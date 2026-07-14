@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>geometry smoke test</title>
+<style>html,body{margin:0;height:100%;background:#111;color:#ddd;font:13px monospace}#log{position:fixed;top:8px;left:8px;white-space:pre;z-index:9}</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js",
+  "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js" } }
+</script>
+</head>
+<body>
+<div id="log"></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as G from './src/geometry.js';
+
+const log = (m) => document.getElementById('log').textContent += m + '\n';
+window.addEventListener('error', e => log('ERROR: ' + e.message));
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14161a);
+const cam = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 1, 2000);
+cam.position.set(0, -160, 220);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+new OrbitControls(cam, renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x201510, 1.2));
+const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(60, -80, 120); scene.add(dl);
+
+// procedural studio environment so metals reflect something
+{
+  const env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(600, 600, 600),
+    new THREE.MeshBasicMaterial({ color: 0x223, side: THREE.BackSide })));
+  const panel = (w, h, x, y, z, c = 0xffffff, i = 6) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(i) }));
+    m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m);
+  };
+  panel(200, 120, 0, 150, 200); panel(150, 100, -200, -50, 100, 0xfff0dd);
+  panel(150, 100, 220, 0, 60, 0xddeeff, 4); panel(300, 60, 0, -220, 150, 0xffffff, 2);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+}
+
+const builds = [
+  ['makeGear',        () => G.makeGear({ module: 1, teeth: 60, thickness: 2 })],
+  ['makePinion',      () => G.makePinion({ module: 1, teeth: 10, thickness: 3 })],
+  ['makeEscapeWheel', () => G.makeEscapeWheel({ radius: 15, thickness: 1.5 })],
+  ['makePalletFork',  () => G.makePalletFork({ span: 14, leverLength: 18, thickness: 1.5 })],
+  ['makeBalanceWheel',() => G.makeBalanceWheel({ radius: 16, thickness: 2 })],
+  ['makeHairspring',  () => G.makeHairspring({ innerR: 2, outerR: 12, coils: 12, height: 1 })],
+  ['makeBarrel',      () => G.makeBarrel({ radius: 25, height: 8, teeth: 80, module: 0.625 })],
+  ['makeBackPlate',   () => G.makeBackPlate({ radius: 50, thickness: 3 })],
+  ['makeCock',        () => G.makeCock({ length: 30, width: 10 })],
+  ['makeJewelSetting',() => G.makeJewelSetting({ r: 2.5 })],
+  ['makePillar',      () => G.makePillar({ height: 14 })],
+  ['makeDial',        () => G.makeDial({ radius: 45 })],
+  ['makeHand',        () => G.makeHand({ length: 30, kind: 'minute' })],
+];
+let i = 0;
+window.parts = {};
+for (const [name, fn] of builds) {
+  try {
+    const obj = fn();
+    obj.position.set(-200 + (i % 5) * 100, 100 - Math.floor(i / 5) * 100, 0);
+    scene.add(obj);
+    window.parts[name] = obj;
+    log('OK  ' + name);
+  } catch (e) { log('FAIL ' + name + ': ' + e.message); console.error(name, e); }
+  i++;
+}
+log('DONE');
+window.cam = cam;
+renderer.setAnimationLoop(() => renderer.render(scene, cam));
+</script>
+</body>
+</html>

@@ -1,0 +1,1742 @@
+// Mechanical Clock Simulation — Agent B (scene, movement assembly, kinematics, UI)
+//
+// Develop-time note: this was built against src/geometry.stub.js / src/materials.stub.js
+// (crude stand-ins implementing the exact SPEC API). Imports below point at the real
+// modules per the integration contract; if geometry.js/materials.js are not yet present
+// this file simply won't run until the orchestrator drops them in — the API is identical
+// so no other changes should be required.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as G from './geometry.js';
+import { MATS } from './materials.js';
+
+const DEG2RAD = Math.PI / 180;
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+function smoothstep(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+
+// ---------------------------------------------------------------------------
+// Kinematic constants (see SPEC.md "Gear train" + "Escapement behavior")
+// ---------------------------------------------------------------------------
+const F_BALANCE = 2.5;           // Hz — balance oscillation frequency
+const BEAT_DEG = 12;             // escape-wheel advance per beat (half of 24° tooth pitch)
+const AMPLITUDE_TRUE_DEG = 270;  // "true" balance swing (physical reference, unused for mesh)
+const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
+const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
+const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
+const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
+const FORK_BANK_DEG = 10;        // fork banking angle (± from center)
+const FORK_RECOIL_DEG = 2.5;     // extra fork deflection into the bank during draw
+
+// ---------------------------------------------------------------------------
+// Renderer / scene / camera
+// ---------------------------------------------------------------------------
+const app = document.getElementById('app');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0b0d);
+scene.fog = new THREE.Fog(0x0a0b0d, 180, 420);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 2000);
+camera.position.set(60, 55, 90);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance = 25;
+controls.maxDistance = 420;
+
+// Lights: hemisphere fill + 2 shadowed directional/spot lights (studio look).
+const hemi = new THREE.HemisphereLight(0x8fa6bf, 0x0a0a0c, 0.65);
+scene.add(hemi);
+
+const keyLight = new THREE.DirectionalLight(0xfff1de, 2.4);
+keyLight.position.set(70, 90, 70);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -110;
+keyLight.shadow.camera.right = 110;
+keyLight.shadow.camera.top = 110;
+keyLight.shadow.camera.bottom = -110;
+keyLight.shadow.camera.near = 1;
+keyLight.shadow.camera.far = 320;
+keyLight.shadow.bias = -0.0005;
+scene.add(keyLight);
+scene.add(keyLight.target);
+
+const fillLight = new THREE.DirectionalLight(0xcfe3ff, 0.55);
+fillLight.position.set(-70, 35, -50);
+scene.add(fillLight);
+
+// Dial side (-Z) gets its own soft key so the face isn't lit only by spill.
+const dialLight = new THREE.DirectionalLight(0xfff4e2, 1.4);
+dialLight.position.set(25, 45, -110);
+scene.add(dialLight);
+
+const rimSpot = new THREE.SpotLight(0xffffff, 220, 400, Math.PI / 6.5, 0.35, 1.4);
+rimSpot.position.set(-10, 70, 150);
+rimSpot.castShadow = true;
+rimSpot.shadow.mapSize.set(1024, 1024);
+scene.add(rimSpot);
+scene.add(rimSpot.target);
+
+// Soft dark backdrop plane behind the movement to catch light / read as a studio wall.
+const backdrop = new THREE.Mesh(
+  new THREE.PlaneGeometry(600, 400),
+  new THREE.MeshStandardMaterial({ color: 0x101317, roughness: 1, metalness: 0 })
+);
+backdrop.position.set(0, 0, -90);
+backdrop.receiveShadow = true;
+scene.add(backdrop);
+
+// Procedural "studio" environment map. The metalness≈1 PBR materials in
+// materials.js read almost black under direct lights alone — they need an
+// environment to reflect. Build a small box room with a few emissive softbox
+// panels and bake it to a PMREM texture (fully offline, no external HDRs).
+function buildStudioEnvironment(renderer) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+
+  const envScene = new THREE.Scene();
+  const roomMat = new THREE.MeshBasicMaterial({ color: 0x1a1d22, side: THREE.BackSide });
+  const room = new THREE.Mesh(new THREE.BoxGeometry(180, 180, 180), roomMat);
+  envScene.add(room);
+
+  function softbox(w, h, color, intensity, pos, rotY = 0, rotX = 0) {
+    const panel = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color, toneMapped: false })
+    );
+    panel.material.color.multiplyScalar(intensity);
+    panel.position.copy(pos);
+    panel.rotation.y = rotY;
+    panel.rotation.x = rotX;
+    envScene.add(panel);
+  }
+
+  // Large soft key overhead, cooler fill from the side, warm rim behind.
+  softbox(90, 60, 0xffffff, 3.2, new THREE.Vector3(0, 70, 0), 0, Math.PI / 2);
+  softbox(70, 90, 0xdfe8ff, 1.6, new THREE.Vector3(-70, 10, 20), Math.PI / 2, 0);
+  softbox(70, 90, 0xfff2df, 1.2, new THREE.Vector3(70, 5, -10), -Math.PI / 2, 0);
+  softbox(100, 60, 0xffffff, 0.8, new THREE.Vector3(0, -20, 70), Math.PI, 0);
+
+  // near/far generous enough to cover the 90-unit room half-extent.
+  const rt = pmrem.fromScene(envScene, 0.04, 0.1, 250);
+  pmrem.dispose();
+  return rt.texture;
+}
+
+scene.environment = buildStudioEnvironment(renderer);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---------------------------------------------------------------------------
+// Movement assembly
+// ---------------------------------------------------------------------------
+// Z layers between the back plate (z=0) and the cocks/top plate (z≈20). Each
+// arbor's PINION sits at the layer where it meshes with the PREVIOUS wheel;
+// its own WHEEL sits one layer further along, where the NEXT pinion meshes it.
+const L_BARREL = 3;   // barrel teeth height (meshes center pinion)
+const L_CENTER = 6;   // center wheel height (meshes third pinion)
+const L_THIRD = 9;    // third wheel height (meshes fourth pinion)
+const L_FOURTH = 12;  // fourth wheel height (meshes escape pinion)
+const L_ESCAPE = 15;  // escape wheel height (engages pallet fork)
+const L_FORK = 16.5;
+// Balance rides high enough that only its roller stack (roller table +
+// impulse pin + safety roller, built ~4mm below the wheel in makeBalanceWheel)
+// descends to the pallet-fork plane, so the pin seats in the fork notch.
+const L_BALANCE = 20.5;
+const L_HAIRSPRING = 23;
+const L_COCK = 24;
+
+const explodeEntries = []; // { obj, baseZ, dir, layer }
+function registerExplode(obj, baseZ, layer, dir = 1) {
+  explodeEntries.push({ obj, baseZ, layer, dir });
+}
+
+const labelEntries = []; // { name, obj }
+function registerLabel(name, obj) {
+  labelEntries.push({ name, obj });
+}
+
+const movement = new THREE.Group();
+scene.add(movement);
+
+// --- Great wheel / barrel -----------------------------------------------
+const barrelModule = 0.36, barrelTeeth = 80;
+const barrelR = (barrelModule * barrelTeeth) / 2;
+const barrel = G.makeBarrel({ radius: barrelR, height: 8, teeth: barrelTeeth, module: barrelModule });
+const barrelR_actual = barrel.userData.r || barrelR;
+
+// --- Center arbor: pinion (meshed by barrel) + center wheel --------------
+const centerPinion = G.makePinion({ module: barrelModule, teeth: 10, thickness: 3, material: MATS.steel });
+const centerPinionR = centerPinion.userData.r;
+
+const centerModule = 0.3, centerTeeth = 75;
+const centerWheel = G.makeGear({ module: centerModule, teeth: centerTeeth, thickness: 2, boreR: 1.2, spokes: 5, material: MATS.brass });
+const centerWheelR = centerWheel.userData.r;
+
+// --- Third arbor: pinion (meshed by center wheel) + third wheel ----------
+const thirdPinion = G.makePinion({ module: centerModule, teeth: 10, thickness: 3, material: MATS.steel });
+const thirdPinionR = thirdPinion.userData.r;
+
+const thirdModule = 0.24, thirdTeeth = 80;
+const thirdWheel = G.makeGear({ module: thirdModule, teeth: thirdTeeth, thickness: 1.8, boreR: 1, spokes: 4, material: MATS.brass });
+const thirdWheelR = thirdWheel.userData.r;
+
+// --- Fourth arbor: pinion (meshed by third wheel) + fourth wheel ---------
+const fourthPinion = G.makePinion({ module: thirdModule, teeth: 10, thickness: 3, material: MATS.steel });
+const fourthPinionR = fourthPinion.userData.r;
+
+const fourthModule = 0.21, fourthTeeth = 80;
+const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: 1.6, boreR: 0.9, spokes: 5, material: MATS.brass });
+const fourthWheelR = fourthWheel.userData.r;
+
+// --- Escape arbor: pinion (meshed by fourth wheel) + escape wheel --------
+const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: 3, material: MATS.steel });
+const escapePinionR = escapePinion.userData.r;
+
+const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 1.5 });
+const escapeWheelR = escapeWheel.userData.r || 4.5;
+
+// --- Pallet fork + balance ------------------------------------------------
+const balanceWheel = G.makeBalanceWheel({ radius: 9, thickness: 2.5 });
+const balanceR = balanceWheel.userData.r || 9;
+
+// Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
+// classic Swiss-lever embrace that makes teeth lock the entry and exit stones
+// on alternating beats: half-span = R·sin(42°).
+const forkSpan = 2 * escapeWheelR * Math.sin(THREE.MathUtils.degToRad(42));
+// Pivot distance from the escape-wheel centre that puts both stones exactly on
+// the wheel rim (stones sit at (±span/2, span/2) in fork-local coordinates).
+const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan / 2) ** 2);
+// Lever runs from the pivot to just short of the balance roller's edge.
+const escToBalanceDist = (escapeWheelR + balanceR) * 2.0;
+const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
+const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: 1.2 });
+
+const hairspring = G.makeHairspring({
+  innerR: Math.max((balanceWheel.userData.rollerR || balanceR * 0.35) * 0.5, 1.5),
+  outerR: balanceR * 0.88,
+  coils: 10,
+  height: 0.6,
+});
+
+// ---------------------------------------------------------------------------
+// Planar layout (XY plane; assembly only sets position, no extra rotation
+// since parts are already built lying flat with their pivot on +Z).
+// ---------------------------------------------------------------------------
+function stepPos(prev, angleDeg, dist) {
+  const a = angleDeg * DEG2RAD;
+  return { x: prev.x + Math.cos(a) * dist, y: prev.y + Math.sin(a) * dist };
+}
+
+const barrelPos = { x: 0, y: 0 };
+const centerPos = stepPos(barrelPos, 52, barrelR_actual + centerPinionR);
+const thirdPos = stepPos(centerPos, -58, centerWheelR + thirdPinionR);
+const fourthPos = stepPos(thirdPos, 64, thirdWheelR + fourthPinionR);
+const escapePos = stepPos(fourthPos, -48, fourthWheelR + escapePinionR);
+const balancePos = stepPos(escapePos, -22, escToBalanceDist);
+
+// Fork pivot: on the escape→balance line at palletStoneDist from the wheel
+// centre (computed above), so the anchor straddles the near rim of the wheel
+// and the lever/notch continues on toward the impulse pin.
+const toBalance = { x: balancePos.x - escapePos.x, y: balancePos.y - escapePos.y };
+const toBalanceLen = Math.hypot(toBalance.x, toBalance.y) || 1;
+const uBalance = { x: toBalance.x / toBalanceLen, y: toBalance.y / toBalanceLen };
+const forkPivotPos = { x: escapePos.x + uBalance.x * palletStoneDist, y: escapePos.y + uBalance.y * palletStoneDist };
+const forkBaseAngle = Math.atan2(uBalance.x, -uBalance.y);
+
+// The impulse pin is built on the roller at local +X; aim it at the fork
+// pivot when the balance is at mid-swing (θ=0) so each zero-crossing carries
+// the pin through the fork notch. Without this the balance oscillates about
+// an arbitrary zero and the pin never meets the horns.
+const PIN_AIM = Math.atan2(forkPivotPos.y - balancePos.y, forkPivotPos.x - balancePos.x);
+
+// Dial center MUST coincide with the center-wheel arbor (minute hand rides
+// on the same axis via the cannon pinion).
+const dialCenterXY = { x: centerPos.x, y: centerPos.y };
+
+// Recenter everything on the CENTER-WHEEL arbor: the dial must be concentric
+// with the plate (hands ride the center arbor), exactly like a real movement —
+// recentring on the layout centroid left the dial hanging off the plate edge.
+const centroid = { x: centerPos.x, y: centerPos.y };
+function shift(p) { return { x: p.x - centroid.x, y: p.y - centroid.y }; }
+const P = {
+  barrel: shift(barrelPos), center: shift(centerPos), third: shift(thirdPos),
+  fourth: shift(fourthPos), escape: shift(escapePos), balance: shift(balancePos),
+  fork: shift(forkPivotPos), dial: shift(dialCenterXY),
+};
+
+// Plate radius: tightest circle (plus a rim margin) that contains each part's
+// own outline — arbor distance plus that part's radius, not a blanket maximum.
+const partOutlineR = {
+  barrel: barrelR_actual, center: centerWheelR, third: thirdWheelR,
+  fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
+  fork: 4, dial: 0,
+};
+let plateR = 20;
+for (const key in P) {
+  plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (partOutlineR[key] || 0));
+}
+plateR += 5;
+
+// Centroid of just the wheel-train arbors (excludes balance/dial), used to
+// aim the "Train" camera preset without staring straight down the Z axis
+// (which would line the small train up directly in front of the much
+// bigger dial sitting behind it and let the dial swamp the frame).
+const trainKeys = ['barrel', 'center', 'third', 'fourth', 'escape'];
+const trainCentroid = trainKeys.reduce(
+  (a, k) => ({ x: a.x + P[k].x / trainKeys.length, y: a.y + P[k].y / trainKeys.length }),
+  { x: 0, y: 0 }
+);
+
+// Now that the real scale of the movement is known, size the orbit limits
+// and initial camera framing to match (rather than fixed absolute units).
+controls.minDistance = plateR * 0.35;
+controls.maxDistance = plateR * 12;
+camera.position.set(plateR * 2.0, plateR * 1.8, plateR * 3.0);
+// Tighten the clip planes to the movement's real scale — the previous
+// 0.5..2000 range gave poor depth-buffer precision at these distances,
+// which was enough to z-fight the (sub-unit) hand-to-dial gap invisible.
+camera.near = Math.max(0.5, plateR * 0.02);
+camera.far = plateR * 20;
+camera.updateProjectionMatrix();
+
+// ---------------------------------------------------------------------------
+// Mesh-phase interleaving: choose each driven wheel's constant rotation
+// offset so a tooth never sits where its partner's tooth already is, for
+// all time (guaranteed once true at any reference instant, since the ratio
+// keeps module-matched gears in lockstep).
+// ---------------------------------------------------------------------------
+function meshOffset(driverPos, drivenPos, drivenTeeth, ratio, driverAngleAtRef) {
+  const phi12 = Math.atan2(drivenPos.y - driverPos.y, drivenPos.x - driverPos.x);
+  const phi21 = phi12 + Math.PI;
+  const P2 = (Math.PI * 2) / drivenTeeth;
+  return phi21 + ratio * driverAngleAtRef - P2 / 2;
+}
+
+// ---------------------------------------------------------------------------
+// Escapement state machine — phase-driven keyframing off the balance clock.
+// ---------------------------------------------------------------------------
+function beatPhase(t) {
+  const raw = t * 2 * F_BALANCE;
+  const n = Math.floor(raw);
+  const p = raw - n;
+  return { n, p };
+}
+
+function escapeDeltaDeg(p) {
+  if (p < IMPULSE_WIDTH) {
+    const s = p / IMPULSE_WIDTH;
+    if (s < RECOIL_FRACTION) {
+      const rs = s / RECOIL_FRACTION;
+      return -Math.sin(rs * Math.PI) * RECOIL_DEG;
+    }
+    const rs = (s - RECOIL_FRACTION) / (1 - RECOIL_FRACTION);
+    return smoothstep(rs) * BEAT_DEG;
+  }
+  return BEAT_DEG;
+}
+
+function escapeAngle(t) {
+  const { n, p } = beatPhase(t);
+  return (n * BEAT_DEG + escapeDeltaDeg(p)) * DEG2RAD;
+}
+
+function forkBankAt(n) { return (n % 2 === 0) ? -1 : 1; }
+
+function forkSwingRad(t) {
+  const { n, p } = beatPhase(t);
+  const bankStart = forkBankAt(n);
+  const bankEnd = -bankStart;
+  if (p < IMPULSE_WIDTH) {
+    const s = p / IMPULSE_WIDTH;
+    if (s < RECOIL_FRACTION) {
+      const rs = s / RECOIL_FRACTION;
+      const dip = Math.sin(rs * Math.PI);
+      return (bankStart * FORK_BANK_DEG - Math.sign(bankStart) * dip * FORK_RECOIL_DEG) * DEG2RAD;
+    }
+    const rs = (s - RECOIL_FRACTION) / (1 - RECOIL_FRACTION);
+    const eased = smoothstep(rs);
+    return (bankStart * FORK_BANK_DEG + (bankEnd - bankStart) * FORK_BANK_DEG * eased) * DEG2RAD;
+  }
+  return bankEnd * FORK_BANK_DEG * DEG2RAD;
+}
+
+// Chain the rest of the train backwards off the escape wheel — pure
+// gear-ratio functions, never integrated, so they never drift.
+const escAt0 = escapeAngle(0);
+
+const ratioFourth = 8 / fourthTeeth; // escape pinion teeth / fourth wheel teeth
+const offFourth = meshOffset(P.escape, P.fourth, fourthTeeth, ratioFourth, escAt0);
+function fourthAngle(t) { return offFourth - ratioFourth * escapeAngle(t); }
+const fourthAt0 = fourthAngle(0);
+
+const ratioThird = 10 / thirdTeeth; // fourth pinion teeth / third wheel teeth
+const offThird = meshOffset(P.fourth, P.third, thirdTeeth, ratioThird, fourthAt0);
+function thirdAngle(t) { return offThird - ratioThird * fourthAngle(t); }
+const thirdAt0 = thirdAngle(0);
+
+const ratioCenter = 10 / centerTeeth; // third pinion teeth / center wheel teeth
+const offCenter = meshOffset(P.third, P.center, centerTeeth, ratioCenter, thirdAt0);
+function centerAngle(t) { return offCenter - ratioCenter * thirdAngle(t); }
+const centerAt0 = centerAngle(0);
+
+const ratioBarrel = 10 / barrelTeeth; // center pinion teeth / barrel teeth
+const offBarrel = meshOffset(P.center, P.barrel, barrelTeeth, ratioBarrel, centerAt0);
+function barrelMeshAngle(t) { return offBarrel - ratioBarrel * centerAngle(t); }
+
+// Amplitude sags with the state of wind (real movements drop from ~300° to
+// ~200° as the mainspring drains) and the oscillation runs on movement time τ.
+function balanceTheta(tau, tension = 1) {
+  const amp = AMPLITUDE_VISUAL_DEG * (0.55 + 0.45 * tension);
+  return amp * DEG2RAD * Math.sin(2 * Math.PI * F_BALANCE * tau);
+}
+
+// ---------------------------------------------------------------------------
+// Assemble arbor groups
+// ---------------------------------------------------------------------------
+const barrelArbor = new THREE.Group();
+barrelArbor.position.set(P.barrel.x, P.barrel.y, L_BARREL);
+barrel.position.z = 0;
+barrelArbor.add(barrel);
+movement.add(barrelArbor);
+registerExplode(barrelArbor, L_BARREL, 1);
+registerLabel('Barrel / Mainspring', barrelArbor);
+
+const centerArbor = new THREE.Group();
+centerArbor.position.set(P.center.x, P.center.y, L_BARREL);
+centerPinion.position.z = 0;
+centerWheel.position.z = L_CENTER - L_BARREL;
+centerArbor.add(centerPinion, centerWheel);
+movement.add(centerArbor);
+registerExplode(centerArbor, L_BARREL, 2);
+registerLabel('Center wheel', centerArbor);
+
+const thirdArbor = new THREE.Group();
+thirdArbor.position.set(P.third.x, P.third.y, L_CENTER);
+thirdPinion.position.z = 0;
+thirdWheel.position.z = L_THIRD - L_CENTER;
+thirdArbor.add(thirdPinion, thirdWheel);
+movement.add(thirdArbor);
+registerExplode(thirdArbor, L_CENTER, 3);
+registerLabel('Third wheel', thirdArbor);
+
+const fourthArbor = new THREE.Group();
+fourthArbor.position.set(P.fourth.x, P.fourth.y, L_THIRD);
+fourthPinion.position.z = 0;
+fourthWheel.position.z = L_FOURTH - L_THIRD;
+fourthArbor.add(fourthPinion, fourthWheel);
+movement.add(fourthArbor);
+registerExplode(fourthArbor, L_THIRD, 4);
+registerLabel('Fourth wheel', fourthArbor);
+
+const escapeArbor = new THREE.Group();
+escapeArbor.position.set(P.escape.x, P.escape.y, L_FOURTH);
+escapePinion.position.z = 0;
+escapeWheel.position.z = L_ESCAPE - L_FOURTH;
+// Phase the wheel so a tooth tip rests on the exit stone at each lock (the
+// 84° stone embrace = 3.5 pitches then makes alternate beats land on the
+// entry stone automatically). Tooth tips sit at (i + 0.22)·pitch in the
+// wheel's local frame (see makeEscapeWheel); stones sit at (±s/2, s/2) in the
+// fork's local frame, whose wheel centre lies at (0, palletStoneDist).
+{
+  const pitch = (Math.PI * 2) / 15;
+  const half = forkSpan / 2;
+  const exitLocal = Math.atan2(half - palletStoneDist, half);
+  const exitWorld = exitLocal + forkBaseAngle;
+  const tipPhase = 0.22 * pitch;
+  const raw = exitWorld - tipPhase - escapeAngle(0);
+  escapeWheel.rotation.z = ((raw % pitch) + pitch) % pitch;
+}
+escapeArbor.add(escapePinion, escapeWheel);
+movement.add(escapeArbor);
+registerExplode(escapeArbor, L_FOURTH, 5);
+registerLabel('Escape wheel', escapeArbor);
+
+const forkGroup = new THREE.Group();
+forkGroup.position.set(P.fork.x, P.fork.y, L_FORK);
+forkGroup.add(palletFork);
+movement.add(forkGroup);
+registerExplode(forkGroup, L_FORK, 6);
+registerLabel('Pallet fork', forkGroup);
+
+const balanceGroup = new THREE.Group();
+balanceGroup.position.set(P.balance.x, P.balance.y, L_BALANCE);
+balanceGroup.add(balanceWheel);
+movement.add(balanceGroup);
+registerExplode(balanceGroup, L_BALANCE, 7);
+registerLabel('Balance', balanceGroup);
+
+const hairspringGroup = new THREE.Group();
+hairspringGroup.position.set(P.balance.x, P.balance.y, L_HAIRSPRING);
+hairspringGroup.add(hairspring);
+movement.add(hairspringGroup);
+registerExplode(hairspringGroup, L_HAIRSPRING, 8);
+registerLabel('Hairspring', hairspringGroup);
+
+// ---------------------------------------------------------------------------
+// Plates, cocks, pillars, jewels
+// ---------------------------------------------------------------------------
+const backPlate = G.makeBackPlate({ radius: plateR, thickness: 2 });
+backPlate.position.set(0, 0, -1);
+backPlate.receiveShadow = true;
+movement.add(backPlate);
+registerExplode(backPlate, -1, 0);
+
+function addBridge(fromXY, toXY, z, widthScale = 1) {
+  const dx = toXY.x - fromXY.x, dy = toXY.y - fromXY.y;
+  const len = Math.hypot(dx, dy) + 10;
+  const cock = G.makeCock({ length: len, width: 5.5 * widthScale });
+  cock.position.set((fromXY.x + toXY.x) / 2, (fromXY.y + toXY.y) / 2, z);
+  cock.rotation.z = Math.atan2(dy, dx) - Math.PI / 2; // cock's long axis is local Y
+  movement.add(cock);
+  registerExplode(cock, z, L_COCK === z ? 9 : 8);
+  return cock;
+}
+addBridge(P.barrel, P.center, L_BARREL + 2.5, 1.3);
+addBridge(P.center, P.third, L_CENTER + 2.5);
+addBridge(P.third, P.fourth, L_THIRD + 2.5);
+
+const balanceCock = G.makeCock({ length: forkLeverLength * 0.9, width: 6 });
+balanceCock.position.set(P.balance.x, P.balance.y + 4, L_COCK);
+balanceCock.rotation.z = Math.atan2(P.balance.y - P.fork.y, P.balance.x - P.fork.x) - Math.PI / 2;
+movement.add(balanceCock);
+registerExplode(balanceCock, L_COCK, 9);
+registerLabel('Balance cock', balanceCock);
+
+// (The hacking BRAKE is now the hack spring — a long blade actuated by the
+// setting lever's post; both are built after the keyless works below, since
+// their geometry is solved from the stem/groove positions. The physical
+// contact model that decelerates the balance is unchanged, in tick().)
+
+// --- Reset hammer + heart cam (seconds-only stopwatch reset) -------------
+// Mounted on its OWN arbor, coaxial with the fourth wheel but NOT rigidly
+// keyed to it — a friction (cannon-pinion-style) coupling, same principle
+// already used for the power-reserve arbor extension above. This is a
+// deliberate choice, not a shortcut: the real fourth wheel is meshed
+// through the escape wheel to a pallet fork that the hacking lever has
+// ALSO locked, and correcting the seconds hand can require up to half a
+// fourth-wheel revolution — geared up ~10:1 through the escape pinion,
+// that's several full turns of the escape wheel, far past the fraction-of-
+// a-tooth backward play a lever-escapement lock actually tolerates before
+// re-locking on the opposite stone. Backdriving the REAL train through a
+// live lock that far isn't a real option (short of breaking it) — real
+// chronographs solve exactly this with a declutchable seconds wheel, so
+// the hammer here acts on a slip-coupled display arbor instead: it can
+// overpower the friction and cam the display to zero without disturbing
+// the real going train, the minute hand, or the mainspring underneath.
+const camRadius = fourthWheelR * 0.4;
+const hammerArmLen = camRadius * 2.3;
+const HAMMER_SWING_RAD = THREE.MathUtils.degToRad(30); // retracted clearance angle
+const fourthDist = Math.hypot(P.fourth.x, P.fourth.y) || 1;
+const uFourthOut = { x: P.fourth.x / fourthDist, y: P.fourth.y / fourthDist }; // radially outward, clear of the train
+const heartCam = G.makeHeartCam({ radius: camRadius, thickness: 1.2 });
+const hammerPivotDist = heartCam.userData.rMin + hammerArmLen; // so 0° swing lands the roller in the notch
+const hammerPivotPos = {
+  x: P.fourth.x + uFourthOut.x * hammerPivotDist,
+  y: P.fourth.y + uFourthOut.y * hammerPivotDist,
+};
+const hammerAimAngle = Math.atan2(-uFourthOut.y, -uFourthOut.x); // pivot -> fourth-wheel centre
+const hammerBaseAngle = hammerAimAngle - Math.PI / 2;
+// Phase the cam so its notch (local θ=0, i.e. local +X) faces the hammer's
+// approach direction once reset — the same fixed-direction phasing trick
+// used to seat the escape wheel's tooth tips on the pallet stones above.
+const camPhaseOffset = hammerAimAngle;
+
+const Z_SECONDS_ARBOR = L_FOURTH + 2.2; // clear of the fourth wheel and escape pinion planes
+const secondsCamArbor = new THREE.Group();
+secondsCamArbor.position.set(P.fourth.x, P.fourth.y, Z_SECONDS_ARBOR);
+secondsCamArbor.add(heartCam);
+movement.add(secondsCamArbor);
+registerExplode(secondsCamArbor, Z_SECONDS_ARBOR, 4);
+registerLabel('Heart cam (seconds reset)', secondsCamArbor);
+
+const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: 2.0 });
+const hammerGroup = new THREE.Group();
+hammerGroup.position.set(hammerPivotPos.x, hammerPivotPos.y, Z_SECONDS_ARBOR);
+hammerGroup.add(hammerLever);
+movement.add(hammerGroup);
+registerExplode(hammerGroup, Z_SECONDS_ARBOR, 4);
+registerLabel('Reset hammer', hammerGroup);
+
+const pillarPositions = [45, 135, 225, 315].map((deg) => ({
+  x: Math.cos(deg * DEG2RAD) * (plateR - 8),
+  y: Math.sin(deg * DEG2RAD) * (plateR - 8),
+}));
+for (const pp of pillarPositions) {
+  const pillar = G.makePillar({ height: L_COCK + 2 });
+  pillar.position.set(pp.x, pp.y, (L_COCK + 2) / 2);
+  movement.add(pillar);
+}
+
+// Jewel settings at each arbor's front bearing.
+const jewelSpots = [
+  { p: P.barrel, z: L_BARREL + 4 }, { p: P.center, z: L_CENTER + 4 }, { p: P.third, z: L_THIRD + 4 },
+  { p: P.fourth, z: L_FOURTH + 4 }, { p: P.escape, z: L_ESCAPE + 2 }, { p: P.balance, z: L_HAIRSPRING + 1.5 },
+];
+for (const spot of jewelSpots) {
+  const jewel = G.makeJewelSetting({ r: 2 });
+  jewel.position.set(spot.p.x, spot.p.y, spot.z);
+  movement.add(jewel);
+}
+
+// ---------------------------------------------------------------------------
+// Keyless works — a real two-position sliding-pinion clutch. windPinion IS
+// the sliding pinion: it rides on windSpinner, which already slides axially
+// along the stem for the crown pull/push (see CROWN_PULL_DIST below). In
+// the pushed-in ("winding") position it meshes crownWheel → ratchet wheel
+// on the barrel arbor. Pulled out ("setting"), it slides clear of crownWheel
+// and meshes settingWheel instead → minuteArbor (a compound wheel+pinion,
+// same trick as the power-reserve train's reduction) → the dial's cannon
+// pinion — bypassing the going train entirely, exactly why you can set a
+// watch's hands without touching its power reserve. Which path is live is
+// decided in tick() by the sliding pinion's ACTUAL animated position
+// (crownPullT), not the raw crown target, so mid-slide it's out of mesh
+// with both, same as a real clutch in transit.
+// ---------------------------------------------------------------------------
+const keyless = new THREE.Group();
+movement.add(keyless);
+registerLabel('Keyless works', keyless);
+registerExplode(keyless, 0, 4);
+
+const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
+const uWind = { x: P.barrel.x / barrelDist, y: P.barrel.y / barrelDist };
+const stemAngle = Math.atan2(uWind.y, uWind.x);
+const ratchetR = barrelR * 0.34;      // matches makeBarrel's ratR
+const Z_KEYLESS = L_BARREL + 4.6;     // the ratchet-wheel plane atop the barrel
+
+const crownWheelTeeth = 20;
+const crownWheel = G.makeGear({ module: 0.34, teeth: crownWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+const crownWheelR = crownWheel.userData.r;
+const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the ratchet
+const cwDist = barrelDist + ratchetR + crownWheelR + 0.1;
+crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
+keyless.add(crownWheel);
+const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.5, 12), MATS.blueSteel);
+cwScrew.rotation.x = Math.PI / 2;
+cwScrew.position.copy(crownWheel.position);
+keyless.add(cwScrew);
+
+// Everything on the stem axis lives in one spinner group (local +Y = outward).
+const windPinionTeeth = 8;
+const windPinion = G.makePinion({ module: 0.34, teeth: windPinionTeeth, thickness: 1.6, material: MATS.steel });
+const windPinionR = windPinion.userData.r;
+const windSpinner = new THREE.Group();
+const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // teeth overlap the wheel rim, bevel-style
+windSpinner.position.set(uWind.x * pinDist, uWind.y * pinDist, Z_KEYLESS);
+// Euler order matters: the winding spin (rotation.y) must compose BEFORE the
+// z-orientation, i.e. about the stem's own local axis — with the default
+// 'XYZ' order the spin happens about world Y and the stem precesses a cone.
+windSpinner.rotation.order = 'ZYX';
+windSpinner.rotation.z = stemAngle - Math.PI / 2;
+keyless.add(windSpinner);
+
+windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the stem
+windSpinner.add(windPinion);
+
+const stemLen = plateR + 2.2 - pinDist;
+const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, stemLen, 12), MATS.steel);
+stem.position.y = stemLen / 2;
+windSpinner.add(stem);
+
+// How far the whole stem/crown assembly slides outward when hacking — the
+// winding pinion rides on this same group, so pulling out also disengages
+// it from the crown wheel, as on a real sliding-pinion keyless works.
+const CROWN_PULL_DIST = 6;
+
+// Knurled crown: faceted barrel (low segment count reads as knurling) + cap.
+const crownBody = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 2.2, 14, 1), MATS.brass);
+crownBody.position.y = stemLen + 0.4;
+const crownCap = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.4, 0.8, 14, 1), MATS.brass);
+crownCap.position.y = stemLen + 1.9;
+windSpinner.add(crownBody, crownCap);
+
+// Handles into the barrel's ratchet + click for the winding animation.
+const ratchetMesh = barrel.getObjectByName('ratchet');
+const clickMesh = barrel.getObjectByName('click');
+const clickBaseRot = clickMesh ? clickMesh.rotation.z : 0;
+const RATCHET_TEETH = 24; // matches makeBarrel's ratTeeth
+
+// --- Setting path: setting wheel -> minute wheel/pinion (compound) --------
+// Positioned further out along the stem than crownWheel, at the sliding
+// pinion's PULLED-OUT position, so the same pinion leaves crownWheel's mesh
+// and picks up this one instead. minuteArbor is a compound wheel+pinion
+// (like the reserve train's rsvWheel1/reservePinion1) purely to get an
+// extra reduction stage without a 4th visible wheel; its pinion's rotation
+// is what tick() reads to drive the hands (see handSetOffset) — a
+// representational hop across the plate/dial gap, same convention already
+// used for the power-reserve arbor, not a literal continuous mesh into the
+// dial's flipped coordinate frame.
+const settingWheelTeeth = 30;
+const settingWheel = G.makeGear({ module: 0.34, teeth: settingWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+const settingWheelR = settingWheel.userData.r;
+const settingWheelBase = Math.PI / settingWheelTeeth;
+const pinOutDist = pinDist + CROWN_PULL_DIST; // sliding pinion's centre when fully pulled out
+const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
+settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
+keyless.add(settingWheel);
+
+const minuteWheelTeeth = 48, minutePinionTeeth = 8;
+const minuteWheel = G.makeGear({ module: 0.34, teeth: minuteWheelTeeth, thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
+const minuteWheelR = minuteWheel.userData.r;
+const minuteWheelBase = Math.PI / minuteWheelTeeth;
+const minutePinion = G.makePinion({ module: 0.28, teeth: minutePinionTeeth, thickness: 1.3, material: MATS.steel });
+const MINUTE_Z_STEP = 2.0;
+const mwDist = swDist + settingWheelR + minuteWheelR + 0.1;
+const minuteArbor = new THREE.Group();
+minuteArbor.position.set(uWind.x * mwDist, uWind.y * mwDist, Z_KEYLESS);
+minutePinion.position.z = -MINUTE_Z_STEP;
+minuteArbor.add(minuteWheel, minutePinion);
+keyless.add(minuteArbor);
+// Stub arbor toward the dial — representational, see comment above.
+const minuteStub = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.5, 10), MATS.steel);
+minuteStub.rotation.x = Math.PI / 2;
+minuteStub.position.set(uWind.x * mwDist, uWind.y * mwDist, Z_KEYLESS - MINUTE_Z_STEP - 1.8);
+keyless.add(minuteStub);
+
+// ---------------------------------------------------------------------------
+// Setting-lever linkage — the visible actuation chain behind the crown pull.
+// The stem carries a grooved collar pair; the setting lever's upright pin
+// rides between them, so sliding the crown ROTATES the lever. Its tall tail
+// post then does the ganged work of real keyless works: it bears on the hack
+// spring (the long blued blade reaching across to the balance rim) and
+// drives the reset-hammer rod. A separate yoke tracks the sliding pinion's
+// hub collars. All angles below are SOLVED from the stem geometry, so the
+// pin stays in the groove and the fork stays on the hub through the slide.
+// ---------------------------------------------------------------------------
+const vPerp = { x: -uWind.y, y: uWind.x };
+const sideSign = Math.sign(P.balance.x * vPerp.x + P.balance.y * vPerp.y) || 1;
+
+// Groove collars on the stem (ride with windSpinner) + sliding-pinion hub
+// collars for the yoke's fork.
+const GROOVE_LOCAL = 4; // along the stem, outward of the sliding pinion
+{
+  const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.5, 12);
+  for (const dy of [-0.95, 0.95]) {
+    const collar = new THREE.Mesh(collarGeo, MATS.steel);
+    collar.position.y = GROOVE_LOCAL + dy;
+    windSpinner.add(collar);
+  }
+  const hubGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.4, 14);
+  for (const dy of [-1.7, 1.7]) {
+    const hub = new THREE.Mesh(hubGeo, MATS.steel);
+    hub.position.y = dy;
+    windSpinner.add(hub);
+  }
+}
+
+// Setting lever: pivoted beside the stem on the balance side; the beak's pin
+// tracks the groove, whose along-stem position is pinDist+pull·slide+local.
+const SL_C = 10;    // pivot's lateral offset from the stem axis
+const SL_TAIL = 6;  // tail arm length (pivot → post)
+const Z_SETTING_LEVER = Z_KEYLESS - 2.1;
+const slMidAlong = pinDist + CROWN_PULL_DIST / 2 + GROOVE_LOCAL;
+const settingLeverPivot = {
+  x: uWind.x * slMidAlong + sideSign * vPerp.x * SL_C,
+  y: uWind.y * slMidAlong + sideSign * vPerp.y * SL_C,
+};
+const settingLever = G.makeSettingLever({
+  beakLen: Math.hypot(SL_C, CROWN_PULL_DIST / 2),
+  tailLen: SL_TAIL,
+  width: 3,
+  thickness: 1,
+  beakPinH: 1.5,
+  postH: L_BALANCE - Z_SETTING_LEVER + 0.5,
+});
+const settingLeverGroup = new THREE.Group();
+settingLeverGroup.position.set(settingLeverPivot.x, settingLeverPivot.y, Z_SETTING_LEVER);
+settingLeverGroup.add(settingLever);
+movement.add(settingLeverGroup);
+registerExplode(settingLeverGroup, Z_SETTING_LEVER, 4);
+registerLabel('Setting lever', settingLeverGroup);
+
+function settingLeverAngleAt(pull) {
+  const along = pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL;
+  const gx = uWind.x * along, gy = uWind.y * along;
+  return Math.atan2(gy - settingLeverPivot.y, gx - settingLeverPivot.x) - Math.PI / 2;
+}
+function tailPostWorldAt(pull) {
+  const a = settingLeverAngleAt(pull);
+  return {
+    x: settingLeverPivot.x + Math.sin(a) * SL_TAIL,
+    y: settingLeverPivot.y - Math.cos(a) * SL_TAIL,
+  };
+}
+
+// Yoke: on the opposite side of the stem, its fork tracking the sliding
+// pinion's hub (which travels with the crown pull).
+const YK_C = 7.5;
+const Z_YOKE = Z_KEYLESS - 2.3;
+const yokeMidAlong = pinDist + CROWN_PULL_DIST / 2;
+const yokePivot = {
+  x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
+  y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
+};
+const yoke = G.makeYoke({
+  armLen: Math.hypot(YK_C, CROWN_PULL_DIST / 2),
+  width: 2.6,
+  thickness: 1,
+  prongGap: 3.4,
+  prongH: Z_KEYLESS - Z_YOKE + 0.4,
+});
+const yokeGroup = new THREE.Group();
+yokeGroup.position.set(yokePivot.x, yokePivot.y, Z_YOKE);
+yokeGroup.add(yoke);
+movement.add(yokeGroup);
+registerExplode(yokeGroup, Z_YOKE, 4);
+registerLabel('Yoke', yokeGroup);
+
+function yokeAngleAt(pull) {
+  const along = pinDist + pull * CROWN_PULL_DIST;
+  const px = uWind.x * along, py = uWind.y * along;
+  return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
+}
+
+// Hack spring: anchored so the setting-lever post bears on its flank near
+// the anchor; the blade runs from there across the movement to the balance
+// rim. All of it derived from the post's actual engaged/released positions.
+const HACK_LIFT = 0.09;       // rad — blade deflection between released/braking
+const HACK_PRESS_DIST = 19.5; // post's bearing point, this far from the anchor
+const postEng = tailPostWorldAt(1);
+const postRel = tailPostWorldAt(0);
+let uB = { x: P.balance.x - postEng.x, y: P.balance.y - postEng.y };
+{
+  const m = Math.hypot(uB.x, uB.y) || 1;
+  uB = { x: uB.x / m, y: uB.y / m };
+}
+// Component of the post's engaging travel perpendicular to the blade — the
+// direction it pushes the flank.
+let pushDir = (() => {
+  const t = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
+  const along = t.x * uB.x + t.y * uB.y;
+  const p = { x: t.x - along * uB.x, y: t.y - along * uB.y };
+  const m = Math.hypot(p.x, p.y);
+  if (m < 1e-6) return { x: -uB.y, y: uB.x };
+  return { x: p.x / m, y: p.y / m };
+})();
+const bladeAnchor = {
+  x: postEng.x + pushDir.x * 1.3 - uB.x * HACK_PRESS_DIST,
+  y: postEng.y + pushDir.y * 1.3 - uB.y * HACK_PRESS_DIST,
+};
+const bladeToBalance = Math.hypot(P.balance.x - bladeAnchor.x, P.balance.y - bladeAnchor.y);
+const bladeAimAngle = Math.atan2(P.balance.y - bladeAnchor.y, P.balance.x - bladeAnchor.x);
+// Rotating the blade by +δ moves its flank along ẑ×û; releasing must move it
+// WITH the retreating post (−pushDir), which fixes the lift's sign.
+const zCrossU = { x: -uB.y, y: uB.x };
+const BLADE_LIFT_SIGN = -Math.sign(zCrossU.x * pushDir.x + zCrossU.y * pushDir.y) || 1;
+const hackSpring = G.makeHackSpring({ length: bladeToBalance - balanceR, width: 1.6, thickness: 0.8 });
+const bladeGroup = new THREE.Group();
+bladeGroup.position.set(bladeAnchor.x, bladeAnchor.y, L_BALANCE);
+bladeGroup.add(hackSpring);
+movement.add(bladeGroup);
+registerExplode(bladeGroup, L_BALANCE, 7);
+registerLabel('Hack spring', bladeGroup);
+
+// Reset-hammer transmission: a short tail arm on the hammer, tied to the
+// setting-lever post by a rod (repositioned every frame between the two).
+const HAMMER_TAIL = 5;
+const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, 1), MATS.steel);
+hammerTailBar.position.set(0, -HAMMER_TAIL / 2, 0);
+hammerGroup.add(hammerTailBar);
+const resetRod = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1, 8), MATS.steel);
+movement.add(resetRod);
+function hammerTailWorld() {
+  const a = hammerGroup.rotation.z;
+  return {
+    x: hammerPivotPos.x + Math.sin(a) * HAMMER_TAIL,
+    y: hammerPivotPos.y - Math.cos(a) * HAMMER_TAIL,
+  };
+}
+
+// (The power-reserve reduction train is built after the dial side below — its
+// output arbor must be coaxial with the reserve sub-dial pivot, whose
+// position depends on the dial's dimensions.)
+
+// ---------------------------------------------------------------------------
+// Dial side (front, opposite z from the back plate) — driven by the same
+// kinematics as the train (center-wheel / fourth-wheel angle functions).
+// ---------------------------------------------------------------------------
+const dialGroup = new THREE.Group();
+const Z_DIAL = -14;
+dialGroup.position.set(P.dial.x, P.dial.y, Z_DIAL);
+movement.add(dialGroup);
+registerExplode(dialGroup, Z_DIAL, 1, -1);
+registerLabel('Dial', dialGroup);
+
+// Everything on the dial side is built assuming a viewer on the mesh's
+// natural +Z side (the convention makeDial/makeHand are authored against).
+// Flipping this whole sub-assembly 180° about Y turns its front to face -Z
+// (the actual front of the watch) while keeping "up" as world +Y — a proper
+// rotation, so numerals/hands stay upright and non-mirrored for a viewer
+// standing further out on the -Z side (see Dial camera preset).
+const dialFace = new THREE.Group();
+dialFace.rotation.y = Math.PI;
+dialGroup.add(dialFace);
+
+const dialRadius = plateR * 0.92;
+const dial = G.makeDial({ radius: dialRadius });
+dialFace.add(dial);
+
+const handsGroup = new THREE.Group();
+handsGroup.position.z = 2.5; // clearly proud of the dial face (avoids z-fighting)
+dialFace.add(handsGroup);
+// NOTE: handsGroup's parent is dialFace (which is flipped 180° about Y), so
+// baseZ here is LOCAL to dialFace — not the world-ish Z_DIAL convention used
+// for movement's direct children. dir is also flipped (+1) because the
+// parent's Y-rotation inverts the sign of a local-Z displacement once it
+// reaches world space (local +Z faces world -Z through this flip).
+registerExplode(handsGroup, 2.5, 2, 1);
+
+const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
+const minuteHand = G.makeHand({ length: dialRadius * 0.72, kind: 'minute' });
+const secondHand = G.makeHand({ length: dialRadius * 0.8, kind: 'second' });
+minuteHand.position.z = 1.2;
+secondHand.position.z = 2.2;
+handsGroup.add(hourHand, minuteHand, secondHand);
+
+// Cannon-pinion / hour-wheel stack under the dial — no longer just
+// decorative: the setting path (see keyless works below) actually drives
+// it via handSetOffset in tick().
+const cannonPinionTeeth = 10;
+const cannonPinion = G.makePinion({ module: 0.3, teeth: cannonPinionTeeth, thickness: 2, material: MATS.steel });
+cannonPinion.position.z = -1.5;
+dialFace.add(cannonPinion);
+
+// ---------------------------------------------------------------------------
+// Power-reserve complication — sub-dial at 6 o'clock. A small blued hand
+// sweeps a 120° arc from 30 h (mainspring fully wound) down to 0, driven by
+// barrelWindTurns in tick(). Authored for a local +Z viewer like the dial.
+// ---------------------------------------------------------------------------
+const reserveGroup = new THREE.Group();
+const reserveR = dialRadius * 0.2;
+reserveGroup.position.set(0, -dialRadius * 0.48, 0.35);
+dialFace.add(reserveGroup);
+registerLabel('Power reserve', reserveGroup);
+{
+  const px = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = px;
+  const ctx = cv.getContext('2d');
+  const cx = px / 2, cy = px / 2;
+  ctx.fillStyle = '#d6d6ca'; // slightly darker than the dial: reads as recessed
+  ctx.beginPath();
+  ctx.arc(cx, cy, px * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Graduated 120° arc: math angle 150° (empty, left) → 30° (full, right).
+  const tickAt = (mathDeg, len, w) => {
+    const a = mathDeg * DEG2RAD;
+    const r1 = px * 0.42, r2 = r1 - len;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r1, cy - Math.sin(a) * r1);
+    ctx.lineTo(cx + Math.cos(a) * r2, cy - Math.sin(a) * r2);
+    ctx.stroke();
+  };
+  ctx.strokeStyle = '#1c1c22';
+  for (let h = 0; h <= 30; h += 5) {
+    const major = h % 15 === 0;
+    tickAt(150 - (h / 30) * 120, major ? 26 : 14, major ? 7 : 4);
+  }
+  // AB (run down) and AUF (wound up) at the ends of the hour arc — the
+  // classic Glashütte reserve marking — in place of numeric labels.
+  ctx.fillStyle = '#1c1c22';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `600 ${px * 0.115}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+  const labelAt = (mathDeg, txt) => {
+    const a = mathDeg * DEG2RAD, r = px * 0.26;
+    ctx.fillText(txt, cx + Math.cos(a) * r, cy - Math.sin(a) * r);
+  };
+  labelAt(150, 'Ab');
+  labelAt(30, 'Auf');
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const face = new THREE.Mesh(
+    new THREE.CircleGeometry(reserveR, 48),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.08 })
+  );
+  reserveGroup.add(face);
+  const bezel = new THREE.Mesh(new THREE.TorusGeometry(reserveR, reserveR * 0.045, 10, 48), MATS.steel);
+  reserveGroup.add(bezel);
+}
+const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute' });
+reserveHand.position.z = 0.45;
+reserveGroup.add(reserveHand);
+
+// ---------------------------------------------------------------------------
+// Power-reserve reduction train — the VISIBLE mechanical link from the barrel
+// to the indicator. The barrel arbor extends through the back plate into the
+// under-dial space (via a friction slip coupling, the standard simple-watch
+// solution: a rigid tap of the great wheel alone can't give a bounded gauge
+// that resets on winding, and a true differential is a lot of machinery).
+// From there a 3-stage reduction (8/36 × 8/20 = 1/11.25) walks across the
+// gap between plate and dial and ends on an arbor COAXIAL with the sub-dial
+// pivot — the same axis the hand rides, its post passing through the dial
+// exactly like the time hands do. 120° of hand = 3.75 barrel turns.
+// ---------------------------------------------------------------------------
+const reserveTrain = new THREE.Group();
+movement.add(reserveTrain);
+registerLabel('Power-reserve train', reserveTrain);
+registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
+
+// World-frame anchors: barrel arbor axis → sub-dial pivot axis. (reserveGroup
+// sits on the Y-flipped dialFace; its local x=0 keeps world x = P.dial.x.)
+const rsvPivotXY = { x: P.dial.x, y: P.dial.y - dialRadius * 0.48 };
+const Z_RSV = -10.5;        // gear plane in the plate→dial gap (plate −1, dial −14)
+const RSV_Z_STEP = 2.2;     // wheel/pinion height split (w1's disk clears w2)
+
+const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 8, rsvTeethW2 = 20;
+const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
+const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
+// Split the barrel→pivot span into the two mesh centre-distances by solving
+// the second stage's module: d0 = m0·(8+36)/2, d1 = span − d0 = m1·(8+20)/2.
+const rsvModule0 = 0.34;
+const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
+const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+
+const reservePinion0 = G.makePinion({ module: rsvModule0, teeth: rsvTeethP0, thickness: 1.2, material: MATS.steel });
+const rsvWheel1 = G.makeGear({ module: rsvModule0, teeth: rsvTeethW1, thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
+const reservePinion1 = G.makePinion({ module: rsvModule1, teeth: rsvTeethP1, thickness: 1.2, material: MATS.steel });
+const rsvWheel2 = G.makeGear({ module: rsvModule1, teeth: rsvTeethW2, thickness: 1.0, boreR: 0.5, spokes: 0, material: MATS.brass });
+// Half-tooth mesh phasing so teeth interleave rather than clash at rest.
+rsvWheel1.rotation.z = Math.PI / rsvTeethW1;
+rsvWheel2.rotation.z = Math.PI / rsvTeethW2;
+
+const rsvW1Pos = { x: P.barrel.x + rsvU.x * rsvD0, y: P.barrel.y + rsvU.y * rsvD0 };
+
+const rsvArbor0 = new THREE.Group(); // p0 — slip-coupled on the barrel arbor axis
+rsvArbor0.position.set(P.barrel.x, P.barrel.y, Z_RSV);
+rsvArbor0.add(reservePinion0);
+reserveTrain.add(rsvArbor0);
+// Visible barrel-arbor extension: from inside the barrel, through the back
+// plate, down to p0 in the under-dial space.
+const rsvExtTop = L_BARREL + 4;
+const rsvArbExt = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.55, 0.55, rsvExtTop - Z_RSV, 12), MATS.steel);
+rsvArbExt.rotation.x = Math.PI / 2;
+rsvArbExt.position.set(P.barrel.x, P.barrel.y, (rsvExtTop + Z_RSV) / 2);
+reserveTrain.add(rsvArbExt);
+
+const rsvArbor1 = new THREE.Group(); // w1 + p1 share this arbor; p1 steps toward the dial
+rsvArbor1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV);
+reservePinion1.position.z = -RSV_Z_STEP;
+rsvArbor1.add(rsvWheel1, reservePinion1);
+reserveTrain.add(rsvArbor1);
+const rsvPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, RSV_Z_STEP + 2, 10), MATS.steel);
+rsvPost1.rotation.x = Math.PI / 2;
+rsvPost1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV - RSV_Z_STEP / 2);
+reserveTrain.add(rsvPost1);
+
+const rsvArbor2 = new THREE.Group(); // w2 — the output, coaxial with the sub-dial pivot
+rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
+rsvArbor2.add(rsvWheel2);
+reserveTrain.add(rsvArbor2);
+// Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
+const rsvHandZ = Z_DIAL - 0.9; // just proud of the sub-dial face
+const rsvHandArbor = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.4, 0.4, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
+rsvHandArbor.rotation.x = Math.PI / 2;
+rsvHandArbor.position.set(rsvPivotXY.x, rsvPivotXY.y, ((Z_RSV - RSV_Z_STEP) + rsvHandZ) / 2);
+reserveTrain.add(rsvHandArbor);
+
+// ---------------------------------------------------------------------------
+// Mainspring / barrel winding state — barrelWindTurns is the ACTUAL wound
+// position of the barrel arbor (in turns), the same quantity a real ratchet
+// wheel's rotation represents. It is incremented by real crown rotation
+// through the winding gear path (see tick()) and drained by however much
+// movement time actually elapses — nothing else touches it, so there is no
+// separate "tension" concept to keep in sync: tension IS this, normalized.
+// (This replaces an earlier epoch-based model — "spring was last fully
+// wound at time X" — that worked for a single instant full-wind button but
+// can't represent incremental winding: shifting the epoch to add reserve
+// makes movement time non-monotonic. A real accumulator is the honest fix.)
+// ---------------------------------------------------------------------------
+const springChild = barrel.getObjectByName('spring');
+const RELAX_SECONDS = 30 * 3600; // simulated hours of running per full wind
+// Power reserve is MECHANICALLY geared off the barrel: the barrel turns once
+// per 8 h, so a 30 h reserve is exactly 3.75 barrel revolutions lock-to-lock.
+const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75
+let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
+let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
+
+// ---------------------------------------------------------------------------
+// Hacking seconds — pulling the crown swings the hacking lever's ruby pad
+// onto the balance rim (see hackLeverGroup above). This is modelled as an
+// actual contact: the pad's braking force ramps in with the lever's swing
+// and damps the BALANCE's own angular rate (balanceRate, below) toward
+// zero over roughly a beat, exactly as friction would. Movement time τ is
+// then just the running integral of that rate (tauIntegrated) — it is not
+// set or frozen directly. balanceRate's target is ALSO gated on the
+// mainspring actually having tension (see tick()) — a depleted spring
+// stops the balance through the exact same damping, not a separate
+// snap-to-formula path, since both are really "the balance ran out of
+// something driving it." Because the whole train (escapeAngle, fourthAngle,
+// … down to the barrel) is a closed-form function of τ, the escapement lock
+// and the gear train's stoppage are a CONSEQUENCE of the balance being
+// stalled, not a separately-flagged freeze. Recovering (lever release OR
+// rewinding) ramps the rate back toward 1, as the escapement's impulses
+// pick the balance back up.
+// ---------------------------------------------------------------------------
+let crownOut = false;        // target: is the crown pulled to the setting position?
+let crownPullT = 0;          // 0..1 eased stem-slide animation toward crownOut
+let leverEngage = 0;         // 0..1 eased lever swing-in (0=clear, 1=pad on rim)
+let balanceRate = 1;         // dτ/dt — the balance's own angular rate (1 = free-running)
+let tauIntegrated = 0;       // ∫ balanceRate dt — movement time τ's actual source
+let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
+
+// A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
+// (or running dry) kills the balance's rate within a fraction of that;
+// recovery (release, or rewinding) takes it back up over a similar span.
+const LEVER_DAMP_TAU = 0.09;    // s — rate decay time constant while decelerating
+const LEVER_RELEASE_TAU = 0.11; // s — rate recovery time constant while accelerating
+
+function setCrownOut(out) {
+  crownOut = out;
+}
+
+// ---------------------------------------------------------------------------
+// Crown rotation — the actual user-driven input. windSpinner always spins
+// with it (the stem turns regardless of clutch position); which REAL gear
+// path receives that rotation depends on the sliding pinion's physical
+// position (crownPullT, not the raw crownOut target — see tick()). Each
+// path accumulates its OWN share of the rotation (windPathRot / setPathRot)
+// only while engaged, so a disengaged path's gears simply hold still
+// rather than trying to track rotation they're not mechanically coupled to.
+// ---------------------------------------------------------------------------
+let crownRotation = 0;     // radians, user input, unbounded, either direction
+let lastCrownRotation = 0; // for computing crownRotDelta each tick
+let windPathRot = 0;       // accumulated rotation actually delivered to the winding path
+let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
+let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
+const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
+
+// ---------------------------------------------------------------------------
+// Seconds reset — the SAME crown-pull also closes the reset hammer onto the
+// heart cam (see secondsCamArbor/hammerGroup above), driven by the same
+// leverEngage as the hacking lever (one setting-lever yoke, two functions,
+// exactly as real keyless works commonly gang several actions off one
+// motion). Because that cam sits on a friction-slip display arbor rather
+// than the real fourth wheel (see the comment above its construction),
+// "camming it to zero" is modelled as re-referencing the second hand's zero
+// point to the fourth wheel's CURRENT angle, eased in while the hammer is
+// closing — visually indistinguishable from a hammer riding the cam down
+// to its notch, but it never fights the real (locked) going train. The
+// reference stops updating the instant the hammer lifts, so the hand
+// resumes counting up from 12 rather than jumping to catch up.
+let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
+const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
+                            // heart cam is a positive mechanical action, not
+                            // a soft friction stop, so the reset reads snappier.
+
+// ---------------------------------------------------------------------------
+// UI panel (plain injected HTML/CSS)
+// ---------------------------------------------------------------------------
+const style = document.createElement('style');
+style.textContent = `
+#clock-ui {
+  position: fixed; top: 14px; left: 14px; z-index: 10;
+  background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  padding: 14px 16px; width: 240px;
+  font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #d8dee6; user-select: none;
+}
+#clock-ui h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
+#clock-ui .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; }
+#clock-ui button {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
+  border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; transition: background 0.15s;
+}
+#clock-ui button:hover { background: rgba(255,255,255,0.14); }
+#clock-ui button.active { background: #3a6bd8; border-color: #3a6bd8; }
+#clock-ui button:disabled { opacity: 0.35; cursor: not-allowed; }
+#clock-ui button#btn-crown.active { background: #c85a3a; border-color: #c85a3a; }
+#clock-ui .readout.hacking { color: #ffb454; }
+#clock-ui .presets { display: flex; flex-wrap: wrap; gap: 5px; }
+#clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
+#clock-ui .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
+#clock-ui .label-small { color: #8b95a1; font-size: 10.5px; }
+#clock-ui hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 0; }
+#clock-labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.clock-label {
+  position: absolute; transform: translate(-50%, -140%); font: 11px/1 -apple-system, sans-serif;
+  color: #cfe3ff; background: rgba(10,12,15,0.55); padding: 2px 6px; border-radius: 4px;
+  white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
+}
+`;
+document.head.appendChild(style);
+
+const panel = document.createElement('div');
+panel.id = 'clock-ui';
+panel.innerHTML = `
+  <h1>Lever Escapement</h1>
+  <div class="row">
+    <button id="btn-pause">Pause</button>
+    <span class="readout" id="readout-time">00:00:00</span>
+  </div>
+  <div class="row label-small"><span>Beats</span><span class="readout" id="readout-beats" style="font-size:13px;">0</span></div>
+  <div class="row">
+    <span class="label-small">Time-scale</span>
+    <input type="range" id="scale-slider" min="0" max="1000" step="1" />
+  </div>
+  <div class="row label-small"><span id="scale-value">0.15×</span><button id="btn-wind">Wind</button></div>
+  <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
+  <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
+  <hr/>
+  <div class="row label-small"><span>Camera</span></div>
+  <div class="row presets">
+    <button data-cam="Escapement">Escapement</button>
+    <button data-cam="Train">Train</button>
+    <button data-cam="Dial">Dial</button>
+    <button data-cam="Free">Free</button>
+  </div>
+  <hr/>
+  <div class="row">
+    <span class="label-small">Exploded view</span>
+    <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
+  </div>
+  <div class="row">
+    <span class="label-small">Labels</span>
+    <button id="btn-labels">Off</button>
+  </div>
+`;
+document.body.appendChild(panel);
+
+const labelsContainer = document.createElement('div');
+labelsContainer.id = 'clock-labels';
+labelsContainer.style.display = 'none';
+document.body.appendChild(labelsContainer);
+const labelEls = labelEntries.map(({ name }) => {
+  const el = document.createElement('div');
+  el.className = 'clock-label';
+  el.textContent = name;
+  labelsContainer.appendChild(el);
+  return el;
+});
+
+// --- time-scale (log slider, 0.02..1, default 0.15) ----------------------
+const SCALE_MIN = 0.02, SCALE_MAX = 1;
+let timeScale = 0.15;
+const scaleSlider = document.getElementById('scale-slider');
+const scaleValueEl = document.getElementById('scale-value');
+function scaleToSlider(s) {
+  const t = (Math.log(s / SCALE_MIN)) / (Math.log(SCALE_MAX / SCALE_MIN));
+  return Math.round(t * 1000);
+}
+function sliderToScale(v) {
+  const t = v / 1000;
+  return SCALE_MIN * Math.pow(SCALE_MAX / SCALE_MIN, t);
+}
+scaleSlider.value = scaleToSlider(timeScale);
+scaleValueEl.textContent = timeScale.toFixed(2) + '×';
+scaleSlider.addEventListener('input', () => {
+  timeScale = sliderToScale(Number(scaleSlider.value));
+  scaleValueEl.textContent = timeScale.toFixed(2) + '×';
+});
+
+// --- pause/play -------------------------------------------------------
+let paused = false;
+const pauseBtn = document.getElementById('btn-pause');
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  pauseBtn.textContent = paused ? 'Play' : 'Pause';
+  pauseBtn.classList.toggle('active', paused);
+});
+
+// --- wind button ----------------------------------------------------------
+// Not a shortcut that pokes tension directly — it queues up real rotation
+// for the SAME crownRotation input a manual drag would produce (see
+// autoWindRemaining in tick()), so it drives the actual winding gear path.
+// Comfortably more than a full wind's worth (11.25 turns); barrelWindTurns
+// clamps at full regardless, so overshoot is harmless.
+document.getElementById('btn-wind').addEventListener('click', () => {
+  if (crownOut) return; // crown must be pushed in (winding position) to wind
+  autoWindRemaining += 16 * 2 * Math.PI;
+});
+
+// --- crown: click to pull/push, drag to turn -------------------------------
+const crownBtn = document.getElementById('btn-crown');
+const windBtnEl = document.getElementById('btn-wind');
+const timeReadoutEl = document.getElementById('readout-time');
+function updateCrownUI() {
+  crownBtn.textContent = crownOut ? 'Push in' : 'Pull out';
+  crownBtn.classList.toggle('active', crownOut);
+  windBtnEl.disabled = crownOut;
+  timeReadoutEl.classList.toggle('hacking', crownOut);
+}
+function toggleCrown() {
+  setCrownOut(!crownOut);
+  updateCrownUI();
+}
+crownBtn.addEventListener('click', toggleCrown);
+updateCrownUI();
+
+// The crown is directly interactive in the 3D view: click it to pull/push
+// (hacking), drag it to turn (winding or time-setting, depending on
+// position) — cursor-affords on hover either way.
+const crownRaycaster = new THREE.Raycaster();
+const crownPointerNDC = new THREE.Vector2();
+const crownHitMeshes = [crownBody, crownCap];
+function setCrownPointerFromEvent(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  crownPointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  crownPointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+}
+function crownHitTest(e) {
+  setCrownPointerFromEvent(e);
+  crownRaycaster.setFromCamera(crownPointerNDC, camera);
+  return crownRaycaster.intersectObjects(crownHitMeshes, false).length > 0;
+}
+
+const CROWN_DRAG_SENSITIVITY = (2 * Math.PI) / 350; // ~350px of drag per full turn
+const CROWN_DRAG_THRESHOLD_PX = 3; // below this, treat pointerup as a click (pull/push)
+let crownDragging = false;
+let crownDragMoved = false;
+let crownDragStartX = 0;
+let crownDragStartRotation = 0;
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (crownDragging) {
+    const dx = e.clientX - crownDragStartX;
+    if (Math.abs(dx) > CROWN_DRAG_THRESHOLD_PX) crownDragMoved = true;
+    crownRotation = crownDragStartRotation + dx * CROWN_DRAG_SENSITIVITY;
+    return;
+  }
+  renderer.domElement.style.cursor = crownHitTest(e) ? 'pointer' : '';
+});
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!crownHitTest(e)) return;
+  crownDragging = true;
+  crownDragMoved = false;
+  crownDragStartX = e.clientX;
+  crownDragStartRotation = crownRotation;
+  controls.enabled = false; // don't fight OrbitControls' own drag-to-orbit
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+window.addEventListener('pointerup', (e) => {
+  if (!crownDragging) return;
+  crownDragging = false;
+  controls.enabled = true;
+  if (renderer.domElement.hasPointerCapture(e.pointerId)) {
+    renderer.domElement.releasePointerCapture(e.pointerId);
+  }
+});
+renderer.domElement.addEventListener('click', (e) => {
+  if (crownDragMoved) { crownDragMoved = false; return; } // was a turn, not a click
+  if (crownHitTest(e)) toggleCrown();
+});
+
+// --- labels toggle --------------------------------------------------------
+let labelsOn = false;
+document.getElementById('btn-labels').addEventListener('click', () => {
+  labelsOn = !labelsOn;
+  labelsContainer.style.display = labelsOn ? 'block' : 'none';
+  document.getElementById('btn-labels').textContent = labelsOn ? 'On' : 'Off';
+  document.getElementById('btn-labels').classList.toggle('active', labelsOn);
+});
+
+// --- exploded view slider -------------------------------------------------
+let explodeAmount = 0;
+document.getElementById('explode-slider').addEventListener('input', (e) => {
+  explodeAmount = Number(e.target.value) / 100;
+});
+
+// --- camera presets (tweened) ---------------------------------------------
+// Distances are derived from the actual computed plate radius so framing
+// stays sane no matter what moduli/gaps the layout above works out to.
+// Camera FOV is 42°; to fit an object of radius R comfortably (~70% of the
+// half-frame) the distance from its target needs to be roughly 3.8×R — the
+// multipliers below are sized with that in mind rather than guessed.
+const camTargets = {
+  Escapement: {
+    // Frame just the escape wheel + fork + balance cluster, not the whole
+    // plate: cluster radius ≈ half the escape↔balance span plus the balance.
+    pos: (() => {
+      const cR = Math.hypot(P.balance.x - P.escape.x, P.balance.y - P.escape.y) / 2 + balanceR;
+      const d = cR * 3.8;
+      return new THREE.Vector3(
+        (P.escape.x + P.balance.x) / 2 + d * 0.35,
+        (P.escape.y + P.balance.y) / 2 + d * 0.25,
+        L_ESCAPE + d * 0.9
+      );
+    })(),
+    target: new THREE.Vector3((P.escape.x + P.balance.x) / 2, (P.escape.y + P.balance.y) / 2, L_ESCAPE + 3),
+  },
+  Train: {
+    // Mostly-lateral (X/Y) offset with a shallow Z contribution: an oblique
+    // side elevation that shows the arbors' Z-layering without looking
+    // straight through the small train cluster at the much larger dial
+    // sitting behind it.
+    pos: new THREE.Vector3(
+      trainCentroid.x + plateR * 1.6,
+      trainCentroid.y + plateR * 1.3,
+      L_CENTER + plateR * 1.9
+    ),
+    target: new THREE.Vector3(trainCentroid.x, trainCentroid.y, L_CENTER + 3),
+  },
+  Dial: {
+    pos: new THREE.Vector3(P.dial.x, P.dial.y + plateR * 0.4, Z_DIAL - plateR * 2.4),
+    target: new THREE.Vector3(P.dial.x, P.dial.y, Z_DIAL),
+  },
+  Free: {
+    pos: new THREE.Vector3(plateR * 2.0, plateR * 1.8, plateR * 3.0),
+    target: new THREE.Vector3(0, 0, 8),
+  },
+};
+let camTween = null; // { fromPos, fromTarget, toPos, toTarget, t0, dur }
+function goToPreset(name) {
+  const preset = camTargets[name];
+  if (!preset) return;
+  camTween = {
+    fromPos: camera.position.clone(),
+    fromTarget: controls.target.clone(),
+    toPos: preset.pos.clone(),
+    toTarget: preset.target.clone(),
+    t: 0,
+    dur: 0.9,
+  };
+  document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.toggle('active', b.dataset.cam === name));
+}
+document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
+  b.addEventListener('click', () => goToPreset(b.dataset.cam));
+});
+goToPreset('Escapement');
+
+// ---------------------------------------------------------------------------
+// Animation loop — fixed-timestep accumulation for the sim; render on rAF.
+// ---------------------------------------------------------------------------
+const FIXED_DT = 1 / 240;
+let simTime = 0;
+let accumulator = 0;
+let lastNow = performance.now();
+
+const projected = new THREE.Vector3();
+
+function formatTime(simSeconds) {
+  const total = Math.floor(simSeconds) % 86400;
+  const hh = Math.floor(total / 3600) % 24;
+  const mm = Math.floor(total / 60) % 60;
+  const ss = total % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+}
+
+function updateExplode() {
+  const UNIT = 6.5;
+  for (const e of explodeEntries) {
+    e.obj.position.z = e.baseZ + explodeAmount * e.dir * e.layer * UNIT;
+  }
+}
+
+function updateLabels() {
+  if (!labelsOn) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  for (let i = 0; i < labelEntries.length; i++) {
+    const { obj } = labelEntries[i];
+    obj.getWorldPosition(projected);
+    projected.project(camera);
+    const behind = projected.z > 1;
+    const el = labelEls[i];
+    if (behind) { el.style.display = 'none'; continue; }
+    el.style.display = 'block';
+    el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
+    el.style.top = `${(-projected.y * 0.5 + 0.5) * h}px`;
+  }
+}
+
+function tick(t) {
+  // dt since the last tick — needed because τ is now a genuinely integrated
+  // quantity (the balance's own accumulated phase), not a pure function of
+  // t. Clamped so a long stall (e.g. a backgrounded tab) can't blow up the
+  // damping integration below.
+  const rawDt = clamp(t - lastTickRawT, 0, 0.25);
+  lastTickRawT = t;
+
+  // Lever swing: eases toward the crown's target position (independent of
+  // — and slightly slower than — the contact damping itself, since the arm
+  // physically has to travel before the pad even touches the rim).
+  const engageTarget = crownOut ? 1 : 0;
+  leverEngage += (engageTarget - leverEngage) * (1 - Math.exp(-rawDt / 0.12));
+  crownPullT = lerp(crownPullT, engageTarget, 1 - Math.exp(-rawDt * 10));
+
+  // Crown clutch: which real gear path the sliding pinion is meshing is
+  // decided by where it PHYSICALLY is (crownPullT), not the raw crownOut
+  // target — mid-slide it's out of mesh with both, same as a real clutch
+  // in transit. The Wind button just queues rotation into the SAME input
+  // (crownRotation) a manual drag would produce, so it drives this exact
+  // path rather than a parallel shortcut.
+  const windEngaged = crownPullT < 0.5;
+  const setEngaged = crownPullT > 0.5;
+  if (autoWindRemaining > 0 && windEngaged) {
+    const step = Math.min(autoWindRemaining, AUTO_WIND_RATE * rawDt);
+    crownRotation += step;
+    autoWindRemaining -= step;
+  }
+  const crownRotDelta = crownRotation - lastCrownRotation;
+  lastCrownRotation = crownRotation;
+  if (windEngaged) {
+    windPathRot += crownRotDelta;
+    // One-way click: only forward turns bank reserve (a real ratchet pawl
+    // free-wheels backward without unwinding the spring) — but the visible
+    // gears below still turn both ways, since they're rigidly meshed to
+    // the crown regardless of which way it's driven.
+    if (crownRotDelta > 0) {
+      // Ratio chain gives the ratchet's rotation in RADIANS; barrelWindTurns
+      // is in TURNS, hence the /2π.
+      const turnsDelta = crownRotDelta * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / RATCHET_TEETH) / (2 * Math.PI);
+      barrelWindTurns = clamp(barrelWindTurns + turnsDelta, 0, RESERVE_BARREL_TURNS);
+    }
+  }
+  if (setEngaged) {
+    setPathRot += crownRotDelta; // bidirectional — no ratchet on the setting path
+  }
+  // Drain: the barrel does 1 turn per 8h of movement time actually elapsed
+  // (same relationship RESERVE_BARREL_TURNS is built from), so it only
+  // drains while the balance is actually turning — uses balanceRate as it
+  // stood at the END of the last tick, a one-frame lag that's imperceptible
+  // but avoids a circular dependency (this frame's rate depends on tension,
+  // which depends on this drain).
+  barrelWindTurns = clamp(barrelWindTurns - (balanceRate * rawDt) / (8 * 3600), 0, RESERVE_BARREL_TURNS);
+  const tension = clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
+
+  // Contact damping: the balance's own angular rate relaxes toward 0 when
+  // EITHER the hack lever is braking it OR the mainspring has nothing left
+  // to drive it — both are really "ran out of what keeps it going" — and
+  // relaxes back toward 1 as either cause clears. Real per-frame decay
+  // toward a moving target, not a snap — it settles over roughly a beat.
+  const rateTarget = (1 - leverEngage) * (tension > 0 ? 1 : 0);
+  const rateTau = rateTarget < balanceRate ? LEVER_DAMP_TAU : LEVER_RELEASE_TAU;
+  balanceRate += (rateTarget - balanceRate) * (1 - Math.exp(-rawDt / rateTau));
+
+  // Movement time τ is the running integral of the balance's own rate — the
+  // escapement and gear train below only ever see τ, so when balanceRate is
+  // damped to ~0 they stop as a mechanical consequence of the balance being
+  // stalled, not because anything told them to.
+  tauIntegrated += balanceRate * rawDt;
+
+  const tau = tauIntegrated;
+  const fourthA = fourthAngle(tau); // the REAL fourth wheel's angle — never adjusted below
+
+  // Reset hammer: while the roller is seated on the cam (leverEngage > 0),
+  // ease the seconds-display reference toward the real fourth wheel's
+  // current angle — this is what actually "cams the wheel to zero" for
+  // display purposes, without touching fourthA/fourthArbor itself. The
+  // pull rate is scaled by leverEngage so it's a soft touch on first
+  // contact and a firm hold once fully closed; once leverEngage decays to
+  // 0 the reference is simply left where it last settled.
+  if (leverEngage > 0.001) {
+    secondsZeroRef += (fourthA - secondsZeroRef) * leverEngage * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
+  }
+
+  // Gear train + escapement.
+  const escA = escapeAngle(tau);
+  escapeArbor.rotation.z = escA;
+  fourthArbor.rotation.z = fourthA; // the REAL wheel — always undisturbed by the reset above
+  thirdArbor.rotation.z = thirdAngle(tau);
+  centerArbor.rotation.z = centerAngle(tau);
+  barrelArbor.rotation.z = barrelMeshAngle(tau);
+
+  // NEGATIVE swing: the fork notch and impulse pin rotate about centres on
+  // opposite sides of their contact point, so for the tip to move WITH the
+  // pin (gear-mesh style) the fork's angular sign must oppose the balance's.
+  forkGroup.rotation.z = forkBaseAngle - forkSwingRad(tau);
+
+  const theta = balanceTheta(tau, tension);
+  balanceGroup.rotation.z = PIN_AIM + theta;
+  hairspringGroup.rotation.z = PIN_AIM + theta;
+  const breathe = 1 + 0.04 * Math.sin(2 * Math.PI * F_BALANCE * tau);
+  hairspringGroup.scale.set(breathe, breathe, 1);
+
+  // Setting path: settingWheel -> minuteArbor (compound wheel+pinion) ->
+  // handSetOffset, the real angle contributed by turning the crown in the
+  // setting position. Computed here (before the hands) and reused below
+  // when driving the actual gear meshes, so it's derived once, not twice.
+  const settingWheelSpin = -setPathRot * (windPinionTeeth / settingWheelTeeth);
+  const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
+  const handSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
+
+  // Hands: driven by the same train functions, but zero-referenced against
+  // t=0 so the dial reads 12:00:00 at sim start (the raw angles carry the
+  // arbitrary tooth-interleaving phase constants), plus handSetOffset from
+  // manual time-setting. Sign notes: centerAngle decreases with t (−2π per
+  // sim hour); a hand's local +Z axis points toward the viewer on the dial
+  // (-Z) side through dialFace's Y-flip, so a decreasing local rotation
+  // reads as a clockwise sweep from the front — the raw deltas already
+  // have the right sense.
+  const minuteA = centerAngle(tau) - centerAt0 + handSetOffset; // −2π per hour
+  hourHand.rotation.z = minuteA / 12;
+  minuteHand.rotation.z = minuteA;
+  secondHand.rotation.z = fourthA - secondsZeroRef; // −2π per minute, re-referenced on reset
+  cannonPinion.rotation.z = minuteA;
+
+  // Mainspring relax — a direct readout of tension now that winding is
+  // continuous rather than a discrete button press (no more settle-pulse
+  // to blend against).
+  if (springChild) {
+    springChild.rotation.z = tension * Math.PI * 1.4;
+    springChild.scale.setScalar(1 + (1 - tension) * 0.06);
+  }
+
+  // Hacking seconds: the stem/crown/winding-pinion group's position along
+  // the stem axis (local +Y = outward) — crownPullT itself was updated at
+  // the top of tick(), before the clutch routing above needed it.
+  const crownOutDist = pinDist + crownPullT * CROWN_PULL_DIST;
+  windSpinner.position.set(uWind.x * crownOutDist, uWind.y * crownOutDist, Z_KEYLESS);
+
+  // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
+  // groove actually is right now (crownPullT), so the beak pin stays in the
+  // groove through the whole slide; the yoke does the same against the
+  // sliding pinion's hub. The hack spring deflects on leverEngage — the
+  // same value driving the contact damping above — pressed by the lever's
+  // tail post; its pad lands exactly on the balance rim at full engage.
+  settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
+  yokeGroup.rotation.z = yokeAngleAt(crownPullT);
+  bladeGroup.rotation.z = bladeAimAngle + BLADE_LIFT_SIGN * HACK_LIFT * (1 - leverEngage);
+
+  // Reset hammer + heart cam: the hammer swings on the same leverEngage
+  // (one setting lever, several ganged functions). The cam's own rotation
+  // mirrors the second hand's exactly, since they share the same
+  // display-arbor reference — so its notch visibly slides under the roller
+  // in step with the hand sweeping back to 12.
+  hammerGroup.rotation.z = hammerBaseAngle + HAMMER_SWING_RAD * (1 - leverEngage);
+  secondsCamArbor.rotation.z = (fourthA - secondsZeroRef) + camPhaseOffset;
+
+  // Reset-hammer rod: stretched between the setting-lever post and the
+  // hammer's tail arm, both of which just moved above.
+  {
+    const a = tailPostWorldAt(crownPullT);
+    const b = hammerTailWorld();
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    resetRod.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, Z_SECONDS_ARBOR);
+    resetRod.scale.set(1, len, 1);
+    resetRod.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+  }
+
+  // Keyless works — the stem always spins with the crown; the two
+  // downstream paths below only reflect rotation actually delivered to
+  // THEM (windPathRot / setPathRot), so whichever one is disengaged simply
+  // holds still — a genuine consequence of the clutch routing above, not a
+  // separate "which am I animating" branch here.
+  windSpinner.rotation.y = crownRotation;
+
+  const crownWheelSpin = -windPathRot * (windPinionTeeth / crownWheelTeeth);
+  crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
+  if (ratchetMesh) {
+    const ratchetSpin = -crownWheelSpin * (crownWheelTeeth / RATCHET_TEETH);
+    ratchetMesh.rotation.z = ratchetSpin;
+    if (clickMesh) clickMesh.rotation.z = clickBaseRot - 0.06 * Math.abs(Math.sin(ratchetSpin * 12));
+  }
+
+  settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
+  minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
+
+  // Power-reserve hand — barrelWindTurns (via tension) IS the mechanical
+  // quantity now; no separate epoch/pulse bookkeeping needed since winding
+  // is continuous rather than a discrete button press.
+  reserveShown = tension;
+  reserveHand.rotation.z = (60 - reserveShown * 120) * DEG2RAD;
+
+  // Power-reserve reduction gear train (see note above its construction):
+  // w2 shares the hand's arbor. The hand lives on the Y-flipped dialFace
+  // while the train is in the movement frame, and that flip mirrors rotation
+  // sense — so w2 takes the NEGATED hand angle to co-rotate with it as seen
+  // from the front. w1/p1 and p0 solve backwards through the mesh ratios.
+  const rsvOut = -reserveHand.rotation.z;
+  rsvArbor2.rotation.z = rsvOut;
+  rsvArbor1.rotation.z = -rsvOut * (rsvTeethW2 / rsvTeethP1);
+  rsvArbor0.rotation.z = -rsvArbor1.rotation.z * (rsvTeethW1 / rsvTeethP0);
+}
+
+tick(0); // seed correct initial pose before the first paint
+
+function frame(now) {
+  const realDt = Math.min((now - lastNow) / 1000, 0.05);
+  lastNow = now;
+
+  if (!paused) {
+    accumulator += realDt * timeScale;
+    while (accumulator >= FIXED_DT) {
+      simTime += FIXED_DT;
+      accumulator -= FIXED_DT;
+      tick(simTime);
+    }
+  }
+
+  // Time and beats read the MOVEMENT's clock (τ): they stop when it stops.
+  const tauNow = tauIntegrated;
+  document.getElementById('readout-time').textContent = formatTime(tauNow);
+  document.getElementById('readout-beats').textContent = String(beatPhase(tauNow).n);
+  document.getElementById('reserve-value').textContent =
+    (reserveShown * (RELAX_SECONDS / 3600)).toFixed(1) + ' h';
+
+  updateExplode();
+
+  if (camTween) {
+    camTween.t += realDt / camTween.dur;
+    const e = smoothstep(camTween.t);
+    camera.position.lerpVectors(camTween.fromPos, camTween.toPos, e);
+    controls.target.lerpVectors(camTween.fromTarget, camTween.toTarget, e);
+    if (camTween.t >= 1) camTween = null;
+  }
+
+  controls.update();
+  updateLabels();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+// Debug/verification hook: step the sim and render without rAF (occluded windows
+// throttle requestAnimationFrame, which stalls automated checks).
+window.__clock = {
+  step(dt) {
+    simTime += dt;
+    tick(simTime);
+    if (camTween) {
+      camTween.t += dt / camTween.dur;
+      const e = smoothstep(camTween.t);
+      camera.position.lerpVectors(camTween.fromPos, camTween.toPos, e);
+      controls.target.lerpVectors(camTween.fromTarget, camTween.toTarget, e);
+      if (camTween.t >= 1) camTween = null;
+    }
+    updateExplode();
+    controls.update();
+    updateLabels();
+    renderer.render(scene, camera);
+    return simTime;
+  },
+  get simTime() { return simTime; },
+  get tau() { return tauIntegrated; },
+  get balanceRate() { return balanceRate; },
+  get leverEngage() { return leverEngage; },
+  get secondsZeroRef() { return secondsZeroRef; },
+  get fourthAngle() { return fourthAngle(tauIntegrated); },
+  get barrelWindTurns() { return barrelWindTurns; },
+  get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },
+  get crownRotation() { return crownRotation; },
+  get windPathRot() { return windPathRot; },
+  get setPathRot() { return setPathRot; },
+  setCrownRotation(v) { crownRotation = v; },
+  setBarrelWindTurns(v) { barrelWindTurns = clamp(v, 0, RESERVE_BARREL_TURNS); },
+  camera, controls, scene, labelEntries,
+};
+
+requestAnimationFrame(frame);
