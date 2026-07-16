@@ -152,18 +152,34 @@ window.addEventListener('resize', () => {
 // Z layers between the back plate (z=0) and the cocks/top plate (z≈20). Each
 // arbor's PINION sits at the layer where it meshes with the PREVIOUS wheel;
 // its own WHEEL sits one layer further along, where the NEXT pinion meshes it.
-const L_BARREL = 3;   // barrel teeth height (meshes center pinion)
-const L_CENTER = 6;   // center wheel height (meshes third pinion)
-const L_THIRD = 9;    // third wheel height (meshes fourth pinion)
-const L_FOURTH = 12;  // fourth wheel height (meshes escape pinion)
-const L_ESCAPE = 15;  // escape wheel height (engages pallet fork)
-const L_FORK = 16.5;
-// Balance rides high enough that only its roller stack (roller table +
-// impulse pin + safety roller, built ~4mm below the wheel in makeBalanceWheel)
-// descends to the pallet-fork plane, so the pin seats in the fork notch.
-const L_BALANCE = 20.5;
-const L_HAIRSPRING = 23;
-const L_COCK = 24;
+// TORNADO Z-stack — compressed to a 1.7-unit wheel stride (the old uniform
+// 3-unit staircase was half air). The three offsets expressed as formulas
+// are real mechanical constraints, not styling:
+//  · L_FORK = L_ESCAPE + 1.5 — the fork body's underside just clears the
+//    escape wheel's top face while the stones (stoneZReach below) straddle
+//    the tooth band;
+//  · L_BALANCE = L_FORK + 4 — the roller stack (table + impulse pin +
+//    safety roller) is built exactly 4 below the wheel in makeBalanceWheel,
+//    so this lands the pin in the fork notch;
+//  · L_COCK/L_HAIRSPRING ride the balance.
+// Stride 2.1 is the floor set by the BRIDGES, not the wheels: each cock is
+// a centred slab ±(width·0.2 + bevel) thick, and it must fit between its
+// own wheel pair's planes and the next wheel up that crosses it (solved:
+// feasible only for stride ≥ ~2.06 at the current cock widths).
+const L_BARREL = 2;     // great-wheel plane (meshes center pinion)
+const L_CENTER = 4.1;   // center wheel (meshes third pinion)
+const L_THIRD = 6.2;    // third wheel (meshes fourth pinion)
+const L_FOURTH = 8.3;   // fourth wheel (meshes escape pinion)
+const L_ESCAPE = 10.4;  // escape wheel (engages pallet fork)
+const L_FORK = L_ESCAPE + 1.5;
+const L_BALANCE = L_FORK + 4;
+const L_HAIRSPRING = L_BALANCE + 1.2;
+const L_COCK = L_BALANCE + 2;
+// Dial plane (watch front, −z side). Declared with the Z-stack because the
+// whole dial gap is part of the same depth budget: the motion-works
+// crossing (Z_SETTING), reserve train (Z_RSV) and cannon pinion all pack
+// between the plate's back face (−2) and this.
+const Z_DIAL = -7;
 
 const explodeEntries = []; // { obj, baseZ, dir, layer }
 function registerExplode(obj, baseZ, layer, dir = 1) {
@@ -242,7 +258,14 @@ const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 1.5 }
 const escapeWheelR = escapeWheel.userData.r || 4.5;
 
 // --- Pallet fork + balance ------------------------------------------------
-const balanceWheel = G.makeBalanceWheel({ radius: 9, thickness: 2.5 });
+// Staff spans from just below the roller stack up through the cock's jewel
+// (poking ~1.5 past it, like a real pivot) — matched to the compressed
+// stack rather than the old thickness-proportional default.
+const balanceWheel = G.makeBalanceWheel({
+  radius: 9,
+  thickness: 2.5,
+  staffHeight: (L_COCK + 1.4 - L_BALANCE + 1.5) * 2,
+});
 const balanceR = balanceWheel.userData.r || 9;
 
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
@@ -653,9 +676,15 @@ function addBridge(fromXY, toXY, z, name, widthScale = 1) {
   registerLabel(name, cock);
   return cock;
 }
-addBridge(P.barrel, P.center, L_BARREL + 2.5, 'Barrel-center bridge', 1.3);
-addBridge(P.center, P.third, L_CENTER + 2.5, 'Center-third bridge');
-addBridge(P.third, P.fourth, L_THIRD + 2.5, 'Third-fourth bridge');
+// Bridge planes at wheel + 1.4 (cocks are CENTRED slabs, so each spans
+// roughly ±1.4 about this). The barrel-center bridge rides higher (+2.2)
+// and NARROWER (0.9): the third wheel's rim passes 12.6 from its
+// centre-line, so the old 1.3-wide flank (±2.34) clipped it — at 0.9
+// (±1.35 slab, ±2.7 flank) it clears in XY and tucks under the
+// ratchet/crown-wheel plane in Z.
+addBridge(P.barrel, P.center, L_BARREL + 2.2, 'Barrel-center bridge', 0.9);
+addBridge(P.center, P.third, L_CENTER + 1.4, 'Center-third bridge');
+addBridge(P.third, P.fourth, L_THIRD + 1.4, 'Third-fourth bridge');
 
 // +1.4 clearance: the cock's underside (its plate is centred on its z) was
 // interpenetrating the hairspring's stud and raised terminal (inspector
@@ -756,10 +785,12 @@ for (const pp of pillarPositions) {
   movement.add(pillar);
 }
 
-// Jewel settings at each arbor's front bearing.
+// Jewel settings at each arbor's front bearing — riding just above each
+// wheel's bridge at the compressed stack (bridge planes are wheel + 1.4,
+// cock bodies ~1.4 thick).
 const jewelSpots = [
-  { p: P.barrel, z: L_BARREL + 4 }, { p: P.center, z: L_CENTER + 4 }, { p: P.third, z: L_THIRD + 4 },
-  { p: P.fourth, z: L_FOURTH + 4 }, { p: P.escape, z: L_ESCAPE + 2 }, { p: P.balance, z: L_HAIRSPRING + 1.5 },
+  { p: P.barrel, z: L_BARREL + 2.9 }, { p: P.center, z: L_CENTER + 2.9 }, { p: P.third, z: L_THIRD + 2.9 },
+  { p: P.fourth, z: L_FOURTH + 2.9 }, { p: P.escape, z: L_ESCAPE + 1.2 }, { p: P.balance, z: L_HAIRSPRING + 0.8 },
 ];
 for (const spot of jewelSpots) {
   const jewel = G.makeJewelSetting({ r: 2 });
@@ -938,7 +969,7 @@ keyless.add(minuteArbor);
 // reserve train heads the other way (up to 12 o'clock), so the direct
 // traverse clears everything — verified by the full inspection sweep —
 // and the arbor is just drop → traverse → rise with two 90° corners.
-const Z_SETTING = -9; // clear of Z_RSV (−10.5) and the going train's Z range
+const Z_SETTING = -3.0; // between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2, w1 tops at −3.7)
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
 const settingDrop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_KEYLESS - Z_SETTING, 10), MATS.steel);
 settingDrop.rotation.x = Math.PI / 2;
@@ -959,7 +990,7 @@ const settingB = new THREE.Vector3(P.dial.x, P.dial.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();
 keyless.add(makeRodSegment(settingA, settingB, 0.35));
 
-const Z_CANNON_PINION = -12.5; // matches cannonPinion's actual world Z
+const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion sits at dialFace local −1.5, which the Y-flip maps to Z_DIAL + 1.5
 const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
 settingRise.rotation.x = Math.PI / 2;
 settingRise.position.set(P.dial.x, P.dial.y, (Z_SETTING + Z_CANNON_PINION) / 2);
@@ -1253,7 +1284,10 @@ const RESET_ROD_LEN = HAMMER_TAIL_DELTA.len;
 // replaces the old fixed 2.3 lift, which was only dodging the heart cam's
 // own body.)
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
-const ROD_Z_LIFT = Math.max(2.3, FUSEE_TOP_Z + 0.65 - Z_SECONDS_ARBOR);
+// 0.7 = rod radius (0.35) + clearance: the rod's straight run passes only
+// ~0.6 from the barrel AXIS (measured live), i.e. essentially over the
+// cone's apex, so it must clear the cone's full axis-top height.
+const ROD_Z_LIFT = Math.max(2.3, FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR);
 const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, 1), MATS.steel);
 hammerTailBar.rotation.z = HAMMER_TAIL_DELTA.delta;
 hammerTailBar.position.set(
@@ -1403,7 +1437,7 @@ function rebuildChain(tension) {
 // kinematics as the train (center-wheel / fourth-wheel angle functions).
 // ---------------------------------------------------------------------------
 const dialGroup = new THREE.Group();
-const Z_DIAL = -14;
+// (Z_DIAL is declared with the Z-stack constants at the top of the file.)
 dialGroup.position.set(P.dial.x, P.dial.y, Z_DIAL);
 movement.add(dialGroup);
 registerExplode(dialGroup, Z_DIAL, 1, -1);
@@ -1568,8 +1602,8 @@ registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 // (P.dial.x − x, P.dial.y + y) — derived from RESERVE_LOCAL so moving the
 // sub-dial moves the whole reduction train's target with it.
 const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
-const Z_RSV = -10.5;        // gear plane in the plate→dial gap (plate −1, dial −14)
-const RSV_Z_STEP = 2.2;     // wheel/pinion height split (w1's disk clears w2)
+const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
+const RSV_Z_STEP = 1.8;     // wheel/pinion height split (w2 at −6.0 clears the dial by 0.5)
 
 const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 8, rsvTeethW2 = 20;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
@@ -1596,7 +1630,7 @@ rsvArbor0.add(reservePinion0);
 reserveTrain.add(rsvArbor0);
 // Visible barrel-arbor extension: from inside the barrel, through the back
 // plate, down to p0 in the under-dial space.
-const rsvExtTop = L_BARREL + 4;
+const rsvExtTop = L_BARREL + 2;
 const rsvArbExt = new THREE.Mesh(
   new THREE.CylinderGeometry(0.55, 0.55, rsvExtTop - Z_RSV, 12), MATS.steel);
 rsvArbExt.rotation.x = Math.PI / 2;
@@ -1979,7 +2013,7 @@ const camTargets = {
   },
   Free: {
     pos: new THREE.Vector3(plateR * 2.0, plateR * 1.8, plateR * 3.0),
-    target: new THREE.Vector3(0, 0, 8),
+    target: new THREE.Vector3(0, 0, 5),
   },
 };
 let camTween = null; // { fromPos, fromTarget, toPos, toTarget, t0, dur }
@@ -2021,7 +2055,7 @@ function formatTime(simSeconds) {
 }
 
 function updateExplode() {
-  const UNIT = 6.5;
+  const UNIT = 4;
   for (const e of explodeEntries) {
     e.obj.position.z = e.baseZ + explodeAmount * e.dir * e.layer * UNIT;
   }

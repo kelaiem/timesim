@@ -304,6 +304,7 @@ const EXPECTED_PAIRS = [
   // for now, but the padding is probably looser than it needs to be; worth
   // trimming so adjacent bridges just clear each other instead of overlapping.
   ['Barrel-center bridge', 'Center-third bridge'],
+  ['Center-third bridge', 'Third-fourth bridge'], // same shared-pivot situation at the THIRD wheel's jewel
   // Small-seconds display arbor (tornado): the through rod runs coaxially
   // inside the fourth wheel/pinion bores (this contact IS the friction
   // coupling), passes the third-fourth bridge's fourth-end pivot pad, exits
@@ -569,6 +570,11 @@ function stoneIntersectsWheel(bvh, wheelMatrixWorld, stoneMesh, stoneGeometry, w
 // Minimum-translation-distance: smallest push, over a spread of candidate
 // directions, that clears the boolean intersection. 0 if already clear.
 function mtvDepth(bvh, wheelMatrixWorld, meshB) {
+  // intersectsGeometry needs the other side INDEXED; building its (otherwise
+  // unused) tree indexes it — same trick meshesIntersect relies on. Without
+  // this, ExtrudeGeometry stones (non-indexed) crash inside the BVH walk —
+  // a latent break since the pallet stones stopped being BoxGeometry.
+  bvhFor(meshB);
   if (!stoneIntersectsWheel(bvh, wheelMatrixWorld, meshB, meshB.geometry, new THREE.Vector3())) return 0;
   let best = Infinity;
   for (const d of MTV_DIRECTIONS) {

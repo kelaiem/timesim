@@ -418,7 +418,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
 // Balance wheel — heavy rim + timing screws, 2 arms, staff, roller table
 // ---------------------------------------------------------------------------
 
-export function makeBalanceWheel({ radius, thickness }) {
+export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6 }) {
   const g = new THREE.Group();
   const rimO = radius;
   const rimI = radius - thickness * 1.3;
@@ -431,8 +431,9 @@ export function makeBalanceWheel({ radius, thickness }) {
   const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.9, thickness * 0.75);
   g.add(new THREE.Mesh(armGeo, MATS.steel));
 
-  // Central staff along Z.
-  const staffGeo = new THREE.CylinderGeometry(thickness * 0.35, thickness * 0.35, thickness * 6, 16);
+  // Central staff along Z (staffHeight lets the caller match the actual
+  // wheel-plane → cock-jewel span instead of a proportion of thickness).
+  const staffGeo = new THREE.CylinderGeometry(thickness * 0.35, thickness * 0.35, staffHeight, 16);
   staffGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(staffGeo, MATS.steel));
 
