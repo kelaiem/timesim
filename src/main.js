@@ -1338,7 +1338,16 @@ dialFace.rotation.y = Math.PI;
 dialGroup.add(dialFace);
 
 const dialRadius = plateR * 0.92;
-const dial = G.makeDial({ radius: dialRadius });
+// Sub-dial positions in dial-local coordinates (+y = 12 o'clock; the
+// dialFace Y-flip makes these read correctly from the front). The reserve
+// face itself is painted into the dial texture by makeDial; only the bezel
+// and hand remain separate meshes (added below at this same position).
+const reserveR = dialRadius * 0.2;
+const RESERVE_LOCAL = { x: 0, y: -dialRadius * 0.48 }; // 6 o'clock
+const dial = G.makeDial({
+  radius: dialRadius,
+  subdials: [{ x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve' }],
+});
 dialFace.add(dial);
 
 const handsGroup = new THREE.Group();
@@ -1367,61 +1376,17 @@ cannonPinion.position.z = -1.5;
 dialFace.add(cannonPinion);
 
 // ---------------------------------------------------------------------------
-// Power-reserve complication — sub-dial at 6 o'clock. A small blued hand
+// Power-reserve complication — sub-dial at RESERVE_LOCAL. A small blued hand
 // sweeps a 120° arc from 30 h (mainspring fully wound) down to 0, driven by
-// barrelWindTurns in tick(). Authored for a local +Z viewer like the dial.
+// barrelWindTurns in tick(). The graduated Ab/Auf face is painted into the
+// dial texture by makeDial (see the subdials param above); this group holds
+// only the physical parts riding proud of the dial: bezel and hand.
 // ---------------------------------------------------------------------------
 const reserveGroup = new THREE.Group();
-const reserveR = dialRadius * 0.2;
-reserveGroup.position.set(0, -dialRadius * 0.48, 0.35);
+reserveGroup.position.set(RESERVE_LOCAL.x, RESERVE_LOCAL.y, 0.35);
 dialFace.add(reserveGroup);
 registerLabel('Power reserve', reserveGroup);
 {
-  const px = 256;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = px;
-  const ctx = cv.getContext('2d');
-  const cx = px / 2, cy = px / 2;
-  ctx.fillStyle = '#d6d6ca'; // slightly darker than the dial: reads as recessed
-  ctx.beginPath();
-  ctx.arc(cx, cy, px * 0.5, 0, Math.PI * 2);
-  ctx.fill();
-  // Graduated 120° arc: math angle 150° (empty, left) → 30° (full, right).
-  const tickAt = (mathDeg, len, w) => {
-    const a = mathDeg * DEG2RAD;
-    const r1 = px * 0.42, r2 = r1 - len;
-    ctx.lineWidth = w;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * r1, cy - Math.sin(a) * r1);
-    ctx.lineTo(cx + Math.cos(a) * r2, cy - Math.sin(a) * r2);
-    ctx.stroke();
-  };
-  ctx.strokeStyle = '#1c1c22';
-  for (let h = 0; h <= 30; h += 5) {
-    const major = h % 15 === 0;
-    tickAt(150 - (h / 30) * 120, major ? 26 : 14, major ? 7 : 4);
-  }
-  // AB (run down) and AUF (wound up) at the ends of the hour arc — the
-  // classic Glashütte reserve marking — in place of numeric labels.
-  ctx.fillStyle = '#1c1c22';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = `600 ${px * 0.115}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-  const labelAt = (mathDeg, txt) => {
-    const a = mathDeg * DEG2RAD, r = px * 0.26;
-    ctx.fillText(txt, cx + Math.cos(a) * r, cy - Math.sin(a) * r);
-  };
-  labelAt(150, 'Ab');
-  labelAt(30, 'Auf');
-
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  const face = new THREE.Mesh(
-    new THREE.CircleGeometry(reserveR, 48),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.08 })
-  );
-  reserveGroup.add(face);
   const bezel = new THREE.Mesh(new THREE.TorusGeometry(reserveR, reserveR * 0.045, 10, 48), MATS.steel);
   reserveGroup.add(bezel);
 }
@@ -1445,9 +1410,11 @@ movement.add(reserveTrain);
 registerLabel('Power-reserve train', reserveTrain);
 registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 
-// World-frame anchors: barrel arbor axis → sub-dial pivot axis. (reserveGroup
-// sits on the Y-flipped dialFace; its local x=0 keeps world x = P.dial.x.)
-const rsvPivotXY = { x: P.dial.x, y: P.dial.y - dialRadius * 0.48 };
+// World-frame anchors: barrel arbor axis → sub-dial pivot axis. reserveGroup
+// sits on the Y-flipped dialFace, so dial-local (x, y) lands at world
+// (P.dial.x − x, P.dial.y + y) — derived from RESERVE_LOCAL so moving the
+// sub-dial moves the whole reduction train's target with it.
+const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
 const Z_RSV = -10.5;        // gear plane in the plate→dial gap (plate −1, dial −14)
 const RSV_Z_STEP = 2.2;     // wheel/pinion height split (w1's disk clears w2)
 
