@@ -1517,7 +1517,10 @@ const dial = G.makeDial({
   radius: dialRadius,
   subdialRecess: SUBDIAL_RECESS,
   subdials: [
-    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve' },
+    // face: the dial's own tone at this radius (its radial gradient
+    // evaluated at 0.39R) so the reserve blends in rather than reading as
+    // a separate instrument; the seconds keeps the darker recessed tone.
+    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5' },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
   ],
 });
@@ -2186,6 +2189,17 @@ function tick(t) {
   // contact and a firm hold once fully closed; once leverEngage decays to
   // 0 the reference is simply left where it last settled.
   if (leverEngage > 0.001) {
+    // Heart-cam physics: the hammer drives the cam to its notch by the
+    // SHORTEST path — that is the entire point of the heart shape; under
+    // the hammer it can never turn more than half a revolution. But
+    // fourthA is a continuous angle (never wrapped), so the display
+    // residual (fourthA − secondsZeroRef) accumulates a whole turn per
+    // minute since the last reset, and easing the raw residual spun the
+    // cam (and seconds hand) through every one of those turns. First
+    // re-normalize the reference by whole turns — a change of exactly
+    // 2πk, invisible to every rotation.z consumer — then ease only the
+    // ≤ half-turn remainder, exactly what the real cam would do.
+    secondsZeroRef += Math.round((fourthA - secondsZeroRef) / (2 * Math.PI)) * 2 * Math.PI;
     secondsZeroRef += (fourthA - secondsZeroRef) * leverEngage * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
   }
 

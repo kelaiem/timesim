@@ -1333,7 +1333,9 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
         cv.width = cv.height = px;
         const fctx = cv.getContext && cv.getContext('2d');
         if (fctx) {
-          fctx.fillStyle = '#d6d6ca'; // slightly darker than the dial: reads as shadowed
+          // Default: slightly darker than the dial, reads as shadowed. A
+          // sub-dial may pass its own `face` colour to blend in instead.
+          fctx.fillStyle = sd.face || '#d6d6ca';
           fctx.fillRect(0, 0, px, px);
           paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind);
           const ftex = new THREE.CanvasTexture(cv);
