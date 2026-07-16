@@ -1135,7 +1135,6 @@ function yokeAngleAt(pull) {
 // the anchor; the blade runs from there across the movement to the balance
 // rim. All of it derived from the post's actual engaged/released positions.
 const HACK_LIFT = 0.09;       // rad — blade deflection between released/braking
-const HACK_PRESS_DIST = 19.5; // post's bearing point, this far from the anchor
 const postEng = tailPostWorldAt(1);
 const postRel = tailPostWorldAt(0);
 let uB = { x: P.balance.x - postEng.x, y: P.balance.y - postEng.y };
@@ -1143,6 +1142,18 @@ let uB = { x: P.balance.x - postEng.x, y: P.balance.y - postEng.y };
   const m = Math.hypot(uB.x, uB.y) || 1;
   uB = { x: uB.x / m, y: uB.y / m };
 }
+// Post's bearing distance from the anchor. The anchor extends BACKWARD
+// from the post along the blade line, and the old fixed 19.5 hung it (and
+// the blade's whole tail) ~15 units past the plate rim. Solve the largest
+// distance that keeps the anchor inside the plate with margin:
+// |postEng − uB·d| = plateR − 2.5, positive root.
+const HACK_PRESS_DIST = (() => {
+  const rMax = plateR - 2.5;
+  const aDotU = postEng.x * uB.x + postEng.y * uB.y;
+  const disc = aDotU * aDotU - (postEng.x ** 2 + postEng.y ** 2) + rMax * rMax;
+  const dMax = disc > 0 ? aDotU + Math.sqrt(disc) : 6;
+  return Math.min(19.5, Math.max(4, dMax));
+})();
 // Component of the post's engaging travel perpendicular to the blade — the
 // direction it pushes the flank.
 let pushDir = (() => {
@@ -1480,7 +1491,6 @@ const dialRadius = plateR * 0.92;
 // dialFace Y-flip makes these read correctly from the front). The reserve
 // face itself is painted into the dial texture by makeDial; only the bezel
 // and hand remain separate meshes (added below at this same position).
-const reserveR = dialRadius * 0.2;
 // 12 o'clock — symmetric with the small-seconds sub-dial at 6 (the fourth
 // wheel sits D4 below centre); also much closer to the barrel's dial-side
 // projection than the old 6-o'clock spot, so the reserve reduction train
@@ -1489,7 +1499,15 @@ const RESERVE_LOCAL = { x: 0, y: dialRadius * 0.39 };
 // Small seconds live ON the fourth wheel's axis — dial-local coordinates
 // mirror world x through the dialFace Y-flip.
 const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
-const secondsSubR = dialRadius * 0.2;
+// Sub-dial radius — as large as the face allows while staying balanced:
+// one shared radius for both wells (their pivots are fixed on their
+// arbors, so only the radius can grow), capped by the clearance the
+// central hands' boss needs around the dial centre. This lands ≈ 0.30 of
+// the dial radius (up from 0.2); the bigger wells swallow the XI/I and
+// V/VII numerals symmetrically, leaving II–IIII and VIII–X.
+const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 3.5;
+const reserveR = subDialR;
+const secondsSubR = subDialR;
 // Sub-dials are recessed WELLS sunk into the dial (hole + wall + painted
 // floor, all built by makeDial); the hands ride inside the well, below the
 // dial surface. In dial-local coordinates the well floor is at

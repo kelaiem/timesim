@@ -1140,15 +1140,31 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
       const major = h % 15 === 0;
       tickAt(150 - (h / 30) * 120, sr * 0.84, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
     }
+    // Ab / Auf painted ALONG the graduation arc, at the tick band's radius,
+    // just beyond its two end ticks — continuing the ring rather than
+    // floating inside it. Each character stands upright with its top
+    // pointing radially outward, reading left→right along the upper arc.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `600 ${sr * 0.23}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    const labelAt = (mathDeg, txt) => {
-      const a = (mathDeg * Math.PI) / 180, r = sr * 0.52;
-      ctx.fillText(txt, scx + Math.cos(a) * r, scy - Math.sin(a) * r);
+    ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    const arcLabel = (txt, centerMathDeg) => {
+      const r = sr * 0.76; // mid-band of the graduation ticks
+      const widths = [...txt].map((ch) => ctx.measureText(ch).width);
+      const extra = sr * 0.008;
+      const total = widths.reduce((s, w) => s + w + extra, -extra) / r;
+      let a = (centerMathDeg * Math.PI) / 180 + total / 2;
+      [...txt].forEach((ch, i) => {
+        a -= (widths[i] / 2) / r;
+        ctx.save();
+        ctx.translate(scx + Math.cos(a) * r, scy - Math.sin(a) * r);
+        ctx.rotate(Math.PI / 2 - a);
+        ctx.fillText(ch, 0, 0);
+        ctx.restore();
+        a -= (widths[i] / 2 + extra) / r;
+      });
     };
-    labelAt(150, 'Ab');
-    labelAt(30, 'Auf');
+    arcLabel('Ab', 166);
+    arcLabel('Auf', 14);
   } else if (kind === 'seconds') {
     // Small-seconds track: 60 ticks, heavier every fifth, quarter
     // numerals 15/30/45/60.
@@ -1312,7 +1328,7 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
     for (const sd of subdials) {
       let floorMat = null;
       if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-        const px = 256;
+        const px = 512;
         const cv = document.createElement('canvas');
         cv.width = cv.height = px;
         const fctx = cv.getContext && cv.getContext('2d');
