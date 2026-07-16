@@ -1121,14 +1121,62 @@ export function makePillar({ height }) {
 // Dial & hands
 // ---------------------------------------------------------------------------
 
+// Sub-dial face artwork, painted around (cx, cy) at radius sr (canvas px).
+function paintSubdialFace(ctx, scx, scy, sr, kind) {
+  ctx.strokeStyle = '#1c1c22';
+  ctx.fillStyle = '#1c1c22';
+  const tickAt = (mathDeg, r1, len, w) => {
+    const a = (mathDeg * Math.PI) / 180;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(scx + Math.cos(a) * r1, scy - Math.sin(a) * r1);
+    ctx.lineTo(scx + Math.cos(a) * (r1 - len), scy - Math.sin(a) * (r1 - len));
+    ctx.stroke();
+  };
+  if (kind === 'reserve') {
+    // Graduated 120° arc: math angle 150° (empty, left) → 30° (full,
+    // right), Ab/Auf Glashütte marking.
+    for (let h = 0; h <= 30; h += 5) {
+      const major = h % 15 === 0;
+      tickAt(150 - (h / 30) * 120, sr * 0.84, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 ${sr * 0.23}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    const labelAt = (mathDeg, txt) => {
+      const a = (mathDeg * Math.PI) / 180, r = sr * 0.52;
+      ctx.fillText(txt, scx + Math.cos(a) * r, scy - Math.sin(a) * r);
+    };
+    labelAt(150, 'Ab');
+    labelAt(30, 'Auf');
+  } else if (kind === 'seconds') {
+    // Small-seconds track: 60 ticks, heavier every fifth, quarter
+    // numerals 15/30/45/60.
+    for (let s = 0; s < 60; s++) {
+      const major = s % 5 === 0;
+      tickAt(90 - s * 6, sr * 0.92, sr * (major ? 0.16 : 0.09), sr * (major ? 0.045 : 0.022));
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `500 ${sr * 0.2}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    for (const [sec, mathDeg] of [[60, 90], [15, 0], [30, -90], [45, 180]]) {
+      const a = (mathDeg * Math.PI) / 180, r = sr * 0.62;
+      ctx.fillText(String(sec), scx + Math.cos(a) * r, scy - Math.sin(a) * r);
+    }
+  }
+}
+
 // subdials: [{ x, y, r, kind: 'seconds' | 'reserve' }] in dial-local units
 // (same frame the numerals use: +y = 12 o'clock, +x = 3 o'clock as authored;
 // the caller's dialFace Y-flip makes that read correctly from the front).
-// Each entry paints a recessed sub-dial face into the dial texture — the
-// caller adds its own bezel/hand meshes at the same local position — and
-// any hour numeral whose marker would land on a sub-dial is skipped
-// automatically (computed, replacing the old hard-coded VI omission).
-export function makeDial({ radius, subdials = [] }) {
+// Each entry becomes a real recessed WELL: a hole cut through the dial disc,
+// a silvered cylindrical wall, and a floor sunk `subdialRecess` below the
+// surface carrying the painted face (with a central bore for the hand
+// arbor). The caller adds its hand inside the well at the same local
+// position. Any hour numeral whose marker would land on a sub-dial is
+// skipped automatically (computed, replacing the old hard-coded VI
+// omission).
+export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
   const g = new THREE.Group();
   let mat = null;
 
@@ -1206,62 +1254,8 @@ export function makeDial({ radius, subdials = [] }) {
         });
       }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-      // Recessed sub-dial faces, painted into the dial texture itself (the
-      // separate face meshes they replace sat proud of the dial and needed
-      // their own canvases; recessed reads more like real guilloché work).
-      const k = R / radius; // canvas px per dial unit
-      for (const sd of subdials) {
-        const scx = C + sd.x * k;
-        const scy = C - sd.y * k; // canvas y is down
-        const sr = sd.r * k;
-        ctx.fillStyle = '#d6d6ca'; // slightly darker than the dial: reads as recessed
-        ctx.beginPath();
-        ctx.arc(scx, scy, sr, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#1c1c22';
-        ctx.fillStyle = '#1c1c22';
-        const tickAt = (mathDeg, r1, len, w) => {
-          const a = (mathDeg * Math.PI) / 180;
-          ctx.lineWidth = w;
-          ctx.beginPath();
-          ctx.moveTo(scx + Math.cos(a) * r1, scy - Math.sin(a) * r1);
-          ctx.lineTo(scx + Math.cos(a) * (r1 - len), scy - Math.sin(a) * (r1 - len));
-          ctx.stroke();
-        };
-        if (sd.kind === 'reserve') {
-          // Graduated 120° arc: math angle 150° (empty, left) → 30° (full,
-          // right), Ab/Auf Glashütte marking — ported from the old separate
-          // sub-dial canvas, same proportions relative to its radius.
-          for (let h = 0; h <= 30; h += 5) {
-            const major = h % 15 === 0;
-            tickAt(150 - (h / 30) * 120, sr * 0.84, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
-          }
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.font = `600 ${sr * 0.23}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-          const labelAt = (mathDeg, txt) => {
-            const a = (mathDeg * Math.PI) / 180, r = sr * 0.52;
-            ctx.fillText(txt, scx + Math.cos(a) * r, scy - Math.sin(a) * r);
-          };
-          labelAt(150, 'Ab');
-          labelAt(30, 'Auf');
-        } else if (sd.kind === 'seconds') {
-          // Small-seconds track: 60 ticks, heavier every fifth, quarter
-          // numerals 15/30/45/60.
-          for (let s = 0; s < 60; s++) {
-            const major = s % 5 === 0;
-            tickAt(90 - s * 6, sr * 0.92, sr * (major ? 0.16 : 0.09), sr * (major ? 0.045 : 0.022));
-          }
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.font = `500 ${sr * 0.2}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-          for (const [sec, mathDeg] of [[60, 90], [15, 0], [30, -90], [45, 180]]) {
-            const a = (mathDeg * Math.PI) / 180, r = sr * 0.62;
-            ctx.fillText(String(sec), scx + Math.cos(a) * r, scy - Math.sin(a) * r);
-          }
-        }
-      }
+      // (Sub-dial faces are NOT painted here: each one lives on its own
+      // recessed floor mesh, built below — the dial disc has a hole there.)
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.anisotropy = 8;
@@ -1277,12 +1271,84 @@ export function makeDial({ radius, subdials = [] }) {
   }
   if (!mat) mat = MATS.silver;
 
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 96), mat);
+  // Dial disc — with a circular hole cut through it at each sub-dial.
+  let discGeo;
+  if (subdials.length) {
+    const discShape = new THREE.Shape();
+    discShape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+    for (const sd of subdials) {
+      const h = new THREE.Path();
+      h.absarc(sd.x, sd.y, sd.r, 0, Math.PI * 2, true);
+      discShape.holes.push(h);
+    }
+    discGeo = new THREE.ShapeGeometry(discShape, 96);
+    // ShapeGeometry UVs are raw local coordinates — remap to the 0..1 disc
+    // mapping CircleGeometry uses, so the canvas texture lands identically.
+    const uv = discGeo.attributes.uv, pos = discGeo.attributes.position;
+    for (let i = 0; i < uv.count; i++) {
+      uv.setXY(i, pos.getX(i) / (2 * radius) + 0.5, pos.getY(i) / (2 * radius) + 0.5);
+    }
+  } else {
+    discGeo = new THREE.CircleGeometry(radius, 96);
+  }
+  const disc = new THREE.Mesh(discGeo, mat);
   g.add(disc);
   // Slight raised chapter ring for depth.
   const ring = new THREE.Mesh(ringExtrude(radius, radius * 0.97, radius * 0.02, 96), MATS.silver);
   ring.position.z = radius * 0.01;
   g.add(ring);
+
+  // Recessed sub-dial wells: silvered wall down from the hole's edge, and a
+  // floor sunk subdialRecess below the surface carrying the painted face.
+  // The floor has a central bore for the hand arbor (r 1.0 — the arbors'
+  // hand hubs in main.js are r ≤ 0.9).
+  if (subdials.length && subdialRecess > 0) {
+    // Matte and darker than the dial: the wall is the SHADOWED side of a
+    // recess. A polished/metallic wall catches highlights and reads as a
+    // raised bezel ring from oblique angles — the opposite of sunk.
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
+    });
+    for (const sd of subdials) {
+      let floorMat = null;
+      if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+        const px = 256;
+        const cv = document.createElement('canvas');
+        cv.width = cv.height = px;
+        const fctx = cv.getContext && cv.getContext('2d');
+        if (fctx) {
+          fctx.fillStyle = '#d6d6ca'; // slightly darker than the dial: reads as shadowed
+          fctx.fillRect(0, 0, px, px);
+          paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind);
+          const ftex = new THREE.CanvasTexture(cv);
+          ftex.colorSpace = THREE.SRGBColorSpace;
+          ftex.anisotropy = 8;
+          floorMat = new THREE.MeshStandardMaterial({ map: ftex, roughness: 0.65, metalness: 0.08 });
+        }
+      }
+      if (!floorMat) floorMat = MATS.silver;
+
+      const floorShape = new THREE.Shape();
+      floorShape.absarc(0, 0, sd.r, 0, Math.PI * 2, false);
+      const bore = new THREE.Path();
+      bore.absarc(0, 0, 1.0, 0, Math.PI * 2, true);
+      floorShape.holes.push(bore);
+      const floorGeo = new THREE.ShapeGeometry(floorShape, 48);
+      const fuv = floorGeo.attributes.uv, fpos = floorGeo.attributes.position;
+      for (let i = 0; i < fuv.count; i++) {
+        fuv.setXY(i, fpos.getX(i) / (2 * sd.r) + 0.5, fpos.getY(i) / (2 * sd.r) + 0.5);
+      }
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.position.set(sd.x, sd.y, -subdialRecess);
+      g.add(floor);
+
+      const wallGeo = new THREE.CylinderGeometry(sd.r, sd.r, subdialRecess, 48, 1, true);
+      wallGeo.rotateX(Math.PI / 2);
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      wall.position.set(sd.x, sd.y, -subdialRecess / 2);
+      g.add(wall);
+    }
+  }
 
   // Applied Roman-numeral hour markers: raised polished-brass indices built
   // from bar strokes (I/V/X are pure strokes, so no font assets needed),

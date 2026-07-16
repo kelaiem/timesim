@@ -1490,8 +1490,14 @@ const RESERVE_LOCAL = { x: 0, y: dialRadius * 0.39 };
 // mirror world x through the dialFace Y-flip.
 const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
 const secondsSubR = dialRadius * 0.2;
+// Sub-dials are recessed WELLS sunk into the dial (hole + wall + painted
+// floor, all built by makeDial); the hands ride inside the well, below the
+// dial surface. In dial-local coordinates the well floor is at
+// −SUBDIAL_RECESS and the hands at −(SUBDIAL_RECESS − 0.3).
+const SUBDIAL_RECESS = 0.5;
 const dial = G.makeDial({
   radius: dialRadius,
+  subdialRecess: SUBDIAL_RECESS,
   subdials: [
     { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve' },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
@@ -1522,16 +1528,12 @@ handsGroup.add(hourHand, minuteHand);
 // the front — the movement-frame arbor carries the negated value, the two
 // being the same physical rotation seen from opposite sides.
 const smallSecondsGroup = new THREE.Group();
-smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0.35);
+smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
 dialFace.add(smallSecondsGroup);
 registerLabel('Small seconds', smallSecondsGroup);
-{
-  const bezel = new THREE.Mesh(new THREE.TorusGeometry(secondsSubR, secondsSubR * 0.045, 10, 48), MATS.steel);
-  smallSecondsGroup.add(bezel);
-}
 const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second' });
 smallSecondsHand.name = 'smallSecondsHand';
-smallSecondsHand.position.z = 0.45;
+smallSecondsHand.position.z = -(SUBDIAL_RECESS - 0.3);
 smallSecondsGroup.add(smallSecondsHand);
 
 // The display arbor itself: extend the slip-coupled seconds arbor (heart
@@ -1542,13 +1544,16 @@ smallSecondsGroup.add(smallSecondsHand);
 // physically honest: the hand's axis is a real rod coaxial with the real
 // fourth wheel, not a representational hop across the movement.
 {
-  const hubZ = Z_DIAL - 0.9; // just proud of the sub-dial face (world)
+  // Hub inside the recessed well: through the floor's bore (r 1.0 > hub
+  // 0.9), stopping just short of the dial's surface plane. The hand rides
+  // at world Z_DIAL + 0.2, straddled by the hub's span.
+  const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15; // hub centre (world)
   const rodLen = Z_SECONDS_ARBOR - hubZ;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
   rod.rotation.x = Math.PI / 2;
   rod.position.z = -rodLen / 2; // local: from the cam plane down/forward to the hub
   secondsCamArbor.add(rod);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.steel);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 12), MATS.steel);
   hub.rotation.x = Math.PI / 2;
   hub.position.z = hubZ - Z_SECONDS_ARBOR;
   secondsCamArbor.add(hub);
@@ -1565,20 +1570,16 @@ dialFace.add(cannonPinion);
 // ---------------------------------------------------------------------------
 // Power-reserve complication — sub-dial at RESERVE_LOCAL. A small blued hand
 // sweeps a 120° arc from 30 h (mainspring fully wound) down to 0, driven by
-// barrelWindTurns in tick(). The graduated Ab/Auf face is painted into the
-// dial texture by makeDial (see the subdials param above); this group holds
-// only the physical parts riding proud of the dial: bezel and hand.
+// barrelWindTurns in tick(). The graduated Ab/Auf face lives on the well's
+// recessed floor (built by makeDial); this group holds only the hand,
+// riding INSIDE the well, below the dial surface.
 // ---------------------------------------------------------------------------
 const reserveGroup = new THREE.Group();
-reserveGroup.position.set(RESERVE_LOCAL.x, RESERVE_LOCAL.y, 0.35);
+reserveGroup.position.set(RESERVE_LOCAL.x, RESERVE_LOCAL.y, 0);
 dialFace.add(reserveGroup);
 registerLabel('Power reserve', reserveGroup);
-{
-  const bezel = new THREE.Mesh(new THREE.TorusGeometry(reserveR, reserveR * 0.045, 10, 48), MATS.steel);
-  reserveGroup.add(bezel);
-}
 const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute' });
-reserveHand.position.z = 0.45;
+reserveHand.position.z = -(SUBDIAL_RECESS - 0.3);
 reserveGroup.add(reserveHand);
 
 // ---------------------------------------------------------------------------
@@ -1603,7 +1604,7 @@ registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 // sub-dial moves the whole reduction train's target with it.
 const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
 const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
-const RSV_Z_STEP = 1.8;     // wheel/pinion height split (w2 at −6.0 clears the dial by 0.5)
+const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.25 clears the recessed well floor at −6.5)
 
 const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 8, rsvTeethW2 = 20;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
@@ -1642,9 +1643,13 @@ rsvArbor1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV);
 reservePinion1.position.z = -RSV_Z_STEP;
 rsvArbor1.add(rsvWheel1, reservePinion1);
 reserveTrain.add(rsvArbor1);
-const rsvPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, RSV_Z_STEP + 2, 10), MATS.steel);
+// Post spans from 1 above w1's plane to 0.6 past p1's — NOT the symmetric
+// +2 it used to be: w1 sits inside the recessed reserve well's footprint,
+// and the longer post's dial-ward end poked through the well floor
+// (Z_DIAL + SUBDIAL_RECESS) as a visible stub on the sub-dial face.
+const rsvPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, RSV_Z_STEP + 1.6, 10), MATS.steel);
 rsvPost1.rotation.x = Math.PI / 2;
-rsvPost1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV - RSV_Z_STEP / 2);
+rsvPost1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV + 1 - (RSV_Z_STEP + 1.6) / 2);
 reserveTrain.add(rsvPost1);
 
 const rsvArbor2 = new THREE.Group(); // w2 — the output, coaxial with the sub-dial pivot
@@ -1652,7 +1657,7 @@ rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
 // Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
-const rsvHandZ = Z_DIAL - 0.9; // just proud of the sub-dial face
+const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2; // through the well floor's bore, just behind the hand
 const rsvHandArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(0.4, 0.4, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
 rsvHandArbor.rotation.x = Math.PI / 2;
