@@ -1,9 +1,17 @@
 # Lever Escapement — 3D Mechanical Clock Simulation
 
-A browser-based, physically-laid-out 3D simulation of a going-barrel movement with a
-Swiss lever escapement: mainspring barrel → center → third → fourth wheel → escape
-wheel ⇄ pallet fork ⇄ balance wheel + hairspring, plus a dial with correctly driven
-hour/minute/second hands.
+A browser-based, physically-laid-out 3D simulation of a fusee movement with a
+Swiss lever escapement: mainspring drum → chain → fusee & great wheel → center →
+third → fourth wheel → escape wheel ⇄ pallet fork ⇄ balance wheel + hairspring,
+plus a dial with correctly driven hour/minute hands and a small-seconds sub-dial.
+
+**Tornado layout** — the movement is composed as a face design on a flat
+(~32-unit front-to-back, down from ~45) construction: crown and barrel exit at
+~1:50, the fourth wheel sits exactly at 6 o'clock so its arbor carries the
+small-seconds display directly (no fake linkage), the escapement trails to
+~6:25 with the balance at 8, and the power-reserve sub-dial answers at 12.
+The going train packs on a 2.1-unit wheel stride under compact bridges, and
+the fusee cone is squashed to 4.5 units tall with a tighter groove pitch.
 
 ## Run
 
@@ -33,7 +41,11 @@ then open http://localhost:8347/ — no build step, no network access needed
   train locked and hands frozen until the next wind. The indicator is geared
   mechanically off the barrel — 120° of hand per 3.75 barrel revolutions
   (1 rev/8 h × 30 h), referenced to the barrel angle at the last wind — shown
-  on an AUF/AB sub-dial at 6 o'clock plus an hours readout in the panel.
+  on an AUF/AB sub-dial at 12 o'clock plus an hours readout in the panel.
+- **Small seconds**: the seconds hand rides a sub-dial at 6 o'clock centred
+  exactly on the fourth wheel's axis — its display arbor (the heart cam's
+  slip-coupled arbor, extended as a real rod through the wheel's bore and the
+  plate) is coaxial with the actual 1-rev/min fourth wheel.
 - **Fusee & chain**: the movement is a fusee movement — the mainspring lives
   in a plain drum off to the side, and a chain runs to a helically-grooved
   cone on the great-wheel arbor. Fully wound, the chain pulls at the cone's

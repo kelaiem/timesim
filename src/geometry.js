@@ -1177,21 +1177,25 @@ export function makeDial({ radius, subdials = [] }) {
         ctx.restore();
       }
       // (Hour markers are applied 3D numerals — built below, not printed.)
-      // Discreet maker's mark, arced along an invisible concentric circle at
-      // 6–7 o'clock, each character upright with its top toward the centre.
-      ctx.font = '500 24px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      // Discreet maker's mark, arced along an invisible concentric circle
+      // centred at exactly 6 o'clock, each character upright with its top
+      // toward the centre. Kept tight (small font, light tracking) so the
+      // whole arc stays inside ±~25° — the clean annulus between a
+      // 6-o'clock sub-dial's edge and the railroad track, clear of the V
+      // and VII numerals either side.
+      ctx.font = '500 21px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.fillStyle = '#6b6b64';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       {
         const msg = 'MADE IN CLAUDE';
         const rSig = R * 0.78;
-        const extra = 4; // px of tracking between characters
+        const extra = 3; // px of tracking between characters
         const widths = [...msg].map((ch) => ctx.measureText(ch).width);
         const totalArc = (widths.reduce((s, cw) => s + cw + extra, -extra)) / rSig;
-        // Read left→right along the bottom arc: start at the 7-o'clock side
-        // (larger clock angle) and advance toward 6.
-        let a = (6.55 / 12) * Math.PI * 2 + totalArc / 2;
+        // Read left→right along the bottom arc: start at the 6:30 side
+        // (larger clock angle) and advance toward 5:30.
+        let a = (6 / 12) * Math.PI * 2 + totalArc / 2;
         [...msg].forEach((ch, i) => {
           a -= (widths[i] / 2) / rSig;
           ctx.save();
