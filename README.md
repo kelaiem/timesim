@@ -34,6 +34,16 @@ then open http://localhost:8347/ — no build step, no network access needed
   mechanically off the barrel — 120° of hand per 3.75 barrel revolutions
   (1 rev/8 h × 30 h), referenced to the barrel angle at the last wind — shown
   on an AUF/AB sub-dial at 6 o'clock plus an hours readout in the panel.
+- **Fusee & chain**: the movement is a fusee movement — the mainspring lives
+  in a plain drum off to the side, and a chain runs to a helically-grooved
+  cone on the great-wheel arbor. Fully wound, the chain pulls at the cone's
+  small radius; as the spring weakens it pays off toward the large radius,
+  so torque delivered to the train stays level (see the Spring/Train torque
+  bars in the panel — the cone profile satisfies S(t)·r_f(t) = const). The
+  chain visibly migrates between drum and cone as the reserve changes.
+- **Fast-forward**: a ~5400× mode that rips through the whole 30 h reserve in
+  seconds so you can watch the chain pay off, the reserve hand fall, and the
+  movement run flat; auto-disengages at zero. Winding restarts the balance.
 - **Keyless works**: knurled crown → stem → winding pinion → crown wheel →
   ratchet + click; the chain spins with true tooth ratios when you wind.
 - **Setting-lever linkage (visible hacking actuation)**: the stem carries a
