@@ -26,8 +26,10 @@ const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied
 const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
 const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
 const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
-const FORK_BANK_DEG = 10;        // fork banking angle (± from center)
-const FORK_RECOIL_DEG = 2.5;     // extra fork deflection into the bank during draw
+// FORK_BANK_DEG / FORK_RECOIL_DEG are DERIVED further down (after the pallet
+// fork and balance geometry exist), from rollerR and the notch's actual
+// reach — see that derivation for why they can't be picked independently of
+// the balance's roller radius without the impulse pin missing the notch.
 
 // ---------------------------------------------------------------------------
 // Renderer / scene / camera
@@ -187,6 +189,10 @@ const barrel = G.makeBarrel({ radius: barrelR, height: 8, plain: true }); // the
 const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 2.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 8.5;
+// Cone base height on the arbor: high enough that the cone's large end
+// clears the THIRD wheel's plane (inspector finding: at 5.9 the cone body
+// intersected the third wheel's rim at every pose).
+const FUSEE_BASE_Z = 7.6;
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -231,13 +237,43 @@ const forkSpan = 2 * escapeWheelR * Math.sin(THREE.MathUtils.degToRad(42));
 // Pivot distance from the escape-wheel centre that puts both stones exactly on
 // the wheel rim (stones sit at (±span/2, span/2) in fork-local coordinates).
 const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan / 2) ** 2);
-// Lever runs from the pivot to just short of the balance roller's edge.
-const escToBalanceDist = (escapeWheelR + balanceR) * 2.0;
+// Lever runs from the pivot to just short of the balance roller's edge. Real
+// Swiss-lever movements sit the balance close to the escapement — a compact
+// fork bridging a modest gap, not stretched across open space — so this is
+// a much tighter multiple of the two wheels' combined radius than before.
+const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
 const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
-const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: 1.2 });
+// stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
+// L_ESCAPE — the stones must descend by exactly that gap to land centered
+// on the wheel's own Z-thickness rather than grazing one edge of it.
+const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: 1.2, stoneZReach: L_FORK - L_ESCAPE });
+// Real impulse rollers sit well inside the balance rim (~15-20% of its
+// radius), not at half of it — the pin only needs to clear the fork's notch,
+// not the whole balance.
+const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
+
+// FORK_BANK_DEG / FORK_RECOIL_DEG — the fork's ±swing must sweep the SAME
+// physical arc-length the impulse pin actually traces during the impulse
+// window, or the two never coincide (the pin sails past the notch on one
+// side, or never reaches it, depending on which is bigger). Matching
+// arc-length: rollerR·Δθ_pin = notchDepth·(2·FORK_BANK_DEG in rad), where
+// notchDepth is the fork's own local-space reach from pivot to notch floor
+// (mirrors the (forkTop + 0.7·thickness) point makePalletFork's V-notch
+// curve actually lands on) and Δθ_pin is the balance's angular travel over
+// IMPULSE_WIDTH of a beat (closed form: amp·sin(π·IMPULSE_WIDTH), since
+// balanceTheta(τ) = amp·sin(2π·F_BALANCE·τ) and τ_impulse = IMPULSE_WIDTH /
+// (2·F_BALANCE)). Discovered by measuring the built pin/notch meshes and
+// finding they never actually touch (~3.5 units of persistent clearance,
+// even at the "locked" extremes) — this ties them together so a future
+// change to rollerR, amplitude, or fork proportions can't silently
+// reintroduce the gap.
+const notchDepth = 0.8 * forkLeverLength - 0.7 * 1.2; // thickness=1.2, matches the makePalletFork call above
+const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH);
+const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
+const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
 
 const hairspring = G.makeHairspring({
-  innerR: Math.max((balanceWheel.userData.rollerR || balanceR * 0.35) * 0.5, 1.5),
+  innerR: Math.max(rollerR * 0.5, 1.5),
   outerR: balanceR * 0.88,
   coils: 10,
   height: 0.6,
@@ -429,7 +465,25 @@ barrelArbor.add(greatWheel);
 const fuseeRatchetGroup = G.makeRatchetAndClick({ radius: barrelR * 0.34, teeth: 24, thickness: 0.96 });
 fuseeRatchetGroup.position.z = 4.1; // centres the ratchet on the crown-wheel plane
 barrelArbor.add(fuseeRatchetGroup);
-fusee.position.z = 5.9; // cone base just above the ratchet/click
+// TODO(realism): the click is mounted on the GREAT WHEEL (a child of
+// barrelArbor, which gets the full train rotation every frame — see
+// barrelArbor.rotation.z = barrelMeshAngle(tau) in tick()). That's backwards:
+// a click's whole job is to hold the ratchet against backward rotation
+// relative to a FIXED reference, which only works if the click itself is
+// anchored to something stationary — the plate or a bridge — not to a part
+// that co-rotates with the very train it's supposedly holding. As built, the
+// click's LOCAL rotation only changes during active winding (windBack,
+// below); the rest of the time it's rigidly along for the ride with the
+// great wheel, providing no actual ratcheting resistance. Fix: mount the
+// click (and its pivot screw) on a bridge/post fixed to the PLATE instead,
+// positioned so its beak still reaches the ratchet's tooth circle at the
+// barrel arbor's fixed XY — the ratchet itself staying on the arbor is
+// correct, only the click's anchor is wrong.
+const clickPost = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 2.2, 10), MATS.steel);
+clickPost.rotation.x = Math.PI / 2;
+clickPost.position.set(barrelR * 0.34 * 1.28, 0, -1.85); // wheel face up to the click pivot
+fuseeRatchetGroup.add(clickPost);
+fusee.position.z = FUSEE_BASE_Z; // cone base above the ratchet/click AND the third wheel's plane
 barrelArbor.add(fusee);
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
@@ -515,7 +569,7 @@ backPlate.receiveShadow = true;
 movement.add(backPlate);
 registerExplode(backPlate, -1, 0);
 
-function addBridge(fromXY, toXY, z, widthScale = 1) {
+function addBridge(fromXY, toXY, z, name, widthScale = 1) {
   const dx = toXY.x - fromXY.x, dy = toXY.y - fromXY.y;
   const len = Math.hypot(dx, dy) + 10;
   const cock = G.makeCock({ length: len, width: 5.5 * widthScale });
@@ -523,17 +577,36 @@ function addBridge(fromXY, toXY, z, widthScale = 1) {
   cock.rotation.z = Math.atan2(dy, dx) - Math.PI / 2; // cock's long axis is local Y
   movement.add(cock);
   registerExplode(cock, z, L_COCK === z ? 9 : 8);
+  // Previously unlabelled: these three train bridges were invisible to the
+  // whole inspection system (overlap sweep, mechanical graph) — not just
+  // ungrounded, but literally not present as units at all, so nothing could
+  // ever have flagged that. Every bridge needs to be a real unit before
+  // "is it mounted on the plate" can even be asked, let alone answered.
+  registerLabel(name, cock);
   return cock;
 }
-addBridge(P.barrel, P.center, L_BARREL + 2.5, 1.3);
-addBridge(P.center, P.third, L_CENTER + 2.5);
-addBridge(P.third, P.fourth, L_THIRD + 2.5);
+addBridge(P.barrel, P.center, L_BARREL + 2.5, 'Barrel-center bridge', 1.3);
+addBridge(P.center, P.third, L_CENTER + 2.5, 'Center-third bridge');
+addBridge(P.third, P.fourth, L_THIRD + 2.5, 'Third-fourth bridge');
 
-const balanceCock = G.makeCock({ length: forkLeverLength * 0.9, width: 6 });
-balanceCock.position.set(P.balance.x, P.balance.y + 4, L_COCK);
+// +1.4 clearance: the cock's underside (its plate is centred on its z) was
+// interpenetrating the hairspring's stud and raised terminal (inspector
+// finding). TODO(realism): the deeper flaw is that the stud ROTATES with the
+// spring — a real stud is fixed to the cock with the spring's outer end
+// pinned to it; model a pinned outer terminal and this clearance can shrink.
+const balanceCockLen = forkLeverLength * 0.9;
+const balanceCock = G.makeCock({ length: balanceCockLen, width: 6 });
 balanceCock.rotation.z = Math.atan2(P.balance.y - P.fork.y, P.balance.x - P.fork.x) - Math.PI / 2;
+// Position the cock so its sunk JEWEL (at local (0, length·0.12) in makeCock)
+// lands exactly on the balance-staff axis — the staff's upper pivot must be
+// set in the cock's jewel, not beside it.
+{
+  const jy = balanceCockLen * 0.12;
+  const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
+  balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, L_COCK + 1.4);
+}
 movement.add(balanceCock);
-registerExplode(balanceCock, L_COCK, 9);
+registerExplode(balanceCock, L_COCK + 1.4, 9);
 registerLabel('Balance cock', balanceCock);
 
 // (The hacking BRAKE is now the hack spring — a long blade actuated by the
@@ -560,8 +633,13 @@ registerLabel('Balance cock', balanceCock);
 const camRadius = fourthWheelR * 0.4;
 const hammerArmLen = camRadius * 2.3;
 const HAMMER_SWING_RAD = THREE.MathUtils.degToRad(30); // retracted clearance angle
-const fourthDist = Math.hypot(P.fourth.x, P.fourth.y) || 1;
-const uFourthOut = { x: P.fourth.x / fourthDist, y: P.fourth.y / fourthDist }; // radially outward, clear of the train
+// Mount the hammer on the side of the fourth arbor facing AWAY from both
+// neighbouring wheels — radially-outward-from-centre pointed the arm across
+// the escape wheel (inspector finding: hammer ⇄ escape wheel at every pose).
+const awayX = (P.fourth.x - P.escape.x) + (P.fourth.x - P.third.x);
+const awayY = (P.fourth.y - P.escape.y) + (P.fourth.y - P.third.y);
+const awayL = Math.hypot(awayX, awayY) || 1;
+const uFourthOut = { x: awayX / awayL, y: awayY / awayL };
 const heartCam = G.makeHeartCam({ radius: camRadius, thickness: 1.2 });
 const hammerPivotDist = heartCam.userData.rMin + hammerArmLen; // so 0° swing lands the roller in the notch
 const hammerPivotPos = {
@@ -671,6 +749,23 @@ const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, stemLen, 12),
 stem.position.y = stemLen / 2;
 windSpinner.add(stem);
 
+// Stem bushing — the stem's actual support: a bored boss at the plate rim
+// that the stem slides and spins through, standing on a foot fixed to the
+// plate. Without it the whole stem/crown assembly visibly floats.
+{
+  const bushDist = plateR - 2;
+  const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
+  // Torus plane ⊥ stem: its hole must point along the stem axis.
+  bush.rotation.z = stemAngle;
+  bush.rotation.y = Math.PI / 2;
+  bush.rotation.order = 'ZYX';
+  bush.position.set(uWind.x * bushDist, uWind.y * bushDist, Z_KEYLESS);
+  keyless.add(bush);
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, Z_KEYLESS - 1.2), MATS.nickel);
+  foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (Z_KEYLESS - 1.2) / 2 - 0.6);
+  keyless.add(foot);
+}
+
 // How far the whole stem/crown assembly slides outward when hacking — the
 // winding pinion rides on this same group, so pulling out also disengages
 // it from the crown wheel, as on a real sliding-pinion keyless works.
@@ -720,11 +815,108 @@ minuteArbor.position.set(uWind.x * mwDist, uWind.y * mwDist, Z_KEYLESS);
 minutePinion.position.z = -MINUTE_Z_STEP;
 minuteArbor.add(minuteWheel, minutePinion);
 keyless.add(minuteArbor);
-// Stub arbor toward the dial — representational, see comment above.
-const minuteStub = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.5, 10), MATS.steel);
-minuteStub.rotation.x = Math.PI / 2;
-minuteStub.position.set(uWind.x * mwDist, uWind.y * mwDist, Z_KEYLESS - MINUTE_Z_STEP - 1.8);
-keyless.add(minuteStub);
+// Motion-works arbor toward the dial — the minute pinion is nowhere near the
+// cannon pinion at the dial centre (the keyless works sits out at the plate
+// edge, by the crown; the cannon pinion sits on the centre-wheel axis), so
+// this has to actually SPAN that distance to read as connected, not just
+// dip through the back plate and stop. Steel rod, like the power-reserve
+// arbor's own plate→dial crossing (Z_RSV): drop from the minute arbor's
+// plane to a clear crossing plane, travel across to the dial centre's XY,
+// then rise to meet the cannon pinion — ending in a small pinion cap so the
+// last foot of travel reads as a real mesh, not just a rod poking at it.
+//
+// Every direction change on this path is a real 90° bevel-gear pair (see
+// makeBevelGear in geometry.js) — a plain rod meeting another rod at an
+// angle has nothing at the joint that could transmit rotation around the
+// corner, so each corner gets two small conical gears, apex-to-apex, one
+// keyed to each of the two meeting shafts (standard 45°/45° miter style).
+// The path is kept orthogonal (drop / sidestep out / across / sidestep back
+// / rise) specifically so every corner is the same clean 90° pair — no
+// bespoke cone angle to solve per bend. Rotation is still driven by
+// handSetOffset in tick() (same representational-coupling convention as the
+// reserve train), but now it's threaded explicitly through each corner pair
+// with alternating sign (an external bevel mesh reverses sense, same as two
+// spur gears meshing), not just teleported to the far end.
+const Z_SETTING = -9; // clear of Z_RSV (−10.5) and the going train's Z range
+const settingArborXY = { x: uWind.x * mwDist, y: uWind.y * mwDist };
+const settingDrop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_KEYLESS - Z_SETTING, 10), MATS.steel);
+settingDrop.rotation.x = Math.PI / 2;
+settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_KEYLESS + Z_SETTING) / 2);
+keyless.add(settingDrop);
+
+function makeRodSegment(a, b, radius) {
+  const len = a.distanceTo(b);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, len, 10), MATS.steel);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  return mesh;
+}
+
+// A straight A→B run passes almost exactly through the power-reserve train's
+// barrel-arbor extension (rsvArbExt), which spans nearly the whole
+// plate→dial Z-gap — no Z_SETTING choice alone clears it. Routed instead as
+// an orthogonal step-around: out perpendicular by a verified-clear 3 units,
+// straight across past the obstacle, then back — three segments, two new
+// 90° corners, both still exactly perpendicular (the sidestep is ⊥ to both
+// the direct run and to the vertical drop/rise) so every corner on the whole
+// arbor uses the identical bevel-gear geometry.
+const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3, BEVEL_PHASE = Math.PI / BEVEL_TEETH;
+const SETTING_CLEARANCE = 3;
+const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING);
+const settingB = new THREE.Vector3(P.dial.x, P.dial.y, Z_SETTING);
+const settingU = settingB.clone().sub(settingA).normalize();
+const settingPerp = new THREE.Vector3(-settingU.y, settingU.x, 0);
+const settingP1 = settingA.clone().add(settingPerp.clone().multiplyScalar(SETTING_CLEARANCE));
+const settingP2 = settingB.clone().add(settingPerp.clone().multiplyScalar(SETTING_CLEARANCE));
+keyless.add(makeRodSegment(settingA, settingP1, 0.35));
+keyless.add(makeRodSegment(settingP1, settingP2, 0.35));
+keyless.add(makeRodSegment(settingP2, settingB, 0.35));
+
+const Z_CANNON_PINION = -12.5; // matches cannonPinion's actual world Z
+const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
+settingRise.rotation.x = Math.PI / 2;
+settingRise.position.set(P.dial.x, P.dial.y, (Z_SETTING + Z_CANNON_PINION) / 2);
+keyless.add(settingRise);
+
+// Bevel-gear corner: two small conical gears sharing an apex at `point`, one
+// keyed to each of the two meeting shafts. axisIn/axisOut point AWAY from
+// the corner, back into each gear's own shaft body — a gear keyed to the end
+// of an arbor has its body trailing back along that arbor from the pitch
+// point, same as a real bevel gear.
+function addBevelCorner(point, axisIn, axisOut) {
+  const mountIn = new THREE.Group();
+  mountIn.position.copy(point);
+  mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
+  const gearIn = G.makeBevelGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  mountIn.add(gearIn);
+
+  const mountOut = new THREE.Group();
+  mountOut.position.copy(point);
+  mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
+  const gearOut = G.makeBevelGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
+  mountOut.add(gearOut);
+
+  keyless.add(mountIn, mountOut);
+  return { gearIn, gearOut };
+}
+
+const Z_UP = new THREE.Vector3(0, 0, 1);
+// drop → seg1 (sidestep out), seg1 → seg2 (across), seg2 → seg3 (sidestep
+// back), seg3 → rise: four corners, all exactly 90°.
+const cornerDrop = addBevelCorner(settingA, Z_UP, settingPerp);
+const cornerP1 = addBevelCorner(settingP1, settingPerp.clone().negate(), settingU);
+const cornerP2 = addBevelCorner(settingP2, settingU.clone().negate(), settingPerp.clone().negate());
+const cornerRise = addBevelCorner(settingB, settingPerp, Z_UP.clone().negate());
+// Small pinion cap sitting right beside the cannon pinion — makes the final
+// connection visually legible rather than a bare rod tip. Cannon pinion
+// itself (module 0.3, 10 teeth → pitch radius 1.5) is defined later in the
+// file, alongside the dial; sized/placed here from those same known
+// constants rather than referencing the not-yet-declared variable.
+const CANNON_PINION_R = (0.3 * 10) / 2;
+const settingCap = G.makePinion({ module: 0.3, teeth: 8, thickness: 1.6, material: MATS.steel });
+settingCap.position.set(P.dial.x + CANNON_PINION_R + settingCap.userData.r + 0.15, P.dial.y, Z_CANNON_PINION);
+keyless.add(settingCap);
 
 // ---------------------------------------------------------------------------
 // Setting-lever linkage — the visible actuation chain behind the crown pull.
@@ -968,17 +1160,21 @@ const HAMMER_TAIL_DELTA = (() => {
   return best;
 })();
 const RESET_ROD_LEN = HAMMER_TAIL_DELTA.len;
+// Tail bar and rod ride 2.3 above the cam's plane (inspector finding: at the
+// cam's own z the rod passed straight through the heart cam's body).
+const ROD_Z_LIFT = 2.3;
 const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, 1), MATS.steel);
 hammerTailBar.rotation.z = HAMMER_TAIL_DELTA.delta;
 hammerTailBar.position.set(
   Math.sin(HAMMER_TAIL_DELTA.delta) * (HAMMER_TAIL / 2),
   -Math.cos(HAMMER_TAIL_DELTA.delta) * (HAMMER_TAIL / 2),
-  0
+  ROD_Z_LIFT
 );
 hammerGroup.add(hammerTailBar);
 const resetRod = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1, 8), MATS.steel);
 resetRod.scale.set(1, RESET_ROD_LEN, 1);
 movement.add(resetRod);
+registerLabel('Reset rod', resetRod);
 // Per-frame solve: track the intersection branch continuously from the
 // retracted pose (the calibration guaranteed the stroke never folds).
 let prevTailTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
@@ -1003,10 +1199,17 @@ const DRUM_R = barrelR;
 const FUSEE_AVG_R = (FUSEE_R_SMALL + FUSEE_R_LARGE) / 2;
 const FUSEE_WRAP_TURNS = 3.75; // = RESERVE_BARREL_TURNS (declared later): 30 h at 1 rev/8 h
 const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length that moves over a full reserve
-const drumDir = { x: -sideSign * vPerp.x, y: -sideSign * vPerp.y };
+// Drum direction: perpendicular-to-stem, blended outward (away from the
+// plate centre) so the chain's span stays clear of the train — the pure
+// perpendicular placement let the span cross the third wheel as the active
+// fusee radius grew (inspector finding).
+const drumDirRawX = -sideSign * vPerp.x + uWind.x * 0.55;
+const drumDirRawY = -sideSign * vPerp.y + uWind.y * 0.55;
+const drumDirL = Math.hypot(drumDirRawX, drumDirRawY) || 1;
+const drumDir = { x: drumDirRawX / drumDirL, y: drumDirRawY / drumDirL };
 const drumPos = {
-  x: P.barrel.x + drumDir.x * (FUSEE_R_LARGE + DRUM_R + 7),
-  y: P.barrel.y + drumDir.y * (FUSEE_R_LARGE + DRUM_R + 7),
+  x: P.barrel.x + drumDir.x * (FUSEE_R_LARGE + DRUM_R + 9),
+  y: P.barrel.y + drumDir.y * (FUSEE_R_LARGE + DRUM_R + 9),
 };
 const drumGroup = new THREE.Group();
 drumGroup.position.set(drumPos.x, drumPos.y, L_BARREL + 1);
@@ -1016,9 +1219,9 @@ registerExplode(drumGroup, L_BARREL + 1, 1);
 registerLabel('Mainspring drum', drumGroup);
 
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
-const FUSEE_Z0 = L_BARREL + 5.9 + FUSEE_H * 0.06; // world z of the lowest groove
+const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_H * 0.06; // world z of the lowest groove
 const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
-const DRUM_CHAIN_Z = L_BARREL + 1 + 3.2;          // where the chain rides the drum
+const DRUM_CHAIN_Z = L_BARREL + 1 + 3.9;          // chain rides near the drum's top
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
@@ -1101,6 +1304,28 @@ dialGroup.position.set(P.dial.x, P.dial.y, Z_DIAL);
 movement.add(dialGroup);
 registerExplode(dialGroup, Z_DIAL, 1, -1);
 registerLabel('Dial', dialGroup);
+
+// Dial feet — the dial otherwise just sits at (P.dial, Z_DIAL) with nothing
+// visibly connecting it to the rest of the movement (the 4 structural
+// pillars span the OPPOSITE direction, back plate to cocks, and never reach
+// anywhere near Z_DIAL). Three short posts from the dial's back to the back
+// plate, positioned near the outer rim — clear of the going train, keyless
+// works, and reserve train, which all live at smaller radii in this same
+// plate→dial gap — same fix, same reasoning as the keyless-works motion-
+// works arbor and the reserve arbor extension: a part that LOOKS correctly
+// placed but has nothing actually anchoring it there is exactly the failure
+// mode this whole inspection system exists to catch.
+{
+  const footR = plateR * 0.88;
+  const footLen = backPlate.position.z - Z_DIAL; // reach from the dial's plane to the back plate
+  for (const deg of [10, 130, 250]) {
+    const a = deg * DEG2RAD;
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, footLen, 10), MATS.steel);
+    foot.rotation.x = Math.PI / 2;
+    foot.position.set(Math.cos(a) * footR, Math.sin(a) * footR, footLen / 2);
+    dialGroup.add(foot);
+  }
+}
 
 // Everything on the dial side is built assuming a viewer on the mesh's
 // natural +Z side (the convention makeDial/makeHand are authored against).
@@ -1867,7 +2092,7 @@ function tick(t) {
   {
     const b = prevTailTip; // the tail tip the solve just landed on
     const dx = b.x - postNow.x, dy = b.y - postNow.y;
-    resetRod.position.set((postNow.x + b.x) / 2, (postNow.y + b.y) / 2, Z_SECONDS_ARBOR);
+    resetRod.position.set((postNow.x + b.x) / 2, (postNow.y + b.y) / 2, Z_SECONDS_ARBOR + ROD_Z_LIFT);
     resetRod.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
   }
 
@@ -1900,6 +2125,23 @@ function tick(t) {
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
+  // Motion-works bevel corners: each meshing pair reverses sense (same as
+  // any two external gears meshing), so the sign flips at every corner —
+  // drop(+) → seg1(−) → seg2(+) → seg3(−) → rise(+), which lands back on
+  // +handSetOffset for the rise/settingCap side since there are 4 corners.
+  cornerDrop.gearIn.rotation.z = handSetOffset;
+  cornerDrop.gearOut.rotation.z = BEVEL_PHASE - handSetOffset;
+  cornerP1.gearIn.rotation.z = -handSetOffset;
+  cornerP1.gearOut.rotation.z = BEVEL_PHASE + handSetOffset;
+  cornerP2.gearIn.rotation.z = handSetOffset;
+  cornerP2.gearOut.rotation.z = BEVEL_PHASE - handSetOffset;
+  cornerRise.gearIn.rotation.z = -handSetOffset;
+  cornerRise.gearOut.rotation.z = BEVEL_PHASE + handSetOffset;
+  // Cap pinion at the dial end of the motion-works arbor: spins with the
+  // same handSetOffset that actually drives the hands, so the part sitting
+  // right beside the cannon pinion visibly turns in step with it — the
+  // connection reads as real, not just a static rod poking at the dial.
+  settingCap.rotation.z = handSetOffset;
 
   // Power-reserve hand — barrelWindTurns (via tension) IS the mechanical
   // quantity now; no separate epoch/pulse bookkeeping needed since winding
@@ -2011,6 +2253,21 @@ window.__clock = {
   get setPathRot() { return setPathRot; },
   setCrownRotation(v) { crownRotation = v; },
   setBarrelWindTurns(v) { barrelWindTurns = clamp(v, 0, RESERVE_BARREL_TURNS); },
+  // Inspection hook: force the mechanism into an exact pose. Assigns the
+  // underlying state variables directly, then evaluates tick() with a zero
+  // rawDt (t == lastTickRawT), which re-poses every part from the closed
+  // forms without integrating anything — a pure, deterministic pose.
+  setPose(p = {}) {
+    if (p.tau !== undefined) tauIntegrated = p.tau;
+    if (p.crownPullT !== undefined) { crownPullT = p.crownPullT; crownOut = p.crownPullT > 0.5; }
+    if (p.leverEngage !== undefined) leverEngage = p.leverEngage;
+    if (p.tension !== undefined) barrelWindTurns = clamp(p.tension, 0, 1) * RESERVE_BARREL_TURNS;
+    if (p.windAccumTurns !== undefined) windAccumTurns = p.windAccumTurns;
+    tick(lastTickRawT);
+    scene.updateMatrixWorld(true);
+  },
+  render() { renderer.render(scene, camera); },
+  movement,
   camera, controls, scene, labelEntries,
 };
 

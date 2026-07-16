@@ -78,3 +78,36 @@ slider, part labels toggle, beat counter and simulated clock readout.
 
 `window.__clock.step(dt)` in the console single-steps the simulation deterministically
 (useful because background tabs throttle requestAnimationFrame).
+
+## Realism inspector
+
+`src/inspect.js` sweeps the mechanism deterministically through its phase axes
+(one beat cycle, the crown stroke, the full reserve) via `__clock.setPose()`
+and reports every pair of functional units whose meshes intersect (exact
+triangle tests via the vendored `three-mesh-bvh`). Pairs with intended
+mechanical contact (gear meshes, pallet lock, chain-on-cone…) are classified
+EXPECTED and reported separately; everything else that touches is FORBIDDEN
+— a defect. Run it from the console:
+
+```js
+document.getElementById('btn-pause').click();
+const { runInspection, checkMechanicalGraph, checkPenetrationBudgets } = await import('./src/inspect.js');
+await runInspection(window.__clock);           // overlap report → window.__inspectReport
+checkMechanicalGraph(window.__clock);          // grounding/drive/anchor report → window.__mechReport
+checkPenetrationBudgets(window.__clock);       // per-pair depth budgets → window.__penetrationReport
+window.__inspect.show('<pair>', '<axis>');     // jump camera to a hit pose
+```
+
+`checkPenetrationBudgets` is the contact-policy layer (milestone 2, started):
+being on `EXPECTED_PAIRS` only proves contact was *intended*, not that its
+depth is reasonable — a stone visibly buried 0.33 units inside an
+escape-wheel tooth still sailed through `runInspection` as "EXPECTED,
+contact detected." Each entry in `PENETRATION_BUDGETS` selects the specific
+engaging meshes (not the whole unit) and fails if the worst true interior
+penetration over the pair's axis exceeds a maxDepth. Currently covers
+`Escape wheel ⇄ Pallet fork` (the ruby stones); TODO: extend to
+`Pallet fork ⇄ Balance` (impulse pin in the notch) and
+`Chain ⇄ Fusee & great wheel` (chain in the cone grooves), add phase-window
+budgets (near-zero depth required OUTSIDE the lock/impulse window), a
+pose-continuity check, and a known-good baseline so re-runs only flag
+regressions.

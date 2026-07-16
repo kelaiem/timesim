@@ -170,6 +170,44 @@ export function makePinion({ module, teeth, thickness, material }) {
 }
 
 // ---------------------------------------------------------------------------
+// Bevel gear — small conical gear for a shaft corner (default 45° half-angle,
+// i.e. a standard miter pair for two shafts meeting at 90°). Built from the
+// same flat tooth-outline as makePinion, then sheared so every vertex moves
+// z += r·tan(coneAngle): the flat disc becomes a shallow cone whose apex sits
+// at the local origin (r=0). Mount with the origin AT the shaft intersection
+// and local +Z pointing back into the gear's own shaft (away from the other
+// gear it meshes with) — same convention as a real bevel gear keyed to the
+// end of its arbor, body trailing back along the shaft from the pitch point.
+// ---------------------------------------------------------------------------
+export function makeBevelGear({ teeth, module, coneAngleDeg = 45, faceWidth = 1.1, boreR = 0.4, material }) {
+  const mat = material || MATS.steel;
+  const pitchR = pitchRadius(module, teeth);
+  const tipR = pitchR + module * 0.85;
+  const rootR = pitchR - module * 0.95;
+  const shape = gearOutlineShape(teeth, rootR, pitchR, tipR, { tipFrac: 0.26, flankFrac: 0.42 });
+  const bore = new THREE.Path();
+  bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+  shape.holes.push(bore);
+
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: faceWidth, bevelEnabled: false, curveSegments: 3 });
+  const taper = Math.tan(THREE.MathUtils.degToRad(coneAngleDeg));
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    v.z += Math.hypot(v.x, v.y) * taper;
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(geo, mat));
+  g.userData.r = pitchR;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
 // Escape wheel — 15 forward-leaning club teeth (Swiss lever style)
 // ---------------------------------------------------------------------------
 
@@ -223,7 +261,7 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 // Pallet fork — pivots at origin, lever along -Y, anchor + ruby stones at +Y
 // ---------------------------------------------------------------------------
 
-export function makePalletFork({ span, leverLength, thickness }) {
+export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   const g = new THREE.Group();
   const t = thickness;
   const L = leverLength;
@@ -279,15 +317,86 @@ export function makePalletFork({ span, leverLength, thickness }) {
   const exitPos = new THREE.Vector3(ax, sy, 0);
   // Stones run deeper in Z than the fork body so they reach down into the
   // escape wheel's plane (the wheel sits slightly below the fork).
-  const stoneGeo = new THREE.BoxGeometry(t * 1.3, t * 1.7, t * 2.0);
+  // Sized against the escape wheel's own tooth PITCH (span subtends 3.5
+  // pitches — see the caller's comment), not the fork's unrelated body
+  // thickness: a real pallet stone is a thin blade, well under one tooth's
+  // spacing, so it engages a single tooth's face without its box silhouette
+  // swallowing the tooth or reaching its neighbours. At thickness=1.2 the
+  // old t-based sizing (1.56×2.04×2.4) came out comparable to or bigger
+  // than an entire tooth (pitch arc ≈ span/3.5) — this is why the rubies
+  // visually swallowed teeth even though true mesh penetration was tiny.
+  const toothPitchArc = (span / 3.5) || t * 4;
+  // Real pallet stones have TWO distinct engaging faces — a locking face
+  // (shallow, near-radial, holds the tooth during lock/draw) and an impulse
+  // face (steeper, transfers torque during unlock) — meeting at an edge,
+  // not one flat face. A plain box (the previous shape here) can only
+  // present one. Built as a pentagon extrusion: the back and side edges
+  // match the box exactly, the FULL-EXTENT front corner (impulse side) is
+  // also unchanged from the box, and only the locking-side corner is pulled
+  // inward/backward to create the second facet. Every vertex therefore
+  // stays within the original box's footprint — a strict subset — so the
+  // extensive MTV-calibrated position/rotation tuning below (three rounds,
+  // converged to ~0.0004/~0.03 worst-case penetration) remains valid: this
+  // can only reduce contact, never introduce a new protruding point.
+  function palletStoneGeometry(bevelSign) {
+    const hw = (toothPitchArc * 0.34) / 2;
+    const d = toothPitchArc * 0.44;
+    const thickness = toothPitchArc * 0.56;
+    const frontY = d / 2, backY = -d / 2;
+    const impulseX = bevelSign * hw;   // full-extent corner — unchanged from the box
+    const lockX = -bevelSign * hw;     // locking-side corner — pulled inward
+    const s = new THREE.Shape();
+    s.moveTo(-hw, backY);
+    s.lineTo(hw, backY);
+    s.lineTo(impulseX, frontY);                      // impulse-side edge (matches the box)
+    s.lineTo(bevelSign * hw * 0.3, frontY - d * 0.08); // impulse face → ridge (barely set back)
+    s.lineTo(lockX, backY + d * 0.7);                 // locking face (steeper, set well back)
+    s.closePath();
+    const geo = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: 1 });
+    geo.translate(0, 0, -thickness / 2);
+    return geo;
+  }
+  const entryStoneGeo = palletStoneGeometry(1);
+  const exitStoneGeo = palletStoneGeometry(-1);
+  // Seating nudge: the Y (radial engagement) component scales with the
+  // STONE's own new size (not the fork's unrelated thickness `t`) — a fixed
+  // t-based offset would embed a shrunken stone proportionally deeper than
+  // intended. The Z component must exactly close the gap between the fork
+  // body's own Z-plane and the escape wheel's Z-plane (L_FORK − L_ESCAPE in
+  // main.js), or the stones only graze one edge of the wheel's thickness
+  // instead of centering on it.
+  const stoneSeat = new THREE.Vector3(0, toothPitchArc * 0.09, -(stoneZReach ?? toothPitchArc * 0.27));
+  // Entry (+20°) and exit (−32°) stones have deliberately different face
+  // angles (real pallet forks cut entry/exit stones differently — their
+  // impulse faces aren't mirror images), so the SAME radial reach engages
+  // them by different amounts.
+  //
+  // IMPORTANT: earlier passes measured penetration with a raycast odd/even
+  // "inside the wheel" vote, which turned out to be UNRELIABLE against this
+  // mesh — the wheel's crossing-hole cutouts break the parity assumption a
+  // watertight-mesh point-in-solid test needs, so it reported near-zero
+  // depth in cases with real, substantial (>0.5 unit) overlap. The
+  // trustworthy measure is a minimum-translation-distance (MTV) search: try
+  // clearing the boolean triangle-triangle intersection (BVH
+  // intersectsGeometry — always reliable) along many candidate directions
+  // and take the smallest that works. That search also showed the true
+  // separating direction isn't purely radial (local Y) for either stone —
+  // there's a real local-X component too, which is why early Y-only nudges
+  // converged so slowly. entrySeat/exitSeat below are the result of three
+  // rounds of MTV correction (re-measuring the worst pose after each,
+  // since fixing one pose shifts which pose becomes worst) plus a ~20%
+  // further size reduction, converging to worst-case penetration of
+  // ~0.0004 (entry) and ~0.03 (exit) — down from an initial ~0.5–0.7.
+  const entrySeat = new THREE.Vector3(0.004, -toothPitchArc * 0.102 - 0.598, stoneSeat.z);
 
-  const entryStone = new THREE.Mesh(stoneGeo, MATS.ruby);
-  entryStone.position.copy(entryPos).add(new THREE.Vector3(0, t * 0.15, -t * 0.45));
+  const entryStone = new THREE.Mesh(entryStoneGeo, MATS.ruby);
+  entryStone.position.copy(entryPos).add(entrySeat);
   entryStone.rotation.z = THREE.MathUtils.degToRad(20);
   g.add(entryStone);
 
-  const exitStone = new THREE.Mesh(stoneGeo, MATS.ruby);
-  exitStone.position.copy(exitPos).add(new THREE.Vector3(0, t * 0.15, -t * 0.45));
+  const exitSeat = stoneSeat.clone().add(new THREE.Vector3(0.867, 0.287, 0));
+  const exitStone = new THREE.Mesh(exitStoneGeo, MATS.ruby);
+  exitStone.position.copy(exitPos).add(exitSeat);
   exitStone.rotation.z = THREE.MathUtils.degToRad(-32);
   g.add(exitStone);
 
@@ -338,9 +447,17 @@ export function makeBalanceWheel({ radius, thickness }) {
   }
 
   // Roller table (disc) below the balance, carrying the ruby impulse pin.
-  const rollerR = radius * 0.3;
+  // rollerR sets the pin's actual swept arc-length (rollerR·Δθ) during the
+  // escapement's impulse window; it must be sized against the fork's own
+  // notch-reach and bank angle (FORK_BANK_DEG in main.js) or the pin and
+  // notch trace mismatched arcs and never truly interlock — see that
+  // constant's comment for the paired derivation. Kept well inside the
+  // balance rim (real impulse rollers run small) so the disc itself stays
+  // clear of the fork's lever as it swings past — only the PIN, protruding
+  // past the disc's edge, is meant to reach the fork.
+  const rollerR = radius * 0.18;
   const rollerZ = -thickness * 1.6;
-  const rtGeo = new THREE.CylinderGeometry(radius * 0.28, radius * 0.28, thickness * 0.5, 32);
+  const rtGeo = new THREE.CylinderGeometry(radius * 0.15, radius * 0.15, thickness * 0.5, 32);
   rtGeo.rotateX(Math.PI / 2);
   rtGeo.translate(0, 0, rollerZ);
   g.add(new THREE.Mesh(rtGeo, MATS.steel));
@@ -745,11 +862,13 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
   clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
   clickShape.lineTo(0, -cw2);
   clickShape.closePath();
+  // Click sits BELOW the ratchet, on the wheel side — where the part that
+  // carries it (great wheel / barrel lid) actually is.
   const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
     depth: thickness * 0.75,
     bevelEnabled: false,
   });
-  clickGeo.translate(0, 0, thickness * 1.15);
+  clickGeo.translate(0, 0, -thickness * 0.9);
   const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
   click.name = 'click';
   click.position.set(radius * 1.28, 0, 0);
@@ -760,7 +879,7 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
     MATS.blueSteel
   );
   clickScrew.rotation.x = Math.PI / 2;
-  clickScrew.position.set(radius * 1.28, 0, thickness * 1.5);
+  clickScrew.position.set(radius * 1.28, 0, -thickness * 1.4);
   g.add(clickScrew);
 
   g.userData.r = radius;
