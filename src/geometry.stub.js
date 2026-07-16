@@ -274,8 +274,9 @@ export function makePillar({ height }) {
   return g;
 }
 
-// Dial side.
-export function makeDial({ radius }) {
+// Dial side. (Real makeDial also takes subdials: [{x, y, r, kind}] — the
+// stub ignores them, matching the API without drawing sub-dial faces.)
+export function makeDial({ radius, subdials = [] }) {
   const g = new THREE.Group();
   const canvas = document.createElement('canvas');
   canvas.width = 512;
