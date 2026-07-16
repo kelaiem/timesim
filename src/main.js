@@ -1452,9 +1452,16 @@ const reserveR = dialRadius * 0.2;
 // projection than the old 6-o'clock spot, so the reserve reduction train
 // spans a shorter, cleaner run.
 const RESERVE_LOCAL = { x: 0, y: dialRadius * 0.39 };
+// Small seconds live ON the fourth wheel's axis — dial-local coordinates
+// mirror world x through the dialFace Y-flip.
+const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
+const secondsSubR = dialRadius * 0.2;
 const dial = G.makeDial({
   radius: dialRadius,
-  subdials: [{ x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve' }],
+  subdials: [
+    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve' },
+    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
+  ],
 });
 dialFace.add(dial);
 
@@ -1470,10 +1477,48 @@ registerExplode(handsGroup, 2.5, 2, 1);
 
 const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
 const minuteHand = G.makeHand({ length: dialRadius * 0.72, kind: 'minute' });
-const secondHand = G.makeHand({ length: dialRadius * 0.8, kind: 'second' });
 minuteHand.position.z = 1.2;
-secondHand.position.z = 2.2;
-handsGroup.add(hourHand, minuteHand, secondHand);
+handsGroup.add(hourHand, minuteHand);
+
+// Small-seconds display — the hand rides the fourth wheel's own axis via
+// the slip-coupled display arbor (see secondsCamArbor: heart cam + through
+// rod). The hand mesh lives on the dialFace (authored-frame) like every
+// other hand; its rotation uses the SAME expression the old central second
+// hand used (fourthA − secondsZeroRef), which is verified clockwise from
+// the front — the movement-frame arbor carries the negated value, the two
+// being the same physical rotation seen from opposite sides.
+const smallSecondsGroup = new THREE.Group();
+smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0.35);
+dialFace.add(smallSecondsGroup);
+registerLabel('Small seconds', smallSecondsGroup);
+{
+  const bezel = new THREE.Mesh(new THREE.TorusGeometry(secondsSubR, secondsSubR * 0.045, 10, 48), MATS.steel);
+  smallSecondsGroup.add(bezel);
+}
+const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second' });
+smallSecondsHand.name = 'smallSecondsHand';
+smallSecondsHand.position.z = 0.45;
+smallSecondsGroup.add(smallSecondsHand);
+
+// The display arbor itself: extend the slip-coupled seconds arbor (heart
+// cam, built back at the movement side) FORWARD along the fourth wheel's
+// axis — through the wheel and pinion bores (rod r 0.4 ≤ bore 0.4/0.9),
+// through the back plate, to a hub just behind the sub-dial, exactly like
+// the reserve train's own hand arbor. This is what makes the small seconds
+// physically honest: the hand's axis is a real rod coaxial with the real
+// fourth wheel, not a representational hop across the movement.
+{
+  const hubZ = Z_DIAL - 0.9; // just proud of the sub-dial face (world)
+  const rodLen = Z_SECONDS_ARBOR - hubZ;
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
+  rod.rotation.x = Math.PI / 2;
+  rod.position.z = -rodLen / 2; // local: from the cam plane down/forward to the hub
+  secondsCamArbor.add(rod);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.steel);
+  hub.rotation.x = Math.PI / 2;
+  hub.position.z = hubZ - Z_SECONDS_ARBOR;
+  secondsCamArbor.add(hub);
+}
 
 // Cannon-pinion / hour-wheel stack under the dial — no longer just
 // decorative: the setting path (see keyless works below) actually drives
@@ -2125,7 +2170,10 @@ function tick(t) {
   const minuteA = centerAngle(tau) - centerAt0 + handSetOffset; // −2π per hour
   hourHand.rotation.z = minuteA / 12;
   minuteHand.rotation.z = minuteA;
-  secondHand.rotation.z = fourthA - secondsZeroRef; // −2π per minute, re-referenced on reset
+  // Small seconds at 6: same expression the old central hand used (−2π per
+  // minute, re-referenced on reset) — the CW-from-front sense is already
+  // verified for dialFace children.
+  smallSecondsHand.rotation.z = fourthA - secondsZeroRef;
   cannonPinion.rotation.z = minuteA;
 
   // Mainspring relax — a direct readout of tension now that winding is
@@ -2155,12 +2203,17 @@ function tick(t) {
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
   // rod — its angle is solved from the setting-lever post's position through
   // the rod constraint, so the whole linkage moves as the four-bar it is.
-  // The cam's own rotation mirrors the second hand's exactly, since they
-  // share the same display-arbor reference — so its notch visibly slides
-  // under the roller in step with the hand sweeping back to 12.
+  // The display arbor (cam + through rod + hand hub) carries the NEGATED
+  // hand value: a movement-frame rotation reads mirrored from the front
+  // through the dialFace Y-flip, so −(fourthA − secondsZeroRef) here and
+  // +(fourthA − secondsZeroRef) on the dialFace-mounted hand are the same
+  // physical rotation seen from opposite sides — the same slip-coupling
+  // sign convention the reserve train uses. At reset both go to 0 and the
+  // cam sits at camPhaseOffset, so the hammer-seat calibration is
+  // unaffected by the sign.
   const postNow = tailPostWorldAt(crownPullT);
   hammerGroup.rotation.z = solveHammerRotation(postNow);
-  secondsCamArbor.rotation.z = (fourthA - secondsZeroRef) + camPhaseOffset;
+  secondsCamArbor.rotation.z = -(fourthA - secondsZeroRef) + camPhaseOffset;
 
   // Reset-hammer rod: rigid — constant length by construction; just placed
   // between its two pins.

@@ -36,7 +36,10 @@ THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 // Units excluded outright for this milestone (dial-side display / statics).
-const EXCLUDED_UNITS = ['Dial', 'Power reserve'];
+// runInspection({ includeExcluded: true }) sweeps them too — used as a
+// second pass per phase, since real hazards live inside excluded units
+// (dial feet vs keyless/motion works, hands vs sub-dial bezels).
+const EXCLUDED_UNITS = ['Dial', 'Power reserve', 'Small seconds'];
 
 // ---------------------------------------------------------------------------
 // Mechanical graph — the movement's declared physics: what supports what
@@ -85,6 +88,7 @@ const MECH_GRAPH = {
     // not just a graph-only declaration.
     ['Dial', 'plate'],
     ['Power reserve', 'Dial'],               // reserve sub-dial sits on the dial face
+    ['Small seconds', 'Dial'],               // seconds sub-dial bezel/hand on the dial face
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -194,6 +198,13 @@ const MECH_GRAPH = {
       tol: 2.5,
       point: nearestMeshCenter,
     },
+    {
+      name: 'small-seconds display arbor reaches the sub-dial pivot',
+      unit: 'Heart cam (seconds reset)',
+      target: 'Small seconds',
+      tol: 2.5,
+      point: nearestMeshCenter,
+    },
   ],
   // Bridge/cock parts (horological terms: a "bridge" spans and supports two
   // pivots, a "cock" one) must be mounted DIRECTLY on the base plate — that
@@ -293,6 +304,23 @@ const EXPECTED_PAIRS = [
   // for now, but the padding is probably looser than it needs to be; worth
   // trimming so adjacent bridges just clear each other instead of overlapping.
   ['Barrel-center bridge', 'Center-third bridge'],
+  // Small-seconds display arbor (tornado): the through rod runs coaxially
+  // inside the fourth wheel/pinion bores (this contact IS the friction
+  // coupling), passes the third-fourth bridge's fourth-end pivot pad, exits
+  // through the dial's arbor hole, and carries the hand hub the sub-dial
+  // hand rides on. The last two pairs only arise in the includeExcluded
+  // sweep ('Dial'/'Small seconds' are excluded from the normal one).
+  ['Fourth wheel', 'Heart cam (seconds reset)'],
+  ['Heart cam (seconds reset)', 'Third-fourth bridge'],
+  ['Heart cam (seconds reset)', 'Dial'],
+  ['Heart cam (seconds reset)', 'Small seconds'],
+  // Dial-side mounts and pass-throughs — only swept with includeExcluded.
+  // Each is the physical contact its support/anchor declaration requires:
+  ['Dial', 'Power reserve'],           // bezel + hand pivot sit on the dial face
+  ['Dial', 'Small seconds'],           // bezel sits on the dial face
+  ['Dial', 'Power-reserve train'],     // hand arbor passes through the dial's hole
+  ['Dial', 'Keyless works'],           // settingCap meshes the cannon pinion (a Dial child)
+  ['Power reserve', 'Power-reserve train'], // reserve hand rides the w2 output arbor
 ];
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
@@ -635,8 +663,8 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
   return results;
 }
 
-export async function runInspection(clock, { axes = AXES, yieldEvery = 8 } = {}) {
-  const units = collectUnits(clock);
+export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includeExcluded = false } = {}) {
+  const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
 
   for (const axis of axes) {
