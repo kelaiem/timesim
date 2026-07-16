@@ -704,32 +704,143 @@ export function makeHairspring({ innerR, outerR, coils = 12, height }) {
 }
 
 // ---------------------------------------------------------------------------
-// Going barrel — drum + toothed great-wheel rim, mainspring, ratchet + click
+// Ratchet wheel + click — standalone so both the going-barrel and the fusee
+// arbor can carry one. Ratchet extrudes upward from z=0; the click and its
+// screw sit just above it. Children named 'ratchet' / 'click'.
 // ---------------------------------------------------------------------------
 
-export function makeBarrel({ radius, height, teeth, module }) {
+export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
   const g = new THREE.Group();
-  const pitchR = pitchRadius(module, teeth);
-  const tipR = pitchR + module * 0.95;
-  const rootR = pitchR - module * 1.15;
-  const drumInnerR = Math.max(rootR - module * 2.2, radius * 0.3);
-
-  // Toothed wall — this IS the great wheel; the drum cavity is the central hole.
-  const shape = gearOutlineShape(teeth, rootR, pitchR, tipR);
-  const hole = new THREE.Path();
-  hole.absarc(0, 0, drumInnerR, 0, Math.PI * 2, true);
-  shape.holes.push(hole);
-  const bevel = Math.min(height * 0.06, module * 0.2);
-  const wallGeo = new THREE.ExtrudeGeometry(shape, {
-    depth: height,
-    bevelEnabled: true,
-    bevelThickness: bevel,
-    bevelSize: bevel,
-    bevelSegments: 1,
-    curveSegments: 3,
+  const rShape = new THREE.Shape();
+  for (let i = 0; i < teeth; i++) {
+    const a0 = (i / teeth) * Math.PI * 2;
+    const a1 = ((i + 0.72) / teeth) * Math.PI * 2;
+    const p0 = [Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8];
+    const p1 = [Math.cos(a1) * radius, Math.sin(a1) * radius];
+    if (i === 0) rShape.moveTo(p0[0], p0[1]);
+    else rShape.lineTo(p0[0], p0[1]);
+    rShape.lineTo(p1[0], p1[1]);
+  }
+  rShape.closePath();
+  const ratHole = new THREE.Path();
+  ratHole.absarc(0, 0, radius * 0.28, 0, Math.PI * 2, true);
+  rShape.holes.push(ratHole);
+  const ratGeo = new THREE.ExtrudeGeometry(rShape, {
+    depth: thickness,
+    bevelEnabled: false,
+    curveSegments: 2,
   });
-  wallGeo.translate(0, 0, -height / 2);
-  g.add(new THREE.Mesh(wallGeo, MATS.brass));
+  const ratchet = new THREE.Mesh(ratGeo, MATS.steel);
+  ratchet.name = 'ratchet';
+  g.add(ratchet);
+
+  // Click / pawl — pivoted just outside the ratchet, beak seated in a valley.
+  const clickL = radius * 0.8;
+  const cw2 = radius * 0.11;
+  const clickShape = new THREE.Shape();
+  clickShape.moveTo(0, cw2);
+  clickShape.lineTo(clickL * 0.55, cw2 * 0.7);
+  clickShape.lineTo(clickL, cw2 * 0.15);
+  clickShape.lineTo(clickL, -cw2 * 0.15);
+  clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
+  clickShape.lineTo(0, -cw2);
+  clickShape.closePath();
+  const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
+    depth: thickness * 0.75,
+    bevelEnabled: false,
+  });
+  clickGeo.translate(0, 0, thickness * 1.15);
+  const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
+  click.name = 'click';
+  click.position.set(radius * 1.28, 0, 0);
+  click.rotation.z = Math.PI * 0.778; // aim the beak at the valley point
+  g.add(click);
+  const clickScrew = new THREE.Mesh(
+    new THREE.CylinderGeometry(cw2 * 1.1, cw2 * 1.1, thickness * 1.2, 12),
+    MATS.blueSteel
+  );
+  clickScrew.rotation.x = Math.PI / 2;
+  clickScrew.position.set(radius * 1.28, 0, thickness * 1.5);
+  g.add(clickScrew);
+
+  g.userData.r = radius;
+  g.userData.teeth = teeth;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// Fusee — the torque-equalising cone. A helically-grooved cone: the chain
+// pulls at the SMALL radius when the spring is strong (fully wound) and pays
+// off toward the LARGE radius as it weakens, so torque delivered to the
+// train stays level. Base flange at z=0, cone rising +Z, small end up.
+// userData: rSmall, rLarge, height, grooveTurns.
+// ---------------------------------------------------------------------------
+
+export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
+  const g = new THREE.Group();
+  // Lathe profile with groove ripples: radius oscillates as z climbs.
+  const pts = [];
+  const N = grooveTurns * 10;
+  pts.push(new THREE.Vector2(rLarge * 1.12, 0));
+  pts.push(new THREE.Vector2(rLarge * 1.12, height * 0.04));
+  for (let i = 0; i <= N; i++) {
+    const f = i / N;
+    const rCore = rLarge + (rSmall - rLarge) * f;
+    const ripple = Math.cos(f * grooveTurns * Math.PI * 2) * (rLarge - rSmall) * 0.035;
+    pts.push(new THREE.Vector2(rCore + ripple, height * (0.06 + 0.88 * f)));
+  }
+  pts.push(new THREE.Vector2(rSmall * 0.85, height * 0.97));
+  pts.push(new THREE.Vector2(rSmall * 0.45, height));
+  // LatheGeometry revolves about +Y; every arbor here spins about +Z, so
+  // stand the cone up (profile height axis Y → Z).
+  const geo = new THREE.LatheGeometry(pts, 48);
+  geo.rotateX(Math.PI / 2);
+  const cone = new THREE.Mesh(geo, MATS.brass);
+  g.add(cone);
+
+  g.userData.rSmall = rSmall;
+  g.userData.rLarge = rLarge;
+  g.userData.height = height;
+  g.userData.grooveTurns = grooveTurns;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// Going barrel — drum + toothed great-wheel rim, mainspring, ratchet + click.
+// With `plain: true` it becomes a fusee-style spring DRUM: smooth wall, no
+// gear teeth, no ratchet/click (the fusee arbor carries those instead).
+// ---------------------------------------------------------------------------
+
+export function makeBarrel({ radius, height, teeth, module, plain = false }) {
+  const g = new THREE.Group();
+  const pitchR = plain ? radius : pitchRadius(module, teeth);
+  const rootR = plain ? radius : pitchR - module * 1.15;
+  const wallModule = module || radius * 0.06;
+  const drumInnerR = Math.max(rootR - wallModule * 2.2, radius * 0.3);
+
+  if (plain) {
+    // Smooth drum wall — the chain wraps around this.
+    const wallGeo = ringExtrude(radius, drumInnerR, height, 64);
+    g.add(new THREE.Mesh(wallGeo, MATS.brass));
+  } else {
+    // Toothed wall — this IS the great wheel; the drum cavity is the central hole.
+    const tipR = pitchR + module * 0.95;
+    const shape = gearOutlineShape(teeth, rootR, pitchR, tipR);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, drumInnerR, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const bevel = Math.min(height * 0.06, module * 0.2);
+    const wallGeo = new THREE.ExtrudeGeometry(shape, {
+      depth: height,
+      bevelEnabled: true,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 1,
+      curveSegments: 3,
+    });
+    wallGeo.translate(0, 0, -height / 2);
+    g.add(new THREE.Mesh(wallGeo, MATS.brass));
+  }
 
   // Floor disc.
   const floorGeo = ringExtrude(rootR, radius * 0.05, height * 0.12, 48);
@@ -750,7 +861,7 @@ export function makeBarrel({ radius, height, teeth, module }) {
   g.add(new THREE.Mesh(lidGeo, MATS.brass));
 
   // Spiral mainspring ribbon (tall in Z), hooked to wall & arbor. name='spring'.
-  const springOuter = drumInnerR - module * 0.5;
+  const springOuter = drumInnerR - wallModule * 0.5;
   const springInner = radius * 0.16;
   const sCoils = 5;
   const sRibbon = Math.max(((springOuter - springInner) / sCoils) * 0.1, 0.08);
@@ -768,7 +879,7 @@ export function makeBarrel({ radius, height, teeth, module }) {
   spring.add(springMesh);
   // Outer hook to the barrel wall.
   const oh = new THREE.Mesh(
-    new THREE.BoxGeometry(module * 1.5, sRibbon * 2.2, height * 0.55),
+    new THREE.BoxGeometry(wallModule * 1.5, sRibbon * 2.2, height * 0.55),
     MATS.steel
   );
   oh.position.set(springOuter, 0, 0);
@@ -780,68 +891,16 @@ export function makeBarrel({ radius, height, teeth, module }) {
   arborGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(arborGeo, MATS.steel));
 
-  // Ratchet wheel (sawteeth) on top.
-  const ratR = radius * 0.34;
-  const ratTeeth = 24;
-  const rShape = new THREE.Shape();
-  for (let i = 0; i < ratTeeth; i++) {
-    const a0 = (i / ratTeeth) * Math.PI * 2;
-    const a1 = ((i + 0.72) / ratTeeth) * Math.PI * 2;
-    const p0 = [Math.cos(a0) * ratR * 0.8, Math.sin(a0) * ratR * 0.8];
-    const p1 = [Math.cos(a1) * ratR, Math.sin(a1) * ratR];
-    if (i === 0) rShape.moveTo(p0[0], p0[1]);
-    else rShape.lineTo(p0[0], p0[1]);
-    rShape.lineTo(p1[0], p1[1]);
+  // Ratchet wheel + click on top (going-barrel form only — a plain fusee
+  // drum has its ratchet on the fusee arbor instead).
+  if (!plain) {
+    const rc = makeRatchetAndClick({ radius: radius * 0.34, teeth: 24, thickness: height * 0.12 });
+    rc.position.z = height / 2;
+    g.add(rc);
   }
-  rShape.closePath();
-  const ratHole = new THREE.Path();
-  ratHole.absarc(0, 0, radius * 0.1, 0, Math.PI * 2, true);
-  rShape.holes.push(ratHole);
-  const ratGeo = new THREE.ExtrudeGeometry(rShape, {
-    depth: height * 0.12,
-    bevelEnabled: false,
-    curveSegments: 2,
-  });
-  ratGeo.translate(0, 0, height / 2);
-  const ratchet = new THREE.Mesh(ratGeo, MATS.steel);
-  ratchet.name = 'ratchet';
-  g.add(ratchet);
-
-  // Click / pawl — small, pivoted just outside the ratchet with its beak
-  // reaching down between two sawteeth (interlocking with the wheel).
-  // Local shape: pivot at origin, slim tapering arm along +x ending in a beak.
-  const clickL = ratR * 0.8;
-  const cw2 = ratR * 0.11;
-  const clickShape = new THREE.Shape();
-  clickShape.moveTo(0, cw2);
-  clickShape.lineTo(clickL * 0.55, cw2 * 0.7);
-  clickShape.lineTo(clickL, cw2 * 0.15);
-  clickShape.lineTo(clickL, -cw2 * 0.15);
-  clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
-  clickShape.lineTo(0, -cw2);
-  clickShape.closePath();
-  const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
-    depth: height * 0.09,
-    bevelEnabled: false,
-  });
-  clickGeo.translate(0, 0, height / 2 + height * 0.02);
-  const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
-  click.name = 'click';
-  // Pivot sits at 1.28·ratR; the beak tip lands at 0.84·ratR — inside the
-  // tooth circle (teeth rise 0.8→1.0·ratR), seated in a tooth valley.
-  click.position.set(ratR * 1.28, 0, 0);
-  click.rotation.z = Math.PI * 0.778; // aim the arm at the valley point
-  g.add(click);
-  // Click pivot screw.
-  const clickScrew = new THREE.Mesh(
-    new THREE.CylinderGeometry(cw2 * 1.1, cw2 * 1.1, height * 0.14, 12),
-    MATS.blueSteel
-  );
-  clickScrew.rotation.x = Math.PI / 2;
-  clickScrew.position.set(ratR * 1.28, 0, height / 2 + height * 0.07);
-  g.add(clickScrew);
 
   g.userData.r = pitchR;
+  g.userData.drumR = radius;
   return g;
 }
 

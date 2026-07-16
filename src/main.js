@@ -176,11 +176,18 @@ function registerLabel(name, obj) {
 const movement = new THREE.Group();
 scene.add(movement);
 
-// --- Great wheel / barrel -----------------------------------------------
+// --- Fusee & chain layout: the movement is now a FUSEE movement -----------
+// The spring barrel is a plain DRUM (no teeth) sitting off to the side; a
+// chain runs from it to the fusee cone, whose arbor carries the great wheel
+// and the winding ratchet. The fusee arbor sits exactly where the going
+// barrel used to be, so every mesh distance in the train is unchanged.
 const barrelModule = 0.36, barrelTeeth = 80;
 const barrelR = (barrelModule * barrelTeeth) / 2;
-const barrel = G.makeBarrel({ radius: barrelR, height: 8, teeth: barrelTeeth, module: barrelModule });
-const barrelR_actual = barrel.userData.r || barrelR;
+const barrel = G.makeBarrel({ radius: barrelR, height: 8, plain: true }); // the spring DRUM
+const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 2.4, boreR: 1.4, spokes: 5, material: MATS.brass });
+const barrelR_actual = greatWheel.userData.r || barrelR;
+const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 8.5;
+const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
 const centerPinion = G.makePinion({ module: barrelModule, teeth: 10, thickness: 3, material: MATS.steel });
@@ -411,13 +418,22 @@ function balanceTheta(tau, tension = 1) {
 // ---------------------------------------------------------------------------
 // Assemble arbor groups
 // ---------------------------------------------------------------------------
+// Fusee arbor — great wheel at the bottom (same mesh position the going
+// barrel occupied), winding ratchet + click at the keyless plane above it,
+// then the grooved cone. The cone and ratchet are keyed together: both take
+// the winding spin; the great wheel turns only with the train.
 const barrelArbor = new THREE.Group();
 barrelArbor.position.set(P.barrel.x, P.barrel.y, L_BARREL);
-barrel.position.z = 0;
-barrelArbor.add(barrel);
+greatWheel.position.z = 0;
+barrelArbor.add(greatWheel);
+const fuseeRatchetGroup = G.makeRatchetAndClick({ radius: barrelR * 0.34, teeth: 24, thickness: 0.96 });
+fuseeRatchetGroup.position.z = 4.1; // centres the ratchet on the crown-wheel plane
+barrelArbor.add(fuseeRatchetGroup);
+fusee.position.z = 5.9; // cone base just above the ratchet/click
+barrelArbor.add(fusee);
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
-registerLabel('Barrel / Mainspring', barrelArbor);
+registerLabel('Fusee & great wheel', barrelArbor);
 
 const centerArbor = new THREE.Group();
 centerArbor.position.set(P.center.x, P.center.y, L_BARREL);
@@ -667,11 +683,11 @@ const crownCap = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.4, 0.8, 14, 1)
 crownCap.position.y = stemLen + 1.9;
 windSpinner.add(crownBody, crownCap);
 
-// Handles into the barrel's ratchet + click for the winding animation.
-const ratchetMesh = barrel.getObjectByName('ratchet');
-const clickMesh = barrel.getObjectByName('click');
+// Handles into the fusee arbor's ratchet + click for the winding animation.
+const ratchetMesh = fuseeRatchetGroup.getObjectByName('ratchet');
+const clickMesh = fuseeRatchetGroup.getObjectByName('click');
 const clickBaseRot = clickMesh ? clickMesh.rotation.z : 0;
-const RATCHET_TEETH = 24; // matches makeBarrel's ratTeeth
+const RATCHET_TEETH = 24; // matches makeRatchetAndClick's default
 
 // --- Setting path: setting wheel -> minute wheel/pinion (compound) --------
 // Positioned further out along the stem than crownWheel, at the sliding
@@ -848,20 +864,227 @@ movement.add(bladeGroup);
 registerExplode(bladeGroup, L_BALANCE, 7);
 registerLabel('Hack spring', bladeGroup);
 
-// Reset-hammer transmission: a short tail arm on the hammer, tied to the
-// setting-lever post by a rod (repositioned every frame between the two).
-const HAMMER_TAIL = 5;
+// Reset-hammer transmission — a RIGID connecting rod (fixed length) from the
+// setting-lever post to a tail arm on the hammer. The hammer's angle is not
+// animated independently: it is SOLVED each frame from the rod constraint
+// (two-circle intersection), so the linkage transmits motion exactly like
+// the physical four-bar it depicts and the rod never stretches. The tail's
+// mounting angle δ is calibrated once so the linkage lands the hammer
+// exactly on its two working poses: retracted at crown-in, roller seated in
+// the cam notch at crown-out.
+let HAMMER_TAIL = 5; // free calibration parameter — final value chosen below
+function hammerTailTipAt(rot, delta) {
+  return {
+    x: hammerPivotPos.x + Math.sin(rot + delta) * HAMMER_TAIL,
+    y: hammerPivotPos.y - Math.cos(rot + delta) * HAMMER_TAIL,
+  };
+}
+// Two-circle intersection core, shared by calibration and the per-frame
+// solve: tail tip Q on circle(pivot, TAIL) ∩ circle(post, rodLen), branch
+// chosen nearest prevQ. Returns the fold margin too (h → 0 at a dead point).
+function intersectTail(post, rodLen, prevQ) {
+  const H = hammerPivotPos;
+  const dx = post.x - H.x, dy = post.y - H.y;
+  const d = Math.hypot(dx, dy) || 1e-9;
+  const aLen = clamp((HAMMER_TAIL ** 2 - rodLen ** 2 + d * d) / (2 * d), -HAMMER_TAIL, HAMMER_TAIL);
+  const h2 = HAMMER_TAIL ** 2 - aLen * aLen;
+  const h = Math.sqrt(Math.max(h2, 0));
+  const mx = H.x + (aLen / d) * dx, my = H.y + (aLen / d) * dy;
+  const px = -dy / d, py = dx / d;
+  const q1 = { x: mx + h * px, y: my + h * py };
+  const q2 = { x: mx - h * px, y: my - h * py };
+  const pick = Math.hypot(q1.x - prevQ.x, q1.y - prevQ.y) <= Math.hypot(q2.x - prevQ.x, q2.y - prevQ.y) ? q1 : q2;
+  return { q: pick, margin: h };
+}
+const HAMMER_TAIL_DELTA = (() => {
+  const P0 = tailPostWorldAt(0), P1 = tailPostWorldAt(1);
+  const a0 = hammerBaseAngle + HAMMER_SWING_RAD; // retracted (crown in)
+  const a1 = hammerBaseAngle;                    // closed on the cam (crown out)
+  const f = (d) => {
+    const q0 = hammerTailTipAt(a0, d), q1 = hammerTailTipAt(a1, d);
+    return Math.hypot(q0.x - P0.x, q0.y - P0.y) - Math.hypot(q1.x - P1.x, q1.y - P1.y);
+  };
+  // A root only equalises the END poses; the linkage must also TRAVERSE the
+  // stroke without folding through a dead point (where the solve would hop
+  // branches and never come back — a real four-bar limitation, not a code
+  // one). So each candidate root is swept 0→1→0 with the branch-following
+  // solver and scored on endpoint fidelity + worst fold margin.
+  const sweep = (delta, rodLen) => {
+    let q = hammerTailTipAt(a0, delta);
+    let minMargin = Infinity;
+    const posesAt = (pull) => {
+      const r = intersectTail(tailPostWorldAt(pull), rodLen, q);
+      q = r.q;
+      minMargin = Math.min(minMargin, r.margin);
+    };
+    for (let i = 0; i <= 40; i++) posesAt(i / 40);
+    const qOut = { ...q };
+    for (let i = 40; i >= 0; i--) posesAt(i / 40);
+    const t1 = hammerTailTipAt(a1, delta), t0 = hammerTailTipAt(a0, delta);
+    return {
+      errOut: Math.hypot(qOut.x - t1.x, qOut.y - t1.y),
+      errBack: Math.hypot(q.x - t0.x, q.y - t0.y),
+      minMargin,
+    };
+  };
+  // The tail-arm LENGTH is a free parameter too: the post's chord and the
+  // tail tip's chord must be compatible or every δ folds mid-stroke. Scan
+  // tail lengths × δ roots; keep the traversable combo with the best margin.
+  let best = null;
+  for (let T = 3; T <= 12; T += 0.5) {
+    HAMMER_TAIL = T;
+    const N = 720;
+    let prevD = -Math.PI, prevF = f(prevD);
+    for (let i = 1; i <= N; i++) {
+      const d = -Math.PI + (i / N) * 2 * Math.PI;
+      const fd = f(d);
+      if (prevF === 0 || prevF * fd < 0) {
+        let lo = prevD, hi = d;
+        for (let k = 0; k < 40; k++) {
+          const m = (lo + hi) / 2;
+          if (f(lo) * f(m) <= 0) hi = m; else lo = m;
+        }
+        const root = (lo + hi) / 2;
+        const q0 = hammerTailTipAt(a0, root);
+        const len = Math.hypot(q0.x - P0.x, q0.y - P0.y);
+        if (len > T * 0.6) {
+          const s = sweep(root, len);
+          const feasible = s.errOut < 0.08 && s.errBack < 0.08 && s.minMargin > 0.25;
+          if (feasible && (!best || s.minMargin > best.minMargin)) {
+            best = { delta: root, len, tail: T, minMargin: s.minMargin };
+          }
+        }
+      }
+      prevD = d;
+      prevF = fd;
+    }
+  }
+  if (!best) {
+    console.warn('reset-rod calibration: no traversable root; falling back');
+    HAMMER_TAIL = 5;
+    return { delta: 0, len: Math.hypot(hammerTailTipAt(a0, 0).x - P0.x, hammerTailTipAt(a0, 0).y - P0.y) };
+  }
+  HAMMER_TAIL = best.tail;
+  return best;
+})();
+const RESET_ROD_LEN = HAMMER_TAIL_DELTA.len;
 const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, 1), MATS.steel);
-hammerTailBar.position.set(0, -HAMMER_TAIL / 2, 0);
+hammerTailBar.rotation.z = HAMMER_TAIL_DELTA.delta;
+hammerTailBar.position.set(
+  Math.sin(HAMMER_TAIL_DELTA.delta) * (HAMMER_TAIL / 2),
+  -Math.cos(HAMMER_TAIL_DELTA.delta) * (HAMMER_TAIL / 2),
+  0
+);
 hammerGroup.add(hammerTailBar);
 const resetRod = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1, 8), MATS.steel);
+resetRod.scale.set(1, RESET_ROD_LEN, 1);
 movement.add(resetRod);
-function hammerTailWorld() {
-  const a = hammerGroup.rotation.z;
+// Per-frame solve: track the intersection branch continuously from the
+// retracted pose (the calibration guaranteed the stroke never folds).
+let prevTailTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
+function solveHammerRotation(post) {
+  const r = intersectTail(post, RESET_ROD_LEN, prevTailTip);
+  prevTailTip = r.q;
+  // Tail tip local direction is (sin, −cos) of (rot + δ): invert for rot.
+  return Math.atan2(r.q.x - hammerPivotPos.x, -(r.q.y - hammerPivotPos.y)) - HAMMER_TAIL_DELTA.delta;
+}
+
+// ---------------------------------------------------------------------------
+// Fusee & chain — torque equalisation. The spring DRUM sits beside the fusee;
+// the chain leaves the drum, crosses on an external tangent, and wraps the
+// cone helically. Fully wound: the chain pulls at the cone's SMALL radius
+// (strong spring × short arm); run down: at the LARGE radius (weak spring ×
+// long arm) — the products match, so train torque stays level. The cone
+// profile and the spring model are chosen so S(t)·r_f(t) is constant:
+// S = 0.35 + 0.65·t (linear spring), r_f = lerp(rLarge, rSmall, t), with
+// rLarge/rSmall = S(1)/S(0) = 2.857.
+// ---------------------------------------------------------------------------
+const DRUM_R = barrelR;
+const FUSEE_AVG_R = (FUSEE_R_SMALL + FUSEE_R_LARGE) / 2;
+const FUSEE_WRAP_TURNS = 3.75; // = RESERVE_BARREL_TURNS (declared later): 30 h at 1 rev/8 h
+const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length that moves over a full reserve
+const drumDir = { x: -sideSign * vPerp.x, y: -sideSign * vPerp.y };
+const drumPos = {
+  x: P.barrel.x + drumDir.x * (FUSEE_R_LARGE + DRUM_R + 7),
+  y: P.barrel.y + drumDir.y * (FUSEE_R_LARGE + DRUM_R + 7),
+};
+const drumGroup = new THREE.Group();
+drumGroup.position.set(drumPos.x, drumPos.y, L_BARREL + 1);
+drumGroup.add(barrel);
+movement.add(drumGroup);
+registerExplode(drumGroup, L_BARREL + 1, 1);
+registerLabel('Mainspring drum', drumGroup);
+
+// Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
+const FUSEE_Z0 = L_BARREL + 5.9 + FUSEE_H * 0.06; // world z of the lowest groove
+const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
+const DRUM_CHAIN_Z = L_BARREL + 1 + 3.2;          // where the chain rides the drum
+const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
+let chainMesh = null;
+let lastChainTension = -1;
+function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
   return {
-    x: hammerPivotPos.x + Math.sin(a) * HAMMER_TAIL,
-    y: hammerPivotPos.y - Math.cos(a) * HAMMER_TAIL,
+    r: FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * f,
+    z: FUSEE_Z0 + FUSEE_ZSPAN * f,
   };
+}
+function rebuildChain(tension) {
+  lastChainTension = tension;
+  const fActive = tension * 0.94;
+  const active = fuseeGrooveAt(fActive);
+  // External tangent between the fusee's active circle and the drum.
+  const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
+  const D = Math.hypot(dx, dy);
+  const base = Math.atan2(dy, dx);
+  const alpha = Math.acos(clamp((active.r - DRUM_R) / D, -1, 1));
+  // Tangent BRANCH matters: the arbor runs CCW, so paying out requires the
+  // cone's surface velocity at the departure point (its CCW tangent) to
+  // point along the span toward the drum — that's the base−α branch. The
+  // +α branch puts the span on the side where the surface moves INTO the
+  // wrap, i.e. the chain peels off the wrong tangent.
+  const thetaT = base - alpha; // tangent departure angle on both circles
+  const pts = [];
+  // 1. Helical wrap on the cone: from the bottom groove up to the active one,
+  //    ending at the tangent departure angle.
+  const wraps = Math.max(tension * FUSEE_WRAP_TURNS, 0.05);
+  const SEG_PER_TURN = 14;
+  const nF = Math.max(Math.ceil(wraps * SEG_PER_TURN), 2);
+  for (let i = 0; i <= nF; i++) {
+    const s = (i / nF) * wraps;              // turns from the stack's bottom
+    const f = (s / wraps) * fActive;
+    const gp = fuseeGrooveAt(f);
+    const ang = thetaT - (wraps - s) * Math.PI * 2;
+    pts.push(new THREE.Vector3(
+      P.barrel.x + Math.cos(ang) * gp.r,
+      P.barrel.y + Math.sin(ang) * gp.r,
+      gp.z
+    ));
+  }
+  // 2. Straight span to the drum's tangent point.
+  const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_R, y: drumPos.y + Math.sin(thetaT) * DRUM_R };
+  pts.push(new THREE.Vector3(TB.x, TB.y, DRUM_CHAIN_Z));
+  // 3. Wrap accumulated on the drum (grows as the reserve drains).
+  const drumTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  const nD = Math.max(Math.ceil(drumTurns * SEG_PER_TURN), 2);
+  for (let i = 1; i <= nD; i++) {
+    const s = (i / nD) * drumTurns;
+    const ang = thetaT + s * Math.PI * 2;
+    pts.push(new THREE.Vector3(
+      drumPos.x + Math.cos(ang) * DRUM_R,
+      drumPos.y + Math.sin(ang) * DRUM_R,
+      DRUM_CHAIN_Z - s * 0.9
+    ));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const geo = new THREE.TubeGeometry(curve, pts.length * 2, 0.3, 6, false);
+  if (chainMesh) {
+    chainMesh.geometry.dispose();
+    chainMesh.geometry = geo;
+  } else {
+    chainMesh = new THREE.Mesh(geo, chainMat);
+    movement.add(chainMesh);
+    registerLabel('Chain', chainMesh);
+  }
 }
 
 // (The power-reserve reduction train is built after the dial side below — its
@@ -1075,6 +1298,7 @@ const RELAX_SECONDS = 30 * 3600; // simulated hours of running per full wind
 // per 8 h, so a 30 h reserve is exactly 3.75 barrel revolutions lock-to-lock.
 const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
+let windAccumTurns = 0; // ratchet/fusee turns actually BANKED by winding (not raw crown input)
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
 // ---------------------------------------------------------------------------
@@ -1095,6 +1319,7 @@ let reserveShown = 1; // = tension each frame; kept as its own var for the UI re
 // rewinding) ramps the rate back toward 1, as the escapement's impulses
 // pick the balance back up.
 // ---------------------------------------------------------------------------
+let fastForward = false;     // fun mode: rip through hours so the fusee chain visibly pays off
 let crownOut = false;        // target: is the crown pulled to the setting position?
 let crownPullT = 0;          // 0..1 eased stem-slide animation toward crownOut
 let leverEngage = 0;         // 0..1 eased lever swing-in (0=clear, 1=pad on rim)
@@ -1172,6 +1397,9 @@ style.textContent = `
 #clock-ui .readout.hacking { color: #ffb454; }
 #clock-ui .presets { display: flex; flex-wrap: wrap; gap: 5px; }
 #clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
+#clock-ui .tq { flex: 1; max-width: 128px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+#clock-ui .tq i { display: block; height: 100%; background: #3a6bd8; width: 100%; transition: none; }
+#clock-ui .tq i.flat { background: #58b368; }
 #clock-ui .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
 #clock-ui .label-small { color: #8b95a1; font-size: 10.5px; }
 #clock-ui hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 0; }
@@ -1200,6 +1428,9 @@ panel.innerHTML = `
   <div class="row label-small"><span id="scale-value">0.15×</span><button id="btn-wind">Wind</button></div>
   <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
   <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
+  <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
+  <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
+  <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
   <hr/>
   <div class="row label-small"><span>Camera</span></div>
   <div class="row presets">
@@ -1287,6 +1518,11 @@ function toggleCrown() {
   updateCrownUI();
 }
 crownBtn.addEventListener('click', toggleCrown);
+
+// --- fast-forward toggle ---------------------------------------------------
+document.getElementById('btn-ff').addEventListener('click', () => {
+  fastForward = !fastForward;
+});
 updateCrownUI();
 
 // The crown is directly interactive in the 3D view: click it to pull/push
@@ -1467,7 +1703,8 @@ function tick(t) {
   // quantity (the balance's own accumulated phase), not a pure function of
   // t. Clamped so a long stall (e.g. a backgrounded tab) can't blow up the
   // damping integration below.
-  const rawDt = clamp(t - lastTickRawT, 0, 0.25);
+  // Fast-forward relaxes the clamp: FF advances in 2 s strides on purpose.
+  const rawDt = clamp(t - lastTickRawT, 0, fastForward ? 2.5 : 0.25);
   lastTickRawT = t;
 
   // Lever swing: eases toward the crown's target position (independent of
@@ -1502,7 +1739,11 @@ function tick(t) {
       // Ratio chain gives the ratchet's rotation in RADIANS; barrelWindTurns
       // is in TURNS, hence the /2π.
       const turnsDelta = crownRotDelta * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / RATCHET_TEETH) / (2 * Math.PI);
+      const beforeTurns = barrelWindTurns;
       barrelWindTurns = clamp(barrelWindTurns + turnsDelta, 0, RESERVE_BARREL_TURNS);
+      // Only what actually banked moves the ratchet/fusee: at full reserve
+      // the chain is fully home and the cone stops, however hard you crank.
+      windAccumTurns += barrelWindTurns - beforeTurns;
     }
   }
   if (setEngaged) {
@@ -1611,23 +1852,22 @@ function tick(t) {
   yokeGroup.rotation.z = yokeAngleAt(crownPullT);
   bladeGroup.rotation.z = bladeAimAngle + BLADE_LIFT_SIGN * HACK_LIFT * (1 - leverEngage);
 
-  // Reset hammer + heart cam: the hammer swings on the same leverEngage
-  // (one setting lever, several ganged functions). The cam's own rotation
-  // mirrors the second hand's exactly, since they share the same
-  // display-arbor reference — so its notch visibly slides under the roller
-  // in step with the hand sweeping back to 12.
-  hammerGroup.rotation.z = hammerBaseAngle + HAMMER_SWING_RAD * (1 - leverEngage);
+  // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
+  // rod — its angle is solved from the setting-lever post's position through
+  // the rod constraint, so the whole linkage moves as the four-bar it is.
+  // The cam's own rotation mirrors the second hand's exactly, since they
+  // share the same display-arbor reference — so its notch visibly slides
+  // under the roller in step with the hand sweeping back to 12.
+  const postNow = tailPostWorldAt(crownPullT);
+  hammerGroup.rotation.z = solveHammerRotation(postNow);
   secondsCamArbor.rotation.z = (fourthA - secondsZeroRef) + camPhaseOffset;
 
-  // Reset-hammer rod: stretched between the setting-lever post and the
-  // hammer's tail arm, both of which just moved above.
+  // Reset-hammer rod: rigid — constant length by construction; just placed
+  // between its two pins.
   {
-    const a = tailPostWorldAt(crownPullT);
-    const b = hammerTailWorld();
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    resetRod.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, Z_SECONDS_ARBOR);
-    resetRod.scale.set(1, len, 1);
+    const b = prevTailTip; // the tail tip the solve just landed on
+    const dx = b.x - postNow.x, dy = b.y - postNow.y;
+    resetRod.position.set((postNow.x + b.x) / 2, (postNow.y + b.y) / 2, Z_SECONDS_ARBOR);
     resetRod.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
   }
 
@@ -1641,10 +1881,22 @@ function tick(t) {
   const crownWheelSpin = -windPathRot * (windPinionTeeth / crownWheelTeeth);
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   if (ratchetMesh) {
-    const ratchetSpin = -crownWheelSpin * (crownWheelTeeth / RATCHET_TEETH);
-    ratchetMesh.rotation.z = ratchetSpin;
-    if (clickMesh) clickMesh.rotation.z = clickBaseRot - 0.06 * Math.abs(Math.sin(ratchetSpin * 12));
+    // Ratchet + fusee cone are keyed together, and their rotation is a pure
+    // function of chain hauled: −2π per BANKED winding turn (backwards
+    // against the train direction, exactly one cone turn per turn of chain
+    // pulled home), riding on the arbor's own train rotation. Raw crown
+    // input past full reserve moves neither — the chain is home.
+    const windBack = -windAccumTurns * Math.PI * 2;
+    ratchetMesh.rotation.z = windBack;
+    fusee.rotation.z = windBack;
+    if (clickMesh) clickMesh.rotation.z = clickBaseRot - 0.06 * Math.abs(Math.sin(windBack * 12));
   }
+
+  // Fusee chain & drum: the drum's angle is a closed-form function of how
+  // much chain has paid onto it; the chain mesh is rebuilt whenever the
+  // reserve state has visibly moved (cheap — a few hundred tube segments).
+  drumGroup.rotation.z = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R;
+  if (Math.abs(tension - lastChainTension) > 0.0015) rebuildChain(tension);
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
@@ -1673,11 +1925,22 @@ function frame(now) {
   lastNow = now;
 
   if (!paused) {
-    accumulator += realDt * timeScale;
-    while (accumulator >= FIXED_DT) {
-      simTime += FIXED_DT;
-      accumulator -= FIXED_DT;
-      tick(simTime);
+    if (fastForward) {
+      // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
+      // off in about 20 s of wall time, chain and reserve hand visibly moving.
+      for (let i = 0; i < 45; i++) {
+        simTime += 2;
+        tick(simTime);
+      }
+      accumulator = 0;
+      if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
+    } else {
+      accumulator += realDt * timeScale;
+      while (accumulator >= FIXED_DT) {
+        simTime += FIXED_DT;
+        accumulator -= FIXED_DT;
+        tick(simTime);
+      }
     }
   }
 
@@ -1687,6 +1950,18 @@ function frame(now) {
   document.getElementById('readout-beats').textContent = String(beatPhase(tauNow).n);
   document.getElementById('reserve-value').textContent =
     (reserveShown * (RELAX_SECONDS / 3600)).toFixed(1) + ' h';
+
+  // Fast-forward button state + fusee torque readouts: the spring's torque
+  // sags as the reserve drains, while the fusee's growing radius keeps the
+  // torque delivered to the train level — the whole point of the mechanism.
+  const ffBtn = document.getElementById('btn-ff');
+  ffBtn.textContent = fastForward ? 'On' : 'Off';
+  ffBtn.classList.toggle('active', fastForward);
+  const springTq = 0.35 + 0.65 * reserveShown;
+  const fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * reserveShown;
+  const trainTq = (springTq * fuseeR) / FUSEE_R_SMALL; // ≈ 1, by the cone's design
+  document.getElementById('bar-spring').style.width = `${(springTq * 100).toFixed(1)}%`;
+  document.getElementById('bar-train').style.width = `${clamp(trainTq * 100, 0, 100).toFixed(1)}%`;
 
   updateExplode();
 
