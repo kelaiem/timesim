@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MATS } from './materials.js';
+import { aesthetics } from './aesthetics.js';
+import { loadState, saveState, clearState, hasState } from './state.js';
 
 const DEG2RAD = Math.PI / 180;
 
@@ -41,29 +43,32 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = aesthetics.rendering.toneMappingExposure;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0b0d);
-scene.fog = new THREE.Fog(0x0a0b0d, 180, 420);
+const sceneAesthetic = aesthetics.lighting.scene;
+scene.background = new THREE.Color(sceneAesthetic.backgroundColor);
+scene.fog = new THREE.Fog(sceneAesthetic.fogColor, 180, 420);
 
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 2000);
 camera.position.set(60, 55, 90);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.07;
+controls.dampingFactor = aesthetics.camera.dampingFactor;
 controls.minDistance = 25;
 controls.maxDistance = 420;
 
 // Lights: hemisphere fill + 2 shadowed directional/spot lights (studio look).
-const hemi = new THREE.HemisphereLight(0x8fa6bf, 0x0a0a0c, 0.65);
+const hemiAesthetic = aesthetics.lighting.hemisphere;
+const hemi = new THREE.HemisphereLight(hemiAesthetic.skyColor, hemiAesthetic.groundColor, hemiAesthetic.intensity);
 scene.add(hemi);
 
-const keyLight = new THREE.DirectionalLight(0xfff1de, 2.4);
+const keyLightAesthetic = aesthetics.lighting.keyLight;
+const keyLight = new THREE.DirectionalLight(keyLightAesthetic.color, keyLightAesthetic.intensity);
 keyLight.position.set(70, 90, 70);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
@@ -73,20 +78,23 @@ keyLight.shadow.camera.top = 110;
 keyLight.shadow.camera.bottom = -110;
 keyLight.shadow.camera.near = 1;
 keyLight.shadow.camera.far = 320;
-keyLight.shadow.bias = -0.0005;
+keyLight.shadow.bias = keyLightAesthetic.shadowBias;
 scene.add(keyLight);
 scene.add(keyLight.target);
 
-const fillLight = new THREE.DirectionalLight(0xcfe3ff, 0.55);
+const fillLightAesthetic = aesthetics.lighting.fillLight;
+const fillLight = new THREE.DirectionalLight(fillLightAesthetic.color, fillLightAesthetic.intensity);
 fillLight.position.set(-70, 35, -50);
 scene.add(fillLight);
 
 // Dial side (-Z) gets its own soft key so the face isn't lit only by spill.
-const dialLight = new THREE.DirectionalLight(0xfff4e2, 1.4);
+const dialLightAesthetic = aesthetics.lighting.dialLight;
+const dialLight = new THREE.DirectionalLight(dialLightAesthetic.color, dialLightAesthetic.intensity);
 dialLight.position.set(25, 45, -110);
 scene.add(dialLight);
 
-const rimSpot = new THREE.SpotLight(0xffffff, 220, 400, Math.PI / 6.5, 0.35, 1.4);
+const rimSpotAesthetic = aesthetics.lighting.rimSpot;
+const rimSpot = new THREE.SpotLight(rimSpotAesthetic.color, rimSpotAesthetic.intensity, 400, Math.PI / 6.5, rimSpotAesthetic.penumbra, rimSpotAesthetic.decay);
 rimSpot.position.set(-10, 70, 150);
 rimSpot.castShadow = true;
 rimSpot.shadow.mapSize.set(1024, 1024);
@@ -94,9 +102,10 @@ scene.add(rimSpot);
 scene.add(rimSpot.target);
 
 // Soft dark backdrop plane behind the movement to catch light / read as a studio wall.
+const backdropAesthetic = aesthetics.lighting.backdrop;
 const backdrop = new THREE.Mesh(
   new THREE.PlaneGeometry(600, 400),
-  new THREE.MeshStandardMaterial({ color: 0x101317, roughness: 1, metalness: 0 })
+  new THREE.MeshStandardMaterial({ color: backdropAesthetic.color, roughness: backdropAesthetic.roughness, metalness: backdropAesthetic.metalness })
 );
 backdrop.position.set(0, 0, -90);
 backdrop.receiveShadow = true;
@@ -889,9 +898,9 @@ windSpinner.add(stem);
 // real sliding-pinion keyless works.)
 
 // Knurled crown: faceted barrel (low segment count reads as knurling) + cap.
-const crownBody = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 2.2, 14, 1), MATS.brass);
+const crownBody = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 2.2, 14, 1), MATS.steel);
 crownBody.position.y = stemLen + 0.4;
-const crownCap = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.4, 0.8, 14, 1), MATS.brass);
+const crownCap = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.4, 0.8, 14, 1), MATS.steel);
 crownCap.position.y = stemLen + 1.9;
 windSpinner.add(crownBody, crownCap);
 
@@ -1518,16 +1527,17 @@ const dial = G.makeDial({
   subdialRecess: SUBDIAL_RECESS,
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
-    // evaluated at 0.39R) so the reserve blends in rather than reading as
-    // a separate instrument; the seconds keeps the darker recessed tone.
+    // evaluated at ±0.39R) so BOTH wells blend in rather than reading as
+    // separate darker instruments — the two sit symmetric about the centre,
+    // so they share the same gradient tone.
     { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5' },
-    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
+    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
   ],
 });
 dialFace.add(dial);
 
 const handsGroup = new THREE.Group();
-handsGroup.position.z = 2.5; // clearly proud of the dial face (avoids z-fighting)
+handsGroup.position.z = aesthetics.dial.hands.handsGroupZOffset;
 dialFace.add(handsGroup);
 // NOTE: handsGroup's parent is dialFace (which is flipped 180° about Y), so
 // baseZ here is LOCAL to dialFace — not the world-ish Z_DIAL convention used
@@ -1732,6 +1742,11 @@ let balanceRate = 1;         // dτ/dt — the balance's own angular rate (1 = f
 let tauIntegrated = 0;       // ∫ balanceRate dt — movement time τ's actual source
 let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
 
+// Persisted state is restored further down, once every state variable it
+// writes (crownRotation and the crown vars in particular) has been declared —
+// assigning them here would hit the temporal dead zone.
+let restoredCamera = null; // camera pose to apply once camera/controls exist
+
 // A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
 // (or running dry) kills the balance's rate within a fraction of that;
 // recovery (release, or rewinding) takes it back up over a similar span.
@@ -1757,6 +1772,19 @@ let windPathRot = 0;       // accumulated rotation actually delivered to the win
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
+
+// Load persisted state now that every variable it writes has been declared.
+// loadState() is async (the primary store is the dev server's temp file);
+// top-level await is fine here — main.js is an ES module.
+{
+  const savedState = await loadState();
+  barrelWindTurns = savedState.barrelWindTurns;
+  tauIntegrated = savedState.tauIntegrated;
+  crownRotation = savedState.crownRotation;
+  crownOut = savedState.crownOut;
+  fastForward = savedState.fastForward;
+  restoredCamera = savedState.camera;
+}
 
 // ---------------------------------------------------------------------------
 // Seconds reset — the SAME crown-pull also closes the reset hammer onto the
@@ -1790,6 +1818,15 @@ style.textContent = `
   color: #d8dee6; user-select: none;
 }
 #clock-ui h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
+#btn-hide-ui { position: absolute; top: 10px; right: 12px; padding: 2px 7px !important; font-size: 10px !important; color: #8b95a1 !important; }
+#clock-ui-show {
+  position: fixed; top: 14px; left: 14px; z-index: 10; display: none;
+  background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.14); color: #d8dee6;
+  border-radius: 8px; padding: 6px 11px; font: 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer; transition: background 0.15s;
+}
+#clock-ui-show:hover { background: rgba(255,255,255,0.14); }
 #clock-ui .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; }
 #clock-ui button {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
@@ -1821,6 +1858,7 @@ const panel = document.createElement('div');
 panel.id = 'clock-ui';
 panel.innerHTML = `
   <h1>Lever Escapement</h1>
+  <button id="btn-hide-ui" title="Hide panel (H)">Hide</button>
   <div class="row">
     <button id="btn-pause">Pause</button>
     <span class="readout" id="readout-time">00:00:00</span>
@@ -1855,6 +1893,24 @@ panel.innerHTML = `
   </div>
 `;
 document.body.appendChild(panel);
+
+// --- panel hide/show -------------------------------------------------------
+// "Hide" collapses the whole panel to a small ☰ chip; the chip (or the H key)
+// brings it back. Pure display toggling — no state inside the panel is lost.
+const showPanelBtn = document.createElement('button');
+showPanelBtn.id = 'clock-ui-show';
+showPanelBtn.textContent = '☰';
+showPanelBtn.title = 'Show control panel (H)';
+document.body.appendChild(showPanelBtn);
+function setPanelHidden(hidden) {
+  panel.style.display = hidden ? 'none' : '';
+  showPanelBtn.style.display = hidden ? 'block' : 'none';
+}
+document.getElementById('btn-hide-ui').addEventListener('click', () => setPanelHidden(true));
+showPanelBtn.addEventListener('click', () => setPanelHidden(false));
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
+});
 
 const labelsContainer = document.createElement('div');
 labelsContainer.id = 'clock-labels';
@@ -1994,6 +2050,80 @@ document.getElementById('btn-labels').addEventListener('click', () => {
   document.getElementById('btn-labels').classList.toggle('active', labelsOn);
 });
 
+// --- state persistence (save/load/clear) -----------------------------------
+// Create state buttons dynamically to avoid template literal issues
+const stateSection = document.createElement('div');
+stateSection.innerHTML = `
+  <hr/>
+  <div class="row label-small"><span>State</span></div>
+  <div class="row presets" id="state-buttons">
+    <button id="btn-save-state">Save</button>
+    <button id="btn-load-state">Load</button>
+    <button id="btn-clear-state">Clear</button>
+  </div>
+`;
+document.getElementById('clock-ui').appendChild(stateSection);
+
+const saveStateBtn = document.getElementById('btn-save-state');
+const loadStateBtn = document.getElementById('btn-load-state');
+const clearStateBtn = document.getElementById('btn-clear-state');
+
+function updateStateButtons() {
+  const has = hasState();
+  loadStateBtn.disabled = !has;
+  clearStateBtn.disabled = !has;
+}
+
+// Snapshot the whole persistable state, including the live camera pose
+// (position + orbit target). Shared by the manual Save button and the
+// periodic auto-save so the two never drift out of sync.
+function captureState() {
+  return {
+    barrelWindTurns,
+    tauIntegrated,
+    crownRotation,
+    crownOut,
+    fastForward,
+    timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
+    showLabels: labelsOn,
+    showBeat: 0,
+    camera: {
+      px: camera.position.x, py: camera.position.y, pz: camera.position.z,
+      tx: controls.target.x, ty: controls.target.y, tz: controls.target.z,
+    },
+  };
+}
+
+saveStateBtn.addEventListener('click', () => {
+  const currentState = captureState();
+  if (saveState(currentState)) {
+    saveStateBtn.textContent = 'Saved!';
+    saveStateBtn.classList.add('active');
+    setTimeout(() => {
+      saveStateBtn.textContent = 'Save';
+      saveStateBtn.classList.remove('active');
+    }, 1200);
+    updateStateButtons();
+  }
+});
+
+loadStateBtn.addEventListener('click', () => {
+  // The startup restore (await loadState() above) applies everything on
+  // boot — a plain reload IS the load.
+  location.reload();
+});
+
+clearStateBtn.addEventListener('click', () => {
+  if (confirm('Clear saved state?')) {
+    clearState();
+    updateStateButtons();
+    clearStateBtn.textContent = 'Cleared';
+    setTimeout(() => { clearStateBtn.textContent = 'Clear'; }, 1200);
+  }
+});
+
+updateStateButtons();
+
 // --- exploded view slider -------------------------------------------------
 let explodeAmount = 0;
 document.getElementById('explode-slider').addEventListener('input', (e) => {
@@ -2059,7 +2189,18 @@ function goToPreset(name) {
 document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
   b.addEventListener('click', () => goToPreset(b.dataset.cam));
 });
-goToPreset('Escapement');
+// Restore a saved camera pose if one was persisted; otherwise frame the
+// default Escapement preset. A restore snaps directly (no tween) and cancels
+// any in-flight preset tween so it isn't overwritten next frame.
+if (restoredCamera) {
+  camera.position.set(restoredCamera.px, restoredCamera.py, restoredCamera.pz);
+  controls.target.set(restoredCamera.tx, restoredCamera.ty, restoredCamera.tz);
+  controls.update();
+  camTween = null;
+  document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.remove('active'));
+} else {
+  goToPreset('Escapement');
+}
 
 // ---------------------------------------------------------------------------
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
@@ -2068,6 +2209,7 @@ const FIXED_DT = 1 / 240;
 let simTime = 0;
 let accumulator = 0;
 let lastNow = performance.now();
+let lastAutoSaveTime = 0;
 
 const projected = new THREE.Vector3();
 
@@ -2413,6 +2555,13 @@ function frame(now) {
   controls.update();
   updateLabels();
   renderer.render(scene, camera);
+
+  // Auto-save state every 5 seconds
+  if (simTime - lastAutoSaveTime > 5) {
+    lastAutoSaveTime = simTime;
+    saveState(captureState());
+  }
+
   requestAnimationFrame(frame);
 }
 

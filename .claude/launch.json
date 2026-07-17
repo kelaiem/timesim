@@ -4,7 +4,7 @@
     {
       "name": "clock",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8347", "--bind", "127.0.0.1"],
+      "runtimeArgs": ["dev_server.py", "8347"],
       "port": 8347
     }
   ]

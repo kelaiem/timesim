@@ -1,0 +1,83 @@
+{
+  "dial": {
+    "hourMarkers": {
+      "strokeWidthFactor": 0.18,
+      "reliefDepthFactor": 0.06,
+      "reliefDepthMin": 0.45,
+      "gapFactor": 0.7,
+      "slantWidthFactor": 1.12,
+      "subdialMarginFactor": 0.02,
+      "weightBalanceExponent": 0.5,
+      "minNumeralKeepFrac": 0.3,
+      "minLetterKeepFrac": 0.2
+    },
+    "hands": {
+      "hour": {
+        "widthFactor": 0.09,
+        "tailFactor": 0.22,
+        "depthFactor": 0.012,
+        "depthMin": 0.35,
+        "bossSizeFactor": 0.05
+      },
+      "minute": {
+        "widthFactor": 0.055,
+        "tailFactor": 0.22,
+        "depthFactor": 0.012,
+        "depthMin": 0.35,
+        "bossSizeFactor": 0.035
+      },
+      "second": {
+        "widthFactor": 0.02,
+        "tailFactor": 0.26,
+        "depthFactor": 0.008,
+        "depthMin": 0.28,
+        "bossSizeFactor": 0.03,
+        "counterweightSizeFactor": 0.045,
+        "counterweightOffsetFactor": 0.8
+      },
+      "handsGroupZOffset": 2.5
+    }
+  },
+  "lighting": {
+    "scene": {
+      "backgroundColor": "#0a0b0d",
+      "fogColor": "#0a0b0d"
+    },
+    "hemisphere": {
+      "skyColor": "#8fa6bf",
+      "groundColor": "#0a0a0c",
+      "intensity": 0.65
+    },
+    "keyLight": {
+      "color": "#fff1de",
+      "intensity": 2.4,
+      "shadowBias": -0.0005
+    },
+    "fillLight": {
+      "color": "#cfe3ff",
+      "intensity": 0.55
+    },
+    "dialLight": {
+      "color": "#fff4e2",
+      "intensity": 1.4
+    },
+    "rimSpot": {
+      "color": "#ffffff",
+      "intensity": 220,
+      "penumbra": 0.35,
+      "decay": 1.4,
+      "shadowBias": -0.0005
+    },
+    "backdrop": {
+      "color": "#101317",
+      "roughness": 1,
+      "metalness": 0
+    }
+  },
+  "camera": {
+    "dampingFactor": 0.07
+  },
+  "rendering": {
+    "toneMappingExposure": 1.05
+  }
+}
