@@ -4,6 +4,7 @@
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
 import { MATS } from './materials.js';
+import { aesthetics } from './aesthetics.js';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -1133,51 +1134,75 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     ctx.lineTo(scx + Math.cos(a) * (r1 - len), scy - Math.sin(a) * (r1 - len));
     ctx.stroke();
   };
+  // Label fanned along an invisible circle of radius r centred on the
+  // sub-dial: each character sits on the arc, upright, reading left→right.
+  // Orientation follows the classic bezel/coin convention — tops point
+  // radially OUTWARD by default (upper-arc labels), and `inward` flips
+  // tops toward the pivot for lower-arc labels so nothing renders
+  // upside-down. Caller sets font/fill first (widths are measured with the
+  // active font).
+  const arcLabel = (txt, centerMathDeg, r, inward = false) => {
+    const widths = [...txt].map((ch) => ctx.measureText(ch).width);
+    const extra = sr * 0.008;
+    const total = widths.reduce((s, w) => s + w + extra, -extra) / r;
+    const dir = inward ? 1 : -1; // reading direction along the arc
+    let a = (centerMathDeg * Math.PI) / 180 - dir * (total / 2);
+    [...txt].forEach((ch, i) => {
+      a += dir * (widths[i] / 2) / r;
+      ctx.save();
+      ctx.translate(scx + Math.cos(a) * r, scy - Math.sin(a) * r);
+      ctx.rotate(inward ? -a - Math.PI / 2 : Math.PI / 2 - a);
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+      a += dir * ((widths[i] / 2 + extra) / r);
+    });
+  };
   if (kind === 'reserve') {
     // Graduated 120° arc: math angle 150° (empty, left) → 30° (full,
-    // right), Ab/Auf Glashütte marking.
-    for (let h = 0; h <= 30; h += 5) {
-      const major = h % 15 === 0;
+    // right), Ab/Auf Glashütte marking. Major ticks every 12 hours of
+    // reserve (0/12/24), small minor ticks every 3 hours between them —
+    // the minors also anchor the full end of the arc (30 h).
+    for (let h = 0; h <= 30; h += 3) {
+      const major = h % 12 === 0;
       tickAt(150 - (h / 30) * 120, sr * 0.84, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
     }
-    // Ab / Auf painted ALONG the graduation arc, at the tick band's radius,
-    // just beyond its two end ticks — continuing the ring rather than
-    // floating inside it. Each character stands upright with its top
-    // pointing radially outward, reading left→right along the upper arc.
+    // AB / AUF painted ALONG the graduation arc, at the tick band's radius
+    // (sr·0.76, mid-band), set clear of the end ticks (22° beyond the arc
+    // ends, vs the old 16°) so the words read as bookends rather than
+    // crowding the outermost indicators.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    const arcLabel = (txt, centerMathDeg) => {
-      const r = sr * 0.76; // mid-band of the graduation ticks
-      const widths = [...txt].map((ch) => ctx.measureText(ch).width);
-      const extra = sr * 0.008;
-      const total = widths.reduce((s, w) => s + w + extra, -extra) / r;
-      let a = (centerMathDeg * Math.PI) / 180 + total / 2;
-      [...txt].forEach((ch, i) => {
-        a -= (widths[i] / 2) / r;
-        ctx.save();
-        ctx.translate(scx + Math.cos(a) * r, scy - Math.sin(a) * r);
-        ctx.rotate(Math.PI / 2 - a);
-        ctx.fillText(ch, 0, 0);
-        ctx.restore();
-        a -= (widths[i] / 2 + extra) / r;
-      });
-    };
-    arcLabel('Ab', 166);
-    arcLabel('Auf', 14);
+    arcLabel('AB', 172, sr * 0.76);
+    arcLabel('AUF', 8, sr * 0.76);
+    // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
+    // of the face — the region the graduation never enters and the hand
+    // never sweeps (its tip stays on the upper arc, its tail well inside
+    // this radius). Letters upright, tops toward the pivot, reading
+    // left→right along the bottom arc; small, light-weight and near the
+    // face tone so it whispers. Radius keeps the ink one type-height off
+    // the wall: centre-line at sr − 1.5·typeH (outer ink at +typeH/2,
+    // leaving a typeH gap to the edge).
+    ctx.font = `400 ${sr * 0.075}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    ctx.fillStyle = '#8a887e';
+    arcLabel('MADE WITH FABLE', -90, sr * (1 - 1.5 * 0.075), true);
   } else if (kind === 'seconds') {
-    // Small-seconds track: 60 ticks, heavier every fifth, quarter
-    // numerals 15/30/45/60.
+    // Small-seconds track: 60 ticks, heavier every fifth, ROMAN quarter
+    // numerals (XV/XXX/XLV/LX) to match the dial's hour indices. Slightly
+    // smaller than the old arabic figures — XXX and XLV are wide glyphs.
     for (let s = 0; s < 60; s++) {
       const major = s % 5 === 0;
       tickAt(90 - s * 6, sr * 0.92, sr * (major ? 0.16 : 0.09), sr * (major ? 0.045 : 0.022));
     }
+    // Quarters fanned along an invisible circle inside the tick band,
+    // bezel-convention oriented: LX/XV/XLV on the upper reaches keep tops
+    // outward; XXX on the lower arc flips tops toward the pivot so it
+    // reads upright rather than inverted.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `500 ${sr * 0.2}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    for (const [sec, mathDeg] of [[60, 90], [15, 0], [30, -90], [45, 180]]) {
-      const a = (mathDeg * Math.PI) / 180, r = sr * 0.62;
-      ctx.fillText(String(sec), scx + Math.cos(a) * r, scy - Math.sin(a) * r);
+    ctx.font = `500 ${sr * 0.17}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    for (const [sec, mathDeg, inward] of [['LX', 90, false], ['XV', 0, false], ['XXX', -90, true], ['XLV', 180, false]]) {
+      arcLabel(sec, mathDeg, sr * 0.62, inward);
     }
   }
 }
@@ -1241,24 +1266,20 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
         ctx.restore();
       }
       // (Hour markers are applied 3D numerals — built below, not printed.)
-      // Discreet maker's mark, arced along an invisible concentric circle
-      // centred at exactly 6 o'clock, each character upright with its top
-      // toward the centre. Kept tight (small font, light tracking) so the
-      // whole arc stays inside ±~25° — the clean annulus between a
-      // 6-o'clock sub-dial's edge and the railroad track, clear of the V
-      // and VII numerals either side.
-      ctx.font = '500 21px "Helvetica Neue", Helvetica, Arial, sans-serif';
-      ctx.fillStyle = '#6b6b64';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      {
-        const msg = 'MADE IN CLAUDE';
-        const rSig = R * 0.78;
-        const extra = 3; // px of tracking between characters
+      // Discreet maker's mark. When a power-reserve sub-dial exists the mark
+      // is set INSIDE its well (painted by paintSubdialFace on the recessed
+      // floor); only a reserve-less dial prints it here, on the classic
+      // 6-o'clock arc.
+      if (!subdials.some((sd) => sd.kind === 'reserve')) {
+        ctx.font = '400 13px "Helvetica Neue", Helvetica, Arial, sans-serif';
+        ctx.fillStyle = '#8a887e';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const msg = 'MADE WITH FABLE';
+        const extra = 2; // px of tracking between characters
         const widths = [...msg].map((ch) => ctx.measureText(ch).width);
-        const totalArc = (widths.reduce((s, cw) => s + cw + extra, -extra)) / rSig;
-        // Read left→right along the bottom arc: start at the 6:30 side
-        // (larger clock angle) and advance toward 5:30.
+        const rSig = R * 0.78;
+        const totalArc = widths.reduce((s, cw) => s + cw + extra, -extra) / rSig;
         let a = (6 / 12) * Math.PI * 2 + totalArc / 2;
         [...msg].forEach((ch, i) => {
           a -= (widths[i] / 2) / rSig;
@@ -1374,21 +1395,27 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
   // Radially oriented (base toward centre), horological IIII. Any numeral
   // whose marker centre falls on a sub-dial is skipped (computed below).
   {
+    const markerAesthetics = aesthetics.dial.hourMarkers;
     const H = radius * 0.21;              // cap height (tall proportion)
-    const w = H * 0.1;                    // stroke width (light weight)
-    const D = Math.max(H * 0.06, 0.45);   // relief depth above the dial
+    const w = H * markerAesthetics.strokeWidthFactor;
+    const D = Math.max(H * markerAesthetics.reliefDepthFactor, markerAesthetics.reliefDepthMin);
     const rc = radius * 0.795 - H / 2;    // markers hug the railroad track
-    const gap = w * 0.7;
     const mat = MATS.steel;
 
     // All stroke END faces are horizontal in glyph-local space; letters are
     // then fanned radially along the marker arc, so every end lies tangent
-    // to — parallel with — the dial perimeter.
-    const straight = () => new THREE.Mesh(new THREE.BoxGeometry(w, H, D), mat);
+    // to — parallel with — the dial perimeter. Every builder takes its
+    // stroke width `sw` as a parameter: numerals are WEIGHT-BALANCED below,
+    // so different numerals set different widths.
+    const straight = (sw) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sw, H, D), mat);
+      m.userData.clipDir = [0, 1]; // side edges are vertical
+      return m;
+    };
     // Parallelogram stroke: bottom edge centred at bx, top edge centred at
     // tx, both edges horizontal (this is what keeps V/X ends perimeter-true).
-    const slant = (bx, tx) => {
-      const wh = w * 1.12;
+    const slant = (sw, bx, tx) => {
+      const wh = sw * markerAesthetics.slantWidthFactor;
       const s = new THREE.Shape();
       s.moveTo(bx - wh / 2, -H / 2);
       s.lineTo(bx + wh / 2, -H / 2);
@@ -1397,56 +1424,174 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
       s.closePath();
       const geo = new THREE.ExtrudeGeometry(s, { depth: D, bevelEnabled: false });
       geo.translate(0, 0, -D / 2);
-      return new THREE.Mesh(geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      const len = Math.hypot(tx - bx, H);
+      m.userData.clipDir = [(tx - bx) / len, H / len]; // along the side edges
+      return m;
     };
-    const letterI = () => {
+    const letterI = (sw) => {
       const lg = new THREE.Group();
-      lg.add(straight());
-      lg.userData.w = w;
+      lg.add(straight(sw));
+      lg.userData.w = sw;
       return lg;
     };
-    const letterV = () => {
+    const letterV = (sw) => {
       const lg = new THREE.Group();
       const W = H * 0.52;
-      lg.add(slant(-w * 0.3, -(W - w) / 2), slant(w * 0.3, (W - w) / 2));
+      lg.add(slant(sw, -sw * 0.3, -(W - sw) / 2), slant(sw, sw * 0.3, (W - sw) / 2));
       lg.userData.w = W;
       return lg;
     };
-    const letterX = () => {
+    const letterX = (sw) => {
       const lg = new THREE.Group();
       const W = H * 0.5;
-      lg.add(slant(-(W - w) / 2, (W - w) / 2), slant((W - w) / 2, -(W - w) / 2));
+      lg.add(slant(sw, -(W - sw) / 2, (W - sw) / 2), slant(sw, (W - sw) / 2, -(W - sw) / 2));
       lg.userData.w = W;
       return lg;
     };
     const LETTER = { I: letterI, V: letterV, X: letterX };
     const ROMAN = ['XII', 'I', 'II', 'III', 'IIII', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 
+    // Per-numeral weight balancing. At one shared stroke width the many-
+    // stroke numerals (VIII carries 5 strokes to II's 2) put ~2.5× the ink
+    // on their quadrant and the dial reads lopsidedly heavy around 7–9.
+    // Measure each numeral's "ink" (Σ stroke widths; slants count their
+    // drawn width) against III — the heaviest numeral of the light quadrant,
+    // which sets the look — and thin only the numerals ABOVE that reference,
+    // by (ref/ink)^exponent. Exponent 0 = uniform width, 1 = strict equal
+    // ink per numeral; the default 0.5 splits the difference so heavy
+    // numerals slim down without going spindly.
+    const inkOf = (ch) => (ch === 'I' ? 1 : 2 * markerAesthetics.slantWidthFactor);
+    const REF_INK = 3; // = ink of 'III'
+    const balExp = markerAesthetics.weightBalanceExponent;
+    const numeralStrokeW = (name) => {
+      const ink = [...name].reduce((s, ch) => s + inkOf(ch), 0);
+      return w * Math.min(1, Math.pow(REF_INK / ink, balExp));
+    };
+
+    // Sub-dials no longer suppress a whole numeral: instead each numeral is
+    // rendered and BISECTED at the sub-dial circle — the letters (or parts of
+    // letters) that would sit over a sub-dial are trimmed off, leaving a clear
+    // margin, while whatever clears the sub-dial stays. A numeral is dropped
+    // in full only when it sits so squarely on a sub-dial that even its
+    // least-covered letter keeps too little to read as anything but debris.
+    const subdialMargin = radius * markerAesthetics.subdialMarginFactor;
+    // Numeral-level: if even the best-kept letter falls below this fraction,
+    // omit the whole numeral. 0.3 keeps XII and VI visible as outer stubs
+    // (~0.42 kept) where the wells cut through the marker ring's middle.
+    const MIN_KEEP_FRAC = markerAesthetics.minNumeralKeepFrac;
+    const LETTER_MIN_FRAC = markerAesthetics.minLetterKeepFrac; // per-letter sliver cutoff
+
+    // Clip a letter against the (margin-expanded) sub-dial circles, cutting
+    // along the ARC itself: any vertex inside a circle slides ALONG ITS
+    // STROKE'S OWN SIDE-EDGE direction (userData.clipDir) until it lands on
+    // the circle's boundary. Sliding along the edge is what makes this a
+    // true CLIP — the surviving portion keeps its exact outline, with only
+    // its lower end cut off on the arc. (An earlier version clamped straight
+    // up in +y, which pivots a slanted stroke's edges — the X/V glyphs
+    // read as vertically squashed into the margin rather than cut.) All cut
+    // points land on the same circle, so neighbouring letters of one
+    // numeral still meet one continuous arc. Vertices outside every circle
+    // are untouched.
+    const clipLetterToArcs = (letterGroup, lx, ly, dth, subs) => {
+      const cos = Math.cos(dth), sin = Math.sin(dth);
+      letterGroup.traverse((o) => {
+        if (!o.isMesh) return;
+        // Stroke edge direction, letter-local -> numeral-local (the letter
+        // carries rotation.z = -dth). Unit length is preserved by rotation.
+        const [ex, ey] = o.userData.clipDir || [0, 1];
+        const dxn = ex * cos + ey * sin;
+        const dyn = -ex * sin + ey * cos;
+        const pos = o.geometry.attributes.position;
+        let touched = false;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i), y = pos.getY(i);
+          let nx = x * cos + y * sin + lx;
+          let ny = -x * sin + y * cos + ly;
+          let moved = false;
+          for (const s of subs) {
+            const px = nx - s.sx, py = ny - s.sy;
+            const inside = px * px + py * py - s.R * s.R;
+            if (inside < 0) {
+              // Slide by t along the edge to the circle: |p + t·d - c| = R.
+              // p is interior, so the positive root always exists.
+              const b = px * dxn + py * dyn;
+              const t = -b + Math.sqrt(b * b - inside);
+              nx += t * dxn;
+              ny += t * dyn;
+              moved = true;
+            }
+          }
+          if (moved) {
+            touched = true;
+            const rx = nx - lx, ry = ny - ly; // back to letter-local
+            pos.setX(i, rx * cos - ry * sin);
+            pos.setY(i, rx * sin + ry * cos);
+          }
+        }
+        if (touched) {
+          pos.needsUpdate = true;
+          o.geometry.computeVertexNormals();
+          o.geometry.computeBoundingSphere();
+        }
+      });
+    };
+
     for (let h = 0; h < 12; h++) {
-      // Skip any numeral sitting on a sub-dial. Margin 0.03·radius keeps the
-      // immediate neighbours (e.g. V/VII beside a 6-o'clock sub-dial at the
-      // standard 0.39–0.48 offset, 0.2R sub-radius) — verified by the trig:
-      // neighbour centre-distance ≈ 0.36R vs threshold ≈ 0.335R.
-      {
-        const a = (h / 12) * Math.PI * 2;
-        const nx = Math.sin(a) * rc, ny = Math.cos(a) * rc;
-        if (subdials.some((sd) => Math.hypot(nx - sd.x, ny - sd.y) < sd.r + H / 2 + radius * 0.03)) continue;
-      }
-      const numeral = new THREE.Group();
-      const letters = [...ROMAN[h]].map((ch) => LETTER[ch]());
-      const total = letters.reduce((s, l) => s + l.userData.w, 0) + gap * (letters.length - 1);
-      let sCur = -total / 2;
-      for (const l of letters) {
-        // Fan each letter along the marker arc: position on the circle of
-        // radius rc (local origin sits on that circle) and rotate radially.
-        const dth = (sCur + l.userData.w / 2) / rc;
-        l.position.set(Math.sin(dth) * rc, Math.cos(dth) * rc - rc, 0);
-        l.rotation.z = -dth;
-        numeral.add(l);
-        sCur += l.userData.w + gap;
-      }
       const a = (h / 12) * Math.PI * 2;
-      numeral.position.set(Math.sin(a) * rc, Math.cos(a) * rc, 0.12 + D / 2);
+      const cosA = Math.cos(a), sinA = Math.sin(a);
+      // Sub-dial centres in THIS numeral's local frame (the numeral sits at
+      // radius rc, rotated by −a; invert that so a letter's local x can be
+      // tested straight against the sub-dial circle).
+      const localSubs = subdials.map((sd) => {
+        const dx = sd.x - sinA * rc, dy = sd.y - cosA * rc;
+        return { sx: dx * cosA - dy * sinA, sy: dx * sinA + dy * cosA, R: sd.r + subdialMargin };
+      });
+
+      // Weight-balanced stroke width for THIS numeral (gap scales with it so
+      // letter spacing stays proportionate to the strokes it separates).
+      const swNum = numeralStrokeW(ROMAN[h]);
+      const gapNum = swNum * markerAesthetics.gapFactor;
+      const letters = [...ROMAN[h]].map((ch) => LETTER[ch](swNum));
+      const total = letters.reduce((s, l) => s + l.userData.w, 0) + gapNum * (letters.length - 1);
+      // First pass: fan each letter and work out its clip line + how much of it
+      // survives, before committing any of them to the numeral group.
+      let sCur = -total / 2;
+      const placed = [];
+      let bestFrac = 0;
+      for (const l of letters) {
+        const dth = (sCur + l.userData.w / 2) / rc;
+        sCur += l.userData.w + gapNum;
+        const lx = Math.sin(dth) * rc, ly = Math.cos(dth) * rc - rc;
+        // Top of the (margin-expanded) sub-dial circle directly below this
+        // letter's x — the height at which the numeral must be cut here.
+        let yBoundary = -Infinity;
+        for (const s of localSubs) {
+          const ddx = lx - s.sx;
+          if (Math.abs(ddx) < s.R) yBoundary = Math.max(yBoundary, s.sy + Math.sqrt(s.R * s.R - ddx * ddx));
+        }
+        const yMinLetter = yBoundary === -Infinity ? -Infinity : yBoundary - ly;
+        const keptFrac = yMinLetter === -Infinity
+          ? 1
+          : Math.max(0, (H / 2 - Math.max(yMinLetter, -H / 2)) / H);
+        bestFrac = Math.max(bestFrac, keptFrac);
+        placed.push({ l, lx, ly, dth, yMinLetter, keptFrac });
+      }
+      // Squarely on a sub-dial — nothing worth showing here.
+      if (bestFrac < MIN_KEEP_FRAC) continue;
+
+      const numeral = new THREE.Group();
+      for (const p of placed) {
+        if (p.keptFrac < LETTER_MIN_FRAC) continue; // fully/mostly covered letter
+        // Arc-clip every surviving letter (no-op when nothing overlaps): the
+        // keptFrac estimate samples the arc only at the letter's centre-line,
+        // so a corner can still nick the circle even at keptFrac = 1.
+        if (localSubs.length) clipLetterToArcs(p.l, p.lx, p.ly, p.dth, localSubs);
+        p.l.position.set(p.lx, p.ly, 0);
+        p.l.rotation.z = -p.dth;
+        numeral.add(p.l);
+      }
+      numeral.position.set(sinA * rc, cosA * rc, 0.12 + D / 2);
       numeral.rotation.z = -a;
       g.add(numeral);
     }
@@ -1458,54 +1603,54 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
 
 export function makeHand({ length, kind }) {
   const g = new THREE.Group();
-  const s = new THREE.Shape();
-  const tail = length * (kind === 'second' ? 0.26 : 0.22);
-  let depth = Math.max(length * 0.012, 0.35);
+  const handAesthetics = aesthetics.dial.hands;
+  const config = handAesthetics[kind];
 
-  if (kind === 'hour') {
-    // Simple baton: straight sides with a slight taper and a flat tip.
-    const w = length * 0.09;
-    s.moveTo(-w * 0.5, -tail * 0.5);
-    s.lineTo(w * 0.5, -tail * 0.5);
-    s.lineTo(w * 0.4, length);
-    s.lineTo(-w * 0.4, length);
-    s.closePath();
-  } else if (kind === 'minute') {
-    const w = length * 0.055;
-    s.moveTo(-w * 0.5, -tail * 0.5);
-    s.lineTo(w * 0.5, -tail * 0.5);
-    s.lineTo(w * 0.4, length);
-    s.lineTo(-w * 0.4, length);
-    s.closePath();
+  const tail = length * config.tailFactor;
+  const depth = Math.max(length * config.depthFactor, config.depthMin);
+  let bossH = depth * 1.6;
+
+  if (kind === 'hour' || kind === 'minute') {
+    // ROD hands: a constant-girth cylinder running tail → tip (cylinder
+    // axis is already local +Y, the hand's pointing direction). Radius
+    // derives from the old blade's width but at 0.3× so the hour and
+    // minute rods clear each other where they cross — the minute hand
+    // rides only 1.2 above the hour hand's plane (main.js), so
+    // rHour + rMinute must stay under that with margin
+    // (0.3: 0.54 + 0.48 ≈ 1.0 at current lengths).
+    const rBase = length * config.widthFactor * 0.3;
+    const rod = new THREE.Mesh(
+      new THREE.CylinderGeometry(rBase, rBase, tail + length, 16),
+      MATS.blueSteel
+    );
+    rod.position.y = (length - tail) / 2;
+    g.add(rod);
+    bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
   } else {
-    // second: fine needle
-    const w = length * 0.02;
+    // second: fine needle (unchanged flat blade)
+    const w = length * config.widthFactor;
+    const s = new THREE.Shape();
     s.moveTo(-w, -tail);
     s.lineTo(w, -tail);
     s.lineTo(w * 0.5, length);
     s.lineTo(-w * 0.5, length);
     s.closePath();
-    depth = Math.max(length * 0.008, 0.28);
-  }
-
-  const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false });
-  geo.translate(0, 0, -depth / 2);
-  g.add(new THREE.Mesh(geo, MATS.blueSteel));
-
-  // Counterweight tail disc for the second hand, boss for all.
-  if (kind === 'second') {
+    const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false });
+    geo.translate(0, 0, -depth / 2);
+    g.add(new THREE.Mesh(geo, MATS.blueSteel));
+    // Counterweight tail disc.
     const cw = new THREE.Mesh(
-      new THREE.CylinderGeometry(length * 0.045, length * 0.045, depth, 16),
+      new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),
       MATS.blueSteel
     );
     cw.rotateX(Math.PI / 2);
-    cw.position.set(0, -tail * 0.8, 0);
+    cw.position.set(0, -tail * config.counterweightOffsetFactor, 0);
     g.add(cw);
   }
 
-  const bossR = kind === 'hour' ? length * 0.05 : kind === 'minute' ? length * 0.035 : length * 0.03;
+  const bossR = length * config.bossSizeFactor;
   const boss = new THREE.Mesh(
-    new THREE.CylinderGeometry(bossR, bossR, depth * 1.6, 18),
+    new THREE.CylinderGeometry(bossR, bossR, bossH, 18),
     MATS.blueSteel
   );
   boss.rotateX(Math.PI / 2);
