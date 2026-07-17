@@ -738,7 +738,6 @@ registerLabel('Balance cock', balanceCock);
 // the real going train, the minute hand, or the mainspring underneath.
 const camRadius = fourthWheelR * 0.4;
 const hammerArmLen = camRadius * 2.3;
-const HAMMER_SWING_RAD = THREE.MathUtils.degToRad(30); // retracted clearance angle
 // Mount the hammer perpendicular to the fourth→escape line, on the side
 // away from the balance. The previous "away from both neighbours" heuristic
 // (sum of the two away-vectors) degenerates in the tornado layout: the
@@ -756,17 +755,94 @@ if ((P.balance.x - P.fourth.x) * outX + (P.balance.y - P.fourth.y) * outY > 0) {
 }
 const uFourthOut = { x: outX, y: outY };
 const heartCam = G.makeHeartCam({ radius: camRadius, thickness: 1.2 });
-const hammerPivotDist = heartCam.userData.rMin + hammerArmLen; // so 0° swing lands the roller in the notch
+const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: 2.0 });
+// Pivot distance solved for a TANGENT seat: at 0° swing the roller's centre
+// sits one roller radius outside the notch floor (rMin, plus the cam's
+// bevel expansion), so the roller surface just kisses the notch instead of
+// being over-driven a full roller radius INTO its flanks (the old
+// rMin + armLen put the roller CENTRE on the notch floor).
+const hammerPivotDist =
+  heartCam.userData.rMin + heartCam.userData.bevel + hammerLever.userData.rollerR + hammerArmLen;
 const hammerPivotPos = {
   x: P.fourth.x + uFourthOut.x * hammerPivotDist,
   y: P.fourth.y + uFourthOut.y * hammerPivotDist,
 };
 const hammerAimAngle = Math.atan2(-uFourthOut.y, -uFourthOut.x); // pivot -> fourth-wheel centre
 const hammerBaseAngle = hammerAimAngle - Math.PI / 2;
-// Phase the cam so its notch (local θ=0, i.e. local +X) faces the hammer's
-// approach direction once reset — the same fixed-direction phasing trick
-// used to seat the escape wheel's tooth tips on the pallet stones above.
-const camPhaseOffset = hammerAimAngle;
+// Phase the cam so its notch (local θ=0, i.e. local +X) points AT the
+// hammer's pivot once reset — the notch must face the roller, which
+// approaches from the pivot side (+uFourthOut from the cam centre, i.e.
+// hammerAimAngle + π). The previous phase used hammerAimAngle itself,
+// which aims the notch at the FAR side of the cam: at the seated pose the
+// roller landed on the full-radius lobe (θ=π), buried ~3 units deep,
+// instead of in the notch.
+const camPhaseOffset = hammerAimAngle + Math.PI;
+// Retracted swing angle — SOLVED, not fixed. While the watch runs, the cam
+// spins continuously under the parked hammer (one rev/min), so EVERY
+// feature of the lever — the bevel-expanded outline (taper corners, flared
+// head, edge spans), the roller and the pivot boss — must stay outside the
+// cam's whole swept disc (radius R + bevel: a lobe crosses any bearing
+// twice a minute) by a clearance margin. The old fixed 30° left the head
+// 0.84 INSIDE the sweep. In lever-local frame the cam centre sits at
+// (D·sinθ, D·cosθ) for swing θ; scan-then-bisect the smallest clearing θ —
+// the same build-time-solver pattern as HACK_PRESS_DIST / HAMMER_TAIL_DELTA.
+const HAMMER_SWING_MARGIN = 0.35;
+const HAMMER_SWING_RAD = (() => {
+  const sweptR = heartCam.userData.r + heartCam.userData.bevel;
+  const { outline, bevel, rollerR, bossR, length: armL } = hammerLever.userData;
+  const n = outline.length;
+  // Bevel-expanded outline: ExtrudeGeometry pushes each vertex out along
+  // its miter normal (intersection of the two offset edges) — replicate
+  // that so the solved angle matches the real mesh.
+  const area = outline.reduce((s, p, i) => {
+    const q = outline[(i + 1) % n];
+    return s + p[0] * q[1] - q[0] * p[1];
+  }, 0);
+  const ccw = area > 0 ? 1 : -1;
+  const edgeNormal = (ux, uy) => {
+    const m = Math.hypot(ux, uy) || 1;
+    return [(ccw * uy) / m, (-ccw * ux) / m];
+  };
+  const pts = outline.map((p, i) => {
+    const a = outline[(i - 1 + n) % n], b = outline[(i + 1) % n];
+    const n1 = edgeNormal(p[0] - a[0], p[1] - a[1]);
+    const n2 = edgeNormal(b[0] - p[0], b[1] - p[1]);
+    let mx = n1[0] + n2[0], my = n1[1] + n2[1];
+    const mm = Math.hypot(mx, my) || 1;
+    mx /= mm; my /= mm;
+    // True miter factor (three.js applies no miter limit; the flared head's
+    // corner reaches cosHalf ≈ 0.44) — only guard against degeneracy.
+    const cosHalf = Math.max(mx * n1[0] + my * n1[1], 0.1);
+    return [p[0] + (mx * bevel) / cosHalf, p[1] + (my * bevel) / cosHalf];
+  });
+  const distToLever = (cx, cy) => {
+    let d = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length];
+      const vx = bx - ax, vy = by - ay;
+      const t = clamp(((cx - ax) * vx + (cy - ay) * vy) / (vx * vx + vy * vy), 0, 1);
+      d = Math.min(d, Math.hypot(cx - ax - t * vx, cy - ay - t * vy));
+    }
+    d = Math.min(d, Math.hypot(cx, cy - armL) - rollerR); // roller — plain cylinder, no bevel
+    d = Math.min(d, Math.hypot(cx, cy) - bossR);          // pivot boss
+    return d;
+  };
+  const clearanceAt = (th) =>
+    distToLever(hammerPivotDist * Math.sin(th), hammerPivotDist * Math.cos(th))
+    - sweptR - HAMMER_SWING_MARGIN;
+  // θ=0 is the seated pose (intended deep contact); clearance grows as the
+  // lever swings away. Scan for the first clearing angle, then bisect.
+  let lo = 0, hi = Math.PI / 2;
+  for (let i = 1; i <= 180; i++) {
+    const th = (i / 180) * (Math.PI / 2);
+    if (clearanceAt(th) >= 0) { hi = th; lo = th - Math.PI / 360; break; }
+  }
+  for (let k = 0; k < 50; k++) {
+    const m = (lo + hi) / 2;
+    if (clearanceAt(m) >= 0) hi = m; else lo = m;
+  }
+  return hi;
+})();
 
 const Z_SECONDS_ARBOR = L_FOURTH + 2.2; // clear of the fourth wheel and escape pinion planes
 const secondsCamArbor = new THREE.Group();
@@ -776,7 +852,6 @@ movement.add(secondsCamArbor);
 registerExplode(secondsCamArbor, Z_SECONDS_ARBOR, 4);
 registerLabel('Heart cam (seconds reset)', secondsCamArbor);
 
-const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: 2.0 });
 const hammerGroup = new THREE.Group();
 hammerGroup.position.set(hammerPivotPos.x, hammerPivotPos.y, Z_SECONDS_ARBOR);
 hammerGroup.add(hammerLever);
