@@ -62,7 +62,11 @@ function gearOutlineShape(teeth, rootR, pitchR, tipR, opts = {}) {
 
 // Punch a central bore plus `spokes` crescent (annular-sector) cutouts into a
 // wheel shape — the classic clock-wheel crossing. innerR/outerR bound the arms.
-function addCrossingHoles(shape, spokes, innerR, outerR, boreR, armFrac = 0.42) {
+// armFrac is the fraction of the circumference kept as arm material: 0.15
+// is skeleton-caliber openworking — the windows dominate and the wheel
+// reads as rim + hub + slender spokes, yet 4–5 straight arms in
+// compression/tension still close the load path from hub to rim.
+function addCrossingHoles(shape, spokes, innerR, outerR, boreR, armFrac = 0.15) {
   const bore = new THREE.Path();
   bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
   shape.holes.push(bore);
@@ -109,9 +113,15 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
   const rootR = pitchR - module * 1.15;
   const shape = gearOutlineShape(teeth, rootR, pitchR, tipR);
 
-  const hubR = hub ? Math.max(boreR * 2.2, pitchR * 0.16) : boreR * 1.6;
-  const innerR = Math.max(hubR + module * 0.9, boreR * 3);
-  const outerR = rootR - module * 0.9;
+  // Skeleton-caliber proportions: hub pared to little more than the bore's
+  // seat, wide windows, slender 15% arms (via addCrossingHoles' default) —
+  // the windows dominate the face. The toothed rim keeps a 0.7·module band
+  // beyond the root land: the earlier 0.45 push read paper-thin under the
+  // bevel (0.22·module bite per edge left almost no flat face), so the rim
+  // takes back a little meat while arms and hub stay at their leanest.
+  const hubR = hub ? Math.max(boreR * 1.6, pitchR * 0.085) : boreR * 1.6;
+  const innerR = Math.max(hubR + module * 0.35, boreR * 2.0);
+  const outerR = rootR - module * 0.7;
   const useSpokes = outerR > innerR + module ? spokes : 0;
   addCrossingHoles(shape, useSpokes, innerR, outerR, boreR);
 
@@ -422,14 +432,17 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
 export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6 }) {
   const g = new THREE.Group();
   const rimO = radius;
-  const rimI = radius - thickness * 1.3;
+  const rimI = radius - thickness * 0.8;
 
-  // Smooth heavy rim (flat faces).
-  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness, 48), MATS.brass);
+  // Slim annular rim — was 1.3·thickness wide and a full thickness tall;
+  // 0.8 wide × 0.75 tall reads as a light precision ring while the 16
+  // timing screws (below, unchanged) keep the rim's visual mass where a
+  // real balance carries it: at the periphery.
+  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness * 0.75, 48), MATS.brass);
   g.add(rim);
 
-  // Two arms (a single diameter bar = 2 arms).
-  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.9, thickness * 0.75);
+  // Two arms (a single diameter bar = 2 arms), matched to the finer rim.
+  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.55, thickness * 0.5);
   g.add(new THREE.Mesh(armGeo, MATS.steel));
 
   // Central staff along Z (staffHeight lets the caller match the actual
@@ -899,16 +912,19 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
 
 export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
   const g = new THREE.Group();
-  // Lathe profile with groove ripples: radius oscillates as z climbs.
+  // Smooth cone core. The old version faked its grooves with annular
+  // RIPPLES — rotationally symmetric rings, which no chain could actually
+  // climb: a fusee's groove must be a HELIX, advancing axially as it goes
+  // around, or the chain has no way up the cone. The core surface follows
+  // exactly the r(f) = lerp(rLarge→rSmall) line the chain path rides
+  // (main.js fuseeGrooveAt), so the chain stays seated on the cone.
   const pts = [];
-  const N = grooveTurns * 10;
   pts.push(new THREE.Vector2(rLarge * 1.12, 0));
   pts.push(new THREE.Vector2(rLarge * 1.12, height * 0.04));
-  for (let i = 0; i <= N; i++) {
-    const f = i / N;
-    const rCore = rLarge + (rSmall - rLarge) * f;
-    const ripple = Math.cos(f * grooveTurns * Math.PI * 2) * (rLarge - rSmall) * 0.035;
-    pts.push(new THREE.Vector2(rCore + ripple, height * (0.06 + 0.88 * f)));
+  const NCORE = 12;
+  for (let i = 0; i <= NCORE; i++) {
+    const f = i / NCORE;
+    pts.push(new THREE.Vector2(rLarge + (rSmall - rLarge) * f, height * (0.06 + 0.88 * f)));
   }
   pts.push(new THREE.Vector2(rSmall * 0.85, height * 0.97));
   pts.push(new THREE.Vector2(rSmall * 0.45, height));
@@ -918,6 +934,23 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
   geo.rotateX(Math.PI / 2);
   const cone = new THREE.Mesh(geo, MATS.brass);
   g.add(cone);
+
+  // Helical guide flange — a screw-thread ridge standing slightly proud of
+  // the core, making grooveTurns turns from the large end to the small end
+  // over the same 0.06–0.94 band the chain occupies. The channel between
+  // adjacent flange turns (axial pitch 0.88·height/turns, comfortably wider
+  // than the chain's diameter) is the inclined groove that carries the
+  // chain up the cone.
+  const ridgeStand = Math.min((rLarge - rSmall) * 0.05, 0.24);
+  class ConeHelix extends THREE.Curve {
+    getPoint(t, target = new THREE.Vector3()) {
+      const a = t * grooveTurns * Math.PI * 2;
+      const r = rLarge + (rSmall - rLarge) * t + ridgeStand;
+      return target.set(Math.cos(a) * r, Math.sin(a) * r, height * (0.06 + 0.88 * t));
+    }
+  }
+  const flangeGeo = new THREE.TubeGeometry(new ConeHelix(), grooveTurns * 32, ridgeStand * 0.9, 8, false);
+  g.add(new THREE.Mesh(flangeGeo, MATS.brass));
 
   g.userData.rSmall = rSmall;
   g.userData.rLarge = rLarge;

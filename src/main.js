@@ -2231,6 +2231,19 @@ function updateExplode() {
 
 function updateLabels() {
   if (!labelsOn) return;
+  // Parts registered AFTER the UI was built get their elements created on
+  // demand — the chain registers its label lazily on the first tick (its
+  // mesh is built inside updateChain), so labelEntries outgrows the
+  // setup-time labelEls by one. Indexing the missing element used to throw
+  // here, and the uncaught exception killed the rAF loop: rendering, sim
+  // and camera controls all froze the moment labels were enabled.
+  while (labelEls.length < labelEntries.length) {
+    const el = document.createElement('div');
+    el.className = 'clock-label';
+    el.textContent = labelEntries[labelEls.length].name;
+    labelsContainer.appendChild(el);
+    labelEls.push(el);
+  }
   const w = window.innerWidth, h = window.innerHeight;
   for (let i = 0; i < labelEntries.length; i++) {
     const { obj } = labelEntries[i];
