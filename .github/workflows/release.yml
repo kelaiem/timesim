@@ -118,10 +118,11 @@ jobs:
           PORT="${SFTP_PORT:-22}"
           sftp -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -P "$PORT" \
             "$SFTP_USER@$SFTP_HOST" <<SFTP_EOF
+          cd $SFTP_PROJECT_PATH
           -mkdir $SFTP_RELEASES_PATH
           cd $SFTP_RELEASES_PATH
           put -r $VERSION
           -rm $SFTP_QA_SYMLINK
-          cd -
+          cd $SFTP_PROJECT_PATH
           symlink $SFTP_RELEASES_PATH/$VERSION $SFTP_QA_SYMLINK
           SFTP_EOF
