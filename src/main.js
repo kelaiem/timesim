@@ -972,12 +972,12 @@ windSpinner.add(stem);
 // group, so pulling out also disengages it from the crown wheel, as on a
 // real sliding-pinion keyless works.)
 
-// Knurled crown: faceted barrel (low segment count reads as knurling) + cap.
-const crownBody = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 2.2, 14, 1), MATS.steel);
-crownBody.position.y = stemLen + 0.4;
-const crownCap = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.4, 0.8, 14, 1), MATS.steel);
-crownCap.position.y = stemLen + 1.9;
-windSpinner.add(crownBody, crownCap);
+// Knurled crown — enlarged barrel with true knurl ridges around the rim and
+// on the face, plus a torus ring in relief (see makeCrown in geometry.js).
+const crown = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.steel }); // +75% over the original 3.1/2.6
+crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem (+Y)
+crown.position.y = stemLen - 0.7; // base where the old crown's base sat
+windSpinner.add(crown);
 
 // Handles into the fusee arbor's ratchet + click for the winding animation.
 const ratchetMesh = fuseeRatchetGroup.getObjectByName('ratchet');
@@ -2066,7 +2066,7 @@ updateCrownUI();
 // position) — cursor-affords on hover either way.
 const crownRaycaster = new THREE.Raycaster();
 const crownPointerNDC = new THREE.Vector2();
-const crownHitMeshes = [crownBody, crownCap];
+const crownHitMeshes = [crown]; // group — hit-test recurses into its parts
 function setCrownPointerFromEvent(e) {
   const rect = renderer.domElement.getBoundingClientRect();
   crownPointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -2075,7 +2075,7 @@ function setCrownPointerFromEvent(e) {
 function crownHitTest(e) {
   setCrownPointerFromEvent(e);
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
-  return crownRaycaster.intersectObjects(crownHitMeshes, false).length > 0;
+  return crownRaycaster.intersectObjects(crownHitMeshes, true).length > 0;
 }
 
 const CROWN_DRAG_SENSITIVITY = (2 * Math.PI) / 350; // ~350px of drag per full turn
