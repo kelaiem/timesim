@@ -1205,6 +1205,190 @@ export function makeBackPlate({ radius, thickness }) {
   return m;
 }
 
+// ---------------------------------------------------------------------------
+// Glashütte-style THREE-QUARTER PLATE.
+//
+// The upper plate of the movement: one disc, coplanar with nothing else,
+// carrying the UPPER pivot of every train arbor and the pallet fork, with a
+// quarter of its area cut away so the balance can hang in the open under its
+// own cock. Everything about the outline is passed in already SOLVED by the
+// caller (main.js measures the parts it has to clear) — this builder only
+// turns that description into material:
+//
+//   cut   the balance + escapement opening. A wedge of half-angle `phiOpen`
+//         about `aim` (the plate-centre → balance-centre direction) is open
+//         all the way to the rim; outside that wedge the edge follows
+//         `cut.radii`, a per-degree table the caller measures. That table is
+//         why this is not a circular hole: the opening also has to expose the
+//         escape wheel, the pallet fork and the bridge that carries them,
+//         which stand off to one side of the balance — see the TQ_CUT solve
+//         in main.js.
+//   holes circular openings (barrel/drum, pivot bores, pillar seats).
+//   slots stadium-shaped openings for parts that SWEEP through the plate
+//         (the setting lever's tail post and its ramp collar) — the swept
+//         union of a circle of radius r along the segment a → b.
+//
+// Style follows makeBackPlate: nickel, bevelled edge, extruded about z = 0.
+// ---------------------------------------------------------------------------
+// The cut's edge radius at bearing `phi` off `cut.aim`, read from the caller's
+// per-degree table (cut.radii[0..359], index = degrees CCW from the aim) with
+// linear interpolation. A table rather than a formula because the opening is
+// not one shape: it is the balance's clearance circle UNIONED with a window
+// measured off the escapement's own geometry, and only the caller can measure
+// that. See the TQ_CUT solve in main.js.
+export function cutEdgeRadius(cut, phi) {
+  const deg = (phi * 180) / Math.PI;
+  const t = ((deg % 360) + 360) % 360;
+  const i = Math.floor(t), f = t - i;
+  const a = cut.radii[i % 360], b = cut.radii[(i + 1) % 360];
+  return a + (b - a) * f;
+}
+
+export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [] }) {
+  // A bevelled extrusion grows its material OUTWARD from the drawn profile by
+  // bevelSize — into every hole and into the balance cut. The caller solved
+  // its clearances against the finished EDGES, so shrink the drawn outline
+  // and grow the drawn openings by exactly that much and the mesh lands where
+  // it was asked to.
+  const bevelSize = 0.06;
+  radius -= bevelSize;
+  const cut = { ...cutIn, radii: cutIn.radii.map((r) => r + bevelSize) };
+  holes = holes.map((h) => ({ ...h, r: h.r + bevelSize }));
+  slots = slots.map((s) => ({ ...s, r: s.r + bevelSize }));
+  // Where the wedge's two edges leave the rim: |C + t·d| = radius, t > 0.
+  const rimHit = (ang) => {
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+    const b = cut.x * dx + cut.y * dy;
+    const c = cut.x * cut.x + cut.y * cut.y - radius * radius;
+    const t = -b + Math.sqrt(Math.max(b * b - c, 0));
+    return { x: cut.x + dx * t, y: cut.y + dy * t };
+  };
+  const angP = cut.aim + cut.phiOpen, angM = cut.aim - cut.phiOpen;
+  const EP = rimHit(angP), EM = rimHit(angM);
+  const thP = Math.atan2(EP.y, EP.x);
+  let thM = Math.atan2(EM.y, EM.x);
+  while (thM < thP) thM += Math.PI * 2; // travel CCW from E+ the long way round
+
+  // A slot may reach PAST the rim — the setting lever's ramp collar hangs
+  // over the plate's edge — and a hole that crosses the outer contour is not
+  // a hole at all (ExtrudeGeometry triangulates it into garbage: the collar
+  // came out embedded in solid plate at every crown pose). Those become
+  // NOTCHES: the rim is walked in small steps and pulled in wherever a slot
+  // eats into it, and only the fully-enclosed slots stay as holes.
+  const segDist = (px, py, sl) => {
+    const vx = sl.bx - sl.ax, vy = sl.by - sl.ay;
+    const L2 = vx * vx + vy * vy || 1e-9;
+    const t = Math.max(0, Math.min(1, ((px - sl.ax) * vx + (py - sl.ay) * vy) / L2));
+    return Math.hypot(px - sl.ax - t * vx, py - sl.ay - t * vy) - sl.r;
+  };
+  const reachesRim = (sl) => {
+    for (const [x, y] of [[sl.ax, sl.ay], [sl.bx, sl.by]]) if (Math.hypot(x, y) + sl.r > radius) return true;
+    return false;
+  };
+  const notches = slots.filter(reachesRim);
+  slots = slots.filter((sl) => !reachesRim(sl));
+  const rimRadiusAt = (th) => {
+    const dx = Math.cos(th), dy = Math.sin(th);
+    let R = radius;
+    for (const sl of notches) {
+      let lo = null;
+      for (let t = 0; t <= radius; t += 0.4) {
+        if (segDist(dx * t, dy * t, sl) <= 0) { lo = Math.max(0, t - 0.4); break; }
+      }
+      if (lo === null) continue;
+      let hi = lo + 0.4;
+      for (let k = 0; k < 24; k++) {
+        const m = (lo + hi) / 2;
+        if (segDist(dx * m, dy * m, sl) <= 0) hi = m; else lo = m;
+      }
+      R = Math.min(R, lo);
+    }
+    return R;
+  };
+
+  const s = new THREE.Shape();
+  s.moveTo(EP.x, EP.y);
+  if (notches.length) {
+    // Adaptive: a notch's angular edges are near-radial steps (43.7 → 36 in a
+    // fraction of a degree), and a straight chord across one of those cuts
+    // the corner off the opening — measurably (0.02 into the ramp collar's
+    // clearance) at a uniform 0.5°.
+    const emit = (th0, R0, th1, R1, depth) => {
+      const thm = (th0 + th1) / 2;
+      const Rm = rimRadiusAt(thm);
+      if (depth < 7 && Math.abs(R1 - R0) > 0.05) {
+        emit(th0, R0, thm, Rm, depth + 1);
+        emit(thm, Rm, th1, R1, depth + 1);
+        return;
+      }
+      s.lineTo(Math.cos(th1) * R1, Math.sin(th1) * R1);
+    };
+    const steps = Math.max(72, Math.round(((thM - thP) / (Math.PI * 2)) * 720));
+    let thPrev = thP, Rprev = rimRadiusAt(thP);
+    for (let i = 1; i <= steps; i++) {
+      const th = thP + ((thM - thP) * i) / steps;
+      const R = rimRadiusAt(th);
+      emit(thPrev, Rprev, th, R, 0);
+      thPrev = th; Rprev = R;
+    }
+  } else {
+    s.absarc(0, 0, radius, thP, thM, false); // rim, CCW, material on the left
+  }
+  // ...in along the −phiOpen edge, around the balance the short way (φ
+  // decreasing, i.e. clockwise about the balance so the opening stays a
+  // hole in the material), then back out along the +phiOpen edge.
+  const STEP = 2 * Math.PI / 180;
+  const N = Math.max(2, Math.round((2 * (Math.PI - cut.phiOpen)) / STEP));
+  for (let i = 0; i <= N; i++) {
+    const phi = -cut.phiOpen - (i / N) * 2 * (Math.PI - cut.phiOpen);
+    const r = cutEdgeRadius(cut, phi);
+    s.lineTo(cut.x + Math.cos(cut.aim + phi) * r, cut.y + Math.sin(cut.aim + phi) * r);
+  }
+  s.lineTo(EP.x, EP.y);
+  s.closePath();
+
+  for (const h of holes) {
+    const p = new THREE.Path();
+    p.absarc(h.x, h.y, h.r, 0, Math.PI * 2, true); // CW: a hole
+    s.holes.push(p);
+  }
+  for (const sl of slots) {
+    const dx = sl.bx - sl.ax, dy = sl.by - sl.ay;
+    const d = Math.hypot(dx, dy);
+    const ux = d > 1e-9 ? dx / d : 1, uy = d > 1e-9 ? dy / d : 0;
+    const ang = Math.atan2(uy, ux);
+    const p = new THREE.Path();
+    // Clockwise stadium. Each cap must bulge AWAY from the other end: going
+    // clockwise from +90° to −90° sweeps through the segment's own direction,
+    // so that arc belongs to the FAR end (b) and the −90° → −270° one to a.
+    p.absarc(sl.bx, sl.by, sl.r, ang + Math.PI / 2, ang - Math.PI / 2, true);
+    p.absarc(sl.ax, sl.ay, sl.r, ang - Math.PI / 2, ang - Math.PI * 1.5, true);
+    p.closePath();
+    s.holes.push(p);
+  }
+
+  // `thickness` is the plate's TOTAL depth, bevel included — the caller's
+  // z-budget is measured against its real faces, and ExtrudeGeometry adds the
+  // bevel OUTSIDE the extrusion depth (the back plate's bevel quietly does
+  // the same; here it would have put the plate's underside 0.16 into the
+  // pallet fork).
+  const bevelT = thickness * 0.15;
+  const depth = thickness - 2 * bevelT;
+  const geo = new THREE.ExtrudeGeometry(s, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: bevelT,
+    bevelSize,
+    bevelSegments: 2,
+    curveSegments: 72,
+  });
+  geo.translate(0, 0, -depth / 2);
+  const m = new THREE.Mesh(geo, MATS.nickel);
+  m.userData.r = radius;
+  m.userData.thickness = thickness;
+  return m;
+}
+
 export function makeCock({ length, width }) {
   const g = new THREE.Group();
   const hw = width / 2;
@@ -1241,6 +1425,174 @@ export function makeCock({ length, width }) {
   g.add(js);
 
   g.userData.length = length;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// Combined PALLET-AND-ESCAPE BRIDGE — a separate cock spanning the escape
+// wheel and pallet fork, standing on LEGS all the way down to the base plate
+// (not on the three-quarter plate above it), so the whole escapement is one
+// assembly that can be fitted, adjusted and lifted on its own, reached
+// through the window cut in the three-quarter plate.
+//
+// `chain` is an ordered list of {x, y, r, foot} in bridge-local XY: the slab
+// is the union of a disc at every link and a bar between consecutive links,
+// which is how a real bridge is shaped (bosses joined by waisted arms) and
+// what lets the caller SOLVE the leg positions against everything underneath
+// instead of drawing a shape and hoping. Links marked foot:true get a leg
+// dropping `footDrop` to the base plate, a spread foot pad at the bottom and
+// a screw head on top. Slab is centred on local z = 0.
+// ---------------------------------------------------------------------------
+export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
+  const g = new THREE.Group();
+  const slabMat = MATS.nickel;
+  for (const n of chain) {
+    let disc;
+    if (n.bore) {
+      // A pivot boss: bored for the staff and COUNTERBORED from the top for
+      // its chaton, so the jewel is set INTO the bridge the same way it is
+      // set into the plate — a chaton lying on a surface is not a setting.
+      const t2 = thickness / 2;
+      const cbR = n.cbR ?? n.bore, cbD = n.cbDepth ?? 0;
+      const pts = [
+        new THREE.Vector2(n.bore, -t2),
+        new THREE.Vector2(n.bore, t2 - cbD),
+        new THREE.Vector2(cbR, t2 - cbD),
+        new THREE.Vector2(cbR, t2),
+        new THREE.Vector2(n.r, t2),
+        new THREE.Vector2(n.r, -t2),
+        new THREE.Vector2(n.bore, -t2),
+      ];
+      const bossG = new THREE.LatheGeometry(pts, 40);
+      bossG.rotateX(Math.PI / 2); // lathe revolves about +Y; stand it along Z
+      disc = new THREE.Mesh(bossG, slabMat);
+    } else {
+      disc = new THREE.Mesh(new THREE.CylinderGeometry(n.r, n.r, thickness, 28), slabMat);
+      disc.geometry.rotateX(Math.PI / 2);
+    }
+    disc.position.set(n.x, n.y, 0);
+    g.add(disc);
+  }
+  for (let i = 0; i + 1 < chain.length; i++) {
+    const a = chain[i], b = chain[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) continue;
+    const w = 2 * Math.min(a.r, b.r) * 0.8; // waisted between the bosses
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(len, w, thickness), slabMat);
+    bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0);
+    bar.rotation.z = Math.atan2(dy, dx);
+    g.add(bar);
+  }
+  for (const n of chain) {
+    if (!n.foot) continue;
+    const legR = n.r * 0.62;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(legR, legR * 1.15, footDrop, 20), slabMat);
+    leg.geometry.rotateX(Math.PI / 2);
+    leg.position.set(n.x, n.y, -thickness / 2 - footDrop / 2);
+    g.add(leg);
+    // Spread pad where it lands on the base plate, and the screw that holds
+    // the whole bridge down, sunk into the slab's top face.
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(legR * 1.5, legR * 1.5, thickness * 0.5, 20), slabMat);
+    pad.geometry.rotateX(Math.PI / 2);
+    pad.position.set(n.x, n.y, -thickness / 2 - footDrop + thickness * 0.25);
+    g.add(pad);
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.55, legR * 0.55, thickness * 0.5, 14), MATS.blueSteel);
+    screw.geometry.rotateX(Math.PI / 2);
+    screw.position.set(n.x, n.y, thickness * 0.25);
+    g.add(screw);
+  }
+  for (const j of jewels) {
+    // Rubbed-in jewel, flush with the bridge's top face — same simple
+    // bearing the plate uses (see the plate build in main.js for why the
+    // screwed-gold-chaton version read as a sunken stone).
+    const jewel = new THREE.Mesh(ringExtrude(j.boreR + 0.95, j.boreR, j.depth, 32), MATS.ruby);
+    jewel.position.set(j.x, j.y, thickness / 2 - j.depth / 2);
+    g.add(jewel);
+  }
+  g.userData.thickness = thickness;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// SCREWED GOLD CHATON — the Glashütte/Lange signature, and the traditional
+// way an upper pivot jewel is mounted.
+//
+// Two different fits, and they are not the same:
+//  · the RUBY into the CHATON is a friction fit — pressed (or rubbed) into
+//    the gold ring, permanent;
+//  · the CHATON into the PLATE is SCREWED — it drops into a counterbore and
+//    is held by 2–3 tiny blued screws whose heads overlap its rim.
+// The screws are the point: jewels were expensive and fragile, and a screwed
+// chaton could be lifted out to replace a cracked jewel or shimmed to set an
+// arbor's endshake. Pressed-in (Seitz) jewels made that obsolete, so screwed
+// chatons survive purely as a mark of traditional finishing — which is
+// exactly why a movement with a three-quarter plate and an Ab/Auf reserve
+// should have them.
+//
+// Local frame: z = 0 is the chaton's TOP face (flush with the plate's), the
+// body hanging down `thickness`. userData.outerR is the counterbore radius
+// the caller must cut; userData.screwR/screwAt place the screws in the plate.
+// ---------------------------------------------------------------------------
+export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase = 0 }) {
+  const g = new THREE.Group();
+  const rubyR = boreR + 0.4;
+  const outerR = rubyR + 0.55;
+
+  // Gold ring. Lathe profile, outer wall → rim → the OIL SINK: the underside
+  // is dished out around the bore so oil is held at the pivot by surface
+  // tension instead of creeping away along the plate.
+  const t = thickness;
+  const pts = [
+    new THREE.Vector2(rubyR, 0),
+    new THREE.Vector2(outerR, 0),
+    new THREE.Vector2(outerR, -t),
+    new THREE.Vector2(rubyR * 1.02, -t),
+    new THREE.Vector2(rubyR * 1.02, -t * 0.55),
+    new THREE.Vector2(rubyR, -t * 0.35),
+    new THREE.Vector2(rubyR, 0),
+  ];
+  // LatheGeometry revolves about +Y — the profile's second coordinate comes
+  // out as height in Y, so it has to be stood up along Z like every other
+  // lathe part here (makePillar does the same).
+  const ringG = new THREE.LatheGeometry(pts, 40);
+  ringG.rotateX(Math.PI / 2);
+  g.add(new THREE.Mesh(ringG, MATS.gold));
+
+  // Ruby, pressed in: an annulus with the pivot's bore through it, its top
+  // face slightly below the gold rim (as a set stone sits).
+  const rubyGeo = ringExtrude(rubyR, boreR, t * 0.62, 32);
+  const jewel = new THREE.Mesh(rubyGeo, MATS.ruby);
+  jewel.position.z = -t * 0.08 - (t * 0.62) / 2;
+  g.add(jewel);
+  // Oil sink cone on the ruby's pivot side — the classic dished seat.
+  const sink = new THREE.Mesh(
+    new THREE.CylinderGeometry(rubyR * 0.98, boreR * 1.05, t * 0.22, 32, 1, true), MATS.ruby);
+  sink.geometry.rotateX(Math.PI / 2);
+  sink.position.z = -t * 0.82;
+  g.add(sink);
+
+  // Blued screws, heads FLUSH with the top face and straddling the rim: half
+  // over the chaton, half biting the plate outside the counterbore.
+  const headR = Math.max(0.22, outerR * 0.19), headT = t * 0.5;
+  for (let i = 0; i < screwCount; i++) {
+    const a = screwPhase + (i / screwCount) * Math.PI * 2;
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(headR, headR * 0.92, headT, 16), MATS.blueSteel);
+    head.geometry.rotateX(Math.PI / 2);
+    head.position.set(Math.cos(a) * outerR, Math.sin(a) * outerR, -headT / 2);
+    g.add(head);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(headR * 1.7, headR * 0.28, headT * 0.35), MATS.dark);
+    // Sunk, not proud: nothing on this face may stand above the plate — the
+    // hack blade passes 0.18 over it.
+    slot.position.set(Math.cos(a) * outerR, Math.sin(a) * outerR, -headT * 0.28);
+    slot.rotation.z = a;
+    g.add(slot);
+  }
+
+  g.userData.outerR = outerR;
+  g.userData.rubyR = rubyR;
+  g.userData.boreR = boreR;
+  g.userData.screwOuterR = outerR + headR;
   return g;
 }
 
@@ -1422,7 +1774,11 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
 // position. Any hour numeral whose marker would land on a sub-dial is
 // skipped automatically (computed, replacing the old hard-coded VI
 // omission).
-export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
+// centerBoreR: hole at the dial centre for the motion works' hand arbors —
+// the hour-wheel TUBE (carrying the hour hand) and the cannon pinion inside
+// it have to physically reach the front of the dial. Without it the hands
+// were mounted in front of an unbroken disc with nothing passing through.
+export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0 }) {
   const g = new THREE.Group();
   let mat = null;
 
@@ -1515,13 +1871,18 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5 }) {
 
   // Dial disc — with a circular hole cut through it at each sub-dial.
   let discGeo;
-  if (subdials.length) {
+  if (subdials.length || centerBoreR > 0) {
     const discShape = new THREE.Shape();
     discShape.absarc(0, 0, radius, 0, Math.PI * 2, false);
     for (const sd of subdials) {
       const h = new THREE.Path();
       h.absarc(sd.x, sd.y, sd.r, 0, Math.PI * 2, true);
       discShape.holes.push(h);
+    }
+    if (centerBoreR > 0) {
+      const bore = new THREE.Path();
+      bore.absarc(0, 0, centerBoreR, 0, Math.PI * 2, true);
+      discShape.holes.push(bore);
     }
     discGeo = new THREE.ShapeGeometry(discShape, 96);
     // ShapeGeometry UVs are raw local coordinates — remap to the 0..1 disc

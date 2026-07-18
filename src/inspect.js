@@ -56,16 +56,37 @@ const MECH_GRAPH = {
   // node 'plate' is the ground; 'mainspring' and 'crown' are force sources.
   support: [
     ['Mainspring drum', 'plate'],            // drum arbor pivots in the plate
+    ['Mainspring drum', 'Three-quarter plate'], // ...and in a plain bushing in the upper plate
     ['Fusee & great wheel', 'plate'],        // fusee arbor pivots plate/bridge
     ['Center wheel', 'plate'],
     ['Third wheel', 'plate'],
     ['Fourth wheel', 'plate'],
-    ['Escape wheel', 'plate'],
-    ['Pallet fork', 'plate'],
-    ['Balance cock', 'plate'],
-    ['Barrel-center bridge', 'plate'],
-    ['Center-third bridge', 'plate'],
-    ['Third-fourth bridge', 'plate'],
+    ['Escape wheel', 'plate'],               // lower pivot; the UPPER one is in its own bridge
+    ['Pallet fork', 'plate'],                // lower pivot; the UPPER one is on the escapement bridge
+    // The three train bridges are GONE — a Glashutte-style three-quarter
+    // plate supersedes them (see makeThreeQuarterPlate / the plate build in
+    // main.js). It is the movement's upper structure: it carries the upper
+    // pivot of every train arbor and of the pallet fork, stands on the
+    // pillars, and the balance cock and hack spring are screwed to its top
+    // face. Those two used to float 17.5 and 12.35 units above the plate
+    // they claimed to be mounted on.
+    ['Three-quarter plate', 'pillars'],
+    ['pillars', 'plate'],
+    ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
+    ['Center wheel', 'Three-quarter plate'],
+    ['Third wheel', 'Three-quarter plate'],
+    ['Fourth wheel', 'Three-quarter plate'],
+    // ...but NEITHER the escape wheel NOR the pallet fork: they share a
+    // combined pallet-and-escape bridge that stands on the BASE plate on its
+    // own legs and comes up through a window cut in the three-quarter plate.
+    // That is Glashutte practice, and it buys two things — the escapement
+    // becomes a self-contained assembly that can be fitted and adjusted
+    // without disturbing the plate or any other train pivot, and it stays
+    // VISIBLE from the back instead of being buried under plate.
+    ['Escape wheel', 'Escape bridge'],
+    ['Pallet fork', 'Escape bridge'],
+    ['Escape bridge', 'plate'],              // its legs land on the base plate
+    ['Balance cock', 'Three-quarter plate'],
     ['Balance', 'Balance cock'],             // staff's upper pivot in the cock jewel
     ['Hairspring', 'Balance'],               // collet on the staff (TODO: stud should pin to cock)
     ['Chain', 'Mainspring drum'],            // hooked to the drum wall
@@ -73,9 +94,9 @@ const MECH_GRAPH = {
     ['Keyless works', 'plate'],              // stem bushing + wheel studs on the plate
     ['Setting lever', 'plate'],
     ['Yoke', 'plate'],
-    ['Hack spring', 'plate'],                // anchor screw
+    ['Hack spring', 'Three-quarter plate'],  // anchor block screwed to the plate's top face
     ['Hack ramp', 'Setting lever'],          // collar pressed onto the tail post
-    ['Reset hammer', 'plate'],
+    ['Reset hammer', 'Three-quarter plate'], // its arbor runs in a bore in the plate
     ['Heart cam (seconds reset)', 'Fourth wheel'], // friction-slip on the fourth arbor
     ['Reset rod', 'Setting lever'],          // pinned at the post
     ['Reset rod', 'Reset hammer'],           // pinned at the tail
@@ -90,6 +111,13 @@ const MECH_GRAPH = {
     ['Dial', 'plate'],
     ['Power reserve', 'Dial'],               // reserve sub-dial sits on the dial face
     ['Small seconds', 'Dial'],               // seconds sub-dial bezel/hand on the dial face
+    // Motion works: the minute wheel/pinion ride a stud on the dial side;
+    // the hour wheel rides its own tube over the cannon pinion, which is
+    // friction-fit on the centre arbor. Declaring these makes the hour
+    // hand's support and drive visible to the checks — it was previously
+    // folded anonymously into 'Dial' and so exempt from both.
+    ['Motion works', 'plate'],               // stud riveted to the plate's dial side
+    ['Hour wheel', 'Motion works'],          // tube runs in the motion-works stud plate
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -113,6 +141,11 @@ const MECH_GRAPH = {
     ['Setting lever', 'Reset rod'],
     ['Reset rod', 'Reset hammer'],
     ['Reset hammer', 'Heart cam (seconds reset)'],
+    // Motion works — the hour hand's 12:1 now comes from two real meshes
+    // (cannon → minute wheel 3:1, minute pinion → hour wheel 4:1) instead of
+    // dividing the minute angle by 12.
+    ['Center wheel', 'Motion works'],        // cannon pinion friction-fit on the centre arbor
+    ['Motion works', 'Hour wheel'],
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
@@ -220,9 +253,7 @@ const MECH_GRAPH = {
   // edge in `support` above, not just eventual reachability.
   bridges: [
     'Balance cock',
-    'Barrel-center bridge',
-    'Center-third bridge',
-    'Third-fourth bridge',
+    'Escape bridge',
   ],
   // Every unit that carries a pinion or a staff must be grounded to the
   // plate — DIRECTLY OR INDIRECTLY (unlike `bridges` above, a chain through
@@ -290,24 +321,24 @@ const EXPECTED_PAIRS = [
   ['Hack ramp', 'Setting lever'],            // collar press-fit on the tail post (bore ⇄ shaft, its support edge)
   ['Setting lever', 'Reset rod'],            // rod pinned to the post
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
-  // The three train bridges were unlabelled (and so invisible to this whole
-  // sweep) until today — each one legitimately cradles the front pivot
-  // jewel of the wheel(s)/arbor it bridges, which is its entire job.
-  ['Barrel-center bridge', 'Fusee & great wheel'], // cradles the fusee arbor's front pivot
-  ['Barrel-center bridge', 'Center wheel'],        // cradles the center wheel's front pivot
-  ['Barrel-center bridge', 'Keyless works'],       // spans close by the crown-wheel/ratchet stack
-  ['Barrel-center bridge', 'Power-reserve train'], // spans close by the reserve arbor extension
-  ['Center wheel', 'Center-third bridge'],         // cradles the center wheel's OTHER pivot
-  ['Center-third bridge', 'Third wheel'],          // cradles the third wheel's front pivot
-  ['Fourth wheel', 'Third-fourth bridge'],         // cradles the fourth wheel's front pivot
-  ['Third wheel', 'Third-fourth bridge'],          // cradles the third wheel's OTHER pivot
-  // Adjacent bridges meet at a SHARED pivot (e.g. barrel-center's far end is
-  // the same centre-wheel jewel center-third's near end cradles), and each
-  // is built with generous end padding (addBridge: span + 10) — accepted
-  // for now, but the padding is probably looser than it needs to be; worth
-  // trimming so adjacent bridges just clear each other instead of overlapping.
-  ['Barrel-center bridge', 'Center-third bridge'],
-  ['Center-third bridge', 'Third-fourth bridge'], // same shared-pivot situation at the THIRD wheel's jewel
+  ['Hour wheel', 'Motion works'],            // minute pinion ⇄ hour wheel — the second 12:1 mesh
+  ['Hour wheel', 'Dial'],                    // tube runs through the dial's centre bore, over the cannon pinion
+  // The three-quarter plate replaced the three train bridges. It TOUCHES
+  // what it holds: each upper pivot's jewel setting closes on the staff
+  // running in its bore, the balance cock and hack spring are screwed to its
+  // top face, and the reset hammer's arbor turns in it. Everything else in
+  // the movement must CLEAR it — which is the point of listing these
+  // explicitly rather than excluding the plate from the sweep.
+  ['Fusee & great wheel', 'Three-quarter plate'],
+  ['Mainspring drum', 'Three-quarter plate'],
+  ['Center wheel', 'Three-quarter plate'],
+  ['Third wheel', 'Three-quarter plate'],
+  ['Fourth wheel', 'Three-quarter plate'],
+  ['Escape wheel', 'Escape bridge'],         // staff's upper pivot in the bridge's jewel
+  ['Pallet fork', 'Escape bridge'],          // ...and the fork's, on the same bridge
+  ['Balance cock', 'Three-quarter plate'],
+  ['Hack spring', 'Three-quarter plate'],
+  ['Reset hammer', 'Three-quarter plate'],
   // Small-seconds display arbor (tornado): the through rod runs coaxially
   // inside the fourth wheel/pinion bores (this contact IS the friction
   // coupling), passes the third-fourth bridge's fourth-end pivot pad, exits
@@ -315,7 +346,6 @@ const EXPECTED_PAIRS = [
   // hand rides on. The last two pairs only arise in the includeExcluded
   // sweep ('Dial'/'Small seconds' are excluded from the normal one).
   ['Fourth wheel', 'Heart cam (seconds reset)'],
-  ['Heart cam (seconds reset)', 'Third-fourth bridge'],
   ['Heart cam (seconds reset)', 'Dial'],
   ['Heart cam (seconds reset)', 'Small seconds'],
   // Dial-side mounts and pass-throughs — only swept with includeExcluded.
@@ -583,7 +613,96 @@ const CLEARANCE_BUDGETS = [
   // (RAMP_TOP_Z in main.js), so rod-over-collar is a designed near-miss
   // held at the margin through the whole crown stroke.
   { a: 'Hack ramp', b: 'Reset rod', min: 0.15 },
+  // Three-quarter plate binds (2026-07-18). Every one of these is a place
+  // where the plate's z-stack or one of its openings was solved to land
+  // exactly on the shared margin, so they are exactly the numbers that a
+  // later change to the Z-stack would silently eat:
+  { a: 'Balance', b: 'Three-quarter plate', min: 0.15 },      // the cut edge tucks UNDER the rim
+  { a: 'Reset rod', b: 'Three-quarter plate', min: 0.15 },    // rod re-planed to clear the plate's top
+  { a: 'Hack ramp', b: 'Three-quarter plate', min: 0.15 },    // collar swings through the lever slot
+  { a: 'Setting lever', b: 'Three-quarter plate', min: 0.15 },   // tail post shares that slot
+  { a: 'Hairspring', b: 'Three-quarter plate', min: 0.15 },
+  // The escape bridge's length is solved from exactly this gap: it overhangs
+  // the pivot it carries, toward the balance, and sits inside the balance's
+  // z band while doing it.
+  { a: 'Balance', b: 'Escape bridge', min: 0.15 },
+  // The bridge's legs drop through the plate's escapement window without
+  // touching it — the window is measured off the bridge's own footprint, so
+  // this row is the check on that measurement.
+  { a: 'Escape bridge', b: 'Three-quarter plate', min: 0.15 },
 ];
+
+// ---------------------------------------------------------------------------
+// Support-geometry verification — "is this part actually held by what the
+// graph says holds it?"
+//
+// checkMechanicalGraph's GROUNDING check verifies the declared support
+// EDGES form a connected graph reaching 'plate'. That is a statement about
+// strings, not geometry: ['Pallet fork','plate'] passes whether or not any
+// part of the fork comes within a mile of the plate. MECH_GRAPH.anchors was
+// meant to close that gap but covers 5 of ~24 support edges (its own TODO
+// says "extend to every support edge") — which is how a floating pallet
+// fork, bottomless arbors and an unattached hack-spring boss all coexisted
+// with a clean graph report.
+//
+// This replaces the per-edge bespoke point() functions with one rule that
+// needs no hand-authoring: a support is REAL only if the supported unit's
+// meshes actually reach the fixture's meshes. Distance is the same exact
+// BVH closest-point measure the clearance tooling uses — a support edge is
+// simply a clearance constraint with an UPPER bound instead of a lower one.
+// Structural fixtures that aren't labelled units ('plate', pillars) resolve
+// by mesh name (set in main.js).
+// ---------------------------------------------------------------------------
+const STRUCTURE_NODES = {
+  plate: 'backPlate',
+  pillars: 'pillar',
+  // 'Three-quarter plate' is ALSO a labelled unit in main.js (it belongs in
+  // the overlap sweep — it is full of clearance holes that have to be
+  // verified), so resolveNode finds it as a unit first; this entry keeps the
+  // structural-node path working if that label is ever dropped.
+  'Three-quarter plate': 'threeQuarterPlate',
+};
+// Nodes that ARE the ground, for the direct-mount rule below: a cock screwed
+// to the three-quarter plate is mounted on the movement's structure, not
+// stacked on another bridge.
+const GROUND_NODES = ['plate', 'Three-quarter plate'];
+const SUPPORT_TOL = 0.5; // a mounted part touches (0) or is set into its fixture
+
+function resolveNode(clock, allUnits, name) {
+  const unit = allUnits.find((u) => u.name === name);
+  if (unit) return unit;
+  const meshName = STRUCTURE_NODES[name];
+  if (!meshName) return null;
+  const meshes = [];
+  clock.movement.traverse((o) => {
+    if (o.isMesh && o.geometry && o.geometry.attributes.position && o.name === meshName) meshes.push(o);
+  });
+  return meshes.length ? { name, obj: clock.movement, meshes } : null;
+}
+
+export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GRAPH.support } = {}) {
+  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 });
+  clock.scene.updateMatrixWorld(true);
+  const allUnits = collectUnits(clock, { includeExcluded: true });
+  const rows = [];
+  for (const [aName, bName] of edges) {
+    const A = resolveNode(clock, allUnits, aName);
+    const B = resolveNode(clock, allUnits, bName);
+    if (!A || !B) {
+      rows.push({ edge: `${aName} → ${bName}`, gap: null, ok: false,
+        note: !A ? `unresolved: ${aName}` : `unresolved: ${bName}` });
+      continue;
+    }
+    const { d } = unitClearance(A, B);
+    rows.push({ edge: `${aName} → ${bName}`, gap: +d.toFixed(3), ok: d <= tol,
+      note: d <= tol ? '' : 'FLOATING — declared support has no geometry' });
+  }
+  rows.sort((x, y) => (x.ok === y.ok ? (y.gap ?? 0) - (x.gap ?? 0) : x.ok ? 1 : -1));
+  console.table(rows);
+  const failures = rows.filter((r) => !r.ok);
+  console.log(`${failures.length}/${rows.length} declared supports are not backed by geometry (tol ${tol})`);
+  return { failures, rows };
+}
 
 export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
   // All budgets ride ONE sweep: each pose is set up once and every pair
@@ -667,7 +786,7 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const notInGraph = [...groundingNames].filter((n) => !inGraph.has(n));
   const ungrounded = [...groundingNames].filter((n) => inGraph.has(n) && !grounded.has(n));
   const missingFromScene = [...inGraph]
-    .filter((n) => !['plate', 'mainspring', 'crown'].includes(n) && !groundingNames.has(n) && !MECH_GRAPH.todo.some(([a, b]) => a === n || b === n));
+    .filter((n) => !['plate', 'pillars', 'mainspring', 'crown'].includes(n) && !groundingNames.has(n) && !MECH_GRAPH.todo.some(([a, b]) => a === n || b === n));
 
   // 2. Drive: empirical motion per axis vs force reachability.
   const fromSpring = reachable(MECH_GRAPH.drive, 'mainspring');
@@ -717,8 +836,8 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   // another bridge would pass section 1 but must fail here.
   const directPlateEdges = new Set(
     MECH_GRAPH.support
-      .filter(([a, b]) => a === 'plate' || b === 'plate')
-      .map(([a, b]) => (a === 'plate' ? b : a))
+      .filter(([a, b]) => GROUND_NODES.includes(a) || GROUND_NODES.includes(b))
+      .map(([a, b]) => (GROUND_NODES.includes(a) ? b : a))
   );
   const bridgeViolations = MECH_GRAPH.bridges.filter((name) => !directPlateEdges.has(name));
 
@@ -943,4 +1062,60 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
     },
   };
   return window.__inspectReport;
+}
+
+// ---------------------------------------------------------------------------
+// Background runner — the full checks take tens of seconds on this scene, and
+// a browser-automation eval that waits for them trips its own 30s timeout. The
+// workaround (kick the promise off, stash the result on window, poll) got
+// hand-written once per session; this is it, once, properly.
+//
+// Do NOT "fix" a timeout by passing yieldEvery: Infinity. That removes the
+// cooperative yields, which blocks the main thread for the whole sweep and
+// wedges the tab — strictly worse than the timeout it avoids. The yields are
+// what keep the page alive; note that a BACKGROUNDED tab throttles setTimeout
+// to ~1s, so a sweep runs far slower when its tab isn't fronted.
+//
+//   start(clock, 'clearances');            // returns immediately
+//   … poll …  status()                     // {state:'running'|'done'|'error'}
+//
+// Multiple named jobs can run at once; results live on window.__checks.
+// ---------------------------------------------------------------------------
+const CHECKS = {
+  clearances: (clock, opts) => checkClearances(clock, opts),
+  inspection: (clock, opts) => runInspection(clock, opts),
+  support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
+  graph: (clock, opts) => checkMechanicalGraph(clock, opts),
+  penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
+};
+
+export function start(clock, name, opts = {}) {
+  const jobs = (window.__checks ||= {});
+  if (!CHECKS[name]) return `unknown check "${name}" — have: ${Object.keys(CHECKS).join(', ')}`;
+  const t0 = performance.now();
+  jobs[name] = { state: 'running', startedAt: t0 };
+  Promise.resolve()
+    .then(() => CHECKS[name](clock, opts))
+    .then((result) => {
+      jobs[name] = { state: 'done', ms: Math.round(performance.now() - t0), result };
+    })
+    .catch((err) => {
+      jobs[name] = { state: 'error', ms: Math.round(performance.now() - t0), error: String(err && err.stack || err) };
+    });
+  return `started ${name}`;
+}
+
+// Compact poll target: one line per job, plus the payload of finished ones.
+export function status(name) {
+  const jobs = window.__checks || {};
+  if (name) return jobs[name] || { state: 'missing' };
+  return Object.fromEntries(Object.entries(jobs).map(([k, v]) => [k, v.state === 'running'
+    ? `running ${Math.round((performance.now() - v.startedAt) / 100) / 10}s`
+    : v]));
+}
+
+// Everything at once, for a full regression pass.
+export function startAll(clock, opts = {}) {
+  for (const n of Object.keys(CHECKS)) start(clock, n, opts[n] || {});
+  return `started: ${Object.keys(CHECKS).join(', ')}`;
 }
