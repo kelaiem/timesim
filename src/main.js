@@ -715,10 +715,11 @@ movement.add(balanceCock);
 registerExplode(balanceCock, L_COCK + 1.4, 9);
 registerLabel('Balance cock', balanceCock);
 
-// (The hacking BRAKE is now the hack spring — a long blade actuated by the
-// setting lever's post; both are built after the keyless works below, since
-// their geometry is solved from the stem/groove positions. The physical
-// contact model that decelerates the balance is unchanged, in tick().)
+// (The hacking BRAKE is now the hack spring — a long blade lifted into
+// contact by a ramp collar on the setting lever's tail post; both are built
+// after the keyless works below, since their geometry is solved from the
+// stem/groove positions. The physical contact model that decelerates the
+// balance is unchanged, in tick().)
 
 // --- Reset hammer + heart cam (seconds-only stopwatch reset) -------------
 // Mounted on its OWN arbor, coaxial with the fourth wheel but NOT rigidly
@@ -785,7 +786,7 @@ const camPhaseOffset = hammerAimAngle + Math.PI;
 // twice a minute) by a clearance margin. The old fixed 30° left the head
 // 0.84 INSIDE the sweep. In lever-local frame the cam centre sits at
 // (D·sinθ, D·cosθ) for swing θ; scan-then-bisect the smallest clearing θ —
-// the same build-time-solver pattern as HACK_PRESS_DIST / HAMMER_TAIL_DELTA.
+// the same build-time-solver pattern as HACK_LAYOUT / HAMMER_TAIL_DELTA.
 const HAMMER_SWING_MARGIN = 0.35;
 const HAMMER_SWING_RAD = (() => {
   const sweptR = heartCam.userData.r + heartCam.userData.bevel;
@@ -1153,6 +1154,23 @@ const GROOVE_LOCAL = 4; // along the stem, outward of the sliding pinion
 const SL_C = 10;    // pivot's lateral offset from the stem axis
 const SL_TAIL = 6;  // tail arm length (pivot → post)
 const Z_SETTING_LEVER = Z_KEYLESS - 2.1;
+// Reset-rod plane — declared HERE (ahead of both the lever and the rod
+// linkage below) because it sizes the lever's tail post: the rod's straight
+// run must clear the fusee cone's axis-top height (see the rod-lift comment
+// at the linkage), and the post's whole job is to carry that rod pin plus
+// the hack-ramp collar beneath it. 0.7 = rod radius (0.35) + clearance.
+const ROD_R = 0.35; // reset-rod radius — shared with the hack-blade standoff solver below
+const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
+const ROD_Z_LIFT = Math.max(2.3, FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR);
+const ROD_PLANE_Z = Z_SECONDS_ARBOR + ROD_Z_LIFT; // rod centre-line's world z
+// Post height — SIZED TO ITS JOBS, no taller: the rod pin at ROD_PLANE_Z
+// plus a pin-retaining land above it. (It used to run on up to the balance
+// plane to "press the hack blade's flank" — an in-plane push that could
+// never produce the blade's vertical engage/release motion; the blade is
+// now driven honestly by the ramp collar lower down, so the tall post was
+// pure fiction and is gone.)
+const HACK_ROD_PIN_LAND = 0.35; // post material kept above the rod pin
+const POST_TOP_Z = ROD_PLANE_Z + ROD_R + HACK_ROD_PIN_LAND;
 const slMidAlong = pinDist + CROWN_PULL_DIST / 2 + GROOVE_LOCAL;
 const settingLeverPivot = {
   x: uWind.x * slMidAlong + sideSign * vPerp.x * SL_C,
@@ -1164,7 +1182,7 @@ const settingLever = G.makeSettingLever({
   width: 3,
   thickness: 1,
   beakPinH: 1.5,
-  postH: L_BALANCE - Z_SETTING_LEVER + 0.5,
+  postH: POST_TOP_Z - (Z_SETTING_LEVER + 0.5),
 });
 const settingLeverGroup = new THREE.Group();
 settingLeverGroup.position.set(settingLeverPivot.x, settingLeverPivot.y, Z_SETTING_LEVER);
@@ -1214,57 +1232,6 @@ function yokeAngleAt(pull) {
   const px = uWind.x * along, py = uWind.y * along;
   return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
 }
-
-// Hack spring: anchored so the setting-lever post bears on its flank near
-// the anchor; the blade runs from there across the movement to the balance
-// rim. All of it derived from the post's actual engaged/released positions.
-const HACK_LIFT = 0.09;       // rad — blade deflection between released/braking
-const postEng = tailPostWorldAt(1);
-const postRel = tailPostWorldAt(0);
-let uB = { x: P.balance.x - postEng.x, y: P.balance.y - postEng.y };
-{
-  const m = Math.hypot(uB.x, uB.y) || 1;
-  uB = { x: uB.x / m, y: uB.y / m };
-}
-// Post's bearing distance from the anchor. The anchor extends BACKWARD
-// from the post along the blade line, and the old fixed 19.5 hung it (and
-// the blade's whole tail) ~15 units past the plate rim. Solve the largest
-// distance that keeps the anchor inside the plate with margin:
-// |postEng − uB·d| = plateR − 2.5, positive root.
-const HACK_PRESS_DIST = (() => {
-  const rMax = plateR - 2.5;
-  const aDotU = postEng.x * uB.x + postEng.y * uB.y;
-  const disc = aDotU * aDotU - (postEng.x ** 2 + postEng.y ** 2) + rMax * rMax;
-  const dMax = disc > 0 ? aDotU + Math.sqrt(disc) : 6;
-  return Math.min(19.5, Math.max(4, dMax));
-})();
-// Component of the post's engaging travel perpendicular to the blade — the
-// direction it pushes the flank.
-let pushDir = (() => {
-  const t = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
-  const along = t.x * uB.x + t.y * uB.y;
-  const p = { x: t.x - along * uB.x, y: t.y - along * uB.y };
-  const m = Math.hypot(p.x, p.y);
-  if (m < 1e-6) return { x: -uB.y, y: uB.x };
-  return { x: p.x / m, y: p.y / m };
-})();
-const bladeAnchor = {
-  x: postEng.x + pushDir.x * 1.3 - uB.x * HACK_PRESS_DIST,
-  y: postEng.y + pushDir.y * 1.3 - uB.y * HACK_PRESS_DIST,
-};
-const bladeToBalance = Math.hypot(P.balance.x - bladeAnchor.x, P.balance.y - bladeAnchor.y);
-const bladeAimAngle = Math.atan2(P.balance.y - bladeAnchor.y, P.balance.x - bladeAnchor.x);
-// Rotating the blade by +δ moves its flank along ẑ×û; releasing must move it
-// WITH the retreating post (−pushDir), which fixes the lift's sign.
-const zCrossU = { x: -uB.y, y: uB.x };
-const BLADE_LIFT_SIGN = -Math.sign(zCrossU.x * pushDir.x + zCrossU.y * pushDir.y) || 1;
-const hackSpring = G.makeHackSpring({ length: bladeToBalance - balanceR, width: 1.6, thickness: 0.8 });
-const bladeGroup = new THREE.Group();
-bladeGroup.position.set(bladeAnchor.x, bladeAnchor.y, L_BALANCE);
-bladeGroup.add(hackSpring);
-movement.add(bladeGroup);
-registerExplode(bladeGroup, L_BALANCE, 7);
-registerLabel('Hack spring', bladeGroup);
 
 // Reset-hammer transmission — a RIGID connecting rod (fixed length) from the
 // setting-lever post to a tail arm on the hammer. The hammer's angle is not
@@ -1377,12 +1344,8 @@ const RESET_ROD_LEN = HAMMER_TAIL_DELTA.len;
 // is over the cone (and over the chain's top wrap). Solved from the cone
 // geometry so flattening the fusee automatically lowers the rod. (This
 // replaces the old fixed 2.3 lift, which was only dodging the heart cam's
-// own body.)
-const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
-// 0.7 = rod radius (0.35) + clearance: the rod's straight run passes only
-// ~0.6 from the barrel AXIS (measured live), i.e. essentially over the
-// cone's apex, so it must clear the cone's full axis-top height.
-const ROD_Z_LIFT = Math.max(2.3, FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR);
+// own body.) ROD_Z_LIFT / FUSEE_TOP_Z / ROD_R themselves are declared up by
+// the setting-lever block: the rod plane sizes the lever's tail post.
 const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, 1), MATS.steel);
 hammerTailBar.rotation.z = HAMMER_TAIL_DELTA.delta;
 hammerTailBar.position.set(
@@ -1399,7 +1362,7 @@ hammerGroup.add(hammerTailBar);
   riser.position.set(0, 0, ROD_Z_LIFT / 2);
   hammerGroup.add(riser);
 }
-const resetRod = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1, 8), MATS.steel);
+const resetRod = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, 1, 8), MATS.steel);
 resetRod.scale.set(1, RESET_ROD_LEN, 1);
 movement.add(resetRod);
 registerLabel('Reset rod', resetRod);
@@ -1411,6 +1374,360 @@ function solveHammerRotation(post) {
   prevTailTip = r.q;
   // Tail tip local direction is (sin, −cos) of (rot + δ): invert for rot.
   return Math.atan2(r.q.x - hammerPivotPos.x, -(r.q.y - hammerPivotPos.y)) - HAMMER_TAIL_DELTA.delta;
+}
+
+// Hack spring: anchored near the plate rim by the keyless works; the blade
+// runs from there across the movement to the balance. It is an UNDERSIDE
+// brake: the blade body travels BELOW the balance plane (adding no height
+// over the movement and never crossing the balance's visible face) and its
+// tip carries a short upright post whose ruby cap presses the flat
+// UNDERSIDE of the rim. Released, the blade pitches DOWN about its anchor
+// so the pad drops a real gap below the rim — fully disconnected until the
+// crown is pulled.
+//
+// ACTUATION — the ramp collar (see the HACK_RAMP solve below): the lever's
+// tail post carries a wedge-profiled collar (makeHackRamp) and the blade a
+// hanging ball-heel near its anchor; as the crown is pulled the post slides
+// the collar under the heel and its conical flank LIFTS the blade to the
+// engaged (level) pose; crown in, the collar retreats and the blade's own
+// preload drops the heel back onto the collar's outer brim. The blade's
+// pitch each frame is SOLVED from the collar's actual position (same
+// convention as the reset hammer's rod-constraint solve), never keyframed —
+// an in-plane lever push on the blade's flank, which is what the tall post
+// used to depict, cannot produce this vertical motion at all.
+//
+// This block sits AFTER the reset-hammer linkage on purpose: the blade's
+// standoff solver below sweeps the reset rod's actual stroke (intersectTail
+// / RESET_ROD_LEN), because the rod's plane (Z_SECONDS_ARBOR + ROD_Z_LIFT,
+// band ±ROD_R) structurally overlaps the blade's z band — the two can only
+// be separated LATERALLY, so the rod's swept path is a first-class input to
+// where the blade may lie.
+const HACK_CLEAR_MARGIN = 0.15; // one named margin; both solvers below bind exactly at it
+
+// --- Pad ↔ balance geometry, derived from the balance's OWN build
+// constants (rim height 0.75·t, rim width 0.8·t, screws ±0.34·t at
+// rimO ± t/2 — see makeBalanceWheel) so reshaping the balance moves the
+// brake with it.
+const BAL_T = 2.5;                                     // = makeBalanceWheel thickness
+const HACK_RIM_I = balanceR - BAL_T * 0.8;             // rim's inner radius
+const HACK_SCREW_IN_R = balanceR - BAL_T / 2;          // timing screws' inner tips
+// The rim's underside hangs only this far below the screws' deepest sweep
+// (0.375·t rim half-height vs 0.34·t screw tip radius) — far less than the
+// margin, so z alone cannot keep the pad clear of the screws:
+const HACK_SCREW_DROP = (0.75 / 2 - 0.34) * BAL_T;
+// ...the rest of the separation must come radially. Corner-to-corner:
+// √(standoff² + drop²) = margin ⇒
+const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_SCREW_DROP ** 2));
+// Size the ruby's top face to fill exactly the annulus that is both fully
+// ON the rim's underside (≥ rim inner edge — full-face seating, lesson:
+// surface-to-surface) and radially inside the screws' standoff:
+const HACK_PAD_TOP_R = (HACK_SCREW_IN_R - HACK_SCREW_STANDOFF - HACK_RIM_I) / 2;
+const HACK_PAD_R = HACK_PAD_TOP_R / G.HACK_RUBY_FLARE; // post/ruby-base radius the builder needs
+const HACK_CONTACT_R = (HACK_RIM_I + HACK_SCREW_IN_R - HACK_SCREW_STANDOFF) / 2;
+const HACK_CONTACT_Z = L_BALANCE - (BAL_T * 0.75) / 2; // the rim's underside plane
+const HACK_DROP = 0.6;                                 // pad clearance below the rim when released
+const BLADE_T = 0.8;
+const BLADE_W = 1.6;
+const PAD_RISE = 0.9;                                  // blade top → pad contact face
+const BLADE_Z = HACK_CONTACT_Z - BLADE_T / 2 - PAD_RISE;
+
+const postEng = tailPostWorldAt(1);
+const postRel = tailPostWorldAt(0);
+let uB = { x: P.balance.x - postEng.x, y: P.balance.y - postEng.y };
+{
+  const m = Math.hypot(uB.x, uB.y) || 1;
+  uB = { x: uB.x / m, y: uB.y / m };
+}
+// Component of the post's engaging travel perpendicular to the blade — the
+// direction the post closes on the blade line (used to stand the blade off
+// the post's swept corridor).
+let pushDir = (() => {
+  const t = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
+  const along = t.x * uB.x + t.y * uB.y;
+  const p = { x: t.x - along * uB.x, y: t.y - along * uB.y };
+  const m = Math.hypot(p.x, p.y);
+  if (m < 1e-6) return { x: -uB.y, y: uB.x };
+  return { x: p.x / m, y: p.y / m };
+})();
+// --- Anchor layout solver. Two free parameters, both solved here:
+//  · standoff A — the blade centerline's perpendicular distance from the
+//    engaged post. The old fixed 1.3 was width/2 + post radius + a token
+//    gap, which ignored (a) the blade's BOW: the rendered flank bulges to
+//    ~1.2 off-axis beside the post (hackSpringEdgeY, exported by the
+//    builder), and (b) the reset ROD, whose run from that same post shares
+//    the blade's z band and hugged the same flank — both interpenetrated
+//    (post −0.44, rod −0.34 at full pull). A is now grown until the WORST
+//    clearance over the whole crown stroke — post arc AND every point of
+//    the rod at every pull — binds exactly at HACK_CLEAR_MARGIN. (The post
+//    is since shortened below the blade's z band — the ramp collar drives
+//    the blade now — but the ROD still shares the band, so the sweep and
+//    its bind are kept unchanged; the post circle is retained as a
+//    conservative stand-in for the post's upper works.)
+//  · press distance D — how far the anchor extends backward from the post
+//    along the blade line; the largest value keeping the anchor's BOSS
+//    (radius 1.15) on-plate with the named margin:
+//    |base − uB·D| = plateR − 1.15 − HACK_CLEAR_MARGIN, positive root (the
+//    old fixed 19.5 hung the anchor ~15 units past the plate rim).
+const HACK_LAYOUT = (() => {
+  const rMax = plateR - 1.15 - HACK_CLEAR_MARGIN;
+  const seedTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
+  const layoutAt = (A) => {
+    const base = { x: postEng.x + pushDir.x * A, y: postEng.y + pushDir.y * A };
+    const aDotU = base.x * uB.x + base.y * uB.y;
+    const disc = aDotU * aDotU - (base.x ** 2 + base.y ** 2) + rMax * rMax;
+    const D = Math.min(19.5, Math.max(4, disc > 0 ? aDotU + Math.sqrt(disc) : 6));
+    const anchor = { x: base.x - uB.x * D, y: base.y - uB.y * D };
+    const toBal = Math.hypot(P.balance.x - anchor.x, P.balance.y - anchor.y);
+    const len = toBal - HACK_CONTACT_R;
+    const ux = (P.balance.x - anchor.x) / toBal, uy = (P.balance.y - anchor.y) / toBal;
+    const local = (p) => ({
+      x: (p.x - anchor.x) * ux + (p.y - anchor.y) * uy,
+      y: -(p.x - anchor.x) * uy + (p.y - anchor.y) * ux,
+    });
+    // Clearance of a circle (center x,y radius r) from the blade's rendered
+    // footprint: the bowed outline within the span, the anchor boss
+    // (radius 1.15, taller than the blade — it shares the rod's band) near
+    // x = 0. Negative = interpenetration. The exact bezier edge is used —
+    // the mesh's flattened polyline lies strictly inside it, so this is
+    // (slightly) conservative.
+    const clr = (x, y, r) => {
+      let c = Infinity;
+      if (x >= 0 && x <= len) {
+        const lo = G.hackSpringEdgeY(x, len, BLADE_W, -1);
+        const hi = G.hackSpringEdgeY(x, len, BLADE_W, +1);
+        c = y < lo ? lo - y - r : y > hi ? y - hi - r : -Math.min(y - lo, hi - y) - r;
+      }
+      if (x < 2) c = Math.min(c, Math.hypot(x, y) - 1.15 - r);
+      return c;
+    };
+    let minClr = Infinity;
+    let q = { ...seedTip };
+    for (let i = 0; i <= 60; i++) {
+      const post = tailPostWorldAt(i / 60);
+      q = intersectTail(post, RESET_ROD_LEN, q).q;
+      const pl = local(post);
+      minClr = Math.min(minClr, clr(pl.x, pl.y, G.SETTING_LEVER_POST_R));
+      const ql = local(q);
+      for (let s = 0; s <= 80; s++) {
+        const t = s / 80;
+        minClr = Math.min(minClr, clr(pl.x + (ql.x - pl.x) * t, pl.y + (ql.y - pl.y) * t, ROD_R));
+      }
+    }
+    return { minClr, anchor, D, len, aim: Math.atan2(uy, ux) };
+  };
+  // minClr grows ~1:1 with A (all governing features sit near the anchor,
+  // which moves with A; the far end pivots on the balance) — fixed-point
+  // iteration converges in a few steps.
+  let A = 1.3, r = layoutAt(A);
+  for (let it = 0; it < 10 && Math.abs(HACK_CLEAR_MARGIN - r.minClr) > 1e-4; it++) {
+    A += HACK_CLEAR_MARGIN - r.minClr;
+    r = layoutAt(A);
+  }
+  if (r.minClr < HACK_CLEAR_MARGIN - 0.01)
+    console.warn('hack-blade standoff solver under margin:', r.minClr.toFixed(4));
+  if (Math.hypot(r.anchor.x, r.anchor.y) > rMax + 0.01)
+    console.warn('hack-blade anchor pushed off-plate:', Math.hypot(r.anchor.x, r.anchor.y).toFixed(2));
+  return { standoff: A, ...r };
+})();
+const bladeAnchor = HACK_LAYOUT.anchor;
+const bladeAimAngle = HACK_LAYOUT.aim;
+const bladeLen = HACK_LAYOUT.len;
+// Released, the blade pitches about its anchor's transverse axis just far
+// enough to drop the pad HACK_DROP below the rim's underside. The gap is
+// held at the pad's NEAREST point, not its centre: pitching tilts the ruby's
+// top face, so its anchor-side edge (radius HACK_PAD_TOP_R closer to the
+// anchor) drops only (bladeLen − HACK_PAD_TOP_R)·sin(pitch) — sizing the
+// pitch by the centre alone left that edge ~HACK_PAD_TOP_R·sin(pitch)
+// (≈ 0.0035) shy of the full HACK_DROP.
+const HACK_PITCH = Math.asin(HACK_DROP / (bladeLen - HACK_PAD_TOP_R));
+
+// --- Hack-ramp actuator solve ---------------------------------------------
+// The honest converter from the setting lever's in-plane swing to the
+// blade's vertical engage/release deflection. The lever's tail post carries
+// a rotationally-symmetric wedge COLLAR (flat outer brim → conical flank →
+// flat top land, makeHackRamp); the blade carries a hanging ball HEEL near
+// its anchor. Radial symmetry is deliberate: the post both translates AND
+// rotates about the lever pivot through the stroke, and a symmetric collar
+// makes the heel's lift a function of one scalar — its radial distance d
+// from the post axis — regardless of the lever's angle.
+//
+// Scale honesty: the blade pivots at its anchor and the post sits only
+// D ≈ 5 of the blade's ~54 length from it, so the full 0.6 pad drop at the
+// tip maps to only ≈ 0.05 of vertical travel at the heel — the flank is
+// therefore a SHALLOW wedge by construction, not by accident. That is
+// mechanically right for a brake actuator: a shallow wedge is self-locking
+// (the blade's preload cannot back-drive the lever), so the crown holds the
+// hack engaged with no residual force on the keyless works. The motion
+// still reads because the ~2 units of radial slide are what the eye tracks.
+//
+// Constants, each from a constraint:
+const HEEL_R = 0.35;             // heel ball radius (matches the rod's visual weight)
+const HEEL_FOOT_R = 0.22;        // heel stud radius (must be < HEEL_R so the ball is the contact)
+const RAMP_SEAT_LAND = 0.15;     // radial dwell inside the engaged contact: the heel tops out
+                                 // onto a FLAT seat just before full pull, so the engaged pose
+                                 // is a stable land, not a knife-edge partway up the flank
+const RAMP_RISE_FRACTION = 0.5;  // the lift is spread over the OUTER half of the radial
+                                 // approach (inner half = brim dwell): smooth, visible travel
+                                 // while keeping the flank shallow (see self-locking note)
+const RAMP_EDGE_LAND = 0.3;      // brim extends this far past the released contact circle
+const RAMP_BRIM_T = 0.35;        // brim slab thickness
+// z-chain: the collar may rise no higher than the reset rod's underside
+// (the rod leaves this same post at ROD_PLANE_Z and sweeps across the
+// collar's footprint), less the shared margin. The engaged ball centre and
+// the heel's blade-local hang depth follow from that single bind:
+const RAMP_TOP_Z = ROD_PLANE_Z - ROD_R - HACK_CLEAR_MARGIN; // collar's top land plane
+const HACK_ZC1 = RAMP_TOP_Z + HEEL_R;  // engaged ball-centre height (ball seated on the land)
+const HEEL_Z = HACK_ZC1 - BLADE_Z;     // ball centre in blade-local z (< 0: hangs below)
+// Engaged radial seat: post shaft + ball surface + margin (binds exactly).
+const HACK_HEEL_D1 = G.SETTING_LEVER_POST_R + HEEL_R + HACK_CLEAR_MARGIN;
+
+const HACK_RAMP = (() => {
+  const ux = Math.cos(bladeAimAngle), uy = Math.sin(bladeAimAngle);
+  const local = (p) => ({
+    x: (p.x - bladeAnchor.x) * ux + (p.y - bladeAnchor.y) * uy,
+    y: -(p.x - bladeAnchor.x) * uy + (p.y - bladeAnchor.y) * ux,
+  });
+  const world = (l) => ({ x: bladeAnchor.x + ux * l.x - uy * l.y, y: bladeAnchor.y + uy * l.x + ux * l.y });
+  const tx = postEng.x - postRel.x, ty = postEng.y - postRel.y;
+  const tl = Math.hypot(tx, ty) || 1;
+  const th = { x: tx / tl, y: ty / tl }; // post travel direction (release → engage)
+  const cosP = Math.cos(HACK_PITCH), sinP = Math.sin(HACK_PITCH);
+  const seedTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
+  // Heel placement: at HACK_HEEL_D1 from the ENGAGED post, in a direction γ
+  // off the travel line. γ is scanned, not assumed, because it must satisfy
+  // three couplings at once: (a) the post's approach to the heel must be
+  // MONOTONIC over the stroke (otherwise the blade would seat early and
+  // back off — and the post would sweep into the heel); (b) the heel (its
+  // z band overlaps the rod's) must clear the reset rod's entire swept path
+  // laterally by the margin; (c) the heel must land far enough along the
+  // blade to clear the anchor boss and give the pitch solve a real lever
+  // arm. Among feasible directions the SMALLEST released distance d0 wins —
+  // it minimises the collar's footprint.
+  const evalGamma = (gammaDeg) => {
+    const gr = gammaDeg * DEG2RAD;
+    const hd = { x: th.x * Math.cos(gr) - th.y * Math.sin(gr), y: th.x * Math.sin(gr) + th.y * Math.cos(gr) };
+    const heelPt = { x: postEng.x + hd.x * HACK_HEEL_D1, y: postEng.y + hd.y * HACK_HEEL_D1 };
+    const hl = local(heelPt);
+    if (hl.x < 1.15 + HEEL_R + 2 * HACK_CLEAR_MARGIN) return null; // (c) anchor-boss clearance
+    const heelRel = world({ x: hl.x * cosP + HEEL_Z * sinP, y: hl.y }); // heel XY, blade pitched down
+    const d0 = Math.hypot(heelRel.x - postRel.x, heelRel.y - postRel.y);
+    if (d0 - HACK_HEEL_D1 < RAMP_SEAT_LAND + 0.6) return null; // approach too short for a real flank
+    let q = { ...seedTip };
+    let minClr = Infinity, prevD = Infinity, monotone = true;
+    for (let i = 0; i <= 60; i++) {
+      const post = tailPostWorldAt(i / 60);
+      q = intersectTail(post, RESET_ROD_LEN, q).q;
+      const d = Math.hypot(heelPt.x - post.x, heelPt.y - post.y);
+      if (d > prevD + 0.02) monotone = false; // (a)
+      prevD = d;
+      minClr = Math.min(minClr, d - G.SETTING_LEVER_POST_R - HEEL_R);
+      for (let s = 0; s <= 40; s++) {
+        const f = s / 40;
+        const rx = post.x + (q.x - post.x) * f, ry = post.y + (q.y - post.y) * f;
+        minClr = Math.min(minClr, Math.hypot(heelPt.x - rx, heelPt.y - ry) - ROD_R - HEEL_R); // (b)
+      }
+    }
+    if (!monotone || minClr < HACK_CLEAR_MARGIN) return null;
+    return { gammaDeg, heelPt, hl, d0, clr: minClr };
+  };
+  let best = null;
+  for (let gd = -150; gd <= 150; gd += 7.5) {
+    const r = evalGamma(gd);
+    if (r && (!best || r.d0 < best.d0 - 1e-9 || (Math.abs(r.d0 - best.d0) < 1e-9 && r.clr > best.clr))) best = r;
+  }
+  if (!best) {
+    console.warn('hack-ramp: no feasible heel direction; falling back to travel-perpendicular');
+    best = evalGamma(90) || (() => {
+      const hd = { x: -th.y, y: th.x };
+      const heelPt = { x: postEng.x + hd.x * HACK_HEEL_D1, y: postEng.y + hd.y * HACK_HEEL_D1 };
+      const hl = local(heelPt);
+      return { gammaDeg: 90, heelPt, hl, d0: HACK_HEEL_D1 + 2, clr: 0 };
+    })();
+  }
+  // Collar profile from the two calibrated poses (both EXACT by construction):
+  //   engaged  (pull 1): d = HACK_HEEL_D1 → ball on the top land → pitch 0;
+  //   released (pull 0): d = d0          → ball on the brim     → pitch HACK_PITCH.
+  const rise = HEEL_Z * (1 - cosP) + best.hl.x * sinP; // ball-centre travel between the poses
+  const dA = HACK_HEEL_D1 + RAMP_SEAT_LAND;            // ball centre where the land ends / flank begins
+  const k = rise / (RAMP_RISE_FRACTION * (best.d0 - dA)); // flank slope (dz per radial unit)
+  const cosF = 1 / Math.hypot(1, k), sinF = k / Math.hypot(1, k);
+  return {
+    ...best,
+    rise, k, dA,
+    landR: dA - HEEL_R * sinF,                 // land's outer SURFACE radius (ball tangency offset)
+    kneeR: dA - HEEL_R * sinF + rise / k,      // flank foot surface radius (meets the brim plane)
+    brimR: best.d0 + HEEL_R + RAMP_EDGE_LAND,
+    ZC0: HACK_ZC1 - rise,                      // released ball-centre height (on the brim)
+  };
+})();
+// Ball-centre height on the collar as a function of radial distance d —
+// land / flank / brim, with the (≤ 5e-4 here) convex-edge blend at the
+// land's rim folded into the min/max clamps:
+function rampHeelHeightAt(d) {
+  return Math.min(HACK_ZC1, Math.max(HACK_RAMP.ZC0, HACK_ZC1 - HACK_RAMP.k * (d - HACK_RAMP.dA)));
+}
+
+const hackSpring = G.makeHackSpring({
+  length: bladeLen, width: BLADE_W, thickness: BLADE_T, padRise: PAD_RISE, padR: HACK_PAD_R,
+  heel: { x: HACK_RAMP.hl.x, y: HACK_RAMP.hl.y, z: HEEL_Z, ballR: HEEL_R, footR: HEEL_FOOT_R },
+});
+const bladeGroup = new THREE.Group();
+bladeGroup.position.set(bladeAnchor.x, bladeAnchor.y, BLADE_Z);
+// 'ZYX': aim about z composes AFTER the pitch, so rotation.y tilts the
+// blade about its own transverse axis (tip rises/drops along the aim line).
+bladeGroup.rotation.order = 'ZYX';
+bladeGroup.rotation.z = bladeAimAngle;
+bladeGroup.add(hackSpring);
+movement.add(bladeGroup);
+registerExplode(bladeGroup, BLADE_Z, 7);
+registerLabel('Hack spring', bladeGroup);
+
+// The collar itself — rides the tail post (tick() keeps its XY on the post;
+// it is its own labelled unit so the inspection tooling can hold the
+// blade↔lever standoff budget while treating heel-on-collar as the intended
+// contact it is).
+const RAMP_BRIM_SURF_Z = HACK_RAMP.ZC0 - HEEL_R; // brim's top surface (world)
+const hackRamp = G.makeHackRamp({
+  boreR: G.SETTING_LEVER_POST_R,
+  landR: HACK_RAMP.landR,
+  kneeR: HACK_RAMP.kneeR,
+  brimR: HACK_RAMP.brimR,
+  landH: HACK_RAMP.rise,
+  brimT: RAMP_BRIM_T,
+});
+const hackRampGroup = new THREE.Group();
+hackRampGroup.position.set(postEng.x, postEng.y, RAMP_BRIM_SURF_Z);
+hackRampGroup.add(hackRamp);
+movement.add(hackRampGroup);
+registerExplode(hackRampGroup, RAMP_BRIM_SURF_Z, 4); // explodes with the setting lever
+registerLabel('Hack ramp', hackRampGroup);
+// Build-time sanity: the top land must sit exactly one margin under the
+// rod, the heel stud must actually reach below the blade, and the collar's
+// swept footprint must clear the blade's anchor boss in XY.
+if (Math.abs((RAMP_BRIM_SURF_Z + HACK_RAMP.rise) - RAMP_TOP_Z) > 1e-9)
+  console.warn('hack-ramp: land plane off its rod-clearance bind');
+if (-HEEL_Z - BLADE_T / 2 < 0.05)
+  console.warn('hack-ramp: heel stud too short to clear the blade underside');
+if (Math.hypot(bladeAnchor.x - postEng.x, bladeAnchor.y - postEng.y)
+    < HACK_RAMP.brimR + 1.15 + HACK_CLEAR_MARGIN)
+  console.warn('hack-ramp: collar sweeps into the blade anchor boss');
+
+// Per-frame pitch solve — the blade's rotation.y is DERIVED from where the
+// collar actually is (heel rides rampHeelHeightAt), mirroring the reset
+// hammer's rod-constraint solve. The heel's XY shifts (≈ 0.01) with pitch,
+// so 3 fixed-point rounds; the clamp encodes the collar's two flat lands.
+let hackPitchState = HACK_PITCH;
+function solveHackPitch(post) {
+  let p = hackPitchState;
+  for (let i = 0; i < 3; i++) {
+    const lx = HACK_RAMP.hl.x * Math.cos(p) + HEEL_Z * Math.sin(p);
+    const hx = bladeAnchor.x + Math.cos(bladeAimAngle) * lx - Math.sin(bladeAimAngle) * HACK_RAMP.hl.y;
+    const hy = bladeAnchor.y + Math.sin(bladeAimAngle) * lx + Math.cos(bladeAimAngle) * HACK_RAMP.hl.y;
+    const zc = rampHeelHeightAt(Math.hypot(hx - post.x, hy - post.y));
+    p = Math.asin((HEEL_Z * Math.cos(p) - (zc - BLADE_Z)) / HACK_RAMP.hl.x);
+  }
+  hackPitchState = clamp(p, 0, HACK_PITCH);
+  return hackPitchState;
 }
 
 // ---------------------------------------------------------------------------
@@ -2494,12 +2811,17 @@ function tick(t) {
   // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
   // groove actually is right now (crownPullT), so the beak pin stays in the
   // groove through the whole slide; the yoke does the same against the
-  // sliding pinion's hub. The hack spring deflects on leverEngage — the
-  // same value driving the contact damping above — pressed by the lever's
-  // tail post; its pad lands exactly on the balance rim at full engage.
+  // sliding pinion's hub. The hack blade is NOT keyframed: its ramp collar
+  // rides the lever's tail post, and the blade's pitch is solved from the
+  // collar's actual position each frame (solveHackPitch) — heel on brim =
+  // dropped HACK_PITCH (pad HACK_DROP clear of the rim), heel up the flank
+  // onto the top land = level, pad touching the rim's lower face.
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
   yokeGroup.rotation.z = yokeAngleAt(crownPullT);
-  bladeGroup.rotation.z = bladeAimAngle + BLADE_LIFT_SIGN * HACK_LIFT * (1 - leverEngage);
+  const postNow = tailPostWorldAt(crownPullT);
+  hackRampGroup.position.x = postNow.x;
+  hackRampGroup.position.y = postNow.y;
+  bladeGroup.rotation.y = solveHackPitch(postNow);
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
   // rod — its angle is solved from the setting-lever post's position through
@@ -2511,8 +2833,8 @@ function tick(t) {
   // physical rotation seen from opposite sides — the same slip-coupling
   // sign convention the reserve train uses. At reset both go to 0 and the
   // cam sits at camPhaseOffset, so the hammer-seat calibration is
-  // unaffected by the sign.
-  const postNow = tailPostWorldAt(crownPullT);
+  // unaffected by the sign. (postNow is computed up at the setting-lever
+  // block — the same post drives the hack ramp collar.)
   hammerGroup.rotation.z = solveHammerRotation(postNow);
   secondsCamArbor.rotation.z = -(fourthA - secondsZeroRef) + camPhaseOffset;
 

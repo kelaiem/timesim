@@ -74,6 +74,7 @@ const MECH_GRAPH = {
     ['Setting lever', 'plate'],
     ['Yoke', 'plate'],
     ['Hack spring', 'plate'],                // anchor screw
+    ['Hack ramp', 'Setting lever'],          // collar pressed onto the tail post
     ['Reset hammer', 'plate'],
     ['Heart cam (seconds reset)', 'Fourth wheel'], // friction-slip on the fourth arbor
     ['Reset rod', 'Setting lever'],          // pinned at the post
@@ -107,7 +108,8 @@ const MECH_GRAPH = {
     ['Keyless works', 'Fusee & great wheel'],  // winding: crown wheel → ratchet
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
     ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
-    ['Setting lever', 'Hack spring'],
+    ['Setting lever', 'Hack ramp'],            // collar rides the lever's tail post
+    ['Hack ramp', 'Hack spring'],              // collar's flank lifts the blade's heel
     ['Setting lever', 'Reset rod'],
     ['Reset rod', 'Reset hammer'],
     ['Reset hammer', 'Heart cam (seconds reset)'],
@@ -284,7 +286,8 @@ const EXPECTED_PAIRS = [
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
   ['Chain', 'Mainspring drum'],              // chain wraps the drum
   ['Power-reserve train', 'Fusee & great wheel'], // p0 slip-coupled on the arbor
-  ['Setting lever', 'Hack spring'],          // post bears on the blade flank
+  ['Hack ramp', 'Hack spring'],              // blade's heel rides the ramp collar (every crown pose)
+  ['Hack ramp', 'Setting lever'],            // collar press-fit on the tail post (bore ⇄ shaft, its support edge)
   ['Setting lever', 'Reset rod'],            // rod pinned to the post
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
   // The three train bridges were unlabelled (and so invisible to this whole
@@ -404,6 +407,205 @@ const AXES = [
     pose: (f) => ({ tau: f * 8 * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Clearance measurement — the TODO item "clearance monitoring (gaps that
+// must stay small-but-positive)", now real. Exact BVH closest-point
+// distances between two labelled units, at the current pose or swept
+// across pose axes. Until now every clearance question (pad↔rim, pad↔
+// timing screws, blade↔reset rod, marker↔sub-dial…) was answered by a
+// hand-written vertex-sampling console script — approximate, slow to
+// rewrite, and rewritten per audit. closestPointToGeometry is exact on
+// the meshes and cached via the same BVH the intersection tests use. All
+// movement transforms are unit-scale, so bvh-local distance == world
+// distance.
+// ---------------------------------------------------------------------------
+function boxDistance(a, b) {
+  // Min distance between two AABBs (0 if overlapping) — cheap lower bound
+  // used to skip mesh pairs that cannot beat the current best.
+  const dx = Math.max(a.min.x - b.max.x, b.min.x - a.max.x, 0);
+  const dy = Math.max(a.min.y - b.max.y, b.min.y - a.max.y, 0);
+  const dz = Math.max(a.min.z - b.max.z, b.min.z - a.max.z, 0);
+  return Math.hypot(dx, dy, dz);
+}
+
+function meshClearance(a, b, upperBound = Infinity) {
+  const bvh = bvhFor(a);
+  bvhFor(b);
+  _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
+  const hit = bvh.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, upperBound);
+  return hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
+}
+
+const _cbA = new THREE.Box3(), _cbB = new THREE.Box3();
+function unitClearance(A, B, upperBound = Infinity) {
+  let best = upperBound, pair = null;
+  for (const a of A.meshes) {
+    _cbA.setFromObject(a);
+    for (const b of B.meshes) {
+      _cbB.setFromObject(b);
+      if (boxDistance(_cbA, _cbB) >= best) continue;
+      const d = meshClearance(a, b, best);
+      if (d < best) { best = d; pair = [a, b]; }
+    }
+  }
+  return { d: best, pair };
+}
+
+function unitByName(clock, name) {
+  const u = collectUnits(clock, { includeExcluded: true }).find((x) => x.name === name);
+  if (!u) throw new Error(`no unit labelled "${name}"`);
+  return u;
+}
+
+// Distance between two labelled units at the CURRENT pose — the interactive
+// one-liner: clearanceAt(__clock, 'Hack spring', 'Balance').
+export function clearanceAt(clock, nameA, nameB) {
+  const A = unitByName(clock, nameA), B = unitByName(clock, nameB);
+  // Scoped matrix refresh: only the two subtrees (plus ancestors), not the
+  // whole 170-mesh scene.
+  A.obj.updateWorldMatrix(true, true);
+  B.obj.updateWorldMatrix(true, true);
+  const { d } = unitClearance(A, B);
+  return d;
+}
+
+// Shared sweep engine: measure MANY unit pairs over pose axes in ONE pass —
+// each pose is evaluated once (setPose + matrix update amortised across all
+// pairs), coarse-to-fine: sample every `coarse`-th pose, then refine only
+// the intervals whose coarse samples come within `refineBand` of that
+// pair's running minimum. refineBand is the Lipschitz-style assumption —
+// a dip narrower than a coarse step AND deeper than the band could in
+// principle be missed; the default band (1.0) is generous for parts moving
+// a few units per axis, and coarse: 1 restores the exact dense sweep.
+// setPose itself refreshes world matrices, so no extra update is needed
+// per pose. Per-pair running minima feed the BVH query's upper bound
+// (best + refineBand during the coarse pass, so band-relevant values stay
+// exact; anything farther clamps to Infinity and is skipped).
+async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+  // pairs: [{ A, B, axes?: [names] }] — resolved units, optional axis filter.
+  const state = pairs.map(() => ({ min: Infinity, at: null }));
+  let poseCount = 0;
+  const evalPose = (axis, i, refined) => {
+    const f = i / axis.n;
+    clock.setPose(axis.pose(f)); // includes scene.updateMatrixWorld(true)
+    poseCount++;
+    for (let p = 0; p < pairs.length; p++) {
+      const pr = pairs[p];
+      if (pr.axes && !pr.axes.includes(axis.name)) continue;
+      const st = state[p];
+      const bound = refined ? st.min : st.min + refineBand;
+      const { d } = unitClearance(pr.A, pr.B, bound);
+      if (d < st.min) { st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) }; }
+      (pr._samples ||= {})[i] = d; // per-axis scratch, reset below
+    }
+  };
+  for (const axis of axes) {
+    const live = pairs.some((pr) => !pr.axes || pr.axes.includes(axis.name));
+    if (!live) continue;
+    for (const pr of pairs) pr._samples = {};
+    // Coarse pass (always includes both endpoints).
+    const coarseIdx = [];
+    for (let i = 0; i <= axis.n; i += coarse) coarseIdx.push(i);
+    if (coarseIdx[coarseIdx.length - 1] !== axis.n) coarseIdx.push(axis.n);
+    for (const i of coarseIdx) {
+      evalPose(axis, i, false);
+      if (poseCount % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+    if (coarse > 1) {
+      // Refine every skipped index adjacent to a coarse sample that came
+      // within refineBand of its pair's minimum (union across pairs). A
+      // pair with a refineFloor (its budget's required margin) skips
+      // refinement entirely while its coarse min stays comfortably above
+      // the floor — a uniformly-distant pair (e.g. blade⇄fork at ~5.5)
+      // would otherwise qualify EVERY interval and degrade to dense.
+      const fine = new Set();
+      for (let p = 0; p < pairs.length; p++) {
+        const pr = pairs[p];
+        if (pr.axes && !pr.axes.includes(axis.name)) continue;
+        if (pr.refineFloor !== undefined && state[p].min > pr.refineFloor + refineBand) continue;
+        for (const i of coarseIdx) {
+          const d = pr._samples[i];
+          if (d === undefined || d > state[p].min + refineBand) continue;
+          for (let j = Math.max(0, i - coarse + 1); j < Math.min(axis.n, i + coarse); j++) {
+            if (pr._samples[j] === undefined) fine.add(j);
+          }
+        }
+      }
+      for (const i of [...fine].sort((a, b) => a - b)) {
+        evalPose(axis, i, true);
+        if (poseCount % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+    for (const pr of pairs) delete pr._samples;
+  }
+  return { state, poseCount };
+}
+
+// Worst-case (minimum) clearance between two units swept across pose axes.
+// Returns { min, at: {axis, f} } plus show() to pose and frame the
+// offending configuration, mirroring runInspection's __inspect.show.
+export async function measureClearance(clock, nameA, nameB, { axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+  const A = unitByName(clock, nameA), B = unitByName(clock, nameB);
+  const { state } = await sweepClearances(clock, [{ A, B }], { axes, coarse, refineBand, yieldEvery });
+  const { min, at } = state[0];
+  return {
+    min: +min.toFixed(4),
+    at,
+    show() {
+      const axis = axes.find((a) => a.name === at.axis);
+      clock.setPose(axis.pose(at.f));
+      const box = new THREE.Box3().setFromObject(A.obj).union(new THREE.Box3().setFromObject(B.obj));
+      const c = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      clock.camera.position.set(c.x + size * 0.5, c.y - size * 0.7, c.z + size * 0.7);
+      clock.controls.target.copy(c);
+      clock.controls.update();
+      clock.render();
+      return `${nameA} ⇄ ${nameB}: ${min} @ ${at.axis} f=${at.f}`;
+    },
+  };
+}
+
+// Standing clearance budgets — pairs whose worst-case gap must stay ABOVE a
+// margin (the complement of PENETRATION_BUDGETS' "may touch, but not this
+// deep"). axes narrows which pose axes apply: the hack pad ⇄ balance pair
+// legitimately TOUCHES at full crown engagement, so its budget covers only
+// the released axes. Seeded from the hack-spring audit (2026-07-18); add a
+// row here whenever an audit derives a clearance worth keeping.
+const CLEARANCE_BUDGETS = [
+  { a: 'Hack spring', b: 'Balance', min: 0.15, axes: ['beat', 'reserve', 'train'] },
+  { a: 'Hack spring', b: 'Reset rod', min: 0.15 },
+  { a: 'Hack spring', b: 'Setting lever', min: 0.15 },
+  { a: 'Hack spring', b: 'Pallet fork', min: 0.15 },
+  // The reset rod leaves the same tail post the ramp collar rides: the
+  // collar's top land is bound at exactly ROD underside − HACK_CLEAR_MARGIN
+  // (RAMP_TOP_Z in main.js), so rod-over-collar is a designed near-miss
+  // held at the margin through the whole crown stroke.
+  { a: 'Hack ramp', b: 'Reset rod', min: 0.15 },
+];
+
+export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+  // All budgets ride ONE sweep: each pose is set up once and every pair
+  // measured at it (per-budget axis scoping handled inside the engine) —
+  // previously this re-swept the full pose space once per budget.
+  const pairs = budgets.map((bud) => ({
+    A: unitByName(clock, bud.a),
+    B: unitByName(clock, bud.b),
+    axes: bud.axes,
+    refineFloor: bud.min, // exact minima only needed near the budget line
+  }));
+  const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
+  const results = budgets.map((bud, i) => ({
+    pair: `${bud.a} ⇄ ${bud.b}`,
+    min: +state[i].min.toFixed(4),
+    required: bud.min,
+    at: `${state[i].at.axis} f=${state[i].at.f}`,
+    ok: state[i].min >= bud.min,
+  }));
+  console.table(results);
+  return { violations: results.filter((r) => !r.ok), results };
+}
 
 // ---------------------------------------------------------------------------
 // Mechanical-graph verification. Three checks:
