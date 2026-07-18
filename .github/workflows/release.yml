@@ -13,10 +13,14 @@
 #   SFTP_SSH_KEY         private key (PEM) authorized for that user on the host
 #
 # Required repository variables (Settings -> Secrets and variables -> Actions -> Variables):
-#   SFTP_RELEASES_PATH   remote base dir releases are uploaded into, e.g. /srv/releases
-#                        (each release lands in $SFTP_RELEASES_PATH/<version>)
-#   SFTP_QA_SYMLINK      remote symlink path the QA environment serves from,
-#                        e.g. /srv/qa/current -- repointed at the new release dir
+#   SFTP_PROJECT_PATH    remote project root the SFTP session is chdir'd into before
+#                        anything else runs; SFTP_RELEASES_PATH and SFTP_QA_SYMLINK
+#                        below are resolved relative to this
+#   SFTP_RELEASES_PATH   base dir (relative to SFTP_PROJECT_PATH) releases are
+#                        uploaded into -- each release lands in
+#                        $SFTP_PROJECT_PATH/$SFTP_RELEASES_PATH/<version>
+#   SFTP_QA_SYMLINK      symlink path (relative to SFTP_PROJECT_PATH) the QA
+#                        environment serves from -- repointed at the new release dir
 
 name: Release
 
@@ -121,7 +125,7 @@ jobs:
             "$SFTP_USER@$SFTP_HOST" <<SFTP_EOF
           cd $SFTP_PROJECT_PATH
           -mkdir $SFTP_RELEASES_PATH
-          put -r $SFTP_RELEASES_PATH/$VERSION
+          put -r $VERSION $SFTP_RELEASES_PATH/$VERSION
           -rm $SFTP_QA_SYMLINK
           symlink $SFTP_RELEASES_PATH/$VERSION $SFTP_QA_SYMLINK
           SFTP_EOF
