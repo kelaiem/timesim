@@ -112,6 +112,7 @@ jobs:
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SFTP_RELEASES_PATH: ${{ vars.SFTP_RELEASES_PATH }}
+          SFTP_PROJECT_PATH: ${{ vars.SFTP_PROJECT_PATH }}
           SFTP_QA_SYMLINK: ${{ vars.SFTP_QA_SYMLINK }}
           VERSION: ${{ needs.release.outputs.version }}
         run: |
