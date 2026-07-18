@@ -1161,6 +1161,52 @@ export function makePillar({ height }) {
   return m;
 }
 
+// Winding crown — knurled barrel plus chamfered cap, with a raised torus ring
+// on the outer face. Base sits at z = 0, the face points along +Z (per the
+// builder convention; main.js tips it onto the stem). All relief features
+// are half-embedded in their host surface so they read as machined relief
+// rather than glued-on appliqués.
+export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
+  const g = new THREE.Group();
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(bodyR, bodyR, bodyH, 48, 1), material);
+  body.geometry.rotateX(Math.PI / 2); // cylinder axis Y → Z
+  body.position.z = bodyH / 2;
+  g.add(body);
+
+  // Rim knurling: axial ridges around the barrel wall. Count derives from the
+  // circumference so the ridge pitch stays constant if bodyR changes.
+  const ridgeR = 0.15;
+  const rimN = Math.round((2 * Math.PI * bodyR) / (ridgeR * 4.5));
+  const rimGeo = new THREE.CylinderGeometry(ridgeR, ridgeR, bodyH * 0.9, 6);
+  rimGeo.rotateX(Math.PI / 2);
+  for (let i = 0; i < rimN; i++) {
+    const a = (i / rimN) * 2 * Math.PI;
+    const ridge = new THREE.Mesh(rimGeo, material);
+    ridge.position.set(Math.cos(a) * bodyR, Math.sin(a) * bodyR, bodyH / 2);
+    g.add(ridge);
+  }
+
+  // Chamfered cap closing the outer face (top radius < bottom radius).
+  const capH = 0.55;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(bodyR - 0.35, bodyR, capH, 48, 1), material);
+  cap.geometry.rotateX(Math.PI / 2);
+  cap.position.z = bodyH + capH / 2;
+  g.add(cap);
+  const faceZ = bodyH + capH;
+
+  // Torus in relief on the face, ringing its centre.
+  const torusR = bodyR * 0.5;
+  const torusTube = 0.45;
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(torusR, torusTube, 12, 48), material);
+  torus.position.z = faceZ + torusTube * 0.25;
+  g.add(torus);
+
+  g.userData.r = bodyR + ridgeR;         // widest point: barrel + proud knurl
+  g.userData.totalH = faceZ + torusTube; // tallest point: face + proud torus
+  return g;
+}
+
 // ---------------------------------------------------------------------------
 // Dial & hands
 // ---------------------------------------------------------------------------
