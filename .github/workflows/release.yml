@@ -120,9 +120,7 @@ jobs:
             "$SFTP_USER@$SFTP_HOST" <<SFTP_EOF
           cd $SFTP_PROJECT_PATH
           -mkdir $SFTP_RELEASES_PATH
-          cd $SFTP_RELEASES_PATH
-          put -r $VERSION
+          put -r $SFTP_RELEASES_PATH/$VERSION
           -rm $SFTP_QA_SYMLINK
-          cd $SFTP_PROJECT_PATH
           symlink $SFTP_RELEASES_PATH/$VERSION $SFTP_QA_SYMLINK
           SFTP_EOF
