@@ -122,5 +122,6 @@ jobs:
           cd $SFTP_RELEASES_PATH
           put -r $VERSION
           -rm $SFTP_QA_SYMLINK
+          cd -
           symlink $SFTP_RELEASES_PATH/$VERSION $SFTP_QA_SYMLINK
           SFTP_EOF
