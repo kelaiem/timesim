@@ -6,11 +6,13 @@
 # Always tags/deploys the current tip of main, regardless of which branch
 # is selected in the dispatch UI.
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
+# Required repository secrets (Settings -> Secrets and variables -> Actions -> Secrets):
 #   SFTP_HOST            remote host, e.g. qa.example.com
 #   SFTP_PORT            optional, defaults to 22
 #   SFTP_USER            remote SFTP username
 #   SFTP_SSH_KEY         private key (PEM) authorized for that user on the host
+#
+# Required repository variables (Settings -> Secrets and variables -> Actions -> Variables):
 #   SFTP_RELEASES_PATH   remote base dir releases are uploaded into, e.g. /srv/releases
 #                        (each release lands in $SFTP_RELEASES_PATH/<version>)
 #   SFTP_QA_SYMLINK      remote symlink path the QA environment serves from,
@@ -109,8 +111,8 @@ jobs:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
-          SFTP_RELEASES_PATH: ${{ secrets.SFTP_RELEASES_PATH }}
-          SFTP_QA_SYMLINK: ${{ secrets.SFTP_QA_SYMLINK }}
+          SFTP_RELEASES_PATH: ${{ vars.SFTP_RELEASES_PATH }}
+          SFTP_QA_SYMLINK: ${{ vars.SFTP_QA_SYMLINK }}
           VERSION: ${{ needs.release.outputs.version }}
         run: |
           PORT="${SFTP_PORT:-22}"
