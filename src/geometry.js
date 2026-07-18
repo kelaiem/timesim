@@ -582,6 +582,7 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
   g.add(new THREE.Mesh(geo, MATS.blueSteel));
   g.userData.r = radius;
   g.userData.rMin = rMin;
+  g.userData.bevel = bevel; // bevelSize EXPANDS the outline in XY — clearance math must add it
   return g;
 }
 
@@ -593,13 +594,18 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
 export function makeHammerLever({ length, width }) {
   const g = new THREE.Group();
   const hw = width / 2;
+  // 2D outline (pre-bevel) — single source of truth for the mesh AND for
+  // clearance solvers in main.js (exported via userData below).
+  const outline = [
+    [-hw, 0],
+    [-hw * 0.5, length * 0.85],
+    [-hw * 1.4, length],
+    [hw * 1.4, length],
+    [hw * 0.5, length * 0.85],
+    [hw, 0],
+  ];
   const s = new THREE.Shape();
-  s.moveTo(-hw, 0);
-  s.lineTo(-hw * 0.5, length * 0.85);
-  s.lineTo(-hw * 1.4, length);
-  s.lineTo(hw * 1.4, length);
-  s.lineTo(hw * 0.5, length * 0.85);
-  s.lineTo(hw, 0);
+  outline.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
   s.closePath();
 
   const depth = width * 0.6;
@@ -627,6 +633,10 @@ export function makeHammerLever({ length, width }) {
   g.add(roller);
 
   g.userData.length = length;
+  g.userData.outline = outline;      // pre-bevel 2D profile, local frame
+  g.userData.bevel = width * 0.08;   // bevelSize EXPANDS the outline in XY
+  g.userData.rollerR = hw * 0.7;     // roller at (0, length) — plain cylinder, no bevel
+  g.userData.bossR = hw * 1.3;       // pivot boss at the origin
   return g;
 }
 
