@@ -155,13 +155,14 @@ const perledNickel = phys({
     shader.uniforms.prlTilt = { value: tilt };
     shader.uniforms.prlRadius = { value: prl.pearlRadiusUnits ?? pitch * 0.8 };
     shader.uniforms.prlOrder = { value: prl.shingleFlip ? -1.0 : 1.0 };
+    shader.uniforms.prlJitter = { value: prl.jitterFrac ?? 0.25 };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;')
       .replace('#include <begin_vertex>',
         '#include <begin_vertex>\nvPrlWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPrlNormal = normalize(mat3(modelMatrix) * objectNormal);');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>',
-        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;\nuniform float prlRadius;\nuniform float prlOrder;')
+        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;\nuniform float prlRadius;\nuniform float prlOrder;\nuniform float prlJitter;')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       if (vPrlNormal.z > 0.7) {
         // Real perlage is stamped pearl by pearl, row by row — each pearl
@@ -183,7 +184,7 @@ const perledNickel = phys({
             vec2 cellId = floor(pp) + vec2(float(pdx), float(pdy));
             vec2 jit = fract(sin(vec2(dot(cellId, vec2(127.1, 311.7)),
                                       dot(cellId, vec2(269.5, 183.3)))) * 43758.5453) - 0.5;
-            vec2 c = cellId + 0.5 + jit * 0.55;
+            vec2 c = cellId + 0.5 + jit * prlJitter;
             if (distance(pp, c) * prlPitch < prlRadius) {
               float score = (cellId.y * 4096.0 + cellId.x) * prlOrder; // application order; prlOrder flips it
               if (score > pBest) { pBest = score; pC = c; }
