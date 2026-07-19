@@ -1758,9 +1758,9 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
 
   // Face rosette: six bur rods radiating tail→centre, tips meeting just
   // shy of the middle so the six ground points read as one cut star.
-  const rodR = bodyR * 0.13;
+  const rodR = bodyR * 0.16;
   const rodOuter = bodyR * 0.8;
-  const rodLen = rodOuter - bodyR * 0.02;
+  const rodLen = rodOuter - bodyR * 0.32; // stop short: open gap at the centre, arms never fuse
   const rodGeo = burPrismGeo(rodR, rodLen, rodR * 2);
   rodGeo.rotateX(Math.PI / 2); // shape +y (keel) → +z (off the face); length → −y
   for (let i = 0; i < 6; i++) {
@@ -2315,8 +2315,8 @@ export function makeHand({ length, kind }) {
   // a point held AT the top-face plane: the top runs level to the point
   // and the whole taper is ground from the underside, like a graver.
   // rBase stays the section's max half-height (the keel), so the crossing
-  // envelope matches the old cylinders — the 1.45 hour/minute plane gap
-  // in main.js still bounds rHour + rMinute (≈ 1.27 at current lengths).
+  // envelope matches the old cylinders — the 1.75 hour/minute plane gap
+  // in main.js still bounds rHour + rMinute (≈ 1.62 at current widths).
   const facetFlat = (geo) => {
     const flat = geo.toNonIndexed();
     flat.computeVertexNormals();

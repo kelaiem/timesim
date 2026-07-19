@@ -2735,7 +2735,7 @@ registerExplode(handsGroup, 2.5, 2, 1);
 // rotation rather than being posed independently.
 const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
 const minuteHand = G.makeHand({ length: dialRadius * 0.82, kind: 'minute' });
-minuteHand.position.z = 1.45; // lifted with the thicker rods: rHour + rMinute must clear this gap (see makeHand)
+minuteHand.position.z = 1.75; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
 
 // Small-seconds display — the hand rides the fourth wheel's own axis via
