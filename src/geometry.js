@@ -1784,7 +1784,20 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // where Rome allows (XII, XXIV); the empty end is 0, a numeral Rome
     // never had.
     ctx.font = `500 ${sr * 0.09}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    arcLabel('0', 150, sr * 0.56);
+    // Zero, for a numeral system that never had one — an INVENTED glyph
+    // with real ancestry: medieval computus tables (Bede, ~725 AD) wrote N
+    // for "nulla" (none) where Roman reckoning needed a zero; the vinculum
+    // overbar is the Roman mark that says "this character is a NUMERAL,
+    // not a letter". So: N-bar.
+    {
+      const aN = (150 * Math.PI) / 180, rN = sr * 0.56, fh = sr * 0.09;
+      ctx.save();
+      ctx.translate(scx + Math.cos(aN) * rN, scy - Math.sin(aN) * rN);
+      ctx.rotate(Math.PI / 2 - aN);
+      ctx.fillText('N', 0, 0);
+      ctx.fillRect(-fh * 0.38, -fh * 0.74, fh * 0.76, fh * 0.09);
+      ctx.restore();
+    }
     arcLabel('XII', 102, sr * 0.56);
     arcLabel('XXIV', 54, sr * 0.56);
     ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
