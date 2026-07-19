@@ -190,18 +190,34 @@ const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
 // 3→1.6): at the old thicknesses the same chain bottoms out against the
 // great wheel with ~2 units still to find.
 const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
-const L_CENTER = 4.85;  // ≥ L_ESCAPE − (0.4+0.15+0.4) − (0.4+0.15+0.45) − (0.45+0.15+0.5), slack 1.5 over the great wheel
+const L_CENTER = 4.85;  // slack 1.5 over the great wheel (the old nest-under-the-escape chain no longer binds it)
 const L_THIRD = 5.95;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
-const L_FOURTH = 6.95;  // = L_ESCAPE − (escape 0.4 + margin + fourth 0.4)
-const L_ESCAPE = 7.90;  // = L_FORK − 1.5 (stone reach), L_FORK from the cock goal above
+const L_FOURTH = 6.95;
+// ESCAPE WHEEL BELOW THE FOURTH WHEEL — the low-escapement layout: the
+// wheel drops under the whole train while its pinion stays up in the
+// fourth wheel's plane (the arbor spans the gap). The ceiling is the
+// fourth arbor's PINION, which meshes the third wheel at L_THIRD and
+// spans 5.15..6.75: escape wheel top (L + 0.4) stays 0.25 under it.
+// Below, its own neighbourhood is clear: the nearest train discs
+// (center, third) are 19+ away in XY, and the fourth arbor is bare
+// staff at this depth.
+const L_ESCAPE = 4.5;
 const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thickness` below)
-const L_FORK = L_ESCAPE + 1.5;
+// FORK INLINE WITH THE WHEEL: one shared plane, the way a real lever
+// escapement is built — the stones engage in the fork's own z-band
+// (stoneZReach = 0) instead of reaching down 1.5. The fork's outline
+// clears the wheel disc everywhere except the stones (arms straddle
+// outside the rim; the belly stays a full radius below it), so
+// coplanarity costs nothing laterally and buys the whole stone reach
+// in depth — which the balance, spring and cock all inherit.
+const L_FORK = L_ESCAPE;
 const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
 const RIM_H = BAL_T * 0.75;     // rim height — mirrors makeBalanceWheel's 0.75·t rim
 // Balance mid-plane: fork body top (L_FORK + FORK_T/2) + margin + half the
 // rim's own height. The rim's underside is the balance's deepest full-ring
-// face, so this is the lowest the wheel can sit without fouling the fork —
-// and it lands the wheel centre inside the plate band [TQ_BOT_Z, TQ_TOP_Z].
+// face, so this is the lowest the wheel can sit without fouling the fork.
+// With the low escapement it lands FAR BELOW the plate band — the whole
+// oscillator now lives in open air under the plate's cutaway.
 const L_BALANCE = L_FORK + FORK_T / 2 + CLEAR_MARGIN + RIM_H / 2;
 // Impulse-pin world mid-plane — inside the fork's z-band, VERIFIED by the
 // collision audit; it is pinned to the FORK, not the balance, and must not
@@ -210,16 +226,13 @@ const L_BALANCE = L_FORK + FORK_T / 2 + CLEAR_MARGIN + RIM_H / 2;
 const PIN_PLANE_Z = L_FORK - 0.5;
 const L_HAIRSPRING = L_BALANCE + 1.2;
 const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal top out ≈0.7·H above mid-plane)
-// BALANCE COCK IN THE PLATE BAND — the restride exists for this. The slab
-// occupies the same z-band as the three-quarter plate (COCK_T = the
-// plate's own thickness; underside one margin over the hairspring stack,
-// which the restridden train places exactly one plate-thickness under
-// where the fusee pins the plate — see TQ_BOT_Z, which takes SPRING_TOP_Z
-// into its max so cock and plate share one underside by construction).
-// The old standing foot is gone: the cock is a STEPPED piece — a low tail
-// block screwed to the plate's top face at the cut edge, stepping DOWN
-// into the band over the cutaway, its top face flush with the plate's.
-const COCK_T = 0.8; // = TQ_T: flush top faces
+// BALANCE COCK: a LOW bridge riding one margin over the hairspring
+// stack, wherever that stack lands — with the low escapement that is
+// ~4 under the three-quarter plate's band, so the cock (and the
+// regulator dress on its face) stands entirely clear of the plate: no
+// nesting, no shared band, no collision. The plate keeps its cutaway
+// purely for the view of the oscillator below.
+const COCK_T = 0.8;
 const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_H * 0.7; // stud (0.6·H), terminal (0.55·H + ribbon)
 const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
 const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
@@ -266,13 +279,20 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // over it. The third-wheel clearance that used to drive the tall seat is
 // now handled in XY instead: the tornado layout keeps |third − barrel|
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
-const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 4.5;
-// Base high enough that the LOWEST groove (where the chain rides when the
-// reserve is nearly flat) keeps the chain's drum-span clear over the crown
-// wheel's top face — the span crosses the crown wheel's XY footprint, so
-// the clearance is purely vertical (inspector finding: Chain ⇄ Keyless
-// works over the drained half of the reserve axis at 5.1).
-const FUSEE_BASE_Z = 6.0;
+// Cone COMPRESSED to what its grooves actually need: 4 turns of 0.6-dia
+// chain want ~0.62 pitch, so 2.8 of height carries them snugly (the old
+// 4.5 spread them a full unit apart and made the fusee the tallest thing
+// in the movement — its top bound the three-quarter plate's floor).
+const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 2.8;
+// Base sized against the SAME bind as before, re-derived: the LOWEST
+// groove (where the chain rides when the reserve is nearly flat) must
+// keep the drum-span clear over the crown wheel's top face (6.6 + 0.55 =
+// 7.15; the span crosses its XY footprint, so the clearance is purely
+// vertical) plus chain radius 0.3 and margin: Z0 = 2 + 5.45 + 0.17 =
+// 7.62. Lowering base AND height together drops the cone's top from
+// 12.5 to 10.25 — and with it the plate floor, since the fusee was the
+// measured maximum.
+const FUSEE_BASE_Z = 5.45;
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -1962,6 +1982,15 @@ const HACK_LAYOUT = (() => {
       q = intersectTail(post, RESET_ROD_LEN, q).q;
       const pl = local(post);
       minClr = Math.min(minClr, clr(pl.x, pl.y, G.SETTING_LEVER_POST_R));
+      // The post WEARS THE HACK-RAMP COLLAR (solved later, so estimated
+      // here). The γ-solve does NOT land near its d0 floor — measured
+      // brim came out 3.93 with the rod-clearance constraint binding —
+      // so the estimate is calibrated by feedback: 4.4 covers the
+      // measured brim plus its weak growth with anchor distance. The
+      // collar's z-band brackets the anchor post/boss — this bind keeps
+      // the collar off the blade's own support. The post-solve check at
+      // the collar build validates the estimate against the real brim.
+      minClr = Math.min(minClr, Math.hypot(pl.x, pl.y) - 1.15 - 4.4);
       const ql = local(q);
       for (let s = 0; s <= 80; s++) {
         const t = s / 80;
@@ -2222,6 +2251,25 @@ hackRampGroup.add(hackRamp);
 movement.add(hackRampGroup);
 registerExplode(hackRampGroup, RAMP_BRIM_SURF_Z, 4); // explodes with the setting lever
 registerLabel('Hack ramp', hackRampGroup);
+// With the low escapement the blade plane (rim-derived) dropped BELOW the
+// setting lever's body, and the collar followed — the tail post, which
+// only rose UPWARD from the body, no longer reached it (support check:
+// 'Hack ramp → Setting lever' FLOATING by 1.2). The post now continues
+// DOWN through the collar's bore: an extension added post-solve (the
+// collar plane isn't known when the lever is built), child of the lever
+// so it swings with the tail.
+{
+  const bodyBotWorld = Z_SETTING_LEVER - 0.5;                    // lever thickness 1, centred
+  const targetBotWorld = RAMP_BRIM_SURF_Z - RAMP_BRIM_T - 0.2;   // through the collar, a hair past
+  const dropLen = bodyBotWorld - targetBotWorld;
+  if (dropLen > 0.05) {
+    const ext = new THREE.Mesh(
+      new THREE.CylinderGeometry(G.SETTING_LEVER_POST_R, G.SETTING_LEVER_POST_R, dropLen, 12), MATS.steel);
+    ext.rotation.x = Math.PI / 2;
+    ext.position.set(0, -SL_TAIL, -0.5 - dropLen / 2); // lever-local, under the tail
+    settingLever.add(ext);
+  }
+}
 // Build-time sanity: the top land must sit exactly one margin under the
 // rod, the heel stud must actually reach below the blade, and the collar's
 // swept footprint must clear the blade's anchor boss in XY.
@@ -2349,7 +2397,7 @@ function rebuildChain(tension) {
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_R,
       drumPos.y + Math.sin(ang) * DRUM_R,
-      DRUM_CHAIN_Z - s * 0.9
+      DRUM_CHAIN_Z - s * 0.65 // one chain diameter per turn: a snug coil, and it stays above the drum's bottom
     ));
   }
   const curve = new THREE.CatmullRomCurve3(pts);
