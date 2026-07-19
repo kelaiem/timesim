@@ -2688,7 +2688,7 @@ const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
 // central hands' boss needs around the dial centre. This lands ≈ 0.30 of
 // the dial radius (up from 0.2); the bigger wells swallow the XI/I and
 // V/VII numerals symmetrically, leaving II–IIII and VIII–X.
-const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 3.5;
+const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 4.5; // slightly inboard of the maximum — breathing room against the hour ring
 const reserveR = subDialR;
 const secondsSubR = subDialR;
 // Sub-dials are recessed WELLS sunk into the dial (hole + wall + painted
