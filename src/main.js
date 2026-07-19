@@ -179,11 +179,20 @@ window.addEventListener('resize', () => {
 const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                            // z-stack and the hack solvers below, and now by
                            // the balance plane derivation itself.
-const L_BARREL = 2;     // great-wheel plane (meshes center pinion)
-const L_CENTER = 4.1;   // center wheel (meshes third pinion)
-const L_THIRD = 6.2;    // third wheel (meshes fourth pinion)
-const L_FOURTH = 8.3;   // fourth wheel (meshes escape pinion)
-const L_ESCAPE = 10.4;  // escape wheel (engages pallet fork)
+// RESTRIDDEN STACK — solved TOP-DOWN from the design goal "the balance
+// cock sits IN the plate band" (the plate band itself stays where the
+// mainspring drum and fusee force it — they must remain covered). Chain:
+// cock underside 12.83 → spring top 12.68 → L_BALANCE 11.09 → L_FORK 9.40
+// → L_ESCAPE 7.90, then each wheel below by half-thickness sums + margin
+// (wheels that XY-overlap must never share z). Feasible only because the
+// wheelwork THINNED with it (great 2.4→1.4 … escape 1.5→0.8, pinions
+// 3→1.6): at the old thicknesses the same chain bottoms out against the
+// great wheel with ~2 units still to find.
+const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
+const L_CENTER = 4.85;  // ≥ L_ESCAPE − (0.4+0.15+0.4) − (0.4+0.15+0.45) − (0.45+0.15+0.5), slack 1.5 over the great wheel
+const L_THIRD = 5.95;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
+const L_FOURTH = 6.95;  // = L_ESCAPE − (escape 0.4 + margin + fourth 0.4)
+const L_ESCAPE = 7.90;  // = L_FORK − 1.5 (stone reach), L_FORK from the cock goal above
 const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thickness` below)
 const L_FORK = L_ESCAPE + 1.5;
 const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
@@ -200,12 +209,16 @@ const L_BALANCE = L_FORK + FORK_T / 2 + CLEAR_MARGIN + RIM_H / 2;
 const PIN_PLANE_Z = L_FORK - 0.5;
 const L_HAIRSPRING = L_BALANCE + 1.2;
 const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal top out ≈0.7·H above mid-plane)
-// FLAT BALANCE COCK — a low slab (the Glashütte look), not the old tall
-// arch. It cannot drop into the plate band itself: fork band + rim +
-// hairspring stack force its underside to ≥ ~15.3 (see TODO.md). So it is
-// as low as the spring stack allows: underside one margin above the
-// hairspring's topmost geometry, slab COCK_T thick, feet on the plate top.
-const COCK_T = 0.7;
+// BALANCE COCK IN THE PLATE BAND — the restride exists for this. The slab
+// occupies the same z-band as the three-quarter plate (COCK_T = the
+// plate's own thickness; underside one margin over the hairspring stack,
+// which the restridden train places exactly one plate-thickness under
+// where the fusee pins the plate — see TQ_BOT_Z, which takes SPRING_TOP_Z
+// into its max so cock and plate share one underside by construction).
+// The old standing foot is gone: the cock is a STEPPED piece — a low tail
+// block screwed to the plate's top face at the cut edge, stepping DOWN
+// into the band over the cutaway, its top face flush with the plate's.
+const COCK_T = 0.8; // = TQ_T: flush top faces
 const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_H * 0.7; // stud (0.6·H), terminal (0.55·H + ribbon)
 const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
 const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
@@ -243,7 +256,7 @@ const barrelR = (barrelModule * barrelTeeth) / 2;
 const DRUM_R_ACTUAL = 10;
 const DRUM_HEIGHT = 5;
 const barrel = G.makeBarrel({ radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true });
-const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 2.4, boreR: 1.4, spokes: 5, material: MATS.brass });
+const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
 // turns at a tighter groove pitch, seated just above the ratchet/click.
@@ -262,34 +275,34 @@ const FUSEE_BASE_Z = 6.0;
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
-const centerPinion = G.makePinion({ module: barrelModule, teeth: 10, thickness: 3, material: MATS.steel });
+const centerPinion = G.makePinion({ module: barrelModule, teeth: 10, thickness: 1.6, material: MATS.steel });
 const centerPinionR = centerPinion.userData.r;
 
 const centerModule = 0.3, centerTeeth = 75;
-const centerWheel = G.makeGear({ module: centerModule, teeth: centerTeeth, thickness: 2, boreR: 1.2, spokes: 5, material: MATS.brass });
+const centerWheel = G.makeGear({ module: centerModule, teeth: centerTeeth, thickness: 1.0, boreR: 1.2, spokes: 5, material: MATS.brass });
 const centerWheelR = centerWheel.userData.r;
 
 // --- Third arbor: pinion (meshed by center wheel) + third wheel ----------
-const thirdPinion = G.makePinion({ module: centerModule, teeth: 10, thickness: 3, material: MATS.steel });
+const thirdPinion = G.makePinion({ module: centerModule, teeth: 10, thickness: 1.6, material: MATS.steel });
 const thirdPinionR = thirdPinion.userData.r;
 
 const thirdModule = 0.24, thirdTeeth = 80;
-const thirdWheel = G.makeGear({ module: thirdModule, teeth: thirdTeeth, thickness: 1.8, boreR: 1, spokes: 4, material: MATS.brass });
+const thirdWheel = G.makeGear({ module: thirdModule, teeth: thirdTeeth, thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
 const thirdWheelR = thirdWheel.userData.r;
 
 // --- Fourth arbor: pinion (meshed by third wheel) + fourth wheel ---------
-const fourthPinion = G.makePinion({ module: thirdModule, teeth: 10, thickness: 3, material: MATS.steel });
+const fourthPinion = G.makePinion({ module: thirdModule, teeth: 10, thickness: 1.6, material: MATS.steel });
 const fourthPinionR = fourthPinion.userData.r;
 
 const fourthModule = 0.21, fourthTeeth = 80;
-const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: 1.6, boreR: 0.9, spokes: 5, material: MATS.brass });
+const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: 0.8, boreR: 0.9, spokes: 5, material: MATS.brass });
 const fourthWheelR = fourthWheel.userData.r;
 
 // --- Escape arbor: pinion (meshed by fourth wheel) + escape wheel --------
-const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: 3, material: MATS.steel });
+const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: 1.6, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
-const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 1.5 });
+const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
 const escapeWheelR = escapeWheel.userData.r || 4.5;
 
 // --- Pallet fork + balance ------------------------------------------------
@@ -744,7 +757,17 @@ function boxOf(obj) { obj.updateMatrixWorld(true); return _tqBox.setFromObject(o
 // hammer arbor and the lever post are excluded ON PURPOSE: they pass
 // THROUGH it, and are cut for below.)
 const TQ_UNDER = [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup];
-const TQ_BOT_Z = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z)) + CLEAR_MARGIN;
+// SPRING_TOP_Z joins the max so the plate's underside and the balance
+// cock's (SPRING_TOP_Z + margin, see the Z-stack block) coincide by
+// construction — the cock sits IN the plate band, which is the design
+// goal the restridden train serves. If a measured part ever outgrows the
+// spring, the plate rises off the cock plane; warn loudly instead of
+// letting the two drift apart silently.
+const TQ_MEASURED_MAX = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z));
+if (TQ_MEASURED_MAX > SPRING_TOP_Z + 1e-6) {
+  console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack (${SPRING_TOP_Z.toFixed(2)}) — the balance cock will sit BELOW the plate band`);
+}
+const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, SPRING_TOP_Z) + CLEAR_MARGIN;
 const TQ_T = 0.8;
 const TQ_TOP_Z = TQ_BOT_Z + TQ_T;
 const TQ_MID_Z = TQ_BOT_Z + TQ_T / 2;
@@ -999,8 +1022,13 @@ registerLabel('Reset hammer', hammerGroup);
 // there — the obvious spot straight out from the escape axis lands 0.5 inside
 // the fourth wheel.
 const ESC_BR_T = 1.2;                        // slab thickness
-const ESC_BR_BOT = TQ_BOT_Z;                 // shares the plate's underside plane:
-                                             // both are set by the fork's top + margin
+// The bridge hugs the ESCAPEMENT, not the plate: with the restridden stack
+// the plate's underside (spring-bound, 12.86) sits ~2.7 over the fork, and
+// a bridge up there would need jewel tubes that long. Slab bottom = fork
+// top + margin — the same bind the balance rim uses, so slab and rim share
+// their z-band; their XY margins (boss edge vs trimmed screw tips) carry
+// the separation, exactly as before the restride.
+const ESC_BR_BOT = L_FORK + FORK_T / 2 + CLEAR_MARGIN;
 const ESC_BR_JEWEL_Z = ESC_BR_BOT + ESC_BR_T; // slab's top face — where both jewels sit
 const escapeBridge = (() => {
   // Everything the legs have to miss on the way down to the base plate.
@@ -1952,7 +1980,17 @@ const HACK_PITCH = Math.asin(HACK_DROP / (bladeLen - HACK_PAD_TOP_R));
 // so the screw head's rim corner rises by its own radius (0.55) times
 // sin(pitch); that rim rise is trimmed off too, or the released pose eats
 // into the margin (measured: 0.006).
-const BLADE_Z = TQ_BOT_Z - CLEAR_MARGIN - BLADE_T * 1.65 - 0.55 * Math.sin(HACK_PITCH);
+// Two candidate binds, take the LOWER: (a) the anchor screw head clearing
+// the plate's underside (governed when the contact plane hugs the plate,
+// as before the restride); (b) the pad standing PAD_RISE_TARGET tall under
+// the contact plane (governs now — the restride dropped the rim's
+// underside ~2.7 below the plate, so the plate bind went slack and a
+// plate-hugging blade would sit ABOVE its own contact).
+const PAD_RISE_TARGET = 0.9;
+const BLADE_Z = Math.min(
+  TQ_BOT_Z - CLEAR_MARGIN - BLADE_T * 1.65 - 0.55 * Math.sin(HACK_PITCH),
+  HACK_CONTACT_Z - BLADE_T / 2 - PAD_RISE_TARGET
+);
 // The pad's contact face IS the rim's underside (tangency by construction);
 // the rise is simply what spans blade top → contact plane.
 const PAD_RISE = HACK_CONTACT_Z - (BLADE_Z + BLADE_T / 2);
@@ -2433,10 +2471,17 @@ const BALANCE_COCK = (() => {
   }
   return { ...best, length: best.dFoot / 0.62 }; // makeCock: jewel +0.12L, foot centre −0.5L
 })();
-const balanceCockLen = BALANCE_COCK.length;
-// FLAT slab, COCK_T thick, its mid-plane at COCK_MID_Z (see the Z-stack
-// constants: underside one margin over the hairspring stack) — the old tall
-// arch reached z ≈ 20.8; this tops out ≈ 2.4 over the plate.
+// STEPPED COCK, nested level with the plate. The slab occupies the plate's
+// own z-band over the cutaway, so it must END before the cut edge (plate
+// material owns that band beyond it). The slab is shortened to stop 0.1
+// inside the edge; a step web rises at its tail, and a low TAIL PLATE lies
+// on the plate's top face out to the solved foot bearing, where the screw
+// goes down. From the back: the cock's top face is flush with the plate's,
+// with the classic low stepped foot at the seam — the Glashütte look the
+// restride exists to produce. (The balance itself now runs entirely BELOW
+// the slab: rim top 12.03 vs slab bottom 12.86, so overhanging it is free.)
+const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
+const balanceCockLen = (cockEdgeR - 0.1) / 0.62; // slab tail reach (0.62·L below the jewel) stops inside the edge
 const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
@@ -2448,17 +2493,26 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   const jy = balanceCockLen * 0.12;
   const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
   balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, COCK_MID_Z);
-  // ...and the foot that carries all of it down to the plate's top face —
-  // much shorter now: the slab's underside is only ~1.7 above the plate.
-  const footH = COCK_SLAB_BOT - TQ_TOP_Z;
-  if (footH > 0.02) {
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(COCK_FOOT_R * 0.8, COCK_FOOT_R * 0.92, footH, 24), MATS.nickel);
-    foot.rotation.x = Math.PI / 2;
-    foot.position.set(0, -balanceCockLen / 2, -COCK_T / 2 - footH / 2);
-    balanceCock.add(foot);
-  } else {
-    console.warn('balance cock: no room for a foot above the 3/4 plate', footH.toFixed(3));
-  }
+  // Step + tail plate + screw, all in cock-local coordinates (origin at the
+  // slab's centre, +Y toward the jewel):
+  const TAIL_T = 0.45;
+  const yTail = -balanceCockLen / 2;                       // slab's tail end
+  const yFoot = balanceCockLen * 0.12 - BALANCE_COCK.dFoot; // foot bearing
+  const stepT = 0.5;
+  const step = new THREE.Mesh(
+    new THREE.BoxGeometry(COCK_W, stepT, COCK_T + TAIL_T), MATS.nickel);
+  step.position.set(0, yTail - stepT / 2, TAIL_T / 2);
+  balanceCock.add(step);
+  const tailLen = (yTail - stepT) - (yFoot - COCK_FOOT_R);
+  const tail = new THREE.Mesh(
+    new THREE.BoxGeometry(COCK_W, tailLen, TAIL_T), MATS.nickel);
+  tail.position.set(0, yTail - stepT - tailLen / 2, COCK_T / 2 + 0.02 + TAIL_T / 2);
+  balanceCock.add(tail);
+  const screw = new THREE.Mesh(
+    new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, TAIL_T * 0.5, 14), MATS.blueSteel);
+  screw.rotation.x = Math.PI / 2;
+  screw.position.set(0, yFoot, COCK_T / 2 + 0.02 + TAIL_T * 0.75);
+  balanceCock.add(screw);
 }
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);

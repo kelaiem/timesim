@@ -116,12 +116,12 @@ the geometry is present and correct, only the number hops.
   annulus, so the blade cannot be lowered vertically into place — it has to be
   fed in laterally below the rim plane. Tight but doable; worth a comment in
   the code so the constraint isn't lost.
-- **Balance cock literally inside the plate band is blocked.** The cock is now
-  a flat slab as low as the stack allows, but getting it INTO the plate's own
-  z-band [12.83, 13.63] is blocked by the fork band + rim + hairspring stack:
-  fork top 12.5 + rim 1.875 + spring ≈ 0.8 + margins ⇒ cock underside ≥ 15.3.
-  Lowering it further requires re-striding the escapement z-stack (thinner
-  fork/pinions, lower `L_ESCAPE`) — part of the planned layout refactor.
+- **Sweep runtime regression.** The full clearance/inspection sweeps took
+  ~110 s before the z-restride and ~355 s after: the compressed stack packs
+  far more part pairs into overlapping z-bands, so the AABB broad phase
+  passes many more pairs to the BVH narrow phase per pose. If sweeps become
+  a routine gate, revisit the tier-2 idea (batched WASM narrow phase) or
+  prune EXPECTED pairs from the broad phase.
 - **Inspector milestones** (`src/inspect.js` header TODO): extend
   `PENETRATION_BUDGETS` to pin-in-notch and chain-on-cone; allowed phase
   windows per budget; a continuity check for linkage branch flips; a
@@ -130,6 +130,17 @@ the geometry is present and correct, only the number hops.
 ---
 
 ## Recently closed
+
+- **Balance cock level with the 3/4 plate.** The whole escapement z-stack was
+  re-stridden for it (wheels thinned great 2.4→1.4 … escape 1.5→0.8, pinions
+  3→1.6; L_CENTER/THIRD/FOURTH/ESCAPE dropped ~2.5), solved top-down from the
+  cock goal. The plate's underside now takes the hairspring stack into its
+  floor measurement, so cock and plate share one underside BY CONSTRUCTION
+  (both = spring top + margin); the cock is a stepped piece — slab flush in
+  the band over the cutaway, low tail block screwed to the plate top at the
+  cut edge. The impulse-pin plane, hack tangency (error 0) and released gap
+  (0.604) all survived the drop; sweeps clean (0 violations, no new
+  FORBIDDEN pairs).
 
 - **Hour hand had no motion works.** Was `hourHand.rotation.z = minuteA / 12` —
   the only ratio in the movement produced by an arithmetic operator. Now a real
