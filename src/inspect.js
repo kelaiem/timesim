@@ -84,9 +84,9 @@ const MECH_GRAPH = {
     // becomes a self-contained assembly that can be fitted and adjusted
     // without disturbing the plate or any other train pivot, and it stays
     // VISIBLE from the back instead of being buried under plate.
-    ['Escape wheel', 'Escape bridge'],
-    ['Pallet fork', 'Escape bridge'],
-    ['Escape bridge', 'plate'],              // its legs land on the base plate
+    ['Escape wheel', 'Three-quarter plate'], // pivots in the plate like the rest of the train
+    ['Pallet fork', 'Fork cock'],            // its own standalone cap...
+    ['Fork cock', 'plate'],                  // ...whose leg lands on the base plate
     ['Balance cock', 'plate'],               // its leg lands on the BASE plate: the whole
                                              // balance assembly (cock, regulator, spring,
                                              // balance) comes off with the escapement, and
@@ -264,7 +264,7 @@ const MECH_GRAPH = {
   // edge in `support` above, not just eventual reachability.
   bridges: [
     'Balance cock',
-    'Escape bridge',
+    'Fork cock',
   ],
   // Every unit that carries a pinion or a staff must be grounded to the
   // plate — DIRECTLY OR INDIRECTLY (unlike `bridges` above, a chain through
@@ -345,8 +345,8 @@ const EXPECTED_PAIRS = [
   ['Center wheel', 'Three-quarter plate'],
   ['Third wheel', 'Three-quarter plate'],
   ['Fourth wheel', 'Three-quarter plate'],
-  ['Escape wheel', 'Escape bridge'],         // staff's upper pivot in the bridge's jewel
-  ['Pallet fork', 'Escape bridge'],          // ...and the fork's, on the same bridge
+  ['Escape wheel', 'Three-quarter plate'],   // staff's upper pivot in the plate's jewel
+  ['Pallet fork', 'Fork cock'],              // the fork's, in its standalone cap
   ['Balance cock', 'Three-quarter plate'],
   // ('Hack spring' ⇄ 'Three-quarter plate' is NOT expected any more: the
   // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
@@ -687,11 +687,11 @@ const CLEARANCE_BUDGETS = [
   // The escape bridge's length is solved from exactly this gap: it overhangs
   // the pivot it carries, toward the balance, and sits inside the balance's
   // z band while doing it.
-  { a: 'Balance', b: 'Escape bridge', min: 0.15 },
+  { a: 'Balance', b: 'Fork cock', min: 0.15 },
   // The bridge's legs drop through the plate's escapement window without
   // touching it — the window is measured off the bridge's own footprint, so
   // this row is the check on that measurement.
-  { a: 'Escape bridge', b: 'Three-quarter plate', min: 0.15 },
+  { a: 'Fork cock', b: 'Three-quarter plate', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------

@@ -288,21 +288,29 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   const forkY = -L;
 
   // Single crafted body: anchor + belly + lever + fork horns + notch.
+  // Outline refined for the open view the fork cock gives it: the lever
+  // WAISTS between belly and horns (concave flanks, narrowest mid-length),
+  // the anchor arms end in rounded noses, and the horns' outer flanks are
+  // drawn concave — the polished-lever look. Every KINEMATIC vertex is
+  // untouched: horn tips (6, 9), notch walls and floor (7, 8), stone-arm
+  // seats, and the forkTop/forkY anchors the bank-angle derivation uses.
+  const waistHW = leverHW * 0.62;              // narrowest point of the lever
+  const yWaist = (-t * 0.4 + forkTop) / 2;     // mid-length
   const s = new THREE.Shape();
   s.moveTo(-ax - t * 0.7, sy + t * 0.4); // 1 left arm outer top
-  s.lineTo(-ax + t * 0.5, sy - t * 0.5); // 2 left arm underside
+  s.quadraticCurveTo(-ax - t * 0.15, sy - t * 0.35, -ax + t * 0.5, sy - t * 0.5); // 2 rounded arm nose
   s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 3 belly -> lever
-  s.lineTo(-leverHW, forkTop); // 4 lever left down
+  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 4 waisted lever, left flank
   s.lineTo(-forkHW, forkY + t * 0.15); // 5 left horn outer
   s.lineTo(-notchHW - t * 0.15, forkY); // 6 left horn tip
   s.lineTo(-notchHW, forkTop + t * 0.9); // 7 notch inner left
   s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 8 notch floor
   s.lineTo(notchHW + t * 0.15, forkY); // 9 right horn tip
   s.lineTo(forkHW, forkY + t * 0.15); // 10 right horn outer
-  s.lineTo(leverHW, forkTop); // 11 lever right up
+  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 11 waisted lever, right flank (up)
   s.lineTo(leverHW, -t * 0.4); // 12
   s.quadraticCurveTo(t * 1.4, t * 0.2, ax - t * 0.5, sy - t * 0.5); // 13 belly right
-  s.lineTo(ax + t * 0.7, sy + t * 0.4); // 14 right arm outer top
+  s.quadraticCurveTo(ax + t * 0.15, sy - t * 0.35, ax + t * 0.7, sy + t * 0.4); // 14 rounded arm nose
   s.quadraticCurveTo(0, sy * 0.45, -ax - t * 0.7, sy + t * 0.4); // 15 concave top back to 1
   s.closePath();
 
@@ -352,8 +360,14 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   function palletStoneGeometry(bevelSign) {
     const hw = (toothPitchArc * 0.34) / 2;
     const d = toothPitchArc * 0.44;
-    const thickness = toothPitchArc * 0.56;
-    const frontY = d / 2, backY = -d / 2;
+    // Slimmer in Z (a stone is a thin blade — 0.42 pitch still spans the
+    // wheel's whole 0.8 band with margin) and LONGER in the seat direction
+    // (backY at −0.95d buries a proper tail in the fork arm's slot). Both
+    // adjustments move away from or along the wheel — every wheel-side
+    // vertex (front face, impulse corner, locking facet) is bit-identical,
+    // so the MTV-calibrated seating above this stays valid.
+    const thickness = toothPitchArc * 0.42;
+    const frontY = d / 2, backY = -d * 0.95;
     const impulseX = bevelSign * hw;   // full-extent corner — unchanged from the box
     const lockX = -bevelSign * hw;     // locking-side corner — pulled inward
     const s = new THREE.Shape();
@@ -1601,7 +1615,21 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     const seatGap = 0.08;
     const outerR = (j.cbR ?? j.boreR + 0.95) - 0.1; // inside the counterbore wall
     const jd = Math.max(j.depth - seatGap, j.depth * 0.6);
-    const jewel = new THREE.Mesh(ringExtrude(outerR, j.boreR, jd, 32), MATS.ruby);
+    // Dished face (flat seating rim, concave oil sink to the bore) instead
+    // of a flat glossy annulus — same silhouette, nothing rises above the
+    // stone's old top plane. See jewelFaceGeo in main.js for why.
+    const pts = [
+      new THREE.Vector2(j.boreR, -jd / 2), new THREE.Vector2(outerR, -jd / 2),
+      new THREE.Vector2(outerR, jd / 2),
+      new THREE.Vector2(outerR * 0.72, jd / 2),
+      new THREE.Vector2(outerR * 0.48, jd * 0.18),
+      new THREE.Vector2(j.boreR * 1.25, jd * 0.02),
+      new THREE.Vector2(j.boreR, -jd * 0.05),
+      new THREE.Vector2(j.boreR, -jd / 2),
+    ];
+    const dishGeo = new THREE.LatheGeometry(pts, 40);
+    dishGeo.rotateX(Math.PI / 2);
+    const jewel = new THREE.Mesh(dishGeo, MATS.ruby);
     jewel.position.set(j.x, j.y, thickness / 2 - seatGap - jd / 2);
     g.add(jewel);
   }

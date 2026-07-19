@@ -798,6 +798,26 @@ function ringGeo(innerR, outerR, h) {
   g.rotateX(Math.PI / 2); // LatheGeometry revolves about +Y — stand it along Z
   return g;
 }
+// JEWEL face: like ringGeo but the top face is DISHED — a flat seating ring
+// at the rim, then a smooth concave fall to the bore: the oil sink every
+// real jewel carries. A dead-flat glossy annulus in this ruby material reads
+// as a bulging donut under the environment highlights; the dish breaks that
+// into a rim ring + a moving inner gleam, which is how a set stone actually
+// looks. Everything stays at or below the flush plane (z = +h/2), so
+// clearances and the rubbed-in seating are untouched.
+function jewelFaceGeo(boreR, outerR, h) {
+  const g = new THREE.LatheGeometry([
+    new THREE.Vector2(boreR, -h / 2), new THREE.Vector2(outerR, -h / 2),
+    new THREE.Vector2(outerR, h / 2),
+    new THREE.Vector2(outerR * 0.72, h / 2),
+    new THREE.Vector2(outerR * 0.48, h * 0.18),
+    new THREE.Vector2(boreR * 1.25, h * 0.02),
+    new THREE.Vector2(boreR, -h * 0.05),
+    new THREE.Vector2(boreR, -h / 2),
+  ], 40);
+  g.rotateX(Math.PI / 2);
+  return g;
+}
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
 function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {}) {
   const worldTop = boxOf(arbor).max.z;
@@ -816,13 +836,14 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {})
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
 // heart cam's 0.6 bore, which is what the friction coupling grips.)
-for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor]) {
+for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   addUpperPivot(arbor);
 }
-// NEITHER the escape wheel NOR the pallet fork pivots in this plate: they
-// share a combined pallet-and-escape bridge that stands on the BASE plate and
-// comes up through a window cut in this one — built a few blocks down, once
-// the parts its legs have to miss exist. See ESCAPEMENT BRIDGE below.
+// The ESCAPE WHEEL pivots in this plate like the rest of the train — its
+// bore sits in the tongue of plate the window leaves around it. Only the
+// PALLET FORK does not: it gets a small standalone cap cock screwed to the
+// BASE plate (see FORK COCK below), leaving the fork in the open where its
+// action can be watched.
 
 // Measured from VERTICES, not from a bounding box: Box3.setFromObject unions
 // each child's box TRANSFORMED, which for a ring of tilted screw cylinders
@@ -999,42 +1020,23 @@ registerExplode(hammerGroup, Z_SECONDS_ARBOR, 4);
 registerLabel('Reset hammer', hammerGroup);
 
 // ---------------------------------------------------------------------------
-// ESCAPEMENT BRIDGE — a combined pallet-and-escape bridge carrying BOTH upper
-// pivots, standing on legs that go all the way down to the BASE plate, and
-// reached through a window cut in the three-quarter plate above it.
+// FORK COCK — a small standalone cap over the pallet fork's upper pivot,
+// standing on ONE solved leg down to the BASE plate. The combined
+// pallet-and-escape bridge it replaces spanned both axes and put a slab and
+// a second leg across the escapement window; the escape wheel now pivots in
+// the three-quarter plate with the rest of the train (addUpperPivot above),
+// and the fork keeps the base-plate mounting that lets the escapement be
+// fitted and adjusted with the plate in place. What the window frames now is
+// the fork itself — nothing over it but this cap.
 //
-// Why not in the three-quarter plate, and why not on top of it:
-//  · the escapement is the one part of a watch that gets adjusted, and this
-//    makes it a self-contained assembly — escape wheel and fork can be
-//    fitted, their endshake set, and the whole bridge lifted, without
-//    disturbing the plate or any other train pivot. Assembly order: base
-//    plate → train → three-quarter plate → escapement, through the window;
-//  · and it is what makes the escapement VISIBLE. A pivot in the plate means
-//    plate over the escapement; a bridge under the window means you can watch
-//    the lock, drop and impulse happen from directly behind the movement.
-//
-// The fork joins the escape wheel on it (rather than keeping a plate pivot):
-// the two axes are 6.4 apart, the bridge has to span the pair anyway, and
-// splitting them would put half the escapement under plate again.
-//
-// The LEGS are solved, not placed: each drops ~12 units past the fourth,
-// third and escape wheels, whose swept discs leave very little floor down
-// there — the obvious spot straight out from the escape axis lands 0.5 inside
-// the fourth wheel.
-// The bridge slab occupies the SAME z-band as the three-quarter plate —
-// top faces flush, one visual plane of striped nickel, the ribbing
-// running unbroken from plate to bridge (world-space stripes, see
-// MATS.ribbedNickel). The window in the plate is MEASURED from this
-// bridge's real geometry (see TQ_CUT below), so the plate clears it
-// laterally by the cut margin and can be lifted off with the whole
-// escapement — bridge, cock, balance — left standing on the base plate.
-// The price is longer escape/fork staffs (the jewels ride ~2.7 higher
-// than the old escapement-hugging slab); those staffs are built to
-// reach, below.
-const ESC_BR_T = TQ_T;                       // slab thickness = the plate's
-const ESC_BR_BOT = TQ_BOT_Z;                 // same band, by construction
-const ESC_BR_JEWEL_Z = ESC_BR_BOT + ESC_BR_T; // slab's top face — where both jewels sit
-const escapeBridge = (() => {
+// The cap hugs the fork (slab bottom = fork top + margin) rather than riding
+// up in the plate band: a low cap means a short honest staff and the least
+// possible metal in the view. The balance rim shares this z-band, so the
+// leg solve keeps the connecting bar clear of the rim's swept disc in XY.
+const FORK_COCK_T = 1.0;                       // slab thickness
+const FORK_COCK_BOT = L_FORK + FORK_T / 2 + CLEAR_MARGIN;
+const FORK_COCK_JEWEL_Z = FORK_COCK_BOT + FORK_COCK_T; // slab top — the jewel sits here
+const forkCock = (() => {
   // Everything the legs have to miss on the way down to the base plate.
   // Wheels and levers are given as their SWEPT DISCS about their own axes
   // (exact for a rotating part, and a bounding box is useless here — the
@@ -1043,7 +1045,7 @@ const escapeBridge = (() => {
     [barrelArbor, P.barrel], [centerArbor, P.center], [thirdArbor, P.third],
     [fourthArbor, P.fourth], [escapeArbor, P.escape], [forkGroup, P.fork],
     [secondsCamArbor, P.fourth], [hammerGroup, hammerPivotPos],
-  ].map(([o, c]) => ({ x: c.x, y: c.y, r: xyRadiusAbout(o, c, ESC_BR_BOT) }));
+  ].map(([o, c]) => ({ x: c.x, y: c.y, r: xyRadiusAbout(o, c, FORK_COCK_BOT) }));
   // The BALANCE counts for its whole swept radius, not just the staff and
   // roller that share the legs' z band. Mechanically a leg could stand under
   // the rim's overhang; but the fork lies between the escape wheel and the
@@ -1057,18 +1059,18 @@ const escapeBridge = (() => {
     for (const d of discs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
     return c;
   };
-  // Both bosses carry a screwed gold chaton too, in its own counterbore —
-  // sized so the boss still has a full ring of metal outside the recess.
-  // (Declared before the leg solve: the legs must clear for the BAR that
-  // will connect them to these bosses, whose width follows the boss radii.)
-  const escBore = 0.5 + PIVOT_BORE_CLEAR, forkBore = 0.35 + PIVOT_BORE_CLEAR;
-  // Fork boss SLIMMED to 1.5 (was chaton + 0.5 = 1.85): with the balance
-  // lowered into the plate band, its timing screws share this slab's z-band,
-  // and the fork boss is the bridge's closest feature to the balance axis
-  // (11.19 away). Screw tips reach 9.5, so the boss edge at 11.19 − 1.5 =
-  // 9.69 clears them by 0.19. The fork's upper jewel still fits: ruby seats
-  // inside the chaton counterbore (1.35) leaving a 0.15 wall of nickel.
-  const bossEsc = chatonOuterFor(escBore) + 0.5, bossFork = chatonOuterFor(forkBore) + 0.15;
+  // The boss carries a rubbed-in jewel in its counterbore — sized so the
+  // boss keeps a full ring of metal outside the recess. (Declared before
+  // the leg solve: the leg must clear for the BAR that will connect it to
+  // this boss, whose width follows the boss radius.)
+  const forkBore = 0.35 + PIVOT_BORE_CLEAR;
+  // Fork boss SLIMMED to 1.5 (was chaton + 0.5 = 1.85): the balance's
+  // timing screws share this slab's z-band, and the boss is the cap's
+  // closest feature to the balance axis (11.19 away). Screw tips reach
+  // 9.5, so the boss edge at 11.19 − 1.5 = 9.69 clears them by 0.19. The
+  // jewel still fits: ruby seats inside the counterbore (1.35) leaving a
+  // 0.15 wall of nickel.
+  const bossFork = chatonOuterFor(forkBore) + 0.15;
   // One leg outboard of each axis. Scan the bearing away from the other axis
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
   // bridge compact. hostBossR is the host end's boss radius — it sizes the
@@ -1106,41 +1108,38 @@ const escapeBridge = (() => {
     return best;
   };
   const legR = 1.15;
-  const legA = legFor(P.escape, P.fork, legR, bossEsc);
   const legB = legFor(P.fork, P.escape, legR, bossFork);
-  if (!legA || !legB) console.warn('escapement bridge: no clear footing for a leg');
+  if (!legB) console.warn('fork cock: no clear footing for its leg');
   const chain = [
-    { x: legA.x, y: legA.y, r: legR * 1.35, foot: true },
-    { x: P.escape.x, y: P.escape.y, r: bossEsc, bore: escBore, cbR: chatonOuterFor(escBore), cbDepth: CHATON_DEPTH },
     { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: chatonOuterFor(forkBore), cbDepth: CHATON_DEPTH },
     { x: legB.x, y: legB.y, r: legR * 1.35, foot: true },
   ];
   const g = G.makeEscapeBridge({
     chain,
-    thickness: ESC_BR_T,
-    // Legs reach the BASE plate's top face (it spans [z−1, z+1]) — measured
-    // from the slab's underside, which is where makeEscapeBridge hangs them.
-    footDrop: ESC_BR_BOT - (backPlate.position.z + 1),
+    thickness: FORK_COCK_T,
+    // The leg reaches the BASE plate's top face (it spans [z−1, z+1]) —
+    // measured from the slab's underside, where makeEscapeBridge hangs it.
+    footDrop: FORK_COCK_BOT - (backPlate.position.z + 1),
     jewels: [
-      { x: P.escape.x, y: P.escape.y, boreR: escBore, depth: CHATON_DEPTH },
       { x: P.fork.x, y: P.fork.y, boreR: forkBore, depth: CHATON_DEPTH },
     ],
   });
-  g.position.set(0, 0, ESC_BR_BOT + ESC_BR_T / 2);
+  g.position.set(0, 0, FORK_COCK_BOT + FORK_COCK_T / 2);
   movement.add(g);
-  registerExplode(g, ESC_BR_BOT + ESC_BR_T / 2, 7);
-  registerLabel('Escape bridge', g);
-  return { obj: g, chain, legA, legB, legR };
+  registerExplode(g, FORK_COCK_BOT + FORK_COCK_T / 2, 7);
+  registerLabel('Fork cock', g);
+  return { obj: g, chain, legB, legR };
 })();
-// Both staffs now run UP to that slab's top face, into its jewels.
-for (const [arbor, staffR] of [[escapeArbor, 0.5], [forkGroup, 0.35]]) {
-  const top = boxOf(arbor).max.z;
-  const len = ESC_BR_JEWEL_Z - top;
+// The fork's staff runs UP to the cap's top face, into its jewel. (The
+// escape wheel's staff is grown by addUpperPivot with the rest of the train.)
+{
+  const top = boxOf(forkGroup).max.z;
+  const len = FORK_COCK_JEWEL_Z - top;
   if (len > 0.05) {
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, len, 12), MATS.steel);
     shaft.rotation.x = Math.PI / 2;
-    shaft.position.z = (top - arbor.position.z) + len / 2;
-    arbor.add(shaft);
+    shaft.position.z = (top - forkGroup.position.z) + len / 2;
+    forkGroup.add(shaft);
   }
 }
 
@@ -1150,9 +1149,10 @@ for (const [arbor, staffR] of [[escapeArbor, 0.5], [forkGroup, 0.35]]) {
 //     centre → balance line, open all the way to the rim, so the balance
 //     hangs in the clear under its cock (~96° of rim removed);
 //   · the ESCAPEMENT WINDOW — the opening then runs on inland to expose the
-//     escape wheel, the pallet fork and the bridge carrying them. Without it
-//     the bridge would be under plate and the whole point of standing it on
-//     the base plate (see ESCAPEMENT BRIDGE above) would be lost.
+//     pallet fork and the cap cock holding it. The ESCAPE WHEEL now pivots
+//     in this plate (its bore in the tongue the window leaves around it), so
+//     it no longer votes for the opening — what the window frames is the
+//     fork's action, with the wheel's rim showing at the window's edge.
 // They are adjacent — the escapement sits ~103° off the balance's outward
 // bearing — so they merge into one kidney-shaped opening running from the rim
 // around the balance and out over the escapement, which is also how these
@@ -1184,16 +1184,10 @@ const TQ_CUT = (() => {
   const v = new THREE.Vector3();
   // Each part contributes its SWEPT footprint, built from its own motion
   // rather than from posed snapshots (poses only exist once tick() runs):
-  //  · escape wheel — turns continuously, so a full disc of its swept radius;
   //  · pallet fork — banks ±(FORK_BANK_DEG + FORK_RECOIL_DEG) about its
   //    pivot, so its vertices swept through exactly that arc;
-  //  · the bridge — static.
-  {
-    const rEsc = xyRadiusAbout(escapeArbor, P.escape);
-    for (let d = 0; d < 360; d += 2) {
-      bump(P.escape.x + Math.cos(d * DEG2RAD) * rEsc, P.escape.y + Math.sin(d * DEG2RAD) * rEsc);
-    }
-  }
+  //  · the fork cock — static.
+  // (The escape wheel no longer contributes: it pivots in this plate.)
   const bankRad = (FORK_BANK_DEG + FORK_RECOIL_DEG) * DEG2RAD;
   forkGroup.updateMatrixWorld(true);
   forkGroup.traverse((o) => {
@@ -1209,8 +1203,8 @@ const TQ_CUT = (() => {
       }
     }
   });
-  escapeBridge.obj.updateMatrixWorld(true);
-  escapeBridge.obj.traverse((o) => {
+  forkCock.obj.updateMatrixWorld(true);
+  forkCock.obj.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
     const pos = o.geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -2429,7 +2423,7 @@ const BALANCE_COCK = (() => {
   for (const h of tqHoles) obstacles.push({ x: h.x, y: h.y, r: h.r });
   for (const s of tqSlots) obstacles.push({ ax: s.ax, ay: s.ay, bx: s.bx, by: s.by, r: s.r });
   // The escapement bridge's slab shares the cock foot's z band.
-  for (const n of escapeBridge.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
+  for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
   // The hack blade and the reset-rod linkage both run in the band between the
   // plate's top face and the cock's underside — the pedestal's band exactly.
   obstacles.push({
@@ -2505,26 +2499,39 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   // so the three-quarter plate lifts off without touching any of it.
   // (The slab still nests level with the plate band for the flush
   // Glashütte look — the mounting changed, not the face.)
+  // ...and the foot is a T: a crossbar fans out from the slab tail, flush
+  // in the same z-band, with a leg at EACH end — two feet splayed wide
+  // apart instead of one under the tail. A cock is cantilevered from one
+  // screw; a bridge is held at two — this is the "structure it like a
+  // bridge" stability move, done at the only end with open floor (the head
+  // end overhangs the fork and the spring; no leg can land there).
   const yTail = -balanceCockLen / 2;                 // slab's tail end
   const LEG_R = 1.3;
-  const yLeg = yTail + LEG_R + 0.2;                  // fully under the slab
+  const BAR_HSPAN = 5.5;                             // crossbar half-span
+  const yBar = yTail + 1.2;                          // crossbar centreline
+  const bar = new THREE.Mesh(
+    new THREE.BoxGeometry(BAR_HSPAN * 2 + LEG_R * 2, 2.4, COCK_T), MATS.nickel);
+  bar.position.set(0, yBar, 0);
+  balanceCock.add(bar);
   const legTopWorld = COCK_MID_Z - COCK_T / 2;       // slab underside
   const legLen = legTopWorld - PLATE_TOP;
-  const leg = new THREE.Mesh(
-    new THREE.CylinderGeometry(LEG_R, LEG_R * 1.15, legLen, 20), MATS.nickel);
-  leg.rotation.x = Math.PI / 2;
-  leg.position.set(0, yLeg, -COCK_T / 2 - legLen / 2);
-  balanceCock.add(leg);
-  const pad = new THREE.Mesh(
-    new THREE.CylinderGeometry(LEG_R * 1.5, LEG_R * 1.5, 0.4, 20), MATS.nickel);
-  pad.rotation.x = Math.PI / 2;
-  pad.position.set(0, yLeg, -COCK_T / 2 - legLen + 0.2);
-  balanceCock.add(pad);
-  const screw = new THREE.Mesh(
-    new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, 0.22, 14), MATS.blueSteel);
-  screw.rotation.x = Math.PI / 2;
-  screw.position.set(0, yLeg, COCK_T / 2 + 0.11);
-  balanceCock.add(screw);
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(
+      new THREE.CylinderGeometry(LEG_R, LEG_R * 1.15, legLen, 20), MATS.nickel);
+    leg.rotation.x = Math.PI / 2;
+    leg.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen / 2);
+    balanceCock.add(leg);
+    const pad = new THREE.Mesh(
+      new THREE.CylinderGeometry(LEG_R * 1.5, LEG_R * 1.5, 0.4, 20), MATS.nickel);
+    pad.rotation.x = Math.PI / 2;
+    pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
+    balanceCock.add(pad);
+    const screw = new THREE.Mesh(
+      new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, 0.22, 14), MATS.blueSteel);
+    screw.rotation.x = Math.PI / 2;
+    screw.position.set(s * BAR_HSPAN, yBar, COCK_T / 2 + 0.11);
+    balanceCock.add(screw);
+  }
 
   // ------------------------------------------------------------------
   // FIXED OUTER TERMINAL + REGULATOR (TODO item 4). Everything below is
@@ -2726,7 +2733,7 @@ const threeQuarterPlate = new THREE.Group();
     // and a jewel set directly into the plate is the older, simpler bearing
     // anyway — what this movement used before chatons were introduced.
     const jewel = new THREE.Mesh(
-      ringGeo(p.boreR, chatonOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
+      jewelFaceGeo(p.boreR, chatonOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
     jewel.position.set(p.x, p.y, TQ_T / 2 - CHATON_DEPTH / 2);
     threeQuarterPlate.add(jewel);
   }
@@ -2762,7 +2769,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     }
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
-    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, escapeBridge.obj]) {
+    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj]) {
       const b = boxOf(o);
       const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
       c = Math.min(c, Math.hypot(x - cx, y - cy));
