@@ -288,21 +288,29 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   const forkY = -L;
 
   // Single crafted body: anchor + belly + lever + fork horns + notch.
+  // Outline refined for the open view the fork cock gives it: the lever
+  // WAISTS between belly and horns (concave flanks, narrowest mid-length),
+  // the anchor arms end in rounded noses, and the horns' outer flanks are
+  // drawn concave — the polished-lever look. Every KINEMATIC vertex is
+  // untouched: horn tips (6, 9), notch walls and floor (7, 8), stone-arm
+  // seats, and the forkTop/forkY anchors the bank-angle derivation uses.
+  const waistHW = leverHW * 0.62;              // narrowest point of the lever
+  const yWaist = (-t * 0.4 + forkTop) / 2;     // mid-length
   const s = new THREE.Shape();
   s.moveTo(-ax - t * 0.7, sy + t * 0.4); // 1 left arm outer top
-  s.lineTo(-ax + t * 0.5, sy - t * 0.5); // 2 left arm underside
+  s.quadraticCurveTo(-ax - t * 0.15, sy - t * 0.35, -ax + t * 0.5, sy - t * 0.5); // 2 rounded arm nose
   s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 3 belly -> lever
-  s.lineTo(-leverHW, forkTop); // 4 lever left down
+  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 4 waisted lever, left flank
   s.lineTo(-forkHW, forkY + t * 0.15); // 5 left horn outer
   s.lineTo(-notchHW - t * 0.15, forkY); // 6 left horn tip
   s.lineTo(-notchHW, forkTop + t * 0.9); // 7 notch inner left
   s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 8 notch floor
   s.lineTo(notchHW + t * 0.15, forkY); // 9 right horn tip
   s.lineTo(forkHW, forkY + t * 0.15); // 10 right horn outer
-  s.lineTo(leverHW, forkTop); // 11 lever right up
+  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 11 waisted lever, right flank (up)
   s.lineTo(leverHW, -t * 0.4); // 12
   s.quadraticCurveTo(t * 1.4, t * 0.2, ax - t * 0.5, sy - t * 0.5); // 13 belly right
-  s.lineTo(ax + t * 0.7, sy + t * 0.4); // 14 right arm outer top
+  s.quadraticCurveTo(ax + t * 0.15, sy - t * 0.35, ax + t * 0.7, sy + t * 0.4); // 14 rounded arm nose
   s.quadraticCurveTo(0, sy * 0.45, -ax - t * 0.7, sy + t * 0.4); // 15 concave top back to 1
   s.closePath();
 
@@ -352,8 +360,14 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   function palletStoneGeometry(bevelSign) {
     const hw = (toothPitchArc * 0.34) / 2;
     const d = toothPitchArc * 0.44;
-    const thickness = toothPitchArc * 0.56;
-    const frontY = d / 2, backY = -d / 2;
+    // Slimmer in Z (a stone is a thin blade — 0.42 pitch still spans the
+    // wheel's whole 0.8 band with margin) and LONGER in the seat direction
+    // (backY at −0.95d buries a proper tail in the fork arm's slot). Both
+    // adjustments move away from or along the wheel — every wheel-side
+    // vertex (front face, impulse corner, locking facet) is bit-identical,
+    // so the MTV-calibrated seating above this stays valid.
+    const thickness = toothPitchArc * 0.42;
+    const frontY = d / 2, backY = -d * 0.95;
     const impulseX = bevelSign * hw;   // full-extent corner — unchanged from the box
     const lockX = -bevelSign * hw;     // locking-side corner — pulled inward
     const s = new THREE.Shape();
@@ -952,34 +966,59 @@ export function makeHackRamp({ boreR, landR, kneeR, brimR, landH, brimT }) {
 // Hairspring — Archimedean spiral tube (flat ribbon), collet, stud, terminal
 // ---------------------------------------------------------------------------
 
-export function makeHairspring({ innerR, outerR, coils = 12, height }) {
+// An oscillator's spring has ONE moving end: the collet turns with the
+// staff; the outer terminal is pinned to the balance cock through its stud
+// and does not move. So winding is a change of GEOMETRY (the coils bunch
+// and spread as the inner boundary rotates), not a rigid rotation of the
+// whole spiral — which is what this used to be: the entire group, stud
+// included, turned with the balance, meaning the spring never actually
+// stored anything (TODO item 4). The spiral is now precomputed as wind
+// keyframes: frame k is the Archimedean spiral whose inner end is rotated
+// by θ_k with the outer end FIXED at its stud angle; tick() swaps frames
+// via userData.setWind(θ). The stud itself is gone from this group — it
+// belongs to the COCK (main.js builds it there); userData tells the
+// caller where the terminal ends so stud and curb pins can meet it.
+export function makeHairspring({ innerR, outerR, coils = 12, height,
+                                 windFrames = 41, windMaxRad = 1.0 }) {
   const g = new THREE.Group();
   const ribbonR = Math.max(((outerR - innerR) / coils) * 0.12, 0.05);
-  const curve = new ArchimedeanSpiral(innerR, outerR, coils);
   const segs = Math.max(coils * 48, 96);
+  const S0 = coils * Math.PI * 2; // unwound span; outer end angle ≡ S0
 
-  const tubeGeo = new THREE.TubeGeometry(curve, segs, ribbonR, 4, false);
-  const tube = new THREE.Mesh(tubeGeo, MATS.blueSteel);
+  const spiralGeo = (theta) => {
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const a = theta + t * (S0 - theta); // inner (turned) → outer (fixed)
+      const r = innerR + t * (outerR - innerR);
+      pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0));
+    }
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false);
+  };
+  const frames = [];
+  for (let k = 0; k < windFrames; k++) {
+    frames.push(spiralGeo(-windMaxRad + (k / (windFrames - 1)) * 2 * windMaxRad));
+  }
+  const tube = new THREE.Mesh(frames[(windFrames - 1) >> 1], MATS.blueSteel);
   tube.scale.z = Math.max(height / (ribbonR * 2), 1); // stand the ribbon on edge
   g.add(tube);
+  g.userData.setWind = (theta) => {
+    const t = Math.max(-windMaxRad, Math.min(windMaxRad, theta));
+    const k = Math.round(((t + windMaxRad) / (2 * windMaxRad)) * (windFrames - 1));
+    if (tube.geometry !== frames[k]) tube.geometry = frames[k];
+  };
 
-  // Collet at center.
+  // Collet at center (turns with the staff; a cylinder, so no visual spin).
   const colletGeo = new THREE.CylinderGeometry(innerR, innerR, height * 1.1, 20);
   colletGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(colletGeo, MATS.steel));
 
-  // Outer stud block.
-  const endA = coils * Math.PI * 2;
-  const studGeo = new THREE.BoxGeometry(ribbonR * 4, ribbonR * 4, height * 1.2);
-  const stud = new THREE.Mesh(studGeo, MATS.steel);
-  stud.position.set(Math.cos(endA) * outerR, Math.sin(endA) * outerR, 0);
-  g.add(stud);
-
-  // Raised terminal end-curve running from the outer coil up to the stud.
+  // Raised terminal end-curve from the fixed outer coil end up toward the
+  // stud (which the cock provides). This part never moves.
   const termPts = [];
   for (let i = 0; i <= 20; i++) {
     const t = i / 20;
-    const a = endA + t * 0.9;
+    const a = S0 + t * 0.9;
     const r = outerR + t * ribbonR * 3;
     termPts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, height * 0.55 * t));
   }
@@ -987,6 +1026,13 @@ export function makeHairspring({ innerR, outerR, coils = 12, height }) {
   g.add(new THREE.Mesh(termGeo, MATS.blueSteel));
 
   g.userData.r = outerR;
+  g.userData.ribbonR = ribbonR;
+  g.userData.endAngle = S0 + 0.9;                 // local angle where the STUD must sit
+  g.userData.termEndR = outerR + ribbonR * 3;     // ...at this radius
+  g.userData.termEndZ = height * 0.55;            // ...and this height above mid-plane
+  g.userData.termMid = {                          // where curb pins straddle the curve
+    angle: S0 + 0.45, r: outerR + ribbonR * 1.5, z: height * 0.275,
+  };
   return g;
 }
 
@@ -1428,7 +1474,7 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
 // (width·0.5 total = width·0.4 core + 2·width·0.05 bevel) reproduces the old
 // fixed proportions exactly; the flat Glashütte-style balance cock passes a
 // much thinner slab.
-export function makeCock({ length, width, thickness = width * 0.5 }) {
+export function makeCock({ length, width, thickness = width * 0.5, studHole = null }) {
   const g = new THREE.Group();
   const hw = width / 2;
   const s = new THREE.Shape();
@@ -1439,9 +1485,21 @@ export function makeCock({ length, width, thickness = width * 0.5 }) {
   s.absarc(0, -length * 0.5, hw, Math.PI, Math.PI * 2, false); // rounded foot
   s.closePath();
 
+  // Spy hole toward the head — slid down out of the way when a stud hole
+  // is punched above it (two overlapping holes break the extrude).
   const h1 = new THREE.Path();
-  h1.absarc(0, length * 0.42, width * 0.12, 0, Math.PI * 2, true);
+  let h1y = length * 0.42;
+  if (studHole) h1y = Math.min(h1y, studHole.y - studHole.r - width * 0.12 - 0.25);
+  h1.absarc(0, h1y, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h1);
+  // STUD HOLE: a real bore for the hairspring stud to pass through the
+  // slab — the traditional fit (the stud drops in and is pinned), and the
+  // honest alternative to a post interpenetrating solid nickel.
+  if (studHole) {
+    const hS = new THREE.Path();
+    hS.absarc(0, studHole.y, studHole.r, 0, Math.PI * 2, true);
+    s.holes.push(hS);
+  }
   const h2 = new THREE.Path();
   h2.absarc(0, -length * 0.42, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h2);
@@ -1557,7 +1615,21 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     const seatGap = 0.08;
     const outerR = (j.cbR ?? j.boreR + 0.95) - 0.1; // inside the counterbore wall
     const jd = Math.max(j.depth - seatGap, j.depth * 0.6);
-    const jewel = new THREE.Mesh(ringExtrude(outerR, j.boreR, jd, 32), MATS.ruby);
+    // Dished face (flat seating rim, concave oil sink to the bore) instead
+    // of a flat glossy annulus — same silhouette, nothing rises above the
+    // stone's old top plane. See jewelFaceGeo in main.js for why.
+    const pts = [
+      new THREE.Vector2(j.boreR, -jd / 2), new THREE.Vector2(outerR, -jd / 2),
+      new THREE.Vector2(outerR, jd / 2),
+      new THREE.Vector2(outerR * 0.72, jd / 2),
+      new THREE.Vector2(outerR * 0.48, jd * 0.18),
+      new THREE.Vector2(j.boreR * 1.25, jd * 0.02),
+      new THREE.Vector2(j.boreR, -jd * 0.05),
+      new THREE.Vector2(j.boreR, -jd / 2),
+    ];
+    const dishGeo = new THREE.LatheGeometry(pts, 40);
+    dishGeo.rotateX(Math.PI / 2);
+    const jewel = new THREE.Mesh(dishGeo, MATS.ruby);
     jewel.position.set(j.x, j.y, thickness / 2 - seatGap - jd / 2);
     g.add(jewel);
   }
@@ -1647,12 +1719,35 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
   return g;
 }
 
+// Flush rubbed-in jewel — the same vocabulary as the escape-bridge and
+// 3/4-plate stones: a ruby annulus sunk in a shallow counterbore, every
+// face held off its host by seat margins (coincident planes z-fight; see
+// the bridge jewels). The hosts here are solid meshes with no real bore
+// cut, so the counterbore is carried by a low nickel collar whose rim
+// stands a hair proud of the surface (local z = 0 is the host's face):
+// from above you read polished rim → recess → sunken ruby, matching the
+// rubbed-in stones above. Replaces the old brass-ring-plus-torus
+// appliqué that sat ON the surface like a donut.
 export function makeJewelSetting({ r }) {
   const g = new THREE.Group();
-  const chaton = new THREE.Mesh(ringExtrude(r * 1.7, r * 0.7, r * 0.7, 24), MATS.brass);
-  g.add(chaton);
-  const jewel = new THREE.Mesh(new THREE.TorusGeometry(r * 0.85, r * 0.35, 12, 24), MATS.ruby);
-  g.add(jewel);
+  const rimTop = 0.1;                    // hair proud of the host face
+  const seatGap = 0.08;                  // same margin the bridge uses
+  const wallR = r * 1.15;                // counterbore wall
+  const outerR = r * 1.6;
+  const d = Math.max(r * 0.35, 0.3);     // recess depth into the host
+  const pts = [
+    new THREE.Vector2(wallR, -d),
+    new THREE.Vector2(wallR, rimTop),
+    new THREE.Vector2(outerR, rimTop),
+    new THREE.Vector2(outerR, -d - 0.1),
+  ];
+  const collarG = new THREE.LatheGeometry(pts, 32);
+  collarG.rotateX(Math.PI / 2); // stand the profile up along Z
+  g.add(new THREE.Mesh(collarG, MATS.nickel));
+  const rubyDepth = d * 0.8;
+  const ruby = new THREE.Mesh(ringExtrude(wallR - seatGap, r * 0.5, rubyDepth, 32), MATS.ruby);
+  ruby.position.z = rimTop - seatGap - rubyDepth / 2; // top sits below the rim
+  g.add(ruby);
   g.userData.r = r;
   return g;
 }
