@@ -2256,22 +2256,32 @@ export function makeHand({ length, kind }) {
   const depth = Math.max(length * config.depthFactor, config.depthMin);
   let bossH = depth * 1.6;
 
-  // Bur rod, shared by all three hands: a ROUND constant-girth rod ending
-  // in a cone that tapers to a point — the profile of an engraver's bur.
-  // Radius rBase keeps the crossing envelope of the earlier cylinders, so
-  // the 1.45 hour/minute plane gap in main.js still bounds
+  // Bur rod, shared by all three hands: a HEXAGONAL prism — near-round in
+  // silhouette but with six flat facets that break the highlight into
+  // distinct planes — ending in a 6-facet pyramid tapering to a point, the
+  // angled tip of an engraver's bur. One corner ridge runs along the top
+  // toward the viewer (6-gon vertices start at +z). De-indexed and
+  // re-normalled so the facets shade FLAT instead of smearing into a tube.
+  // rBase is the CIRCUMradius, so the crossing envelope matches the old
+  // cylinders — the 1.45 hour/minute plane gap in main.js still bounds
   // rHour + rMinute (≈ 1.27 at current lengths).
+  const facetFlat = (geo) => {
+    const flat = geo.toNonIndexed();
+    flat.computeVertexNormals();
+    geo.dispose();
+    return flat;
+  };
   const burRod = (rBase) => {
     const grp = new THREE.Group();
     const tipLen = rBase * 2; // stout point: short taper, wide apex angle
     const shaftLen = tail + length - tipLen;
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(rBase, rBase, shaftLen, 16, 1),
+      facetFlat(new THREE.CylinderGeometry(rBase, rBase, shaftLen, 6, 1)),
       MATS.blueSteel
     );
     shaft.position.y = -tail + shaftLen / 2;
     const tip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0, rBase, tipLen, 16, 1),
+      facetFlat(new THREE.CylinderGeometry(0, rBase, tipLen, 6, 1)),
       MATS.blueSteel
     );
     tip.position.y = length - tipLen / 2;
