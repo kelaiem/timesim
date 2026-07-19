@@ -2273,7 +2273,7 @@ export function makeHand({ length, kind }) {
   };
   const burRod = (rBase) => {
     const grp = new THREE.Group();
-    const tipLen = rBase * 6;
+    const tipLen = rBase * 3; // blunter bur point: shorter taper, wider apex angle
     const shaftLen = tail + length - tipLen;
     const shaft = new THREE.Mesh(
       facetFlat(new THREE.CylinderGeometry(rBase, rBase, shaftLen, 4, 1)),
