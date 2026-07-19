@@ -1800,7 +1800,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
       ctx.translate(scx + Math.cos(aN) * rN, scy - Math.sin(aN) * rN);
       ctx.rotate(Math.PI / 2 - aN);
       ctx.fillText('N', 0, 0);
-      ctx.fillRect(-fh * 0.38, -fh * 0.74, fh * 0.76, fh * 0.09);
+      ctx.fillRect(-fh * 0.38, -fh * 0.70, fh * 0.76, fh * 0.05);
       ctx.restore();
     }
     arcLabel('XII', 120, sr * 0.64);
@@ -2256,33 +2256,48 @@ export function makeHand({ length, kind }) {
   const depth = Math.max(length * config.depthFactor, config.depthMin);
   let bossH = depth * 1.6;
 
-  if (kind === 'hour' || kind === 'minute') {
-    // ROD hands: a constant-girth cylinder running tail → tip (cylinder
-    // axis is already local +Y, the hand's pointing direction). Radius
-    // derives from the old blade's width but at 0.3× so the hour and
-    // minute rods clear each other where they cross — the minute hand
-    // rides only 1.45 above the hour hand's plane (main.js), so
-    // rHour + rMinute must stay under that with margin
-    // (0.3: 0.54 + 0.48 ≈ 1.0 at current lengths).
-    const rBase = length * config.widthFactor * 0.35;
-    const rod = new THREE.Mesh(
-      new THREE.CylinderGeometry(rBase, rBase, tail + length, 16),
+  // Faceted bur rod, shared by all three hands: a square prism turned 45°
+  // so an EDGE ridge runs along the top facing the viewer (4-gon corners
+  // sit at ±z / ±x), ending in a 4-facet pyramid that tapers to a point —
+  // the profile of an engraver's bur/graver. Geometry is de-indexed and
+  // re-normalled so the facets shade FLAT; a smooth-shaded 4-gon would
+  // read as a badly tessellated tube, not a faceted hand. The prism's
+  // CIRCUMradius is rBase, so the crossing envelope is unchanged from the
+  // old cylinders — the 1.45 hour/minute plane gap in main.js still
+  // bounds rHour + rMinute (≈ 1.27 at current lengths).
+  const facetFlat = (geo) => {
+    const flat = geo.toNonIndexed();
+    flat.computeVertexNormals();
+    geo.dispose();
+    return flat;
+  };
+  const burRod = (rBase) => {
+    const grp = new THREE.Group();
+    const tipLen = rBase * 6;
+    const shaftLen = tail + length - tipLen;
+    const shaft = new THREE.Mesh(
+      facetFlat(new THREE.CylinderGeometry(rBase, rBase, shaftLen, 4, 1)),
       MATS.blueSteel
     );
-    rod.position.y = (length - tail) / 2;
-    g.add(rod);
+    shaft.position.y = -tail + shaftLen / 2;
+    const tip = new THREE.Mesh(
+      facetFlat(new THREE.CylinderGeometry(0, rBase, tipLen, 4, 1)),
+      MATS.blueSteel
+    );
+    tip.position.y = length - tipLen / 2;
+    grp.add(shaft, tip);
+    return grp;
+  };
+
+  if (kind === 'hour' || kind === 'minute') {
+    const rBase = length * config.widthFactor * 0.35;
+    g.add(burRod(rBase));
     bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
   } else {
-    // second: a slim ROD like the hour/minute hands — constant girth,
-    // cylinder axis along the pointing direction. Floor on the radius: at
-    // second-hand widthFactors a sub-dial-length rod would vanish.
+    // second: same bur rod, slimmer. Floor on the radius: at second-hand
+    // widthFactors a sub-dial-length rod would vanish.
     const rBase = Math.max(length * config.widthFactor * 0.5, 0.14);
-    const rod = new THREE.Mesh(
-      new THREE.CylinderGeometry(rBase, rBase, tail + length, 12),
-      MATS.blueSteel
-    );
-    rod.position.y = (length - tail) / 2;
-    g.add(rod);
+    g.add(burRod(rBase));
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
       new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),
