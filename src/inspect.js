@@ -97,9 +97,14 @@ const MECH_GRAPH = {
     ['Regulator', 'Balance cock'],           // index collar + swan-neck ride the cock's top face
     ['Chain', 'Mainspring drum'],            // hooked to the drum wall
     ['Chain', 'Fusee & great wheel'],        // hooked to the cone
-    ['Keyless works', 'plate'],              // stem bushing + wheel studs on the plate
-    ['Setting lever', 'plate'],
-    ['Yoke', 'plate'],
+    ['Keyless works', 'plate'],              // stem-bushing foot hung from the plate's BACK face
+                                             // + the winding transfer arbor running in its bore:
+                                             // the whole keyless works lives on the DIAL side now
+    ['Setting lever', 'plate'],              // stud planted in the plate's back face (dial side)
+    ['Yoke', 'plate'],                       // same dial-side stud mounting
+    ['Winding click', 'plate'],              // its own post standing on the plate's top face —
+                                             // the plate-fixed mount a click needs to actually
+                                             // hold the ratchet (closed TODO.md item 2)
     ['Hack spring', 'plate'],                // anchor post stands on the BASE plate: the blade
                                              // runs UNDER the three-quarter plate now (the
                                              // balance dropped into the plate band took its
@@ -144,7 +149,10 @@ const MECH_GRAPH = {
     ['Fourth wheel', 'Heart cam (seconds reset)'], // friction slip
     ['Fusee & great wheel', 'Power-reserve train'], // slip-coupled arbor extension
     ['crown', 'Keyless works'],
-    ['Keyless works', 'Fusee & great wheel'],  // winding: crown wheel → ratchet
+    ['Keyless works', 'Fusee & great wheel'],  // winding: crown wheel → transfer arbor through the
+                                               // plate bore → transfer wheel → ratchet (the ratchet
+                                               // now sits at the arbor's plate end, under the great wheel)
+    ['Fusee & great wheel', 'Winding click'],  // ratchet teeth kick the plate-fixed click as they pass
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
     ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
     ['Setting lever', 'Hack ramp'],            // collar rides the lever's tail post
@@ -178,16 +186,10 @@ const MECH_GRAPH = {
     // convention already accepted for the reserve train, not a unique gap.
     ['Keyless works', 'cannon pinion / hands', 'motion-works arbor now has real bevel-gear pairs at every corner; the DRIVING value (handSetOffset) is still assigned directly in tick() rather than computed forward from the crown through those gears’ tooth ratios'],
     ['Hairspring', 'Balance cock', 'stud should be pinned to the cock (it currently rotates with the spring)'],
-    // Click is a sub-mesh of "Fusee & great wheel" (fuseeRatchetGroup →
-    // barrelArbor), not its own labelled unit, so this can't yet be a
-    // structured support edge — noted here instead. barrelArbor.rotation.z
-    // = barrelMeshAngle(tau) every frame, so anything mounted under it
-    // (the click included) inherits the full train rotation during normal
-    // running; the click's own local rotation only moves during active
-    // winding (windBack). A click has to be anchored to something
-    // STATIONARY — the plate — to provide real ratcheting resistance; one
-    // riding along with the wheel it's meant to hold provides none.
-    ['Fusee & great wheel (click)', 'plate', 'click should be mounted on a plate-fixed bridge, not on the rotating great wheel/barrel arbor — it currently inherits the train rotation and cannot mechanically hold the ratchet'],
+    // (The click item is CLOSED: the click is its own labelled unit now —
+    // 'Winding click' — standing on a plate-fixed post beside the ratchet,
+    // which itself moved to the fusee arbor's plate end when the keyless
+    // works went dial-side. See its support/drive edges above.)
   ],
   // Geometric anchor checks: a declared support edge is only real if the
   // attachment point actually sits in/on the fixture. point() extracts the
@@ -323,7 +325,8 @@ const EXPECTED_PAIRS = [
   ['Balance', 'Balance cock'],               // staff's upper pivot runs in the cock jewel
   ['Balance', 'Hack spring'],                // brake pad on the rim (crown out)
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
-  ['Keyless works', 'Fusee & great wheel'],  // crown wheel ⇄ ratchet
+  ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ ratchet (+ shared band under the great wheel)
+  ['Winding click', 'Fusee & great wheel'],  // click beak seated in the ratchet's teeth
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
   ['Keyless works', 'Yoke'],                 // prongs on the sliding-pinion hub
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
@@ -693,6 +696,13 @@ const CLEARANCE_BUDGETS = [
   // touching it — the window is measured off the bridge's own footprint, so
   // this row is the check on that measurement.
   { a: 'Fork cock', b: 'Three-quarter plate', min: 0.15 },
+  // Dial-side keyless works (2026-07-19): the lever and yoke bodies now
+  // hang in the plate→dial gap, their pivot-boss undersides solved to hold
+  // exactly the margin over the dial's face — these rows pin that budget
+  // (and would catch a dial foot wandering back into the keyless corridor,
+  // since the feet belong to the 'Dial' unit).
+  { a: 'Setting lever', b: 'Dial', min: 0.15 },
+  { a: 'Yoke', b: 'Dial', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------

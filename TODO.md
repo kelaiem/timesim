@@ -36,15 +36,6 @@ The fusee, chain and cone geometry around it are good; they deserve a real
 spring anchoring. Fix: anchor the spiral's inner end to the drum arbor and let
 its wind state follow `barrelWindTurns`.
 
-## 2. The winding click rides the rotating great wheel
-
-Already documented in-code (`main.js`, near `fuseeRatchetGroup`) and in the
-mechanical graph's `todo` list, but it breaks a primary force path: a click
-anchored to the co-rotating arbor provides zero ratcheting resistance, so
-nothing mechanically prevents the fusee unwinding. The existing comment
-contains the right fix — mount the click on a plate-fixed post/bridge,
-positioned so its beak still reaches the ratchet's tooth circle.
-
 ## 3. `handSetOffset` is assigned, not derived
 
 The motion-works arbor now has real bevel-gear pairs at every corner, and the
@@ -79,6 +70,17 @@ the geometry is present and correct, only the number hops.
 ---
 
 ## Recently closed
+
+- **Winding click is plate-fixed** (was item 2), closed as part of the
+  keyless-works move to the dial side. The ratchet slid down the fusee
+  arbor to just above the base plate (under the great wheel) so the
+  dial-side winding path could cross the plate legally — and at that plane
+  the honest click mount became trivial: its own labelled unit
+  (`Winding click`) on a short post standing on the plate's top face, beak
+  in the ratchet's teeth, at the builder's original azimuth (a multiple of
+  the 15° tooth pitch, preserving the beak-in-valley registration).
+  MECH_GRAPH: support `Winding click → plate`, drive
+  `Fusee & great wheel → Winding click`; the graph's `todo` entry is gone.
 
 - **Setting arbor terminates at the motion works' minute wheel** (was item
   1). The dial-centre stand-in — a pinion cap beside the cannon pinion,
