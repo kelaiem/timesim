@@ -3361,6 +3361,32 @@ panel.innerHTML = `
     <span class="label-small">Plate X-ray</span>
     <button id="btn-xray">Off</button>
   </div>
+  <hr/>
+  <div class="row label-small"><span>Finish</span></div>
+  <div class="row">
+    <span class="label-small">Hand flute</span>
+    <input type="range" id="flute-slider" min="-60" max="30" step="1" />
+  </div>
+  <div class="row">
+    <span class="label-small">Key light</span>
+    <input type="range" id="light-key" min="0" max="500" step="1" />
+  </div>
+  <div class="row">
+    <span class="label-small">Fill light</span>
+    <input type="range" id="light-fill" min="0" max="300" step="1" />
+  </div>
+  <div class="row">
+    <span class="label-small">Dial light</span>
+    <input type="range" id="light-dial" min="0" max="400" step="1" />
+  </div>
+  <div class="row">
+    <span class="label-small">Ambient</span>
+    <input type="range" id="light-hemi" min="0" max="300" step="1" />
+  </div>
+  <div class="row">
+    <span class="label-small">Exposure</span>
+    <input type="range" id="exposure-slider" min="20" max="300" step="1" />
+  </div>
 `;
 document.body.appendChild(panel);
 
@@ -3381,6 +3407,41 @@ showPanelBtn.addEventListener('click', () => setPanelHidden(false));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
 });
+
+// --- Finish: hand flute + lighting -----------------------------------------
+// The flute slider re-cuts the hands LIVE: every hand keeps its group (tick
+// holds those references and drives their rotations), and only the children
+// are swapped for a fresh makeHand build at the new concavity. Lighting
+// sliders drive the light objects directly; nothing here is persisted.
+{
+  const fluteSlider = document.getElementById('flute-slider');
+  fluteSlider.value = Math.round((aesthetics.dial.hands.fluteFactor ?? -0.3) * 100);
+  const HAND_SPECS = [
+    [hourHand, { length: dialRadius * 0.5, kind: 'hour' }],
+    [minuteHand, { length: dialRadius * 0.905, kind: 'minute' }],
+    [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second' }],
+    [reserveHand, { length: reserveR * 0.8, kind: 'minute' }],
+  ];
+  fluteSlider.addEventListener('input', () => {
+    aesthetics.dial.hands.fluteFactor = fluteSlider.value / 100;
+    for (const [hand, spec] of HAND_SPECS) {
+      hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+      hand.clear();
+      for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
+    }
+  });
+  const bindLight = (id, get, set, scale) => {
+    const el = document.getElementById(id);
+    el.value = Math.round(get() * scale);
+    el.addEventListener('input', () => set(el.value / scale));
+  };
+  bindLight('light-key', () => keyLight.intensity, (v) => { keyLight.intensity = v; }, 100);
+  bindLight('light-fill', () => fillLight.intensity, (v) => { fillLight.intensity = v; }, 100);
+  bindLight('light-dial', () => dialLight.intensity, (v) => { dialLight.intensity = v; }, 100);
+  bindLight('light-hemi', () => hemi.intensity, (v) => { hemi.intensity = v; }, 100);
+  bindLight('exposure-slider', () => renderer.toneMappingExposure,
+    (v) => { renderer.toneMappingExposure = v; }, 100);
+}
 
 const labelsContainer = document.createElement('div');
 labelsContainer.id = 'clock-labels';

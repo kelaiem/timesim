@@ -2424,7 +2424,7 @@ export function makeHand({ length, kind }) {
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     const halfW = rBase * (Math.sqrt(3) / 2);
-    const crown = rBase * -0.3; // NEGATIVE bow: the top face dishes into a flute
+    const crown = rBase * (handAesthetics.fluteFactor ?? -0.3); // <0 dishes into a flute, >0 crowns (UI-adjustable)
     // Cross-section in (x = width, y = toward viewer): keel down, top an
     // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
     const sec = new THREE.Shape();
