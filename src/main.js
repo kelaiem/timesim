@@ -158,7 +158,7 @@ function buildStudioEnvironment(renderer) {
   // dark, so they read as black cutouts. A soft even panel here gives
   // their polished faces a constant diffuse sheen (and the lacquer dial
   // a gentle glow), keeping the hands legible at every angle.
-  softbox(80, 55, 0xffffff, 0.45, new THREE.Vector3(0, 8, -75), 0, 0); // dim + small: sheen on the blued hands without silvering the markers
+  softbox(45, 32, 0xffffff, 0.35, new THREE.Vector3(0, 8, -75), 0, 0); // small + dim: a tighter, harder card — sheen on the blued hands, less wash on the dial
 
   // near/far generous enough to cover the 90-unit room half-extent.
   const rt = pmrem.fromScene(envScene, 0.04, 0.1, 250);
