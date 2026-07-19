@@ -429,7 +429,20 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
 // Balance wheel — heavy rim + timing screws, 2 arms, staff, roller table
 // ---------------------------------------------------------------------------
 
-export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6 }) {
+// staffTop/staffBottom: the staff's reach UP and DOWN from the wheel's
+// mid-plane. They exist (rather than one symmetric staffHeight) because the
+// cock jewel above and the roller stack below are NOT symmetric about the
+// wheel — with the flat, low balance cock the staff reaches barely 3 up but
+// must still run down past the safety roller; a symmetric staff would poke
+// out through the cock. Defaults preserve the old symmetric behaviour.
+// pinDrop: wheel mid-plane → impulse-pin mid-plane distance. The pin's WORLD
+// plane is pinned by the pallet fork's notch (it must not move when the
+// balance is re-planed), so the caller passes L_BALANCE − pin plane here.
+// The roller table stays 0.2·t above the pin and the safety roller 0.4·t
+// below it, as before; default −t·1.8 keeps the old hard-coded stack.
+export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6,
+                                   staffTop = null, staffBottom = null,
+                                   pinDrop = thickness * 1.8 }) {
   const g = new THREE.Group();
   const rimO = radius;
   const rimI = radius - thickness * 0.8;
@@ -445,19 +458,32 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.55, thickness * 0.5);
   g.add(new THREE.Mesh(armGeo, MATS.steel));
 
-  // Central staff along Z (staffHeight lets the caller match the actual
-  // wheel-plane → cock-jewel span instead of a proportion of thickness).
-  const staffGeo = new THREE.CylinderGeometry(thickness * 0.35, thickness * 0.35, staffHeight, 16);
+  // Central staff along Z. Asymmetric (staffTop/staffBottom) when the caller
+  // says so; staffHeight remains the symmetric fallback.
+  const sTop = staffTop ?? staffHeight / 2;
+  const sBot = staffBottom ?? staffHeight / 2;
+  const staffGeo = new THREE.CylinderGeometry(thickness * 0.35, thickness * 0.35, sTop + sBot, 16);
   staffGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(staffGeo, MATS.steel));
+  const staff = new THREE.Mesh(staffGeo, MATS.steel);
+  staff.position.z = (sTop - sBot) / 2;
+  g.add(staff);
 
-  // 16 timing screws radially around the rim.
-  const screwGeo = new THREE.CylinderGeometry(thickness * 0.28, thickness * 0.34, thickness * 1.0, 10);
+  // 16 timing screws radially around the rim. Outward PROTRUSION is capped
+  // at 0.5 (they used to reach 0.5·t = 1.25 past the rim): with the balance
+  // lowered into the three-quarter plate's z-band the screw tips share their
+  // z with the escape bridge's fork-pivot boss, and the tips are what set
+  // the balance's true swept radius against that boss and the plate's
+  // cutaway edge. The INNER tip stays where it was (rimO − t/2 at t = 2.5),
+  // which is what HACK_SCREW_IN_R in main.js mirrors.
+  const SCREW_PROTRUSION = 0.5;
+  const screwLen = thickness * 0.7;
+  const screwGeo = new THREE.CylinderGeometry(thickness * 0.28, thickness * 0.34, screwLen, 10);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
     const sc = new THREE.Mesh(screwGeo, MATS.blueSteel);
     sc.rotation.z = a - Math.PI / 2; // cylinder Y-axis -> radial
-    sc.position.set(Math.cos(a) * rimO, Math.sin(a) * rimO, 0);
+    const rc = rimO - (screwLen / 2 - SCREW_PROTRUSION); // tip lands at rimO + PROTRUSION
+    sc.position.set(Math.cos(a) * rc, Math.sin(a) * rc, 0);
     g.add(sc);
   }
 
@@ -471,7 +497,10 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // clear of the fork's lever as it swings past — only the PIN, protruding
   // past the disc's edge, is meant to reach the fork.
   const rollerR = radius * 0.18;
-  const rollerZ = -thickness * 1.6;
+  // The whole roller stack hangs off the PIN's plane (see pinDrop above):
+  // table 0.2·t above it, safety roller 0.4·t below it.
+  const pinZ = -pinDrop;
+  const rollerZ = pinZ + thickness * 0.2;
   const rtGeo = new THREE.CylinderGeometry(radius * 0.15, radius * 0.15, thickness * 0.5, 32);
   rtGeo.rotateX(Math.PI / 2);
   rtGeo.translate(0, 0, rollerZ);
@@ -482,12 +511,12 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
-  pin.position.set(rollerR, 0, rollerZ - thickness * 0.2);
+  pin.position.set(rollerR, 0, pinZ);
   g.add(pin);
 
   // Crescent-notched safety roller (smaller disc under the impulse roller).
   const srR = radius * 0.2;
-  const srZ = rollerZ - thickness * 0.6;
+  const srZ = pinZ - thickness * 0.4;
   const gap = 0.45;
   const srShape = new THREE.Shape();
   srShape.absarc(0, 0, srR, gap, Math.PI * 2 - gap, false);
@@ -1389,7 +1418,13 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   return m;
 }
 
-export function makeCock({ length, width }) {
+// `thickness` is the slab's TOTAL depth, bevels included (same convention as
+// makeThreeQuarterPlate) — the caller budgets real z-faces, and
+// ExtrudeGeometry adds its bevel OUTSIDE the extrusion depth. The default
+// (width·0.5 total = width·0.4 core + 2·width·0.05 bevel) reproduces the old
+// fixed proportions exactly; the flat Glashütte-style balance cock passes a
+// much thinner slab.
+export function makeCock({ length, width, thickness = width * 0.5 }) {
   const g = new THREE.Group();
   const hw = width / 2;
   const s = new THREE.Shape();
@@ -1407,11 +1442,12 @@ export function makeCock({ length, width }) {
   h2.absarc(0, -length * 0.42, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h2);
 
-  const depth = width * 0.4;
+  const bevelT = Math.min(width * 0.05, thickness * 0.2);
+  const depth = thickness - 2 * bevelT; // core extrusion; bevels restore the total
   const geo = new THREE.ExtrudeGeometry(s, {
     depth,
     bevelEnabled: true,
-    bevelThickness: width * 0.05,
+    bevelThickness: bevelT,
     bevelSize: width * 0.05,
     bevelSegments: 1,
     curveSegments: 20,
@@ -1503,11 +1539,19 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     g.add(screw);
   }
   for (const j of jewels) {
-    // Rubbed-in jewel, flush with the bridge's top face — same simple
-    // bearing the plate uses (see the plate build in main.js for why the
-    // screwed-gold-chaton version read as a sunken stone).
-    const jewel = new THREE.Mesh(ringExtrude(j.boreR + 0.95, j.boreR, j.depth, 32), MATS.ruby);
-    jewel.position.set(j.x, j.y, thickness / 2 - j.depth / 2);
+    // Rubbed-in jewel, seated in its counterbore. Every face is kept OFF
+    // the surrounding boss: the outer wall a hair inside the counterbore
+    // wall, the top a hair below the bridge face, the bottom a hair above
+    // the counterbore floor. Coincident faces here z-fought — the ruby and
+    // the nickel boss share a plane at the same depth, which flickered as a
+    // red/white checkerboard and read as a stone lying IN the surface
+    // rather than set into a bore. (The plate jewels avoid this with the
+    // same margins.)
+    const seatGap = 0.08;
+    const outerR = (j.cbR ?? j.boreR + 0.95) - 0.1; // inside the counterbore wall
+    const jd = Math.max(j.depth - seatGap, j.depth * 0.6);
+    const jewel = new THREE.Mesh(ringExtrude(outerR, j.boreR, jd, 32), MATS.ruby);
+    jewel.position.set(j.x, j.y, thickness / 2 - seatGap - jd / 2);
     g.add(jewel);
   }
   g.userData.thickness = thickness;

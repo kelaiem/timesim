@@ -67,9 +67,10 @@ const MECH_GRAPH = {
     // plate supersedes them (see makeThreeQuarterPlate / the plate build in
     // main.js). It is the movement's upper structure: it carries the upper
     // pivot of every train arbor and of the pallet fork, stands on the
-    // pillars, and the balance cock and hack spring are screwed to its top
-    // face. Those two used to float 17.5 and 12.35 units above the plate
-    // they claimed to be mounted on.
+    // pillars, and the balance cock is screwed to its top face (the cock
+    // used to float 17.5 units above the plate it claimed to be mounted
+    // on; the hack spring, once also on this plate's top face, now runs
+    // BELOW the plate and stands on the base plate instead).
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
     ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
@@ -94,7 +95,12 @@ const MECH_GRAPH = {
     ['Keyless works', 'plate'],              // stem bushing + wheel studs on the plate
     ['Setting lever', 'plate'],
     ['Yoke', 'plate'],
-    ['Hack spring', 'Three-quarter plate'],  // anchor block screwed to the plate's top face
+    ['Hack spring', 'plate'],                // anchor post stands on the BASE plate: the blade
+                                             // runs UNDER the three-quarter plate now (the
+                                             // balance dropped into the plate band took its
+                                             // contact plane below the plate's bottom face),
+                                             // so its mount is a standing post like the
+                                             // escapement bridge's legs, not a top-face stud
     ['Hack ramp', 'Setting lever'],          // collar pressed onto the tail post
     ['Reset hammer', 'Three-quarter plate'], // its arbor runs in a bore in the plate
     ['Heart cam (seconds reset)', 'Fourth wheel'], // friction-slip on the fourth arbor
@@ -337,7 +343,10 @@ const EXPECTED_PAIRS = [
   ['Escape wheel', 'Escape bridge'],         // staff's upper pivot in the bridge's jewel
   ['Pallet fork', 'Escape bridge'],          // ...and the fork's, on the same bridge
   ['Balance cock', 'Three-quarter plate'],
-  ['Hack spring', 'Three-quarter plate'],
+  // ('Hack spring' ⇄ 'Three-quarter plate' is NOT expected any more: the
+  // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
+  // and its anchor post lands on the base plate, which is a structure node,
+  // not a swept unit.)
   ['Reset hammer', 'Three-quarter plate'],
   // Small-seconds display arbor (tornado): the through rod runs coaxially
   // inside the fourth wheel/pinion bores (this contact IS the friction
@@ -459,12 +468,46 @@ function boxDistance(a, b) {
   return Math.hypot(dx, dy, dz);
 }
 
+// Exact vertex→surface fallback: every vertex of each mesh queried against
+// the OTHER mesh's tree (closestPointToPoint — the single-tree path, which
+// has never misbehaved), both directions. Slightly conservative (it can
+// only see vertex-to-face distances, not face-interior-to-face-interior),
+// but immune to the tri-to-tri failure it exists to guard against.
+const _sampleV = new THREE.Vector3();
+function sampledClearance(a, b, upperBound = Infinity) {
+  let best = upperBound;
+  for (const [src, dst] of [[b, a], [a, b]]) {
+    const tree = bvhFor(dst);
+    _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
+    const pos = src.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      _sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat);
+      const hit = tree.closestPointToPoint(_sampleV, {}, 0, best);
+      if (hit && hit.distance < best) best = hit.distance;
+    }
+  }
+  return best;
+}
+
 function meshClearance(a, b, upperBound = Infinity) {
   const bvh = bvhFor(a);
   bvhFor(b);
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
   const hit = bvh.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, upperBound);
-  return hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
+  let d = hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
+  // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
+  // short-circuits to 0 through its own triangle-intersection test, and
+  // that test can FALSELY report an intersection for plainly separated
+  // meshes at specific relative transforms (observed: a balance timing
+  // screw vs the escape bridge's fork jewel — true separation ~0.2,
+  // reported 0 at exactly one beat pose, sane at its neighbours). Same
+  // lesson as the pallet-stone MTV story: the boolean BVH intersection is
+  // the primitive this codebase trusts — so a near-zero that the boolean
+  // test CONTRADICTS is re-measured with exact vertex→surface queries.
+  if (d < 0.05 && !meshesIntersect(a, b)) {
+    d = Math.max(d, sampledClearance(a, b, upperBound));
+  }
+  return d;
 }
 
 const _cbA = new THREE.Box3(), _cbB = new THREE.Box3();
@@ -608,10 +651,15 @@ const CLEARANCE_BUDGETS = [
   { a: 'Hack spring', b: 'Reset rod', min: 0.15 },
   { a: 'Hack spring', b: 'Setting lever', min: 0.15 },
   { a: 'Hack spring', b: 'Pallet fork', min: 0.15 },
-  // The reset rod leaves the same tail post the ramp collar rides: the
-  // collar's top land is bound at exactly ROD underside − HACK_CLEAR_MARGIN
-  // (RAMP_TOP_Z in main.js), so rod-over-collar is a designed near-miss
-  // held at the margin through the whole crown stroke.
+  // The blade crosses the movement UNDER the three-quarter plate now; its
+  // anchor screw's head is the tallest fitting and binds at exactly one
+  // margin below the plate's underside (BLADE_Z in main.js).
+  { a: 'Hack spring', b: 'Three-quarter plate', min: 0.15 },
+  // The reset rod leaves the same tail post the ramp collar rides. The
+  // collar used to be bound at exactly ROD underside − HACK_CLEAR_MARGIN;
+  // since the blade (and so the collar) moved under the plate the gap is
+  // ~4 units, but the rod still sweeps the collar's slot corridor, so the
+  // budget stays.
   { a: 'Hack ramp', b: 'Reset rod', min: 0.15 },
   // Three-quarter plate binds (2026-07-18). Every one of these is a place
   // where the plate's z-stack or one of its openings was solved to land

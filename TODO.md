@@ -116,6 +116,12 @@ the geometry is present and correct, only the number hops.
   annulus, so the blade cannot be lowered vertically into place — it has to be
   fed in laterally below the rim plane. Tight but doable; worth a comment in
   the code so the constraint isn't lost.
+- **Balance cock literally inside the plate band is blocked.** The cock is now
+  a flat slab as low as the stack allows, but getting it INTO the plate's own
+  z-band [12.83, 13.63] is blocked by the fork band + rim + hairspring stack:
+  fork top 12.5 + rim 1.875 + spring ≈ 0.8 + margins ⇒ cock underside ≥ 15.3.
+  Lowering it further requires re-striding the escapement z-stack (thinner
+  fork/pinions, lower `L_ESCAPE`) — part of the planned layout refactor.
 - **Inspector milestones** (`src/inspect.js` header TODO): extend
   `PENETRATION_BUDGETS` to pin-in-notch and chain-on-cone; allowed phase
   windows per budget; a continuity check for linkage branch flips; a

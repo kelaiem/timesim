@@ -167,23 +167,49 @@ window.addEventListener('resize', () => {
 //  · L_FORK = L_ESCAPE + 1.5 — the fork body's underside just clears the
 //    escape wheel's top face while the stones (stoneZReach below) straddle
 //    the tooth band;
-//  · L_BALANCE = L_FORK + 4 — the roller stack (table + impulse pin +
-//    safety roller) is built exactly 4 below the wheel in makeBalanceWheel,
-//    so this lands the pin in the fork notch;
-//  · L_COCK/L_HAIRSPRING ride the balance.
+//  · L_BALANCE — the balance now sits IN the three-quarter plate's z-band
+//    (the classic Glashütte elevation: rim level with the plate, swinging in
+//    the cutaway), derived below so its rim's underside binds exactly one
+//    CLEAR_MARGIN above the fork body's top face;
+//  · L_HAIRSPRING and the flat balance cock ride the balance.
 // Stride 2.1 is the floor set by the BRIDGES, not the wheels: each cock is
 // a centred slab ±(width·0.2 + bevel) thick, and it must fit between its
 // own wheel pair's planes and the next wheel up that crosses it (solved:
 // feasible only for stride ≥ ~2.06 at the current cock widths).
+const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
+                           // z-stack and the hack solvers below, and now by
+                           // the balance plane derivation itself.
 const L_BARREL = 2;     // great-wheel plane (meshes center pinion)
 const L_CENTER = 4.1;   // center wheel (meshes third pinion)
 const L_THIRD = 6.2;    // third wheel (meshes fourth pinion)
 const L_FOURTH = 8.3;   // fourth wheel (meshes escape pinion)
 const L_ESCAPE = 10.4;  // escape wheel (engages pallet fork)
+const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thickness` below)
 const L_FORK = L_ESCAPE + 1.5;
-const L_BALANCE = L_FORK + 4;
+const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
+const RIM_H = BAL_T * 0.75;     // rim height — mirrors makeBalanceWheel's 0.75·t rim
+// Balance mid-plane: fork body top (L_FORK + FORK_T/2) + margin + half the
+// rim's own height. The rim's underside is the balance's deepest full-ring
+// face, so this is the lowest the wheel can sit without fouling the fork —
+// and it lands the wheel centre inside the plate band [TQ_BOT_Z, TQ_TOP_Z].
+const L_BALANCE = L_FORK + FORK_T / 2 + CLEAR_MARGIN + RIM_H / 2;
+// Impulse-pin world mid-plane — inside the fork's z-band, VERIFIED by the
+// collision audit; it is pinned to the FORK, not the balance, and must not
+// move when L_BALANCE does. makeBalanceWheel takes the wheel-centre→pin
+// distance as `pinDrop` so the caller can hold this plane exactly.
+const PIN_PLANE_Z = L_FORK - 0.5;
 const L_HAIRSPRING = L_BALANCE + 1.2;
-const L_COCK = L_BALANCE + 2;
+const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal top out ≈0.7·H above mid-plane)
+// FLAT BALANCE COCK — a low slab (the Glashütte look), not the old tall
+// arch. It cannot drop into the plate band itself: fork band + rim +
+// hairspring stack force its underside to ≥ ~15.3 (see TODO.md). So it is
+// as low as the spring stack allows: underside one margin above the
+// hairspring's topmost geometry, slab COCK_T thick, feet on the plate top.
+const COCK_T = 0.7;
+const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_H * 0.7; // stud (0.6·H), terminal (0.55·H + ribbon)
+const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
+const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
+const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // Dial plane (watch front, −z side). Declared with the Z-stack because the
 // whole dial gap is part of the same depth budget: the motion-works
 // crossing (Z_SETTING), reserve train (Z_RSV) and cannon pinion all pack
@@ -267,13 +293,21 @@ const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 1.5 }
 const escapeWheelR = escapeWheel.userData.r || 4.5;
 
 // --- Pallet fork + balance ------------------------------------------------
-// Staff spans from just below the roller stack up through the cock's jewel
-// (poking ~1.5 past it, like a real pivot) — matched to the compressed
-// stack rather than the old thickness-proportional default.
+// The staff is ASYMMETRIC now: up through the flat cock's jewel (poking 0.5
+// past the slab's top, a real pivot end), and down just past the safety
+// roller — the wheel sits low in the movement but the cock sits low too, so
+// a symmetric staff would spike out through the cock.
 const balanceWheel = G.makeBalanceWheel({
   radius: 9,
-  thickness: 2.5,
-  staffHeight: (L_COCK + 1.4 - L_BALANCE + 1.5) * 2,
+  thickness: BAL_T,
+  staffTop: COCK_SLAB_TOP + 0.5 - L_BALANCE,
+  // pinDrop + 0.4·t = safety-roller plane (mirrors the builder's stack);
+  // +0.6 pokes the staff just past the roller's underside.
+  staffBottom: (L_BALANCE - PIN_PLANE_Z) + BAL_T * 0.4 + 0.6,
+  // Wheel-centre → impulse-pin distance: holds the pin's WORLD plane at
+  // PIN_PLANE_Z exactly, wherever the balance itself sits — the pin belongs
+  // to the fork's z-band, not the wheel's.
+  pinDrop: L_BALANCE - PIN_PLANE_Z,
 });
 const balanceR = balanceWheel.userData.r || 9;
 
@@ -293,7 +327,7 @@ const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
 // stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
 // L_ESCAPE — the stones must descend by exactly that gap to land centered
 // on the wheel's own Z-thickness rather than grazing one edge of it.
-const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: 1.2, stoneZReach: L_FORK - L_ESCAPE });
+const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T, stoneZReach: L_FORK - L_ESCAPE });
 // Real impulse rollers sit well inside the balance rim (~15-20% of its
 // radius), not at half of it — the pin only needs to clear the fork's notch,
 // not the whole balance.
@@ -314,7 +348,7 @@ const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
 // even at the "locked" extremes) — this ties them together so a future
 // change to rollerR, amplitude, or fork proportions can't silently
 // reintroduce the gap.
-const notchDepth = 0.8 * forkLeverLength - 0.7 * 1.2; // thickness=1.2, matches the makePalletFork call above
+const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches the makePalletFork call above
 const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH);
 const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
 const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
@@ -323,7 +357,7 @@ const hairspring = G.makeHairspring({
   innerR: Math.max(rollerR * 0.5, 1.5),
   outerR: balanceR * 0.88,
   coils: 10,
-  height: 0.6,
+  height: HAIRSPRING_H, // shared with the cock's z-solve: its slab sits one margin above this stack
 });
 
 // ---------------------------------------------------------------------------
@@ -691,17 +725,19 @@ registerExplode(backPlate, -1, 0);
 // Z-STACK (all three numbers derived, not chosen):
 //  · TQ_BOT_Z — the tallest thing that must run UNDER the plate (the pallet
 //    fork's pivot boss, measured, not assumed) plus one CLEAR_MARGIN.
-//  · TQ_T — the depth budget between the fork and the balance is only
-//    L_BALANCE − (BAL_T·0.75)/2 − fork top ≈ 2.28, and the hack blade has
-//    to live in there too (see the PAD_RISE derivation at the hack block:
-//    plate thickness is spent directly against the blade's pad rise). 0.8 is
-//    the thickest plate that still leaves the blade a real pad; the hack
-//    block asserts the leftover.
+//  · TQ_T — 0.8 of nickel. The balance now sits IN this plate's z-band (its
+//    rim underside L_BALANCE − RIM_H/2 is actually BELOW TQ_BOT_Z), so the
+//    plate no longer separates fork from balance vertically at all — the
+//    CUTAWAY's edge radius is what keeps plate and balance apart, in XY
+//    (see TQ_CUT: base edge = the balance's measured swept radius + margin).
+//    The hack blade runs UNDER the plate now (see BLADE_Z at the hack
+//    block), so plate thickness is no longer traded against the pad rise.
 //  · Parts taller than TQ_BOT_Z that are SUPPOSED to cross the plate (the
 //    spring drum, the setting lever's post + ramp collar, the reset hammer's
 //    arbor) get real openings — see tqHoles/tqSlots at the plate build.
 // ---------------------------------------------------------------------------
-const CLEAR_MARGIN = 0.15; // ONE structural margin, shared with the hack solvers
+// (CLEAR_MARGIN is declared with the Z-stack constants at the top of the
+// file — the balance's own plane derivation binds at it too.)
 const _tqBox = new THREE.Box3();
 function boxOf(obj) { obj.updateMatrixWorld(true); return _tqBox.setFromObject(obj).clone(); }
 // Everything that runs under the plate for its whole width. (The drum, the
@@ -989,11 +1025,29 @@ const escapeBridge = (() => {
     for (const d of discs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
     return c;
   };
+  // Both bosses carry a screwed gold chaton too, in its own counterbore —
+  // sized so the boss still has a full ring of metal outside the recess.
+  // (Declared before the leg solve: the legs must clear for the BAR that
+  // will connect them to these bosses, whose width follows the boss radii.)
+  const escBore = 0.5 + PIVOT_BORE_CLEAR, forkBore = 0.35 + PIVOT_BORE_CLEAR;
+  // Fork boss SLIMMED to 1.5 (was chaton + 0.5 = 1.85): with the balance
+  // lowered into the plate band, its timing screws share this slab's z-band,
+  // and the fork boss is the bridge's closest feature to the balance axis
+  // (11.19 away). Screw tips reach 9.5, so the boss edge at 11.19 − 1.5 =
+  // 9.69 clears them by 0.19. The fork's upper jewel still fits: ruby seats
+  // inside the chaton counterbore (1.35) leaving a 0.15 wall of nickel.
+  const bossEsc = chatonOuterFor(escBore) + 0.5, bossFork = chatonOuterFor(forkBore) + 0.15;
   // One leg outboard of each axis. Scan the bearing away from the other axis
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
-  // bridge compact.
-  const legFor = (host, other, legR) => {
+  // bridge compact. hostBossR is the host end's boss radius — it sizes the
+  // connecting bar the seat commits the bridge to.
+  const legFor = (host, other, legR, hostBossR) => {
     const away = Math.atan2(host.y - other.y, host.x - other.x);
+    // What must clear at the seat is the chain NODE built there (legR·1.35)
+    // — the leg shaft alone under-clears by 0.4, which was latent while the
+    // balance rode above the slab and bites now that they share a z-band.
+    const nodeR = legR * 1.35;
+    const barHW = Math.min(hostBossR, nodeR) * 0.8; // makeEscapeBridge's bar half-width
     let best = null;
     for (let dd = 0; dd <= 100; dd += 2) {
       for (const sgn of dd === 0 ? [1] : [1, -1]) {
@@ -1001,7 +1055,17 @@ const escapeBridge = (() => {
         for (let reach = 3; reach <= 16; reach += 0.25) {
           const x = host.x + Math.cos(a) * reach, y = host.y + Math.sin(a) * reach;
           if (Math.hypot(x, y) > plateR - legR - 1) continue;
-          if (floorClear(x, y) < legR + CLEAR_MARGIN) continue;
+          if (floorClear(x, y) < nodeR + CLEAR_MARGIN) continue;
+          // The BAR from the host boss to this seat rides in the slab's own
+          // z-band — the band the balance (rim + timing screws) now sweeps —
+          // so the bar's edge must clear the balance's swept disc in XY.
+          // (The old solve never looked at the bar: harmless when the
+          // balance was 2.3 higher, a through-the-rim cut once it dropped.)
+          const vx = x - host.x, vy = y - host.y;
+          const L2 = vx * vx + vy * vy || 1e-9;
+          const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
+          const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
+          if (dBar < BAL_OUTER_R + barHW + CLEAR_MARGIN) continue;
           if (!best || reach < best.reach) best = { x, y, reach, a };
         }
       }
@@ -1010,13 +1074,9 @@ const escapeBridge = (() => {
     return best;
   };
   const legR = 1.15;
-  const legA = legFor(P.escape, P.fork, legR);
-  const legB = legFor(P.fork, P.escape, legR);
+  const legA = legFor(P.escape, P.fork, legR, bossEsc);
+  const legB = legFor(P.fork, P.escape, legR, bossFork);
   if (!legA || !legB) console.warn('escapement bridge: no clear footing for a leg');
-  // Both bosses carry a screwed gold chaton too, in its own counterbore —
-  // sized so the boss still has a full ring of metal outside the recess.
-  const escBore = 0.5 + PIVOT_BORE_CLEAR, forkBore = 0.35 + PIVOT_BORE_CLEAR;
-  const bossEsc = chatonOuterFor(escBore) + 0.5, bossFork = chatonOuterFor(forkBore) + 0.5;
   const chain = [
     { x: legA.x, y: legA.y, r: legR * 1.35, foot: true },
     { x: P.escape.x, y: P.escape.y, r: bossEsc, bore: escBore, cbR: chatonOuterFor(escBore), cbDepth: CHATON_DEPTH },
@@ -1072,9 +1132,12 @@ for (const [arbor, staffR] of [[escapeArbor, 0.5], [forkGroup, 0.35]]) {
 // keeps every scrap of material that nothing needs — which is what stops this
 // from becoming a skeleton frame. Sampled across the beat because the fork
 // banks and the escape wheel turns.
-const TQ_CUT_MARGIN = 0.5; // service clearance, not a running one: nothing revealed here
-                           // moves relative to the plate, so this is sized for the eye
-                           // and for a screwdriver at the bridge screws.
+const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: with the
+                           // balance lowered into the plate band, the wheel + its timing
+                           // screws (tips at BAL_OUTER_R) sweep INSIDE the plate's z-band,
+                           // so the cut's base edge (BAL_OUTER_R + this) is what physically
+                           // clears them at every azimuth — the escapement stretch of the
+                           // window is still sized for the eye and the bridge screws.
 const TQ_CUT = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
   const phiOpen = 75 * DEG2RAD;
@@ -1738,7 +1801,8 @@ const HACK_CLEAR_MARGIN = CLEAR_MARGIN; // one named margin; both solvers below 
 // constants (rim height 0.75·t, rim width 0.8·t, screws ±0.34·t at
 // rimO ± t/2 — see makeBalanceWheel) so reshaping the balance moves the
 // brake with it.
-const BAL_T = 2.5;                                     // = makeBalanceWheel thickness
+// (BAL_T itself is declared with the Z-stack constants — the balance plane
+// derivation needs it first.)
 const HACK_RIM_I = balanceR - BAL_T * 0.8;             // rim's inner radius
 const HACK_SCREW_IN_R = balanceR - BAL_T / 2;          // timing screws' inner tips
 // The rim's underside hangs only this far below the screws' deepest sweep
@@ -1754,17 +1818,15 @@ const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_
 const HACK_PAD_TOP_R = (HACK_SCREW_IN_R - HACK_SCREW_STANDOFF - HACK_RIM_I) / 2;
 const HACK_PAD_R = HACK_PAD_TOP_R / G.HACK_RUBY_FLARE; // post/ruby-base radius the builder needs
 const HACK_CONTACT_R = (HACK_RIM_I + HACK_SCREW_IN_R - HACK_SCREW_STANDOFF) / 2;
-const HACK_CONTACT_Z = L_BALANCE - (BAL_T * 0.75) / 2; // the rim's underside plane
+const HACK_CONTACT_Z = L_BALANCE - RIM_H / 2;          // the rim's underside plane
 const HACK_DROP = 0.6;                                 // pad clearance below the rim when released
-// Blade section: thinner than the old 0.8 because the three-quarter plate now
-// occupies most of the depth this blade used to have to itself. The whole
-// stack — plate, blade, pad — has to fit between the pallet fork's top and
-// the balance rim's underside, and the blade is the one member of it that is
-// a SPRING: 0.35 of blued steel over a ~50-long blade is the part of the
-// budget that costs the least (and reads more like a real hack spring than
-// the slab did). PAD_RISE and BLADE_Z are no longer free — they are solved
-// below, after the blade's length (and so its released pitch) is known.
-const BLADE_T = 0.35;
+// Blade section. Back to 0.8: the 0.35 blade was thinned because blade,
+// plate and pad all had to share the fork→balance depth — but with the
+// balance lowered INTO the plate band the rim's underside (12.65) now sits
+// BELOW the plate's bottom face, so the blade cannot run over the plate at
+// all any more and lives UNDER it instead (see BLADE_Z below), where the
+// depth it lost is back. PAD_RISE and BLADE_Z are still solved, not free.
+const BLADE_T = 0.8;
 const BLADE_W = 1.6;
 
 const postEng = tailPostWorldAt(1);
@@ -1794,11 +1856,11 @@ let pushDir = (() => {
 //    the blade's z band and hugged the same flank — both interpenetrated
 //    (post −0.44, rod −0.34 at full pull). A is now grown until the WORST
 //    clearance over the whole crown stroke — post arc AND every point of
-//    the rod at every pull — binds exactly at HACK_CLEAR_MARGIN. (The post
-//    is since shortened below the blade's z band — the ramp collar drives
-//    the blade now — but the ROD still shares the band, so the sweep and
-//    its bind are kept unchanged; the post circle is retained as a
-//    conservative stand-in for the post's upper works.)
+//    the rod at every pull — binds exactly at HACK_CLEAR_MARGIN. (With the
+//    blade re-planed UNDER the three-quarter plate the ROD no longer shares
+//    its z band either — but the POST still crosses the band on its way up
+//    to the rod plane, and keeping the rod in the sweep costs only
+//    conservatism, so the solve is kept unchanged.)
 //  · press distance D — how far the anchor extends backward from the post
 //    along the blade line; the largest value keeping the anchor's BOSS
 //    (radius 1.15) on-plate with the named margin:
@@ -1878,29 +1940,26 @@ const bladeLen = HACK_LAYOUT.len;
 const HACK_PITCH = Math.asin(HACK_DROP / (bladeLen - HACK_PAD_TOP_R));
 
 // --- Blade plane + pad rise: SOLVED against the three-quarter plate --------
-// The blade now runs ABOVE the plate for nearly its whole length, and the
-// released pose is the one that binds: pitching about the anchor drops every
-// point of the blade by x·sin(HACK_PITCH), so the deepest point over the
-// plate is the LAST one before the blade crosses into the balance cut.
-//
-//   x_edge = bladeLen + HACK_CONTACT_R − (cut edge radius on the blade's
-//            bearing) — the blade aims at the balance axis, so its distance
-//            from that axis is (bladeLen − x) + HACK_CONTACT_R.
-//
-// From there the chain is forced, top down: the pad's contact face IS the
-// rim's underside (HACK_CONTACT_Z, tangency by construction), the blade hangs
-// under it by PAD_RISE + BLADE_T, and its underside must still clear the
-// plate by CLEAR_MARGIN after the released drop. PAD_RISE is what's left.
-const HACK_BLADE_CUT_PHI = Math.atan2(bladeAnchor.y - P.balance.y, bladeAnchor.x - P.balance.x) - TQ_CUT.aim;
-const HACK_X_EDGE = bladeLen + HACK_CONTACT_R - G.cutEdgeRadius(TQ_CUT, HACK_BLADE_CUT_PHI);
-const HACK_RELEASED_DROP = Math.max(0, HACK_X_EDGE) * Math.sin(HACK_PITCH);
-const PAD_RISE = HACK_CONTACT_Z - BLADE_T
-  - (TQ_TOP_Z + CLEAR_MARGIN + HACK_RELEASED_DROP);
-const BLADE_Z = HACK_CONTACT_Z - BLADE_T / 2 - PAD_RISE;
+// The blade now runs UNDER the plate. With the balance lowered into the
+// plate band, the rim's underside (HACK_CONTACT_Z = 12.65) sits BELOW the
+// plate's bottom face (TQ_BOT_Z = 12.83) — a blade over the plate could no
+// longer reach DOWN to its contact at all. So the stack flips, and the bind
+// flips with it: the blade's TALLEST fitting is the anchor boss's screw,
+// whose head tops out 1.65·BLADE_T above the blade's mid-plane (screw seat
+// at 1.35·T plus half its 0.6·T height — see makeHackSpring), and that head
+// must clear the plate's UNDERSIDE by the shared margin. Releasing pitches
+// the blade DOWN about the anchor — but the anchor hardware TILTS in place,
+// so the screw head's rim corner rises by its own radius (0.55) times
+// sin(pitch); that rim rise is trimmed off too, or the released pose eats
+// into the margin (measured: 0.006).
+const BLADE_Z = TQ_BOT_Z - CLEAR_MARGIN - BLADE_T * 1.65 - 0.55 * Math.sin(HACK_PITCH);
+// The pad's contact face IS the rim's underside (tangency by construction);
+// the rise is simply what spans blade top → contact plane.
+const PAD_RISE = HACK_CONTACT_Z - (BLADE_Z + BLADE_T / 2);
 const PAD_RISE_MIN = 0.15; // below this the ruby cap has no post to stand on
 if (PAD_RISE < PAD_RISE_MIN)
-  console.warn('hack pad rise squeezed out by the 3/4 plate:', PAD_RISE.toFixed(3),
-    '— thin TQ_T or BLADE_T');
+  console.warn('hack pad rise squeezed out:', PAD_RISE.toFixed(3),
+    '— BLADE_T vs the plate underside bind');
 
 // --- Hack-ramp actuator solve ---------------------------------------------
 // The honest converter from the setting lever's in-plane swing to the
@@ -1932,13 +1991,23 @@ const RAMP_RISE_FRACTION = 0.5;  // the lift is spread over the OUTER half of th
                                  // while keeping the flank shallow (see self-locking note)
 const RAMP_EDGE_LAND = 0.3;      // brim extends this far past the released contact circle
 const RAMP_BRIM_T = 0.35;        // brim slab thickness
-// z-chain: the collar may rise no higher than the reset rod's underside
-// (the rod leaves this same post at ROD_PLANE_Z and sweeps across the
-// collar's footprint), less the shared margin. The engaged ball centre and
-// the heel's blade-local hang depth follow from that single bind:
-const RAMP_TOP_Z = ROD_PLANE_Z - ROD_R - HACK_CLEAR_MARGIN; // collar's top land plane
-const HACK_ZC1 = RAMP_TOP_Z + HEEL_R;  // engaged ball-centre height (ball seated on the land)
-const HEEL_Z = HACK_ZC1 - BLADE_Z;     // ball centre in blade-local z (< 0: hangs below)
+// z-chain — RE-DERIVED for the lowered blade. The old chain ran top-down
+// from the reset rod: the collar's land was pinned one margin under the
+// rod's underside and the heel's hang depth fell out of that — the right
+// bind when the blade rode ABOVE the plate, a whisker under the rod's
+// plane. With the blade re-planed ~2.3 LOWER (under the plate), that chain
+// would solve a POSITIVE HEEL_Z: a "hanging" heel ball floating above the
+// blade. The binding constraint is now the heel plane itself: the ball
+// hangs a real stud below the blade's underside, and the collar's top land
+// follows from where the ball actually is. The rod bind survives as a
+// CHECK (the rod still leaves this same post, ~4 above the collar).
+const HEEL_STUD_DROP = 0.3;    // blade underside → ball TOP: a visible stud, ball fully proud
+const HEEL_Z = -(BLADE_T / 2 + HEEL_STUD_DROP + HEEL_R); // ball centre, blade-local (< 0)
+const HACK_ZC1 = BLADE_Z + HEEL_Z;     // engaged ball-centre height (blade level)
+const RAMP_TOP_Z = HACK_ZC1 - HEEL_R;  // collar's top land plane (ball seated on it)
+if (RAMP_TOP_Z > ROD_PLANE_Z - ROD_R - HACK_CLEAR_MARGIN + 1e-9)
+  console.warn('hack-ramp: collar top violates the reset-rod plane',
+    RAMP_TOP_Z.toFixed(2), 'vs', (ROD_PLANE_Z - ROD_R - HACK_CLEAR_MARGIN).toFixed(2));
 // Engaged radial seat: post shaft + ball surface + margin (binds exactly).
 const HACK_HEEL_D1 = G.SETTING_LEVER_POST_R + HEEL_R + HACK_CLEAR_MARGIN;
 
@@ -2032,24 +2101,28 @@ const hackSpring = G.makeHackSpring({
   length: bladeLen, width: BLADE_W, thickness: BLADE_T, padRise: PAD_RISE, padR: HACK_PAD_R,
   heel: { x: HACK_RAMP.hl.x, y: HACK_RAMP.hl.y, z: HEEL_Z, ballR: HEEL_R, footR: HEEL_FOOT_R },
 });
-// Anchor block: the blade's fixed end is SCREWED DOWN to the three-quarter
-// plate's top face, and this is the stud that gets it there — the blade's
-// declared ['Hack spring','plate'] support used to measure 12.35 units of
-// air. Built as part of the blade so the support edge is measured against
-// real geometry, and sized from the gap it actually has to span.
+// Anchor post: the blade's fixed end used to be screwed to the
+// three-quarter plate's TOP face — but the blade now runs UNDER that plate,
+// and a stud reaching up through it would need a slot the blade never
+// passes through. The geometrically honest mount is the same one the
+// escapement bridge uses: a standing post rising from the BASE plate's top
+// face to the blade's underside (its ['Hack spring','plate'] support edge
+// in inspect.js changes with it). Built as part of the blade so the support
+// edge is measured against real geometry, and sized from the gap it
+// actually spans.
 {
-  // Trimmed by the block's own rim dip: the blade group PITCHES about this
-  // anchor, so a foot of radius R hangs R·sin(HACK_PITCH) lower on its
-  // outside edge at the released pose. Sizing to the level pose alone drove
-  // that edge 0.015 into the plate.
-  const footLen = (BLADE_Z - BLADE_T * 1.1) - TQ_TOP_Z - 1.3 * Math.sin(HACK_PITCH);
+  // Trimmed by the post's own rim dip: the blade group PITCHES about this
+  // anchor, so a post of radius R hangs R·sin(HACK_PITCH) lower on its
+  // outside edge at the released pose — end it that much above the base
+  // plate or the released pose digs the rim in.
+  const footLen = (BLADE_Z - BLADE_T * 1.1) - PLATE_TOP - 1.3 * Math.sin(HACK_PITCH);
   if (footLen > 0.02) {
     const foot = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.3, footLen, 16), MATS.steel);
     foot.rotation.x = Math.PI / 2;
     foot.position.set(0, 0, -BLADE_T * 1.1 - footLen / 2);
     hackSpring.add(foot);
   } else {
-    console.warn('hack anchor: no room for a foot on the 3/4 plate', footLen.toFixed(3));
+    console.warn('hack anchor: no room for a post down to the base plate', footLen.toFixed(3));
   }
 }
 const bladeGroup = new THREE.Group();
@@ -2283,9 +2356,19 @@ const tqPostBow = (() => {
   }
   return bow;
 })();
+// The ramp collar only widens the slot if it actually CROSSES the plate's
+// z-band: with the blade (and so the collar that drives it) re-planed under
+// the plate, the collar's top land sits well below TQ_BOT_Z and only the
+// bare post passes through — the plate keeps that material.
+const tqSlotBodyR = RAMP_TOP_Z >= TQ_BOT_Z - CLEAR_MARGIN
+  ? Math.max(HACK_RAMP.brimR, G.SETTING_LEVER_POST_R)
+  : G.SETTING_LEVER_POST_R;
 const tqSlots = [{
   ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
-  r: Math.max(HACK_RAMP.brimR, G.SETTING_LEVER_POST_R) + tqPostBow + CLEAR_MARGIN,
+  // +0.02: tqPostBow is a 40-sample maximum of a smooth arc, so the true
+  // bow can exceed it by a hair — without the pad the bare post's slot
+  // clearance ties at EXACTLY the margin and rounds under it mid-stroke.
+  r: tqSlotBodyR + tqPostBow + CLEAR_MARGIN + 0.02,
 }];
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
@@ -2351,7 +2434,10 @@ const BALANCE_COCK = (() => {
   return { ...best, length: best.dFoot / 0.62 }; // makeCock: jewel +0.12L, foot centre −0.5L
 })();
 const balanceCockLen = BALANCE_COCK.length;
-const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W });
+// FLAT slab, COCK_T thick, its mid-plane at COCK_MID_Z (see the Z-stack
+// constants: underside one margin over the hairspring stack) — the old tall
+// arch reached z ≈ 20.8; this tops out ≈ 2.4 over the plate.
+const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
   const toJewel = TQ_CUT.aim + BALANCE_COCK.phi + Math.PI;
@@ -2361,21 +2447,21 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W });
   // set in the cock's jewel, not beside it.
   const jy = balanceCockLen * 0.12;
   const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
-  balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, L_COCK + 1.4);
-  // ...and the foot that carries all of it down to the plate's top face.
-  const depth = COCK_W * 0.4;                 // makeCock extrudes width·0.4, centred
-  const footH = (L_COCK + 1.4 - depth / 2) - TQ_TOP_Z;
+  balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, COCK_MID_Z);
+  // ...and the foot that carries all of it down to the plate's top face —
+  // much shorter now: the slab's underside is only ~1.7 above the plate.
+  const footH = COCK_SLAB_BOT - TQ_TOP_Z;
   if (footH > 0.02) {
     const foot = new THREE.Mesh(new THREE.CylinderGeometry(COCK_FOOT_R * 0.8, COCK_FOOT_R * 0.92, footH, 24), MATS.nickel);
     foot.rotation.x = Math.PI / 2;
-    foot.position.set(0, -balanceCockLen / 2, -depth / 2 - footH / 2);
+    foot.position.set(0, -balanceCockLen / 2, -COCK_T / 2 - footH / 2);
     balanceCock.add(foot);
   } else {
     console.warn('balance cock: no room for a foot above the 3/4 plate', footH.toFixed(3));
   }
 }
 movement.add(balanceCock);
-registerExplode(balanceCock, L_COCK + 1.4, 9);
+registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
 
 // --- The plate itself.
