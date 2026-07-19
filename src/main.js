@@ -2703,6 +2703,16 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   // the reference along with the thing it references. They share the
   // index frame's transform (same origin, same 0.45 sweep) so the tail
   // coordinates above stay valid, but the group is a child of the cock.
+  // ...and the cock's face is SHAPED to carry it, as real swan-neck cocks
+  // are: the 0.45 sweep puts the neck's foot ~1 unit past the slab's side
+  // edge, over the open cutaway — its hold-down screw was going into air.
+  // A seat plate, top flush with the cock face, overlaps the slab edge
+  // (the weld) and cantilevers out under the neck's foot and screw.
+  {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.0, 0.35), MATS.nickel);
+    seat.position.set(2.6, jyStaff - 4.3, COCK_T / 2 - 0.175);
+    balanceCock.add(seat);
+  }
   const regDress = new THREE.Group();
   regDress.name = 'swanNeck';
   regDress.position.set(0, jyStaff, COCK_T / 2);
