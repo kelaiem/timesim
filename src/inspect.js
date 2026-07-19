@@ -87,7 +87,10 @@ const MECH_GRAPH = {
     ['Escape wheel', 'Escape bridge'],
     ['Pallet fork', 'Escape bridge'],
     ['Escape bridge', 'plate'],              // its legs land on the base plate
-    ['Balance cock', 'Three-quarter plate'],
+    ['Balance cock', 'plate'],               // its leg lands on the BASE plate: the whole
+                                             // balance assembly (cock, regulator, spring,
+                                             // balance) comes off with the escapement, and
+                                             // the three-quarter plate lifts independently
     ['Balance', 'Balance cock'],             // staff's upper pivot in the cock jewel
     ['Hairspring', 'Balance'],               // collet on the staff (inner end)
     ['Hairspring', 'Balance cock'],          // outer terminal clamped in the stud hanging from the cock

@@ -1021,14 +1021,18 @@ registerLabel('Reset hammer', hammerGroup);
 // third and escape wheels, whose swept discs leave very little floor down
 // there — the obvious spot straight out from the escape axis lands 0.5 inside
 // the fourth wheel.
-const ESC_BR_T = 1.2;                        // slab thickness
-// The bridge hugs the ESCAPEMENT, not the plate: with the restridden stack
-// the plate's underside (spring-bound, 12.86) sits ~2.7 over the fork, and
-// a bridge up there would need jewel tubes that long. Slab bottom = fork
-// top + margin — the same bind the balance rim uses, so slab and rim share
-// their z-band; their XY margins (boss edge vs trimmed screw tips) carry
-// the separation, exactly as before the restride.
-const ESC_BR_BOT = L_FORK + FORK_T / 2 + CLEAR_MARGIN;
+// The bridge slab occupies the SAME z-band as the three-quarter plate —
+// top faces flush, one visual plane of striped nickel, the ribbing
+// running unbroken from plate to bridge (world-space stripes, see
+// MATS.ribbedNickel). The window in the plate is MEASURED from this
+// bridge's real geometry (see TQ_CUT below), so the plate clears it
+// laterally by the cut margin and can be lifted off with the whole
+// escapement — bridge, cock, balance — left standing on the base plate.
+// The price is longer escape/fork staffs (the jewels ride ~2.7 higher
+// than the old escapement-hugging slab); those staffs are built to
+// reach, below.
+const ESC_BR_T = TQ_T;                       // slab thickness = the plate's
+const ESC_BR_BOT = TQ_BOT_Z;                 // same band, by construction
 const ESC_BR_JEWEL_Z = ESC_BR_BOT + ESC_BR_T; // slab's top face — where both jewels sit
 const escapeBridge = (() => {
   // Everything the legs have to miss on the way down to the base plate.
@@ -2471,15 +2475,16 @@ const BALANCE_COCK = (() => {
   }
   return { ...best, length: best.dFoot / 0.62 }; // makeCock: jewel +0.12L, foot centre −0.5L
 })();
-// STEPPED COCK, nested level with the plate. The slab occupies the plate's
-// own z-band over the cutaway, so it must END before the cut edge (plate
-// material owns that band beyond it). The slab is shortened to stop 0.1
-// inside the edge; a step web rises at its tail, and a low TAIL PLATE lies
-// on the plate's top face out to the solved foot bearing, where the screw
-// goes down. From the back: the cock's top face is flush with the plate's,
-// with the classic low stepped foot at the seam — the Glashütte look the
-// restride exists to produce. (The balance itself now runs entirely BELOW
-// the slab: rim top 12.03 vs slab bottom 12.86, so overhanging it is free.)
+// COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
+// the plate's own z-band over the cutaway, so it must END before the cut
+// edge (plate material owns that band beyond it); it stops 0.1 inside.
+// From the back: the cock's top face is flush with the plate's — the
+// Glashütte look the restride exists to produce — but its FOOT is a leg
+// dropping from under the slab tail to the base plate, keeping the whole
+// balance assembly independent of the three-quarter plate (see the
+// escape bridge, which works the same way). (The balance itself runs
+// entirely BELOW the slab: rim top 12.03 vs slab bottom 12.86, so
+// overhanging it is free.)
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
 const balanceCockLen = (cockEdgeR - 0.1) / 0.62; // slab tail reach (0.62·L below the jewel) stops inside the edge
 const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
@@ -2493,25 +2498,32 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   const jy = balanceCockLen * 0.12;
   const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
   balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, COCK_MID_Z);
-  // Step + tail plate + screw, all in cock-local coordinates (origin at the
-  // slab's centre, +Y toward the jewel):
-  const TAIL_T = 0.45;
-  const yTail = -balanceCockLen / 2;                       // slab's tail end
-  const yFoot = balanceCockLen * 0.12 - BALANCE_COCK.dFoot; // foot bearing
-  const stepT = 0.5;
-  const step = new THREE.Mesh(
-    new THREE.BoxGeometry(COCK_W, stepT, COCK_T + TAIL_T), MATS.nickel);
-  step.position.set(0, yTail - stepT / 2, TAIL_T / 2);
-  balanceCock.add(step);
-  const tailLen = (yTail - stepT) - (yFoot - COCK_FOOT_R);
-  const tail = new THREE.Mesh(
-    new THREE.BoxGeometry(COCK_W, tailLen, TAIL_T), MATS.nickel);
-  tail.position.set(0, yTail - stepT - tailLen / 2, COCK_T / 2 + 0.02 + TAIL_T / 2);
-  balanceCock.add(tail);
+  // BRIDGE FOOT to the BASE plate. The cock used to be plate furniture —
+  // a step web and tail plate lying on the three-quarter plate's top
+  // face. It is escapement furniture now: a turned leg drops from under
+  // the slab's tail, INSIDE the cutaway, all the way to the base plate,
+  // so the three-quarter plate lifts off without touching any of it.
+  // (The slab still nests level with the plate band for the flush
+  // Glashütte look — the mounting changed, not the face.)
+  const yTail = -balanceCockLen / 2;                 // slab's tail end
+  const LEG_R = 1.3;
+  const yLeg = yTail + LEG_R + 0.2;                  // fully under the slab
+  const legTopWorld = COCK_MID_Z - COCK_T / 2;       // slab underside
+  const legLen = legTopWorld - PLATE_TOP;
+  const leg = new THREE.Mesh(
+    new THREE.CylinderGeometry(LEG_R, LEG_R * 1.15, legLen, 20), MATS.nickel);
+  leg.rotation.x = Math.PI / 2;
+  leg.position.set(0, yLeg, -COCK_T / 2 - legLen / 2);
+  balanceCock.add(leg);
+  const pad = new THREE.Mesh(
+    new THREE.CylinderGeometry(LEG_R * 1.5, LEG_R * 1.5, 0.4, 20), MATS.nickel);
+  pad.rotation.x = Math.PI / 2;
+  pad.position.set(0, yLeg, -COCK_T / 2 - legLen + 0.2);
+  balanceCock.add(pad);
   const screw = new THREE.Mesh(
-    new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, TAIL_T * 0.5, 14), MATS.blueSteel);
+    new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, 0.22, 14), MATS.blueSteel);
   screw.rotation.x = Math.PI / 2;
-  screw.position.set(0, yFoot, COCK_T / 2 + 0.02 + TAIL_T * 0.75);
+  screw.position.set(0, yLeg, COCK_T / 2 + 0.11);
   balanceCock.add(screw);
 
   // ------------------------------------------------------------------
