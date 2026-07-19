@@ -152,6 +152,13 @@ function buildStudioEnvironment(renderer) {
   softbox(90, 70, 0xf1ede4, 0.45, new THREE.Vector3(55, -15, 55), (-3 * Math.PI) / 4, 0);
   softbox(90, 70, 0xf1ede4, 0.45, new THREE.Vector3(-55, -15, 55), (3 * Math.PI) / 4, 0);
   softbox(110, 50, 0xf4f1ea, 0.35, new THREE.Vector3(0, -35, -70), 0, 0);
+  // DIAL-SIDE softbox: a broad card hung where a camera operator would
+  // put it, facing the dial. The hands are full-metal — face-on they can
+  // only show what the room shows them, and this side of the room was
+  // dark, so they read as black cutouts. A soft even panel here gives
+  // their polished faces a constant diffuse sheen (and the lacquer dial
+  // a gentle glow), keeping the hands legible at every angle.
+  softbox(120, 85, 0xffffff, 0.9, new THREE.Vector3(0, 12, -75), 0, 0);
 
   // near/far generous enough to cover the 90-unit room half-extent.
   const rt = pmrem.fromScene(envScene, 0.04, 0.1, 250);
