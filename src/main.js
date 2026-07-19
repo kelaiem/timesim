@@ -279,13 +279,20 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // over it. The third-wheel clearance that used to drive the tall seat is
 // now handled in XY instead: the tornado layout keeps |third − barrel|
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
-const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 4.5;
-// Base high enough that the LOWEST groove (where the chain rides when the
-// reserve is nearly flat) keeps the chain's drum-span clear over the crown
-// wheel's top face — the span crosses the crown wheel's XY footprint, so
-// the clearance is purely vertical (inspector finding: Chain ⇄ Keyless
-// works over the drained half of the reserve axis at 5.1).
-const FUSEE_BASE_Z = 6.0;
+// Cone COMPRESSED to what its grooves actually need: 4 turns of 0.6-dia
+// chain want ~0.62 pitch, so 2.8 of height carries them snugly (the old
+// 4.5 spread them a full unit apart and made the fusee the tallest thing
+// in the movement — its top bound the three-quarter plate's floor).
+const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 2.8;
+// Base sized against the SAME bind as before, re-derived: the LOWEST
+// groove (where the chain rides when the reserve is nearly flat) must
+// keep the drum-span clear over the crown wheel's top face (6.6 + 0.55 =
+// 7.15; the span crosses its XY footprint, so the clearance is purely
+// vertical) plus chain radius 0.3 and margin: Z0 = 2 + 5.45 + 0.17 =
+// 7.62. Lowering base AND height together drops the cone's top from
+// 12.5 to 10.25 — and with it the plate floor, since the fusee was the
+// measured maximum.
+const FUSEE_BASE_Z = 5.45;
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -2381,7 +2388,7 @@ function rebuildChain(tension) {
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_R,
       drumPos.y + Math.sin(ang) * DRUM_R,
-      DRUM_CHAIN_Z - s * 0.9
+      DRUM_CHAIN_Z - s * 0.65 // one chain diameter per turn: a snug coil, and it stays above the drum's bottom
     ));
   }
   const curve = new THREE.CatmullRomCurve3(pts);
