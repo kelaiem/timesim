@@ -1460,7 +1460,7 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
 // (width·0.5 total = width·0.4 core + 2·width·0.05 bevel) reproduces the old
 // fixed proportions exactly; the flat Glashütte-style balance cock passes a
 // much thinner slab.
-export function makeCock({ length, width, thickness = width * 0.5 }) {
+export function makeCock({ length, width, thickness = width * 0.5, studHole = null }) {
   const g = new THREE.Group();
   const hw = width / 2;
   const s = new THREE.Shape();
@@ -1471,9 +1471,21 @@ export function makeCock({ length, width, thickness = width * 0.5 }) {
   s.absarc(0, -length * 0.5, hw, Math.PI, Math.PI * 2, false); // rounded foot
   s.closePath();
 
+  // Spy hole toward the head — slid down out of the way when a stud hole
+  // is punched above it (two overlapping holes break the extrude).
   const h1 = new THREE.Path();
-  h1.absarc(0, length * 0.42, width * 0.12, 0, Math.PI * 2, true);
+  let h1y = length * 0.42;
+  if (studHole) h1y = Math.min(h1y, studHole.y - studHole.r - width * 0.12 - 0.25);
+  h1.absarc(0, h1y, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h1);
+  // STUD HOLE: a real bore for the hairspring stud to pass through the
+  // slab — the traditional fit (the stud drops in and is pinned), and the
+  // honest alternative to a post interpenetrating solid nickel.
+  if (studHole) {
+    const hS = new THREE.Path();
+    hS.absarc(0, studHole.y, studHole.r, 0, Math.PI * 2, true);
+    s.holes.push(hS);
+  }
   const h2 = new THREE.Path();
   h2.absarc(0, -length * 0.42, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h2);

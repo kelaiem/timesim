@@ -2482,7 +2482,13 @@ const BALANCE_COCK = (() => {
 // the slab: rim top 12.03 vs slab bottom 12.86, so overhanging it is free.)
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
 const balanceCockLen = (cockEdgeR - 0.1) / 0.62; // slab tail reach (0.62·L below the jewel) stops inside the edge
-const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
+// The hairspring stud passes through a REAL hole in the slab, dead ahead of
+// the staff at the terminal's end radius (see the stud carrier below).
+const STUD_Y = balanceCockLen * 0.12 + hairspring.userData.termEndR;
+const balanceCock = G.makeCock({
+  length: balanceCockLen, width: COCK_W, thickness: COCK_T,
+  studHole: { y: STUD_Y, r: 0.5 },
+});
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
   const toJewel = TQ_CUT.aim + BALANCE_COCK.phi + Math.PI;
@@ -2527,20 +2533,72 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   // stud can hang from real material.
   hairspringGroup.rotation.z = toJewel - hsUD.endAngle;
 
-  // STUD: a steel block hanging from the slab's underside, clamping the
-  // terminal's end. The spring's outer boundary condition, made of metal.
-  const studWorldZ = L_HAIRSPRING + hsUD.termEndZ;   // terminal end height
-  const studTopLocal = -COCK_T / 2 + 0.05;           // embedded into the slab
-  const studH = (COCK_MID_Z + studTopLocal) - (studWorldZ - 0.25);
-  const yStud = jyStaff + hsUD.termEndR;
+  // Small ring builder (extrude spans local z 0..h) for the concentric
+  // collars below — CylinderGeometry has no bore, and the staff pokes 0.5
+  // proud of the cock face right where a solid collar would sit.
+  const ringMesh = (rIn, rOut, h, mat) => {
+    const rs = new THREE.Shape();
+    rs.absarc(0, 0, rOut, 0, Math.PI * 2, false);
+    const rh = new THREE.Path();
+    rh.absarc(0, 0, rIn, 0, Math.PI * 2, true);
+    rs.holes.push(rh);
+    return new THREE.Mesh(
+      new THREE.ExtrudeGeometry(rs, { depth: h, bevelEnabled: false, curveSegments: 32 }), mat);
+  };
+
+  // SHOCK SETTING on the staff: the upper pivot runs in the cock's flush
+  // hole jewel, and its tip (0.5 proud of the face) is capped by an
+  // endstone held down by a gold lyre spring — the classic anti-shock
+  // stack, and the reason the tip may stop here instead of spiking on.
   {
-    const slabReach = balanceCockLen * 0.5 + COCK_W / 2; // slab tip incl. head arc
-    if (yStud + 0.55 > slabReach) console.warn('hairspring stud: beyond the slab head — no material to hang from');
+    const shock = new THREE.Group();
+    shock.name = 'shockSetting';
+    shock.position.set(0, jyStaff, COCK_T / 2);
+    const boss = ringMesh(0.85, 1.35, 0.55, MATS.steel);
+    boss.position.z = 0.12;
+    shock.add(boss);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.18, 24), MATS.ruby);
+    cap.rotation.x = Math.PI / 2;
+    cap.position.z = 0.12 + 0.55 + 0.09; // staff tip at 0.5 → 0.17 endshake under the stone
+    shock.add(cap);
+    const lyre = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.07, 8, 28, 4.6), MATS.gold);
+    lyre.position.z = 0.12 + 0.55 + 0.2;
+    lyre.rotation.z = -Math.PI / 2 - 2.3; // gap centred toward the tail
+    shock.add(lyre);
+    balanceCock.add(shock);
   }
-  const stud = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, studH), MATS.steel);
-  stud.name = 'hairspringStud';
-  stud.position.set(0, yStud, studTopLocal - studH / 2);
-  balanceCock.add(stud);
+
+  // STUD CARRIER: the spring's outer end belongs to the regulator
+  // ASSEMBLY, not to bare plate. A second concentric ring outside the
+  // index collar carries an arm up the cock's axis; at the terminal-end
+  // radius its stud drops through the slab's stud hole and clamps the
+  // terminal, pinned from the side.
+  const studWorldZ = L_HAIRSPRING + hsUD.termEndZ;   // terminal end height
+  {
+    const carrier = new THREE.Group();
+    carrier.name = 'studCarrier';
+    carrier.position.set(0, jyStaff, COCK_T / 2);
+    const ring = ringMesh(2.55, 3.1, 0.22, MATS.steel);
+    ring.position.z = 0.02;
+    carrier.add(ring);
+    const yS = hsUD.termEndR;                        // carrier-local stud centre
+    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - 2.85, 0.22), MATS.steel);
+    armC.position.set(0, (2.85 + yS) / 2, 0.13);
+    carrier.add(armC);
+    const boss = ringMesh(0.42, 1.0, 0.26, MATS.steel);
+    boss.position.set(0, yS, 0.01);
+    carrier.add(boss);
+    const postBot = (studWorldZ - 0.25) - (COCK_MID_Z + COCK_T / 2); // cock-face-local
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.27 - postBot), MATS.steel);
+    post.name = 'hairspringStud';
+    post.position.set(0, yS, (0.27 + postBot) / 2);
+    carrier.add(post);
+    const pinScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 10), MATS.blueSteel);
+    pinScrew.rotation.z = Math.PI / 2;               // side pin, headed at +x
+    pinScrew.position.set(0.85, yS, 0.13);
+    carrier.add(pinScrew);
+    balanceCock.add(carrier);
+  }
 
   // REGULATOR: an index arm pivoted on a collar ring around the cock's
   // jewel, swept 0.45 rad off the cock axis so its tip rides over the OPEN
@@ -2553,13 +2611,11 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   reg.name = 'regulator';
   reg.position.set(0, jyStaff, COCK_T / 2);
   reg.rotation.z = -0.45;                        // arm aims at the terminal midpoint
-  const collarIn = COCK_W * 0.16 * 1.6 + 0.15;
-  const collarOut = collarIn + 0.75;
+  const collarIn = 1.7;  // clears the shock boss (1.35) and the lyre's reach
+  const collarOut = collarIn + 0.72; // inside the stud-carrier ring (2.55)
   const armT = 0.28;
-  const collar = new THREE.Mesh(
-    new THREE.CylinderGeometry(collarOut, collarOut, armT, 28), MATS.steel);
-  collar.rotation.x = Math.PI / 2;
-  collar.position.z = armT / 2 + 0.02;
+  const collar = ringMesh(collarIn, collarOut, armT, MATS.steel);
+  collar.position.z = 0.02;
   reg.add(collar);
   const rPin = hsUD.termMid.r;
   const armLen = rPin - collarOut + 0.5;

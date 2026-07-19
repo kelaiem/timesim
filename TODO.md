@@ -131,9 +131,13 @@ the geometry is present and correct, only the number hops.
   swaps them via `userData.setWind(θ)`. On the cock's top face: an index arm
   on a collar around the jewel, swept 0.45 rad so its two curb pins drop
   over the open cutaway and straddle the terminal curve at its midpoint,
-  dressed with a swan-neck spring and opposing adjuster screw. Declared in
-  MECH_GRAPH (`Hairspring → Balance cock`, `Regulator → Balance cock`);
-  support 0 failures, clearances 0 violations after the change.
+  dressed with a swan-neck spring and opposing adjuster screw. The stud is
+  carried by the regulator ASSEMBLY — a concentric stud-carrier ring whose
+  arm drops the stud through a real hole punched in the slab, side-pinned —
+  and the staff's upper pivot got a visible shock setting: hole jewel in the
+  cock, capped endstone over the staff tip (0.17 endshake) held by a gold
+  lyre spring. Declared in MECH_GRAPH (`Hairspring → Balance cock`,
+  `Regulator → Balance cock`); support 0 failures, clearances 0 violations.
 
 
 - **Jewel style unified.** `makeJewelSetting` (the 9 base-plate lower pivots
