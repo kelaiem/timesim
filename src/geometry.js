@@ -1758,8 +1758,8 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
 
   // Face rosette: six bur rods radiating tail→centre, tips meeting just
   // shy of the middle so the six ground points read as one cut star.
-  const rodR = bodyR * 0.055;
-  const rodOuter = bodyR * 0.62;
+  const rodR = bodyR * 0.08;
+  const rodOuter = bodyR * 0.72;
   const rodLen = rodOuter - bodyR * 0.02;
   const rodGeo = burPrismGeo(rodR, rodLen, rodR * 2);
   rodGeo.rotateX(Math.PI / 2); // shape +y (keel) → +z (off the face); length → −y
@@ -1767,7 +1767,7 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
     const a = (i / 6) * 2 * Math.PI;
     const rod = new THREE.Mesh(rodGeo, material);
     rod.rotation.z = a - Math.PI / 2; // length −y → inward radial at angle a
-    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.45);
+    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.3);
     g.add(rod);
   }
 
@@ -2329,7 +2329,7 @@ export function makeHand({ length, kind }) {
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     const halfW = rBase * (Math.sqrt(3) / 2);
-    const crown = rBase * 0.25; // slight convex bow across the top
+    const crown = rBase * 0.12; // gentler bow: wider arc, flatter top
     // Cross-section in (x = width, y = toward viewer): keel down, top an
     // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
     const sec = new THREE.Shape();
