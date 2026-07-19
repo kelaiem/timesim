@@ -18,6 +18,7 @@ const defaultState = {
   fastForward: false,
   timeScale: 0.15,
   showLabels: false,
+  plateXray: false,   // three-quarter plate see-through (UI toggle)
   showBeat: 0,
   // Camera pose: position + orbit target, both in world coordinates. null
   // means "no saved camera" — the caller keeps its default framing.
@@ -33,6 +34,7 @@ function sanitize(state) {
     fastForward: state.fastForward,
     timeScale: state.timeScale,
     showLabels: state.showLabels,
+    plateXray: state.plateXray,
     showBeat: state.showBeat,
     camera: state.camera,
   };

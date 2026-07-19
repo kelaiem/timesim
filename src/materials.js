@@ -50,6 +50,20 @@ const ruby = phys({
   clearcoatRoughness: 0.05,
 });
 
+// Yellow GOLD — for the screwed chatons the upper pivot jewels sit in. A
+// distinct material rather than a reuse of `brass`: the chatons are set into
+// a nickel plate a few units from brass wheels, and if gold and brass read
+// the same the detail that makes them worth modelling disappears. Richer,
+// redder and smoother than brass, with no clearcoat haze.
+const gold = phys({
+  color: 0xe8b53c,
+  metalness: 1.0,
+  roughness: 0.14,
+  clearcoat: 0.5,
+  clearcoatRoughness: 0.08,
+  reflectivity: 0.85,
+});
+
 // Cool nickel/rhodium plate finish.
 const nickel = phys({
   color: 0xc9ccd1,
@@ -77,6 +91,7 @@ const dark = phys({
 
 export const MATS = {
   brass,
+  gold,
   steel,
   blueSteel,
   ruby,
