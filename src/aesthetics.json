@@ -60,7 +60,7 @@
     },
     "dialLight": {
       "color": "#fff4e2",
-      "intensity": 2.0
+      "intensity": 1.4
     },
     "rimSpot": {
       "color": "#ffffff",

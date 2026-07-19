@@ -141,24 +141,6 @@ function buildStudioEnvironment(renderer) {
   softbox(70, 90, 0xfff2df, 1.2, new THREE.Vector3(70, 5, -10), -Math.PI / 2, 0);
   softbox(100, 60, 0xffffff, 0.8, new THREE.Vector3(0, -20, 70), Math.PI, 0);
 
-  // REFLECTORS — bounce cards, not lamps: big, dim, warm-neutral panels
-  // filling the room's dark holes (floor, the two lower corners, low
-  // front). Every curved metal surface used to fall to near-black where
-  // it mirrored those voids; the cards replace the voids with broad soft
-  // gradients, which is exactly what a diffuse bounce does on a real
-  // shooting table. Intensities stay well under the softboxes so they
-  // lift shadows without adding a fifth "light source" to the highlights.
-  softbox(140, 140, 0xf4f1ea, 0.5, new THREE.Vector3(0, -70, 0), 0, -Math.PI / 2);
-  softbox(90, 70, 0xf1ede4, 0.45, new THREE.Vector3(55, -15, 55), (-3 * Math.PI) / 4, 0);
-  softbox(90, 70, 0xf1ede4, 0.45, new THREE.Vector3(-55, -15, 55), (3 * Math.PI) / 4, 0);
-  softbox(110, 50, 0xf4f1ea, 0.35, new THREE.Vector3(0, -35, -70), 0, 0);
-  // DIAL-SIDE softbox: a broad card hung where a camera operator would
-  // put it, facing the dial. The hands are full-metal — face-on they can
-  // only show what the room shows them, and this side of the room was
-  // dark, so they read as black cutouts. A soft even panel here gives
-  // their polished faces a constant diffuse sheen (and the lacquer dial
-  // a gentle glow), keeping the hands legible at every angle.
-  softbox(45, 32, 0xffffff, 0.35, new THREE.Vector3(0, 8, -75), 0, 0); // small + dim: a tighter, harder card — sheen on the blued hands, less wash on the dial
 
   // near/far generous enough to cover the 90-unit room half-extent.
   const rt = pmrem.fromScene(envScene, 0.04, 0.1, 250);
