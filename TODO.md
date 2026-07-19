@@ -108,10 +108,6 @@ the geometry is present and correct, only the number hops.
 
 ## 6. Smaller items
 
-- **Jewel style is inconsistent.** The 3/4 plate and escape bridge use flush
-  rubbed-in rubies; the 9 lower pivots in the base plate still use the older
-  brass-ring-plus-torus `makeJewelSetting`. Largely hidden under the movement,
-  but worth unifying.
 - **Hack-pad assembly note.** The pad sits radially *inside* the balance rim's
   annulus, so the blade cannot be lowered vertically into place — it has to be
   fed in laterally below the rim plane. Tight but doable; worth a comment in
@@ -135,6 +131,13 @@ the geometry is present and correct, only the number hops.
 ---
 
 ## Recently closed
+
+- **Jewel style unified.** `makeJewelSetting` (the 9 base-plate lower pivots
+  and the balance cock stone) is no longer a brass-ring-plus-torus appliqué:
+  it now builds the same flush rubbed-in look as the 3/4 plate and escape
+  bridge — a low nickel collar carrying the counterbore (rim a hair proud,
+  since the host meshes have no real bore cut) with the ruby annulus sunk
+  below the rim on the bridge's 0.08 seat margins.
 
 - **Balance cock level with the 3/4 plate.** The whole escapement z-stack was
   re-stridden for it (wheels thinned great 2.4→1.4 … escape 1.5→0.8, pinions

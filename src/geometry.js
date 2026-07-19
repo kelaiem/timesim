@@ -1647,12 +1647,35 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
   return g;
 }
 
+// Flush rubbed-in jewel — the same vocabulary as the escape-bridge and
+// 3/4-plate stones: a ruby annulus sunk in a shallow counterbore, every
+// face held off its host by seat margins (coincident planes z-fight; see
+// the bridge jewels). The hosts here are solid meshes with no real bore
+// cut, so the counterbore is carried by a low nickel collar whose rim
+// stands a hair proud of the surface (local z = 0 is the host's face):
+// from above you read polished rim → recess → sunken ruby, matching the
+// rubbed-in stones above. Replaces the old brass-ring-plus-torus
+// appliqué that sat ON the surface like a donut.
 export function makeJewelSetting({ r }) {
   const g = new THREE.Group();
-  const chaton = new THREE.Mesh(ringExtrude(r * 1.7, r * 0.7, r * 0.7, 24), MATS.brass);
-  g.add(chaton);
-  const jewel = new THREE.Mesh(new THREE.TorusGeometry(r * 0.85, r * 0.35, 12, 24), MATS.ruby);
-  g.add(jewel);
+  const rimTop = 0.1;                    // hair proud of the host face
+  const seatGap = 0.08;                  // same margin the bridge uses
+  const wallR = r * 1.15;                // counterbore wall
+  const outerR = r * 1.6;
+  const d = Math.max(r * 0.35, 0.3);     // recess depth into the host
+  const pts = [
+    new THREE.Vector2(wallR, -d),
+    new THREE.Vector2(wallR, rimTop),
+    new THREE.Vector2(outerR, rimTop),
+    new THREE.Vector2(outerR, -d - 0.1),
+  ];
+  const collarG = new THREE.LatheGeometry(pts, 32);
+  collarG.rotateX(Math.PI / 2); // stand the profile up along Z
+  g.add(new THREE.Mesh(collarG, MATS.nickel));
+  const rubyDepth = d * 0.8;
+  const ruby = new THREE.Mesh(ringExtrude(wallR - seatGap, r * 0.5, rubyDepth, 32), MATS.ruby);
+  ruby.position.z = rimTop - seatGap - rubyDepth / 2; // top sits below the rim
+  g.add(ruby);
   g.userData.r = r;
   return g;
 }
