@@ -2652,14 +2652,18 @@ smallSecondsGroup.add(smallSecondsHand);
 // over the cannon pinion and carrying the hour hand. Two meshes, 3:1 then
 // 4:1 = 12:1.
 //
-// Both meshes must share one centre distance d (the stud is a single post),
-// but Nc+Nmw ≠ Nmp+Nhw for a 12:1 pair at these tooth counts — so the two
-// meshes take DIFFERENT moduli, exactly as real motion works do, each solved
-// from the same d:
+// Both meshes must share one centre distance d — the minute wheel and its
+// pinion are one compound part on a single post — so each module is solved
+// from that same d:
 //   mesh 1: d = m1·(Nc + Nmw)/2      mesh 2: d = m2·(Nmp + Nhw)/2
+// 10/30/8/32 makes the tooth SUMS equal (40 = 40), so m2 falls out equal to
+// m1 and one module serves the whole motion works — the tidier result, and
+// one fewer cutter on a real bench. The formula stays general: a 12:1 pair
+// whose sums differ (10/30/10/40, say) would simply solve to m2 ≠ m1, the
+// way real motion works often do.
 // (cannonPinionTeeth / MW_MODULE_1 / HOUR_TUBE_* are declared up by the dial,
 // whose centre bore has to clear the tube.)
-const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 10, MW_HOUR_TEETH = 40;
+const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
 const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
 const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
 // Reduction, derived from the tooth counts rather than asserted. Each
