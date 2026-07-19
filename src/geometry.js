@@ -2420,7 +2420,7 @@ export function makeHand({ length, kind }) {
   };
   const burRod = (rBase) => {
     const grp = new THREE.Group();
-    const tipLen = rBase * 2; // stout point: short taper, wide apex angle
+    const tipLen = rBase * 2.6; // curved taper: a little longer so the ease reads
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     const halfW = rBase * (Math.sqrt(3) / 2);
@@ -2440,14 +2440,34 @@ export function makeHand({ length, kind }) {
     shaftGeo.rotateZ(Math.PI);
     shaftGeo.translate(0, -tail, 0);
     const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.bluedHand);
-    // Tip: fan from the same crowned section to an apex ON the top-face
-    // plane, so the top stays level while the underside cuts up to it.
-    const pts = sec.getPoints(12);
+    // Tip: a LOFT, not a spike — the fluted section shrinks along a
+    // convex ease (a curved taper) and finishes on a small domed NOSE
+    // instead of a sharp apex. The flute rides the shrinking section all
+    // the way into the nose.
+    const raw = sec.getPoints(12);
+    if (raw.length > 1 && raw[0].equals(raw[raw.length - 1])) raw.pop();
+    const K = 9;                                  // taper rings
+    const noseS = 0.16;                           // nose radius, as a fraction of the section
+    const ease = (t) => Math.pow(1 - t, 0.55);    // convex: bleeds off fast, lands soft
+    const ringAt = (k) => {
+      const t = k / K;
+      const s = noseS + (1 - noseS) * ease(t);
+      return raw.map((p) => [p.x * s, p.y * s, t * tipLen]);
+    };
     const tri = [];
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], q = pts[(i + 1) % pts.length];
-      if (p.x === q.x && p.y === q.y) continue;
-      tri.push(p.x, p.y, 0, q.x, q.y, 0, 0, apothem + crown, tipLen); // apex at the dish floor: the flute runs through the point
+    let prev = ringAt(0);
+    for (let k = 1; k <= K; k++) {
+      const cur = ringAt(k);
+      for (let i = 0; i < raw.length; i++) {
+        const j = (i + 1) % raw.length;
+        tri.push(...prev[i], ...prev[j], ...cur[j]);
+        tri.push(...prev[i], ...cur[j], ...cur[i]);
+      }
+      prev = cur;
+    }
+    for (let i = 0; i < raw.length; i++) {        // domed nose cap
+      const j = (i + 1) % raw.length;
+      tri.push(...prev[i], ...prev[j], 0, 0, tipLen + rBase * 0.08);
     }
     const tipGeo = new THREE.BufferGeometry();
     tipGeo.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
