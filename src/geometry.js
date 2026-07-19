@@ -1412,7 +1412,9 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     curveSegments: 72,
   });
   geo.translate(0, 0, -depth / 2);
-  const m = new THREE.Mesh(geo, MATS.nickel);
+  // Striped: the material's world-space bands continue across the escape
+  // bridge, which shares it — see MATS.ribbedNickel in materials.js.
+  const m = new THREE.Mesh(geo, MATS.ribbedNickel);
   m.userData.r = radius;
   m.userData.thickness = thickness;
   return m;
@@ -1481,7 +1483,10 @@ export function makeCock({ length, width, thickness = width * 0.5 }) {
 // ---------------------------------------------------------------------------
 export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
   const g = new THREE.Group();
-  const slabMat = MATS.nickel;
+  // Striped like the plate it serves under — one world-space pattern, so
+  // the lines run unbroken from plate to bridge (legs/walls stay plain:
+  // the shader gates the stripes to upward-facing surfaces).
+  const slabMat = MATS.ribbedNickel;
   for (const n of chain) {
     let disc;
     if (n.bore) {

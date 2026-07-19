@@ -89,6 +89,49 @@ const dark = phys({
   roughness: 0.75,
 });
 
+// Glashütte-striped nickel, for the three-quarter plate and the escape
+// bridge. The stripes are shaded, not modelled: a world-position sawtooth
+// tilts the surface normal across each band (the shallow scallop a real
+// striping lap leaves), gated to upward-facing surfaces so walls, legs and
+// bevels stay plain. Because the band coordinate comes from WORLD space —
+// not UVs — the pattern continues seamlessly across any separate part
+// sharing this material, which is the whole point: plate and escape bridge
+// read as striped in one setup, the lines running unbroken across the
+// escapement window. Parameters live in aesthetics.json (decoration.ribbing).
+import { aesthetics } from './aesthetics.js';
+const ribbedNickel = phys({
+  color: 0xc9ccd1,
+  metalness: 1.0,
+  roughness: 0.42,
+  clearcoat: 0.2,
+  clearcoatRoughness: 0.4,
+});
+{
+  const rib = (aesthetics.decoration && aesthetics.decoration.ribbing) || {};
+  const a = ((rib.angleDeg ?? 25) * Math.PI) / 180;
+  const dir = new THREE.Vector2(Math.cos(a), Math.sin(a));
+  const width = rib.widthUnits ?? 4.5;
+  const tilt = rib.tilt ?? 0.35;
+  ribbedNickel.onBeforeCompile = (shader) => {
+    shader.uniforms.ribDir = { value: dir };
+    shader.uniforms.ribWidth = { value: width };
+    shader.uniforms.ribTilt = { value: tilt };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRibWorld;\nvarying vec3 vRibNormal;')
+      .replace('#include <begin_vertex>',
+        '#include <begin_vertex>\nvRibWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvRibNormal = normalize(mat3(modelMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>',
+        '#include <common>\nvarying vec3 vRibWorld;\nvarying vec3 vRibNormal;\nuniform vec2 ribDir;\nuniform float ribWidth;\nuniform float ribTilt;')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      if (vRibNormal.z > 0.7) {
+        float ribBand = fract(dot(vRibWorld.xy, ribDir) / ribWidth) - 0.5;
+        vec3 ribTiltView = normalize((viewMatrix * vec4(ribDir, 0.0, 0.0)).xyz);
+        normal = normalize(normal + ribTiltView * ribBand * ribTilt);
+      }`);
+  };
+}
+
 export const MATS = {
   brass,
   gold,
@@ -96,6 +139,7 @@ export const MATS = {
   blueSteel,
   ruby,
   nickel,
+  ribbedNickel,
   silver,
   dark,
 };
