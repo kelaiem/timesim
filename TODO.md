@@ -24,49 +24,7 @@ the main thread for the whole sweep, and wedges the tab.
 
 ---
 
-## 1. Terminate the setting arbor at the motion works' minute wheel
-
-**Status:** open. Causes the only 3 FORBIDDEN overlaps currently reported.
-
-The keyless works builds a "motion-works arbor" that runs from the keyless
-corner across the plate→dial gap and ends at the **dial centre**, in a small
-pinion cap beside the cannon pinion (`src/main.js`: `settingB` ~1379,
-`settingRise` ~1386, `settingCap` ~1423). It was a representational stand-in
-for "the setting path reaches the hands".
-
-A real motion works now occupies that space (cannon pinion → minute wheel 3:1
-→ minute pinion → hour wheel 4:1, hour-wheel tube concentric over the cannon
-pinion), so the stand-in collides with it. All three overlaps share this one
-cause:
-
-- `Dial ⇄ Motion works`
-- `Hour wheel ⇄ Keyless works`
-- `Keyless works ⇄ Motion works`
-
-**Fix.** In a real watch the setting path drives the **minute wheel of the
-motion works**, not the dial centre. Re-target `settingB`, `settingRise` and
-`settingCap` onto the minute-wheel stud; size the cap off `MW_MODULE_1` /
-`MW_MINUTE_TEETH` so it meshes real teeth instead of stopping beside them.
-This removes a representational hop as well as the collisions.
-
-- Minute wheel world XY = `(P.dial.x − MW_CENTER_D, P.dial.y)`. Note
-  `dialFace` is Y-flipped, so dial-local `+x` maps to world `−x`.
-
-**Hazard — this has bitten twice.** `MW_CENTER_D`, `MW_MODULE_1`,
-`MW_MINUTE_TEETH` and `cannonPinionTeeth` are declared just above the dial
-build (~2555), but the setting arbor is built ~1200 lines *earlier* (~1379).
-Referencing them there is a temporal-dead-zone `ReferenceError` that kills the
-whole module at load. Hoist the layout constants up with the other layout /
-Z-stack constants near the top of `main.js` (they depend only on module and
-tooth counts, so they hoist cleanly) and leave a pointer comment behind — the
-file already uses that pattern for the keyless constants and the drum's lower
-pivot.
-
-**Done when:** 0 FORBIDDEN; support still 0 failures; clearances still 0
-violations; and the hour-hand kinematics are unchanged — 12 sim hours ⇒ minute
-−12 turns, intermediate arbor +4, hour wheel exactly −1 (ratio 12.000000).
-
-## 2. The mainspring is not a force source
+## 1. The mainspring is not a force source
 
 The spring spiral is a child of the drum whose rotation/scale are a direct
 *readout* of tension (`main.js`, `springChild` in `tick()`). There is no
@@ -78,7 +36,7 @@ The fusee, chain and cone geometry around it are good; they deserve a real
 spring anchoring. Fix: anchor the spiral's inner end to the drum arbor and let
 its wind state follow `barrelWindTurns`.
 
-## 3. The winding click rides the rotating great wheel
+## 2. The winding click rides the rotating great wheel
 
 Already documented in-code (`main.js`, near `fuseeRatchetGroup`) and in the
 mechanical graph's `todo` list, but it breaks a primary force path: a click
@@ -87,7 +45,7 @@ nothing mechanically prevents the fusee unwinding. The existing comment
 contains the right fix — mount the click on a plate-fixed post/bridge,
 positioned so its beak still reaches the ratchet's tooth circle.
 
-## 4. `handSetOffset` is assigned, not derived
+## 3. `handSetOffset` is assigned, not derived
 
 The motion-works arbor now has real bevel-gear pairs at every corner, and the
 hour hand's 12:1 is now real gearing — but the *driving value* for hand-setting
@@ -96,7 +54,7 @@ crown's rotation through those gears' tooth ratios. Same representational
 convention as the reserve train; lower priority than the items above because
 the geometry is present and correct, only the number hops.
 
-## 5. Smaller items
+## 4. Smaller items
 
 - **Hack-pad assembly note.** The pad sits radially *inside* the balance rim's
   annulus, so the blade cannot be lowered vertically into place — it has to be
@@ -121,6 +79,20 @@ the geometry is present and correct, only the number hops.
 ---
 
 ## Recently closed
+
+- **Setting arbor terminates at the motion works' minute wheel** (was item
+  1). The dial-centre stand-in — a pinion cap beside the cannon pinion,
+  meshing nothing — is gone: the arbor's traverse now ends one mesh
+  distance from the minute wheel's axis (on the keyless side, the short way
+  in), rises to the minute wheel's own plane, and its 8-tooth cap engages
+  the wheel's real teeth at module MW_MODULE_1. The MW_* constants are
+  hoisted to the top of main.js with the layout constants (the documented
+  TDZ hazard), and MECH_GRAPH gained the drive edge
+  `Keyless works → Motion works`. This removed all three FORBIDDEN
+  overlaps (Dial⇄Motion works, Hour wheel⇄Keyless works, Keyless
+  works⇄Motion works). The cap's rotation is still driven by handSetOffset
+  (item 3's representational convention), with a rest phase aimed at the
+  wheel.
 
 - **Hairspring terminal fixed; swan-neck regulator added** (was item 4). The
   stud no longer belongs to the spring: it hangs from the cock slab's

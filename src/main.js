@@ -389,6 +389,23 @@ function stepPos(prev, angleDeg, dist) {
 // the dial centre (its arbor carries the small-seconds display), escapement
 // continuing to ~6:25, balance at ~8:00. Hop distances are fixed by the
 // pitch-radius sums, so the free variables are the walk angles plus D4.
+// MOTION WORKS layout constants — HOISTED here from the dial build (they
+// depend only on module and tooth counts, so they hoist cleanly): the
+// keyless works' setting arbor terminates at the motion works' minute
+// wheel and needs these ~1300 lines before the dial exists. Referencing
+// them down there from up here was the temporal-dead-zone ReferenceError
+// that bit twice (see TODO.md item 1, now closed).
+const cannonPinionTeeth = 10;
+const MW_MODULE_1 = 0.3;                                     // cannon ⇄ minute wheel
+const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
+const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
+const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
+// Reduction, derived from the tooth counts rather than asserted. Each
+// external mesh reverses sense, so the two negations cancel: the hour wheel
+// turns the same way as the cannon pinion, at 1/12 the rate.
+const MW_RATIO_1 = -(cannonPinionTeeth / MW_MINUTE_TEETH);   // cannon → minute wheel
+const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion → hour wheel
+
 const BARREL_STEP_DEG = -35;   // center sits down-right of barrel → barrel/crown exit viewed ~1:50
 const D4 = 15.5;               // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
 const ESCAPE_STEP_DEG = -57.9; // escape at viewed ~6:25
@@ -1466,14 +1483,28 @@ function makeRodSegment(a, b, radius) {
 
 const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3, BEVEL_PHASE = Math.PI / BEVEL_TEETH;
 const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING);
-const settingB = new THREE.Vector3(P.dial.x, P.dial.y, Z_SETTING);
+// The arbor terminates at the MOTION WORKS' MINUTE WHEEL — the wheel a real
+// setting path drives — not at the dial centre. (The old dial-centre
+// stand-in ended in a pinion cap beside the cannon pinion, meshing nothing,
+// and collided with the real motion works once they existed: it caused all
+// three FORBIDDEN overlaps — Dial⇄Motion works, Hour wheel⇄Keyless works,
+// Keyless works⇄Motion works. TODO.md item 1.)
+// Minute wheel world XY: dialFace is Y-flipped, so dial-local +x maps to
+// world −x. The cap pinion sits one mesh distance from its axis, on the
+// keyless side so the traverse is the short way in.
+const MW_WORLD = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
+const SETTING_CAP_TEETH = 8;
+const capMeshD = (MW_MODULE_1 * (SETTING_CAP_TEETH + MW_MINUTE_TEETH)) / 2;
+const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborXY.y - MW_WORLD.y).normalize();
+const SETTING_CAP_XY = { x: MW_WORLD.x + toKeyless.x * capMeshD, y: MW_WORLD.y + toKeyless.y * capMeshD };
+const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();
 keyless.add(makeRodSegment(settingA, settingB, 0.35));
 
-const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion sits at dialFace local −1.5, which the Y-flip maps to Z_DIAL + 1.5
+const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5
 const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
 settingRise.rotation.x = Math.PI / 2;
-settingRise.position.set(P.dial.x, P.dial.y, (Z_SETTING + Z_CANNON_PINION) / 2);
+settingRise.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (Z_SETTING + Z_CANNON_PINION) / 2);
 keyless.add(settingRise);
 
 // Bevel-gear corner: two small conical gears sharing an apex at `point`, one
@@ -1503,14 +1534,13 @@ const Z_UP = new THREE.Vector3(0, 0, 1);
 // drop → traverse and traverse → rise: two corners, both exactly 90°.
 const cornerDrop = addBevelCorner(settingA, Z_UP, settingU);
 const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate());
-// Small pinion cap sitting right beside the cannon pinion — makes the final
-// connection visually legible rather than a bare rod tip. Cannon pinion
-// itself (module 0.3, 10 teeth → pitch radius 1.5) is defined later in the
-// file, alongside the dial; sized/placed here from those same known
-// constants rather than referencing the not-yet-declared variable.
-const CANNON_PINION_R = (0.3 * 10) / 2;
-const settingCap = G.makePinion({ module: 0.3, teeth: 8, thickness: 1.6, material: MATS.steel });
-settingCap.position.set(P.dial.x + CANNON_PINION_R + settingCap.userData.r + 0.15, P.dial.y, Z_CANNON_PINION);
+// The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
+// from the minute wheel's axis, in the minute wheel's own plane — it
+// engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
+const settingCap = G.makePinion({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1.6, material: MATS.steel });
+settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
+const SETTING_CAP_PHASE =
+  Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
 keyless.add(settingCap);
 
 // ---------------------------------------------------------------------------
@@ -2879,8 +2909,8 @@ const SUBDIAL_RECESS = 0.5;
 // Motion-works constants the DIAL needs (its centre bore must clear the
 // hour-wheel tube). Declared here rather than with the rest of the motion
 // works further down, which is built after the dial.
-const cannonPinionTeeth = 10;
-const MW_MODULE_1 = 0.3;                                     // cannon ⇄ minute wheel
+// (cannonPinionTeeth / MW_MODULE_1 are hoisted to the top of the file with
+// the layout constants — the keyless works' setting arbor needs them.)
 const HOUR_TUBE_INNER = (MW_MODULE_1 * cannonPinionTeeth) / 2 + MW_MODULE_1 + 0.25;
 const HOUR_TUBE_OUTER = HOUR_TUBE_INNER + 0.45;
 
@@ -2981,16 +3011,9 @@ smallSecondsGroup.add(smallSecondsHand);
 // one fewer cutter on a real bench. The formula stays general: a 12:1 pair
 // whose sums differ (10/30/10/40, say) would simply solve to m2 ≠ m1, the
 // way real motion works often do.
-// (cannonPinionTeeth / MW_MODULE_1 / HOUR_TUBE_* are declared up by the dial,
-// whose centre bore has to clear the tube.)
-const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
-const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
-const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
-// Reduction, derived from the tooth counts rather than asserted. Each
-// external mesh reverses sense, so the two negations cancel: the hour wheel
-// turns the same way as the cannon pinion, at 1/12 the rate.
-const MW_RATIO_1 = -(cannonPinionTeeth / MW_MINUTE_TEETH);   // cannon → minute wheel
-const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion → hour wheel
+// (All MW_* constants and cannonPinionTeeth are hoisted to the top of the
+// file with the layout constants — the setting arbor terminates at the
+// minute wheel and needs them long before the dial is built.)
 
 const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2, material: MATS.steel });
 cannonPinion.position.z = -1.5;
@@ -4081,7 +4104,7 @@ function tick(t) {
   // same handSetOffset that actually drives the hands, so the part sitting
   // right beside the cannon pinion visibly turns in step with it — the
   // connection reads as real, not just a static rod poking at the dial.
-  settingCap.rotation.z = handSetOffset;
+  settingCap.rotation.z = SETTING_CAP_PHASE + handSetOffset;
 
   // Power-reserve hand — barrelWindTurns (via tension) IS the mechanical
   // quantity now; no separate epoch/pulse bookkeeping needed since winding
