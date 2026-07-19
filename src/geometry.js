@@ -1263,14 +1263,40 @@ export function makeBarrel({ radius, height, teeth, module, plain = false }) {
 // Plates & structure
 // ---------------------------------------------------------------------------
 
-export function makeBackPlate({ radius, thickness }) {
+// holes: circular through-bores {x, y, r}; slots: stadium-shaped through
+// openings {ax, ay, bx, by, r} for parts that SWEEP through the plate (the
+// setting lever's tail post crossing to the dial side) — same conventions as
+// makeThreeQuarterPlate. The bevel grows material INTO every drawn opening,
+// so openings are drawn oversized by bevelSize and the finished edges land
+// on the caller's requested radii.
+export function makeBackPlate({ radius, thickness, holes = [], slots = [] }) {
+  const bevelSize = radius * 0.008;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  for (const h of holes) {
+    const p = new THREE.Path();
+    p.absarc(h.x, h.y, h.r + bevelSize, 0, Math.PI * 2, true); // CW: a hole
+    shape.holes.push(p);
+  }
+  for (const sl of slots) {
+    const r = sl.r + bevelSize;
+    const dx = sl.bx - sl.ax, dy = sl.by - sl.ay;
+    const d = Math.hypot(dx, dy);
+    const ux = d > 1e-9 ? dx / d : 1, uy = d > 1e-9 ? dy / d : 0;
+    const ang = Math.atan2(uy, ux);
+    const p = new THREE.Path();
+    // Clockwise stadium; each cap bulges away from the other end (see
+    // makeThreeQuarterPlate for the arc-direction reasoning).
+    p.absarc(sl.bx, sl.by, r, ang + Math.PI / 2, ang - Math.PI / 2, true);
+    p.absarc(sl.ax, sl.ay, r, ang - Math.PI / 2, ang - Math.PI * 1.5, true);
+    p.closePath();
+    shape.holes.push(p);
+  }
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,
     bevelThickness: thickness * 0.15,
-    bevelSize: radius * 0.008,
+    bevelSize,
     bevelSegments: 2,
     curveSegments: 72,
   });
