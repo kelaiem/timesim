@@ -550,63 +550,6 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 }
 
 // ---------------------------------------------------------------------------
-// Hacking lever — brake arm that pivots a ruby-tipped pad against the
-// balance rim to physically stall it when the crown is pulled.
-// ---------------------------------------------------------------------------
-
-export function makeHackingLever({ length, width }) {
-  const g = new THREE.Group();
-  const hw = width / 2;
-
-  // Slim spring-steel arm from the pivot (origin, local +Y = toward tip) to
-  // a wider brake-pad tip.
-  const s = new THREE.Shape();
-  s.moveTo(-hw * 0.85, 0);
-  s.lineTo(-hw * 0.45, length * 0.82);
-  s.lineTo(-hw * 1.15, length);
-  s.lineTo(hw * 1.15, length);
-  s.lineTo(hw * 0.45, length * 0.82);
-  s.lineTo(hw * 0.85, 0);
-  s.closePath();
-
-  const depth = width * 0.6;
-  const geo = new THREE.ExtrudeGeometry(s, {
-    depth,
-    bevelEnabled: true,
-    bevelThickness: width * 0.08,
-    bevelSize: width * 0.08,
-    bevelSegments: 1,
-    curveSegments: 6,
-  });
-  geo.translate(0, 0, -depth / 2);
-  g.add(new THREE.Mesh(geo, MATS.blueSteel));
-
-  // Pivot boss + screw.
-  const bossGeo = new THREE.CylinderGeometry(hw * 1.4, hw * 1.4, depth * 1.5, 16);
-  bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
-  const screwGeo = new THREE.CylinderGeometry(hw * 0.55, hw * 0.55, depth * 0.5, 10);
-  screwGeo.rotateX(Math.PI / 2);
-  const screw = new THREE.Mesh(screwGeo, MATS.blueSteel);
-  screw.position.z = depth;
-  g.add(screw);
-
-  // Ruby friction pad at the tip — the surface that actually contacts and
-  // brakes the balance rim.
-  const pad = new THREE.Mesh(new THREE.SphereGeometry(hw * 0.9, 14, 10), MATS.ruby);
-  pad.position.set(0, length, 0);
-  g.add(pad);
-
-  g.userData.length = length;
-  return g;
-}
-
-// ---------------------------------------------------------------------------
-// Heart cam — asymmetric return-to-zero cam for a chronograph-style reset
-// hammer. r(θ) is smallest at θ=0 (the notch/point, where a roller pressed
-// radially inward comes to rest) and largest at θ=π, so a roller pushed in
-// at any other angle rides the rising flank and is cammed toward θ=0.
-// ---------------------------------------------------------------------------
 
 export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
   const g = new THREE.Group();
@@ -806,164 +749,13 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
 }
 
 // ---------------------------------------------------------------------------
-// Hack spring — the long, thin blued blade that reaches across the movement
-// from the keyless works to the balance. Anchored (screwed) at the origin,
-// gently bowed along its length, with the ruby brake pad at the tip. Local
-// +X runs anchor → pad.
-//
-// The bow's control constants and an exact edge evaluator are EXPORTED so
-// layout solvers in main.js can reason about the blade's true rendered
-// flank (the whole blade bows toward local −Y by up to `length·SAG_RATIO`,
-// so mid-blade the flank sits far outside the nominal ±width/2) instead of
-// re-deriving — one source of truth for shape and clearance math alike.
+// Hack pad proportion — shared by the stop work's ruby pad in main.js (the
+// pad's flared cap: top radius over its post radius). The old blade-and-
+// ramp-collar hacking builders that lived here are gone with that design;
+// the stop crank is assembled from primitives at its solve site in main.js.
 // ---------------------------------------------------------------------------
-
-export const HACK_SAG_RATIO = 0.055;  // bow depth as a fraction of blade length
-export const HACK_TIP_TAPER = 0.55;   // tip half-width as a fraction of hw
 export const HACK_RUBY_FLARE = 1.15;  // ruby cap's top radius over the post radius
 
-// Exact Y of the blade's edge at abscissa x (side = −1 lower / +1 upper).
-// Matches the quadratic beziers below exactly: their X control point is at
-// length/2, which makes x(t) = length·t, so t = x/length.
-export function hackSpringEdgeY(x, length, width, side) {
-  const hw = width / 2;
-  const sag = length * HACK_SAG_RATIO;
-  const t = x / length;
-  const y0 = side * hw;
-  const yc = side * hw - sag;
-  const y1 = side * hw * HACK_TIP_TAPER;
-  return (1 - t) * (1 - t) * y0 + 2 * t * (1 - t) * yc + t * t * y1;
-}
-
-export function makeHackSpring({ length, width = 1.6, thickness = 0.8, padRise = 0, padR = 0.45, heel = null }) {
-  const g = new THREE.Group();
-  const hw = width / 2;
-  const sag = length * HACK_SAG_RATIO;
-
-  const s = new THREE.Shape();
-  s.moveTo(0, -hw);
-  s.quadraticCurveTo(length * 0.5, -hw - sag, length, -hw * HACK_TIP_TAPER);
-  s.lineTo(length, hw * HACK_TIP_TAPER);
-  s.quadraticCurveTo(length * 0.5, hw - sag, 0, hw);
-  s.closePath();
-  const geo = new THREE.ExtrudeGeometry(s, {
-    depth: thickness,
-    bevelEnabled: false,
-    curveSegments: 12,
-  });
-  geo.translate(0, 0, -thickness / 2);
-  g.add(new THREE.Mesh(geo, MATS.blueSteel));
-
-  // Anchor boss + screw (the fixed end, screwed to the plate/bridge).
-  const bossGeo = new THREE.CylinderGeometry(1.15, 1.15, thickness * 2.2, 14);
-  bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
-  const screwGeo = new THREE.CylinderGeometry(0.55, 0.55, thickness * 0.6, 10);
-  screwGeo.rotateX(Math.PI / 2);
-  const screw = new THREE.Mesh(screwGeo, MATS.blueSteel);
-  screw.position.z = thickness * 1.35;
-  g.add(screw);
-
-  // Brake pad at the free end. With padRise > 0 the pad rides a short
-  // upright post ABOVE the blade (local +z) — an underside brake: the
-  // blade body runs below the balance plane and only this post's ruby cap
-  // reaches up to the rim's lower face. padRise measures blade TOP surface
-  // → pad contact plane, so the caller can equate it to clearance geometry
-  // directly; the ruby's top face IS the contact face.
-  if (padRise > 0) {
-    const postR = padR;
-    const rubyH = Math.min(0.5, padRise * 0.55);
-    const postH = padRise - rubyH;
-    if (postH > 0.01) {
-      const postGeo = new THREE.CylinderGeometry(postR, postR, postH, 12);
-      postGeo.rotateX(Math.PI / 2);
-      const post = new THREE.Mesh(postGeo, MATS.steel);
-      post.position.set(length, 0, thickness / 2 + postH / 2);
-      g.add(post);
-    }
-    const rubyGeo = new THREE.CylinderGeometry(postR * HACK_RUBY_FLARE, postR * 0.95, rubyH, 12);
-    rubyGeo.rotateX(Math.PI / 2);
-    const ruby = new THREE.Mesh(rubyGeo, MATS.ruby);
-    ruby.position.set(length, 0, thickness / 2 + padRise - rubyH / 2);
-    g.add(ruby);
-  } else {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 10), MATS.ruby);
-    pad.position.set(length, 0, 0);
-    g.add(pad);
-  }
-
-  // Actuation heel — a hardened stud pressed through the blade near its
-  // anchor end, hanging BELOW the blade, ending in a ball whose underside
-  // rides the setting lever's ramp collar (makeHackRamp). heel.x/heel.y are
-  // blade-local; heel.z is the BALL CENTRE's local z (negative — below the
-  // mid-plane). This is the one point where the blade is driven; everything
-  // else about its motion follows from the anchor + this contact.
-  if (heel) {
-    const footLen = -heel.z - thickness / 2; // blade underside → ball centre
-    if (footLen > 0.01) {
-      const footGeo = new THREE.CylinderGeometry(heel.footR, heel.footR, footLen, 12);
-      footGeo.rotateX(Math.PI / 2);
-      const foot = new THREE.Mesh(footGeo, MATS.steel);
-      foot.name = 'hackHeelFoot';
-      foot.position.set(heel.x, heel.y, -thickness / 2 - footLen / 2);
-      g.add(foot);
-    }
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(heel.ballR, 18, 14), MATS.steel);
-    ball.name = 'hackHeelBall';
-    ball.position.set(heel.x, heel.y, heel.z);
-    g.add(ball);
-    // Retaining head above the blade — the stud is pressed in from the top,
-    // so the part reads as mounted rather than glued to the underside.
-    const headGeo = new THREE.CylinderGeometry(heel.footR * 1.4, heel.footR * 1.4, thickness * 0.4, 12);
-    headGeo.rotateX(Math.PI / 2);
-    const head = new THREE.Mesh(headGeo, MATS.steel);
-    head.name = 'hackHeelHead';
-    head.position.set(heel.x, heel.y, thickness / 2 + thickness * 0.2);
-    g.add(head);
-  }
-
-  g.userData.length = length;
-  return g;
-}
-
-// ---------------------------------------------------------------------------
-// Hack ramp — the wedge collar on the setting lever's tail post that converts
-// the lever's in-plane swing into the hack blade's vertical deflection. A
-// solid of revolution about the post (rotationally symmetric on purpose: the
-// post also ROTATES about the lever pivot as it swings, and a symmetric
-// collar makes the lift depend only on the heel's radial distance, never on
-// the lever's angle). Radial profile, inside → out:
-//   flat TOP LAND (r ≤ landR, height landH above the brim) — the seated
-//     dwell: the heel arrives here just before full crown pull, so the
-//     engaged pose is a stable flat seat, not a knife-edge on the flank;
-//   conical FLANK (landR → kneeR) — the working ramp: as the post slides
-//     under the heel the flank passes beneath it and lifts it landH;
-//   flat BRIM (kneeR → brimR) — the released dwell: the blade's own preload
-//     rests the heel here whenever the crown is in.
-// Local frame: z = 0 is the BRIM's top surface, the axis is the post's.
-// ---------------------------------------------------------------------------
-
-export function makeHackRamp({ boreR, landR, kneeR, brimR, landH, brimT }) {
-  const g = new THREE.Group();
-  const pts = [
-    new THREE.Vector2(boreR, landH),
-    new THREE.Vector2(landR, landH),
-    new THREE.Vector2(kneeR, 0),
-    new THREE.Vector2(brimR, 0),
-    new THREE.Vector2(brimR, -brimT),
-    new THREE.Vector2(boreR, -brimT),
-  ];
-  const geo = new THREE.LatheGeometry(pts, 64);
-  geo.rotateX(Math.PI / 2); // lathe revolves about +Y; the post axis is +Z
-  const m = new THREE.Mesh(geo, MATS.brass);
-  m.name = 'hackRamp';
-  g.add(m);
-  g.userData = { boreR, landR, kneeR, brimR, landH, brimT };
-  return g;
-}
-
-// ---------------------------------------------------------------------------
-// Hairspring — Archimedean spiral tube (flat ribbon), collet, stud, terminal
 // ---------------------------------------------------------------------------
 
 // An oscillator's spring has ONE moving end: the collet turns with the
@@ -1166,7 +958,10 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
 // gear teeth, no ratchet/click (the fusee arbor carries those instead).
 // ---------------------------------------------------------------------------
 
-export function makeBarrel({ radius, height, teeth, module, plain = false }) {
+// arborH: full length of the central arbor (centred on the body's
+// mid-plane) — the caller sizes it to reach its actual bearings; the
+// default reproduces the old fixed proportion.
+export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null }) {
   const g = new THREE.Group();
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
@@ -1242,7 +1037,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false }) {
   g.add(spring);
 
   // Central arbor.
-  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, height * 2.4, 16);
+  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, arborH ?? height * 2.4, 16);
   arborGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(arborGeo, MATS.steel));
 
