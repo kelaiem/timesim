@@ -2256,12 +2256,15 @@ export function makeHand({ length, kind }) {
   const depth = Math.max(length * config.depthFactor, config.depthMin);
   let bossH = depth * 1.6;
 
-  // Bur rod, shared by all three hands: a TRIANGULAR prism clocked so its
-  // flat face lies parallel to the dial toward the viewer and the keel
-  // edge points down at the dial (thetaStart 60° centres a face at +z) —
-  // ending in a 3-facet pyramid point, the angled tip of an engraver's
-  // bur. De-indexed and re-normalled so the facets shade FLAT instead of
-  // smearing into a tube. rBase is the CIRCUMradius, so the crossing
+  // Bur rod, shared by all three hands: a TRIANGULAR section, keel edge
+  // down at the dial, whose top face is gently CROWNED — a shallow convex
+  // arc rather than a dead-flat plane — so the polished top throws a
+  // highlight over a range of viewing angles instead of only when its one
+  // plane mirrors the light. The crown is faceted (12 curve segments,
+  // flat-shaded), reading like a burnished round-over. The tip tapers to
+  // a point held AT the top-face plane: the top runs level to the point
+  // and the whole taper is ground from the underside, like a graver.
+  // rBase stays the section's max half-height (the keel), so the crossing
   // envelope matches the old cylinders — the 1.45 hour/minute plane gap
   // in main.js still bounds rHour + rMinute (≈ 1.27 at current lengths).
   const facetFlat = (geo) => {
@@ -2274,27 +2277,40 @@ export function makeHand({ length, kind }) {
     const grp = new THREE.Group();
     const tipLen = rBase * 2; // stout point: short taper, wide apex angle
     const shaftLen = tail + length - tipLen;
-    const shaft = new THREE.Mesh(
-      facetFlat(new THREE.CylinderGeometry(rBase, rBase, shaftLen, 3, 1, false, Math.PI / 3)),
-      MATS.blueSteel
-    );
-    shaft.position.y = -tail + shaftLen / 2;
-    // Oblique point: shear the pyramid's apex up to the TOP-FACE plane
-    // (the triangle's apothem, rBase/2, where the flat facet lies) so the
-    // top surface runs dead flat from tail to point and the whole taper
-    // is cut from the underside — the way a graver's face is ground.
-    const tipGeo = new THREE.CylinderGeometry(0, rBase, tipLen, 3, 1, false, Math.PI / 3).toNonIndexed();
-    {
-      const pos = tipGeo.attributes.position;
-      const apothem = rBase * 0.5;
-      for (let i = 0; i < pos.count; i++) {
-        const t = (pos.getY(i) + tipLen / 2) / tipLen; // 0 at base, 1 at apex
-        pos.setZ(i, pos.getZ(i) + apothem * t);
-      }
-      tipGeo.computeVertexNormals();
+    const apothem = rBase * 0.5; // corner height of the top face
+    const halfW = rBase * (Math.sqrt(3) / 2);
+    const crown = rBase * 0.25; // slight convex bow across the top
+    // Cross-section in (x = width, y = toward viewer): keel down, top an
+    // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
+    const sec = new THREE.Shape();
+    sec.moveTo(0, -rBase);
+    sec.lineTo(halfW, apothem);
+    sec.quadraticCurveTo(0, apothem + 2 * crown, -halfW, apothem);
+    sec.closePath();
+    const shaftGeo = new THREE.ExtrudeGeometry(sec, {
+      depth: shaftLen, bevelEnabled: false, curveSegments: 12,
+    });
+    // extrusion axis → local +Y (hand length), section +y → local +Z (viewer)
+    shaftGeo.rotateX(Math.PI / 2);
+    shaftGeo.rotateZ(Math.PI);
+    shaftGeo.translate(0, -tail, 0);
+    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.blueSteel);
+    // Tip: fan from the same crowned section to an apex ON the top-face
+    // plane, so the top stays level while the underside cuts up to it.
+    const pts = sec.getPoints(12);
+    const tri = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      if (p.x === q.x && p.y === q.y) continue;
+      tri.push(p.x, p.y, 0, q.x, q.y, 0, 0, apothem, tipLen);
     }
+    const tipGeo = new THREE.BufferGeometry();
+    tipGeo.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+    tipGeo.computeVertexNormals();
+    tipGeo.rotateX(Math.PI / 2);
+    tipGeo.rotateZ(Math.PI);
+    tipGeo.translate(0, length - tipLen, 0);
     const tip = new THREE.Mesh(tipGeo, MATS.blueSteel);
-    tip.position.y = length - tipLen / 2;
     grp.add(shaft, tip);
     return grp;
   };
