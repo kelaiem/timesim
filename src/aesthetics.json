@@ -82,7 +82,7 @@
   },
   "decoration": {
     "ribbing": {
-      "widthUnits": 4.5,
+      "widthUnits": 6.7,
       "angleDeg": 25,
       "tilt": 0.35,
       "_comment": "Glashuette stripes on the 3/4 plate + escape bridge. widthUnits = band pitch in model units; angleDeg = direction the bands PROGRESS in (stripes run perpendicular); tilt = normal scallop strength (0 = off). Stripes are computed from WORLD position in the shader, so they continue across separate parts by construction."
