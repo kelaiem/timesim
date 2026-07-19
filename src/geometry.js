@@ -1229,7 +1229,9 @@ export function makeBackPlate({ radius, thickness }) {
     curveSegments: 72,
   });
   geo.translate(0, 0, -thickness / 2);
-  const m = new THREE.Mesh(geo, MATS.nickel);
+  // Perled: circular graining on the movement-side face (the shader gates
+  // to upward-facing surfaces; the dial-side face and edge stay plain).
+  const m = new THREE.Mesh(geo, MATS.perledNickel);
   m.userData.r = radius;
   return m;
 }
@@ -1412,7 +1414,9 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     curveSegments: 72,
   });
   geo.translate(0, 0, -depth / 2);
-  const m = new THREE.Mesh(geo, MATS.nickel);
+  // Striped: the material's world-space bands continue across the escape
+  // bridge, which shares it — see MATS.ribbedNickel in materials.js.
+  const m = new THREE.Mesh(geo, MATS.ribbedNickel);
   m.userData.r = radius;
   m.userData.thickness = thickness;
   return m;
@@ -1481,7 +1485,10 @@ export function makeCock({ length, width, thickness = width * 0.5 }) {
 // ---------------------------------------------------------------------------
 export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
   const g = new THREE.Group();
-  const slabMat = MATS.nickel;
+  // Striped like the plate it serves under — one world-space pattern, so
+  // the lines run unbroken from plate to bridge (legs/walls stay plain:
+  // the shader gates the stripes to upward-facing surfaces).
+  const slabMat = MATS.ribbedNickel;
   for (const n of chain) {
     let disc;
     if (n.bore) {
@@ -1673,11 +1680,50 @@ export function makePillar({ height }) {
   return m;
 }
 
-// Winding crown — knurled barrel plus chamfered cap, with a raised torus ring
-// on the outer face. Base sits at z = 0, the face points along +Z (per the
-// builder convention; main.js tips it onto the stem). All relief features
-// are half-embedded in their host surface so they read as machined relief
-// rather than glued-on appliqués.
+// Winding crown — decorated in the BUR language the hands speak (see
+// makeHand): triangular keel-edged prisms ground to oblique points.
+//
+// A shared template geometry, built once in a local "shape frame" (keel
+// along +y, length along +z from 0, tip at the far end): a triangular
+// prism whose end is ground like a graver — the keel edge runs LEVEL to
+// the point while the whole taper is cut from the flanks beneath it —
+// then oriented per use by baked rotations. Flat-shaded (de-indexed +
+// recomputed normals) so every facet reads as a plane.
+function burPrismGeo(rr, len, tipLen) {
+  const halfW = rr * (Math.sqrt(3) / 2);
+  const sec = new THREE.Shape();
+  sec.moveTo(0, rr); // keel
+  sec.lineTo(-halfW, -rr * 0.5);
+  sec.lineTo(halfW, -rr * 0.5);
+  sec.closePath();
+  const shaftLen = len - tipLen;
+  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }).toNonIndexed();
+  const pts = sec.getPoints(3);
+  const tri = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    if (p.x === q.x && p.y === q.y) continue;
+    tri.push(p.x, p.y, shaftLen, q.x, q.y, shaftLen, 0, rr, len); // apex ON the keel line
+  }
+  const shaftPos = shaft.attributes.position.array;
+  const all = new Float32Array(shaftPos.length + tri.length);
+  all.set(shaftPos);
+  all.set(tri, shaftPos.length);
+  shaft.dispose();
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(all, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Base sits at z = 0, the face points along +Z (per the builder
+// convention; main.js tips it onto the stem). All relief features are
+// half-embedded in their host surface so they read as machined relief
+// rather than glued-on appliqués. Two decorations, one vocabulary:
+//   – Rim: axial bur ridges, keels radially out, each ending outboard in
+//     the graver grind — a ring of angled cuts just below the cap.
+//   – Face: a rosette of six bur rods lying flat, keels up, their ground
+//     points converging at the centre like an engraved sunburst.
 export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   const g = new THREE.Group();
 
@@ -1686,16 +1732,19 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   body.position.z = bodyH / 2;
   g.add(body);
 
-  // Rim knurling: axial ridges around the barrel wall. Count derives from the
-  // circumference so the ridge pitch stays constant if bodyR changes.
-  const ridgeR = 0.15;
-  const rimN = Math.round((2 * Math.PI * bodyR) / (ridgeR * 4.5));
-  const rimGeo = new THREE.CylinderGeometry(ridgeR, ridgeR, bodyH * 0.9, 6);
-  rimGeo.rotateX(Math.PI / 2);
+  // Rim knurling: count derives from the circumference so the ridge pitch
+  // stays constant if bodyR changes. One shared geometry, N transforms.
+  const ridgeR = 0.16;
+  const rimN = Math.round((2 * Math.PI * bodyR) / (ridgeR * 3.5));
+  const ridgeLen = bodyH * 0.9;
+  const ridgeGeo = burPrismGeo(ridgeR, ridgeLen, ridgeR * 2.5);
+  const ridgeSeat = bodyR - ridgeR * 0.3; // sink the section so the keel sits lower
   for (let i = 0; i < rimN; i++) {
     const a = (i / rimN) * 2 * Math.PI;
-    const ridge = new THREE.Mesh(rimGeo, material);
-    ridge.position.set(Math.cos(a) * bodyR, Math.sin(a) * bodyR, bodyH / 2);
+    const ridge = new THREE.Mesh(ridgeGeo, material);
+    // shape +y (keel) → radial out; shape +z (length, tip last) → crown +z
+    ridge.rotation.z = a - Math.PI / 2;
+    ridge.position.set(Math.cos(a) * ridgeSeat, Math.sin(a) * ridgeSeat, bodyH * 0.05);
     g.add(ridge);
   }
 
@@ -1707,15 +1756,23 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   g.add(cap);
   const faceZ = bodyH + capH;
 
-  // Torus in relief on the face, ringing its centre.
-  const torusR = bodyR * 0.5;
-  const torusTube = 0.45;
-  const torus = new THREE.Mesh(new THREE.TorusGeometry(torusR, torusTube, 12, 48), material);
-  torus.position.z = faceZ + torusTube * 0.25;
-  g.add(torus);
+  // Face rosette: six bur rods radiating tail→centre, tips meeting just
+  // shy of the middle so the six ground points read as one cut star.
+  const rodR = bodyR * 0.16;
+  const rodOuter = bodyR * 0.8;
+  const rodLen = rodOuter - bodyR * 0.32; // stop short: open gap at the centre, arms never fuse
+  const rodGeo = burPrismGeo(rodR, rodLen, rodR * 2);
+  rodGeo.rotateX(Math.PI / 2); // shape +y (keel) → +z (off the face); length → −y
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * 2 * Math.PI;
+    const rod = new THREE.Mesh(rodGeo, material);
+    rod.rotation.z = a - Math.PI / 2; // length −y → inward radial at angle a
+    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.15);
+    g.add(rod);
+  }
 
-  g.userData.r = bodyR + ridgeR;         // widest point: barrel + proud knurl
-  g.userData.totalH = faceZ + torusTube; // tallest point: face + proud torus
+  g.userData.r = bodyR + ridgeR * 0.7; // widest point: barrel + proud keels (sunk 0.3)
+  g.userData.totalH = faceZ + rodR;   // tallest point: face + proud rosette
   return g;
 }
 
@@ -1763,9 +1820,14 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // right), Ab/Auf Glashütte marking. Major ticks every 12 hours of
     // reserve (0/12/24), small minor ticks every 3 hours between them —
     // the minors also anchor the full end of the arc (30 h).
-    for (let h = 0; h <= 30; h += 3) {
+    // 150-degree arc riding near the well's edge (was 120 at 0.84): more
+    // angular travel per hour = finer reading, and the face's centre opens
+    // up for the figures.
+    // One minor per HOUR (the 150-degree sweep gives each its 5 degrees),
+    // slimmed to keep the comb fine; majors every 12 h as before.
+    for (let h = 0; h <= 30; h += 1) {
       const major = h % 12 === 0;
-      tickAt(150 - (h / 30) * 120, sr * 0.84, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
+      tickAt(180 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022)); // empty end anchored at 9 o'clock — the sweep sits asymmetric, 180 to 30
     }
     // AB / AUF painted ALONG the graduation arc, at the tick band's radius
     // (sr·0.76, mid-band), set clear of the end ticks (22° beyond the arc
@@ -1773,9 +1835,29 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // crowding the outermost indicators.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    // Tiny hour figures at the majors, inboard of the tick ends — Roman
+    // where Rome allows (XII, XXIV); the empty end is 0, a numeral Rome
+    // never had.
+    ctx.font = `500 ${sr * 0.09}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    // Zero, for a numeral system that never had one — an INVENTED glyph
+    // with real ancestry: medieval computus tables (Bede, ~725 AD) wrote N
+    // for "nulla" (none) where Roman reckoning needed a zero; the vinculum
+    // overbar is the Roman mark that says "this character is a NUMERAL,
+    // not a letter". So: N-bar.
+    {
+      const aN = (180 * Math.PI) / 180, rN = sr * 0.64, fh = sr * 0.09;
+      ctx.save();
+      ctx.translate(scx + Math.cos(aN) * rN, scy - Math.sin(aN) * rN);
+      ctx.rotate(Math.PI / 2 - aN);
+      ctx.fillText('N', 0, 0);
+      ctx.fillRect(-fh * 0.38, -fh * 0.70, fh * 0.76, fh * 0.05);
+      ctx.restore();
+    }
+    arcLabel('XII', 120, sr * 0.64);
+    arcLabel('XXIV', 60, sr * 0.64);
     ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    arcLabel('AB', 172, sr * 0.76);
-    arcLabel('AUF', 8, sr * 0.76);
+    arcLabel('AB', 196, sr * 0.76);
+    arcLabel('AUF', 16, sr * 0.76);
     // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
     // of the face — the region the graduation never enters and the hand
     // never sweeps (its tip stays on the upper arc, its tail well inside
@@ -1901,13 +1983,16 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.anisotropy = 8;
+      // Enamelled/lacquered dial: a deep glossy clearcoat over the painted
+      // face — low metalness (fired enamel is glass, not metal), tightened
+      // base roughness, near-mirror coat.
       mat = new THREE.MeshPhysicalMaterial({
         map: tex,
         color: 0xffffff,
-        metalness: 0.15,
-        roughness: 0.5,
-        clearcoat: 0.3,
-        clearcoatRoughness: 0.4,
+        metalness: 0.05,
+        roughness: 0.35,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.07,
       });
     }
   }
@@ -1972,7 +2057,8 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
           const ftex = new THREE.CanvasTexture(cv);
           ftex.colorSpace = THREE.SRGBColorSpace;
           ftex.anisotropy = 8;
-          floorMat = new THREE.MeshStandardMaterial({ map: ftex, roughness: 0.65, metalness: 0.08 });
+          // Same lacquered finish as the main dial face.
+          floorMat = new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
         }
       }
       if (!floorMat) floorMat = MATS.silver;
@@ -2220,34 +2306,74 @@ export function makeHand({ length, kind }) {
   const depth = Math.max(length * config.depthFactor, config.depthMin);
   let bossH = depth * 1.6;
 
+  // Bur rod, shared by all three hands: a TRIANGULAR section, keel edge
+  // down at the dial, whose top face is gently CROWNED — a shallow convex
+  // arc rather than a dead-flat plane — so the polished top throws a
+  // highlight over a range of viewing angles instead of only when its one
+  // plane mirrors the light. The crown is faceted (12 curve segments,
+  // flat-shaded), reading like a burnished round-over. The tip tapers to
+  // a point held AT the top-face plane: the top runs level to the point
+  // and the whole taper is ground from the underside, like a graver.
+  // rBase stays the section's max half-height (the keel), so the crossing
+  // envelope matches the old cylinders — the 2.3 hour/minute plane gap
+  // in main.js still bounds rHour + rMinute (≈ 2.10 at current widths).
+  const facetFlat = (geo) => {
+    const flat = geo.toNonIndexed();
+    flat.computeVertexNormals();
+    geo.dispose();
+    return flat;
+  };
+  const burRod = (rBase) => {
+    const grp = new THREE.Group();
+    const tipLen = rBase * 2; // stout point: short taper, wide apex angle
+    const shaftLen = tail + length - tipLen;
+    const apothem = rBase * 0.5; // corner height of the top face
+    const halfW = rBase * (Math.sqrt(3) / 2);
+    const crown = rBase * 0.05; // near-flat bow: just enough to slide a highlight
+    // Cross-section in (x = width, y = toward viewer): keel down, top an
+    // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
+    const sec = new THREE.Shape();
+    sec.moveTo(0, -rBase);
+    sec.lineTo(halfW, apothem);
+    sec.quadraticCurveTo(0, apothem + 2 * crown, -halfW, apothem);
+    sec.closePath();
+    const shaftGeo = new THREE.ExtrudeGeometry(sec, {
+      depth: shaftLen, bevelEnabled: false, curveSegments: 12,
+    });
+    // extrusion axis → local +Y (hand length), section +y → local +Z (viewer)
+    shaftGeo.rotateX(Math.PI / 2);
+    shaftGeo.rotateZ(Math.PI);
+    shaftGeo.translate(0, -tail, 0);
+    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.blueSteel);
+    // Tip: fan from the same crowned section to an apex ON the top-face
+    // plane, so the top stays level while the underside cuts up to it.
+    const pts = sec.getPoints(12);
+    const tri = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      if (p.x === q.x && p.y === q.y) continue;
+      tri.push(p.x, p.y, 0, q.x, q.y, 0, 0, apothem, tipLen);
+    }
+    const tipGeo = new THREE.BufferGeometry();
+    tipGeo.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+    tipGeo.computeVertexNormals();
+    tipGeo.rotateX(Math.PI / 2);
+    tipGeo.rotateZ(Math.PI);
+    tipGeo.translate(0, length - tipLen, 0);
+    const tip = new THREE.Mesh(tipGeo, MATS.blueSteel);
+    grp.add(shaft, tip);
+    return grp;
+  };
+
   if (kind === 'hour' || kind === 'minute') {
-    // ROD hands: a constant-girth cylinder running tail → tip (cylinder
-    // axis is already local +Y, the hand's pointing direction). Radius
-    // derives from the old blade's width but at 0.3× so the hour and
-    // minute rods clear each other where they cross — the minute hand
-    // rides only 1.2 above the hour hand's plane (main.js), so
-    // rHour + rMinute must stay under that with margin
-    // (0.3: 0.54 + 0.48 ≈ 1.0 at current lengths).
-    const rBase = length * config.widthFactor * 0.3;
-    const rod = new THREE.Mesh(
-      new THREE.CylinderGeometry(rBase, rBase, tail + length, 16),
-      MATS.blueSteel
-    );
-    rod.position.y = (length - tail) / 2;
-    g.add(rod);
+    const rBase = length * config.widthFactor * 0.35;
+    g.add(burRod(rBase));
     bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
   } else {
-    // second: fine needle (unchanged flat blade)
-    const w = length * config.widthFactor;
-    const s = new THREE.Shape();
-    s.moveTo(-w, -tail);
-    s.lineTo(w, -tail);
-    s.lineTo(w * 0.5, length);
-    s.lineTo(-w * 0.5, length);
-    s.closePath();
-    const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false });
-    geo.translate(0, 0, -depth / 2);
-    g.add(new THREE.Mesh(geo, MATS.blueSteel));
+    // second: same bur rod, slimmer. Floor on the radius: at second-hand
+    // widthFactors a sub-dial-length rod would vanish.
+    const rBase = Math.max(length * config.widthFactor * 0.5, 0.14);
+    g.add(burRod(rBase));
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
       new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),

@@ -2688,7 +2688,7 @@ const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
 // central hands' boss needs around the dial centre. This lands ≈ 0.30 of
 // the dial radius (up from 0.2); the bigger wells swallow the XI/I and
 // V/VII numerals symmetrically, leaving II–IIII and VIII–X.
-const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 3.5;
+const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 4.5; // slightly inboard of the maximum — breathing room against the hour ring
 const reserveR = subDialR;
 const secondsSubR = subDialR;
 // Sub-dials are recessed WELLS sunk into the dial (hole + wall + painted
@@ -2734,8 +2734,8 @@ registerExplode(handsGroup, 2.5, 2, 1);
 // here — it becomes a child of hourWheelGroup and inherits that wheel's
 // rotation rather than being posed independently.
 const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
-const minuteHand = G.makeHand({ length: dialRadius * 0.72, kind: 'minute' });
-minuteHand.position.z = 1.2;
+const minuteHand = G.makeHand({ length: dialRadius * 0.82, kind: 'minute' });
+minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
 
 // Small-seconds display — the hand rides the fourth wheel's own axis via
@@ -3831,7 +3831,7 @@ function tick(t) {
   // quantity now; no separate epoch/pulse bookkeeping needed since winding
   // is continuous rather than a discrete button press.
   reserveShown = tension;
-  reserveHand.rotation.z = (60 - reserveShown * 120) * DEG2RAD;
+  reserveHand.rotation.z = (90 - reserveShown * 150) * DEG2RAD; // 150-degree scale, empty end at 9 o'clock (see makeDial's reserve face)
 
   // Power-reserve reduction gear train (see note above its construction):
   // w2 shares the hand's arbor. The hand lives on the Y-flipped dialFace

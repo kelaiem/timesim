@@ -89,6 +89,121 @@ const dark = phys({
   roughness: 0.75,
 });
 
+// Glashütte-striped nickel, for the three-quarter plate and the escape
+// bridge. The stripes are shaded, not modelled: a world-position sawtooth
+// tilts the surface normal across each band (the shallow scallop a real
+// striping lap leaves), gated to upward-facing surfaces so walls, legs and
+// bevels stay plain. Because the band coordinate comes from WORLD space —
+// not UVs — the pattern continues seamlessly across any separate part
+// sharing this material, which is the whole point: plate and escape bridge
+// read as striped in one setup, the lines running unbroken across the
+// escapement window. Parameters live in aesthetics.json (decoration.ribbing).
+import { aesthetics } from './aesthetics.js';
+const ribbedNickel = phys({
+  color: 0xc9ccd1,
+  metalness: 1.0,
+  roughness: 0.42,
+  clearcoat: 0.2,
+  clearcoatRoughness: 0.4,
+});
+{
+  const rib = (aesthetics.decoration && aesthetics.decoration.ribbing) || {};
+  const a = ((rib.angleDeg ?? 25) * Math.PI) / 180;
+  const dir = new THREE.Vector2(Math.cos(a), Math.sin(a));
+  const width = rib.widthUnits ?? 4.5;
+  const tilt = rib.tilt ?? 0.35;
+  ribbedNickel.onBeforeCompile = (shader) => {
+    shader.uniforms.ribDir = { value: dir };
+    shader.uniforms.ribWidth = { value: width };
+    shader.uniforms.ribTilt = { value: tilt };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRibWorld;\nvarying vec3 vRibNormal;')
+      .replace('#include <begin_vertex>',
+        '#include <begin_vertex>\nvRibWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvRibNormal = normalize(mat3(modelMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>',
+        '#include <common>\nvarying vec3 vRibWorld;\nvarying vec3 vRibNormal;\nuniform vec2 ribDir;\nuniform float ribWidth;\nuniform float ribTilt;')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      if (vRibNormal.z > 0.7) {
+        float ribBand = fract(dot(vRibWorld.xy, ribDir) / ribWidth) - 0.5;
+        vec3 ribTiltView = normalize((viewMatrix * vec4(ribDir, 0.0, 0.0)).xyz);
+        normal = normalize(normal + ribTiltView * ribBand * ribTilt);
+      }`);
+  };
+}
+
+// Perled nickel for the BASE plate: circular graining (perlage) — a
+// staggered grid of pearls, each shaded as concentric micro-rings by
+// tilting the normal radially about the pearl's own centre, fading with
+// radius. Same world-space construction as the ribbing (position-stable,
+// no UVs), same up-facing gate so only the movement-side face grains.
+const perledNickel = phys({
+  color: 0xc9ccd1,
+  metalness: 1.0,
+  roughness: 0.42,
+  clearcoat: 0.2,
+  clearcoatRoughness: 0.4,
+});
+{
+  const prl = (aesthetics.decoration && aesthetics.decoration.perlage) || {};
+  const pitch = prl.pitchUnits ?? 4.2;
+  const ringFreq = prl.ringFreq ?? 9.0;
+  const tilt = prl.tilt ?? 0.22;
+  perledNickel.onBeforeCompile = (shader) => {
+    shader.uniforms.prlPitch = { value: pitch };
+    shader.uniforms.prlRingFreq = { value: ringFreq };
+    shader.uniforms.prlTilt = { value: tilt };
+    shader.uniforms.prlRadius = { value: prl.pearlRadiusUnits ?? pitch * 0.8 };
+    shader.uniforms.prlOrder = { value: prl.shingleFlip ? -1.0 : 1.0 };
+    shader.uniforms.prlJitter = { value: prl.jitterFrac ?? 0.25 };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;')
+      .replace('#include <begin_vertex>',
+        '#include <begin_vertex>\nvPrlWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPrlNormal = normalize(mat3(modelMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>',
+        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;\nuniform float prlRadius;\nuniform float prlOrder;\nuniform float prlJitter;')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      if (vPrlNormal.z > 0.7) {
+        // Real perlage is stamped pearl by pearl, row by row — each pearl
+        // CUTS INTO the ones laid before it. So a fragment covered by
+        // several pearls takes its rings from the LAST one in application
+        // order (higher row, then higher x): every pearl keeps a clean
+        // full-circle edge on the not-yet-overlapped side and is shingled
+        // away on the other — the directional overlap of the real finish.
+        vec2 pp = vPrlWorld.xy / prlPitch;
+        // Jittered stamp centres: real perlage is laid by hand, pearl over
+        // pearl — the circles overlap in sequence but their centres are
+        // never on a perfect lattice, and each pearl's rings run strong to
+        // its own edge. Winner = LAST pearl in application order covering
+        // the fragment; with jitter, every visible boundary is the ARC of
+        // the later pearl's edge — nothing reads as a straight row.
+        float pBest = -1e9; vec2 pC = vec2(0.0);
+        for (int pdy = -1; pdy <= 1; pdy++) {
+          for (int pdx = -1; pdx <= 1; pdx++) {
+            vec2 cellId = floor(pp) + vec2(float(pdx), float(pdy));
+            vec2 jit = fract(sin(vec2(dot(cellId, vec2(127.1, 311.7)),
+                                      dot(cellId, vec2(269.5, 183.3)))) * 43758.5453) - 0.5;
+            vec2 c = cellId + 0.5 + jit * prlJitter;
+            if (distance(pp, c) * prlPitch < prlRadius) {
+              float score = (cellId.y * 4096.0 + cellId.x) * prlOrder; // application order; prlOrder flips it
+              if (score > pBest) { pBest = score; pC = c; }
+            }
+          }
+        }
+        if (pBest > -1e8) {
+          vec2 pd = (pp - pC) * prlPitch;
+          float pr = length(pd) + 1e-4;
+          // rings hold full strength across the disc, fading only at the rim
+          float pedge = 1.0 - smoothstep(0.82, 1.0, pr / prlRadius);
+          float pring = sin(pr * prlRingFreq) * pedge;
+          vec3 pradV = normalize((viewMatrix * vec4(pd / pr, 0.0, 0.0)).xyz);
+          normal = normalize(normal + pradV * pring * prlTilt);
+        }
+      }`);
+  };
+}
+
 export const MATS = {
   brass,
   gold,
@@ -96,6 +211,8 @@ export const MATS = {
   blueSteel,
   ruby,
   nickel,
+  ribbedNickel,
+  perledNickel,
   silver,
   dark,
 };
