@@ -1680,11 +1680,50 @@ export function makePillar({ height }) {
   return m;
 }
 
-// Winding crown — knurled barrel plus chamfered cap, with a raised torus ring
-// on the outer face. Base sits at z = 0, the face points along +Z (per the
-// builder convention; main.js tips it onto the stem). All relief features
-// are half-embedded in their host surface so they read as machined relief
-// rather than glued-on appliqués.
+// Winding crown — decorated in the BUR language the hands speak (see
+// makeHand): triangular keel-edged prisms ground to oblique points.
+//
+// A shared template geometry, built once in a local "shape frame" (keel
+// along +y, length along +z from 0, tip at the far end): a triangular
+// prism whose end is ground like a graver — the keel edge runs LEVEL to
+// the point while the whole taper is cut from the flanks beneath it —
+// then oriented per use by baked rotations. Flat-shaded (de-indexed +
+// recomputed normals) so every facet reads as a plane.
+function burPrismGeo(rr, len, tipLen) {
+  const halfW = rr * (Math.sqrt(3) / 2);
+  const sec = new THREE.Shape();
+  sec.moveTo(0, rr); // keel
+  sec.lineTo(-halfW, -rr * 0.5);
+  sec.lineTo(halfW, -rr * 0.5);
+  sec.closePath();
+  const shaftLen = len - tipLen;
+  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }).toNonIndexed();
+  const pts = sec.getPoints(3);
+  const tri = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    if (p.x === q.x && p.y === q.y) continue;
+    tri.push(p.x, p.y, shaftLen, q.x, q.y, shaftLen, 0, rr, len); // apex ON the keel line
+  }
+  const shaftPos = shaft.attributes.position.array;
+  const all = new Float32Array(shaftPos.length + tri.length);
+  all.set(shaftPos);
+  all.set(tri, shaftPos.length);
+  shaft.dispose();
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(all, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Base sits at z = 0, the face points along +Z (per the builder
+// convention; main.js tips it onto the stem). All relief features are
+// half-embedded in their host surface so they read as machined relief
+// rather than glued-on appliqués. Two decorations, one vocabulary:
+//   – Rim: axial bur ridges, keels radially out, each ending outboard in
+//     the graver grind — a ring of angled cuts just below the cap.
+//   – Face: a rosette of six bur rods lying flat, keels up, their ground
+//     points converging at the centre like an engraved sunburst.
 export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   const g = new THREE.Group();
 
@@ -1693,16 +1732,19 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   body.position.z = bodyH / 2;
   g.add(body);
 
-  // Rim knurling: axial ridges around the barrel wall. Count derives from the
-  // circumference so the ridge pitch stays constant if bodyR changes.
-  const ridgeR = 0.15;
-  const rimN = Math.round((2 * Math.PI * bodyR) / (ridgeR * 4.5));
-  const rimGeo = new THREE.CylinderGeometry(ridgeR, ridgeR, bodyH * 0.9, 6);
-  rimGeo.rotateX(Math.PI / 2);
+  // Rim knurling: count derives from the circumference so the ridge pitch
+  // stays constant if bodyR changes. One shared geometry, N transforms.
+  const ridgeR = 0.16;
+  const rimN = Math.round((2 * Math.PI * bodyR) / (ridgeR * 3.5));
+  const ridgeLen = bodyH * 0.9;
+  const ridgeGeo = burPrismGeo(ridgeR, ridgeLen, ridgeR * 2.5);
+  const ridgeSeat = bodyR - ridgeR * 0.3; // sink the section so the keel sits lower
   for (let i = 0; i < rimN; i++) {
     const a = (i / rimN) * 2 * Math.PI;
-    const ridge = new THREE.Mesh(rimGeo, material);
-    ridge.position.set(Math.cos(a) * bodyR, Math.sin(a) * bodyR, bodyH / 2);
+    const ridge = new THREE.Mesh(ridgeGeo, material);
+    // shape +y (keel) → radial out; shape +z (length, tip last) → crown +z
+    ridge.rotation.z = a - Math.PI / 2;
+    ridge.position.set(Math.cos(a) * ridgeSeat, Math.sin(a) * ridgeSeat, bodyH * 0.05);
     g.add(ridge);
   }
 
@@ -1714,15 +1756,23 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   g.add(cap);
   const faceZ = bodyH + capH;
 
-  // Torus in relief on the face, ringing its centre.
-  const torusR = bodyR * 0.5;
-  const torusTube = 0.45;
-  const torus = new THREE.Mesh(new THREE.TorusGeometry(torusR, torusTube, 12, 48), material);
-  torus.position.z = faceZ + torusTube * 0.25;
-  g.add(torus);
+  // Face rosette: six bur rods radiating tail→centre, tips meeting just
+  // shy of the middle so the six ground points read as one cut star.
+  const rodR = bodyR * 0.055;
+  const rodOuter = bodyR * 0.62;
+  const rodLen = rodOuter - bodyR * 0.02;
+  const rodGeo = burPrismGeo(rodR, rodLen, rodR * 2);
+  rodGeo.rotateX(Math.PI / 2); // shape +y (keel) → +z (off the face); length → −y
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * 2 * Math.PI;
+    const rod = new THREE.Mesh(rodGeo, material);
+    rod.rotation.z = a - Math.PI / 2; // length −y → inward radial at angle a
+    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.45);
+    g.add(rod);
+  }
 
-  g.userData.r = bodyR + ridgeR;         // widest point: barrel + proud knurl
-  g.userData.totalH = faceZ + torusTube; // tallest point: face + proud torus
+  g.userData.r = bodyR + ridgeR * 0.7; // widest point: barrel + proud keels (sunk 0.3)
+  g.userData.totalH = faceZ + rodR;   // tallest point: face + proud rosette
   return g;
 }
 
