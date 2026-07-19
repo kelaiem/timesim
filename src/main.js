@@ -2687,12 +2687,26 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
     pin.position.set(s * pinGap, rPin, -pinLen / 2 + 0.02);
     reg.add(pin);
   }
-  // Tail, swan-neck spring and adjuster screw, all on the slab's top face.
+  // TAIL: part of the index lever — it rotates with the regulator.
   const tailLen2 = 2.3;
   const tailY = -(collarOut + tailLen2 / 2 - 0.25);
   const rTail = new THREE.Mesh(new THREE.BoxGeometry(0.55, tailLen2, armT), MATS.steel);
   rTail.position.set(0, tailY, armT / 2 + 0.02);
   reg.add(rTail);
+  balanceCock.add(reg);
+  registerLabel('Regulator', reg);
+
+  // SWAN NECK + ADJUSTER: mounted on the COCK (the balance bridge), not on
+  // the index — they are the fixed datum the index is set against: the
+  // neck spring presses the tail against the screw, the screw meters how
+  // far it may yield. Parenting them to the rotating index would carry
+  // the reference along with the thing it references. They share the
+  // index frame's transform (same origin, same 0.45 sweep) so the tail
+  // coordinates above stay valid, but the group is a child of the cock.
+  const regDress = new THREE.Group();
+  regDress.name = 'swanNeck';
+  regDress.position.set(0, jyStaff, COCK_T / 2);
+  regDress.rotation.z = 0.45;
   const tailTipY = tailY - tailLen2 / 2 + 0.15;
   const neckPts = [
     new THREE.Vector3(1.7, tailTipY - 1.3, 0),
@@ -2704,25 +2718,25 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   const neck = new THREE.Mesh(
     new THREE.TubeGeometry(new THREE.CatmullRomCurve3(neckPts), 24, 0.15, 8, false), MATS.steel);
   neck.position.z = armT / 2 + 0.02;
-  reg.add(neck);
+  regDress.add(neck);
+  // ...held down by its own screw through the neck's foot, into the cock.
   const neckScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, armT * 1.2, 14), MATS.blueSteel);
   neckScrew.rotation.x = Math.PI / 2;
   neckScrew.position.set(1.7, tailTipY - 1.3, armT * 0.6 + 0.02);
-  reg.add(neckScrew);
+  regDress.add(neckScrew);
   // Adjuster: block + fine screw bearing on the tail's other flank.
   const adjBlock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, armT * 1.4), MATS.steel);
   adjBlock.position.set(-1.55, tailTipY, armT * 0.7 + 0.02);
-  reg.add(adjBlock);
+  regDress.add(adjBlock);
   const adjScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.15, 10), MATS.blueSteel);
   adjScrew.rotation.z = Math.PI / 2;
   adjScrew.position.set(-0.85, tailTipY, armT * 0.7 + 0.02);
-  reg.add(adjScrew);
+  regDress.add(adjScrew);
   const adjHead = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.22, 12), MATS.blueSteel);
   adjHead.rotation.z = Math.PI / 2;
   adjHead.position.set(-1.95, tailTipY, armT * 0.7 + 0.02);
-  reg.add(adjHead);
-  balanceCock.add(reg);
-  registerLabel('Regulator', reg);
+  regDress.add(adjHead);
+  balanceCock.add(regDress);
 }
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);
