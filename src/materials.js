@@ -153,24 +153,42 @@ const perledNickel = phys({
     shader.uniforms.prlPitch = { value: pitch };
     shader.uniforms.prlRingFreq = { value: ringFreq };
     shader.uniforms.prlTilt = { value: tilt };
+    shader.uniforms.prlRadius = { value: prl.pearlRadiusUnits ?? pitch * 0.8 };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;')
       .replace('#include <begin_vertex>',
         '#include <begin_vertex>\nvPrlWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPrlNormal = normalize(mat3(modelMatrix) * objectNormal);');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>',
-        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;')
+        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;\nuniform float prlRadius;')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       if (vPrlNormal.z > 0.7) {
+        // Real perlage is stamped pearl by pearl, row by row — each pearl
+        // CUTS INTO the ones laid before it. So a fragment covered by
+        // several pearls takes its rings from the LAST one in application
+        // order (higher row, then higher x): every pearl keeps a clean
+        // full-circle edge on the not-yet-overlapped side and is shingled
+        // away on the other — the directional overlap of the real finish.
         vec2 pp = vPrlWorld.xy / prlPitch;
-        float prow = floor(pp.y);
-        float pxo = mod(prow, 2.0) * 0.5;
-        vec2 pcell = vec2(floor(pp.x - pxo) + 0.5 + pxo, prow + 0.5);
-        vec2 pd = (pp - pcell) * prlPitch;
-        float pr = length(pd) + 1e-4;
-        float pring = sin(pr * prlRingFreq) * exp(-pr / prlPitch);
-        vec3 pradV = normalize((viewMatrix * vec4(pd / pr, 0.0, 0.0)).xyz);
-        normal = normalize(normal + pradV * pring * prlTilt);
+        float pBest = -1e9; vec2 pC = vec2(0.0);
+        for (int pdy = 0; pdy <= 1; pdy++) {
+          float prow = floor(pp.y) + float(pdy);
+          float pxo = mod(prow, 2.0) * 0.5;
+          for (int pdx = -1; pdx <= 1; pdx++) {
+            vec2 c = vec2(floor(pp.x - pxo) + float(pdx) + 0.5 + pxo, prow + 0.5);
+            if (distance(pp, c) * prlPitch < prlRadius) {
+              float score = prow * 4096.0 + c.x;
+              if (score > pBest) { pBest = score; pC = c; }
+            }
+          }
+        }
+        if (pBest > -1e8) {
+          vec2 pd = (pp - pC) * prlPitch;
+          float pr = length(pd) + 1e-4;
+          float pring = sin(pr * prlRingFreq) * exp(-pr / prlPitch);
+          vec3 pradV = normalize((viewMatrix * vec4(pd / pr, 0.0, 0.0)).xyz);
+          normal = normalize(normal + pradV * pring * prlTilt);
+        }
       }`);
   };
 }

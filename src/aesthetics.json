@@ -91,7 +91,8 @@
       "pitchUnits": 4.2,
       "ringFreq": 9.0,
       "tilt": 0.22,
-      "_comment": "Circular graining on the BASE plate: staggered grid of pearls, each a set of concentric micro-rings (normal scallop), world-space like the ribbing so the pattern is position-stable. pitchUnits = pearl spacing; ringFreq = rings per unit radius; tilt = strength."
+      "_comment": "Circular graining on the BASE plate, stamped like the real thing: pearls in a staggered grid, each fragment shaded by the LAST pearl (row-major application order) whose radius covers it \u2014 so every pearl overlaps its neighbours in one direction, shingled. pearlRadiusUnits > pitch/2 sets the overlap.",
+      "pearlRadiusUnits": 3.4
     }
   }
 }
