@@ -87,17 +87,7 @@ nothing mechanically prevents the fusee unwinding. The existing comment
 contains the right fix — mount the click on a plate-fixed post/bridge,
 positioned so its beak still reaches the ratchet's tooth circle.
 
-## 4. Hairspring has no fixed outer terminal, and no regulator
-
-The stud rotates with the spring instead of being pinned to the balance cock,
-so the oscillator has no fixed outer point — as built it could not actually
-store and return energy, and the breathing animation scales about the wrong
-constraint. There is also no regulator/index.
-
-Fix: a pinned stud block on the cock with the spring's outer terminal fixed to
-it, plus regulator pins straddling the terminal curve.
-
-## 5. `handSetOffset` is assigned, not derived
+## 4. `handSetOffset` is assigned, not derived
 
 The motion-works arbor now has real bevel-gear pairs at every corner, and the
 hour hand's 12:1 is now real gearing — but the *driving value* for hand-setting
@@ -106,7 +96,7 @@ crown's rotation through those gears' tooth ratios. Same representational
 convention as the reserve train; lower priority than the items above because
 the geometry is present and correct, only the number hops.
 
-## 6. Smaller items
+## 5. Smaller items
 
 - **Hack-pad assembly note.** The pad sits radially *inside* the balance rim's
   annulus, so the blade cannot be lowered vertically into place — it has to be
@@ -131,6 +121,20 @@ the geometry is present and correct, only the number hops.
 ---
 
 ## Recently closed
+
+- **Hairspring terminal fixed; swan-neck regulator added** (was item 4). The
+  stud no longer belongs to the spring: it hangs from the cock slab's
+  underside and clamps the terminal's end, and the spring is re-anchored so
+  that end lands on the cock's own axis. Winding is now a change of
+  geometry, not a rigid rotation — `makeHairspring` precomputes wind
+  keyframes (inner boundary follows the staff, outer end fixed) and `tick()`
+  swaps them via `userData.setWind(θ)`. On the cock's top face: an index arm
+  on a collar around the jewel, swept 0.45 rad so its two curb pins drop
+  over the open cutaway and straddle the terminal curve at its midpoint,
+  dressed with a swan-neck spring and opposing adjuster screw. Declared in
+  MECH_GRAPH (`Hairspring → Balance cock`, `Regulator → Balance cock`);
+  support 0 failures, clearances 0 violations after the change.
+
 
 - **Jewel style unified.** `makeJewelSetting` (the 9 base-plate lower pivots
   and the balance cock stone) is no longer a brass-ring-plus-torus appliqué:

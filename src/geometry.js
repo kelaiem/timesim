@@ -952,34 +952,59 @@ export function makeHackRamp({ boreR, landR, kneeR, brimR, landH, brimT }) {
 // Hairspring — Archimedean spiral tube (flat ribbon), collet, stud, terminal
 // ---------------------------------------------------------------------------
 
-export function makeHairspring({ innerR, outerR, coils = 12, height }) {
+// An oscillator's spring has ONE moving end: the collet turns with the
+// staff; the outer terminal is pinned to the balance cock through its stud
+// and does not move. So winding is a change of GEOMETRY (the coils bunch
+// and spread as the inner boundary rotates), not a rigid rotation of the
+// whole spiral — which is what this used to be: the entire group, stud
+// included, turned with the balance, meaning the spring never actually
+// stored anything (TODO item 4). The spiral is now precomputed as wind
+// keyframes: frame k is the Archimedean spiral whose inner end is rotated
+// by θ_k with the outer end FIXED at its stud angle; tick() swaps frames
+// via userData.setWind(θ). The stud itself is gone from this group — it
+// belongs to the COCK (main.js builds it there); userData tells the
+// caller where the terminal ends so stud and curb pins can meet it.
+export function makeHairspring({ innerR, outerR, coils = 12, height,
+                                 windFrames = 41, windMaxRad = 1.0 }) {
   const g = new THREE.Group();
   const ribbonR = Math.max(((outerR - innerR) / coils) * 0.12, 0.05);
-  const curve = new ArchimedeanSpiral(innerR, outerR, coils);
   const segs = Math.max(coils * 48, 96);
+  const S0 = coils * Math.PI * 2; // unwound span; outer end angle ≡ S0
 
-  const tubeGeo = new THREE.TubeGeometry(curve, segs, ribbonR, 4, false);
-  const tube = new THREE.Mesh(tubeGeo, MATS.blueSteel);
+  const spiralGeo = (theta) => {
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const a = theta + t * (S0 - theta); // inner (turned) → outer (fixed)
+      const r = innerR + t * (outerR - innerR);
+      pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0));
+    }
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false);
+  };
+  const frames = [];
+  for (let k = 0; k < windFrames; k++) {
+    frames.push(spiralGeo(-windMaxRad + (k / (windFrames - 1)) * 2 * windMaxRad));
+  }
+  const tube = new THREE.Mesh(frames[(windFrames - 1) >> 1], MATS.blueSteel);
   tube.scale.z = Math.max(height / (ribbonR * 2), 1); // stand the ribbon on edge
   g.add(tube);
+  g.userData.setWind = (theta) => {
+    const t = Math.max(-windMaxRad, Math.min(windMaxRad, theta));
+    const k = Math.round(((t + windMaxRad) / (2 * windMaxRad)) * (windFrames - 1));
+    if (tube.geometry !== frames[k]) tube.geometry = frames[k];
+  };
 
-  // Collet at center.
+  // Collet at center (turns with the staff; a cylinder, so no visual spin).
   const colletGeo = new THREE.CylinderGeometry(innerR, innerR, height * 1.1, 20);
   colletGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(colletGeo, MATS.steel));
 
-  // Outer stud block.
-  const endA = coils * Math.PI * 2;
-  const studGeo = new THREE.BoxGeometry(ribbonR * 4, ribbonR * 4, height * 1.2);
-  const stud = new THREE.Mesh(studGeo, MATS.steel);
-  stud.position.set(Math.cos(endA) * outerR, Math.sin(endA) * outerR, 0);
-  g.add(stud);
-
-  // Raised terminal end-curve running from the outer coil up to the stud.
+  // Raised terminal end-curve from the fixed outer coil end up toward the
+  // stud (which the cock provides). This part never moves.
   const termPts = [];
   for (let i = 0; i <= 20; i++) {
     const t = i / 20;
-    const a = endA + t * 0.9;
+    const a = S0 + t * 0.9;
     const r = outerR + t * ribbonR * 3;
     termPts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, height * 0.55 * t));
   }
@@ -987,6 +1012,13 @@ export function makeHairspring({ innerR, outerR, coils = 12, height }) {
   g.add(new THREE.Mesh(termGeo, MATS.blueSteel));
 
   g.userData.r = outerR;
+  g.userData.ribbonR = ribbonR;
+  g.userData.endAngle = S0 + 0.9;                 // local angle where the STUD must sit
+  g.userData.termEndR = outerR + ribbonR * 3;     // ...at this radius
+  g.userData.termEndZ = height * 0.55;            // ...and this height above mid-plane
+  g.userData.termMid = {                          // where curb pins straddle the curve
+    angle: S0 + 0.45, r: outerR + ribbonR * 1.5, z: height * 0.275,
+  };
   return g;
 }
 

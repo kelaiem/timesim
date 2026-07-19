@@ -2513,6 +2513,112 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   screw.rotation.x = Math.PI / 2;
   screw.position.set(0, yFoot, COCK_T / 2 + 0.02 + TAIL_T * 0.75);
   balanceCock.add(screw);
+
+  // ------------------------------------------------------------------
+  // FIXED OUTER TERMINAL + REGULATOR (TODO item 4). Everything below is
+  // cock-local: origin at the slab centre, +Y toward the jewel/staff,
+  // top face at +COCK_T/2 (flush with the plate).
+  // ------------------------------------------------------------------
+  const jyStaff = balanceCockLen * 0.12;         // staff axis in cock-local y
+  const hsUD = hairspring.userData;
+
+  // Re-anchor the SPRING so its terminal end lands dead ahead of the
+  // staff along the cock's own axis — under the slab head, where the
+  // stud can hang from real material.
+  hairspringGroup.rotation.z = toJewel - hsUD.endAngle;
+
+  // STUD: a steel block hanging from the slab's underside, clamping the
+  // terminal's end. The spring's outer boundary condition, made of metal.
+  const studWorldZ = L_HAIRSPRING + hsUD.termEndZ;   // terminal end height
+  const studTopLocal = -COCK_T / 2 + 0.05;           // embedded into the slab
+  const studH = (COCK_MID_Z + studTopLocal) - (studWorldZ - 0.25);
+  const yStud = jyStaff + hsUD.termEndR;
+  {
+    const slabReach = balanceCockLen * 0.5 + COCK_W / 2; // slab tip incl. head arc
+    if (yStud + 0.55 > slabReach) console.warn('hairspring stud: beyond the slab head — no material to hang from');
+  }
+  const stud = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, studH), MATS.steel);
+  stud.name = 'hairspringStud';
+  stud.position.set(0, yStud, studTopLocal - studH / 2);
+  balanceCock.add(stud);
+
+  // REGULATOR: an index arm pivoted on a collar ring around the cock's
+  // jewel, swept 0.45 rad off the cock axis so its tip rides over the OPEN
+  // cutaway; two curb pins drop from the tip and straddle the terminal
+  // curve at its midpoint. Moving the index along the curve is what would
+  // lengthen/shorten the effective spring — the regulator this movement
+  // never had. The index is dressed Glashütte-style with a swan-neck
+  // spring and an opposing adjuster screw bearing on its tail.
+  const reg = new THREE.Group();
+  reg.name = 'regulator';
+  reg.position.set(0, jyStaff, COCK_T / 2);
+  reg.rotation.z = -0.45;                        // arm aims at the terminal midpoint
+  const collarIn = COCK_W * 0.16 * 1.6 + 0.15;
+  const collarOut = collarIn + 0.75;
+  const armT = 0.28;
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(collarOut, collarOut, armT, 28), MATS.steel);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.z = armT / 2 + 0.02;
+  reg.add(collar);
+  const rPin = hsUD.termMid.r;
+  const armLen = rPin - collarOut + 0.5;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.6, armLen, armT), MATS.steel);
+  arm.position.set(0, collarOut + armLen / 2 - 0.25, armT / 2 + 0.02);
+  reg.add(arm);
+  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, armT, 18), MATS.steel);
+  tip.rotation.x = Math.PI / 2;
+  tip.position.set(0, rPin, armT / 2 + 0.02);
+  reg.add(tip);
+  // Curb pins: from the arm's underside down PAST the terminal curve, one
+  // each side of the ribbon with running clearance.
+  const pinR = 0.12;
+  const pinGap = hsUD.ribbonR + 0.1 + pinR;      // ribbon face → pin surface 0.1
+  const pinTopWorld = COCK_MID_Z + COCK_T / 2;
+  const pinBotWorld = L_HAIRSPRING + hsUD.termMid.z - 0.45;
+  const pinLen = pinTopWorld - pinBotWorld;
+  for (const s of [-1, 1]) {
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, pinLen, 10), MATS.steel);
+    pin.rotation.x = Math.PI / 2;
+    pin.position.set(s * pinGap, rPin, -pinLen / 2 + 0.02);
+    reg.add(pin);
+  }
+  // Tail, swan-neck spring and adjuster screw, all on the slab's top face.
+  const tailLen2 = 2.3;
+  const tailY = -(collarOut + tailLen2 / 2 - 0.25);
+  const rTail = new THREE.Mesh(new THREE.BoxGeometry(0.55, tailLen2, armT), MATS.steel);
+  rTail.position.set(0, tailY, armT / 2 + 0.02);
+  reg.add(rTail);
+  const tailTipY = tailY - tailLen2 / 2 + 0.15;
+  const neckPts = [
+    new THREE.Vector3(1.7, tailTipY - 1.3, 0),
+    new THREE.Vector3(1.35, tailTipY - 1.75, 0),
+    new THREE.Vector3(0.55, tailTipY - 1.35, 0),
+    new THREE.Vector3(0.42, tailTipY - 0.4, 0),
+    new THREE.Vector3(0.42, tailTipY + 0.1, 0),
+  ];
+  const neck = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(neckPts), 24, 0.15, 8, false), MATS.steel);
+  neck.position.z = armT / 2 + 0.02;
+  reg.add(neck);
+  const neckScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, armT * 1.2, 14), MATS.blueSteel);
+  neckScrew.rotation.x = Math.PI / 2;
+  neckScrew.position.set(1.7, tailTipY - 1.3, armT * 0.6 + 0.02);
+  reg.add(neckScrew);
+  // Adjuster: block + fine screw bearing on the tail's other flank.
+  const adjBlock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, armT * 1.4), MATS.steel);
+  adjBlock.position.set(-1.55, tailTipY, armT * 0.7 + 0.02);
+  reg.add(adjBlock);
+  const adjScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.15, 10), MATS.blueSteel);
+  adjScrew.rotation.z = Math.PI / 2;
+  adjScrew.position.set(-0.85, tailTipY, armT * 0.7 + 0.02);
+  reg.add(adjScrew);
+  const adjHead = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.22, 12), MATS.blueSteel);
+  adjHead.rotation.z = Math.PI / 2;
+  adjHead.position.set(-1.95, tailTipY, armT * 0.7 + 0.02);
+  reg.add(adjHead);
+  balanceCock.add(reg);
+  registerLabel('Regulator', reg);
 }
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);
@@ -3693,9 +3799,10 @@ function tick(t) {
 
   const theta = balanceTheta(tau, tension);
   balanceGroup.rotation.z = PIN_AIM + theta;
-  hairspringGroup.rotation.z = PIN_AIM + theta;
-  const breathe = 1 + 0.04 * Math.sin(2 * Math.PI * F_BALANCE * tau);
-  hairspringGroup.scale.set(breathe, breathe, 1);
+  // The spring's outer end is PINNED (stud on the cock): winding is a
+  // geometry change — the inner boundary follows the staff while the
+  // outer terminal holds still (precomputed keyframes; see makeHairspring).
+  hairspring.userData.setWind(theta);
 
   // Setting path: settingWheel -> minuteArbor (compound wheel+pinion) ->
   // handSetOffset, the real angle contributed by turning the crown in the

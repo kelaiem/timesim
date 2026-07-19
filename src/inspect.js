@@ -89,7 +89,9 @@ const MECH_GRAPH = {
     ['Escape bridge', 'plate'],              // its legs land on the base plate
     ['Balance cock', 'Three-quarter plate'],
     ['Balance', 'Balance cock'],             // staff's upper pivot in the cock jewel
-    ['Hairspring', 'Balance'],               // collet on the staff (TODO: stud should pin to cock)
+    ['Hairspring', 'Balance'],               // collet on the staff (inner end)
+    ['Hairspring', 'Balance cock'],          // outer terminal clamped in the stud hanging from the cock
+    ['Regulator', 'Balance cock'],           // index collar + swan-neck ride the cock's top face
     ['Chain', 'Mainspring drum'],            // hooked to the drum wall
     ['Chain', 'Fusee & great wheel'],        // hooked to the cone
     ['Keyless works', 'plate'],              // stem bushing + wheel studs on the plate
