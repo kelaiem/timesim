@@ -1777,7 +1777,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // slimmed to keep the comb fine; majors every 12 h as before.
     for (let h = 0; h <= 30; h += 1) {
       const major = h % 12 === 0;
-      tickAt(165 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022));
+      tickAt(180 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022)); // empty end anchored at 9 o'clock — the sweep sits asymmetric, 180 to 30
     }
     // AB / AUF painted ALONG the graduation arc, at the tick band's radius
     // (sr·0.76, mid-band), set clear of the end ticks (22° beyond the arc
@@ -1795,7 +1795,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // overbar is the Roman mark that says "this character is a NUMERAL,
     // not a letter". So: N-bar.
     {
-      const aN = (165 * Math.PI) / 180, rN = sr * 0.64, fh = sr * 0.09;
+      const aN = (180 * Math.PI) / 180, rN = sr * 0.64, fh = sr * 0.09;
       ctx.save();
       ctx.translate(scx + Math.cos(aN) * rN, scy - Math.sin(aN) * rN);
       ctx.rotate(Math.PI / 2 - aN);
@@ -1803,11 +1803,11 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
       ctx.fillRect(-fh * 0.38, -fh * 0.74, fh * 0.76, fh * 0.09);
       ctx.restore();
     }
-    arcLabel('XII', 105, sr * 0.64);
-    arcLabel('XXIV', 45, sr * 0.64);
+    arcLabel('XII', 120, sr * 0.64);
+    arcLabel('XXIV', 60, sr * 0.64);
     ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    arcLabel('AB', 184, sr * 0.76);
-    arcLabel('AUF', -4, sr * 0.76);
+    arcLabel('AB', 196, sr * 0.76);
+    arcLabel('AUF', 16, sr * 0.76);
     // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
     // of the face — the region the graduation never enters and the hand
     // never sweeps (its tip stays on the upper arc, its tail well inside

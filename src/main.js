@@ -3831,7 +3831,7 @@ function tick(t) {
   // quantity now; no separate epoch/pulse bookkeeping needed since winding
   // is continuous rather than a discrete button press.
   reserveShown = tension;
-  reserveHand.rotation.z = (75 - reserveShown * 150) * DEG2RAD; // 150-degree scale (see makeDial's reserve face)
+  reserveHand.rotation.z = (90 - reserveShown * 150) * DEG2RAD; // 150-degree scale, empty end at 9 o'clock (see makeDial's reserve face)
 
   // Power-reserve reduction gear train (see note above its construction):
   // w2 shares the hand's arbor. The hand lives on the Y-flipped dialFace
