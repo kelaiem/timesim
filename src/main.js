@@ -3369,24 +3369,8 @@ panel.innerHTML = `
     <input type="range" id="flute-slider" min="-60" max="30" step="1" />
   </div>
   <div class="row">
-    <span class="label-small">Key light</span>
-    <input type="range" id="light-key" min="0" max="500" step="1" />
-  </div>
-  <div class="row">
-    <span class="label-small">Fill light</span>
-    <input type="range" id="light-fill" min="0" max="300" step="1" />
-  </div>
-  <div class="row">
-    <span class="label-small">Dial light</span>
-    <input type="range" id="light-dial" min="0" max="400" step="1" />
-  </div>
-  <div class="row">
     <span class="label-small">Ambient</span>
     <input type="range" id="light-hemi" min="0" max="300" step="1" />
-  </div>
-  <div class="row">
-    <span class="label-small">Exposure</span>
-    <input type="range" id="exposure-slider" min="20" max="300" step="1" />
   </div>
 `;
 document.body.appendChild(panel);
@@ -3436,12 +3420,7 @@ window.addEventListener('keydown', (e) => {
     el.value = Math.round(get() * scale);
     el.addEventListener('input', () => set(el.value / scale));
   };
-  bindLight('light-key', () => keyLight.intensity, (v) => { keyLight.intensity = v; }, 100);
-  bindLight('light-fill', () => fillLight.intensity, (v) => { fillLight.intensity = v; }, 100);
-  bindLight('light-dial', () => dialLight.intensity, (v) => { dialLight.intensity = v; }, 100);
   bindLight('light-hemi', () => hemi.intensity, (v) => { hemi.intensity = v; }, 100);
-  bindLight('exposure-slider', () => renderer.toneMappingExposure,
-    (v) => { renderer.toneMappingExposure = v; }, 100);
 
   // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open
   // daylight, to judge how the piece reads outside. Natural is one sun
@@ -3481,10 +3460,7 @@ window.addEventListener('keydown', (e) => {
     renderer.toneMappingExposure = p.exposure;
     scene.background.set(p.bg);
     if (scene.fog) scene.fog.color.set(p.bg);
-    for (const [id, v] of [['light-key', p.key.intensity], ['light-fill', p.fill.intensity],
-      ['light-dial', p.dial.intensity], ['light-hemi', p.hemi.intensity], ['exposure-slider', p.exposure]]) {
-      document.getElementById(id).value = Math.round(v * 100);
-    }
+    document.getElementById('light-hemi').value = Math.round(p.hemi.intensity * 100);
     lightModeBtn.textContent = name;
   }
   lightModeBtn.addEventListener('click', () => {
