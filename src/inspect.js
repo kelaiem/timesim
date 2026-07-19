@@ -567,7 +567,16 @@ async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBa
       const pr = pairs[p];
       if (pr.axes && !pr.axes.includes(axis.name)) continue;
       const st = state[p];
-      const bound = refined ? st.min : st.min + refineBand;
+      // The query bound is where all the time goes: closestPointToGeometry
+      // against the plate's ~21k-triangle extrusion costs ~180ms UNBOUNDED
+      // (profiled — 6 of 13 budgets touch the plate, ≈ the whole 355s
+      // sweep), but the BVH prunes almost all of it given a finite cap. A
+      // budget pair only ever needs exact distances near its floor, so cap
+      // at refineFloor + band: pairs comfortably clear return "≥ cap" in
+      // ~1ms instead of an exact number nobody needs. Exact mode
+      // (measureClearance, no refineFloor) is uncapped as before.
+      const cap = pr.refineFloor !== undefined ? pr.refineFloor + refineBand : Infinity;
+      const bound = Math.min(refined ? st.min : st.min + refineBand, cap);
       const { d } = unitClearance(pr.A, pr.B, bound);
       if (d < st.min) { st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) }; }
       (pr._samples ||= {})[i] = d; // per-axis scratch, reset below
@@ -763,13 +772,20 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     refineFloor: bud.min, // exact minima only needed near the budget line
   }));
   const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
-  const results = budgets.map((bud, i) => ({
-    pair: `${bud.a} ⇄ ${bud.b}`,
-    min: +state[i].min.toFixed(4),
-    required: bud.min,
-    at: `${state[i].at.axis} f=${state[i].at.f}`,
-    ok: state[i].min >= bud.min,
-  }));
+  const results = budgets.map((bud, i) => {
+    // min === Infinity ⇒ every query pruned at the cap: the pair never came
+    // within refineFloor + band of its floor anywhere in pose space. That
+    // IS the verdict a budget exists for — report it as the bound proven,
+    // not a number we never measured.
+    const capped = !isFinite(state[i].min);
+    return {
+      pair: `${bud.a} ⇄ ${bud.b}`,
+      min: capped ? `≥ ${(bud.min + refineBand).toFixed(2)}` : +state[i].min.toFixed(4),
+      required: bud.min,
+      at: capped ? '(never within band)' : `${state[i].at.axis} f=${state[i].at.f}`,
+      ok: capped || state[i].min >= bud.min,
+    };
+  });
   console.table(results);
   return { violations: results.filter((r) => !r.ok), results };
 }

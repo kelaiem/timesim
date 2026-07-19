@@ -116,12 +116,17 @@ the geometry is present and correct, only the number hops.
   annulus, so the blade cannot be lowered vertically into place — it has to be
   fed in laterally below the rim plane. Tight but doable; worth a comment in
   the code so the constraint isn't lost.
-- **Sweep runtime regression.** The full clearance/inspection sweeps took
-  ~110 s before the z-restride and ~355 s after: the compressed stack packs
-  far more part pairs into overlapping z-bands, so the AABB broad phase
-  passes many more pairs to the BVH narrow phase per pose. If sweeps become
-  a routine gate, revisit the tier-2 idea (batched WASM narrow phase) or
-  prune EXPECTED pairs from the broad phase.
+- **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
+  showed ~all of it was ONE cost — unbounded closest-point queries against
+  the plate's ~21k-triangle extrusion (180 ms/query, 6 of 13 budgets). Now
+  capped at refineFloor + band (a budget only needs exact numbers near its
+  floor): 355 s → 40 s, identical verdicts. If the layout refactor needs
+  more: (a) a low-poly query proxy for the plate (its render mesh is 96-seg
+  curves + bevels; a ~2k-tri hitbox is another ~5-10x on plate pairs);
+  (b) only then WASM SIMD narrow phase — the profile says native code was
+  the WRONG first move (setPose: 0.04 ms/pose; the myth that pose eval or
+  matrix updates dominated died by measurement). runInspection still runs
+  uncapped narrow phase and remains the slow one (~6 min).
 - **Inspector milestones** (`src/inspect.js` header TODO): extend
   `PENETRATION_BUDGETS` to pin-in-notch and chain-on-cone; allowed phase
   windows per budget; a continuity check for linkage branch flips; a
