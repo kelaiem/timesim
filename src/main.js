@@ -2376,14 +2376,21 @@ const HACK_RAMP = (() => {
   const seedTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
   // Heel placement: at HACK_HEEL_D1 from the ENGAGED post, in a direction γ
   // off the travel line. γ is scanned, not assumed, because it must satisfy
-  // three couplings at once: (a) the post's approach to the heel must be
+  // four couplings at once: (a) the post's approach to the heel must be
   // MONOTONIC over the stroke (otherwise the blade would seat early and
   // back off — and the post would sweep into the heel); (b) the heel (its
   // z band overlaps the rod's) must clear the reset rod's entire swept path
   // laterally by the margin; (c) the heel must land far enough along the
   // blade to clear the anchor boss and give the pitch solve a real lever
-  // arm. Among feasible directions the SMALLEST released distance d0 wins —
-  // it minimises the collar's footprint.
+  // arm; (d) the heel hangs from a stamped FINGER reaching out from the
+  // blade's flank (the heel's solved spot lies OFF the blade's outline —
+  // the blade itself must stand clear of the post, so the stud can't
+  // pierce the body; see makeHackSpring's tab), and the post's swept path
+  // must clear that finger's whole length, not just the ball at its end.
+  // Discovered visually: the pre-(d) winner hung the stud 2.7 off the
+  // flank in thin air. Among feasible directions the SMALLEST released
+  // distance d0 wins — it minimises the collar's footprint.
+  const TAB_HALF_W = HEEL_FOOT_R * 1.4; // finger half-width = retaining head radius (see builder)
   const evalGamma = (gammaDeg) => {
     const gr = gammaDeg * DEG2RAD;
     const hd = { x: th.x * Math.cos(gr) - th.y * Math.sin(gr), y: th.x * Math.sin(gr) + th.y * Math.cos(gr) };
@@ -2393,6 +2400,14 @@ const HACK_RAMP = (() => {
     const heelRel = world({ x: hl.x * cosP + HEEL_Z * sinP, y: hl.y }); // heel XY, blade pitched down
     const d0 = Math.hypot(heelRel.x - postRel.x, heelRel.y - postRel.y);
     if (d0 - HACK_HEEL_D1 < RAMP_SEAT_LAND + 0.6) return null; // approach too short for a real flank
+    // (d) the finger: blade-local (hl.x, 0) → (hl.x, hl.y), as a segment.
+    const tabRoot = world({ x: hl.x, y: 0 });
+    const tabSegClr = (px, py) => {
+      const vx = heelPt.x - tabRoot.x, vy = heelPt.y - tabRoot.y;
+      const L2 = vx * vx + vy * vy || 1e-9;
+      const t = clamp(((px - tabRoot.x) * vx + (py - tabRoot.y) * vy) / L2, 0, 1);
+      return Math.hypot(px - tabRoot.x - t * vx, py - tabRoot.y - t * vy);
+    };
     let q = { ...seedTip };
     let minClr = Infinity, prevD = Infinity, monotone = true;
     for (let i = 0; i <= 60; i++) {
@@ -2402,6 +2417,7 @@ const HACK_RAMP = (() => {
       if (d > prevD + 0.02) monotone = false; // (a)
       prevD = d;
       minClr = Math.min(minClr, d - G.SETTING_LEVER_POST_R - HEEL_R);
+      minClr = Math.min(minClr, tabSegClr(post.x, post.y) - G.SETTING_LEVER_POST_R - TAB_HALF_W); // (d)
       for (let s = 0; s <= 40; s++) {
         const f = s / 40;
         const rx = post.x + (q.x - post.x) * f, ry = post.y + (q.y - post.y) * f;

@@ -898,7 +898,24 @@ export function makeHackSpring({ length, width = 1.6, thickness = 0.8, padRise =
   // blade-local; heel.z is the BALL CENTRE's local z (negative — below the
   // mid-plane). This is the one point where the blade is driven; everything
   // else about its motion follows from the anchor + this contact.
+  //
+  // The heel's solved position generally lies OFF the blade's outline (the
+  // collar geometry wants it ~a ball-radius from the lever post, which the
+  // blade itself must stand clear of), so the stud cannot be pressed
+  // through the blade body: a stamped FINGER reaches from the blade's flank
+  // out to the heel and carries the stud. Full blade thickness, same
+  // mid-plane, blued like the body — one piece of spring steel. Its
+  // along-blade width matches the stud's retaining head, and the caller's
+  // heel solve is responsible for keeping the lever post's swept path clear
+  // of it (see the tab constraint in main.js's HACK_RAMP solve).
   if (heel) {
+    if (Math.abs(heel.y) > 0.05) {
+      const tabW = heel.footR * 2.8; // = the retaining head's diameter
+      const tab = new THREE.Mesh(new THREE.BoxGeometry(tabW, Math.abs(heel.y), thickness), MATS.blueSteel);
+      tab.name = 'hackHeelTab';
+      tab.position.set(heel.x, heel.y / 2, 0); // spans blade centreline → heel
+      g.add(tab);
+    }
     const footLen = -heel.z - thickness / 2; // blade underside → ball centre
     if (footLen > 0.01) {
       const footGeo = new THREE.CylinderGeometry(heel.footR, heel.footR, footLen, 12);
