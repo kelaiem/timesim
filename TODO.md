@@ -47,10 +47,12 @@ the geometry is present and correct, only the number hops.
 
 ## 4. Smaller items
 
-- **Hack-pad assembly note.** The pad sits radially *inside* the balance rim's
-  annulus, so the blade cannot be lowered vertically into place — it has to be
-  fed in laterally below the rim plane. Tight but doable; worth a comment in
-  the code so the constraint isn't lost.
+- **Hack-pad assembly note.** The stop pad sits radially *inside* the balance
+  rim's annulus, so the crank cannot be dropped vertically into its clevis
+  with the arm level — it goes in with the arm swung down (released pose) and
+  rotates up under the rim. Trivial with the see-saw crank (the released pose
+  IS the drop-clear pose), but worth a comment in the code so the constraint
+  isn't lost.
 - **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
   showed ~all of it was ONE cost — unbounded closest-point queries against
   the plate's ~21k-triangle extrusion (180 ms/query, 6 of 13 budgets). Now

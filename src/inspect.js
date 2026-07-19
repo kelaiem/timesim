@@ -69,7 +69,7 @@ const MECH_GRAPH = {
     // pivot of every train arbor and of the pallet fork, stands on the
     // pillars, and the balance cock is screwed to its top face (the cock
     // used to float 17.5 units above the plate it claimed to be mounted
-    // on; the hack spring, once also on this plate's top face, now runs
+    // on; the old hack spring, once also on this plate's top face, later ran
     // BELOW the plate and stands on the base plate instead).
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
@@ -105,13 +105,10 @@ const MECH_GRAPH = {
     ['Winding click', 'plate'],              // its own post standing on the plate's top face —
                                              // the plate-fixed mount a click needs to actually
                                              // hold the ratchet (closed TODO.md item 2)
-    ['Hack spring', 'plate'],                // anchor post stands on the BASE plate: the blade
-                                             // runs UNDER the three-quarter plate now (the
-                                             // balance dropped into the plate band took its
-                                             // contact plane below the plate's bottom face),
-                                             // so its mount is a standing post like the
-                                             // escapement bridge's legs, not a top-face stud
-    ['Hack ramp', 'Setting lever'],          // collar pressed onto the tail post
+    ['Stop lever', 'plate'],                 // clevis bracket stands on the BASE plate in the
+                                             // balance cut's open wedge (the crank see-saws in it)
+    ['Hack rod', 'Setting lever'],           // pinned at the tail post, under the reset rod's pin
+    ['Hack rod', 'Stop lever'],              // pinned at the crank's tail top
     ['Reset hammer', 'Three-quarter plate'], // its arbor runs in a bore in the plate
     ['Heart cam (seconds reset)', 'Fourth wheel'], // friction-slip on the fourth arbor
     ['Reset rod', 'Setting lever'],          // pinned at the post
@@ -155,8 +152,8 @@ const MECH_GRAPH = {
     ['Fusee & great wheel', 'Winding click'],  // ratchet teeth kick the plate-fixed click as they pass
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
     ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
-    ['Setting lever', 'Hack ramp'],            // collar rides the lever's tail post
-    ['Hack ramp', 'Hack spring'],              // collar's flank lifts the blade's heel
+    ['Setting lever', 'Hack rod'],             // the rod rides the lever's tail post
+    ['Hack rod', 'Stop lever'],                // rigid rod rocks the stop crank
     ['Setting lever', 'Reset rod'],
     ['Reset rod', 'Reset hammer'],
     ['Reset hammer', 'Heart cam (seconds reset)'],
@@ -241,8 +238,8 @@ const MECH_GRAPH = {
       point: nearestMeshCenter,
     },
     {
-      name: 'hack spring pad reaches the balance rim',
-      unit: 'Hack spring',
+      name: 'stop lever pad reaches the balance rim',
+      unit: 'Stop lever',
       target: 'Balance',
       tol: 2.5,
       point: nearestMeshCenter,
@@ -331,7 +328,7 @@ const EXPECTED_PAIRS = [
   ['Balance cock', 'Regulator'],             // index collar + swan neck ride the cock's top face — its support edge
   ['Balance cock', 'Hairspring'],            // the cock's hanging stud CLAMPS the terminal — its support edge
   ['Hairspring', 'Regulator'],               // curb pins straddle the terminal curve at its midpoint
-  ['Balance', 'Hack spring'],                // brake pad on the rim (crown out)
+  ['Balance', 'Stop lever'],                 // brake pad on the rim (crown out)
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ ratchet (+ shared band under the great wheel)
   ['Winding click', 'Fusee & great wheel'],  // click beak seated in the ratchet's teeth
@@ -340,8 +337,8 @@ const EXPECTED_PAIRS = [
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
   ['Chain', 'Mainspring drum'],              // chain wraps the drum
   ['Power-reserve train', 'Fusee & great wheel'], // p0 slip-coupled on the arbor
-  ['Hack ramp', 'Hack spring'],              // blade's heel rides the ramp collar (every crown pose)
-  ['Hack ramp', 'Setting lever'],            // collar press-fit on the tail post (bore ⇄ shaft, its support edge)
+  ['Hack rod', 'Setting lever'],             // rod pinned to the post (its support edge)
+  ['Hack rod', 'Stop lever'],                // rod pinned to the crank's tail top
   ['Setting lever', 'Reset rod'],            // rod pinned to the post
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
   ['Hour wheel', 'Motion works'],            // minute pinion ⇄ hour wheel — the second 12:1 mesh
@@ -356,7 +353,7 @@ const EXPECTED_PAIRS = [
   ['Dial', 'Motion works'],
   // The three-quarter plate replaced the three train bridges. It TOUCHES
   // what it holds: each upper pivot's jewel setting closes on the staff
-  // running in its bore, the balance cock and hack spring are screwed to its
+  // running in its bore, the balance cock is screwed to its
   // top face, and the reset hammer's arbor turns in it. Everything else in
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
@@ -373,7 +370,7 @@ const EXPECTED_PAIRS = [
   ['Escape wheel', 'Three-quarter plate'],   // staff's upper pivot in the plate's jewel
   ['Pallet fork', 'Fork cock'],              // the fork's, in its standalone cap
   ['Balance cock', 'Three-quarter plate'],
-  // ('Hack spring' ⇄ 'Three-quarter plate' is NOT expected any more: the
+  // ('Stop lever' ⇄ 'Three-quarter plate' is NOT expected: the
   // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
   // and its anchor post lands on the base plate, which is a structure node,
   // not a swept unit.)
@@ -578,7 +575,7 @@ function unitByName(clock, name) {
 }
 
 // Distance between two labelled units at the CURRENT pose — the interactive
-// one-liner: clearanceAt(__clock, 'Hack spring', 'Balance').
+// one-liner: clearanceAt(__clock, 'Stop lever', 'Balance').
 export function clearanceAt(clock, nameA, nameB) {
   const A = unitByName(clock, nameA), B = unitByName(clock, nameB);
   // Scoped matrix refresh: only the two subtrees (plus ancestors), not the
@@ -697,33 +694,31 @@ export async function measureClearance(clock, nameA, nameB, { axes = AXES, coars
 
 // Standing clearance budgets — pairs whose worst-case gap must stay ABOVE a
 // margin (the complement of PENETRATION_BUDGETS' "may touch, but not this
-// deep"). axes narrows which pose axes apply: the hack pad ⇄ balance pair
+// deep"). axes narrows which pose axes apply: the stop pad ⇄ balance pair
 // legitimately TOUCHES at full crown engagement, so its budget covers only
-// the released axes. Seeded from the hack-spring audit (2026-07-18); add a
-// row here whenever an audit derives a clearance worth keeping.
+// the released axes. Seeded from the hack audit (2026-07-18); add a row
+// here whenever an audit derives a clearance worth keeping.
 const CLEARANCE_BUDGETS = [
-  { a: 'Hack spring', b: 'Balance', min: 0.15, axes: ['beat', 'reserve', 'train'] },
-  { a: 'Hack spring', b: 'Reset rod', min: 0.15 },
-  { a: 'Hack spring', b: 'Setting lever', min: 0.15 },
-  { a: 'Hack spring', b: 'Pallet fork', min: 0.15 },
-  // The blade crosses the movement UNDER the three-quarter plate now; its
-  // anchor screw's head is the tallest fitting and binds at exactly one
-  // margin below the plate's underside (BLADE_Z in main.js).
-  { a: 'Hack spring', b: 'Three-quarter plate', min: 0.15 },
-  // The reset rod leaves the same tail post the ramp collar rides. The
-  // collar used to be bound at exactly ROD underside − HACK_CLEAR_MARGIN;
-  // since the blade (and so the collar) moved under the plate the gap is
-  // ~4 units, but the rod still sweeps the collar's slot corridor, so the
-  // budget stays.
-  { a: 'Hack ramp', b: 'Reset rod', min: 0.15 },
+  { a: 'Stop lever', b: 'Balance', min: 0.15, axes: ['beat', 'reserve', 'train'] },
+  // The crank's tall tail and the balance cock share the open wedge; the
+  // two rods diverge from the same tail post and the hack rod overflies
+  // the cock/regulator dress on its way to the crank — each of these is a
+  // corridor the stop-work design depends on:
+  { a: 'Stop lever', b: 'Balance cock', min: 0.15 },
+  { a: 'Stop lever', b: 'Fork cock', min: 0.15 },
+  { a: 'Stop lever', b: 'Pallet fork', min: 0.15 },
+  { a: 'Hack rod', b: 'Reset rod', min: 0.15 },
+  { a: 'Hack rod', b: 'Balance cock', min: 0.15 },
+  { a: 'Hack rod', b: 'Regulator', min: 0.15 },
+  { a: 'Hack rod', b: 'Three-quarter plate', min: 0.15 },
+  { a: 'Hack rod', b: 'Fusee & great wheel', min: 0.15 }, // overflies the cone by the derived lift
   // Three-quarter plate binds (2026-07-18). Every one of these is a place
   // where the plate's z-stack or one of its openings was solved to land
   // exactly on the shared margin, so they are exactly the numbers that a
   // later change to the Z-stack would silently eat:
   { a: 'Balance', b: 'Three-quarter plate', min: 0.15 },      // the cut edge tucks UNDER the rim
   { a: 'Reset rod', b: 'Three-quarter plate', min: 0.15 },    // rod re-planed to clear the plate's top
-  { a: 'Hack ramp', b: 'Three-quarter plate', min: 0.15 },    // collar swings through the lever slot
-  { a: 'Setting lever', b: 'Three-quarter plate', min: 0.15 },   // tail post shares that slot
+  { a: 'Setting lever', b: 'Three-quarter plate', min: 0.15 },   // tail post swings through the plate's arc slot
   { a: 'Hairspring', b: 'Three-quarter plate', min: 0.15 },
   // The escape bridge's length is solved from exactly this gap: it overhangs
   // the pivot it carries, toward the balance, and sits inside the balance's
@@ -740,17 +735,6 @@ const CLEARANCE_BUDGETS = [
   // since the feet belong to the 'Dial' unit).
   { a: 'Setting lever', b: 'Dial', min: 0.15 },
   { a: 'Yoke', b: 'Dial', min: 0.15 },
-  // The hack blade's z-plane is BOXED between the center wheel's underside
-  // (levelled, crown pulled) and the great wheel's top face (released, the
-  // pitch dip at the barrel crossing) — PAD_RISE_TARGET in main.js parks it
-  // mid-window. These rows keep both binds from rotting silently.
-  { a: 'Hack spring', b: 'Center wheel', min: 0.15 },
-  { a: 'Hack spring', b: 'Fusee & great wheel', min: 0.15 },
-  // Pillar seats are solved against the hack layout's swept corridors (see
-  // the pillar block in main.js) — these rows keep that solve honest across
-  // the crown stroke, now that the pillars are a swept unit at all.
-  { a: 'Hack ramp', b: 'pillars', min: 0.15 },
-  { a: 'Hack spring', b: 'pillars', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------
