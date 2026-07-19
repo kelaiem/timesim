@@ -2932,7 +2932,7 @@ registerExplode(handsGroup, 2.5, 2, 1);
 // here — it becomes a child of hourWheelGroup and inherits that wheel's
 // rotation rather than being posed independently.
 const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
-const minuteHand = G.makeHand({ length: dialRadius * 0.905, kind: 'minute' }); // tip lands mid-railroad (rails at 0.87R/0.94R)
+const minuteHand = G.makeHand({ length: dialRadius * 0.84, kind: 'minute' }); // tip stops just short of the railroad (inner rail at 0.87R)
 minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
 
