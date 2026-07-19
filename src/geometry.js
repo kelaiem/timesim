@@ -1770,9 +1770,12 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // right), Ab/Auf Glashütte marking. Major ticks every 12 hours of
     // reserve (0/12/24), small minor ticks every 3 hours between them —
     // the minors also anchor the full end of the arc (30 h).
+    // 150-degree arc riding near the well's edge (was 120 at 0.84): more
+    // angular travel per hour = finer reading, and the face's centre opens
+    // up for the figures.
     for (let h = 0; h <= 30; h += 3) {
       const major = h % 12 === 0;
-      tickAt(150 - (h / 30) * 120, sr * 0.84, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
+      tickAt(165 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
     }
     // AB / AUF painted ALONG the graduation arc, at the tick band's radius
     // (sr·0.76, mid-band), set clear of the end ticks (22° beyond the arc
@@ -1790,7 +1793,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // overbar is the Roman mark that says "this character is a NUMERAL,
     // not a letter". So: N-bar.
     {
-      const aN = (150 * Math.PI) / 180, rN = sr * 0.56, fh = sr * 0.09;
+      const aN = (165 * Math.PI) / 180, rN = sr * 0.64, fh = sr * 0.09;
       ctx.save();
       ctx.translate(scx + Math.cos(aN) * rN, scy - Math.sin(aN) * rN);
       ctx.rotate(Math.PI / 2 - aN);
@@ -1798,11 +1801,11 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
       ctx.fillRect(-fh * 0.38, -fh * 0.74, fh * 0.76, fh * 0.09);
       ctx.restore();
     }
-    arcLabel('XII', 102, sr * 0.56);
-    arcLabel('XXIV', 54, sr * 0.56);
+    arcLabel('XII', 105, sr * 0.64);
+    arcLabel('XXIV', 45, sr * 0.64);
     ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    arcLabel('AB', 172, sr * 0.76);
-    arcLabel('AUF', 8, sr * 0.76);
+    arcLabel('AB', 184, sr * 0.76);
+    arcLabel('AUF', -4, sr * 0.76);
     // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
     // of the face — the region the graduation never enters and the hand
     // never sweeps (its tip stays on the upper arc, its tail well inside
