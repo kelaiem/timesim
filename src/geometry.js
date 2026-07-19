@@ -2256,32 +2256,22 @@ export function makeHand({ length, kind }) {
   const depth = Math.max(length * config.depthFactor, config.depthMin);
   let bossH = depth * 1.6;
 
-  // Faceted bur rod, shared by all three hands: a square prism turned 45°
-  // so an EDGE ridge runs along the top facing the viewer (4-gon corners
-  // sit at ±z / ±x), ending in a 4-facet pyramid that tapers to a point —
-  // the profile of an engraver's bur/graver. Geometry is de-indexed and
-  // re-normalled so the facets shade FLAT; a smooth-shaded 4-gon would
-  // read as a badly tessellated tube, not a faceted hand. The prism's
-  // CIRCUMradius is rBase, so the crossing envelope is unchanged from the
-  // old cylinders — the 1.45 hour/minute plane gap in main.js still
-  // bounds rHour + rMinute (≈ 1.27 at current lengths).
-  const facetFlat = (geo) => {
-    const flat = geo.toNonIndexed();
-    flat.computeVertexNormals();
-    geo.dispose();
-    return flat;
-  };
+  // Bur rod, shared by all three hands: a ROUND constant-girth rod ending
+  // in a cone that tapers to a point — the profile of an engraver's bur.
+  // Radius rBase keeps the crossing envelope of the earlier cylinders, so
+  // the 1.45 hour/minute plane gap in main.js still bounds
+  // rHour + rMinute (≈ 1.27 at current lengths).
   const burRod = (rBase) => {
     const grp = new THREE.Group();
-    const tipLen = rBase * 2; // blunter bur point: shorter taper, wider apex angle
+    const tipLen = rBase * 2; // stout point: short taper, wide apex angle
     const shaftLen = tail + length - tipLen;
     const shaft = new THREE.Mesh(
-      facetFlat(new THREE.CylinderGeometry(rBase, rBase, shaftLen, 4, 1)),
+      new THREE.CylinderGeometry(rBase, rBase, shaftLen, 16, 1),
       MATS.blueSteel
     );
     shaft.position.y = -tail + shaftLen / 2;
     const tip = new THREE.Mesh(
-      facetFlat(new THREE.CylinderGeometry(0, rBase, tipLen, 4, 1)),
+      new THREE.CylinderGeometry(0, rBase, tipLen, 16, 1),
       MATS.blueSteel
     );
     tip.position.y = length - tipLen / 2;
