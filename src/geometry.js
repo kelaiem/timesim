@@ -2261,10 +2261,10 @@ export function makeHand({ length, kind }) {
     // axis is already local +Y, the hand's pointing direction). Radius
     // derives from the old blade's width but at 0.3× so the hour and
     // minute rods clear each other where they cross — the minute hand
-    // rides only 1.2 above the hour hand's plane (main.js), so
+    // rides only 1.45 above the hour hand's plane (main.js), so
     // rHour + rMinute must stay under that with margin
     // (0.3: 0.54 + 0.48 ≈ 1.0 at current lengths).
-    const rBase = length * config.widthFactor * 0.3;
+    const rBase = length * config.widthFactor * 0.35;
     const rod = new THREE.Mesh(
       new THREE.CylinderGeometry(rBase, rBase, tail + length, 16),
       MATS.blueSteel
