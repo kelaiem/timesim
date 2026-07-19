@@ -323,6 +323,14 @@ const EXPECTED_PAIRS = [
   ['Escape wheel', 'Pallet fork'],           // lock/impulse — THE escapement contact
   ['Pallet fork', 'Balance'],                // impulse pin in the fork notch
   ['Balance', 'Balance cock'],               // staff's upper pivot runs in the cock jewel
+  // Regulator assembly contacts (all by construction — the 2026-07 swan-neck
+  // work landed without EXPECTED rows, so the first includeExcluded sweep
+  // after it reported all four as FORBIDDEN):
+  ['Balance', 'Regulator'],                  // staff runs through the index/stud-carrier collars (same
+                                             // pivot adjacency as Balance ⇄ Balance cock above)
+  ['Balance cock', 'Regulator'],             // index collar + swan neck ride the cock's top face — its support edge
+  ['Balance cock', 'Hairspring'],            // the cock's hanging stud CLAMPS the terminal — its support edge
+  ['Hairspring', 'Regulator'],               // curb pins straddle the terminal curve at its midpoint
   ['Balance', 'Hack spring'],                // brake pad on the rim (crown out)
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ ratchet (+ shared band under the great wheel)
@@ -338,6 +346,14 @@ const EXPECTED_PAIRS = [
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
   ['Hour wheel', 'Motion works'],            // minute pinion ⇄ hour wheel — the second 12:1 mesh
   ['Hour wheel', 'Dial'],                    // tube runs through the dial's centre bore, over the cannon pinion
+  ['Keyless works', 'Motion works'],         // SETTING: the arbor's cap pinion meshes the minute wheel's
+                                             // real teeth — the drive edge above IS this contact
+  // 'Motion works' is a labelled child of the dialFace group, so every one of
+  // its meshes also belongs to the 'Dial' unit and self-intersects across the
+  // pair (the same label nesting Power reserve / Small seconds already have,
+  // and those pairs are EXPECTED for the same reason). The real contacts are
+  // by design anyway: stud and wheels sit against the dial's back.
+  ['Dial', 'Motion works'],
   // The three-quarter plate replaced the three train bridges. It TOUCHES
   // what it holds: each upper pivot's jewel setting closes on the staff
   // running in its bore, the balance cock and hack spring are screwed to its
@@ -408,11 +424,27 @@ function bvhFor(mesh) {
 }
 
 const _mat = new THREE.Matrix4();
+const _matRev = new THREE.Matrix4();
 function meshesIntersect(a, b) {
-  const bvh = bvhFor(a);
-  bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
+  const bvhA = bvhFor(a);
+  const bvhB = bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  return bvh.intersectsGeometry(b.geometry, _mat);
+  if (!bvhA.intersectsGeometry(b.geometry, _mat)) return false;
+  // CROSS-CHECK a positive before believing it. The tree-vs-tree
+  // intersectsGeometry path has an observed FALSE-POSITIVE mode at specific
+  // relative transforms (2026-07: balance rim ⇄ fork-cock boss — two parts a
+  // provable 0.69 apart in XY, radially inscribed circles, flagged as
+  // intersecting at exactly 5 of 303 sweep poses; the same query run in
+  // REVERSE said clear, the raw-triangle path said clear, and
+  // closestPointToGeometry measured 0.699). So the boolean is only trusted
+  // when BOTH directions agree; on disagreement the exact distance query
+  // arbitrates — its tri-tri distance errs toward EXTRA zeros (the false-0
+  // mode documented at meshClearance below), so a genuine contact cannot
+  // slip through this branch as a non-zero.
+  _matRev.copy(b.matrixWorld).invert().multiply(a.matrixWorld);
+  if (bvhB.intersectsGeometry(a.geometry, _matRev)) return true;
+  const hit = bvhA.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, 1e-4);
+  return !!hit && hit.distance < 1e-4;
 }
 
 function unitsIntersect(A, B) {
@@ -703,6 +735,12 @@ const CLEARANCE_BUDGETS = [
   // since the feet belong to the 'Dial' unit).
   { a: 'Setting lever', b: 'Dial', min: 0.15 },
   { a: 'Yoke', b: 'Dial', min: 0.15 },
+  // The hack blade's z-plane is BOXED between the center wheel's underside
+  // (levelled, crown pulled) and the great wheel's top face (released, the
+  // pitch dip at the barrel crossing) — PAD_RISE_TARGET in main.js parks it
+  // mid-window. These rows keep both binds from rotting silently.
+  { a: 'Hack spring', b: 'Center wheel', min: 0.15 },
+  { a: 'Hack spring', b: 'Fusee & great wheel', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------

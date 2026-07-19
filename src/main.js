@@ -441,7 +441,13 @@ const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion �
 const BARREL_STEP_DEG = -35;   // center sits down-right of barrel → barrel/crown exit viewed ~1:50
 const D4 = 15.5;               // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
 const ESCAPE_STEP_DEG = -57.9; // escape at viewed ~6:25
-const BALANCE_STEP_DEG = 44.6; // balance at viewed ~8:00
+// The balance's walk angle is a TARGET, not a constant: ~8:00 viewed is where
+// the eye wants it, but the low-escapement restride dropped the balance INTO
+// the train's z-bands (rim [5.25, 7.13] straddles the center wheel's tooth
+// band below AND the fourth wheel's above), so the wheel must also clear both
+// discs in XY. The solved angle (BALANCE_STEP_DEG below, after the escape
+// arbor is placed) is the feasible angle nearest this target.
+const BALANCE_STEP_TARGET_DEG = 44.6; // balance at viewed ~8:00
 
 const barrelPos = { x: 0, y: 0 };
 const centerPos = stepPos(barrelPos, BARREL_STEP_DEG, barrelR_actual + centerPinionR);
@@ -457,6 +463,72 @@ const thirdWedgeDeg =
 const thirdPos = stepPos(centerPos, -90 - thirdWedgeDeg, d1CT);
 const fourthPos = { x: centerPos.x, y: centerPos.y - D4 };
 const escapePos = stepPos(fourthPos, ESCAPE_STEP_DEG, fourthWheelR + escapePinionR);
+// BALANCE_STEP_DEG — SOLVED from the clearance constraint, not styled. The
+// balance rides a circle of radius escToBalanceDist about the escape arbor;
+// rotating on that circle is the ONE move that leaves every fork/balance
+// relation untouched (fork pivot, lever length, pin aim, hack pad and fork
+// cock all re-derive from the escape→balance line). Constraint, per train
+// disc W the balance z-shares:  |balance − W| ≥ sweptR(W) + sweptR(balance)
+// + CLEAR_MARGIN.  Swept radii are MEASURED from the built meshes about
+// their own axes (vertex max — same lesson as xyRadiusAbout below: bevels
+// and the timing screws' tip corners are real, boxes over-report), so a
+// future radius, bevel or screw change re-solves instead of silently
+// re-colliding. At the current builds this lands ≈ 41.9° (target 44.6°):
+// the fourth wheel binds first (screw corners at 9.52 vs tooth band 8.72),
+// the center wheel a hair behind (rim 9.0 vs tooth band 11.70).
+const BALANCE_STEP_DEG = (() => {
+  const sweptR = (obj) => {
+    obj.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    let r = 0;
+    obj.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        r = Math.max(r, Math.hypot(v.x, v.y));
+      }
+    });
+    return r;
+  };
+  const rBal = sweptR(balanceWheel);
+  // Every placed train disc votes; the far ones (great, third, escape) never
+  // bind today but cost nothing and guard the next relayout. Full-height
+  // swept radii — deliberately z-blind: the balance straddles BOTH adjacent
+  // wheel bands, so no z argument can relax the XY bound for the pair that
+  // matters, and a z-blind bound cannot rot when the stack is restridden.
+  const obstacles = [
+    { pos: barrelPos, rr: sweptR(greatWheel) + rBal + CLEAR_MARGIN },
+    { pos: centerPos, rr: sweptR(centerWheel) + rBal + CLEAR_MARGIN },
+    { pos: thirdPos, rr: sweptR(thirdWheel) + rBal + CLEAR_MARGIN },
+    { pos: fourthPos, rr: sweptR(fourthWheel) + rBal + CLEAR_MARGIN },
+    { pos: escapePos, rr: sweptR(escapeWheel) + rBal + CLEAR_MARGIN },
+  ];
+  const ok = (deg) => {
+    const p = stepPos(escapePos, deg, escToBalanceDist);
+    return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+  };
+  if (ok(BALANCE_STEP_TARGET_DEG)) return BALANCE_STEP_TARGET_DEG;
+  // Nearest feasible angle: march outward from the target on each side, then
+  // bisect onto the feasibility edge (hi stays feasible), take the closer side.
+  const edge = (s) => {
+    let hi = 0.25;
+    while (hi <= 90 && !ok(BALANCE_STEP_TARGET_DEG + s * hi)) hi += 0.25;
+    if (hi > 90) return Infinity;
+    let lo = hi - 0.25;
+    for (let k = 0; k < 40; k++) {
+      const m = (lo + hi) / 2;
+      if (ok(BALANCE_STEP_TARGET_DEG + s * m)) hi = m; else lo = m;
+    }
+    return hi;
+  };
+  const down = edge(-1), up = edge(1);
+  if (down === Infinity && up === Infinity) {
+    console.warn('balance step: no clear angle about the escape arbor — leaving the target');
+    return BALANCE_STEP_TARGET_DEG;
+  }
+  return BALANCE_STEP_TARGET_DEG + (down <= up ? -down : up);
+})();
 const balancePos = stepPos(escapePos, BALANCE_STEP_DEG, escToBalanceDist);
 
 // Fork pivot: on the escape→balance line at palletStoneDist from the wheel
@@ -516,11 +588,18 @@ const stemAngle = Math.atan2(uWind.y, uWind.x);
 // Which side of the stem line the balance (and hence the setting lever /
 // hack spring) lives on. NOTE: with the tornado layout the balance sits
 // almost exactly ON the stem line's far extension (perpendicular distance
-// ≈ 1 unit), so this sign holds by a thin margin — nudging BALANCE_STEP_DEG
-// or the barrel angle can silently mirror the whole lever/yoke/hack-spring
-// assembly. If that geometry ever looks flipped, check this first.
+// ≈ 1 unit), so this sign holds by a thin margin — nudging the balance step
+// TARGET, the solved clearances feeding BALANCE_STEP_DEG, or the barrel
+// angle can silently mirror the whole lever/yoke/hack-spring assembly.
+// Asserted below (the clearance solve now MOVES the balance, so a silent
+// flip is a live failure mode, not a hypothetical): |projection| ≈ 0.79
+// after the solve, vs ≈ 0.97 at the raw target.
 const vPerp = { x: -uWind.y, y: uWind.x };
-const sideSign = Math.sign(P.balance.x * vPerp.x + P.balance.y * vPerp.y) || 1;
+const sideProj = P.balance.x * vPerp.x + P.balance.y * vPerp.y;
+const sideSign = Math.sign(sideProj) || 1;
+if (Math.abs(sideProj) < 0.5) {
+  console.warn(`keyless side sign nearly degenerate (balance ${sideProj.toFixed(2)} off the stem line) — lever/yoke/hack layout may mirror`);
+}
 const ratchetR = barrelR * 0.34;                       // matches makeBarrel's ratR
 const crownWheelR = (KW_MODULE * crownWheelTeeth) / 2;
 const windPinionR = (KW_MODULE * windPinionTeeth) / 2;
@@ -2054,7 +2133,14 @@ const HACK_PAD_TOP_R = (HACK_SCREW_IN_R - HACK_SCREW_STANDOFF - HACK_RIM_I) / 2;
 const HACK_PAD_R = HACK_PAD_TOP_R / G.HACK_RUBY_FLARE; // post/ruby-base radius the builder needs
 const HACK_CONTACT_R = (HACK_RIM_I + HACK_SCREW_IN_R - HACK_SCREW_STANDOFF) / 2;
 const HACK_CONTACT_Z = L_BALANCE - RIM_H / 2;          // the rim's underside plane
-const HACK_DROP = 0.6;                                 // pad clearance below the rim when released
+// Pad clearance below the rim when released. 0.45 (was 0.6): the release
+// PITCH this sets is what dips the blade toward the great wheel's top face
+// at the barrel crossing (~2/3 along the blade), and at 0.6 that dip ate
+// the great-wheel side of the blade's z-window down to 0.10 — under the
+// margin — while the levelled (center-wheel) side had slack. The dip
+// scales ~0.7·HACK_DROP at the crossing, so 0.45 buys the missing ~0.1
+// with the released pad still standing three margins clear of the rim.
+const HACK_DROP = 0.45;
 // Blade section. Back to 0.8: the 0.35 blade was thinned because blade,
 // plate and pad all had to share the fork→balance depth — but with the
 // balance lowered INTO the plate band the rim's underside (12.65) now sits
@@ -2202,7 +2288,18 @@ const HACK_PITCH = Math.asin(HACK_DROP / (bladeLen - HACK_PAD_TOP_R));
 // the contact plane (governs now — the restride dropped the rim's
 // underside ~2.7 below the plate, so the plate bind went slack and a
 // plate-hugging blade would sit ABOVE its own contact).
-const PAD_RISE_TARGET = 0.9;
+// 1.17 (was 0.9): the blade's long run from the keyless corner to the
+// balance is BOXED IN — it crosses under the CENTER WHEEL's disc/hub
+// (levelled blade top vs their undersides: the old 0.9 grazed them over 14
+// crown poses — inspection: Center wheel ⇄ Hack spring, crown f ≥ 0.73)
+// and over the GREAT WHEEL's disc (the released blade PITCHES DOWN, and at
+// the barrel crossing ~2/3 along its length that dip reaches toward the
+// wheel's top face — 1.3 here traded the center graze for a great-wheel
+// cut). Measured slopes (both ~1:1 in BLADE_Z): center bind allows
+// BLADE_Z ≤ 3.73, great-wheel bind needs BLADE_Z ≥ 3.62; 1.17 parks the
+// blade mid-window (~0.2 to each). Both binds are pinned as clearance
+// budgets in inspect.js so a future restride re-flags them.
+const PAD_RISE_TARGET = 1.17;
 const BLADE_Z = Math.min(
   TQ_BOT_Z - CLEAR_MARGIN - BLADE_T * 1.65 - 0.55 * Math.sin(HACK_PITCH),
   HACK_CONTACT_Z - BLADE_T / 2 - PAD_RISE_TARGET
