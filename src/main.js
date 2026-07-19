@@ -2482,13 +2482,7 @@ const BALANCE_COCK = (() => {
 // the slab: rim top 12.03 vs slab bottom 12.86, so overhanging it is free.)
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
 const balanceCockLen = (cockEdgeR - 0.1) / 0.62; // slab tail reach (0.62·L below the jewel) stops inside the edge
-// The hairspring stud passes through a REAL hole in the slab, dead ahead of
-// the staff at the terminal's end radius (see the stud carrier below).
-const STUD_Y = balanceCockLen * 0.12 + hairspring.userData.termEndR;
-const balanceCock = G.makeCock({
-  length: balanceCockLen, width: COCK_W, thickness: COCK_T,
-  studHole: { y: STUD_Y, r: 0.5 },
-});
+const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
   const toJewel = TQ_CUT.aim + BALANCE_COCK.phi + Math.PI;
@@ -2528,10 +2522,12 @@ const balanceCock = G.makeCock({
   const jyStaff = balanceCockLen * 0.12;         // staff axis in cock-local y
   const hsUD = hairspring.userData;
 
-  // Re-anchor the SPRING so its terminal end lands dead ahead of the
-  // staff along the cock's own axis — under the slab head, where the
-  // stud can hang from real material.
-  hairspringGroup.rotation.z = toJewel - hsUD.endAngle;
+  // Re-anchor the SPRING so its terminal end lands 0.9 rad off the cock
+  // axis, over the OPEN cutaway — the stud that clamps it hangs from a
+  // cantilevered carrier arm there, in plain view beside the cock, not
+  // buried under the slab. Terminal order along the curve stays honest:
+  // spiral end (on the cock axis) → curb pins (+0.45) → stud (+0.9).
+  hairspringGroup.rotation.z = toJewel + 0.9 - hsUD.endAngle;
 
   // Small ring builder (extrude spans local z 0..h) for the concentric
   // collars below — CylinderGeometry has no bore, and the staff pokes 0.5
@@ -2570,14 +2566,16 @@ const balanceCock = G.makeCock({
 
   // STUD CARRIER: the spring's outer end belongs to the regulator
   // ASSEMBLY, not to bare plate. A second concentric ring outside the
-  // index collar carries an arm up the cock's axis; at the terminal-end
-  // radius its stud drops through the slab's stud hole and clamps the
-  // terminal, pinned from the side.
+  // index collar cantilevers an arm out over the open cutaway (0.9 rad
+  // off the cock axis, past the index arm at 0.45); at the terminal-end
+  // radius its stud drops to the spring plane and clamps the terminal,
+  // pinned from the side — the whole attachment visible from the back.
   const studWorldZ = L_HAIRSPRING + hsUD.termEndZ;   // terminal end height
   {
     const carrier = new THREE.Group();
     carrier.name = 'studCarrier';
     carrier.position.set(0, jyStaff, COCK_T / 2);
+    carrier.rotation.z = 0.9;
     const ring = ringMesh(2.55, 3.1, 0.22, MATS.steel);
     ring.position.z = 0.02;
     carrier.add(ring);
@@ -2610,7 +2608,7 @@ const balanceCock = G.makeCock({
   const reg = new THREE.Group();
   reg.name = 'regulator';
   reg.position.set(0, jyStaff, COCK_T / 2);
-  reg.rotation.z = -0.45;                        // arm aims at the terminal midpoint
+  reg.rotation.z = 0.45;                         // arm aims at the terminal midpoint
   const collarIn = 1.7;  // clears the shock boss (1.35) and the lyre's reach
   const collarOut = collarIn + 0.72; // inside the stud-carrier ring (2.55)
   const armT = 0.28;
