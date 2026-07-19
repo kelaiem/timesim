@@ -1908,13 +1908,16 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.anisotropy = 8;
+      // Enamelled/lacquered dial: a deep glossy clearcoat over the painted
+      // face — low metalness (fired enamel is glass, not metal), tightened
+      // base roughness, near-mirror coat.
       mat = new THREE.MeshPhysicalMaterial({
         map: tex,
         color: 0xffffff,
-        metalness: 0.15,
-        roughness: 0.5,
-        clearcoat: 0.3,
-        clearcoatRoughness: 0.4,
+        metalness: 0.05,
+        roughness: 0.35,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.07,
       });
     }
   }
@@ -1979,7 +1982,8 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
           const ftex = new THREE.CanvasTexture(cv);
           ftex.colorSpace = THREE.SRGBColorSpace;
           ftex.anisotropy = 8;
-          floorMat = new THREE.MeshStandardMaterial({ map: ftex, roughness: 0.65, metalness: 0.08 });
+          // Same lacquered finish as the main dial face.
+          floorMat = new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
         }
       }
       if (!floorMat) floorMat = MATS.silver;
@@ -2244,17 +2248,16 @@ export function makeHand({ length, kind }) {
     g.add(rod);
     bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
   } else {
-    // second: fine needle (unchanged flat blade)
-    const w = length * config.widthFactor;
-    const s = new THREE.Shape();
-    s.moveTo(-w, -tail);
-    s.lineTo(w, -tail);
-    s.lineTo(w * 0.5, length);
-    s.lineTo(-w * 0.5, length);
-    s.closePath();
-    const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false });
-    geo.translate(0, 0, -depth / 2);
-    g.add(new THREE.Mesh(geo, MATS.blueSteel));
+    // second: a slim ROD like the hour/minute hands — constant girth,
+    // cylinder axis along the pointing direction. Floor on the radius: at
+    // second-hand widthFactors a sub-dial-length rod would vanish.
+    const rBase = Math.max(length * config.widthFactor * 0.5, 0.14);
+    const rod = new THREE.Mesh(
+      new THREE.CylinderGeometry(rBase, rBase, tail + length, 12),
+      MATS.blueSteel
+    );
+    rod.position.y = (length - tail) / 2;
+    g.add(rod);
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
       new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),
