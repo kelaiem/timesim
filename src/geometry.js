@@ -1773,9 +1773,11 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // 150-degree arc riding near the well's edge (was 120 at 0.84): more
     // angular travel per hour = finer reading, and the face's centre opens
     // up for the figures.
-    for (let h = 0; h <= 30; h += 3) {
+    // One minor per HOUR (the 150-degree sweep gives each its 5 degrees),
+    // slimmed to keep the comb fine; majors every 12 h as before.
+    for (let h = 0; h <= 30; h += 1) {
       const major = h % 12 === 0;
-      tickAt(165 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.11), sr * (major ? 0.055 : 0.031));
+      tickAt(165 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022));
     }
     // AB / AUF painted ALONG the graduation arc, at the tick band's radius
     // (sr·0.76, mid-band), set clear of the end ticks (22° beyond the arc
