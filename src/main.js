@@ -1982,6 +1982,15 @@ const HACK_LAYOUT = (() => {
       q = intersectTail(post, RESET_ROD_LEN, q).q;
       const pl = local(post);
       minClr = Math.min(minClr, clr(pl.x, pl.y, G.SETTING_LEVER_POST_R));
+      // The post WEARS THE HACK-RAMP COLLAR (solved later, so estimated
+      // here). The γ-solve does NOT land near its d0 floor — measured
+      // brim came out 3.93 with the rod-clearance constraint binding —
+      // so the estimate is calibrated by feedback: 4.4 covers the
+      // measured brim plus its weak growth with anchor distance. The
+      // collar's z-band brackets the anchor post/boss — this bind keeps
+      // the collar off the blade's own support. The post-solve check at
+      // the collar build validates the estimate against the real brim.
+      minClr = Math.min(minClr, Math.hypot(pl.x, pl.y) - 1.15 - 4.4);
       const ql = local(q);
       for (let s = 0; s <= 80; s++) {
         const t = s / 80;
