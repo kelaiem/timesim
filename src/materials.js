@@ -171,14 +171,21 @@ const perledNickel = phys({
         // full-circle edge on the not-yet-overlapped side and is shingled
         // away on the other — the directional overlap of the real finish.
         vec2 pp = vPrlWorld.xy / prlPitch;
+        // Jittered stamp centres: real perlage is laid by hand, pearl over
+        // pearl — the circles overlap in sequence but their centres are
+        // never on a perfect lattice, and each pearl's rings run strong to
+        // its own edge. Winner = LAST pearl in application order covering
+        // the fragment; with jitter, every visible boundary is the ARC of
+        // the later pearl's edge — nothing reads as a straight row.
         float pBest = -1e9; vec2 pC = vec2(0.0);
-        for (int pdy = 0; pdy <= 1; pdy++) {
-          float prow = floor(pp.y) + float(pdy);
-          float pxo = mod(prow, 2.0) * 0.5;
+        for (int pdy = -1; pdy <= 1; pdy++) {
           for (int pdx = -1; pdx <= 1; pdx++) {
-            vec2 c = vec2(floor(pp.x - pxo) + float(pdx) + 0.5 + pxo, prow + 0.5);
+            vec2 cellId = floor(pp) + vec2(float(pdx), float(pdy));
+            vec2 jit = fract(sin(vec2(dot(cellId, vec2(127.1, 311.7)),
+                                      dot(cellId, vec2(269.5, 183.3)))) * 43758.5453) - 0.5;
+            vec2 c = cellId + 0.5 + jit * 0.55;
             if (distance(pp, c) * prlPitch < prlRadius) {
-              float score = (prow * 4096.0 + c.x) * prlOrder; // prlOrder flips the application order, reversing the shingle direction
+              float score = (cellId.y * 4096.0 + cellId.x) * prlOrder; // application order; prlOrder flips it
               if (score > pBest) { pBest = score; pC = c; }
             }
           }
@@ -186,7 +193,9 @@ const perledNickel = phys({
         if (pBest > -1e8) {
           vec2 pd = (pp - pC) * prlPitch;
           float pr = length(pd) + 1e-4;
-          float pring = sin(pr * prlRingFreq) * exp(-pr / prlPitch);
+          // rings hold full strength across the disc, fading only at the rim
+          float pedge = 1.0 - smoothstep(0.82, 1.0, pr / prlRadius);
+          float pring = sin(pr * prlRingFreq) * pedge;
           vec3 pradV = normalize((viewMatrix * vec4(pd / pr, 0.0, 0.0)).xyz);
           normal = normalize(normal + pradV * pring * prlTilt);
         }
