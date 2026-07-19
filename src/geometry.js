@@ -2439,7 +2439,7 @@ export function makeHand({ length, kind }) {
     shaftGeo.rotateX(Math.PI / 2);
     shaftGeo.rotateZ(Math.PI);
     shaftGeo.translate(0, -tail, 0);
-    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.blueSteel);
+    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.bluedHand);
     // Tip: fan from the same crowned section to an apex ON the top-face
     // plane, so the top stays level while the underside cuts up to it.
     const pts = sec.getPoints(12);
@@ -2455,7 +2455,7 @@ export function makeHand({ length, kind }) {
     tipGeo.rotateX(Math.PI / 2);
     tipGeo.rotateZ(Math.PI);
     tipGeo.translate(0, length - tipLen, 0);
-    const tip = new THREE.Mesh(tipGeo, MATS.blueSteel);
+    const tip = new THREE.Mesh(tipGeo, MATS.bluedHand);
     grp.add(shaft, tip);
     return grp;
   };
@@ -2472,7 +2472,7 @@ export function makeHand({ length, kind }) {
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
       new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),
-      MATS.blueSteel
+      MATS.bluedHand
     );
     cw.rotateX(Math.PI / 2);
     cw.position.set(0, -tail * config.counterweightOffsetFactor, 0);
@@ -2482,7 +2482,7 @@ export function makeHand({ length, kind }) {
   const bossR = length * config.bossSizeFactor;
   const boss = new THREE.Mesh(
     new THREE.CylinderGeometry(bossR, bossR, bossH, 18),
-    MATS.blueSteel
+    MATS.bluedHand
   );
   boss.rotateX(Math.PI / 2);
   g.add(boss);

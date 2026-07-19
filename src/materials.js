@@ -64,6 +64,52 @@ const gold = phys({
   reflectivity: 0.85,
 });
 
+// Blued steel for the HANDS: a SATIN finish rather than a mirror. Base
+// roughness sits above the screw blue (0.3 vs 0.22) and a value-noise
+// field varies it another ±0.1 point to point, with a faint irregular
+// normal grain riding underneath — the surface of a hand that was blued
+// over fine emery rather than off a polishing wheel. The unevenness is
+// the point: reflections spread into a soft diffuse glow that shifts
+// cloud-like as the light moves, instead of one hard specular streak.
+// Striped in OBJECT space (the hand geometries bake their orientation),
+// no UVs needed.
+const bluedHand = phys({
+  color: 0x1b3a86,
+  metalness: 1.0,
+  roughness: 0.3,
+  clearcoat: 0.35,
+  clearcoatRoughness: 0.3,
+  reflectivity: 0.7,
+});
+{
+  bluedHand.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vHandObj;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHandObj = transformed;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+      varying vec3 vHandObj;
+      float handHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float handNoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(handHash(i), handHash(i + vec2(1.0, 0.0)), f.x),
+                   mix(handHash(i + vec2(0.0, 1.0)), handHash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+      {
+        float grain = handNoise(vHandObj.xy * 9.0) * 0.65 + handNoise(vHandObj.xy * 31.0) * 0.35;
+        roughnessFactor = clamp(roughnessFactor + (grain - 0.5) * 0.2, 0.08, 0.9);
+      }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      {
+        float nx = handNoise(vHandObj.xy * 14.0 + 3.7) - 0.5;
+        float ny = handNoise(vHandObj.xy * 14.0 + 9.2) - 0.5;
+        normal = normalize(normal + vec3(nx, ny, 0.0) * 0.06);
+      }`);
+  };
+}
+
 // Cool nickel/rhodium plate finish.
 const nickel = phys({
   color: 0xc9ccd1,
@@ -206,6 +252,7 @@ const perledNickel = phys({
 
 export const MATS = {
   brass,
+  bluedHand,
   gold,
   steel,
   blueSteel,
