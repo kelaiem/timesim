@@ -89,10 +89,11 @@
     },
     "perlage": {
       "pitchUnits": 5.0,
-      "ringFreq": 16.0,
+      "ringFreq": 32.0,
       "tilt": 0.22,
       "_comment": "Circular graining on the BASE plate, stamped like the real thing: pearls in a staggered grid, each fragment shaded by the LAST pearl (row-major application order) whose radius covers it \u2014 so every pearl overlaps its neighbours in one direction, shingled. pearlRadiusUnits > pitch/2 sets the overlap.",
-      "pearlRadiusUnits": 5.2
+      "pearlRadiusUnits": 5.2,
+      "shingleFlip": true
     }
   }
 }

@@ -154,13 +154,14 @@ const perledNickel = phys({
     shader.uniforms.prlRingFreq = { value: ringFreq };
     shader.uniforms.prlTilt = { value: tilt };
     shader.uniforms.prlRadius = { value: prl.pearlRadiusUnits ?? pitch * 0.8 };
+    shader.uniforms.prlOrder = { value: prl.shingleFlip ? -1.0 : 1.0 };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;')
       .replace('#include <begin_vertex>',
         '#include <begin_vertex>\nvPrlWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPrlNormal = normalize(mat3(modelMatrix) * objectNormal);');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>',
-        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;\nuniform float prlRadius;')
+        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;\nuniform float prlRadius;\nuniform float prlOrder;')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       if (vPrlNormal.z > 0.7) {
         // Real perlage is stamped pearl by pearl, row by row — each pearl
@@ -177,7 +178,7 @@ const perledNickel = phys({
           for (int pdx = -1; pdx <= 1; pdx++) {
             vec2 c = vec2(floor(pp.x - pxo) + float(pdx) + 0.5 + pxo, prow + 0.5);
             if (distance(pp, c) * prlPitch < prlRadius) {
-              float score = prow * 4096.0 + c.x;
+              float score = (prow * 4096.0 + c.x) * prlOrder; // prlOrder flips the application order, reversing the shingle direction
               if (score > pBest) { pBest = score; pC = c; }
             }
           }
