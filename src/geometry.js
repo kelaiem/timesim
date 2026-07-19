@@ -2329,7 +2329,7 @@ export function makeHand({ length, kind }) {
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     const halfW = rBase * (Math.sqrt(3) / 2);
-    const crown = rBase * 0.12; // gentler bow: wider arc, flatter top
+    const crown = rBase * 0.05; // near-flat bow: just enough to slide a highlight
     // Cross-section in (x = width, y = toward viewer): keel down, top an
     // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
     const sec = new THREE.Shape();
