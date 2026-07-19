@@ -3368,10 +3368,6 @@ panel.innerHTML = `
     <span class="label-small">Hand flute</span>
     <input type="range" id="flute-slider" min="-60" max="30" step="1" />
   </div>
-  <div class="row">
-    <span class="label-small">Ambient</span>
-    <input type="range" id="light-hemi" min="0" max="300" step="1" />
-  </div>
 `;
 document.body.appendChild(panel);
 
@@ -3415,12 +3411,6 @@ window.addEventListener('keydown', (e) => {
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
     }
   });
-  const bindLight = (id, get, set, scale) => {
-    const el = document.getElementById(id);
-    el.value = Math.round(get() * scale);
-    el.addEventListener('input', () => set(el.value / scale));
-  };
-  bindLight('light-hemi', () => hemi.intensity, (v) => { hemi.intensity = v; }, 100);
 
   // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open
   // daylight, to judge how the piece reads outside. Natural is one sun
@@ -3460,7 +3450,6 @@ window.addEventListener('keydown', (e) => {
     renderer.toneMappingExposure = p.exposure;
     scene.background.set(p.bg);
     if (scene.fog) scene.fog.color.set(p.bg);
-    document.getElementById('light-hemi').value = Math.round(p.hemi.intensity * 100);
     lightModeBtn.textContent = name;
   }
   lightModeBtn.addEventListener('click', () => {
