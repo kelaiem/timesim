@@ -1780,6 +1780,13 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // crowding the outermost indicators.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    // Tiny hour figures at the majors, inboard of the tick ends — Roman
+    // where Rome allows (XII, XXIV); the empty end is 0, a numeral Rome
+    // never had.
+    ctx.font = `500 ${sr * 0.09}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    arcLabel('0', 150, sr * 0.56);
+    arcLabel('XII', 102, sr * 0.56);
+    arcLabel('XXIV', 54, sr * 0.56);
     ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     arcLabel('AB', 172, sr * 0.76);
     arcLabel('AUF', 8, sr * 0.76);
