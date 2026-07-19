@@ -3363,6 +3363,7 @@ panel.innerHTML = `
   </div>
   <hr/>
   <div class="row label-small"><span>Finish</span></div>
+  <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
   <div class="row">
     <span class="label-small">Hand flute</span>
     <input type="range" id="flute-slider" min="-60" max="30" step="1" />
@@ -3441,6 +3442,54 @@ window.addEventListener('keydown', (e) => {
   bindLight('light-hemi', () => hemi.intensity, (v) => { hemi.intensity = v; }, 100);
   bindLight('exposure-slider', () => renderer.toneMappingExposure,
     (v) => { renderer.toneMappingExposure = v; }, 100);
+
+  // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open
+  // daylight, to judge how the piece reads outside. Natural is one sun
+  // (the key, strong and warm-white), a bright cool skylight doing the
+  // ambient work, no studio furniture (dial light down, rim spot off),
+  // and a lifted haze-grey world instead of the black void. Switching
+  // modes rewrites the light objects AND the sliders, so the sliders
+  // stay live fine-tuning on top of either preset.
+  const LIGHT_MODES = {
+    Studio: {
+      key: { color: keyLightAesthetic.color, intensity: keyLightAesthetic.intensity },
+      fill: { color: fillLightAesthetic.color, intensity: fillLightAesthetic.intensity },
+      dial: { color: dialLightAesthetic.color, intensity: dialLightAesthetic.intensity },
+      hemi: { sky: hemiAesthetic.skyColor, ground: hemiAesthetic.groundColor, intensity: hemiAesthetic.intensity },
+      rim: rimSpotAesthetic.intensity,
+      exposure: aesthetics.rendering.toneMappingExposure,
+      bg: aesthetics.lighting.scene.backgroundColor,
+    },
+    Natural: {
+      key: { color: '#fff6e4', intensity: 3.6 },   // the sun
+      fill: { color: '#dbe8ff', intensity: 0.2 },  // faint sky bounce
+      dial: { color: '#ffffff', intensity: 0.25 }, // no studio dial lamp outside
+      hemi: { sky: '#bcd7ff', ground: '#7a7f6e', intensity: 1.5 }, // open-sky ambient
+      rim: 0,                                      // no rim spot in a field
+      exposure: 1.15,
+      bg: '#39424e',                               // overcast-haze surround
+    },
+  };
+  const lightModeBtn = document.getElementById('btn-light-mode');
+  function applyLightMode(name) {
+    const p = LIGHT_MODES[name];
+    keyLight.color.set(p.key.color); keyLight.intensity = p.key.intensity;
+    fillLight.color.set(p.fill.color); fillLight.intensity = p.fill.intensity;
+    dialLight.color.set(p.dial.color); dialLight.intensity = p.dial.intensity;
+    hemi.color.set(p.hemi.sky); hemi.groundColor.set(p.hemi.ground); hemi.intensity = p.hemi.intensity;
+    rimSpot.intensity = p.rim;
+    renderer.toneMappingExposure = p.exposure;
+    scene.background.set(p.bg);
+    if (scene.fog) scene.fog.color.set(p.bg);
+    for (const [id, v] of [['light-key', p.key.intensity], ['light-fill', p.fill.intensity],
+      ['light-dial', p.dial.intensity], ['light-hemi', p.hemi.intensity], ['exposure-slider', p.exposure]]) {
+      document.getElementById(id).value = Math.round(v * 100);
+    }
+    lightModeBtn.textContent = name;
+  }
+  lightModeBtn.addEventListener('click', () => {
+    applyLightMode(lightModeBtn.textContent === 'Studio' ? 'Natural' : 'Studio');
+  });
 }
 
 const labelsContainer = document.createElement('div');
