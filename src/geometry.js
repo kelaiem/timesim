@@ -1758,8 +1758,8 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
 
   // Face rosette: six bur rods radiating tail→centre, tips meeting just
   // shy of the middle so the six ground points read as one cut star.
-  const rodR = bodyR * 0.08;
-  const rodOuter = bodyR * 0.72;
+  const rodR = bodyR * 0.13;
+  const rodOuter = bodyR * 0.8;
   const rodLen = rodOuter - bodyR * 0.02;
   const rodGeo = burPrismGeo(rodR, rodLen, rodR * 2);
   rodGeo.rotateX(Math.PI / 2); // shape +y (keel) → +z (off the face); length → −y
@@ -1767,7 +1767,7 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
     const a = (i / 6) * 2 * Math.PI;
     const rod = new THREE.Mesh(rodGeo, material);
     rod.rotation.z = a - Math.PI / 2; // length −y → inward radial at angle a
-    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.3);
+    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.15);
     g.add(rod);
   }
 
