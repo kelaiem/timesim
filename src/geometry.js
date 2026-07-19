@@ -2279,10 +2279,21 @@ export function makeHand({ length, kind }) {
       MATS.blueSteel
     );
     shaft.position.y = -tail + shaftLen / 2;
-    const tip = new THREE.Mesh(
-      facetFlat(new THREE.CylinderGeometry(0, rBase, tipLen, 3, 1, false, Math.PI / 3)),
-      MATS.blueSteel
-    );
+    // Oblique point: shear the pyramid's apex up to the TOP-FACE plane
+    // (the triangle's apothem, rBase/2, where the flat facet lies) so the
+    // top surface runs dead flat from tail to point and the whole taper
+    // is cut from the underside — the way a graver's face is ground.
+    const tipGeo = new THREE.CylinderGeometry(0, rBase, tipLen, 3, 1, false, Math.PI / 3).toNonIndexed();
+    {
+      const pos = tipGeo.attributes.position;
+      const apothem = rBase * 0.5;
+      for (let i = 0; i < pos.count; i++) {
+        const t = (pos.getY(i) + tipLen / 2) / tipLen; // 0 at base, 1 at apex
+        pos.setZ(i, pos.getZ(i) + apothem * t);
+      }
+      tipGeo.computeVertexNormals();
+    }
+    const tip = new THREE.Mesh(tipGeo, MATS.blueSteel);
     tip.position.y = length - tipLen / 2;
     grp.add(shaft, tip);
     return grp;
