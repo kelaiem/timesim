@@ -1229,7 +1229,9 @@ export function makeBackPlate({ radius, thickness }) {
     curveSegments: 72,
   });
   geo.translate(0, 0, -thickness / 2);
-  const m = new THREE.Mesh(geo, MATS.nickel);
+  // Perled: circular graining on the movement-side face (the shader gates
+  // to upward-facing surfaces; the dial-side face and edge stay plain).
+  const m = new THREE.Mesh(geo, MATS.perledNickel);
   m.userData.r = radius;
   return m;
 }

@@ -132,6 +132,49 @@ const ribbedNickel = phys({
   };
 }
 
+// Perled nickel for the BASE plate: circular graining (perlage) — a
+// staggered grid of pearls, each shaded as concentric micro-rings by
+// tilting the normal radially about the pearl's own centre, fading with
+// radius. Same world-space construction as the ribbing (position-stable,
+// no UVs), same up-facing gate so only the movement-side face grains.
+const perledNickel = phys({
+  color: 0xc9ccd1,
+  metalness: 1.0,
+  roughness: 0.42,
+  clearcoat: 0.2,
+  clearcoatRoughness: 0.4,
+});
+{
+  const prl = (aesthetics.decoration && aesthetics.decoration.perlage) || {};
+  const pitch = prl.pitchUnits ?? 4.2;
+  const ringFreq = prl.ringFreq ?? 9.0;
+  const tilt = prl.tilt ?? 0.22;
+  perledNickel.onBeforeCompile = (shader) => {
+    shader.uniforms.prlPitch = { value: pitch };
+    shader.uniforms.prlRingFreq = { value: ringFreq };
+    shader.uniforms.prlTilt = { value: tilt };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;')
+      .replace('#include <begin_vertex>',
+        '#include <begin_vertex>\nvPrlWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPrlNormal = normalize(mat3(modelMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>',
+        '#include <common>\nvarying vec3 vPrlWorld;\nvarying vec3 vPrlNormal;\nuniform float prlPitch;\nuniform float prlRingFreq;\nuniform float prlTilt;')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      if (vPrlNormal.z > 0.7) {
+        vec2 pp = vPrlWorld.xy / prlPitch;
+        float prow = floor(pp.y);
+        float pxo = mod(prow, 2.0) * 0.5;
+        vec2 pcell = vec2(floor(pp.x - pxo) + 0.5 + pxo, prow + 0.5);
+        vec2 pd = (pp - pcell) * prlPitch;
+        float pr = length(pd) + 1e-4;
+        float pring = sin(pr * prlRingFreq) * exp(-pr / prlPitch);
+        vec3 pradV = normalize((viewMatrix * vec4(pd / pr, 0.0, 0.0)).xyz);
+        normal = normalize(normal + pradV * pring * prlTilt);
+      }`);
+  };
+}
+
 export const MATS = {
   brass,
   gold,
@@ -140,6 +183,7 @@ export const MATS = {
   ruby,
   nickel,
   ribbedNickel,
+  perledNickel,
   silver,
   dark,
 };

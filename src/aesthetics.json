@@ -86,6 +86,12 @@
       "angleDeg": 25,
       "tilt": 0.35,
       "_comment": "Glashuette stripes on the 3/4 plate + escape bridge. widthUnits = band pitch in model units; angleDeg = direction the bands PROGRESS in (stripes run perpendicular); tilt = normal scallop strength (0 = off). Stripes are computed from WORLD position in the shader, so they continue across separate parts by construction."
+    },
+    "perlage": {
+      "pitchUnits": 4.2,
+      "ringFreq": 9.0,
+      "tilt": 0.22,
+      "_comment": "Circular graining on the BASE plate: staggered grid of pearls, each a set of concentric micro-rings (normal scallop), world-space like the ribbing so the pattern is position-stable. pitchUnits = pearl spacing; ringFreq = rings per unit radius; tilt = strength."
     }
   }
 }
