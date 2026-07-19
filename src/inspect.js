@@ -361,6 +361,11 @@ const EXPECTED_PAIRS = [
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
   ['Fusee & great wheel', 'Three-quarter plate'],
+  // The pillars are a labelled unit now (they were a bare structure node,
+  // invisible to this sweep — which is how a re-seated pillar ended up
+  // inside the hack collar's swing without a single check firing). The one
+  // contact that IS the design: the plate sits on their caps.
+  ['Three-quarter plate', 'pillars'],
   ['Mainspring drum', 'Three-quarter plate'],
   ['Center wheel', 'Three-quarter plate'],
   ['Third wheel', 'Three-quarter plate'],
@@ -741,6 +746,11 @@ const CLEARANCE_BUDGETS = [
   // mid-window. These rows keep both binds from rotting silently.
   { a: 'Hack spring', b: 'Center wheel', min: 0.15 },
   { a: 'Hack spring', b: 'Fusee & great wheel', min: 0.15 },
+  // Pillar seats are solved against the hack layout's swept corridors (see
+  // the pillar block in main.js) — these rows keep that solve honest across
+  // the crown stroke, now that the pillars are a swept unit at all.
+  { a: 'Hack ramp', b: 'pillars', min: 0.15 },
+  { a: 'Hack spring', b: 'pillars', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------

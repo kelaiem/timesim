@@ -3098,10 +3098,30 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
   };
   const capR = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
+  // The hack layout lives under the plate too, and it MOVES: the ramp
+  // collar (radius brimR) rides the lever's tail post through the whole
+  // crown stroke, and the blade's bowed flank reaches well off its
+  // centre-line. Neither was in this obstacle list, and a pillar is the
+  // one part the overlap sweep historically could not see (structure
+  // node, not a labelled unit) — which is exactly how the 135°-quadrant
+  // pillar ended up inside the collar's swing when the balance-step
+  // re-solve reshaped the cut and shifted its seat. Segment obstacles,
+  // same math as the slots: collar corridor = post chord + arc bow +
+  // brim radius; blade = centre-line + half-width + full bow sag
+  // (one-sided in truth, treated two-sided — a pillar seat is cheap and
+  // the scan has 60° of freedom, so conservatism costs nothing).
+  const hackObstacles = [
+    { ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
+      r: HACK_RAMP.brimR + kwPostBow },
+    { ax: bladeAnchor.x, ay: bladeAnchor.y,
+      bx: bladeAnchor.x + Math.cos(bladeAimAngle) * bladeLen,
+      by: bladeAnchor.y + Math.sin(bladeAimAngle) * bladeLen,
+      r: Math.max(BLADE_W / 2 + G.HACK_SAG_RATIO * bladeLen, 1.15) }, // 1.15 = anchor boss
+  ];
   const seatClearance = (x, y) => {
     let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
-    for (const s of tqSlots) {
+    for (const s of [...tqSlots, ...hackObstacles]) {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
       const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
       c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
@@ -3119,6 +3139,15 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // and a shared offset cannot clear the barrel opening AND the balance cut
   // AND the keyless corner at once (best such ring fouled something by 1.8).
   // Each seat is the point nearest its quadrant's ideal that actually holds.
+  // One labelled group for all four: as a bare structure node the pillars
+  // were invisible to the overlap sweep (only checkSupportGeometry could
+  // see them, and only along declared edges) — as a unit, every pair
+  // against them is swept like anything else. The label matches the
+  // structure-node name so the graph's support edges resolve to the same
+  // meshes either way.
+  const pillarsGroup = new THREE.Group();
+  movement.add(pillarsGroup);
+  registerLabel('pillars', pillarsGroup);
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -3136,7 +3165,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const pillar = G.makePillar({ height: TQ_BOT_Z });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
-    movement.add(pillar);
+    pillarsGroup.add(pillar);
   }
 }
 
