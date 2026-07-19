@@ -958,7 +958,10 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
 // gear teeth, no ratchet/click (the fusee arbor carries those instead).
 // ---------------------------------------------------------------------------
 
-export function makeBarrel({ radius, height, teeth, module, plain = false }) {
+// arborH: full length of the central arbor (centred on the body's
+// mid-plane) — the caller sizes it to reach its actual bearings; the
+// default reproduces the old fixed proportion.
+export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null }) {
   const g = new THREE.Group();
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
@@ -1034,7 +1037,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false }) {
   g.add(spring);
 
   // Central arbor.
-  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, height * 2.4, 16);
+  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, arborH ?? height * 2.4, 16);
   arborGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(arborGeo, MATS.steel));
 

@@ -190,7 +190,13 @@ const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
 // 3→1.6): at the old thicknesses the same chain bottoms out against the
 // great wheel with ~2 units still to find.
 const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
-const L_CENTER = 4.85;  // slack 1.5 over the great wheel (the old nest-under-the-escape chain no longer binds it)
+// Center wheel dropped onto its own bind: one margin over the great wheel's
+// top face, at the wheel's deepest feature (its hub ring, thickness·1.5/2 =
+// 0.75 below the mid-plane). The old 4.85 carried ~1.2 of slack left over
+// from the nest-under-the-escape era — slack the fusee now needs: the
+// chain's lowest span must clear THIS wheel's top face, and every 0.1 here
+// is 0.1 the cone (and with it the whole plate stack) cannot drop.
+const L_CENTER = (L_BARREL + 0.7 + 0.08) + CLEAR_MARGIN + 0.75;
 const L_THIRD = 5.95;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
 const L_FOURTH = 6.95;
 // ESCAPE WHEEL BELOW THE FOURTH WHEEL — the low-escapement layout: the
@@ -278,10 +284,18 @@ const barrelR = (barrelModule * barrelTeeth) / 2;
 // The spring DRUM — slimmer than the great wheel it feeds: with the compact
 // tornado plate the drum tucks in close beside the fusee (XY gap smaller
 // than the great wheel's radius), so it clears the great wheel in Z instead
-// of XY — lifted drum seat + reduced height, see drumGroup below.
+// of XY. Its z-band is DERIVED from those two vertical binds: bottom one
+// margin over the great wheel's top face (1.4 thick + bevel), top at the
+// plate floor the hairspring stack sets (= floor − margin; the drum gets
+// no plate opening — only its arbor reaches the plate). With the fusee
+// dropped to the same spring-bound floor, drum and cone compress together.
 const DRUM_R_ACTUAL = 10;
-const DRUM_HEIGHT = 5;
-const barrel = G.makeBarrel({ radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true });
+const DRUM_BOT_Z = L_BARREL + 0.7 + 0.08 + CLEAR_MARGIN;
+const DRUM_TOP_Z = SPRING_TOP_Z;
+const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
+// (the drum body itself — makeBarrel — is built at the drumGroup assembly
+// further down: its arbor is sized to reach the plate's mid-thickness,
+// which isn't known yet here)
 const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
@@ -296,15 +310,28 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // 4.5 spread them a full unit apart and made the fusee the tallest thing
 // in the movement — its top bound the three-quarter plate's floor).
 const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 2.8;
-// Base originally sized so the LOWEST groove (where the chain rides when
-// the reserve is nearly flat) kept the drum-span clear over the crown
-// wheel's top face (then 7.15; the span crosses its XY footprint, so the
-// clearance was purely vertical) plus chain radius 0.3 and margin:
-// Z0 = 2 + 5.45 + 0.17 = 7.62. That bind is SLACK now — the keyless works
-// (crown wheel included) moved to the dial side and nothing tall remains
-// under the span — but the value stays: lowering the cone further would
-// only re-tighten the chain's clearance over the great wheel for no gain.
-const FUSEE_BASE_Z = 5.45;
+// Base DERIVED from the plate's design goal. The old bind (the chain's
+// lowest span clearing the movement-side crown wheel) vanished when the
+// keyless works moved to the dial side — after that, the only thing the
+// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
+// sits at max(tallest under-plate part, hairspring stack) + margin, and
+// the fusee tip was that tallest part by ~2.5, holding the whole back of
+// the movement high and the balance cock BELOW the plate band it is meant
+// to sit in (the long-standing console warning). Seat the cone so its tip
+// (plus ~0.1 for the helical ridge standing proud of the profile) lands AT
+// the hairspring stack's top: the spring becomes the plate's binding
+// member again and everything above — plate, rod planes, post, stop-work
+// tail — closes down with it. The FLOOR under the cone is the CENTER
+// WHEEL: its disc reaches under the cone's footprint (origin is only 16.2
+// from the barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's
+// lowest span — riding the groove at FUSEE_H·0.06 above the base, chain
+// radius below its centre-line — must clear the wheel's top face by the
+// margin. Both binds explicit; today the spring goal governs (the center
+// wheel was dropped onto its own bind to make that true).
+const FUSEE_BASE_Z = Math.max(
+  SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
+  (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + 0.3 - FUSEE_H * 0.06 - L_BARREL,
+);
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -1174,8 +1201,13 @@ if ((P.balance.x - P.fourth.x) * outX + (P.balance.y - P.fourth.y) * outY > 0) {
   outX = -outX; outY = -outY;
 }
 const uFourthOut = { x: outX, y: outY };
-const heartCam = G.makeHeartCam({ radius: camRadius, thickness: 1.2 });
-const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: 2.0 });
+// Cam thinned 1.2 → 0.8: the hammer/cam ride ABOVE the three-quarter plate
+// now (see Z_SECONDS_ARBOR below), and every bit of body thickness up
+// there is height the compressed stack has to give back.
+const CAM_T = 0.8;
+const HAMMER_W = 2.0;
+const heartCam = G.makeHeartCam({ radius: camRadius, thickness: CAM_T });
+const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: HAMMER_W });
 // Pivot distance solved for a TANGENT seat: at 0° swing the roller's centre
 // sits one roller radius outside the notch floor (rMin, plus the cam's
 // bevel expansion), so the roller surface just kisses the notch instead of
@@ -1264,7 +1296,15 @@ const HAMMER_SWING_RAD = (() => {
   return hi;
 })();
 
-const Z_SECONDS_ARBOR = L_FOURTH + 2.2; // clear of the fourth wheel and escape pinion planes
+// Display-arbor plane — ABOVE the three-quarter plate. Its old under-plate
+// berth (L_FOURTH + 2.2) no longer exists: with the fusee dropped, the
+// plate closes down onto the hairspring stack and the escape pinion tops
+// out a hair under the plate's own underside, leaving no band for the
+// hammer and cam beneath it. So they ride just over the plate's top face
+// instead — chronograph-style works on the plate, the real construction
+// for exactly this mechanism — one margin over it at the tallest body
+// half-extent (the hammer's pivot boss: width·0.6 slab · 1.4).
+const Z_SECONDS_ARBOR = TQ_TOP_Z + CLEAR_MARGIN + (HAMMER_W * 0.6 * 1.4) / 2;
 const secondsCamArbor = new THREE.Group();
 secondsCamArbor.position.set(P.fourth.x, P.fourth.y, Z_SECONDS_ARBOR);
 secondsCamArbor.add(heartCam);
@@ -1858,11 +1898,10 @@ const HUB_COLLAR_R = 1.2;
 // drop is collar radius + margin + half the 1-thick body + its bevel.
 const Z_SETTING_LEVER = Z_KEYLESS - (0.75 + CLEAR_MARGIN + 0.5 + 0.1);
 // Reset-rod plane — declared HERE (ahead of both the lever and the rod
-// linkage below) because it sizes the lever's tail post: the rod's straight
-// run must clear the fusee cone's axis-top height (see the rod-lift comment
-// at the linkage), and the post's whole job is to carry that rod pin plus
-// the hack-ramp collar beneath it. 0.7 = rod radius (0.35) + clearance.
-const ROD_R = 0.35; // reset-rod radius — shared with the hack-blade standoff solver below
+// linkage below) because it sizes the lever's tail post: the post's whole
+// job is to carry the two rod pins (reset, then the hack rod's above it).
+// 0.7 in the fusee term = rod radius (0.35) + clearance.
+const ROD_R = 0.35; // rod radius — reset and hack rods share it
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 // ...and, since the three-quarter plate went in, the rod must ALSO run clear
 // OVER that plate: it crosses ~55 units of it, from the keyless corner to
@@ -1871,8 +1910,11 @@ const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 // HAMMER TAIL BAR hung on the same plane (a 1-thick slab, so half-thickness
 // 0.5 > ROD_R), not the rod itself.
 const ROD_TAILBAR_T = 1;
+// First term (was a fixed 2.3 floor): the tail bar swings over the HEART
+// CAM on this same arbor plane — its underside must clear the cam's top
+// face by the margin. Derived so thinning the cam lowers the bar with it.
 const ROD_Z_LIFT = Math.max(
-  2.3,
+  CAM_T / 2 + CLEAR_MARGIN + ROD_TAILBAR_T / 2,
   FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR,
   TQ_TOP_Z + CLEAR_MARGIN + ROD_TAILBAR_T / 2 - Z_SECONDS_ARBOR,
 );
@@ -2057,16 +2099,17 @@ hammerTailBar.position.set(
 hammerGroup.add(hammerTailBar);
 // Visible riser from the hammer's pivot up to the lifted tail bar — the bar
 // has to be driven by something; without this it floats above the lever.
+// The hammer's BODY rides above the plate now, so the same shaft also
+// continues DOWN into its jewelled bore in the plate below: one arbor,
+// bore to tail bar. That bearing is the hammer's grounding: its declared
+// ['Reset hammer','Three-quarter plate'] support used to measure 9.36
+// units of nothing.
 {
-  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, ROD_Z_LIFT, 10), MATS.steel);
+  const riserBot = TQ_MID_Z - Z_SECONDS_ARBOR; // hammer-local: down into the plate's mid-thickness
+  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, ROD_Z_LIFT - riserBot, 10), MATS.steel);
   riser.rotation.x = Math.PI / 2;
-  riser.position.set(0, 0, ROD_Z_LIFT / 2);
+  riser.position.set(0, 0, (ROD_Z_LIFT + riserBot) / 2);
   hammerGroup.add(riser);
-  // That riser is the hammer's ARBOR, and it now passes through the
-  // three-quarter plate on its way to the tail bar above — so it runs in a
-  // jewelled bore there, exactly like a train arbor. That bearing is the
-  // hammer's grounding: its declared ['Reset hammer','plate'] support used
-  // to measure 9.36 units of nothing.
   tqPivots.push({
     x: hammerPivotPos.x, y: hammerPivotPos.y, staffR: 0.5, jewelR: 1.0,
     boreR: 0.5 + PIVOT_BORE_CLEAR,
@@ -2355,7 +2398,15 @@ const drumPos = {
 // gap the drum's silhouette overlaps the great wheel's radius in XY, so
 // the clearance is vertical: drum bottom sits above the wheel's top face
 // (the fusee grooves are higher still, so the chain span stays level-ish).
-const Z_DRUM = L_BARREL + 5;
+const Z_DRUM = (DRUM_BOT_Z + DRUM_TOP_Z) / 2; // drum body is built centred; band solved with its height up top
+// Arbor sized to its bearings: up to the plate's mid-thickness bushing
+// (the old fixed height·2.4 was tuned for the tall stack and would poke
+// 2.5 past the spring-bound plate), down just past the body for the lower
+// pivot to continue.
+const barrel = G.makeBarrel({
+  radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true,
+  arborH: 2 * (TQ_MID_Z - Z_DRUM),
+});
 const drumGroup = new THREE.Group();
 drumGroup.position.set(drumPos.x, drumPos.y, Z_DRUM);
 drumGroup.add(barrel);
