@@ -157,6 +157,7 @@ const MECH_GRAPH = {
     // dividing the minute angle by 12.
     ['Center wheel', 'Motion works'],        // cannon pinion friction-fit on the centre arbor
     ['Motion works', 'Hour wheel'],
+    ['Keyless works', 'Motion works'],       // SETTING: the arbor's cap pinion meshes the minute wheel
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [

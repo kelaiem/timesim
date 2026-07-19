@@ -35,7 +35,8 @@
         "counterweightSizeFactor": 0.045,
         "counterweightOffsetFactor": 0.8
       },
-      "handsGroupZOffset": 2.5
+      "handsGroupZOffset": 2.5,
+      "fluteFactor": -0.03
     }
   },
   "lighting": {

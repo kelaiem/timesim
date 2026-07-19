@@ -2402,16 +2402,16 @@ export function makeHand({ length, kind }) {
   let bossH = depth * 1.6;
 
   // Bur rod, shared by all three hands: a TRIANGULAR section, keel edge
-  // down at the dial, whose top face is gently CROWNED — a shallow convex
-  // arc rather than a dead-flat plane — so the polished top throws a
-  // highlight over a range of viewing angles instead of only when its one
-  // plane mirrors the light. The crown is faceted (12 curve segments,
-  // flat-shaded), reading like a burnished round-over. The tip tapers to
-  // a point held AT the top-face plane: the top runs level to the point
-  // and the whole taper is ground from the underside, like a graver.
-  // rBase stays the section's max half-height (the keel), so the crossing
-  // envelope matches the old cylinders — the 2.3 hour/minute plane gap
-  // in main.js still bounds rHour + rMinute (≈ 2.10 at current widths).
+  // down at the dial, whose top face is CONCAVE — a shallow flute dished
+  // between the two top corners, the hollow a graver leaves when its face
+  // is ground on the wheel. The corners catch twin edge-highlights and
+  // the dish carries a moving inner gleam. The flute runs THROUGH the
+  // point: the tip fan's apex sits at the DISH FLOOR's height, so the
+  // hollow narrows and dives into the point instead of filling flat.
+  // Concavity only removes material below the corner plane, so the
+  // crossing envelope still matches the old cylinders — the 2.3
+  // hour/minute plane gap in main.js still bounds rHour + rMinute
+  // (≈ 2.10 at current widths).
   const facetFlat = (geo) => {
     const flat = geo.toNonIndexed();
     flat.computeVertexNormals();
@@ -2420,11 +2420,11 @@ export function makeHand({ length, kind }) {
   };
   const burRod = (rBase) => {
     const grp = new THREE.Group();
-    const tipLen = rBase * 2; // stout point: short taper, wide apex angle
+    const tipLen = rBase * 2.6; // curved taper: a little longer so the ease reads
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     const halfW = rBase * (Math.sqrt(3) / 2);
-    const crown = rBase * 0.05; // near-flat bow: just enough to slide a highlight
+    const crown = rBase * (handAesthetics.fluteFactor ?? -0.3); // <0 dishes into a flute, >0 crowns (UI-adjustable)
     // Cross-section in (x = width, y = toward viewer): keel down, top an
     // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
     const sec = new THREE.Shape();
@@ -2439,15 +2439,40 @@ export function makeHand({ length, kind }) {
     shaftGeo.rotateX(Math.PI / 2);
     shaftGeo.rotateZ(Math.PI);
     shaftGeo.translate(0, -tail, 0);
-    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.blueSteel);
-    // Tip: fan from the same crowned section to an apex ON the top-face
-    // plane, so the top stays level while the underside cuts up to it.
-    const pts = sec.getPoints(12);
+    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.bluedHand);
+    // Tip: a LOFT scaled about the TOP-FACE PLANE (y = apothem), not the
+    // axis — so the fluted upper surface runs dead STRAIGHT through to
+    // the tip while the width and the keel sweep up to meet it (the
+    // graver grind, again). The taper is near-linear; the roundness is
+    // only a soft landing at the nose — a polish that takes the edge
+    // off, not a dome.
+    const raw = sec.getPoints(12);
+    if (raw.length > 1 && raw[0].equals(raw[raw.length - 1])) raw.pop();
+    const K = 9;                                  // taper rings
+    const noseS = 0.1;                            // what survives at the nose
+    const ease = (t) => Math.pow(1 - t, 0.85);    // near-straight sides, soft landing
+    const ringAt = (k) => {
+      const t = k / K;
+      const s = noseS + (1 - noseS) * ease(t);
+      return raw.map((p) => [p.x * s, apothem - (apothem - p.y) * s, t * tipLen]);
+    };
     const tri = [];
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], q = pts[(i + 1) % pts.length];
-      if (p.x === q.x && p.y === q.y) continue;
-      tri.push(p.x, p.y, 0, q.x, q.y, 0, 0, apothem, tipLen);
+    let prev = ringAt(0);
+    for (let k = 1; k <= K; k++) {
+      const cur = ringAt(k);
+      for (let i = 0; i < raw.length; i++) {
+        const j = (i + 1) % raw.length;
+        tri.push(...prev[i], ...prev[j], ...cur[j]);
+        tri.push(...prev[i], ...cur[j], ...cur[i]);
+      }
+      prev = cur;
+    }
+    let capY = 0;                                 // nose cap: barely proud, edge-broken
+    for (const p of prev) capY += p[1];
+    capY /= prev.length;
+    for (let i = 0; i < raw.length; i++) {
+      const j = (i + 1) % raw.length;
+      tri.push(...prev[i], ...prev[j], 0, capY, tipLen + rBase * 0.03);
     }
     const tipGeo = new THREE.BufferGeometry();
     tipGeo.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
@@ -2455,7 +2480,7 @@ export function makeHand({ length, kind }) {
     tipGeo.rotateX(Math.PI / 2);
     tipGeo.rotateZ(Math.PI);
     tipGeo.translate(0, length - tipLen, 0);
-    const tip = new THREE.Mesh(tipGeo, MATS.blueSteel);
+    const tip = new THREE.Mesh(tipGeo, MATS.bluedHand);
     grp.add(shaft, tip);
     return grp;
   };
@@ -2472,7 +2497,7 @@ export function makeHand({ length, kind }) {
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
       new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),
-      MATS.blueSteel
+      MATS.bluedHand
     );
     cw.rotateX(Math.PI / 2);
     cw.position.set(0, -tail * config.counterweightOffsetFactor, 0);
@@ -2482,7 +2507,7 @@ export function makeHand({ length, kind }) {
   const bossR = length * config.bossSizeFactor;
   const boss = new THREE.Mesh(
     new THREE.CylinderGeometry(bossR, bossR, bossH, 18),
-    MATS.blueSteel
+    MATS.bluedHand
   );
   boss.rotateX(Math.PI / 2);
   g.add(boss);

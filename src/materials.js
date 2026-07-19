@@ -64,6 +64,28 @@ const gold = phys({
   reflectivity: 0.85,
 });
 
+// Blued steel for the HANDS: cleanly POLISHED, deliberately a step
+// short of mirror — roughness 0.17 keeps a whisper of softness in the
+// reflections so the hands read as finished metal rather than chrome.
+// No procedural texture (a satin noise pass and a brushed pass both
+// auditioned and were cut).
+const bluedHand = phys({
+  // Lighter, more chromatic blue than the screw steel, and drinking 1.6x
+  // the environment: under the original studio rig (which lights the
+  // MOVEMENT well but left the dial side of the room dark) the old deep
+  // navy read as black. The fix lives in the material, not the lights.
+  color: 0x2450b5,
+  // 0.8, not 1.0: the sliver of diffuse response lets the directional
+  // lights develop the BLUE at angles where the env gives the mirror
+  // nothing — the flash-of-blue a real blued hand shows, present always.
+  metalness: 0.8,
+  roughness: 0.17,
+  clearcoat: 0.6,
+  clearcoatRoughness: 0.15,
+  reflectivity: 0.8,
+  envMapIntensity: 1.6,
+});
+
 // Cool nickel/rhodium plate finish.
 const nickel = phys({
   color: 0xc9ccd1,
@@ -206,6 +228,7 @@ const perledNickel = phys({
 
 export const MATS = {
   brass,
+  bluedHand,
   gold,
   steel,
   blueSteel,

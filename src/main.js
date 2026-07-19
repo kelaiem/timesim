@@ -141,6 +141,7 @@ function buildStudioEnvironment(renderer) {
   softbox(70, 90, 0xfff2df, 1.2, new THREE.Vector3(70, 5, -10), -Math.PI / 2, 0);
   softbox(100, 60, 0xffffff, 0.8, new THREE.Vector3(0, -20, 70), Math.PI, 0);
 
+
   // near/far generous enough to cover the 90-unit room half-extent.
   const rt = pmrem.fromScene(envScene, 0.04, 0.1, 250);
   pmrem.dispose();
@@ -388,6 +389,23 @@ function stepPos(prev, angleDeg, dist) {
 // the dial centre (its arbor carries the small-seconds display), escapement
 // continuing to ~6:25, balance at ~8:00. Hop distances are fixed by the
 // pitch-radius sums, so the free variables are the walk angles plus D4.
+// MOTION WORKS layout constants — HOISTED here from the dial build (they
+// depend only on module and tooth counts, so they hoist cleanly): the
+// keyless works' setting arbor terminates at the motion works' minute
+// wheel and needs these ~1300 lines before the dial exists. Referencing
+// them down there from up here was the temporal-dead-zone ReferenceError
+// that bit twice (see TODO.md item 1, now closed).
+const cannonPinionTeeth = 10;
+const MW_MODULE_1 = 0.3;                                     // cannon ⇄ minute wheel
+const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
+const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
+const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
+// Reduction, derived from the tooth counts rather than asserted. Each
+// external mesh reverses sense, so the two negations cancel: the hour wheel
+// turns the same way as the cannon pinion, at 1/12 the rate.
+const MW_RATIO_1 = -(cannonPinionTeeth / MW_MINUTE_TEETH);   // cannon → minute wheel
+const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion → hour wheel
+
 const BARREL_STEP_DEG = -35;   // center sits down-right of barrel → barrel/crown exit viewed ~1:50
 const D4 = 15.5;               // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
 const ESCAPE_STEP_DEG = -57.9; // escape at viewed ~6:25
@@ -1465,14 +1483,28 @@ function makeRodSegment(a, b, radius) {
 
 const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3, BEVEL_PHASE = Math.PI / BEVEL_TEETH;
 const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING);
-const settingB = new THREE.Vector3(P.dial.x, P.dial.y, Z_SETTING);
+// The arbor terminates at the MOTION WORKS' MINUTE WHEEL — the wheel a real
+// setting path drives — not at the dial centre. (The old dial-centre
+// stand-in ended in a pinion cap beside the cannon pinion, meshing nothing,
+// and collided with the real motion works once they existed: it caused all
+// three FORBIDDEN overlaps — Dial⇄Motion works, Hour wheel⇄Keyless works,
+// Keyless works⇄Motion works. TODO.md item 1.)
+// Minute wheel world XY: dialFace is Y-flipped, so dial-local +x maps to
+// world −x. The cap pinion sits one mesh distance from its axis, on the
+// keyless side so the traverse is the short way in.
+const MW_WORLD = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
+const SETTING_CAP_TEETH = 8;
+const capMeshD = (MW_MODULE_1 * (SETTING_CAP_TEETH + MW_MINUTE_TEETH)) / 2;
+const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborXY.y - MW_WORLD.y).normalize();
+const SETTING_CAP_XY = { x: MW_WORLD.x + toKeyless.x * capMeshD, y: MW_WORLD.y + toKeyless.y * capMeshD };
+const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();
 keyless.add(makeRodSegment(settingA, settingB, 0.35));
 
-const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion sits at dialFace local −1.5, which the Y-flip maps to Z_DIAL + 1.5
+const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5
 const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
 settingRise.rotation.x = Math.PI / 2;
-settingRise.position.set(P.dial.x, P.dial.y, (Z_SETTING + Z_CANNON_PINION) / 2);
+settingRise.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (Z_SETTING + Z_CANNON_PINION) / 2);
 keyless.add(settingRise);
 
 // Bevel-gear corner: two small conical gears sharing an apex at `point`, one
@@ -1502,14 +1534,13 @@ const Z_UP = new THREE.Vector3(0, 0, 1);
 // drop → traverse and traverse → rise: two corners, both exactly 90°.
 const cornerDrop = addBevelCorner(settingA, Z_UP, settingU);
 const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate());
-// Small pinion cap sitting right beside the cannon pinion — makes the final
-// connection visually legible rather than a bare rod tip. Cannon pinion
-// itself (module 0.3, 10 teeth → pitch radius 1.5) is defined later in the
-// file, alongside the dial; sized/placed here from those same known
-// constants rather than referencing the not-yet-declared variable.
-const CANNON_PINION_R = (0.3 * 10) / 2;
-const settingCap = G.makePinion({ module: 0.3, teeth: 8, thickness: 1.6, material: MATS.steel });
-settingCap.position.set(P.dial.x + CANNON_PINION_R + settingCap.userData.r + 0.15, P.dial.y, Z_CANNON_PINION);
+// The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
+// from the minute wheel's axis, in the minute wheel's own plane — it
+// engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
+const settingCap = G.makePinion({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1.6, material: MATS.steel });
+settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
+const SETTING_CAP_PHASE =
+  Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
 keyless.add(settingCap);
 
 // ---------------------------------------------------------------------------
@@ -2656,12 +2687,36 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
     pin.position.set(s * pinGap, rPin, -pinLen / 2 + 0.02);
     reg.add(pin);
   }
-  // Tail, swan-neck spring and adjuster screw, all on the slab's top face.
+  // TAIL: part of the index lever — it rotates with the regulator.
   const tailLen2 = 2.3;
   const tailY = -(collarOut + tailLen2 / 2 - 0.25);
   const rTail = new THREE.Mesh(new THREE.BoxGeometry(0.55, tailLen2, armT), MATS.steel);
   rTail.position.set(0, tailY, armT / 2 + 0.02);
   reg.add(rTail);
+  balanceCock.add(reg);
+  registerLabel('Regulator', reg);
+
+  // SWAN NECK + ADJUSTER: mounted on the COCK (the balance bridge), not on
+  // the index — they are the fixed datum the index is set against: the
+  // neck spring presses the tail against the screw, the screw meters how
+  // far it may yield. Parenting them to the rotating index would carry
+  // the reference along with the thing it references. They share the
+  // index frame's transform (same origin, same 0.45 sweep) so the tail
+  // coordinates above stay valid, but the group is a child of the cock.
+  // ...and the cock's face is SHAPED to carry it, as real swan-neck cocks
+  // are: the 0.45 sweep puts the neck's foot ~1 unit past the slab's side
+  // edge, over the open cutaway — its hold-down screw was going into air.
+  // A seat plate, top flush with the cock face, overlaps the slab edge
+  // (the weld) and cantilevers out under the neck's foot and screw.
+  {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.0, 0.35), MATS.nickel);
+    seat.position.set(2.6, jyStaff - 4.3, COCK_T / 2 - 0.175);
+    balanceCock.add(seat);
+  }
+  const regDress = new THREE.Group();
+  regDress.name = 'swanNeck';
+  regDress.position.set(0, jyStaff, COCK_T / 2);
+  regDress.rotation.z = 0.45;
   const tailTipY = tailY - tailLen2 / 2 + 0.15;
   const neckPts = [
     new THREE.Vector3(1.7, tailTipY - 1.3, 0),
@@ -2673,25 +2728,25 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   const neck = new THREE.Mesh(
     new THREE.TubeGeometry(new THREE.CatmullRomCurve3(neckPts), 24, 0.15, 8, false), MATS.steel);
   neck.position.z = armT / 2 + 0.02;
-  reg.add(neck);
+  regDress.add(neck);
+  // ...held down by its own screw through the neck's foot, into the cock.
   const neckScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, armT * 1.2, 14), MATS.blueSteel);
   neckScrew.rotation.x = Math.PI / 2;
   neckScrew.position.set(1.7, tailTipY - 1.3, armT * 0.6 + 0.02);
-  reg.add(neckScrew);
+  regDress.add(neckScrew);
   // Adjuster: block + fine screw bearing on the tail's other flank.
   const adjBlock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, armT * 1.4), MATS.steel);
   adjBlock.position.set(-1.55, tailTipY, armT * 0.7 + 0.02);
-  reg.add(adjBlock);
+  regDress.add(adjBlock);
   const adjScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.15, 10), MATS.blueSteel);
   adjScrew.rotation.z = Math.PI / 2;
   adjScrew.position.set(-0.85, tailTipY, armT * 0.7 + 0.02);
-  reg.add(adjScrew);
+  regDress.add(adjScrew);
   const adjHead = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.22, 12), MATS.blueSteel);
   adjHead.rotation.z = Math.PI / 2;
   adjHead.position.set(-1.95, tailTipY, armT * 0.7 + 0.02);
-  reg.add(adjHead);
-  balanceCock.add(reg);
-  registerLabel('Regulator', reg);
+  regDress.add(adjHead);
+  balanceCock.add(regDress);
 }
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);
@@ -2878,8 +2933,8 @@ const SUBDIAL_RECESS = 0.5;
 // Motion-works constants the DIAL needs (its centre bore must clear the
 // hour-wheel tube). Declared here rather than with the rest of the motion
 // works further down, which is built after the dial.
-const cannonPinionTeeth = 10;
-const MW_MODULE_1 = 0.3;                                     // cannon ⇄ minute wheel
+// (cannonPinionTeeth / MW_MODULE_1 are hoisted to the top of the file with
+// the layout constants — the keyless works' setting arbor needs them.)
 const HOUR_TUBE_INNER = (MW_MODULE_1 * cannonPinionTeeth) / 2 + MW_MODULE_1 + 0.25;
 const HOUR_TUBE_OUTER = HOUR_TUBE_INNER + 0.45;
 
@@ -2913,7 +2968,7 @@ registerExplode(handsGroup, 2.5, 2, 1);
 // here — it becomes a child of hourWheelGroup and inherits that wheel's
 // rotation rather than being posed independently.
 const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
-const minuteHand = G.makeHand({ length: dialRadius * 0.905, kind: 'minute' }); // tip lands mid-railroad (rails at 0.87R/0.94R)
+const minuteHand = G.makeHand({ length: dialRadius * 0.84, kind: 'minute' }); // tip stops just short of the railroad (inner rail at 0.87R)
 minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
 
@@ -2980,16 +3035,9 @@ smallSecondsGroup.add(smallSecondsHand);
 // one fewer cutter on a real bench. The formula stays general: a 12:1 pair
 // whose sums differ (10/30/10/40, say) would simply solve to m2 ≠ m1, the
 // way real motion works often do.
-// (cannonPinionTeeth / MW_MODULE_1 / HOUR_TUBE_* are declared up by the dial,
-// whose centre bore has to clear the tube.)
-const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
-const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
-const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
-// Reduction, derived from the tooth counts rather than asserted. Each
-// external mesh reverses sense, so the two negations cancel: the hour wheel
-// turns the same way as the cannon pinion, at 1/12 the rate.
-const MW_RATIO_1 = -(cannonPinionTeeth / MW_MINUTE_TEETH);   // cannon → minute wheel
-const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion → hour wheel
+// (All MW_* constants and cannonPinionTeeth are hoisted to the top of the
+// file with the layout constants — the setting arbor terminates at the
+// minute wheel and needs them long before the dial is built.)
 
 const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2, material: MATS.steel });
 cannonPinion.position.z = -1.5;
@@ -3361,6 +3409,13 @@ panel.innerHTML = `
     <span class="label-small">Plate X-ray</span>
     <button id="btn-xray">Off</button>
   </div>
+  <hr/>
+  <div class="row label-small"><span>Finish</span></div>
+  <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
+  <div class="row">
+    <span class="label-small">Hand flute</span>
+    <input type="range" id="flute-slider" min="-60" max="30" step="1" />
+  </div>
 `;
 document.body.appendChild(panel);
 
@@ -3381,6 +3436,74 @@ showPanelBtn.addEventListener('click', () => setPanelHidden(false));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
 });
+
+// --- Finish: hand flute + lighting -----------------------------------------
+// The flute slider re-cuts the hands LIVE: every hand keeps its group (tick
+// holds those references and drives their rotations), and only the children
+// are swapped for a fresh makeHand build at the new concavity. Lighting
+// sliders drive the light objects directly; nothing here is persisted.
+{
+  const fluteSlider = document.getElementById('flute-slider');
+  fluteSlider.value = Math.round((aesthetics.dial.hands.fluteFactor ?? -0.3) * 100);
+  const HAND_SPECS = [
+    [hourHand, { length: dialRadius * 0.5, kind: 'hour' }],
+    [minuteHand, { length: dialRadius * 0.905, kind: 'minute' }],
+    [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second' }],
+    [reserveHand, { length: reserveR * 0.8, kind: 'minute' }],
+  ];
+  fluteSlider.addEventListener('input', () => {
+    aesthetics.dial.hands.fluteFactor = fluteSlider.value / 100;
+    for (const [hand, spec] of HAND_SPECS) {
+      hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+      hand.clear();
+      for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
+    }
+  });
+
+  // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open
+  // daylight, to judge how the piece reads outside. Natural is one sun
+  // (the key, strong and warm-white), a bright cool skylight doing the
+  // ambient work, no studio furniture (dial light down, rim spot off),
+  // and a lifted haze-grey world instead of the black void. Switching
+  // modes rewrites the light objects AND the sliders, so the sliders
+  // stay live fine-tuning on top of either preset.
+  const LIGHT_MODES = {
+    Studio: {
+      key: { color: keyLightAesthetic.color, intensity: keyLightAesthetic.intensity },
+      fill: { color: fillLightAesthetic.color, intensity: fillLightAesthetic.intensity },
+      dial: { color: dialLightAesthetic.color, intensity: dialLightAesthetic.intensity },
+      hemi: { sky: hemiAesthetic.skyColor, ground: hemiAesthetic.groundColor, intensity: hemiAesthetic.intensity },
+      rim: rimSpotAesthetic.intensity,
+      exposure: aesthetics.rendering.toneMappingExposure,
+      bg: aesthetics.lighting.scene.backgroundColor,
+    },
+    Natural: {
+      key: { color: '#fff6e4', intensity: 3.6 },   // the sun
+      fill: { color: '#dbe8ff', intensity: 0.2 },  // faint sky bounce
+      dial: { color: '#ffffff', intensity: 0.25 }, // no studio dial lamp outside
+      hemi: { sky: '#bcd7ff', ground: '#7a7f6e', intensity: 1.5 }, // open-sky ambient
+      rim: 0,                                      // no rim spot in a field
+      exposure: 1.15,
+      bg: '#39424e',                               // overcast-haze surround
+    },
+  };
+  const lightModeBtn = document.getElementById('btn-light-mode');
+  function applyLightMode(name) {
+    const p = LIGHT_MODES[name];
+    keyLight.color.set(p.key.color); keyLight.intensity = p.key.intensity;
+    fillLight.color.set(p.fill.color); fillLight.intensity = p.fill.intensity;
+    dialLight.color.set(p.dial.color); dialLight.intensity = p.dial.intensity;
+    hemi.color.set(p.hemi.sky); hemi.groundColor.set(p.hemi.ground); hemi.intensity = p.hemi.intensity;
+    rimSpot.intensity = p.rim;
+    renderer.toneMappingExposure = p.exposure;
+    scene.background.set(p.bg);
+    if (scene.fog) scene.fog.color.set(p.bg);
+    lightModeBtn.textContent = name;
+  }
+  lightModeBtn.addEventListener('click', () => {
+    applyLightMode(lightModeBtn.textContent === 'Studio' ? 'Natural' : 'Studio');
+  });
+}
 
 const labelsContainer = document.createElement('div');
 labelsContainer.id = 'clock-labels';
@@ -4005,7 +4128,7 @@ function tick(t) {
   // same handSetOffset that actually drives the hands, so the part sitting
   // right beside the cannon pinion visibly turns in step with it — the
   // connection reads as real, not just a static rod poking at the dial.
-  settingCap.rotation.z = handSetOffset;
+  settingCap.rotation.z = SETTING_CAP_PHASE + handSetOffset;
 
   // Power-reserve hand — barrelWindTurns (via tension) IS the mechanical
   // quantity now; no separate epoch/pulse bookkeeping needed since winding
