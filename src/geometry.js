@@ -2315,8 +2315,8 @@ export function makeHand({ length, kind }) {
   // a point held AT the top-face plane: the top runs level to the point
   // and the whole taper is ground from the underside, like a graver.
   // rBase stays the section's max half-height (the keel), so the crossing
-  // envelope matches the old cylinders — the 1.75 hour/minute plane gap
-  // in main.js still bounds rHour + rMinute (≈ 1.62 at current widths).
+  // envelope matches the old cylinders — the 2.3 hour/minute plane gap
+  // in main.js still bounds rHour + rMinute (≈ 2.10 at current widths).
   const facetFlat = (geo) => {
     const flat = geo.toNonIndexed();
     flat.computeVertexNormals();

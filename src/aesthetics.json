@@ -13,14 +13,14 @@
     },
     "hands": {
       "hour": {
-        "widthFactor": 0.115,
+        "widthFactor": 0.15,
         "tailFactor": 0.22,
         "depthFactor": 0.012,
         "depthMin": 0.35,
         "bossSizeFactor": 0.05
       },
       "minute": {
-        "widthFactor": 0.07,
+        "widthFactor": 0.09,
         "tailFactor": 0.22,
         "depthFactor": 0.012,
         "depthMin": 0.35,
