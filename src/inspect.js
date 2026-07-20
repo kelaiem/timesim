@@ -116,7 +116,8 @@ const MECH_GRAPH = {
                                              // balance cut's open wedge (the crank see-saws in it)
     ['Hack rod', 'Setting lever'],           // pinned at the tail post, under the reset rod's pin
     ['Hack rod', 'Stop lever'],              // pinned at the crank's tail top
-    ['Reset hammer', 'Three-quarter plate'], // its arbor runs in a bore in the plate
+    ['Reset hammer', 'plate'],               // its arbor stands footed on the BASE plate — the whole
+                                             // reset/hack linkage lives in the low band now
     ['Heart cam (seconds reset)', 'Fourth wheel'], // friction-slip on the fourth arbor
     ['Reset rod', 'Setting lever'],          // pinned at the post
     ['Reset rod', 'Reset hammer'],           // pinned at the tail
@@ -406,7 +407,11 @@ const EXPECTED_PAIRS = [
   // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
   // and its anchor post lands on the base plate, which is a structure node,
   // not a swept unit.)
-  ['Reset hammer', 'Three-quarter plate'],
+  // The two rods share the tail post's pin stack in a 0.22-unit corridor
+  // now — near the post their tubes converge and touch, as two levers on
+  // one stud do; the angular spread to their destinations separates them
+  // beyond it.
+  ['Hack rod', 'Reset rod'],
   // Small-seconds display arbor (tornado): the through rod runs coaxially
   // inside the fourth wheel/pinion bores (this contact IS the friction
   // coupling), passes the third-fourth bridge's fourth-end pivot pad, exits
@@ -739,10 +744,20 @@ const CLEARANCE_BUDGETS = [
   { a: 'Stop lever', b: 'Balance cock', min: 0.15 },
   { a: 'Stop lever', b: 'Fork cock', min: 0.15 },
   { a: 'Stop lever', b: 'Pallet fork', min: 0.15 },
-  { a: 'Hack rod', b: 'Reset rod', min: 0.15 },
+  // (Hack rod ⇄ Reset rod is EXPECTED contact now — shared post pin
+  // stack in the low corridor; see EXPECTED_PAIRS.)
   { a: 'Hack rod', b: 'Balance cock', min: 0.15 },
   { a: 'Hack rod', b: 'Three-quarter plate', min: 0.15 },
-  { a: 'Hack rod', b: 'Fusee & great wheel', min: 0.15 }, // overflies the cone by the derived lift
+  // The low corridor's guards: both rods cross UNDER the great wheel's
+  // disc and thread past the transfer wheel and the centre arbor's
+  // lower-pivot collar — the elbow scans place them, these rows keep
+  // them placed.
+  { a: 'Hack rod', b: 'Fusee & great wheel', min: 0.15 },
+  { a: 'Hack rod', b: 'Keyless works', min: 0.15 },
+  { a: 'Hack rod', b: 'Center wheel', min: 0.15 },
+  { a: 'Reset rod', b: 'Keyless works', min: 0.15 },
+  { a: 'Reset rod', b: 'Center wheel', min: 0.15 },
+  { a: 'Reset rod', b: 'Heart cam (seconds reset)', min: 0.15 },
   // Three-quarter plate binds (2026-07-18). Every one of these is a place
   // where the plate's z-stack or one of its openings was solved to land
   // exactly on the shared margin, so they are exactly the numbers that a
