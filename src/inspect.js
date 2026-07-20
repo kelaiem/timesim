@@ -384,7 +384,11 @@ const EXPECTED_PAIRS = [
   ['Fourth wheel', 'Three-quarter plate'],
   ['Escape wheel', 'Three-quarter plate'],   // staff's upper pivot in the plate's jewel
   ['Pallet fork', 'Fork cock'],              // the fork's, in its standalone cap
-  ['Balance cock', 'Three-quarter plate'],
+  // ('Balance cock' ⇄ 'Three-quarter plate' is NOT expected any more: the
+  // cut is re-solved around the BUILT cock (the bridge-reveal pass in
+  // main.js), so the plate never touches the bridge — the cock stands on
+  // its own base-plate legs in open air. A clearance budget below holds
+  // the gap.)
   // ('Stop lever' ⇄ 'Three-quarter plate' is NOT expected: the
   // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
   // and its anchor post lands on the base plate, which is a structure node,
@@ -749,6 +753,11 @@ const CLEARANCE_BUDGETS = [
   // since the feet belong to the 'Dial' unit).
   { a: 'Setting lever', b: 'Dial', min: 0.15 },
   { a: 'Yoke', b: 'Dial', min: 0.15 },
+  // The bridge-reveal pass re-solves the plate cut around the BUILT cock
+  // with the cut margin (0.5) — this row keeps that reveal from silently
+  // eroding (the pair used to be EXPECTED-contact, which is how the plate
+  // sat flush against and into the bridge unnoticed).
+  { a: 'Balance cock', b: 'Three-quarter plate', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------

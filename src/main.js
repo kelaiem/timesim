@@ -1494,6 +1494,24 @@ const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: 
                            // so the cut's base edge (BAL_OUTER_R + this) is what physically
                            // clears them at every azimuth — the escapement stretch of the
                            // window is still sized for the eye and the bridge screws.
+// Table finishing, shared by the initial solve and the post-cock second
+// pass (see the balance-cock reveal further down): a per-degree max is a
+// saw edge, and a plate edge is milled by a cutter of finite radius —
+// running max over ±6°, then light smoothing. Both only ever ADD clearance.
+function finishCutRadii(raw) {
+  const spread = raw.map((_, i) => {
+    let m = 0;
+    for (let d = -6; d <= 6; d++) m = Math.max(m, raw[((i + d) % 360 + 360) % 360]);
+    return m;
+  });
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 0; i < 360; i++) {
+      const a = spread[(i + 359) % 360], b = spread[(i + 1) % 360];
+      spread[i] = Math.max(spread[i], (a + b) / 2);
+    }
+  }
+  return spread;
+}
 const TQ_CUT = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
   const phiOpen = 75 * DEG2RAD;
@@ -1536,21 +1554,11 @@ const TQ_CUT = (() => {
       bump(v.x, v.y);
     }
   });
-  // Round the table off: a per-degree max is a saw edge, and a plate edge is
-  // milled by a cutter of finite radius. Running max over a ±6° window, then
-  // a light smoothing pass — both only ever ADD clearance.
-  const spread = radii.map((_, i) => {
-    let m = 0;
-    for (let d = -6; d <= 6; d++) m = Math.max(m, radii[((i + d) % 360 + 360) % 360]);
-    return m;
-  });
-  for (let pass = 0; pass < 3; pass++) {
-    for (let i = 0; i < 360; i++) {
-      const a = spread[(i + 359) % 360], b = spread[(i + 1) % 360];
-      spread[i] = Math.max(spread[i], (a + b) / 2);
-    }
-  }
-  return { x: P.balance.x, y: P.balance.y, aim, phiOpen, radii: spread };
+  // The RAW table is kept alongside the finished one: the balance-cock
+  // reveal (further down, once the cock exists) bumps the raw table and
+  // re-finishes ONCE — finishing twice would over-widen every original
+  // feature by another cutter radius.
+  return { x: P.balance.x, y: P.balance.y, aim, phiOpen, rawRadii: radii, radii: finishCutRadii(radii) };
 })();
 // (The pillars are built with the three-quarter plate they carry, at the end
 // of the assembly — their seating angles are solved against the plate's cut
@@ -2451,7 +2459,6 @@ addLowerPivot(drumGroup, { staffR: 0.6, jewelR: 1.4 });
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
 const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_H * 0.06; // world z of the lowest groove
 const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
-const DRUM_CHAIN_Z = Z_DRUM + DRUM_HEIGHT * 0.4;  // chain rides near the drum's top
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
@@ -2460,6 +2467,44 @@ function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
     r: FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * f,
     z: FUSEE_Z0 + FUSEE_ZSPAN * f,
   };
+}
+// --- The chain's BARREL ATTACHMENT. The chain hooks to the drum wall at a
+// fixed point and the accumulating wraps STACK DOWNWARD from it: the hook
+// sits at the top of the coil zone, each arriving turn lays one chain
+// diameter below the last, and the takeoff tangent point descends with the
+// coil as the reserve drains (mirroring the fusee side, whose active
+// groove descends too — the span stays near-level over the whole reserve).
+// The old construction was inverted: the tangent was pinned near the
+// drum's top and the chain's FREE END descended, ending in mid-air with
+// no attachment at all.
+const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid
+// Hook angle, drum-local. The wrap's far end lands at world angle
+// thetaT + turns·2π and the drum's rotation is rot = (1−tension)·C/R, so
+// a fixed drum-local hook works iff the wrap's fractional turn absorbs
+// thetaT's small drift with tension (the wrap length IS set by geometry —
+// see rebuildChain). Placing the hook at thetaT(mid-reserve) + 0.3 turns
+// centres that fractional solve on the +0.3 slack turn, giving the
+// round-to-nearest branch maximum headroom against the ±0.02-turn drift.
+const HOOK_A = (() => {
+  const midR = fuseeGrooveAt(0.5 * 0.94).r;
+  const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
+  const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_R) / Math.hypot(dx, dy), -1, 1));
+  return thetaMid + 0.3 * Math.PI * 2;
+})();
+{
+  // The hook itself: a riveted tab on the drum wall with a claw pin the
+  // chain's end link drops over — child of drumGroup, so it turns with the
+  // barrel and the ['Chain','Mainspring drum'] support edge measures real
+  // geometry (the chain's last point is placed ON this claw).
+  const hookLocalZ = COIL_TOP - Z_DRUM;
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.9), MATS.steel);
+  tab.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.25), Math.sin(HOOK_A) * (DRUM_R + 0.25), hookLocalZ);
+  tab.rotation.z = HOOK_A;
+  drumGroup.add(tab);
+  const claw = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.8, 8), MATS.steel);
+  claw.rotation.z = HOOK_A + Math.PI / 2; // pin lies tangentially along the wall
+  claw.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.45), Math.sin(HOOK_A) * (DRUM_R + 0.45), hookLocalZ);
+  drumGroup.add(claw);
 }
 function rebuildChain(tension) {
   lastChainTension = tension;
@@ -2493,11 +2538,22 @@ function rebuildChain(tension) {
       gp.z
     ));
   }
-  // 2. Straight span to the drum's tangent point.
+  // 2+3. Drum coil, hook-anchored. The wrap's turn count is SOLVED so its
+  // far end lands exactly on the hook (fixed on the rotating drum at
+  // drum-local HOOK_A): world hook angle = HOOK_A + rot must equal
+  // thetaT + turns·2π, so the fractional part of `turns` comes from that
+  // congruence and the whole part from the chain-length accounting
+  // (round-to-nearest is branch-stable: HOOK_A centres the offset — see
+  // its comment). The coil hangs DOWN from the hook, one chain diameter
+  // per turn, so the takeoff tangent point descends as the reserve drains.
+  const rot = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R; // = drumGroup.rotation.z in tick()
+  const baseTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
+  if (frac < 0) frac += 1;
+  const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
+  const takeoffZ = COIL_TOP - drumTurns * 0.65;
   const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_R, y: drumPos.y + Math.sin(thetaT) * DRUM_R };
-  pts.push(new THREE.Vector3(TB.x, TB.y, DRUM_CHAIN_Z));
-  // 3. Wrap accumulated on the drum (grows as the reserve drains).
-  const drumTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  pts.push(new THREE.Vector3(TB.x, TB.y, takeoffZ));
   const nD = Math.max(Math.ceil(drumTurns * SEG_PER_TURN), 2);
   for (let i = 1; i <= nD; i++) {
     const s = (i / nD) * drumTurns;
@@ -2505,9 +2561,16 @@ function rebuildChain(tension) {
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_R,
       drumPos.y + Math.sin(ang) * DRUM_R,
-      DRUM_CHAIN_Z - s * 0.65 // one chain diameter per turn: a snug coil, and it stays above the drum's bottom
+      COIL_TOP - (drumTurns - s) * 0.65 // climbs back up to the hook plane
     ));
   }
+  // ...and the end link steps out onto the hook's claw pin.
+  const hookAng = thetaT + drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
+  pts.push(new THREE.Vector3(
+    drumPos.x + Math.cos(hookAng) * (DRUM_R + 0.45),
+    drumPos.y + Math.sin(hookAng) * (DRUM_R + 0.45),
+    COIL_TOP
+  ));
   const curve = new THREE.CatmullRomCurve3(pts);
   const geo = new THREE.TubeGeometry(curve, pts.length * 2, 0.3, 6, false);
   if (chainMesh) {
@@ -2545,17 +2608,21 @@ addUpperPivot(drumGroup, { staffR: 0.9, jewelR: 0, boreR: 0.95 });
 
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
-for (const p of tqPivots) {
-  const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
-  const d = Math.hypot(dx, dy);
-  const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
-  const bossR = Math.max(p.jewelR * 1.7, p.boreR);
-  const edge = G.cutEdgeRadius(TQ_CUT, phi);
-  const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
-  if (inWedge || d - bossR - CLEAR_MARGIN < edge)
-    console.warn('3/4 plate: the cut reaches a pivot it has to carry at',
-      p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
+// Factored: it re-runs after the balance-cock reveal grows the cut.
+function checkCutVsPivots() {
+  for (const p of tqPivots) {
+    const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
+    const d = Math.hypot(dx, dy);
+    const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
+    const bossR = Math.max(p.jewelR * 1.7, p.boreR);
+    const edge = G.cutEdgeRadius(TQ_CUT, phi);
+    const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
+    if (inWedge || d - bossR - CLEAR_MARGIN < edge)
+      console.warn('3/4 plate: the cut reaches a pivot it has to carry at',
+        p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
+  }
 }
+checkCutVsPivots();
 
 // A jewelled pivot needs the plate opened up to its CHATON's diameter, not
 // the staff's — the counterbore is cut right through and the bearing collar
@@ -2683,18 +2750,16 @@ const BALANCE_COCK = (() => {
   return { ...best, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
 })();
 // COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
-// the plate's own z-band over the cutaway, so it must END before the cut
-// edge (plate material owns that band beyond it); it stops 0.1 inside.
-// From the back: the cock's top face is flush with the plate's — the
-// Glashütte look the restride exists to produce — but its FOOT is a leg
-// dropping from under the slab tail to the base plate, keeping the whole
-// balance assembly independent of the three-quarter plate (see the
-// escape bridge, which works the same way). (The balance itself runs
-// entirely BELOW the slab: rim top 12.03 vs slab bottom 12.86, so
-// overhanging it is free.)
+// the plate's own z-band over the cutaway; its LENGTH is sized against the
+// cut edge as first solved (tail to 0.1 inside it), and once the cock is
+// BUILT the cut is re-solved around it — the bridge-reveal pass after the
+// cock build — so the finished plate edge retreats a full cut margin past
+// every part of the bridge. From the back: the cock's top face is flush
+// with the plate's — the Glashütte look — but it stands in open air on
+// its own base-plate legs, independent of the three-quarter plate.
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
-// Slab tail reach ((0.5 + COCK_JEWEL_AT)·L below the jewel) stops 0.1
-// inside the cut edge.
+// Slab tail reach ((0.5 + COCK_JEWEL_AT)·L below the jewel), sized to the
+// pre-reveal cut edge.
 const balanceCockLen = (cockEdgeR - 0.1) / (0.5 + COCK_JEWEL_AT);
 const balanceCock = G.makeCock({
   length: balanceCockLen, width: COCK_W, thickness: COCK_T, jewelAt: COCK_JEWEL_AT,
@@ -2859,6 +2924,61 @@ const balanceCock = G.makeCock({
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
+
+// --- REVEAL THE BRIDGE: second pass over the plate cut. TQ_CUT was solved
+// before the cock existed, so the cock never voted — its slab was fitted
+// to the edge by a single-bearing radial rule while its width-6 flanks and
+// the T-bar spanned unchecked, and (cock and plate being flush in one
+// z-band) the plate's material ran right up against and into the bridge.
+// Now that the cock is BUILT, every mesh of it that actually crosses the
+// plate's band votes the raw cut table outward by the cut margin, and the
+// table is re-finished ONCE — the plate's kidney edge retreats around the
+// whole bridge and the cock stands revealed in open air.
+{
+  const eps = 0.05;
+  const v = new THREE.Vector3();
+  balanceCock.updateMatrixWorld(true);
+  balanceCock.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    // Per-MESH band filter (not per-vertex: the slab's faces sit exactly ON
+    // the band edges, and the stud-carrier post CROSSES the band with both
+    // its box corners outside it): a mesh votes iff its world AABB overlaps
+    // the plate's z-band. Legs, pads and the above-face dressing (shock
+    // setting, carrier ring, screw heads) never meet the plate and are
+    // excluded, so the cut doesn't over-open for them.
+    o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    if (!(bb.min.z < TQ_TOP_Z - eps && bb.max.z > TQ_BOT_Z + eps)) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      const dx = v.x - P.balance.x, dy = v.y - P.balance.y;
+      const r = Math.hypot(dx, dy) + TQ_CUT_MARGIN;
+      const deg = Math.round(((Math.atan2(dy, dx) - TQ_CUT.aim) * 180) / Math.PI);
+      const idx = ((deg % 360) + 360) % 360;
+      if (r > TQ_CUT.rawRadii[idx]) TQ_CUT.rawRadii[idx] = r;
+    }
+  });
+  TQ_CUT.radii = finishCutRadii(TQ_CUT.rawRadii);
+  // A cut-edge point pushed past the plate's rim would self-intersect the
+  // plate outline (the documented slot-notch failure class in
+  // makeThreeQuarterPlate) — clamp each degree so the edge stays inside,
+  // and say so if it ever engages.
+  for (let i = 0; i < 360; i++) {
+    const a = TQ_CUT.aim + i * DEG2RAD;
+    const dxr = Math.cos(a), dyr = Math.sin(a);
+    // Exact bound: |C + r·d̂| = plateR − 0.2, positive root.
+    const cd = TQ_CUT.x * dxr + TQ_CUT.y * dyr;
+    const disc = cd * cd - (TQ_CUT.x ** 2 + TQ_CUT.y ** 2) + (plateR - 0.2) ** 2;
+    const rMax = -cd + Math.sqrt(Math.max(disc, 0));
+    if (TQ_CUT.radii[i] > rMax) {
+      TQ_CUT.radii[i] = rMax;
+      console.warn('balance-cock reveal: cut edge clamped at the plate rim, bearing', i);
+    }
+  }
+  // The grown opening must still carry every upper pivot.
+  checkCutVsPivots();
+}
 
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
