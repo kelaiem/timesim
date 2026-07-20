@@ -5192,9 +5192,27 @@ function tick(t) {
   // THEM (windPathRot / setPathRot), so whichever one is disengaged simply
   // holds still — a genuine consequence of the clutch routing above, not a
   // separate "which am I animating" branch here.
-  windSpinner.rotation.y = crownRotation;
+  //
+  // SIGN CHAIN, derived from the one physically-forced sense and counted
+  // back through the meshes (it used to be assembled by convention, which
+  // wound the watch counter-clockwise AND co-rotated an external mesh):
+  //  · ANCHOR: the fusee must turn CW-from-the-back (−z) to gather chain
+  //    (the wrap math in rebuildChain) → windBack < 0 while winding.
+  //  · The winding SPUR is keyed to that arbor: also −.
+  //  · The TRANSFER wheel meshes the spur EXTERNALLY: must counter-rotate
+  //    → +, and the crown wheel is keyed to it → +. Hence the POSITIVE
+  //    sign below (the old −windPathRot slid the transfer⇄spur teeth
+  //    through each other — masked only by how slowly they turn).
+  //  · The winding PINION engages the crown wheel's rim on the side
+  //    facing the movement centre; for the wheel to turn + (CCW from the
+  //    back) the pinion's contact-point velocity there fixes the stem's
+  //    sense: winding rotation appears CLOCKWISE viewed from the crown's
+  //    outer end — the horological convention. Positive crownRotation
+  //    (drag right / Wind button) IS the banking direction, so the visual
+  //    spin about the outward stem axis is its negation.
+  windSpinner.rotation.y = -crownRotation;
 
-  const crownWheelSpin = -windPathRot * (windPinionTeeth / crownWheelTeeth);
+  const crownWheelSpin = windPathRot * (windPinionTeeth / crownWheelTeeth);
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
   {
