@@ -4520,7 +4520,7 @@ let jumpCorr = 0;
 // Sound edge-detector state: one "last index" per discrete source (null
 // until first observed, so enabling sound mid-run never machine-guns a
 // backlog of events).
-let sndBeatN = null, sndPawlIdx = null, sndDetIdx = null, sndJumpIdx = null;
+let sndBeatN = null, sndBeatRaw = null, sndPawlIdx = null, sndDetIdx = null, sndJumpIdx = null;
 let sndCrownOut = null, sndHammerHit = false;
 let jumpSnapIdx = null; // written by the quantize block; read by the sound block
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
@@ -5009,12 +5009,43 @@ function sndClick(freq, q, decay, gain, when = 0) {
   src.start(t0);
   src.stop(t0 + decay + 0.02);
 }
+// Sub-beat acoustic events, derived from the SAME phase constants that
+// drive the escapement animation — not canned millisecond offsets. Within
+// a beat, raw phase p crosses:
+//   0                               → unlocking (the recoil dip begins)
+//   RECOIL_FRACTION · IMPULSE_WIDTH → the tooth takes the impulse face
+//   IMPULSE_WIDTH                   → drop onto the far lock + banking pin
+// beatEventCount returns a monotone event count up to movement time t, so
+// the tick's edge detector fires exactly the events a frame stepped across.
+const SND_BEAT_EVENTS = [0, RECOIL_FRACTION * IMPULSE_WIDTH, IMPULSE_WIDTH];
+function beatEventCount(t) {
+  const raw = t * 2 * F_BALANCE;
+  const n = Math.floor(raw);
+  const p = raw - n;
+  let c = n * 3;
+  for (const e of SND_BEAT_EVENTS) if (p >= e) c++;
+  return c;
+}
 // Timbres per source (tuned by ear; the beat alternates two centres by
 // bank parity — that parity IS the fork's bank side, so tic/toc is
 // mechanically honest for free).
 const SND = {
-  beatTic: () => sndClick(4200, 7, 0.006, 0.16),
-  beatToc: () => sndClick(3400, 7, 0.007, 0.16),
+  // Each beat is a THREE-impact cluster, the way a timing machine hears a
+  // real lever escapement:
+  //   kind 0 — unlocking: the impulse pin knocks the fork off its bank and
+  //            the pallet slides off the lock (soft, bright);
+  //   kind 1 — impulse: the tooth scrapes down the pallet's impulse face
+  //            (a quiet broadband smear, not a click — low Q, longer);
+  //   kind 2 — drop + lock: the freed tooth lands on the far pallet as the
+  //            lever hits the banking pin — the loud compound impact.
+  beatEvent: (kind, tic, w = 0) => {
+    if (kind === 0) sndClick(tic ? 5200 : 4600, 8, 0.005, 0.07, w);
+    else if (kind === 1) sndClick(tic ? 3600 : 3100, 1.5, 0.022, 0.05, w);
+    else {
+      sndClick(tic ? 4200 : 3400, 7, 0.008, 0.17, w);
+      sndClick(tic ? 1500 : 1300, 4, 0.012, 0.10, w);
+    }
+  },
   // The winding pawl gets a two-layer click — a bright tick plus a low
   // mechanical body — so it reads clearly over the running beat.
   pawl: (w = 0) => { sndClick(2200, 5, 0.014, 0.42, w); sndClick(900, 3, 0.022, 0.28, w); },
@@ -5629,15 +5660,25 @@ function tick(t) {
     // 3 transients per source per tick with small time offsets so a
     // clamped-but-large rawDt (tab restore) hiccups gracefully.
     if (soundOn && !fastForward) {
-      // Escapement beat — parity is the fork's bank side: honest tic/toc.
-      const bn = beatPhase(tau).n;
-      if (sndBeatN !== null && bn !== sndBeatN) {
-        const steps = Math.min(Math.abs(bn - sndBeatN), 3);
-        for (let i = 0; i < steps; i++) {
-          ((sndBeatN + i + 1) % 2 === 0 ? SND.beatTic : SND.beatToc)();
+      // Escapement beat — a three-impact cluster per beat (unlock, impulse,
+      // drop+lock; see SND.beatEvent), each fired as the frame steps across
+      // its phase boundary. Events crossed in ONE frame are scheduled at
+      // their true wall-clock offsets from the previous frame's phase, so
+      // the unlock→impulse gap survives frames longer than itself.
+      const bev = beatEventCount(tau);
+      const rawNow = tau * 2 * F_BALANCE;
+      if (sndBeatN !== null && bev > sndBeatN) {
+        const from = Math.max(sndBeatN, bev - 6); // ≤ 2 beats per hiccup
+        for (let c = from + 1; c <= bev; c++) {
+          const ev = c - 1;
+          const kind = ev % 3;
+          const beat = Math.floor(ev / 3);
+          const evRaw = beat + SND_BEAT_EVENTS[kind];
+          const w = Math.min(Math.max((evRaw - sndBeatRaw) / (2 * F_BALANCE) / timeScale, 0), 0.15);
+          SND.beatEvent(kind, beat % 2 === 0, w);
         }
       }
-      sndBeatN = bn;
+      sndBeatN = bev; sndBeatRaw = rawNow;
       // Maintaining pawls while winding — one tooth passage = one snap
       // (the two pawls sit exactly 12 of 24 pitches apart: unison).
       const pawlIdx = Math.floor((MAINT_PAWL_TIP_AZ - windBack) / ((Math.PI * 2) / MAINT_TEETH));
@@ -5664,7 +5705,7 @@ function tick(t) {
       if (leverEngage < 0.15) sndHammerHit = false;
     } else {
       // Keep trackers current while muted/FF so re-enabling is silent.
-      sndBeatN = null; sndPawlIdx = null; sndDetIdx = null; sndJumpIdx = null;
+      sndBeatN = null; sndBeatRaw = null; sndPawlIdx = null; sndDetIdx = null; sndJumpIdx = null;
       sndCrownOut = crownOut;
     }
   }
