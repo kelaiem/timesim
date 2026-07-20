@@ -4652,6 +4652,10 @@ style.textContent = `
 #clock-ui .readout.hacking { color: #ffb454; }
 #clock-ui .presets { display: flex; flex-wrap: wrap; gap: 5px; }
 #clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
+#clock-ui select {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
+  border-radius: 6px; padding: 4px 6px; font-size: 11px; cursor: pointer; max-width: 150px;
+}
 #clock-ui .tq { flex: 1; max-width: 128px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
 #clock-ui .tq i { display: block; height: 100%; background: #3a6bd8; width: 100%; transition: none; }
 #clock-ui .tq i.flat { background: #58b368; }
@@ -4699,6 +4703,10 @@ panel.innerHTML = `
   <div class="row">
     <span class="label-small">Exploded view</span>
     <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
+  </div>
+  <div class="row">
+    <span class="label-small">Unit</span>
+    <select id="explode-unit"><option>All</option></select>
   </div>
   <div class="row">
     <span class="label-small">Labels</span>
@@ -4968,9 +4976,40 @@ tqXrayMat.transparent = true;
 tqXrayMat.opacity = 0.28;
 tqXrayMat.depthWrite = false;
 tqXrayMat.roughness = Math.min(1, tqSolidMat.roughness + 0.1); // less mirror, more glass
+
+// The DIAL rides the same toggle (BACKLOG §6): the dial-side works —
+// keyless, motion works, reserve train, minute jumper — are what the §3
+// sapphire dial exists to show, so "plate transparent" means the dial goes
+// glassy too (a live preview of that dial). Unlike the plate, the dial is
+// MANY meshes mixing unique canvas-textured materials with shared MATS
+// entries, so glassy clones are cached per ORIGINAL material and swapped
+// both ways. The mesh set covers only the Dial unit's own geometry (the
+// makeDial build plus the dial feet); hands, subdial hands and the whole
+// motion-works cluster are dialFace siblings — not in the set — so they
+// stay solid, and a shared MATS clone can never leak onto another part
+// because only meshes in this set ever get their material swapped.
+const dialXrayMeshes = [];
+dial.traverse((o) => { if (o.isMesh) dialXrayMeshes.push(o); });
+for (const c of dialGroup.children) if (c.isMesh) dialXrayMeshes.push(c); // the dial feet
+const dialXrayClones = new Map(); // original material → glassy clone
+for (const m of dialXrayMeshes) {
+  if (!dialXrayClones.has(m.material)) {
+    const x = m.material.clone();
+    x.transparent = true;
+    x.opacity = tqXrayMat.opacity; // the ONE x-ray opacity, shared with the plate
+    x.depthWrite = false;
+    x.roughness = Math.min(1, (x.roughness ?? 1) + 0.1);
+    dialXrayClones.set(m.material, x);
+  }
+  m.userData.solidMat = m.material;
+}
+
 function setXray(on) {
   xrayOn = on;
   tqPlateMesh.material = on ? tqXrayMat : tqSolidMat;
+  for (const m of dialXrayMeshes) {
+    m.material = on ? dialXrayClones.get(m.userData.solidMat) : m.userData.solidMat;
+  }
   const b = document.getElementById('btn-xray');
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
@@ -5233,6 +5272,47 @@ document.getElementById('explode-slider').addEventListener('input', (e) => {
   explodeAmount = Number(e.target.value) / 100;
 });
 
+// --- per-unit explode + label filter (BACKLOG §7) --------------------------
+// Pick one unit and the slider lifts only it (labels filter to it too).
+// Explode entries carry no names, but nearly every explode obj IS the very
+// object registered with registerLabel — an identity join names them all
+// without touching the ~30 registerExplode call sites. The two stragglers
+// (backPlate, handsGroup — neither has a label) get explicit names.
+let selectedUnit = 'All';
+const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Structure'], [handsGroup, 'Hands']]);
+function explodeEntryName(e) {
+  if (e.name === undefined) {
+    const hit = labelEntries.find((l) => l.obj === e.obj);
+    e.name = hit ? hit.name : (EXPLODE_NAME_FALLBACK.get(e.obj) ?? 'Structure');
+  }
+  return e.name;
+}
+const unitSelect = document.getElementById('explode-unit');
+// Options are the union of explode-entry names and label names: label-only
+// units (Chain, Motion works, …) can't lift on their own — they either have
+// no explode entry or ride a parent's — but selecting one still isolates
+// its label. Rebuilt on open because the Chain label registers lazily on
+// the first tick (its mesh is built inside updateChain).
+function refreshUnitOptions() {
+  const names = [...new Set([
+    ...explodeEntries.map(explodeEntryName),
+    ...labelEntries.map((l) => l.name),
+  ])];
+  if (unitSelect.options.length === names.length + 1) return;
+  const cur = unitSelect.value;
+  unitSelect.innerHTML = '';
+  for (const n of ['All', ...names]) {
+    const o = document.createElement('option');
+    o.textContent = n;
+    unitSelect.appendChild(o);
+  }
+  unitSelect.value = names.includes(cur) ? cur : 'All';
+  selectedUnit = unitSelect.value;
+}
+refreshUnitOptions();
+unitSelect.addEventListener('pointerdown', refreshUnitOptions);
+unitSelect.addEventListener('change', () => { selectedUnit = unitSelect.value; });
+
 // --- camera presets (tweened) ---------------------------------------------
 // Distances are derived from the actual computed plate radius so framing
 // stays sane no matter what moduli/gaps the layout above works out to.
@@ -5328,7 +5408,14 @@ function formatTime(simSeconds) {
 function updateExplode() {
   const UNIT = 4;
   for (const e of explodeEntries) {
-    e.obj.position.z = e.baseZ + explodeAmount * e.dir * e.layer * UNIT;
+    // With one unit selected, the plates co-lift to their own full-explode
+    // positions: a lone unit rising through a parked three-quarter plate or
+    // dial would pass straight through them, and the full-explode exit path
+    // is already known to be clean.
+    const lifts = selectedUnit === 'All'
+      || explodeEntryName(e) === selectedUnit
+      || e.obj === threeQuarterPlate || e.obj === dialGroup;
+    e.obj.position.z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * e.layer * UNIT;
   }
 }
 
@@ -5349,11 +5436,12 @@ function updateLabels() {
   }
   const w = window.innerWidth, h = window.innerHeight;
   for (let i = 0; i < labelEntries.length; i++) {
-    const { obj } = labelEntries[i];
+    const { name, obj } = labelEntries[i];
+    const el = labelEls[i];
+    if (selectedUnit !== 'All' && name !== selectedUnit) { el.style.display = 'none'; continue; }
     obj.getWorldPosition(projected);
     projected.project(camera);
     const behind = projected.z > 1;
-    const el = labelEls[i];
     if (behind) { el.style.display = 'none'; continue; }
     el.style.display = 'block';
     el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
