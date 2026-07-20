@@ -2390,7 +2390,13 @@ const STOP_BEARING = (() => {
     { x: hammerPivotPos.x, y: hammerPivotPos.y, r: hammerArmLen + 4 },
   ];
   let best = null;
-  for (let d = -28; d <= 28; d += 1) {
+  // Scan bound: the plate cut's open wedge (±phiOpen about the same
+  // balance-centred aim), less the bracket's own angular half-width —
+  // the mast crosses the plate band and must stay in open air. The old
+  // ±28° window was leftover conservatism from the tall-mast design and
+  // capped the achievable coupling ~0.62.
+  const wedgeBound = TQ_CUT.phiOpen / DEG2RAD - Math.atan2(1.65 + HACK_CLEAR_MARGIN, STOP_PIVOT_R) / DEG2RAD;
+  for (let d = -Math.floor(wedgeBound); d <= Math.floor(wedgeBound); d += 1) {
     const phi = ideal + d * DEG2RAD;
     const bx = P.balance.x + Math.cos(phi) * STOP_PIVOT_R;
     const by = P.balance.y + Math.sin(phi) * STOP_PIVOT_R;
@@ -2408,7 +2414,12 @@ const STOP_BEARING = (() => {
     for (const o of obstacles)
       clr = Math.min(clr, segCircleClear({ x: bx, y: by }, swept, o) - 2);
     if (clr < HACK_CLEAR_MARGIN) continue;
-    const score = clr - Math.abs(d) * 0.05;
+    // MAXIMIZE the coupling, with clearance as the constraint it always
+    // really was (the old clearance-maximizing score let K sit at its
+    // 0.6 gate, inflating the tail lever — and the mast — by ~40%: the
+    // pivot height divides by |K|, see Z_STOP_PIVOT). Tiny clearance
+    // tiebreak so equal-K bearings still prefer open air.
+    const score = Math.abs(rodK) + clr * 0.01;
     if (!best || score > best.score) best = { phi, score };
   }
   if (!best) {
@@ -2433,6 +2444,15 @@ const STOP_TANG_K = (() => {
 //   |STOP_TAIL_H| · sin(ψ_target) · |K| = POST_STROKE
 const Z_STOP_PIVOT = ROD2_PLANE_Z + POST_STROKE / (Math.abs(STOP_TANG_K) * Math.sin(STOP_PSI_TARGET));
 const STOP_TAIL_H = ROD2_PLANE_Z - Z_STOP_PIVOT; // NEGATIVE: the tail hangs down to the rod plane
+// CASE-FIT assert: the mast (pivot + clevis cheeks, top = pivot + 0.85)
+// must not stand above the balance cock's own height — the cock sets the
+// display side's silhouette, and the K-maximizing bearing scan above is
+// what earns this. If it fires, the achieved coupling is printed: the
+// fallback is a dedicated hack-rod pin at reduced radius on the setting
+// lever's tail (stroke scales with r/SL_TAIL).
+const STOP_MAST_TOP = Z_STOP_PIVOT + 0.85;
+if (STOP_MAST_TOP > TQ_TOP_Z)
+  console.warn(`stop work: mast top ${STOP_MAST_TOP.toFixed(2)} above the cock height ${TQ_TOP_Z.toFixed(2)} — achieved |K| = ${Math.abs(STOP_TANG_K).toFixed(3)}, needed ≥ ${(POST_STROKE / ((TQ_TOP_Z - 0.85 - ROD2_PLANE_Z) * Math.sin(STOP_PSI_TARGET))).toFixed(3)}`);
 
 // --- Build: static bracket (post + clevis + pin) and the rotating crank.
 // Group local +X = radially OUT of the balance, local +Y = STOP_T_HAT;
@@ -2643,6 +2663,38 @@ function updateStopWork(post) {
   hackRod.quaternion.setFromUnitVectors(_rodUp, _rodDir);
 }
 updateStopWork(postRel); // rest pose (crown in)
+
+// --- LOW-LINKAGE SWEPT CORRIDOR — the one obstacle model for every LATER
+// seat scan (balance-cock legs, pillar seats). Both rods were built before
+// those scans run, so their own elbow scans could not see what comes next:
+// whatever is placed afterwards must yield to the linkage instead. Sampled
+// over the full crown stroke: the setting-lever tail post's swing arc,
+// both rods' elbow segments (+ knuckle), and the reset hammer's arm.
+// Entries are XY circles {x,y,r} / stadium segments {ax..by,r} at the
+// parts' OWN radii — each consumer adds its own reach plus CLEAR_MARGIN.
+const LOW_LINKAGE_OBSTACLES = (() => {
+  const obs = [];
+  const pushElbow = (a, b, elbow) => {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+    const E = { x: a.x + ux * L * elbow.f + nx * elbow.e, y: a.y + uy * L * elbow.f + ny * elbow.e };
+    obs.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: ROD_R });
+    obs.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: ROD_R });
+    obs.push({ x: E.x, y: E.y, r: ROD_R * 1.15 });
+  };
+  let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
+  let psi = STOP_PSI0;
+  for (let i = 0; i <= 12; i++) {
+    const post = tailPostWorldAt(i / 12);
+    obs.push({ x: post.x, y: post.y, r: G.SETTING_LEVER_POST_R });
+    q = intersectTail(post, RESET_ROD_LEN, q).q;
+    pushElbow(post, q, RESET_ROD_ELBOW);
+    obs.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: q.x, by: q.y, r: 0.7 });
+    psi = stopSolvePsi(post, psi);
+    pushElbow(post, stopTailTopAt(psi), HACK_ROD_ELBOW);
+  }
+  return obs;
+})();
 
 // ---------------------------------------------------------------------------
 // Fusee & chain — torque equalisation. The spring DRUM sits beside the fusee;
@@ -3336,8 +3388,16 @@ const BALANCE_COCK = (() => {
   for (const p of tqPivots) obstacles.push({ x: p.x, y: p.y, r: p.jewelR * 1.7 });
   for (const h of tqHoles) obstacles.push({ x: h.x, y: h.y, r: h.r });
   for (const s of tqSlots) obstacles.push({ ax: s.ax, ay: s.ay, bx: s.bx, by: s.by, r: s.r });
-  // The escapement bridge's slab shares the cock foot's z band.
+  // The escapement bridge's slab shares the cock foot's z band — its
+  // pivot bosses AND the waisted BAR between them (makeEscapeBridge:
+  // half-width = min(r_a, r_b)·0.8). The bar was missing from this list,
+  // and the leg scan promptly stood a leg across it (inspection finding:
+  // Balance cock ⇄ Fork cock, leg through the bridge bar's slab band).
   for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
+  for (let i = 0; i + 1 < forkCock.chain.length; i++) {
+    const a = forkCock.chain[i], b = forkCock.chain[i + 1];
+    obstacles.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 });
+  }
   // The FULL train: the cock's pedestal spans from the base plate to the
   // slab, crossing every wheel band on the way, so each disc's whole
   // footprint is off-limits to the foot. The old hack blade's obstacle
@@ -3377,29 +3437,9 @@ const BALANCE_COCK = (() => {
     }
   }
   // Both rods were built BEFORE the cock exists, so their elbow scans
-  // could not see its legs — the cock's seat must yield to the rods
-  // instead: push each rod's swept corridor (both elbow segments plus
-  // the knuckle, sampled over the crown stroke).
-  {
-    let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
-    let psi = STOP_PSI0;
-    const pushElbow = (a, b, elbow) => {
-      const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
-      const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
-      const E = { x: a.x + ux * L * elbow.f + nx * elbow.e, y: a.y + uy * L * elbow.f + ny * elbow.e };
-      obstacles.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: ROD_R });
-      obstacles.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: ROD_R });
-      obstacles.push({ x: E.x, y: E.y, r: ROD_R * 1.15 });
-    };
-    for (let i = 0; i <= 12; i++) {
-      const post = tailPostWorldAt(i / 12);
-      q = intersectTail(post, RESET_ROD_LEN, q).q;
-      pushElbow(post, q, RESET_ROD_ELBOW);
-      obstacles.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: q.x, by: q.y, r: 0.7 });
-      psi = stopSolvePsi(post, psi);
-      pushElbow(post, stopTailTopAt(psi), HACK_ROD_ELBOW);
-    }
-  }
+  // could not see its legs — the cock's seat must yield to the linkage
+  // instead: the shared swept-corridor list (rods, post arc, hammer arm).
+  for (const o of LOW_LINKAGE_OBSTACLES) obstacles.push(o);
   const distTo = (o, x, y) => {
     if (o.ax === undefined) return Math.hypot(x - o.x, y - o.y) - o.r;
     const vx = o.bx - o.ax, vy = o.by - o.ay;
@@ -3764,21 +3804,25 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
   };
   const capR = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
-  // The stop work's hardware lives entirely in the plate cut's open wedge
-  // (where inCutClearance already forbids seats) and its hack rod runs
-  // above the pillar tops, so — unlike the old blade/collar layout, whose
-  // mid-movement sweep once swallowed a pillar seat — the hacking no
-  // longer constrains the pillars at all. The lever's tail-post arc is
-  // still covered by tqSlots, and the pillars are a swept unit now, so any
-  // future regression is caught by the inspector rather than by luck.
+  // The stop work's BRACKET lives in the plate cut's open wedge (where
+  // inCutClearance already forbids seats), but the low reset/hack linkage
+  // does NOT: both elbow rods, the setting-lever tail post's swing arc and
+  // the hammer arm cross the movement at z ≈ 0.15–1.9, and a pillar is a
+  // full-height column. The post's arc used to be covered indirectly by
+  // tqSlots; the low corridor emptied tqSlots (the post no longer pierces
+  // the 3/4 plate), which silently dropped that cover — so the pillars
+  // take the shared swept-corridor list directly.
   const seatClearance = (x, y) => {
     let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
-    for (const s of tqSlots) {
+    const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
       const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
-      c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
-    }
+      return Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r;
+    };
+    for (const s of tqSlots) c = Math.min(c, stadium(s));
+    for (const o of LOW_LINKAGE_OBSTACLES)
+      c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
     for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj, maintDetent, setupWork]) {
