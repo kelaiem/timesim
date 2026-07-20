@@ -184,8 +184,8 @@ const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
 // oscillator hangs under the open plate cutaway, and the plate's own floor
 // binds on the hairspring stack (the fusee was dropped to make that true —
 // see FUSEE_BASE_Z). Chain, with the slim balance: L_FORK/L_ESCAPE 4.5 →
-// L_BALANCE ≈ 5.79 → spring top ≈ 7.41 → cock underside = plate floor
-// ≈ 7.56 (wheels that XY-overlap must never share z; each step is
+// L_BALANCE ≈ 5.94 → spring top ≈ 7.56 → cock underside = plate floor
+// ≈ 7.71 (wheels that XY-overlap must never share z; each step is
 // half-thickness sums + the one margin).
 const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
 // Center wheel dropped onto its own bind: one margin over the great wheel's
@@ -353,11 +353,26 @@ const fourthPinion = G.makePinion({ module: thirdModule, teeth: 10, thickness: 1
 const fourthPinionR = fourthPinion.userData.r;
 
 const fourthModule = 0.21, fourthTeeth = 80;
-const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: 0.8, boreR: 0.9, spokes: 5, material: MATS.brass });
+const FOURTH_WHEEL_T = 0.8;
+const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: FOURTH_WHEEL_T, boreR: 0.9, spokes: 5, material: MATS.brass });
 const fourthWheelR = fourthWheel.userData.r;
 
 // --- Escape arbor: pinion (meshed by fourth wheel) + escape wheel --------
-const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: 1.6, material: MATS.steel });
+// The escape pinion rides the train's highest wheel plane (L_FOURTH), so its
+// thickness is a plate-floor constraint, not a free choice: the 3/4 plate
+// floor sits at max(tallest under-plate part, hairspring stack) + margin,
+// and the design goal is that the SPRING binds (cock flush in the plate
+// band — see the TQ_MEASURED_MAX check). The house pinion thickness (1.6,
+// fine for the low arbors) topped out at L_FOURTH + 0.8 + bevel = 7.79,
+// above the spring stack (7.56) — surplus leaf with nothing to mesh.
+// Derived from what the mesh actually needs instead: the leaf band covers
+// the fourth wheel's full tooth band (thickness + 2·extrude bevel) with
+// CLEAR_MARGIN of overrun at each end. Top lands at 7.55 ≤ SPRING_TOP_Z,
+// so the hairspring stack is the plate's binding member again.
+const fourthWheelBevel = Math.min(FOURTH_WHEEL_T * 0.18, fourthModule * 0.22); // = makeGear's bevel
+const escPinionBevel = fourthModule * 0.2; // = makePinion's bevel (module·0.2 governs; thickness·0.15 is larger)
+const ESC_PINION_T = FOURTH_WHEEL_T + 2 * fourthWheelBevel + 2 * CLEAR_MARGIN - 2 * escPinionBevel;
+const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: ESC_PINION_T, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
 const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
@@ -955,10 +970,10 @@ escapeArbor.add(escapePinion, escapeWheel);
 // its own pinion, and nothing spanned that gap: from the side the two discs
 // floated. A visible shaft from the wheel's hub top to the pinion's
 // underside (dimensions from the same constants that place them: hub ring
-// is wheelT·1.3 tall, pinion 1.6 thick).
+// is wheelT·1.3 tall, pinion ESC_PINION_T thick).
 {
   const hubTop = (L_ESCAPE - L_FOURTH) + (0.8 * 1.3) / 2;
-  const pinionBot = -1.6 / 2;
+  const pinionBot = -ESC_PINION_T / 2;
   const shaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.4, 0.4, pinionBot - hubTop, 12), MATS.steel);
   shaft.rotation.x = Math.PI / 2;
@@ -1072,6 +1087,10 @@ const TQ_UNDER = [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor
 const TQ_MEASURED_MAX = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z));
 if (TQ_MEASURED_MAX > SPRING_TOP_Z + 1e-6) {
   console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack (${SPRING_TOP_Z.toFixed(2)}) — the balance cock will sit BELOW the plate band`);
+  for (const o of TQ_UNDER) {
+    const name = labelEntries.find((e) => e.obj === o)?.name ?? '(unlabeled)';
+    console.warn(`  under-plate part ${name}: max z = ${boxOf(o).max.z.toFixed(3)}`);
+  }
 }
 const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, SPRING_TOP_Z) + CLEAR_MARGIN;
 const TQ_T = 0.8;
@@ -3030,13 +3049,18 @@ registerLabel('Balance cock', balanceCock);
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
     // Per-MESH band filter (not per-vertex: the slab's faces sit exactly ON
     // the band edges, and the stud-carrier post CROSSES the band with both
-    // its box corners outside it): a mesh votes iff its world AABB overlaps
-    // the plate's z-band. Legs, pads and the above-face dressing (shock
-    // setting, carrier ring, screw heads) never meet the plate and are
-    // excluded, so the cut doesn't over-open for them.
+    // its box corners outside it): a mesh votes iff its world AABB comes
+    // within CLEAR_MARGIN of the plate's z-band — the same margin the
+    // cock⇄plate clearance budget enforces. The band is INFLATED by that
+    // margin because, with the slab flush in the band, the T-foot legs end
+    // exactly AT the plate's floor plane (and the above-face dress starts
+    // at its top plane): a mesh kissing the band edge gets zero vertical
+    // separation, so its whole XY outline needs the cut margin too. Parts
+    // more than a margin outside the band (leg pads down at the base
+    // plate) still don't vote, so the cut doesn't over-open for them.
     o.geometry.computeBoundingBox();
     const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
-    if (!(bb.min.z < TQ_TOP_Z - eps && bb.max.z > TQ_BOT_Z + eps)) return;
+    if (!(bb.min.z < TQ_TOP_Z + CLEAR_MARGIN - eps && bb.max.z > TQ_BOT_Z - CLEAR_MARGIN + eps)) return;
     const pos = o.geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
