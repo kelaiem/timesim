@@ -933,6 +933,55 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
 // screw sit just above it. Children named 'ratchet' / 'click'.
 // ---------------------------------------------------------------------------
 
+// STAR WHEEL — symmetric V-points (a detent star, not a saw ratchet:
+// the jumper must ride identically in both directions). Points at
+// u = 0 of each pitch, valleys at u = 0.5. Extruded 0-based.
+export function makeStarWheel({ radius, points, thickness, depth, boreR = 0.5 }) {
+  const s = new THREE.Shape();
+  const rootR = radius - depth;
+  for (let i = 0; i < points; i++) {
+    const aTip = (i / points) * Math.PI * 2;
+    const aVal = ((i + 0.5) / points) * Math.PI * 2;
+    if (i === 0) s.moveTo(Math.cos(aTip) * radius, Math.sin(aTip) * radius);
+    else s.lineTo(Math.cos(aTip) * radius, Math.sin(aTip) * radius);
+    s.lineTo(Math.cos(aVal) * rootR, Math.sin(aVal) * rootR);
+  }
+  s.closePath();
+  const hole = new THREE.Path();
+  hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+  s.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: 1 });
+  const mesh = new THREE.Mesh(geo, MATS.steel);
+  mesh.name = 'star';
+  return mesh;
+}
+
+// JUMPER — detent lever: pivot boss at the origin, tapered arm along +x
+// ending in a V beak. Extruded 0-based; callers place and aim it.
+export function makeJumper({ reach, thickness, width = 0.9 }) {
+  const w2 = width / 2;
+  // Outline kept as data so placement solvers work on the RENDERED shape
+  // (mesh and solver share one source of truth — no bevel here, so the
+  // outline is exact).
+  const outline = [
+    [0, w2],
+    [reach * 0.6, w2 * 0.6],
+    [reach - 0.01, w2 * 0.28],
+    [reach + w2 * 0.9, 0], // the V beak's point
+    [reach - 0.01, -w2 * 0.28],
+    [reach * 0.6, -w2 * 0.6],
+    [0, -w2],
+  ];
+  const s = new THREE.Shape();
+  outline.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
+  s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geo, MATS.blueSteel);
+  mesh.name = 'jumperBeak';
+  mesh.userData.outline = outline;
+  return mesh;
+}
+
 // The click body alone (beak along +x, pivot hole at the origin end),
 // extruded 0-based — callers place and aim it. Shared by the composite
 // builder below and the plate-top click unit in main.js.

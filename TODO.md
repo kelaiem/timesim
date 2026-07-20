@@ -40,14 +40,16 @@ rather than a keyframed morph whose inner boundary follows the (now
 anchored) arbor and whose outer end follows the drum wall — the
 makeHairspring wind-keyframe trick would close it.
 
-## 3. `handSetOffset` is assigned, not derived
+## 3. CLOSED — `handSetOffset` derived through the setting path
 
-The motion-works arbor now has real bevel-gear pairs at every corner, and the
-hour hand's 12:1 is now real gearing — but the *driving value* for hand-setting
-is still assigned directly in `tick()` rather than computed forward from the
-crown's rotation through those gears' tooth ratios. Same representational
-convention as the reserve train; lower priority than the items above because
-the geometry is present and correct, only the number hops.
+Closed by the jumping-minute setting (BACKLOG §1): the hand-set value is
+now `rawSetOffset`, computed forward from the crown's rotation through
+the real tooth counts (windPinion → settingWheel → minuteArbor compound →
+cannon), then quantized to whole minutes by the star + jumper while the
+crown is out (the snap folding into a persistent correction on push-in).
+Nothing about hand-setting is assigned any more — the number travels the
+gears. (The reserve train keeps its own representational convention;
+that's its entry, not this one.)
 
 ## 4. Smaller items
 

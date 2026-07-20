@@ -2023,9 +2023,41 @@ const settingLever = G.makeSettingLever({
   // it no longer reaches the three-quarter plate at all.
   postH: POST_TOP_Z - (Z_SETTING_LEVER + 0.5),
 });
+// --- Jumping-minute LIFTER PLANE (shared by the post drop below and the
+// jumper's lost-motion bar, built with the dial side). The bar spans the
+// whole plate→dial gap from this post to the jumper's tail pin, and the
+// keyless/motion/reserve stacks leave NO clear plane along that span in
+// the z-band they occupy (measured: stacks reach z −3.5 … −6.36 on the
+// straight run). The one empty corridor is the DIAL-HUGGING plane: both
+// bar faces derived from the dial's back face plus the margin —
+//   bar centre = Z_DIAL + CLEAR_MARGIN + JMP_LIFTER_T/2
+// binds the bar's dial-side face at exactly CLEAR_MARGIN.
+const JMP_LIFTER_T = 0.3;
+// Bind headroom: these planes are solved to land EXACTLY on CLEAR_MARGIN,
+// and the clearance sweep compares the BVH-measured mesh gap ≥ 0.15 with
+// no tolerance — a float hair (transform chains, tessellation) reads as a
+// violation. One explicit centi-unit of slack keeps the bind falsifiable
+// without flickering.
+const JMP_BIND_EPS = 0.01;
+const Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS + JMP_LIFTER_T / 2;
 const settingLeverGroup = new THREE.Group();
 settingLeverGroup.position.set(settingLeverPivot.x, settingLeverPivot.y, Z_SETTING_LEVER);
 settingLeverGroup.add(settingLever);
+{
+  // Post DROP: the lifter bar rides the tail post at the dial-hugging
+  // plane, below the lever body — extend the post dial-ward so the bar's
+  // slot has a pin there. Its end binds at CLEAR_MARGIN above the dial's
+  // back face (same constraint the bar itself is planed by).
+  const topW = Z_SETTING_LEVER - 0.5;                  // lever body's dial-side face (world)
+  const endW = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS;   // pin end, margin (+ bind headroom) off the dial back
+  const drop = new THREE.Mesh(
+    new THREE.CylinderGeometry(G.SETTING_LEVER_POST_R, G.SETTING_LEVER_POST_R, topW - endW, 12), MATS.steel);
+  drop.rotation.x = Math.PI / 2;
+  // settingLever local frame: group sits at Z_SETTING_LEVER, no flip —
+  // dial-ward is −z; the post rides the tail at local (0, −SL_TAIL).
+  drop.position.set(0, -SL_TAIL, (topW + endW) / 2 - Z_SETTING_LEVER);
+  settingLever.add(drop);
+}
 movement.add(settingLeverGroup);
 registerExplode(settingLeverGroup, Z_SETTING_LEVER, 4, -1);
 registerLabel('Setting lever', settingLeverGroup);
@@ -4126,6 +4158,245 @@ hourWheelGroup.add(mwHourWheel);
 }
 
 // ---------------------------------------------------------------------------
+// JUMPING-MINUTE SETTING (BACKLOG §1) — a star on the minute wheel and a
+// sprung jumper on the dial face, engaged ONLY while the crown is out:
+// pull → seconds fly to zero and hack (existing), and the jumper drops
+// into the star, snapping the minute hand onto an exact minute index;
+// turn → the hand advances in whole-minute detented jumps; push at the
+// reference tick → restart, synchronized. The running display stays
+// continuous because the jumper lifts when the crown goes home.
+//
+// The star's point count is DERIVED from the motion works, not assumed:
+// one point per MINUTE-HAND minute seen at the minute wheel through the
+// real cannon⇄minute-wheel mesh (10:30 → the wheel turns once per 3 h →
+// 180 points at 2° pitch: a fine-serrated detent star).
+// ---------------------------------------------------------------------------
+const STAR_POINTS = Math.round(60 / Math.abs(MW_RATIO_1));
+if (Math.abs(60 / Math.abs(MW_RATIO_1) - STAR_POINTS) > 1e-9)
+  console.warn('jumping minutes: motion-works ratio gives a NON-INTEGER star count', 60 / Math.abs(MW_RATIO_1));
+const STAR_PITCH = (Math.PI * 2) / STAR_POINTS;
+// z slice DERIVED between the minute wheel's underside and the hour
+// wheel's top face (both with their extrude bevels), one margin each way.
+const _mwWheelBot = MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+const _hourWheelTop = MW_Z2 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);
+const STAR_T = (_mwWheelBot - _hourWheelTop) - 2 * CLEAR_MARGIN;
+if (STAR_T < 0.2)
+  console.warn(`jumping minutes: star slice collapsed to ${STAR_T.toFixed(2)} between the motion-works planes`);
+const STAR_BOT = _hourWheelTop + CLEAR_MARGIN;      // 0-based extrude sits here
+const STAR_MID = STAR_BOT + STAR_T / 2;
+// Radius inside the minute wheel's root circle (the star must never be
+// the mesh); depth styled deep for slender visible points.
+const STAR_R = (MW_MODULE_1 * MW_MINUTE_TEETH) / 2 - MW_MODULE_1 * 1.15 - 0.35;
+const STAR_DEPTH = 0.45;
+const minuteStar = G.makeStarWheel({ radius: STAR_R, points: STAR_POINTS, thickness: STAR_T, depth: STAR_DEPTH });
+minuteStar.position.z = STAR_BOT;
+mwArbor.add(minuteStar); // keyed to the minute wheel — snaps move the hands through the real train
+
+// JUMPER — its own unit on the dial face. Pivot bearing scanned around
+// the star; beak reach solved so the V tip seats at the valleys with a
+// working bite; lift angle derived from the tip's clearance over the
+// star's points.
+const JMP_PIV_R = STAR_R + 2.4;                     // pivot ring: clear of the tips by ~2 beak lengths
+const JMP_TIP_SEAT_R = STAR_R - STAR_DEPTH + 0.1;   // tip rests just above the valley root
+const JMP_W = 0.9;
+// Lever length (pivot → tip), solved so the tip's swing circle CROSSES the
+// seat radius transversally with real ride authority. The old derivation
+// (REACH = PIV − seat − 0.405) made |pivot→tip| = PIV − seat exactly: the
+// seat sat AT the swing circle's inner tangency, where dR/dθ = 0 — so the
+// off-axis aim scan below could never meet its ≥ 0.45·L slope gate and
+// fell back (with a warning) to the dead-on lay with no ride authority.
+// Constraint: at the seat crossing, slope = PIV·L·sinφ/seat ≥ 0.5·L (10%
+// over the scan's gate) ⇒ sinφ = 0.5·seat/PIV, then the law of cosines
+// gives the inner transversal crossing:
+const JMP_PHI = Math.asin(0.5 * JMP_TIP_SEAT_R / JMP_PIV_R); // pivot-vertex angle at the seat crossing
+const JMP_LEVER = JMP_PIV_R * Math.cos(JMP_PHI)
+  - Math.sqrt(JMP_TIP_SEAT_R ** 2 - (JMP_PIV_R * Math.sin(JMP_PHI)) ** 2); // pivot → tip
+const JMP_REACH = JMP_LEVER - JMP_W * 0.45;
+// (The released lift itself is solved further down, over the beak's whole
+// outline — see JMP_LIFT_ROT.)
+// Bearing scan (dialFace-local frame): dodge the setting cap's arbor
+// head (its z-band overlaps this plane), the sub-dial wells, and the
+// hour-wheel tube; prefer the bearing farthest from the setting cap so
+// the lifter link has a clean run from the tail post.
+const JMP_AZ = (() => {
+  const capLocal = { x: -SETTING_CAP_XY.x, y: SETTING_CAP_XY.y }; // world→dialFace: R_y(π) mirrors x
+  const obstacles = [
+    { x: capLocal.x - MW_STUD.x, y: capLocal.y - MW_STUD.y, r: 1.8 }, // setting cap + arbor head (stud-relative)
+    { x: -MW_STUD.x, y: -MW_STUD.y, r: HOUR_TUBE_OUTER + 0.6 },       // dial-centre tube stack
+    { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
+    { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
+  ];
+  let best = null;
+  for (let d = 0; d < 360; d += 2) {
+    const a = d * DEG2RAD;
+    const px = Math.cos(a) * JMP_PIV_R, py = Math.sin(a) * JMP_PIV_R;
+    let clr = Infinity;
+    for (const o of obstacles) clr = Math.min(clr, Math.hypot(px - o.x, py - o.y) - o.r - 1.2);
+    if (clr < CLEAR_MARGIN) continue;
+    const capD = Math.hypot(px - obstacles[0].x, py - obstacles[0].y);
+    const score = Math.min(clr, 2) + capD * 0.02;
+    if (!best || score > best.score) best = { a, score };
+  }
+  if (!best) { console.warn('minute jumper: no clear bearing — using +y'); best = { a: Math.PI / 2 }; }
+  return best.a;
+})();
+const jumperUnit = new THREE.Group();
+jumperUnit.position.set(MW_STUD.x, MW_STUD.y, 0);
+dialFace.add(jumperUnit);
+registerLabel('Minute jumper', jumperUnit);
+const jumperAzGroup = new THREE.Group();
+jumperAzGroup.rotation.z = JMP_AZ;
+jumperUnit.add(jumperAzGroup);
+// The lever itself, pivoted at JMP_PIV_R, aimed back at the star.
+const jumperLever = new THREE.Group();
+jumperLever.position.set(JMP_PIV_R, 0, STAR_BOT);
+jumperAzGroup.add(jumperLever);
+// Beak AIM solved, not the dead-on lay: a tip on the stud→pivot line has
+// zero radial mechanical advantage (rotation moves it tangentially), so
+// the seat is scanned OFF-axis for the aim whose tip lands on the seat
+// radius with a real dR/dθ slope. Seat azimuth, slope and lift sign all
+// come out of the same numbers (the pawl/detent scheme).
+const _jTipAt = (rot) => ({ x: JMP_PIV_R + Math.cos(rot) * JMP_LEVER, y: Math.sin(rot) * JMP_LEVER });
+const JMP_AIM = (() => {
+  let best = null;
+  for (let rot = Math.PI * 0.55; rot <= Math.PI * 1.45; rot += 0.002) {
+    const t = _jTipAt(rot);
+    const r = Math.hypot(t.x, t.y);
+    if (Math.abs(r - JMP_TIP_SEAT_R) > 0.02) continue;
+    const r2 = Math.hypot(_jTipAt(rot + 1e-3).x, _jTipAt(rot + 1e-3).y);
+    const slope = (r2 - r) / 1e-3; // dR/dθ at the seat
+    if (Math.abs(slope) < 0.45 * JMP_LEVER) continue;
+    if (!best || Math.abs(slope) > Math.abs(best.slope)) best = { rot, slope, t };
+  }
+  if (!best) {
+    console.warn('minute jumper: no off-axis seat aim found — beak laid dead-on (no ride authority)');
+    best = { rot: Math.PI, slope: JMP_LEVER, t: _jTipAt(Math.PI) };
+  }
+  return best;
+})();
+const JMP_BASE_ROT = JMP_AIM.rot;
+const JMP_TIP_AZ_LOCAL = Math.atan2(JMP_AIM.t.y, JMP_AIM.t.x); // in the az frame
+const JMP_LIFT_SIGN = Math.sign(JMP_AIM.slope) || 1;
+const JMP_SLOPE = Math.abs(JMP_AIM.slope);
+const jumperBeakMesh = G.makeJumper({ reach: JMP_REACH, thickness: STAR_T, width: JMP_W });
+jumperBeakMesh.rotation.z = JMP_BASE_ROT; // solved aim, tip on the seat
+// Released lift, solved over the beak's WHOLE OUTLINE — not the tip apex.
+// The apex has the full dR/dθ authority (JMP_SLOPE), but the V's base
+// corners sit almost on the pivot circle and move nearly tangentially, so
+// the apex-only lift ((STAR_R + margin − seat)/slope ≈ 0.18) left the
+// flank corners at radius ~3.54, INSIDE the running star's tip circle —
+// the wheel ground the lifted beak (measured intersection at rest).
+// Constraint: at ψ_lift, EVERY outline point stays a margin outside the
+// star's swept tip circle:  min_p |(JMP_PIV_R,0) + R(ψ)·R(base)·p| ≥
+// STAR_R + CLEAR_MARGIN.
+const JMP_LIFT_ROT = (() => {
+  const cB = Math.cos(JMP_BASE_ROT), sB = Math.sin(JMP_BASE_ROT);
+  const raw = jumperBeakMesh.userData.outline.map(([x, y]) => ({ x: x * cB - y * sB, y: x * sB + y * cB }));
+  // Sample ALONG the outline edges too: an edge's interior can pass closer
+  // to the star axis than either of its endpoints.
+  const pts = [];
+  for (let i = 0; i < raw.length; i++) {
+    const a = raw[i], b = raw[(i + 1) % raw.length];
+    for (let k = 0; k < 8; k++) pts.push({ x: a.x + (b.x - a.x) * k / 8, y: a.y + (b.y - a.y) * k / 8 });
+  }
+  const minRAt = (psi) => {
+    const c = Math.cos(psi), s = Math.sin(psi);
+    let m = Infinity;
+    for (const p of pts) m = Math.min(m, Math.hypot(JMP_PIV_R + p.x * c - p.y * s, p.x * s + p.y * c));
+    return m;
+  };
+  for (let a = 0; a <= Math.PI / 2; a += 1e-3) {
+    if (minRAt(JMP_LIFT_SIGN * a) >= STAR_R + CLEAR_MARGIN + JMP_BIND_EPS) return a;
+  }
+  console.warn('minute jumper: no lift angle clears the star by the margin — beak left at the apex-only lift');
+  return (STAR_R + CLEAR_MARGIN - JMP_TIP_SEAT_R) / JMP_SLOPE;
+})();
+{
+  const beak = jumperBeakMesh;
+  jumperLever.add(beak);
+  // Tail bar behind the pivot: the lifter link's pin land.
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(1.3, JMP_W * 0.7, STAR_T), MATS.blueSteel);
+  tail.position.set(0.85, 0, STAR_T / 2);
+  jumperLever.add(tail);
+  // Tail pin, EXTENDED dial-ward: it is both the lever's pin through the
+  // tail bar and the RISER the lost-motion bar connects to, down on the
+  // dial-hugging lifter plane (Z_JMP_LIFTER — the bar cannot run at the
+  // star slice: the keyless/motion/reserve stacks own that whole z-band
+  // along its span). The pin's dial-ward end sits flush with the bar's
+  // dial face, i.e. it binds at CLEAR_MARGIN above the dial's back — the
+  // same constraint that planes the bar.
+  const pinEnd = -(CLEAR_MARGIN + JMP_BIND_EPS) - STAR_BOT; // lever-local; +z is dial-ward in the flipped unit frame
+  const tailPin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, pinEnd + 0.25, 8), MATS.steel);
+  tailPin.rotation.x = Math.PI / 2;
+  tailPin.position.set(1.35, 0, (pinEnd - 0.25) / 2);
+  tailPin.name = 'jumperTailPin';
+  jumperLever.add(tailPin);
+}
+{
+  // Pivot stud: from the base plate's dial-side face up to this plane
+  // (the same span the minute wheel's own stud bridges).
+  const plateFaceLocal = Z_DIAL - (backPlate.position.z - 1);
+  const studLen = Math.abs(STAR_BOT - (plateFaceLocal - 0.4));
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studLen, 10), MATS.steel);
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(JMP_PIV_R, 0, STAR_BOT - studLen / 2 + STAR_T / 2);
+  jumperAzGroup.add(stud);
+  // Jumper SPRING: solved-arc blade from its own screw pressing the
+  // lever's flank toward the star (the bias that seats the beak).
+  const A = { x: JMP_PIV_R + 1.9 * Math.cos(0.7), y: 1.9 * Math.sin(0.7) };
+  const T = { x: JMP_PIV_R - 0.9, y: JMP_W * 0.55 + 0.12 };
+  const dx = T.x - A.x, dy = T.y - A.y, dd = Math.hypot(dx, dy);
+  const springR = 1.1;
+  const h = Math.sqrt(Math.max(springR * springR - (dd / 2) ** 2, 0.01));
+  const C = { x: (A.x + T.x) / 2 + (-dy / dd) * h, y: (A.y + T.y) / 2 + (dx / dd) * h };
+  const thT = Math.atan2(T.y - C.y, T.x - C.x);
+  let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
+  if (span < 0) span += Math.PI * 2;
+  const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.1, 8, 22, span), MATS.blueSteel);
+  spring.position.set(C.x, C.y, STAR_MID);
+  spring.rotation.z = thT;
+  jumperAzGroup.add(spring);
+  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, studLen, 8), MATS.steel);
+  springPost.rotation.x = Math.PI / 2;
+  springPost.position.set(A.x, A.y, STAR_BOT - studLen / 2 + STAR_T / 2);
+  jumperAzGroup.add(springPost);
+}
+// LIFTER LINK — a lost-motion bar from the setting lever's tail post
+// (which already carries the crown's pull, dial side) to the jumper's
+// tail pin: crown out pushes the slot's end against the pin and drops
+// the beak in; crown in draws it back and lifts the beak clear. The
+// bar's slot absorbs the stroke surplus (the post travels ~2.9; the
+// tail arc is ~0.2 — a classic slotted setting-lever connection). Drawn
+// as a follower between its two pins each frame.
+const jumperLifter = new THREE.Mesh(new THREE.BoxGeometry(1, 0.55, JMP_LIFTER_T), MATS.steel);
+jumperUnit.add(jumperLifter); // part of the jumper UNIT (its contact with the post is the declared lost-motion joint)
+// Star base phase: snapped minutes must put a VALLEY under the beak.
+// At a snapped pose the minute wheel's angle is a multiple of the pitch,
+// so a single build-time phase aligns every snap: valley (u = 0.5) at
+// the beak's azimuth when mwMinuteA = 0 snapped.
+// Star base phase from the SOLVED tip azimuth: a snapped minute puts the
+// minute wheel at a pitch multiple, so one build-time phase aligns every
+// snap's valley (u = 0.5) under the beak's tip.
+const JMP_TIP_AZ = JMP_AZ + JMP_TIP_AZ_LOCAL; // dialFace frame
+minuteStar.rotation.z = JMP_TIP_AZ - STAR_PITCH / 2;
+const JMP_WORLD_Z = Z_JMP_LIFTER; // the LIFTER BAR's plane in movement z — the dial-hugging corridor (see its derivation at the setting-lever build); the post's drop pin ends there by the same constraint
+const JMP_LIFT_LOCAL_Z = Z_DIAL - Z_JMP_LIFTER; // same plane in the unit's flipped local frame
+// UNIT ATTRIBUTION: the jumper is PLATE furniture (its stud rivets into the
+// plate's dial-side face — see the mechanical graph's support edge), not
+// dial furniture. As a dialFace child its meshes were collected into BOTH
+// the 'Minute jumper' AND 'Dial' units (collectUnits gathers each label's
+// full subtree), which made the 'Minute jumper' ⇄ 'Dial' budget row
+// identically zero at every pose and leaked the lifter bar's intended
+// post contact into 'Setting lever' ⇄ 'Dial'. Re-parent to the movement
+// with the same world transform (attach preserves it); it keeps exploding
+// with the dial side (same layer/dir as dialGroup).
+dialFace.updateWorldMatrix(true, false);
+movement.attach(jumperUnit);
+registerExplode(jumperUnit, Z_DIAL, 1, -1);
+const jumperTailPin = jumperLever.getObjectByName('jumperTailPin');
+const _jmpPostW = new THREE.Vector3(), _jmpPinW = new THREE.Vector3(); // tick scratch
+
+// ---------------------------------------------------------------------------
 // Power-reserve complication — sub-dial at RESERVE_LOCAL. A small blued hand
 // sweeps a 120° arc from 30 h (mainspring fully wound) down to 0, driven by
 // barrelWindTurns in tick(). The graduated Ab/Auf face lives on the well's
@@ -4241,6 +4512,11 @@ const RELAX_SECONDS = 30 * 3600; // simulated hours of running per full wind
 const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 let windAccumTurns = 0; // ratchet/fusee turns actually BANKED by winding (not raw crown input)
+// Jumping-minute setting state: the eased displayed offset while the
+// jumper is engaged (null when lifted), and the folded-in snap correction
+// that keeps the hand from springing back to the raw phase on push-in.
+let jumpDisp = null;
+let jumpCorr = 0;
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
 // ---------------------------------------------------------------------------
@@ -5104,12 +5380,31 @@ function tick(t) {
   hairspring.userData.setWind(theta);
 
   // Setting path: settingWheel -> minuteArbor (compound wheel+pinion) ->
-  // handSetOffset, the real angle contributed by turning the crown in the
-  // setting position. Computed here (before the hands) and reused below
-  // when driving the actual gear meshes, so it's derived once, not twice.
+  // the RAW hand-set angle, derived forward through the real tooth counts.
   const settingWheelSpin = -setPathRot * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
-  const handSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
+  const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
+  // JUMPING-MINUTE SETTING: while the crown is out, the jumper is in the
+  // star and the DISPLAYED offset is quantized so the minute hand sits on
+  // exact minute indices — the raw input winds against the jumper spring
+  // and the hand SNAPS one detent at a time (eased on the CAM_SNAP_TAU
+  // convention). On push-in the achieved snap is folded into a persistent
+  // correction so the hand never springs back to the raw phase; running
+  // then resumes continuously with the jumper lifted clear.
+  const jmpEngaged = crownPullT > 0.5;
+  {
+    const minuteBase = centerAngle(tau) - centerAt0; // frozen while hacked (pull also hacks)
+    const MIN_PITCH = (Math.PI * 2) / 60;
+    if (jmpEngaged) {
+      const target = Math.round((minuteBase + rawSetOffset + jumpCorr) / MIN_PITCH) * MIN_PITCH - minuteBase;
+      if (jumpDisp === null) jumpDisp = target;
+      jumpDisp += (target - jumpDisp) * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
+    } else if (jumpDisp !== null) {
+      jumpCorr = jumpDisp - rawSetOffset; // fold the snap in; no spring-back
+      jumpDisp = null;
+    }
+  }
+  const handSetOffset = jumpDisp !== null ? jumpDisp : rawSetOffset + jumpCorr;
 
   // Hands: driven by the same train functions, but zero-referenced against
   // t=0 so the dial reads 12:00:00 at sim start (the raw angles carry the
@@ -5130,6 +5425,33 @@ function tick(t) {
   const mwMinuteA = minuteA * MW_RATIO_1;      // minute wheel + its pinion
   const mwHourA = mwMinuteA * MW_RATIO_2;      // hour wheel (and its tube)
   mwArbor.rotation.z = mwMinuteA;
+  // Minute jumper: the star is a child of mwArbor, so its dial-frame turn
+  // is mwMinuteA plus its build phase; the beak's tip rides the V profile
+  // passing its azimuth, on top of the crown-driven lift (crownPullT is
+  // already eased, so engagement is smooth). While running with the crown
+  // in, the lever holds clear of the points by the derived lift.
+  {
+    const starTurn = minuteStar.rotation.z + mwMinuteA;
+    let u = ((JMP_TIP_AZ - starTurn) / STAR_PITCH) % 1;
+    if (u < 0) u += 1;
+    const rU = STAR_R - 2 * STAR_DEPTH * Math.min(u, 1 - u); // V profile: tips at u=0, valley at 0.5
+    const ride = Math.max(rU - JMP_TIP_SEAT_R, 0) / JMP_SLOPE;
+    const lift = (1 - crownPullT) * JMP_LIFT_ROT;
+    jumperLever.rotation.z = JMP_LIFT_SIGN * Math.max(ride * crownPullT, lift);
+    // Lifter link (lost-motion bar): follower drawn from the setting
+    // lever's tail post — at this plane's movement-frame z — to the
+    // jumper's tail pin, both transformed into the dialFace frame.
+    const jmpPost = tailPostWorldAt(crownPullT); // (postNow is computed later in tick — same expression)
+    _jmpPostW.set(jmpPost.x, jmpPost.y, JMP_WORLD_Z);
+    jumperUnit.worldToLocal(_jmpPostW);
+    jumperTailPin.getWorldPosition(_jmpPinW);
+    jumperUnit.worldToLocal(_jmpPinW);
+    const ldx = _jmpPinW.x - _jmpPostW.x, ldy = _jmpPinW.y - _jmpPostW.y;
+    const llen = Math.hypot(ldx, ldy) || 1;
+    jumperLifter.position.set((_jmpPostW.x + _jmpPinW.x) / 2, (_jmpPostW.y + _jmpPinW.y) / 2, JMP_LIFT_LOCAL_Z);
+    jumperLifter.rotation.z = Math.atan2(ldy, ldx);
+    jumperLifter.scale.x = llen;
+  }
   hourWheelGroup.rotation.z = mwHourA;
   // Small seconds at 6: same expression the old central hand used (−2π per
   // minute, re-referenced on reset) — the CW-from-front sense is already
