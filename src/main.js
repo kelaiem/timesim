@@ -1191,6 +1191,14 @@ barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', whi
 // (the plate-fixed mount a click needs to actually hold the ratchet).
 // The whole subgroup can rotate about the barrel axis in 15°-pitch steps
 // (CLICK_AZ) without losing the builder's beak-in-valley registration.
+// ACCEPTED COMPROMISE, stated rather than hidden: this arbor turns BOTH
+// ways (forward with the train as the chain pays off, backward under
+// windBack), and a fixed pawl on a bidirectional ratchet is impossible in
+// a real fusee — real movements absorb the reversal in the maintaining-
+// power ratchet down at the great wheel, whose detent never sees reverse
+// motion. This plate-top pair compresses that construction for the view;
+// in tick() the beak geometrically rides whatever teeth pass under it,
+// which during winding means playing the saw ramp backwards.
 const CLICK_AZ = 0 * ((Math.PI * 2) / WIND_SPUR_TEETH); // k·pitch; bump k if the rod corridor ever pinches
 const windingClick = new THREE.Group();
 windingClick.position.set(P.barrel.x, P.barrel.y, 0);
@@ -1868,6 +1876,29 @@ windSpinner.add(crown);
 const clickMesh = windingClick.getObjectByName('click');
 const clickBaseRot = clickMesh ? clickMesh.rotation.z : 0;
 const RATCHET_TEETH = WIND_SPUR_TEETH; // spur and plate-top ratchet share the count — ratio unchanged
+// Geometric click ride (see the maintaining-power caveat at the
+// windingClick build): the beak tip's seat is MEASURED from the built
+// geometry, and in tick() it rides the saw profile actually passing its
+// azimuth. All az-frame quantities — CLICK_AZ rotates the whole subgroup,
+// so the tip azimuth is used relative to that frame.
+const CLICK_PIV_R = ratchetR * 1.28; // the click mesh's pivot (its shape origin sits at its position)
+const CLICK_BEAK_L = ratchetR * 0.8; // makeClick's beak length, pivot → tip
+const clickTipAt = (rot) => ({
+  x: CLICK_PIV_R + Math.cos(rot) * CLICK_BEAK_L,
+  y: Math.sin(rot) * CLICK_BEAK_L,
+});
+const _tip0 = clickTipAt(clickBaseRot);
+const CLICK_TIP_R = Math.hypot(_tip0.x, _tip0.y); // seat radius about the wheel axis
+const CLICK_TIP_AZ = Math.atan2(_tip0.y, _tip0.x);
+// Sanity: the tip must sit low enough in the teeth to have ride left
+// (below the tip circle by a workable bite) and must not be buried under
+// the root circle. Warn instead of silently animating nothing.
+if (CLICK_TIP_R > ratchetR - 0.2 || CLICK_TIP_R < ratchetR * 0.8 - 0.1)
+  console.warn(`winding click: beak tip seats at radius ${CLICK_TIP_R.toFixed(2)} — outside the ratchet's working band [${(ratchetR * 0.8).toFixed(2)}, ${ratchetR.toFixed(2)}]`);
+// The rotation sense that lifts the tip radially OUT of the teeth —
+// derived from the geometry, not guessed.
+const _tipEps = clickTipAt(clickBaseRot + 1e-4);
+const CLICK_LIFT_SIGN = Math.sign(Math.hypot(_tipEps.x, _tipEps.y) - CLICK_TIP_R) || 1;
 
 // --- Setting path: setting wheel -> minute wheel/pinion (compound) --------
 // Positioned further out along the stem than crownWheel, at the sliding
@@ -4566,7 +4597,23 @@ function tick(t) {
     windSpur.rotation.z = windSpurBase + windBack;
     windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
-    if (clickMesh) clickMesh.rotation.z = clickBaseRot - 0.06 * Math.abs(Math.sin(windBack * 12));
+    if (clickMesh) {
+      // The beak rides the saw teeth actually passing its azimuth — one
+      // geometric formula for both motion sources (train creep while
+      // running: the arbor group's rotation; windBack while winding) and
+      // both directions (winding plays the ramp backwards — the caveat at
+      // the windingClick build). Net ratchet angle in the click's az frame:
+      const ratNet = barrelArbor.rotation.z + windTop.rotation.z - CLICK_AZ;
+      let u = (((CLICK_TIP_AZ - ratNet) * RATCHET_TEETH) / (2 * Math.PI)) % 1;
+      if (u < 0) u += 1;
+      // Tooth profile from the builder: root→tip chord over 72% of the
+      // pitch (the back), tip→root over the remaining 28% (the face).
+      const rootR = ratchetR * 0.8, depth = ratchetR * 0.2;
+      const rTooth = u <= 0.72 ? rootR + (depth * u) / 0.72 : ratchetR - (depth * (u - 0.72)) / 0.28;
+      // Contact when the passing profile stands above the tip's seat
+      // radius; radial ride → click rotation about its shoulder screw.
+      clickMesh.rotation.z = clickBaseRot + (CLICK_LIFT_SIGN * Math.max(rTooth - CLICK_TIP_R, 0)) / CLICK_BEAK_L;
+    }
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
