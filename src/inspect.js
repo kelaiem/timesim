@@ -88,13 +88,14 @@ const MECH_GRAPH = {
     ['Pallet fork', 'Fork cock'],            // its own standalone cap...
     ['Fork cock', 'plate'],                  // ...whose leg lands on the base plate
     ['Balance cock', 'plate'],               // its leg lands on the BASE plate: the whole
-                                             // balance assembly (cock, regulator, spring,
-                                             // balance) comes off with the escapement, and
-                                             // the three-quarter plate lifts independently
+                                             // balance assembly (cock, spring, balance)
+                                             // comes off with the escapement, and the
+                                             // three-quarter plate lifts independently
     ['Balance', 'Balance cock'],             // staff's upper pivot in the cock jewel
+    ['Balance', 'plate'],                    // staff's LOWER pivot: rubbed-in jewel in the base plate
     ['Hairspring', 'Balance'],               // collet on the staff (inner end)
     ['Hairspring', 'Balance cock'],          // outer terminal clamped in the stud hanging from the cock
-    ['Regulator', 'Balance cock'],           // index collar + swan-neck ride the cock's top face
+                                             // (free-sprung: the stud carrier is the spring's ONLY fixture)
     ['Chain', 'Mainspring drum'],            // hooked to the drum wall
     ['Chain', 'Fusee & great wheel'],        // hooked to the cone
     ['Keyless works', 'plate'],              // stem-bushing foot hung from the plate's BACK face
@@ -182,7 +183,10 @@ const MECH_GRAPH = {
     // corner gears' own tooth ratios — same representational-coupling
     // convention already accepted for the reserve train, not a unique gap.
     ['Keyless works', 'cannon pinion / hands', 'motion-works arbor now has real bevel-gear pairs at every corner; the DRIVING value (handSetOffset) is still assigned directly in tick() rather than computed forward from the crown through those gears’ tooth ratios'],
-    ['Hairspring', 'Balance cock', 'stud should be pinned to the cock (it currently rotates with the spring)'],
+    // (The hairspring-stud item is CLOSED: the stud lives on the cock's
+    // stud-carrier arm, the spring's outer end is angle-fixed by setWind,
+    // and the ['Hairspring','Balance cock'] support row above measures the
+    // clamp for real. Free-sprung, no curb pins to confuse the story.)
     // (The click item is CLOSED: the click is its own labelled unit now —
     // 'Winding click' — standing on a plate-fixed post beside the ratchet,
     // which itself moved to the fusee arbor's plate end when the keyless
@@ -205,6 +209,21 @@ const MECH_GRAPH = {
         const c = box.getCenter(new THREE.Vector3());
         return new THREE.Vector3(unitEntry.obj.getWorldPosition(new THREE.Vector3()).x,
           unitEntry.obj.getWorldPosition(new THREE.Vector3()).y, box.max.z);
+      },
+    },
+    {
+      // Mirror of the top anchor: the staff's LOWER end must actually
+      // reach its base-plate jewel (the balance ran without any lower
+      // bearing for a long time and nothing noticed — this makes that
+      // impossible to regress silently).
+      name: 'balance staff bottom in the plate jewel',
+      unit: 'Balance',
+      target: 'plate',
+      tol: 1.6,
+      point(unitEntry) {
+        const box = new THREE.Box3().setFromObject(unitEntry.obj);
+        return new THREE.Vector3(unitEntry.obj.getWorldPosition(new THREE.Vector3()).x,
+          unitEntry.obj.getWorldPosition(new THREE.Vector3()).y, box.min.z);
       },
     },
     // The four connectors below were each verified ONCE, by hand, live in
@@ -320,14 +339,10 @@ const EXPECTED_PAIRS = [
   ['Escape wheel', 'Pallet fork'],           // lock/impulse — THE escapement contact
   ['Pallet fork', 'Balance'],                // impulse pin in the fork notch
   ['Balance', 'Balance cock'],               // staff's upper pivot runs in the cock jewel
-  // Regulator assembly contacts (all by construction — the 2026-07 swan-neck
-  // work landed without EXPECTED rows, so the first includeExcluded sweep
-  // after it reported all four as FORBIDDEN):
-  ['Balance', 'Regulator'],                  // staff runs through the index/stud-carrier collars (same
-                                             // pivot adjacency as Balance ⇄ Balance cock above)
-  ['Balance cock', 'Regulator'],             // index collar + swan neck ride the cock's top face — its support edge
+  // (The Regulator unit is GONE — free-sprung conversion: no index, no
+  // curb pins, no swan neck. The stud carrier and shock setting remain,
+  // as parts of the Balance cock unit.)
   ['Balance cock', 'Hairspring'],            // the cock's hanging stud CLAMPS the terminal — its support edge
-  ['Hairspring', 'Regulator'],               // curb pins straddle the terminal curve at its midpoint
   ['Balance', 'Stop lever'],                 // brake pad on the rim (crown out)
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ ratchet (+ shared band under the great wheel)
@@ -702,14 +717,13 @@ const CLEARANCE_BUDGETS = [
   { a: 'Stop lever', b: 'Balance', min: 0.15, axes: ['beat', 'reserve', 'train'] },
   // The crank's tall tail and the balance cock share the open wedge; the
   // two rods diverge from the same tail post and the hack rod overflies
-  // the cock/regulator dress on its way to the crank — each of these is a
-  // corridor the stop-work design depends on:
+  // the cock's free-sprung dress on its way to the crank — each of these
+  // is a corridor the stop-work design depends on:
   { a: 'Stop lever', b: 'Balance cock', min: 0.15 },
   { a: 'Stop lever', b: 'Fork cock', min: 0.15 },
   { a: 'Stop lever', b: 'Pallet fork', min: 0.15 },
   { a: 'Hack rod', b: 'Reset rod', min: 0.15 },
   { a: 'Hack rod', b: 'Balance cock', min: 0.15 },
-  { a: 'Hack rod', b: 'Regulator', min: 0.15 },
   { a: 'Hack rod', b: 'Three-quarter plate', min: 0.15 },
   { a: 'Hack rod', b: 'Fusee & great wheel', min: 0.15 }, // overflies the cone by the derived lift
   // Three-quarter plate binds (2026-07-18). Every one of these is a place
@@ -929,7 +943,9 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const anchorFailures = [];
   for (const spec of MECH_GRAPH.anchors) {
     const unit = allUnits.find((u) => u.name === spec.unit);
-    const target = allUnits.find((u) => u.name === spec.target);
+    // Targets may also be STRUCTURE nodes ('plate' — the balance staff's
+    // lower jewel anchor) — resolveNode handles both.
+    const target = resolveNode(clock, allUnits, spec.target);
     if (!unit || !target) { anchorFailures.push({ name: spec.name, error: 'unit missing' }); continue; }
     const p = spec.point(unit, target);
     let best = Infinity;
