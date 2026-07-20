@@ -5015,7 +5015,9 @@ function sndClick(freq, q, decay, gain, when = 0) {
 const SND = {
   beatTic: () => sndClick(4200, 7, 0.006, 0.16),
   beatToc: () => sndClick(3400, 7, 0.007, 0.16),
-  pawl: (w = 0) => sndClick(2500, 5, 0.010, 0.22, w),
+  // The winding pawl gets a two-layer click — a bright tick plus a low
+  // mechanical body — so it reads clearly over the running beat.
+  pawl: (w = 0) => { sndClick(2200, 5, 0.014, 0.42, w); sndClick(900, 3, 0.022, 0.28, w); },
   detent: () => sndClick(2000, 5, 0.012, 0.18),
   jump: () => sndClick(3000, 6, 0.010, 0.25),
   hammer: () => sndClick(1200, 4, 0.025, 0.3),
