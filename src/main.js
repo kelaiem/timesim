@@ -1179,16 +1179,9 @@ barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', whi
 // (The plate-top ratchet + click that used to stand here on the FUSEE
 // arbor are gone — a fixed pawl on a bidirectional arbor was a display
 // fiction. The construction is now honest and split in two: the STATIC
-// set-up ratchet + click live on the DRUM arbor's plate-top square (see
-// the SET-UP WORK block at the drum build), and the moving clicks are
-// the MAINTAINING POWER pawls and detent at the great wheel (see that
-// block after the chain section). z-derivations for the drum's plate-top
-// stack, shared with the rod corridor below:)
-const SETUP_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN; // set-up ratchet rides one margin over the plate face
-const SETUP_TOP_Z = SETUP_BOT_Z + RATCHET_T;
-const SETUP_CAP_H = 0.35;
-const SETUP_SQ_PROUD = 0.05; // square proud of the wheel so the cap seats on the SQUARE
-const SETUP_CAP_TOP = SETUP_TOP_Z + SETUP_SQ_PROUD + SETUP_CAP_H;
+// set-up ratchet + click live low on the DRUM arbor above the BASE plate
+// (see the SET-UP WORK block at the drum build), and the moving clicks
+// are the MAINTAINING POWER pawls and detent at the great wheel.)
 // The ESCAPE WHEEL pivots in this plate like the rest of the train — its
 // bore sits in the tongue of plate the window leaves around it. Only the
 // PALLET FORK does not: it gets a small standalone cap cock screwed to the
@@ -1996,13 +1989,12 @@ const ROD_Z_LIFT = Math.max(
   CAM_T / 2 + CLEAR_MARGIN + ROD_TAILBAR_T / 2,
   FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR,
   TQ_TOP_Z + CLEAR_MARGIN + ROD_TAILBAR_T / 2 - Z_SECONDS_ARBOR,
-  // The rods cross the plate top near the keyless corner (the fusee's
-  // let-down square) and could cross the drum's set-up stack: their
-  // undersides must overfly both. Non-binding today (the plate term above
-  // wins) but derived so a taller square or cap can never silently eat
-  // the corridor.
+  // The rods cross the plate top near the keyless corner, where the
+  // fusee's let-down square stands: their undersides must overfly it.
+  // Non-binding today (the plate term above wins) but derived so a
+  // taller square can never silently eat the corridor. (The drum's
+  // set-up work lives on the BASE plate now — nowhere near the rods.)
   LETDOWN_TOP + CLEAR_MARGIN + ROD_R - Z_SECONDS_ARBOR,
-  SETUP_CAP_TOP + CLEAR_MARGIN + ROD_R - Z_SECONDS_ARBOR,
 );
 const ROD_PLANE_Z = Z_SECONDS_ARBOR + ROD_Z_LIFT; // reset rod centre-line's world z
 // The HACK rod (stop work) rides the same post on its own pin land ABOVE
@@ -2993,58 +2985,63 @@ const maintDetent = new THREE.Group();
 
 // ---------------------------------------------------------------------------
 // SET-UP WORK — the one ratchet a fusee movement really carries at its
-// barrel, and it is STATIC: the spring's inner end grips the DRUM ARBOR,
-// the arbor ends in a square above the plate carrying this ratchet, and
-// the plate-top click holds the few turns of pre-tension put in at
+// barrel, and it is STATIC: the spring's inner end grips the DRUM ARBOR
+// and this ratchet + click hold the few turns of pre-tension put in at
 // assembly. It never moves again in service — winding happens at the
-// fusee, running spins the drum BODY around this held arbor. Closes the
-// anchor half of TODO.md item 1: the drum→chain torque path now ends on
-// a fixture instead of thin air. (The spiral itself is still the
-// tension readout child — its morph remains representational.)
+// fusee, running spins the drum BODY around this held arbor. Because it
+// is bench-only hardware, it lives DOWN on the base plate under the drum
+// (marine-chronometer practice: set-up work on the lower plate, out of
+// the display side), in the same one-margin band the winding spur uses —
+// the great wheel's rim passes 5.2 from the drum axis but only above
+// z 1.2, so the low band clears it in both axes. Closes the anchor half
+// of TODO.md item 1: the drum→chain torque path now ends on a fixture
+// instead of thin air. (The spiral itself is still the tension readout
+// child — its morph remains representational.)
 // ---------------------------------------------------------------------------
 const setupWork = new THREE.Group();
 {
-  const SQ = 0.9 * Math.SQRT2; // across-corners = the drum staff's diameter — passes the plate's 0.95 bore
+  const SQ = 0.6 * Math.SQRT2; // across-corners = the lower staff's diameter (addLowerPivot staffR 0.6)
   setupWork.position.set(drumPos.x, drumPos.y, 0);
   const az = new THREE.Group();
   // Click and spring aimed toward the movement centre (+x in drum frame),
   // away from the plate rim where the pillars seat.
   az.rotation.z = 0;
   setupWork.add(az);
-  // Shaft continuation + square + ratchet + cap, all STATIC (the arbor
-  // does not turn in service — the body rotates around it).
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, TQ_TOP_Z - TQ_MID_Z, 12), MATS.steel);
-  shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2;
-  az.add(shaft);
-  const sqH = SETUP_TOP_Z + SETUP_SQ_PROUD - TQ_TOP_Z;
+  // Square + ratchet on the arbor's LOWER end, one margin above the base
+  // plate (Z_RATCHET_BOT — the winding spur's convention). No cap: the
+  // ratchet is captive between the plate below and the arbor's shoulder
+  // above. All STATIC — the arbor does not turn in service.
+  const sqH = RATCHET_T + 0.2;
   const square = new THREE.Mesh(new THREE.BoxGeometry(SQ, SQ, sqH), MATS.steel);
-  square.position.z = TQ_TOP_Z + sqH / 2;
+  square.position.z = Z_RATCHET_BOT - 0.05 + sqH / 2;
   az.add(square);
   const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: 24, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
-  ratchet.position.z = SETUP_BOT_Z;
+  ratchet.position.z = Z_RATCHET_BOT;
   az.add(ratchet);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, SETUP_CAP_H, 14), MATS.blueSteel);
-  cap.rotation.x = Math.PI / 2;
-  cap.position.z = SETUP_TOP_Z + SETUP_SQ_PROUD + SETUP_CAP_H / 2;
-  az.add(cap);
   // Click on its shoulder screw + curved click spring pressing the
-  // beak-side flank (same solved-arc construction the winding click used
-  // to carry — here it holds for the life of the watch).
+  // beak-side flank (same solved-arc construction as ever) — the screw
+  // posts stand on the BASE plate's top face now.
   const CLICK_T = RATCHET_T * 0.75;
-  const clickBot = SETUP_BOT_Z + (RATCHET_T - CLICK_T) / 2;
+  const clickBot = Z_RATCHET_BOT + (RATCHET_T - CLICK_T) / 2;
   const click = G.makeClick({ radius: ratchetR, thickness: CLICK_T });
   click.position.set(ratchetR * 1.28, 0, clickBot);
   click.rotation.z = Math.PI * 0.778;
   az.add(click);
-  const postH = clickBot + CLICK_T - TQ_TOP_Z;
+  const postH = clickBot + CLICK_T;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, postH, 10), MATS.steel);
   post.rotation.x = Math.PI / 2;
-  post.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH / 2);
+  post.position.set(ratchetR * 1.28, 0, postH / 2);
   az.add(post);
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.18, 12), MATS.blueSteel);
+  // The click side of this assembly reaches under the GREAT WHEEL's rim
+  // (the wheel's tip circle passes 5.2 from the drum axis, disc underside
+  // at L_BARREL − t/2 − bevel): the screw head's thickness is derived so
+  // its top stays one margin under that face.
+  const gwUnder = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
+  const headT = Math.min(0.18, gwUnder - CLEAR_MARGIN - postH);
+  if (headT < 0.08) console.warn(`set-up click screw head squeezed to ${headT.toFixed(2)} under the great wheel`);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, headT, 12), MATS.blueSteel);
   head.rotation.x = Math.PI / 2;
-  head.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH + 0.09);
+  head.position.set(ratchetR * 1.28, 0, postH + headT / 2);
   az.add(head);
   const springR = 1.3;
   const beta = Math.PI * 0.778;
@@ -3065,14 +3062,13 @@ const setupWork = new THREE.Group();
   spring.position.set(C.x, C.y, springZ);
   spring.rotation.z = thT;
   az.add(spring);
-  const spH = springZ - TQ_TOP_Z;
-  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, spH, 10), MATS.steel);
+  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, springZ, 10), MATS.steel);
   springPost.rotation.x = Math.PI / 2;
-  springPost.position.set(A.x, A.y, TQ_TOP_Z + spH / 2);
+  springPost.position.set(A.x, A.y, springZ / 2);
   az.add(springPost);
   const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.18, 12), MATS.blueSteel);
   springHead.rotation.x = Math.PI / 2;
-  springHead.position.set(A.x, A.y, TQ_TOP_Z + spH + 0.09);
+  springHead.position.set(A.x, A.y, springZ + 0.09);
   az.add(springHead);
   // The spring's INNER-END ANCHOR, inside the drum: a collar on the
   // static arbor with a radial hook pin at the spiral's heart. The drum
@@ -3086,7 +3082,7 @@ const setupWork = new THREE.Group();
   hookPin.position.set(1.5 + 0.7, 0, Z_DRUM);
   az.add(hookPin);
   movement.add(setupWork);
-  registerExplode(setupWork, 0, 8); // plate-top furniture: lifts with the plate layer
+  registerExplode(setupWork, 0, 1); // base-plate furniture now
   registerLabel('Set-up work', setupWork);
 }
 

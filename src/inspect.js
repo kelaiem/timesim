@@ -103,9 +103,11 @@ const MECH_GRAPH = {
                                              // the whole keyless works lives on the DIAL side now
     ['Setting lever', 'plate'],              // stud planted in the plate's back face (dial side)
     ['Yoke', 'plate'],                       // same dial-side stud mounting
-    ['Set-up work', 'Three-quarter plate'],  // the drum arbor's square + set-up ratchet pass through
-                                             // the plate; its click's shoulder screws stand on the
-                                             // top face. STATIC in service — it holds the spring's
+    ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
+                                             // square just above the BASE plate (chronometer
+                                             // practice — bench-only hardware lives on the lower
+                                             // plate); its click's screws stand on that face.
+                                             // STATIC in service — it holds the spring's
                                              // pre-tension for the life of the watch
     ['Maintaining detent', 'plate'],         // its cock's foot post stands on the base plate,
                                              // outside the great wheel's tip circle; the arm
@@ -356,8 +358,8 @@ const EXPECTED_PAIRS = [
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ winding spur (+ shared band under the great wheel)
   ['Maintaining detent', 'Fusee & great wheel'], // detent beak seated in the maintaining ring's teeth
-  ['Set-up work', 'Three-quarter plate'],    // its square passes the plate's bore; click screws stand on the top face
-  ['Set-up work', 'Mainspring drum'],        // the static arbor parts (collar, hook pin) live inside the rotating body
+  ['Set-up work', 'Mainspring drum'],        // the static arbor parts (square, collar, hook pin)
+                                             // thread the rotating body and its lower-pivot furniture
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
   ['Keyless works', 'Yoke'],                 // prongs on the sliding-pinion hub
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
@@ -769,13 +771,12 @@ const CLEARANCE_BUDGETS = [
   // eroding (the pair used to be EXPECTED-contact, which is how the plate
   // sat flush against and into the bridge unnoticed).
   { a: 'Balance cock', b: 'Three-quarter plate', min: 0.15 },
-  // Plate-top stacks: the reset/hack rods cross the plate top near the
-  // keyless corner (the fusee's let-down square) and could cross the
-  // drum's set-up stack — ROD_Z_LIFT carries derived terms for both, and
-  // these rows hold them.
+  // The reset/hack rods cross the plate top near the keyless corner —
+  // ROD_Z_LIFT carries a derived term for the fusee's let-down square,
+  // and this row holds it. (The set-up work is base-plate level now,
+  // nowhere near the rods; the great wheel low band covers it instead.)
   { a: 'Reset rod', b: 'Fusee & great wheel', min: 0.15 },
-  { a: 'Set-up work', b: 'Reset rod', min: 0.15 },
-  { a: 'Set-up work', b: 'Hack rod', min: 0.15 },
+  { a: 'Set-up work', b: 'Fusee & great wheel', min: 0.15 },
   // The maintaining detent's arm overhangs the great wheel and threads
   // between the drum, the chain's low wraps and the center wheel — the
   // azimuth scan places it, these rows keep it placed.
