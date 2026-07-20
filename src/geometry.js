@@ -1726,7 +1726,7 @@ function burPrismGeo(rr, len, tipLen) {
   sec.lineTo(halfW, -rr * 0.5);
   sec.closePath();
   const shaftLen = len - tipLen;
-  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }).toNonIndexed();
+  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }); // Extrude output is already non-indexed
   const pts = sec.getPoints(3);
   const tri = [];
   for (let i = 0; i < pts.length; i++) {
@@ -2347,9 +2347,11 @@ export function makeHand({ length, kind }) {
   // hour/minute plane gap in main.js still bounds rHour + rMinute
   // (≈ 2.10 at current widths).
   const facetFlat = (geo) => {
-    const flat = geo.toNonIndexed();
+    // Extrude output is already non-indexed; toNonIndexed() would warn and
+    // return the same geometry (which the dispose below would then free).
+    const flat = geo.index ? geo.toNonIndexed() : geo;
     flat.computeVertexNormals();
-    geo.dispose();
+    if (flat !== geo) geo.dispose();
     return flat;
   };
   const burRod = (rBase) => {
