@@ -180,15 +180,13 @@ window.addEventListener('resize', () => {
 const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                            // z-stack and the hack solvers below, and now by
                            // the balance plane derivation itself.
-// RESTRIDDEN STACK — solved TOP-DOWN from the design goal "the balance
-// cock sits IN the plate band" (the plate band itself stays where the
-// mainspring drum and fusee force it — they must remain covered). Chain:
-// cock underside 12.83 → spring top 12.68 → L_BALANCE 11.09 → L_FORK 9.40
-// → L_ESCAPE 7.90, then each wheel below by half-thickness sums + margin
-// (wheels that XY-overlap must never share z). Feasible only because the
-// wheelwork THINNED with it (great 2.4→1.4 … escape 1.5→0.8, pinions
-// 3→1.6): at the old thicknesses the same chain bottoms out against the
-// great wheel with ~2 units still to find.
+// RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
+// oscillator hangs under the open plate cutaway, and the plate's own floor
+// binds on the hairspring stack (the fusee was dropped to make that true —
+// see FUSEE_BASE_Z). Chain, with the slim balance: L_FORK/L_ESCAPE 4.5 →
+// L_BALANCE ≈ 5.79 → spring top ≈ 7.41 → cock underside = plate floor
+// ≈ 7.56 (wheels that XY-overlap must never share z; each step is
+// half-thickness sums + the one margin).
 const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
 // Center wheel dropped onto its own bind: one margin over the great wheel's
 // top face, at the wheel's deepest feature (its hub ring, thickness·1.5/2 =
@@ -218,7 +216,7 @@ const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thick
 // in depth — which the balance, spring and cock all inherit.
 const L_FORK = L_ESCAPE;
 const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
-const RIM_H = BAL_T * 0.75;     // rim height — mirrors makeBalanceWheel's 0.75·t rim
+const RIM_H = BAL_T * 0.55;     // rim height — mirrors makeBalanceWheel's 0.55·t rim
 // Balance mid-plane: fork body top (L_FORK + FORK_T/2) + margin + half the
 // rim's own height. The rim's underside is the balance's deepest full-ring
 // face, so this is the lowest the wheel can sit without fouling the fork.
@@ -235,7 +233,7 @@ const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal top out 
 // BALANCE COCK: a LOW bridge riding one margin over the hairspring
 // stack, wherever that stack lands — with the low escapement that is
 // ~4 under the three-quarter plate's band, so the cock (and the
-// regulator dress on its face) stands entirely clear of the plate: no
+// free-sprung dress on its face) stands entirely clear of the plate: no
 // nesting, no shared band, no collision. The plate keeps its cutaway
 // purely for the view of the oscillator below.
 const COCK_T = 0.8;
@@ -397,10 +395,6 @@ const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan /
 // a much tighter multiple of the two wheels' combined radius than before.
 const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
 const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
-// stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
-// L_ESCAPE — the stones must descend by exactly that gap to land centered
-// on the wheel's own Z-thickness rather than grazing one edge of it.
-const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T, stoneZReach: L_FORK - L_ESCAPE });
 // Real impulse rollers sit well inside the balance rim (~15-20% of its
 // radius), not at half of it — the pin only needs to clear the fork's notch,
 // not the whole balance.
@@ -420,11 +414,22 @@ const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
 // finding they never actually touch (~3.5 units of persistent clearance,
 // even at the "locked" extremes) — this ties them together so a future
 // change to rollerR, amplitude, or fork proportions can't silently
-// reintroduce the gap.
-const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches the makePalletFork call above
+// reintroduce the gap. Solved BEFORE the fork is built: the builder cuts
+// the pallet stones' impulse faces from the same beat/bank pair.
+const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches makePalletFork's V-notch geometry
 const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH);
 const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
 const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
+
+// stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
+// L_ESCAPE — the stones must descend by exactly that gap to land centered
+// on the wheel's own Z-thickness rather than grazing one edge of it.
+// beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
+const palletFork = G.makePalletFork({
+  span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T,
+  stoneZReach: L_FORK - L_ESCAPE,
+  beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
+});
 
 const hairspring = G.makeHairspring({
   innerR: Math.max(rollerR * 0.5, 1.5),
@@ -946,6 +951,20 @@ escapeWheel.position.z = L_ESCAPE - L_FOURTH;
   escapeWheel.rotation.z = ((raw % pitch) + pitch) % pitch;
 }
 escapeArbor.add(escapePinion, escapeWheel);
+// The arbor itself — the low-escapement layout drops the wheel 2.45 under
+// its own pinion, and nothing spanned that gap: from the side the two discs
+// floated. A visible shaft from the wheel's hub top to the pinion's
+// underside (dimensions from the same constants that place them: hub ring
+// is wheelT·1.3 tall, pinion 1.6 thick).
+{
+  const hubTop = (L_ESCAPE - L_FOURTH) + (0.8 * 1.3) / 2;
+  const pinionBot = -1.6 / 2;
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.4, pinionBot - hubTop, 12), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (hubTop + pinionBot) / 2;
+  escapeArbor.add(shaft);
+}
 movement.add(escapeArbor);
 registerExplode(escapeArbor, L_FOURTH, 5);
 registerLabel('Escape wheel', escapeArbor);
@@ -1364,12 +1383,10 @@ const forkCock = (() => {
   // the leg solve: the leg must clear for the BAR that will connect it to
   // this boss, whose width follows the boss radius.)
   const forkBore = 0.35 + PIVOT_BORE_CLEAR;
-  // Fork boss SLIMMED to 1.5 (was chaton + 0.5 = 1.85): the balance's
-  // timing screws share this slab's z-band, and the boss is the cap's
-  // closest feature to the balance axis (11.19 away). Screw tips reach
-  // 9.5, so the boss edge at 11.19 − 1.5 = 9.69 clears them by 0.19. The
-  // jewel still fits: ruby seats inside the counterbore (1.35) leaving a
-  // 0.15 wall of nickel.
+  // Fork boss at 1.5: the balance's timing screws share this slab's
+  // z-band, and the boss is the cap's closest feature to the balance axis.
+  // The jewel's counterbore is fork-sized (forkCbR below, bore + 0.55),
+  // so the boss keeps a full 0.55 ring of nickel around the stone.
   const bossFork = chatonOuterFor(forkBore) + 0.15;
   // One leg outboard of each axis. Scan the bearing away from the other axis
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
@@ -1410,8 +1427,15 @@ const forkCock = (() => {
   const legR = 1.15;
   const legB = legFor(P.fork, P.escape, legR, bossFork);
   if (!legB) console.warn('fork cock: no clear footing for its leg');
+  // The jewel is seated FULLY: a fork-sized counterbore (bore + 0.55, not
+  // the chaton family's bore + 0.95) sunk 0.65·T deep, so the ruby sits
+  // its whole height in the bore with a 0.35·T bearing collar beneath and
+  // a full 0.55 ring of nickel around it — the old shallow CHATON_DEPTH
+  // seat left the stone standing more than half proud of a thin wall.
+  const forkCbR = forkBore + 0.55;
+  const forkCbDepth = FORK_COCK_T * 0.65;
   const chain = [
-    { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: chatonOuterFor(forkBore), cbDepth: CHATON_DEPTH },
+    { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: forkCbR, cbDepth: forkCbDepth },
     { x: legB.x, y: legB.y, r: legR * 1.35, foot: true },
   ];
   const g = G.makeEscapeBridge({
@@ -1421,7 +1445,7 @@ const forkCock = (() => {
     // measured from the slab's underside, where makeEscapeBridge hangs it.
     footDrop: FORK_COCK_BOT - (backPlate.position.z + 1),
     jewels: [
-      { x: P.fork.x, y: P.fork.y, boreR: forkBore, depth: CHATON_DEPTH },
+      { x: P.fork.x, y: P.fork.y, boreR: forkBore, cbR: forkCbR, depth: forkCbDepth },
     ],
   });
   g.position.set(0, 0, FORK_COCK_BOT + FORK_COCK_T / 2);
@@ -1470,6 +1494,24 @@ const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: 
                            // so the cut's base edge (BAL_OUTER_R + this) is what physically
                            // clears them at every azimuth — the escapement stretch of the
                            // window is still sized for the eye and the bridge screws.
+// Table finishing, shared by the initial solve and the post-cock second
+// pass (see the balance-cock reveal further down): a per-degree max is a
+// saw edge, and a plate edge is milled by a cutter of finite radius —
+// running max over ±6°, then light smoothing. Both only ever ADD clearance.
+function finishCutRadii(raw) {
+  const spread = raw.map((_, i) => {
+    let m = 0;
+    for (let d = -6; d <= 6; d++) m = Math.max(m, raw[((i + d) % 360 + 360) % 360]);
+    return m;
+  });
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 0; i < 360; i++) {
+      const a = spread[(i + 359) % 360], b = spread[(i + 1) % 360];
+      spread[i] = Math.max(spread[i], (a + b) / 2);
+    }
+  }
+  return spread;
+}
 const TQ_CUT = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
   const phiOpen = 75 * DEG2RAD;
@@ -1512,21 +1554,11 @@ const TQ_CUT = (() => {
       bump(v.x, v.y);
     }
   });
-  // Round the table off: a per-degree max is a saw edge, and a plate edge is
-  // milled by a cutter of finite radius. Running max over a ±6° window, then
-  // a light smoothing pass — both only ever ADD clearance.
-  const spread = radii.map((_, i) => {
-    let m = 0;
-    for (let d = -6; d <= 6; d++) m = Math.max(m, radii[((i + d) % 360 + 360) % 360]);
-    return m;
-  });
-  for (let pass = 0; pass < 3; pass++) {
-    for (let i = 0; i < 360; i++) {
-      const a = spread[(i + 359) % 360], b = spread[(i + 1) % 360];
-      spread[i] = Math.max(spread[i], (a + b) / 2);
-    }
-  }
-  return { x: P.balance.x, y: P.balance.y, aim, phiOpen, radii: spread };
+  // The RAW table is kept alongside the finished one: the balance-cock
+  // reveal (further down, once the cock exists) bumps the raw table and
+  // re-finishes ONCE — finishing twice would over-widen every original
+  // feature by another cutter radius.
+  return { x: P.balance.x, y: P.balance.y, aim, phiOpen, rawRadii: radii, radii: finishCutRadii(radii) };
 })();
 // (The pillars are built with the three-quarter plate they carry, at the end
 // of the assembly — their seating angles are solved against the plate's cut
@@ -1593,6 +1625,13 @@ function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ } = {}) {
 // staff now reaches the plate like any other arbor (thinner: a fork staff
 // is a light, fast-moving part).
 addLowerPivot(forkGroup, { staffR: 0.35, jewelR: 1.0 });
+// The BALANCE staff had no lower bearing at all — it stopped in open air
+// just past the safety roller while only the cock's jewel held it from
+// above. Same helper: the staff continues from its current bottom (the
+// group's box-min is the staff tip, on-axis) down to mid-plate, running
+// into a rubbed-in jewel in the plate's top face. Nothing else occupies
+// the axis below (the stop crank works at radius ≈ 8.5+).
+addLowerPivot(balanceGroup, { staffR: 0.3, jewelR: 1.0 });
 // (The spring drum gets its lower pivot where it is built, further down —
 // declaring it here would read drumGroup before its `const`.)
 
@@ -2152,17 +2191,17 @@ function solveHammerRotation(post) {
 const HACK_CLEAR_MARGIN = CLEAR_MARGIN; // one named margin; the solves below bind exactly at it
 
 // --- Pad ↔ balance geometry, derived from the balance's OWN build
-// constants (rim height 0.75·t, rim width 0.8·t, screws ±0.34·t at
-// rimO ± t/2 — see makeBalanceWheel) so reshaping the balance moves the
-// brake with it.
+// constants (slim rim: height 0.55·t, width 0.5·t; screws base 0.24·t,
+// embedded 0.16·t past the rim face — see makeBalanceWheel) so reshaping
+// the balance moves the brake with it.
 // (BAL_T itself is declared with the Z-stack constants — the balance plane
 // derivation needs it first.)
-const HACK_RIM_I = balanceR - BAL_T * 0.8;             // rim's inner radius
-const HACK_SCREW_IN_R = balanceR - BAL_T / 2;          // timing screws' inner tips
+const HACK_RIM_I = balanceR - BAL_T * 0.5;             // rim's inner radius
+const HACK_SCREW_IN_R = balanceR - BAL_T * 0.16;       // timing screws' inner tips (rimO − screwLen + protrusion)
 // The rim's underside hangs only this far below the screws' deepest sweep
-// (0.375·t rim half-height vs 0.34·t screw tip radius) — far less than the
-// margin, so z alone cannot keep the pad clear of the screws:
-const HACK_SCREW_DROP = (0.75 / 2 - 0.34) * BAL_T;
+// (0.275·t rim half-height vs 0.24·t screw base radius) — far less than
+// the margin, so z alone cannot keep the pad clear of the screws:
+const HACK_SCREW_DROP = (0.55 / 2 - 0.24) * BAL_T;
 // ...the rest of the separation must come radially. Corner-to-corner:
 // √(standoff² + drop²) = margin ⇒
 const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_SCREW_DROP ** 2));
@@ -2420,7 +2459,6 @@ addLowerPivot(drumGroup, { staffR: 0.6, jewelR: 1.4 });
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
 const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_H * 0.06; // world z of the lowest groove
 const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
-const DRUM_CHAIN_Z = Z_DRUM + DRUM_HEIGHT * 0.4;  // chain rides near the drum's top
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
@@ -2429,6 +2467,44 @@ function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
     r: FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * f,
     z: FUSEE_Z0 + FUSEE_ZSPAN * f,
   };
+}
+// --- The chain's BARREL ATTACHMENT. The chain hooks to the drum wall at a
+// fixed point and the accumulating wraps STACK DOWNWARD from it: the hook
+// sits at the top of the coil zone, each arriving turn lays one chain
+// diameter below the last, and the takeoff tangent point descends with the
+// coil as the reserve drains (mirroring the fusee side, whose active
+// groove descends too — the span stays near-level over the whole reserve).
+// The old construction was inverted: the tangent was pinned near the
+// drum's top and the chain's FREE END descended, ending in mid-air with
+// no attachment at all.
+const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid
+// Hook angle, drum-local. The wrap's far end lands at world angle
+// thetaT + turns·2π and the drum's rotation is rot = (1−tension)·C/R, so
+// a fixed drum-local hook works iff the wrap's fractional turn absorbs
+// thetaT's small drift with tension (the wrap length IS set by geometry —
+// see rebuildChain). Placing the hook at thetaT(mid-reserve) + 0.3 turns
+// centres that fractional solve on the +0.3 slack turn, giving the
+// round-to-nearest branch maximum headroom against the ±0.02-turn drift.
+const HOOK_A = (() => {
+  const midR = fuseeGrooveAt(0.5 * 0.94).r;
+  const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
+  const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_R) / Math.hypot(dx, dy), -1, 1));
+  return thetaMid + 0.3 * Math.PI * 2;
+})();
+{
+  // The hook itself: a riveted tab on the drum wall with a claw pin the
+  // chain's end link drops over — child of drumGroup, so it turns with the
+  // barrel and the ['Chain','Mainspring drum'] support edge measures real
+  // geometry (the chain's last point is placed ON this claw).
+  const hookLocalZ = COIL_TOP - Z_DRUM;
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.9), MATS.steel);
+  tab.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.25), Math.sin(HOOK_A) * (DRUM_R + 0.25), hookLocalZ);
+  tab.rotation.z = HOOK_A;
+  drumGroup.add(tab);
+  const claw = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.8, 8), MATS.steel);
+  claw.rotation.z = HOOK_A + Math.PI / 2; // pin lies tangentially along the wall
+  claw.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.45), Math.sin(HOOK_A) * (DRUM_R + 0.45), hookLocalZ);
+  drumGroup.add(claw);
 }
 function rebuildChain(tension) {
   lastChainTension = tension;
@@ -2462,11 +2538,22 @@ function rebuildChain(tension) {
       gp.z
     ));
   }
-  // 2. Straight span to the drum's tangent point.
+  // 2+3. Drum coil, hook-anchored. The wrap's turn count is SOLVED so its
+  // far end lands exactly on the hook (fixed on the rotating drum at
+  // drum-local HOOK_A): world hook angle = HOOK_A + rot must equal
+  // thetaT + turns·2π, so the fractional part of `turns` comes from that
+  // congruence and the whole part from the chain-length accounting
+  // (round-to-nearest is branch-stable: HOOK_A centres the offset — see
+  // its comment). The coil hangs DOWN from the hook, one chain diameter
+  // per turn, so the takeoff tangent point descends as the reserve drains.
+  const rot = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R; // = drumGroup.rotation.z in tick()
+  const baseTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
+  if (frac < 0) frac += 1;
+  const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
+  const takeoffZ = COIL_TOP - drumTurns * 0.65;
   const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_R, y: drumPos.y + Math.sin(thetaT) * DRUM_R };
-  pts.push(new THREE.Vector3(TB.x, TB.y, DRUM_CHAIN_Z));
-  // 3. Wrap accumulated on the drum (grows as the reserve drains).
-  const drumTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  pts.push(new THREE.Vector3(TB.x, TB.y, takeoffZ));
   const nD = Math.max(Math.ceil(drumTurns * SEG_PER_TURN), 2);
   for (let i = 1; i <= nD; i++) {
     const s = (i / nD) * drumTurns;
@@ -2474,9 +2561,16 @@ function rebuildChain(tension) {
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_R,
       drumPos.y + Math.sin(ang) * DRUM_R,
-      DRUM_CHAIN_Z - s * 0.65 // one chain diameter per turn: a snug coil, and it stays above the drum's bottom
+      COIL_TOP - (drumTurns - s) * 0.65 // climbs back up to the hook plane
     ));
   }
+  // ...and the end link steps out onto the hook's claw pin.
+  const hookAng = thetaT + drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
+  pts.push(new THREE.Vector3(
+    drumPos.x + Math.cos(hookAng) * (DRUM_R + 0.45),
+    drumPos.y + Math.sin(hookAng) * (DRUM_R + 0.45),
+    COIL_TOP
+  ));
   const curve = new THREE.CatmullRomCurve3(pts);
   const geo = new THREE.TubeGeometry(curve, pts.length * 2, 0.3, 6, false);
   if (chainMesh) {
@@ -2514,17 +2608,21 @@ addUpperPivot(drumGroup, { staffR: 0.9, jewelR: 0, boreR: 0.95 });
 
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
-for (const p of tqPivots) {
-  const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
-  const d = Math.hypot(dx, dy);
-  const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
-  const bossR = Math.max(p.jewelR * 1.7, p.boreR);
-  const edge = G.cutEdgeRadius(TQ_CUT, phi);
-  const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
-  if (inWedge || d - bossR - CLEAR_MARGIN < edge)
-    console.warn('3/4 plate: the cut reaches a pivot it has to carry at',
-      p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
+// Factored: it re-runs after the balance-cock reveal grows the cut.
+function checkCutVsPivots() {
+  for (const p of tqPivots) {
+    const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
+    const d = Math.hypot(dx, dy);
+    const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
+    const bossR = Math.max(p.jewelR * 1.7, p.boreR);
+    const edge = G.cutEdgeRadius(TQ_CUT, phi);
+    const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
+    if (inWedge || d - bossR - CLEAR_MARGIN < edge)
+      console.warn('3/4 plate: the cut reaches a pivot it has to carry at',
+        p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
+  }
 }
+checkCutVsPivots();
 
 // A jewelled pivot needs the plate opened up to its CHATON's diameter, not
 // the staff's — the counterbore is cut right through and the bearing collar
@@ -2559,6 +2657,12 @@ const tqSlots = [{
 // actually share the pedestal's z band.
 const COCK_W = 6;
 const COCK_FOOT_R = COCK_W / 2;
+// The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction 0.5 of
+// the length from the slab centre): the head ends exactly one half-width
+// past the staff — no dead nickel overhanging the bearing (the old 0.12
+// left 0.38·L of slab reaching past the jewel for no structural reason).
+const COCK_JEWEL_AT = 0.5;
+const COCK_LEG_R = 1.3;
 const BALANCE_COCK = (() => {
   const obstacles = [];
   for (const p of tqPivots) obstacles.push({ x: p.x, y: p.y, r: p.jewelR * 1.7 });
@@ -2613,10 +2717,25 @@ const BALANCE_COCK = (() => {
     // Radially: outside the balance assembly (the pedestal crosses the
     // wheel's plane) AND outside the cut edge on this bearing.
     const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
-    const fx = P.balance.x + Math.cos(TQ_CUT.aim + phi) * dFoot;
-    const fy = P.balance.y + Math.sin(TQ_CUT.aim + phi) * dFoot;
+    const cs = Math.cos(TQ_CUT.aim + phi), sn = Math.sin(TQ_CUT.aim + phi);
+    const fx = P.balance.x + cs * dFoot;
+    const fy = P.balance.y + sn * dFoot;
     let clr = plateR - CLEAR_MARGIN - (Math.hypot(fx, fy) + COCK_FOOT_R); // stay on the plate
     for (const o of obstacles) clr = Math.min(clr, distTo(o, fx, fy) - COCK_FOOT_R);
+    // The T-foot's two LEG PADS must clear the same obstacle set. Their
+    // half-span is φ-dependent (it is solved from the balance's swept
+    // radius at the bar's distance — see the build below): test both pads
+    // at this candidate bearing, not just the slab tail.
+    const dyLeg = dFoot - 1.2;
+    const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;
+    const hspan = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLeg * dyLeg, 0)));
+    const padR = COCK_LEG_R * 1.5;
+    for (const s of [-1, 1]) {
+      const lx = P.balance.x + cs * dyLeg - sn * s * hspan;
+      const ly = P.balance.y + sn * dyLeg + cs * s * hspan;
+      clr = Math.min(clr, plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR));
+      for (const o of obstacles) clr = Math.min(clr, distTo(o, lx, ly) - padR);
+    }
     if (clr < CLEAR_MARGIN) continue;
     if (!best || clr > best.clr) best = { phi, dFoot, fx, fy, clr };
   }
@@ -2626,29 +2745,35 @@ const BALANCE_COCK = (() => {
     const dFoot = BAL_OUTER_R + COCK_FOOT_R + CLEAR_MARGIN;
     best = { phi, dFoot, fx: 0, fy: 0, clr: 0 };
   }
-  return { ...best, length: best.dFoot / 0.62 }; // makeCock: jewel +0.12L, foot centre −0.5L
+  // makeCock: jewel at +COCK_JEWEL_AT·L, foot centre at −0.5·L → the
+  // staff→tail distance is (0.5 + COCK_JEWEL_AT)·L.
+  return { ...best, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
 })();
 // COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
-// the plate's own z-band over the cutaway, so it must END before the cut
-// edge (plate material owns that band beyond it); it stops 0.1 inside.
-// From the back: the cock's top face is flush with the plate's — the
-// Glashütte look the restride exists to produce — but its FOOT is a leg
-// dropping from under the slab tail to the base plate, keeping the whole
-// balance assembly independent of the three-quarter plate (see the
-// escape bridge, which works the same way). (The balance itself runs
-// entirely BELOW the slab: rim top 12.03 vs slab bottom 12.86, so
-// overhanging it is free.)
+// the plate's own z-band over the cutaway; its LENGTH is sized against the
+// cut edge as first solved (tail to 0.1 inside it), and once the cock is
+// BUILT the cut is re-solved around it — the bridge-reveal pass after the
+// cock build — so the finished plate edge retreats a full cut margin past
+// every part of the bridge. From the back: the cock's top face is flush
+// with the plate's — the Glashütte look — but it stands in open air on
+// its own base-plate legs, independent of the three-quarter plate.
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
-const balanceCockLen = (cockEdgeR - 0.1) / 0.62; // slab tail reach (0.62·L below the jewel) stops inside the edge
-const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
+// Slab tail reach ((0.5 + COCK_JEWEL_AT)·L below the jewel), sized to the
+// pre-reveal cut edge.
+const balanceCockLen = (cockEdgeR - 0.1) / (0.5 + COCK_JEWEL_AT);
+const balanceCock = G.makeCock({
+  length: balanceCockLen, width: COCK_W, thickness: COCK_T, jewelAt: COCK_JEWEL_AT,
+});
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
   const toJewel = TQ_CUT.aim + BALANCE_COCK.phi + Math.PI;
   balanceCock.rotation.z = toJewel - Math.PI / 2;
-  // Position the cock so its sunk JEWEL (at local (0, length·0.12) in makeCock)
+  // Position the cock so its sunk JEWEL (at local (0, length·COCK_JEWEL_AT))
   // lands exactly on the balance-staff axis — the staff's upper pivot must be
-  // set in the cock's jewel, not beside it.
-  const jy = balanceCockLen * 0.12;
+  // set in the cock's jewel, not beside it. With the jewel at the head-arc
+  // centre, the round head ends one half-width past the staff and nothing
+  // overhangs the bearing.
+  const jy = balanceCockLen * COCK_JEWEL_AT;
   const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
   balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, COCK_MID_Z);
   // BRIDGE FOOT to the BASE plate. The cock used to be plate furniture —
@@ -2665,9 +2790,20 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   // bridge" stability move, done at the only end with open floor (the head
   // end overhangs the fork and the spring; no leg can land there).
   const yTail = -balanceCockLen / 2;                 // slab's tail end
-  const LEG_R = 1.3;
-  const BAR_HSPAN = 5.5;                             // crossbar half-span
+  const LEG_R = COCK_LEG_R;
   const yBar = yTail + 1.2;                          // crossbar centreline
+  // Crossbar half-span SOLVED, not styled: each leg's centre must stand
+  // one margin plus its own radius off the balance's MEASURED swept
+  // radius (BAL_OUTER_R — the timing-screw tips are what sweep furthest).
+  // The old fixed 5.5 put the legs' inner edges 0.34 INSIDE the screw
+  // sweep; being an intended-contact pair (staff in the cock jewel), the
+  // overlap sweep could never flag it.
+  const dyLegBuild = (jy - yBar);                    // staff → bar, cock-local
+  const legBound = BAL_OUTER_R + LEG_R + CLEAR_MARGIN;
+  const BAR_HSPAN = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLegBuild * dyLegBuild, 0)));
+  if (Math.hypot(BAR_HSPAN, dyLegBuild) < legBound - 1e-6)
+    console.warn('balance cock: T-foot legs inside the balance sweep',
+      Math.hypot(BAR_HSPAN, dyLegBuild).toFixed(2), '<', legBound.toFixed(2));
   const bar = new THREE.Mesh(
     new THREE.BoxGeometry(BAR_HSPAN * 2 + LEG_R * 2, 2.4, COCK_T), MATS.nickel);
   bar.position.set(0, yBar, 0);
@@ -2693,18 +2829,18 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   }
 
   // ------------------------------------------------------------------
-  // FIXED OUTER TERMINAL + REGULATOR (TODO item 4). Everything below is
+  // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
   // cock-local: origin at the slab centre, +Y toward the jewel/staff,
   // top face at +COCK_T/2 (flush with the plate).
   // ------------------------------------------------------------------
-  const jyStaff = balanceCockLen * 0.12;         // staff axis in cock-local y
+  const jyStaff = balanceCockLen * COCK_JEWEL_AT; // staff axis in cock-local y
   const hsUD = hairspring.userData;
 
   // Re-anchor the SPRING so its terminal end lands 0.9 rad off the cock
   // axis, over the OPEN cutaway — the stud that clamps it hangs from a
   // cantilevered carrier arm there, in plain view beside the cock, not
-  // buried under the slab. Terminal order along the curve stays honest:
-  // spiral end (on the cock axis) → curb pins (+0.45) → stud (+0.9).
+  // buried under the slab. Free-sprung: the terminal runs uninterrupted
+  // from the spiral's outer end to the stud.
   hairspringGroup.rotation.z = toJewel + 0.9 - hsUD.endAngle;
 
   // Small ring builder (extrude spans local z 0..h) for the concentric
@@ -2742,19 +2878,20 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
     balanceCock.add(shock);
   }
 
-  // STUD CARRIER: the spring's outer end belongs to the regulator
-  // ASSEMBLY, not to bare plate. A second concentric ring outside the
-  // index collar cantilevers an arm out over the open cutaway (0.9 rad
-  // off the cock axis, past the index arm at 0.45); at the terminal-end
-  // radius its stud drops to the spring plane and clamps the terminal,
-  // pinned from the side — the whole attachment visible from the back.
+  // STUD CARRIER: the spring's outer end belongs to a fixture on the
+  // cock, not to bare plate. A concentric ring around the shock setting
+  // cantilevers an arm out over the open cutaway (0.9 rad off the cock
+  // axis); at the terminal-end radius its stud drops to the spring plane
+  // and clamps the terminal, pinned from the side — the whole attachment
+  // visible from the back. On a free-sprung balance this is the spring's
+  // ONLY fixture: no index, no curb pins.
   const studWorldZ = L_HAIRSPRING + hsUD.termEndZ;   // terminal end height
   {
     const carrier = new THREE.Group();
     carrier.name = 'studCarrier';
     carrier.position.set(0, jyStaff, COCK_T / 2);
     carrier.rotation.z = 0.9;
-    const ring = ringMesh(2.55, 3.1, 0.22, MATS.steel);
+    const ring = ringMesh(2.55, 2.95, 0.22, MATS.steel); // outer trimmed inside the head's half-width (3.0)
     ring.position.z = 0.02;
     carrier.add(ring);
     const yS = hsUD.termEndR;                        // carrier-local stud centre
@@ -2776,109 +2913,72 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
     balanceCock.add(carrier);
   }
 
-  // REGULATOR: an index arm pivoted on a collar ring around the cock's
-  // jewel, swept 0.45 rad off the cock axis so its tip rides over the OPEN
-  // cutaway; two curb pins drop from the tip and straddle the terminal
-  // curve at its midpoint. Moving the index along the curve is what would
-  // lengthen/shorten the effective spring — the regulator this movement
-  // never had. The index is dressed Glashütte-style with a swan-neck
-  // spring and an opposing adjuster screw bearing on its tail.
-  const reg = new THREE.Group();
-  reg.name = 'regulator';
-  reg.position.set(0, jyStaff, COCK_T / 2);
-  reg.rotation.z = 0.45;                         // arm aims at the terminal midpoint
-  const collarIn = 1.7;  // clears the shock boss (1.35) and the lyre's reach
-  const collarOut = collarIn + 0.72; // inside the stud-carrier ring (2.55)
-  const armT = 0.28;
-  const collar = ringMesh(collarIn, collarOut, armT, MATS.steel);
-  collar.position.z = 0.02;
-  reg.add(collar);
-  const rPin = hsUD.termMid.r;
-  const armLen = rPin - collarOut + 0.5;
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.6, armLen, armT), MATS.steel);
-  arm.position.set(0, collarOut + armLen / 2 - 0.25, armT / 2 + 0.02);
-  reg.add(arm);
-  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, armT, 18), MATS.steel);
-  tip.rotation.x = Math.PI / 2;
-  tip.position.set(0, rPin, armT / 2 + 0.02);
-  reg.add(tip);
-  // Curb pins: from the arm's underside down PAST the terminal curve, one
-  // each side of the ribbon with running clearance.
-  const pinR = 0.12;
-  const pinGap = hsUD.ribbonR + 0.1 + pinR;      // ribbon face → pin surface 0.1
-  const pinTopWorld = COCK_MID_Z + COCK_T / 2;
-  const pinBotWorld = L_HAIRSPRING + hsUD.termMid.z - 0.45;
-  const pinLen = pinTopWorld - pinBotWorld;
-  for (const s of [-1, 1]) {
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, pinLen, 10), MATS.steel);
-    pin.rotation.x = Math.PI / 2;
-    pin.position.set(s * pinGap, rPin, -pinLen / 2 + 0.02);
-    reg.add(pin);
-  }
-  // TAIL: part of the index lever — it rotates with the regulator.
-  const tailLen2 = 2.3;
-  const tailY = -(collarOut + tailLen2 / 2 - 0.25);
-  const rTail = new THREE.Mesh(new THREE.BoxGeometry(0.55, tailLen2, armT), MATS.steel);
-  rTail.position.set(0, tailY, armT / 2 + 0.02);
-  reg.add(rTail);
-  balanceCock.add(reg);
-  registerLabel('Regulator', reg);
-
-  // SWAN NECK + ADJUSTER: mounted on the COCK (the balance bridge), not on
-  // the index — they are the fixed datum the index is set against: the
-  // neck spring presses the tail against the screw, the screw meters how
-  // far it may yield. Parenting them to the rotating index would carry
-  // the reference along with the thing it references. They share the
-  // index frame's transform (same origin, same 0.45 sweep) so the tail
-  // coordinates above stay valid, but the group is a child of the cock.
-  // ...and the cock's face is SHAPED to carry it, as real swan-neck cocks
-  // are: the 0.45 sweep puts the neck's foot ~1 unit past the slab's side
-  // edge, over the open cutaway — its hold-down screw was going into air.
-  // A seat plate, top flush with the cock face, overlaps the slab edge
-  // (the weld) and cantilevers out under the neck's foot and screw.
-  {
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.0, 0.35), MATS.nickel);
-    seat.position.set(2.6, jyStaff - 4.3, COCK_T / 2 - 0.175);
-    balanceCock.add(seat);
-  }
-  const regDress = new THREE.Group();
-  regDress.name = 'swanNeck';
-  regDress.position.set(0, jyStaff, COCK_T / 2);
-  regDress.rotation.z = 0.45;
-  const tailTipY = tailY - tailLen2 / 2 + 0.15;
-  const neckPts = [
-    new THREE.Vector3(1.7, tailTipY - 1.3, 0),
-    new THREE.Vector3(1.35, tailTipY - 1.75, 0),
-    new THREE.Vector3(0.55, tailTipY - 1.35, 0),
-    new THREE.Vector3(0.42, tailTipY - 0.4, 0),
-    new THREE.Vector3(0.42, tailTipY + 0.1, 0),
-  ];
-  const neck = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(neckPts), 24, 0.15, 8, false), MATS.steel);
-  neck.position.z = armT / 2 + 0.02;
-  regDress.add(neck);
-  // ...held down by its own screw through the neck's foot, into the cock.
-  const neckScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, armT * 1.2, 14), MATS.blueSteel);
-  neckScrew.rotation.x = Math.PI / 2;
-  neckScrew.position.set(1.7, tailTipY - 1.3, armT * 0.6 + 0.02);
-  regDress.add(neckScrew);
-  // Adjuster: block + fine screw bearing on the tail's other flank.
-  const adjBlock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, armT * 1.4), MATS.steel);
-  adjBlock.position.set(-1.55, tailTipY, armT * 0.7 + 0.02);
-  regDress.add(adjBlock);
-  const adjScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.15, 10), MATS.blueSteel);
-  adjScrew.rotation.z = Math.PI / 2;
-  adjScrew.position.set(-0.85, tailTipY, armT * 0.7 + 0.02);
-  regDress.add(adjScrew);
-  const adjHead = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.22, 12), MATS.blueSteel);
-  adjHead.rotation.z = Math.PI / 2;
-  adjHead.position.set(-1.95, tailTipY, armT * 0.7 + 0.02);
-  regDress.add(adjHead);
-  balanceCock.add(regDress);
+  // FREE-SPRUNG: there is deliberately NO regulator. The index arm, curb
+  // pins, swan neck and adjuster that used to dress this face are gone —
+  // the spring's effective length is fixed (outer terminal clamped in the
+  // stud, nothing straddling the curve), and the rate is adjusted at the
+  // BALANCE instead, by its timing screws. The cock face carries only what
+  // a free-sprung watch carries: the shock setting over the pivot and the
+  // stud carrier holding the spring's terminal.
 }
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
+
+// --- REVEAL THE BRIDGE: second pass over the plate cut. TQ_CUT was solved
+// before the cock existed, so the cock never voted — its slab was fitted
+// to the edge by a single-bearing radial rule while its width-6 flanks and
+// the T-bar spanned unchecked, and (cock and plate being flush in one
+// z-band) the plate's material ran right up against and into the bridge.
+// Now that the cock is BUILT, every mesh of it that actually crosses the
+// plate's band votes the raw cut table outward by the cut margin, and the
+// table is re-finished ONCE — the plate's kidney edge retreats around the
+// whole bridge and the cock stands revealed in open air.
+{
+  const eps = 0.05;
+  const v = new THREE.Vector3();
+  balanceCock.updateMatrixWorld(true);
+  balanceCock.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    // Per-MESH band filter (not per-vertex: the slab's faces sit exactly ON
+    // the band edges, and the stud-carrier post CROSSES the band with both
+    // its box corners outside it): a mesh votes iff its world AABB overlaps
+    // the plate's z-band. Legs, pads and the above-face dressing (shock
+    // setting, carrier ring, screw heads) never meet the plate and are
+    // excluded, so the cut doesn't over-open for them.
+    o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    if (!(bb.min.z < TQ_TOP_Z - eps && bb.max.z > TQ_BOT_Z + eps)) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      const dx = v.x - P.balance.x, dy = v.y - P.balance.y;
+      const r = Math.hypot(dx, dy) + TQ_CUT_MARGIN;
+      const deg = Math.round(((Math.atan2(dy, dx) - TQ_CUT.aim) * 180) / Math.PI);
+      const idx = ((deg % 360) + 360) % 360;
+      if (r > TQ_CUT.rawRadii[idx]) TQ_CUT.rawRadii[idx] = r;
+    }
+  });
+  TQ_CUT.radii = finishCutRadii(TQ_CUT.rawRadii);
+  // A cut-edge point pushed past the plate's rim would self-intersect the
+  // plate outline (the documented slot-notch failure class in
+  // makeThreeQuarterPlate) — clamp each degree so the edge stays inside,
+  // and say so if it ever engages.
+  for (let i = 0; i < 360; i++) {
+    const a = TQ_CUT.aim + i * DEG2RAD;
+    const dxr = Math.cos(a), dyr = Math.sin(a);
+    // Exact bound: |C + r·d̂| = plateR − 0.2, positive root.
+    const cd = TQ_CUT.x * dxr + TQ_CUT.y * dyr;
+    const disc = cd * cd - (TQ_CUT.x ** 2 + TQ_CUT.y ** 2) + (plateR - 0.2) ** 2;
+    const rMax = -cd + Math.sqrt(Math.max(disc, 0));
+    if (TQ_CUT.radii[i] > rMax) {
+      TQ_CUT.radii[i] = rMax;
+      console.warn('balance-cock reveal: cut edge clamped at the plate rim, bearing', i);
+    }
+  }
+  // The grown opening must still carry every upper pivot.
+  checkCutVsPivots();
+}
 
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
