@@ -102,6 +102,8 @@ const MECH_GRAPH = {
                                              // + the winding transfer arbor running in its bore:
                                              // the whole keyless works lives on the DIAL side now
     ['Setting lever', 'plate'],              // stud planted in the plate's back face (dial side)
+    ['Minute jumper', 'plate'],              // its pivot stud rivets into the same dial-side face,
+                                             // beside the motion works (jumping-minute setting)
     ['Yoke', 'plate'],                       // same dial-side stud mounting
     ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
                                              // square just above the BASE plate (chronometer
@@ -173,6 +175,10 @@ const MECH_GRAPH = {
     ['Center wheel', 'Motion works'],        // cannon pinion friction-fit on the centre arbor
     ['Motion works', 'Hour wheel'],
     ['Keyless works', 'Motion works'],       // SETTING: the arbor's cap pinion meshes the minute wheel
+    ['Setting lever', 'Minute jumper'],      // the lost-motion lifter bar off the tail post drops the
+                                             // jumper into the star when the crown is out
+    ['Motion works', 'Minute jumper'],       // the star's teeth ride the seated beak (the detent that
+                                             // quantizes setting to whole minutes)
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
@@ -372,6 +378,11 @@ const EXPECTED_PAIRS = [
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
   ['Hour wheel', 'Motion works'],            // minute pinion ⇄ hour wheel — the second 12:1 mesh
   ['Hour wheel', 'Dial'],                    // tube runs through the dial's centre bore, over the cannon pinion
+  ['Minute jumper', 'Motion works'],         // beak seated in the minute star's teeth
+  ['Minute jumper', 'Dial'],                 // same seat — the star is also a Dial-unit mesh through
+                                             // the motion-works nesting (the jumper itself is a
+                                             // movement child now, so this is star contact only)
+  ['Minute jumper', 'Setting lever'],        // the lifter bar rides the tail post's pin
   ['Keyless works', 'Motion works'],         // SETTING: the arbor's cap pinion meshes the minute wheel's
                                              // real teeth — the drive edge above IS this contact
   // 'Motion works' is a labelled child of the dialFace group, so every one of
@@ -798,6 +809,14 @@ const CLEARANCE_BUDGETS = [
   { a: 'Maintaining detent', b: 'Mainspring drum', min: 0.15 },
   { a: 'Maintaining detent', b: 'Chain', min: 0.15 },
   { a: 'Maintaining detent', b: 'Center wheel', min: 0.15 },
+  // Jumping-minute setting: the jumper lives in the thin slice between
+  // the minute wheel and the hour wheel on the dial face — these rows
+  // hold that slice and its neighbours. The Dial row excludes the crown
+  // axis: crown out SEATS the beak in the minute star (a Dial-unit mesh
+  // via the motion-works nesting) — that contact is the detent itself.
+  { a: 'Minute jumper', b: 'Dial', min: 0.15, axes: ['beat', 'reserve', 'train'] },
+  { a: 'Minute jumper', b: 'Hour wheel', min: 0.15 },
+  { a: 'Minute jumper', b: 'Keyless works', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------
