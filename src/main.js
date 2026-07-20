@@ -897,8 +897,8 @@ barrelArbor.add(fusee);
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
 registerLabel('Fusee & great wheel', barrelArbor);
-// (The 'Winding click' unit is built with the plate-top ratchet at the
-// upper pivots — it stands on the THREE-QUARTER plate's top face now.)
+// (No click anywhere on this arbor — see the let-down square comment at
+// the upper pivots and the maintaining-power block after the drum.)
 
 const centerArbor = new THREE.Group();
 centerArbor.position.set(P.center.x, P.center.y, L_BARREL);
@@ -1145,22 +1145,22 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   addUpperPivot(arbor);
 }
 // The FUSEE arbor is the exception: it does not END in the plate — it
-// passes THROUGH it, because the winding ratchet and click live on the
-// plate's top face (the classic Glashütte view: ratchet on an arbor
-// square, click and click spring screwed beside it). A winding arbor runs
-// in a plain bushed bore, not a jewel — jewelling a barrel arbor is
-// unusual, and no jewel could pass the square anyway.
+// passes THROUGH it and finishes in a short LET-DOWN square standing
+// proud of the top face. There is deliberately NO ratchet or click on
+// this arbor any more: the arbor turns BOTH ways (forward with the train
+// as the chain pays off, backward under windBack) and a fixed pawl on a
+// bidirectional ratchet is impossible — the wind is held by the
+// escapement through the train, and the winding-time reversal is
+// absorbed by the MAINTAINING POWER at the great wheel (see that block).
+// The square is the watchmaker's let-down square: a key on it is how the
+// power is safely released at the bench. A winding arbor runs in a plain
+// bushed bore, not a jewel — and no jewel could pass the square anyway.
 addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
-// Plate-top ratchet stack ("windTop") — keyed to the fusee arbor, so it
-// takes the winding spin exactly like the spur and cone below.
 // Square across-corners = staff diameter (0.5·2), so the filed square
 // passes the plate's own bore without opening it.
 const FUSEE_SQ_S = 0.5 * Math.SQRT2;
-const RTOP_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN; // ratchet rides one margin over the plate face (nothing on the plate top stands proud — jewels sit flush)
-const RTOP_TOP_Z = RTOP_BOT_Z + RATCHET_T;
-const RATCHET_CAP_H = 0.35;
-const RTOP_SQ_PROUD = 0.05; // square stands proud of the wheel so the cap visibly seats on the SQUARE, not the wheel
-const RTOP_CAP_TOP = RTOP_TOP_Z + RTOP_SQ_PROUD + RATCHET_CAP_H; // tallest thing on the barrel axis — the rod corridor derives from it
+const LETDOWN_H = 0.9; // proud of the plate face: enough engagement for a let-down key
+const LETDOWN_TOP = TQ_TOP_Z + LETDOWN_H; // the rod corridor derives from this
 const windTop = new THREE.Group();
 {
   // Shaft continuation: addUpperPivot's staff stops at the plate's
@@ -1170,104 +1170,25 @@ const windTop = new THREE.Group();
   shaft.rotation.x = Math.PI / 2;
   shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2 - L_BARREL;
   windTop.add(shaft);
-  const sqH = RTOP_TOP_Z + RTOP_SQ_PROUD - TQ_TOP_Z;
-  const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, sqH), MATS.steel);
-  square.position.z = TQ_TOP_Z + sqH / 2 - L_BARREL;
+  const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, LETDOWN_H), MATS.steel);
+  square.position.z = TQ_TOP_Z + LETDOWN_H / 2 - L_BARREL;
   windTop.add(square);
-  const ratchetTop = G.makeRatchetAndClick({
-    radius: ratchetR, teeth: WIND_SPUR_TEETH, thickness: RATCHET_T,
-    includeClick: false, squareBore: FUSEE_SQ_S,
-  });
-  ratchetTop.position.z = RTOP_BOT_Z - L_BARREL; // 0-based extrude spans the [RTOP_BOT_Z, RTOP_TOP_Z] band
-  windTop.add(ratchetTop);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, RATCHET_CAP_H, 14), MATS.blueSteel);
-  cap.rotation.x = Math.PI / 2;
-  cap.position.z = RTOP_TOP_Z + RTOP_SQ_PROUD + RATCHET_CAP_H / 2 - L_BARREL;
-  windTop.add(cap);
 }
 barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', which is what it is
 
-// CLICK + CLICK SPRING on the plate's top face — its own labelled unit
-// (the plate-fixed mount a click needs to actually hold the ratchet).
-// The whole subgroup can rotate about the barrel axis in 15°-pitch steps
-// (CLICK_AZ) without losing the builder's beak-in-valley registration.
-// ACCEPTED COMPROMISE, stated rather than hidden: this arbor turns BOTH
-// ways (forward with the train as the chain pays off, backward under
-// windBack), and a fixed pawl on a bidirectional ratchet is impossible in
-// a real fusee — real movements absorb the reversal in the maintaining-
-// power ratchet down at the great wheel, whose detent never sees reverse
-// motion. This plate-top pair compresses that construction for the view;
-// in tick() the beak geometrically rides whatever teeth pass under it,
-// which during winding means playing the saw ramp backwards.
-const CLICK_AZ = 0 * ((Math.PI * 2) / WIND_SPUR_TEETH); // k·pitch; bump k if the rod corridor ever pinches
-const windingClick = new THREE.Group();
-windingClick.position.set(P.barrel.x, P.barrel.y, 0);
-{
-  const az = new THREE.Group();
-  az.rotation.z = CLICK_AZ;
-  windingClick.add(az);
-  const CLICK_T = RATCHET_T * 0.75;
-  const clickBot = RTOP_BOT_Z + (RATCHET_T - CLICK_T) / 2; // body centred in the ratchet's band
-  const click = G.makeClick({ radius: ratchetR, thickness: CLICK_T });
-  click.position.set(ratchetR * 1.28, 0, clickBot);
-  click.rotation.z = Math.PI * 0.778; // the builder's beak-at-valley aim, preserved
-  az.add(click);
-  // Shoulder screw: post standing ON the plate's top face (this is the
-  // support geometry the ['Winding click','Three-quarter plate'] edge
-  // measures), through the click body, head above.
-  const postH = clickBot + CLICK_T - TQ_TOP_Z;
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, postH, 10), MATS.steel);
-  post.rotation.x = Math.PI / 2;
-  post.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH / 2);
-  az.add(post);
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.18, 12), MATS.blueSteel);
-  head.rotation.x = Math.PI / 2;
-  head.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH + 0.09);
-  az.add(head);
-  // Click SPRING: a flat curved blade from its own screw, tip pressing the
-  // click's FLANK on the beak side — the push there torques the click so
-  // the beak stays biased into the teeth (pressing the opposite flank
-  // would lift it out). The arc is SOLVED through its two endpoints
-  // (anchor A, contact tip T) at a chosen blade radius — same style as
-  // the shock setting's lyre spring.
-  const springR = 1.3;
-  const beta = Math.PI * 0.778; // the click body's aim (its beak-at-valley rotation)
-  // Contact point: 1.2 along the body from the pivot (clear of the 0.55
-  // pivot head), offset one half-width + blade radius to the flank.
-  const flankOff = ratchetR * 0.11 * 0.7 + 0.12;
-  const T = {
-    x: ratchetR * 1.28 + 1.2 * Math.cos(beta) + flankOff * Math.sin(beta),
-    y: 1.2 * Math.sin(beta) - flankOff * Math.cos(beta),
-  };
-  const A = { x: ratchetR * 1.28 + 2.2 * Math.cos(0.6), y: 2.2 * Math.sin(0.6) }; // anchor screw, outboard on the same side
-  const dx = T.x - A.x, dy = T.y - A.y, d = Math.hypot(dx, dy);
-  const h = Math.sqrt(Math.max(springR * springR - (d / 2) ** 2, 0.01));
-  const C = { x: (A.x + T.x) / 2 + (-dy / d) * h, y: (A.y + T.y) / 2 + (dx / d) * h };
-  const thA = Math.atan2(A.y - C.y, A.x - C.x);
-  const thT = Math.atan2(T.y - C.y, T.x - C.x);
-  let span = thA - thT; // CCW from the tip back to the anchor
-  if (span < 0) span += Math.PI * 2;
-  const springZ = clickBot + CLICK_T / 2;
-  const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.12, 8, 24, span), MATS.blueSteel);
-  spring.position.set(C.x, C.y, springZ);
-  spring.rotation.z = thT;
-  az.add(spring);
-  const springPostH = springZ - TQ_TOP_Z;
-  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, springPostH, 10), MATS.steel);
-  springPost.rotation.x = Math.PI / 2;
-  springPost.position.set(A.x, A.y, TQ_TOP_Z + springPostH / 2);
-  az.add(springPost);
-  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.18, 12), MATS.blueSteel);
-  springHead.rotation.x = Math.PI / 2;
-  springHead.position.set(A.x, A.y, TQ_TOP_Z + springPostH + 0.09);
-  az.add(springHead);
-}
-movement.add(windingClick);
-// registerExplode's base z is the group's HOME position.z (children here
-// carry absolute z, so the group's home is 0); layer 8 = the plate layer —
-// plate-top furniture lifts with the plate in the exploded view.
-registerExplode(windingClick, 0, 8);
-registerLabel('Winding click', windingClick);
+// (The plate-top ratchet + click that used to stand here on the FUSEE
+// arbor are gone — a fixed pawl on a bidirectional arbor was a display
+// fiction. The construction is now honest and split in two: the STATIC
+// set-up ratchet + click live on the DRUM arbor's plate-top square (see
+// the SET-UP WORK block at the drum build), and the moving clicks are
+// the MAINTAINING POWER pawls and detent at the great wheel (see that
+// block after the chain section). z-derivations for the drum's plate-top
+// stack, shared with the rod corridor below:)
+const SETUP_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN; // set-up ratchet rides one margin over the plate face
+const SETUP_TOP_Z = SETUP_BOT_Z + RATCHET_T;
+const SETUP_CAP_H = 0.35;
+const SETUP_SQ_PROUD = 0.05; // square proud of the wheel so the cap seats on the SQUARE
+const SETUP_CAP_TOP = SETUP_TOP_Z + SETUP_SQ_PROUD + SETUP_CAP_H;
 // The ESCAPE WHEEL pivots in this plate like the rest of the train — its
 // bore sits in the tongue of plate the window leaves around it. Only the
 // PALLET FORK does not: it gets a small standalone cap cock screwed to the
@@ -1870,35 +1791,9 @@ crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
 windSpinner.add(crown);
 
-// Handles into the fusee arbor's winding parts + the plate-top click for
-// the winding animation (windTop carries the plate-top ratchet stack; the
-// click lives in its own plate-top unit — see the windTop block).
-const clickMesh = windingClick.getObjectByName('click');
-const clickBaseRot = clickMesh ? clickMesh.rotation.z : 0;
-const RATCHET_TEETH = WIND_SPUR_TEETH; // spur and plate-top ratchet share the count — ratio unchanged
-// Geometric click ride (see the maintaining-power caveat at the
-// windingClick build): the beak tip's seat is MEASURED from the built
-// geometry, and in tick() it rides the saw profile actually passing its
-// azimuth. All az-frame quantities — CLICK_AZ rotates the whole subgroup,
-// so the tip azimuth is used relative to that frame.
-const CLICK_PIV_R = ratchetR * 1.28; // the click mesh's pivot (its shape origin sits at its position)
-const CLICK_BEAK_L = ratchetR * 0.8; // makeClick's beak length, pivot → tip
-const clickTipAt = (rot) => ({
-  x: CLICK_PIV_R + Math.cos(rot) * CLICK_BEAK_L,
-  y: Math.sin(rot) * CLICK_BEAK_L,
-});
-const _tip0 = clickTipAt(clickBaseRot);
-const CLICK_TIP_R = Math.hypot(_tip0.x, _tip0.y); // seat radius about the wheel axis
-const CLICK_TIP_AZ = Math.atan2(_tip0.y, _tip0.x);
-// Sanity: the tip must sit low enough in the teeth to have ride left
-// (below the tip circle by a workable bite) and must not be buried under
-// the root circle. Warn instead of silently animating nothing.
-if (CLICK_TIP_R > ratchetR - 0.2 || CLICK_TIP_R < ratchetR * 0.8 - 0.1)
-  console.warn(`winding click: beak tip seats at radius ${CLICK_TIP_R.toFixed(2)} — outside the ratchet's working band [${(ratchetR * 0.8).toFixed(2)}, ${ratchetR.toFixed(2)}]`);
-// The rotation sense that lifts the tip radially OUT of the teeth —
-// derived from the geometry, not guessed.
-const _tipEps = clickTipAt(clickBaseRot + 1e-4);
-const CLICK_LIFT_SIGN = Math.sign(Math.hypot(_tipEps.x, _tipEps.y) - CLICK_TIP_R) || 1;
+const RATCHET_TEETH = WIND_SPUR_TEETH; // the spur's count — sets the crown→fusee winding ratio
+// (Pawl and detent ride constants live with the maintaining-power block;
+// the fusee arbor itself carries no ratchet any more.)
 
 // --- Setting path: setting wheel -> minute wheel/pinion (compound) --------
 // Positioned further out along the stem than crownWheel, at the sliding
@@ -2101,11 +1996,13 @@ const ROD_Z_LIFT = Math.max(
   CAM_T / 2 + CLEAR_MARGIN + ROD_TAILBAR_T / 2,
   FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR,
   TQ_TOP_Z + CLEAR_MARGIN + ROD_TAILBAR_T / 2 - Z_SECONDS_ARBOR,
-  // The rods cross the plate top near the keyless corner, where the
-  // plate-top ratchet stack now stands: their undersides must overfly its
-  // cap screw. Non-binding today (the plate term above wins) but derived
-  // so a thicker ratchet or taller cap can never silently eat the corridor.
-  RTOP_CAP_TOP + CLEAR_MARGIN + ROD_R - Z_SECONDS_ARBOR,
+  // The rods cross the plate top near the keyless corner (the fusee's
+  // let-down square) and could cross the drum's set-up stack: their
+  // undersides must overfly both. Non-binding today (the plate term above
+  // wins) but derived so a taller square or cap can never silently eat
+  // the corridor.
+  LETDOWN_TOP + CLEAR_MARGIN + ROD_R - Z_SECONDS_ARBOR,
+  SETUP_CAP_TOP + CLEAR_MARGIN + ROD_R - Z_SECONDS_ARBOR,
 );
 const ROD_PLANE_Z = Z_SECONDS_ARBOR + ROD_Z_LIFT; // reset rod centre-line's world z
 // The HACK rod (stop work) rides the same post on its own pin land ABOVE
@@ -2844,6 +2741,355 @@ function rebuildChain(tension) {
 // bearing it never had.
 addUpperPivot(drumGroup, { staffR: 0.9, jewelR: 0, boreR: 0.95 });
 
+// ---------------------------------------------------------------------------
+// MAINTAINING POWER — Harrison's sandwich at the great wheel, the honest
+// home of every moving click in a fusee. The great wheel is loose on the
+// fusee arbor; drive flows cone → base ratchet → PAWLS on the maintaining
+// wheel → maintaining spring → great wheel. While WINDING, the fusee (and
+// its base ratchet) reverse under the pawls — they click over backwards —
+// and the plate DETENT holds the maintaining wheel so the maintaining
+// spring keeps the train fed. While RUNNING, pawls sit locked, the whole
+// sandwich creeps with the wheel, and the detent slowly ticks over the
+// maintaining wheel's rim teeth. The detent never sees reverse motion —
+// which is why a fixed pawl is legal HERE and nowhere on the arbor.
+//
+// GEOMETRY IS SQUEEZED by the tornado layout, and the derivation says so:
+// the center wheel sweeps under the cone (the chain clears it VERTICALLY
+// — FUSEE_BASE_Z's window term), so a full-diameter sandwich would run
+// straight through it. Every radius below is bound by the center wheel's
+// closest approach to the barrel axis; every z by the wheel hub below and
+// the chain's lowest links above.
+// ---------------------------------------------------------------------------
+const MAINT_TEETH = 24;
+// RADIAL BOUND: the center wheel's tip circle comes within this of the
+// barrel axis — every full-circumference part of the sandwich must stay
+// a margin inside it.
+const _cwTipNear = barrelDist - (centerWheel.userData.r || 12) - 0.36; // − pitch r − addendum = tip-circle approach
+const MAINT_RING_R = _cwTipNear - CLEAR_MARGIN;
+const MAINT_RING_ROOT = MAINT_RING_R * 0.8;
+// The pawl pivot studs need SOLID footing on the ring (inside its tooth
+// roots), and the builder pivots a click at 1.28·its radius — so the
+// flange's radius is derived backwards from the footing bound.
+const MAINT_PAWL_PIV = MAINT_RING_ROOT - 0.25; // stud centre: stud r 0.22 + shy of the root land
+const MAINT_FLANGE_R = MAINT_PAWL_PIV / 1.28;
+// z BOUNDS: ring above the great wheel HUB (its tallest central feature),
+// flange below the chain's lowest links on the cone's bottom groove.
+const GW_HUB_TOP = L_BARREL + (1.4 * 1.5) / 2; // makeGear hub ring: thickness·1.5, centred on the wheel
+const MAINT_CHAIN_LOW = FUSEE_Z0 - CHAIN_PIN_LEN / 2; // underside of the lowest chain wrap
+const MAINT_RING_T = 0.5, MAINT_FLANGE_T = 0.5;
+const MAINT_RING_BOT = GW_HUB_TOP + CLEAR_MARGIN;
+const MAINT_RING_TOP = MAINT_RING_BOT + MAINT_RING_T;
+const MAINT_FLANGE_TOP = MAINT_CHAIN_LOW - CLEAR_MARGIN;
+const MAINT_FLANGE_BOT = MAINT_FLANGE_TOP - MAINT_FLANGE_T;
+if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
+  console.warn(`maintaining power: flange bottom ${MAINT_FLANGE_BOT.toFixed(2)} crowds the ring top ${MAINT_RING_TOP.toFixed(2)} — the sandwich band collapsed`);
+// Base ratchet flange: keyed to the FUSEE (winds backward with it). A hub
+// boss carries it down from the cone's base.
+{
+  const flange = G.makeRatchetAndClick({ radius: MAINT_FLANGE_R, teeth: MAINT_TEETH, thickness: MAINT_FLANGE_T, includeClick: false });
+  flange.position.z = MAINT_FLANGE_BOT - (L_BARREL + FUSEE_BASE_Z); // fusee-local (the fusee sits at FUSEE_BASE_Z in the arbor group)
+  fusee.add(flange);
+  const bossH = (L_BARREL + FUSEE_BASE_Z) - MAINT_FLANGE_TOP;
+  const bossR = MAINT_FLANGE_R * 0.8 - 0.15; // inside the flange's root land
+  const boss = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 14), MATS.steel);
+  boss.rotation.x = Math.PI / 2;
+  boss.position.z = -bossH / 2; // fusee-local: hangs from the cone's base plane
+  fusee.add(boss);
+}
+// Maintaining wheel: loose on the arbor, rim saw teeth for the detent,
+// carrying two pawls that ride the flange above. Child of barrelArbor
+// WITHOUT windBack — it turns only with the train, so it never reverses.
+const maintWheel = new THREE.Group();
+const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
+{
+  const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_TEETH, thickness: MAINT_RING_T, includeClick: false });
+  ring.position.z = MAINT_RING_BOT - L_BARREL;
+  maintWheel.add(ring);
+  // Two opposed pawls, pivot studs footed inside the ring's root land,
+  // beaks in the flange's teeth. π apart = 12 tooth pitches, so both
+  // share the builder's beak-at-valley registration.
+  for (const k of [0, 1]) {
+    const az = new THREE.Group();
+    az.rotation.z = k * Math.PI;
+    maintWheel.add(az);
+    const pawl = G.makeClick({ radius: MAINT_FLANGE_R, thickness: MAINT_FLANGE_T * 0.8 });
+    pawl.position.set(MAINT_PAWL_PIV, 0, MAINT_FLANGE_BOT + MAINT_FLANGE_T * 0.1 - L_BARREL);
+    pawl.rotation.z = Math.PI * 0.778;
+    pawl.name = 'maintPawl';
+    az.add(pawl);
+    const studH = MAINT_FLANGE_TOP - MAINT_RING_TOP;
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, studH, 8), MATS.blueSteel);
+    stud.rotation.x = Math.PI / 2;
+    stud.position.set(MAINT_PAWL_PIV, 0, MAINT_RING_TOP + studH / 2 - L_BARREL);
+    az.add(stud);
+    MAINT_PAWL_SEATS.push(pawl);
+  }
+  // The maintaining SPRING: coiled flat in the gap under the ring, hooked
+  // to a stud on the great wheel's face — mostly hidden, as in the real
+  // thing; the power-flow view lights it when it is what feeds the train.
+  const msArc = new THREE.Mesh(new THREE.TorusGeometry(MAINT_RING_ROOT * 0.6, 0.08, 6, 20, Math.PI * 1.5), MATS.blueSteel);
+  msArc.position.z = (GW_HUB_TOP + MAINT_RING_BOT) / 2 - L_BARREL;
+  msArc.name = 'maintSpring';
+  maintWheel.add(msArc);
+}
+barrelArbor.add(maintWheel); // train rotation only — tick never adds windBack here
+// Pawl ride constants — seat measured from the built geometry, lift sign
+// derived numerically (same scheme the plate click used).
+const MAINT_PAWL_BASE = Math.PI * 0.778;
+const _mpTip = (rot) => ({ x: MAINT_PAWL_PIV + Math.cos(rot) * MAINT_FLANGE_R * 0.8, y: Math.sin(rot) * MAINT_FLANGE_R * 0.8 });
+const _mp0 = _mpTip(MAINT_PAWL_BASE);
+const MAINT_PAWL_TIP_R = Math.hypot(_mp0.x, _mp0.y);
+const MAINT_PAWL_TIP_AZ = Math.atan2(_mp0.y, _mp0.x);
+const MAINT_PAWL_SIGN = Math.sign(Math.hypot(_mpTip(MAINT_PAWL_BASE + 1e-4).x, _mpTip(MAINT_PAWL_BASE + 1e-4).y) - MAINT_PAWL_TIP_R) || 1;
+if (MAINT_PAWL_TIP_R > MAINT_FLANGE_R - 0.05 || MAINT_PAWL_TIP_R < MAINT_FLANGE_R * 0.8 - 0.1)
+  console.warn(`maintaining pawl tip seats at ${MAINT_PAWL_TIP_R.toFixed(2)} — outside the flange's working band [${(MAINT_FLANGE_R * 0.8).toFixed(2)}, ${MAINT_FLANGE_R.toFixed(2)}]`);
+// Saw profile shared by pawls and detent (the builder's tooth: root→tip
+// chord over 72% of the pitch, face over the last 28%).
+function sawRadiusAt(u, R) {
+  const rootR = R * 0.8, depth = R * 0.2;
+  return u <= 0.72 ? rootR + (depth * u) / 0.72 : R - (depth * (u - 0.72)) / 0.28;
+}
+// Detent handles — built with its own cock after the drum (it needs the
+// spur/transfer envelope for its footing); null until then.
+let maintDetentBeak = null;
+let MAINT_DETENT_AZ = 0, MAINT_DET_TIP_AZ = 0, MAINT_DET_TIP_R = 0,
+    MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN = 1;
+// The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
+// windBack: zero while running (locked, torque flows), sweeping backward
+// during winding (click-click while the detent holds the wheel). The
+// detent rides the wheel's ABSOLUTE rotation — pure train creep, one
+// slow tick per tooth as the watch runs, and NEVER a reverse pass.
+function updateMaintaining(windBack) {
+  for (let k = 0; k < MAINT_PAWL_SEATS.length; k++) {
+    let u = (((MAINT_PAWL_TIP_AZ - windBack) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    if (u < 0) u += 1;
+    const lift = Math.max(sawRadiusAt(u, MAINT_FLANGE_R) - MAINT_PAWL_TIP_R, 0) / (MAINT_FLANGE_R * 0.8);
+    MAINT_PAWL_SEATS[k].rotation.z = MAINT_PAWL_BASE + MAINT_PAWL_SIGN * lift;
+  }
+  if (maintDetentBeak) {
+    const net = barrelArbor.rotation.z - MAINT_DETENT_AZ;
+    let u = (((MAINT_DET_TIP_AZ - net) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    if (u < 0) u += 1;
+    const lift = Math.max(sawRadiusAt(u, MAINT_RING_R) - MAINT_DET_TIP_R, 0) / MAINT_DET_LEVER;
+    maintDetentBeak.rotation.z = MAINT_DET_BASE + MAINT_DET_SIGN * lift;
+  }
+}
+// The DETENT on its own overhung cock. Its beak must reach the ring at
+// r ≈ 5 from the barrel axis in the ring's plane — but no post can rise
+// there: the great wheel's spoked disc sweeps every radius under it. So
+// the cock's FOOT stands on the base plate OUTSIDE the wheel's tip
+// circle, and a flat arm reaches inward OVER the wheel's top face to a
+// pivot stud from which the beak hangs down into the ring's band. The
+// azimuth is SOLVED by an obstacle scan (pillar-solver pattern): the
+// post and the arm's sweep must clear the drum, the train, the keyless
+// envelope and the setting lever's post swing.
+const maintDetent = new THREE.Group();
+{
+  const uWindAngle = Math.atan2(uWind.y, uWind.x);
+  // Pivot: just outside the winding spur's tip circle (the beak's stud
+  // hangs here — nothing of the cock reaches lower than the arm at this
+  // radius, so the spur's band below is never entered).
+  const pivR = windSpurR + KW_MODULE + CLEAR_MARGIN + 0.4;
+  // Aim SOLVED, not guessed: scan the lever's rotation for the beak tip
+  // seat closest to a working bite (root + 0.35·tooth depth).
+  const lever = pivR - MAINT_RING_ROOT + 1.1; // reaches past the root by a beak's engagement
+  const targetR = MAINT_RING_ROOT + 0.35 * (MAINT_RING_R - MAINT_RING_ROOT);
+  let bestAim = { err: Infinity, aim: Math.PI * 0.8 };
+  for (let aim = Math.PI * 0.6; aim <= Math.PI * 0.98; aim += 0.005) {
+    const tx = pivR + Math.cos(aim) * lever, ty = Math.sin(aim) * lever;
+    const err = Math.abs(Math.hypot(tx, ty) - targetR);
+    if (err < bestAim.err) bestAim = { err, aim };
+  }
+  MAINT_DET_BASE = bestAim.aim;
+  MAINT_DET_LEVER = lever;
+  const tip = { x: pivR + Math.cos(bestAim.aim) * lever, y: Math.sin(bestAim.aim) * lever };
+  MAINT_DET_TIP_R = Math.hypot(tip.x, tip.y);
+  MAINT_DET_TIP_AZ = Math.atan2(tip.y, tip.x);
+  const tipEps = { x: pivR + Math.cos(bestAim.aim + 1e-4) * lever, y: Math.sin(bestAim.aim + 1e-4) * lever };
+  MAINT_DET_SIGN = Math.sign(Math.hypot(tipEps.x, tipEps.y) - MAINT_DET_TIP_R) || 1;
+  // Footing: post centre one margin + its own radius outside the great
+  // wheel's tip circle (pitch + addendum), with a little slop.
+  const POST_R = 0.5;
+  const gwTip = barrelR_actual + barrelModule;
+  const postR = gwTip + CLEAR_MARGIN + POST_R + 0.05;
+  // Obstacle scan over the azimuth (world frame, about the barrel axis).
+  // XY-conservative like the pillar solver: distance to obstacle BOXES,
+  // full height — a candidate that passes here passes at any z.
+  // NOT boxOf(keyless): that box swallows half the movement (the setting
+  // arbor's dial-side traverse) and would veto every azimuth. The only
+  // keyless parts in the cock's z-reach are the transfer wheel + arbor —
+  // an analytic circle on the stem ray.
+  const detObstacles = [drumGroup, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup];
+  const transferXY = { x: uWind.x * cwDist, y: uWind.y * cwDist, r: crownWheelR + 0.7 };
+  const detClearAt = (x, y) => {
+    let c = plateR - 1.5 - Math.hypot(x, y); // stay well inside the plate rim
+    for (const o of detObstacles) {
+      const b = boxOf(o);
+      const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
+      c = Math.min(c, Math.hypot(x - cx, y - cy));
+    }
+    c = Math.min(c, Math.hypot(x - transferXY.x, y - transferXY.y) - transferXY.r);
+    for (let t = 0; t <= 1.0001; t += 0.1) { // the setting lever's post swing (base-plate arc slot)
+      const p = tailPostWorldAt(t);
+      c = Math.min(c, Math.hypot(x - p.x, y - p.y) - 1.2);
+    }
+    return c;
+  };
+  const ARM_HALF = 0.55; // arm half-width + a working skin
+  const prefer = uWindAngle + Math.PI / 4;
+  let bestAz = null;
+  for (let dDeg = 0; dDeg <= 180; dDeg += 5) {
+    for (const sgn of dDeg === 0 ? [1] : [1, -1]) {
+      const azw = prefer + sgn * dDeg * DEG2RAD;
+      const ux = Math.cos(azw), uy = Math.sin(azw);
+      let c = Infinity;
+      for (let r = pivR; r <= postR + POST_R; r += (postR - pivR) / 8) {
+        c = Math.min(c, detClearAt(P.barrel.x + ux * r, P.barrel.y + uy * r));
+      }
+      if (c >= CLEAR_MARGIN + ARM_HALF) { bestAz = azw; break; }
+    }
+    if (bestAz !== null) break;
+  }
+  if (bestAz === null) {
+    bestAz = prefer;
+    console.warn('maintaining detent: no clear azimuth found — using the stem-line offset unchecked');
+  }
+  // Snap so the beak tip's WORLD azimuth lands in a tooth valley (the
+  // ring sits at rotation 0 at build).
+  const pitch = (Math.PI * 2) / MAINT_TEETH;
+  MAINT_DETENT_AZ = Math.round((bestAz + MAINT_DET_TIP_AZ) / pitch) * pitch - MAINT_DET_TIP_AZ;
+  maintDetent.position.set(P.barrel.x, P.barrel.y, 0);
+  const az = new THREE.Group();
+  az.rotation.z = MAINT_DETENT_AZ;
+  maintDetent.add(az);
+  // Arm plane: just above the ring's band (the flange above starts at
+  // MAINT_FLANGE_BOT — the arm's top stays a margin under it; radially
+  // the arm never comes near the flange's 2-unit reach anyway).
+  const ARM_T = 0.45;
+  const armBot = MAINT_RING_TOP + 0.05;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(postR - pivR + POST_R, 1.1, ARM_T), MATS.steel);
+  arm.position.set((pivR + postR + POST_R) / 2, 0, armBot + ARM_T / 2);
+  az.add(arm);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(POST_R, POST_R + 0.1, armBot + ARM_T, 12), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(postR, 0, (armBot + ARM_T) / 2);
+  az.add(post);
+  // Beak hangs from a stud under the arm's inner end, riding in the
+  // ring's own z band.
+  const beak = G.makeClick({ radius: lever / 0.8, thickness: MAINT_RING_T * 0.9 });
+  beak.position.set(pivR, 0, MAINT_RING_BOT + MAINT_RING_T * 0.05);
+  beak.rotation.z = MAINT_DET_BASE;
+  az.add(beak);
+  maintDetentBeak = beak;
+  const studH = armBot + ARM_T - (MAINT_RING_BOT + MAINT_RING_T * 0.05);
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, studH, 8), MATS.blueSteel);
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(pivR, 0, armBot + ARM_T - studH / 2);
+  az.add(stud);
+  movement.add(maintDetent);
+  registerExplode(maintDetent, 0, 1); // base-plate furniture
+  registerLabel('Maintaining detent', maintDetent);
+}
+
+// ---------------------------------------------------------------------------
+// SET-UP WORK — the one ratchet a fusee movement really carries at its
+// barrel, and it is STATIC: the spring's inner end grips the DRUM ARBOR,
+// the arbor ends in a square above the plate carrying this ratchet, and
+// the plate-top click holds the few turns of pre-tension put in at
+// assembly. It never moves again in service — winding happens at the
+// fusee, running spins the drum BODY around this held arbor. Closes the
+// anchor half of TODO.md item 1: the drum→chain torque path now ends on
+// a fixture instead of thin air. (The spiral itself is still the
+// tension readout child — its morph remains representational.)
+// ---------------------------------------------------------------------------
+const setupWork = new THREE.Group();
+{
+  const SQ = 0.9 * Math.SQRT2; // across-corners = the drum staff's diameter — passes the plate's 0.95 bore
+  setupWork.position.set(drumPos.x, drumPos.y, 0);
+  const az = new THREE.Group();
+  // Click and spring aimed toward the movement centre (+x in drum frame),
+  // away from the plate rim where the pillars seat.
+  az.rotation.z = 0;
+  setupWork.add(az);
+  // Shaft continuation + square + ratchet + cap, all STATIC (the arbor
+  // does not turn in service — the body rotates around it).
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, TQ_TOP_Z - TQ_MID_Z, 12), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2;
+  az.add(shaft);
+  const sqH = SETUP_TOP_Z + SETUP_SQ_PROUD - TQ_TOP_Z;
+  const square = new THREE.Mesh(new THREE.BoxGeometry(SQ, SQ, sqH), MATS.steel);
+  square.position.z = TQ_TOP_Z + sqH / 2;
+  az.add(square);
+  const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: 24, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
+  ratchet.position.z = SETUP_BOT_Z;
+  az.add(ratchet);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, SETUP_CAP_H, 14), MATS.blueSteel);
+  cap.rotation.x = Math.PI / 2;
+  cap.position.z = SETUP_TOP_Z + SETUP_SQ_PROUD + SETUP_CAP_H / 2;
+  az.add(cap);
+  // Click on its shoulder screw + curved click spring pressing the
+  // beak-side flank (same solved-arc construction the winding click used
+  // to carry — here it holds for the life of the watch).
+  const CLICK_T = RATCHET_T * 0.75;
+  const clickBot = SETUP_BOT_Z + (RATCHET_T - CLICK_T) / 2;
+  const click = G.makeClick({ radius: ratchetR, thickness: CLICK_T });
+  click.position.set(ratchetR * 1.28, 0, clickBot);
+  click.rotation.z = Math.PI * 0.778;
+  az.add(click);
+  const postH = clickBot + CLICK_T - TQ_TOP_Z;
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, postH, 10), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH / 2);
+  az.add(post);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.18, 12), MATS.blueSteel);
+  head.rotation.x = Math.PI / 2;
+  head.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH + 0.09);
+  az.add(head);
+  const springR = 1.3;
+  const beta = Math.PI * 0.778;
+  const flankOff = ratchetR * 0.11 * 0.7 + 0.12;
+  const T = {
+    x: ratchetR * 1.28 + 1.2 * Math.cos(beta) + flankOff * Math.sin(beta),
+    y: 1.2 * Math.sin(beta) - flankOff * Math.cos(beta),
+  };
+  const A = { x: ratchetR * 1.28 + 2.2 * Math.cos(0.6), y: 2.2 * Math.sin(0.6) };
+  const dx = T.x - A.x, dy = T.y - A.y, d = Math.hypot(dx, dy);
+  const h = Math.sqrt(Math.max(springR * springR - (d / 2) ** 2, 0.01));
+  const C = { x: (A.x + T.x) / 2 + (-dy / d) * h, y: (A.y + T.y) / 2 + (dx / d) * h };
+  const thT = Math.atan2(T.y - C.y, T.x - C.x);
+  let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
+  if (span < 0) span += Math.PI * 2;
+  const springZ = clickBot + CLICK_T / 2;
+  const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.12, 8, 24, span), MATS.blueSteel);
+  spring.position.set(C.x, C.y, springZ);
+  spring.rotation.z = thT;
+  az.add(spring);
+  const spH = springZ - TQ_TOP_Z;
+  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, spH, 10), MATS.steel);
+  springPost.rotation.x = Math.PI / 2;
+  springPost.position.set(A.x, A.y, TQ_TOP_Z + spH / 2);
+  az.add(springPost);
+  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.18, 12), MATS.blueSteel);
+  springHead.rotation.x = Math.PI / 2;
+  springHead.position.set(A.x, A.y, TQ_TOP_Z + spH + 0.09);
+  az.add(springHead);
+  // The spring's INNER-END ANCHOR, inside the drum: a collar on the
+  // static arbor with a radial hook pin at the spiral's heart. The drum
+  // body (and the readout spiral) rotate around it — the arbor holds.
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 1.2, 14), MATS.steel);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.z = Z_DRUM;
+  az.add(collar);
+  const hookPin = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 8), MATS.blueSteel);
+  hookPin.rotation.z = Math.PI / 2; // cylinder Y-axis laid radially along +x
+  hookPin.position.set(1.5 + 0.7, 0, Z_DRUM);
+  az.add(hookPin);
+  movement.add(setupWork);
+  registerExplode(setupWork, 0, 8); // plate-top furniture: lifts with the plate layer
+  registerLabel('Set-up work', setupWork);
+}
+
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
 // Factored: it re-runs after the balance-cock reveal grows the cut.
@@ -3302,7 +3548,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     }
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
-    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj]) {
+    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj, maintDetent, setupWork]) {
       const b = boxOf(o);
       const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
       c = Math.min(c, Math.hypot(x - cx, y - cy));
@@ -3901,6 +4147,10 @@ panel.innerHTML = `
     <span class="label-small">Plate X-ray</span>
     <button id="btn-xray">Off</button>
   </div>
+  <div class="row">
+    <span class="label-small">Power flow</span>
+    <button id="btn-powerflow">Off</button>
+  </div>
   <hr/>
   <div class="row label-small"><span>Finish</span></div>
   <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
@@ -4162,6 +4412,90 @@ function setXray(on) {
 }
 document.getElementById('btn-xray').addEventListener('click', () => setXray(!xrayOn));
 if (restoredXray) setXray(true);
+
+// --- POWER FLOW view -------------------------------------------------------
+// Tints the LIVE torque path so the maintaining sandwich's job is visible:
+// while WINDING, the input side lights amber (energy flowing INTO the
+// spring via crown → spur → cone → chain → drum), the maintaining wheel
+// and detent light red (HOLDING — the reversal stops here), and the train
+// stays green because the maintaining spring keeps feeding it. While
+// RUNNING, the whole line from drum to escapement is green: the only way
+// energy leaves the spring is through the going train, one escapement
+// beat at a time. The set-up work glows faint red always — it holds the
+// spring's inner end for the life of the watch.
+let powerFlowOn = false;
+const PF_STORE = 0xb86e1e, PF_DELIVER = 0x1e7e46, PF_HOLD = 0xa02020, PF_DIM = 0x000000;
+let pfEntries = null; // [{ mesh, orig, tinted }] — built lazily on first enable
+function pfCollect(objs) {
+  const out = [];
+  for (const o of objs) {
+    if (!o) continue;
+    o.traverse((m) => { if (m.isMesh && m.material) out.push(m); });
+  }
+  return out;
+}
+function pfBuildGroups() {
+  // The pipe carries torque BOTH ways; input only stores; the train only
+  // delivers; the sandwich holds while winding.
+  return {
+    input: pfCollect([keyless, windSpinner]),
+    pipe: pfCollect([windSpur, windTop, fusee, drumGroup]).concat(chainMesh ? pfCollect([chainMesh]) : []),
+    train: pfCollect([greatWheel, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, balanceGroup]),
+    sandwich: pfCollect([maintWheel, maintDetent]),
+    anchor: pfCollect([setupWork]),
+  };
+}
+let pfGroups = null;
+function pfApply(meshes, hex, intensity) {
+  for (const m of meshes) {
+    if (!m.userData.pfOrig) {
+      m.userData.pfOrig = m.material;
+      m.material = m.material.clone();
+    }
+    if (m.material.emissive) {
+      m.material.emissive.setHex(hex);
+      m.material.emissiveIntensity = intensity;
+    }
+  }
+}
+function pfRestore() {
+  if (!pfGroups) return;
+  for (const g of Object.values(pfGroups))
+    for (const m of g) {
+      if (m.userData.pfOrig) {
+        m.material.dispose();
+        m.material = m.userData.pfOrig;
+        delete m.userData.pfOrig;
+      }
+    }
+  pfGroups = null;
+}
+let pfLastWind = 0, pfWindHotUntil = 0;
+function pfUpdate() {
+  if (!powerFlowOn) return;
+  if (!pfGroups) pfGroups = pfBuildGroups();
+  const now = performance.now();
+  if (windAccumTurns !== pfLastWind) {
+    pfLastWind = windAccumTurns;
+    pfWindHotUntil = now + 600; // winding activity lingers visibly
+  }
+  const winding = now < pfWindHotUntil;
+  const running = balanceRate > 0.05 && reserveShown > 0.001;
+  const pulse = 0.75 + 0.25 * Math.sin(now / 180);
+  pfApply(pfGroups.input, winding ? PF_STORE : PF_DIM, winding ? 0.55 * pulse : 0);
+  pfApply(pfGroups.pipe, winding ? PF_STORE : running ? PF_DELIVER : PF_DIM, (winding || running) ? 0.5 * pulse : 0);
+  pfApply(pfGroups.train, (running || winding) ? PF_DELIVER : PF_DIM, (running || winding) ? 0.45 * pulse : 0);
+  pfApply(pfGroups.sandwich, winding ? PF_HOLD : running ? PF_DELIVER : PF_DIM, winding ? 0.9 * pulse : running ? 0.45 * pulse : 0);
+  pfApply(pfGroups.anchor, PF_HOLD, 0.3);
+}
+function setPowerFlow(on) {
+  powerFlowOn = on;
+  if (!on) pfRestore();
+  const b = document.getElementById('btn-powerflow');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+}
+document.getElementById('btn-powerflow').addEventListener('click', () => setPowerFlow(!powerFlowOn));
 
 // --- state persistence (save/load/clear) -----------------------------------
 // Create state buttons dynamically to avoid template literal issues
@@ -4587,33 +4921,18 @@ function tick(t) {
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
   {
-    // Winding spur, plate-top ratchet stack and fusee cone are keyed
-    // together, and their rotation is a pure function of chain hauled:
-    // −2π per BANKED winding turn (backwards against the train direction,
-    // exactly one cone turn per turn of chain pulled home), riding on the
-    // arbor's own train rotation. Raw crown input past full reserve moves
-    // none of them — the chain is home.
+    // Winding spur, let-down square and fusee cone are keyed together,
+    // and their rotation is a pure function of chain hauled: −2π per
+    // BANKED winding turn (backwards against the train direction, exactly
+    // one cone turn per turn of chain pulled home), riding on the arbor's
+    // own train rotation. Raw crown input past full reserve moves none of
+    // them — the chain is home.
     const windBack = -windAccumTurns * Math.PI * 2;
     windSpur.rotation.z = windSpurBase + windBack;
     windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
-    if (clickMesh) {
-      // The beak rides the saw teeth actually passing its azimuth — one
-      // geometric formula for both motion sources (train creep while
-      // running: the arbor group's rotation; windBack while winding) and
-      // both directions (winding plays the ramp backwards — the caveat at
-      // the windingClick build). Net ratchet angle in the click's az frame:
-      const ratNet = barrelArbor.rotation.z + windTop.rotation.z - CLICK_AZ;
-      let u = (((CLICK_TIP_AZ - ratNet) * RATCHET_TEETH) / (2 * Math.PI)) % 1;
-      if (u < 0) u += 1;
-      // Tooth profile from the builder: root→tip chord over 72% of the
-      // pitch (the back), tip→root over the remaining 28% (the face).
-      const rootR = ratchetR * 0.8, depth = ratchetR * 0.2;
-      const rTooth = u <= 0.72 ? rootR + (depth * u) / 0.72 : ratchetR - (depth * (u - 0.72)) / 0.28;
-      // Contact when the passing profile stands above the tip's seat
-      // radius; radial ride → click rotation about its shoulder screw.
-      clickMesh.rotation.z = clickBaseRot + (CLICK_LIFT_SIGN * Math.max(rTooth - CLICK_TIP_R, 0)) / CLICK_BEAK_L;
-    }
+    updateMaintaining(windBack);
+    pfUpdate();
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how

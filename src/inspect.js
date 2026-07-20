@@ -103,10 +103,13 @@ const MECH_GRAPH = {
                                              // the whole keyless works lives on the DIAL side now
     ['Setting lever', 'plate'],              // stud planted in the plate's back face (dial side)
     ['Yoke', 'plate'],                       // same dial-side stud mounting
-    ['Winding click', 'Three-quarter plate'], // shoulder screws into the plate's TOP face beside
-                                             // the ratchet — classic Glashütte ratchet-and-click
-                                             // on the three-quarter plate (the fixed mount a click
-                                             // needs to actually hold the ratchet)
+    ['Set-up work', 'Three-quarter plate'],  // the drum arbor's square + set-up ratchet pass through
+                                             // the plate; its click's shoulder screws stand on the
+                                             // top face. STATIC in service — it holds the spring's
+                                             // pre-tension for the life of the watch
+    ['Maintaining detent', 'plate'],         // its cock's foot post stands on the base plate,
+                                             // outside the great wheel's tip circle; the arm
+                                             // overhangs the wheel to reach the maintaining ring
     ['Stop lever', 'plate'],                 // clevis bracket stands on the BASE plate in the
                                              // balance cut's open wedge (the crank see-saws in it)
     ['Hack rod', 'Setting lever'],           // pinned at the tail post, under the reset rod's pin
@@ -151,7 +154,9 @@ const MECH_GRAPH = {
     ['Keyless works', 'Fusee & great wheel'],  // winding: crown wheel → transfer arbor through the
                                                // plate bore → transfer wheel → winding SPUR at the
                                                // arbor's plate end, under the great wheel
-    ['Fusee & great wheel', 'Winding click'],  // the plate-top ratchet's teeth kick the click as they pass
+    ['Fusee & great wheel', 'Maintaining detent'], // the maintaining ring's teeth tick past the
+                                               // detent's beak as the train runs (never in reverse
+                                               // — that is the whole point of the sandwich)
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
     ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
     ['Setting lever', 'Hack rod'],             // the rod rides the lever's tail post
@@ -188,11 +193,13 @@ const MECH_GRAPH = {
     // stud-carrier arm, the spring's outer end is angle-fixed by setWind,
     // and the ['Hairspring','Balance cock'] support row above measures the
     // clamp for real. Free-sprung, no curb pins to confuse the story.)
-    // (The click item is CLOSED: the click is its own labelled unit now —
-    // 'Winding click' — screwed to the three-quarter plate's TOP face
-    // beside the ratchet, which rides a square of the fusee arbor above
-    // the plate (the classic Glashütte view); the transfer wheel below
-    // meshes a plain winding spur instead. See support/drive edges above.)
+    // (The click story is CLOSED the honest way: a fusee needs NO winding
+    // click — the escapement holds the wind through the train. The two
+    // real ratchets are built instead: the STATIC set-up ratchet + click
+    // on the drum arbor ('Set-up work', holding the spring's pre-tension)
+    // and the MAINTAINING POWER sandwich at the great wheel, whose pawls
+    // click during winding and whose plate detent ('Maintaining detent')
+    // ticks as the train runs. See support/drive edges above.)
   ],
   // Geometric anchor checks: a declared support edge is only real if the
   // attachment point actually sits in/on the fixture. point() extracts the
@@ -348,8 +355,9 @@ const EXPECTED_PAIRS = [
   ['Balance', 'Stop lever'],                 // brake pad on the rim (crown out)
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ winding spur (+ shared band under the great wheel)
-  ['Winding click', 'Fusee & great wheel'],  // click beak seated in the plate-top ratchet's teeth
-  ['Winding click', 'Three-quarter plate'],  // its shoulder screws stand on/in the plate's top face
+  ['Maintaining detent', 'Fusee & great wheel'], // detent beak seated in the maintaining ring's teeth
+  ['Set-up work', 'Three-quarter plate'],    // its square passes the plate's bore; click screws stand on the top face
+  ['Set-up work', 'Mainspring drum'],        // the static arbor parts (collar, hook pin) live inside the rotating body
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
   ['Keyless works', 'Yoke'],                 // prongs on the sliding-pinion hub
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
@@ -761,12 +769,19 @@ const CLEARANCE_BUDGETS = [
   // eroding (the pair used to be EXPECTED-contact, which is how the plate
   // sat flush against and into the bridge unnoticed).
   { a: 'Balance cock', b: 'Three-quarter plate', min: 0.15 },
-  // Plate-top ratchet stack: the reset/hack rods cross the plate top near
-  // the keyless corner where the ratchet + click now stand — ROD_Z_LIFT
-  // gained a derived term for the cap screw, and these rows hold it.
+  // Plate-top stacks: the reset/hack rods cross the plate top near the
+  // keyless corner (the fusee's let-down square) and could cross the
+  // drum's set-up stack — ROD_Z_LIFT carries derived terms for both, and
+  // these rows hold them.
   { a: 'Reset rod', b: 'Fusee & great wheel', min: 0.15 },
-  { a: 'Winding click', b: 'Reset rod', min: 0.15 },
-  { a: 'Winding click', b: 'Hack rod', min: 0.15 },
+  { a: 'Set-up work', b: 'Reset rod', min: 0.15 },
+  { a: 'Set-up work', b: 'Hack rod', min: 0.15 },
+  // The maintaining detent's arm overhangs the great wheel and threads
+  // between the drum, the chain's low wraps and the center wheel — the
+  // azimuth scan places it, these rows keep it placed.
+  { a: 'Maintaining detent', b: 'Mainspring drum', min: 0.15 },
+  { a: 'Maintaining detent', b: 'Chain', min: 0.15 },
+  { a: 'Maintaining detent', b: 'Center wheel', min: 0.15 },
 ];
 
 // ---------------------------------------------------------------------------

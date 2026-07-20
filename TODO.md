@@ -24,17 +24,21 @@ the main thread for the whole sweep, and wedges the tab.
 
 ---
 
-## 1. The mainspring is not a force source
+## 1. The mainspring is not a force source (HALF CLOSED)
 
 The spring spiral is a child of the drum whose rotation/scale are a direct
-*readout* of tension (`main.js`, `springChild` in `tick()`). There is no
-inner-end anchor to a fixed arbor and no setup ratchet, so the drum→chain
-torque path never actually closes inside the drum — the one place in the
-movement where power is supposed to originate.
+*readout* of tension (`main.js`, `springChild` in `tick()`).
 
-The fusee, chain and cone geometry around it are good; they deserve a real
-spring anchoring. Fix: anchor the spiral's inner end to the drum arbor and let
-its wind state follow `barrelWindTurns`.
+CLOSED half: the inner-end anchor and set-up ratchet now exist — the
+`Set-up work` unit puts a static collar + hook pin on the drum arbor at the
+spiral's heart, and the arbor ends in a plate-top square carrying the
+classic set-up ratchet + click (static in service, exactly like the real
+thing). The drum→chain torque path now closes on a fixture.
+
+REMAINING half: the spiral's wind state is still a scale/rotation readout
+rather than a keyframed morph whose inner boundary follows the (now
+anchored) arbor and whose outer end follows the drum wall — the
+makeHairspring wind-keyframe trick would close it.
 
 ## 3. `handSetOffset` is assigned, not derived
 
