@@ -180,17 +180,21 @@ window.addEventListener('resize', () => {
 const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                            // z-stack and the hack solvers below, and now by
                            // the balance plane derivation itself.
-// RESTRIDDEN STACK — solved TOP-DOWN from the design goal "the balance
-// cock sits IN the plate band" (the plate band itself stays where the
-// mainspring drum and fusee force it — they must remain covered). Chain:
-// cock underside 12.83 → spring top 12.68 → L_BALANCE 11.09 → L_FORK 9.40
-// → L_ESCAPE 7.90, then each wheel below by half-thickness sums + margin
-// (wheels that XY-overlap must never share z). Feasible only because the
-// wheelwork THINNED with it (great 2.4→1.4 … escape 1.5→0.8, pinions
-// 3→1.6): at the old thicknesses the same chain bottoms out against the
-// great wheel with ~2 units still to find.
+// RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
+// oscillator hangs under the open plate cutaway, and the plate's own floor
+// binds on the hairspring stack (the fusee was dropped to make that true —
+// see FUSEE_BASE_Z). Chain, with the slim balance: L_FORK/L_ESCAPE 4.5 →
+// L_BALANCE ≈ 5.94 → spring top ≈ 7.56 → cock underside = plate floor
+// ≈ 7.71 (wheels that XY-overlap must never share z; each step is
+// half-thickness sums + the one margin).
 const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
-const L_CENTER = 4.85;  // slack 1.5 over the great wheel (the old nest-under-the-escape chain no longer binds it)
+// Center wheel dropped onto its own bind: one margin over the great wheel's
+// top face, at the wheel's deepest feature (its hub ring, thickness·1.5/2 =
+// 0.75 below the mid-plane). The old 4.85 carried ~1.2 of slack left over
+// from the nest-under-the-escape era — slack the fusee now needs: the
+// chain's lowest span must clear THIS wheel's top face, and every 0.1 here
+// is 0.1 the cone (and with it the whole plate stack) cannot drop.
+const L_CENTER = (L_BARREL + 0.7 + 0.08) + CLEAR_MARGIN + 0.75;
 const L_THIRD = 5.95;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
 const L_FOURTH = 6.95;
 // ESCAPE WHEEL BELOW THE FOURTH WHEEL — the low-escapement layout: the
@@ -212,7 +216,7 @@ const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thick
 // in depth — which the balance, spring and cock all inherit.
 const L_FORK = L_ESCAPE;
 const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
-const RIM_H = BAL_T * 0.75;     // rim height — mirrors makeBalanceWheel's 0.75·t rim
+const RIM_H = BAL_T * 0.55;     // rim height — mirrors makeBalanceWheel's 0.55·t rim
 // Balance mid-plane: fork body top (L_FORK + FORK_T/2) + margin + half the
 // rim's own height. The rim's underside is the balance's deepest full-ring
 // face, so this is the lowest the wheel can sit without fouling the fork.
@@ -229,7 +233,7 @@ const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal top out 
 // BALANCE COCK: a LOW bridge riding one margin over the hairspring
 // stack, wherever that stack lands — with the low escapement that is
 // ~4 under the three-quarter plate's band, so the cock (and the
-// regulator dress on its face) stands entirely clear of the plate: no
+// free-sprung dress on its face) stands entirely clear of the plate: no
 // nesting, no shared band, no collision. The plate keeps its cutaway
 // purely for the view of the oscillator below.
 const COCK_T = 0.8;
@@ -242,6 +246,18 @@ const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // crossing (Z_SETTING), reserve train (Z_RSV) and cannon pinion all pack
 // between the plate's back face (−2) and this.
 const Z_DIAL = -7;
+// KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of
+// the base plate as in a real watch (it used to ride atop the barrel on the
+// movement side). Bracketed by two binds and set mid-band:
+//  · ceiling: the sliding pinion's axis lies ALONG the stem, so its z-reach
+//    is its outer RADIUS (pitch 1.36 + addendum ≈ 1.79); that stack must
+//    clear the plate's flat underside (−2) by CLEAR_MARGIN →
+//    Z_KEYLESS ≤ −2 − 0.15 − 1.79 = −3.94.
+//  · floor: the yoke rides below the plane (its arm passes under the
+//    sliding pinion's hub collars, r 1.2) and its pivot boss must clear the
+//    dial face (Z_DIAL) by the margin → Z_KEYLESS ≥ −7 + 0.15 + 0.75
+//    (boss half) + 1.91 (yoke drop, see Z_YOKE) = −4.19.
+const Z_KEYLESS = -4.1;
 
 const explodeEntries = []; // { obj, baseZ, dir, layer }
 function registerExplode(obj, baseZ, layer, dir = 1) {
@@ -258,24 +274,33 @@ scene.add(movement);
 
 // --- Fusee & chain layout: the movement is now a FUSEE movement -----------
 // The spring barrel is a plain DRUM (no teeth) sitting off to the side; a
-// chain runs from it to the fusee cone, whose arbor carries the great wheel
-// and the winding ratchet. The fusee arbor sits exactly where the going
-// barrel used to be, so every mesh distance in the train is unchanged.
+// chain runs from it to the fusee cone, whose arbor carries the great
+// wheel, the winding spur and (above the plate) the ratchet. The fusee
+// arbor sits exactly where the going barrel used to be, so every mesh
+// distance in the train is unchanged.
 const barrelModule = 0.36, barrelTeeth = 80;
 const barrelR = (barrelModule * barrelTeeth) / 2;
 // The spring DRUM — slimmer than the great wheel it feeds: with the compact
 // tornado plate the drum tucks in close beside the fusee (XY gap smaller
 // than the great wheel's radius), so it clears the great wheel in Z instead
-// of XY — lifted drum seat + reduced height, see drumGroup below.
+// of XY. Its z-band is DERIVED from those two vertical binds: bottom one
+// margin over the great wheel's top face (1.4 thick + bevel), top at the
+// plate floor the hairspring stack sets (= floor − margin; the drum gets
+// no plate opening — only its arbor reaches the plate). With the fusee
+// dropped to the same spring-bound floor, drum and cone compress together.
 const DRUM_R_ACTUAL = 10;
-const DRUM_HEIGHT = 5;
-const barrel = G.makeBarrel({ radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true });
+const DRUM_BOT_Z = L_BARREL + 0.7 + 0.08 + CLEAR_MARGIN;
+const DRUM_TOP_Z = SPRING_TOP_Z;
+const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
+// (the drum body itself — makeBarrel — is built at the drumGroup assembly
+// further down: its arbor is sized to reach the plate's mid-thickness,
+// which isn't known yet here)
 const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
-// turns at a tighter groove pitch, seated just above the ratchet/click.
+// turns at a tighter groove pitch, seated just above the winding spur.
 // The tall cone was the single largest back-side thickness contributor AND
-// forced every cross-movement linkage (reset rod, hack blade) to detour
+// forced every cross-movement linkage (reset rod, hack linkage) to detour
 // over it. The third-wheel clearance that used to drive the tall seat is
 // now handled in XY instead: the tornado layout keeps |third − barrel|
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
@@ -284,15 +309,28 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // 4.5 spread them a full unit apart and made the fusee the tallest thing
 // in the movement — its top bound the three-quarter plate's floor).
 const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 2.8;
-// Base sized against the SAME bind as before, re-derived: the LOWEST
-// groove (where the chain rides when the reserve is nearly flat) must
-// keep the drum-span clear over the crown wheel's top face (6.6 + 0.55 =
-// 7.15; the span crosses its XY footprint, so the clearance is purely
-// vertical) plus chain radius 0.3 and margin: Z0 = 2 + 5.45 + 0.17 =
-// 7.62. Lowering base AND height together drops the cone's top from
-// 12.5 to 10.25 — and with it the plate floor, since the fusee was the
-// measured maximum.
-const FUSEE_BASE_Z = 5.45;
+// Base DERIVED from the plate's design goal. The old bind (the chain's
+// lowest span clearing the movement-side crown wheel) vanished when the
+// keyless works moved to the dial side — after that, the only thing the
+// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
+// sits at max(tallest under-plate part, hairspring stack) + margin, and
+// the fusee tip was that tallest part by ~2.5, holding the whole back of
+// the movement high and the balance cock BELOW the plate band it is meant
+// to sit in (the long-standing console warning). Seat the cone so its tip
+// (plus ~0.1 for the helical ridge standing proud of the profile) lands AT
+// the hairspring stack's top: the spring becomes the plate's binding
+// member again and everything above — plate, rod planes, post, stop-work
+// tail — closes down with it. The FLOOR under the cone is the CENTER
+// WHEEL: its disc reaches under the cone's footprint (origin is only 16.2
+// from the barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's
+// lowest span — riding the groove at FUSEE_H·0.06 above the base, chain
+// radius below its centre-line — must clear the wheel's top face by the
+// margin. Both binds explicit; today the spring goal governs (the center
+// wheel was dropped onto its own bind to make that true).
+const FUSEE_BASE_Z = Math.max(
+  SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
+  (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + 0.3 - FUSEE_H * 0.06 - L_BARREL,
+);
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -316,11 +354,26 @@ const fourthPinion = G.makePinion({ module: thirdModule, teeth: 10, thickness: 1
 const fourthPinionR = fourthPinion.userData.r;
 
 const fourthModule = 0.21, fourthTeeth = 80;
-const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: 0.8, boreR: 0.9, spokes: 5, material: MATS.brass });
+const FOURTH_WHEEL_T = 0.8;
+const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: FOURTH_WHEEL_T, boreR: 0.9, spokes: 5, material: MATS.brass });
 const fourthWheelR = fourthWheel.userData.r;
 
 // --- Escape arbor: pinion (meshed by fourth wheel) + escape wheel --------
-const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: 1.6, material: MATS.steel });
+// The escape pinion rides the train's highest wheel plane (L_FOURTH), so its
+// thickness is a plate-floor constraint, not a free choice: the 3/4 plate
+// floor sits at max(tallest under-plate part, hairspring stack) + margin,
+// and the design goal is that the SPRING binds (cock flush in the plate
+// band — see the TQ_MEASURED_MAX check). The house pinion thickness (1.6,
+// fine for the low arbors) topped out at L_FOURTH + 0.8 + bevel = 7.79,
+// above the spring stack (7.56) — surplus leaf with nothing to mesh.
+// Derived from what the mesh actually needs instead: the leaf band covers
+// the fourth wheel's full tooth band (thickness + 2·extrude bevel) with
+// CLEAR_MARGIN of overrun at each end. Top lands at 7.55 ≤ SPRING_TOP_Z,
+// so the hairspring stack is the plate's binding member again.
+const fourthWheelBevel = Math.min(FOURTH_WHEEL_T * 0.18, fourthModule * 0.22); // = makeGear's bevel
+const escPinionBevel = fourthModule * 0.2; // = makePinion's bevel (module·0.2 governs; thickness·0.15 is larger)
+const ESC_PINION_T = FOURTH_WHEEL_T + 2 * fourthWheelBevel + 2 * CLEAR_MARGIN - 2 * escPinionBevel;
+const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: ESC_PINION_T, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
 const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
@@ -358,10 +411,6 @@ const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan /
 // a much tighter multiple of the two wheels' combined radius than before.
 const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
 const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
-// stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
-// L_ESCAPE — the stones must descend by exactly that gap to land centered
-// on the wheel's own Z-thickness rather than grazing one edge of it.
-const palletFork = G.makePalletFork({ span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T, stoneZReach: L_FORK - L_ESCAPE });
 // Real impulse rollers sit well inside the balance rim (~15-20% of its
 // radius), not at half of it — the pin only needs to clear the fork's notch,
 // not the whole balance.
@@ -381,11 +430,22 @@ const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
 // finding they never actually touch (~3.5 units of persistent clearance,
 // even at the "locked" extremes) — this ties them together so a future
 // change to rollerR, amplitude, or fork proportions can't silently
-// reintroduce the gap.
-const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches the makePalletFork call above
+// reintroduce the gap. Solved BEFORE the fork is built: the builder cuts
+// the pallet stones' impulse faces from the same beat/bank pair.
+const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches makePalletFork's V-notch geometry
 const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH);
 const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
 const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
+
+// stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
+// L_ESCAPE — the stones must descend by exactly that gap to land centered
+// on the wheel's own Z-thickness rather than grazing one edge of it.
+// beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
+const palletFork = G.makePalletFork({
+  span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T,
+  stoneZReach: L_FORK - L_ESCAPE,
+  beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
+});
 
 const hairspring = G.makeHairspring({
   innerR: Math.max(rollerR * 0.5, 1.5),
@@ -429,7 +489,13 @@ const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion �
 const BARREL_STEP_DEG = -35;   // center sits down-right of barrel → barrel/crown exit viewed ~1:50
 const D4 = 15.5;               // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
 const ESCAPE_STEP_DEG = -57.9; // escape at viewed ~6:25
-const BALANCE_STEP_DEG = 44.6; // balance at viewed ~8:00
+// The balance's walk angle is a TARGET, not a constant: ~8:00 viewed is where
+// the eye wants it, but the low-escapement restride dropped the balance INTO
+// the train's z-bands (rim [5.25, 7.13] straddles the center wheel's tooth
+// band below AND the fourth wheel's above), so the wheel must also clear both
+// discs in XY. The solved angle (BALANCE_STEP_DEG below, after the escape
+// arbor is placed) is the feasible angle nearest this target.
+const BALANCE_STEP_TARGET_DEG = 44.6; // balance at viewed ~8:00
 
 const barrelPos = { x: 0, y: 0 };
 const centerPos = stepPos(barrelPos, BARREL_STEP_DEG, barrelR_actual + centerPinionR);
@@ -445,6 +511,72 @@ const thirdWedgeDeg =
 const thirdPos = stepPos(centerPos, -90 - thirdWedgeDeg, d1CT);
 const fourthPos = { x: centerPos.x, y: centerPos.y - D4 };
 const escapePos = stepPos(fourthPos, ESCAPE_STEP_DEG, fourthWheelR + escapePinionR);
+// BALANCE_STEP_DEG — SOLVED from the clearance constraint, not styled. The
+// balance rides a circle of radius escToBalanceDist about the escape arbor;
+// rotating on that circle is the ONE move that leaves every fork/balance
+// relation untouched (fork pivot, lever length, pin aim, hack pad and fork
+// cock all re-derive from the escape→balance line). Constraint, per train
+// disc W the balance z-shares:  |balance − W| ≥ sweptR(W) + sweptR(balance)
+// + CLEAR_MARGIN.  Swept radii are MEASURED from the built meshes about
+// their own axes (vertex max — same lesson as xyRadiusAbout below: bevels
+// and the timing screws' tip corners are real, boxes over-report), so a
+// future radius, bevel or screw change re-solves instead of silently
+// re-colliding. At the current builds this lands ≈ 41.9° (target 44.6°):
+// the fourth wheel binds first (screw corners at 9.52 vs tooth band 8.72),
+// the center wheel a hair behind (rim 9.0 vs tooth band 11.70).
+const BALANCE_STEP_DEG = (() => {
+  const sweptR = (obj) => {
+    obj.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    let r = 0;
+    obj.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        r = Math.max(r, Math.hypot(v.x, v.y));
+      }
+    });
+    return r;
+  };
+  const rBal = sweptR(balanceWheel);
+  // Every placed train disc votes; the far ones (great, third, escape) never
+  // bind today but cost nothing and guard the next relayout. Full-height
+  // swept radii — deliberately z-blind: the balance straddles BOTH adjacent
+  // wheel bands, so no z argument can relax the XY bound for the pair that
+  // matters, and a z-blind bound cannot rot when the stack is restridden.
+  const obstacles = [
+    { pos: barrelPos, rr: sweptR(greatWheel) + rBal + CLEAR_MARGIN },
+    { pos: centerPos, rr: sweptR(centerWheel) + rBal + CLEAR_MARGIN },
+    { pos: thirdPos, rr: sweptR(thirdWheel) + rBal + CLEAR_MARGIN },
+    { pos: fourthPos, rr: sweptR(fourthWheel) + rBal + CLEAR_MARGIN },
+    { pos: escapePos, rr: sweptR(escapeWheel) + rBal + CLEAR_MARGIN },
+  ];
+  const ok = (deg) => {
+    const p = stepPos(escapePos, deg, escToBalanceDist);
+    return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+  };
+  if (ok(BALANCE_STEP_TARGET_DEG)) return BALANCE_STEP_TARGET_DEG;
+  // Nearest feasible angle: march outward from the target on each side, then
+  // bisect onto the feasibility edge (hi stays feasible), take the closer side.
+  const edge = (s) => {
+    let hi = 0.25;
+    while (hi <= 90 && !ok(BALANCE_STEP_TARGET_DEG + s * hi)) hi += 0.25;
+    if (hi > 90) return Infinity;
+    let lo = hi - 0.25;
+    for (let k = 0; k < 40; k++) {
+      const m = (lo + hi) / 2;
+      if (ok(BALANCE_STEP_TARGET_DEG + s * m)) hi = m; else lo = m;
+    }
+    return hi;
+  };
+  const down = edge(-1), up = edge(1);
+  if (down === Infinity && up === Infinity) {
+    console.warn('balance step: no clear angle about the escape arbor — leaving the target');
+    return BALANCE_STEP_TARGET_DEG;
+  }
+  return BALANCE_STEP_TARGET_DEG + (down <= up ? -down : up);
+})();
 const balancePos = stepPos(escapePos, BALANCE_STEP_DEG, escToBalanceDist);
 
 // Fork pivot: on the escape→balance line at palletStoneDist from the wheel
@@ -481,12 +613,115 @@ const P = {
 // because the setting cluster extends OUTBOARD of the pulled-out sliding
 // pinion along the stem, and the plate must enclose it (with the compact
 // tornado train, this floor — not the train extent — is what sizes the
-// plate). The keyless works itself is assembled after the plates below,
-// from these same constants.
+// plate).
 const KW_MODULE = 0.34;
 const crownWheelTeeth = 20, windPinionTeeth = 8, settingWheelTeeth = 20;
 const minuteWheelTeeth = 24, minutePinionTeeth = 8;
 const CROWN_PULL_DIST = 5; // stem/crown outward slide when pulled to set
+
+// ---------------------------------------------------------------------------
+// KEYLESS WORKS XY LAYOUT — hoisted ahead of the plate build because the
+// BASE plate needs real openings measured from this geometry: the keyless
+// works lives on the DIAL side now (plane Z_KEYLESS, see the Z-stack), so
+// the setting lever's tail post crosses the plate through an arc SLOT on
+// its way up to the hack collar / reset rod, and the winding transfer
+// arbor runs in a bored hole (see the winding path at the keyless
+// assembly). Pitch radii are closed-form (module·teeth/2 — identical to
+// what makeGear returns); the assembly further down consumes these same
+// constants, so layout and plate openings can never drift apart.
+// ---------------------------------------------------------------------------
+const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
+const uWind = { x: P.barrel.x / barrelDist, y: P.barrel.y / barrelDist };
+const stemAngle = Math.atan2(uWind.y, uWind.x);
+// Which side of the stem line the balance (and hence the setting lever)
+// lives on. NOTE: with the tornado layout the balance sits
+// almost exactly ON the stem line's far extension (perpendicular distance
+// ≈ 1 unit), so this sign holds by a thin margin — nudging the balance step
+// TARGET, the solved clearances feeding BALANCE_STEP_DEG, or the barrel
+// angle can silently mirror the whole lever/yoke/hack-spring assembly.
+// Asserted below (the clearance solve now MOVES the balance, so a silent
+// flip is a live failure mode, not a hypothetical): |projection| ≈ 0.79
+// after the solve, vs ≈ 0.97 at the raw target.
+const vPerp = { x: -uWind.y, y: uWind.x };
+const sideProj = P.balance.x * vPerp.x + P.balance.y * vPerp.y;
+const sideSign = Math.sign(sideProj) || 1;
+if (Math.abs(sideProj) < 0.5) {
+  console.warn(`keyless side sign nearly degenerate (balance ${sideProj.toFixed(2)} off the stem line) — lever/yoke/hack layout may mirror`);
+}
+const ratchetR = barrelR * 0.34;                       // matches makeBarrel's ratR
+const crownWheelR = (KW_MODULE * crownWheelTeeth) / 2;
+const windPinionR = (KW_MODULE * windPinionTeeth) / 2;
+const settingWheelR = (KW_MODULE * settingWheelTeeth) / 2;
+const minuteWheelR = (KW_MODULE * minuteWheelTeeth) / 2;
+// The transfer wheel drives a plain 24-tooth WINDING SPUR on the fusee
+// arbor (the saw-toothed ratchet lives on the plate top now, serving only
+// the click). Same tooth count as the ratchet keeps the crown→fusee ratio;
+// equal module makes the mesh honest — the old layout gear-meshed the
+// ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
+const WIND_SPUR_TEETH = 24;
+const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
+// Winding transfer arbor axis — one spur-mesh distance outboard of the
+// barrel, with the same +0.1 slop every keyless mesh uses (see mwFoldD).
+const cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
+const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // sliding pinion, pushed in (teeth overlap the wheel rim, bevel-style)
+const pinOutDist = pinDist + CROWN_PULL_DIST;              // ...pulled out → setting mesh
+const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
+// The minute wheel FOLDS perpendicularly off the stem line (see the
+// setting-path assembly for why).
+const mwFoldD = settingWheelR + minuteWheelR + 0.1;
+const minuteArborXY = {
+  x: uWind.x * swDist - sideSign * vPerp.x * mwFoldD,
+  y: uWind.y * swDist - sideSign * vPerp.y * mwFoldD,
+};
+// Setting lever & yoke pivots + the pull-driven angle solves. Hoisted with
+// the layout: the lever's tail-post ARC is what the plate's slot is cut
+// from, and every hack/reset solver downstream keys off tailPostWorldAt.
+const SL_C = 10;        // lever pivot's lateral offset from the stem axis
+const SL_TAIL = 6;      // tail arm length (pivot → post)
+const GROOVE_LOCAL = 4; // stem groove collars sit this far outboard of the sliding pinion
+const slMidAlong = pinDist + CROWN_PULL_DIST / 2 + GROOVE_LOCAL;
+const settingLeverPivot = {
+  x: uWind.x * slMidAlong + sideSign * vPerp.x * SL_C,
+  y: uWind.y * slMidAlong + sideSign * vPerp.y * SL_C,
+};
+function settingLeverAngleAt(pull) {
+  const along = pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL;
+  const gx = uWind.x * along, gy = uWind.y * along;
+  return Math.atan2(gy - settingLeverPivot.y, gx - settingLeverPivot.x) - Math.PI / 2;
+}
+function tailPostWorldAt(pull) {
+  const a = settingLeverAngleAt(pull);
+  return {
+    x: settingLeverPivot.x + Math.sin(a) * SL_TAIL,
+    y: settingLeverPivot.y - Math.cos(a) * SL_TAIL,
+  };
+}
+const postEng = tailPostWorldAt(1);
+const postRel = tailPostWorldAt(0);
+// The post swings on the lever's tail, so its track between the two crown
+// poses is an ARC, not the chord — both plates' slots need the bow.
+const kwPostBow = (() => {
+  const chord = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
+  const L = Math.hypot(chord.x, chord.y) || 1;
+  let bow = 0;
+  for (let i = 0; i <= 40; i++) {
+    const p = tailPostWorldAt(i / 40);
+    const t = ((p.x - postRel.x) * chord.x + (p.y - postRel.y) * chord.y) / (L * L);
+    bow = Math.max(bow, Math.hypot(p.x - postRel.x - t * chord.x, p.y - postRel.y - t * chord.y));
+  }
+  return bow;
+})();
+const YK_C = 7.5; // yoke pivot's lateral offset, opposite side of the stem
+const yokeMidAlong = pinDist + CROWN_PULL_DIST / 2;
+const yokePivot = {
+  x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
+  y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
+};
+function yokeAngleAt(pull) {
+  const along = pinDist + pull * CROWN_PULL_DIST;
+  const px = uWind.x * along, py = uWind.y * along;
+  return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
+}
 
 // Plate radius: tightest circle (plus a rim margin) that contains each part's
 // own outline — arbor distance plus that part's radius, not a blanket maximum.
@@ -500,28 +735,14 @@ for (const key in P) {
   plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (partOutlineR[key] || 0));
 }
 plateR += 5;
-{
-  // Keyless floor: walk the wheel line out along the stem (closed-form
-  // pitch radii — module·teeth/2, identical to what makeGear returns) and
-  // require the plate to reach 1 unit past the setting wheel and past the
-  // folded minute wheel (which sits perpendicular off the stem line at the
-  // setting wheel — see the setting-path assembly).
-  const kwBarrelDist = barrelR_actual + centerPinionR; // = |P.barrel| by construction
-  const kwRatchetR = barrelR * 0.34;                   // matches makeBarrel's ratR
-  const kwCrownR = (KW_MODULE * crownWheelTeeth) / 2;
-  const kwPinR = (KW_MODULE * windPinionTeeth) / 2;
-  const kwSettingR = (KW_MODULE * settingWheelTeeth) / 2;
-  const kwMinuteR = (KW_MODULE * minuteWheelTeeth) / 2;
-  const kwSwDist = kwBarrelDist + kwRatchetR + kwCrownR + 0.1 // crown wheel centre
-    + kwCrownR + kwPinR * 0.55                                // sliding pinion, pushed in
-    + CROWN_PULL_DIST + kwPinR * 0.55 + kwSettingR;           // pulled out → setting wheel
-  const kwMinuteFoldD = kwSettingR + kwMinuteR + 0.1;
-  plateR = Math.max(
-    plateR,
-    kwSwDist + kwSettingR + 1,
-    Math.hypot(kwSwDist, kwMinuteFoldD) + kwMinuteR + 1,
-  );
-}
+// Keyless floor: the plate must reach 1 unit past the setting wheel and
+// past the folded minute wheel (with the compact tornado train, this floor
+// — not the train extent — is what sizes the plate).
+plateR = Math.max(
+  plateR,
+  swDist + settingWheelR + 1,
+  Math.hypot(swDist, mwFoldD) + minuteWheelR + 1,
+);
 
 // Centroid of just the wheel-train arbors (excludes balance/dial), used to
 // aim the "Train" camera preset without staring straight down the Z axis
@@ -640,39 +861,44 @@ function balanceTheta(tau, tension = 1) {
 // Assemble arbor groups
 // ---------------------------------------------------------------------------
 // Fusee arbor — great wheel at the bottom (same mesh position the going
-// barrel occupied), winding ratchet + click at the keyless plane above it,
-// then the grooved cone. The cone and ratchet are keyed together: both take
-// the winding spin; the great wheel turns only with the train.
+// barrel occupied), winding SPUR at the keyless plane above it, then the
+// grooved cone. Spur and cone are keyed together: both take the winding
+// spin; the great wheel turns only with the train.
 const barrelArbor = new THREE.Group();
 barrelArbor.position.set(P.barrel.x, P.barrel.y, L_BARREL);
 greatWheel.position.z = 0;
 barrelArbor.add(greatWheel);
-const fuseeRatchetGroup = G.makeRatchetAndClick({ radius: barrelR * 0.34, teeth: 24, thickness: 0.96 });
-fuseeRatchetGroup.position.z = 4.1; // centres the ratchet on the crown-wheel plane
-barrelArbor.add(fuseeRatchetGroup);
-// TODO(realism): the click is mounted on the GREAT WHEEL (a child of
-// barrelArbor, which gets the full train rotation every frame — see
-// barrelArbor.rotation.z = barrelMeshAngle(tau) in tick()). That's backwards:
-// a click's whole job is to hold the ratchet against backward rotation
-// relative to a FIXED reference, which only works if the click itself is
-// anchored to something stationary — the plate or a bridge — not to a part
-// that co-rotates with the very train it's supposedly holding. As built, the
-// click's LOCAL rotation only changes during active winding (windBack,
-// below); the rest of the time it's rigidly along for the ride with the
-// great wheel, providing no actual ratcheting resistance. Fix: mount the
-// click (and its pivot screw) on a bridge/post fixed to the PLATE instead,
-// positioned so its beak still reaches the ratchet's tooth circle at the
-// barrel arbor's fixed XY — the ratchet itself staying on the arbor is
-// correct, only the click's anchor is wrong.
-const clickPost = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 2.2, 10), MATS.steel);
-clickPost.rotation.x = Math.PI / 2;
-clickPost.position.set(barrelR * 0.34 * 1.28, 0, -1.85); // wheel face up to the click pivot
-fuseeRatchetGroup.add(clickPost);
-fusee.position.z = FUSEE_BASE_Z; // cone base above the ratchet/click AND the third wheel's plane
+// WINDING SPUR — at the BOTTOM of the fusee arbor, just above the base
+// plate and UNDER the great wheel. With the keyless works on the dial side
+// (Z_KEYLESS < 0), the winding has to cross the base plate somewhere — and
+// the spur's mesh point sits only ~7.6 from the barrel axis, well INSIDE
+// the great wheel's radius, so a crossing arbor at any spur-mesh XY would
+// skewer the great wheel's disc… unless it stops BELOW it. Down here the
+// crown-wheel arbor (see the winding path at the keyless assembly) can end
+// its climb legally: plate top at 0, spur band, then the great wheel's
+// underside at ~1.22 — everything clears by the margin. (The saw-toothed
+// RATCHET this spur replaced now sits on the plate top, on a square of
+// this same arbor, where its teeth serve only the click — see the windTop
+// block at the upper pivots.)
+const RATCHET_T = 0.8;
+const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
+// Hub-less like the transfer wheel it meshes: the band under the great
+// wheel is ~1.2 tall and makeGear's stock hub ring (1.5·thickness) would
+// eat both gaps.
+const windSpur = G.makeGear({ module: KW_MODULE, teeth: WIND_SPUR_TEETH, thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+windSpur.name = 'windSpur';
+const windSpurBase = Math.PI / WIND_SPUR_TEETH; // half-tooth phase so spur and transfer teeth interlace at rest (crownWheelBase convention)
+// makeGear extrudes CENTERED (unlike the old ratchet builder's 0-based
+// extrude), so the group z places the band's middle.
+windSpur.position.z = Z_RATCHET_BOT + RATCHET_T / 2 - L_BARREL;
+barrelArbor.add(windSpur);
+fusee.position.z = FUSEE_BASE_Z; // cone base above the third wheel's plane
 barrelArbor.add(fusee);
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
 registerLabel('Fusee & great wheel', barrelArbor);
+// (No click anywhere on this arbor — see the let-down square comment at
+// the upper pivots and the maintaining-power block after the drum.)
 
 const centerArbor = new THREE.Group();
 centerArbor.position.set(P.center.x, P.center.y, L_BARREL);
@@ -720,6 +946,20 @@ escapeWheel.position.z = L_ESCAPE - L_FOURTH;
   escapeWheel.rotation.z = ((raw % pitch) + pitch) % pitch;
 }
 escapeArbor.add(escapePinion, escapeWheel);
+// The arbor itself — the low-escapement layout drops the wheel 2.45 under
+// its own pinion, and nothing spanned that gap: from the side the two discs
+// floated. A visible shaft from the wheel's hub top to the pinion's
+// underside (dimensions from the same constants that place them: hub ring
+// is wheelT·1.3 tall, pinion ESC_PINION_T thick).
+{
+  const hubTop = (L_ESCAPE - L_FOURTH) + (0.8 * 1.3) / 2;
+  const pinionBot = -ESC_PINION_T / 2;
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.4, pinionBot - hubTop, 12), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (hubTop + pinionBot) / 2;
+  escapeArbor.add(shaft);
+}
 movement.add(escapeArbor);
 registerExplode(escapeArbor, L_FOURTH, 5);
 registerLabel('Escape wheel', escapeArbor);
@@ -752,7 +992,30 @@ registerLabel('Hairspring', hairspringGroup);
 // nodes ('plate') to actual geometry: a support edge is only real if the
 // supported part's meshes actually REACH the fixture — see
 // checkSupportGeometry in inspect.js.
-const backPlate = G.makeBackPlate({ radius: plateR, thickness: 2 });
+// Real openings, all measured from the hoisted keyless XY layout (the
+// keyless works lives on the DIAL side of this plate now):
+//  · a bored hole for the winding transfer arbor (the crown-wheel arbor
+//    climbing from the dial-side clutch to the winding spur above the plate) —
+//    cut PIVOT_BORE_CLEAR-style clearance over the 0.7 shaft, and the bore
+//    IS that arbor's bearing, exactly like a train pivot;
+//  · a clearance recess at the motion-works corner: the setting path's
+//    drop→traverse bevel gear stands tip-up at the minute arbor's axis and
+//    its cone reaches into the plate's z-band (the corner plane sits just
+//    under the plate) — the recess is sized to the gear's tip circle;
+//  · an arc SLOT for the setting lever's tail post, swept over the full
+//    crown stroke (chord + measured bow, same construction as the
+//    three-quarter plate's slot for this same post higher up).
+const backPlate = G.makeBackPlate({
+  radius: plateR, thickness: 2,
+  holes: [
+    { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
+    { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
+  ],
+  slots: [{
+    ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
+    r: G.SETTING_LEVER_POST_R + kwPostBow + CLEAR_MARGIN + 0.02,
+  }],
+});
 backPlate.name = 'backPlate';
 backPlate.position.set(0, 0, -1);
 backPlate.receiveShadow = true;
@@ -781,8 +1044,8 @@ registerExplode(backPlate, -1, 0);
 //    plate no longer separates fork from balance vertically at all — the
 //    CUTAWAY's edge radius is what keeps plate and balance apart, in XY
 //    (see TQ_CUT: base edge = the balance's measured swept radius + margin).
-//    The hack blade runs UNDER the plate now (see BLADE_Z at the hack
-//    block), so plate thickness is no longer traded against the pad rise.
+//    The hacking's stop crank stands in this same open cut (see the STOP
+//    WORK block), so plate thickness owes it nothing either.
 //  · Parts taller than TQ_BOT_Z that are SUPPOSED to cross the plate (the
 //    spring drum, the setting lever's post + ramp collar, the reset hammer's
 //    arbor) get real openings — see tqHoles/tqSlots at the plate build.
@@ -804,6 +1067,10 @@ const TQ_UNDER = [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor
 const TQ_MEASURED_MAX = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z));
 if (TQ_MEASURED_MAX > SPRING_TOP_Z + 1e-6) {
   console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack (${SPRING_TOP_Z.toFixed(2)}) — the balance cock will sit BELOW the plate band`);
+  for (const o of TQ_UNDER) {
+    const name = labelEntries.find((e) => e.obj === o)?.name ?? '(unlabeled)';
+    console.warn(`  under-plate part ${name}: max z = ${boxOf(o).max.z.toFixed(3)}`);
+  }
 }
 const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, SPRING_TOP_Z) + CLEAR_MARGIN;
 const TQ_T = 0.8;
@@ -874,9 +1141,47 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {})
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
 // heart cam's 0.6 bore, which is what the friction coupling grips.)
-for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
+for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   addUpperPivot(arbor);
 }
+// The FUSEE arbor is the exception: it does not END in the plate — it
+// passes THROUGH it and finishes in a short LET-DOWN square standing
+// proud of the top face. There is deliberately NO ratchet or click on
+// this arbor any more: the arbor turns BOTH ways (forward with the train
+// as the chain pays off, backward under windBack) and a fixed pawl on a
+// bidirectional ratchet is impossible — the wind is held by the
+// escapement through the train, and the winding-time reversal is
+// absorbed by the MAINTAINING POWER at the great wheel (see that block).
+// The square is the watchmaker's let-down square: a key on it is how the
+// power is safely released at the bench. A winding arbor runs in a plain
+// bushed bore, not a jewel — and no jewel could pass the square anyway.
+addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+// Square across-corners = staff diameter (0.5·2), so the filed square
+// passes the plate's own bore without opening it.
+const FUSEE_SQ_S = 0.5 * Math.SQRT2;
+const LETDOWN_H = 0.9; // proud of the plate face: enough engagement for a let-down key
+const LETDOWN_TOP = TQ_TOP_Z + LETDOWN_H; // tallest thing on the plate top at this corner (rods run LOW now)
+const windTop = new THREE.Group();
+{
+  // Shaft continuation: addUpperPivot's staff stops at the plate's
+  // mid-thickness (its bearing plane); carry the round arbor on to the
+  // plate's top face, where the square begins.
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z, 12), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2 - L_BARREL;
+  windTop.add(shaft);
+  const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, LETDOWN_H), MATS.steel);
+  square.position.z = TQ_TOP_Z + LETDOWN_H / 2 - L_BARREL;
+  windTop.add(square);
+}
+barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', which is what it is
+
+// (The plate-top ratchet + click that used to stand here on the FUSEE
+// arbor are gone — a fixed pawl on a bidirectional arbor was a display
+// fiction. The construction is now honest and split in two: the STATIC
+// set-up ratchet + click live low on the DRUM arbor above the BASE plate
+// (see the SET-UP WORK block at the drum build), and the moving clicks
+// are the MAINTAINING POWER pawls and detent at the great wheel.)
 // The ESCAPE WHEEL pivots in this plate like the rest of the train — its
 // bore sits in the tongue of plate the window leaves around it. Only the
 // PALLET FORK does not: it gets a small standalone cap cock screwed to the
@@ -909,14 +1214,14 @@ const BAL_OUTER_R = Math.max(
 
 // (The balance cock, and the plate itself, are built at the end of the
 // movement assembly — both need the drum, the setting lever's post sweep and
-// the hack blade's solved line, which don't exist yet. See "THREE-QUARTER
+// the stop crank's solved bearing, which don't exist yet. See "THREE-QUARTER
 // PLATE — build" below.)
 
-// (The hacking BRAKE is now the hack spring — a long blade lifted into
-// contact by a ramp collar on the setting lever's tail post; both are built
-// after the keyless works below, since their geometry is solved from the
-// stem/groove positions. The physical contact model that decelerates the
-// balance is unchanged, in tick().)
+// (The hacking BRAKE is the STOP WORK — a crank at the balance whose pad
+// presses the rim's underside, driven by a thin hack rod from the setting
+// lever's tail post; built after the keyless works below, since its linkage
+// is calibrated from the post's crown stroke. The physical contact model
+// that decelerates the balance is unchanged, in tick().)
 
 // --- Reset hammer + heart cam (seconds-only stopwatch reset) -------------
 // Mounted on its OWN arbor, coaxial with the fourth wheel but NOT rigidly
@@ -952,8 +1257,13 @@ if ((P.balance.x - P.fourth.x) * outX + (P.balance.y - P.fourth.y) * outY > 0) {
   outX = -outX; outY = -outY;
 }
 const uFourthOut = { x: outX, y: outY };
-const heartCam = G.makeHeartCam({ radius: camRadius, thickness: 1.2 });
-const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: 2.0 });
+// Cam thinned 1.2 → 0.8: the hammer/cam ride ABOVE the three-quarter plate
+// now (see Z_SECONDS_ARBOR below), and every bit of body thickness up
+// there is height the compressed stack has to give back.
+const CAM_T = 0.8;
+const HAMMER_W = 2.0;
+const heartCam = G.makeHeartCam({ radius: camRadius, thickness: CAM_T });
+const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: HAMMER_W });
 // Pivot distance solved for a TANGENT seat: at 0° swing the roller's centre
 // sits one roller radius outside the notch floor (rMin, plus the cam's
 // bevel expansion), so the roller surface just kisses the notch instead of
@@ -983,7 +1293,7 @@ const camPhaseOffset = hammerAimAngle + Math.PI;
 // twice a minute) by a clearance margin. The old fixed 30° left the head
 // 0.84 INSIDE the sweep. In lever-local frame the cam centre sits at
 // (D·sinθ, D·cosθ) for swing θ; scan-then-bisect the smallest clearing θ —
-// the same build-time-solver pattern as HACK_LAYOUT / HAMMER_TAIL_DELTA.
+// the same build-time-solver pattern as HAMMER_TAIL_DELTA / STOP_BEARING.
 const HAMMER_SWING_MARGIN = 0.35;
 const HAMMER_SWING_RAD = (() => {
   const sweptR = heartCam.userData.r + heartCam.userData.bevel;
@@ -1042,7 +1352,21 @@ const HAMMER_SWING_RAD = (() => {
   return hi;
 })();
 
-const Z_SECONDS_ARBOR = L_FOURTH + 2.2; // clear of the fourth wheel and escape pinion planes
+// Display-arbor plane — LOW, between the plates, in the band under the
+// great wheel. The old above-plate berth cleaned the z-budget but put the
+// whole reset/hack tower on the display side; this branch brings it back
+// down. The mid-band (under the plate floor) is closed — the fusee cone's
+// tip reaches 0.25 under it — but the LOW band is open: nothing on the
+// fourth (display) axis below the third-wheel mesh, and the through-rod
+// to the small-seconds dial already runs the full height for the cam to
+// friction-couple onto. Bounds, both derived:
+//  · cam bottom ≥ reset-rod band top + margin (the rod plane lives under
+//    the great wheel — see ROD_PLANE_Z);
+//  · cam + hammer boss top ≤ the CENTER WHEEL's underside − margin (its
+//    rim passes 3.26 from the fourth axis, well inside the hammer's
+//    swing, from z = L_CENTER − t/2).
+const CW_UNDER_Z = L_CENTER - 1.0 / 2; // center wheel underside (thickness 1.0)
+const Z_SECONDS_ARBOR = CW_UNDER_Z - CLEAR_MARGIN - (HAMMER_W * 0.6 * 1.4) / 2;
 const secondsCamArbor = new THREE.Group();
 secondsCamArbor.position.set(P.fourth.x, P.fourth.y, Z_SECONDS_ARBOR);
 secondsCamArbor.add(heartCam);
@@ -1102,12 +1426,10 @@ const forkCock = (() => {
   // the leg solve: the leg must clear for the BAR that will connect it to
   // this boss, whose width follows the boss radius.)
   const forkBore = 0.35 + PIVOT_BORE_CLEAR;
-  // Fork boss SLIMMED to 1.5 (was chaton + 0.5 = 1.85): the balance's
-  // timing screws share this slab's z-band, and the boss is the cap's
-  // closest feature to the balance axis (11.19 away). Screw tips reach
-  // 9.5, so the boss edge at 11.19 − 1.5 = 9.69 clears them by 0.19. The
-  // jewel still fits: ruby seats inside the counterbore (1.35) leaving a
-  // 0.15 wall of nickel.
+  // Fork boss at 1.5: the balance's timing screws share this slab's
+  // z-band, and the boss is the cap's closest feature to the balance axis.
+  // The jewel's counterbore is fork-sized (forkCbR below, bore + 0.55),
+  // so the boss keeps a full 0.55 ring of nickel around the stone.
   const bossFork = chatonOuterFor(forkBore) + 0.15;
   // One leg outboard of each axis. Scan the bearing away from the other axis
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
@@ -1148,8 +1470,15 @@ const forkCock = (() => {
   const legR = 1.15;
   const legB = legFor(P.fork, P.escape, legR, bossFork);
   if (!legB) console.warn('fork cock: no clear footing for its leg');
+  // The jewel is seated FULLY: a fork-sized counterbore (bore + 0.55, not
+  // the chaton family's bore + 0.95) sunk 0.65·T deep, so the ruby sits
+  // its whole height in the bore with a 0.35·T bearing collar beneath and
+  // a full 0.55 ring of nickel around it — the old shallow CHATON_DEPTH
+  // seat left the stone standing more than half proud of a thin wall.
+  const forkCbR = forkBore + 0.55;
+  const forkCbDepth = FORK_COCK_T * 0.65;
   const chain = [
-    { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: chatonOuterFor(forkBore), cbDepth: CHATON_DEPTH },
+    { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: forkCbR, cbDepth: forkCbDepth },
     { x: legB.x, y: legB.y, r: legR * 1.35, foot: true },
   ];
   const g = G.makeEscapeBridge({
@@ -1159,7 +1488,7 @@ const forkCock = (() => {
     // measured from the slab's underside, where makeEscapeBridge hangs it.
     footDrop: FORK_COCK_BOT - (backPlate.position.z + 1),
     jewels: [
-      { x: P.fork.x, y: P.fork.y, boreR: forkBore, depth: CHATON_DEPTH },
+      { x: P.fork.x, y: P.fork.y, boreR: forkBore, cbR: forkCbR, depth: forkCbDepth },
     ],
   });
   g.position.set(0, 0, FORK_COCK_BOT + FORK_COCK_T / 2);
@@ -1208,6 +1537,24 @@ const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: 
                            // so the cut's base edge (BAL_OUTER_R + this) is what physically
                            // clears them at every azimuth — the escapement stretch of the
                            // window is still sized for the eye and the bridge screws.
+// Table finishing, shared by the initial solve and the post-cock second
+// pass (see the balance-cock reveal further down): a per-degree max is a
+// saw edge, and a plate edge is milled by a cutter of finite radius —
+// running max over ±6°, then light smoothing. Both only ever ADD clearance.
+function finishCutRadii(raw) {
+  const spread = raw.map((_, i) => {
+    let m = 0;
+    for (let d = -6; d <= 6; d++) m = Math.max(m, raw[((i + d) % 360 + 360) % 360]);
+    return m;
+  });
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 0; i < 360; i++) {
+      const a = spread[(i + 359) % 360], b = spread[(i + 1) % 360];
+      spread[i] = Math.max(spread[i], (a + b) / 2);
+    }
+  }
+  return spread;
+}
 const TQ_CUT = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
   const phiOpen = 75 * DEG2RAD;
@@ -1250,21 +1597,11 @@ const TQ_CUT = (() => {
       bump(v.x, v.y);
     }
   });
-  // Round the table off: a per-degree max is a saw edge, and a plate edge is
-  // milled by a cutter of finite radius. Running max over a ±6° window, then
-  // a light smoothing pass — both only ever ADD clearance.
-  const spread = radii.map((_, i) => {
-    let m = 0;
-    for (let d = -6; d <= 6; d++) m = Math.max(m, radii[((i + d) % 360 + 360) % 360]);
-    return m;
-  });
-  for (let pass = 0; pass < 3; pass++) {
-    for (let i = 0; i < 360; i++) {
-      const a = spread[(i + 359) % 360], b = spread[(i + 1) % 360];
-      spread[i] = Math.max(spread[i], (a + b) / 2);
-    }
-  }
-  return { x: P.balance.x, y: P.balance.y, aim, phiOpen, radii: spread };
+  // The RAW table is kept alongside the finished one: the balance-cock
+  // reveal (further down, once the cock exists) bumps the raw table and
+  // re-finishes ONCE — finishing twice would over-widen every original
+  // feature by another cutter radius.
+  return { x: P.balance.x, y: P.balance.y, aim, phiOpen, rawRadii: radii, radii: finishCutRadii(radii) };
 })();
 // (The pillars are built with the three-quarter plate they carry, at the end
 // of the assembly — their seating angles are solved against the plate's cut
@@ -1307,66 +1644,104 @@ function addLowerPivot(arbor, { staffR = 0.5, jewelR = 1.3 } = {}) {
 for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   addLowerPivot(arbor);
 }
+// Dial-side counterpart: parts living UNDER the plate (the keyless works'
+// setting lever and yoke) pivot on studs planted in the plate's BACK face —
+// shaft from the part's own plane UP to mid-plate, jewel set into the back
+// face, mirroring the movement-side convention above. The caller passes the
+// part's plane explicitly (a box measure is wrong here: the lever's tail
+// post spans the whole movement, so its box top is nowhere near its body).
+const PLATE_BACK = backPlate.position.z - 1; // back plate spans [z−1, z+1]
+function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ } = {}) {
+  const len = PIVOT_SEAT_Z - fromZ;
+  if (len <= 0.05) return;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (fromZ - arbor.position.z) + len / 2; // arbor-local
+  arbor.add(shaft);
+  const jewel = G.makeJewelSetting({ r: jewelR });
+  jewel.rotation.x = Math.PI; // rim proud of the BACK face, recess up into the plate
+  jewel.position.set(arbor.position.x, arbor.position.y, PLATE_BACK);
+  movement.add(jewel);
+}
 // The pallet fork carries the highest-frequency loads in the watch and had
 // no bearing geometry whatsoever — a pivot boss floating in space. Its
 // staff now reaches the plate like any other arbor (thinner: a fork staff
 // is a light, fast-moving part).
 addLowerPivot(forkGroup, { staffR: 0.35, jewelR: 1.0 });
+// The BALANCE staff had no lower bearing at all — it stopped in open air
+// just past the safety roller while only the cock's jewel held it from
+// above. Same helper: the staff continues from its current bottom (the
+// group's box-min is the staff tip, on-axis) down to mid-plate, running
+// into a rubbed-in jewel in the plate's top face. Nothing else occupies
+// the axis below (the stop crank works at radius ≈ 8.5+).
+addLowerPivot(balanceGroup, { staffR: 0.3, jewelR: 1.0 });
 // (The spring drum gets its lower pivot where it is built, further down —
 // declaring it here would read drumGroup before its `const`.)
 
 // ---------------------------------------------------------------------------
-// Keyless works — a real two-position sliding-pinion clutch. windPinion IS
-// the sliding pinion: it rides on windSpinner, which already slides axially
-// along the stem for the crown pull/push (see CROWN_PULL_DIST below). In
-// the pushed-in ("winding") position it meshes crownWheel → ratchet wheel
-// on the barrel arbor. Pulled out ("setting"), it slides clear of crownWheel
-// and meshes settingWheel instead → minuteArbor (a compound wheel+pinion,
-// same trick as the power-reserve train's reduction) → the dial's cannon
-// pinion — bypassing the going train entirely, exactly why you can set a
-// watch's hands without touching its power reserve. Which path is live is
-// decided in tick() by the sliding pinion's ACTUAL animated position
-// (crownPullT), not the raw crown target, so mid-slide it's out of mesh
-// with both, same as a real clutch in transit.
+// Keyless works — a real two-position sliding-pinion clutch, on the DIAL
+// SIDE of the base plate (plane Z_KEYLESS) as in a real watch. windPinion
+// IS the sliding pinion: it rides on windSpinner, which slides axially
+// along the stem for the crown pull/push (see CROWN_PULL_DIST). In the
+// pushed-in ("winding") position it meshes the crown wheel, whose arbor
+// climbs through a real bore in the base plate to the winding transfer
+// wheel that meshes the fusee arbor's winding spur just above the plate's
+// movement face. Pulled out ("setting"), it slides clear of the crown wheel and
+// meshes settingWheel instead → minuteArbor (a compound wheel+pinion, same
+// trick as the power-reserve train's reduction) → the motion works' minute
+// wheel, a short same-side run away — bypassing the going train entirely,
+// exactly why you can set a watch's hands without touching its power
+// reserve. Which path is live is decided in tick() by the sliding pinion's
+// ACTUAL animated position (crownPullT), not the raw crown target, so
+// mid-slide it's out of mesh with both, same as a real clutch in transit.
+// (All XY layout constants — uWind / vPerp / sideSign, cwDist / pinDist /
+// swDist, the lever and yoke pivots and tailPostWorldAt — are hoisted up
+// by the plate-radius computation: the base plate's own openings are
+// measured from them.)
 // ---------------------------------------------------------------------------
 const keyless = new THREE.Group();
 movement.add(keyless);
 registerLabel('Keyless works', keyless);
-registerExplode(keyless, 0, 4);
+registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 
-const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
-const uWind = { x: P.barrel.x / barrelDist, y: P.barrel.y / barrelDist };
-const stemAngle = Math.atan2(uWind.y, uWind.x);
-// Which side of the stem line the balance (and hence the setting lever /
-// hack spring) lives on. NOTE: with the tornado layout the balance sits
-// almost exactly ON the stem line's far extension (perpendicular distance
-// ≈ 1 unit), so this sign holds by a thin margin — nudging BALANCE_STEP_DEG
-// or the barrel angle can silently mirror the whole lever/yoke/hack-spring
-// assembly. If that geometry ever looks flipped, check this first.
-const vPerp = { x: -uWind.y, y: uWind.x };
-const sideSign = Math.sign(P.balance.x * vPerp.x + P.balance.y * vPerp.y) || 1;
-const ratchetR = barrelR * 0.34;      // matches makeBarrel's ratR
-const Z_KEYLESS = L_BARREL + 4.6;     // the ratchet-wheel plane atop the barrel
-
-// (crownWheelTeeth / windPinionTeeth / settingWheelTeeth / minuteWheelTeeth /
-// minutePinionTeeth / CROWN_PULL_DIST / KW_MODULE are declared up by the
-// plate-radius computation, which needs them for the keyless floor.)
+// --- Winding path: crown wheel + transfer arbor → winding spur ------------
+// Two coaxial wheels on one arbor at cwDist: the CROWN WHEEL proper on the
+// dial side (meshed by the sliding pinion) and the winding TRANSFER wheel
+// in the thin band between the plate's top face and the great wheel's
+// underside, where it meshes the fusee arbor's winding SPUR (a crossing
+// arbor anywhere at spur-mesh distance sits INSIDE the great wheel's
+// radius, so the climb must END below that wheel; the saw-toothed ratchet
+// itself lives on the plate top now, serving only the click). The arbor
+// runs in a real bored hole in the plate; the bore is its bearing. The
+// same tooth count top and bottom keeps the crown→fusee ratio exactly
+// what it was when the crown wheel meshed the ratchet directly (the
+// middle wheel telescopes out of the ratio), and the path still has TWO
+// meshes, so the winding sense is unchanged too.
 const crownWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
-const crownWheelR = crownWheel.userData.r;
-const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the ratchet
-const cwDist = barrelDist + ratchetR + crownWheelR + 0.1;
+const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the spur
 crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
 keyless.add(crownWheel);
-const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.5, 12), MATS.blueSteel);
+// Transfer wheel: hub-less — its band between plate top and great-wheel
+// underside is only ~1.2 tall, and the stock hub ring would eat both gaps.
+const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding spur
+const transferWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
+keyless.add(transferWheel);
+const transferArbor = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - Z_KEYLESS, 14), MATS.steel);
+transferArbor.rotation.x = Math.PI / 2;
+transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + Z_KEYLESS) / 2);
+keyless.add(transferArbor);
+// The crown wheel's blued screw — on the arbor's dial-side end now (its
+// old spot atop the wheel is where the arbor leaves for the plate bore).
+const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.blueSteel);
 cwScrew.rotation.x = Math.PI / 2;
-cwScrew.position.copy(crownWheel.position);
+cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS - 0.55 - 0.5);
 keyless.add(cwScrew);
 
 // Everything on the stem axis lives in one spinner group (local +Y = outward).
 const windPinion = G.makePinion({ module: KW_MODULE, teeth: windPinionTeeth, thickness: 1.6, material: MATS.steel });
-const windPinionR = windPinion.userData.r;
 const windSpinner = new THREE.Group();
-const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // teeth overlap the wheel rim, bevel-style
 windSpinner.position.set(uWind.x * pinDist, uWind.y * pinDist, Z_KEYLESS);
 // Euler order matters: the winding spin (rotation.y) must compose BEFORE the
 // z-orientation, i.e. about the stem's own local axis — with the default
@@ -1384,8 +1759,10 @@ stem.position.y = stemLen / 2;
 windSpinner.add(stem);
 
 // Stem bushing — the stem's actual support: a bored boss at the plate rim
-// that the stem slides and spins through, standing on a foot fixed to the
-// plate. Without it the whole stem/crown assembly visibly floats.
+// that the stem slides and spins through. The keyless works hangs UNDER
+// the plate now, so the foot hangs too: from the plate's BACK face (top
+// end embedded 0.6 into the plate, like the old foot's seat into the top
+// face) down to the bush.
 {
   const bushDist = plateR - 2;
   const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
@@ -1395,8 +1772,9 @@ windSpinner.add(stem);
   bush.rotation.order = 'ZYX';
   bush.position.set(uWind.x * bushDist, uWind.y * bushDist, Z_KEYLESS);
   keyless.add(bush);
-  const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, Z_KEYLESS - 1.2), MATS.nickel);
-  foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (Z_KEYLESS - 1.2) / 2 - 0.6);
+  const footTop = -1.4; // 0.6 into the plate's back face (−2)
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, footTop - Z_KEYLESS), MATS.nickel);
+  foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (footTop + Z_KEYLESS) / 2);
   keyless.add(foot);
 }
 
@@ -1412,11 +1790,9 @@ crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
 windSpinner.add(crown);
 
-// Handles into the fusee arbor's ratchet + click for the winding animation.
-const ratchetMesh = fuseeRatchetGroup.getObjectByName('ratchet');
-const clickMesh = fuseeRatchetGroup.getObjectByName('click');
-const clickBaseRot = clickMesh ? clickMesh.rotation.z : 0;
-const RATCHET_TEETH = 24; // matches makeRatchetAndClick's default
+const RATCHET_TEETH = WIND_SPUR_TEETH; // the spur's count — sets the crown→fusee winding ratio
+// (Pawl and detent ride constants live with the maintaining-power block;
+// the fusee arbor itself carries no ratchet any more.)
 
 // --- Setting path: setting wheel -> minute wheel/pinion (compound) --------
 // Positioned further out along the stem than crownWheel, at the sliding
@@ -1429,18 +1805,18 @@ const RATCHET_TEETH = 24; // matches makeRatchetAndClick's default
 // used for the power-reserve arbor, not a literal continuous mesh into the
 // dial's flipped coordinate frame.
 const settingWheel = G.makeGear({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
-const settingWheelR = settingWheel.userData.r;
 const settingWheelBase = Math.PI / settingWheelTeeth;
-const pinOutDist = pinDist + CROWN_PULL_DIST; // sliding pinion's centre when fully pulled out
-const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
 settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
 keyless.add(settingWheel);
 
 const minuteWheel = G.makeGear({ module: KW_MODULE, teeth: minuteWheelTeeth, thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
-const minuteWheelR = minuteWheel.userData.r;
 const minuteWheelBase = Math.PI / minuteWheelTeeth;
 const minutePinion = G.makePinion({ module: 0.28, teeth: minutePinionTeeth, thickness: 1.3, material: MATS.steel });
-const MINUTE_Z_STEP = 2.0;
+// Pinion steps toward the DIAL below the wheel (same side as before the
+// move, keeping the compound stack's read direction): 1.8 rather than the
+// old 2.0 so the pinion's underside holds one margin over the dial face —
+// the whole cluster is only ~2.9 above the dial now.
+const MINUTE_Z_STEP = 1.8;
 // The minute wheel FOLDS perpendicularly off the stem line instead of
 // continuing outward: straight-line continuation would put it (and its own
 // radius) well past the plate rim. Folded to the side AWAY from the setting
@@ -1449,48 +1825,36 @@ const MINUTE_Z_STEP = 2.0;
 // parts of them that rise through it sit on the stem axis or the lever
 // side. The perpendicular mesh with the setting wheel is unchanged spur
 // meshing; only the centre-line direction rotates.
-const mwFoldD = settingWheelR + minuteWheelR + 0.1;
-const minuteArborXY = {
-  x: uWind.x * swDist - sideSign * vPerp.x * mwFoldD,
-  y: uWind.y * swDist - sideSign * vPerp.y * mwFoldD,
-};
+// (mwFoldD / minuteArborXY are hoisted with the XY layout.)
 const minuteArbor = new THREE.Group();
 minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, Z_KEYLESS);
 minutePinion.position.z = -MINUTE_Z_STEP;
 minuteArbor.add(minuteWheel, minutePinion);
 keyless.add(minuteArbor);
-// Motion-works arbor toward the dial — the minute pinion is nowhere near the
-// cannon pinion at the dial centre (the keyless works sits out at the plate
-// edge, by the crown; the cannon pinion sits on the centre-wheel axis), so
-// this has to actually SPAN that distance to read as connected, not just
-// dip through the back plate and stop. Steel rod, like the power-reserve
-// arbor's own plate→dial crossing (Z_RSV): drop from the minute arbor's
-// plane to a clear crossing plane, travel across to the dial centre's XY,
-// then rise to meet the cannon pinion — ending in a small pinion cap so the
-// last foot of travel reads as a real mesh, not just a rod poking at it.
+// Motion-works arbor toward the dial centre — the minute pinion is nowhere
+// near the cannon pinion (the keyless works sits out at the plate edge, by
+// the crown; the cannon pinion sits on the centre-wheel axis), so this has
+// to actually SPAN that distance to read as connected. Steel rod: a short
+// RISE from the minute arbor's plane to the crossing plane just under the
+// plate's back face, the traverse across to the motion works, then down to
+// meet the minute wheel's plane — ending in a small pinion cap engaging
+// real teeth. With the keyless works on the dial side this whole run is a
+// SAME-SIDE affair: the old version's 9.6-unit plunge straight through the
+// solid base plate is gone; nothing on this path crosses a plate any more.
 //
-// Every direction change on this path is a real 90° bevel-gear pair (see
-// makeBevelGear in geometry.js) — a plain rod meeting another rod at an
-// angle has nothing at the joint that could transmit rotation around the
-// corner, so each corner gets two small conical gears, apex-to-apex, one
-// keyed to each of the two meeting shafts (standard 45°/45° miter style).
-// Rotation is still driven by handSetOffset in tick() (same
-// representational-coupling convention as the reserve train), but it's
-// threaded explicitly through each corner pair with alternating sign (an
-// external bevel mesh reverses sense, same as two spur gears meshing), not
-// just teleported to the far end.
-//
-// The old layout needed an orthogonal step-around here (the straight run
-// passed through the power-reserve arbor extension); in the tornado layout
-// the keyless works sits on the BARREL's side of the movement and the
-// reserve train heads the other way (up to 12 o'clock), so the direct
-// traverse clears everything — verified by the full inspection sweep —
-// and the arbor is just drop → traverse → rise with two 90° corners.
-const Z_SETTING = -3.0; // between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2, w1 tops at −3.7)
+// Every direction change is still a real 90° bevel-gear pair (see
+// makeBevelGear) — a plain rod meeting another rod at an angle has nothing
+// at the joint that could transmit rotation around the corner. Rotation is
+// still driven by handSetOffset in tick() (same representational-coupling
+// convention as the reserve train), threaded through each corner pair with
+// alternating sign, not just teleported to the far end.
+const Z_SETTING = -3.0; // traverse plane: between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2, w1 tops at −3.7)
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
-const settingDrop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_KEYLESS - Z_SETTING, 10), MATS.steel);
+// The arbor's own shaft: from the minute pinion's plane UP to the corner.
+const settingDrop = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - (Z_KEYLESS - MINUTE_Z_STEP), 10), MATS.steel);
 settingDrop.rotation.x = Math.PI / 2;
-settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_KEYLESS + Z_SETTING) / 2);
+settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + Z_KEYLESS - MINUTE_Z_STEP) / 2);
 keyless.add(settingDrop);
 
 function makeRodSegment(a, b, radius) {
@@ -1551,7 +1915,10 @@ function addBevelCorner(point, axisIn, axisOut) {
 }
 
 const Z_UP = new THREE.Vector3(0, 0, 1);
-// drop → traverse and traverse → rise: two corners, both exactly 90°.
+// rise → traverse and traverse → drop: two corners, both exactly 90°. The
+// first corner's vertical gear stands tip-up at the shaft's top end; its
+// cone reaches into the plate's z-band, which is why the base plate carries
+// a clearance recess bored at exactly this axis (see the plate build).
 const cornerDrop = addBevelCorner(settingA, Z_UP, settingU);
 const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate());
 // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
@@ -1570,15 +1937,21 @@ keyless.add(settingCap);
 // post then does the ganged work of real keyless works: it bears on the hack
 // spring (the long blued blade reaching across to the balance rim) and
 // drives the reset-hammer rod. A separate yoke tracks the sliding pinion's
-// hub collars. All angles below are SOLVED from the stem geometry, so the
-// pin stays in the groove and the fork stays on the hub through the slide.
-// (vPerp / sideSign are declared up with the stem direction — the folded
-// minute wheel needed them earlier.)
+// hub collars. All angles are SOLVED from the stem geometry, so the pin
+// stays in the groove and the fork stays on the hub through the slide.
+// Lever and yoke live on the DIAL side with the rest of the keyless works,
+// pivoting on studs in the plate's back face; only the lever's tail post
+// crosses back to the movement side, through the plate's arc slot. (The
+// pivots, angle solves and vPerp / sideSign are hoisted with the XY
+// layout, up by the plate-radius computation.)
 // ---------------------------------------------------------------------------
 
 // Groove collars on the stem (ride with windSpinner) + sliding-pinion hub
-// collars for the yoke's fork.
-const GROOVE_LOCAL = 4; // along the stem, outward of the sliding pinion
+// collars for the yoke's fork. (GROOVE_LOCAL is hoisted with the XY layout —
+// the lever-angle solve needs it.) Hub collars slimmed 1.5 → 1.2: the yoke's
+// arm passes UNDER them, and every 0.1 of hub radius is 0.1 of yoke drop —
+// depth the dial gap no longer has to spare.
+const HUB_COLLAR_R = 1.2;
 {
   const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.5, 12);
   for (const dy of [-0.95, 0.95]) {
@@ -1586,7 +1959,7 @@ const GROOVE_LOCAL = 4; // along the stem, outward of the sliding pinion
     collar.position.y = GROOVE_LOCAL + dy;
     windSpinner.add(collar);
   }
-  const hubGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.4, 14);
+  const hubGeo = new THREE.CylinderGeometry(HUB_COLLAR_R, HUB_COLLAR_R, 0.4, 14);
   for (const dy of [-1.7, 1.7]) {
     const hub = new THREE.Mesh(hubGeo, MATS.steel);
     hub.position.y = dy;
@@ -1596,83 +1969,77 @@ const GROOVE_LOCAL = 4; // along the stem, outward of the sliding pinion
 
 // Setting lever: pivoted beside the stem on the balance side; the beak's pin
 // tracks the groove, whose along-stem position is pinDist+pull·slide+local.
-const SL_C = 10;    // pivot's lateral offset from the stem axis
-const SL_TAIL = 6;  // tail arm length (pivot → post)
-const Z_SETTING_LEVER = Z_KEYLESS - 2.1;
+// (SL_C / SL_TAIL / settingLeverPivot and the angle solves are hoisted with
+// the XY layout — the base plate's slot is cut from the tail post's arc.)
+// The lever rides BELOW the wheel plane, toward the dial: its body must
+// clear the stem's groove collars (r 0.75) passing over the beak, so the
+// drop is collar radius + margin + half the 1-thick body + its bevel.
+const Z_SETTING_LEVER = Z_KEYLESS - (0.75 + CLEAR_MARGIN + 0.5 + 0.1);
 // Reset-rod plane — declared HERE (ahead of both the lever and the rod
-// linkage below) because it sizes the lever's tail post: the rod's straight
-// run must clear the fusee cone's axis-top height (see the rod-lift comment
-// at the linkage), and the post's whole job is to carry that rod pin plus
-// the hack-ramp collar beneath it. 0.7 = rod radius (0.35) + clearance.
-const ROD_R = 0.35; // reset-rod radius — shared with the hack-blade standoff solver below
+// linkage below) because it sizes the lever's tail post: the post's whole
+// job is to carry the two rod pins.
+const ROD_R = 0.35; // rod radius — reset and hack rods share it
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
-// ...and, since the three-quarter plate went in, the rod must ALSO run clear
-// OVER that plate: it crosses ~55 units of it, from the keyless corner to
-// the hammer's tail, and a rod at the old height would have had to be
-// trenched through the plate for its whole run. The binding term is the
-// HAMMER TAIL BAR hung on the same plane (a 1-thick slab, so half-thickness
-// 0.5 > ROD_R), not the rod itself.
-const ROD_TAILBAR_T = 1;
-const ROD_Z_LIFT = Math.max(
-  2.3,
-  FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR,
-  TQ_TOP_Z + CLEAR_MARGIN + ROD_TAILBAR_T / 2 - Z_SECONDS_ARBOR,
-);
-const ROD_PLANE_Z = Z_SECONDS_ARBOR + ROD_Z_LIFT; // rod centre-line's world z
-// Post height — SIZED TO ITS JOBS, no taller: the rod pin at ROD_PLANE_Z
-// plus a pin-retaining land above it. (It used to run on up to the balance
-// plane to "press the hack blade's flank" — an in-plane push that could
-// never produce the blade's vertical engage/release motion; the blade is
-// now driven honestly by the ramp collar lower down, so the tall post was
-// pure fiction and is gone.)
-const HACK_ROD_PIN_LAND = 0.35; // post material kept above the rod pin
-const POST_TOP_Z = ROD_PLANE_Z + ROD_R + HACK_ROD_PIN_LAND;
-const slMidAlong = pinDist + CROWN_PULL_DIST / 2 + GROOVE_LOCAL;
-const settingLeverPivot = {
-  x: uWind.x * slMidAlong + sideSign * vPerp.x * SL_C,
-  y: uWind.y * slMidAlong + sideSign * vPerp.y * SL_C,
-};
+// The rods run LOW now — between the base plate and the GREAT WHEEL's
+// underside. The mid-band (just under the plate floor) is closed by the
+// fusee cone (its tip reaches 0.25 below the floor), but under the wheel
+// there is a real corridor across the whole movement. The corridor's
+// bounds, both derived:
+//  · floor: one margin over the base plate for the thickest thing riding
+//    the plane (the hammer's tail bar, thinned to 0.8);
+//  · ceiling: the great wheel's disc underside (thickness/2 + bevel below
+//    its plane) less a margin — BOTH rod routes cross its footprint.
+const ROD_TAILBAR_T = 0.8;
+const GW_UNDER_Z = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
+const ROD_PLANE_Z = CLEAR_MARGIN + ROD_TAILBAR_T / 2;              // floor-bound: 0.55
+const ROD2_PLANE_Z = GW_UNDER_Z - CLEAR_MARGIN - ROD_R;            // ceiling-bound: 0.72
+if (ROD2_PLANE_Z < ROD_PLANE_Z)
+  console.warn(`rod corridor collapsed: hack plane ${ROD2_PLANE_Z.toFixed(2)} under reset plane ${ROD_PLANE_Z.toFixed(2)}`);
+// The two rods CANNOT keep the old 2r+gap vertical separation in this
+// 0.22-unit corridor — near the shared post their tubes converge and
+// touch, exactly as two levers stacked on one stud do. That contact is
+// declared EXPECTED (see inspect.js); away from the post the angular
+// spread to their different destinations separates them.
+// The cam sits comfortably above the whole plane by construction:
+if (Z_SECONDS_ARBOR - CAM_T / 2 < ROD_PLANE_Z + ROD_TAILBAR_T / 2 + CLEAR_MARGIN)
+  console.warn('heart cam crowds the reset-rod plane from above');
+// Post height — SIZED TO ITS JOBS, no taller: the topmost pin (the hack
+// rod's, at ROD2_PLANE_Z) plus a pin-retaining land above it. The post no
+// longer crosses the three-quarter plate AT ALL — it tops out ~1.4, so
+// the plate loses its arc slot (see tqSlots).
+const HACK_ROD_PIN_LAND = 0.35; // post material kept above the top pin
+const POST_TOP_Z = ROD2_PLANE_Z + ROD_R + HACK_ROD_PIN_LAND;
 const settingLever = G.makeSettingLever({
   beakLen: Math.hypot(SL_C, CROWN_PULL_DIST / 2),
   tailLen: SL_TAIL,
   width: 3,
   thickness: 1,
-  beakPinH: 1.5,
+  // Pin top lands 0.1 under the stem's axis — the same 0.65 of engagement
+  // into the groove-collar band the movement-side build had.
+  beakPinH: Z_KEYLESS - 0.1 - (Z_SETTING_LEVER + 0.5),
+  // The post still does its work on the MOVEMENT side (both rod pins at
+  // the LOW plane): from the dial-side lever body it crosses only the
+  // BASE plate through the arc slot cut for it (see the plate build) —
+  // it no longer reaches the three-quarter plate at all.
   postH: POST_TOP_Z - (Z_SETTING_LEVER + 0.5),
 });
 const settingLeverGroup = new THREE.Group();
 settingLeverGroup.position.set(settingLeverPivot.x, settingLeverPivot.y, Z_SETTING_LEVER);
 settingLeverGroup.add(settingLever);
 movement.add(settingLeverGroup);
-registerExplode(settingLeverGroup, Z_SETTING_LEVER, 4);
+registerExplode(settingLeverGroup, Z_SETTING_LEVER, 4, -1);
 registerLabel('Setting lever', settingLeverGroup);
-// The lever swings on a post screwed into the main plate — it had none:
-// checkSupportGeometry measured its declared ['Setting lever','plate']
-// support 3.4 units of thin air. Same helper as every arbor.
-addLowerPivot(settingLeverGroup, { staffR: 0.45, jewelR: 1.0 });
-
-function settingLeverAngleAt(pull) {
-  const along = pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL;
-  const gx = uWind.x * along, gy = uWind.y * along;
-  return Math.atan2(gy - settingLeverPivot.y, gx - settingLeverPivot.x) - Math.PI / 2;
-}
-function tailPostWorldAt(pull) {
-  const a = settingLeverAngleAt(pull);
-  return {
-    x: settingLeverPivot.x + Math.sin(a) * SL_TAIL,
-    y: settingLeverPivot.y - Math.cos(a) * SL_TAIL,
-  };
-}
+// The lever swings on a stud planted in the plate's BACK face now — the
+// dial-side mirror of the post it used to stand on (checkSupportGeometry
+// keeps its ['Setting lever','plate'] edge honest either way).
+addDialSidePivot(settingLeverGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_SETTING_LEVER });
 
 // Yoke: on the opposite side of the stem, its fork tracking the sliding
-// pinion's hub (which travels with the crown pull).
-const YK_C = 7.5;
-const Z_YOKE = Z_KEYLESS - 2.3;
-const yokeMidAlong = pinDist + CROWN_PULL_DIST / 2;
-const yokePivot = {
-  x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
-  y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
-};
+// pinion's hub (which travels with the crown pull). Its arm passes under
+// the hub collars, so its drop below the keyless plane is the collar
+// radius + margin + half its 1-thick body + bevel; its pivot boss's
+// underside is what sets the keyless plane's floor against the dial.
+const Z_YOKE = Z_KEYLESS - (HUB_COLLAR_R + CLEAR_MARGIN + 0.5 + 0.06);
 const yoke = G.makeYoke({
   armLen: Math.hypot(YK_C, CROWN_PULL_DIST / 2),
   width: 2.6,
@@ -1684,15 +2051,9 @@ const yokeGroup = new THREE.Group();
 yokeGroup.position.set(yokePivot.x, yokePivot.y, Z_YOKE);
 yokeGroup.add(yoke);
 movement.add(yokeGroup);
-registerExplode(yokeGroup, Z_YOKE, 4);
+registerExplode(yokeGroup, Z_YOKE, 4, -1);
 registerLabel('Yoke', yokeGroup);
-addLowerPivot(yokeGroup, { staffR: 0.45, jewelR: 1.0 }); // same: it had no pivot post at all
-
-function yokeAngleAt(pull) {
-  const along = pinDist + pull * CROWN_PULL_DIST;
-  const px = uWind.x * along, py = uWind.y * along;
-  return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
-}
+addDialSidePivot(yokeGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_YOKE });
 
 // Reset-hammer transmission — a RIGID connecting rod (fixed length) from the
 // setting-lever post to a tail arm on the hammer. The hammer's angle is not
@@ -1798,42 +2159,114 @@ const HAMMER_TAIL_DELTA = (() => {
   return best;
 })();
 const RESET_ROD_LEN = HAMMER_TAIL_DELTA.len;
-// Tail bar and rod ride ABOVE the fusee cone's top: the rod's straight run
-// from the setting-lever tail post (keyless corner) to the hammer tail
-// passes almost directly over the barrel axis — the barrel sits between
-// those two points in the tornado layout — so the only clean straight path
-// is over the cone (and over the chain's top wrap). Solved from the cone
-// geometry so flattening the fusee automatically lowers the rod. (This
-// replaces the old fixed 2.3 lift, which was only dodging the heart cam's
-// own body.) ROD_Z_LIFT / FUSEE_TOP_Z / ROD_R themselves are declared up by
-// the setting-lever block: the rod plane sizes the lever's tail post.
-const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, 1), MATS.steel);
+// Tail bar rides BELOW the hammer body on the low rod plane (the rod's
+// run from the tail post to here now crosses UNDER the great wheel — the
+// corridor derivation at the setting-lever block). Local z is the plane
+// offset from the display-arbor plane; negative, since the plane is
+// beneath the cam now.
+const hammerTailBar = new THREE.Mesh(new THREE.BoxGeometry(1.4, HAMMER_TAIL, ROD_TAILBAR_T), MATS.steel);
 hammerTailBar.rotation.z = HAMMER_TAIL_DELTA.delta;
 hammerTailBar.position.set(
   Math.sin(HAMMER_TAIL_DELTA.delta) * (HAMMER_TAIL / 2),
   -Math.cos(HAMMER_TAIL_DELTA.delta) * (HAMMER_TAIL / 2),
-  ROD_Z_LIFT
+  ROD_PLANE_Z - Z_SECONDS_ARBOR
 );
 hammerGroup.add(hammerTailBar);
-// Visible riser from the hammer's pivot up to the lifted tail bar — the bar
-// has to be driven by something; without this it floats above the lever.
+// The hammer's arbor: one shaft from the tail bar's plane up through the
+// body, and DOWN to a footed bearing on the BASE plate — the hammer's
+// grounding lives below now (its old jewelled bore in the three-quarter
+// plate is gone, and the plate is cleaner for it).
 {
-  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, ROD_Z_LIFT, 10), MATS.steel);
-  riser.rotation.x = Math.PI / 2;
-  riser.position.set(0, 0, ROD_Z_LIFT / 2);
-  hammerGroup.add(riser);
-  // That riser is the hammer's ARBOR, and it now passes through the
-  // three-quarter plate on its way to the tail bar above — so it runs in a
-  // jewelled bore there, exactly like a train arbor. That bearing is the
-  // hammer's grounding: its declared ['Reset hammer','plate'] support used
-  // to measure 9.36 units of nothing.
-  tqPivots.push({
-    x: hammerPivotPos.x, y: hammerPivotPos.y, staffR: 0.5, jewelR: 1.0,
-    boreR: 0.5 + PIVOT_BORE_CLEAR,
-  });
+  const shaftTop = 0.6; // just past the body boss, hammer-local
+  const shaftBot = -Z_SECONDS_ARBOR; // base plate, hammer-local
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, shaftTop - shaftBot, 10), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.set(0, 0, (shaftTop + shaftBot) / 2);
+  hammerGroup.add(shaft);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.3, 12), MATS.steel);
+  foot.rotation.x = Math.PI / 2;
+  foot.position.set(0, 0, shaftBot + 0.15);
+  hammerGroup.add(foot);
 }
-const resetRod = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, 1, 8), MATS.steel);
-resetRod.scale.set(1, RESET_ROD_LEN, 1);
+// --- ELBOW RODS. The low corridor crosses the transfer wheel's and the
+// winding spur's XY footprints (and, for the hack rod, the centre
+// arbor's lower-pivot collar) — a straight tube cannot clear them, so
+// each rod is a RIGID two-segment link with a fixed bend. The elbow's
+// chord-frame position (f along, e lateral) is SOLVED by scan,
+// maximizing the worst-case clearance over the whole crown stroke
+// against the low-band obstacle circles. The link stays rigid — its
+// pin-to-pin chord is the calibrated length — so the two-circle pose
+// solves are untouched; only the mesh is bent. (The drum's set-up
+// cluster is 15+ units off both routes — checked analytically, not
+// scanned, because drumPos is declared later in the build.)
+const LOW_ROD_OBSTACLES = [
+  { x: uWind.x * cwDist, y: uWind.y * cwDist, r: crownWheelR + 0.4 + ROD_R + CLEAR_MARGIN }, // transfer wheel
+  { x: P.barrel.x, y: P.barrel.y, r: windSpurR + KW_MODULE + ROD_R + CLEAR_MARGIN },         // winding spur
+  { x: P.center.x, y: P.center.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN },                     // centre lower-pivot collar
+  { x: P.fourth.x, y: P.fourth.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN },                     // fourth lower-pivot collar
+];
+function segCircleClear(p, q, c) {
+  const vx = q.x - p.x, vy = q.y - p.y;
+  const L2 = vx * vx + vy * vy || 1e-9;
+  const t = clamp(((c.x - p.x) * vx + (c.y - p.y) * vy) / L2, 0, 1);
+  return Math.hypot(c.x - p.x - t * vx, c.y - p.y - t * vy) - c.r;
+}
+function solveElbow(len, posesAB) {
+  let best = { clear: -Infinity, f: 0.5, e: 0 };
+  for (let f = 0.25; f <= 0.751; f += 0.05) {
+    for (let e = -6; e <= 6.01; e += 0.2) {
+      let worst = Infinity;
+      for (const { a, b } of posesAB) {
+        const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+        // Lateral unit = the chord's RIGHT-perp — the direction the mesh's
+        // local +X maps to under the placement rotation (atan2 − π/2).
+        const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+        const E = { x: a.x + ux * L * f + nx * e, y: a.y + uy * L * f + ny * e };
+        for (const o of LOW_ROD_OBSTACLES) {
+          worst = Math.min(worst, segCircleClear(a, E, o), segCircleClear(E, b, o));
+        }
+      }
+      if (worst > best.clear) best = { clear: worst, f, e };
+    }
+  }
+  return best;
+}
+// Mesh in the pose frame the placement code already uses: local +Y is the
+// chord (post end at −len/2), so position-at-midpoint + rotation.z works
+// exactly as it did for the straight tube.
+function makeElbowRodMesh(len, f, e) {
+  const g = new THREE.Group();
+  const a = { x: 0, y: -len / 2 }, b = { x: 0, y: len / 2 };
+  const E = { x: e, y: -len / 2 + f * len };
+  for (const [p, q] of [[a, E], [E, b]]) {
+    const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy);
+    const seg = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, L, 8), MATS.steel);
+    seg.position.set((p.x + q.x) / 2, (p.y + q.y) / 2, 0);
+    seg.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+    g.add(seg);
+  }
+  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(ROD_R * 1.15, 10, 8), MATS.steel);
+  knuckle.position.set(E.x, E.y, 0);
+  g.add(knuckle);
+  return g;
+}
+// Reset rod: endpoint pairs sampled over the stroke with the SAME
+// branch-tracked two-circle solve tick() uses.
+const RESET_ROD_ELBOW = (() => {
+  const poses = [];
+  let prev = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
+  for (let t = 0; t <= 1.0001; t += 0.125) {
+    const post = tailPostWorldAt(t);
+    const r = intersectTail(post, RESET_ROD_LEN, prev);
+    prev = r.q;
+    poses.push({ a: post, b: { x: r.q.x, y: r.q.y } });
+  }
+  const best = solveElbow(RESET_ROD_LEN, poses);
+  if (best.clear < 0)
+    console.warn(`reset rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
+  return best;
+})();
+const resetRod = makeElbowRodMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e);
 movement.add(resetRod);
 registerLabel('Reset rod', resetRod);
 // Per-frame solve: track the intersection branch continuously from the
@@ -1846,46 +2279,48 @@ function solveHammerRotation(post) {
   return Math.atan2(r.q.x - hammerPivotPos.x, -(r.q.y - hammerPivotPos.y)) - HAMMER_TAIL_DELTA.delta;
 }
 
-// Hack spring: anchored near the plate rim by the keyless works; the blade
-// runs from there across the movement to the balance. It is an UNDERSIDE
-// brake: the blade body travels BELOW the balance plane (adding no height
-// over the movement and never crossing the balance's visible face) and its
-// tip carries a short upright post whose ruby cap presses the flat
-// UNDERSIDE of the rim. Released, the blade pitches DOWN about its anchor
-// so the pad drops a real gap below the rim — fully disconnected until the
-// crown is pulled.
+// ---------------------------------------------------------------------------
+// STOP WORK (hacking) — a local stop crank at the balance, driven by a
+// thin LOW hack rod (the corridor under the great wheel — the whole
+// reset/hack linkage lives between the plates now). The crown's motion
+// still has to travel from the keyless corner to the balance — that span
+// is irreducible — but it travels as a thin elbow rod in the low band
+// instead of over the plate. At the balance end the rod drives a SEE-SAW
+// CRANK standing in the plate cut's open wedge: a HANGING tail down to
+// the rod plane, and a pad arm dropped from the raised pivot to reach
+// under the rim, pivoted in a clevis bracket on the base plate about the
+// RADIAL axis (balance-centre → bracket). The hinge axis is forced by the
+// keyless kinematics: releasing the crown moves the tail post AWAY from
+// the crank (measured stroke ≈ 2.9 outward along the rod), so the rigid
+// rod can only PULL the tail toward the post on release. A tangential
+// hinge would turn that pull into the pad camming UP through the rim
+// (any pad reaching inward from a below-pivot arm rises when its tail is
+// pulled — dz/dψ = −x_pad > 0, no placement escapes it); the radial
+// hinge turns the same pull into a TANGENTIAL tail swing, which never
+// moves anything on the crank toward the balance axis (hypot(R, y) ≥ R),
+// and a solved tangential pad offset converts the swing into the pad
+// DROP the release needs. Because the rod is rigid and pinned at both
+// ends, the linkage is positively controlled in both directions: no
+// preload spring needed.
 //
-// ACTUATION — the ramp collar (see the HACK_RAMP solve below): the lever's
-// tail post carries a wedge-profiled collar (makeHackRamp) and the blade a
-// hanging ball-heel near its anchor; as the crown is pulled the post slides
-// the collar under the heel and its conical flank LIFTS the blade to the
-// engaged (level) pose; crown in, the collar retreats and the blade's own
-// preload drops the heel back onto the collar's outer brim. The blade's
-// pitch each frame is SOLVED from the collar's actual position (same
-// convention as the reset hammer's rod-constraint solve), never keyframed —
-// an in-plane lever push on the blade's flank, which is what the tall post
-// used to depict, cannot produce this vertical motion at all.
-//
-// This block sits AFTER the reset-hammer linkage on purpose: the blade's
-// standoff solver below sweeps the reset rod's actual stroke (intersectTail
-// / RESET_ROD_LEN), because the rod's plane (Z_SECONDS_ARBOR + ROD_Z_LIFT,
-// band ±ROD_R) structurally overlaps the blade's z band — the two can only
-// be separated LATERALLY, so the rod's swept path is a first-class input to
-// where the blade may lie.
-const HACK_CLEAR_MARGIN = CLEAR_MARGIN; // one named margin; both solvers below bind exactly at it
+// The brake itself is unchanged in kind: an UNDERSIDE pad. The rim's side
+// face is not a usable contact — the timing screws' heads sweep proud of
+// the rim across its whole z-band — so the pad must press up from below,
+// on the same screw-standoff annulus as before (derivation kept verbatim).
+const HACK_CLEAR_MARGIN = CLEAR_MARGIN; // one named margin; the solves below bind exactly at it
 
 // --- Pad ↔ balance geometry, derived from the balance's OWN build
-// constants (rim height 0.75·t, rim width 0.8·t, screws ±0.34·t at
-// rimO ± t/2 — see makeBalanceWheel) so reshaping the balance moves the
-// brake with it.
+// constants (slim rim: height 0.55·t, width 0.5·t; screws base 0.24·t,
+// embedded 0.16·t past the rim face — see makeBalanceWheel) so reshaping
+// the balance moves the brake with it.
 // (BAL_T itself is declared with the Z-stack constants — the balance plane
 // derivation needs it first.)
-const HACK_RIM_I = balanceR - BAL_T * 0.8;             // rim's inner radius
-const HACK_SCREW_IN_R = balanceR - BAL_T / 2;          // timing screws' inner tips
+const HACK_RIM_I = balanceR - BAL_T * 0.5;             // rim's inner radius
+const HACK_SCREW_IN_R = balanceR - BAL_T * 0.16;       // timing screws' inner tips (rimO − screwLen + protrusion)
 // The rim's underside hangs only this far below the screws' deepest sweep
-// (0.375·t rim half-height vs 0.34·t screw tip radius) — far less than the
-// margin, so z alone cannot keep the pad clear of the screws:
-const HACK_SCREW_DROP = (0.75 / 2 - 0.34) * BAL_T;
+// (0.275·t rim half-height vs 0.24·t screw base radius) — far less than
+// the margin, so z alone cannot keep the pad clear of the screws:
+const HACK_SCREW_DROP = (0.55 / 2 - 0.24) * BAL_T;
 // ...the rest of the separation must come radially. Corner-to-corner:
 // √(standoff² + drop²) = margin ⇒
 const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_SCREW_DROP ** 2));
@@ -1893,411 +2328,373 @@ const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_
 // ON the rim's underside (≥ rim inner edge — full-face seating, lesson:
 // surface-to-surface) and radially inside the screws' standoff:
 const HACK_PAD_TOP_R = (HACK_SCREW_IN_R - HACK_SCREW_STANDOFF - HACK_RIM_I) / 2;
-const HACK_PAD_R = HACK_PAD_TOP_R / G.HACK_RUBY_FLARE; // post/ruby-base radius the builder needs
+const HACK_PAD_R = HACK_PAD_TOP_R / G.HACK_RUBY_FLARE; // pad post / ruby-base radius
 const HACK_CONTACT_R = (HACK_RIM_I + HACK_SCREW_IN_R - HACK_SCREW_STANDOFF) / 2;
 const HACK_CONTACT_Z = L_BALANCE - RIM_H / 2;          // the rim's underside plane
-const HACK_DROP = 0.6;                                 // pad clearance below the rim when released
-// Blade section. Back to 0.8: the 0.35 blade was thinned because blade,
-// plate and pad all had to share the fork→balance depth — but with the
-// balance lowered INTO the plate band the rim's underside (12.65) now sits
-// BELOW the plate's bottom face, so the blade cannot run over the plate at
-// all any more and lives UNDER it instead (see BLADE_Z below), where the
-// depth it lost is back. PAD_RISE and BLADE_Z are still solved, not free.
-const BLADE_T = 0.8;
-const BLADE_W = 1.6;
+// Minimum acceptable pad gap below the rim when released — the linkage's
+// actual released drop is DERIVED (the rod's rigid length maps the post's
+// crown travel onto the crank), asserted against this floor below.
+const HACK_DROP_MIN = 0.35;
 
-const postEng = tailPostWorldAt(1);
-const postRel = tailPostWorldAt(0);
-let uB = { x: P.balance.x - postEng.x, y: P.balance.y - postEng.y };
-{
-  const m = Math.hypot(uB.x, uB.y) || 1;
-  uB = { x: uB.x / m, y: uB.y / m };
-}
-// Component of the post's engaging travel perpendicular to the blade — the
-// direction the post closes on the blade line (used to stand the blade off
-// the post's swept corridor).
-let pushDir = (() => {
-  const t = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
-  const along = t.x * uB.x + t.y * uB.y;
-  const p = { x: t.x - along * uB.x, y: t.y - along * uB.y };
-  const m = Math.hypot(p.x, p.y);
-  if (m < 1e-6) return { x: -uB.y, y: uB.x };
-  return { x: p.x / m, y: p.y / m };
-})();
-// --- Anchor layout solver. Two free parameters, both solved here:
-//  · standoff A — the blade centerline's perpendicular distance from the
-//    engaged post. The old fixed 1.3 was width/2 + post radius + a token
-//    gap, which ignored (a) the blade's BOW: the rendered flank bulges to
-//    ~1.2 off-axis beside the post (hackSpringEdgeY, exported by the
-//    builder), and (b) the reset ROD, whose run from that same post shares
-//    the blade's z band and hugged the same flank — both interpenetrated
-//    (post −0.44, rod −0.34 at full pull). A is now grown until the WORST
-//    clearance over the whole crown stroke — post arc AND every point of
-//    the rod at every pull — binds exactly at HACK_CLEAR_MARGIN. (With the
-//    blade re-planed UNDER the three-quarter plate the ROD no longer shares
-//    its z band either — but the POST still crosses the band on its way up
-//    to the rod plane, and keeping the rod in the sweep costs only
-//    conservatism, so the solve is kept unchanged.)
-//  · press distance D — how far the anchor extends backward from the post
-//    along the blade line; the largest value keeping the anchor's BOSS
-//    (radius 1.15) on-plate with the named margin:
-//    |base − uB·D| = plateR − 1.15 − HACK_CLEAR_MARGIN, positive root (the
-//    old fixed 19.5 hung the anchor ~15 units past the plate rim).
-const HACK_LAYOUT = (() => {
-  const rMax = plateR - 1.15 - HACK_CLEAR_MARGIN;
-  const seedTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
-  const layoutAt = (A) => {
-    const base = { x: postEng.x + pushDir.x * A, y: postEng.y + pushDir.y * A };
-    const aDotU = base.x * uB.x + base.y * uB.y;
-    const disc = aDotU * aDotU - (base.x ** 2 + base.y ** 2) + rMax * rMax;
-    const D = Math.min(19.5, Math.max(4, disc > 0 ? aDotU + Math.sqrt(disc) : 6));
-    const anchor = { x: base.x - uB.x * D, y: base.y - uB.y * D };
-    const toBal = Math.hypot(P.balance.x - anchor.x, P.balance.y - anchor.y);
-    const len = toBal - HACK_CONTACT_R;
-    const ux = (P.balance.x - anchor.x) / toBal, uy = (P.balance.y - anchor.y) / toBal;
-    const local = (p) => ({
-      x: (p.x - anchor.x) * ux + (p.y - anchor.y) * uy,
-      y: -(p.x - anchor.x) * uy + (p.y - anchor.y) * ux,
-    });
-    // Clearance of a circle (center x,y radius r) from the blade's rendered
-    // footprint: the bowed outline within the span, the anchor boss
-    // (radius 1.15, taller than the blade — it shares the rod's band) near
-    // x = 0. Negative = interpenetration. The exact bezier edge is used —
-    // the mesh's flattened polyline lies strictly inside it, so this is
-    // (slightly) conservative.
-    const clr = (x, y, r) => {
-      let c = Infinity;
-      if (x >= 0 && x <= len) {
-        const lo = G.hackSpringEdgeY(x, len, BLADE_W, -1);
-        const hi = G.hackSpringEdgeY(x, len, BLADE_W, +1);
-        c = y < lo ? lo - y - r : y > hi ? y - hi - r : -Math.min(y - lo, hi - y) - r;
-      }
-      if (x < 2) c = Math.min(c, Math.hypot(x, y) - 1.15 - r);
-      return c;
-    };
-    let minClr = Infinity;
-    let q = { ...seedTip };
-    for (let i = 0; i <= 60; i++) {
-      const post = tailPostWorldAt(i / 60);
-      q = intersectTail(post, RESET_ROD_LEN, q).q;
-      const pl = local(post);
-      minClr = Math.min(minClr, clr(pl.x, pl.y, G.SETTING_LEVER_POST_R));
-      // The post WEARS THE HACK-RAMP COLLAR (solved later, so estimated
-      // here). The γ-solve does NOT land near its d0 floor — measured
-      // brim came out 3.93 with the rod-clearance constraint binding —
-      // so the estimate is calibrated by feedback: 4.4 covers the
-      // measured brim plus its weak growth with anchor distance. The
-      // collar's z-band brackets the anchor post/boss — this bind keeps
-      // the collar off the blade's own support. The post-solve check at
-      // the collar build validates the estimate against the real brim.
-      minClr = Math.min(minClr, Math.hypot(pl.x, pl.y) - 1.15 - 4.4);
-      const ql = local(q);
-      for (let s = 0; s <= 80; s++) {
-        const t = s / 80;
-        minClr = Math.min(minClr, clr(pl.x + (ql.x - pl.x) * t, pl.y + (ql.y - pl.y) * t, ROD_R));
-      }
-    }
-    return { minClr, anchor, D, len, aim: Math.atan2(uy, ux) };
-  };
-  // minClr grows ~1:1 with A (all governing features sit near the anchor,
-  // which moves with A; the far end pivots on the balance) — fixed-point
-  // iteration converges in a few steps.
-  let A = 1.3, r = layoutAt(A);
-  for (let it = 0; it < 10 && Math.abs(HACK_CLEAR_MARGIN - r.minClr) > 1e-4; it++) {
-    A += HACK_CLEAR_MARGIN - r.minClr;
-    r = layoutAt(A);
-  }
-  if (r.minClr < HACK_CLEAR_MARGIN - 0.01)
-    console.warn('hack-blade standoff solver under margin:', r.minClr.toFixed(4));
-  if (Math.hypot(r.anchor.x, r.anchor.y) > rMax + 0.01)
-    console.warn('hack-blade anchor pushed off-plate:', Math.hypot(r.anchor.x, r.anchor.y).toFixed(2));
-  return { standoff: A, ...r };
-})();
-const bladeAnchor = HACK_LAYOUT.anchor;
-const bladeAimAngle = HACK_LAYOUT.aim;
-const bladeLen = HACK_LAYOUT.len;
-// Released, the blade pitches about its anchor's transverse axis just far
-// enough to drop the pad HACK_DROP below the rim's underside. The gap is
-// held at the pad's NEAREST point, not its centre: pitching tilts the ruby's
-// top face, so its anchor-side edge (radius HACK_PAD_TOP_R closer to the
-// anchor) drops only (bladeLen − HACK_PAD_TOP_R)·sin(pitch) — sizing the
-// pitch by the centre alone left that edge ~HACK_PAD_TOP_R·sin(pitch)
-// (≈ 0.0035) shy of the full HACK_DROP.
-const HACK_PITCH = Math.asin(HACK_DROP / (bladeLen - HACK_PAD_TOP_R));
+// --- Crank geometry. The PAD ARM still sits level at full engagement
+// with its ruby's top face exactly on the contact plane — the engaged
+// pose is the calibration zero — but the arm's plane is a build DATUM
+// now (Z_STOP_PIVOT_LOW below), not the pivot height: the pivot moved up
+// so the tail can hang to the low rod plane, and a drop leg connects the
+// raised pivot hub to the arm.
+const STOP_ARM_T = 0.8;     // pad arm thickness
+const STOP_ARM_W = 0.9;     // pad arm width
+const STOP_PAD_RISE = 0.9;  // arm top face → ruby top face (post 0.5 + ruby 0.4)
+const STOP_TAIL_W = 0.5;    // tail bar section
+// Bracket axis stand-off from the balance axis. With the RADIAL hinge the
+// crank's tangential swing only ever moves it AWAY from the balance axis,
+// so the binding constraint is the STATIC hardware: the clevis cheeks
+// reach 1.5/2 inward of the pivot, so the allowance must cover
+// 0.75 + CLEAR_MARGIN = 0.90; the 2.0 keeps the extra so the pad arm's
+// diagonal run down to the contact annulus stays shallow.
+const STOP_LEAN_ALLOW = 2.0;
+const STOP_PIVOT_R = BAL_OUTER_R + STOP_LEAN_ALLOW;
+// The tail now HANGS: the hack rod runs on the LOW plane (under the
+// great wheel), so the crank's driven arm reaches DOWN from the pivot to
+// the rod. The pivot height is therefore no longer set by the pad-arm
+// stack — it is SIZED FROM THE STROKE: the released crank angle is what
+// the rod's crown travel maps onto the tail's length, and a small-angle
+// crank (real-watch scale) needs the pivot high enough that the hanging
+// tail is long. The rod only couples through the TANGENTIAL component of
+// its run (STOP_TANG_K below), so the pivot-height formula carries that
+// factor — omitting it is exactly how the old solve overshot its target
+// swing. The bracket stands in the plate cut's open wedge, where there
+// is no plate to hide below — its slim post is the one piece of this
+// linkage that still shows above the plate line.
+const STOP_PSI_TARGET = 0.5; // ~29° released swing sizes the tail lever (with K ≈ 0.6 the mast stays near its old height)
+const POST_STROKE = Math.hypot(postEng.x - postRel.x, postEng.y - postRel.y);
+const Z_STOP_PIVOT_LOW = HACK_CONTACT_Z - STOP_PAD_RISE - STOP_ARM_T / 2; // the pad arm's own plane (build datum)
 
-// --- Blade plane + pad rise: SOLVED against the three-quarter plate --------
-// The blade now runs UNDER the plate. With the balance lowered into the
-// plate band, the rim's underside (HACK_CONTACT_Z = 12.65) sits BELOW the
-// plate's bottom face (TQ_BOT_Z = 12.83) — a blade over the plate could no
-// longer reach DOWN to its contact at all. So the stack flips, and the bind
-// flips with it: the blade's TALLEST fitting is the anchor boss's screw,
-// whose head tops out 1.65·BLADE_T above the blade's mid-plane (screw seat
-// at 1.35·T plus half its 0.6·T height — see makeHackSpring), and that head
-// must clear the plate's UNDERSIDE by the shared margin. Releasing pitches
-// the blade DOWN about the anchor — but the anchor hardware TILTS in place,
-// so the screw head's rim corner rises by its own radius (0.55) times
-// sin(pitch); that rim rise is trimmed off too, or the released pose eats
-// into the margin (measured: 0.006).
-// Two candidate binds, take the LOWER: (a) the anchor screw head clearing
-// the plate's underside (governed when the contact plane hugs the plate,
-// as before the restride); (b) the pad standing PAD_RISE_TARGET tall under
-// the contact plane (governs now — the restride dropped the rim's
-// underside ~2.7 below the plate, so the plate bind went slack and a
-// plate-hugging blade would sit ABOVE its own contact).
-const PAD_RISE_TARGET = 0.9;
-const BLADE_Z = Math.min(
-  TQ_BOT_Z - CLEAR_MARGIN - BLADE_T * 1.65 - 0.55 * Math.sin(HACK_PITCH),
-  HACK_CONTACT_Z - BLADE_T / 2 - PAD_RISE_TARGET
-);
-// The pad's contact face IS the rim's underside (tangency by construction);
-// the rise is simply what spans blade top → contact plane.
-const PAD_RISE = HACK_CONTACT_Z - (BLADE_Z + BLADE_T / 2);
-const PAD_RISE_MIN = 0.15; // below this the ruby cap has no post to stand on
-if (PAD_RISE < PAD_RISE_MIN)
-  console.warn('hack pad rise squeezed out:', PAD_RISE.toFixed(3),
-    '— BLADE_T vs the plate underside bind');
-
-// --- Hack-ramp actuator solve ---------------------------------------------
-// The honest converter from the setting lever's in-plane swing to the
-// blade's vertical engage/release deflection. The lever's tail post carries
-// a rotationally-symmetric wedge COLLAR (flat outer brim → conical flank →
-// flat top land, makeHackRamp); the blade carries a hanging ball HEEL near
-// its anchor. Radial symmetry is deliberate: the post both translates AND
-// rotates about the lever pivot through the stroke, and a symmetric collar
-// makes the heel's lift a function of one scalar — its radial distance d
-// from the post axis — regardless of the lever's angle.
-//
-// Scale honesty: the blade pivots at its anchor and the post sits only
-// D ≈ 5 of the blade's ~54 length from it, so the full 0.6 pad drop at the
-// tip maps to only ≈ 0.05 of vertical travel at the heel — the flank is
-// therefore a SHALLOW wedge by construction, not by accident. That is
-// mechanically right for a brake actuator: a shallow wedge is self-locking
-// (the blade's preload cannot back-drive the lever), so the crown holds the
-// hack engaged with no residual force on the keyless works. The motion
-// still reads because the ~2 units of radial slide are what the eye tracks.
-//
-// Constants, each from a constraint:
-const HEEL_R = 0.35;             // heel ball radius (matches the rod's visual weight)
-const HEEL_FOOT_R = 0.22;        // heel stud radius (must be < HEEL_R so the ball is the contact)
-const RAMP_SEAT_LAND = 0.15;     // radial dwell inside the engaged contact: the heel tops out
-                                 // onto a FLAT seat just before full pull, so the engaged pose
-                                 // is a stable land, not a knife-edge partway up the flank
-const RAMP_RISE_FRACTION = 0.5;  // the lift is spread over the OUTER half of the radial
-                                 // approach (inner half = brim dwell): smooth, visible travel
-                                 // while keeping the flank shallow (see self-locking note)
-const RAMP_EDGE_LAND = 0.3;      // brim extends this far past the released contact circle
-const RAMP_BRIM_T = 0.35;        // brim slab thickness
-// z-chain — RE-DERIVED for the lowered blade. The old chain ran top-down
-// from the reset rod: the collar's land was pinned one margin under the
-// rod's underside and the heel's hang depth fell out of that — the right
-// bind when the blade rode ABOVE the plate, a whisker under the rod's
-// plane. With the blade re-planed ~2.3 LOWER (under the plate), that chain
-// would solve a POSITIVE HEEL_Z: a "hanging" heel ball floating above the
-// blade. The binding constraint is now the heel plane itself: the ball
-// hangs a real stud below the blade's underside, and the collar's top land
-// follows from where the ball actually is. The rod bind survives as a
-// CHECK (the rod still leaves this same post, ~4 above the collar).
-const HEEL_STUD_DROP = 0.3;    // blade underside → ball TOP: a visible stud, ball fully proud
-const HEEL_Z = -(BLADE_T / 2 + HEEL_STUD_DROP + HEEL_R); // ball centre, blade-local (< 0)
-const HACK_ZC1 = BLADE_Z + HEEL_Z;     // engaged ball-centre height (blade level)
-const RAMP_TOP_Z = HACK_ZC1 - HEEL_R;  // collar's top land plane (ball seated on it)
-if (RAMP_TOP_Z > ROD_PLANE_Z - ROD_R - HACK_CLEAR_MARGIN + 1e-9)
-  console.warn('hack-ramp: collar top violates the reset-rod plane',
-    RAMP_TOP_Z.toFixed(2), 'vs', (ROD_PLANE_Z - ROD_R - HACK_CLEAR_MARGIN).toFixed(2));
-// Engaged radial seat: post shaft + ball surface + margin (binds exactly).
-const HACK_HEEL_D1 = G.SETTING_LEVER_POST_R + HEEL_R + HACK_CLEAR_MARGIN;
-
-const HACK_RAMP = (() => {
-  const ux = Math.cos(bladeAimAngle), uy = Math.sin(bladeAimAngle);
-  const local = (p) => ({
-    x: (p.x - bladeAnchor.x) * ux + (p.y - bladeAnchor.y) * uy,
-    y: -(p.x - bladeAnchor.x) * uy + (p.y - bladeAnchor.y) * ux,
-  });
-  const world = (l) => ({ x: bladeAnchor.x + ux * l.x - uy * l.y, y: bladeAnchor.y + uy * l.x + ux * l.y });
-  const tx = postEng.x - postRel.x, ty = postEng.y - postRel.y;
-  const tl = Math.hypot(tx, ty) || 1;
-  const th = { x: tx / tl, y: ty / tl }; // post travel direction (release → engage)
-  const cosP = Math.cos(HACK_PITCH), sinP = Math.sin(HACK_PITCH);
-  const seedTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
-  // Heel placement: at HACK_HEEL_D1 from the ENGAGED post, in a direction γ
-  // off the travel line. γ is scanned, not assumed, because it must satisfy
-  // three couplings at once: (a) the post's approach to the heel must be
-  // MONOTONIC over the stroke (otherwise the blade would seat early and
-  // back off — and the post would sweep into the heel); (b) the heel (its
-  // z band overlaps the rod's) must clear the reset rod's entire swept path
-  // laterally by the margin; (c) the heel must land far enough along the
-  // blade to clear the anchor boss and give the pitch solve a real lever
-  // arm. Among feasible directions the SMALLEST released distance d0 wins —
-  // it minimises the collar's footprint.
-  const evalGamma = (gammaDeg) => {
-    const gr = gammaDeg * DEG2RAD;
-    const hd = { x: th.x * Math.cos(gr) - th.y * Math.sin(gr), y: th.x * Math.sin(gr) + th.y * Math.cos(gr) };
-    const heelPt = { x: postEng.x + hd.x * HACK_HEEL_D1, y: postEng.y + hd.y * HACK_HEEL_D1 };
-    const hl = local(heelPt);
-    if (hl.x < 1.15 + HEEL_R + 2 * HACK_CLEAR_MARGIN) return null; // (c) anchor-boss clearance
-    const heelRel = world({ x: hl.x * cosP + HEEL_Z * sinP, y: hl.y }); // heel XY, blade pitched down
-    const d0 = Math.hypot(heelRel.x - postRel.x, heelRel.y - postRel.y);
-    if (d0 - HACK_HEEL_D1 < RAMP_SEAT_LAND + 0.6) return null; // approach too short for a real flank
-    let q = { ...seedTip };
-    let minClr = Infinity, prevD = Infinity, monotone = true;
-    for (let i = 0; i <= 60; i++) {
-      const post = tailPostWorldAt(i / 60);
-      q = intersectTail(post, RESET_ROD_LEN, q).q;
-      const d = Math.hypot(heelPt.x - post.x, heelPt.y - post.y);
-      if (d > prevD + 0.02) monotone = false; // (a)
-      prevD = d;
-      minClr = Math.min(minClr, d - G.SETTING_LEVER_POST_R - HEEL_R);
-      for (let s = 0; s <= 40; s++) {
-        const f = s / 40;
-        const rx = post.x + (q.x - post.x) * f, ry = post.y + (q.y - post.y) * f;
-        minClr = Math.min(minClr, Math.hypot(heelPt.x - rx, heelPt.y - ry) - ROD_R - HEEL_R); // (b)
-      }
-    }
-    if (!monotone || minClr < HACK_CLEAR_MARGIN) return null;
-    return { gammaDeg, heelPt, hl, d0, clr: minClr };
-  };
+// --- Bearing: scanned around the plate cut's open-wedge centre (the wedge
+// aims plate-centre → balance and is open to the rim, so the OUTWARD
+// bearing is open air from base plate to sky by construction — the crank's
+// tall tail needs exactly that). The scan walks away from the ideal only
+// far enough to clear the escapement-side hardware, and requires the hack
+// rod's approach to keep a strong component along the crank's tilt plane —
+// TANGENTIAL now (the see-saw only converts motion in its own hinge
+// plane, and the hinge is radial). The released tail sweeps tangentially
+// toward the post, so the whole swept segment is tested, not the pivot
+// point alone.
+const STOP_BEARING = (() => {
+  const ideal = Math.atan2(P.balance.y, P.balance.x);
+  const obstacles = [
+    ...forkCock.chain.map((n) => ({ x: n.x, y: n.y, r: n.r })),
+    { x: P.fork.x, y: P.fork.y, r: 4 },
+    { x: P.escape.x, y: P.escape.y, r: escapeWheelR + 1 },
+    { x: P.fourth.x, y: P.fourth.y, r: fourthWheelR + 1 },
+    { x: hammerPivotPos.x, y: hammerPivotPos.y, r: hammerArmLen + 4 },
+  ];
   let best = null;
-  for (let gd = -150; gd <= 150; gd += 7.5) {
-    const r = evalGamma(gd);
-    if (r && (!best || r.d0 < best.d0 - 1e-9 || (Math.abs(r.d0 - best.d0) < 1e-9 && r.clr > best.clr))) best = r;
+  // Scan bound: the plate cut's open wedge (±phiOpen about the same
+  // balance-centred aim), less the bracket's own angular half-width —
+  // the mast crosses the plate band and must stay in open air. The old
+  // ±28° window was leftover conservatism from the tall-mast design and
+  // capped the achievable coupling ~0.62.
+  const wedgeBound = TQ_CUT.phiOpen / DEG2RAD - Math.atan2(1.65 + HACK_CLEAR_MARGIN, STOP_PIVOT_R) / DEG2RAD;
+  for (let d = -Math.floor(wedgeBound); d <= Math.floor(wedgeBound); d += 1) {
+    const phi = ideal + d * DEG2RAD;
+    const bx = P.balance.x + Math.cos(phi) * STOP_PIVOT_R;
+    const by = P.balance.y + Math.sin(phi) * STOP_PIVOT_R;
+    const dxp = bx - postEng.x, dyp = by - postEng.y, mp = Math.hypot(dxp, dyp) || 1;
+    const tx = -Math.sin(phi), ty = Math.cos(phi);
+    const rodK = (dxp * tx + dyp * ty) / mp;
+    if (Math.abs(rodK) < 0.6) continue;
+    // Released tail-end sweep, tangential, TOWARD the post: first-order
+    // stroke/|K|, inflated 25% for the pin's cosine rise (covers ψ0 ≲ 40°).
+    const sw = -Math.sign(rodK) * 1.25 * POST_STROKE / Math.abs(rodK);
+    const swept = { x: bx + tx * sw, y: by + ty * sw };
+    if (Math.hypot(bx, by) > plateR - 2) continue;        // bracket fully on the plate
+    if (Math.hypot(swept.x, swept.y) > plateR - 1) continue; // swept tail stays over the plate
+    let clr = Infinity;
+    for (const o of obstacles)
+      clr = Math.min(clr, segCircleClear({ x: bx, y: by }, swept, o) - 2);
+    if (clr < HACK_CLEAR_MARGIN) continue;
+    // MAXIMIZE the coupling, with clearance as the constraint it always
+    // really was (the old clearance-maximizing score let K sit at its
+    // 0.6 gate, inflating the tail lever — and the mast — by ~40%: the
+    // pivot height divides by |K|, see Z_STOP_PIVOT). Tiny clearance
+    // tiebreak so equal-K bearings still prefer open air.
+    const score = Math.abs(rodK) + clr * 0.01;
+    if (!best || score > best.score) best = { phi, score };
   }
   if (!best) {
-    console.warn('hack-ramp: no feasible heel direction; falling back to travel-perpendicular');
-    best = evalGamma(90) || (() => {
-      const hd = { x: -th.y, y: th.x };
-      const heelPt = { x: postEng.x + hd.x * HACK_HEEL_D1, y: postEng.y + hd.y * HACK_HEEL_D1 };
-      const hl = local(heelPt);
-      return { gammaDeg: 90, heelPt, hl, d0: HACK_HEEL_D1 + 2, clr: 0 };
-    })();
+    console.warn('stop work: no clear bearing about the balance — using the outward ideal');
+    best = { phi: ideal };
   }
-  // Collar profile from the two calibrated poses (both EXACT by construction):
-  //   engaged  (pull 1): d = HACK_HEEL_D1 → ball on the top land → pitch 0;
-  //   released (pull 0): d = d0          → ball on the brim     → pitch HACK_PITCH.
-  const rise = HEEL_Z * (1 - cosP) + best.hl.x * sinP; // ball-centre travel between the poses
-  const dA = HACK_HEEL_D1 + RAMP_SEAT_LAND;            // ball centre where the land ends / flank begins
-  const k = rise / (RAMP_RISE_FRACTION * (best.d0 - dA)); // flank slope (dz per radial unit)
-  const cosF = 1 / Math.hypot(1, k), sinF = k / Math.hypot(1, k);
-  return {
-    ...best,
-    rise, k, dA,
-    landR: dA - HEEL_R * sinF,                 // land's outer SURFACE radius (ball tangency offset)
-    kneeR: dA - HEEL_R * sinF + rise / k,      // flank foot surface radius (meets the brim plane)
-    brimR: best.d0 + HEEL_R + RAMP_EDGE_LAND,
-    ZC0: HACK_ZC1 - rise,                      // released ball-centre height (on the brim)
-  };
+  return best.phi;
 })();
-// Ball-centre height on the collar as a function of radial distance d —
-// land / flank / brim, with the (≤ 5e-4 here) convex-edge blend at the
-// land's rim folded into the min/max clamps:
-function rampHeelHeightAt(d) {
-  return Math.min(HACK_ZC1, Math.max(HACK_RAMP.ZC0, HACK_ZC1 - HACK_RAMP.k * (d - HACK_RAMP.dA)));
-}
+const STOP_R_HAT = { x: Math.cos(STOP_BEARING), y: Math.sin(STOP_BEARING) };
+const STOP_T_HAT = { x: -STOP_R_HAT.y, y: STOP_R_HAT.x }; // hinge plane's horizontal axis
+const STOP_PIVOT = {
+  x: P.balance.x + STOP_R_HAT.x * STOP_PIVOT_R,
+  y: P.balance.y + STOP_R_HAT.y * STOP_PIVOT_R,
+};
+// Rod coupling: tangential fraction of the rod's run at the engaged pose
+// (|K| ≥ 0.6 guaranteed by the bearing scan above).
+const STOP_TANG_K = (() => {
+  const dx = STOP_PIVOT.x - postEng.x, dy = STOP_PIVOT.y - postEng.y;
+  return (dx * STOP_T_HAT.x + dy * STOP_T_HAT.y) / Math.hypot(dx, dy);
+})();
+// Pivot height from the stroke THROUGH the coupling:
+//   |STOP_TAIL_H| · sin(ψ_target) · |K| = POST_STROKE
+const Z_STOP_PIVOT = ROD2_PLANE_Z + POST_STROKE / (Math.abs(STOP_TANG_K) * Math.sin(STOP_PSI_TARGET));
+const STOP_TAIL_H = ROD2_PLANE_Z - Z_STOP_PIVOT; // NEGATIVE: the tail hangs down to the rod plane
+// CASE-FIT assert: the mast (pivot + clevis cheeks, top = pivot + 0.85)
+// must not stand above the balance cock's own height — the cock sets the
+// display side's silhouette, and the K-maximizing bearing scan above is
+// what earns this. If it fires, the achieved coupling is printed: the
+// fallback is a dedicated hack-rod pin at reduced radius on the setting
+// lever's tail (stroke scales with r/SL_TAIL).
+const STOP_MAST_TOP = Z_STOP_PIVOT + 0.85;
+if (STOP_MAST_TOP > TQ_TOP_Z)
+  console.warn(`stop work: mast top ${STOP_MAST_TOP.toFixed(2)} above the cock height ${TQ_TOP_Z.toFixed(2)} — achieved |K| = ${Math.abs(STOP_TANG_K).toFixed(3)}, needed ≥ ${(POST_STROKE / ((TQ_TOP_Z - 0.85 - ROD2_PLANE_Z) * Math.sin(STOP_PSI_TARGET))).toFixed(3)}`);
 
-const hackSpring = G.makeHackSpring({
-  length: bladeLen, width: BLADE_W, thickness: BLADE_T, padRise: PAD_RISE, padR: HACK_PAD_R,
-  heel: { x: HACK_RAMP.hl.x, y: HACK_RAMP.hl.y, z: HEEL_Z, ballR: HEEL_R, footR: HEEL_FOOT_R },
-});
-// Anchor post: the blade's fixed end used to be screwed to the
-// three-quarter plate's TOP face — but the blade now runs UNDER that plate,
-// and a stud reaching up through it would need a slot the blade never
-// passes through. The geometrically honest mount is the same one the
-// escapement bridge uses: a standing post rising from the BASE plate's top
-// face to the blade's underside (its ['Hack spring','plate'] support edge
-// in inspect.js changes with it). Built as part of the blade so the support
-// edge is measured against real geometry, and sized from the gap it
-// actually spans.
+// --- Build: static bracket (post + clevis + pin) and the rotating crank.
+// Group local +X = radially OUT of the balance, local +Y = STOP_T_HAT;
+// the crank rotates about local X (the horizontal RADIAL pivot axis).
+const stopLeverGroup = new THREE.Group();
+stopLeverGroup.position.set(STOP_PIVOT.x, STOP_PIVOT.y, Z_STOP_PIVOT);
+stopLeverGroup.rotation.z = STOP_BEARING;
+movement.add(stopLeverGroup);
+registerExplode(stopLeverGroup, Z_STOP_PIVOT, 7);
+registerLabel('Stop lever', stopLeverGroup);
 {
-  // Trimmed by the post's own rim dip: the blade group PITCHES about this
-  // anchor, so a post of radius R hangs R·sin(HACK_PITCH) lower on its
-  // outside edge at the released pose — end it that much above the base
-  // plate or the released pose digs the rim in.
-  const footLen = (BLADE_Z - BLADE_T * 1.1) - PLATE_TOP - 1.3 * Math.sin(HACK_PITCH);
-  if (footLen > 0.02) {
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.3, footLen, 16), MATS.steel);
-    foot.rotation.x = Math.PI / 2;
-    foot.position.set(0, 0, -BLADE_T * 1.1 - footLen / 2);
-    hackSpring.add(foot);
-  } else {
-    console.warn('hack anchor: no room for a post down to the base plate', footLen.toFixed(3));
+  // Bracket post: base plate top (seated 0.3 in) up to just under the arm.
+  const postTopLocal = -(STOP_ARM_T / 2 + HACK_CLEAR_MARGIN);
+  const postH = (Z_STOP_PIVOT + 0.3) + postTopLocal;
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, postH, 12), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.z = postTopLocal - postH / 2;
+  stopLeverGroup.add(post);
+  // Clevis cheeks straddle the crank at the pivot; the blued pin runs
+  // through both, along the RADIAL hinge axis (local X).
+  const cheekGeo = new THREE.BoxGeometry(0.32, 1.5, 2.0);
+  for (const s of [-1, 1]) {
+    const cheek = new THREE.Mesh(cheekGeo, MATS.steel);
+    cheek.position.set(s * (STOP_TAIL_W / 2 + 0.28), 0, -0.15);
+    stopLeverGroup.add(cheek);
   }
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, STOP_TAIL_W + 1.15, 10), MATS.blueSteel);
+  pin.rotation.z = Math.PI / 2; // cylinder's native Y → local X
+  stopLeverGroup.add(pin);
 }
-const bladeGroup = new THREE.Group();
-bladeGroup.position.set(bladeAnchor.x, bladeAnchor.y, BLADE_Z);
-// 'ZYX': aim about z composes AFTER the pitch, so rotation.y tilts the
-// blade about its own transverse axis (tip rises/drops along the aim line).
-bladeGroup.rotation.order = 'ZYX';
-bladeGroup.rotation.z = bladeAimAngle;
-bladeGroup.add(hackSpring);
-movement.add(bladeGroup);
-registerExplode(bladeGroup, BLADE_Z, 7);
-registerLabel('Hack spring', bladeGroup);
+const stopCrank = new THREE.Group();
+stopLeverGroup.add(stopCrank);
+// Pad-arm plane relative to the raised pivot (negative: the arm hangs).
+const PAD_ARM_LOCAL_Z = Z_STOP_PIVOT_LOW - Z_STOP_PIVOT;
 
-// The collar itself — rides the tail post (tick() keeps its XY on the post;
-// it is its own labelled unit so the inspection tooling can hold the
-// blade↔lever standoff budget while treating heel-on-collar as the intended
-// contact it is).
-const RAMP_BRIM_SURF_Z = HACK_RAMP.ZC0 - HEEL_R; // brim's top surface (world)
-const hackRamp = G.makeHackRamp({
-  boreR: G.SETTING_LEVER_POST_R,
-  landR: HACK_RAMP.landR,
-  kneeR: HACK_RAMP.kneeR,
-  brimR: HACK_RAMP.brimR,
-  landH: HACK_RAMP.rise,
-  brimT: RAMP_BRIM_T,
-});
-const hackRampGroup = new THREE.Group();
-hackRampGroup.position.set(postEng.x, postEng.y, RAMP_BRIM_SURF_Z);
-hackRampGroup.add(hackRamp);
-movement.add(hackRampGroup);
-registerExplode(hackRampGroup, RAMP_BRIM_SURF_Z, 4); // explodes with the setting lever
-registerLabel('Hack ramp', hackRampGroup);
-// With the low escapement the blade plane (rim-derived) dropped BELOW the
-// setting lever's body, and the collar followed — the tail post, which
-// only rose UPWARD from the body, no longer reached it (support check:
-// 'Hack ramp → Setting lever' FLOATING by 1.2). The post now continues
-// DOWN through the collar's bore: an extension added post-solve (the
-// collar plane isn't known when the lever is built), child of the lever
-// so it swings with the tail.
+// --- Hack-rod linkage: rigid rod, length CALIBRATED at the engaged pose
+// (crank at ψ = 0, pad tangent to the rim by the z-stack above); the
+// released crank angle then FOLLOWS from the post's crown travel through
+// the rod constraint — derived, not styled — and the released pad drop is
+// asserted against HACK_DROP_MIN. Per-frame the crank angle is solved from
+// the same constraint (a·sinψ + b·cosψ = c, branch nearest the previous
+// frame), mirroring the reset hammer's rod solve; ψ is clamped at 0
+// because the rim itself is the hard stop the pad presses against.
+// Rotation about local X maps (y, z) → (y·cosψ − z·sinψ, y·sinψ + z·cosψ):
+// the tail-end pin swings in the TANGENTIAL-vertical plane.
+function stopTailTopAt(psi) {
+  const sw = -STOP_TAIL_H * Math.sin(psi); // tangential swing (H < 0)
+  return {
+    x: STOP_PIVOT.x + STOP_T_HAT.x * sw,
+    y: STOP_PIVOT.y + STOP_T_HAT.y * sw,
+    z: Z_STOP_PIVOT + STOP_TAIL_H * Math.cos(psi),
+  };
+}
+function stopSolvePsi(post, prev) {
+  const wx = post.x - STOP_PIVOT.x, wy = post.y - STOP_PIVOT.y, wz = ROD2_PLANE_Z - Z_STOP_PIVOT;
+  const a = -(wx * STOP_T_HAT.x + wy * STOP_T_HAT.y), b = wz;
+  const c = (wx * wx + wy * wy + wz * wz + STOP_TAIL_H * STOP_TAIL_H - HACK_ROD_LEN * HACK_ROD_LEN)
+    / (2 * STOP_TAIL_H);
+  const m = Math.hypot(a, b) || 1e-9;
+  const base = Math.atan2(a, b);
+  const off = Math.acos(clamp(c / m, -1, 1));
+  const c1 = base - off, c2 = base + off;
+  return Math.abs(c1 - prev) <= Math.abs(c2 - prev) ? c1 : c2;
+}
+const HACK_ROD_LEN = (() => {
+  const t = stopTailTopAt(0);
+  return Math.hypot(postEng.x - t.x, postEng.y - t.y, ROD2_PLANE_Z - t.z);
+})();
+const STOP_PSI0 = stopSolvePsi(postRel, 0); // released crank angle (sign follows the post's tangential side)
+
+// --- Pad placement on the crank, DERIVED. Under the radial hinge the pad
+// moves only in (tangential, vertical): z(ψ) = y·sinψ + z_top·cosψ.
+// The cosine term alone would RAISE a below-pivot pad as |ψ| grows, so
+// the tangential offset PAD_Y is solved from the release constraint. The
+// released pad face TILTS with the crank, so the constraint binds at the
+// face's WORST point — the top-face edge a pad radius toward the swing
+// (y = PAD_Y + r·sign(sinψ0)), not the centre:
+//   drop(ψ0) = −(PAD_Y + r·sgn)·sinψ0 + z_top·(1 − cosψ0) = HACK_DROP_MIN
+const STOP_PAD_TOP_LZ = HACK_CONTACT_Z - Z_STOP_PIVOT; // ruby top face, crank-local (negative)
+const STOP_PAD_Y = (STOP_PAD_TOP_LZ * (1 - Math.cos(STOP_PSI0)) - HACK_DROP_MIN) / Math.sin(STOP_PSI0)
+  - HACK_PAD_TOP_R * Math.sign(Math.sin(STOP_PSI0));
+// Radial coordinate: the contact annulus is rotationally symmetric about
+// the balance axis, so the tangential offset just shifts the contact
+// azimuth — the pad's top-face centre stays at the derived radius:
+//   hypot(STOP_PIVOT_R + PAD_X, PAD_Y) = HACK_CONTACT_R
+const STOP_PAD_X = Math.sqrt(Math.max(0, HACK_CONTACT_R ** 2 - STOP_PAD_Y ** 2)) - STOP_PIVOT_R; // negative: inward
+if (Math.abs(STOP_PAD_Y) >= HACK_CONTACT_R)
+  console.warn('stop work: pad tangential offset exceeds the contact radius', STOP_PAD_Y.toFixed(2));
 {
-  const bodyBotWorld = Z_SETTING_LEVER - 0.5;                    // lever thickness 1, centred
-  const targetBotWorld = RAMP_BRIM_SURF_Z - RAMP_BRIM_T - 0.2;   // through the collar, a hair past
-  const dropLen = bodyBotWorld - targetBotWorld;
-  if (dropLen > 0.05) {
-    const ext = new THREE.Mesh(
-      new THREE.CylinderGeometry(G.SETTING_LEVER_POST_R, G.SETTING_LEVER_POST_R, dropLen, 12), MATS.steel);
-    ext.rotation.x = Math.PI / 2;
-    ext.position.set(0, -SL_TAIL, -0.5 - dropLen / 2); // lever-local, under the tail
-    settingLever.add(ext);
-  }
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(STOP_TAIL_W, STOP_TAIL_W, Math.abs(STOP_TAIL_H)), MATS.steel);
+  tail.position.z = STOP_TAIL_H / 2; // hangs: H is negative
+  stopCrank.add(tail);
+  // Pad arm: a DIAGONAL run from the drop leg's foot to the pad centre
+  // (the pad carries the solved tangential offset).
+  const runX = STOP_PAD_X - 0.7, runY = STOP_PAD_Y;
+  const armL = Math.hypot(runX, runY) + 1.4; // overshoots both ends for the bosses
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(armL, STOP_ARM_W, STOP_ARM_T), MATS.steel);
+  arm.position.set((0.7 + STOP_PAD_X) / 2, STOP_PAD_Y / 2, PAD_ARM_LOCAL_Z);
+  arm.rotation.z = Math.atan2(runY, runX);
+  stopCrank.add(arm);
+  // Drop leg: pivot hub down to the hanging arm.
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.7, STOP_ARM_W, Math.abs(PAD_ARM_LOCAL_Z) + STOP_ARM_T), MATS.steel);
+  leg.position.set(0.35, 0, PAD_ARM_LOCAL_Z / 2);
+  stopCrank.add(leg);
+  const padPost = new THREE.Mesh(new THREE.CylinderGeometry(HACK_PAD_R, HACK_PAD_R, 0.5, 12), MATS.steel);
+  padPost.rotation.x = Math.PI / 2;
+  padPost.position.set(STOP_PAD_X, STOP_PAD_Y, PAD_ARM_LOCAL_Z + STOP_ARM_T / 2 + 0.25);
+  stopCrank.add(padPost);
+  const ruby = new THREE.Mesh(new THREE.CylinderGeometry(HACK_PAD_TOP_R, HACK_PAD_R * 0.95, 0.4, 14), MATS.ruby);
+  ruby.rotation.x = Math.PI / 2;
+  ruby.position.set(STOP_PAD_X, STOP_PAD_Y, PAD_ARM_LOCAL_Z + STOP_ARM_T / 2 + 0.7);
+  stopCrank.add(ruby);
+  // Rod pin stub at the tail's END (its low tip), along the hinge axis.
+  const rodPin = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, STOP_TAIL_W + 0.6, 8), MATS.steel);
+  rodPin.rotation.z = Math.PI / 2;
+  rodPin.position.z = STOP_TAIL_H;
+  stopCrank.add(rodPin);
 }
-// Build-time sanity: the top land must sit exactly one margin under the
-// rod, the heel stud must actually reach below the blade, and the collar's
-// swept footprint must clear the blade's anchor boss in XY.
-if (Math.abs((RAMP_BRIM_SURF_Z + HACK_RAMP.rise) - RAMP_TOP_Z) > 1e-9)
-  console.warn('hack-ramp: land plane off its rod-clearance bind');
-if (-HEEL_Z - BLADE_T / 2 < 0.05)
-  console.warn('hack-ramp: heel stud too short to clear the blade underside');
-if (Math.hypot(bladeAnchor.x - postEng.x, bladeAnchor.y - postEng.y)
-    < HACK_RAMP.brimR + 1.15 + HACK_CLEAR_MARGIN)
-  console.warn('hack-ramp: collar sweeps into the blade anchor boss');
+// Released pad drop, from the EXACT rotation of the pad's WORST top-face
+// edge — binds at HACK_DROP_MIN by the PAD_Y solve above (tolerance for
+// the float round-trip):
+const _padEdgeY = STOP_PAD_Y + HACK_PAD_TOP_R * Math.sign(Math.sin(STOP_PSI0));
+const _padZAt = (psi) => _padEdgeY * Math.sin(psi) + STOP_PAD_TOP_LZ * Math.cos(psi);
+const STOP_RELEASE_DROP = _padZAt(0) - _padZAt(STOP_PSI0);
+if (!(STOP_RELEASE_DROP >= HACK_DROP_MIN - 1e-6))
+  console.warn('stop work: released pad drop under floor', STOP_RELEASE_DROP.toFixed(3), '<', HACK_DROP_MIN);
+// Sweep safety, replacing the old graded-lean check (the tail can no
+// longer lean toward the balance: tangential swings keep every crank
+// point at world radius hypot(R, y) ≥ R from the balance axis). Two
+// things still need proof across the WHOLE stroke ψ ∈ [0, ψ0] — the
+// crown can rest anywhere and the balance may still be swinging:
+//  · the pad's top face must never rise above the contact plane, and
+//  · every other crank point that enters the balance's radial envelope
+//    must stay a margin below the rim's underside.
+{
+  const pts = [];
+  const ring = (cx, cy, r, z, pad) => {
+    for (let k = 0; k < 8; k++)
+      pts.push({ x: cx + r * Math.cos(k * Math.PI / 4), y: cy + r * Math.sin(k * Math.PI / 4), z, pad });
+  };
+  ring(STOP_PAD_X, STOP_PAD_Y, HACK_PAD_TOP_R, STOP_PAD_TOP_LZ, true);          // ruby top face
+  ring(STOP_PAD_X, STOP_PAD_Y, HACK_PAD_R, STOP_PAD_TOP_LZ - 0.4, false);       // ruby base
+  ring(STOP_PAD_X, STOP_PAD_Y, HACK_PAD_R, PAD_ARM_LOCAL_Z + STOP_ARM_T / 2, false); // pad post root
+  {
+    const runX = STOP_PAD_X - 0.7, runY = STOP_PAD_Y, L = Math.hypot(runX, runY) || 1;
+    const nx = -runY / L * (STOP_ARM_W / 2), ny = runX / L * (STOP_ARM_W / 2);
+    for (let i = 0; i <= 8; i++) { // arm top-face lattice
+      const x = 0.7 + runX * i / 8, y = runY * i / 8;
+      pts.push({ x: x + nx, y: y + ny, z: PAD_ARM_LOCAL_Z + STOP_ARM_T / 2 });
+      pts.push({ x: x - nx, y: y - ny, z: PAD_ARM_LOCAL_Z + STOP_ARM_T / 2 });
+    }
+  }
+  let worst = Infinity, rise = -Infinity;
+  const lo = Math.min(0, STOP_PSI0), hi = Math.max(0, STOP_PSI0);
+  for (let i = 0; i <= 24; i++) {
+    const psi = lo + (hi - lo) * i / 24;
+    const c = Math.cos(psi), s = Math.sin(psi);
+    for (const p of pts) {
+      const y = p.y * c - p.z * s, z = p.y * s + p.z * c;
+      if (p.pad) { rise = Math.max(rise, Z_STOP_PIVOT + z - HACK_CONTACT_Z); continue; }
+      const wr = Math.hypot(STOP_PIVOT_R + p.x, y);
+      if (wr < BAL_OUTER_R + HACK_CLEAR_MARGIN)
+        worst = Math.min(worst, HACK_CONTACT_Z - HACK_CLEAR_MARGIN - (Z_STOP_PIVOT + z));
+    }
+  }
+  if (rise > 1e-6)
+    console.warn('stop work: pad rises above the contact plane mid-stroke by', rise.toFixed(3));
+  if (worst < 0)
+    console.warn('stop work: crank sweeps into the balance envelope, margin short by', (-worst).toFixed(3));
+}
 
-// Per-frame pitch solve — the blade's rotation.y is DERIVED from where the
-// collar actually is (heel rides rampHeelHeightAt), mirroring the reset
-// hammer's rod-constraint solve. The heel's XY shifts (≈ 0.01) with pitch,
-// so 3 fixed-point rounds; the clamp encodes the collar's two flat lands.
-let hackPitchState = HACK_PITCH;
-function solveHackPitch(post) {
-  let p = hackPitchState;
-  for (let i = 0; i < 3; i++) {
-    const lx = HACK_RAMP.hl.x * Math.cos(p) + HEEL_Z * Math.sin(p);
-    const hx = bladeAnchor.x + Math.cos(bladeAimAngle) * lx - Math.sin(bladeAimAngle) * HACK_RAMP.hl.y;
-    const hy = bladeAnchor.y + Math.sin(bladeAimAngle) * lx + Math.cos(bladeAimAngle) * HACK_RAMP.hl.y;
-    const zc = rampHeelHeightAt(Math.hypot(hx - post.x, hy - post.y));
-    p = Math.asin((HEEL_Z * Math.cos(p) - (zc - BLADE_Z)) / HACK_RAMP.hl.x);
+// Hack rod: elbow link on the low plane, solved exactly like the reset
+// rod's (the endpoints here come from the crank solve; the slight z-slope
+// toward the crank end is carried by the placement quaternion).
+const HACK_ROD_ELBOW = (() => {
+  const poses = [];
+  let prev = STOP_PSI0;
+  for (let t = 0; t <= 1.0001; t += 0.125) {
+    const post = tailPostWorldAt(t);
+    const psi = stopSolvePsi(post, prev);
+    prev = psi;
+    const tt = stopTailTopAt(psi);
+    poses.push({ a: post, b: { x: tt.x, y: tt.y } });
   }
-  hackPitchState = clamp(p, 0, HACK_PITCH);
-  return hackPitchState;
+  const best = solveElbow(HACK_ROD_LEN, poses);
+  if (best.clear < 0)
+    console.warn(`hack rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
+  return best;
+})();
+const hackRod = makeElbowRodMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e);
+movement.add(hackRod);
+registerLabel('Hack rod', hackRod);
+
+let stopPsiState = STOP_PSI0;
+const _rodUp = new THREE.Vector3(0, 1, 0);
+const _rodDir = new THREE.Vector3();
+function updateStopWork(post) {
+  // Rim = hard stop: the rod can never rotate the crank past the tangent
+  // pose (ψ = 0), however the eased crownPullT overshoots numerically.
+  // The released side's SIGN follows the hanging-tail geometry, so the
+  // clamp keeps ψ on STOP_PSI0's side of zero.
+  const psi = stopSolvePsi(post, stopPsiState);
+  stopPsiState = STOP_PSI0 <= 0 ? Math.min(0, psi) : Math.max(0, psi);
+  stopCrank.rotation.x = stopPsiState;
+  const t = stopTailTopAt(stopPsiState);
+  hackRod.position.set((post.x + t.x) / 2, (post.y + t.y) / 2, (ROD2_PLANE_Z + t.z) / 2);
+  _rodDir.set(t.x - post.x, t.y - post.y, t.z - ROD2_PLANE_Z).normalize();
+  hackRod.quaternion.setFromUnitVectors(_rodUp, _rodDir);
 }
+updateStopWork(postRel); // rest pose (crown in)
+
+// --- LOW-LINKAGE SWEPT CORRIDOR — the one obstacle model for every LATER
+// seat scan (balance-cock legs, pillar seats). Both rods were built before
+// those scans run, so their own elbow scans could not see what comes next:
+// whatever is placed afterwards must yield to the linkage instead. Sampled
+// over the full crown stroke: the setting-lever tail post's swing arc,
+// both rods' elbow segments (+ knuckle), and the reset hammer's arm.
+// Entries are XY circles {x,y,r} / stadium segments {ax..by,r} at the
+// parts' OWN radii — each consumer adds its own reach plus CLEAR_MARGIN.
+const LOW_LINKAGE_OBSTACLES = (() => {
+  const obs = [];
+  const pushElbow = (a, b, elbow) => {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+    const E = { x: a.x + ux * L * elbow.f + nx * elbow.e, y: a.y + uy * L * elbow.f + ny * elbow.e };
+    obs.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: ROD_R });
+    obs.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: ROD_R });
+    obs.push({ x: E.x, y: E.y, r: ROD_R * 1.15 });
+  };
+  let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
+  let psi = STOP_PSI0;
+  for (let i = 0; i <= 12; i++) {
+    const post = tailPostWorldAt(i / 12);
+    obs.push({ x: post.x, y: post.y, r: G.SETTING_LEVER_POST_R });
+    q = intersectTail(post, RESET_ROD_LEN, q).q;
+    pushElbow(post, q, RESET_ROD_ELBOW);
+    obs.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: q.x, by: q.y, r: 0.7 });
+    psi = stopSolvePsi(post, psi);
+    pushElbow(post, stopTailTopAt(psi), HACK_ROD_ELBOW);
+  }
+  return obs;
+})();
 
 // ---------------------------------------------------------------------------
 // Fusee & chain — torque equalisation. The spring DRUM sits beside the fusee;
@@ -2329,7 +2726,15 @@ const drumPos = {
 // gap the drum's silhouette overlaps the great wheel's radius in XY, so
 // the clearance is vertical: drum bottom sits above the wheel's top face
 // (the fusee grooves are higher still, so the chain span stays level-ish).
-const Z_DRUM = L_BARREL + 5;
+const Z_DRUM = (DRUM_BOT_Z + DRUM_TOP_Z) / 2; // drum body is built centred; band solved with its height up top
+// Arbor sized to its bearings: up to the plate's mid-thickness bushing
+// (the old fixed height·2.4 was tuned for the tall stack and would poke
+// 2.5 past the spring-bound plate), down just past the body for the lower
+// pivot to continue.
+const barrel = G.makeBarrel({
+  radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true,
+  arborH: 2 * (TQ_MID_Z - Z_DRUM),
+});
 const drumGroup = new THREE.Group();
 drumGroup.position.set(drumPos.x, drumPos.y, Z_DRUM);
 drumGroup.add(barrel);
@@ -2343,15 +2748,140 @@ addLowerPivot(drumGroup, { staffR: 0.6, jewelR: 1.4 });
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
 const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_H * 0.06; // world z of the lowest groove
 const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
-const DRUM_CHAIN_Z = Z_DRUM + DRUM_HEIGHT * 0.4;  // chain rides near the drum's top
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
+// The chain is drawn as what a fusee chain IS: a miniature bicycle chain —
+// alternating inner/outer plate pairs riveted through pins. The pin axes
+// stay parallel to the arbors the whole way round (cone wrap, span and
+// drum coil alike, as on the real thing), so the plates lie flat in the
+// coil and successive turns clear each other at the 0.65 coil pitch:
+const CHAIN_PITCH = 0.8;    // rivet-to-rivet along the chain
+const CHAIN_PIN_LEN = 0.62; // total stack height — inside the 0.65 coil pitch
+const CHAIN_PLATE_T = 0.11;
+// One template per part, kept as raw non-indexed arrays so a rebuild is a
+// plain transform-and-fill into one big buffer (no per-link allocations
+// beyond the buffer itself). Plate pair z-stack, mirrored about the chain
+// centreline: inner faces 0.06..0.17, outer 0.20..0.31 — the pins run
+// flush to the outer faces, their ends reading as rivet heads.
+function chainPlatePairTemplate(endR, zOff) {
+  const half = CHAIN_PITCH / 2;
+  const s = new THREE.Shape(); // stadium: rivet-hole centres at ±half
+  s.absarc(-half, 0, endR, Math.PI / 2, Math.PI * 1.5, false);
+  s.absarc(half, 0, endR, Math.PI * 1.5, Math.PI / 2, false);
+  const one = new THREE.ExtrudeGeometry(s, { depth: CHAIN_PLATE_T, bevelEnabled: false, curveSegments: 4 });
+  const pos = [], nrm = [];
+  for (const zc of [zOff - CHAIN_PLATE_T / 2, -zOff - CHAIN_PLATE_T / 2]) {
+    const g = one.clone().translate(0, 0, zc);
+    pos.push(...g.attributes.position.array);
+    nrm.push(...g.attributes.normal.array);
+    g.dispose();
+  }
+  one.dispose();
+  return { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm) };
+}
+const CHAIN_TMPL = (() => {
+  const inner = chainPlatePairTemplate(0.2, 0.115);
+  const outer = chainPlatePairTemplate(0.23, 0.255);
+  const pinGeo = new THREE.CylinderGeometry(0.13, 0.13, CHAIN_PIN_LEN, 8).rotateX(Math.PI / 2).toNonIndexed();
+  const pin = {
+    pos: Float32Array.from(pinGeo.attributes.position.array),
+    nrm: Float32Array.from(pinGeo.attributes.normal.array),
+  };
+  pinGeo.dispose();
+  return { inner, outer, pin };
+})();
+function buildChainLinkGeometry(curve) {
+  curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
+  const len = curve.getLength();
+  const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
+  const joints = curve.getSpacedPoints(N); // N+1 rivet positions, arc-length uniform
+  const { inner, outer, pin } = CHAIN_TMPL;
+  // Parity is anchored at the CLAW end so the link that drops over the
+  // hook's pin is always an outer pair, whatever N rounds to this rebuild.
+  const isOuter = (i) => (N - 1 - i) % 2 === 0;
+  let total = (N + 1) * pin.pos.length;
+  for (let i = 0; i < N; i++) total += (isOuter(i) ? outer : inner).pos.length;
+  const pos = new Float32Array(total), nrm = new Float32Array(total);
+  let off = 0;
+  // Write a template transformed by the orthonormal frame with basis
+  // columns (t̂,ŷ,k̂) and translation c — normals rotate by the same basis.
+  const write = (tmpl, t, y, k, c) => {
+    const P = tmpl.pos, Q = tmpl.nrm;
+    for (let i = 0; i < P.length; i += 3) {
+      const a = P[i], b = P[i + 1], d = P[i + 2];
+      pos[off + i] = t.x * a + y.x * b + k.x * d + c.x;
+      pos[off + i + 1] = t.y * a + y.y * b + k.y * d + c.y;
+      pos[off + i + 2] = t.z * a + y.z * b + k.z * d + c.z;
+      const na = Q[i], nb = Q[i + 1], nd = Q[i + 2];
+      nrm[off + i] = t.x * na + y.x * nb + k.x * nd;
+      nrm[off + i + 1] = t.y * na + y.y * nb + k.y * nd;
+      nrm[off + i + 2] = t.z * na + y.z * nb + k.z * nd;
+    }
+    off += P.length;
+  };
+  const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
+  const mid = new THREE.Vector3();
+  const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+  for (let i = 0; i < N; i++) {
+    const a = joints[i], b = joints[i + 1];
+    t.subVectors(b, a).normalize();
+    // Pin axis: world-vertical with the tangent's component removed, so
+    // plates stay flat while the span carries its slight z slope.
+    k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
+    y.crossVectors(k, t);
+    mid.addVectors(a, b).multiplyScalar(0.5);
+    write(isOuter(i) ? outer : inner, t, y, k, mid);
+  }
+  for (let i = 0; i <= N; i++) write(pin, X, Y, Z, joints[i]); // rivets, world-vertical
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  return geo;
+}
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
   return {
     r: FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * f,
     z: FUSEE_Z0 + FUSEE_ZSPAN * f,
   };
+}
+// --- The chain's BARREL ATTACHMENT. The chain hooks to the drum wall at a
+// fixed point and the accumulating wraps STACK DOWNWARD from it: the hook
+// sits at the top of the coil zone, each arriving turn lays one chain
+// diameter below the last, and the takeoff tangent point descends with the
+// coil as the reserve drains (mirroring the fusee side, whose active
+// groove descends too — the span stays near-level over the whole reserve).
+// The old construction was inverted: the tangent was pinned near the
+// drum's top and the chain's FREE END descended, ending in mid-air with
+// no attachment at all.
+const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid
+// Hook angle, drum-local. The wrap's far end lands at world angle
+// thetaT + turns·2π and the drum's rotation is rot = (1−tension)·C/R, so
+// a fixed drum-local hook works iff the wrap's fractional turn absorbs
+// thetaT's small drift with tension (the wrap length IS set by geometry —
+// see rebuildChain). Placing the hook at thetaT(mid-reserve) + 0.3 turns
+// centres that fractional solve on the +0.3 slack turn, giving the
+// round-to-nearest branch maximum headroom against the ±0.02-turn drift.
+const HOOK_A = (() => {
+  const midR = fuseeGrooveAt(0.5 * 0.94).r;
+  const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
+  const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_R) / Math.hypot(dx, dy), -1, 1));
+  return thetaMid + 0.3 * Math.PI * 2;
+})();
+{
+  // The hook itself: a riveted tab on the drum wall with a claw pin the
+  // chain's end link drops over — child of drumGroup, so it turns with the
+  // barrel and the ['Chain','Mainspring drum'] support edge measures real
+  // geometry (the chain's last point is placed ON this claw).
+  const hookLocalZ = COIL_TOP - Z_DRUM;
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.9), MATS.steel);
+  tab.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.25), Math.sin(HOOK_A) * (DRUM_R + 0.25), hookLocalZ);
+  tab.rotation.z = HOOK_A;
+  drumGroup.add(tab);
+  const claw = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.8, 8), MATS.steel);
+  claw.rotation.z = HOOK_A + Math.PI / 2; // pin lies tangentially along the wall
+  claw.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.45), Math.sin(HOOK_A) * (DRUM_R + 0.45), hookLocalZ);
+  drumGroup.add(claw);
 }
 function rebuildChain(tension) {
   lastChainTension = tension;
@@ -2385,11 +2915,22 @@ function rebuildChain(tension) {
       gp.z
     ));
   }
-  // 2. Straight span to the drum's tangent point.
+  // 2+3. Drum coil, hook-anchored. The wrap's turn count is SOLVED so its
+  // far end lands exactly on the hook (fixed on the rotating drum at
+  // drum-local HOOK_A): world hook angle = HOOK_A + rot must equal
+  // thetaT + turns·2π, so the fractional part of `turns` comes from that
+  // congruence and the whole part from the chain-length accounting
+  // (round-to-nearest is branch-stable: HOOK_A centres the offset — see
+  // its comment). The coil hangs DOWN from the hook, one chain diameter
+  // per turn, so the takeoff tangent point descends as the reserve drains.
+  const rot = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R; // = drumGroup.rotation.z in tick()
+  const baseTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
+  if (frac < 0) frac += 1;
+  const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
+  const takeoffZ = COIL_TOP - drumTurns * 0.65;
   const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_R, y: drumPos.y + Math.sin(thetaT) * DRUM_R };
-  pts.push(new THREE.Vector3(TB.x, TB.y, DRUM_CHAIN_Z));
-  // 3. Wrap accumulated on the drum (grows as the reserve drains).
-  const drumTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  pts.push(new THREE.Vector3(TB.x, TB.y, takeoffZ));
   const nD = Math.max(Math.ceil(drumTurns * SEG_PER_TURN), 2);
   for (let i = 1; i <= nD; i++) {
     const s = (i / nD) * drumTurns;
@@ -2397,11 +2938,18 @@ function rebuildChain(tension) {
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_R,
       drumPos.y + Math.sin(ang) * DRUM_R,
-      DRUM_CHAIN_Z - s * 0.65 // one chain diameter per turn: a snug coil, and it stays above the drum's bottom
+      COIL_TOP - (drumTurns - s) * 0.65 // climbs back up to the hook plane
     ));
   }
+  // ...and the end link steps out onto the hook's claw pin.
+  const hookAng = thetaT + drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
+  pts.push(new THREE.Vector3(
+    drumPos.x + Math.cos(hookAng) * (DRUM_R + 0.45),
+    drumPos.y + Math.sin(hookAng) * (DRUM_R + 0.45),
+    COIL_TOP
+  ));
   const curve = new THREE.CatmullRomCurve3(pts);
-  const geo = new THREE.TubeGeometry(curve, pts.length * 2, 0.3, 6, false);
+  const geo = buildChainLinkGeometry(curve);
   if (chainMesh) {
     chainMesh.geometry.dispose();
     chainMesh.geometry = geo;
@@ -2416,7 +2964,7 @@ function rebuildChain(tension) {
 // THREE-QUARTER PLATE — build. Deliberately the LAST structural step: every
 // opening in it and the seating of everything on it is measured off parts
 // that already exist, rather than predicted. (Its z-stack and the balance
-// cut were solved up with the plates, because the hack blade and the reset
+// cut were solved up with the plates, because the stop work and the reset
 // rod both had to be laid out against them.)
 // ---------------------------------------------------------------------------
 
@@ -2435,19 +2983,376 @@ function rebuildChain(tension) {
 // bearing it never had.
 addUpperPivot(drumGroup, { staffR: 0.9, jewelR: 0, boreR: 0.95 });
 
+// ---------------------------------------------------------------------------
+// MAINTAINING POWER — Harrison's sandwich at the great wheel, the honest
+// home of every moving click in a fusee. The great wheel is loose on the
+// fusee arbor; drive flows cone → base ratchet → PAWLS on the maintaining
+// wheel → maintaining spring → great wheel. While WINDING, the fusee (and
+// its base ratchet) reverse under the pawls — they click over backwards —
+// and the plate DETENT holds the maintaining wheel so the maintaining
+// spring keeps the train fed. While RUNNING, pawls sit locked, the whole
+// sandwich creeps with the wheel, and the detent slowly ticks over the
+// maintaining wheel's rim teeth. The detent never sees reverse motion —
+// which is why a fixed pawl is legal HERE and nowhere on the arbor.
+//
+// GEOMETRY IS SQUEEZED by the tornado layout, and the derivation says so:
+// the center wheel sweeps under the cone (the chain clears it VERTICALLY
+// — FUSEE_BASE_Z's window term), so a full-diameter sandwich would run
+// straight through it. Every radius below is bound by the center wheel's
+// closest approach to the barrel axis; every z by the wheel hub below and
+// the chain's lowest links above.
+// ---------------------------------------------------------------------------
+const MAINT_TEETH = 24;
+// RADIAL BOUND: the center wheel's tip circle comes within this of the
+// barrel axis — every full-circumference part of the sandwich must stay
+// a margin inside it.
+const _cwTipNear = barrelDist - (centerWheel.userData.r || 12) - 0.36; // − pitch r − addendum = tip-circle approach
+const MAINT_RING_R = _cwTipNear - CLEAR_MARGIN;
+const MAINT_RING_ROOT = MAINT_RING_R * 0.8;
+// The pawl pivot studs need SOLID footing on the ring (inside its tooth
+// roots), and the builder pivots a click at 1.28·its radius — so the
+// flange's radius is derived backwards from the footing bound.
+const MAINT_PAWL_PIV = MAINT_RING_ROOT - 0.25; // stud centre: stud r 0.22 + shy of the root land
+const MAINT_FLANGE_R = MAINT_PAWL_PIV / 1.28;
+// z BOUNDS: ring above the great wheel HUB (its tallest central feature),
+// flange below the chain's lowest links on the cone's bottom groove.
+const GW_HUB_TOP = L_BARREL + (1.4 * 1.5) / 2; // makeGear hub ring: thickness·1.5, centred on the wheel
+const MAINT_CHAIN_LOW = FUSEE_Z0 - CHAIN_PIN_LEN / 2; // underside of the lowest chain wrap
+const MAINT_RING_T = 0.5, MAINT_FLANGE_T = 0.5;
+const MAINT_RING_BOT = GW_HUB_TOP + CLEAR_MARGIN;
+const MAINT_RING_TOP = MAINT_RING_BOT + MAINT_RING_T;
+const MAINT_FLANGE_TOP = MAINT_CHAIN_LOW - CLEAR_MARGIN;
+const MAINT_FLANGE_BOT = MAINT_FLANGE_TOP - MAINT_FLANGE_T;
+if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
+  console.warn(`maintaining power: flange bottom ${MAINT_FLANGE_BOT.toFixed(2)} crowds the ring top ${MAINT_RING_TOP.toFixed(2)} — the sandwich band collapsed`);
+// Base ratchet flange: keyed to the FUSEE (winds backward with it). A hub
+// boss carries it down from the cone's base.
+{
+  const flange = G.makeRatchetAndClick({ radius: MAINT_FLANGE_R, teeth: MAINT_TEETH, thickness: MAINT_FLANGE_T, includeClick: false });
+  flange.position.z = MAINT_FLANGE_BOT - (L_BARREL + FUSEE_BASE_Z); // fusee-local (the fusee sits at FUSEE_BASE_Z in the arbor group)
+  fusee.add(flange);
+  const bossH = (L_BARREL + FUSEE_BASE_Z) - MAINT_FLANGE_TOP;
+  const bossR = MAINT_FLANGE_R * 0.8 - 0.15; // inside the flange's root land
+  const boss = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 14), MATS.steel);
+  boss.rotation.x = Math.PI / 2;
+  boss.position.z = -bossH / 2; // fusee-local: hangs from the cone's base plane
+  fusee.add(boss);
+}
+// Maintaining wheel: loose on the arbor, rim saw teeth for the detent,
+// carrying two pawls that ride the flange above. Child of barrelArbor
+// WITHOUT windBack — it turns only with the train, so it never reverses.
+const maintWheel = new THREE.Group();
+const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
+{
+  const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_TEETH, thickness: MAINT_RING_T, includeClick: false });
+  ring.position.z = MAINT_RING_BOT - L_BARREL;
+  maintWheel.add(ring);
+  // Two opposed pawls, pivot studs footed inside the ring's root land,
+  // beaks in the flange's teeth. π apart = 12 tooth pitches, so both
+  // share the builder's beak-at-valley registration.
+  for (const k of [0, 1]) {
+    const az = new THREE.Group();
+    az.rotation.z = k * Math.PI;
+    maintWheel.add(az);
+    const pawl = G.makeClick({ radius: MAINT_FLANGE_R, thickness: MAINT_FLANGE_T * 0.8 });
+    pawl.position.set(MAINT_PAWL_PIV, 0, MAINT_FLANGE_BOT + MAINT_FLANGE_T * 0.1 - L_BARREL);
+    pawl.rotation.z = Math.PI * 0.778;
+    pawl.name = 'maintPawl';
+    az.add(pawl);
+    const studH = MAINT_FLANGE_TOP - MAINT_RING_TOP;
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, studH, 8), MATS.blueSteel);
+    stud.rotation.x = Math.PI / 2;
+    stud.position.set(MAINT_PAWL_PIV, 0, MAINT_RING_TOP + studH / 2 - L_BARREL);
+    az.add(stud);
+    MAINT_PAWL_SEATS.push(pawl);
+  }
+  // The maintaining SPRING: coiled flat in the gap under the ring, hooked
+  // to a stud on the great wheel's face — mostly hidden, as in the real
+  // thing; the power-flow view lights it when it is what feeds the train.
+  const msArc = new THREE.Mesh(new THREE.TorusGeometry(MAINT_RING_ROOT * 0.6, 0.08, 6, 20, Math.PI * 1.5), MATS.blueSteel);
+  msArc.position.z = (GW_HUB_TOP + MAINT_RING_BOT) / 2 - L_BARREL;
+  msArc.name = 'maintSpring';
+  maintWheel.add(msArc);
+}
+barrelArbor.add(maintWheel); // train rotation only — tick never adds windBack here
+// Pawl ride constants — seat measured from the built geometry, lift sign
+// derived numerically (same scheme the plate click used).
+const MAINT_PAWL_BASE = Math.PI * 0.778;
+const _mpTip = (rot) => ({ x: MAINT_PAWL_PIV + Math.cos(rot) * MAINT_FLANGE_R * 0.8, y: Math.sin(rot) * MAINT_FLANGE_R * 0.8 });
+const _mp0 = _mpTip(MAINT_PAWL_BASE);
+const MAINT_PAWL_TIP_R = Math.hypot(_mp0.x, _mp0.y);
+const MAINT_PAWL_TIP_AZ = Math.atan2(_mp0.y, _mp0.x);
+const MAINT_PAWL_SIGN = Math.sign(Math.hypot(_mpTip(MAINT_PAWL_BASE + 1e-4).x, _mpTip(MAINT_PAWL_BASE + 1e-4).y) - MAINT_PAWL_TIP_R) || 1;
+if (MAINT_PAWL_TIP_R > MAINT_FLANGE_R - 0.05 || MAINT_PAWL_TIP_R < MAINT_FLANGE_R * 0.8 - 0.1)
+  console.warn(`maintaining pawl tip seats at ${MAINT_PAWL_TIP_R.toFixed(2)} — outside the flange's working band [${(MAINT_FLANGE_R * 0.8).toFixed(2)}, ${MAINT_FLANGE_R.toFixed(2)}]`);
+// Saw profile shared by pawls and detent (the builder's tooth: root→tip
+// chord over 72% of the pitch, face over the last 28%).
+function sawRadiusAt(u, R) {
+  const rootR = R * 0.8, depth = R * 0.2;
+  return u <= 0.72 ? rootR + (depth * u) / 0.72 : R - (depth * (u - 0.72)) / 0.28;
+}
+// Detent handles — built with its own cock after the drum (it needs the
+// spur/transfer envelope for its footing); null until then.
+let maintDetentBeak = null;
+let MAINT_DETENT_AZ = 0, MAINT_DET_TIP_AZ = 0, MAINT_DET_TIP_R = 0,
+    MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN = 1;
+// The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
+// windBack: zero while running (locked, torque flows), sweeping backward
+// during winding (click-click while the detent holds the wheel). The
+// detent rides the wheel's ABSOLUTE rotation — pure train creep, one
+// slow tick per tooth as the watch runs, and NEVER a reverse pass.
+function updateMaintaining(windBack) {
+  for (let k = 0; k < MAINT_PAWL_SEATS.length; k++) {
+    let u = (((MAINT_PAWL_TIP_AZ - windBack) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    if (u < 0) u += 1;
+    const lift = Math.max(sawRadiusAt(u, MAINT_FLANGE_R) - MAINT_PAWL_TIP_R, 0) / (MAINT_FLANGE_R * 0.8);
+    MAINT_PAWL_SEATS[k].rotation.z = MAINT_PAWL_BASE + MAINT_PAWL_SIGN * lift;
+  }
+  if (maintDetentBeak) {
+    const net = barrelArbor.rotation.z - MAINT_DETENT_AZ;
+    let u = (((MAINT_DET_TIP_AZ - net) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    if (u < 0) u += 1;
+    const lift = Math.max(sawRadiusAt(u, MAINT_RING_R) - MAINT_DET_TIP_R, 0) / MAINT_DET_LEVER;
+    maintDetentBeak.rotation.z = MAINT_DET_BASE + MAINT_DET_SIGN * lift;
+  }
+}
+// The DETENT on its own overhung cock. Its beak must reach the ring at
+// r ≈ 5 from the barrel axis in the ring's plane — but no post can rise
+// there: the great wheel's spoked disc sweeps every radius under it. So
+// the cock's FOOT stands on the base plate OUTSIDE the wheel's tip
+// circle, and a flat arm reaches inward OVER the wheel's top face to a
+// pivot stud from which the beak hangs down into the ring's band. The
+// azimuth is SOLVED by an obstacle scan (pillar-solver pattern): the
+// post and the arm's sweep must clear the drum, the train, the keyless
+// envelope and the setting lever's post swing.
+const maintDetent = new THREE.Group();
+{
+  const uWindAngle = Math.atan2(uWind.y, uWind.x);
+  // Pivot: just outside the winding spur's tip circle (the beak's stud
+  // hangs here — nothing of the cock reaches lower than the arm at this
+  // radius, so the spur's band below is never entered).
+  const pivR = windSpurR + KW_MODULE + CLEAR_MARGIN + 0.4;
+  // Aim SOLVED, not guessed: scan the lever's rotation for the beak tip
+  // seat closest to a working bite (root + 0.35·tooth depth).
+  const lever = pivR - MAINT_RING_ROOT + 1.1; // reaches past the root by a beak's engagement
+  const targetR = MAINT_RING_ROOT + 0.35 * (MAINT_RING_R - MAINT_RING_ROOT);
+  let bestAim = { err: Infinity, aim: Math.PI * 0.8 };
+  for (let aim = Math.PI * 0.6; aim <= Math.PI * 0.98; aim += 0.005) {
+    const tx = pivR + Math.cos(aim) * lever, ty = Math.sin(aim) * lever;
+    const err = Math.abs(Math.hypot(tx, ty) - targetR);
+    if (err < bestAim.err) bestAim = { err, aim };
+  }
+  MAINT_DET_BASE = bestAim.aim;
+  MAINT_DET_LEVER = lever;
+  const tip = { x: pivR + Math.cos(bestAim.aim) * lever, y: Math.sin(bestAim.aim) * lever };
+  MAINT_DET_TIP_R = Math.hypot(tip.x, tip.y);
+  MAINT_DET_TIP_AZ = Math.atan2(tip.y, tip.x);
+  const tipEps = { x: pivR + Math.cos(bestAim.aim + 1e-4) * lever, y: Math.sin(bestAim.aim + 1e-4) * lever };
+  MAINT_DET_SIGN = Math.sign(Math.hypot(tipEps.x, tipEps.y) - MAINT_DET_TIP_R) || 1;
+  // Footing: post centre one margin + its own radius outside the great
+  // wheel's tip circle (pitch + addendum), with a little slop.
+  const POST_R = 0.5;
+  const gwTip = barrelR_actual + barrelModule;
+  const postR = gwTip + CLEAR_MARGIN + POST_R + 0.05;
+  // Obstacle scan over the azimuth (world frame, about the barrel axis).
+  // XY-conservative like the pillar solver: distance to obstacle BOXES,
+  // full height — a candidate that passes here passes at any z.
+  // NOT boxOf(keyless): that box swallows half the movement (the setting
+  // arbor's dial-side traverse) and would veto every azimuth. The only
+  // keyless parts in the cock's z-reach are the transfer wheel + arbor —
+  // an analytic circle on the stem ray.
+  const detObstacles = [drumGroup, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup];
+  const transferXY = { x: uWind.x * cwDist, y: uWind.y * cwDist, r: crownWheelR + 0.7 };
+  const detClearAt = (x, y) => {
+    let c = plateR - 1.5 - Math.hypot(x, y); // stay well inside the plate rim
+    for (const o of detObstacles) {
+      const b = boxOf(o);
+      const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
+      c = Math.min(c, Math.hypot(x - cx, y - cy));
+    }
+    c = Math.min(c, Math.hypot(x - transferXY.x, y - transferXY.y) - transferXY.r);
+    for (let t = 0; t <= 1.0001; t += 0.1) { // the setting lever's post swing (base-plate arc slot)
+      const p = tailPostWorldAt(t);
+      c = Math.min(c, Math.hypot(x - p.x, y - p.y) - 1.2);
+    }
+    return c;
+  };
+  const ARM_HALF = 0.55; // arm half-width + a working skin
+  const prefer = uWindAngle + Math.PI / 4;
+  let bestAz = null;
+  for (let dDeg = 0; dDeg <= 180; dDeg += 5) {
+    for (const sgn of dDeg === 0 ? [1] : [1, -1]) {
+      const azw = prefer + sgn * dDeg * DEG2RAD;
+      const ux = Math.cos(azw), uy = Math.sin(azw);
+      let c = Infinity;
+      for (let r = pivR; r <= postR + POST_R; r += (postR - pivR) / 8) {
+        c = Math.min(c, detClearAt(P.barrel.x + ux * r, P.barrel.y + uy * r));
+      }
+      if (c >= CLEAR_MARGIN + ARM_HALF) { bestAz = azw; break; }
+    }
+    if (bestAz !== null) break;
+  }
+  if (bestAz === null) {
+    bestAz = prefer;
+    console.warn('maintaining detent: no clear azimuth found — using the stem-line offset unchecked');
+  }
+  // Snap so the beak tip's WORLD azimuth lands in a tooth valley (the
+  // ring sits at rotation 0 at build).
+  const pitch = (Math.PI * 2) / MAINT_TEETH;
+  MAINT_DETENT_AZ = Math.round((bestAz + MAINT_DET_TIP_AZ) / pitch) * pitch - MAINT_DET_TIP_AZ;
+  maintDetent.position.set(P.barrel.x, P.barrel.y, 0);
+  const az = new THREE.Group();
+  az.rotation.z = MAINT_DETENT_AZ;
+  maintDetent.add(az);
+  // Arm plane: just above the ring's band (the flange above starts at
+  // MAINT_FLANGE_BOT — the arm's top stays a margin under it; radially
+  // the arm never comes near the flange's 2-unit reach anyway).
+  const ARM_T = 0.45;
+  const armBot = MAINT_RING_TOP + 0.05;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(postR - pivR + POST_R, 1.1, ARM_T), MATS.steel);
+  arm.position.set((pivR + postR + POST_R) / 2, 0, armBot + ARM_T / 2);
+  az.add(arm);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(POST_R, POST_R + 0.1, armBot + ARM_T, 12), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(postR, 0, (armBot + ARM_T) / 2);
+  az.add(post);
+  // Beak hangs from a stud under the arm's inner end, riding in the
+  // ring's own z band.
+  const beak = G.makeClick({ radius: lever / 0.8, thickness: MAINT_RING_T * 0.9 });
+  beak.position.set(pivR, 0, MAINT_RING_BOT + MAINT_RING_T * 0.05);
+  beak.rotation.z = MAINT_DET_BASE;
+  az.add(beak);
+  maintDetentBeak = beak;
+  const studH = armBot + ARM_T - (MAINT_RING_BOT + MAINT_RING_T * 0.05);
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, studH, 8), MATS.blueSteel);
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(pivR, 0, armBot + ARM_T - studH / 2);
+  az.add(stud);
+  movement.add(maintDetent);
+  registerExplode(maintDetent, 0, 1); // base-plate furniture
+  registerLabel('Maintaining detent', maintDetent);
+}
+
+// ---------------------------------------------------------------------------
+// SET-UP WORK — the one ratchet a fusee movement really carries at its
+// barrel, and it is STATIC: the spring's inner end grips the DRUM ARBOR
+// and this ratchet + click hold the few turns of pre-tension put in at
+// assembly. It never moves again in service — winding happens at the
+// fusee, running spins the drum BODY around this held arbor. Because it
+// is bench-only hardware, it lives DOWN on the base plate under the drum
+// (marine-chronometer practice: set-up work on the lower plate, out of
+// the display side), in the same one-margin band the winding spur uses —
+// the great wheel's rim passes 5.2 from the drum axis but only above
+// z 1.2, so the low band clears it in both axes. Closes the anchor half
+// of TODO.md item 1: the drum→chain torque path now ends on a fixture
+// instead of thin air. (The spiral itself is still the tension readout
+// child — its morph remains representational.)
+// ---------------------------------------------------------------------------
+const setupWork = new THREE.Group();
+{
+  const SQ = 0.6 * Math.SQRT2; // across-corners = the lower staff's diameter (addLowerPivot staffR 0.6)
+  setupWork.position.set(drumPos.x, drumPos.y, 0);
+  const az = new THREE.Group();
+  // Click and spring aimed toward the movement centre (+x in drum frame),
+  // away from the plate rim where the pillars seat.
+  az.rotation.z = 0;
+  setupWork.add(az);
+  // Square + ratchet on the arbor's LOWER end, one margin above the base
+  // plate (Z_RATCHET_BOT — the winding spur's convention). No cap: the
+  // ratchet is captive between the plate below and the arbor's shoulder
+  // above. All STATIC — the arbor does not turn in service.
+  const sqH = RATCHET_T + 0.2;
+  const square = new THREE.Mesh(new THREE.BoxGeometry(SQ, SQ, sqH), MATS.steel);
+  square.position.z = Z_RATCHET_BOT - 0.05 + sqH / 2;
+  az.add(square);
+  const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: 24, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
+  ratchet.position.z = Z_RATCHET_BOT;
+  az.add(ratchet);
+  // Click on its shoulder screw + curved click spring pressing the
+  // beak-side flank (same solved-arc construction as ever) — the screw
+  // posts stand on the BASE plate's top face now.
+  const CLICK_T = RATCHET_T * 0.75;
+  const clickBot = Z_RATCHET_BOT + (RATCHET_T - CLICK_T) / 2;
+  const click = G.makeClick({ radius: ratchetR, thickness: CLICK_T });
+  click.position.set(ratchetR * 1.28, 0, clickBot);
+  click.rotation.z = Math.PI * 0.778;
+  az.add(click);
+  const postH = clickBot + CLICK_T;
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, postH, 10), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(ratchetR * 1.28, 0, postH / 2);
+  az.add(post);
+  // The click side of this assembly reaches under the GREAT WHEEL's rim
+  // (the wheel's tip circle passes 5.2 from the drum axis, disc underside
+  // at L_BARREL − t/2 − bevel): the screw head's thickness is derived so
+  // its top stays one margin under that face.
+  const gwUnder = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
+  const headT = Math.min(0.18, gwUnder - CLEAR_MARGIN - postH);
+  if (headT < 0.08) console.warn(`set-up click screw head squeezed to ${headT.toFixed(2)} under the great wheel`);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, headT, 12), MATS.blueSteel);
+  head.rotation.x = Math.PI / 2;
+  head.position.set(ratchetR * 1.28, 0, postH + headT / 2);
+  az.add(head);
+  const springR = 1.3;
+  const beta = Math.PI * 0.778;
+  const flankOff = ratchetR * 0.11 * 0.7 + 0.12;
+  const T = {
+    x: ratchetR * 1.28 + 1.2 * Math.cos(beta) + flankOff * Math.sin(beta),
+    y: 1.2 * Math.sin(beta) - flankOff * Math.cos(beta),
+  };
+  const A = { x: ratchetR * 1.28 + 2.2 * Math.cos(0.6), y: 2.2 * Math.sin(0.6) };
+  const dx = T.x - A.x, dy = T.y - A.y, d = Math.hypot(dx, dy);
+  const h = Math.sqrt(Math.max(springR * springR - (d / 2) ** 2, 0.01));
+  const C = { x: (A.x + T.x) / 2 + (-dy / d) * h, y: (A.y + T.y) / 2 + (dx / d) * h };
+  const thT = Math.atan2(T.y - C.y, T.x - C.x);
+  let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
+  if (span < 0) span += Math.PI * 2;
+  const springZ = clickBot + CLICK_T / 2;
+  const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.12, 8, 24, span), MATS.blueSteel);
+  spring.position.set(C.x, C.y, springZ);
+  spring.rotation.z = thT;
+  az.add(spring);
+  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, springZ, 10), MATS.steel);
+  springPost.rotation.x = Math.PI / 2;
+  springPost.position.set(A.x, A.y, springZ / 2);
+  az.add(springPost);
+  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.18, 12), MATS.blueSteel);
+  springHead.rotation.x = Math.PI / 2;
+  springHead.position.set(A.x, A.y, springZ + 0.09);
+  az.add(springHead);
+  // The spring's INNER-END ANCHOR, inside the drum: a collar on the
+  // static arbor with a radial hook pin at the spiral's heart. The drum
+  // body (and the readout spiral) rotate around it — the arbor holds.
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 1.2, 14), MATS.steel);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.z = Z_DRUM;
+  az.add(collar);
+  const hookPin = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 8), MATS.blueSteel);
+  hookPin.rotation.z = Math.PI / 2; // cylinder Y-axis laid radially along +x
+  hookPin.position.set(1.5 + 0.7, 0, Z_DRUM);
+  az.add(hookPin);
+  movement.add(setupWork);
+  registerExplode(setupWork, 0, 1); // base-plate furniture now
+  registerLabel('Set-up work', setupWork);
+}
+
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
-for (const p of tqPivots) {
-  const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
-  const d = Math.hypot(dx, dy);
-  const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
-  const bossR = Math.max(p.jewelR * 1.7, p.boreR);
-  const edge = G.cutEdgeRadius(TQ_CUT, phi);
-  const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
-  if (inWedge || d - bossR - CLEAR_MARGIN < edge)
-    console.warn('3/4 plate: the cut reaches a pivot it has to carry at',
-      p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
+// Factored: it re-runs after the balance-cock reveal grows the cut.
+function checkCutVsPivots() {
+  for (const p of tqPivots) {
+    const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
+    const d = Math.hypot(dx, dy);
+    const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
+    const bossR = Math.max(p.jewelR * 1.7, p.boreR);
+    const edge = G.cutEdgeRadius(TQ_CUT, phi);
+    const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
+    if (inWedge || d - bossR - CLEAR_MARGIN < edge)
+      console.warn('3/4 plate: the cut reaches a pivot it has to carry at',
+        p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
+  }
 }
+checkCutVsPivots();
 
 // A jewelled pivot needs the plate opened up to its CHATON's diameter, not
 // the staff's — the counterbore is cut right through and the bearing collar
@@ -2456,35 +3361,11 @@ for (const p of tqPivots) {
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
-// The post swings on the setting lever's 6-long tail, so its track between
-// the two crown poses is an ARC: sized on the chord alone the slot was 0.03
-// tight against the ramp collar at mid-stroke (inspector: Hack ramp ⇄
-// Three-quarter plate, every pose). Measure the bow and add it.
-const tqPostBow = (() => {
-  const chord = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
-  const L = Math.hypot(chord.x, chord.y) || 1;
-  let bow = 0;
-  for (let i = 0; i <= 40; i++) {
-    const p = tailPostWorldAt(i / 40);
-    const t = ((p.x - postRel.x) * chord.x + (p.y - postRel.y) * chord.y) / (L * L);
-    bow = Math.max(bow, Math.hypot(p.x - postRel.x - t * chord.x, p.y - postRel.y - t * chord.y));
-  }
-  return bow;
-})();
-// The ramp collar only widens the slot if it actually CROSSES the plate's
-// z-band: with the blade (and so the collar that drives it) re-planed under
-// the plate, the collar's top land sits well below TQ_BOT_Z and only the
-// bare post passes through — the plate keeps that material.
-const tqSlotBodyR = RAMP_TOP_Z >= TQ_BOT_Z - CLEAR_MARGIN
-  ? Math.max(HACK_RAMP.brimR, G.SETTING_LEVER_POST_R)
-  : G.SETTING_LEVER_POST_R;
-const tqSlots = [{
-  ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
-  // +0.02: tqPostBow is a 40-sample maximum of a smooth arc, so the true
-  // bow can exceed it by a hair — without the pad the bare post's slot
-  // clearance ties at EXACTLY the margin and rounds under it mid-stroke.
-  r: tqSlotBodyR + tqPostBow + CLEAR_MARGIN + 0.02,
-}];
+// The three-quarter plate carries NO slot for the setting lever's tail
+// post any more: with the whole reset/hack linkage on the LOW plane, the
+// post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
+// cut from kwPostBow, remains). One less opening in the display plate.
+const tqSlots = [];
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -2496,30 +3377,69 @@ const tqSlots = [{
 // actually share the pedestal's z band.
 const COCK_W = 6;
 const COCK_FOOT_R = COCK_W / 2;
+// The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction 0.5 of
+// the length from the slab centre): the head ends exactly one half-width
+// past the staff — no dead nickel overhanging the bearing (the old 0.12
+// left 0.38·L of slab reaching past the jewel for no structural reason).
+const COCK_JEWEL_AT = 0.5;
+const COCK_LEG_R = 1.3;
 const BALANCE_COCK = (() => {
   const obstacles = [];
   for (const p of tqPivots) obstacles.push({ x: p.x, y: p.y, r: p.jewelR * 1.7 });
   for (const h of tqHoles) obstacles.push({ x: h.x, y: h.y, r: h.r });
   for (const s of tqSlots) obstacles.push({ ax: s.ax, ay: s.ay, bx: s.bx, by: s.by, r: s.r });
-  // The escapement bridge's slab shares the cock foot's z band.
+  // The escapement bridge's slab shares the cock foot's z band — its
+  // pivot bosses AND the waisted BAR between them (makeEscapeBridge:
+  // half-width = min(r_a, r_b)·0.8). The bar was missing from this list,
+  // and the leg scan promptly stood a leg across it (inspection finding:
+  // Balance cock ⇄ Fork cock, leg through the bridge bar's slab band).
   for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
-  // The hack blade and the reset-rod linkage both run in the band between the
-  // plate's top face and the cock's underside — the pedestal's band exactly.
-  obstacles.push({
-    ax: bladeAnchor.x, ay: bladeAnchor.y,
-    bx: bladeAnchor.x + Math.cos(bladeAimAngle) * bladeLen,
-    by: bladeAnchor.y + Math.sin(bladeAimAngle) * bladeLen,
-    r: BLADE_W / 2,
-  });
+  for (let i = 0; i + 1 < forkCock.chain.length; i++) {
+    const a = forkCock.chain[i], b = forkCock.chain[i + 1];
+    obstacles.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 });
+  }
+  // The FULL train: the cock's pedestal spans from the base plate to the
+  // slab, crossing every wheel band on the way, so each disc's whole
+  // footprint is off-limits to the foot. The old hack blade's obstacle
+  // incidentally blocked every inward bearing, which is why these were
+  // never needed before — the first scan run without the blade promptly
+  // seated the foot inside the center wheel's disc (inspection finding).
+  for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, drumGroup]) {
+    const b = boxOf(o);
+    obstacles.push({
+      x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2,
+      r: Math.hypot(b.max.x - b.min.x, b.max.y - b.min.y) / 2,
+    });
+  }
+  // The stop work's crank (bracket, hanging tail, pad arm) and BOTH rods'
+  // low corridors run in the band between the plate's top face and the
+  // cock's underside — the pedestal's band exactly. The crank hinges
+  // about its RADIAL axis, so it sweeps TANGENTIALLY: cover the pivot
+  // hardware, the tail's swept segment, and the pad arm's diagonal at
+  // both stroke ends (the arm's own plane swings furthest — it hangs
+  // deepest below the hinge).
+  obstacles.push({ x: STOP_PIVOT.x, y: STOP_PIVOT.y, r: 2.2 });
   {
-    let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
-    for (let i = 0; i <= 12; i++) {
-      const post = tailPostWorldAt(i / 12);
-      q = intersectTail(post, RESET_ROD_LEN, q).q;
-      obstacles.push({ ax: post.x, ay: post.y, bx: q.x, by: q.y, r: ROD_R });
-      obstacles.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: q.x, by: q.y, r: 0.7 });
+    const swTail = -STOP_TAIL_H * Math.sin(STOP_PSI0); // signed tangential sweep at the tail's low end
+    obstacles.push({
+      ax: STOP_PIVOT.x, ay: STOP_PIVOT.y,
+      bx: STOP_PIVOT.x + STOP_T_HAT.x * swTail, by: STOP_PIVOT.y + STOP_T_HAT.y * swTail,
+      r: 1.2,
+    });
+    for (const psi of [0, STOP_PSI0]) {
+      const py = STOP_PAD_Y * Math.cos(psi) - PAD_ARM_LOCAL_Z * Math.sin(psi);
+      obstacles.push({
+        ax: STOP_PIVOT.x, ay: STOP_PIVOT.y,
+        bx: STOP_PIVOT.x + STOP_R_HAT.x * STOP_PAD_X + STOP_T_HAT.x * py,
+        by: STOP_PIVOT.y + STOP_R_HAT.y * STOP_PAD_X + STOP_T_HAT.y * py,
+        r: STOP_ARM_W / 2 + 0.4,
+      });
     }
   }
+  // Both rods were built BEFORE the cock exists, so their elbow scans
+  // could not see its legs — the cock's seat must yield to the linkage
+  // instead: the shared swept-corridor list (rods, post arc, hammer arm).
+  for (const o of LOW_LINKAGE_OBSTACLES) obstacles.push(o);
   const distTo = (o, x, y) => {
     if (o.ax === undefined) return Math.hypot(x - o.x, y - o.y) - o.r;
     const vx = o.bx - o.ax, vy = o.by - o.ay;
@@ -2530,45 +3450,87 @@ const BALANCE_COCK = (() => {
   let best = null;
   for (let d = -180; d < 180; d += 1) {
     const phi = d * DEG2RAD;
-    // Radially: outside the balance assembly (the pedestal crosses the
-    // wheel's plane) AND outside the cut edge on this bearing.
+    const cs = Math.cos(TQ_CUT.aim + phi), sn = Math.sin(TQ_CUT.aim + phi);
+    // Everything below is tested WHERE THE BUILD PUTS IT: the built slab
+    // is sized to the cut edge (staff→tail = cutEdge − 0.1, see
+    // balanceCockLen), so the bar sits at cutEdge − 1.3. The old scan
+    // modelled a phantom foot disc at dFoot = cutEdge + 3.15 instead —
+    // ~3 units outboard of the real legs — and happily seated a leg
+    // straight through the stop bracket's mast while rejecting honest
+    // seats whose phantom foot grazed something that isn't there.
     const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
-    const fx = P.balance.x + Math.cos(TQ_CUT.aim + phi) * dFoot;
-    const fy = P.balance.y + Math.sin(TQ_CUT.aim + phi) * dFoot;
-    let clr = plateR - CLEAR_MARGIN - (Math.hypot(fx, fy) + COCK_FOOT_R); // stay on the plate
-    for (const o of obstacles) clr = Math.min(clr, distTo(o, fx, fy) - COCK_FOOT_R);
+    const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1; // built slab-tail reach
+    let clr = plateR - CLEAR_MARGIN
+      - (Math.hypot(P.balance.x + cs * dTail, P.balance.y + sn * dTail) + COCK_W / 2); // slab stays on the plate
+    // The T-foot's two LEG PADS must clear the obstacle set. Their
+    // half-span is φ-dependent (it is solved from the balance's swept
+    // radius at the bar's distance — see the build below): test both pads
+    // at this candidate bearing, not just the slab tail.
+    const dyLeg = dTail - 1.2;
+    const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;
+    const hspan = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLeg * dyLeg, 0)));
+    const padR = COCK_LEG_R * 1.5;
+    for (const s of [-1, 1]) {
+      const lx = P.balance.x + cs * dyLeg - sn * s * hspan;
+      const ly = P.balance.y + sn * dyLeg + cs * s * hspan;
+      clr = Math.min(clr, plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR));
+      for (const o of obstacles) clr = Math.min(clr, distTo(o, lx, ly) - padR);
+    }
+    // The SLAB and T-BAR ride in the plate band (z ≈ COCK_MID_Z ± T/2),
+    // above the pedestal obstacles — but the stop work's MAST + hanging
+    // tail stand in the cut wedge and cross that band on the way to the
+    // raised hinge. Effective mast radius at the slab band = the larger
+    // of the post's taper (0.7) and the tail's tangential sweep reach
+    // there (|z_band − pivot|·|sinψ0| + tail half-width).
+    {
+      const mastR = Math.max(0.7,
+        Math.abs(COCK_MID_Z + COCK_T / 2 - Z_STOP_PIVOT) * Math.abs(Math.sin(STOP_PSI0)) + STOP_TAIL_W / 2);
+      const tailD = dyLeg + 1.2;
+      const slab = { ax: P.balance.x, ay: P.balance.y,
+        bx: P.balance.x + cs * tailD, by: P.balance.y + sn * tailD, r: 0 };
+      clr = Math.min(clr, distTo(slab, STOP_PIVOT.x, STOP_PIVOT.y) - COCK_W / 2 - mastR);
+      const bar = { ax: P.balance.x + cs * dyLeg - sn * hspan, ay: P.balance.y + sn * dyLeg + cs * hspan,
+        bx: P.balance.x + cs * dyLeg + sn * hspan, by: P.balance.y + sn * dyLeg - cs * hspan, r: 0 };
+      clr = Math.min(clr, distTo(bar, STOP_PIVOT.x, STOP_PIVOT.y) - 1.2 - COCK_LEG_R - mastR);
+    }
     if (clr < CLEAR_MARGIN) continue;
-    if (!best || clr > best.clr) best = { phi, dFoot, fx, fy, clr };
+    if (!best || clr > best.clr) best = { phi, dFoot, clr };
   }
   if (!best) {
     console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing');
     const phi = Math.atan2(P.fork.y - P.balance.y, P.fork.x - P.balance.x) - TQ_CUT.aim;
     const dFoot = BAL_OUTER_R + COCK_FOOT_R + CLEAR_MARGIN;
-    best = { phi, dFoot, fx: 0, fy: 0, clr: 0 };
+    best = { phi, dFoot, clr: 0 };
   }
-  return { ...best, length: best.dFoot / 0.62 }; // makeCock: jewel +0.12L, foot centre −0.5L
+  // makeCock: jewel at +COCK_JEWEL_AT·L, foot centre at −0.5·L → the
+  // staff→tail distance is (0.5 + COCK_JEWEL_AT)·L.
+  return { ...best, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
 })();
 // COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
-// the plate's own z-band over the cutaway, so it must END before the cut
-// edge (plate material owns that band beyond it); it stops 0.1 inside.
-// From the back: the cock's top face is flush with the plate's — the
-// Glashütte look the restride exists to produce — but its FOOT is a leg
-// dropping from under the slab tail to the base plate, keeping the whole
-// balance assembly independent of the three-quarter plate (see the
-// escape bridge, which works the same way). (The balance itself runs
-// entirely BELOW the slab: rim top 12.03 vs slab bottom 12.86, so
-// overhanging it is free.)
+// the plate's own z-band over the cutaway; its LENGTH is sized against the
+// cut edge as first solved (tail to 0.1 inside it), and once the cock is
+// BUILT the cut is re-solved around it — the bridge-reveal pass after the
+// cock build — so the finished plate edge retreats a full cut margin past
+// every part of the bridge. From the back: the cock's top face is flush
+// with the plate's — the Glashütte look — but it stands in open air on
+// its own base-plate legs, independent of the three-quarter plate.
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
-const balanceCockLen = (cockEdgeR - 0.1) / 0.62; // slab tail reach (0.62·L below the jewel) stops inside the edge
-const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thickness: COCK_T });
+// Slab tail reach ((0.5 + COCK_JEWEL_AT)·L below the jewel), sized to the
+// pre-reveal cut edge.
+const balanceCockLen = (cockEdgeR - 0.1) / (0.5 + COCK_JEWEL_AT);
+const balanceCock = G.makeCock({
+  length: balanceCockLen, width: COCK_W, thickness: COCK_T, jewelAt: COCK_JEWEL_AT,
+});
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
   const toJewel = TQ_CUT.aim + BALANCE_COCK.phi + Math.PI;
   balanceCock.rotation.z = toJewel - Math.PI / 2;
-  // Position the cock so its sunk JEWEL (at local (0, length·0.12) in makeCock)
+  // Position the cock so its sunk JEWEL (at local (0, length·COCK_JEWEL_AT))
   // lands exactly on the balance-staff axis — the staff's upper pivot must be
-  // set in the cock's jewel, not beside it.
-  const jy = balanceCockLen * 0.12;
+  // set in the cock's jewel, not beside it. With the jewel at the head-arc
+  // centre, the round head ends one half-width past the staff and nothing
+  // overhangs the bearing.
+  const jy = balanceCockLen * COCK_JEWEL_AT;
   const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
   balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, COCK_MID_Z);
   // BRIDGE FOOT to the BASE plate. The cock used to be plate furniture —
@@ -2585,9 +3547,20 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   // bridge" stability move, done at the only end with open floor (the head
   // end overhangs the fork and the spring; no leg can land there).
   const yTail = -balanceCockLen / 2;                 // slab's tail end
-  const LEG_R = 1.3;
-  const BAR_HSPAN = 5.5;                             // crossbar half-span
+  const LEG_R = COCK_LEG_R;
   const yBar = yTail + 1.2;                          // crossbar centreline
+  // Crossbar half-span SOLVED, not styled: each leg's centre must stand
+  // one margin plus its own radius off the balance's MEASURED swept
+  // radius (BAL_OUTER_R — the timing-screw tips are what sweep furthest).
+  // The old fixed 5.5 put the legs' inner edges 0.34 INSIDE the screw
+  // sweep; being an intended-contact pair (staff in the cock jewel), the
+  // overlap sweep could never flag it.
+  const dyLegBuild = (jy - yBar);                    // staff → bar, cock-local
+  const legBound = BAL_OUTER_R + LEG_R + CLEAR_MARGIN;
+  const BAR_HSPAN = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLegBuild * dyLegBuild, 0)));
+  if (Math.hypot(BAR_HSPAN, dyLegBuild) < legBound - 1e-6)
+    console.warn('balance cock: T-foot legs inside the balance sweep',
+      Math.hypot(BAR_HSPAN, dyLegBuild).toFixed(2), '<', legBound.toFixed(2));
   const bar = new THREE.Mesh(
     new THREE.BoxGeometry(BAR_HSPAN * 2 + LEG_R * 2, 2.4, COCK_T), MATS.nickel);
   bar.position.set(0, yBar, 0);
@@ -2613,18 +3586,18 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
   }
 
   // ------------------------------------------------------------------
-  // FIXED OUTER TERMINAL + REGULATOR (TODO item 4). Everything below is
+  // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
   // cock-local: origin at the slab centre, +Y toward the jewel/staff,
   // top face at +COCK_T/2 (flush with the plate).
   // ------------------------------------------------------------------
-  const jyStaff = balanceCockLen * 0.12;         // staff axis in cock-local y
+  const jyStaff = balanceCockLen * COCK_JEWEL_AT; // staff axis in cock-local y
   const hsUD = hairspring.userData;
 
   // Re-anchor the SPRING so its terminal end lands 0.9 rad off the cock
   // axis, over the OPEN cutaway — the stud that clamps it hangs from a
   // cantilevered carrier arm there, in plain view beside the cock, not
-  // buried under the slab. Terminal order along the curve stays honest:
-  // spiral end (on the cock axis) → curb pins (+0.45) → stud (+0.9).
+  // buried under the slab. Free-sprung: the terminal runs uninterrupted
+  // from the spiral's outer end to the stud.
   hairspringGroup.rotation.z = toJewel + 0.9 - hsUD.endAngle;
 
   // Small ring builder (extrude spans local z 0..h) for the concentric
@@ -2662,19 +3635,20 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
     balanceCock.add(shock);
   }
 
-  // STUD CARRIER: the spring's outer end belongs to the regulator
-  // ASSEMBLY, not to bare plate. A second concentric ring outside the
-  // index collar cantilevers an arm out over the open cutaway (0.9 rad
-  // off the cock axis, past the index arm at 0.45); at the terminal-end
-  // radius its stud drops to the spring plane and clamps the terminal,
-  // pinned from the side — the whole attachment visible from the back.
+  // STUD CARRIER: the spring's outer end belongs to a fixture on the
+  // cock, not to bare plate. A concentric ring around the shock setting
+  // cantilevers an arm out over the open cutaway (0.9 rad off the cock
+  // axis); at the terminal-end radius its stud drops to the spring plane
+  // and clamps the terminal, pinned from the side — the whole attachment
+  // visible from the back. On a free-sprung balance this is the spring's
+  // ONLY fixture: no index, no curb pins.
   const studWorldZ = L_HAIRSPRING + hsUD.termEndZ;   // terminal end height
   {
     const carrier = new THREE.Group();
     carrier.name = 'studCarrier';
     carrier.position.set(0, jyStaff, COCK_T / 2);
     carrier.rotation.z = 0.9;
-    const ring = ringMesh(2.55, 3.1, 0.22, MATS.steel);
+    const ring = ringMesh(2.55, 2.95, 0.22, MATS.steel); // outer trimmed inside the head's half-width (3.0)
     ring.position.z = 0.02;
     carrier.add(ring);
     const yS = hsUD.termEndR;                        // carrier-local stud centre
@@ -2696,109 +3670,77 @@ const balanceCock = G.makeCock({ length: balanceCockLen, width: COCK_W, thicknes
     balanceCock.add(carrier);
   }
 
-  // REGULATOR: an index arm pivoted on a collar ring around the cock's
-  // jewel, swept 0.45 rad off the cock axis so its tip rides over the OPEN
-  // cutaway; two curb pins drop from the tip and straddle the terminal
-  // curve at its midpoint. Moving the index along the curve is what would
-  // lengthen/shorten the effective spring — the regulator this movement
-  // never had. The index is dressed Glashütte-style with a swan-neck
-  // spring and an opposing adjuster screw bearing on its tail.
-  const reg = new THREE.Group();
-  reg.name = 'regulator';
-  reg.position.set(0, jyStaff, COCK_T / 2);
-  reg.rotation.z = 0.45;                         // arm aims at the terminal midpoint
-  const collarIn = 1.7;  // clears the shock boss (1.35) and the lyre's reach
-  const collarOut = collarIn + 0.72; // inside the stud-carrier ring (2.55)
-  const armT = 0.28;
-  const collar = ringMesh(collarIn, collarOut, armT, MATS.steel);
-  collar.position.z = 0.02;
-  reg.add(collar);
-  const rPin = hsUD.termMid.r;
-  const armLen = rPin - collarOut + 0.5;
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.6, armLen, armT), MATS.steel);
-  arm.position.set(0, collarOut + armLen / 2 - 0.25, armT / 2 + 0.02);
-  reg.add(arm);
-  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, armT, 18), MATS.steel);
-  tip.rotation.x = Math.PI / 2;
-  tip.position.set(0, rPin, armT / 2 + 0.02);
-  reg.add(tip);
-  // Curb pins: from the arm's underside down PAST the terminal curve, one
-  // each side of the ribbon with running clearance.
-  const pinR = 0.12;
-  const pinGap = hsUD.ribbonR + 0.1 + pinR;      // ribbon face → pin surface 0.1
-  const pinTopWorld = COCK_MID_Z + COCK_T / 2;
-  const pinBotWorld = L_HAIRSPRING + hsUD.termMid.z - 0.45;
-  const pinLen = pinTopWorld - pinBotWorld;
-  for (const s of [-1, 1]) {
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, pinLen, 10), MATS.steel);
-    pin.rotation.x = Math.PI / 2;
-    pin.position.set(s * pinGap, rPin, -pinLen / 2 + 0.02);
-    reg.add(pin);
-  }
-  // TAIL: part of the index lever — it rotates with the regulator.
-  const tailLen2 = 2.3;
-  const tailY = -(collarOut + tailLen2 / 2 - 0.25);
-  const rTail = new THREE.Mesh(new THREE.BoxGeometry(0.55, tailLen2, armT), MATS.steel);
-  rTail.position.set(0, tailY, armT / 2 + 0.02);
-  reg.add(rTail);
-  balanceCock.add(reg);
-  registerLabel('Regulator', reg);
-
-  // SWAN NECK + ADJUSTER: mounted on the COCK (the balance bridge), not on
-  // the index — they are the fixed datum the index is set against: the
-  // neck spring presses the tail against the screw, the screw meters how
-  // far it may yield. Parenting them to the rotating index would carry
-  // the reference along with the thing it references. They share the
-  // index frame's transform (same origin, same 0.45 sweep) so the tail
-  // coordinates above stay valid, but the group is a child of the cock.
-  // ...and the cock's face is SHAPED to carry it, as real swan-neck cocks
-  // are: the 0.45 sweep puts the neck's foot ~1 unit past the slab's side
-  // edge, over the open cutaway — its hold-down screw was going into air.
-  // A seat plate, top flush with the cock face, overlaps the slab edge
-  // (the weld) and cantilevers out under the neck's foot and screw.
-  {
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.0, 0.35), MATS.nickel);
-    seat.position.set(2.6, jyStaff - 4.3, COCK_T / 2 - 0.175);
-    balanceCock.add(seat);
-  }
-  const regDress = new THREE.Group();
-  regDress.name = 'swanNeck';
-  regDress.position.set(0, jyStaff, COCK_T / 2);
-  regDress.rotation.z = 0.45;
-  const tailTipY = tailY - tailLen2 / 2 + 0.15;
-  const neckPts = [
-    new THREE.Vector3(1.7, tailTipY - 1.3, 0),
-    new THREE.Vector3(1.35, tailTipY - 1.75, 0),
-    new THREE.Vector3(0.55, tailTipY - 1.35, 0),
-    new THREE.Vector3(0.42, tailTipY - 0.4, 0),
-    new THREE.Vector3(0.42, tailTipY + 0.1, 0),
-  ];
-  const neck = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(neckPts), 24, 0.15, 8, false), MATS.steel);
-  neck.position.z = armT / 2 + 0.02;
-  regDress.add(neck);
-  // ...held down by its own screw through the neck's foot, into the cock.
-  const neckScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, armT * 1.2, 14), MATS.blueSteel);
-  neckScrew.rotation.x = Math.PI / 2;
-  neckScrew.position.set(1.7, tailTipY - 1.3, armT * 0.6 + 0.02);
-  regDress.add(neckScrew);
-  // Adjuster: block + fine screw bearing on the tail's other flank.
-  const adjBlock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, armT * 1.4), MATS.steel);
-  adjBlock.position.set(-1.55, tailTipY, armT * 0.7 + 0.02);
-  regDress.add(adjBlock);
-  const adjScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.15, 10), MATS.blueSteel);
-  adjScrew.rotation.z = Math.PI / 2;
-  adjScrew.position.set(-0.85, tailTipY, armT * 0.7 + 0.02);
-  regDress.add(adjScrew);
-  const adjHead = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.22, 12), MATS.blueSteel);
-  adjHead.rotation.z = Math.PI / 2;
-  adjHead.position.set(-1.95, tailTipY, armT * 0.7 + 0.02);
-  regDress.add(adjHead);
-  balanceCock.add(regDress);
+  // FREE-SPRUNG: there is deliberately NO regulator. The index arm, curb
+  // pins, swan neck and adjuster that used to dress this face are gone —
+  // the spring's effective length is fixed (outer terminal clamped in the
+  // stud, nothing straddling the curve), and the rate is adjusted at the
+  // BALANCE instead, by its timing screws. The cock face carries only what
+  // a free-sprung watch carries: the shock setting over the pivot and the
+  // stud carrier holding the spring's terminal.
 }
 movement.add(balanceCock);
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
+
+// --- REVEAL THE BRIDGE: second pass over the plate cut. TQ_CUT was solved
+// before the cock existed, so the cock never voted — its slab was fitted
+// to the edge by a single-bearing radial rule while its width-6 flanks and
+// the T-bar spanned unchecked, and (cock and plate being flush in one
+// z-band) the plate's material ran right up against and into the bridge.
+// Now that the cock is BUILT, every mesh of it that actually crosses the
+// plate's band votes the raw cut table outward by the cut margin, and the
+// table is re-finished ONCE — the plate's kidney edge retreats around the
+// whole bridge and the cock stands revealed in open air.
+{
+  const eps = 0.05;
+  const v = new THREE.Vector3();
+  balanceCock.updateMatrixWorld(true);
+  balanceCock.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    // Per-MESH band filter (not per-vertex: the slab's faces sit exactly ON
+    // the band edges, and the stud-carrier post CROSSES the band with both
+    // its box corners outside it): a mesh votes iff its world AABB comes
+    // within CLEAR_MARGIN of the plate's z-band — the same margin the
+    // cock⇄plate clearance budget enforces. The band is INFLATED by that
+    // margin because, with the slab flush in the band, the T-foot legs end
+    // exactly AT the plate's floor plane (and the above-face dress starts
+    // at its top plane): a mesh kissing the band edge gets zero vertical
+    // separation, so its whole XY outline needs the cut margin too. Parts
+    // more than a margin outside the band (leg pads down at the base
+    // plate) still don't vote, so the cut doesn't over-open for them.
+    o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    if (!(bb.min.z < TQ_TOP_Z + CLEAR_MARGIN - eps && bb.max.z > TQ_BOT_Z - CLEAR_MARGIN + eps)) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      const dx = v.x - P.balance.x, dy = v.y - P.balance.y;
+      const r = Math.hypot(dx, dy) + TQ_CUT_MARGIN;
+      const deg = Math.round(((Math.atan2(dy, dx) - TQ_CUT.aim) * 180) / Math.PI);
+      const idx = ((deg % 360) + 360) % 360;
+      if (r > TQ_CUT.rawRadii[idx]) TQ_CUT.rawRadii[idx] = r;
+    }
+  });
+  TQ_CUT.radii = finishCutRadii(TQ_CUT.rawRadii);
+  // A cut-edge point pushed past the plate's rim would self-intersect the
+  // plate outline (the documented slot-notch failure class in
+  // makeThreeQuarterPlate) — clamp each degree so the edge stays inside,
+  // and say so if it ever engages.
+  for (let i = 0; i < 360; i++) {
+    const a = TQ_CUT.aim + i * DEG2RAD;
+    const dxr = Math.cos(a), dyr = Math.sin(a);
+    // Exact bound: |C + r·d̂| = plateR − 0.2, positive root.
+    const cd = TQ_CUT.x * dxr + TQ_CUT.y * dyr;
+    const disc = cd * cd - (TQ_CUT.x ** 2 + TQ_CUT.y ** 2) + (plateR - 0.2) ** 2;
+    const rMax = -cd + Math.sqrt(Math.max(disc, 0));
+    if (TQ_CUT.radii[i] > rMax) {
+      TQ_CUT.radii[i] = rMax;
+      console.warn('balance-cock reveal: cut edge clamped at the plate rim, bearing', i);
+    }
+  }
+  // The grown opening must still carry every upper pivot.
+  checkCutVsPivots();
+}
 
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
@@ -2817,9 +3759,9 @@ const threeQuarterPlate = new THREE.Group();
   // step visible: plate face, chaton dropped into its recess, then the plate
   // stepping in to the bore below.
   //
-  // Nothing here may stand proud of the plate's top face: the hack blade
-  // clears that face by 0.18 and the reset rod by 0.30, and a chaton perched
-  // on the surface would be straight through both.
+  // Nothing here may stand proud of the plate's top face: the reset and
+  // hack rods run just above it, and a chaton perched on the surface would
+  // be straight through them.
   for (const p of tqPivots) {
     if (!p.jewelR) continue; // plain bushing (the barrel arbor)
     const collar = new THREE.Mesh(
@@ -2830,8 +3772,8 @@ const threeQuarterPlate = new THREE.Group();
     // Rubbed-in jewel: the ruby FILLS its counterbore, top face flush with
     // the plate. The screwed-gold-chaton version read as a stone sunk at the
     // bottom of a gold well — unavoidably, because the plate is thin and
-    // nothing here may stand proud of it (the hack blade clears this face by
-    // 0.18), so the gold rim had to rise around the stone rather than the
+    // nothing here may stand proud of it (the rods run just above this
+    // face), so the gold rim had to rise around the stone rather than the
     // stone sitting up in the rim. Filling the recess reads as pressed-in,
     // and a jewel set directly into the plate is the older, simpler bearing
     // anyway — what this movement used before chatons were introduced.
@@ -2862,17 +3804,28 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
   };
   const capR = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
+  // The stop work's BRACKET lives in the plate cut's open wedge (where
+  // inCutClearance already forbids seats), but the low reset/hack linkage
+  // does NOT: both elbow rods, the setting-lever tail post's swing arc and
+  // the hammer arm cross the movement at z ≈ 0.15–1.9, and a pillar is a
+  // full-height column. The post's arc used to be covered indirectly by
+  // tqSlots; the low corridor emptied tqSlots (the post no longer pierces
+  // the 3/4 plate), which silently dropped that cover — so the pillars
+  // take the shared swept-corridor list directly.
   const seatClearance = (x, y) => {
     let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
-    for (const s of tqSlots) {
+    const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
       const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
-      c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
-    }
+      return Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r;
+    };
+    for (const s of tqSlots) c = Math.min(c, stadium(s));
+    for (const o of LOW_LINKAGE_OBSTACLES)
+      c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
-    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj]) {
+    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj, maintDetent, setupWork]) {
       const b = boxOf(o);
       const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
       c = Math.min(c, Math.hypot(x - cx, y - cy));
@@ -2883,6 +3836,15 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // and a shared offset cannot clear the barrel opening AND the balance cut
   // AND the keyless corner at once (best such ring fouled something by 1.8).
   // Each seat is the point nearest its quadrant's ideal that actually holds.
+  // One labelled group for all four: as a bare structure node the pillars
+  // were invisible to the overlap sweep (only checkSupportGeometry could
+  // see them, and only along declared edges) — as a unit, every pair
+  // against them is swept like anything else. The label matches the
+  // structure-node name so the graph's support edges resolve to the same
+  // meshes either way.
+  const pillarsGroup = new THREE.Group();
+  movement.add(pillarsGroup);
+  registerLabel('pillars', pillarsGroup);
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -2900,7 +3862,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const pillar = G.makePillar({ height: TQ_BOT_Z });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
-    movement.add(pillar);
+    pillarsGroup.add(pillar);
   }
 }
 
@@ -2932,7 +3894,12 @@ registerLabel('Dial', dialGroup);
 {
   const footR = plateR * 0.88;
   const footLen = backPlate.position.z - Z_DIAL; // reach from the dial's plane to the back plate
-  for (const deg of [10, 130, 250]) {
+  // 130° moved to 108°: the keyless works lives in this same plate→dial gap
+  // now, and the old 130° foot landed ~2.5 from the folded minute wheel's
+  // axis (wheel radius 4.5) — squarely inside its disc. 108° keeps the foot
+  // ≥ ~15 from every keyless part, the setting traverse and the reserve
+  // train while staying near the rim.
+  for (const deg of [10, 108, 250]) {
     const a = deg * DEG2RAD;
     const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, footLen, 10), MATS.steel);
     foot.rotation.x = Math.PI / 2;
@@ -3278,7 +4245,7 @@ let reserveShown = 1; // = tension each frame; kept as its own var for the UI re
 
 // ---------------------------------------------------------------------------
 // Hacking seconds — pulling the crown swings the hacking lever's ruby pad
-// onto the balance rim (see hackLeverGroup above). This is modelled as an
+// onto the balance rim (see the stop lever above). This is modelled as an
 // actual contact: the pad's braking force ramps in with the lever's swing
 // and damps the BALANCE's own angular rate (balanceRate, below) toward
 // zero over roughly a beat, exactly as friction would. Movement time τ is
@@ -3456,6 +4423,10 @@ panel.innerHTML = `
   <div class="row">
     <span class="label-small">Plate X-ray</span>
     <button id="btn-xray">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Power flow</span>
+    <button id="btn-powerflow">Off</button>
   </div>
   <hr/>
   <div class="row label-small"><span>Finish</span></div>
@@ -3718,6 +4689,90 @@ function setXray(on) {
 }
 document.getElementById('btn-xray').addEventListener('click', () => setXray(!xrayOn));
 if (restoredXray) setXray(true);
+
+// --- POWER FLOW view -------------------------------------------------------
+// Tints the LIVE torque path so the maintaining sandwich's job is visible:
+// while WINDING, the input side lights amber (energy flowing INTO the
+// spring via crown → spur → cone → chain → drum), the maintaining wheel
+// and detent light red (HOLDING — the reversal stops here), and the train
+// stays green because the maintaining spring keeps feeding it. While
+// RUNNING, the whole line from drum to escapement is green: the only way
+// energy leaves the spring is through the going train, one escapement
+// beat at a time. The set-up work glows faint red always — it holds the
+// spring's inner end for the life of the watch.
+let powerFlowOn = false;
+const PF_STORE = 0xb86e1e, PF_DELIVER = 0x1e7e46, PF_HOLD = 0xa02020, PF_DIM = 0x000000;
+let pfEntries = null; // [{ mesh, orig, tinted }] — built lazily on first enable
+function pfCollect(objs) {
+  const out = [];
+  for (const o of objs) {
+    if (!o) continue;
+    o.traverse((m) => { if (m.isMesh && m.material) out.push(m); });
+  }
+  return out;
+}
+function pfBuildGroups() {
+  // The pipe carries torque BOTH ways; input only stores; the train only
+  // delivers; the sandwich holds while winding.
+  return {
+    input: pfCollect([keyless, windSpinner]),
+    pipe: pfCollect([windSpur, windTop, fusee, drumGroup]).concat(chainMesh ? pfCollect([chainMesh]) : []),
+    train: pfCollect([greatWheel, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, balanceGroup]),
+    sandwich: pfCollect([maintWheel, maintDetent]),
+    anchor: pfCollect([setupWork]),
+  };
+}
+let pfGroups = null;
+function pfApply(meshes, hex, intensity) {
+  for (const m of meshes) {
+    if (!m.userData.pfOrig) {
+      m.userData.pfOrig = m.material;
+      m.material = m.material.clone();
+    }
+    if (m.material.emissive) {
+      m.material.emissive.setHex(hex);
+      m.material.emissiveIntensity = intensity;
+    }
+  }
+}
+function pfRestore() {
+  if (!pfGroups) return;
+  for (const g of Object.values(pfGroups))
+    for (const m of g) {
+      if (m.userData.pfOrig) {
+        m.material.dispose();
+        m.material = m.userData.pfOrig;
+        delete m.userData.pfOrig;
+      }
+    }
+  pfGroups = null;
+}
+let pfLastWind = 0, pfWindHotUntil = 0;
+function pfUpdate() {
+  if (!powerFlowOn) return;
+  if (!pfGroups) pfGroups = pfBuildGroups();
+  const now = performance.now();
+  if (windAccumTurns !== pfLastWind) {
+    pfLastWind = windAccumTurns;
+    pfWindHotUntil = now + 600; // winding activity lingers visibly
+  }
+  const winding = now < pfWindHotUntil;
+  const running = balanceRate > 0.05 && reserveShown > 0.001;
+  const pulse = 0.75 + 0.25 * Math.sin(now / 180);
+  pfApply(pfGroups.input, winding ? PF_STORE : PF_DIM, winding ? 0.55 * pulse : 0);
+  pfApply(pfGroups.pipe, winding ? PF_STORE : running ? PF_DELIVER : PF_DIM, (winding || running) ? 0.5 * pulse : 0);
+  pfApply(pfGroups.train, (running || winding) ? PF_DELIVER : PF_DIM, (running || winding) ? 0.45 * pulse : 0);
+  pfApply(pfGroups.sandwich, winding ? PF_HOLD : running ? PF_DELIVER : PF_DIM, winding ? 0.9 * pulse : running ? 0.45 * pulse : 0);
+  pfApply(pfGroups.anchor, PF_HOLD, 0.3);
+}
+function setPowerFlow(on) {
+  powerFlowOn = on;
+  if (!on) pfRestore();
+  const b = document.getElementById('btn-powerflow');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+}
+document.getElementById('btn-powerflow').addEventListener('click', () => setPowerFlow(!powerFlowOn));
 
 // --- state persistence (save/load/clear) -----------------------------------
 // Create state buttons dynamically to avoid template literal issues
@@ -4099,17 +5154,14 @@ function tick(t) {
   // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
   // groove actually is right now (crownPullT), so the beak pin stays in the
   // groove through the whole slide; the yoke does the same against the
-  // sliding pinion's hub. The hack blade is NOT keyframed: its ramp collar
-  // rides the lever's tail post, and the blade's pitch is solved from the
-  // collar's actual position each frame (solveHackPitch) — heel on brim =
-  // dropped HACK_PITCH (pad HACK_DROP clear of the rim), heel up the flank
-  // onto the top land = level, pad touching the rim's lower face.
+  // sliding pinion's hub. The stop crank is NOT keyframed either: the hack
+  // rod is rigid, so the crank's angle is solved from the post's actual
+  // position each frame (updateStopWork) — crown out levels the pad arm
+  // onto the rim's underside, crown in drops it the derived release gap.
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
   yokeGroup.rotation.z = yokeAngleAt(crownPullT);
   const postNow = tailPostWorldAt(crownPullT);
-  hackRampGroup.position.x = postNow.x;
-  hackRampGroup.position.y = postNow.y;
-  bladeGroup.rotation.y = solveHackPitch(postNow);
+  updateStopWork(postNow);
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
   // rod — its angle is solved from the setting-lever post's position through
@@ -4131,7 +5183,7 @@ function tick(t) {
   {
     const b = prevTailTip; // the tail tip the solve just landed on
     const dx = b.x - postNow.x, dy = b.y - postNow.y;
-    resetRod.position.set((postNow.x + b.x) / 2, (postNow.y + b.y) / 2, Z_SECONDS_ARBOR + ROD_Z_LIFT);
+    resetRod.position.set((postNow.x + b.x) / 2, (postNow.y + b.y) / 2, ROD_PLANE_Z);
     resetRod.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
   }
 
@@ -4144,16 +5196,20 @@ function tick(t) {
 
   const crownWheelSpin = -windPathRot * (windPinionTeeth / crownWheelTeeth);
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
-  if (ratchetMesh) {
-    // Ratchet + fusee cone are keyed together, and their rotation is a pure
-    // function of chain hauled: −2π per BANKED winding turn (backwards
-    // against the train direction, exactly one cone turn per turn of chain
-    // pulled home), riding on the arbor's own train rotation. Raw crown
-    // input past full reserve moves neither — the chain is home.
+  transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
+  {
+    // Winding spur, let-down square and fusee cone are keyed together,
+    // and their rotation is a pure function of chain hauled: −2π per
+    // BANKED winding turn (backwards against the train direction, exactly
+    // one cone turn per turn of chain pulled home), riding on the arbor's
+    // own train rotation. Raw crown input past full reserve moves none of
+    // them — the chain is home.
     const windBack = -windAccumTurns * Math.PI * 2;
-    ratchetMesh.rotation.z = windBack;
+    windSpur.rotation.z = windSpurBase + windBack;
+    windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
-    if (clickMesh) clickMesh.rotation.z = clickBaseRot - 0.06 * Math.abs(Math.sin(windBack * 12));
+    updateMaintaining(windBack);
+    pfUpdate();
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how

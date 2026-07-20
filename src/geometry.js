@@ -272,7 +272,11 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 // Pallet fork — pivots at origin, lever along -Y, anchor + ruby stones at +Y
 // ---------------------------------------------------------------------------
 
-export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
+// beatRad / bankRad: the escape wheel's advance per beat and the fork's
+// half-swing — the impulse faces are CUT from them (the tooth tip's sliding
+// path in the fork frame is their vector mix), so the caller must pass the
+// same values that drive the animation.
+export function makePalletFork({ span, leverLength, thickness, stoneZReach, beatRad, bankRad }) {
   const g = new THREE.Group();
   const t = thickness;
   const L = leverLength;
@@ -287,31 +291,39 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   const forkTop = -L * 0.8;
   const forkY = -L;
 
-  // Single crafted body: anchor + belly + lever + fork horns + notch.
-  // Outline refined for the open view the fork cock gives it: the lever
-  // WAISTS between belly and horns (concave flanks, narrowest mid-length),
-  // the anchor arms end in rounded noses, and the horns' outer flanks are
-  // drawn concave — the polished-lever look. Every KINEMATIC vertex is
-  // untouched: horn tips (6, 9), notch walls and floor (7, 8), stone-arm
-  // seats, and the forkTop/forkY anchors the bank-angle derivation uses.
+  // Single crafted body: belly + lever + fork horns + notch, topped by a
+  // LOW shoulder line. The old outline reached arm blobs up beside the
+  // wheel and spanned them with a concave web whose midpoint sat INSIDE
+  // the escape wheel's tooth-tip circle — the teeth swept straight through
+  // the fork's steel every beat (masked by the expected-contact pair; only
+  // the ruby stones were penetration-budgeted). The body now STOPS below
+  // the wheel: its top edge is bounded by |p − W| ≥ R + swing + margin
+  // (W = wheel centre at (0, D); the fork's ±bank swing moves an outline
+  // point by ~bank·|p|), and the pallet ARMS are separate bars from the
+  // pivot boss out to the slotted stone heads — the real anchor shape.
+  // Every KINEMATIC vertex is untouched: horn tips, notch walls and floor,
+  // and the forkTop/forkY anchors the bank-angle derivation uses.
   const waistHW = leverHW * 0.62;              // narrowest point of the lever
   const yWaist = (-t * 0.4 + forkTop) / 2;     // mid-length
+  const Rwheel = span / (2 * Math.sin(THREE.MathUtils.degToRad(42)));
+  const Dwheel = span / 2 + Math.sqrt(Math.max(Rwheel * Rwheel - (span / 2) ** 2, 0));
+  const shoulderX = t * 1.8;
+  const bankAllow = (bankRad ?? 0.045) * Math.hypot(shoulderX, Dwheel - Rwheel); // swing sweep of a top point
+  const topY = Dwheel - (Rwheel + 0.15 + bankAllow) - 0.05; // the |p−W| bound at x = 0, with slack
   const s = new THREE.Shape();
-  s.moveTo(-ax - t * 0.7, sy + t * 0.4); // 1 left arm outer top
-  s.quadraticCurveTo(-ax - t * 0.15, sy - t * 0.35, -ax + t * 0.5, sy - t * 0.5); // 2 rounded arm nose
-  s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 3 belly -> lever
-  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 4 waisted lever, left flank
-  s.lineTo(-forkHW, forkY + t * 0.15); // 5 left horn outer
-  s.lineTo(-notchHW - t * 0.15, forkY); // 6 left horn tip
-  s.lineTo(-notchHW, forkTop + t * 0.9); // 7 notch inner left
-  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 8 notch floor
-  s.lineTo(notchHW + t * 0.15, forkY); // 9 right horn tip
-  s.lineTo(forkHW, forkY + t * 0.15); // 10 right horn outer
-  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 11 waisted lever, right flank (up)
-  s.lineTo(leverHW, -t * 0.4); // 12
-  s.quadraticCurveTo(t * 1.4, t * 0.2, ax - t * 0.5, sy - t * 0.5); // 13 belly right
-  s.quadraticCurveTo(ax + t * 0.15, sy - t * 0.35, ax + t * 0.7, sy + t * 0.4); // 14 rounded arm nose
-  s.quadraticCurveTo(0, sy * 0.45, -ax - t * 0.7, sy + t * 0.4); // 15 concave top back to 1
+  s.moveTo(-shoulderX, topY); // 1 left shoulder
+  s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 2 belly -> lever
+  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 3 waisted lever, left flank
+  s.lineTo(-forkHW, forkY + t * 0.15); // 4 left horn outer
+  s.lineTo(-notchHW - t * 0.15, forkY); // 5 left horn tip
+  s.lineTo(-notchHW, forkTop + t * 0.9); // 6 notch inner left
+  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 7 notch floor
+  s.lineTo(notchHW + t * 0.15, forkY); // 8 right horn tip
+  s.lineTo(forkHW, forkY + t * 0.15); // 9 right horn outer
+  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 10 waisted lever, right flank (up)
+  s.lineTo(leverHW, -t * 0.4); // 11
+  s.quadraticCurveTo(t * 1.4, t * 0.2, shoulderX, topY); // 12 belly right -> shoulder
+  s.quadraticCurveTo(0, topY - t * 0.5, -shoulderX, topY); // 13 concave top, dipping AWAY from the wheel
   s.closePath();
 
   const bevel = t * 0.12;
@@ -331,99 +343,182 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach }) {
   bossGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(bossGeo, MATS.steel));
 
-  // Ruby pallet stones with angled impulse faces (entry differs from exit).
+  // -------------------------------------------------------------------------
+  // Ruby pallet stones — REAL construction: each stone is a leaning
+  // rectangular prism seated in a slot cut through a pallet-arm block, its
+  // locking corner ON the wheel's tooth circle and its impulse face CUT
+  // from the tooth tip's actual sliding path. Everything below is DERIVED
+  // from the wheel geometry the caller already fixed (no seat offsets, no
+  // tuned angles — this replaces the old pentagon stones whose placement
+  // was three rounds of MTV penetration-nudging):
+  //
+  //   · The wheel centre sits fork-local at W = (0, D) with D = the same
+  //     palletStoneDist the caller uses, re-derived here from the span
+  //     (R = span / 2sin42°, D = span/2 + sqrt(R² − (span/2)²)). The
+  //     nominal corners C_σ = (σ·span/2, span/2) sit on the tooth-tip
+  //     circle at the fork's NEUTRAL pose — but the tooth only ever RESTS
+  //     on a stone at the BANKED pose, when the fork's swing has carried
+  //     the corner bank·|C| toward the wheel. So each stone is seated at
+  //     its banked CONTACT point, C_σ + bank·|C|·û_σ: at lock the dipped
+  //     corner lands exactly back on the tip circle and the phased tooth
+  //     tip rests precisely on it (the caller's tip-at-corner phasing
+  //     becomes exact, not approximate). Seating at the nominal C instead
+  //     started the impulse slide 0.19 outside the corner and drove the
+  //     tooth through the locking face — the inspector's penetration
+  //     budget measured exactly that (0.194 vs the 0.1 allowance).
+  //   · LEAN (draw): a locking face perpendicular to the pivot→corner
+  //     line would hold the tooth with zero torque about the fork pivot.
+  //     Rotating that face by DRAW_DEG in the wheel's rotation sense gives
+  //     both stones real draw — the tooth's pressure pulls the fork INTO
+  //     the banking, which is what keeps a real lever safely locked. The
+  //     two stones come out at visibly different leans relative to their
+  //     arms (entry ≈ 237° fork-local, exit ≈ −33°), like a real fork.
+  //   · IMPULSE FACE: during the impulse window the wheel advance
+  //     (beatRad) and the fork swing (2·bankRad) ride the SAME smoothstep
+  //     (see main.js escapeDeltaDeg/forkSwingRad), so in the fork frame
+  //     the tooth tip slides along the fixed direction
+  //       p = R·beatRad·t̂ + 2·bankRad·|C|·û
+  //     (t̂ = tooth-motion tangent, û = wheel radial at the corner). The
+  //     impulse face is the plane through the locking corner containing p:
+  //     the let-off corner's setback Δ is solved per stone from that line,
+  //     so entry and exit faces come out at their own angles. Residual
+  //     contact error is bounded by the two arc sagittas (≈0.03) — inside
+  //     the inspector's 0.1 penetration budget by construction.
+  // -------------------------------------------------------------------------
+  const DRAW_DEG = 12; // horological constant, like the 42° embrace
+  const R = span / (2 * Math.sin(THREE.MathUtils.degToRad(42)));
+  const D = span / 2 + Math.sqrt(Math.max(R * R - (span / 2) ** 2, 0));
+  const pitchArc = (2 * Math.PI * R) / 15;
+  const stoneW = 0.32 * pitchArc;  // well under one tooth spacing
+  const stoneL = 0.9 * pitchArc;   // slot-buried tail included
+  const cornerLen = Math.hypot(span / 2, span / 2); // |C|
+  const beat = beatRad ?? THREE.MathUtils.degToRad(12);
+  const bank = bankRad ?? 0.045;
   const entryPos = new THREE.Vector3(-ax, sy, 0);
   const exitPos = new THREE.Vector3(ax, sy, 0);
-  // Stones run deeper in Z than the fork body so they reach down into the
-  // escape wheel's plane (the wheel sits slightly below the fork).
-  // Sized against the escape wheel's own tooth PITCH (span subtends 3.5
-  // pitches — see the caller's comment), not the fork's unrelated body
-  // thickness: a real pallet stone is a thin blade, well under one tooth's
-  // spacing, so it engages a single tooth's face without its box silhouette
-  // swallowing the tooth or reaching its neighbours. At thickness=1.2 the
-  // old t-based sizing (1.56×2.04×2.4) came out comparable to or bigger
-  // than an entire tooth (pitch arc ≈ span/3.5) — this is why the rubies
-  // visually swallowed teeth even though true mesh penetration was tiny.
-  const toothPitchArc = (span / 3.5) || t * 4;
-  // Real pallet stones have TWO distinct engaging faces — a locking face
-  // (shallow, near-radial, holds the tooth during lock/draw) and an impulse
-  // face (steeper, transfers torque during unlock) — meeting at an edge,
-  // not one flat face. A plain box (the previous shape here) can only
-  // present one. Built as a pentagon extrusion: the back and side edges
-  // match the box exactly, the FULL-EXTENT front corner (impulse side) is
-  // also unchanged from the box, and only the locking-side corner is pulled
-  // inward/backward to create the second facet. Every vertex therefore
-  // stays within the original box's footprint — a strict subset — so the
-  // extensive MTV-calibrated position/rotation tuning below (three rounds,
-  // converged to ~0.0004/~0.03 worst-case penetration) remains valid: this
-  // can only reduce contact, never introduce a new protruding point.
-  function palletStoneGeometry(bevelSign) {
-    const hw = (toothPitchArc * 0.34) / 2;
-    const d = toothPitchArc * 0.44;
-    // Slimmer in Z (a stone is a thin blade — 0.42 pitch still spans the
-    // wheel's whole 0.8 band with margin) and LONGER in the seat direction
-    // (backY at −0.95d buries a proper tail in the fork arm's slot). Both
-    // adjustments move away from or along the wheel — every wheel-side
-    // vertex (front face, impulse corner, locking facet) is bit-identical,
-    // so the MTV-calibrated seating above this stays valid.
-    const thickness = toothPitchArc * 0.42;
-    const frontY = d / 2, backY = -d * 0.95;
-    const impulseX = bevelSign * hw;   // full-extent corner — unchanged from the box
-    const lockX = -bevelSign * hw;     // locking-side corner — pulled inward
-    const s = new THREE.Shape();
-    s.moveTo(-hw, backY);
-    s.lineTo(hw, backY);
-    s.lineTo(impulseX, frontY);                      // impulse-side edge (matches the box)
-    s.lineTo(bevelSign * hw * 0.3, frontY - d * 0.08); // impulse face → ridge (barely set back)
-    s.lineTo(lockX, backY + d * 0.7);                 // locking face (steeper, set well back)
-    s.closePath();
-    const geo = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: 1 });
-    geo.translate(0, 0, -thickness / 2);
-    return geo;
+
+  // Stone cross-section (stone-local: origin = locking corner, +Y = lean
+  // axis pointing away from the wheel into the slot, body at −X — the
+  // downstream side of the locking face, where the arm's material backs
+  // the stone against the tooth's push):
+  //   (0,0) → (−w, Δ) → (−w, ℓ) → (0, ℓ);  x = 0 face = LOCKING face,
+  //   the angled (0,0)→(−w,Δ) end = IMPULSE face.
+  function stoneAndArm(sigma) {
+    const C = new THREE.Vector2(sigma * span / 2, span / 2);
+    const u = new THREE.Vector2(C.x - 0, C.y - D).divideScalar(R);      // wheel radial at the corner
+    const tHat = new THREE.Vector2(-u.y, u.x);                          // tooth-motion tangent (ẑ×û)
+    const cHat = C.clone().divideScalar(cornerLen);                     // pivot radial
+    // Zero-torque face direction: the perp of ĉ on the away-from-wheel
+    // branch, then + draw in the wheel's (+z) rotation sense.
+    let f0 = new THREE.Vector2(-cHat.y, cHat.x);
+    if (f0.dot(u) < 0) f0.negate();
+    const drawRad = THREE.MathUtils.degToRad(DRAW_DEG);
+    const tau = f0.clone().rotateAround(new THREE.Vector2(), drawRad);  // stone lean axis
+    const thetaTau = Math.atan2(tau.y, tau.x);
+    // Impulse slide direction in the fork frame (see header comment).
+    const p = tHat.clone().multiplyScalar(R * beat)
+      .add(u.clone().multiplyScalar(2 * bank * cornerLen));
+    // Into stone-local (rotate by −(θτ − 90°)) and solve the let-off
+    // corner's setback: face through (0,0) along p meets x = −w at Δ.
+    const pLoc = p.clone().rotateAround(new THREE.Vector2(), -(thetaTau - Math.PI / 2));
+    const delta = Math.abs(pLoc.x) > 1e-6 ? -stoneW * (pLoc.y / pLoc.x) : stoneW * 0.5;
+    if (!(delta > 0.02 && delta < stoneL * 0.8))
+      console.warn('pallet stone: impulse setback out of range', sigma, delta.toFixed(3));
+    // Draw sanity: the tooth's normal push on the locking face must torque
+    // the fork INTO this stone's banking (deeper lock). Face outward
+    // normal (toward the tooth) = stone-local +X mapped to world.
+    const n = new THREE.Vector2(Math.cos(thetaTau - Math.PI / 2), Math.sin(thetaTau - Math.PI / 2));
+    const torque = C.x * -n.y - C.y * -n.x; // (C × (−n))_z — force on the FORK is −n
+    if (sigma * torque < 0)
+      console.warn('pallet stone: draw torque sign wrong for stone', sigma);
+
+    const zOff = -(stoneZReach ?? 0);
+    const rotZ = thetaTau - Math.PI / 2;
+    // Banked contact seat (see header): the corner goes where the tooth
+    // actually rests at lock.
+    const seat = new THREE.Vector2(C.x + bank * cornerLen * u.x, C.y + bank * cornerLen * u.y);
+
+    // The stone itself.
+    const sh = new THREE.Shape();
+    sh.moveTo(0, 0);
+    sh.lineTo(-stoneW, delta);
+    sh.lineTo(-stoneW, stoneL);
+    sh.lineTo(0, stoneL);
+    sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false, curveSegments: 1 });
+    geo.translate(0, 0, -t / 2);
+    const stone = new THREE.Mesh(geo, MATS.ruby); // MATS.ruby is load-bearing: the
+    // inspector's penetration budget finds the stones by this material's colour.
+    stone.position.set(seat.x, seat.y, zOff);
+    stone.rotation.z = rotZ;
+    g.add(stone);
+
+    // Pallet-arm block: the slotted arm the stone is SET INTO — a real
+    // fork's arm is exactly this, a block with a slot broached through it,
+    // the stone protruding past the arm's nose. Drawn in the same
+    // stone-local frame: outer walls one wallW around the slot (slot =
+    // stone footprint + seat gap g all around), nose edge at m along the
+    // lean axis (the stone shows m of ruby past the arm), notch open at
+    // the nose.
+    const gGap = 0.05;                    // visible seat gap around the stone
+    const m = 0.4 * stoneL;               // ruby protrusion past the arm's nose
+    const wallW = 0.55;
+    const sxL = -stoneW - gGap - wallW, sxR = gGap + wallW; // block outer x
+    const nx0 = -stoneW - gGap, nx1 = gGap;                 // slot walls
+    const yN = m, yF = stoneL + gGap, yB = yF + wallW;      // nose / slot floor / block back
+    const ash = new THREE.Shape();
+    ash.moveTo(sxR, yN);
+    ash.lineTo(sxR, yB);
+    ash.lineTo(sxL, yB);
+    ash.lineTo(sxL, yN);
+    ash.lineTo(nx0, yN);
+    ash.lineTo(nx0, yF);
+    ash.lineTo(nx1, yF);
+    ash.lineTo(nx1, yN);
+    ash.closePath();
+    const armBevel = t * 0.08;
+    const armGeo = new THREE.ExtrudeGeometry(ash, {
+      depth: t, bevelEnabled: true, bevelThickness: armBevel, bevelSize: armBevel,
+      bevelSegments: 1, curveSegments: 1,
+    });
+    armGeo.translate(0, 0, -t / 2);
+    const arm = new THREE.Mesh(armGeo, MATS.steel);
+    arm.position.set(seat.x, seat.y, 0); // arm stays in the fork's own plane
+    arm.rotation.z = rotZ;
+    g.add(arm);
+
+    // ARM BAR: the head must be CARRIED by the fork, not hang off its
+    // ruby — a bar from the pivot boss out to the slotted head, the way a
+    // real anchor's arms run. The straight boss→head line stays a full
+    // unit outside the wheel's swept teeth (asserted below with the rest).
+    const headMid = new THREE.Vector2(
+      seat.x + tau.x * (yN + yB) / 2,
+      seat.y + tau.y * (yN + yB) / 2);
+    const barLen = headMid.length();
+    const barDir = headMid.clone().divideScalar(barLen || 1);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(t * 0.95, barLen, t), MATS.steel);
+    bar.position.set(headMid.x / 2, headMid.y / 2, 0);
+    bar.rotation.z = Math.atan2(barDir.y, barDir.x) - Math.PI / 2;
+    g.add(bar);
+
+    // Clearance sanity: no STEEL of this arm may enter the wheel's swept
+    // tooth annulus, at any point of the fork's ±bank swing. Checked at
+    // the governing points (head nose corners, bar edges nearest the
+    // wheel); the inspector's steel-vs-wheel penetration budget is the
+    // permanent guard.
+    const W = new THREE.Vector2(0, D);
+    const worldPt = (lx, ly) => new THREE.Vector2(
+      seat.x + Math.cos(rotZ) * lx - Math.sin(rotZ) * ly,
+      seat.y + Math.sin(rotZ) * lx + Math.cos(rotZ) * ly);
+    for (const [lx, ly] of [[sxL, yN], [sxR, yN], [sxL, yB], [sxR, yB]]) {
+      const p = worldPt(lx, ly);
+      const clr = p.distanceTo(W) - Rwheel - (bankRad ?? 0.045) * p.length();
+      if (clr < 0.1)
+        console.warn('pallet arm: steel within the wheel sweep', sigma, clr.toFixed(3));
+    }
   }
-  const entryStoneGeo = palletStoneGeometry(1);
-  const exitStoneGeo = palletStoneGeometry(-1);
-  // Seating nudge: the Y (radial engagement) component scales with the
-  // STONE's own new size (not the fork's unrelated thickness `t`) — a fixed
-  // t-based offset would embed a shrunken stone proportionally deeper than
-  // intended. The Z component must exactly close the gap between the fork
-  // body's own Z-plane and the escape wheel's Z-plane (L_FORK − L_ESCAPE in
-  // main.js), or the stones only graze one edge of the wheel's thickness
-  // instead of centering on it.
-  const stoneSeat = new THREE.Vector3(0, toothPitchArc * 0.09, -(stoneZReach ?? toothPitchArc * 0.27));
-  // Entry (+20°) and exit (−32°) stones have deliberately different face
-  // angles (real pallet forks cut entry/exit stones differently — their
-  // impulse faces aren't mirror images), so the SAME radial reach engages
-  // them by different amounts.
-  //
-  // IMPORTANT: earlier passes measured penetration with a raycast odd/even
-  // "inside the wheel" vote, which turned out to be UNRELIABLE against this
-  // mesh — the wheel's crossing-hole cutouts break the parity assumption a
-  // watertight-mesh point-in-solid test needs, so it reported near-zero
-  // depth in cases with real, substantial (>0.5 unit) overlap. The
-  // trustworthy measure is a minimum-translation-distance (MTV) search: try
-  // clearing the boolean triangle-triangle intersection (BVH
-  // intersectsGeometry — always reliable) along many candidate directions
-  // and take the smallest that works. That search also showed the true
-  // separating direction isn't purely radial (local Y) for either stone —
-  // there's a real local-X component too, which is why early Y-only nudges
-  // converged so slowly. entrySeat/exitSeat below are the result of three
-  // rounds of MTV correction (re-measuring the worst pose after each,
-  // since fixing one pose shifts which pose becomes worst) plus a ~20%
-  // further size reduction, converging to worst-case penetration of
-  // ~0.0004 (entry) and ~0.03 (exit) — down from an initial ~0.5–0.7.
-  const entrySeat = new THREE.Vector3(0.004, -toothPitchArc * 0.102 - 0.598, stoneSeat.z);
-
-  const entryStone = new THREE.Mesh(entryStoneGeo, MATS.ruby);
-  entryStone.position.copy(entryPos).add(entrySeat);
-  entryStone.rotation.z = THREE.MathUtils.degToRad(20);
-  g.add(entryStone);
-
-  const exitSeat = stoneSeat.clone().add(new THREE.Vector3(0.867, 0.287, 0));
-  const exitStone = new THREE.Mesh(exitStoneGeo, MATS.ruby);
-  exitStone.position.copy(exitPos).add(exitSeat);
-  exitStone.rotation.z = THREE.MathUtils.degToRad(-32);
-  g.add(exitStone);
+  stoneAndArm(-1); // entry
+  stoneAndArm(1);  // exit
 
   // Guard pin at the fork tip just under the notch, protruding toward the
   // safety roller (-Z) so it rides close to the roller's crescent edge.
@@ -459,17 +554,18 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
                                    pinDrop = thickness * 1.8 }) {
   const g = new THREE.Group();
   const rimO = radius;
-  const rimI = radius - thickness * 0.8;
+  const rimI = radius - thickness * 0.5;
 
-  // Slim annular rim — was 1.3·thickness wide and a full thickness tall;
-  // 0.8 wide × 0.75 tall reads as a light precision ring while the 16
-  // timing screws (below, unchanged) keep the rim's visual mass where a
-  // real balance carries it: at the periphery.
-  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness * 0.75, 48), MATS.brass);
+  // Slim annular rim — 0.5·t wide × 0.55·t tall (down from 0.8 × 0.75,
+  // itself already down from 1.3 × 1.0): a light precision ring. The
+  // proportions are mirrored in main.js (HACK_RIM_I, RIM_H) — the stop
+  // work's pad annulus is derived from them, so they must move together.
+  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness * 0.55, 48), MATS.brass);
   g.add(rim);
 
-  // Two arms (a single diameter bar = 2 arms), matched to the finer rim.
-  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.55, thickness * 0.5);
+  // Two arms (a single diameter bar = 2 arms), matched to the finer rim —
+  // kept inside the rim's own z-band.
+  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.5, thickness * 0.4);
   g.add(new THREE.Mesh(armGeo, MATS.steel));
 
   // Central staff along Z. Asymmetric (staffTop/staffBottom) when the caller
@@ -482,16 +578,19 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   staff.position.z = (sTop - sBot) / 2;
   g.add(staff);
 
-  // 16 timing screws radially around the rim. Outward PROTRUSION is capped
-  // at 0.5 (they used to reach 0.5·t = 1.25 past the rim): with the balance
-  // lowered into the three-quarter plate's z-band the screw tips share their
-  // z with the escape bridge's fork-pivot boss, and the tips are what set
-  // the balance's true swept radius against that boss and the plate's
-  // cutaway edge. The INNER tip stays where it was (rimO − t/2 at t = 2.5),
-  // which is what HACK_SCREW_IN_R in main.js mirrors.
-  const SCREW_PROTRUSION = 0.5;
-  const screwLen = thickness * 0.7;
-  const screwGeo = new THREE.CylinderGeometry(thickness * 0.28, thickness * 0.34, screwLen, 10);
+  // 16 timing screws radially around the rim. Outward PROTRUSION trimmed
+  // to 0.3: the tips set the balance's true swept radius against the
+  // balance cock's T-foot legs, the fork-pivot boss and the plate's
+  // cutaway edge — every 0.1 of protrusion is 0.1 every one of those must
+  // stand off. Head radii sized to the slimmer rim (base 0.24·t < the
+  // rim's 0.275·t half-height, so the screws stay inside the rim's z-band
+  // and the HACK_SCREW_DROP mirror in main.js stays positive). Embedment
+  // (screwLen − protrusion = 0.16·t = 0.4) is solved from the stop-work
+  // pad's annulus: pad top diameter = rim width − embedment − standoff
+  // must stay ≥ 0.7. HACK_SCREW_IN_R in main.js mirrors the inner tips.
+  const SCREW_PROTRUSION = 0.3;
+  const screwLen = SCREW_PROTRUSION + thickness * 0.16;
+  const screwGeo = new THREE.CylinderGeometry(thickness * 0.20, thickness * 0.24, screwLen, 10);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
     const sc = new THREE.Mesh(screwGeo, MATS.blueSteel);
@@ -549,63 +648,6 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   return g;
 }
 
-// ---------------------------------------------------------------------------
-// Hacking lever — brake arm that pivots a ruby-tipped pad against the
-// balance rim to physically stall it when the crown is pulled.
-// ---------------------------------------------------------------------------
-
-export function makeHackingLever({ length, width }) {
-  const g = new THREE.Group();
-  const hw = width / 2;
-
-  // Slim spring-steel arm from the pivot (origin, local +Y = toward tip) to
-  // a wider brake-pad tip.
-  const s = new THREE.Shape();
-  s.moveTo(-hw * 0.85, 0);
-  s.lineTo(-hw * 0.45, length * 0.82);
-  s.lineTo(-hw * 1.15, length);
-  s.lineTo(hw * 1.15, length);
-  s.lineTo(hw * 0.45, length * 0.82);
-  s.lineTo(hw * 0.85, 0);
-  s.closePath();
-
-  const depth = width * 0.6;
-  const geo = new THREE.ExtrudeGeometry(s, {
-    depth,
-    bevelEnabled: true,
-    bevelThickness: width * 0.08,
-    bevelSize: width * 0.08,
-    bevelSegments: 1,
-    curveSegments: 6,
-  });
-  geo.translate(0, 0, -depth / 2);
-  g.add(new THREE.Mesh(geo, MATS.blueSteel));
-
-  // Pivot boss + screw.
-  const bossGeo = new THREE.CylinderGeometry(hw * 1.4, hw * 1.4, depth * 1.5, 16);
-  bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
-  const screwGeo = new THREE.CylinderGeometry(hw * 0.55, hw * 0.55, depth * 0.5, 10);
-  screwGeo.rotateX(Math.PI / 2);
-  const screw = new THREE.Mesh(screwGeo, MATS.blueSteel);
-  screw.position.z = depth;
-  g.add(screw);
-
-  // Ruby friction pad at the tip — the surface that actually contacts and
-  // brakes the balance rim.
-  const pad = new THREE.Mesh(new THREE.SphereGeometry(hw * 0.9, 14, 10), MATS.ruby);
-  pad.position.set(0, length, 0);
-  g.add(pad);
-
-  g.userData.length = length;
-  return g;
-}
-
-// ---------------------------------------------------------------------------
-// Heart cam — asymmetric return-to-zero cam for a chronograph-style reset
-// hammer. r(θ) is smallest at θ=0 (the notch/point, where a roller pressed
-// radially inward comes to rest) and largest at θ=π, so a roller pushed in
-// at any other angle rides the rising flank and is cammed toward θ=0.
 // ---------------------------------------------------------------------------
 
 export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
@@ -806,164 +848,13 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
 }
 
 // ---------------------------------------------------------------------------
-// Hack spring — the long, thin blued blade that reaches across the movement
-// from the keyless works to the balance. Anchored (screwed) at the origin,
-// gently bowed along its length, with the ruby brake pad at the tip. Local
-// +X runs anchor → pad.
-//
-// The bow's control constants and an exact edge evaluator are EXPORTED so
-// layout solvers in main.js can reason about the blade's true rendered
-// flank (the whole blade bows toward local −Y by up to `length·SAG_RATIO`,
-// so mid-blade the flank sits far outside the nominal ±width/2) instead of
-// re-deriving — one source of truth for shape and clearance math alike.
+// Hack pad proportion — shared by the stop work's ruby pad in main.js (the
+// pad's flared cap: top radius over its post radius). The old blade-and-
+// ramp-collar hacking builders that lived here are gone with that design;
+// the stop crank is assembled from primitives at its solve site in main.js.
 // ---------------------------------------------------------------------------
-
-export const HACK_SAG_RATIO = 0.055;  // bow depth as a fraction of blade length
-export const HACK_TIP_TAPER = 0.55;   // tip half-width as a fraction of hw
 export const HACK_RUBY_FLARE = 1.15;  // ruby cap's top radius over the post radius
 
-// Exact Y of the blade's edge at abscissa x (side = −1 lower / +1 upper).
-// Matches the quadratic beziers below exactly: their X control point is at
-// length/2, which makes x(t) = length·t, so t = x/length.
-export function hackSpringEdgeY(x, length, width, side) {
-  const hw = width / 2;
-  const sag = length * HACK_SAG_RATIO;
-  const t = x / length;
-  const y0 = side * hw;
-  const yc = side * hw - sag;
-  const y1 = side * hw * HACK_TIP_TAPER;
-  return (1 - t) * (1 - t) * y0 + 2 * t * (1 - t) * yc + t * t * y1;
-}
-
-export function makeHackSpring({ length, width = 1.6, thickness = 0.8, padRise = 0, padR = 0.45, heel = null }) {
-  const g = new THREE.Group();
-  const hw = width / 2;
-  const sag = length * HACK_SAG_RATIO;
-
-  const s = new THREE.Shape();
-  s.moveTo(0, -hw);
-  s.quadraticCurveTo(length * 0.5, -hw - sag, length, -hw * HACK_TIP_TAPER);
-  s.lineTo(length, hw * HACK_TIP_TAPER);
-  s.quadraticCurveTo(length * 0.5, hw - sag, 0, hw);
-  s.closePath();
-  const geo = new THREE.ExtrudeGeometry(s, {
-    depth: thickness,
-    bevelEnabled: false,
-    curveSegments: 12,
-  });
-  geo.translate(0, 0, -thickness / 2);
-  g.add(new THREE.Mesh(geo, MATS.blueSteel));
-
-  // Anchor boss + screw (the fixed end, screwed to the plate/bridge).
-  const bossGeo = new THREE.CylinderGeometry(1.15, 1.15, thickness * 2.2, 14);
-  bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
-  const screwGeo = new THREE.CylinderGeometry(0.55, 0.55, thickness * 0.6, 10);
-  screwGeo.rotateX(Math.PI / 2);
-  const screw = new THREE.Mesh(screwGeo, MATS.blueSteel);
-  screw.position.z = thickness * 1.35;
-  g.add(screw);
-
-  // Brake pad at the free end. With padRise > 0 the pad rides a short
-  // upright post ABOVE the blade (local +z) — an underside brake: the
-  // blade body runs below the balance plane and only this post's ruby cap
-  // reaches up to the rim's lower face. padRise measures blade TOP surface
-  // → pad contact plane, so the caller can equate it to clearance geometry
-  // directly; the ruby's top face IS the contact face.
-  if (padRise > 0) {
-    const postR = padR;
-    const rubyH = Math.min(0.5, padRise * 0.55);
-    const postH = padRise - rubyH;
-    if (postH > 0.01) {
-      const postGeo = new THREE.CylinderGeometry(postR, postR, postH, 12);
-      postGeo.rotateX(Math.PI / 2);
-      const post = new THREE.Mesh(postGeo, MATS.steel);
-      post.position.set(length, 0, thickness / 2 + postH / 2);
-      g.add(post);
-    }
-    const rubyGeo = new THREE.CylinderGeometry(postR * HACK_RUBY_FLARE, postR * 0.95, rubyH, 12);
-    rubyGeo.rotateX(Math.PI / 2);
-    const ruby = new THREE.Mesh(rubyGeo, MATS.ruby);
-    ruby.position.set(length, 0, thickness / 2 + padRise - rubyH / 2);
-    g.add(ruby);
-  } else {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 10), MATS.ruby);
-    pad.position.set(length, 0, 0);
-    g.add(pad);
-  }
-
-  // Actuation heel — a hardened stud pressed through the blade near its
-  // anchor end, hanging BELOW the blade, ending in a ball whose underside
-  // rides the setting lever's ramp collar (makeHackRamp). heel.x/heel.y are
-  // blade-local; heel.z is the BALL CENTRE's local z (negative — below the
-  // mid-plane). This is the one point where the blade is driven; everything
-  // else about its motion follows from the anchor + this contact.
-  if (heel) {
-    const footLen = -heel.z - thickness / 2; // blade underside → ball centre
-    if (footLen > 0.01) {
-      const footGeo = new THREE.CylinderGeometry(heel.footR, heel.footR, footLen, 12);
-      footGeo.rotateX(Math.PI / 2);
-      const foot = new THREE.Mesh(footGeo, MATS.steel);
-      foot.name = 'hackHeelFoot';
-      foot.position.set(heel.x, heel.y, -thickness / 2 - footLen / 2);
-      g.add(foot);
-    }
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(heel.ballR, 18, 14), MATS.steel);
-    ball.name = 'hackHeelBall';
-    ball.position.set(heel.x, heel.y, heel.z);
-    g.add(ball);
-    // Retaining head above the blade — the stud is pressed in from the top,
-    // so the part reads as mounted rather than glued to the underside.
-    const headGeo = new THREE.CylinderGeometry(heel.footR * 1.4, heel.footR * 1.4, thickness * 0.4, 12);
-    headGeo.rotateX(Math.PI / 2);
-    const head = new THREE.Mesh(headGeo, MATS.steel);
-    head.name = 'hackHeelHead';
-    head.position.set(heel.x, heel.y, thickness / 2 + thickness * 0.2);
-    g.add(head);
-  }
-
-  g.userData.length = length;
-  return g;
-}
-
-// ---------------------------------------------------------------------------
-// Hack ramp — the wedge collar on the setting lever's tail post that converts
-// the lever's in-plane swing into the hack blade's vertical deflection. A
-// solid of revolution about the post (rotationally symmetric on purpose: the
-// post also ROTATES about the lever pivot as it swings, and a symmetric
-// collar makes the lift depend only on the heel's radial distance, never on
-// the lever's angle). Radial profile, inside → out:
-//   flat TOP LAND (r ≤ landR, height landH above the brim) — the seated
-//     dwell: the heel arrives here just before full crown pull, so the
-//     engaged pose is a stable flat seat, not a knife-edge on the flank;
-//   conical FLANK (landR → kneeR) — the working ramp: as the post slides
-//     under the heel the flank passes beneath it and lifts it landH;
-//   flat BRIM (kneeR → brimR) — the released dwell: the blade's own preload
-//     rests the heel here whenever the crown is in.
-// Local frame: z = 0 is the BRIM's top surface, the axis is the post's.
-// ---------------------------------------------------------------------------
-
-export function makeHackRamp({ boreR, landR, kneeR, brimR, landH, brimT }) {
-  const g = new THREE.Group();
-  const pts = [
-    new THREE.Vector2(boreR, landH),
-    new THREE.Vector2(landR, landH),
-    new THREE.Vector2(kneeR, 0),
-    new THREE.Vector2(brimR, 0),
-    new THREE.Vector2(brimR, -brimT),
-    new THREE.Vector2(boreR, -brimT),
-  ];
-  const geo = new THREE.LatheGeometry(pts, 64);
-  geo.rotateX(Math.PI / 2); // lathe revolves about +Y; the post axis is +Z
-  const m = new THREE.Mesh(geo, MATS.brass);
-  m.name = 'hackRamp';
-  g.add(m);
-  g.userData = { boreR, landR, kneeR, brimR, landH, brimT };
-  return g;
-}
-
-// ---------------------------------------------------------------------------
-// Hairspring — Archimedean spiral tube (flat ribbon), collet, stud, terminal
 // ---------------------------------------------------------------------------
 
 // An oscillator's spring has ONE moving end: the collet turns with the
@@ -1030,9 +921,9 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   g.userData.endAngle = S0 + 0.9;                 // local angle where the STUD must sit
   g.userData.termEndR = outerR + ribbonR * 3;     // ...at this radius
   g.userData.termEndZ = height * 0.55;            // ...and this height above mid-plane
-  g.userData.termMid = {                          // where curb pins straddle the curve
-    angle: S0 + 0.45, r: outerR + ribbonR * 1.5, z: height * 0.275,
-  };
+  // (termMid — the curb-pin straddle point — is gone with the regulator:
+  // the balance is FREE-SPRUNG, timed by its screws alone; the terminal
+  // runs uninterrupted from the outer coil to the stud.)
   return g;
 }
 
@@ -1042,7 +933,30 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
 // screw sit just above it. Children named 'ratchet' / 'click'.
 // ---------------------------------------------------------------------------
 
-export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
+// The click body alone (beak along +x, pivot hole at the origin end),
+// extruded 0-based — callers place and aim it. Shared by the composite
+// builder below and the plate-top click unit in main.js.
+export function makeClick({ radius, thickness }) {
+  const clickL = radius * 0.8;
+  const cw2 = radius * 0.11;
+  const clickShape = new THREE.Shape();
+  clickShape.moveTo(0, cw2);
+  clickShape.lineTo(clickL * 0.55, cw2 * 0.7);
+  clickShape.lineTo(clickL, cw2 * 0.15);
+  clickShape.lineTo(clickL, -cw2 * 0.15);
+  clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
+  clickShape.lineTo(0, -cw2);
+  clickShape.closePath();
+  const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
+    depth: thickness,
+    bevelEnabled: false,
+  });
+  const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
+  click.name = 'click';
+  return click;
+}
+
+export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null }) {
   const g = new THREE.Group();
   const rShape = new THREE.Shape();
   for (let i = 0; i < teeth; i++) {
@@ -1056,7 +970,17 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
   }
   rShape.closePath();
   const ratHole = new THREE.Path();
-  ratHole.absarc(0, 0, radius * 0.28, 0, Math.PI * 2, true);
+  if (squareBore != null) {
+    // Square hole for a filed arbor square (drive fit + 0.03 assembly play).
+    const h = (squareBore + 0.03) / 2;
+    ratHole.moveTo(-h, -h);
+    ratHole.lineTo(-h, h);
+    ratHole.lineTo(h, h);
+    ratHole.lineTo(h, -h);
+    ratHole.closePath();
+  } else {
+    ratHole.absarc(0, 0, radius * 0.28, 0, Math.PI * 2, true);
+  }
   rShape.holes.push(ratHole);
   const ratGeo = new THREE.ExtrudeGeometry(rShape, {
     depth: thickness,
@@ -1066,30 +990,21 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
   const ratchet = new THREE.Mesh(ratGeo, MATS.steel);
   ratchet.name = 'ratchet';
   g.add(ratchet);
+  if (!includeClick) {
+    g.userData.r = radius;
+    g.userData.teeth = teeth;
+    return g;
+  }
 
   // Click / pawl — pivoted just outside the ratchet, beak seated in a valley.
-  const clickL = radius * 0.8;
-  const cw2 = radius * 0.11;
-  const clickShape = new THREE.Shape();
-  clickShape.moveTo(0, cw2);
-  clickShape.lineTo(clickL * 0.55, cw2 * 0.7);
-  clickShape.lineTo(clickL, cw2 * 0.15);
-  clickShape.lineTo(clickL, -cw2 * 0.15);
-  clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
-  clickShape.lineTo(0, -cw2);
-  clickShape.closePath();
   // Click sits BELOW the ratchet, on the wheel side — where the part that
   // carries it (great wheel / barrel lid) actually is.
-  const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
-    depth: thickness * 0.75,
-    bevelEnabled: false,
-  });
-  clickGeo.translate(0, 0, -thickness * 0.9);
-  const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
-  click.name = 'click';
+  const click = makeClick({ radius, thickness: thickness * 0.75 });
+  click.geometry.translate(0, 0, -thickness * 0.9);
   click.position.set(radius * 1.28, 0, 0);
   click.rotation.z = Math.PI * 0.778; // aim the beak at the valley point
   g.add(click);
+  const cw2 = radius * 0.11;
   const clickScrew = new THREE.Mesh(
     new THREE.CylinderGeometry(cw2 * 1.1, cw2 * 1.1, thickness * 1.2, 12),
     MATS.blueSteel
@@ -1166,7 +1081,10 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
 // gear teeth, no ratchet/click (the fusee arbor carries those instead).
 // ---------------------------------------------------------------------------
 
-export function makeBarrel({ radius, height, teeth, module, plain = false }) {
+// arborH: full length of the central arbor (centred on the body's
+// mid-plane) — the caller sizes it to reach its actual bearings; the
+// default reproduces the old fixed proportion.
+export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null }) {
   const g = new THREE.Group();
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
@@ -1242,7 +1160,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false }) {
   g.add(spring);
 
   // Central arbor.
-  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, height * 2.4, 16);
+  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, arborH ?? height * 2.4, 16);
   arborGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(arborGeo, MATS.steel));
 
@@ -1263,14 +1181,40 @@ export function makeBarrel({ radius, height, teeth, module, plain = false }) {
 // Plates & structure
 // ---------------------------------------------------------------------------
 
-export function makeBackPlate({ radius, thickness }) {
+// holes: circular through-bores {x, y, r}; slots: stadium-shaped through
+// openings {ax, ay, bx, by, r} for parts that SWEEP through the plate (the
+// setting lever's tail post crossing to the dial side) — same conventions as
+// makeThreeQuarterPlate. The bevel grows material INTO every drawn opening,
+// so openings are drawn oversized by bevelSize and the finished edges land
+// on the caller's requested radii.
+export function makeBackPlate({ radius, thickness, holes = [], slots = [] }) {
+  const bevelSize = radius * 0.008;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  for (const h of holes) {
+    const p = new THREE.Path();
+    p.absarc(h.x, h.y, h.r + bevelSize, 0, Math.PI * 2, true); // CW: a hole
+    shape.holes.push(p);
+  }
+  for (const sl of slots) {
+    const r = sl.r + bevelSize;
+    const dx = sl.bx - sl.ax, dy = sl.by - sl.ay;
+    const d = Math.hypot(dx, dy);
+    const ux = d > 1e-9 ? dx / d : 1, uy = d > 1e-9 ? dy / d : 0;
+    const ang = Math.atan2(uy, ux);
+    const p = new THREE.Path();
+    // Clockwise stadium; each cap bulges away from the other end (see
+    // makeThreeQuarterPlate for the arc-direction reasoning).
+    p.absarc(sl.bx, sl.by, r, ang + Math.PI / 2, ang - Math.PI / 2, true);
+    p.absarc(sl.ax, sl.ay, r, ang - Math.PI / 2, ang - Math.PI * 1.5, true);
+    p.closePath();
+    shape.holes.push(p);
+  }
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,
     bevelThickness: thickness * 0.15,
-    bevelSize: radius * 0.008,
+    bevelSize,
     bevelSegments: 2,
     curveSegments: 72,
   });
@@ -1474,7 +1418,11 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
 // (width·0.5 total = width·0.4 core + 2·width·0.05 bevel) reproduces the old
 // fixed proportions exactly; the flat Glashütte-style balance cock passes a
 // much thinner slab.
-export function makeCock({ length, width, thickness = width * 0.5, studHole = null }) {
+// jewelAt: the pivot jewel's position as a fraction of length from the slab
+// centre (+ = toward the rounded head). At 0.5 the jewel sits at the head
+// arc's own centre, so the slab ends exactly one half-width past the staff —
+// the classic round-head cock, with no dead overhang beyond the bearing.
+export function makeCock({ length, width, thickness = width * 0.5, studHole = null, jewelAt = 0.12 }) {
   const g = new THREE.Group();
   const hw = width / 2;
   const s = new THREE.Shape();
@@ -1485,11 +1433,14 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   s.absarc(0, -length * 0.5, hw, Math.PI, Math.PI * 2, false); // rounded foot
   s.closePath();
 
-  // Spy hole toward the head — slid down out of the way when a stud hole
-  // is punched above it (two overlapping holes break the extrude).
+  // Spy hole toward the head — slid down out of the way of a stud hole
+  // punched above it AND of a high-set jewel (overlapping holes break the
+  // extrude; the jewel setting's collar reaches width·0.16·1.6 around
+  // jewelAt·length).
   const h1 = new THREE.Path();
   let h1y = length * 0.42;
   if (studHole) h1y = Math.min(h1y, studHole.y - studHole.r - width * 0.12 - 0.25);
+  h1y = Math.min(h1y, length * jewelAt - width * 0.16 * 1.6 - width * 0.12 - 0.25);
   h1.absarc(0, h1y, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h1);
   // STUD HOLE: a real bore for the hairspring stud to pass through the
@@ -1517,9 +1468,9 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   geo.translate(0, 0, -depth / 2);
   g.add(new THREE.Mesh(geo, MATS.nickel));
 
-  // Sunk jewel setting near the pivot end.
+  // Sunk jewel setting at the pivot.
   const js = makeJewelSetting({ r: width * 0.16 });
-  js.position.set(0, length * 0.12, depth * 0.5);
+  js.position.set(0, length * jewelAt, depth * 0.5);
   g.add(js);
 
   g.userData.length = length;
@@ -1593,15 +1544,22 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     leg.position.set(n.x, n.y, -thickness / 2 - footDrop / 2);
     g.add(leg);
     // Spread pad where it lands on the base plate, and the screw that holds
-    // the whole bridge down, sunk into the slab's top face.
+    // the whole bridge down: shaft through the slab plus a PROUD blued head
+    // seated on the top face (the old version sank the whole screw inside
+    // the slab, leaving the bridge visually unfastened — the same pattern
+    // as the balance cock's T-foot screws).
     const pad = new THREE.Mesh(new THREE.CylinderGeometry(legR * 1.5, legR * 1.5, thickness * 0.5, 20), slabMat);
     pad.geometry.rotateX(Math.PI / 2);
     pad.position.set(n.x, n.y, -thickness / 2 - footDrop + thickness * 0.25);
     g.add(pad);
-    const screw = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.55, legR * 0.55, thickness * 0.5, 14), MATS.blueSteel);
-    screw.geometry.rotateX(Math.PI / 2);
-    screw.position.set(n.x, n.y, thickness * 0.25);
-    g.add(screw);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.35, legR * 0.35, thickness, 14), MATS.blueSteel);
+    shaft.geometry.rotateX(Math.PI / 2);
+    shaft.position.set(n.x, n.y, 0);
+    g.add(shaft);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.6, legR * 0.6, 0.22, 14), MATS.blueSteel);
+    head.geometry.rotateX(Math.PI / 2);
+    head.position.set(n.x, n.y, thickness / 2 + 0.11);
+    g.add(head);
   }
   for (const j of jewels) {
     // Rubbed-in jewel, seated in its counterbore. Every face is kept OFF
@@ -1792,7 +1750,7 @@ function burPrismGeo(rr, len, tipLen) {
   sec.lineTo(halfW, -rr * 0.5);
   sec.closePath();
   const shaftLen = len - tipLen;
-  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }).toNonIndexed();
+  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }); // Extrude output is already non-indexed
   const pts = sec.getPoints(3);
   const tri = [];
   for (let i = 0; i < pts.length; i++) {
@@ -2413,9 +2371,11 @@ export function makeHand({ length, kind }) {
   // hour/minute plane gap in main.js still bounds rHour + rMinute
   // (≈ 2.10 at current widths).
   const facetFlat = (geo) => {
-    const flat = geo.toNonIndexed();
+    // Extrude output is already non-indexed; toNonIndexed() would warn and
+    // return the same geometry (which the dispose below would then free).
+    const flat = geo.index ? geo.toNonIndexed() : geo;
     flat.computeVertexNormals();
-    geo.dispose();
+    if (flat !== geo) geo.dispose();
     return flat;
   };
   const burRod = (rBase) => {

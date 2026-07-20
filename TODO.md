@@ -24,26 +24,21 @@ the main thread for the whole sweep, and wedges the tab.
 
 ---
 
-## 1. The mainspring is not a force source
+## 1. The mainspring is not a force source (HALF CLOSED)
 
 The spring spiral is a child of the drum whose rotation/scale are a direct
-*readout* of tension (`main.js`, `springChild` in `tick()`). There is no
-inner-end anchor to a fixed arbor and no setup ratchet, so the drum→chain
-torque path never actually closes inside the drum — the one place in the
-movement where power is supposed to originate.
+*readout* of tension (`main.js`, `springChild` in `tick()`).
 
-The fusee, chain and cone geometry around it are good; they deserve a real
-spring anchoring. Fix: anchor the spiral's inner end to the drum arbor and let
-its wind state follow `barrelWindTurns`.
+CLOSED half: the inner-end anchor and set-up ratchet now exist — the
+`Set-up work` unit puts a static collar + hook pin on the drum arbor at the
+spiral's heart, and the arbor ends in a plate-top square carrying the
+classic set-up ratchet + click (static in service, exactly like the real
+thing). The drum→chain torque path now closes on a fixture.
 
-## 2. The winding click rides the rotating great wheel
-
-Already documented in-code (`main.js`, near `fuseeRatchetGroup`) and in the
-mechanical graph's `todo` list, but it breaks a primary force path: a click
-anchored to the co-rotating arbor provides zero ratcheting resistance, so
-nothing mechanically prevents the fusee unwinding. The existing comment
-contains the right fix — mount the click on a plate-fixed post/bridge,
-positioned so its beak still reaches the ratchet's tooth circle.
+REMAINING half: the spiral's wind state is still a scale/rotation readout
+rather than a keyframed morph whose inner boundary follows the (now
+anchored) arbor and whose outer end follows the drum wall — the
+makeHairspring wind-keyframe trick would close it.
 
 ## 3. `handSetOffset` is assigned, not derived
 
@@ -56,10 +51,12 @@ the geometry is present and correct, only the number hops.
 
 ## 4. Smaller items
 
-- **Hack-pad assembly note.** The pad sits radially *inside* the balance rim's
-  annulus, so the blade cannot be lowered vertically into place — it has to be
-  fed in laterally below the rim plane. Tight but doable; worth a comment in
-  the code so the constraint isn't lost.
+- **Hack-pad assembly note.** The stop pad sits radially *inside* the balance
+  rim's annulus, so the crank cannot be dropped vertically into its clevis
+  with the arm level — it goes in with the arm swung down (released pose) and
+  rotates up under the rim. Trivial with the see-saw crank (the released pose
+  IS the drop-clear pose), but worth a comment in the code so the constraint
+  isn't lost.
 - **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
   showed ~all of it was ONE cost — unbounded closest-point queries against
   the plate's ~21k-triangle extrusion (180 ms/query, 6 of 13 budgets). Now
@@ -79,6 +76,17 @@ the geometry is present and correct, only the number hops.
 ---
 
 ## Recently closed
+
+- **Winding click is plate-fixed** (was item 2), closed as part of the
+  keyless-works move to the dial side. The ratchet slid down the fusee
+  arbor to just above the base plate (under the great wheel) so the
+  dial-side winding path could cross the plate legally — and at that plane
+  the honest click mount became trivial: its own labelled unit
+  (`Winding click`) on a short post standing on the plate's top face, beak
+  in the ratchet's teeth, at the builder's original azimuth (a multiple of
+  the 15° tooth pitch, preserving the beak-in-valley registration).
+  MECH_GRAPH: support `Winding click → plate`, drive
+  `Fusee & great wheel → Winding click`; the graph's `todo` entry is gone.
 
 - **Setting arbor terminates at the motion works' minute wheel** (was item
   1). The dial-centre stand-in — a pinion cap beside the cannon pinion,
