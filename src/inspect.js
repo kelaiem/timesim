@@ -1077,6 +1077,34 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  {
+    // The fork's STEEL (body, arm bars, slotted heads — everything that is
+    // not a ruby) must NEVER meet the wheel: only the stones are contact
+    // surfaces. This is the guard the old fork lacked — its top web swept
+    // through the teeth every beat, invisible because the unit pair is
+    // expected-contact and the row above only watches the rubies.
+    pair: ['Escape wheel', 'Pallet fork'],
+    maxDepth: 0.02,
+    axis: 'beat',
+    nSamples: 150,
+    selectA(unit) {
+      let best = null, bestR = 0;
+      unit.obj.traverse((o) => {
+        if (o.isMesh) {
+          o.geometry.computeBoundingSphere();
+          if (o.geometry.boundingSphere.radius > bestR) { bestR = o.geometry.boundingSphere.radius; best = o; }
+        }
+      });
+      return best ? [best] : [];
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => {
+        if (o.isMesh && o.material && o.material.color && o.material.color.getHex() !== 0xb01326) out.push(o);
+      });
+      return out;
+    },
+  },
 ];
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {

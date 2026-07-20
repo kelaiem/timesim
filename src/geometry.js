@@ -291,31 +291,39 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const forkTop = -L * 0.8;
   const forkY = -L;
 
-  // Single crafted body: anchor + belly + lever + fork horns + notch.
-  // Outline refined for the open view the fork cock gives it: the lever
-  // WAISTS between belly and horns (concave flanks, narrowest mid-length),
-  // the anchor arms end in rounded noses, and the horns' outer flanks are
-  // drawn concave — the polished-lever look. Every KINEMATIC vertex is
-  // untouched: horn tips (6, 9), notch walls and floor (7, 8), stone-arm
-  // seats, and the forkTop/forkY anchors the bank-angle derivation uses.
+  // Single crafted body: belly + lever + fork horns + notch, topped by a
+  // LOW shoulder line. The old outline reached arm blobs up beside the
+  // wheel and spanned them with a concave web whose midpoint sat INSIDE
+  // the escape wheel's tooth-tip circle — the teeth swept straight through
+  // the fork's steel every beat (masked by the expected-contact pair; only
+  // the ruby stones were penetration-budgeted). The body now STOPS below
+  // the wheel: its top edge is bounded by |p − W| ≥ R + swing + margin
+  // (W = wheel centre at (0, D); the fork's ±bank swing moves an outline
+  // point by ~bank·|p|), and the pallet ARMS are separate bars from the
+  // pivot boss out to the slotted stone heads — the real anchor shape.
+  // Every KINEMATIC vertex is untouched: horn tips, notch walls and floor,
+  // and the forkTop/forkY anchors the bank-angle derivation uses.
   const waistHW = leverHW * 0.62;              // narrowest point of the lever
   const yWaist = (-t * 0.4 + forkTop) / 2;     // mid-length
+  const Rwheel = span / (2 * Math.sin(THREE.MathUtils.degToRad(42)));
+  const Dwheel = span / 2 + Math.sqrt(Math.max(Rwheel * Rwheel - (span / 2) ** 2, 0));
+  const shoulderX = t * 1.8;
+  const bankAllow = (bankRad ?? 0.045) * Math.hypot(shoulderX, Dwheel - Rwheel); // swing sweep of a top point
+  const topY = Dwheel - (Rwheel + 0.15 + bankAllow) - 0.05; // the |p−W| bound at x = 0, with slack
   const s = new THREE.Shape();
-  s.moveTo(-ax - t * 0.7, sy + t * 0.4); // 1 left arm outer top
-  s.quadraticCurveTo(-ax - t * 0.15, sy - t * 0.35, -ax + t * 0.5, sy - t * 0.5); // 2 rounded arm nose
-  s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 3 belly -> lever
-  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 4 waisted lever, left flank
-  s.lineTo(-forkHW, forkY + t * 0.15); // 5 left horn outer
-  s.lineTo(-notchHW - t * 0.15, forkY); // 6 left horn tip
-  s.lineTo(-notchHW, forkTop + t * 0.9); // 7 notch inner left
-  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 8 notch floor
-  s.lineTo(notchHW + t * 0.15, forkY); // 9 right horn tip
-  s.lineTo(forkHW, forkY + t * 0.15); // 10 right horn outer
-  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 11 waisted lever, right flank (up)
-  s.lineTo(leverHW, -t * 0.4); // 12
-  s.quadraticCurveTo(t * 1.4, t * 0.2, ax - t * 0.5, sy - t * 0.5); // 13 belly right
-  s.quadraticCurveTo(ax + t * 0.15, sy - t * 0.35, ax + t * 0.7, sy + t * 0.4); // 14 rounded arm nose
-  s.quadraticCurveTo(0, sy * 0.45, -ax - t * 0.7, sy + t * 0.4); // 15 concave top back to 1
+  s.moveTo(-shoulderX, topY); // 1 left shoulder
+  s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 2 belly -> lever
+  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 3 waisted lever, left flank
+  s.lineTo(-forkHW, forkY + t * 0.15); // 4 left horn outer
+  s.lineTo(-notchHW - t * 0.15, forkY); // 5 left horn tip
+  s.lineTo(-notchHW, forkTop + t * 0.9); // 6 notch inner left
+  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 7 notch floor
+  s.lineTo(notchHW + t * 0.15, forkY); // 8 right horn tip
+  s.lineTo(forkHW, forkY + t * 0.15); // 9 right horn outer
+  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 10 waisted lever, right flank (up)
+  s.lineTo(leverHW, -t * 0.4); // 11
+  s.quadraticCurveTo(t * 1.4, t * 0.2, shoulderX, topY); // 12 belly right -> shoulder
+  s.quadraticCurveTo(0, topY - t * 0.5, -shoulderX, topY); // 13 concave top, dipping AWAY from the wheel
   s.closePath();
 
   const bevel = t * 0.12;
@@ -478,6 +486,36 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     arm.position.set(seat.x, seat.y, 0); // arm stays in the fork's own plane
     arm.rotation.z = rotZ;
     g.add(arm);
+
+    // ARM BAR: the head must be CARRIED by the fork, not hang off its
+    // ruby — a bar from the pivot boss out to the slotted head, the way a
+    // real anchor's arms run. The straight boss→head line stays a full
+    // unit outside the wheel's swept teeth (asserted below with the rest).
+    const headMid = new THREE.Vector2(
+      seat.x + tau.x * (yN + yB) / 2,
+      seat.y + tau.y * (yN + yB) / 2);
+    const barLen = headMid.length();
+    const barDir = headMid.clone().divideScalar(barLen || 1);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(t * 0.95, barLen, t), MATS.steel);
+    bar.position.set(headMid.x / 2, headMid.y / 2, 0);
+    bar.rotation.z = Math.atan2(barDir.y, barDir.x) - Math.PI / 2;
+    g.add(bar);
+
+    // Clearance sanity: no STEEL of this arm may enter the wheel's swept
+    // tooth annulus, at any point of the fork's ±bank swing. Checked at
+    // the governing points (head nose corners, bar edges nearest the
+    // wheel); the inspector's steel-vs-wheel penetration budget is the
+    // permanent guard.
+    const W = new THREE.Vector2(0, D);
+    const worldPt = (lx, ly) => new THREE.Vector2(
+      seat.x + Math.cos(rotZ) * lx - Math.sin(rotZ) * ly,
+      seat.y + Math.sin(rotZ) * lx + Math.cos(rotZ) * ly);
+    for (const [lx, ly] of [[sxL, yN], [sxR, yN], [sxL, yB], [sxR, yB]]) {
+      const p = worldPt(lx, ly);
+      const clr = p.distanceTo(W) - Rwheel - (bankRad ?? 0.045) * p.length();
+      if (clr < 0.1)
+        console.warn('pallet arm: steel within the wheel sweep', sigma, clr.toFixed(3));
+    }
   }
   stoneAndArm(-1); // entry
   stoneAndArm(1);  // exit
