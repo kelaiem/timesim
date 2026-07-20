@@ -1,1 +1,8 @@
 .DS_Store
+
+# Claude workspace: local state stays out of the repo; shared project
+# capability (agent definitions, launch config) is tracked deliberately.
+.claude/*
+!.claude/agents/
+!.claude/launch.json
+.claude/worktrees/
