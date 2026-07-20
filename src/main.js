@@ -4517,6 +4517,12 @@ let windAccumTurns = 0; // ratchet/fusee turns actually BANKED by winding (not r
 // that keeps the hand from springing back to the raw phase on push-in.
 let jumpDisp = null;
 let jumpCorr = 0;
+// Sound edge-detector state: one "last index" per discrete source (null
+// until first observed, so enabling sound mid-run never machine-guns a
+// backlog of events).
+let sndBeatN = null, sndPawlIdx = null, sndDetIdx = null, sndJumpIdx = null;
+let sndCrownOut = null, sndHammerHit = false;
+let jumpSnapIdx = null; // written by the quantize block; read by the sound block
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
 // ---------------------------------------------------------------------------
@@ -4550,6 +4556,7 @@ let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
 // assigning them here would hit the temporal dead zone.
 let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
+let restoredSound = false; // sound toggle, applied once the UI exists
 
 // A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
 // (or running dry) kills the balance's rate within a fraction of that;
@@ -4589,6 +4596,7 @@ const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
   fastForward = savedState.fastForward;
   restoredCamera = savedState.camera;
   restoredXray = !!savedState.plateXray;
+  restoredSound = !!savedState.soundOn;
 }
 
 // ---------------------------------------------------------------------------
@@ -4703,6 +4711,10 @@ panel.innerHTML = `
   <div class="row">
     <span class="label-small">Power flow</span>
     <button id="btn-powerflow">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Sound</span>
+    <button id="btn-sound">Off</button>
   </div>
   <hr/>
   <div class="row label-small"><span>Finish</span></div>
@@ -4966,6 +4978,62 @@ function setXray(on) {
 document.getElementById('btn-xray').addEventListener('click', () => setXray(!xrayOn));
 if (restoredXray) setXray(true);
 
+// --- SOUND — synthesized clicks off the movement's own discrete events
+// (BACKLOG §8). No audio assets and no loops: each mechanical event
+// already computed by tick() fires one short noise transient through a
+// bandpass + exponential-decay gain. Default Off, which also keeps
+// __clock.setPose-driven inspector runs silent; enabling is itself the
+// user gesture the autoplay policy wants, so the AudioContext is
+// created/resumed right in the toggle handler.
+let soundOn = false;
+let audioCtx = null;
+let _noiseBuf = null;
+function sndClick(freq, q, decay, gain, when = 0) {
+  if (!soundOn || !audioCtx || audioCtx.state !== 'running') return;
+  if (!_noiseBuf) {
+    _noiseBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.06), audioCtx.sampleRate);
+    const d = _noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t0 = audioCtx.currentTime + when;
+  const src = audioCtx.createBufferSource();
+  src.buffer = _noiseBuf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = freq;
+  bp.Q.value = q;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + decay);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0);
+  src.stop(t0 + decay + 0.02);
+}
+// Timbres per source (tuned by ear; the beat alternates two centres by
+// bank parity — that parity IS the fork's bank side, so tic/toc is
+// mechanically honest for free).
+const SND = {
+  beatTic: () => sndClick(4200, 7, 0.006, 0.16),
+  beatToc: () => sndClick(3400, 7, 0.007, 0.16),
+  pawl: (w = 0) => sndClick(2500, 5, 0.010, 0.22, w),
+  detent: () => sndClick(2000, 5, 0.012, 0.18),
+  jump: () => sndClick(3000, 6, 0.010, 0.25),
+  hammer: () => sndClick(1200, 4, 0.025, 0.3),
+  stem: () => sndClick(1700, 4, 0.015, 0.2),
+};
+function setSound(on) {
+  soundOn = on;
+  if (on) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  const b = document.getElementById('btn-sound');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+}
+document.getElementById('btn-sound').addEventListener('click', () => setSound(!soundOn));
+if (restoredSound) setSound(true); // context resume may still await a gesture; the first click supplies it
+
 // --- POWER FLOW view -------------------------------------------------------
 // Tints the LIVE torque path so the maintaining sandwich's job is visible:
 // while WINDING, the input side lights amber (energy flowing INTO the
@@ -5087,6 +5155,7 @@ function captureState() {
     timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
     showLabels: labelsOn,
     plateXray: xrayOn,
+    soundOn,
     showBeat: 0,
     camera: {
       px: camera.position.x, py: camera.position.y, pz: camera.position.z,
@@ -5397,6 +5466,7 @@ function tick(t) {
     const MIN_PITCH = (Math.PI * 2) / 60;
     if (jmpEngaged) {
       const target = Math.round((minuteBase + rawSetOffset + jumpCorr) / MIN_PITCH) * MIN_PITCH - minuteBase;
+      jumpSnapIdx = Math.round((minuteBase + target) / MIN_PITCH); // absolute minute index — the sound block's edge source
       if (jumpDisp === null) jumpDisp = target;
       jumpDisp += (target - jumpDisp) * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
     } else if (jumpDisp !== null) {
@@ -5550,6 +5620,51 @@ function tick(t) {
     fusee.rotation.z = windBack;
     updateMaintaining(windBack);
     pfUpdate();
+
+    // --- SOUND edge detection (BACKLOG §8). Discrete events off the
+    // continuous phases this tick just computed. All suppressed in
+    // fast-forward (~5400× would machine-gun the beat), and capped at
+    // 3 transients per source per tick with small time offsets so a
+    // clamped-but-large rawDt (tab restore) hiccups gracefully.
+    if (soundOn && !fastForward) {
+      // Escapement beat — parity is the fork's bank side: honest tic/toc.
+      const bn = beatPhase(tau).n;
+      if (sndBeatN !== null && bn !== sndBeatN) {
+        const steps = Math.min(Math.abs(bn - sndBeatN), 3);
+        for (let i = 0; i < steps; i++) {
+          ((sndBeatN + i + 1) % 2 === 0 ? SND.beatTic : SND.beatToc)();
+        }
+      }
+      sndBeatN = bn;
+      // Maintaining pawls while winding — one tooth passage = one snap
+      // (the two pawls sit exactly 12 of 24 pitches apart: unison).
+      const pawlIdx = Math.floor((MAINT_PAWL_TIP_AZ - windBack) / ((Math.PI * 2) / MAINT_TEETH));
+      if (sndPawlIdx !== null && pawlIdx !== sndPawlIdx) {
+        const n = Math.min(Math.abs(pawlIdx - sndPawlIdx), 3);
+        for (let i = 0; i < n; i++) SND.pawl(i * 0.03);
+      }
+      sndPawlIdx = pawlIdx;
+      // Maintaining detent while running — one soft tick per 20 min of
+      // movement time (barrel 1 rev/8 h × 24 rim teeth).
+      const detIdx = Math.floor((barrelArbor.rotation.z - MAINT_DETENT_AZ) / ((Math.PI * 2) / MAINT_TEETH));
+      if (sndDetIdx !== null && detIdx !== sndDetIdx) SND.detent();
+      sndDetIdx = detIdx;
+      // Minute jumper snap while setting.
+      if (jumpSnapIdx !== null) {
+        if (sndJumpIdx !== null && jumpSnapIdx !== sndJumpIdx) SND.jump();
+        sndJumpIdx = jumpSnapIdx;
+      } else sndJumpIdx = null;
+      // Crown stem click (both directions) + the reset hammer's fall
+      // (once per pull, as the lever seats).
+      if (sndCrownOut !== null && crownOut !== sndCrownOut) SND.stem();
+      sndCrownOut = crownOut;
+      if (leverEngage > 0.85 && !sndHammerHit) { SND.hammer(); sndHammerHit = true; }
+      if (leverEngage < 0.15) sndHammerHit = false;
+    } else {
+      // Keep trackers current while muted/FF so re-enabling is silent.
+      sndBeatN = null; sndPawlIdx = null; sndDetIdx = null; sndJumpIdx = null;
+      sndCrownOut = crownOut;
+    }
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
