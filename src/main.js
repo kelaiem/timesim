@@ -274,9 +274,10 @@ scene.add(movement);
 
 // --- Fusee & chain layout: the movement is now a FUSEE movement -----------
 // The spring barrel is a plain DRUM (no teeth) sitting off to the side; a
-// chain runs from it to the fusee cone, whose arbor carries the great wheel
-// and the winding ratchet. The fusee arbor sits exactly where the going
-// barrel used to be, so every mesh distance in the train is unchanged.
+// chain runs from it to the fusee cone, whose arbor carries the great
+// wheel, the winding spur and (above the plate) the ratchet. The fusee
+// arbor sits exactly where the going barrel used to be, so every mesh
+// distance in the train is unchanged.
 const barrelModule = 0.36, barrelTeeth = 80;
 const barrelR = (barrelModule * barrelTeeth) / 2;
 // The spring DRUM — slimmer than the great wheel it feeds: with the compact
@@ -297,7 +298,7 @@ const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
 const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
-// turns at a tighter groove pitch, seated just above the ratchet/click.
+// turns at a tighter groove pitch, seated just above the winding spur.
 // The tall cone was the single largest back-side thickness contributor AND
 // forced every cross-movement linkage (reset rod, hack linkage) to detour
 // over it. The third-wheel clearance that used to drive the tall seat is
@@ -652,10 +653,16 @@ const crownWheelR = (KW_MODULE * crownWheelTeeth) / 2;
 const windPinionR = (KW_MODULE * windPinionTeeth) / 2;
 const settingWheelR = (KW_MODULE * settingWheelTeeth) / 2;
 const minuteWheelR = (KW_MODULE * minuteWheelTeeth) / 2;
-// Winding transfer arbor axis — one ratchet-mesh distance outboard of the
-// barrel (exactly where the crown wheel sat when it lived on the movement
-// side; the ratchet's tooth circle fixes this distance).
-const cwDist = barrelDist + ratchetR + crownWheelR + 0.1;
+// The transfer wheel drives a plain 24-tooth WINDING SPUR on the fusee
+// arbor (the saw-toothed ratchet lives on the plate top now, serving only
+// the click). Same tooth count as the ratchet keeps the crown→fusee ratio;
+// equal module makes the mesh honest — the old layout gear-meshed the
+// ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
+const WIND_SPUR_TEETH = 24;
+const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
+// Winding transfer arbor axis — one spur-mesh distance outboard of the
+// barrel, with the same +0.1 slop every keyless mesh uses (see mwFoldD).
+const cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
 const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // sliding pinion, pushed in (teeth overlap the wheel rim, bevel-style)
 const pinOutDist = pinDist + CROWN_PULL_DIST;              // ...pulled out → setting mesh
 const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
@@ -854,71 +861,44 @@ function balanceTheta(tau, tension = 1) {
 // Assemble arbor groups
 // ---------------------------------------------------------------------------
 // Fusee arbor — great wheel at the bottom (same mesh position the going
-// barrel occupied), winding ratchet + click at the keyless plane above it,
-// then the grooved cone. The cone and ratchet are keyed together: both take
-// the winding spin; the great wheel turns only with the train.
+// barrel occupied), winding SPUR at the keyless plane above it, then the
+// grooved cone. Spur and cone are keyed together: both take the winding
+// spin; the great wheel turns only with the train.
 const barrelArbor = new THREE.Group();
 barrelArbor.position.set(P.barrel.x, P.barrel.y, L_BARREL);
 greatWheel.position.z = 0;
 barrelArbor.add(greatWheel);
-// RATCHET — dropped to the BOTTOM of the fusee arbor, just above the base
+// WINDING SPUR — at the BOTTOM of the fusee arbor, just above the base
 // plate and UNDER the great wheel. With the keyless works on the dial side
 // (Z_KEYLESS < 0), the winding has to cross the base plate somewhere — and
-// the ratchet's mesh point sits only ~8.4 from the barrel axis, well INSIDE
-// the great wheel's radius, so a crossing arbor at any ratchet-mesh XY
-// would skewer the great wheel's disc… unless it stops BELOW it. Down here
-// the crown-wheel arbor (see the winding path at the keyless assembly) can
-// end its climb legally: plate top at 0, ratchet band, then the great
-// wheel's underside at ~1.22 — everything clears by the margin. The
-// ratchet stays keyed to the fusee exactly as before; only its plane moved.
+// the spur's mesh point sits only ~7.6 from the barrel axis, well INSIDE
+// the great wheel's radius, so a crossing arbor at any spur-mesh XY would
+// skewer the great wheel's disc… unless it stops BELOW it. Down here the
+// crown-wheel arbor (see the winding path at the keyless assembly) can end
+// its climb legally: plate top at 0, spur band, then the great wheel's
+// underside at ~1.22 — everything clears by the margin. (The saw-toothed
+// RATCHET this spur replaced now sits on the plate top, on a square of
+// this same arbor, where its teeth serve only the click — see the windTop
+// block at the upper pivots.)
 const RATCHET_T = 0.8;
 const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
-const fuseeRatchetGroup = G.makeRatchetAndClick({ radius: ratchetR, teeth: 24, thickness: RATCHET_T });
-fuseeRatchetGroup.position.z = Z_RATCHET_BOT - L_BARREL; // extrude spans [Z_RATCHET_BOT, +RATCHET_T] in world
-barrelArbor.add(fuseeRatchetGroup);
+// Hub-less like the transfer wheel it meshes: the band under the great
+// wheel is ~1.2 tall and makeGear's stock hub ring (1.5·thickness) would
+// eat both gaps.
+const windSpur = G.makeGear({ module: KW_MODULE, teeth: WIND_SPUR_TEETH, thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+windSpur.name = 'windSpur';
+const windSpurBase = Math.PI / WIND_SPUR_TEETH; // half-tooth phase so spur and transfer teeth interlace at rest (crownWheelBase convention)
+// makeGear extrudes CENTERED (unlike the old ratchet builder's 0-based
+// extrude), so the group z places the band's middle.
+windSpur.position.z = Z_RATCHET_BOT + RATCHET_T / 2 - L_BARREL;
+barrelArbor.add(windSpur);
 fusee.position.z = FUSEE_BASE_Z; // cone base above the third wheel's plane
 barrelArbor.add(fusee);
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
 registerLabel('Fusee & great wheel', barrelArbor);
-
-// CLICK — extracted from the ratchet group and PLATE-FIXED. It used to ride
-// the barrel arbor (co-rotating with the very wheel it was supposed to
-// hold — providing no actual ratcheting resistance; TODO.md item 2). With
-// the ratchet now a whisker above the base plate, the honest mount is
-// trivial: its own labelled unit standing on a short post screwed to the
-// plate's top face, beak reaching the ratchet's tooth circle in-plane. The
-// azimuth keeps the click at the group's build-time position (toward the
-// movement centre), a multiple of the 15° tooth pitch, so the beak-in-valley
-// registration from the builder is preserved.
-const windingClick = new THREE.Group();
-{
-  const clickPart = fuseeRatchetGroup.getObjectByName('click');
-  // The builder stacks click body/screw BELOW the ratchet (wheel-mount
-  // style); re-seat them for a plate mount: body inside the ratchet's own
-  // z-band, pivot post from the plate top, cap screw above.
-  const clickBodyBot = Z_RATCHET_BOT + 0.06;             // body extrude spans 0.75·RATCHET_T
-  windingClick.position.set(P.barrel.x, P.barrel.y, clickBodyBot + RATCHET_T * 0.9);
-  clickPart.position.z = 0; // was −0.9·t below the wheel; group z carries the seat now
-  windingClick.add(clickPart); // reparent: world XY unchanged (barrelArbor rotation is 0 at build)
-  const postH = clickBodyBot + RATCHET_T * 0.75; // plate top → just past the click body
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, postH, 10), MATS.steel);
-  post.rotation.x = Math.PI / 2;
-  post.position.set(ratchetR * 1.28, 0, postH / 2 - windingClick.position.z);
-  windingClick.add(post);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.18, 12), MATS.blueSteel);
-  cap.rotation.x = Math.PI / 2;
-  cap.position.set(ratchetR * 1.28, 0, postH + 0.09 - windingClick.position.z);
-  windingClick.add(cap);
-  // Drop the builder's wheel-mount screw (its post is gone with the old
-  // mounting; the click itself keeps its own pivot wiggle in tick()).
-  const oldScrew = fuseeRatchetGroup.children.find(
-    (c) => c !== fuseeRatchetGroup.getObjectByName('ratchet') && c.name !== 'click');
-  if (oldScrew) fuseeRatchetGroup.remove(oldScrew);
-}
-movement.add(windingClick);
-registerExplode(windingClick, windingClick.position.z, 1);
-registerLabel('Winding click', windingClick);
+// (The 'Winding click' unit is built with the plate-top ratchet at the
+// upper pivots — it stands on the THREE-QUARTER plate's top face now.)
 
 const centerArbor = new THREE.Group();
 centerArbor.position.set(P.center.x, P.center.y, L_BARREL);
@@ -1015,7 +995,7 @@ registerLabel('Hairspring', hairspringGroup);
 // Real openings, all measured from the hoisted keyless XY layout (the
 // keyless works lives on the DIAL side of this plate now):
 //  · a bored hole for the winding transfer arbor (the crown-wheel arbor
-//    climbing from the dial-side clutch to the ratchet above the plate) —
+//    climbing from the dial-side clutch to the winding spur above the plate) —
 //    cut PIVOT_BORE_CLEAR-style clearance over the 0.7 shaft, and the bore
 //    IS that arbor's bearing, exactly like a train pivot;
 //  · a clearance recess at the motion-works corner: the setting path's
@@ -1161,9 +1141,125 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {})
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
 // heart cam's 0.6 bore, which is what the friction coupling grips.)
-for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
+for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   addUpperPivot(arbor);
 }
+// The FUSEE arbor is the exception: it does not END in the plate — it
+// passes THROUGH it, because the winding ratchet and click live on the
+// plate's top face (the classic Glashütte view: ratchet on an arbor
+// square, click and click spring screwed beside it). A winding arbor runs
+// in a plain bushed bore, not a jewel — jewelling a barrel arbor is
+// unusual, and no jewel could pass the square anyway.
+addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+// Plate-top ratchet stack ("windTop") — keyed to the fusee arbor, so it
+// takes the winding spin exactly like the spur and cone below.
+// Square across-corners = staff diameter (0.5·2), so the filed square
+// passes the plate's own bore without opening it.
+const FUSEE_SQ_S = 0.5 * Math.SQRT2;
+const RTOP_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN; // ratchet rides one margin over the plate face (nothing on the plate top stands proud — jewels sit flush)
+const RTOP_TOP_Z = RTOP_BOT_Z + RATCHET_T;
+const RATCHET_CAP_H = 0.35;
+const RTOP_SQ_PROUD = 0.05; // square stands proud of the wheel so the cap visibly seats on the SQUARE, not the wheel
+const RTOP_CAP_TOP = RTOP_TOP_Z + RTOP_SQ_PROUD + RATCHET_CAP_H; // tallest thing on the barrel axis — the rod corridor derives from it
+const windTop = new THREE.Group();
+{
+  // Shaft continuation: addUpperPivot's staff stops at the plate's
+  // mid-thickness (its bearing plane); carry the round arbor on to the
+  // plate's top face, where the square begins.
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z, 12), MATS.steel);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2 - L_BARREL;
+  windTop.add(shaft);
+  const sqH = RTOP_TOP_Z + RTOP_SQ_PROUD - TQ_TOP_Z;
+  const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, sqH), MATS.steel);
+  square.position.z = TQ_TOP_Z + sqH / 2 - L_BARREL;
+  windTop.add(square);
+  const ratchetTop = G.makeRatchetAndClick({
+    radius: ratchetR, teeth: WIND_SPUR_TEETH, thickness: RATCHET_T,
+    includeClick: false, squareBore: FUSEE_SQ_S,
+  });
+  ratchetTop.position.z = RTOP_BOT_Z - L_BARREL; // 0-based extrude spans the [RTOP_BOT_Z, RTOP_TOP_Z] band
+  windTop.add(ratchetTop);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, RATCHET_CAP_H, 14), MATS.blueSteel);
+  cap.rotation.x = Math.PI / 2;
+  cap.position.z = RTOP_TOP_Z + RTOP_SQ_PROUD + RATCHET_CAP_H / 2 - L_BARREL;
+  windTop.add(cap);
+}
+barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', which is what it is
+
+// CLICK + CLICK SPRING on the plate's top face — its own labelled unit
+// (the plate-fixed mount a click needs to actually hold the ratchet).
+// The whole subgroup can rotate about the barrel axis in 15°-pitch steps
+// (CLICK_AZ) without losing the builder's beak-in-valley registration.
+const CLICK_AZ = 0 * ((Math.PI * 2) / WIND_SPUR_TEETH); // k·pitch; bump k if the rod corridor ever pinches
+const windingClick = new THREE.Group();
+windingClick.position.set(P.barrel.x, P.barrel.y, 0);
+{
+  const az = new THREE.Group();
+  az.rotation.z = CLICK_AZ;
+  windingClick.add(az);
+  const CLICK_T = RATCHET_T * 0.75;
+  const clickBot = RTOP_BOT_Z + (RATCHET_T - CLICK_T) / 2; // body centred in the ratchet's band
+  const click = G.makeClick({ radius: ratchetR, thickness: CLICK_T });
+  click.position.set(ratchetR * 1.28, 0, clickBot);
+  click.rotation.z = Math.PI * 0.778; // the builder's beak-at-valley aim, preserved
+  az.add(click);
+  // Shoulder screw: post standing ON the plate's top face (this is the
+  // support geometry the ['Winding click','Three-quarter plate'] edge
+  // measures), through the click body, head above.
+  const postH = clickBot + CLICK_T - TQ_TOP_Z;
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, postH, 10), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH / 2);
+  az.add(post);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.18, 12), MATS.blueSteel);
+  head.rotation.x = Math.PI / 2;
+  head.position.set(ratchetR * 1.28, 0, TQ_TOP_Z + postH + 0.09);
+  az.add(head);
+  // Click SPRING: a flat curved blade from its own screw, tip pressing the
+  // click's FLANK on the beak side — the push there torques the click so
+  // the beak stays biased into the teeth (pressing the opposite flank
+  // would lift it out). The arc is SOLVED through its two endpoints
+  // (anchor A, contact tip T) at a chosen blade radius — same style as
+  // the shock setting's lyre spring.
+  const springR = 1.3;
+  const beta = Math.PI * 0.778; // the click body's aim (its beak-at-valley rotation)
+  // Contact point: 1.2 along the body from the pivot (clear of the 0.55
+  // pivot head), offset one half-width + blade radius to the flank.
+  const flankOff = ratchetR * 0.11 * 0.7 + 0.12;
+  const T = {
+    x: ratchetR * 1.28 + 1.2 * Math.cos(beta) + flankOff * Math.sin(beta),
+    y: 1.2 * Math.sin(beta) - flankOff * Math.cos(beta),
+  };
+  const A = { x: ratchetR * 1.28 + 2.2 * Math.cos(0.6), y: 2.2 * Math.sin(0.6) }; // anchor screw, outboard on the same side
+  const dx = T.x - A.x, dy = T.y - A.y, d = Math.hypot(dx, dy);
+  const h = Math.sqrt(Math.max(springR * springR - (d / 2) ** 2, 0.01));
+  const C = { x: (A.x + T.x) / 2 + (-dy / d) * h, y: (A.y + T.y) / 2 + (dx / d) * h };
+  const thA = Math.atan2(A.y - C.y, A.x - C.x);
+  const thT = Math.atan2(T.y - C.y, T.x - C.x);
+  let span = thA - thT; // CCW from the tip back to the anchor
+  if (span < 0) span += Math.PI * 2;
+  const springZ = clickBot + CLICK_T / 2;
+  const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.12, 8, 24, span), MATS.blueSteel);
+  spring.position.set(C.x, C.y, springZ);
+  spring.rotation.z = thT;
+  az.add(spring);
+  const springPostH = springZ - TQ_TOP_Z;
+  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, springPostH, 10), MATS.steel);
+  springPost.rotation.x = Math.PI / 2;
+  springPost.position.set(A.x, A.y, TQ_TOP_Z + springPostH / 2);
+  az.add(springPost);
+  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.18, 12), MATS.blueSteel);
+  springHead.rotation.x = Math.PI / 2;
+  springHead.position.set(A.x, A.y, TQ_TOP_Z + springPostH + 0.09);
+  az.add(springHead);
+}
+movement.add(windingClick);
+// registerExplode's base z is the group's HOME position.z (children here
+// carry absolute z, so the group's home is 0); layer 8 = the plate layer —
+// plate-top furniture lifts with the plate in the exploded view.
+registerExplode(windingClick, 0, 8);
+registerLabel('Winding click', windingClick);
 // The ESCAPE WHEEL pivots in this plate like the rest of the train — its
 // bore sits in the tongue of plate the window leaves around it. Only the
 // PALLET FORK does not: it gets a small standalone cap cock screwed to the
@@ -1661,8 +1757,8 @@ addLowerPivot(balanceGroup, { staffR: 0.3, jewelR: 1.0 });
 // along the stem for the crown pull/push (see CROWN_PULL_DIST). In the
 // pushed-in ("winding") position it meshes the crown wheel, whose arbor
 // climbs through a real bore in the base plate to the winding transfer
-// wheel that meshes the fusee ratchet just above the plate's movement
-// face. Pulled out ("setting"), it slides clear of the crown wheel and
+// wheel that meshes the fusee arbor's winding spur just above the plate's
+// movement face. Pulled out ("setting"), it slides clear of the crown wheel and
 // meshes settingWheel instead → minuteArbor (a compound wheel+pinion, same
 // trick as the power-reserve train's reduction) → the motion works' minute
 // wheel, a short same-side run away — bypassing the going train entirely,
@@ -1680,26 +1776,26 @@ movement.add(keyless);
 registerLabel('Keyless works', keyless);
 registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 
-// --- Winding path: crown wheel + transfer arbor → ratchet -----------------
+// --- Winding path: crown wheel + transfer arbor → winding spur ------------
 // Two coaxial wheels on one arbor at cwDist: the CROWN WHEEL proper on the
 // dial side (meshed by the sliding pinion) and the winding TRANSFER wheel
 // in the thin band between the plate's top face and the great wheel's
-// underside, where it meshes the relocated ratchet (see the ratchet's move
-// down the fusee arbor at the barrel build — a crossing arbor anywhere at
-// ratchet-mesh distance sits INSIDE the great wheel's radius, so the climb
-// must END below that wheel). The arbor runs in a real bored hole in the
-// plate; the bore is its bearing. The same tooth count top and bottom
-// keeps the crown→ratchet ratio exactly what it was when the crown wheel
-// meshed the ratchet directly (the middle wheel telescopes out of the
-// ratio), and the path still has TWO meshes, so the winding sense is
-// unchanged too.
+// underside, where it meshes the fusee arbor's winding SPUR (a crossing
+// arbor anywhere at spur-mesh distance sits INSIDE the great wheel's
+// radius, so the climb must END below that wheel; the saw-toothed ratchet
+// itself lives on the plate top now, serving only the click). The arbor
+// runs in a real bored hole in the plate; the bore is its bearing. The
+// same tooth count top and bottom keeps the crown→fusee ratio exactly
+// what it was when the crown wheel meshed the ratchet directly (the
+// middle wheel telescopes out of the ratio), and the path still has TWO
+// meshes, so the winding sense is unchanged too.
 const crownWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
-const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the ratchet
+const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the spur
 crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
 keyless.add(crownWheel);
 // Transfer wheel: hub-less — its band between plate top and great-wheel
 // underside is only ~1.2 tall, and the stock hub ring would eat both gaps.
-const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the ratchet
+const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding spur
 const transferWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
 keyless.add(transferWheel);
@@ -1766,13 +1862,12 @@ crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
 windSpinner.add(crown);
 
-// Handles into the fusee arbor's ratchet + the plate-fixed click for the
-// winding animation (the click lives in its own unit now — see windingClick
-// at the barrel build).
-const ratchetMesh = fuseeRatchetGroup.getObjectByName('ratchet');
+// Handles into the fusee arbor's winding parts + the plate-top click for
+// the winding animation (windTop carries the plate-top ratchet stack; the
+// click lives in its own plate-top unit — see the windTop block).
 const clickMesh = windingClick.getObjectByName('click');
 const clickBaseRot = clickMesh ? clickMesh.rotation.z : 0;
-const RATCHET_TEETH = 24; // matches makeRatchetAndClick's default
+const RATCHET_TEETH = WIND_SPUR_TEETH; // spur and plate-top ratchet share the count — ratio unchanged
 
 // --- Setting path: setting wheel -> minute wheel/pinion (compound) --------
 // Positioned further out along the stem than crownWheel, at the sliding
@@ -1975,6 +2070,11 @@ const ROD_Z_LIFT = Math.max(
   CAM_T / 2 + CLEAR_MARGIN + ROD_TAILBAR_T / 2,
   FUSEE_TOP_Z + 0.7 - Z_SECONDS_ARBOR,
   TQ_TOP_Z + CLEAR_MARGIN + ROD_TAILBAR_T / 2 - Z_SECONDS_ARBOR,
+  // The rods cross the plate top near the keyless corner, where the
+  // plate-top ratchet stack now stands: their undersides must overfly its
+  // cap screw. Non-binding today (the plate term above wins) but derived
+  // so a thicker ratchet or taller cap can never silently eat the corridor.
+  RTOP_CAP_TOP + CLEAR_MARGIN + ROD_R - Z_SECONDS_ARBOR,
 );
 const ROD_PLANE_Z = Z_SECONDS_ARBOR + ROD_Z_LIFT; // reset rod centre-line's world z
 // The HACK rod (stop work) rides the same post on its own pin land ABOVE
@@ -4455,14 +4555,16 @@ function tick(t) {
   const crownWheelSpin = -windPathRot * (windPinionTeeth / crownWheelTeeth);
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
-  if (ratchetMesh) {
-    // Ratchet + fusee cone are keyed together, and their rotation is a pure
-    // function of chain hauled: −2π per BANKED winding turn (backwards
-    // against the train direction, exactly one cone turn per turn of chain
-    // pulled home), riding on the arbor's own train rotation. Raw crown
-    // input past full reserve moves neither — the chain is home.
+  {
+    // Winding spur, plate-top ratchet stack and fusee cone are keyed
+    // together, and their rotation is a pure function of chain hauled:
+    // −2π per BANKED winding turn (backwards against the train direction,
+    // exactly one cone turn per turn of chain pulled home), riding on the
+    // arbor's own train rotation. Raw crown input past full reserve moves
+    // none of them — the chain is home.
     const windBack = -windAccumTurns * Math.PI * 2;
-    ratchetMesh.rotation.z = windBack;
+    windSpur.rotation.z = windSpurBase + windBack;
+    windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
     if (clickMesh) clickMesh.rotation.z = clickBaseRot - 0.06 * Math.abs(Math.sin(windBack * 12));
   }

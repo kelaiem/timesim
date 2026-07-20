@@ -933,7 +933,30 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
 // screw sit just above it. Children named 'ratchet' / 'click'.
 // ---------------------------------------------------------------------------
 
-export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
+// The click body alone (beak along +x, pivot hole at the origin end),
+// extruded 0-based — callers place and aim it. Shared by the composite
+// builder below and the plate-top click unit in main.js.
+export function makeClick({ radius, thickness }) {
+  const clickL = radius * 0.8;
+  const cw2 = radius * 0.11;
+  const clickShape = new THREE.Shape();
+  clickShape.moveTo(0, cw2);
+  clickShape.lineTo(clickL * 0.55, cw2 * 0.7);
+  clickShape.lineTo(clickL, cw2 * 0.15);
+  clickShape.lineTo(clickL, -cw2 * 0.15);
+  clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
+  clickShape.lineTo(0, -cw2);
+  clickShape.closePath();
+  const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
+    depth: thickness,
+    bevelEnabled: false,
+  });
+  const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
+  click.name = 'click';
+  return click;
+}
+
+export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null }) {
   const g = new THREE.Group();
   const rShape = new THREE.Shape();
   for (let i = 0; i < teeth; i++) {
@@ -947,7 +970,17 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
   }
   rShape.closePath();
   const ratHole = new THREE.Path();
-  ratHole.absarc(0, 0, radius * 0.28, 0, Math.PI * 2, true);
+  if (squareBore != null) {
+    // Square hole for a filed arbor square (drive fit + 0.03 assembly play).
+    const h = (squareBore + 0.03) / 2;
+    ratHole.moveTo(-h, -h);
+    ratHole.lineTo(-h, h);
+    ratHole.lineTo(h, h);
+    ratHole.lineTo(h, -h);
+    ratHole.closePath();
+  } else {
+    ratHole.absarc(0, 0, radius * 0.28, 0, Math.PI * 2, true);
+  }
   rShape.holes.push(ratHole);
   const ratGeo = new THREE.ExtrudeGeometry(rShape, {
     depth: thickness,
@@ -957,30 +990,21 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness }) {
   const ratchet = new THREE.Mesh(ratGeo, MATS.steel);
   ratchet.name = 'ratchet';
   g.add(ratchet);
+  if (!includeClick) {
+    g.userData.r = radius;
+    g.userData.teeth = teeth;
+    return g;
+  }
 
   // Click / pawl — pivoted just outside the ratchet, beak seated in a valley.
-  const clickL = radius * 0.8;
-  const cw2 = radius * 0.11;
-  const clickShape = new THREE.Shape();
-  clickShape.moveTo(0, cw2);
-  clickShape.lineTo(clickL * 0.55, cw2 * 0.7);
-  clickShape.lineTo(clickL, cw2 * 0.15);
-  clickShape.lineTo(clickL, -cw2 * 0.15);
-  clickShape.lineTo(clickL * 0.55, -cw2 * 0.7);
-  clickShape.lineTo(0, -cw2);
-  clickShape.closePath();
   // Click sits BELOW the ratchet, on the wheel side — where the part that
   // carries it (great wheel / barrel lid) actually is.
-  const clickGeo = new THREE.ExtrudeGeometry(clickShape, {
-    depth: thickness * 0.75,
-    bevelEnabled: false,
-  });
-  clickGeo.translate(0, 0, -thickness * 0.9);
-  const click = new THREE.Mesh(clickGeo, MATS.blueSteel);
-  click.name = 'click';
+  const click = makeClick({ radius, thickness: thickness * 0.75 });
+  click.geometry.translate(0, 0, -thickness * 0.9);
   click.position.set(radius * 1.28, 0, 0);
   click.rotation.z = Math.PI * 0.778; // aim the beak at the valley point
   g.add(click);
+  const cw2 = radius * 0.11;
   const clickScrew = new THREE.Mesh(
     new THREE.CylinderGeometry(cw2 * 1.1, cw2 * 1.1, thickness * 1.2, 12),
     MATS.blueSteel
