@@ -2462,6 +2462,94 @@ const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
+// The chain is drawn as what a fusee chain IS: a miniature bicycle chain —
+// alternating inner/outer plate pairs riveted through pins. The pin axes
+// stay parallel to the arbors the whole way round (cone wrap, span and
+// drum coil alike, as on the real thing), so the plates lie flat in the
+// coil and successive turns clear each other at the 0.65 coil pitch:
+const CHAIN_PITCH = 0.8;    // rivet-to-rivet along the chain
+const CHAIN_PIN_LEN = 0.62; // total stack height — inside the 0.65 coil pitch
+const CHAIN_PLATE_T = 0.11;
+// One template per part, kept as raw non-indexed arrays so a rebuild is a
+// plain transform-and-fill into one big buffer (no per-link allocations
+// beyond the buffer itself). Plate pair z-stack, mirrored about the chain
+// centreline: inner faces 0.06..0.17, outer 0.20..0.31 — the pins run
+// flush to the outer faces, their ends reading as rivet heads.
+function chainPlatePairTemplate(endR, zOff) {
+  const half = CHAIN_PITCH / 2;
+  const s = new THREE.Shape(); // stadium: rivet-hole centres at ±half
+  s.absarc(-half, 0, endR, Math.PI / 2, Math.PI * 1.5, false);
+  s.absarc(half, 0, endR, Math.PI * 1.5, Math.PI / 2, false);
+  const one = new THREE.ExtrudeGeometry(s, { depth: CHAIN_PLATE_T, bevelEnabled: false, curveSegments: 4 });
+  const pos = [], nrm = [];
+  for (const zc of [zOff - CHAIN_PLATE_T / 2, -zOff - CHAIN_PLATE_T / 2]) {
+    const g = one.clone().translate(0, 0, zc);
+    pos.push(...g.attributes.position.array);
+    nrm.push(...g.attributes.normal.array);
+    g.dispose();
+  }
+  one.dispose();
+  return { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm) };
+}
+const CHAIN_TMPL = (() => {
+  const inner = chainPlatePairTemplate(0.2, 0.115);
+  const outer = chainPlatePairTemplate(0.23, 0.255);
+  const pinGeo = new THREE.CylinderGeometry(0.13, 0.13, CHAIN_PIN_LEN, 8).rotateX(Math.PI / 2).toNonIndexed();
+  const pin = {
+    pos: Float32Array.from(pinGeo.attributes.position.array),
+    nrm: Float32Array.from(pinGeo.attributes.normal.array),
+  };
+  pinGeo.dispose();
+  return { inner, outer, pin };
+})();
+function buildChainLinkGeometry(curve) {
+  curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
+  const len = curve.getLength();
+  const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
+  const joints = curve.getSpacedPoints(N); // N+1 rivet positions, arc-length uniform
+  const { inner, outer, pin } = CHAIN_TMPL;
+  // Parity is anchored at the CLAW end so the link that drops over the
+  // hook's pin is always an outer pair, whatever N rounds to this rebuild.
+  const isOuter = (i) => (N - 1 - i) % 2 === 0;
+  let total = (N + 1) * pin.pos.length;
+  for (let i = 0; i < N; i++) total += (isOuter(i) ? outer : inner).pos.length;
+  const pos = new Float32Array(total), nrm = new Float32Array(total);
+  let off = 0;
+  // Write a template transformed by the orthonormal frame with basis
+  // columns (t̂,ŷ,k̂) and translation c — normals rotate by the same basis.
+  const write = (tmpl, t, y, k, c) => {
+    const P = tmpl.pos, Q = tmpl.nrm;
+    for (let i = 0; i < P.length; i += 3) {
+      const a = P[i], b = P[i + 1], d = P[i + 2];
+      pos[off + i] = t.x * a + y.x * b + k.x * d + c.x;
+      pos[off + i + 1] = t.y * a + y.y * b + k.y * d + c.y;
+      pos[off + i + 2] = t.z * a + y.z * b + k.z * d + c.z;
+      const na = Q[i], nb = Q[i + 1], nd = Q[i + 2];
+      nrm[off + i] = t.x * na + y.x * nb + k.x * nd;
+      nrm[off + i + 1] = t.y * na + y.y * nb + k.y * nd;
+      nrm[off + i + 2] = t.z * na + y.z * nb + k.z * nd;
+    }
+    off += P.length;
+  };
+  const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
+  const mid = new THREE.Vector3();
+  const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+  for (let i = 0; i < N; i++) {
+    const a = joints[i], b = joints[i + 1];
+    t.subVectors(b, a).normalize();
+    // Pin axis: world-vertical with the tangent's component removed, so
+    // plates stay flat while the span carries its slight z slope.
+    k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
+    y.crossVectors(k, t);
+    mid.addVectors(a, b).multiplyScalar(0.5);
+    write(isOuter(i) ? outer : inner, t, y, k, mid);
+  }
+  for (let i = 0; i <= N; i++) write(pin, X, Y, Z, joints[i]); // rivets, world-vertical
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  return geo;
+}
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
   return {
     r: FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * f,
@@ -2572,7 +2660,7 @@ function rebuildChain(tension) {
     COIL_TOP
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
-  const geo = new THREE.TubeGeometry(curve, pts.length * 2, 0.3, 6, false);
+  const geo = buildChainLinkGeometry(curve);
   if (chainMesh) {
     chainMesh.geometry.dispose();
     chainMesh.geometry = geo;
