@@ -4935,7 +4935,7 @@ document.head.appendChild(style);
 const panel = document.createElement('div');
 panel.id = 'clock-ui';
 panel.innerHTML = `
-  <h1>Lever Escapement</h1>
+  <h1>Watch Sim</h1>
   <button id="btn-hide-ui" title="Hide panel (H)">Hide</button>
   <div class="row">
     <button id="btn-pause">Pause</button>
