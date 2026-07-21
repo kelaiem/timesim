@@ -617,6 +617,22 @@ const P = {
 const KW_MODULE = 0.34;
 const crownWheelTeeth = 20, windPinionTeeth = 8, settingWheelTeeth = 20;
 const minuteWheelTeeth = 24, minutePinionTeeth = 8;
+// The setting path collapsed to ONE coefficient: hand-offset radians per
+// radian of setting-path rotation. tick() walks this same chain forward
+// (settingWheel → minuteArbor compound → cannon) to derive the hand offset
+// from the crown; Sync (BACKLOG §9) needs the inverse to solve the crown
+// rotation a wanted hand movement costs. Both directions therefore come
+// from the tooth counts — the identity is asserted below rather than
+// trusted, since the two forms live 5000 lines apart.
+const HAND_RAD_PER_SET_RAD = -(windPinionTeeth / minuteWheelTeeth) * (minutePinionTeeth / cannonPinionTeeth);
+{
+  const probe = 1; // one radian into the setting path, walked exactly as tick() walks it
+  const settingWheelSpin = -probe * (windPinionTeeth / settingWheelTeeth);
+  const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
+  const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
+  if (Math.abs(rawSetOffset - HAND_RAD_PER_SET_RAD) > 1e-12)
+    console.warn(`setting path: closed form ${HAND_RAD_PER_SET_RAD} disagrees with the forward chain ${rawSetOffset}`);
+}
 const CROWN_PULL_DIST = 5; // stem/crown outward slide when pulled to set
 
 // ---------------------------------------------------------------------------
@@ -845,6 +861,23 @@ const ratioCenter = 10 / centerTeeth; // third pinion teeth / center wheel teeth
 const offCenter = meshOffset(P.third, P.center, centerTeeth, ratioCenter, thirdAt0);
 function centerAngle(t) { return offCenter - ratioCenter * thirdAngle(t); }
 const centerAt0 = centerAngle(0);
+
+// DIAL EPOCH — the angle the hands are FITTED at. Zero-referencing the hands
+// against centerAt0 makes τ = 0 read 12:00:00 by construction; a watchmaker
+// fits hands at whatever angle they please, so the boot pose is one constant
+// folded into the hands' own reference. It is NOT folded into τ: that would
+// claim the movement had already run 1 h 51 m, against a full barrel and a
+// beat count of zero — three readouts disagreeing about the same history.
+// The minute hand's rate converts between the two domains in both
+// directions; read it off centerAngle rather than assuming −2π per hour.
+const MIN_HAND_RAD_PER_SEC = (centerAngle(3600) - centerAngle(0)) / 3600;
+const DIAL_EPOCH_S = 1 * 3600 + 51 * 60; // boot pose: 1:51:00
+const DIAL_EPOCH_ANGLE = DIAL_EPOCH_S * MIN_HAND_RAD_PER_SEC;
+// The jumper quantizes the setting offset on the MIN_PITCH grid without the
+// epoch in hand (see tick()), so an epoch that is not a whole number of
+// minutes would leave the minute hand permanently between two indices.
+if (DIAL_EPOCH_S % 60 !== 0)
+  console.warn(`dial epoch: ${DIAL_EPOCH_S}s is not a whole number of minutes — the jumper's index grid and the dial disagree`);
 
 const ratioBarrel = 10 / barrelTeeth; // center pinion teeth / barrel teeth
 const offBarrel = meshOffset(P.center, P.barrel, barrelTeeth, ratioBarrel, centerAt0);
@@ -4853,6 +4886,7 @@ const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
   barrelWindTurns = savedState.barrelWindTurns;
   tauIntegrated = savedState.tauIntegrated;
   crownRotation = savedState.crownRotation;
+  jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
   restoredCamera = savedState.camera;
@@ -4947,7 +4981,9 @@ panel.innerHTML = `
     <input type="range" id="scale-slider" min="0" max="1000" step="1" />
   </div>
   <div class="row label-small"><span id="scale-value">0.15×</span><button id="btn-wind">Wind</button></div>
+  <div class="row label-small"><span id="scale-note">6.7× slow · 0.75 beats/s</span></div>
   <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
+  <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
   <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
   <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
   <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
@@ -5107,10 +5143,56 @@ function sliderToScale(v) {
   return SCALE_MIN * Math.pow(SCALE_MAX / SCALE_MIN, t);
 }
 scaleSlider.value = scaleToSlider(timeScale);
-scaleValueEl.textContent = timeScale.toFixed(2) + '×';
+
+// --- the scale readout (BACKLOG §12) ---------------------------------------
+// At the top of the slider the scale IS 1× and the symbol says everything —
+// no gloss, and no trailing zeros to make a statement look like a
+// measurement. Below it, two DERIVED facts rather than invented adjectives:
+// how slow, and what that does to the beat — 0.15× is not an arbitrary
+// default, it is roughly where the escapement's unlock-impulse-drop sequence
+// becomes followable by eye, and "0.75 beats/s" says that better than any
+// word could. Fast-forward, pause and the sync catch-up all run on rates the
+// slider does not know about, so they OUTRANK it here: reporting the slider
+// while the movement flies would simply be false.
+const scaleNoteEl = document.getElementById('scale-note');
+// Detect the top by the slider's INTEGER position, never by comparing the
+// scale to 1: sliderToScale(max) is 0.02·50, which in floating point can
+// land at 1.0000000000000002. The unity case renders differently, so it has
+// to be detected exactly.
+function atRealTime() { return Number(scaleSlider.value) >= Number(scaleSlider.max); }
+function formatScale() {
+  if (paused) return { value: 'paused', note: 'movement stopped' };
+  if (fastForward) return { value: 'fast-forward', note: '≈5400× — the whole reserve in ~20 s' };
+  if (syncPhase === 'catchup') return { value: `${catchUpRate.toFixed(1)}×`, note: 'catching up to the wall clock' };
+  const beats = 2 * F_BALANCE * timeScale; // 5/s at 1× — 18,000 vph
+  const beatsText = `${(beats >= 1 ? beats.toFixed(1) : beats.toFixed(2))} beats/s`;
+  if (atRealTime()) return { value: '1×', note: beatsText };
+  // Two decimals round the notch below the top to "1.00×", which claims a
+  // unity this position does not have — and its slow-ratio rounds to
+  // "1.0× slow", which is noise. Unity is a distinct state here, so the
+  // readout gains a digit rather than borrowing the top's identity, and the
+  // ratio clause drops out once it stops saying anything.
+  const shown = timeScale.toFixed(2);
+  const slow = 1 / timeScale;
+  return {
+    value: `${shown === '1.00' ? timeScale.toFixed(3) : shown}×`,
+    note: slow >= 1.05 ? `${slow.toFixed(1)}× slow · ${beatsText}` : beatsText,
+  };
+}
+function paintScale() {
+  const s = formatScale();
+  scaleValueEl.textContent = s.value;
+  scaleNoteEl.textContent = s.note;
+}
+function setTimeScale(s) {
+  timeScale = s;
+  scaleSlider.value = scaleToSlider(s);
+  paintScale();
+}
 scaleSlider.addEventListener('input', () => {
   timeScale = sliderToScale(Number(scaleSlider.value));
-  scaleValueEl.textContent = timeScale.toFixed(2) + '×';
+  paintScale();
+  syncCancel(); // taking the slider means taking the wheel
 });
 
 // --- pause/play -------------------------------------------------------
@@ -5120,7 +5202,89 @@ pauseBtn.addEventListener('click', () => {
   paused = !paused;
   pauseBtn.textContent = paused ? 'Play' : 'Pause';
   pauseBtn.classList.toggle('active', paused);
+  syncCancel(); // a script that cannot advance must not pretend to be running
 });
+
+// --- SYNC TO THE WALL CLOCK (BACKLOG §9) -----------------------------------
+// A scripted watchmaker, not an assignment. The crown is pulled — which
+// hacks the balance and flies the seconds hand to zero, both already built —
+// the minute hand is SET through the real keyless ratios to the wall clock's
+// LAST whole minute, and the crown is pushed back in. The watch is now
+// running a known number of seconds BEHIND, and it closes that gap by
+// running fast until it agrees: catching up, the way a watch you have just
+// set actually gets there.
+//
+// Nothing is assigned anywhere in this: the hand movement travels the gears
+// (it is a write to crownRotation, exactly what a drag produces — the
+// auto-wind precedent), and the catch-up is time-scale, which this app
+// already treats as a first-class user-facing control. Aiming at the LAST
+// whole minute rather than the next one is what buys that: the jumper
+// quantizes the display to whole minutes while the crown is out anyway, so
+// a minute that has already passed leaves a deficit that is always positive
+// and always less than a minute. Aiming forward would leave the script
+// sitting and waiting for the wall clock to catch up to IT.
+const SYNC_SETTLE = 0.45; // s — hold after the set so the detent snap is watchable
+// Catch-up law: rate = 1 + min(gap/TAU, MAX_EXTRA). Constraint: the worst
+// case — a full minute of deficit plus the ~1 s the crown animation itself
+// costs — closes in under 10 s of real time, and the last second of it eases
+// rather than falling off a cliff. MAX_EXTRA = 20 covers the linear stretch
+// (62 s → 12 s at 20 s per second ≈ 2.5 s) and TAU = 0.6 s eases the rest
+// (12 s → 0.05 s ≈ 3.3 s): ≈ 6 s worst case, decelerating the whole way.
+const CATCHUP_TAU = 0.6;
+const CATCHUP_MAX_EXTRA = 20;
+const CATCHUP_DONE = 0.05; // s of residual — under one frame's worth at 1×
+let syncPhase = null;      // null | 'pull' | 'settle' | 'push' | 'catchup'
+let syncTimer = 0;
+let catchUpRate = 1;
+
+function wallClockSeconds() {
+  const d = new Date();
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+}
+// Signed shortest distance from `from` to `to` on the 12-hour dial: the
+// hands cannot tell the halves apart, so neither should the arithmetic.
+function dialDelta(from, to) {
+  const H = DIAL_PERIOD_S;
+  return ((((to - from) % H) + H + H / 2) % H) - H / 2;
+}
+function syncCancel() {
+  syncPhase = null;
+  catchUpRate = 1;
+}
+function syncStart() {
+  if (fastForward || paused) return; // both outrank the slider — see formatScale()
+  setTimeScale(1);                   // a synced clock at 0.15× is wrong again within seconds
+  syncPhase = 'pull';
+  syncTimer = 0;
+  setCrownOut(true);
+}
+function syncUpdate(realDt) {
+  if (!syncPhase) return;
+  syncTimer += realDt;
+  if (syncPhase === 'pull') {
+    // Wait for the stem to actually reach the setting position: the jumper
+    // is only in the star, and the setting path only engaged, once it has.
+    if (crownPullT > 0.95) {
+      const target = Math.floor(wallClockSeconds() / 60) * 60;
+      const deltaSec = dialDelta(displayedSeconds(), target);
+      // Hand movement → setting-path rotation → crown. Both conversions are
+      // the movement's own: the minute hand's rate, then the keyless chain.
+      crownRotation += (deltaSec * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD;
+      syncPhase = 'settle';
+      syncTimer = 0;
+    }
+  } else if (syncPhase === 'settle') {
+    if (syncTimer >= SYNC_SETTLE) { syncPhase = 'push'; setCrownOut(false); updateCrownUI(); }
+  } else if (syncPhase === 'push') {
+    // The push folds the jumper's snap into jumpCorr and lifts the beak; the
+    // balance is released here, so the catch-up has something to run.
+    if (crownPullT < 0.05) { syncPhase = 'catchup'; syncTimer = 0; }
+  } else if (syncPhase === 'catchup') {
+    const gap = dialDelta(displayedSeconds(), wallClockSeconds());
+    if (gap <= CATCHUP_DONE) syncCancel();
+    else catchUpRate = 1 + Math.min(gap / CATCHUP_TAU, CATCHUP_MAX_EXTRA);
+  }
+}
 
 // --- wind button ----------------------------------------------------------
 // Not a shortcut that pokes tension directly — it queues up real rotation
@@ -5144,10 +5308,27 @@ function updateCrownUI() {
   timeReadoutEl.classList.toggle('hacking', crownOut);
 }
 function toggleCrown() {
+  syncCancel(); // taking the crown by hand ends the script's claim on it
   setCrownOut(!crownOut);
   updateCrownUI();
 }
 crownBtn.addEventListener('click', toggleCrown);
+
+// --- sync button (BACKLOG §9) ----------------------------------------------
+// Click to start, click again to abandon; the script itself drives the crown,
+// so the button's job is only to hand it over and report where it has got to.
+const syncBtn = document.getElementById('btn-sync');
+syncBtn.addEventListener('click', () => {
+  if (syncPhase) { syncCancel(); return; }
+  syncStart();
+  updateCrownUI();
+});
+const SYNC_LABEL = { pull: 'Pulling…', settle: 'Setting…', push: 'Pushing in…', catchup: 'Catching up' };
+function updateSyncUI() {
+  syncBtn.textContent = syncPhase ? SYNC_LABEL[syncPhase] : 'Now';
+  syncBtn.classList.toggle('active', !!syncPhase);
+  syncBtn.disabled = fastForward || paused;
+}
 
 // --- fast-forward toggle ---------------------------------------------------
 document.getElementById('btn-ff').addEventListener('click', () => {
@@ -5190,6 +5371,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (!crownHitTest(e)) return;
+  syncCancel(); // ditto: a hand on the crown outranks the script
   crownDragging = true;
   crownDragMoved = false;
   crownDragStartX = e.clientX;
@@ -5483,6 +5665,7 @@ function captureState() {
     barrelWindTurns,
     tauIntegrated,
     crownRotation,
+    jumpCorr,
     crownOut,
     fastForward,
     timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
@@ -5657,13 +5840,26 @@ let lastAutoSaveTime = 0;
 
 const projected = new THREE.Vector3();
 
-function formatTime(simSeconds) {
-  const total = Math.floor(simSeconds) % 86400;
-  const hh = Math.floor(total / 3600) % 24;
+// What the HANDS read, in seconds. τ alone is the movement's own elapsed
+// time and ignores hand-setting entirely — which is why the panel used to
+// disagree with its own dial the moment the crown was turned. The hands are
+// τ displaced by the setting offset and the dial epoch, so the readout is
+// too, converted back through the minute hand's own rate.
+let handSetOffsetNow = 0; // last value tick() gave the hands
+function displayedSeconds() {
+  return tauIntegrated + (handSetOffsetNow + DIAL_EPOCH_ANGLE) / MIN_HAND_RAD_PER_SEC;
+}
+
+// 12-hour, like the dial it mirrors — a 24-hour readout beside a 12-hour
+// dial invites the reader to trust a distinction the hands cannot make.
+const DIAL_PERIOD_S = 12 * 3600;
+function formatTime(displaySeconds) {
+  const total = Math.floor(((displaySeconds % DIAL_PERIOD_S) + DIAL_PERIOD_S) % DIAL_PERIOD_S);
+  const hh = Math.floor(total / 3600) || 12; // 0 o'clock reads as 12
   const mm = Math.floor(total / 60) % 60;
   const ss = total % 60;
   const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+  return `${hh}:${pad(mm)}:${pad(ss)}`;
 }
 
 function updateExplode() {
@@ -5857,6 +6053,7 @@ function tick(t) {
     }
   }
   const handSetOffset = jumpDisp !== null ? jumpDisp : rawSetOffset + jumpCorr;
+  handSetOffsetNow = handSetOffset; // the readout reads what the HANDS read (see displayedSeconds)
 
   // Hands: driven by the same train functions, but zero-referenced against
   // t=0 so the dial reads 12:00:00 at sim start (the raw angles carry the
@@ -5866,7 +6063,7 @@ function tick(t) {
   // (-Z) side through dialFace's Y-flip, so a decreasing local rotation
   // reads as a clockwise sweep from the front — the raw deltas already
   // have the right sense.
-  const minuteA = centerAngle(tau) - centerAt0 + handSetOffset; // −2π per hour
+  const minuteA = centerAngle(tau) - centerAt0 + handSetOffset + DIAL_EPOCH_ANGLE; // −2π per hour
   minuteHand.rotation.z = minuteA;
   // Hour hand: NOT minuteA/12. The angle is carried through the motion
   // works' two real meshes — cannon pinion → minute wheel, then minute
@@ -6009,10 +6206,11 @@ function tick(t) {
 
     // --- SOUND edge detection (BACKLOG §8). Discrete events off the
     // continuous phases this tick just computed. All suppressed in
-    // fast-forward (~5400× would machine-gun the beat), and capped at
-    // 3 transients per source per tick with small time offsets so a
-    // clamped-but-large rawDt (tab restore) hiccups gracefully.
-    if (soundOn && !fastForward) {
+    // fast-forward (~5400× would machine-gun the beat) and in the sync
+    // catch-up (up to 21× is a ~105 Hz buzz, the same failure in miniature),
+    // and capped at 3 transients per source per tick with small time offsets
+    // so a clamped-but-large rawDt (tab restore) hiccups gracefully.
+    if (soundOn && !fastForward && syncPhase !== 'catchup') {
       // Escapement beat — a three-impact cluster per beat (unlock, impulse,
       // drop+lock; see SND.beatEvent), each fired as the frame steps across
       // its phase boundary. Events crossed in ONE frame are scheduled at
@@ -6119,7 +6317,11 @@ function frame(now) {
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
     } else {
-      accumulator += realDt * timeScale;
+      syncUpdate(realDt);
+      // The catch-up is a rate the slider does not know about, so it stands
+      // in for timeScale rather than being written into it — the slider's
+      // own position (and the user's chosen scale) survives the sync.
+      accumulator += realDt * (syncPhase === 'catchup' ? catchUpRate : timeScale);
       while (accumulator >= FIXED_DT) {
         simTime += FIXED_DT;
         accumulator -= FIXED_DT;
@@ -6128,9 +6330,13 @@ function frame(now) {
     }
   }
 
-  // Time and beats read the MOVEMENT's clock (τ): they stop when it stops.
+  // Beats read the MOVEMENT's clock (τ): they stop when it stops. The TIME
+  // reads what the hands read — τ displaced by the setting offset and the
+  // dial epoch — so the panel and the dial can no longer disagree.
   const tauNow = tauIntegrated;
-  document.getElementById('readout-time').textContent = formatTime(tauNow);
+  document.getElementById('readout-time').textContent = formatTime(displayedSeconds());
+  paintScale();
+  updateSyncUI();
   document.getElementById('readout-beats').textContent = String(beatPhase(tauNow).n);
   document.getElementById('reserve-value').textContent =
     (reserveShown * (RELAX_SECONDS / 3600)).toFixed(1) + ' h';
@@ -6191,6 +6397,11 @@ window.__clock = {
   },
   get simTime() { return simTime; },
   get tau() { return tauIntegrated; },
+  // What the HANDS read, in seconds (τ displaced by the setting offset and
+  // the dial epoch). τ alone cannot be checked against the dial once the
+  // crown has been turned, so the inspection surface needs both.
+  get displayTime() { return displayedSeconds(); },
+  get dialEpoch() { return DIAL_EPOCH_S; },
   get balanceRate() { return balanceRate; },
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
