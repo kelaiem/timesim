@@ -536,6 +536,17 @@ const AXES = [
     n: 96,
     pose: (f) => ({ tau: f * 8 * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
   },
+  {
+    // One full star pitch (60 s of movement time — the star turns 2° per
+    // MINUTE, one point per minute-hand minute) with the crown pulled, so
+    // the minute jumper is actually ENGAGED and riding the V profile —
+    // neither 'crown' (tau pinned at 0.05, never turns the star) nor
+    // 'train' (crownPullT pinned at 0, jumper held lifted clear) ever pose
+    // this pair through a real point→valley→point cycle.
+    name: 'jumperEngage',
+    n: 120,
+    pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1170,6 +1181,44 @@ const PENETRATION_BUDGETS = [
       unit.obj.traverse((o) => {
         if (o.isMesh && o.material && o.material.color && o.material.color.getHex() !== 0xb01326) out.push(o);
       });
+      return out;
+    },
+  },
+  {
+    // Minute jumper's beak seated in the minute star (BACKLOG §1, PRs
+    // #28/#29): EXPECTED contact (see EXPECTED_PAIRS above), but the depth
+    // needs its own tight budget for the same reason the escape-wheel rows
+    // do. This pair used to bury the beak 0.268 deep, because STAR_DEPTH
+    // was styled (0.45) rather than derived: with STAR_POINTS forced to 180
+    // by the motion works, that made each tooth 3.4× deeper than its own
+    // pitch arc, and no beak of practical width could seat in the resulting
+    // needle valley. Deriving the depth from the pitch (see STAR_FLANK in
+    // main.js) took the worst case to 0.009 — the seated tip's own contact,
+    // nothing more. maxDepth is set just over that so a future upstream
+    // change (a different STAR_R, STAR_FLANK, or JMP_PIV_R) that reopens
+    // the gap fails here instead of silently shipping.
+    //
+    // NOTE for anyone re-measuring this pair by hand: setting
+    // window.requestAnimationFrame to a THROTTLED shim (e.g. a setTimeout
+    // stand-in, the usual trick for driving sweeps with the preview pane
+    // hidden) is NOT enough to get a repeatable number here — the live
+    // loop is still running underneath and can nudge crownPullT/tau
+    // between individual setPose calls in a slow (many-BVH-query) sweep,
+    // so two back-to-back runs can report different worst poses (observed
+    // 0.123 vs 0.191 for the identical built geometry). Set it to a no-op
+    // (`() => {}`) to fully freeze the sim before sweeping this pair.
+    pair: ['Motion works', 'Minute jumper'],
+    maxDepth: 0.03,
+    axis: 'jumperEngage',
+    nSamples: 120,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'star') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'jumperBeak') out.push(o); });
       return out;
     },
   },

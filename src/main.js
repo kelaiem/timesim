@@ -4394,9 +4394,20 @@ if (STAR_T < 0.2)
 const STAR_BOT = _hourWheelTop + CLEAR_MARGIN;      // 0-based extrude sits here
 const STAR_MID = STAR_BOT + STAR_T / 2;
 // Radius inside the minute wheel's root circle (the star must never be
-// the mesh); depth styled deep for slender visible points.
+// the mesh).
 const STAR_R = (MW_MODULE_1 * MW_MINUTE_TEETH) / 2 - MW_MODULE_1 * 1.15 - 0.35;
-const STAR_DEPTH = 0.45;
+// Tooth depth DERIVED from the pitch, not styled. STAR_POINTS is forced to
+// 180 by the motion works (one point per minute-hand minute), so at this
+// radius the pitch arc is only ~0.13 — a depth styled for "slender visible
+// points" (it was 0.45) made every tooth 3.4× deeper than its own spacing:
+// an 8° needle whose valley admits nothing, so no jumper beak of any
+// practical width could seat without burying its shaft in the neighbours.
+// Depth follows the flank angle instead: half a pitch arc of tangential
+// run per STAR_FLANK of radial drop. 40° is the cam-able middle of the
+// jumper range — steep enough that the beak is pushed out decisively as a
+// point passes, shallow enough that the spring isn't fighting a wall.
+const STAR_FLANK = 40 * DEG2RAD;                    // flank half-angle from radial
+const STAR_DEPTH = (STAR_R * STAR_PITCH) / 2 / Math.tan(STAR_FLANK);
 const minuteStar = G.makeStarWheel({ radius: STAR_R, points: STAR_POINTS, thickness: STAR_T, depth: STAR_DEPTH });
 minuteStar.position.z = STAR_BOT;
 mwArbor.add(minuteStar); // keyed to the minute wheel — snaps move the hands through the real train
@@ -4406,8 +4417,15 @@ mwArbor.add(minuteStar); // keyed to the minute wheel — snaps move the hands t
 // working bite; lift angle derived from the tip's clearance over the
 // star's points.
 const JMP_PIV_R = STAR_R + 2.4;                     // pivot ring: clear of the tips by ~2 beak lengths
-const JMP_TIP_SEAT_R = STAR_R - STAR_DEPTH + 0.1;   // tip rests just above the valley root
-const JMP_W = 0.9;
+// Tip seat: HALF a tooth depth below the tip circle, so the beak rides the
+// flanks rather than bottoming out on the root — a beak resting at the root
+// would take its snap from the root fillet instead of the V, and the notch
+// is narrowest there. This is a FRACTION of the depth, not a fixed offset:
+// the old `- STAR_DEPTH + 0.1` only looked sane against the old 0.45 depth
+// and would sit outside the tip circle entirely at the derived depth.
+const JMP_TIP_SEAT_R = STAR_R - STAR_DEPTH * 0.5;
+// The radial band over which the beak is actually inside the star.
+const JMP_ENGAGE_BAND = STAR_R - JMP_TIP_SEAT_R;
 // Lever length (pivot → tip), solved so the tip's swing circle CROSSES the
 // seat radius transversally with real ride authority. The old derivation
 // (REACH = PIV − seat − 0.405) made |pivot→tip| = PIV − seat exactly: the
@@ -4420,6 +4438,14 @@ const JMP_W = 0.9;
 const JMP_PHI = Math.asin(0.5 * JMP_TIP_SEAT_R / JMP_PIV_R); // pivot-vertex angle at the seat crossing
 const JMP_LEVER = JMP_PIV_R * Math.cos(JMP_PHI)
   - Math.sqrt(JMP_TIP_SEAT_R ** 2 - (JMP_PIV_R * Math.sin(JMP_PHI)) ** 2); // pivot → tip
+// Beak width from the SHOULDER constraint, not styling. makeJumper's
+// outline is self-similar: the tip cone runs from the apex back to the
+// shoulder over 0.9·(W/2), where the arm flares to full width. Only the
+// cone may be inside the star — the shoulder must stay outside the tip
+// circle, or it fouls the points either side of the valley (that, not the
+// tip, is what the old 0.9 width buried 0.27 deep). Clear the tip circle
+// by one further tooth depth so the ride swing can't carry it back in:
+const JMP_W = (2 * (JMP_ENGAGE_BAND + STAR_DEPTH)) / 0.9;
 const JMP_REACH = JMP_LEVER - JMP_W * 0.45;
 // (The released lift itself is solved further down, over the beak's whole
 // outline — see JMP_LIFT_ROT.)
@@ -4460,6 +4486,9 @@ jumperUnit.add(jumperAzGroup);
 const jumperLever = new THREE.Group();
 jumperLever.position.set(JMP_PIV_R, 0, STAR_BOT);
 jumperAzGroup.add(jumperLever);
+// Beak AIM (JMP_AIM), lever length and width were all solved together,
+// above, against the star's real tooth geometry — see the (k, width)
+// scan next to JMP_LEVER's definition.
 // Beak AIM solved, not the dead-on lay: a tip on the stud→pivot line has
 // zero radial mechanical advantage (rotation moves it tangentially), so
 // the seat is scanned OFF-axis for the aim whose tip lands on the seat
@@ -4487,6 +4516,29 @@ const JMP_BASE_ROT = JMP_AIM.rot;
 const JMP_TIP_AZ_LOCAL = Math.atan2(JMP_AIM.t.y, JMP_AIM.t.x); // in the az frame
 const JMP_LIFT_SIGN = Math.sign(JMP_AIM.slope) || 1;
 const JMP_SLOPE = Math.abs(JMP_AIM.slope);
+// Exact tip-radius → lever-rotation inverse, for the RUNTIME ride (below,
+// near "starTurn"/"rU"). |tip(rot)| is the same law-of-cosines circle
+// JMP_LEVER was solved from: R(rot)² = PIV² + L² + 2·PIV·L·cos(rot). The
+// runtime ride used to LINEARIZE this at the seat (ride = (Rt−seat)/slope),
+// which is only exact in the limit Rt→seat; measuring the swept MTV depth
+// between the star and beak meshes across a full point→valley→point cycle
+// (crown pulled, engaged) found the linear model under-rotating badly as
+// Rt grows toward STAR_R — the beak dug into the passing POINT by up to
+// ~0.27 units (worst near the point apex, where the seat-tangent line
+// diverges most from the true circle). Solving the circle exactly instead
+// removes that error identically at every phase, not just near the seat.
+const JMP_COS_DENOM = 2 * JMP_PIV_R * JMP_LEVER;
+function jmpRideForSeatRadius(targetR) {
+  // targetR is clamped to ≥ JMP_TIP_SEAT_R by the caller (below-seat radii
+  // — the valley side of the profile — mean the beak simply rests seated,
+  // ride = 0). acos's principal value is always in [0, π]; JMP_BASE_ROT's
+  // branch (which side of π the solved aim landed on, fixed at build time
+  // and bounded away from π itself by the JMP_AIM slope gate) says which
+  // of the two rot solutions for this cos is the one on OUR swing arc.
+  const c = clamp((targetR * targetR - JMP_PIV_R * JMP_PIV_R - JMP_LEVER * JMP_LEVER) / JMP_COS_DENOM, -1, 1);
+  const rot = JMP_BASE_ROT > Math.PI ? Math.PI * 2 - Math.acos(c) : Math.acos(c);
+  return JMP_LIFT_SIGN * (rot - JMP_BASE_ROT);
+}
 const jumperBeakMesh = G.makeJumper({ reach: JMP_REACH, thickness: STAR_T, width: JMP_W });
 jumperBeakMesh.rotation.z = JMP_BASE_ROT; // solved aim, tip on the seat
 // Released lift, solved over the beak's WHOLE OUTLINE — not the tip apex.
@@ -5835,7 +5887,11 @@ function tick(t) {
     let u = ((JMP_TIP_AZ - starTurn) / STAR_PITCH) % 1;
     if (u < 0) u += 1;
     const rU = STAR_R - 2 * STAR_DEPTH * Math.min(u, 1 - u); // V profile: tips at u=0, valley at 0.5
-    const ride = Math.max(rU - JMP_TIP_SEAT_R, 0) / JMP_SLOPE;
+    // Exact ride (see jmpRideForSeatRadius above) — below the seat radius
+    // the beak simply stays seated (ride 0); above it, the true circle
+    // solve, not the seat-tangent line, so the tip's swept radius matches
+    // the star's local profile EXACTLY through the whole point→valley arc.
+    const ride = rU > JMP_TIP_SEAT_R ? jmpRideForSeatRadius(rU) : 0;
     const lift = (1 - crownPullT) * JMP_LIFT_ROT;
     jumperLever.rotation.z = JMP_LIFT_SIGN * Math.max(ride * crownPullT, lift);
     // Lifter link (lost-motion bar): follower drawn from the setting
