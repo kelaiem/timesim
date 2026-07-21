@@ -2378,12 +2378,23 @@ const STOP_ARM_T = 0.8;     // pad arm thickness
 const STOP_ARM_W = 0.9;     // pad arm width
 const STOP_PAD_RISE = 0.9;  // arm top face → ruby top face (post 0.5 + ruby 0.4)
 const STOP_TAIL_W = 0.5;    // tail bar section
+const STOP_LEG_W = 0.7;     // drop-leg section (local x): pivot hub → pad-arm plane
+// The drop leg — and with it the pad arm's root — is IN LINE with the tail
+// bar, not stood off beside it. The crank hinges about local X, so every
+// point of it keeps its x for ever: a leg hanging off-axis makes the crank
+// asymmetric about its own swing plane, and then there is no pair of
+// positions where a clevis can straddle it (the old +x leg ran straight
+// through the +x cheek). With the root ON the axis the crank's whole hub
+// band is |x| ≤ STOP_HUB_HALF_X, which is what the cheeks are derived from.
+const STOP_ARM_ROOT_X = 0;
+const STOP_HUB_HALF_X = Math.max(STOP_TAIL_W, STOP_LEG_W) / 2;
 // Bracket axis stand-off from the balance axis. With the RADIAL hinge the
 // crank's tangential swing only ever moves it AWAY from the balance axis,
 // so the binding constraint is the STATIC hardware: the clevis cheeks
-// reach 1.5/2 inward of the pivot, so the allowance must cover
-// 0.75 + CLEAR_MARGIN = 0.90; the 2.0 keeps the extra so the pad arm's
-// diagonal run down to the contact annulus stays shallow.
+// straddle the crank along that same radial axis and reach
+// STOP_CHEEK_X + STOP_CHEEK_T/2 ≈ 0.82 inward of the pivot, so the
+// allowance must cover that + CLEAR_MARGIN ≈ 0.97; the 2.0 keeps the extra
+// so the pad arm's diagonal run down to the contact annulus stays shallow.
 const STOP_LEAN_ALLOW = 2.0;
 const STOP_PIVOT_R = BAL_OUTER_R + STOP_LEAN_ALLOW;
 // The tail now HANGS: the hack rod runs on the LOW plane (under the
@@ -2486,35 +2497,18 @@ const STOP_MAST_TOP = Z_STOP_PIVOT + 0.85;
 if (STOP_MAST_TOP > TQ_TOP_Z)
   console.warn(`stop work: mast top ${STOP_MAST_TOP.toFixed(2)} above the cock height ${TQ_TOP_Z.toFixed(2)} — achieved |K| = ${Math.abs(STOP_TANG_K).toFixed(3)}, needed ≥ ${(POST_STROKE / ((TQ_TOP_Z - 0.85 - ROD2_PLANE_Z) * Math.sin(STOP_PSI_TARGET))).toFixed(3)}`);
 
-// --- Build: static bracket (post + clevis + pin) and the rotating crank.
+// --- Build: the rotating crank first, then the static bracket AROUND it.
 // Group local +X = radially OUT of the balance, local +Y = STOP_T_HAT;
 // the crank rotates about local X (the horizontal RADIAL pivot axis).
+// Build order is load-bearing: the bracket's stand-off is SOLVED against
+// the crank's swept envelope (see the bracket block after the crank), so
+// the crank has to exist first.
 const stopLeverGroup = new THREE.Group();
 stopLeverGroup.position.set(STOP_PIVOT.x, STOP_PIVOT.y, Z_STOP_PIVOT);
 stopLeverGroup.rotation.z = STOP_BEARING;
 movement.add(stopLeverGroup);
 registerExplode(stopLeverGroup, Z_STOP_PIVOT, 7);
 registerLabel('Stop lever', stopLeverGroup);
-{
-  // Bracket post: base plate top (seated 0.3 in) up to just under the arm.
-  const postTopLocal = -(STOP_ARM_T / 2 + HACK_CLEAR_MARGIN);
-  const postH = (Z_STOP_PIVOT + 0.3) + postTopLocal;
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, postH, 12), MATS.steel);
-  post.rotation.x = Math.PI / 2;
-  post.position.z = postTopLocal - postH / 2;
-  stopLeverGroup.add(post);
-  // Clevis cheeks straddle the crank at the pivot; the blued pin runs
-  // through both, along the RADIAL hinge axis (local X).
-  const cheekGeo = new THREE.BoxGeometry(0.32, 1.5, 2.0);
-  for (const s of [-1, 1]) {
-    const cheek = new THREE.Mesh(cheekGeo, MATS.steel);
-    cheek.position.set(s * (STOP_TAIL_W / 2 + 0.28), 0, -0.15);
-    stopLeverGroup.add(cheek);
-  }
-  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, STOP_TAIL_W + 1.15, 10), MATS.blueSteel);
-  pin.rotation.z = Math.PI / 2; // cylinder's native Y → local X
-  stopLeverGroup.add(pin);
-}
 const stopCrank = new THREE.Group();
 stopLeverGroup.add(stopCrank);
 // Pad-arm plane relative to the raised pivot (negative: the arm hangs).
@@ -2579,15 +2573,15 @@ if (Math.abs(STOP_PAD_Y) >= HACK_CONTACT_R)
   stopCrank.add(tail);
   // Pad arm: a DIAGONAL run from the drop leg's foot to the pad centre
   // (the pad carries the solved tangential offset).
-  const runX = STOP_PAD_X - 0.7, runY = STOP_PAD_Y;
+  const runX = STOP_PAD_X - STOP_ARM_ROOT_X, runY = STOP_PAD_Y;
   const armL = Math.hypot(runX, runY) + 1.4; // overshoots both ends for the bosses
   const arm = new THREE.Mesh(new THREE.BoxGeometry(armL, STOP_ARM_W, STOP_ARM_T), MATS.steel);
-  arm.position.set((0.7 + STOP_PAD_X) / 2, STOP_PAD_Y / 2, PAD_ARM_LOCAL_Z);
+  arm.position.set((STOP_ARM_ROOT_X + STOP_PAD_X) / 2, STOP_PAD_Y / 2, PAD_ARM_LOCAL_Z);
   arm.rotation.z = Math.atan2(runY, runX);
   stopCrank.add(arm);
-  // Drop leg: pivot hub down to the hanging arm.
-  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.7, STOP_ARM_W, Math.abs(PAD_ARM_LOCAL_Z) + STOP_ARM_T), MATS.steel);
-  leg.position.set(0.35, 0, PAD_ARM_LOCAL_Z / 2);
+  // Drop leg: pivot hub down to the hanging arm, on the hinge axis.
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(STOP_LEG_W, STOP_ARM_W, Math.abs(PAD_ARM_LOCAL_Z) + STOP_ARM_T), MATS.steel);
+  leg.position.set(STOP_ARM_ROOT_X, 0, PAD_ARM_LOCAL_Z / 2);
   stopCrank.add(leg);
   const padPost = new THREE.Mesh(new THREE.CylinderGeometry(HACK_PAD_R, HACK_PAD_R, 0.5, 12), MATS.steel);
   padPost.rotation.x = Math.PI / 2;
@@ -2629,10 +2623,10 @@ if (!(STOP_RELEASE_DROP >= HACK_DROP_MIN - 1e-6))
   ring(STOP_PAD_X, STOP_PAD_Y, HACK_PAD_R, STOP_PAD_TOP_LZ - 0.4, false);       // ruby base
   ring(STOP_PAD_X, STOP_PAD_Y, HACK_PAD_R, PAD_ARM_LOCAL_Z + STOP_ARM_T / 2, false); // pad post root
   {
-    const runX = STOP_PAD_X - 0.7, runY = STOP_PAD_Y, L = Math.hypot(runX, runY) || 1;
+    const runX = STOP_PAD_X - STOP_ARM_ROOT_X, runY = STOP_PAD_Y, L = Math.hypot(runX, runY) || 1;
     const nx = -runY / L * (STOP_ARM_W / 2), ny = runX / L * (STOP_ARM_W / 2);
     for (let i = 0; i <= 8; i++) { // arm top-face lattice
-      const x = 0.7 + runX * i / 8, y = runY * i / 8;
+      const x = STOP_ARM_ROOT_X + runX * i / 8, y = runY * i / 8;
       pts.push({ x: x + nx, y: y + ny, z: PAD_ARM_LOCAL_Z + STOP_ARM_T / 2 });
       pts.push({ x: x - nx, y: y - ny, z: PAD_ARM_LOCAL_Z + STOP_ARM_T / 2 });
     }
@@ -2654,6 +2648,204 @@ if (!(STOP_RELEASE_DROP >= HACK_DROP_MIN - 1e-6))
     console.warn('stop work: pad rises above the contact plane mid-stroke by', rise.toFixed(3));
   if (worst < 0)
     console.warn('stop work: crank sweeps into the balance envelope, margin short by', (-worst).toFixed(3));
+}
+
+// --- STATIC BRACKET, stood off from the crank's OWN sweep -------------------
+// The crank is a see-saw about the unit's local X axis: every point of it
+// keeps its x for ever and fans through (y, z) as ψ runs between the engaged
+// pose and ψ0. A bracket carrying that hinge has exactly two places it can
+// stand — out of the swing plane along ±x, or beyond the fan in (y, z) — and
+// the old build used neither: its post rose from the unit's own origin, dead
+// under the pivot, so the hanging tail and the drop leg swept straight
+// through their own support at every crown pose.
+//
+// Which escape is available is decided by the crank, not by taste:
+//  · ±x cannot carry a column. The pad arm runs diagonally from the hub out
+//    to the pad under the balance rim (x ≈ STOP_PAD_X) and overhangs its root
+//    the other way, so a column clear of it would stand ~1.6+ off the hinge
+//    RADIALLY — and the clevis cheeks are plates in the y–z plane, which can
+//    never reach a post offset along the very axis they straddle.
+//  · The (y, z) fan is ONE-SIDED: ψ only ever runs between 0 and ψ0, so the
+//    crank sweeps toward sign(ψ0)·y and away from the other side for ever.
+// So the bracket stands on the swing-AWAY side: a post there, and the two
+// cheeks reaching back from it to the pin. The crank's clearance to it then
+// only ever IMPROVES as the crown pulls, which is the pose that used to be
+// the worst one. The stand-off itself is solved below.
+
+// Crank swept envelope, sampled from the BUILT crank so it tracks any later
+// change to it: every triangle of every crank mesh is sampled on a lattice
+// finer than the margin (vertices alone are not enough — a column can lie
+// alongside the MIDDLE of a long edge, which no corner of it reports),
+// expressed in the unit's local frame at ψ = 0.
+const STOP_CRANK_PTS = (() => {
+  // Lattice pitch. A sampled surface can only UNDER-report a distance, and
+  // by at most half a pitch (the distance to a convex solid is 1-Lipschitz
+  // along the surface), so the pitch is also the solve's error bar: 0.1 puts
+  // it at 0.05, a third of the margin, and an independent finer sweep then
+  // measures the built clearance back at the margin to within a thousandth.
+  const STEP = 0.1;
+  const pts = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const m = new THREE.Matrix4(), inv = new THREE.Matrix4();
+  stopLeverGroup.updateMatrixWorld(true);
+  inv.copy(stopCrank.matrixWorld).invert(); // → crank-local, whatever ψ is posed
+  stopCrank.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    m.multiplyMatrices(inv, o.matrixWorld);
+    const pos = o.geometry.attributes.position, idx = o.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    for (let t = 0; t + 2 < n; t += 3) {
+      const i0 = idx ? idx.getX(t) : t, i1 = idx ? idx.getX(t + 1) : t + 1, i2 = idx ? idx.getX(t + 2) : t + 2;
+      a.fromBufferAttribute(pos, i0).applyMatrix4(m);
+      b.fromBufferAttribute(pos, i1).applyMatrix4(m);
+      c.fromBufferAttribute(pos, i2).applyMatrix4(m);
+      const rows = Math.max(1, Math.ceil(Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)) / STEP));
+      for (let i = 0; i <= rows; i++)
+        for (let j = 0; i + j <= rows; j++) {
+          const u = i / rows, v = j / rows, w = 1 - u - v;
+          pts.push({
+            x: a.x * w + b.x * u + c.x * v,
+            y: a.y * w + b.y * u + c.y * v,
+            z: a.z * w + b.z * u + c.z * v,
+          });
+        }
+    }
+  });
+  return pts;
+})();
+// Reduce fn over that envelope across the WHOLE stroke (rotation about local
+// X maps (y, z) → (y·cosψ − z·sinψ, y·sinψ + z·cosψ), as everywhere above).
+function stopSweptMin(fn) {
+  let out = Infinity;
+  const lo = Math.min(0, STOP_PSI0), hi = Math.max(0, STOP_PSI0);
+  for (let i = 0; i <= 24; i++) {
+    const psi = lo + (hi - lo) * i / 24;
+    const cs = Math.cos(psi), sn = Math.sin(psi);
+    for (const p of STOP_CRANK_PTS) {
+      const v = fn(p.x, p.y * cs - p.z * sn, p.y * sn + p.z * cs);
+      if (v < out) out = v;
+    }
+  }
+  return out;
+}
+
+const STOP_MAST_TOP_LZ = STOP_MAST_TOP - Z_STOP_PIVOT;  // the case-fit ceiling, unit-local
+const STOP_CHEEK_T = 0.32, STOP_CHEEK_H = 2.0;
+const STOP_CHEEK_Z = STOP_MAST_TOP_LZ - STOP_CHEEK_H / 2; // cheeks hang from that ceiling
+// The cheeks straddle the crank OUT OF ITS SWING PLANE — local x is the hinge
+// axis, so no crank point ever crosses it — hence the offset is just the
+// crank's hub half-width, the margin, and their own half-thickness:
+const STOP_CHEEK_X = STOP_HUB_HALF_X + HACK_CLEAR_MARGIN + STOP_CHEEK_T / 2;
+const STOP_CHEEK_FRONT = 0.75;  // cheek overhang past the pin, on the swing side
+const STOP_PIN_PROUD = 0.135;   // pin ends showing proud of the cheeks
+// Post: base plate top (seated 0.3 in) up to that same ceiling.
+const STOP_POST_RT = 0.6, STOP_POST_RB = 0.7;
+const STOP_POST_Z0 = -(Z_STOP_PIVOT + 0.3), STOP_POST_Z1 = STOP_MAST_TOP_LZ;
+const stopPostR = (z) => STOP_POST_RB + (STOP_POST_RT - STOP_POST_RB)
+  * clamp((z - STOP_POST_Z0) / (STOP_POST_Z1 - STOP_POST_Z0), 0, 1);
+// Stand-off, SOLVED. With the post a column at (0, side·Y) — side being the
+// swing-away side — a swept crank sample p clears it iff
+//   hypot(p.x, |Y − side·p.y|) ≥ r_post(p.z) + CLEAR_MARGIN,
+// and with Y outboard of every sample that is
+//   Y ≥ side·p.y + √((r + margin)² − p.x²),
+// and that binds only on samples the column could ever reach at all — those
+// within its radius in x. (The pad end of the arm stands 3+ out along the
+// hinge axis: it is the crank's furthest reach to this side, and it does not
+// vote, because no stand-off of a column at x = 0 can help or hurt it.) So Y
+// is the maximum of that right-hand side over the CONSTRAINING samples: the
+// smallest offset that stands the post off the crank, binding exactly at the
+// margin against whatever reaches furthest this way (the pad arm's flank
+// where it passes the hub). The column is treated as full height, which is
+// conservative for samples above its top — and there are none: the crank
+// tops out at the drop leg's hub, well under the mast ceiling.
+const STOP_BR_SIDE = STOP_PSI0 >= 0 ? -1 : 1;
+const STOP_BR_Y = -stopSweptMin((x, y, z) => {
+  const rr = stopPostR(z) + HACK_CLEAR_MARGIN;
+  if (Math.abs(x) >= rr) return Infinity; // clear of the column in x, whatever Y is
+  return -(STOP_BR_SIDE * y + Math.sqrt(rr * rr - x * x));
+});
+// The bracket as DATA: the meshes and the clearance assert below are built
+// from the same list, so anything ever added to the bracket is checked too.
+const STOP_BRACKET_PARTS = [
+  { post: true, x: 0, y: STOP_BR_SIDE * STOP_BR_Y,
+    z0: STOP_POST_Z0, z1: STOP_POST_Z1, r0: STOP_POST_RB, r1: STOP_POST_RT },
+  ...[-1, 1].map((s) => ({
+    x: s * STOP_CHEEK_X, y: STOP_BR_SIDE * (STOP_BR_Y - STOP_CHEEK_FRONT) / 2, z: STOP_CHEEK_Z,
+    w: STOP_CHEEK_T, d: STOP_BR_Y + STOP_CHEEK_FRONT, h: STOP_CHEEK_H,
+  })),
+];
+{
+  for (const p of STOP_BRACKET_PARTS) {
+    let mesh;
+    if (p.post) {
+      mesh = new THREE.Mesh(new THREE.CylinderGeometry(p.r1, p.r0, p.z1 - p.z0, 12), MATS.steel);
+      mesh.rotation.x = Math.PI / 2; // cylinder's native +Y → local +Z
+      mesh.position.set(p.x, p.y, (p.z0 + p.z1) / 2);
+    } else {
+      mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.d, p.h), MATS.steel);
+      mesh.position.set(p.x, p.y, p.z);
+    }
+    stopLeverGroup.add(mesh);
+  }
+  // The blued hinge pin is deliberately NOT in that list: it is the JOURNAL,
+  // coaxial with the hinge axis, so it cannot sweep and the crank turns ON it
+  // by design — hub material around it is a bearing fit, not a collision.
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2,
+    2 * (STOP_CHEEK_X + STOP_CHEEK_T / 2 + STOP_PIN_PROUD), 10), MATS.blueSteel);
+  pin.rotation.z = Math.PI / 2; // cylinder's native Y → local X
+  stopLeverGroup.add(pin);
+}
+// INTRA-UNIT ASSERT — the check the inspection battery structurally cannot
+// make: every pair scan in inspect.js enumerates DISTINCT units, so a bracket
+// buried inside its own crank is invisible to it. Exact signed distance from
+// each swept crank sample to each bracket part (box: the usual outside/inside
+// split; post: radial, its taper being 0.7° off vertical).
+const STOP_BRACKET_CLEAR = stopSweptMin((x, y, z) => {
+  let d = Infinity;
+  for (const p of STOP_BRACKET_PARTS) {
+    if (p.post) {
+      const t = clamp((z - p.z0) / (p.z1 - p.z0), 0, 1);
+      const dr = Math.hypot(x - p.x, y - p.y) - (p.r0 + (p.r1 - p.r0) * t);
+      const dz = Math.max(p.z0 - z, z - p.z1);
+      d = Math.min(d, dz <= 0 ? dr : (dr <= 0 ? dz : Math.hypot(dr, dz)));
+    } else {
+      const ex = Math.abs(x - p.x) - p.w / 2, ey = Math.abs(y - p.y) - p.d / 2,
+        ez = Math.abs(z - p.z) - p.h / 2;
+      d = Math.min(d, Math.hypot(Math.max(ex, 0), Math.max(ey, 0), Math.max(ez, 0))
+        + Math.min(Math.max(ex, ey, ez), 0));
+    }
+  }
+  return d;
+});
+// (tolerance for the float round-trip: the stand-off solve above binds this
+// EXACTLY at the margin, same as the released-drop assert)
+if (STOP_BRACKET_CLEAR < HACK_CLEAR_MARGIN - 1e-6)
+  console.warn('stop work: the crank sweeps its own bracket — clearance',
+    STOP_BRACKET_CLEAR.toFixed(3), '<', HACK_CLEAR_MARGIN);
+// The bracket now reaches STOP_BR_Y to one side of the pivot instead of
+// sitting on it, and it stands in the plate cut's OPEN WEDGE (|φ| ≤ phiOpen
+// about the cut's aim, where the plate is removed all the way to the rim).
+// The bearing scan reserved an angular half-width for a mast that had no
+// stand-off, so check the BUILT extremes against the real wedge (arc length
+// at the part's own radius, which is the distance to the wedge's edge).
+{
+  const cs = Math.cos(STOP_BEARING), sn = Math.sin(STOP_BEARING);
+  let worst = Infinity;
+  for (const p of STOP_BRACKET_PARTS) {
+    const hx = p.post ? Math.max(p.r0, p.r1) : p.w / 2;
+    const hy = p.post ? Math.max(p.r0, p.r1) : p.d / 2;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+      const lx = p.x + sx * hx, ly = p.y + sy * hy;
+      const dx = STOP_PIVOT.x + cs * lx - sn * ly - P.balance.x;
+      const dy = STOP_PIVOT.y + sn * lx + cs * ly - P.balance.y;
+      const off = Math.atan2(dy, dx) - TQ_CUT.aim;
+      const phi = Math.abs(Math.atan2(Math.sin(off), Math.cos(off)));
+      worst = Math.min(worst, (TQ_CUT.phiOpen - phi) * Math.hypot(dx, dy));
+    }
+  }
+  if (worst < CLEAR_MARGIN)
+    console.warn('stop work: the bracket reaches out of the plate cut wedge by',
+      (CLEAR_MARGIN - worst).toFixed(2));
 }
 
 // Hack rod: elbow link on the low plane, solved exactly like the reset
@@ -3450,7 +3642,11 @@ const BALANCE_COCK = (() => {
   // hardware, the tail's swept segment, and the pad arm's diagonal at
   // both stroke ends (the arm's own plane swings furthest — it hangs
   // deepest below the hinge).
-  obstacles.push({ x: STOP_PIVOT.x, y: STOP_PIVOT.y, r: 2.2 });
+  // Pivot hardware = the bracket's own footprint about the pivot: the post
+  // stands STOP_BR_Y off the hinge on the swing-away side and the cheeks run
+  // out to it, so the covering disc is that reach plus the post's taper.
+  obstacles.push({ x: STOP_PIVOT.x, y: STOP_PIVOT.y,
+    r: Math.max(2.2, STOP_BR_Y + STOP_POST_RB + CLEAR_MARGIN) });
   {
     const swTail = -STOP_TAIL_H * Math.sin(STOP_PSI0); // signed tangential sweep at the tail's low end
     obstacles.push({
@@ -3511,19 +3707,32 @@ const BALANCE_COCK = (() => {
     // The SLAB and T-BAR ride in the plate band (z ≈ COCK_MID_Z ± T/2),
     // above the pedestal obstacles — but the stop work's MAST + hanging
     // tail stand in the cut wedge and cross that band on the way to the
-    // raised hinge. Effective mast radius at the slab band = the larger
-    // of the post's taper (0.7) and the tail's tangential sweep reach
-    // there (|z_band − pivot|·|sinψ0| + tail half-width).
+    // raised hinge. Effective mast radius at the slab band = the largest
+    // of the post's taper, the clevis half-span, and the tail's tangential
+    // sweep reach there (|z_band − pivot|·|sinψ0| + tail half-width).
     {
-      const mastR = Math.max(0.7,
+      const mastR = Math.max(STOP_POST_RB, STOP_CHEEK_X + STOP_CHEEK_T / 2,
         Math.abs(COCK_MID_Z + COCK_T / 2 - Z_STOP_PIVOT) * Math.abs(Math.sin(STOP_PSI0)) + STOP_TAIL_W / 2);
+      // The mast is no longer a column ON the pivot: the bracket's post
+      // stands STOP_BR_Y off it, on the tangential swing-away side, with the
+      // cheeks spanning between. Model it as that SEGMENT, so the cock's seat
+      // scan sees the bracket where it actually is instead of a phantom disc.
+      const mast = { ax: STOP_PIVOT.x, ay: STOP_PIVOT.y,
+        bx: STOP_PIVOT.x + STOP_T_HAT.x * STOP_BR_SIDE * STOP_BR_Y,
+        by: STOP_PIVOT.y + STOP_T_HAT.y * STOP_BR_SIDE * STOP_BR_Y, r: mastR };
+      // Centreline distance segment ⇄ segment: the smallest of the four
+      // endpoint-to-segment distances (exact while they do not cross, and a
+      // crossing is already far inside the radii subtracted below).
+      const segSeg = (o) => Math.min(
+        distTo(o, mast.ax, mast.ay) + o.r, distTo(o, mast.bx, mast.by) + o.r,
+        distTo(mast, o.ax, o.ay) + mastR, distTo(mast, o.bx, o.by) + mastR);
       const tailD = dyLeg + 1.2;
       const slab = { ax: P.balance.x, ay: P.balance.y,
         bx: P.balance.x + cs * tailD, by: P.balance.y + sn * tailD, r: 0 };
-      clr = Math.min(clr, distTo(slab, STOP_PIVOT.x, STOP_PIVOT.y) - COCK_W / 2 - mastR);
       const bar = { ax: P.balance.x + cs * dyLeg - sn * hspan, ay: P.balance.y + sn * dyLeg + cs * hspan,
         bx: P.balance.x + cs * dyLeg + sn * hspan, by: P.balance.y + sn * dyLeg - cs * hspan, r: 0 };
-      clr = Math.min(clr, distTo(bar, STOP_PIVOT.x, STOP_PIVOT.y) - 1.2 - COCK_LEG_R - mastR);
+      clr = Math.min(clr, segSeg(slab) - COCK_W / 2 - mastR);
+      clr = Math.min(clr, segSeg(bar) - 1.2 - COCK_LEG_R - mastR);
     }
     if (clr < CLEAR_MARGIN) continue;
     if (!best || clr > best.clr) best = { phi, dFoot, clr };

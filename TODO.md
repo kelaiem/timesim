@@ -75,6 +75,63 @@ that's its entry, not this one.)
   windows per budget; a continuity check for linkage branch flips; a
   known-good baseline so re-runs only flag regressions.
 
+## 5. The inspector cannot see INSIDE a unit
+
+Every check in `src/inspect.js` is a relation between two DIFFERENT
+units. The sweep enumerates `for (let bi = ai + 1; …)` over the ~31
+`registerLabel` names (~1229), and `CLEARANCE_BUDGETS`,
+`PENETRATION_BUDGETS`, `EXPECTED_PAIRS`, `IGNORED_PAIRS` and every
+`MECH_GRAPH` edge are keyed on PAIRS OF UNIT NAMES. The model is a
+graph whose nodes are units, and the inside of a node is a black box.
+A unit's own parts may interpenetrate arbitrarily and every sweep
+still reports clean.
+
+**This is not a forgotten pair — the grouping is the cause.** Units
+were drawn to match the mechanical graph, so a unit usually bundles a
+FIXED mount together with the thing that MOVES on it. That is exactly
+the pair most likely to foul, because each moving part was solved
+against its neighbours (the constraint the layout cared about) and
+never against its own bracket. The broad phase hides it a second time:
+a unit's AABB contains all of its own children, so there is no signal
+at any stage.
+
+**Confirmed instance (since REPAIRED — the gap that hid it is not).**
+The 'Stop lever' bracket post stood on the hinge axis at the unit's
+local origin with the crank hanging from the same origin straight down
+through it: penetration 0.685 at full hack against a `CLEAR_MARGIN` of
+0.15, present at every pose, and FIVE distinct overlapping pairs once
+measured on a dense surface lattice rather than by axis stations (tail
+bar, drop leg, pad arm and rod pin against the post; drop leg against
+a clevis cheek at a constant 0.157). Every battery run in the
+project's history was consistent with all five. The unit now solves
+its bracket around the built crank's swept envelope and carries its
+own build-time assert — but that assert is bespoke to this one unit,
+which is the point: the next instance still has nothing watching it.
+Candidates to check by
+the same reasoning — any unit holding both a fixture and a mover:
+Reset hammer (arbor foot vs hammer), Set-up work (ratchet vs click),
+Maintaining detent (cock post vs arm), Minute jumper (pivot stud and
+return spring vs lever), Keyless works (bushing foot vs the sliding
+gang), Power-reserve train.
+
+**Why it cannot simply be switched on.** Inside a unit, parts are
+SUPPOSED to touch — a pivot in its bearing, a wheel on its arbor, a
+screw in its seat. A naive intra-unit sweep would light up with
+intended contact, and the EXPECTED/budget vocabulary that tames the
+inter-unit sweep does not exist at part granularity: only 12 objects
+in `main.js` carry a `.name` at all. That naming is the same missing
+infrastructure BACKLOG §10 (drill-down explode) has to build, so the
+two should land together or at least share the vocabulary.
+
+**Cheap interim that would have caught this one.** Do not name
+anything — DERIVE the split. For each unit, pose the existing sweep
+axes and diff each child's `matrixWorld` across the poses: children
+that never move are the unit's fixtures, children that move are its
+movers. Check movers against fixtures only. Intended contact between
+those two sets is rare (a pivot's bearing surfaces are the main case),
+so the budget list stays short, and no part needs a name for the check
+to run. Report violations as `Unit/child` pairs.
+
 ---
 
 ## Recently closed
