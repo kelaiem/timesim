@@ -21,7 +21,7 @@ const defaultState = {
   jumpCorr: 0,
   crownOut: false,
   fastForward: false,
-  timeScale: 0.15,
+  timeScale: 1, // real time — matches main.js's own default
   showLabels: false,
   plateXray: false,   // three-quarter plate see-through (UI toggle)
   showBeat: 0,
