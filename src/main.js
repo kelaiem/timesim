@@ -5464,12 +5464,90 @@ if (restoredXray) setXray(true);
 let soundOn = false;
 let audioCtx = null;
 let _noiseBuf = null;
-function sndClick(freq, q, decay, gain, when = 0) {
+// Master chain (BUILT §11): every click passes through one gain + limiter
+// before the destination, so a near-field beat cluster stacked on a pawl
+// click can't clip. Also the future volume-slider hook.
+let masterGain = null;
+let masterCompressor = null;
+function ensureAudioGraph() {
+  if (masterGain) return;
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 1;
+  masterCompressor = audioCtx.createDynamicsCompressor();
+  masterGain.connect(masterCompressor);
+  masterCompressor.connect(audioCtx.destination);
+}
+// --- Spatial audio (BUILT §11) ---------------------------------------------
+// Every click is a ≤30ms transient scheduled once, so a source can't move
+// during its own sound: spatialization is a SNAPSHOT taken at schedule
+// time, not a moving panner tracking a moving listener. Direction comes
+// from an equal-power StereoPannerNode (safe on speakers, unlike an HRTF
+// PannerNode, which buys elevation/front-back cues the camera framing
+// already gives visually) rather than a full 3D panner.
+const _sndPos = new THREE.Vector3();
+const _sndVec = new THREE.Vector3();
+const _sndRight = new THREE.Vector3();
+// Reference distance: the Escapement preset's own framing radius (cluster
+// radius × 3.8 — the same "fit at ~70% of the half-frame" rule camTargets
+// uses below), so the DEFAULT view is nominal gain 1.0 and every §8 level
+// stays exactly as tuned by ear.
+const SND_REF = (Math.hypot(P.balance.x - P.escape.x, P.balance.y - P.escape.y) / 2 + balanceR) * 3.8;
+const SND_NEAR = plateR * 0.35; // controls.minDistance
+const SND_FAR = plateR * 12; // controls.maxDistance
+// rolloff solved so the far orbit limit lands at -25dB (10^(-25/20)) rather
+// than at silence; gain is clamped <=1 below so the near limit can't exceed
+// today's tuned levels (SND_NEAR < SND_REF would otherwise overshoot 1).
+const SND_FAR_GAIN = Math.pow(10, -25 / 20);
+const SND_ROLLOFF = (SND_REF / SND_FAR_GAIN - SND_REF) / (SND_FAR - SND_REF);
+function sndDistanceGain(d) {
+  const g = SND_REF / (SND_REF + SND_ROLLOFF * (d - SND_REF));
+  return Math.min(1, Math.max(0, g));
+}
+// Dial-side occlusion: every going-train pinion meshes the main plate at
+// world Z=0 (greatWheel/centerPinion/thirdPinion/fourthPinion/escapePinion
+// all set position.z=0), so that plane IS the plate baseline. A source and
+// the camera on OPPOSITE sides of it have the plate physically between
+// them; muffle unless x-ray has already made the plate/dial glassy (then
+// it's honest for sound to pass too). No hardcoded "dial-side" emitter
+// list — this falls out of each emitter's own measured Z, so a front-side
+// source (the beat) gets muffled too if you view it from deep on the
+// dial's side, which is physically correct.
+const SND_OPEN_CUTOFF = 20000; // effectively unfiltered (above audible click content)
+// 2400, not a near-silent 900: the SND timbres center as high as 5200 Hz, and
+// a lowpass much below that erases a narrow-Q bandpass transient almost
+// entirely -- reads as the sound vanishing, not as "muffled". 2400 sits
+// above every source's low body tone (hammer 1200, stem 1700, pawl's 900 Hz
+// layer) so those stay present, while the sharper 3-5 kHz voices (beat,
+// jump) lose their edge instead of disappearing. Tuned by ear, same as the
+// SND timbres themselves.
+const SND_MUFFLE_CUTOFF = 2400;
+const SND_MUFFLE_GAIN = 0.65; // occlusion also softens level a little, not just tone -- tuned by ear
+function sndSpatial(emitter) {
+  emitter.getWorldPosition(_sndPos);
+  _sndVec.subVectors(_sndPos, camera.position);
+  const d = _sndVec.length();
+  _sndRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+  _sndVec.normalize();
+  const pan = THREE.MathUtils.clamp(_sndVec.dot(_sndRight), -1, 1);
+  const sameSide = _sndPos.z * camera.position.z >= 0;
+  const muffled = !xrayOn && !sameSide;
+  const cutoff = muffled ? SND_MUFFLE_CUTOFF : SND_OPEN_CUTOFF;
+  return { pan, gain: sndDistanceGain(d) * (muffled ? SND_MUFFLE_GAIN : 1), cutoff };
+}
+function sndClick(freq, q, decay, gain, when = 0, emitter = null) {
   if (!soundOn || !audioCtx || audioCtx.state !== 'running') return;
   if (!_noiseBuf) {
     _noiseBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.06), audioCtx.sampleRate);
     const d = _noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  let pan = 0, finalGain = gain, cutoff = SND_OPEN_CUTOFF;
+  if (emitter) {
+    const s = sndSpatial(emitter); // captured NOW, not at t0 -- see header note
+    pan = s.pan;
+    finalGain = gain * s.gain;
+    cutoff = s.cutoff;
+    sndFlash(emitter); // BUILT §11: light up the part making the sound (own tuned duration, not `decay` -- 5-30ms is inaudible-fast on screen)
   }
   const t0 = audioCtx.currentTime + when;
   const src = audioCtx.createBufferSource();
@@ -5478,10 +5556,15 @@ function sndClick(freq, q, decay, gain, when = 0) {
   bp.type = 'bandpass';
   bp.frequency.value = freq;
   bp.Q.value = q;
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = cutoff;
   const g = audioCtx.createGain();
-  g.gain.setValueAtTime(gain, t0);
+  g.gain.setValueAtTime(finalGain, t0);
   g.gain.exponentialRampToValueAtTime(0.0005, t0 + decay);
-  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  const pn = audioCtx.createStereoPanner();
+  pn.pan.value = pan;
+  src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(pn); pn.connect(masterGain);
   src.start(t0);
   src.stop(t0 + decay + 0.02);
 }
@@ -5515,25 +5598,69 @@ const SND = {
   //   kind 2 — drop + lock: the freed tooth lands on the far pallet as the
   //            lever hits the banking pin — the loud compound impact.
   beatEvent: (kind, tic, w = 0) => {
-    if (kind === 0) sndClick(tic ? 5200 : 4600, 8, 0.005, 0.07, w);
-    else if (kind === 1) sndClick(tic ? 3600 : 3100, 1.5, 0.022, 0.05, w);
+    if (kind === 0) sndClick(tic ? 5200 : 4600, 8, 0.005, 0.07, w, forkGroup);
+    else if (kind === 1) sndClick(tic ? 3600 : 3100, 1.5, 0.022, 0.05, w, forkGroup);
     else {
-      sndClick(tic ? 4200 : 3400, 7, 0.008, 0.17, w);
-      sndClick(tic ? 1500 : 1300, 4, 0.012, 0.10, w);
+      sndClick(tic ? 4200 : 3400, 7, 0.008, 0.17, w, forkGroup);
+      sndClick(tic ? 1500 : 1300, 4, 0.012, 0.10, w, forkGroup);
     }
   },
   // The winding pawl gets a two-layer click — a bright tick plus a low
-  // mechanical body — so it reads clearly over the running beat.
-  pawl: (w = 0) => { sndClick(2200, 5, 0.014, 0.42, w); sndClick(900, 3, 0.022, 0.28, w); },
-  detent: () => sndClick(2000, 5, 0.012, 0.18),
-  jump: () => sndClick(3000, 6, 0.010, 0.25),
-  hammer: () => sndClick(1200, 4, 0.025, 0.3),
-  stem: () => sndClick(1700, 4, 0.015, 0.2),
+  // mechanical body — so it reads clearly over the running beat. The pawls
+  // themselves aren't separately named objects; maintDetent (their carrier)
+  // is the nearest addressable emitter.
+  pawl: (w = 0) => { sndClick(2200, 5, 0.014, 0.42, w, maintDetent); sndClick(900, 3, 0.022, 0.28, w, maintDetent); },
+  detent: () => sndClick(2000, 5, 0.012, 0.18, 0, maintDetent),
+  jump: () => sndClick(3000, 6, 0.010, 0.25, 0, jumperUnit),
+  hammer: () => sndClick(1200, 4, 0.025, 0.3, 0, hammerGroup),
+  stem: () => sndClick(1700, 4, 0.015, 0.2, 0, crown),
 };
+// --- Sound-event highlight (BUILT §11) --------------------------------------
+// The part that just made a sound glows on its OWN surface -- a direct
+// emissive tint, not a separate overlay mesh -- so a click reads as coming
+// from something specific. Each mesh gets exactly ONE cloned material,
+// lazily, the first time IT is ever flashed; only the clone's emissive
+// fields move. Known overlap: the power-flow view (`pfApply`, further
+// down) ALSO clones-and-tints forkGroup/maintDetent/windSpinner's meshes
+// while it's on. With both features enabled at once on an overlapping
+// part, whichever ran last within a frame wins that frame's emissive
+// value -- an accepted simplification (same spirit as the pan swirl
+// during a camera tween, noted above), not a crash; jumperUnit and
+// hammerGroup are outside every pf group, so they never see it.
+const SND_FLASH_DECAY = 0.35; // seconds to fade out -- tuned by eye, gentler/subtler than any one click's own audio decay
+const SND_FLASH_COLOR = new THREE.Color(0xffe6a0); // warm, low-key -- a glint, not an alarm
+const SND_FLASH_PEAK = 0.55; // emissiveIntensity at the instant of the click -- tuned by eye
+const sndFlashMeshes = new Map(); // target Object3D -> [mesh, ...]
+const sndFlashLevel = new Map(); // target Object3D -> current 0..1
+for (const target of [forkGroup, maintDetent, jumperUnit, hammerGroup, crown]) {
+  const meshes = [];
+  target.traverse((o) => { if (o.isMesh && o.material && 'emissive' in o.material) meshes.push(o); });
+  sndFlashMeshes.set(target, meshes);
+  sndFlashLevel.set(target, 0);
+}
+function sndFlash(emitter) {
+  if (sndFlashMeshes.has(emitter)) sndFlashLevel.set(emitter, 1);
+}
+function updateSndFlash(realDt) {
+  for (const [target, level] of sndFlashLevel) {
+    if (level <= 0) continue;
+    const next = Math.max(0, level - realDt / SND_FLASH_DECAY);
+    sndFlashLevel.set(target, next);
+    for (const mesh of sndFlashMeshes.get(target)) {
+      if (!mesh.userData.sndFlashOwned) {
+        mesh.material = mesh.material.clone();
+        mesh.userData.sndFlashOwned = true;
+      }
+      mesh.material.emissive.copy(SND_FLASH_COLOR);
+      mesh.material.emissiveIntensity = next * SND_FLASH_PEAK;
+    }
+  }
+}
 function setSound(on) {
   soundOn = on;
   if (on) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    ensureAudioGraph();
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
   const b = document.getElementById('btn-sound');
@@ -6206,6 +6333,11 @@ function tick(t) {
     // and capped at 3 transients per source per tick with small time offsets
     // so a clamped-but-large rawDt (tab restore) hiccups gracefully.
     if (soundOn && !fastForward && syncPhase !== 'catchup') {
+      // Force matrixWorld current for this tick's emitters (BUILT §11):
+      // three.js only recomputes it on render, and up to 12 ticks can run
+      // per displayed frame, so an un-forced snapshot would read stale
+      // (last-frame) positions for anything rotated earlier in this tick.
+      movement.updateMatrixWorld(true);
       // Escapement beat — a three-impact cluster per beat (unlock, impulse,
       // drop+lock; see SND.beatEvent), each fired as the frame steps across
       // its phase boundary. Events crossed in ONE frame are scheduled at
@@ -6360,6 +6492,7 @@ function frame(now) {
 
   controls.update();
   updateLabels();
+  updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
   renderer.render(scene, camera);
 
   // Auto-save state every 5 seconds
