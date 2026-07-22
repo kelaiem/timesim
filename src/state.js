@@ -7,7 +7,19 @@
 const STORAGE_KEY = 'timesim-state';
 const STATE_URL = '/__state';
 
-let serverAvailable = true; // optimistic until a request proves otherwise
+// Only dev_server.py serves /__state, and it is documented to run on loopback
+// (README: `python3 dev_server.py 8347`). Anywhere else — a plain static
+// server, GitHub Pages — every request to it is a guaranteed 404, and a GET
+// 404 does NOT clear the flag below (only a thrown fetch does), so the failed
+// GET is followed by a failed PUT: two console errors on every single load of
+// a published build, which reads as a broken app to anyone who opens devtools.
+// Start pessimistic off-loopback and never make the requests at all.
+//
+// Trade-off: serving dev_server.py on a LAN address to test on a phone now
+// uses localStorage rather than the server's state file. State still persists,
+// just per-browser instead of shared.
+const LOOPBACK = ['localhost', '127.0.0.1', '::1', '[::1]'];
+let serverAvailable = LOOPBACK.includes(location.hostname);
 let known = false;          // does a saved state currently exist (either store)?
 
 const defaultState = {
