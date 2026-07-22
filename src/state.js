@@ -14,9 +14,14 @@ const defaultState = {
   barrelWindTurns: 3.75,
   tauIntegrated: 0,
   crownRotation: 0,
+  // The jumper's folded snap correction. crownRotation alone restores the
+  // RAW setting input; without this the quantized part of it is lost and a
+  // reload moves the hands by up to half a minute (and un-syncs a clock that
+  // was synced to the wall clock — see BACKLOG §9).
+  jumpCorr: 0,
   crownOut: false,
   fastForward: false,
-  timeScale: 0.15,
+  timeScale: 1, // real time — matches main.js's own default
   showLabels: false,
   plateXray: false,   // three-quarter plate see-through (UI toggle)
   showBeat: 0,
@@ -30,6 +35,7 @@ function sanitize(state) {
     barrelWindTurns: state.barrelWindTurns,
     tauIntegrated: state.tauIntegrated,
     crownRotation: state.crownRotation,
+    jumpCorr: state.jumpCorr,
     crownOut: state.crownOut,
     fastForward: state.fastForward,
     timeScale: state.timeScale,
