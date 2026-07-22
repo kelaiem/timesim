@@ -14,9 +14,8 @@ lever escapement. Everything is procedural — there are no model assets.
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
 
-`src/*.stub.js` are development stubs from before the real builders
-existed — nothing imports them. `test-geometry.html` is a per-part visual
-smoke test, separate from the inspector.
+`test-geometry.html` is a per-part visual smoke test, separate from the
+inspector.
 
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying

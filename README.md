@@ -85,8 +85,6 @@ slider, part labels toggle, beat counter and simulated clock readout.
 - `src/main.js` — scene, studio lighting + procedural PMREM environment, movement
   assembly (mesh distances from pitch radii), escapement kinematics, UI.
 - `test-geometry.html` — standalone visual smoke-test page for every part builder.
-- `src/*.stub.js` — crude stand-in geometry used during parallel development; kept
-  for reference, unused by the app.
 
 `window.__clock.step(dt)` in the console single-steps the simulation deterministically
 (useful because background tabs throttle requestAnimationFrame).

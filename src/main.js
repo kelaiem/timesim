@@ -1,10 +1,4 @@
-// Mechanical Clock Simulation — Agent B (scene, movement assembly, kinematics, UI)
-//
-// Develop-time note: this was built against src/geometry.stub.js / src/materials.stub.js
-// (crude stand-ins implementing the exact SPEC API). Imports below point at the real
-// modules per the integration contract; if geometry.js/materials.js are not yet present
-// this file simply won't run until the orchestrator drops them in — the API is identical
-// so no other changes should be required.
+// Mechanical Clock Simulation — scene, movement assembly, kinematics, UI.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
