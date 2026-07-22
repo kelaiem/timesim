@@ -4980,8 +4980,8 @@ panel.innerHTML = `
     <span class="label-small">Time-scale</span>
     <input type="range" id="scale-slider" min="0" max="1000" step="1" />
   </div>
-  <div class="row label-small"><span id="scale-value">0.15×</span><button id="btn-wind">Wind</button></div>
-  <div class="row label-small"><span id="scale-note">6.7× slow · 0.75 beats/s</span></div>
+  <div class="row label-small"><span id="scale-value">1×</span><button id="btn-wind">Wind</button></div>
+  <div class="row label-small"><span id="scale-note">5.0 beats/s</span></div>
   <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
   <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
   <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
@@ -5129,9 +5129,9 @@ const labelEls = labelEntries.map(({ name }) => {
   return el;
 });
 
-// --- time-scale (log slider, 0.02..1, default 0.15) ----------------------
+// --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
 const SCALE_MIN = 0.02, SCALE_MAX = 1;
-let timeScale = 0.15;
+let timeScale = 1;
 const scaleSlider = document.getElementById('scale-slider');
 const scaleValueEl = document.getElementById('scale-value');
 function scaleToSlider(s) {
@@ -5817,8 +5817,9 @@ document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
   b.addEventListener('click', () => goToPreset(b.dataset.cam));
 });
 // Restore a saved camera pose if one was persisted; otherwise frame the
-// default Escapement preset. A restore snaps directly (no tween) and cancels
-// any in-flight preset tween so it isn't overwritten next frame.
+// default Free preset — the whole movement, before the viewer has said what
+// they came to look at. A restore snaps directly (no tween) and cancels any
+// in-flight preset tween so it isn't overwritten next frame.
 if (restoredCamera) {
   camera.position.set(restoredCamera.px, restoredCamera.py, restoredCamera.pz);
   controls.target.set(restoredCamera.tx, restoredCamera.ty, restoredCamera.tz);
@@ -5826,7 +5827,7 @@ if (restoredCamera) {
   camTween = null;
   document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.remove('active'));
 } else {
-  goToPreset('Escapement');
+  goToPreset('Free');
 }
 
 // ---------------------------------------------------------------------------
