@@ -132,6 +132,43 @@ those two sets is rare (a pivot's bearing surfaces are the main case),
 so the budget list stays short, and no part needs a name for the check
 to run. Report violations as `Unit/child` pairs.
 
+## 6. `EXPECTED` is granted per PAIR, not per contact
+
+Item 5's blind spot has a sibling. Once two units appear in
+`EXPECTED_PAIRS`, **every** overlap between them anywhere in the
+movement is classified EXPECTED — not just the contact the entry was
+written for. One declared mesh grants the whole pair blanket immunity.
+
+**Confirmed instance: the minute star and the hour wheel's tube.**
+`['Hour wheel', 'Motion works']` is EXPECTED because of the minute
+pinion ⇄ hour wheel mesh — the second half of the 12:1
+(`inspect.js` ~28). But the §1 minute star is also a `Motion works`
+mesh, and it passes the hour wheel's tube (a `LatheGeometry` sleeve,
+r 2.05 → 2.5, half-height 2.75) with a measured minimum clearance of:
+
+| pose | star ⇄ tube |
+|---|---|
+| crown in (running) | **0.0127** |
+| crown out (setting) | **0.0084** |
+
+Swept over a full star pitch (one minute-hand minute) against all 4,356
+star vertices. Not interpenetrating — but `CLEAR_MARGIN` is **0.15**,
+so these are roughly **a twelfth of the margin**, in a place where
+nothing declared they should be close at all. There is also NO entry
+for this pair in `CLEARANCE_BUDGETS`, so no floor is asserted anywhere.
+It is two hundredths of a unit from being a real collision, and nothing
+in the battery would report it if it crossed.
+
+**Fix, in two parts.** The instance: re-solve the star's root diameter
+or the tube's outer radius so the gap is a derived margin rather than
+an accident — the star's tooth depth already derives from its pitch
+(PR #33), so this is the same solve extended to the sleeve. The
+structural half: EXPECTED should name the CONTACT, not just the pair —
+either a region/part qualifier, or a paired `CLEARANCE_BUDGETS` floor
+that says "these two units may touch HERE, and must keep the margin
+everywhere else." The second form is cheaper and uses machinery that
+already exists.
+
 ---
 
 ## Recently closed
