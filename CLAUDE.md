@@ -64,7 +64,7 @@ file, falling back to `localStorage`. **Back it up before clearing it** —
 Verify with `src/inspect.js`, not by eye:
 
 ```js
-const I = await import('/src/inspect.js');   // worktree: /.claude/worktrees/<name>/src/inspect.js
+const I = await import('./src/inspect.js');   // worktree: /.claude/worktrees/<name>/src/inspect.js
 I.start(__clock, 'inspection', { includeExcluded: true });  // poll I.status()
 I.start(__clock, 'support');                                // 0 failures
 I.start(__clock, 'clearances');                             // 0 violations

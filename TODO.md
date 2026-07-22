@@ -11,7 +11,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
 ```js
-const I = await import('/src/inspect.js');
+const I = await import('./src/inspect.js');
 I.start(__clock, 'inspection', { includeExcluded: true });  // then poll I.status()
 I.start(__clock, 'support');                                // must stay at 0 failures
 I.start(__clock, 'clearances');                             // must stay at 0 violations
