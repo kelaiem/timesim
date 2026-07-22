@@ -1,0 +1,12 @@
+#!/bin/sh
+# The feature roadmap is private (github.com/kelaiem/timesim-roadmap) and was
+# purged from this repo's history. .gitignore already excludes it; this hook is
+# the hard stop, because `git add -f` and a well-meaning edit to .gitignore both
+# route around that. Shipped entries belong in docs/BUILT.md instead.
+if git diff --cached --name-only | grep -qx 'BACKLOG.md'; then
+	echo 'pre-commit: BACKLOG.md is private and must not enter this repo.' >&2
+	echo '            Roadmap lives in github.com/kelaiem/timesim-roadmap;' >&2
+	echo '            shipped entries move to docs/BUILT.md.' >&2
+	exit 1
+fi
+exit 0

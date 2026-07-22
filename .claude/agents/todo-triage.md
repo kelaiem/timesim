@@ -24,9 +24,11 @@ penetration budgets).
      (registerLabel/registerExplode units, obstacle scans,
      LOW_LINKAGE_OBSTACLES, the pose axes), and what could bite.
 3. **Classify and file**:
-   - New capability or display/UX affordance → `BACKLOG.md` (the feature
-     roadmap — a local working file, deliberately not tracked in this repo;
-     `docs/BUILT.md` is where entries land once they ship).
+   - New capability or display/UX affordance → `BACKLOG.md` in the PRIVATE
+     `kelaiem/timesim-roadmap` repo (cloned alongside this one), never into
+     this repo; `docs/BUILT.md` here is where entries land once they ship.
+     Take the next free § number across BOTH files — numbers are permanent
+     IDs and source comments cite shipped ones as `BUILT §N`.
    - Honesty fix to existing mechanics → `TODO.md` (realism debt).
    Write the entry in the target file's established voice: a heading,
    the goal in one sentence, the mechanism/approach with the actual
