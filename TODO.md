@@ -42,7 +42,7 @@ makeHairspring wind-keyframe trick would close it.
 
 ## 3. CLOSED — `handSetOffset` derived through the setting path
 
-Closed by the jumping-minute setting (BACKLOG §1): the hand-set value is
+Closed by the jumping-minute setting (BUILT §1): the hand-set value is
 now `rawSetOffset`, computed forward from the crown's rotation through
 the real tooth counts (windPinion → settingWheel → minuteArbor compound →
 cannon), then quantized to whole minutes by the star + jumper while the
@@ -120,7 +120,7 @@ screw in its seat. A naive intra-unit sweep would light up with
 intended contact, and the EXPECTED/budget vocabulary that tames the
 inter-unit sweep does not exist at part granularity: only 12 objects
 in `main.js` carry a `.name` at all. That naming is the same missing
-infrastructure BACKLOG §10 (drill-down explode) has to build, so the
+infrastructure a drill-down exploded view would have to build, so the
 two should land together or at least share the vocabulary.
 
 **Cheap interim that would have caught this one.** Do not name

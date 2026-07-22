@@ -1185,7 +1185,7 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
-    // Minute jumper's beak seated in the minute star (BACKLOG §1, PRs
+    // Minute jumper's beak seated in the minute star (BUILT §1, PRs
     // #28/#29): EXPECTED contact (see EXPECTED_PAIRS above), but the depth
     // needs its own tight budget for the same reason the escape-wheel rows
     // do. This pair used to bury the beak 0.268 deep, because STAR_DEPTH

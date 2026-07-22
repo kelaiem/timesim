@@ -24,7 +24,9 @@ penetration budgets).
      (registerLabel/registerExplode units, obstacle scans,
      LOW_LINKAGE_OBSTACLES, the pose axes), and what could bite.
 3. **Classify and file**:
-   - New capability or display/UX affordance → `BACKLOG.md` (features).
+   - New capability or display/UX affordance → `BACKLOG.md` (the feature
+     roadmap — a local working file, deliberately not tracked in this repo;
+     `docs/BUILT.md` is where entries land once they ship).
    - Honesty fix to existing mechanics → `TODO.md` (realism debt).
    Write the entry in the target file's established voice: a heading,
    the goal in one sentence, the mechanism/approach with the actual

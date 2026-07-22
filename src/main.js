@@ -620,7 +620,7 @@ const minuteWheelTeeth = 24, minutePinionTeeth = 8;
 // The setting path collapsed to ONE coefficient: hand-offset radians per
 // radian of setting-path rotation. tick() walks this same chain forward
 // (settingWheel → minuteArbor compound → cannon) to derive the hand offset
-// from the crown; Sync (BACKLOG §9) needs the inverse to solve the crown
+// from the crown; Sync (BUILT §9) needs the inverse to solve the crown
 // rotation a wanted hand movement costs. Both directions therefore come
 // from the tooth counts — the identity is asserted below rather than
 // trusted, since the two forms live 5000 lines apart.
@@ -4400,7 +4400,7 @@ hourWheelGroup.add(mwHourWheel);
 }
 
 // ---------------------------------------------------------------------------
-// JUMPING-MINUTE SETTING (BACKLOG §1) — a star on the minute wheel and a
+// JUMPING-MINUTE SETTING (BUILT §1) — a star on the minute wheel and a
 // sprung jumper on the dial face, engaged ONLY while the crown is out:
 // pull → seconds fly to zero and hack (existing), and the jumper drops
 // into the star, snapping the minute hand onto an exact minute index;
@@ -5144,7 +5144,7 @@ function sliderToScale(v) {
 }
 scaleSlider.value = scaleToSlider(timeScale);
 
-// --- the scale readout (BACKLOG §12) ---------------------------------------
+// --- the scale readout (BUILT §12) ---------------------------------------
 // At the top of the slider the scale IS 1× and the symbol says everything —
 // no gloss, and no trailing zeros to make a statement look like a
 // measurement. Below it, two DERIVED facts rather than invented adjectives:
@@ -5205,7 +5205,7 @@ pauseBtn.addEventListener('click', () => {
   syncCancel(); // a script that cannot advance must not pretend to be running
 });
 
-// --- SYNC TO THE WALL CLOCK (BACKLOG §9) -----------------------------------
+// --- SYNC TO THE WALL CLOCK (BUILT §9) -----------------------------------
 // A scripted watchmaker, not an assignment. The crown is pulled — which
 // hacks the balance and flies the seconds hand to zero, both already built —
 // the minute hand is SET through the real keyless ratios to the wall clock's
@@ -5314,7 +5314,7 @@ function toggleCrown() {
 }
 crownBtn.addEventListener('click', toggleCrown);
 
-// --- sync button (BACKLOG §9) ----------------------------------------------
+// --- sync button (BUILT §9) ----------------------------------------------
 // Click to start, click again to abandon; the script itself drives the crown,
 // so the button's job is only to hand it over and report where it has got to.
 const syncBtn = document.getElementById('btn-sync');
@@ -5420,7 +5420,7 @@ tqXrayMat.opacity = 0.28;
 tqXrayMat.depthWrite = false;
 tqXrayMat.roughness = Math.min(1, tqSolidMat.roughness + 0.1); // less mirror, more glass
 
-// The DIAL rides the same toggle (BACKLOG §6): the dial-side works —
+// The DIAL rides the same toggle (BUILT §6): the dial-side works —
 // keyless, motion works, reserve train, minute jumper — are what the §3
 // sapphire dial exists to show, so "plate transparent" means the dial goes
 // glassy too (a live preview of that dial). Unlike the plate, the dial is
@@ -5461,7 +5461,7 @@ document.getElementById('btn-xray').addEventListener('click', () => setXray(!xra
 if (restoredXray) setXray(true);
 
 // --- SOUND — synthesized clicks off the movement's own discrete events
-// (BACKLOG §8). No audio assets and no loops: each mechanical event
+// (BUILT §8). No audio assets and no loops: each mechanical event
 // already computed by tick() fires one short noise transient through a
 // bandpass + exponential-decay gain. Default Off, which also keeps
 // __clock.setPose-driven inspector runs silent; enabling is itself the
@@ -5716,7 +5716,7 @@ document.getElementById('explode-slider').addEventListener('input', (e) => {
   explodeAmount = Number(e.target.value) / 100;
 });
 
-// --- per-unit explode + label filter (BACKLOG §7) --------------------------
+// --- per-unit explode + label filter (BUILT §7) --------------------------
 // Pick one unit and the slider lifts only it (labels filter to it too).
 // Explode entries carry no names, but nearly every explode obj IS the very
 // object registered with registerLabel — an identity join names them all
@@ -6205,7 +6205,7 @@ function tick(t) {
     updateMaintaining(windBack);
     pfUpdate();
 
-    // --- SOUND edge detection (BACKLOG §8). Discrete events off the
+    // --- SOUND edge detection (BUILT §8). Discrete events off the
     // continuous phases this tick just computed. All suppressed in
     // fast-forward (~5400× would machine-gun the beat) and in the sync
     // catch-up (up to 21× is a ~105 Hz buzz, the same failure in miniature),

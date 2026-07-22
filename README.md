@@ -123,3 +123,22 @@ penetration over the pair's axis exceeds a maxDepth. Currently covers
 budgets (near-zero depth required OUTSIDE the lock/impulse window), a
 pose-continuity check, and a known-good baseline so re-runs only flag
 regressions.
+
+## License
+
+Copyright 2026 kelaiem. Licensed under the [Apache License, Version
+2.0](LICENSE); you may not use this project except in compliance with it.
+
+The Apache grant covers this project's own code — `src/`, `index.html`,
+`dev_server.py`, `test-geometry.html`, and the documentation. It does **not**
+cover `vendor/`, which is third-party code redistributed verbatim under its own
+MIT terms:
+
+| File | Package | Version | License |
+|---|---|---|---|
+| `vendor/three.module.js` | [three.js](https://github.com/mrdoob/three.js) | r165 | MIT, © 2010-2024 three.js authors — [text](vendor/LICENSE-three.txt) |
+| `vendor/OrbitControls.js` | three.js addons | r165 | MIT, © 2010-2024 three.js authors — [text](vendor/LICENSE-three.txt) |
+| `vendor/three-mesh-bvh.module.js` | [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh) | 0.7.8 | MIT, © 2018 Garrett Johnson — [text](vendor/LICENSE-three-mesh-bvh.txt) |
+
+See [`vendor/README.md`](vendor/README.md) for provenance, checksums, and how to
+verify or refresh these files.

@@ -8,7 +8,8 @@ lever escapement. Everything is procedural — there are no model assets.
 | File | What it is |
 |---|---|
 | `SPEC.md` | The architecture contract. Read before changing structure. |
-| `BACKLOG.md` | New capabilities — scoped, costed, numbered (§n). |
+| `docs/BUILT.md` | How shipped features were designed — numbered (§n); source comments cite these. |
+| `BACKLOG.md` | Unshipped roadmap. A local working file, deliberately not tracked in this repo. |
 | `TODO.md` | Mechanical-realism debt: honesty fixes to what exists. |
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
@@ -17,7 +18,7 @@ lever escapement. Everything is procedural — there are no model assets.
 existed — nothing imports them. `test-geometry.html` is a per-part visual
 smoke test, separate from the inspector.
 
-New feature → file it in `BACKLOG.md`. Something already built is lying
+New feature → file it in `BACKLOG.md` (local, untracked). Something already built is lying
 about how a watch works → `TODO.md`. Both are written to be actionable by
 someone who wasn't in the conversation; match that.
 
@@ -124,5 +125,6 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
 Branch for the work; don't commit to `main`. Commit messages explain *why*
 the number changed, not just that it did — the reasoning is the artifact.
 When a `BACKLOG.md` entry lands, reconcile the entry with what was actually
-built rather than only marking it BUILT; a plan left describing an
-abandoned approach is worse than no plan.
+built rather than only marking it BUILT — then move it to `docs/BUILT.md`,
+which is the public record; a plan left describing an abandoned approach is
+worse than no plan.

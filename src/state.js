@@ -17,7 +17,7 @@ const defaultState = {
   // The jumper's folded snap correction. crownRotation alone restores the
   // RAW setting input; without this the quantized part of it is lost and a
   // reload moves the hands by up to half a minute (and un-syncs a clock that
-  // was synced to the wall clock — see BACKLOG §9).
+  // was synced to the wall clock — see BUILT §9).
   jumpCorr: 0,
   crownOut: false,
   fastForward: false,

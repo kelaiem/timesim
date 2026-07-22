@@ -6,3 +6,7 @@
 !.claude/agents/
 !.claude/launch.json
 .claude/worktrees/
+
+# Private feature roadmap: unshipped plans stay out of the public repo.
+# Shipped entries move to docs/BUILT.md, which IS tracked.
+BACKLOG.md
