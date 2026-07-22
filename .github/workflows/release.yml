@@ -1,19 +1,26 @@
 # Cut a new release (major.minor.patch tag on main, e.g. 0.1.2 -> 0.1.3),
-# publish a GitHub Release for it, then deploy that tagged tree to GitHub Pages.
+# publish a GitHub Release for it, then deploy the tagged tree to the QA
+# server over SFTP and repoint the QA symlink at the new release.
 #
 # Run from the Actions tab (Run workflow) and pick which part to bump.
 # Always tags/deploys the current tip of main, regardless of which branch
 # is selected in the dispatch UI.
 #
-# One-time setup before the deploy job can succeed:
-#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
-# No secrets or variables are required — deployment authenticates with the
-# workflow's own OIDC token.
+# Required repository secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+#   SFTP_HOST            remote host, e.g. qa.example.com
+#   SFTP_PORT            optional, defaults to 22
+#   SFTP_USER            remote SFTP username
+#   SFTP_SSH_KEY         private key (PEM) authorized for that user on the host
 #
-# NOTE: a Pages site is PUBLIC even when its repository is private, and this
-# app has no build step, so the deployed site IS the source. Enabling Pages
-# publishes src/, vendor/ and the docs to the open internet. Serving Pages
-# from a private repository also requires a paid GitHub plan.
+# Required repository variables (Settings -> Secrets and variables -> Actions -> Variables):
+#   SFTP_PROJECT_PATH    remote project root the SFTP session is chdir'd into before
+#                        anything else runs; SFTP_RELEASES_PATH and SFTP_QA_SYMLINK
+#                        below are resolved relative to this
+#   SFTP_RELEASES_PATH   base dir (relative to SFTP_PROJECT_PATH) releases are
+#                        uploaded into -- each release lands in
+#                        $SFTP_PROJECT_PATH/$SFTP_RELEASES_PATH/<version>
+#   SFTP_QA_SYMLINK      symlink path (relative to SFTP_PROJECT_PATH) the QA
+#                        environment serves from -- repointed at the new release dir
 
 name: Release
 
@@ -78,35 +85,47 @@ jobs:
   deploy:
     needs: release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.release.outputs.version }}
 
-      - uses: actions/configure-pages@v5
-
-      - name: Build site payload
+      - name: Build release payload
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
         run: |
           # Exactly the tracked files at this tag, minus CI/dev-tool config
-          # that has no bearing on the running app. The app is a no-build
-          # static site, so the tree ships as-is; every path in index.html is
-          # relative, which is what lets it serve from a /timesim/ subpath.
-          mkdir -p _site
-          git archive --format=tar HEAD -- . \
-            ':(exclude).github' ':(exclude).claude' ':(exclude).githooks' \
-            | tar -x -C _site
+          # that has no bearing on the running app.
+          mkdir -p "$VERSION"
+          git archive --format=tar HEAD -- . ':(exclude).github' ':(exclude).claude' \
+            | tar -x -C "$VERSION"
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
+      - name: Configure SSH
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_SSH_KEY: ${{ secrets.SFTP_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SFTP_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SFTP_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Upload release and repoint QA symlink
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_RELEASES_PATH: ${{ vars.SFTP_RELEASES_PATH }}
+          SFTP_PROJECT_PATH: ${{ vars.SFTP_PROJECT_PATH }}
+          SFTP_QA_SYMLINK: ${{ vars.SFTP_QA_SYMLINK }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          PORT="${SFTP_PORT:-22}"
+          sftp -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -P "$PORT" \
+            "$SFTP_USER@$SFTP_HOST" <<SFTP_EOF
+          cd $SFTP_PROJECT_PATH
+          -mkdir $SFTP_RELEASES_PATH
+          put -r $VERSION $SFTP_RELEASES_PATH/$VERSION
+          -rm $SFTP_QA_SYMLINK
+          symlink $SFTP_RELEASES_PATH/$VERSION $SFTP_QA_SYMLINK
+          SFTP_EOF
