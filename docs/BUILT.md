@@ -479,3 +479,122 @@ the beat rate legible nearby; at the 0.15× default the beat rate reads
 on: the readout says so instead of reporting the slider. Paused: the
 readout does not claim the movement is running at any rate.
 
+## 11. Spatial sound — distance and direction for the click track (BUILT)
+
+**Goal.** §8's click track comes from everywhere at once. The movement's
+noises should come from WHERE the parts are: zoom out and it gets
+quieter, orbit past the escapement and its tic-toc moves between the
+ears.
+
+**Mechanism, as built.** Every `sndClick(freq, q, decay, gain, when,
+emitter)` call in `main.js` (~5515) now takes an optional sixth
+argument, a `THREE.Object3D` already in scope at the call site — no new
+emitter registry, since the six timbre wrappers in `SND` already close
+over the objects they need: `forkGroup` for the beat, `maintDetent` for
+both the winding pawls and the running detent tick (the pawls aren't
+separately named objects, so their carrier stands in), `jumperUnit` for
+the minute snap, `hammerGroup` for the reset thunk, and `crown` for the
+stem click.
+
+- *Direction.* `sndSpatial(emitter)` takes `v = worldPos −
+  camera.position`, reads `cameraRight` off `camera.matrixWorld`'s
+  first column, and clamps `v̂ · right` into a `StereoPannerNode`
+  inserted between the per-click gain and the master chain. Equal-power
+  panning, not an HRTF `PannerNode` — the camera framing already gives
+  front/back and elevation cues, an HRTF panner would only buy those on
+  headphones.
+- *Distance.* The inverse law `gain = ref/(ref + rolloff·(d−ref))`,
+  clamped to ≤ 1. `ref` is NOT a guessed number: it's the Escapement
+  camera preset's own framing radius (cluster radius × 3.8 — the same
+  rule `camTargets` uses), so the default view plays every §8 level
+  exactly as tuned. `rolloff` is solved so the orbit's far limit
+  (`controls.maxDistance = plateR·12`) lands at −25 dB rather than
+  silence; the near limit (`plateR·0.35`) is what the ≤ 1 clamp exists
+  to protect.
+- *Snapshot timing.* A source can't move during its own ≤30 ms
+  transient, so spatialization is captured once, synchronously, inside
+  `sndClick` — not deferred to `audioCtx.currentTime + when`. The one
+  wrinkle: three.js only recomputes `matrixWorld` at render time, and
+  up to 12 fixed ticks can run per displayed frame, so reading a
+  moving part's world position mid-tick without forcing an update
+  would read last frame's pose. `movement.updateMatrixWorld(true)` runs
+  once at the top of the sound edge-detection block in `tick()`
+  (~6272), before any emitter positions are sampled that tick.
+- *Master chain.* One `GainNode` → one `DynamicsCompressorNode` →
+  `audioCtx.destination`, built lazily in `ensureAudioGraph()` alongside
+  the `AudioContext` itself (same gesture-gated creation as before). All
+  per-click panners connect into the master gain rather than the
+  destination directly. The compressor exists because a beat cluster
+  (three impacts) can land on top of a pawl click at near field; the
+  gain node is also where a future volume slider would hook in.
+
+**Dial-side occlusion, built without a hardcoded emitter list.** The
+backlog's original mechanism ("a lowpass whose cutoff falls with the
+dot product against the dial normal", tied to the x-ray flag) shipped
+in a simpler form once actual part positions were checked: every
+going-train pinion sets `position.z = 0` (`greatWheel`, `centerPinion`,
+`thirdPinion`, `fourthPinion`, `escapePinion`), so world Z=0 IS the
+plate baseline, and `movement` carries no rotation (`scene.add(movement)`
+with none set), so world Z already is the stacking axis — no matrix
+work needed. `sndSpatial` compares `emitterWorldZ * camera.position.z`:
+opposite signs means the plate sits between the camera and the source,
+so it gets muffled (a `BiquadFilterNode` lowpass, plus a mild gain
+multiplier) unless x-ray has made the plate/dial glassy. Checking the
+actual numbers first paid off: `hammerGroup`'s Z resolves to ≈+2.19
+(front/train side, alongside the escapement) even though the backlog's
+Risks section had grouped "jumper, keyless, hammer" together as
+dial-side sources — that would have been a confidently wrong hardcoded
+list (§10's own lesson). Computing each emitter's real Z instead means
+the rule is fully general and symmetric: the escapement gets muffled
+too, correctly, if you view it from deep on the dial's own side.
+Tuning note: the first cutoff (900 Hz) nearly silenced everything, since
+the `SND` timbres center as high as 5200 Hz and a narrow-Q bandpass
+transient has almost nothing left below a cutoff that far under its
+center — muffled has to still be clearly a SOUND, not a dropout. Settled
+at 2400 Hz (above every source's low body tone) plus a 0.65× gain dip,
+tuned by ear after a first pass read as broken rather than muffled.
+
+**Sound-event highlight (not in the original backlog — added during
+build).** The user asked, mid-implementation, for the part making a
+sound to visibly light up. First pass was a separate glow-sprite
+tracking each emitter's world position, added specifically to dodge a
+real hazard: these parts' materials are shared scene-wide via `MATS.*`
+and ALSO independently owned by the power-flow view (`pfApply`, which
+lazily clones and tints `forkGroup`/`maintDetent`/`windSpinner`'s
+meshes while it's on) — mutating emissive directly looked like it would
+fight that feature for the same material slot. The overlay read as an
+alarming floating blob, so it was replaced with what was actually
+wanted: a direct emissive tint on the part's own cloned material
+(lazy-cloned per mesh, first flash only), which turned out fine to
+accept the power-flow overlap rather than engineer around it — two
+optional, user-toggled features occasionally trading the last write
+within one frame on `forkGroup`/`maintDetent`/`crown`'s materials is a
+minor, accepted cosmetic edge case, not a crash; `jumperUnit` and
+`hammerGroup` sit outside every power-flow group so they never see it
+at all. Real-time decay (`SND_FLASH_DECAY`, 0.35 s) via `updateSndFlash`
+in `frame()`, independent of `timeScale` — same reasoning as
+`CAM_SNAP_TAU`.
+
+**Deliberately deferred, not built.** The master volume slider was
+scoped as optional in the original entry and stayed out of this pass —
+the master `GainNode` it would drive already exists.
+
+Cost as built: ~150 lines in `main.js` (master chain ~10, spatial +
+occlusion helpers/constants ~45, `sndClick`/`SND` signature changes
+~30, `updateMatrixWorld` forcing call ~5, sound-event highlight
+~45–60), 0 new parts, 0 geometry, no `MECH_GRAPH` entries (the
+highlight touches no new scene-graph nodes — it retints existing
+meshes in place) · Battery: no geometry — boot + listening/looking
+check only.
+
+**Acceptance (met).** Boot console stays clean (no new warnings).
+Orbiting around the movement with Sound On moves the beat between
+channels, reversing as the camera crosses the escapement's axis.
+Zooming from near to far drops the level smoothly without hitting
+silence at the far limit. Switching between the Escapement and Dial
+camera presets makes dial-side sources (jumper, crown) noticeably
+duller from the train side without going silent, and un-mutes when
+x-ray is on. Each click reads as a brief, subtle warm glint on the part
+that made it. Sound Off and fast-forward remain exactly as silent as
+§8 built them — neither code path changed.
+
