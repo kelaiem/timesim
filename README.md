@@ -124,6 +124,28 @@ budgets (near-zero depth required OUTSIDE the lock/impulse window), a
 pose-continuity check, and a known-good baseline so re-runs only flag
 regressions.
 
+## A note on the styling
+
+The finishing and layout follow the **Glashütte school** of watchmaking: a
+three-quarter plate, Glashütte striping across that plate and the escape
+bridge, perlage on the base plate, screwed gold chatons over the upper pivot
+jewels, blued steel screws and hands, and a power reserve graduated
+**AUF/AB** — German for "up/down", the conventional marking for a German
+reserve indicator.
+
+These are traditional techniques and conventions, in general use across
+German horology for well over a century. They belong to the craft, not to any
+one maker.
+
+The movement itself is an original parametric model: every part is generated
+from its own dimensions and constraints in `src/geometry.js`, not traced or
+measured from any manufacturer's caliber. No maker's name, logo, or trademark
+appears in this project or on the dial.
+
+This project is not affiliated with, endorsed by, or a product of any watch
+manufacturer. If the result puts you in mind of a particular Glashütte house,
+that is the shared vocabulary of the school, borrowed admiringly.
+
 ## License
 
 Copyright 2026 kelaiem. Licensed under the [Apache License, Version
