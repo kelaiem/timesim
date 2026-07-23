@@ -598,3 +598,78 @@ x-ray is on. Each click reads as a brief, subtle warm glint on the part
 that made it. Sound Off and fast-forward remain exactly as silent as
 §8 built them — neither code path changed.
 
+## 15. The UI panel now fits a phone (BUILT — PR #3)
+
+**Goal.** `#clock-ui` is usable on a phone.
+
+**What was wrong.** The panel was `width: 240px` at fixed `top/left: 14px`
+with no `max-height` and no scroll, carrying 24 `.row`s plus four `<hr/>`
+rules, the camera presets row, and the state buttons. On a 667px-tall
+viewport the bottom of the panel — Finish and State — sat off-screen and
+unreachable. The Hide/☰ chip could push the panel out of the way but was
+itself useless while small: nothing let you *use* the lower controls.
+
+**What shipped — both the floor and the real fix, not just the floor.**
+The backlog scoped a minimum (scroll floor) and a real fix (collapsible
+sections). Both landed together in one pass:
+
+- *Scroll floor.* `#clock-ui` gained `max-height: calc(100vh - 28px)` and
+  `overflow-y: auto`, so the panel can never exceed the viewport and
+  scrolls internally instead.
+- *Collapsible sections.* Every control row is grouped into a native
+  `<details>` disclosure — **Time, Camera, View, Finish, State** — with
+  only **Time** open by default (`open` attribute). The panel now opens
+  compact and the viewer discloses what they came for. The four `<hr/>`
+  dividers and the `#clock-ui hr` rule they used are gone, replaced by a
+  `.ui-section` `border-top` between sections (suppressed on the first, to
+  avoid doubling the divider under the `<h1>`).
+
+**Deviation from spec: `box-sizing: border-box` was required, and added.**
+The backlog wrote the floor as exactly `max-height: calc(100vh - 28px)`.
+That number is correct arithmetic (14px inset top + 14px bottom) *only* if
+it sizes the whole visual box — but `#clock-ui` is default `content-box`,
+so the raw floor sizes the content box and the 14px padding + 1px border
+then push the rendered box ~30px past the intended inset. The panel's own
+bottom lands below the fold and the lowest controls stay unreachable **even
+with `overflow-y: auto` on**, because the scroll container's bottom edge is
+itself off-screen. Adding `box-sizing: border-box` makes the 28px mean the
+whole box, which is what the spec's arithmetic assumed. Measured on the
+running app at 375×667: default (Time only) bottom at 551px; all sections
+open, bottom at 653px and the body scrolls; the Save button (last control
+in State) is on-screen after scrolling to the bottom — the exact control
+the old layout buried. Side effect of border-box: content width narrows
+240→~206px; presets wrap one button later, verified cosmetically fine.
+
+**It stayed 0-logic, as estimated.** No behavioral JavaScript changed: no
+event handlers, no open/close state machine, no measurement code — native
+`<details>` owns the disclosure state, which is exactly why it was chosen.
+Every `id` and `class` is preserved verbatim, so the existing
+`querySelectorAll('#clock-ui .presets button')` and the ~30
+`getElementById` wirings (pause, crown, sync, explode, labels, x-ray,
+power-flow, sound, light, flute, save/load/clear) bind unchanged. The one
+structural edit outside markup: the dynamically-built State section changed
+from `document.createElement('div')` to `createElement('details')` plus a
+`.ui-section` class, purely so it folds like the template sections — still
+zero added logic.
+
+**Reused by §23.** The `.ui-section` / `summary` styling — custom `▸`
+disclosure marker that rotates 90° on `[open]`, hover state, section
+borders — is the disclosure mechanism §23 was told to reuse, built once
+here rather than inlined.
+
+**Source.** All in `src/main.js`: the scroll floor on `#clock-ui`
+(`box-sizing` + `max-height`, ~4918), the `.ui-section` disclosure styles
+(~4927), the sectioned panel markup (`panel.innerHTML`, ~4986), and the
+appended State `<details>` (~5800). Each site carries a `BUILT §15` comment.
+
+Cost as built: PR #3 was +110/−66 in one file; net new markup + CSS is
+~40–70 lines (the balance is existing rows re-indented into section
+bodies), 0 logic, 0 geometry, no `MECH_GRAPH` entries · Battery: none —
+pure UI/DOM, no parts and no geometry to sweep.
+
+**Acceptance (met).** On a 375×667 viewport the panel opens within the
+screen with only Time expanded; opening every section scrolls internally
+rather than overflowing; Finish and State — unreachable before — are
+reachable; every original control still responds (ids/classes unchanged);
+boot console stays clean. Verified in the live app, not only in isolation.
+

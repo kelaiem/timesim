@@ -4916,16 +4916,18 @@ style.textContent = `
   background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
   padding: 14px 16px; width: 240px; box-sizing: border-box;
-  /* 14px inset top and bottom → 28px total; border-box makes calc() size the
-     whole visual box, so the panel stays within a short (phone) viewport and
-     scrolls internally rather than running its lower controls off-screen. */
+  /* Phone fit (BUILT §15): 14px inset top and bottom → 28px total; border-box
+     makes calc() size the whole visual box, so the panel stays within a short
+     (phone) viewport and scrolls internally rather than running its lower
+     controls off-screen. */
   max-height: calc(100vh - 28px); overflow-y: auto;
   font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #d8dee6; user-select: none;
 }
 #clock-ui h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
-/* Collapsible section — a native <details> disclosure so there is no JS state
-   to track. Reused wherever the panel needs a labelled, foldable group. */
+/* Collapsible section (BUILT §15) — a native <details> disclosure so there is
+   no JS state to track. Reused wherever the panel needs a labelled, foldable
+   group; the disclosure mechanism §23 will reuse lives here. */
 #clock-ui .ui-section { border-top: 1px solid rgba(255,255,255,0.08); }
 #clock-ui .ui-section:first-of-type { border-top: none; }
 #clock-ui .ui-section > summary {
@@ -4983,10 +4985,10 @@ document.head.appendChild(style);
 
 const panel = document.createElement('div');
 panel.id = 'clock-ui';
-// Rows are grouped into collapsible <details> sections (Time, Camera, View,
-// Finish; State is appended later) so the panel fits a short viewport. Only
-// Time is open by default. Every original id/class is preserved verbatim so
-// the existing querySelector / getElementById wiring is untouched.
+// Rows are grouped into collapsible <details> sections (BUILT §15): Time,
+// Camera, View, Finish; State is appended later, so the panel fits a short
+// viewport. Only Time is open by default. Every original id/class is preserved
+// verbatim so the existing querySelector / getElementById wiring is untouched.
 panel.innerHTML = `
   <h1>Watch Sim</h1>
   <button id="btn-hide-ui" title="Hide panel (H)">Hide</button>
@@ -5796,8 +5798,9 @@ document.getElementById('btn-powerflow').addEventListener('click', () => setPowe
 
 // --- state persistence (save/load/clear) -----------------------------------
 // Create state buttons dynamically to avoid template literal issues
-// A collapsible <details> section like the ones in the panel template, so
-// State folds away with the rest and the panel fits a short viewport.
+// A collapsible <details> section (BUILT §15) like the ones in the panel
+// template, so State folds away with the rest and the panel fits a short
+// viewport.
 const stateSection = document.createElement('details');
 stateSection.className = 'ui-section';
 stateSection.innerHTML = `
