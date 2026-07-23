@@ -673,3 +673,205 @@ rather than overflowing; Finish and State — unreachable before — are
 reachable; every original control still responds (ids/classes unchanged);
 boot console stays clean. Verified in the live app, not only in isolation.
 
+---
+
+## 24. Alarm — synthesized dings, set from a second crown (BUILT)
+
+**Goal.** The watch dings a slow bell volley when the display crosses a
+settable hour, using nothing but WebAudio synthesis (same standing as §8/§11
+— no audio assets), and the hour is set the way a real mechanical alarm
+watch sets it: from a **second, independent crown** driving a small alarm
+disc, never a UI control writing the target directly (Standing Rule 2 —
+angles travel the gears).
+
+Three interface options were weighed in the roadmap against the real keyless
+code. **Option A — a second, independent crown** — shipped. Option B (a
+third position on the existing time stem) and Option C (a rotating bezel)
+were both recorded as considered-and-declined; the reasoning is at the end.
+
+### The ding engine
+
+**`sndTone` — a pitched voice, not a filtered click.** Every existing timbre
+(`SND.beatEvent`, `.pawl`, `.hammer`, `.stem`) is a band-passed *noise burst*
+through `sndClick` — right for a mechanical thunk, wrong for a bell. So the
+alarm gets one new primitive beside `sndClick`: `sndTone(freq, decay, gain,
+when, emitter)`, **two lightly detuned sine oscillators** (±4 cents, a faint
+beating shimmer) into one exponential-decay `GainNode`, through the same
+`masterGain → masterCompressor → destination` chain, the same
+`sndSpatial(emitter)` snapshot, and the same `soundOn`/`audioCtx.state`
+guard as every other source. `SND.alarm` schedules **six dings across 0.42 s
+offsets** (a leisurely ring), each a two-partial strike (an A6-ish
+fundamental under a softer octave-down partial), spatialized to the gong's
+ringing end (see the striker below) — the same offset-scheduling idiom
+`SND_BEAT_EVENTS` uses for a beat's cluster, just far longer-spaced.
+
+**Trigger — a prev-value crossing edge, not a "fired today" flag.** Inside
+the existing sound edge-detect block (`if (soundOn && !fastForward &&
+syncPhase !== 'catchup')`, which already supplies the `soundOn` gate and the
+fast-forward / sync-catch-up suppression the acceptance requires), the volley
+fires on the frame whose displayed time crosses the set target *forward*,
+gated additionally on `alarmOn`. This is the same one-shot idiom the
+beat/detent already use (`alarmPrevSec`, reset to `null` in the block's
+`else` branch so re-arming after a mute/FF gap stays silent until the next
+real crossing) — no separate "already fired today" flag is needed. A large
+forward "advance" is a backward hand-set wrapping the period, not a real
+crossing, so it is ignored.
+
+**Deviation from the roadmap: the 12-hour period, not `mod 86400`.** The
+roadmap wrote the crossing as `displayedSeconds() mod 86400`. But the dial
+and `formatTime` are **12-hour** (`DIAL_PERIOD_S = 43200`) and carry no
+AM/PM, so a 24-hour alarm could not be set unambiguously from this face. The
+alarm therefore wraps on the same 12 h period as everything else it is read
+against.
+
+**Panel.** A new `<details class="ui-section">` "Alarm" (the View section's
+pattern): an `id="btn-alarm"` On/Off toggle (mirroring `setSound`/`setXray`)
+and a **read-only** readout of the set time, derived from the disc angle via
+`formatTime` (hours:minutes — the target quantizes to the quarter hour, so
+seconds are always `00`). The panel only *arms* the alarm; it never writes
+the target — that is set by turning the alarm crown (Rule 2).
+
+### The second crown and the friction-set disc
+
+**Where it sits — scanned, not eyeballed.** 12 o'clock is the reserve and
+6 o'clock the small seconds, both on the vertical axis, so the free slots are
+dial-local 3 and 9 o'clock. The *side* is chosen the way §1's `JMP_AZ` picks
+a bearing: score each candidate by angular clearance from the **winding
+crown's stem** (which lies along `uWind`, world ≈ 145°; the dialFace Y-flip
+mirrors world x, so its dial-local bearing is `atan2(uWind.y, −uWind.x)`) and
+take the clearer. That is dial-local **9 o'clock** (world +x, 145° away from
+the winding crown). The well radius is derived, not chosen: the largest that
+leaves a comfortable band of dial (`ALARM_WELL_GAP = 3.0`, well above the
+single `CLEAR_MARGIN`, because two silvered recesses closer than that read as
+one blurred cut) to each neighbour well on the perpendicular axis. The well
+renders in the same family as reserve/seconds via a new `kind: 'alarm'`
+branch in `makeDial` — a light 12-hour ring with Arabic hour figures and
+quarter-hour ticks (a clock face in miniature). The alarm well is also fed
+into `JMP_AZ`'s obstacle scan so the minute jumper still avoids it.
+
+**Three units, not the roadmap's two.** The roadmap sketched `'Alarm crown'`
++ `'Alarm disc'`. As built the disc arbor is split into its own registered
+unit so the bevel mesh is a *real swept pair between registered units*, not a
+contact hidden inside one group — more honest than the two-unit sketch, and
+mirroring exactly how the power reserve decomposes (hand on the dialFace, its
+train on the movement side):
+
+- **`Alarm disc`** — the pointer, riding in the well like the reserve hand;
+  its dialFace rotation IS the set time read against the ring.
+- **`Alarm setting arbor`** — the disc arbor carrying the mating bevel and a
+  lower bearing collar; the friction-set link from crown to disc.
+- **`Alarm crown`** — crown + free stem + a bevel at the stem's inner end; a
+  force source, exiting the case rim (no sliding pinion, no clutch — it drives
+  one thing, so it is *simpler* than the winding crown it copies).
+
+**The coupling — a real 90° bevel pair.** The crown turns the disc through a
+1:1 bevel corner (the `addBevelCorner` idiom §1's setting arbor already uses):
+the horizontal stem meets the vertical disc arbor at a right angle where the
+two exit-radial and disc axes cross. Rotation is threaded through in `tick()`
+with the same representational coupling the setting/reserve arbors use, 1:1 and
+continuously — the whole assembly (crown, stem, bevel, arbor, pointer) turns in
+lockstep.
+
+**Friction-set, not detented — and why (a bug the battery missed).** The first
+build gave the disc a 48-tooth detent star + click-spring. It passed every
+inspector check, and it was wrong: the star sat at z −2.3…−1.6, *buried in the
+base plate* — because the base plate is not a labelled unit, so the overlap
+sweep never tested anything against it (one of the two structural blind spots
+`TODO.md` already names). The narrow band between the plate (bottom −2.3) and
+the well floor (−6.5) cannot fit a 48-tooth star clear of the plate, the stem,
+and the bevel. The fix is also the more authentic mechanism: real alarm watches
+(Vulcain Cricket, JLC Memovox) **friction-set** the alarm hand — no click
+detent. So the star and click-spring are gone; the disc holds wherever the
+crown leaves it and is READ to the nearest quarter mark on the ring
+(`ALARM_MARK_STEPS = DIAL_PERIOD_S / (15·60) = 48`, a derived reading
+resolution, not a tooth count). Setting is smooth and silent. The bevel was
+also shrunk and its corner lowered to −4.1 so the stem bevel clears the plate
+and the disc bevel clears the well floor with `CLEAR_MARGIN` — verified by hand
+against the un-swept base plate (arbor 1.8, crown 0.35). The arbor's lower pivot
+runs in the well floor bore (a bearing collar), which is its route to `Dial`
+(itself grounded) in the support graph — the star's collision had been silently
+*satisfying* the old `Alarm setting arbor → plate` support edge.
+
+### Angles travel the gears
+
+`alarmCrownRotation` is the raw drag input (parallel to `crownRotation`,
+written by an alarm-crown drag handler with its own hit-test — the winding
+handlers are registered first and take the pointer when they hit, so the two
+crowns never both capture). The pointer renders the disc angle *continuously*
+(friction-set), and **`alarmTargetSeconds` is DERIVED** from that angle — the
+nearest quarter mark, `round(angle) · 43200/48` — never assigned by the panel.
+
+### The striker — a visible source for the sound
+
+The disc only *sets* the alarm; nothing about it makes a noise. So the ding
+gets a real source: a **gong** — a steel wire arc (`Alarm gong`) fixed to the
+back (three-quarter) plate by a single foot, its far end ringing free — struck
+by a **hammer** (`Alarm hammer`) pivoted just beyond that free end. Both sit in
+the clear upper sector of the movement back (az 45–135°, away from the balance
+and escapement in the lower-right), above the plate top, where a real alarm
+gong lives. The bell voice spatializes to the gong's ringing end (an empty at
+that point, since the gong unit's own origin is the movement axis and would
+mis-place the sound at the centre), and the gong + hammer glow as it rings.
+
+The strike is **representationally driven**, like the rest of the movement:
+`SND.alarm` stamps `alarmRingStartMs`, and `frame()` swings the hammer a
+half-sine onto the wire once per ding, in sync with the tones — its head closing
+a 0.4-unit rest gap onto the ring. The strike direction (which way the pivot
+rotates the head onto the wire) was *measured*, not guessed. It is frame-driven,
+not posed by `setPose`, so it stays at rest through the entire inspector battery
+— which is why `Alarm hammer`/`Alarm gong` are supported but carry no drive
+edge and never trip the undriven check. What this model does **not** build is
+the alarm's own power: a real Memovox has a second mainspring and striking train
+driving the hammer. Here the hammer is shown and its motion is honest; its power
+source is the one piece left for later.
+
+### Persistence — and a bug fixed alongside
+
+`captureState()` already *emitted* `soundOn`, but `state.js`'s `defaultState`
+/ `sanitize()` **omitted** it, so it was stripped before saving and
+`restoredSound` was effectively always false. Fixed (one line each) while
+adding the alarm's own persisted fields. The alarm persists `alarmOn` and the
+**raw `alarmCrownRotation`** (not the target): the disc angle and
+`alarmTargetSeconds` re-derive deterministically, so a reload lands on the
+exact same setting (Rule 2).
+
+### Battery (clean)
+
+Five units — `Alarm disc`, `Alarm setting arbor`, `Alarm crown`, `Alarm gong`,
+`Alarm hammer`. Support 0 failures · graph clean (all grounded; the setting
+chain — via a new `'alarm'` pose axis sweeping `alarmCrownRotation` through a
+full disc revolution, with `'Alarm crown'` a new drive source — is attributed
+to the alarm crown and *only* the alarm crown; the gong and hammer are static
+under every pose axis, so they carry no drive edge) · full `inspection
+{includeExcluded:true}` **0 FORBIDDEN** across 45 pairs (every alarm pair
+EXPECTED) · clearances 0 violations · boot silent. The blind spots the sweep
+structurally cannot see were measured by hand: the base plate is not a swept
+unit, so the whole alarm mechanism was measured against it directly (all clear);
+the hammer's strike onto the gong is a frame-time contact (verified by
+measurement, not posed).
+
+### Acceptance
+
+Alarm On + hour set via the alarm crown → at that time `soundOn` plays a slow
+multi-ding bell volley (not a click), spatialized to the gong, which the hammer
+visibly strikes once per ding; Alarm Off → silent; fast-forward across the
+target → silent (§8's FF rule). The disc's angle and `alarmTargetSeconds` agree
+to within one quarter mark in both directions (verified across the range). State
+save/load round-trips the hour and the toggle (7:45 + armed survived a reload,
+re-derived to the same setting). Boot silent; full battery clean.
+
+### Options B and C (considered, declined)
+
+**B — a third position on the existing time stem.** `crownPullT` is not an
+N-position selector; it is a continuous eased slide gated into two zones by
+one threshold, and the minute jumper's lift keys off that *same* threshold.
+A third position means widening the travel, adding a second threshold, and
+re-deriving every `crownOut`/`crownPullT` read site per zone — while still
+building the same alarm disc Option A needs anyway. Strictly more code and
+more regression surface for the identical user-visible result. Not built.
+
+**C — a rotating bezel.** `plateR` is a computed movement *envelope*, not a
+case wall; there is no case, crystal, or caseback mesh today (BACKLOG §3,
+deferred). A bezel is a ring on a case with nothing to attach to yet.
+Parked on §3 rather than built as a case-less placeholder.
+

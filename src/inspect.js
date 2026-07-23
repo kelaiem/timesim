@@ -141,6 +141,19 @@ const MECH_GRAPH = {
     // folded anonymously into 'Dial' and so exempt from both.
     ['Motion works', 'plate'],               // stud riveted to the plate's dial side
     ['Hour wheel', 'Motion works'],          // tube runs in the motion-works stud plate
+    // Alarm (§24): a second crown (a force source, like the winding 'crown')
+    // sets a small disc through a 90° bevel pair. The crown's stem runs in a
+    // rim bushing on the plate; the setting arbor pivots in the plate and
+    // carries the disc's pointer through the dial well.
+    ['Alarm crown', 'plate'],                // stem bushing at the case rim
+    ['Alarm setting arbor', 'Dial'],         // arbor's lower pivot bushed in the well floor bore
+    ['Alarm disc', 'Alarm setting arbor'],   // pointer rides the arbor's dial end (its support)
+    // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
+    // end rings free) and a hammer pivoted beside it. Neither is DRIVEN through
+    // a gear from a force source — the hammer is triggered by the ding and
+    // animated in frame() only, so it is static under every inspector pose axis.
+    ['Alarm gong', 'Three-quarter plate'],   // the gong's single foot stands on the back plate
+    ['Alarm hammer', 'Three-quarter plate'], // the hammer's pivot post stands on the back plate
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -179,6 +192,11 @@ const MECH_GRAPH = {
                                              // jumper into the star when the crown is out
     ['Motion works', 'Minute jumper'],       // the star's teeth ride the seated beak (the detent that
                                              // quantizes setting to whole minutes)
+    // Alarm setting (§24): the second crown turns the disc through the bevel
+    // pair; the arbor turns the pointer. 'Alarm crown' is a force source only
+    // reachable on the 'alarm' pose axis — nothing else writes it.
+    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh
+    ['Alarm setting arbor', 'Alarm disc'],   // arbor turns the pointer through the dial
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
@@ -439,6 +457,14 @@ const EXPECTED_PAIRS = [
   ['Dial', 'Power-reserve train'],     // hand arbor passes through the dial's hole
   ['Dial', 'Keyless works'],           // settingCap meshes the cannon pinion (a Dial child)
   ['Power reserve', 'Power-reserve train'], // reserve hand rides the w2 output arbor
+  // Alarm (§24) — the mirror of the reserve/motion-works contacts:
+  ['Alarm crown', 'Alarm setting arbor'], // the 90° bevel mesh (the one declared crown⇄arbor contact)
+  ['Alarm disc', 'Alarm setting arbor'],  // pointer rides the arbor's dial end
+  ['Dial', 'Alarm setting arbor'],        // arbor passes through the well floor's bore
+  ['Dial', 'Alarm disc'],                 // pointer + pivot boss sit in the dial well
+  ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
+  ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
+  ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
 ];
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
@@ -546,6 +572,17 @@ const AXES = [
     name: 'jumperEngage',
     n: 120,
     pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+  },
+  {
+    // One full revolution of the alarm disc (§24): the crown turned through a
+    // complete 12 h of setting, so the disc, its bevel and the detent star
+    // sweep their whole travel past the static click-spring, the dial well and
+    // the plate. Neither 'crown' nor 'train' writes alarmCrownRotation, so this
+    // is the only axis that exercises the alarm — and the disc is honestly
+    // verified as driven by the alarm crown, and only by it.
+    name: 'alarm',
+    n: 96,
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI }),
   },
 ];
 
@@ -996,9 +1033,10 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   // 2. Drive: empirical motion per axis vs force reachability.
   const fromSpring = reachable(MECH_GRAPH.drive, 'mainspring');
   const fromCrown = reachable(MECH_GRAPH.drive, 'crown');
+  const fromAlarm = reachable(MECH_GRAPH.drive, 'Alarm crown'); // §24 alarm force source
   const undriven = [];
   for (const axis of axes) {
-    const source = axis.name === 'crown' ? fromCrown : fromSpring;
+    const source = axis.name === 'crown' ? fromCrown : axis.name === 'alarm' ? fromAlarm : fromSpring;
     clock.setPose(axis.pose(0));
     const sig0 = units.map(unitSignature);
     clock.setPose(axis.pose(0.63));
@@ -1008,7 +1046,7 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
     units.forEach((u, i) => {
       const moves = Math.abs(sig1[i] - sig0[i]) > 1e-6 || Math.abs(sig2[i] - sig0[i]) > 1e-6;
       if (moves && !source.has(u.name)) {
-        undriven.push({ unit: u.name, axis: axis.name, expectedForce: axis.name === 'crown' ? 'crown' : 'mainspring' });
+        undriven.push({ unit: u.name, axis: axis.name, expectedForce: axis.name === 'crown' ? 'crown' : axis.name === 'alarm' ? 'Alarm crown' : 'mainspring' });
       }
     });
   }
