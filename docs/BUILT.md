@@ -733,6 +733,63 @@ entries — so the cost was boot + visual check with the inspector kept green:
 support 0 failures, clearances 0 violations, full
 `inspection {includeExcluded:true}` 0 FORBIDDEN, boot console clean.
 
+### Deep links — the same two surfaces, from a URL
+
+`applyDeepLink()` (`src/main.js` ~6354, run once at boot) reads the query
+string onto the **same** two surfaces the Guided buttons drive: the script
+engine (`?tour` / `?demo`) and the raw view state its steps set (`?preset`,
+`?scale`, `?xray`, `?explode`, `?labels`, `?powerflow`, `?sound`, `?unit`,
+`?crown`, `?reserve`). No new code path — the state params go through the very
+setters `scriptEnterStep` calls, so a link like `?preset=Escapement&scale=0.05`
+reaches the pose a script step would and then just sits there as ordinary
+interactive state. `?demo=1` starts the matching script exactly as its button
+would.
+
+Ordering is deliberate. State params apply **first and unconditionally**,
+before the `?tour` / `?demo` branches return, because a script's steps only
+touch the fields they name (`TOUR_STEPS`/`DEMO_STEPS` never set
+`barrelWindTurns`) — so a base like `?tour=1&reserve=0.3` survives into the
+tour instead of being skipped. Malformed input is inert: `goToPreset` no-ops
+on an unknown name, and unparseable numbers fall back via `|| ` (1 for scale,
+0 for explode/reserve) — nothing throws on a bad link. `?reserve` is a
+fraction of the 30 h bank (`RESERVE_BARREL_TURNS`), the same 0..1 vocabulary
+`__clock.setPose`'s `p.tension` already uses, so the barrel has somewhere to
+wind *to* on load instead of starting flat against the full stop.
+
+**The tour is gated; state params are not.** `?tour=1` goes through
+`askTour`'s confirm/skip overlay (`#clock-tour-gate`) before anything runs — a
+deep link is not itself a user gesture the way a button click is, and must not
+swing the camera/crown/sound unattended before the visitor has agreed.
+Proceed calls the *same* `scriptStart(TOUR_STEPS, …)` the button uses. The
+state params are lower-stakes (applied once, no camera sweep, no sound) and
+need no gate.
+
+**Audio needs a real gesture.** A restored, deep-linked, or scripted
+`sound:true` can call `setSound(true)` with no trusted event behind it, and
+autoplay policy then leaves the `AudioContext` `suspended` forever — §8's
+`sndClick` drops every tick with nothing on screen to say why. Two fixes:
+capture-phase `pointerdown`/`keydown` on `window` resume the context on the
+next real input whatever it is; and `scriptStart` creates/resumes it
+synchronously inside the tap that launched the script, rather than waiting for
+whichever step first sets `sound:true` (which runs frames later out of
+`scriptUpdate`, well outside any trusted event — exactly the resume that gets
+silently ignored).
+
+**A latent restore bug `?reserve` exposed — and closed.** `crownRotDelta` in
+`tick()` is `crownRotation − lastCrownRotation`, but on load `crownRotation`
+was restored from saved state while `lastCrownRotation` stayed `0`. The first
+tick then replayed the *entire* restored crown history as one positive delta,
+which the winding path (`barrelWindTurns += …`) clamped to full on frame one.
+That silently re-wound a drained reserve on **every** reload — invisible only
+because `barrelWindTurns` was normally *also* restored to full, so the phantom
+wind re-clamped to the same number. `?reserve` is the first caller to start
+the barrel *below* full, so the phantom wind erased it. Fix: seed
+`lastCrownRotation = crownRotation` in the restore block, so the first tick
+sees a zero delta. The restored angle is input already delivered to the gears
+last session (and already reflected in the restored `barrelWindTurns` and hand
+offset), not new turning — measuring the delta from `0` double-applies the
+whole history. Adds no geometry; the battery verdicts are unchanged.
+
 ## 15. The UI panel now fits a phone (BUILT — PR #3)
 
 **Goal.** `#clock-ui` is usable on a phone.
