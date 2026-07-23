@@ -4915,11 +4915,33 @@ style.textContent = `
   position: fixed; top: 14px; left: 14px; z-index: 10;
   background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
-  padding: 14px 16px; width: 240px;
+  padding: 14px 16px; width: 240px; box-sizing: border-box;
+  /* 14px inset top and bottom → 28px total; border-box makes calc() size the
+     whole visual box, so the panel stays within a short (phone) viewport and
+     scrolls internally rather than running its lower controls off-screen. */
+  max-height: calc(100vh - 28px); overflow-y: auto;
   font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #d8dee6; user-select: none;
 }
 #clock-ui h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
+/* Collapsible section — a native <details> disclosure so there is no JS state
+   to track. Reused wherever the panel needs a labelled, foldable group. */
+#clock-ui .ui-section { border-top: 1px solid rgba(255,255,255,0.08); }
+#clock-ui .ui-section:first-of-type { border-top: none; }
+#clock-ui .ui-section > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  padding: 9px 0; margin: 0;
+  font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #8fa6bf; font-weight: 600;
+}
+#clock-ui .ui-section > summary::-webkit-details-marker { display: none; }
+#clock-ui .ui-section > summary::before {
+  content: '▸'; font-size: 9px; color: #6b7683; transition: transform 0.15s;
+}
+#clock-ui .ui-section[open] > summary::before { transform: rotate(90deg); }
+#clock-ui .ui-section > summary:hover { color: #b9cbe0; }
+#clock-ui .ui-section-body { padding-bottom: 4px; }
+#clock-ui .ui-section-body > .row:first-child { margin-top: 0; }
 #btn-hide-ui { position: absolute; top: 10px; right: 12px; padding: 2px 7px !important; font-size: 10px !important; color: #8b95a1 !important; }
 #clock-ui-show {
   position: fixed; top: 14px; left: 14px; z-index: 10; display: none;
@@ -4950,7 +4972,6 @@ style.textContent = `
 #clock-ui .tq i.flat { background: #58b368; }
 #clock-ui .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
 #clock-ui .label-small { color: #8b95a1; font-size: 10.5px; }
-#clock-ui hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 0; }
 #clock-labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
 .clock-label {
   position: absolute; transform: translate(-50%, -140%); font: 11px/1 -apple-system, sans-serif;
@@ -4962,66 +4983,85 @@ document.head.appendChild(style);
 
 const panel = document.createElement('div');
 panel.id = 'clock-ui';
+// Rows are grouped into collapsible <details> sections (Time, Camera, View,
+// Finish; State is appended later) so the panel fits a short viewport. Only
+// Time is open by default. Every original id/class is preserved verbatim so
+// the existing querySelector / getElementById wiring is untouched.
 panel.innerHTML = `
   <h1>Watch Sim</h1>
   <button id="btn-hide-ui" title="Hide panel (H)">Hide</button>
-  <div class="row">
-    <button id="btn-pause">Pause</button>
-    <span class="readout" id="readout-time">00:00:00</span>
-  </div>
-  <div class="row label-small"><span>Beats</span><span class="readout" id="readout-beats" style="font-size:13px;">0</span></div>
-  <div class="row">
-    <span class="label-small">Time-scale</span>
-    <input type="range" id="scale-slider" min="0" max="1000" step="1" />
-  </div>
-  <div class="row label-small"><span id="scale-value">1×</span><button id="btn-wind">Wind</button></div>
-  <div class="row label-small"><span id="scale-note">5.0 beats/s</span></div>
-  <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
-  <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
-  <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
-  <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
-  <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
-  <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
-  <hr/>
-  <div class="row label-small"><span>Camera</span></div>
-  <div class="row presets">
-    <button data-cam="Escapement">Escapement</button>
-    <button data-cam="Train">Train</button>
-    <button data-cam="Dial">Dial</button>
-    <button data-cam="Free">Free</button>
-  </div>
-  <hr/>
-  <div class="row">
-    <span class="label-small">Exploded view</span>
-    <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
-  </div>
-  <div class="row">
-    <span class="label-small">Unit</span>
-    <select id="explode-unit"><option>All</option></select>
-  </div>
-  <div class="row">
-    <span class="label-small">Labels</span>
-    <button id="btn-labels">Off</button>
-  </div>
-  <div class="row">
-    <span class="label-small">Plate X-ray</span>
-    <button id="btn-xray">Off</button>
-  </div>
-  <div class="row">
-    <span class="label-small">Power flow</span>
-    <button id="btn-powerflow">Off</button>
-  </div>
-  <div class="row">
-    <span class="label-small">Sound</span>
-    <button id="btn-sound">Off</button>
-  </div>
-  <hr/>
-  <div class="row label-small"><span>Finish</span></div>
-  <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
-  <div class="row">
-    <span class="label-small">Hand flute</span>
-    <input type="range" id="flute-slider" min="-60" max="30" step="1" />
-  </div>
+  <details class="ui-section" open>
+    <summary>Time</summary>
+    <div class="ui-section-body">
+      <div class="row">
+        <button id="btn-pause">Pause</button>
+        <span class="readout" id="readout-time">00:00:00</span>
+      </div>
+      <div class="row label-small"><span>Beats</span><span class="readout" id="readout-beats" style="font-size:13px;">0</span></div>
+      <div class="row">
+        <span class="label-small">Time-scale</span>
+        <input type="range" id="scale-slider" min="0" max="1000" step="1" />
+      </div>
+      <div class="row label-small"><span id="scale-value">1×</span><button id="btn-wind">Wind</button></div>
+      <div class="row label-small"><span id="scale-note">5.0 beats/s</span></div>
+      <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
+      <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
+      <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
+      <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
+      <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
+      <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
+    </div>
+  </details>
+  <details class="ui-section">
+    <summary>Camera</summary>
+    <div class="ui-section-body">
+      <div class="row presets">
+        <button data-cam="Escapement">Escapement</button>
+        <button data-cam="Train">Train</button>
+        <button data-cam="Dial">Dial</button>
+        <button data-cam="Free">Free</button>
+      </div>
+    </div>
+  </details>
+  <details class="ui-section">
+    <summary>View</summary>
+    <div class="ui-section-body">
+      <div class="row">
+        <span class="label-small">Exploded view</span>
+        <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
+      </div>
+      <div class="row">
+        <span class="label-small">Unit</span>
+        <select id="explode-unit"><option>All</option></select>
+      </div>
+      <div class="row">
+        <span class="label-small">Labels</span>
+        <button id="btn-labels">Off</button>
+      </div>
+      <div class="row">
+        <span class="label-small">Plate X-ray</span>
+        <button id="btn-xray">Off</button>
+      </div>
+      <div class="row">
+        <span class="label-small">Power flow</span>
+        <button id="btn-powerflow">Off</button>
+      </div>
+      <div class="row">
+        <span class="label-small">Sound</span>
+        <button id="btn-sound">Off</button>
+      </div>
+    </div>
+  </details>
+  <details class="ui-section">
+    <summary>Finish</summary>
+    <div class="ui-section-body">
+      <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
+      <div class="row">
+        <span class="label-small">Hand flute</span>
+        <input type="range" id="flute-slider" min="-60" max="30" step="1" />
+      </div>
+    </div>
+  </details>
 `;
 document.body.appendChild(panel);
 
@@ -5756,14 +5796,18 @@ document.getElementById('btn-powerflow').addEventListener('click', () => setPowe
 
 // --- state persistence (save/load/clear) -----------------------------------
 // Create state buttons dynamically to avoid template literal issues
-const stateSection = document.createElement('div');
+// A collapsible <details> section like the ones in the panel template, so
+// State folds away with the rest and the panel fits a short viewport.
+const stateSection = document.createElement('details');
+stateSection.className = 'ui-section';
 stateSection.innerHTML = `
-  <hr/>
-  <div class="row label-small"><span>State</span></div>
-  <div class="row presets" id="state-buttons">
-    <button id="btn-save-state">Save</button>
-    <button id="btn-load-state">Load</button>
-    <button id="btn-clear-state">Clear</button>
+  <summary>State</summary>
+  <div class="ui-section-body">
+    <div class="row presets" id="state-buttons">
+      <button id="btn-save-state">Save</button>
+      <button id="btn-load-state">Load</button>
+      <button id="btn-clear-state">Clear</button>
+    </div>
   </div>
 `;
 document.getElementById('clock-ui').appendChild(stateSection);
