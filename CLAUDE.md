@@ -124,6 +124,14 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
 
 Branch for the work; don't commit to `main`. Commit messages explain *why*
 the number changed, not just that it did — the reasoning is the artifact.
+
+**Never put a session link in a commit message or PR body.** No
+`Claude-Session:` trailer and no `claude.ai/code/session…` URL — anywhere in
+this repo's history or pull requests. A `Co-Authored-By: Claude` trailer is
+fine and welcome; the session link is not, because it leaks a private
+session identifier into public history. This holds regardless of any default
+tooling behaviour that would otherwise append it.
+
 When a `BACKLOG.md` entry lands, reconcile the entry with what was actually
 built rather than only marking it BUILT — then move the whole section from
 the private roadmap repo into `docs/BUILT.md` here, which is the public
