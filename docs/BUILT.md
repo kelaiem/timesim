@@ -598,6 +598,141 @@ x-ray is on. Each click reads as a brief, subtle warm glint on the part
 that made it. Sound Off and fast-forward remain exactly as silent as
 §8 built them — neither code path changed.
 
+## 5. "See the minute jumper in action" — Setting preset + guided demo (BUILT)
+
+**Goal.** One click frames the §1 jumping-minute works and walks the
+pull → snap → set → push cycle, so the mechanism sells itself instead of
+hiding on the dial side. Two independently shippable halves — a camera
+preset and a scripted demo — that share nothing new mechanically: the demo
+is a *scripted user*, driving the same inputs a viewer would.
+
+### Half 1 — the `Setting` camera preset
+
+- A fifth `data-cam` button in the presets row (`src/main.js` ~5040) and a
+  `Setting` entry in `camTargets` (~5994). The button wiring was already
+  generic (`goToPreset` reads `dataset.cam`), so this is one object literal
+  and one line of markup — as the plan scoped it.
+- **Target derived, not eyeballed.** The whole cluster — star, beak,
+  spring, lifter — lives within `JMP_PIV_R` of the minute-wheel stud, so the
+  stud IS the frame's centre. Its world position comes through the `dialFace`
+  Y-flip (`dialFace.rotation.y = π` ⇒ dial-local `(x,y,z)` ↔ world
+  `(P.dial.x − x, P.dial.y + y, Z_DIAL − z)`): target
+  `(P.dial.x − MW_STUD.x, P.dial.y + MW_STUD.y, Z_DIAL − STAR_MID)`. Framing
+  radius `R = JMP_PIV_R + STAR_R`, camera `3.8×R` off the target by the same
+  42° FOV fit rule the other presets use (documented in the `camTargets`
+  header), on the −Z (dial) side like the `Dial` preset.
+- **Why the dial side, and `reveal: 'xray'`.** The jumper sits *between* the
+  dial and the plate (mesh Z ≈ −4.6…−6.7 against the dial at Z_DIAL = −7), so
+  from the dial side the only thing occluding it is the thin dial — from the
+  movement side the entire going train and barrel would. So the frame is
+  dial-side, and the preset carries `reveal: 'xray'`; `goToPreset` honours it
+  by turning x-ray ON (never off — a camera move shouldn't silently un-glass
+  a viewer's plates). Without it the button would tween to a solid dial back;
+  with it, the star and jumper read through the glassed dial. Verified in the
+  live app: the target lands on the stud at world `(−6, 0, −4.75)`, x-ray
+  flips to On, and the cluster is centred.
+
+### Half 2 — the guided demo (the scripted-user engine)
+
+The `Demo` button runs a small step list through a shared engine (see §17 —
+the engine was built here as the concrete case and generalised there, one
+step-runner, not two). `DEMO_STEPS` (`src/main.js` ~6219):
+
+1. `preset: 'Setting'` at `scale: 0.3` — frame + slow down.
+2. `crown: 'out'` — waits for `crownPullT > 0.95` (the stem reaches the
+   setting position); the seconds hack and fly to zero for free, both §1.
+3. `turnMinutes: 4` — feeds a scripted setting turn (see below) so ~4
+   detents snap out.
+4. `crown: 'in'` at `scale: 1` — the jumper lifts, the watch runs on.
+
+- **Setting turns travel the gears (rule 2).** A turn step converts minutes
+  to crown rotation with the movement's OWN chain, exactly as §9's sync does:
+  `(minutes·60·MIN_HAND_RAD_PER_SEC)/HAND_RAD_PER_SET_RAD`, fed onto
+  `crownRotation` at `SCRIPT_SET_RATE` — itself derived from
+  `SCRIPT_SET_MIN_S = 0.7 s` per detent (a beat is ~0.2 s and the snap eases
+  over `CAM_SNAP_TAU = 0.06 s`, so 0.7 s/min leaves a clear gap between
+  snaps), not a hand-picked rad/s. The feed is gated on `crownPullT > 0.5`
+  so it can only ever drive the setting path, mirroring `tick()`'s own gate.
+- **Real-time snap, on purpose.** The turn is fed on real dt, so — like the
+  snap ease it triggers — the detents play at real cadence regardless of the
+  time-scale slider. This is the slow-motion fork the plan flagged: slowing
+  the snap would need a scripted multiplier on `rawDt` in that one easing; it
+  reads fine at real speed since the snap is the point, so it was skipped.
+
+**Acceptance (met).** Verified unattended via the deterministic frame hook
+(`__clock.advanceFrame`, added because rAF is fully paused in a backgrounded
+automation pane): the demo runs 0 → 1 → 2 → 3 → done, crown out at step 2
+(`leverEngage` 0.99, `balanceRate` 0.05 — hacked), the turn produces **5
+distinct whole-minute detents** (start + 4 snaps) advancing exactly 4
+minutes and landing on an index, and it ends **running** (`balanceRate` 1.0,
+crown in). The `Setting` button tweens to the framed, x-rayed cluster.
+
+## 17. Guided tour — §5's demo generalised (BUILT)
+
+**Goal.** A first-time viewer is *shown* what to try instead of being handed
+24 controls. The tour is §5's guided-demo pattern generalised: a longer list
+of declarative steps driven by the SAME engine — one step-runner, not two.
+
+### The shared engine
+
+`scriptEnterStep` / `scriptUpdate` / `scriptStart` / `scriptStop`
+(`src/main.js` ~6101–6216) interpret a step's declarative fields:
+`preset`, `scale`, `crown` (`'out'`/`'in'`), `turnMinutes`, `wind`, `sync`,
+the view toggles (`xray`, `labels`, `powerflow`, `sound`), `explode` (eased),
+`unit`, plus `caption` and `dwell`. On enter the immediate setters fire
+(toggles, then camera, then crown/turn/sync — so a preset's `reveal:'xray'`
+can be overridden by an explicit `xray:false` in the same step). Each frame,
+the step's *dynamic* actions must settle — crown reaching position, the turn
+spent, a wind drained, a sync run all the way through catch-up, the explode
+eased in — before the `dwell` clock starts; then it advances. The caption
+renders in a single bottom banner (`#clock-caption`, ~pointer-events:none so
+a click still reaches the canvas and cancels).
+
+**`DEMO_STEPS` and `TOUR_STEPS` are the only two lists** (~6219, ~6229);
+there is no second state machine. The tour's jumper stop even reuses the
+demo's own `crown`/`turnMinutes` vocabulary verbatim, proving the reuse.
+
+### Interaction contract — §9's `syncCancel`, generalised
+
+Any real user input ends the script at once: `scriptStop` is armed on
+capture-phase `pointerdown`/`keydown`/`wheel` on `window` while a script
+runs, and disarmed when it stops. A click on the Guided buttons themselves
+is exempted (`e.target.closest('.script-ctrl')`), so those toggle the script
+rather than cancelling it. A script never dispatches DOM events — it calls
+the underlying functions — so a captured DOM event is always the user taking
+over. Like `syncCancel`, `scriptStop` STOPS rather than undoing: whatever the
+script last set stays. The one thing it must release is a mid-flight scripted
+sync's catch-up rate (it calls `syncCancel`), or the movement would keep
+running fast with no script to end it.
+
+### The stops
+
+Intro (whole movement, reset to a clean view) → escapement at `scale: 0.05`
+(with §12's honest readout narrating "20.0× slow · 0.25 beats/s", relied on
+rather than a parallel indicator) → winding (`wind: 16` at `scale: 1` — the
+chain climbs the fusee cone) → the going train with power-flow on → x-ray +
+explode with labels → the dial-side jumper, operated via a pull/turn/push
+inline (the demo's vocabulary) → sync to the wall clock → sound → outro
+(everything reset, watch running).
+
+**One derived-constant bug found and fixed in verification.** The winding
+step first inherited the escapement step's `scale: 0.05`; auto-wind drains in
+*sim*-time, so at 0.05× a ~2 s wind stretched to ~43 s. Setting the winding
+step's `scale: 1` explicitly (with the constraint in a comment) brought it to
+3.7 s.
+
+**Acceptance (met).** Verified unattended via `__clock.advanceFrame`: the
+tour runs all 11 stops 0 → … → 10 → done in ~37 s, each framing its subject
+with a caption and dwelling, and ends **running** (`balanceRate` 1.0). A
+`keydown` mid-turn and a `pointerdown` during the sync catch-up each cancel
+cleanly (script null, caption hidden, `balanceRate` settles to 1.0 — no
+runaway catch-up).
+
+**Battery.** Both §5 and §17 add no geometry and no parts — no `MECH_GRAPH`
+entries — so the cost was boot + visual check with the inspector kept green:
+support 0 failures, clearances 0 violations, full
+`inspection {includeExcluded:true}` 0 FORBIDDEN, boot console clean.
+
 ## 15. The UI panel now fits a phone (BUILT — PR #3)
 
 **Goal.** `#clock-ui` is usable on a phone.
