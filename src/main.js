@@ -4880,6 +4880,15 @@ const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
   barrelWindTurns = savedState.barrelWindTurns;
   tauIntegrated = savedState.tauIntegrated;
   crownRotation = savedState.crownRotation;
+  // Seed the delta baseline to the restored angle. crownRotDelta in tick() is
+  // crownRotation − lastCrownRotation; the restored crownRotation is input
+  // ALREADY delivered to the gears last session (and already reflected in the
+  // restored barrelWindTurns / hand offset), not new turning. Left at 0, the
+  // first tick replays the entire crown history as one positive delta and the
+  // winding path (tick(): barrelWindTurns += …) clamps the barrel to full on
+  // frame one — which silently re-winds a drained reserve on every reload, and
+  // stomps any starting reserve set below full (e.g. the ?reserve= deep link).
+  lastCrownRotation = crownRotation;
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
@@ -4996,6 +5005,33 @@ style.textContent = `
   opacity: 0; transition: opacity 0.35s; display: none;
 }
 #clock-caption.show { opacity: 1; }
+/* Tour deep-link confirmation (BUILT §17) — a real click is the ONLY way to
+   arrive at the tour when it's auto-triggered by ?tour=1 on load: unlike the
+   button, a deep link isn't itself a user gesture, and it shouldn't run the
+   camera/crown/sound unattended before the visitor has agreed to it. Opaque
+   overlay (unlike the caption, THIS blocks pointer input) until answered. */
+#clock-tour-gate {
+  position: fixed; inset: 0; z-index: 20; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(8,9,11,0.55); backdrop-filter: blur(2px);
+}
+#clock-tour-gate.show { display: flex; }
+#clock-tour-gate .box {
+  max-width: min(86vw, 420px); text-align: center;
+  background: rgba(20,22,26,0.96); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px; padding: 22px 26px; color: #eaf0f7;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+#clock-tour-gate .box p { margin: 0 0 16px; }
+#clock-tour-gate .box .row { display: flex; gap: 8px; justify-content: center; }
+#clock-tour-gate button {
+  font: inherit; padding: 8px 16px; border-radius: 7px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: #e8edf2;
+}
+#clock-tour-gate button:hover { background: rgba(255,255,255,0.14); }
+#clock-tour-gate button.primary { background: #7a3ad8; border-color: #7a3ad8; }
+#clock-tour-gate button.primary:hover { background: #8d4ce6; }
 `;
 document.head.appendChild(style);
 
@@ -5105,6 +5141,35 @@ showPanelBtn.addEventListener('click', () => setPanelHidden(false));
 const captionEl = document.createElement('div');
 captionEl.id = 'clock-caption';
 document.body.appendChild(captionEl);
+
+// Tour deep-link confirmation gate (BUILT §17) — see the #clock-tour-gate
+// CSS comment above for why this exists. Single-use: the only caller is the
+// ?tour=1 deep link, once, at boot.
+const tourGateEl = document.createElement('div');
+tourGateEl.id = 'clock-tour-gate';
+tourGateEl.innerHTML = `
+  <div class="box">
+    <p>Take a guided tour of the movement?</p>
+    <div class="row">
+      <button id="tour-gate-skip">Skip</button>
+      <button id="tour-gate-go" class="primary">Start Tour</button>
+    </div>
+  </div>`;
+document.body.appendChild(tourGateEl);
+function askTour(onProceed) {
+  tourGateEl.classList.add('show');
+  const goBtn = document.getElementById('tour-gate-go');
+  const skipBtn = document.getElementById('tour-gate-skip');
+  const finish = (proceed) => {
+    tourGateEl.classList.remove('show');
+    goBtn.onclick = null;
+    skipBtn.onclick = null;
+    if (proceed) onProceed();
+  };
+  goBtn.onclick = () => finish(true);
+  skipBtn.onclick = () => finish(false);
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
 });
@@ -5740,6 +5805,18 @@ function setSound(on) {
 }
 document.getElementById('btn-sound').addEventListener('click', () => setSound(!soundOn));
 if (restoredSound) setSound(true); // context resume may still await a gesture; the first click supplies it
+// setSound(true) can run with no real gesture behind it — restored state
+// above, a `?sound=1` deep link, or the tour's own `sound:true` step — and
+// autoplay policy then leaves audioCtx 'suspended' forever, so sndClick's
+// own guard drops every tick with nothing to show for it. Resume on the
+// next REAL pointer/key input, whatever it is, not just a click on this
+// button; harmless to keep listening once already 'running'.
+window.addEventListener('pointerdown', () => {
+  if (soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, true);
+window.addEventListener('keydown', () => {
+  if (soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, true);
 
 // --- POWER FLOW view -------------------------------------------------------
 // Tints the LIVE torque path so the maintaining sandwich's job is visible:
@@ -6198,6 +6275,17 @@ function scriptStop() {
 
 function scriptStart(steps, btn) {
   scriptStop();               // supersede any running script
+  // scriptStart is only ever reached through a real tap — the Tour/Demo
+  // button, or the tour gate's Proceed — so THIS is the gesture autoplay
+  // policy wants. Create/resume the AudioContext right here, synchronously
+  // in that gesture, rather than waiting for whichever step first sets
+  // sound:true: that runs frames later out of scriptUpdate, well outside
+  // any trusted event, and a resume() called that late is exactly what
+  // gets silently ignored (BUILT §8's sndClick then drops every tick with
+  // audioCtx stuck 'suspended' and nothing on screen to say why).
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  ensureAudioGraph();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   scriptSteps = steps;
   scriptIdx = 0;
   scriptBtn = btn || null;
@@ -6225,25 +6313,25 @@ const DEMO_STEPS = [
 // stop leans on §12's honest scale readout to narrate the catch-up rate.
 const TOUR_STEPS = [
   { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false, powerflow: false, sound: false, unit: 'All',
-    caption: 'A fusee-and-chain watch movement — every part built from geometry, no models', dwell: 2.4 },
+    caption: 'A fusee-and-chain watch movement — every part built from geometry, no models', dwell: 3.6 },
   { preset: 'Escapement', scale: 0.05,
-    caption: 'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat', dwell: 4.0 },
-  { preset: 'Free', scale: 1, crown: 'in', wind: 16, // scale:1 — auto-wind drains in sim-time, so the previous step's slow scale would stretch the wind out
-    caption: 'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady', dwell: 1.6 },
+    caption: 'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat', dwell: 6.0 },
+  { preset: 'Free', scale: 1, crown: 'in', wind: 16, xray: true, // scale:1 — auto-wind drains in sim-time, so the previous step's slow scale would stretch the wind out
+    caption: 'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady', dwell: 2.4 },
   { preset: 'Train', scale: 1, powerflow: true,
-    caption: 'That torque runs the going train — barrel to centre, third, fourth, escape', dwell: 3.4 },
+    caption: 'That torque runs the going train — barrel to centre, third, fourth, escape', dwell: 5.1 },
   { preset: 'Free', powerflow: false, xray: true, explode: 0.6, labels: true,
-    caption: 'X-ray the plates and explode the stack to see how the layers fit', dwell: 4.0 },
+    caption: 'X-ray the plates and explode the stack to see how the layers fit', dwell: 6.0 },
   { preset: 'Setting', explode: 0, labels: false, scale: 0.3, crown: 'out',
-    caption: 'On the dial side, pull the crown and the jumping-minute works engage', dwell: 0.8 },
-  { turnMinutes: 3, caption: 'Each detent sets the minute hand one exact minute', dwell: 0.8 },
-  { crown: 'in', scale: 1, caption: 'Push home and it runs on', dwell: 1.2 },
+    caption: 'On the dial side, pull the crown and the jumping-minute works engage', dwell: 1.2 },
+  { turnMinutes: 3, caption: 'Each detent sets the minute hand one exact minute', dwell: 1.2 },
+  { crown: 'in', scale: 1, caption: 'Push home and it runs on', dwell: 1.8 },
   { preset: 'Dial', xray: false, sync: true,
-    caption: 'Sync sets the hands to your wall clock through the real keyless works, then catches up', dwell: 0.6 },
+    caption: 'Sync sets the hands to your wall clock through the real keyless works, then catches up', dwell: 0.9 },
   { preset: 'Free', sound: true,
-    caption: 'Every tick is synthesised from the movement’s own events — turn the volume up', dwell: 3.4 },
+    caption: 'Every tick is synthesised from the movement’s own events — turn the volume up', dwell: 5.1 },
   { preset: 'Free', sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false,
-    caption: 'That’s the tour. Now explore the controls yourself.', dwell: 2.6 },
+    caption: 'That’s the tour. Now explore the controls yourself.', dwell: 3.9 },
 ];
 
 document.getElementById('btn-demo').addEventListener('click', (e) => {
@@ -6254,6 +6342,56 @@ document.getElementById('btn-tour').addEventListener('click', (e) => {
   const btn = e.currentTarget;
   if (scriptBtn === btn) scriptStop(); else scriptStart(TOUR_STEPS, btn);
 });
+
+// ---------------------------------------------------------------------------
+// DEEP LINKS — query-string entry points onto the SAME two surfaces above:
+// the script engine (?tour / ?demo) or the raw view state the engine's own
+// steps set (?preset, ?scale, ?xray, ?explode, ?labels, ?powerflow, ?sound,
+// ?unit, ?crown, ?reserve). `?demo=1` starts the matching script exactly as
+// its button would. `?tour=1` goes through askTour's confirm/skip gate first
+// — a deep link isn't itself a user gesture the way a button click is, and
+// shouldn't swing the camera/crown/sound unattended before the visitor has
+// agreed to it; Proceed calls the SAME scriptStart(TOUR_STEPS, ...) the
+// button uses. The state params are lower-stakes: applied once, on load,
+// directly through the same setters scriptEnterStep calls — no caption, no
+// dwell, no script running afterward to abort — so a link like
+// `?preset=Escapement&scale=0.05&xray=1` reaches the pose a script step would
+// and then just sits there as ordinary interactive state. Unrecognised or
+// malformed params are ignored (goToPreset no-ops on an unknown name;
+// unparseable numbers fall back to 1 for scale, 0 for explode/reserve via
+// `|| ` — nothing throws on a bad link).
+function applyDeepLink() {
+  const params = new URLSearchParams(location.search);
+  // State params apply FIRST and unconditionally — including alongside
+  // ?tour=1/?demo=1 — because a script's own steps only touch the fields
+  // they name (TOUR_STEPS/DEMO_STEPS never set barrelWindTurns), so a base
+  // state like ?tour=1&reserve=0.3 is meant to survive into the tour, not
+  // get skipped because the tour branch used to return before reaching it.
+  const flag = (v) => v === '1' || v === 'true';
+  if (params.has('preset')) goToPreset(params.get('preset'));
+  if (params.has('scale')) setTimeScale(parseFloat(params.get('scale')) || 1);
+  if (params.has('xray')) setXray(flag(params.get('xray')));
+  if (params.has('labels')) setLabels(flag(params.get('labels')));
+  if (params.has('powerflow')) setPowerFlow(flag(params.get('powerflow')));
+  if (params.has('sound')) setSound(flag(params.get('sound')));
+  if (params.has('unit')) { unitSelect.value = params.get('unit'); selectedUnit = params.get('unit'); }
+  if (params.has('explode')) {
+    const v = clamp(parseFloat(params.get('explode')) || 0, 0, 1);
+    explodeAmount = v;
+    document.getElementById('explode-slider').value = String(Math.round(v * 100));
+  }
+  if (params.has('crown')) { setCrownOut(params.get('crown') === 'out'); updateCrownUI(); }
+  // Fraction of the 30h reserve (RESERVE_BARREL_TURNS), same 0..1 tension
+  // vocabulary __clock.setPose's p.tension already uses — so winding has
+  // somewhere to go on load instead of starting flat against the full stop.
+  if (params.has('reserve')) barrelWindTurns = clamp(parseFloat(params.get('reserve')) || 0, 0, 1) * RESERVE_BARREL_TURNS;
+  // Scripts run LAST: they immediately re-pose the view through step 0
+  // anyway (any preset/xray/etc. set above is about to be overridden), so
+  // nothing above is wasted work, just a base state the script doesn't own.
+  if (params.has('tour')) { askTour(() => scriptStart(TOUR_STEPS, document.getElementById('btn-tour'))); return; }
+  if (params.has('demo')) { scriptStart(DEMO_STEPS, document.getElementById('btn-demo')); return; }
+}
+applyDeepLink();
 
 // ---------------------------------------------------------------------------
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
