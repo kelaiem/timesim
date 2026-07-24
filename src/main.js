@@ -4803,18 +4803,19 @@ dialFace.add(alarmRingGroup);
   // and has to thread that ~1-unit lane — is the honest mechanism, built next.
   // The marker alone lives in FRONT of the dial face, clear of all mechanism,
   // which is why this first look is battery-safe.)
-  // The marker — a little blued "train" riding ON the railroad (r ≈ 0.90R,
-  // between the rails), floating just in front of the dial face (local +z) so
-  // it shows without a slot. A short car body + a pointer nose reading inward.
-  const MARK_R = dialRadius * 0.90;           // on the railroad track (rails at 0.87 / 0.94R)
-  const carLen = 2.6, carW = 1.6;
-  const car = new THREE.Mesh(new THREE.BoxGeometry(carLen, carW, 0.7), MATS.blueSteel);
-  car.position.set(MARK_R, 0, 0.55);          // local +z → just in front of the dial plane
-  alarmRingGroup.add(car);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(carW * 0.5, 1.4, 4), MATS.blueSteel);
-  nose.rotation.z = Math.PI / 2;              // point OUTWARD along +x (leading the orbit)
-  nose.position.set(MARK_R + carLen / 2, 0, 0.55);
-  alarmRingGroup.add(nose);
+  // The marker — a SUBTLE, abstract steel lozenge floating just over the track,
+  // not a literal train. Steel (not blued) so it reads as part of the movement
+  // rather than a hand. Sized small and pulled to the railroad's INNER rail
+  // (~0.85R) rather than mid-track: the minute hand tip stops at 0.84R, so this
+  // is the largest radius at which the hand can still pass over — and cover —
+  // the marker, which is what lets the alarm indicator hide under the minute
+  // hand (a natural "parked/off" resting place). Floats at local +z, just in
+  // front of the dial face and well behind the minute hand's plane (local +2.3).
+  const MARK_R = dialRadius * 0.85;           // inner rail, within the minute hand's sweep
+  const marker = new THREE.Mesh(new THREE.OctahedronGeometry(1.0), MATS.steel);
+  marker.scale.set(1.5, 0.75, 0.35);          // a low, flat radial lozenge — abstract, understated
+  marker.position.set(MARK_R, 0, 0.45);       // local +z → just proud of the dial face
+  alarmRingGroup.add(marker);
 }
 
 // --- 'Alarm setting arbor' — disc arbor + mating bevel (friction-set) -------
