@@ -4803,17 +4803,23 @@ dialFace.add(alarmRingGroup);
   // and has to thread that ~1-unit lane — is the honest mechanism, built next.
   // The marker alone lives in FRONT of the dial face, clear of all mechanism,
   // which is why this first look is battery-safe.)
-  // The marker — a SUBTLE, abstract steel lozenge floating just over the track,
-  // not a literal train. Steel (not blued) so it reads as part of the movement
-  // rather than a hand. Sized small and pulled to the railroad's INNER rail
-  // (~0.85R) rather than mid-track: the minute hand tip stops at 0.84R, so this
-  // is the largest radius at which the hand can still pass over — and cover —
-  // the marker, which is what lets the alarm indicator hide under the minute
-  // hand (a natural "parked/off" resting place). Floats at local +z, just in
-  // front of the dial face and well behind the minute hand's plane (local +2.3).
-  const MARK_R = dialRadius * 0.85;           // inner rail, within the minute hand's sweep
+  // The marker — a SUBTLE, abstract steel lozenge riding BETWEEN the railroad's
+  // two rails (inner 0.87R, outer 0.94R), centred on that ~2.7-unit band. Steel
+  // (not blued) so it reads as part of the movement rather than a hand, and
+  // sized to sit neatly within the band with margin to either rail. Floats at
+  // local +z, just proud of the dial face and well behind the minute-hand plane
+  // (local +2.3). (This is outboard of the minute-hand tip at 0.84R, so it sits
+  // on the track proper rather than hiding under the hand — the owner's call.)
+  // makeDial paints the railroad ("chemin de fer" — two rails + a minute rung
+  // between them) in a canvas whose silver fill reaches only ~0.92R, so the
+  // rails at canvas 0.87/0.94 render at ~0.80/0.865·dialRadius in WORLD space,
+  // not 0.87/0.94. (The DIAL_FILL factor mirrors makeDial's R = 0.46·S over the
+  // half-canvas.) Put the marker on the true midpoint, between the rungs.
+  const DIAL_FILL = 0.92;
+  const RAIL_IN = dialRadius * 0.87 * DIAL_FILL, RAIL_OUT = dialRadius * 0.94 * DIAL_FILL;
+  const MARK_R = (RAIL_IN + RAIL_OUT) / 2;    // midway between the rails
   const marker = new THREE.Mesh(new THREE.OctahedronGeometry(1.0), MATS.steel);
-  marker.scale.set(1.5, 0.75, 0.35);          // a low, flat radial lozenge — abstract, understated
+  marker.scale.set(0.9, 0.6, 0.35);           // radial half ≈ 0.9 → sits within the ~2.5-unit rail gap
   marker.position.set(MARK_R, 0, 0.45);       // local +z → just proud of the dial face
   alarmRingGroup.add(marker);
 }
