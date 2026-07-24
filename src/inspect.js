@@ -1676,9 +1676,19 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline on post-§25 main (43 units, 42 fingerprinted, 10 poses,
-// captured at merge 3d3908b): 2407965539 — verified stable across reload
-// and a deliberately dirtied session. §13 step 3 diffs against THIS.
+// Baseline (§29 step 0; 43 units, 42 fingerprinted, 10 poses): 1207528787
+// — verified IDENTICAL on a virgin boot, after 5 s of running, and after a
+// deliberately dirtied session, in one process. The previous baseline
+// (2407965539, captured at merge 3d3908b) was an attractor, not a baseline:
+// it embedded updateExplode's frame-one teleport of the handsGroup to a
+// stale baseZ literal (2.5 vs the constructed, derived 3.2 — the minute
+// hand sat 0.7 below its designed plane in every running session), plus
+// nothing else, and only sessions that had actually rendered a frame ever
+// reached it — a virgin boot hashed differently, which is how §29 step 0
+// caught it. registerExplode now boot-asserts baseZ against the
+// constructed position, and resetInputs restores secondsZeroRef (the
+// seconds-reset cam's banked reference — the other session accumulator
+// the fingerprint's dirty-session sweep exposed).
 const FINGERPRINT_POSES = [
   { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },

@@ -173,6 +173,14 @@ window.addEventListener('resize', () => {
 
 const explodeEntries = []; // { obj, baseZ, dir, layer }
 function registerExplode(obj, baseZ, layer, dir = 1) {
+  // updateExplode writes position.z = baseZ at rest EVERY FRAME, so a baseZ
+  // that disagrees with the constructed position silently teleports the unit
+  // on frame one — and only virgin sessions (zero frames) ever see the
+  // constructed value, which is how the handsGroup 3.2/2.5 divergence hid in
+  // every battery run and fingerprint capture. Assert the agreement at
+  // registration; the constructor's own z is the one source.
+  if (Math.abs(obj.position.z - baseZ) > 1e-9)
+    console.warn(`registerExplode: baseZ ${baseZ} disagrees with constructed position.z ${obj.position.z} — frame one will teleport this unit`);
   explodeEntries.push({ obj, baseZ, layer, dir });
 }
 
@@ -4040,7 +4048,20 @@ dialFace.add(handsGroup);
 // for movement's direct children. dir is also flipped (+1) because the
 // parent's Y-rotation inverts the sign of a local-Z displacement once it
 // reaches world space (local +Z faces world -Z through this flip).
-registerExplode(handsGroup, 2.5, 2, 1);
+// baseZ MUST be the same expression the constructor set — updateExplode
+// writes position.z = baseZ every frame at rest, so a divergent literal
+// here silently REVERTS the constructed position on frame one. That
+// exact bug shipped: the json offset said 3.2 — a DERIVED value (see the
+// alarm hand-plane stack at ALARM_HAND_Z: at 2.5 the free lane is 0.5,
+// thinner than any hand section) and the hour TUBE was built to reach it
+// — but this line said 2.5, so frame one dropped the minute hand 0.7
+// below its designed plane, into the hour hand's lane, in every running
+// session ever seen. Intra-unit, so the battery could not see it (the
+// documented blind spot); found by §29 step 0's virgin-session
+// fingerprint check, because only a virgin boot showed the constructed
+// geometry. registerExplode boot-asserts the match for every entry now,
+// so the class is closed.
+registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 
 // The MINUTE hand rides the cannon pinion; the HOUR hand is mounted on the
 // hour wheel's tube further down (see the motion works), so it is NOT added
@@ -8681,6 +8702,7 @@ window.__clock = {
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
     alarmPrevRel = null; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓)
+    secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
