@@ -24,6 +24,7 @@ import {
   minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH,
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  solveLayout,
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -363,23 +364,14 @@ const hairspring = G.makeHairspring({
 // Planar layout (XY plane; assembly only sets position, no extra rotation
 // since parts are already built lying flat with their pivot on +Z).
 // ---------------------------------------------------------------------------
-function stepPos(prev, angleDeg, dist) {
-  const a = angleDeg * DEG2RAD;
-  return { x: prev.x + Math.cos(a) * dist, y: prev.y + Math.sin(a) * dist };
-}
-
-// TORNADO layout — the train is composed as a face design rather than an
-// organic walk. Targets (VIEWED from the dial side, which mirrors world x):
-// barrel & crown toward ~1:50, the FOURTH wheel exactly at 6 o'clock below
-// the dial centre (its arbor carries the small-seconds display), escapement
-// continuing to ~6:25, balance at ~8:00. Hop distances are fixed by the
-// pitch-radius sums, so the free variables are the walk angles plus D4.
-// MOTION WORKS layout constants — HOISTED here from the dial build (they
-// depend only on module and tooth counts, so they hoist cleanly): the
-// keyless works' setting arbor terminates at the motion works' minute
-// wheel and needs these ~1300 lines before the dial exists. Referencing
-// them down there from up here was the temporal-dead-zone ReferenceError
-// that bit twice (see TODO.md item 1, now closed).
+// TORNADO layout (§13 step 3) — the SOLVE lives in layout.js now
+// (solveLayout), a pure function of the spec. main.js's remaining job here
+// is the MEASUREMENT: the swept radii the balance-clearance constraint binds
+// on are read from the BUILT meshes (vertex max — bevels and the timing
+// screws' tip corners are real, boxes over-report), then passed IN as
+// declared inputs. Same honesty, but the solve is now callable twice with
+// different specs in one process — §13's regression suite. Ported verbatim;
+// the geometry fingerprint (2407965539) is the proof nothing moved.
 const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
 const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
 // Reduction, derived from the tooth counts rather than asserted. Each
@@ -388,128 +380,36 @@ const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // mi
 const MW_RATIO_1 = -(cannonPinionTeeth / MW_MINUTE_TEETH);   // cannon → minute wheel
 const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion → hour wheel
 
-// (BARREL_STEP_DEG / D4 / ESCAPE_STEP_DEG — the tornado step-angle inputs —
-// are imported from layout.js; the solve that consumes them stays here.)
-// The balance's walk angle is a TARGET, not a constant: ~8:00 viewed is where
-// the eye wants it, but the low-escapement restride dropped the balance INTO
-// the train's z-bands (rim [5.25, 7.13] straddles the center wheel's tooth
-// band below AND the fourth wheel's above), so the wheel must also clear both
-// discs in XY. The solved angle (BALANCE_STEP_DEG below, after the escape
-// arbor is placed) is the feasible angle nearest this target.
-// BALANCE_STEP_TARGET_DEG imported from layout.js (the target; the feasible
-// angle BALANCE_STEP_DEG is solved below).
-
-const barrelPos = { x: 0, y: 0 };
-const centerPos = stepPos(barrelPos, BARREL_STEP_DEG, barrelR_actual + centerPinionR);
-// Solve the centre→third→fourth two-bar linkage so the fourth wheel lands
-// EXACTLY D4 below the centre (viewed 6 o'clock). Triangle with sides
-// d1 (centre→third), d2 (third→fourth) and base D4 straight down; the third
-// wheel goes on the −x side so the train sweeps the quadrant opposite the
-// barrel and leaves the movement's other flank to the balance.
-const d1CT = centerWheelR + thirdPinionR;
-const d2TF = thirdWheelR + fourthPinionR;
-const thirdWedgeDeg =
-  Math.acos((d1CT * d1CT + D4 * D4 - d2TF * d2TF) / (2 * d1CT * D4)) / DEG2RAD;
-const thirdPos = stepPos(centerPos, -90 - thirdWedgeDeg, d1CT);
-const fourthPos = { x: centerPos.x, y: centerPos.y - D4 };
-const escapePos = stepPos(fourthPos, ESCAPE_STEP_DEG, fourthWheelR + escapePinionR);
-// BALANCE_STEP_DEG — SOLVED from the clearance constraint, not styled. The
-// balance rides a circle of radius escToBalanceDist about the escape arbor;
-// rotating on that circle is the ONE move that leaves every fork/balance
-// relation untouched (fork pivot, lever length, pin aim, hack pad and fork
-// cock all re-derive from the escape→balance line). Constraint, per train
-// disc W the balance z-shares:  |balance − W| ≥ sweptR(W) + sweptR(balance)
-// + CLEAR_MARGIN.  Swept radii are MEASURED from the built meshes about
-// their own axes (vertex max — same lesson as xyRadiusAbout below: bevels
-// and the timing screws' tip corners are real, boxes over-report), so a
-// future radius, bevel or screw change re-solves instead of silently
-// re-colliding. At the current builds this lands ≈ 41.9° (target 44.6°):
-// the fourth wheel binds first (screw corners at 9.52 vs tooth band 8.72),
-// the center wheel a hair behind (rim 9.0 vs tooth band 11.70).
-const BALANCE_STEP_DEG = (() => {
-  const sweptR = (obj) => {
-    obj.updateMatrixWorld(true);
-    const v = new THREE.Vector3();
-    let r = 0;
-    obj.traverse((o) => {
-      if (!o.isMesh || !o.geometry?.attributes?.position) return;
-      const pos = o.geometry.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-        r = Math.max(r, Math.hypot(v.x, v.y));
-      }
-    });
-    return r;
-  };
-  const rBal = sweptR(balanceWheel);
-  // Every placed train disc votes; the far ones (great, third, escape) never
-  // bind today but cost nothing and guard the next relayout. Full-height
-  // swept radii — deliberately z-blind: the balance straddles BOTH adjacent
-  // wheel bands, so no z argument can relax the XY bound for the pair that
-  // matters, and a z-blind bound cannot rot when the stack is restridden.
-  const obstacles = [
-    { pos: barrelPos, rr: sweptR(greatWheel) + rBal + CLEAR_MARGIN },
-    { pos: centerPos, rr: sweptR(centerWheel) + rBal + CLEAR_MARGIN },
-    { pos: thirdPos, rr: sweptR(thirdWheel) + rBal + CLEAR_MARGIN },
-    { pos: fourthPos, rr: sweptR(fourthWheel) + rBal + CLEAR_MARGIN },
-    { pos: escapePos, rr: sweptR(escapeWheel) + rBal + CLEAR_MARGIN },
-  ];
-  const ok = (deg) => {
-    const p = stepPos(escapePos, deg, escToBalanceDist);
-    return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
-  };
-  if (ok(BALANCE_STEP_TARGET_DEG)) return BALANCE_STEP_TARGET_DEG;
-  // Nearest feasible angle: march outward from the target on each side, then
-  // bisect onto the feasibility edge (hi stays feasible), take the closer side.
-  const edge = (s) => {
-    let hi = 0.25;
-    while (hi <= 90 && !ok(BALANCE_STEP_TARGET_DEG + s * hi)) hi += 0.25;
-    if (hi > 90) return Infinity;
-    let lo = hi - 0.25;
-    for (let k = 0; k < 40; k++) {
-      const m = (lo + hi) / 2;
-      if (ok(BALANCE_STEP_TARGET_DEG + s * m)) hi = m; else lo = m;
+const sweptR = (obj) => {
+  obj.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  let r = 0;
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      r = Math.max(r, Math.hypot(v.x, v.y));
     }
-    return hi;
-  };
-  const down = edge(-1), up = edge(1);
-  if (down === Infinity && up === Infinity) {
-    console.warn('balance step: no clear angle about the escape arbor — leaving the target');
-    return BALANCE_STEP_TARGET_DEG;
-  }
-  return BALANCE_STEP_TARGET_DEG + (down <= up ? -down : up);
-})();
-const balancePos = stepPos(escapePos, BALANCE_STEP_DEG, escToBalanceDist);
-
-// Fork pivot: on the escape→balance line at palletStoneDist from the wheel
-// centre (computed above), so the anchor straddles the near rim of the wheel
-// and the lever/notch continues on toward the impulse pin.
-const toBalance = { x: balancePos.x - escapePos.x, y: balancePos.y - escapePos.y };
-const toBalanceLen = Math.hypot(toBalance.x, toBalance.y) || 1;
-const uBalance = { x: toBalance.x / toBalanceLen, y: toBalance.y / toBalanceLen };
-const forkPivotPos = { x: escapePos.x + uBalance.x * palletStoneDist, y: escapePos.y + uBalance.y * palletStoneDist };
-const forkBaseAngle = Math.atan2(uBalance.x, -uBalance.y);
-
-// The impulse pin is built on the roller at local +X; aim it at the fork
-// pivot when the balance is at mid-swing (θ=0) so each zero-crossing carries
-// the pin through the fork notch. Without this the balance oscillates about
-// an arbitrary zero and the pin never meets the horns.
-const PIN_AIM = Math.atan2(forkPivotPos.y - balancePos.y, forkPivotPos.x - balancePos.x);
-
-// Dial center MUST coincide with the center-wheel arbor (minute hand rides
-// on the same axis via the cannon pinion).
-const dialCenterXY = { x: centerPos.x, y: centerPos.y };
-
-// Recenter everything on the CENTER-WHEEL arbor: the dial must be concentric
-// with the plate (hands ride the center arbor), exactly like a real movement —
-// recentring on the layout centroid left the dial hanging off the plate edge.
-const centroid = { x: centerPos.x, y: centerPos.y };
-function shift(p) { return { x: p.x - centroid.x, y: p.y - centroid.y }; }
-const P = {
-  barrel: shift(barrelPos), center: shift(centerPos), third: shift(thirdPos),
-  fourth: shift(fourthPos), escape: shift(escapePos), balance: shift(balancePos),
-  fork: shift(forkPivotPos), dial: shift(dialCenterXY),
+  });
+  return r;
 };
+const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM } = solveLayout({
+  radii: {
+    barrel: barrelR_actual, centerPinion: centerPinionR,
+    centerWheel: centerWheelR, thirdPinion: thirdPinionR,
+    thirdWheel: thirdWheelR, fourthPinion: fourthPinionR,
+    fourthWheel: fourthWheelR, escapePinion: escapePinionR,
+  },
+  escToBalance: escToBalanceDist,
+  palletStone: palletStoneDist,
+  swept: {
+    great: sweptR(greatWheel), center: sweptR(centerWheel),
+    third: sweptR(thirdWheel), fourth: sweptR(fourthWheel),
+    escape: sweptR(escapeWheel), balance: sweptR(balanceWheel),
+  },
+  warn: (m) => console.warn(m),
+});
 
 // Keyless-works geometry constants — declared before the plate radius
 // because the setting cluster extends OUTBOARD of the pulled-out sliding

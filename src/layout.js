@@ -184,3 +184,105 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 export const D4 = 15.5;                     // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
 export const ESCAPE_STEP_DEG = -57.9;      // escape at viewed ~6:25
 export const BALANCE_STEP_TARGET_DEG = 44.6; // balance at viewed ~8:00 — a TARGET; the feasible angle is solved in main.js
+
+// ---------------------------------------------------------------------------
+// solveLayout (§13 step 3) — the tornado solve as a PURE FUNCTION. Everything
+// the solve consumes arrives as an argument: the walk angles and D4 (the
+// spec), the mesh centre-distances (pitch-radius sums), and — crucially — the
+// SWEPT RADII the balance-clearance solve binds on. Those are measured from
+// the built meshes by the CALLER (vertex max: bevels and screw-tip corners
+// are real, boxes over-report — the shipped lesson), because measuring is
+// main.js's job and purity here means "same inputs, same outputs", not
+// "pretends geometry doesn't exist". Called twice with different specs in
+// one process, it returns two independent layouts — which is the §13
+// regression suite: the current spec must reproduce the fingerprint
+// baseline's positions exactly.
+//
+// Returns { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM } — the shifted
+// position table and the three byproducts the build consumes downstream.
+// Every expression is ported VERBATIM from the in-line solve so the
+// floating-point sequence (and therefore the geometry fingerprint) is
+// bit-identical.
+export function stepPos(prev, angleDeg, dist) {
+  const a = angleDeg * (Math.PI / 180);
+  return { x: prev.x + Math.cos(a) * dist, y: prev.y + Math.sin(a) * dist };
+}
+
+export function solveLayout({
+  barrelStepDeg = BARREL_STEP_DEG,
+  d4 = D4,
+  escapeStepDeg = ESCAPE_STEP_DEG,
+  balanceStepTargetDeg = BALANCE_STEP_TARGET_DEG,
+  radii,          // { barrel, centerPinion, centerWheel, thirdPinion, thirdWheel, fourthPinion, fourthWheel, escapePinion }
+  escToBalance,   // escape arbor → balance arbor
+  palletStone,    // escape arbor → fork pivot, along the escape→balance line
+  swept,          // { great, center, third, fourth, escape, balance } — measured swept radii
+  clearMargin = CLEAR_MARGIN,
+  warn = () => {},
+}) {
+  const DEG2RAD = Math.PI / 180;
+  const barrelPos = { x: 0, y: 0 };
+  const centerPos = stepPos(barrelPos, barrelStepDeg, radii.barrel + radii.centerPinion);
+  // centre→third→fourth two-bar: the fourth lands EXACTLY d4 below the centre.
+  const d1CT = radii.centerWheel + radii.thirdPinion;
+  const d2TF = radii.thirdWheel + radii.fourthPinion;
+  const thirdWedgeDeg =
+    Math.acos((d1CT * d1CT + d4 * d4 - d2TF * d2TF) / (2 * d1CT * d4)) / DEG2RAD;
+  const thirdPos = stepPos(centerPos, -90 - thirdWedgeDeg, d1CT);
+  const fourthPos = { x: centerPos.x, y: centerPos.y - d4 };
+  const escapePos = stepPos(fourthPos, escapeStepDeg, radii.fourthWheel + radii.escapePinion);
+  // BALANCE_STEP_DEG — solved from the swept-radius clearance constraint.
+  const rBal = swept.balance;
+  const obstacles = [
+    { pos: barrelPos, rr: swept.great + rBal + clearMargin },
+    { pos: centerPos, rr: swept.center + rBal + clearMargin },
+    { pos: thirdPos, rr: swept.third + rBal + clearMargin },
+    { pos: fourthPos, rr: swept.fourth + rBal + clearMargin },
+    { pos: escapePos, rr: swept.escape + rBal + clearMargin },
+  ];
+  const ok = (deg) => {
+    const p = stepPos(escapePos, deg, escToBalance);
+    return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+  };
+  let BALANCE_STEP_DEG;
+  if (ok(balanceStepTargetDeg)) {
+    BALANCE_STEP_DEG = balanceStepTargetDeg;
+  } else {
+    const edge = (s) => {
+      let hi = 0.25;
+      while (hi <= 90 && !ok(balanceStepTargetDeg + s * hi)) hi += 0.25;
+      if (hi > 90) return Infinity;
+      let lo = hi - 0.25;
+      for (let k = 0; k < 40; k++) {
+        const m = (lo + hi) / 2;
+        if (ok(balanceStepTargetDeg + s * m)) hi = m; else lo = m;
+      }
+      return hi;
+    };
+    const down = edge(-1), up = edge(1);
+    if (down === Infinity && up === Infinity) {
+      warn('balance step: no clear angle about the escape arbor — leaving the target');
+      BALANCE_STEP_DEG = balanceStepTargetDeg;
+    } else {
+      BALANCE_STEP_DEG = balanceStepTargetDeg + (down <= up ? -down : up);
+    }
+  }
+  const balancePos = stepPos(escapePos, BALANCE_STEP_DEG, escToBalance);
+  // Fork pivot on the escape→balance line; pin aim at mid-swing.
+  const toBalance = { x: balancePos.x - escapePos.x, y: balancePos.y - escapePos.y };
+  const toBalanceLen = Math.hypot(toBalance.x, toBalance.y) || 1;
+  const uBalance = { x: toBalance.x / toBalanceLen, y: toBalance.y / toBalanceLen };
+  const forkPivotPos = { x: escapePos.x + uBalance.x * palletStone, y: escapePos.y + uBalance.y * palletStone };
+  const forkBaseAngle = Math.atan2(uBalance.x, -uBalance.y);
+  const PIN_AIM = Math.atan2(forkPivotPos.y - balancePos.y, forkPivotPos.x - balancePos.x);
+  const dialCenterXY = { x: centerPos.x, y: centerPos.y };
+  // Recenter on the CENTER-WHEEL arbor (dial concentric with the plate).
+  const centroid = { x: centerPos.x, y: centerPos.y };
+  const shift = (p) => ({ x: p.x - centroid.x, y: p.y - centroid.y });
+  const P = {
+    barrel: shift(barrelPos), center: shift(centerPos), third: shift(thirdPos),
+    fourth: shift(fourthPos), escape: shift(escapePos), balance: shift(balancePos),
+    fork: shift(forkPivotPos), dial: shift(dialCenterXY),
+  };
+  return { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM };
+}
