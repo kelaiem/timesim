@@ -867,7 +867,7 @@ boot console stays clean. Verified in the live app, not only in isolation.
 
 ---
 
-## 13. Layout as a SPEC — steps 0–2 (BUILT — PR #8; step 3 remains in the roadmap)
+## 13. Layout as a SPEC (BUILT — PRs #8, #15, #16 + the step 3c PR)
 
 `main.js`'s evaluation order IS its architecture: 6,400+ lines of
 module-level `const` where a number cannot move without knowing everything
@@ -906,9 +906,41 @@ This is §22's single source: changing the beat is "edit `TRAIN` and
 re-derive", not hunting ten copies. Fingerprint bit-identical; battery
 clean at every step.
 
-**Still open (roadmap §13):** the P-dependent XY constants and step 3 — the
-pure `solveLayout(spec)`. The fingerprint baseline must be re-captured on
-the post-§25 tree (43 units) before step 3 starts.
+**Step 3 — the solves become pure functions.** Baseline re-captured first
+on the post-§25 tree: `2407965539` (10 poses, 42 fingerprinted units —
+two alarm poses joined the sweep). Then three slices, each a VERBATIM
+expression port proven by that hash coming back bit-identical:
+
+- **3a (PR #15) — `solveLayout(spec)`.** The tornado solve (the `stepPos`
+  walks, the centre→third→fourth two-bar, the `BALANCE_STEP_DEG`
+  edge-march/bisection clearance solve, fork pivot / `PIN_AIM`, the
+  recentring shift) left `main.js` for `layout.js`. `main.js` keeps only
+  the MEASUREMENT: swept radii read off the built meshes (vertex max)
+  and passed in as declared inputs — purity means "same inputs, same
+  outputs", not "pretends geometry doesn't exist". Called twice with
+  different specs in one process it returns independent layouts, which
+  is the regression suite §13 promised: the live spec must reproduce
+  the baseline, and `d4 + 2` moving the fourth wheel proves the second
+  call is really solving.
+- **3b (PR #16) — `solveKeyless(spec)`.** The whole P-dependent XY frame:
+  stem line (`uWind`/`vPerp`/`sideSign`), the keyless cluster's
+  distances, the lever/yoke pivots with their pull-driven angle
+  functions (`tailPostWorldAt` and the slot-arc bow), the plate radius
+  with its keyless floor, and the dial-side locals that radius fixes
+  (`dialRadius`, `RESERVE_LOCAL`, `SECONDS_LOCAL`, `subDialR`) — one
+  pure function, measured outline radii as inputs. Casualty of the
+  single source: `ALARM_CD`'s duplicated `plateR·0.92·0.39` at the
+  plate-bore hoist and the drift assert that guarded it — both retired,
+  since both sites now read the solve's one output.
+- **3c — the flat-teeth seam.** `TRAIN` gained the pinion count per mesh;
+  the pinion builders (hard-coded `10/10/10/8`) and `tick()`'s ratio
+  chain (the same numbers again as `8 / fourthTeeth`, …) both read the
+  table, and the flat exports `barrelTeeth`…`fourthModule` are retired.
+  A ratio can no longer disagree with the geometry that carries it;
+  §22's "edit `TRAIN` and re-derive" now covers the kinematics too.
+
+Every slice: fingerprint `2407965539` bit-identical, support 0, graph
+clean, boot silent. §13 is complete.
 
 ## 24. Alarm — synthesized dings, set from a second crown (BUILT)
 
