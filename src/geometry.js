@@ -692,6 +692,56 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 }
 
 // ---------------------------------------------------------------------------
+// Column wheel (§25 D) — the chronograph switch: a castellated crown whose
+// raised columns alternately block or admit a lever's beak. One actuation
+// advances it HALF a column pitch, flipping beak-on-column ⇄ beak-in-gap.
+// userData.profileAt(angle) returns the beak lift [0..1] at a given wheel
+// angle for a beak standing at angle 0 — the SAME function the caller's
+// tick() poses against, so the cut columns and the ridden profile cannot
+// drift apart (the §25 A cam convention).
+// ---------------------------------------------------------------------------
+export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material }) {
+  const mat = material || MATS.blueSteel;
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(ringExtrude(baseR, boreR, baseH, 48), mat);
+  g.add(base);
+  const pitch = (Math.PI * 2) / columns;
+  const duty = 0.5;             // column arc fraction of a pitch
+  const flank = 0.18 * pitch;   // rise/fall arc — what the beak visibly climbs
+  for (let i = 0; i < columns; i++) {
+    const a0 = i * pitch - (duty * pitch) / 2;
+    const shape = new THREE.Shape();
+    const steps = 8;
+    for (let k = 0; k <= steps; k++) {
+      const a = a0 + (k / steps) * duty * pitch;
+      const x = Math.cos(a) * baseR, y = Math.sin(a) * baseR;
+      if (k === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+    }
+    for (let k = steps; k >= 0; k--) {
+      const a = a0 + (k / steps) * duty * pitch;
+      shape.lineTo(Math.cos(a) * colInner, Math.sin(a) * colInner);
+    }
+    shape.closePath();
+    const colGeo = new THREE.ExtrudeGeometry(shape, { depth: colH, bevelEnabled: false, curveSegments: 2 });
+    colGeo.translate(0, 0, baseH / 2);
+    g.add(new THREE.Mesh(colGeo, mat));
+  }
+  g.userData.columns = columns;
+  g.userData.colH = colH;
+  // Beak lift at wheel angle `a` (beak azimuth 0): 1 on a column, 0 in a gap,
+  // linear on the flanks. Column i is centred at i·pitch.
+  g.userData.profileAt = (a) => {
+    let rel = ((a % pitch) + pitch) % pitch;             // distance past the nearest column centre
+    if (rel > pitch / 2) rel = pitch - rel;              // fold to [0, pitch/2]
+    const edge = (duty * pitch) / 2;
+    if (rel <= edge - flank) return 1;
+    if (rel >= edge) return 0;
+    return (edge - rel) / flank;
+  };
+  return g;
+}
+
+// ---------------------------------------------------------------------------
 // Reset hammer — pivoted lever whose hardened-steel roller presses against
 // a heart cam's flank, camming it to the zero/notch position as it closes.
 // ---------------------------------------------------------------------------

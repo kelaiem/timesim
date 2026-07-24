@@ -154,7 +154,7 @@ const MECH_GRAPH = {
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
-    ['Alarm switch', 'Three-quarter plate'], // §25 D: the on/off slide's guide stud
+    ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
@@ -210,7 +210,7 @@ const MECH_GRAPH = {
     ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PULLED OUT — set)
     ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
     ['Alarm winding train', 'Alarm barrel'], // §25 C: climb pinion → idlers → barrel rim (12/44)
-    ['Alarm switch', 'Alarm lock'],          // §25 D: the slide's nose bears on the lever's tail (OFF holds the brake)
+    ['Alarm switch', 'Alarm lock'],          // §25 D: the column wheel blocks the lever's tail beak (column = OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
     ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
     ['Alarm setting wheel', 'Alarm disc'],   // friction coupling: drives the tube when armed, slips when
@@ -505,7 +505,7 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
-  ['Alarm lock', 'Alarm switch'],          // §25 D: nose on tail
+  ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
   ['Alarm lock', 'Three-quarter plate'],   // pivot post
   ['Alarm switch', 'Three-quarter plate'], // guide stud
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
