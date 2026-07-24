@@ -149,11 +149,16 @@ const MECH_GRAPH = {
     ['Alarm setting arbor', 'Dial'],         // arbor's lower pivot bushed in the well floor bore
     ['Alarm disc', 'Alarm setting arbor'],   // pointer rides the arbor's dial end (its support)
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
-    // end rings free) and a hammer pivoted beside it. Neither is DRIVEN through
-    // a gear from a force source — the hammer is triggered by the ding and
-    // animated in frame() only, so it is static under every inspector pose axis.
+    // end rings free) and a hammer pivoted beside it. The hammer IS driven now
+    // — §25 built the striking works below and moved its pose into tick(), so
+    // the 'alarmStrike' axis sweeps it like any other train.
     ['Alarm gong', 'Three-quarter plate'],   // the gong's single foot stands on the back plate
     ['Alarm hammer', 'Three-quarter plate'], // the hammer's pivot post stands on the back plate
+    // Alarm striking works (§25 A): the power chain behind the hammer. Both
+    // arbors stand on studs planted in the same plate-top face the gong and
+    // hammer posts use — the only clear band on it.
+    ['Alarm barrel', 'Three-quarter plate'],        // barrel arbor's boss stands on the back plate
+    ['Alarm striking wheel', 'Three-quarter plate'], // pin wheel's bearing stud, likewise
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -197,6 +202,13 @@ const MECH_GRAPH = {
     // reachable on the 'alarm' pose axis — nothing else writes it.
     ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh
     ['Alarm setting arbor', 'Alarm disc'],   // arbor turns the pointer through the dial
+    // Alarm striking works (§25 A): a SECOND force source — the alarm's own
+    // mainspring, the counterpart of 'mainspring' for the going train. It
+    // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
+    // so the hammer's swing is reachable from a spring and from nothing else.
+    ['alarm mainspring', 'Alarm barrel'],
+    ['Alarm barrel', 'Alarm striking wheel'], // barrel's toothed wall → strike pinion
+    ['Alarm striking wheel', 'Alarm hammer'], // pins lift the tail and let it go
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
@@ -465,6 +477,11 @@ const EXPECTED_PAIRS = [
   ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
+  // Alarm striking works (§25 A) — the declared contacts of the power chain:
+  ['Alarm barrel', 'Three-quarter plate'],        // arbor boss planted in the back plate top
+  ['Alarm striking wheel', 'Three-quarter plate'],// bearing stud, likewise
+  ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
+  ['Alarm striking wheel', 'Alarm hammer'],       // a pin on the hammer's tail — the lift
 ];
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
@@ -584,6 +601,25 @@ const AXES = [
     n: 96,
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI }),
   },
+  {
+    // A whole wind of the alarm barrel (§25): the barrel unwinds its full
+    // travel, the striking wheel turns ALARM_STRIKE_RATIO times as far, and
+    // every pin drives the hammer's tail through a complete lift → release →
+    // strike → rebound. The other axes all pin the striking phase, so this is
+    // the only one that poses the striker in motion — and posing it is what
+    // proves the hammer is driven by the spring rather than animated beside
+    // it. n is chosen COPRIME to the strike count (109 vs 28) on purpose: an
+    // even multiple samples the same handful of phases inside every pin cycle
+    // and steps straight over the strike, which is a fast excursion within
+    // each pitch. (The pin⇄tail penetration budget re-sweeps this same axis on
+    // its own, finer, sampling.)
+    name: 'alarmStrike',
+    n: 109,
+    pose: (f, clock) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      alarmStrikePhase: f * (clock ? clock.alarmStrikesPerWind : 28),
+    }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -700,7 +736,7 @@ async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBa
   let poseCount = 0;
   const evalPose = (axis, i, refined) => {
     const f = i / axis.n;
-    clock.setPose(axis.pose(f)); // includes scene.updateMatrixWorld(true)
+    clock.setPose(axis.pose(f, clock)); // includes scene.updateMatrixWorld(true)
     poseCount++;
     for (let p = 0; p < pairs.length; p++) {
       const pr = pairs[p];
@@ -775,7 +811,7 @@ export async function measureClearance(clock, nameA, nameB, { axes = AXES, coars
     at,
     show() {
       const axis = axes.find((a) => a.name === at.axis);
-      clock.setPose(axis.pose(at.f));
+      clock.setPose(axis.pose(at.f, clock));
       const box = new THREE.Box3().setFromObject(A.obj).union(new THREE.Box3().setFromObject(B.obj));
       const c = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3()).length();
@@ -1028,25 +1064,34 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const notInGraph = [...groundingNames].filter((n) => !inGraph.has(n));
   const ungrounded = [...groundingNames].filter((n) => inGraph.has(n) && !grounded.has(n));
   const missingFromScene = [...inGraph]
-    .filter((n) => !['plate', 'pillars', 'mainspring', 'crown'].includes(n) && !groundingNames.has(n) && !MECH_GRAPH.todo.some(([a, b]) => a === n || b === n));
+    .filter((n) => !['plate', 'pillars', 'mainspring', 'alarm mainspring', 'crown'].includes(n) && !groundingNames.has(n) && !MECH_GRAPH.todo.some(([a, b]) => a === n || b === n));
 
   // 2. Drive: empirical motion per axis vs force reachability.
   const fromSpring = reachable(MECH_GRAPH.drive, 'mainspring');
   const fromCrown = reachable(MECH_GRAPH.drive, 'crown');
   const fromAlarm = reachable(MECH_GRAPH.drive, 'Alarm crown'); // §24 alarm force source
+  const fromAlarmSpring = reachable(MECH_GRAPH.drive, 'alarm mainspring'); // §25 striking-works force source
   const undriven = [];
+  const sourceFor = (name) => (name === 'crown' ? fromCrown
+    : name === 'alarm' ? fromAlarm
+    : name === 'alarmStrike' ? fromAlarmSpring
+    : fromSpring);
+  const forceFor = (name) => (name === 'crown' ? 'crown'
+    : name === 'alarm' ? 'Alarm crown'
+    : name === 'alarmStrike' ? 'alarm mainspring'
+    : 'mainspring');
   for (const axis of axes) {
-    const source = axis.name === 'crown' ? fromCrown : axis.name === 'alarm' ? fromAlarm : fromSpring;
-    clock.setPose(axis.pose(0));
+    const source = sourceFor(axis.name);
+    clock.setPose(axis.pose(0, clock));
     const sig0 = units.map(unitSignature);
-    clock.setPose(axis.pose(0.63));
+    clock.setPose(axis.pose(0.63, clock));
     const sig1 = units.map(unitSignature);
-    clock.setPose(axis.pose(1));
+    clock.setPose(axis.pose(1, clock));
     const sig2 = units.map(unitSignature);
     units.forEach((u, i) => {
       const moves = Math.abs(sig1[i] - sig0[i]) > 1e-6 || Math.abs(sig2[i] - sig0[i]) > 1e-6;
       if (moves && !source.has(u.name)) {
-        undriven.push({ unit: u.name, axis: axis.name, expectedForce: axis.name === 'crown' ? 'crown' : axis.name === 'alarm' ? 'Alarm crown' : 'mainspring' });
+        undriven.push({ unit: u.name, axis: axis.name, expectedForce: forceFor(axis.name) });
       }
     });
   }
@@ -1260,6 +1305,47 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  {
+    // Alarm cam ⇄ hammer nose (§25 A). This budget exists BECAUSE the overlap
+    // sweep cannot see it: 'Alarm striking wheel' ⇄ 'Alarm hammer' is a
+    // declared EXPECTED pair, and EXPECTED is granted per unit PAIR, so the
+    // one intended contact excuses every other overlap between those two
+    // units — including a flank driven straight through the lever it is meant
+    // to lift. This pair is also the entry's design history: a PIN wheel was
+    // built here first and this budget is what caught it, reporting 0.375 of
+    // pin buried in the tail because a released pin cannot get out of a
+    // falling hammer's way at this hammer's throw. The cam profile is
+    // GENERATED from the lift law, so a correct build touches and never bites;
+    // the budget is set just over the flat-facet error of the extruded
+    // profile, and any later change to the tail length, rest angle, wheel
+    // position or lift law that breaks the generation fails here instead of
+    // shipping a cam sunk into a lever.
+    //
+    // CALIBRATION, because 0.12 looks loose for a pair that should touch and
+    // not bite. A cam follower RIDES its cam, so this contact is tangential,
+    // and mtvDepth resolves a tangential contact badly: its escape directions
+    // are a fixed set, none of which lines up with a flank normal, so clearing
+    // one costs far more travel than the real overlap. Measured by shrinking
+    // the tail in place and re-running: a correct build reports 0.094, and the
+    // number falls about 1:1 with the shrink, hitting 0 at 0.1 — i.e. 0.094 IS
+    // the floor for touching here, not a bite. 0.12 therefore still fails on
+    // about 0.03 of genuine penetration, which is the resolution this measure
+    // can honestly claim. (The pin wheel it replaced reported 0.375.)
+    pair: ['Alarm striking wheel', 'Alarm hammer'],
+    maxDepth: 0.12,
+    axis: 'alarmStrike',
+    nSamples: 240,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmCam') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmTail') out.push(o); });
+      return out;
+    },
+  },
 ];
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {
@@ -1278,7 +1364,7 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
     let worst = 0, worstF = null;
     for (let i = 0; i <= n; i++) {
       const f = i / n;
-      clock.setPose(axis.pose(f));
+      clock.setPose(axis.pose(f, clock));
       clock.scene.updateMatrixWorld(true);
       for (const meshA of meshesA) {
         const bvh = bvhFor(meshA);
@@ -1308,7 +1394,7 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
   for (const axis of axes) {
     for (let i = 0; i <= axis.n; i++) {
       const f = i / axis.n;
-      clock.setPose(axis.pose(f));
+      clock.setPose(axis.pose(f, clock));
 
       // Broad phase: unit AABBs at this pose.
       const boxes = units.map((u) => new THREE.Box3().setFromObject(u.obj));
@@ -1359,7 +1445,7 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
       const axis = axes.find((a) => a.name === (axisName || Object.keys(rec.axes)[0]));
       const fs = rec.axes[axis.name] || [];
       const useF = f !== undefined ? f : fs[Math.floor(fs.length / 2)];
-      clock.setPose(axis.pose(useF));
+      clock.setPose(axis.pose(useF, clock));
       const [na, nb] = key.split(' ⇄ ');
       const ua = units.find((u) => u.name === na), ub = units.find((u) => u.name === nb);
       const box = new THREE.Box3().setFromObject(ua.obj).union(new THREE.Box3().setFromObject(ub.obj));

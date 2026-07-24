@@ -1133,7 +1133,13 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
 // arborH: full length of the central arbor (centred on the body's
 // mid-plane) — the caller sizes it to reach its actual bearings; the
 // default reproduces the old fixed proportion.
-export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null }) {
+// ratchet: the going-barrel form carries a ratchet + click on its lid by
+// default. Pass `ratchet: false` when the caller has not built the winding
+// path yet — a click riding round with the barrel it is supposed to HOLD is a
+// display fiction, and an unwound barrel is better shown with no click at all
+// than with one that turns.
+export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
+                             ratchet = !plain }) {
   const g = new THREE.Group();
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
@@ -1215,7 +1221,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 
   // Ratchet wheel + click on top (going-barrel form only — a plain fusee
   // drum has its ratchet on the fusee arbor instead).
-  if (!plain) {
+  if (ratchet) {
     const rc = makeRatchetAndClick({ radius: radius * 0.34, teeth: 24, thickness: height * 0.12 });
     rc.position.z = height / 2;
     g.add(rc);
