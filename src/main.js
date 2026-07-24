@@ -4787,6 +4787,36 @@ const alarmPointer = G.makeHand({ length: alarmSubR * 0.72, kind: 'minute' });
 alarmPointer.position.z = -(SUBDIAL_RECESS - 0.3); // rides inside the well, below the dial surface
 alarmPointerGroup.add(alarmPointer);
 
+// --- §25 C PROTOTYPE: peripheral "orbiting train" alarm indicator ------------
+// A first LOOK, not the final mechanism: a ring centred on the dial carrying a
+// marker that rides out to the rehaut (past the dial edge, so it needs no dial
+// slot yet) and orbits once per 12 h with the alarm setting. Built UNLABELLED
+// and driven representationally off alarmDiscAngle() for now — it is here to
+// judge the motion and the read, before it earns a real rim-pinion drive and
+// replaces the sub-dial disc. dialFace is Y-flipped: world z = −7 − localZ, so
+// local +z faces the viewer (front) and local −z sits behind the dial.
+const alarmRingGroup = new THREE.Group(); // centred on the dial, rotates with the set time
+dialFace.add(alarmRingGroup);
+{
+  // (The prototype shows only the orbiting MARKER; the real toothed ring +
+  // bearing it rides — which sits behind the dial in the yoke/keyless z-band
+  // and has to thread that ~1-unit lane — is the honest mechanism, built next.
+  // The marker alone lives in FRONT of the dial face, clear of all mechanism,
+  // which is why this first look is battery-safe.)
+  // The marker — a little blued "train" riding ON the railroad (r ≈ 0.90R,
+  // between the rails), floating just in front of the dial face (local +z) so
+  // it shows without a slot. A short car body + a pointer nose reading inward.
+  const MARK_R = dialRadius * 0.90;           // on the railroad track (rails at 0.87 / 0.94R)
+  const carLen = 2.6, carW = 1.6;
+  const car = new THREE.Mesh(new THREE.BoxGeometry(carLen, carW, 0.7), MATS.blueSteel);
+  car.position.set(MARK_R, 0, 0.55);          // local +z → just in front of the dial plane
+  alarmRingGroup.add(car);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(carW * 0.5, 1.4, 4), MATS.blueSteel);
+  nose.rotation.z = Math.PI / 2;              // point OUTWARD along +x (leading the orbit)
+  nose.position.set(MARK_R + carLen / 2, 0, 0.55);
+  alarmRingGroup.add(nose);
+}
+
 // --- 'Alarm setting arbor' — disc arbor + mating bevel (friction-set) -------
 const alarmArborUnit = new THREE.Group();
 movement.add(alarmArborUnit);
@@ -7237,6 +7267,7 @@ function tick(t) {
   const alarmAngle = alarmDiscAngle();
   alarmPointer.rotation.z = -alarmAngle;
   alarmRotor.rotation.z = alarmAngle;
+  alarmRingGroup.rotation.z = Math.PI / 2 + alarmAngle; // §25 C prototype: +90° puts alarm 12:00 at the top; +angle runs clockwise from the front (marker built at local +x)
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A). All three poses come off ONE state
