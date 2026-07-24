@@ -2430,7 +2430,12 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
   return g;
 }
 
-export function makeHand({ length, kind }) {
+// boreR / bossR / bossH: stacked-hand overrides (§25 C). A hand riding an
+// OUTER tube of a co-axial stack needs its boss to be a bored COLLET — wide
+// enough to seat on its own tube's annular face, bored so the inner tubes
+// pass through, and short so it tucks under the hand above. Defaults preserve
+// the classic solid boss bit-for-bit for every existing hand.
+export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null }) {
   const g = new THREE.Group();
   const handAesthetics = aesthetics.dial.hands;
   const config = handAesthetics[kind];
@@ -2544,12 +2549,11 @@ export function makeHand({ length, kind }) {
     g.add(cw);
   }
 
-  const bossR = length * config.bossSizeFactor;
-  const boss = new THREE.Mesh(
-    new THREE.CylinderGeometry(bossR, bossR, bossH, 18),
-    MATS.bluedHand
-  );
-  boss.rotateX(Math.PI / 2);
+  const bossR = bossROverride ?? length * config.bossSizeFactor;
+  if (bossHOverride !== null) bossH = bossHOverride;
+  const boss = boreR > 0
+    ? new THREE.Mesh(ringExtrude(bossR, boreR, bossH, 24), MATS.bluedHand) // bored collet (already axis-z)
+    : (() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 18), MATS.bluedHand); m.rotateX(Math.PI / 2); return m; })();
   g.add(boss);
 
   g.userData.length = length;

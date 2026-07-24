@@ -4163,8 +4163,10 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // blurred cut, so the gap is set well above the single CLEAR_MARGIN. A
 // neighbour sits on the perpendicular axis at centre-distance RESERVE_LOCAL.y,
 // so the centre-to-centre span is hypot(ALARM_CD, RESERVE_LOCAL.y).
-const ALARM_WELL_GAP = 3.0; // mm of dial between the alarm well and each neighbour — reads as three distinct instruments
-const alarmSubR = Math.hypot(ALARM_CD, RESERVE_LOCAL.y) - subDialR - ALARM_WELL_GAP;
+// (§24's alarm sub-dial WELL is gone — §25 C's rattrapante hand lives at the
+// dial CENTRE, so the dial face heals over the old 3-o'clock recess. ALARM_CD /
+// ALARM_LOCAL survive: they still place the crown, its stem and the setting
+// arbor, which the future az-0 train taps.)
 // Sub-dials are recessed WELLS sunk into the dial (hole + wall + painted
 // floor, all built by makeDial); the hands ride inside the well, below the
 // dial surface. In dial-local coordinates the well floor is at
@@ -4177,11 +4179,17 @@ const SUBDIAL_RECESS = 0.5;
 // the layout constants — the keyless works' setting arbor needs them.)
 const HOUR_TUBE_INNER = (MW_MODULE_1 * cannonPinionTeeth) / 2 + MW_MODULE_1 + 0.25;
 const HOUR_TUBE_OUTER = HOUR_TUBE_INNER + 0.45;
+// §25 C rattrapante centre stack: the alarm hand rides its OWN tube around the
+// hour-wheel tube — third member of the co-axial stack (cannon pinion → hour
+// tube → alarm tube), the way a real central-alarm watch carries its pointer.
+// 0.1 running clearance on the hour tube (its bearing), 0.4 wall.
+const ALARM_TUBE_INNER = HOUR_TUBE_OUTER + 0.1;
+const ALARM_TUBE_OUTER = ALARM_TUBE_INNER + 0.4;
 
 const dial = G.makeDial({
   radius: dialRadius,
   subdialRecess: SUBDIAL_RECESS,
-  centerBoreR: HOUR_TUBE_OUTER + 0.2, // tube passes through with running clearance
+  centerBoreR: ALARM_TUBE_OUTER + 0.2, // the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
     // evaluated at ±0.39R) so BOTH wells blend in rather than reading as
@@ -4189,7 +4197,6 @@ const dial = G.makeDial({
     // so they share the same gradient tone.
     { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5' },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
-    { x: ALARM_LOCAL.x, y: ALARM_LOCAL.y, r: alarmSubR, kind: 'alarm', face: '#eeece5' }, // §24
   ],
 });
 dialFace.add(dial);
@@ -4208,8 +4215,19 @@ registerExplode(handsGroup, 2.5, 2, 1);
 // hour wheel's tube further down (see the motion works), so it is NOT added
 // here — it becomes a child of hourWheelGroup and inherits that wheel's
 // rotation rather than being posed independently.
-const hourHand = G.makeHand({ length: dialRadius * 0.5, kind: 'hour' });
-const minuteHand = G.makeHand({ length: dialRadius * 0.84, kind: 'minute' }); // tip stops just short of the railroad (inner rail at 0.87R)
+// Hour hand length: tip just shy of the hour numerals. The applied numerals'
+// inner edge measures r ≈ 23.1 (sampled from the built numeral meshes, all 12
+// azimuths); 0.56·dialRadius puts the tip at ≈ 22.1 — one unit shy, the same
+// visual gap the minute hand keeps to the railroad. (Was 0.5R = 19.7, which
+// left a dead band of 3.4 before the numerals.)
+const HOUR_HAND_LEN = dialRadius * 0.56;
+const hourHand = G.makeHand({ length: HOUR_HAND_LEN, kind: 'hour' });
+// Minute hand length: tip ON the railroad's rungs. The chemin de fer's two
+// rails RENDER at world r ≈ 31.5 / 34.2 (measured from the dial texture — the
+// canvas silver fill reaches only ~0.92R, so the printed 0.87/0.94R land
+// further in); 0.83·dialRadius puts the tip at ≈ 32.8, mid-rung between them.
+const MINUTE_HAND_LEN = dialRadius * 0.83;
+const minuteHand = G.makeHand({ length: MINUTE_HAND_LEN, kind: 'minute' });
 minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
 
@@ -4442,10 +4460,9 @@ const JMP_AZ = (() => {
   const capLocal = { x: -SETTING_CAP_XY.x, y: SETTING_CAP_XY.y }; // world→dialFace: R_y(π) mirrors x
   const obstacles = [
     { x: capLocal.x - MW_STUD.x, y: capLocal.y - MW_STUD.y, r: 1.8 }, // setting cap + arbor head (stud-relative)
-    { x: -MW_STUD.x, y: -MW_STUD.y, r: HOUR_TUBE_OUTER + 0.6 },       // dial-centre tube stack
+    { x: -MW_STUD.x, y: -MW_STUD.y, r: ALARM_TUBE_OUTER + 0.6 },      // dial-centre tube stack (outermost: the §25 C alarm tube)
     { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
     { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
-    { x: ALARM_LOCAL.x - MW_STUD.x, y: ALARM_LOCAL.y - MW_STUD.y, r: alarmSubR + 0.5 }, // §24 alarm well
   ];
   let best = null;
   for (let d = 0; d < 360; d += 2) {
@@ -4778,14 +4795,57 @@ const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD };
 const Z_ALARM_CORNER = -4.1;
 const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
 
-// --- 'Alarm disc' — the pointer, in the well (mirrors the reserve hand) -----
-const alarmPointerGroup = new THREE.Group();
-alarmPointerGroup.position.set(ALARM_LOCAL.x, ALARM_LOCAL.y, 0);
-dialFace.add(alarmPointerGroup);
-registerLabel('Alarm disc', alarmPointerGroup);
-const alarmPointer = G.makeHand({ length: alarmSubR * 0.72, kind: 'minute' });
-alarmPointer.position.z = -(SUBDIAL_RECESS - 0.3); // rides inside the well, below the dial surface
-alarmPointerGroup.add(alarmPointer);
+// --- 'Alarm disc' — the CENTRAL rattrapante alarm hand (§25 C, stage 1) -----
+// Replaces §24's sub-dial pointer. The alarm indicator is now a co-axial hand
+// at the dial centre: its tube rides the hour-wheel tube (running fit — that
+// contact IS its bearing) through the enlarged centre bore, and the hand sits
+// between the applied numerals' relief (local ≤ ~0.9) and the hour hand's
+// plane (+2.5), slightly shorter than the hour hand so it can hide exactly
+// beneath it. Stage 1 shows the SET time always; stage 2 adds the rattrapante
+// follow (heart cam on the hour wheel + spring follower + the arming clamp)
+// so it TRACKS the hour hand when disarmed. dialFace frame, like the hour
+// wheel it wraps.
+// Hand plane — bounded by the hand HUBS, not the numerals (the alarm blade's
+// tip, 20.9, never radially reaches the numerals' inner edge at 23.1). The
+// binding stack, measured: dial-furniture relief ≤ 0.16 proud of the face;
+// the hour hand's solid boss reaches 1.51 below its mount plane. At the old
+// hands plane (2.5) the free lane was 0.99 − 0.5 ≈ 0.5 — thinner than any
+// hand section — which is WHY handsGroupZOffset rose 2.5 → 3.2 (hour + minute
+// move together, so their own crossing envelope is untouched): the hour hub
+// bottom moves to 1.69 and the lane opens to ~1.2. The alarm hand then seats
+// at 1.1 with its blade z-thinned 0.5× (a rattrapante leaf): keel at 0.55
+// (0.39 over the furniture), blade top at 1.35 (0.34 under the hour hub), and
+// its bored collet (0.9..1.3 after the same 0.5× z-scale, straddling the
+// tube's front face at 1.1) clears the hour blade's keel (2.04) by 0.74.
+const ALARM_HAND_Z = 1.1;
+const ALARM_TUBE_BACK = -2.0;                   // behind the dial, 0.6 short of the hour wheel's face (−2.6)
+const alarmTubeGroup = new THREE.Group();
+dialFace.add(alarmTubeGroup);
+registerLabel('Alarm disc', alarmTubeGroup);
+{
+  const tube = new THREE.Mesh(
+    ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
+  tube.position.z = (ALARM_TUBE_BACK + ALARM_HAND_Z) / 2;
+  alarmTubeGroup.add(tube);
+  // Retaining flange at the back end — behind the dial sheet, wider than the
+  // bore, so the tube cannot ride forward out of the stack; it is also where
+  // stage 2's follower arm and stage 3's setting wheel will seat.
+  const flange = new THREE.Mesh(ringGeo(ALARM_TUBE_OUTER, ALARM_TUBE_OUTER + 0.7, 0.35), MATS.steel);
+  flange.position.z = ALARM_TUBE_BACK + 0.175;
+  alarmTubeGroup.add(flange);
+}
+// The hand: hour-hand profile, a touch shorter so the hour hand can cover it
+// completely, and STEEL rather than blued — parked it reads as a shadow of the
+// hour hand; split it reads as a distinct, quieter pointer (owner's styling:
+// subtle, steel).
+// Stacked-hand build: the collet (bore 2.65) passes the hour tube (outer 2.5)
+// with running clearance and seats on the alarm tube's annular face (2.6..3.0);
+// bossR 3.3 gives it a visible seating lip. See ALARM_HAND_Z for the z budget.
+const alarmHand = G.makeHand({ length: HOUR_HAND_LEN - 1.2, kind: 'hour', boreR: 2.65, bossR: 3.3, bossH: 0.8 });
+alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
+alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
+alarmHand.position.z = ALARM_HAND_Z;
+alarmTubeGroup.add(alarmHand);
 
 // (A §25 C prototype "orbiting train" marker briefly lived here — an
 // unlabelled steel lozenge riding between the railroad's rails, driven off
@@ -4794,7 +4854,13 @@ alarmPointerGroup.add(alarmPointer);
 // design record — so the prototype was removed rather than left as a second,
 // contradictory indicator.)
 
-// --- 'Alarm setting arbor' — disc arbor + mating bevel (friction-set) -------
+// --- 'Alarm setting arbor' — crown-side arbor + mating bevel ----------------
+// §25 C interim: this arbor used to end in the sub-dial pointer; the pointer
+// (and its well) are gone — the indicator is the central rattrapante hand.
+// The arbor keeps its bevel (the crown still turns it, it still spins in
+// tick()) and its dial-ward rod/collar now stand as the takeoff stub for
+// stage 3's az-0 setting train to the centre wheel. Its support tolerance to
+// the healed dial sheet still holds (collar face 0.25 off the dial plane).
 const alarmArborUnit = new THREE.Group();
 movement.add(alarmArborUnit);
 registerLabel('Alarm setting arbor', alarmArborUnit);
@@ -5671,8 +5737,8 @@ window.addEventListener('keydown', (e) => {
   const fluteSlider = document.getElementById('flute-slider');
   fluteSlider.value = Math.round((aesthetics.dial.hands.fluteFactor ?? -0.3) * 100);
   const HAND_SPECS = [
-    [hourHand, { length: dialRadius * 0.5, kind: 'hour' }],
-    [minuteHand, { length: dialRadius * 0.905, kind: 'minute' }],
+    [hourHand, { length: HOUR_HAND_LEN, kind: 'hour' }],
+    [minuteHand, { length: MINUTE_HAND_LEN, kind: 'minute' }], // was 0.905R here vs 0.84R at build — a latent flute-slider length jump, now one constant
     [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second' }],
     [reserveHand, { length: reserveR * 0.8, kind: 'minute' }],
   ];
@@ -7242,7 +7308,18 @@ function tick(t) {
   // reserve arbor), carrying the mating bevel; the crown/stem turn with it 1:1.
   // Friction-set — everything moves together, continuously, in lockstep.
   const alarmAngle = alarmDiscAngle();
-  alarmPointer.rotation.z = -alarmAngle;
+  // §25 C stage 1: the central rattrapante hand shows the SET time on the main
+  // 12 h dial — same period the sub-dial pointer had (one crown rev = 12 h),
+  // same sign convention as its dialFace neighbours (hour hand at 3:00 and
+  // alarm set for 3:00 must coincide; verified by measurement below the same
+  // way the hour hand's own mapping was). Stage 2 replaces this direct write
+  // with the heart-cam follow when disarmed.
+  // − sense: dialFace's Y-flip mirrors world x, so printed hour H sits at
+  // world az 90 + 30·H — set-for-5:00 must land on the printed V, which is
+  // world az 240, and −alarmAngle is what gets there (verified against the
+  // printed numerals in a front screenshot; a world-frame-only "calibration"
+  // got this backwards once — the hour hand itself is the reference).
+  alarmTubeGroup.rotation.z = -alarmAngle;
   alarmRotor.rotation.z = alarmAngle;
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
