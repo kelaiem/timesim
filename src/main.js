@@ -7687,9 +7687,13 @@ const FIXED_DT = 1 / 240;
 const TICK_DT_CLAMP = 0.25; // tick()'s own rawDt clamp (non-FF): the largest dt its integrations
                             // accept without discarding time — a coarse stride must never exceed it,
                             // or τ would silently lose the clamped-away remainder
-const TICK_BUDGET_FULL = Math.ceil(0.05 / FIXED_DT); // = 12: the realDt clamp's worth of fixed steps —
-                                                     // the most a 1× frame can ever demand, so the full
-                                                     // budget changes nothing outside catch-up
+const REAL_DT_CLAMP = 0.05; // frame()'s cap on wall-clock delta: a stalled tab resumes as ONE
+                            // slow frame, not a burst of catch-up ticks (the pre-§14 literal, named
+                            // so the budget below derives from the same constraint frame() enforces)
+const TICK_BUDGET_FULL = Math.ceil(REAL_DT_CLAMP / FIXED_DT); // = 12: the realDt clamp's worth of fixed
+                                                              // steps — the most a 1× frame can ever
+                                                              // demand, so the full budget changes
+                                                              // nothing outside catch-up
 let tickBudget = TICK_BUDGET_FULL; // per-frame fixed-step allowance; the §14 quality tier sets it
 let simTime = 0;
 let accumulator = 0;
@@ -8576,7 +8580,7 @@ function advanceFrame(realDt) {
 
 function frame(now) {
   const frameMs = now - lastNow;
-  const realDt = Math.min(frameMs / 1000, 0.05);
+  const realDt = Math.min(frameMs / 1000, REAL_DT_CLAMP);
   lastNow = now;
 
   // Frame-time readout (§14): sample before the frame's work so a stall shows
