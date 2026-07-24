@@ -4893,6 +4893,7 @@ const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMI
 const alarmTubeGroup = new THREE.Group();
 dialFace.add(alarmTubeGroup);
 registerLabel('Alarm disc', alarmTubeGroup);
+registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward the viewer (the handsGroup convention)
 {
   const tube = new THREE.Mesh(
     ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
@@ -4964,6 +4965,7 @@ alarmFollowerSpring.rotation.z = 1.9;
 const alarmSetWheelGroup = new THREE.Group();
 dialFace.add(alarmSetWheelGroup);
 registerLabel('Alarm setting wheel', alarmSetWheelGroup);
+registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm tube above
 {
   // CRISP (bevel: false): the gap to the dial sheet is 0.05 and the extrude
   // bevel would expand the face 0.045 toward it — the full sweep caught the
@@ -6932,6 +6934,31 @@ document.getElementById('explode-slider').addEventListener('input', (e) => {
 // without touching the ~30 registerExplode call sites. The two stragglers
 // (backPlate, handsGroup — neither has a label) get explicit names.
 let selectedUnit = 'All';
+// --- Explode GROUPS (§25 C; the seed of §10's level-1) ---------------------
+// A named set of units the selector can lift TOGETHER, each at its own
+// per-group layer so the mechanism unfolds in its working order instead of
+// moving as one slab. Layers here override the entry's registered layer ONLY
+// while the group is selected — 'All' keeps every unit's original staging.
+// dir stays the ENTRY's own (it encodes the dialFace frame flip); within one
+// visual side a bigger layer just means further out.
+const EXPLODE_GROUPS = new Map([
+  ['Alarm complication', new Map([
+    // dial side, unfolding toward the viewer in drive order: crown outermost
+    ['Alarm crown', 6], ['Alarm setting arbor', 5], ['Alarm setting idler', 4],
+    ['Alarm setting wheel', 3], ['Alarm disc', 2],
+    // back side, unfolding away: the power chain in torque order
+    ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
+    ['Alarm hammer', 9], ['Alarm gong', 11],
+  ])],
+]);
+// A hand-written table like this rots silently (§10's warning) — assert every
+// member is a real label name at boot.
+for (const [gname, members] of EXPLODE_GROUPS) {
+  for (const n of members.keys()) {
+    if (!labelEntries.some((l) => l.name === n))
+      console.warn(`explode group "${gname}": member "${n}" is not a registered label`);
+  }
+}
 const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Structure'], [handsGroup, 'Hands']]);
 function explodeEntryName(e) {
   if (e.name === undefined) {
@@ -6951,10 +6978,11 @@ function refreshUnitOptions() {
     ...explodeEntries.map(explodeEntryName),
     ...labelEntries.map((l) => l.name),
   ])];
-  if (unitSelect.options.length === names.length + 1) return;
+  const groups = [...EXPLODE_GROUPS.keys()];
+  if (unitSelect.options.length === names.length + groups.length + 1) return;
   const cur = unitSelect.value;
   unitSelect.innerHTML = '';
-  for (const n of ['All', ...names]) {
+  for (const n of ['All', ...groups, ...names]) {
     const o = document.createElement('option');
     o.textContent = n;
     unitSelect.appendChild(o);
@@ -7114,10 +7142,14 @@ function updateExplode() {
     // positions: a lone unit rising through a parked three-quarter plate or
     // dial would pass straight through them, and the full-explode exit path
     // is already known to be clean.
+    const group = EXPLODE_GROUPS.get(selectedUnit);
+    const inGroup = group ? group.get(explodeEntryName(e)) : undefined;
     const lifts = selectedUnit === 'All'
       || explodeEntryName(e) === selectedUnit
+      || inGroup !== undefined
       || e.obj === threeQuarterPlate || e.obj === dialGroup;
-    e.obj.position.z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * e.layer * UNIT;
+    const layer = inGroup !== undefined ? inGroup : e.layer; // group staging overrides only while the group is selected
+    e.obj.position.z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * layer * UNIT;
   }
 }
 
@@ -7140,7 +7172,8 @@ function updateLabels() {
   for (let i = 0; i < labelEntries.length; i++) {
     const { name, obj } = labelEntries[i];
     const el = labelEls[i];
-    if (selectedUnit !== 'All' && name !== selectedUnit) { el.style.display = 'none'; continue; }
+    const labelGroup = EXPLODE_GROUPS.get(selectedUnit);
+    if (selectedUnit !== 'All' && name !== selectedUnit && !(labelGroup && labelGroup.has(name))) { el.style.display = 'none'; continue; }
     obj.getWorldPosition(projected);
     projected.project(camera);
     const behind = projected.z > 1;
