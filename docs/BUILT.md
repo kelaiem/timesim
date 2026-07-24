@@ -867,6 +867,49 @@ boot console stays clean. Verified in the live app, not only in isolation.
 
 ---
 
+## 13. Layout as a SPEC — steps 0–2 (BUILT — PR #8; step 3 remains in the roadmap)
+
+`main.js`'s evaluation order IS its architecture: 6,400+ lines of
+module-level `const` where a number cannot move without knowing everything
+downstream of its line. §13 untangles that in ordered, verifiable steps —
+these first three shipped, each proven a pure relocation.
+
+**Step 0 — the geometry fingerprint (`src/inspect.js`).** The battery
+answers "is the movement still LEGAL?"; a refactor also needs "is it still
+the SAME?", which the battery cannot answer (a part can move and stay
+legal). `fingerprint()` hashes every labelled unit's world AABB over a rest
+pose plus one pose per force input into one 32-bit number;
+`fingerprintFull()`/`fingerprintDiff()` localise any mismatch to the unit
+and pose that moved. Making it reproducible surfaced two real gaps, both
+fixed rather than papered over: `setPose` inherited the persistent user
+inputs that place the HANDS (raw crown angle, banked clutch rotations, the
+jump-snap correction), so a hash depended on session history — closed with
+`__clock.resetInputs()`; and the display-only chain is path-dependently
+tessellated (~0.02 AABB wobble), so it is excluded by name, with the
+reason. Baseline on the pre-§25 tree: `1605788245` (7 poses).
+
+**Step 1 — the pure constants (`src/layout.js`).** The kinematic constants
+(`F_BALANCE` … `RECOIL_DEG`) and the whole Z-stack (`CLEAR_MARGIN`,
+`L_BARREL` … `Z_KEYLESS`) moved out of the evaluation order into a data
+module. The rule the file establishes: a value belongs there iff it is
+computable from literals and other values there — the moment it needs a
+measured bbox or a solved position it stays in `main.js` until step 3
+pulls the solve out too. Fingerprint bit-identical before and after.
+
+**Step 2 — the train ratios as data.** The going train became a structured
+`TRAIN` object (module + tooth count per mesh) alongside the keyless/
+motion-works counts and the pure tornado step-angles; every going-train
+gear BUILDER consumes `TRAIN.*`. The honest seam: gear modules flow only
+through `TRAIN`, while the flat tooth counts survive solely because
+`tick()`'s ratio chain still reads them by name — inlining that is step 3.
+This is §22's single source: changing the beat is "edit `TRAIN` and
+re-derive", not hunting ten copies. Fingerprint bit-identical; battery
+clean at every step.
+
+**Still open (roadmap §13):** the P-dependent XY constants and step 3 — the
+pure `solveLayout(spec)`. The fingerprint baseline must be re-captured on
+the post-§25 tree (43 units) before step 3 starts.
+
 ## 24. Alarm — synthesized dings, set from a second crown (BUILT)
 
 **Goal.** The watch dings a slow bell volley when the display crosses a
@@ -1068,7 +1111,7 @@ deferred). A bezel is a ring on a case with nothing to attach to yet.
 Parked on §3 rather than built as a case-less placeholder.
 
 
-## 25. Alarm striking works + the full alarm complication (BUILT — branch claude/alarm-wind-clutch)
+## 25. Alarm striking works + the full alarm complication (BUILT — PRs #7/#8/#12)
 
 **Context.** §24 shipped the alarm as a real complication (second crown,
 friction-set disc at 9 o'clock, gong + hammer) AND made the striker
