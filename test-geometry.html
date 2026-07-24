@@ -29,6 +29,10 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 document.body.appendChild(renderer.domElement);
 new OrbitControls(cam, renderer.domElement);
+addEventListener('resize', () => { // automated panes can load at 0×0 and size later
+  renderer.setSize(innerWidth, innerHeight);
+  cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+});
 scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x201510, 1.2));
 const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(60, -80, 120); scene.add(dl);
 
@@ -62,6 +66,8 @@ const builds = [
   ['makePillar',      () => G.makePillar({ height: 14 })],
   ['makeDial',        () => G.makeDial({ radius: 45 })],
   ['makeHand',        () => G.makeHand({ length: 30, kind: 'minute' })],
+  ['makeCrown',       () => G.makeCrown({ bodyR: 5.425, bodyH: 4.55 })],
+  ['makeBrandMark',   () => G.makeBrandMark({ r: 12, tubeR: 1.2 })],
 ];
 let i = 0;
 window.parts = {};
@@ -77,6 +83,8 @@ for (const [name, fn] of builds) {
 }
 log('DONE');
 window.cam = cam;
+window.scene = scene;
+window.renderer = renderer; // exposed so automation can force a paint (rAF throttles in background panes)
 renderer.setAnimationLoop(() => renderer.render(scene, cam));
 </script>
 </body>

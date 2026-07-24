@@ -1543,8 +1543,12 @@ windSpinner.add(stem);
 // group, so pulling out also disengages it from the crown wheel, as on a
 // real sliding-pinion keyless works.)
 
-// Knurled crown — enlarged barrel with true knurl ridges around the rim and
-// on the face, plus a torus ring in relief (see makeCrown in geometry.js).
+// Brand crown (§27) — traditional knurled barrel with the knurl ENLARGED
+// (fewer, round, smooth-shaded ridges) and makeBrandMark's ∞ in relief on
+// the face (see makeCrown in geometry.js). Same bodyR/bodyH as the fine-
+// knurl crown it replaces: the redesign stays inside that build's PROVEN
+// swept envelope (asserted in the builder), so every standing clearance
+// row holds without re-derivation.
 const crown = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.steel }); // +75% over the original 3.1/2.6
 crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem (+Y)
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
@@ -4997,8 +5001,9 @@ const alarmStemLen = plateR + 2.2 - ALARM_CD;
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
 alarmSpinner.add(alarmStem);
-// Knurled crown — smaller than the winding crown (this stem drives only the
-// light alarm disc, so it needs no winding leverage).
+// Brand crown (§27), smaller than the winding crown (this stem drives only
+// the light alarm disc, so it needs no winding leverage) — the second
+// consumer of makeBrandMark's ∞, same enlarged knurl at 4.0/3.4.
 const alarmCrownKnob = G.makeCrown({ bodyR: 4.0, bodyH: 3.4, material: MATS.steel });
 alarmCrownKnob.rotation.x = -Math.PI / 2; // builder +Z face → outward along +Y
 alarmCrownKnob.position.y = alarmStemLen - 0.7;

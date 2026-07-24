@@ -1495,6 +1495,77 @@ version, of which Stage 1 already shipped) was drafted as
 `~/.claude/plans/cozy-wandering-boot.md` on the machine where §24 was
 built; this entry is the durable copy.
 
+## 27. Crown redesign — a brand mark (infinity/hourglass) in place of the knurl (BUILT)
+
+**Goal.** The crown stops reading as a generic prickly knurl and starts
+carrying a brand signature — an infinity sign shaped to evoke an
+hourglass — while getting cheaper to draw and calmer to the eye.
+
+**What shipped (reconciled).** An end-cap brand mark on a traditional,
+enlarged-knurl crown. The first cut replaced the whole barrel with a
+double-lobe hourglass lathe (the grip-band carrier taken to its limit);
+the owner reviewed it and kept the traditional shape instead — so the
+knurl was scaled UP rather than replaced, and the mark lives on the
+face:
+
+- *The mark* is `makeBrandMark({ r, tubeR, aspect, material, … })` in
+  `src/geometry.js` — a lemniscate of Bernoulli (∞) swept as a closed
+  round-stroke tube, its natural 1/(2√2) height/width rescaled by
+  `aspect` (default 0.52) so the lobes plump and the crossing steepens
+  into an hourglass neck. It is shared and parameterised, never inlined:
+  `makeCrown` is the only direct consumer today, and a caseback or
+  buckle can call it tomorrow.
+- *End-cap relief* (the brand read): the crown's flat outer face
+  carries the ∞ raised, half-embedded — centreline ON the face plane,
+  proud by exactly `tubeR` — per the house relief convention. The §27
+  orientation question ("does horizontal-infinity fight
+  vertical-hourglass?") dissolved on this carrier: the crown SPINS when
+  wound, so one mark gives both reads a quarter-turn apart.
+- *Grip* (traditional, calmed): the fine knurl (~60 bur-prism keels) and
+  the six-rod face rosette are retired — `burPrismGeo` went with them —
+  and the barrel keeps its classic cylinder + chamfer-cap shape with
+  LARGER knurling: round, smooth-shaded rods (16 on the winding crown,
+  12 on the alarm knob), the count still derived from the circumference
+  at the knurl-era pitch/ridge ratio (3.5) so the coin-edge duty cycle
+  survives both the size change and any future `bodyR` change. Soft
+  scallops where the keels prickled.
+
+**Derived, asserted budget.** The redesign stays INSIDE the fine-knurl
+crown's proven swept envelope — radius ≤ `bodyR` + 0.112 (the old keels'
+proud height; the new knurl's crest is SEATED to land exactly there,
+seat = budget − `KNURL_R`), axial ≤ `bodyH` + 0.55 + 0.16·`bodyR` (the
+retired rosette's proud rods) — because every standing
+clearance/penetration row was proven against that envelope, so staying
+inside cannot create a new contact anywhere in the pose space.
+`makeCrown` asserts both at build time (boot stays silent; a warn means
+the envelope regressed). `KNURL_R` = 0.61 is the one styled number (the
+"larger" in the owner's brief), FLOORED by the tri budget: at 8-segment
+rods the alarm knob's ridge count must stay ≤ 12 to hold under its
+knurl-era spend. The mark's stroke is `tubeR` = 0.085·`bodyR` (well
+under the 0.16·`bodyR` the axial envelope allows for its proud half)
+and its span fills the cap's face rim minus one stroke-width of quiet
+reveal: `markR + 2·tubeR = bodyR − 0.35`.
+
+**Call sites.** Two crowns, one builder, both redesigned for free:
+the winding crown (`main.js`, keyless assembly, `bodyR` 5.425/`bodyH`
+4.55) and the §24/§25 alarm crown knob (`main.js`, alarm crown unit,
+4.0/3.4). Same `bodyR`/`bodyH` as before at both sites — the envelope
+is what the battery had already proven.
+
+**Cost (the §14/§20 draw-call worry).** Winding crown: 1121 tris / 69
+draw calls → 1056 / 19. Alarm knob: 945 / 53 → 928 / 15. The knurl's
+prickly micro-noise is gone from both; the barrel/cap silhouettes
+dropped from 48 to 28 segments (sagitta ≈ 0.03 at the winding crown's
+radius — invisible) to buy the bigger rods their triangles.
+
+**Untouched, verified.** `crownRotation` drag, `crownPullT`, the
+setting/winding clutch and every `crownOut` read site — the `main.js`
+diff is call-site comments only; `MECH_GRAPH`'s crown declaration is
+unchanged. Turning the crown through the real drive path still winds
+the fusee (verified live: +π/2 of `crownRotation` banked reserve).
+Battery on the redesign: support 0 failures, graph clean, penetration
+within budgets, clearances 0 violations, full
+`inspection {includeExcluded:true}` 0 FORBIDDEN, boot silent.
 ## 14. Performance on slower machines (BUILT)
 
 **Goal.** The sim stays smooth on integrated graphics and modest CPUs.
