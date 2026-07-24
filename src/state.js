@@ -36,6 +36,13 @@ const defaultState = {
   timeScale: 1, // real time — matches main.js's own default
   showLabels: false,
   plateXray: false,   // three-quarter plate see-through (UI toggle)
+  soundOn: false,     // sound toggle — captureState() emits it, so it must round-trip
+  alarmOn: false,     // alarm armed toggle (§24)
+  // Raw alarm-crown drag angle (§24). Persisting the RAW input, not the target,
+  // keeps Rule 2: the detented disc angle and alarmTargetSeconds re-derive from
+  // it deterministically, so a reload lands on the exact same detent.
+  alarmCrownRotation: 0,
+  alarmBarrelWind: 8, // alarm-spring energy in turns (§24); = ALARM_BARREL_TURNS at full wind
   showBeat: 0,
   // Camera pose: position + orbit target, both in world coordinates. null
   // means "no saved camera" — the caller keeps its default framing.
@@ -53,6 +60,10 @@ function sanitize(state) {
     timeScale: state.timeScale,
     showLabels: state.showLabels,
     plateXray: state.plateXray,
+    soundOn: state.soundOn,
+    alarmOn: state.alarmOn,
+    alarmCrownRotation: state.alarmCrownRotation,
+    alarmBarrelWind: state.alarmBarrelWind,
     showBeat: state.showBeat,
     camera: state.camera,
   };

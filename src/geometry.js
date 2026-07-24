@@ -1133,7 +1133,13 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
 // arborH: full length of the central arbor (centred on the body's
 // mid-plane) — the caller sizes it to reach its actual bearings; the
 // default reproduces the old fixed proportion.
-export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null }) {
+// ratchet: the going-barrel form carries a ratchet + click on its lid by
+// default. Pass `ratchet: false` when the caller has not built the winding
+// path yet — a click riding round with the barrel it is supposed to HOLD is a
+// display fiction, and an unwound barrel is better shown with no click at all
+// than with one that turns.
+export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
+                             ratchet = !plain }) {
   const g = new THREE.Group();
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
@@ -1215,7 +1221,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 
   // Ratchet wheel + click on top (going-barrel form only — a plain fusee
   // drum has its ratchet on the fusee arbor instead).
-  if (!plain) {
+  if (ratchet) {
     const rc = makeRatchetAndClick({ radius: radius * 0.34, teeth: 24, thickness: height * 0.12 });
     rc.position.z = height / 2;
     g.add(rc);
@@ -1988,6 +1994,31 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     ctx.font = `500 ${sr * 0.17}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     for (const [sec, mathDeg, inward] of [['LX', 90, false], ['XV', 0, false], ['XXX', -90, true], ['XLV', 180, false]]) {
       arcLabel(sec, mathDeg, sr * 0.62, inward);
+    }
+  } else if (kind === 'alarm') {
+    // Alarm hour ring (§24): a light 12-hour scale the alarm pointer sets
+    // against — majors at each hour, a longer/heavier mark at XII, minors at
+    // the quarter-hour marks between (the friction-set disc is read to the
+    // nearest of these). Math angle 90° = 12 o'clock at the top; hours run
+    // clockwise, so hour h sits at 90° − h·30°.
+    for (let q = 0; q < 48; q++) {                 // 48 quarter-hour marks over 12 h
+      const onHour = q % 4 === 0;
+      const h = q / 4;
+      const noon = onHour && h === 0;
+      const len = noon ? sr * 0.20 : onHour ? sr * 0.15 : sr * 0.07;
+      const w = noon ? sr * 0.05 : onHour ? sr * 0.035 : sr * 0.018;
+      tickAt(90 - (q / 48) * 360, sr * 0.92, len, w);
+    }
+    // The twelve Arabic hour figures, small, inboard of the tick band — a
+    // clock face in miniature. Roman would crowd this little dial; the alarm
+    // is a utility scale, so plain numerals read fastest.
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `500 ${sr * 0.15}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    for (let h = 0; h < 12; h++) {
+      const a = (90 - h * 30) * Math.PI / 180;
+      const label = h === 0 ? 12 : h;
+      ctx.fillText(String(label), scx + Math.cos(a) * sr * 0.66, scy - Math.sin(a) * sr * 0.66);
     }
   }
 }
