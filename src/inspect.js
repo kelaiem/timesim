@@ -229,10 +229,13 @@ const MECH_GRAPH = {
   todo: [
     // §25 B: the RELEASE is derived from the real co-axial alignment (the
     // follower's nose entering the heart's notch) and the lock lever answers
-    // it — but the physical linkage from the dial-centre follower up to the
-    // plate-top lever is not modelled. The rod/lever train that carries that
-    // drop through the movement is the remaining §25 coupling debt.
-    ['Alarm disc', 'Alarm lock', '§25 B: the follower\'s drop releases the lock in logic; the physical release rod between them is unbuilt'],
+    // it — but no physical linkage carries the drop. NOT a missing rod: the
+    // feeler CO-ROTATES with the setting, so a pickup must be azimuth-
+    // independent — the Memovox differential-disc architecture — and the
+    // centre's z-budget (largest free gap 0.08) must be re-stratified first.
+    // The full design, measured constraints and the dial-side contrate-pawl
+    // lock that follows are §29 in the roadmap.
+    ['Alarm disc', 'Alarm lock', '§25 B → §29: physical release needs the differential-disc feeler (the follower co-rotates; no fixed rod can meet it) — designed, awaiting the centre z re-stratification'],
     // Was: "setting path ends at a representational arbor stub" — the stub
     // used to stop 54 units short of the cannon pinion, in the keyless-
     // works corner, with no visible path to the dial centre at all. Now a
