@@ -45,6 +45,8 @@ const defaultState = {
   alarmSetRot: 0,
   alarmCrownOut: false,
   alarmBarrelWind: 8, // alarm-spring energy in turns (§24); = ALARM_BARREL_TURNS at full wind
+  quality: 'Auto',    // §14 quality select — the panel's choice (Auto or a pinned tier), so an
+                      // override survives reload; Auto's own tier verdict is re-earned each boot
   showBeat: 0,
   // Camera pose: position + orbit target, both in world coordinates. null
   // means "no saved camera" — the caller keeps its default framing.
@@ -68,6 +70,7 @@ function sanitize(state) {
     alarmSetRot: state.alarmSetRot,
     alarmCrownOut: state.alarmCrownOut,
     alarmBarrelWind: state.alarmBarrelWind,
+    quality: state.quality,
     showBeat: state.showBeat,
     camera: state.camera,
   };

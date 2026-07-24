@@ -2735,6 +2735,7 @@ const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
+let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMoved() (§14)
 // The chain is drawn as what a fusee chain IS: a miniature bicycle chain —
 // alternating inner/outer plate pairs riveted through pins. The pin axes
 // stay parallel to the arbors the whole way round (cone wrap, span and
@@ -2942,6 +2943,19 @@ function rebuildChain(tension) {
     movement.add(chainMesh);
     registerLabel('Chain', chainMesh);
   }
+}
+// The chain is DISPLAY-only — nothing reads its geometry back into the
+// mechanism — so it rebuilds at most once per RENDERED frame, not per tick
+// (§14): tick() only records the tension, and the caller that is about to
+// paint (advanceFrame, __clock.step) or to measure (setPose, which the
+// inspection battery's support sweep reads chain geometry through) calls
+// this. Inside tick it cost up to 12 dispose/allocate cycles per displayed
+// frame on a machine slow enough to hit the realDt clamp — the slower the
+// machine, the more geometry churn, exactly backwards.
+function updateChainIfMoved() {
+  // 0.0015 of tension ≈ one chain-diameter of takeoff travel — the smallest
+  // rebuild that is visible at all (the old in-tick threshold, unchanged).
+  if (Math.abs(chainTensionNow - lastChainTension) > 0.0015) rebuildChain(chainTensionNow);
 }
 
 // ---------------------------------------------------------------------------
@@ -5884,6 +5898,7 @@ let alarmStrikePhase = ALARM_PHASE_REST; // striking-train phase, in strikes (ea
 let alarmStrikeIdx = Math.floor(ALARM_PHASE_REST - ALARM_STRIKE_U); // last strike SOUNDED — the ding's edge source
 let alarmReleased = false;        // the lock is lifted: the striking train is free to run (set at the trip)
 let restoredAlarmOn = false;      // persisted toggle, applied once the UI exists
+let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier plumbing exists
 
 // Load persisted state now that every variable it writes has been declared.
 // loadState() is async (the primary store is the dev server's temp file);
@@ -5917,6 +5932,7 @@ let restoredAlarmOn = false;      // persisted toggle, applied once the UI exist
   alarmSetRot = savedState.alarmSetRot ?? savedState.alarmCrownRotation ?? 0; // pre-winding saves: crown WAS the set path
   lastAlarmCrownRotation = savedState.alarmCrownRotation ?? 0;
   alarmCrownOut = !!savedState.alarmCrownOut;
+  restoredQualityMode = savedState.quality ?? 'Auto'; // ?? — states saved before §14 have no such field
 }
 
 // ---------------------------------------------------------------------------
@@ -6151,6 +6167,21 @@ panel.innerHTML = `
         <span class="label-small">Hand flute</span>
         <input type="range" id="flute-slider" min="-60" max="30" step="1" />
       </div>
+    </div>
+  </details>
+  <details class="ui-section">
+    <summary>Performance</summary>
+    <div class="ui-section-body">
+      <!-- Frame-time readout (BUILT §14) — the gate every performance change
+           is measured against. Ticks/frame makes the fixed-step spiral (more
+           tick() work the slower the machine) directly visible. -->
+      <div class="row label-small"><span>Frame</span><span class="readout" id="readout-frame" style="font-size:13px;">—</span></div>
+      <div class="row label-small"><span>Ticks/frame</span><span class="readout" id="readout-ticks" style="font-size:13px;">0</span></div>
+      <div class="row">
+        <span class="label-small">Quality</span>
+        <select id="quality-select"><option>Auto</option><option>High</option><option>Balanced</option><option>Low</option></select>
+      </div>
+      <div class="row label-small"><span>Tier</span><span class="readout" id="readout-tier" style="font-size:13px;">High</span></div>
     </div>
   </details>
 `;
@@ -7165,6 +7196,7 @@ function captureState() {
     alarmSetRot,        // §25 C: the SET path's banked rotation (the hand position survives winding)
     alarmCrownOut,      // §25 C: winding clutch state
     alarmBarrelWind,    // alarm-spring energy in turns (§24)
+    quality: qualityMode, // §14: the panel's CHOICE (Auto or a pinned tier), not Auto's current verdict
     showBeat: 0,
     camera: {
       px: camera.position.x, py: camera.position.y, pz: camera.position.z,
@@ -7648,10 +7680,101 @@ applyDeepLink();
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
 // ---------------------------------------------------------------------------
 const FIXED_DT = 1 / 240;
+// Tick budget (BUILT §14). The fixed-step loop used to hand a SLOW machine
+// MORE work per frame — 12 full ticks at the 0.05 s realDt clamp, ~250 during
+// a sync catch-up — exactly backwards. A frame now gets at most `tickBudget`
+// fixed steps; any remainder is consumed in coarse strides (see advanceFrame).
+const TICK_DT_CLAMP = 0.25; // tick()'s own rawDt clamp (non-FF): the largest dt its integrations
+                            // accept without discarding time — a coarse stride must never exceed it,
+                            // or τ would silently lose the clamped-away remainder
+const REAL_DT_CLAMP = 0.05; // frame()'s cap on wall-clock delta: a stalled tab resumes as ONE
+                            // slow frame, not a burst of catch-up ticks (the pre-§14 literal, named
+                            // so the budget below derives from the same constraint frame() enforces)
+const TICK_BUDGET_FULL = Math.ceil(REAL_DT_CLAMP / FIXED_DT); // = 12: the realDt clamp's worth of fixed
+                                                              // steps — the most a 1× frame can ever
+                                                              // demand, so the full budget changes
+                                                              // nothing outside catch-up
+let tickBudget = TICK_BUDGET_FULL; // per-frame fixed-step allowance; the §14 quality tier sets it
 let simTime = 0;
 let accumulator = 0;
 let lastNow = performance.now();
 let lastAutoSaveTime = 0;
+
+// --- Frame-time readout (BUILT §14) ----------------------------------------
+// The gate for every performance change — the TODO.md item 4 lesson (a
+// native-code plan died to a 0.04 ms profile): no optimisation claims a win
+// unless this number moves. The EMA tracks the RAW rAF interval, unclamped,
+// so it reads the display cadence itself rather than the sim's realDt clamp.
+const FRAME_EMA_ALPHA = 0.1; // ~10-frame settle — fast enough to watch a tier change land, slow enough not to flicker
+const FRAME_STALL_MS = 250;  // = tick()'s own 0.25 s rawDt clamp: past it the sim already treats the gap as a stall
+                             // (backgrounded tab, debugger), not render cost — such samples would poison the EMA for seconds
+let frameMsEma = 0;
+let ticksThisFrame = 0;      // tick() calls in the last advanceFrame — the "12× per frame on a slow machine" number, made visible
+let perfReadoutMs = 0;       // ms since the panel text was last painted
+
+// --- Quality tiers (BUILT §14) ---------------------------------------------
+// One knob instead of three: a tier sets the pixel-ratio cap (the renderer's
+// antialias flag is context-creation-time and can't change, but its cost
+// scales with the same fragment count the cap controls), the two shadow map
+// sizes (shadows are the biggest fixed cost in this scene: key 2048² + rim
+// spot 1024² under PCFSoftShadowMap), and the tick budget. High IS the
+// pre-§14 configuration, verbatim.
+const QUALITY_TIERS = {
+  //                pixel-ratio cap: 2 = the original min(dpr, 2); 1.5 ≈ half
+  //                the fragments of 2× on a retina laptop; 1 = a quarter.
+  //                shadow px: Balanced halves each map edge (¼ the texels);
+  //                Low stops casting entirely (0 = castShadow off).
+  //                tickBudget: fractions of the full clamp's 12 — Low turns a
+  //                20 fps frame's 12 ticks into 3 fixed + 1 coarse stride.
+  High:     { pixelRatioCap: 2,   keyShadowPx: 2048, rimShadowPx: 1024, tickBudget: TICK_BUDGET_FULL },
+  Balanced: { pixelRatioCap: 1.5, keyShadowPx: 1024, rimShadowPx: 512,  tickBudget: TICK_BUDGET_FULL / 2 },
+  Low:      { pixelRatioCap: 1,   keyShadowPx: 0,    rimShadowPx: 0,    tickBudget: TICK_BUDGET_FULL / 4 },
+};
+const TIER_LADDER = ['High', 'Balanced', 'Low'];
+let qualityMode = 'Auto'; // the panel select: Auto or a pinned tier
+let qualityTier = 'High'; // the tier actually applied right now
+function applyQualityTier(name) {
+  qualityTier = name;
+  const t = QUALITY_TIERS[name];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, t.pixelRatioCap)); // re-sizes the buffer itself
+  for (const [light, px] of [[keyLight, t.keyShadowPx], [rimSpot, t.rimShadowPx]]) {
+    light.castShadow = px > 0;
+    if (px > 0) light.shadow.mapSize.set(px, px);
+    // An allocated map keeps its old size, so drop it — the next shadow pass
+    // reallocates at the new one (and a non-casting light holds no map).
+    if (light.shadow.map) { light.shadow.map.dispose(); light.shadow.map = null; }
+  }
+  tickBudget = t.tickBudget;
+}
+// Auto-select walks DOWN only. The readout's EMA is the rAF interval, which
+// is vsync-floored: a machine with 10× headroom and one barely keeping up
+// both read ~16.7 ms at 60 Hz, so "fast enough to step back up" is invisible
+// from here — starting at High and stepping down until frames keep up is the
+// only honest read of this signal. The panel select overrides at any time.
+const TIER_DOWN_MS = 1000 / 30; // sustained above one 30 fps frame = missing every other 60 Hz vsync
+const TIER_HOLD_MS = 3000;      // after any change, let the EMA (~10-frame settle) and the
+                                // recompile/realloc hitch of the change itself wash out before judging again
+let tierHoldUntil = 0;          // set at boot below: startup shader compiles look like slow frames
+function autoTierUpdate(now) {
+  if (qualityMode !== 'Auto' || frameMsEma === 0 || now < tierHoldUntil) return;
+  if (frameMsEma > TIER_DOWN_MS) {
+    const next = TIER_LADDER[TIER_LADDER.indexOf(qualityTier) + 1];
+    if (next) {
+      applyQualityTier(next);
+      tierHoldUntil = now + TIER_HOLD_MS;
+    }
+  }
+}
+const qualitySelect = document.getElementById('quality-select');
+function setQualityMode(mode) {
+  qualityMode = QUALITY_TIERS[mode] ? mode : 'Auto';
+  // Auto re-earns its way down from High rather than trusting a stale verdict.
+  applyQualityTier(qualityMode === 'Auto' ? 'High' : qualityMode);
+  tierHoldUntil = performance.now() + TIER_HOLD_MS;
+  qualitySelect.value = qualityMode;
+}
+qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
+setQualityMode(restoredQualityMode); // persisted panel choice (state.js); default Auto
 
 const projected = new THREE.Vector3();
 
@@ -7767,7 +7890,7 @@ function tick(t) {
   // t. Clamped so a long stall (e.g. a backgrounded tab) can't blow up the
   // damping integration below.
   // Fast-forward relaxes the clamp: FF advances in 2 s strides on purpose.
-  const rawDt = clamp(t - lastTickRawT, 0, fastForward ? 2.5 : 0.25);
+  const rawDt = clamp(t - lastTickRawT, 0, fastForward ? 2.5 : TICK_DT_CLAMP);
   lastTickRawT = t;
 
   // Lever swing: eases toward the crown's target position (independent of
@@ -8182,10 +8305,11 @@ function tick(t) {
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
-  // much chain has paid onto it; the chain mesh is rebuilt whenever the
-  // reserve state has visibly moved (cheap — a few hundred tube segments).
+  // much chain has paid onto it. The chain MESH is not rebuilt here — tick
+  // only records the tension; updateChainIfMoved() rebuilds once per
+  // rendered/posed frame (§14), since the chain is display-only.
   drumGroup.rotation.z = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R;
-  if (Math.abs(tension - lastChainTension) > 0.0015) rebuildChain(tension);
+  chainTensionNow = tension;
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
@@ -8363,6 +8487,7 @@ function tick(t) {
 }
 
 tick(0); // seed correct initial pose before the first paint
+updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
 
 // One frame's worth of simulation, script/sync stepping, camera tween and
 // render — everything except the rAF scheduling and autosave. Split out of
@@ -8370,6 +8495,7 @@ tick(0); // seed correct initial pose before the first paint
 // demo/tour deterministically: rAF is fully paused in a backgrounded
 // automation pane, so scripted behaviour cannot be observed through frame().
 function advanceFrame(realDt) {
+  ticksThisFrame = 0; // §14 readout: how many tick() calls this frame costs
   if (!paused) {
     if (fastForward) {
       // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
@@ -8377,6 +8503,7 @@ function advanceFrame(realDt) {
       for (let i = 0; i < 45; i++) {
         simTime += 2;
         tick(simTime);
+        ticksThisFrame++;
       }
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
@@ -8387,12 +8514,25 @@ function advanceFrame(realDt) {
       // in for timeScale rather than being written into it — the slider's
       // own position (and the user's chosen scale) survives the sync.
       accumulator += realDt * (syncPhase === 'catchup' ? catchUpRate : timeScale);
+      // Tick budget (§14): up to tickBudget fixed steps, then the remainder in
+      // coarse strides — whole multiples of FIXED_DT (the sub-step accumulator
+      // phase stays identical to the unbudgeted path, so behaviour at speed is
+      // bit-for-bit unchanged), capped at TICK_DT_CLAMP so tick() never clamps
+      // a stride away and silently loses τ. The 252-ticks-per-frame catch-up
+      // case collapses to tickBudget + ⌈remainder / TICK_DT_CLAMP⌉ calls; a
+      // coarse stride is exactly what fast-forward already feeds tick(), so
+      // the mechanism's closed forms are on well-trodden ground.
       while (accumulator >= FIXED_DT) {
-        simTime += FIXED_DT;
-        accumulator -= FIXED_DT;
+        const stride = ticksThisFrame < tickBudget
+          ? FIXED_DT
+          : Math.min(Math.floor(accumulator / FIXED_DT) * FIXED_DT, TICK_DT_CLAMP);
+        simTime += stride;
+        accumulator -= stride;
         tick(simTime);
+        ticksThisFrame++;
       }
     }
+    updateChainIfMoved(); // once per frame, after ALL of this frame's ticks (§14)
   }
 
   // Beats read the MOVEMENT's clock (τ): they stop when it stops. The TIME
@@ -8439,10 +8579,29 @@ function advanceFrame(realDt) {
 }
 
 function frame(now) {
-  const realDt = Math.min((now - lastNow) / 1000, 0.05);
+  const frameMs = now - lastNow;
+  const realDt = Math.min(frameMs / 1000, REAL_DT_CLAMP);
   lastNow = now;
 
+  // Frame-time readout (§14): sample before the frame's work so a stall shows
+  // up as ONE skipped sample, not a poisoned average.
+  if (frameMs < FRAME_STALL_MS) {
+    frameMsEma = frameMsEma === 0 ? frameMs : frameMsEma + (frameMs - frameMsEma) * FRAME_EMA_ALPHA;
+  }
+  autoTierUpdate(now); // §14: Auto quality steps down while frames sustained miss vsync
+
   advanceFrame(realDt);
+
+  // Paint the readout ~2×/s — touching the DOM every frame would itself cost
+  // frames, which a frame-time readout of all things must not do.
+  perfReadoutMs += frameMs;
+  if (perfReadoutMs >= 500 && frameMsEma > 0) {
+    perfReadoutMs = 0;
+    document.getElementById('readout-frame').textContent =
+      `${frameMsEma.toFixed(1)} ms · ${Math.round(1000 / frameMsEma)} fps`;
+    document.getElementById('readout-ticks').textContent = String(ticksThisFrame);
+    document.getElementById('readout-tier').textContent = qualityTier;
+  }
 
   // Auto-save state every 5 seconds
   if (simTime - lastAutoSaveTime > 5) {
@@ -8459,6 +8618,7 @@ window.__clock = {
   step(dt) {
     simTime += dt;
     tick(simTime);
+    updateChainIfMoved(); // step() paints — the chain must be current in the render (§14)
     if (camTween) {
       camTween.t += dt / camTween.dur;
       const e = smoothstep(camTween.t);
@@ -8550,6 +8710,11 @@ window.__clock = {
       alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
     }
     tick(lastTickRawT);
+    // The support sweep measures the chain's REAL geometry against the drum's
+    // hook, so a posed tension must rebuild the mesh before the caller reads
+    // it — this call is what kept that true when §14 moved the rebuild out of
+    // tick() itself.
+    updateChainIfMoved();
     scene.updateMatrixWorld(true);
   },
   render() { renderer.render(scene, camera); },
@@ -8561,6 +8726,12 @@ window.__clock = {
   // automation pane is backgrounded, so the guided demo/tour can't be watched
   // through the real loop). Runs script + sync + sim + camera + render.
   advanceFrame(realDt) { advanceFrame(realDt); return simTime; },
+  // Frame-time readout (§14) — the panel's own numbers, exposed so a perf
+  // claim can be checked from automation instead of by eye.
+  get frameMs() { return frameMsEma; },
+  get ticksPerFrame() { return ticksThisFrame; },
+  get quality() { return { mode: qualityMode, tier: qualityTier }; },
+  setQualityMode(m) { setQualityMode(m); },
   movement,
   // Alarm introspection (§24): the disc's actual detented angle and the set
   // time derived from it, for verifying they agree within one detent step.
