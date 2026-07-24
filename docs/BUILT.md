@@ -1067,3 +1067,355 @@ case wall; there is no case, crystal, or caseback mesh today (BACKLOG §3,
 deferred). A bezel is a ring on a case with nothing to attach to yet.
 Parked on §3 rather than built as a case-less placeholder.
 
+
+## 25. Alarm striking works + the full alarm complication (BUILT — branch claude/alarm-wind-clutch)
+
+**Context.** §24 shipped the alarm as a real complication (second crown,
+friction-set disc at 9 o'clock, gong + hammer) AND made the striker
+honestly SPRING-POWERED in logic (public repo, PR #6 / branch
+`claude/alarm-second-crown`, commit `50c258e`): a dedicated alarm barrel
+`alarmBarrelWind` (turns) drains while ringing, the hammer angle is
+DERIVED from a striking-train phase `alarmStrikePhase` that the draining
+drives, one ding per whole strike, and the ring STOPS when the barrel
+runs down (Rule 2 — see `tick()`'s "Alarm: release + spring-powered
+strike" block, `alarmHammerAngle`, and `SND.alarmStrike`). The RELEASE
+trips on the hour position crossing the set position; the `Alarm` toggle
+gates it. `__clock` exposes `alarmBarrelWind` / `alarmReleased` /
+`alarmStrikePhase` / `alarmHammerAngle`.
+
+**What is still MISSING is the visible geometry** for that power chain —
+today the alarm barrel, the striking train, the release feeler/lock, and
+the alarm-crown winding are all logic with no parts. This entry is that
+geometry, so a viewer can SEE the striker draw its energy, see it get
+scheduled, and see it armed/disarmed. It mirrors how the going train is
+already built (spring `barrelWindTurns` → drains as the balance turns →
+gates `balanceRate` → `τ` → whole train), just for the alarm.
+
+**A — alarm barrel + striking train. BUILT** (public repo, branch
+`claude/alarm-striking-works`). Reconciled against what actually shipped:
+
+- *A barrel and a striking wheel now stand on the plate top*, in the clear
+  band outboard-left of the balance that the gong already claims. `Alarm
+  barrel` is a new FORCE SOURCE in `MECH_GRAPH` (node `'alarm mainspring'`,
+  the counterpart of `'mainspring'`); `Alarm striking wheel` carries its
+  pinion. Both sit on studs planted in the 3/4 plate top — the gong post's
+  idiom. Barrel 44 t ⇄ pinion 11 t, a 4:1 step-up at module 0.3.
+- *The striking wheel is a lifting CAM, not a pin wheel* — the one real
+  departure from the sketch above, and worth knowing WHY before anyone
+  "fixes" it back. A pin lifts the hammer's tail by sliding out along its
+  face and letting go at the tip; the hammer then falls and its face sweeps
+  straight back down through where the pin still is. The pin only escapes
+  radially (≈1.7 units per radian of wheel) while the hammer falls its whole
+  draw in a fifth of a pin pitch. Measured: the tail buried itself 0.21–0.47
+  into the pin it had just released, and thinner pins, a slower fall and tip
+  relief all failed to shift it. A clean escape needs the tail to cross the
+  pin circle steeply — and steep crossing and small draw are the SAME
+  parameter, so it wants ≈60° of hammer swing, against §24's hammer resting
+  0.4 off the gong on a 7-unit arm. A cam and follower never lose contact on
+  the rise, so there is nothing to escape from.
+- *The profile is GENERATED from the lift law*, not the other way round:
+  sample the rise, put the nose where the law says, record where that lands
+  in the wheel's own turning frame. Four lobes, 62 % rise (smoothstep), then
+  the flank drops away and the hammer falls under its own spring — that free
+  fall is the strike. Draw = 3 × `ALARM_STRIKE_AMP`. (Trap: the generated
+  psi is already in the wheel's frame. Re-zeroing it on the release — the
+  obvious tidy-up — puts every lobe a full radian off the nose that is
+  supposed to ride it.)
+- *The hammer gained a TAIL* whose wheel-facing side tapers from full width
+  at the pivot to nothing at the point. Not styling: a parallel bar with a
+  symmetric nose buries its wheel-facing SHOULDER 0.36 into the rising
+  flank, because the shoulder stands nearer the wheel's centre than the
+  point does. The taper puts every part of that edge further out.
+- *`ALARM_RING_SECONDS` is now an OUTPUT.* §24's 6 s was a free constant no
+  train can deliver at a 0.42 s cadence without the barrel creeping through
+  a third of a turn. The constraint is now that the barrel must visibly
+  unwind more than one revolution: `ALARM_BARREL_TURNS = 1.75` → 16 strikes
+  per barrel turn → 28 strikes → ≈11.8 s. `ALARM_STRIKE_DUR` is gone, and
+  restored state clamps `alarmBarrelWind` (older saves hold §24's 8).
+- *The striker's pose moved from `frame()` into `tick()`*, so the inspector
+  can pose it at all. New `'alarmStrike'` axis, `n: 109` — deliberately
+  coprime to the 28 strikes, or every sample lands on the same few phases
+  within a lobe and steps over the strike entirely.
+- *New penetration budget* `['Alarm striking wheel','Alarm hammer']`, which
+  earned its keep immediately: it is what caught both defects above, in a
+  pair the overlap sweep is structurally blind to (EXPECTED is granted per
+  unit PAIR). Calibrated at 0.12 — a cam follower TOUCHES, and `mtvDepth`
+  resolves a tangential contact badly; a correct build reads 0.094 and the
+  number falls ≈1:1 with an artificial shrink of the tail, reaching 0 at 0.1.
+- *`makeBarrel` gained a `ratchet` option.* The alarm barrel ships with NO
+  ratchet or click: there is no winding path until stage C, and a click
+  riding round with the barrel it is meant to hold is a display fiction.
+- *Cost:* the back stack grew from 10.2 to ≈12.1. The cam has to sit under
+  the barrel — a pinion always sits closer to its wheel than the wheel's own
+  tip radius, so the cam unavoidably passes over the barrel and the two can
+  only be separated in z. Worth carrying into §2.
+
+Battery at landing: support 0 · graph clean · penetration all within budget
+· `inspection {includeExcluded:true}` 0 FORBIDDEN · clearances 0 · boot
+silent.
+
+**B — release mechanism.** A reduction train from the hour wheel
+(`hourWheelGroup`, `mwHourA` = 1 rev / 12 h) to a 12-hour cam COAXIAL with
+the alarm disc at 9 o'clock — the same span-crossing pattern as the
+power-reserve train (`reserveTrain`). The set disc carries a notch, the
+hour cam a finger; a feeler drops when they align and lifts a locking
+lever off the striking wheel. The lock is what the shipped `alarmReleased`
+flag now embodies; cross-check the cam alignment against the existing
+angle crossing.
+
+*After A:* the lock now has something real to hold. `alarmStrikePhase` is
+parked at `ALARM_PHASE_REST` (the instant a lobe's rise begins, lift 0)
+whenever the lock seats, so a locking lever wants to bear on the striking
+wheel at that phase and free it at the trip. Note also that A left the
+striking wheel's own bearing stud static and its rotor separate — the lever
+has a static face to be pivoted against.
+
+**C — alarm-crown wind/set clutch.** Mirror the time crown's
+sliding-pinion clutch (`windSpinner` / `crownPullT` / `windPathRot` /
+`setPathRot`, one-way ratchet banking `barrelWindTurns` in `tick()`): a
+second sliding pinion on the alarm stem + `alarmCrownPullT`; PUSHED IN
+winds `alarmBarrelWind` through an alarm crown wheel + ratchet, PULLED OUT
+drives the disc through the existing bevel (today's setting path). An
+alarm-crown pull/push toggle (like `toggleCrown`). `MECH_GRAPH` drive
+`['Alarm crown','Alarm barrel']` (wind) + `['Alarm crown','Alarm setting
+arbor']` (set). When this lands, change `alarmBarrelWind`'s default from
+full to 0 — the alarm must be WOUND to ring.
+
+*After A:* the barrel is built and `ALARM_BARREL_TURNS = 1.75` is what the
+crown has to bank into, through whatever winding reduction the crown wheel
+gives. The barrel deliberately carries no ratchet or click yet
+(`makeBarrel({ ratchet: false })`) — this stage adds them, and the click
+must be mounted on the PLATE, not on the barrel group, or it turns with the
+thing it is holding. The crown will also need a second force-source route
+in `MECH_GRAPH`, alongside the `'alarm mainspring'` node A added.
+
+*Winding-route design, RESOLVED (the geometry study that has to happen before
+any code, done — branch `claude/alarm-wind-clutch`, off the §13 tree).* The
+naïve picture (dial-side crown → drop straight down to the barrel) is
+IMPOSSIBLE here, and it took measurement to prove rather than assume:
+
+- §25 A sited the alarm barrel on the plate top at world az ~173, r ~23 —
+  directly OVER the fusee, great wheel, drum and chain, which fill the entire
+  z-column beneath it. A winding arbor cannot drop from it.
+- A full clear-column sweep of the movement (excluding the plates, which get
+  bored for arbors) finds NO clear vertical channel within a gear-mesh of the
+  barrel. The nearest clear column is ~15 units away, in the lower-left gap.
+  Placing the barrel anywhere on its own mesh circle around the striking wheel
+  does not help — the striking wheel is pinned near the hammer (upper-left),
+  so every barrel position that meshes it sits over the going train.
+- The crossing is therefore unavoidable: the power source (barrel, windable
+  near a front crown) and the sink (hammer, on the back) are on opposite faces
+  with a solid movement between. §25 A already paid the EASY crossing — barrel
+  and striking wheel are both on the plate top, meshing laterally, no z-cross.
+  The winding is the HARD crossing and needs a real route.
+
+Two architectures for the STRIKER were weighed with the owner. **Rejected:
+move the whole striker to the dial front.** It co-locates everything (no
+crossing) but reworks all four shipped §25 A parts AND clutters the visible
+dial (the owner wants the dial face clean). **CHOSEN: keep §25 A's striker on
+the back untouched; make only the winding cross, through the one clear
+channel.**
+
+*The SETTING indicator — design history and the CURRENT design.* This went
+through three owner-steered revisions; recording all three because each was
+killed by a MEASUREMENT, and the reasons are load-bearing for whoever builds:
+
+1. ~~§24's sub-dial disc~~ (shipped, being replaced): a 5 mm well cramps the
+   12 h scale into a tiny arc — poor setting precision.
+2. ~~Peripheral "orbiting train" ring at the railroad radius~~: precise
+   (12 h spread over the full dial) and prototyped to an approved look — a
+   subtle steel lozenge seated between the chemin-de-fer's rails (measured off
+   the dial TEXTURE: the rails render at world r 31.5/34.2, not the nominal
+   0.87/0.94·dialR — the canvas silver fill only reaches ~0.92R). But the
+   RING behind the dial is blocked: at the keyless cluster (az 120–160°) the
+   yoke and setting lever reach z −6.8, leaving 0.2 of the ≥0.45 a ring +
+   margins needs above the dial plane (−7.0). A front-side floating ring on
+   dial rollers was designed around it (and is still viable), but was
+   superseded by 3 before build.
+3. **CHOSEN — central rattrapante alarm hand.** A co-axial hand at the dial
+   centre riding its own tube around the hour-wheel tube, just dial-ward of
+   the hour hand. DISARMED, it mechanically FOLLOWS the hour hand — a true
+   rattrapante return: heart cam on the hour wheel, spring-loaded follower on
+   the alarm tube — so it hides exactly under the hour hand, invisible.
+   ARMED, a clamp holds the alarm tube at the set time and the follower
+   lifts; the hand stands at the alarm hour like a Tudor Advisor / Memovox
+   pointer. Setting (crown pulled) drives the tube against the clamp-open
+   state through a small train from the alarm corner.
+
+   Why this converges beautifully: the rattrapante centre IS stage B's
+   release. With the hour wheel and the alarm tube co-axial, "hour crosses
+   set time" is a physical alignment at ONE axis — the classic Memovox
+   architecture (notched cam + drop pin) falls out of the same parts, instead
+   of needing a separate 12 h comparison train at 9 o'clock.
+
+   Measured constraints for the build: the dial-gap disc (z −7.0..−6.3) is
+   crowded — small-seconds display arbor crosses r 6.8–15.8 (its own azimuth),
+   keyless works r 10.1–12.8, minute jumper r 12–12.6, reserve train r 11–16 —
+   so the drive train from the alarm corner (r ≈ 15.4) to the centre must
+   thread the az ≈ 0 corridor (measured passable). Centre surgery: the dial's
+   centre bore (currently HOUR_TUBE_OUTER + 0.2) must open to pass the alarm
+   tube; the tube wraps the hour-wheel tube with running clearance; the hand
+   rides between the dial face and the hour hand. The heart cam mounts on the
+   hour wheel (1 rev/12 h, the correct period by construction); the follower
+   and clamp live in the dial gap near the centre.
+
+   The §25 C prototype marker (revision 2's look) was removed from the tree
+   when 3 was chosen — one indicator, not two.
+
+**BUILT (branch `claude/alarm-wind-clutch`, four verified stages — this is
+what shipped, reconciled against the plan above):**
+
+1. *Centre stack* ✔ — alarm tube around the hour-wheel tube (its running fit
+   IS the bearing), enlarged dial bore, steel rattrapante leaf under a
+   LENGTHENED hour hand (0.5R → 0.56R, tip one unit shy of the numerals'
+   measured inner edge; the minute hand moved to 0.83R, tip ON the measured
+   rails). The z-budget forced two real changes: the whole hands stack rose
+   0.7 (hour+minute together — at the old plane the free lane was thinner
+   than any hand section, and the first mount GRAZED the blade through the
+   dial sheet), and `makeHand` grew stacked-hand overrides (boreR/bossR/
+   bossH — a bored collet that passes the inner tubes; defaults bit-identical
+   for every existing hand). §24's sub-dial well is healed; the dialFace
+   mirror bit once (a world-frame calibration put 5:00 at printed 7 — the
+   printed numerals are the only reference).
+2. *Heart cam + sprung follower* ✔ — the rattrapante follow. The follower
+   co-rotates with the SETTING, so its swept envelope is an annulus, and the
+   lane behind the dial is bounded at r 4.5 by a dial foot + the motion-works
+   stud (vertex-probed): everything lives inside r ≤ 4.3 — shallow heart
+   (rMin 2.75 → R 3.55; makeHeartCam gained an rMin override since the
+   classic 0.32·R notch would fall inside the tube bore) and a short arm
+   whose length + seated angle are derived from the same triangle tick()
+   solves. Follower pose is Rule-2 derived (heart profile → law of cosines,
+   two fixed-point iterations for contact-azimuth drift) and was verified
+   against the closed form at four relative angles. New penetration budget
+   ['Hour wheel','Alarm disc'] on the (now ARMED) alarm axis: 0.082/0.12.
+   The CLAMP was NOT built as a lever — arming is the friction coupling in 3
+   holding against the follower spring; the visible on/off lever remains D's.
+3. *Setting train* ✔ — crown → bevels → arbor pinion (10) → plain idler (31)
+   → setting wheel (30) FRICTION-riding the tube (armed: wheel ≡ tube to
+   1e-9; disarmed: 1.12 rad of measured slip — the cannon-pinion precedent).
+   ONE module for all three meshes (m·(30+2·31+10)/2 = ALARM_CD ≈ 0.302 —
+   a plain idler cannot span two modules; the first plan wrongly borrowed
+   the reserve train's two-module split, which needs a COMPOUND idler).
+   The quantizer bug this exposed: alarmMarkIndex read the RAW crown angle
+   (correct only at 1:1) — one crown rev read 0 h instead of 4 h. §24's
+   arbor collar (riding a well-floor bore that no longer exists) became a
+   plate cock; support edge 'Dial' → 'plate'.
+4. *Winding path* ✔ — with a cleaner clutch than planned: the stem's own
+   pull throw (CROWN_PULL_DIST) carries its sliding bevel from the setting
+   corner to the CLIMB ARBOR's contrate one throw outboard — the pull IS the
+   clutch, no separate sliding pinion. (The planned az-205 channel died with
+   the sub-dial relocation; the climb lives at az 0, r = ALARM_CD + throw,
+   rising through BOTH plates — base-plate bore + jeweled TQ pivot, the
+   plates' holes hoisted with an assert since they build first. A raycast
+   overruled a sparse vertex probe that claimed the TQ plate was absent
+   there.) Up top: pinion + two 59 t idlers cross the vertex-probed-empty
+   z 10.1..11.6 lane to the barrel rim, i2 by two-circle intersection.
+   Idlers drop out: crown → barrel = 12/44, full wind ≈ 6.4 crown turns.
+   `alarmBarrelWind` defaults 0 — the alarm ships unwound. NO CLICK, a
+   deliberate deviation from the plan: in §25 A's single-member barrel
+   (rotation IS wound state) a click would block the ring itself; the hold
+   is B's lock, and the arbor/shell split that earns a real click is filed
+   as debt. Winding banks wind AND un-rides the cam in lockstep (the exact
+   mirror of the ring's spend), and the three phase RESETS (trip, run-down,
+   switch-off) are GONE — each silently slipped the barrel⇄cam mesh.
+   Verified: wind → trip → 28-strike ring lands the phase at exactly REST
+   with no reset anywhere. The winding train's pose derives rigidly from
+   the barrel angle, so it visibly free-spins during the ring — what rigid
+   meshing implies, and what real alarm crowns famously do.
+5. *tick() + UI* ✔ — crown deltas route by where the bevel physically is
+   (`alarmCrownPullT`); the SET path (`alarmSetRot`) holds while winding and
+   persists; pull toggle + wind-percent readout; `setAlarmCrownRotation` /
+   `setAlarmCrownOut` on `__clock` for inspection parity.
+
+**B + D — BUILT (same branch), reconciled:**
+
+- *B, the hold:* a brake lever on the plate top (probed-clear az-160 sector
+  by the striking wheel) — pivot post, steel arm, ruby pad on a new smooth
+  LOCK COLLAR under the striking cam. A brake, not the sketched notched
+  detent, because the winding lockstep can park the train at ANY phase —
+  the stop-lever-on-balance-rim precedent. Verified: lifts by exactly the
+  derived ALARM_LOCK_LIFT at the trip, re-seats to 1e-4 after run-down.
+- *B, the release:* the CONVERGENCE the entry predicted came true — the
+  feeler IS the rattrapante follower. The trip now derives from the
+  physical alignment (wrapPi(mwHourA − alarmTubeShownA) crossing zero =
+  the nose dropping into the heart's notch), §24's seconds-space
+  comparison retired, its guards carried into angle space. The rod from
+  the centre follower up to the plate-top lever is NOT built — declared
+  in MECH_GRAPH.todo as the remaining §25 coupling debt.
+- *D, the switch:* a two-position blued slide behind the lock's tail: OFF
+  presses the brake closed regardless of the feeler, ON backs its 0.9
+  throw away. btn-alarm eases it; pose path exact. Power-flow gained the
+  alarm groups (winding lights crown-train + barrel as STORE; ringing
+  lights barrel → cam → hammer → gong as DELIVER).
+- *Battery for the new contact:* the alarmStrike axis now poses
+  alarmOn + alarmReleased (a turning train IS a ringing one — an engaged
+  pad under a spinning collar would be a false dig), and a clearance
+  budget proves the lifted pad clears the turning collar by 0.22 ≥ 0.15
+  through the whole ring.
+- *Also:* an 'Alarm complication' explode GROUP (the §10 level-1 seed):
+  per-group layer staging unfolds all ten alarm units in torque order,
+  labels filter to members, boot-asserted against real label names.
+
+*Crown-sense swap — DONE (owner's call):* pushed-in WINDS, pulled-out
+SETS, the Cricket/Memovox convention. The two vertical arbors exchanged
+radii; the setting train re-solved and then re-solved AGAIN when the full
+sweep and the owner's own eyes caught what focused runs and an EXPECTED
+blanket had hidden: a collinear idler impaled on the climb, an idler
+poking through the reserve sub-dial's wall, and the setting wheel crossing
+BOTH well walls since stage 3. Final geometry: asymmetric 28 t/37 t idlers
+on a dogleg threading the (slightly shrunk, wellR 10.9 → 10.2) well rings,
+the climb and the cock — every clearance boot-asserted, because the two
+failure paths (a probe that skipped the Dial unit; an EXPECTED row
+blanketing the sweep) are structural and asserts share neither.
+
+*D, revised twice more (owner-driven):* the slide switch became a COLUMN
+WHEEL (steel, ratchet skirt, castellations cut by the same profileAt the
+poses ride), with a CLICK/detent arm whose tangential geometry rocks its
+nose radially — 1.78 riding a column (OFF), 1.30 dropped in a gap (ON),
+derived not picked — and a case PUSHER whose pawl indexes the skirt, since
+a cased movement cannot reach a plate-top wheel (§3's case band bores for
+its stem). Tap targets: the wheel, the click, the pusher cap, the alarm
+crown (pull/push toggle), plus the panel buttons. An interference audit
+prompted by the owner's eye fixed the stud-through-crown, skirt-on-plate,
+pawl-in-plate, boss-in-plate and beak/nose-through-castellation set.
+
+*Also:* an 'Alarm complication' explode group (§10's level-1 seed) unfolds
+all ten alarm units in torque order with labels; arming SWEEPS the hand out
+(τ 350 ms, the re-coupled friction wheel) while disarming SNAPS it home
+(τ 60 ms, the spring) — the two speeds are the two mechanisms.
+
+*Still open before the PR leaves draft:* the final full sweep on the
+B+D tree, moving this entry to `docs/BUILT.md`, and the PR description.
+*True remaining debt:* the follower→lock release rod, and the barrel
+arbor/shell split (the honest click).
+
+**D — on/off lever + power-flow.** A visible on/off lever the `btn-alarm`
+toggle drives (holds/frees the lock; `setAlarm()` animates it). Extend the
+power-flow view (`pfBuildGroups`) with an alarm group so the barrel →
+striking train → hammer torque path lights while ringing — the visual
+proof it is spring-powered.
+
+*After A:* the torque path exists as real parts and real `MECH_GRAPH` drive
+edges (`alarm mainspring → Alarm barrel → Alarm striking wheel → Alarm
+hammer`), so the group is a lookup rather than a story. A already lights the
+striking wheel alongside the gong and hammer on each strike
+(`SND.alarmStrike`'s `sndFlash` targets).
+
+**Traps carried from §24.** The **base plate is NOT a swept unit**, so
+every new part must be measured against it by hand (the bug that buried
+§24's first detent star). Same for the 3/4 plate top where the back-side
+parts sit. The movement is crowded; geometry fitting is the bulk of the
+work and is iterative against the live battery.
+
+Feasibility: large (a full second complication in a crowded movement) ·
+Cost: A came to ~330 lines across `main.js` / `geometry.js` / `inspect.js`;
+B–D likely another ~300–400, still mostly iterative fitting · Battery:
+full, and best landed A→D with a checkpoint after each — support 0, graph
+clean, `inspection {includeExcluded:true}` 0 FORBIDDEN, clearances 0, boot
+silent. A's lesson for the rest: the overlap sweep will NOT catch a bad
+contact between two units that are already declared EXPECTED, so every new
+working contact wants its own penetration budget, written before the
+geometry is trusted. A fuller written plan (the 5-stage
+version, of which Stage 1 already shipped) was drafted as
+`~/.claude/plans/cozy-wandering-boot.md` on the machine where §24 was
+built; this entry is the durable copy.

@@ -42,6 +42,8 @@ const defaultState = {
   // keeps Rule 2: the detented disc angle and alarmTargetSeconds re-derive from
   // it deterministically, so a reload lands on the exact same detent.
   alarmCrownRotation: 0,
+  alarmSetRot: 0,
+  alarmCrownOut: false,
   alarmBarrelWind: 8, // alarm-spring energy in turns (§24); = ALARM_BARREL_TURNS at full wind
   showBeat: 0,
   // Camera pose: position + orbit target, both in world coordinates. null
@@ -63,6 +65,8 @@ function sanitize(state) {
     soundOn: state.soundOn,
     alarmOn: state.alarmOn,
     alarmCrownRotation: state.alarmCrownRotation,
+    alarmSetRot: state.alarmSetRot,
+    alarmCrownOut: state.alarmCrownOut,
     alarmBarrelWind: state.alarmBarrelWind,
     showBeat: state.showBeat,
     camera: state.camera,

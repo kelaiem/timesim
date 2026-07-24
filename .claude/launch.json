@@ -4,8 +4,9 @@
     {
       "name": "clock",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["dev_server.py", "8347"],
-      "port": 8347
+      "runtimeArgs": ["dev_server.py"],
+      "port": 8347,
+      "autoPort": true
     }
   ]
 }

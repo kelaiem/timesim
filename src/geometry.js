@@ -105,8 +105,12 @@ class ArchimedeanSpiral extends THREE.Curve {
 // ---------------------------------------------------------------------------
 
 // Involute/cycloidal-ish spur gear. pitchRadius = module*teeth/2 (userData.r).
+// bevel: false (§25 C) — a gear whose z-budget to its neighbour is smaller
+// than the extrude bevel's expansion (bevelThickness ≈ 0.18·t) must be cut
+// CRISP: the rendered outline is what collides, not the authored one
+// (docs/MODELING.md rule 1). Default true — every existing gear unchanged.
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
-                           material, hub = true }) {
+                           material, hub = true, bevel: bevelOn = true }) {
   const mat = material || MATS.brass;
   const pitchR = pitchRadius(module, teeth);
   const tipR = pitchR + module * 0.95;
@@ -125,10 +129,10 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
   const useSpokes = outerR > innerR + module ? spokes : 0;
   addCrossingHoles(shape, useSpokes, innerR, outerR, boreR);
 
-  const bevel = Math.min(thickness * 0.18, module * 0.22);
+  const bevel = bevelOn ? Math.min(thickness * 0.18, module * 0.22) : 0;
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
-    bevelEnabled: true,
+    bevelEnabled: bevelOn,
     bevelThickness: bevel,
     bevelSize: bevel,
     bevelSegments: 1,
@@ -650,9 +654,12 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
 // ---------------------------------------------------------------------------
 
-export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
+// rMin override (§25 C): a heart pressed onto a TUBE needs its notch floor
+// outside the tube's bore — the classic 0.32·radius would fall inside it.
+// Default preserves the seconds-reset heart bit-for-bit.
+export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverride = null }) {
   const g = new THREE.Group();
-  const rMin = radius * 0.32;
+  const rMin = rMinOverride ?? radius * 0.32;
   const shape = new THREE.Shape();
   const N = 96;
   for (let i = 0; i <= N; i++) {
@@ -681,6 +688,75 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
   g.userData.r = radius;
   g.userData.rMin = rMin;
   g.userData.bevel = bevel; // bevelSize EXPANDS the outline in XY — clearance math must add it
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// Column wheel (§25 D) — the chronograph switch: a castellated crown whose
+// raised columns alternately block or admit a lever's beak. One actuation
+// advances it HALF a column pitch, flipping beak-on-column ⇄ beak-in-gap.
+// userData.profileAt(angle) returns the beak lift [0..1] at a given wheel
+// angle for a beak standing at angle 0 — the SAME function the caller's
+// tick() poses against, so the cut columns and the ridden profile cannot
+// drift apart (the §25 A cam convention).
+// ---------------------------------------------------------------------------
+export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material }) {
+  const mat = material || MATS.blueSteel;
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(ringExtrude(baseR, boreR, baseH, 48), mat);
+  g.add(base);
+  const pitch = (Math.PI * 2) / columns;
+  const duty = 0.5;             // column arc fraction of a pitch
+  const flank = 0.18 * pitch;   // rise/fall arc — what the beak visibly climbs
+  for (let i = 0; i < columns; i++) {
+    const a0 = i * pitch - (duty * pitch) / 2;
+    const shape = new THREE.Shape();
+    const steps = 8;
+    for (let k = 0; k <= steps; k++) {
+      const a = a0 + (k / steps) * duty * pitch;
+      const x = Math.cos(a) * baseR, y = Math.sin(a) * baseR;
+      if (k === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+    }
+    for (let k = steps; k >= 0; k--) {
+      const a = a0 + (k / steps) * duty * pitch;
+      shape.lineTo(Math.cos(a) * colInner, Math.sin(a) * colInner);
+    }
+    shape.closePath();
+    const colGeo = new THREE.ExtrudeGeometry(shape, { depth: colH, bevelEnabled: false, curveSegments: 2 });
+    colGeo.translate(0, 0, baseH / 2);
+    g.add(new THREE.Mesh(colGeo, mat));
+  }
+  // Lower RATCHET skirt — one saw tooth per STEP (2 per column): what the
+  // case pusher's pawl indexes. Real column wheels are driven exactly here.
+  {
+    const teethN = columns * 2;
+    const rr = baseR * 0.9, tip = baseR * 1.12;
+    const shape = new THREE.Shape();
+    for (let i = 0; i < teethN; i++) {
+      const a0 = (i / teethN) * Math.PI * 2, a1 = ((i + 1) / teethN) * Math.PI * 2;
+      if (i === 0) shape.moveTo(Math.cos(a0) * tip, Math.sin(a0) * tip);
+      else shape.lineTo(Math.cos(a0) * tip, Math.sin(a0) * tip);
+      shape.lineTo(Math.cos(a1) * rr, Math.sin(a1) * rr); // saw flank
+    }
+    shape.closePath();
+    const hole = new THREE.Path(); hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.22, bevelEnabled: false, curveSegments: 2 });
+    geo.translate(0, 0, -baseH / 2 - 0.22);
+    g.add(new THREE.Mesh(geo, mat));
+  }
+  g.userData.columns = columns;
+  g.userData.colH = colH;
+  // Beak lift at wheel angle `a` (beak azimuth 0): 1 on a column, 0 in a gap,
+  // linear on the flanks. Column i is centred at i·pitch.
+  g.userData.profileAt = (a) => {
+    let rel = ((a % pitch) + pitch) % pitch;             // distance past the nearest column centre
+    if (rel > pitch / 2) rel = pitch - rel;              // fold to [0, pitch/2]
+    const edge = (duty * pitch) / 2;
+    if (rel <= edge - flank) return 1;
+    if (rel >= edge) return 0;
+    return (edge - rel) / flank;
+  };
   return g;
 }
 
@@ -2430,7 +2506,12 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
   return g;
 }
 
-export function makeHand({ length, kind }) {
+// boreR / bossR / bossH: stacked-hand overrides (§25 C). A hand riding an
+// OUTER tube of a co-axial stack needs its boss to be a bored COLLET — wide
+// enough to seat on its own tube's annular face, bored so the inner tubes
+// pass through, and short so it tucks under the hand above. Defaults preserve
+// the classic solid boss bit-for-bit for every existing hand.
+export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null }) {
   const g = new THREE.Group();
   const handAesthetics = aesthetics.dial.hands;
   const config = handAesthetics[kind];
@@ -2544,12 +2625,11 @@ export function makeHand({ length, kind }) {
     g.add(cw);
   }
 
-  const bossR = length * config.bossSizeFactor;
-  const boss = new THREE.Mesh(
-    new THREE.CylinderGeometry(bossR, bossR, bossH, 18),
-    MATS.bluedHand
-  );
-  boss.rotateX(Math.PI / 2);
+  const bossR = bossROverride ?? length * config.bossSizeFactor;
+  if (bossHOverride !== null) bossH = bossHOverride;
+  const boss = boreR > 0
+    ? new THREE.Mesh(ringExtrude(bossR, boreR, bossH, 24), MATS.bluedHand) // bored collet (already axis-z)
+    : (() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 18), MATS.bluedHand); m.rotateX(Math.PI / 2); return m; })();
   g.add(boss);
 
   g.userData.length = length;

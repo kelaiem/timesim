@@ -146,8 +146,15 @@ const MECH_GRAPH = {
     // rim bushing on the plate; the setting arbor pivots in the plate and
     // carries the disc's pointer through the dial well.
     ['Alarm crown', 'plate'],                // stem bushing at the case rim
-    ['Alarm setting arbor', 'Dial'],         // arbor's lower pivot bushed in the well floor bore
-    ['Alarm disc', 'Alarm setting arbor'],   // pointer rides the arbor's dial end (its support)
+    ['Alarm setting arbor', 'plate'],     // §25 C stage 3: the well-floor collar became a plate cock (post + arm + bush)
+    ['Alarm disc', 'Hour wheel'],            // §25 C: the alarm tube RIDES the hour-wheel tube — that
+                                             // running fit is its bearing (rattrapante centre stack)
+    ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
+    ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
+    ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
+    ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
+    ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
+    ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
@@ -200,8 +207,16 @@ const MECH_GRAPH = {
     // Alarm setting (§24): the second crown turns the disc through the bevel
     // pair; the arbor turns the pointer. 'Alarm crown' is a force source only
     // reachable on the 'alarm' pose axis — nothing else writes it.
-    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh
-    ['Alarm setting arbor', 'Alarm disc'],   // arbor turns the pointer through the dial
+    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PULLED OUT — set)
+    ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
+    ['Alarm winding train', 'Alarm barrel'], // §25 C: climb pinion → idlers → barrel rim (12/44)
+    ['Alarm switch', 'Alarm lock'],          // §25 D: the column wheel blocks the lever's tail beak (column = OFF holds the brake)
+    ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
+    ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
+    ['Alarm setting wheel', 'Alarm disc'],   // friction coupling: drives the tube when armed, slips when
+                                             // the tube follows the heart (the cannon-pinion precedent)
+    ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
+                                             // tube drives the tube home through the sprung follower
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -212,6 +227,15 @@ const MECH_GRAPH = {
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
+    // §25 B: the RELEASE is derived from the real co-axial alignment (the
+    // follower's nose entering the heart's notch) and the lock lever answers
+    // it — but no physical linkage carries the drop. NOT a missing rod: the
+    // feeler CO-ROTATES with the setting, so a pickup must be azimuth-
+    // independent — the Memovox differential-disc architecture — and the
+    // centre's z-budget (largest free gap 0.08) must be re-stratified first.
+    // The full design, measured constraints and the dial-side contrate-pawl
+    // lock that follows are §29 in the roadmap.
+    ['Alarm disc', 'Alarm lock', '§25 B → §29: physical release needs the differential-disc feeler (the follower co-rotates; no fixed rod can meet it) — designed, awaiting the centre z re-stratification'],
     // Was: "setting path ends at a representational arbor stub" — the stub
     // used to stop 54 units short of the cannon pinion, in the keyless-
     // works corner, with no visible path to the dial centre at all. Now a
@@ -471,9 +495,23 @@ const EXPECTED_PAIRS = [
   ['Power reserve', 'Power-reserve train'], // reserve hand rides the w2 output arbor
   // Alarm (§24) — the mirror of the reserve/motion-works contacts:
   ['Alarm crown', 'Alarm setting arbor'], // the 90° bevel mesh (the one declared crown⇄arbor contact)
-  ['Alarm disc', 'Alarm setting arbor'],  // pointer rides the arbor's dial end
-  ['Dial', 'Alarm setting arbor'],        // arbor passes through the well floor's bore
-  ['Dial', 'Alarm disc'],                 // pointer + pivot boss sit in the dial well
+  ['Alarm disc', 'Hour wheel'],           // §25 C: alarm tube running on the hour-wheel tube (its bearing)
+  ['Alarm setting wheel', 'Alarm disc'],  // §25 C stage 3: friction bore on the tube + retention against the carrier flange
+  ['Alarm setting wheel', 'Dial'],        // retained 0.05 behind the dial sheet — deliberate proximity
+  ['Alarm setting idler', 'Alarm setting wheel'], // gear mesh
+  ['Alarm setting idler', 'Dial'],        // the SAME gear mesh re-attributed: the setting wheel is a
+                                          // Dial-rooted descendant (the Dial ⇄ Hour wheel precedent);
+                                          // the true Dial sheet is measured 0.05 clear of the idler
+  ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
+  ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
+  ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
+  ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
+  ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
+  ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
+  ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
+  ['Alarm lock', 'Three-quarter plate'],   // pivot post
+  ['Alarm switch', 'Three-quarter plate'], // guide stud
+  ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
@@ -599,7 +637,13 @@ const AXES = [
     // verified as driven by the alarm crown, and only by it.
     name: 'alarm',
     n: 96,
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI }),
+    // alarmOn: 1 — §25 C: ARMED, so the crown sweep actually swings the tube
+    // (disarmed it would follow the fixed hour wheel and the axis would probe
+    // nothing), and the follower nose rides the whole heart once per rev.
+    // alarmCrownPullT: 1 — crown-sense swap: SET is the pulled-out path now.
+    // (setPose(alarmCrownRotation) writes the set path directly, so the sweep
+    // itself is clutch-independent; the pose records the honest state.)
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }),
   },
   {
     // A whole wind of the alarm barrel (§25): the barrel unwinds its full
@@ -615,9 +659,13 @@ const AXES = [
     // its own, finer, sampling.)
     name: 'alarmStrike',
     n: 109,
+    // alarmReleased: 1 — §25 B: a turning striking train IS a ringing one, so
+    // the sweep runs with the brake lever LIFTED, exactly as the real ring
+    // does (an engaged pad under a spinning collar would be a false dig).
     pose: (f, clock) => ({
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
       alarmStrikePhase: f * (clock ? clock.alarmStrikesPerWind : 28),
+      alarmOn: 1, alarmReleased: 1,
     }),
   },
 ];
@@ -831,6 +879,9 @@ export async function measureClearance(clock, nameA, nameB, { axes = AXES, coars
 // the released axes. Seeded from the hack audit (2026-07-18); add a row
 // here whenever an audit derives a clearance worth keeping.
 const CLEARANCE_BUDGETS = [
+  // §25 B: with the brake LIFTED (the alarmStrike axis poses alarmReleased),
+  // the pad must clear the turning collar through the entire ring.
+  { a: 'Alarm lock', b: 'Alarm striking wheel', min: 0.15, axes: ['alarmStrike'] },
   { a: 'Stop lever', b: 'Balance', min: 0.15, axes: ['beat', 'reserve', 'train'] },
   // The crank's tall tail and the balance cock share the open wedge; the
   // two rods diverge from the same tail post and the hack rod overflies
@@ -1346,6 +1397,29 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  {
+    // §25 C stage 2: the rattrapante follower's nose on the heart cam — a cam
+    // contact between two units that are already EXPECTED (the tube rides the
+    // hour tube), so the overlap sweep is structurally blind here, exactly the
+    // striking-works precedent above. Swept on the ARMED alarm axis: the tube
+    // turns under a fixed hour wheel, so the nose rides the entire heart once
+    // per crown revolution. Budget matches the cam-follower calibration (0.12):
+    // a follower TOUCHES, and mtvDepth resolves tangential contact badly.
+    pair: ['Hour wheel', 'Alarm disc'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmHeart') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmNose') out.push(o); });
+      return out;
+    },
+  },
 ];
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {
@@ -1610,6 +1684,9 @@ const FINGERPRINT_POSES = [
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4, windAccumTurns: 0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmStrikePhase: 7.3 },
+  // §25 C: ARMED with the tube split from the hour wheel — poses the follower
+  // mid-ride on the heart, the one configuration the other poses never reach.
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0, alarmOn: 1 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,
