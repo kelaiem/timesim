@@ -4854,7 +4854,10 @@ const ALARM_HAND_Z = 1.1;
 // below; the empty bracket lane and the r-4.5 bound were both measured, not
 // assumed.
 const ALARM_TUBE_BACK = -0.30;                  // tube back meets the carrier flange just behind the dial sheet
-const ALARM_FLANGE_OUT = 4.25;                  // carrier flange: retention + the follower's mounting plate
+const ALARM_FLANGE_OUT = 4.05;                  // carrier flange: retention + the follower's mounting plate —
+                                                // held 0.18 inside the setting idler's tip-reach toward the centre
+                                                // (9.21 − 4.98 = 4.23; the full sweep caught a 4.25 flange corner-
+                                                // grazing the idler at their shared z boundary)
 const ALARM_FLANGE_T = 0.10;                    // thin — the z between the setting wheel and the arm lane is spoken for
 // §25 C stage 3 — the setting train's tooth counts. ONE module for all three
 // meshes (a plain idler cannot mesh two different modules), solved so the
@@ -4873,7 +4876,7 @@ const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75, ALARM_HEART_T = 0.4;
 // starting at −0.55 keeps exactly one margin under the flange.
 const ALARM_HEART_Z = -0.75;                    // heart mid-plane (band −0.55..−0.95)
 const ALARM_NOSE_R = 0.2;                       // follower roller
-const ALARM_PIVOT_R = 3.85;                     // pivot post radius (tube frame, az π) — inside the setting wheel's root circle (4.15)
+const ALARM_PIVOT_R = 3.68;                     // pivot post radius (tube frame, az π) — post edge (r+0.22) inside the 4.05 flange
 const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
 // Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
 // seated nose) — the same constants tick() solves against, so the built arm
@@ -4962,7 +4965,10 @@ const alarmSetWheelGroup = new THREE.Group();
 dialFace.add(alarmSetWheelGroup);
 registerLabel('Alarm setting wheel', alarmSetWheelGroup);
 {
-  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: 0.25, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass });
+  // CRISP (bevel: false): the gap to the dial sheet is 0.05 and the extrude
+  // bevel would expand the face 0.045 toward it — the full sweep caught the
+  // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
+  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: 0.25, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
   wheel.position.z = -0.175; // band −0.05..−0.30 (dialFace local)
   alarmSetWheelGroup.add(wheel);
 }
@@ -4980,7 +4986,7 @@ const alarmIdlerSpin = new THREE.Group();
 {
   const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD }; // centre → arbor direction
   alarmIdlerSpin.position.set(u.x * ALARM_SET_D1, u.y * ALARM_SET_D1, ALARM_SET_Z);
-  const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_IDLER_TEETH, thickness: 0.25, boreR: 0.5, spokes: 4, material: MATS.brass });
+  const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_IDLER_TEETH, thickness: 0.25, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp AND hub-less — the stock hub ring is 1.5× the wheel and punched through the dial sheet; the stud pivot is its bearing (the winding transfer wheel precedent)
   idler.rotation.z = Math.PI / ALARM_SET_IDLER_TEETH; // half-tooth interleave with both neighbours
   alarmIdlerSpin.add(idler);
   alarmIdlerGroup.add(alarmIdlerSpin);

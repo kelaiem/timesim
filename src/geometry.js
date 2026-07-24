@@ -105,8 +105,12 @@ class ArchimedeanSpiral extends THREE.Curve {
 // ---------------------------------------------------------------------------
 
 // Involute/cycloidal-ish spur gear. pitchRadius = module*teeth/2 (userData.r).
+// bevel: false (§25 C) — a gear whose z-budget to its neighbour is smaller
+// than the extrude bevel's expansion (bevelThickness ≈ 0.18·t) must be cut
+// CRISP: the rendered outline is what collides, not the authored one
+// (docs/MODELING.md rule 1). Default true — every existing gear unchanged.
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
-                           material, hub = true }) {
+                           material, hub = true, bevel: bevelOn = true }) {
   const mat = material || MATS.brass;
   const pitchR = pitchRadius(module, teeth);
   const tipR = pitchR + module * 0.95;
@@ -125,10 +129,10 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
   const useSpokes = outerR > innerR + module ? spokes : 0;
   addCrossingHoles(shape, useSpokes, innerR, outerR, boreR);
 
-  const bevel = Math.min(thickness * 0.18, module * 0.22);
+  const bevel = bevelOn ? Math.min(thickness * 0.18, module * 0.22) : 0;
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
-    bevelEnabled: true,
+    bevelEnabled: bevelOn,
     bevelThickness: bevel,
     bevelSize: bevel,
     bevelSegments: 1,

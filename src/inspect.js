@@ -487,6 +487,9 @@ const EXPECTED_PAIRS = [
   ['Alarm setting wheel', 'Alarm disc'],  // §25 C stage 3: friction bore on the tube + retention against the carrier flange
   ['Alarm setting wheel', 'Dial'],        // retained 0.05 behind the dial sheet — deliberate proximity
   ['Alarm setting idler', 'Alarm setting wheel'], // gear mesh
+  ['Alarm setting idler', 'Dial'],        // the SAME gear mesh re-attributed: the setting wheel is a
+                                          // Dial-rooted descendant (the Dial ⇄ Hour wheel precedent);
+                                          // the true Dial sheet is measured 0.05 clear of the idler
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
