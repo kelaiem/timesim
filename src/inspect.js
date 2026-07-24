@@ -152,7 +152,7 @@ const MECH_GRAPH = {
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
-    ['Alarm release idler', 'Dial'],         // §29 step 2: j hangs from the dial sheet — at its radius a plate stud would impale the hour wheel
+
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
@@ -220,8 +220,8 @@ const MECH_GRAPH = {
     ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
                                              // tube drives the tube home through the sprung follower
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
-    ['Alarm setting idler', 'Alarm release idler'], // …and the compound i2's band pinion re-phases it when the crown sets:
-    ['Alarm release idler', 'Alarm release disc'],  // i2b (37) → j (18, drops out) → the disc's rim (30) — hour − setting
+    ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
+                                                   // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -513,9 +513,7 @@ const EXPECTED_PAIRS = [
                                             // nested-label exclusion, so the Dial unit contains the disc's
                                             // own meshes (the Dial ⇄ Hour wheel precedent); the disc's real
                                             // clearances to Dial furniture are boot-asserted analytically
-  ['Alarm release idler', 'Alarm release disc'],  // §29: j ⇄ rim mesh
-  ['Alarm setting idler', 'Alarm release idler'], // §29: i2b ⇄ j mesh
-  ['Alarm release idler', 'Dial'],          // §29: j's stud anchors on the sheet's back face
+  ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
   ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
