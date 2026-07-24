@@ -650,9 +650,12 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
 // ---------------------------------------------------------------------------
 
-export function makeHeartCam({ radius, thickness, boreR = 0.6 }) {
+// rMin override (§25 C): a heart pressed onto a TUBE needs its notch floor
+// outside the tube's bore — the classic 0.32·radius would fall inside it.
+// Default preserves the seconds-reset heart bit-for-bit.
+export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverride = null }) {
   const g = new THREE.Group();
-  const rMin = radius * 0.32;
+  const rMin = rMinOverride ?? radius * 0.32;
   const shape = new THREE.Shape();
   const N = 96;
   for (let i = 0; i <= N; i++) {

@@ -31,6 +31,7 @@ const DEG2RAD = Math.PI / 180;
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
 function smoothstep(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+function wrapPi(a) { a = (a + Math.PI) % (2 * Math.PI); return (a < 0 ? a + 2 * Math.PI : a) - Math.PI; }
 
 // (Kinematic constants F_BALANCE … RECOIL_DEG are now imported from layout.js.
 // FORK_BANK_DEG / FORK_RECOIL_DEG remain DERIVED further down — after the
@@ -4818,7 +4819,41 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // its bored collet (0.9..1.3 after the same 0.5× z-scale, straddling the
 // tube's front face at 1.1) clears the hour blade's keel (2.04) by 0.74.
 const ALARM_HAND_Z = 1.1;
-const ALARM_TUBE_BACK = -2.0;                   // behind the dial, 0.6 short of the hour wheel's face (−2.6)
+// §25 C stage 2 — the rattrapante follow. A HEART CAM pressed on the hour
+// tube and a sprung FOLLOWER carried by the alarm tube: disarmed, the spring
+// seats the follower's nose in the heart's notch and the alarm hand snaps to
+// and tracks the hour hand; armed, the tube is held at the set time and the
+// nose rides the turning heart, pumping the arm — the visible proof the two
+// members are coupled by a cam, not an assignment.
+//
+// The whole follower sweeps EVERY azimuth as the alarm is set, so its swept
+// envelope is an annulus — and the lane behind the dial sheet is bounded at
+// r 4.5 by a dial foot and the motion-works stud (vertex-probed). Everything
+// here therefore stays inside r ≤ 4.2: a shallow heart (2.75 → 3.55) and a
+// short arm. z, dialFace-local (world = −7 − local): flange −0.05..−0.30,
+// heart and arm share the band −0.45..−0.85, hour wheel face at −2.6 far
+// below; the empty bracket lane and the r-4.5 bound were both measured, not
+// assumed.
+const ALARM_TUBE_BACK = -0.30;                  // tube back meets the flange just behind the dial sheet
+const ALARM_FLANGE_OUT = 4.25;                  // flange doubles as the follower carrier
+const ALARM_FLANGE_T = 0.25;
+const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75, ALARM_HEART_T = 0.4;
+const ALARM_HEART_Z = -0.65;                    // heart mid-plane (band −0.45..−0.85)
+const ALARM_NOSE_R = 0.2;                       // follower roller
+const ALARM_PIVOT_R = 3.95;                     // pivot post radius (tube frame, az π — 90° behind the hand)
+const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
+// Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
+// seated nose) — the same constants tick() solves against, so the built arm
+// and the posed arm cannot drift apart.
+const _alarmSeatD = ALARM_HEART_RMIN + ALARM_NOSE_R;
+const _alarmSeatT = { x: _alarmSeatD * Math.cos(ALARM_NOSE_AZ), y: _alarmSeatD * Math.sin(ALARM_NOSE_AZ) };
+const ALARM_FOLLOWER_LEN = Math.hypot(_alarmSeatT.x + ALARM_PIVOT_R, _alarmSeatT.y);
+const alarmArmAngleAt = (d) => Math.acos(clamp(
+  (ALARM_PIVOT_R * ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * ALARM_FOLLOWER_LEN - d * d)
+  / (2 * ALARM_PIVOT_R * ALARM_FOLLOWER_LEN), -1, 1));
+const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
+const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
+
 const alarmTubeGroup = new THREE.Group();
 dialFace.add(alarmTubeGroup);
 registerLabel('Alarm disc', alarmTubeGroup);
@@ -4827,12 +4862,60 @@ registerLabel('Alarm disc', alarmTubeGroup);
     ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
   tube.position.z = (ALARM_TUBE_BACK + ALARM_HAND_Z) / 2;
   alarmTubeGroup.add(tube);
-  // Retaining flange at the back end — behind the dial sheet, wider than the
-  // bore, so the tube cannot ride forward out of the stack; it is also where
-  // stage 2's follower arm and stage 3's setting wheel will seat.
-  const flange = new THREE.Mesh(ringGeo(ALARM_TUBE_OUTER, ALARM_TUBE_OUTER + 0.7, 0.35), MATS.steel);
-  flange.position.z = ALARM_TUBE_BACK + 0.175;
+  // Flange/carrier: retention (wider than the bore) AND the follower's
+  // mounting plate — the pivot post and spring stub hang from its underside.
+  const flange = new THREE.Mesh(ringGeo(ALARM_TUBE_OUTER, ALARM_FLANGE_OUT, ALARM_FLANGE_T), MATS.steel);
+  flange.position.z = ALARM_TUBE_BACK + ALARM_FLANGE_T / 2;
   alarmTubeGroup.add(flange);
+  // Pivot post: flange underside (−0.30) down through the arm plane (−0.85).
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.55, 10), MATS.steel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - 0.275);
+  alarmTubeGroup.add(post);
+}
+// The follower arm — pivoted at the post, nose roller at the tip riding the
+// heart. Built along +x from the pivot; at rotation 0 it points at the dial
+// centre (the pivot sits at az π), so tick's triangle solution IS its pose.
+const alarmFollowerArm = new THREE.Group();
+alarmFollowerArm.position.set(-ALARM_PIVOT_R, 0, ALARM_HEART_Z + 0.05); // arm band −0.45..−0.75
+alarmTubeGroup.add(alarmFollowerArm);
+{
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FOLLOWER_LEN, 0.3, 0.3), MATS.steel);
+  bar.position.x = ALARM_FOLLOWER_LEN / 2;
+  alarmFollowerArm.add(bar);
+  const nose = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_NOSE_R, ALARM_NOSE_R, 0.28, 12), MATS.ruby);
+  nose.name = 'alarmNose'; // penetration-budget selector (inspect.js couples by string)
+  nose.rotation.x = Math.PI / 2;
+  nose.position.x = ALARM_FOLLOWER_LEN;
+  alarmFollowerArm.add(nose);
+}
+// Return spring — a thin blade from a stub on the flange bearing on the arm's
+// outer edge. Its FORCE is representational (like the striker's hammer
+// spring); its flex is driven in tick() from the arm's actual lift.
+const alarmFollowerSpring = new THREE.Group();
+alarmFollowerSpring.position.set(-ALARM_PIVOT_R * Math.cos(0.45), ALARM_PIVOT_R * Math.sin(-0.45), ALARM_HEART_Z + 0.05);
+alarmTubeGroup.add(alarmFollowerSpring);
+{
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.22), MATS.blueSteel);
+  blade.position.x = 0.55;
+  alarmFollowerSpring.add(blade);
+  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5, 8), MATS.steel);
+  stub.rotation.x = Math.PI / 2;
+  stub.position.z = 0.25;
+  alarmFollowerSpring.add(stub);
+}
+// Blade angled INWARD from the stub toward the arm's flank — tip lands at
+// r ≈ 4.0, inside the measured r-4.5 obstacle bound like everything else here.
+alarmFollowerSpring.rotation.z = 1.9;
+// The heart itself — pressed on the HOUR tube (co-rotating with the hour
+// hand), notch phased to the seated nose azimuth so "seated" IS "hands
+// coincident". Blued like the seconds-reset heart.
+{
+  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: 2.5, rMin: ALARM_HEART_RMIN });
+  heart.traverse((o) => { if (o.isMesh) o.name = 'alarmHeart'; }); // penetration-budget selector
+  heart.position.z = ALARM_HEART_Z;
+  heart.rotation.z = ALARM_NOSE_AZ;
+  hourWheelGroup.add(heart);
 }
 // The hand: hour-hand profile, a touch shorter so the hour hand can cover it
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
@@ -5488,6 +5571,7 @@ const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
 // derivation beside DIAL_PERIOD_S below and the drive wiring in the pointer
 // handlers. Each strike fires SND.alarmStrike, spatialized to the gong.
 let alarmOn = false;              // alarm ARMED toggle (the on/off lever's enable)
+let alarmTubeShownA = 0;          // §25 C: the alarm tube's DISPLAYED angle — eases home along the cam on disarm (transient, not saved)
 let alarmCrownRotation = 0;       // radians, raw alarm-crown drag input, unbounded
 let alarmEmitter = null;          // the bell voice spatializes to the gong's ringing end
 alarmEmitter = alarmStrikePt;     // the strike-point empty built with the gong geometry
@@ -7308,18 +7392,40 @@ function tick(t) {
   // reserve arbor), carrying the mating bevel; the crown/stem turn with it 1:1.
   // Friction-set — everything moves together, continuously, in lockstep.
   const alarmAngle = alarmDiscAngle();
-  // §25 C stage 1: the central rattrapante hand shows the SET time on the main
-  // 12 h dial — same period the sub-dial pointer had (one crown rev = 12 h),
-  // same sign convention as its dialFace neighbours (hour hand at 3:00 and
-  // alarm set for 3:00 must coincide; verified by measurement below the same
-  // way the hour hand's own mapping was). Stage 2 replaces this direct write
-  // with the heart-cam follow when disarmed.
-  // − sense: dialFace's Y-flip mirrors world x, so printed hour H sits at
-  // world az 90 + 30·H — set-for-5:00 must land on the printed V, which is
-  // world az 240, and −alarmAngle is what gets there (verified against the
-  // printed numerals in a front screenshot; a world-frame-only "calibration"
-  // got this backwards once — the hour hand itself is the reference).
-  alarmTubeGroup.rotation.z = -alarmAngle;
+  // §25 C stage 2 — the rattrapante follow. ARMED: the tube is held at the set
+  // time (−alarmAngle: dialFace's Y-flip puts printed hour H at world az
+  // 90 + 30·H, verified against the printed numerals — a world-frame-only
+  // calibration got the sign backwards once). DISARMED: the follower spring
+  // seats the nose in the heart's notch, which IS the hour wheel's angle —
+  // live frames ease home along the cam slope (CAM_SNAP_TAU, the jumper-snap
+  // convention); the pose path (rawDt = 0) assigns exactly, so inspector
+  // poses stay deterministic.
+  {
+    const tubeTarget = alarmOn ? -alarmAngle : mwHourA;
+    if (rawDt > 0 && !alarmOn) {
+      alarmTubeShownA += wrapPi(tubeTarget - alarmTubeShownA) * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
+    } else {
+      alarmTubeShownA = tubeTarget;
+    }
+    alarmTubeGroup.rotation.z = alarmTubeShownA;
+    // Follower pose — DERIVED from the cam (Rule 2): the nose radius is the
+    // heart profile at the contact angle, and the arm angle is the triangle
+    // (pivot, dial centre, nose) at that radius. The contact azimuth drifts
+    // as the arm lifts, so iterate twice — the second pass moves the answer
+    // by < 0.01 rad. Seated (ψ = 0) this lands exactly on ALARM_ARM_A0.
+    let contactAz = ALARM_NOSE_AZ;
+    let armA = ALARM_FOLLOWER_A0;
+    for (let it = 0; it < 2; it++) {
+      const psi = contactAz - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA - mwHourA);
+      const d = alarmHeartRAt(psi) + ALARM_NOSE_R;
+      armA = alarmArmAngleAt(d);
+      contactAz = Math.atan2(ALARM_FOLLOWER_LEN * Math.sin(armA), -ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * Math.cos(armA));
+    }
+    alarmFollowerArm.rotation.z = armA;
+    // The blade flexes with the pump (its force is representational; its
+    // MOTION is the arm's real lift).
+    alarmFollowerSpring.rotation.z = 1.9 + (armA - ALARM_FOLLOWER_A0) * 0.45;
+  }
   alarmRotor.rotation.z = alarmAngle;
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
@@ -7469,6 +7575,7 @@ window.__clock = {
     jumpCorr = 0; jumpDisp = null;
     alarmCrownRotation = 0;
     alarmBarrelWind = ALARM_BARREL_TURNS; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false;
+    alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
@@ -7481,6 +7588,7 @@ window.__clock = {
     if (p.tension !== undefined) barrelWindTurns = clamp(p.tension, 0, 1) * RESERVE_BARREL_TURNS;
     if (p.windAccumTurns !== undefined) windAccumTurns = p.windAccumTurns;
     if (p.alarmCrownRotation !== undefined) alarmCrownRotation = p.alarmCrownRotation; // §24 alarm axis
+    if (p.alarmOn !== undefined) alarmOn = !!p.alarmOn; // §25 C: armed/disarmed — decides whether the tube holds the set time or follows the hour wheel
     if (p.alarmBarrelWind !== undefined) alarmBarrelWind = p.alarmBarrelWind; // §24 alarm-spring energy
     // §25 striking axis. Phase and wind are ONE mechanical quantity — the
     // barrel and the striking wheel are a single mesh — so posing the phase

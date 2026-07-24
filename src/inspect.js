@@ -204,6 +204,8 @@ const MECH_GRAPH = {
     ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh
     ['Alarm setting arbor', 'Alarm disc'],   // §25 C: turns the central alarm tube (the physical
                                              // az-0 train is stage 3 — see MECH_GRAPH.todo)
+    ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
+                                             // tube drives the tube home through the sprung follower
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -608,7 +610,10 @@ const AXES = [
     // verified as driven by the alarm crown, and only by it.
     name: 'alarm',
     n: 96,
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI }),
+    // alarmOn: 1 — §25 C: ARMED, so the crown sweep actually swings the tube
+    // (disarmed it would follow the fixed hour wheel and the axis would probe
+    // nothing), and the follower nose rides the whole heart once per rev.
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1 }),
   },
   {
     // A whole wind of the alarm barrel (§25): the barrel unwinds its full
@@ -1355,6 +1360,29 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  {
+    // §25 C stage 2: the rattrapante follower's nose on the heart cam — a cam
+    // contact between two units that are already EXPECTED (the tube rides the
+    // hour tube), so the overlap sweep is structurally blind here, exactly the
+    // striking-works precedent above. Swept on the ARMED alarm axis: the tube
+    // turns under a fixed hour wheel, so the nose rides the entire heart once
+    // per crown revolution. Budget matches the cam-follower calibration (0.12):
+    // a follower TOUCHES, and mtvDepth resolves tangential contact badly.
+    pair: ['Hour wheel', 'Alarm disc'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmHeart') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmNose') out.push(o); });
+      return out;
+    },
+  },
 ];
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {
@@ -1619,6 +1647,9 @@ const FINGERPRINT_POSES = [
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4, windAccumTurns: 0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmStrikePhase: 7.3 },
+  // §25 C: ARMED with the tube split from the hour wheel — poses the follower
+  // mid-ride on the heart, the one configuration the other poses never reach.
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0, alarmOn: 1 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,
