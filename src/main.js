@@ -7672,6 +7672,17 @@ applyDeepLink();
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
 // ---------------------------------------------------------------------------
 const FIXED_DT = 1 / 240;
+// Tick budget (BUILT §14). The fixed-step loop used to hand a SLOW machine
+// MORE work per frame — 12 full ticks at the 0.05 s realDt clamp, ~250 during
+// a sync catch-up — exactly backwards. A frame now gets at most `tickBudget`
+// fixed steps; any remainder is consumed in coarse strides (see advanceFrame).
+const TICK_DT_CLAMP = 0.25; // tick()'s own rawDt clamp (non-FF): the largest dt its integrations
+                            // accept without discarding time — a coarse stride must never exceed it,
+                            // or τ would silently lose the clamped-away remainder
+const TICK_BUDGET_FULL = Math.ceil(0.05 / FIXED_DT); // = 12: the realDt clamp's worth of fixed steps —
+                                                     // the most a 1× frame can ever demand, so the full
+                                                     // budget changes nothing outside catch-up
+let tickBudget = TICK_BUDGET_FULL; // per-frame fixed-step allowance; the §14 quality tier sets it
 let simTime = 0;
 let accumulator = 0;
 let lastNow = performance.now();
@@ -7803,7 +7814,7 @@ function tick(t) {
   // t. Clamped so a long stall (e.g. a backgrounded tab) can't blow up the
   // damping integration below.
   // Fast-forward relaxes the clamp: FF advances in 2 s strides on purpose.
-  const rawDt = clamp(t - lastTickRawT, 0, fastForward ? 2.5 : 0.25);
+  const rawDt = clamp(t - lastTickRawT, 0, fastForward ? 2.5 : TICK_DT_CLAMP);
   lastTickRawT = t;
 
   // Lever swing: eases toward the crown's target position (independent of
@@ -8427,9 +8438,20 @@ function advanceFrame(realDt) {
       // in for timeScale rather than being written into it — the slider's
       // own position (and the user's chosen scale) survives the sync.
       accumulator += realDt * (syncPhase === 'catchup' ? catchUpRate : timeScale);
+      // Tick budget (§14): up to tickBudget fixed steps, then the remainder in
+      // coarse strides — whole multiples of FIXED_DT (the sub-step accumulator
+      // phase stays identical to the unbudgeted path, so behaviour at speed is
+      // bit-for-bit unchanged), capped at TICK_DT_CLAMP so tick() never clamps
+      // a stride away and silently loses τ. The 252-ticks-per-frame catch-up
+      // case collapses to tickBudget + ⌈remainder / TICK_DT_CLAMP⌉ calls; a
+      // coarse stride is exactly what fast-forward already feeds tick(), so
+      // the mechanism's closed forms are on well-trodden ground.
       while (accumulator >= FIXED_DT) {
-        simTime += FIXED_DT;
-        accumulator -= FIXED_DT;
+        const stride = ticksThisFrame < tickBudget
+          ? FIXED_DT
+          : Math.min(Math.floor(accumulator / FIXED_DT) * FIXED_DT, TICK_DT_CLAMP);
+        simTime += stride;
+        accumulator -= stride;
         tick(simTime);
         ticksThisFrame++;
       }
