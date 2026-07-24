@@ -15,6 +15,15 @@ import {
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_KEYLESS,
+  // Train ratios (§13 step 2): TRAIN is the structured spec every gear BUILDER
+  // consumes; the flat TEETH beside it are what the KINEMATICS still read in
+  // tick()'s ratio chain (meshOffset / the going-train ratios), which step 3
+  // will inline onto TRAIN. The modules are consumed only through TRAIN now.
+  TRAIN, barrelTeeth, centerTeeth, thirdTeeth, fourthTeeth,
+  KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
+  minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH,
+  cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
+  BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -177,8 +186,7 @@ scene.add(movement);
 // wheel, the winding spur and (above the plate) the ratchet. The fusee
 // arbor sits exactly where the going barrel used to be, so every mesh
 // distance in the train is unchanged.
-const barrelModule = 0.36, barrelTeeth = 80;
-const barrelR = (barrelModule * barrelTeeth) / 2;
+const barrelR = (TRAIN.barrel.module * TRAIN.barrel.teeth) / 2;
 // The spring DRUM — slimmer than the great wheel it feeds: with the compact
 // tornado plate the drum tucks in close beside the fusee (XY gap smaller
 // than the great wheel's radius), so it clears the great wheel in Z instead
@@ -194,7 +202,7 @@ const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
 // (the drum body itself — makeBarrel — is built at the drumGroup assembly
 // further down: its arbor is sized to reach the plate's mid-thickness,
 // which isn't known yet here)
-const greatWheel = G.makeGear({ module: barrelModule, teeth: barrelTeeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
+const greatWheel = G.makeGear({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
 // turns at a tighter groove pitch, seated just above the winding spur.
@@ -233,28 +241,25 @@ const FUSEE_BASE_Z = Math.max(
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
-const centerPinion = G.makePinion({ module: barrelModule, teeth: 10, thickness: 1.6, material: MATS.steel });
+const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: 10, thickness: 1.6, material: MATS.steel });
 const centerPinionR = centerPinion.userData.r;
 
-const centerModule = 0.3, centerTeeth = 75;
-const centerWheel = G.makeGear({ module: centerModule, teeth: centerTeeth, thickness: 1.0, boreR: 1.2, spokes: 5, material: MATS.brass });
+const centerWheel = G.makeGear({ module: TRAIN.center.module, teeth: TRAIN.center.teeth, thickness: 1.0, boreR: 1.2, spokes: 5, material: MATS.brass });
 const centerWheelR = centerWheel.userData.r;
 
 // --- Third arbor: pinion (meshed by center wheel) + third wheel ----------
-const thirdPinion = G.makePinion({ module: centerModule, teeth: 10, thickness: 1.6, material: MATS.steel });
+const thirdPinion = G.makePinion({ module: TRAIN.center.module, teeth: 10, thickness: 1.6, material: MATS.steel });
 const thirdPinionR = thirdPinion.userData.r;
 
-const thirdModule = 0.24, thirdTeeth = 80;
-const thirdWheel = G.makeGear({ module: thirdModule, teeth: thirdTeeth, thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
+const thirdWheel = G.makeGear({ module: TRAIN.third.module, teeth: TRAIN.third.teeth, thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
 const thirdWheelR = thirdWheel.userData.r;
 
 // --- Fourth arbor: pinion (meshed by third wheel) + fourth wheel ---------
-const fourthPinion = G.makePinion({ module: thirdModule, teeth: 10, thickness: 1.6, material: MATS.steel });
+const fourthPinion = G.makePinion({ module: TRAIN.third.module, teeth: 10, thickness: 1.6, material: MATS.steel });
 const fourthPinionR = fourthPinion.userData.r;
 
-const fourthModule = 0.21, fourthTeeth = 80;
 const FOURTH_WHEEL_T = 0.8;
-const fourthWheel = G.makeGear({ module: fourthModule, teeth: fourthTeeth, thickness: FOURTH_WHEEL_T, boreR: 0.9, spokes: 5, material: MATS.brass });
+const fourthWheel = G.makeGear({ module: TRAIN.fourth.module, teeth: TRAIN.fourth.teeth, thickness: FOURTH_WHEEL_T, boreR: 0.9, spokes: 5, material: MATS.brass });
 const fourthWheelR = fourthWheel.userData.r;
 
 // --- Escape arbor: pinion (meshed by fourth wheel) + escape wheel --------
@@ -269,10 +274,10 @@ const fourthWheelR = fourthWheel.userData.r;
 // the fourth wheel's full tooth band (thickness + 2·extrude bevel) with
 // CLEAR_MARGIN of overrun at each end. Top lands at 7.55 ≤ SPRING_TOP_Z,
 // so the hairspring stack is the plate's binding member again.
-const fourthWheelBevel = Math.min(FOURTH_WHEEL_T * 0.18, fourthModule * 0.22); // = makeGear's bevel
-const escPinionBevel = fourthModule * 0.2; // = makePinion's bevel (module·0.2 governs; thickness·0.15 is larger)
+const fourthWheelBevel = Math.min(FOURTH_WHEEL_T * 0.18, TRAIN.fourth.module * 0.22); // = makeGear's bevel
+const escPinionBevel = TRAIN.fourth.module * 0.2; // = makePinion's bevel (module·0.2 governs; thickness·0.15 is larger)
 const ESC_PINION_T = FOURTH_WHEEL_T + 2 * fourthWheelBevel + 2 * CLEAR_MARGIN - 2 * escPinionBevel;
-const escapePinion = G.makePinion({ module: fourthModule, teeth: 8, thickness: ESC_PINION_T, material: MATS.steel });
+const escapePinion = G.makePinion({ module: TRAIN.fourth.module, teeth: 8, thickness: ESC_PINION_T, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
 const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
@@ -374,9 +379,6 @@ function stepPos(prev, angleDeg, dist) {
 // wheel and needs these ~1300 lines before the dial exists. Referencing
 // them down there from up here was the temporal-dead-zone ReferenceError
 // that bit twice (see TODO.md item 1, now closed).
-const cannonPinionTeeth = 10;
-const MW_MODULE_1 = 0.3;                                     // cannon ⇄ minute wheel
-const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
 const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
 const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
 // Reduction, derived from the tooth counts rather than asserted. Each
@@ -385,16 +387,16 @@ const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // mi
 const MW_RATIO_1 = -(cannonPinionTeeth / MW_MINUTE_TEETH);   // cannon → minute wheel
 const MW_RATIO_2 = -(MW_PINION_TEETH / MW_HOUR_TEETH);       // minute pinion → hour wheel
 
-const BARREL_STEP_DEG = -35;   // center sits down-right of barrel → barrel/crown exit viewed ~1:50
-const D4 = 15.5;               // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
-const ESCAPE_STEP_DEG = -57.9; // escape at viewed ~6:25
+// (BARREL_STEP_DEG / D4 / ESCAPE_STEP_DEG — the tornado step-angle inputs —
+// are imported from layout.js; the solve that consumes them stays here.)
 // The balance's walk angle is a TARGET, not a constant: ~8:00 viewed is where
 // the eye wants it, but the low-escapement restride dropped the balance INTO
 // the train's z-bands (rim [5.25, 7.13] straddles the center wheel's tooth
 // band below AND the fourth wheel's above), so the wheel must also clear both
 // discs in XY. The solved angle (BALANCE_STEP_DEG below, after the escape
 // arbor is placed) is the feasible angle nearest this target.
-const BALANCE_STEP_TARGET_DEG = 44.6; // balance at viewed ~8:00
+// BALANCE_STEP_TARGET_DEG imported from layout.js (the target; the feasible
+// angle BALANCE_STEP_DEG is solved below).
 
 const barrelPos = { x: 0, y: 0 };
 const centerPos = stepPos(barrelPos, BARREL_STEP_DEG, barrelR_actual + centerPinionR);
@@ -513,9 +515,9 @@ const P = {
 // pinion along the stem, and the plate must enclose it (with the compact
 // tornado train, this floor — not the train extent — is what sizes the
 // plate).
-const KW_MODULE = 0.34;
-const crownWheelTeeth = 20, windPinionTeeth = 8, settingWheelTeeth = 20;
-const minuteWheelTeeth = 24, minutePinionTeeth = 8;
+// (KW_MODULE, crownWheelTeeth/windPinionTeeth/settingWheelTeeth,
+// minuteWheelTeeth/minutePinionTeeth — the keyless ratios — imported from
+// layout.js.)
 // The setting path collapsed to ONE coefficient: hand-offset radians per
 // radian of setting-path rotation. tick() walks this same chain forward
 // (settingWheel → minuteArbor compound → cannon) to derive the hand offset
@@ -573,7 +575,6 @@ const minuteWheelR = (KW_MODULE * minuteWheelTeeth) / 2;
 // the click). Same tooth count as the ratchet keeps the crown→fusee ratio;
 // equal module makes the mesh honest — the old layout gear-meshed the
 // ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
-const WIND_SPUR_TEETH = 24;
 const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
 // Winding transfer arbor axis — one spur-mesh distance outboard of the
 // barrel, with the same +0.1 slop every keyless mesh uses (see mwFoldD).
@@ -3308,7 +3309,7 @@ const maintDetent = new THREE.Group();
   // Footing: post centre one margin + its own radius outside the great
   // wheel's tip circle (pitch + addendum), with a little slop.
   const POST_R = 0.5;
-  const gwTip = barrelR_actual + barrelModule;
+  const gwTip = barrelR_actual + TRAIN.barrel.module;
   const postR = gwTip + CLEAR_MARGIN + POST_R + 0.05;
   // Obstacle scan over the azimuth (world frame, about the barrel axis).
   // XY-conservative like the pillar solver: distance to obstacle BOXES,

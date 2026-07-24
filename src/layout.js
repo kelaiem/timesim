@@ -134,3 +134,53 @@ export const Z_DIAL = -7;
 //    dial face (Z_DIAL) by the margin → Z_KEYLESS ≥ −7 + 0.15 + 0.75
 //    (boss half) + 1.91 (yoke drop, see Z_YOKE) = −4.19.
 export const Z_KEYLESS = -4.1;
+
+// ---------------------------------------------------------------------------
+// Train ratios — the "ratios" third of the eventual solveLayout output. Tooth
+// counts and modules per mesh: pure literals, the single source §22 (custom
+// beat rate) needs to re-derive counts. The going train's counts exist to make
+// the FOURTH wheel turn once per minute at F_BALANCE, so a different beat means
+// re-solving THESE, not editing an angle somewhere downstream — which is the
+// whole reason they want to live together as data. (SPEC.md's gear table is
+// the prose version of this object.)
+//
+// Flat names are kept because the KINEMATICS still read them by those names in
+// tick()'s ratio chain, and untangling that block is §13 step 3, deliberately
+// deferred. The structured TRAIN view below is built from the same flats and
+// is what the geometry BUILDERS consume today — so the "single source" holds
+// either way, and step 3 can retire the flats without touching this data.
+export const barrelModule = 0.36, barrelTeeth = 80; // great wheel → center pinion
+export const centerModule = 0.30, centerTeeth = 75; // center wheel → third pinion
+export const thirdModule = 0.24, thirdTeeth = 80;   // third wheel → fourth pinion
+export const fourthModule = 0.21, fourthTeeth = 80; // fourth wheel → escape pinion
+export const TRAIN = {
+  barrel: { module: barrelModule, teeth: barrelTeeth },
+  center: { module: centerModule, teeth: centerTeeth },
+  third:  { module: thirdModule,  teeth: thirdTeeth },
+  fourth: { module: fourthModule, teeth: fourthTeeth },
+};
+
+// Keyless works + winding path (the SETTING side, not the going train).
+export const KW_MODULE = 0.34;
+export const crownWheelTeeth = 20, windPinionTeeth = 8, settingWheelTeeth = 20;
+export const minuteWheelTeeth = 24, minutePinionTeeth = 8;
+export const WIND_SPUR_TEETH = 24;
+
+// Motion works — the 12:1 hour reduction. cannon → minute wheel, then minute
+// pinion → hour wheel; the ratio falls out of the counts (see main.js), it is
+// not asserted.
+export const cannonPinionTeeth = 10;
+export const MW_MODULE_1 = 0.3;                                 // cannon ⇄ minute wheel
+export const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
+
+// ---------------------------------------------------------------------------
+// Planar layout inputs — the "positions" the tornado solve steps off. These
+// are the pure ANGLES and one distance that decide where each arbor lands;
+// the solve that consumes them (stepPos / the two-bar third-wheel solve /
+// shift) is still interleaved in main.js and comes out in step 3. Editing one
+// of these is how "move the crown to 3 o'clock" will eventually be a one-line
+// change — once the solve reads a spec instead of module scope.
+export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel → barrel/crown exit viewed ~1:50
+export const D4 = 15.5;                     // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
+export const ESCAPE_STEP_DEG = -57.9;      // escape at viewed ~6:25
+export const BALANCE_STEP_TARGET_DEG = 44.6; // balance at viewed ~8:00 — a TARGET; the feasible angle is solved in main.js
