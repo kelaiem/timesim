@@ -949,7 +949,10 @@ registerLabel('Hairspring', hairspringGroup);
 // is what carries its sliding bevel from the corner to the climb's contrate —
 // the pull IS the clutch, no extra slide mechanism needed.
 const ALARM_CD = plateR * 0.92 * 0.39;
-const ALARM_WIND_X = ALARM_CD + CROWN_PULL_DIST, ALARM_WIND_Y = 0;
+// Crown-sense swap: the CLIMB stands at the stem's INNER radius (the crown's
+// pushed-in rest meshes it — winding is the resting action, the convention),
+// and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
+const ALARM_WIND_X = ALARM_CD, ALARM_WIND_Y = 0;
 const backPlate = G.makeBackPlate({
   radius: plateR, thickness: 2,
   holes: [
@@ -4797,7 +4800,18 @@ reserveTrain.add(rsvHandArbor);
 // threaded through in tick() with the same representational coupling the
 // setting/reserve arbors use.
 // ---------------------------------------------------------------------------
-const alarmWorld = { x: P.dial.x - ALARM_LOCAL.x, y: P.dial.y + ALARM_LOCAL.y };
+// §25 crown-sense swap (owner's call — the Cricket/Memovox convention is
+// pushed-in = WIND, pulled-out = SET, and the first build had it inverted):
+// the SETTING arbor stands one crown throw OUTBOARD of §24's radius, and the
+// winding CLIMB takes the vacated inner column — the two probed-clear
+// verticals literally exchange places, and the stem's pull now carries its
+// bevel from the (inner) winding contrate out to the setting corner.
+const ALARM_ARBOR_R = ALARM_CD + CROWN_PULL_DIST;
+const alarmWorld = (() => {
+  const bx = P.dial.x - ALARM_LOCAL.x, by = P.dial.y + ALARM_LOCAL.y;
+  const d = Math.hypot(bx, by) || 1;
+  return { x: (bx / d) * ALARM_ARBOR_R, y: (by / d) * ALARM_ARBOR_R };
+})();
 const _alarmRimD = Math.hypot(alarmWorld.x, alarmWorld.y);
 const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD }; // outward radial (world) to the case rim
 // Bevel-corner plane, wedged into the tight band between the BASE PLATE
@@ -4865,8 +4879,10 @@ const ALARM_FLANGE_T = 0.10;                    // thin — the z between the se
 //   m·(30 + 2·31 + 10)/2 = ALARM_CD  →  m ≈ 0.302 at the current layout.
 // The idler's 31 drops out of the ratio: crown → hand is pinion/wheel =
 // 10/30 — one crown rev sets 4 h (see alarmDiscAngle).
-const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_IDLER_TEETH = 31, ALARM_SET_PINION_TEETH = 10;
-const ALARM_SET_MODULE = (2 * ALARM_CD) / (ALARM_SET_WHEEL_TEETH + 2 * ALARM_SET_IDLER_TEETH + ALARM_SET_PINION_TEETH);
+const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_IDLER_TEETH = 48, ALARM_SET_PINION_TEETH = 10;
+// Span = the arbor's new radius (ALARM_CD + throw): 48 idler teeth land the
+// module back at ≈ 0.30 — the swap re-solves to integer teeth cleanly.
+const ALARM_SET_MODULE = (2 * (ALARM_CD + CROWN_PULL_DIST)) / (ALARM_SET_WHEEL_TEETH + 2 * ALARM_SET_IDLER_TEETH + ALARM_SET_PINION_TEETH);
 const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
 const ALARM_SET_D1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_IDLER_TEETH) / 2; // centre → idler axle
 const ALARM_SET_Z = -6.825;                     // WORLD gear plane — the probed-empty lane under the reserve band
@@ -5608,7 +5624,7 @@ alarmBarrelUnit.add(alarmBarrelRotor);
 // click is filed as debt.
 // ---------------------------------------------------------------------------
 const ALARM_WIND_PINION_TEETH = 12;
-const ALARM_WIND_IDLER_TEETH = 59; // sized so the 3-mesh chain (with a small dogleg) spans climb → barrel
+const ALARM_WIND_IDLER_TEETH = 51; // sized so the 3-mesh chain (with a small dogleg) spans the SHORTER inner-climb → barrel run
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_BARREL_TEETH; // barrel turns per crown turn
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
@@ -6081,9 +6097,9 @@ panel.innerHTML = `
         <button id="btn-alarm">Off</button>
       </div>
       <div class="row label-small"><span>Set for</span><span class="readout" id="readout-alarm" style="font-size:13px;">12:00</span></div>
-      <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to wind</button></div>
+      <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
       <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
-      <div class="row label-small"><span>Push in + turn to set · pull out + turn to wind</span></div>
+      <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
     </div>
   </details>
   <details class="ui-section">
@@ -6845,7 +6861,7 @@ document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!a
 document.getElementById('btn-alarm-crown').addEventListener('click', () => {
   alarmCrownOut = !alarmCrownOut;
   const b = document.getElementById('btn-alarm-crown');
-  b.textContent = alarmCrownOut ? 'Push to set' : 'Pull to wind';
+  b.textContent = alarmCrownOut ? 'Push to wind' : 'Pull to set';
   b.classList.toggle('active', alarmCrownOut);
 });
 if (restoredAlarmOn) setAlarm(true);
@@ -7775,15 +7791,18 @@ function tick(t) {
   alarmCrownPullT = rawDt > 0
     ? lerp(alarmCrownPullT, alarmCrownOut ? 1 : 0, 1 - Math.exp(-rawDt * 10))
     : (alarmCrownOut ? 1 : 0);
+  // Pushed-in the bevel rests on the (inner) winding contrate; the pull
+  // carries it one throw OUT to the setting corner — wind at rest, pull to
+  // set: the Cricket/Memovox convention.
   alarmSpinner.position.set(
-    alarmWorld.x + alarmDir.x * alarmCrownPullT * CROWN_PULL_DIST,
-    alarmWorld.y + alarmDir.y * alarmCrownPullT * CROWN_PULL_DIST, Z_ALARM_CORNER);
+    alarmDir.x * (ALARM_CD + alarmCrownPullT * CROWN_PULL_DIST),
+    alarmDir.y * (ALARM_CD + alarmCrownPullT * CROWN_PULL_DIST), Z_ALARM_CORNER);
   {
     const aDelta = alarmCrownRotation - lastAlarmCrownRotation;
     lastAlarmCrownRotation = alarmCrownRotation;
-    if (alarmCrownPullT < 0.5) {
+    if (alarmCrownPullT > 0.5) {
       alarmSetRot += aDelta;
-    } else if (alarmCrownPullT > 0.5 && aDelta > 0) {
+    } else if (alarmCrownPullT < 0.5 && aDelta > 0) {
       const before = alarmBarrelWind;
       alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
       alarmStrikePhase -= (alarmBarrelWind - before) * ALARM_STRIKES_PER_BARREL_TURN;

@@ -207,8 +207,8 @@ const MECH_GRAPH = {
     // Alarm setting (§24): the second crown turns the disc through the bevel
     // pair; the arbor turns the pointer. 'Alarm crown' is a force source only
     // reachable on the 'alarm' pose axis — nothing else writes it.
-    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PUSHED IN)
-    ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PULLED OUT — the sliding bevel lands on the climb contrate
+    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PULLED OUT — set)
+    ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
     ['Alarm winding train', 'Alarm barrel'], // §25 C: climb pinion → idlers → barrel rim (12/44)
     ['Alarm switch', 'Alarm lock'],          // §25 D: the slide's nose bears on the lever's tail (OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
@@ -637,7 +637,10 @@ const AXES = [
     // alarmOn: 1 — §25 C: ARMED, so the crown sweep actually swings the tube
     // (disarmed it would follow the fixed hour wheel and the axis would probe
     // nothing), and the follower nose rides the whole heart once per rev.
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1 }),
+    // alarmCrownPullT: 1 — crown-sense swap: SET is the pulled-out path now.
+    // (setPose(alarmCrownRotation) writes the set path directly, so the sweep
+    // itself is clutch-independent; the pose records the honest state.)
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }),
   },
   {
     // A whole wind of the alarm barrel (§25): the barrel unwinds its full
