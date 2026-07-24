@@ -4879,12 +4879,20 @@ const ALARM_FLANGE_T = 0.10;                    // thin — the z between the se
 //   m·(30 + 2·31 + 10)/2 = ALARM_CD  →  m ≈ 0.302 at the current layout.
 // The idler's 31 drops out of the ratio: crown → hand is pinion/wheel =
 // 10/30 — one crown rev sets 4 h (see alarmDiscAngle).
-const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_IDLER_TEETH = 48, ALARM_SET_PINION_TEETH = 10;
-// Span = the arbor's new radius (ALARM_CD + throw): 48 idler teeth land the
-// module back at ≈ 0.30 — the swap re-solves to integer teeth cleanly.
-const ALARM_SET_MODULE = (2 * (ALARM_CD + CROWN_PULL_DIST)) / (ALARM_SET_WHEEL_TEETH + 2 * ALARM_SET_IDLER_TEETH + ALARM_SET_PINION_TEETH);
+const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_IDLER_TEETH = 40, ALARM_SET_PINION_TEETH = 10;
+// TWO 40 t idlers on a DOGLEG, not one collinear idler: with the climb arbor
+// now standing at ALARM_CD on the az-0 line, a collinear idler's inward reach
+// is span − 4·m — no sane module clears the climb (the sweep caught the disc
+// impaled on the rod). The dogleg routes the chain +y around the climb column
+// (both discs and stud columns vertex-probed clear), the idlers drop out of
+// the ratio as before, and the extra mesh flip is absorbed by the 90° bevel
+// pair's handedness. Module is nominal (0.30): the bends absorb the slack the
+// collinear identity used to fix.
+const ALARM_SET_MODULE = 0.30;
 const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
-const ALARM_SET_D1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_IDLER_TEETH) / 2; // centre → idler axle
+const ALARM_SET_DW1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_IDLER_TEETH) / 2; // centre wheel ⇄ i1
+const ALARM_SET_D12 = ALARM_SET_MODULE * (ALARM_SET_IDLER_TEETH * 2) / 2;                      // i1 ⇄ i2
+const ALARM_SET_D2P = ALARM_SET_MODULE * (ALARM_SET_IDLER_TEETH + ALARM_SET_PINION_TEETH) / 2; // i2 ⇄ arbor pinion
 const ALARM_SET_Z = -6.825;                     // WORLD gear plane — the probed-empty lane under the reserve band
 const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75, ALARM_HEART_T = 0.4;
 // Heart/arm plane dropped 0.1 from stage 2 (−0.65 → −0.75): the setting wheel
@@ -5000,20 +5008,52 @@ const alarmIdlerGroup = new THREE.Group();
 movement.add(alarmIdlerGroup);
 registerLabel('Alarm setting idler', alarmIdlerGroup);
 registerExplode(alarmIdlerGroup, 0, 2, -1);
-const alarmIdlerSpin = new THREE.Group();
+// Route: i1 leaves the az-0 line at +35°, i2 lands by two-circle intersection
+// (+y solution) — the same construction the winding chain's dogleg uses.
+const _setU = { x: alarmWorld.x / ALARM_ARBOR_R, y: alarmWorld.y / ALARM_ARBOR_R }; // TRUE unit (an un-normalized copy of this once planted the idler in the climb)
+const _setPerp = { x: -_setU.y, y: _setU.x };
+const _setB = 35 * DEG2RAD;
+const ALARM_SET_I1 = {
+  x: (_setU.x * Math.cos(_setB) + _setPerp.x * Math.sin(_setB)) * ALARM_SET_DW1,
+  y: (_setU.y * Math.cos(_setB) + _setPerp.y * Math.sin(_setB)) * ALARM_SET_DW1,
+};
+const ALARM_SET_I2 = (() => {
+  const dx = alarmWorld.x - ALARM_SET_I1.x, dy = alarmWorld.y - ALARM_SET_I1.y;
+  const d = Math.hypot(dx, dy);
+  const a = (ALARM_SET_D12 * ALARM_SET_D12 - ALARM_SET_D2P * ALARM_SET_D2P + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, ALARM_SET_D12 * ALARM_SET_D12 - a * a));
+  const mx = ALARM_SET_I1.x + (a * dx) / d, my = ALARM_SET_I1.y + (a * dy) / d;
+  const s1 = { x: mx - (h * dy) / d, y: my + (h * dx) / d }, s2 = { x: mx + (h * dy) / d, y: my - (h * dx) / d };
+  // pick the +perp side (away from the az-0 line, around the climb)
+  return (s1.x * _setPerp.x + s1.y * _setPerp.y) > (s2.x * _setPerp.x + s2.y * _setPerp.y) ? s1 : s2;
+})();
+// The whole point of the dogleg — assert it (this route rots silently otherwise):
 {
-  const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD }; // centre → arbor direction
-  alarmIdlerSpin.position.set(u.x * ALARM_SET_D1, u.y * ALARM_SET_D1, ALARM_SET_Z);
-  const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_IDLER_TEETH, thickness: 0.25, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp AND hub-less — the stock hub ring is 1.5× the wheel and punched through the dial sheet; the stud pivot is its bearing (the winding transfer wheel precedent)
-  idler.rotation.z = Math.PI / ALARM_SET_IDLER_TEETH; // half-tooth interleave with both neighbours
-  alarmIdlerSpin.add(idler);
-  alarmIdlerGroup.add(alarmIdlerSpin);
-  // Stud: base plate underside (−2) down to the pivot; the wheel spins on its
-  // tip, the same construction as the reserve train's rsvPost1.
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, -2 - (ALARM_SET_Z + 0.125), 10), MATS.steel);
-  stud.rotation.x = Math.PI / 2;
-  stud.position.set(alarmIdlerSpin.position.x, alarmIdlerSpin.position.y, (-2 + ALARM_SET_Z + 0.125) / 2);
-  alarmIdlerGroup.add(stud);
+  const tip = ALARM_SET_MODULE * ALARM_SET_IDLER_TEETH / 2 + ALARM_SET_MODULE;
+  const need = tip + 0.45 + CLEAR_MARGIN; // idler tip + climb rod + the margin
+  for (const [nm, p] of [['i1', ALARM_SET_I1], ['i2', ALARM_SET_I2]]) {
+    const dd = Math.hypot(p.x - ALARM_WIND_X, p.y - ALARM_WIND_Y);
+    if (dd < need) console.warn(`alarm setting ${nm} fouls the winding climb: centres ${dd.toFixed(2)}, need ${need.toFixed(2)}`);
+  }
+  const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
+  if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
+}
+const alarmSetI1Spin = new THREE.Group();
+const alarmSetI2Spin = new THREE.Group();
+{
+  const mk = (spin, pos) => {
+    spin.position.set(pos.x, pos.y, ALARM_SET_Z);
+    const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_IDLER_TEETH, thickness: 0.25, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
+    idler.rotation.z = Math.PI / ALARM_SET_IDLER_TEETH;
+    spin.add(idler);
+    alarmIdlerGroup.add(spin);
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, -2 - (ALARM_SET_Z + 0.125), 10), MATS.steel);
+    stud.rotation.x = Math.PI / 2;
+    stud.position.set(pos.x, pos.y, (-2 + ALARM_SET_Z + 0.125) / 2);
+    alarmIdlerGroup.add(stud);
+  };
+  mk(alarmSetI1Spin, ALARM_SET_I1);
+  mk(alarmSetI2Spin, ALARM_SET_I2);
 }
 // The hand: hour-hand profile, a touch shorter so the hour hand can cover it
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
@@ -5122,7 +5162,10 @@ stemBevelMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THR
 stemBevelMount.add(stemBevel);
 alarmSpinner.add(stemBevelMount);
 // Stem: from the corner out to just past the case rim.
-const alarmStemLen = plateR + 2.2 - _alarmRimD;
+// Stem length from the PUSHED-IN rest radius (the climb, ALARM_CD) — the
+// spinner slides OUT from there, so basing it on the arbor's outboard radius
+// left the knob 5 short, buried against the dial rim (the sweep caught it).
+const alarmStemLen = plateR + 2.2 - ALARM_CD;
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
 alarmSpinner.add(alarmStem);
@@ -7848,8 +7891,14 @@ function tick(t) {
   // The setting wheel's world rotation lands at crown·(10/30); its dialFace-
   // local write is the negation. The tube's armed target (−alarmDiscAngle())
   // is this same quantity wrapped — the friction coupling closes the loop.
-  alarmRotor.rotation.z = alarmSetRot; // the SET path's position — holds while the clutch is out winding
-  alarmIdlerSpin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_IDLER_TEETH); // (half-tooth phase lives on the mesh itself)
+  // Setting-train senses: three external meshes now (wheel⇄i1⇄i2⇄pinion), so
+  // the arbor spins OPPOSITE the old two-mesh chain for the same hand motion —
+  // the 90° bevel pair's handedness absorbs it (representational sign, as
+  // §24's bevels always were). Derived forward: arbor −setRot → i2 +setRot/4
+  // → i1 −setRot/4 → wheel world +setRot/3 = the armed tube's world sense.
+  alarmRotor.rotation.z = -alarmSetRot;
+  alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_IDLER_TEETH);
+  alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_IDLER_TEETH);
   alarmSetWheelGroup.rotation.z = -alarmSetRot * ALARM_SET_RATIO;
   // §25 C winding train — posed RIGIDLY from the barrel's angle, so winding,
   // ringing and rest are one consistent mesh (while ringing, the train and a
