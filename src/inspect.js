@@ -225,6 +225,9 @@ const MECH_GRAPH = {
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
     ['Alarm release disc', 'Alarm release feeler'], // §29 step 3: the raised track carries the pin; the notch's arrival
                                                     // under it IS the drop — the azimuth-independent detection
+    ['Alarm release feeler', 'Alarm winding train'], // §29 step 4: the tail's beak in the climb's contrate band is the
+                                                     // RELEASE DETENT — seated it holds the striking barrel through the
+                                                     // 12/44 mesh; the pin's drop withdraws it and the train runs
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -518,6 +521,10 @@ const EXPECTED_PAIRS = [
                                             // clearances to Dial furniture are boot-asserted analytically
   ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
   ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
+  ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
+  ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
+                                            // is a dialFace descendant, so the Dial's traverse carries its beak
+                                            // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
   ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
@@ -1456,6 +1463,26 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmFeelerPin') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §29 step 4: the pawl's beak in the winding contrate's tooth band — a
+    // detent riding a turning member (the climb spins on the strike axis's
+    // back-spin and under winding), with the spring-steel tip following the
+    // saw profile kinematically. Same blindness argument, same calibration.
+    pair: ['Alarm winding train', 'Alarm release feeler'],
+    maxDepth: 0.12,
+    axis: 'alarmStrike',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmWindContrate') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmPawlBeak') out.push(o); });
       return out;
     },
   },

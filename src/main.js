@@ -4193,7 +4193,10 @@ const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and 
 // margin. Derivation at the feeler build; the two numbers live here
 // because the whole chain hangs off them.
 const ALARM_TRACK_H = 0.17;
-const ALARM_PIN_DROP = 0.06;
+const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin bounds it at 0.108
+                             // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
+                             // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
+                             // clearing the 0.06 engagement by the one margin (measured + asserted)
 const ALARM_DISC_BODY_T = 0.13;  // disc body (the rim's teeth share this plane)
 const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −1.05
 const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −1.22 (body top)
@@ -4882,7 +4885,14 @@ alarmFollowerSpring.rotation.z = 1.9;
 // hand), notch phased to the seated nose azimuth so "seated" IS "hands
 // coincident". Blued like the seconds-reset heart.
 {
-  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: 2.5, rMin: ALARM_HEART_RMIN });
+  // CRISP (bevel: false, §29 step 4): the beveled twin's rendered band is
+  // 0.42 for the authored 0.30 (±0.06 z, +0.06 XY) — the sweep caught the
+  // DROPPED feeler arm kissing that expansion at the notch-alignment poses,
+  // the exact class MODELING.md rule 1 documents. Crisp, the band IS the
+  // authored ALARM_HEART_T the §29 z-chain budgets, and the follower's
+  // nose rides the TRUE authored profile (its cam budget stops absorbing a
+  // phantom 0.06).
+  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: 2.5, rMin: ALARM_HEART_RMIN, bevel: false });
   heart.traverse((o) => { if (o.isMesh) o.name = 'alarmHeart'; }); // penetration-budget selector
   heart.position.z = ALARM_HEART_Z;
   heart.rotation.z = ALARM_NOSE_AZ;
@@ -5149,6 +5159,85 @@ alarmFeelerUnit.add(alarmFeelerLever);
   blade.name = 'alarmFeelerSpring';
   blade.position.set(0.45, 0.28, ALARM_FEELER_T / 2 + 0.04);
   alarmFeelerLever.add(blade);
+}
+// --- §29 step 4: the TAIL and the CONTRATE PAWL ---------------------------
+// The tail runs STRAIGHT from the pivot to the climb (the probe cleared the
+// line: it passes 4.3 from i1's sleeve, far over the gear lane), one band
+// above the lane at the feeler's plane; at its end a RISER climbs to the
+// winding contrate at Z_ALARM_CORNER and a beak enters the tooth band's
+// LOWER edge from beside. Pin riding (no trip) ⇒ beak seated ⇒ the climb —
+// and through the 12/44 mesh the whole striking barrel — is HELD. Pin drops
+// ⇒ the tail swings dial-ward and the beak withdraws clear of the band:
+// the RELEASE, as a real detent. Winding clicks over it: the beak's tip is
+// SPRING STEEL and follows the tooth profile under it (kinematically, like
+// the pin on the track) — the lever itself cannot bob, because the pin's
+// track contact fixes its other end; the compliance is the pawl's own.
+const ALARM_PAWL_ENGAGE = 0.06;  // beak's z reach into the contrate band's top edge — sized so the
+                                 // pin's stop-banked drop withdraws it a full margin clear
+const _climbDial = { x: -ALARM_WIND_X, y: ALARM_WIND_Y };      // climb axis, dial-local
+const _pivotDial = { x: _uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R };
+const _toClimb = { x: _climbDial.x - _pivotDial.x, y: _climbDial.y - _pivotDial.y };
+const _toClimbL = {  // lever-local (undo the lever's z-rotation)
+  x: Math.cos(-_phiF) * _toClimb.x - Math.sin(-_phiF) * _toClimb.y,
+  y: Math.sin(-_phiF) * _toClimb.x + Math.cos(-_phiF) * _toClimb.y,
+};
+const _contrateR = (ALARM_BEVEL_MODULE * ALARM_BEVEL_TEETH) / 2;
+// The beak engages the tooth band's PLATE-side (top) edge: the lever's
+// rock moves the tail plate-ward on the trip (measured — the pivot side
+// signs land that way through the mirror), so engaging the top edge makes
+// plate-ward motion the WITHDRAWAL, into the open span under the plate.
+const _pawlBandTop = Z_ALARM_CORNER + ALARM_BEVEL_FACE / 2;
+const ALARM_PAWL_DIST = Math.hypot(_toClimbL.x, _toClimbL.y) - _contrateR - 0.35; // pivot → riser (beak stand-off outside the teeth)
+const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes position.z with the tooth profile
+{
+  const dirL = Math.atan2(_toClimbL.y, _toClimbL.x);
+  // The tail's RUN is z-JOGGED off the arm's plane, dial-ward to local
+  // −0.66..−0.76 (empty at its radii — the flange stops at 4.05, the heart
+  // at 3.75): at the arm's plane the run passed under i1b's band gears with
+  // 0.21 static, and the DROPPED lever's rise ate it — the sweep caught the
+  // graze at exactly the notch-alignment poses. The jogged run clears i1b
+  // by 0.46 even dropped, and still rides 0.43 above the gear lane.
+  const _tailRunZ = (-7 - (-6.29)) - _armMidZ; // world −6.29 (run mid) → lever-local
+  const jog = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, Math.abs(_tailRunZ) + ALARM_FEELER_T), MATS.steel);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 0.26, 0.10), MATS.steel);
+  tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
+  const tailG = new THREE.Group();
+  tailG.rotation.z = dirL;
+  jog.position.set(0.35, 0, _tailRunZ / 2);
+  tailG.add(jog);
+  tailG.add(tail);
+  alarmFeelerLever.add(tailG);
+  // riser + beak ride the flex group at the tail's end
+  const beakTopL = (-7 - (_pawlBandTop - ALARM_PAWL_ENGAGE / 2)) - _armMidZ; // beak CENTRE, so its span is [bandTop − engage, bandTop] (world → dial-local → lever-local)
+  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, Math.abs(beakTopL - _tailRunZ)), MATS.steel);
+  riser.position.z = (beakTopL + _tailRunZ) / 2; // spans the jogged run's plane down to the beak
+  alarmPawlFlex.add(riser);
+  const beak = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, ALARM_PAWL_ENGAGE), MATS.steel);
+  beak.name = 'alarmPawlBeak'; // penetration-budget selector; its leading face is square to the
+                               // DELIVERY flank (wedges, self-holding) and the winding sense cams
+                               // it out axially — the one-way approach-angle convention
+  beak.position.set(0.35, 0, beakTopL - ALARM_PAWL_ENGAGE / 2 + ALARM_PAWL_ENGAGE / 2);
+  beak.position.z = beakTopL;
+  alarmPawlFlex.add(beak);
+  alarmPawlFlex.position.set(Math.cos(dirL) * ALARM_PAWL_DIST, Math.sin(dirL) * ALARM_PAWL_DIST, 0);
+  alarmPawlFlex.rotation.z = -dirL; // beak's +x aims at the climb axis
+  alarmFeelerLever.add(alarmPawlFlex);
+}
+// §29 step 4 asserts — the tail's corridor and the travel arithmetic:
+{
+  const worldPt = (dl) => ({ x: -dl.x, y: dl.y });
+  const pv = worldPt(_pivotDial), cl = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
+  const segDist = (p2) => { // point-to-segment pivot→climb
+    const dx = cl.x - pv.x, dy = cl.y - pv.y; const L2 = dx * dx + dy * dy;
+    const t = Math.max(0, Math.min(1, ((p2.x - pv.x) * dx + (p2.y - pv.y) * dy) / L2));
+    return Math.hypot(p2.x - (pv.x + t * dx), p2.y - (pv.y + t * dy));
+  };
+  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 pawl tail ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
+  say('vs i1 sleeve', segDist(ALARM_SET_I1) - 0.62 - 0.13);
+  say('vs i2 stud', segDist(ALARM_SET_I2) - 0.45 - 0.13);
+  const wd = ALARM_PIN_DROP * (ALARM_PAWL_DIST + _contrateR + 0.35) / ALARM_FEELER_ARM_LEN; // beak's withdrawal travel
+  if (wd - ALARM_PAWL_ENGAGE < CLEAR_MARGIN)
+    console.warn(`§29 pawl: withdrawal ${wd.toFixed(2)} clears the ${ALARM_PAWL_ENGAGE} engagement by ${(wd - ALARM_PAWL_ENGAGE).toFixed(2)}, need ${CLEAR_MARGIN}`);
 }
 // §29 step 3 corridor + travel asserts:
 {
@@ -5856,6 +5945,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   rod.position.z = (rodTop + Z_ALARM_CORNER) / 2;
   climb.add(rod);
   const contrate = G.makeBevelGear({ teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+  contrate.traverse((o) => { if (o.isMesh) o.name = 'alarmWindContrate'; }); // §29 step 4: the pawl budget selects this by name
   const cMount = new THREE.Group();
   cMount.position.z = Z_ALARM_CORNER;
   cMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
@@ -8792,6 +8882,17 @@ function tick(t) {
     alarmWindUnit.userData.i2.rotation.z = -bA * (ALARM_BARREL_TEETH / ALARM_WIND_IDLER_TEETH);
     alarmWindUnit.userData.i1.rotation.z = bA * (ALARM_BARREL_TEETH / ALARM_WIND_IDLER_TEETH);
     alarmWindUnit.userData.climb.rotation.z = -bA * (ALARM_BARREL_TEETH / ALARM_WIND_PINION_TEETH);
+    // §29 step 4: the pawl's spring-steel tip follows the contrate tooth
+    // profile under it while seated — stateless, like the pin on the track
+    // (winding visibly clicks it; the long-ramp/steep-bank saw shape is the
+    // one-way convention). The trip's withdrawal comes from the LEVER (the
+    // pin side owns that); this flex is only the click's compliance.
+    {
+      const seatedT = 1 - clamp(alarmPinDropNow / ALARM_PIN_DROP, 0, 1);
+      const ph = ((alarmWindUnit.userData.climb.rotation.z * ALARM_BEVEL_TEETH / (2 * Math.PI)) % 1 + 1) % 1;
+      const saw = ph < 0.85 ? ph / 0.85 : (1 - ph) / 0.15;
+      alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw; // cam-out is plate-ward (−local z), the withdrawal's own direction
+    }
   }
   // §25 B + D — the brake and the column-wheel switch. The wheel eases to its
   // stepped angle; the beak's lift comes from the SAME profile the columns

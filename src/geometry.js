@@ -657,7 +657,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 // rMin override (§25 C): a heart pressed onto a TUBE needs its notch floor
 // outside the tube's bore — the classic 0.32·radius would fall inside it.
 // Default preserves the seconds-reset heart bit-for-bit.
-export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverride = null }) {
+export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverride = null, bevel: bevelOn = true }) {
   const g = new THREE.Group();
   const rMin = rMinOverride ?? radius * 0.32;
   const shape = new THREE.Shape();
@@ -674,10 +674,15 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
   bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
   shape.holes.push(bore);
 
-  const bevel = Math.min(thickness * 0.2, radius * 0.05);
+  // bevel: false (§29) — CRISP faces: the extrude bevel expands the band
+  // ±bevel in z AND the outline +bevel in XY (MODELING.md rule 1); §29's
+  // margin-exact centre stack budgets the AUTHORED thickness, and the
+  // dropped feeler arm's clearance was eaten by exactly this expansion.
+  // Default (true) preserves the seconds-reset heart bit-for-bit.
+  const bevel = bevelOn ? Math.min(thickness * 0.2, radius * 0.05) : 0;
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
-    bevelEnabled: true,
+    bevelEnabled: bevelOn,
     bevelThickness: bevel,
     bevelSize: bevel,
     bevelSegments: 1,
