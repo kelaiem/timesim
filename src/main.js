@@ -5826,8 +5826,8 @@ alarmLockUnit.add(alarmLockLever);
   pad.position.x = ALARM_LOCK_L;
   alarmLockLever.add(pad);
   // Tail — what the switch's nose bears on.
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.28), MATS.steel);
-  tail.position.x = -1.1;
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.28), MATS.steel);
+  tail.position.x = -1.0; // end at 1.8 from the wheel axis — the old 2.2 corner clipped the ratchet skirt (reach 1.68)
   alarmLockLever.add(tail);
 }
 const alarmSwitchUnit = new THREE.Group();
@@ -5878,24 +5878,35 @@ alarmSwitchUnit.add(alarmColSpin);
 // SAME parity — asserted below, since a phase slip here would show ON while
 // gating OFF.
 const ALARM_CLICK_AZ = ALARM_LOCK_ENGAGED + 2 * (Math.PI * 2 / ALARM_COL_COLUMNS); // 2 pitches around the wheel
-const ALARM_CLICK_SWING = 0.16; // rad — the visible rock between column and gap
-const ALARM_CLICK_L = 2.4;      // pivot → nose
+// TANGENTIAL click geometry: the pivot stands one arm-length SIDEWAYS from
+// the contact point, so the arm's rotation carries the nose RADIALLY — it
+// visibly drops INTO a gap (nose centre 1.30 from the axis) and rides OUT
+// onto a column's outer face (1.5 + nose radius = 1.78). The first build's
+// radial arm rocked the nose sideways along the ring — and buried it in it.
+const ALARM_CLICK_NOSE_R = 0.28;
+const ALARM_CLICK_L = 2.0;
+const ALARM_CLICK_SEAT = 1.30;                 // nose centre, dropped in a gap
+const ALARM_CLICK_OUT = 1.5 + ALARM_CLICK_NOSE_R; // nose centre riding a column
+const ALARM_CLICK_SWING = (ALARM_CLICK_OUT - ALARM_CLICK_SEAT) / ALARM_CLICK_L;
+const _clickDir = { x: Math.cos(ALARM_CLICK_AZ), y: Math.sin(ALARM_CLICK_AZ) };      // wheel centre → contact
+const _clickTan = { x: -_clickDir.y, y: _clickDir.x };
+const _clickSeatP = { x: ALARM_COL_POS.x + _clickDir.x * ALARM_CLICK_SEAT, y: ALARM_COL_POS.y + _clickDir.y * ALARM_CLICK_SEAT };
 const alarmClickPivot = {
-  x: ALARM_COL_POS.x + Math.cos(ALARM_CLICK_AZ) * (1.5 + ALARM_CLICK_L - 0.35),
-  y: ALARM_COL_POS.y + Math.sin(ALARM_CLICK_AZ) * (1.5 + ALARM_CLICK_L - 0.35),
+  x: _clickSeatP.x + _clickTan.x * ALARM_CLICK_L,
+  y: _clickSeatP.y + _clickTan.y * ALARM_CLICK_L,
 };
 const alarmClickArm = new THREE.Group();
-alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + 0.50);
+alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + 0.80); // nose in the column band, clear of the base disc
 alarmSwitchUnit.add(alarmClickArm);
 {
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 10), MATS.nickel);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.15, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
-  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.52 - 0.01);
+  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.585 - 0.01);
   alarmSwitchUnit.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, 0.3), MATS.steel);
-  arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the wheel
+  arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the seat point
   alarmClickArm.add(arm);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), MATS.steel);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(ALARM_CLICK_NOSE_R, 12, 8), MATS.steel);
   nose.position.x = -ALARM_CLICK_L;
   alarmClickArm.add(nose);
   // Its return spring — the blade that gives the click its snap.
@@ -5904,8 +5915,9 @@ alarmSwitchUnit.add(alarmClickArm);
   blade.rotation.z = 0.35;
   alarmClickArm.add(blade);
 }
-// Base angle: arm pointing from pivot back at the wheel's centre.
-const ALARM_CLICK_BASE = Math.atan2(ALARM_COL_POS.y - alarmClickPivot.y, ALARM_COL_POS.x - alarmClickPivot.x) + Math.PI;
+// Base angle: arm pointing from the pivot at the SEATED nose position; the
+// rock (+SWING·colBlock) rotates the nose outward onto the column face.
+const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSeatP.x - alarmClickPivot.x) + Math.PI;
 // THE PUSHER (owner's catch: a cased movement cannot reach a plate-top
 // column wheel — chronographs pierce the case here). A capped stem at the
 // rim on the wheel's azimuth, OFFSET half a wheel-radius sideways so its
@@ -5962,7 +5974,11 @@ alarmSwitchUnit.add(alarmPusherGroup);
 {
   const beak = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 0.4), MATS.steel);
   beak.name = 'alarmSwitchBeak';
-  beak.position.set(-2.7, 0, 0.43); // tail end, lifted into the (raised) column band
+  // Plan-depth matters as much as z: the wheel stands 3.8 behind the pivot,
+  // so the beak's near face lands at 3.8 − 2.35 = 1.45 from the wheel axis —
+  // 0.05 of engagement into the columns' outer face (1.5), not a bar shoved
+  // clean through the castellation ring (the owner circled exactly that).
+  beak.position.set(-1.85, 0, 0.72);
   alarmLockLever.add(beak);
 }
 
