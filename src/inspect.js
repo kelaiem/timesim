@@ -151,6 +151,8 @@ const MECH_GRAPH = {
                                              // running fit is its bearing (rattrapante centre stack)
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
+    ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
+    ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
@@ -203,7 +205,9 @@ const MECH_GRAPH = {
     // Alarm setting (§24): the second crown turns the disc through the bevel
     // pair; the arbor turns the pointer. 'Alarm crown' is a force source only
     // reachable on the 'alarm' pose axis — nothing else writes it.
-    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh
+    ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PUSHED IN)
+    ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PULLED OUT — the sliding bevel lands on the climb contrate
+    ['Alarm winding train', 'Alarm barrel'], // §25 C: climb pinion → idlers → barrel rim (12/44)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
     ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
     ['Alarm setting wheel', 'Alarm disc'],   // friction coupling: drives the tube when armed, slips when
@@ -484,6 +488,10 @@ const EXPECTED_PAIRS = [
   ['Alarm setting wheel', 'Dial'],        // retained 0.05 behind the dial sheet — deliberate proximity
   ['Alarm setting idler', 'Alarm setting wheel'], // gear mesh
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
+  ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
+  ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
+  ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
+  ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
