@@ -6110,6 +6110,15 @@ let restoredAlarmOn = false;      // persisted toggle, applied once the UI exist
   barrelWindTurns = savedState.barrelWindTurns;
   tauIntegrated = savedState.tauIntegrated;
   crownRotation = savedState.crownRotation;
+  // Seed the delta baseline to the restored angle. crownRotDelta in tick() is
+  // crownRotation − lastCrownRotation; the restored crownRotation is input
+  // ALREADY delivered to the gears last session (and already reflected in the
+  // restored barrelWindTurns / hand offset), not new turning. Left at 0, the
+  // first tick replays the entire crown history as one positive delta and the
+  // winding path (tick(): barrelWindTurns += …) clamps the barrel to full on
+  // frame one — which silently re-winds a drained reserve on every reload, and
+  // stomps any starting reserve set below full (e.g. the ?reserve= deep link).
+  lastCrownRotation = crownRotation;
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
@@ -6219,6 +6228,49 @@ style.textContent = `
   color: #cfe3ff; background: rgba(10,12,15,0.55); padding: 2px 6px; border-radius: 4px;
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
 }
+#clock-ui .guided-btns { display: flex; gap: 5px; }
+#clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
+/* Guided-demo / tour caption (BUILT §5, §17) — the scripted user's narration.
+   A single centred banner along the bottom, above the movement, that appears
+   only while a script runs and never intercepts pointer input (so any click
+   still reaches the canvas and cancels the script). */
+#clock-caption {
+  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
+  z-index: 8; max-width: min(80vw, 640px); text-align: center;
+  background: rgba(15,17,20,0.82); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+  padding: 11px 18px; color: #eaf0f7; pointer-events: none;
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  opacity: 0; transition: opacity 0.35s; display: none;
+}
+#clock-caption.show { opacity: 1; }
+/* Tour deep-link confirmation (BUILT §17) — a real click is the ONLY way to
+   arrive at the tour when it's auto-triggered by ?tour=1 on load: unlike the
+   button, a deep link isn't itself a user gesture, and it shouldn't run the
+   camera/crown/sound unattended before the visitor has agreed to it. Opaque
+   overlay (unlike the caption, THIS blocks pointer input) until answered. */
+#clock-tour-gate {
+  position: fixed; inset: 0; z-index: 20; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(8,9,11,0.55); backdrop-filter: blur(2px);
+}
+#clock-tour-gate.show { display: flex; }
+#clock-tour-gate .box {
+  max-width: min(86vw, 420px); text-align: center;
+  background: rgba(20,22,26,0.96); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px; padding: 22px 26px; color: #eaf0f7;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+#clock-tour-gate .box p { margin: 0 0 16px; }
+#clock-tour-gate .box .row { display: flex; gap: 8px; justify-content: center; }
+#clock-tour-gate button {
+  font: inherit; padding: 8px 16px; border-radius: 7px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: #e8edf2;
+}
+#clock-tour-gate button:hover { background: rgba(255,255,255,0.14); }
+#clock-tour-gate button.primary { background: #7a3ad8; border-color: #7a3ad8; }
+#clock-tour-gate button.primary:hover { background: #8d4ce6; }
 `;
 document.head.appendChild(style);
 
@@ -6260,8 +6312,10 @@ panel.innerHTML = `
         <button data-cam="Escapement">Escapement</button>
         <button data-cam="Train">Train</button>
         <button data-cam="Dial">Dial</button>
+        <button data-cam="Setting">Setting</button>
         <button data-cam="Free">Free</button>
       </div>
+      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button></span></div>
     </div>
   </details>
   <details class="ui-section">
@@ -6333,6 +6387,72 @@ function setPanelHidden(hidden) {
 }
 document.getElementById('btn-hide-ui').addEventListener('click', () => setPanelHidden(true));
 showPanelBtn.addEventListener('click', () => setPanelHidden(false));
+
+// While a guided script (Demo/Tour) runs, get the fixed control panel out from
+// in front of it on a narrow screen: the panel is 240px wide at a 14px inset
+// (a 254px right edge), so on a phone-width viewport it sits on top of the
+// horizontally-centred movement and the caption. Collapse it to the ☰ chip for
+// the run, then restore whatever the user had before.
+//
+// Gate on viewport WIDTH alone — NOT pointer type. A phone reports a narrow
+// width, but so does a resized desktop window or a device-emulation preview,
+// and all three have the identical overlap; an earlier `(pointer: coarse)`
+// clause meant the collapse silently no-op'd in exactly those non-touch test
+// setups. A desktop window this narrow is just as well served by getting the
+// panel out of the way for the run (the ☰ chip brings it right back), and a
+// full-width desktop (> the breakpoint) never triggers. 820px ≈ where the
+// 240px panel plus a mirror-image right gutter leaves under ~300px of clear
+// centre, so below it the overlap is unavoidable.
+function isNarrowLayout() {
+  return window.matchMedia('(max-width: 820px)').matches;
+}
+let panelForcedHiddenByScript = false;
+function hidePanelForScript() {
+  if (!isNarrowLayout()) return;
+  if (panel.style.display === 'none') return; // already collapsed by the user — leave it, and claim no restore
+  setPanelHidden(true);
+  panelForcedHiddenByScript = true;
+}
+function restorePanelAfterScript() {
+  if (!panelForcedHiddenByScript) return;
+  panelForcedHiddenByScript = false;
+  setPanelHidden(false);
+}
+
+// Guided-script caption banner (BUILT §5, §17) — created up front, shown only
+// while a scripted user (demo/tour) is running.
+const captionEl = document.createElement('div');
+captionEl.id = 'clock-caption';
+document.body.appendChild(captionEl);
+
+// Tour deep-link confirmation gate (BUILT §17) — see the #clock-tour-gate
+// CSS comment above for why this exists. Single-use: the only caller is the
+// ?tour=1 deep link, once, at boot.
+const tourGateEl = document.createElement('div');
+tourGateEl.id = 'clock-tour-gate';
+tourGateEl.innerHTML = `
+  <div class="box">
+    <p>Take a guided tour of the movement?</p>
+    <div class="row">
+      <button id="tour-gate-skip">Skip</button>
+      <button id="tour-gate-go" class="primary">Start Tour</button>
+    </div>
+  </div>`;
+document.body.appendChild(tourGateEl);
+function askTour(onProceed) {
+  tourGateEl.classList.add('show');
+  const goBtn = document.getElementById('tour-gate-go');
+  const skipBtn = document.getElementById('tour-gate-skip');
+  const finish = (proceed) => {
+    tourGateEl.classList.remove('show');
+    goBtn.onclick = null;
+    skipBtn.onclick = null;
+    if (proceed) onProceed();
+  };
+  goBtn.onclick = () => finish(true);
+  skipBtn.onclick = () => finish(false);
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
 });
@@ -6740,13 +6860,18 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 });
 
 // --- labels toggle --------------------------------------------------------
+// Factored into setLabels(on) so the guided-tour scripted user (BUILT §17)
+// can drive it the same way a click does, rather than re-implementing the
+// toggle's side effects.
 let labelsOn = false;
-document.getElementById('btn-labels').addEventListener('click', () => {
-  labelsOn = !labelsOn;
-  labelsContainer.style.display = labelsOn ? 'block' : 'none';
-  document.getElementById('btn-labels').textContent = labelsOn ? 'On' : 'Off';
-  document.getElementById('btn-labels').classList.toggle('active', labelsOn);
-});
+function setLabels(on) {
+  labelsOn = on;
+  labelsContainer.style.display = on ? 'block' : 'none';
+  const b = document.getElementById('btn-labels');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+}
+document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
 
 // --- three-quarter plate X-ray --------------------------------------------
 // The plate does its job by covering the train, which is also the one thing
@@ -7070,6 +7195,18 @@ function setSound(on) {
 }
 document.getElementById('btn-sound').addEventListener('click', () => setSound(!soundOn));
 if (restoredSound) setSound(true); // context resume may still await a gesture; the first click supplies it
+// setSound(true) can run with no real gesture behind it — restored state
+// above, a `?sound=1` deep link, or the tour's own `sound:true` step — and
+// autoplay policy then leaves audioCtx 'suspended' forever, so sndClick's
+// own guard drops every tick with nothing to show for it. Resume on the
+// next REAL pointer/key input, whatever it is, not just a click on this
+// button; harmless to keep listening once already 'running'.
+window.addEventListener('pointerdown', () => {
+  if (soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, true);
+window.addEventListener('keydown', () => {
+  if (soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, true);
 
 // Alarm enable toggle (BUILT §24). The panel only ARMS the alarm — it never
 // writes the set time; that is set by turning the alarm crown in 3D (Rule 2),
@@ -7393,6 +7530,33 @@ const camTargets = {
     pos: new THREE.Vector3(P.dial.x, P.dial.y + plateR * 0.4, Z_DIAL - plateR * 2.4),
     target: new THREE.Vector3(P.dial.x, P.dial.y, Z_DIAL),
   },
+  Setting: {
+    // The §1 jumping-minute works, framed on their own (BUILT §5). The whole
+    // cluster — star, beak, spring, lifter — lives within JMP_PIV_R of the
+    // minute-wheel stud, so the stud IS the frame's centre. Its world position
+    // comes through the dialFace Y-flip (dial-local (x,y,z) ↔ world
+    // (P.dial.x − x, P.dial.y + y, Z_DIAL − z); dialFace.rotation.y = π), with
+    // the cluster's mid-Z at Z_DIAL − STAR_MID.
+    //
+    // Viewed from the dial (−Z) side like the Dial preset: the jumper sits
+    // between the dial and the plate, so the only thing between it and a
+    // dial-side camera is the thin dial itself — which `reveal: 'xray'`
+    // glassifies. From the movement (+Z) side the whole going train and barrel
+    // would occlude it instead, so −Z is the clean side.
+    pos: (() => {
+      const cx = P.dial.x - MW_STUD.x, cy = P.dial.y + MW_STUD.y, cz = Z_DIAL - STAR_MID;
+      // Framing radius spans the star (STAR_R) plus the jumper's pivot reach
+      // (JMP_PIV_R); the 42° FOV fit rule (see this block's header) puts the
+      // camera 3.8×R off the target.
+      const R = JMP_PIV_R + STAR_R;
+      const d = R * 3.8;
+      // Lateral + vertical offset (like Escapement/Dial) so the beak and
+      // spring aren't seen edge-on; the bulk of the distance is −Z (dial side).
+      return new THREE.Vector3(cx + d * 0.28, cy + d * 0.28, cz - d * 0.9);
+    })(),
+    target: new THREE.Vector3(P.dial.x - MW_STUD.x, P.dial.y + MW_STUD.y, Z_DIAL - STAR_MID),
+    reveal: 'xray', // the jumper hides behind the dial — glass it so the frame is legible
+  },
   Free: {
     pos: new THREE.Vector3(plateR * 2.0, plateR * 1.8, plateR * 3.0),
     target: new THREE.Vector3(0, 0, 5),
@@ -7410,6 +7574,11 @@ function goToPreset(name) {
     t: 0,
     dur: 0.9,
   };
+  // A preset can declare that its subject is hidden behind a plate and needs
+  // x-ray to be legible (the Setting preset's jumper, BUILT §5). Only ever
+  // turns it ON — a camera move should not silently switch a viewer's x-ray
+  // back off.
+  if (preset.reveal === 'xray' && !xrayOn) setXray(true);
   document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.toggle('active', b.dataset.cam === name));
 }
 document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
@@ -7428,6 +7597,269 @@ if (restoredCamera) {
 } else {
   goToPreset('Free');
 }
+
+// ---------------------------------------------------------------------------
+// SCRIPTED USER — one engine for the guided demo (BUILT §5) and the guided
+// tour (BUILT §17). It is NOT a new mechanism: it only drives the SAME inputs
+// a viewer would (camera presets, the crown, the time-scale, the view toggles,
+// the wind and sync buttons), stepping through a declarative list. Each step is
+// { preset, <view/UI state>, caption, dwell, ... }; the demo is one such list,
+// the tour is a longer one, and both run through scriptEnterStep/scriptUpdate.
+//
+// Interaction contract (BUILT §9's syncCancel, generalised): ANY real user
+// input — a pointer, a key, the scroll wheel — ends the script at once, except
+// a click on the Guided buttons themselves (their own handlers toggle it). A
+// script never dispatches DOM events (it calls the underlying functions), so a
+// captured DOM event is always the user taking the wheel.
+//
+// Setting turns are fed through the movement's own keyless chain, exactly as
+// §9's sync does: one star detent is one minute of the minute hand, and the
+// per-minute crown rotation is (60·MIN_HAND_RAD_PER_SEC)/HAND_RAD_PER_SET_RAD,
+// not a hand-picked angle. SCRIPT_SET_MIN_S is how long each detent takes on
+// screen — a beat is ~0.2 s and the jumper snap eases over CAM_SNAP_TAU
+// (0.06 s), so ~0.7 s per minute leaves a clear pause between snaps. Fed on
+// real dt, so (like the snap itself) the detents play at real cadence
+// regardless of the time-scale slider.
+const SCRIPT_SET_MIN_S = 0.7;
+const SCRIPT_SET_RAD_PER_MIN = Math.abs((60 * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD);
+const SCRIPT_SET_RATE = SCRIPT_SET_RAD_PER_MIN / SCRIPT_SET_MIN_S; // rad/s of crown, gentle
+const SCRIPT_EXPLODE_TAU = 0.35; // s — explode ease matches the caption fade so it reads as motion
+function settingTurnRad(minutes) {
+  // Signed like §9's write: advances the minute hand forward by `minutes`.
+  return (minutes * 60 * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD;
+}
+
+let scriptSteps = null;         // active step list, or null when idle
+let scriptIdx = 0;
+let scriptBtn = null;           // the Guided button that started the run
+let scriptDwell = 0;            // s held since the current step's actions settled
+let scriptTurnRad = 0;          // signed crown rotation left to feed for a turn step
+let scriptExplodeTarget = null; // 0..1 to ease explodeAmount toward, or null
+
+function scriptEnterStep(i) {
+  const s = scriptSteps[i];
+  scriptDwell = 0;
+  scriptTurnRad = 0;
+  // View/UI state first, camera next, then crown/turn/sync — so a preset's
+  // reveal:'xray' can be overridden by an explicit xray:false in the same step.
+  if (s.scale !== undefined) setTimeScale(s.scale);
+  if (s.labels !== undefined) setLabels(s.labels);
+  if (s.powerflow !== undefined) setPowerFlow(s.powerflow);
+  if (s.sound !== undefined) setSound(s.sound);
+  if (s.unit !== undefined) { unitSelect.value = s.unit; selectedUnit = s.unit; }
+  scriptExplodeTarget = (s.explode !== undefined) ? s.explode : null;
+  if (s.preset) goToPreset(s.preset);
+  if (s.xray !== undefined) setXray(s.xray);
+  if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
+  if (s.turnMinutes) scriptTurnRad = settingTurnRad(s.turnMinutes);
+  if (s.wind) autoWindRemaining += s.wind * 2 * Math.PI;
+  if (s.sync) { syncStart(); updateCrownUI(); }
+  if (s.caption !== undefined) captionEl.textContent = s.caption;
+  captionEl.style.display = 'block';
+  captionEl.classList.add('show');
+}
+
+function scriptUpdate(realDt) {
+  if (!scriptSteps) return;
+  const s = scriptSteps[scriptIdx];
+  // Feed a scripted setting turn — only while the stem is physically in the
+  // setting position (crownPullT > 0.5), mirroring tick()'s own gate, so it can
+  // never leak onto the winding path.
+  if (scriptTurnRad !== 0 && crownPullT > 0.5) {
+    const stepRad = Math.sign(scriptTurnRad) * Math.min(Math.abs(scriptTurnRad), SCRIPT_SET_RATE * realDt);
+    crownRotation += stepRad;
+    scriptTurnRad -= stepRad;
+    if (Math.abs(scriptTurnRad) < 1e-6) scriptTurnRad = 0;
+  }
+  // Ease the exploded view toward the step's target and keep the slider honest.
+  if (scriptExplodeTarget !== null) {
+    explodeAmount += (scriptExplodeTarget - explodeAmount) * (1 - Math.exp(-realDt / SCRIPT_EXPLODE_TAU));
+    document.getElementById('explode-slider').value = String(Math.round(explodeAmount * 100));
+    if (Math.abs(explodeAmount - scriptExplodeTarget) < 0.005) { explodeAmount = scriptExplodeTarget; scriptExplodeTarget = null; }
+  }
+  // The step's dynamic actions must finish before the dwell clock starts: the
+  // crown must reach position, the turn must be spent, a wind must complete, a
+  // sync must run all the way through catch-up, the explode must settle.
+  const settled =
+    (!s.crown || (s.crown === 'out' ? crownPullT > 0.95 : crownPullT < 0.05)) &&
+    scriptTurnRad === 0 &&
+    (!s.wind || autoWindRemaining <= 0) &&
+    (!s.sync || syncPhase === null) &&
+    scriptExplodeTarget === null;
+  if (!settled) return;
+  scriptDwell += realDt;
+  if (scriptDwell < (s.dwell ?? 0)) return;
+  if (scriptIdx + 1 >= scriptSteps.length) { scriptStop(); return; }
+  scriptIdx++;
+  scriptEnterStep(scriptIdx);
+}
+
+let scriptAbortArmed = false;
+function scriptAbort(e) {
+  // A click on a Guided button is the user talking TO the script (its handler
+  // toggles it), not taking over from it — let that through.
+  if (e.target && e.target.closest && e.target.closest('.script-ctrl')) return;
+  scriptStop();
+}
+function armScriptAbort() {
+  if (scriptAbortArmed) return;
+  window.addEventListener('pointerdown', scriptAbort, true);
+  window.addEventListener('keydown', scriptAbort, true);
+  window.addEventListener('wheel', scriptAbort, true);
+  scriptAbortArmed = true;
+}
+function disarmScriptAbort() {
+  if (!scriptAbortArmed) return;
+  window.removeEventListener('pointerdown', scriptAbort, true);
+  window.removeEventListener('keydown', scriptAbort, true);
+  window.removeEventListener('wheel', scriptAbort, true);
+  scriptAbortArmed = false;
+}
+
+function scriptStop() {
+  // Follows §9's syncCancel: STOP, don't undo. Whatever the script last set
+  // (camera, x-ray, explode, crown) stays — the point of aborting is to hand
+  // the user the state they're looking at, not to reset it out from under them.
+  // A mid-flight scripted sync is the one thing that must be released, or its
+  // catch-up rate would keep running the movement fast with no script to end it.
+  scriptSteps = null;
+  scriptIdx = 0;
+  scriptTurnRad = 0;
+  scriptExplodeTarget = null;
+  syncCancel();
+  captionEl.classList.remove('show');
+  setTimeout(() => { if (!scriptSteps) captionEl.style.display = 'none'; }, 400); // let the fade finish
+  scriptBtn = null;
+  const tb = document.getElementById('btn-tour'); if (tb) { tb.textContent = 'Tour'; tb.classList.remove('active'); }
+  const db = document.getElementById('btn-demo'); if (db) { db.textContent = 'Demo'; db.classList.remove('active'); }
+  restorePanelAfterScript(); // undo any phone-layout panel collapse from scriptStart
+  disarmScriptAbort();
+}
+
+function scriptStart(steps, btn) {
+  scriptStop();               // supersede any running script
+  // Phone: move the fixed control panel out from in front of the scripted run.
+  // scriptStop (above, and whenever this run ends or the user taps to take
+  // over) restores it, so the final "explore the controls yourself" stop hands
+  // the panel back.
+  hidePanelForScript();
+  // scriptStart is only ever reached through a real tap — the Tour/Demo
+  // button, or the tour gate's Proceed — so THIS is the gesture autoplay
+  // policy wants. Create/resume the AudioContext right here, synchronously
+  // in that gesture, rather than waiting for whichever step first sets
+  // sound:true: that runs frames later out of scriptUpdate, well outside
+  // any trusted event, and a resume() called that late is exactly what
+  // gets silently ignored (BUILT §8's sndClick then drops every tick with
+  // audioCtx stuck 'suspended' and nothing on screen to say why).
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  ensureAudioGraph();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  scriptSteps = steps;
+  scriptIdx = 0;
+  scriptBtn = btn || null;
+  if (scriptBtn) { scriptBtn.classList.add('active'); scriptBtn.textContent = 'Stop'; }
+  captionEl.style.display = 'block';
+  captionEl.classList.remove('show');
+  // Two frames so the opacity transition fires from the display:none→block edge.
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (scriptSteps) captionEl.classList.add('show'); }));
+  armScriptAbort();
+  scriptEnterStep(0);
+}
+
+// --- the two scripts -------------------------------------------------------
+// §5 — "See the minute jumper in action": frame the jumper, then pull → snap →
+// set → push, unattended, ending with the watch running on an index.
+const DEMO_STEPS = [
+  { preset: 'Setting', scale: 0.3, caption: 'The jumping-minute setting works, behind the dial', dwell: 1.4 },
+  { crown: 'out', caption: 'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star', dwell: 0.7 },
+  { turnMinutes: 4, caption: 'Turn to set — the beak snaps the hand one exact minute per detent', dwell: 0.9 },
+  { crown: 'in', scale: 1, caption: 'Push home — the jumper lifts and the watch runs on, synchronised', dwell: 1.6 },
+];
+
+// §17 — Guided tour: the same engine over more stops. The jumper stop reuses
+// the demo's own pull/turn/push vocabulary (not a second machine), and the sync
+// stop leans on §12's honest scale readout to narrate the catch-up rate.
+const TOUR_STEPS = [
+  { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false, powerflow: false, sound: false, unit: 'All',
+    caption: 'A fusee-and-chain watch movement — every part built from geometry, no models', dwell: 3.6 },
+  { preset: 'Escapement', scale: 0.05,
+    caption: 'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat', dwell: 6.0 },
+  { preset: 'Free', scale: 1, crown: 'in', wind: 16, xray: true, // scale:1 — auto-wind drains in sim-time, so the previous step's slow scale would stretch the wind out
+    caption: 'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady', dwell: 2.4 },
+  { preset: 'Train', scale: 1, powerflow: true,
+    caption: 'That torque runs the going train — barrel to centre, third, fourth, escape', dwell: 5.1 },
+  { preset: 'Free', powerflow: false, xray: true, explode: 0.6, labels: true,
+    caption: 'X-ray the plates and explode the stack to see how the layers fit', dwell: 6.0 },
+  { preset: 'Setting', explode: 0, labels: false, scale: 0.3, crown: 'out',
+    caption: 'On the dial side, pull the crown and the jumping-minute works engage', dwell: 1.2 },
+  { turnMinutes: 3, caption: 'Each detent sets the minute hand one exact minute', dwell: 1.2 },
+  { crown: 'in', scale: 1, caption: 'Push home and it runs on', dwell: 1.8 },
+  { preset: 'Dial', xray: false, sync: true,
+    caption: 'Sync sets the hands to your wall clock through the real keyless works, then catches up', dwell: 0.9 },
+  { preset: 'Free', sound: true,
+    caption: 'Every tick is synthesised from the movement’s own events — turn the volume up', dwell: 5.1 },
+  { preset: 'Free', sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false,
+    caption: 'That’s the tour. Now explore the controls yourself.', dwell: 3.9 },
+];
+
+document.getElementById('btn-demo').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(DEMO_STEPS, btn);
+});
+document.getElementById('btn-tour').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(TOUR_STEPS, btn);
+});
+
+// ---------------------------------------------------------------------------
+// DEEP LINKS — query-string entry points onto the SAME two surfaces above:
+// the script engine (?tour / ?demo) or the raw view state the engine's own
+// steps set (?preset, ?scale, ?xray, ?explode, ?labels, ?powerflow, ?sound,
+// ?unit, ?crown, ?reserve). `?demo=1` starts the matching script exactly as
+// its button would. `?tour=1` goes through askTour's confirm/skip gate first
+// — a deep link isn't itself a user gesture the way a button click is, and
+// shouldn't swing the camera/crown/sound unattended before the visitor has
+// agreed to it; Proceed calls the SAME scriptStart(TOUR_STEPS, ...) the
+// button uses. The state params are lower-stakes: applied once, on load,
+// directly through the same setters scriptEnterStep calls — no caption, no
+// dwell, no script running afterward to abort — so a link like
+// `?preset=Escapement&scale=0.05&xray=1` reaches the pose a script step would
+// and then just sits there as ordinary interactive state. Unrecognised or
+// malformed params are ignored (goToPreset no-ops on an unknown name;
+// unparseable numbers fall back to 1 for scale, 0 for explode/reserve via
+// `|| ` — nothing throws on a bad link).
+function applyDeepLink() {
+  const params = new URLSearchParams(location.search);
+  // State params apply FIRST and unconditionally — including alongside
+  // ?tour=1/?demo=1 — because a script's own steps only touch the fields
+  // they name (TOUR_STEPS/DEMO_STEPS never set barrelWindTurns), so a base
+  // state like ?tour=1&reserve=0.3 is meant to survive into the tour, not
+  // get skipped because the tour branch used to return before reaching it.
+  const flag = (v) => v === '1' || v === 'true';
+  if (params.has('preset')) goToPreset(params.get('preset'));
+  if (params.has('scale')) setTimeScale(parseFloat(params.get('scale')) || 1);
+  if (params.has('xray')) setXray(flag(params.get('xray')));
+  if (params.has('labels')) setLabels(flag(params.get('labels')));
+  if (params.has('powerflow')) setPowerFlow(flag(params.get('powerflow')));
+  if (params.has('sound')) setSound(flag(params.get('sound')));
+  if (params.has('unit')) { unitSelect.value = params.get('unit'); selectedUnit = params.get('unit'); }
+  if (params.has('explode')) {
+    const v = clamp(parseFloat(params.get('explode')) || 0, 0, 1);
+    explodeAmount = v;
+    document.getElementById('explode-slider').value = String(Math.round(v * 100));
+  }
+  if (params.has('crown')) { setCrownOut(params.get('crown') === 'out'); updateCrownUI(); }
+  // Fraction of the 30h reserve (RESERVE_BARREL_TURNS), same 0..1 tension
+  // vocabulary __clock.setPose's p.tension already uses — so winding has
+  // somewhere to go on load instead of starting flat against the full stop.
+  if (params.has('reserve')) barrelWindTurns = clamp(parseFloat(params.get('reserve')) || 0, 0, 1) * RESERVE_BARREL_TURNS;
+  // Scripts run LAST: they immediately re-pose the view through step 0
+  // anyway (any preset/xray/etc. set above is about to be overridden), so
+  // nothing above is wasted work, just a base state the script doesn't own.
+  if (params.has('tour')) { askTour(() => scriptStart(TOUR_STEPS, document.getElementById('btn-tour'))); return; }
+  if (params.has('demo')) { scriptStart(DEMO_STEPS, document.getElementById('btn-demo')); return; }
+}
+applyDeepLink();
 
 // ---------------------------------------------------------------------------
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
@@ -8149,10 +8581,12 @@ function tick(t) {
 
 tick(0); // seed correct initial pose before the first paint
 
-function frame(now) {
-  const realDt = Math.min((now - lastNow) / 1000, 0.05);
-  lastNow = now;
-
+// One frame's worth of simulation, script/sync stepping, camera tween and
+// render — everything except the rAF scheduling and autosave. Split out of
+// frame() so the verification hook (__clock.advanceFrame) can run the guided
+// demo/tour deterministically: rAF is fully paused in a backgrounded
+// automation pane, so scripted behaviour cannot be observed through frame().
+function advanceFrame(realDt) {
   if (!paused) {
     if (fastForward) {
       // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
@@ -8164,6 +8598,7 @@ function frame(now) {
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
     } else {
+      scriptUpdate(realDt); // scripted user (BUILT §5/§17): drives crown/scale before this frame's ticks
       syncUpdate(realDt);
       // The catch-up is a rate the slider does not know about, so it stands
       // in for timeScale rather than being written into it — the slider's
@@ -8218,6 +8653,13 @@ function frame(now) {
   updateLabels();
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
   renderer.render(scene, camera);
+}
+
+function frame(now) {
+  const realDt = Math.min((now - lastNow) / 1000, 0.05);
+  lastNow = now;
+
+  advanceFrame(realDt);
 
   // Auto-save state every 5 seconds
   if (simTime - lastAutoSaveTime > 5) {
@@ -8328,6 +8770,14 @@ window.__clock = {
     scene.updateMatrixWorld(true);
   },
   render() { renderer.render(scene, camera); },
+  // Guided demo/tour (BUILT §5/§17) hooks — for unattended verification.
+  startDemo() { scriptStart(DEMO_STEPS, document.getElementById('btn-demo')); },
+  startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
+  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionEl.textContent } : null; },
+  // Deterministic per-frame advance for verification (rAF is paused when the
+  // automation pane is backgrounded, so the guided demo/tour can't be watched
+  // through the real loop). Runs script + sync + sim + camera + render.
+  advanceFrame(realDt) { advanceFrame(realDt); return simTime; },
   movement,
   // Alarm introspection (§24): the disc's actual detented angle and the set
   // time derived from it, for verifying they agree within one detent step.
