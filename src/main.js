@@ -4834,13 +4834,27 @@ const ALARM_HAND_Z = 1.1;
 // heart and arm share the band −0.45..−0.85, hour wheel face at −2.6 far
 // below; the empty bracket lane and the r-4.5 bound were both measured, not
 // assumed.
-const ALARM_TUBE_BACK = -0.30;                  // tube back meets the flange just behind the dial sheet
-const ALARM_FLANGE_OUT = 4.25;                  // flange doubles as the follower carrier
-const ALARM_FLANGE_T = 0.25;
+const ALARM_TUBE_BACK = -0.30;                  // tube back meets the carrier flange just behind the dial sheet
+const ALARM_FLANGE_OUT = 4.25;                  // carrier flange: retention + the follower's mounting plate
+const ALARM_FLANGE_T = 0.10;                    // thin — the z between the setting wheel and the arm lane is spoken for
+// §25 C stage 3 — the setting train's tooth counts. ONE module for all three
+// meshes (a plain idler cannot mesh two different modules), solved so the
+// three pitch circles exactly span the arbor's radius:
+//   m·(30 + 2·31 + 10)/2 = ALARM_CD  →  m ≈ 0.302 at the current layout.
+// The idler's 31 drops out of the ratio: crown → hand is pinion/wheel =
+// 10/30 — one crown rev sets 4 h (see alarmDiscAngle).
+const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_IDLER_TEETH = 31, ALARM_SET_PINION_TEETH = 10;
+const ALARM_SET_MODULE = (2 * ALARM_CD) / (ALARM_SET_WHEEL_TEETH + 2 * ALARM_SET_IDLER_TEETH + ALARM_SET_PINION_TEETH);
+const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
+const ALARM_SET_D1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_IDLER_TEETH) / 2; // centre → idler axle
+const ALARM_SET_Z = -6.825;                     // WORLD gear plane — the probed-empty lane under the reserve band
 const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75, ALARM_HEART_T = 0.4;
-const ALARM_HEART_Z = -0.65;                    // heart mid-plane (band −0.45..−0.85)
+// Heart/arm plane dropped 0.1 from stage 2 (−0.65 → −0.75): the setting wheel
+// now owns −0.05..−0.30 and the carrier flange −0.30..−0.40, so the arm band
+// starting at −0.55 keeps exactly one margin under the flange.
+const ALARM_HEART_Z = -0.75;                    // heart mid-plane (band −0.55..−0.95)
 const ALARM_NOSE_R = 0.2;                       // follower roller
-const ALARM_PIVOT_R = 3.95;                     // pivot post radius (tube frame, az π — 90° behind the hand)
+const ALARM_PIVOT_R = 3.85;                     // pivot post radius (tube frame, az π) — inside the setting wheel's root circle (4.15)
 const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
 // Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
 // seated nose) — the same constants tick() solves against, so the built arm
@@ -4862,15 +4876,16 @@ registerLabel('Alarm disc', alarmTubeGroup);
     ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
   tube.position.z = (ALARM_TUBE_BACK + ALARM_HAND_Z) / 2;
   alarmTubeGroup.add(tube);
-  // Flange/carrier: retention (wider than the bore) AND the follower's
-  // mounting plate — the pivot post and spring stub hang from its underside.
+  // Carrier flange: retention AND the follower's mounting plate — the pivot
+  // post and spring stub hang from its underside. Sits UNDER the setting
+  // wheel (−0.30..−0.40), which is retained between it and the dial sheet.
   const flange = new THREE.Mesh(ringGeo(ALARM_TUBE_OUTER, ALARM_FLANGE_OUT, ALARM_FLANGE_T), MATS.steel);
-  flange.position.z = ALARM_TUBE_BACK + ALARM_FLANGE_T / 2;
+  flange.position.z = ALARM_TUBE_BACK - ALARM_FLANGE_T / 2;
   alarmTubeGroup.add(flange);
-  // Pivot post: flange underside (−0.30) down through the arm plane (−0.85).
+  // Pivot post: flange underside (−0.40) down through the arm plane (−0.95).
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.55, 10), MATS.steel);
   post.rotation.x = Math.PI / 2;
-  post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - 0.275);
+  post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - 0.275);
   alarmTubeGroup.add(post);
 }
 // The follower arm — pivoted at the post, nose roller at the tip riding the
@@ -4899,9 +4914,9 @@ alarmTubeGroup.add(alarmFollowerSpring);
   const blade = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.22), MATS.blueSteel);
   blade.position.x = 0.55;
   alarmFollowerSpring.add(blade);
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5, 8), MATS.steel);
+  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.32, 8), MATS.steel);
   stub.rotation.x = Math.PI / 2;
-  stub.position.z = 0.25;
+  stub.position.z = 0.16; // reaches up to the carrier flange's underside — its anchor
   alarmFollowerSpring.add(stub);
 }
 // Blade angled INWARD from the stub toward the arm's flank — tip lands at
@@ -4916,6 +4931,46 @@ alarmFollowerSpring.rotation.z = 1.9;
   heart.position.z = ALARM_HEART_Z;
   heart.rotation.z = ALARM_NOSE_AZ;
   hourWheelGroup.add(heart);
+}
+
+// --- 'Alarm setting wheel' — the FRICTION-coupled crown of the centre stack.
+// Toothed wheel riding the alarm tube (bore 3.05 on the 3.0 tube — that snug
+// fit IS the coupling, the cannon-pinion precedent §24's "friction-set"
+// always implied): ARMED it turns the tube; DISARMED the tube follows the
+// heart underneath it and slips, so the crown's set position is kept. Retained
+// axially between the dial sheet (−7 world) and the carrier flange.
+const alarmSetWheelGroup = new THREE.Group();
+dialFace.add(alarmSetWheelGroup);
+registerLabel('Alarm setting wheel', alarmSetWheelGroup);
+{
+  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: 0.25, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass });
+  wheel.position.z = -0.175; // band −0.05..−0.30 (dialFace local)
+  alarmSetWheelGroup.add(wheel);
+}
+
+// --- 'Alarm setting idler' — plain idler spanning setting wheel → arbor
+// pinion, in the probed-empty lane at ALARM_SET_Z (its whole disc at az 0,
+// r 4.2..14.2, cleared by the vertex probe; the reserve band ends above it).
+// MOVEMENT frame (it meshes the world-frame arbor); its stud drops from the
+// base plate — that probed-clear column is its support.
+const alarmIdlerGroup = new THREE.Group();
+movement.add(alarmIdlerGroup);
+registerLabel('Alarm setting idler', alarmIdlerGroup);
+registerExplode(alarmIdlerGroup, 0, 2, -1);
+const alarmIdlerSpin = new THREE.Group();
+{
+  const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD }; // centre → arbor direction
+  alarmIdlerSpin.position.set(u.x * ALARM_SET_D1, u.y * ALARM_SET_D1, ALARM_SET_Z);
+  const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_IDLER_TEETH, thickness: 0.25, boreR: 0.5, spokes: 4, material: MATS.brass });
+  idler.rotation.z = Math.PI / ALARM_SET_IDLER_TEETH; // half-tooth interleave with both neighbours
+  alarmIdlerSpin.add(idler);
+  alarmIdlerGroup.add(alarmIdlerSpin);
+  // Stud: base plate underside (−2) down to the pivot; the wheel spins on its
+  // tip, the same construction as the reserve train's rsvPost1.
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, -2 - (ALARM_SET_Z + 0.125), 10), MATS.steel);
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(alarmIdlerSpin.position.x, alarmIdlerSpin.position.y, (-2 + ALARM_SET_Z + 0.125) / 2);
+  alarmIdlerGroup.add(stud);
 }
 // The hand: hour-hand profile, a touch shorter so the hour hand can cover it
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
@@ -4954,19 +5009,43 @@ alarmArborUnit.add(alarmRotor);
 // Arbor rod: from just behind the pointer up to the bevel corner (coaxial
 // with the well pivot, through the well floor's bore — the same run the
 // reserve indicator arbor makes).
-const alarmHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2; // dial-ward end, just behind the pointer (cf. rsvHandZ)
+// §25 C stage 3: the rod now runs past the old pointer depth down to the
+// setting PINION at the gear lane — the arbor's whole reason to exist is to
+// deliver the crown's turn into that lane.
+const alarmArborEnd = ALARM_SET_Z - 0.125; // rod bottoms at the pinion's underside
 const alarmArborRod = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.4, 0.4, Z_ALARM_CORNER - alarmHandZ, 10), MATS.steel);
+  new THREE.CylinderGeometry(0.4, 0.4, Z_ALARM_CORNER - alarmArborEnd, 10), MATS.steel);
 alarmArborRod.rotation.x = Math.PI / 2;
-alarmArborRod.position.set(0, 0, (Z_ALARM_CORNER + alarmHandZ) / 2);
+alarmArborRod.position.set(0, 0, (Z_ALARM_CORNER + alarmArborEnd) / 2);
 alarmRotor.add(alarmArborRod);
-// Lower bearing: a collar on the arbor running in the well floor's bore (r 1.0)
-// — the arbor's pivot, and its route to 'Dial' in the support graph (a sub-dial
-// arbor bushed in the dial, like the reserve indicator's). 0.1 running clearance.
-const alarmArborCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.5, 16), MATS.steel);
-alarmArborCollar.rotation.x = Math.PI / 2;
-alarmArborCollar.position.set(0, 0, Z_DIAL + SUBDIAL_RECESS + 0.25); // straddling the floor bore at −6.5
-alarmRotor.add(alarmArborCollar);
+// The setting pinion — overhung on the rod's end in the gear lane, meshing
+// the idler. Same module as the whole train (see ALARM_SET_MODULE).
+{
+  const pin = G.makePinion({ module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, thickness: 0.25, material: MATS.steel });
+  pin.position.z = ALARM_SET_Z;
+  alarmRotor.add(pin);
+}
+// Lower bearing — §24's collar rode a well-floor bore that no longer exists
+// (the well healed when the indicator moved to the centre stack). The honest
+// replacement is a small COCK from the base plate: a post one arbor-bearing
+// outboard, an arm across, and a bush the rod runs in just above the pinion.
+// Static — it lives in the labelled unit but NOT in the rotor.
+{
+  const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD };
+  const postXY = { x: alarmWorld.x + u.x * 1.4, y: alarmWorld.y + u.y * 1.4 };
+  const BUSH_Z = -6.3; // above the pinion (top −6.70) with clearance to spare
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, -2 - BUSH_Z, 10), MATS.nickel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(postXY.x, postXY.y, (-2 + BUSH_Z) / 2);
+  alarmArborUnit.add(post);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.3), MATS.nickel);
+  arm.position.set((postXY.x + alarmWorld.x) / 2, (postXY.y + alarmWorld.y) / 2, BUSH_Z);
+  arm.rotation.z = Math.atan2(u.y, u.x);
+  alarmArborUnit.add(arm);
+  const bush = new THREE.Mesh(ringGeo(0.45, 0.85, 0.3), MATS.nickel);
+  bush.position.set(alarmWorld.x, alarmWorld.y, BUSH_Z);
+  alarmArborUnit.add(bush);
+}
 // Disc bevel at the corner, axis −z (its shaft trails down to the pointer).
 const discBevel = G.makeBevelGear({ teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
 const discBevelMount = new THREE.Group();
@@ -6870,13 +6949,22 @@ function formatTime(displaySeconds) {
 // + step constants are hoisted above the geometry; only the derivations, which
 // read the live alarmCrownRotation, stay here.
 function alarmDiscAngle() {
-  // Continuous 1:1 crown→disc angle, wrapped into one turn — what the pointer renders.
-  return ((alarmCrownRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  // §25 C stage 3: the hand angle now ARRIVES THROUGH THE TRAIN (Rule 2) —
+  // crown → bevel pair (1:1) → arbor pinion (10) → idler (32, drops out of
+  // the ratio) → setting wheel (30) on the tube. One crown rev = 10/30 of a
+  // hand rev = 4 h of alarm time: three crown turns sweep the dial, a finer
+  // feel than §24's 1:1. Wrapped into one turn — the 12 h hand-angle space.
+  const a = alarmCrownRotation * ALARM_SET_RATIO;
+  return ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 }
 function alarmMarkIndex() {
-  // Which quarter-hour mark the pointer is nearest — for the readout and the
-  // ding target. (Not a physical detent; a friction disc has none.)
-  return Math.round(alarmCrownRotation / ALARM_MARK_PITCH);
+  // Which quarter-hour mark the HAND is nearest — for the readout and the
+  // ding target. (Not a physical detent; the friction coupling has none.)
+  // §25 C stage 3: the marks live in hand-angle space, so the crown's raw
+  // angle goes through the setting-train ratio first — the same 10/30 the
+  // gears deliver (reading the crown directly was correct only while the
+  // coupling was 1:1).
+  return Math.round((alarmCrownRotation * ALARM_SET_RATIO) / ALARM_MARK_PITCH);
 }
 function alarmTargetSeconds() {
   // The nearest quarter mark, wrapped into one 12 h turn.
@@ -7426,7 +7514,14 @@ function tick(t) {
     // MOTION is the arm's real lift).
     alarmFollowerSpring.rotation.z = 1.9 + (armA - ALARM_FOLLOWER_A0) * 0.45;
   }
-  alarmRotor.rotation.z = alarmAngle;
+  // §25 C stage 3 — the setting train, derived FORWARD from the crown (Rule
+  // 2): arbor 1:1 through the bevels, each external mesh reversing sense.
+  // The setting wheel's world rotation lands at crown·(10/30); its dialFace-
+  // local write is the negation. The tube's armed target (−alarmDiscAngle())
+  // is this same quantity wrapped — the friction coupling closes the loop.
+  alarmRotor.rotation.z = alarmCrownRotation;
+  alarmIdlerSpin.rotation.z = -alarmCrownRotation * (ALARM_SET_PINION_TEETH / ALARM_SET_IDLER_TEETH); // (half-tooth phase lives on the mesh itself)
+  alarmSetWheelGroup.rotation.z = -alarmCrownRotation * ALARM_SET_RATIO;
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A). All three poses come off ONE state

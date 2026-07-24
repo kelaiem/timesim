@@ -146,9 +146,11 @@ const MECH_GRAPH = {
     // rim bushing on the plate; the setting arbor pivots in the plate and
     // carries the disc's pointer through the dial well.
     ['Alarm crown', 'plate'],                // stem bushing at the case rim
-    ['Alarm setting arbor', 'Dial'],         // arbor's lower pivot bushed in the well floor bore
+    ['Alarm setting arbor', 'plate'],     // §25 C stage 3: the well-floor collar became a plate cock (post + arm + bush)
     ['Alarm disc', 'Hour wheel'],            // §25 C: the alarm tube RIDES the hour-wheel tube — that
                                              // running fit is its bearing (rattrapante centre stack)
+    ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
+    ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
@@ -202,8 +204,10 @@ const MECH_GRAPH = {
     // pair; the arbor turns the pointer. 'Alarm crown' is a force source only
     // reachable on the 'alarm' pose axis — nothing else writes it.
     ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh
-    ['Alarm setting arbor', 'Alarm disc'],   // §25 C: turns the central alarm tube (the physical
-                                             // az-0 train is stage 3 — see MECH_GRAPH.todo)
+    ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
+    ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
+    ['Alarm setting wheel', 'Alarm disc'],   // friction coupling: drives the tube when armed, slips when
+                                             // the tube follows the heart (the cannon-pinion precedent)
     ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
                                              // tube drives the tube home through the sprung follower
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
@@ -216,13 +220,6 @@ const MECH_GRAPH = {
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
-    // §25 C stage 1: the central alarm tube is DRIVEN representationally — the
-    // declared ['Alarm setting arbor','Alarm disc'] drive edge has no meshed
-    // geometry yet (the arbor's dial end and the tube's back flange are ~12
-    // apart). Stage 3 builds the az-0 corridor train between them; until then
-    // this is the same representational-coupling convention the reserve train
-    // and handSetOffset already carry.
-    ['Alarm setting arbor', 'Alarm disc', '§25 C stage 1: central tube turned by tick() directly; the az-0 setting train from the arbor to the centre wheel is stage 3'],
     // Was: "setting path ends at a representational arbor stub" — the stub
     // used to stop 54 units short of the cannon pinion, in the keyless-
     // works corner, with no visible path to the dial centre at all. Now a
@@ -483,7 +480,10 @@ const EXPECTED_PAIRS = [
   // Alarm (§24) — the mirror of the reserve/motion-works contacts:
   ['Alarm crown', 'Alarm setting arbor'], // the 90° bevel mesh (the one declared crown⇄arbor contact)
   ['Alarm disc', 'Hour wheel'],           // §25 C: alarm tube running on the hour-wheel tube (its bearing)
-  ['Dial', 'Alarm setting arbor'],        // arbor passes through the well floor's bore
+  ['Alarm setting wheel', 'Alarm disc'],  // §25 C stage 3: friction bore on the tube + retention against the carrier flange
+  ['Alarm setting wheel', 'Dial'],        // retained 0.05 behind the dial sheet — deliberate proximity
+  ['Alarm setting idler', 'Alarm setting wheel'], // gear mesh
+  ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
