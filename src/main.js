@@ -6153,6 +6153,16 @@ panel.innerHTML = `
       </div>
     </div>
   </details>
+  <details class="ui-section">
+    <summary>Performance</summary>
+    <div class="ui-section-body">
+      <!-- Frame-time readout (BUILT §14) — the gate every performance change
+           is measured against. Ticks/frame makes the fixed-step spiral (more
+           tick() work the slower the machine) directly visible. -->
+      <div class="row label-small"><span>Frame</span><span class="readout" id="readout-frame" style="font-size:13px;">—</span></div>
+      <div class="row label-small"><span>Ticks/frame</span><span class="readout" id="readout-ticks" style="font-size:13px;">0</span></div>
+    </div>
+  </details>
 `;
 document.body.appendChild(panel);
 
@@ -7653,6 +7663,18 @@ let accumulator = 0;
 let lastNow = performance.now();
 let lastAutoSaveTime = 0;
 
+// --- Frame-time readout (BUILT §14) ----------------------------------------
+// The gate for every performance change — the TODO.md item 4 lesson (a
+// native-code plan died to a 0.04 ms profile): no optimisation claims a win
+// unless this number moves. The EMA tracks the RAW rAF interval, unclamped,
+// so it reads the display cadence itself rather than the sim's realDt clamp.
+const FRAME_EMA_ALPHA = 0.1; // ~10-frame settle — fast enough to watch a tier change land, slow enough not to flicker
+const FRAME_STALL_MS = 250;  // = tick()'s own 0.25 s rawDt clamp: past it the sim already treats the gap as a stall
+                             // (backgrounded tab, debugger), not render cost — such samples would poison the EMA for seconds
+let frameMsEma = 0;
+let ticksThisFrame = 0;      // tick() calls in the last advanceFrame — the "12× per frame on a slow machine" number, made visible
+let perfReadoutMs = 0;       // ms since the panel text was last painted
+
 const projected = new THREE.Vector3();
 
 // What the HANDS read, in seconds. τ alone is the movement's own elapsed
@@ -8370,6 +8392,7 @@ tick(0); // seed correct initial pose before the first paint
 // demo/tour deterministically: rAF is fully paused in a backgrounded
 // automation pane, so scripted behaviour cannot be observed through frame().
 function advanceFrame(realDt) {
+  ticksThisFrame = 0; // §14 readout: how many tick() calls this frame costs
   if (!paused) {
     if (fastForward) {
       // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
@@ -8377,6 +8400,7 @@ function advanceFrame(realDt) {
       for (let i = 0; i < 45; i++) {
         simTime += 2;
         tick(simTime);
+        ticksThisFrame++;
       }
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
@@ -8391,6 +8415,7 @@ function advanceFrame(realDt) {
         simTime += FIXED_DT;
         accumulator -= FIXED_DT;
         tick(simTime);
+        ticksThisFrame++;
       }
     }
   }
@@ -8439,10 +8464,27 @@ function advanceFrame(realDt) {
 }
 
 function frame(now) {
-  const realDt = Math.min((now - lastNow) / 1000, 0.05);
+  const frameMs = now - lastNow;
+  const realDt = Math.min(frameMs / 1000, 0.05);
   lastNow = now;
 
+  // Frame-time readout (§14): sample before the frame's work so a stall shows
+  // up as ONE skipped sample, not a poisoned average.
+  if (frameMs < FRAME_STALL_MS) {
+    frameMsEma = frameMsEma === 0 ? frameMs : frameMsEma + (frameMs - frameMsEma) * FRAME_EMA_ALPHA;
+  }
+
   advanceFrame(realDt);
+
+  // Paint the readout ~2×/s — touching the DOM every frame would itself cost
+  // frames, which a frame-time readout of all things must not do.
+  perfReadoutMs += frameMs;
+  if (perfReadoutMs >= 500 && frameMsEma > 0) {
+    perfReadoutMs = 0;
+    document.getElementById('readout-frame').textContent =
+      `${frameMsEma.toFixed(1)} ms · ${Math.round(1000 / frameMsEma)} fps`;
+    document.getElementById('readout-ticks').textContent = String(ticksThisFrame);
+  }
 
   // Auto-save state every 5 seconds
   if (simTime - lastAutoSaveTime > 5) {
@@ -8561,6 +8603,10 @@ window.__clock = {
   // automation pane is backgrounded, so the guided demo/tour can't be watched
   // through the real loop). Runs script + sync + sim + camera + render.
   advanceFrame(realDt) { advanceFrame(realDt); return simTime; },
+  // Frame-time readout (§14) — the panel's own numbers, exposed so a perf
+  // claim can be checked from automation instead of by eye.
+  get frameMs() { return frameMsEma; },
+  get ticksPerFrame() { return ticksThisFrame; },
   movement,
   // Alarm introspection (§24): the disc's actual detented angle and the set
   // time derived from it, for verifying they agree within one detent step.
