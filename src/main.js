@@ -5136,6 +5136,37 @@ function setPanelHidden(hidden) {
 document.getElementById('btn-hide-ui').addEventListener('click', () => setPanelHidden(true));
 showPanelBtn.addEventListener('click', () => setPanelHidden(false));
 
+// While a guided script (Demo/Tour) runs, get the fixed control panel out from
+// in front of it on a narrow screen: the panel is 240px wide at a 14px inset
+// (a 254px right edge), so on a phone-width viewport it sits on top of the
+// horizontally-centred movement and the caption. Collapse it to the ☰ chip for
+// the run, then restore whatever the user had before.
+//
+// Gate on viewport WIDTH alone — NOT pointer type. A phone reports a narrow
+// width, but so does a resized desktop window or a device-emulation preview,
+// and all three have the identical overlap; an earlier `(pointer: coarse)`
+// clause meant the collapse silently no-op'd in exactly those non-touch test
+// setups. A desktop window this narrow is just as well served by getting the
+// panel out of the way for the run (the ☰ chip brings it right back), and a
+// full-width desktop (> the breakpoint) never triggers. 820px ≈ where the
+// 240px panel plus a mirror-image right gutter leaves under ~300px of clear
+// centre, so below it the overlap is unavoidable.
+function isNarrowLayout() {
+  return window.matchMedia('(max-width: 820px)').matches;
+}
+let panelForcedHiddenByScript = false;
+function hidePanelForScript() {
+  if (!isNarrowLayout()) return;
+  if (panel.style.display === 'none') return; // already collapsed by the user — leave it, and claim no restore
+  setPanelHidden(true);
+  panelForcedHiddenByScript = true;
+}
+function restorePanelAfterScript() {
+  if (!panelForcedHiddenByScript) return;
+  panelForcedHiddenByScript = false;
+  setPanelHidden(false);
+}
+
 // Guided-script caption banner (BUILT §5, §17) — created up front, shown only
 // while a scripted user (demo/tour) is running.
 const captionEl = document.createElement('div');
@@ -6270,11 +6301,17 @@ function scriptStop() {
   scriptBtn = null;
   const tb = document.getElementById('btn-tour'); if (tb) { tb.textContent = 'Tour'; tb.classList.remove('active'); }
   const db = document.getElementById('btn-demo'); if (db) { db.textContent = 'Demo'; db.classList.remove('active'); }
+  restorePanelAfterScript(); // undo any phone-layout panel collapse from scriptStart
   disarmScriptAbort();
 }
 
 function scriptStart(steps, btn) {
   scriptStop();               // supersede any running script
+  // Phone: move the fixed control panel out from in front of the scripted run.
+  // scriptStop (above, and whenever this run ends or the user taps to take
+  // over) restores it, so the final "explore the controls yourself" stop hands
+  // the panel back.
+  hidePanelForScript();
   // scriptStart is only ever reached through a real tap — the Tour/Demo
   // button, or the tour gate's Proceed — so THIS is the gesture autoplay
   // policy wants. Create/resume the AudioContext right here, synchronously
