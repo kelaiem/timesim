@@ -153,6 +153,8 @@ const MECH_GRAPH = {
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
+    ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
+    ['Alarm switch', 'Three-quarter plate'], // §25 D: the on/off slide's guide stud
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
@@ -208,6 +210,7 @@ const MECH_GRAPH = {
     ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PUSHED IN)
     ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PULLED OUT — the sliding bevel lands on the climb contrate
     ['Alarm winding train', 'Alarm barrel'], // §25 C: climb pinion → idlers → barrel rim (12/44)
+    ['Alarm switch', 'Alarm lock'],          // §25 D: the slide's nose bears on the lever's tail (OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
     ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
     ['Alarm setting wheel', 'Alarm disc'],   // friction coupling: drives the tube when armed, slips when
@@ -224,6 +227,12 @@ const MECH_GRAPH = {
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
+    // §25 B: the RELEASE is derived from the real co-axial alignment (the
+    // follower's nose entering the heart's notch) and the lock lever answers
+    // it — but the physical linkage from the dial-centre follower up to the
+    // plate-top lever is not modelled. The rod/lever train that carries that
+    // drop through the movement is the remaining §25 coupling debt.
+    ['Alarm disc', 'Alarm lock', '§25 B: the follower\'s drop releases the lock in logic; the physical release rod between them is unbuilt'],
     // Was: "setting path ends at a representational arbor stub" — the stub
     // used to stop 54 units short of the cannon pinion, in the keyless-
     // works corner, with no visible path to the dial centre at all. Now a
@@ -495,6 +504,10 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
   ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
+  ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
+  ['Alarm lock', 'Alarm switch'],          // §25 D: nose on tail
+  ['Alarm lock', 'Three-quarter plate'],   // pivot post
+  ['Alarm switch', 'Three-quarter plate'], // guide stud
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
@@ -640,9 +653,13 @@ const AXES = [
     // its own, finer, sampling.)
     name: 'alarmStrike',
     n: 109,
+    // alarmReleased: 1 — §25 B: a turning striking train IS a ringing one, so
+    // the sweep runs with the brake lever LIFTED, exactly as the real ring
+    // does (an engaged pad under a spinning collar would be a false dig).
     pose: (f, clock) => ({
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
       alarmStrikePhase: f * (clock ? clock.alarmStrikesPerWind : 28),
+      alarmOn: 1, alarmReleased: 1,
     }),
   },
 ];
@@ -856,6 +873,9 @@ export async function measureClearance(clock, nameA, nameB, { axes = AXES, coars
 // the released axes. Seeded from the hack audit (2026-07-18); add a row
 // here whenever an audit derives a clearance worth keeping.
 const CLEARANCE_BUDGETS = [
+  // §25 B: with the brake LIFTED (the alarmStrike axis poses alarmReleased),
+  // the pad must clear the turning collar through the entire ring.
+  { a: 'Alarm lock', b: 'Alarm striking wheel', min: 0.15, axes: ['alarmStrike'] },
   { a: 'Stop lever', b: 'Balance', min: 0.15, axes: ['beat', 'reserve', 'train'] },
   // The crank's tall tail and the balance cock share the open wedge; the
   // two rods diverge from the same tail post and the hack rod overflies
