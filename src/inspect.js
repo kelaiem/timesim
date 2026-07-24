@@ -152,6 +152,7 @@ const MECH_GRAPH = {
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
+    ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
@@ -222,6 +223,8 @@ const MECH_GRAPH = {
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
     ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
+    ['Alarm release disc', 'Alarm release feeler'], // §29 step 3: the raised track carries the pin; the notch's arrival
+                                                    // under it IS the drop — the azimuth-independent detection
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -514,6 +517,8 @@ const EXPECTED_PAIRS = [
                                             // own meshes (the Dial ⇄ Hour wheel precedent); the disc's real
                                             // clearances to Dial furniture are boot-asserted analytically
   ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
+  ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
+  ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
   ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
@@ -1428,6 +1433,29 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmNose') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §29 step 3: the feeler's pin ON the disc's raised track — a riding
+    // contact between units that are EXPECTED (the read station), so the
+    // sweep is structurally blind here (the follower-nose precedent above).
+    // Swept on the alarm axis: setting turns the disc a full revolution
+    // under the fixed pin, so the gap's edges pass under it — the ramp in
+    // tick keeps the tip on the corner; the budget absorbs the tangential
+    // graze the mtv resolves badly (same 0.12 as the cam-follower pair).
+    pair: ['Alarm release disc', 'Alarm release feeler'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmDiscTrack') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmFeelerPin') out.push(o); });
       return out;
     },
   },
