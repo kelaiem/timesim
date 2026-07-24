@@ -2735,6 +2735,7 @@ const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
+let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMoved() (§14)
 // The chain is drawn as what a fusee chain IS: a miniature bicycle chain —
 // alternating inner/outer plate pairs riveted through pins. The pin axes
 // stay parallel to the arbors the whole way round (cone wrap, span and
@@ -2942,6 +2943,19 @@ function rebuildChain(tension) {
     movement.add(chainMesh);
     registerLabel('Chain', chainMesh);
   }
+}
+// The chain is DISPLAY-only — nothing reads its geometry back into the
+// mechanism — so it rebuilds at most once per RENDERED frame, not per tick
+// (§14): tick() only records the tension, and the caller that is about to
+// paint (advanceFrame, __clock.step) or to measure (setPose, which the
+// inspection battery's support sweep reads chain geometry through) calls
+// this. Inside tick it cost up to 12 dispose/allocate cycles per displayed
+// frame on a machine slow enough to hit the realDt clamp — the slower the
+// machine, the more geometry churn, exactly backwards.
+function updateChainIfMoved() {
+  // 0.0015 of tension ≈ one chain-diameter of takeoff travel — the smallest
+  // rebuild that is visible at all (the old in-tick threshold, unchanged).
+  if (Math.abs(chainTensionNow - lastChainTension) > 0.0015) rebuildChain(chainTensionNow);
 }
 
 // ---------------------------------------------------------------------------
@@ -8204,10 +8218,11 @@ function tick(t) {
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
-  // much chain has paid onto it; the chain mesh is rebuilt whenever the
-  // reserve state has visibly moved (cheap — a few hundred tube segments).
+  // much chain has paid onto it. The chain MESH is not rebuilt here — tick
+  // only records the tension; updateChainIfMoved() rebuilds once per
+  // rendered/posed frame (§14), since the chain is display-only.
   drumGroup.rotation.z = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R;
-  if (Math.abs(tension - lastChainTension) > 0.0015) rebuildChain(tension);
+  chainTensionNow = tension;
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
@@ -8385,6 +8400,7 @@ function tick(t) {
 }
 
 tick(0); // seed correct initial pose before the first paint
+updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
 
 // One frame's worth of simulation, script/sync stepping, camera tween and
 // render — everything except the rAF scheduling and autosave. Split out of
@@ -8418,6 +8434,7 @@ function advanceFrame(realDt) {
         ticksThisFrame++;
       }
     }
+    updateChainIfMoved(); // once per frame, after ALL of this frame's ticks (§14)
   }
 
   // Beats read the MOVEMENT's clock (τ): they stop when it stops. The TIME
@@ -8501,6 +8518,7 @@ window.__clock = {
   step(dt) {
     simTime += dt;
     tick(simTime);
+    updateChainIfMoved(); // step() paints — the chain must be current in the render (§14)
     if (camTween) {
       camTween.t += dt / camTween.dur;
       const e = smoothstep(camTween.t);
@@ -8592,6 +8610,11 @@ window.__clock = {
       alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
     }
     tick(lastTickRawT);
+    // The support sweep measures the chain's REAL geometry against the drum's
+    // hook, so a posed tension must rebuild the mesh before the caller reads
+    // it — this call is what kept that true when §14 moved the rebuild out of
+    // tick() itself.
+    updateChainIfMoved();
     scene.updateMatrixWorld(true);
   },
   render() { renderer.render(scene, camera); },
