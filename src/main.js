@@ -25,6 +25,8 @@ import {
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   solveLayout,
+  CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
+  solveKeyless,
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -435,131 +437,36 @@ const HAND_RAD_PER_SET_RAD = -(windPinionTeeth / minuteWheelTeeth) * (minutePini
   if (Math.abs(rawSetOffset - HAND_RAD_PER_SET_RAD) > 1e-12)
     console.warn(`setting path: closed form ${HAND_RAD_PER_SET_RAD} disagrees with the forward chain ${rawSetOffset}`);
 }
-const CROWN_PULL_DIST = 5; // stem/crown outward slide when pulled to set
-
 // ---------------------------------------------------------------------------
-// KEYLESS WORKS XY LAYOUT — hoisted ahead of the plate build because the
-// BASE plate needs real openings measured from this geometry: the keyless
-// works lives on the DIAL side now (plane Z_KEYLESS, see the Z-stack), so
-// the setting lever's tail post crosses the plate through an arc SLOT on
-// its way up to the hack collar / reset rod, and the winding transfer
-// arbor runs in a bored hole (see the winding path at the keyless
-// assembly). Pitch radii are closed-form (module·teeth/2 — identical to
-// what makeGear returns); the assembly further down consumes these same
-// constants, so layout and plate openings can never drift apart.
+// KEYLESS WORKS XY LAYOUT + plate/dial frame (§13 step 3b) — the SOLVE lives
+// in layout.js now (solveKeyless), pure like solveLayout: the stem line, the
+// keyless cluster's distances along it, the setting-lever/yoke pivots with
+// their pull-driven angle functions, the plate radius, and the dial-side
+// locals that radius fixes all come back as ONE FRAME, destructured under
+// the names the in-line block used to declare — downstream consumers (plate
+// openings, keyless assembly, dial build) are unchanged. main.js's job here
+// is again the MEASUREMENT: each part's outline radius (with the drum's
+// REAL radius under 'barrel') is read from the built parts and passed in as
+// declared inputs. Ported verbatim; the fingerprint is the proof.
+// (CROWN_PULL_DIST, SL_C / SL_TAIL / GROOVE_LOCAL, YK_C — the declared
+// keyless spec — imported from layout.js.)
 // ---------------------------------------------------------------------------
-const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
-const uWind = { x: P.barrel.x / barrelDist, y: P.barrel.y / barrelDist };
-const stemAngle = Math.atan2(uWind.y, uWind.x);
-// Which side of the stem line the balance (and hence the setting lever)
-// lives on. NOTE: with the tornado layout the balance sits
-// almost exactly ON the stem line's far extension (perpendicular distance
-// ≈ 1 unit), so this sign holds by a thin margin — nudging the balance step
-// TARGET, the solved clearances feeding BALANCE_STEP_DEG, or the barrel
-// angle can silently mirror the whole lever/yoke/hack-spring assembly.
-// Asserted below (the clearance solve now MOVES the balance, so a silent
-// flip is a live failure mode, not a hypothetical): |projection| ≈ 0.79
-// after the solve, vs ≈ 0.97 at the raw target.
-const vPerp = { x: -uWind.y, y: uWind.x };
-const sideProj = P.balance.x * vPerp.x + P.balance.y * vPerp.y;
-const sideSign = Math.sign(sideProj) || 1;
-if (Math.abs(sideProj) < 0.5) {
-  console.warn(`keyless side sign nearly degenerate (balance ${sideProj.toFixed(2)} off the stem line) — lever/yoke/hack layout may mirror`);
-}
-const ratchetR = barrelR * 0.34;                       // matches makeBarrel's ratR
-const crownWheelR = (KW_MODULE * crownWheelTeeth) / 2;
-const windPinionR = (KW_MODULE * windPinionTeeth) / 2;
-const settingWheelR = (KW_MODULE * settingWheelTeeth) / 2;
-const minuteWheelR = (KW_MODULE * minuteWheelTeeth) / 2;
-// The transfer wheel drives a plain 24-tooth WINDING SPUR on the fusee
-// arbor (the saw-toothed ratchet lives on the plate top now, serving only
-// the click). Same tooth count as the ratchet keeps the crown→fusee ratio;
-// equal module makes the mesh honest — the old layout gear-meshed the
-// ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
-const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
-// Winding transfer arbor axis — one spur-mesh distance outboard of the
-// barrel, with the same +0.1 slop every keyless mesh uses (see mwFoldD).
-const cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
-const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // sliding pinion, pushed in (teeth overlap the wheel rim, bevel-style)
-const pinOutDist = pinDist + CROWN_PULL_DIST;              // ...pulled out → setting mesh
-const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
-// The minute wheel FOLDS perpendicularly off the stem line (see the
-// setting-path assembly for why).
-const mwFoldD = settingWheelR + minuteWheelR + 0.1;
-const minuteArborXY = {
-  x: uWind.x * swDist - sideSign * vPerp.x * mwFoldD,
-  y: uWind.y * swDist - sideSign * vPerp.y * mwFoldD,
-};
-// Setting lever & yoke pivots + the pull-driven angle solves. Hoisted with
-// the layout: the lever's tail-post ARC is what the plate's slot is cut
-// from, and every hack/reset solver downstream keys off tailPostWorldAt.
-const SL_C = 10;        // lever pivot's lateral offset from the stem axis
-const SL_TAIL = 6;      // tail arm length (pivot → post)
-const GROOVE_LOCAL = 4; // stem groove collars sit this far outboard of the sliding pinion
-const slMidAlong = pinDist + CROWN_PULL_DIST / 2 + GROOVE_LOCAL;
-const settingLeverPivot = {
-  x: uWind.x * slMidAlong + sideSign * vPerp.x * SL_C,
-  y: uWind.y * slMidAlong + sideSign * vPerp.y * SL_C,
-};
-function settingLeverAngleAt(pull) {
-  const along = pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL;
-  const gx = uWind.x * along, gy = uWind.y * along;
-  return Math.atan2(gy - settingLeverPivot.y, gx - settingLeverPivot.x) - Math.PI / 2;
-}
-function tailPostWorldAt(pull) {
-  const a = settingLeverAngleAt(pull);
-  return {
-    x: settingLeverPivot.x + Math.sin(a) * SL_TAIL,
-    y: settingLeverPivot.y - Math.cos(a) * SL_TAIL,
-  };
-}
-const postEng = tailPostWorldAt(1);
-const postRel = tailPostWorldAt(0);
-// The post swings on the lever's tail, so its track between the two crown
-// poses is an ARC, not the chord — both plates' slots need the bow.
-const kwPostBow = (() => {
-  const chord = { x: postEng.x - postRel.x, y: postEng.y - postRel.y };
-  const L = Math.hypot(chord.x, chord.y) || 1;
-  let bow = 0;
-  for (let i = 0; i <= 40; i++) {
-    const p = tailPostWorldAt(i / 40);
-    const t = ((p.x - postRel.x) * chord.x + (p.y - postRel.y) * chord.y) / (L * L);
-    bow = Math.max(bow, Math.hypot(p.x - postRel.x - t * chord.x, p.y - postRel.y - t * chord.y));
-  }
-  return bow;
-})();
-const YK_C = 7.5; // yoke pivot's lateral offset, opposite side of the stem
-const yokeMidAlong = pinDist + CROWN_PULL_DIST / 2;
-const yokePivot = {
-  x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
-  y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
-};
-function yokeAngleAt(pull) {
-  const along = pinDist + pull * CROWN_PULL_DIST;
-  const px = uWind.x * along, py = uWind.y * along;
-  return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
-}
-
-// Plate radius: tightest circle (plus a rim margin) that contains each part's
-// own outline — arbor distance plus that part's radius, not a blanket maximum.
-const partOutlineR = {
-  barrel: barrelR_actual, center: centerWheelR, third: thirdWheelR,
-  fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
-  fork: 4, dial: 0,
-};
-let plateR = 20;
-for (const key in P) {
-  plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (partOutlineR[key] || 0));
-}
-plateR += 5;
-// Keyless floor: the plate must reach 1 unit past the setting wheel and
-// past the folded minute wheel (with the compact tornado train, this floor
-// — not the train extent — is what sizes the plate).
-plateR = Math.max(
-  plateR,
-  swDist + settingWheelR + 1,
-  Math.hypot(swDist, mwFoldD) + minuteWheelR + 1,
-);
+const {
+  barrelDist, uWind, stemAngle, vPerp, sideSign,
+  ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
+  cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY,
+  settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
+  kwPostBow, yokePivot, yokeAngleAt,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR,
+} = solveKeyless({
+  P,
+  outline: {
+    barrel: barrelR_actual, center: centerWheelR, third: thirdWheelR,
+    fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
+    fork: 4, dial: 0,
+  },
+  warn: (m) => console.warn(m),
+});
 
 // Centroid of just the wheel-train arbors (excludes balance/dial), used to
 // aim the "Train" camera preset without staring straight down the Z axis
@@ -841,14 +748,14 @@ registerLabel('Hairspring', hairspringGroup);
 //    three-quarter plate's slot for this same post higher up).
 // §25 C winding — hoisted: the CLIMB ARBOR (the alarm crown's winding path up
 // to the plate top) pierces BOTH plates, so its axis must exist before either
-// builds. ALARM_CD is the alarm stem corner's radius; the canonical definition
-// (RESERVE_LOCAL.y = dialRadius·0.39) lives thousands of lines down with the
-// dial, so the arithmetic is repeated here from plateR and ASSERT-CHECKED at
-// the sub-dial block — they cannot silently drift. The climb sits ONE CROWN
-// THROW outboard of the setting corner: the stem's own pull (CROWN_PULL_DIST)
-// is what carries its sliding bevel from the corner to the climb's contrate —
-// the pull IS the clutch, no extra slide mechanism needed.
-const ALARM_CD = plateR * 0.92 * 0.39;
+// builds. ALARM_CD is the alarm stem corner's radius — its canonical
+// definition IS RESERVE_LOCAL.y (dialRadius·0.39), and since §13 step 3b
+// that value comes from solveKeyless as one source, so the old repeated
+// arithmetic (and the drift assert that guarded it) is gone. The climb sits
+// ONE CROWN THROW outboard of the setting corner: the stem's own pull
+// (CROWN_PULL_DIST) is what carries its sliding bevel from the corner to the
+// climb's contrate — the pull IS the clutch, no extra slide mechanism needed.
+const ALARM_CD = RESERVE_LOCAL.y;
 // Crown-sense swap: the CLIMB stands at the stem's INNER radius (the crown's
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
@@ -4012,33 +3919,11 @@ const dialFace = new THREE.Group();
 dialFace.rotation.y = Math.PI;
 dialGroup.add(dialFace);
 
-const dialRadius = plateR * 0.92;
-// Sub-dial positions in dial-local coordinates (+y = 12 o'clock; the
-// dialFace Y-flip makes these read correctly from the front). The reserve
-// face itself is painted into the dial texture by makeDial; only the bezel
-// and hand remain separate meshes (added below at this same position).
-// 12 o'clock — symmetric with the small-seconds sub-dial at 6 (the fourth
-// wheel sits D4 below centre); also much closer to the barrel's dial-side
-// projection than the old 6-o'clock spot, so the reserve reduction train
-// spans a shorter, cleaner run.
-const RESERVE_LOCAL = { x: 0, y: dialRadius * 0.39 };
-// Small seconds live ON the fourth wheel's axis — dial-local coordinates
-// mirror world x through the dialFace Y-flip.
-const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
-// Sub-dial radius — as large as the face allows while staying balanced:
-// one shared radius for both wells (their pivots are fixed on their
-// arbors, so only the radius can grow), capped by the clearance the
-// central hands' boss needs around the dial centre. This lands ≈ 0.30 of
-// the dial radius (up from 0.2); the bigger wells swallow the XI/I and
-// V/VII numerals symmetrically, leaving II–IIII and VIII–X.
-// §25 C tightened this constant: the sub-dial WELLS' walls descend through
-// the gear lane (z −7.0..−6.5), and their rings pass within (centre distance
-// − wellR) of the dial centre — the central SETTING WHEEL (tip 4.83) needs
-// wellR ≤ 15.4 − 4.83 − 0.2 (wall) − 0.15 (margin) ≈ 10.2. The old −4.5
-// (wellR 10.9) had the wall passing straight through the wheel's teeth,
-// masked in the sweep by the wheel⇄Dial EXPECTED blanket; the clearance is
-// boot-asserted at the alarm block now.
-const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 5.2;
+// dialRadius / RESERVE_LOCAL / SECONDS_LOCAL / subDialR — solved in
+// solveKeyless (layout.js, §13 step 3b) with the plate radius they hang
+// off; destructured at the frame solve up top. The constraint comments
+// (sub-dial symmetry, the §25 C well-radius cap) moved with the
+// expressions. Consumed here by the dial build:
 const reserveR = subDialR;
 const secondsSubR = subDialR;
 // --- Alarm period + reading resolution (BUILT §24) -------------------------
@@ -4073,10 +3958,8 @@ const ALARM_STRIKE_AMP = 0.09;   // rad — swings the head from its 0.4 rest ga
 // bearing is atan2(uWind.y, −uWind.x). The side is chosen the way §1's JMP_AZ
 // picks a bearing — score each candidate by angular clearance from that stem
 // and take the clearer — rather than eyeballed.
-// ALARM_CD is HOISTED to the plate-bore block (§25 C winding) — assert the
-// repeated arithmetic still equals its canonical definition here:
-if (Math.abs(ALARM_CD - RESERVE_LOCAL.y) > 1e-6)
-  console.warn(`ALARM_CD hoist drifted: ${ALARM_CD} vs RESERVE_LOCAL.y ${RESERVE_LOCAL.y}`);
+// (ALARM_CD ≡ RESERVE_LOCAL.y by definition since §13 step 3b — both read
+// solveKeyless's one output, so the old hoist-drift assert is retired.)
 const _alarmWindBearing = Math.atan2(uWind.y, -uWind.x); // winding stem, dial-local frame
 const ALARM_LOCAL_AZ = (() => {
   const angDist = (a) => Math.abs(((a - _alarmWindBearing + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
