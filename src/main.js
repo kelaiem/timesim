@@ -5816,9 +5816,13 @@ const ALARM_COL_POS = {
   x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * 3.8,
   y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * 3.8,
 };
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: 1.5, baseH: 0.3, colH: 0.55, colInner: 0.95, material: MATS.blueSteel });
+// Steel, not blued (owner's finish call), bore 0.30 over a 0.24 stud (0.06
+// running clearance — the first build had bore = stud and the post punched
+// out through the castellations). Raised so the ratchet skirt clears the
+// plate top by a full margin instead of sitting dead on it.
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: 1.5, baseH: 0.3, colH: 0.55, colInner: 0.95, boreR: 0.30, material: MATS.steel });
 const alarmColSpin = new THREE.Group();
-alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + 0.05);
+alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + 0.22);
 // Phase the wheel so the BEAK's azimuth (from the wheel toward the lock tail,
 // = ALARM_LOCK_ENGAGED) starts centred on a column: profileAt is written for
 // a beak at angle 0, so the spin group carries the beak azimuth and the wheel
@@ -5827,9 +5831,11 @@ alarmColSpin.rotation.z = ALARM_LOCK_ENGAGED;
 alarmColSpin.add(alarmColumnWheel);
 alarmSwitchUnit.add(alarmColSpin);
 {
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 12), MATS.nickel);
+  // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
+  // (9.15, under the base's top face) — a pivot, not a pole through the crown.
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.95, 12), MATS.nickel);
   stud.rotation.x = Math.PI / 2;
-  stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, TQ_TOP_Z - 0.5 + 0.6 + 0.45);
+  stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, 8.675);
   alarmSwitchUnit.add(stud);
 }
 // The CLICK — the detent arm every real column wheel carries, and the part
@@ -5848,12 +5854,12 @@ const alarmClickPivot = {
   y: ALARM_COL_POS.y + Math.sin(ALARM_CLICK_AZ) * (1.5 + ALARM_CLICK_L - 0.35),
 };
 const alarmClickArm = new THREE.Group();
-alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + 0.35);
+alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + 0.50);
 alarmSwitchUnit.add(alarmClickArm);
 {
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
-  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.44 - 0.01);
+  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.52 - 0.01);
   alarmSwitchUnit.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, 0.3), MATS.steel);
   arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the wheel
@@ -5887,7 +5893,7 @@ const _pushBase = {
   x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
   y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
 };
-alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z - 0.15);
+alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + 0.17);
 alarmSwitchUnit.add(alarmPusherGroup);
 {
   const stemLen = plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4;
@@ -5903,15 +5909,17 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // The pawl — a slim bar at the stem's inner end, nose down at the skirt.
   const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
   pawl.rotation.z = ALARM_PUSH_AZ;
-  pawl.position.set(_pushU.x * 0.85, _pushU.y * 0.85, -0.12);
+  pawl.position.set(_pushU.x * 0.85, _pushU.y * 0.85, -0.17); // dropped from the raised axis to the skirt band, clear of the plate
   alarmPusherGroup.add(pawl);
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
-  const boss = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.3, 8, 16), MATS.nickel);
+  // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
+  // sizings buried its underside in the plate by forgetting that.
+  const boss = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.12, 8, 16), MATS.nickel);
   boss.rotation.z = ALARM_PUSH_AZ; boss.rotation.y = Math.PI / 2; boss.rotation.order = 'ZYX';
   const bossD = plateR - 1.2;
   boss.position.set(
     _pushU.x * bossD + _pushPerp.x * ALARM_PUSH_CHORD,
-    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z - 0.15);
+    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z + 0.17); // on the raised pusher axis — its underside now CLEARS the plate top
   alarmSwitchUnit.add(boss);
 }
 {
@@ -5923,7 +5931,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
 {
   const beak = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 0.4), MATS.steel);
   beak.name = 'alarmSwitchBeak';
-  beak.position.set(-2.7, 0, 0.28); // tail end, lifted into the column band
+  beak.position.set(-2.7, 0, 0.43); // tail end, lifted into the (raised) column band
   alarmLockLever.add(beak);
 }
 
@@ -8076,7 +8084,7 @@ function tick(t) {
     if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
-      _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z - 0.15);
+      _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + 0.17);
   }
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
