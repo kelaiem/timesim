@@ -1676,6 +1676,9 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
+// Baseline on post-§25 main (43 units, 42 fingerprinted, 10 poses,
+// captured at merge 3d3908b): 2407965539 — verified stable across reload
+// and a deliberately dirtied session. §13 step 3 diffs against THIS.
 const FINGERPRINT_POSES = [
   { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
@@ -1687,6 +1690,14 @@ const FINGERPRINT_POSES = [
   // §25 C: ARMED with the tube split from the hour wheel — poses the follower
   // mid-ride on the heart, the one configuration the other poses never reach.
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0, alarmOn: 1 },
+  // §25 C/D inputs added after the original list (the rule above demands a
+  // pose per force input, or its path's refactors go unguarded):
+  // — the alarm crown pulled to the SET position (the stem slid one throw,
+  //   the sliding bevel at the setting corner);
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownPullT: 1 },
+  // — mid-RING: armed, released, part-wound — the brake lever lifted off the
+  //   collar, the column wheel in a gap, the striker mid-cycle.
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 5.2 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,
