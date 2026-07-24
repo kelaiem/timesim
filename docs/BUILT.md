@@ -1494,3 +1494,64 @@ geometry is trusted. A fuller written plan (the 5-stage
 version, of which Stage 1 already shipped) was drafted as
 `~/.claude/plans/cozy-wandering-boot.md` on the machine where §24 was
 built; this entry is the durable copy.
+
+## 27. Crown redesign — a brand mark (infinity/hourglass) in place of the knurl (BUILT)
+
+**Goal.** The crown stops reading as a generic prickly knurl and starts
+carrying a brand signature — an infinity sign shaped to evoke an
+hourglass — while getting cheaper to draw and calmer to the eye.
+
+**What shipped (reconciled).** Both carriers, folded into one design:
+
+- *The mark* is `makeBrandMark({ r, tubeR, aspect, material, … })` in
+  `src/geometry.js` — a lemniscate of Bernoulli (∞) swept as a closed
+  round-stroke tube, its natural 1/(2√2) height/width rescaled by
+  `aspect` (default 0.52) so the lobes plump and the crossing steepens
+  into an hourglass neck. It is shared and parameterised, never inlined:
+  `makeCrown` is the only direct consumer today, and a caseback or
+  buckle can call it tomorrow.
+- *End-cap relief* (the primary brand read): the crown's flat outer face
+  carries the ∞ raised, half-embedded — centreline ON the face plane,
+  proud by exactly `tubeR` — per the house relief convention. The §27
+  orientation question ("does horizontal-infinity fight
+  vertical-hourglass?") dissolved on this carrier: the crown SPINS when
+  wound, so one mark gives both reads a quarter-turn apart.
+- *Grip band* (the profile read): the knurl ring (~60 bur-prism ridges)
+  and the six-rod face rosette are retired outright — `burPrismGeo` went
+  with them — and the barrel is now ONE lathe whose silhouette is the
+  mark's own profile: two convex lobes meeting at a pinched waist
+  (lobes at `bodyR`, waist at 0.72·`bodyR`), rotation-invariant, so the
+  hourglass reads side-on at the Dial/Setting frames where the end cap
+  is edge-on.
+
+**Derived, asserted budget.** The redesign stays INSIDE the knurled
+crown's proven swept envelope — radius ≤ `bodyR` + 0.112 (the retired
+keels' proud height), axial ≤ `bodyH` + 0.55 + 0.16·`bodyR` (the retired
+rosette's proud rods) — because every standing clearance/penetration row
+was proven against that envelope, so staying inside cannot create a new
+contact anywhere in the pose space. `makeCrown` asserts both at build
+time (boot stays silent; a warn means the envelope regressed). Net slim:
+−0.112 radial, −0.16·`bodyR` + `tubeR` (= −0.41 at the winding crown)
+axial — slack banked toward §2's z-stack budget. The mark's stroke is
+`tubeR` = 0.085·`bodyR` (well under the 0.16·`bodyR` the envelope
+allows) and its span is whatever fits the face rim minus one
+stroke-width of quiet reveal: `markR + 2·tubeR = 0.80·bodyR`.
+
+**Call sites.** Two crowns, one builder, both redesigned for free:
+the winding crown (`main.js`, keyless assembly, `bodyR` 5.425/`bodyH`
+4.55) and the §24/§25 alarm crown knob (`main.js`, alarm crown unit,
+4.0/3.4). Same `bodyR`/`bodyH` as before at both sites — the envelope
+is what the battery had already proven.
+
+**Cost (the §14/§20 draw-call worry).** Winding crown: 1121 tris / 69
+draw calls → 880 / 2. Alarm knob: 945 / 53 → 880 / 2. The knurl's
+prickly micro-noise is gone from both.
+
+**Untouched, verified.** `crownRotation` drag, `crownPullT`, the
+setting/winding clutch and every `crownOut` read site — the `main.js`
+diff is call-site comments only; `MECH_GRAPH`'s crown declaration is
+unchanged. Turning the crown through the real drive path still winds
+the fusee (verified live: +π/2 of `crownRotation` banked reserve).
+Battery on the redesign: support 0 failures, graph clean, penetration
+within budgets, clearances 0 violations, full
+`inspection {includeExcluded:true}` 0 FORBIDDEN, boot silent.

@@ -1864,99 +1864,113 @@ export function makePillar({ height }) {
   return m;
 }
 
-// Winding crown — decorated in the BUR language the hands speak (see
-// makeHand): triangular keel-edged prisms ground to oblique points.
+// Brand mark (§27) — the house signature: a lemniscate of Bernoulli (∞)
+// whose pinched crossing reads as an hourglass waist. One closed curve,
+// two reads a quarter-turn apart: lobes horizontal = infinity, lobes
+// vertical = hourglass — the §27 orientation question dissolves on a
+// part that SPINS (the crown), and a static carrier just picks its read
+// by rotation at placement.
 //
-// A shared template geometry, built once in a local "shape frame" (keel
-// along +y, length along +z from 0, tip at the far end): a triangular
-// prism whose end is ground like a graver — the keel edge runs LEVEL to
-// the point while the whole taper is cut from the flanks beneath it —
-// then oriented per use by baked rotations. Flat-shaded (de-indexed +
-// recomputed normals) so every facet reads as a plane.
-function burPrismGeo(rr, len, tipLen) {
-  const halfW = rr * (Math.sqrt(3) / 2);
-  const sec = new THREE.Shape();
-  sec.moveTo(0, rr); // keel
-  sec.lineTo(-halfW, -rr * 0.5);
-  sec.lineTo(halfW, -rr * 0.5);
-  sec.closePath();
-  const shaftLen = len - tipLen;
-  const shaft = new THREE.ExtrudeGeometry(sec, { depth: shaftLen, bevelEnabled: false }); // Extrude output is already non-indexed
-  const pts = sec.getPoints(3);
-  const tri = [];
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i], q = pts[(i + 1) % pts.length];
-    if (p.x === q.x && p.y === q.y) continue;
-    tri.push(p.x, p.y, shaftLen, q.x, q.y, shaftLen, 0, rr, len); // apex ON the keel line
+// SHARED and parameterised so a caseback or buckle can carry the same
+// mark later — call it, never inline a copy. The mesh lies in the XY
+// plane, lobes along ±X, centreline at z = 0, spanning 2·r wide by
+// 2·r·aspect tall with a round stroke of radius tubeR. The CALLER embeds
+// it: half-embedding (centreline ON the host surface, proud by exactly
+// tubeR) is the house relief convention — see the makeCrown header.
+class LemniscateCurve extends THREE.Curve {
+  constructor(a, yScale) { super(); this.a = a; this.yScale = yScale; }
+  getPoint(t, target = new THREE.Vector3()) {
+    // Lemniscate of Bernoulli: x = a·cosθ/(1+sin²θ), y = a·sinθcosθ/(1+sin²θ).
+    const th = t * 2 * Math.PI;
+    const s = Math.sin(th), c = Math.cos(th), d = 1 + s * s;
+    return target.set((this.a * c) / d, (this.a * s * c * this.yScale) / d, 0);
   }
-  const shaftPos = shaft.attributes.position.array;
-  const all = new Float32Array(shaftPos.length + tri.length);
-  all.set(shaftPos);
-  all.set(tri, shaftPos.length);
-  shaft.dispose();
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(all, 3));
-  geo.computeVertexNormals();
-  return geo;
+}
+export function makeBrandMark({ r, tubeR, aspect = 0.52, material = MATS.steel,
+                                tubularSegments = 32, radialSegments = 5 }) {
+  // The curve's natural height/width is 1/(2√2) ≈ 0.354; yScale re-aims it
+  // at `aspect` (height = 2·r·aspect), plumping the lobes and steepening
+  // the crossing so the waist reads as an hourglass neck, not a mere kink.
+  const curve = new LemniscateCurve(r, aspect * 2 * Math.SQRT2);
+  const mesh = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, tubularSegments, tubeR, radialSegments, true), material);
+  mesh.userData = { r, tubeR, height: 2 * r * aspect };
+  return mesh;
 }
 
+// Winding crown (§27) — the brand carrier. The knurl era (a ring of ~60
+// bur ridges plus a six-rod face rosette; see git history for
+// burPrismGeo) is retired: the grip is now the barrel itself, lathed to
+// a double-lobe silhouette — two convex lobes meeting at a pinched
+// waist, the brand mark's own profile, rotation-invariant so it reads at
+// every winding angle — and the flat outer face carries makeBrandMark's
+// ∞ as a raised relief, half-embedded per the house convention (relief
+// features sit with their centreline ON the host surface so they read
+// as machined, not glued on).
+//
 // Base sits at z = 0, the face points along +Z (per the builder
-// convention; main.js tips it onto the stem). All relief features are
-// half-embedded in their host surface so they read as machined relief
-// rather than glued-on appliqués. Two decorations, one vocabulary:
-//   – Rim: axial bur ridges, keels radially out, each ending outboard in
-//     the graver grind — a ring of angled cuts just below the cap.
-//   – Face: a rosette of six bur rods lying flat, keels up, their ground
-//     points converging at the centre like an engraved sunburst.
+// convention; main.js tips it onto the stem).
+//
+// ENVELOPE BUDGET — the constraint every constant below derives from:
+// the redesign must stay INSIDE the knurled crown's proven swept
+// envelope, radius ≤ bodyR + 0.112 (the retired knurl keels' proud
+// height: ridge section 0.16, seated 0.3 sunk) and axial length ≤
+// bodyH + CAP_H + 0.16·bodyR (the retired rosette rods' proud radius) —
+// because every standing clearance/penetration row in the inspector
+// battery was proven against that envelope, so staying inside it cannot
+// create a new contact anywhere in the pose space. Asserted at the
+// bottom (boot is silent — a warn means the envelope regressed).
 export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   const g = new THREE.Group();
+  const CAP_H = 0.55;            // chamfer band height — unchanged from the knurled crown
+  const R_BUDGET = bodyR + 0.112;            // knurl-era proven radial envelope
+  const H_BUDGET = bodyH + CAP_H + bodyR * 0.16; // knurl-era proven axial envelope
+  const faceZ = bodyH + CAP_H;   // face plane — where the knurled crown's cap face sat,
+                                 // so the stem-axis layout at both call sites is untouched
 
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(bodyR, bodyR, bodyH, 48, 1), material);
-  body.geometry.rotateX(Math.PI / 2); // cylinder axis Y → Z
-  body.position.z = bodyH / 2;
-  g.add(body);
+  // Grip: one lathe, base disc → lobe → waist → lobe → chamfer → face
+  // disc. Radii are fractions of bodyR (the envelope ceiling): lobes peak
+  // AT bodyR, the waist dips to 0.72 — deep enough to read as a neck in
+  // silhouette, shallow enough to still look grippable — and the face rim
+  // lands at 0.80 (the knurled cap's own chamfer, bodyR − 0.35, ≈ 0.78 at
+  // the 4.0 alarm knob / 0.94 at the 5.4 winding crown; one shared
+  // fraction replaces the absolute inset so both crowns keep the same
+  // proportions). Sparse sampling on purpose: the lathe is most of the
+  // crown's triangle spend, and §27's budget is "≤ the knurled crown".
+  const F = faceZ;
+  const profile = [
+    [0.001, 0],      // base disc centre
+    [0.78, 0],       // base rim
+    [0.96, 0.14],    // lobe 1 rise
+    [1.0, 0.26],     // lobe 1 peak — the envelope ceiling
+    [0.90, 0.40],
+    [0.72, 0.50],    // waist — the hourglass neck
+    [0.90, 0.60],
+    [1.0, 0.74],     // lobe 2 peak
+    [0.93, 0.88],    // chamfer, standing in for the old cap band
+    [0.80, 1.0],     // face rim
+    [0.001, 1.0],    // face disc centre
+  ].map(([rr, zz]) => new THREE.Vector2(rr * bodyR, zz * F));
+  const RADIAL_SEGS = 28; // silhouette sagitta at bodyR 5.4: 5.4·(1−cos(π/28)) ≈ 0.03 — invisible
+  const barrel = new THREE.Mesh(new THREE.LatheGeometry(profile, RADIAL_SEGS), material);
+  barrel.geometry.rotateX(Math.PI / 2); // lathe axis Y → Z (same turn as the old cylinder)
+  g.add(barrel);
 
-  // Rim knurling: count derives from the circumference so the ridge pitch
-  // stays constant if bodyR changes. One shared geometry, N transforms.
-  const ridgeR = 0.16;
-  const rimN = Math.round((2 * Math.PI * bodyR) / (ridgeR * 3.5));
-  const ridgeLen = bodyH * 0.9;
-  const ridgeGeo = burPrismGeo(ridgeR, ridgeLen, ridgeR * 2.5);
-  const ridgeSeat = bodyR - ridgeR * 0.3; // sink the section so the keel sits lower
-  for (let i = 0; i < rimN; i++) {
-    const a = (i / rimN) * 2 * Math.PI;
-    const ridge = new THREE.Mesh(ridgeGeo, material);
-    // shape +y (keel) → radial out; shape +z (length, tip last) → crown +z
-    ridge.rotation.z = a - Math.PI / 2;
-    ridge.position.set(Math.cos(a) * ridgeSeat, Math.sin(a) * ridgeSeat, bodyH * 0.05);
-    g.add(ridge);
-  }
+  // Face mark: stroke first, then the span it leaves room for. The stroke
+  // is 0.085·bodyR — well under the 0.16·bodyR the axial envelope allows
+  // for its proud half (asserted below) — and the mark's half-width is
+  // whatever fits inside the face rim leaving one stroke-width of quiet
+  // border reveal: markR + tubeR (ink edge) + tubeR (reveal) = face rim.
+  const tubeR = bodyR * 0.085;
+  const markR = 0.80 * bodyR - 2 * tubeR;
+  const mark = makeBrandMark({ r: markR, tubeR, material });
+  mark.position.z = faceZ; // half-embedded: centreline on the face plane
+  g.add(mark);
 
-  // Chamfered cap closing the outer face (top radius < bottom radius).
-  const capH = 0.55;
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(bodyR - 0.35, bodyR, capH, 48, 1), material);
-  cap.geometry.rotateX(Math.PI / 2);
-  cap.position.z = bodyH + capH / 2;
-  g.add(cap);
-  const faceZ = bodyH + capH;
-
-  // Face rosette: six bur rods radiating tail→centre, tips meeting just
-  // shy of the middle so the six ground points read as one cut star.
-  const rodR = bodyR * 0.16;
-  const rodOuter = bodyR * 0.8;
-  const rodLen = rodOuter - bodyR * 0.32; // stop short: open gap at the centre, arms never fuse
-  const rodGeo = burPrismGeo(rodR, rodLen, rodR * 2);
-  rodGeo.rotateX(Math.PI / 2); // shape +y (keel) → +z (off the face); length → −y
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * 2 * Math.PI;
-    const rod = new THREE.Mesh(rodGeo, material);
-    rod.rotation.z = a - Math.PI / 2; // length −y → inward radial at angle a
-    rod.position.set(Math.cos(a) * rodOuter, Math.sin(a) * rodOuter, faceZ - rodR * 0.15);
-    g.add(rod);
-  }
-
-  g.userData.r = bodyR + ridgeR * 0.7; // widest point: barrel + proud keels (sunk 0.3)
-  g.userData.totalH = faceZ + rodR;   // tallest point: face + proud rosette
+  g.userData.r = bodyR;              // widest point: the lobe peaks
+  g.userData.totalH = faceZ + tubeR; // tallest point: face + the mark's proud half
+  if (g.userData.r > R_BUDGET + 1e-9 || g.userData.totalH > H_BUDGET + 1e-9)
+    console.warn(`makeCrown §27 envelope exceeded: r ${g.userData.r.toFixed(3)} (budget ${R_BUDGET.toFixed(3)}), totalH ${g.userData.totalH.toFixed(3)} (budget ${H_BUDGET.toFixed(3)})`);
   return g;
 }
 
