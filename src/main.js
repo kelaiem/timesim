@@ -5832,6 +5832,92 @@ alarmSwitchUnit.add(alarmColSpin);
   stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, TQ_TOP_Z - 0.5 + 0.6 + 0.45);
   alarmSwitchUnit.add(stud);
 }
+// The CLICK — the detent arm every real column wheel carries, and the part
+// that makes the toggle READ: its rounded nose rides the castellations, so
+// each actuation visibly rocks it OUT onto a column (alarm OFF) or drops it
+// INTO a gap (ON). Two jobs, one part: the wheel's index (the two stable
+// states + the click) and the visible state flag. Its contact azimuth sits a
+// whole number of pitches from the lock beak's, so the two always read the
+// SAME parity — asserted below, since a phase slip here would show ON while
+// gating OFF.
+const ALARM_CLICK_AZ = ALARM_LOCK_ENGAGED + 2 * (Math.PI * 2 / ALARM_COL_COLUMNS); // 2 pitches around the wheel
+const ALARM_CLICK_SWING = 0.16; // rad — the visible rock between column and gap
+const ALARM_CLICK_L = 2.4;      // pivot → nose
+const alarmClickPivot = {
+  x: ALARM_COL_POS.x + Math.cos(ALARM_CLICK_AZ) * (1.5 + ALARM_CLICK_L - 0.35),
+  y: ALARM_COL_POS.y + Math.sin(ALARM_CLICK_AZ) * (1.5 + ALARM_CLICK_L - 0.35),
+};
+const alarmClickArm = new THREE.Group();
+alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + 0.35);
+alarmSwitchUnit.add(alarmClickArm);
+{
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 10), MATS.nickel);
+  post.rotation.x = Math.PI / 2;
+  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.44 - 0.01);
+  alarmSwitchUnit.add(post);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, 0.3), MATS.steel);
+  arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the wheel
+  alarmClickArm.add(arm);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), MATS.steel);
+  nose.position.x = -ALARM_CLICK_L;
+  alarmClickArm.add(nose);
+  // Its return spring — the blade that gives the click its snap.
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 0.2), MATS.blueSteel);
+  blade.position.set(0.8, -0.5, 0);
+  blade.rotation.z = 0.35;
+  alarmClickArm.add(blade);
+}
+// Base angle: arm pointing from pivot back at the wheel's centre.
+const ALARM_CLICK_BASE = Math.atan2(ALARM_COL_POS.y - alarmClickPivot.y, ALARM_COL_POS.x - alarmClickPivot.x) + Math.PI;
+// THE PUSHER (owner's catch: a cased movement cannot reach a plate-top
+// column wheel — chronographs pierce the case here). A capped stem at the
+// rim on the wheel's azimuth, OFFSET half a wheel-radius sideways so its
+// line passes the ratchet skirt on a chord: the press is tangential, which
+// is what turns a ratchet. Its pawl nose rides the skirt; each press is one
+// index = half a column pitch. §3's case band will bore for exactly this
+// stem. The press animates on EVERY actuation (button, wheel tap, or pusher
+// tap) — the pose derives from the same state either way.
+const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
+const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
+const _pushPerp = { x: -_pushU.y, y: _pushU.x };
+const ALARM_PUSH_CHORD = 1.15; // lateral offset — the pawl's line grazes the ratchet tangentially
+const ALARM_PUSH_TRAVEL = 0.7;
+const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
+const _pushBase = {
+  x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
+  y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
+};
+alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z - 0.15);
+alarmSwitchUnit.add(alarmPusherGroup);
+{
+  const stemLen = plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4;
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, stemLen, 10), MATS.steel);
+  stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
+  stem.position.set(_pushU.x * (1.6 + stemLen / 2), _pushU.y * (1.6 + stemLen / 2), 0);
+  alarmPusherGroup.add(stem);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.1, 14), MATS.steel);
+  cap.name = 'alarmPusherCap';
+  cap.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;
+  cap.position.set(_pushU.x * (1.6 + stemLen + 0.55), _pushU.y * (1.6 + stemLen + 0.55), 0);
+  alarmPusherGroup.add(cap);
+  // The pawl — a slim bar at the stem's inner end, nose down at the skirt.
+  const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
+  pawl.rotation.z = ALARM_PUSH_AZ;
+  pawl.position.set(_pushU.x * 0.85, _pushU.y * 0.85, -0.12);
+  alarmPusherGroup.add(pawl);
+  // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
+  const boss = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.3, 8, 16), MATS.nickel);
+  boss.rotation.z = ALARM_PUSH_AZ; boss.rotation.y = Math.PI / 2; boss.rotation.order = 'ZYX';
+  const bossD = plateR - 1.2;
+  boss.position.set(
+    _pushU.x * bossD + _pushPerp.x * ALARM_PUSH_CHORD,
+    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z - 0.15);
+  alarmSwitchUnit.add(boss);
+}
+{
+  const gap = ((ALARM_CLICK_AZ - ALARM_LOCK_ENGAGED) % (Math.PI * 2 / ALARM_COL_COLUMNS));
+  if (Math.abs(gap) > 1e-9) console.warn(`alarm click phase: contact azimuths differ by a non-integer pitch (${gap.toFixed(4)}) — the flag and the gate would disagree`);
+}
 // The tail BEAK — the lock lever grows a nose at its tail end, in the column
 // band, riding the castellations. Part of the LEVER (it moves with it).
 {
@@ -5874,6 +5960,7 @@ let alarmPrevRel = null; // §25 B: previous hour-wheel→alarm-tube angle gap �
 let alarmLockLiftT = 0;  // §25 B: eased brake-lever lift (1 = released, pad clear of the collar)
 let alarmColSteps = 0;   // §25 D: column-wheel actuations — parity IS the on/off (odd = gap under the beak = ON)
 let alarmColShownA = 0;  // eased wheel angle (transient; the pose path assigns exactly)
+let alarmPusherT = 0;    // §25 D: pusher press pulse — 1 at the actuation, spring-back decay
 let jumpSnapIdx = null; // written by the quantize block; read by the sound block
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
@@ -6587,11 +6674,11 @@ renderer.domElement.addEventListener('click', (e) => {
 function alarmColumnHitTest(e) {
   setCrownPointerFromEvent(e);
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
-  return crownRaycaster.intersectObject(alarmColSpin, true).length > 0;
+  return crownRaycaster.intersectObject(alarmSwitchUnit, true).length > 0; // wheel, click arm, or pusher — one control
 }
 renderer.domElement.addEventListener('click', (e) => {
   if (crownHitTest(e) || alarmCrownHitTest(e)) return; // the crowns have first refusal
-  if (alarmColumnHitTest(e)) setAlarm(!alarmOn);
+  if (alarmColumnHitTest(e)) setAlarm(!alarmOn); // wheel, click arm, or the PUSHER — one actuation
 });
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!crownDragging && !alarmDragging && alarmColumnHitTest(e)) renderer.domElement.style.cursor = 'pointer';
@@ -6935,7 +7022,7 @@ if (restoredSound) setSound(true); // context resume may still await a gesture; 
 // the display sits before the target arms silently until the crossing;
 // `alarmPrevRel` resets each mute/FF gap so re-arming never machine-guns.
 function setAlarm(on) {
-  if (on !== alarmOn) alarmColSteps += 1; // §25 D: each toggle is one column-wheel actuation — half a pitch
+  if (on !== alarmOn) { alarmColSteps += 1; alarmPusherT = 1; } // §25 D: one actuation = one pusher press = half a pitch
   alarmOn = on;
   const b = document.getElementById('btn-alarm');
   b.textContent = on ? 'On' : 'Off';
@@ -7980,6 +8067,16 @@ function tick(t) {
       alarmLockLiftT = liftTarget;
     }
     alarmLockLever.rotation.z = ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT * alarmLockLiftT * (1 - colBlock);
+    // The click rocks with the SAME ridden profile (its contact sits whole
+    // pitches from the beak's): out on a column, dropped into a gap — the
+    // visible flip on every actuation, mid-flank included.
+    alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;
+    // The pusher: presses IN with the actuation pulse and springs back — its
+    // pawl rides the ratchet skirt through the same eased step.
+    if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
+    alarmPusherGroup.position.set(
+      _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
+      _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z - 0.15);
   }
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
@@ -8138,7 +8235,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmPrevRel = null; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; // §25 B+D (steps parity = alarmOn = false ✓)
+    alarmPrevRel = null; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓)
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero

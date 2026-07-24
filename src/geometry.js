@@ -726,6 +726,25 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     colGeo.translate(0, 0, baseH / 2);
     g.add(new THREE.Mesh(colGeo, mat));
   }
+  // Lower RATCHET skirt — one saw tooth per STEP (2 per column): what the
+  // case pusher's pawl indexes. Real column wheels are driven exactly here.
+  {
+    const teethN = columns * 2;
+    const rr = baseR * 0.9, tip = baseR * 1.12;
+    const shape = new THREE.Shape();
+    for (let i = 0; i < teethN; i++) {
+      const a0 = (i / teethN) * Math.PI * 2, a1 = ((i + 1) / teethN) * Math.PI * 2;
+      if (i === 0) shape.moveTo(Math.cos(a0) * tip, Math.sin(a0) * tip);
+      else shape.lineTo(Math.cos(a0) * tip, Math.sin(a0) * tip);
+      shape.lineTo(Math.cos(a1) * rr, Math.sin(a1) * rr); // saw flank
+    }
+    shape.closePath();
+    const hole = new THREE.Path(); hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.22, bevelEnabled: false, curveSegments: 2 });
+    geo.translate(0, 0, -baseH / 2 - 0.22);
+    g.add(new THREE.Mesh(geo, mat));
+  }
   g.userData.columns = columns;
   g.userData.colH = colH;
   // Beak lift at wheel angle `a` (beak azimuth 0): 1 on a column, 0 in a gap,
