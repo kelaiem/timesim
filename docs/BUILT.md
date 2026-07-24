@@ -867,7 +867,7 @@ boot console stays clean. Verified in the live app, not only in isolation.
 
 ---
 
-## 13. Layout as a SPEC (BUILT — PRs #8, #15, #16 + the step 3c PR)
+## 13. Layout as a SPEC (BUILT — PRs #8, #15–#17)
 
 `main.js`'s evaluation order IS its architecture: 6,400+ lines of
 module-level `const` where a number cannot move without knowing everything
@@ -932,7 +932,7 @@ expression port proven by that hash coming back bit-identical:
   single source: `ALARM_CD`'s duplicated `plateR·0.92·0.39` at the
   plate-bore hoist and the drift assert that guarded it — both retired,
   since both sites now read the solve's one output.
-- **3c — the flat-teeth seam.** `TRAIN` gained the pinion count per mesh;
+- **3c (PR #17) — the flat-teeth seam.** `TRAIN` gained the pinion count per mesh;
   the pinion builders (hard-coded `10/10/10/8`) and `tick()`'s ratio
   chain (the same numbers again as `8 / fourthTeeth`, …) both read the
   table, and the flat exports `barrelTeeth`…`fourthModule` are retired.
