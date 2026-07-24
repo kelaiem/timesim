@@ -1566,3 +1566,86 @@ the fusee (verified live: +π/2 of `crownRotation` banked reserve).
 Battery on the redesign: support 0 failures, graph clean, penetration
 within budgets, clearances 0 violations, full
 `inspection {includeExcluded:true}` 0 FORBIDDEN, boot silent.
+## 14. Performance on slower machines (BUILT)
+
+**Goal.** The sim stays smooth on integrated graphics and modest CPUs.
+Render + scheduling only — nothing about the mechanism changed, and
+`runInspection` is untouched (it drives `setPose` directly and never
+enters `frame()`).
+
+**Measure before touching anything.** This project was already burned
+once by optimising the wrong thing (`TODO.md` item 4: a native-code plan
+killed by a profile showing pose evaluation at 0.04 ms), so the
+frame-time readout landed FIRST, alone, and gated every later step —
+each one below cites the number it moved. All four steps shipped, in
+order, one commit each (steps 1 and 2 were independently shippable and
+were shipped that way).
+
+**1 — Frame-time readout** (`src/main.js`, the `FRAME_EMA_ALPHA` block
+by the animation-loop constants; painted in `frame()`; panel section
+"Performance"). An EMA of the RAW rAF interval — unclamped, so it reads
+the real display cadence — plus a ticks-per-frame counter that makes the
+fixed-step spiral directly visible. Samples past `FRAME_STALL_MS`
+(= tick()'s own 0.25 s clamp) are scheduling gaps, not render cost, and
+are rejected. Exposed as `__clock.frameMs` / `__clock.ticksPerFrame` so
+perf claims are checkable from automation; the panel text repaints only
+~2×/s so the readout can't cost frames itself.
+
+**2 — Chain rebuilds once per FRAME, not per tick**
+(`updateChainIfMoved()` beside `rebuildChain`). The chain is
+display-only, yet its full BufferGeometry dispose/allocate (~100k
+vertices) ran inside `tick()` — up to 12× per displayed frame while
+winding on a machine slow enough to hit the realDt clamp. `tick()` now
+only records the tension; the rebuild happens once per rendered frame
+(`advanceFrame`, `__clock.step`) or per posed frame (`setPose` — the
+support sweep measures the chain's real geometry against the drum hook,
+so a posed tension still rebuilds before the caller reads it, which is
+why the battery stayed clean). Readout: a winding frame at the 12-tick
+clamp fell 3.59 → 2.20 ms.
+
+**3 — Tick budget** (`TICK_BUDGET_FULL` / `TICK_DT_CLAMP` by
+`FIXED_DT`; the budgeted loop in `advanceFrame`). The accumulator used
+to hand a SLOW machine MORE work per frame — 12 ticks at the 0.05 s
+clamp, 252 during a sync catch-up. A frame now gets `tickBudget` fixed
+steps, then the remainder in coarse strides: whole multiples of
+`FIXED_DT` (the sub-step accumulator phase — and so all behaviour at
+speed — is bit-for-bit unchanged), capped at `TICK_DT_CLAMP`, tick()'s
+own rawDt clamp, so no stride is clamped away and τ never silently
+loses time. Coarse strides are what fast-forward already feeds tick()
+(FF's own 45×2 s path is deliberately untouched — its whole point is a
+wall-time-bounded payout). Readout: catch-up worst frame 252 ticks /
+11.60 ms → 16 ticks / 2.60 ms, sync still landing on the wall clock.
+
+**4 — Quality tiers** (`QUALITY_TIERS` block after the readout vars;
+"Quality" select in the Performance panel section; `quality` persisted
+in `state.js`). One knob over three costs: pixel-ratio cap (High = the
+original `min(dpr, 2)`; Low = 1×, a quarter of the fragments on a 2×
+laptop — `antialias` is context-creation-time and can't be toggled, but
+its cost scales with the same fragment count the cap controls), the two
+shadow maps (Balanced halves each edge of key 2048² / rim 1024²; Low
+stops casting — shadows are the scene's biggest fixed cost), and the
+tick budget (12 / 6 / 3). High is the pre-§14 configuration verbatim.
+Readout: the clamped-frame benchmark fell 4.13 ms (High) → 2.13 ms
+(Low); in the throttled verification pane Low held the 16.7 ms vsync
+floor where High sat at ~9.5–115 ms.
+
+**Reconciliation — Auto walks DOWN only.** The plan said "chosen from a
+measured frame time"; what shipped is a one-way ladder (High → Balanced
+→ Low on a sustained EMA above `TIER_DOWN_MS`, with a hold after each
+change), because the readout's signal is the rAF interval and that is
+vsync-floored: a machine with 10× headroom and one barely keeping up
+both read ~16.7 ms once they hold 60 Hz, so "fast enough to step back
+up" is invisible from this signal. Stepping up is the user's call via
+the panel select, and the CHOICE (Auto or a pinned tier) is what
+persists — Auto re-earns its verdict each boot rather than trusting a
+stale one. One verification honesty note: Auto's live downgrade is the
+one path browser automation could not exercise (rAF pauses between
+forced paints — the CLAUDE.md trap), so it is verified by parts: the
+EMA demonstrably accumulates from real frames, all three tiers apply
+correctly, and the trigger runs every frame.
+
+Battery: support 0 failures (both Chain edges gap 0 through the moved
+rebuild), graph clean, penetration within budgets, clearances 0
+violations, full `inspection { includeExcluded: true }` 58 pairs all
+EXPECTED / 0 FORBIDDEN, boot silent. Cost: readout ~35 lines, chain fix
+~25, tick budget ~25, tier plumbing ~80.
