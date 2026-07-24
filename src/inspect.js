@@ -1338,6 +1338,66 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
 }
 
 // ---------------------------------------------------------------------------
+// Focused battery — the iterative-geometry convenience. The full entry points
+// (runInspection / checkClearances) sweep EVERY unit pair across all six pose
+// axes (~4-6 min) — the price of a clean-slate regression pass. During feature
+// work you have just moved a handful of parts and only care about the pairs
+// those parts touch. focusedCheck runs the same graph + support + penetration +
+// clearance checks, but SCOPED: the support edges, penetration budgets and
+// clearance budgets are filtered to rows where EITHER unit is in `unitNames`,
+// and every sweep is confined to `axes` (default: all). On the pairs it does
+// cover it is bit-identical to the full battery — same budgets, same sweep
+// engine, same tolerances — it just skips the thousands of pair·pose
+// evaluations that cannot involve the parts you changed, so it finishes in
+// seconds instead of minutes. The full-battery entry points are unchanged;
+// this is purely additive, and NOT a substitute for the pre-land clean run
+// (it only sees the pairs you named — a change that breaks a pair you did not
+// list is invisible to it).
+//
+// `axes` is a list of axis NAMES (['beat', 'alarmStrike']) — omitted ⇒ all six
+// (axis objects are also accepted). A penetration or clearance budget whose
+// axis is outside that set is dropped, so narrowing the axis set only ever
+// REMOVES work — it never leaves a budget pointing at an axis that isn't there.
+//
+// Returns { units, axes, support, graph, penetration, clearances } — each field
+// the verbatim return of the underlying check — so start()/status() stash and
+// surface it the same way they do the individual checks.
+// ---------------------------------------------------------------------------
+export async function focusedCheck(clock, unitNames, { axes: axisArg } = {}) {
+  const names = new Set(Array.isArray(unitNames) ? unitNames : [unitNames]);
+  const axisNames = axisArg && axisArg.map((a) => (typeof a === 'string' ? a : a.name));
+  const axes = axisNames ? AXES.filter((a) => axisNames.includes(a.name)) : AXES;
+  const axisSet = new Set(axes.map((a) => a.name));
+  const touches = (a, b) => names.has(a) || names.has(b);
+
+  // Support: only the declared support edges that attach one of these units to
+  // (or hang one of these units from) its fixture.
+  const supportEdges = MECH_GRAPH.support.filter(([a, b]) => touches(a, b));
+  const support = checkSupportGeometry(clock, { edges: supportEdges });
+
+  // Graph is inherently whole-movement (grounding / drive / anchor / bridge /
+  // pinion are global invariants), so it is run in full — but its per-axis
+  // motion probe honours the axis filter, so a single-axis focus doesn't
+  // re-pose all six.
+  const graph = checkMechanicalGraph(clock, { axes });
+
+  // Penetration: budgets whose pair touches a focus unit AND whose (single)
+  // axis is in the focus set.
+  const penBudgets = PENETRATION_BUDGETS.filter(
+    (b) => touches(b.pair[0], b.pair[1]) && axisSet.has(b.axis));
+  const penetration = checkPenetrationBudgets(clock, { budgets: penBudgets, axes });
+
+  // Clearances: budgets whose pair touches a focus unit, swept only on the
+  // focus axes (each budget's own `axes` scoping still applies on top).
+  const clrBudgets = CLEARANCE_BUDGETS.filter((b) => touches(b.a, b.b));
+  const clearances = await checkClearances(clock, { budgets: clrBudgets, axes });
+
+  const result = { units: [...names], axes: [...axisSet], support, graph, penetration, clearances };
+  window.__focusedReport = result;
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Background runner — the full checks take tens of seconds on this scene, and
 // a browser-automation eval that waits for them trips its own 30s timeout. The
 // workaround (kick the promise off, stash the result on window, poll) got
@@ -1360,6 +1420,8 @@ const CHECKS = {
   support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
+  // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
+  focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
 
 export function start(clock, name, opts = {}) {
@@ -1389,6 +1451,8 @@ export function status(name) {
 
 // Everything at once, for a full regression pass.
 export function startAll(clock, opts = {}) {
-  for (const n of Object.keys(CHECKS)) start(clock, n, opts[n] || {});
-  return `started: ${Object.keys(CHECKS).join(', ')}`;
+  // 'focused' needs a unit list, so it is never part of the full regression pass.
+  const names = Object.keys(CHECKS).filter((n) => n !== 'focused');
+  for (const n of names) start(clock, n, opts[n] || {});
+  return `started: ${names.join(', ')}`;
 }
