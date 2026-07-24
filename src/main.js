@@ -15,11 +15,11 @@ import {
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_KEYLESS,
-  // Train ratios (§13 step 2): TRAIN is the structured spec every gear BUILDER
-  // consumes; the flat TEETH beside it are what the KINEMATICS still read in
-  // tick()'s ratio chain (meshOffset / the going-train ratios), which step 3
-  // will inline onto TRAIN. The modules are consumed only through TRAIN now.
-  TRAIN, barrelTeeth, centerTeeth, thirdTeeth, fourthTeeth,
+  // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
+  // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
+  // (meshOffset / the going-train ratios) both read it; the flat teeth
+  // names are retired.
+  TRAIN,
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
   minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH,
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
@@ -245,21 +245,21 @@ const FUSEE_BASE_Z = Math.max(
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
-const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: 10, thickness: 1.6, material: MATS.steel });
+const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.pinion, thickness: 1.6, material: MATS.steel });
 const centerPinionR = centerPinion.userData.r;
 
 const centerWheel = G.makeGear({ module: TRAIN.center.module, teeth: TRAIN.center.teeth, thickness: 1.0, boreR: 1.2, spokes: 5, material: MATS.brass });
 const centerWheelR = centerWheel.userData.r;
 
 // --- Third arbor: pinion (meshed by center wheel) + third wheel ----------
-const thirdPinion = G.makePinion({ module: TRAIN.center.module, teeth: 10, thickness: 1.6, material: MATS.steel });
+const thirdPinion = G.makePinion({ module: TRAIN.center.module, teeth: TRAIN.center.pinion, thickness: 1.6, material: MATS.steel });
 const thirdPinionR = thirdPinion.userData.r;
 
 const thirdWheel = G.makeGear({ module: TRAIN.third.module, teeth: TRAIN.third.teeth, thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
 const thirdWheelR = thirdWheel.userData.r;
 
 // --- Fourth arbor: pinion (meshed by third wheel) + fourth wheel ---------
-const fourthPinion = G.makePinion({ module: TRAIN.third.module, teeth: 10, thickness: 1.6, material: MATS.steel });
+const fourthPinion = G.makePinion({ module: TRAIN.third.module, teeth: TRAIN.third.pinion, thickness: 1.6, material: MATS.steel });
 const fourthPinionR = fourthPinion.userData.r;
 
 const FOURTH_WHEEL_T = 0.8;
@@ -281,7 +281,7 @@ const fourthWheelR = fourthWheel.userData.r;
 const fourthWheelBevel = Math.min(FOURTH_WHEEL_T * 0.18, TRAIN.fourth.module * 0.22); // = makeGear's bevel
 const escPinionBevel = TRAIN.fourth.module * 0.2; // = makePinion's bevel (module·0.2 governs; thickness·0.15 is larger)
 const ESC_PINION_T = FOURTH_WHEEL_T + 2 * fourthWheelBevel + 2 * CLEAR_MARGIN - 2 * escPinionBevel;
-const escapePinion = G.makePinion({ module: TRAIN.fourth.module, teeth: 8, thickness: ESC_PINION_T, material: MATS.steel });
+const escapePinion = G.makePinion({ module: TRAIN.fourth.module, teeth: TRAIN.fourth.pinion, thickness: ESC_PINION_T, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
 const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
@@ -555,18 +555,18 @@ function forkSwingRad(t) {
 // gear-ratio functions, never integrated, so they never drift.
 const escAt0 = escapeAngle(0);
 
-const ratioFourth = 8 / fourthTeeth; // escape pinion teeth / fourth wheel teeth
-const offFourth = meshOffset(P.escape, P.fourth, fourthTeeth, ratioFourth, escAt0);
+const ratioFourth = TRAIN.fourth.pinion / TRAIN.fourth.teeth; // escape pinion teeth / fourth wheel teeth
+const offFourth = meshOffset(P.escape, P.fourth, TRAIN.fourth.teeth, ratioFourth, escAt0);
 function fourthAngle(t) { return offFourth - ratioFourth * escapeAngle(t); }
 const fourthAt0 = fourthAngle(0);
 
-const ratioThird = 10 / thirdTeeth; // fourth pinion teeth / third wheel teeth
-const offThird = meshOffset(P.fourth, P.third, thirdTeeth, ratioThird, fourthAt0);
+const ratioThird = TRAIN.third.pinion / TRAIN.third.teeth; // fourth pinion teeth / third wheel teeth
+const offThird = meshOffset(P.fourth, P.third, TRAIN.third.teeth, ratioThird, fourthAt0);
 function thirdAngle(t) { return offThird - ratioThird * fourthAngle(t); }
 const thirdAt0 = thirdAngle(0);
 
-const ratioCenter = 10 / centerTeeth; // third pinion teeth / center wheel teeth
-const offCenter = meshOffset(P.third, P.center, centerTeeth, ratioCenter, thirdAt0);
+const ratioCenter = TRAIN.center.pinion / TRAIN.center.teeth; // third pinion teeth / center wheel teeth
+const offCenter = meshOffset(P.third, P.center, TRAIN.center.teeth, ratioCenter, thirdAt0);
 function centerAngle(t) { return offCenter - ratioCenter * thirdAngle(t); }
 const centerAt0 = centerAngle(0);
 
@@ -587,8 +587,8 @@ const DIAL_EPOCH_ANGLE = DIAL_EPOCH_S * MIN_HAND_RAD_PER_SEC;
 if (DIAL_EPOCH_S % 60 !== 0)
   console.warn(`dial epoch: ${DIAL_EPOCH_S}s is not a whole number of minutes — the jumper's index grid and the dial disagree`);
 
-const ratioBarrel = 10 / barrelTeeth; // center pinion teeth / barrel teeth
-const offBarrel = meshOffset(P.center, P.barrel, barrelTeeth, ratioBarrel, centerAt0);
+const ratioBarrel = TRAIN.barrel.pinion / TRAIN.barrel.teeth; // center pinion teeth / barrel teeth
+const offBarrel = meshOffset(P.center, P.barrel, TRAIN.barrel.teeth, ratioBarrel, centerAt0);
 function barrelMeshAngle(t) { return offBarrel - ratioBarrel * centerAngle(t); }
 
 // Amplitude sags with the state of wind (real movements drop from ~300° to
