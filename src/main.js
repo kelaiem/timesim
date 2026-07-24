@@ -5898,6 +5898,7 @@ let alarmStrikePhase = ALARM_PHASE_REST; // striking-train phase, in strikes (ea
 let alarmStrikeIdx = Math.floor(ALARM_PHASE_REST - ALARM_STRIKE_U); // last strike SOUNDED — the ding's edge source
 let alarmReleased = false;        // the lock is lifted: the striking train is free to run (set at the trip)
 let restoredAlarmOn = false;      // persisted toggle, applied once the UI exists
+let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier plumbing exists
 
 // Load persisted state now that every variable it writes has been declared.
 // loadState() is async (the primary store is the dev server's temp file);
@@ -5931,6 +5932,7 @@ let restoredAlarmOn = false;      // persisted toggle, applied once the UI exist
   alarmSetRot = savedState.alarmSetRot ?? savedState.alarmCrownRotation ?? 0; // pre-winding saves: crown WAS the set path
   lastAlarmCrownRotation = savedState.alarmCrownRotation ?? 0;
   alarmCrownOut = !!savedState.alarmCrownOut;
+  restoredQualityMode = savedState.quality ?? 'Auto'; // ?? — states saved before §14 have no such field
 }
 
 // ---------------------------------------------------------------------------
@@ -6175,6 +6177,11 @@ panel.innerHTML = `
            tick() work the slower the machine) directly visible. -->
       <div class="row label-small"><span>Frame</span><span class="readout" id="readout-frame" style="font-size:13px;">—</span></div>
       <div class="row label-small"><span>Ticks/frame</span><span class="readout" id="readout-ticks" style="font-size:13px;">0</span></div>
+      <div class="row">
+        <span class="label-small">Quality</span>
+        <select id="quality-select"><option>Auto</option><option>High</option><option>Balanced</option><option>Low</option></select>
+      </div>
+      <div class="row label-small"><span>Tier</span><span class="readout" id="readout-tier" style="font-size:13px;">High</span></div>
     </div>
   </details>
 `;
@@ -7189,6 +7196,7 @@ function captureState() {
     alarmSetRot,        // §25 C: the SET path's banked rotation (the hand position survives winding)
     alarmCrownOut,      // §25 C: winding clutch state
     alarmBarrelWind,    // alarm-spring energy in turns (§24)
+    quality: qualityMode, // §14: the panel's CHOICE (Auto or a pinned tier), not Auto's current verdict
     showBeat: 0,
     camera: {
       px: camera.position.x, py: camera.position.y, pz: camera.position.z,
@@ -7699,6 +7707,70 @@ const FRAME_STALL_MS = 250;  // = tick()'s own 0.25 s rawDt clamp: past it the s
 let frameMsEma = 0;
 let ticksThisFrame = 0;      // tick() calls in the last advanceFrame — the "12× per frame on a slow machine" number, made visible
 let perfReadoutMs = 0;       // ms since the panel text was last painted
+
+// --- Quality tiers (BUILT §14) ---------------------------------------------
+// One knob instead of three: a tier sets the pixel-ratio cap (the renderer's
+// antialias flag is context-creation-time and can't change, but its cost
+// scales with the same fragment count the cap controls), the two shadow map
+// sizes (shadows are the biggest fixed cost in this scene: key 2048² + rim
+// spot 1024² under PCFSoftShadowMap), and the tick budget. High IS the
+// pre-§14 configuration, verbatim.
+const QUALITY_TIERS = {
+  //                pixel-ratio cap: 2 = the original min(dpr, 2); 1.5 ≈ half
+  //                the fragments of 2× on a retina laptop; 1 = a quarter.
+  //                shadow px: Balanced halves each map edge (¼ the texels);
+  //                Low stops casting entirely (0 = castShadow off).
+  //                tickBudget: fractions of the full clamp's 12 — Low turns a
+  //                20 fps frame's 12 ticks into 3 fixed + 1 coarse stride.
+  High:     { pixelRatioCap: 2,   keyShadowPx: 2048, rimShadowPx: 1024, tickBudget: TICK_BUDGET_FULL },
+  Balanced: { pixelRatioCap: 1.5, keyShadowPx: 1024, rimShadowPx: 512,  tickBudget: TICK_BUDGET_FULL / 2 },
+  Low:      { pixelRatioCap: 1,   keyShadowPx: 0,    rimShadowPx: 0,    tickBudget: TICK_BUDGET_FULL / 4 },
+};
+const TIER_LADDER = ['High', 'Balanced', 'Low'];
+let qualityMode = 'Auto'; // the panel select: Auto or a pinned tier
+let qualityTier = 'High'; // the tier actually applied right now
+function applyQualityTier(name) {
+  qualityTier = name;
+  const t = QUALITY_TIERS[name];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, t.pixelRatioCap)); // re-sizes the buffer itself
+  for (const [light, px] of [[keyLight, t.keyShadowPx], [rimSpot, t.rimShadowPx]]) {
+    light.castShadow = px > 0;
+    if (px > 0) light.shadow.mapSize.set(px, px);
+    // An allocated map keeps its old size, so drop it — the next shadow pass
+    // reallocates at the new one (and a non-casting light holds no map).
+    if (light.shadow.map) { light.shadow.map.dispose(); light.shadow.map = null; }
+  }
+  tickBudget = t.tickBudget;
+}
+// Auto-select walks DOWN only. The readout's EMA is the rAF interval, which
+// is vsync-floored: a machine with 10× headroom and one barely keeping up
+// both read ~16.7 ms at 60 Hz, so "fast enough to step back up" is invisible
+// from here — starting at High and stepping down until frames keep up is the
+// only honest read of this signal. The panel select overrides at any time.
+const TIER_DOWN_MS = 1000 / 30; // sustained above one 30 fps frame = missing every other 60 Hz vsync
+const TIER_HOLD_MS = 3000;      // after any change, let the EMA (~10-frame settle) and the
+                                // recompile/realloc hitch of the change itself wash out before judging again
+let tierHoldUntil = 0;          // set at boot below: startup shader compiles look like slow frames
+function autoTierUpdate(now) {
+  if (qualityMode !== 'Auto' || frameMsEma === 0 || now < tierHoldUntil) return;
+  if (frameMsEma > TIER_DOWN_MS) {
+    const next = TIER_LADDER[TIER_LADDER.indexOf(qualityTier) + 1];
+    if (next) {
+      applyQualityTier(next);
+      tierHoldUntil = now + TIER_HOLD_MS;
+    }
+  }
+}
+const qualitySelect = document.getElementById('quality-select');
+function setQualityMode(mode) {
+  qualityMode = QUALITY_TIERS[mode] ? mode : 'Auto';
+  // Auto re-earns its way down from High rather than trusting a stale verdict.
+  applyQualityTier(qualityMode === 'Auto' ? 'High' : qualityMode);
+  tierHoldUntil = performance.now() + TIER_HOLD_MS;
+  qualitySelect.value = qualityMode;
+}
+qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
+setQualityMode(restoredQualityMode); // persisted panel choice (state.js); default Auto
 
 const projected = new THREE.Vector3();
 
@@ -8512,6 +8584,7 @@ function frame(now) {
   if (frameMs < FRAME_STALL_MS) {
     frameMsEma = frameMsEma === 0 ? frameMs : frameMsEma + (frameMs - frameMsEma) * FRAME_EMA_ALPHA;
   }
+  autoTierUpdate(now); // §14: Auto quality steps down while frames sustained miss vsync
 
   advanceFrame(realDt);
 
@@ -8523,6 +8596,7 @@ function frame(now) {
     document.getElementById('readout-frame').textContent =
       `${frameMsEma.toFixed(1)} ms · ${Math.round(1000 / frameMsEma)} fps`;
     document.getElementById('readout-ticks').textContent = String(ticksThisFrame);
+    document.getElementById('readout-tier').textContent = qualityTier;
   }
 
   // Auto-save state every 5 seconds
@@ -8652,6 +8726,8 @@ window.__clock = {
   // claim can be checked from automation instead of by eye.
   get frameMs() { return frameMsEma; },
   get ticksPerFrame() { return ticksThisFrame; },
+  get quality() { return { mode: qualityMode, tier: qualityTier }; },
+  setQualityMode(m) { setQualityMode(m); },
   movement,
   // Alarm introspection (§24): the disc's actual detented angle and the set
   // time derived from it, for verifying they agree within one detent step.
