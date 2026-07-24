@@ -144,20 +144,17 @@ export const Z_KEYLESS = -4.1;
 // whole reason they want to live together as data. (SPEC.md's gear table is
 // the prose version of this object.)
 //
-// Flat names are kept because the KINEMATICS still read them by those names in
-// tick()'s ratio chain, and untangling that block is §13 step 3, deliberately
-// deferred. The structured TRAIN view below is built from the same flats and
-// is what the geometry BUILDERS consume today — so the "single source" holds
-// either way, and step 3 can retire the flats without touching this data.
-export const barrelModule = 0.36, barrelTeeth = 80; // great wheel → center pinion
-export const centerModule = 0.30, centerTeeth = 75; // center wheel → third pinion
-export const thirdModule = 0.24, thirdTeeth = 80;   // third wheel → fourth pinion
-export const fourthModule = 0.21, fourthTeeth = 80; // fourth wheel → escape pinion
+// Each entry is one MESH: a wheel of `teeth` driving a pinion of `pinion`
+// teeth at `module` (the arrow in the comment). §13 step 3c retired the old
+// flat names (barrelTeeth … fourthTeeth) and folded the pinion counts in —
+// they used to be magic 10s and an 8 repeated in BOTH the pinion builders
+// and tick()'s ratio chain; now builders and kinematics read this one table,
+// so a ratio literally cannot disagree with the geometry that carries it.
 export const TRAIN = {
-  barrel: { module: barrelModule, teeth: barrelTeeth },
-  center: { module: centerModule, teeth: centerTeeth },
-  third:  { module: thirdModule,  teeth: thirdTeeth },
-  fourth: { module: fourthModule, teeth: fourthTeeth },
+  barrel: { module: 0.36, teeth: 80, pinion: 10 }, // great wheel → center pinion
+  center: { module: 0.30, teeth: 75, pinion: 10 }, // center wheel → third pinion
+  third:  { module: 0.24, teeth: 80, pinion: 10 }, // third wheel → fourth pinion
+  fourth: { module: 0.21, teeth: 80, pinion: 8 },  // fourth wheel → escape pinion
 };
 
 // Keyless works + winding path (the SETTING side, not the going train).
