@@ -7462,6 +7462,24 @@ window.__clock = {
   get setPathRot() { return setPathRot; },
   setCrownRotation(v) { crownRotation = v; },
   setBarrelWindTurns(v) { barrelWindTurns = clamp(v, 0, RESERVE_BARREL_TURNS); },
+  // Zero every PERSISTENT user input, returning the mechanism to its as-booted
+  // reference. setPose forces the pose *variables* but deliberately leaves the
+  // accumulators a real session builds up — the raw crown angle, the rotation
+  // each clutch path has banked, and the jumping-minute snap correction —
+  // exactly the inputs that decide where the HANDS sit. That is fine for the
+  // battery (its axes never touch the hands) but makes a geometry fingerprint
+  // depend on session history: two loads with different saved crown state hash
+  // differently for the same build. The fingerprint calls this first so its
+  // reference pose is canonical (handSetOffset = 0, the boot state), not
+  // whatever was last saved. Not a pose itself — follow with setPose().
+  resetInputs() {
+    crownRotation = 0; lastCrownRotation = 0;
+    windPathRot = 0; setPathRot = 0; windAccumTurns = 0;
+    autoWindRemaining = 0;
+    jumpCorr = 0; jumpDisp = null;
+    alarmCrownRotation = 0;
+    alarmBarrelWind = ALARM_BARREL_TURNS; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false;
+  },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
   // rawDt (t == lastTickRawT), which re-poses every part from the closed

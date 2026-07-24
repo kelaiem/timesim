@@ -1516,3 +1516,111 @@ export function startAll(clock, opts = {}) {
   for (const n of Object.keys(CHECKS)) start(clock, n, opts[n] || {});
   return `started: ${Object.keys(CHECKS).join(', ')}`;
 }
+
+// ---------------------------------------------------------------------------
+// Geometry fingerprint — the tool §13 (the layout refactor) is built against.
+// A refactor that only reorganises WHERE numbers are computed, changing no
+// geometry, must reproduce every part's world position bit-for-bit. The
+// battery above proves the movement is still LEGAL (nothing collides, every
+// support holds); this proves it is still the SAME. They answer different
+// questions — a refactor could stay legal while nudging a part — so §13 wants
+// both: capture fingerprint() on the pre-refactor tree, then diff after each
+// mechanical step.
+//
+// It is a set of POSES (a rest pose plus one exercising each force input),
+// each hashed from every labelled unit's world AABB, quantised to 1e-3 (finer
+// than any real geometry change and coarser than float noise). fingerprint()
+// returns { hash, poses, units } for a fast go/no-go; fingerprintFull() keeps
+// the per-unit boxes so a mismatch can be localised to the part that moved.
+//
+// The poses deliberately drive all four inputs the movement has — the going
+// train (tau), the crown pull/turn, the reserve, and both alarm axes — so a
+// refactor that quietly changes how any ONE of them threads through is caught,
+// not just the rest pose. Keep this list in sync with the AXES above: a new
+// force input wants a pose here too, or the refactor of its path is unguarded.
+const FINGERPRINT_POSES = [
+  { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
+  { tau: 8 * 3600 * 0.37, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
+  { tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1, windAccumTurns: 0 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4, windAccumTurns: 0 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmStrikePhase: 7.3 },
+];
+
+// A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,
+// and identical across browsers because it is pure integer arithmetic.
+function strHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h >>> 0;
+}
+
+// The one unit the fingerprint must NOT read: the chain is display-only
+// geometry that updateChain re-tessellates lazily (only when the reserve has
+// visibly moved — see rebuildChain), so its mesh is PATH-DEPENDENT. Its AABB
+// wobbles ~0.02 between a freshly rebuilt tessellation and a slightly stale
+// one at the same tension, which is real mesh difference, not float noise, so
+// it cannot be quantised away without also hiding real changes. It is not a
+// layout element — nothing §13 refactors reaches it except through `tension`,
+// which every other unit already captures — and its own correctness is covered
+// by the battery (its two support edges and the overlap sweep). So it is
+// excluded here by name rather than left to add noise to every hash.
+const FINGERPRINT_EXCLUDE = new Set(['Chain']);
+
+function fingerprintBoxes(clock, poses = FINGERPRINT_POSES) {
+  const q = (n) => Math.round(n * 1000) / 1000 + 0; // +0 folds -0 → 0
+  const box = new THREE.Box3();
+  const rows = {};
+  const entries = clock.labelEntries.filter((e) => !FINGERPRINT_EXCLUDE.has(e.name));
+  const units = entries.map((e) => e.name).sort();
+  poses.forEach((pose, pi) => {
+    // Canonical inputs first, so a part the pose does not drive sits where a
+    // fresh boot would put it rather than where the last save left it — the
+    // fingerprint must not depend on session history (see resetInputs).
+    clock.resetInputs();
+    clock.setPose(pose);
+    clock.scene.updateMatrixWorld(true);
+    for (const e of entries) {
+      box.setFromObject(e.obj);
+      rows[`${e.name}#${pi}`] =
+        [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].map(q);
+    }
+  });
+  clock.setPose(poses[0]); // leave it at rest
+  return { rows, units, poseCount: poses.length };
+}
+
+// Go/no-go: one number. Same across two builds ⇒ every part is in the same
+// place at every probed pose. Different ⇒ call fingerprintFull on both and
+// diff `rows` to find which unit at which pose moved.
+export function fingerprint(clock, poses) {
+  const { rows, units, poseCount } = fingerprintBoxes(clock, poses);
+  const canon = Object.keys(rows).sort().map((k) => k + ':' + rows[k].join(',')).join('|');
+  return { hash: strHash(canon), poseCount, units: units.length };
+}
+
+// The same measurement with the per-unit boxes kept, for localising a
+// mismatch. Returned rows are keyed 'Unit name#poseIndex'.
+export function fingerprintFull(clock, poses) {
+  return fingerprintBoxes(clock, poses);
+}
+
+// Diff two fingerprintFull() results (or a stored one against a live capture),
+// returning only the rows that changed, with both values and the max delta.
+export function fingerprintDiff(before, after) {
+  const keys = new Set([...Object.keys(before.rows), ...Object.keys(after.rows)]);
+  const changed = [];
+  for (const k of keys) {
+    const a = before.rows[k], b = after.rows[k];
+    if (!a || !b) { changed.push({ key: k, before: a || null, after: b || null, delta: Infinity }); continue; }
+    let d = 0;
+    for (let i = 0; i < 6; i++) d = Math.max(d, Math.abs(a[i] - b[i]));
+    if (d > 0) changed.push({ key: k, before: a, after: b, delta: +d.toFixed(4) });
+  }
+  changed.sort((x, y) => y.delta - x.delta);
+  return { changedCount: changed.length, changed };
+}
