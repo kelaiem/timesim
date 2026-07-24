@@ -1898,77 +1898,90 @@ export function makeBrandMark({ r, tubeR, aspect = 0.52, material = MATS.steel,
   return mesh;
 }
 
-// Winding crown (§27) — the brand carrier. The knurl era (a ring of ~60
-// bur ridges plus a six-rod face rosette; see git history for
-// burPrismGeo) is retired: the grip is now the barrel itself, lathed to
-// a double-lobe silhouette — two convex lobes meeting at a pinched
-// waist, the brand mark's own profile, rotation-invariant so it reads at
-// every winding angle — and the flat outer face carries makeBrandMark's
-// ∞ as a raised relief, half-embedded per the house convention (relief
-// features sit with their centreline ON the host surface so they read
-// as machined, not glued on).
+// Winding crown (§27) — traditional knurled barrel, brand-marked face.
+// The knurl-era grip (a ring of ~60 fine bur-prism ridges plus a six-rod
+// face rosette; see git history for burPrismGeo) read as prickly light-
+// noise and cost ~69 draw calls. §27's first cut replaced the whole
+// barrel with an hourglass lathe; the owner kept the TRADITIONAL shape
+// instead — straight barrel, chamfered cap — with the knurling ENLARGED:
+// fewer, larger, ROUND ridges (soft smooth-shaded scallops, not keels),
+// and makeBrandMark's ∞ raised on the flat outer face, half-embedded per
+// the house relief convention (centreline ON the host surface, so it
+// reads as machined, not glued on). The mark needs no orientation
+// choice: the crown spins when wound, so infinity and hourglass are the
+// same mark a quarter-turn apart.
 //
 // Base sits at z = 0, the face points along +Z (per the builder
 // convention; main.js tips it onto the stem).
 //
-// ENVELOPE BUDGET — the constraint every constant below derives from:
-// the redesign must stay INSIDE the knurled crown's proven swept
-// envelope, radius ≤ bodyR + 0.112 (the retired knurl keels' proud
-// height: ridge section 0.16, seated 0.3 sunk) and axial length ≤
-// bodyH + CAP_H + 0.16·bodyR (the retired rosette rods' proud radius) —
-// because every standing clearance/penetration row in the inspector
-// battery was proven against that envelope, so staying inside it cannot
-// create a new contact anywhere in the pose space. Asserted at the
-// bottom (boot is silent — a warn means the envelope regressed).
+// ENVELOPE BUDGET — the constraint the constants below derive from: the
+// redesign must stay INSIDE the knurl-era proven swept envelope, radius
+// ≤ bodyR + 0.112 (the old keels' proud height: ridge section 0.16,
+// seated 0.3 sunk) and axial length ≤ bodyH + CAP_H + 0.16·bodyR (the
+// retired rosette rods' proud radius) — because every standing
+// clearance/penetration row in the inspector battery was proven against
+// that envelope, so staying inside it cannot create a new contact
+// anywhere in the pose space. Asserted at the bottom (boot is silent —
+// a warn means the envelope regressed).
 export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   const g = new THREE.Group();
-  const CAP_H = 0.55;            // chamfer band height — unchanged from the knurled crown
+  const CAP_H = 0.55;            // chamfer band height — unchanged from the knurl era
   const R_BUDGET = bodyR + 0.112;            // knurl-era proven radial envelope
   const H_BUDGET = bodyH + CAP_H + bodyR * 0.16; // knurl-era proven axial envelope
-  const faceZ = bodyH + CAP_H;   // face plane — where the knurled crown's cap face sat,
+  const faceZ = bodyH + CAP_H;   // face plane — where the knurl-era cap face sat,
                                  // so the stem-axis layout at both call sites is untouched
+  const RADIAL_SEGS = 28; // barrel/cap silhouette sagitta at bodyR 5.4 ≈ 0.03 — invisible;
+                          // trimmed from the old 48 to buy the knurl its triangles (budget below)
 
-  // Grip: one lathe, base disc → lobe → waist → lobe → chamfer → face
-  // disc. Radii are fractions of bodyR (the envelope ceiling): lobes peak
-  // AT bodyR, the waist dips to 0.72 — deep enough to read as a neck in
-  // silhouette, shallow enough to still look grippable — and the face rim
-  // lands at 0.80 (the knurled cap's own chamfer, bodyR − 0.35, ≈ 0.78 at
-  // the 4.0 alarm knob / 0.94 at the 5.4 winding crown; one shared
-  // fraction replaces the absolute inset so both crowns keep the same
-  // proportions). Sparse sampling on purpose: the lathe is most of the
-  // crown's triangle spend, and §27's budget is "≤ the knurled crown".
-  const F = faceZ;
-  const profile = [
-    [0.001, 0],      // base disc centre
-    [0.78, 0],       // base rim
-    [0.96, 0.14],    // lobe 1 rise
-    [1.0, 0.26],     // lobe 1 peak — the envelope ceiling
-    [0.90, 0.40],
-    [0.72, 0.50],    // waist — the hourglass neck
-    [0.90, 0.60],
-    [1.0, 0.74],     // lobe 2 peak
-    [0.93, 0.88],    // chamfer, standing in for the old cap band
-    [0.80, 1.0],     // face rim
-    [0.001, 1.0],    // face disc centre
-  ].map(([rr, zz]) => new THREE.Vector2(rr * bodyR, zz * F));
-  const RADIAL_SEGS = 28; // silhouette sagitta at bodyR 5.4: 5.4·(1−cos(π/28)) ≈ 0.03 — invisible
-  const barrel = new THREE.Mesh(new THREE.LatheGeometry(profile, RADIAL_SEGS), material);
-  barrel.geometry.rotateX(Math.PI / 2); // lathe axis Y → Z (same turn as the old cylinder)
-  g.add(barrel);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(bodyR, bodyR, bodyH, RADIAL_SEGS, 1), material);
+  body.geometry.rotateX(Math.PI / 2); // cylinder axis Y → Z
+  body.position.z = bodyH / 2;
+  g.add(body);
+
+  // Enlarged knurl: round rods along the barrel, smooth-shaded — broad
+  // scallops where the old keels prickled. Count still derives from the
+  // circumference at the knurl-era pitch/ridge ratio (3.5), so the duty
+  // cycle — the classic coin-edge look — survives the size change and any
+  // future bodyR change. KNURL_R is the one styled number ("larger", the
+  // owner's brief), FLOORED by the tri budget: at 8-seg rods (32 tris
+  // each) the 4.0 alarm knob must keep count ≤ 12 for its total to stay
+  // under its knurl-era spend (945 tris) → pitch ≥ 2π·4/12 → KNURL_R ≥
+  // 0.60. Crest sits EXACTLY on the proven envelope: seat = R_BUDGET −
+  // KNURL_R, so the exposed dome is the 0.112 the old keels stood proud.
+  const KNURL_R = 0.61;
+  const rimN = Math.round((2 * Math.PI * bodyR) / (KNURL_R * 3.5));
+  const knurlSeat = R_BUDGET - KNURL_R;
+  const ridgeLen = bodyH * 0.9;
+  const ridgeGeo = new THREE.CylinderGeometry(KNURL_R, KNURL_R, ridgeLen, 8, 1);
+  ridgeGeo.rotateX(Math.PI / 2); // rod axis Y → Z (along the barrel)
+  for (let i = 0; i < rimN; i++) {
+    const a = (i / rimN) * 2 * Math.PI;
+    const ridge = new THREE.Mesh(ridgeGeo, material);
+    ridge.position.set(Math.cos(a) * knurlSeat, Math.sin(a) * knurlSeat, bodyH / 2);
+    g.add(ridge);
+  }
+
+  // Chamfered cap closing the outer face (top radius < bottom radius) —
+  // unchanged from the knurl era.
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(bodyR - 0.35, bodyR, CAP_H, RADIAL_SEGS, 1), material);
+  cap.geometry.rotateX(Math.PI / 2);
+  cap.position.z = bodyH + CAP_H / 2;
+  g.add(cap);
 
   // Face mark: stroke first, then the span it leaves room for. The stroke
   // is 0.085·bodyR — well under the 0.16·bodyR the axial envelope allows
   // for its proud half (asserted below) — and the mark's half-width is
-  // whatever fits inside the face rim leaving one stroke-width of quiet
-  // border reveal: markR + tubeR (ink edge) + tubeR (reveal) = face rim.
+  // whatever fits inside the cap's face rim (bodyR − 0.35) leaving one
+  // stroke-width of quiet border reveal: markR + tubeR (ink edge) +
+  // tubeR (reveal) = face rim.
   const tubeR = bodyR * 0.085;
-  const markR = 0.80 * bodyR - 2 * tubeR;
+  const markR = (bodyR - 0.35) - 2 * tubeR;
   const mark = makeBrandMark({ r: markR, tubeR, material });
   mark.position.z = faceZ; // half-embedded: centreline on the face plane
   g.add(mark);
 
-  g.userData.r = bodyR;              // widest point: the lobe peaks
-  g.userData.totalH = faceZ + tubeR; // tallest point: face + the mark's proud half
+  g.userData.r = knurlSeat + KNURL_R; // widest point: the knurl crests — ON the budget by construction
+  g.userData.totalH = faceZ + tubeR;  // tallest point: face + the mark's proud half
   if (g.userData.r > R_BUDGET + 1e-9 || g.userData.totalH > H_BUDGET + 1e-9)
     console.warn(`makeCrown §27 envelope exceeded: r ${g.userData.r.toFixed(3)} (budget ${R_BUDGET.toFixed(3)}), totalH ${g.userData.totalH.toFixed(3)} (budget ${H_BUDGET.toFixed(3)})`);
   return g;

@@ -1501,7 +1501,12 @@ built; this entry is the durable copy.
 carrying a brand signature — an infinity sign shaped to evoke an
 hourglass — while getting cheaper to draw and calmer to the eye.
 
-**What shipped (reconciled).** Both carriers, folded into one design:
+**What shipped (reconciled).** An end-cap brand mark on a traditional,
+enlarged-knurl crown. The first cut replaced the whole barrel with a
+double-lobe hourglass lathe (the grip-band carrier taken to its limit);
+the owner reviewed it and kept the traditional shape instead — so the
+knurl was scaled UP rather than replaced, and the mark lives on the
+face:
 
 - *The mark* is `makeBrandMark({ r, tubeR, aspect, material, … })` in
   `src/geometry.js` — a lemniscate of Bernoulli (∞) swept as a closed
@@ -1510,32 +1515,36 @@ hourglass — while getting cheaper to draw and calmer to the eye.
   into an hourglass neck. It is shared and parameterised, never inlined:
   `makeCrown` is the only direct consumer today, and a caseback or
   buckle can call it tomorrow.
-- *End-cap relief* (the primary brand read): the crown's flat outer face
+- *End-cap relief* (the brand read): the crown's flat outer face
   carries the ∞ raised, half-embedded — centreline ON the face plane,
   proud by exactly `tubeR` — per the house relief convention. The §27
   orientation question ("does horizontal-infinity fight
   vertical-hourglass?") dissolved on this carrier: the crown SPINS when
   wound, so one mark gives both reads a quarter-turn apart.
-- *Grip band* (the profile read): the knurl ring (~60 bur-prism ridges)
-  and the six-rod face rosette are retired outright — `burPrismGeo` went
-  with them — and the barrel is now ONE lathe whose silhouette is the
-  mark's own profile: two convex lobes meeting at a pinched waist
-  (lobes at `bodyR`, waist at 0.72·`bodyR`), rotation-invariant, so the
-  hourglass reads side-on at the Dial/Setting frames where the end cap
-  is edge-on.
+- *Grip* (traditional, calmed): the fine knurl (~60 bur-prism keels) and
+  the six-rod face rosette are retired — `burPrismGeo` went with them —
+  and the barrel keeps its classic cylinder + chamfer-cap shape with
+  LARGER knurling: round, smooth-shaded rods (16 on the winding crown,
+  12 on the alarm knob), the count still derived from the circumference
+  at the knurl-era pitch/ridge ratio (3.5) so the coin-edge duty cycle
+  survives both the size change and any future `bodyR` change. Soft
+  scallops where the keels prickled.
 
-**Derived, asserted budget.** The redesign stays INSIDE the knurled
-crown's proven swept envelope — radius ≤ `bodyR` + 0.112 (the retired
-keels' proud height), axial ≤ `bodyH` + 0.55 + 0.16·`bodyR` (the retired
-rosette's proud rods) — because every standing clearance/penetration row
-was proven against that envelope, so staying inside cannot create a new
-contact anywhere in the pose space. `makeCrown` asserts both at build
-time (boot stays silent; a warn means the envelope regressed). Net slim:
-−0.112 radial, −0.16·`bodyR` + `tubeR` (= −0.41 at the winding crown)
-axial — slack banked toward §2's z-stack budget. The mark's stroke is
-`tubeR` = 0.085·`bodyR` (well under the 0.16·`bodyR` the envelope
-allows) and its span is whatever fits the face rim minus one
-stroke-width of quiet reveal: `markR + 2·tubeR = 0.80·bodyR`.
+**Derived, asserted budget.** The redesign stays INSIDE the fine-knurl
+crown's proven swept envelope — radius ≤ `bodyR` + 0.112 (the old keels'
+proud height; the new knurl's crest is SEATED to land exactly there,
+seat = budget − `KNURL_R`), axial ≤ `bodyH` + 0.55 + 0.16·`bodyR` (the
+retired rosette's proud rods) — because every standing
+clearance/penetration row was proven against that envelope, so staying
+inside cannot create a new contact anywhere in the pose space.
+`makeCrown` asserts both at build time (boot stays silent; a warn means
+the envelope regressed). `KNURL_R` = 0.61 is the one styled number (the
+"larger" in the owner's brief), FLOORED by the tri budget: at 8-segment
+rods the alarm knob's ridge count must stay ≤ 12 to hold under its
+knurl-era spend. The mark's stroke is `tubeR` = 0.085·`bodyR` (well
+under the 0.16·`bodyR` the axial envelope allows for its proud half)
+and its span fills the cap's face rim minus one stroke-width of quiet
+reveal: `markR + 2·tubeR = bodyR − 0.35`.
 
 **Call sites.** Two crowns, one builder, both redesigned for free:
 the winding crown (`main.js`, keyless assembly, `bodyR` 5.425/`bodyH`
@@ -1544,8 +1553,10 @@ the winding crown (`main.js`, keyless assembly, `bodyR` 5.425/`bodyH`
 is what the battery had already proven.
 
 **Cost (the §14/§20 draw-call worry).** Winding crown: 1121 tris / 69
-draw calls → 880 / 2. Alarm knob: 945 / 53 → 880 / 2. The knurl's
-prickly micro-noise is gone from both.
+draw calls → 1056 / 19. Alarm knob: 945 / 53 → 928 / 15. The knurl's
+prickly micro-noise is gone from both; the barrel/cap silhouettes
+dropped from 48 to 28 segments (sagitta ≈ 0.03 at the winding crown's
+radius — invisible) to buy the bigger rods their triangles.
 
 **Untouched, verified.** `crownRotation` drag, `crownPullT`, the
 setting/winding clutch and every `crownOut` read site — the `main.js`
