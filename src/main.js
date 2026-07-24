@@ -4787,42 +4787,12 @@ const alarmPointer = G.makeHand({ length: alarmSubR * 0.72, kind: 'minute' });
 alarmPointer.position.z = -(SUBDIAL_RECESS - 0.3); // rides inside the well, below the dial surface
 alarmPointerGroup.add(alarmPointer);
 
-// --- §25 C PROTOTYPE: peripheral "orbiting train" alarm indicator ------------
-// A first LOOK, not the final mechanism: a ring centred on the dial carrying a
-// marker that rides out to the rehaut (past the dial edge, so it needs no dial
-// slot yet) and orbits once per 12 h with the alarm setting. Built UNLABELLED
-// and driven representationally off alarmDiscAngle() for now — it is here to
-// judge the motion and the read, before it earns a real rim-pinion drive and
-// replaces the sub-dial disc. dialFace is Y-flipped: world z = −7 − localZ, so
-// local +z faces the viewer (front) and local −z sits behind the dial.
-const alarmRingGroup = new THREE.Group(); // centred on the dial, rotates with the set time
-dialFace.add(alarmRingGroup);
-{
-  // (The prototype shows only the orbiting MARKER; the real toothed ring +
-  // bearing it rides — which sits behind the dial in the yoke/keyless z-band
-  // and has to thread that ~1-unit lane — is the honest mechanism, built next.
-  // The marker alone lives in FRONT of the dial face, clear of all mechanism,
-  // which is why this first look is battery-safe.)
-  // The marker — a SUBTLE, abstract steel lozenge riding BETWEEN the railroad's
-  // two rails (inner 0.87R, outer 0.94R), centred on that ~2.7-unit band. Steel
-  // (not blued) so it reads as part of the movement rather than a hand, and
-  // sized to sit neatly within the band with margin to either rail. Floats at
-  // local +z, just proud of the dial face and well behind the minute-hand plane
-  // (local +2.3). (This is outboard of the minute-hand tip at 0.84R, so it sits
-  // on the track proper rather than hiding under the hand — the owner's call.)
-  // makeDial paints the railroad ("chemin de fer" — two rails + a minute rung
-  // between them) in a canvas whose silver fill reaches only ~0.92R, so the
-  // rails at canvas 0.87/0.94 render at ~0.80/0.865·dialRadius in WORLD space,
-  // not 0.87/0.94. (The DIAL_FILL factor mirrors makeDial's R = 0.46·S over the
-  // half-canvas.) Put the marker on the true midpoint, between the rungs.
-  const DIAL_FILL = 0.92;
-  const RAIL_IN = dialRadius * 0.87 * DIAL_FILL, RAIL_OUT = dialRadius * 0.94 * DIAL_FILL;
-  const MARK_R = (RAIL_IN + RAIL_OUT) / 2;    // midway between the rails
-  const marker = new THREE.Mesh(new THREE.OctahedronGeometry(1.0), MATS.steel);
-  marker.scale.set(0.9, 0.6, 0.35);           // radial half ≈ 0.9 → sits within the ~2.5-unit rail gap
-  marker.position.set(MARK_R, 0, 0.45);       // local +z → just proud of the dial face
-  alarmRingGroup.add(marker);
-}
+// (A §25 C prototype "orbiting train" marker briefly lived here — an
+// unlabelled steel lozenge riding between the railroad's rails, driven off
+// alarmDiscAngle(). It settled the peripheral-indicator look, then the owner
+// chose the CENTRAL RATTRAPANTE alarm hand instead — see the roadmap's §25 C
+// design record — so the prototype was removed rather than left as a second,
+// contradictory indicator.)
 
 // --- 'Alarm setting arbor' — disc arbor + mating bevel (friction-set) -------
 const alarmArborUnit = new THREE.Group();
@@ -7274,7 +7244,6 @@ function tick(t) {
   const alarmAngle = alarmDiscAngle();
   alarmPointer.rotation.z = -alarmAngle;
   alarmRotor.rotation.z = alarmAngle;
-  alarmRingGroup.rotation.z = Math.PI / 2 + alarmAngle; // §25 C prototype: +90° puts alarm 12:00 at the top; +angle runs clockwise from the front (marker built at local +x)
   alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A). All three poses come off ONE state
