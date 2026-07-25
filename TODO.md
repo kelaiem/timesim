@@ -114,6 +114,31 @@ Maintaining detent (cock post vs arm), Minute jumper (pivot stud and
 return spring vs lever), Keyless works (bushing foot vs the sliding
 gang), Power-reserve train.
 
+**Second confirmed instance (since REPAIRED) — and it breaks the
+interim below.** The pallet fork's ruby stone sits in a slot broached
+through its arm block, with a hand-set `gGap = 0.05` seat gap. The
+arm's own extrude bevel is `t * 0.08` = 0.096 at `FORK_T = 1.2`, and a
+bevel grows the outline along its outward normal — which, inside a
+notch, points INTO the slot. So each wall stood 0.046 inside the ruby
+it was holding. Found by drawing the fork ALONE in
+`test-geometry.html`, where it showed as z-fighting on the stone's
+face; unreadable in the movement at the Escapement framing, and
+invisible to every battery run ever made. Repaired by DERIVING the gap
+from the bevel (`gGap = armBevel + SEAT_SHOW`) rather than guessing
+against it — a stronger guard than an assert, because the two can no
+longer be edited apart. Same arithmetic as §34's alarm setting wheel
+(0.05 gap vs 0.045 of bevel): twice now, so it is a CLASS — **any
+extruded shape with a notch, whose bevel is not checked against what
+sits in the notch.** MODELING.md rule 1 covers face-to-face growth; it
+does not yet say this about notches.
+
+Note what this instance does to the interim proposed below: the stone
+and the arm block are BOTH fixtures — neither moves relative to the
+other at any pose — so a mover-vs-fixture split would never have
+looked at this pair. The interim is still worth building, but it is
+not sufficient, and a bevel-vs-neighbour check is a separate, cheaper
+idea that would have caught both this and §34's.
+
 **Why it cannot simply be switched on.** Inside a unit, parts are
 SUPPOSED to touch — a pivot in its bearing, a wheel on its arbor, a
 screw in its seat. A naive intra-unit sweep would light up with
