@@ -4844,6 +4844,14 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   const flange = new THREE.Mesh(ringGeo(ALARM_TUBE_OUTER, ALARM_FLANGE_OUT, ALARM_FLANGE_T), MATS.steel);
   flange.position.z = ALARM_TUBE_BACK - ALARM_FLANGE_T / 2;
   alarmTubeGroup.add(flange);
+  // §34 first slice: the INDEX LINE — the wedge's partner on the tube's
+  // carrier flange, at the SAME local azimuth 0 (the armed identity is the
+  // registration). A thin blued bar on the flange's plate-side face, proud
+  // 0.02 into the flange→heart margin (0.15; §29's chain — declared).
+  const idxLine = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.06, 0.02), MATS.blueSteel);
+  idxLine.name = 'alarmIndexLine';
+  idxLine.position.set(3.7, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - 0.01);
+  alarmTubeGroup.add(idxLine);
   // Pivot post: flange underside down through the heart/arm band's bottom —
   // both ends DERIVED so the post tracks the §29 step 1 re-stratification.
   const postH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - (ALARM_HEART_Z - ALARM_HEART_T / 2);
@@ -4925,6 +4933,18 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
   wheel.position.z = -(0.05 + ALARM_SET_T / 2); // band −0.05..−0.23 (dialFace local; ALARM_SET_Z is this plane in world)
   alarmSetWheelGroup.add(wheel);
+  // §34 first slice: the INDEX WEDGE — a chamfered blued mark proud of the
+  // wheel's dial-side face, the readable half of the coupling. Proud 0.03
+  // into the 0.05 sheet gap (0.02 kept — inside the crisp-face budget the
+  // gap exists to protect; declared here, not discovered). Placed at the
+  // wheel's local azimuth 0: the §25 armed identity (wheel ≡ tube) makes it
+  // REGISTER with the flange's line at every armed pose, for any setting.
+  const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, 0.42, 3), MATS.blueSteel);
+  wedge.name = 'alarmIndexWedge';
+  wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
+  wedge.position.set(4.45, 0, -0.05 + 0.015); // proud 0.03 of the face at −0.05
+  wedge.rotation.x = Math.PI / 2;
+  alarmSetWheelGroup.add(wedge);
 }
 
 // --- 'Alarm setting idler' — plain idler spanning setting wheel → arbor
@@ -6577,6 +6597,7 @@ panel.innerHTML = `
       </div>
       <div class="row label-small"><span>Set for</span><span class="readout" id="readout-alarm" style="font-size:13px;">12:00</span></div>
       <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
+      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling">Show</button></div>
       <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
       <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
     </div>
@@ -7457,6 +7478,7 @@ function setAlarm(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!alarmOn));
+document.getElementById('btn-coupling').addEventListener('click', () => scriptStart(ALARM_COUPLING_STEPS, document.getElementById('btn-coupling'))); // §34
 function alarmCrownSyncLabel() {
   const b = document.getElementById('btn-alarm-crown');
   b.textContent = alarmCrownOut ? 'Push to wind' : 'Pull to set';
@@ -7868,6 +7890,7 @@ function settingTurnRad(minutes) {
 }
 
 let scriptSteps = null;         // active step list, or null when idle
+let scriptAlarmTurnRad = 0;     // §34: pending scripted alarm-crown turn (radians)
 let scriptIdx = 0;
 let scriptBtn = null;           // the Guided button that started the run
 let scriptDwell = 0;            // s held since the current step's actions settled
@@ -7890,6 +7913,10 @@ function scriptEnterStep(i) {
   if (s.xray !== undefined) setXray(s.xray);
   if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
   if (s.turnMinutes) scriptTurnRad = settingTurnRad(s.turnMinutes);
+  // §34 first slice — the alarm vocabulary, same shape as the crown's:
+  if (s.alarm !== undefined) setAlarm(s.alarm);
+  if (s.alarmCrown) { alarmCrownOut = (s.alarmCrown === 'out'); alarmCrownSyncLabel(); }
+  if (s.turnAlarmHours) scriptAlarmTurnRad = s.turnAlarmHours * (2 * Math.PI / 4); // one crown rev = 4 h through the 10/30 train
   if (s.wind) autoWindRemaining += s.wind * 2 * Math.PI;
   if (s.sync) { syncStart(); updateCrownUI(); }
   if (s.caption !== undefined) captionEl.textContent = s.caption;
@@ -7909,6 +7936,14 @@ function scriptUpdate(realDt) {
     scriptTurnRad -= stepRad;
     if (Math.abs(scriptTurnRad) < 1e-6) scriptTurnRad = 0;
   }
+  // §34: the alarm crown's scripted turn — gated on ITS stem position the
+  // same way (pulled = the set path; tick banks alarmSetRot from the delta).
+  if (scriptAlarmTurnRad !== 0 && alarmCrownPullT > 0.5) {
+    const stepRad = Math.sign(scriptAlarmTurnRad) * Math.min(Math.abs(scriptAlarmTurnRad), SCRIPT_SET_RATE * realDt);
+    alarmCrownRotation += stepRad;
+    scriptAlarmTurnRad -= stepRad;
+    if (Math.abs(scriptAlarmTurnRad) < 1e-6) scriptAlarmTurnRad = 0;
+  }
   // Ease the exploded view toward the step's target and keep the slider honest.
   if (scriptExplodeTarget !== null) {
     explodeAmount += (scriptExplodeTarget - explodeAmount) * (1 - Math.exp(-realDt / SCRIPT_EXPLODE_TAU));
@@ -7920,7 +7955,8 @@ function scriptUpdate(realDt) {
   // sync must run all the way through catch-up, the explode must settle.
   const settled =
     (!s.crown || (s.crown === 'out' ? crownPullT > 0.95 : crownPullT < 0.05)) &&
-    scriptTurnRad === 0 &&
+    (!s.alarmCrown || (s.alarmCrown === 'out' ? alarmCrownPullT > 0.95 : alarmCrownPullT < 0.05)) &&
+    scriptTurnRad === 0 && scriptAlarmTurnRad === 0 &&
     (!s.wind || autoWindRemaining <= 0) &&
     (!s.sync || syncPhase === null) &&
     scriptExplodeTarget === null;
@@ -8012,6 +8048,29 @@ const DEMO_STEPS = [
   { crown: 'out', caption: 'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star', dwell: 0.7 },
   { turnMinutes: 4, caption: 'Turn to set — the beak snaps the hand one exact minute per detent', dwell: 0.9 },
   { crown: 'in', scale: 1, caption: 'Push home — the jumper lifts and the watch runs on, synchronised', dwell: 1.6 },
+];
+
+// §34 first slice — the COUPLING demo: the same engine, the alarm's
+// vocabulary. The star of the show is the index pair (wedge on the wheel,
+// line on the flange): split = the friction bore slipping, registered =
+// coupled. The disarmed-set step makes the slip VISIBLE immediately (the
+// wheel turns alone while the heart holds the tube), which no time-scale
+// wait could show as crisply.
+const ALARM_COUPLING_STEPS = [
+  { preset: 'Dial', xray: true, alarm: false, alarmCrown: 'in', scale: 1, labels: false, explode: 0,
+    caption: 'The alarm coupling, behind the dial: a blued index WEDGE on the setting wheel, its partner LINE on the tube\u2019s flange', dwell: 3.0 },
+  { alarmCrown: 'out',
+    caption: 'Disarmed, pull the alarm crown\u2026', dwell: 1.2 },
+  { turnAlarmHours: 3,
+    caption: '\u2026and set: the WHEEL turns alone \u2014 the tube stays with the hour hand (the heart holds it). The marks SPLIT: that relative angle IS the alarm time, and the wheel is what remembers it', dwell: 4.0 },
+  { alarmCrown: 'in', alarm: true,
+    caption: 'ARM: the tube leaves the hour hand and snaps to the wheel \u2014 the marks REGISTER at the remembered time', dwell: 3.5 },
+  { alarmCrown: 'out', turnAlarmHours: 1.5,
+    caption: 'Set while armed: LOCKSTEP \u2014 wheel and tube move together, marks registered, the alarm hand sweeping with them', dwell: 3.5 },
+  { alarmCrown: 'in', alarm: false,
+    caption: 'DISARM: the spring snaps the hand home under the hour hand \u2014 the marks split to exactly the set angle. Nothing forgot', dwell: 3.0 },
+  { alarm: true,
+    caption: 'ARM again: it registers at the SAME marks \u2014 the wheel never forgot. (\u00a734 proper makes this coupling a second heart instead of an asserted friction)', dwell: 4.0 },
 ];
 
 // §17 — Guided tour: the same engine over more stops. The jumper stop reuses
@@ -9182,6 +9241,18 @@ window.__clock = {
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
     alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives on the next tick
+    // §34 harvest (found by §31's battery, independent of its geometry):
+    // the EXPLODE is a persistent user input that MOVES UNITS, restored
+    // from saved UI state across reloads — a sweep on a session that left
+    // it open ran on displaced geometry (a phantom detent⇄chain zero that
+    // pristine main clears by 0.64). The battery's canonical state is the
+    // ASSEMBLED watch.
+    explodeAmount = 0; selectedUnit = 'All'; updateExplode();
+    // …and the CHAIN's mesh is a BAKED PATH (the fingerprint's exclusion)
+    // that only rebuilds on a tension DELTA — a chain baked around an
+    // exploded drum keeps that shape forever at constant tension.
+    // Invalidate it so the next tick re-bakes from assembled geometry.
+    lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
   },
@@ -9228,6 +9299,7 @@ window.__clock = {
   render() { renderer.render(scene, camera); },
   // Guided demo/tour (BUILT §5/§17) hooks — for unattended verification.
   startDemo() { scriptStart(DEMO_STEPS, document.getElementById('btn-demo')); },
+  startCouplingDemo() { scriptStart(ALARM_COUPLING_STEPS, document.getElementById('btn-coupling')); }, // §34 first slice
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionEl.textContent } : null; },
   // Deterministic per-frame advance for verification (rAF is paused when the
