@@ -793,6 +793,7 @@ const backPlate = G.makeBackPlate({
     { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
     { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
     { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
+    { x: -33.55, y: 17.84, r: 0.45 },              // §35: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build). r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1) — 0.28 sealed, ray-verified open at 0.45
   ],
   slots: [{
     ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
@@ -3390,6 +3391,7 @@ checkCutVsPivots();
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
+tqHoles.push({ x: -33.55, y: 17.84, r: 0.45 }); // §35: the selector rod passes the plate top beside the column wheel (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -4939,6 +4941,7 @@ const alarmPinArmB = new THREE.Group();
 // blade-A off, ring UP (disarmed) flexes blade-B off. The tube's law reads
 // the SELECTOR's state — alarmOn only turns the column wheel, and the
 // column→ring run is §35's filed debt (MECH_GRAPH.todo carries it).
+const ALARM_LINK_AZ_DEG = 158; // §35: the link run's INNER-end azimuth — the ring's drive tab sits on it (dial-local mirror), so it is hoisted here with the selector
 const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75, ALARM_SEL_T = 0.10;
 const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger throw it buys makes the
                                // armed B:A preload ratio 3.1 (the first cut, 0.14, measured 2.6 and
@@ -4968,6 +4971,15 @@ const alarmSelRing = new THREE.Group();
     sleeve.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, 0);
     alarmSelRing.add(sleeve);
   }
+  // §35: the DRIVE TAB — the centre crank's landing, on the corridor's
+  // azimuth (dial-local mirror of world 155°). Its underside is the
+  // pressed face; the crank lifts it (world-up = armed).
+  const tabAz = Math.PI - ALARM_LINK_AZ_DEG * DEG2RAD;
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.35, ALARM_SEL_T), MATS.nickel);
+  tab.name = 'alarmSelTab';
+  tab.position.set(Math.cos(tabAz) * (ALARM_SEL_R_OUT + 0.45), Math.sin(tabAz) * (ALARM_SEL_R_OUT + 0.45), 0);
+  tab.rotation.z = tabAz;
+  alarmSelRing.add(tab);
   alarmSelRing.position.z = ALARM_SEL_Z_UP - ALARM_SEL_T / 2;
   alarmSelectorUnit.add(alarmSelRing);
   // the posts: sheet's back face down past the ring's lowest travel
@@ -6289,15 +6301,24 @@ registerExplode(alarmSwitchUnit, 0, 9);
 // castellation's radial lift is exactly the tail's press direction.
 const ALARM_COL_COLUMNS = 6;
 const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuation
+// §35 (owner's call): the wheel grows 1.5 → 2.1 — it reads to THREE members
+// now (brake beak, click, the §35 link beak) plus the pusher's pawl, and the
+// castellation annulus was too tight for a fourth rider. Every riding
+// radius below DERIVES from this one constant; the wheel's stand-off from
+// the lock pivot grows by the same delta so the brake beak's reach is
+// unchanged.
+const ALARM_COL_BASE_R = 2.1;
+const ALARM_COL_INNER = ALARM_COL_BASE_R * (0.95 / 1.5); // the original proportion, kept
 const ALARM_COL_POS = {
-  x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * 3.8,
-  y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * 3.8,
+  x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
+  y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
 };
 // Steel, not blued (owner's finish call), bore 0.30 over a 0.24 stud (0.06
 // running clearance — the first build had bore = stud and the post punched
 // out through the castellations). Raised so the ratchet skirt clears the
 // plate top by a full margin instead of sitting dead on it.
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: 1.5, baseH: 0.3, colH: 0.55, colInner: 0.95, boreR: 0.30, material: MATS.steel });
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: 0.3, colH: 0.55, colInner: ALARM_COL_INNER, boreR: 0.30, material: MATS.steel });
+alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
 const alarmColSpin = new THREE.Group();
 alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + 0.22);
 // Phase the wheel so the BEAK's azimuth (from the wheel toward the lock tail,
@@ -6331,8 +6352,8 @@ const ALARM_CLICK_AZ = ALARM_LOCK_ENGAGED + 2 * (Math.PI * 2 / ALARM_COL_COLUMNS
 // radial arm rocked the nose sideways along the ring — and buried it in it.
 const ALARM_CLICK_NOSE_R = 0.28;
 const ALARM_CLICK_L = 2.0;
-const ALARM_CLICK_SEAT = 1.30;                 // nose centre, dropped in a gap
-const ALARM_CLICK_OUT = 1.5 + ALARM_CLICK_NOSE_R; // nose centre riding a column
+const ALARM_CLICK_SEAT = ALARM_COL_BASE_R * (1.30 / 1.5); // nose centre, dropped in a gap (proportion kept through the §35 resize)
+const ALARM_CLICK_OUT = ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R; // nose centre riding a column
 const ALARM_CLICK_SWING = (ALARM_CLICK_OUT - ALARM_CLICK_SEAT) / ALARM_CLICK_L;
 const _clickDir = { x: Math.cos(ALARM_CLICK_AZ), y: Math.sin(ALARM_CLICK_AZ) };      // wheel centre → contact
 const _clickTan = { x: -_clickDir.y, y: _clickDir.x };
@@ -6372,10 +6393,175 @@ const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSea
 // index = half a column pitch. §3's case band will bore for exactly this
 // stem. The press animates on EVERY actuation (button, wheel tap, or pusher
 // tap) — the pose derives from the same state either way.
+// --- '(§35) the unbroken link' — pusher to arm/disarm, every member real --
+// The column wheel lives at the RIM; the selector ring at the CENTRE — 32
+// units apart, which no lever should span. The real-watch answer is a LAY
+// SHAFT: a thin arbor under the base plate running radially along the
+// column's azimuth (162.6° — measured clear: z-separated 1.5 above the
+// keyless plane, outside the 12-well locus entirely, 1.79 from the
+// motion-works stud), a crank at each end. The chain: SECOND BEAK on the
+// §25 D column (120° around — the same parity, read from the same
+// castellations) → vertical ROD down bores in both plates (the §29 climb
+// precedent) → rim crank → lay shaft → centre crank pressing the ring's
+// DRIVE TAB. Rod down = ring down = armed. alarmOn is a readout now.
+// (ALARM_LINK_AZ is derived below, AFTER the rod's site — the shaft must
+// run under the ROD, which sits 2.9 tangentially off the wheel.)
+// The rod stands ON the corridor's azimuth at the rim — the plate-top
+// probe put the free sector NNE of the wheel, which is where az 155°'s
+// rim intersection lands (the lock lever's furniture is east, the
+// striking wheel farther east, the pusher on the wheel's own azimuth).
+const _linkAz = ALARM_LINK_AZ_DEG * DEG2RAD;
+// §35 corridor — RAY-PROBED, not vertex-probed, and probed across the POSE
+// SWEEPS. Three straight-corridor attempts died to instrument blindness:
+// vertex scans cannot see face interiors (slabs, wheel discs), rest-pose
+// probes cannot see the fusee chain's reserve-swept fan (it owns every rod
+// column az 162–173 at the rim), and a probe offset at exactly
+// radius+margin reads a legal at-margin fit as a hit. With honest
+// instruments (5-ray bundles at ±0.2685, boolean BVH vs the chain across
+// tension 0→1), NO straight chord exists from any chain-clean rod column
+// to the ring: the yoke and the keyless rim piece fence the west arc.
+// The link therefore runs in TWO lay shafts meeting at a crank knuckle:
+//   rod column az 152° r 38 (chain-clean, full climb clean)
+//   → shaft A to the joint az 185° r 27 (headroom for the knuckle probed)
+//   → shaft B to the ring at az 158° r 5.4 (tab az 22° dial-local mirror).
+// Shaft z −6.26: bottom −6.38 vs the keyless piece top −6.549 → 0.169
+// (−6.28 failed: 0.149 is a hair inside the one margin).
+const ALARM_LINK_SHAFT_Z = -6.26;
+const ALARM_LINK_ROD_AZ_DEG = 152, ALARM_LINK_ROD_R = 38;
+const _rodAz = ALARM_LINK_ROD_AZ_DEG * DEG2RAD;
+const ALARM_LINK_ROD_XY = { x: Math.cos(_rodAz) * ALARM_LINK_ROD_R, y: Math.sin(_rodAz) * ALARM_LINK_ROD_R };
+const _linkJointAz = 185 * DEG2RAD;
+const ALARM_LINK_JOINT_XY = { x: Math.cos(_linkJointAz) * 27, y: Math.sin(_linkJointAz) * 27 };
+const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
+const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
+
+const ALARM_LINK_BEAK_OFF = (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
+const ALARM_LINK_ROD_TRAVEL = 0.42;                 // the beak's fall into a gap, at the rod
+const alarmLinkUnit = new THREE.Group();
+movement.add(alarmLinkUnit);
+registerLabel('Alarm link', alarmLinkUnit);
+registerExplode(alarmLinkUnit, 0, 4, -1); // dial-side chain: explodes toward the dial
+const alarmLinkParts = {};
+{
+  // The SECOND BEAK: a small lever on the plate top, COLLINEAR by
+  // construction — the pivot sits ON the wheel→rod segment, so the nose
+  // (toward the wheel) reads the castellations and the tail (opposite)
+  // lands exactly over the rod.
+  const wr = { x: ALARM_LINK_ROD_XY.x - ALARM_COL_POS.x, y: ALARM_LINK_ROD_XY.y - ALARM_COL_POS.y };
+  const wrLen = Math.hypot(wr.x, wr.y);
+  const uwr = { x: wr.x / wrLen, y: wr.y / wrLen };
+  const pivDist = ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04; // post r 0.16 fully clear of the wheel's skirt
+  const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
+  const beakArm = new THREE.Group();
+  beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_LOCK_Z + 0.80);
+  const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
+  beakArm.rotation.z = beakAim;
+  const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
+  const beakLen = pivDist - noseR;
+  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, 0.22, 0.14), MATS.steel);
+  beakBar.position.x = beakLen / 2;
+  beakArm.add(beakBar);
+  const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.22), MATS.steel);
+  beakNose.name = 'alarmLinkBeak';
+  beakNose.position.x = beakLen;
+  beakArm.add(beakNose);
+  // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
+  const tailLen = wrLen - pivDist;
+  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, 0.2, 0.12), MATS.steel);
+  beakTail.position.x = -tailLen / 2;
+  beakArm.add(beakTail);
+  const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.5, 10), MATS.steel);
+  beakPost.rotation.x = Math.PI / 2;
+  beakPost.position.set(beakPiv.x, beakPiv.y, ALARM_LOCK_Z + 0.55);
+  alarmLinkUnit.add(beakPost);
+  alarmLinkUnit.add(beakArm);
+  alarmLinkParts.beakArm = beakArm;
+  alarmLinkParts.beakAim = beakAim;
+  // The ROD: from the beak's tail down through both plates to shaft A's rim crank.
+  const rodLen = (ALARM_LOCK_Z + 0.74) - (ALARM_LINK_SHAFT_Z + 0.25);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, rodLen, 10), MATS.steel);
+  rod.name = 'alarmLinkRod';
+  rod.rotation.x = Math.PI / 2;
+  rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, (ALARM_LOCK_Z + 0.74 + ALARM_LINK_SHAFT_Z + 0.25) / 2);
+  alarmLinkUnit.add(rod);
+  alarmLinkParts.rod = rod;
+  // The TWO LAY SHAFTS, meeting at the knuckle. Each is a straight arbor
+  // on two plate-hung bushes; the knuckle transfers the rock 1:1 (equal
+  // crank lengths, A's pin under B's toe), so both shafts carry the SAME
+  // roll and the centre crank repeats the rod's throw at the ring.
+  const mkShaft = (pA, pB, names) => {
+    // +x end is pB.
+    const cx = { x: pB.x - pA.x, y: pB.y - pA.y };
+    const len = Math.hypot(cx.x, cx.y);
+    const g = new THREE.Group();
+    g.position.set((pA.x + pB.x) / 2, (pA.y + pB.y) / 2, ALARM_LINK_SHAFT_Z);
+    g.rotation.order = 'ZYX'; // the tick's rotation.x (roll) must turn ABOUT THE LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
+    g.rotation.z = Math.atan2(cx.y, cx.x);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, len, 8), MATS.steel);
+    bar.rotation.z = Math.PI / 2;
+    g.add(bar);
+    for (const [xLocal, nm] of [[len / 2, names[1]], [-len / 2, names[0]]]) {
+      if (!nm) continue;
+      const crank = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.45), MATS.steel);
+      crank.name = nm;
+      crank.position.set(xLocal, 0, 0.22); // pointing world-up
+      g.add(crank);
+    }
+    alarmLinkUnit.add(g);
+    return { g, len, u: { x: cx.x / len, y: cx.y / len } };
+  };
+  const A = mkShaft(ALARM_LINK_JOINT_XY, ALARM_LINK_ROD_XY, ['alarmLinkCrankKnuckleA', 'alarmLinkCrankRim']);
+  const B = mkShaft(ALARM_LINK_INNER_XY, ALARM_LINK_JOINT_XY, ['alarmLinkCrankCentre', 'alarmLinkCrankKnuckleB']);
+  // the knuckle: A's crank carries a cross-pin, B's crank a toe riding it
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), MATS.steel);
+  pin.position.set(-A.len / 2, 0, 0.36); // at A's knuckle crank tip
+  A.g.add(pin);
+  const toe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.06), MATS.steel);
+  toe.position.set(B.len / 2, 0, 0.45);
+  B.g.add(toe);
+  alarmLinkParts.shaft = A.g;
+  alarmLinkParts.shaftB = B.g;
+  alarmLinkParts.rodTop = ALARM_LOCK_Z + 0.74;
+  alarmLinkParts.beakLen = beakLen;
+  alarmLinkParts.tailLen = tailLen;
+  // bushes: hangers from the base plate's underside, at the chord stations
+  // whose full vertical columns the ray probe found clean
+  const hangAt = (from, u, t) => {
+    const hx = from.x + u.x * t, hy = from.y + u.y * t;
+    const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);
+    bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
+    bush.rotation.y = Math.PI / 2;
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel);
+    hanger.position.set(hx, hy, ((-2) + ALARM_LINK_SHAFT_Z) / 2 + 0.15);
+    alarmLinkUnit.add(bush);
+    alarmLinkUnit.add(hanger);
+  };
+  hangAt(ALARM_LINK_JOINT_XY, A.u, 3);    // shaft A, joint side
+  hangAt(ALARM_LINK_JOINT_XY, A.u, 19.7); // shaft A, rod side
+  hangAt(ALARM_LINK_INNER_XY, B.u, 10);   // shaft B, ring side — t 7 put the bush's 0.26 ring 0.02 off the minute jumper's furniture (the column probe's rays are thinner than the bush)
+  hangAt(ALARM_LINK_INNER_XY, B.u, 20);   // shaft B, joint side
+  // The plates' bores are LITERALS (they build long before ALARM_COL_POS
+  // exists) — assert they sit on the derived rod site:
+  if (Math.hypot(ALARM_LINK_ROD_XY.x - (-33.55), ALARM_LINK_ROD_XY.y - 17.84) > 0.25)
+    console.warn(`§35: the plate bores (−33.55, 17.84) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
+  // the shafts' bottoms vs the keyless piece under the west run (top measured −6.549):
+  if ((ALARM_LINK_SHAFT_Z - 0.12) - (-6.549) < CLEAR_MARGIN - 1e-9)
+    console.warn(`§35: shaft bottom ${(ALARM_LINK_SHAFT_Z - 0.12).toFixed(2)} inside the keyless piece's margin (−6.549)`);
+  // the run vs the crown-stroke linkage's swept record (Rule 5): the
+  // LOW_LINKAGE_OBSTACLES entries are 2D-only because their usual consumers
+  // (pillars, cock legs) span every z. The link consumes the record by
+  // Z-SEPARATION instead — the whole chain under the back plate sits below
+  // z −2, while the record's lowest member rides at z 0.17 (reset rod;
+  // hack rod 0.36, reset hammer 0.00, tail post above the floor plane) —
+  // so the 2D footprint never applies. Assert the separation itself:
+  if ((ALARM_LINK_SHAFT_Z + 0.12 + 0.45) > -2 + 1e-9)
+    console.warn(`§35: the link's under-plate band tops at ${(ALARM_LINK_SHAFT_Z + 0.12 + 0.45).toFixed(2)} — no longer z-separated from the low linkage's floor (0.17); its 2D swept record would apply`);
+}
+
 const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
 const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
 const _pushPerp = { x: -_pushU.y, y: _pushU.x };
-const ALARM_PUSH_CHORD = 1.15; // lateral offset — the pawl's line grazes the ratchet tangentially
+const ALARM_PUSH_CHORD = 1.15 * (ALARM_COL_BASE_R / 1.5); // lateral offset — the pawl's line grazes the ratchet tangentially (the skirt scaled with the wheel)
 const ALARM_PUSH_TRAVEL = 0.7;
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 const _pushBase = {
@@ -9112,13 +9298,31 @@ function tick(t) {
   // convention); the pose path (rawDt = 0) assigns exactly, so inspector
   // poses stay deterministic.
   {
-    // §34 pass 2b: the tube's law reads the SELECTOR — the ring's slide is
-    // the column parity's physical consequence (§35 owns making the run
-    // itself metal), the rocker's tip is the ring's, the bias is the
-    // rocker's, and the seat the bias favours is where the tube rests.
-    // alarmOn turns the column; the mechanism does the rest.
-    if (rawDt > 0) alarmSelShownT += ((alarmOn ? 1 : 0) - alarmSelShownT) * (1 - Math.exp(-rawDt / 0.10));
-    else alarmSelShownT = alarmOn ? 1 : 0;
+    // §35: the tube's law reads the selector; the SELECTOR now reads the
+    // COLUMN WHEEL — the link beak (120° around the same castellations)
+    // falls into a gap when armed, and the whole chain poses from that one
+    // derived quantity: beak → rod → lay shaft → centre crank → ring. The
+    // MECH_GRAPH.todo row is retired; alarmOn is a readout.
+    // The column's shown angle updates HERE — its first consumer in tick
+    // order. (The strike section's brake block reads it later the same
+    // tick; §29 step 5's one-tick-stale lesson, applied the third time.)
+    {
+      const colTarget = alarmColSteps * ALARM_COL_STEP;
+      if (rawDt > 0) alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
+      else alarmColShownA = colTarget;
+    }
+    const linkGapT = 1 - alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
+    if (rawDt > 0) alarmSelShownT += (linkGapT - alarmSelShownT) * (1 - Math.exp(-rawDt / 0.10));
+    else alarmSelShownT = linkGapT;
+    // the chain's members wear the same derived state (stateless poses):
+    {
+      const drop = ALARM_SEL_TRAVEL * (alarmLinkParts.beakLen / alarmLinkParts.tailLen); // nose fall sized so the rod's throw IS the ring's travel (1:1 cranks)
+      alarmLinkParts.beakArm.rotation.y = (drop / alarmLinkParts.beakLen) * alarmSelShownT; // nose falls into the gap
+      alarmLinkParts.rod.position.z = (alarmLinkParts.rodTop + ALARM_LINK_SHAFT_Z + 0.25) / 2 + ALARM_SEL_TRAVEL * alarmSelShownT; // tail up ⇒ rod up
+      const linkRoll = (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
+      alarmLinkParts.shaft.rotation.x = linkRoll;  // shaft A…
+      alarmLinkParts.shaftB.rotation.x = linkRoll; // …and shaft B carry the SAME roll: the knuckle is 1:1 (equal crank lengths, pin under toe)
+    }
     alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
     alarmRocker.rotation.y = -0.12 * (alarmSelShownT * 2 - 1); // see-saw tip, ±: pin follows the ring's face
     const tubeTarget = (alarmSelShownT > 0.5) ? -alarmAngle : mwHourA;
@@ -9226,12 +9430,8 @@ function tick(t) {
   // column GATES the brake's lift — the physical "off". The lever's pad sits
   // on the collar whenever the train is held and swings clear while it rings.
   {
-    const colTarget = alarmColSteps * ALARM_COL_STEP;
-    if (rawDt > 0) {
-      alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
-    } else {
-      alarmColShownA = colTarget;
-    }
+    // (alarmColShownA updates up at the selector block — its first consumer
+    // in tick order; here the wheel just wears the state.)
     alarmColumnWheel.rotation.z = -alarmColShownA; // the wheel turns UNDER the fixed-azimuth beak
     const colBlock = alarmColumnWheel.userData.profileAt(alarmColShownA);
     // §29 step 5: the brake is the ON/OFF STOP-WORK alone now — it lifts at
@@ -9440,7 +9640,7 @@ window.__clock = {
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   get bootWarns() { return __bootWarns; },
-  get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind }; }, // §29 step 5 verification surface
+  get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },

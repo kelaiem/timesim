@@ -1798,3 +1798,82 @@ carried §29's.
 session-independent · support 0 · graph clean (todo 2: §9's debt + the
 §35 run) · clearances 0 · inspection {includeExcluded} 0 FORBIDDEN ·
 budgets: pin-B⇄face-cam and sensing-pin⇄ring swept on the alarm axis.
+
+## §35 — The unbroken link: pusher to arming, as one mechanical chain
+
+**The debt.** §34 armed and disarmed with real geometry, but the
+column wheel's state reached the selector ring by decree: the tick
+read the wheel's angle and posed the ring. The user's ask — before 2b
+was even built — was an UNBROKEN mechanical run from the pusher's
+press all the way to the ring's slide. This section is that run:
+pusher → pawl → column wheel → beak → rod → lay shafts → crank →
+drive tab → ring. Every hand-off is a contact between two parts.
+
+**The corridor hunt, and the instruments that lied.** Three routes
+were built and torn out before this one, each signed off by a probe
+with a structural blind spot; the lessons are now general guidance
+(MODELING.md, "Free-space probing"):
+
+- Route 1 (radial, az 155, rod at the rim) — passed a
+  VERTEX-occupancy scan. Vertex scans see nothing in the interior of
+  a big face (slabs and wheel discs keep vertices only at hub and
+  rim); the "clean" line speared the keyless works, the yoke, and ran
+  the rod down the crown-stem's own azimuth.
+- Route 2 (chord, rod az 164 r 36.5, straight to the ring) — passed
+  5-ray bundles at rest. The reserve axis then swept the fusee
+  CHAIN's drum→fusee span across the rod column (the chain's fan owns
+  az 162–173 at the rim, z 7.1–7.6), and the chain is thin enough to
+  thread between bundle rays: only boolean BVH against the actual
+  mesh, swept over tension 0→1, sees it.
+- The search itself was once gated shut by a 0.001 graze: a probe
+  offset at EXACTLY radius+CLEAR_MARGIN reads a legal at-margin fit
+  as a hit (the keyless piece's real top is −6.549, not the assumed
+  −6.55). The corrected epsilon reopened a 3000-chord solution space.
+
+The surviving geometry, all ray-proved and re-proved across the pose
+axes: rod column az 152° r 38 (chain-clean across the whole reserve,
+full climb clean through both plates), and NO straight under-plate
+chord from there to the ring — the yoke and the keyless rim piece
+fence the west arc. Hence TWO lay shafts.
+
+**The parts.** The beak is a plate-top lever pivoted ON the
+wheel→rod segment (collinear by construction: post 2.45 from the
+wheel's centre — its own skirt clearance derived — nose landing
+mid-castellation, tail ending exactly over the rod). It reads the
+castellations 120° from the brake's read point (two pitches:
+identical parity). The rod drops through bevel-safe r 0.45 bores in
+both plates (r 0.28 was silently sealed by the plates' extrude bevel
+collar — MODELING.md rule 1's revenge; the bore-drift assert now has
+ray-proof behind it). Shaft A runs the rod's foot to a knuckle at
+az 185° r 27; shaft B runs the knuckle to the ring at az 158° —
+each an arbor at z −6.26 (bottom 0.169 above the keyless piece's
+measured top) on two plate-hung bushes at ray-proved stations (one
+station moved when the bush's 0.26 ring — fatter than the probe's
+rays — grazed the minute jumper at 0.02). The knuckle is A's
+cross-pin under B's toe: 1:1, equal crank lengths, so both shafts
+carry the same roll and the centre crank repeats the rod's throw
+under the ring's DRIVE TAB (a slotted boss at dial-local az 22°,
+the mirror of world 158°). Both shaft groups order their eulers
+'ZYX' — the roll must turn about the shaft's LENGTH; the default
+order rolls about world-x and tilts the arbor end-over-end (±2.3 in
+z at full throw, measured before the fix).
+
+**What the tick changed.** The column ease was HOISTED to the
+selector block (its first consumer — the third one-tick-stale lesson
+this feature has paid for); §25 D now only wears the eased state.
+The selector's target is `1 − profileAt(colA + 120°)`: the ring's
+slide IS the beak's read of the castellations, and the rod, shafts
+and cranks pose from the same derived quantity — the chain is one
+fact end to end. The LOW_LINKAGE_OBSTACLES record (2D by design —
+its usual consumers span every z) is consumed by a z-separation
+assert: the whole under-plate run tops at −5.69, the record's lowest
+member rides at 0.17.
+
+**Battery (final tree, 47 units).** bootWarns [] · support 0 ·
+graph clean (todo 1: §9's debt — the §35 row is retired) ·
+clearances 0 · penetration within budgets (beak⇄castellations on
+alarmStrike, crank⇄ring on alarm) · inspection {includeExcluded}
+0 FORBIDDEN · measured at the armed pose: keyless 0.162, yoke
+0.271, minute jumper 0.164, drum 2.481; ring slide and rod throw
+both 0.19 across the toggle; the coupling demo steps the column
+30°/press with profLink flipping 0/1.

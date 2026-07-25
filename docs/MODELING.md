@@ -80,6 +80,34 @@ Some contacts ARE the mechanism — never "fix" these to a gap:
 A future automated sweep needs these registered explicitly (pair + expected
 contact: tangent vs. sweeping) so everything *else* can be flagged at any depth.
 
+## Free-space probing (the §35 lessons)
+
+Corridor and free-space questions are answered by RAYS and BOOLEAN BVH, never
+by vertex sampling, and always across the pose sweeps:
+
+- **Vertex-occupancy scans are structurally blind.** An extruded slab or a
+  cylinder's disc keeps vertices only at its hub, rim, and corners — the face
+  interior samples as empty space. Three §35 corridors passed vertex scans and
+  speared wheels and slabs. Raycasts hit triangle interiors;
+  `boundsTree.intersectsGeometry` is the primitive this codebase trusts.
+- **Ray bundles under-sample thin movers.** The fusee chain threads between
+  bundle rays spaced 0.27 apart. Anything thin (chains, springs, fingers) must
+  be tested with boolean BVH against its actual mesh.
+- **Probe across the pose axes, not the rest pose.** The chain's drum→fusee
+  span sweeps a whole azimuth fan as the reserve runs down; the rest pose
+  showed every column clean. Sweep the axis that moves the part (reserve for
+  the chain, alarmStrike for the hammer, crown for the keyless).
+- **Back probe offsets off the margin boundary by an epsilon.** An offset at
+  exactly radius+CLEAR_MARGIN registers a legal at-margin fit as a hit; a
+  0.001 graze once gated an entire 3000-solution search space shut.
+- **`closestPointToGeometry` target points are unreliable at distance 0**
+  (the tri-intersection short-circuit fills nothing meaningful). Use the
+  points only when d > 0; identify contacts with `intersectsGeometry` per
+  mesh pair.
+- **Probe at the consumer's true radius.** A column probe whose rays span
+  0.29 clears a 0.12 shaft but not the 0.26 bush ring around it — the §35
+  jumper graze. Probe with the fattest part that will occupy the corridor.
+
 ## Verification protocol
 
 1. **Numeric first**: compute min separation across the pose sweep, before and
