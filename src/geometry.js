@@ -295,6 +295,19 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const forkTop = -L * 0.8;
   const forkY = -L;
 
+  // §16 — the wheel geometry this fork is CUT TO, derived ONCE and shared by
+  // the body outline, the stone seats and the clearance asserts. All three
+  // used to re-derive it: `Rwheel`/`Dwheel` up here and `R`/`D` down in the
+  // stone block, from character-identical expressions, with both pairs live
+  // inside the same closure (the asserts inside stoneAndArm read `Rwheel`
+  // while its seats read `R`). Two names for one quantity is a divergence
+  // waiting for the first person who tunes one of them. Likewise the bank
+  // default, which was spelled `bankRad ?? 0.045` in three places.
+  const EMBRACE_DEG = 42;  // lever embrace — a horological constant, like DRAW_DEG below
+  const R = span / (2 * Math.sin(THREE.MathUtils.degToRad(EMBRACE_DEG)));
+  const D = span / 2 + Math.sqrt(Math.max(R * R - (span / 2) ** 2, 0));
+  const bank = bankRad ?? 0.045;
+
   // Single crafted body: belly + lever + fork horns + notch, topped by a
   // LOW shoulder line. The old outline reached arm blobs up beside the
   // wheel and spanned them with a concave web whose midpoint sat INSIDE
@@ -309,11 +322,9 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // and the forkTop/forkY anchors the bank-angle derivation uses.
   const waistHW = leverHW * 0.62;              // narrowest point of the lever
   const yWaist = (-t * 0.4 + forkTop) / 2;     // mid-length
-  const Rwheel = span / (2 * Math.sin(THREE.MathUtils.degToRad(42)));
-  const Dwheel = span / 2 + Math.sqrt(Math.max(Rwheel * Rwheel - (span / 2) ** 2, 0));
   const shoulderX = t * 1.8;
-  const bankAllow = (bankRad ?? 0.045) * Math.hypot(shoulderX, Dwheel - Rwheel); // swing sweep of a top point
-  const topY = Dwheel - (Rwheel + 0.15 + bankAllow) - 0.05; // the |p−W| bound at x = 0, with slack
+  const bankAllow = bank * Math.hypot(shoulderX, D - R); // swing sweep of a top point
+  const topY = D - (R + 0.15 + bankAllow) - 0.05; // the |p−W| bound at x = 0, with slack
   const s = new THREE.Shape();
   s.moveTo(-shoulderX, topY); // 1 left shoulder
   s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 2 belly -> lever
@@ -389,15 +400,12 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //     contact error is bounded by the two arc sagittas (≈0.03) — inside
   //     the inspector's 0.1 penetration budget by construction.
   // -------------------------------------------------------------------------
-  const DRAW_DEG = 12; // horological constant, like the 42° embrace
-  const R = span / (2 * Math.sin(THREE.MathUtils.degToRad(42)));
-  const D = span / 2 + Math.sqrt(Math.max(R * R - (span / 2) ** 2, 0));
+  const DRAW_DEG = 12; // horological constant, like the EMBRACE_DEG above
   const pitchArc = (2 * Math.PI * R) / 15;
   const stoneW = 0.32 * pitchArc;  // well under one tooth spacing
   const stoneL = 0.9 * pitchArc;   // slot-buried tail included
   const cornerLen = Math.hypot(span / 2, span / 2); // |C|
   const beat = beatRad ?? THREE.MathUtils.degToRad(12);
-  const bank = bankRad ?? 0.045;
   const entryPos = new THREE.Vector3(-ax, sy, 0);
   const exitPos = new THREE.Vector3(ax, sy, 0);
 
@@ -464,7 +472,21 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     // stone footprint + seat gap g all around), nose edge at m along the
     // lean axis (the stone shows m of ruby past the arm), notch open at
     // the nose.
-    const gGap = 0.05;                    // visible seat gap around the stone
+    // §16 — the seat gap must CLEAR the arm's own extrude bevel. The bevel
+    // grows the outline along its outward normal, and inside a notch that
+    // direction points INTO the slot, so each wall creeps armBevel back
+    // toward the ruby it is meant to hold. At FORK_T = 1.2 that is 0.096
+    // against a hand-set 0.05 gap — 0.046 of steel standing inside the
+    // stone, which renders as z-fighting on the ruby's face and which the
+    // battery CANNOT see: arm and stone are the same unit, and same-unit
+    // overlap is the sweep's documented blind spot (CLAUDE.md, TODO.md
+    // item 5). This is MODELING.md rule 1, and the same arithmetic §34 hit
+    // on the alarm setting wheel (0.05 gap vs 0.045 of bevel). There the
+    // answer was a crisp face; here the arm keeps its softened edge, so the
+    // GAP is DERIVED from the bevel rather than guessed against it.
+    const armBevel = t * 0.08;
+    const SEAT_SHOW = 0.05;               // the seat line the stone should actually show
+    const gGap = armBevel + SEAT_SHOW;    // bevel first, then the gap that survives it
     const m = 0.4 * stoneL;               // ruby protrusion past the arm's nose
     const wallW = 0.55;
     const sxL = -stoneW - gGap - wallW, sxR = gGap + wallW; // block outer x
@@ -480,7 +502,6 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     ash.lineTo(nx1, yF);
     ash.lineTo(nx1, yN);
     ash.closePath();
-    const armBevel = t * 0.08;
     const armGeo = new THREE.ExtrudeGeometry(ash, {
       depth: t, bevelEnabled: true, bevelThickness: armBevel, bevelSize: armBevel,
       bevelSegments: 1, curveSegments: 1,
@@ -516,7 +537,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
       seat.y + Math.sin(rotZ) * lx + Math.cos(rotZ) * ly);
     for (const [lx, ly] of [[sxL, yN], [sxR, yN], [sxL, yB], [sxR, yB]]) {
       const p = worldPt(lx, ly);
-      const clr = p.distanceTo(W) - Rwheel - (bankRad ?? 0.045) * p.length();
+      const clr = p.distanceTo(W) - R - bank * p.length();
       if (clr < 0.1)
         console.warn('pallet arm: steel within the wheel sweep', sigma, clr.toFixed(3));
     }
