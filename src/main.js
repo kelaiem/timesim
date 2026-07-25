@@ -39,7 +39,16 @@ const DEG2RAD = Math.PI / 180;
 // the list: "boot is silent" now means __clock.bootWarns.length === 0,
 // checkable, per-boot, unambiguous.
 const __bootWarns = [];
-{ const _w = console.warn.bind(console); console.warn = (...a) => { __bootWarns.push(a.map(String).join(' ')); _w(...a); }; }
+{
+  const _w = console.warn.bind(console);
+  console.warn = (...a) => {
+    const msg = a.map(String).join(' ');
+    // three-mesh-bvh's coplanar-triangle warn is library chatter from the
+    // inspection sweeps, not one of our asserts — it would bury real warns.
+    if (!msg.startsWith('ExtendedTriangle.intersectsTriangle')) __bootWarns.push(msg);
+    _w(...a);
+  };
+}
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
@@ -6219,7 +6228,7 @@ let jumpCorr = 0;
 // backlog of events).
 let sndBeatN = null, sndBeatRaw = null, sndPawlIdx = null, sndDetIdx = null, sndJumpIdx = null;
 let sndCrownOut = null, sndHammerHit = false;
-let alarmPrevRel = null; // §25 B: previous hour-wheel→alarm-tube angle gap — the trip edge is now the PHYSICAL alignment (the follower dropping into the heart's notch), not §24's seconds comparison
+let alarmDropSpent = false; // §29 step 5: one-shot latch — the pin's current drop has already fired its release (re-arms when the pin lifts off the notch)
 let alarmLockLiftT = 0;  // §25 B: eased brake-lever lift (1 = released, pad clear of the collar)
 let alarmColSteps = 0;   // §25 D: column-wheel actuations — parity IS the on/off (odd = gap under the beak = ON)
 let alarmColShownA = 0;  // eased wheel angle (transient; the pose path assigns exactly)
@@ -7439,7 +7448,7 @@ window.addEventListener('keydown', () => {
 // writes the set time; that is set by turning the alarm crown in 3D (Rule 2),
 // and the readout below is derived from the disc's angle. Turning it on while
 // the display sits before the target arms silently until the crossing;
-// `alarmPrevRel` resets each mute/FF gap so re-arming never machine-guns.
+// `alarmDropSpent` latches across each mute/FF gap so re-arming never machine-guns.
 function setAlarm(on) {
   if (on !== alarmOn) { alarmColSteps += 1; alarmPusherT = 1; } // §25 D: one actuation = one pusher press = half a pitch
   alarmOn = on;
@@ -8681,17 +8690,49 @@ function tick(t) {
     // clockwise ⇒ rel falls; a jump of more than half a turn in one tick is
     // a hand-set wrap, not a crossing).
     const rel = wrapPi(mwHourA - alarmTubeShownA);
-    if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && alarmPrevRel !== null) {
-      const step = wrapPi(rel - alarmPrevRel);
-      if (step < 0 && step > -Math.PI && alarmPrevRel > 0 && rel <= 0) {
-        alarmReleased = true;            // the brake lever swings off the collar — the striking train is free
-        // §25 C: the phase CONTINUES from wherever winding parked it (lockstep
-        // with the barrel — resetting it here would slip the mesh by however
-        // much the last wind was short of full).
-        alarmStrikeIdx = Math.floor(alarmStrikePhase - ALARM_STRIKE_U);
-      }
+    // §29 step 5 ordering: the strike section runs EARLIER in tick than the
+    // alarm-setting section that poses the disc, so the pin's drop is
+    // computed HERE from the same closed forms — the trip must read THIS
+    // tick's pin, not the previous pose's (a one-tick-stale pin broke
+    // setPose determinism and once fired a release from a prior session's
+    // state). The later disc block re-derives the identical value for the
+    // visual pose; both are pure functions of the same inputs.
+    {
+      const discRotNow = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+      const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
+      const gapHalf = ALARM_NOTCH_W / 2;
+      const align = Math.abs(wrapPi(discRotNow - ALARM_RELEASE_PHASE));
+      alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
+        : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
+        : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
     }
-    alarmPrevRel = rel;
+    // §29 step 5: the trip IS the pin's drop. The physical chain — disc's
+    // notch arriving under the pin, the lever bottoming on its stop, the
+    // pawl withdrawing clear of the contrate — is what frees the train;
+    // the §25 B angle-crossing survives as the AGREEMENT ASSERT: a pin
+    // that bottoms outside the coincidence window means the differential's
+    // encoding has drifted from the tube's, and that is a defect, not a
+    // ring. One-shot per drop (alarmDropSpent re-arms when the pin lifts),
+    // which also makes FF/catch-up jumps honest: landing mid-window rings
+    // once, exactly as the skipped time would have.
+    if (alarmPinDropNow < ALARM_PIN_DROP - 1e-9) alarmDropSpent = false;
+    if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && !alarmDropSpent
+        && alarmPinDropNow >= ALARM_PIN_DROP - 1e-9) {
+      // The agreement is checked in TARGET space (the tube's mechanical set
+      // angle), not against alarmTubeShownA: the shown angle is an EASE and
+      // cannot move under a zero-dt setPose tick (the documented trap), so
+      // a posed jump would false-fire the assert while the pin is exactly
+      // where the mechanism puts it.
+      const relTarget = wrapPi(mwHourA + alarmDiscAngle());
+      if (Math.abs(relTarget) > ALARM_NOTCH_W)
+        console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad from coincidence — detector and arithmetic disagree (window ${ALARM_NOTCH_W})`);
+      alarmReleased = true;              // both holds now off: the brake lifted at arming, the pawl just withdrew
+      alarmDropSpent = true;
+      // §25 C: the phase CONTINUES from wherever winding parked it (lockstep
+      // with the barrel — resetting it here would slip the mesh by however
+      // much the last wind was short of full).
+      alarmStrikeIdx = Math.floor(alarmStrikePhase - ALARM_STRIKE_U);
+    }
     // Ring: while released, armed and wound, the striking train runs at the
     // cadence the gong wants and the barrel gives up EXACTLY the turning the
     // train takes — one spend, two variables, so §25's geometry cannot drift
@@ -8715,7 +8756,7 @@ function tick(t) {
       alarmReleased = false;
     }
   } else {
-    alarmPrevRel = null; // re-enabling after FF / catch-up stays silent until the next real crossing
+    alarmDropSpent = true; // re-enabling after FF / catch-up: the CURRENT drop (if the jump landed mid-window) is treated as already heard — the next notch arrival rings
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
@@ -8861,18 +8902,9 @@ function tick(t) {
   alarmDiscGroup.rotation.z = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
   // §29 step 3: the pin RIDES the track — its lift IS the surface under it,
   // a pure function of the disc's angle (no ease, no state: setPose poses
-  // it exactly). Between the gap's edges the drop ramps over the pin's own
-  // arc (a round pin can't fall square past a corner); fully aligned it
-  // rests on the bracket's banking stop at ALARM_PIN_DROP.
-  {
-    const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
-    const gapHalf = ALARM_NOTCH_W / 2;
-    const align = Math.abs(wrapPi(alarmDiscGroup.rotation.z - ALARM_RELEASE_PHASE));
-    alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
-      : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
-      : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
-    alarmFeelerLever.rotation.y = -alarmPinDropNow / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
-  }
+  // it exactly). alarmPinDropNow was computed up at the strike section this
+  // same tick (the trip needs it before the ring); here the LEVER wears it.
+  alarmFeelerLever.rotation.y = -alarmPinDropNow / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
   alarmSetWheelGroup.rotation.z = -alarmSetRot * ALARM_SET_RATIO;
   // §25 C winding train — posed RIGIDLY from the barrel's angle, so winding,
   // ringing and rest are one consistent mesh (while ringing, the train and a
@@ -8908,7 +8940,13 @@ function tick(t) {
     }
     alarmColumnWheel.rotation.z = -alarmColShownA; // the wheel turns UNDER the fixed-azimuth beak
     const colBlock = alarmColumnWheel.userData.profileAt(alarmColShownA);
-    const liftTarget = (alarmOn && alarmReleased) ? 1 : 0;
+    // §29 step 5: the brake is the ON/OFF STOP-WORK alone now — it lifts at
+    // ARMING (the §25 D column still physically gates it via colBlock), and
+    // between arming and the coincidence the PAWL is the hold that matters:
+    // two holds, each real, each with its own master, as in actual alarm
+    // calibers. After run-down the lock stays lifted (still armed) and the
+    // re-seated pawl holds the parked train.
+    const liftTarget = alarmOn ? 1 : 0;
     if (rawDt > 0) {
       alarmLockLiftT += (liftTarget - alarmLockLiftT) * (1 - Math.exp(-rawDt / 0.08));
     } else {
@@ -9108,6 +9146,7 @@ window.__clock = {
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   get bootWarns() { return __bootWarns; },
+  get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind }; }, // §29 step 5 verification surface
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
@@ -9142,7 +9181,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmPrevRel = null; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓)
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives on the next tick
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
   },

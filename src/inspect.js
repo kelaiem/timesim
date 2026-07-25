@@ -246,7 +246,6 @@ const MECH_GRAPH = {
     // centre's z-budget (largest free gap 0.08) must be re-stratified first.
     // The full design, measured constraints and the dial-side contrate-pawl
     // lock that follows are §29 in the roadmap.
-    ['Alarm disc', 'Alarm lock', '§25 B → §29: physical release needs the differential-disc feeler (the follower co-rotates; no fixed rod can meet it) — designed, awaiting the centre z re-stratification'],
     // Was: "setting path ends at a representational arbor stub" — the stub
     // used to stop 54 units short of the cannon pinion, in the keyless-
     // works corner, with no visible path to the dial centre at all. Now a
@@ -1742,19 +1741,19 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§29 step 0; 43 units, 42 fingerprinted, 10 poses): 1207528787
-// — verified IDENTICAL on a virgin boot, after 5 s of running, and after a
-// deliberately dirtied session, in one process. The previous baseline
-// (2407965539, captured at merge 3d3908b) was an attractor, not a baseline:
-// it embedded updateExplode's frame-one teleport of the handsGroup to a
-// stale baseZ literal (2.5 vs the constructed, derived 3.2 — the minute
-// hand sat 0.7 below its designed plane in every running session), plus
-// nothing else, and only sessions that had actually rendered a frame ever
-// reached it — a virgin boot hashed differently, which is how §29 step 0
-// caught it. registerExplode now boot-asserts baseZ against the
-// constructed position, and resetInputs restores secondsZeroRef (the
-// seconds-reset cam's banked reference — the other session accumulator
-// the fingerprint's dirty-session sweep exposed).
+// Baseline (§29 complete, rebased on §14+§27 main; 45 units, 44
+// fingerprinted, 10 poses): 3868604154
+// — verified IDENTICAL on a virgin boot, after running, and after a
+// deliberately dirtied session, in one process. History: §29 step 0 found
+// the previous baseline (2407965539) was an ATTRACTOR — it embedded
+// updateExplode's frame-one teleport of the handsGroup (stale baseZ 2.5 vs
+// the derived 3.2: the minute hand rode 0.7 below its designed plane in
+// every session ever seen), and only frame-rendering sessions reached it.
+// registerExplode boot-asserts baseZ now, resetInputs owns secondsZeroRef
+// and the §29 crown-creep bank, console.warn collects into
+// __clock.bootWarns, and the §29 feature (release disc, feeler, pawl,
+// re-stratified centre, crisp heart, physical trip) moved the geometry to
+// this value deliberately, step by verified step.
 const FINGERPRINT_POSES = [
   { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
