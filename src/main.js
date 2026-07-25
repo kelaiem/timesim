@@ -4924,11 +4924,11 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
   const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
   wheel.position.z = -(0.05 + ALARM_SET_T / 2); // band −0.05..−0.23 (dialFace local; ALARM_SET_Z is this plane in world)
-  wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmSetWheelRim'; }); // §30: the clamp's pad budget selects the gripped member by name
+  wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmSetWheelRim'; }); // §31: the clamp's pad budget selects the gripped member by name
   alarmSetWheelGroup.add(wheel);
 }
 
-// --- '(§30) Alarm clamp' — the ISOLATION JAWS on the setting wheel's rim --
+// --- '(§31) Alarm clamp' — the ISOLATION JAWS on the setting wheel's rim --
 // The rattrapante answer to "how does the toggle physically attach the
 // hand": chronograph clamps never touch the co-rotating follower — the
 // jaws grip the split wheel's RIM, and a rim brake is azimuth-independent
@@ -4997,7 +4997,7 @@ const alarmJawArms = [];
   }
   // The WEDGE: a coned pin descending between the tails — down = tails
   // spread = pads close. Its rod runs up to a bore in the base plate's
-  // dial face; §30's next slice puts the plate-top lever and the second
+  // dial face; §31's next slice puts the plate-top lever and the second
   // column-wheel beak on its other end (declared in MECH_GRAPH until then).
   const wedgeW = { x: _jawU.x * (ALARM_JAW_TAIL_R - 0.3), y: _jawU.y * (ALARM_JAW_TAIL_R - 0.3) };
   const wedgeD = dl(wedgeW);
@@ -5005,7 +5005,7 @@ const alarmJawArms = [];
   cone.name = 'alarmClampWedge';
   cone.rotation.x = Math.PI / 2;
   // The rod runs from the wedge's crown down (dial-local −z) to the base
-  // plate's dial face at local −5.0, ending 0.4 INSIDE its bore — §30's
+  // plate's dial face at local −5.0, ending 0.4 INSIDE its bore — §31's
   // next slice hangs the plate-top lever on its far end.
   const rodLen = (5.0 - 0.4) - Math.abs(bandMid) - 0.25;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, rodLen, 10), MATS.steel);
@@ -5027,9 +5027,9 @@ const alarmJawArms = [];
   blade.rotation.z = Math.atan2(springD.y, springD.x);
   alarmClampUnit.add(blade);
 }
-// §30 corridor asserts — every wall the clamp and its rod thread:
+// §31 corridor asserts — every wall the clamp and its rod thread:
 {
-  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§30 clamp ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
+  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§31 clamp ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
   const wellC = { x: 0, y: 15.4 };  // the 12-o'clock well ring's centre (world), radius 10.2, wall 0.2
   const rodW = { x: _jawU.x * (ALARM_JAW_TAIL_R - 0.3), y: _jawU.y * (ALARM_JAW_TAIL_R - 0.3) };
   say('rod vs 12-well ring', Math.abs(Math.hypot(rodW.x - wellC.x, rodW.y - wellC.y) - 10.2) - 0.2 - 0.16);
@@ -5407,7 +5407,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   const closure = Math.abs(Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y)
     - ALARM_BRANCH_MODULE * (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH) / 2);
   if (closure > 1e-9) console.warn(`§29 branch: i1b⇄rim mesh fails to close by ${closure.toFixed(4)}`);
-  // §30: the clamp's arms sweep r 4.87..8.0 along the world-135° radial —
+  // §31: the clamp's arms sweep r 4.87..8.0 along the world-135° radial —
   // assert i1's lane-band sweep never reaches them (its own annulus is at
   // az 18°; measured here rather than trusted).
   {
@@ -5415,7 +5415,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
     const i1d2 = Math.hypot(ALARM_SET_I1.x - armMidW.x, ALARM_SET_I1.y - armMidW.y);
     const i1LaneTip = (ALARM_SET_MODULE * ALARM_SET_I1_TEETH) / 2 + 1.25 * ALARM_SET_MODULE;
     if (i1d2 - i1LaneTip - 1.6 < CLEAR_MARGIN)
-      console.warn(`§30 clamp arms vs i1 lane sweep: clearance ${(i1d2 - i1LaneTip - 1.6).toFixed(2)}, need ${CLEAR_MARGIN}`);
+      console.warn(`§31 clamp arms vs i1 lane sweep: clearance ${(i1d2 - i1LaneTip - 1.6).toFixed(2)}, need ${CLEAR_MARGIN}`);
   }
   // the trip invariance — the whole POINT of the differential, verified
   // numerically: for two different settings, (hour == set) must put the
@@ -6500,7 +6500,7 @@ let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier 
 let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
-let alarmJawT = 0; // §30: the arming clamp's eased closure — the column parity's physical consequence, and what the tube law reads
+let alarmJawT = 0; // §31: the arming clamp's eased closure — the column parity's physical consequence, and what the tube law reads
 const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
                             // heart cam is a positive mechanical action, not
                             // a soft friction stop, so the reset reads snappier.
@@ -8973,7 +8973,7 @@ function tick(t) {
   // convention); the pose path (rawDt = 0) assigns exactly, so inspector
   // poses stay deterministic.
   {
-    // §30: the tube's law reads the CLAMP, not the flag — alarmOn only
+    // §31: the tube's law reads the CLAMP, not the flag — alarmOn only
     // turns the column wheel; the column's parity drives the jaws (their
     // ease below), and the jaws' closure is what holds the tube. Under a
     // zero-dt pose the ease sets exactly (the liftTarget pattern), so the
@@ -9090,7 +9090,7 @@ function tick(t) {
       alarmLockLiftT = liftTarget;
     }
     alarmLockLever.rotation.z = ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT * alarmLockLiftT * (1 - colBlock);
-    // §30: the arming clamp — the same column parity that gates the brake
+    // §31: the arming clamp — the same column parity that gates the brake
     // drives the wedge: down = tails spread = pads close on the rim.
     {
       const jawTarget = alarmOn ? 1 : 0;
@@ -9328,8 +9328,8 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmJawT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §30: jaws open
-    // §30 postscript, the step-0 class again: the EXPLODE is a persistent
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmJawT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §31: jaws open
+    // §31 postscript, the step-0 class again: the EXPLODE is a persistent
     // user input that MOVES UNITS, restored from saved UI state across
     // reloads — a battery sweep on a session that left the explode open ran
     // on displaced geometry (measured: a phantom detent⇄chain zero that a
