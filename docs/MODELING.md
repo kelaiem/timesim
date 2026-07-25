@@ -107,6 +107,15 @@ by vertex sampling, and always across the pose sweeps:
 - **Probe at the consumer's true radius.** A column probe whose rays span
   0.29 clears a 0.12 shaft but not the 0.26 bush ring around it — the §35
   jumper graze. Probe with the fattest part that will occupy the corridor.
+- **Never start a probe ray inside geometry.** An upward ray started at the
+  §35 bush floor sat inside the jumper's blade; its exit face was backface-
+  culled and the station passed at 0.02 from contact. Cast DOWNWARD from
+  known-free air (or two-sided) so entry faces are front faces.
+- **Finish with a boolean proxy at the true margin.** Build a temporary
+  margin-inflated mesh for the candidate (rod + CLEAR_MARGIN as one
+  cylinder), BVH it, and `intersectsGeometry` it against every unit across
+  the pose sweeps. This is the only §35 probe the chain never fooled — and
+  it still caught a nick rays had passed, at one of 61 reserve tensions.
 
 ## Verification protocol
 

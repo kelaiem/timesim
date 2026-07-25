@@ -187,12 +187,16 @@ the poses we visited," never "no collision anywhere in the range."
   the reserve axis owns its whole drum→fusee fan. Any probe run at ONE
   pose silently assumes every other axis is at rest.
 
-There is also a trust cost below the failure threshold: the §35 rod
-clears the setting wheels by 0.162 at EVERY crown/setting pose
-(measured at 500 poses) — legal by the margin, but under plate x-ray
-it reads as an interpenetration from half the camera angles. "How
-close does this pair ever get, over all poses" should be a cheap,
-queryable fact, not a 500-pose sweep.
+The sharpest instance closed the loop on itself: the §35 rod first
+measured "0.162 clear at 500 poses" — and every one of those poses,
+like every battery axis, left hand-set rotation (setPathRot) at zero.
+The minute wheel spins under that input, and its spokes swept through
+the rod over ~24% of a revolution. The battery now has a handSet
+axis and each check run starts from resetInputs(); the rod was
+re-sited outside the wheel's whole tip circle. The general lesson
+stands: "how close does this pair ever get, over all inputs" should
+be a cheap, queryable fact, not a matter of which sweep someone
+thought to run.
 
 The structural fix is a SWEPT-VOLUME registry (filed in the roadmap):
 per moving part, a conservative hull of its full pose range —

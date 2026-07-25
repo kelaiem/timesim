@@ -1806,7 +1806,7 @@ column wheel's state reached the selector ring by decree: the tick
 read the wheel's angle and posed the ring. The user's ask — before 2b
 was even built — was an UNBROKEN mechanical run from the pusher's
 press all the way to the ring's slide. This section is that run:
-pusher → pawl → column wheel → beak → rod → lay shafts → crank →
+pusher → pawl → column wheel → beak → rod → lay shaft → crank →
 drive tab → ring. Every hand-off is a contact between two parts.
 
 **The corridor hunt, and the instruments that lied.** Three routes
@@ -1830,39 +1830,62 @@ with a structural blind spot; the lessons are now general guidance
   as a hit (the keyless piece's real top is −6.549, not the assumed
   −6.55). The corrected epsilon reopened a 3000-chord solution space.
 
-The surviving geometry, all ray-proved and re-proved across the pose
-axes: rod column az 152° r 38 (chain-clean across the whole reserve,
-full climb clean through both plates), and NO straight under-plate
-chord from there to the ring — the yoke and the keyless rim piece
-fence the west arc. Hence TWO lay shafts.
+A FOURTH instrument lesson arrived after review: the first shipped
+site (az 152 r 38) stood the rod 2.97 from the minute wheel's arbor —
+inside its r≈5.1 tips — and the wheel spins during HAND-SETTING
+(setPathRot), an input no battery axis swept, so a spoke passed
+through the rod over ~24% of the wheel's revolution and every run
+was clean. The battery now has a handSet axis (one full minute-wheel
+revolution, crown pulled), setPose accepts setPathRot, every check
+run starts from resetInputs() (canonical state, the §34 explode
+harvest generalised), and the rod site keeps out of the wheel's whole
+tip circle by assert — the swept-volume principle: a turning wheel's
+disc is occupied space, spokes or no spokes.
 
-**The parts.** The beak is a plate-top lever pivoted ON the
+A FIFTH lesson closed the search: the crown-PULL swings the yoke and
+keyless furniture over the whole belt az ~138–164 r ~24–36, and the
+power-reserve train wanders with tension — so every rest-pose-clean
+west corridor died on the pulled axes, and the whole west arc (the
+only region with a short beak tail) is unreachable. The probes that
+settled the final route sweep 11–19 poses per candidate (rest, three
+crown pulls, three reserve tensions, four strike phases, four
+hand-set angles), use DOWNWARD rays from free air (an upward ray
+started inside the jumper's blade had its exit face backface-culled
+and passed a 0.02 graze), probe at the fattest occupant's radius, and
+finish with a BOOLEAN margin-inflated proxy — rays alone thread the
+chain, which still nicked az 208 at one of 61 tensions.
+
+The surviving geometry: rod column az 212° r 26 (south-west — past
+the drum's chain span, outside the pulled belt, 12+ from the minute
+arbor), reached by the beak's LONG TAIL, then ONE straight lay shaft
+to the ring at az 146° — the knuckle died with the west routes.
+
+**The parts.** The beak is one plate-top lever pivoted ON the
 wheel→rod segment (collinear by construction: post 2.45 from the
 wheel's centre — its own skirt clearance derived — nose landing
-mid-castellation, tail ending exactly over the rod). It reads the
-castellations 120° from the brake's read point (two pitches:
-identical parity). The rod drops through bevel-safe r 0.45 bores in
-both plates (r 0.28 was silently sealed by the plates' extrude bevel
-collar — MODELING.md rule 1's revenge; the bore-drift assert now has
-ray-proof behind it). Shaft A runs the rod's foot to a knuckle at
-az 185° r 27; shaft B runs the knuckle to the ring at az 158° —
-each an arbor at z −6.26 (bottom 0.169 above the keyless piece's
-measured top) on two plate-hung bushes at ray-proved stations (one
-station moved when the bush's 0.26 ring — fatter than the probe's
-rays — grazed the minute jumper at 0.02). The knuckle is A's
-cross-pin under B's toe: 1:1, equal crank lengths, so both shafts
-carry the same roll and the centre crank repeats the rod's throw
-under the ring's DRIVE TAB (a slotted boss at dial-local az 22°,
-the mirror of world 158°). Both shaft groups order their eulers
-'ZYX' — the roll must turn about the shaft's LENGTH; the default
-order rolls about world-x and tilts the arbor end-over-end (±2.3 in
-z at full throw, measured before the fix).
+mid-castellation, tail ending exactly over the rod). The tail is
+LONG (~28, its plane probed under the strike sweeps — the striking
+cam spins at the same z): the nose's ~0.005 dip amplifies ~35:1 into
+the full 0.19 throw, détente-style. It reads the castellations 120°
+from the brake's read point (two pitches: identical parity). The rod
+drops through bevel-safe r 0.45 bores in both plates (r 0.28 was
+silently sealed by the plates' extrude bevel collar — MODELING.md
+rule 1's revenge; the bore-drift assert now has ray-proof behind it).
+ONE lay shaft runs the rod's foot to the ring at az 146° — an arbor
+at z −6.26 (bottom 0.169 above the keyless piece's measured top) on
+two plate-hung bushes at down-ray-proved stations, with parallel end
+cranks so the centre crank repeats the rod's throw under the ring's
+DRIVE TAB (a slotted boss at dial-local az 34°, the mirror of world
+146°). The shaft group orders its eulers 'ZYX' — the roll must turn
+about the shaft's LENGTH; the default order rolls about world-x and
+tilts the arbor end-over-end (±2.3 in z at full throw, measured
+before the fix).
 
 **What the tick changed.** The column ease was HOISTED to the
 selector block (its first consumer — the third one-tick-stale lesson
 this feature has paid for); §25 D now only wears the eased state.
 The selector's target is `1 − profileAt(colA + 120°)`: the ring's
-slide IS the beak's read of the castellations, and the rod, shafts
+slide IS the beak's read of the castellations, and the rod, shaft
 and cranks pose from the same derived quantity — the chain is one
 fact end to end. The LOW_LINKAGE_OBSTACLES record (2D by design —
 its usual consumers span every z) is consumed by a z-separation
@@ -1873,7 +1896,7 @@ member rides at 0.17.
 graph clean (todo 1: §9's debt — the §35 row is retired) ·
 clearances 0 · penetration within budgets (beak⇄castellations on
 alarmStrike, crank⇄ring on alarm) · inspection {includeExcluded}
-0 FORBIDDEN · measured at the armed pose: keyless 0.162, yoke
-0.271, minute jumper 0.164, drum 2.481; ring slide and rod throw
-both 0.19 across the toggle; the coupling demo steps the column
-30°/press with profLink flipping 0/1.
+0 FORBIDDEN (now including the handSet axis) · rod⇄minute-arbor:
+0 intersections over 720 spin steps (was 172 of 720 at the first
+site); ring slide and rod throw both 0.19 across the toggle; the
+coupling demo steps the column 30°/press with profLink flipping 0/1.

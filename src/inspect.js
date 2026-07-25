@@ -671,6 +671,20 @@ const AXES = [
     pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
   },
   {
+    // §35 postmortem: HAND-SETTING is the only input that spins the keyless
+    // setting path (setPathRot — crown rotation while pulled), and no other
+    // axis writes it, so a rod standing in the minute wheel's spoke windows
+    // passed every battery run. One full MINUTE-WHEEL revolution, crown
+    // pulled — the setting wheel and the compound arbor sweep their whole
+    // angular range past everything static.
+    name: 'handSet',
+    n: 120,
+    pose: (f, clock) => ({
+      tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      setPathRot: f * (clock ? clock.setPathPerMinuteWheelRev : 0),
+    }),
+  },
+  {
     // One full revolution of the alarm disc (§24): the crown turned through a
     // complete 12 h of setting, so the disc, its bevel and the detent star
     // sweep their whole travel past the static click-spring, the dial well and
@@ -1787,6 +1801,11 @@ export function start(clock, name, opts = {}) {
   const jobs = (window.__checks ||= {});
   if (!CHECKS[name]) return `unknown check "${name}" — have: ${Object.keys(CHECKS).join(', ')}`;
   const t0 = performance.now();
+  // Canonical state per run (the §34 explode harvest, generalised): a check
+  // must not inherit session accumulators — a leftover setPathRot, alarm
+  // rotation or explode from earlier interaction (or from a PREVIOUS axis's
+  // last pose) would silently move geometry under the sweep.
+  clock.resetInputs();
   jobs[name] = { state: 'running', startedAt: t0 };
   Promise.resolve()
     .then(() => CHECKS[name](clock, opts))
