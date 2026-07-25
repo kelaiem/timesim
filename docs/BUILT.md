@@ -1739,3 +1739,62 @@ clearances 0 · inspection `{includeExcluded}` 0 FORBIDDEN · penetration
 budgets (pin⇄track, beak⇄contrate) worst depth 0 · verified end-to-end:
 arm → wind → coincidence → pin drops → pawl withdraws → 4-turn ring to
 empty → lock re-seats → pawl re-arms as the notch passes.
+
+## 34. Two hearts — the armed set-position becomes real geometry (BUILT)
+
+**Goal.** Retire §25 C's one remaining asserted behaviour: on arming, the
+friction setting wheel "re-coupled" and the tube swept to a REMEMBERED
+state variable — friction is phase-agnostic and cannot do that. The
+honest memory was always the setting wheel's own angle; §34 builds the
+mechanism that lets the tube FIND it.
+
+**First slice (shipped separately, PR #22).** The coupling made
+readable before being replaced: the blued index wedge on the wheel, its
+partner line on the tube's flange (registered by the armed identity at
+any setting), and the `ALARM_COUPLING_STEPS` demo on the §5/§17 engine
+with the alarm's own script verbs. Plus the §31 harvest: `resetInputs`
+owns the explode and invalidates the chain's baked path — two battery-
+hygiene defects the superseded clamp's battery found.
+
+**Pass 1 — the chain re-opens.** `ALARM_TUBE_BACK` became an expression
+again: heart-B's 0.30 band enters between the wheel and the flange, and
+everything below re-derives 0.45 deeper through the §29 chain. Total
+height unchanged — the slack under the hour wheel absorbs it (plate gap
+1.08 → 0.62, asserted); the cannon pinion lengthened a second time
+(2.1 → 2.5). The owner's offered z-height increase was never needed.
+
+**Pass 2, as REDESIGNED mid-build.** The side-chat's radial cardioid
+for heart-B is geometrically impossible where it must live: its rMin
+(2.75) sits inside the 3.05 bore the alarm tube demands, and scaling it
+out sweeps the cam through its own follower's pivot — the degenerate
+shell was caught by the sweep as a dist-0 hit on the hour tube, and the
+three-way cross-check confirmed it real. The build pivoted to the
+grooved-face-cam principle, §29-style: heart-B is an AXIAL heart — a
+height-varying ring on the wheel's plate-side face (the cardioid law in
+z, 0.02 at the notch to 0.10, built as raised relief: the notch is the
+absence of height) — and follower-B is a PIN-ARM on the flange's top
+face whose sprung up-pin seeks the cam's minimum; the slopes cam the
+RELATIVE ROTATION until it seats. Measured: seated rock = hMin/reach
+and lifted rock = lift/reach exactly (−0.0111 / −0.0888 over the 1.83
+reach).
+
+**The selector — the choice as parts.** A flat ring (r 4.45..4.75) on
+three dial posts (az 60/220/300 — each wall asserted; the first post
+layout died on the 12-o'clock well ring's arc and the wheel's tips)
+slides 0.19 axially — a travel SIZED BY ITS OWN ASSERT (the first cut,
+0.14, measured under the required bias and was refused). A rocker on
+the tube's flange rides the ring's face with a ruby sensing pin — the
+one contact a fixed member can make on a co-rotating one at every
+azimuth — and its single finger presses the pin-arm's tail plate-ward:
+ring up = pin lifted clear (disarmed), ring down = the pin's own spring
+seats it (armed). The tube's law reads the SELECTOR's state; alarmOn
+only turns the column wheel. The 350 ms friction sweep is retired —
+arming is a spring snap on its own rate (0.12 vs CAM_SNAP_TAU), so the
+two-speed feel survives with an honest cause. The column→ring run is
+§35's filed debt, carried as a MECH_GRAPH.todo row the way §25 B
+carried §29's.
+
+**Battery (final tree, 46 units).** bootWarns [] · fingerprint
+session-independent · support 0 · graph clean (todo 2: §9's debt + the
+§35 run) · clearances 0 · inspection {includeExcluded} 0 FORBIDDEN ·
+budgets: pin-B⇄face-cam and sensing-pin⇄ring swept on the alarm axis.

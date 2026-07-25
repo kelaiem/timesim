@@ -153,6 +153,7 @@ const MECH_GRAPH = {
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+    ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
@@ -220,6 +221,11 @@ const MECH_GRAPH = {
                                              // the tube follows the heart (the cannon-pinion precedent)
     ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
                                              // tube drives the tube home through the sprung follower
+    ['Alarm setting wheel', 'Alarm disc'],   // §34: ARMED, the FACE CAM on the wheel drives the tube to the set
+                                             // phase through the sprung pin-arm (an axial heart: the pin seeks the
+                                             // cam's minimum and the slopes cam the rotation) — the coupling as geometry
+    ['Alarm selector', 'Alarm disc'],        // §34 pass 2b: the ring's face tips the flange rocker (axial contact,
+                                             // azimuth-independent) — the bias that picks which heart wins
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
     ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
@@ -238,6 +244,7 @@ const MECH_GRAPH = {
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
+    ['Alarm switch', 'Alarm selector', '§34 → §35: the column→ring run (second beak, az-135 rod through §31\'s probed corridor and base-plate bore, below-plate transfer lever) — filed as §35; until it lands the parity reaches the ring by declaration'],
     // §25 B: the RELEASE is derived from the real co-axial alignment (the
     // follower's nose entering the heart's notch) and the lock lever answers
     // it — but no physical linkage carries the drop. NOT a missing rod: the
@@ -521,6 +528,8 @@ const EXPECTED_PAIRS = [
   ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
   ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
   ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
+  ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
+  ['Alarm selector', 'Dial'],               // the nesting artifact + the posts' sheet anchors
   ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
                                             // is a dialFace descendant, so the Dial's traverse carries its beak
                                             // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
@@ -1439,6 +1448,46 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmNose') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §34 pass 2b: the rocker's sensing pin on the selector ring's face —
+    // the fixed⇄co-rotating interface, riding at every azimuth as the tube
+    // turns. Swept on the alarm axis (a full relative revolution).
+    pair: ['Alarm disc', 'Alarm selector'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmSelPin') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmSelRing') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §34: follower-B's nose on heart-B — the armed coupling's working
+    // contact, the exact mirror of the A pair below in §25 C's stage 2.
+    // Swept on the alarm axis: setting turns the WHEEL (and heart-B) under
+    // the armed-seated nose... and disarmed, the tube turns under a
+    // stationary heart-B — both directions live on this axis.
+    pair: ['Alarm setting wheel', 'Alarm disc'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmFaceCam') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmPinB') out.push(o); });
       return out;
     },
   },
