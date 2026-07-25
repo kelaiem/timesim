@@ -171,6 +171,38 @@ already exists.
 
 ---
 
+## 7. The battery samples poses — it cannot bound them
+
+§35's build surfaced two more blindness classes, siblings of items 5
+and 6. Both are SAMPLING failures: the battery proves "no collision at
+the poses we visited," never "no collision anywhere in the range."
+
+- **Thin features slip between samples.** The fusee chain threads
+  between 5-ray probe bundles spaced 0.27 apart, and a wheel spoke
+  ~1.5° wide can pass between a slow axis's 60 samples. §35 caught the
+  chain only because a boolean BVH test happened to land on a hit
+  fraction; the corridor had already passed the bundles.
+- **A part's sweep exists only while its axis is being swept.** Every
+  §35 corridor probe at the rest pose saw the chain parked and clean;
+  the reserve axis owns its whole drum→fusee fan. Any probe run at ONE
+  pose silently assumes every other axis is at rest.
+
+There is also a trust cost below the failure threshold: the §35 rod
+clears the setting wheels by 0.162 at EVERY crown/setting pose
+(measured at 500 poses) — legal by the margin, but under plate x-ray
+it reads as an interpenetration from half the camera angles. "How
+close does this pair ever get, over all poses" should be a cheap,
+queryable fact, not a 500-pose sweep.
+
+The structural fix is a SWEPT-VOLUME registry (filed in the roadmap):
+per moving part, a conservative hull of its full pose range —
+exact surfaces of revolution for rotors (which rightly fill spoke
+gaps: never thread a corridor between the spokes of a turning wheel),
+arc wedges for levers, the fan for the chain.
+`LOW_LINKAGE_OBSTACLES` is this idea, done by hand, in 2D, for one
+linkage; it wants generalising into the battery so pair checks become
+pose-independent volume tests that cannot under-sample.
+
 ## Recently closed
 
 - **Winding click is plate-fixed** (was item 2), closed as part of the
