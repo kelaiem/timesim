@@ -4169,11 +4169,13 @@ smallSecondsGroup.add(smallSecondsHand);
 // file with the layout constants — the setting arbor terminates at the
 // minute wheel and needs them long before the dial is built.)
 
-// §29: thickness 2 → 2.1, seated 0.05 deeper — the z-chain's MW_Z1 landed
-// at −1.966 and the minute wheel's bevelled underside (−2.48) must stay
-// inside the cannon's leaves for full-face mesh; the top face stays −0.5.
-const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2.1, material: MATS.steel });
-cannonPinion.position.z = -1.55;
+// §29 lengthened this once (2.0 → 2.1) for its deeper MW_Z1; §34's
+// heart-B band pushes the chain 0.45 further (MW_Z1 −2.416), so the
+// leaves grow again: 2.5, top face still −0.5, end −3.0 — the minute
+// wheel's bevelled underside (−2.88) keeps 0.12 inside the mesh, and
+// the §29 coverage warn below re-checks it with the achieved numbers.
+const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2.5, material: MATS.steel });
+cannonPinion.position.z = -1.75;
 dialFace.add(cannonPinion);
 
 // ---------------------------------------------------------------------------
@@ -4185,8 +4187,15 @@ dialFace.add(cannonPinion);
 // below consumes these; they are hoisted here because the motion works
 // builds first.)
 // ---------------------------------------------------------------------------
-const ALARM_TUBE_BACK = -0.23;   // setting wheel −0.05..−0.23 (0.18 thick, ALARM_SET_T below), flange top here
-const ALARM_FLANGE_T = 0.08;     // carrier flange −0.23..−0.31
+// §34: HEART-B's band — the second heart, FIXED to the setting wheel's
+// plate-side face (one member: no margin between them), its follower
+// sharing the band the way heart-A's arm shares its own. The flange and
+// everything below it re-derive 0.45 deeper; total stack height is
+// UNCHANGED (the slack below the hour wheel absorbs it — the plate gap
+// closes 1.08 → 0.62, both asserted).
+const ALARM_HEART_B_T = 0.30;    // mirror of heart-A's crisp band
+const ALARM_TUBE_BACK = -(0.05 + 0.18 + ALARM_HEART_B_T + CLEAR_MARGIN); // = −0.68: wheel −0.05..−0.23 · heart-B/follower-B −0.23..−0.53 · margin · flange top
+const ALARM_FLANGE_T = 0.08;     // carrier flange −0.68..−0.76
 const ALARM_HEART_T = 0.30;      // heart band, one CLEAR_MARGIN under the flange:
 const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // −0.46..−0.76
 // §29 step 2/3 stack under the heart: fixed feeler (one margin below the
@@ -4221,8 +4230,16 @@ const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    //
 // engagement down to −1.986+bevel; asserted below.
 const MW_Z1 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22)); // = −1.916
 const MW_Z2 = MW_Z1 - 1.5;   // minute pinion / hour wheel — the 1.5 IS the star slice spacing
-if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < -2.6 + 0.1)
-  console.warn(`§29: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end −2.6 — face engagement thinning`);
+if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < -3.0 + 0.1)
+  console.warn(`§29/§34: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end −3.0 — face engagement thinning`);
+// §34: the chain grew downward — assert the landing still clears the plate
+// (dial-side face at local −5.0) by at least the one margin + the hour
+// wheel's own bevelled band.
+{
+  const hourBot = (MW_Z1 - 1.5) - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+  if (hourBot - CLEAR_MARGIN < -5.0)
+    console.warn(`§34: hour wheel's underside ${hourBot.toFixed(2)} inside the plate's margin (face −5.0)`);
+}
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
 // and below the centre).
 const MW_STUD = { x: MW_CENTER_D, y: 0 };
