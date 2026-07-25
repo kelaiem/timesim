@@ -1649,3 +1649,93 @@ rebuild), graph clean, penetration within budgets, clearances 0
 violations, full `inspection { includeExcluded: true }` 58 pairs all
 EXPECTED / 0 FORBIDDEN, boot silent. Cost: readout ~35 lines, chain fix
 ~25, tick budget ~25, tier plumbing ~80.
+## 29. The physical alarm release — feeler to lock, for real (BUILT)
+
+**Goal.** Discharge §25's one declared coupling debt (`MECH_GRAPH.todo`,
+`['Alarm disc','Alarm lock']`): the trip was DERIVED from the co-axial
+angle alignment, but no physical linkage carried the drop to the lock.
+§25's own measurement showed why a rod cannot do it — the follower rides
+the alarm tube and its drop happens at whatever azimuth the alarm is set
+to. The Memovox answer, built here: make the comparison's OUTPUT a
+fixed-azimuth event.
+
+**Step 0 — the gate paid before the feature existed.** Fingerprinting a
+VIRGIN session (zero rendered frames) hashed differently from every
+session ever run, which unravelled two shipped defects: `registerExplode`
+held a stale `baseZ` literal for the handsGroup and `updateExplode`
+silently teleported the minute hand 0.7 below its designed plane on frame
+one (intra-unit — the battery's documented blind spot); and `resetInputs`
+missed `secondsZeroRef`, so a crown-pull re-based the small seconds
+forever. Both fixed structurally: `registerExplode` boot-asserts every
+`baseZ` against the constructed position, and `console.warn` now collects
+into `__clock.bootWarns` — "boot is silent" is a checkable, per-boot fact
+(pattern-filtered console reads had been silently lying, which this same
+session proved the hard way).
+
+**Step 1 — the centre re-stratified.** The whole stack behind the dial
+sheet became ONE derived top-down chain (`§29 CENTRE Z-CHAIN`): setting
+lane thinned to a shared 0.18 with its plane closed-form from the sheet
+gap; flange 0.08; heart 0.30 with `ALARM_HEART_Z` an expression; the
+motion-works planes are where the chain LANDS (their 1.5 spacing — the
+jumper's star slice — preserved by construction; the cannon pinion
+lengthened to keep full mesh). The DISC BAND the § needed opens between
+the heart and the minute wheel, boot-asserted from the same expressions
+that place both neighbours.
+
+**Step 2 — the differential disc.** A notched disc friction-riding the
+HOUR TUBE in that band: driven with time through the seat, re-phased by
+the setting train when the crown sets, its angle physically encoding
+(hour − setting) so the notch passes ONE fixed azimuth exactly at
+coincidence, for every setting. The re-phasing branch taps I1 as a
+compound idler: i1b (28) meshes the disc's rim (30) DIRECTLY — one mesh,
+the tube path's mirror ratio, with the branch module DERIVED from the
+closure (m = 2·DW1/58), so the mesh cannot fail to close. The back-drive
+is total and honest: the dogleg creeps with the hour in both crown
+positions, the rod closes the chain, and a pulled crown visibly
+back-turns through a banked accumulator owned by `resetInputs`. (The
+first branch build placed an idler by a two-circle solve whose circles
+never met — the closure assert fired at every boot while its own EXPECTED
+row blanketed the collision in the sweep. Both § lessons in one defect.)
+
+**Step 3 — the fixed feeler.** A rocking lever on a dial-hung bracket at
+the release azimuth: ruby pin down onto the disc's raised track (the
+notch is the GAP in the track — no CSG), the ride STATELESS — the pin's
+lift is the surface under it, so `setPose` poses it exactly. The drop is
+banked at 0.10 by a stop on the bracket, NOT by bottoming in the notch:
+the dropped arm still owes the spinning rim one margin, and (static gap −
+drop × lever fraction) is what the stop preserves. Proven before wiring:
+the pin drops once per 12 h at every tested setting, centred exactly
+where §25 B's `rel == 0` holds (the constant 1.85 h offset across
+settings IS the hands' fitted epoch).
+
+**Step 4 — the tail and the pawl.** The tail runs straight to the winding
+climb one band above the gear lane (z-jogged clear of i1b's swept tips —
+the sweep caught the dropped lever's rise), riser to the winding contrate
+at the stem corner, beak into the tooth band's PLATE-side edge (measured:
+the rock withdraws plate-ward, 0.31 at the beak). Seated, the climb — and
+through the 12/44 mesh the whole striking barrel — is held; winding
+clicks over the beak's SPRING-STEEL tip, which follows the saw profile
+kinematically (the lever cannot bob; the pin's track contact fixes its
+other end). The last FORBIDDEN here was the dropped arm kissing the
+heart's extrude-bevel expansion — authored 0.30, rendered 0.42 —
+`makeHeartCam` gained the `bevel:false` opt-out (the `makeGear`
+precedent) and §29's heart is crisp.
+
+**Step 5 — the trip IS the pin.** `alarmReleased` fires when the physical
+chain bottoms the pin (one-shot per drop; FF/catch-up latches honestly),
+and the §25 angle-crossing survives as the AGREEMENT ASSERT in target
+space — a pin that bottoms outside the coincidence window is a defect,
+not a ring. The brake became the pure ON/OFF stop-work (lifts at arming,
+still physically gated by §25 D's column): two holds, each real, each
+with its own master. The `MECH_GRAPH.todo` row is retired. The ordering
+defect this step caught — the strike section reads the pin BEFORE the
+disc block poses it — is why the pin computes at the trip site from the
+same closed forms.
+
+**Battery (final tree, 45 units).** `bootWarns []` · fingerprint
+**1026170114** identical across virgin boot / running / dirtied session ·
+support 0 · graph clean (1 declared todo — the §9 handSetOffset debt) ·
+clearances 0 · inspection `{includeExcluded}` 0 FORBIDDEN · penetration
+budgets (pin⇄track, beak⇄contrate) worst depth 0 · verified end-to-end:
+arm → wind → coincidence → pin drops → pawl withdraws → 4-turn ring to
+empty → lock re-seats → pawl re-arms as the notch passes.

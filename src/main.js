@@ -31,6 +31,25 @@ import {
 
 const DEG2RAD = Math.PI / 180;
 
+// Boot-assert visibility (§29 step 0's postscript): console.warn is the
+// assert channel (CLAUDE.md rule 6), but an automated console reader sees a
+// CUMULATIVE buffer across reloads drowned in three-mesh-bvh spam — pattern
+// reads against it returned "silent" while a §29 assert was firing every
+// boot. Every warn is therefore ALSO collected here, and __clock exposes
+// the list: "boot is silent" now means __clock.bootWarns.length === 0,
+// checkable, per-boot, unambiguous.
+const __bootWarns = [];
+{
+  const _w = console.warn.bind(console);
+  console.warn = (...a) => {
+    const msg = a.map(String).join(' ');
+    // three-mesh-bvh's coplanar-triangle warn is library chatter from the
+    // inspection sweeps, not one of our asserts — it would bury real warns.
+    if (!msg.startsWith('ExtendedTriangle.intersectsTriangle')) __bootWarns.push(msg);
+    _w(...a);
+  };
+}
+
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
 function smoothstep(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
@@ -173,6 +192,14 @@ window.addEventListener('resize', () => {
 
 const explodeEntries = []; // { obj, baseZ, dir, layer }
 function registerExplode(obj, baseZ, layer, dir = 1) {
+  // updateExplode writes position.z = baseZ at rest EVERY FRAME, so a baseZ
+  // that disagrees with the constructed position silently teleports the unit
+  // on frame one — and only virgin sessions (zero frames) ever see the
+  // constructed value, which is how the handsGroup 3.2/2.5 divergence hid in
+  // every battery run and fingerprint capture. Assert the agreement at
+  // registration; the constructor's own z is the one source.
+  if (Math.abs(obj.position.z - baseZ) > 1e-9)
+    console.warn(`registerExplode: baseZ ${baseZ} disagrees with constructed position.z ${obj.position.z} — frame one will teleport this unit`);
   explodeEntries.push({ obj, baseZ, layer, dir });
 }
 
@@ -4040,7 +4067,20 @@ dialFace.add(handsGroup);
 // for movement's direct children. dir is also flipped (+1) because the
 // parent's Y-rotation inverts the sign of a local-Z displacement once it
 // reaches world space (local +Z faces world -Z through this flip).
-registerExplode(handsGroup, 2.5, 2, 1);
+// baseZ MUST be the same expression the constructor set — updateExplode
+// writes position.z = baseZ every frame at rest, so a divergent literal
+// here silently REVERTS the constructed position on frame one. That
+// exact bug shipped: the json offset said 3.2 — a DERIVED value (see the
+// alarm hand-plane stack at ALARM_HAND_Z: at 2.5 the free lane is 0.5,
+// thinner than any hand section) and the hour TUBE was built to reach it
+// — but this line said 2.5, so frame one dropped the minute hand 0.7
+// below its designed plane, into the hour hand's lane, in every running
+// session ever seen. Intra-unit, so the battery could not see it (the
+// documented blind spot); found by §29 step 0's virgin-session
+// fingerprint check, because only a virgin boot showed the constructed
+// geometry. registerExplode boot-asserts the match for every entry now,
+// so the class is closed.
+registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 
 // The MINUTE hand rides the cannon pinion; the HOUR hand is mounted on the
 // hour wheel's tube further down (see the motion works), so it is NOT added
@@ -4129,15 +4169,60 @@ smallSecondsGroup.add(smallSecondsHand);
 // file with the layout constants — the setting arbor terminates at the
 // minute wheel and needs them long before the dial is built.)
 
-const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2, material: MATS.steel });
-cannonPinion.position.z = -1.5;
+// §29: thickness 2 → 2.1, seated 0.05 deeper — the z-chain's MW_Z1 landed
+// at −1.966 and the minute wheel's bevelled underside (−2.48) must stay
+// inside the cannon's leaves for full-face mesh; the top face stays −0.5.
+const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2.1, material: MATS.steel });
+cannonPinion.position.z = -1.55;
 dialFace.add(cannonPinion);
 
+// ---------------------------------------------------------------------------
+// §29 CENTRE Z-CHAIN (steps 1–2) — the whole stack behind the dial sheet,
+// derived TOP-DOWN in one place (dialFace-local; world = −7 − local). Each
+// member's plane is the previous member's far face plus exactly the margin
+// or working contact the mechanism needs; the motion-works planes at the
+// bottom are WHERE THE CHAIN LANDS, not chosen numbers. (§25 C's block
+// below consumes these; they are hoisted here because the motion works
+// builds first.)
+// ---------------------------------------------------------------------------
+const ALARM_TUBE_BACK = -0.23;   // setting wheel −0.05..−0.23 (0.18 thick, ALARM_SET_T below), flange top here
+const ALARM_FLANGE_T = 0.08;     // carrier flange −0.23..−0.31
+const ALARM_HEART_T = 0.30;      // heart band, one CLEAR_MARGIN under the flange:
+const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // −0.46..−0.76
+// §29 step 2/3 stack under the heart: fixed feeler (one margin below the
+// co-rotating heart), its pin riding the disc's raised notch track, the
+// disc body, then one margin to the minute wheel.
+const ALARM_FEELER_T = 0.10;                                             // feeler arm slice (step 3 builds it)
+const ALARM_FEELER_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // −0.91
+const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and track top
+// The track is TALL (0.17) and the pin's DROP is BANKED at 0.06 by a stop
+// on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
+// the spinning rim, and its dropped-state clearance over the teeth is
+// (static gap − drop·leverFraction) — the stop is what keeps that ≥ the
+// margin. Derivation at the feeler build; the two numbers live here
+// because the whole chain hangs off them.
+const ALARM_TRACK_H = 0.17;
+const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin bounds it at 0.108
+                             // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
+                             // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
+                             // clearing the 0.06 engagement by the one margin (measured + asserted)
+const ALARM_DISC_BODY_T = 0.13;  // disc body (the rim's teeth share this plane)
+const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −1.05
+const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −1.22 (body top)
+const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −1.35
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
 // plane to mesh it; the minute pinion and hour wheel share a second plane
 // behind that. Both stay clear of the sub-dial well floors at −SUBDIAL_RECESS.
-const MW_Z1 = -1.5;   // cannon pinion / minute wheel
-const MW_Z2 = -3.0;   // minute pinion / hour wheel
+// §29: MW_Z1 IS the end of the chain — one margin plus the wheel's bevelled
+// half-thickness below the disc body. Both planes move together (their 1.5
+// spacing is the jumper star's slice, untouched by construction); every
+// star/lever/stud z derives from them and follows. The cannon pinion (2.0
+// thick at −1.5, spanning −0.5..−2.5) covers MW_Z1 with full face
+// engagement down to −1.986+bevel; asserted below.
+const MW_Z1 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22)); // = −1.916
+const MW_Z2 = MW_Z1 - 1.5;   // minute pinion / hour wheel — the 1.5 IS the star slice spacing
+if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < -2.6 + 0.1)
+  console.warn(`§29: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end −2.6 — face engagement thinning`);
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
 // and below the centre).
 const MW_STUD = { x: MW_CENTER_D, y: 0 };
@@ -4671,16 +4756,18 @@ const ALARM_HAND_Z = 1.1;
 // envelope is an annulus — and the lane behind the dial sheet is bounded at
 // r 4.5 by a dial foot and the motion-works stud (vertex-probed). Everything
 // here therefore stays inside r ≤ 4.2: a shallow heart (2.75 → 3.55) and a
-// short arm. z, dialFace-local (world = −7 − local): flange −0.05..−0.30,
-// heart and arm share the band −0.45..−0.85, hour wheel face at −2.6 far
-// below; the empty bracket lane and the r-4.5 bound were both measured, not
-// assumed.
-const ALARM_TUBE_BACK = -0.30;                  // tube back meets the carrier flange just behind the dial sheet
+// short arm. z, dialFace-local (world = −7 − local), §29 step 1 stack:
+// setting wheel −0.05..−0.23 · carrier flange −0.23..−0.31 · heart and arm
+// share −0.46..−0.76 · DISC BAND (§29, open) −0.76..−1.33 · minute wheel
+// from −1.33 · hour wheel face at −2.9 far below; the empty bracket lane
+// and the r-4.5 bound were both measured, not assumed.
+// (ALARM_TUBE_BACK is defined in the §29 CENTRE Z-CHAIN block up at the
+// motion works, with the rest of the stack it anchors.)
 const ALARM_FLANGE_OUT = 4.05;                  // carrier flange: retention + the follower's mounting plate —
                                                 // held 0.18 inside the setting idler's tip-reach toward the centre
                                                 // (9.21 − 4.98 = 4.23; the full sweep caught a 4.25 flange corner-
                                                 // grazing the idler at their shared z boundary)
-const ALARM_FLANGE_T = 0.10;                    // thin — the z between the setting wheel and the arm lane is spoken for
+// (ALARM_FLANGE_T — see the §29 CENTRE Z-CHAIN block.)
 // §25 C stage 3 — the setting train's tooth counts. ONE module for all three
 // meshes (a plain idler cannot mesh two different modules), solved so the
 // three pitch circles exactly span the arbor's radius:
@@ -4700,17 +4787,33 @@ const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_I1_TEETH = 28, ALARM_SET_I2_TEETH = 
 // off a probe that SKIPPED the Dial unit, and its EXPECTED row then blanketed
 // the collision in the sweep; asserts don't share that blind spot.
 const ALARM_SET_MODULE = 0.30;
+// §29 step 1: ONE thickness for the whole setting-train gear lane (wheel,
+// both idlers, arbor pinion) — 0.25 → 0.18. The lane's z is DERIVED from it:
+// crisp faces (bevel: false everywhere in this lane) + the 0.05 sheet gap
+// the setting wheel established, so the band is world −6.95..−6.77 and the
+// plane is its middle. Thinning here is what lets the centre stack above
+// compact without losing the sheet gap.
+const ALARM_SET_T = 0.18;
 const ALARM_SET_I1_BEARING = 18 * DEG2RAD;
 const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
 const ALARM_SET_DW1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_I1_TEETH) / 2; // centre wheel ⇄ i1
 const ALARM_SET_D12 = ALARM_SET_MODULE * (ALARM_SET_I1_TEETH + ALARM_SET_I2_TEETH) / 2;     // i1 ⇄ i2
 const ALARM_SET_D2P = ALARM_SET_MODULE * (ALARM_SET_I2_TEETH + ALARM_SET_PINION_TEETH) / 2; // i2 ⇄ arbor pinion
-const ALARM_SET_Z = -6.825;                     // WORLD gear plane — the probed-empty lane under the reserve band
-const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75, ALARM_HEART_T = 0.4;
-// Heart/arm plane dropped 0.1 from stage 2 (−0.65 → −0.75): the setting wheel
-// now owns −0.05..−0.30 and the carrier flange −0.30..−0.40, so the arm band
-// starting at −0.55 keeps exactly one margin under the flange.
-const ALARM_HEART_Z = -0.75;                    // heart mid-plane (band −0.55..−0.95)
+const ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2; // WORLD gear plane (= −6.86) — the probed-empty lane under the
+                                                // reserve band, DERIVED: sheet (−7) + the 0.05 crisp-face gap + half the
+                                                // lane thickness. The corridor asserts below re-verify the lane.
+const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // (ALARM_HEART_T / ALARM_HEART_Z — §29 CENTRE Z-CHAIN block; heart 0.30 thick, band −0.46..−0.76, one margin under the flange by derivation)
+// §29: the DISC BAND is now a derivation chain (see the CENTRE Z-CHAIN
+// block), but re-verify its two hard edges from the same expressions that
+// place the neighbours — a future edit to any link must keep both margins.
+{
+  const heartBot = ALARM_HEART_Z - ALARM_HEART_T / 2;
+  const mwTop = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+  if (heartBot - ALARM_FEELER_TOP < CLEAR_MARGIN - 1e-9)
+    console.warn(`§29 stack: feeler top ${ALARM_FEELER_TOP.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
+  if (ALARM_DISC_BOT - mwTop < CLEAR_MARGIN - 1e-9)
+    console.warn(`§29 stack: disc bottom ${ALARM_DISC_BOT.toFixed(2)} inside the minute wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
+}
 const ALARM_NOSE_R = 0.2;                       // follower roller
 const ALARM_PIVOT_R = 3.68;                     // pivot post radius (tube frame, az π) — post edge (r+0.22) inside the 4.05 flange
 const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
@@ -4741,23 +4844,28 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   const flange = new THREE.Mesh(ringGeo(ALARM_TUBE_OUTER, ALARM_FLANGE_OUT, ALARM_FLANGE_T), MATS.steel);
   flange.position.z = ALARM_TUBE_BACK - ALARM_FLANGE_T / 2;
   alarmTubeGroup.add(flange);
-  // Pivot post: flange underside (−0.40) down through the arm plane (−0.95).
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.55, 10), MATS.steel);
+  // Pivot post: flange underside down through the heart/arm band's bottom —
+  // both ends DERIVED so the post tracks the §29 step 1 re-stratification.
+  const postH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - (ALARM_HEART_Z - ALARM_HEART_T / 2);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, postH, 10), MATS.steel);
   post.rotation.x = Math.PI / 2;
-  post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - 0.275);
+  post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - postH / 2);
   alarmTubeGroup.add(post);
 }
 // The follower arm — pivoted at the post, nose roller at the tip riding the
 // heart. Built along +x from the pivot; at rotation 0 it points at the dial
 // centre (the pivot sits at az π), so tick's triangle solution IS its pose.
 const alarmFollowerArm = new THREE.Group();
-alarmFollowerArm.position.set(-ALARM_PIVOT_R, 0, ALARM_HEART_Z + 0.05); // arm band −0.45..−0.75
+alarmFollowerArm.position.set(-ALARM_PIVOT_R, 0, ALARM_HEART_Z); // §29 step 1: arm CENTRED on the heart's mid-plane —
+// the old +0.05 ride-high spent margin the compacted stack no longer has;
+// centred, the arm's 0.3 bar exactly shares the heart band and keeps one
+// CLEAR_MARGIN to the flange above by the ALARM_HEART_Z derivation itself
 alarmTubeGroup.add(alarmFollowerArm);
 {
   const bar = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FOLLOWER_LEN, 0.3, 0.3), MATS.steel);
   bar.position.x = ALARM_FOLLOWER_LEN / 2;
   alarmFollowerArm.add(bar);
-  const nose = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_NOSE_R, ALARM_NOSE_R, 0.28, 12), MATS.ruby);
+  const nose = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_NOSE_R, ALARM_NOSE_R, 0.24, 12), MATS.ruby); // §29 step 1: 0.28 → 0.24 — stays inside the thinned 0.30 heart face (0.03 static margin each side; the two ride fixed, co-planar z)
   nose.name = 'alarmNose'; // penetration-budget selector (inspect.js couples by string)
   nose.rotation.x = Math.PI / 2;
   nose.position.x = ALARM_FOLLOWER_LEN;
@@ -4767,15 +4875,16 @@ alarmTubeGroup.add(alarmFollowerArm);
 // outer edge. Its FORCE is representational (like the striker's hammer
 // spring); its flex is driven in tick() from the arm's actual lift.
 const alarmFollowerSpring = new THREE.Group();
-alarmFollowerSpring.position.set(-ALARM_PIVOT_R * Math.cos(0.45), ALARM_PIVOT_R * Math.sin(-0.45), ALARM_HEART_Z + 0.05);
+alarmFollowerSpring.position.set(-ALARM_PIVOT_R * Math.cos(0.45), ALARM_PIVOT_R * Math.sin(-0.45), ALARM_HEART_Z); // §29 step 1: centred with the arm it bears on
 alarmTubeGroup.add(alarmFollowerSpring);
 {
   const blade = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.22), MATS.blueSteel);
   blade.position.x = 0.55;
   alarmFollowerSpring.add(blade);
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.32, 8), MATS.steel);
+  const stubH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - ALARM_HEART_Z; // spring plane up to the flange underside — its anchor (derived, §29 step 1)
+  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, stubH, 8), MATS.steel);
   stub.rotation.x = Math.PI / 2;
-  stub.position.z = 0.16; // reaches up to the carrier flange's underside — its anchor
+  stub.position.z = stubH / 2;
   alarmFollowerSpring.add(stub);
 }
 // Blade angled INWARD from the stub toward the arm's flank — tip lands at
@@ -4785,7 +4894,14 @@ alarmFollowerSpring.rotation.z = 1.9;
 // hand), notch phased to the seated nose azimuth so "seated" IS "hands
 // coincident". Blued like the seconds-reset heart.
 {
-  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: 2.5, rMin: ALARM_HEART_RMIN });
+  // CRISP (bevel: false, §29 step 4): the beveled twin's rendered band is
+  // 0.42 for the authored 0.30 (±0.06 z, +0.06 XY) — the sweep caught the
+  // DROPPED feeler arm kissing that expansion at the notch-alignment poses,
+  // the exact class MODELING.md rule 1 documents. Crisp, the band IS the
+  // authored ALARM_HEART_T the §29 z-chain budgets, and the follower's
+  // nose rides the TRUE authored profile (its cam budget stops absorbing a
+  // phantom 0.06).
+  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: 2.5, rMin: ALARM_HEART_RMIN, bevel: false });
   heart.traverse((o) => { if (o.isMesh) o.name = 'alarmHeart'; }); // penetration-budget selector
   heart.position.z = ALARM_HEART_Z;
   heart.rotation.z = ALARM_NOSE_AZ;
@@ -4806,8 +4922,8 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // CRISP (bevel: false): the gap to the dial sheet is 0.05 and the extrude
   // bevel would expand the face 0.045 toward it — the full sweep caught the
   // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
-  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: 0.25, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
-  wheel.position.z = -0.175; // band −0.05..−0.30 (dialFace local)
+  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
+  wheel.position.z = -(0.05 + ALARM_SET_T / 2); // band −0.05..−0.23 (dialFace local; ALARM_SET_Z is this plane in world)
   alarmSetWheelGroup.add(wheel);
 }
 
@@ -4875,17 +4991,315 @@ const alarmSetI2Spin = new THREE.Group();
 {
   const mk = (spin, pos, teeth) => {
     spin.position.set(pos.x, pos.y, ALARM_SET_Z);
-    const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth, thickness: 0.25, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
+    const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth, thickness: ALARM_SET_T, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
     idler.rotation.z = Math.PI / teeth;
     spin.add(idler);
     alarmIdlerGroup.add(spin);
-    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, -2 - (ALARM_SET_Z + 0.125), 10), MATS.steel);
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, -2 - (ALARM_SET_Z + ALARM_SET_T / 2), 10), MATS.steel);
     stud.rotation.x = Math.PI / 2;
-    stud.position.set(pos.x, pos.y, (-2 + ALARM_SET_Z + 0.125) / 2);
+    stud.position.set(pos.x, pos.y, (-2 + ALARM_SET_Z + ALARM_SET_T / 2) / 2);
     alarmIdlerGroup.add(stud);
   };
   mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH);
   mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH);
+}
+
+// --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
+// A notched disc friction-riding the HOUR TUBE in the §29 disc band: driven
+// with time through that friction seat, RE-PHASED by the setting train when
+// the crown sets — so its angle physically encodes (hour − setting), and the
+// notch passes a FIXED azimuth exactly at coincidence, for every setting.
+// The re-phasing branch taps the EXISTING dogleg: i2 becomes a COMPOUND
+// idler (a second pinion on its sleeve down at the band plane), one new
+// idler j carries the drive inboard, and the disc's own toothed rim closes
+// it. The counts are FORCED, not chosen: the branch must deliver the tube's
+// set rate with opposite sense, so (i2b/rim) ≡ (i2/settingWheel) = 37/30 —
+// the same pair as the lane — and the extra mesh provides the sign. j drops
+// out of the ratio; 18 teeth is its GEOMETRY: big enough that its dial-hung
+// stud stands clear of the setting wheel's tips (asserted below).
+const ALARM_DISC_TEETH = 30; // rim — with i1b (28) the branch nets −(28/30), the tube path's mirror (see the branch block)
+// The branch MODULE is closure-derived: i1 stands ALARM_SET_DW1 from the
+// centre, and the i1b⇄rim mesh must span exactly that — m = 2·DW1/(28+30).
+const ALARM_BRANCH_MODULE = 2 * ALARM_SET_DW1 / (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH);
+// The READ STATION sits 0.44 rad off the stem line: the feeler's bracket
+// needs |bracket − i1| ≥ i1b's tip reach + margin (4.74) at bracket radius
+// 5.5, and on the az-0 line that distance is only 3.9 — the offset swings
+// it clear (6.0 achieved, asserted at the feeler). The release azimuth is
+// a free phase (Φ absorbs it); only the TAIL's corridor cares, and it
+// dog-legs back to the climb one band above the gear lane (step 4).
+const ALARM_FEELER_AZ_OFF = 0.44;
+const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
+const ALARM_RELEASE_PHASE = Math.PI - ALARM_RELEASE_AZ; // dialFace mirror: a disc-local-az-0 feature sits at world ALARM_RELEASE_AZ when rotation.z == this
+const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
+const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.85), inside the rim's root circle (3.30)
+const ALARM_BAND_Z = Z_DIAL - ALARM_DISC_TOP + ALARM_DISC_BODY_T / 2; // WORLD plane of the band gears (= the disc body's mid-plane mirrored)
+// Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
+// invariants (disc tracks hour when idle; setting re-phases it equal and
+// opposite to the tube; the notch az at trip is setting-independent) —
+// the mirror-frame algebra has too many hands. The boot assert below
+// re-verifies the third invariant numerically on every load.
+const ALARM_DISC_SIGN = 1;   // set-term sign in the disc's dial-frame law
+const ALARM_BD_SIGN = 1;     // hour back-drive sign through the branch
+{
+  if (Math.abs(ALARM_SET_I2_TEETH / ALARM_DISC_TEETH - ALARM_SET_I2_TEETH / ALARM_SET_WHEEL_TEETH) > 1e-12)
+    console.warn('§29 disc branch: rim ratio no longer mirrors the lane pair — the differential encodes the wrong rate');
+}
+const alarmDiscGroup = new THREE.Group();
+dialFace.add(alarmDiscGroup);
+registerLabel('Alarm release disc', alarmDiscGroup);
+registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry local z
+{
+  // Friction hub — the running seat ON the hour tube (bore +0.05, the
+  // setting wheel's snug-fit precedent: the fit IS the coupling).
+  const hub = new THREE.Mesh(ringGeo(HOUR_TUBE_OUTER + 0.05, HOUR_TUBE_OUTER + 0.35, ALARM_TRACK_TOP - ALARM_DISC_BOT), MATS.steel);
+  hub.name = 'alarmDiscHub';
+  hub.position.z = (ALARM_TRACK_TOP + ALARM_DISC_BOT) / 2;
+  alarmDiscGroup.add(hub);
+  // Body + rim teeth in one crisp gear (bevel: false — the band budget is
+  // margin-exact on both faces, same rule as the setting lane).
+  const body = G.makeGear({ module: ALARM_BRANCH_MODULE, teeth: ALARM_DISC_TEETH, thickness: ALARM_DISC_BODY_T, boreR: HOUR_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.steel, bevel: false });
+  body.traverse((o) => { if (o.isMesh) o.name = 'alarmDiscBody'; });
+  body.position.z = ALARM_DISC_BOT + ALARM_DISC_BODY_T / 2;
+  alarmDiscGroup.add(body);
+  // The RAISED TRACK with the notch as its one gap (no CSG: the notch is
+  // the ABSENCE of track). The pin rides the track's top; at coincidence
+  // the gap arrives under it and it drops ALARM_TRACK_H onto the body.
+  const a0 = ALARM_NOTCH_W / 2, a1 = Math.PI * 2 - ALARM_NOTCH_W / 2;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
+  shape.absarc(0, 0, ALARM_TRACK_RMID - ALARM_TRACK_HALFW, a1, a0, true);
+  const trackGeo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_TRACK_H, bevelEnabled: false });
+  const track = new THREE.Mesh(trackGeo, MATS.steel);
+  track.name = 'alarmDiscTrack';
+  track.position.z = ALARM_DISC_TOP;
+  alarmDiscGroup.add(track);
+}
+// --- '(§29 step 2, FIXED) the re-phasing branch taps I1 DIRECTLY -----------
+// The first build tapped i2 through a new idler j — placed by a two-circle
+// solve whose circles never intersected: |i2 − centre| is 18.4 (the dogleg
+// runs out to the ARBOR), not the assumed ~9. The closure assert caught it
+// at boot, and the sweep did NOT: the collided pair was blanketed by its
+// own EXPECTED row — the documented blind spot, self-inflicted a second
+// time. The fix is simpler than the mistake: I1 sits at ALARM_SET_DW1
+// (8.7) from the centre, and a compound pinion on ITS sleeve meshing the
+// rim DIRECTLY gives the required −(28/30) in one mesh — the branch module
+// is DERIVED from the closure (m = 2·DW1/(28+30)), so the mesh cannot
+// fail to close, and the whole j problem evaporates.
+{
+  const i1b = G.makeGear({ module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, thickness: ALARM_DISC_BODY_T, boreR: 0.5, spokes: 4, hub: false, material: MATS.brass, bevel: false });
+  i1b.rotation.z = Math.PI / ALARM_SET_I1_TEETH;
+  i1b.position.z = ALARM_BAND_Z - ALARM_SET_Z;
+  alarmSetI1Spin.add(i1b);
+  const sleeve = new THREE.Mesh(ringGeo(0.5, 0.62, Math.abs(ALARM_BAND_Z - ALARM_SET_Z)), MATS.steel);
+  sleeve.position.z = (ALARM_BAND_Z - ALARM_SET_Z) / 2;
+  alarmSetI1Spin.add(sleeve);
+}
+// --- '(§29 step 3) Alarm release feeler' — the FIXED reader ---------------
+// A rocking lever on a dial-hung bracket at the release azimuth: pin down
+// onto the disc's raised track, arm crossing the spinning rim with one
+// margin, tail stub outboard for step 4's run to the climb. The pin's drop
+// is BANKED at ALARM_PIN_DROP by a stop on the bracket — NOT by bottoming
+// in the notch — because the dropped arm still owes the rim its margin
+// (asserted below with the lever fraction written out).
+const ALARM_FEELER_PIVOT_R = 5.5; // bracket lugs' inboard faces clear the rim's tips by one margin (asserted)
+const ALARM_PIN_R = 0.14;         // pin radius — its diameter equals the arm's width, so the arm fits the
+                                  // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
+                                  // 0.092 rad pin arc at the track radius; the edge ramp below is what
+                                  // keeps the arm above the ridge until the pin is truly in the gap)
+const alarmFeelerUnit = new THREE.Group();
+dialFace.add(alarmFeelerUnit);
+registerLabel('Alarm release feeler', alarmFeelerUnit);
+registerExplode(alarmFeelerUnit, 0, 2, 1); // dialFace child: children carry local z
+// dial-local frame: world (x,y) ↔ dial-local (−x, y); uF = outward radial
+// at the release azimuth, phiF = the inboard direction's dial-local angle.
+const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
+const _phiF = Math.atan2(-_uF.y, -_uF.x);
+const ALARM_FEELER_ARM_LEN = ALARM_FEELER_PIVOT_R - ALARM_TRACK_RMID; // pivot → pin
+const ALARM_FEELER_TAIL = 0.9;   // outboard stub — step 4 extends it to the climb pawl
+const _armMidZ = (ALARM_FEELER_TOP + (ALARM_FEELER_TOP - ALARM_FEELER_T)) / 2; // −0.96
+{
+  // Bracket: two lugs from the sheet's back face down to the pivot, a
+  // tangential pivot pin between them, and the BANKING STOP over the tail.
+  const lugH = -0.05 - (_armMidZ - 0.10); // sheet back face → just under the pivot
+  for (const side of [-1, 1]) {
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, lugH), MATS.nickel);
+    lug.position.set(_uF.x * ALARM_FEELER_PIVOT_R - Math.sin(_phiF) * 0.25 * side,
+                     _uF.y * ALARM_FEELER_PIVOT_R + Math.cos(_phiF) * 0.25 * side,
+                     -0.05 - lugH / 2);
+    lug.rotation.z = _phiF;
+    alarmFeelerUnit.add(lug);
+  }
+  const pivotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.62, 8), MATS.steel);
+  pivotPin.rotation.z = _phiF; // cylinder axis +y → rotate into the tangential direction
+  pivotPin.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
+  alarmFeelerUnit.add(pivotPin);
+  // Banking stop: a post over the TAIL whose face banks the tail's RISE at
+  // exactly the pin's allowed drop (lever ratio tail/arm) — the derived
+  // travel limit that protects the rim crossing.
+  const stopGap = ALARM_PIN_DROP * (ALARM_FEELER_TAIL / ALARM_FEELER_ARM_LEN);
+  const stop = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.12), MATS.nickel);
+  stop.position.set(_uF.x * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL),
+                    _uF.y * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL),
+                    ALARM_FEELER_TOP + 0.06 + stopGap + 0.06); // face sits stopGap above the tail's rest top
+  stop.rotation.z = _phiF;
+  alarmFeelerUnit.add(stop);
+}
+const alarmFeelerLever = new THREE.Group();
+alarmFeelerLever.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
+alarmFeelerLever.rotation.z = _phiF; // local +x = inboard, toward the pin
+alarmFeelerUnit.add(alarmFeelerLever);
+{
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_ARM_LEN, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
+  arm.position.x = ALARM_FEELER_ARM_LEN / 2;
+  alarmFeelerLever.add(arm);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_TAIL, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
+  tail.position.x = -ALARM_FEELER_TAIL / 2;
+  alarmFeelerLever.add(tail);
+  // The pin: shank from inside the arm down to the riding tip.
+  const pinLen = (ALARM_FEELER_TOP - ALARM_FEELER_T / 2) - ALARM_TRACK_TOP + 0.02; // arm mid → track top, +0.02 seat
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PIN_R, ALARM_PIN_R, pinLen, 12), MATS.ruby);
+  pin.name = 'alarmFeelerPin'; // penetration-budget selector
+  pin.rotation.x = Math.PI / 2;
+  pin.position.set(ALARM_FEELER_ARM_LEN, 0, -pinLen / 2 + 0.02);
+  alarmFeelerLever.add(pin);
+  // Return spring: a blade from the outboard lug pressing the arm down —
+  // force representational, flex driven in tick from the actual drop.
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.04), MATS.blueSteel);
+  blade.name = 'alarmFeelerSpring';
+  blade.position.set(0.45, 0.28, ALARM_FEELER_T / 2 + 0.04);
+  alarmFeelerLever.add(blade);
+}
+// --- §29 step 4: the TAIL and the CONTRATE PAWL ---------------------------
+// The tail runs STRAIGHT from the pivot to the climb (the probe cleared the
+// line: it passes 4.3 from i1's sleeve, far over the gear lane), one band
+// above the lane at the feeler's plane; at its end a RISER climbs to the
+// winding contrate at Z_ALARM_CORNER and a beak enters the tooth band's
+// LOWER edge from beside. Pin riding (no trip) ⇒ beak seated ⇒ the climb —
+// and through the 12/44 mesh the whole striking barrel — is HELD. Pin drops
+// ⇒ the tail swings dial-ward and the beak withdraws clear of the band:
+// the RELEASE, as a real detent. Winding clicks over it: the beak's tip is
+// SPRING STEEL and follows the tooth profile under it (kinematically, like
+// the pin on the track) — the lever itself cannot bob, because the pin's
+// track contact fixes its other end; the compliance is the pawl's own.
+const ALARM_PAWL_ENGAGE = 0.06;  // beak's z reach into the contrate band's top edge — sized so the
+                                 // pin's stop-banked drop withdraws it a full margin clear
+const _climbDial = { x: -ALARM_WIND_X, y: ALARM_WIND_Y };      // climb axis, dial-local
+const _pivotDial = { x: _uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R };
+const _toClimb = { x: _climbDial.x - _pivotDial.x, y: _climbDial.y - _pivotDial.y };
+const _toClimbL = {  // lever-local (undo the lever's z-rotation)
+  x: Math.cos(-_phiF) * _toClimb.x - Math.sin(-_phiF) * _toClimb.y,
+  y: Math.sin(-_phiF) * _toClimb.x + Math.cos(-_phiF) * _toClimb.y,
+};
+const _contrateR = (ALARM_BEVEL_MODULE * ALARM_BEVEL_TEETH) / 2;
+// The beak engages the tooth band's PLATE-side (top) edge: the lever's
+// rock moves the tail plate-ward on the trip (measured — the pivot side
+// signs land that way through the mirror), so engaging the top edge makes
+// plate-ward motion the WITHDRAWAL, into the open span under the plate.
+const _pawlBandTop = Z_ALARM_CORNER + ALARM_BEVEL_FACE / 2;
+const ALARM_PAWL_DIST = Math.hypot(_toClimbL.x, _toClimbL.y) - _contrateR - 0.35; // pivot → riser (beak stand-off outside the teeth)
+const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes position.z with the tooth profile
+{
+  const dirL = Math.atan2(_toClimbL.y, _toClimbL.x);
+  // The tail's RUN is z-JOGGED off the arm's plane, dial-ward to local
+  // −0.66..−0.76 (empty at its radii — the flange stops at 4.05, the heart
+  // at 3.75): at the arm's plane the run passed under i1b's band gears with
+  // 0.21 static, and the DROPPED lever's rise ate it — the sweep caught the
+  // graze at exactly the notch-alignment poses. The jogged run clears i1b
+  // by 0.46 even dropped, and still rides 0.43 above the gear lane.
+  const _tailRunZ = (-7 - (-6.29)) - _armMidZ; // world −6.29 (run mid) → lever-local
+  const jog = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, Math.abs(_tailRunZ) + ALARM_FEELER_T), MATS.steel);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 0.26, 0.10), MATS.steel);
+  tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
+  const tailG = new THREE.Group();
+  tailG.rotation.z = dirL;
+  jog.position.set(0.35, 0, _tailRunZ / 2);
+  tailG.add(jog);
+  tailG.add(tail);
+  alarmFeelerLever.add(tailG);
+  // riser + beak ride the flex group at the tail's end
+  const beakTopL = (-7 - (_pawlBandTop - ALARM_PAWL_ENGAGE / 2)) - _armMidZ; // beak CENTRE, so its span is [bandTop − engage, bandTop] (world → dial-local → lever-local)
+  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, Math.abs(beakTopL - _tailRunZ)), MATS.steel);
+  riser.position.z = (beakTopL + _tailRunZ) / 2; // spans the jogged run's plane down to the beak
+  alarmPawlFlex.add(riser);
+  const beak = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, ALARM_PAWL_ENGAGE), MATS.steel);
+  beak.name = 'alarmPawlBeak'; // penetration-budget selector; its leading face is square to the
+                               // DELIVERY flank (wedges, self-holding) and the winding sense cams
+                               // it out axially — the one-way approach-angle convention
+  beak.position.set(0.35, 0, beakTopL - ALARM_PAWL_ENGAGE / 2 + ALARM_PAWL_ENGAGE / 2);
+  beak.position.z = beakTopL;
+  alarmPawlFlex.add(beak);
+  alarmPawlFlex.position.set(Math.cos(dirL) * ALARM_PAWL_DIST, Math.sin(dirL) * ALARM_PAWL_DIST, 0);
+  alarmPawlFlex.rotation.z = -dirL; // beak's +x aims at the climb axis
+  alarmFeelerLever.add(alarmPawlFlex);
+}
+// §29 step 4 asserts — the tail's corridor and the travel arithmetic:
+{
+  const worldPt = (dl) => ({ x: -dl.x, y: dl.y });
+  const pv = worldPt(_pivotDial), cl = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
+  const segDist = (p2) => { // point-to-segment pivot→climb
+    const dx = cl.x - pv.x, dy = cl.y - pv.y; const L2 = dx * dx + dy * dy;
+    const t = Math.max(0, Math.min(1, ((p2.x - pv.x) * dx + (p2.y - pv.y) * dy) / L2));
+    return Math.hypot(p2.x - (pv.x + t * dx), p2.y - (pv.y + t * dy));
+  };
+  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 pawl tail ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
+  say('vs i1 sleeve', segDist(ALARM_SET_I1) - 0.62 - 0.13);
+  say('vs i2 stud', segDist(ALARM_SET_I2) - 0.45 - 0.13);
+  const wd = ALARM_PIN_DROP * (ALARM_PAWL_DIST + _contrateR + 0.35) / ALARM_FEELER_ARM_LEN; // beak's withdrawal travel
+  if (wd - ALARM_PAWL_ENGAGE < CLEAR_MARGIN)
+    console.warn(`§29 pawl: withdrawal ${wd.toFixed(2)} clears the ${ALARM_PAWL_ENGAGE} engagement by ${(wd - ALARM_PAWL_ENGAGE).toFixed(2)}, need ${CLEAR_MARGIN}`);
+}
+// §29 step 3 corridor + travel asserts:
+{
+  const bx = -_uF.x * ALARM_FEELER_PIVOT_R, by = _uF.y * ALARM_FEELER_PIVOT_R; // world XY of the bracket
+  const i1bTip = (ALARM_BRANCH_MODULE * ALARM_SET_I1_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
+  const dToI1 = Math.hypot(bx - ALARM_SET_I1.x, by - ALARM_SET_I1.y);
+  if (dToI1 - i1bTip - 0.31 < CLEAR_MARGIN)
+    console.warn(`§29 feeler: bracket ${dToI1.toFixed(2)} from i1 — i1b tips reach ${i1bTip.toFixed(2)} + lug 0.31, need ${CLEAR_MARGIN} clear`);
+  const rimTip = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
+  if ((ALARM_FEELER_PIVOT_R - 0.31) - rimTip < CLEAR_MARGIN)
+    console.warn(`§29 feeler: lug inner face ${(ALARM_FEELER_PIVOT_R - 0.31).toFixed(2)} vs rim tips ${rimTip.toFixed(2)}, need ${CLEAR_MARGIN}`);
+  const rimRoot = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 - 1.25 * ALARM_BRANCH_MODULE;
+  const staticGap = (ALARM_FEELER_TOP - ALARM_FEELER_T) - ALARM_DISC_TOP;
+  const dropAtRim = ALARM_PIN_DROP * (ALARM_FEELER_PIVOT_R - rimRoot) / ALARM_FEELER_ARM_LEN;
+  if (staticGap - dropAtRim < CLEAR_MARGIN)
+    console.warn(`§29 feeler: dropped arm ${(staticGap - dropAtRim).toFixed(3)} over the rim teeth, need ${CLEAR_MARGIN} — the banking stop's travel is too generous`);
+  if (ALARM_TRACK_TOP - ALARM_PIN_DROP <= ALARM_DISC_TOP)
+    console.warn('§29 feeler: the dropped pin would bottom in the notch — the stop, not the disc, must take the landing');
+}
+
+// §29 step 2 corridor — every wall the branch threads, asserted with the
+// achieved and required numbers (the §25 C discipline):
+{
+  const mwc = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
+  const mwTip = (MW_MODULE_1 * MW_MINUTE_TEETH) / 2 + 1.25 * MW_MODULE_1;
+  const i1bTip = (ALARM_BRANCH_MODULE * ALARM_SET_I1_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
+  const rimTip = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
+  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 branch ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
+  // i1b's swept tips vs the minute-wheel circle — XY only matters if the z
+  // bands touch; they are separated by the chain, so assert THAT instead:
+  const mwTopL = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+  if (ALARM_DISC_BOT - mwTopL < CLEAR_MARGIN - 1e-9)
+    console.warn(`§29 branch: band gears' underside ${ALARM_DISC_BOT.toFixed(2)} inside the minute wheel's margin (top ${mwTopL.toFixed(2)})`);
+  // i1b vs the minute-wheel circle in ITS OWN plane (the sleeve crosses nothing, but the tips do XY-wise at other azimuths — z-separated; the real XY bind is the RIM):
+  say('i1 sleeve vs minute wheel', Math.hypot(ALARM_SET_I1.x - mwc.x, ALARM_SET_I1.y - mwc.y) - mwTip - 0.62);
+  // the rim's tips vs the follower annulus above are z-separated by the
+  // chain (asserted at the stack); its one same-plane neighbour is i1b —
+  // the declared mesh. Assert the mesh IS closed (pitch sum = distance):
+  const closure = Math.abs(Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y)
+    - ALARM_BRANCH_MODULE * (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH) / 2);
+  if (closure > 1e-9) console.warn(`§29 branch: i1b⇄rim mesh fails to close by ${closure.toFixed(4)}`);
+  // the trip invariance — the whole POINT of the differential, verified
+  // numerically: for two different settings, (hour == set) must put the
+  // notch at the SAME world azimuth (the release az).
+  for (const setRot of [1.0, 4.7]) {
+    const aSet = setRot * ALARM_SET_RATIO;
+    const hourAtTrip = -aSet;                               // the §25 B trip: mwHourA == tube (−alarmAngle)
+    const discRot = hourAtTrip + ALARM_DISC_SIGN * aSet + ALARM_RELEASE_PHASE;
+    const notchWorld = Math.PI - discRot;                   // dialFace mirror of the disc-local-az-0 gap
+    const err = Math.abs(wrapPi(notchWorld - ALARM_RELEASE_AZ));
+    if (err > 1e-9)
+      console.warn(`§29 trip invariance: setting ${setRot} puts the notch ${err.toFixed(4)} rad off the release az — the disc law's set sign is wrong`);
+  }
 }
 // The hand: hour-hand profile, a touch shorter so the hour hand can cover it
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
@@ -4927,7 +5341,7 @@ alarmArborUnit.add(alarmRotor);
 // §25 C stage 3: the rod now runs past the old pointer depth down to the
 // setting PINION at the gear lane — the arbor's whole reason to exist is to
 // deliver the crown's turn into that lane.
-const alarmArborEnd = ALARM_SET_Z - 0.125; // rod bottoms at the pinion's underside
+const alarmArborEnd = ALARM_SET_Z - ALARM_SET_T / 2; // rod bottoms at the pinion's underside
 const alarmArborRod = new THREE.Mesh(
   new THREE.CylinderGeometry(0.4, 0.4, Z_ALARM_CORNER - alarmArborEnd, 10), MATS.steel);
 alarmArborRod.rotation.x = Math.PI / 2;
@@ -4936,7 +5350,7 @@ alarmRotor.add(alarmArborRod);
 // The setting pinion — overhung on the rod's end in the gear lane, meshing
 // the idler. Same module as the whole train (see ALARM_SET_MODULE).
 {
-  const pin = G.makePinion({ module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, thickness: 0.25, material: MATS.steel });
+  const pin = G.makePinion({ module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, thickness: ALARM_SET_T, material: MATS.steel });
   pin.position.z = ALARM_SET_Z;
   alarmRotor.add(pin);
 }
@@ -5540,6 +5954,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   rod.position.z = (rodTop + Z_ALARM_CORNER) / 2;
   climb.add(rod);
   const contrate = G.makeBevelGear({ teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+  contrate.traverse((o) => { if (o.isMesh) o.name = 'alarmWindContrate'; }); // §29 step 4: the pawl budget selects this by name
   const cMount = new THREE.Group();
   cMount.position.z = Z_ALARM_CORNER;
   cMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
@@ -5813,7 +6228,7 @@ let jumpCorr = 0;
 // backlog of events).
 let sndBeatN = null, sndBeatRaw = null, sndPawlIdx = null, sndDetIdx = null, sndJumpIdx = null;
 let sndCrownOut = null, sndHammerHit = false;
-let alarmPrevRel = null; // §25 B: previous hour-wheel→alarm-tube angle gap — the trip edge is now the PHYSICAL alignment (the follower dropping into the heart's notch), not §24's seconds comparison
+let alarmDropSpent = false; // §29 step 5: one-shot latch — the pin's current drop has already fired its release (re-arms when the pin lifts off the notch)
 let alarmLockLiftT = 0;  // §25 B: eased brake-lever lift (1 = released, pad clear of the collar)
 let alarmColSteps = 0;   // §25 D: column-wheel actuations — parity IS the on/off (odd = gap under the beak = ON)
 let alarmColShownA = 0;  // eased wheel angle (transient; the pose path assigns exactly)
@@ -5954,6 +6369,8 @@ let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier 
 // reference stops updating the instant the hammer lifts, so the hand
 // resumes counting up from 12 rather than jumping to catch up.
 let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
+let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
+let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
                             // heart cam is a positive mechanical action, not
                             // a soft friction stop, so the reset reads snappier.
@@ -7031,7 +7448,7 @@ window.addEventListener('keydown', () => {
 // writes the set time; that is set by turning the alarm crown in 3D (Rule 2),
 // and the readout below is derived from the disc's angle. Turning it on while
 // the display sits before the target arms silently until the crossing;
-// `alarmPrevRel` resets each mute/FF gap so re-arming never machine-guns.
+// `alarmDropSpent` latches across each mute/FF gap so re-arming never machine-guns.
 function setAlarm(on) {
   if (on !== alarmOn) { alarmColSteps += 1; alarmPusherT = 1; } // §25 D: one actuation = one pusher press = half a pitch
   alarmOn = on;
@@ -7265,6 +7682,7 @@ const EXPLODE_GROUPS = new Map([
     // dial side, unfolding toward the viewer in drive order: crown outermost
     ['Alarm crown', 6], ['Alarm setting arbor', 5], ['Alarm setting idler', 4],
     ['Alarm setting wheel', 3], ['Alarm disc', 2],
+    ['Alarm release disc', 2], ['Alarm release feeler', 3],
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm hammer', 9], ['Alarm gong', 11],
@@ -8272,17 +8690,49 @@ function tick(t) {
     // clockwise ⇒ rel falls; a jump of more than half a turn in one tick is
     // a hand-set wrap, not a crossing).
     const rel = wrapPi(mwHourA - alarmTubeShownA);
-    if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && alarmPrevRel !== null) {
-      const step = wrapPi(rel - alarmPrevRel);
-      if (step < 0 && step > -Math.PI && alarmPrevRel > 0 && rel <= 0) {
-        alarmReleased = true;            // the brake lever swings off the collar — the striking train is free
-        // §25 C: the phase CONTINUES from wherever winding parked it (lockstep
-        // with the barrel — resetting it here would slip the mesh by however
-        // much the last wind was short of full).
-        alarmStrikeIdx = Math.floor(alarmStrikePhase - ALARM_STRIKE_U);
-      }
+    // §29 step 5 ordering: the strike section runs EARLIER in tick than the
+    // alarm-setting section that poses the disc, so the pin's drop is
+    // computed HERE from the same closed forms — the trip must read THIS
+    // tick's pin, not the previous pose's (a one-tick-stale pin broke
+    // setPose determinism and once fired a release from a prior session's
+    // state). The later disc block re-derives the identical value for the
+    // visual pose; both are pure functions of the same inputs.
+    {
+      const discRotNow = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+      const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
+      const gapHalf = ALARM_NOTCH_W / 2;
+      const align = Math.abs(wrapPi(discRotNow - ALARM_RELEASE_PHASE));
+      alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
+        : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
+        : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
     }
-    alarmPrevRel = rel;
+    // §29 step 5: the trip IS the pin's drop. The physical chain — disc's
+    // notch arriving under the pin, the lever bottoming on its stop, the
+    // pawl withdrawing clear of the contrate — is what frees the train;
+    // the §25 B angle-crossing survives as the AGREEMENT ASSERT: a pin
+    // that bottoms outside the coincidence window means the differential's
+    // encoding has drifted from the tube's, and that is a defect, not a
+    // ring. One-shot per drop (alarmDropSpent re-arms when the pin lifts),
+    // which also makes FF/catch-up jumps honest: landing mid-window rings
+    // once, exactly as the skipped time would have.
+    if (alarmPinDropNow < ALARM_PIN_DROP - 1e-9) alarmDropSpent = false;
+    if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && !alarmDropSpent
+        && alarmPinDropNow >= ALARM_PIN_DROP - 1e-9) {
+      // The agreement is checked in TARGET space (the tube's mechanical set
+      // angle), not against alarmTubeShownA: the shown angle is an EASE and
+      // cannot move under a zero-dt setPose tick (the documented trap), so
+      // a posed jump would false-fire the assert while the pin is exactly
+      // where the mechanism puts it.
+      const relTarget = wrapPi(mwHourA + alarmDiscAngle());
+      if (Math.abs(relTarget) > ALARM_NOTCH_W)
+        console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad from coincidence — detector and arithmetic disagree (window ${ALARM_NOTCH_W})`);
+      alarmReleased = true;              // both holds now off: the brake lifted at arming, the pawl just withdrew
+      alarmDropSpent = true;
+      // §25 C: the phase CONTINUES from wherever winding parked it (lockstep
+      // with the barrel — resetting it here would slip the mesh by however
+      // much the last wind was short of full).
+      alarmStrikeIdx = Math.floor(alarmStrikePhase - ALARM_STRIKE_U);
+    }
     // Ring: while released, armed and wound, the striking train runs at the
     // cadence the gong wants and the barrel gives up EXACTLY the turning the
     // train takes — one spend, two variables, so §25's geometry cannot drift
@@ -8306,7 +8756,7 @@ function tick(t) {
       alarmReleased = false;
     }
   } else {
-    alarmPrevRel = null; // re-enabling after FF / catch-up stays silent until the next real crossing
+    alarmDropSpent = true; // re-enabling after FF / catch-up: the CURRENT drop (if the jump landed mid-window) is treated as already heard — the next notch arrival rings
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
@@ -8432,9 +8882,29 @@ function tick(t) {
   // the 90° bevel pair's handedness absorbs it (representational sign, as
   // §24's bevels always were). Derived forward: arbor −setRot → i2 +setRot/4
   // → i1 −setRot/4 → wheel world +setRot/3 = the armed tube's world sense.
-  alarmRotor.rotation.z = -alarmSetRot;
-  alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH);
-  alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH);
+  // §29 step 2: the branch makes the setting train TOTAL — the crown term
+  // (unchanged, §25's verified identity) plus the hour's back-drive through
+  // the disc's friction seat. The back-drive flows in BOTH crown positions:
+  // pushed in, the rod idles free (the pull IS the clutch); pulled out,
+  // nothing detents the crown's ROTATION, so the train slowly back-turns
+  // the pulled crown — real Memovox behaviour — and the hub slips only
+  // under the user's own setting torque, which is the re-phasing.
+  const _bd = ALARM_BD_SIGN * mwHourA;
+  alarmRotor.rotation.z = -alarmSetRot - 3 * _bd; // −ω_i1·(28/10) closes the chain on the rod: 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
+  alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH)
+    - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
+  alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
+    + _bd * (ALARM_DISC_TEETH / ALARM_SET_I1_TEETH);
+  // The disc's one law — total in both regimes (running: follows the hour
+  // through the friction seat; setting: re-phased through the branch): its
+  // dial-frame angle is hour + set-term + the release phase, so the notch
+  // sits at the release azimuth exactly when the hands coincide.
+  alarmDiscGroup.rotation.z = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+  // §29 step 3: the pin RIDES the track — its lift IS the surface under it,
+  // a pure function of the disc's angle (no ease, no state: setPose poses
+  // it exactly). alarmPinDropNow was computed up at the strike section this
+  // same tick (the trip needs it before the ring); here the LEVER wears it.
+  alarmFeelerLever.rotation.y = -alarmPinDropNow / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
   alarmSetWheelGroup.rotation.z = -alarmSetRot * ALARM_SET_RATIO;
   // §25 C winding train — posed RIGIDLY from the barrel's angle, so winding,
   // ringing and rest are one consistent mesh (while ringing, the train and a
@@ -8444,6 +8914,17 @@ function tick(t) {
     alarmWindUnit.userData.i2.rotation.z = -bA * (ALARM_BARREL_TEETH / ALARM_WIND_IDLER_TEETH);
     alarmWindUnit.userData.i1.rotation.z = bA * (ALARM_BARREL_TEETH / ALARM_WIND_IDLER_TEETH);
     alarmWindUnit.userData.climb.rotation.z = -bA * (ALARM_BARREL_TEETH / ALARM_WIND_PINION_TEETH);
+    // §29 step 4: the pawl's spring-steel tip follows the contrate tooth
+    // profile under it while seated — stateless, like the pin on the track
+    // (winding visibly clicks it; the long-ramp/steep-bank saw shape is the
+    // one-way convention). The trip's withdrawal comes from the LEVER (the
+    // pin side owns that); this flex is only the click's compliance.
+    {
+      const seatedT = 1 - clamp(alarmPinDropNow / ALARM_PIN_DROP, 0, 1);
+      const ph = ((alarmWindUnit.userData.climb.rotation.z * ALARM_BEVEL_TEETH / (2 * Math.PI)) % 1 + 1) % 1;
+      const saw = ph < 0.85 ? ph / 0.85 : (1 - ph) / 0.15;
+      alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw; // cam-out is plate-ward (−local z), the withdrawal's own direction
+    }
   }
   // §25 B + D — the brake and the column-wheel switch. The wheel eases to its
   // stepped angle; the beak's lift comes from the SAME profile the columns
@@ -8459,7 +8940,13 @@ function tick(t) {
     }
     alarmColumnWheel.rotation.z = -alarmColShownA; // the wheel turns UNDER the fixed-azimuth beak
     const colBlock = alarmColumnWheel.userData.profileAt(alarmColShownA);
-    const liftTarget = (alarmOn && alarmReleased) ? 1 : 0;
+    // §29 step 5: the brake is the ON/OFF STOP-WORK alone now — it lifts at
+    // ARMING (the §25 D column still physically gates it via colBlock), and
+    // between arming and the coincidence the PAWL is the hold that matters:
+    // two holds, each real, each with its own master, as in actual alarm
+    // calibers. After run-down the lock stays lifted (still armed) and the
+    // re-seated pawl holds the parked train.
+    const liftTarget = alarmOn ? 1 : 0;
     if (rawDt > 0) {
       alarmLockLiftT += (liftTarget - alarmLockLiftT) * (1 - Math.exp(-rawDt / 0.08));
     } else {
@@ -8477,7 +8964,18 @@ function tick(t) {
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + 0.17);
   }
-  alarmSpinner.rotation.y = alarmCrownRotation; // free stem, continuous with the drag
+  // §29 step 2: PULLED, the crown's bevel is meshed to the rod, and the rod
+  // creeps with the hour back-drive (see the branch above) — so the crown
+  // visibly back-turns with it, 1:1 through the bevel pair, on top of the
+  // user's own drag. Pushed in, the stem rides the winding contrate and the
+  // set-side creep never reaches it. BANKED, not gated: pushing in freezes
+  // the accumulated creep in the knob's position (disengaging a bevel moves
+  // nothing), so the shown angle is continuous through every transition —
+  // the §25 lockstep discipline. A session accumulator ⇒ resetInputs owns it.
+  if (alarmCrownOut && alarmCrownCreepLastBd !== null)
+    alarmCrownCreep += -3 * (_bd - alarmCrownCreepLastBd);
+  alarmCrownCreepLastBd = _bd;
+  alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A). All three poses come off ONE state
   // pair that tick() advances together, so the mesh cannot slip: the barrel's
@@ -8647,6 +9145,9 @@ window.__clock = {
   get balanceRate() { return balanceRate; },
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
+  get bootWarns() { return __bootWarns; },
+  get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind }; }, // §29 step 5 verification surface
+  get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },
@@ -8680,7 +9181,9 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmPrevRel = null; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓)
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives on the next tick
+    secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
+    alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero

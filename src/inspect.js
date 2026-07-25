@@ -151,6 +151,9 @@ const MECH_GRAPH = {
                                              // running fit is its bearing (rattrapante centre stack)
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
+    ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
+    ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
@@ -217,6 +220,14 @@ const MECH_GRAPH = {
                                              // the tube follows the heart (the cannon-pinion precedent)
     ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
                                              // tube drives the tube home through the sprung follower
+    ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
+    ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
+                                                   // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
+    ['Alarm release disc', 'Alarm release feeler'], // §29 step 3: the raised track carries the pin; the notch's arrival
+                                                    // under it IS the drop — the azimuth-independent detection
+    ['Alarm release feeler', 'Alarm winding train'], // §29 step 4: the tail's beak in the climb's contrate band is the
+                                                     // RELEASE DETENT — seated it holds the striking barrel through the
+                                                     // 12/44 mesh; the pin's drop withdraws it and the train runs
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -235,7 +246,6 @@ const MECH_GRAPH = {
     // centre's z-budget (largest free gap 0.08) must be re-stratified first.
     // The full design, measured constraints and the dial-side contrate-pawl
     // lock that follows are §29 in the roadmap.
-    ['Alarm disc', 'Alarm lock', '§25 B → §29: physical release needs the differential-disc feeler (the follower co-rotates; no fixed rod can meet it) — designed, awaiting the centre z re-stratification'],
     // Was: "setting path ends at a representational arbor stub" — the stub
     // used to stop 54 units short of the cannon pinion, in the keyless-
     // works corner, with no visible path to the dial centre at all. Now a
@@ -503,6 +513,18 @@ const EXPECTED_PAIRS = [
                                           // Dial-rooted descendant (the Dial ⇄ Hour wheel precedent);
                                           // the true Dial sheet is measured 0.05 clear of the idler
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
+  ['Alarm release disc', 'Hour wheel'],     // §29: the friction seat (bore +0.05 running fit on the tube)
+  ['Alarm release disc', 'Dial'],           // the NESTING artifact, not a contact: collectUnits does no
+                                            // nested-label exclusion, so the Dial unit contains the disc's
+                                            // own meshes (the Dial ⇄ Hour wheel precedent); the disc's real
+                                            // clearances to Dial furniture are boot-asserted analytically
+  ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
+  ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
+  ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
+  ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
+                                            // is a dialFace descendant, so the Dial's traverse carries its beak
+                                            // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
+  ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
   ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
@@ -1420,6 +1442,49 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  {
+    // §29 step 3: the feeler's pin ON the disc's raised track — a riding
+    // contact between units that are EXPECTED (the read station), so the
+    // sweep is structurally blind here (the follower-nose precedent above).
+    // Swept on the alarm axis: setting turns the disc a full revolution
+    // under the fixed pin, so the gap's edges pass under it — the ramp in
+    // tick keeps the tip on the corner; the budget absorbs the tangential
+    // graze the mtv resolves badly (same 0.12 as the cam-follower pair).
+    pair: ['Alarm release disc', 'Alarm release feeler'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmDiscTrack') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmFeelerPin') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §29 step 4: the pawl's beak in the winding contrate's tooth band — a
+    // detent riding a turning member (the climb spins on the strike axis's
+    // back-spin and under winding), with the spring-steel tip following the
+    // saw profile kinematically. Same blindness argument, same calibration.
+    pair: ['Alarm winding train', 'Alarm release feeler'],
+    maxDepth: 0.12,
+    axis: 'alarmStrike',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmWindContrate') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmPawlBeak') out.push(o); });
+      return out;
+    },
+  },
 ];
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {
@@ -1676,9 +1741,19 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline on post-§25 main (43 units, 42 fingerprinted, 10 poses,
-// captured at merge 3d3908b): 2407965539 — verified stable across reload
-// and a deliberately dirtied session. §13 step 3 diffs against THIS.
+// Baseline (§29 complete, rebased on §14+§27 main; 45 units, 44
+// fingerprinted, 10 poses): 3868604154
+// — verified IDENTICAL on a virgin boot, after running, and after a
+// deliberately dirtied session, in one process. History: §29 step 0 found
+// the previous baseline (2407965539) was an ATTRACTOR — it embedded
+// updateExplode's frame-one teleport of the handsGroup (stale baseZ 2.5 vs
+// the derived 3.2: the minute hand rode 0.7 below its designed plane in
+// every session ever seen), and only frame-rendering sessions reached it.
+// registerExplode boot-asserts baseZ now, resetInputs owns secondsZeroRef
+// and the §29 crown-creep bank, console.warn collects into
+// __clock.bootWarns, and the §29 feature (release disc, feeler, pawl,
+// re-stratified centre, crisp heart, physical trip) moved the geometry to
+// this value deliberately, step by verified step.
 const FINGERPRINT_POSES = [
   { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
