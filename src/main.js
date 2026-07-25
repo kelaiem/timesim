@@ -4877,35 +4877,158 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - postH / 2);
   alarmTubeGroup.add(post);
 }
-// §34 pass 2a: FOLLOWER-B — the second follower, pivoted on a post rising
-// from the flange's TOP face into heart-B's band; the same triangle
-// constants as A (pivot radius, arm length, seat azimuth), so tick's one
-// law of cosines poses both. Its nose rides heart-B: seated ⇒ tube ≡
-// wheel — the armed coupling, as geometry.
-const alarmFollowerArmB = new THREE.Group();
+// §34 (groove redesign): the PIN-ARM — follower-B is now an axially
+// rocking lever on the flange's top face (the §29 feeler's pattern, tube-
+// mounted): its tip carries an UP-pin riding the face cam's surface; its
+// spring presses the pin dial-ward, so the pin seeks the cam's minimum —
+// the notch — and the slopes cam the tube to the wheel's phase. The arm's
+// slice is the band floor (−0.48..−0.53, one margin below the cam's max
+// reach −0.33, asserted); its tail extends to the rocker's finger, which
+// PRESSES it plate-ward to lift the pin clear: the disarmed state, a
+// clean toggle.
+const ALARM_PINB_AZ = ALARM_NOSE_AZ;   // the pin rides at the same azimuth convention heart-A's nose does
+const ALARM_PINB_R = 3.6;              // mid of the cam ring (3.3..3.9)
+const ALARM_CAM_HMAX = 0.10, ALARM_CAM_HMIN = 0.02;
+const ALARM_PINB_LIFT = 0.16;          // fork-lifted pin tip clearance below the wheel face: hMax + margin-ish (asserted)
+const alarmPinArmB = new THREE.Group();
 {
-  const postB = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, (-(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2) - ALARM_TUBE_BACK + ALARM_HEART_B_T / 2, 10), MATS.steel);
+  const postB = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.22, 10), MATS.steel);
   postB.rotation.x = Math.PI / 2;
-  postB.position.set(-ALARM_PIVOT_R, 0, (ALARM_TUBE_BACK + (-(0.05 + ALARM_SET_T))) / 2);
+  postB.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK + 0.11);
   alarmTubeGroup.add(postB);
-  alarmFollowerArmB.position.set(-ALARM_PIVOT_R, 0, -(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2);
-  alarmTubeGroup.add(alarmFollowerArmB);
-  const barB = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FOLLOWER_LEN, 0.3, 0.3), MATS.steel);
-  barB.position.x = ALARM_FOLLOWER_LEN / 2;
-  alarmFollowerArmB.add(barB);
-  const noseB = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_NOSE_R, ALARM_NOSE_R, 0.24, 12), MATS.ruby);
-  noseB.name = 'alarmNoseB'; // penetration-budget selector (string-coupled)
-  noseB.rotation.x = Math.PI / 2;
-  noseB.position.x = ALARM_FOLLOWER_LEN;
-  alarmFollowerArmB.add(noseB);
-  const bladeB = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.22), MATS.blueSteel);
-  bladeB.name = 'alarmFollowerSpringB';
-  bladeB.position.x = 0.55;
-  const springB = new THREE.Group();
-  springB.position.set(-ALARM_PIVOT_R * Math.cos(0.45), ALARM_PIVOT_R * Math.sin(-0.45), -(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2);
-  springB.rotation.z = 1.9;
-  springB.add(bladeB);
-  alarmTubeGroup.add(springB);
+  // arm: pivoted at the post (tangential axis), running to the pin at the
+  // cam ring's mid radius, tail onward to the rocker's finger azimuth
+  alarmPinArmB.position.set(-ALARM_PIVOT_R, 0, -0.505); // the band-floor slice
+  const aimB = Math.atan2(ALARM_PINB_R * Math.sin(ALARM_PINB_AZ) - 0, ALARM_PINB_R * Math.cos(ALARM_PINB_AZ) - (-ALARM_PIVOT_R));
+  alarmPinArmB.rotation.z = aimB;
+  alarmTubeGroup.add(alarmPinArmB);
+  const reachB = Math.hypot(ALARM_PINB_R * Math.cos(ALARM_PINB_AZ) + ALARM_PIVOT_R, ALARM_PINB_R * Math.sin(ALARM_PINB_AZ));
+  const armBar = new THREE.Mesh(new THREE.BoxGeometry(reachB, 0.22, 0.05), MATS.steel);
+  armBar.position.x = reachB / 2;
+  alarmPinArmB.add(armBar);
+  const pinB = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.26, 10), MATS.ruby);
+  pinB.name = 'alarmPinB';
+  pinB.rotation.x = Math.PI / 2;
+  pinB.position.set(reachB, 0, 0.13 + 0.025);
+  alarmPinArmB.add(pinB);
+  const tailB = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.05), MATS.steel);
+  tailB.position.x = -0.4;
+  alarmPinArmB.add(tailB);
+  const coil = new THREE.Mesh(ringGeo(0.10, 0.16, 0.14), MATS.blueSteel);
+  coil.name = 'alarmPinSpringB';
+  coil.position.set(reachB - 0.5, 0, 0.1);
+  alarmPinArmB.add(coil);
+  alarmPinArmB.userData.reach = reachB;
+}
+// §34 band-fit asserts (the groove redesign's own):
+{
+  const camMax = -0.23 - ALARM_CAM_HMAX; // −0.33
+  if ((-0.48) - camMax > -CLEAR_MARGIN + 1e-9 && camMax - (-0.48) < CLEAR_MARGIN - 1e-9)
+    console.warn(`§34 cam band: arm top −0.48 within ${(camMax - (-0.48)).toFixed(2)} of the cam's max reach ${camMax.toFixed(2)} — need ${CLEAR_MARGIN}`);
+  if (ALARM_PINB_LIFT < ALARM_CAM_HMAX + 0.05)
+    console.warn(`§34 pin lift ${ALARM_PINB_LIFT} does not clear the cam's max height ${ALARM_CAM_HMAX} by 0.05`);
+}
+
+// --- '(§34 pass 2b) Alarm selector' — the CHOICE as parts ------------------
+// A flat ring on three dial posts slides axially (±ALARM_SEL_TRAVEL/2); a
+// ROCKER on the tube's flange (co-rotating, so the spring side has no
+// azimuth problem) rides the ring's face with a sensing pin — an AXIAL
+// contact, honest at any azimuth — and its vertical yoke carries two
+// fingers in the co-rotating free lane (r 3.9..4.15, between the hearts'
+// rims and the ring) that re-bias the two blades: ring DOWN (armed) flexes
+// blade-A off, ring UP (disarmed) flexes blade-B off. The tube's law reads
+// the SELECTOR's state — alarmOn only turns the column wheel, and the
+// column→ring run is §35's filed debt (MECH_GRAPH.todo carries it).
+const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75, ALARM_SEL_T = 0.10;
+const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger throw it buys makes the
+                               // armed B:A preload ratio 3.1 (the first cut, 0.14, measured 2.6 and
+                               // the assert refused it). Ring's lowest face −1.15 keeps 0.21 to the
+                               // §29 feeler slice; the posts' XY stand-off from i1b's sweep is 1.25.
+const ALARM_SEL_Z_UP = -0.86;     // ring's top face, DISARMED (slid dial-ward)
+const ALARM_SEL_POST_R = 5.15;    // guides OUTSIDE the setting wheel's tips (4.83 + margin; asserted)
+const ALARM_SEL_POST_AZ = [60, 220, 300].map((d) => d * DEG2RAD); // world az — each wall asserted below
+const alarmSelectorUnit = new THREE.Group();
+dialFace.add(alarmSelectorUnit);
+registerLabel('Alarm selector', alarmSelectorUnit);
+registerExplode(alarmSelectorUnit, 0, 3, 1);
+const alarmSelRing = new THREE.Group();
+{
+  const ring = new THREE.Mesh(ringGeo(ALARM_SEL_R_IN, ALARM_SEL_R_OUT, ALARM_SEL_T), MATS.nickel);
+  ring.name = 'alarmSelRing';
+  alarmSelRing.add(ring);
+  // three guide bosses reaching the posts
+  for (const az of ALARM_SEL_POST_AZ) {
+    const dlx = -Math.cos(az), dly = Math.sin(az); // world → dial-local mirror
+    const boss = new THREE.Mesh(new THREE.BoxGeometry(ALARM_SEL_POST_R - ALARM_SEL_R_OUT + 0.3, 0.24, ALARM_SEL_T), MATS.nickel);
+    const mid = (ALARM_SEL_R_OUT + ALARM_SEL_POST_R) / 2;
+    boss.position.set(dlx * mid, dly * mid, 0);
+    boss.rotation.z = Math.atan2(dly, dlx);
+    alarmSelRing.add(boss);
+    const sleeve = new THREE.Mesh(ringGeo(0.15, 0.26, ALARM_SEL_T + 0.14), MATS.nickel);
+    sleeve.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, 0);
+    alarmSelRing.add(sleeve);
+  }
+  alarmSelRing.position.z = ALARM_SEL_Z_UP - ALARM_SEL_T / 2;
+  alarmSelectorUnit.add(alarmSelRing);
+  // the posts: sheet's back face down past the ring's lowest travel
+  for (const az of ALARM_SEL_POST_AZ) {
+    const dlx = -Math.cos(az), dly = Math.sin(az);
+    const postLen = (ALARM_SEL_Z_UP - ALARM_SEL_TRAVEL - ALARM_SEL_T - 0.06) - (-0.05);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, Math.abs(postLen), 10), MATS.steel);
+    post.rotation.x = Math.PI / 2;
+    post.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, -0.05 + postLen / 2);
+    alarmSelectorUnit.add(post);
+  }
+}
+// §34 pass 2b corridor asserts — the posts' walls, achieved numbers:
+{
+  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§34 selector ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
+  say('posts vs setting-wheel tips', ALARM_SEL_POST_R - 0.14 - 4.83);
+  for (const az of ALARM_SEL_POST_AZ) {
+    const p2 = { x: Math.cos(az) * ALARM_SEL_POST_R, y: Math.sin(az) * ALARM_SEL_POST_R };
+    for (const [nm, c, rr] of [['12-well ring', { x: 0, y: 15.4 }, 10.2], ['seconds-well ring', { x: 0, y: -15.4 }, 10.2]]) {
+      const d = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - rr) - 0.2 - 0.14;
+      say(`post az${Math.round(az / DEG2RAD)} vs ${nm}`, d);
+    }
+  }
+}
+// The ROCKER — on the tube's flange at the blades' azimuth, so its yoke's
+// fingers reach both blade roots in the free lane. Pivot axis TANGENTIAL:
+// the see-saw tips in the r-z plane; the ring's face pushes its pin
+// axially, which is the one contact a fixed member can make on a
+// co-rotating one at every azimuth (the §29 read-station lesson, reused).
+const ALARM_ROCKER_AZ = -155 * DEG2RAD; // tube-frame — the blades' neighbourhood
+const alarmRocker = new THREE.Group();
+{
+  const rx = Math.cos(ALARM_ROCKER_AZ) * 3.9, ry = Math.sin(ALARM_ROCKER_AZ) * 3.9;
+  alarmRocker.position.set(rx, ry, ALARM_TUBE_BACK - ALARM_FLANGE_T / 2);
+  alarmRocker.rotation.z = ALARM_ROCKER_AZ; // local +x = outboard radial
+  // pivot lugs on the flange rim
+  const lug = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.16), MATS.steel);
+  alarmRocker.add(lug); // (the lug rides the rocker group origin — the flange carries it)
+  // outboard arm + sensing pin down to the ring's face
+  const armOut = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 0.10), MATS.steel);
+  armOut.position.x = 0.35;
+  alarmRocker.add(armOut);
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.30, 8), MATS.ruby);
+  pin.name = 'alarmSelPin';
+  pin.rotation.x = Math.PI / 2;
+  pin.position.set(0.7, 0, -(0.30 / 2) - 0.02);
+  alarmRocker.add(pin);
+  // §34 (groove redesign): ONE finger — the toggle is clean now. The
+  // rocker's inboard arm rises to the pin-arm's TAIL (the band floor) and
+  // presses it PLATE-ward when the ring is up: pin lifted clear of the cam
+  // = disarmed. Ring down (armed): the finger backs off and the pin's own
+  // spring seats it. Follower-A never needed a finger — §29 moved the trip
+  // off it, and armed it simply keeps riding heart-A (the §25 pumping).
+  const yokeBar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.30), MATS.steel);
+  yokeBar.position.set(0.25, 0, 0.15);
+  alarmRocker.add(yokeBar);
+  const finger = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.14, 0.05), MATS.steel);
+  finger.name = 'alarmSelFingerB';
+  finger.position.set(-0.05, 0, (-0.44) - (ALARM_TUBE_BACK - ALARM_FLANGE_T / 2)); // just above the pin-arm's tail slice
+  alarmRocker.add(finger);
+  alarmTubeGroup.add(alarmRocker);
 }
 
 // The follower arm — pivoted at the post, nose roller at the tip riding the
@@ -4987,16 +5110,44 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // gap exists to protect; declared here, not discovered). Placed at the
   // wheel's local azimuth 0: the §25 armed identity (wheel ≡ tube) makes it
   // REGISTER with the flange's line at every armed pose, for any setting.
-  // §34 pass 2a: HEART-B — the second heart, fixed to this wheel's
-  // plate-side face (one member), phased like heart-A (ALARM_NOSE_AZ in
-  // the wheel's frame): follower-B seated ⇒ tube ≡ wheel at the same
-  // constant heart-A's seat gives tube ≡ hour — the constants cancel in
-  // the armed registration, which is what the index marks show.
-  const heartB = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_B_T, boreR: ALARM_TUBE_OUTER + 0.05, rMin: ALARM_HEART_RMIN, bevel: false });
-  heartB.traverse((o) => { if (o.isMesh) { o.name = 'alarmHeartB'; o.material = MATS.blueSteel; } });
-  heartB.position.z = -(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2;
-  heartB.rotation.z = ALARM_NOSE_AZ;
-  alarmSetWheelGroup.add(heartB);
+  // §34 (groove redesign): HEART-B AS A FACE CAM — the radial cardioid is
+  // geometrically impossible here (its rMin 2.75 sits inside the 3.05 bore
+  // the alarm tube demands; scaling it out sweeps the cam through its own
+  // follower's pivot — measured, and the degenerate shell was the sweep's
+  // dist-0 hit on the hour tube). The real-watch alternative: a HEIGHT-
+  // varying ring on the wheel's plate-side face, the same cardioid law in
+  // the AXIAL dimension — deepest (lowest) at the notch azimuth. An axial
+  // sprung pin seeking minimum height cams the RELATIVE ROTATION down the
+  // slopes until it seats: rotational alignment from an axial spring, the
+  // grooved-face-cam principle with the §29 track's no-CSG construction
+  // (the notch is the ABSENCE of height).
+  const camGeo = (() => {
+    const N = 96, rIn = 3.3, rOut = 3.9;
+    const hAt = (th) => 0.02 + (0.10 - 0.02) * (1 - Math.cos(th)) / 2;
+    const pos = [], idx = [];
+    for (let i = 0; i <= N; i++) {
+      const th = (i / N) * Math.PI * 2;
+      const c = Math.cos(th), sn = Math.sin(th), h = hAt(th);
+      // base ring (z 0) and cam top (z −h): the cam rises PLATE-ward
+      pos.push(rIn * c, rIn * sn, 0,  rOut * c, rOut * sn, 0,  rIn * c, rIn * sn, -h,  rOut * c, rOut * sn, -h);
+    }
+    for (let i = 0; i < N; i++) {
+      const a = i * 4, b = (i + 1) * 4;
+      idx.push(a + 2, b + 2, a + 3,  b + 2, b + 3, a + 3); // top (cam face)
+      idx.push(a, a + 2, b,  b, a + 2, b + 2);             // inner wall
+      idx.push(a + 1, b + 1, a + 3,  b + 1, b + 3, a + 3); // outer wall
+    }
+    const g2 = new THREE.BufferGeometry();
+    g2.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g2.setIndex(idx);
+    g2.computeVertexNormals();
+    return g2;
+  })();
+  const faceCam = new THREE.Mesh(camGeo, MATS.blueSteel);
+  faceCam.name = 'alarmFaceCam';
+  faceCam.position.z = -0.23; // seated on the wheel's plate-side face; heights grow into pass 1's band
+  faceCam.rotation.z = ALARM_NOSE_AZ; // notch (minimum height) phased to the pin's azimuth: seated ⇒ tube ≡ wheel
+  alarmSetWheelGroup.add(faceCam);
   const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, 0.42, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
@@ -6449,6 +6600,7 @@ let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier 
 let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
+let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column parity's physical consequence, and what the tube law reads
 const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
                             // heart cam is a positive mechanical action, not
                             // a soft friction stop, so the reset reads snappier.
@@ -8128,7 +8280,7 @@ const ALARM_COUPLING_STEPS = [
   { alarmCrown: 'in', alarm: false,
     caption: 'DISARM: the spring snaps the hand home under the hour hand \u2014 the marks split to exactly the set angle. Nothing forgot', dwell: 3.0 },
   { alarm: true,
-    caption: 'ARM again: it registers at the SAME marks \u2014 the wheel never forgot. (\u00a734 proper makes this coupling a second heart instead of an asserted friction)', dwell: 4.0 },
+    caption: 'ARM again: it registers at the SAME marks \u2014 the wheel never forgot. The seat is REAL now: an axial heart cut into the wheel\u2019s face, its sprung pin seeking the notch (\u00a734)', dwell: 4.0 },
 ];
 
 // §17 — Guided tour: the same engine over more stops. The jumper stop reuses
@@ -8960,13 +9112,16 @@ function tick(t) {
   // convention); the pose path (rawDt = 0) assigns exactly, so inspector
   // poses stay deterministic.
   {
-    // §34 pass 2a: the tube now has TWO reference members, one heart each.
-    // Armed it seeks the SETTING WHEEL's phase (follower-B seating in
-    // heart-B: the wheel's rotation is −alarmSetRot·RATIO, whose wrapped
-    // value IS −alarmAngle — the arithmetic §25 asserted is now the seat
-    // geometry); disarmed it seeks the HOUR (follower-A in heart-A, as
-    // always). Pass 2b's rocker makes the CHOICE itself physical.
-    const tubeTarget = alarmOn ? -alarmAngle : mwHourA;
+    // §34 pass 2b: the tube's law reads the SELECTOR — the ring's slide is
+    // the column parity's physical consequence (§35 owns making the run
+    // itself metal), the rocker's tip is the ring's, the bias is the
+    // rocker's, and the seat the bias favours is where the tube rests.
+    // alarmOn turns the column; the mechanism does the rest.
+    if (rawDt > 0) alarmSelShownT += ((alarmOn ? 1 : 0) - alarmSelShownT) * (1 - Math.exp(-rawDt / 0.10));
+    else alarmSelShownT = alarmOn ? 1 : 0;
+    alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
+    alarmRocker.rotation.y = -0.12 * (alarmSelShownT * 2 - 1); // see-saw tip, ±: pin follows the ring's face
+    const tubeTarget = (alarmSelShownT > 0.5) ? -alarmAngle : mwHourA;
     // Both transitions EASE live (the pose path assigns exactly): disarming is
     // the spring snapping the follower home along the cam slope, and arming is
     // the re-coupled friction wheel swinging the hand out to the set time —
@@ -8976,7 +9131,7 @@ function tick(t) {
       // arming is follower-B's spring driving the nose down heart-B's slope,
       // a SNAP like disarming's, just on its own spring (two rates keep the
       // two-speed feel honestly: B's blade is the longer, softer one).
-      alarmTubeShownA += wrapPi(tubeTarget - alarmTubeShownA) * (1 - Math.exp(-rawDt / (alarmOn ? 0.12 : CAM_SNAP_TAU)));
+      alarmTubeShownA += wrapPi(tubeTarget - alarmTubeShownA) * (1 - Math.exp(-rawDt / (alarmSelShownT > 0.5 ? 0.12 : CAM_SNAP_TAU)));
     } else {
       alarmTubeShownA = tubeTarget;
     }
@@ -8998,19 +9153,18 @@ function tick(t) {
     // The blade flexes with the pump (its force is representational; its
     // MOTION is the arm's real lift).
     alarmFollowerSpring.rotation.z = 1.9 + (armA - ALARM_FOLLOWER_A0) * 0.45;
-    // §34 pass 2a: follower-B, the same law of cosines against heart-B —
-    // its relative angle is tube vs WHEEL (armed: 0, seated — the coupling;
-    // disarmed: the set offset, and B pumps as the tube follows the hour
-    // under it, the mirror of A's armed pumping).
-    let contactAzB = ALARM_NOSE_AZ;
-    let armB = ALARM_FOLLOWER_A0;
-    for (let it = 0; it < 2; it++) {
-      const psiB = contactAzB - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA - (-alarmSetRot * ALARM_SET_RATIO));
-      const dB = alarmHeartRAt(psiB) + ALARM_NOSE_R;
-      armB = alarmArmAngleAt(dB);
-      contactAzB = Math.atan2(ALARM_FOLLOWER_LEN * Math.sin(armB), -ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * Math.cos(armB));
+    // §34 (groove redesign): the pin-arm rides the FACE CAM — its lift is
+    // the cam's height at the relative angle (tube vs wheel), stateless
+    // like §29's pin; the fork's press overrides it to the full lift when
+    // the selector is up (disarmed). Armed-seated: relB 0 ⇒ minimum height
+    // ⇒ the coupling; disarmed the pin is clear and the cam turns freely
+    // beneath it.
+    {
+      const relB = wrapPi(alarmTubeShownA - (-alarmSetRot * ALARM_SET_RATIO));
+      const hB = ALARM_CAM_HMIN + (ALARM_CAM_HMAX - ALARM_CAM_HMIN) * (1 - Math.cos(relB)) / 2;
+      const liftB = Math.max(hB, ALARM_PINB_LIFT * (1 - alarmSelShownT));
+      alarmPinArmB.rotation.y = -liftB / alarmPinArmB.userData.reach; // small-angle rock: the pin tip wears the lift
     }
-    alarmFollowerArmB.rotation.z = armB;
   }
   // §25 C stage 3 — the setting train, derived FORWARD from the crown (Rule
   // 2): arbor 1:1 through the bevels, each external mesh reversing sense.
@@ -9321,7 +9475,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives on the next tick
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
     // §34 harvest (found by §31's battery, independent of its geometry):
     // the EXPLODE is a persistent user input that MOVES UNITS, restored
     // from saved UI state across reloads — a sweep on a session that left
