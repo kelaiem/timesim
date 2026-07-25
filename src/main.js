@@ -9182,6 +9182,18 @@ window.__clock = {
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
     alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives on the next tick
+    // §34 harvest (found by §31's battery, independent of its geometry):
+    // the EXPLODE is a persistent user input that MOVES UNITS, restored
+    // from saved UI state across reloads — a sweep on a session that left
+    // it open ran on displaced geometry (a phantom detent⇄chain zero that
+    // pristine main clears by 0.64). The battery's canonical state is the
+    // ASSEMBLED watch.
+    explodeAmount = 0; selectedUnit = 'All'; updateExplode();
+    // …and the CHAIN's mesh is a BAKED PATH (the fingerprint's exclusion)
+    // that only rebuilds on a tension DELTA — a chain baked around an
+    // exploded drum keeps that shape forever at constant tension.
+    // Invalidate it so the next tick re-bakes from assembled geometry.
+    lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
   },
