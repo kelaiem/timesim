@@ -7042,27 +7042,15 @@ function setPanelHidden(hidden) {
 document.getElementById('btn-hide-ui').addEventListener('click', () => setPanelHidden(true));
 showPanelBtn.addEventListener('click', () => setPanelHidden(false));
 
-// While a guided script (Demo/Tour) runs, get the fixed control panel out from
-// in front of it on a narrow screen: the panel is 240px wide at a 14px inset
-// (a 254px right edge), so on a phone-width viewport it sits on top of the
-// horizontally-centred movement and the caption. Collapse it to the ☰ chip for
-// the run, then restore whatever the user had before.
-//
-// Gate on viewport WIDTH alone — NOT pointer type. A phone reports a narrow
-// width, but so does a resized desktop window or a device-emulation preview,
-// and all three have the identical overlap; an earlier `(pointer: coarse)`
-// clause meant the collapse silently no-op'd in exactly those non-touch test
-// setups. A desktop window this narrow is just as well served by getting the
-// panel out of the way for the run (the ☰ chip brings it right back), and a
-// full-width desktop (> the breakpoint) never triggers. 820px ≈ where the
-// 240px panel plus a mirror-image right gutter leaves under ~300px of clear
-// centre, so below it the overlap is unavoidable.
-function isNarrowLayout() {
-  return window.matchMedia('(max-width: 820px)').matches;
-}
+// While a guided script (Demo/Tour/Coupling) runs, collapse the fixed control
+// panel to the ☰ chip and restore it after. This used to gate on a narrow
+// viewport (the phone-overlap case), but the coupling show framed on the DIAL
+// CENTRE sits partly behind the 240px panel at desktop widths too — the
+// panel overlaps whatever the preset centres, at any width. The chip brings
+// it straight back, and a panel the user had ALREADY collapsed stays
+// collapsed with no restore claimed.
 let panelForcedHiddenByScript = false;
 function hidePanelForScript() {
-  if (!isNarrowLayout()) return;
   if (panel.style.display === 'none') return; // already collapsed by the user — leave it, and claim no restore
   setPanelHidden(true);
   panelForcedHiddenByScript = true;
@@ -7875,7 +7863,10 @@ function setAlarm(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!alarmOn));
-document.getElementById('btn-coupling').addEventListener('click', () => scriptStart(ALARM_COUPLING_STEPS, document.getElementById('btn-coupling'))); // §34
+document.getElementById('btn-coupling').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(ALARM_COUPLING_STEPS, btn); // §34 — same toggle as Demo/Tour: a running show's button STOPS it (it used to restart)
+});
 function alarmCrownSyncLabel() {
   const b = document.getElementById('btn-alarm-crown');
   b.textContent = alarmCrownOut ? 'Push to wind' : 'Pull to set';
@@ -8403,6 +8394,7 @@ function scriptStop() {
   scriptBtn = null;
   const tb = document.getElementById('btn-tour'); if (tb) { tb.textContent = 'Tour'; tb.classList.remove('active'); }
   const db = document.getElementById('btn-demo'); if (db) { db.textContent = 'Demo'; db.classList.remove('active'); }
+  const cb = document.getElementById('btn-coupling'); if (cb) { cb.textContent = 'Show'; cb.classList.remove('active'); } // §34's button was missing from this restore — it stayed "Stop" after its run ended
   restorePanelAfterScript(); // undo any phone-layout panel collapse from scriptStart
   disarmScriptAbort();
 }
