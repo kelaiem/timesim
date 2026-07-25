@@ -6954,6 +6954,7 @@ panel.innerHTML = `
         <button data-cam="Free">Free</button>
       </div>
       <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button></span></div>
+      <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
     </div>
   </details>
   <details class="ui-section">
@@ -6995,6 +6996,7 @@ panel.innerHTML = `
       <div class="row label-small"><span>Set for</span><span class="readout" id="readout-alarm" style="font-size:13px;">12:00</span></div>
       <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
       <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling">Show</button></div>
+      <div class="row"><span class="label-small">The link</span><button id="btn-link">Trace</button></div>
       <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
       <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
     </div>
@@ -7867,6 +7869,12 @@ document.getElementById('btn-coupling').addEventListener('click', (e) => {
   const btn = e.currentTarget;
   if (scriptBtn === btn) scriptStop(); else scriptStart(ALARM_COUPLING_STEPS, btn); // §34 — same toggle as Demo/Tour: a running show's button STOPS it (it used to restart)
 });
+// §37 — the §35 chain, traced. Same stop-toggle contract as every other
+// script button (§34's polish lesson), and scriptStop restores its label.
+document.getElementById('btn-link').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(ALARM_LINK_STEPS, btn);
+});
 function alarmCrownSyncLabel() {
   const b = document.getElementById('btn-alarm-crown');
   b.textContent = alarmCrownOut ? 'Push to wind' : 'Pull to set';
@@ -8315,17 +8323,40 @@ const camTargets = {
   },
 };
 let camTween = null; // { fromPos, fromTarget, toPos, toTarget, t0, dur }
+// §37 — the camera POSE is now a first-class primitive with three consumers:
+// a ?cam/?look deep link, a script step's `camera:` field, and the share-view
+// button. A preset is just a NAMED pose plus its reveal rule, so goToPreset
+// is a lookup in front of this. Before §37 the only way to aim the camera was
+// to name one of five presets, which is why reviewing §35 meant hand-posing
+// __clock.camera in a console and sharing that view meant a screenshot.
+const CAM_TWEEN_DUR = 0.9; // s — the one ease every consumer inherits
+function goToPose(pos, target, { snap = false } = {}) {
+  if (snap) {
+    // Snap is for a pose that is ALREADY the answer — a restored session or a
+    // shared link. Flying to it from wherever the default framing left us
+    // would animate 0.9 s of travel the sharer never intended.
+    camera.position.copy(pos);
+    controls.target.copy(target);
+    controls.update();
+    camTween = null;
+  } else {
+    camTween = {
+      fromPos: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      toPos: pos.clone(),
+      toTarget: target.clone(),
+      t: 0,
+      dur: CAM_TWEEN_DUR,
+    };
+  }
+  // A literal pose is not a preset: clear the row so the panel never claims
+  // the viewer is on a named framing they have left.
+  document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.remove('active'));
+}
 function goToPreset(name) {
   const preset = camTargets[name];
   if (!preset) return;
-  camTween = {
-    fromPos: camera.position.clone(),
-    fromTarget: controls.target.clone(),
-    toPos: preset.pos.clone(),
-    toTarget: preset.target.clone(),
-    t: 0,
-    dur: 0.9,
-  };
+  goToPose(preset.pos, preset.target);
   // A preset can declare that its subject is hidden behind a plate and needs
   // x-ray to be legible (the Setting preset's jumper, BUILT §5). Only ever
   // turns it ON — a camera move should not silently switch a viewer's x-ray
@@ -8336,6 +8367,76 @@ function goToPreset(name) {
 document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
   b.addEventListener('click', () => goToPreset(b.dataset.cam));
 });
+
+// §37 — SHARE VIEW. The link carries the pose the viewer is actually looking
+// at, read live off the camera, never reconstructed from the last preset they
+// clicked: §21's "do not fake it" applied to sharing. Three decimals — at the
+// Free preset's ~100-unit standoff, a 42° FOV across ~1000 px puts one pixel
+// near 0.075 units, so 0.001 is about 1/75 of a pixel: invisible, and it keeps
+// the URL short enough to paste into a message.
+const CAM_LINK_DP = 3;
+const camLinkVec = (v) => [v.x, v.y, v.z].map((n) => +n.toFixed(CAM_LINK_DP)).join(',');
+function currentViewLink() {
+  const p = new URLSearchParams();
+  p.set('cam', camLinkVec(camera.position));
+  p.set('look', camLinkVec(controls.target));
+  // Only NON-DEFAULT toggles travel, so the link states what it changes and
+  // nothing else — a bare view link stays a view link. The RESERVE is
+  // deliberately absent: it is sim state that drains while you read, not a
+  // view setting, so baking it in would make the link mean something
+  // different by the time it arrives.
+  if (timeScale !== 1) p.set('scale', String(timeScale));
+  if (xrayOn) p.set('xray', '1');
+  if (labelsOn) p.set('labels', '1');
+  if (powerFlowOn) p.set('powerflow', '1');
+  if (soundOn) p.set('sound', '1');
+  if (selectedUnit !== 'All') p.set('unit', selectedUnit);
+  if (explodeAmount > 0) p.set('explode', explodeAmount.toFixed(CAM_LINK_DP));
+  if (crownOut) p.set('crown', 'out');
+  // URLSearchParams percent-encodes the commas in cam/look (%2C). They are
+  // sub-delims and perfectly legal raw in a query, and this link exists to be
+  // pasted into a message — so put them back. Nothing else is touched, so
+  // every other value keeps its proper encoding (unit names contain spaces
+  // and '&': "Fusee & great wheel" must stay escaped).
+  return `${location.origin}${location.pathname}?${p.toString().replace(/%2C/g, ',')}`;
+}
+{
+  const btn = document.getElementById('btn-copy-view');
+  let copyRestore = null;
+  const flash = (msg) => {
+    clearTimeout(copyRestore);
+    btn.textContent = msg;
+    copyRestore = setTimeout(() => { btn.textContent = 'Copy view'; }, 1600);
+  };
+  btn.addEventListener('click', async () => {
+    const url = currentViewLink();
+    // navigator.clipboard needs a secure context and can still reject on a
+    // permissions policy. Never leave the viewer with nothing: fall back to
+    // the legacy execCommand path, and if that fails too, put the URL on
+    // screen (prompt selects it) so it can still be copied by hand.
+    try {
+      if (!navigator.clipboard) throw new Error('no clipboard api');
+      await navigator.clipboard.writeText(url);
+      flash('Copied');
+      return;
+    } catch (err) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (!ok) throw new Error('execCommand refused');
+        flash('Copied');
+      } catch (err2) {
+        flash('Copy failed');
+        window.prompt('Copy this view link:', url);
+      }
+    }
+  });
+}
 // Restore a saved camera pose if one was persisted; otherwise frame the
 // default Free preset — the whole movement, before the viewer has said what
 // they came to look at. A restore snaps directly (no tween) and cancels any
@@ -8402,6 +8503,13 @@ function scriptEnterStep(i) {
   if (s.unit !== undefined) { unitSelect.value = s.unit; selectedUnit = s.unit; }
   scriptExplodeTarget = (s.explode !== undefined) ? s.explode : null;
   if (s.preset) goToPreset(s.preset);
+  // §37 — a literal pose in a step, tweened exactly as a preset is (same
+  // CAM_TWEEN_DUR ease, same abort-on-takeover, since both go through the one
+  // camTween the engine already owns). This keeps one-off framings — the §35
+  // link's five stops — out of the global preset table, which is a menu the
+  // viewer reads, not a scratchpad. Wins over `preset` in the same step, the
+  // same precedence ?cam has over ?preset.
+  if (s.camera) goToPose(new THREE.Vector3(...s.camera.pos), new THREE.Vector3(...s.camera.look));
   if (s.xray !== undefined) setXray(s.xray);
   if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
   if (s.turnMinutes) scriptTurnRad = settingTurnRad(s.turnMinutes);
@@ -8499,6 +8607,7 @@ function scriptStop() {
   const tb = document.getElementById('btn-tour'); if (tb) { tb.textContent = 'Tour'; tb.classList.remove('active'); }
   const db = document.getElementById('btn-demo'); if (db) { db.textContent = 'Demo'; db.classList.remove('active'); }
   const cb = document.getElementById('btn-coupling'); if (cb) { cb.textContent = 'Show'; cb.classList.remove('active'); } // §34's button was missing from this restore — it stayed "Stop" after its run ended
+  const lb = document.getElementById('btn-link'); if (lb) { lb.textContent = 'Trace'; lb.classList.remove('active'); } // §37, same restore — the lesson above, applied on the way in this time
   restorePanelAfterScript(); // undo any phone-layout panel collapse from scriptStart
   disarmScriptAbort();
 }
@@ -8566,6 +8675,103 @@ const ALARM_COUPLING_STEPS = [
     caption: 'ARM again: it registers at the SAME marks \u2014 the wheel never forgot. The seat is REAL now: an axial heart cut into the wheel\u2019s face, its sprung pin seeking the notch (\u00a734)', dwell: 4.0 },
 ];
 
+// §37's first consumer — THE LINK, TRACED. §35 made the pusher-to-ring run a
+// real mechanical chain, but neither surface that should show it could aim at
+// it: the script engine's framing vocabulary was preset-only, and the §34
+// coupling show is correctly framed on the centre. This is the sibling script
+// that entry called for, and every stop is a literal `camera:` pose.
+//
+// The poses are DERIVED from each part's own site constant — never a typed
+// vector — so a layout change carries the camera with the part, the same
+// discipline the preset table already follows. Standoff is the preset block's
+// 42°-FOV fit rule (≈3.8×R); `out`/`up` are a direction in the (radial, z)
+// plane, normalised so the distance is exactly that. `up` goes NEGATIVE for
+// the two stops under the base plate, which is the only place to watch a lay
+// shaft from.
+const linkShot = (at, R, out = 0.45, up = 0.75) => {
+  const d = R * 3.8;
+  const rad = Math.hypot(at.x, at.y) || 1;
+  const m = Math.hypot(out, up) || 1;
+  const oR = out / m, oZ = up / m;
+  return {
+    pos: [at.x + (at.x / rad) * d * oR, at.y + (at.y / rad) * d * oR, at.z + d * oZ],
+    look: [at.x, at.y, at.z],
+  };
+};
+const _colAt = { x: ALARM_COL_POS.x, y: ALARM_COL_POS.y, z: ALARM_LOCK_Z + 0.22 };
+const _pushAt = { x: _pushBase.x, y: _pushBase.y, z: ALARM_LOCK_Z + 0.17 };
+const _rodAt = { x: ALARM_LINK_ROD_XY.x, y: ALARM_LINK_ROD_XY.y, z: ALARM_LOCK_Z + 0.2 };
+const _tailAt = { x: (_colAt.x + _rodAt.x) / 2, y: (_colAt.y + _rodAt.y) / 2, z: ALARM_LOCK_Z + 0.2 };
+// The rod's whole run, plate top down to the shaft: its mid-Z is the frame.
+const _dropAt = { x: ALARM_LINK_ROD_XY.x, y: ALARM_LINK_ROD_XY.y, z: (ALARM_LOCK_Z + ALARM_LINK_SHAFT_Z) / 2 };
+const _shaftAt = {
+  x: (ALARM_LINK_ROD_XY.x + ALARM_LINK_INNER_XY.x) / 2,
+  y: (ALARM_LINK_ROD_XY.y + ALARM_LINK_INNER_XY.y) / 2,
+  z: ALARM_LINK_SHAFT_Z,
+};
+// The tab is the one stop whose subject lives under `dialFace`, so its z has
+// to come through the Y-flip (CLAUDE.md's standing trap; the Setting preset
+// pays the same toll): dial-local z ↦ world Z_DIAL − z. Its XY does NOT —
+// ALARM_LINK_INNER_XY is the lay shaft's inner end, already a movement-frame
+// site, and az 146° is exactly the world mirror of the tab's dial-local 34°.
+// Home (disarmed) height, so the framing is the same whichever state the
+// viewer arrives in; the ring's ±ALARM_SEL_TRAVEL slide is smaller than the
+// stop's own framing radius.
+const _tabAt = {
+  x: ALARM_LINK_INNER_XY.x,
+  y: ALARM_LINK_INNER_XY.y,
+  z: Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2),
+};
+const _rodRun = Math.hypot(_rodAt.x - _colAt.x, _rodAt.y - _colAt.y);
+const _shaftRun = Math.hypot(ALARM_LINK_INNER_XY.x - ALARM_LINK_ROD_XY.x, ALARM_LINK_INNER_XY.y - ALARM_LINK_ROD_XY.y);
+// The centre is the one stop a radial standoff cannot frame. On the dial side
+// the hands sweep directly in front of it (they sit BEYOND the dial, so x-ray
+// does not help — it glassifies the dial and the 3/4 plate, not the hands);
+// on the plate side the going train and the fusee chain fill the view. So
+// borrow the DIAL PRESET's own viewing direction — the framing §34's show
+// already proves carries a centre subject — and pull it in to the tab. Taken
+// from the preset table rather than copied, so it tracks if that preset moves.
+const _dialDir = camTargets.Dial.pos.clone().sub(camTargets.Dial.target).normalize();
+const _tabShot = (() => {
+  const d = 36; // ≈3.8 × the tab-plus-inner-crank reach (~9.5), the same fit rule
+  return {
+    pos: [_tabAt.x + _dialDir.x * d, _tabAt.y + _dialDir.y * d, _tabAt.z + _dialDir.z * d],
+    look: [_tabAt.x, _tabAt.y, _tabAt.z],
+  };
+})();
+
+// …and assert that derivation against the part it claims to frame, rather
+// than trusting a hand-done frame flip — the first draft of this table aimed
+// the tab stop at world z −0.91 (the raw dial-LOCAL value), 5.2 units off the
+// ring, and every run looked fine because a camera that misses cannot fail.
+{
+  scene.updateMatrixWorld(true);
+  const ringAt = new THREE.Vector3();
+  alarmSelRing.getWorldPosition(ringAt);
+  if (Math.abs(ringAt.z - _tabAt.z) > 1e-6)
+    console.warn(`§37 tab stop: derived world z ${_tabAt.z.toFixed(3)} but the selector ring sits at ${ringAt.z.toFixed(3)} — the dialFace flip is wrong`);
+}
+const ALARM_LINK_STEPS = [
+  { camera: linkShot(_pushAt, 4.0), alarm: false, alarmCrown: 'in', xray: false, explode: 0, labels: false, scale: 1,
+    caption: 'The PUSHER at the rim — the one thing an owner touches. A cased movement cannot reach a plate-top column wheel, so §3’s case band will bore for exactly this stem', dwell: 3.4 },
+  { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, 0.8), alarm: true,
+    caption: 'One press = one index = half a column pitch. A SECOND beak, 120° round — two full pitches, so identical parity — reads the same castellations the §25 D lock does', dwell: 4.0 },
+  { camera: linkShot(_tailAt, _rodRun / 2 + 2.0, 0.35, 0.85),
+    caption: 'Its long TAIL carries that read across the south-west, clear of the keyless works, to a rod at the rim. Nothing here is decreed — every hand-off is two parts touching', dwell: 3.8 },
+  { camera: linkShot(_dropAt, Math.abs(ALARM_LOCK_Z - ALARM_LINK_SHAFT_Z) / 2 + 2.5, 0.9, 0.25), xray: true,
+    caption: 'X-ray the plates: the beak’s fall drops the ROD through bores in both, the §29 climb in reverse. Rod down = ring down = armed', dwell: 4.0 },
+  // Low and well outboard, not straight up the z axis: from directly below,
+  // the dial furniture stacks over the shaft and the hands cross it. Skimming
+  // along its run instead puts both cranks in frame — checked on screen, which
+  // is the only way to check a framing.
+  { camera: linkShot(_shaftAt, _shaftRun / 2 + 1.0, 0.78, -0.55),
+    caption: 'Under the base plate, a LAY SHAFT with a crank at each end runs the read 32 units inboard — the distance no single lever should ever span', dwell: 4.0 },
+  { camera: _tabShot,
+    caption: 'The centre crank presses the selector ring’s DRIVE TAB and the ring slides. `alarmOn` is a READOUT of this chain now, not its cause', dwell: 4.0 },
+  { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, 0.8), alarm: false, xray: false,
+    caption: 'Press again and the whole run reverses — column, beak, rod, shaft, crank, ring. Pusher to arming, unbroken', dwell: 3.4 },
+];
+
 // §17 — Guided tour: the same engine over more stops. The jumper stop reuses
 // the demo's own pull/turn/push vocabulary (not a second machine), and the sync
 // stop leans on §12's honest scale readout to narrate the catch-up rate.
@@ -8627,6 +8833,21 @@ function applyDeepLink() {
   // get skipped because the tour branch used to return before reaching it.
   const flag = (v) => v === '1' || v === 'true';
   if (params.has('preset')) goToPreset(params.get('preset'));
+  // §37 — a LITERAL pose: ?cam=x,y,z&look=x,y,z. Each param is judged on its
+  // own; one that is absent, short, long or unparseable is ignored and the
+  // live value stands, per this block's standing rule that a bad link degrades
+  // rather than throws. Applied AFTER ?preset so cam WINS when both appear —
+  // a literal pose is the more specific claim — which also cancels the
+  // preset's in-flight tween rather than racing it.
+  const vec3Param = (name) => {
+    if (!params.has(name)) return null;
+    const n = params.get(name).split(',').map((s) => parseFloat(s));
+    return (n.length === 3 && n.every((v) => Number.isFinite(v))) ? new THREE.Vector3(n[0], n[1], n[2]) : null;
+  };
+  const camParam = vec3Param('cam'), lookParam = vec3Param('look');
+  if (camParam || lookParam) {
+    goToPose(camParam || camera.position.clone(), lookParam || controls.target.clone(), { snap: true });
+  }
   if (params.has('scale')) setTimeScale(parseFloat(params.get('scale')) || 1);
   if (params.has('xray')) setXray(flag(params.get('xray')));
   if (params.has('labels')) setLabels(flag(params.get('labels')));
@@ -9839,6 +10060,9 @@ window.__clock = {
   // Guided demo/tour (BUILT §5/§17) hooks — for unattended verification.
   startDemo() { scriptStart(DEMO_STEPS, document.getElementById('btn-demo')); },
   startCouplingDemo() { scriptStart(ALARM_COUPLING_STEPS, document.getElementById('btn-coupling')); }, // §34 first slice
+  startLinkDemo() { scriptStart(ALARM_LINK_STEPS, document.getElementById('btn-link')); },            // §37 — the §35 chain, traced
+  viewLink() { return currentViewLink(); },                                                            // §37 — what the share button copies, without the clipboard
+  goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionEl.textContent } : null; },
   // Deterministic per-frame advance for verification (rAF is paused when the

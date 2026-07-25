@@ -1984,3 +1984,95 @@ default run effectively never finishes there. `yieldEvery: 64` clears
 it (clearances 299 s, inspection 46 s). 384 wedges the tab — the mild
 version of the `yieldEvery: Infinity` trap CLAUDE.md already warns
 about.
+
+## §37 — Camera poses as shareable, scriptable state
+
+**The gap, found twice in one review session.** §35's link runs from the
+column wheel across the whole south-west to the ring, and neither
+surface that should show it could aim at it. The script engine's
+framing vocabulary was preset-only (Escapement / Train / Dial /
+Setting / Free), and the deep-link scheme shared every view SETTING
+(?preset, ?scale, ?xray, ?explode, …) except the one thing that frames
+a discovery — the camera. Reviewing §35 meant hand-posing
+`__clock.camera` in a console; sharing that view meant a screenshot.
+
+**One primitive.** `goToPose(pos, target, { snap })` owns the single
+`camTween` the frame loop already ran, and `goToPreset` became a lookup
+in front of it — a preset is a NAMED pose plus its `reveal` rule,
+nothing more. Everything below is a consumer, so there is one ease
+(`CAM_TWEEN_DUR`), one abort-on-takeover path, and one place that
+clears the preset row's highlight when the viewer leaves a named
+framing.
+
+**Snap versus tween, decided once.** A pose that is ALREADY the answer
+— a restored session, a shared link — snaps; a pose the viewer is being
+*taken to* tweens. Flying a recipient from Free to a shared framing
+would animate 0.9 s of travel the sharer never asked for, so `?cam`
+snaps and cancels any in-flight preset tween rather than racing it.
+
+**Three consumers.**
+
+- *Deep link* `?cam=x,y,z&look=x,y,z`. Each param is judged alone: one
+  that is absent, short, long, or unparseable is ignored and the live
+  value stands — `Number.isFinite` also rejects `NaN` and `Infinity`,
+  which `parseFloat` happily returns. Given both `?preset` and `?cam`,
+  cam wins: a literal pose is the more specific claim.
+- *Script step* `camera: { pos, look }`, tweened exactly as a preset is
+  because it goes through the same primitive. Keeps one-off framings
+  out of the preset table, which is a menu the viewer reads, not a
+  scratchpad. Wins over `preset` in the same step, matching the
+  deep-link precedence.
+- *Share view*, in the Camera section. Serialises the live camera plus
+  only the NON-DEFAULT toggles, so a bare view link stays a view link.
+  Reserve is deliberately excluded: it drains while you read, and
+  baking it in would make the link mean something different by the time
+  it arrives. Three decimals — at the Free preset's ~100-unit standoff
+  a 42° FOV across ~1000 px puts one pixel near 0.075 units, so 0.001
+  is about 1/75 px. `URLSearchParams` percent-encodes the commas, which
+  are legal raw in a query and this link exists to be pasted, so they
+  are put back — and only they, since a unit name like "Fusee & great
+  wheel" must keep its escaping.
+
+**Clipboard, honestly.** `navigator.clipboard` needs a secure context
+and can still be refused by permissions policy, so the button falls
+back to the legacy `execCommand` path and then to a prompt carrying the
+URL. Verified with a REAL pointer click, not a synthetic one: a
+synthetic `click()` is not a trusted gesture, so it exercises only the
+fallback and would have "passed" while telling you nothing.
+
+**First consumer — the §35 chain, traced.** A SIBLING script
+(`ALARM_LINK_STEPS`, the "Trace" button), not an extension of the §34
+coupling show, whose subject is correctly the centre. Seven stops:
+pusher at the rim → the second beak reading the castellations → the
+long tail's sweep → the x-rayed rod drop → the lay shaft under the
+plate → the centre crank on the ring's drive tab → and back, reversed.
+Each `alarm:` toggle in the script IS one pusher press, so the chain
+really runs; the camera only follows it.
+
+Every pose is DERIVED from the part's own site constant — never a typed
+vector — so a layout change carries the camera with the part. `linkShot`
+takes a framing radius and a direction in the (radial, z) plane,
+normalised, at the preset block's 42°-FOV fit rule (≈3.8×R).
+
+**Two things the framings taught, on screen.** A pose can be arithmetically
+perfect and still show nothing, and only looking catches it:
+
+- The tab stop's first draft aimed at world z −0.91 — the raw
+  dial-LOCAL value. `dialFace` is Y-flipped (CLAUDE.md's standing
+  trap), so the real ring sits at −6.09 and the camera was 5.2 off,
+  looking at nothing. It now derives through `Z_DIAL − z` and a boot
+  assert checks that derivation against the built ring, because a
+  camera that misses cannot fail a test that does not exist.
+- The centre is the one stop a radial standoff cannot frame: the hands
+  sweep in front of it on the dial side (they sit BEYOND the dial, so
+  x-ray does not help — it glassifies the dial and 3/4 plate, not the
+  hands), and the going train and fusee chain fill it from the plate
+  side. It borrows the Dial preset's own viewing direction, read from
+  the preset table rather than copied, which is the framing §34's show
+  already proves carries a centre subject.
+
+**Battery (47 units).** bootWarns [] · support 0 · graph clean (todo 1:
+§9's standing debt) · penetration within budgets · clearances 0
+violations · inspection {includeExcluded} 0 FORBIDDEN · geometry
+fingerprint 3312892754, unchanged — this is render and I/O, and the
+sim math is untouched.
