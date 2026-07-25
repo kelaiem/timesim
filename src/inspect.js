@@ -220,6 +220,8 @@ const MECH_GRAPH = {
                                              // the tube follows the heart (the cannon-pinion precedent)
     ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
                                              // tube drives the tube home through the sprung follower
+    ['Alarm setting wheel', 'Alarm disc'],   // §34: ARMED, heart-B on the wheel drives the tube to the
+                                             // set phase through sprung follower-B — the coupling as geometry
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
     ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
@@ -1439,6 +1441,27 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmNose') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §34: follower-B's nose on heart-B — the armed coupling's working
+    // contact, the exact mirror of the A pair below in §25 C's stage 2.
+    // Swept on the alarm axis: setting turns the WHEEL (and heart-B) under
+    // the armed-seated nose... and disarmed, the tube turns under a
+    // stationary heart-B — both directions live on this axis.
+    pair: ['Alarm setting wheel', 'Alarm disc'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmHeartB') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmNoseB') out.push(o); });
       return out;
     },
   },

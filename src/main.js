@@ -4877,6 +4877,37 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - postH / 2);
   alarmTubeGroup.add(post);
 }
+// §34 pass 2a: FOLLOWER-B — the second follower, pivoted on a post rising
+// from the flange's TOP face into heart-B's band; the same triangle
+// constants as A (pivot radius, arm length, seat azimuth), so tick's one
+// law of cosines poses both. Its nose rides heart-B: seated ⇒ tube ≡
+// wheel — the armed coupling, as geometry.
+const alarmFollowerArmB = new THREE.Group();
+{
+  const postB = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, (-(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2) - ALARM_TUBE_BACK + ALARM_HEART_B_T / 2, 10), MATS.steel);
+  postB.rotation.x = Math.PI / 2;
+  postB.position.set(-ALARM_PIVOT_R, 0, (ALARM_TUBE_BACK + (-(0.05 + ALARM_SET_T))) / 2);
+  alarmTubeGroup.add(postB);
+  alarmFollowerArmB.position.set(-ALARM_PIVOT_R, 0, -(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2);
+  alarmTubeGroup.add(alarmFollowerArmB);
+  const barB = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FOLLOWER_LEN, 0.3, 0.3), MATS.steel);
+  barB.position.x = ALARM_FOLLOWER_LEN / 2;
+  alarmFollowerArmB.add(barB);
+  const noseB = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_NOSE_R, ALARM_NOSE_R, 0.24, 12), MATS.ruby);
+  noseB.name = 'alarmNoseB'; // penetration-budget selector (string-coupled)
+  noseB.rotation.x = Math.PI / 2;
+  noseB.position.x = ALARM_FOLLOWER_LEN;
+  alarmFollowerArmB.add(noseB);
+  const bladeB = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.22), MATS.blueSteel);
+  bladeB.name = 'alarmFollowerSpringB';
+  bladeB.position.x = 0.55;
+  const springB = new THREE.Group();
+  springB.position.set(-ALARM_PIVOT_R * Math.cos(0.45), ALARM_PIVOT_R * Math.sin(-0.45), -(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2);
+  springB.rotation.z = 1.9;
+  springB.add(bladeB);
+  alarmTubeGroup.add(springB);
+}
+
 // The follower arm — pivoted at the post, nose roller at the tip riding the
 // heart. Built along +x from the pivot; at rotation 0 it points at the dial
 // centre (the pivot sits at az π), so tick's triangle solution IS its pose.
@@ -4956,6 +4987,16 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // gap exists to protect; declared here, not discovered). Placed at the
   // wheel's local azimuth 0: the §25 armed identity (wheel ≡ tube) makes it
   // REGISTER with the flange's line at every armed pose, for any setting.
+  // §34 pass 2a: HEART-B — the second heart, fixed to this wheel's
+  // plate-side face (one member), phased like heart-A (ALARM_NOSE_AZ in
+  // the wheel's frame): follower-B seated ⇒ tube ≡ wheel at the same
+  // constant heart-A's seat gives tube ≡ hour — the constants cancel in
+  // the armed registration, which is what the index marks show.
+  const heartB = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_B_T, boreR: ALARM_TUBE_OUTER + 0.05, rMin: ALARM_HEART_RMIN, bevel: false });
+  heartB.traverse((o) => { if (o.isMesh) { o.name = 'alarmHeartB'; o.material = MATS.blueSteel; } });
+  heartB.position.z = -(0.05 + ALARM_SET_T) - ALARM_HEART_B_T / 2;
+  heartB.rotation.z = ALARM_NOSE_AZ;
+  alarmSetWheelGroup.add(heartB);
   const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, 0.42, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
@@ -8919,13 +8960,23 @@ function tick(t) {
   // convention); the pose path (rawDt = 0) assigns exactly, so inspector
   // poses stay deterministic.
   {
+    // §34 pass 2a: the tube now has TWO reference members, one heart each.
+    // Armed it seeks the SETTING WHEEL's phase (follower-B seating in
+    // heart-B: the wheel's rotation is −alarmSetRot·RATIO, whose wrapped
+    // value IS −alarmAngle — the arithmetic §25 asserted is now the seat
+    // geometry); disarmed it seeks the HOUR (follower-A in heart-A, as
+    // always). Pass 2b's rocker makes the CHOICE itself physical.
     const tubeTarget = alarmOn ? -alarmAngle : mwHourA;
     // Both transitions EASE live (the pose path assigns exactly): disarming is
     // the spring snapping the follower home along the cam slope, and arming is
     // the re-coupled friction wheel swinging the hand out to the set time —
     // the hand visibly TRAVELS between hiding and showing, either way.
     if (rawDt > 0) {
-      alarmTubeShownA += wrapPi(tubeTarget - alarmTubeShownA) * (1 - Math.exp(-rawDt / (alarmOn ? 0.35 : CAM_SNAP_TAU)));
+      // §34: the 350 ms FRICTION SWEEP is retired with the friction story —
+      // arming is follower-B's spring driving the nose down heart-B's slope,
+      // a SNAP like disarming's, just on its own spring (two rates keep the
+      // two-speed feel honestly: B's blade is the longer, softer one).
+      alarmTubeShownA += wrapPi(tubeTarget - alarmTubeShownA) * (1 - Math.exp(-rawDt / (alarmOn ? 0.12 : CAM_SNAP_TAU)));
     } else {
       alarmTubeShownA = tubeTarget;
     }
@@ -8947,6 +8998,19 @@ function tick(t) {
     // The blade flexes with the pump (its force is representational; its
     // MOTION is the arm's real lift).
     alarmFollowerSpring.rotation.z = 1.9 + (armA - ALARM_FOLLOWER_A0) * 0.45;
+    // §34 pass 2a: follower-B, the same law of cosines against heart-B —
+    // its relative angle is tube vs WHEEL (armed: 0, seated — the coupling;
+    // disarmed: the set offset, and B pumps as the tube follows the hour
+    // under it, the mirror of A's armed pumping).
+    let contactAzB = ALARM_NOSE_AZ;
+    let armB = ALARM_FOLLOWER_A0;
+    for (let it = 0; it < 2; it++) {
+      const psiB = contactAzB - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA - (-alarmSetRot * ALARM_SET_RATIO));
+      const dB = alarmHeartRAt(psiB) + ALARM_NOSE_R;
+      armB = alarmArmAngleAt(dB);
+      contactAzB = Math.atan2(ALARM_FOLLOWER_LEN * Math.sin(armB), -ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * Math.cos(armB));
+    }
+    alarmFollowerArmB.rotation.z = armB;
   }
   // §25 C stage 3 — the setting train, derived FORWARD from the crown (Rule
   // 2): arbor 1:1 through the bevels, each external mesh reversing sense.
