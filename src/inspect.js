@@ -153,6 +153,8 @@ const MECH_GRAPH = {
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+    ['Alarm clamp', 'Dial'],                 // §30: the jaws' scissor posts hang from the sheet; the wedge's rod runs to the base plate's bore
+    ['Alarm clamp', 'plate'],                // §30: the rod's upper bearing — the bore in the base plate's dial face
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
@@ -228,6 +230,10 @@ const MECH_GRAPH = {
     ['Alarm release feeler', 'Alarm winding train'], // §29 step 4: the tail's beak in the climb's contrate band is the
                                                      // RELEASE DETENT — seated it holds the striking barrel through the
                                                      // 12/44 mesh; the pin's drop withdraws it and the train runs
+    ['Alarm switch', 'Alarm clamp'],         // §30: the column's parity works the wedge — the plate-top lever and
+                                             // second beak are the next slice; until then this row IS the run
+    ['Alarm clamp', 'Alarm setting wheel'],  // §30: pads on the rim — ARMED the jaws hold the wheel, and the tube
+                                             // through the wheel's own friction bore; the visible cause of attach
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -521,6 +527,8 @@ const EXPECTED_PAIRS = [
   ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
   ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
   ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
+  ['Alarm clamp', 'Alarm setting wheel'],   // §30: pads kissing the rim when armed — the working grip
+  ['Alarm clamp', 'Dial'],                  // the nesting artifact (dialFace descendant), like the feeler's row
   ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
                                             // is a dialFace descendant, so the Dial's traverse carries its beak
                                             // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
@@ -1482,6 +1490,25 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmPawlBeak') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §30: the clamp's pads on the setting wheel's rim — the armed grip is
+    // a deliberate kiss (a brake), swept on the alarm axis where the wheel
+    // turns through the closed jaws during setting.
+    pair: ['Alarm setting wheel', 'Alarm clamp'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmSetWheelRim') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmClampPad') out.push(o); });
       return out;
     },
   },
