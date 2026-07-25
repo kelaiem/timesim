@@ -8080,14 +8080,51 @@ document.getElementById('explode-slider').addEventListener('input', (e) => {
 // without touching the ~30 registerExplode call sites. The two stragglers
 // (backPlate, handsGroup — neither has a label) get explicit names.
 let selectedUnit = 'All';
-// --- Explode GROUPS (§25 C; the seed of §10's level-1) ---------------------
-// A named set of units the selector can lift TOGETHER, each at its own
-// per-group layer so the mechanism unfolds in its working order instead of
-// moving as one slab. Layers here override the entry's registered layer ONLY
-// while the group is selected — 'All' keeps every unit's original staging.
+// --- UNIT GROUPS (§10 level 1; generalises §25 D's single explode group) ---
+// The selector's primary vocabulary is a handful of logical assemblies rather
+// than the flat 49-entry unit list. A group is a Map of member name → layer,
+// where the layer OVERRIDES the entry's registered layer ONLY while that
+// group is selected, so a mechanism can unfold in its working order instead
+// of moving as one slab. `null` means "keep the unit's own registered
+// staging" — the honest default for a group nobody has choreographed, and
+// what makes a group's lift identical to its slice of 'All'. 'All' itself
+// always keeps every unit's original staging.
 // dir stays the ENTRY's own (it encodes the dialFace frame flip); within one
 // visual side a bigger layer just means further out.
-const EXPLODE_GROUPS = new Map([
+//
+// The partition is over the SAME vocabulary MECH_GRAPH uses — graph node
+// names, registerLabel names and explode-entry names are the same strings.
+// A group name must NOT collide with a unit name (the selector resolves a
+// group first, so a shadowed unit becomes unreachable): that is why the
+// structural group is 'Frame & plates' and not 'Structure', which is already
+// backPlate's name and the catch-all for unlabelled explode entries.
+const UNIT_GROUPS = new Map([
+  ['Escapement', new Map([
+    ['Escape wheel', null], ['Pallet fork', null], ['Balance', null],
+    ['Hairspring', null], ['Balance cock', null], ['Fork cock', null],
+  ])],
+  ['Going train', new Map([
+    ['Center wheel', null], ['Third wheel', null], ['Fourth wheel', null],
+  ])],
+  ['Fusee & chain', new Map([
+    ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
+    ['Maintaining detent', null], ['Set-up work', null],
+  ])],
+  ['Keyless & winding', new Map([
+    ['Keyless works', null], ['Setting lever', null], ['Yoke', null],
+  ])],
+  ['Zero-reset & hacking', new Map([
+    ['Heart cam (seconds reset)', null], ['Reset hammer', null], ['Reset rod', null],
+    ['Stop lever', null], ['Hack rod', null],
+  ])],
+  ['Dial side', new Map([
+    ['Dial', null], ['Motion works', null], ['Hour wheel', null],
+    ['Minute jumper', null], ['Small seconds', null], ['Power reserve', null],
+    ['Power-reserve train', null], ['Hands', null],
+  ])],
+  ['Frame & plates', new Map([
+    ['Structure', null], ['pillars', null], ['Three-quarter plate', null],
+  ])],
   ['Alarm complication', new Map([
     // dial side, unfolding toward the viewer in drive order: crown outermost
     ['Alarm crown', 6], ['Alarm setting arbor', 5], ['Alarm setting idler', 4],
@@ -8096,16 +8133,14 @@ const EXPLODE_GROUPS = new Map([
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm hammer', 9], ['Alarm gong', 11],
+    // §34/§35 additions — the release path and the long link to it. Uncho-
+    // reographed (null) on purpose: their working order through the column
+    // wheel is a level-2 story, and the partition assert below is what forced
+    // them to be listed at all.
+    ['Alarm selector', null], ['Alarm lock', null], ['Alarm switch', null],
+    ['Alarm link', null],
   ])],
 ]);
-// A hand-written table like this rots silently (§10's warning) — assert every
-// member is a real label name at boot.
-for (const [gname, members] of EXPLODE_GROUPS) {
-  for (const n of members.keys()) {
-    if (!labelEntries.some((l) => l.name === n))
-      console.warn(`explode group "${gname}": member "${n}" is not a registered label`);
-  }
-}
 const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Structure'], [handsGroup, 'Hands']]);
 function explodeEntryName(e) {
   if (e.name === undefined) {
@@ -8114,28 +8149,97 @@ function explodeEntryName(e) {
   }
   return e.name;
 }
-const unitSelect = document.getElementById('explode-unit');
-// Options are the union of explode-entry names and label names: label-only
-// units (Chain, Motion works, …) can't lift on their own — they either have
-// no explode entry or ride a parent's — but selecting one still isolates
-// its label. Rebuilt on open because the Chain label registers lazily on
-// the first tick (its mesh is built inside updateChain).
-function refreshUnitOptions() {
-  const names = [...new Set([
+// The selectable universe: the union of explode-entry names and label names.
+// Label-only units (Chain, Motion works, …) can't lift on their own — they
+// either have no explode entry or ride a parent's — but selecting one still
+// isolates its label. The Chain registers its label lazily (its mesh is built
+// inside updateChain), so this is only complete after the first chain build.
+function unitUniverse() {
+  return [...new Set([
     ...explodeEntries.map(explodeEntryName),
     ...labelEntries.map((l) => l.name),
   ])];
-  const groups = [...EXPLODE_GROUPS.keys()];
+}
+
+// A hand-written table like this rots silently — §25 D's assert only checked
+// that members were real label names, which is exactly how four §34/§35 parts
+// (Alarm selector/lock/switch/link) joined the movement without ever joining
+// a group and nobody heard about it. §10 asks for a PARTITION assert, so this
+// checks both directions and exclusivity: every member is a real unit, every
+// unit is claimed, and no unit is claimed twice.
+// Called after the first chain build, not at table-definition time — the
+// Chain's label does not exist yet up there, and a boot warning about it
+// would be a false alarm in a project whose rule 6 is "boot is silent".
+function assertUnitGroups() {
+  const universe = new Set(unitUniverse());
+  const claimedBy = new Map(); // unit name -> [group names]
+  for (const [gname, members] of UNIT_GROUPS) {
+    if (universe.has(gname))
+      console.warn(`unit group "${gname}" shadows a unit of the same name — that unit can no longer be selected on its own`);
+    for (const n of members.keys()) {
+      if (!universe.has(n))
+        console.warn(`unit group "${gname}": member "${n}" is not a registered unit name`);
+      claimedBy.set(n, [...(claimedBy.get(n) ?? []), gname]);
+    }
+  }
+  for (const [n, gs] of claimedBy)
+    if (gs.length > 1)
+      console.warn(`unit "${n}" is claimed by ${gs.length} groups (${gs.join(', ')}) — the partition must be exclusive`);
+  for (const n of universe)
+    if (!claimedBy.has(n))
+      console.warn(`unit "${n}" belongs to no group — add it to UNIT_GROUPS`);
+}
+
+const unitSelect = document.getElementById('explode-unit');
+// Groups come first as the primary choice; every individual unit stays
+// reachable underneath its own group's <optgroup>, so level 1 organises the
+// list without removing the per-unit isolation §7 shipped (part granularity
+// is level 2's job, and until it lands this is the only way to isolate one
+// part). Rebuilt on open because of the Chain's lazy label.
+function refreshUnitOptions() {
+  const names = unitUniverse();
+  const groups = [...UNIT_GROUPS.keys()];
   if (unitSelect.options.length === names.length + groups.length + 1) return;
-  const cur = unitSelect.value;
+  // selectedUnit — NOT unitSelect.value — is the source of truth here. A deep
+  // link (?unit=Chain) runs at module scope before the Chain's lazy label
+  // exists, so assigning that name to the <select> is a no-op and reading the
+  // element back would quietly reset a legitimate selection to 'All'. The
+  // change handler keeps selectedUnit in sync for every interactive path.
+  const cur = selectedUnit;
   unitSelect.innerHTML = '';
-  for (const n of ['All', ...groups, ...names]) {
+  const addOption = (parent, n) => {
     const o = document.createElement('option');
     o.textContent = n;
-    unitSelect.appendChild(o);
+    parent.appendChild(o);
+  };
+  const addGroupBox = (label) => {
+    const og = document.createElement('optgroup');
+    og.label = label;
+    unitSelect.appendChild(og);
+    return og;
+  };
+  addOption(unitSelect, 'All');
+  const assemblies = addGroupBox('Assemblies');
+  for (const g of groups) addOption(assemblies, g);
+  const placed = new Set();
+  for (const [g, members] of UNIT_GROUPS) {
+    const box = addGroupBox(g);
+    for (const n of members.keys()) {
+      if (!names.includes(n)) continue; // assertUnitGroups has already warned
+      addOption(box, n);
+      placed.add(n);
+    }
   }
-  unitSelect.value = names.includes(cur) ? cur : 'All';
-  selectedUnit = unitSelect.value;
+  // Never drop a unit off the list silently: anything the table missed is
+  // still selectable, and its presence here is the visible half of the warning.
+  const orphans = names.filter((n) => !placed.has(n));
+  if (orphans.length) {
+    const box = addGroupBox('Ungrouped');
+    for (const n of orphans) addOption(box, n);
+  }
+  const keep = [...groups, ...names].includes(cur) ? cur : 'All';
+  unitSelect.value = keep;
+  selectedUnit = keep;
 }
 refreshUnitOptions();
 unitSelect.addEventListener('pointerdown', refreshUnitOptions);
@@ -8713,13 +8817,16 @@ function updateExplode() {
     // positions: a lone unit rising through a parked three-quarter plate or
     // dial would pass straight through them, and the full-explode exit path
     // is already known to be clean.
-    const group = EXPLODE_GROUPS.get(selectedUnit);
-    const inGroup = group ? group.get(explodeEntryName(e)) : undefined;
+    const group = UNIT_GROUPS.get(selectedUnit);
+    const isMember = group ? group.has(explodeEntryName(e)) : false;
+    const inGroup = isMember ? group.get(explodeEntryName(e)) : undefined;
     const lifts = selectedUnit === 'All'
       || explodeEntryName(e) === selectedUnit
-      || inGroup !== undefined
+      || isMember
       || e.obj === threeQuarterPlate || e.obj === dialGroup;
-    const layer = inGroup !== undefined ? inGroup : e.layer; // group staging overrides only while the group is selected
+    // A member's null layer means "keep your own registered staging", so an
+    // unchoreographed group lifts as its slice of 'All' rather than as a slab.
+    const layer = inGroup != null ? inGroup : e.layer; // group staging overrides only while the group is selected
     e.obj.position.z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * layer * UNIT;
   }
 }
@@ -8743,7 +8850,7 @@ function updateLabels() {
   for (let i = 0; i < labelEntries.length; i++) {
     const { name, obj } = labelEntries[i];
     const el = labelEls[i];
-    const labelGroup = EXPLODE_GROUPS.get(selectedUnit);
+    const labelGroup = UNIT_GROUPS.get(selectedUnit);
     if (selectedUnit !== 'All' && name !== selectedUnit && !(labelGroup && labelGroup.has(name))) { el.style.display = 'none'; continue; }
     obj.getWorldPosition(projected);
     projected.project(camera);
@@ -9476,6 +9583,8 @@ function tick(t) {
 
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
+assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete
+refreshUnitOptions(); // …and rebuild the selector now that it is (the boot call above ran a Chain short)
 
 // One frame's worth of simulation, script/sync stepping, camera tween and
 // render — everything except the rAF scheduling and autosave. Split out of

@@ -1900,3 +1900,87 @@ alarmStrike, crank⇄ring on alarm) · inspection {includeExcluded}
 0 intersections over 720 spin steps (was 172 of 720 at the first
 site); ring slide and rod throw both 0.19 across the toggle; the
 coupling demo steps the column 30°/press with profLink flipping 0/1.
+
+## §10 level 1 — Grouped explode: the selector speaks in assemblies
+
+**Shipped in part, on purpose.** §10 was filed as two levels: level 1
+groups the flat unit list into assemblies, level 2 drills *into* a
+group and separates its own sub-parts. The entry itself said to ship
+level 1 alone because it is the majority of the usability win. That is
+what this section is. **Level 2 is unbuilt and stays in the roadmap
+under the same §10** — the sub-labels, the parent-aware
+`updateExplode`, and the additive-offset refactor §32 depends on are
+all still ahead.
+
+**What it replaces.** §7 shipped a per-unit selector over a flat list;
+that list had grown to 49 entries by §35, which is a wall, not a menu.
+§25 D then proved the group mechanism on exactly one group ('Alarm
+complication'). Level 1 generalises that one group into a total
+partition and makes groups the selector's primary vocabulary.
+
+**`UNIT_GROUPS` — a partition, not a grouping.** Eight groups over all
+49 selectable names: Escapement, Going train, Fusee & chain, Keyless &
+winding, Zero-reset & hacking, Dial side, Frame & plates, Alarm
+complication. Each is a Map of member name → layer, where the layer
+overrides the entry's registered layer only while that group is
+selected. `null` means "keep your own registered staging", and it is
+the honest default: an unchoreographed group then lifts as its slice
+of 'All' rather than as a slab. Only the alarm group carries real
+per-member layers, inherited unchanged from §25 D.
+
+**Two departures from the plan, both forced by the code.**
+
+- The structural group is **`Frame & plates`**, not the plan's
+  'Structure'. `Structure` is already `backPlate`'s name *and* the
+  catch-all `explodeEntryName` hands to any unlabelled explode entry;
+  a group by that name would shadow the unit and make it unselectable,
+  since the selector resolves a group first. The assert now checks for
+  that collision class by name.
+- **Per-unit selection stayed.** The plan's acceptance said the
+  selector should list groups "not 30 parts", but part granularity is
+  level 2's job, and until level 2 lands the per-unit list is the only
+  way to isolate one part — removing it would have been a regression
+  against §7. Groups lead under an `Assemblies` optgroup; every unit
+  remains reachable under its own group's box.
+
+**The assert is the feature.** §25 D's check only asked whether listed
+members were real label names. It could not ask the converse, and the
+converse is what rots: `Alarm selector`, `Alarm lock`, `Alarm switch`
+and `Alarm link` — all §34/§35 parts — had joined the movement without
+ever joining a group, silently, for two whole sections.
+`assertUnitGroups()` checks membership, coverage AND exclusivity, plus
+group-name shadowing. It found those four the first time it ran.
+
+It runs after the first `updateChainIfMoved()`, not at the table: the
+Chain registers its label lazily, so a boot-time assert would warn
+about a unit that simply does not exist yet — a false alarm in a
+project whose rule 6 is that boot is silent. The selector is rebuilt
+at the same point for the same reason.
+
+**One ordering trap, found by writing the fix for it.** The rebuild
+reads back a current selection to preserve it, and reading it from
+`unitSelect.value` is wrong: `applyDeepLink()` runs at module scope,
+before the Chain's option exists, so `?unit=Chain` assigns a value the
+`<select>` cannot hold, and the rebuild would quietly reset a
+legitimate selection to 'All'. `selectedUnit` is the source of truth.
+The same read also fixed a latent §25 D bug — a selected *group* was
+reset to 'All' on every rebuild, because the old guard tested
+membership against unit names only.
+
+**Battery (47 units).** bootWarns [] · support 0 failures · graph
+clean (todo 1: §9's pre-existing debt) · penetration 11 rows within
+budgets · clearances 0 violations · inspection {includeExcluded} 72
+pairs, all EXPECTED, 0 FORBIDDEN · geometry fingerprint 3312892754,
+identical to the pre-change tree (10 poses, 46 units) · 'All' explode
+positions bit-identical to pre-change across 47 units × 3 amounts,
+A/B'd against a worktree of the parent commit. No geometry changed and
+none could: explode is render-side, and `start()` calls
+`resetInputs()` before every sweep, so the battery never sees a group
+at all.
+
+**Note for whoever runs the battery next.** Both long sweeps yield via
+`setTimeout(0)`, which the automation harness throttles to ~1 s, so a
+default run effectively never finishes there. `yieldEvery: 64` clears
+it (clearances 299 s, inspection 46 s). 384 wedges the tab — the mild
+version of the `yieldEvery: Infinity` trap CLAUDE.md already warns
+about.

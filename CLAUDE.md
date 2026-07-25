@@ -73,7 +73,9 @@ I.start(__clock, 'clearances');                             // 0 violations
 Use `start()`/`status()`, never `await` the sweep directly — full runs take
 100 s+ and blow a browser-eval timeout. Do **not** pass
 `yieldEvery: Infinity` to work around it: that removes the cooperative
-yields and wedges the tab.
+yields and wedges the tab. Driving the browser through tooling changes the
+arithmetic entirely — see the yield-throttling trap below before starting a
+sweep that way.
 
 ### Two things the battery structurally cannot see
 
@@ -108,6 +110,17 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   nothing — the sim barely advances. Prefer `step()`; if you must observe
   `frame()` behaviour, sample across separate tool calls and force paints
   with screenshots.
+- **So do the sweeps' own yields — and the fix has a cliff on both sides.**
+  `sweepClearances`/`runInspection` stay responsive by pausing every
+  `yieldEvery` poses via `setTimeout(0)`. An automated pane throttles that
+  to ~1 s, so a default run is almost entirely *idle*: thousands of naps,
+  hours of wall clock, and a status that reads `running` forever. Raising
+  `yieldEvery` eats fewer naps but lengthens each blocking chunk, and too
+  high wedges the tab — the same failure as `yieldEvery: Infinity`, just
+  slower to arrive (384 wedged it; 64 is the value that works, clearances
+  ~300 s and inspection ~46 s). Run the two long checks one at a time, not
+  via `startAll`. None of this applies when a human has the tab in front of
+  them: the default 16 is correct there.
 - **`inspect.js` couples by string.** Every `MECH_GRAPH` / `EXPECTED_PAIRS` /
   anchors name must match a `registerLabel` name *verbatim*.
 - **`dialFace` is Y-flipped**: dial-local `(x, y)` ↔ world
