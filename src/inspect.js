@@ -154,6 +154,8 @@ const MECH_GRAPH = {
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
+    ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
+    ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
@@ -226,6 +228,10 @@ const MECH_GRAPH = {
                                              // cam's minimum and the slopes cam the rotation) — the coupling as geometry
     ['Alarm selector', 'Alarm disc'],        // §34 pass 2b: the ring's face tips the flange rocker (axial contact,
                                              // azimuth-independent) — the bias that picks which heart wins
+    ['Alarm switch', 'Alarm link'],          // §35: the link beak ON the castellations, 120° around — the same
+                                             // parity the brake beak reads, now carried away as metal
+    ['Alarm link', 'Alarm selector'],        // §35: the centre crank on the ring's drive tab — the run's last
+                                             // contact; the pusher press now moves the whole chain
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
     ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
@@ -244,7 +250,6 @@ const MECH_GRAPH = {
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
-    ['Alarm switch', 'Alarm selector', '§34 → §35: the column→ring run (second beak, az-135 rod through §31\'s probed corridor and base-plate bore, below-plate transfer lever) — filed as §35; until it lands the parity reaches the ring by declaration'],
     // §25 B: the RELEASE is derived from the real co-axial alignment (the
     // follower's nose entering the heart's notch) and the lock lever answers
     // it — but no physical linkage carries the drop. NOT a missing rod: the
@@ -529,6 +534,12 @@ const EXPECTED_PAIRS = [
   ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
   ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
+  ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
+  ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
+  ['Alarm link', 'Dial'],                   // the SAME tab contact re-attributed through nesting: the ring
+                                            // (and its tab) is a dialFace descendant, so the Dial's traverse
+                                            // carries it (the Dial ⇄ Hour wheel precedent); the link's real
+                                            // corridor past Dial furniture is ray-asserted at the build
   ['Alarm selector', 'Dial'],               // the nesting artifact + the posts' sheet anchors
   ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
                                             // is a dialFace descendant, so the Dial's traverse carries its beak
@@ -658,6 +669,20 @@ const AXES = [
     name: 'jumperEngage',
     n: 120,
     pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+  },
+  {
+    // §35 postmortem: HAND-SETTING is the only input that spins the keyless
+    // setting path (setPathRot — crown rotation while pulled), and no other
+    // axis writes it, so a rod standing in the minute wheel's spoke windows
+    // passed every battery run. One full MINUTE-WHEEL revolution, crown
+    // pulled — the setting wheel and the compound arbor sweep their whole
+    // angular range past everything static.
+    name: 'handSet',
+    n: 120,
+    pose: (f, clock) => ({
+      tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      setPathRot: f * (clock ? clock.setPathPerMinuteWheelRev : 0),
+    }),
   },
   {
     // One full revolution of the alarm disc (§24): the crown turned through a
@@ -1452,6 +1477,42 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
+    // §35: the link beak riding the castellations' tops — the §25 D click's
+    // treatment for the new reader; swept on the strike axis (the column
+    // steps through both parities as the alarm arms and re-arms).
+    pair: ['Alarm switch', 'Alarm link'],
+    maxDepth: 0.12,
+    axis: 'alarmStrike',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmColWheel') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLinkBeak') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §35: the centre crank on the ring's drive tab — the run's last contact.
+    pair: ['Alarm link', 'Alarm selector'],
+    maxDepth: 0.12,
+    axis: 'alarm',
+    nSamples: 150,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLinkCrankCentre') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmSelRing') out.push(o); });
+      return out;
+    },
+  },
+  {
     // §34 pass 2b: the rocker's sensing pin on the selector ring's face —
     // the fixed⇄co-rotating interface, riding at every azimuth as the tube
     // turns. Swept on the alarm axis (a full relative revolution).
@@ -1740,6 +1801,11 @@ export function start(clock, name, opts = {}) {
   const jobs = (window.__checks ||= {});
   if (!CHECKS[name]) return `unknown check "${name}" — have: ${Object.keys(CHECKS).join(', ')}`;
   const t0 = performance.now();
+  // Canonical state per run (the §34 explode harvest, generalised): a check
+  // must not inherit session accumulators — a leftover setPathRot, alarm
+  // rotation or explode from earlier interaction (or from a PREVIOUS axis's
+  // last pose) would silently move geometry under the sweep.
+  clock.resetInputs();
   jobs[name] = { state: 'running', startedAt: t0 };
   Promise.resolve()
     .then(() => CHECKS[name](clock, opts))
