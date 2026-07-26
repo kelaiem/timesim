@@ -2156,3 +2156,99 @@ function's closing braces, looked clean, and surfaced only as a
 `SyntaxError` on load. The check that actually proves an additive
 change is `git diff <base>` showing ZERO deletions — any removed line
 is a defect by definition.
+
+## §28 — Fresh-load hygiene: never serve a stale build
+
+**Delivery, not the movement.** Like §26 this lives outside the
+mechanism, but it is the difference between a viewer seeing today's
+escapement fix and last week's. Build and serving only — sim math
+untouched, no geometry, no `MECH_GRAPH` impact.
+
+Two layers, and the point is not conflating them: make a changed file
+get a new URL, and give an already-open tab a way to update. Caching is
+NOT disabled — the JS is large and wants to cache.
+
+**Layer 1 is not what the entry proposed, because the premise was
+wrong.** §28 assumed GitHub Pages and prescribed an esbuild step
+emitting content-hashed filenames. This project does not deploy to
+Pages: `release.yml` tags `main`, uploads the tree over SFTP into
+`<releases>/<version>/`, and repoints a QA symlink. A bundle would also
+have cost two things worth more than the caching problem — the
+importmap (so `three` stays ONE shared instance) and
+`await import('./src/inspect.js')` from the console, which is
+CLAUDE.md's documented way to run the battery.
+
+So `tools/stamp-release.mjs` versions URLs instead: `index.html`'s entry
+point and importmap targets, plus every relative specifier in the module
+graph. A module's imports resolve against its OWN url and a query does
+not propagate, so each file has to carry the version itself. 14 urls.
+
+**URLs stay RELATIVE, and that is the load-bearing decision.** The
+obvious move is to rebase every asset onto an absolute
+`/<releases>/<version>/` path — the release directory as fingerprint,
+exact rather than content-derived. That works only if the releases
+directory is itself inside the web root, and the site is distributed as
+the SYMLINK: if the web root IS the symlink, `/<releases>/…` is not in
+the URL space at all and every asset 404s. Fixing a caching problem by
+breaking the whole app on the next release is a bad trade, and the
+layout is not knowable from this repo. `?v=<version>` changes the cache
+key under either layout, so nothing depends on knowing.
+
+**The stamper asserts the sweep was TOTAL**, rather than trusting a
+count — any relative asset url still lacking a version would be a file
+served stale forever. It earned itself immediately: the first version
+matched only `./` and silently left `inspect.js`'s
+`../vendor/three-mesh-bvh` import unversioned, and the scan agreed,
+because it looked for less than the rewrite did. **A check that searches
+for less than the change it verifies will always pass.** Both now match
+`./` and `../`.
+
+**Layer 2 — the half nothing else can cover.** A tab already open when
+the deploy landed. JS cannot purge the HTTP cache (`reload(true)`'s
+`forceGet` is dead in every modern browser), so the mechanism is layer
+1's changed url plus a reload the VIEWER chooses. Reloading unasked
+would throw away state that took real effort to reach — a crown
+mid-pull, an explode mid-drag, a tour three stops in.
+
+**The version is BAKED into the document, not fetched at boot**, and
+the first draft got this wrong in the one way that mattered. Asset urls
+are per-release so assets can never go stale; `index.html` at the
+unchanging symlink url is the one document that can. If a browser
+replays a CACHED `index.html`, then "what am I running" fetched at boot
+returns the NEW version while the loaded code is old — no mismatch, no
+toast, a viewer silently pinned to a stale build with the checker
+satisfied. The one case layer 2 exists for was its blind spot. The
+comparison is baked-vs-live now, so stale HTML is caught on the first
+check and the reload it offers revalidates the document.
+
+Polling is gated on visibility plus a slow interval, never a tight
+loop: a hidden tab costs nothing, a visible one asks at most once a
+quarter hour, or the moment it is focused — which is when a stale tab
+actually matters. `version.json` is fetched `no-store`; it is the one
+file that must never come from a cache, since its whole job is to
+reveal a stale one. An unstamped tree (development) has no
+`<meta name="app-version">` and so fetches nothing at all.
+
+**Verified against a simulated deploy** on the dev server: unstamped
+tree silent and requesting nothing; stamped and matching, silent;
+newer version on focus, toast appears; dismissed, the same version does
+not nag; a LATER deploy re-arms it; and the stale-`index.html` case —
+running 0.1.4 against a server serving 0.1.5 — detected, offering
+0.1.5. Stamped tree boots clean with all 14 assets carrying `?v=` and
+ZERO unversioned `src/`/`vendor/` requests.
+
+**Battery.** None needed and none affected: fingerprint 3415378947
+unchanged, boot silent, `runInspection` untouched. `version.json` is
+gitignored so a local test cannot be committed; `tools/` is excluded
+from the release payload while staying in the checkout the stamp step
+runs from.
+
+**Out of scope, per the entry, and not built:** offline support,
+precaching, any service worker, any auto-reload.
+
+**Still worth doing, outside this repo.** `Cache-Control: no-cache` on
+`index.html` and `version.json` at the symlink path. Layer 2 RECOVERS
+from a stale entry document; a no-cache header stops it happening at
+all. Recovery is the safety net, not the plan — but it cannot be set
+from here, since deployment is an SFTP upload into an existing server
+config.
