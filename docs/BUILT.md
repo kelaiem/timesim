@@ -2383,10 +2383,33 @@ A lever that truly swings a few degrees is being treated as sweeping a
 complete annulus about its pivot, which overlaps half the movement. All
 17 are artifacts of part one's conservatism, not collisions.
 
-So part one's prediction is now MEASURED rather than predicted: this
-check cannot produce a trustworthy violation list until the oscillator
-hulls are tightened, and that needs the pose law DECLARED —
-`FORK_BANK_DEG`, the balance amplitude, each lever's travel — because
-it is not recoverable from samples at any density. **The declaration
-surface is the next piece of work, and this check is the instrument
-that will measure whether it worked.**
+**And then it measured its own fix.** Reading those 17 sent me back to
+part one, where two bugs were hiding behind the conservatism:
+
+- *Axis boundaries were being read as motion.* The frames are every
+  axis's sweep concatenated, so at each boundary the pose jumps from one
+  sweep's end to the next's start — not movement the part performed.
+  Both the spoke rule and the oscillation test compared across that, so
+  a part monotonic within an axis and stationary elsewhere looked like
+  it BOTH jumped and reversed. The setting lever and minute jumper were
+  exactly that.
+- *Validation only reported.* Fixing the first bug made the registry
+  UNSOUND — 13 proven volumes stopped containing their own parts at the
+  finer sweep. Deriving tight is only safe if failure has a fallback, so
+  a failing arc is now widened to full (21 volumes), and one that still
+  fails on its r or z band — proof the motion is not a rotation about
+  the fitted axis at all — is DEMOTED to approx (19), where the registry
+  says plainly it cannot hull the part.
+
+Unsound volumes 13 → **0**; part two's violations 17 → **9**; positive
+control still firing at 27, so the reduction is tighter hulls and not a
+quieter check. 21 widened and 19 demoted is now the honest measure of
+how much of this movement cannot be pinned from samples.
+
+**The 9 that remain are a different class.** All are `Keyless works` and
+`Reset rod`, which have COMPOUND motion — the reset rod translates AND
+swings, both endpoints moving — so no single rotation bounds them and a
+declared ARC would not help. They want a hull of their own. That, plus
+the declared travels for genuine oscillators (`FORK_BANK_DEG`, the
+balance amplitude), is the declaration surface, and this check is the
+instrument that will measure whether it worked.
