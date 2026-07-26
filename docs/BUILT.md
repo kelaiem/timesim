@@ -3239,11 +3239,25 @@ inspector walks `labelEntries`, so it is structurally invisible to every
 sweep — a ruler reporting clearance violations against the plate would
 be this entry's own reductio. Boot silent.
 
-### Noted, not done
+### The §10 tie-in (follow-up, shipped)
 
-- The §10 group-selection tie-in (measure what the viewer is looking
-  at) was a "consider" and is not built; the shown set is the asserted
-  dimensions (plate ⌀, assembly depth).
-- §32's rule (measure the TRUE layout, not a dragged one) holds by
-  construction today — the leaders read built constants and the
-  boot-measured box — and must be revisited when §32 exists.
+With a unit or group selected, the overlay measures the SELECTION: its
+Y-span read on the vertical leg, its Z-span on the foot, via doglegged
+leaders — the drafting convention for an offset feature — landing on
+the spines at the measured heights. The stats line follows the same box
+(`Balance: ≈9.53 mm tall · ≈3.75 mm deep · …`), so text and lines
+cannot disagree. `All` restores the movement set.
+
+Two judgment calls worth their record:
+
+- **The leaders are live.** A selected mover's box is recomputed per
+  frame, so the balance's Y-span leader breathes with its swing —
+  verified moving between frames. That is honesty, not jitter: the
+  extent really oscillates, and a frozen leader would be the snapshot
+  pretending to be the fact. The stats line stays a snapshot and says
+  `≈` for exactly that reason.
+- **Explode hides the selection leaders** and falls back to the
+  whole-movement set (verified: 8 segments → 4 on explode). §49's §32
+  rule applied early: a ruler that measures a diagram of the watch is
+  measuring nothing, and the whole-movement anchors are built constants
+  immune by construction.

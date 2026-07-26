@@ -8077,26 +8077,84 @@ function buildMeasureScale() {
   g.add(lines);
   return g;
 }
-// Leaders are world-space (movement feature → the standing leg), so they are
-// rebuilt whenever the slide moves the leg.
-function rebuildMeasureLeaders() {
-  if (measureLeaders) { scene.remove(measureLeaders); measureLeaders.geometry.dispose(); measureLeaders = null; }
-  if (!measureGroup || !measureGroup.visible) return;
-  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
-  const X = measureGroup.position.x, yFoot = -Math.ceil(MM(R)) / UNIT_MM;
-  const pts = [
-    0,  R, 0,   X,  R, 0,        // plate rim, north → the height that IS +R
-    0, -R, 0,   X, -R, 0,        // plate rim, south
-    0, yFoot, zA,   X, yFoot, zA, // assembly's dial-side face → the foot
-    0, yFoot, zB,   X, yFoot, zB, // assembly's far face
-  ];
+// Leaders are world-space (movement feature → the standing leg). Persistent
+// geometry, updated in place per frame: the whole-movement set is static, but
+// the §10 tie-in below measures the SELECTED unit or group, and a selected
+// part's extent genuinely moves — a swinging balance's Y-span breathes with
+// its swing, and a leader that tracks it is reading the truth, not chasing a
+// display. Eight segments preallocated (four doglegged pairs).
+const MEASURE_MAX_SEGS = 12;
+function ensureMeasureLeaders() {
+  if (measureLeaders) return;
   const gl = new THREE.BufferGeometry();
-  gl.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  gl.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MEASURE_MAX_SEGS * 6), 3));
+  gl.setDrawRange(0, 0);
   measureLeaders = new THREE.LineSegments(gl,
     new THREE.LineBasicMaterial({ color: 0xffa050, depthTest: false, depthWrite: false, transparent: true, opacity: 0.55 }));
   measureLeaders.renderOrder = 997;
   scene.add(measureLeaders);
 }
+const _selBox = new THREE.Box3();
+// The §10 tie-in — measure what the viewer is looking at. 'All' measures the
+// movement (plate rim, assembly faces). A selected unit or group measures the
+// SELECTION's box: its Y-span read on the vertical leg, its Z-span on the
+// foot, via doglegged leaders that land ON the spine at the measured heights,
+// the drafting convention for an offset feature.
+//
+// TRUE LAYOUT ONLY (§49's §32 rule, applied early): while the explode is
+// open, selection leaders fall back to the whole-movement set rather than
+// measure displaced geometry — a ruler that measures a diagram of the watch
+// is measuring nothing. The whole-movement anchors are built constants, so
+// they are immune by construction.
+// The stats line follows the selection: movement figures for 'All', the
+// selection's spans otherwise — the same box the leaders read, so the text
+// and the lines cannot disagree. '≈' because a mover's box is a moment's
+// box: the balance's Y-span breathes, and the text is a snapshot where the
+// leaders are live.
+function updateMeasureStats() {
+  const stats = document.getElementById('scale-stats');
+  if (!stats || !scaleReadout) return;
+  const base = `⌀${scaleReadout.plateMM.toFixed(1)} × ${scaleReadout.movMM.toFixed(1)} mm · ` +
+    `${(F_BALANCE * 7200).toLocaleString()} A/h · ${(RELAX_SECONDS / 3600).toFixed(0)} h reserve`;
+  const sel = selectionMeasureBox();
+  stats.firstElementChild.textContent = sel
+    ? `${selectedUnit}: ≈${MM(sel.max.y - sel.min.y).toFixed(2)} mm tall · ≈${MM(sel.max.z - sel.min.z).toFixed(2)} mm deep · ${base}`
+    : base;
+}
+function selectionMeasureBox() {
+  if (selectedUnit === 'All' || explodeAmount > 0) return null;
+  const group = UNIT_GROUPS.get(selectedUnit);
+  const names = group ? group : new Set([selectedUnit]);
+  _selBox.makeEmpty();
+  for (const e of labelEntries) if (names.has(e.name)) _selBox.expandByObject(e.obj);
+  return _selBox.isEmpty() ? null : _selBox;
+}
+function updateMeasureLeaders() {
+  if (!measureLeaders || !measureGroup || !measureGroup.visible) return;
+  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const X = measureGroup.position.x, yFoot = -Math.ceil(MM(R)) / UNIT_MM;
+  const pos = measureLeaders.geometry.getAttribute('position');
+  let w = 0;
+  const seg = (ax, ay, az, bx, by, bz) => { pos.setXYZ(w++, ax, ay, az); pos.setXYZ(w++, bx, by, bz); };
+  const sel = selectionMeasureBox();
+  if (!sel) {
+    seg(0,  R, 0,  X,  R, 0);
+    seg(0, -R, 0,  X, -R, 0);
+    seg(0, yFoot, zA,  X, yFoot, zA);
+    seg(0, yFoot, zB,  X, yFoot, zB);
+  } else {
+    const cx = (sel.min.x + sel.max.x) / 2, cy = (sel.min.y + sel.max.y) / 2, cz = (sel.min.z + sel.max.z) / 2;
+    // Y-span: dogleg from the box's top/bottom faces to the vertical leg.
+    seg(cx, sel.max.y, cz,  X, sel.max.y, cz); seg(X, sel.max.y, cz,  X, sel.max.y, 0);
+    seg(cx, sel.min.y, cz,  X, sel.min.y, cz); seg(X, sel.min.y, cz,  X, sel.min.y, 0);
+    // Z-span: dogleg from the near/far faces down to the foot.
+    seg(cx, cy, sel.min.z,  X, cy, sel.min.z); seg(X, cy, sel.min.z,  X, yFoot, sel.min.z);
+    seg(cx, cy, sel.max.z,  X, cy, sel.max.z); seg(X, cy, sel.max.z,  X, yFoot, sel.max.z);
+  }
+  measureLeaders.geometry.setDrawRange(0, w);
+  pos.needsUpdate = true;
+}
+function rebuildMeasureLeaders() { ensureMeasureLeaders(); updateMeasureLeaders(); }
 
 function setScaleRef(on) {
   scaleRefOn = on;
@@ -8107,9 +8165,7 @@ function setScaleRef(on) {
     // Every figure DERIVED, none typed: diameter and depth are §39's asserted
     // predictions, the beat comes from F_BALANCE (A/h = Hz x 7200, two beats
     // per cycle), the reserve from RELAX_SECONDS.
-    stats.firstElementChild.textContent =
-      `⌀${scaleReadout.plateMM.toFixed(1)} × ${scaleReadout.movMM.toFixed(1)} mm · ` +
-      `${(F_BALANCE * 7200).toLocaleString()} A/h · ${(RELAX_SECONDS / 3600).toFixed(0)} h reserve`;
+    updateMeasureStats();
   }
   if (on) updateScaleRef();
 }
@@ -8907,7 +8963,7 @@ function refreshUnitOptions() {
 }
 refreshUnitOptions();
 unitSelect.addEventListener('pointerdown', refreshUnitOptions);
-unitSelect.addEventListener('change', () => { selectedUnit = unitSelect.value; });
+unitSelect.addEventListener('change', () => { selectedUnit = unitSelect.value; updateMeasureStats(); });
 
 // --- camera presets (tweened) ---------------------------------------------
 // Distances are derived from the actual computed plate radius so framing
@@ -10719,6 +10775,7 @@ function advanceFrame(realDt) {
   controls.update();
   updateLabels();
   updateScaleRef();   // §21: px/mm changes with every camera move
+  updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
   renderer.render(scene, camera);
 }
