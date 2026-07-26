@@ -3356,3 +3356,52 @@ Defaults unchanged → geometry unchanged at boot → the battery's standing
 results carry. An owner who commits NEW values into `aesthetics.json`
 inherits the usual obligation: full battery clean at boot, and the hands
 re-checked against the dial furniture if the hand factors moved.
+
+## §50 part one — The stock floor: declared, cited, and gating only where unarguable
+
+### The 7.5-micron part, identified first as the entry required
+
+It is a **design, not a defect**: §34's `alarmIndexLine`, the
+registration marking on the alarm tube's carrier flange — a blued bar
+deliberately proud only 0.02 units (7.5 µm) into a declared margin
+chain. Degenerate as *stock*; legitimate as *marking*, the analog of
+printed dial indices, whose real ink films run 5–10 µm. So the floor
+had to be per kind before it could be a floor at all.
+
+### The declaration surface
+
+`STOCK_FLOORS` — every floor cited, none invented (rule 1 for floors):
+
+| kind | mm | basis |
+|---|---|---|
+| wheel *(default)* | 0.12 | the entry's figure; thin end of §40's measured 0.10–0.15 going-train band |
+| pivot | 0.07 | real train pivots run 0.07–0.12 |
+| spring | 0.03 | real hairsprings 0.02–0.04 |
+| marking | 0.005 | printed/inlaid indices are a 5–10 µm film — relief, not stock |
+
+plus `DEGENERATE_STOCK_MM = 0.01` — the unarguable tier: below it a
+solid is broken geometry, not thin metal. Kinds are declared per part
+with per-mesh overrides (`MECH_GRAPH`'s table discipline); anything
+undeclared defaults to wheel **and is listed**, so the table's gaps are
+visible rather than silent — 45 of 46 parts ride the default today.
+
+### Report → triage → declare → gate, honoured
+
+`checkStockFloor` (battery: `stockFloor`) **gates only the degenerate
+tier** — and it is green from day one: `ok: true`, zero rows under
+0.01 mm, with the index line passing as a declared marking rather than
+by mercy. The horological tier **reports**: **108 violations across 26
+parts**, published for triage per the entry:
+
+- **The alarm work dominates**, as §40 predicted: alarm disc ×15,
+  feeler ×12, selector ×11, link ×11, switch ×6 — worst rows 0.015 mm
+  (the feeler spring, against its own *spring* floor of 0.03) and
+  0.0187 mm (the disc's selector fingers, against wheel's 0.12).
+- **Going-train stragglers**: Escape wheel ×1, Balance ×1, Fusee ×2,
+  Hour wheel ×1 — likely the 0.10–0.12 band the entry said "wants a
+  ~20% thickening, not a redesign".
+- Balance cock ×9 and Set-up work ×3 are the surprises worth a look in
+  triage.
+
+The gate for these arrives only after the owner's triage declares the
+exceptions — §36 part two's precedent, followed.
