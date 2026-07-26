@@ -1912,16 +1912,176 @@ class LemniscateCurve extends THREE.Curve {
     return target.set((this.a * c) / d, (this.a * s * c * this.yScale) / d, 0);
   }
 }
-export function makeBrandMark({ r, tubeR, aspect = 0.52, material = MATS.steel,
-                                tubularSegments = 32, radialSegments = 5 }) {
-  // The curve's natural height/width is 1/(2√2) ≈ 0.354; yScale re-aims it
-  // at `aspect` (height = 2·r·aspect), plumping the lobes and steepening
-  // the crossing so the waist reads as an hourglass neck, not a mere kink.
-  const curve = new LemniscateCurve(r, aspect * 2 * Math.SQRT2);
-  const mesh = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, tubularSegments, tubeR, radialSegments, true), material);
-  mesh.userData = { r, tubeR, height: 2 * r * aspect };
+// §41 — the brand mark is a WS monogram (Watch Sim), replacing §27's ∞.
+//
+// SIGNATURE UNCHANGED. §27's acceptance required this be "parameterised and
+// CALLED, not inlined, so a second part could reuse it". That held: makeCrown
+// is the only call site, it passes { r, tubeR, material }, and it reads none
+// of the returned userData. So this is a body swap with ZERO call-site edits,
+// which is the test §41 was written to run. `aspect` and the tube-tessellation
+// arguments are gone because they described a lemniscate; nothing passed them.
+//
+// STROKE WIDTH AND RELIEF, derived — not eyeballed. The house relief
+// convention half-embeds the mark: centreline on the host surface, proud half
+// standing off it. makeCrown budgets exactly `tubeR` of proud height for this
+// mark (`g.userData.totalH = faceZ + tubeR`), so the relief is fixed by the
+// caller and the only free choice is stroke WIDTH. Take it from the shape the
+// ∞ already proved inside the envelope: its stroke was a round tube of radius
+// tubeR, i.e. 2·tubeR wide standing tubeR proud. Keeping that ratio —
+//
+//     stroke width = 2 × proud height
+//
+// — means the relief is never a knife edge: at engraving scale a stroke
+// narrower than twice its relief cannot be cut, and reads as a scratch rather
+// than a mark. On the winding crown (bodyR 5.425) tubeR is 0.461 units, so the
+// strokes are 0.922 u = 0.346 mm wide standing 0.173 mm proud (§39's
+// UNIT_MM = 0.375). That is engraving scale and among the thinnest detail on
+// the part, as §41 predicted; §40's census is the check on whether it is too
+// fine.
+//
+// THE COUNTER. The S's counter — the gap its arcs enclose — is held at one
+// full stroke width. Below that the two arcs read as a filled blob at crown
+// size, which is the specific way a monogram fails.
+//
+// The crown ROTATES and WS is not symmetric, so it sits upside down for half
+// of every turn. Accepted, per §41: real crowns carry brand marks and they
+// spin. §27's ∞ read the same either way; this deliberately trades that for
+// brand specificity.
+export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments = 10 }) {
+  // FIT. The call site sizes its budget for the ∞, which was a wide, flat curve
+  // using almost none of the vertical box. Two upright letters use ALL of it,
+  // so filling the same budget crowds the cap rim and the quiet reveal
+  // disappears. Both glyphs are therefore drawn inside a box scaled by FIT.
+  //
+  // Scaling r AND tubeR together, rather than the layout alone, is what keeps
+  // this honest: stroke width stays 2 × proud height, and the counter-to-
+  // stroke ratio the legibility assert tests is scale-invariant, so a smaller
+  // mark cannot quietly become an illegible one. Standing less proud than the
+  // caller budgeted is safe — makeCrown's totalH is a ceiling, not an equality.
+  const FIT = 0.72;
+  r = r * FIT; tubeR = tubeR * FIT;
+  const sw = 2 * tubeR;              // stroke width, per the derivation above
+  const depth = 2 * tubeR;           // half-embedded: extruded symmetrically about z = 0
+  // Cap height. The ∞'s 0.52 aspect described its CENTRELINE; its ink stood one
+  // tube radius proud of that at top and bottom, so the height it really
+  // occupied was 2·r·0.52 + 2·tubeR. Taking the centreline figure gave the S
+  // 0.92 units less room than the mark being replaced, and the counter assert
+  // below caught it firing on both crowns. Match the ink, not the spine.
+  const H = 2 * r * 0.52 + 2 * tubeR;
+  // INK BUDGET. makeCrown sizes markR so the mark's ink edge plus one stroke
+  // of quiet reveal lands on the cap's face rim: it assumes a half-width of
+  // r + tubeR, exactly as the ∞'s tube gave. Both glyphs live inside that.
+  const halfW = r + sw / 2;
+  const gap = r * 0.10;                              // breathing space between the letters
+  const wHalf = (halfW * 2 - gap) * 0.30;            // W is the wider glyph
+  const sHalf = (halfW * 2 - gap) * 0.20;
+  const wCx = -halfW + wHalf;                        // W packed left
+  const sCx = halfW - sHalf;                         // S packed right
+  const shapes = [];
+
+  // --- W: four strokes, each stroked individually --------------------------
+  // The first cut wrote the W as ONE closed outline, offsetting the inner
+  // return in x only. That is not a constant-width stroke on a slanted limb —
+  // the offset has to run along the segment's NORMAL — so the outline
+  // self-intersected and triangulated into slivers: on screen the W was a few
+  // stray edges. Stroking each segment separately and letting the quads
+  // overlap at the joints is exact for the limb width and needs no mitre
+  // solve; the overlaps are interior to opaque metal and never show.
+  const midY = H * 0.34;                             // centre peak stops short of the cap line
+  const X = (t) => wCx + t * wHalf;                  // t in [-1, 1] spans the glyph
+  const spine = [[X(-1), H], [X(-0.5), 0], [X(0), midY], [X(0.5), 0], [X(1), H]];
+  for (let i = 0; i < spine.length - 1; i++) {
+    const [x0, y0] = spine[i], [x1, y1] = spine[i + 1];
+    const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1;
+    const ux = dx / L, uy = dy / L;                  // along the limb
+    const nx = -uy * (sw / 2), ny = ux * (sw / 2);   // across it
+    // Extend each end by half a stroke so consecutive quads close the vertex.
+    const ex = ux * (sw / 2), ey = uy * (sw / 2);
+    // WINDING. ExtrudeGeometry takes its face orientation from the outline's
+    // winding, and this quad's winding flips with the limb's direction — the
+    // W's down-going limbs came out inverted, so their faces pointed into the
+    // crown and only the silhouette edges showed. absarc always emits CCW,
+    // which is why the S was unaffected and the bug looked like a W-only
+    // problem. Force CCW by signed area rather than by reasoning about which
+    // limbs slope which way.
+    let quad = [[x0 - ex + nx, y0 - ey + ny], [x1 + ex + nx, y1 + ey + ny],
+                [x1 + ex - nx, y1 + ey - ny], [x0 - ex - nx, y0 - ey - ny]];
+    const area2 = quad.reduce((acc, q, k) => {
+      const w2 = quad[(k + 1) % 4];
+      return acc + (q[0] * w2[1] - w2[0] * q[1]);
+    }, 0);
+    if (area2 < 0) quad = quad.slice().reverse();
+    const sh = new THREE.Shape();
+    sh.moveTo(quad[0][0], quad[0][1]);
+    for (let k = 1; k < 4; k++) sh.lineTo(quad[k][0], quad[k][1]);
+    sh.closePath();
+    shapes.push(sh);
+  }
+
+  // --- S: two arcs with a counter -----------------------------------------
+  // Each half is an ANNULAR SECTOR — outer arc out, inner arc back — exact
+  // rather than a polyline approximation, and the stroke width IS the
+  // difference of the two radii, so it cannot drift from the W's.
+  //
+  // sR is SOLVED, not chosen: two stacked bowls whose centres sit one stroke
+  // half-height from each cap line must be 2·sR apart for the spine to run
+  // continuously, which gives (H − sw) − 2·sR = 2·sR.
+  const sR = Math.min((H - sw) / 4, sHalf - sw / 2);
+  // §41's legibility floor: the counter is the hole each bowl encloses, and
+  // below one stroke width the two arcs read as a filled blob at crown size.
+  const counter = 2 * (sR - sw / 2);
+  if (counter < sw)
+    console.warn(`§41 monogram: S counter ${counter.toFixed(3)} < one stroke ${sw.toFixed(3)} — the bowls will fill in at crown scale`);
+  const bowl = (cy, a0, a1, cw) => {
+    const sh = new THREE.Shape();
+    sh.absarc(sCx, cy, sR + sw / 2, a0, a1, cw);
+    sh.absarc(sCx, cy, sR - sw / 2, a1, a0, !cw);
+    sh.closePath();
+    return sh;
+  };
+  // The two bowls must be TANGENT AT THE JOIN or the letter is just two arcs.
+  // With centres 2·sR apart the upper circle's bottom (−90°) and the lower
+  // circle's top (+90°) are the same point, so each arc has to START there and
+  // sweep away. The first cut had them opening at unrelated angles and ending
+  // 1.36·sR apart — on screen it read as a 3, not an S.
+  //   upper: free end upper-right, CCW over the top and down the left to the join
+  //   lower: from the join, clockwise round the right and down to the lower-left
+  const cyTop = H - sR - sw / 2, cyBot = sR + sw / 2;
+  const FREE = Math.PI * 0.25;                       // where each tail stops
+  shapes.push(bowl(cyTop, FREE, Math.PI * 1.5, false));
+  shapes.push(bowl(cyBot, Math.PI * 0.5, -Math.PI * 0.75, true));
+
+  const geos = shapes.map((sh) => {
+    const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments });
+    g.translate(0, -H / 2, -depth / 2);   // centre the monogram on the face, half-embedded
+    return g;
+  });
+  const merged = mergeGeos(geos);
+  const mesh = new THREE.Mesh(merged, material);
+  mesh.userData = { r, tubeR, height: H, strokeWidth: sw, proud: tubeR };
   return mesh;
+}
+
+// Minimal geometry merge — the three examples' BufferGeometryUtils is not
+// vendored, and the monogram is the only caller. Non-indexed, position+normal
+// only, which is all ExtrudeGeometry produces here.
+function mergeGeos(geos) {
+  const parts = geos.map((g) => (g.index ? g.toNonIndexed() : g));
+  let n = 0;
+  for (const g of parts) n += g.getAttribute('position').count;
+  const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3);
+  let o = 0;
+  for (const g of parts) {
+    const p = g.getAttribute('position'), q = g.getAttribute('normal');
+    pos.set(p.array.subarray(0, p.count * 3), o * 3);
+    if (q) nrm.set(q.array.subarray(0, q.count * 3), o * 3);
+    o += p.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  for (const g of parts) g.dispose();
+  return out;
 }
 
 // Winding crown (§27) — traditional knurled barrel, brand-marked face.
