@@ -3024,3 +3024,70 @@ census does not judge either; that is the job it was scoped not to do.
 
 §41's monogram strokes (0.249 mm) sit comfortably above all of this,
 answering the question that entry deferred here.
+
+## §36 job B — Path hulls, and the confirmation tier that made the gate honest
+
+### The blocker that never existed
+
+Job B shipped its WIP note claiming `checkSweptOverlap` "no longer
+terminates — ~3 min before, past 15 after" and concluded performance was
+part of the definition of done. **All of that was false.** The check was
+crashing in the first minute — a path volume reaching the validation's
+revolve arm and throwing on `vol.axis[0]` — and the launching promise
+had no `.catch`, so the done-flag never flipped and a silent crash read
+as an endless run. With the dispatch fixed (PR #45) the full check runs
+in **5.5 s**, and with confirmation **61 s**. Two lessons already in
+this repo's pattern language, compounded: an `else` arm that assumes one
+kind inherits every kind added later, and an instrument that cannot
+distinguish "crashed" from "running" reports whichever you fear less.
+
+### What the first complete run showed
+
+37,347 pairs tested; 11 hull violations — the 5 the entry inherited plus
+6 new `via: path`. Pose-refined measurement (`measureClearance`, BVH
+with refinement near minima) refuted **all eleven**: the four Reset rod
+rows clear by **0.9–15.6 units** (a full-circle hull of an undeclared
+spoke mover claims a disc the part never fills), and the sleeves' box
+conservatism — a round rod squared off gains `(√2−1)·r` at the corners —
+accounts for the rest. The tightest, `Alarm link ⇄ Three-quarter plate`
+at 0.1496, is the §35 rod in its own bore: **designed** at exactly
+`CLEAR_MARGIN`, measuring a tessellation hair under.
+
+### The confirmation tier
+
+A hull overlap is a *possible* collision. The check now says so with
+three tiers, each row carrying its refined gap and pose:
+
+- **confirmed** — refined gap ≤ 0: real contact. *The* gate number.
+- **tight** — inside the one margin: no contact, reported for humans.
+- **refuted** — the hull over-claims; hull depth and refined gap both
+  recorded so the claim is checkable.
+
+Pose refinement is still sampling (TODO 7) — it cannot *bound* motion —
+so a refuted row keeps the hull's side of the story rather than being
+deleted: the hull says "possible", the refinement says "not at any
+refined pose", and both statements stand.
+
+**Verified in both directions.** Sound run: 0 confirmed, 1 tight, 10
+refuted. Positive control: with exclusions off the raw hull test fires
+at 35, and a known-touching pair (`Fusee & great wheel ⇄ Maintaining
+detent` — the detent riding the ratchet) **confirms at gap 0**, so the
+tier that clears false positives demonstrably does not clear real
+contact.
+
+### The gate
+
+`sweptOverlap` joins standing rule 4: **0 CONFIRMED**, with `tight` and
+`refuted` as reports. This is the entry's stated finish line — "only
+then can sweptOverlap join the standing battery" — reached at 5 → 11 →
+**0**, with the middle number being the honest one the first "5" never
+was.
+
+### Still open, recorded
+
+- **42 of 92 sleeves fail containment** under the finer sweep and demote
+  to `approx` (excluded from claims — sound, but 42 parts are invisible
+  to this check). Tightening `buildPathHull` against inter-sample bulge
+  is the remaining quality work.
+- Part three (routing as a spec) still needs §33; `LOW_LINKAGE_OBSTACLES`
+  is still not subsumed.
