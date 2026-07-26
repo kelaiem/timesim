@@ -54,6 +54,28 @@ export const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
 // a centred slab ±(width·0.2 + bevel) thick, and it must fit between its
 // own wheel pair's planes and the next wheel up that crosses it (solved:
 // feasible only for stride ≥ ~2.06 at the current cock widths).
+// ---------------------------------------------------------------------------
+// §39 — the unit→mm mapping. PINNED, not chosen.
+//
+// The tempting definition is "pick the scale that puts the case under 40 mm".
+// That is circular: it makes the size target true by construction and tests
+// nothing. Instead the scale is pinned to the one dimension in this movement
+// that is a MANUFACTURED STANDARD rather than a style choice — fusee chain
+// pitch. Real fusee chain is made to ~0.30 mm rivet-to-rivet and the tolerance
+// on it is narrow, because it has to run in a groove cut to match.
+//
+// Everything else about the movement's real size is then a PREDICTION, and is
+// asserted as one at the end of the build. Those asserts are allowed to fail;
+// that is the whole point of deriving the scale from something else first.
+//
+// Cross-check, from a completely independent direction: §2's mapping study
+// proposed ~0.38 mm/unit by eye from overall proportions. This lands at
+// 0.375. Two methods agreeing to within 1.5% is the argument for the number.
+export const CHAIN_PITCH = 0.8;        // units, rivet-to-rivet (geometry)
+export const CHAIN_PITCH_MM = 0.30;    // REAL fusee chain — the manufactured standard this pins to
+export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.375 mm per unit
+export const MM = (units) => units * UNIT_MM;          // for readouts and asserts
+
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
                                   // the balance plane derivation itself.
