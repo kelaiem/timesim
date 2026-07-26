@@ -2391,23 +2391,45 @@ export async function buildSweptRegistry(clock, {
         // the count stays a signal: it says how much of the registry cannot
         // be pinned from samples and is therefore waiting on a declared
         // pose law.
-        escapes.push({ unit: vol.unit, kind: vol.kind, why: bad, widened: vol.kind === 'revolve' });
+        // §36 job B, second pass at the sleeve fix. The FIRST attempt dilated
+        // every box of every sleeve by 0.25x the inter-sample chord — sound
+        // reasoning about arc sagitta, catastrophic economics: fast movers
+        // have multi-unit chords, so every sleeve grew by up to a unit, raw
+        // hull hits multiplied, and the confirm tier ground for 20+ minutes.
+        // The check's own precedent is surgical: a revolve that escapes is
+        // widened — THAT volume, not all of them. So an escaping sleeve is
+        // dilated by ITS OWN measured overshoot (max distance of any escaping
+        // vertex outside the sleeve, over the whole fine sweep), doubled for
+        // headroom. The 90 sleeves that already hold stay exactly as tight as
+        // before, which is what keeps the overlap check's raw-hit count sane.
+        //
+        // The dilation is derived from the same sweep that validates it, so
+        // its containment there is partly self-fulfilling — the honest arbiter
+        // is the second pass below, which re-checks widened sleeves and
+        // DEMOTES whatever still fails, same as an unfixable revolve.
+        escapes.push({ unit: vol.unit, kind: vol.kind, why: bad, widened: vol.kind === 'revolve' || vol.kind === 'path' });
         if (vol.kind === 'revolve') { vol.full = true; vol.bins = null; vol.reason = 'validation'; }
         else if (vol.kind === 'path') {
-          // A sleeve that does not contain its own part DEMOTES to approx,
-          // the same fallback a revolve gets when its bands cannot hold it:
-          // the registry says plainly it cannot hull this part rather than
-          // shipping a hull that fails to contain it, and approx volumes are
-          // excluded from every claim. Bounds are the union of the sleeve's
-          // own boxes, which by construction covers every sampled pose.
-          let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity, zL = Infinity, zH = -Infinity;
-          for (const b of vol.boxes) {
-            if (b[0] < xLo) xLo = b[0]; if (b[3] > xHi) xHi = b[3];
-            if (b[1] < yLo) yLo = b[1]; if (b[4] > yHi) yHi = b[4];
-            if (b[2] < zL) zL = b[2];  if (b[5] > zH) zH = b[5];
+          let over = 0;
+          for (const f2 of fine) {
+            const q = f2.get(vol.mesh); if (!q) continue;
+            for (let i = 0; i < q.length; i += 3) {
+              let best = Infinity;
+              for (const bx of vol.boxes) {
+                const dx = Math.max(bx[0] - q[i], 0, q[i] - bx[3]);
+                const dy = Math.max(bx[1] - q[i + 1], 0, q[i + 1] - bx[4]);
+                const dz = Math.max(bx[2] - q[i + 2], 0, q[i + 2] - bx[5]);
+                const dd = Math.max(dx, dy, dz);
+                if (dd < best) best = dd;
+                if (best === 0) break;
+              }
+              if (best > over && isFinite(best)) over = best;
+            }
           }
-          vol.kind = 'approx'; vol.box = [xLo, yLo, zL, xHi, yHi, zH];
-          delete vol.boxes; delete vol.hullBox;
+          const grow = over * 2 + tol;
+          for (const bx of vol.boxes) { bx[0] -= grow; bx[1] -= grow; bx[2] -= grow; bx[3] += grow; bx[4] += grow; bx[5] += grow; }
+          vol.dilatedBy = +grow.toFixed(4);
+          break;
         }
         break;
       }
@@ -2418,6 +2440,39 @@ export async function buildSweptRegistry(clock, {
   // failure of the hull's SHAPE (its r or z band), not of its arc, and no
   // amount of angular widening fixes it. This is the number that must be 0.
   const stillEscaping = [];
+  // Widened SLEEVES are re-checked here too — the dilation above was derived
+  // from this same fine sweep, so passing it is partly self-fulfilling; what
+  // this pass genuinely arbitrates is whether the doubled headroom holds. A
+  // sleeve that STILL escapes demotes to approx over the union of its own
+  // boxes, the registry saying plainly it cannot hull the part.
+  for (const vol of volumes) {
+    if (!(vol.kind === 'path' && vol.dilatedBy)) continue;
+    let bad = false;
+    for (const frame of fine) {
+      const pts = frame.get(vol.mesh);
+      if (!pts) continue;
+      for (let i = 0; i < pts.length && !bad; i += 3) {
+        let inside = false;
+        for (const bx of vol.boxes) {
+          if (pts[i] >= bx[0] - tol && pts[i] <= bx[3] + tol && pts[i+1] >= bx[1] - tol
+              && pts[i+1] <= bx[4] + tol && pts[i+2] >= bx[2] - tol && pts[i+2] <= bx[5] + tol) { inside = true; break; }
+        }
+        if (!inside) bad = true;
+      }
+      if (bad) break;
+    }
+    if (bad) {
+      let xLo = Infinity, yLo = Infinity, zL = Infinity, xHi = -Infinity, yHi = -Infinity, zH = -Infinity;
+      for (const bx of vol.boxes) {
+        if (bx[0] < xLo) xLo = bx[0]; if (bx[3] > xHi) xHi = bx[3];
+        if (bx[1] < yLo) yLo = bx[1]; if (bx[4] > yHi) yHi = bx[4];
+        if (bx[2] < zL) zL = bx[2];  if (bx[5] > zH) zH = bx[5];
+      }
+      stillEscaping.push({ unit: vol.unit, why: 'sleeve', demotedToApprox: true });
+      vol.kind = 'approx'; vol.box = [xLo, yLo, zL, xHi, yHi, zH];
+      delete vol.boxes; delete vol.hullBox;
+    }
+  }
   for (const vol of volumes) {
     if (vol.kind !== 'revolve' || !vol.full) continue;
     for (const frame of fine) {

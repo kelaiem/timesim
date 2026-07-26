@@ -3083,11 +3083,38 @@ then can sweptOverlap join the standing battery" — reached at 5 → 11 →
 **0**, with the middle number being the honest one the first "5" never
 was.
 
+### The sleeve fix — surgical, after the blanket version failed
+
+The 42 demotions came from inter-sample bulge: a pair-union box holds
+both endpoint poses, but a vertex on an ARC between them exits the
+chord's box by the sagitta, which is where the finer phase-shifted sweep
+landed. Two designs were built; the first was wrong in an instructive
+way:
+
+- **Blanket dilation** (every box, 0.25× its inter-sample chord) closed
+  42 → 2 — and wrecked the economics. Fast movers have multi-unit
+  chords, so every sleeve grew by up to a unit, raw hull hits
+  multiplied, and the confirm tier ground past 20 minutes, wedging the
+  tab. Sound geometry, catastrophic cost model.
+- **Surgical widening** follows the check's own precedent for revolves:
+  the volume that escapes is the one that grows. An escaping sleeve is
+  dilated by its **own measured overshoot** (max distance of any
+  escaping vertex outside the sleeve, over the whole fine sweep),
+  doubled for headroom; the ~108 sleeves that already hold stay exactly
+  as tight as before. The dilation is derived from the sweep that
+  validates it — partly self-fulfilling, said so in the comment — so a
+  second pass re-checks widened sleeves and demotes what still fails.
+
+Result: **0 demotions, 0 `approx` volumes, `approxUnitsExcluded` empty**
+— for the first time, nothing in the movement is invisible to the
+overlap check. 40 sleeves widened by 0.005–0.92 units; gate unchanged at
+**0 confirmed / 1 tight / 11 refuted** (one new raw hit from the
+widened sleeves, refuted with its numbers). Registry 5.8 s.
+
 ### Still open, recorded
 
-- **42 of 92 sleeves fail containment** under the finer sweep and demote
-  to `approx` (excluded from claims — sound, but 42 parts are invisible
-  to this check). Tightening `buildPathHull` against inter-sample bulge
-  is the remaining quality work.
 - Part three (routing as a spec) still needs §33; `LOW_LINKAGE_OBSTACLES`
   is still not subsumed.
+- The census's `else` branch now measures `path` parts from a world
+  bbox at the reset pose — adequate for extents, sloppy for a rotated
+  part, and worth a `path`-aware ruler now that `approx` is empty.
