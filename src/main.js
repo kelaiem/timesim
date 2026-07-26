@@ -793,7 +793,7 @@ const backPlate = G.makeBackPlate({
     { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
     { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
     { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-    { x: -22.05, y: -13.78, r: 0.45 },             // §35: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build). r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1) — 0.28 sealed, ray-verified open at 0.45
+    { x: -22.517, y: -13.0, r: 0.45 },             // §35: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build). r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1) — 0.28 sealed, ray-verified open at 0.45
   ],
   slots: [{
     ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
@@ -3391,7 +3391,7 @@ checkCutVsPivots();
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
-tqHoles.push({ x: -22.05, y: -13.78, r: 0.45 }); // §35: the selector rod passes the plate top at the south-west, under the beak's long tail (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
+tqHoles.push({ x: -22.517, y: -13.0, r: 0.45 }); // §35: the selector rod passes the plate top at the south-west, under the beak's long tail (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -6462,12 +6462,52 @@ const _linkAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 //   az 146° — no knuckle. Shaft z −6.26: bottom −6.38 vs the keyless
 //   piece top −6.549 → 0.169.
 const ALARM_LINK_SHAFT_Z = -6.26;
-const ALARM_LINK_ROD_AZ_DEG = 212, ALARM_LINK_ROD_R = 26;
+// AZ 210, not 212. Moved 2 deg toward 12 o'clock so the rod stands nearer the
+// dial's vertical centreline, which is where the linkage reads as one line
+// rather than as a strut off in the corner. 2 deg is the WHOLE budget, not a
+// round number: the drum's chain span owns az 196-208 at this radius, and az
+// 208 was already nicked at 1 of 61 tensions when that span was probed, so 210
+// is the last azimuth with a clear degree between the rod and a moving chain.
+// Going further needs the chain span re-probed, not a bigger step here.
+const ALARM_LINK_ROD_AZ_DEG = 210, ALARM_LINK_ROD_R = 26;
+// The bore both plates carry for this rod. Was written as a bare 0.45 at each
+// of the two hole sites and again implied at the rod; one name so the rod's
+// own section can be derived from it instead of racing it.
+const ALARM_LINK_ROD_BORE_R = 0.45;
 const _rodAz = ALARM_LINK_ROD_AZ_DEG * DEG2RAD;
 const ALARM_LINK_ROD_XY = { x: Math.cos(_rodAz) * ALARM_LINK_ROD_R, y: Math.sin(_rodAz) * ALARM_LINK_ROD_R };
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
 
+// §35 fix — the cranks' REST PHASE on the shaft. Built pointing local +z
+// (world-up) they sit at top dead centre, where height is 0.22·cos θ: even in
+// θ, zero first derivative, so the crank falls whichever way the shaft turns.
+// A quarter turn CCW puts them on the side of the circle, where height is
+// 0.22·sin θ and the crank tracks the rod that presses it.
+const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
+// The crank arm's own dimensions, hoisted because the ROD'S FOOT is derived
+// from them: the foot has to land ON the arm's top face, and two independent
+// literals for one contact is how a linkage ends up transmitting through a gap.
+const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
+const ALARM_LINK_CRANK_T = 0.12;                         // arm section
+// Top face of the arm, measured from the shaft axis.
+const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
+// Where the rod's foot is BUILT. The tick lifts it by one ALARM_SEL_TRAVEL at
+// rest (disarmed), so the built height is the contact height minus that lift —
+// which puts the foot exactly on the arm when disarmed, and drives it down
+// with the arm as it arms. Was a bare 0.25, which left the foot hovering a
+// measured 0.159 above the arm at rest and 0.19 when armed: the linkage moved
+// correctly and never touched anything, which is the same class of lie as a
+// wheel meshing across empty space.
+// MEASURED residual -- see TODO.md item 9. Deriving the foot as (arm top - one
+// travel) assumed the tick lifts the rod by exactly ALARM_SEL_TRAVEL at rest;
+// it does not quite, and the rod still hovered 0.079 at the armed end. This is
+// standing rule 1's failure case and is filed as debt, not defended: the arm's
+// contact tracks the rod 1:1 only at r = travel/sin(travel/0.35) = 0.368
+// against the 0.28 built, but forcing that radius measured WORSE (spread
+// 0.031 -> 0.077), so the divisor is the thing to understand first.
+const ALARM_LINK_ROD_SEAT = 0.079;   // measured hover at the armed extreme
+const ALARM_LINK_ROD_FOOT = ALARM_LINK_CRANK_TOP - ALARM_SEL_TRAVEL - ALARM_LINK_ROD_SEAT;
 const ALARM_LINK_BEAK_OFF = (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
 const ALARM_LINK_ROD_TRAVEL = 0.42;                 // the beak's fall into a gap, at the rod
 const alarmLinkUnit = new THREE.Group();
@@ -6510,11 +6550,19 @@ const alarmLinkParts = {};
   alarmLinkParts.beakArm = beakArm;
   alarmLinkParts.beakAim = beakAim;
   // The ROD: from the beak's tail down through both plates to the rim crank.
-  const rodLen = (ALARM_LOCK_Z + 0.74) - (ALARM_LINK_SHAFT_Z + 0.25);
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, rodLen, 10), MATS.steel);
+  const rodLen = (ALARM_LOCK_Z + 0.74) - (ALARM_LINK_SHAFT_Z + ALARM_LINK_ROD_FOOT);
+  // Rod SECTION, derived rather than eyeballed. The rod passes a bore in both
+  // plates whose radius is 0.45 — not because the rod is that fat, but because
+  // the plate's extrude bevel collars small holes shut (MODELING.md rule 1) and
+  // 0.28 sealed. Built at r 0.14 the rod then left almost the whole of that
+  // oversized bore empty, which reads as wire, not as an arbor: a hole that had
+  // to be opened to 0.45 for a rod implies a rod that fills it. Fill it less the
+  // one clearance margin.
+  const ALARM_LINK_ROD_R_SECTION = ALARM_LINK_ROD_BORE_R - CLEAR_MARGIN;   // 0.30
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_ROD_R_SECTION, ALARM_LINK_ROD_R_SECTION, rodLen, 12), MATS.steel);
   rod.name = 'alarmLinkRod';
   rod.rotation.x = Math.PI / 2;
-  rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, (ALARM_LOCK_Z + 0.74 + ALARM_LINK_SHAFT_Z + 0.25) / 2);
+  rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, (ALARM_LOCK_Z + 0.74 + ALARM_LINK_SHAFT_Z + ALARM_LINK_ROD_FOOT) / 2);
   alarmLinkUnit.add(rod);
   alarmLinkParts.rod = rod;
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
@@ -6530,9 +6578,9 @@ const alarmLinkParts = {};
   shaft.add(shaftRod);
   // cranks: rim end (up to the rod's foot), centre end (under the ring's tab)
   for (const [xLocal, nm] of [[chordLen / 2, 'alarmLinkCrankRim'], [-chordLen / 2, 'alarmLinkCrankCentre']]) {
-    const crank = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.45), MATS.steel);
+    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, 0.45), MATS.steel);
     crank.name = nm;
-    crank.position.set(xLocal, 0, 0.22); // pointing world-up
+    crank.position.set(xLocal, 0, ALARM_LINK_CRANK_OFF); // radial offset on the shaft
     shaft.add(crank);
   }
   alarmLinkUnit.add(shaft);
@@ -6560,8 +6608,13 @@ const alarmLinkParts = {};
   }
   // The plates' bores are LITERALS (they build long before ALARM_COL_POS
   // exists) — assert they sit on the derived rod site:
-  if (Math.hypot(ALARM_LINK_ROD_XY.x - (-22.05), ALARM_LINK_ROD_XY.y - (-13.78)) > 0.25)
-    console.warn(`§35: the plate bores (−22.05, −13.78) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
+  // The bores are literals up at the two plate-hole sites and cannot see this
+  // constant, so this is the tripwire between them. It has already earned its
+  // keep once: moving the rod to az 210 left both bores behind at az 212 and
+  // this is what said so.
+  const _boreXY = { x: -22.517, y: -13.0 };   // MUST equal both tqHoles entries for this rod
+  if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
+    console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
   // the shaft's bottom vs the keyless piece under the run (top measured −6.549):
   if ((ALARM_LINK_SHAFT_Z - 0.12) - (-6.549) < CLEAR_MARGIN - 1e-9)
     console.warn(`§35: shaft bottom ${(ALARM_LINK_SHAFT_Z - 0.12).toFixed(2)} inside the keyless piece's margin (−6.549)`);
@@ -7008,6 +7061,17 @@ panel.innerHTML = `
   <details class="ui-section">
     <summary>View</summary>
     <div class="ui-section-body">
+      <!-- An orientation legend. The movement's axis is world Z (dial at
+           Z_DIAL = −7, plate at 0), so on a side-on view Z reads horizontally
+           and "up" on screen is world Y — which is exactly the ambiguity that
+           makes it easy to describe a part's move in the wrong axis. -->
+      <div class="row">
+        <span class="label-small">Axes</span>
+        <button id="btn-axes">Off</button>
+      </div>
+      <div class="row label-small" id="axes-key" style="display:none; opacity:0.75;">
+        <span>X red · Y green · Z blue (movement axis)</span>
+      </div>
       <div class="row">
         <span class="label-small">Exploded view</span>
         <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
@@ -7665,6 +7729,27 @@ function setLabels(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
+
+// Orientation legend (world axes at the movement's origin). Sized to the plate
+// so it reads at any framing, and drawn on top of the geometry so it is never
+// buried inside the movement — it is a reference, not a part.
+let axesHelper = null, axesOn = false;
+function setAxes(on) {
+  axesOn = on;
+  if (on && !axesHelper) {
+    axesHelper = new THREE.AxesHelper(plateR * 1.15);
+    axesHelper.material.depthTest = false;
+    axesHelper.material.depthWrite = false;
+    axesHelper.renderOrder = 999;
+    scene.add(axesHelper);
+  }
+  if (axesHelper) axesHelper.visible = on;
+  const b = document.getElementById('btn-axes');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+  document.getElementById('axes-key').style.display = on ? '' : 'none';
+}
+document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
 
 // --- three-quarter plate X-ray --------------------------------------------
 // The plate does its job by covering the train, which is also the one thing
@@ -9859,7 +9944,17 @@ function tick(t) {
       const drop = ALARM_SEL_TRAVEL * (alarmLinkParts.beakLen / alarmLinkParts.tailLen); // nose fall sized so the rod's throw IS the ring's travel (1:1 cranks)
       alarmLinkParts.beakArm.rotation.y = (drop / alarmLinkParts.beakLen) * alarmSelShownT; // nose falls into the gap
       alarmLinkParts.rod.position.z = (alarmLinkParts.rodTop + ALARM_LINK_SHAFT_Z + 0.25) / 2 + ALARM_SEL_TRAVEL * alarmSelShownT; // tail up ⇒ rod up
-      alarmLinkParts.shaft.rotation.x = (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
+      // The cranks are built at local +z — pointing straight world-up — which
+      // puts them at TOP DEAD CENTRE of their own circle. A crank there has
+      // height 0.22·cos θ, which is EVEN in θ: it falls for rotation in either
+      // direction, and dz/dθ = 0 at rest. That is why the rod rose while the
+      // crank it bears on fell (measured: rod +0.19, crank tip −0.095), and
+      // why flipping the rotation's sign changed nothing — a sign cannot move
+      // a stationary point.
+      // Rotating the shaft a quarter turn puts the cranks on the SIDE of the
+      // circle, where height goes as sin θ and dz/dθ is at its maximum, so the
+      // crank actually rises and falls with the rod it touches.
+      alarmLinkParts.shaft.rotation.x = ALARM_LINK_CRANK_PHASE - (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
     }
     alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
     alarmRocker.rotation.y = -0.12 * (alarmSelShownT * 2 - 1); // see-saw tip, ±: pin follows the ring's face
