@@ -2654,3 +2654,101 @@ world X *is* screen-right, agreement was 99.94%. A verification that
 measures a different quantity than the instrument does will disagree
 with a correct instrument, and it is worth being sure which one is
 wrong before "fixing" anything.
+
+## §36 job A — Declared travels: what sampling cannot recover, the build already knows
+
+The registry bounds a part by sampling its poses, which cannot work for
+an oscillator. **A part that swings out and back between two samples
+sweeps further than the interval between them**, and no sample count
+fixes it. Part one therefore bounded any reversing series by the FULL
+CIRCLE — sound, and for a pallet fork that banks 6.42° total, absurd.
+
+### The declaration surface
+
+`declareTravel(unit, radians, why)` in `main.js`, called **at the site
+each constant is derived**:
+
+| unit | travel | from |
+|---|---|---|
+| Pallet fork | 6.42° | `2 × (FORK_BANK_DEG + FORK_RECOIL_DEG)` |
+| Balance | 90° | `2 × AMPLITUDE_VISUAL_DEG` |
+| Hairspring | 90° | rides the balance arbor |
+| Reset hammer | 35.39° | `HAMMER_SWING_RAD` |
+| Alarm hammer | 30.94° | `2 × ALARM_DRAW_RAD` |
+
+Declaring at the derivation site is the whole point. §10 shipped with
+four units missing from a parallel group table and §16 had a wheel
+radius derived twice; a second table is a second thing to forget.
+
+`AMPLITUDE_VISUAL_DEG`, not `AMPLITUDE_TRUE_DEG` — the registry must
+bound the mesh that is actually **animated**, and the true 270° swing is
+a physical reference the meshes never perform.
+
+### Why declaring is safe to attempt
+
+The containment assert already validates every volume against a finer,
+phase-shifted sweep. A travel declared too small makes the part escape
+its own hull and the volume is widened back. The declaration is a
+**claim, not a licence** — which is what makes it worth trying at all.
+
+Measured: **0 declared volumes escape**, all 37 escapes are `approx`
+kind and none on a declared unit.
+
+### The dilation, and why it is deliberately loose
+
+Each sampled arc is widened by the WHOLE declared travel **in each
+direction**. Looser than necessary, but sound without assuming anything
+about where the samples fell: every true and every sampled position lie
+in one interval of width `travel`, so they differ by at most `travel`.
+For the pallet fork that is 6.42° against 360°.
+
+### Results — same page load, declarations off then on
+
+| | before | after |
+|---|---|---|
+| `full:oscillates` | 78 | **15** |
+| `full:spoke` | 45 | **26** |
+| `partial:declared` | 0 | **29** |
+| full-circle volumes, total | 198 | **170** |
+| static-vs-swept violations | 5 | 5 |
+| positive control | 19 | 19 |
+
+Mean coverage of the declared volumes: pallet fork **0.331**, reset
+hammer **0.324**, alarm hammer **0.563**, balance **0.774**.
+
+`full:covered` and `full:annular` *rose* (40→75, 35→54). That is
+relabelling, not loosening: those volumes were previously stamped
+`spoke` before the later tests ran, and dilation now fills some circles
+outright.
+
+### The bug in the first version
+
+Declarations were consulted only on direction reversal. But the **spoke**
+rule fires first, and it exists for the same reason — motion between
+samples the samples cannot see — so the balance, hairspring and reset
+hammer were promoted to full revolves as `spoke` and never consulted
+their declarations at all. Only the pallet fork and alarm hammer got
+arcs. A declared travel answers both rules; it is a property of the
+part, not of which test noticed it moving. Fixing that took declared
+volumes from 9 to 29.
+
+### What job A did NOT do
+
+**The violation count did not move: 5 before, 5 after.** The entry's
+success measure ("9 → 0") conflates jobs A and B, and the remaining
+violations are all job B's class:
+
+```
+Maintaining detent ⇄ Reset rod      Fork cock ⇄ Reset rod
+Reset rod ⇄ pillars                 Balance cock ⇄ Reset rod
+Keyless works ⇄ Minute jumper
+```
+
+Four are `Reset rod`, which TRANSLATES and SWINGS — no single rotation
+about any fitted axis bounds it, and **a declared arc cannot help**.
+That is exactly what job B was split out to handle. Job A tightened 29
+volumes and left the gate where it was; `sweptOverlap` still cannot join
+the standing battery until job B lands.
+
+Note also the baseline is **5**, not the 9 the entry records — that
+number predates §35's rod work.
