@@ -6468,6 +6468,12 @@ const ALARM_LINK_ROD_XY = { x: Math.cos(_rodAz) * ALARM_LINK_ROD_R, y: Math.sin(
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
 
+// §35 fix — the cranks' REST PHASE on the shaft. Built pointing local +z
+// (world-up) they sit at top dead centre, where height is 0.22·cos θ: even in
+// θ, zero first derivative, so the crank falls whichever way the shaft turns.
+// A quarter turn CCW puts them on the side of the circle, where height is
+// 0.22·sin θ and the crank tracks the rod that presses it.
+const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
 const ALARM_LINK_BEAK_OFF = (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
 const ALARM_LINK_ROD_TRAVEL = 0.42;                 // the beak's fall into a gap, at the rod
 const alarmLinkUnit = new THREE.Group();
@@ -9859,7 +9865,17 @@ function tick(t) {
       const drop = ALARM_SEL_TRAVEL * (alarmLinkParts.beakLen / alarmLinkParts.tailLen); // nose fall sized so the rod's throw IS the ring's travel (1:1 cranks)
       alarmLinkParts.beakArm.rotation.y = (drop / alarmLinkParts.beakLen) * alarmSelShownT; // nose falls into the gap
       alarmLinkParts.rod.position.z = (alarmLinkParts.rodTop + ALARM_LINK_SHAFT_Z + 0.25) / 2 + ALARM_SEL_TRAVEL * alarmSelShownT; // tail up ⇒ rod up
-      alarmLinkParts.shaft.rotation.x = (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
+      // The cranks are built at local +z — pointing straight world-up — which
+      // puts them at TOP DEAD CENTRE of their own circle. A crank there has
+      // height 0.22·cos θ, which is EVEN in θ: it falls for rotation in either
+      // direction, and dz/dθ = 0 at rest. That is why the rod rose while the
+      // crank it bears on fell (measured: rod +0.19, crank tip −0.095), and
+      // why flipping the rotation's sign changed nothing — a sign cannot move
+      // a stationary point.
+      // Rotating the shaft a quarter turn puts the cranks on the SIDE of the
+      // circle, where height goes as sin θ and dz/dθ is at its maximum, so the
+      // crank actually rises and falls with the rod it touches.
+      alarmLinkParts.shaft.rotation.x = ALARM_LINK_CRANK_PHASE - (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
     }
     alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
     alarmRocker.rotation.y = -0.12 * (alarmSelShownT * 2 - 1); // see-saw tip, ±: pin follows the ring's face
