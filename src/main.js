@@ -7081,6 +7081,16 @@ panel.innerHTML = `
       <div class="row label-small" id="axes-scale" style="display:none; opacity:0.75;">
         <span></span>
       </div>
+      <!-- §21: the scale REFERENCE. The legend above states millimetres;
+           this makes them intuitive by drawing objects of known size at the
+           same on-screen scale as the movement. -->
+      <div class="row">
+        <span class="label-small">Scale reference</span>
+        <button id="btn-scaleref">Off</button>
+      </div>
+      <div class="row label-small" id="scale-stats" style="display:none; opacity:0.75;">
+        <span></span>
+      </div>
       <div class="row">
         <span class="label-small">Exploded view</span>
         <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
@@ -7770,6 +7780,133 @@ function setAxes(on) {
   }
 }
 document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
+
+// --- §21 scale reference ---------------------------------------------------
+// §39 gave the movement a real size; this makes that size READABLE. Numbers in
+// millimetres tell you nothing unless you already think in millimetres, so the
+// comparison is drawn: objects of known diameter, at the same pixels-per-mm as
+// the movement itself, updating live as the camera moves.
+//
+// WHY A CORNER PANEL AND NOT AN OVERLAY ON THE MOVEMENT. Registering a coin
+// outline on top of the plate would be the more direct comparison, but it is
+// only honest face-on: the plate projects to a circle at one camera angle and
+// to an ellipse at every other, so the two shapes would stop being comparable
+// exactly when the view got interesting. A fixed panel sidesteps that — it is
+// a scale BAR, which is how a micrograph does it, and it stays true at any
+// orientation.
+//
+// The reference sizes are STANDARDS, not impressions, for the same reason §39
+// pinned the scale to chain pitch rather than to a guess. A "fingertip" (the
+// backlog's suggestion) has no defined size and would have quietly reintroduced
+// the decoration this pair of entries exists to avoid.
+const SCALE_REFS = [
+  { name: 'US quarter', mm: 24.26 },   // US Mint spec, exact
+  { name: '1 euro',     mm: 23.25 },   // ECB spec, exact
+  { name: 'AA cell',    mm: 14.50 },   // IEC R6 standard
+];
+// 1-2-5 ladder: the bar picks the largest step that still draws >= 60 px.
+const SCALE_BAR_LADDER = [0.5, 1, 2, 5, 10, 20, 50, 100];
+
+const scaleRefEl = document.createElement('div');
+scaleRefEl.id = 'scale-ref';
+// A backdrop, not decoration: the movement's plate is near-white under the
+// studio environment, and light-on-light made the readout unreadable exactly
+// when it was over the thing it describes.
+scaleRefEl.style.cssText =
+  'position:fixed; left:16px; bottom:16px; display:none; pointer-events:none;' +
+  'font:11px/1.35 ui-monospace,monospace; color:#cfd6dd;' +
+  'background:rgba(14,18,22,0.72); border-radius:6px; padding:9px 11px;' +
+  'backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);';
+document.body.appendChild(scaleRefEl);
+let scaleRefOn = false;
+
+// Pixels per WORLD UNIT at the movement's centre depth. Derived by projecting
+// two points one unit apart along the camera's own screen-right axis, so it is
+// correct for any orientation and any FOV without duplicating the projection
+// maths. Perspective means this is exact only at that depth — parts nearer the
+// camera render larger — which is why the panel says "at the movement".
+const _srA = new THREE.Vector3(), _srB = new THREE.Vector3(), _srR = new THREE.Vector3(), _srF = new THREE.Vector3();
+function pxPerUnit() {
+  camera.getWorldDirection(_srF);
+  _srR.crossVectors(_srF, camera.up).normalize();
+  _srA.set(0, 0, 0).project(camera);
+  _srB.set(_srR.x, _srR.y, _srR.z).project(camera);
+  return Math.abs(_srB.x - _srA.x) * window.innerWidth / 2;
+}
+
+function setScaleRef(on) {
+  scaleRefOn = on;
+  scaleRefEl.style.display = on ? '' : 'none';
+  const b = document.getElementById('btn-scaleref');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+  const stats = document.getElementById('scale-stats');
+  stats.style.display = on ? '' : 'none';
+  if (on && scaleReadout) {
+    // Every figure DERIVED, none typed: diameter and depth are §39's asserted
+    // predictions, the beat comes from F_BALANCE (A/h = Hz x 7200, two beats
+    // per cycle), the reserve from RELAX_SECONDS.
+    stats.firstElementChild.textContent =
+      `⌀${scaleReadout.plateMM.toFixed(1)} × ${scaleReadout.movMM.toFixed(1)} mm · ` +
+      `${(F_BALANCE * 7200).toLocaleString()} A/h · ${(RELAX_SECONDS / 3600).toFixed(0)} h reserve`;
+  }
+  if (on) updateScaleRef();
+}
+document.getElementById('btn-scaleref').addEventListener('click', () => setScaleRef(!scaleRefOn));
+
+function updateScaleRef() {
+  if (!scaleRefOn) return;
+  const perMM = pxPerUnit() / UNIT_MM;
+  if (!isFinite(perMM) || perMM <= 0) { scaleRefEl.innerHTML = '<div>scale unavailable at this framing</div>'; return; }
+
+  // THE BAR — true on-screen scale, live. Its LENGTH is chosen from a 1-2-5
+  // ladder so the drawn bar stays 60-200 px at any zoom. Fixing the bar at
+  // 10 mm instead would make it 4 px across when zoomed out and 2000 px when
+  // zoomed in; picking the length is what keeps the same instrument readable
+  // over the whole range, and it is why the label is generated rather than
+  // written.
+  let barMM = 10;
+  for (const step of SCALE_BAR_LADDER) { barMM = step; if (step * perMM >= 60) break; }
+  const barPx = barMM * perMM;
+
+  // THE DIAGRAM — its own scale, and SAYS so. Drawing the references at true
+  // on-screen scale was the first attempt and it does not work: a 24 mm coin
+  // against a 32 mm movement is the same order of size, so once the movement
+  // fills the view the coin does too and there is nothing left to compare it
+  // against. Clamping the circles to fit was worse — it drew a wrong-size
+  // circle under a real diameter, which is precisely the decoration this
+  // entry was written to avoid. So the comparison is an explicit diagram:
+  // everything in it is to scale WITH EACH OTHER, at a scale of its own.
+  const items = [{ name: 'movement', mm: scaleReadout ? scaleReadout.plateMM : 0, self: true }, ...SCALE_REFS];
+  const maxMM = Math.max(...items.map(i => i.mm));
+  const D = 116;                       // px across for the largest circle
+  const k = D / maxMM;                 // diagram px per mm
+  const circles = items.map(i => {
+    const r = (i.mm * k) / 2;
+    return `<circle cx="${(D / 2 + 1).toFixed(1)}" cy="${(D / 2 + 1).toFixed(1)}" r="${r.toFixed(1)}"
+      fill="none" stroke="${i.self ? '#e8b44a' : '#8fb8d8'}" stroke-width="${i.self ? 1.6 : 1}"
+      ${i.self ? '' : 'stroke-dasharray="3 3"'} opacity="${i.self ? 1 : 0.85}"/>`;
+  }).join('');
+  const key = items.map(i =>
+    `<div style="white-space:nowrap; color:${i.self ? '#e8b44a' : '#cfd6dd'};">
+       ${i.self ? '●' : '○'} ${i.name} ⌀${i.mm.toFixed(i.self ? 1 : 2)} mm
+     </div>`).join('');
+
+  scaleRefEl.innerHTML =
+    `<div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;">
+       <svg width="${barPx.toFixed(1)}" height="9" style="flex:none; overflow:visible;">
+         <path d="M0.5 1 V8 M${(barPx - 0.5).toFixed(1)} 1 V8 M0.5 4.5 H${(barPx - 0.5).toFixed(1)}"
+               stroke="#cfd6dd" stroke-width="1" fill="none"/>
+       </svg>
+       <span>${barMM} mm at the movement</span>
+     </div>
+     <div style="display:flex; align-items:center; gap:10px;">
+       <svg width="${D + 2}" height="${D + 2}" style="flex:none;">${circles}</svg>
+       <div style="display:flex; flex-direction:column; gap:3px;">${key}
+         <div style="opacity:0.55; margin-top:3px;">diagram — to scale with<br/>each other, not with the view</div>
+       </div>
+     </div>`;
+}
 
 // --- three-quarter plate X-ray --------------------------------------------
 // The plate does its job by covering the train, which is also the one thing
@@ -10307,6 +10444,7 @@ function advanceFrame(realDt) {
 
   controls.update();
   updateLabels();
+  updateScaleRef();   // §21: px/mm changes with every camera move
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
   renderer.render(scene, camera);
 }

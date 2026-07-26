@@ -2500,3 +2500,74 @@ been decoration, which is precisely what §21 warned against.
 "behind §2", i.e. behind a large deferred compaction job. What it
 actually needed was one asserted constant. §2 keeps the compaction work
 and can now, for the first time, measure its own "≤ 40 mm" target.
+
+## §21 — Scale reference: making 32 mm mean something
+
+§39 gave the movement a real size. Millimetres only mean something to
+someone who already thinks in millimetres, so this draws the comparison.
+
+### Two instruments, because one could not be honest at every zoom
+
+**A scale bar, at true on-screen scale.** Pixels-per-unit is derived by
+projecting two points one unit apart along the camera's *own*
+screen-right axis, so it is correct at any orientation and FOV without
+duplicating the projection maths:
+
+```js
+camera.getWorldDirection(_srF);
+_srR.crossVectors(_srF, camera.up).normalize();
+// project origin and origin+_srR, take the NDC delta
+```
+
+The bar's **length** is chosen from a 1-2-5 ladder so it always draws
+60–200 px. A fixed 10 mm bar would be 4 px across zoomed out and
+2000 px zoomed in; picking the step is what keeps one instrument
+readable over the whole range, which is why the label is generated
+rather than written.
+
+**A diagram, at its own scale, that says so.** The first attempt drew
+the reference objects at true on-screen scale, and it does not work: a
+24 mm coin against a 32 mm movement is the *same order of size*, so once
+the movement fills the view the coin does too and there is nothing left
+to compare against. Clamping the circles to fit was worse — it drew a
+wrong-size circle labelled with a real diameter, which is exactly the
+decoration §21 was written to forbid. So the comparison became an
+explicit diagram: everything in it is to scale with each other, at a
+scale of its own, and the caption says that out loud.
+
+### The reference sizes are standards, not impressions
+
+| object | ⌀ | source |
+|---|---|---|
+| movement plate | 32.2 mm | §39's asserted prediction |
+| US quarter | 24.26 mm | US Mint spec |
+| 1 euro | 23.25 mm | ECB spec |
+| AA cell | 14.50 mm | IEC R6 |
+
+The backlog suggested "a fingertip". A fingertip has no defined size and
+would have quietly reintroduced the very thing §39 spent its whole entry
+avoiding — a number chosen because it looked right. Dropped for that
+reason.
+
+### The stats line
+
+`⌀32.2 × 9.7 mm · 18,000 A/h · 30 h reserve` — every figure derived,
+none typed. Diameter and depth are §39's asserted predictions; the beat
+comes from `F_BALANCE` (A/h = Hz × 7200, two beats per cycle); the
+reserve from `RELAX_SECONDS`.
+
+### Verification
+
+Across a 30× zoom range (camera 40 → 1200 units), the ladder steps
+1 → 2 → 5 → 10 → 20 mm, the bar stays 74–115 px, and it agrees with an
+**independently projected** plate width to within **0.02%** at every
+level.
+
+One trap worth recording. The first check compared the bar against the
+plate's width along *world X* and reported a 28% error. The bar was
+right; the check was wrong — the camera was angled, so world X is
+foreshortened while the bar measures screen-right. Re-run face-on, where
+world X *is* screen-right, agreement was 99.94%. A verification that
+measures a different quantity than the instrument does will disagree
+with a correct instrument, and it is worth being sure which one is
+wrong before "fixing" anything.
