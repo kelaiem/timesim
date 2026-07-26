@@ -269,6 +269,61 @@ Measured on the current build: 0.07 disarmed, 0.039 armed, no
 penetration. Note the battery cannot see any of this — every part
 involved belongs to the `Alarm link` unit, which is item 5.
 
+## 10. `JMP_BIND_EPS` does not reach the gap it is supposed to guard
+
+`Minute jumper ⇄ Dial` measures **exactly 0.1500** against a required
+`CLEAR_MARGIN` of 0.15 — the tightest pair in the battery, sitting on
+the threshold with nothing to spare.
+
+That is NOT the defect. The lifter plane is deliberately solved to bind
+there, because the keyless/motion/reserve stacks leave no other clear
+plane along the post→tail-pin span:
+
+```
+Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS + JMP_LIFTER_T / 2
+```
+
+The defect is `JMP_BIND_EPS = 0.01`, whose stated job is exactly this
+situation: *"these planes are solved to land EXACTLY on CLEAR_MARGIN,
+and the clearance sweep compares the BVH-measured mesh gap >= 0.15 with
+no tolerance — a float hair reads as a violation. One explicit
+centi-unit of slack keeps the bind falsifiable without flickering."*
+
+If that epsilon reached the measured contact, the pair would report
+0.16. It reports 0.1500. `measureClearance` rounds to 4 decimals (other
+pairs come back 0.2489, 0.1908), so this is not display rounding — the
+slack is not in the number the sweep compares.
+
+So the pair is one float hair from a spurious violation, which is the
+precise outcome the epsilon was written to prevent. It is currently
+passing on luck, and any retessellation or transform-chain change near
+the dial can flip it.
+
+**Two candidate causes, not yet distinguished:**
+
+1. The binding contact is NOT the lifter bar's dial-side face. The
+   epsilon only lifts the bar; if the minimum is set by some other
+   jumper mesh against the dial, the epsilon is irrelevant to it and
+   the comment describes a guard on the wrong surface.
+2. The epsilon is lost between the derivation and the mesh — a parent
+   transform, or a geometry built about a face rather than a centre.
+
+**Lead, unverified**: probing the pair by world AABB puts `jumperBeak`
+and a mesh named `star` in contact, with the star reached through the
+*Dial* unit's subtree — even though the jumper is explicitly
+re-parented out of `dialFace` (`movement.attach(jumperUnit)`) to stop
+that double-attribution. If the star is still collected into Dial, this
+pair is partly measuring the jumper against its own star, and the beak
+riding the star's valley is an INTENDED contact, not a clearance. That
+would make the 0.15 an artifact of attribution rather than a real
+plane — a fresh instance of items 5 and 6. AABB overlap is not contact
+and this was not checked against the inspector's own unit collection
+(`collectUnits` is not exported), so treat it as a lead. It is the
+first thing to settle, because if it holds, cause 1 above is the
+answer.
+
+Found while verifying §35; unrelated to that branch and pre-existing.
+
 ## Recently closed
 
 - **The alarm could not ring under fast-forward** (was item 8). The whole
