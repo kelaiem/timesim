@@ -5730,10 +5730,21 @@ const alarmStemLen = plateR + 2.2 - ALARM_CD;
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
 alarmSpinner.add(alarmStem);
-// Brand crown (§27), smaller than the winding crown (this stem drives only
-// the light alarm disc, so it needs no winding leverage) — the second
-// consumer of makeBrandMark's ∞, same enlarged knurl at 4.0/3.4.
-const alarmCrownKnob = G.makeCrown({ bodyR: 4.0, bodyH: 3.4, material: MATS.steel });
+// Brand crown (§27) — the second consumer of makeBrandMark, now the WS
+// monogram (§41). MATCHED to the winding crown at 5.425/3.4.
+//
+// It was 4.0/3.4, and the comment justified that mechanically: this stem
+// drives only the light alarm disc, so it needs no winding leverage. True,
+// and not the deciding argument — leverage sets the MINIMUM a crown may be,
+// not the size it must be, and the two crowns sit in the same view where a
+// 26% difference reads as an inconsistency rather than as a statement about
+// torque. Owner's call, taken deliberately; the smaller size remains
+// mechanically sufficient if it is ever wanted back.
+//
+// Height stays 3.4. Matching that too would push the knob further along the
+// alarm stem, which is a placement change on a part whose stem length and
+// bushing are solved elsewhere — out of scope for a size match.
+const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: 3.4, material: MATS.steel });
 alarmCrownKnob.rotation.x = -Math.PI / 2; // builder +Z face → outward along +Y
 alarmCrownKnob.position.y = alarmStemLen - 0.7;
 alarmSpinner.add(alarmCrownKnob);

@@ -2914,3 +2914,33 @@ on the switch unit through the same `setAlarm` path, so the remaining
 work is the pointer affordance rather than a second code path. §43 filed
 this as separable and it stays that way; §19's findings on whether
 viewers discover the crown's 3D drag at all should inform it.
+
+### Also here — the alarm crown matched to the winding crown
+
+`bodyR` 4.0 → **5.425**, matching the winding crown. Height stays 3.4:
+matching that too would push the knob along the alarm stem, and the
+stem's length and bushing are solved elsewhere, so it is a placement
+change rather than a size match.
+
+The old comment justified the smaller crown mechanically — "this stem
+drives only the light alarm disc, so it needs no winding leverage". That
+is true and was not the deciding argument: leverage sets the MINIMUM a
+crown may be, not the size it must be, and the two crowns share a view
+where a 26% difference reads as an inconsistency rather than as a
+statement about torque. Owner's call; the comment now says so instead of
+asserting a rationale the geometry no longer follows.
+
+**A warning that was not what it looked like.** The first load after this
+change reported `§38/TODO 8: the alarm's coincidence was crossed in ONE
+tick`. Reverting appeared to clear it — one sample each, and wrong: the
+change was reinstated and boot was silent again. The warning is the
+tick-advance condition firing from restored sim state, which persists
+across reloads via the dev server, and a crown's diameter cannot reach
+it. An A/B across two page loads is not an A/B when the state carries
+over.
+
+Boot silent. The focused battery over the enlarged crown's neighbours
+did **not** complete — including `Three-quarter plate` and `Alarm disc`
+took it past 194 s where the pusher's four-unit run took 11 s. The
+pusher result above is clean and unaffected, but this crown resize is
+**not** battery-verified.
