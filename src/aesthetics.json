@@ -40,7 +40,13 @@
     },
     "subdials": {
       "radiusFactor": 1.0,
-      "_comment": "Scales the SOLVED shared sub-dial radius (small seconds + reserve). Applied in solveLayout, so it needs a reload; the \u00a725 C boot assert still guards the wells against the central setting wheel, so an oversized factor warns rather than silently colliding. Position is solved layout and is deliberately NOT a knob."
+      "_comment": "Scales the SOLVED shared sub-dial radius (small seconds + reserve). Applied in solveLayout, so it needs a reload; the \u00a725 C boot assert still guards the wells against the central setting wheel, so an oversized factor warns rather than silently colliding. Position is solved layout and is deliberately NOT a knob. BOUNDS: max 1.0 because the solved radius already sits exactly on the \u00a725 C ceiling (well ring vs central setting wheel) \u2014 measured: factor 1.15 penetrates by 1.33; min 0.5 because below half size the wells swallow their own hands.",
+      "_bounds": {
+        "radiusFactor": [
+          0.5,
+          1.0
+        ]
+      }
     }
   },
   "lighting": {
@@ -90,7 +96,17 @@
       "widthUnits": 6.7,
       "angleDeg": 25,
       "tilt": 0.35,
-      "_comment": "Glashuette stripes on the 3/4 plate + escape bridge. widthUnits = band pitch in model units; angleDeg = direction the bands PROGRESS in (stripes run perpendicular); tilt = normal scallop strength (0 = off). Stripes are computed from WORLD position in the shader, so they continue across separate parts by construction."
+      "_comment": "Glashuette stripes on the 3/4 plate + escape bridge. widthUnits = band pitch in model units; angleDeg = direction the bands PROGRESS in (stripes run perpendicular); tilt = normal scallop strength (0 = off). Stripes are computed from WORLD position in the shader, so they continue across separate parts by construction.",
+      "_bounds": {
+        "widthUnits": [
+          2,
+          30
+        ],
+        "tilt": [
+          0,
+          1
+        ]
+      }
     },
     "perlage": {
       "pitchUnits": 8.4,
@@ -99,7 +115,17 @@
       "_comment": "Circular graining on the BASE plate, stamped like the real thing: pearls in a staggered grid, each fragment shaded by the LAST pearl (row-major application order) whose radius covers it \u2014 so every pearl overlaps its neighbours in one direction, shingled. pearlRadiusUnits > pitch/2 sets the overlap.",
       "pearlRadiusUnits": 6.5,
       "shingleFlip": true,
-      "jitterFrac": 0.12
+      "jitterFrac": 0.12,
+      "_bounds": {
+        "pitchUnits": [
+          2,
+          30
+        ],
+        "tilt": [
+          0,
+          1
+        ]
+      }
     }
   },
   "materials": {
