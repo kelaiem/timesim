@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { MATS } from './materials.js';
+import { MATS, applyDecorationFromAesthetics } from './materials.js';
 import { aesthetics } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
@@ -7271,6 +7271,28 @@ panel.innerHTML = `
         <span class="label-small">Hand flute</span>
         <input type="range" id="flute-slider" min="-60" max="30" step="1" />
       </div>
+      <!-- §23, owner's ask: rib COUNT on the 3/4 plate + escape bridge.
+           The stripes are world-space bands at decoration.ribbing.widthUnits
+           pitch shared by both parts, so count = span / pitch and ONE slider
+           thins them everywhere at once. Logged as pitch because that is the
+           schema's own word for it. -->
+      <div class="row">
+        <span class="label-small">Rib pitch</span>
+        <input type="range" id="rib-pitch" min="4" max="22" step="0.1" />
+      </div>
+      <!-- §23: ADVANCED — every control below is GENERATED from
+           aesthetics.json, so a future finish parameter gets a knob for free
+           and the file stays the single source. Collapsed by default on §15's
+           own mechanism: the panel a first-time viewer sees is unchanged. -->
+      <details id="advanced-section" style="margin-top:6px;">
+        <summary class="label-small" style="cursor:pointer; opacity:0.8;">Advanced</summary>
+        <div id="advanced-body"></div>
+        <div class="row label-small" style="opacity:0.75;">
+          <span>Tuned values persist in this browser</span>
+          <button id="btn-copy-aesthetics">Copy JSON</button>
+          <button id="btn-reset-aesthetics">Reset</button>
+        </div>
+      </details>
     </div>
   </details>
   <details class="ui-section">
@@ -7468,13 +7490,122 @@ window.addEventListener('keydown', (e) => {
     [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second' }],
     [reserveHand, { length: reserveR * 0.8, kind: 'minute' }],
   ];
-  fluteSlider.addEventListener('input', () => {
-    aesthetics.dial.hands.fluteFactor = fluteSlider.value / 100;
+  const recutHands = () => {
     for (const [hand, spec] of HAND_SPECS) {
       hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
       hand.clear();
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
     }
+  };
+  fluteSlider.addEventListener('input', () => {
+    aesthetics.dial.hands.fluteFactor = fluteSlider.value / 100;
+    recutHands();
+  });
+
+  // §23, the owner's headline knob: rib pitch, live through the compiled
+  // shader's uniforms. One value serves the 3/4 plate AND the escape bridge
+  // because the stripes are computed from world position in one shared
+  // material — thinning the count is a single write by construction.
+  const ribPitch = document.getElementById('rib-pitch');
+  ribPitch.value = aesthetics.decoration.ribbing.widthUnits;
+  ribPitch.addEventListener('input', () => {
+    aesthetics.decoration.ribbing.widthUnits = Number(ribPitch.value);
+    applyDecorationFromAesthetics();
+    try { localStorage.setItem('aestheticsOverrides', JSON.stringify(aesthetics, (k, v) => k.startsWith('_') ? undefined : v)); } catch {}
+  });
+
+  // §23 — THE GENERATED PANEL. Walk aesthetics.json, emit a control per
+  // leaf: numbers get a slider spanning a heuristic range about the shipped
+  // value, hex-colour strings get a colour input. No hand-written row per
+  // knob — a future schema entry gets its control for free, and the file
+  // stays the single source. Keys beginning '_' are prose, not parameters.
+  //
+  // LIVE where a live path exists, honest where one does not: each edit
+  // writes the schema value, then the best-known applier for its subtree
+  // runs. Subtrees with no live consumer are LABELLED "reload" rather than
+  // silently pretending — a knob that does nothing until reload and does not
+  // say so would be the panel lying about its own reach.
+  const APPLIERS = {
+    lighting: () => {
+      const l = aesthetics.lighting;
+      scene.background.set(l.scene.backgroundColor);
+      hemi.color.set(l.hemisphere.skyColor); hemi.groundColor.set(l.hemisphere.groundColor); hemi.intensity = l.hemisphere.intensity;
+      keyLight.color.set(l.keyLight.color); keyLight.intensity = l.keyLight.intensity;
+      fillLight.color.set(l.fillLight.color); fillLight.intensity = l.fillLight.intensity;
+      dialLight.color.set(l.dialLight.color); dialLight.intensity = l.dialLight.intensity;
+      rimSpot.color.set(l.rimSpot.color); rimSpot.intensity = l.rimSpot.intensity; rimSpot.penumbra = l.rimSpot.penumbra; rimSpot.decay = l.rimSpot.decay;
+    },
+    rendering: () => { renderer.toneMappingExposure = aesthetics.rendering.toneMappingExposure; },
+    camera: () => { controls.dampingFactor = aesthetics.camera.dampingFactor; },
+    decoration: () => { applyDecorationFromAesthetics(); if (ribPitch) ribPitch.value = aesthetics.decoration.ribbing.widthUnits; },
+    materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
+    dial: (path) => { if (path[1] === 'hands') recutHands(); else return false; },
+  };
+  const advBody = document.getElementById('advanced-body');
+  const buildAdvanced = () => {
+    const rows = [];
+    const walk = (node, path) => {
+      for (const k of Object.keys(node)) {
+        if (k.startsWith('_')) continue;
+        const v = node[k];
+        if (v && typeof v === 'object') { walk(v, [...path, k]); continue; }
+        rows.push({ path: [...path, k], value: v });
+      }
+    };
+    walk(aesthetics, []);
+    for (const r of rows) {
+      const domain = r.path[0];
+      const applier = APPLIERS[domain];
+      const live = !!applier && !(domain === 'dial' && r.path[1] !== 'hands');
+      const row = document.createElement('div');
+      row.className = 'row label-small';
+      const label = document.createElement('span');
+      label.textContent = r.path.slice(1).join('.') + (live ? '' : ' ⟳');
+      label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload';
+      label.style.cssText = 'overflow:hidden; text-overflow:ellipsis; max-width:11em;';
+      row.appendChild(label);
+      let input;
+      if (typeof r.value === 'number') {
+        input = document.createElement('input');
+        input.type = 'range';
+        const m = Math.abs(r.value) || 1;
+        input.min = r.value >= 0 ? 0 : -3 * m;
+        input.max = 3 * m;
+        input.step = m / 100;
+        input.value = r.value;
+      } else if (typeof r.value === 'string' && /^#[0-9a-f]{6}$/i.test(r.value)) {
+        input = document.createElement('input');
+        input.type = 'color';
+        input.value = r.value;
+      } else if (typeof r.value === 'boolean') {
+        input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = r.value;
+      } else continue;
+      input.addEventListener('input', () => {
+        let leaf = aesthetics;
+        for (const k of r.path.slice(0, -1)) leaf = leaf[k];
+        leaf[r.path[r.path.length - 1]] =
+          input.type === 'range' ? Number(input.value) : input.type === 'checkbox' ? input.checked : input.value;
+        const fn = APPLIERS[r.path[0]];
+        if (fn) fn(r.path);
+        // Persist so ⟳-tier knobs (consumed at build) actually take effect on
+        // the reload they ask for. Comments stripped: they are prose.
+        try { localStorage.setItem('aestheticsOverrides', JSON.stringify(aesthetics, (k, v) => k.startsWith('_') ? undefined : v)); } catch {}
+      });
+      row.appendChild(input);
+      advBody.appendChild(row);
+    }
+  };
+  buildAdvanced();
+  document.getElementById('btn-reset-aesthetics').addEventListener('click', () => {
+    localStorage.removeItem('aestheticsOverrides');
+    location.reload();
+  });
+  document.getElementById('btn-copy-aesthetics').addEventListener('click', () => {
+    // The tuned state travels back to the FILE — the schema stays the single
+    // source and a good tuning session ends in a commit, not in localStorage.
+    navigator.clipboard.writeText(JSON.stringify(aesthetics, (k, v) => k.startsWith('_') ? undefined : v, 2));
   });
 
   // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open

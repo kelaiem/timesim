@@ -1,3 +1,4 @@
+import { aesthetics } from './aesthetics.js';
 // Mechanical Clock Simulation — LAYOUT SPEC (BUILT §13, step 1).
 //
 // The movement's geometry is genuinely parametric — barrel at the origin,
@@ -467,7 +468,12 @@ export function solveKeyless({
   // (wellR 10.9) had the wall passing straight through the wheel's teeth,
   // masked in the sweep by the wheel⇄Dial EXPECTED blanket; the clearance is
   // boot-asserted at the alarm block.
-  const subDialR = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 5.2;
+  // §23: the owner's size knob — a factor over the SOLVED radius, so the
+  // solve stays the source and the knob is a taste adjustment on top. The
+  // §25 C boot assert still guards the wells against the setting wheel, so an
+  // oversized factor warns at boot instead of silently colliding.
+  const subDialR = (Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 5.2)
+    * ((aesthetics.dial.subdials && aesthetics.dial.subdials.radiusFactor) || 1);
 
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,
