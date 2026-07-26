@@ -2152,6 +2152,15 @@ export async function buildSweptRegistry(clock, {
       // like it both jumped (spoke) and reversed (oscillates), and promoted
       // it to a full revolve for neither reason. `steps` carries null at each
       // boundary so both tests skip it.
+      // §36 JOB A applies to the SPOKE rule too, and missing that was the
+      // first version's bug. Both rules exist for the same reason — motion
+      // between samples that the samples cannot see — so a declared travel
+      // answers both. Checking it only on reversal meant the balance, the
+      // hairspring and the reset hammer never consulted their declarations at
+      // all: they step further than their own width, so they were promoted to
+      // a full revolve as 'spoke' before the oscillation test ran.
+      const declared = clock.declaredTravels && clock.declaredTravels.get(u.name);
+      const bounded = declared && declared.rad > 0 && declared.rad < Math.PI * 2 ? declared.rad : 0;
       const steps = [];
       for (let i = 1; i < arcs.length; i++) {
         if (i % perAxis === 0) { steps.push(null); continue; }   // axis boundary: not a movement
@@ -2159,7 +2168,7 @@ export async function buildSweptRegistry(clock, {
         while (step > Math.PI) step -= Math.PI * 2;
         while (step < -Math.PI) step += Math.PI * 2;
         steps.push(step);
-        if (Math.abs(step) > ownWidth) { full = true; reason = 'spoke'; }
+        if (Math.abs(step) > ownWidth && !bounded) { full = true; reason = 'spoke'; }
       }
       // OSCILLATORS cannot be bounded by sampling at all. A part that swings
       // out and back between two samples sweeps further than the interval
@@ -2174,12 +2183,32 @@ export async function buildSweptRegistry(clock, {
       // amplitude), which is what §36 means by "declares, or derives from
       // MECH_GRAPH + its pose law". Until then they are marked so nobody
       // reads a full revolve as a measured travel.
+      // §36 JOB A — a DECLARED travel replaces the full circle here, and only
+      // here. The build states the arc it drives the part through
+      // (`declareTravel` in main.js, at the site each constant is derived), so
+      // for those parts the reversal is not an unknown: it is a bounded swing.
+      //
+      // The dilation is by the WHOLE declared travel in each direction, which
+      // is looser than necessary but sound without assuming anything about
+      // where the samples fell. Every true position and every sampled position
+      // lie in one interval of width `travel`, so they differ by at most
+      // `travel`; widening each sampled arc by that much therefore covers the
+      // motion between samples, which is exactly what sampling cannot see.
+      // For the pallet fork that is a few degrees against 360.
+      let dilate = 0;
       if (!full) {
         for (let i = 1; i < steps.length; i++) {
           if (steps[i] === null || steps[i - 1] === null) continue;  // spans an axis boundary
-          if (steps[i] * steps[i - 1] < -1e-12) { full = true; reason = 'oscillates'; break; }
+          if (steps[i] * steps[i - 1] < -1e-12) {
+            if (!bounded) { full = true; reason = 'oscillates'; }
+            break;
+          }
         }
       }
+      // A declared part is dilated whether it tripped the spoke test, the
+      // reversal test or neither — the travel is a property of the part, not
+      // of which rule noticed it moving.
+      if (!full && bounded) { dilate = bounded; reason = 'declared'; }
       // Angular coverage as a CIRCULAR BITMAP, not a [lo,hi] interval. Each
       // frame's bounds come from its own atan2 branch, so taking min/max
       // across frames silently mixes branches — that read as 74 containment
@@ -2195,9 +2224,12 @@ export async function buildSweptRegistry(clock, {
       if (!full) {
         bins = new Uint8Array(THETA_BINS);
         for (const a of arcs) {
-          const span = a.hi - a.lo;
+          // A declared oscillator's arc is widened by the travel at BOTH ends;
+          // for everything else `dilate` is 0 and this is the original union.
+          const lo = a.lo - dilate, hi = a.hi + dilate;
+          const span = hi - lo;
           const steps = Math.max(1, Math.ceil(span / THETA_BIN_W) + 1);
-          for (let s = 0; s <= steps; s++) bins[thetaBin(a.lo + (span * s) / steps)] = 1;
+          for (let s = 0; s <= steps; s++) bins[thetaBin(lo + (span * s) / steps)] = 1;
         }
         if (bins.every((b) => b === 1)) { full = true; reason = 'covered'; }
       }
@@ -2205,6 +2237,7 @@ export async function buildSweptRegistry(clock, {
         unit: u.name, mesh: m, kind: 'revolve', axis: [cx, cy],
         rBand: [rLo, rHi], zBand: [zLo, zHi],
         bins: full ? null : bins, full, reason,
+        declaredRad: dilate || undefined,
         coverage: full ? 1 : +(bins.reduce((a, b) => a + b, 0) / THETA_BINS).toFixed(4),
       });
     }

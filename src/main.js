@@ -209,6 +209,37 @@ function registerLabel(name, obj) {
   labelEntries.push({ name, obj });
 }
 
+// §36 job A — DECLARED TRAVELS.
+//
+// The registry bounds a part by sampling its poses, which cannot work for an
+// oscillator: a part that swings out and back BETWEEN two samples sweeps
+// further than the interval between them, and no sample count fixes that. So
+// part one bounds any pose series that reverses direction by the FULL CIRCLE.
+// Safe, and for a pallet fork that banks a couple of degrees, absurd.
+//
+// What sampling cannot recover, the build already knows. `FORK_BANK_DEG` and
+// the balance amplitude are honest derived constants sitting in this file; the
+// fix is to let the registry read them rather than re-measure them.
+//
+// TWO RULES, both learned the hard way:
+//  1. Declare AT THE SITE the constant is defined. §10 shipped with four units
+//     missing from a parallel group table and §16 had a wheel radius derived
+//     twice; a second table is a second thing to forget to update.
+//  2. A declaration is a CLAIM, not a licence. The registry's containment
+//     assert still validates every volume against a finer, phase-shifted
+//     sweep, so a travel declared too small makes the part escape its own hull
+//     and the volume is widened back. That is precisely what makes declaring
+//     safe enough to attempt.
+//
+// Declare the TOTAL angular travel about the part's own pivot, in radians.
+const declaredTravels = new Map();   // unit name -> { rad, why }
+function declareTravel(name, rad, why) {
+  if (declaredTravels.has(name)) console.warn(`§36A: '${name}' travel declared twice`);
+  if (!(rad > 0) || rad >= Math.PI * 2)
+    console.warn(`§36A: '${name}' travel ${rad} is not a bounded arc — a part that can reach any angle must stay a full revolve`);
+  declaredTravels.set(name, { rad, why });
+}
+
 const movement = new THREE.Group();
 scene.add(movement);
 
@@ -370,8 +401,21 @@ const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
 // the pallet stones' impulse faces from the same beat/bank pair.
 const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches makePalletFork's V-notch geometry
 const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH);
+// §36A: balanceTheta(tau) = amp*sin(2*pi*F_BALANCE*tau), so the swing is
+// +/-AMPLITUDE_VISUAL_DEG and the travel is twice that. The hairspring rides
+// the same arbor and takes the same arc. AMPLITUDE_VISUAL_DEG, not
+// AMPLITUDE_TRUE_DEG: the registry must bound the mesh that is actually
+// ANIMATED, and the true 270 deg swing is a physical reference the meshes
+// never perform.
+declareTravel('Balance', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'balanceTheta swings +/-AMPLITUDE_VISUAL_DEG');
+declareTravel('Hairspring', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'rides the balance arbor');
 const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
 const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
+// §36A: the fork banks between ±FORK_BANK_DEG and recoils FORK_RECOIL_DEG past
+// the bank on draw, so its extreme-to-extreme travel is 2*(bank + recoil).
+// Declared HERE, next to the derivation, so the two cannot drift.
+declareTravel('Pallet fork', 2 * (FORK_BANK_DEG + FORK_RECOIL_DEG) * DEG2RAD,
+  'banks +/-FORK_BANK_DEG with FORK_RECOIL_DEG of draw past each bank');
 
 // stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
 // L_ESCAPE — the stones must descend by exactly that gap to land centered
@@ -1084,6 +1128,9 @@ const camPhaseOffset = hammerAimAngle + Math.PI;
 // (D·sinθ, D·cosθ) for swing θ; scan-then-bisect the smallest clearing θ —
 // the same build-time-solver pattern as HAMMER_TAIL_DELTA / STOP_BEARING.
 const HAMMER_SWING_MARGIN = 0.35;
+// §36A forward reference: the reset hammer's travel is HAMMER_SWING_RAD itself
+// — retracted sits at hammerBaseAngle + HAMMER_SWING_RAD, seated at
+// hammerBaseAngle. Declared just after the constant is solved, below.
 const HAMMER_SWING_RAD = (() => {
   const sweptR = heartCam.userData.r + heartCam.userData.bevel;
   const { outline, bevel, rollerR, bossR, length: armL } = hammerLever.userData;
@@ -1140,6 +1187,8 @@ const HAMMER_SWING_RAD = (() => {
   }
   return hi;
 })();
+declareTravel('Reset hammer', HAMMER_SWING_RAD,
+  'retracted at hammerBaseAngle + HAMMER_SWING_RAD, seated at hammerBaseAngle');
 
 // Display-arbor plane — LOW, between the plates, in the band under the
 // great wheel. The old above-plate berth cleaned the z-budget but put the
@@ -5912,6 +5961,12 @@ const ALARM_CAM_APPROACH_FRAC = 0.06;  // base circle → the radius that first 
 // wire from rest, which is also what makes the wind-up read on screen as the
 // cause of the blow instead of as a wobble.
 const ALARM_DRAW_RAD = 3 * ALARM_STRIKE_AMP;
+// §36A: alarmHammerAngle() is ALARM_DRAW_RAD*smoothstep on the flank and
+// ALARM_DRAW_RAD*cos(...) in free fall, so it lives in [-DRAW, +DRAW]; the
+// rebound term is smaller still and decays. Travel is therefore 2*DRAW. If
+// that is short the containment assert widens it — which is the check that
+// makes declaring from a lift law safe rather than a guess.
+declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_RAD, +ALARM_DRAW_RAD]');
 // Where the tail rests. Measured out from the pivot⇄wheel bearing: the larger
 // this is, the further the nose sits from the wheel's centre and the bigger
 // the cam has to be. 12° gives a base circle of ≈3.3 rising to lobe tips at
@@ -10755,6 +10810,7 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   // Layout introspection for the realism-inspection tooling.
   P, plateR, dialRadius,
 };
