@@ -30,6 +30,11 @@
 // ---------------------------------------------------------------------------
 import * as THREE from 'three';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../vendor/three-mesh-bvh.module.js';
+// The ONE structural margin (standing rule 1). The budget rows below still
+// spell 0.15 inline, one per pair, because each is a per-pair statement that
+// may legitimately differ; the free-annulus probe wants the project-wide
+// default and should not add a fourth copy of the number.
+import { CLEAR_MARGIN } from './layout.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -1787,8 +1792,209 @@ export async function focusedCheck(clock, unitNames, { axes: axisArg } = {}) {
 //
 // Multiple named jobs can run at once; results live on window.__checks.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// FREE-ANNULUS PROBE (§38's siting question; a first slice of §36)
+//
+// "At world height z, is there a radius where a full RING of clearance
+// exists — over every azimuth, and over every pose the movement can reach?"
+// §38 needs it because the alarm's release notch can only narrow by moving
+// OUTWARD (its angular width is floored by pin ÷ radius), and a ring gate has
+// to be free all the way round.
+//
+// Why not the obvious probes. §35 burned three built-and-torn-out corridors
+// on instruments with structural blind spots, and TODO items 5–7 name the
+// classes. This one avoids them deliberately:
+//
+//   · NOT a bounding-box scan. Run naively over this scene, radial AABB
+//     occupancy merges to a single 0..56 span, because the AABB of any large
+//     flat part covers every radius. Bounding boxes cannot answer a radial
+//     question about a disc.
+//   · NOT a vertex scan. Vertex occupancy is blind to the interior of a big
+//     face — slabs and wheel discs carry vertices only at hub and rim, which
+//     is exactly how §35's route 1 "passed" while spearing the keyless works.
+//   · NOT a ray bundle. The fusee chain is thin enough to thread between
+//     rays; §35's route 2 passed 5-ray bundles and was still wrong.
+//
+// Instead it SLICES: every triangle that crosses the slab [z ± clearance]
+// contributes its true footprint to a polar occupancy grid, tested per cell
+// with point-in-triangle rather than by bounding box. Faces are therefore
+// solid to it, and nothing thin can slip through.
+//
+// And it is SWEPT, not rest-pose. Every axis is sampled and the grids are
+// OR-ed, so a turning wheel fills its own annulus — the §36 semantics: a
+// corridor must never thread between the spokes of a moving wheel.
+//
+// Conservative by construction, in the safe direction: the slab is the full
+// clearance thickness, the footprint is the whole triangle, and occupancy is
+// dilated by the clearance afterwards. It will under-report free space before
+// it ever over-reports it — so a ring it calls FREE is trustworthy, while a
+// "nothing free" answer is a reason to refine (smaller dr, more azimuths)
+// rather than a proof.
+//
+//   start(clock, 'freeAnnulus', { z: -6.0 });
+//
+export async function findFreeAnnulus(clock, {
+  z,
+  rMin = 2, rMax = null, dr = 0.25, nAz = 360,
+  clearance = CLEAR_MARGIN,
+  axes = AXES, perAxis = 5,
+  exclude = [],
+  yieldEvery = 8,
+} = {}) {
+  if (typeof z !== 'number') throw new Error('freeAnnulus needs a z (world height of the slice)');
+  const rHi = rMax ?? clock.plateR;
+  const nR = Math.max(1, Math.ceil((rHi - rMin) / dr));
+  const dAz = (Math.PI * 2) / nAz;
+  const occ = new Uint8Array(nR * nAz);
+
+  // Which meshes to ignore: everything under the named units.
+  const skip = new Set();
+  for (const name of exclude) {
+    const u = (clock.labelEntries || []).find((l) => l.name === name);
+    if (u) u.obj.traverse((o) => skip.add(o));
+  }
+
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  const box = new THREE.Box3();
+  const zLo = z - clearance, zHi = z + clearance;
+
+  const markTriangle = () => {
+    if (Math.min(A.z, B.z, C.z) > zHi || Math.max(A.z, B.z, C.z) < zLo) return;
+    // Polar bounds of the triangle's xy projection, then point-in-triangle
+    // per cell inside them.
+    const xs = [A.x, B.x, C.x], ys = [A.y, B.y, C.y];
+    const xLo = Math.min(...xs), xHi = Math.max(...xs);
+    const yLo = Math.min(...ys), yHi = Math.max(...ys);
+    const spansOrigin = xLo <= 0 && xHi >= 0 && yLo <= 0 && yHi >= 0;
+    const corners = [[xLo, yLo], [xLo, yHi], [xHi, yLo], [xHi, yHi]];
+    const rFar = Math.max(...corners.map(([x, y]) => Math.hypot(x, y)));
+    const cx = Math.min(Math.max(0, xLo), xHi), cy = Math.min(Math.max(0, yLo), yHi);
+    const rNear = spansOrigin ? 0 : Math.hypot(cx, cy);
+    let i0 = Math.floor((rNear - rMin) / dr), i1 = Math.ceil((rFar - rMin) / dr);
+    if (i1 < 0 || i0 > nR - 1) return;
+    i0 = Math.max(0, i0); i1 = Math.min(nR - 1, i1);
+    // Marking is INTERIOR FILL + EDGE WALK, and it needs to be both.
+    //
+    // Centre-test fill alone silently misses anything thinner than a cell —
+    // at r 35 with nAz 120 a cell spans 1.83 units while a 0.4 rod subtends
+    // 0.65°, so the rod vanishes between samples. That is §35's ray-bundle
+    // blind spot rebuilt in polar coordinates.
+    //
+    // Marking the whole polar bounding box instead is safe but far too blunt:
+    // a tessellated rim is long chord triangles whose polar AABB reaches well
+    // past the part, and on the dial-sheet control that ate three units of
+    // genuinely free space outside r 39.49 and reported NOTHING free.
+    //
+    // So: fill the interior by cell centre, then walk the three edges and
+    // mark every cell they pass through. A sliver too thin to contain a cell
+    // centre is still caught, because its edges cross the cells it occupies.
+    const mark = (x, y) => {
+      const r = Math.hypot(x, y);
+      const i = Math.floor((r - rMin) / dr);
+      if (i < 0 || i >= nR) return;
+      const j = ((Math.floor(Math.atan2(y, x) / dAz) % nAz) + nAz) % nAz;
+      occ[i * nAz + j] = 1;
+    };
+    // interior
+    const d0 = (B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y);
+    if (Math.abs(d0) > 1e-12) {
+      for (let i = i0; i <= i1; i++) {
+        const r = rMin + (i + 0.5) * dr;
+        for (let j = 0; j < nAz; j++) {
+          const idx = i * nAz + j;
+          if (occ[idx]) continue;
+          const th = (j + 0.5) * dAz, px = r * Math.cos(th), py = r * Math.sin(th);
+          const u = ((B.y - C.y) * (px - C.x) + (C.x - B.x) * (py - C.y)) / d0;
+          const v = ((C.y - A.y) * (px - C.x) + (A.x - C.x) * (py - C.y)) / d0;
+          if (u >= 0 && v >= 0 && u + v <= 1) occ[idx] = 1;
+        }
+      }
+    }
+    // edges — step finer than one cell in whichever direction is tighter
+    for (const [P, Q] of [[A, B], [B, C], [C, A]]) {
+      const len = Math.hypot(Q.x - P.x, Q.y - P.y);
+      if (len < 1e-9) { mark(P.x, P.y); continue; }
+      const rNearSeg = Math.max(Math.min(Math.hypot(P.x, P.y), Math.hypot(Q.x, Q.y)), 1e-3);
+      const step = Math.max(0.5 * Math.min(dr, rNearSeg * dAz), 0.01);
+      const steps = Math.min(Math.ceil(len / step), 4000);
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        mark(P.x + (Q.x - P.x) * t, P.y + (Q.y - P.y) * t);
+      }
+    }
+  };
+
+  let poses = 0;
+  for (const axis of axes) {
+    for (let s = 0; s < perAxis; s++) {
+      clock.setPose(axis.pose(s / Math.max(1, perAxis - 1)));
+      clock.scene.updateMatrixWorld(true);
+      clock.scene.traverse((o) => {
+        if (!o.isMesh || skip.has(o)) return;
+        box.setFromObject(o);
+        if (box.min.z > zHi || box.max.z < zLo) return;   // broad phase on the slab only
+        const pos = o.geometry.getAttribute('position');
+        const index = o.geometry.getIndex();
+        const n = index ? index.count : pos.count;
+        for (let t = 0; t < n; t += 3) {
+          const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+          A.fromBufferAttribute(pos, a).applyMatrix4(o.matrixWorld);
+          B.fromBufferAttribute(pos, b).applyMatrix4(o.matrixWorld);
+          C.fromBufferAttribute(pos, c).applyMatrix4(o.matrixWorld);
+          markTriangle();
+        }
+      });
+      poses++;
+      if (poses % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
+  // Dilate by the clearance: radially a fixed cell count, angularly an
+  // r-dependent one (the same arc is fewer cells further out).
+  const grown = new Uint8Array(occ);
+  const kR = Math.ceil(clearance / dr);
+  for (let i = 0; i < nR; i++) {
+    const r = rMin + (i + 0.5) * dr;
+    const kA = Math.ceil(clearance / Math.max(r * dAz, 1e-6));
+    for (let j = 0; j < nAz; j++) {
+      if (!occ[i * nAz + j]) continue;
+      for (let di = -kR; di <= kR; di++) {
+        const ii = i + di; if (ii < 0 || ii >= nR) continue;
+        for (let dj = -kA; dj <= kA; dj++) grown[ii * nAz + ((j + dj) % nAz + nAz) % nAz] = 1;
+      }
+    }
+  }
+
+  // A ring is usable only if EVERY azimuth at that radius is clear.
+  const perRadius = [];
+  for (let i = 0; i < nR; i++) {
+    let blocked = 0;
+    for (let j = 0; j < nAz; j++) if (grown[i * nAz + j]) blocked++;
+    perRadius.push({ r: +(rMin + (i + 0.5) * dr).toFixed(3), freeFrac: +(1 - blocked / nAz).toFixed(4) });
+  }
+  const bands = [];
+  let run = null;
+  for (const row of perRadius) {
+    if (row.freeFrac === 1) { if (!run) run = { from: row.r, to: row.r }; else run.to = row.r; }
+    else if (run) { bands.push(run); run = null; }
+  }
+  if (run) bands.push(run);
+  for (const b of bands) b.width = +(b.to - b.from + dr).toFixed(3);
+  bands.sort((a, b) => b.width - a.width);
+
+  clock.resetInputs();
+  return {
+    z, rMin, rMax: rHi, dr, nAz, clearance, posesSampled: poses,
+    freeRings: bands,
+    widestFreeRing: bands[0] ?? null,
+    tightestOccupied: perRadius.filter((p) => p.freeFrac < 1).sort((a, b) => b.freeFrac - a.freeFrac).slice(0, 8),
+    perRadius,
+  };
+}
+
 const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
+  freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
   inspection: (clock, opts) => runInspection(clock, opts),
   support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
