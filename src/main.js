@@ -6499,9 +6499,13 @@ const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   //
 // measured 0.159 above the arm at rest and 0.19 when armed: the linkage moved
 // correctly and never touched anything, which is the same class of lie as a
 // wheel meshing across empty space.
-// MEASURED residual. Deriving the foot as (arm top - one travel) assumed the
-// tick lifts the rod by exactly ALARM_SEL_TRAVEL at rest; it does not quite,
-// and the rod still hovered 0.079 at the armed end.
+// MEASURED residual -- see TODO.md item 9. Deriving the foot as (arm top - one
+// travel) assumed the tick lifts the rod by exactly ALARM_SEL_TRAVEL at rest;
+// it does not quite, and the rod still hovered 0.079 at the armed end. This is
+// standing rule 1's failure case and is filed as debt, not defended: the arm's
+// contact tracks the rod 1:1 only at r = travel/sin(travel/0.35) = 0.368
+// against the 0.28 built, but forcing that radius measured WORSE (spread
+// 0.031 -> 0.077), so the divisor is the thing to understand first.
 const ALARM_LINK_ROD_SEAT = 0.079;   // measured hover at the armed extreme
 const ALARM_LINK_ROD_FOOT = ALARM_LINK_CRANK_TOP - ALARM_SEL_TRAVEL - ALARM_LINK_ROD_SEAT;
 const ALARM_LINK_BEAK_OFF = (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity

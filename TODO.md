@@ -232,6 +232,43 @@ arc wedges for levers, the fan for the chain.
 linkage; it wants generalising into the battery so pair checks become
 pose-independent volume tests that cannot under-sample.
 
+## 9. `ALARM_LINK_ROD_SEAT` is measured, not derived
+
+The alarm selector rod's foot is derived from the crank arm's own top
+face (`ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2`) minus one
+`ALARM_SEL_TRAVEL` — the reasoning being that the tick lifts the rod by
+exactly one travel at rest, so building it one travel low puts the foot
+on the arm when disarmed and drives it down with the arm as it arms.
+
+That reasoning is wrong by 0.079, and `ALARM_LINK_ROD_SEAT = 0.079` is
+the leftover, read off the model and pasted back in. It is standing rule
+1's exact failure case: a number that is there because it made the
+picture right. It is commented as MEASURED so it cannot be mistaken for
+a constraint, but the comment is a confession, not a fix.
+
+**What is actually unknown**: why the lift is not one travel. The tick
+sets `shaft.rotation.x = ALARM_LINK_CRANK_PHASE - (ALARM_SEL_TRAVEL /
+0.35) * alarmSelShownT`, so the arm's contact point moves
+`r·sin(travel/0.35)` while the rod moves `travel`. Those agree only at
+`r = travel / sin(travel / 0.35) = 0.368`; the arm is built with its top
+face at 0.28, a ~16% shortfall. The residual is the tracking error, and
+the two extremes therefore cannot both be zero — which is why closing
+one end opened the other.
+
+**What was tried and did not work**: setting the arm's radius to 0.368
+so the contact tracks 1:1. Measured, that made it WORSE — the spread
+between the disarmed and armed gaps went from 0.031 to 0.077. So the
+0.35 in the tick's divisor, or the assumption that `alarmSelShownT` runs
+the full 0→1, is also not what it appears to be. That is the thread to
+pull, and it should be pulled before the radius is touched again.
+
+Until then the residual is carried at the REST end on purpose: slack
+there shows as a gap, slack at the armed end would be penetration.
+
+Measured on the current build: 0.07 disarmed, 0.039 armed, no
+penetration. Note the battery cannot see any of this — every part
+involved belongs to the `Alarm link` unit, which is item 5.
+
 ## Recently closed
 
 - **The alarm could not ring under fast-forward** (was item 8). The whole
