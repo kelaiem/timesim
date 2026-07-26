@@ -3405,3 +3405,34 @@ parts**, published for triage per the entry:
 
 The gate for these arrives only after the owner's triage declares the
 exceptions — §36 part two's precedent, followed.
+
+## §50 part two — The triage, and the gate
+
+All 108 horological violations dispositioned; none deleted. Three bins:
+
+**Cleared legitimately by kind (2).** The maintaining spring (0.052 mm)
+and the alarm pin spring (0.0525) are real flat springs — declared
+`spring`, they clear the cited 0.03 floor on merit. Three alarm pins
+were also honestly redeclared `pivot`, though two still sit under even
+that floor and fall into the debt.
+
+**TODO 11 — the alarm work, 76 rows.** Quarter-to-half-scale stock
+(0.015–0.10 mm) across fourteen units, the feeler spring at half the
+real-spring floor. Not a bulk scale-up: §29 bought the alarm's z
+corridor *with thickness*, so thickening in place overflows the corridor
+— the fix re-buys z, a design task.
+
+**TODO 12 — the 0.05–0.12 band, 30 rows.** Correct horology at the thin
+edge: the going-train stragglers, the minute jumper, small-seconds and
+set-up furniture — and the balance cock's ×9, identified by probe before
+disposition (the entry's own discipline): its **jewel assembly** (ruby
+disc 0.0675 where real cap jewels run 0.3+, gold chaton ring 0.0525,
+setting plates) and regulator furniture. A ~20–45% per-part thickening
+toward each part's free side.
+
+**A waiver is accepted debt, not a pass**: the row stays in the report
+under `waived` with its TODO citation, and deleting the waiver is part
+of closing the item. With every row dispositioned, the horological tier
+flipped from report to gate per the entry's order: `stockFloor` now
+passes only at **0 degenerate and 0 unwaived**, and joined standing
+rule 4. Verified: `ok: true`, 106 waived (76 + 30), fresh boot silent.

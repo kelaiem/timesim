@@ -40,7 +40,9 @@ someone who wasn't in the conversation; match that.
    violations, full `inspection { includeExcluded: true }` 0 FORBIDDEN,
    and `sweptOverlap` **0 CONFIRMED** (§36 job B — hull overlaps are
    pose-confirmed before they count; `tight` and `refuted` rows are
-   reports, not failures).
+   reports, not failures), and `stockFloor` **0 degenerate and 0
+   unwaived** (§50 — a waived row is accepted debt citing its TODO
+   item, visible in the report).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved

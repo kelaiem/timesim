@@ -326,6 +326,48 @@ names two UNITS and leaves the actual surfaces to guesswork.
 
 Found while verifying §35; pre-existing and unrelated to that branch.
 
+## 11. The alarm work is built at quarter-to-half-scale stock
+
+§50's floor found it and the census had already predicted it: **every
+alarm unit carries stock at 0.015–0.10 mm against the 0.12 mm wheel
+floor** — the feeler spring at 0.015 (HALF the cited real-spring floor
+of 0.03), the disc's selector fingers at 0.0187, the selector ring and
+face cam at 0.0375, the column wheel at 0.0825, ~50 meshes in all
+across fourteen units (including the alarm heart riding the Hour wheel).
+
+**Why it is not a bulk scale-up.** §29's re-stratification bought the
+alarm's z corridor **with thickness** — these parts are thin because
+the dial-side band they occupy is thin. Thickening them in place
+overflows the corridor §29 solved; the honest fix re-buys z (a
+different stratification, or accepting a taller movement) and is a
+design task, not a multiplier.
+
+Waived in `checkStockFloor` as accepted debt citing this item; the
+waiver keeps every row visible in the report. Closing this item means
+the alarm units clear their floors and their waivers are DELETED.
+
+## 12. The 0.05–0.12 band wants a ~20–45% thickening
+
+The mild tier of §50's findings: parts that are correct horology built
+at the thin edge, or slightly under it. ~30 meshes across twelve units:
+
+- **Going-train stragglers** at 0.0825–0.1125 — escape wheel, balance
+  arm, fusee detail, hour wheel — the "wants ~20%, not a redesign"
+  class §50 predicted.
+- **The balance cock's jewel assembly** (identified by probe: the ruby
+  jewel disc at 0.0675 where real cap jewels run 0.3+, its gold chaton
+  ring at 0.0525, setting plates) and its regulator furniture (index
+  arm, scale plate at 0.0825).
+- Minute jumper (0.0693–0.1125), small-seconds furniture (0.0788),
+  set-up work plates (0.0675), reset hammer and power-reserve pieces at
+  the 0.1125 standard slab.
+
+Mostly independent, per-part thickenings; the constraint to respect is
+each part's own clearance chain (thicken toward free space, and the
+battery says which side is free). Waived in `checkStockFloor` citing
+this item; rows stay visible; closing means thickening and deleting the
+waivers.
+
 ## Recently closed
 
 - **The alarm could not ring under fast-forward** (was item 8). The whole
