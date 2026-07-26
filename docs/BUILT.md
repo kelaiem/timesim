@@ -2944,3 +2944,77 @@ did **not** complete — including `Three-quarter plate` and `Alarm disc`
 took it past 194 s where the pusher's four-unit run took 11 s. The
 pusher result above is clean and unaffected, but this crown resize is
 **not** battery-verified.
+
+## §40 — Stock census: the thinnest feature on every part, in millimetres
+
+### What it is, and pointedly is not
+
+`stockCensus(clock)` returns one ranked, thinnest-first list — every
+part's thinnest dimension in mm. **It reports; it does not gate.** No
+minimum, nothing fails, no part is called illegal. A thickness gate on a
+movement this developed would arrive with violations and be switched
+off (§36 part two arrived with 17), and a floor would take a side in the
+live thinning-for-z argument that §2 owns. The report hands the numbers
+to whoever is making that call.
+
+The measure is **`min(axial extent, radial extent)`** — the thinnest way
+through the part. Kind-agnostic by construction: a rod has a small
+radial extent, a wheel a small axial one, and the minimum picks the
+right dimension for each without a classifier to be confidently wrong.
+
+Sourced from §36's registry, not a second scan, so the census and the
+overlap check cannot disagree about a part. Each row states its ruler:
+
+- `revolve` — faithful: `rBand`/`zBand` are real vertex extents.
+- `static` — the mesh's own exact bbox (a part that never moves has one;
+  the *better* ruler, not a fallback).
+- `approx` — **not measured**, listed with the reason: that box spans
+  every pose, so its extents are motion, not stock.
+
+Header states: pivots are **bodies only** unless modelled as separate
+meshes; every *part* is named while unnamed meshes are identified by
+unit + dimensions; nothing here can fail the battery.
+
+### What it took to make honest — four failures, in order
+
+1. **Not reproducible** — 468 rows, then 475, same page. The registry
+   depended on session state and on rAF frames racing the sweep's
+   yields; fixed upstream (canonical state + the sweep hold), and that
+   fix retroactively explains §36 job A's "noise". Now two consecutive
+   runs are identical, 416 = 416.
+2. **Zero-thickness rows ranked first.** A cylinder wall has every
+   vertex at one radius, so its r-band width is 0 — an open surface in
+   the mesh, not thin stock. Ranking "0.0000 mm" first presents a
+   modelling artefact as the thinnest part in the movement. Moved to
+   not-measured with the reason.
+3. **Double counting.** Units nest, so `Alarm disc / alarmIndexLine`
+   also appeared as `Dial / alarmIndexLine` (TODO 10's attribution
+   overlap, inherited). Deduped by mesh **object**, attributed to the
+   nearest-ancestor unit — walked, not assumed.
+4. **Unnamed meshes.** The part level is fully named (46 parts); mesh
+   naming is a model campaign, not a census change, and the header says
+   which identification a row carries.
+
+### The report (current main)
+
+416 rows, 46 parts, 34 not measured. Thinnest per part:
+
+| mm | part |
+|---|---|
+| **0.0075** | Alarm disc (`alarmIndexLine`) |
+| **0.0150** | Alarm release feeler (`alarmFeelerSpring`) |
+| 0.0375 | Alarm selector |
+| 0.0375 | Alarm setting wheel |
+| 0.0450 | Alarm setting idler |
+| 0.0487 | Alarm barrel |
+
+Set against real going-train wheels at roughly 0.10–0.15 mm, the thin
+end is exactly where the entry predicted: the alarm work, thinned to buy
+z. The two extremes deserve a word: the 0.0075 mm `alarmIndexLine` is a
+printed index modelled as relief — geometry, faithfully reported, though
+arguably marking rather than stock — and the feeler spring at 0.0150 mm
+is a real blade at a fifth of the thinnest plausible spring steel. The
+census does not judge either; that is the job it was scoped not to do.
+
+§41's monogram strokes (0.249 mm) sit comfortably above all of this,
+answering the question that entry deferred here.

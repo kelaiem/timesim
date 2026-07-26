@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM } from './layout.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -2685,6 +2685,129 @@ export function fingerprintDiff(before, after) {
 //
 //   start(clock, 'sweptOverlap');
 //
+// §40 — STOCK CENSUS. The thinnest dimension carried by every part, in mm.
+//
+// THIS REPORTS. It does not gate. No minimum is declared, nothing fails, no
+// part is called illegal — deliberately, for two reasons the entry gives: a
+// hard thickness gate on a movement this developed would be switched off (§36
+// part two arrived with 17 artifact violations), and a floor would take a side
+// in the live argument about thinning parts to buy z that §2 is still having.
+// A report hands the numbers to whoever is making that call.
+//
+// THE MEASURE is min(axial extent, radial extent) — the thinnest way through
+// the part. That is kind-agnostic by construction, and it is the whole trick:
+// a rod has a small radial extent and a long axial one, a wheel the reverse,
+// so the minimum picks the right dimension for each WITHOUT anyone declaring
+// which is which. No `kind` field to be confidently wrong about a thin arbor.
+//
+// SOURCED FROM §36's REGISTRY, not a second scan, so the census and the
+// overlap check cannot disagree about the same part. What each hull kind can
+// honestly answer differs, and the output says which was used:
+//
+//   revolve — FAITHFUL. rBand and zBand are real vertex extents measured
+//             across poses, so radial width and axial height are the part's
+//             own stock. True even when the hull is a full revolve: the
+//             angular span is conservative, the r and z bands are not.
+//   static  — measured from the mesh's OWN bounding box instead. A static
+//             hull records only a zBand, and a part that never moves has an
+//             exact bbox, so this is the more faithful ruler, not a fallback.
+//   approx  — NOT MEASURED, and listed as such. That box spans every pose, so
+//             its extents are inflated by motion; reporting it as stock is
+//             exactly the "swept wedge in the list as though it were stock"
+//             the entry forbids.
+//
+// PIVOTS: the census is per MESH, so a stepped arbor is covered per section
+// only if its pivots are modelled as separate meshes. Where they are not, this
+// measures BODIES ONLY and the header says so — a list that silently omits the
+// thinnest feature on a part is the confident-but-incomplete artifact this
+// project keeps closing.
+export async function stockCensus(clock, opts = {}) {
+  const reg = await buildSweptRegistry(clock, opts);
+  const rows = [], unmeasured = [];
+  const box = new THREE.Box3();
+  // DEDUPE BY MESH, keeping the most specific unit. Units nest — 'Alarm disc'
+  // is a labelled child inside the 'Dial' subtree, so collectUnits hands the
+  // same mesh to both and the registry carries a volume for each. Left alone,
+  // the census listed physical parts twice (the attribution overlap TODO 10
+  // records for the minute star), corrupting every count and any ranking read
+  // per part. The most specific unit is the one whose labelled object is the
+  // NEAREST ANCESTOR of the mesh — walked, not assumed from list order.
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();
+  for (const v of reg._volumes) {
+    const prev = byMesh.get(v.mesh);
+    if (!prev || hops(v.mesh, v.unit) < hops(v.mesh, prev.unit)) byMesh.set(v.mesh, v);
+  }
+  for (const v of byMesh.values()) {
+    const name = v.mesh.name || '(unnamed)';
+    if (v.kind === 'approx') {
+      unmeasured.push({ part: v.unit, mesh: name,
+        why: 'approx hull — box spans every pose, so its extents are motion, not stock' });
+      continue;
+    }
+    let axial = null, radial = null, source;
+    if (v.kind === 'revolve') {
+      axial = v.zBand[1] - v.zBand[0];
+      radial = v.rBand[1] - v.rBand[0];
+      source = 'registry-revolve';
+    } else {
+      // static: the mesh's own world bbox is exact because it never moves.
+      v.mesh.geometry.computeBoundingBox();
+      box.copy(v.mesh.geometry.boundingBox).applyMatrix4(v.mesh.matrixWorld);
+      axial = box.max.z - box.min.z;
+      radial = Math.min(box.max.x - box.min.x, box.max.y - box.min.y);
+      source = 'geometry-static';
+    }
+    const via = axial <= radial ? 'axial' : 'radial';
+    const thin = Math.min(axial, radial);
+    // A zero (or effectively zero) extent is not thin stock — it is an OPEN
+    // SURFACE in the mesh: a cylinder wall has every vertex at one radius, so
+    // its r-band width is 0, and a flat ring has zero axial height. Real stock
+    // cannot be zero thick; a mesh's can, and ranking it first as "0.0000 mm"
+    // presents a modelling artefact as the thinnest part in the movement.
+    // Listed as not-measured with the reason, per the entry's rule that the
+    // report says so wherever its ruler is wrong.
+    if (!(thin > 1e-3) || !isFinite(thin)) {
+      unmeasured.push({ part: v.unit, mesh: name,
+        why: `zero-thickness ${via} extent — open surface in the mesh, not stock` });
+      continue;
+    }
+    rows.push({ part: v.unit, mesh: name, via, source,
+      thinnestUnits: +thin.toFixed(4), thinnestMM: +(thin * UNIT_MM).toFixed(4),
+      axialUnits: +axial.toFixed(4), radialUnits: +radial.toFixed(4) });
+  }
+  // Thinnest first. Ties broken by name so the ORDER is reproducible too, not
+  // just the values — the entry asks for a reproducible report, and a stable
+  // sort over equal keys is part of that.
+  rows.sort((a, b) => a.thinnestUnits - b.thinnestUnits ||
+    a.part.localeCompare(b.part) || a.mesh.localeCompare(b.mesh));
+  unmeasured.sort((a, b) => a.part.localeCompare(b.part) || a.mesh.localeCompare(b.mesh));
+  // One row per PART, thinnest section standing for it, alongside the full list.
+  const byPart = new Map();
+  for (const r of rows) if (!byPart.has(r.part)) byPart.set(r.part, r);
+  return {
+    header: {
+      unitMM: UNIT_MM,
+      measure: 'min(axial extent, radial extent) — the thinnest way through the part',
+      source: "§36 registry (revolve r/z bands); static parts from their own exact bbox",
+      pivots: 'BODIES ONLY unless a pivot is modelled as its own mesh — the census is per mesh and does not subdivide an arbor',
+      gates: 'none — this report cannot fail the battery',
+      counted: rows.length, notMeasured: unmeasured.length,
+      dedupe: 'one row per MESH, attributed to its most specific (nearest-ancestor) unit — nested units otherwise list the same part twice',
+      naming: 'every PART (unit) is named; individual meshes are named only where the model names them — an (unnamed) row is identified by its unit and dimensions',
+    },
+    thinnestFirst: rows,
+    perPart: [...byPart.values()],
+    notMeasured: unmeasured,
+  };
+}
+
 export async function checkSweptOverlap(clock, opts = {}) {
   // includeDeclared: run WITHOUT the EXPECTED/IGNORED opt-outs. Only for
   // validating the check itself — on a clean movement a violation count of
