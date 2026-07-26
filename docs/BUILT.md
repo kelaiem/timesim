@@ -2413,3 +2413,90 @@ declared ARC would not help. They want a hull of their own. That, plus
 the declared travels for genuine oscillators (`FORK_BANK_DEG`, the
 balance amplitude), is the declaration surface, and this check is the
 instrument that will measure whether it worked.
+
+## §39 — `UNIT_MM`: pin the scale, don't choose it
+
+**The question this answers.** Is this a wristwatch or a mantel clock?
+The model had no unit→mm mapping, so nothing on screen could state a
+real size without inventing one.
+
+### The trap, which is what the entry is really about
+
+The obvious definition is "pick the scale that puts the case under
+40 mm" — §2's target. That is **circular**: it makes the size target
+true by construction and tests nothing. Any scale can be made to
+satisfy a budget you also chose.
+
+So the scale is pinned to the one dimension here that is a
+**manufactured standard** rather than a style choice — fusee chain
+pitch. Real fusee chain runs ~0.30 mm rivet-to-rivet, and the tolerance
+is narrow because the chain has to sit in a groove cut to match it:
+
+```js
+export const CHAIN_PITCH    = 0.8;                         // units, geometry
+export const CHAIN_PITCH_MM = 0.30;                        // REAL, manufactured
+export const UNIT_MM        = CHAIN_PITCH_MM / CHAIN_PITCH; // 0.375 mm/unit
+```
+
+`CHAIN_PITCH` moved from `main.js` into `layout.js` so the geometry and
+the scale cannot drift apart — the chain the model draws and the chain
+the scale is pinned to are now one constant.
+
+**Independent cross-check.** §2's mapping study proposed ~0.38 mm/unit
+by eye from overall proportions. This derivation lands at 0.375, from a
+completely different direction. Two methods agreeing to within 1.5% is
+the argument for the number; neither alone would be.
+
+### Everything else became a prediction
+
+Because the scale came from the chain, the movement's real dimensions
+are now falsifiable outputs, asserted at the end of the build:
+
+| quantity | units | mm | envelope |
+|---|---|---|---|
+| plate diameter | 85.85 | **32.2** | 20–40 |
+| balance diameter | 21.7 | **8.1** | 6–13 |
+| assembly depth | 25.94 | **9.7** | 2.5–12 |
+
+All three pass, and none was tuned to. The envelopes are deliberately
+**wide**: a narrow range would just be this model's current numbers
+written down twice, which asserts nothing. Verified falsifiable — the
+plate check passes at 0.375 and fails at both 0.20 and 0.60.
+
+The chain pitch itself is deliberately **not** asserted against its own
+real-world value; that would be the circularity the entry exists to
+avoid. What is checked is that the geometry still reproduces it.
+
+### Two numbers this corrected
+
+- §2 quoted an **87.4-unit plate**; it measures **85.85**.
+- §2 quoted a balance of **≈ 10 mm**; it is **8.1**.
+
+And one it did *not* correct, because they are different quantities:
+§2's "z-stack ≈ 18.6 units" is the going-train plate stack, while the
+assert measures **overall assembly depth** — 25.94 units, spanning the
+hands standing off the dial (the `Dial` unit reaches z −13.84, well past
+`Z_DIAL = −7`) up to the alarm barrel at +12.1. That is what a case has
+to swallow, so it is the one worth asserting; calling it "movement
+thickness" would have quietly conflated the two.
+
+### On screen
+
+The axes legend (added with §35's rod work) now carries the scale as
+well as the directions:
+
+```
+arm 49.4 u = 18.5 mm · 1 u = 0.375 mm · ⌀32.2 mm plate, 9.7 mm deep
+```
+
+The arm length is the `AxesHelper`'s own, so the legend is a readable
+ruler rather than a caption. Showing mm is only honest **because**
+`UNIT_MM` is pinned and asserted — before §39 the same text would have
+been decoration, which is precisely what §21 warned against.
+
+### What this unblocks
+
+§21 (scale reference — silhouette overlay, stats line) was parked
+"behind §2", i.e. behind a large deferred compaction job. What it
+actually needed was one asserted constant. §2 keeps the compaction work
+and can now, for the first time, measure its own "≤ 40 mm" target.

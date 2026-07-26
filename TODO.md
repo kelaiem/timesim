@@ -269,6 +269,63 @@ Measured on the current build: 0.07 disarmed, 0.039 armed, no
 penetration. Note the battery cannot see any of this — every part
 involved belongs to the `Alarm link` unit, which is item 5.
 
+## 10. `Minute jumper ⇄ Dial` measures exactly 0.1500 and nobody knows which surface sets it
+
+The pair is the tightest in the battery: **min 0.1500, required 0.15**.
+`measureClearance` rounds to 4 decimals (neighbouring pairs report
+0.2489, 0.1908), so that is the true value, not display rounding.
+
+Three facts, all verified:
+
+- The tight plane is **intentional**. The keyless/motion/reserve stacks
+  leave no clear corridor along the post→tail-pin span, so the lifter
+  plane is solved to bind on the margin:
+  `Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS + JMP_LIFTER_T/2`.
+- `required: 0.15` is not the generic `CLEAR_MARGIN` falling through —
+  it is an explicit per-pair budget row in `inspect.js`
+  (`{ a: 'Minute jumper', b: 'Dial', min: 0.15, axes: [...] }`).
+- The minute star is collected into **both** `Dial` and `Motion works`
+  (confirmed by walking mesh ancestors against `labelEntries`). This is
+  already known and handled: `['Minute jumper', 'Dial']` is in
+  `EXPECTED_PAIRS` and its comment says so in as many words.
+
+**The open question.** `JMP_BIND_EPS = 0.01` exists so a solved-to-bind
+plane cannot flicker into a false violation on a float hair. If it
+reached the measured contact this pair would read 0.16. It reads
+0.1500. So either:
+
+1. the binding contact is **not** the lifter bar's dial-side face — most
+   likely the beak seated in the star, which is an INTENDED contact and
+   would make 0.15 a seat depth rather than a clearance, leaving the
+   epsilon correct but irrelevant to this number; or
+2. the epsilon is lost between the derivation and the mesh.
+
+Under (1) there is no defect here at all, only a misleading row. Under
+(2) the guard does not guard. **These have not been distinguished**, and
+the difference decides whether this entry is a bug or a documentation
+fix.
+
+**What settles it**: the identity of the closest mesh pair at
+`beat f=0`. Three attempts failed, recorded so they are not repeated:
+
+- World-AABB nearest-pair — returns 0 for any two overlapping boxes.
+  A beak sitting near a star tooth overlaps in AABB with a real gap
+  between the surfaces. This is the same error that once reported the
+  alarm hand 0.32 from the markers when the true vertex radius was 0.96.
+- `three-mesh-bvh` `closestPointToGeometry` driven by hand — returned
+  distance 0 for every pair including obviously distant ones, so the
+  call or the geometry-to-BVH matrix was wrong.
+- `inspect.js` does not export `collectUnits`, and `measureClearance`
+  returns only `{min, at}` — the battery knows the answer internally and
+  does not surface it.
+
+The cheap fix is to make the battery report it: have `measureClearance`
+carry the mesh names of the minimum through to its result. That is
+useful well beyond this row — every tight pair in the report currently
+names two UNITS and leaves the actual surfaces to guesswork.
+
+Found while verifying §35; pre-existing and unrelated to that branch.
+
 ## Recently closed
 
 - **The alarm could not ring under fast-forward** (was item 8). The whole

@@ -27,6 +27,7 @@ import {
   solveLayout,
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
+  CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -2773,7 +2774,8 @@ let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMo
 // stay parallel to the arbors the whole way round (cone wrap, span and
 // drum coil alike, as on the real thing), so the plates lie flat in the
 // coil and successive turns clear each other at the 0.65 coil pitch:
-const CHAIN_PITCH = 0.8;    // rivet-to-rivet along the chain
+// CHAIN_PITCH now lives in layout.js — §39 pins the whole unit→mm scale to it,
+// so the geometry and the scale cannot drift apart.
 const CHAIN_PIN_LEN = 0.62; // total stack height — inside the 0.65 coil pitch
 const CHAIN_PLATE_T = 0.11;
 // One template per part, kept as raw non-indexed arrays so a rebuild is a
@@ -7072,6 +7074,13 @@ panel.innerHTML = `
       <div class="row label-small" id="axes-key" style="display:none; opacity:0.75;">
         <span>X red · Y green · Z blue (movement axis)</span>
       </div>
+      <!-- §39: the legend states the SCALE as well as the directions. Each
+           axis arm is a known length, so this is a readable ruler, not a
+           caption. mm is shown because UNIT_MM is pinned to fusee chain pitch
+           and asserted at build — before §39 it would have been decoration. -->
+      <div class="row label-small" id="axes-scale" style="display:none; opacity:0.75;">
+        <span></span>
+      </div>
       <div class="row">
         <span class="label-small">Exploded view</span>
         <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" />
@@ -7730,6 +7739,9 @@ function setLabels(on) {
 }
 document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
 
+// §39 fills this at the end of the build; the axes key reads it.
+let scaleReadout = null;
+
 // Orientation legend (world axes at the movement's origin). Sized to the plate
 // so it reads at any framing, and drawn on top of the geometry so it is never
 // buried inside the movement — it is a reference, not a part.
@@ -7748,6 +7760,14 @@ function setAxes(on) {
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
   document.getElementById('axes-key').style.display = on ? '' : 'none';
+  const scaleRow = document.getElementById('axes-scale');
+  scaleRow.style.display = on ? '' : 'none';
+  if (on) {
+    const arm = plateR * 1.15;   // the AxesHelper's arm length, above
+    scaleRow.firstElementChild.textContent =
+      `arm ${arm.toFixed(1)} u = ${MM(arm).toFixed(1)} mm · 1 u = ${UNIT_MM.toFixed(3)} mm` +
+      (scaleReadout ? ` · ⌀${scaleReadout.plateMM.toFixed(1)} mm plate, ${scaleReadout.movMM.toFixed(1)} mm deep` : '');
+  }
 }
 document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
 
@@ -10146,6 +10166,57 @@ function tick(t) {
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
 assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete
+
+// §39 — the SIZE PREDICTIONS. UNIT_MM is pinned to fusee chain pitch (see
+// layout.js), so none of these three numbers was tuned to come out right.
+// They are the falsifiable half of that pin: if the scale is wrong, or the
+// movement drifts away from watch proportions, this is what says so.
+//
+// Ranges are real-movement envelopes, deliberately WIDE. A narrow range would
+// just be this model's current numbers written down twice, which asserts
+// nothing — the check has to be able to fail.
+{
+  const box = new THREE.Box3();
+  const unitBox = (name) => {
+    const e = labelEntries.find(l => l.name === name);
+    return e ? box.setFromObject(e.obj).clone() : null;
+  };
+  scene.updateMatrixWorld(true);
+
+  // 1. Case/plate diameter — §2's "≤ 40 mm case" target. This is now a real
+  //    test rather than a definition, BECAUSE the scale came from the chain.
+  const plateMM = MM(plateR * 2);
+  if (!(plateMM >= 20 && plateMM <= 40))
+    console.warn(`§39: plate ${plateMM.toFixed(1)} mm outside the 20–40 mm movement envelope (${(plateR * 2).toFixed(2)} units at ${UNIT_MM} mm/unit)`);
+
+  // 2. Balance diameter. Circular and axis-aligned in z, so the XY extent of
+  //    its box IS the diameter — no vertex walk needed here.
+  const bal = unitBox('Balance');
+  if (bal) {
+    const balMM = MM(Math.max(bal.max.x - bal.min.x, bal.max.y - bal.min.y));
+    if (!(balMM >= 6 && balMM <= 13))
+      console.warn(`§39: balance ${balMM.toFixed(2)} mm outside the 6–13 mm wristwatch envelope`);
+  }
+
+  // 3. OVERALL ASSEMBLY DEPTH — not the same quantity as §2's "z-stack ≈ 18.6
+  //    units". This box spans everything: the hands standing off the dial
+  //    (the Dial unit reaches z −13.84, well past Z_DIAL = −7) up to the alarm
+  //    barrel at +12.1, for 25.94 units. §2's figure is the going-train plate
+  //    stack alone. Both are real; they are just different things, and calling
+  //    this one "movement thickness" would quietly conflate them.
+  //    This is what a case has to swallow, so it is the one worth asserting.
+  const movMM = MM(box.setFromObject(movement).getSize(new THREE.Vector3()).z);
+  if (!(movMM >= 2.5 && movMM <= 12))
+    console.warn(`§39: assembly ${movMM.toFixed(2)} mm deep, outside the 2.5–12 mm envelope`);
+
+  // The chain pitch itself is not asserted — it IS the pin, so checking it
+  // against its own definition would be the circularity this entry exists to
+  // avoid. What is checked is that the geometry still uses it.
+  if (Math.abs(MM(CHAIN_PITCH) - CHAIN_PITCH_MM) > 1e-9)
+    console.warn('§39: the unit→mm pin no longer reproduces the chain pitch it was derived from');
+
+  scaleReadout = { plateMM, movMM, balMM: bal ? MM(Math.max(bal.max.x - bal.min.x, bal.max.y - bal.min.y)) : null };
+}
 refreshUnitOptions(); // …and rebuild the selector now that it is (the boot call above ran a Chain short)
 
 // One frame's worth of simulation, script/sync stepping, camera tween and
