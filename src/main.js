@@ -7041,16 +7041,17 @@ panel.innerHTML = `
         <span class="label-small">Alarm</span>
         <button id="btn-alarm">Off</button>
       </div>
-      <!-- Two readouts, because they are two different quantities and the
-           difference is real. "Hand at" is where the alarm hand physically
-           points — continuous, because the friction coupling has no detent.
-           "Rings at" is when the movement will actually strike, which
-           alarmTargetSeconds() ROUNDS to the nearest quarter-hour mark
-           (alarmMarkIndex: "Not a physical detent"). So a hand resting at
-           3:07 fires at 3:00, and until now the panel showed only the
-           second number under a label that reads like the first. -->
-      <div class="row label-small"><span>Hand at</span><span class="readout" id="readout-alarm-hand" style="font-size:13px;">12:00</span></div>
-      <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">12:00</span></div>
+      <!-- ONE readout, and it is the time the alarm ACTUALLY rings.
+           The trip is geometric: the pin bottoms when the disc's notch
+           floor arrives under it, and the disc angle carries the
+           CONTINUOUS set position. alarmTargetSeconds() — the nearest
+           quarter mark — has no behavioural role at all; it feeds this
+           readout and an inspection getter, nothing else. Showing it
+           here said "Rings at 3:00" while the movement rang at 2:52.
+           The ≈ is the notch floor: the pin bottoms across ~2.76 min of
+           disc travel, so the ring lands within about ±1.4 min of the
+           hand, and claiming to the minute would be its own small lie. -->
+      <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">≈12:00</span></div>
       <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
       <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling">Show</button></div>
       <div class="row"><span class="label-small">The link</span><button id="btn-link">Trace</button></div>
@@ -9170,6 +9171,11 @@ function alarmMarkIndex() {
   // coupling was 1:1).
   return Math.round((alarmSetRot * ALARM_SET_RATIO) / ALARM_MARK_PITCH);
 }
+// NEAREST-MARK CONVENIENCE, NOT A BEHAVIOUR. Nothing in the movement reads
+// this: the release is geometric (the pin bottoming on the disc's notch floor)
+// and runs off the CONTINUOUS set angle. Kept for the inspection surface and
+// for §24's mark vocabulary. It was wired to the panel readout until the panel
+// was found announcing 3:00 for an alarm that rang at 2:52.
 function alarmTargetSeconds() {
   // The nearest quarter mark, wrapped into one 12 h turn.
   const idx = ((alarmMarkIndex() % ALARM_MARK_STEPS) + ALARM_MARK_STEPS) % ALARM_MARK_STEPS;
@@ -10100,14 +10106,10 @@ function advanceFrame(realDt) {
   document.getElementById('readout-time').textContent = formatTime(displayedSeconds());
   // Alarm readout (§24): derived from the disc's detented angle, hours:minutes
   // only (the target is quantized to the quarter hour, so seconds are always 00).
-  document.getElementById('readout-alarm').textContent = formatTime(alarmTargetSeconds()).slice(0, -3);
-  // Where the HAND actually points — derived forward from the disc's angle
-  // (Rule 2), not from the rounded target. The two agree only when the hand
-  // happens to sit on a quarter mark; the gap between them IS the mechanism's
-  // setting resolution, and showing it is the honest alternative to implying
-  // a precision the friction coupling does not have.
-  document.getElementById('readout-alarm-hand').textContent =
-    formatTime((alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S).slice(0, -3);
+  // Derived forward from the disc's own angle (Rule 2) — the same quantity
+  // the trip reads — not from the rounded mark, which the mechanism ignores.
+  document.getElementById('readout-alarm').textContent =
+    '≈' + formatTime((alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S).slice(0, -3);
   document.getElementById('readout-alarm-wind').textContent = Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100) + '%';
   paintScale();
   updateSyncUI();
