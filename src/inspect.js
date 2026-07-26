@@ -1992,9 +1992,265 @@ export async function findFreeAnnulus(clock, {
   };
 }
 
+// ---------------------------------------------------------------------------
+// SWEPT-VOLUME REGISTRY (§36 part one, and the assert §36 requires of it)
+//
+// The debt: §35 burned three built-and-torn-out corridors on probes that could
+// not see what MOVES, and the battery's own axis sampling can pass a wheel
+// spoke between two samples (TODO items 5–7). Every fix so far was a smarter
+// one-off probe. A registry makes it structural: each part declares the hull
+// of its geometry over its whole pose range ONCE, and questions get asked of
+// the hull instead of of a sample.
+//
+// Volumes are DERIVED, not hand-authored — §36 says most of them should be,
+// and a hand table is the thing that rots (§10's four ungrouped units, §16's
+// twice-derived wheel radius). Derivation per mesh:
+//
+//   · Track its world vertices across every axis sample.
+//   · Motionless ⇒ STATIC: the volume is the geometry itself.
+//   · Moves, all vertex z constant, and the motion fits a circle about a
+//     z-parallel axis ⇒ REVOLVE: an annulus sector (centre, r-band, z-band,
+//     θ-range) — exact for a rotation, and pose-INDEPENDENT, which is the
+//     whole point.
+//   · Anything else (the §35 lay shaft turns about a RADIAL axis, the crown
+//     stem about its own) ⇒ APPROX: the union of per-pose bounds, flagged, so
+//     nobody mistakes it for a proven hull.
+//
+// The spoke rule, which is the reason this exists: if a part turns further
+// between two consecutive samples than its own angular width, the samples do
+// NOT overlap and the true swept arc is not their union — it is everything
+// between. Such a part is promoted to a FULL revolve. That is exactly §36's
+// "a revolve fills spoke gaps, which is the right semantics: a corridor must
+// never thread between the spokes of a turning wheel."
+//
+//   start(clock, 'sweptRegistry');
+//
+const THETA_BINS = 2048;                              // 0.0031 rad per bin
+const THETA_BIN_W = (Math.PI * 2) / THETA_BINS;
+const thetaBin = (a) => ((Math.floor(a / THETA_BIN_W) % THETA_BINS) + THETA_BINS) % THETA_BINS;
+
+export async function buildSweptRegistry(clock, {
+  axes = AXES, perAxis = 12, validatePerAxis = 29, eps = 1e-6, yieldEvery = 4,
+} = {}) {
+  const units = collectUnits(clock, { includeExcluded: true });
+  // Sample every mesh's world vertices over a pose set.
+  const samplePoses = async (n) => {
+    const frames = [];
+    for (const axis of axes) {
+      for (let s = 0; s < n; s++) {
+        clock.setPose(axis.pose(s / Math.max(1, n - 1)));
+        clock.scene.updateMatrixWorld(true);
+        const frame = new Map();
+        for (const u of units) for (const m of u.meshes) {
+          const pos = m.geometry.getAttribute('position');
+          const pts = new Float64Array(pos.count * 3);
+          const v = new THREE.Vector3();
+          for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+            pts[i * 3] = v.x; pts[i * 3 + 1] = v.y; pts[i * 3 + 2] = v.z;
+          }
+          frame.set(m, pts);
+        }
+        frames.push(frame);
+        if (frames.length % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+    return frames;
+  };
+
+  const frames = await samplePoses(perAxis);
+
+  // Kåsa algebraic circle fit — centre of the arc a point travels on.
+  const fitCircle = (xs, ys) => {
+    const n = xs.length;
+    let sx = 0, sy = 0;
+    for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; }
+    const mx = sx / n, my = sy / n;
+    let suu = 0, svv = 0, suv = 0, suuu = 0, svvv = 0, suvv = 0, svuu = 0;
+    for (let i = 0; i < n; i++) {
+      const u = xs[i] - mx, v = ys[i] - my;
+      suu += u * u; svv += v * v; suv += u * v;
+      suuu += u * u * u; svvv += v * v * v; suvv += u * v * v; svuu += v * u * u;
+    }
+    const det = 2 * (suu * svv - suv * suv);
+    if (Math.abs(det) < 1e-12) return null;
+    const uc = (svv * (suuu + suvv) - suv * (svvv + svuu)) / det;
+    const vc = (suu * (svvv + svuu) - suv * (suuu + suvv)) / det;
+    const cx = mx + uc, cy = my + vc;
+    let rm = 0; for (let i = 0; i < n; i++) rm += Math.hypot(xs[i] - cx, ys[i] - cy);
+    rm /= n;
+    let resid = 0;
+    for (let i = 0; i < n; i++) resid = Math.max(resid, Math.abs(Math.hypot(xs[i] - cx, ys[i] - cy) - rm));
+    return { cx, cy, r: rm, resid };
+  };
+
+  const volumes = [];
+  for (const u of units) {
+    for (const m of u.meshes) {
+      const series = frames.map((f) => f.get(m));
+      const n0 = series[0].length / 3;
+      // Does it move at all?
+      let moves = false;
+      for (const pts of series) {
+        for (let i = 0; i < pts.length; i++) if (Math.abs(pts[i] - series[0][i]) > eps) { moves = true; break; }
+        if (moves) break;
+      }
+      let zLo = Infinity, zHi = -Infinity;
+      for (const pts of series) for (let i = 2; i < pts.length; i += 3) { if (pts[i] < zLo) zLo = pts[i]; if (pts[i] > zHi) zHi = pts[i]; }
+      if (!moves) {
+        volumes.push({ unit: u.name, mesh: m, kind: 'static', zBand: [zLo, zHi] });
+        continue;
+      }
+      // Planar? (every vertex holds its z)
+      let planar = true;
+      for (const pts of series) { for (let i = 2; i < pts.length && planar; i += 3) if (Math.abs(pts[i] - series[0][i]) > 1e-4) planar = false; if (!planar) break; }
+      // Track one witness vertex's path and fit a circle to it.
+      let fit = null;
+      if (planar) {
+        const wi = 0;
+        const xs = series.map((p) => p[wi * 3]), ys = series.map((p) => p[wi * 3 + 1]);
+        fit = fitCircle(xs, ys);
+        if (fit && (fit.resid > Math.max(1e-3, fit.r * 1e-3) || fit.r < 1e-4)) fit = null;
+      }
+      if (!fit) {
+        let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity;
+        for (const pts of series) for (let i = 0; i < pts.length; i += 3) {
+          if (pts[i] < xLo) xLo = pts[i]; if (pts[i] > xHi) xHi = pts[i];
+          if (pts[i + 1] < yLo) yLo = pts[i + 1]; if (pts[i + 1] > yHi) yHi = pts[i + 1];
+        }
+        volumes.push({ unit: u.name, mesh: m, kind: 'approx', box: [xLo, yLo, zLo, xHi, yHi, zHi] });
+        continue;
+      }
+      // REVOLVE about (cx, cy) ∥ z. r-band and per-frame θ extent.
+      const { cx, cy } = fit;
+      let rLo = Infinity, rHi = -Infinity;
+      const arcs = [];
+      for (const pts of series) {
+        let aLo = Infinity, aHi = -Infinity;
+        const base = Math.atan2(pts[1] - cy, pts[0] - cx);
+        for (let i = 0; i < pts.length; i += 3) {
+          const dx = pts[i] - cx, dy = pts[i + 1] - cy;
+          const r = Math.hypot(dx, dy);
+          if (r < rLo) rLo = r; if (r > rHi) rHi = r;
+          let d = Math.atan2(dy, dx) - base;
+          while (d > Math.PI) d -= Math.PI * 2;
+          while (d < -Math.PI) d += Math.PI * 2;
+          if (d < aLo) aLo = d; if (d > aHi) aHi = d;
+        }
+        arcs.push({ lo: base + aLo, hi: base + aHi, width: aHi - aLo });
+      }
+      // The spoke rule: if the part advances further between consecutive
+      // samples than its own angular width, the sampled arcs do not overlap
+      // and their union is NOT the swept set. Promote to a full revolve.
+      let full = false, reason = null;
+      const ownWidth = Math.max(...arcs.map((a) => a.width));
+      const steps = [];
+      for (let i = 1; i < arcs.length; i++) {
+        let step = arcs[i].lo - arcs[i - 1].lo;
+        while (step > Math.PI) step -= Math.PI * 2;
+        while (step < -Math.PI) step += Math.PI * 2;
+        steps.push(step);
+        if (Math.abs(step) > ownWidth) { full = true; reason = 'spoke'; }
+      }
+      // OSCILLATORS cannot be bounded by sampling at all. A part that swings
+      // out and back between two samples sweeps further than the interval
+      // between them, and no sample count fixes it — the balance, the pallet
+      // fork and the reset hammer all escaped their derived arc this way, and
+      // that failure is the honest one: it is the very class §36 exists to
+      // stop guessing at. So a series that REVERSES direction is bounded by
+      // the full circle, which is safe but loose.
+      //
+      // Tightening these is the next increment and it is not derivable from
+      // samples: it needs the pose law declared (FORK_BANK_DEG, the balance
+      // amplitude), which is what §36 means by "declares, or derives from
+      // MECH_GRAPH + its pose law". Until then they are marked so nobody
+      // reads a full revolve as a measured travel.
+      if (!full) {
+        for (let i = 1; i < steps.length; i++) {
+          if (steps[i] * steps[i - 1] < -1e-12) { full = true; reason = 'oscillates'; break; }
+        }
+      }
+      // Angular coverage as a CIRCULAR BITMAP, not a [lo,hi] interval. Each
+      // frame's bounds come from its own atan2 branch, so taking min/max
+      // across frames silently mixes branches — that read as 74 containment
+      // failures the first time this ran, every one of them an artefact of
+      // the bookkeeping rather than a real escape. Bins also represent the
+      // genuinely disjoint arcs a part can occupy on different pose axes,
+      // which no single interval can.
+      // A part that is itself a full annulus about its axis — every wheel
+      // disc — is a full revolve the moment it turns at all, and binning it
+      // is 2048 writes per frame for an answer already known.
+      if (!full && ownWidth >= Math.PI * 2 - THETA_BIN_W) { full = true; reason = 'annular'; }
+      let bins = null;
+      if (!full) {
+        bins = new Uint8Array(THETA_BINS);
+        for (const a of arcs) {
+          const span = a.hi - a.lo;
+          const steps = Math.max(1, Math.ceil(span / THETA_BIN_W) + 1);
+          for (let s = 0; s <= steps; s++) bins[thetaBin(a.lo + (span * s) / steps)] = 1;
+        }
+        if (bins.every((b) => b === 1)) { full = true; reason = 'covered'; }
+      }
+      volumes.push({
+        unit: u.name, mesh: m, kind: 'revolve', axis: [cx, cy],
+        rBand: [rLo, rHi], zBand: [zLo, zHi],
+        bins: full ? null : bins, full, reason,
+        coverage: full ? 1 : +(bins.reduce((a, b) => a + b, 0) / THETA_BINS).toFixed(4),
+      });
+    }
+  }
+
+  // THE ASSERT §36 REQUIRES: every declared volume must CONTAIN its part at
+  // every pose. Validated against a FINER, phase-shifted sample set than the
+  // one the hull was derived from — checking a hull against its own samples
+  // would be vacuous, and catching a hull that is merely stale is the point.
+  const fine = await samplePoses(validatePerAxis);
+  const tol = 1e-3;
+  const escapes = [];
+  for (const vol of volumes) {
+    for (const frame of fine) {
+      const pts = frame.get(vol.mesh);
+      if (!pts) continue;
+      let bad = null;
+      for (let i = 0; i < pts.length; i += 3) {
+        const x = pts[i], y = pts[i + 1], z = pts[i + 2];
+        if (vol.kind === 'static') {
+          if (z < vol.zBand[0] - tol || z > vol.zBand[1] + tol) { bad = 'z'; break; }
+        } else if (vol.kind === 'approx') {
+          if (x < vol.box[0] - tol || x > vol.box[3] + tol || y < vol.box[1] - tol
+              || y > vol.box[4] + tol || z < vol.box[2] - tol || z > vol.box[5] + tol) { bad = 'box'; break; }
+        } else {
+          const r = Math.hypot(x - vol.axis[0], y - vol.axis[1]);
+          if (r < vol.rBand[0] - tol || r > vol.rBand[1] + tol) { bad = `r=${r.toFixed(3)}`; break; }
+          if (z < vol.zBand[0] - tol || z > vol.zBand[1] + tol) { bad = `z=${z.toFixed(3)}`; break; }
+          if (!vol.full) {
+            // A vertex is contained if its bin, or either neighbour, is
+            // covered — one bin of slack for the discretisation itself.
+            const b = thetaBin(Math.atan2(y - vol.axis[1], x - vol.axis[0]));
+            if (!vol.bins[b] && !vol.bins[(b + 1) % THETA_BINS] && !vol.bins[(b + THETA_BINS - 1) % THETA_BINS]) { bad = 'θ'; break; }
+          }
+        }
+      }
+      if (bad) { escapes.push({ unit: vol.unit, kind: vol.kind, why: bad }); break; }
+    }
+  }
+
+  clock.resetInputs();
+  const byKind = volumes.reduce((a, v) => (a[v.kind] = (a[v.kind] || 0) + 1, a), {});
+  return {
+    derivedFrom: { axes: axes.length, perAxis, validatedAt: validatePerAxis },
+    volumes: volumes.length, byKind,
+    fullRevolves: volumes.filter((v) => v.full).length,
+    approximate: volumes.filter((v) => v.kind === 'approx').map((v) => v.unit).filter((n, i, a) => a.indexOf(n) === i),
+    containmentEscapes: escapes,
+    registry: volumes.map(({ mesh, bins, ...rest }) => rest),
+  };
+}
+
 const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
   freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
+  sweptRegistry: (clock, opts) => buildSweptRegistry(clock, opts),
   inspection: (clock, opts) => runInspection(clock, opts),
   support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
