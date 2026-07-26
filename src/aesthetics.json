@@ -37,6 +37,10 @@
       },
       "handsGroupZOffset": 3.2,
       "fluteFactor": -0.03
+    },
+    "subdials": {
+      "radiusFactor": 1.0,
+      "_comment": "Scales the SOLVED shared sub-dial radius (small seconds + reserve). Applied in solveLayout, so it needs a reload; the \u00a725 C boot assert still guards the wells against the central setting wheel, so an oversized factor warns rather than silently colliding. Position is solved layout and is deliberately NOT a knob."
     }
   },
   "lighting": {
@@ -96,6 +100,12 @@
       "pearlRadiusUnits": 6.5,
       "shingleFlip": true,
       "jitterFrac": 0.12
+    }
+  },
+  "materials": {
+    "ruby": {
+      "color": "#b01326",
+      "_comment": "Bearing jewels, pallet stones, impulse pin. Read at material creation and updatable live; the advanced panel writes here."
     }
   }
 }

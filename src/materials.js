@@ -37,8 +37,10 @@ const blueSteel = phys({
 });
 
 // Translucent ruby for pallet stones, impulse pin, bearing jewels.
+// Colour comes from the aesthetics schema (§23): one source, and the advanced
+// panel can retint every jewel live through MATS.ruby.color.
 const ruby = phys({
-  color: 0xb01326,
+  color: (aesthetics.materials && aesthetics.materials.ruby && aesthetics.materials.ruby.color) || 0xb01326,
   metalness: 0.0,
   roughness: 0.08,
   transparent: true,
@@ -135,6 +137,10 @@ const ribbedNickel = phys({
   const width = rib.widthUnits ?? 4.5;
   const tilt = rib.tilt ?? 0.35;
   ribbedNickel.onBeforeCompile = (shader) => {
+    // §23: the compiled shader is kept so the advanced panel can rewrite the
+    // uniforms live — before this, the values were captured constants and a
+    // decoration knob would have silently done nothing until reload.
+    ribbedNickel.userData.shader = shader;
     shader.uniforms.ribDir = { value: dir };
     shader.uniforms.ribWidth = { value: width };
     shader.uniforms.ribTilt = { value: tilt };
@@ -172,6 +178,7 @@ const perledNickel = phys({
   const ringFreq = prl.ringFreq ?? 9.0;
   const tilt = prl.tilt ?? 0.22;
   perledNickel.onBeforeCompile = (shader) => {
+    perledNickel.userData.shader = shader;
     shader.uniforms.prlPitch = { value: pitch };
     shader.uniforms.prlRingFreq = { value: ringFreq };
     shader.uniforms.prlTilt = { value: tilt };
@@ -224,6 +231,28 @@ const perledNickel = phys({
         }
       }`);
   };
+}
+
+// §23 — apply the decoration subtree of the aesthetics schema to the LIVE
+// compiled shaders. Angle/width/tilt for the ribbing, pitch/ringFreq/tilt for
+// the perlage; anything not yet compiled is a no-op and picks the values up at
+// first compile.
+export function applyDecorationFromAesthetics() {
+  const rib = (aesthetics.decoration && aesthetics.decoration.ribbing) || {};
+  const rs = ribbedNickel.userData.shader;
+  if (rs) {
+    const a = ((rib.angleDeg ?? 25) * Math.PI) / 180;
+    rs.uniforms.ribDir.value.set(Math.cos(a), Math.sin(a));
+    rs.uniforms.ribWidth.value = rib.widthUnits ?? 4.5;
+    rs.uniforms.ribTilt.value = rib.tilt ?? 0.35;
+  }
+  const prl = (aesthetics.decoration && aesthetics.decoration.perlage) || {};
+  const ps = perledNickel.userData.shader;
+  if (ps) {
+    if (ps.uniforms.prlPitch) ps.uniforms.prlPitch.value = prl.pitchUnits ?? 4.2;
+    if (ps.uniforms.prlRingFreq) ps.uniforms.prlRingFreq.value = prl.ringFreq ?? 9.0;
+    if (ps.uniforms.prlTilt) ps.uniforms.prlTilt.value = prl.tilt ?? 0.22;
+  }
 }
 
 export const MATS = {
