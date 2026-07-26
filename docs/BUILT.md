@@ -2525,6 +2525,16 @@ The bar's **length** is chosen from a 1-2-5 ladder so it always draws
 readable over the whole range, which is why the label is generated
 rather than written.
 
+The bar is labelled just `5 mm`. It first read `5 mm at the movement`,
+carrying the perspective caveat inline — and that was wrong placement,
+not wrong content. Under a perspective camera a millimetre covers more
+pixels the nearer it is to the eye, so the bar is exact only at the
+movement's depth; a part swung toward the camera renders slightly
+larger. True, but it was the first thing the eye met, and jargon in a
+headline makes a number harder to trust rather than easier. A micrograph
+writes the number and footnotes the rest, so the caveat moved to the
+panel's fine print.
+
 **A diagram, at its own scale, that says so.** The first attempt drew
 the reference objects at true on-screen scale, and it does not work: a
 24 mm coin against a 32 mm movement is the *same order of size*, so once

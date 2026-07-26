@@ -7867,7 +7867,10 @@ let scaleRefOn = false;
 // two points one unit apart along the camera's own screen-right axis, so it is
 // correct for any orientation and any FOV without duplicating the projection
 // maths. Perspective means this is exact only at that depth — parts nearer the
-// camera render larger — which is why the panel says "at the movement".
+// camera render larger. That caveat belongs in the panel's fine print, NOT in
+// the bar's own label: "5 mm at the movement" read as jargon and was the first
+// thing the eye landed on, so it made the headline number harder to trust
+// rather than easier. The bar says "5 mm"; the footnote says where.
 const _srA = new THREE.Vector3(), _srB = new THREE.Vector3(), _srR = new THREE.Vector3(), _srF = new THREE.Vector3();
 function pxPerUnit() {
   camera.getWorldDirection(_srF);
@@ -7941,12 +7944,13 @@ function updateScaleRef() {
          <path d="M0.5 1 V8 M${(barPx - 0.5).toFixed(1)} 1 V8 M0.5 4.5 H${(barPx - 0.5).toFixed(1)}"
                stroke="#cfd6dd" stroke-width="1" fill="none"/>
        </svg>
-       <span>${barMM} mm at the movement</span>
+       <span>${barMM} mm</span>
      </div>
      <div style="display:flex; align-items:center; gap:10px;">
        <svg width="${D + 2}" height="${D + 2}" style="flex:none;">${circles}</svg>
        <div style="display:flex; flex-direction:column; gap:3px;">${key}
-         <div style="opacity:0.55; margin-top:3px;">diagram — to scale with<br/>each other, not with the view</div>
+         <div style="opacity:0.55; margin-top:3px;">circles: to scale with each<br/>other, not with the view<br/>
+           bar: true on screen, measured<br/>at the movement's distance</div>
        </div>
      </div>`;
 }
