@@ -232,6 +232,49 @@ arc wedges for levers, the fan for the chain.
 linkage; it wants generalising into the battery so pair checks become
 pose-independent volume tests that cannot under-sample.
 
+## 8. The alarm cannot ring under fast-forward
+
+**The whole trip is gated off.** `if (!fastForward && syncPhase !==
+'catchup')` opens at `main.js` ~9594 and closes ~9670, and inside it sit
+the pin-drop computation, the release gate and `alarmReleased = true`.
+So with FF on, the feeler is never evaluated, the pin never moves, and
+no release can fire.
+
+**The block's own comment says the opposite.** §29 step 5 reads: "One-
+shot per drop (alarmDropSpent re-arms when the pin lifts), which also
+makes FF/catch-up jumps honest: landing mid-window rings once, exactly
+as the skipped time would have." Nothing can land mid-window when the
+section does not run. The code and the comment describing it disagree,
+which is the tell that one of them was changed without the other.
+
+**Measured, on a clean load with no test scaffolding:** mainspring
+wound, alarm wound (barrel 1.75) and armed, target 12:00, fast-forward
+on — 30 sim-hours elapsed, which crosses the coincidence twice, and
+`alarmPinDrop` never leaves 0.0 and `alarmReleased` stays false. The
+same setup with FF off rings. That A/B is the whole bug.
+
+**Why it is not merely cosmetic.** Fast-forward is the ONLY control
+that reaches the alarm time in reasonable wall-clock: the time-scale
+slider spans 0.001x..1x and cannot speed the movement up at all. So the
+one path a viewer would take to watch their alarm fire is the one path
+on which it cannot.
+
+**Not obviously a simple deletion.** The `syncPhase !== 'catchup'` half
+probably IS deliberate — firing during a §9 catch-up would ring for a
+time the viewer is skipping THROUGH rather than arriving at. The FF
+half looks like it was carried along with it. Whoever fixes this should
+decide the two separately, and say which semantic they want: does a
+fast-forward THROUGH an alarm time ring once (the comment's claim), or
+not at all (today's behaviour)?
+
+**Sizing note for whoever takes it.** At FF the sim advances ~1.5
+sim-minutes per tick, and the pin's full-drop plateau is ~2.76 minutes
+wide, so a tick is guaranteed to land inside it — simply ungating may
+be sufficient, with no crossing-detection needed. Verify that before
+building anything more elaborate. But note the margin is only 1.8x, so
+it is worth asserting rather than assuming, and it SHRINKS with any
+change that narrows the notch — which is exactly what §38 proposes.
+
 ## Recently closed
 
 - **Winding click is plate-fixed** (was item 2), closed as part of the
