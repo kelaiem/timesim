@@ -2334,6 +2334,25 @@ export async function buildSweptRegistry(clock, {
         } else if (vol.kind === 'approx') {
           if (x < vol.box[0] - tol || x > vol.box[3] + tol || y < vol.box[1] - tol
               || y > vol.box[4] + tol || z < vol.box[2] - tol || z > vol.box[5] + tol) { bad = 'box'; break; }
+        } else if (vol.kind === 'path') {
+          // §36 job B's sleeve: contained if the vertex is inside ANY of its
+          // boxes. Adding this case is the fix for a hard crash — job B
+          // introduced a FOURTH volume shape and this dispatch had three
+          // arms, the last of which assumes revolve and reads vol.axis[0].
+          // A path volume fell into it and threw on an axis it never has,
+          // taking buildSweptRegistry down and with it every check built on
+          // the registry.
+          //
+          // Worth naming the shape of the mistake: the bug was not the
+          // missing field, it was an `else` standing in for "therefore
+          // revolve". A dispatch whose default arm assumes one specific kind
+          // silently inherits every kind added later.
+          let inside = false;
+          for (const b of vol.boxes) {
+            if (x >= b[0] - tol && x <= b[3] + tol && y >= b[1] - tol
+                && y <= b[4] + tol && z >= b[2] - tol && z <= b[5] + tol) { inside = true; break; }
+          }
+          if (!inside) { bad = 'sleeve'; break; }
         } else {
           const r = Math.hypot(x - vol.axis[0], y - vol.axis[1]);
           if (r < vol.rBand[0] - tol || r > vol.rBand[1] + tol) { bad = `r=${r.toFixed(3)}`; break; }
@@ -2357,6 +2376,22 @@ export async function buildSweptRegistry(clock, {
         // pose law.
         escapes.push({ unit: vol.unit, kind: vol.kind, why: bad, widened: vol.kind === 'revolve' });
         if (vol.kind === 'revolve') { vol.full = true; vol.bins = null; vol.reason = 'validation'; }
+        else if (vol.kind === 'path') {
+          // A sleeve that does not contain its own part DEMOTES to approx,
+          // the same fallback a revolve gets when its bands cannot hold it:
+          // the registry says plainly it cannot hull this part rather than
+          // shipping a hull that fails to contain it, and approx volumes are
+          // excluded from every claim. Bounds are the union of the sleeve's
+          // own boxes, which by construction covers every sampled pose.
+          let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity, zL = Infinity, zH = -Infinity;
+          for (const b of vol.boxes) {
+            if (b[0] < xLo) xLo = b[0]; if (b[3] > xHi) xHi = b[3];
+            if (b[1] < yLo) yLo = b[1]; if (b[4] > yHi) yHi = b[4];
+            if (b[2] < zL) zL = b[2];  if (b[5] > zH) zH = b[5];
+          }
+          vol.kind = 'approx'; vol.box = [xLo, yLo, zL, xHi, yHi, zH];
+          delete vol.boxes; delete vol.hullBox;
+        }
         break;
       }
     }
