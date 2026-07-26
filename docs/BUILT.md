@@ -2553,6 +2553,41 @@ decoration §21 was written to forbid. So the comparison became an
 explicit diagram: everything in it is to scale with each other, at a
 scale of its own, and the caption says that out loud.
 
+### Two corners, because only one half moves
+
+The bar and the diagram started in one box and were split apart: the bar
+re-lengths and re-labels on every camera move, the diagram never
+changes, and sharing a box made the whole panel read as twitching. Bar
+bottom-right, diagram bottom-left — each corner with one job.
+
+The diagram then has to **dodge the control panel**, which owns the left
+edge and grows downward as its sections open. Both moves are
+conditional and recomputed, so the common case keeps the plain corner:
+sideways past `#clock-ui` when it would actually overlap, then
+vertically above the bar if that sideways move pushed it there.
+
+Three bugs on the way, none of them in the layout and all in the
+**checking** — each the same shape, a test that looked at less than the
+thing it was testing:
+
+1. Panel visibility read `offsetParent !== null`. `#clock-ui` is
+   `position: fixed`, and a fixed element's `offsetParent` is *always*
+   null. The panel was never seen, the dodge never fired once, and the
+   overlap checks reported no overlap because they were measuring
+   nothing. A zero-size rect is the honest test.
+2. The lift condition read the diagram's **live** rect, which makes it
+   self-cancelling: lifting clears the overlap, the test goes false, it
+   drops back, the overlap returns — a flip every frame, and a single
+   snapshot catches whichever phase it lands on. It now tests the
+   prospective *unlifted* position, which does not depend on the answer.
+3. The first overlap test compared the two scale elements only to each
+   other, never to the control panel, so it passed while the diagram sat
+   buried underneath it.
+
+The check that finally worked samples each layout **twice** and
+compares. An oscillating layout differs between frames, and one sample
+cannot distinguish "correct" from "correct this frame".
+
 ### The reference sizes are standards, not impressions
 
 | object | ⌀ | source |
