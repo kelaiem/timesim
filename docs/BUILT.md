@@ -3025,6 +3025,28 @@ census does not judge either; that is the job it was scoped not to do.
 §41's monogram strokes (0.249 mm) sit comfortably above all of this,
 answering the question that entry deferred here.
 
+### Addendum — the path-aware ruler
+
+Once §36's sleeves closed `approx` to zero, the census's `else` branch
+was measuring 148 `path` movers from a **world AABB at the reset pose**
+— and a world box mixes axes under rotation: a rod posed at 45° reports
+both x and y at ~(L+d)/√2, neither a dimension the part *has*.
+
+Static and path parts now measure in the mesh's **geometry-local** box
+(world scale applied per axis), which is pose-independent by
+construction — verified on the §35 alarm rod: extents `[0.6, 15.819,
+0.6]`, exactly 2×r, at any pose. The stated shared limit remains:
+geometry with rotation **baked into its vertices** (dial markers at
+azimuth, the monogram's stroked quads) still mixes axes locally, and
+such rows *under*-report thinness rather than over-reporting it.
+
+The sharper ruler moved the report: 446 rows (was 416), not-measured
+34 → **4** (the zero-thickness open surfaces), and newly visible path
+movers surfaced thinner features than the old list knew —
+`alarmSelFingerB` at **0.0187 mm**, an Alarm switch blade at
+**0.0262 mm**, the Alarm link joining the per-part table at 0.0450 mm.
+
+
 ## §36 job B — Path hulls, and the confirmation tier that made the gate honest
 
 ### The blocker that never existed

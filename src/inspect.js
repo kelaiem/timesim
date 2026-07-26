@@ -2806,21 +2806,38 @@ export async function stockCensus(clock, opts = {}) {
         why: 'approx hull — box spans every pose, so its extents are motion, not stock' });
       continue;
     }
-    let axial = null, radial = null, source;
+    let axial = null, radial = null, source, via, thin, extents = null;
     if (v.kind === 'revolve') {
       axial = v.zBand[1] - v.zBand[0];
       radial = v.rBand[1] - v.rBand[0];
       source = 'registry-revolve';
+      via = axial <= radial ? 'axial' : 'radial';
+      thin = Math.min(axial, radial);
     } else {
-      // static: the mesh's own world bbox is exact because it never moves.
+      // §36's follow-up: static AND path parts measure in the mesh's OWN
+      // frame, not the world's. A world AABB mixes axes under rotation — a
+      // rod posed at 45° reports both x and y extents at ~(L+d)/√2, neither
+      // of which is a dimension the part HAS — and for a path (compound
+      // mover) the mix additionally changed with the reset pose. The
+      // geometry-local box is pose-independent by construction: a cylinder
+      // is (2r, h, 2r) wherever the pose loop left it. World scale is
+      // applied per axis; builders here rarely scale, but a ruler should not
+      // assume that. Remaining shared limit, stated: geometry with rotation
+      // BAKED INTO ITS VERTICES (dial markers at azimuth, the monogram's
+      // stroked quads) still mixes axes in its local box, so its row
+      // UNDER-reports thinness rather than over-reporting it.
       v.mesh.geometry.computeBoundingBox();
-      box.copy(v.mesh.geometry.boundingBox).applyMatrix4(v.mesh.matrixWorld);
-      axial = box.max.z - box.min.z;
-      radial = Math.min(box.max.x - box.min.x, box.max.y - box.min.y);
-      source = 'geometry-static';
+      const lb = v.mesh.geometry.boundingBox;
+      const ws = v.mesh.getWorldScale(new THREE.Vector3());
+      extents = [
+        (lb.max.x - lb.min.x) * Math.abs(ws.x),
+        (lb.max.y - lb.min.y) * Math.abs(ws.y),
+        (lb.max.z - lb.min.z) * Math.abs(ws.z),
+      ].map((e) => +e.toFixed(4));
+      thin = Math.min(...extents);
+      via = 'local-' + ['x', 'y', 'z'][extents.indexOf(thin)];
+      source = v.kind === 'path' ? 'geometry-local (path mover)' : 'geometry-local (static)';
     }
-    const via = axial <= radial ? 'axial' : 'radial';
-    const thin = Math.min(axial, radial);
     // A zero (or effectively zero) extent is not thin stock — it is an OPEN
     // SURFACE in the mesh: a cylinder wall has every vertex at one radius, so
     // its r-band width is 0, and a flat ring has zero axial height. Real stock
@@ -2835,7 +2852,7 @@ export async function stockCensus(clock, opts = {}) {
     }
     rows.push({ part: v.unit, mesh: name, via, source,
       thinnestUnits: +thin.toFixed(4), thinnestMM: +(thin * UNIT_MM).toFixed(4),
-      axialUnits: +axial.toFixed(4), radialUnits: +radial.toFixed(4) });
+      ...(axial !== null ? { axialUnits: +axial.toFixed(4), radialUnits: +radial.toFixed(4) } : { extentsUnits: extents }) });
   }
   // Thinnest first. Ties broken by name so the ORDER is reproducible too, not
   // just the values — the entry asks for a reproducible report, and a stable
@@ -2850,7 +2867,7 @@ export async function stockCensus(clock, opts = {}) {
     header: {
       unitMM: UNIT_MM,
       measure: 'min(axial extent, radial extent) — the thinnest way through the part',
-      source: "§36 registry (revolve r/z bands); static parts from their own exact bbox",
+      source: "§36 registry (revolve r/z bands); static and path parts from their GEOMETRY-LOCAL box, world scale applied — pose-independent, so a rotated pose cannot mix a part's axes",
       pivots: 'BODIES ONLY unless a pivot is modelled as its own mesh — the census is per mesh and does not subdivide an arbor',
       gates: 'none — this report cannot fail the battery',
       counted: rows.length, notMeasured: unmeasured.length,
