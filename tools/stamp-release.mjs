@@ -39,6 +39,21 @@ if (html === before) {
   console.error('stamp-release: no ./vendor or ./src asset URLs found in index.html — refusing to emit a release that would not be versioned');
   process.exit(1);
 }
+// BAKE the version into the document. This is what makes a stale index.html
+// detectable: the running app must compare the version it was BUILT with
+// against the version the server serves NOW. Reading "what am I running" from
+// a runtime fetch instead would report the NEW version even when the browser
+// replayed an old cached index.html — the one case layer 2 exists to catch,
+// silently undetectable.
+if (/name=["']app-version["']/.test(html)) {
+  html = html.replace(/(<meta\s+name=["']app-version["']\s+content=)["'][^"']*["']/, `$1"${version}"`);
+} else {
+  html = html.replace(/<\/head>/, `<meta name="app-version" content="${version}" />\n</head>`);
+}
+if (!new RegExp(`name=["']app-version["'][^>]*content=["']${version}["']`).test(html)) {
+  console.error('stamp-release: could not bake app-version into index.html');
+  process.exit(1);
+}
 writeFileSync('index.html', html);
 
 // version.json is what layer 2 polls. Served no-store; it is the one file that

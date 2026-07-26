@@ -7177,14 +7177,31 @@ async function checkForUpdate(force = false) {
     updateEl.classList.add('show');
   }
 }
-fetchVersion().then((v) => {
-  if (!v) return;                    // no version.json (dev): stay silent forever
-  bootVersion = v;
-  lastUpdateCheck = performance.now();
+// The version this build was STAMPED with, baked into the document by
+// tools/stamp-release.mjs. It must come from the document, not from a runtime
+// fetch of version.json.
+//
+// The distinction is the whole mechanism, because the release is distributed
+// as a SYMLINK — every viewer loads the same unchanging URL, and the only
+// thing that tells them apart is which release the symlink resolves to. Asset
+// URLs are per-release, so assets can never go stale; index.html at the
+// symlink is the one document that can. And if a browser replays a CACHED
+// index.html, "what am I running" fetched at boot would return the NEW
+// version while the loaded code is old — no mismatch, no toast, a viewer
+// silently stuck on a stale build. That is precisely the case layer 2 exists
+// for, so the comparison is baked-vs-live: stale HTML is then detected on the
+// first check, and the reload it offers revalidates the document.
+const builtVersion = document.querySelector('meta[name="app-version"]')?.content || null;
+if (builtVersion) {
+  bootVersion = builtVersion;
+  lastUpdateCheck = 0;               // check once promptly; a stale tab matters at once
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(true); });
   window.addEventListener('focus', () => checkForUpdate(true));
   setInterval(() => { if (!document.hidden) checkForUpdate(); }, UPDATE_POLL_MS);
-});
+  checkForUpdate(true);
+}
+// No meta tag means an unstamped tree — development. Nothing is fetched at
+// all, so dev never polls a file that is not there.
 
 // Tour deep-link confirmation gate (BUILT §17) — see the #clock-tour-gate
 // CSS comment above for why this exists. Single-use: the only caller is the
