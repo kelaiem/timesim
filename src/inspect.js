@@ -2244,6 +2244,7 @@ export async function buildSweptRegistry(clock, {
     approximate: volumes.filter((v) => v.kind === 'approx').map((v) => v.unit).filter((n, i, a) => a.indexOf(n) === i),
     containmentEscapes: escapes,
     registry: volumes.map(({ mesh, bins, ...rest }) => rest),
+    _volumes: volumes,   // with mesh + bins, for checkSweptOverlap (§36 part two)
   };
 }
 
@@ -2251,6 +2252,7 @@ const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
   freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
   sweptRegistry: (clock, opts) => buildSweptRegistry(clock, opts),
+  sweptOverlap: (clock, opts) => checkSweptOverlap(clock, opts),
   inspection: (clock, opts) => runInspection(clock, opts),
   support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
@@ -2427,4 +2429,141 @@ export function fingerprintDiff(before, after) {
   }
   changed.sort((x, y) => y.delta - x.delta);
   return { changedCount: changed.length, changed };
+}
+
+// ---------------------------------------------------------------------------
+// §36 PART TWO — pose-INDEPENDENT overlap against the swept registry.
+//
+// The existing battery samples poses, so it can pass a wheel spoke between two
+// samples (TODO 7). This asks the question of the HULLS instead, so there is
+// no sampling to under-do: if a fixed part lies inside the volume a mover can
+// reach, they meet, and no pose schedule can hide it.
+//
+// THE SOUNDNESS LINE, which decides what this check may claim:
+//
+//   · STATIC vs REVOLVE is sound. The fixed part is always there and the mover
+//     reaches every point of its hull, so an overlap IS a collision at some
+//     reachable pose. This is exactly the §35 class — a rod standing in the
+//     annulus a wheel turns through — and it is reported as a violation.
+//
+//   · REVOLVE vs REVOLVE is NOT sound as a claim, and saying so is the point.
+//     Two hulls overlapping means a collision only if both parts can
+//     INDEPENDENTLY reach the offending phases. In a going train they cannot:
+//     phases are locked by the teeth, and every meshing pair's hulls overlap
+//     BY CONSTRUCTION — that is what meshing is. Reporting those as violations
+//     would bury the real ones under the movement's entire gear train. They
+//     are counted separately as phase-dependent, for a human to read.
+//
+//   · Anything involving an `approx` volume is not claimed at all. Those are
+//     per-pose bounding boxes, not hulls (part one's assert says so: all 55 of
+//     its containment escapes are theirs), and a check built on them would be
+//     asserting something the registry explicitly does not know.
+//
+// Declared contacts opt out via the same EXPECTED_PAIRS / IGNORED_PAIRS the
+// pose battery uses, so this shares one vocabulary with it rather than
+// inventing a second.
+//
+//   start(clock, 'sweptOverlap');
+//
+export async function checkSweptOverlap(clock, opts = {}) {
+  // includeDeclared: run WITHOUT the EXPECTED/IGNORED opt-outs. Only for
+  // validating the check itself — on a clean movement a violation count of
+  // zero proves nothing, so the positive control is to drop the exclusions
+  // and confirm the geometry test fires on pairs that are known to touch.
+  const { includeDeclared = false } = opts;
+  const declared = (a, b) => !includeDeclared && (inList(EXPECTED_PAIRS, a, b) || inList(IGNORED_PAIRS, a, b));
+  const reg = await buildSweptRegistry(clock, opts);
+  const vols = reg._volumes;
+
+  // 2D distance from a point to a triangle: 0 inside, else the nearest edge.
+  const segDist = (px, py, ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay;
+    const L = dx * dx + dy * dy;
+    const t = L < 1e-16 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  };
+  const inTri2 = (px, py, ax, ay, bx, by, cx2, cy2) => {
+    const d = (by - cy2) * (ax - cx2) + (cx2 - bx) * (ay - cy2);
+    if (Math.abs(d) < 1e-12) return false;
+    const u = ((by - cy2) * (px - cx2) + (cx2 - bx) * (py - cy2)) / d;
+    const v = ((cy2 - ay) * (px - cx2) + (ax - cx2) * (py - cy2)) / d;
+    return u >= 0 && v >= 0 && u + v <= 1;
+  };
+
+  // Does any triangle of a static mesh lie inside a revolve's hull?
+  const staticHitsRevolve = (stat, vol) => {
+    const zLo = Math.max(stat.zBand[0], vol.zBand[0]), zHi = Math.min(stat.zBand[1], vol.zBand[1]);
+    if (zLo > zHi) return null;                       // no shared height at all
+    const [cx, cy] = vol.axis;
+    const pos = stat.mesh.geometry.getAttribute('position');
+    const index = stat.mesh.geometry.getIndex();
+    const n = index ? index.count : pos.count;
+    const V = new THREE.Vector3();
+    const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    let worst = null;
+    for (let t = 0; t < n; t += 3) {
+      for (let k = 0; k < 3; k++) {
+        const idx = index ? index.getX(t + k) : t + k;
+        P[k].fromBufferAttribute(pos, idx).applyMatrix4(stat.mesh.matrixWorld);
+      }
+      if (Math.min(P[0].z, P[1].z, P[2].z) > vol.zBand[1] || Math.max(P[0].z, P[1].z, P[2].z) < vol.zBand[0]) continue;
+      const rs = P.map((p) => Math.hypot(p.x - cx, p.y - cy));
+      const rMax = Math.max(...rs);
+      const rMin = inTri2(cx, cy, P[0].x, P[0].y, P[1].x, P[1].y, P[2].x, P[2].y) ? 0
+        : Math.min(segDist(cx, cy, P[0].x, P[0].y, P[1].x, P[1].y),
+                   segDist(cx, cy, P[1].x, P[1].y, P[2].x, P[2].y),
+                   segDist(cx, cy, P[2].x, P[2].y, P[0].x, P[0].y));
+      if (rMax < vol.rBand[0] || rMin > vol.rBand[1]) continue;   // outside the annulus band
+      if (!vol.full) {
+        // Partial arc: the triangle must also fall inside the covered angles.
+        let hit = false;
+        for (let k = 0; k < 3 && !hit; k++) {
+          const b = thetaBin(Math.atan2(P[k].y - cy, P[k].x - cx));
+          if (vol.bins[b]) hit = true;
+        }
+        if (!hit) continue;
+      }
+      const depth = Math.min(rMax, vol.rBand[1]) - Math.max(rMin, vol.rBand[0]);
+      if (!worst || depth > worst.depth) worst = { depth, rMin: +rMin.toFixed(3), rMax: +rMax.toFixed(3) };
+    }
+    return worst;
+  };
+
+  const statics = vols.filter((v) => v.kind === 'static');
+  const revolves = vols.filter((v) => v.kind === 'revolve');
+  const violations = [], phaseDependent = new Set(), unverified = new Set();
+  const seen = new Set();
+  let tested = 0;
+
+  for (const vol of revolves) {
+    for (const stat of statics) {
+      if (stat.unit === vol.unit) continue;                       // same unit: TODO 5's blind spot, not this check's
+      if (declared(stat.unit, vol.unit)) continue;
+      const key = pairKey(stat.unit, vol.unit);
+      if (seen.has(key)) continue;
+      tested++;
+      const hit = staticHitsRevolve(stat, vol);
+      if (hit) { seen.add(key); violations.push({ pair: key, fixed: stat.unit, mover: vol.unit, overlap: +hit.depth.toFixed(3) }); }
+    }
+  }
+  for (const a of revolves) for (const b of revolves) {
+    if (a.unit >= b.unit) continue;
+    if (declared(a.unit, b.unit)) continue;
+    const zOverlap = Math.min(a.zBand[1], b.zBand[1]) - Math.max(a.zBand[0], b.zBand[0]);
+    if (zOverlap <= 0) continue;
+    const d = Math.hypot(a.axis[0] - b.axis[0], a.axis[1] - b.axis[1]);
+    if (d > a.rBand[1] + b.rBand[1] || d + Math.min(a.rBand[1], b.rBand[1]) < Math.max(a.rBand[0], b.rBand[0])) continue;
+    phaseDependent.add(pairKey(a.unit, b.unit));
+  }
+  for (const v of vols) if (v.kind === 'approx') unverified.add(v.unit);
+
+  clock.resetInputs();
+  return {
+    sound: { staticVsSwept: { pairsTested: tested, violations } },
+    notClaimed: {
+      swept_vs_swept_phaseDependent: [...phaseDependent].sort(),
+      approxUnitsExcluded: [...unverified].sort(),
+    },
+    registrySummary: reg.byKind,
+  };
 }
