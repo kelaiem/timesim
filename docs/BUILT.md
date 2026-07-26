@@ -2326,3 +2326,67 @@ blade or knife edge — which is what §35's beak already is — narrows it
 with no new train and no new z: ≈1.5 min against today's 2.76, for one
 part changed. It inherits the stride constraint above, so check that
 first.
+
+## §36 part two — Pose-independent overlap against the registry
+
+**Built, and deliberately not wired into the standing battery.** It
+would fail today on artifacts rather than on collisions — see the
+finding below — and a gate that cries wolf is worse than no gate. It
+runs on demand: `start(clock, 'sweptOverlap')`.
+
+**What it is for.** The pose battery samples, so it can pass a wheel
+spoke between two samples (TODO 7). This asks the same question of the
+HULLS, where there is no sampling to under-do: if a fixed part lies
+inside the volume a mover can reach, they meet, and no pose schedule
+hides it.
+
+**The soundness line is the design.** What the check may CLAIM is not
+uniform, and pretending otherwise would be the whole bug:
+
+- *Static vs revolve — SOUND, reported as violations.* The fixed part
+  is always there and the mover reaches every point of its hull, so an
+  overlap IS a collision at some reachable pose. This is the §35 class
+  exactly: a rod standing in the annulus a wheel turns through.
+- *Revolve vs revolve — NOT sound as a claim.* Two hulls overlapping
+  means a collision only if both parts can INDEPENDENTLY reach the
+  offending phases, and in a going train they cannot — phases are
+  locked by the teeth, so every meshing pair's hulls overlap BY
+  CONSTRUCTION. Reported separately as phase-dependent (35 pairs),
+  never as violations, or the real ones would be buried under the
+  movement's entire gear train.
+- *Anything `approx` — not claimed at all.* Part one's assert already
+  established these are per-pose boxes rather than hulls (all 55 of its
+  containment escapes are theirs), so a check built on them would be
+  asserting what the registry explicitly does not know. 14 units
+  excluded.
+
+Declared contacts opt out through the same `EXPECTED_PAIRS` /
+`IGNORED_PAIRS` the pose battery uses — one vocabulary, not a second.
+
+**Validated with a POSITIVE control, because zero violations on a clean
+movement proves nothing.** Run with the opt-outs disabled
+(`includeDeclared`), it flags 36 pairs including Balance ⇄ Balance
+cock, Balance ⇄ Hairspring and Balance cock ⇄ Hairspring — pairs that
+genuinely touch. The geometry test fires.
+
+**And then the result IS the finding.** With opt-outs on it reports 17
+violations, and every mover among them is bounded by a FULL REVOLVE:
+
+| mover | revolve volumes | full | why |
+|---|---|---|---|
+| Setting lever | 7 | 7 | oscillates, spoke |
+| Reset rod | 3 | 3 | oscillates, spoke |
+| Minute jumper | 4 | 4 | oscillates |
+| Keyless works | 15 | 14 | spoke, covered, annular |
+
+A lever that truly swings a few degrees is being treated as sweeping a
+complete annulus about its pivot, which overlaps half the movement. All
+17 are artifacts of part one's conservatism, not collisions.
+
+So part one's prediction is now MEASURED rather than predicted: this
+check cannot produce a trustworthy violation list until the oscillator
+hulls are tightened, and that needs the pose law DECLARED —
+`FORK_BANK_DEG`, the balance amplitude, each lever's travel — because
+it is not recoverable from samples at any density. **The declaration
+surface is the next piece of work, and this check is the instrument
+that will measure whether it worked.**
