@@ -6667,6 +6667,11 @@ let jumpCorr = 0;
 // backlog of events).
 let sndBeatN = null, sndBeatRaw = null, sndPawlIdx = null, sndDetIdx = null, sndJumpIdx = null;
 let sndCrownOut = null, sndHammerHit = false;
+let alarmRingHoldTick = false; // TODO 8: skip the ring for the tick FF was dropped on (see the release block)
+let alarmPrevSetRot = 0;       // TODO 8 guard: the crown's own movement is not a missed alarm
+let alarmPrevCentred = null;   // TODO 8 step-over guard: last tick's signed angle to the notch centre
+let alarmStepOverWarned = false; // warn once — a design-margin signal, not a per-tick log
+let discRotForTrip = 0;        // the disc angle the trip read this tick, shared with the guard
 let alarmDropSpent = false; // §29 step 5: one-shot latch — the pin's current drop has already fired its release (re-arms when the pin lifts off the notch)
 let alarmLockLiftT = 0;  // §25 B: eased brake-lever lift (1 = released, pad clear of the collar)
 let alarmColSteps = 0;   // §25 D: column-wheel actuations — parity IS the on/off (odd = gap under the beak = ON)
@@ -7036,7 +7041,16 @@ panel.innerHTML = `
         <span class="label-small">Alarm</span>
         <button id="btn-alarm">Off</button>
       </div>
-      <div class="row label-small"><span>Set for</span><span class="readout" id="readout-alarm" style="font-size:13px;">12:00</span></div>
+      <!-- Two readouts, because they are two different quantities and the
+           difference is real. "Hand at" is where the alarm hand physically
+           points — continuous, because the friction coupling has no detent.
+           "Rings at" is when the movement will actually strike, which
+           alarmTargetSeconds() ROUNDS to the nearest quarter-hour mark
+           (alarmMarkIndex: "Not a physical detent"). So a hand resting at
+           3:07 fires at 3:00, and until now the panel showed only the
+           second number under a label that reads like the first. -->
+      <div class="row label-small"><span>Hand at</span><span class="readout" id="readout-alarm-hand" style="font-size:13px;">12:00</span></div>
+      <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">12:00</span></div>
       <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
       <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling">Show</button></div>
       <div class="row"><span class="label-small">The link</span><button id="btn-link">Trace</button></div>
@@ -9590,8 +9604,29 @@ function tick(t) {
   // want of power (Rule 2 — the hammer is not scripted). Not gated on soundOn:
   // the alarm rings mechanically whether or not audio is on; soundOn only
   // decides whether each strike is heard (SND.alarmStrike self-gates). Held
-  // through fast-forward / sync catch-up like every other sound edge.
-  if (!fastForward && syncPhase !== 'catchup') {
+  // through sync catch-up like every other sound edge.
+  //
+  // TODO 8 fix — the TRIP is no longer held through fast-forward. It used to
+  // be: this gate read `!fastForward && syncPhase !== 'catchup'` and enclosed
+  // the pin, the release AND the ring, so with FF on the feeler was never
+  // evaluated and the alarm could not fire at all. Measured: armed, wound,
+  // target 12:00, 30 sim-hours under FF crossing the coincidence twice —
+  // alarmPinDrop never left 0. The comment below claimed the opposite ("makes
+  // FF/catch-up jumps honest"), which is how a suppressed mechanism read as
+  // an intended one.
+  //
+  // The rationale above is about SOUND, and sound already has its own gate
+  // (`soundOn && !fastForward && …`, the SND block earlier this tick). The
+  // trip is mechanism, not a sound edge, so it was being suppressed by a rule
+  // that was never about it.
+  //
+  // Catch-up KEEPS its suppression, and the two are not the same case: a §9
+  // catch-up skips THROUGH the time it is covering, so ringing for a moment
+  // the viewer is passing over would be wrong. Fast-forward is the opposite —
+  // it is the only control that reaches an alarm time at all (the time-scale
+  // slider spans 0.001×..1× and cannot speed the movement up), so a viewer
+  // fast-forwarding is deliberately travelling TO the alarm.
+  if (syncPhase !== 'catchup') {
     // Trip (§25 B): the feeler IS the rattrapante follower — armed, its nose
     // drops into the heart's notch exactly when the hour wheel's angle
     // reaches the held tube's, and that PHYSICAL alignment (rel crossing 0)
@@ -9608,7 +9643,8 @@ function tick(t) {
     // state). The later disc block re-derives the identical value for the
     // visual pose; both are pure functions of the same inputs.
     {
-      const discRotNow = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+      discRotForTrip = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+      const discRotNow = discRotForTrip;
       const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
       const gapHalf = ALARM_NOTCH_W / 2;
       const align = Math.abs(wrapPi(discRotNow - ALARM_RELEASE_PHASE));
@@ -9626,6 +9662,32 @@ function tick(t) {
     // which also makes FF/catch-up jumps honest: landing mid-window rings
     // once, exactly as the skipped time would have.
     if (alarmPinDropNow < ALARM_PIN_DROP - 1e-9) alarmDropSpent = false;
+    // STEP-OVER GUARD (TODO 8's sizing note, made permanent). The pin only
+    // bottoms across the notch's flat floor — |align| ≤ gapHalf − pinArcHalf,
+    // about 2.76 min of the 12 h disc — while one fast-forward tick advances
+    // roughly 1.5 sim-min. A 1.8× margin is thin, and it SHRINKS with any
+    // change that narrows the notch, which is exactly what §38 proposes: at
+    // §38's 0.92 min window a tick would step clean over the floor and the
+    // alarm would silently not ring, the same symptom TODO 8 just fixed for a
+    // different reason. So measure it rather than assume it — if the disc
+    // crossed the notch centre in one tick without the pin ever bottoming,
+    // say so. Warn once: this is a design-margin signal, not a per-tick log.
+    {
+      // Only the TIME-driven component counts. The disc angle also moves when
+      // the viewer turns the alarm crown, and a set sweep crosses coincidence
+      // at any speed it likes — that is the user's hand, not a missed alarm.
+      // Watching the raw angle warned on the first alarm anyone set.
+      const setMoved = Math.abs(alarmSetRot - alarmPrevSetRot) > 1e-9;
+      alarmPrevSetRot = alarmSetRot;
+      const centred = wrapPi(discRotForTrip - ALARM_RELEASE_PHASE);
+      if (!setMoved && alarmPrevCentred !== null && centred * alarmPrevCentred < 0
+          && Math.abs(centred - alarmPrevCentred) < Math.PI      // a real crossing, not a hand-set wrap
+          && alarmPinDropNow < ALARM_PIN_DROP - 1e-9 && !alarmStepOverWarned) {
+        alarmStepOverWarned = true;
+        console.warn(`§38/TODO 8: the alarm's coincidence was crossed in ONE tick (${Math.abs(centred - alarmPrevCentred).toFixed(4)} rad) without the pin bottoming — the notch floor (${(ALARM_NOTCH_W / 2 - ALARM_PIN_R / ALARM_TRACK_RMID).toFixed(4)} rad) is now narrower than a tick's advance, so alarms will be missed`);
+      }
+      alarmPrevCentred = centred;
+    }
     if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && !alarmDropSpent
         && alarmPinDropNow >= ALARM_PIN_DROP - 1e-9) {
       // The agreement is checked in TARGET space (the tube's mechanical set
@@ -9638,6 +9700,13 @@ function tick(t) {
         console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad from coincidence — detector and arithmetic disagree (window ${ALARM_NOTCH_W})`);
       alarmReleased = true;              // both holds now off: the brake lifted at arming, the pawl just withdrew
       alarmDropSpent = true;
+      // Fast-forward exists to REACH this moment, so hand the moment back at
+      // real speed: a ring that plays out in three FF ticks is over before it
+      // can be watched or heard, and the strikes would land as one smear.
+      // Same move the reserve makes when it runs flat (`fastForward = false`
+      // further down) — FF drops out when the thing you were waiting for
+      // arrives.
+      if (fastForward) { fastForward = false; alarmRingHoldTick = true; }
       // §25 C: the phase CONTINUES from wherever winding parked it (lockstep
       // with the barrel — resetting it here would slip the mesh by however
       // much the last wind was short of full).
@@ -9652,7 +9721,17 @@ function tick(t) {
     // train stops and the lock re-seats — the ring ends because it RAN DOWN —
     // and it is re-armed for the next crossing. Turning the alarm OFF re-seats
     // it too, parking the hammer on its check.
-    if (alarmReleased && alarmOn && alarmBarrelWind > 0) {
+    if (alarmRingHoldTick) {
+      // The tick that fired the release still carries the FAST-FORWARD rawDt
+      // (it was clamped at the top of this tick, before the drop-out below
+      // could take effect), and the ring spends the barrel in proportion to
+      // rawDt — so ringing on this tick alone consumed roughly a quarter of
+      // the alarm's power at FF speed, and the viewer that fast-forwarded to
+      // hear it missed the opening strikes. Hold the ring for exactly this
+      // tick; from the next one, rawDt is real-time and the whole ring plays
+      // out at a speed it can be watched and heard at.
+      alarmRingHoldTick = false;
+    } else if (alarmReleased && alarmOn && alarmBarrelWind > 0) {
       const spend = Math.min(rawDt / ALARM_STRIKE_GAP / ALARM_STRIKES_PER_BARREL_TURN, alarmBarrelWind);
       alarmBarrelWind -= spend;
       alarmStrikePhase += spend * ALARM_STRIKES_PER_BARREL_TURN;
@@ -9666,7 +9745,7 @@ function tick(t) {
       alarmReleased = false;
     }
   } else {
-    alarmDropSpent = true; // re-enabling after FF / catch-up: the CURRENT drop (if the jump landed mid-window) is treated as already heard — the next notch arrival rings
+    alarmDropSpent = true; // leaving a sync catch-up: the CURRENT drop (if the jump landed mid-window) is treated as already heard — the next notch arrival rings. Fast-forward no longer takes this branch; it now runs the trip (TODO 8).
   }
 
   // Fusee chain & drum: the drum's angle is a closed-form function of how
@@ -10022,6 +10101,13 @@ function advanceFrame(realDt) {
   // Alarm readout (§24): derived from the disc's detented angle, hours:minutes
   // only (the target is quantized to the quarter hour, so seconds are always 00).
   document.getElementById('readout-alarm').textContent = formatTime(alarmTargetSeconds()).slice(0, -3);
+  // Where the HAND actually points — derived forward from the disc's angle
+  // (Rule 2), not from the rounded target. The two agree only when the hand
+  // happens to sit on a quarter mark; the gap between them IS the mechanism's
+  // setting resolution, and showing it is the honest alternative to implying
+  // a precision the friction coupling does not have.
+  document.getElementById('readout-alarm-hand').textContent =
+    formatTime((alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S).slice(0, -3);
   document.getElementById('readout-alarm-wind').textContent = Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100) + '%';
   paintScale();
   updateSyncUI();
