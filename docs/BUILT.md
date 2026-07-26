@@ -3140,3 +3140,52 @@ widened sleeves, refuted with its numbers). Registry 5.8 s.
 - The census's `else` branch now measures `path` parts from a world
   bbox at the reset pose — adequate for extents, sloppy for a rotated
   part, and worth a `path`-aware ruler now that `approx` is empty.
+
+## §36 follow-up — the low-corridor table, verified instead of trusted
+
+`LOW_LINKAGE_OBSTACLES` is the manual 2D prototype of the swept-volume
+idea: circles and stadium segments covering the low linkage's whole
+crown-stroke footprint, consumed by the balance-cock and pillar seat
+scans. §36 planned for the registry to subsume it.
+
+**It cannot, structurally.** The table is consumed MID-BUILD — the seat
+scans run while `main.js` is still evaluating — and the registry is an
+async pose sweep over geometry that must already exist. No machinery
+moves the sweep before the thing it sweeps. So the subsumption is §42's
+pattern instead: the hand-written table stays the build-time input, and
+**`checkLowCorridor`** (in the battery as `lowCorridor`) verifies it —
+every axis swept under the sweep hold, the linkage units' world vertices
+sampled, those inside the corridor's z-band (0.15–1.9, hoisted from the
+pillar consumer's comment into a shared constant) required to lie inside
+some table obstacle. An escape means the table under-covers and a seat
+scan could place a leg inside the real swept path.
+
+### The first run caught eighteen months of nobody noticing
+
+`Reset hammer` escaping by **3.35 units** at crown f = 1, in-band, at
+(−0.7, −17.8). The table covered only the hammer's **tail** segment; the
+head-side arm — which swings across the movement as the crown pulls —
+was never in it. And the pillar scan's under-plate box list does not
+include the hammer either, so nothing prevented a pillar seat inside the
+head's sweep. The check's first output was precisely the class of rot it
+was built to catch.
+
+Fixed in the **table**, not the check: per stroke sample, the hammer's
+rotation is recovered from the already-solved tail tip (the same
+inversion `solveHammerRotation` uses), and the head arm is covered by a
+stadium at the lever's own half-width — read from the lever's exported
+outline plus bevel, so the cover cannot drift from the mesh — with the
+roller's radius added at the tip. Table 104 → 130 entries.
+
+### Verification
+
+- `lowCorridor`: **ok — 0 escapes** over 130,800 in-band vertices at 200
+  poses across all eight axes.
+- Boot silent — the seat solvers re-solved around the enlarged footprint
+  and still found clean placements.
+- Focused battery over the re-seated neighbourhood (`Reset hammer`,
+  `Stop lever`, `Balance cock`, `Fork cock`, `pillars`, `Three-quarter
+  plate`): support 0 failures, graph clean, penetration OK, clearances
+  0 violations.
+
+§36's remainder is now part three alone (needs §33).
