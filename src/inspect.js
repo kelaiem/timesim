@@ -2813,7 +2813,7 @@ export async function checkSweptOverlap(clock, opts = {}) {
   // validating the check itself — on a clean movement a violation count of
   // zero proves nothing, so the positive control is to drop the exclusions
   // and confirm the geometry test fires on pairs that are known to touch.
-  const { includeDeclared = false } = opts;
+  const { includeDeclared = false, confirm = !includeDeclared, yieldEvery = 16 } = opts;
   const declared = (a, b) => !includeDeclared && (inList(EXPECTED_PAIRS, a, b) || inList(IGNORED_PAIRS, a, b));
   const reg = await buildSweptRegistry(clock, opts);
   const vols = reg._volumes;
@@ -2979,9 +2979,48 @@ export async function checkSweptOverlap(clock, opts = {}) {
   }
   for (const v of vols) if (v.kind === 'approx') unverified.add(v.unit);
 
+  // §36 JOB B — THE CONFIRMATION TIER. A hull overlap is a POSSIBLE collision,
+  // not a collision: both hull shapes are supersets by design (a full revolve
+  // for an undeclared spoke mover sweeps a disc the part never fills; a box
+  // sleeve squares off a round rod, gaining (√2−1)·r at the corners). Measured
+  // on the first complete run, that conservatism was the ENTIRE result — all
+  // 11 hull violations refuted by pose-refined clearance, the Reset rod rows
+  // clearing by 0.9–15.6 units.
+  //
+  // So every hull violation is re-measured with measureClearance (BVH, coarse
+  // sweep + refinement near minima) and tiered:
+  //   confirmed — refined gap ≤ 0: real contact. THE gate number.
+  //   tight     — 0 < gap < CLEAR_MARGIN: no contact, but inside the one
+  //               margin. The rod-in-bore case lands here (designed at
+  //               exactly the margin, measures a tessellation hair under).
+  //   refuted   — gap ≥ CLEAR_MARGIN: the hull over-claims; the refined gap
+  //               and its pose are recorded so the claim is checkable.
+  //
+  // Pose refinement is still sampling (TODO 7): it cannot BOUND the motion,
+  // so refuted keeps the hull's side of the story in the output rather than
+  // deleting the row — the hull says "possible", the refinement says "not at
+  // any refined pose", and both statements stand.
+  let confirmed = violations, tightRows = [], refuted = [];
+  if (confirm && violations.length) {
+    confirmed = []; 
+    for (const v of violations) {
+      const m = await measureClearance(clock, v.fixed, v.mover, { yieldEvery });
+      const row = { ...v, refinedMinGap: m.min, refinedAt: m.at };
+      if (m.min <= 0) confirmed.push(row);
+      else if (m.min < CLEAR_MARGIN) tightRows.push(row);
+      else refuted.push(row);
+    }
+  }
+
   clock.resetInputs();
   return {
-    sound: { staticVsSwept: { pairsTested: tested, violations } },
+    sound: { staticVsSwept: {
+      pairsTested: tested,
+      violations: confirmed,
+      tight: tightRows,
+      refutedByRefinement: refuted,
+      confirmTier: confirm ? 'on — violations are pose-confirmed contacts; tight/refuted carry the refined gap' : 'off — raw hull overlaps',
+    } },
     notClaimed: {
       swept_vs_swept_phaseDependent: [...phaseDependent].sort(),
       approxUnitsExcluded: [...unverified].sort(),

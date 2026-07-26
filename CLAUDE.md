@@ -37,7 +37,10 @@ someone who wasn't in the conversation; match that.
    supports it, what drives it.
 4. **The inspector battery is clean before anything lands**: support 0
    failures, graph clean, penetration within budgets, clearances 0
-   violations, full `inspection { includeExcluded: true }` 0 FORBIDDEN.
+   violations, full `inspection { includeExcluded: true }` 0 FORBIDDEN,
+   and `sweptOverlap` **0 CONFIRMED** (§36 job B — hull overlaps are
+   pose-confirmed before they count; `tight` and `refuted` rows are
+   reports, not failures).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
