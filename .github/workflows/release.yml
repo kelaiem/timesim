@@ -103,28 +103,18 @@ jobs:
           # tools/ is excluded from the PAYLOAD but still present in the
           # checkout, which is where the stamp step below runs it from.
 
-      # §28 layer 1 — point index.html at THIS release's own directory, so
-      # every asset URL changes when the version does and a browser cannot
-      # serve a stale one. The release dir is already a per-version path, so
-      # it IS the fingerprint; no bundler or content hash is needed. Every
-      # relative import inside the module graph resolves against the rebased
-      # main.js url, so the whole graph inherits it. Also emits version.json,
-      # which the running app polls to offer an already-open tab a reload.
+      # §28 layer 1 — version every asset URL so a browser cannot serve a
+      # stale one, and emit version.json for the running app to poll. URLs
+      # stay RELATIVE and carry ?v=<version>: the site is distributed as the
+      # QA symlink, and whether the releases directory is itself inside the
+      # web root is not knowable from this repo. Rebasing onto an absolute
+      # /<releases>/<version>/ path would 404 the whole app if it is not.
       - name: Stamp release URLs and version
         env:
           VERSION: ${{ needs.release.outputs.version }}
-          SFTP_RELEASES_PATH: ${{ vars.SFTP_RELEASES_PATH }}
-          SFTP_URL_BASE: ${{ vars.SFTP_URL_BASE }}
         run: |
-          # The URL path the release dir is reachable at. Defaults to
-          # /<releases-path>/<version>, which is what the upload below creates;
-          # set the SFTP_URL_BASE variable if the web root is not the project
-          # root (it is prefixed, and must NOT include the version).
-          BASE="${SFTP_URL_BASE:-/$SFTP_RELEASES_PATH}"
-          BASE="${BASE%/}/$VERSION"
-          echo "Stamping $VERSION at $BASE"
           cd "$VERSION"
-          node ../tools/stamp-release.mjs "$VERSION" "$BASE"
+          node ../tools/stamp-release.mjs "$VERSION"
 
       - name: Configure SSH
         env:
