@@ -232,50 +232,48 @@ arc wedges for levers, the fan for the chain.
 linkage; it wants generalising into the battery so pair checks become
 pose-independent volume tests that cannot under-sample.
 
-## 8. The alarm cannot ring under fast-forward
-
-**The whole trip is gated off.** `if (!fastForward && syncPhase !==
-'catchup')` opens at `main.js` ~9594 and closes ~9670, and inside it sit
-the pin-drop computation, the release gate and `alarmReleased = true`.
-So with FF on, the feeler is never evaluated, the pin never moves, and
-no release can fire.
-
-**The block's own comment says the opposite.** §29 step 5 reads: "One-
-shot per drop (alarmDropSpent re-arms when the pin lifts), which also
-makes FF/catch-up jumps honest: landing mid-window rings once, exactly
-as the skipped time would have." Nothing can land mid-window when the
-section does not run. The code and the comment describing it disagree,
-which is the tell that one of them was changed without the other.
-
-**Measured, on a clean load with no test scaffolding:** mainspring
-wound, alarm wound (barrel 1.75) and armed, target 12:00, fast-forward
-on — 30 sim-hours elapsed, which crosses the coincidence twice, and
-`alarmPinDrop` never leaves 0.0 and `alarmReleased` stays false. The
-same setup with FF off rings. That A/B is the whole bug.
-
-**Why it is not merely cosmetic.** Fast-forward is the ONLY control
-that reaches the alarm time in reasonable wall-clock: the time-scale
-slider spans 0.001x..1x and cannot speed the movement up at all. So the
-one path a viewer would take to watch their alarm fire is the one path
-on which it cannot.
-
-**Not obviously a simple deletion.** The `syncPhase !== 'catchup'` half
-probably IS deliberate — firing during a §9 catch-up would ring for a
-time the viewer is skipping THROUGH rather than arriving at. The FF
-half looks like it was carried along with it. Whoever fixes this should
-decide the two separately, and say which semantic they want: does a
-fast-forward THROUGH an alarm time ring once (the comment's claim), or
-not at all (today's behaviour)?
-
-**Sizing note for whoever takes it.** At FF the sim advances ~1.5
-sim-minutes per tick, and the pin's full-drop plateau is ~2.76 minutes
-wide, so a tick is guaranteed to land inside it — simply ungating may
-be sufficient, with no crossing-detection needed. Verify that before
-building anything more elaborate. But note the margin is only 1.8x, so
-it is worth asserting rather than assuming, and it SHRINKS with any
-change that narrows the notch — which is exactly what §38 proposes.
-
 ## Recently closed
+
+- **The alarm could not ring under fast-forward** (was item 8). The whole
+  trip — pin drop, release gate, `alarmReleased` — sat inside
+  `if (!fastForward && syncPhase !== 'catchup')`, so with FF on the feeler
+  was never evaluated and no alarm could fire. Measured before the fix:
+  armed, wound, target 12:00, 30 sim-hours crossing the coincidence twice,
+  `alarmPinDrop` never leaving 0. It mattered because FF is the ONLY
+  control that reaches an alarm time — the time-scale slider spans
+  0.001×..1× and cannot speed the movement up — so the one path a viewer
+  takes to watch the alarm fire was the one path where it could not.
+
+  Closed by suppressing CATCH-UP only. The two are different cases: a §9
+  catch-up skips THROUGH the time it covers, while fast-forward travels TO
+  the alarm deliberately. The gate's own rationale was about SOUND, and
+  sound already has its own gate earlier in the tick, so the trip had been
+  suppressed by a rule that was never about it. Two things came with it:
+  FF now DROPS OUT at the release (the move the reserve already makes when
+  it runs flat), and the ring HOLDS for that one tick — the release tick
+  still carries the fast-forward `rawDt`, and ringing on it alone spent 87%
+  of the alarm's power before the drop-out could take effect. Rings at tick
+  164 after 11.06 sim-hours where it previously never rang.
+
+  **The residual is a margin, and it is now instrumented rather than
+  assumed.** The pin only bottoms across the notch's flat floor (~2.76 min
+  of the 12 h disc) while an FF tick advances ~1.5 sim-min: 1.8×, and it
+  SHRINKS with any change that narrows the notch. §38 proposes a 0.92 min
+  window, at which a tick would step clean over and the alarm would
+  silently not ring — the same symptom this item just closed, from a
+  different cause. A step-over guard warns once if the coincidence is
+  crossed in one tick without the pin bottoming, so §38 will hear about it
+  rather than ship it. (The guard's first version fired on the first alarm
+  anyone SET, because the crown moves the disc too; it now ignores ticks
+  where `alarmSetRot` moved.)
+
+  Also surfaced while fixing it: the panel showed only the ROUNDED fire
+  time under the label "Set for", which reads like the hand position. It
+  now shows both — "Hand at" (continuous, since the friction coupling has
+  no detent) and "Rings at" (rounded to the quarter mark). A hand at 3:07
+  fires at 3:00, and the gap between the two IS the mechanism's setting
+  resolution, which is what §38 exists to improve.
+
 
 - **Winding click is plate-fixed** (was item 2), closed as part of the
   keyless-works move to the dial side. The ratchet slid down the fusee
