@@ -7574,6 +7574,17 @@ scaleSlider.addEventListener('input', () => {
 
 // --- pause/play -------------------------------------------------------
 let paused = false;
+// Sweep hold — while non-zero, frame() renders but does NOT advance the
+// mechanism. The inspection sweeps yield to the event loop between samples
+// (setTimeout(0)), and every rAF frame that runs in those gaps integrates the
+// EASED shown-values (the jumper snap, the alarm tube/selector springs) by a
+// real wall-clock dt. setPose cannot re-pin them — the documented zero-dt trap
+// — so the sampled geometry depended on frame timing: ~20 registry volumes
+// flipped kind between back-to-back runs on identical state, alarm discs and
+// the minute star reading as compound movers in one run and clean revolves in
+// the next. A COUNTER, not a flag, so overlapping sweeps compose; the camera,
+// controls and render stay live so the page never appears hung.
+let sweepHold = 0;
 const pauseBtn = document.getElementById('btn-pause');
 pauseBtn.addEventListener('click', () => {
   paused = !paused;
@@ -10664,7 +10675,7 @@ function frame(now) {
   }
   autoTierUpdate(now); // §14: Auto quality steps down while frames sustained miss vsync
 
-  advanceFrame(realDt);
+  if (sweepHold === 0) advanceFrame(realDt); // sweep hold: geometry frozen, page alive
 
   // Paint the readout ~2×/s — touching the DOM every frame would itself cost
   // frames, which a frame-time readout of all things must not do.
@@ -10746,6 +10757,8 @@ window.__clock = {
   // differently for the same build. The fingerprint calls this first so its
   // reference pose is canonical (handSetOffset = 0, the boot state), not
   // whatever was last saved. Not a pose itself — follow with setPose().
+  beginSweepHold() { sweepHold++; },
+  endSweepHold() { sweepHold = Math.max(0, sweepHold - 1); },
   resetInputs() {
     crownRotation = 0; lastCrownRotation = 0;
     windPathRot = 0; setPathRot = 0; windAccumTurns = 0;
