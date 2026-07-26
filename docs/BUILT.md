@@ -2326,3 +2326,90 @@ blade or knife edge — which is what §35's beak already is — narrows it
 with no new train and no new z: ≈1.5 min against today's 2.76, for one
 part changed. It inherits the stride constraint above, so check that
 first.
+
+## §36 part two — Pose-independent overlap against the registry
+
+**Built, and deliberately not wired into the standing battery.** It
+would fail today on artifacts rather than on collisions — see the
+finding below — and a gate that cries wolf is worse than no gate. It
+runs on demand: `start(clock, 'sweptOverlap')`.
+
+**What it is for.** The pose battery samples, so it can pass a wheel
+spoke between two samples (TODO 7). This asks the same question of the
+HULLS, where there is no sampling to under-do: if a fixed part lies
+inside the volume a mover can reach, they meet, and no pose schedule
+hides it.
+
+**The soundness line is the design.** What the check may CLAIM is not
+uniform, and pretending otherwise would be the whole bug:
+
+- *Static vs revolve — SOUND, reported as violations.* The fixed part
+  is always there and the mover reaches every point of its hull, so an
+  overlap IS a collision at some reachable pose. This is the §35 class
+  exactly: a rod standing in the annulus a wheel turns through.
+- *Revolve vs revolve — NOT sound as a claim.* Two hulls overlapping
+  means a collision only if both parts can INDEPENDENTLY reach the
+  offending phases, and in a going train they cannot — phases are
+  locked by the teeth, so every meshing pair's hulls overlap BY
+  CONSTRUCTION. Reported separately as phase-dependent (35 pairs),
+  never as violations, or the real ones would be buried under the
+  movement's entire gear train.
+- *Anything `approx` — not claimed at all.* Part one's assert already
+  established these are per-pose boxes rather than hulls (all 55 of its
+  containment escapes are theirs), so a check built on them would be
+  asserting what the registry explicitly does not know. 14 units
+  excluded.
+
+Declared contacts opt out through the same `EXPECTED_PAIRS` /
+`IGNORED_PAIRS` the pose battery uses — one vocabulary, not a second.
+
+**Validated with a POSITIVE control, because zero violations on a clean
+movement proves nothing.** Run with the opt-outs disabled
+(`includeDeclared`), it flags 36 pairs including Balance ⇄ Balance
+cock, Balance ⇄ Hairspring and Balance cock ⇄ Hairspring — pairs that
+genuinely touch. The geometry test fires.
+
+**And then the result IS the finding.** With opt-outs on it reports 17
+violations, and every mover among them is bounded by a FULL REVOLVE:
+
+| mover | revolve volumes | full | why |
+|---|---|---|---|
+| Setting lever | 7 | 7 | oscillates, spoke |
+| Reset rod | 3 | 3 | oscillates, spoke |
+| Minute jumper | 4 | 4 | oscillates |
+| Keyless works | 15 | 14 | spoke, covered, annular |
+
+A lever that truly swings a few degrees is being treated as sweeping a
+complete annulus about its pivot, which overlaps half the movement. All
+17 are artifacts of part one's conservatism, not collisions.
+
+**And then it measured its own fix.** Reading those 17 sent me back to
+part one, where two bugs were hiding behind the conservatism:
+
+- *Axis boundaries were being read as motion.* The frames are every
+  axis's sweep concatenated, so at each boundary the pose jumps from one
+  sweep's end to the next's start — not movement the part performed.
+  Both the spoke rule and the oscillation test compared across that, so
+  a part monotonic within an axis and stationary elsewhere looked like
+  it BOTH jumped and reversed. The setting lever and minute jumper were
+  exactly that.
+- *Validation only reported.* Fixing the first bug made the registry
+  UNSOUND — 13 proven volumes stopped containing their own parts at the
+  finer sweep. Deriving tight is only safe if failure has a fallback, so
+  a failing arc is now widened to full (21 volumes), and one that still
+  fails on its r or z band — proof the motion is not a rotation about
+  the fitted axis at all — is DEMOTED to approx (19), where the registry
+  says plainly it cannot hull the part.
+
+Unsound volumes 13 → **0**; part two's violations 17 → **9**; positive
+control still firing at 27, so the reduction is tighter hulls and not a
+quieter check. 21 widened and 19 demoted is now the honest measure of
+how much of this movement cannot be pinned from samples.
+
+**The 9 that remain are a different class.** All are `Keyless works` and
+`Reset rod`, which have COMPOUND motion — the reset rod translates AND
+swings, both endpoints moving — so no single rotation bounds them and a
+declared ARC would not help. They want a hull of their own. That, plus
+the declared travels for genuine oscillators (`FORK_BANK_DEG`, the
+balance amplitude), is the declaration surface, and this check is the
+instrument that will measure whether it worked.
