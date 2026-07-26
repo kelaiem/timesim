@@ -2828,11 +2828,18 @@ for half of every turn. Accepted per §41 — real crowns carry brand marks
 and they spin. §27's ∞ read the same either way; this trades that for
 brand specificity, deliberately.
 
-**The W still reads weakly.** The S is crisp; the W is legible as a
-zigzag but not crisp at the default frames. With relief at 0.125 mm on
-near-white metal there is very little shading contrast to carry it. The
-likely fix is §41's own prescription — fewer, heavier strokes — or more
-relief, which needs the caller's budget raised. **Not resolved here.**
+**The W reads softly, and that is ACCEPTED — owner's call.** The S is
+crisp; the W is legible as a zigzag rather than sharply cut. At 0.125 mm
+relief on near-white metal there is little shading contrast to carry it,
+and the available fixes were §41's own prescription (fewer, heavier
+strokes) or more relief via a raised caller budget. Neither was taken:
+the letters do not need to be crisp. A monogram machined into a steel
+crown at engraving scale IS soft in real light, so the soft read is
+closer to the thing than a sharp one would be.
+
+Recorded so nobody files it as a defect later, and so the next person
+does not "fix" it — the same reason §41 wrote down the upside-down
+rotation in advance.
 
 Triangles 376 against the ∞'s 320. §41 asked for "no worse"; this is
 +17.5%, one draw call either way (the glyph shapes are merged into a
