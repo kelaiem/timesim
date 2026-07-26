@@ -6905,6 +6905,26 @@ style.textContent = `
   opacity: 0; transition: opacity 0.35s; display: none;
 }
 #clock-caption.show { opacity: 1; }
+/* §28 layer 2 — the "a new version is available" toast. Bottom-LEFT, clear of
+   the caption (bottom-centre) and the panel (top-left on desktop, and on a
+   phone §15's panel collapses upward), because this can appear at any moment
+   including mid-tour and must never cover what the viewer came for. */
+#clock-update {
+  position: fixed; left: 16px; bottom: 16px; z-index: 9;
+  background: rgba(15,17,20,0.9); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.16); border-radius: 10px;
+  padding: 10px 12px; color: #eaf0f7; display: none; align-items: center; gap: 10px;
+  font: 13px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  opacity: 0; transition: opacity 0.35s;
+}
+#clock-update.show { display: flex; opacity: 1; }
+#clock-update button {
+  font: inherit; color: #eaf0f7; background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18); border-radius: 7px;
+  padding: 4px 10px; cursor: pointer;
+}
+#clock-update button:hover { background: rgba(255,255,255,0.16); }
+#clock-update .dismiss { background: none; border: none; opacity: 0.6; padding: 4px 6px; }
 /* Tour deep-link confirmation (BUILT §17) — a real click is the ONLY way to
    arrive at the tour when it's auto-triggered by ?tour=1 on load: unlike the
    button, a deep link isn't itself a user gesture, and it shouldn't run the
@@ -7091,6 +7111,80 @@ function restorePanelAfterScript() {
 const captionEl = document.createElement('div');
 captionEl.id = 'clock-caption';
 document.body.appendChild(captionEl);
+
+// ---------------------------------------------------------------------------
+// §28 layer 2 — a USER-DECIDED reload for tabs left open across a deploy.
+//
+// Layer 1 (the release-versioned asset base, see .github/workflows/release.yml)
+// makes a fresh navigation pull new code on its own. This is the other half:
+// a tab that was already open when the deploy landed has no way to know, and
+// nothing in JS can purge the HTTP cache — `location.reload(true)`'s forceGet
+// argument is dead in every modern browser. The only honest mechanism is a
+// changed URL, which layer 1 provides, plus a reload the VIEWER chooses.
+//
+// It must be the viewer's choice. Reloading unasked would throw away
+// interaction state that took real effort to reach — a crown mid-pull, an
+// explode mid-drag, a tour three stops in.
+//
+// Polling is gated on VISIBILITY plus a slow interval, never a tight loop: a
+// hidden tab costs nothing, and a visible one asks at most once a quarter hour
+// (or the moment it is focused, which is when a stale tab actually matters).
+// version.json is fetched no-store — it is the one file that must never come
+// from a cache, since it exists to detect that the cache is stale.
+//
+// Absent in development: dev_server.py serves the source tree, which has no
+// version.json, so the first fetch 404s and the checker disables itself. No
+// toast, no repeated requests, nothing to notice.
+const UPDATE_POLL_MS = 15 * 60 * 1000; // a quarter hour; focus is the fast path
+let bootVersion = null, updateChecking = false, updateShown = false, lastUpdateCheck = 0;
+const updateEl = document.createElement('div');
+updateEl.id = 'clock-update';
+updateEl.innerHTML = '<span>A new version is available</span>';
+document.body.appendChild(updateEl);
+{
+  const reload = document.createElement('button');
+  reload.textContent = 'Reload';
+  reload.addEventListener('click', () => location.reload());
+  const dismiss = document.createElement('button');
+  dismiss.className = 'dismiss';
+  dismiss.textContent = '✕';
+  dismiss.title = 'Dismiss';
+  // Dismiss hides it for THIS version only: updateShown stays true so the
+  // same version cannot nag, but a later deploy re-arms it below.
+  dismiss.addEventListener('click', () => updateEl.classList.remove('show'));
+  updateEl.append(reload, dismiss);
+}
+async function fetchVersion() {
+  try {
+    const r = await fetch('version.json', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return typeof j.version === 'string' ? j.version : null;
+  } catch { return null; }
+}
+async function checkForUpdate(force = false) {
+  if (updateChecking || bootVersion === null) return;
+  const now = performance.now();
+  if (!force && now - lastUpdateCheck < UPDATE_POLL_MS) return;
+  updateChecking = true;
+  lastUpdateCheck = now;
+  const v = await fetchVersion();
+  updateChecking = false;
+  if (!v || v === bootVersion) return;
+  if (!updateShown || v !== updateEl.dataset.version) {
+    updateShown = true;
+    updateEl.dataset.version = v;   // a NEWER deploy re-arms a dismissed toast
+    updateEl.classList.add('show');
+  }
+}
+fetchVersion().then((v) => {
+  if (!v) return;                    // no version.json (dev): stay silent forever
+  bootVersion = v;
+  lastUpdateCheck = performance.now();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(true); });
+  window.addEventListener('focus', () => checkForUpdate(true));
+  setInterval(() => { if (!document.hidden) checkForUpdate(); }, UPDATE_POLL_MS);
+});
 
 // Tour deep-link confirmation gate (BUILT §17) — see the #clock-tour-gate
 // CSS comment above for why this exists. Single-use: the only caller is the
