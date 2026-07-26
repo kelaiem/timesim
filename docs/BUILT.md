@@ -3318,6 +3318,40 @@ The knob is free to move; the constraint stays asserted; an oversized
 taste choice is loud instead of a silent collision — the standing-rules
 division of labour working exactly as designed.
 
+### Safety bounds (follow-up, same PR)
+
+Three dangers, three mechanisms, because they are different problems:
+
+- **Declared bounds in the schema**, beside the values they bound with
+  the constraint in the comment (rule 1 for bounds): the subdial factor
+  caps at 1.0 *because the solved radius sits on the §25 C ceiling —
+  measured, 1.15 penetrates by 1.33* — and floors at 0.5 where the wells
+  would swallow their own hands; rib and perlage pitch bound [2, 30].
+  Declared only where a hard constraint is KNOWN — a 61-row bounds table
+  would rot, and the generic floors cover the rest.
+- **Generic floors in the generator**: a range never crosses zero — a
+  positive width, pitch or intensity gone negative is geometric
+  nonsense, and a divisor at exactly 0 is a NaN in a shader — so
+  positives floor at one step ("visually off" is reachable, true zero is
+  reserved to the file), negatives cap symmetrically, everything finite
+  by construction. The first-class rib slider reads the same schema
+  bounds, one table.
+- **Crash recovery for persisted overrides** — the danger bounds cannot
+  reach: a build-breaking value would crash every boot with the reset
+  panel never appearing. The merge arms a pending marker; the completed
+  build confirms it; a load that finds it still armed knows the previous
+  boot died mid-build and drops the overrides, warning. Value-agnostic —
+  it does not need to know which value was lethal, only that one was.
+  Drill verified: marker armed by hand → next load boots from the file.
+
+The override merge is also **type-anchored** — the file's value defines
+each leaf's type, and a mismatched override is refused rather than
+coerced. Found the hard way: a planted `NaN` serialised to JSON `null`,
+which is not `typeof 'number'`, sailed past the finite check and wrote
+`null` into the exposure — the exact smuggling the merge exists to stop.
+Verified: null and string refused, in-bounds number accepted, stale
+over-limit values clamped on merge (1.6 → 1.0, 0.001 → 2).
+
 Defaults unchanged → geometry unchanged at boot → the battery's standing
 results carry. An owner who commits NEW values into `aesthetics.json`
 inherits the usual obligation: full battery clean at boot, and the hands

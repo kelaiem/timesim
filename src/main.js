@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MATS, applyDecorationFromAesthetics } from './materials.js';
-import { aesthetics } from './aesthetics.js';
+import { aesthetics, confirmAestheticsBoot } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
@@ -7507,6 +7507,10 @@ window.addEventListener('keydown', (e) => {
   // because the stripes are computed from world position in one shared
   // material — thinning the count is a single write by construction.
   const ribPitch = document.getElementById('rib-pitch');
+  {
+    const b = aesthetics.decoration.ribbing._bounds.widthUnits;
+    ribPitch.min = b[0]; ribPitch.max = b[1];   // one bounds table — the schema's
+  }
   ribPitch.value = aesthetics.decoration.ribbing.widthUnits;
   ribPitch.addEventListener('input', () => {
     aesthetics.decoration.ribbing.widthUnits = Number(ribPitch.value);
@@ -7568,10 +7572,23 @@ window.addEventListener('keydown', (e) => {
       if (typeof r.value === 'number') {
         input = document.createElement('input');
         input.type = 'range';
+        // Bounds: the schema's own _bounds first (declared beside the value,
+        // constraint in its comment); else generic SAFETY floors. The generic
+        // range never crosses zero — a positive width, pitch or intensity
+        // gone negative is geometric nonsense, and a divisor at exactly 0 is
+        // a NaN in a shader — so positives floor at one step (visually 'off'
+        // is reachable, true zero is reserved to the file), negatives cap
+        // symmetrically, and everything stays finite by construction.
+        let parent = aesthetics;
+        for (const k of r.path.slice(0, -1)) parent = parent[k];
+        const declared = parent._bounds && parent._bounds[r.path[r.path.length - 1]];
         const m = Math.abs(r.value) || 1;
-        input.min = r.value >= 0 ? 0 : -3 * m;
-        input.max = 3 * m;
-        input.step = m / 100;
+        const step = m / 100;
+        if (declared) { input.min = declared[0]; input.max = declared[1]; }
+        else if (r.value > 0) { input.min = step; input.max = 3 * m; }
+        else if (r.value < 0) { input.min = -3 * m; input.max = -step; }
+        else { input.min = 0; input.max = 1; }
+        input.step = step;
         input.value = r.value;
       } else if (typeof r.value === 'string' && /^#[0-9a-f]{6}$/i.test(r.value)) {
         input = document.createElement('input');
@@ -10755,6 +10772,7 @@ function tick(t) {
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
 assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete
+confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned overrides
 
 // §39 — the SIZE PREDICTIONS. UNIT_MM is pinned to fusee chain pitch (see
 // layout.js), so none of these three numbers was tuned to come out right.
