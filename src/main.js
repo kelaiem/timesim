@@ -7183,9 +7183,17 @@ panel.innerHTML = `
            Z_DIAL = −7, plate at 0), so on a side-on view Z reads horizontally
            and "up" on screen is world Y — which is exactly the ambiguity that
            makes it easy to describe a part's move in the wrong axis. -->
+      <!-- §49: ONE overlay. Axes, graduations, the in-scene scale, the size
+           comparison and the stats line all ride one toggle and one derived
+           dimension set (scaleReadout) — two displays of one measurement
+           cannot drift when there is only one display. -->
       <div class="row">
-        <span class="label-small">Axes</span>
+        <span class="label-small">Measure</span>
         <button id="btn-axes">Off</button>
+      </div>
+      <div class="row label-small" id="measure-slide-row" style="display:none;">
+        <span class="label-small">Scale distance</span>
+        <input type="range" id="measure-slide" min="0" max="100" step="1" value="30" />
       </div>
       <div class="row label-small" id="axes-key" style="display:none; opacity:0.75;">
         <span>X red · Y green · Z blue (movement axis)</span>
@@ -7200,10 +7208,7 @@ panel.innerHTML = `
       <!-- §21: the scale REFERENCE. The legend above states millimetres;
            this makes them intuitive by drawing objects of known size at the
            same on-screen scale as the movement. -->
-      <div class="row">
-        <span class="label-small">Scale reference</span>
-        <button id="btn-scaleref">Off</button>
-      </div>
+
       <div class="row label-small" id="scale-stats" style="display:none; opacity:0.75;">
         <span></span>
       </div>
@@ -7936,6 +7941,16 @@ function setAxes(on) {
     scene.add(axesHelper);
   }
   if (axesHelper) axesHelper.visible = on;
+  // §49: the in-scene scale rides the same toggle.
+  if (on && !measureGroup) {
+    measureGroup = buildMeasureScale();
+    measureGroup.position.x = plateR * 1.25 + (Number(document.getElementById('measure-slide').value) / 100) * plateR;
+    scene.add(measureGroup);
+  }
+  if (measureGroup) measureGroup.visible = on;
+  rebuildMeasureLeaders();
+  document.getElementById('measure-slide-row').style.display = on ? '' : 'none';
+  setScaleRef(on);   // §49 merge: the comparison diagram and stats are the same overlay
   const b = document.getElementById('btn-axes');
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
@@ -7950,6 +7965,14 @@ function setAxes(on) {
   }
 }
 document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
+document.getElementById('measure-slide').addEventListener('input', (e) => {
+  if (!measureGroup) return;
+  // Slide along the standing offset: plateR·1.25 … plateR·2.25. Tick Y/Z
+  // coordinates never change, so the scale cannot read differently — only
+  // stand nearer or farther, which is the whole depth cue.
+  measureGroup.position.x = plateR * 1.25 + (Number(e.target.value) / 100) * plateR;
+  rebuildMeasureLeaders();
+});
 
 // --- §21 scale reference ---------------------------------------------------
 // §39 gave the movement a real size; this makes that size READABLE. Numbers in
@@ -7974,8 +7997,6 @@ const SCALE_REFS = [
   { name: '1 euro',     mm: 23.25 },   // ECB spec, exact
   { name: 'AA cell',    mm: 14.50 },   // IEC R6 standard
 ];
-// 1-2-5 ladder: the bar picks the largest step that still draws >= 60 px.
-const SCALE_BAR_LADDER = [0.5, 1, 2, 5, 10, 20, 50, 100];
 
 const scaleRefEl = document.createElement('div');
 scaleRefEl.id = 'scale-ref';
@@ -7994,47 +8015,92 @@ document.body.appendChild(scaleRefEl);
 // Sharing one box made the whole panel look like it was twitching, and put the
 // only moving readout on the same side as the control panel. Split apart, each
 // corner has one job: left is the fixed comparison, right is the live rule.
-const scaleBarEl = document.createElement('div');
-scaleBarEl.id = 'scale-bar';
-scaleBarEl.style.cssText =
-  'position:fixed; right:16px; bottom:16px; display:none; pointer-events:none;' +
-  'font:11px/1.35 ui-monospace,monospace; color:#cfd6dd; text-align:right;' +
-  'background:rgba(14,18,22,0.72); border-radius:6px; padding:9px 11px;' +
-  'backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);';
-document.body.appendChild(scaleBarEl);
+// §49 retired the 2D corner bar: the in-scene scale IS the live ruler now,
+// and it is honest at every camera angle by construction where the corner bar
+// had to re-derive itself per frame. The coin diagram stays — it is a
+// comparison, not a ruler.
 let scaleRefOn = false;
 
-// Pixels per WORLD UNIT at the movement's centre depth. Derived by projecting
-// two points one unit apart along the camera's own screen-right axis, so it is
-// correct for any orientation and any FOV without duplicating the projection
-// maths. Perspective means this is exact only at that depth — parts nearer the
-// camera render larger. That caveat belongs in the panel's fine print, NOT in
-// the bar's own label: "5 mm at the movement" read as jargon and was the first
-// thing the eye landed on, so it made the headline number harder to trust
-// rather than easier. The bar says "5 mm"; the footnote says where.
+
+// §49 — THE MEASUREMENT SCALE, IN THE SCENE. The obvious build is a 2D ruler
+// over the canvas with leader lines to projected points; §49 names why that is
+// wrong: under orbit the screen-to-mm mapping changes every frame, so a
+// screen-space ruler must re-derive its ticks per frame to stay truthful, and
+// any frame where that lags is a frame where it lies. This scale is ordinary
+// 3D geometry standing in the scene — the renderer's projection does the work
+// and the leader lines converge correctly at every angle by construction.
 //
-// And the footnote names the ORIGIN, not "the movement", because the origin is
-// where the axes are drawn — so the caveat points at something visible. The
-// two instruments are the same ruler: measured at camera 60/120/300, the bar's
-// px-per-mm and the on-screen spacing of the 1 mm axis ticks agree to within
-// 0.05%. Saying "at the movement's distance" described that correctly and
-// helped nobody; "same scale as the axis ticks" can be checked by looking.
-const _srA = new THREE.Vector3(), _srB = new THREE.Vector3(), _srR = new THREE.Vector3(), _srF = new THREE.Vector3();
-function pxPerUnit() {
-  camera.getWorldDirection(_srF);
-  _srR.crossVectors(_srF, camera.up).normalize();
-  _srA.set(0, 0, 0).project(camera);
-  _srB.set(_srR.x, _srR.y, _srR.z).project(camera);
-  return Math.abs(_srB.x - _srA.x) * window.innerWidth / 2;
+// Shape: an L-square east of the movement. The VERTICAL leg reads Y extents;
+// the FOOT runs along world Z and reads the assembly's depth. Ticks every
+// 1 mm, long every 5 — the same graduation the axes carry, one system of
+// marks. Every tick sits at k / UNIT_MM units; every leader endpoint comes
+// from scaleReadout. Nothing on this object is hand-placed, and the leaders
+// land ON the spine at the measured height, to be read against the adjacent
+// ticks exactly as a drawing's dimension line is.
+//
+// The SLIDE moves the square along its standing offset (world X): nearer the
+// movement the leaders shorten, farther they lengthen and converge — the
+// depth cue arrives as a side effect of real geometry, not as an effect. The
+// tick coordinates never move in Y or Z, so sliding cannot make the scale
+// read differently, only stand elsewhere.
+//
+// Added to the SCENE and never registered as a unit: the inspector walks
+// labelEntries, so the ruler is structurally invisible to the battery — a
+// ruler reporting clearance violations against the plate would be §49's own
+// reductio.
+let measureGroup = null, measureLeaders = null;
+function buildMeasureScale() {
+  const g = new THREE.Group();
+  const mm = 1 / UNIT_MM;
+  const pts = [], cols = [];
+  const C_SPINE = [0.82, 0.86, 0.9], C_MAJOR = [1, 0.83, 0.35], C_MINOR = [0.65, 0.7, 0.76];
+  const seg = (ax, ay, az, bx, by, bz, c) => { pts.push(ax, ay, az, bx, by, bz); cols.push(...c, ...c); };
+  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const mmTop = Math.ceil(MM(R)), yTop = mmTop * mm, yFoot = -yTop;
+  seg(0, yFoot, 0, 0, yTop, 0, C_SPINE);
+  for (let k = -mmTop; k <= mmTop; k++) {
+    if (k === 0) continue;
+    const major = k % 5 === 0, h = major ? 1.4 : 0.55, c = major ? C_MAJOR : C_MINOR;
+    seg(-h, k * mm, 0, h, k * mm, 0, c); seg(0, k * mm, -h, 0, k * mm, h, c);
+  }
+  seg(0, yFoot, zA - 2 * mm, 0, yFoot, zB + 2 * mm, C_SPINE);
+  for (let k = Math.floor(MM(zA)); k <= Math.ceil(MM(zB)); k++) {
+    const major = k % 5 === 0, h = major ? 1.4 : 0.55, c = major ? C_MAJOR : C_MINOR;
+    seg(-h, yFoot, k * mm, h, yFoot, k * mm, c); seg(0, yFoot - h, k * mm, 0, yFoot + h, k * mm, c);
+  }
+  const gl = new THREE.BufferGeometry();
+  gl.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  gl.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const lines = new THREE.LineSegments(gl,
+    new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false, depthWrite: false, transparent: true, opacity: 0.95 }));
+  lines.renderOrder = 998;
+  g.add(lines);
+  return g;
+}
+// Leaders are world-space (movement feature → the standing leg), so they are
+// rebuilt whenever the slide moves the leg.
+function rebuildMeasureLeaders() {
+  if (measureLeaders) { scene.remove(measureLeaders); measureLeaders.geometry.dispose(); measureLeaders = null; }
+  if (!measureGroup || !measureGroup.visible) return;
+  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const X = measureGroup.position.x, yFoot = -Math.ceil(MM(R)) / UNIT_MM;
+  const pts = [
+    0,  R, 0,   X,  R, 0,        // plate rim, north → the height that IS +R
+    0, -R, 0,   X, -R, 0,        // plate rim, south
+    0, yFoot, zA,   X, yFoot, zA, // assembly's dial-side face → the foot
+    0, yFoot, zB,   X, yFoot, zB, // assembly's far face
+  ];
+  const gl = new THREE.BufferGeometry();
+  gl.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  measureLeaders = new THREE.LineSegments(gl,
+    new THREE.LineBasicMaterial({ color: 0xffa050, depthTest: false, depthWrite: false, transparent: true, opacity: 0.55 }));
+  measureLeaders.renderOrder = 997;
+  scene.add(measureLeaders);
 }
 
 function setScaleRef(on) {
   scaleRefOn = on;
   scaleRefEl.style.display = on ? '' : 'none';
-  scaleBarEl.style.display = on ? '' : 'none';
-  const b = document.getElementById('btn-scaleref');
-  b.textContent = on ? 'On' : 'Off';
-  b.classList.toggle('active', on);
   const stats = document.getElementById('scale-stats');
   stats.style.display = on ? '' : 'none';
   if (on && scaleReadout) {
@@ -8047,27 +8113,10 @@ function setScaleRef(on) {
   }
   if (on) updateScaleRef();
 }
-document.getElementById('btn-scaleref').addEventListener('click', () => setScaleRef(!scaleRefOn));
+
 
 function updateScaleRef() {
-  if (!scaleRefOn) return;
-  const perMM = pxPerUnit() / UNIT_MM;
-  if (!isFinite(perMM) || perMM <= 0) {
-    scaleRefEl.innerHTML = '<div>scale unavailable at this framing</div>';
-    scaleBarEl.innerHTML = '<div>—</div>';
-    return;
-  }
-
-  // THE BAR — true on-screen scale, live. Its LENGTH is chosen from a 1-2-5
-  // ladder so the drawn bar stays 60-200 px at any zoom. Fixing the bar at
-  // 10 mm instead would make it 4 px across when zoomed out and 2000 px when
-  // zoomed in; picking the length is what keeps the same instrument readable
-  // over the whole range, and it is why the label is generated rather than
-  // written.
-  let barMM = 10;
-  for (const step of SCALE_BAR_LADDER) { barMM = step; if (step * perMM >= 60) break; }
-  const barPx = barMM * perMM;
-
+  if (!scaleRefOn || !scaleReadout) return;
   // THE DIAGRAM — its own scale, and SAYS so. Drawing the references at true
   // on-screen scale was the first attempt and it does not work: a 24 mm coin
   // against a 32 mm movement is the same order of size, so once the movement
@@ -8091,16 +8140,6 @@ function updateScaleRef() {
        ${i.self ? '●' : '○'} ${i.name} ⌀${i.mm.toFixed(i.self ? 1 : 2)} mm
      </div>`).join('');
 
-  scaleBarEl.innerHTML =
-    `<div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
-       <span>${barMM} mm</span>
-       <svg width="${barPx.toFixed(1)}" height="9" style="flex:none; overflow:visible;">
-         <path d="M0.5 1 V8 M${(barPx - 0.5).toFixed(1)} 1 V8 M0.5 4.5 H${(barPx - 0.5).toFixed(1)}"
-               stroke="#cfd6dd" stroke-width="1" fill="none"/>
-       </svg>
-     </div>
-     <div style="opacity:0.55; margin-top:4px;">true on screen, at the origin<br/>same scale as the 1 mm axis ticks</div>`;
-
   // DODGE THE CONTROL PANEL. #clock-ui owns the left edge and grows downward
   // as its sections open, so the bottom-left corner is only sometimes free —
   // with VIEW expanded it swallowed this diagram entirely. A fixed offset
@@ -8122,19 +8161,8 @@ function updateScaleRef() {
   // move is vertical: sit above the bar rather than across it. Both moves are
   // conditional and recomputed, so the common case (panel collapsed) keeps the
   // plain bottom-left corner and neither element drifts for no reason.
-  // Tested against where the diagram WOULD sit unlifted, never against where it
-  // currently sits. Reading the live rect makes the condition self-cancelling:
-  // lifting clears the overlap, so the test goes false, so it drops back, so
-  // the overlap returns — a flip every frame. The prospective rect has no such
-  // feedback because it does not depend on the answer.
-  const barR = scaleBarEl.getBoundingClientRect();
-  const selfW = scaleRefEl.offsetWidth, selfH = scaleRefEl.offsetHeight;
-  const restLeft = wouldOverlap ? Math.round(uiR.right) + 12 : 16;
-  const restBottom = window.innerHeight - 16;          // if it were NOT lifted
-  const hitsBar = barR.width > 0 &&
-                  restLeft + selfW > barR.left &&
-                  restBottom > barR.top && restBottom - selfH < barR.bottom;
-  scaleRefEl.style.bottom = hitsBar ? `${Math.round(window.innerHeight - barR.top) + 12}px` : '16px';
+  // (The vertical bar-dodge went with the bar §49 retired; the sideways panel
+  // dodge above is the one that still earns its keep.)
 
   scaleRefEl.innerHTML =
     `<div style="display:flex; align-items:center; gap:10px;">
@@ -10589,7 +10617,16 @@ assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label
   if (Math.abs(MM(CHAIN_PITCH) - CHAIN_PITCH_MM) > 1e-9)
     console.warn('§39: the unit→mm pin no longer reproduces the chain pitch it was derived from');
 
-  scaleReadout = { plateMM, movMM, balMM: bal ? MM(Math.max(bal.max.x - bal.min.x, bal.max.y - bal.min.y)) : null };
+  // §49: the ONE derived dimension set. Every overlay figure — stats line,
+  // legend, in-scene ruler tick, leader-line endpoint — reads from here, so
+  // two displays of one measurement cannot drift apart. Raw unit extents ride
+  // along because the ruler needs world coordinates, not just mm.
+  scaleReadout = {
+    plateMM, movMM,
+    balMM: bal ? MM(Math.max(bal.max.x - bal.min.x, bal.max.y - bal.min.y)) : null,
+    plateRUnits: plateR,
+    zMinUnits: +box.min.z.toFixed(3), zMaxUnits: +box.max.z.toFixed(3),
+  };
 }
 refreshUnitOptions(); // …and rebuild the selector now that it is (the boot call above ran a Chain short)
 

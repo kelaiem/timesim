@@ -3189,3 +3189,61 @@ roller's radius added at the tip. Table 104 → 130 entries.
   0 violations.
 
 §36's remainder is now part three alone (needs §33).
+
+## §49 — One measurement overlay, with the scale standing in the scene
+
+### The merge
+
+The axes display and the size comparison were separate overlays making
+separate assertions of the same measurement — a stats line saying
+"32.2 mm" and an axes legend spanning the plate, with nothing forcing
+them to agree. Both now ride **one toggle** ("Measure") and read **one
+derived set**: `scaleReadout`, extended to carry the raw unit extents
+(`plateRUnits`, `zMinUnits`, `zMaxUnits`) alongside the mm figures the
+stats line uses. Two displays of one measurement cannot drift when there
+is only one display. §49 names this as the §40 argument — read from one
+source, never scan twice — applied to what the viewer is shown.
+
+Retired in the merge: the 2D corner bar. The in-scene scale is the live
+ruler now, honest at every angle by construction, where the bar had to
+re-derive itself per frame. The coin diagram stays — it is a comparison,
+not a ruler.
+
+### The scale, in the scene — §49's design decision, followed
+
+A screen-space ruler must recompute its tick spacing every frame under
+orbit to stay truthful, and any frame where that lags is a frame where
+it lies. So the scale is ordinary 3D geometry: an **L-square** standing
+east of the movement — a vertical leg reading Y extents, a foot along
+world Z reading the assembly's depth — ticked every 1 mm, long every
+5, the same graduation the axes carry. The renderer's projection does
+the perspective work; the foot's ticks visibly converge because they
+are really receding.
+
+**Leader lines, both ends derived:** plate rim (±`plateRUnits`) to the
+vertical leg, assembly faces (`zMinUnits`/`zMaxUnits`) to the foot.
+Leaders land ON the spine at the measured height, read against the
+adjacent ticks the way a drawing's dimension line is. Nothing is
+hand-placed; a leader to a hand-placed tick would be a diagram of a
+measurement.
+
+**The slide** moves the square along its standing offset
+(`plateR·1.25 … 2.25`). Tick Y/Z coordinates never change, so sliding
+cannot make the scale read differently — only stand nearer or farther,
+which is the depth cue arriving as a side effect of real geometry.
+
+### Battery
+
+The ruler is added to the scene and never registered as a unit; the
+inspector walks `labelEntries`, so it is structurally invisible to every
+sweep — a ruler reporting clearance violations against the plate would
+be this entry's own reductio. Boot silent.
+
+### Noted, not done
+
+- The §10 group-selection tie-in (measure what the viewer is looking
+  at) was a "consider" and is not built; the shown set is the asserted
+  dimensions (plate ⌀, assembly depth).
+- §32's rule (measure the TRUE layout, not a dragged one) holds by
+  construction today — the leaders read built constants and the
+  boot-measured box — and must be revisited when §32 exists.
