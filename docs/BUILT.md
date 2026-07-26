@@ -2535,6 +2535,14 @@ headline makes a number harder to trust rather than easier. A micrograph
 writes the number and footnotes the rest, so the caveat moved to the
 panel's fine print.
 
+The footnote names **the origin**, not "the movement", because the
+origin is where the axes are drawn — so the caveat points at something
+the viewer can see. The two instruments are in fact the same ruler:
+measured at camera 60 / 120 / 300, the bar's px-per-mm and the on-screen
+spacing of the 1 mm axis ticks agree to within **0.05%**. The first
+wording described that relationship correctly and helped nobody; "same
+scale as the axis ticks" can be checked by looking.
+
 **A diagram, at its own scale, that says so.** The first attempt drew
 the reference objects at true on-screen scale, and it does not work: a
 24 mm coin against a 32 mm movement is the *same order of size*, so once

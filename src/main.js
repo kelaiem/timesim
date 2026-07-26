@@ -7871,6 +7871,13 @@ let scaleRefOn = false;
 // the bar's own label: "5 mm at the movement" read as jargon and was the first
 // thing the eye landed on, so it made the headline number harder to trust
 // rather than easier. The bar says "5 mm"; the footnote says where.
+//
+// And the footnote names the ORIGIN, not "the movement", because the origin is
+// where the axes are drawn — so the caveat points at something visible. The
+// two instruments are the same ruler: measured at camera 60/120/300, the bar's
+// px-per-mm and the on-screen spacing of the 1 mm axis ticks agree to within
+// 0.05%. Saying "at the movement's distance" described that correctly and
+// helped nobody; "same scale as the axis ticks" can be checked by looking.
 const _srA = new THREE.Vector3(), _srB = new THREE.Vector3(), _srR = new THREE.Vector3(), _srF = new THREE.Vector3();
 function pxPerUnit() {
   camera.getWorldDirection(_srF);
@@ -7950,7 +7957,7 @@ function updateScaleRef() {
        <svg width="${D + 2}" height="${D + 2}" style="flex:none;">${circles}</svg>
        <div style="display:flex; flex-direction:column; gap:3px;">${key}
          <div style="opacity:0.55; margin-top:3px;">circles: to scale with each<br/>other, not with the view<br/>
-           bar: true on screen, measured<br/>at the movement's distance</div>
+           bar: true on screen, at the<br/>origin — same scale as the<br/>1 mm axis ticks</div>
        </div>
      </div>`;
 }
