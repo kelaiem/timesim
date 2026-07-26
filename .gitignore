@@ -10,3 +10,6 @@
 # Private feature roadmap: unshipped plans stay out of the public repo.
 # Shipped entries move to docs/BUILT.md, which IS tracked.
 BACKLOG.md
+
+# §28: emitted by tools/stamp-release.mjs at release time, never committed
+version.json
