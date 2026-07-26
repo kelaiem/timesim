@@ -7861,6 +7861,20 @@ scaleRefEl.style.cssText =
   'background:rgba(14,18,22,0.72); border-radius:6px; padding:9px 11px;' +
   'backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);';
 document.body.appendChild(scaleRefEl);
+
+// The BAR gets the opposite corner. It is the live half — it re-lengths and
+// re-labels on every camera move — while the diagram beside it never changes.
+// Sharing one box made the whole panel look like it was twitching, and put the
+// only moving readout on the same side as the control panel. Split apart, each
+// corner has one job: left is the fixed comparison, right is the live rule.
+const scaleBarEl = document.createElement('div');
+scaleBarEl.id = 'scale-bar';
+scaleBarEl.style.cssText =
+  'position:fixed; right:16px; bottom:16px; display:none; pointer-events:none;' +
+  'font:11px/1.35 ui-monospace,monospace; color:#cfd6dd; text-align:right;' +
+  'background:rgba(14,18,22,0.72); border-radius:6px; padding:9px 11px;' +
+  'backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);';
+document.body.appendChild(scaleBarEl);
 let scaleRefOn = false;
 
 // Pixels per WORLD UNIT at the movement's centre depth. Derived by projecting
@@ -7890,6 +7904,7 @@ function pxPerUnit() {
 function setScaleRef(on) {
   scaleRefOn = on;
   scaleRefEl.style.display = on ? '' : 'none';
+  scaleBarEl.style.display = on ? '' : 'none';
   const b = document.getElementById('btn-scaleref');
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
@@ -7910,7 +7925,11 @@ document.getElementById('btn-scaleref').addEventListener('click', () => setScale
 function updateScaleRef() {
   if (!scaleRefOn) return;
   const perMM = pxPerUnit() / UNIT_MM;
-  if (!isFinite(perMM) || perMM <= 0) { scaleRefEl.innerHTML = '<div>scale unavailable at this framing</div>'; return; }
+  if (!isFinite(perMM) || perMM <= 0) {
+    scaleRefEl.innerHTML = '<div>scale unavailable at this framing</div>';
+    scaleBarEl.innerHTML = '<div>—</div>';
+    return;
+  }
 
   // THE BAR — true on-screen scale, live. Its LENGTH is chosen from a 1-2-5
   // ladder so the drawn bar stays 60-200 px at any zoom. Fixing the bar at
@@ -7945,19 +7964,56 @@ function updateScaleRef() {
        ${i.self ? '●' : '○'} ${i.name} ⌀${i.mm.toFixed(i.self ? 1 : 2)} mm
      </div>`).join('');
 
-  scaleRefEl.innerHTML =
-    `<div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;">
+  scaleBarEl.innerHTML =
+    `<div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+       <span>${barMM} mm</span>
        <svg width="${barPx.toFixed(1)}" height="9" style="flex:none; overflow:visible;">
          <path d="M0.5 1 V8 M${(barPx - 0.5).toFixed(1)} 1 V8 M0.5 4.5 H${(barPx - 0.5).toFixed(1)}"
                stroke="#cfd6dd" stroke-width="1" fill="none"/>
        </svg>
-       <span>${barMM} mm</span>
      </div>
-     <div style="display:flex; align-items:center; gap:10px;">
+     <div style="opacity:0.55; margin-top:4px;">true on screen, at the origin<br/>same scale as the 1 mm axis ticks</div>`;
+
+  // DODGE THE CONTROL PANEL. #clock-ui owns the left edge and grows downward
+  // as its sections open, so the bottom-left corner is only sometimes free —
+  // with VIEW expanded it swallowed this diagram entirely. A fixed offset
+  // would waste the space whenever the panel is collapsed or hidden, so the
+  // dodge is conditional on an ACTUAL overlap, recomputed each frame.
+  // Visibility by RECT, not offsetParent: #clock-ui is position:fixed, and a
+  // fixed element's offsetParent is always null whether or not it is on
+  // screen. Testing it that way made uiR permanently null, so the dodge below
+  // never fired once — the feature was absent while every overlap check
+  // happily reported no overlap. A zero-size rect is the honest test, since
+  // display:none collapses to 0x0 and a visible panel cannot.
+  const ui = document.getElementById('clock-ui');
+  const uiRaw = ui ? ui.getBoundingClientRect() : null;
+  const uiR = uiRaw && uiRaw.width > 0 && uiRaw.height > 0 ? uiRaw : null;
+  const selfR = scaleRefEl.getBoundingClientRect();
+  const wouldOverlap = uiR && uiR.bottom > window.innerHeight - selfR.height - 16 && uiR.right > 16;
+  scaleRefEl.style.left = wouldOverlap ? `${Math.round(uiR.right) + 12}px` : '16px';
+  // Dodging sideways can push the diagram into the bar's corner, so the second
+  // move is vertical: sit above the bar rather than across it. Both moves are
+  // conditional and recomputed, so the common case (panel collapsed) keeps the
+  // plain bottom-left corner and neither element drifts for no reason.
+  // Tested against where the diagram WOULD sit unlifted, never against where it
+  // currently sits. Reading the live rect makes the condition self-cancelling:
+  // lifting clears the overlap, so the test goes false, so it drops back, so
+  // the overlap returns — a flip every frame. The prospective rect has no such
+  // feedback because it does not depend on the answer.
+  const barR = scaleBarEl.getBoundingClientRect();
+  const selfW = scaleRefEl.offsetWidth, selfH = scaleRefEl.offsetHeight;
+  const restLeft = wouldOverlap ? Math.round(uiR.right) + 12 : 16;
+  const restBottom = window.innerHeight - 16;          // if it were NOT lifted
+  const hitsBar = barR.width > 0 &&
+                  restLeft + selfW > barR.left &&
+                  restBottom > barR.top && restBottom - selfH < barR.bottom;
+  scaleRefEl.style.bottom = hitsBar ? `${Math.round(window.innerHeight - barR.top) + 12}px` : '16px';
+
+  scaleRefEl.innerHTML =
+    `<div style="display:flex; align-items:center; gap:10px;">
        <svg width="${D + 2}" height="${D + 2}" style="flex:none;">${circles}</svg>
        <div style="display:flex; flex-direction:column; gap:3px;">${key}
-         <div style="opacity:0.55; margin-top:3px;">circles: to scale with each<br/>other, not with the view<br/>
-           bar: true on screen, at the<br/>origin — same scale as the<br/>1 mm axis ticks</div>
+         <div style="opacity:0.55; margin-top:3px;">to scale with each other,<br/>not with the view</div>
        </div>
      </div>`;
 }
