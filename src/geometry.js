@@ -2166,6 +2166,16 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
 // the hour-wheel TUBE (carrying the hour hand) and the cannon pinion inside
 // it have to physically reach the front of the dial. Without it the hands
 // were mounted in front of an unbroken disc with nothing passing through.
+// The applied hour markers' radial band, as FACTORS of the dial radius.
+// Exported because the HOUR HAND's length is derived from it (main.js): the
+// hand is sized to the markers' inner edge, so the two cannot drift apart.
+// They were previously a literal here and a hand-sampled "r ≈ 23.1" comment
+// there — correct on the day it was measured, and exactly the arrangement
+// that goes stale the first time the dial is re-proportioned.
+export const DIAL_MARKER_OUTER_F = 0.795; // markers hug the railroad track
+export const DIAL_MARKER_H_F = 0.21;      // cap height (tall proportion)
+export const DIAL_MARKER_INNER_F = DIAL_MARKER_OUTER_F - DIAL_MARKER_H_F; // = 0.585
+
 export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0 }) {
   const g = new THREE.Group();
   let mat = null;
@@ -2354,10 +2364,10 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
   // whose marker centre falls on a sub-dial is skipped (computed below).
   {
     const markerAesthetics = aesthetics.dial.hourMarkers;
-    const H = radius * 0.21;              // cap height (tall proportion)
+    const H = radius * DIAL_MARKER_H_F;   // cap height (tall proportion)
     const w = H * markerAesthetics.strokeWidthFactor;
     const D = Math.max(H * markerAesthetics.reliefDepthFactor, markerAesthetics.reliefDepthMin);
-    const rc = radius * 0.795 - H / 2;    // markers hug the railroad track
+    const rc = radius * DIAL_MARKER_OUTER_F - H / 2; // markers hug the railroad track
     const mat = MATS.steel;
 
     // All stroke END faces are horizontal in glyph-local space; letters are
