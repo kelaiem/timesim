@@ -2939,11 +2939,17 @@ across reloads via the dev server, and a crown's diameter cannot reach
 it. An A/B across two page loads is not an A/B when the state carries
 over.
 
-Boot silent. The focused battery over the enlarged crown's neighbours
-did **not** complete — including `Three-quarter plate` and `Alarm disc`
-took it past 194 s where the pusher's four-unit run took 11 s. The
-pusher result above is clean and unaffected, but this crown resize is
-**not** battery-verified.
+Boot silent. **Battery-verified after the fact** (the run at merge time
+did not complete — a re-run with the documented automation setting,
+`yieldEvery: 64`, finished the same unit list in 237 s; the earlier
+"non-termination" was the yield-throttling trap, not the workload):
+support 0 failures including the new `Alarm crown → plate` edge at
+0.35, graph clean, penetration all OK, clearances 0 violations, and the
+full `inspection { includeExcluded: true }` scan — the check that walks
+arbitrary pairs rather than declared budgets — reports **70 contacts,
+all EXPECTED, 0 FORBIDDEN**. The enlarged crown touches exactly its own
+setting arbor and the alarm winding train, at every one of ~750 poses
+across all eight axes.
 
 ## §40 — Stock census: the thinnest feature on every part, in millimetres
 
