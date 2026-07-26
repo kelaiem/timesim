@@ -2085,6 +2085,14 @@ built. Part two is not. Part three the entry itself gates behind §33's
 plumbing, which does not exist. **Parts two and three stay in the
 roadmap under the same §36** — the partial-ship convention §10 set.
 
+**A first slice shipped alongside it.** `findFreeAnnulus` (the
+`freeAnnulus` check) answers the narrower question "is there a clear
+RING of clearance at this height", by slicing the scene and OR-ing over
+every pose axis — the same swept semantics this registry generalises,
+and a working precedent for the occupancy grid part three needs. It was
+built to answer §38's siting question and validated against two known
+answers before being trusted anywhere; see §38.
+
 **The debt.** §35 burned three built-and-torn-out corridors on probes
 that could not see what MOVES, and the battery's own axis sampling can
 pass a wheel spoke between two samples (TODO items 5–7). Every fix was
@@ -2252,3 +2260,69 @@ from a stale entry document; a no-cache header stops it happening at
 all. Recovery is the safety net, not the plan — but it cannot be set
 from here, since deployment is an SFTP upload into an existing server
 config.
+
+## §38 — Alarm precision: what shipped, and why the mechanism did not
+
+**An entry that was answered rather than built.** §38 proposed a
+peripheral gate ring to take the alarm's firing window from 16 min to
+0.92 min. It is NOT built, and the roadmap entry recommends against it.
+What shipped is everything the investigation turned up on the way, and
+that is the honest bulk of it.
+
+**The premise was wrong, in two places at once.**
+
+`alarmTargetSeconds()` — the nearest quarter mark — has **no
+behavioural role**. It feeds a panel readout and an inspection getter,
+nothing else. The release is geometric: the pin bottoms when the disc's
+notch floor arrives under it, and the disc angle carries the
+CONTINUOUS set position. So the alarm was never settable-only-to-
+quarters; the READOUT was what rounded.
+
+And 16 min was the wrong figure for the window. 16 min is the notch's
+WIDTH; the pin only bottoms across its flat FLOOR — |align| ≤ gapHalf −
+pinArcHalf — which is **2.76 min**. The alarm already rings within
+about **±1.4 min** of the hand.
+
+| | |
+|---|---|
+| setting resolution | continuous (not 15 min) |
+| firing precision | ≈±1.4 min (not ±8) |
+| best free ring, probed | ±0.46 min |
+| what the ring would buy | **±0.94 min** |
+
+±0.94 min does not pay for a compound idler (1:1 across a large radius
+change cannot be done in one mesh), a ~34-radius ring, a feeler out
+there and a linkage back — sited in the band §29 and §34 have already
+squeezed twice, with the usable rings PLATE-side at z −1..−2 while the
+feeler works at ≈−6.
+
+**What shipped, and what changed for a viewer.**
+
+- **The panel now states the true firing time.** It announced
+  "Rings at 3:00" for an alarm that rang at 2:52 — a shipped readout,
+  under the label "Set for", naming a time the movement demonstrably
+  does not ring at. One readout now, derived from the disc's own angle
+  (Rule 2 — the same quantity the trip reads). Verified: panel ≈9:44,
+  fired 9:41, inside the notch floor (±1.4) plus the fast-forward
+  sampling stride (±1.5). The `≈` is load-bearing: printing a bare
+  minute would be a smaller version of the same lie.
+- **The alarm can ring under fast-forward at all** (TODO 8, now
+  closed). The whole trip sat inside a `!fastForward` gate: 30
+  sim-hours crossing the coincidence twice never rang. FF now drops out
+  at the release so the ring is witnessed at real speed, and the ring
+  holds the release tick, which still carried the FF `rawDt` and spent
+  87% of the alarm's power on its own.
+- **A step-over guard**, because the margin that makes any of this work
+  is thin: the pin's floor is 1.8× one FF stride, and narrowing the
+  notch consumes that. It warns once if a coincidence is crossed in a
+  single tick without the pin bottoming.
+- **The free-annulus probe** (`findFreeAnnulus`, registered as the
+  `freeAnnulus` check) — built to answer this entry's siting question
+  and useful well past it. It is §36's first slice; see that section.
+
+**If precision is ever actually wanted, the ring is the expensive
+half.** The floor is pin ÷ radius, and the pin is a ROUND 0.28 rod. A
+blade or knife edge — which is what §35's beak already is — narrows it
+with no new train and no new z: ≈1.5 min against today's 2.76, for one
+part changed. It inherits the stride constraint above, so check that
+first.
