@@ -269,60 +269,62 @@ Measured on the current build: 0.07 disarmed, 0.039 armed, no
 penetration. Note the battery cannot see any of this — every part
 involved belongs to the `Alarm link` unit, which is item 5.
 
-## 10. `JMP_BIND_EPS` does not reach the gap it is supposed to guard
+## 10. `Minute jumper ⇄ Dial` measures exactly 0.1500 and nobody knows which surface sets it
 
-`Minute jumper ⇄ Dial` measures **exactly 0.1500** against a required
-`CLEAR_MARGIN` of 0.15 — the tightest pair in the battery, sitting on
-the threshold with nothing to spare.
+The pair is the tightest in the battery: **min 0.1500, required 0.15**.
+`measureClearance` rounds to 4 decimals (neighbouring pairs report
+0.2489, 0.1908), so that is the true value, not display rounding.
 
-That is NOT the defect. The lifter plane is deliberately solved to bind
-there, because the keyless/motion/reserve stacks leave no other clear
-plane along the post→tail-pin span:
+Three facts, all verified:
 
-```
-Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS + JMP_LIFTER_T / 2
-```
+- The tight plane is **intentional**. The keyless/motion/reserve stacks
+  leave no clear corridor along the post→tail-pin span, so the lifter
+  plane is solved to bind on the margin:
+  `Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS + JMP_LIFTER_T/2`.
+- `required: 0.15` is not the generic `CLEAR_MARGIN` falling through —
+  it is an explicit per-pair budget row in `inspect.js`
+  (`{ a: 'Minute jumper', b: 'Dial', min: 0.15, axes: [...] }`).
+- The minute star is collected into **both** `Dial` and `Motion works`
+  (confirmed by walking mesh ancestors against `labelEntries`). This is
+  already known and handled: `['Minute jumper', 'Dial']` is in
+  `EXPECTED_PAIRS` and its comment says so in as many words.
 
-The defect is `JMP_BIND_EPS = 0.01`, whose stated job is exactly this
-situation: *"these planes are solved to land EXACTLY on CLEAR_MARGIN,
-and the clearance sweep compares the BVH-measured mesh gap >= 0.15 with
-no tolerance — a float hair reads as a violation. One explicit
-centi-unit of slack keeps the bind falsifiable without flickering."*
+**The open question.** `JMP_BIND_EPS = 0.01` exists so a solved-to-bind
+plane cannot flicker into a false violation on a float hair. If it
+reached the measured contact this pair would read 0.16. It reads
+0.1500. So either:
 
-If that epsilon reached the measured contact, the pair would report
-0.16. It reports 0.1500. `measureClearance` rounds to 4 decimals (other
-pairs come back 0.2489, 0.1908), so this is not display rounding — the
-slack is not in the number the sweep compares.
+1. the binding contact is **not** the lifter bar's dial-side face — most
+   likely the beak seated in the star, which is an INTENDED contact and
+   would make 0.15 a seat depth rather than a clearance, leaving the
+   epsilon correct but irrelevant to this number; or
+2. the epsilon is lost between the derivation and the mesh.
 
-So the pair is one float hair from a spurious violation, which is the
-precise outcome the epsilon was written to prevent. It is currently
-passing on luck, and any retessellation or transform-chain change near
-the dial can flip it.
+Under (1) there is no defect here at all, only a misleading row. Under
+(2) the guard does not guard. **These have not been distinguished**, and
+the difference decides whether this entry is a bug or a documentation
+fix.
 
-**Two candidate causes, not yet distinguished:**
+**What settles it**: the identity of the closest mesh pair at
+`beat f=0`. Three attempts failed, recorded so they are not repeated:
 
-1. The binding contact is NOT the lifter bar's dial-side face. The
-   epsilon only lifts the bar; if the minimum is set by some other
-   jumper mesh against the dial, the epsilon is irrelevant to it and
-   the comment describes a guard on the wrong surface.
-2. The epsilon is lost between the derivation and the mesh — a parent
-   transform, or a geometry built about a face rather than a centre.
+- World-AABB nearest-pair — returns 0 for any two overlapping boxes.
+  A beak sitting near a star tooth overlaps in AABB with a real gap
+  between the surfaces. This is the same error that once reported the
+  alarm hand 0.32 from the markers when the true vertex radius was 0.96.
+- `three-mesh-bvh` `closestPointToGeometry` driven by hand — returned
+  distance 0 for every pair including obviously distant ones, so the
+  call or the geometry-to-BVH matrix was wrong.
+- `inspect.js` does not export `collectUnits`, and `measureClearance`
+  returns only `{min, at}` — the battery knows the answer internally and
+  does not surface it.
 
-**Lead, unverified**: probing the pair by world AABB puts `jumperBeak`
-and a mesh named `star` in contact, with the star reached through the
-*Dial* unit's subtree — even though the jumper is explicitly
-re-parented out of `dialFace` (`movement.attach(jumperUnit)`) to stop
-that double-attribution. If the star is still collected into Dial, this
-pair is partly measuring the jumper against its own star, and the beak
-riding the star's valley is an INTENDED contact, not a clearance. That
-would make the 0.15 an artifact of attribution rather than a real
-plane — a fresh instance of items 5 and 6. AABB overlap is not contact
-and this was not checked against the inspector's own unit collection
-(`collectUnits` is not exported), so treat it as a lead. It is the
-first thing to settle, because if it holds, cause 1 above is the
-answer.
+The cheap fix is to make the battery report it: have `measureClearance`
+carry the mesh names of the minimum through to its result. That is
+useful well beyond this row — every tight pair in the report currently
+names two UNITS and leaves the actual surfaces to guesswork.
 
-Found while verifying §35; unrelated to that branch and pre-existing.
+Found while verifying §35; pre-existing and unrelated to that branch.
 
 ## Recently closed
 
