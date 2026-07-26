@@ -2076,3 +2076,83 @@ perfect and still show nothing, and only looking catches it:
 violations · inspection {includeExcluded} 0 FORBIDDEN · geometry
 fingerprint 3312892754, unchanged — this is render and I/O, and the
 sim math is untouched.
+
+## §36 part one — The swept-volume registry, and the assert it owes
+
+**Shipped in part.** §36 is three parts: the registry, a
+pose-independent overlap check, and a routing surface. Part one is
+built. Part two is not. Part three the entry itself gates behind §33's
+plumbing, which does not exist. **Parts two and three stay in the
+roadmap under the same §36** — the partial-ship convention §10 set.
+
+**The debt.** §35 burned three built-and-torn-out corridors on probes
+that could not see what MOVES, and the battery's own axis sampling can
+pass a wheel spoke between two samples (TODO items 5–7). Every fix was
+a smarter one-off probe. A registry makes it structural: each part's
+hull over its whole pose range, derived once, so questions get asked of
+the hull instead of of a sample.
+
+**Derived, not declared.** §36 said most volumes should be derivable,
+and a hand-authored table is the thing that rots — §10 found four units
+that had gone ungrouped for two sections, §16 found the same wheel
+radius derived twice under two names. So `buildSweptRegistry`
+classifies each mesh from its own motion:
+
+| motion | volume | status |
+|---|---|---|
+| motionless | the geometry itself | proven |
+| planar, fits a circle about a z-parallel axis | annulus sector (centre, r-band, z-band, θ-coverage) — exact for a rotation, pose-INDEPENDENT | proven |
+| anything else (§35's lay shaft turns about a RADIAL axis) | union of per-pose bounds | **approx — explicitly not a hull** |
+
+514 volumes on the shipped movement: 210 revolve, 167 static, 137
+approx.
+
+**The assert §36 requires.** Every volume must contain its part at
+every pose, validated against a FINER, phase-shifted sample set than
+the one it was derived from — checking a hull against its own samples
+is vacuous, and catching a hull that has gone stale is the point. Of
+the 377 PROVEN volumes, **0 escape**. All 55 escapes are `approx`,
+which is the assert correctly reporting that a per-pose box union is
+not a hull.
+
+**Angular coverage cannot be an interval.** Each frame's arc bounds
+come from its own `atan2` branch, so taking min/max across frames
+mixes branches. That read as 74 containment failures on the first run,
+every one an artefact of the bookkeeping rather than a real escape.
+Coverage is a circular bitmap now, which also represents the genuinely
+disjoint arcs a part occupies on different pose axes — something no
+single interval can.
+
+**The spoke rule earns its place.** A part advancing further between
+two samples than its own angular width is promoted to a FULL revolve,
+because the samples do not overlap and their union is not the swept
+set. 59 volumes qualify. That is §36's own "a revolve fills spoke gaps:
+a corridor must never thread between the spokes of a turning wheel",
+and it is now a mechanism rather than a sentence.
+
+**The finding that matters: OSCILLATORS CANNOT BE BOUNDED BY SAMPLING
+AT ALL.** A part that swings out and back between two samples sweeps
+further than the interval between them, and no sample count fixes it —
+the balance, the pallet fork and the reset hammer each escaped their
+derived arc exactly this way. They are bounded by the full circle now:
+safe, and loose (122 volumes).
+
+Tightening them is NOT derivable from poses. It needs the pose law
+DECLARED — `FORK_BANK_DEG`, the balance amplitude. §36's wording,
+"declares, or derives from `MECH_GRAPH` + its pose law", reads like an
+either/or convenience; it is load-bearing, and part two has to be built
+knowing that a meaningful fraction of the registry will always be
+declared rather than measured.
+
+**Battery.** No geometry and no sim change — the registry only reads
+poses. Fingerprint 3415378947, unchanged; boot silent. Runtime ~3 s
+fronted, ~55 s under the harness's yield throttling.
+
+**Note on the rebase, because it nearly shipped broken.** The registry
+and §38's free-annulus probe insert at the same point in `inspect.js`,
+so they conflict. Stripping conflict markers is NOT the same as
+resolving a conflict: the first resolution silently ate the probe
+function's closing braces, looked clean, and surfaced only as a
+`SyntaxError` on load. The check that actually proves an additive
+change is `git diff <base>` showing ZERO deletions — any removed line
+is a defect by definition.
