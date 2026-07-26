@@ -2598,6 +2598,75 @@ export async function checkLowCorridor(clock, {
   };
 }
 
+// §50 — A DECLARED FLOOR ON STOCK THICKNESS. §40 measured; this asserts.
+//
+// The census's thin end was the alarm work at 0.0075-0.0487 mm against real
+// going-train wheels at ~0.10-0.15. The thinnest row — 7.5 MICRONS — was
+// identified first, per the entry, and it is a design rather than a defect:
+// §34's alarmIndexLine, a registration MARKING deliberately proud only 0.02
+// units into a declared margin chain. Which is why the floor is per KIND: a
+// wheel, a pivot, a spring and a printed marking cannot honestly share one
+// number, and a flat 0.12 would condemn a hairspring for being accurate.
+//
+// Every floor is CITED, not invented (rule 1 applied to floors):
+export const STOCK_FLOORS = {
+  //          mm       basis
+  wheel:   { mm: 0.12,  basis: 'the entry\'s figure; sits at the thin end of the 0.10-0.15 mm band §40 measured for the going train. THE DEFAULT for any part that declares nothing.' },
+  pivot:   { mm: 0.07,  basis: 'real train pivots run 0.07-0.12 mm' },
+  spring:  { mm: 0.03,  basis: 'real hairsprings run 0.02-0.04 mm; flat springs thicker' },
+  marking: { mm: 0.005, basis: 'printed/inlaid dial indices are a 5-10 micron film — relief, not stock' },
+};
+// DEGENERATE floor — the unarguable tier, gating from day one: below this a
+// solid is not thin metal but broken geometry (invisible, z-fighting, a
+// hazard to the volume registry). Kind declarations cannot excuse it unless
+// the kind's own cited floor is lower (marking is, deliberately).
+export const DEGENERATE_STOCK_MM = 0.01;
+// Kind declarations. Per PART, with per-MESH overrides for named exceptions —
+// the same string-keyed table discipline as MECH_GRAPH, living beside it.
+// Anything absent defaults to \'wheel\' and its 0.12 floor, and the report
+// lists the default rows separately so the table\'s gaps are visible, not
+// silent.
+export const STOCK_KIND_BY_PART = {
+  Hairspring: 'spring',
+  Chain: 'pivot',            // link stock: pin-scale, not wheel-scale
+};
+export const STOCK_KIND_BY_MESH = {
+  alarmIndexLine: 'marking',       // §34 registration line, cited above
+  alarmFeelerSpring: 'spring',     // §40\'s first honesty nominee — a real blade
+  alarmDiscTrack: 'marking',       // printed track on the disc face
+};
+
+// REPORT → TRIAGE → DECLARE → GATE, in that order (§36 part two is the
+// precedent). This check GATES only the degenerate tier; the horological
+// tier REPORTS violations for the owner\'s triage, and becomes a gate only
+// once the exceptions are declared. ok:false therefore means degenerate
+// geometry, not thin-but-arguable stock.
+export async function checkStockFloor(clock, opts = {}) {
+  const census = await stockCensus(clock, opts);
+  const degenerate = [], violations = [], defaulted = new Set();
+  for (const r of census.thinnestFirst) {
+    const kind = STOCK_KIND_BY_MESH[r.mesh] || STOCK_KIND_BY_PART[r.part] || 'wheel';
+    if (!STOCK_KIND_BY_MESH[r.mesh] && !STOCK_KIND_BY_PART[r.part]) defaulted.add(r.part);
+    const floor = STOCK_FLOORS[kind];
+    const row = { part: r.part, mesh: r.mesh, kind, mm: r.thinnestMM, floorMM: floor.mm };
+    if (r.thinnestMM < floor.mm) {
+      if (r.thinnestMM < DEGENERATE_STOCK_MM && floor.mm >= DEGENERATE_STOCK_MM) degenerate.push(row);
+      else violations.push(row);
+    }
+  }
+  violations.sort((a, b) => a.mm - b.mm);
+  return {
+    ok: degenerate.length === 0,
+    gate: 'degenerate tier only — horological violations REPORT pending owner triage (§50: report, triage, declare, then gate)',
+    floors: STOCK_FLOORS, degenerateFloorMM: DEGENERATE_STOCK_MM,
+    degenerate, violations,
+    violationsByPart: [...violations.reduce((m, v) => (m.set(v.part, (m.get(v.part) || 0) + 1), m), new Map())]
+      .map(([part, n]) => `${part} ×${n}`),
+    partsOnDefaultKind: [...defaulted].sort(),
+    rowsChecked: census.thinnestFirst.length,
+  };
+}
+
 const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
   freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
@@ -2608,6 +2677,7 @@ const CHECKS = {
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
+  stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
