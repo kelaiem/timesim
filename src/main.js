@@ -5730,10 +5730,21 @@ const alarmStemLen = plateR + 2.2 - ALARM_CD;
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
 alarmSpinner.add(alarmStem);
-// Brand crown (§27), smaller than the winding crown (this stem drives only
-// the light alarm disc, so it needs no winding leverage) — the second
-// consumer of makeBrandMark's ∞, same enlarged knurl at 4.0/3.4.
-const alarmCrownKnob = G.makeCrown({ bodyR: 4.0, bodyH: 3.4, material: MATS.steel });
+// Brand crown (§27) — the second consumer of makeBrandMark, now the WS
+// monogram (§41). MATCHED to the winding crown at 5.425/3.4.
+//
+// It was 4.0/3.4, and the comment justified that mechanically: this stem
+// drives only the light alarm disc, so it needs no winding leverage. True,
+// and not the deciding argument — leverage sets the MINIMUM a crown may be,
+// not the size it must be, and the two crowns sit in the same view where a
+// 26% difference reads as an inconsistency rather than as a statement about
+// torque. Owner's call, taken deliberately; the smaller size remains
+// mechanically sufficient if it is ever wanted back.
+//
+// Height stays 3.4. Matching that too would push the knob further along the
+// alarm stem, which is a placement change on a part whose stem length and
+// bushing are solved elsewhere — out of scope for a size match.
+const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: 3.4, material: MATS.steel });
 alarmCrownKnob.rotation.x = -Math.PI / 2; // builder +Z face → outward along +Y
 alarmCrownKnob.position.y = alarmStemLen - 0.7;
 alarmSpinner.add(alarmCrownKnob);
@@ -6710,11 +6721,38 @@ alarmSwitchUnit.add(alarmPusherGroup);
   stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
   stem.position.set(_pushU.x * (1.6 + stemLen / 2), _pushU.y * (1.6 + stemLen / 2), 0);
   alarmPusherGroup.add(stem);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.1, 14), MATS.steel);
+  // §43 — THE HEAD IS SIZED IN MILLIMETRES, because a pusher is the one part
+  // of this movement a finger is supposed to operate, and "looks about right"
+  // is not a spec for that.
+  //
+  // Real watch pushers run 2–3 mm across the head: below about 2 mm a fingertip
+  // cannot locate and press it without a tool, which is the ergonomic floor
+  // this derives from. Take the SMALL end — this is a minimum to clear, not a
+  // target to hit.
+  //
+  // Measured before changing anything (§43 required that, and §38 is the
+  // cautionary tale for scoping on an unmeasured premise): the head was
+  // r 0.85 u = 0.319 mm, a 0.64 mm head. Not marginally small — a third of the
+  // floor, nearer a pinhead than a pusher. The premise held.
+  //
+  // Converted through §39's UNIT_MM rather than written as units, so the
+  // ergonomic claim stays legible and survives a change of scale.
+  const PUSHER_HEAD_MM = 1.0;                          // RADIUS floor ⇒ a 2 mm head
+  const PUSHER_HEAD_R = PUSHER_HEAD_MM / UNIT_MM;      // 2.667 u at 0.375 mm/u
+  // Head DEPTH follows the width so it still reads as a turned cap rather than
+  // a wafer; at the old 1.1 u against a 5.3 u face it would have been a disc.
+  // This is the HEAD, not the stem's travel — the throw that indexes the
+  // column wheel one castellation per press is mechanism and is untouched
+  // below, which is why the pusher is not simply scaled up as a whole.
+  const PUSHER_HEAD_LEN = PUSHER_HEAD_R * 0.62;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(PUSHER_HEAD_R, PUSHER_HEAD_R, PUSHER_HEAD_LEN, 20), MATS.steel);
   cap.name = 'alarmPusherCap';
   cap.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;
-  cap.position.set(_pushU.x * (1.6 + stemLen + 0.55), _pushU.y * (1.6 + stemLen + 0.55), 0);
+  cap.position.set(_pushU.x * (1.6 + stemLen + PUSHER_HEAD_LEN / 2),
+                   _pushU.y * (1.6 + stemLen + PUSHER_HEAD_LEN / 2), 0);
   alarmPusherGroup.add(cap);
+  if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
+    console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
   // The pawl — a slim bar at the stem's inner end, nose down at the skirt.
   const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
   pawl.rotation.z = ALARM_PUSH_AZ;
