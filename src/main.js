@@ -7756,13 +7756,56 @@ let scaleReadout = null;
 // so it reads at any framing, and drawn on top of the geometry so it is never
 // buried inside the movement — it is a reference, not a part.
 let axesHelper = null, axesOn = false;
+
+// §21 — GRADUATE the axes. Once UNIT_MM exists the arms stop being mere
+// direction indicators and can carry a real rule, so the legend's "1 u =
+// 0.375 mm" becomes something you can read off the model instead of having to
+// hold in your head. Ticks are in MILLIMETRES, not units: units are this
+// model's internal bookkeeping, millimetres are the thing a viewer can judge.
+//
+// Minor every 1 mm, major every 5 mm, each drawn as a small CROSS (two
+// segments perpendicular to the arm rather than one) so a tick stays legible
+// from any orbit — a single flat tick vanishes edge-on, which for an
+// instrument meant to be read from any angle is the whole failure.
+const AXIS_TICK_MM = 1, AXIS_TICK_MAJOR_MM = 5;
+function buildAxisTicks(armUnits) {
+  const stepU = AXIS_TICK_MM / UNIT_MM;              // 1 mm expressed in units
+  const pts = [], cols = [];
+  const AXES_DIR = [
+    { d: [1, 0, 0], p: [[0, 1, 0], [0, 0, 1]], c: [1, 0.25, 0.25] },  // X red
+    { d: [0, 1, 0], p: [[1, 0, 0], [0, 0, 1]], c: [0.3, 1, 0.3] },    // Y green
+    { d: [0, 0, 1], p: [[1, 0, 0], [0, 1, 0]], c: [0.4, 0.55, 1] },   // Z blue
+  ];
+  for (const ax of AXES_DIR) {
+    for (let n = 1; n * stepU <= armUnits; n++) {
+      const at = n * stepU;
+      const major = (n * AXIS_TICK_MM) % AXIS_TICK_MAJOR_MM === 0;
+      const half = major ? 1.5 : 0.6;                // tick half-length, units
+      for (const pd of ax.p) {
+        pts.push(ax.d[0] * at - pd[0] * half, ax.d[1] * at - pd[1] * half, ax.d[2] * at - pd[2] * half,
+                 ax.d[0] * at + pd[0] * half, ax.d[1] * at + pd[1] * half, ax.d[2] * at + pd[2] * half);
+        for (let k = 0; k < 2; k++) cols.push(ax.c[0], ax.c[1], ax.c[2]);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const m = new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false, depthWrite: false, transparent: true, opacity: 0.9 });
+  const ticks = new THREE.LineSegments(g, m);
+  ticks.renderOrder = 999;
+  return ticks;
+}
+
 function setAxes(on) {
   axesOn = on;
   if (on && !axesHelper) {
-    axesHelper = new THREE.AxesHelper(plateR * 1.15);
+    const arm = plateR * 1.15;
+    axesHelper = new THREE.AxesHelper(arm);
     axesHelper.material.depthTest = false;
     axesHelper.material.depthWrite = false;
     axesHelper.renderOrder = 999;
+    axesHelper.add(buildAxisTicks(arm));
     scene.add(axesHelper);
   }
   if (axesHelper) axesHelper.visible = on;
@@ -7775,7 +7818,7 @@ function setAxes(on) {
   if (on) {
     const arm = plateR * 1.15;   // the AxesHelper's arm length, above
     scaleRow.firstElementChild.textContent =
-      `arm ${arm.toFixed(1)} u = ${MM(arm).toFixed(1)} mm · 1 u = ${UNIT_MM.toFixed(3)} mm` +
+      `ticks ${AXIS_TICK_MM} mm · long ${AXIS_TICK_MAJOR_MM} mm · arm ${MM(arm).toFixed(1)} mm` +
       (scaleReadout ? ` · ⌀${scaleReadout.plateMM.toFixed(1)} mm plate, ${scaleReadout.movMM.toFixed(1)} mm deep` : '');
   }
 }

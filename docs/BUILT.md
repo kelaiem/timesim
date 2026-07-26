@@ -2549,6 +2549,21 @@ would have quietly reintroduced the very thing §39 spent its whole entry
 avoiding — a number chosen because it looked right. Dropped for that
 reason.
 
+### Graduated axes
+
+The axes legend was a caption; once `UNIT_MM` existed the arms could
+carry a real rule instead. Ticks every **1 mm**, long every **5 mm**,
+over an 18.5 mm arm — 18 per axis.
+
+Graduations are in **millimetres, not units**. Units are this model's
+internal bookkeeping; millimetres are the thing a viewer can judge, and
+putting units on a ruler would have made it readable only by someone who
+already knew the scale.
+
+Each tick is a small **cross** — two segments perpendicular to the arm,
+not one. A single flat tick disappears edge-on, which for an instrument
+meant to be read while orbiting is the whole failure.
+
 ### The stats line
 
 `⌀32.2 × 9.7 mm · 18,000 A/h · 30 h reserve` — every figure derived,
@@ -2563,7 +2578,22 @@ Across a 30× zoom range (camera 40 → 1200 units), the ladder steps
 **independently projected** plate width to within **0.02%** at every
 level.
 
-One trap worth recording. The first check compared the bar against the
+The tick placement was verified separately: 18 ticks per axis at exactly
+1–18 mm, identical on all three, the last inside the 18.51 mm arm.
+Residual error is ~1e-6 mm, which is `Float32BufferAttribute` storage
+rounding rather than placement.
+
+**Two traps worth recording**, both instances of the same thing — a
+check that looks for less than the thing it verifies.
+
+The first tick check filtered for vertices with `y ≈ 0 AND z ≈ 0` to
+find points on the X axis. But a tick CROSS offsets its vertices in
+exactly those two directions, so the filter matched nothing and
+`.every()` returned `true` over an empty array. It reported success
+while measuring no ticks at all. The fix was to test segment MIDPOINTS,
+which do lie on the axis.
+
+The second: the first bar check compared the bar against the
 plate's width along *world X* and reported a 28% error. The bar was
 right; the check was wrong — the camera was angled, so world X is
 foreshortened while the bar measures screen-right. Re-run face-on, where
