@@ -2081,6 +2081,23 @@ const thetaBin = (a) => ((Math.floor(a / THETA_BIN_W) % THETA_BINS) + THETA_BINS
 export async function buildSweptRegistry(clock, {
   axes = AXES, perAxis = 12, validatePerAxis = 29, eps = 1e-6, yieldEvery = 4,
 } = {}) {
+  // CANONICAL STATE FIRST — the registry's output must be a function of the
+  // geometry, not of session history. start() already enforces this for every
+  // battery check and fingerprintFull() for every pose, but the registry only
+  // reset AFTERWARD (leaving the clock clean for the next caller), so a
+  // DIRECT call sampled whatever the session had restored — an engaged alarm,
+  // an open explode, a crown pull — and the run after it sampled the clean
+  // state its own tail had produced. Same code, same page, different registry:
+  // 468 rows then 475 in §40's census, and job A's static/approx counts
+  // drifting between runs. setPose() cannot save this on its own, because it
+  // assigns only the fields a pose names and everything else rides through.
+  clock.resetInputs();
+  // …and HOLD the frame loop for the whole build: canonical state at entry is
+  // not enough, because the sweep yields between samples and any rAF frame in
+  // a gap integrates the eased shown-values by a wall-clock dt setPose cannot
+  // undo. try/finally so a throw cannot leave the mechanism frozen.
+  if (clock.beginSweepHold) clock.beginSweepHold();
+  try {
   const units = collectUnits(clock, { includeExcluded: true });
   // Sample every mesh's world vertices over a pose set.
   const samplePoses = async (n) => {
@@ -2448,6 +2465,7 @@ export async function buildSweptRegistry(clock, {
     registry: volumes.map(({ mesh, bins, ...rest }) => rest),
     _volumes: volumes,   // with mesh + bins, for checkSweptOverlap (§36 part two)
   };
+  } finally { if (clock.endSweepHold) clock.endSweepHold(); }
 }
 
 const CHECKS = {
