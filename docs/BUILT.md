@@ -2752,3 +2752,95 @@ the standing battery until job B lands.
 
 Note also the baseline is **5**, not the 9 the entry records — that
 number predates §35's rod work.
+
+## §41 — Brand mark: WS monogram (replaces §27's ∞)
+
+### §27's factoring held — the test this entry existed to run
+
+§27's acceptance required the mark be "parameterised and CALLED, not
+inlined, so a second part could reuse it". It was: `makeCrown` is the
+only call site, passes `{ r, tubeR, material }`, and reads none of the
+returned `userData`. So this is a **body swap with zero call-site
+edits**, and both crowns (winding `bodyR` 5.425, alarm 4.0) follow
+automatically. `aspect` and the tube-tessellation arguments are gone —
+they described a lemniscate and nothing passed them.
+
+**§27 has no `docs/BUILT.md` entry.** The entry says to read one first;
+it does not exist — only a passing mention at the crown-tube relief
+convention. The design had to be recovered from `makeCrown`'s source.
+
+### Stroke width and relief, derived
+
+`makeCrown` budgets exactly `tubeR` of proud height, so relief is fixed
+by the caller and the only free choice is stroke WIDTH. Take it from the
+shape the ∞ already proved inside the envelope — a round tube of radius
+`tubeR`, i.e. **2·tubeR wide standing tubeR proud**:
+
+> stroke width = 2 × proud height
+
+Below that ratio the relief is a knife edge: at engraving scale a stroke
+narrower than twice its relief reads as a scratch, not a mark.
+
+**The S's counter is held at one full stroke width**, asserted at build.
+Below it the two arcs read as a filled blob, which is the specific way a
+monogram fails at crown size.
+
+### Fit
+
+The call site's budget was sized for the ∞ — a wide, flat curve using
+almost none of the vertical box. Two upright letters use all of it, so
+filling the same budget crowded the rim. Both glyphs are drawn inside a
+box scaled by `FIT = 0.72`, with **`r` and `tubeR` scaled together** so
+stroke width stays 2 × proud and the counter-to-stroke ratio the assert
+tests is scale-invariant — a smaller mark cannot quietly become an
+illegible one. Half-width 3.725 against a 4.614 budget; proud 0.332
+against 0.461. Standing under the caller's ceiling is safe.
+
+At `UNIT_MM = 0.375`: strokes **0.249 mm** wide standing **0.125 mm**
+proud on the winding crown. Engraving scale, and among the thinnest
+detail on the part exactly as §41 predicted — §40's census is the check
+on whether that is too fine.
+
+### Three bugs, all mine, all caught by looking
+
+1. **The counter assert fired on both crowns** (0.776 against a 0.922
+   stroke). Cause: `H` took the ∞'s *centreline* height when its ink
+   stood one tube radius proud of that top and bottom, so the S got
+   0.92 units less room than the mark being replaced. Match the ink, not
+   the spine.
+2. **The S was two disconnected arcs.** With centres 2·sR apart the
+   upper circle's bottom and the lower's top are the same point, but my
+   arcs started at unrelated angles and ended 1.36·sR apart — on screen
+   a 3, not an S. Each arc must start at the tangent join.
+3. **The W was written as one closed outline** offsetting the inner
+   return in x only. That is not a constant-width stroke on a slanted
+   limb — the offset must run along the segment normal — so the polygon
+   self-intersected into slivers. Rebuilt as four separately stroked
+   quads. Their winding flips with limb direction, which inverted half
+   the faces; `absarc` always emits CCW, which is why the S was
+   unaffected and it looked like a W-only bug. Winding is now forced CCW
+   by signed area.
+
+### Accepted, and open
+
+**The crown rotates and WS is not symmetric**, so it sits upside down
+for half of every turn. Accepted per §41 — real crowns carry brand marks
+and they spin. §27's ∞ read the same either way; this trades that for
+brand specificity, deliberately.
+
+**The W reads softly, and that is ACCEPTED — owner's call.** The S is
+crisp; the W is legible as a zigzag rather than sharply cut. At 0.125 mm
+relief on near-white metal there is little shading contrast to carry it,
+and the available fixes were §41's own prescription (fewer, heavier
+strokes) or more relief via a raised caller budget. Neither was taken:
+the letters do not need to be crisp. A monogram machined into a steel
+crown at engraving scale IS soft in real light, so the soft read is
+closer to the thing than a sharp one would be.
+
+Recorded so nobody files it as a defect later, and so the next person
+does not "fix" it — the same reason §41 wrote down the upside-down
+rotation in advance.
+
+Triangles 376 against the ∞'s 320. §41 asked for "no worse"; this is
++17.5%, one draw call either way (the glyph shapes are merged into a
+single mesh). Stated rather than hidden.

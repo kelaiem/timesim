@@ -2025,6 +2025,55 @@ export async function findFreeAnnulus(clock, {
 //
 //   start(clock, 'sweptRegistry');
 //
+// §36 JOB B — PATH HULLS, for compound movers.
+//
+// `Reset rod` and `Keyless works` are not oscillators. The reset rod
+// TRANSLATES and SWINGS — both endpoints moving — so no rotation about any
+// fitted axis bounds it, and job A's declared arc cannot help by construction.
+// Part one's fallback for these was one AABB over every pose, which is so
+// loose the registry refuses to claim anything built on it (`approx`).
+//
+// A path hull is the middle term: not one box over the whole motion, but a
+// LIST of boxes, one per sample, each unioned with its successor so the gap
+// between two samples is covered by the box that spans them. A part that moves
+// smoothly is then bounded by a sleeve that follows it instead of by the
+// bounding box of everywhere it has ever been.
+//
+// Consecutive boxes are only unioned WITHIN one pose axis. The frames are
+// every axis's sweep concatenated, so at a boundary the pose jumps from one
+// sweep's end to the next sweep's start — unioning across that would bridge
+// two unrelated configurations and inflate the sleeve back to an AABB. This is
+// the same boundary rule the spoke and oscillation tests already carry.
+function buildPathHull(series, perAxis) {
+  const boxes = [];
+  const acc = (b, pts) => {
+    for (let i = 0; i < pts.length; i += 3) {
+      if (pts[i] < b[0]) b[0] = pts[i];       if (pts[i] > b[3]) b[3] = pts[i];
+      if (pts[i + 1] < b[1]) b[1] = pts[i + 1]; if (pts[i + 1] > b[4]) b[4] = pts[i + 1];
+      if (pts[i + 2] < b[2]) b[2] = pts[i + 2]; if (pts[i + 2] > b[5]) b[5] = pts[i + 2];
+    }
+  };
+  for (let i = 0; i < series.length; i++) {
+    const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    acc(b, series[i]);
+    const sameAxis = (i + 1) % perAxis !== 0;
+    if (sameAxis && i + 1 < series.length) acc(b, series[i + 1]);
+    boxes.push(b);
+  }
+  // Drop any box wholly inside another — a part at rest on most axes produces
+  // the same box many times over, and the overlap test pays for every one.
+  const keep = [];
+  for (const b of boxes) {
+    if (keep.some((k) => b[0] >= k[0] && b[1] >= k[1] && b[2] >= k[2] && b[3] <= k[3] && b[4] <= k[4] && b[5] <= k[5])) continue;
+    for (let i = keep.length - 1; i >= 0; i--) {
+      const k = keep[i];
+      if (k[0] >= b[0] && k[1] >= b[1] && k[2] >= b[2] && k[3] <= b[3] && k[4] <= b[4] && k[5] <= b[5]) keep.splice(i, 1);
+    }
+    keep.push(b);
+  }
+  return keep;
+}
+
 const THETA_BINS = 2048;                              // 0.0031 rad per bin
 const THETA_BIN_W = (Math.PI * 2) / THETA_BINS;
 const thetaBin = (a) => ((Math.floor(a / THETA_BIN_W) % THETA_BINS) + THETA_BINS) % THETA_BINS;
@@ -2118,7 +2167,15 @@ export async function buildSweptRegistry(clock, {
           if (pts[i] < xLo) xLo = pts[i]; if (pts[i] > xHi) xHi = pts[i];
           if (pts[i + 1] < yLo) yLo = pts[i + 1]; if (pts[i + 1] > yHi) yHi = pts[i + 1];
         }
-        volumes.push({ unit: u.name, mesh: m, kind: 'approx', box: [xLo, yLo, zLo, xHi, yHi, zHi] });
+        // §36B: a path hull instead of the single AABB this used to be. The
+        // AABB is kept alongside as `box` so anything still reading it works,
+        // but `kind` is now 'path' and the check CLAIMS it.
+        volumes.push({
+          unit: u.name, mesh: m, kind: 'path',
+          box: [xLo, yLo, zLo, xHi, yHi, zHi],
+          boxes: buildPathHull(series, perAxis),
+          zBand: [zLo, zHi],
+        });
         continue;
       }
       // REVOLVE about (cx, cy) ∥ z. r-band and per-frame θ extent.
@@ -2232,6 +2289,21 @@ export async function buildSweptRegistry(clock, {
           for (let s = 0; s <= steps; s++) bins[thetaBin(lo + (span * s) / steps)] = 1;
         }
         if (bins.every((b) => b === 1)) { full = true; reason = 'covered'; }
+      }
+      // §36B: a part that REVERSES and has no declared travel is a compound
+      // mover, not a rotator — the full circle part one gives it is what
+      // produced every false static-vs-swept violation. A path hull bounds it
+      // by where it actually went. Deliberately NOT applied to 'spoke' or
+      // 'annular': those are genuine rotators, and for them the full circle is
+      // the correct semantics — a corridor must never thread between the
+      // spokes of a turning wheel.
+      if (full && reason === 'oscillates') {
+        volumes.push({
+          unit: u.name, mesh: m, kind: 'path',
+          box: null, boxes: buildPathHull(series, perAxis), zBand: [zLo, zHi],
+          from: 'oscillates',
+        });
+        continue;
       }
       volumes.push({
         unit: u.name, mesh: m, kind: 'revolve', axis: [cx, cy],
@@ -2624,8 +2696,76 @@ export async function checkSweptOverlap(clock, opts = {}) {
     return worst;
   };
 
+  // §36B: does any triangle of a static mesh fall inside a path hull's sleeve?
+  // Triangle AABB against each box: a superset test, so it can over-report but
+  // never miss — the same direction of error the rest of this check accepts.
+  // Triangle AABBs of a static mesh, in world space, computed ONCE. The first
+  // version re-transformed every triangle for every (static, path) pair, which
+  // is the same matrix multiply repeated a hundred-odd times per mesh.
+  const triCache = new Map();
+  const staticTris = (stat) => {
+    let t = triCache.get(stat);
+    if (t) return t;
+    const pos = stat.mesh.geometry.getAttribute('position');
+    const index = stat.mesh.geometry.getIndex();
+    const n = index ? index.count : pos.count;
+    const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const out = new Float64Array((n / 3) * 6);
+    const all = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    let w = 0;
+    for (let i = 0; i < n; i += 3) {
+      for (let k = 0; k < 3; k++) {
+        const idx = index ? index.getX(i + k) : i + k;
+        P[k].fromBufferAttribute(pos, idx).applyMatrix4(stat.mesh.matrixWorld);
+      }
+      out[w] = Math.min(P[0].x, P[1].x, P[2].x); out[w + 3] = Math.max(P[0].x, P[1].x, P[2].x);
+      out[w + 1] = Math.min(P[0].y, P[1].y, P[2].y); out[w + 4] = Math.max(P[0].y, P[1].y, P[2].y);
+      out[w + 2] = Math.min(P[0].z, P[1].z, P[2].z); out[w + 5] = Math.max(P[0].z, P[1].z, P[2].z);
+      for (let k = 0; k < 3; k++) { if (out[w + k] < all[k]) all[k] = out[w + k]; if (out[w + 3 + k] > all[3 + k]) all[3 + k] = out[w + 3 + k]; }
+      w += 6;
+    }
+    t = { tris: out, count: w / 6, all };
+    triCache.set(stat, t);
+    return t;
+  };
+  // Each path hull's overall bounds, for the broad phase.
+  for (const v of vols) {
+    if (v.kind !== 'path' || !v.boxes || !v.boxes.length) continue;
+    const a = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (const b of v.boxes) for (let k = 0; k < 3; k++) { if (b[k] < a[k]) a[k] = b[k]; if (b[3 + k] > a[3 + k]) a[3 + k] = b[3 + k]; }
+    v.hullBox = a;
+  }
+  const boxHit = (p, q) => !(p[3] < q[0] || p[0] > q[3] || p[4] < q[1] || p[1] > q[4] || p[5] < q[2] || p[2] > q[5]);
+
+  const staticHitsPath = (stat, vol) => {
+    if (!vol.boxes || !vol.boxes.length) return null;
+    const S = staticTris(stat);
+    // BROAD PHASE. Without it this test was O(statics x tris x boxes) with no
+    // way out early, and the run went from ~3 min to over 15. Two gates: the
+    // whole static against the whole sleeve, then each triangle against the
+    // sleeve before it looks at any individual box.
+    if (!boxHit(S.all, vol.hullBox)) return null;
+    const tris = S.tris;
+    let worst = null;
+    for (let i = 0, w = 0; i < S.count; i++, w += 6) {
+      if (tris[w + 3] < vol.hullBox[0] || tris[w] > vol.hullBox[3] ||
+          tris[w + 4] < vol.hullBox[1] || tris[w + 1] > vol.hullBox[4] ||
+          tris[w + 5] < vol.hullBox[2] || tris[w + 2] > vol.hullBox[5]) continue;
+      for (const b of vol.boxes) {
+        if (tris[w + 3] < b[0] || tris[w] > b[3] || tris[w + 4] < b[1] || tris[w + 1] > b[4] || tris[w + 5] < b[2] || tris[w + 2] > b[5]) continue;
+        const depth = Math.min(
+          Math.min(tris[w + 3], b[3]) - Math.max(tris[w], b[0]),
+          Math.min(tris[w + 4], b[4]) - Math.max(tris[w + 1], b[1]),
+          Math.min(tris[w + 5], b[5]) - Math.max(tris[w + 2], b[2]));
+        if (!worst || depth > worst.depth) worst = { depth };
+      }
+    }
+    return worst;
+  };
+
   const statics = vols.filter((v) => v.kind === 'static');
   const revolves = vols.filter((v) => v.kind === 'revolve');
+  const paths = vols.filter((v) => v.kind === 'path');
   const violations = [], phaseDependent = new Set(), unverified = new Set();
   const seen = new Set();
   let tested = 0;
@@ -2639,6 +2779,17 @@ export async function checkSweptOverlap(clock, opts = {}) {
       tested++;
       const hit = staticHitsRevolve(stat, vol);
       if (hit) { seen.add(key); violations.push({ pair: key, fixed: stat.unit, mover: vol.unit, overlap: +hit.depth.toFixed(3) }); }
+    }
+  }
+  for (const vol of paths) {
+    for (const stat of statics) {
+      if (stat.unit === vol.unit) continue;
+      if (declared(stat.unit, vol.unit)) continue;
+      const key = pairKey(stat.unit, vol.unit);
+      if (seen.has(key)) continue;
+      tested++;
+      const hit = staticHitsPath(stat, vol);
+      if (hit) { seen.add(key); violations.push({ pair: key, fixed: stat.unit, mover: vol.unit, overlap: +hit.depth.toFixed(3), via: 'path' }); }
     }
   }
   for (const a of revolves) for (const b of revolves) {
