@@ -2844,3 +2844,73 @@ rotation in advance.
 Triangles 376 against the ∞'s 320. §41 asked for "no worse"; this is
 +17.5%, one draw call either way (the glyph shapes are merged into a
 single mesh). Stated rather than hidden.
+
+## §43 part one — The alarm pusher, sized in millimetres
+
+### Measured first, because the premise was a suspicion
+
+§43 required the current size be reported before anything changed — §38
+is the cautionary tale, having been scoped on a premise that measurement
+showed did not exist. Here the premise **held, and not marginally**:
+
+| | units | mm |
+|---|---|---|
+| head radius, before | 0.85 | **0.319** |
+| head radius, after | 2.667 | **1.000** |
+
+A 0.64 mm head is nearer a pinhead than a pusher — a third of the
+ergonomic floor, not a near miss.
+
+### The floor is derived, not chosen
+
+Real watch pushers run 2–3 mm across the head; below about 2 mm a
+fingertip cannot locate and press one without a tool. That is the
+constraint, and the **small end** is taken deliberately — a minimum to
+clear, not a target to hit:
+
+```js
+const PUSHER_HEAD_MM = 1.0;                     // RADIUS floor ⇒ a 2 mm head
+const PUSHER_HEAD_R  = PUSHER_HEAD_MM / UNIT_MM; // 2.667 u at 0.375 mm/u
+```
+
+Converted through §39's `UNIT_MM` rather than written as `2.667`, so the
+ergonomic claim stays legible and survives a change of scale. A build
+assert fails if the head ever drops back under 1 mm.
+
+### The head grew; the mechanism did not
+
+The stem's throw is what indexes the column wheel one castellation per
+press — mechanism, derived from the wheel's index angle and the beak.
+Scaling the pusher uniformly would have changed the indexing and broken
+the toggle, so only the cap's radius, depth and its own offset along the
+push axis moved. Head depth follows width (`0.62 × R`) so it still reads
+as a turned cap; at the old 1.1 u against a 5.3 u face it would have
+been a wafer.
+
+**Verified unchanged, by measurement rather than by argument**: each
+press advances the column wheel by exactly **−30°**, identical in
+magnitude and direction across two presses — half of the 60° pitch, as
+the source's "one actuation = one pusher press = half a pitch" requires.
+The lock beak toggles ±16.043°.
+
+### Clearance
+
+Focused battery over `Alarm switch`, `Alarm lock`, `Dial`, `Alarm link`
+across all eight axes: support 0 failures, graph clean, penetration OK
+(both pairs 0 against a 0.12 budget), clearances **0 violations**. Boot
+silent.
+
+The head now stands **2.22 mm proud of the plate rim**. There is nothing
+out there to hit — it is outside the plate entirely — but "how far it
+protrudes" still has no reference, because §3's case band does not
+exist. That number is recorded here so it can be checked against a bezel
+when there is one, rather than discovered then.
+
+### Not done — part two
+
+The pusher is sized to be pressed and still cannot be pressed: the alarm
+toggles from the panel, and `alarmColumnHitTest` already routes clicks
+on the switch unit through the same `setAlarm` path, so the remaining
+work is the pointer affordance rather than a second code path. §43 filed
+this as separable and it stays that way; §19's findings on whether
+viewers discover the crown's 3D drag at all should inform it.
