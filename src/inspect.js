@@ -2144,8 +2144,17 @@ export async function buildSweptRegistry(clock, {
       // and their union is NOT the swept set. Promote to a full revolve.
       let full = false, reason = null;
       const ownWidth = Math.max(...arcs.map((a) => a.width));
+      // Consecutive samples are only comparable WITHIN one axis. The frames
+      // are every axis's sweep concatenated, so at each axis boundary the
+      // pose jumps from one sweep's end to the next sweep's start — which is
+      // not motion the part performed. Comparing across that boundary made a
+      // part that is monotonic within an axis and stationary elsewhere look
+      // like it both jumped (spoke) and reversed (oscillates), and promoted
+      // it to a full revolve for neither reason. `steps` carries null at each
+      // boundary so both tests skip it.
       const steps = [];
       for (let i = 1; i < arcs.length; i++) {
+        if (i % perAxis === 0) { steps.push(null); continue; }   // axis boundary: not a movement
         let step = arcs[i].lo - arcs[i - 1].lo;
         while (step > Math.PI) step -= Math.PI * 2;
         while (step < -Math.PI) step += Math.PI * 2;
@@ -2167,6 +2176,7 @@ export async function buildSweptRegistry(clock, {
       // reads a full revolve as a measured travel.
       if (!full) {
         for (let i = 1; i < steps.length; i++) {
+          if (steps[i] === null || steps[i - 1] === null) continue;  // spans an axis boundary
           if (steps[i] * steps[i - 1] < -1e-12) { full = true; reason = 'oscillates'; break; }
         }
       }
@@ -2231,7 +2241,57 @@ export async function buildSweptRegistry(clock, {
           }
         }
       }
-      if (bad) { escapes.push({ unit: vol.unit, kind: vol.kind, why: bad }); break; }
+      if (bad) {
+        // A DERIVED arc that does not survive validation is widened to the
+        // full circle rather than shipped. Deriving tight and validating
+        // wider is only sound if the failure has somewhere safe to fall
+        // back to — otherwise tightening the hulls just trades a loose
+        // registry for a wrong one, which is worse. Recorded either way, so
+        // the count stays a signal: it says how much of the registry cannot
+        // be pinned from samples and is therefore waiting on a declared
+        // pose law.
+        escapes.push({ unit: vol.unit, kind: vol.kind, why: bad, widened: vol.kind === 'revolve' });
+        if (vol.kind === 'revolve') { vol.full = true; vol.bins = null; vol.reason = 'validation'; }
+        break;
+      }
+    }
+  }
+
+  // Second pass over the widened set: whatever still escapes is a genuine
+  // failure of the hull's SHAPE (its r or z band), not of its arc, and no
+  // amount of angular widening fixes it. This is the number that must be 0.
+  const stillEscaping = [];
+  for (const vol of volumes) {
+    if (vol.kind !== 'revolve' || !vol.full) continue;
+    for (const frame of fine) {
+      const pts = frame.get(vol.mesh);
+      if (!pts) continue;
+      let bad = null;
+      for (let i = 0; i < pts.length; i += 3) {
+        const r = Math.hypot(pts[i] - vol.axis[0], pts[i + 1] - vol.axis[1]);
+        if (r < vol.rBand[0] - tol || r > vol.rBand[1] + tol) { bad = 'r'; break; }
+        if (pts[i + 2] < vol.zBand[0] - tol || pts[i + 2] > vol.zBand[1] + tol) { bad = 'z'; break; }
+      }
+      if (bad) {
+        // Its r or z band cannot hold it, so the motion is not really a
+        // rotation about the fitted axis — the circle fit was a coincidence
+        // of the sampled path. DEMOTE to approx: the registry says plainly
+        // that it cannot hull this part, rather than shipping a hull that
+        // does not contain it. Bounds come from the FINE sample set.
+        let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity, zL = Infinity, zH = -Infinity;
+        for (const f2 of fine) {
+          const q = f2.get(vol.mesh); if (!q) continue;
+          for (let i = 0; i < q.length; i += 3) {
+            if (q[i] < xLo) xLo = q[i]; if (q[i] > xHi) xHi = q[i];
+            if (q[i+1] < yLo) yLo = q[i+1]; if (q[i+1] > yHi) yHi = q[i+1];
+            if (q[i+2] < zL) zL = q[i+2]; if (q[i+2] > zH) zH = q[i+2];
+          }
+        }
+        stillEscaping.push({ unit: vol.unit, why: bad, demotedToApprox: true });
+        vol.kind = 'approx'; vol.box = [xLo, yLo, zL, xHi, yHi, zH];
+        delete vol.axis; delete vol.rBand; delete vol.bins; vol.full = false;
+        break;
+      }
     }
   }
 
@@ -2243,6 +2303,8 @@ export async function buildSweptRegistry(clock, {
     fullRevolves: volumes.filter((v) => v.full).length,
     approximate: volumes.filter((v) => v.kind === 'approx').map((v) => v.unit).filter((n, i, a) => a.indexOf(n) === i),
     containmentEscapes: escapes,
+    widenedByValidation: escapes.filter((e) => e.widened).length,
+    stillEscapingAfterWidening: stillEscaping,
     registry: volumes.map(({ mesh, bins, ...rest }) => rest),
     _volumes: volumes,   // with mesh + bins, for checkSweptOverlap (§36 part two)
   };
