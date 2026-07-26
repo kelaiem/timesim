@@ -2523,6 +2523,81 @@ export async function buildSweptRegistry(clock, {
   } finally { if (clock.endSweepHold) clock.endSweepHold(); }
 }
 
+// §36 follow-up — VERIFY the low-corridor obstacle table.
+//
+// LOW_LINKAGE_OBSTACLES is the manual 2D prototype of the swept-volume idea:
+// circles and stadium segments covering the low linkage's whole crown-stroke
+// footprint, consumed by the balance-cock and pillar seat scans. §36 planned
+// for the registry to subsume it. It CANNOT, structurally: the table is
+// consumed MID-BUILD, before the registry can exist, and no amount of
+// machinery moves an async pose sweep before the geometry it sweeps. What the
+// registry's machinery CAN do is what §42 did for the shipped list — keep the
+// hand-written input and fail loudly when it disagrees with sampled reality.
+//
+// The check sweeps every axis, samples the linkage units' world vertices,
+// keeps those inside the corridor's z-band, and requires each to lie inside
+// some table obstacle (small tolerance for tessellation). An escape means the
+// table under-covers: a seat scan could place a leg inside the real swept
+// path, which is precisely the silent rot this closes.
+export async function checkLowCorridor(clock, {
+  units = ['Setting lever', 'Reset rod', 'Hack rod', 'Reset hammer'],
+  perAxis = 25, tol = 0.02, yieldEvery = 16,
+} = {}) {
+  const obstacles = clock.lowLinkageObstacles, band = clock.lowCorridorZBand;
+  if (!obstacles || !band) return { error: 'clock does not expose lowLinkageObstacles / lowCorridorZBand' };
+  const all = collectUnits(clock, { includeExcluded: true });
+  const targets = all.filter((u) => units.includes(u.name));
+  const dist = (o, x, y) => {
+    if (o.ax === undefined) return Math.hypot(x - o.x, y - o.y) - o.r;
+    const vx = o.bx - o.ax, vy = o.by - o.ay;
+    const L2 = vx * vx + vy * vy || 1e-9;
+    let t = ((x - o.ax) * vx + (y - o.ay) * vy) / L2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
+  };
+  if (clock.beginSweepHold) clock.beginSweepHold();
+  const escapes = new Map();   // mesh -> worst escape
+  let sampled = 0, inBand = 0, poses = 0;
+  try {
+    const v = new THREE.Vector3();
+    for (const axis of AXES) {
+      for (let sIdx = 0; sIdx < perAxis; sIdx++) {
+        clock.setPose(axis.pose(sIdx / (perAxis - 1)));
+        clock.scene.updateMatrixWorld(true);
+        poses++;
+        for (const u of targets) for (const m of u.meshes) {
+          const pos = m.geometry.getAttribute('position');
+          for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+            sampled++;
+            if (v.z < band[0] || v.z > band[1]) continue;
+            inBand++;
+            let best = Infinity;
+            for (const o of obstacles) { const d = dist(o, v.x, v.y); if (d < best) best = d; if (best <= tol) break; }
+            if (best > tol) {
+              const key = `${u.name} / ${m.name || '(unnamed)'}`;
+              const prev = escapes.get(key);
+              if (!prev || best > prev.escape)
+                escapes.set(key, { escape: +best.toFixed(3), at: { axis: axis.name, f: +(sIdx / (perAxis - 1)).toFixed(3) },
+                                   xy: [+v.x.toFixed(2), +v.y.toFixed(2)], z: +v.z.toFixed(2) });
+            }
+          }
+        }
+        if ((sIdx % yieldEvery) === yieldEvery - 1) await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+  } finally { if (clock.endSweepHold) clock.endSweepHold(); }
+  clock.resetInputs();
+  const rows = [...escapes.entries()].map(([mesh, e]) => ({ mesh, ...e }))
+    .sort((a, b) => b.escape - a.escape);
+  return {
+    ok: rows.length === 0,
+    units, poses, verticesSampled: sampled, verticesInBand: inBand,
+    obstacleCount: obstacles.length, band, tol,
+    escapes: rows,
+  };
+}
+
 const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
   freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
@@ -2532,6 +2607,7 @@ const CHECKS = {
   support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
+  lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };

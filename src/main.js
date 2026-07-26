@@ -2750,17 +2750,40 @@ const LOW_LINKAGE_OBSTACLES = (() => {
   };
   let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
   let psi = STOP_PSI0;
+  // The hammer's HEAD-side arm: half-width at the widened tip plus the bevel,
+  // read from the lever's own exported outline so the cover cannot drift from
+  // the mesh. The verifier (checkLowCorridor) found this side MISSING from the
+  // table — the original entries covered only the tail segment, and the head
+  // swings 3.35 units outside them at full crown pull, in-band, exactly where
+  // a pillar seat could have been placed. The roller adds its radius at the
+  // tip.
+  const _ham = hammerLever.userData;
+  const _hamHalfW = Math.max(..._ham.outline.map((p) => Math.abs(p[0]))) + _ham.bevel;
   for (let i = 0; i <= 12; i++) {
     const post = tailPostWorldAt(i / 12);
     obs.push({ x: post.x, y: post.y, r: G.SETTING_LEVER_POST_R });
     q = intersectTail(post, RESET_ROD_LEN, q).q;
     pushElbow(post, q, RESET_ROD_ELBOW);
     obs.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: q.x, by: q.y, r: 0.7 });
+    {
+      // rot from the solved tail tip — the same inversion solveHammerRotation
+      // uses — so head coverage tracks the tail solve exactly.
+      const rot = Math.atan2(q.x - hammerPivotPos.x, -(q.y - hammerPivotPos.y)) - HAMMER_TAIL_DELTA.delta;
+      const hx = hammerPivotPos.x - Math.sin(rot) * _ham.length;
+      const hy = hammerPivotPos.y + Math.cos(rot) * _ham.length;
+      obs.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: hx, by: hy, r: _hamHalfW });
+      obs.push({ x: hx, y: hy, r: _hamHalfW + _ham.rollerR });
+    }
     psi = stopSolvePsi(post, psi);
     pushElbow(post, stopTailTopAt(psi), HACK_ROD_ELBOW);
   }
   return obs;
 })();
+// The corridor's z-band, hoisted from the pillar-seat consumer's comment so
+// the VERIFIER (inspect.js checkLowCorridor) tests the same band the
+// consumers guard: both rods, the post arc and the hammer arm cross the
+// movement at these heights, and a seat is a full-height column.
+const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 
 // ---------------------------------------------------------------------------
 // Fusee & chain — torque equalisation. The spring DRUM sits beside the fusee;
@@ -10862,6 +10885,14 @@ window.__clock = {
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
+  // §36 follow-up: the low-corridor table and its band, exposed so the
+  // battery can VERIFY the hand-built footprint against sampled reality.
+  // The table cannot be GENERATED from the registry — it is consumed
+  // mid-build (balance-cock legs, pillar seats), before the registry can
+  // exist — so the subsumption is §42's pattern: hand-written input,
+  // machine-checked against the source of truth.
+  lowLinkageObstacles: LOW_LINKAGE_OBSTACLES,
+  lowCorridorZBand: LOW_CORRIDOR_Z_BAND,
   // Layout introspection for the realism-inspection tooling.
   P, plateR, dialRadius,
 };
