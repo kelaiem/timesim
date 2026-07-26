@@ -2500,3 +2500,157 @@ been decoration, which is precisely what §21 warned against.
 "behind §2", i.e. behind a large deferred compaction job. What it
 actually needed was one asserted constant. §2 keeps the compaction work
 and can now, for the first time, measure its own "≤ 40 mm" target.
+
+## §21 — Scale reference: making 32 mm mean something
+
+§39 gave the movement a real size. Millimetres only mean something to
+someone who already thinks in millimetres, so this draws the comparison.
+
+### Two instruments, because one could not be honest at every zoom
+
+**A scale bar, at true on-screen scale.** Pixels-per-unit is derived by
+projecting two points one unit apart along the camera's *own*
+screen-right axis, so it is correct at any orientation and FOV without
+duplicating the projection maths:
+
+```js
+camera.getWorldDirection(_srF);
+_srR.crossVectors(_srF, camera.up).normalize();
+// project origin and origin+_srR, take the NDC delta
+```
+
+The bar's **length** is chosen from a 1-2-5 ladder so it always draws
+60–200 px. A fixed 10 mm bar would be 4 px across zoomed out and
+2000 px zoomed in; picking the step is what keeps one instrument
+readable over the whole range, which is why the label is generated
+rather than written.
+
+The bar is labelled just `5 mm`. It first read `5 mm at the movement`,
+carrying the perspective caveat inline — and that was wrong placement,
+not wrong content. Under a perspective camera a millimetre covers more
+pixels the nearer it is to the eye, so the bar is exact only at the
+movement's depth; a part swung toward the camera renders slightly
+larger. True, but it was the first thing the eye met, and jargon in a
+headline makes a number harder to trust rather than easier. A micrograph
+writes the number and footnotes the rest, so the caveat moved to the
+panel's fine print.
+
+The footnote names **the origin**, not "the movement", because the
+origin is where the axes are drawn — so the caveat points at something
+the viewer can see. The two instruments are in fact the same ruler:
+measured at camera 60 / 120 / 300, the bar's px-per-mm and the on-screen
+spacing of the 1 mm axis ticks agree to within **0.05%**. The first
+wording described that relationship correctly and helped nobody; "same
+scale as the axis ticks" can be checked by looking.
+
+**A diagram, at its own scale, that says so.** The first attempt drew
+the reference objects at true on-screen scale, and it does not work: a
+24 mm coin against a 32 mm movement is the *same order of size*, so once
+the movement fills the view the coin does too and there is nothing left
+to compare against. Clamping the circles to fit was worse — it drew a
+wrong-size circle labelled with a real diameter, which is exactly the
+decoration §21 was written to forbid. So the comparison became an
+explicit diagram: everything in it is to scale with each other, at a
+scale of its own, and the caption says that out loud.
+
+### Two corners, because only one half moves
+
+The bar and the diagram started in one box and were split apart: the bar
+re-lengths and re-labels on every camera move, the diagram never
+changes, and sharing a box made the whole panel read as twitching. Bar
+bottom-right, diagram bottom-left — each corner with one job.
+
+The diagram then has to **dodge the control panel**, which owns the left
+edge and grows downward as its sections open. Both moves are
+conditional and recomputed, so the common case keeps the plain corner:
+sideways past `#clock-ui` when it would actually overlap, then
+vertically above the bar if that sideways move pushed it there.
+
+Three bugs on the way, none of them in the layout and all in the
+**checking** — each the same shape, a test that looked at less than the
+thing it was testing:
+
+1. Panel visibility read `offsetParent !== null`. `#clock-ui` is
+   `position: fixed`, and a fixed element's `offsetParent` is *always*
+   null. The panel was never seen, the dodge never fired once, and the
+   overlap checks reported no overlap because they were measuring
+   nothing. A zero-size rect is the honest test.
+2. The lift condition read the diagram's **live** rect, which makes it
+   self-cancelling: lifting clears the overlap, the test goes false, it
+   drops back, the overlap returns — a flip every frame, and a single
+   snapshot catches whichever phase it lands on. It now tests the
+   prospective *unlifted* position, which does not depend on the answer.
+3. The first overlap test compared the two scale elements only to each
+   other, never to the control panel, so it passed while the diagram sat
+   buried underneath it.
+
+The check that finally worked samples each layout **twice** and
+compares. An oscillating layout differs between frames, and one sample
+cannot distinguish "correct" from "correct this frame".
+
+### The reference sizes are standards, not impressions
+
+| object | ⌀ | source |
+|---|---|---|
+| movement plate | 32.2 mm | §39's asserted prediction |
+| US quarter | 24.26 mm | US Mint spec |
+| 1 euro | 23.25 mm | ECB spec |
+| AA cell | 14.50 mm | IEC R6 |
+
+The backlog suggested "a fingertip". A fingertip has no defined size and
+would have quietly reintroduced the very thing §39 spent its whole entry
+avoiding — a number chosen because it looked right. Dropped for that
+reason.
+
+### Graduated axes
+
+The axes legend was a caption; once `UNIT_MM` existed the arms could
+carry a real rule instead. Ticks every **1 mm**, long every **5 mm**,
+over an 18.5 mm arm — 18 per axis.
+
+Graduations are in **millimetres, not units**. Units are this model's
+internal bookkeeping; millimetres are the thing a viewer can judge, and
+putting units on a ruler would have made it readable only by someone who
+already knew the scale.
+
+Each tick is a small **cross** — two segments perpendicular to the arm,
+not one. A single flat tick disappears edge-on, which for an instrument
+meant to be read while orbiting is the whole failure.
+
+### The stats line
+
+`⌀32.2 × 9.7 mm · 18,000 A/h · 30 h reserve` — every figure derived,
+none typed. Diameter and depth are §39's asserted predictions; the beat
+comes from `F_BALANCE` (A/h = Hz × 7200, two beats per cycle); the
+reserve from `RELAX_SECONDS`.
+
+### Verification
+
+Across a 30× zoom range (camera 40 → 1200 units), the ladder steps
+1 → 2 → 5 → 10 → 20 mm, the bar stays 74–115 px, and it agrees with an
+**independently projected** plate width to within **0.02%** at every
+level.
+
+The tick placement was verified separately: 18 ticks per axis at exactly
+1–18 mm, identical on all three, the last inside the 18.51 mm arm.
+Residual error is ~1e-6 mm, which is `Float32BufferAttribute` storage
+rounding rather than placement.
+
+**Two traps worth recording**, both instances of the same thing — a
+check that looks for less than the thing it verifies.
+
+The first tick check filtered for vertices with `y ≈ 0 AND z ≈ 0` to
+find points on the X axis. But a tick CROSS offsets its vertices in
+exactly those two directions, so the filter matched nothing and
+`.every()` returned `true` over an empty array. It reported success
+while measuring no ticks at all. The fix was to test segment MIDPOINTS,
+which do lie on the axis.
+
+The second: the first bar check compared the bar against the
+plate's width along *world X* and reported a 28% error. The bar was
+right; the check was wrong — the camera was angled, so world X is
+foreshortened while the bar measures screen-right. Re-run face-on, where
+world X *is* screen-right, agreement was 99.94%. A verification that
+measures a different quantity than the instrument does will disagree
+with a correct instrument, and it is worth being sure which one is
+wrong before "fixing" anything.
