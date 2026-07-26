@@ -4088,12 +4088,20 @@ registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 // hour wheel's tube further down (see the motion works), so it is NOT added
 // here — it becomes a child of hourWheelGroup and inherits that wheel's
 // rotation rather than being posed independently.
-// Hour hand length: tip just shy of the hour numerals. The applied numerals'
-// inner edge measures r ≈ 23.1 (sampled from the built numeral meshes, all 12
-// azimuths); 0.56·dialRadius puts the tip at ≈ 22.1 — one unit shy, the same
-// visual gap the minute hand keeps to the railroad. (Was 0.5R = 19.7, which
-// left a dead band of 3.4 before the numerals.)
-const HOUR_HAND_LEN = dialRadius * 0.56;
+// Hour hand length: the tip now GRAZES the hour numerals' inner edge, DERIVED
+// from the marker band itself (G.DIAL_MARKER_INNER_F) rather than from a
+// sampled number — the old 0.56 was measured against "r ≈ 23.1" by hand, and
+// a factor that only agrees with the dial on the day it was sampled is the
+// same rot §16 found in the pallet fork.
+//
+// This deliberately spends the 1.0 visual gap the previous length kept (the
+// gap the minute hand keeps to the railroad). It buys ALARM SETTING precision:
+// the alarm hand is HOUR_HAND_LEN − 1.2, and setting is done by placing its
+// TIP, so tip radius is the reading resolution. 20.91 → 21.90 is +4.7%.
+// Be clear what this does NOT do: it changes nothing about when the alarm
+// FIRES. That window is set by the release notch's angular width at the track
+// radius (§38's floor: pin ÷ radius), and no hand length touches it.
+const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F;
 const hourHand = G.makeHand({ length: HOUR_HAND_LEN, kind: 'hour' });
 // Minute hand length: tip ON the railroad's rungs. The chemin de fer's two
 // rails RENDER at world r ≈ 31.5 / 34.2 (measured from the dial texture — the
@@ -5554,6 +5562,21 @@ alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
 alarmTubeGroup.add(alarmHand);
+// §38 — the alarm hand and the RAISED hour markers overlap in z (hand
+// −8.39..−7.53, marker relief −7.62..−7.12), so the only thing holding them
+// apart is RADIUS — and no battery pair covers it: 'Alarm disc' ⇄ 'Dial' is
+// not in CLEARANCE_BUDGETS, which is the same per-pair blind spot TODO.md
+// item 6 names. So measure it here, off the BUILT mesh rather than the
+// nominal length (the leaf reaches ~0.9 past `length` through its boss and
+// taper). Lengthening the hands again is exactly what this is watching for:
+// the gap was 1.35 before the §38 extension and is 0.32 after.
+// The hand pivots about the dial centre, so its max radius does not vary with
+// rotation and one measurement stands for every pose. Bounding-box corners
+// over-estimate the true reach, so the check errs toward firing early.
+// The assert itself lives at the END of the build (search §38 alarm hand) —
+// measured HERE it read a stale matrixWorld, because this hand's transform
+// chain up to dialFace is not complete yet, and it silently passed a case
+// that genuinely violates. Same reason §10's partition assert runs late.
 
 // (A §25 C prototype "orbiting train" marker briefly lived here — an
 // unlabelled steel lozenge riding between the railroad's rails, driven off
@@ -9800,6 +9823,33 @@ function tick(t) {
   alarmBarrelRotor.rotation.z = (ALARM_BARREL_TURNS - alarmBarrelWind) * Math.PI * 2;
   alarmStrikeRotor.rotation.z = alarmStrikeWheelAngle();
   alarmHammerPivot.rotation.z = alarmHammerAngle();
+}
+
+// §38 alarm hand vs the raised hour markers — see the note at the hand's
+// build. Runs HERE, with the whole tree assembled and matrices current,
+// because measured at the build site it read a stale matrixWorld and passed a
+// genuine violation. Nothing in the battery covers this pair.
+{
+  scene.updateMatrixWorld(true);
+  const markerInnerR = dialRadius * G.DIAL_MARKER_INNER_F;
+  // TRUE vertex radius, not the bounding box's corner. The hand is a thin
+  // diagonal leaf, so its axis-aligned box corner sits ~0.85 OUTSIDE the
+  // geometry and swings with the pose (22.16 aligned, 22.99 diagonal) — an
+  // AABB check here would read a different number every time the hand moved
+  // and eventually fire on a hand that never came near anything. The vertex
+  // radius is pose-invariant, because the hand pivots on the dial axis.
+  const _v = new THREE.Vector3();
+  let reach = 0;
+  alarmHand.traverse((o) => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) {
+      _v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      reach = Math.max(reach, Math.hypot(_v.x, _v.y));
+    }
+  });
+  if (markerInnerR - reach < CLEAR_MARGIN)
+    console.warn(`§38 alarm hand: reach ${reach.toFixed(2)} leaves only ${(markerInnerR - reach).toFixed(2)} to the hour markers' inner edge ${markerInnerR.toFixed(2)} — need ${CLEAR_MARGIN}`);
 }
 
 tick(0); // seed correct initial pose before the first paint
