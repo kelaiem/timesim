@@ -4268,12 +4268,14 @@ smallSecondsGroup.add(smallSecondsHand);
 // minute wheel and needs them long before the dial is built.)
 
 // §29 lengthened this once (2.0 → 2.1) for its deeper MW_Z1; §34's
-// heart-B band pushes the chain 0.45 further (MW_Z1 −2.416), so the
-// leaves grow again: 2.5, top face still −0.5, end −3.0 — the minute
-// wheel's bevelled underside (−2.88) keeps 0.12 inside the mesh, and
-// the §29 coverage warn below re-checks it with the achieved numbers.
-const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 2.5, material: MATS.steel });
-cannonPinion.position.z = -1.75;
+// heart-B band pushed 0.45 further (→ 2.5); §51 phase A's flange-and-lane
+// thickening pushes the chain 0.38 again, so the leaves grow a third time.
+// Top face stays −0.5; the END is now DERIVED and shared with the coverage
+// assert below, so the third growth is the last one anybody hand-tracks.
+const CANNON_T = 2.9;
+const CANNON_END = -0.5 - CANNON_T;
+const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
+cannonPinion.position.z = -0.5 - CANNON_T / 2;
 dialFace.add(cannonPinion);
 
 // ---------------------------------------------------------------------------
@@ -4292,8 +4294,19 @@ dialFace.add(cannonPinion);
 // UNCHANGED (the slack below the hour wheel absorbs it — the plate gap
 // closes 1.08 → 0.62, both asserted).
 const ALARM_HEART_B_T = 0.30;    // mirror of heart-A's crisp band
-const ALARM_TUBE_BACK = -(0.05 + 0.18 + ALARM_HEART_B_T + CLEAR_MARGIN); // = −0.68: wheel −0.05..−0.23 · heart-B/follower-B −0.23..−0.53 · margin · flange top
-const ALARM_FLANGE_T = 0.08;     // carrier flange −0.68..−0.76
+// §51 phase A — the two worst §50 debts in this chain, funded from the
+// plate-side end gap (measured 0.62; §34's own note). The setting wheel and
+// lane share ONE thickness (hoisted here from the lane block so the chain
+// can consume it), raised 0.18 → floor stock; the carrier flange — 0.08 u =
+// 0.03 mm, the census's thinnest structural sheet — likewise. Everything
+// below re-derives deeper by the +0.38 total, the §34 precedent in reverse,
+// and the end gap absorbs it leaving ≥ the margin. The literals that USED to
+// mirror this chain's numbers (the arm band slice, the corridor asserts) are
+// expected to trip their tripwires on first boot — that enumeration is the
+// worklist, not collateral.
+const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinning, now unwound)
+const ALARM_TUBE_BACK = -(0.05 + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
+const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
 const ALARM_HEART_T = 0.30;      // heart band, one CLEAR_MARGIN under the flange:
 const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // −0.46..−0.76
 // §29 step 2/3 stack under the heart: fixed feeler (one margin below the
@@ -4328,8 +4341,8 @@ const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    //
 // engagement down to −1.986+bevel; asserted below.
 const MW_Z1 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22)); // = −1.916
 const MW_Z2 = MW_Z1 - 1.5;   // minute pinion / hour wheel — the 1.5 IS the star slice spacing
-if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < -3.0 + 0.1)
-  console.warn(`§29/§34: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end −3.0 — face engagement thinning`);
+if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < CANNON_END + 0.1)
+  console.warn(`§29/§34/§51: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end ${CANNON_END} — face engagement thinning`);
 // §34: the chain grew downward — assert the landing still clears the plate
 // (dial-side face at local −5.0) by at least the one margin + the hour
 // wheel's own bevelled band.
@@ -4909,7 +4922,7 @@ const ALARM_SET_MODULE = 0.30;
 // the setting wheel established, so the band is world −6.95..−6.77 and the
 // plane is its middle. Thinning here is what lets the centre stack above
 // compact without losing the sheet gap.
-const ALARM_SET_T = 0.18;
+// ALARM_SET_T hoisted into the §29 centre chain (§51 phase A) — one thickness, defined once.
 const ALARM_SET_I1_BEARING = 18 * DEG2RAD;
 const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
 const ALARM_SET_DW1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_I1_TEETH) / 2; // centre wheel ⇄ i1
