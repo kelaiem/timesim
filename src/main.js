@@ -6404,7 +6404,7 @@ alarmLockUnit.add(alarmLockLever);
   post.rotation.x = Math.PI / 2;
   post.position.set(alarmLockPivot.x, alarmLockPivot.y, TQ_TOP_Z + 0.31 - 0.01);
   alarmLockUnit.add(post);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LOCK_L, 0.5, 0.28), MATS.steel);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LOCK_L, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top lever
   arm.position.x = ALARM_LOCK_L / 2;
   alarmLockLever.add(arm);
   const pad = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LOCK_PAD_R, ALARM_LOCK_PAD_R, 0.3, 12), MATS.ruby);
@@ -6413,7 +6413,7 @@ alarmLockUnit.add(alarmLockLever);
   pad.position.x = ALARM_LOCK_L;
   alarmLockLever.add(pad);
   // Tail — what the switch's nose bears on.
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.28), MATS.steel);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock
   tail.position.x = -1.0; // end at 1.8 from the wheel axis — the old 2.2 corner clipped the ratchet skirt (reach 1.68)
   alarmLockLever.add(tail);
 }
@@ -6636,7 +6636,7 @@ const alarmLinkParts = {};
   beakArm.rotation.z = beakAim;
   const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
   const beakLen = pivDist - noseR;
-  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, 0.22, 0.14), MATS.steel);
+  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock BOTH ways — plate-top lever, free upward and sideways (first pass thickened z only and the census promptly made width the new thin dimension)
   beakBar.position.x = beakLen / 2;
   beakArm.add(beakBar);
   const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.22), MATS.steel);
@@ -6645,7 +6645,7 @@ const alarmLinkParts = {};
   beakArm.add(beakNose);
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
   const tailLen = wrLen - pivDist;
-  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, 0.2, 0.12), MATS.steel);
+  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock both ways, same plane
   beakTail.position.x = -tailLen / 2;
   beakArm.add(beakTail);
   const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.5, 10), MATS.steel);

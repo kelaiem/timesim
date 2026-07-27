@@ -2656,6 +2656,7 @@ export const STOCK_KIND_BY_MESH = {
   jumperClickSpring: 'spring', // the minute jumper's return spring — same construction, 0.075 mm
   mainspringRibbon: 'spring',  // the coil IS the mainspring
   mainspringHook: 'spring',    // its hook tab, same stock
+  barrelClickPawl: 'spring',   // integral click: spring-tempered pawl stock
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none
