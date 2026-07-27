@@ -4272,7 +4272,7 @@ smallSecondsGroup.add(smallSecondsHand);
 // thickening pushes the chain 0.38 again, so the leaves grow a third time.
 // Top face stays −0.5; the END is now DERIVED and shared with the coverage
 // assert below, so the third growth is the last one anybody hand-tracks.
-const CANNON_T = 2.9;
+const CANNON_T = 3.35; // §51 strata spends: fourth growth (2.0→2.1→2.5→2.9→3.35) as the chain deepened +0.45 — end derived below, so this line is the whole edit
 const CANNON_END = -0.5 - CANNON_T;
 const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
@@ -4293,7 +4293,7 @@ dialFace.add(cannonPinion);
 // everything below it re-derive 0.45 deeper; total stack height is
 // UNCHANGED (the slack below the hour wheel absorbs it — the plate gap
 // closes 1.08 → 0.62, both asserted).
-const ALARM_HEART_B_T = 0.30;    // mirror of heart-A's crisp band
+const ALARM_HEART_B_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.30); mirror of heart-A's crisp band
 // §51 phase A — the two worst §50 debts in this chain, funded from the
 // plate-side end gap (measured 0.62; §34's own note). The setting wheel and
 // lane share ONE thickness (hoisted here from the lane block so the chain
@@ -4307,12 +4307,12 @@ const ALARM_HEART_B_T = 0.30;    // mirror of heart-A's crisp band
 const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinning, now unwound)
 const ALARM_TUBE_BACK = -(0.05 + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
 const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
-const ALARM_HEART_T = 0.30;      // heart band, one CLEAR_MARGIN under the flange:
+const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band, one CLEAR_MARGIN under the flange:
 const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // −0.46..−0.76
 // §29 step 2/3 stack under the heart: fixed feeler (one margin below the
 // co-rotating heart), its pin riding the disc's raised notch track, the
 // disc body, then one margin to the minute wheel.
-const ALARM_FEELER_T = 0.10;                                             // feeler arm slice (step 3 builds it)
+const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
 const ALARM_FEELER_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // −0.91
 const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and track top
 // The track is TALL (0.17) and the pin's DROP is BANKED at 0.06 by a stop
@@ -4326,7 +4326,12 @@ const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin b
                              // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
                              // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
                              // clearing the 0.06 engagement by the one margin (measured + asserted)
-const ALARM_DISC_BODY_T = 0.13;  // disc body (the rim's teeth share this plane)
+// §51: the body's spend is REVERTED — thickened to 0.32 its band collides
+// with the selector guide posts (battery: disc ⇄ selector 0.246 against the
+// 0.12 working budget; probed to the post at alarm f=1). The §34 pass-2b
+// post corridors were solved for a 0.13 body and must be re-solved before
+// this member can take the floor; catalogued in TODO 11 rather than forced.
+const ALARM_DISC_BODY_T = 0.13;      // disc body (the rim's teeth share this plane)
 const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −1.05
 const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −1.22 (body top)
 const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −1.35
@@ -4344,12 +4349,16 @@ const MW_Z2 = MW_Z1 - 1.5;   // minute pinion / hour wheel — the 1.5 IS the st
 if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < CANNON_END + 0.1)
   console.warn(`§29/§34/§51: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end ${CANNON_END} — face engagement thinning`);
 // §34: the chain grew downward — assert the landing still clears the plate
-// (dial-side face at local −5.0) by at least the one margin + the hour
-// wheel's own bevelled band.
+// by at least the one margin + the hour wheel's own bevelled band. §51: the
+// plate face is MOVEMENT-frame (world −2.0); its dial-local coordinate was
+// frozen at −5.0 when the dial sat at −7 and fired a false alarm the moment
+// the dial moved — the same stale-absolute class as the §35 keyless floor,
+// now derived the same way.
 {
+  const PLATE_DIAL_FACE_LOCAL = Z_DIAL - (-2.0);   // world −2.0 in dialFace-local
   const hourBot = (MW_Z1 - 1.5) - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
-  if (hourBot - CLEAR_MARGIN < -5.0)
-    console.warn(`§34: hour wheel's underside ${hourBot.toFixed(2)} inside the plate's margin (face −5.0)`);
+  if (hourBot - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL)
+    console.warn(`§34: hour wheel's underside ${hourBot.toFixed(2)} inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)})`);
 }
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
 // and below the centre).
@@ -5052,11 +5061,30 @@ const alarmPinArmB = new THREE.Group();
 // the SELECTOR's state — alarmOn only turns the column wheel, and the
 // column→ring run is §35's filed debt (MECH_GRAPH.todo carries it).
 const ALARM_LINK_AZ_DEG = 146; // §35: the link run's INNER-end azimuth — the ring's drive tab sits on it (dial-local mirror, az 34° — ≥26° from every §34 guide post), so it is hoisted here with the selector
-const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75, ALARM_SEL_T = 0.10;
+const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75;
+// §51: the sheet's spend is REVERTED — the B-side fingers run BOTH above and
+// below the ring, so the 0.10 slot cannot take a 0.32 sheet in any anchoring
+// (measured: top-anchored 0.192, centreline 0.246 against the pair's 0.12
+// working budget — the excess just moves between the finger sides). The slot
+// itself must be re-solved for a thicker sheet; catalogued in TODO 11 with
+// the disc body, both blocked on their §34-class corridor re-solves.
+const ALARM_SEL_T = 0.10;
 const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger throw it buys makes the
                                // armed B:A preload ratio 3.1 (the first cut, 0.14, measured 2.6 and
                                // the assert refused it). Ring's lowest face −1.15 keeps 0.21 to the
                                // §29 feeler slice; the posts' XY stand-off from i1b's sweep is 1.25.
+// §51 strata spends: DERIVED from the tube-back plane it engages, was the
+// absolute −0.86 — which was −0.18 below the OLD tube back (−0.68). The
+// chain's growth moved the B-side fingers down and the frozen ring stayed,
+// deepening the working contact past its 0.12 budget (measured 0.246); the
+// same stale-absolute class as the §35 shaft and the §34 landing, fixed the
+// same way: the anchor rides its partner.
+// §51 postscript: the partner-derivation experiment (TUBE_BACK − 0.18) is
+// REVERTED to the absolute — deriving moved the ring 0.16 deeper than the
+// B-side finger planes, which hang off the §29 arm-band LITERALS (−0.505 and
+// kin) that never rode the chain. Until those literals are re-derived, the
+// ring's absolute and the fingers' absolutes at least drift TOGETHER. The
+// §35 shaft derives from this constant either way.
 const ALARM_SEL_Z_UP = -0.86;     // ring's top face, DISARMED (slid dial-ward)
 const ALARM_SEL_POST_R = 5.15;    // guides OUTSIDE the setting wheel's tips (4.83 + margin; asserted)
 const ALARM_SEL_POST_AZ = [60, 220, 300].map((d) => d * DEG2RAD); // world az — each wall asserted below
@@ -5516,7 +5544,10 @@ alarmFeelerUnit.add(alarmFeelerLever);
   alarmFeelerLever.add(pin);
   // Return spring: a blade from the outboard lug pressing the arm down —
   // force representational, flex driven in tick from the actual drop.
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.04), MATS.blueSteel);
+  // §51 strata spend: the blade at real spring stock — 0.08 u = 0.03 mm, the
+  // cited spring floor, from the 0.015 mm that made it §40's first honesty
+  // nominee and §50's headline under-stock.
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.08), MATS.blueSteel);
   blade.name = 'alarmFeelerSpring';
   blade.position.set(0.45, 0.28, ALARM_FEELER_T / 2 + 0.04);
   alarmFeelerLever.add(blade);
@@ -6590,11 +6621,13 @@ const _linkAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 // dial-frame in fact, and the constant now says so: the old offset preserved
 // exactly (−7 + 0.74 = −6.26), riding Z_DIAL. The rod lengthens and the
 // rod-end crank engagement ride along by their own derivations.
-// Offset 0.86, not the historic 0.74: measured at 0.74 the jaw's REST band
-// sat 0.06 below the tab (armed contact was fine at 0.085 overlap). +0.12 —
-// one crank section — closes the rest side; the rod-end foot derives from the
-// crank-top constants and rides along, its 0.039 seat unchanged.
-const ALARM_LINK_SHAFT_Z = Z_DIAL + 0.86;
+// §51: DERIVED from the partner, third iteration of this constant and the
+// one that ends the chase. Hand-tuned offsets (0.74 historic, then 0.86
+// measured) each broke the moment the selector's own anchor moved — the
+// working geometry, solved by measurement at both extremes, turns out to be
+// exactly: shaft centre ON the ring's top-face world plane. Stated that way
+// it rides the dial AND the selector's chain, so neither can strand it again.
+const ALARM_LINK_SHAFT_Z = Z_DIAL - ALARM_SEL_Z_UP;
 // AZ 210, not 212. Moved 2 deg toward 12 o'clock so the rod stands nearer the
 // dial's vertical centreline, which is where the linkage reads as one line
 // rather than as a strut off in the corner. 2 deg is the WHOLE budget, not a
@@ -6715,7 +6748,7 @@ const alarmLinkParts = {};
   // measurement showed the old 0.45 never actually reached the tab at rest
   // (a 0.03 gap PRE-dating the dial move: the link's §35 fix closed the
   // rod-end contact and nobody measured this end). 0.45 + travel + wrap.
-  const INNER_JAW_LEN = 0.45 + ALARM_SEL_TRAVEL + 0.25;
+  const INNER_JAW_LEN = 0.45 + ALARM_SEL_TRAVEL + ALARM_SEL_T + 0.15; // §51: rides the sheet's thickness so a thicker tab stays embraced
   for (const [xLocal, nm, len] of [[chordLen / 2, 'alarmLinkCrankRim', 0.45], [-chordLen / 2, 'alarmLinkCrankCentre', INNER_JAW_LEN]]) {
     const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, len), MATS.steel);
     crank.name = nm;
