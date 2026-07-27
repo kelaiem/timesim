@@ -2058,9 +2058,9 @@ hammerGroup.add(hammerTailBar);
   shaft.rotation.x = Math.PI / 2;
   shaft.position.set(0, 0, (shaftTop + shaftBot) / 2);
   hammerGroup.add(shaft);
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.3, 12), MATS.steel);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, STOCK_MIN_U, 12), MATS.steel); // TODO 12: floor stock, free upward from the plate
   foot.rotation.x = Math.PI / 2;
-  foot.position.set(0, 0, shaftBot + 0.15);
+  foot.position.set(0, 0, shaftBot + STOCK_MIN_U / 2);
   hammerGroup.add(foot);
 }
 // --- ELBOW RODS. The low corridor crosses the transfer wheel's and the
@@ -3392,7 +3392,13 @@ const setupWork = new THREE.Group();
   // at L_BARREL − t/2 − bevel): the screw head's thickness is derived so
   // its top stays one margin under that face.
   const gwUnder = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
-  const headT = Math.min(0.18, gwUnder - CLEAR_MARGIN - postH);
+  // TODO 12: floor stock when the under-wheel clearance allows it; the min
+  // keeps the bound honest. The 0.01 is JMP_BIND_EPS's lesson relearned the
+  // moment this formula first went ACTIVE: solved exactly to the bind, the
+  // head measured gap 0.1500 against required 0.15 and a float hair failed
+  // the sweep — one explicit centi-unit keeps the bind falsifiable without
+  // flickering.
+  const headT = Math.min(STOCK_MIN_U, gwUnder - CLEAR_MARGIN - 0.01 - postH);
   if (headT < 0.08) console.warn(`set-up click screw head squeezed to ${headT.toFixed(2)} under the great wheel`);
   const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, headT, 12), MATS.blueSteel);
   head.rotation.x = Math.PI / 2;
@@ -3414,6 +3420,7 @@ const setupWork = new THREE.Group();
   if (span < 0) span += Math.PI * 2;
   const springZ = clickBot + CLICK_T / 2;
   const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.12, 8, 24, span), MATS.blueSteel);
+  spring.name = 'setupClickSpring'; // TODO 12 triage: SPRING stock (0.24 u ⌀ = 0.09 mm) — declared, not thickened
   spring.position.set(C.x, C.y, springZ);
   spring.rotation.z = thT;
   az.add(spring);
@@ -3421,9 +3428,9 @@ const setupWork = new THREE.Group();
   springPost.rotation.x = Math.PI / 2;
   springPost.position.set(A.x, A.y, springZ / 2);
   az.add(springPost);
-  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.18, 12), MATS.blueSteel);
+  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, STOCK_MIN_U, 12), MATS.blueSteel); // TODO 12: floor stock, free upward
   springHead.rotation.x = Math.PI / 2;
-  springHead.position.set(A.x, A.y, springZ + 0.09);
+  springHead.position.set(A.x, A.y, springZ + STOCK_MIN_U / 2);
   az.add(springHead);
   // The spring's INNER-END ANCHOR, inside the drum: a collar on the
   // static arbor with a radial hook pin at the spiral's heart. The drum
@@ -4641,6 +4648,7 @@ const JMP_LIFT_ROT = (() => {
   let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
   if (span < 0) span += Math.PI * 2;
   const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.1, 8, 22, span), MATS.blueSteel);
+  spring.name = 'jumperClickSpring'; // TODO 12 triage: SPRING stock (0.2 u ⌀ = 0.075 mm) — declared, not thickened
   spring.position.set(C.x, C.y, STAR_MID);
   spring.rotation.z = thT;
   jumperAzGroup.add(spring);
