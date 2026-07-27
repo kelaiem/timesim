@@ -3436,3 +3436,50 @@ of closing the item. With every row dispositioned, the horological tier
 flipped from report to gate per the entry's order: `stockFloor` now
 passes only at **0 degenerate and 0 unwaived**, and joined standing
 rule 4. Verified: `ok: true`, 106 waived (76 + 30), fresh boot silent.
+
+## §51 phase A — The flange and the lane, funded from the plate gap
+
+### Measured first, decided by number
+
+Option 1 (slack inside the band) measured **~zero by construction** —
+and the measuring taught the instrument lesson again: two occupancy
+probes showed no free runs because the tube spine threads every z by
+design, so a union can never show stratum gaps. §29's own chain is the
+honest ruler, and it states each member sits at exactly the margin.
+The one reservoir is the **plate-side end gap, 0.62** (§34's note),
+0.47 spendable. Decision: spend **+0.38** of it on the centre chain's
+two worst §50 debts.
+
+### The edits — three constants, and the chain did the rest
+
+- `ALARM_SET_T` 0.18 → `STOCK_MIN_U` (0.32) — §29 step 1's thinning,
+  unwound. Hoisted into the chain block and the chain's own `0.18`
+  literal replaced with the constant, so wheel and lane can never
+  diverge again. One thickness clears **the setting wheel, both idlers
+  and the arbor pinion** at once.
+- `ALARM_FLANGE_T` 0.08 → `STOCK_MIN_U` — the census's thinnest
+  structural sheet (**0.03 mm**) to floor stock.
+- The cannon pinion grew a third time (2.5 → 2.9), following its own
+  §29/§34 precedent as the chain's end deepened — and its end is now
+  **derived and shared with the coverage assert**, so the third growth
+  is the last one anybody hand-tracks.
+
+Everything else followed by derivation: feeler, track, disc, minute
+wheel planes, the star chain — the §29 top-down design absorbing +0.38
+exactly as built. **One boot warning total** (the pinion coverage
+tripwire, which is the system working), then silence.
+
+### Verified, full bar
+
+`stockFloor` ok with TODO 11 waived **67 → 62**; focused battery over
+the nine affected units clean; full `inspection {includeExcluded}` **0
+FORBIDDEN** (67 contact rows); `sweptOverlap` unchanged at 0 confirmed /
+1 tight / 11 refuted; `Minute jumper ⇄ Dial` still exactly 0.15 — its
+bind formula held through a 0.38 chain shift. Boot silent.
+
+### What phase B still owes
+
+The selector sheet, the disc's fingers and track, and the two
+under-stock springs live outside this chain's funding — they need the
+dial lowered (§51's option 2), with the §2 shared-budget position
+already recorded in the entry.
