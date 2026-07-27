@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
+import { STOCK_MIN_U } from './layout.js'; // §50/TODO 12: build to the stock floor
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -1713,7 +1714,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     shaft.geometry.rotateX(Math.PI / 2);
     shaft.position.set(n.x, n.y, 0);
     g.add(shaft);
-    const head = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.6, legR * 0.6, 0.22, 14), MATS.blueSteel);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.6, legR * 0.6, STOCK_MIN_U, 14), MATS.blueSteel); // TODO 12: floor stock — screw head proud of the leg, free upward
     head.geometry.rotateX(Math.PI / 2);
     head.position.set(n.x, n.y, thickness / 2 + 0.11);
     g.add(head);
@@ -1799,15 +1800,21 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
 
   // Ruby, pressed in: an annulus with the pivot's bore through it, its top
   // face slightly below the gold rim (as a set stone sits).
-  const rubyGeo = ringExtrude(rubyR, boreR, t * 0.62, 32);
+  // TODO 12: ruby at 0.74·t (was 0.62) — at the cock chaton's t = 0.434 that
+  // is 0.321 u, clearing the 0.12 mm stock floor, and the underside lands
+  // exactly where the oil sink begins, so the deepening costs no new mate.
+  // Real pressed jewels are 0.3–0.6 mm; even the plate chatons' default
+  // t = 0.35 improves from 0.217 to 0.259 u toward that.
+  const rubyGeo = ringExtrude(rubyR, boreR, t * 0.74, 32);
   const jewel = new THREE.Mesh(rubyGeo, MATS.ruby);
-  jewel.position.z = -t * 0.08 - (t * 0.62) / 2;
+  jewel.position.z = -t * 0.08 - (t * 0.74) / 2;
   g.add(jewel);
-  // Oil sink cone on the ruby's pivot side — the classic dished seat.
+  // Oil sink cone on the ruby's pivot side — the classic dished seat, ridden
+  // down with the thicker stone so the cone still starts at its underside.
   const sink = new THREE.Mesh(
     new THREE.CylinderGeometry(rubyR * 0.98, boreR * 1.05, t * 0.22, 32, 1, true), MATS.ruby);
   sink.geometry.rotateX(Math.PI / 2);
-  sink.position.z = -t * 0.82;
+  sink.position.z = -t * 0.94;
   g.add(sink);
 
   // Blued screws, heads FLUSH with the top face and straddling the rim: half
@@ -1859,7 +1866,11 @@ export function makeJewelSetting({ r }) {
   const collarG = new THREE.LatheGeometry(pts, 32);
   collarG.rotateX(Math.PI / 2); // stand the profile up along Z
   g.add(new THREE.Mesh(collarG, MATS.nickel));
-  const rubyDepth = d * 0.8;
+  // TODO 12: the stone at floor stock. d·0.8 gave 0.269 u at the balance
+  // cock's setting; the max floors it at 0.12 mm while staying inside the
+  // collar's lathe wall, which reaches −d−0.1 (deepest stone bottom here is
+  // rimTop − seatGap − STOCK_MIN_U = −0.30 against −0.436).
+  const rubyDepth = Math.max(d * 0.8, STOCK_MIN_U);
   const ruby = new THREE.Mesh(ringExtrude(wallR - seatGap, r * 0.5, rubyDepth, 32), MATS.ruby);
   ruby.position.z = rimTop - seatGap - rubyDepth / 2; // top sits below the rim
   g.add(ruby);
