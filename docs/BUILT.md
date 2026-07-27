@@ -3483,3 +3483,51 @@ The selector sheet, the disc's fingers and track, and the two
 under-stock springs live outside this chain's funding — they need the
 dial lowered (§51's option 2), with the §2 shared-budget position
 already recorded in the entry.
+
+## §51 phase B — The dial at −7.5, and the §35 corridor re-solved
+
+### Step 1: the dial move measured its own blast radius
+
+`Z_DIAL` −7 → −7.5, deliberately alone first. The result: **zero
+tripwires** — boot silent, graph and pinion checks clean, the interface
+battery green, `Minute jumper ⇄ Dial` riding at exactly 0.15 through
+the move. The dial-relative architecture absorbed half a unit
+wholesale. Assembly depth grows ≈0.19 mm, inside §39's envelope.
+
+### The one coupling that crosses the frames — and the older sin it exposed
+
+The §35 lay shaft (movement-frame) drives the selector tab
+(dial-frame). Direct measurement found the crank jaw and tab
+**separated by 0.04** after the move — invisible to every assert
+because the tick poses the selector by law and TODO 5 blinds the
+battery inside a unit. And the measurement exposed something older:
+**the engagement had a 0.03 gap before the dial ever moved.** §35
+closed the rod-end contact with great care; nobody ever measured this
+end. The link has been transmitting through a gap at the ring since it
+was built.
+
+### The re-solve
+
+- **The shaft is dial-relative now**: `Z_DIAL + 0.86`. Its partner is
+  dial-frame, and so — measured — is the keyless piece its old absolute
+  floor was solved against: the historic "top −6.549" was taken with
+  the dial at −7 and the piece rode the move, so the floor constant is
+  rewritten `Z_DIAL + 0.451` and the §35 tripwire (which fired
+  correctly on the stale literal — the system working) now rides the
+  dial with it. `Alarm link ⇄ Keyless works` measures **2.34 clear** at
+  the new depth.
+- **The inner jaw derives its length**: `0.45 + ALARM_SEL_TRAVEL +
+  wrap` — it must cover the tab across the whole travel, which the
+  historic 0.45 never did. The offset landed at 0.86 by measurement:
+  at the historic 0.74 the rest side still gapped 0.06.
+- **Both extremes now embrace**: armed overlap 0.06, disarmed 0.10 —
+  the first time this engagement has had metal on metal in both
+  states. The rod-end seat rode along by derivation, unchanged at 0.04.
+
+### Verified
+
+Boot silent; focused battery over link, selector, keyless, lock, switch
+and plate clean (support 0, graph 0, penetration 0, clearances 0);
+`stockFloor` still green with 73 waived; the §39 depth assert passes.
+The strata spends — feeler, disc body, selector sheet, both springs —
+are §51's remaining step, now with the band real and the link honest.
