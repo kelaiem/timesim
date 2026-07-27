@@ -8136,10 +8136,15 @@ function alarmColumnHitTest(e) {
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
   return crownRaycaster.intersectObject(alarmSwitchUnit, true).length > 0; // wheel, click arm, or pusher — one control
 }
-renderer.domElement.addEventListener('click', (e) => {
-  if (crownHitTest(e) || alarmCrownHitTest(e)) return; // the crowns have first refusal
-  if (alarmColumnHitTest(e)) setAlarm(!alarmOn); // wheel, click arm, or the PUSHER — one actuation
-});
+// The ACTUATION fires on pointerDOWN, not on click. A pawl drives the ratchet
+// on the INWARD stroke and slips back over the teeth on the return, so the
+// wheel must index as the button goes in — indexing on release had the wheel
+// stepping on the spring-back, which is the one stroke that cannot drive it.
+//
+// This deliberately gives up the drag-off-to-cancel that a screen button has,
+// and that is the honest trade: once a real pusher has travelled far enough to
+// index, the step has happened and sliding your finger sideways cannot undo
+// it. The pointerdown handler below owns both the press and the step.
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!crownDragging && !alarmDragging && alarmColumnHitTest(e)) renderer.domElement.style.cursor = 'pointer';
 });
@@ -8150,7 +8155,9 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 // late press this fixes.
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (crownHitTest(e) || alarmCrownHitTest(e)) return;
-  if (alarmColumnHitTest(e)) alarmPusherHeld = true;
+  if (!alarmColumnHitTest(e)) return;
+  alarmPusherHeld = true;   // §43: the head goes down under the finger…
+  setAlarm(!alarmOn);       // …and the pawl indexes the wheel on that same stroke
 });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   renderer.domElement.addEventListener(ev, () => { alarmPusherHeld = false; });

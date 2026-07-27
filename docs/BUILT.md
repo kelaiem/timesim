@@ -3754,3 +3754,34 @@ Worth noting what did *not* catch this: every check in the battery is
 about **space** — what occupies where — and nothing was overlapping.
 This was a *kinematic* lie in geometry that fit perfectly, the class
 TODO 7 describes from a different angle. It took an eye on the render.
+
+### §43 postscript, continued — indexing on the press stroke, and the saw
+
+Two owner corrections, both mechanical rather than cosmetic.
+
+**The wheel now indexes as the button goes IN.** The actuation moved
+from `click` to `pointerdown`: a pawl drives the ratchet on the inward
+stroke and slips back over the teeth on the return, so stepping on
+release had the wheel driven by the one stroke that cannot drive it.
+Measured across a press: **−4.6° → −23.3° → −28.2° → −29.9°**, reaching
+−30° at release with **no further step on spring-back**.
+
+This gives up the drag-off-to-cancel a screen button has, and that is
+the honest trade — once a real pusher has travelled far enough to
+index, sliding your finger sideways cannot undo the step.
+
+**The saw is mirrored in y.** Measuring the tooth profile settled which
+of the three parties was wrong: each tooth fell tip→root with rising
+angle (r 2.352 → 1.89), so its cliff caught a pawl travelling +θ — the
+teeth were cut to be driven CCW while the wheel indexes CW and the
+pawl (fixed above) drives CW. **Two of three agreed and the teeth were
+the odd one out**, which also means the `ratchetDrive = -1` exported in
+the previous fix was aspirational; the flip makes it true.
+
+**Honest limit on this one:** the flip is the owner's call plus the
+analytic argument that mirroring y reverses a saw. My own profile probe
+could not confirm it — the skirt is built at `curveSegments: 2`, so
+there are about two vertices per tooth and the angular bucketing
+collapses. Boot is silent and the indexing measures correctly, but the
+tooth *sense* is verified by eye and by construction, not by
+instrument.
