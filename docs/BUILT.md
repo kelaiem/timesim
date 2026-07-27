@@ -3849,3 +3849,33 @@ switch, link, lock, plate and striking wheel clean; `stockFloor` green.
 The blade remains 0.026 mm — under even the spring floor, and still
 carried in TODO 11 as one of the two sub-floor springs. Grounding it
 fixes what it *does*, not yet what it is made of.
+
+### TODO 11 tranche four — the two sub-floor springs, bought
+
+The last two rows that were under the floor **for their own declared
+kind**: the feeler's return blade (0.0225 mm) and the switch click's
+detent blade (0.0262 mm), both against a 0.03 mm spring floor.
+
+The fix is not "add stock until the check passes" — it is reading what
+the floor actually claims. §50's spring basis says: *real hairsprings run
+0.02–0.04 mm; **flat springs thicker***. Both of these are flat blades, a
+return and a detent, not hairsprings. 0.03 was never their target; it was
+the floor for a different class of spring. They are now sized at
+`SPRING_FLAT_U = 0.05 / UNIT_MM` (0.133 u) — the low end of real
+flat-spring stock — so they clear on merit instead of grazing the line.
+
+**The feeler blade is worth recording as a miss.** §51 had already tried
+to buy it, raising its **z** from 0.04 to 0.08 (0.03 mm, exactly the
+floor). The row survived, because the blade's thin axis was **y** at
+0.06. The census measures the *smallest* extent, so thickening a
+dimension that was not the thinnest changed nothing it looks at. This is
+the second-hand `widthFactor` lesson in a new costume: **before buying
+stock, confirm which dimension is actually the binding one.** Both
+flexing dimensions now carry it.
+
+**Verified:** `stockFloor` `ok: true`, 0 degenerate, 0 unwaived, waived
+59 → **57**, and **zero** spring-kind rows remain under floor. Boot
+silent on a fresh reload (marker-delimited, so the pre-existing §38
+runtime warnings from the sweep session could not be mistaken for it).
+Focused check over the switch, feeler, link, lock, striking wheel and
+plate: support 0, graph 0, penetration none over budget, clearances 0.

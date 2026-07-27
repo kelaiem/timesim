@@ -28,7 +28,7 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
-  STOCK_MIN_U,                                // §50/TODO 12: build to the floor
+  STOCK_MIN_U, SPRING_FLAT_U,                 // §50: build to the floor; flat-spring stock
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -5558,7 +5558,11 @@ alarmFeelerUnit.add(alarmFeelerLever);
   // §51 strata spend: the blade at real spring stock — 0.08 u = 0.03 mm, the
   // cited spring floor, from the 0.015 mm that made it §40's first honesty
   // nominee and §50's headline under-stock.
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.08), MATS.blueSteel);
+  // TODO 11: flat-spring stock. §51 raised this blade's Z (0.04 → 0.08) and
+  // the census row survived, because the THIN axis is y (0.06 = 0.0225 mm) —
+  // thickening the dimension that was not the thinnest is the seconds-hand
+  // lesson again. Both flexing dimensions now carry real flat-spring stock.
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9, SPRING_FLAT_U, SPRING_FLAT_U), MATS.blueSteel);
   blade.name = 'alarmFeelerSpring';
   blade.position.set(0.45, 0.28, ALARM_FEELER_T / 2 + 0.04);
   alarmFeelerLever.add(blade);
@@ -6592,8 +6596,8 @@ alarmSwitchUnit.add(alarmClickArm);
   stud.rotation.x = Math.PI / 2;
   stud.position.set(anchor.x, anchor.y, TQ_TOP_Z + 0.5);
   alarmSwitchUnit.add(stud);
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, 0.07, 0.2), MATS.blueSteel);
-  blade.name = 'switchClickSpring'; // TODO 11 triage: SPRING stock (0.07 u = 0.026 mm — under even the spring floor; stays in the debt, honestly kinded)
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, SPRING_FLAT_U, 0.2), MATS.blueSteel);
+  blade.name = 'switchClickSpring'; // TODO 11: flat-spring stock (was 0.07 u = 0.026 mm, under even the 0.03 floor)
   blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z + 0.80);
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
   alarmSwitchUnit.add(blade);

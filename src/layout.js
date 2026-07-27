@@ -79,6 +79,12 @@ export const MM = (units) => units * UNIT_MM;          // for readouts and asser
 // §50/TODO 12: the wheel-and-plate stock floor, in UNITS, so a thickness can
 // be built to clear it rather than measured against it after the fact.
 export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.32 u
+// FLAT-SPRING stock. §50's spring floor is 0.03 mm and its own basis says why
+// that is a floor and not a target: "real hairsprings run 0.02-0.04 mm; flat
+// springs THICKER". A click detent or a feeler return is a flat blade, not a
+// hairspring, so it is sized at 0.05 mm — the low end of real flat-spring
+// stock, clearing the floor on merit rather than grazing it.
+export const SPRING_FLAT_U = 0.05 / UNIT_MM;          // 0.133 u
 
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
