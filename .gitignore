@@ -13,3 +13,6 @@ BACKLOG.md
 
 # §28: emitted by tools/stamp-release.mjs at release time, never committed
 version.json
+
+# §52: the CI battery harness installs its pinned Playwright here
+tools/node_modules/

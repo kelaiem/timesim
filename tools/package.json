@@ -1,0 +1,9 @@
+{
+  "name": "timesim-tools",
+  "private": true,
+  "description": "CI/dev tooling for timesim. Lives under tools/ (not the repo root) so the app itself stays dependency-free and the release payload — which excludes tools/ — never ships any of this.",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

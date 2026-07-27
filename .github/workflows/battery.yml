@@ -1,0 +1,61 @@
+# §52 — the inspector battery as a merge gate.
+#
+# Runs tools/ci-battery.mjs (headless Chromium against dev_server.py) on every
+# pull request and on main, so a change that breaks support, the graph, a
+# penetration budget, a clearance, the stock floor, boot silence or the
+# geometry fingerprint's determinism fails BEFORE it merges — standing rule 4
+# as CI instead of discipline.
+#
+# Sized by measurement, per the entry's own order: the full battery took
+# ~13 min wall (clearances ~370 s and sweptOverlap ~220 s the long poles,
+# boot ~26 s) on a 2025 dev container. CI hardware is slower and SwiftShader
+# does the GL, so the job budget is 3× that measurement — if the battery
+# genuinely outgrows a per-PR gate someday, the entry's fallback is a tiered
+# split (cheap checks per-PR, sweeps nightly), not a longer timeout.
+#
+# Playwright is pinned in tools/package.json so the browser build is stable;
+# the browser download is cached keyed on that pin. python3 for dev_server.py
+# is preinstalled on ubuntu-latest.
+
+name: Battery
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A force-push mid-run should kill the stale run — the battery is long enough
+# that queued duplicates would otherwise stack up behind it.
+concurrency:
+  group: battery-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  battery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      # --with-deps also apt-installs the shared libraries Chromium needs,
+      # which the browser cache above cannot carry — so it runs every time.
+      - name: Install Chromium
+        working-directory: tools
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the battery
+        run: node tools/ci-battery.mjs
