@@ -358,7 +358,21 @@ wholesale and overclaimed: the alarm work splits by z into
 - **dial-side strata rows (z −5 to −7), genuinely §29-bound** (~50):
   disc, selector, feeler, setting wheel, idler, release disc, arbor,
   the link's crank half, the heart. These are the real re-buy-z design
-  task. **Tranche three named and declared the selector's three guide posts**
+  task. **§51's strata spends (the finale) closed the feeler slices, both
+hearts and the feeler spring** — the spring at real spring stock at
+last (0.08 u = 0.03 mm, from the 0.015 that made it §40's first
+nominee). **Two members are BLOCKED and reverted with their numbers:**
+the disc body (0.13) collides with the selector guide posts at 0.32
+(measured 0.246 against the 0.12 working budget — the §34 pass-2b post
+corridors were solved for a 0.13 body), and the selector sheet (0.10)
+cannot take 0.32 in its two-sided finger slot (0.192–0.246 in every
+anchoring — the excess just moves between finger sides). Both wait on
+the same root: **the §29 arm-band literals (−0.505 and kin) never rode
+the chain**; until those are re-derived, the ring and fingers drift
+together only by staying absolute. That literal re-derivation is the
+enabling step for both blocked spends.
+
+**Tranche three named and declared the selector's three guide posts**
   (pin stock at 0.105 mm, clearing the pivot floor — zero geometry
   moved). Remaining honest-pin candidates: the disc's unnamed 0.22 u
   pin. The feeler spring at 0.015 mm and the switch blade at 0.026 mm

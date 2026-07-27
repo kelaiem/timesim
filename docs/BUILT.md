@@ -3531,3 +3531,29 @@ and plate clean (support 0, graph 0, penetration 0, clearances 0);
 `stockFloor` still green with 73 waived; the §39 depth assert passes.
 The strata spends — feeler, disc body, selector sheet, both springs —
 are §51's remaining step, now with the band real and the link honest.
+
+### §51 finale — the strata spends, with two honest reverts
+
+**Landed:** the feeler slices (0.10 → floor), both hearts (0.30 →
+floor), and the feeler spring at real spring stock — 0.03 mm, from the
+0.015 that made it §40's first honesty nominee. The cannon pinion grew
+a fourth time (→ 3.35), its derived end making that a one-line edit;
+the §34 landing assert's plate face proved to be one more stale
+dial-frame absolute and now rides `Z_DIAL`; and the §35 shaft's offset
+collapsed into a real derivation — **shaft centre = the ring's
+top-face world plane** (`Z_DIAL − ALARM_SEL_Z_UP`), the relationship
+two hand-tuned offsets had been approximating.
+
+**Reverted, with their numbers:** the disc body (collides with the
+selector posts at 0.32 — 0.246 against the 0.12 working budget; the
+§34 pass-2b corridors were solved for 0.13) and the selector sheet
+(its two-sided finger slot cannot take 0.32 in any anchoring —
+0.192–0.246, the excess just moving between finger sides). Root cause
+for both: the §29 arm-band literals never rode the chain; re-deriving
+them is the enabling step, catalogued in TODO 11.
+
+**Verified:** boot silent; engagement embraced both ways (0.10/0.06);
+penetration, clearances, support all clean; `stockFloor` green, TODO 11
+waived 62 → 60 net. §51 closes with the band real, the link honest,
+and the two blocked members carrying exact numbers for their own
+sessions.
