@@ -3970,3 +3970,49 @@ and does not exist.
 **Battery beside it, unchanged:** registry 519 volumes (203 revolve, 147
 path, 169 static), 0 still escaping after widening, **0 confirmed swept
 overlaps**. The audit adds no geometry and cannot fail.
+
+### TODO 14 closed — the alarm hammer's spring now exists
+
+§48 reported the alarm hammer as a MALFORMED declaration: the build
+declared the spring its pose law implies, and the audit answered that no
+such mesh was in the scene. `alarmHammerAngle()`'s free swing is
+`cos(ALARM_HAMMER_W · t)` with an exponential decay, and
+`ALARM_HAMMER_W` is an angular frequency derived so the hammer meets the
+wire exactly at `ALARM_FALL_S` — a spring-and-inertia law. §25 read that
+fall as unexplained; it never was. What was missing was the **part**.
+
+`alarmHammerSpring` is a flat blade at `SPRING_FLAT_U`, grounded on its
+own stud standing plate → gong plane, bearing on the tail at 45% of its
+length (inboard of the nose, so it never fouls the cam).
+
+**The direction is derived, not chosen.** The push is minus the
+derivative of the bearing point with respect to the hammer angle, and the
+draw's own sign decides which way that is — so a later change to
+`ALARM_DRAW_RAD` carries the spring with it instead of silently
+inverting it. That is §43's chord-sign lesson, applied before the fact
+rather than after. A build-time tripwire re-checks the torque opposes the
+draw and is silent unless it stops doing so.
+
+**Grounded on purpose.** The blade's free end tracks the tail every
+frame while its anchored root stays fixed — the §43 postscript lesson,
+where the click's spring was a child of the lever it was supposed to push
+and therefore did no work. This one's stud is a child of the static
+`alarmHammerUnit`, never of the rotating pivot group.
+
+**Verified.** Root moved **0.000000** while the hammer swung **0.3162
+rad**; tip-to-tail gap **0.0000** across the whole strike axis; measured
+torque −5.954 against a draw of +0.27, so it opposes. The first version
+of that test reported a perfectly still root — but the hammer had not
+moved either, because `setPose` needs the strike axis posed explicitly.
+A check that searches for less than the change it verifies always passes,
+and it nearly did here too.
+
+The audit closes its own finding: `malformedDeclarations` is now empty
+and the hammer sits in `restoredByDeclaredElement ← alarmHammerSpring`.
+Boot silent, `stockFloor` green (waived unchanged at 57), focused battery
+clean.
+
+**Still open, deliberately:** `ALARM_HAMMER_W` comes from the strike
+timing, not from this blade's stiffness. §48's scope guard puts spring
+rate and force modelling outside it, and so does this. The spring now
+exists and acts; it does not yet set the frequency.
