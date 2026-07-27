@@ -366,11 +366,14 @@ the disc body (0.13) collides with the selector guide posts at 0.32
 (measured 0.246 against the 0.12 working budget — the §34 pass-2b post
 corridors were solved for a 0.13 body), and the selector sheet (0.10)
 cannot take 0.32 in its two-sided finger slot (0.192–0.246 in every
-anchoring — the excess just moves between finger sides). Both wait on
-the same root: **the §29 arm-band literals (−0.505 and kin) never rode
-the chain**; until those are re-derived, the ring and fingers drift
-together only by staying absolute. That literal re-derivation is the
-enabling step for both blocked spends.
+anchoring — the excess just moves between finger sides). **The enabling step is DONE**: the §29 arm-band literals (−0.505,
+−0.53, −0.48, −0.23) are re-derived from the wheel's plate-side face
+(`ALARM_WHEEL_BOT_B` → `ALARM_BAND_FLOOR_B` → `ALARM_ARMB_Z`), the §34
+cam-band assert derives with them, and the disc ⇄ selector working
+engagement measured **0.062 against its 0.12 budget** after the change
+— the derivation healed the drift the frozen family had accumulated.
+The disc-body and selector-sheet spends are now genuinely unblocked;
+they remain the two open rows of this class.
 
 **Tranche three named and declared the selector's three guide posts**
   (pin stock at 0.105 mm, clearing the pivot floor — zero geometry
