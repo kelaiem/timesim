@@ -348,6 +348,16 @@ the alarm units clear their floors and their waivers are DELETED.
 
 ## 12. The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row
 
+**Tranche three (shipped): 2 more rows — 15 remain, both cocks fully
+clear.** Two shared-builder finds: `makeCock`'s leg screw head (0.22 u —
+the fork cock's row, and every cock leg with it) took the floor, and
+`makeJewelSetting`'s stone went from `d·0.8` (0.269 u) to a floored
+depth that stays inside its collar wall — clearing the balance cock's
+last row and deepening the fork cock's setting with it. `makeChaton`'s
+pressed ruby also grew 0.62·t → 0.74·t (its underside landing exactly
+where the oil sink begins), improving the plate chatons toward real
+0.3+ mm stones even though no census row named them.
+
 **Tranche two (shipped): 4 more rows — 17 remain.** The set-up work's
 two heads took the floor (the click-screw head through its bound
 formula, which promptly taught JMP_BIND_EPS's lesson again: solved
@@ -381,13 +391,12 @@ exactly 0.15 after the change, which is the formula doing its job.
   wheel, Balance, Power-reserve train ×2 — the thin dimension is a
   radial band width, so the fix is a radius change with its own
   clearance chain, not a slab bump.
-- **still-to-locate free candidates**: the fork cock's jewel disc
-  (0.22 u), the drum's hook rib (0.298 u, literal not found — likely
-  computed), a fusee step disc (0.292 u), the small-seconds boss
-  (0.28 u) and hand blades (0.21 u — the measured depth does not match
-  `depthMin`, so the hand builder needs reading before an aesthetics
-  change), and the balance cock's last plate (0.269 u ruby extrude —
-  locate by position probe).
+- **still-to-locate free candidates**: the drum's mainspring hook rib
+  (0.298 u — the coil and hook are the MAINSPRING, i.e. spring stock;
+  name the meshes at build and declare, don't thicken), a fusee step
+  disc (0.292 u, computed literal), the small-seconds boss (0.28 u) and
+  hand blades (0.21 u — the measured depth does not match `depthMin`,
+  so the hand builder needs reading before an aesthetics change).
 - **at its bound**: the set-up click-screw head now rides its derived
   under-wheel ceiling (0.21 u) — thicker only if the great-wheel gap is
   re-solved.
