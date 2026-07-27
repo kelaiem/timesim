@@ -347,10 +347,14 @@ wholesale and overclaimed: the alarm work splits by z into
   and the census promptly made width the new thin dimension — and the
   lock lever's arm and tail), floored the shared barrel ratchet, and
   declared the integral click pawl the spring-tempered stock it is.
-  Still open on top: the switch's click furniture, the castellation
-  wedges (MATE-bound to the beak nose), the winding train's wheels, and
-  the lock collar (a documented sandwich: 0.17 over the plate, 0.22
-  under the cam).
+  **Tranche two** took the switch's click arm to the floor and honestly
+  kinded two more: the switch detent's blade is spring stock (at
+  0.026 mm it stays in the debt even so), and the follower's ruby nose
+  is a pin — its 0.24 u height §29-bound co-planar with the heart, so
+  declared, not thickened. Still open on top: the castellation wedges
+  (MATE-bound to the beak nose), the winding train's wheels, and the
+  lock collar (a documented sandwich: 0.17 over the plate, 0.22 under
+  the cam).
 - **dial-side strata rows (z −5 to −7), genuinely §29-bound** (~50):
   disc, selector, feeler, setting wheel, idler, release disc, arbor,
   the link's crank half, the heart. These are the real re-buy-z design

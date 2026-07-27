@@ -2657,6 +2657,9 @@ export const STOCK_KIND_BY_MESH = {
   mainspringRibbon: 'spring',  // the coil IS the mainspring
   mainspringHook: 'spring',    // its hook tab, same stock
   barrelClickPawl: 'spring',   // integral click: spring-tempered pawl stock
+  // TODO 11 tranche two:
+  alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
+  switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none
