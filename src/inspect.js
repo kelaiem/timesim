@@ -3006,8 +3006,14 @@ export async function stockCensus(clock, opts = {}) {
     let axial = null, radial = null, source, via, thin, extents = null;
     if (v.kind === 'revolve') {
       axial = v.zBand[1] - v.zBand[0];
-      radial = v.rBand[1] - v.rBand[0];
-      source = 'registry-revolve';
+      // SOLID vs RING, and the factor of two between them. A ring's radial
+      // stock is its wall — rHi − rLo — but a SOLID revolve's vertices reach
+      // r = 0 at the cap centres, so its band width equals its RADIUS, which
+      // is HALF the true thin-way-through. Two winding-train posts (r 0.30,
+      // really ⌀ 0.225 mm) sat in the violation list at half size for three
+      // identification probes because of this; rLo ≈ 0 is the tell.
+      radial = v.rBand[0] < 0.02 ? 2 * v.rBand[1] : v.rBand[1] - v.rBand[0];
+      source = v.rBand[0] < 0.02 ? 'registry-revolve (solid: ⌀)' : 'registry-revolve';
       via = axial <= radial ? 'axial' : 'radial';
       thin = Math.min(axial, radial);
     } else {

@@ -358,9 +358,16 @@ wholesale and overclaimed: the alarm work splits by z into
   −30°/press — and the lock collar's sandwich took +0.02 after all
   (0.16 over the plate, 0.21 under the cam, both clearing the margin).
   Still open on the plate top: the lock pad (a solved brake mate
-  against the collar) and the winding train's two census-band rows,
-  which three probes have failed to match to any local mesh — likely
-  the census's ruler on the tilted bevels; identify before touching.
+  against the collar) and **the winding pair, now identified**: not
+  bevels and not a ruler artifact — two BUSHES with genuine 0.1125 mm
+  walls (registry rings, rLo > 0), real thin stock wanting ordinary
+  ring thickening. The identification came via a census ruler FIX: a
+  solid revolve's rBand width equals its radius — half the true
+  diameter — and correcting that (rLo ≈ 0 is the tell) cleared two
+  genuine artifacts elsewhere (Balance's and Small seconds' 0.1125
+  rows were solid posts at half-size) while the winding pair survived,
+  proving them rings. The Motion-works and Power-reserve 0.1125 rows
+  survived too: same class, real ring hubs.
 - **dial-side strata rows (z −5 to −7), genuinely §29-bound** (~50):
   disc, selector, feeler, setting wheel, idler, release disc, arbor,
   the link's crank half, the heart. These are the real re-buy-z design
