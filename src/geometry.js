@@ -774,6 +774,11 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
   }
   g.userData.columns = columns;
   g.userData.colH = colH;
+  // The saw teeth above run tip→root as the angle RISES, so their cliff faces
+  // +theta and a pawl can only drive the wheel in −z. Exported so the caller's
+  // pawl geometry can derive its side from the teeth instead of agreeing with
+  // them by luck — it did not (§43 postscript).
+  g.userData.ratchetDrive = -1;
   // Beak lift at wheel angle `a` (beak azimuth 0): 1 on a column, 0 in a gap,
   // linear on the flanks. Column i is centred at i·pitch.
   g.userData.profileAt = (a) => {

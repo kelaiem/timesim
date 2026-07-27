@@ -6834,9 +6834,25 @@ const alarmLinkParts = {};
 const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
 const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
 const _pushPerp = { x: -_pushU.y, y: _pushU.x };
-const ALARM_PUSH_CHORD = 1.15 * (ALARM_COL_BASE_R / 1.5); // lateral offset — the pawl's line grazes the ratchet tangentially (the skirt scaled with the wheel)
+// Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
+// scaled with the wheel). Its SIGN is the drive direction, not a placement
+// taste: with the pawl at chord·perp + 0.85·û from the wheel centre, the
+// tangential component of its inward press works out to exactly the chord
+// (the û·perp cross-term vanishes), so
+//
+//     sign(ALARM_PUSH_CHORD) === the z-direction the pawl can drive
+//
+// Built positive, it pushed +z (CCW) while the wheel's own saw teeth are cut
+// to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
+// dragging the wheel backwards, which a pawl cannot do. Now derived from the
+// teeth themselves and asserted below.
+const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5);
 const ALARM_PUSH_TRAVEL = 0.7;
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
+// §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
+// Cheap because the algebra above reduces the whole geometry to one sign.
+if (Math.sign(ALARM_PUSH_CHORD) !== alarmColumnWheel.userData.ratchetDrive)
+  console.warn(`§43: the pusher's pawl drives ${Math.sign(ALARM_PUSH_CHORD) > 0 ? '+z' : '-z'} but the ratchet's teeth are cut for ${alarmColumnWheel.userData.ratchetDrive > 0 ? '+z' : '-z'} — the pawl would drag the wheel backwards`);
 const _pushBase = {
   x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
   y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,

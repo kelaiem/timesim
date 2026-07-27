@@ -3716,3 +3716,41 @@ No geometry moved — this is input plumbing over an existing animation.
 affordance (beyond the cursor) is wanted. §19 has not shipped, so
 inventing one here would be guessing at the answer it exists to
 measure. The cursor affordance stands; the question stays §19's.
+
+### §43 postscript — the pawl was driving the wheel backwards
+
+Reported by eye ("the pusher is turning the column wheel the wrong
+direction?"), and the measurement agreed. A pawl can only PUSH, so the
+wheel must turn the way the pawl's contact point moves:
+
+| | measured |
+|---|---|
+| pawl's tangential drive on press | **+0.619 → +z (CCW)** |
+| wheel's actual index | **−30° → −z (CW)** |
+| ratchet teeth, cut tip→root as angle rises | driven **−z (CW)** |
+
+Two of the three agreed: the wheel and its own teeth. The **pusher's
+pawl sat on the wrong side of the wheel centre**, so it would have had
+to drag the wheel backwards.
+
+**The fix is one sign, and the algebra says why.** With the pawl at
+`chord·perp + 0.85·û` from the centre, the tangential component of its
+inward press reduces to exactly the chord (the û·perp cross-term
+vanishes):
+
+> `sign(ALARM_PUSH_CHORD)` **is** the z-direction the pawl can drive.
+
+So `makeColumnWheel` now exports `userData.ratchetDrive = -1` — which
+way its teeth are cut — and the chord's sign derives from it rather
+than agreeing by luck. A boot assert compares the two, which is cheap
+precisely because the geometry collapses to one sign.
+
+**Verified:** pawl drive −0.619 and index −30°, both CW, agreeing. The
+pusher swung to the other side of the wheel and still clears everything
+— support 0, graph 0, penetration none, clearances 0, full FORBIDDEN
+scan 0 across 69 rows. Boot silent.
+
+Worth noting what did *not* catch this: every check in the battery is
+about **space** — what occupies where — and nothing was overlapping.
+This was a *kinematic* lie in geometry that fit perfectly, the class
+TODO 7 describes from a different angle. It took an eye on the render.
