@@ -6267,7 +6267,10 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // lock lever's pad bears on when the train is held. Smooth, not notched: a
   // partial wind can park the train at ANY phase (the winding lockstep), so
   // the hold is a friction brake — the stop-lever-on-balance-rim precedent.
-  const lockCollar = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 0.30, 32), MATS.steel);
+  // TODO 11 tail: the sandwich takes floor stock after all — centred growth
+  // +0.02 leaves 0.16 over the plate and 0.21 under the cam, both ≥ the one
+  // margin the note below demands.
+  const lockCollar = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, STOCK_MIN_U, 32), MATS.steel);
   lockCollar.name = 'alarmLockCollar';
   lockCollar.rotation.x = Math.PI / 2;
   lockCollar.position.z = 8.83; // world (the rotor sits at z 0): band 8.68..8.98 — 0.17 over the plate top, 0.22 under the cam
@@ -6502,7 +6505,7 @@ const ALARM_COL_POS = {
 // running clearance — the first build had bore = stud and the post punched
 // out through the castellations). Raised so the ratchet skirt clears the
 // plate top by a full margin instead of sitting dead on it.
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: 0.3, colH: 0.55, colInner: ALARM_COL_INNER, boreR: 0.30, material: MATS.steel });
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: STOCK_MIN_U, colH: 0.55, colInner: ALARM_COL_INNER, boreR: 0.30, material: MATS.steel }); // TODO 11 tail: base plate at floor stock — the castellations ride up 0.02 and the beak nose stays mid-band
 alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
 const alarmColSpin = new THREE.Group();
 alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + 0.22);

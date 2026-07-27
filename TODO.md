@@ -351,10 +351,16 @@ wholesale and overclaimed: the alarm work splits by z into
   kinded two more: the switch detent's blade is spring stock (at
   0.026 mm it stays in the debt even so), and the follower's ruby nose
   is a pin — its 0.24 u height §29-bound co-planar with the heart, so
-  declared, not thickened. Still open on top: the castellation wedges
-  (MATE-bound to the beak nose), the winding train's wheels, and the
-  lock collar (a documented sandwich: 0.17 over the plate, 0.22 under
-  the cam).
+  declared, not thickened. **The plate-top tail closed** (three more rows): the column wheel's
+  base plate and ratchet skirt took the floor — the probe showed the
+  "mate-bound wedges" were never the thin rows; the castellations are
+  0.55 and fine, and the stack grew with indexing verified unchanged at
+  −30°/press — and the lock collar's sandwich took +0.02 after all
+  (0.16 over the plate, 0.21 under the cam, both clearing the margin).
+  Still open on the plate top: the lock pad (a solved brake mate
+  against the collar) and the winding train's two census-band rows,
+  which three probes have failed to match to any local mesh — likely
+  the census's ruler on the tilted bevels; identify before touching.
 - **dial-side strata rows (z −5 to −7), genuinely §29-bound** (~50):
   disc, selector, feeler, setting wheel, idler, release disc, arbor,
   the link's crank half, the heart. These are the real re-buy-z design
