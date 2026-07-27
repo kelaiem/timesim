@@ -398,10 +398,22 @@ said so).
 **Tranche three named and declared the selector's three guide posts**
   (pin stock at 0.105 mm, clearing the pivot floor — zero geometry
   moved). Remaining honest-pin candidates: the disc's unnamed 0.22 u
-  pin. The feeler spring at 0.015 mm and the switch blade at 0.026 mm
-  remain the headline under-stock even as springs, and the strata
-  sheets (selector ring/tab at 0.0375 u, the disc fingers, the face
-  cam) are the re-buy-z core.
+  pin. The strata sheets (selector ring/tab at 0.0375 u, the disc
+  fingers, the face cam) are the re-buy-z core.
+
+**Tranche four bought the two sub-floor springs** — the last rows that
+  were under the floor *for their own declared kind*. Both are flat
+  blades (a feeler return, a click detent), and the spring floor's own
+  basis says why 0.03 mm was never their target: "real hairsprings run
+  0.02–0.04 mm; **flat springs thicker**". They are now sized at
+  `SPRING_FLAT_U` = 0.05 mm, the low end of real flat-spring stock, so
+  they clear on merit rather than grazing the line. Waived rows 59 → 57.
+
+  The feeler blade is the instructive one: §51 had already tried to buy
+  it, raising its **z** 0.04 → 0.08, and the row survived — because its
+  thin axis was **y** at 0.06. Thickening a dimension that was not the
+  thinnest changes nothing the census measures. Both flexing dimensions
+  now carry the stock.
 
 Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means
