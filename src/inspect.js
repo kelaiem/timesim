@@ -2705,6 +2705,8 @@ export const STOCK_KIND_BY_MESH = {
   // three alarm pins are pin-stock, though two still sit under even the
   // pivot floor and stay inside the debt below.
   maintSpring: 'spring',
+  alarmHammerSpring: 'spring',     // §48/TODO 14 — flat blade at SPRING_FLAT_U
+  alarmHammerSpringStud: 'pivot',  // ...and the grounded stud it hangs from
   alarmPinSpringB: 'spring',
   alarmFeelerPin: 'pivot',
   alarmSelPin: 'pivot',

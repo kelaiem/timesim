@@ -6158,7 +6158,7 @@ declareRestoring('Alarm disc', 'two-way',
 // which is the honest finding: the law asserts a spring the watch lacks.
 // Modelling it is TODO.md's business, per this entry's scope guard.
 declareRestoring('Alarm hammer', 'spring',
-  'alarmHammerAngle() falls as cos(ALARM_HAMMER_W t) with decay — a spring-and-inertia law, but NO spring is modelled',
+  'alarmHammerAngle() falls as cos(ALARM_HAMMER_W t) with decay — a spring-and-inertia law; the blade is grounded to its own stud and bears on the tail (TODO 14)',
   'alarmHammerSpring');
 declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_RAD, +ALARM_DRAW_RAD]');
 // Where the tail rests. Measured out from the pivot⇄wheel bearing: the larger
@@ -6280,6 +6280,80 @@ if (!(ALARM_DRAW_RAD > ALARM_STRIKE_AMP))
 // The hammer post already stands to the gong plane and the tail sits in that
 // same plane, so nothing about the post changes. (Kept explicit because a
 // later stage that moves the tail off the gong plane must raise it.)
+
+// --- §48 / TODO 14 — THE HAMMER SPRING, which the pose law always assumed ---
+//
+// `alarmHammerAngle()`'s free swing is cos(ALARM_HAMMER_W * t) with an
+// exponential decay after the strike. That is a SPRING-AND-INERTIA law:
+// ALARM_HAMMER_W is an angular frequency, derived so the hammer meets the
+// wire exactly at ALARM_FALL_S. So the fall was never unexplained — §25 read
+// it as one, but the law had a restoring element in it all along. What was
+// missing was the PART. §48's audit said so in the only way it can: the build
+// declared the spring the law implies, and the audit answered that no such
+// mesh was in the scene.
+//
+// The direction is DERIVED, not chosen. The restoring torque has to drive the
+// hammer the way it falls, so the push is minus the derivative of the bearing
+// point with respect to the hammer angle — and the draw's own sign decides
+// which way that is, so a later change to ALARM_DRAW_RAD carries the spring
+// with it instead of silently inverting it (§43's chord-sign lesson).
+//
+// GROUNDED, per the §43 postscript: one end fixed to a stud standing from the
+// plate, the other bearing on the tail. The click spring taught that lesson
+// the hard way by being a child of the lever it was supposed to push — a
+// spring that travels with its own load does no work. This one's stud is a
+// child of the static `alarmHammerUnit`, never of the rotating pivot group.
+const ALARM_HAM_SPR_BEAR_F = 0.45;   // bearing at 45% of the tail — inboard of
+                                     // the nose, so it never fouls the cam
+const ALARM_HAM_SPR_FREE = 2.2;      // free length, anchor → bearing at rest
+const ALARM_HAM_SPR_LB = ALARM_TAIL_LEN * ALARM_HAM_SPR_BEAR_F;
+const ALARM_HAM_SPR_DRAW_SIGN = Math.sign(ALARM_DRAW_RAD) || 1;
+const _hamBear0 = {
+  x: hammerPiv.x + ALARM_HAM_SPR_LB * Math.cos(ALARM_TAIL_REST_AZ),
+  y: hammerPiv.y + ALARM_HAM_SPR_LB * Math.sin(ALARM_TAIL_REST_AZ),
+};
+// -d/dphi of the bearing point: the direction a push must act to UNWIND the
+// draw, which is exactly the direction the hammer falls.
+const _hamPush = {
+  x:  ALARM_HAM_SPR_DRAW_SIGN * Math.sin(ALARM_TAIL_REST_AZ),
+  y: -ALARM_HAM_SPR_DRAW_SIGN * Math.cos(ALARM_TAIL_REST_AZ),
+};
+const ALARM_HAM_SPR_ANCHOR = {
+  x: _hamBear0.x - _hamPush.x * ALARM_HAM_SPR_FREE,
+  y: _hamBear0.y - _hamPush.y * ALARM_HAM_SPR_FREE,
+};
+let alarmHammerSpring = null;
+{
+  const stud = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.3, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
+  stud.rotation.x = Math.PI / 2;      // stand it along the movement axis
+  stud.name = 'alarmHammerSpringStud';
+  stud.position.set(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y,
+                    (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+  alarmHammerUnit.add(stud);
+  // Blade built one unit long with its ORIGIN at the anchored end, so the
+  // frame law below can point it and set its reach without moving its root.
+  // Flat-spring stock (SPRING_FLAT_U), for the reason TODO 11 records: this
+  // is a flat blade, not a hairspring, and the spring floor's own basis says
+  // flat springs are thicker.
+  const geo = new THREE.BoxGeometry(1, SPRING_FLAT_U, ALARM_TAIL_T * 0.8);
+  geo.translate(0.5, 0, 0);
+  alarmHammerSpring = new THREE.Mesh(geo, MATS.blueSteel);
+  alarmHammerSpring.name = 'alarmHammerSpring';
+  alarmHammerSpring.position.set(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y, Z_GONG);
+  alarmHammerUnit.add(alarmHammerSpring);
+}
+// THE TRIPWIRE. The push direction is derived from the draw's sign, so this
+// cannot drift on its own — but the bearing fraction, the rest azimuth and
+// the anchor are all free, and a spring on the wrong side of the tail would
+// hold the hammer UP rather than drive it down. Silent unless that happens.
+{
+  const r = { x: _hamBear0.x - hammerPiv.x, y: _hamBear0.y - hammerPiv.y };
+  const tq = r.x * _hamPush.y - r.y * _hamPush.x;      // z of (pivot→contact) × push
+  if (Math.sign(tq) !== -ALARM_HAM_SPR_DRAW_SIGN)
+    console.warn(`§48/TODO 14: the hammer spring's torque (${tq.toFixed(3)}) does not oppose `
+      + `the draw (sign ${ALARM_HAM_SPR_DRAW_SIGN}) — it would hold the hammer up, not drive it down`);
+}
 
 // --- 'Alarm striking wheel' — lifting cam + its pinion on a bearing stud -----
 const alarmStrikeUnit = new THREE.Group();
@@ -11019,6 +11093,19 @@ function tick(t) {
   alarmBarrelRotor.rotation.z = (ALARM_BARREL_TURNS - alarmBarrelWind) * Math.PI * 2;
   alarmStrikeRotor.rotation.z = alarmStrikeWheelAngle();
   alarmHammerPivot.rotation.z = alarmHammerAngle();
+  // §48 / TODO 14 — the spring bears on the tail wherever the tail now is.
+  // Anchored end fixed at the stud; free end follows the bearing point, so
+  // the blade is seen to work against the draw and to be what pushes the
+  // hammer back down. The contact point SLIDES along the blade as the angle
+  // changes, which is what a flat spring's contact does, so the reach is set
+  // rather than the blade being stretched to a new free length.
+  if (alarmHammerSpring) {
+    const az = ALARM_TAIL_REST_AZ + alarmHammerPivot.rotation.z;
+    const dx = hammerPiv.x + ALARM_HAM_SPR_LB * Math.cos(az) - ALARM_HAM_SPR_ANCHOR.x;
+    const dy = hammerPiv.y + ALARM_HAM_SPR_LB * Math.sin(az) - ALARM_HAM_SPR_ANCHOR.y;
+    alarmHammerSpring.rotation.z = Math.atan2(dy, dx);
+    alarmHammerSpring.scale.x = Math.hypot(dx, dy);
+  }
 }
 
 // §38 alarm hand vs the raised hour markers — see the note at the hand's

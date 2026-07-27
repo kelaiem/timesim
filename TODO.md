@@ -640,7 +640,7 @@ so does this item.
 The feeler is first by fanout, and it is also the one whose failure is
 visible — it drives the alarm release.
 
-## 14. The alarm hammer's fall is a spring law with no spring (§48)
+## 14. CLOSED — the alarm hammer's fall is a spring law with no spring (§48)
 
 `alarmHammerAngle()`'s free swing is
 `ALARM_DRAW_RAD * cos(ALARM_HAMMER_W * t)`, decaying exponentially after
@@ -663,3 +663,33 @@ lesson, that a return spring has one end fixed and one end bearing.
 Note that §25 recorded the lobes lifting the hammer and left the fall
 unexplained. The fall was in fact always explained; what was missing was
 the part.
+
+**CLOSED.** `alarmHammerSpring` is a flat blade at `SPRING_FLAT_U`,
+grounded on its own stud standing from the plate to the gong plane, and
+bearing on the tail at 45% of its length — inboard of the nose, so it
+never fouls the cam. The push direction is DERIVED as minus the
+derivative of the bearing point with respect to the hammer angle, with
+the draw's own sign deciding which way that is, so a change to
+`ALARM_DRAW_RAD` carries the spring rather than silently inverting it. A
+build-time tripwire re-checks that the torque opposes the draw.
+
+The blade's free end tracks the tail each frame while its anchored root
+stays put, so the spring is seen to work against the draw — the §43
+postscript's lesson applied on purpose this time rather than after the
+fact.
+
+Verified: root moved **0.000000** while the hammer swung **0.3162 rad**,
+tip-to-tail gap **0.0000** across the whole strike axis, and the measured
+torque (−5.954) opposes a draw of +0.27. The audit closes its own
+finding: the alarm hammer moved out of `malformedDeclarations` into
+`restoredByDeclaredElement ← alarmHammerSpring`, leaving that bucket
+empty. Boot silent; `stockFloor` green (the blade clears the spring floor
+on its own, waived unchanged at 57); focused battery over hammer, gong,
+striking wheel, lock, barrel, plate and balance: support 0, graph 0,
+penetration none over budget, clearances 0.
+
+What is NOT closed, and is deliberately out of scope: `ALARM_HAMMER_W`
+still comes from the strike timing rather than from this blade's
+stiffness. §48's scope guard puts spring RATE and force modelling
+outside that entry, and it stays outside this item too. The spring now
+exists and acts; it does not yet SET the frequency.
