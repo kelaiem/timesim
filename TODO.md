@@ -372,8 +372,15 @@ anchoring — the excess just moves between finger sides). **The enabling step i
 cam-band assert derives with them, and the disc ⇄ selector working
 engagement measured **0.062 against its 0.12 budget** after the change
 — the derivation healed the drift the frozen family had accumulated.
-The disc-body and selector-sheet spends are now genuinely unblocked;
-they remain the two open rows of this class.
+**And with the family derived, both blocked spends LANDED** (disc body
+and selector sheet at floor stock; TODO 11 waived 60 → 53). The two
+keys, each a working-face rule: the ring's anchor pins its UNDERSIDE
+(the face that presses the rocker — the endstone precedent, stock grows
+away from the solved contact), and the §35 shaft rides the ring's
+MID-plane, not its top face (the top-face relationship was an artifact
+of the thin sheet; centre-on-centre cleared the keyless floor by 0.229
+where top-face left 0.069, and the floor's own derived tripwire is what
+said so).
 
 **Tranche three named and declared the selector's three guide posts**
   (pin stock at 0.105 mm, clearing the pivot floor — zero geometry

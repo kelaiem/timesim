@@ -4326,12 +4326,9 @@ const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin b
                              // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
                              // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
                              // clearing the 0.06 engagement by the one margin (measured + asserted)
-// §51: the body's spend is REVERTED — thickened to 0.32 its band collides
-// with the selector guide posts (battery: disc ⇄ selector 0.246 against the
-// 0.12 working budget; probed to the post at alarm f=1). The §34 pass-2b
-// post corridors were solved for a 0.13 body and must be re-solved before
-// this member can take the floor; catalogued in TODO 11 rather than forced.
-const ALARM_DISC_BODY_T = 0.13;      // disc body (the rim's teeth share this plane)
+// §51 final spend, retried with the whole band DERIVED (the first attempt's
+// collision was measured against planes that hung off frozen literals).
+const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's teeth share this plane)
 const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −1.05
 const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −1.22 (body top)
 const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −1.35
@@ -5073,13 +5070,10 @@ const alarmPinArmB = new THREE.Group();
 // column→ring run is §35's filed debt (MECH_GRAPH.todo carries it).
 const ALARM_LINK_AZ_DEG = 146; // §35: the link run's INNER-end azimuth — the ring's drive tab sits on it (dial-local mirror, az 34° — ≥26° from every §34 guide post), so it is hoisted here with the selector
 const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75;
-// §51: the sheet's spend is REVERTED — the B-side fingers run BOTH above and
-// below the ring, so the 0.10 slot cannot take a 0.32 sheet in any anchoring
-// (measured: top-anchored 0.192, centreline 0.246 against the pair's 0.12
-// working budget — the excess just moves between the finger sides). The slot
-// itself must be re-solved for a thicker sheet; catalogued in TODO 11 with
-// the disc body, both blocked on their §34-class corridor re-solves.
-const ALARM_SEL_T = 0.10;
+// §51 final spend, retried with the band derived — the earlier "two-sided
+// slot" reading was wrong (§34 left ONE rocker finger), and the anchoring
+// failures traced to the frozen arm-band family, since re-derived.
+const ALARM_SEL_T = STOCK_MIN_U;
 const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger throw it buys makes the
                                // armed B:A preload ratio 3.1 (the first cut, 0.14, measured 2.6 and
                                // the assert refused it). Ring's lowest face −1.15 keeps 0.21 to the
@@ -5096,7 +5090,13 @@ const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger thr
 // kin) that never rode the chain. Until those literals are re-derived, the
 // ring's absolute and the fingers' absolutes at least drift TOGETHER. The
 // §35 shaft derives from this constant either way.
-const ALARM_SEL_Z_UP = -0.86;     // ring's top face, DISARMED (slid dial-ward)
+// §51 final spend: the anchor preserves the ring's UNDERSIDE — its working
+// face, the one that presses the rocker below. The old −0.86 top with the
+// old 0.10 sheet put the bottom at −0.96; a thicker sheet grows AWAY from
+// the working face (the endstone precedent: grow off the solved contact),
+// so the top rises with the thickness and the bottom stays where the rocker
+// engagement was solved. The §35 shaft derives from this and follows.
+const ALARM_SEL_Z_UP = -0.96 + ALARM_SEL_T;     // ring's top face, DISARMED (bottom pinned at −0.96)
 const ALARM_SEL_POST_R = 5.15;    // guides OUTSIDE the setting wheel's tips (4.83 + margin; asserted)
 const ALARM_SEL_POST_AZ = [60, 220, 300].map((d) => d * DEG2RAD); // world az — each wall asserted below
 const alarmSelectorUnit = new THREE.Group();
@@ -5188,7 +5188,7 @@ const alarmRocker = new THREE.Group();
   alarmRocker.add(yokeBar);
   const finger = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.14, 0.05), MATS.steel);
   finger.name = 'alarmSelFingerB';
-  finger.position.set(-0.05, 0, (-0.44) - (ALARM_TUBE_BACK - ALARM_FLANGE_T / 2)); // just above the pin-arm's tail slice
+  finger.position.set(-0.05, 0, (ALARM_ARMB_Z + 0.05 / 2 + 0.04) - (ALARM_TUBE_BACK - ALARM_FLANGE_T / 2)); // just above the pin-arm's tail slice — the −0.44 literal was the old arm-top + 0.04, now derived (§51 postscript's last stray)
   alarmRocker.add(finger);
   alarmTubeGroup.add(alarmRocker);
 }
@@ -6638,7 +6638,12 @@ const _linkAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 // working geometry, solved by measurement at both extremes, turns out to be
 // exactly: shaft centre ON the ring's top-face world plane. Stated that way
 // it rides the dial AND the selector's chain, so neither can strand it again.
-const ALARM_LINK_SHAFT_Z = Z_DIAL - ALARM_SEL_Z_UP;
+// …and centre-on-centre, not centre-on-top-face: the top-face relationship
+// was an artifact of the 0.10 sheet (top ≈ centre then). With real stock the
+// top-face rule pushed the shaft to 0.069 from the keyless floor (its own
+// derived tripwire caught it); the ring's MID-plane is the honest partner
+// plane and clears the floor by 0.229.
+const ALARM_LINK_SHAFT_Z = Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2);
 // AZ 210, not 212. Moved 2 deg toward 12 o'clock so the rod stands nearer the
 // dial's vertical centreline, which is where the linkage reads as one line
 // rather than as a strut off in the corner. 2 deg is the WHOLE budget, not a
