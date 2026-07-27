@@ -348,6 +348,16 @@ the alarm units clear their floors and their waivers are DELETED.
 
 ## 12. The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row
 
+**Tranche two (shipped): 4 more rows — 17 remain.** The set-up work's
+two heads took the floor (the click-screw head through its bound
+formula, which promptly taught JMP_BIND_EPS's lesson again: solved
+exactly to the bind it failed the sweep by a float hair, and now
+carries the one explicit centi-unit — it rides AT its derived bound,
+0.21 u, improved but honestly still under the floor). The reset
+hammer's pivot foot took the floor free-upward. Two more return
+springs were declared as the spring stock they are (set-up click,
+jumper click — the same blued-arc construction as the shock lyre).
+
 **Tranche one (shipped): 9 of 30 rows.** The balance cock went 9 → 1:
 foot screw heads, stud-carrier ring/arm/boss and the ruby endstone
 thickened to `STOCK_MIN_U` (the endstone growing UPWARD so its solved
@@ -371,13 +381,16 @@ exactly 0.15 after the change, which is the formula doing its job.
   wheel, Balance, Power-reserve train ×2 — the thin dimension is a
   radial band width, so the fix is a radius change with its own
   clearance chain, not a slab bump.
-- **unidentified-but-free candidates**, located by probe and awaiting
-  their literals: the fork cock's jewel disc (0.22 u), the drum's
-  chain-guide lip and hook rib, a fusee step disc (0.292 u), the reset
-  hammer's boss (0.3 u), the small-seconds boss (0.28 u) and hand
-  blades (0.21 u — likely an aesthetics `depthMin` change), set-up
-  spring head, the jumper's pivot-torus (probably spring stock to
-  declare), and the balance cock's last plate (0.269 u extrude).
+- **still-to-locate free candidates**: the fork cock's jewel disc
+  (0.22 u), the drum's hook rib (0.298 u, literal not found — likely
+  computed), a fusee step disc (0.292 u), the small-seconds boss
+  (0.28 u) and hand blades (0.21 u — the measured depth does not match
+  `depthMin`, so the hand builder needs reading before an aesthetics
+  change), and the balance cock's last plate (0.269 u ruby extrude —
+  locate by position probe).
+- **at its bound**: the set-up click-screw head now rides its derived
+  under-wheel ceiling (0.21 u) — thicker only if the great-wheel gap is
+  re-solved.
 
 Waivers stay per part while any row remains; closing a part's last row
 deletes its waiver.
