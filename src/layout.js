@@ -76,6 +76,9 @@ export const CHAIN_PITCH = 0.8;        // units, rivet-to-rivet (geometry)
 export const CHAIN_PITCH_MM = 0.30;    // REAL fusee chain — the manufactured standard this pins to
 export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.375 mm per unit
 export const MM = (units) => units * UNIT_MM;          // for readouts and asserts
+// §50/TODO 12: the wheel-and-plate stock floor, in UNITS, so a thickness can
+// be built to clear it rather than measured against it after the fact.
+export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.32 u
 
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by

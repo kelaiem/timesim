@@ -346,27 +346,41 @@ Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means
 the alarm units clear their floors and their waivers are DELETED.
 
-## 12. The 0.05–0.12 band wants a ~20–45% thickening
+## 12. The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row
 
-The mild tier of §50's findings: parts that are correct horology built
-at the thin edge, or slightly under it. ~30 meshes across twelve units:
+**Tranche one (shipped): 9 of 30 rows.** The balance cock went 9 → 1:
+foot screw heads, stud-carrier ring/arm/boss and the ruby endstone
+thickened to `STOCK_MIN_U` (the endstone growing UPWARD so its solved
+0.17 endshake is untouched, the lyre riding it), plus two honest kind
+declarations — the gold shock lyre IS spring stock (0.0525 mm against
+real shock springs at 0.05–0.10) and the stud side-pin IS pin stock. The
+minute jumper's lifter bar took the floor with its bind formula
+re-deriving the corridor plane: `Minute jumper ⇄ Dial` still measures
+exactly 0.15 after the change, which is the formula doing its job.
 
-- **Going-train stragglers** at 0.0825–0.1125 — escape wheel, balance
-  arm, fusee detail, hour wheel — the "wants ~20%, not a redesign"
-  class §50 predicted.
-- **The balance cock's jewel assembly** (identified by probe: the ruby
-  jewel disc at 0.0675 where real cap jewels run 0.3+, its gold chaton
-  ring at 0.0525, setting plates) and its regulator furniture (index
-  arm, scale plate at 0.0825).
-- Minute jumper (0.0693–0.1125), small-seconds furniture (0.0788),
-  set-up work plates (0.0675), reset hammer and power-reserve pieces at
-  the 0.1125 standard slab.
+**Remainder (21 rows), each with its bound named — do not bulk-edit:**
 
-Mostly independent, per-part thickenings; the constraint to respect is
-each part's own clearance chain (thicken toward free space, and the
-battery says which side is free). Waived in `checkStockFloor` citing
-this item; rows stay visible; closing means thickening and deleting the
-waivers.
+- **z-stack-bound**: the minute star (`STAR_T` is DERIVED as the
+  motion-works gap minus two margins — thickening it means re-solving
+  that stack), and the set-up work's `headT` (a `Math.min` against a
+  derived under-wheel clearance).
+- **mate-bound**: the jumper's beak and tail share `JMP_W` (0.264 u),
+  which must enter the star's tooth valleys — widening it is a
+  star-pitch question, not a literal.
+- **radial-band rows** (census `registry-revolve` source): Escape
+  wheel, Balance, Power-reserve train ×2 — the thin dimension is a
+  radial band width, so the fix is a radius change with its own
+  clearance chain, not a slab bump.
+- **unidentified-but-free candidates**, located by probe and awaiting
+  their literals: the fork cock's jewel disc (0.22 u), the drum's
+  chain-guide lip and hook rib, a fusee step disc (0.292 u), the reset
+  hammer's boss (0.3 u), the small-seconds boss (0.28 u) and hand
+  blades (0.21 u — likely an aesthetics `depthMin` change), set-up
+  spring head, the jumper's pivot-torus (probably spring stock to
+  declare), and the balance cock's last plate (0.269 u extrude).
+
+Waivers stay per part while any row remains; closing a part's last row
+deletes its waiver.
 
 ## Recently closed
 
