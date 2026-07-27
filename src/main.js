@@ -6499,7 +6499,7 @@ alarmSwitchUnit.add(alarmClickArm);
   post.rotation.x = Math.PI / 2;
   post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.585 - 0.01);
   alarmSwitchUnit.add(post);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, 0.3), MATS.steel);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top click arm, free upward
   arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the seat point
   alarmClickArm.add(arm);
   const nose = new THREE.Mesh(new THREE.SphereGeometry(ALARM_CLICK_NOSE_R, 12, 8), MATS.steel);
@@ -6507,6 +6507,7 @@ alarmSwitchUnit.add(alarmClickArm);
   alarmClickArm.add(nose);
   // Its return spring — the blade that gives the click its snap.
   const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 0.2), MATS.blueSteel);
+  blade.name = 'switchClickSpring'; // TODO 11 triage: SPRING stock (0.07 u = 0.026 mm... under even the spring floor; stays in the debt, but honestly kinded)
   blade.position.set(0.8, -0.5, 0);
   blade.rotation.z = 0.35;
   alarmClickArm.add(blade);
