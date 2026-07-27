@@ -3281,12 +3281,39 @@ function updateMaintaining(windBack) {
     const lift = Math.max(sawRadiusAt(u, MAINT_FLANGE_R) - MAINT_PAWL_TIP_R, 0) / (MAINT_FLANGE_R * 0.8);
     MAINT_PAWL_SEATS[k].rotation.z = MAINT_PAWL_BASE + MAINT_PAWL_SIGN * lift;
   }
+  // §48 / TODO 13 — A SPRING-LOADED FOLLOWER IS A ONE-SIDED CONSTRAINT.
+  //
+  // These followers used to be PLACED at their cam's profile value:
+  // `angle = profile(u)`. That reads as contact but is really glue — the part
+  // is welded to the curve, and its return is asserted by evaluating the
+  // profile again rather than caused by anything. Nothing pressed it on.
+  // §48's audit filed all three for exactly this, and noted that a spring
+  // MESH next to a lever is not a mechanism.
+  //
+  // What a sprung follower actually does: the spring drives it toward a SEAT
+  // it can never reach, and the cam stands in the way. So the law is a
+  // one-sided constraint — seek the seat, stop at the cam — and the spring is
+  // now what produces the return, with the cam only ever obstructing.
+  //
+  // The seat is PRELOADED past the deepest the cam can go, by one CLEAR_MARGIN
+  // of travel at the contact radius: a spring that goes slack at the valley
+  // has lifted off, and the follower is free.
+  //
+  // GEOMETRY IS UNCHANGED BY THIS, and that is the point rather than a caveat.
+  // While contact holds, `seek the seat, stop at the cam` evaluates to the cam
+  // — same pose, every frame. What changes is what the law MEANS, and what it
+  // would do if the cam fell away: the follower drops to its seat instead of
+  // tracking a profile that is no longer there.
+  const followCam = (seat, cam, sign) => (sign > 0 ? Math.min(seat, cam) : Math.max(seat, cam));
   if (maintDetentBeak) {
     const net = barrelArbor.rotation.z - MAINT_DETENT_AZ;
     let u = (((MAINT_DET_TIP_AZ - net) * MAINT_TEETH) / (2 * Math.PI)) % 1;
     if (u < 0) u += 1;
     const lift = Math.max(sawRadiusAt(u, MAINT_RING_R) - MAINT_DET_TIP_R, 0) / MAINT_DET_LEVER;
-    maintDetentBeak.rotation.z = MAINT_DET_BASE + MAINT_DET_SIGN * lift;
+    maintDetentBeak.rotation.z = followCam(
+      MAINT_DET_BASE - MAINT_DET_SIGN * MAINT_DET_PRELOAD,   // where the spring alone would seat it
+      MAINT_DET_BASE + MAINT_DET_SIGN * lift,                // where the ring lets it sit
+      -MAINT_DET_SIGN);
   }
 }
 // The DETENT on its own overhung cock. Its beak must reach the ring at
@@ -3405,6 +3432,14 @@ const maintDetent = new THREE.Group();
   registerExplode(maintDetent, 0, 1); // base-plate furniture
   registerLabel('Maintaining detent', maintDetent);
 }
+// §48/TODO 13 — the detent spring's PRELOAD, as an angle at the beak. One
+// CLEAR_MARGIN of further travel past the ring's deepest point, so the spring
+// is still pushing when the beak is at the bottom of a tooth rather than
+// merely touching it. Defined HERE, after the solve: MAINT_DET_LEVER is
+// assigned by that solve, and reading it earlier is a module-level temporal
+// dead zone — which is exactly how the first version of this failed, throwing
+// before `__clock` was ever set, with nothing in the console to say so.
+const MAINT_DET_PRELOAD = CLEAR_MARGIN / MAINT_DET_LEVER;
 
 // ---------------------------------------------------------------------------
 // SET-UP WORK — the one ratchet a fusee movement really carries at its
@@ -5575,7 +5610,16 @@ const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
 const _phiF = Math.atan2(-_uF.y, -_uF.x);
 const ALARM_FEELER_ARM_LEN = ALARM_FEELER_PIVOT_R - ALARM_TRACK_RMID; // pivot → pin
 const ALARM_FEELER_TAIL = 0.9;   // outboard stub — step 4 extends it to the climb pawl
+// §48/TODO 13 — where the return blade would drive the pin if nothing stopped
+// it. The travel is BANKED at ALARM_PIN_DROP by the stop over the tail, so the
+// seat sits one CLEAR_MARGIN beyond that bank: the blade is still pushing when
+// the lever is against its stop, which is what keeps it there.
+const ALARM_FEELER_SEAT_DROP = ALARM_PIN_DROP + CLEAR_MARGIN;
 const _armMidZ = (ALARM_FEELER_TOP + (ALARM_FEELER_TOP - ALARM_FEELER_T)) / 2; // −0.96
+const ALARM_FEELER_BEAR_R = ALARM_FEELER_ARM_LEN * 0.45;  // bearing inboard of the pin
+const ALARM_FEELER_SPR_FREE = 0.7;                        // stud stands outboard of the pivot
+let alarmFeelerSpringBlade = null, alarmFeelerBearPoint = null;
+const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 {
   // Bracket: two lugs from the sheet's back face down to the pivot, a
   // tangential pivot pin between them, and the BANKING STOP over the tail.
@@ -5630,10 +5674,32 @@ alarmFeelerUnit.add(alarmFeelerLever);
   // the census row survived, because the THIN axis is y (0.06 = 0.0225 mm) —
   // thickening the dimension that was not the thinnest is the seconds-hand
   // lesson again. Both flexing dimensions now carry real flat-spring stock.
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9, SPRING_FLAT_U, SPRING_FLAT_U), MATS.blueSteel);
+  // §48/TODO 13 — GROUNDED. This blade was a child of `alarmFeelerLever`: it
+  // travelled with the very arm it exists to press, which is the §43
+  // postscript's defect exactly, found a second time. A spring that moves
+  // with its own load does no work. It now hangs off its own stud on the
+  // static unit and bears on the arm, and the frame law below keeps its free
+  // end on the arm while its root stays put.
+  const bearP = new THREE.Object3D();      // rides the arm; read each frame
+  bearP.position.set(ALARM_FEELER_BEAR_R, 0, ALARM_FEELER_T / 2);
+  alarmFeelerLever.add(bearP);
+  alarmFeelerBearPoint = bearP;
+  const anchor = {
+    x: _uF.x * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_SPR_FREE) ,
+    y: _uF.y * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_SPR_FREE),
+  };
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.34, 8), MATS.nickel);
+  stud.rotation.x = Math.PI / 2;
+  stud.name = 'alarmFeelerSpringStud';
+  stud.position.set(anchor.x, anchor.y, ALARM_FEELER_TOP + 0.17);
+  alarmFeelerUnit.add(stud);
+  const geo = new THREE.BoxGeometry(1, SPRING_FLAT_U, SPRING_FLAT_U);
+  geo.translate(0.5, 0, 0);                // origin at the anchored end
+  const blade = new THREE.Mesh(geo, MATS.blueSteel);
   blade.name = 'alarmFeelerSpring';
-  blade.position.set(0.45, 0.28, ALARM_FEELER_T / 2 + 0.04);
-  alarmFeelerLever.add(blade);
+  blade.position.set(anchor.x, anchor.y, ALARM_FEELER_TOP + 0.06);
+  alarmFeelerUnit.add(blade);
+  alarmFeelerSpringBlade = blade;
 }
 // --- §29 step 4: the TAIL and the CONTRATE PAWL ---------------------------
 // The tail runs STRAIGHT from the pivot to the climb (the probe cleared the
@@ -6144,6 +6210,20 @@ const ALARM_DRAW_RAD = 3 * ALARM_STRIKE_AMP;
 // that is short the containment assert widens it — which is the check that
 // makes declaring from a lift law safe rather than a guess.
 // §48 — the setting train is turned by hand, both ways, by the alarm crown.
+// §48/TODO 13 — the three cam followers, now that the spring is IN the law.
+// Each is a one-sided constraint: the blade drives the follower toward a
+// preloaded seat it can never reach, and the cam obstructs. Naming the mesh is
+// required — §48 rejects a spring that is only geometry, which is exactly what
+// all three were when the audit first ran.
+declareRestoring('Alarm release feeler', 'spring',
+  'the blade is grounded on its own stud and drives the arm to a seat one CLEAR_MARGIN past the banking stop; the pin obstructs',
+  'alarmFeelerSpring');
+declareRestoring('Minute jumper', 'spring',
+  'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
+  'jumperClickSpring');
+declareRestoring('Maintaining detent', 'spring',
+  'the detent spring seats the beak one CLEAR_MARGIN past the ring root; the saw teeth obstruct',
+  'maintSpring');
 declareRestoring('Alarm setting arbor', 'two-way',
   'the alarm crown turns it in either direction; there is no return to provide');
 declareRestoring('Alarm disc', 'two-way',
@@ -10470,7 +10550,14 @@ function tick(t) {
     // the star's local profile EXACTLY through the whole point→valley arc.
     const ride = rU > JMP_TIP_SEAT_R ? jmpRideForSeatRadius(rU) : 0;
     const lift = (1 - crownPullT) * JMP_LIFT_ROT;
-    jumperLever.rotation.z = JMP_LIFT_SIGN * Math.max(ride * crownPullT, lift);
+    // §48/TODO 13 — one-sided, like the detent above. The click spring seats
+    // the beak PAST the valley floor (it can never get there — the star is in
+    // the way), so the star obstructs a spring that is always pushing, rather
+    // than the beak being placed at whatever the profile evaluates to. The
+    // seat is one CLEAR_MARGIN of travel at the tip radius, expressed as the
+    // ride the beak would take if the star vanished.
+    jumperLever.rotation.z = JMP_LIFT_SIGN * Math.max(
+      ride * crownPullT, lift, -CLEAR_MARGIN / JMP_TIP_SEAT_R);
     // Lifter link (lost-motion bar): follower drawn from the setting
     // lever's tail post — at this plane's movement-frame z — to the
     // jumper's tail pin, both transformed into the dialFace frame.
@@ -11013,7 +11100,24 @@ function tick(t) {
   // a pure function of the disc's angle (no ease, no state: setPose poses
   // it exactly). alarmPinDropNow was computed up at the strike section this
   // same tick (the trip needs it before the ring); here the LEVER wears it.
-  alarmFeelerLever.rotation.y = -alarmPinDropNow / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
+  // §48/TODO 13 — the blade presses the arm DOWN onto the disc; the pin's
+  // height is what stops it. Seat one CLEAR_MARGIN below the deepest the pin
+  // can drop, so the spring is still loaded at the bottom of the notch.
+  const feelerDrop = Math.min(alarmPinDropNow, ALARM_FEELER_SEAT_DROP);
+  alarmFeelerLever.rotation.y = -feelerDrop / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
+  // §48/TODO 13 — the blade follows the arm it presses, root fixed at the stud.
+  if (alarmFeelerSpringBlade && alarmFeelerBearPoint) {
+    alarmFeelerUnit.updateWorldMatrix(true, false);
+    alarmFeelerBearPoint.updateWorldMatrix(true, false);
+    _feelerBearW.setFromMatrixPosition(alarmFeelerBearPoint.matrixWorld);
+    alarmFeelerUnit.worldToLocal(_feelerBearW);
+    const dx = _feelerBearW.x - alarmFeelerSpringBlade.position.x;
+    const dy = _feelerBearW.y - alarmFeelerSpringBlade.position.y;
+    const dz = _feelerBearW.z - alarmFeelerSpringBlade.position.z;
+    const flat = Math.hypot(dx, dy);
+    alarmFeelerSpringBlade.rotation.set(0, -Math.atan2(dz, flat), Math.atan2(dy, dx));
+    alarmFeelerSpringBlade.scale.x = Math.hypot(flat, dz);
+  }
   alarmSetWheelGroup.rotation.z = -alarmSetRot * ALARM_SET_RATIO;
   // §25 C winding train — posed RIGIDLY from the barrel's angle, so winding,
   // ringing and rest are one consistent mesh (while ringing, the train and a
