@@ -3667,3 +3667,52 @@ not widen what the battery can see. The two structural blind spots
 TODO.md items 5 and 6) pass through it unexamined, exactly as they pass
 through a hand-run battery. CI moved the enforcement, not the
 instrument.
+
+## §43 part two — The pusher presses
+
+### Measured first: most of "part two" was already done
+
+The entry framed this as "a pusher sized to be pressed that cannot be
+pressed." Measured before building, that was **largely false**:
+`alarmColumnHitTest` already routed clicks through `setAlarm`, the
+cursor already became a pointer over the control and cleared off it,
+and §25 D's `alarmPusherT` pulse already drove a spring-back press.
+
+**One real gap remained, and it is the whole change**: nothing moved
+until the pointer was *released* — 0.000 on `pointerdown`, 0.626 on
+click. The head moved as a consequence of the toggle rather than as
+the act of pressing.
+
+### The change
+
+`alarmPusherHeld` pins the existing pulse at 1 while a pointer is down
+on the control; release lets it fall into §25 D's decay. No second code
+path — the entry's own constraint — and the **actuation deliberately
+stays on `click`**, so dragging off still cancels, as any button does.
+
+Released on `pointerup`, `pointercancel` **and** `pointerleave`, not
+only the happy path: a pusher stuck in its pressed state would be a
+worse lie than the late press this fixes. `resetInputs` clears it too,
+so a held pointer cannot pose displaced geometry into a battery run.
+
+### Verified
+
+| behaviour | result |
+|---|---|
+| moves on pointer-down | **0.700** (was 0.000) |
+| stays down while held (1 s) | 0.700 |
+| springs back on release | 0.008 |
+| click still actuates | ✓ toggled |
+| drag-off cancels actuation, head still releases | ✓ |
+| `resetInputs` clears a stuck hold | 0.000 |
+
+Boot silent; focused battery over the switch neighbourhood clean
+(support 0, graph 0, penetration 0, clearances 0); `stockFloor` green.
+No geometry moved — this is input plumbing over an existing animation.
+
+### Not done, and why
+
+§43 cites §19's usability findings as the guide for whether a *visible*
+affordance (beyond the cursor) is wanted. §19 has not shipped, so
+inventing one here would be guessing at the answer it exists to
+measure. The cursor affordance stands; the question stays §19's.

@@ -6953,6 +6953,14 @@ let alarmLockLiftT = 0;  // §25 B: eased brake-lever lift (1 = released, pad cl
 let alarmColSteps = 0;   // §25 D: column-wheel actuations — parity IS the on/off (odd = gap under the beak = ON)
 let alarmColShownA = 0;  // eased wheel angle (transient; the pose path assigns exactly)
 let alarmPusherT = 0;    // §25 D: pusher press pulse — 1 at the actuation, spring-back decay
+// §43 part two: HELD while a pointer is down on the switch control. Measured
+// before building: the click path, the cursor affordance and the spring-back
+// animation all already worked — the one real gap was that the head did not
+// move until the pointer was RELEASED (0.0 on pointerdown, 0.63 on click), so
+// the press read as a consequence of the toggle rather than as pressing. This
+// pins the pulse down under the finger; the ACTUATION deliberately stays on
+// click, so dragging off still cancels, as any button should.
+let alarmPusherHeld = false;
 let jumpSnapIdx = null; // written by the quantize block; read by the sound block
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
@@ -8119,6 +8127,18 @@ renderer.domElement.addEventListener('click', (e) => {
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!crownDragging && !alarmDragging && alarmColumnHitTest(e)) renderer.domElement.style.cursor = 'pointer';
 });
+// §43 part two — the head goes down when the finger does. Same first-refusal
+// order as the click handler so the crowns keep priority, and released on
+// every exit path (up, cancel, leaving the canvas) rather than only the happy
+// one: a pusher stuck in its pressed state would be a worse lie than the
+// late press this fixes.
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (crownHitTest(e) || alarmCrownHitTest(e)) return;
+  if (alarmColumnHitTest(e)) alarmPusherHeld = true;
+});
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  renderer.domElement.addEventListener(ev, () => { alarmPusherHeld = false; });
+}
 
 // --- labels toggle --------------------------------------------------------
 // Factored into setLabels(on) so the guided-tour scripted user (BUILT §17)
@@ -10817,7 +10837,8 @@ function tick(t) {
     alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;
     // The pusher: presses IN with the actuation pulse and springs back — its
     // pawl rides the ratchet skirt through the same eased step.
-    if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
+    if (alarmPusherHeld) alarmPusherT = 1;                       // §43: down under the finger
+    else if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + 0.17);
@@ -11139,7 +11160,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
     // §34 harvest (found by §31's battery, independent of its geometry):
     // the EXPLODE is a persistent user input that MOVES UNITS, restored
     // from saved UI state across reloads — a sweep on a session that left
