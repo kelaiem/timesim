@@ -1304,6 +1304,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     false
   );
   const springMesh = new THREE.Mesh(sGeo, MATS.steel);
+  springMesh.name = 'mainspringRibbon'; // TODO 12 triage: SPRING stock — the coil IS the mainspring (real ones 0.05–0.20 mm); named so §50's kind table sees it
   springMesh.scale.z = Math.max((height * 0.7) / (sRibbon * 2), 1);
   const spring = new THREE.Group();
   spring.name = 'spring';
@@ -1313,6 +1314,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     new THREE.BoxGeometry(wallModule * 1.5, sRibbon * 2.2, height * 0.55),
     MATS.steel
   );
+  oh.name = 'mainspringHook'; // TODO 12 triage: the spring's own hook tab — spring stock with the ribbon it belongs to
   oh.position.set(springOuter, 0, 0);
   spring.add(oh);
   g.add(spring);
@@ -2845,9 +2847,14 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     g.add(burRod(rBase));
     bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
   } else {
-    // second: same bur rod, slimmer. Floor on the radius: at second-hand
-    // widthFactors a sub-dial-length rod would vanish.
-    const rBase = Math.max(length * config.widthFactor * 0.5, 0.14);
+    // second: same bur rod, slimmer. Floor on the radius — originally 0.14 so
+    // a sub-dial-length rod would not vanish, now DERIVED from §50's hand
+    // floor instead (TODO 12): the keeled section is 1.5·rBase thick, so
+    // rBase ≥ (0.10 mm + a hair) / UNIT_MM / 1.5 = 0.18 puts the blade at
+    // 0.101 mm against real hands' 0.10–0.20. Sub-dial hands ride the floor;
+    // the central seconds (length·widthFactor·0.5 ≈ 0.195) clears it on its
+    // own and is untouched.
+    const rBase = Math.max(length * config.widthFactor * 0.5, 0.18);
     g.add(burRod(rBase));
     // Counterweight tail disc.
     const cw = new THREE.Mesh(

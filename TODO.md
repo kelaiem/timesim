@@ -348,6 +348,18 @@ the alarm units clear their floors and their waivers are DELETED.
 
 ## 12. The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row
 
+**Tranche four (shipped): 4 more rows — 11 remain, all bound-or-band.**
+The mainspring's coil and hook are now NAMED at build and declared the
+spring stock they are (the drum clears). Hands became a cited kind
+(`hand`, 0.10 mm — real blued-steel hands run 0.10–0.20) with the
+sub-dial hand units declared; the counterweight cleared on the kind
+alone, and the blades through the builder: the second-hand bur rod's
+0.14 visibility floor is now DERIVED from the hand floor (rBase ≥ 0.18,
+blade = 1.5·rBase = 0.101 mm), sub-dial hands riding it while the
+central seconds clears on its own width untouched. An aesthetics-default
+change was tried first and reverted — the builder floor was the real
+lever, and defaults stay defaults.
+
 **Tranche three (shipped): 2 more rows — 15 remain, both cocks fully
 clear.** Two shared-builder finds: `makeCock`'s leg screw head (0.22 u —
 the fork cock's row, and every cock leg with it) took the floor, and
@@ -391,12 +403,10 @@ exactly 0.15 after the change, which is the formula doing its job.
   wheel, Balance, Power-reserve train ×2 — the thin dimension is a
   radial band width, so the fix is a radius change with its own
   clearance chain, not a slab bump.
-- **still-to-locate free candidates**: the drum's mainspring hook rib
-  (0.298 u — the coil and hook are the MAINSPRING, i.e. spring stock;
-  name the meshes at build and declare, don't thicken), a fusee step
-  disc (0.292 u, computed literal), the small-seconds boss (0.28 u) and
-  hand blades (0.21 u — the measured depth does not match `depthMin`,
-  so the hand builder needs reading before an aesthetics change).
+- **still-to-locate**: a fusee step disc (r 1.914, h 0.292 u, computed
+  literal — probe with a deeper parent chain), and the small-seconds
+  0.0918 row, which matches no local mesh extent and is a
+  registry-revolve band width (the swinging hand's swept band).
 - **at its bound**: the set-up click-screw head now rides its derived
   under-wheel ceiling (0.21 u) — thicker only if the great-wheel gap is
   re-solved.
