@@ -6564,12 +6564,39 @@ alarmSwitchUnit.add(alarmClickArm);
   const nose = new THREE.Mesh(new THREE.SphereGeometry(ALARM_CLICK_NOSE_R, 12, 8), MATS.steel);
   nose.position.x = -ALARM_CLICK_L;
   alarmClickArm.add(nose);
-  // Its return spring — the blade that gives the click its snap.
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 0.2), MATS.blueSteel);
-  blade.name = 'switchClickSpring'; // TODO 11 triage: SPRING stock (0.07 u = 0.026 mm... under even the spring floor; stays in the debt, but honestly kinded)
-  blade.position.set(0.8, -0.5, 0);
-  blade.rotation.z = 0.35;
-  alarmClickArm.add(blade);
+}
+// The click's RETURN SPRING — a blade from a fixed stud, bearing on the arm's
+// outer flank to press its nose into the wheel.
+//
+// It used to be a child of alarmClickArm sitting at local x +0.8, i.e. on the
+// far side of the pivot from the arm itself (which reaches back to the nose at
+// x −2.0) — so it hung in space behind the pivot AND travelled with the very
+// lever it exists to push. A spring that moves with its own load does no work
+// and reads as floating, which is exactly how it looked. A return spring has
+// to be GROUNDED: one end fixed to the plate, the other pressing the moving
+// part. Anchored here to the switch unit, not the arm.
+{
+  // Bear on the arm at mid-length, on the side away from the wheel, so the
+  // moment about the pivot drives the nose inward — the direction the click
+  // must be biased.
+  const toSeat = { x: _clickSeatP.x - alarmClickPivot.x, y: _clickSeatP.y - alarmClickPivot.y };
+  const L = Math.hypot(toSeat.x, toSeat.y) || 1;
+  const uArm = { x: toSeat.x / L, y: toSeat.y / L };          // pivot → nose
+  const nOut = { x: -uArm.y, y: uArm.x };                     // arm's flank normal
+  // the bearing point on the arm, and the anchor standing off it
+  const bear = { x: alarmClickPivot.x + uArm.x * (L * 0.55), y: alarmClickPivot.y + uArm.y * (L * 0.55) };
+  const SPRING_FREE = 1.5;                                    // blade length
+  const anchor = { x: bear.x + nOut.x * 0.34 - uArm.x * SPRING_FREE * 0.5,
+                   y: bear.y + nOut.y * 0.34 - uArm.y * SPRING_FREE * 0.5 };
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.0, 10), MATS.nickel);
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(anchor.x, anchor.y, TQ_TOP_Z + 0.5);
+  alarmSwitchUnit.add(stud);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, 0.07, 0.2), MATS.blueSteel);
+  blade.name = 'switchClickSpring'; // TODO 11 triage: SPRING stock (0.07 u = 0.026 mm — under even the spring floor; stays in the debt, honestly kinded)
+  blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z + 0.80);
+  blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
+  alarmSwitchUnit.add(blade);
 }
 // Base angle: arm pointing from the pivot at the SEATED nose position; the
 // rock (+SWING·colBlock) rotates the nose outward onto the column face.

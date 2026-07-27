@@ -3817,3 +3817,35 @@ The beak falls *as the flank passes*, and every member behind it moves
 because the wheel moved. Boot silent; focused battery over the switch,
 link, selector and lock clean (support 0, graph 0, penetration none,
 clearances 0). No geometry changed — this is a coupling fix.
+
+### §43 postscript — the click's return spring was not grounded
+
+Reported by eye: the click and the parts around the column wheel looked
+wrong. Measuring all four followers against the wheel cleared three of
+them — the click's nose rides tangent on the column face (centre 2.37 =
+baseR + noseR), the link's beak sits inside the castellation band, the
+lock pad is on a different wheel entirely. The **spring** was the fault,
+and in two ways at once:
+
+- It sat at arm-local **x +0.8**, on the far side of the pivot from the
+  arm itself, which reaches back to the nose at **x −2.0**. It hung in
+  space behind the pivot, touching nothing.
+- It was a **child of `alarmClickArm`**, so it travelled with the very
+  lever it exists to push. A spring that moves with its own load does no
+  work — which is precisely why it read as floating.
+
+**A return spring has to be grounded**: one end fixed, the other bearing
+on the moving part. It now hangs off its own stud on the switch unit and
+presses the arm's outer flank at mid-length, so the moment about the
+pivot drives the nose into the wheel — the direction the click must be
+biased. The bearing point, anchor and blade angle all derive from the
+pivot→seat vector rather than being placed by hand.
+
+**Verified:** the blade now moves **0.0000** while the nose rocks
+**0.558** (it is genuinely static), its z-band lies inside the arm's,
+and it makes contact (gap 0.000). Boot silent; focused battery over the
+switch, link, lock, plate and striking wheel clean; `stockFloor` green.
+
+The blade remains 0.026 mm — under even the spring floor, and still
+carried in TODO 11 as one of the two sub-floor springs. Grounding it
+fixes what it *does*, not yet what it is made of.
