@@ -6564,12 +6564,39 @@ alarmSwitchUnit.add(alarmClickArm);
   const nose = new THREE.Mesh(new THREE.SphereGeometry(ALARM_CLICK_NOSE_R, 12, 8), MATS.steel);
   nose.position.x = -ALARM_CLICK_L;
   alarmClickArm.add(nose);
-  // Its return spring — the blade that gives the click its snap.
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 0.2), MATS.blueSteel);
-  blade.name = 'switchClickSpring'; // TODO 11 triage: SPRING stock (0.07 u = 0.026 mm... under even the spring floor; stays in the debt, but honestly kinded)
-  blade.position.set(0.8, -0.5, 0);
-  blade.rotation.z = 0.35;
-  alarmClickArm.add(blade);
+}
+// The click's RETURN SPRING — a blade from a fixed stud, bearing on the arm's
+// outer flank to press its nose into the wheel.
+//
+// It used to be a child of alarmClickArm sitting at local x +0.8, i.e. on the
+// far side of the pivot from the arm itself (which reaches back to the nose at
+// x −2.0) — so it hung in space behind the pivot AND travelled with the very
+// lever it exists to push. A spring that moves with its own load does no work
+// and reads as floating, which is exactly how it looked. A return spring has
+// to be GROUNDED: one end fixed to the plate, the other pressing the moving
+// part. Anchored here to the switch unit, not the arm.
+{
+  // Bear on the arm at mid-length, on the side away from the wheel, so the
+  // moment about the pivot drives the nose inward — the direction the click
+  // must be biased.
+  const toSeat = { x: _clickSeatP.x - alarmClickPivot.x, y: _clickSeatP.y - alarmClickPivot.y };
+  const L = Math.hypot(toSeat.x, toSeat.y) || 1;
+  const uArm = { x: toSeat.x / L, y: toSeat.y / L };          // pivot → nose
+  const nOut = { x: -uArm.y, y: uArm.x };                     // arm's flank normal
+  // the bearing point on the arm, and the anchor standing off it
+  const bear = { x: alarmClickPivot.x + uArm.x * (L * 0.55), y: alarmClickPivot.y + uArm.y * (L * 0.55) };
+  const SPRING_FREE = 1.5;                                    // blade length
+  const anchor = { x: bear.x + nOut.x * 0.34 - uArm.x * SPRING_FREE * 0.5,
+                   y: bear.y + nOut.y * 0.34 - uArm.y * SPRING_FREE * 0.5 };
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.0, 10), MATS.nickel);
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(anchor.x, anchor.y, TQ_TOP_Z + 0.5);
+  alarmSwitchUnit.add(stud);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, 0.07, 0.2), MATS.blueSteel);
+  blade.name = 'switchClickSpring'; // TODO 11 triage: SPRING stock (0.07 u = 0.026 mm — under even the spring floor; stays in the debt, honestly kinded)
+  blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z + 0.80);
+  blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
+  alarmSwitchUnit.add(blade);
 }
 // Base angle: arm pointing from the pivot at the SEATED nose position; the
 // rock (+SWING·colBlock) rotates the nose outward onto the column face.
@@ -6834,9 +6861,25 @@ const alarmLinkParts = {};
 const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
 const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
 const _pushPerp = { x: -_pushU.y, y: _pushU.x };
-const ALARM_PUSH_CHORD = 1.15 * (ALARM_COL_BASE_R / 1.5); // lateral offset — the pawl's line grazes the ratchet tangentially (the skirt scaled with the wheel)
+// Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
+// scaled with the wheel). Its SIGN is the drive direction, not a placement
+// taste: with the pawl at chord·perp + 0.85·û from the wheel centre, the
+// tangential component of its inward press works out to exactly the chord
+// (the û·perp cross-term vanishes), so
+//
+//     sign(ALARM_PUSH_CHORD) === the z-direction the pawl can drive
+//
+// Built positive, it pushed +z (CCW) while the wheel's own saw teeth are cut
+// to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
+// dragging the wheel backwards, which a pawl cannot do. Now derived from the
+// teeth themselves and asserted below.
+const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5);
 const ALARM_PUSH_TRAVEL = 0.7;
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
+// §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
+// Cheap because the algebra above reduces the whole geometry to one sign.
+if (Math.sign(ALARM_PUSH_CHORD) !== alarmColumnWheel.userData.ratchetDrive)
+  console.warn(`§43: the pusher's pawl drives ${Math.sign(ALARM_PUSH_CHORD) > 0 ? '+z' : '-z'} but the ratchet's teeth are cut for ${alarmColumnWheel.userData.ratchetDrive > 0 ? '+z' : '-z'} — the pawl would drag the wheel backwards`);
 const _pushBase = {
   x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
   y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
@@ -8120,10 +8163,15 @@ function alarmColumnHitTest(e) {
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
   return crownRaycaster.intersectObject(alarmSwitchUnit, true).length > 0; // wheel, click arm, or pusher — one control
 }
-renderer.domElement.addEventListener('click', (e) => {
-  if (crownHitTest(e) || alarmCrownHitTest(e)) return; // the crowns have first refusal
-  if (alarmColumnHitTest(e)) setAlarm(!alarmOn); // wheel, click arm, or the PUSHER — one actuation
-});
+// The ACTUATION fires on pointerDOWN, not on click. A pawl drives the ratchet
+// on the INWARD stroke and slips back over the teeth on the return, so the
+// wheel must index as the button goes in — indexing on release had the wheel
+// stepping on the spring-back, which is the one stroke that cannot drive it.
+//
+// This deliberately gives up the drag-off-to-cancel that a screen button has,
+// and that is the honest trade: once a real pusher has travelled far enough to
+// index, the step has happened and sliding your finger sideways cannot undo
+// it. The pointerdown handler below owns both the press and the step.
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!crownDragging && !alarmDragging && alarmColumnHitTest(e)) renderer.domElement.style.cursor = 'pointer';
 });
@@ -8134,7 +8182,9 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 // late press this fixes.
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (crownHitTest(e) || alarmCrownHitTest(e)) return;
-  if (alarmColumnHitTest(e)) alarmPusherHeld = true;
+  if (!alarmColumnHitTest(e)) return;
+  alarmPusherHeld = true;   // §43: the head goes down under the finger…
+  setAlarm(!alarmOn);       // …and the pawl indexes the wheel on that same stroke
 });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   renderer.domElement.addEventListener(ev, () => { alarmPusherHeld = false; });
@@ -10687,9 +10737,19 @@ function tick(t) {
       if (rawDt > 0) alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
       else alarmColShownA = colTarget;
     }
-    const linkGapT = 1 - alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
-    if (rawDt > 0) alarmSelShownT += (linkGapT - alarmSelShownT) * (1 - Math.exp(-rawDt / 0.10));
-    else alarmSelShownT = linkGapT;
+    // A CAM FOLLOWER HAS NO DYNAMICS OF ITS OWN. Its position is a pure
+    // function of the cam's angle, and the whole §35 chain — beak, rod,
+    // cranks, selector ring — is rigid behind this one reading. It used to be
+    // eased a SECOND time here (tau 0.10) on top of the wheel's own ease, and
+    // that lag was exactly why no force transfer read on screen: the beak
+    // glided on its own schedule while the column flank that drives it had
+    // already passed underneath. Rule 2's case in miniature — a display
+    // quantity no real train would produce.
+    //
+    // Now the follower is the profile, evaluated at the wheel's shown angle.
+    // Every downstream member moves BECAUSE the wheel moved, and the flank's
+    // slope is what you see lifting the beak.
+    alarmSelShownT = 1 - alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
     // the chain's members wear the same derived state (stateless poses):
     {
       const drop = ALARM_SEL_TRAVEL * (alarmLinkParts.beakLen / alarmLinkParts.tailLen); // nose fall sized so the rod's throw IS the ring's travel (1:1 cranks)

@@ -3716,3 +3716,136 @@ No geometry moved — this is input plumbing over an existing animation.
 affordance (beyond the cursor) is wanted. §19 has not shipped, so
 inventing one here would be guessing at the answer it exists to
 measure. The cursor affordance stands; the question stays §19's.
+
+### §43 postscript — the pawl was driving the wheel backwards
+
+Reported by eye ("the pusher is turning the column wheel the wrong
+direction?"), and the measurement agreed. A pawl can only PUSH, so the
+wheel must turn the way the pawl's contact point moves:
+
+| | measured |
+|---|---|
+| pawl's tangential drive on press | **+0.619 → +z (CCW)** |
+| wheel's actual index | **−30° → −z (CW)** |
+| ratchet teeth, cut tip→root as angle rises | driven **−z (CW)** |
+
+Two of the three agreed: the wheel and its own teeth. The **pusher's
+pawl sat on the wrong side of the wheel centre**, so it would have had
+to drag the wheel backwards.
+
+**The fix is one sign, and the algebra says why.** With the pawl at
+`chord·perp + 0.85·û` from the centre, the tangential component of its
+inward press reduces to exactly the chord (the û·perp cross-term
+vanishes):
+
+> `sign(ALARM_PUSH_CHORD)` **is** the z-direction the pawl can drive.
+
+So `makeColumnWheel` now exports `userData.ratchetDrive = -1` — which
+way its teeth are cut — and the chord's sign derives from it rather
+than agreeing by luck. A boot assert compares the two, which is cheap
+precisely because the geometry collapses to one sign.
+
+**Verified:** pawl drive −0.619 and index −30°, both CW, agreeing. The
+pusher swung to the other side of the wheel and still clears everything
+— support 0, graph 0, penetration none, clearances 0, full FORBIDDEN
+scan 0 across 69 rows. Boot silent.
+
+Worth noting what did *not* catch this: every check in the battery is
+about **space** — what occupies where — and nothing was overlapping.
+This was a *kinematic* lie in geometry that fit perfectly, the class
+TODO 7 describes from a different angle. It took an eye on the render.
+
+### §43 postscript, continued — indexing on the press stroke, and the saw
+
+Two owner corrections, both mechanical rather than cosmetic.
+
+**The wheel now indexes as the button goes IN.** The actuation moved
+from `click` to `pointerdown`: a pawl drives the ratchet on the inward
+stroke and slips back over the teeth on the return, so stepping on
+release had the wheel driven by the one stroke that cannot drive it.
+Measured across a press: **−4.6° → −23.3° → −28.2° → −29.9°**, reaching
+−30° at release with **no further step on spring-back**.
+
+This gives up the drag-off-to-cancel a screen button has, and that is
+the honest trade — once a real pusher has travelled far enough to
+index, sliding your finger sideways cannot undo the step.
+
+**The saw is mirrored in y.** Measuring the tooth profile settled which
+of the three parties was wrong: each tooth fell tip→root with rising
+angle (r 2.352 → 1.89), so its cliff caught a pawl travelling +θ — the
+teeth were cut to be driven CCW while the wheel indexes CW and the
+pawl (fixed above) drives CW. **Two of three agreed and the teeth were
+the odd one out**, which also means the `ratchetDrive = -1` exported in
+the previous fix was aspirational; the flip makes it true.
+
+**Honest limit on this one:** the flip is the owner's call plus the
+analytic argument that mirroring y reverses a saw. My own profile probe
+could not confirm it — the skirt is built at `curveSegments: 2`, so
+there are about two vertices per tooth and the angular bucketing
+collapses. Boot is silent and the indexing measures correctly, but the
+tooth *sense* is verified by eye and by construction, not by
+instrument.
+
+### §43 postscript — why no force transfer read on screen
+
+Reported by eye: "no obvious transfer of force from the columns to the
+alarm link or the alarm switch." The followers were already reading the
+wheel's real profile — `profileAt(alarmColShownA + BEAK_OFF)` — so the
+mechanism was right. The problem was one line downstream:
+
+```js
+alarmSelShownT += (linkGapT - alarmSelShownT) * (1 - exp(-dt / 0.10));
+```
+
+The reading was then **eased a second time**, on top of the wheel's own
+ease. A cam follower has no dynamics of its own — its position is a
+pure function of the cam's angle, and the whole §35 chain (beak, rod,
+cranks, ring) is rigid behind that one reading. The extra lag meant the
+beak glided on its own schedule while the flank that drives it had
+already passed underneath: motion that *correlated* with the wheel
+instead of being *caused* by it. Rule 2's case in miniature.
+
+**The fix is to delete the ease** and let the follower be the profile.
+Measured every frame through a press, the follower now equals the cam
+reading to **0.000000** error, and the trace shows the transfer:
+
+| wheel | 34.6° | 49.0° | 55.2° | 57.9° |
+|---|---|---|---|---|
+| follower | 1.000 | 0.633 | 0.055 | 0.000 |
+
+The beak falls *as the flank passes*, and every member behind it moves
+because the wheel moved. Boot silent; focused battery over the switch,
+link, selector and lock clean (support 0, graph 0, penetration none,
+clearances 0). No geometry changed — this is a coupling fix.
+
+### §43 postscript — the click's return spring was not grounded
+
+Reported by eye: the click and the parts around the column wheel looked
+wrong. Measuring all four followers against the wheel cleared three of
+them — the click's nose rides tangent on the column face (centre 2.37 =
+baseR + noseR), the link's beak sits inside the castellation band, the
+lock pad is on a different wheel entirely. The **spring** was the fault,
+and in two ways at once:
+
+- It sat at arm-local **x +0.8**, on the far side of the pivot from the
+  arm itself, which reaches back to the nose at **x −2.0**. It hung in
+  space behind the pivot, touching nothing.
+- It was a **child of `alarmClickArm`**, so it travelled with the very
+  lever it exists to push. A spring that moves with its own load does no
+  work — which is precisely why it read as floating.
+
+**A return spring has to be grounded**: one end fixed, the other bearing
+on the moving part. It now hangs off its own stud on the switch unit and
+presses the arm's outer flank at mid-length, so the moment about the
+pivot drives the nose into the wheel — the direction the click must be
+biased. The bearing point, anchor and blade angle all derive from the
+pivot→seat vector rather than being placed by hand.
+
+**Verified:** the blade now moves **0.0000** while the nose rocks
+**0.558** (it is genuinely static), its z-band lies inside the arm's,
+and it makes contact (gap 0.000). Boot silent; focused battery over the
+switch, link, lock, plate and striking wheel clean; `stockFloor` green.
+
+The blade remains 0.026 mm — under even the spring floor, and still
+carried in TODO 11 as one of the two sub-floor springs. Grounding it
+fixes what it *does*, not yet what it is made of.
