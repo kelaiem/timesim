@@ -10710,9 +10710,19 @@ function tick(t) {
       if (rawDt > 0) alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
       else alarmColShownA = colTarget;
     }
-    const linkGapT = 1 - alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
-    if (rawDt > 0) alarmSelShownT += (linkGapT - alarmSelShownT) * (1 - Math.exp(-rawDt / 0.10));
-    else alarmSelShownT = linkGapT;
+    // A CAM FOLLOWER HAS NO DYNAMICS OF ITS OWN. Its position is a pure
+    // function of the cam's angle, and the whole §35 chain — beak, rod,
+    // cranks, selector ring — is rigid behind this one reading. It used to be
+    // eased a SECOND time here (tau 0.10) on top of the wheel's own ease, and
+    // that lag was exactly why no force transfer read on screen: the beak
+    // glided on its own schedule while the column flank that drives it had
+    // already passed underneath. Rule 2's case in miniature — a display
+    // quantity no real train would produce.
+    //
+    // Now the follower is the profile, evaluated at the wheel's shown angle.
+    // Every downstream member moves BECAUSE the wheel moved, and the flank's
+    // slope is what you see lifting the beak.
+    alarmSelShownT = 1 - alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
     // the chain's members wear the same derived state (stateless poses):
     {
       const drop = ALARM_SEL_TRAVEL * (alarmLinkParts.beakLen / alarmLinkParts.tailLen); // nose fall sized so the rod's throw IS the ring's travel (1:1 cranks)

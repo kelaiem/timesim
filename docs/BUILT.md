@@ -3785,3 +3785,35 @@ there are about two vertices per tooth and the angular bucketing
 collapses. Boot is silent and the indexing measures correctly, but the
 tooth *sense* is verified by eye and by construction, not by
 instrument.
+
+### §43 postscript — why no force transfer read on screen
+
+Reported by eye: "no obvious transfer of force from the columns to the
+alarm link or the alarm switch." The followers were already reading the
+wheel's real profile — `profileAt(alarmColShownA + BEAK_OFF)` — so the
+mechanism was right. The problem was one line downstream:
+
+```js
+alarmSelShownT += (linkGapT - alarmSelShownT) * (1 - exp(-dt / 0.10));
+```
+
+The reading was then **eased a second time**, on top of the wheel's own
+ease. A cam follower has no dynamics of its own — its position is a
+pure function of the cam's angle, and the whole §35 chain (beak, rod,
+cranks, ring) is rigid behind that one reading. The extra lag meant the
+beak glided on its own schedule while the flank that drives it had
+already passed underneath: motion that *correlated* with the wheel
+instead of being *caused* by it. Rule 2's case in miniature.
+
+**The fix is to delete the ease** and let the follower be the profile.
+Measured every frame through a press, the follower now equals the cam
+reading to **0.000000** error, and the trace shows the transfer:
+
+| wheel | 34.6° | 49.0° | 55.2° | 57.9° |
+|---|---|---|---|---|
+| follower | 1.000 | 0.633 | 0.055 | 0.000 |
+
+The beak falls *as the flank passes*, and every member behind it moves
+because the wheel moved. Boot silent; focused battery over the switch,
+link, selector and lock clean (support 0, graph 0, penetration none,
+clearances 0). No geometry changed — this is a coupling fix.
