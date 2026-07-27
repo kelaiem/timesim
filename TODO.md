@@ -335,12 +335,29 @@ of 0.03), the disc's selector fingers at 0.0187, the selector ring and
 face cam at 0.0375, the column wheel at 0.0825, ~50 meshes in all
 across fourteen units (including the alarm heart riding the Hour wheel).
 
-**Why it is not a bulk scale-up.** §29's re-stratification bought the
-alarm's z corridor **with thickness** — these parts are thin because
-the dial-side band they occupy is thin. Thickening them in place
-overflows the corridor §29 solved; the honest fix re-buys z (a
-different stratification, or accepting a taller movement) and is a
-design task, not a multiplier.
+**The bound, CORRECTED by probe (tranche one).** The original claim —
+"§29 bought the z corridor with thickness" — was granted per part
+wholesale and overclaimed: the alarm work splits by z into
+
+- **plate-top rows (z 8.8–10.8), NOT corridor-bound**: the switch, the
+  lock, the striking wheel's furniture, the barrel's ratchet, and the
+  link's plate-top half sit in open air above the 3/4 plate.
+  **Tranche one closed four of them** (the §35 beak bar and tail to
+  floor stock in BOTH free dimensions — the first pass thickened z only
+  and the census promptly made width the new thin dimension — and the
+  lock lever's arm and tail), floored the shared barrel ratchet, and
+  declared the integral click pawl the spring-tempered stock it is.
+  Still open on top: the switch's click furniture, the castellation
+  wedges (MATE-bound to the beak nose), the winding train's wheels, and
+  the lock collar (a documented sandwich: 0.17 over the plate, 0.22
+  under the cam).
+- **dial-side strata rows (z −5 to −7), genuinely §29-bound** (~50):
+  disc, selector, feeler, setting wheel, idler, release disc, arbor,
+  the link's crank half, the heart. These are the real re-buy-z design
+  task. Within them, several are honest pins awaiting names and pivot
+  declarations (the selector's three 0.266 posts, the disc's nose and
+  0.22 pin), and the feeler spring at 0.015 mm remains the headline
+  under-stock even as a spring.
 
 Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means

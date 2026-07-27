@@ -1152,6 +1152,7 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
   // Click sits BELOW the ratchet, on the wheel side — where the part that
   // carries it (great wheel / barrel lid) actually is.
   const click = makeClick({ radius, thickness: thickness * 0.75 });
+  click.name = 'barrelClickPawl'; // TODO 11 triage: an integral click is spring-tempered pawl stock — declared, not thickened
   click.geometry.translate(0, 0, -thickness * 0.9);
   click.position.set(radius * 1.28, 0, 0);
   click.rotation.z = Math.PI * 0.778; // aim the beak at the valley point
@@ -1327,7 +1328,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   // Ratchet wheel + click on top (going-barrel form only — a plain fusee
   // drum has its ratchet on the fusee arbor instead).
   if (ratchet) {
-    const rc = makeRatchetAndClick({ radius: radius * 0.34, teeth: 24, thickness: height * 0.12 });
+    const rc = makeRatchetAndClick({ radius: radius * 0.34, teeth: 24, thickness: Math.max(height * 0.12, STOCK_MIN_U) }); // TODO 11/12: ratchet at floor stock — it sits on the barrel top, free upward
     rc.position.z = height / 2;
     g.add(rc);
   }
