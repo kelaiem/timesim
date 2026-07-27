@@ -358,10 +358,13 @@ wholesale and overclaimed: the alarm work splits by z into
 - **dial-side strata rows (z −5 to −7), genuinely §29-bound** (~50):
   disc, selector, feeler, setting wheel, idler, release disc, arbor,
   the link's crank half, the heart. These are the real re-buy-z design
-  task. Within them, several are honest pins awaiting names and pivot
-  declarations (the selector's three 0.266 posts, the disc's nose and
-  0.22 pin), and the feeler spring at 0.015 mm remains the headline
-  under-stock even as a spring.
+  task. **Tranche three named and declared the selector's three guide posts**
+  (pin stock at 0.105 mm, clearing the pivot floor — zero geometry
+  moved). Remaining honest-pin candidates: the disc's unnamed 0.22 u
+  pin. The feeler spring at 0.015 mm and the switch blade at 0.026 mm
+  remain the headline under-stock even as springs, and the strata
+  sheets (selector ring/tab at 0.0375 u, the disc fingers, the face
+  cam) are the re-buy-z core.
 
 Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means

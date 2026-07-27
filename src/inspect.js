@@ -2660,6 +2660,7 @@ export const STOCK_KIND_BY_MESH = {
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
+  alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none

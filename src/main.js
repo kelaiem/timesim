@@ -5084,6 +5084,7 @@ const alarmSelRing = new THREE.Group();
     const dlx = -Math.cos(az), dly = Math.sin(az);
     const postLen = (ALARM_SEL_Z_UP - ALARM_SEL_TRAVEL - ALARM_SEL_T - 0.06) - (-0.05);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, Math.abs(postLen), 10), MATS.steel);
+    post.name = 'alarmSelPost'; // TODO 11 triage: PIN stock (0.28 u ⌀ = 0.105 mm ≥ the 0.07 pivot floor) — declared, not thickened; the §34 corridor asserts below own their walls
     post.rotation.x = Math.PI / 2;
     post.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, -0.05 + postLen / 2);
     alarmSelectorUnit.add(post);
