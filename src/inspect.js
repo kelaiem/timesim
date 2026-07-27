@@ -2644,6 +2644,9 @@ export const STOCK_KIND_BY_MESH = {
   alarmFeelerPin: 'pivot',
   alarmSelPin: 'pivot',
   alarmPinB: 'pivot',
+  // TODO 12 first tranche — honest kinds found during the thickening pass:
+  shockLyreSpring: 'spring',   // the gold anti-shock lyre: real ones are 0.05-0.10 mm wire
+  studPinScrew: 'pivot',       // the stud clamp's side pin: pin stock, clears the pivot floor
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none

@@ -28,6 +28,7 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
+  STOCK_MIN_U,                                // §50/TODO 12: build to the floor
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -1874,7 +1875,7 @@ const settingLever = G.makeSettingLever({
 // bar faces derived from the dial's back face plus the margin —
 //   bar centre = Z_DIAL + CLEAR_MARGIN + JMP_LIFTER_T/2
 // binds the bar's dial-side face at exactly CLEAR_MARGIN.
-const JMP_LIFTER_T = 0.3;
+const JMP_LIFTER_T = STOCK_MIN_U; // TODO 12: floor stock — the bar centre formula below re-binds the dial face at CLEAR_MARGIN and the plate-side face still clears the stacks (top ≈ −6.52 vs their −6.36 floor)
 // Bind headroom: these planes are solved to land EXACTLY on CLEAR_MARGIN,
 // and the clearance sweep compares the BVH-measured mesh gap ≥ 0.15 with
 // no tolerance — a float hair (transform chains, tessellation) reads as a
@@ -3701,7 +3702,7 @@ const balanceCock = G.makeCock({
     pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
     balanceCock.add(pad);
     const screw = new THREE.Mesh(
-      new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, 0.22, 14), MATS.blueSteel);
+      new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, STOCK_MIN_U, 14), MATS.blueSteel); // TODO 12: head proud of the foot — free upward
     screw.rotation.x = Math.PI / 2;
     screw.position.set(s * BAR_HSPAN, yBar, COCK_T / 2 + 0.11);
     balanceCock.add(screw);
@@ -3746,12 +3747,17 @@ const balanceCock = G.makeCock({
     const boss = ringMesh(0.85, 1.35, 0.55, MATS.steel);
     boss.position.z = 0.12;
     shock.add(boss);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.18, 24), MATS.ruby);
+    // TODO 12: endstone at real cap-jewel stock (was 0.18 u = 0.0675 mm; real
+    // cap jewels run 0.3+ mm). Grows UPWARD — centre rises by half the gain so
+    // the underside, and the 0.17 endshake under it, stay exactly where the
+    // comment below solved them.
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, STOCK_MIN_U, 24), MATS.ruby);
     cap.rotation.x = Math.PI / 2;
-    cap.position.z = 0.12 + 0.55 + 0.09; // staff tip at 0.5 → 0.17 endshake under the stone
+    cap.position.z = 0.12 + 0.55 + 0.09 + (STOCK_MIN_U - 0.18) / 2; // staff tip at 0.5 → 0.17 endshake under the stone
     shock.add(cap);
     const lyre = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.07, 8, 28, 4.6), MATS.gold);
-    lyre.position.z = 0.12 + 0.55 + 0.2;
+    lyre.name = 'shockLyreSpring'; // TODO 12 triage: SPRING stock (0.14 u ⌀ = 0.0525 mm; real shock springs 0.05–0.10) — declared, not thickened
+    lyre.position.z = 0.12 + 0.55 + 0.2 + (STOCK_MIN_U - 0.18); // rides the thickened endstone
     lyre.rotation.z = -Math.PI / 2 - 2.3; // gap centred toward the tail
     shock.add(lyre);
     balanceCock.add(shock);
@@ -3770,14 +3776,14 @@ const balanceCock = G.makeCock({
     carrier.name = 'studCarrier';
     carrier.position.set(0, jyStaff, COCK_T / 2);
     carrier.rotation.z = 0.9;
-    const ring = ringMesh(2.55, 2.95, 0.22, MATS.steel); // outer trimmed inside the head's half-width (3.0)
+    const ring = ringMesh(2.55, 2.95, STOCK_MIN_U, MATS.steel); // outer trimmed inside the head's half-width (3.0); TODO 12: floor stock, free outward
     ring.position.z = 0.02;
     carrier.add(ring);
     const yS = hsUD.termEndR;                        // carrier-local stud centre
-    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - 2.85, 0.22), MATS.steel);
+    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - 2.85, STOCK_MIN_U), MATS.steel); // TODO 12: floor stock
     armC.position.set(0, (2.85 + yS) / 2, 0.13);
     carrier.add(armC);
-    const boss = ringMesh(0.42, 1.0, 0.26, MATS.steel);
+    const boss = ringMesh(0.42, 1.0, STOCK_MIN_U, MATS.steel); // TODO 12: floor stock
     boss.position.set(0, yS, 0.01);
     carrier.add(boss);
     const postBot = (studWorldZ - 0.25) - (COCK_MID_Z + COCK_T / 2); // cock-face-local
@@ -3786,6 +3792,7 @@ const balanceCock = G.makeCock({
     post.position.set(0, yS, (0.27 + postBot) / 2);
     carrier.add(post);
     const pinScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 10), MATS.blueSteel);
+    pinScrew.name = 'studPinScrew'; // TODO 12 triage: PIN stock (0.26 u ⌀ = 0.0975 mm ≥ the 0.07 pivot floor) — declared, not thickened
     pinScrew.rotation.z = Math.PI / 2;               // side pin, headed at +x
     pinScrew.position.set(0.85, yS, 0.13);
     carrier.add(pinScrew);
