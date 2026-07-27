@@ -2634,6 +2634,38 @@ export const STOCK_KIND_BY_MESH = {
   alarmIndexLine: 'marking',       // §34 registration line, cited above
   alarmFeelerSpring: 'spring',     // §40\'s first honesty nominee — a real blade
   alarmDiscTrack: 'marking',       // printed track on the disc face
+  // Triage additions — honest kinds, not escape hatches. The maintaining
+  // spring and the alarm pin spring are real flat springs (0.052 both, above
+  // the cited 0.03 spring floor, so declaring clears them legitimately); the
+  // three alarm pins are pin-stock, though two still sit under even the
+  // pivot floor and stay inside the debt below.
+  maintSpring: 'spring',
+  alarmPinSpringB: 'spring',
+  alarmFeelerPin: 'pivot',
+  alarmSelPin: 'pivot',
+  alarmPinB: 'pivot',
+};
+
+// §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none
+// deleted. A waiver is ACCEPTED DEBT citing its TODO item, not a pass: the
+// row stays in the report under 'waived' with the reference, and the gate
+// counts only unwaived rows. Two debts:
+//   TODO 11 — the alarm work is quarter-to-half-scale stock (0.015–0.10 mm):
+//   §29 bought its z corridor WITH thickness, so the fix re-buys z — a design
+//   task, not a multiplier.
+//   TODO 12 — the 0.05–0.12 band (going-train stragglers, the balance cock's
+//   jewel assembly and regulator furniture, jumper, small-seconds, set-up
+//   work) wants a ~20–45% per-part thickening toward each part's free side.
+export const STOCK_WAIVERS = {
+  'Alarm release feeler': 'TODO 11', 'Alarm disc': 'TODO 11', 'Alarm switch': 'TODO 11',
+  'Alarm selector': 'TODO 11', 'Alarm setting wheel': 'TODO 11', 'Alarm link': 'TODO 11',
+  'Alarm setting idler': 'TODO 11', 'Alarm barrel': 'TODO 11', 'Alarm release disc': 'TODO 11',
+  'Alarm setting arbor': 'TODO 11', 'Alarm lock': 'TODO 11', 'Alarm striking wheel': 'TODO 11',
+  'Alarm winding train': 'TODO 11', 'Hour wheel': 'TODO 11',   // its one violating mesh is alarmHeart
+  'Balance cock': 'TODO 12', 'Set-up work': 'TODO 12', 'Minute jumper': 'TODO 12',
+  'Small seconds': 'TODO 12', 'Escape wheel': 'TODO 12', 'Fork cock': 'TODO 12',
+  'Motion works': 'TODO 12', 'Mainspring drum': 'TODO 12', 'Fusee & great wheel': 'TODO 12',
+  'Balance': 'TODO 12', 'Power-reserve train': 'TODO 12', 'Reset hammer': 'TODO 12',
 };
 
 // REPORT → TRIAGE → DECLARE → GATE, in that order (§36 part two is the
@@ -2643,7 +2675,7 @@ export const STOCK_KIND_BY_MESH = {
 // geometry, not thin-but-arguable stock.
 export async function checkStockFloor(clock, opts = {}) {
   const census = await stockCensus(clock, opts);
-  const degenerate = [], violations = [], defaulted = new Set();
+  const degenerate = [], violations = [], waived = [], defaulted = new Set();
   for (const r of census.thinnestFirst) {
     const kind = STOCK_KIND_BY_MESH[r.mesh] || STOCK_KIND_BY_PART[r.part] || 'wheel';
     if (!STOCK_KIND_BY_MESH[r.mesh] && !STOCK_KIND_BY_PART[r.part]) defaulted.add(r.part);
@@ -2651,13 +2683,15 @@ export async function checkStockFloor(clock, opts = {}) {
     const row = { part: r.part, mesh: r.mesh, kind, mm: r.thinnestMM, floorMM: floor.mm };
     if (r.thinnestMM < floor.mm) {
       if (r.thinnestMM < DEGENERATE_STOCK_MM && floor.mm >= DEGENERATE_STOCK_MM) degenerate.push(row);
+      else if (STOCK_WAIVERS[r.part]) waived.push({ ...row, debt: STOCK_WAIVERS[r.part] });
       else violations.push(row);
     }
   }
-  violations.sort((a, b) => a.mm - b.mm);
+  violations.sort((a, b) => a.mm - b.mm); waived.sort((a, b) => a.mm - b.mm);
   return {
-    ok: degenerate.length === 0,
-    gate: 'degenerate tier only — horological violations REPORT pending owner triage (§50: report, triage, declare, then gate)',
+    ok: degenerate.length === 0 && violations.length === 0,
+    waived, waivedCount: waived.length,
+    gate: 'GATING (triaged 2026-07-26): degenerate 0 AND unwaived 0 to pass; a waived row is accepted debt citing its TODO item, visible in the report, not a pass', 
     floors: STOCK_FLOORS, degenerateFloorMM: DEGENERATE_STOCK_MM,
     degenerate, violations,
     violationsByPart: [...violations.reduce((m, v) => (m.set(v.part, (m.get(v.part) || 0) + 1), m), new Map())]
