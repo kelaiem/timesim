@@ -75,6 +75,13 @@ I.start(__clock, 'support');                                // 0 failures
 I.start(__clock, 'clearances');                             // 0 violations
 ```
 
+CI runs this whole bar on every PR (§52): `.github/workflows/battery.yml`
+drives `tools/ci-battery.mjs` — headless Chromium, one check at a time,
+plus boot-silence and a fingerprint-determinism double-boot. `node
+tools/ci-battery.mjs` runs the same gate locally (needs `npm ci` in
+`tools/` and a Playwright Chromium). It enforces rule 4; it does not
+replace the focused checks below while iterating.
+
 Use `start()`/`status()`, never `await` the sweep directly — full runs take
 100 s+ and blow a browser-eval timeout. Do **not** pass
 `yieldEvery: Infinity` to work around it: that removes the cooperative

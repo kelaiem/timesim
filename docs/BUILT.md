@@ -3578,3 +3578,92 @@ foot 0.07, every check green, TODO 11 waived **60 → 53**. Of the 76
 alarm rows the census condemned, every one now carries floor stock, an
 honest kind, or a named bound — and the band that §29 bought with
 thickness has bought it back.
+
+## §52 — The battery as a CI gate
+
+**Goal (as filed).** The inspector battery runs in this repo's CI, so a
+change that breaks support, the graph, a penetration budget, a
+clearance, the stock floor or the fingerprint fails before it merges —
+instead of depending on whoever ships remembering to run it. Standing
+rule 4 was enforced entirely by discipline, and discipline is the thing
+CI exists to replace.
+
+### The two measured risks, settled by measurement
+
+The entry refused to scope itself until two numbers existed, and both
+came in on the permissive side:
+
+- **Runtime: ~13 min for the full bar** (measured 791 s on a 2025 dev
+  container: boot 26 s, support 10 s, graph 1 s, penetration 17 s,
+  stockFloor 33 s, inspection 83 s, clearances 368 s, sweptOverlap
+  219 s, plus a second boot for determinism). That is per-PR-gate
+  territory, so the tiered split and the nightly job the entry held in
+  reserve were **not built** — the workflow carries a 45-minute budget
+  (3× the measurement, for slower CI hardware on SwiftShader GL) and a
+  comment naming the split as the fallback if the battery outgrows it.
+- **Determinism: the fingerprint reproduces exactly.** Two *virgin*
+  boots — fresh browser context, the dev server's `/__state` file
+  deleted between them — hash identically on headless Chromium. That is
+  the anchor the entry asked for, and it gates every run: the harness
+  boots twice and fails if the hashes differ, so a §40-style
+  session-state or rAF-race regression surfaces as its own named
+  failure rather than as unexplained flakiness in the sweeps.
+
+### What was built
+
+**`tools/ci-battery.mjs`** — the battery as an exit code. It spawns
+`dev_server.py` on a free port with a private `TMPDIR` (so `/__state`
+starts absent and a developer's real saved state is never read or
+clobbered), boots `index.html` in headless Chromium via Playwright, and
+runs the checks **one at a time through `start()`/`status()`** — never
+`startAll` — with `yieldEvery: 64` on the long sweeps, exactly the
+regime CLAUDE.md's yield-throttling trap prescribes for automated
+panes. Cheap synchronous checks run first so a broken graph fails in
+seconds, sweeps last. Nine gates, most-severe payloads dumped on
+failure:
+
+1. boot silent (`__clock.bootWarns` empty — standing rule 6);
+2. `support` 0 failures;
+3. `graph` every violation list empty (declared `todo` edges allowed);
+4. `penetration` every budget row OK;
+5. `stockFloor` 0 degenerate and 0 unwaived (waived rows reported as
+   the accepted debt they are);
+6. `inspection { includeExcluded: true }` 0 FORBIDDEN;
+7. `clearances` 0 violations;
+8. `sweptOverlap` 0 CONFIRMED (`tight`/`refuted` reported, not failed);
+9. fingerprint identical across the two virgin boots.
+
+Two harness decisions worth recording. **The sweep hold is taken for
+the whole run**: only `buildSweptRegistry`/`checkLowCorridor` hold it
+themselves, so during the other sweeps the rAF loop would keep
+painting — on CI's software GL those paints are pure overhead stolen
+from the sweep, and no check needs a frame (`setPose` +
+`updateMatrixWorld` is the whole measurement path). And Chromium is
+launched with **background-timer throttling disabled**, so the sweeps'
+cooperative `setTimeout(0)` yields cost microseconds instead of the
+~1 s naps that make a default automated run read `running` forever.
+
+**`.github/workflows/battery.yml`** — the gate itself, on every pull
+request and on `main`. Playwright is pinned in `tools/package.json`
+(which lives under `tools/`, not the repo root, so the app stays
+dependency-free and the release payload — which excludes `tools/` —
+never ships any of it); the browser download is cached keyed on the
+lockfile pin; `python3` for the dev server is preinstalled on the
+runner. Concurrency cancels a stale run when its branch moves — the
+battery is long enough that queued duplicates would stack.
+
+### What the plan got wrong, and one boundary restated
+
+The entry worried the headless route might be blocked by §36's
+non-terminating sweep or §40's fragility; both fixes held, and the only
+genuine surprise was trivial: a virgin boot 404s `/__state` *by
+design* (state.js falls back to defaults), so the harness's
+"no console errors at boot" net has exactly that one exception carved
+out.
+
+The gate proves the movement is **legal, and the same twice** — it does
+not widen what the battery can see. The two structural blind spots
+(intra-unit collisions; second contacts inside an EXPECTED pair,
+TODO.md items 5 and 6) pass through it unexamined, exactly as they pass
+through a hand-run battery. CI moved the enforcement, not the
+instrument.
