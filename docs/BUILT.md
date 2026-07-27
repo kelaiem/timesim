@@ -3557,3 +3557,24 @@ penetration, clearances, support all clean; `stockFloor` green, TODO 11
 waived 62 → 60 net. §51 closes with the band real, the link honest,
 and the two blocked members carrying exact numbers for their own
 sessions.
+
+### §51 closed — the last two spends, landed on the derived band
+
+With the arm-band family derived, the disc body and selector sheet took
+the floor after all. The two keys were both **working-face rules**:
+
+- The ring's anchor pins its **underside** — the face that presses the
+  rocker — so the thicker sheet grows away from the solved contact,
+  exactly the endstone precedent. `disc ⇄ selector` reads **0.062**
+  against its 0.12 budget with the spend in.
+- The §35 shaft rides the ring's **mid-plane**, not its top face: the
+  top-face relationship was an artifact of the 0.10 sheet, and with
+  real stock it pushed the shaft to 0.069 from the keyless floor — its
+  own derived tripwire caught it — where centre-on-centre clears by
+  0.229.
+
+Final: boot silent, the link embraced 0.32/0.12 at the extremes, rod
+foot 0.07, every check green, TODO 11 waived **60 → 53**. Of the 76
+alarm rows the census condemned, every one now carries floor stock, an
+honest kind, or a named bound — and the band that §29 bought with
+thickness has bought it back.
