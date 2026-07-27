@@ -2164,7 +2164,7 @@ export async function buildSweptRegistry(clock, {
       let zLo = Infinity, zHi = -Infinity;
       for (const pts of series) for (let i = 2; i < pts.length; i += 3) { if (pts[i] < zLo) zLo = pts[i]; if (pts[i] > zHi) zHi = pts[i]; }
       if (!moves) {
-        volumes.push({ unit: u.name, mesh: m, kind: 'static', zBand: [zLo, zHi] });
+        volumes.push({ unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'static', zBand: [zLo, zHi], reversed: false });
         continue;
       }
       // Planar? (every vertex holds its z)
@@ -2184,14 +2184,68 @@ export async function buildSweptRegistry(clock, {
           if (pts[i] < xLo) xLo = pts[i]; if (pts[i] > xHi) xHi = pts[i];
           if (pts[i + 1] < yLo) yLo = pts[i + 1]; if (pts[i + 1] > yHi) yHi = pts[i + 1];
         }
+        // §48: a compound mover has no angle to reverse, so the arc test
+        // below never sees it — but a part that SLIDES out and back is
+        // reciprocating just as surely as one that swings, and needs a
+        // restoring element for the same reason. Reversal here is a sign
+        // change in the CENTROID's direction of travel: consecutive step
+        // vectors pointing against each other (dot < 0). Same axis-boundary
+        // skip, since a pose jump between sweeps is not motion the part made.
+        const cen = series.map((pts) => {
+          let sx = 0, sy = 0, sz = 0, n = 0;
+          for (let i = 0; i < pts.length; i += 3) { sx += pts[i]; sy += pts[i+1]; sz += pts[i+2]; n++; }
+          return n ? [sx/n, sy/n, sz/n] : [0, 0, 0];
+        });
+        const dv = [];
+        for (let i = 1; i < cen.length; i++) {
+          if (i % perAxis === 0) { dv.push(null); continue; }
+          dv.push([cen[i][0]-cen[i-1][0], cen[i][1]-cen[i-1][1], cen[i][2]-cen[i-1][2]]);
+        }
+        // THE DEADBAND, and why it is not optional. A rigid part that merely
+        // TURNS has a centroid sitting still on its own axis, so its step
+        // vectors are pure float noise and their directions flip essentially
+        // at random — the first run of this called the chain, the fusee, both
+        // train wheels, the dial and the power reserve reciprocators, which
+        // they emphatically are not. Noise is only distinguishable from
+        // motion by SCALE, so the track must go somewhere real before any of
+        // its direction changes mean anything.
+        //
+        // Two gates, both self-scaling so neither is a magic number:
+        //   1. the centroid track's extent must be a real fraction of the
+        //      part's own size — a part whose centroid moves a thousandth of
+        //      its own diagonal is rotating or static, not translating;
+        //   2. within such a track, individual steps below a thousandth of
+        //      that extent are noise and do not vote.
+        let tLo = [Infinity, Infinity, Infinity], tHi = [-Infinity, -Infinity, -Infinity];
+        for (const c of cen) for (let k = 0; k < 3; k++) {
+          if (c[k] < tLo[k]) tLo[k] = c[k]; if (c[k] > tHi[k]) tHi[k] = c[k];
+        }
+        const trackExtent = Math.hypot(tHi[0]-tLo[0], tHi[1]-tLo[1], tHi[2]-tLo[2]);
+        const partSize = Math.hypot(xHi-xLo, yHi-yLo, zHi-zLo);
+        let pathReversed = false;
+        if (trackExtent > Math.max(1e-4, partSize * 1e-3)) {
+          const floor = trackExtent * 1e-3;
+          let prev = null;
+          for (const b of dv) {
+            if (!b) { prev = null; continue; }             // axis boundary
+            const lb = Math.hypot(b[0], b[1], b[2]);
+            if (lb < floor) continue;                      // noise: no vote
+            if (prev) {
+              const la = Math.hypot(prev[0], prev[1], prev[2]);
+              if ((prev[0]*b[0] + prev[1]*b[1] + prev[2]*b[2]) / (la*lb) < -1e-6) { pathReversed = true; break; }
+            }
+            prev = b;
+          }
+        }
         // §36B: a path hull instead of the single AABB this used to be. The
         // AABB is kept alongside as `box` so anything still reading it works,
         // but `kind` is now 'path' and the check CLAIMS it.
         volumes.push({
-          unit: u.name, mesh: m, kind: 'path',
+          unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'path',
           box: [xLo, yLo, zLo, xHi, yHi, zHi],
           boxes: buildPathHull(series, perAxis),
-          zBand: [zLo, zHi],
+          zBand: [zLo, zHi], reversed: pathReversed,
+          reversedVia: pathReversed ? 'track' : undefined,   // centroid translated out and back
         });
         continue;
       }
@@ -2269,16 +2323,21 @@ export async function buildSweptRegistry(clock, {
       // `travel`; widening each sampled arc by that much therefore covers the
       // motion between samples, which is exactly what sampling cannot see.
       // For the pallet fork that is a few degrees against 360.
-      let dilate = 0;
-      if (!full) {
-        for (let i = 1; i < steps.length; i++) {
-          if (steps[i] === null || steps[i - 1] === null) continue;  // spans an axis boundary
-          if (steps[i] * steps[i - 1] < -1e-12) {
-            if (!bounded) { full = true; reason = 'oscillates'; }
-            break;
-          }
-        }
+      // §48 CONSUMES THIS FACT, so it is now computed for every part rather
+      // than only where the reversal test still had a decision to make. It
+      // used to sit behind `if (!full)`, which meant a part already promoted
+      // by the SPOKE rule never had its direction sampled at all — and the
+      // spoke rule fires first for exactly the fast oscillators §48 is
+      // hunting. Consuming that set would have quietly excluded them: a check
+      // that searches for less than the thing it verifies. Same loop, same
+      // epsilon, same axis-boundary skip; only the guard moved.
+      let reversed = false;
+      for (let i = 1; i < steps.length; i++) {
+        if (steps[i] === null || steps[i - 1] === null) continue;  // spans an axis boundary
+        if (steps[i] * steps[i - 1] < -1e-12) { reversed = true; break; }
       }
+      let dilate = 0;
+      if (!full && reversed && !bounded) { full = true; reason = 'oscillates'; }
       // A declared part is dilated whether it tripped the spoke test, the
       // reversal test or neither — the travel is a property of the part, not
       // of which rule noticed it moving.
@@ -2316,16 +2375,18 @@ export async function buildSweptRegistry(clock, {
       // spokes of a turning wheel.
       if (full && reason === 'oscillates') {
         volumes.push({
-          unit: u.name, mesh: m, kind: 'path',
+          unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'path',
           box: null, boxes: buildPathHull(series, perAxis), zBand: [zLo, zHi],
-          from: 'oscillates',
+          from: 'oscillates', reversed,
+          reversedVia: reversed ? 'arc' : undefined,         // turned one way then the other
         });
         continue;
       }
       volumes.push({
-        unit: u.name, mesh: m, kind: 'revolve', axis: [cx, cy],
+        unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'revolve', axis: [cx, cy],
         rBand: [rLo, rHi], zBand: [zLo, zHi],
-        bins: full ? null : bins, full, reason,
+        bins: full ? null : bins, full, reason, reversed,
+        reversedVia: reversed ? 'arc' : undefined,
         declaredRad: dilate || undefined,
         coverage: full ? 1 : +(bins.reduce((a, b) => a + b, 0) / THETA_BINS).toFixed(4),
       });
@@ -3080,6 +3141,168 @@ export async function stockCensus(clock, opts = {}) {
     thinnestFirst: rows,
     perPart: [...byPart.values()],
     notMeasured: unmeasured,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §48 — AUDIT THE OSCILLATORS THAT HAVE NO SPRING
+//
+// THE RULE, STATED ONCE. A part whose motion REVERSES needs one of exactly
+// two things: a TWO-WAY DRIVE, where something pushes it each way, or a
+// RESTORING ELEMENT — a spring, or gravity, declared as acting. A part with
+// neither is ANIMATED, not driven: its return is asserted by the pose law
+// rather than caused by the movement.
+//
+// The pallet fork is the control case and must PASS in the first category:
+// the escape wheel impulses it alternately, so it is genuinely two-way driven
+// and correctly carries no return spring. If the fork ever lands in the third
+// bucket, this audit is broken, not the fork.
+//
+// THE POPULATION IS §36'S, NOT A SECOND PASS. §36 asks what VOLUME a reversal
+// sweeps; this asks what FORCE causes it. Same set, different question — so
+// this consumes `reversed` off the registry rather than re-sampling the pose
+// laws, which also keeps the two honest about the same list. That is why
+// `reversed` is computed unconditionally up there now.
+//
+// WHAT THIS CANNOT SEE, SAID PLAINLY. A declaration is a claim made by the
+// build about its own pose law, and no static check can confirm that a force
+// is what actually produces a return — the pose law is code, not a solver.
+// What IS checked is the failure mode the entry names: a spring that exists
+// only as GEOMETRY. A `spring` declaration must name a mesh that is really in
+// the scene, so "there is a spring next to it" cannot be typed in and left to
+// look like a mechanism. The `why` carries the rest, and it is a human claim.
+//
+// THIS IS A REPORT, NOT A GATE — the §40 rule. An audit that fails the battery
+// on arrival gets switched off. It returns `ok: true` always; findings are
+// triaged by hand and each restored-by-nothing part is filed to TODO.md
+// against the part, which is where that debt lives.
+export const RESTORING_KINDS = ['two-way', 'spring', 'gravity'];
+
+// How load-bearing a part is: how much of the movement is downstream of it in
+// MECH_GRAPH.drive, transitively. A missing return on the pallet fork would
+// mis-state the whole train below it; a missing return on a dial-side flag
+// mis-states itself. Sorting by this puts the consequential findings first
+// rather than the alphabetically lucky ones.
+function driveFanout(name) {
+  const adj = new Map();
+  for (const [a, b] of MECH_GRAPH.drive) {
+    if (!adj.has(a)) adj.set(a, []);
+    adj.get(a).push(b);
+  }
+  const seen = new Set();
+  const stack = [name];
+  while (stack.length) {
+    const n = stack.pop();
+    for (const m of adj.get(n) || []) if (!seen.has(m)) { seen.add(m); stack.push(m); }
+  }
+  seen.delete(name);
+  return seen.size;
+}
+
+export async function auditOscillators(clock, opts = {}) {
+  const reg = opts.registry || await buildSweptRegistry(clock, opts);
+
+  // DEDUPE BY MESH, keeping the most specific unit — §40's rule, and needed
+  // here for the same reason and then one more. Units NEST: the feeler's
+  // meshes are inside the 'Dial' subtree, so collectUnits hands each mesh to
+  // both and the registry carries a volume per pairing. Left alone the audit
+  // filed the feeler's reversal twice, once against the feeler and once
+  // against the Dial — and the second is not merely a duplicate, it is a
+  // FALSE finding: the dial does not reciprocate, its tenant does. The
+  // acceptance rule "every reversing part appears exactly once" is precisely
+  // this. Nearest ancestor by walking parents, never by list order.
+  const rows = reg._volumes || reg.registry || reg.volumes || [];
+  let deduped = rows;
+  if (reg._volumes && clock.labelEntries) {
+    const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+    const hops = (mesh, name) => {
+      const target = unitObj.get(name);
+      let n = 0;
+      for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+      return Infinity;
+    };
+    const byMesh = new Map();
+    for (const v of rows) {
+      const prev = byMesh.get(v.mesh);
+      if (!prev || hops(v.mesh, v.unit) < hops(v.mesh, prev.unit)) byMesh.set(v.mesh, v);
+    }
+    deduped = [...byMesh.values()];
+  }
+
+  // The reversal set, per UNIT. A unit reverses if any of its OWN meshes does
+  // — the restoring element is declared against the part, not the mesh.
+  const reversingUnits = new Map();
+  for (const v of deduped) {
+    if (!v.reversed) continue;
+    if (!reversingUnits.has(v.unit)) reversingUnits.set(v.unit, []);
+    reversingUnits.get(v.unit).push(
+      `${v.meshName || v.mesh?.name || v.kind}${v.reason ? '/' + v.reason : ''}:${v.reversedVia || '?'}`);
+  }
+
+  const declared = clock.declaredRestoring || new Map();
+  const scene = clock.scene;
+  const twoWay = [], restored = [], unrestored = [], malformed = [];
+
+  for (const [unit, kinds] of reversingUnits) {
+    const d = declared.get(unit);
+    const row = {
+      unit,
+      fanout: driveFanout(unit),
+      sweptAs: kinds.filter((k, i, a) => a.indexOf(k) === i),
+    };
+    if (!d) { unrestored.push(row); continue; }
+    row.kind = d.kind; row.why = d.why;
+    if (!RESTORING_KINDS.includes(d.kind)) {
+      malformed.push({ ...row, problem: `kind '${d.kind}' is not one of ${RESTORING_KINDS.join(', ')}` });
+      continue;
+    }
+    // THE GEOMETRY-ONLY GUARD. A declared spring must name a mesh that is
+    // actually in the scene. This does not prove the spring acts — nothing
+    // static can — but it does stop an empty declaration from reading as a
+    // mechanism, which is the specific failure the entry calls out.
+    if (d.kind === 'spring') {
+      if (!d.mesh) {
+        malformed.push({ ...row, problem: 'spring declared without naming its mesh' });
+        continue;
+      }
+      if (scene && !scene.getObjectByName(d.mesh)) {
+        malformed.push({ ...row, problem: `declared spring mesh '${d.mesh}' is not in the scene` });
+        continue;
+      }
+      row.mesh = d.mesh;
+    }
+    (d.kind === 'two-way' ? twoWay : restored).push(row);
+  }
+
+  // A declaration for a part that does NOT reverse is not a pass — it is a
+  // stale claim, and it is exactly how this report would rot: the part gets
+  // re-posed, stops reciprocating, and the declaration outlives the reason
+  // for it. Report those too.
+  const stale = [];
+  for (const [unit] of declared) if (!reversingUnits.has(unit)) stale.push(unit);
+
+  const bySeverity = (a, b) => b.fanout - a.fanout || a.unit.localeCompare(b.unit);
+  unrestored.sort(bySeverity); twoWay.sort(bySeverity);
+  restored.sort(bySeverity); malformed.sort(bySeverity);
+
+  // The control case, asserted rather than hoped for.
+  const control = twoWay.some((r) => r.unit === 'Pallet fork')
+    ? 'PASS — the pallet fork is classified two-way driven'
+    : `BROKEN — the pallet fork is not in the two-way bucket (it is ${
+        unrestored.some((r) => r.unit === 'Pallet fork') ? 'restored-by-nothing'
+        : restored.some((r) => r.unit === 'Pallet fork') ? 'restored-by-element'
+        : reversingUnits.has('Pallet fork') ? 'misdeclared' : 'not reversing at all'})`;
+
+  return {
+    ok: true,                       // §40 rule: a REPORT. Nothing here can fail.
+    control,
+    population: reversingUnits.size,
+    populationFrom: '§36 registry `reversed`',
+    twoWayDriven: twoWay,
+    restoredByDeclaredElement: restored,
+    restoredByNothing: unrestored,
+    malformedDeclarations: malformed,
+    staleDeclarations: stale,
   };
 }
 

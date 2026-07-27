@@ -3879,3 +3879,94 @@ silent on a fresh reload (marker-delimited, so the pre-existing §38
 runtime warnings from the sweep session could not be mistaken for it).
 Focused check over the switch, feeler, link, lock, striking wheel and
 plate: support 0, graph 0, penetration none over budget, clearances 0.
+
+## §48. Audit the oscillators that have no spring
+
+**The rule, stated once.** A part whose motion REVERSES needs one of
+exactly two things: a **two-way drive**, where something pushes it each
+way, or a **restoring element** — a spring, or gravity, declared as
+acting. A part with neither is *animated*, not driven: its return is
+asserted by the pose law rather than caused by the movement.
+
+`auditOscillators()` classifies every reversing part into those three
+buckets. It is a **report, not a gate** (§40's rule — an audit that fails
+the battery on arrival gets switched off): `ok` is always true, and each
+restored-by-nothing finding is filed to `TODO.md` against its part.
+
+### The population is §36's, not a second pass
+
+§36 asks what VOLUME a reversal sweeps; §48 asks what FORCE causes it.
+Same set, different question — so the audit consumes `reversed` off the
+registry rather than re-sampling the pose laws, which keeps the two
+honest about one list.
+
+Making that possible needed §36 to record the fact **unconditionally**.
+It used to compute reversal behind `if (!full)`, so a part already
+promoted by the SPOKE rule never had its direction sampled at all — and
+the spoke rule fires first for exactly the fast oscillators this audit
+hunts. Consuming that set would have silently excluded them: *a check
+that searches for less than the thing it verifies.* Same loop, same
+epsilon, same axis-boundary skip; only the guard moved.
+
+§36 also had no reversal test at all for **compound movers** — a part
+that SLIDES out and back reciprocates just as surely as one that swings.
+That is now a sign change in the centroid's direction of travel, with two
+self-scaling gates: the track must go somewhere real relative to the
+part's own size, and steps below a thousandth of that extent are noise
+and do not vote. Without them a rotating part's stationary centroid is
+pure float jitter, whose direction flips at random.
+
+### What it cannot see, said plainly
+
+A declaration is a claim the build makes about its own pose law, and no
+static check can confirm that a force is what actually produces a return
+— the pose law is code, not a solver. What IS checked is the failure mode
+the entry names: **a spring that exists only as geometry.** A `spring`
+declaration must name a mesh really in the scene, so "there is a spring
+next to it" cannot be typed in and left to look like a mechanism. Stale
+declarations — for parts that no longer reverse — are reported too, since
+that is how this report would otherwise rot.
+
+### The result
+
+**Control case PASSES:** the pallet fork is classified two-way driven.
+It is impulsed alternately by the escape wheel and correctly has no
+return spring, exactly as a real lever escapement does not.
+
+Of **18** reversing parts (after §40's nearest-ancestor mesh dedupe —
+before it, the feeler's meshes were filed against the Dial as well, and
+that second row was not a duplicate but a FALSE finding: the dial does
+not reciprocate, its tenant does):
+
+- **12 two-way driven** — the fusee and chain (mainspring one way,
+  winding the other), the escape and third wheels (recoil), the keyless
+  parts and the alarm setting train (the crown drives both ways), the
+  reset hammer (a positive linkage in its slot), the heart cam.
+- **2 restored by a declared element** — balance and hairspring. Scope,
+  stated: this asks whether a restoring element is declared, not whether
+  its rate comes from stiffness. It does not, and that gap is `TODO.md`'s.
+- **1 malformed** — the alarm hammer, and this is the interesting one
+  (below).
+- **3 restored by nothing** — the alarm release feeler, the minute jumper
+  and the maintaining detent. All three are cam followers whose position
+  is computed from the profile, so nothing presses them against the cam;
+  all three already have a spring MESH. Filed as `TODO.md` item 13.
+
+### The alarm hammer resolved — the opposite way round
+
+This is the case that prompted the entry, and §25's account of it was
+incomplete rather than wrong. `alarmHammerAngle()`'s free swing is
+`ALARM_DRAW_RAD * cos(ALARM_HAMMER_W * t)` with exponential decay after
+the strike — a **spring-and-inertia law**; `ALARM_HAMMER_W` is an angular
+frequency derived so the hammer reaches the wire exactly at
+`ALARM_FALL_S`. The pose law is not missing a restoring element; it
+*asserts* one. No hammer spring is modelled.
+
+So the build declares the spring the law implies, and the audit answers
+that the mesh does not exist. Filed as `TODO.md` item 14. Item 13 is a
+spring that exists and does nothing; this is a spring that does something
+and does not exist.
+
+**Battery beside it, unchanged:** registry 519 volumes (203 revolve, 147
+path, 169 static), 0 still escaping after widening, **0 confirmed swept
+overlaps**. The audit adds no geometry and cannot fail.

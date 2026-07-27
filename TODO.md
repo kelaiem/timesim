@@ -611,3 +611,55 @@ deletes its waiver.
 invisible: the grounding check verified that declared edges formed a connected
 graph, not that any geometry existed at the other end. Keep new parts declared
 in `MECH_GRAPH` so they stay accountable.
+
+## 13. Three followers are held to their cams by nothing (§48)
+
+`auditOscillators` classifies every reversing part as two-way driven,
+restored by a declared element, or **restored by nothing**. Three land in
+the third bucket, and all three fail the same way: the pose law computes
+the follower's position from the CAM PROFILE, so the return is whatever
+the profile says next. Nothing presses the follower against the cam, and
+a follower that is not pressed is *glued* — it would ride up a flank and
+stay there, or leave the cam entirely on the falling side.
+
+Each already has a spring MESH. That is exactly what §48 exists to
+distinguish: a spring next to a part is not a mechanism.
+
+| Part | Spring modelled | Pose law | Fanout |
+|---|---|---|---|
+| Alarm release feeler | `alarmFeelerSpring` | position from the cam profile | 4 |
+| Minute jumper | `jumperClickSpring` | `max(ride * crownPullT, lift)` from the star profile | 0 |
+| Maintaining detent | `maintSpring` | `MAINT_DET_BASE + SIGN * lift` from the saw profile | 0 |
+
+Closing this means the spring APPEARS IN THE LAW as the thing producing
+the return — the follower seeks the cam because the spring pushes it,
+rather than because the profile was evaluated. It does not mean modelling
+spring RATE or force: §48's scope guard puts that outside this work, and
+so does this item.
+
+The feeler is first by fanout, and it is also the one whose failure is
+visible — it drives the alarm release.
+
+## 14. The alarm hammer's fall is a spring law with no spring (§48)
+
+`alarmHammerAngle()`'s free swing is
+`ALARM_DRAW_RAD * cos(ALARM_HAMMER_W * t)`, decaying exponentially after
+the strike. That is a **spring-and-inertia law** — `ALARM_HAMMER_W` is an
+angular frequency, and it is derived so the hammer reaches the wire
+exactly at `ALARM_FALL_S`.
+
+So the pose law is not missing a restoring element; it *asserts* one. The
+movement has no hammer spring modelled. §48 reports this as a MALFORMED
+declaration rather than a finding, because the build now declares the
+spring the law implies (`declareRestoring('Alarm hammer', 'spring', …,
+'alarmHammerSpring')`) and the audit answers that no such mesh exists.
+
+This is the inverse of item 13 and the more interesting half: there, a
+spring exists and does nothing; here, a spring does something and does
+not exist. Closing it means a real hammer spring in the geometry, seated
+against the hammer's tail and grounded to the plate — the §43 postscript
+lesson, that a return spring has one end fixed and one end bearing.
+
+Note that §25 recorded the lobes lifting the hammer and left the fall
+unexplained. The fall was in fact always explained; what was missing was
+the part.

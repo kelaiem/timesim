@@ -241,6 +241,27 @@ function declareTravel(name, rad, why) {
   declaredTravels.set(name, { rad, why });
 }
 
+// §48 — WHAT BRINGS A RECIPROCATING PART BACK.
+// A part whose motion reverses needs a two-way drive or a restoring element.
+// This is where the build STATES which, at the site of the pose law that is
+// making the claim — the same discipline as `declareTravel`, and for the same
+// reason: the audit consumes declarations, and a declaration written far from
+// the law it describes is the one that goes stale first.
+//
+// A 'spring' MUST name its mesh. §48's whole point is that a spring which
+// exists only as geometry is decoration, not a mechanism, so an unnamed or
+// non-existent mesh is reported as a MALFORMED declaration rather than
+// counted as a restoring element.
+const declaredRestoring = new Map();   // unit name -> { kind, why, mesh }
+function declareRestoring(name, kind, why, mesh) {
+  if (declaredRestoring.has(name)) console.warn(`§48: '${name}' restoring element declared twice`);
+  if (!['two-way', 'spring', 'gravity'].includes(kind))
+    console.warn(`§48: '${name}' restoring kind '${kind}' is not two-way, spring or gravity`);
+  if (kind === 'spring' && !mesh)
+    console.warn(`§48: '${name}' declares a spring but does not name its mesh — a spring that is only geometry does not count`);
+  declaredRestoring.set(name, { kind, why, mesh });
+}
+
 const movement = new THREE.Group();
 scene.add(movement);
 
@@ -408,6 +429,15 @@ const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI *
 // AMPLITUDE_TRUE_DEG: the registry must bound the mesh that is actually
 // ANIMATED, and the true 270 deg swing is a physical reference the meshes
 // never perform.
+// §48 — the winding path reverses because it is driven from BOTH ends: the
+// mainspring unwinds it one way, the keyless works winds it the other. That
+// is a two-way drive, not a missing spring.
+declareRestoring('Fusee & great wheel', 'two-way',
+  'mainspring drives it while running; the keyless works drives it the other way while winding');
+declareRestoring('Chain', 'two-way',
+  'the barrel hauls it one way and the fusee the other; winding swaps which end is pulling');
+declareRestoring('Power reserve', 'two-way',
+  'the slip-coupled arbor is driven up by winding and down by running — both directions are driven');
 declareTravel('Balance', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'balanceTheta swings +/-AMPLITUDE_VISUAL_DEG');
 declareTravel('Hairspring', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'rides the balance arbor');
 const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
@@ -415,6 +445,32 @@ const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 r
 // §36A: the fork banks between ±FORK_BANK_DEG and recoils FORK_RECOIL_DEG past
 // the bank on draw, so its extreme-to-extreme travel is 2*(bank + recoil).
 // Declared HERE, next to the derivation, so the two cannot drift.
+// §48 — THE CONTROL CASE. The fork is impulsed ALTERNATELY by the escape
+// wheel: one tooth drives the entry pallet, the next drives the exit pallet.
+// Something pushes it each way, so it needs no return spring, and a real
+// lever escapement has none. If the audit ever files the fork as
+// restored-by-nothing, the audit is wrong, not the fork.
+declareRestoring('Pallet fork', 'two-way',
+  'escape-wheel teeth impulse the entry and exit pallets alternately; draw holds it banked between');
+// The wheel the fork acts back on. Its reversal is RECOIL — the fork's draw
+// pushes the wheel backwards against the train before each unlocking — so it
+// too is driven both ways, by the train forward and by the fork back.
+declareRestoring('Escape wheel', 'two-way',
+  'train drives it forward; the fork\'s draw recoils it backward before unlocking');
+declareRestoring('Third wheel', 'two-way',
+  'centre wheel drives it forward; escape-wheel recoil back-drives it through the fourth-wheel mesh');
+// The balance IS a spring oscillator, and the hairspring is what makes it
+// one. SCOPE, stated: §48 asks whether a restoring element is DECLARED, not
+// whether its rate is modelled from stiffness — rate and force modelling are
+// explicitly out of this entry. The sinusoid is the hairspring's restoring
+// law in closed form; its FREQUENCY comes from the beat rate rather than
+// from the spring's geometry, and that gap is TODO.md's business.
+declareRestoring('Balance', 'spring',
+  'the hairspring restores it; balanceTheta is that harmonic law in closed form (rate from beat, not stiffness)',
+  'hairspringCoil');
+declareRestoring('Hairspring', 'spring',
+  'it IS the restoring element — it reverses because the balance arbor it is pinned to does',
+  'hairspringCoil');
 declareTravel('Pallet fork', 2 * (FORK_BANK_DEG + FORK_RECOIL_DEG) * DEG2RAD,
   'banks +/-FORK_BANK_DEG with FORK_RECOIL_DEG of draw past each bank');
 
@@ -794,6 +850,7 @@ registerLabel('Balance', balanceGroup);
 
 const hairspringGroup = new THREE.Group();
 hairspringGroup.position.set(P.balance.x, P.balance.y, L_HAIRSPRING);
+hairspring.name = 'hairspringCoil';   // §48: the restoring element has to be nameable to be declared
 hairspringGroup.add(hairspring);
 movement.add(hairspringGroup);
 registerExplode(hairspringGroup, L_HAIRSPRING, 8);
@@ -1188,6 +1245,17 @@ const HAMMER_SWING_RAD = (() => {
   }
   return hi;
 })();
+declareRestoring('Setting lever', 'two-way',
+  'crownPullT drives it both ways — pulling the crown swings it out, pushing swings it back');
+declareRestoring('Yoke', 'two-way',
+  'rides the setting lever, which crownPullT drives in both directions');
+// The reset hammer is worked by a POSITIVE LINKAGE, not a spring: the
+// setting lever's tail post is in its slot, so the post carries it out and
+// back. solveHammerRotation() takes the post's position as its input.
+declareRestoring('Reset hammer', 'two-way',
+  'the setting lever\'s tail post sits in its slot and drives it both ways (solveHammerRotation)');
+declareRestoring('Heart cam (seconds reset)', 'two-way',
+  'the fourth wheel friction-drives it forward; the reset hammer snaps it back against that friction');
 declareTravel('Reset hammer', HAMMER_SWING_RAD,
   'retracted at hammerBaseAngle + HAMMER_SWING_RAD, seated at hammerBaseAngle');
 
@@ -6075,6 +6143,23 @@ const ALARM_DRAW_RAD = 3 * ALARM_STRIKE_AMP;
 // rebound term is smaller still and decays. Travel is therefore 2*DRAW. If
 // that is short the containment assert widens it — which is the check that
 // makes declaring from a lift law safe rather than a guess.
+// §48 — the setting train is turned by hand, both ways, by the alarm crown.
+declareRestoring('Alarm setting arbor', 'two-way',
+  'the alarm crown turns it in either direction; there is no return to provide');
+declareRestoring('Alarm disc', 'two-way',
+  'geared to the alarm setting arbor, so the crown drives it both ways');
+// §48 — THE CASE THAT PROMPTED THE ENTRY, and it does not resolve the way
+// §25 implied. The lift is the cam profile, but the FALL is not: the free
+// swing is cos(ALARM_HAMMER_W * t) with an exponential decay, which is a
+// SPRING-AND-INERTIA law — ALARM_HAMMER_W is an angular frequency. So the
+// pose law does claim a restoring element. The movement has no such spring
+// modelled. Declaring it here NAMES the mesh the law implies, and the audit
+// reports it as MALFORMED precisely because that mesh does not exist —
+// which is the honest finding: the law asserts a spring the watch lacks.
+// Modelling it is TODO.md's business, per this entry's scope guard.
+declareRestoring('Alarm hammer', 'spring',
+  'alarmHammerAngle() falls as cos(ALARM_HAMMER_W t) with decay — a spring-and-inertia law, but NO spring is modelled',
+  'alarmHammerSpring');
 declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_RAD, +ALARM_DRAW_RAD]');
 // Where the tail rests. Measured out from the pivot⇄wheel bearing: the larger
 // this is, the further the nose sits from the wheel's centre and the bigger
@@ -10354,6 +10439,10 @@ function tick(t) {
   // rod is rigid, so the crank's angle is solved from the post's actual
   // position each frame (updateStopWork) — crown out levels the pad arm
   // onto the rim's underside, crown in drops it the derived release gap.
+  // §48: pulling the crown drives these out, pushing it drives them back in.
+  // Both directions are driven by the same input, so no return spring is
+  // required to explain the reversal. (The setting-lever DETENT that holds
+  // each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
   yokeGroup.rotation.z = yokeAngleAt(crownPullT);
   const postNow = tailPostWorldAt(crownPullT);
@@ -11318,6 +11407,7 @@ window.__clock = {
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
+  declaredRestoring, // §48: what brings each reciprocating part back
   // §36 follow-up: the low-corridor table and its band, exposed so the
   // battery can VERIFY the hand-built footprint against sampled reality.
   // The table cannot be GENERATED from the registry — it is consumed
