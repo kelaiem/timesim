@@ -5007,6 +5007,16 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
 // reach −0.33, asserted); its tail extends to the rocker's finger, which
 // PRESSES it plate-ward to lift the pin clear: the disarmed state, a
 // clean toggle.
+// §51 postscript — THE ARM-BAND CHAIN, derived at last. Every plane in the
+// tube-B band descended from the setting wheel's plate-side face, but as
+// LITERALS frozen at the old 0.18 wheel (−0.23, −0.53, −0.505, −0.48):
+// when §51 thickened the wheel the whole family stayed behind, which is why
+// the ring and the fingers could only stay aligned by both being absolute —
+// and why the disc-body and selector-sheet spends were blocked. Three
+// constants replace the family; everything below rides the chain.
+const ALARM_WHEEL_BOT_B = -0.05 - ALARM_SET_T;                    // the wheel's plate-side face (the old −0.23)
+const ALARM_BAND_FLOOR_B = ALARM_WHEEL_BOT_B - ALARM_HEART_B_T;   // heart-B/follower band floor (the old −0.53)
+const ALARM_ARMB_Z = ALARM_BAND_FLOOR_B + 0.05 / 2;               // the pin-arm's slice centre (arm 0.05 thick; the old −0.505)
 const ALARM_PINB_AZ = ALARM_NOSE_AZ;   // the pin rides at the same azimuth convention heart-A's nose does
 const ALARM_PINB_R = 3.6;              // mid of the cam ring (3.3..3.9)
 const ALARM_CAM_HMAX = 0.10, ALARM_CAM_HMIN = 0.02;
@@ -5019,7 +5029,7 @@ const alarmPinArmB = new THREE.Group();
   alarmTubeGroup.add(postB);
   // arm: pivoted at the post (tangential axis), running to the pin at the
   // cam ring's mid radius, tail onward to the rocker's finger azimuth
-  alarmPinArmB.position.set(-ALARM_PIVOT_R, 0, -0.505); // the band-floor slice
+  alarmPinArmB.position.set(-ALARM_PIVOT_R, 0, ALARM_ARMB_Z); // the band-floor slice, riding the chain
   const aimB = Math.atan2(ALARM_PINB_R * Math.sin(ALARM_PINB_AZ) - 0, ALARM_PINB_R * Math.cos(ALARM_PINB_AZ) - (-ALARM_PIVOT_R));
   alarmPinArmB.rotation.z = aimB;
   alarmTubeGroup.add(alarmPinArmB);
@@ -5043,9 +5053,10 @@ const alarmPinArmB = new THREE.Group();
 }
 // §34 band-fit asserts (the groove redesign's own):
 {
-  const camMax = -0.23 - ALARM_CAM_HMAX; // −0.33
-  if ((-0.48) - camMax > -CLEAR_MARGIN + 1e-9 && camMax - (-0.48) < CLEAR_MARGIN - 1e-9)
-    console.warn(`§34 cam band: arm top −0.48 within ${(camMax - (-0.48)).toFixed(2)} of the cam's max reach ${camMax.toFixed(2)} — need ${CLEAR_MARGIN}`);
+  const camMax = ALARM_WHEEL_BOT_B - ALARM_CAM_HMAX;
+  const armTop = ALARM_ARMB_Z + 0.05 / 2;
+  if (armTop - camMax > -CLEAR_MARGIN + 1e-9 && camMax - armTop < CLEAR_MARGIN - 1e-9)
+    console.warn(`§34 cam band: arm top ${armTop.toFixed(2)} within ${(camMax - armTop).toFixed(2)} of the cam's max reach ${camMax.toFixed(2)} — need ${CLEAR_MARGIN}`);
   if (ALARM_PINB_LIFT < ALARM_CAM_HMAX + 0.05)
     console.warn(`§34 pin lift ${ALARM_PINB_LIFT} does not clear the cam's max height ${ALARM_CAM_HMAX} by 0.05`);
 }
@@ -5296,7 +5307,7 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   })();
   const faceCam = new THREE.Mesh(camGeo, MATS.blueSteel);
   faceCam.name = 'alarmFaceCam';
-  faceCam.position.z = -0.23; // seated on the wheel's plate-side face; heights grow into pass 1's band
+  faceCam.position.z = ALARM_WHEEL_BOT_B; // seated on the wheel's plate-side face (derived — was the frozen −0.23); heights grow into pass 1's band
   faceCam.rotation.z = ALARM_NOSE_AZ; // notch (minimum height) phased to the pin's azimuth: seated ⇒ tube ≡ wheel
   alarmSetWheelGroup.add(faceCam);
   const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, 0.42, 3), MATS.blueSteel);
