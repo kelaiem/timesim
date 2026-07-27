@@ -768,8 +768,8 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     shape.closePath();
     const hole = new THREE.Path(); hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
     shape.holes.push(hole);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.22, bevelEnabled: false, curveSegments: 2 });
-    geo.translate(0, 0, -baseH / 2 - 0.22);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 2 }); // TODO 11 tail: the pusher's pawl indexes here — floor stock, growing downward where the call site's raised seat left a full margin
+    geo.translate(0, 0, -baseH / 2 - STOCK_MIN_U);
     g.add(new THREE.Mesh(geo, mat));
   }
   g.userData.columns = columns;
