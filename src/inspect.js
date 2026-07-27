@@ -2615,6 +2615,7 @@ export const STOCK_FLOORS = {
   pivot:   { mm: 0.07,  basis: 'real train pivots run 0.07-0.12 mm' },
   spring:  { mm: 0.03,  basis: 'real hairsprings run 0.02-0.04 mm; flat springs thicker' },
   marking: { mm: 0.005, basis: 'printed/inlaid dial indices are a 5-10 micron film — relief, not stock' },
+  hand:    { mm: 0.10,  basis: 'real blued-steel hands run 0.10-0.20 mm blade stock' },
 };
 // DEGENERATE floor — the unarguable tier, gating from day one: below this a
 // solid is not thin metal but broken geometry (invisible, z-fighting, a
@@ -2629,6 +2630,9 @@ export const DEGENERATE_STOCK_MM = 0.01;
 export const STOCK_KIND_BY_PART = {
   Hairspring: 'spring',
   Chain: 'pivot',            // link stock: pin-scale, not wheel-scale
+  // TODO 12 tranche four: the sub-dial hand units contain only hand stock.
+  'Small seconds': 'hand',
+  'Power reserve': 'hand',
 };
 export const STOCK_KIND_BY_MESH = {
   alarmIndexLine: 'marking',       // §34 registration line, cited above
@@ -2650,6 +2654,8 @@ export const STOCK_KIND_BY_MESH = {
   // TODO 12 tranche two:
   setupClickSpring: 'spring',  // the set-up click's return spring — blued arc, 0.09 mm
   jumperClickSpring: 'spring', // the minute jumper's return spring — same construction, 0.075 mm
+  mainspringRibbon: 'spring',  // the coil IS the mainspring
+  mainspringHook: 'spring',    // its hook tab, same stock
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none
