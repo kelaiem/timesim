@@ -6582,7 +6582,19 @@ const _linkAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 //   ~35:1 to the full 0.19 throw), then ONE lay shaft to the ring at
 //   az 146° — no knuckle. Shaft z −6.26: bottom −6.38 vs the keyless
 //   piece top −6.549 → 0.169.
-const ALARM_LINK_SHAFT_Z = -6.26;
+// §51 phase B re-solve: DIAL-RELATIVE, was the absolute −6.26. The shaft
+// serves the dial-frame selector tab, and the keyless piece its old floor was
+// solved against ("top −6.549") is itself dial-side — measured after the dial
+// move: that piece rode down 0.5 with the dial, and the remaining deep
+// keyless material sits ≥3 units off-chord in XY. So the whole corridor is
+// dial-frame in fact, and the constant now says so: the old offset preserved
+// exactly (−7 + 0.74 = −6.26), riding Z_DIAL. The rod lengthens and the
+// rod-end crank engagement ride along by their own derivations.
+// Offset 0.86, not the historic 0.74: measured at 0.74 the jaw's REST band
+// sat 0.06 below the tab (armed contact was fine at 0.085 overlap). +0.12 —
+// one crank section — closes the rest side; the rod-end foot derives from the
+// crank-top constants and rides along, its 0.039 seat unchanged.
+const ALARM_LINK_SHAFT_Z = Z_DIAL + 0.86;
 // AZ 210, not 212. Moved 2 deg toward 12 o'clock so the rod stands nearer the
 // dial's vertical centreline, which is where the linkage reads as one line
 // rather than as a strut off in the corner. 2 deg is the WHOLE budget, not a
@@ -6697,9 +6709,15 @@ const alarmLinkParts = {};
   const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, chordLen, 8), MATS.steel);
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
-  // cranks: rim end (up to the rod's foot), centre end (under the ring's tab)
-  for (const [xLocal, nm] of [[chordLen / 2, 'alarmLinkCrankRim'], [-chordLen / 2, 'alarmLinkCrankCentre']]) {
-    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, 0.45), MATS.steel);
+  // cranks: rim end (up to the rod's foot), centre end (under the ring's tab).
+  // §51 phase B: the INNER crank's jaw is LONGER than the rim's — it must
+  // cover the tab across the selector's whole 0.19 travel plus wrap, and
+  // measurement showed the old 0.45 never actually reached the tab at rest
+  // (a 0.03 gap PRE-dating the dial move: the link's §35 fix closed the
+  // rod-end contact and nobody measured this end). 0.45 + travel + wrap.
+  const INNER_JAW_LEN = 0.45 + ALARM_SEL_TRAVEL + 0.25;
+  for (const [xLocal, nm, len] of [[chordLen / 2, 'alarmLinkCrankRim', 0.45], [-chordLen / 2, 'alarmLinkCrankCentre', INNER_JAW_LEN]]) {
+    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, len), MATS.steel);
     crank.name = nm;
     crank.position.set(xLocal, 0, ALARM_LINK_CRANK_OFF); // radial offset on the shaft
     shaft.add(crank);
@@ -6736,9 +6754,14 @@ const alarmLinkParts = {};
   const _boreXY = { x: -22.517, y: -13.0 };   // MUST equal both tqHoles entries for this rod
   if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
     console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
-  // the shaft's bottom vs the keyless piece under the run (top measured −6.549):
-  if ((ALARM_LINK_SHAFT_Z - 0.12) - (-6.549) < CLEAR_MARGIN - 1e-9)
-    console.warn(`§35: shaft bottom ${(ALARM_LINK_SHAFT_Z - 0.12).toFixed(2)} inside the keyless piece's margin (−6.549)`);
+  // the shaft's bottom vs the keyless piece under the run. §35 measured that
+  // piece's top at −6.549 WITH THE DIAL AT −7 — and the piece is dial-side,
+  // so the measurement is really Z_DIAL + 0.451 and rides the dial (§51
+  // phase B: the stale absolute fired a false alarm the moment the dial
+  // moved; the piece itself had moved with it).
+  const _keylessTop = Z_DIAL + 0.451;
+  if ((ALARM_LINK_SHAFT_Z - 0.12) - _keylessTop < CLEAR_MARGIN - 1e-9)
+    console.warn(`§35: shaft bottom ${(ALARM_LINK_SHAFT_Z - 0.12).toFixed(2)} inside the keyless piece's margin (${_keylessTop.toFixed(3)})`);
   // the rod vs the minute wheel's SETTING-SWEPT disc: the wheel spins under
   // hand-set rotation, so its whole tip circle is occupied space (the
   // swept-volume principle — never thread a corridor between the spokes of

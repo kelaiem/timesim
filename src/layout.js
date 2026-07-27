@@ -147,7 +147,14 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // Dial plane (watch front, −z side). Part of the same depth budget: the
 // motion-works crossing (Z_SETTING), reserve train (Z_RSV) and cannon pinion
 // all pack between the plate's back face (−2) and this.
-export const Z_DIAL = -7;
+// §51 phase B: −7 → −7.5. The dial-side band grows half a unit to fund the
+// strata re-spends the plate gap could not (selector sheet, disc body and
+// fingers, the feeler slices, both springs — all measured z-thin). Assembly
+// depth grows ≈ 0.19 mm, inside §39's asserted 2.5–12 envelope; the §2
+// shared-budget position is recorded in the roadmap entry. Every
+// dial↔movement coupling is tripwired, and this edit is deliberately made
+// ALONE first so the tripwire list measures the real blast radius.
+export const Z_DIAL = -7.5;
 // KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of
 // the base plate as in a real watch (it used to ride atop the barrel on the
 // movement side). Bracketed by two binds and set mid-band:
