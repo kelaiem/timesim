@@ -4520,3 +4520,27 @@ so shortening the arc changes the *character* and not just the pitch.
 What remains of TODO 17: the hammer strikes **in-plane**, and a curved
 bar's in-plane modes sit somewhat above these straight-bar figures, so a
 curvature term would sharpen all of the above.
+
+### §54 postscript — the shaft thickening was reverted; CI caught it
+
+The alarm-link section fix shipped for the **beak tail** and was **reverted
+for the shaft**. Taking it to `SLENDER_TARGET` (r 0.12 → 0.447) drove it
+into the minute jumper: `Alarm link ⇄ Minute jumper`, FORBIDDEN across the
+whole beat axis, **overlap 0.312** against a radius growth of 0.327.
+
+The instructive part is why the local evidence looked fine. An exhaustive
+per-vertex scan put the nearest non-contact neighbour at **0.97** and the
+jumper at **2.86** — both correct, both beside the point, because the
+minute jumper is a **mover** and the fat shaft sits in the arc its blade
+sweeps. A single-pose probe cannot see a swept intrusion no matter how
+finely it samples. That is the whole argument for `sweptOverlap` being a
+gate, and §52's CI is what enforced it here.
+
+Kept: the beak tail blade (λ 27, 10.2 → 305 N/m) and the inverted-lever fix,
+both movement-side. Reverted: shaft, crank section and offset, bush bore,
+hanger. `SLENDER_WAIVERS['Alarm link']` restored — the check goes on
+reporting λ 100.5, which is the honest state.
+
+The shaft wants a **stepped arbor** — turned down through the jumper's
+sweep, full section in the span and the overhang — which recovers most of
+the stiffness while respecting the corridor. Filed in `TODO.md` 16.

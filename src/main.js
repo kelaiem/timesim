@@ -7242,13 +7242,30 @@ const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
 // before the parts that must clear it.
 const ALARM_LINK_CHORD_LEN = Math.hypot(
   ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y);
-const ALARM_LINK_SHAFT_R = ALARM_LINK_CHORD_LEN / SLENDER_TARGET / 2;   // 0.447
-const ALARM_LINK_CRANK_T = STOCK_MIN_U;                  // arm section — §50 floor (was 0.12 u = 0.045 mm)
+// THE CORRIDOR IS BINDING, NOT THE SLENDERNESS BUDGET. Sizing this from
+// SLENDER_TARGET gives r 0.447, and CI rejected it: `Alarm link ⇄ Minute
+// jumper`, FORBIDDEN across the whole beat axis, overlap 0.312 — almost
+// exactly the 0.327 the radius grew by. The corridor has no room at all.
+//
+// Worth recording HOW that was missed, because the static evidence looked
+// clean and was: an exhaustive vertex scan puts the nearest non-contact
+// neighbour 0.97 away, and the jumper 2.86. Both true, and both irrelevant —
+// the minute jumper is a MOVER, and the fattened shaft sits in the arc its
+// blade sweeps. Only a swept check can see that, which is exactly why
+// sweptOverlap is a gate and a single-pose probe is not.
+//
+// So the shaft stays at its original section and §54 goes on reporting it at
+// λ 100.5. That is the honest outcome: the check is right, the part is too
+// slender, and the fix is not "make it thicker here" — it needs a stepped
+// arbor (turned down through the jumper's sweep, full section in the free
+// span and the drive overhang) or the corridor re-planned. TODO 16 carries it.
+const ALARM_LINK_SHAFT_R = 0.12;
+const ALARM_LINK_CRANK_T = 0.12;                         // arm section — reverted with the shaft (TODO 12 debt)
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
 // now be buried inside a shaft of radius 0.402 — which is exactly why this
 // became derived rather than re-tuned. Crank and shaft are one rigid part, so
 // they touch: no clearance margin between an arm and its own arbor.
-const ALARM_LINK_CRANK_OFF = ALARM_LINK_SHAFT_R + ALARM_LINK_CRANK_T / 2;
+const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
 // Top face of the arm, measured from the shaft axis.
 const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
 // Where the rod's foot is BUILT. The tick lifts it by one ALARM_SEL_TRAVEL at
@@ -7423,10 +7440,10 @@ const alarmLinkParts = {};
     const hx = ALARM_LINK_INNER_XY.x + u.x * t, hy = ALARM_LINK_INNER_XY.y + u.y * t;
     // §54: the bore follows the shaft, with a running clearance; the wall is
     // stock-floor so the bush is itself a real part.
-    const bush = new THREE.Mesh(ringGeo(ALARM_LINK_SHAFT_R + 0.02, ALARM_LINK_SHAFT_R + 0.02 + STOCK_MIN_U, 0.3), MATS.nickel);
+    const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);   // reverted with the shaft: its 0.45-radius probe is what the corridor was cleared at
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, STOCK_MIN_U, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // §50: was 0.2 u = 0.075 mm, under the floor
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // reverted with the shaft — it runs the same congested dial-side column
     hanger.position.set(hx, hy, ((-2) + ALARM_LINK_SHAFT_Z) / 2 + 0.15);
     alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);

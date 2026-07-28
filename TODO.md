@@ -1095,7 +1095,7 @@ searches for less than the thing it verifies, arrived at from a new
 direction: not a too-small search *range* this time, but a single sample
 of a quantity that only reveals itself in motion.
 
-## 16. MOSTLY CLOSED — the alarm link was thickness-legal and structurally impossible
+## 16. PART CLOSED — the alarm link was thickness-legal and structurally impossible
 
 Reported by eye: the horizontal lay shaft looks too thin. It is, and
 measuring it showed the check that should have caught it cannot see this
@@ -1293,3 +1293,34 @@ modes sit above the straight-bar figures used here — `gongModes()` should
 carry the curvature term. And the DESIGN question is now exposed rather
 than answered: the 90° default still rings low for an alarm; whether the
 default arc should move to ~45° is a decision, not a bug.
+
+### CORRECTION — the shaft thickening was REVERTED; CI rejected it
+
+The section fix above landed for the beak tail and was **reverted for the
+shaft**. Thickening it to `SLENDER_TARGET` (r 0.12 → 0.447) put it into the
+minute jumper: **`Alarm link ⇄ Minute jumper`, FORBIDDEN across the whole
+beat axis, overlap 0.312** — almost exactly the 0.327 the radius grew by.
+The corridor has no room at all.
+
+**Why the local evidence looked clean, and was.** An exhaustive vertex scan
+puts the nearest non-contact neighbour **0.97** away and the jumper **2.86**.
+Both true; both irrelevant. The minute jumper is a **MOVER**, and the
+fattened shaft sits in the arc its blade sweeps. Only a swept check can see
+that — which is precisely why `sweptOverlap` is a gate and a single-pose
+probe is not. (An AABB probe was tried first and was worse than useless: the
+shaft is a long diagonal member whose box overlaps half the movement.)
+
+**Still standing from that work:** the beak tail is a 0.12 × 0.372 mm blade
+at λ 27 (was 0.12 mm square at λ 83.7, 10.2 → 305 N/m), and the inverted
+lever is fixed. Those are movement-side and unaffected.
+
+**Reverted:** shaft r → 0.12, crank section and offset, bush bore, hanger
+section. `SLENDER_WAIVERS['Alarm link']` is restored — accepted debt, not an
+oversight.
+
+**What the shaft actually needs** is a **stepped arbor**: turned down through
+the jumper's sweep, full section in the free span and the drive-end
+overhang. Bending stiffness is set by the span, so that recovers most of the
+4075 N/m while keeping the thin sections where the corridor demands them.
+That is a real change to a part with a §35-corridor history, and it wants
+its own pass rather than being bolted onto this one.
