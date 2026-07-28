@@ -1324,3 +1324,39 @@ overhang. Bending stiffness is set by the span, so that recovers most of the
 4075 N/m while keeping the thin sections where the corridor demands them.
 That is a real change to a part with a §35-corridor history, and it wants
 its own pass rather than being bolted onto this one.
+
+### Why z cannot be stolen: the shaft threads the ring it drives
+
+Proposed: give the shaft more z room instead of reverting. Measured, and
+it does not work — but the reason is worth having, because it also
+retires the wrong diagnosis above.
+
+**The minute jumper's tail pin is not the obstruction.** Swept across
+`crownPullT` and the whole setting path, it never comes closer than
+**2.886** to the shaft axis. The earlier attribution came from an AABB
+test on a long diagonal member, whose box spans half the movement — the
+third time that instrument misled this work.
+
+**The obstruction is the selector ring**, and it is symmetric:
+
+| direction from the shaft plane | nearest thing | gap |
+|---|---|---|
+| above | `Dial/alarmSelRing` | **0.16** |
+| below | `Dial/alarmSelRing` | **0.16** |
+
+The shaft passes through the ring's own plane — the ring it exists to
+drive — with 0.16 to the faces either side and a 0.12 radius, so about
+0.04 of real gap. **Stealing z buys nothing**: move the shaft up and it
+hits the ring's upper face, down and it hits the lower. There is no
+direction to steal from, because the clearance is not a stack-up, it is a
+slot.
+
+So the fat-shaft attempt failed at the ring, not at the jumper, and the
+overlap CI reported was the enlarged **bush** dropping through it.
+
+**This settles the shape of the fix.** A stepped arbor is not one option
+among several, it is the only one: turned down to something near the
+present 0.12 where it threads the ring, full section in the free span and
+the drive-end overhang, where the exhaustive scan shows 0.97–8.3 of room.
+Bending stiffness is set by the span, so most of the 4075 N/m survives.
+The neck length is bounded by the ring's own thickness plus margin.
