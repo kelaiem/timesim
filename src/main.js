@@ -7735,6 +7735,40 @@ style.textContent = `
 }
 #clock-ui .guided-btns { display: flex; gap: 5px; }
 #clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
+/* §57 — the control HUD. Lower RIGHT: the bottom-left corner is spoken for
+   (§21's comparison diagram, §28's update toast) and the caption owns the
+   bottom centre, so this is the one free corner. touch-action:none because
+   every gesture in it is a drag — without it a phone scrolls the page instead
+   of turning the crown. */
+#ctl-hud {
+  position: fixed; right: 16px; bottom: 16px; z-index: 7; display: none;
+  width: 150px; height: 150px; padding: 6px; touch-action: none;
+  background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+}
+#ctl-hud svg { width: 100%; height: 100%; display: block; }
+#ctl-hud .hud-rim { fill: none; stroke: rgba(255,255,255,0.26); stroke-width: 1.4; }
+#ctl-hud .hud-dial { fill: rgba(255,255,255,0.03); stroke: rgba(255,255,255,0.12); stroke-width: 1; stroke-dasharray: 3 5; }
+#ctl-hud .hud-ball { fill: rgba(255,255,255,0.05); stroke: rgba(255,255,255,0.16); stroke-width: 1; }
+#ctl-hud .hud-stem { stroke: rgba(255,255,255,0.34); stroke-width: 2.4; }
+#ctl-hud .hud-head { fill: rgba(255,255,255,0.10); stroke: rgba(255,255,255,0.48); stroke-width: 1.4; }
+#ctl-hud .hud-knurl { stroke: rgba(255,255,255,0.30); stroke-width: 0.9; }
+/* The direction marks are a WHISPER. They exist to say which way a gesture
+   goes, and a HUD that shouts its arrows louder than the controls they point
+   at is an instruction sheet, not an instrument: thin, dim, and dimmer still
+   for the direction the current state has already used up. */
+#ctl-hud .hud-hint { fill: none; stroke: rgba(255,255,255,0.20); stroke-width: 1;
+  stroke-linecap: round; stroke-linejoin: round; transition: opacity 0.2s; }
+#ctl-hud .hud-hint.dim { opacity: 0.16; }
+#ctl-hud .hud-hit { fill: transparent; cursor: grab; }
+#ctl-hud .hud-hit:active { cursor: grabbing; }
+/* State, shown in the palette the rest of the UI already uses for it: the
+   pulled crown wears #btn-crown's red, an armed alarm wears the torque bars'
+   green. */
+#ctl-hud.crown-out .hud-g-crown .hud-head { stroke: #e07a55; fill: rgba(224,122,85,0.18); }
+#ctl-hud.alarm-crown-out .hud-g-alarm .hud-head { stroke: #e07a55; fill: rgba(224,122,85,0.18); }
+#ctl-hud.alarm-on .hud-g-pusher .hud-head { stroke: #6fc47e; fill: rgba(111,196,126,0.22); }
 /* Guided-demo / tour caption (BUILT §5, §17) — the scripted user's narration.
    A single centred banner along the bottom, above the movement, that appears
    only while a script runs and never intercepts pointer input (so any click
@@ -7891,6 +7925,10 @@ panel.innerHTML = `
       <div class="row">
         <span class="label-small">Labels</span>
         <button id="btn-labels">Off</button>
+      </div>
+      <div class="row">
+        <span class="label-small">Control HUD</span>
+        <button id="btn-hud">Off</button>
       </div>
       <div class="row">
         <span class="label-small">Plate X-ray</span>
@@ -9435,6 +9473,291 @@ document.getElementById('btn-alarm-crown').addEventListener('click', toggleAlarm
 alarmCrownSyncLabel(); // a restored save may boot with the crown already out — the label follows the state, not the default
 if (restoredAlarmOn) setAlarm(true);
 
+// ---------------------------------------------------------------------------
+// §57 — THE CONTROL HUD. The controls, reachable without hunting for them.
+//
+// Both crowns and the pusher are already directly interactive in the scene
+// (§24, §43): the real parts take a real drag. What that costs is a camera
+// hunt. The crown is a 5.4 u knob on a 32 mm movement, so at any framing that
+// shows the whole watch it is a few pixels wide, and at any framing where it
+// is comfortable to grab, the dial is off screen. This is a SECOND way in,
+// not a replacement — it calls the very same entry points the 3D handlers do
+// (toggleCrown, toggleAlarmCrown, setAlarm, and the same crownRotation /
+// alarmCrownRotation the drags write), so there is one set of state and no
+// second implementation to drift.
+//
+// It is a SCHEMATIC, not a projection: the ring does NOT track the camera. It
+// is a plan of the movement seen from the dial side, the way a service
+// diagram is, and it is honest about the one thing such a plan must be —
+// where each control actually sits. Every marker's angle and radius is
+// DERIVED from that part's own world position, and the pull/press travels are
+// the real CROWN_PULL_DIST / ALARM_PUSH_TRAVEL scaled by the same plate
+// radius, so a control that moves in the movement moves here too.
+//
+// Only the controls are drawn. A faithful outline of the movement would be a
+// diagram of the watch, and the one thing this corner must not become is a
+// second, worse view of the thing already filling the screen.
+const HUD_VIEW = 200;                       // viewBox span (−100…100)
+const HUD_RIM = 58;                         // the plate rim, in viewBox units
+const HUD_U = HUD_RIM / plateR;             // model units → viewBox units, for everything below
+const HUD_PULL = CROWN_PULL_DIST * HUD_U;   // a crown's stem slide, to scale
+const HUD_PRESS = ALARM_PUSH_TRAVEL * HUD_U;
+const HUD_CLASSIFY = 5;   // viewBox units of travel before a drag is called a slide or a turn
+const HUD_ACT = 11;       // …and of RADIAL travel that counts as a pull, a push or a press
+const HUD_TURNS_PER_LAP = 2; // dragging a crown's head once around the ring turns it twice
+
+// Angle and radius from the PART, at build (the movement is unspun here, so
+// what comes back is movement-local — which is the frame the HUD's own
+// rotation is applied to below).
+const _hudAt = new THREE.Vector3();
+function hudPlace(obj) {
+  movement.updateMatrixWorld(true);
+  obj.getWorldPosition(_hudAt);
+  return { az: Math.atan2(_hudAt.y, _hudAt.x), r: Math.hypot(_hudAt.x, _hudAt.y) * HUD_U };
+}
+const HUD_CTLS = [
+  { id: 'crown',  kind: 'crown',  ...hudPlace(crown) },
+  { id: 'alarm',  kind: 'crown',  ...hudPlace(alarmCrownKnob) },
+  { id: 'pusher', kind: 'pusher', ...hudPlace(alarmPusherGroup.getObjectByName('alarmPusherCap')) },
+];
+// ERGONOMIC SPREAD — the one place this map is deliberately not to scale.
+// The pusher sits 16° from the winding crown on the real movement, which is
+// fine for a fingertip on a 32 mm case and impossible at 150 px: their heads
+// are ~7° wide each at this radius and their hint marks reach ±18°, so drawn
+// true they overlap and every gesture becomes a coin toss between hacking the
+// watch and firing the alarm. The pair is pushed apart, symmetrically about
+// its own midpoint, to the angle a thumb can separate. Only this pair moves,
+// only in angle, and the ORDER around the ring is preserved — the map still
+// answers "which side, and which of the two is nearer 12" correctly, which is
+// what a control pad is read for.
+const HUD_MIN_SEP = 46 * DEG2RAD;
+{
+  const a = HUD_CTLS.find((c) => c.id === 'crown'), b = HUD_CTLS.find((c) => c.id === 'pusher');
+  let d = b.az - a.az;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  const grow = (HUD_MIN_SEP - Math.abs(d)) / 2;
+  if (grow > 0) { const s = Math.sign(d) || 1; a.az -= s * grow; b.az += s * grow; }
+}
+const HUD_BY_ID = new Map(HUD_CTLS.map((c) => [c.id, c]));
+
+// Each control is authored along +x — head at (r, 0), outward = +x — and then
+// swung to its own azimuth, so "radial" and "tangential" mean the same thing
+// in every marker's own frame and the hint arrows cannot point the wrong way.
+//
+// THE PLAN IS DRAWN FROM THE DIAL SIDE, which is where the viewer is: the dial
+// sits at z −7.5 and every default framing looks back along −z. Seen from
+// there, world +x is on the LEFT of the screen and SVG's y runs down, so a
+// model azimuth lands at az + 180° in the HUD. Getting this wrong is not
+// subtle and it was wrong first: with a plain −az the winding crown drew at
+// 8 o'clock while the real one sat at 2, which is worse than no map at all.
+// The conversion lives here and nowhere else.
+const HUD_AZ_OFFSET = 180;
+const hudChev = (x, dir) => `M ${x - 3 * dir} -3.2 L ${x} 0 L ${x - 3 * dir} 3.2`;
+function hudCtlMarkup(c) {
+  // Both heads are SIDE PROFILES, drawn as the part is shaped: the crown a
+  // knurled barrel on its stem, the pusher a PUCK — a plain flat cylinder
+  // seen from the side, squat where the crown is deep, with the collar its
+  // guide boss makes at the case wall. §43 sized that head in millimetres
+  // precisely because it is a thing a finger presses, and a circle drawn in
+  // plan said "button on a panel" where the part is a pushbutton on a rim.
+  const head = c.kind === 'crown'
+    ? `<rect class="hud-head" x="-8" y="-7" width="16" height="14" rx="3"/>
+       <line class="hud-knurl" x1="-6" y1="-3.4" x2="6" y2="-3.4"/>
+       <line class="hud-knurl" x1="-6" y1="0" x2="6" y2="0"/>
+       <line class="hud-knurl" x1="-6" y1="3.4" x2="6" y2="3.4"/>`
+    : `<rect class="hud-head" x="-4.6" y="-8" width="9.2" height="16" rx="1.6"/>
+       <line class="hud-knurl" x1="-4.6" y1="-5.6" x2="-4.6" y2="5.6"/>`;
+  // Turn hints flank a crown's head tangentially; a pusher has no turn, so it
+  // gets the press chevron alone. The two RADIAL chevrons are always both
+  // drawn and the unavailable one is dimmed by state (below) — a crown that
+  // is already out cannot be pulled further, and saying so is the affordance.
+  const turn = c.kind === 'crown'
+    ? `<path class="hud-hint" d="M ${c.r - 3.4} -14.5 L ${c.r} -18 L ${c.r + 3.4} -14.5"/>
+       <path class="hud-hint" d="M ${c.r - 3.4} 14.5 L ${c.r} 18 L ${c.r + 3.4} 14.5"/>`
+    : '';
+  return `<g class="hud-g hud-g-${c.id}" transform="rotate(${(c.az * 180 / Math.PI + HUD_AZ_OFFSET).toFixed(2)})">
+    <line class="hud-stem" x1="${(HUD_RIM - 1).toFixed(1)}" y1="0" x2="${(c.r - 5).toFixed(1)}" y2="0"/>
+    <g class="hud-head-g" transform="translate(${c.r.toFixed(1)},0)">${head}</g>
+    ${c.kind === 'crown' ? `<path class="hud-hint hud-out" d="${hudChev(c.r + 14, 1)}"/>` : ''}
+    <path class="hud-hint hud-in" d="${hudChev(c.r - 14, -1)}"/>
+    ${turn}
+    <circle class="hud-hit" data-ctl="${c.id}" cx="${c.r.toFixed(1)}" cy="0" r="18"/>
+  </g>`;
+}
+
+const hudEl = document.createElement('div');
+hudEl.id = 'ctl-hud';
+hudEl.innerHTML = `<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} ${HUD_VIEW}">
+  <g>
+    <circle class="hud-rim" cx="0" cy="0" r="${HUD_RIM}"/>
+    <circle class="hud-dial" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
+    <!-- The trackball, said as a trackball: a SPHERE carrying a cross of two
+         double-ended arrows ON ITS SURFACE. Both strokes are drawn as arcs
+         bowing off the centre line, which is what a great circle does when
+         you see it on a ball — a flat cross would be a d-pad, and a d-pad
+         promises four directions where this takes any of them. Heads at both
+         ends of each: the ball turns either way. -->
+    <circle class="hud-ball" cx="0" cy="0" r="22"/>
+    <path class="hud-hint" d="M -20 0 Q 0 10 20 0"/>
+    <path class="hud-hint" d="M 17.36 4.12 L 20 0 L 15.12 -0.36"/>
+    <path class="hud-hint" d="M -17.36 4.12 L -20 0 L -15.12 -0.36"/>
+    <path class="hud-hint" d="M 0 -20 Q -10 0 0 20"/>
+    <path class="hud-hint" d="M -4.12 17.36 L 0 20 L 0.36 15.12"/>
+    <path class="hud-hint" d="M -4.12 -17.36 L 0 -20 L 0.36 -15.12"/>
+    ${HUD_CTLS.map(hudCtlMarkup).join('')}
+    <circle class="hud-hit" data-ctl="spin" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
+  </g>
+</svg>`;
+document.body.appendChild(hudEl);
+const hudSvg = hudEl.querySelector('svg');
+const hudHeadG = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-head-g`)]));
+const hudOutHint = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-out`)]));
+const hudInHint = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-in`)]));
+
+// THE TRACKBALL. The dial face is an arcball: a drag across the middle tumbles
+// the watch, a drag around the edge rolls it on its own axis, which is what a
+// ball under a fingertip does and what "turn it over and look" means.
+//
+// IT MOVES THE CAMERA, NOT THE MODEL, and that is the whole design decision.
+// Rotating the movement group was the first build and it is the one that
+// lies: §49's ruler stands in world space and reads the plate's Y extents and
+// the assembly's Z depth off BUILT CONSTANTS, so the moment the watch tilts,
+// its leaders point at where the rim used to be and the overlay states a
+// measurement that is no longer true. Orbiting the camera leaves every part,
+// every world-frame overlay and every camera script exactly as correct as
+// they were — the viewer moves, which is the honest description of what is
+// happening anyway.
+//
+// The pole clamp is inherited rather than reimplemented: OrbitControls keeps
+// its polar angle inside (0, π) about world +Y, so a tumble that would cross
+// the pole is REFUSED here instead of being applied and then snapped back by
+// the controls on the next update. Roll is unbounded, as it must be.
+const HUD_BALL_R = HUD_RIM * 0.72;   // the dial disc — the ball's silhouette
+const _hudUp = new THREE.Vector3(0, 1, 0); // OrbitControls' fixed orbit axis — the one its polar clamp is about
+const _hudQ = new THREE.Quaternion(), _hudQCam = new THREE.Quaternion();
+const _hudV0 = new THREE.Vector3(), _hudV1 = new THREE.Vector3(), _hudOff = new THREE.Vector3();
+// HUD point → a point on the virtual ball, in CAMERA space (screen space, y
+// up): inside the disc it lifts off the sphere, outside it stays on the rim,
+// which is what makes an edge drag a pure roll.
+function hudBall(p, out) {
+  const x = p.x / HUD_BALL_R, y = -p.y / HUD_BALL_R;
+  const d2 = x * x + y * y;
+  if (d2 <= 1) return out.set(x, y, Math.sqrt(1 - d2));
+  const s = 1 / Math.sqrt(d2);
+  return out.set(x * s, y * s, 0);
+}
+function hudTrackball(from, to) {
+  _hudQCam.copy(camera.quaternion);
+  _hudQ.setFromUnitVectors(hudBall(from, _hudV0), hudBall(to, _hudV1));       // camera-space rotation of the ball
+  _hudQ.premultiply(_hudQCam).multiply(_hudQCam.clone().invert());            // …expressed in world space
+  _hudQ.invert();                                                             // the viewer goes the other way
+  _hudOff.copy(camera.position).sub(controls.target).applyQuaternion(_hudQ);
+  const phi = _hudOff.angleTo(_hudUp);
+  if (phi < 1e-3 || phi > Math.PI - 1e-3) return;  // OrbitControls would clamp this back — refuse it instead
+  camera.position.copy(controls.target).add(_hudOff);
+  camera.up.applyQuaternion(_hudQ).normalize();
+  camera.lookAt(controls.target);
+}
+let hudOn = false;
+
+function hudUpdate() {
+  if (!hudOn) return;
+  // The heads ride the ACTUAL animated positions (crownPullT / alarmCrownPullT
+  // / alarmPusherT), not the raw targets — the same distinction tick() draws
+  // for the parts themselves, so the HUD eases with the watch instead of
+  // snapping ahead of it.
+  const at = (id, d) => hudHeadG[id].setAttribute('transform', `translate(${(HUD_BY_ID.get(id).r + d).toFixed(2)},0)`);
+  at('crown', crownPullT * HUD_PULL);
+  at('alarm', alarmCrownPullT * HUD_PULL);
+  at('pusher', -alarmPusherT * HUD_PRESS);
+  hudOutHint.crown.classList.toggle('dim', crownOut);
+  hudInHint.crown.classList.toggle('dim', !crownOut);
+  hudOutHint.alarm.classList.toggle('dim', alarmCrownOut);
+  hudInHint.alarm.classList.toggle('dim', !alarmCrownOut);
+  hudEl.classList.toggle('crown-out', crownOut);
+  hudEl.classList.toggle('alarm-crown-out', alarmCrownOut);
+  hudEl.classList.toggle('alarm-on', alarmOn);
+}
+
+function setHud(on) {
+  hudOn = on;
+  hudEl.style.display = on ? 'block' : 'none';
+  const b = document.getElementById('btn-hud');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+  hudUpdate();
+}
+document.getElementById('btn-hud').addEventListener('click', () => setHud(!hudOn));
+
+// --- the gestures ---------------------------------------------------------
+// A drag is classified once, on the first HUD_CLASSIFY units of travel, into
+// the two things a crown does: SLIDE (radially — pull out, push in) or TURN
+// (tangentially — wind or set). Classifying once and holding it is what makes
+// a turn survive the wobble of a real finger; re-deciding per frame had a
+// long turn flip into a pull halfway through.
+let hudGrab = null;
+function hudLocal(e) {
+  const r = hudSvg.getBoundingClientRect();
+  const k = HUD_VIEW / r.width;
+  return { x: (e.clientX - r.left - r.width / 2) * k, y: (e.clientY - r.top - r.height / 2) * k };
+}
+// Pull/push/press. Each one hands off to the SAME function the panel button
+// and the 3D part call — a swipe is a third caller, not a third mechanism.
+function hudSlide(id, outward) {
+  if (id === 'crown') { if (outward !== crownOut) toggleCrown(); return; }
+  if (id === 'alarm') { if (outward !== alarmCrownOut) toggleAlarmCrown(); return; }
+  if (outward) return;             // a pusher only goes IN
+  alarmPusherHeld = true;          // §43: the head is down while the finger is
+  setAlarm(!alarmOn);
+}
+hudSvg.addEventListener('pointerdown', (e) => {
+  const hit = e.target.closest('[data-ctl]');
+  if (!hit) return;
+  const id = hit.dataset.ctl;
+  const p = hudLocal(e);
+  hudSvg.setPointerCapture(e.pointerId);
+  if (id === 'spin') { hudGrab = { id, p }; return; }
+  syncCancel();                    // a hand on a control outranks the sync script, exactly as in 3D
+  const c = HUD_BY_ID.get(id);
+  const th = c.az + HUD_AZ_OFFSET * DEG2RAD;   // where this marker points in the HUD's own frame
+  hudGrab = { id, c, ux: Math.cos(th), uy: Math.sin(th), x0: p.x, y0: p.y, mode: null, fired: false,
+              rot0: id === 'crown' ? crownRotation : alarmCrownRotation };
+});
+hudSvg.addEventListener('pointermove', (e) => {
+  if (!hudGrab) return;
+  const p = hudLocal(e);
+  if (hudGrab.id === 'spin') {
+    hudTrackball(hudGrab.p, p);    // incremental: each move rotates from the LAST sample, so the ball has no home
+    hudGrab.p = p;
+    return;
+  }
+  const dx = p.x - hudGrab.x0, dy = p.y - hudGrab.y0;
+  const radial = dx * hudGrab.ux + dy * hudGrab.uy;      // + = outward, away from the movement
+  const tang = -dx * hudGrab.uy + dy * hudGrab.ux;       // + = clockwise on screen
+  if (!hudGrab.mode && Math.hypot(dx, dy) > HUD_CLASSIFY)
+    hudGrab.mode = Math.abs(radial) > Math.abs(tang) ? 'slide' : 'turn';
+  if (hudGrab.mode === 'slide') {
+    if (!hudGrab.fired && Math.abs(radial) > HUD_ACT) { hudSlide(hudGrab.id, radial > 0); hudGrab.fired = true; }
+  } else if (hudGrab.mode === 'turn') {
+    const turned = hudGrab.rot0 + (tang / hudGrab.c.r) * HUD_TURNS_PER_LAP;
+    if (hudGrab.id === 'crown') crownRotation = turned; else alarmCrownRotation = turned;
+  }
+});
+for (const ev of ['pointerup', 'pointercancel']) {
+  hudSvg.addEventListener(ev, (e) => {
+    if (!hudGrab) return;
+    // A tap on the PUSHER presses it — a button that only answers to a swipe
+    // would be a worse control than the real one, which answers to a poke.
+    // The crowns stay swipe-only: a stray tap that hacked the watch would be
+    // a state change nobody asked for.
+    if (hudGrab.id === 'pusher' && !hudGrab.mode && !hudGrab.fired) hudSlide('pusher', false);
+    alarmPusherHeld = false;
+    hudGrab = null;
+    if (hudSvg.hasPointerCapture(e.pointerId)) hudSvg.releasePointerCapture(e.pointerId);
+  });
+}
+
 // --- POWER FLOW view -------------------------------------------------------
 // Tints the LIVE torque path so the maintaining sandwich's job is visible:
 // while WINDING, the input side lights amber (energy flowing INTO the
@@ -10416,6 +10739,10 @@ function applyDeepLink() {
   // nothing above is wasted work, just a base state the script doesn't own.
   if (params.has('tour')) { askTour(() => scriptStart(TOUR_STEPS, document.getElementById('btn-tour'))); return; }
   if (params.has('demo')) { scriptStart(DEMO_STEPS, document.getElementById('btn-demo')); return; }
+  // §57 — `?hud=1`. Opens the control HUD on arrival, for a link that wants
+  // the watch driveable the moment it loads (a phone, where hunting a 5 u
+  // crown by orbit is the least pleasant thing this app asks of anyone).
+  if (params.has('hud')) setHud(params.get('hud') !== '0');
 }
 applyDeepLink();
 
@@ -11662,6 +11989,7 @@ function advanceFrame(realDt) {
 
   controls.update();
   updateLabels();
+  hudUpdate();        // §57: the HUD's heads follow the eased stem positions, so they update with the frame
   updateScaleRef();   // §21: px/mm changes with every camera move
   updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale

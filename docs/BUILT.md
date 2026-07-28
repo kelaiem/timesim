@@ -739,7 +739,7 @@ support 0 failures, clearances 0 violations, full
 string onto the **same** two surfaces the Guided buttons drive: the script
 engine (`?tour` / `?demo`) and the raw view state its steps set (`?preset`,
 `?scale`, `?xray`, `?explode`, `?labels`, `?powerflow`, `?sound`, `?unit`,
-`?crown`, `?reserve`). No new code path — the state params go through the very
+`?crown`, `?reserve`, `?hud`). No new code path — the state params go through the very
 setters `scriptEnterStep` calls, so a link like `?preset=Escapement&scale=0.05`
 reaches the pose a script step would and then just sits there as ordinary
 interactive state. `?demo=1` starts the matching script exactly as its button
@@ -4062,3 +4062,93 @@ parts are accounted for — 12 two-way driven, 6 restored by a declared
 element. Boot silent; focused battery over the three followers plus
 Dial, fusee and plate: support 0, graph 0, penetration none over budget,
 clearances 0.
+
+## §57. The control HUD — the watch's own controls, in the corner
+
+Both crowns and the pusher have been directly interactive in the scene
+since §24 and §43: the real parts take a real drag. What that costs is a
+camera hunt. The crown is a 5.4 u knob on a 32 mm movement, so at any
+framing that shows the whole watch it is a few pixels wide, and at any
+framing where it is comfortable to grab, the dial is off screen. §57 adds
+a **second way in**, not a replacement — a 150 px pad in the lower-right
+corner (the one free corner: §21's comparison diagram and §28's toast own
+the bottom-left, the caption owns the centre) showing the movement's ring
+and **nothing but its three controls**.
+
+Every gesture calls the SAME entry point the panel button and the 3D part
+call — `toggleCrown`, `toggleAlarmCrown`, `setAlarm`, and the same
+`crownRotation` / `alarmCrownRotation` the drags write. There is one set
+of state and no second implementation to drift out of step with the first.
+
+### A plan, not a projection — and it is drawn from the dial side
+
+The ring does not track the camera. It is a plan of the movement the way a
+service diagram is, and it is honest about the one thing such a plan must
+be: **where each control sits**. Every marker's angle and radius is derived
+from that part's own world position, and the pull and press travels are
+the real `CROWN_PULL_DIST` / `ALARM_PUSH_TRAVEL` scaled by the same plate
+radius, so a control that moves in the movement moves here too.
+
+Which side it is drawn from is not a detail. The dial sits at z −7.5 and
+every default framing looks back along −z, so world +x is on the **left**
+of the screen; with SVG's y running down, a model azimuth lands at
+az + 180°. The first build used a plain −az and drew the winding crown at
+8 o'clock while the real one sat at 2 — a map that is mirrored is worse
+than no map. The conversion is one constant, `HUD_AZ_OFFSET`, applied in
+one place.
+
+**The one deliberate untruth is angular spacing.** The pusher sits 16°
+from the winding crown, which is fine for a fingertip on a real case and
+impossible at 150 px: the heads are ~7° wide each and their hint marks
+reach ±18°, so drawn true they overlap and every gesture becomes a coin
+toss between hacking the watch and firing the alarm. That pair is pushed
+apart to 46° about its own midpoint. Only that pair, only in angle, and
+the order around the ring is preserved — a control pad is read for "which
+side, and which of the two is nearer 12", and both survive.
+
+Both heads are **side profiles**, drawn as the parts are shaped: the crown
+a knurled barrel on its stem, the pusher a squat puck with the collar its
+guide boss makes. §43 sized that head in millimetres precisely because it
+is a thing a finger presses; a circle drawn in plan said "button on a
+panel" where the part is a pushbutton on a rim.
+
+### The gestures
+
+A drag is classified once, on its first few units of travel, into the two
+things a crown does — **slide** (radially: pull out, push in) or **turn**
+(tangentially: wind or set). Classifying once and holding it is what makes
+a turn survive the wobble of a real finger; re-deciding per frame had a
+long turn flip into a pull halfway through. The pusher takes an inward
+swipe or a plain tap; the crowns stay swipe-only, because a stray tap that
+hacked the watch is a state change nobody asked for. Direction marks are
+deliberately a whisper — a HUD that shouts its arrows louder than the
+controls they point at is an instruction sheet, not an instrument — and
+the direction the current state has already used up is dimmed further.
+
+### The trackball moves the CAMERA, not the model
+
+The dial face carries the affordance as a **sphere with a cross of two
+double-ended arrows on its surface** — both strokes bowed off the centre
+line, because that is what a great circle does when you see it on a ball.
+A flat cross would read as a d-pad, and a d-pad promises four directions
+where this takes any of them; heads at both ends of each say the ball
+turns either way.
+
+The face itself is an arcball: a drag across the middle tumbles the watch, a
+drag around the edge rolls it on its own axis. Rotating the movement group
+was the first build and it is the one that lies — §49's ruler stands in
+world space and reads the plate's Y extents and the assembly's Z depth off
+built constants, so the moment the watch tilts, its leaders point at where
+the rim used to be and the overlay states a measurement that is no longer
+true. Orbiting the camera leaves every part, every world-frame overlay and
+every camera script exactly as correct as they were.
+
+The pole clamp is inherited rather than reimplemented: OrbitControls keeps
+its polar angle inside (0, π) about world +Y, so a tumble that would cross
+the pole is refused here instead of being applied and then snapped back by
+the controls on the next update. Roll is unbounded, as it must be.
+
+Off by default, toggled in **View → Control HUD**, or opened on arrival
+with `?hud=1` — for a link that wants the watch driveable the moment it
+loads, which on a phone is the difference between a demo and an
+instrument.
