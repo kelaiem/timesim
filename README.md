@@ -3,26 +3,37 @@
 A browser-based, physically-laid-out 3D simulation of a fusee movement with a
 Swiss lever escapement: mainspring drum → chain → fusee & great wheel → center →
 third → fourth wheel → escape wheel ⇄ pallet fork ⇄ balance wheel + hairspring,
-plus a dial with correctly driven hour/minute hands and a small-seconds sub-dial.
+plus an alarm complication with its own barrel and gong, and a dial with
+correctly driven hour/minute hands, a small-seconds sub-dial, a power-reserve
+sub-dial and a 12 h alarm-setting ring.
 
 **Tornado layout** — the movement is composed as a face design on a flat
-(~32-unit front-to-back, down from ~45) construction: crown and barrel exit at
-~1:50, the fourth wheel sits exactly at 6 o'clock so its arbor carries the
-small-seconds display directly (no fake linkage), the escapement trails to
-~6:25 with the balance at 8, and the power-reserve sub-dial answers at 12.
-The going train packs on a 2.1-unit wheel stride under compact bridges, and
-the fusee cone is squashed to 4.5 units tall with a tighter groove pitch.
+construction: crown and barrel exit at ~1:50, the fourth wheel sits exactly
+at 6 o'clock so its arbor carries the small-seconds display directly (no fake
+linkage), the escapement trails to ~6:25 with the balance at 8, and the
+power-reserve sub-dial answers at 12. The going train no longer runs a uniform
+stride: the z-stack is solved bottom-up (`src/layout.js`), the escape wheel
+drops *below* the train while its pinion stays up in the fourth wheel's plane,
+and the fusee cone is squashed to 2.8 units — the height four turns of
+0.6-diameter chain actually need — which is what lets the three-quarter plate
+floor come down. The whole assembly, hands to alarm barrel, measures ~26.4
+units front-to-back; at the scale pinned in §39 (0.375 mm/unit, derived from
+real fusee-chain pitch) that is ≈9.9 mm deep on a 32.2 mm plate.
 
 ## Run
 
-Any static file server from this directory, e.g.:
+Use the dev server, which also serves the `/__state` endpoint the save/load
+buttons persist to and sends `Cache-Control: no-store` so edited modules
+aren't served stale:
 
 ```sh
-python3 -m http.server 8347
+python3 dev_server.py        # :8347
 ```
 
 then open http://localhost:8347/ — no build step, no network access needed
-(Three.js 0.165 is vendored in `vendor/`).
+(Three.js 0.165 is vendored in `vendor/`). A plain static server
+(`python3 -m http.server 8347`) also works; state then falls back to
+`localStorage`.
 
 ## What's simulated
 
@@ -34,14 +45,20 @@ then open http://localhost:8347/ — no build step, no network access needed
   barrel 80T→10 center pinion, center 75T→10, third 80T→10, fourth 80T→8 escape
   pinion; fourth wheel = 1 rev/min, center = 1 rev/h, barrel = 1 rev/8 h. No drift.
 - **Mainspring**: visible coil in the barrel cutaway relaxes over ~30 simulated
-  hours; the Wind button re-tightens it.
+  hours. Winding goes through the keyless chain, whether you drag the crown or
+  press Wind (which turns it for you); a one-way click means only forward turns
+  bank reserve, and at full wind the cone stops however hard you crank.
+- **Maintaining power**: drive runs cone → base ratchet → pawls on the
+  maintaining wheel → maintaining spring → great wheel, so the train keeps
+  going while you wind instead of stopping dead — the standard fusee answer to
+  losing power at the one moment you are adding it.
 - **Power reserve (functional)**: the movement runs on its own "movement time"
   that stalls when the spring is spent — balance amplitude sags as tension
   drops (like a real watch), and at zero the balance stops dead-centre with the
-  train locked and hands frozen until the next wind. The indicator is geared
-  mechanically off the barrel — 120° of hand per 3.75 barrel revolutions
-  (1 rev/8 h × 30 h), referenced to the barrel angle at the last wind — shown
-  on an AUF/AB sub-dial at 12 o'clock plus an hours readout in the panel.
+  train locked and hands frozen until the next wind. The indicator is driven
+  off the state of wind through a visible reduction train (below) and reads on
+  a sub-dial at 12 o'clock — a 150° arc graduated 0 → 30 h, figured 0/12/24 in
+  Arabic — plus an hours readout in the panel.
 - **Small seconds**: the seconds hand rides a sub-dial at 6 o'clock centred
   exactly on the fourth wheel's axis — its display arbor (the heart cam's
   slip-coupled arbor, extended as a real rod through the wheel's bore and the
@@ -56,71 +73,109 @@ then open http://localhost:8347/ — no build step, no network access needed
 - **Fast-forward**: a ~5400× mode that rips through the whole 30 h reserve in
   seconds so you can watch the chain pay off, the reserve hand fall, and the
   movement run flat; auto-disengages at zero. Winding restarts the balance.
+- **Alarm**: a second, independent complication with its own crown, barrel
+  (1.75 turns of wind), striking wheel, hammer and coiled gong. The setting
+  disc is read against a 12 h ring on the dial at quarter-hour marks; a
+  release feeler drops into the disc's notch at the set time, unlocking the
+  striking train for ≈28 strikes (~12 s) on one wind. Every link from pusher
+  to arming is a modelled part — switch, link, selector, lock, release disc —
+  and the gong's tone is derived from its own arc geometry.
 - **Keyless works**: knurled crown → stem → winding pinion → crown wheel →
-  ratchet + click; the chain spins with true tooth ratios when you wind.
+  ratchet + click; the winding train turns with true tooth ratios when you
+  wind, and the fusee chain migrates as the cone takes it up.
 - **Setting-lever linkage (visible hacking actuation)**: the stem carries a
   grooved collar pair; the setting lever's pin rides in it, so pulling the
   crown rotates the lever. Its tall tail post presses the hack spring — a
   long blued blade reaching across the movement whose ruby pad lands exactly
   on the balance rim — and drives the reset-hammer rod; a separate yoke
   tracks the sliding pinion's hub between the winding and setting meshes.
-- **Power-reserve gear train**: a visible 3-stage reduction (8T/36T ×
-  8T/20T = 1/11.25) mounted coaxially on the barrel arbor, geared so the
-  first pinion turns exactly 3.75 times — matching RESERVE_BARREL_TURNS —
-  over one full wind-to-empty cycle, ending at an arbor that matches the
-  indicator hand's angle exactly.
+- **Power-reserve gear train**: a visible two-mesh reduction across three
+  arbors (8T/36T × 8T/20T = 1/11.25) whose first pinion sits on the barrel arbor,
+  slip-coupled, and whose last wheel shares the indicator hand's arbor. The
+  train is posed backwards from the hand, so its output matches the hand
+  exactly; its input pinion does **not** currently match the barrel it rides
+  — see TODO 18, the ratio still encodes the 120° scale this sub-dial had
+  before it was regraduated to 150°.
 
 ## Controls
 
-Pause/play, time-scale (0.02×–1×; default 0.15× so the beat is watchable), Wind,
-camera presets (Escapement / Train / Dial / Free + orbit/zoom), exploded-view
-slider, part labels toggle, beat counter and simulated clock readout.
+Pause/play, time-scale (a log slider, 0.02×–1×; starts at 1× — around 0.15× is
+where the unlock-impulse-drop sequence becomes followable by eye), Wind,
+fast-forward, sync-to-wall-clock, sound, camera presets (plus orbit/zoom),
+exploded view (whole-movement slider or one assembly at a time), part labels,
+x-ray, power-flow highlighting, a measurement overlay with an in-scene mm
+ruler, a guided tour and an inspection route, a control HUD, save/load of the
+whole scene state, and the beat counter, simulated clock, reserve and alarm
+readouts. The alarm has its own crown and pusher. `?inspect=1` and `?cycle=1`
+deep-link into the inspection and alarm-cycler routes; an Advanced panel
+exposes the finish parameters from `src/aesthetics.json`.
 
 ## Files
 
+- `src/layout.js` — the layout contract: tooth counts, the z-stack, the
+  one clearance margin, the unit→mm pin, and `solveLayout` (the planar solve
+  as a pure function of its spec).
 - `src/geometry.js` — parametric part builders (gears with crescent crossings,
   club-tooth escape wheel, pallet fork with ruby stones, balance with timing screws,
   Archimedean hairspring, cutaway barrel, plates, dial, hands).
 - `src/materials.js` — shared PBR materials (brass, steel, blued steel, ruby…).
 - `src/main.js` — scene, studio lighting + procedural PMREM environment, movement
   assembly (mesh distances from pitch radii), escapement kinematics, UI.
+- `src/inspect.js` — the realism inspector (below).
+- `src/state.js` — state persistence via the dev server's `/__state`, falling
+  back to `localStorage`.
+- `src/aesthetics.js`, `src/aesthetics.json` — finish parameters; see
+  `AESTHETICS.md` for the reasoning.
+- `dev_server.py` — the static server plus `/__state` and `no-store`.
 - `test-geometry.html` — standalone visual smoke-test page for every part builder.
+- `SPEC.md` (architecture contract), `docs/BUILT.md` (how each shipped
+  feature was designed, numbered §n and cited from source comments),
+  `docs/MODELING.md` (geometry conventions), `TODO.md` (mechanical-realism
+  debt), `CLAUDE.md` (working rules).
 
 `window.__clock.step(dt)` in the console single-steps the simulation deterministically
 (useful because background tabs throttle requestAnimationFrame).
 
 ## Realism inspector
 
-`src/inspect.js` sweeps the mechanism deterministically through its phase axes
-(one beat cycle, the crown stroke, the full reserve) via `__clock.setPose()`
-and reports every pair of functional units whose meshes intersect (exact
-triangle tests via the vendored `three-mesh-bvh`). Pairs with intended
-mechanical contact (gear meshes, pallet lock, chain-on-cone…) are classified
-EXPECTED and reported separately; everything else that touches is FORBIDDEN
-— a defect. Run it from the console:
+`src/inspect.js` sweeps the mechanism deterministically through eight phase
+axes — `beat`, `crown`, `reserve`, `train`, `jumperEngage`, `handSet`, `alarm`,
+`alarmStrike` — via `__clock.setPose()` and reports every pair of functional
+units whose meshes intersect (exact triangle tests via the vendored
+`three-mesh-bvh`). Pairs with intended mechanical contact (gear meshes, pallet
+lock, chain-on-cone…) are classified EXPECTED and reported separately;
+everything else that touches is FORBIDDEN — a defect.
+
+Run it from the console with `start()`/`status()`, **never** by awaiting a
+sweep directly: full runs take 100 s+ and will blow a browser-eval timeout.
 
 ```js
 document.getElementById('btn-pause').click();
-const { runInspection, checkMechanicalGraph, checkPenetrationBudgets } = await import('./src/inspect.js');
-await runInspection(window.__clock);           // overlap report → window.__inspectReport
-checkMechanicalGraph(window.__clock);          // grounding/drive/anchor report → window.__mechReport
-checkPenetrationBudgets(window.__clock);       // per-pair depth budgets → window.__penetrationReport
-window.__inspect.show('<pair>', '<axis>');     // jump camera to a hit pose
+const I = await import('./src/inspect.js');
+I.start(__clock, 'inspection', { includeExcluded: true });  // then poll I.status()
+I.start(__clock, 'support');                                // 0 failures
+I.start(__clock, 'clearances');                             // 0 violations
+window.__inspect.show('<pair>', '<axis>');                  // jump camera to a hit pose
 ```
 
-`checkPenetrationBudgets` is the contact-policy layer (milestone 2, started):
-being on `EXPECTED_PAIRS` only proves contact was *intended*, not that its
-depth is reasonable — a stone visibly buried 0.33 units inside an
-escape-wheel tooth still sailed through `runInspection` as "EXPECTED,
-contact detected." Each entry in `PENETRATION_BUDGETS` selects the specific
-engaging meshes (not the whole unit) and fails if the worst true interior
-penetration over the pair's axis exceeds a maxDepth. Currently covers
-`Escape wheel ⇄ Pallet fork` (the ruby stones); TODO: extend to
-`Pallet fork ⇄ Balance` (impulse pin in the notch) and
-`Chain ⇄ Fusee & great wheel` (chain in the cone grooves), add phase-window
-budgets (near-zero depth required OUTSIDE the lock/impulse window), a
-pose-continuity check, and a known-good baseline so re-runs only flag
-regressions.
+Beyond overlap the module carries `checkMechanicalGraph` (is every part
+grounded and driven), `checkPenetrationBudgets` (how *deep* an intended
+contact goes — being on `EXPECTED_PAIRS` proves contact was intended, not
+that its depth is reasonable; twelve pairs are budgeted, from the ruby stones
+to the alarm linkage), `checkSweptOverlap` against a swept-volume registry,
+`checkStockFloor` and `checkSlenderness` (a part can be thick enough and still
+be a noodle), `checkLowCorridor`, `auditOscillators`, `stockCensus` and
+`fingerprint` for determinism. `focusedCheck(clock, names)` runs the same
+budgets scoped to the parts you just moved, in seconds rather than minutes.
+
+CI runs the whole bar on every PR: `.github/workflows/battery.yml` drives
+`tools/ci-battery.mjs` under headless Chromium, plus a boot-silence check and
+a double-boot fingerprint comparison. `node tools/ci-battery.mjs` runs the
+same gate locally (needs `npm ci` in `tools/` and a Playwright Chromium).
+
+Two things the sweep structurally cannot see, both written up in `TODO.md`
+(items 5 and 6): a part colliding with another part of the *same* unit, and
+any second overlap between a pair that already has one declared contact.
 
 ## A note on the styling
 

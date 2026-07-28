@@ -4838,7 +4838,11 @@ reserveGroup.add(reserveHand);
 // From there a 3-stage reduction (8/36 × 8/20 = 1/11.25) walks across the
 // gap between plate and dial and ends on an arbor COAXIAL with the sub-dial
 // pivot — the same axis the hand rides, its post passing through the dial
-// exactly like the time hands do. 120° of hand = 3.75 barrel turns.
+// exactly like the time hands do.
+// TODO 18 — the 1/11.25 was derived for a 120° scale (3.75 barrel turns ÷
+// 11.25 = 1/3 rev = 120° of hand, exactly). The arc was later regraduated to
+// 150° and this ratio was not re-derived with it, so p0 now sweeps 4.6875
+// turns where the arbor it is slip-coupled to turns 3.75. R must be 9.
 // ---------------------------------------------------------------------------
 const reserveTrain = new THREE.Group();
 movement.add(reserveTrain);

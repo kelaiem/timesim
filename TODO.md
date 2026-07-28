@@ -487,6 +487,79 @@ exactly 0.15 after the change, which is the formula doing its job.
 Waivers stay per part while any row remains; closing a part's last row
 deletes its waiver.
 
+## 18. The power-reserve reduction turns 25% faster than the arbor it rides
+
+The reduction train's tooth counts still encode a 120° indicator scale that
+no longer exists.
+
+`rsvArbor0` carries `reservePinion0` on the barrel-arbor axis — coaxial with
+`barrelArbor`, described in its own build comment as slip-coupled to it
+(`main.js`, "Power-reserve reduction train"). A slip coupling transmits
+rotation and slips only at the end stops, so over one wind-to-empty cycle
+that pinion should turn exactly as many times as the arbor under it:
+`RESERVE_BARREL_TURNS` = 3.75 (`RELAX_SECONDS / (8 * 3600)` — 30 h at
+1 rev/8 h).
+
+It turns 4.6875. The train is posed BACKWARDS from the hand:
+
+```js
+const rsvOut = -reserveHand.rotation.z;
+rsvArbor2.rotation.z = rsvOut;
+rsvArbor1.rotation.z = -rsvOut * (rsvTeethW2 / rsvTeethP1);   // ×2.5
+rsvArbor0.rotation.z = -rsvArbor1.rotation.z * (rsvTeethW1 / rsvTeethP0); // ×4.5
+```
+
+so `p0` sweeps `hand travel × 11.25`. The hand's travel is 150°
+(`reserveHand.rotation.z = (90 - reserveShown * 150) * DEG2RAD`), giving
+150° × 11.25 = 1687.5° = **4.6875 turns** against the arbor's 3.75. The
+ratio is off by exactly 1.25 = 150/120.
+
+The 8/36 × 8/20 = 1/11.25 reduction was DERIVED when the sub-dial was a
+120° arc: 3.75 turns ÷ 11.25 = 1/3 rev = 120° of hand, exactly. The arc was
+later regraduated to 150° ("more angular travel per hour = finer reading",
+`geometry.js` `kind === 'reserve'`) and the reduction was not re-derived
+with it. Two comments still assert the retired figure — `main.js`'s
+"120° of hand = 3.75 barrel turns" and `geometry.js`'s "Graduated 120° arc"
+one line above the loop that draws 150 — which is why it survived: every
+local reading agrees with itself.
+
+Nothing overlaps and nothing warns, because `rsvArbExt` (the visible
+barrel-arbor extension) is a static cylinder parented to `reserveTrain`
+rather than to `rsvArbor0`, so the two rotations are never displayed
+against each other. The defect is only visible by counting teeth. It is a
+Rule 2 violation of the same family as the old `minuteA / 12` hour hand:
+the hand's angle is the input and the train is drawn to agree with it,
+where a real movement has the barrel as the input and the hand as what the
+teeth produce.
+
+**The fix is a ratio, not a nudge.** The required reduction is set by the
+scale: 3.75 rev = 1350° of arbor must become 150° of hand, so
+R = 1350/150 = **9**, not 11.25. R is the product of the two meshes,
+(W1/P0) × (W2/P1) = (36/8) × (20/8) = 4.5 × 2.5 = 11.25. Three
+whole-tooth ways to land on 9:
+
+| change | new stages | R | cost |
+|---|---|---|---|
+| `rsvTeethP1` 8 → 10 | (36/8) × (20/10) | 4.5 × 2 = 9 | `rsvModule1` re-solves; only p1's pitch radius moves |
+| `rsvTeethW2` 20 → 16 | (36/8) × (16/8) | 4.5 × 2 = 9 | `rsvModule1` re-solves; w2 sits on the hand's arbor, inside the well |
+| `rsvTeethP0` 8 → 10 | (36/10) × (20/8) | 3.6 × 2.5 = 9 | changes `rsvD0`, which MOVES w1 along the barrel→pivot span |
+
+`rsvTeethP1` 8 → 10 is the cheapest: `rsvModule1` is already solved from the
+span (`(2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2)`), so the centre
+distance re-solves itself and w1 does not move. It still changes a real
+diameter in the plate→dial gap, so it needs the battery, not just arithmetic:
+
+- `I.start(__clock, 'clearances')` — `rsvPost1` and w1 sit inside the
+  recessed reserve well's footprint, and the post already had to be
+  shortened once to stay out of the well floor.
+- `checkPenetrationBudgets` — the reserve train has no budgeted pair today;
+  a re-toothed mesh is the moment to add one.
+- The two stale comments die with the fix.
+
+Alternatively, re-derive the SCALE from the reduction (150° → 120°) — but
+the 150° arc was itself a deliberate readability decision with its reasoning
+written down, so the train is the side that should move.
+
 ## Recently closed
 
 - **The alarm could not ring under fast-forward** (was item 8). The whole
