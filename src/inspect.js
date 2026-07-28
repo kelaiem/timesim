@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN, UNIT_MM } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM, SLENDER_MAX as SLENDER_MAX_U } from './layout.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -2766,7 +2766,7 @@ export const STOCK_KIND_BY_MESH = {
 // REPORT, NOT A GATE — §40's rule, and §50's own history. §50 reported, was
 // triaged over four tranches, and only then gated. Arriving as a gate is how
 // a check gets switched off. `ok` is always true; the rows are the product.
-export const SLENDER_MAX = 30;
+export const SLENDER_MAX = SLENDER_MAX_U;   // layout.js owns it: geometry derives from the same number
 export const SLENDER_BASIS =
   'real watch arbors and levers run L/t of roughly 5–20; 30 is generous headroom, '
   + 'set so nothing correctly proportioned trips it and only real outliers do';
@@ -2782,9 +2782,10 @@ export const SLENDER_MAX_BY_KIND = {
 const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
 // A waived row is still reported; the waiver records that someone has looked.
-export const SLENDER_WAIVERS = {
-  'Alarm link': 'TODO 16',
-};
+// Empty, and that is the point: the alarm link was this check's reason for
+// existing and its geometry was fixed rather than waived. A waiver here means
+// someone looked and accepted the debt; none is outstanding.
+export const SLENDER_WAIVERS = {};
 
 // Young's modulus for the movement's steels/brasses, order of magnitude. The
 // stiffness column is INFORMATIONAL: a first-order cantilever estimate, good

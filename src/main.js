@@ -28,7 +28,7 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
-  STOCK_MIN_U, SPRING_FLAT_U,                 // §50: build to the floor; flat-spring stock
+  STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §53 target
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -7212,8 +7212,19 @@ const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
 // The crank arm's own dimensions, hoisted because the ROD'S FOOT is derived
 // from them: the foot has to land ON the arm's top face, and two independent
 // literals for one contact is how a linkage ends up transmitting through a gap.
-const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
-const ALARM_LINK_CRANK_T = 0.12;                         // arm section
+// §53 / TODO 16 — the lay shaft's SECTION, derived from the slenderness
+// ceiling, and everything that hangs off it derived from that in turn. The
+// chord is known here (both ends were sited above), so the shaft can be sized
+// before the parts that must clear it.
+const ALARM_LINK_CHORD_LEN = Math.hypot(
+  ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y);
+const ALARM_LINK_SHAFT_R = ALARM_LINK_CHORD_LEN / SLENDER_TARGET / 2;   // 0.447
+const ALARM_LINK_CRANK_T = STOCK_MIN_U;                  // arm section — §50 floor (was 0.12 u = 0.045 mm)
+// The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
+// now be buried inside a shaft of radius 0.402 — which is exactly why this
+// became derived rather than re-tuned. Crank and shaft are one rigid part, so
+// they touch: no clearance margin between an arm and its own arbor.
+const ALARM_LINK_CRANK_OFF = ALARM_LINK_SHAFT_R + ALARM_LINK_CRANK_T / 2;
 // Top face of the arm, measured from the shaft axis.
 const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
 // Where the rod's foot is BUILT. The tick lifts it by one ALARM_SEL_TRAVEL at
@@ -7264,9 +7275,28 @@ const alarmLinkParts = {};
   beakArm.add(beakNose);
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
   const tailLen = wrLen - pivDist;
-  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock both ways, same plane
-  beakTail.name = 'alarmLinkBeakTail'; // §53: λ 83.7 — TODO 16's headline member
+  // §53 / TODO 16 — A LEVER IS TALL AND THIN, NOT SQUARE.
+  // This was STOCK_MIN_U both ways: 0.12 mm square over 10 mm, λ 83.7, and it
+  // deflected 0.098 mm per mN against a required rod travel of 0.158 mm — it
+  // bent most of its own stroke instead of moving the rod. It passed §50
+  // because it was built exactly TO the floor, which is the whole reason §53
+  // exists.
+  //
+  // The fix is not a fatter square. The load here is VERTICAL — the tail
+  // presses down on the rod — so the section grows in Z, the direction the
+  // force acts, and stays at floor stock in Y. That is what a real lever looks
+  // like, and it is what §53 measures: slenderness against the STIFFEST
+  // available dimension, so a blade earns its ratio by being deep where it is
+  // loaded rather than by being fat everywhere.
+  //
+  // Height derived from the ceiling, not chosen: λ = tailLen / height = 30.
+  // It grows UPWARD ONLY — the underside carries the rod-top contact, and
+  // dropping it would both bury the rod and close on the plate 1.02 away.
+  const ALARM_LINK_TAIL_H = tailLen / SLENDER_TARGET;
+  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, ALARM_LINK_TAIL_H), MATS.steel);
+  beakTail.name = 'alarmLinkBeakTail'; // §53: was λ 83.7 — TODO 16's headline member
   beakTail.position.x = -tailLen / 2;
+  beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
   beakArm.add(beakTail);
   const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.5, 10), MATS.steel);
   beakPost.rotation.x = Math.PI / 2;
@@ -7294,12 +7324,32 @@ const alarmLinkParts = {};
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
   const chordLen = Math.hypot(chord.x, chord.y);
+  if (Math.abs(chordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
+    console.warn(`§53: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
+      + `${chordLen.toFixed(4)} — the shaft was sized against a length it does not have`);
   const u = { x: chord.x / chordLen, y: chord.y / chordLen };
   const shaft = new THREE.Group();
   shaft.position.set((ALARM_LINK_INNER_XY.x + ALARM_LINK_ROD_XY.x) / 2, (ALARM_LINK_INNER_XY.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
-  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, chordLen, 8), MATS.steel);
+  // §53 / TODO 16 — THE SECTION IS DERIVED FROM THE SLENDERNESS CEILING.
+  // It used to be r 0.12: a 0.09 mm rod spanning 9.05 mm, L/d = 100. A human
+  // hair is about 0.07 mm. It passed §50 only because §50 asks how thin a part
+  // is and never how LONG it is thin for.
+  //
+  // Two independent derivations land on the same number, which is the reason
+  // to trust it. §53's ceiling gives d ≥ chordLen/30. And the load path gives
+  // the same: the drive end is a 4.5 mm cantilever (the dial-side congestion
+  // fixes that — every station inboard of the current one is under dial
+  // hardware, which is why the bushes sit where they do), and holding its
+  // deflection to a tenth of the selector's 0.071 mm stroke under a ~20 mN
+  // detent load needs 3EI/L³ ≳ 2800 N/m, i.e. r ≈ 0.41. Geometry budget and
+  // force budget agreeing to two decimals is not a coincidence worth ignoring.
+  //
+  // It FITS: the shaft's radial clearance was probed along its whole length
+  // and the tightest non-contact band is 0.97 (t 20–22). The 0.297 at t≈0.3 is
+  // `Dial/alarmSelTab` — the crank's own working contact, not an obstruction.
+  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 12), MATS.steel);
   shaftRod.name = 'alarmLinkShaft';   // §53: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
@@ -7331,10 +7381,12 @@ const alarmLinkParts = {};
   // passed while 0.02 from contact
   for (const t of [12, 22]) {
     const hx = ALARM_LINK_INNER_XY.x + u.x * t, hy = ALARM_LINK_INNER_XY.y + u.y * t;
-    const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);
+    // §53: the bore follows the shaft, with a running clearance; the wall is
+    // stock-floor so the bush is itself a real part.
+    const bush = new THREE.Mesh(ringGeo(ALARM_LINK_SHAFT_R + 0.02, ALARM_LINK_SHAFT_R + 0.02 + STOCK_MIN_U, 0.3), MATS.nickel);
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel);
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, STOCK_MIN_U, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // §50: was 0.2 u = 0.075 mm, under the floor
     hanger.position.set(hx, hy, ((-2) + ALARM_LINK_SHAFT_Z) / 2 + 0.15);
     alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);

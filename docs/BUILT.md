@@ -4225,3 +4225,48 @@ Three alarm-link members were **named** in the same change
 (`alarmLinkShaft`, `alarmLinkBeakBar`, `alarmLinkBeakTail`): a slenderness
 row that cannot name its member is not actionable, and unnamed geometry
 has been this session's most expensive recurring cost.
+
+### §53 postscript — the alarm link fixed, and a pillar move rejected on evidence
+
+§53's first customer, closed. Both members are now derived from
+`SLENDER_TARGET`, so the geometry is sized by the same number the check
+measures it against.
+
+**The originally-proposed fix was wrong, and probing said so.** TODO 16
+proposed moving the pillars: both bushes cluster at the rod end, leaving
+the drive crank on a 4.5 mm cantilever. Probing every station along the
+chord showed the entire inboard run sits under dial-side hardware — which
+is precisely *why* the bushes are where they are. The cantilever is not
+movable, so the fix had to be section.
+
+| member | was | now |
+|---|---|---|
+| `alarmLinkShaft` | 0.09 mm, λ 100.5, 21 N/m | 0.335 mm, λ 27, **4075 N/m** |
+| `alarmLinkBeakTail` | 0.12 mm square, λ 83.7, 10.2 N/m | 0.12 × 0.372 mm blade, λ 27, **305 N/m** |
+
+**A lever is tall and thin, not square.** The tail's load is vertical, so
+its section grew in Z, where the force acts, and stayed at floor stock in
+Y. §53 measures slenderness against the stiffest available dimension
+precisely so a blade earns its ratio this way.
+
+**Two budgets agreeing is why the shaft radius is trustworthy.** §53's
+ceiling gives d ≥ chord/30; the load path — holding the drive end to a
+tenth of the selector's 0.071 mm stroke under a ~20 mN detent — gives
+≈ 2800 N/m, i.e. the same radius to two decimals.
+
+**`SLENDER_TARGET = SLENDER_MAX * 0.9` exists because of a rounding
+miss.** Built at exactly the ceiling, the tail came back at λ 30.0 and was
+still reported: sizing a part to the boundary lets float rounding pick the
+side. `JMP_BIND_EPS`'s lesson in a new place — never build exactly to the
+limit a check compares against.
+
+The crank offset had to become derived (`SHAFT_R + CRANK_T/2`): at the old
+literal 0.22 an arm would sit *inside* the fattened arbor. `ROD_FOOT`
+followed `CRANK_TOP` automatically, as §51 arranged.
+
+**Verified:** the alarm link is entirely off the slenderness report (8 → 6
+rows, and `SLENDER_WAIVERS` is now empty — fixed, not waived);
+`stockFloor` ok with waived **57 → 53**; focused battery over link,
+selector, switch, dial, plate, jumper, drum and barrel: support 0, graph
+0, penetration none over budget, clearances 0; boot silent. Stall force
+along the chain ≈ 1.5 mN → ≈ 48 mN.

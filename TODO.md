@@ -1095,7 +1095,7 @@ searches for less than the thing it verifies, arrived at from a new
 direction: not a too-small search *range* this time, but a single sample
 of a quantity that only reveals itself in motion.
 
-## 16. The alarm link is thickness-legal and structurally impossible
+## 16. MOSTLY CLOSED — the alarm link was thickness-legal and structurally impossible
 
 Reported by eye: the horizontal lay shaft looks too thin. It is, and
 measuring it showed the check that should have caught it cannot see this
@@ -1176,3 +1176,50 @@ segment, waivers citing an item, gate on nothing at first — would catch
 this class everywhere rather than only where someone happens to look. The
 alarm link would be its first customer; the winding-train hangers
 (0.075 mm × 4.7 u) are probably its second.
+
+### FIXED — sections derived from §53's budget; one item deliberately left
+
+**The pillar move was investigated and REJECTED on evidence.** Probing
+every station along the chord showed the whole inboard run is under
+dial-side hardware — which is *why* the two bushes sit where they do. The
+4.5 mm cantilever cannot be shortened, so the fix had to be section, not
+position. That is the opposite of what this item originally proposed, and
+the probe is the reason.
+
+**Both members are now derived from `SLENDER_TARGET`**, so they are sized
+by the same number §53 measures them against:
+
+| member | was | now |
+|---|---|---|
+| `alarmLinkShaft` | 0.09 mm, λ 100.5, **21 N/m** at the drive end | 0.335 mm, λ 27, **4075 N/m** |
+| `alarmLinkBeakTail` | 0.12 mm square, λ 83.7, **10.2 N/m** | 0.12 × 0.372 mm blade, λ 27, **305 N/m** |
+
+The tail is now a **blade, not a fatter square**: the load is vertical, so
+the section grew in Z where the force acts and stayed at floor stock in Y.
+That is what a real lever looks like, and it is what §53 rewards — depth
+where it is loaded rather than fat everywhere.
+
+The shaft's radius fell out of two independent budgets agreeing: §53's
+ceiling (d ≥ chord/30) and the load path (holding the drive end's
+deflection to a tenth of the selector stroke under a ~20 mN detent needs
+≈ 2800 N/m). Geometry budget and force budget landing on the same
+number is why it is trustworthy rather than tuned.
+
+Cascade handled by the existing derivation chain: the crank's radial
+offset had to become derived (`SHAFT_R + CRANK_T/2`) because at the old
+literal 0.22 an arm would now sit *inside* its own arbor, and
+`ALARM_LINK_ROD_FOOT` follows `CRANK_TOP` automatically, as §51 set it up
+to. Cranks and hangers also went to floor stock, which took `stockFloor`
+waived rows **57 → 53**.
+
+**Force transfer, restored:** stall force ≈ **1.5 mN → ≈ 48 mN**
+(tail-limited), which is in the plausible band for a detented ring rather
+than one to two orders below it.
+
+**Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
+means re-siting the rod, whose plate bores are literals carrying drift
+asserts (`ALARM_LINK_ROD_XY`), so it is a §35-corridor change, not a
+section change. The tail is also the chain's remaining weakest member —
+it still bends 42% of its stroke at 20 mN, against the shaft's 7% — so if
+anything here gets more work, it is that lever, and the two are the same
+problem: the tail is long *because* the rod is far away.
