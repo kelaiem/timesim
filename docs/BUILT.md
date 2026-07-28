@@ -4016,3 +4016,49 @@ clean.
 timing, not from this blade's stiffness. §48's scope guard puts spring
 rate and force modelling outside it, and so does this. The spring now
 exists and acts; it does not yet set the frequency.
+
+### TODO 13 closed — the three followers are sprung, not glued
+
+§48 filed the alarm release feeler, the minute jumper and the maintaining
+detent as *restored by nothing*. All three were PLACED at their cam's
+profile value — `angle = profile(u)` — which reads as contact but is
+really glue: the part is welded to the curve, and its return is asserted
+by evaluating the profile again rather than caused by anything. All three
+already had a spring MESH, which is precisely the distinction §48 exists
+to draw.
+
+**A sprung follower is a one-sided constraint.** The spring drives it
+toward a *seat* it can never reach; the cam stands in the way. `Seek the
+seat, stop at the cam.` The seat is preloaded one `CLEAR_MARGIN` of
+travel past the deepest the cam can go — what keeps the follower loaded
+at the bottom of the profile instead of merely kissing it, since a spring
+that goes slack in the valley has lifted off.
+
+**Geometry is unchanged, and that is the point rather than a caveat.**
+While contact holds, the constraint evaluates to the cam: same pose,
+every frame. What changes is what the law MEANS, and what it would do if
+the cam fell away — the follower drops to its seat instead of tracking a
+profile that is no longer there.
+
+**The feeler needed a second fix.** Its blade was a child of
+`alarmFeelerLever`, travelling with the very arm it exists to press —
+the §43 postscript's defect, found a second time in a different part.
+It now hangs from its own stud on the static unit, and the frame law
+keeps its free end on the arm while its root stays put.
+
+**Two verification notes worth keeping.** The first attempt at the
+detent's preload read `MAINT_DET_LEVER` before the solve that assigns it
+— a module-level temporal dead zone that threw before `__clock` was ever
+set, with nothing in the console to say so. And the feeler's grounding
+test reported a perfectly still blade root while the lever had not moved
+either: the rock comes from the pin drop at coincidence, not from the
+poses being set. That test was vacuous, exactly as the hammer's first
+one was, and the grounding is confirmed structurally
+(`bladeIsChildOfLever: false`) rather than dynamically.
+
+**Verified by the audit that filed the item:** `restoredByNothing` is
+**empty**, `malformedDeclarations` is **empty**, and all 18 reversing
+parts are accounted for — 12 two-way driven, 6 restored by a declared
+element. Boot silent; focused battery over the three followers plus
+Dial, fusee and plate: support 0, graph 0, penetration none over budget,
+clearances 0.

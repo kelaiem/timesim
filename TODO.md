@@ -612,7 +612,7 @@ invisible: the grounding check verified that declared edges formed a connected
 graph, not that any geometry existed at the other end. Keep new parts declared
 in `MECH_GRAPH` so they stay accountable.
 
-## 13. Three followers are held to their cams by nothing (§48)
+## 13. CLOSED — three followers are held to their cams by nothing (§48)
 
 `auditOscillators` classifies every reversing part as two-way driven,
 restored by a declared element, or **restored by nothing**. Three land in
@@ -639,6 +639,36 @@ so does this item.
 
 The feeler is first by fanout, and it is also the one whose failure is
 visible — it drives the alarm release.
+
+**CLOSED.** The law for all three is now a ONE-SIDED CONSTRAINT rather
+than a placement. The spring drives the follower toward a *seat* it can
+never reach, and the cam stands in the way: `seek the seat, stop at the
+cam`. The seat is preloaded one `CLEAR_MARGIN` of travel past the deepest
+the cam can go, which is what keeps the follower loaded at the bottom of
+the profile instead of merely kissing it — a spring that goes slack in
+the valley has lifted off.
+
+Geometry is unchanged by this, and that is the point rather than a
+caveat: while contact holds, the constraint evaluates to the cam, same
+pose every frame. What changes is what the law MEANS, and what it would
+do if the cam fell away — the follower drops to its seat instead of
+tracking a profile that is no longer there.
+
+The feeler needed a second fix. Its blade was a child of
+`alarmFeelerLever` — travelling with the very arm it exists to press,
+which is the §43 postscript's defect found a second time in a different
+part. It now hangs from its own stud on the static unit, and the frame
+law keeps its free end on the arm while its root stays put.
+
+Verified by the audit that filed the item: `restoredByNothing` is
+**empty** and all three sit in `restoredByDeclaredElement` — feeler ←
+`alarmFeelerSpring`, jumper ← `jumperClickSpring`, detent ←
+`maintSpring`. Boot silent; focused battery over the three plus Dial,
+fusee and plate: support 0, graph 0, penetration none over budget,
+clearances 0.
+
+Out of scope here, as in §48: spring RATE. These springs act; none of
+them yet sets a force.
 
 ## 14. CLOSED — the alarm hammer's fall is a spring law with no spring (§48)
 
@@ -693,3 +723,27 @@ still comes from the strike timing rather than from this blade's
 stiffness. §48's scope guard puts spring RATE and force modelling
 outside that entry, and it stays outside this item too. The spring now
 exists and acts; it does not yet SET the frequency.
+
+## 15. The two alarm winding idlers mesh out of phase
+
+Reported by eye from the running sim: the two alarm winding idlers
+appear to **interlock tooth-on-tooth rather than tooth-into-gap** — the
+meshing pair is half a tooth pitch out of phase, so the teeth collide at
+the pitch circle instead of interleaving.
+
+Not yet instrument-confirmed. The battery would not catch it on its own:
+it asks whether volumes overlap, and two gears meshing out of phase
+overlap exactly as much as two meshing correctly — this is a KINEMATIC
+lie of the same family as the pawl that drove backwards and the saw cut
+the wrong way, all three of which were caught by eye rather than by the
+inspector.
+
+Where to look: the idlers' build-time angular offsets. A correct mesh
+needs each wheel's tooth phase set from its own tooth count and the
+centre-line azimuth between the pair, so that one wheel's tooth lands in
+the other's gap. An offset that is right for one pair and copied to the
+other, or one that ignores odd/even tooth-count parity, produces exactly
+this half-pitch error.
+
+Worth checking whether the same derivation is shared with any other
+meshing pair before fixing it in one place only.
