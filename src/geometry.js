@@ -2267,7 +2267,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     ctx.restore();
   };
   if (kind === 'reserve') {
-    // Graduated 120° arc: math angle 150° (empty, left) → 30° (full,
+    // Graduated 150° arc: math angle 180° (empty, left) → 30° (full,
     // right). Major ticks every 12 hours of
     // reserve (0/12/24), small minor ticks every 3 hours between them —
     // the minors also anchor the full end of the arc (30 h).
