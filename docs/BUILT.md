@@ -4574,3 +4574,33 @@ Verified against the two gates that failed the previous attempt:
 `sweptOverlap` 0 confirmed / 0 tight / no Alarm link rows, `inspection` 0
 FORBIDDEN, `stockFloor` clean, and `SLENDER_WAIVERS` empty — fixed rather
 than waived.
+
+### §54 fix — the button-restore list is gone
+
+Reported: **Inspect reads "Stop" permanently after the route ends.**
+
+`scriptStop()` restored each script button's idle label from four
+hand-written lines, one per button — and two of them carried comments
+recording this exact bug happening before:
+
+> `// §34's button was missing from this restore — it stayed "Stop" after its run ended`
+> `// §37, same restore — the lesson above, applied on the way in this time`
+
+§54's Inspect button made it **three**. A list that must be edited in a
+second place every time a button is added will eventually be missed, and
+this one had been missed every single time it grew.
+
+So the list is gone. Script buttons carry `.script-ctrl`, their idle
+labels are captured **from the DOM at boot** (`SCRIPT_BTN_IDLE` — read,
+not declared, so it cannot drift from the markup), and `scriptStop`
+iterates. A new button is restored correctly **by existing**; there is
+nothing to remember.
+
+`btn-coupling` and `btn-link` were missing the `.script-ctrl` class and
+gained it here. That also fixes them in a second place: `scriptAbort`
+already used `.script-ctrl` to tell "the user is talking TO the script"
+from "the user is taking over", so clicking either of those mid-run had
+been counted as a takeover.
+
+Verified across both exit paths — second click, and running to completion —
+for all five buttons.

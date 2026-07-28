@@ -8104,8 +8104,8 @@ panel.innerHTML = `
            hand, and claiming to the minute would be its own small lie. -->
       <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">≈12:00</span></div>
       <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
-      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling">Show</button></div>
-      <div class="row"><span class="label-small">The link</span><button id="btn-link">Trace</button></div>
+      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling" class="script-ctrl">Show</button></div>
+      <div class="row"><span class="label-small">The link</span><button id="btn-link" class="script-ctrl">Trace</button></div>
       <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
       <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
     </div>
@@ -10656,6 +10656,12 @@ function disarmScriptAbort() {
   scriptAbortArmed = false;
 }
 
+// Idle labels for every `.script-ctrl`, read once at boot — before any script
+// can overwrite one with "Stop". Captured rather than declared so it cannot
+// drift from the markup.
+const SCRIPT_BTN_IDLE = new Map(
+  [...document.querySelectorAll('.script-ctrl')].map((b) => [b.id, b.textContent]));
+
 function scriptStop() {
   // Follows §9's syncCancel: STOP, don't undo. Whatever the script last set
   // (camera, x-ray, explode, crown) stays — the point of aborting is to hand
@@ -10670,10 +10676,22 @@ function scriptStop() {
   captionEl.classList.remove('show');
   setTimeout(() => { if (!scriptSteps) captionEl.style.display = 'none'; }, 400); // let the fade finish
   scriptBtn = null;
-  const tb = document.getElementById('btn-tour'); if (tb) { tb.textContent = 'Tour'; tb.classList.remove('active'); }
-  const db = document.getElementById('btn-demo'); if (db) { db.textContent = 'Demo'; db.classList.remove('active'); }
-  const cb = document.getElementById('btn-coupling'); if (cb) { cb.textContent = 'Show'; cb.classList.remove('active'); } // §34's button was missing from this restore — it stayed "Stop" after its run ended
-  const lb = document.getElementById('btn-link'); if (lb) { lb.textContent = 'Trace'; lb.classList.remove('active'); } // §37, same restore — the lesson above, applied on the way in this time
+  // RESTORE EVERY SCRIPT BUTTON, DERIVED. This was four hand-written lines,
+  // one per button, and the comments on two of them recorded the same bug
+  // twice: §34's Coupling button was missing and stayed reading "Stop" after
+  // its run, then §37's added itself "on the way in this time". §54's Inspect
+  // button then made it three — a list that must be edited in a second place
+  // every time a button is added will eventually be missed, and this one was,
+  // every time.
+  //
+  // So the list is gone. Script buttons carry `.script-ctrl`, their idle label
+  // is captured from the DOM at boot (SCRIPT_BTN_IDLE), and a new button is
+  // restored correctly by existing. Nothing to remember.
+  for (const b of document.querySelectorAll('.script-ctrl')) {
+    const idle = SCRIPT_BTN_IDLE.get(b.id);
+    if (idle !== undefined) b.textContent = idle;
+    b.classList.remove('active');
+  }
   restorePanelAfterScript(); // undo any phone-layout panel collapse from scriptStart
   disarmScriptAbort();
 }
