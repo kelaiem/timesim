@@ -5480,13 +5480,59 @@ const ALARM_SET_I2 = (() => {
   const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
   if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
 }
+// --- TODO 15 — MESH PHASE IS NOT FREE ---------------------------------------
+// Reported by eye: the two winding idlers interlock tooth-on-tooth instead of
+// tooth-into-gap. They did, and the cause was in plain sight — BOTH idlers got
+// `rotation.z = Math.PI / teeth`, half of their own angular pitch, with no
+// reference to the line of centres between them. Half a pitch from a wheel's
+// own local zero says nothing about where its teeth fall relative to its
+// NEIGHBOUR; the two are only anti-phase by luck, and here they were not.
+//
+// A gear's phase is not a free parameter. `gearOutlineShape` puts a tooth
+// CENTRE at local angle 0, so where P's teeth land on the centre line is
+// fixed by P's own phase and tooth count — and Q must then present a GAP
+// exactly there. That is one equation, and it determines Q.
+//
+// The battery cannot see this and never could: two gears meshing out of phase
+// sweep the same volumes as two meshing correctly, so `sweptOverlap` is
+// equally happy either way. This is the fourth kinematic lie found by eye
+// (after the pawl driving backwards, the saw cut the wrong way, and the
+// follower decoupled from its cam), which is the argument for the assert
+// below rather than for trusting a clean run.
+const _frac = (x) => x - Math.floor(x);
+// Where P's tooth pattern sits on the P→Q centre line, as a fraction of a
+// pitch; Q's phase is then whatever puts a gap opposite it.
+const gearMeshPhase = (p, phiP, NP, q, NQ) => {
+  const psi = Math.atan2(q.y - p.y, q.x - p.x);
+  const tP = _frac(((psi - phiP) * NP) / (Math.PI * 2));
+  return psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / NQ);
+};
+// I1 keeps the old value as the DATUM — it is the wheel whose other mesh
+// (setting wheel → I1) this change does not touch, so moving it would trade
+// one unverified mesh for another. I2 is now solved against it.
+const ALARM_SET_I1_PHASE = Math.PI / ALARM_SET_I1_TEETH;
+const ALARM_SET_I2_PHASE = gearMeshPhase(
+  ALARM_SET_I1, ALARM_SET_I1_PHASE, ALARM_SET_I1_TEETH,
+  ALARM_SET_I2, ALARM_SET_I2_TEETH);
+{
+  // The tripwire. Checks the thing the eye caught, in the terms the eye caught
+  // it: at the line of centres, one wheel's tooth must sit against the other's
+  // gap — half a pitch apart, not zero.
+  const psi = Math.atan2(ALARM_SET_I2.y - ALARM_SET_I1.y, ALARM_SET_I2.x - ALARM_SET_I1.x);
+  const a = _frac(((psi - ALARM_SET_I1_PHASE) * ALARM_SET_I1_TEETH) / (Math.PI * 2));
+  const b = _frac(((psi + Math.PI - ALARM_SET_I2_PHASE) * ALARM_SET_I2_TEETH) / (Math.PI * 2));
+  const off = Math.min(_frac(b - a - 0.5), 1 - _frac(b - a - 0.5));
+  if (off > 1e-6)
+    console.warn(`TODO 15: the alarm winding idlers sit ${(off * 100).toFixed(1)}% of a pitch `
+      + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
+}
 const alarmSetI1Spin = new THREE.Group();
 const alarmSetI2Spin = new THREE.Group();
 {
-  const mk = (spin, pos, teeth) => {
+  const mk = (spin, pos, teeth, phase) => {
     spin.position.set(pos.x, pos.y, ALARM_SET_Z);
     const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth, thickness: ALARM_SET_T, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
-    idler.rotation.z = Math.PI / teeth;
+    idler.rotation.z = phase;
     spin.add(idler);
     alarmIdlerGroup.add(spin);
     const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, -2 - (ALARM_SET_Z + ALARM_SET_T / 2), 10), MATS.steel);
@@ -5494,8 +5540,8 @@ const alarmSetI2Spin = new THREE.Group();
     stud.position.set(pos.x, pos.y, (-2 + ALARM_SET_Z + ALARM_SET_T / 2) / 2);
     alarmIdlerGroup.add(stud);
   };
-  mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH);
-  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH);
+  mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, ALARM_SET_I1_PHASE);
+  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, ALARM_SET_I2_PHASE);
 }
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
