@@ -4362,6 +4362,28 @@ one states the test:
    tail: grounded at the stud, moving at the arm.
 9. **A sprung cam follower** — pressed onto its cam, not glued to it.
 
+### The sandwich: a stop must be viewed from the side its part is on
+
+Reported by eye: *"stop 9 is focusing on the balance wheel"*. It was. This
+movement is a sandwich and half the alarm work lives **under the base
+plate**, on the dial side. Three of the nine stops named dial-side parts
+(crank centre z −6.7, setting idler −4.7, release feeler −5.8) while their
+camera directions all had **+z** — putting the camera on the movement side
+looking *through* two plates at the balance and the plate top, with not one
+pixel of the subject in frame.
+
+`frameOn` now decides which side of the plates to view from, from the
+target's own centre: a stop says which way it wants to look, and a part
+that later moves across the sandwich takes its camera with it. Per-stop
+vectors would have needed re-tuning on every such move — the same reason
+framings are derived rather than typed in the first place.
+
+Fixing the side alone is not enough: once the camera is correctly on the
+dial side, the base plate and dial are between it and the subject, so
+those stops set `xray` too. Stop 9 also reframed from the whole unit onto
+`alarmFeelerSpring` — the unit's radius is 6.2, which at any usable pad
+puts the camera ~28 u out, a whole-movement shot for a part 0.1 mm thick.
+
 ### Stop 4 frames an END, not a centre — and the first attempt failed
 
 `frameOn` aims at a bounding-box centre, which is right for a wheel and

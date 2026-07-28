@@ -10788,6 +10788,18 @@ function frameOn(target, dir = [0.5, -0.4, 0.75], pad = 3.4) {
   _frameBox.getCenter(_frameCen); _frameBox.getSize(_frameSz);
   const r = Math.max(_frameSz.length() / 2, 1.6);
   const d = new THREE.Vector3(...dir).normalize().multiplyScalar(r * pad);
+  // VIEW FROM THE SIDE THE PART IS ON. This movement is a sandwich, and half
+  // the alarm work lives UNDER the base plate on the dial side. A stop naming
+  // a dial-side part with a +z direction puts the camera on the movement side
+  // looking THROUGH two plates: you see the balance and the plate top and not
+  // one pixel of the subject. Three of nine stops did exactly that (crank
+  // centre at z -6.7, setting idler -4.7, release feeler -5.8), and stop 9 was
+  // reported as "focusing on the balance wheel" — which is what it was doing.
+  //
+  // Derived, not per-stop tuning: a stop says which way it wants to look and
+  // this decides which side of the plates to look from, so a part that later
+  // moves across the sandwich takes its camera with it.
+  if (_frameCen.z < 0 && d.z > 0) d.z = -d.z;
   return { pos: [_frameCen.x + d.x, _frameCen.y + d.y, _frameCen.z + d.z],
            look: [_frameCen.x, _frameCen.y, _frameCen.z] };
 }
@@ -10846,22 +10858,29 @@ const INSPECT_STEPS = [
   // input. Framed on the contact so it keeps aiming there if either moves.
   { camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0), scale: 0.25,
     caption: '4/9 Where the beak’s tail meets the top of the vertical rod, movement side. Nose falls into a gap ⇒ tail RISES ⇒ the rod follows it up 1:1. A tail driving DOWN onto a rising rod is an inverted lever.', dwell: 7.5 },
-  { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false,
+  // xray on every DIAL-SIDE stop from here: once the camera is correctly on the
+  // dial side, the base plate and the dial itself are between it and the
+  // subject. Fixing the side without this just swaps one opaque view for
+  // another.
+  { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false, xray: true,
     caption: '5/9 The lay shaft’s drive end. Its crank should carry the selector ring’s tab — and the shaft should look like an arbor, not a hair.', dwell: 7.0 },
 
   // --- the mesh-phase family: TODO 15
   { camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6), scale: 1, labels: false,
     caption: '6/9 Winding idlers. Tooth into GAP at the line of centres, never tooth on tooth — and the same again where they meet the barrel.', dwell: 7.0 },
-  { camera: frameOn('Alarm setting idler', [0.4, -0.35, 0.85], 4.0),
-    caption: '7/9 The setting train’s dogleg: setting wheel → idler → idler. Same test, and this chain crosses the dial’s Y-flip.', dwell: 6.5 },
+  { camera: frameOn('Alarm setting wheel', [0.4, -0.35, 0.8], 2.6), xray: true,
+    caption: '7/9 The setting train’s dogleg, dial side: setting wheel → idler → idler. Same tooth-into-gap test, and this chain crosses the dial’s Y-flip.', dwell: 6.5 },
 
   // --- the strike: TODO 14's spring, and the hammer that has to fall
   { camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2), alarm: true, scale: 0.3,
     caption: '8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.', dwell: 7.0 },
 
   // --- the cam followers: TODO 13
-  { camera: frameOn('Alarm release feeler', [0.4, -0.4, 0.85], 4.6), scale: 0.3,
-    caption: '9/9 A sprung cam follower. The blade is anchored off-lever now; the arm should be pressed onto its cam, not glued to it.', dwell: 7.0 },
+  // Framed on the BLADE itself: the unit's radius is 6.2, which at any usable
+  // pad puts the camera ~28 u out — a whole-movement shot for a part 0.1 mm
+  // thick. The subject is the spring and the arm it presses.
+  { camera: frameOn('alarmFeelerSpring', [0.5, -0.3, 0.8], 8.0), scale: 0.3, xray: true,
+    caption: '9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.', dwell: 7.5 },
 
   { preset: 'Free', scale: 1, alarm: false, labels: false, xray: false, explode: 0,
     caption: 'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.', dwell: 4.0 },
