@@ -980,3 +980,47 @@ should be quoted.
 3. **Silhouette spectrum** — the right idea, honestly under-confident.
    Says "I don't know" instead of lying, which is the only one of the
    three that is safe to build on.
+
+### Edge interpolation fixed the sampling — and exposed the real problem
+
+Walking every triangle EDGE across the azimuth bins it spans works
+exactly as intended: **2048 of 2048 bins populated**, up from 699. The
+sparse-signal aliasing is gone.
+
+But the spectrum did not sharpen — it **collapsed**:
+
+| N | amplitude |
+|---|---|
+| 8 | 0.00008 |
+| 32 | 0.00007 |
+| 16 | 0.00004 |
+
+Ratio 1.14, amplitudes ~0.008% of mean radius. With the sampling fixed,
+`R(θ)` came out **essentially CONSTANT** — a circle. There is no tooth
+modulation in the silhouette at all.
+
+**That is not a gauge failure; it is a finding about the object.** A
+toothed wheel's outer radius must swing by roughly a module between tip
+and root — several percent, not eight thousandths of one. A silhouette
+this flat means the max-radius outline is dominated by something
+**circular sitting at or beyond the tooth tips**. Consistent with the
+earlier probe, which found 1224 vertices bunched within 0.5% of max
+radius — that was never a bevel band on the teeth; it reads like a ring.
+
+So one of two things is true, and they are cheap to tell apart:
+
+1. the handle (`spin.userData.gear`) is not the toothed wheel, or carries
+   more than it, or
+2. there is a genuine circular part — a rim, collar or washer — at the
+   tip radius, in which case the mesh the screenshots show cannot be the
+   part this handle points at.
+
+**Next: list every mesh under the handle with its own max radius and
+vertex count.** One call, and it distinguishes the two immediately.
+Measure the toothed mesh ALONE and the spectrum should snap to the true
+tooth count — the ratio is still the acceptance test.
+
+Each attempt has moved the unknown one step outward: the check was
+circular, then the input was sparse, and now the input is clean and the
+OBJECT is wrong. That is progress, but the phase question remains
+unanswered and nothing here should be quoted as a measurement yet.
