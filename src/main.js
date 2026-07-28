@@ -5682,11 +5682,32 @@ const solveGearChain = (label, chain, module) => {
       return;
     }
   }
+  // THE INVARIANT IS THE SUM, NOT THE DIFFERENCE — and getting this wrong is
+  // why the wheels looked meshed at rest and drifted apart as they turned.
+  //
+  // Let uP = where P's tooth pattern sits on the centre line, as a fraction of
+  // its pitch, and uQ the same for Q measured from the opposite direction.
+  // Meshing gears COUNTER-rotate: turn P by +θ and Q goes −θ·(NP/NQ). Under
+  // that, uP DECREASES by θ/pP while uQ INCREASES by the same amount. So
+  // `uQ − uP` changes continuously as the train runs — it is not a property of
+  // the mesh at all — while `uP + uQ` is invariant. The condition is
+  //
+  //     frac(uP + uQ) = 0.5
+  //
+  // (when P puts a tooth on the line, uP = 0, Q must put a GAP there, uQ = 0.5).
+  //
+  // The previous version solved for uQ = uP + 0.5, which satisfies the
+  // DIFFERENCE. That is true at exactly one rotational instant and false
+  // everywhere else, which is precisely the reported symptom: correct in the
+  // built pose, visibly tooth-on-tooth in the running sim. Verified by the
+  // only test that can tell them apart — measuring at the build pose AND after
+  // runtime rotation, and requiring both to agree.
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const tP = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
-    alignGear(Q.obj, psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / Q.teeth), Q.teeth);
+    const uP = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const uQ = _frac(0.5 - uP);
+    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth);
   }
   // The residual tolerance is set by the INSTRUMENT, not by hope: gap centres
   // are quantised to 2π/2048, averaged over N gaps — comfortably inside 2% of
@@ -5696,7 +5717,7 @@ const solveGearChain = (label, chain, module) => {
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
     const a = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
     const b = _frac(((psi + Math.PI - measuredToothPhase(Q.obj, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
-    const off = Math.min(_frac(b - a - 0.5), 1 - _frac(b - a - 0.5));
+    const off = Math.min(_frac(a + b - 0.5), 1 - _frac(a + b - 0.5));   // SUM: see above
     if (off > 0.02)
       console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
         + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
@@ -6668,6 +6689,12 @@ registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like
   stud.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + studBase) / 2);
   alarmStrikeUnit.add(stud);
 }
+// TODO 15 handles. Declared HERE, above the striking rotor: the pinion is
+// assigned in that build and the barrel's wall later, so a declaration sited
+// with the barrel is a module-level temporal dead zone. It threw at import,
+// which reads in the console as a SILENT boot — no warnings because nothing
+// ran. Third time this session; the tell is `__clock` missing, not the log.
+let alarmBarrelGear = null, alarmStrikePinion = null;
 const alarmStrikeRotor = new THREE.Group(); // everything that turns with the striking train
 alarmStrikeRotor.position.set(alarmSwPos.x, alarmSwPos.y, 0);
 alarmStrikeUnit.add(alarmStrikeRotor);
@@ -6743,6 +6770,7 @@ alarmStrikeUnit.add(alarmStrikeRotor);
     module: ALARM_TRAIN_MODULE, teeth: ALARM_STRIKE_PINION_TEETH, thickness: ALARM_PINION_T });
   pinion.position.z = ALARM_BARREL_Z;
   alarmStrikeRotor.add(pinion);
+  alarmStrikePinion = pinion;      // TODO 15: the barrel's OTHER mesh
 }
 // Where the striking wheel stands. Lobes repeat every ALARM_CAM_LOBE_PITCH, so
 // anchoring the rotation at 0 puts a release at every whole strike — which is
@@ -6777,6 +6805,7 @@ alarmBarrelUnit.add(alarmBarrelRotor);
     radius: ALARM_BARREL_PITCH_R, height: ALARM_BARREL_H, ratchet: false,
     teeth: ALARM_BARREL_TEETH, module: ALARM_TRAIN_MODULE, arborH });
   alarmBarrelRotor.add(alarmBarrel);
+  alarmBarrelGear = alarmBarrel;   // TODO 15: the winding chain's last link
   if (ALARM_BARREL_Z - arborH / 2 > ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2)
     console.warn(`alarm barrel arbor stops at ${(ALARM_BARREL_Z - arborH / 2).toFixed(2)}, short of its boss top ${(ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2).toFixed(2)} — no pivot engagement`);
 }
@@ -6879,10 +6908,18 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   // The pinion comes from makePinion rather than makeGear, which is exactly
   // why the phase is measured from vertices rather than assumed from a local
   // axis — nothing guarantees the two builders agree on where local 0 sits.
+  // The chain runs to the BARREL and on to the striking pinion. The barrel is
+  // not a terminus: it is a wheel with two meshes, and a phase that satisfies
+  // the idler it is driven by must then be the datum for the pinion it drives.
+  // Stopping at idler 2 is what left the barrel meeting the idlers tip-on-tip
+  // — the same "fixed one pair, ignored the next" mistake as the setting
+  // wheel, one link further down.
   solveGearChain('alarm winding:', [
     { obj: pin, teeth: ALARM_WIND_PINION_TEETH, name: 'climb pinion' },
     { obj: alarmWindUnit.userData.i1.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 1' },
     { obj: alarmWindUnit.userData.i2.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 2' },
+    { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel' },
+    { obj: alarmStrikePinion, teeth: ALARM_STRIKE_PINION_TEETH, name: 'striking pinion' },
   ], ALARM_TRAIN_MODULE);
 }
 

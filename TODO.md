@@ -1056,3 +1056,41 @@ the chain, pick the datum, call `solveGearChain`. Also note i1b shares an
 arbor with setting i1, whose phase the solve now moves — if the two are
 meant to be one rigid part, their relative phase is a constraint nobody
 has stated yet.
+
+### The barrel report exposed the real bug: the invariant was the wrong one
+
+Extending the winding chain past idler 2 to the **barrel** and on to the
+**striking pinion** was the easy half — the barrel is not a terminus but
+a wheel with two meshes, and stopping at idler 2 is the same
+"fixed one pair, ignored the next" mistake one link further down.
+
+The hard half is that the mesh condition itself was **wrong**, and the
+barrel report is what surfaced it. Measuring at the built pose gave 0.00%
+while measuring the *rendered* scene gave 13.67% — with a spin ratio of
+exactly −1, which is correct for two 51-tooth wheels. Correct rotation,
+drifting mesh: the condition could not be a property of the mesh.
+
+Let `uP` be where P's tooth pattern sits on the centre line as a fraction
+of its pitch, `uQ` the same for Q from the opposite direction. Meshing
+gears **counter-rotate**: turn P by +θ and Q goes −θ·(NP/NQ), under which
+`uP` decreases by θ/pP while `uQ` **increases** by the same. Therefore
+
+- `uQ − uP` changes continuously as the train runs — not a property of the
+  mesh at all;
+- `uP + uQ` is **invariant**, and the condition is `frac(uP + uQ) = 0.5`.
+
+The solve had been targeting `uQ = uP + 0.5` — the difference. That is
+true at exactly one rotational instant and false everywhere else, which
+is precisely the reported symptom: right at rest, tooth-on-tooth in the
+running sim. Every "verified 0.00%" before this measured the built pose
+only, so the wrong invariant was never exercised.
+
+**The test that separates right from lucky** is invariance: measure at
+the build pose, as rendered, and at an arbitrary third pose, and require
+agreement. Now **0.01% at all three** (spin ±7.938 and ±1.234), gap
+counts 51/51, boot silent, all five links credible.
+
+A build-pose-only check could never have caught this — it is a check that
+searches for less than the thing it verifies, arrived at from a new
+direction: not a too-small search *range* this time, but a single sample
+of a quantity that only reveals itself in motion.
