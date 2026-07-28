@@ -4152,3 +4152,481 @@ Off by default, toggled in **View → Control HUD**, or opened on arrival
 with `?hud=1` — for a link that wants the watch driveable the moment it
 loads, which on a phone is the difference between a demo and an
 instrument.
+## §54. Slenderness — a minimum thickness is not a minimum stiffness
+
+§50 gave every part a floor on its thinnest dimension, closing a real
+class of defect: parts too thin to exist. It cannot see the next class at
+all, because **stiffness goes as t⁴/L³** and the floor knows nothing
+about L.
+
+The alarm link is the case that prompted it (`TODO.md` 16, reported by
+eye). Its beak tail is 0.12 mm section — **exactly `STOCK_MIN_U`, built
+deliberately to the floor** — and 10.0 mm long, so it passes by
+construction while being 84× longer than it is thick. Meanwhile the same
+unit's centre crank, at 0.045 mm the thinnest member in the alarm work,
+is **280× stiffer**, because it is short. The thickness floor ranks those
+two exactly backwards.
+
+### Which dimension, and why not the thinnest
+
+A flat lever is wide and thin *on purpose*: it bends easily out of plane
+and is stiff in the plane its load acts in. Judging it by sheet thickness
+would flag every correctly-made lever in the movement. So slenderness is
+measured against the **second-smallest extent** — the stiffest section
+dimension available. A part slender even in its stiff direction is
+slender however it is oriented, and there is no argument to have about
+it. The test is deliberately conservative: it under-reports rather than
+crying wolf.
+
+Springs and markings are **exempt by kind, not waived** — a spring that
+is not slender is not a spring, and a printed index is a film, not a
+member. Flagging them is a category error, so they never enter the
+population.
+
+### One ceiling per kind, and the one that was found by running it
+
+`SLENDER_MAX = 30`, on the basis that real watch arbors and levers run
+L/t of roughly 5–20. The small-seconds hand then came back at **λ 31.5**
+— and that is not a defect, it is what a hand *is* (real blued-steel
+seconds hands run λ 30–50). `SLENDER_MAX_BY_KIND.hand = 50` covers it.
+A **ceiling, not an exemption**: a hand at λ 200 would still be a real
+finding. That refinement was not predicted; it came out of running the
+check, which is exactly the §50 triage loop.
+
+### Result
+
+**4 ms** over 454 meshes — geometry-local, so unlike §50 it needs no
+swept registry and no sampling. 17 exempt by kind, **8 over ceiling, 6
+unwaived**:
+
+| unit / mesh | λ | section × length | stiffness |
+|---|---|---|---|
+| Alarm link / `alarmLinkShaft` | **100.5** | 0.09 × 9.05 mm | 4.4 N/m |
+| Alarm link / `alarmLinkBeakTail` | **83.7** | 0.12 × 10.05 mm | 10.2 N/m |
+| Hack rod | 63.4 | 0.26 × 16.65 mm | 51.4 N/m |
+| Reset rod | 44.7 | 0.26 × 11.74 mm | 146.9 N/m |
+| Keyless works | 38.2 | 0.26 × 10.02 mm | 224.3 N/m |
+| Reset rod | 36.9 | 0.26 × 9.69 mm | 261 N/m |
+| Alarm crown | 35.4 | 0.32 × 11.15 mm | 355.5 N/m |
+| Alarm release feeler | 35.1 | 0.10 × 3.43 mm | 43.2 N/m |
+
+It **independently reproduces the hand-measured alarm link** at the top
+of the list, then finds six more nobody had looked at. The stiffness
+column is informational — a first-order cantilever estimate good to a
+factor of two — because "λ = 84" means less to a reader than "10 N/m: it
+bends a tenth of a millimetre under a milligram-ish load".
+
+**A report, not a gate** — §40's rule and §50's own history. §50 reported,
+was triaged over four tranches, and only then gated. Arriving as a gate is
+how a check gets switched off. `ok` is always true; the rows are the
+product.
+
+Three alarm-link members were **named** in the same change
+(`alarmLinkShaft`, `alarmLinkBeakBar`, `alarmLinkBeakTail`): a slenderness
+row that cannot name its member is not actionable, and unnamed geometry
+has been this session's most expensive recurring cost.
+
+### §54 postscript — the alarm link fixed, and a pillar move rejected on evidence
+
+§54's first customer, closed. Both members are now derived from
+`SLENDER_TARGET`, so the geometry is sized by the same number the check
+measures it against.
+
+**The originally-proposed fix was wrong, and probing said so.** TODO 16
+proposed moving the pillars: both bushes cluster at the rod end, leaving
+the drive crank on a 4.5 mm cantilever. Probing every station along the
+chord showed the entire inboard run sits under dial-side hardware — which
+is precisely *why* the bushes are where they are. The cantilever is not
+movable, so the fix had to be section.
+
+| member | was | now |
+|---|---|---|
+| `alarmLinkShaft` | 0.09 mm, λ 100.5, 21 N/m | 0.335 mm, λ 27, **4075 N/m** |
+| `alarmLinkBeakTail` | 0.12 mm square, λ 83.7, 10.2 N/m | 0.12 × 0.372 mm blade, λ 27, **305 N/m** |
+
+**A lever is tall and thin, not square.** The tail's load is vertical, so
+its section grew in Z, where the force acts, and stayed at floor stock in
+Y. §54 measures slenderness against the stiffest available dimension
+precisely so a blade earns its ratio this way.
+
+**Two budgets agreeing is why the shaft radius is trustworthy.** §54's
+ceiling gives d ≥ chord/30; the load path — holding the drive end to a
+tenth of the selector's 0.071 mm stroke under a ~20 mN detent — gives
+≈ 2800 N/m, i.e. the same radius to two decimals.
+
+**`SLENDER_TARGET = SLENDER_MAX * 0.9` exists because of a rounding
+miss.** Built at exactly the ceiling, the tail came back at λ 30.0 and was
+still reported: sizing a part to the boundary lets float rounding pick the
+side. `JMP_BIND_EPS`'s lesson in a new place — never build exactly to the
+limit a check compares against.
+
+The crank offset had to become derived (`SHAFT_R + CRANK_T/2`): at the old
+literal 0.22 an arm would sit *inside* the fattened arbor. `ROD_FOOT`
+followed `CRANK_TOP` automatically, as §51 arranged.
+
+**Verified:** the alarm link is entirely off the slenderness report (8 → 6
+rows, and `SLENDER_WAIVERS` is now empty — fixed, not waived);
+`stockFloor` ok with waived **57 → 53**; focused battery over link,
+selector, switch, dial, plate, jumper, drum and barrel: support 0, graph
+0, penetration none over budget, clearances 0; boot silent. Stall force
+along the chain ≈ 1.5 mN → ≈ 48 mN.
+
+### §54 postscript 2 — the beak lever was inverted, and my verification could not see it
+
+Reported by eye: the rod from the column wheel to the vertical rod levers
+the wrong way against a shaft that should be pushed dial-side and sprung
+back — with a collision to show for it.
+
+**The same Euler-order trap the lay shaft already carries a fix for, on the
+arm twelve lines above it.** The beak's aim is `rotation.z`, set at build;
+its lever action is `rotation.y`, set each tick. Under the default `'XYZ'`
+the tilt is applied *before* the aim — about world-Y — so the throw comes
+out scaled by `cos(beakAim)`, and this arm aims at **122.4°**, where the
+cosine is **negative**.
+
+Measured under `'XYZ'`: nose **+0.0079**, tail **−0.1436** per 0.02 rad,
+against a pose law whose own comment reads *"nose falls into the gap"*.
+The nose **rose**. So the tail drove **down** onto a rod the same frame was
+moving **up** — the two members pushed into each other — and the lever ran
+at **54%** of its intended throw as a bonus.
+
+`beakArm.rotation.order = 'ZYX'` applies the aim first, then tilts about
+the arm's own axis. Verified across the alarm's on/off poses:
+
+| | |
+|---|---|
+| tail tip travel | **+0.19** |
+| rod travel | **+0.19** — ratio **1.000** |
+| nose | −0.0065 — falls while the tail rises |
+| tail↔rod contact gap | constant at both poses |
+
+**On my own verification.** I reported the section fix as battery-clean
+having run `focusedCheck` — support, graph, penetration, clearances. Those
+test **declared pairs**. A brand-new overlap between an *undeclared* pair
+is invisible to every one of them, and `sweptOverlap` — the check that
+enumerates all pairs — is the one I skipped as "the slow one". The eye
+caught what the cheap subset structurally could not. Re-run in full here:
+**523 volumes, 0 still escaping, 0 confirmed, 0 tight, no Alarm link rows.**
+
+Three of my measurements during this fix were also vacuous before they
+were right — an AABB test on a long diagonal bar (its box overlaps half
+the movement), a pose sweep that never moved the column wheel, and the
+tail's AABB *floor*, which is pinned at the pivot end no matter how the
+lever swings. The tip is what moves; measure the thing that moves.
+
+## §55. The inspection route — a tour for the instrument that actually finds things
+
+`TOUR_STEPS` is a **showcase**: it narrates the movement to a visitor and
+never goes near the alarm work. This is a different animal — a **route to
+the places defects live** — and it exists because of a pattern this
+project keeps paying for.
+
+The battery answers *"does anything overlap?"*. Every kinematic lie found
+so far was caught **by eye** and was invisible to a clean run: a pawl
+driving the column wheel backwards, a saw cut the wrong way, a follower
+decoupled from its cam, a spring parented to the lever it should push,
+gears meshing tooth-on-tooth, and a lever inverted by its Euler order.
+Not one of those moves a volume anywhere it should not be, so not one of
+them can fail a sweep. If the eye is the instrument that finds this class,
+it deserves a systematic route rather than wherever the camera happened to
+be pointing.
+
+### Framings are derived, not typed
+
+A stop names the **part** it wants to look at; the camera is placed off
+that part's measured bounding box (`frameOn`, accepting a unit name or a
+mesh name). A hand-typed pose silently stops framing its subject the first
+time the subject moves — which is precisely the failure this tour exists
+to catch. The tour must not need re-aiming every time the geometry it
+inspects is corrected. A stop naming something that does not exist warns
+by name at boot rather than quietly framing nothing.
+
+### Nine stops, each saying what to LOOK FOR
+
+A caption that only names the part gives the eye nothing to do, so each
+one states the test:
+
+1. **Escapement** — §48's control case: the fork is impulsed both ways and
+   should read as *driven*, not animated.
+2. **Column wheel at rest** — the click's spring is grounded on its own
+   stud; it must stay still while the arm rocks.
+3. **Column wheel indexing** — the pawl must drive the ratchet the way its
+   teeth are cut.
+4. **The beak on the castellations** — nose falls into a gap ⇒ tail rises
+   ⇒ rod rises. *A lever inverts*; nose and tail moving together is wrong.
+5. **The lay shaft's drive end** — its crank must carry the ring's tab, and
+   the shaft should read as an arbor rather than a hair.
+6. **Winding idlers → barrel** — tooth into gap at the line of centres.
+7. **Setting train dogleg** — the same test across the dial's Y-flip.
+8. **The hammer** — its fall is a spring law, so a real spring bears on the
+   tail: grounded at the stud, moving at the arm.
+9. **A sprung cam follower** — pressed onto its cam, not glued to it.
+
+### The sandwich: a stop must be viewed from the side its part is on
+
+Reported by eye: *"stop 9 is focusing on the balance wheel"*. It was. This
+movement is a sandwich and half the alarm work lives **under the base
+plate**, on the dial side. Three of the nine stops named dial-side parts
+(crank centre z −6.7, setting idler −4.7, release feeler −5.8) while their
+camera directions all had **+z** — putting the camera on the movement side
+looking *through* two plates at the balance and the plate top, with not one
+pixel of the subject in frame.
+
+`frameOn` now decides which side of the plates to view from, from the
+target's own centre: a stop says which way it wants to look, and a part
+that later moves across the sandwich takes its camera with it. Per-stop
+vectors would have needed re-tuning on every such move — the same reason
+framings are derived rather than typed in the first place.
+
+Fixing the side alone is not enough: once the camera is correctly on the
+dial side, the base plate and dial are between it and the subject, so
+those stops set `xray` too. Stop 9 also reframed from the whole unit onto
+`alarmFeelerSpring` — the unit's radius is 6.2, which at any usable pad
+puts the camera ~28 u out, a whole-movement shot for a part 0.1 mm thick.
+
+### Stop 4 frames an END, not a centre — and the first attempt failed
+
+`frameOn` aims at a bounding-box centre, which is right for a wheel and
+wrong for a rod. The z-shaft runs 16 u through both plates, so its centre
+is buried in the plate sandwich while the joint worth looking at — where
+the beak's tail drives it — is 8 u away on the movement side.
+
+The first attempt framed the **contact** between tail and rod by
+intersecting their bounding boxes. It came back **empty**, and the
+fallback landed at z 5.76: mid-air, below the plate top, framing nothing.
+The reason is the lesson this project keeps relearning — an AABB of a long
+**diagonal** member describes a volume the part is nowhere near. The tail
+runs 26.8 u across the movement, so its box is enormous and its overlap
+with anything says nothing about where the two actually touch. Same
+instrument failure that produced a false collision reading during the
+alarm-link work an hour earlier.
+
+`frameOnEnd(target, end, axis)` takes the member's own extent and frames
+the requested end, closing in by the part's **section** rather than its
+length — otherwise the shot is as wide as the member is long. Stop 4 now
+lands on the rod's top at z 9.45, above the plate top at 8.5, at 4.2 units.
+
+Runs off an `Inspect` button beside `Tour` and `Demo`, through the same
+`scriptStart`/`scriptEnterStep` engine, so it stops the same way and takes
+the same camera tween. Dwells are 6–7 s rather than the showcase's 1–4:
+this one is meant to be looked at, not watched.
+
+### Deep links: `?inspect=1` and `?cycle=1`
+
+`?inspect=1` starts the route, and unlike `?tour` it has **no confirm
+gate**. That gate exists because a deep link is not a user gesture and
+should not swing the camera, crown and *sound* at a first-time visitor
+unasked. The inspection route is a working tool reached deliberately, it
+makes no sound, and anyone typing the parameter has already asked for
+exactly what it does.
+
+`?cycle=1` starts the alarm cycler on arrival, which is the one worth
+pairing with the existing `?cam` / `?look` / `?xray`: aim at a linkage and
+watch it work without touching the page. E.g.
+
+```
+?cam=6.0,-3.0,-7.9&look=4.79,-2.26,-5.75&xray=1&cycle=1
+```
+
+### The alarm cycler — motion at the view you already chose
+
+A `Cycle` button beside the alarm's on/off. It flips the alarm on a 1.6 s
+timer and touches **nothing else**: no camera, no preset, no time scale.
+
+**Force transfer is only legible in motion.** A single state change gives
+the eye two still frames and leaves it to assume the path between them —
+which is exactly how a follower decoupled from its cam and a lever
+inverted by its Euler order both survived review. Watching the chain cycle
+several times makes pusher → column wheel → beak → rod → shaft → crank →
+ring either obviously work or obviously not.
+
+**Deliberately not a tour stop.** A stop moves the camera, and the point
+here is to inspect *the view you already framed* — park wherever you like
+and let the mechanism run. It also runs off the frame loop rather than
+`setInterval`, so it stops dead when the tab is backgrounded instead of
+queueing a burst of toggles to replay on return, and its toggle lands in
+the same pre-tick slot as the scripted crown turns so the state change is
+integrated by the frame that follows it.
+
+**Verified:** alarm state observed **On → Off** while cycling, with
+`cameraMoved` **0.0000**, and holding at a single state once stopped.
+Sampled across separate tool calls with forced paints — this repo's rAF
+throttles hard under automation, and the first attempt to check it inside
+one eval sampled 14 consecutive frames (~0.2 s) against a 1.6 s
+half-period, a window in which no toggle could ever have appeared.
+
+### Defaults: synced on arrival, ribbing at its minimum
+
+**Synced.** The movement used to boot at an arbitrary epoch, so the first
+thing a viewer saw was a watch showing the wrong time. Boot now runs the
+SAME `syncStart()` the button does — crown out, set through the real
+keyless works, catch up — so the default is the mechanism doing its job
+rather than a number assigned to the hands. Skipped when a script owns the
+view (a deep-linked tour/demo/inspection is mid-flight and `syncStart`
+pulls the crown and forces scale 1 underneath it) and when `?tau` or
+`?sync` says the caller already chose an epoch.
+
+**Ribbing at a minimum.** `decoration.ribbing.widthUnits` is the band
+PITCH, so larger means fewer ribs: 6.7 → **30**, the bound maximum. The
+`_comment` now says which way the parameter runs, since "minimum ribbing"
+and "minimum widthUnits" are opposites and the next reader will meet that
+trap.
+
+Verified: dial reads 11:56:37 against a 23:56:37 wall clock; rib slider at 30.
+
+## §56. The gong arc is a parameter, and the gong's voice is derived from it
+
+`decoration`-style live controls for the alarm gong: `gong.arcDeg` and
+`gong.wireDiaUnits`, through §23's generated Advanced panel and its bounds
+table.
+
+### Measured back from the FREE end
+
+The arc is defined **backwards from the struck end**, so `arcDeg` moves the
+**foot**. That direction is the whole trick: the ringing end, the hammer,
+its pivot azimuth (`GONG_A1 + 11°`), the head's rest radius and the strike
+emitter are every one of them sited off `GONG_A1`. Anchoring at the foot
+instead would drag the hammer around the rim on every edit and re-open
+§25's strike geometry. **Verified: `hammerMoved` = 0.0000** across the
+range.
+
+### The voice follows the wire
+
+The ding used to be `sndTone(1760) + sndTone(880)` — an octave pair, picked
+as "A6-ish, a small bell". It is now the wire's own modes:
+
+> f_n = (β_nL)² · (d/4) · √(E/ρ) / (2π L²),  (β_nL)² = 3.516, 22.03, 61.70
+
+Those ratios are **1 : 6.27 : 17.55** — *inharmonic*, and that is the
+point rather than a detail. A struck wire is not a bell; modelling it as an
+octave modelled away the very thing that makes a gong sound like a gong.
+Neither old tone was a mode of this wire at any dimension.
+
+Measured through the live control:
+
+| arc | fundamental | 2nd mode |
+|---|---|---|
+| **90°** (default) | 626 Hz | 3922 Hz |
+| 60° | 1397 Hz | 8755 Hz |
+| 45° | **2514 Hz** | 15756 Hz |
+
+which closes most of `TODO.md` 17 — the tone is no longer chosen. It also
+makes the entry's design point audible rather than theoretical: at 90° the
+fundamental is a 626 Hz hum and the ring that carries is the 3.9 kHz second
+mode, while at 45° the fundamental itself lands at 2514 Hz, right where a
+real alarm sits. Note the second mode leaves the audible band on the way,
+so shortening the arc changes the *character* and not just the pitch.
+
+What remains of TODO 17: the hammer strikes **in-plane**, and a curved
+bar's in-plane modes sit somewhat above these straight-bar figures, so a
+curvature term would sharpen all of the above.
+
+### §54 postscript — the shaft thickening was reverted; CI caught it
+
+The alarm-link section fix shipped for the **beak tail** and was **reverted
+for the shaft**. Taking it to `SLENDER_TARGET` (r 0.12 → 0.447) drove it
+into the minute jumper: `Alarm link ⇄ Minute jumper`, FORBIDDEN across the
+whole beat axis, **overlap 0.312** against a radius growth of 0.327.
+
+The instructive part is why the local evidence looked fine. An exhaustive
+per-vertex scan put the nearest non-contact neighbour at **0.97** and the
+jumper at **2.86** — both correct, both beside the point, because the
+minute jumper is a **mover** and the fat shaft sits in the arc its blade
+sweeps. A single-pose probe cannot see a swept intrusion no matter how
+finely it samples. That is the whole argument for `sweptOverlap` being a
+gate, and §52's CI is what enforced it here.
+
+Kept: the beak tail blade (λ 27, 10.2 → 305 N/m) and the inverted-lever fix,
+both movement-side. Reverted: shaft, crank section and offset, bush bore,
+hanger. `SLENDER_WAIVERS['Alarm link']` restored — the check goes on
+reporting λ 100.5, which is the honest state.
+
+The shaft wants a **stepped arbor** — turned down through the jumper's
+sweep, full section in the span and the overhang — which recovers most of
+the stiffness while respecting the corridor. Filed in `TODO.md` 16.
+
+### §54 postscript 2 — the stepped arbor
+
+The uniform fat shaft was rejected by CI; measuring why showed the
+obstruction is the **selector ring**, symmetric at 0.16 above and below the
+shaft plane. The shaft threads the plane of the ring it drives, so there is
+no direction to steal room from — the clearance is a slot, not a stack-up.
+That leaves exactly one shape, and it is the one a real arbor has anyway:
+**turned down at the ends, full section between**.
+
+Necking **both** ends rather than one is the better answer, not a
+compromise: both cranks then sit on thin sections, so their offsets and the
+`ROD_FOOT` chain derived from them do not move, leaving §25's tab
+engagement and §35's corridor untouched. The body's radius derives from the
+BODY's own length — it is the span that must satisfy the ceiling.
+
+Body r 0.373 × 20.13 u at **λ 27**; necks r 0.12 × 2.0 u.
+
+**Drive-end stiffness, by unit-load over the stepped section:** 21 → **1387
+N/m**, which is **65×** the original and **70%** of an unbroken 0.373 shaft.
+The code's first note claimed the tip neck would cost "very little"; that
+was wrong and is now corrected in place — the neck is 17% of the length but
+**30% of the compliance**, since I falls 93× where it is turned down. Under
+20 mN the drive end deflects **20%** of the selector stroke, against
+**1324%** before.
+
+Verified against the two gates that failed the previous attempt:
+`sweptOverlap` 0 confirmed / 0 tight / no Alarm link rows, `inspection` 0
+FORBIDDEN, `stockFloor` clean, and `SLENDER_WAIVERS` empty — fixed rather
+than waived.
+
+### §54 fix — the button-restore list is gone
+
+Reported: **Inspect reads "Stop" permanently after the route ends.**
+
+`scriptStop()` restored each script button's idle label from four
+hand-written lines, one per button — and two of them carried comments
+recording this exact bug happening before:
+
+> `// §34's button was missing from this restore — it stayed "Stop" after its run ended`
+> `// §37, same restore — the lesson above, applied on the way in this time`
+
+§54's Inspect button made it **three**. A list that must be edited in a
+second place every time a button is added will eventually be missed, and
+this one had been missed every single time it grew.
+
+So the list is gone. Script buttons carry `.script-ctrl`, their idle
+labels are captured **from the DOM at boot** (`SCRIPT_BTN_IDLE` — read,
+not declared, so it cannot drift from the markup), and `scriptStop`
+iterates. A new button is restored correctly **by existing**; there is
+nothing to remember.
+
+`btn-coupling` and `btn-link` were missing the `.script-ctrl` class and
+gained it here. That also fixes them in a second place: `scriptAbort`
+already used `.script-ctrl` to tell "the user is talking TO the script"
+from "the user is taking over", so clicking either of those mid-run had
+been counted as a takeover.
+
+Verified across both exit paths — second click, and running to completion —
+for all five buttons.
+
+### §54 postscript 3 — the stepped arbor was rejected too, and why that is informative
+
+The stepped arbor was built (body r 0.373 at λ 27, necks r 0.12) and CI
+rejected it: `Alarm link ⇄ Minute jumper`, overlap **0.310**, against
+**0.312** for the uniform r 0.447 shaft.
+
+**The radius barely moved the number.** That is the finding. If the
+shaft's section were the binding thing, 0.447 → 0.373 would have shown —
+so the alarm link's swept volume enters the jumper's swept region at all,
+and the reported depth belongs to that region's shape rather than to the
+shaft. The earlier "selector ring is the obstruction" conclusion is
+retracted: the 0.16-either-side measurement was real, but it was not what
+CI was reporting.
+
+**Local said clean; CI said no, and the gap between them is the useful
+part.** CI boots **virgin**, and boot now runs `syncStart()`, which pulls
+the crown — and a pulled crown puts the minute jumper **in the star**. The
+local session carried persisted state with the jumper elsewhere. *A swept
+check is only as good as the poses it starts from*, and "it passed
+locally" meant "it passed from my saved pose". That is the same family as
+every vacuous check in this session, one level up: not a check that
+searched too little, but a check that started somewhere too comfortable.
+
+Reverted to the section CI passes. The beak tail blade and the
+inverted-lever fix stand — movement-side, verified, not implicated.

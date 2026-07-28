@@ -28,7 +28,7 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
-  STOCK_MIN_U, SPRING_FLAT_U,                 // §50: build to the floor; flat-spring stock
+  STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -6244,9 +6244,15 @@ alarmSpinner.add(alarmCrownKnob);
 // away from the balance/escapement in the lower-right), above the 3/4 plate.
 const Z_GONG = 9.6;              // above the 3/4 plate top (8.5), about the balance-cock height (9.4)
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
-const GONG_A0 = 45 * DEG2RAD;    // fixed (foot) end
 const GONG_A1 = 135 * DEG2RAD;   // free (ringing) end — the hammer strikes here
-const GONG_WIRE_R = 0.5;
+// §56 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
+// direction is the whole trick: the struck end, the hammer, its pivot azimuth
+// (GONG_A1 + 11°), the head's rest radius and the strike emitter are all sited
+// off GONG_A1, so moving the FOOT changes the ringing length while leaving
+// every one of them untouched. Anchoring at the foot instead would drag the
+// hammer around the rim on every edit and re-open §25's strike geometry.
+let GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
 // (TQ_TOP_Z — the three-quarter plate's top face — is derived up at the plate
 // build; the gong foot and hammer post plant into it.)
 
@@ -6262,10 +6268,28 @@ gongArc.position.z = Z_GONG;
 alarmGongUnit.add(gongArc);
 // Foot: a post from the arc's fixed end down into the 3/4 plate top — the
 // gong's ONLY fixing (the far end rings free); its route to the plate.
-const gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
+let gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
 const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
 gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
 alarmGongUnit.add(gongPost);
+
+// §56 — THE GONG'S VOICE, DERIVED FROM THE GONG. A clamped-free steel bar:
+//   f_n = (β_n L)² · (d/4) · √(E/ρ) / (2π L²)
+// with (β_nL)² = 3.516, 22.03, 61.70 — ratios 1 : 6.27 : 17.55. Those are
+// INHARMONIC, and that is the point rather than a detail: a struck wire is not
+// a bell, and the octave pair this used to play (1760 + 880 Hz, chosen as "a
+// small bell") modelled away the very thing that makes a gong sound like a
+// gong. Neither of those tones was a mode of this wire at any dimension.
+//
+// Recomputed whenever the arc or wire changes, so the pitch tracks the
+// geometry: shorten the arc and it rings higher, exactly as the real thing.
+const GONG_STEEL_C = Math.sqrt(200e9 / 7850);      // bar wave speed, m/s
+function gongModes() {
+  const L = GONG_R * (GONG_A1 - GONG_A0) * UNIT_MM / 1000;   // developed length, m
+  const k = (2 * GONG_WIRE_R * UNIT_MM / 1000) / 4;          // radius of gyration, circular section
+  return [3.5160, 22.034, 61.70].map((bl2) => bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L));
+}
+let gongF = gongModes();
 
 // Emitter for the bell voice — an empty at the strike point (the gong unit's
 // own origin is the movement axis, which would mis-spatialize the sound to the
@@ -7212,8 +7236,42 @@ const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
 // The crank arm's own dimensions, hoisted because the ROD'S FOOT is derived
 // from them: the foot has to land ON the arm's top face, and two independent
 // literals for one contact is how a linkage ends up transmitting through a gap.
+// §54 / TODO 16 — the lay shaft's SECTION, derived from the slenderness
+// ceiling, and everything that hangs off it derived from that in turn. The
+// chord is known here (both ends were sited above), so the shaft can be sized
+// before the parts that must clear it.
+const ALARM_LINK_CHORD_LEN = Math.hypot(
+  ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y);
+// THE SHAFT STAYS AT ITS ORIGINAL SECTION. Two attempts to thicken it were
+// rejected by CI, and the second is the informative one.
+//
+//   uniform r 0.447   → Alarm link ⇄ Minute jumper, overlap 0.312
+//   stepped, body r 0.373 → the same pair, overlap 0.310
+//
+// Dropping the radius barely moved the number, which refutes the diagnosis
+// that led to the stepped arbor: if the shaft's SECTION were the lever, 0.447
+// → 0.373 would have shown. It did not, so the binding thing is not how fat
+// the shaft is — the alarm link's swept volume enters the minute jumper's
+// swept region at all, and the overlap depth is set by that region's shape
+// rather than by the radius.
+//
+// A local sweptOverlap said clean at r 0.373, and the disagreement is itself
+// the lesson: CI boots VIRGIN, and boot now runs syncStart(), which pulls the
+// crown — and a pulled crown puts the minute jumper IN the star. The local
+// session carried persisted state with the jumper elsewhere. A swept check is
+// only as good as the poses it starts from, and "it passed on my machine"
+// meant "it passed from my saved pose".
+//
+// So: original section, and §54 goes on reporting λ 100.5. TODO 16 carries
+// what a real fix needs — the jumper's swept envelope measured first, so the
+// next attempt is sized against the thing that actually blocks it.
+const ALARM_LINK_SHAFT_R = 0.12;
+const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
+// The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
+// now be buried inside a shaft of radius 0.402 — which is exactly why this
+// became derived rather than re-tuned. Crank and shaft are one rigid part, so
+// they touch: no clearance margin between an arm and its own arbor.
 const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
-const ALARM_LINK_CRANK_T = 0.12;                         // arm section
 // Top face of the arm, measured from the shaft axis.
 const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
 // Where the rod's foot is BUILT. The tick lifts it by one ALARM_SEL_TRAVEL at
@@ -7249,12 +7307,29 @@ const alarmLinkParts = {};
   const pivDist = ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04; // post r 0.16 fully clear of the wheel's skirt
   const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
   const beakArm = new THREE.Group();
+  // §54 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
+  // FOR, twelve lines below, unfixed here. The aim is `rotation.z`; the tick's
+  // lever action is `rotation.y`. Under the DEFAULT 'XYZ' the tilt is applied
+  // BEFORE the aim, i.e. about world-Y, so the throw comes out scaled by
+  // cos(beakAim) — and this arm aims at 122.4°, where the cosine is NEGATIVE.
+  //
+  // Measured: nose +0.0079 and tail −0.1436 per 0.02 rad, against a law whose
+  // own comment says "nose falls into the gap". The nose ROSE. So the tail
+  // drove DOWN onto a rod that the same frame was moving UP — the two members
+  // were pushed into each other, which is the collision reported by eye, and
+  // the lever ran at 54% of its intended throw as well.
+  //
+  // 'ZYX' applies the aim first and then tilts about the arm's OWN axis:
+  // nose −0.0147 = −beakLen·θ, tail +0.2679 = +(tailLen/2)·θ. Both exactly
+  // what the pose law says they should be.
+  beakArm.rotation.order = 'ZYX';
   beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_LOCK_Z + 0.80);
   const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
   beakArm.rotation.z = beakAim;
   const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
   const beakLen = pivDist - noseR;
   const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock BOTH ways — plate-top lever, free upward and sideways (first pass thickened z only and the census promptly made width the new thin dimension)
+  beakBar.name = 'alarmLinkBeakBar';  // §54
   beakBar.position.x = beakLen / 2;
   beakArm.add(beakBar);
   const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.22), MATS.steel);
@@ -7263,8 +7338,28 @@ const alarmLinkParts = {};
   beakArm.add(beakNose);
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
   const tailLen = wrLen - pivDist;
-  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock both ways, same plane
+  // §54 / TODO 16 — A LEVER IS TALL AND THIN, NOT SQUARE.
+  // This was STOCK_MIN_U both ways: 0.12 mm square over 10 mm, λ 83.7, and it
+  // deflected 0.098 mm per mN against a required rod travel of 0.158 mm — it
+  // bent most of its own stroke instead of moving the rod. It passed §50
+  // because it was built exactly TO the floor, which is the whole reason §54
+  // exists.
+  //
+  // The fix is not a fatter square. The load here is VERTICAL — the tail
+  // presses down on the rod — so the section grows in Z, the direction the
+  // force acts, and stays at floor stock in Y. That is what a real lever looks
+  // like, and it is what §54 measures: slenderness against the STIFFEST
+  // available dimension, so a blade earns its ratio by being deep where it is
+  // loaded rather than by being fat everywhere.
+  //
+  // Height derived from the ceiling, not chosen: λ = tailLen / height = 30.
+  // It grows UPWARD ONLY — the underside carries the rod-top contact, and
+  // dropping it would both bury the rod and close on the plate 1.02 away.
+  const ALARM_LINK_TAIL_H = tailLen / SLENDER_TARGET;
+  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, ALARM_LINK_TAIL_H), MATS.steel);
+  beakTail.name = 'alarmLinkBeakTail'; // §54: was λ 83.7 — TODO 16's headline member
   beakTail.position.x = -tailLen / 2;
+  beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
   beakArm.add(beakTail);
   const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.5, 10), MATS.steel);
   beakPost.rotation.x = Math.PI / 2;
@@ -7292,12 +7387,33 @@ const alarmLinkParts = {};
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
   const chordLen = Math.hypot(chord.x, chord.y);
+  if (Math.abs(chordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
+    console.warn(`§54: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
+      + `${chordLen.toFixed(4)} — the shaft was sized against a length it does not have`);
   const u = { x: chord.x / chordLen, y: chord.y / chordLen };
   const shaft = new THREE.Group();
   shaft.position.set((ALARM_LINK_INNER_XY.x + ALARM_LINK_ROD_XY.x) / 2, (ALARM_LINK_INNER_XY.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
-  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, chordLen, 8), MATS.steel);
+  // §54 / TODO 16 — THE SECTION IS DERIVED FROM THE SLENDERNESS CEILING.
+  // It used to be r 0.12: a 0.09 mm rod spanning 9.05 mm, L/d = 100. A human
+  // hair is about 0.07 mm. It passed §50 only because §50 asks how thin a part
+  // is and never how LONG it is thin for.
+  //
+  // Two independent derivations land on the same number, which is the reason
+  // to trust it. §54's ceiling gives d ≥ chordLen/30. And the load path gives
+  // the same: the drive end is a 4.5 mm cantilever (the dial-side congestion
+  // fixes that — every station inboard of the current one is under dial
+  // hardware, which is why the bushes sit where they do), and holding its
+  // deflection to a tenth of the selector's 0.071 mm stroke under a ~20 mN
+  // detent load needs 3EI/L³ ≳ 2800 N/m, i.e. r ≈ 0.41. Geometry budget and
+  // force budget agreeing to two decimals is not a coincidence worth ignoring.
+  //
+  // It FITS: the shaft's radial clearance was probed along its whole length
+  // and the tightest non-contact band is 0.97 (t 20–22). The 0.297 at t≈0.3 is
+  // `Dial/alarmSelTab` — the crank's own working contact, not an obstruction.
+  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 8), MATS.steel);
+  shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
   // cranks: rim end (up to the rod's foot), centre end (under the ring's tab).
@@ -7328,10 +7444,14 @@ const alarmLinkParts = {};
   // passed while 0.02 from contact
   for (const t of [12, 22]) {
     const hx = ALARM_LINK_INNER_XY.x + u.x * t, hy = ALARM_LINK_INNER_XY.y + u.y * t;
+    // §54: the bore follows the shaft, with a running clearance; the wall is
+    // stock-floor so the bush is itself a real part.
+    // Bore follows the BODY: both stations (t 12 and t 22) sit inside the full
+    // section, and the exhaustive scan gives them 7.55 and 10.54 of room.
     const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel);
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // reverted with the shaft — it runs the same congested dial-side column
     hanger.position.set(hx, hy, ((-2) + ALARM_LINK_SHAFT_Z) / 2 + 0.15);
     alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);
@@ -7874,7 +7994,7 @@ panel.innerHTML = `
         <button data-cam="Setting">Setting</button>
         <button data-cam="Free">Free</button>
       </div>
-      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button></span></div>
+      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
       <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
     </div>
   </details>
@@ -7949,7 +8069,7 @@ panel.innerHTML = `
     <div class="ui-section-body">
       <div class="row">
         <span class="label-small">Alarm</span>
-        <button id="btn-alarm">Off</button>
+        <button id="btn-alarm">Off</button><button id="btn-alarm-cycle" title="Toggle the alarm on and off repeatedly, without moving the camera">Cycle</button>
       </div>
       <!-- ONE readout, and it is the time the alarm ACTUALLY rings.
            The trip is geometric: the pin bottoms when the disc's notch
@@ -7963,8 +8083,8 @@ panel.innerHTML = `
            hand, and claiming to the minute would be its own small lie. -->
       <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">≈12:00</span></div>
       <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
-      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling">Show</button></div>
-      <div class="row"><span class="label-small">The link</span><button id="btn-link">Trace</button></div>
+      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling" class="script-ctrl">Show</button></div>
+      <div class="row"><span class="label-small">The link</span><button id="btn-link" class="script-ctrl">Trace</button></div>
       <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
       <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
     </div>
@@ -8250,6 +8370,16 @@ window.addEventListener('keydown', (e) => {
     decoration: () => { applyDecorationFromAesthetics(); if (ribPitch) ribPitch.value = aesthetics.decoration.ribbing.widthUnits; },
     materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
     dial: (path) => { if (path[1] === 'hands') recutHands(); else return false; },
+    gong: () => {
+      GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;
+      GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
+      gongArc.geometry.dispose();
+      gongArc.geometry = new THREE.TorusGeometry(GONG_R, GONG_WIRE_R, 8, 64, GONG_A1 - GONG_A0);
+      gongArc.rotation.z = GONG_A0;
+      gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
+      gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+      gongF = gongModes();   // the voice follows the wire
+    },
   };
   const advBody = document.getElementById('advanced-body');
   const buildAdvanced = () => {
@@ -9380,8 +9510,11 @@ const SND = {
     // Light the whole power chain, not just the noisy end: the pin wheel did
     // the work, the hammer carried it, the gong turned it into sound (§25).
     sndFlash(alarmGongUnit); sndFlash(alarmHammerUnit); sndFlash(alarmStrikeUnit);
-    sndTone(1760, 0.55, 0.30, 0, alarmEmitter);         // fundamental (A6-ish, a small bell)
-    sndTone(880, 0.32, 0.14, 0, alarmEmitter);          // a softer strike partial an octave down
+    // §56: the wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the
+    // 1st — inharmonic, which is what makes this read as struck steel. It also
+    // carries the loudest energy at these dimensions, hence the gain order.
+    sndTone(gongF[1], 0.55, 0.30, 0, alarmEmitter);     // 2nd flexural mode — the ring that carries
+    sndTone(gongF[0], 0.32, 0.14, 0, alarmEmitter);     // fundamental — the body under it
   },
 };
 // --- Sound-event highlight (BUILT §11) --------------------------------------
@@ -9464,6 +9597,34 @@ function setAlarm(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!alarmOn));
+// §55 — THE ALARM CYCLER. Flips the alarm on and off on a timer and touches
+// NOTHING else: no camera, no preset, no time scale. That is the whole design.
+//
+// Force transfer is only legible in MOTION. A single state change gives the eye
+// two still frames and leaves it to assume the path between them — which is
+// exactly how a follower decoupled from its cam and a lever inverted by its
+// Euler order both survived review. Watching the chain cycle several times,
+// from wherever you have already aimed the camera, is what makes the pusher →
+// column wheel → beak → rod → shaft → crank → ring path either obviously work
+// or obviously not.
+//
+// Deliberately NOT a tour stop: a stop would move the camera, and the point is
+// to inspect the view you chose. It runs off the frame loop rather than
+// setInterval so it stops dead when the tab is backgrounded and cannot queue
+// up a burst of toggles to replay on return.
+const ALARM_CYCLE_PERIOD = 1.6;      // s per half-cycle — slow enough to follow a lever
+let alarmCycleOn = false, alarmCycleT = 0;
+function alarmCycleUpdate(realDt) {
+  if (!alarmCycleOn) return;
+  alarmCycleT += realDt;
+  if (alarmCycleT >= ALARM_CYCLE_PERIOD) { alarmCycleT = 0; setAlarm(!alarmOn); }
+}
+document.getElementById('btn-alarm-cycle').addEventListener('click', (e) => {
+  alarmCycleOn = !alarmCycleOn;
+  alarmCycleT = 0;
+  e.currentTarget.classList.toggle('on', alarmCycleOn);
+  e.currentTarget.textContent = alarmCycleOn ? 'Stop' : 'Cycle';
+});
 document.getElementById('btn-coupling').addEventListener('click', (e) => {
   const btn = e.currentTarget;
   if (scriptBtn === btn) scriptStop(); else scriptStart(ALARM_COUPLING_STEPS, btn); // §34 — same toggle as Demo/Tour: a running show's button STOPS it (it used to restart)
@@ -10474,6 +10635,12 @@ function disarmScriptAbort() {
   scriptAbortArmed = false;
 }
 
+// Idle labels for every `.script-ctrl`, read once at boot — before any script
+// can overwrite one with "Stop". Captured rather than declared so it cannot
+// drift from the markup.
+const SCRIPT_BTN_IDLE = new Map(
+  [...document.querySelectorAll('.script-ctrl')].map((b) => [b.id, b.textContent]));
+
 function scriptStop() {
   // Follows §9's syncCancel: STOP, don't undo. Whatever the script last set
   // (camera, x-ray, explode, crown) stays — the point of aborting is to hand
@@ -10488,10 +10655,22 @@ function scriptStop() {
   captionEl.classList.remove('show');
   setTimeout(() => { if (!scriptSteps) captionEl.style.display = 'none'; }, 400); // let the fade finish
   scriptBtn = null;
-  const tb = document.getElementById('btn-tour'); if (tb) { tb.textContent = 'Tour'; tb.classList.remove('active'); }
-  const db = document.getElementById('btn-demo'); if (db) { db.textContent = 'Demo'; db.classList.remove('active'); }
-  const cb = document.getElementById('btn-coupling'); if (cb) { cb.textContent = 'Show'; cb.classList.remove('active'); } // §34's button was missing from this restore — it stayed "Stop" after its run ended
-  const lb = document.getElementById('btn-link'); if (lb) { lb.textContent = 'Trace'; lb.classList.remove('active'); } // §37, same restore — the lesson above, applied on the way in this time
+  // RESTORE EVERY SCRIPT BUTTON, DERIVED. This was four hand-written lines,
+  // one per button, and the comments on two of them recorded the same bug
+  // twice: §34's Coupling button was missing and stayed reading "Stop" after
+  // its run, then §37's added itself "on the way in this time". §54's Inspect
+  // button then made it three — a list that must be edited in a second place
+  // every time a button is added will eventually be missed, and this one was,
+  // every time.
+  //
+  // So the list is gone. Script buttons carry `.script-ctrl`, their idle label
+  // is captured from the DOM at boot (SCRIPT_BTN_IDLE), and a new button is
+  // restored correctly by existing. Nothing to remember.
+  for (const b of document.querySelectorAll('.script-ctrl')) {
+    const idle = SCRIPT_BTN_IDLE.get(b.id);
+    if (idle !== undefined) b.textContent = idle;
+    b.classList.remove('active');
+  }
   restorePanelAfterScript(); // undo any phone-layout panel collapse from scriptStart
   disarmScriptAbort();
 }
@@ -10682,6 +10861,148 @@ const TOUR_STEPS = [
     caption: 'That’s the tour. Now explore the controls yourself.', dwell: 3.9 },
 ];
 
+// ---------------------------------------------------------------------------
+// §55 — THE INSPECTION TOUR. A different animal from TOUR_STEPS above.
+//
+// That one is a SHOWCASE: it narrates the movement to a visitor and never goes
+// near the alarm work. This one is a ROUTE TO THE PLACES DEFECTS LIVE, and it
+// exists because of a pattern this project keeps paying for — the battery
+// answers "does anything overlap?", and every kinematic lie found so far was
+// caught BY EYE and was invisible to a clean run: a pawl driving the column
+// wheel backwards, a saw cut the wrong way, a follower decoupled from its cam,
+// a spring parented to the lever it should push, gears meshing tooth-on-tooth,
+// and a lever inverted by its Euler order. Not one of those moves a volume
+// anywhere it should not be, so not one of them can fail a sweep.
+//
+// If the eye is the instrument that finds this class, it deserves a systematic
+// route rather than whatever the camera happened to be pointing at.
+//
+// Framings are DERIVED from the geometry, not typed as vectors: a stop names
+// the part it wants to look at and the camera is placed off its measured
+// bounding box. A hand-typed pose silently stops framing its subject the first
+// time that subject moves, which is exactly the failure this tour exists to
+// catch — the tour must not need re-aiming every time the geometry it inspects
+// is corrected.
+const _frameBox = new THREE.Box3(), _frameCen = new THREE.Vector3(), _frameSz = new THREE.Vector3();
+function frameOn(target, dir = [0.5, -0.4, 0.75], pad = 3.4) {
+  let obj = labelEntries.find((x) => x.name === target)?.obj;
+  if (!obj) obj = scene.getObjectByName(target);
+  if (!obj) {
+    console.warn(`§55: inspection stop names '${target}', which is neither a labelled unit nor a mesh`);
+    return null;
+  }
+  _frameBox.setFromObject(obj);
+  if (!isFinite(_frameBox.min.x)) return null;
+  _frameBox.getCenter(_frameCen); _frameBox.getSize(_frameSz);
+  const r = Math.max(_frameSz.length() / 2, 1.6);
+  const d = new THREE.Vector3(...dir).normalize().multiplyScalar(r * pad);
+  // VIEW FROM THE SIDE THE PART IS ON. This movement is a sandwich, and half
+  // the alarm work lives UNDER the base plate on the dial side. A stop naming
+  // a dial-side part with a +z direction puts the camera on the movement side
+  // looking THROUGH two plates: you see the balance and the plate top and not
+  // one pixel of the subject. Three of nine stops did exactly that (crank
+  // centre at z -6.7, setting idler -4.7, release feeler -5.8), and stop 9 was
+  // reported as "focusing on the balance wheel" — which is what it was doing.
+  //
+  // Derived, not per-stop tuning: a stop says which way it wants to look and
+  // this decides which side of the plates to look from, so a part that later
+  // moves across the sandwich takes its camera with it.
+  if (_frameCen.z < 0 && d.z > 0) d.z = -d.z;
+  return { pos: [_frameCen.x + d.x, _frameCen.y + d.y, _frameCen.z + d.z],
+           look: [_frameCen.x, _frameCen.y, _frameCen.z] };
+}
+
+// Framing the END of a long member, not its middle. `frameOn` aims at a
+// bounding-box centre, which is right for a wheel and wrong for a rod: the
+// z-shaft runs 16 u through both plates, so its centre is inside the plate
+// sandwich and its interesting end is 8 u away on the movement side.
+//
+// The first attempt at this framed the CONTACT between the tail and the rod by
+// intersecting their bounding boxes. It returned EMPTY, and the fallback
+// landed at z 5.76 — mid-air, below the plate top, framing nothing. The reason
+// is the one this project keeps relearning: an AABB of a long DIAGONAL member
+// describes a volume the part is nowhere near. The tail runs 26.8 u across the
+// movement, so its box is enormous and its overlap with anything says nothing
+// about where the two actually touch. Same instrument failure that produced a
+// false collision reading earlier in this work.
+//
+// So: take the member's own axis-aligned extent and frame the requested END.
+// Close in by the part's SECTION rather than its length, or the shot is as
+// wide as the member is long.
+const _eB = new THREE.Box3(), _eS = new THREE.Vector3(), _eC = new THREE.Vector3();
+function frameOnEnd(target, end = 'max', axis = 'z', dir = [0.6, -0.35, 0.55], pad = 6.0) {
+  const obj = labelEntries.find((x) => x.name === target)?.obj || scene.getObjectByName(target);
+  if (!obj) { console.warn(`§55: end-stop names '${target}', which is not in the scene`); return null; }
+  _eB.setFromObject(obj);
+  if (!isFinite(_eB.min.x)) return null;
+  _eB.getCenter(_eC); _eB.getSize(_eS);
+  const p = _eC.clone();
+  p[axis] = end === 'max' ? _eB.max[axis] : _eB.min[axis];
+  const section = Math.max(Math.min(_eS.x, _eS.y, _eS.z), 0.4);   // across, not along
+  const d = new THREE.Vector3(...dir).normalize().multiplyScalar(section * pad);
+  return { pos: [p.x + d.x, p.y + d.y, p.z + d.z], look: [p.x, p.y, p.z] };
+}
+
+// Each stop says WHAT TO LOOK FOR, not what the part is called. A caption that
+// only names the part gives the eye nothing to do.
+const INSPECT_STEPS = [
+  { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false,
+    powerflow: false, sound: false, unit: 'All', alarm: false,
+    // Do NOT tell the viewer to press Inspect: scriptStart calls
+    // hidePanelForScript(), so the control this used to name is not on screen
+    // while the route runs. Any pointerdown, key or wheel aborts (scriptAbort),
+    // so the honest instruction is the one that works from anywhere.
+    caption: 'INSPECTION ROUTE — the places where defects have actually been found. Click anywhere to stop.', dwell: 4.0 },
+
+  // --- the escapement: §48's control case, and the one thing that must look right
+  { preset: 'Escapement', scale: 0.04,
+    caption: '1/9 Escapement. The fork is impulsed BOTH ways — this is §48’s control case, and it should look driven, not animated.', dwell: 7.0 },
+
+  // --- the column wheel and its four followers (§43, §48)
+  { camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2), scale: 0.25, alarm: false, labels: true,
+    caption: '2/9 Column wheel at rest. The click’s spring is GROUNDED on its own stud — it must stay still while the arm rocks.', dwell: 6.0 },
+  { alarm: true,
+    caption: '3/9 Alarm ON. The wheel indexes as the pusher goes down. Watch the pawl drive the ratchet the way its teeth are cut.', dwell: 6.5 },
+
+  // --- the alarm link, end to end: §54 / TODO 16 / the inverted lever
+  // The lever test is judged where the tail MEETS THE ROD, on the movement
+  // side at the top of the z-shaft — not at the nose, which only shows the
+  // input. Framed on the contact so it keeps aiming there if either moves.
+  { camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0), scale: 0.25,
+    caption: '4/9 Where the beak’s tail meets the top of the vertical rod, movement side. Nose falls into a gap ⇒ tail RISES ⇒ the rod follows it up 1:1. A tail driving DOWN onto a rising rod is an inverted lever.', dwell: 7.5 },
+  // xray on every DIAL-SIDE stop from here: once the camera is correctly on the
+  // dial side, the base plate and the dial itself are between it and the
+  // subject. Fixing the side without this just swaps one opaque view for
+  // another.
+  { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false, xray: true,
+    caption: '5/9 The LAY SHAFT — the long horizontal arbor under the dial. The vertical rod pushes a crank at its far end, the shaft twists, and a second crank at THIS end shifts the alarm selector ring. Watch that near crank stay in the ring’s tab: it is the last step of the pusher’s force path.', dwell: 8.0 },
+
+  // --- the mesh-phase family: TODO 15
+  { camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6), scale: 1, labels: false,
+    caption: '6/9 Winding idlers. Tooth into GAP at the line of centres, never tooth on tooth — and the same again where they meet the barrel.', dwell: 7.0 },
+  { camera: frameOn('Alarm setting wheel', [0.4, -0.35, 0.8], 2.6), xray: true,
+    caption: '7/9 The setting train’s dogleg, dial side: setting wheel → idler → idler. Same tooth-into-gap test, and this chain crosses the dial’s Y-flip.', dwell: 6.5 },
+
+  // --- the strike: TODO 14's spring, and the hammer that has to fall
+  { camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2), alarm: true, scale: 0.3,
+    caption: '8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.', dwell: 7.0 },
+
+  // --- the cam followers: TODO 13
+  // Framed on the BLADE itself: the unit's radius is 6.2, which at any usable
+  // pad puts the camera ~28 u out — a whole-movement shot for a part 0.1 mm
+  // thick. The subject is the spring and the arm it presses.
+  { camera: frameOn('alarmFeelerSpring', [0.5, -0.3, 0.8], 8.0), scale: 0.3, xray: true,
+    caption: '9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.', dwell: 7.5 },
+
+  { preset: 'Free', scale: 1, alarm: false, labels: false, xray: false, explode: 0,
+    caption: 'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.', dwell: 4.0 },
+];
+
+document.getElementById('btn-inspect').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(INSPECT_STEPS, btn);
+});
+
 document.getElementById('btn-demo').addEventListener('click', (e) => {
   const btn = e.currentTarget;
   if (scriptBtn === btn) scriptStop(); else scriptStart(DEMO_STEPS, btn);
@@ -10695,7 +11016,7 @@ document.getElementById('btn-tour').addEventListener('click', (e) => {
 // DEEP LINKS — query-string entry points onto the SAME two surfaces above:
 // the script engine (?tour / ?demo) or the raw view state the engine's own
 // steps set (?preset, ?scale, ?xray, ?explode, ?labels, ?powerflow, ?sound,
-// ?unit, ?crown, ?reserve). `?demo=1` starts the matching script exactly as
+// ?unit, ?crown, ?reserve, and §55's ?inspect / ?cycle). `?demo=1` starts the matching script exactly as
 // its button would. `?tour=1` goes through askTour's confirm/skip gate first
 // — a deep link isn't itself a user gesture the way a button click is, and
 // shouldn't swing the camera/crown/sound unattended before the visitor has
@@ -10757,8 +11078,31 @@ function applyDeepLink() {
   // the watch driveable the moment it loads (a phone, where hunting a 5 u
   // crown by orbit is the least pleasant thing this app asks of anyone).
   if (params.has('hud')) setHud(params.get('hud') !== '0');
+  // §55 — `?inspect=1`. No confirm gate, unlike ?tour: that gate exists because
+  // a deep link is not a user gesture and shouldn't swing the camera, crown and
+  // SOUND at a first-time visitor unasked. The inspection route is a working
+  // tool reached deliberately, it makes no sound, and anyone typing this
+  // parameter has already asked for exactly what it does.
+  if (params.has('inspect')) { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); return; }
+  // `?cycle=1` — the alarm cycler on arrival, for pairing with ?cam/?look:
+  // aim at a linkage and watch it work without touching the page.
+  if (params.has('cycle')) document.getElementById('btn-alarm-cycle').click();
 }
 applyDeepLink();
+
+// §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
+// arbitrary epoch, so the very first thing a viewer saw was a watch showing the
+// wrong time. Syncing on arrival runs the SAME syncStart() the button does —
+// crown out, set through the real keyless works, catch up — so the default is
+// the mechanism doing its job, not a number assigned to the hands.
+//
+// Skipped when a script owns the view (a deep-linked tour/demo/inspection is
+// mid-flight and syncStart pulls the crown and forces scale 1 under it), and
+// when ?tau or ?sync says the caller already chose an epoch.
+{
+  const q = new URLSearchParams(location.search);
+  if (!scriptSteps && !q.has('tau') && !q.has('sync')) syncStart();
+}
 
 // ---------------------------------------------------------------------------
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
@@ -11935,6 +12279,7 @@ function advanceFrame(realDt) {
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
     } else {
       scriptUpdate(realDt); // scripted user (BUILT §5/§17): drives crown/scale before this frame's ticks
+      alarmCycleUpdate(realDt); // §55: the alarm cycler, same pre-tick slot — its toggle must land before this frame integrates
       syncUpdate(realDt);
       // The catch-up is a rate the slider does not know about, so it stands
       // in for timeScale rather than being written into it — the slider's

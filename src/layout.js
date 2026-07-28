@@ -79,6 +79,17 @@ export const MM = (units) => units * UNIT_MM;          // for readouts and asser
 // §50/TODO 12: the wheel-and-plate stock floor, in UNITS, so a thickness can
 // be built to clear it rather than measured against it after the fact.
 export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.32 u
+// §54's slenderness ceiling, L/t. Lives HERE rather than in inspect.js so the
+// GEOMETRY can be derived from the same number the CHECK enforces — a part
+// sized against the check that measures it cannot drift away from it.
+export const SLENDER_MAX = 30;
+// What to BUILD to. Sizing a part at exactly `SLENDER_MAX` puts it on the
+// boundary, where float rounding decides which side it lands — the beak tail
+// came back at λ 30.0 and was still reported. That is `JMP_BIND_EPS`'s lesson
+// in a new place: never build exactly to the limit a check compares against.
+// 10% headroom, so a part that drifts slightly still passes and one that
+// drifts a lot still fails.
+export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 // FLAT-SPRING stock. §50's spring floor is 0.03 mm and its own basis says why
 // that is a floor and not a target: "real hairsprings run 0.02-0.04 mm; flat
 // springs THICKER". A click detent or a feeler return is a flat blade, not a

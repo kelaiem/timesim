@@ -1094,3 +1094,342 @@ A build-pose-only check could never have caught this — it is a check that
 searches for less than the thing it verifies, arrived at from a new
 direction: not a too-small search *range* this time, but a single sample
 of a quantity that only reveals itself in motion.
+
+## 16. PART CLOSED — the alarm link was thickness-legal and structurally impossible
+
+Reported by eye: the horizontal lay shaft looks too thin. It is, and
+measuring it showed the check that should have caught it cannot see this
+class of defect at all.
+
+### The feature-size checks DO reach these segments — and still pass them
+
+Every mesh in the unit is enumerated by `stockCensus`. Two things blunt
+that:
+
+1. **`STOCK_WAIVERS['Alarm link'] = 'TODO 11'` is a UNIT-level waiver.**
+   One entry excuses every segment, so a 0.09 mm hair and a marginally
+   thin decorative bracket read identically in the report.
+2. **More fundamental: the stock floor is a THICKNESS test with no notion
+   of SLENDERNESS.** The beak tail is 0.12 mm section — exactly
+   `STOCK_MIN_U`, i.e. built deliberately *to* the floor — and 10.0 mm
+   long. It passes by construction while being **84× longer than it is
+   thick**.
+
+Stiffness goes as t⁴/L³, so the floor ranks these backwards. Measured
+cantilever stiffnesses in this one unit:
+
+| part | section | length | stiffness | deflection @ 1 mN |
+|---|---|---|---|---|
+| centre crank | **0.045 mm** (thinnest) | 0.42 mm | **2843 N/m** | 0.0004 mm |
+| beak tail | 0.12 mm (at floor) | 10.05 mm | **10.2 N/m** | 0.098 mm |
+
+**The thinnest part in the unit is 280× stiffer than the one that passes
+the floor.** Thickness alone predicts nothing.
+
+### The shaft and its pillars
+
+- lay shaft **0.09 mm diameter, 9.05 mm long — L/d = 100.5**. A human
+  hair is about 0.07 mm.
+- bushes sit at shaft stations **−0.06 and +9.94** on a shaft running
+  ±12.06 — **both supports cluster at the rod end**.
+- the **centre crank, which drives the selector ring, overhangs 4.5 mm**
+  past the nearest bush: stiffness **21 N/m**.
+
+### Force transfer, pusher → ring: it divides force twice and bends
+
+- **beak lever** — nose arm 0.735 u, tail arm 26.79 u ⇒ displacement gain
+  **36.5×**, so force at the tail is **2.7%** of what the column applies
+  at the nose.
+- **beak tail** deflects 0.098 mm/mN against a required rod travel of
+  **0.158 mm**.
+- **shaft drive end** deflects 0.047 mm/mN against a selector travel of
+  **0.071 mm**.
+
+Two compliant members in series, each absorbing ~two-thirds of its own
+working stroke per millinewton, downstream of a 36:1 force reduction.
+**Stall force ≈ 1.5 mN** — the load at which the whole stroke goes into
+bending and nothing reaches the ring. A detented selector ring plausibly
+needs 5–50 mN, so this is short by one to two orders of magnitude.
+
+(First-order solid-steel cantilever estimates. The absolute numbers carry
+maybe a factor of two; the *ratios* — deflection against stroke — are what
+the conclusion rests on, and they are not close.)
+
+### What to fix
+
+- **Move the pillars.** Both bushes sit at one end. Stations near t≈2 and
+  t≈22 would give a long span and short overhangs at both ends, killing
+  the 4.5 mm cantilever. NOTE the existing comment: those two stations
+  were chosen because pose-swept ray probes found their vertical columns
+  clean, so any new station must be re-probed the same way.
+- **Thicken the shaft and the beak tail**, and derive both from a
+  SLENDERNESS budget rather than the thickness floor.
+- **Shorten the beak's tail arm** or re-site the rod: 36:1 is a
+  displacement gain nobody asked for; the rod only needs 0.42 u of travel.
+
+### The general lesson, and the check it implies
+
+§50 gave every part a minimum thickness. Nothing gives them a minimum
+*stiffness*, and stiffness is what "constructible" actually means for a
+lever or an arbor. A `checkSlenderness` in the §50 mould — report L/t per
+segment, waivers citing an item, gate on nothing at first — would catch
+this class everywhere rather than only where someone happens to look. The
+alarm link would be its first customer; the winding-train hangers
+(0.075 mm × 4.7 u) are probably its second.
+
+### FIXED — sections derived from §54's budget; one item deliberately left
+
+**The pillar move was investigated and REJECTED on evidence.** Probing
+every station along the chord showed the whole inboard run is under
+dial-side hardware — which is *why* the two bushes sit where they do. The
+4.5 mm cantilever cannot be shortened, so the fix had to be section, not
+position. That is the opposite of what this item originally proposed, and
+the probe is the reason.
+
+**Both members are now derived from `SLENDER_TARGET`**, so they are sized
+by the same number §54 measures them against:
+
+| member | was | now |
+|---|---|---|
+| `alarmLinkShaft` | 0.09 mm, λ 100.5, **21 N/m** at the drive end | 0.335 mm, λ 27, **4075 N/m** |
+| `alarmLinkBeakTail` | 0.12 mm square, λ 83.7, **10.2 N/m** | 0.12 × 0.372 mm blade, λ 27, **305 N/m** |
+
+The tail is now a **blade, not a fatter square**: the load is vertical, so
+the section grew in Z where the force acts and stayed at floor stock in Y.
+That is what a real lever looks like, and it is what §54 rewards — depth
+where it is loaded rather than fat everywhere.
+
+The shaft's radius fell out of two independent budgets agreeing: §54's
+ceiling (d ≥ chord/30) and the load path (holding the drive end's
+deflection to a tenth of the selector stroke under a ~20 mN detent needs
+≈ 2800 N/m). Geometry budget and force budget landing on the same
+number is why it is trustworthy rather than tuned.
+
+Cascade handled by the existing derivation chain: the crank's radial
+offset had to become derived (`SHAFT_R + CRANK_T/2`) because at the old
+literal 0.22 an arm would now sit *inside* its own arbor, and
+`ALARM_LINK_ROD_FOOT` follows `CRANK_TOP` automatically, as §51 set it up
+to. Cranks and hangers also went to floor stock, which took `stockFloor`
+waived rows **57 → 53**.
+
+**Force transfer, restored:** stall force ≈ **1.5 mN → ≈ 48 mN**
+(tail-limited), which is in the plausible band for a detented ring rather
+than one to two orders below it.
+
+**Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
+means re-siting the rod, whose plate bores are literals carrying drift
+asserts (`ALARM_LINK_ROD_XY`), so it is a §35-corridor change, not a
+section change. The tail is also the chain's remaining weakest member —
+it still bends 42% of its stroke at 20 mN, against the shaft's 7% — so if
+anything here gets more work, it is that lever, and the two are the same
+problem: the tail is long *because* the rod is far away.
+
+### Postscript — the lever was also inverted (§54 postscript 2)
+
+Separately from the sections: `beakArm` set its aim on `rotation.z` and its
+lever action on `rotation.y` under the default `'XYZ'` order, so the tilt
+applied about world-Y *before* the aim. At this arm's 122.4° aim that
+scaled the throw by cos(122.4°) — **negative** — inverting the lever and
+costing 46% of its travel. The tail drove down onto a rod the same frame
+moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
+1:1 (+0.19 each) with the nose falling as the tail rises.
+
+The lay shaft twelve lines below already carried this exact fix, with a
+comment explaining it. The arm did not.
+
+## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+
+`sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
+musically ("A6-ish, a small bell" says the comment). The gong's actual
+dimensions imply something quite different.
+
+Wire 0.375 mm diameter, arc radius 13.125 mm, 90° of arc = **20.617 mm
+developed length**, L/d = 55. As a clamped–free steel bar (E 200 GPa,
+ρ 7850, bar wave speed 5048 m/s):
+
+| mode | frequency | ratio |
+|---|---|---|
+| fundamental | **623 Hz** | 1.00 |
+| 2nd | **3904 Hz** | 6.27 |
+| 3rd | 10932 Hz | 17.55 |
+
+Two mismatches, and the second is the interesting one:
+
+1. **Neither synthesised tone is a mode of this gong.** 880 Hz is 1.41× the
+   fundamental and 1760 Hz is 2.83× — the geometry offers 1× and 6.27×.
+2. **A struck bar's overtones are INHARMONIC.** 1 : 6.27 : 17.55, not
+   1 : 2 : 3. The octave pair models a *bell*, and the reason a steel wire
+   gong sounds like a "ting" rather than a pitched chime is precisely that
+   its partials are not harmonically related. Modelling it as an octave is
+   the one thing that removes the character being modelled.
+
+There is also a **design** question underneath the audio one: 623 Hz is
+low for an alarm. Real alarm-watch gongs (Memovox, Cricket) ring bright,
+in the low kHz, because that is what carries and what wakes someone. At
+these dimensions the fundamental is a low hum and the ring the ear would
+actually hear is the 3.9 kHz second mode. To put the FUNDAMENTAL in
+alarm territory (~2.5 kHz) the arc would need to be **45° instead of 90°**
+(10.3 mm developed), or the wire 1.50 mm thick at the current length —
+which is absurd for a gong. So the arc is roughly **twice as long as an
+alarm gong should be**.
+
+Closing this means deriving the tone from the geometry — `f_n = (β_nL)²
+·(d/4)·√(E/ρ) / (2πL²)`, struck at the modes the hammer actually excites —
+rather than picking notes. Note the hammer strikes IN-PLANE (radially at
+the free end), and a curved bar's in-plane modes sit somewhat above the
+straight-bar figures above, so the derivation should carry the curvature
+term rather than reuse this estimate.
+
+Filed rather than fixed: this is an audio-model change and a gong-geometry
+change, and the two want deciding together.
+
+**Mostly closed by §56.** The tone is now computed from the wire's own
+dimensions and the arc is a live parameter, so the pitch tracks the
+geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
+the inharmonic 1 : 6.27 ratio is what is sounded.
+
+Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
+modes sit above the straight-bar figures used here — `gongModes()` should
+carry the curvature term. And the DESIGN question is now exposed rather
+than answered: the 90° default still rings low for an alarm; whether the
+default arc should move to ~45° is a decision, not a bug.
+
+### CORRECTION — the shaft thickening was REVERTED; CI rejected it
+
+The section fix above landed for the beak tail and was **reverted for the
+shaft**. Thickening it to `SLENDER_TARGET` (r 0.12 → 0.447) put it into the
+minute jumper: **`Alarm link ⇄ Minute jumper`, FORBIDDEN across the whole
+beat axis, overlap 0.312** — almost exactly the 0.327 the radius grew by.
+The corridor has no room at all.
+
+**Why the local evidence looked clean, and was.** An exhaustive vertex scan
+puts the nearest non-contact neighbour **0.97** away and the jumper **2.86**.
+Both true; both irrelevant. The minute jumper is a **MOVER**, and the
+fattened shaft sits in the arc its blade sweeps. Only a swept check can see
+that — which is precisely why `sweptOverlap` is a gate and a single-pose
+probe is not. (An AABB probe was tried first and was worse than useless: the
+shaft is a long diagonal member whose box overlaps half the movement.)
+
+**Still standing from that work:** the beak tail is a 0.12 × 0.372 mm blade
+at λ 27 (was 0.12 mm square at λ 83.7, 10.2 → 305 N/m), and the inverted
+lever is fixed. Those are movement-side and unaffected.
+
+**Reverted:** shaft r → 0.12, crank section and offset, bush bore, hanger
+section. `SLENDER_WAIVERS['Alarm link']` is restored — accepted debt, not an
+oversight.
+
+**What the shaft actually needs** is a **stepped arbor**: turned down through
+the jumper's sweep, full section in the free span and the drive-end
+overhang. Bending stiffness is set by the span, so that recovers most of the
+4075 N/m while keeping the thin sections where the corridor demands them.
+That is a real change to a part with a §35-corridor history, and it wants
+its own pass rather than being bolted onto this one.
+
+### Why z cannot be stolen: the shaft threads the ring it drives
+
+Proposed: give the shaft more z room instead of reverting. Measured, and
+it does not work — but the reason is worth having, because it also
+retires the wrong diagnosis above.
+
+**The minute jumper's tail pin is not the obstruction.** Swept across
+`crownPullT` and the whole setting path, it never comes closer than
+**2.886** to the shaft axis. The earlier attribution came from an AABB
+test on a long diagonal member, whose box spans half the movement — the
+third time that instrument misled this work.
+
+**The obstruction is the selector ring**, and it is symmetric:
+
+| direction from the shaft plane | nearest thing | gap |
+|---|---|---|
+| above | `Dial/alarmSelRing` | **0.16** |
+| below | `Dial/alarmSelRing` | **0.16** |
+
+The shaft passes through the ring's own plane — the ring it exists to
+drive — with 0.16 to the faces either side and a 0.12 radius, so about
+0.04 of real gap. **Stealing z buys nothing**: move the shaft up and it
+hits the ring's upper face, down and it hits the lower. There is no
+direction to steal from, because the clearance is not a stack-up, it is a
+slot.
+
+So the fat-shaft attempt failed at the ring, not at the jumper, and the
+overlap CI reported was the enlarged **bush** dropping through it.
+
+**This settles the shape of the fix.** A stepped arbor is not one option
+among several, it is the only one: turned down to something near the
+present 0.12 where it threads the ring, full section in the free span and
+the drive-end overhang, where the exhaustive scan shows 0.97–8.3 of room.
+Bending stiffness is set by the span, so most of the 4075 N/m survives.
+The neck length is bounded by the ring's own thickness plus margin.
+
+### CLOSED — the stepped arbor
+
+Necked at **both** ends, full section between. Necking both rather than one
+is not a compromise, it is the better shape: **both cranks sit on the thin
+sections**, so their radial offsets and the whole `ROD_FOOT` chain derived
+from them do not move at all, and §25's tab engagement and §35's corridor
+are untouched.
+
+| | |
+|---|---|
+| body | r 0.373, 20.13 u long, **λ 27** |
+| necks | r 0.12 × 2.0 u at each end — as-was, where it threads the ring |
+| body radius | derived from the BODY's own length, not the chord |
+
+**Stiffness at the drive end, computed by unit-load over the stepped
+section rather than assumed:**
+
+| | N/m |
+|---|---|
+| original uniform r 0.12 | 21 |
+| **stepped (built)** | **1387** |
+| uniform r 0.373 (CI rejected it) | 1980 |
+
+**65× the original, and 70% of the unbroken ideal.** My first note in the
+code said the tip neck would cost "very little" — wrong: it is 17% of the
+length but **30% of the compliance**, because I falls 93× where it is
+turned down. Under a 20 mN detent the drive end now deflects **20% of the
+selector's stroke**, against **1324%** before.
+
+**Verified against the gates that rejected the last attempt:**
+`sweptOverlap` 525 volumes, **0 confirmed, 0 tight, no Alarm link rows**;
+`inspection` **0 FORBIDDEN**; `stockFloor` ok, 0 degenerate, 0 unwaived;
+alarm link entirely off the §54 report and `SLENDER_WAIVERS` **empty**
+again — earned this time rather than reverted.
+
+Remaining in this item: only the **36:1 beak lever**, which needs the rod
+re-sited and is a §35-corridor change.
+
+### The stepped arbor was built, and CI rejected it too — read this first
+
+Two attempts, and the second is what matters:
+
+| attempt | shaft | result |
+|---|---|---|
+| uniform | r 0.447 | `Alarm link ⇄ Minute jumper`, overlap **0.312** |
+| stepped | body r 0.373, necks 0.12 | the same pair, overlap **0.310** |
+
+**Dropping the radius barely moved the number.** That refutes the
+diagnosis this item previously recorded: if the shaft's SECTION were the
+binding thing, 0.447 → 0.373 would have shown in the overlap. It did not.
+The alarm link's swept volume enters the minute jumper's swept region *at
+all*, and the depth reported is set by that region's shape, not by how fat
+the shaft is. **The "selector ring is the obstruction" conclusion above is
+therefore wrong** — the ring measurement was real but it was not this.
+
+**A local `sweptOverlap` said clean at r 0.373, and the disagreement is
+the lesson.** CI boots **virgin**; boot now runs `syncStart()`, which pulls
+the crown — and a pulled crown puts the minute jumper **in the star**. The
+local session carried persisted state with the jumper elsewhere. A swept
+check is only as good as the poses it starts from, and *"it passed
+locally"* meant *"it passed from my saved pose"*. Any future attempt must
+be validated from a virgin boot, not a working session.
+
+**What the next attempt needs, before touching geometry:** measure the
+minute jumper's **swept envelope** along the shaft's stations, from a
+virgin boot with the crown pulled. Only then is there a number to size
+against. Guessing costs a 15-minute CI run per iteration, and has now cost
+two.
+
+Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
+restored. The **beak tail** fix and the **inverted lever** fix stand — both
+movement-side, both verified, neither implicated.
