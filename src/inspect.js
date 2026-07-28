@@ -2736,6 +2736,121 @@ export const STOCK_KIND_BY_MESH = {
 //   TODO 12 — the 0.05–0.12 band (going-train stragglers, the balance cock's
 //   jewel assembly and regulator furniture, jumper, small-seconds, set-up
 //   work) wants a ~20–45% per-part thickening toward each part's free side.
+// ---------------------------------------------------------------------------
+// §53 — SLENDERNESS. A minimum thickness is not a minimum stiffness.
+//
+// §50 gave every part a floor on its thinnest dimension, and that closed a
+// real class of defect: parts too thin to exist. It cannot see the next class
+// at all, because STIFFNESS GOES AS t⁴/L³ and the floor knows nothing about L.
+//
+// The alarm link is the case that prompted this (TODO 16). Its beak tail is
+// 0.12 mm section — EXACTLY `STOCK_MIN_U`, built deliberately to the floor —
+// and 10.0 mm long, so it passes by construction while being 84× longer than
+// it is thick. Meanwhile the same unit's centre crank, at 0.045 mm the
+// THINNEST part in the movement's alarm work, is 280× STIFFER, because it is
+// short. The thickness floor ranks these two exactly backwards.
+//
+// WHICH DIMENSION, and why not the thinnest. A flat lever is wide and thin on
+// purpose: it bends easily out of plane and is stiff in the plane its load
+// acts in, and judging it by its sheet thickness would flag every correctly
+// made lever and spring in the movement. So slenderness is measured against
+// the SECOND-smallest extent — the stiffest section dimension available. A
+// part that is slender even in its stiff direction is slender however it is
+// oriented, and there is no argument to have about it. That makes this test
+// deliberately conservative: it under-reports rather than crying wolf.
+//
+// SPRINGS AND MARKINGS ARE EXEMPT BY KIND, not waived. A spring that is not
+// slender is not a spring; a printed index is a film, not a member. Flagging
+// them would be a category error, so they never enter the population.
+//
+// REPORT, NOT A GATE — §40's rule, and §50's own history. §50 reported, was
+// triaged over four tranches, and only then gated. Arriving as a gate is how
+// a check gets switched off. `ok` is always true; the rows are the product.
+export const SLENDER_MAX = 30;
+export const SLENDER_BASIS =
+  'real watch arbors and levers run L/t of roughly 5–20; 30 is generous headroom, '
+  + 'set so nothing correctly proportioned trips it and only real outliers do';
+// PER-KIND CEILINGS, for parts whose job IS to be long and thin. Found by
+// running the check, not predicted: the small-seconds hand came back at λ 31.5
+// and that is not a defect, it is what a hand is — real blued-steel seconds
+// hands run λ 30–50 over a 0.10–0.20 mm blade. Flagging it would be the same
+// category error as flagging a spring, just less obvious. A hand still gets a
+// ceiling rather than an exemption: a hand at λ 200 would be a real finding.
+export const SLENDER_MAX_BY_KIND = {
+  hand: 50,   // real seconds hands are 0.10–0.20 mm blades at λ 30–50
+};
+const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
+// Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
+// A waived row is still reported; the waiver records that someone has looked.
+export const SLENDER_WAIVERS = {
+  'Alarm link': 'TODO 16',
+};
+
+// Young's modulus for the movement's steels/brasses, order of magnitude. The
+// stiffness column is INFORMATIONAL: a first-order cantilever estimate, good
+// to a factor of two, included because "λ = 84" means less to a reader than
+// "10 N/m — it bends a tenth of a millimetre under a milligram-ish load".
+const SLENDER_E_PA = 200e9;
+
+export function checkSlenderness(clock, opts = {}) {
+  const max = opts.max || SLENDER_MAX;
+  // Nearest-ancestor dedupe — §40's rule. Units nest, so without it a mesh
+  // inside two labelled subtrees is reported twice and the second row is not
+  // a duplicate but a FALSE attribution: it names a part that does not move.
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();
+  for (const e of clock.labelEntries) {
+    e.obj.traverse((m) => {
+      if (!m.isMesh || !m.geometry?.attributes?.position) return;
+      const prev = byMesh.get(m);
+      if (!prev || hops(m, e.name) < hops(m, prev.unit)) byMesh.set(m, { unit: e.name, mesh: m });
+    });
+  }
+
+  const rows = [], exempt = [];
+  for (const { unit, mesh } of byMesh.values()) {
+    const name = mesh.name || '(unnamed)';
+    const kind = STOCK_KIND_BY_MESH[name] || STOCK_KIND_BY_PART[unit] || 'wheel';
+    if (SLENDER_EXEMPT_KINDS.has(kind)) { exempt.push({ unit, mesh: name, kind }); continue; }
+    mesh.geometry.computeBoundingBox();
+    const b = mesh.geometry.boundingBox;
+    const d = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].sort((x, y) => x - y);
+    const [tMin, tMid, len] = d;
+    if (!(tMid > 1e-9) || !(len > 1e-9)) continue;          // degenerate: §50's business, not this one
+    const lambda = len / tMid;
+    const ceiling = SLENDER_MAX_BY_KIND[kind] || max;
+    if (lambda <= ceiling) continue;
+    // Stiffness about the STIFF axis, so a flagged part is flagged at its best.
+    const a = tMin * UNIT_MM * 1e-3, c = tMid * UNIT_MM * 1e-3, L = len * UNIT_MM * 1e-3;
+    const I = (a * c * c * c) / 12;
+    rows.push({
+      unit, mesh: name, kind,
+      lambda: +lambda.toFixed(1), ceiling,
+      thin_mm: +(tMin * UNIT_MM).toFixed(4),
+      section_mm: +(tMid * UNIT_MM).toFixed(4),
+      length_mm: +(len * UNIT_MM).toFixed(3),
+      cantileverStiffness_N_per_m: +(3 * SLENDER_E_PA * I / (L * L * L)).toFixed(1),
+      waived: SLENDER_WAIVERS[unit] || null,
+    });
+  }
+  rows.sort((x, y) => y.lambda - x.lambda);
+  const unwaived = rows.filter((r) => !r.waived);
+  return {
+    ok: true,                       // §40 rule: a REPORT. Nothing here can fail.
+    max, basis: SLENDER_BASIS,
+    measuredAgainst: 'the SECOND-smallest extent — the stiffest section dimension available',
+    counted: byMesh.size, exemptByKind: exempt.length,
+    over: rows.length, unwaived: unwaived.length,
+    rows,
+  };
+}
+
 export const STOCK_WAIVERS = {
   'Alarm release feeler': 'TODO 11', 'Alarm disc': 'TODO 11', 'Alarm switch': 'TODO 11',
   'Alarm selector': 'TODO 11', 'Alarm setting wheel': 'TODO 11', 'Alarm link': 'TODO 11',

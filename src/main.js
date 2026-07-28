@@ -7255,6 +7255,7 @@ const alarmLinkParts = {};
   const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
   const beakLen = pivDist - noseR;
   const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock BOTH ways — plate-top lever, free upward and sideways (first pass thickened z only and the census promptly made width the new thin dimension)
+  beakBar.name = 'alarmLinkBeakBar';  // §53
   beakBar.position.x = beakLen / 2;
   beakArm.add(beakBar);
   const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.22), MATS.steel);
@@ -7264,6 +7265,7 @@ const alarmLinkParts = {};
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
   const tailLen = wrLen - pivDist;
   const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock both ways, same plane
+  beakTail.name = 'alarmLinkBeakTail'; // §53: λ 83.7 — TODO 16's headline member
   beakTail.position.x = -tailLen / 2;
   beakArm.add(beakTail);
   const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.5, 10), MATS.steel);
@@ -7298,6 +7300,7 @@ const alarmLinkParts = {};
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
   const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, chordLen, 8), MATS.steel);
+  shaftRod.name = 'alarmLinkShaft';   // §53: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
   // cranks: rim end (up to the rod's foot), centre end (under the ring's tab).

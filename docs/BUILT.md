@@ -4152,3 +4152,76 @@ Off by default, toggled in **View → Control HUD**, or opened on arrival
 with `?hud=1` — for a link that wants the watch driveable the moment it
 loads, which on a phone is the difference between a demo and an
 instrument.
+## §53. Slenderness — a minimum thickness is not a minimum stiffness
+
+§50 gave every part a floor on its thinnest dimension, closing a real
+class of defect: parts too thin to exist. It cannot see the next class at
+all, because **stiffness goes as t⁴/L³** and the floor knows nothing
+about L.
+
+The alarm link is the case that prompted it (`TODO.md` 16, reported by
+eye). Its beak tail is 0.12 mm section — **exactly `STOCK_MIN_U`, built
+deliberately to the floor** — and 10.0 mm long, so it passes by
+construction while being 84× longer than it is thick. Meanwhile the same
+unit's centre crank, at 0.045 mm the thinnest member in the alarm work,
+is **280× stiffer**, because it is short. The thickness floor ranks those
+two exactly backwards.
+
+### Which dimension, and why not the thinnest
+
+A flat lever is wide and thin *on purpose*: it bends easily out of plane
+and is stiff in the plane its load acts in. Judging it by sheet thickness
+would flag every correctly-made lever in the movement. So slenderness is
+measured against the **second-smallest extent** — the stiffest section
+dimension available. A part slender even in its stiff direction is
+slender however it is oriented, and there is no argument to have about
+it. The test is deliberately conservative: it under-reports rather than
+crying wolf.
+
+Springs and markings are **exempt by kind, not waived** — a spring that
+is not slender is not a spring, and a printed index is a film, not a
+member. Flagging them is a category error, so they never enter the
+population.
+
+### One ceiling per kind, and the one that was found by running it
+
+`SLENDER_MAX = 30`, on the basis that real watch arbors and levers run
+L/t of roughly 5–20. The small-seconds hand then came back at **λ 31.5**
+— and that is not a defect, it is what a hand *is* (real blued-steel
+seconds hands run λ 30–50). `SLENDER_MAX_BY_KIND.hand = 50` covers it.
+A **ceiling, not an exemption**: a hand at λ 200 would still be a real
+finding. That refinement was not predicted; it came out of running the
+check, which is exactly the §50 triage loop.
+
+### Result
+
+**4 ms** over 454 meshes — geometry-local, so unlike §50 it needs no
+swept registry and no sampling. 17 exempt by kind, **8 over ceiling, 6
+unwaived**:
+
+| unit / mesh | λ | section × length | stiffness |
+|---|---|---|---|
+| Alarm link / `alarmLinkShaft` | **100.5** | 0.09 × 9.05 mm | 4.4 N/m |
+| Alarm link / `alarmLinkBeakTail` | **83.7** | 0.12 × 10.05 mm | 10.2 N/m |
+| Hack rod | 63.4 | 0.26 × 16.65 mm | 51.4 N/m |
+| Reset rod | 44.7 | 0.26 × 11.74 mm | 146.9 N/m |
+| Keyless works | 38.2 | 0.26 × 10.02 mm | 224.3 N/m |
+| Reset rod | 36.9 | 0.26 × 9.69 mm | 261 N/m |
+| Alarm crown | 35.4 | 0.32 × 11.15 mm | 355.5 N/m |
+| Alarm release feeler | 35.1 | 0.10 × 3.43 mm | 43.2 N/m |
+
+It **independently reproduces the hand-measured alarm link** at the top
+of the list, then finds six more nobody had looked at. The stiffness
+column is informational — a first-order cantilever estimate good to a
+factor of two — because "λ = 84" means less to a reader than "10 N/m: it
+bends a tenth of a millimetre under a milligram-ish load".
+
+**A report, not a gate** — §40's rule and §50's own history. §50 reported,
+was triaged over four tranches, and only then gated. Arriving as a gate is
+how a check gets switched off. `ok` is always true; the rows are the
+product.
+
+Three alarm-link members were **named** in the same change
+(`alarmLinkShaft`, `alarmLinkBeakBar`, `alarmLinkBeakTail`): a slenderness
+row that cannot name its member is not actionable, and unnamed geometry
+has been this session's most expensive recurring cost.
