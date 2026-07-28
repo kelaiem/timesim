@@ -10969,7 +10969,11 @@ function frameOnEnd(target, end = 'max', axis = 'z', dir = [0.6, -0.35, 0.55], p
 const INSPECT_STEPS = [
   { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false,
     powerflow: false, sound: false, unit: 'All', alarm: false,
-    caption: 'INSPECTION ROUTE — the places where defects have actually been found. Click Inspect again to stop.', dwell: 4.0 },
+    // Do NOT tell the viewer to press Inspect: scriptStart calls
+    // hidePanelForScript(), so the control this used to name is not on screen
+    // while the route runs. Any pointerdown, key or wheel aborts (scriptAbort),
+    // so the honest instruction is the one that works from anywhere.
+    caption: 'INSPECTION ROUTE — the places where defects have actually been found. Click anywhere to stop.', dwell: 4.0 },
 
   // --- the escapement: §48's control case, and the one thing that must look right
   { preset: 'Escapement', scale: 0.04,
@@ -10992,7 +10996,7 @@ const INSPECT_STEPS = [
   // subject. Fixing the side without this just swaps one opaque view for
   // another.
   { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false, xray: true,
-    caption: '5/9 The lay shaft’s drive end. Its crank should carry the selector ring’s tab — and the shaft should look like an arbor, not a hair.', dwell: 7.0 },
+    caption: '5/9 The LAY SHAFT — the long horizontal arbor under the dial. The vertical rod pushes a crank at its far end, the shaft twists, and a second crank at THIS end shifts the alarm selector ring. Watch that near crank stay in the ring’s tab: it is the last step of the pusher’s force path.', dwell: 8.0 },
 
   // --- the mesh-phase family: TODO 15
   { camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6), scale: 1, labels: false,
