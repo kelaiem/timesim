@@ -1237,7 +1237,7 @@ moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
 The lay shaft twelve lines below already carried this exact fix, with a
 comment explaining it. The arm did not.
 
-## 17. The gong's sound is not derived from the gong
+## 17. MOSTLY CLOSED (§55) — the gong's sound is not derived from the gong
 
 `sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
 musically ("A6-ish, a small bell" says the comment). The gong's actual
@@ -1282,3 +1282,14 @@ term rather than reuse this estimate.
 
 Filed rather than fixed: this is an audio-model change and a gong-geometry
 change, and the two want deciding together.
+
+**Mostly closed by §55.** The tone is now computed from the wire's own
+dimensions and the arc is a live parameter, so the pitch tracks the
+geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
+the inharmonic 1 : 6.27 ratio is what is sounded.
+
+Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
+modes sit above the straight-bar figures used here — `gongModes()` should
+carry the curvature term. And the DESIGN question is now exposed rather
+than answered: the 90° default still rings low for an alarm; whether the
+default arc should move to ~45° is a decision, not a bug.

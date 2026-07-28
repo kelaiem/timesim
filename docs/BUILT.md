@@ -4473,3 +4473,50 @@ and "minimum widthUnits" are opposites and the next reader will meet that
 trap.
 
 Verified: dial reads 11:56:37 against a 23:56:37 wall clock; rib slider at 30.
+
+## §55. The gong arc is a parameter, and the gong's voice is derived from it
+
+`decoration`-style live controls for the alarm gong: `gong.arcDeg` and
+`gong.wireDiaUnits`, through §23's generated Advanced panel and its bounds
+table.
+
+### Measured back from the FREE end
+
+The arc is defined **backwards from the struck end**, so `arcDeg` moves the
+**foot**. That direction is the whole trick: the ringing end, the hammer,
+its pivot azimuth (`GONG_A1 + 11°`), the head's rest radius and the strike
+emitter are every one of them sited off `GONG_A1`. Anchoring at the foot
+instead would drag the hammer around the rim on every edit and re-open
+§25's strike geometry. **Verified: `hammerMoved` = 0.0000** across the
+range.
+
+### The voice follows the wire
+
+The ding used to be `sndTone(1760) + sndTone(880)` — an octave pair, picked
+as "A6-ish, a small bell". It is now the wire's own modes:
+
+> f_n = (β_nL)² · (d/4) · √(E/ρ) / (2π L²),  (β_nL)² = 3.516, 22.03, 61.70
+
+Those ratios are **1 : 6.27 : 17.55** — *inharmonic*, and that is the
+point rather than a detail. A struck wire is not a bell; modelling it as an
+octave modelled away the very thing that makes a gong sound like a gong.
+Neither old tone was a mode of this wire at any dimension.
+
+Measured through the live control:
+
+| arc | fundamental | 2nd mode |
+|---|---|---|
+| **90°** (default) | 626 Hz | 3922 Hz |
+| 60° | 1397 Hz | 8755 Hz |
+| 45° | **2514 Hz** | 15756 Hz |
+
+which closes most of `TODO.md` 17 — the tone is no longer chosen. It also
+makes the entry's design point audible rather than theoretical: at 90° the
+fundamental is a 626 Hz hum and the ring that carries is the 3.9 kHz second
+mode, while at 45° the fundamental itself lands at 2514 Hz, right where a
+real alarm sits. Note the second mode leaves the audible band on the way,
+so shortening the arc changes the *character* and not just the pitch.
+
+What remains of TODO 17: the hammer strikes **in-plane**, and a curved
+bar's in-plane modes sit somewhat above these straight-bar figures, so a
+curvature term would sharpen all of the above.

@@ -6244,9 +6244,15 @@ alarmSpinner.add(alarmCrownKnob);
 // away from the balance/escapement in the lower-right), above the 3/4 plate.
 const Z_GONG = 9.6;              // above the 3/4 plate top (8.5), about the balance-cock height (9.4)
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
-const GONG_A0 = 45 * DEG2RAD;    // fixed (foot) end
 const GONG_A1 = 135 * DEG2RAD;   // free (ringing) end — the hammer strikes here
-const GONG_WIRE_R = 0.5;
+// §55 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
+// direction is the whole trick: the struck end, the hammer, its pivot azimuth
+// (GONG_A1 + 11°), the head's rest radius and the strike emitter are all sited
+// off GONG_A1, so moving the FOOT changes the ringing length while leaving
+// every one of them untouched. Anchoring at the foot instead would drag the
+// hammer around the rim on every edit and re-open §25's strike geometry.
+let GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
 // (TQ_TOP_Z — the three-quarter plate's top face — is derived up at the plate
 // build; the gong foot and hammer post plant into it.)
 
@@ -6262,10 +6268,28 @@ gongArc.position.z = Z_GONG;
 alarmGongUnit.add(gongArc);
 // Foot: a post from the arc's fixed end down into the 3/4 plate top — the
 // gong's ONLY fixing (the far end rings free); its route to the plate.
-const gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
+let gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
 const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
 gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
 alarmGongUnit.add(gongPost);
+
+// §55 — THE GONG'S VOICE, DERIVED FROM THE GONG. A clamped-free steel bar:
+//   f_n = (β_n L)² · (d/4) · √(E/ρ) / (2π L²)
+// with (β_nL)² = 3.516, 22.03, 61.70 — ratios 1 : 6.27 : 17.55. Those are
+// INHARMONIC, and that is the point rather than a detail: a struck wire is not
+// a bell, and the octave pair this used to play (1760 + 880 Hz, chosen as "a
+// small bell") modelled away the very thing that makes a gong sound like a
+// gong. Neither of those tones was a mode of this wire at any dimension.
+//
+// Recomputed whenever the arc or wire changes, so the pitch tracks the
+// geometry: shorten the arc and it rings higher, exactly as the real thing.
+const GONG_STEEL_C = Math.sqrt(200e9 / 7850);      // bar wave speed, m/s
+function gongModes() {
+  const L = GONG_R * (GONG_A1 - GONG_A0) * UNIT_MM / 1000;   // developed length, m
+  const k = (2 * GONG_WIRE_R * UNIT_MM / 1000) / 4;          // radius of gyration, circular section
+  return [3.5160, 22.034, 61.70].map((bl2) => bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L));
+}
+let gongF = gongModes();
 
 // Emitter for the bell voice — an empty at the strike point (the gong unit's
 // own origin is the movement axis, which would mis-spatialize the sound to the
@@ -8321,6 +8345,16 @@ window.addEventListener('keydown', (e) => {
     decoration: () => { applyDecorationFromAesthetics(); if (ribPitch) ribPitch.value = aesthetics.decoration.ribbing.widthUnits; },
     materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
     dial: (path) => { if (path[1] === 'hands') recutHands(); else return false; },
+    gong: () => {
+      GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;
+      GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
+      gongArc.geometry.dispose();
+      gongArc.geometry = new THREE.TorusGeometry(GONG_R, GONG_WIRE_R, 8, 64, GONG_A1 - GONG_A0);
+      gongArc.rotation.z = GONG_A0;
+      gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
+      gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+      gongF = gongModes();   // the voice follows the wire
+    },
   };
   const advBody = document.getElementById('advanced-body');
   const buildAdvanced = () => {
@@ -9451,8 +9485,11 @@ const SND = {
     // Light the whole power chain, not just the noisy end: the pin wheel did
     // the work, the hammer carried it, the gong turned it into sound (§25).
     sndFlash(alarmGongUnit); sndFlash(alarmHammerUnit); sndFlash(alarmStrikeUnit);
-    sndTone(1760, 0.55, 0.30, 0, alarmEmitter);         // fundamental (A6-ish, a small bell)
-    sndTone(880, 0.32, 0.14, 0, alarmEmitter);          // a softer strike partial an octave down
+    // §55: the wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the
+    // 1st — inharmonic, which is what makes this read as struck steel. It also
+    // carries the loudest energy at these dimensions, hence the gain order.
+    sndTone(gongF[1], 0.55, 0.30, 0, alarmEmitter);     // 2nd flexural mode — the ring that carries
+    sndTone(gongF[0], 0.32, 0.14, 0, alarmEmitter);     // fundamental — the body under it
   },
 };
 // --- Sound-event highlight (BUILT §11) --------------------------------------

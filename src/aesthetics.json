@@ -91,6 +91,21 @@
   "rendering": {
     "toneMappingExposure": 1.05
   },
+  "gong": {
+    "arcDeg": 90,
+    "wireDiaUnits": 1.0,
+    "_comment": "The alarm gong's ringing wire. arcDeg is measured BACK FROM THE FREE (struck) end, so changing it moves the FOOT and leaves the hammer, its pivot and the strike point exactly where they are. Both feed the synthesised tone: f_n = (beta_n L)^2 (d/4) sqrt(E/rho) / (2 pi L^2) for a clamped-free steel bar, so the gong is heard at the pitch its dimensions imply rather than at a chosen note. Shorter arc or thicker wire = higher pitch. See TODO 17 — at the 90 deg default the fundamental is only 623 Hz, low for an alarm; ~45 deg puts it near 2.5 kHz.",
+    "_bounds": {
+      "arcDeg": [
+        25,
+        120
+      ],
+      "wireDiaUnits": [
+        0.4,
+        2.0
+      ]
+    }
+  },
   "decoration": {
     "ribbing": {
       "widthUnits": 30,
