@@ -747,3 +747,42 @@ this half-pitch error.
 
 Worth checking whether the same derivation is shared with any other
 meshing pair before fixing it in one place only.
+
+**Progress, and where it stopped.** Branch `claude/todo-15-idler-phase`
+carries the diagnosis and a fix for the I1⇄I2 mesh only. The cause was in
+plain sight: BOTH idlers were built with `rotation.z = Math.PI / teeth`,
+half of their OWN pitch, with no reference to the line of centres between
+them — which says nothing about where a wheel's teeth fall relative to
+its neighbour. `gearMeshPhase()` now solves I2 against I1, with a
+build-time tripwire on the anti-phase condition.
+
+**The setting wheel ⇄ I1 mesh is ALSO wrong** (reported by eye, second
+screenshot) and is NOT fixed. It is harder than the idler pair for a
+reason worth writing down before anyone attempts it:
+
+- The setting wheel is a **`dialFace` child**; the idlers are **`movement`
+  children**. Their positions are in different frames, so a line-of-centres
+  azimuth cannot be taken between them without transforming first.
+- `dialFace` is **Y-FLIPPED** (`dial-local (x,y) ↔ world (P.dial.x − x,
+  P.dial.y + y)`). A Y-flip MIRRORS the gear, which reverses the direction
+  its tooth pattern advances. So the setting wheel's effective phase in
+  world terms is not its `rotation.z`, and the sign of the pitch step
+  flips. Getting this wrong produces a fix that looks derived and is still
+  half a pitch out.
+- The setting wheel currently has **no explicit `rotation.z` at all**
+  (phase 0), so it is the natural datum — but only once expressed in the
+  frame the idlers live in.
+
+The right shape is a CHAIN solved from one datum — setting wheel → I1 →
+I2 → arbor pinion — since a gear's phase is determined by its mesh with
+the previous wheel, not chosen. Fixing pairs independently cannot work: I1
+cannot satisfy two meshes with two freely-chosen phases.
+
+**Verification is the other open half.** The tripwire checks the formula
+against its own terms, which is not independent. An attempt to measure the
+built geometry failed twice because it could not SELECT the meshing pair —
+only one spin group sits under the `Alarm setting idler` label. Any
+instrument for this has to be able to name the two wheels before it can
+measure them, and that naming gap should be closed first. The battery
+cannot substitute: gears meshing out of phase sweep the same volumes as
+gears meshing correctly.
