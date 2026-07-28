@@ -2737,7 +2737,7 @@ export const STOCK_KIND_BY_MESH = {
 //   jewel assembly and regulator furniture, jumper, small-seconds, set-up
 //   work) wants a ~20–45% per-part thickening toward each part's free side.
 // ---------------------------------------------------------------------------
-// §53 — SLENDERNESS. A minimum thickness is not a minimum stiffness.
+// §54 — SLENDERNESS. A minimum thickness is not a minimum stiffness.
 //
 // §50 gave every part a floor on its thinnest dimension, and that closed a
 // real class of defect: parts too thin to exist. It cannot see the next class

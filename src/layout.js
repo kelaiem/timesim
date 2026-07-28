@@ -79,7 +79,7 @@ export const MM = (units) => units * UNIT_MM;          // for readouts and asser
 // §50/TODO 12: the wheel-and-plate stock floor, in UNITS, so a thickness can
 // be built to clear it rather than measured against it after the fact.
 export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.32 u
-// §53's slenderness ceiling, L/t. Lives HERE rather than in inspect.js so the
+// §54's slenderness ceiling, L/t. Lives HERE rather than in inspect.js so the
 // GEOMETRY can be derived from the same number the CHECK enforces — a part
 // sized against the check that measures it cannot drift away from it.
 export const SLENDER_MAX = 30;

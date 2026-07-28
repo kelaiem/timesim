@@ -1177,7 +1177,7 @@ this class everywhere rather than only where someone happens to look. The
 alarm link would be its first customer; the winding-train hangers
 (0.075 mm × 4.7 u) are probably its second.
 
-### FIXED — sections derived from §53's budget; one item deliberately left
+### FIXED — sections derived from §54's budget; one item deliberately left
 
 **The pillar move was investigated and REJECTED on evidence.** Probing
 every station along the chord showed the whole inboard run is under
@@ -1187,7 +1187,7 @@ position. That is the opposite of what this item originally proposed, and
 the probe is the reason.
 
 **Both members are now derived from `SLENDER_TARGET`**, so they are sized
-by the same number §53 measures them against:
+by the same number §54 measures them against:
 
 | member | was | now |
 |---|---|---|
@@ -1196,10 +1196,10 @@ by the same number §53 measures them against:
 
 The tail is now a **blade, not a fatter square**: the load is vertical, so
 the section grew in Z where the force acts and stayed at floor stock in Y.
-That is what a real lever looks like, and it is what §53 rewards — depth
+That is what a real lever looks like, and it is what §54 rewards — depth
 where it is loaded rather than fat everywhere.
 
-The shaft's radius fell out of two independent budgets agreeing: §53's
+The shaft's radius fell out of two independent budgets agreeing: §54's
 ceiling (d ≥ chord/30) and the load path (holding the drive end's
 deflection to a tenth of the selector stroke under a ~20 mN detent needs
 ≈ 2800 N/m). Geometry budget and force budget landing on the same
@@ -1224,7 +1224,7 @@ it still bends 42% of its stroke at 20 mN, against the shaft's 7% — so if
 anything here gets more work, it is that lever, and the two are the same
 problem: the tail is long *because* the rod is far away.
 
-### Postscript — the lever was also inverted (§53 postscript 2)
+### Postscript — the lever was also inverted (§54 postscript 2)
 
 Separately from the sections: `beakArm` set its aim on `rotation.z` and its
 lever action on `rotation.y` under the default `'XYZ'` order, so the tilt
@@ -1237,7 +1237,7 @@ moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
 The lay shaft twelve lines below already carried this exact fix, with a
 comment explaining it. The arm did not.
 
-## 17. MOSTLY CLOSED (§55) — the gong's sound is not derived from the gong
+## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
 
 `sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
 musically ("A6-ish, a small bell" says the comment). The gong's actual
@@ -1283,7 +1283,7 @@ term rather than reuse this estimate.
 Filed rather than fixed: this is an audio-model change and a gong-geometry
 change, and the two want deciding together.
 
-**Mostly closed by §55.** The tone is now computed from the wire's own
+**Mostly closed by §56.** The tone is now computed from the wire's own
 dimensions and the arc is a live parameter, so the pitch tracks the
 geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
 the inharmonic 1 : 6.27 ratio is what is sounded.

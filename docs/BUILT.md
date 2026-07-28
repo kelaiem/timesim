@@ -4152,7 +4152,7 @@ Off by default, toggled in **View → Control HUD**, or opened on arrival
 with `?hud=1` — for a link that wants the watch driveable the moment it
 loads, which on a phone is the difference between a demo and an
 instrument.
-## §53. Slenderness — a minimum thickness is not a minimum stiffness
+## §54. Slenderness — a minimum thickness is not a minimum stiffness
 
 §50 gave every part a floor on its thinnest dimension, closing a real
 class of defect: parts too thin to exist. It cannot see the next class at
@@ -4226,9 +4226,9 @@ Three alarm-link members were **named** in the same change
 row that cannot name its member is not actionable, and unnamed geometry
 has been this session's most expensive recurring cost.
 
-### §53 postscript — the alarm link fixed, and a pillar move rejected on evidence
+### §54 postscript — the alarm link fixed, and a pillar move rejected on evidence
 
-§53's first customer, closed. Both members are now derived from
+§54's first customer, closed. Both members are now derived from
 `SLENDER_TARGET`, so the geometry is sized by the same number the check
 measures it against.
 
@@ -4246,10 +4246,10 @@ movable, so the fix had to be section.
 
 **A lever is tall and thin, not square.** The tail's load is vertical, so
 its section grew in Z, where the force acts, and stayed at floor stock in
-Y. §53 measures slenderness against the stiffest available dimension
+Y. §54 measures slenderness against the stiffest available dimension
 precisely so a blade earns its ratio this way.
 
-**Two budgets agreeing is why the shaft radius is trustworthy.** §53's
+**Two budgets agreeing is why the shaft radius is trustworthy.** §54's
 ceiling gives d ≥ chord/30; the load path — holding the drive end to a
 tenth of the selector's 0.071 mm stroke under a ~20 mN detent — gives
 ≈ 2800 N/m, i.e. the same radius to two decimals.
@@ -4271,7 +4271,7 @@ selector, switch, dial, plate, jumper, drum and barrel: support 0, graph
 0, penetration none over budget, clearances 0; boot silent. Stall force
 along the chain ≈ 1.5 mN → ≈ 48 mN.
 
-### §53 postscript 2 — the beak lever was inverted, and my verification could not see it
+### §54 postscript 2 — the beak lever was inverted, and my verification could not see it
 
 Reported by eye: the rod from the column wheel to the vertical rod levers
 the wrong way against a shaft that should be pushed dial-side and sprung
@@ -4314,7 +4314,7 @@ the movement), a pose sweep that never moved the column wheel, and the
 tail's AABB *floor*, which is pinned at the pivot end no matter how the
 lever swings. The tip is what moves; measure the thing that moves.
 
-## §54. The inspection route — a tour for the instrument that actually finds things
+## §55. The inspection route — a tour for the instrument that actually finds things
 
 `TOUR_STEPS` is a **showcase**: it narrates the movement to a visitor and
 never goes near the alarm work. This is a different animal — a **route to
@@ -4474,7 +4474,7 @@ trap.
 
 Verified: dial reads 11:56:37 against a 23:56:37 wall clock; rib slider at 30.
 
-## §55. The gong arc is a parameter, and the gong's voice is derived from it
+## §56. The gong arc is a parameter, and the gong's voice is derived from it
 
 `decoration`-style live controls for the alarm gong: `gong.arcDeg` and
 `gong.wireDiaUnits`, through §23's generated Advanced panel and its bounds

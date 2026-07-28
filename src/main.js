@@ -28,7 +28,7 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
-  STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §53 target
+  STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -6245,7 +6245,7 @@ alarmSpinner.add(alarmCrownKnob);
 const Z_GONG = 9.6;              // above the 3/4 plate top (8.5), about the balance-cock height (9.4)
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
 const GONG_A1 = 135 * DEG2RAD;   // free (ringing) end — the hammer strikes here
-// §55 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
+// §56 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
 // direction is the whole trick: the struck end, the hammer, its pivot azimuth
 // (GONG_A1 + 11°), the head's rest radius and the strike emitter are all sited
 // off GONG_A1, so moving the FOOT changes the ringing length while leaving
@@ -6273,7 +6273,7 @@ const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, Z_GONG - (T
 gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
 alarmGongUnit.add(gongPost);
 
-// §55 — THE GONG'S VOICE, DERIVED FROM THE GONG. A clamped-free steel bar:
+// §56 — THE GONG'S VOICE, DERIVED FROM THE GONG. A clamped-free steel bar:
 //   f_n = (β_n L)² · (d/4) · √(E/ρ) / (2π L²)
 // with (β_nL)² = 3.516, 22.03, 61.70 — ratios 1 : 6.27 : 17.55. Those are
 // INHARMONIC, and that is the point rather than a detail: a struck wire is not
@@ -7236,7 +7236,7 @@ const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
 // The crank arm's own dimensions, hoisted because the ROD'S FOOT is derived
 // from them: the foot has to land ON the arm's top face, and two independent
 // literals for one contact is how a linkage ends up transmitting through a gap.
-// §53 / TODO 16 — the lay shaft's SECTION, derived from the slenderness
+// §54 / TODO 16 — the lay shaft's SECTION, derived from the slenderness
 // ceiling, and everything that hangs off it derived from that in turn. The
 // chord is known here (both ends were sited above), so the shaft can be sized
 // before the parts that must clear it.
@@ -7284,7 +7284,7 @@ const alarmLinkParts = {};
   const pivDist = ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04; // post r 0.16 fully clear of the wheel's skirt
   const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
   const beakArm = new THREE.Group();
-  // §53 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
+  // §54 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
   // FOR, twelve lines below, unfixed here. The aim is `rotation.z`; the tick's
   // lever action is `rotation.y`. Under the DEFAULT 'XYZ' the tilt is applied
   // BEFORE the aim, i.e. about world-Y, so the throw comes out scaled by
@@ -7306,7 +7306,7 @@ const alarmLinkParts = {};
   const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
   const beakLen = pivDist - noseR;
   const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock BOTH ways — plate-top lever, free upward and sideways (first pass thickened z only and the census promptly made width the new thin dimension)
-  beakBar.name = 'alarmLinkBeakBar';  // §53
+  beakBar.name = 'alarmLinkBeakBar';  // §54
   beakBar.position.x = beakLen / 2;
   beakArm.add(beakBar);
   const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.22), MATS.steel);
@@ -7315,17 +7315,17 @@ const alarmLinkParts = {};
   beakArm.add(beakNose);
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
   const tailLen = wrLen - pivDist;
-  // §53 / TODO 16 — A LEVER IS TALL AND THIN, NOT SQUARE.
+  // §54 / TODO 16 — A LEVER IS TALL AND THIN, NOT SQUARE.
   // This was STOCK_MIN_U both ways: 0.12 mm square over 10 mm, λ 83.7, and it
   // deflected 0.098 mm per mN against a required rod travel of 0.158 mm — it
   // bent most of its own stroke instead of moving the rod. It passed §50
-  // because it was built exactly TO the floor, which is the whole reason §53
+  // because it was built exactly TO the floor, which is the whole reason §54
   // exists.
   //
   // The fix is not a fatter square. The load here is VERTICAL — the tail
   // presses down on the rod — so the section grows in Z, the direction the
   // force acts, and stays at floor stock in Y. That is what a real lever looks
-  // like, and it is what §53 measures: slenderness against the STIFFEST
+  // like, and it is what §54 measures: slenderness against the STIFFEST
   // available dimension, so a blade earns its ratio by being deep where it is
   // loaded rather than by being fat everywhere.
   //
@@ -7334,7 +7334,7 @@ const alarmLinkParts = {};
   // dropping it would both bury the rod and close on the plate 1.02 away.
   const ALARM_LINK_TAIL_H = tailLen / SLENDER_TARGET;
   const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, ALARM_LINK_TAIL_H), MATS.steel);
-  beakTail.name = 'alarmLinkBeakTail'; // §53: was λ 83.7 — TODO 16's headline member
+  beakTail.name = 'alarmLinkBeakTail'; // §54: was λ 83.7 — TODO 16's headline member
   beakTail.position.x = -tailLen / 2;
   beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
   beakArm.add(beakTail);
@@ -7365,20 +7365,20 @@ const alarmLinkParts = {};
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
   const chordLen = Math.hypot(chord.x, chord.y);
   if (Math.abs(chordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
-    console.warn(`§53: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
+    console.warn(`§54: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
       + `${chordLen.toFixed(4)} — the shaft was sized against a length it does not have`);
   const u = { x: chord.x / chordLen, y: chord.y / chordLen };
   const shaft = new THREE.Group();
   shaft.position.set((ALARM_LINK_INNER_XY.x + ALARM_LINK_ROD_XY.x) / 2, (ALARM_LINK_INNER_XY.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
-  // §53 / TODO 16 — THE SECTION IS DERIVED FROM THE SLENDERNESS CEILING.
+  // §54 / TODO 16 — THE SECTION IS DERIVED FROM THE SLENDERNESS CEILING.
   // It used to be r 0.12: a 0.09 mm rod spanning 9.05 mm, L/d = 100. A human
   // hair is about 0.07 mm. It passed §50 only because §50 asks how thin a part
   // is and never how LONG it is thin for.
   //
   // Two independent derivations land on the same number, which is the reason
-  // to trust it. §53's ceiling gives d ≥ chordLen/30. And the load path gives
+  // to trust it. §54's ceiling gives d ≥ chordLen/30. And the load path gives
   // the same: the drive end is a 4.5 mm cantilever (the dial-side congestion
   // fixes that — every station inboard of the current one is under dial
   // hardware, which is why the bushes sit where they do), and holding its
@@ -7390,7 +7390,7 @@ const alarmLinkParts = {};
   // and the tightest non-contact band is 0.97 (t 20–22). The 0.297 at t≈0.3 is
   // `Dial/alarmSelTab` — the crank's own working contact, not an obstruction.
   const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 12), MATS.steel);
-  shaftRod.name = 'alarmLinkShaft';   // §53: a slenderness row that cannot name its member is not actionable
+  shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
   // cranks: rim end (up to the rod's foot), centre end (under the ring's tab).
@@ -7421,7 +7421,7 @@ const alarmLinkParts = {};
   // passed while 0.02 from contact
   for (const t of [12, 22]) {
     const hx = ALARM_LINK_INNER_XY.x + u.x * t, hy = ALARM_LINK_INNER_XY.y + u.y * t;
-    // §53: the bore follows the shaft, with a running clearance; the wall is
+    // §54: the bore follows the shaft, with a running clearance; the wall is
     // stock-floor so the bush is itself a real part.
     const bush = new THREE.Mesh(ringGeo(ALARM_LINK_SHAFT_R + 0.02, ALARM_LINK_SHAFT_R + 0.02 + STOCK_MIN_U, 0.3), MATS.nickel);
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
@@ -9485,7 +9485,7 @@ const SND = {
     // Light the whole power chain, not just the noisy end: the pin wheel did
     // the work, the hammer carried it, the gong turned it into sound (§25).
     sndFlash(alarmGongUnit); sndFlash(alarmHammerUnit); sndFlash(alarmStrikeUnit);
-    // §55: the wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the
+    // §56: the wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the
     // 1st — inharmonic, which is what makes this read as struck steel. It also
     // carries the loudest energy at these dimensions, hence the gain order.
     sndTone(gongF[1], 0.55, 0.30, 0, alarmEmitter);     // 2nd flexural mode — the ring that carries
@@ -9572,7 +9572,7 @@ function setAlarm(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!alarmOn));
-// §54 — THE ALARM CYCLER. Flips the alarm on and off on a timer and touches
+// §55 — THE ALARM CYCLER. Flips the alarm on and off on a timer and touches
 // NOTHING else: no camera, no preset, no time scale. That is the whole design.
 //
 // Force transfer is only legible in MOTION. A single state change gives the eye
@@ -10819,7 +10819,7 @@ const TOUR_STEPS = [
 ];
 
 // ---------------------------------------------------------------------------
-// §54 — THE INSPECTION TOUR. A different animal from TOUR_STEPS above.
+// §55 — THE INSPECTION TOUR. A different animal from TOUR_STEPS above.
 //
 // That one is a SHOWCASE: it narrates the movement to a visitor and never goes
 // near the alarm work. This one is a ROUTE TO THE PLACES DEFECTS LIVE, and it
@@ -10845,7 +10845,7 @@ function frameOn(target, dir = [0.5, -0.4, 0.75], pad = 3.4) {
   let obj = labelEntries.find((x) => x.name === target)?.obj;
   if (!obj) obj = scene.getObjectByName(target);
   if (!obj) {
-    console.warn(`§54: inspection stop names '${target}', which is neither a labelled unit nor a mesh`);
+    console.warn(`§55: inspection stop names '${target}', which is neither a labelled unit nor a mesh`);
     return null;
   }
   _frameBox.setFromObject(obj);
@@ -10889,7 +10889,7 @@ function frameOn(target, dir = [0.5, -0.4, 0.75], pad = 3.4) {
 const _eB = new THREE.Box3(), _eS = new THREE.Vector3(), _eC = new THREE.Vector3();
 function frameOnEnd(target, end = 'max', axis = 'z', dir = [0.6, -0.35, 0.55], pad = 6.0) {
   const obj = labelEntries.find((x) => x.name === target)?.obj || scene.getObjectByName(target);
-  if (!obj) { console.warn(`§54: end-stop names '${target}', which is not in the scene`); return null; }
+  if (!obj) { console.warn(`§55: end-stop names '${target}', which is not in the scene`); return null; }
   _eB.setFromObject(obj);
   if (!isFinite(_eB.min.x)) return null;
   _eB.getCenter(_eC); _eB.getSize(_eS);
@@ -10917,7 +10917,7 @@ const INSPECT_STEPS = [
   { alarm: true,
     caption: '3/9 Alarm ON. The wheel indexes as the pusher goes down. Watch the pawl drive the ratchet the way its teeth are cut.', dwell: 6.5 },
 
-  // --- the alarm link, end to end: §53 / TODO 16 / the inverted lever
+  // --- the alarm link, end to end: §54 / TODO 16 / the inverted lever
   // The lever test is judged where the tail MEETS THE ROD, on the movement
   // side at the top of the z-shaft — not at the nose, which only shows the
   // input. Framed on the contact so it keeps aiming there if either moves.
@@ -10969,7 +10969,7 @@ document.getElementById('btn-tour').addEventListener('click', (e) => {
 // DEEP LINKS — query-string entry points onto the SAME two surfaces above:
 // the script engine (?tour / ?demo) or the raw view state the engine's own
 // steps set (?preset, ?scale, ?xray, ?explode, ?labels, ?powerflow, ?sound,
-// ?unit, ?crown, ?reserve, and §54's ?inspect / ?cycle). `?demo=1` starts the matching script exactly as
+// ?unit, ?crown, ?reserve, and §55's ?inspect / ?cycle). `?demo=1` starts the matching script exactly as
 // its button would. `?tour=1` goes through askTour's confirm/skip gate first
 // — a deep link isn't itself a user gesture the way a button click is, and
 // shouldn't swing the camera/crown/sound unattended before the visitor has
@@ -11031,7 +11031,7 @@ function applyDeepLink() {
   // the watch driveable the moment it loads (a phone, where hunting a 5 u
   // crown by orbit is the least pleasant thing this app asks of anyone).
   if (params.has('hud')) setHud(params.get('hud') !== '0');
-  // §54 — `?inspect=1`. No confirm gate, unlike ?tour: that gate exists because
+  // §55 — `?inspect=1`. No confirm gate, unlike ?tour: that gate exists because
   // a deep link is not a user gesture and shouldn't swing the camera, crown and
   // SOUND at a first-time visitor unasked. The inspection route is a working
   // tool reached deliberately, it makes no sound, and anyone typing this
@@ -11043,7 +11043,7 @@ function applyDeepLink() {
 }
 applyDeepLink();
 
-// §54 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
+// §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
 // arbitrary epoch, so the very first thing a viewer saw was a watch showing the
 // wrong time. Syncing on arrival runs the SAME syncStart() the button does —
 // crown out, set through the real keyless works, catch up — so the default is
@@ -12232,7 +12232,7 @@ function advanceFrame(realDt) {
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
     } else {
       scriptUpdate(realDt); // scripted user (BUILT §5/§17): drives crown/scale before this frame's ticks
-      alarmCycleUpdate(realDt); // §54: the alarm cycler, same pre-tick slot — its toggle must land before this frame integrates
+      alarmCycleUpdate(realDt); // §55: the alarm cycler, same pre-tick slot — its toggle must land before this frame integrates
       syncUpdate(realDt);
       // The catch-up is a rate the slider does not know about, so it stands
       // in for timeScale rather than being written into it — the slider's
