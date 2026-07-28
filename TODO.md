@@ -724,7 +724,7 @@ stiffness. §48's scope guard puts spring RATE and force modelling
 outside that entry, and it stays outside this item too. The spring now
 exists and acts; it does not yet SET the frequency.
 
-## 15. The two alarm winding idlers mesh out of phase
+## 15. Mesh phase is set to half a wheel's OWN pitch, everywhere
 
 Reported by eye from the running sim: the two alarm winding idlers
 appear to **interlock tooth-on-tooth rather than tooth-into-gap** — the
@@ -809,3 +809,46 @@ pair). A per-gear handle that returns exactly one geometry per wheel is
 the prerequisite for any real instrument here; a vertex-level pass still
 double-counts, because more than one extruded mesh sits under a single
 gear.
+
+---
+
+### CORRECTION — the branch fixes the WRONG TRAIN
+
+Both reports were about the **`Alarm winding train`** (`registerLabel` at
+`main.js:6705`). Branch `claude/todo-15-idler-phase` solves the **`Alarm
+setting`** chain instead — a different unit. That is exactly why its
+tripwires pass while the screenshots plainly disagree: they measure
+wheels the reports were never about. **Do not merge it as a fix for
+this.**
+
+**The actual site is `main.js:6756`:**
+
+```js
+w.rotation.z = Math.PI / ALARM_WIND_IDLER_TEETH;
+```
+
+Same bug, same shape: half of the wheel's OWN angular pitch, with no
+reference to the line of centres to its neighbour.
+
+**It is an IDIOM repeated across the file**, which is why fixing one
+place kept not being enough. Known sites:
+
+| Line | Wheels |
+|---|---|
+| 4870–4871 | power-reserve wheels 1 and 2 |
+| 5696 | alarm branch idler i1b |
+| 6756 | **alarm winding idlers — what was reported** |
+
+The chain-solve machinery on the branch (`worldToothPhase`, `alignGear`,
+`meshPhaseTarget`, and the two per-mesh tripwires) is written to be
+reusable and is the right tool — it measures each wheel's world tooth
+direction and the sign of its response to `rotation.z`, so frames, flips
+and mirroring need no hand reasoning. Point it at the winding train, then
+at the other sites, rather than writing a fourth bespoke fix.
+
+**Prerequisite, still unmet:** a per-gear handle returning exactly one
+geometry per wheel. `makeGear` returns a **Group** (rim plus optional
+hub). That single fact caused a build crash and two confidently wrong
+measurements, and it is why no independent instrument for mesh phase
+exists yet. The battery cannot substitute — gears meshing out of phase
+sweep the same volumes as gears meshing correctly.
