@@ -7945,7 +7945,7 @@ panel.innerHTML = `
         <button data-cam="Setting">Setting</button>
         <button data-cam="Free">Free</button>
       </div>
-      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button></span></div>
+      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
       <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
     </div>
   </details>
@@ -10752,6 +10752,91 @@ const TOUR_STEPS = [
   { preset: 'Free', sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false,
     caption: 'That’s the tour. Now explore the controls yourself.', dwell: 3.9 },
 ];
+
+// ---------------------------------------------------------------------------
+// §54 — THE INSPECTION TOUR. A different animal from TOUR_STEPS above.
+//
+// That one is a SHOWCASE: it narrates the movement to a visitor and never goes
+// near the alarm work. This one is a ROUTE TO THE PLACES DEFECTS LIVE, and it
+// exists because of a pattern this project keeps paying for — the battery
+// answers "does anything overlap?", and every kinematic lie found so far was
+// caught BY EYE and was invisible to a clean run: a pawl driving the column
+// wheel backwards, a saw cut the wrong way, a follower decoupled from its cam,
+// a spring parented to the lever it should push, gears meshing tooth-on-tooth,
+// and a lever inverted by its Euler order. Not one of those moves a volume
+// anywhere it should not be, so not one of them can fail a sweep.
+//
+// If the eye is the instrument that finds this class, it deserves a systematic
+// route rather than whatever the camera happened to be pointing at.
+//
+// Framings are DERIVED from the geometry, not typed as vectors: a stop names
+// the part it wants to look at and the camera is placed off its measured
+// bounding box. A hand-typed pose silently stops framing its subject the first
+// time that subject moves, which is exactly the failure this tour exists to
+// catch — the tour must not need re-aiming every time the geometry it inspects
+// is corrected.
+const _frameBox = new THREE.Box3(), _frameCen = new THREE.Vector3(), _frameSz = new THREE.Vector3();
+function frameOn(target, dir = [0.5, -0.4, 0.75], pad = 3.4) {
+  let obj = labelEntries.find((x) => x.name === target)?.obj;
+  if (!obj) obj = scene.getObjectByName(target);
+  if (!obj) {
+    console.warn(`§54: inspection stop names '${target}', which is neither a labelled unit nor a mesh`);
+    return null;
+  }
+  _frameBox.setFromObject(obj);
+  if (!isFinite(_frameBox.min.x)) return null;
+  _frameBox.getCenter(_frameCen); _frameBox.getSize(_frameSz);
+  const r = Math.max(_frameSz.length() / 2, 1.6);
+  const d = new THREE.Vector3(...dir).normalize().multiplyScalar(r * pad);
+  return { pos: [_frameCen.x + d.x, _frameCen.y + d.y, _frameCen.z + d.z],
+           look: [_frameCen.x, _frameCen.y, _frameCen.z] };
+}
+
+// Each stop says WHAT TO LOOK FOR, not what the part is called. A caption that
+// only names the part gives the eye nothing to do.
+const INSPECT_STEPS = [
+  { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false,
+    powerflow: false, sound: false, unit: 'All', alarm: false,
+    caption: 'INSPECTION ROUTE — the places where defects have actually been found. Click Inspect again to stop.', dwell: 4.0 },
+
+  // --- the escapement: §48's control case, and the one thing that must look right
+  { preset: 'Escapement', scale: 0.04,
+    caption: '1/9 Escapement. The fork is impulsed BOTH ways — this is §48’s control case, and it should look driven, not animated.', dwell: 7.0 },
+
+  // --- the column wheel and its four followers (§43, §48)
+  { camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2), scale: 0.25, alarm: false, labels: true,
+    caption: '2/9 Column wheel at rest. The click’s spring is GROUNDED on its own stud — it must stay still while the arm rocks.', dwell: 6.0 },
+  { alarm: true,
+    caption: '3/9 Alarm ON. The wheel indexes as the pusher goes down. Watch the pawl drive the ratchet the way its teeth are cut.', dwell: 6.5 },
+
+  // --- the alarm link, end to end: §53 / TODO 16 / the inverted lever
+  { camera: frameOn('alarmLinkBeak', [0.3, -0.35, 0.9], 5.0), scale: 0.25,
+    caption: '4/9 The beak on the castellations. Nose falls into a gap ⇒ tail RISES ⇒ rod rises. A lever inverts; if nose and tail move together it is wrong.', dwell: 7.0 },
+  { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false,
+    caption: '5/9 The lay shaft’s drive end. Its crank should carry the selector ring’s tab — and the shaft should look like an arbor, not a hair.', dwell: 7.0 },
+
+  // --- the mesh-phase family: TODO 15
+  { camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6), scale: 1, labels: false,
+    caption: '6/9 Winding idlers. Tooth into GAP at the line of centres, never tooth on tooth — and the same again where they meet the barrel.', dwell: 7.0 },
+  { camera: frameOn('Alarm setting idler', [0.4, -0.35, 0.85], 4.0),
+    caption: '7/9 The setting train’s dogleg: setting wheel → idler → idler. Same test, and this chain crosses the dial’s Y-flip.', dwell: 6.5 },
+
+  // --- the strike: TODO 14's spring, and the hammer that has to fall
+  { camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2), alarm: true, scale: 0.3,
+    caption: '8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.', dwell: 7.0 },
+
+  // --- the cam followers: TODO 13
+  { camera: frameOn('Alarm release feeler', [0.4, -0.4, 0.85], 4.6), scale: 0.3,
+    caption: '9/9 A sprung cam follower. The blade is anchored off-lever now; the arm should be pressed onto its cam, not glued to it.', dwell: 7.0 },
+
+  { preset: 'Free', scale: 1, alarm: false, labels: false, xray: false, explode: 0,
+    caption: 'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.', dwell: 4.0 },
+];
+
+document.getElementById('btn-inspect').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(INSPECT_STEPS, btn);
+});
 
 document.getElementById('btn-demo').addEventListener('click', (e) => {
   const btn = e.currentTarget;

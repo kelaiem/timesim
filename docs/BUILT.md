@@ -4313,3 +4313,56 @@ were right — an AABB test on a long diagonal bar (its box overlaps half
 the movement), a pose sweep that never moved the column wheel, and the
 tail's AABB *floor*, which is pinned at the pivot end no matter how the
 lever swings. The tip is what moves; measure the thing that moves.
+
+## §54. The inspection route — a tour for the instrument that actually finds things
+
+`TOUR_STEPS` is a **showcase**: it narrates the movement to a visitor and
+never goes near the alarm work. This is a different animal — a **route to
+the places defects live** — and it exists because of a pattern this
+project keeps paying for.
+
+The battery answers *"does anything overlap?"*. Every kinematic lie found
+so far was caught **by eye** and was invisible to a clean run: a pawl
+driving the column wheel backwards, a saw cut the wrong way, a follower
+decoupled from its cam, a spring parented to the lever it should push,
+gears meshing tooth-on-tooth, and a lever inverted by its Euler order.
+Not one of those moves a volume anywhere it should not be, so not one of
+them can fail a sweep. If the eye is the instrument that finds this class,
+it deserves a systematic route rather than wherever the camera happened to
+be pointing.
+
+### Framings are derived, not typed
+
+A stop names the **part** it wants to look at; the camera is placed off
+that part's measured bounding box (`frameOn`, accepting a unit name or a
+mesh name). A hand-typed pose silently stops framing its subject the first
+time the subject moves — which is precisely the failure this tour exists
+to catch. The tour must not need re-aiming every time the geometry it
+inspects is corrected. A stop naming something that does not exist warns
+by name at boot rather than quietly framing nothing.
+
+### Nine stops, each saying what to LOOK FOR
+
+A caption that only names the part gives the eye nothing to do, so each
+one states the test:
+
+1. **Escapement** — §48's control case: the fork is impulsed both ways and
+   should read as *driven*, not animated.
+2. **Column wheel at rest** — the click's spring is grounded on its own
+   stud; it must stay still while the arm rocks.
+3. **Column wheel indexing** — the pawl must drive the ratchet the way its
+   teeth are cut.
+4. **The beak on the castellations** — nose falls into a gap ⇒ tail rises
+   ⇒ rod rises. *A lever inverts*; nose and tail moving together is wrong.
+5. **The lay shaft's drive end** — its crank must carry the ring's tab, and
+   the shaft should read as an arbor rather than a hair.
+6. **Winding idlers → barrel** — tooth into gap at the line of centres.
+7. **Setting train dogleg** — the same test across the dial's Y-flip.
+8. **The hammer** — its fall is a spring law, so a real spring bears on the
+   tail: grounded at the stud, moving at the arm.
+9. **A sprung cam follower** — pressed onto its cam, not glued to it.
+
+Runs off an `Inspect` button beside `Tour` and `Demo`, through the same
+`scriptStart`/`scriptEnterStep` engine, so it stops the same way and takes
+the same camera tween. Dwells are 6–7 s rather than the showcase's 1–4:
+this one is meant to be looked at, not watched.
