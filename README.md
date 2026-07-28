@@ -125,15 +125,25 @@ regressions.
 ## A note on the styling
 
 The finishing and layout follow the **Glashütte school** of watchmaking: a
-three-quarter plate, Glashütte striping across that plate and the escape
-bridge, perlage on the base plate, screwed gold chatons over the upper pivot
-jewels, blued steel screws and hands, and a power reserve graduated
-**AUF/AB** — German for "up/down", the conventional marking for a German
-reserve indicator.
+three-quarter plate, a separate balance cock screwed to it, Glashütte
+striping across that plate and the escape bridge, perlage on the base plate,
+screwed gold chatons over the upper pivot jewels, and blued steel screws and
+hands.
+
+**The dial no longer speaks German.** It used to: the power reserve was
+graduated **AUF/AB** — "up/down", the conventional marking for a German
+reserve indicator. That scale is now figured 0 → 24 in Arabic numerals, and
+both sub-dials are captioned in English (POWER RESERVE, SECONDS), so the
+words that named the school on the *front* of the watch are gone. Removing
+them is not a claim to have left the school. The movement behind the dial is
+where the vocabulary actually lives, and every item in the list above is
+still there — the three-quarter plate and its cock are the layout, not a
+decoration applied to it.
 
 These are traditional techniques and conventions, in general use across
 German horology for well over a century. They belong to the craft, not to any
-one maker.
+one maker. Nothing in the list is exclusive to one house, and none of it is
+borrowed from a specific caliber.
 
 The movement itself is an original parametric model: every part is generated
 from its own dimensions and constraints in `src/geometry.js`, not traced or
