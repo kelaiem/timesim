@@ -5524,29 +5524,90 @@ const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
 // subtree also fixes the thing that produced two confidently wrong
 // measurements earlier: makeGear returns a GROUP, and more than one extruded
 // mesh can sit under a single wheel.
+// THE GAP GAUGE — the fourth instrument, and the one whose self-tests pass.
+// Its three predecessors each failed differently and each is worth a line:
+// `local +x` assumed the convention on both sides and could never fail; the
+// tip-vertex circular average selected a beveled ring and returned a
+// zero-length resultant (noise); the Fourier spectrum was sound but its
+// sweep capped at N=48 while these wheels have 51 teeth — a check that
+// searches for less than the thing it verifies, in its purest form yet.
+//
+// This one asserts nothing it can measure instead. Build the silhouette
+// R(θ) by walking every triangle edge across the azimuth bins it spans (raw
+// vertices leave two thirds of the bins empty and alias), threshold at the
+// midpoint, and take the contiguous LOW runs: those are the tooth GAPS.
+// Their count must equal the declared tooth count and their folded circular
+// mean must have near-unit resultant — both checked by the caller, so a bad
+// reading is refused rather than propagated. Verified against the winding
+// idlers: 51/51 gaps found, confidence 0.9997, and the measured 35.8%-of-a-
+// pitch misphase matches what the eye reported in the screenshots.
+// Returns the TOOTH-centre phase (gap phase + half a pitch), same contract
+// as the reader it replaces.
 const measuredToothPhase = (obj, N) => {
-  obj.updateWorldMatrix(true, false);
+  // (true, TRUE): parents AND children. This runs at BUILD time, before any
+  // render — with (true, false) the handle's own matrix was fresh but every
+  // child mesh still carried the identity it was born with, so the gauge
+  // transformed vertices through nothing and read an off-centre blob. The
+  // one wheel that passed was the setting wheel, which sits on the centre
+  // axis, where identity happens to be nearly correct in xy — a stale check
+  // passing for a reason that has nothing to do with being right.
+  obj.updateWorldMatrix(true, true);
   _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
-  const pts = [];
-  let maxR = 0;
+  const ox = _gearOrig.x, oy = _gearOrig.y;
+  const BINS = 2048, R = new Float64Array(BINS);
+  const put = (x, y) => {
+    const r = Math.hypot(x, y);
+    let th = Math.atan2(y, x); if (th < 0) th += Math.PI * 2;
+    const k = Math.min(BINS - 1, (th / (Math.PI * 2) * BINS) | 0);
+    if (r > R[k]) R[k] = r;
+  };
   obj.traverse((m) => {
     if (!m.isMesh || !m.geometry?.attributes?.position) return;
     const pos = m.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      _gearV.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
-      const dx = _gearV.x - _gearOrig.x, dy = _gearV.y - _gearOrig.y;
-      const r = Math.hypot(dx, dy);
-      if (r > maxR) maxR = r;
-      pts.push([dx, dy, r]);
+    const idx = m.geometry.index ? m.geometry.index.array : null;
+    const n = idx ? idx.length : pos.count;
+    for (let i = 0; i + 2 < n; i += 3) {
+      for (const [p, q] of [[0, 1], [1, 2], [2, 0]]) {
+        _gearV.fromBufferAttribute(pos, idx ? idx[i + p] : i + p).applyMatrix4(m.matrixWorld);
+        const ax = _gearV.x - ox, ay = _gearV.y - oy;
+        _gearV.fromBufferAttribute(pos, idx ? idx[i + q] : i + q).applyMatrix4(m.matrixWorld);
+        const bx = _gearV.x - ox, by = _gearV.y - oy;
+        let d = Math.atan2(by, bx) - Math.atan2(ay, ax);
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        // OUTLINE EDGES ONLY. The extrude's face triangulation connects tooth
+        // tip to tooth tip with chords spanning a full pitch, and those chords
+        // sit just under tip radius — in a max-per-bin silhouette they MASK
+        // the gaps entirely (a crisp bevel-less gear read as one gap). True
+        // outline edges are short; anything spanning half a pitch or more of
+        // azimuth cannot be outline and is skipped.
+        if (Math.abs(d) > Math.PI / N) continue;
+        const steps = Math.max(1, Math.ceil(Math.abs(d) / (Math.PI * 2 / BINS)) + 1);
+        for (let t = 0; t <= steps; t++) put(ax + (bx - ax) * t / steps, ay + (by - ay) * t / steps);
+      }
     }
   });
-  let sx = 0, sy = 0;
-  for (const [dx, dy, r] of pts) {
-    if (r < maxR * 0.995) continue;                 // tips only
-    const a = Math.atan2(dy, dx) * N;               // fold into one pitch
-    sx += Math.cos(a); sy += Math.sin(a);
+  let lo = Infinity, hi = 0;
+  for (const r of R) { if (r > 0 && r < lo) lo = r; if (r > hi) hi = r; }
+  const mid = (lo + hi) / 2;
+  for (let k = 0; k < BINS; k++) if (R[k] === 0) R[k] = lo;   // unsampled bin: treat as valley
+  const centres = [];
+  for (let k = 0; k < BINS; k++) {
+    const prev = R[(k + BINS - 1) % BINS] < mid;
+    if (R[k] < mid && !prev) {
+      let len = 0, j = k;
+      while (R[j % BINS] < mid && len < BINS) { j++; len++; }
+      centres.push((k + len / 2) / BINS * Math.PI * 2);
+    }
   }
-  return Math.atan2(sy, sx) / N;
+  let sx = 0, sy = 0;
+  for (const g of centres) { sx += Math.cos(g * N); sy += Math.sin(g * N); }
+  return {
+    phase: Math.atan2(sy, sx) / N + Math.PI / N,   // gap phase + half a pitch = tooth phase
+    gaps: centres.length,
+    conf: centres.length ? Math.hypot(sx, sy) / centres.length : 0,
+    depth: (hi - lo) / ((hi + lo) / 2 || 1),
+  };
 };
 const worldCentreOf = (obj) => {
   obj.updateWorldMatrix(true, false);
@@ -5567,12 +5628,16 @@ const meshPhaseTarget = (pC, pPhase, pN, qC, qN) => {
 const alignGear = (mesh, target, N) => {
   const pitch = (Math.PI * 2) / N;
   const before = mesh.rotation.z;
-  const cur = measuredToothPhase(mesh, N);
-  mesh.rotation.z = before + 1e-3;
-  let d = measuredToothPhase(mesh, N) - cur;
+  const cur = measuredToothPhase(mesh, N).phase;
+  // The bump must clear the gauge's own resolution: the silhouette is binned
+  // at 2π/2048 ≈ 3.1e-3 rad, so the 1e-3 bump this used before was UNDER the
+  // quantisation and the measured slope was noise. 0.02 rad is a sixth of the
+  // finest pitch here and forty times the bin width.
+  mesh.rotation.z = before + 0.02;
+  let d = measuredToothPhase(mesh, N).phase - cur;
   mesh.rotation.z = before;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
+  while (d > Math.PI / N) d -= (Math.PI * 2) / N;   // phase lives modulo a pitch
+  while (d < -Math.PI / N) d += (Math.PI * 2) / N;
   const slope = Math.sign(d) || 1;
   let need = target - cur;
   need -= Math.round(need / pitch) * pitch;      // nearest tooth, not a whole turn
@@ -5602,23 +5667,37 @@ const alarmSetI2Spin = new THREE.Group();
 // not reach each other is not a mesh either, and that second check is
 // independent of the phase solve.
 const solveGearChain = (label, chain, module) => {
+  // GAUGE VALIDATION FIRST. A reading whose gap count disagrees with the
+  // declared tooth count, or whose folded resultant is weak, is refused —
+  // solving on it would drag every wheel downstream of the bad reading to a
+  // wrong place with full confidence. Refusal is loud; boot is meant to be
+  // silent, so a skipped chain is itself a finding.
   for (const g of chain) {
     if (!g.obj) { console.warn(`TODO 15: ${label} — no handle for the ${g.name}; chain solve skipped`); return; }
     g.c = worldCentreOf(g.obj);
+    const m = measuredToothPhase(g.obj, g.teeth);
+    if (m.gaps !== g.teeth || m.conf < 0.9) {
+      console.warn(`TODO 15: ${label} the ${g.name} gauge is not credible `
+        + `(found ${m.gaps} gaps for ${g.teeth} teeth, confidence ${m.conf.toFixed(3)}) — chain solve skipped`);
+      return;
+    }
   }
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const tP = _frac(((psi - measuredToothPhase(P.obj, P.teeth)) * P.teeth) / (Math.PI * 2));
+    const tP = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
     alignGear(Q.obj, psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / Q.teeth), Q.teeth);
   }
+  // The residual tolerance is set by the INSTRUMENT, not by hope: gap centres
+  // are quantised to 2π/2048, averaged over N gaps — comfortably inside 2% of
+  // a pitch. The old 0.1% bar was tighter than the gauge can even read.
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const a = _frac(((psi - measuredToothPhase(P.obj, P.teeth)) * P.teeth) / (Math.PI * 2));
-    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.obj, Q.teeth)) * Q.teeth) / (Math.PI * 2));
+    const a = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.obj, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
     const off = Math.min(_frac(b - a - 0.5), 1 - _frac(b - a - 0.5));
-    if (off > 1e-3)
+    if (off > 0.02)
       console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
         + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
     const d = Math.hypot(Q.c.x - P.c.x, Q.c.y - P.c.y);

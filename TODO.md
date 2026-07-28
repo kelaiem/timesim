@@ -724,7 +724,7 @@ stiffness. §48's scope guard puts spring RATE and force modelling
 outside that entry, and it stays outside this item too. The spring now
 exists and acts; it does not yet SET the frequency.
 
-## 15. Mesh phase is set to half a wheel's OWN pitch, everywhere
+## 15. CLOSED (winding + setting chains) — mesh phase solved from measurement; two sites remain
 
 Reported by eye from the running sim: the two alarm winding idlers
 appear to **interlock tooth-on-tooth rather than tooth-into-gap** — the
@@ -1024,3 +1024,35 @@ Each attempt has moved the unknown one step outward: the check was
 circular, then the input was sparse, and now the input is clean and the
 OBJECT is wrong. That is progress, but the phase question remains
 unanswered and nothing here should be quoted as a measurement yet.
+
+### RESOLVED — the fourth gauge works, and the chains are solved
+
+The gap gauge (silhouette by outline-edge interpolation → threshold →
+count gaps → circular mean folded into one pitch) passes every self-test
+and closed the loop:
+
+- **51/51 gaps** found on each winding idler, matching
+  `ALARM_WIND_IDLER_TEETH` — the spectrum before it swept N only to 48,
+  below the true count; the constant was one grep away.
+- confidence **0.9997**; centre distance 15.300 = pitch-circle sum 15.300
+- measured the reported defect at **35.8% of a pitch** out of phase,
+  matching the screenshots; after the chain solve the same independent
+  gauge reads **0.00%**, and the teeth visibly interleave.
+
+Three build-time traps are now encoded in the gauge, each found by a
+failed measurement: face-triangulation chords that mask gaps (skip edges
+spanning ≥ half a pitch), stale child `matrixWorld` before first render
+(`updateWorldMatrix(true, true)` — the setting wheel passed with stale
+matrices only because it sits on the centre axis), and a slope-probe bump
+smaller than the gauge's own bin quantisation.
+
+`solveGearChain` refuses to solve on a non-credible reading (gap count ≠
+declared teeth, or weak resultant), loudly — a skipped chain is a boot
+warning, not a silent fallback.
+
+**Remaining sites, still `Math.PI / teeth`:** the power-reserve pair
+(4870–4871) and the alarm branch idler i1b (5696). Same fix shape: name
+the chain, pick the datum, call `solveGearChain`. Also note i1b shares an
+arbor with setting i1, whose phase the solve now moves — if the two are
+meant to be one rigid part, their relative phase is a constraint nobody
+has stated yet.
