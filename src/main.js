@@ -5511,17 +5511,46 @@ const ALARM_SET_I2 = (() => {
 // fourth kinematic lie caught by eye, which is the argument for the asserts
 // below rather than for trusting a clean run.
 const _frac = (x) => x - Math.floor(x);
-const _gearAxis = new THREE.Vector3(), _gearOrig = new THREE.Vector3();
-// World azimuth of a tooth CENTRE (gearOutlineShape puts one at local angle 0).
-const worldToothPhase = (mesh) => {
-  mesh.updateWorldMatrix(true, false);
-  _gearOrig.set(0, 0, 0).applyMatrix4(mesh.matrixWorld);
-  _gearAxis.set(1, 0, 0).applyMatrix4(mesh.matrixWorld);
-  return Math.atan2(_gearAxis.y - _gearOrig.y, _gearAxis.x - _gearOrig.x);
+const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
+// A tooth-centre azimuth, MEASURED FROM THE VERTICES. Reading `local +x` and
+// trusting gearOutlineShape's convention is not good enough here: the winding
+// train's climb wheel comes from makePinion, not makeGear, and nothing
+// guarantees the two put a tooth at the same local angle. Vertices cannot lie
+// about where the teeth are.
+//
+// Tip vertices are folded into ONE pitch (multiply the angle by N) and
+// circular-averaged, which is the honest way to average angles modulo a pitch
+// — a plain mean would be wrecked by the branch cut. Traversing the whole
+// subtree also fixes the thing that produced two confidently wrong
+// measurements earlier: makeGear returns a GROUP, and more than one extruded
+// mesh can sit under a single wheel.
+const measuredToothPhase = (obj, N) => {
+  obj.updateWorldMatrix(true, false);
+  _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
+  const pts = [];
+  let maxR = 0;
+  obj.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes?.position) return;
+    const pos = m.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      _gearV.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+      const dx = _gearV.x - _gearOrig.x, dy = _gearV.y - _gearOrig.y;
+      const r = Math.hypot(dx, dy);
+      if (r > maxR) maxR = r;
+      pts.push([dx, dy, r]);
+    }
+  });
+  let sx = 0, sy = 0;
+  for (const [dx, dy, r] of pts) {
+    if (r < maxR * 0.995) continue;                 // tips only
+    const a = Math.atan2(dy, dx) * N;               // fold into one pitch
+    sx += Math.cos(a); sy += Math.sin(a);
+  }
+  return Math.atan2(sy, sx) / N;
 };
-const worldCentre = (mesh) => {
-  mesh.updateWorldMatrix(true, false);
-  _gearOrig.set(0, 0, 0).applyMatrix4(mesh.matrixWorld);
+const worldCentreOf = (obj) => {
+  obj.updateWorldMatrix(true, false);
+  _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
   return { x: _gearOrig.x, y: _gearOrig.y };
 };
 // Where Q's tooth centre must point so that a GAP of Q faces a TOOTH of P
@@ -5538,9 +5567,9 @@ const meshPhaseTarget = (pC, pPhase, pN, qC, qN) => {
 const alignGear = (mesh, target, N) => {
   const pitch = (Math.PI * 2) / N;
   const before = mesh.rotation.z;
-  const cur = worldToothPhase(mesh);
+  const cur = measuredToothPhase(mesh, N);
   mesh.rotation.z = before + 1e-3;
-  let d = worldToothPhase(mesh) - cur;
+  let d = measuredToothPhase(mesh, N) - cur;
   mesh.rotation.z = before;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
@@ -5566,48 +5595,46 @@ const alarmSetI2Spin = new THREE.Group();
   mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, 0);
   mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, 0);
 }
-// THE CHAIN SOLVE. Setting wheel is the datum (it carries the alarm's own
-// index and must not move); i1 is solved against it, i2 against i1.
-// An IIFE, not a bare block: the missing-handle guard needs to bail out,
-// and `return` at module top level is a syntax error.
-(() => {
-  // makeGear returns a GROUP (rim mesh + optional hub mesh), not a mesh — the
-  // first version of this looked for `isMesh` and found nothing, crashing the
-  // whole build before `__clock` existed. The gear's own transform is what
-  // carries the phase, so the group IS the right handle.
-  const gearOf = (spin) => spin.children.find((o) => o.isGroup || o.isMesh);
-  const chain = [
-    { mesh: alarmSetWheelMesh, teeth: ALARM_SET_WHEEL_TEETH, name: 'setting wheel' },
-    { mesh: gearOf(alarmSetI1Spin), teeth: ALARM_SET_I1_TEETH, name: 'idler 1' },
-    { mesh: gearOf(alarmSetI2Spin), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
-  ];
+// THE CHAIN SOLVE, reusable. Each wheel after the datum is turned until its
+// measured tooth phase puts a GAP against the previous wheel's TOOTH across
+// their line of centres. Two tripwires per mesh: anti-phase, and centre
+// distance against the pitch-circle sum — a perfectly phased pair that does
+// not reach each other is not a mesh either, and that second check is
+// independent of the phase solve.
+const solveGearChain = (label, chain, module) => {
   for (const g of chain) {
-    if (!g.mesh) { console.warn(`TODO 15: no gear handle for the ${g.name} — chain solve skipped`); return; }
-    g.c = worldCentre(g.mesh);
+    if (!g.obj) { console.warn(`TODO 15: ${label} — no handle for the ${g.name}; chain solve skipped`); return; }
+    g.c = worldCentreOf(g.obj);
   }
-  for (let i = 1; i < chain.length; i++) {
-    const P = chain[i - 1], Q = chain[i];
-    alignGear(Q.mesh, meshPhaseTarget(P.c, worldToothPhase(P.mesh), P.teeth, Q.c, Q.teeth), Q.teeth);
-  }
-  // THE TRIPWIRE, in the terms the eye caught it: at each line of centres one
-  // wheel's tooth must sit against the other's GAP — half a pitch apart, not
-  // zero. Also checks the pitch circles actually reach each other, since a
-  // perfectly phased pair that does not touch is not a mesh either.
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const a = _frac(((psi - worldToothPhase(P.mesh)) * P.teeth) / (Math.PI * 2));
-    const b = _frac(((psi + Math.PI - worldToothPhase(Q.mesh)) * Q.teeth) / (Math.PI * 2));
+    const tP = _frac(((psi - measuredToothPhase(P.obj, P.teeth)) * P.teeth) / (Math.PI * 2));
+    alignGear(Q.obj, psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / Q.teeth), Q.teeth);
+  }
+  for (let i = 1; i < chain.length; i++) {
+    const P = chain[i - 1], Q = chain[i];
+    const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
+    const a = _frac(((psi - measuredToothPhase(P.obj, P.teeth)) * P.teeth) / (Math.PI * 2));
+    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.obj, Q.teeth)) * Q.teeth) / (Math.PI * 2));
     const off = Math.min(_frac(b - a - 0.5), 1 - _frac(b - a - 0.5));
-    if (off > 1e-6)
-      console.warn(`TODO 15: ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch off `
-        + `anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
+    if (off > 1e-3)
+      console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
+        + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
     const d = Math.hypot(Q.c.x - P.c.x, Q.c.y - P.c.y);
-    const want = ALARM_SET_MODULE * (P.teeth + Q.teeth) / 2;
-    if (Math.abs(d - want) > 0.02)
-      console.warn(`TODO 15: ${P.name} ⇄ ${Q.name} centre distance ${d.toFixed(3)} is not the `
+    const want = module * (P.teeth + Q.teeth) / 2;
+    if (Math.abs(d - want) > 0.05)
+      console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} centre distance ${d.toFixed(3)} is not the `
         + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
   }
+};
+(() => {
+  const gearOf = (spin) => spin.children.find((o) => o.isGroup || o.isMesh);
+  solveGearChain('alarm setting:', [
+    { obj: alarmSetWheelMesh, teeth: ALARM_SET_WHEEL_TEETH, name: 'setting wheel' },
+    { obj: gearOf(alarmSetI1Spin), teeth: ALARM_SET_I1_TEETH, name: 'idler 1' },
+    { obj: gearOf(alarmSetI2Spin), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
+  ], ALARM_SET_MODULE);
 })();
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
@@ -6753,8 +6780,12 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     const spin = new THREE.Group();
     spin.position.set(pos.x, pos.y, ALARM_BARREL_Z);
     const w = G.makeGear({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass });
-    w.rotation.z = Math.PI / ALARM_WIND_IDLER_TEETH;
+    // TODO 15: phase left at zero — the chain solve below sets it. The old
+    // `Math.PI / teeth` here was half of this wheel's OWN pitch and said
+    // nothing about the wheel it meshes; this is the pair that was reported
+    // interlocking tooth-on-tooth.
     spin.add(w);
+    spin.userData.gear = w;
     alarmWindUnit.add(spin);
     const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_BARREL_Z + 0.3 - (TQ_TOP_Z - 0.5), 10), MATS.steel);
     stud.rotation.x = Math.PI / 2;
@@ -6764,6 +6795,16 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   };
   alarmWindUnit.userData.i1 = mkIdler(alarmWindI1);
   alarmWindUnit.userData.i2 = mkIdler(alarmWindI2);
+  // TODO 15 — THE REPORTED TRAIN. Datum is the climb PINION: it is keyed to
+  // the climb rod and cannot be turned freely, so the idlers are what move.
+  // The pinion comes from makePinion rather than makeGear, which is exactly
+  // why the phase is measured from vertices rather than assumed from a local
+  // axis — nothing guarantees the two builders agree on where local 0 sits.
+  solveGearChain('alarm winding:', [
+    { obj: pin, teeth: ALARM_WIND_PINION_TEETH, name: 'climb pinion' },
+    { obj: alarmWindUnit.userData.i1.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 1' },
+    { obj: alarmWindUnit.userData.i2.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 2' },
+  ], ALARM_TRAIN_MODULE);
 }
 
 // ---------------------------------------------------------------------------

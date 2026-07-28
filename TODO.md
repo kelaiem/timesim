@@ -852,3 +852,38 @@ hub). That single fact caused a build crash and two confidently wrong
 measurements, and it is why no independent instrument for mesh phase
 exists yet. The battery cannot substitute — gears meshing out of phase
 sweep the same volumes as gears meshing correctly.
+
+### The tripwire now FIRES, and that is the finding
+
+Pointed at the winding train (`solveGearChain` is now reusable; both
+trains run through it). Boot reports:
+
+```
+alarm setting: setting wheel ⇄ idler 1   0.2% of a pitch off
+alarm setting: idler 1 ⇄ idler 2        35.1% off
+alarm winding: climb pinion ⇄ idler 1   29.6% off
+alarm winding: idler 1 ⇄ idler 2        34.7% off
+```
+
+**The earlier silence was a FALSE PASS.** The old check read each wheel's
+phase as `local +x` transformed — the same assumption on both sides of
+the comparison — so it agreed with itself by construction. That is the
+session's recurring lesson in its purest form: *a check that searches for
+less than the thing it verifies always passes.* Measuring tooth position
+from the VERTICES breaks the circularity, and the disagreement appears
+immediately. The screenshots were right and the instrument was wrong.
+
+**But the solve is NOT converging.** `alignGear` sets each phase from the
+same measured function the tripwire then re-reads, so a working solve
+would leave ≈0% residual, not 35%. One of the two is still faulty. The
+most likely cause is tip selection inside `measuredToothPhase`: vertices
+within 0.5% of max radius are treated as tooth tips, but `makeGear`
+bevels its teeth, so that band may be a nearly-uniform ring rather than
+the tips — and a circular average over a uniform ring has no direction,
+returning noise. Worth printing the tip-vertex count and the resultant
+vector's LENGTH (near zero ⇒ no usable direction) before trusting any
+number this function returns.
+
+**Boot is no longer silent on this branch**, deliberately: the warnings
+are an accurate report of a real defect. They must be resolved, not
+silenced, before anything here merges.
