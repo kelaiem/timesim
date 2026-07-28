@@ -4411,6 +4411,23 @@ Runs off an `Inspect` button beside `Tour` and `Demo`, through the same
 the same camera tween. Dwells are 6–7 s rather than the showcase's 1–4:
 this one is meant to be looked at, not watched.
 
+### Deep links: `?inspect=1` and `?cycle=1`
+
+`?inspect=1` starts the route, and unlike `?tour` it has **no confirm
+gate**. That gate exists because a deep link is not a user gesture and
+should not swing the camera, crown and *sound* at a first-time visitor
+unasked. The inspection route is a working tool reached deliberately, it
+makes no sound, and anyone typing the parameter has already asked for
+exactly what it does.
+
+`?cycle=1` starts the alarm cycler on arrival, which is the one worth
+pairing with the existing `?cam` / `?look` / `?xray`: aim at a linkage and
+watch it work without touching the page. E.g.
+
+```
+?cam=6.0,-3.0,-7.9&look=4.79,-2.26,-5.75&xray=1&cycle=1
+```
+
 ### The alarm cycler — motion at the view you already chose
 
 A `Cycle` button beside the alarm's on/off. It flips the alarm on a 1.6 s

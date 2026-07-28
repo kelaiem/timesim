@@ -10932,7 +10932,7 @@ document.getElementById('btn-tour').addEventListener('click', (e) => {
 // DEEP LINKS — query-string entry points onto the SAME two surfaces above:
 // the script engine (?tour / ?demo) or the raw view state the engine's own
 // steps set (?preset, ?scale, ?xray, ?explode, ?labels, ?powerflow, ?sound,
-// ?unit, ?crown, ?reserve). `?demo=1` starts the matching script exactly as
+// ?unit, ?crown, ?reserve, and §54's ?inspect / ?cycle). `?demo=1` starts the matching script exactly as
 // its button would. `?tour=1` goes through askTour's confirm/skip gate first
 // — a deep link isn't itself a user gesture the way a button click is, and
 // shouldn't swing the camera/crown/sound unattended before the visitor has
@@ -10994,6 +10994,15 @@ function applyDeepLink() {
   // the watch driveable the moment it loads (a phone, where hunting a 5 u
   // crown by orbit is the least pleasant thing this app asks of anyone).
   if (params.has('hud')) setHud(params.get('hud') !== '0');
+  // §54 — `?inspect=1`. No confirm gate, unlike ?tour: that gate exists because
+  // a deep link is not a user gesture and shouldn't swing the camera, crown and
+  // SOUND at a first-time visitor unasked. The inspection route is a working
+  // tool reached deliberately, it makes no sound, and anyone typing this
+  // parameter has already asked for exactly what it does.
+  if (params.has('inspect')) { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); return; }
+  // `?cycle=1` — the alarm cycler on arrival, for pairing with ?cam/?look:
+  // aim at a linkage and watch it work without touching the page.
+  if (params.has('cycle')) document.getElementById('btn-alarm-cycle').click();
 }
 applyDeepLink();
 
