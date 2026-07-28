@@ -4817,7 +4817,7 @@ const _jmpPostW = new THREE.Vector3(), _jmpPinW = new THREE.Vector3(); // tick s
 // ---------------------------------------------------------------------------
 // Power-reserve complication — sub-dial at RESERVE_LOCAL. A small blued hand
 // sweeps a 120° arc from 30 h (mainspring fully wound) down to 0, driven by
-// barrelWindTurns in tick(). The graduated Ab/Auf face lives on the well's
+// barrelWindTurns in tick(). The graduated 0→24 face lives on the well's
 // recessed floor (built by makeDial); this group holds only the hand,
 // riding INSIDE the well, below the dial surface.
 // ---------------------------------------------------------------------------

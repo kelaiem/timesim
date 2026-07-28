@@ -1781,7 +1781,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
 // chaton could be lifted out to replace a cracked jewel or shimmed to set an
 // arbor's endshake. Pressed-in (Seitz) jewels made that obsolete, so screwed
 // chatons survive purely as a mark of traditional finishing — which is
-// exactly why a movement with a three-quarter plate and an Ab/Auf reserve
+// exactly why a movement with a three-quarter plate and a power reserve
 // should have them.
 //
 // Local frame: z = 0 is the chaton's TOP face (flush with the plate's), the
@@ -2238,9 +2238,37 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
       a += dir * ((widths[i] / 2 + extra) / r);
     });
   };
+  // The well's NAME, set STRAIGHT below the pivot — a caption, not another
+  // graduation, so it does not fan along an arc the way the scale's own
+  // lettering does. Type is the MEASUREMENT overlay's (§49's size-comparison
+  // readout, `font:11px/1.35 ui-monospace,monospace` on #scale-ref): these
+  // captions name an instrument, the way that panel names a dimension, so
+  // they carry its voice rather than the dial's Helvetica. Lightly tracked —
+  // monospace already sets its own advance, so this only opens the word.
+  // Both wells caption at the same depth, dy = 0.40·sr:
+  // clear of the busiest hand tail below the pivot (the small-seconds
+  // hand's counterweight reaches 0.26·0.8·sr + its own radius ≈ 0.24·sr)
+  // and clear of the deepest figure below it (the seconds track's 30,
+  // centred at 0.62·sr, half its 0.19·sr height = top edge at 0.525·sr).
+  const caption = (txt) => {
+    ctx.save();
+    ctx.font = `400 ${sr * 0.08}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
+    ctx.fillStyle = '#1c1c22';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const track = sr * 0.01;
+    const widths = [...txt].map((ch) => ctx.measureText(ch).width);
+    const total = widths.reduce((s, w) => s + w + track, -track);
+    let x = scx - total / 2;
+    for (let i = 0; i < widths.length; i++) {
+      ctx.fillText(txt[i], x + widths[i] / 2, scy + sr * 0.40);
+      x += widths[i] + track;
+    }
+    ctx.restore();
+  };
   if (kind === 'reserve') {
     // Graduated 120° arc: math angle 150° (empty, left) → 30° (full,
-    // right), Ab/Auf Glashütte marking. Major ticks every 12 hours of
+    // right). Major ticks every 12 hours of
     // reserve (0/12/24), small minor ticks every 3 hours between them —
     // the minors also anchor the full end of the arc (30 h).
     // 150-degree arc riding near the well's edge (was 120 at 0.84): more
@@ -2252,35 +2280,24 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
       const major = h % 12 === 0;
       tickAt(180 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022)); // empty end anchored at 9 o'clock — the sweep sits asymmetric, 180 to 30
     }
-    // AB / AUF painted ALONG the graduation arc, at the tick band's radius
-    // (sr·0.76, mid-band), set clear of the end ticks (22° beyond the arc
-    // ends, vs the old 16°) so the words read as bookends rather than
-    // crowding the outermost indicators.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Tiny hour figures at the majors, inboard of the tick ends — Roman
-    // where Rome allows (XII, XXIV); the empty end is 0, a numeral Rome
-    // never had.
-    ctx.font = `500 ${sr * 0.09}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    // Zero, for a numeral system that never had one — an INVENTED glyph
-    // with real ancestry: medieval computus tables (Bede, ~725 AD) wrote N
-    // for "nulla" (none) where Roman reckoning needed a zero; the vinculum
-    // overbar is the Roman mark that says "this character is a NUMERAL,
-    // not a letter". So: N-bar.
-    {
-      const aN = (180 * Math.PI) / 180, rN = sr * 0.64, fh = sr * 0.09;
-      ctx.save();
-      ctx.translate(scx + Math.cos(aN) * rN, scy - Math.sin(aN) * rN);
-      ctx.rotate(Math.PI / 2 - aN);
-      ctx.fillText('N', 0, 0);
-      ctx.fillRect(-fh * 0.38, -fh * 0.70, fh * 0.76, fh * 0.05);
-      ctx.restore();
-    }
-    arcLabel('XII', 120, sr * 0.64);
-    arcLabel('XXIV', 60, sr * 0.64);
-    ctx.font = `600 ${sr * 0.16}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    arcLabel('AB', 196, sr * 0.76);
-    arcLabel('AUF', 16, sr * 0.76);
+    // Hour figures at the majors, inboard of the tick ends — ARABIC, so the
+    // reserve reads as an instrument scale rather than as more of the hour
+    // chapter. Two glyphs at the widest ('12', '24') where Roman needed four
+    // ('XXIV'), which is what buys the larger figure: 0.11·sr sets '24' about
+    // as wide as 'XXIV' was at 0.09·sr, inside the same 0.64·sr band.
+    // Arabic also retires the invented zero the Roman set needed here (an
+    // N with a vinculum overbar, after the medieval computus tables' "nulla")
+    // — this system has a 0 of its own.
+    ctx.font = `500 ${sr * 0.11}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    arcLabel('0', 180, sr * 0.64);
+    arcLabel('12', 120, sr * 0.64);
+    arcLabel('24', 60, sr * 0.64);
+    // No AB / AUF bookending the arc: the German pair was the Glashütte
+    // marking for a Roman-figured reserve, and with the scale figured 0→24
+    // in Arabic the words name what the numbers already say. The empty end
+    // is where 0 is; the caption below names the complication.
     // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
     // of the face — the region the graduation never enters and the hand
     // never sweeps (its tip stays on the upper arc, its tail well inside
@@ -2291,25 +2308,29 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // leaving a typeH gap to the edge).
     ctx.font = `400 ${sr * 0.075}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     ctx.fillStyle = '#8a887e';
-    arcLabel('MADE WITH FABLE', -90, sr * (1 - 1.5 * 0.075), true);
+    arcLabel('WATCH SIMULATOR', -90, sr * (1 - 1.5 * 0.075), true);
+    caption('POWER RESERVE');
   } else if (kind === 'seconds') {
-    // Small-seconds track: 60 ticks, heavier every fifth, ROMAN quarter
-    // numerals (XV/XXX/XLV/LX) to match the dial's hour indices. Slightly
-    // smaller than the old arabic figures — XXX and XLV are wide glyphs.
+    // Small-seconds track: 60 ticks, heavier every fifth, ARABIC quarter
+    // figures (15/30/45/60). The hour chapter stays Roman; a running-seconds
+    // count is read at a glance, and two digits do that where XLV asks to be
+    // parsed. Two glyphs also lift the size cap the Roman set imposed —
+    // 0.19·sr sets '45' narrower than 'XLV' was at 0.17·sr.
     for (let s = 0; s < 60; s++) {
       const major = s % 5 === 0;
       tickAt(90 - s * 6, sr * 0.92, sr * (major ? 0.16 : 0.09), sr * (major ? 0.045 : 0.022));
     }
     // Quarters fanned along an invisible circle inside the tick band,
-    // bezel-convention oriented: LX/XV/XLV on the upper reaches keep tops
-    // outward; XXX on the lower arc flips tops toward the pivot so it
+    // bezel-convention oriented: 60/15/45 on the upper reaches keep tops
+    // outward; 30 on the lower arc flips tops toward the pivot so it
     // reads upright rather than inverted.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `500 ${sr * 0.17}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    for (const [sec, mathDeg, inward] of [['LX', 90, false], ['XV', 0, false], ['XXX', -90, true], ['XLV', 180, false]]) {
+    ctx.font = `500 ${sr * 0.19}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    for (const [sec, mathDeg, inward] of [['60', 90, false], ['15', 0, false], ['30', -90, true], ['45', 180, false]]) {
       arcLabel(sec, mathDeg, sr * 0.62, inward);
     }
+    caption('SECONDS');
   } else if (kind === 'alarm') {
     // Alarm hour ring (§24): a light 12-hour scale the alarm pointer sets
     // against — majors at each hour, a longer/heavier mark at XII, minors at
@@ -2420,7 +2441,7 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
         ctx.fillStyle = '#8a887e';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const msg = 'MADE WITH FABLE';
+        const msg = 'WATCH SIMULATOR';
         const extra = 2; // px of tracking between characters
         const widths = [...msg].map((ch) => ctx.measureText(ch).width);
         const rSig = R * 0.78;
