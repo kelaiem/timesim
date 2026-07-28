@@ -932,3 +932,51 @@ face, not the bevel chamfer), or better, taken from
 soup. A working gauge must show `resultantLen` near 1 for the true tooth
 count and near 0 for wrong ones — that ratio is itself the self-test, and
 it is the thing to build first.
+
+### The gauge, third attempt: a SPECTRUM — right shape, insufficient confidence
+
+Stop hunting for "tip vertices" at all. Sample the gear's silhouette
+radius as a function of azimuth, `R(θ)`, and the tooth pattern is a
+periodic signal: its **N-th Fourier component** gives the phase from its
+argument and a **confidence from its amplitude**. Convention-independent,
+bevel-tolerant, and — the part the first two gauges lacked — **it says
+how much to trust itself**. The true tooth count should stand out as a
+clear spectral peak; if no N stands out, the reading is refused rather
+than returned.
+
+Measured on winding idler 1, sweeping N from 6 to 40:
+
+| N | amplitude |
+|---|---|
+| **28** | 0.03802 |
+| 16 | 0.02913 |
+| 35 | 0.01766 |
+| 24 | 0.01708 |
+
+**It fails its own bar.** Best-to-second ratio is **1.31** — a real tooth
+count should tower over its neighbours, not edge past one. And only
+**699 of 2048** azimuth bins are populated.
+
+That second number is the cause and it is not subtle: raw VERTICES
+undersample the silhouette. A gear's vertices cluster at tooth corners
+and leave two thirds of the azimuth range empty, so `R(θ)` is a sparse,
+irregularly-spaced signal and the Fourier estimate aliases. The gauge is
+sound; its input is not.
+
+**The fix is to sample the silhouette properly** — walk the geometry's
+TRIANGLES and interpolate each edge across the azimuth bins it spans,
+rather than dropping in isolated vertices. Every bin then gets a value
+and `R(θ)` becomes the continuous outline it is meant to be. Expect the
+ratio to go from 1.31 to something unambiguous; that ratio is the
+acceptance test, and until it passes, no phase number from any of this
+should be quoted.
+
+**Three gauges, three failure modes, worth keeping as a set:**
+
+1. **`local +x`** — self-referential. Same assumption on both sides, so
+   it always passed.
+2. **Tip-vertex circular average** — resultant length 0. Averaged a
+   uniform bevel ring, so it always fired.
+3. **Silhouette spectrum** — the right idea, honestly under-confident.
+   Says "I don't know" instead of lying, which is the only one of the
+   three that is safe to build on.
