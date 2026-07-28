@@ -1095,7 +1095,7 @@ searches for less than the thing it verifies, arrived at from a new
 direction: not a too-small search *range* this time, but a single sample
 of a quantity that only reveals itself in motion.
 
-## 16. CLOSED — the alarm link was thickness-legal and structurally impossible
+## 16. PART CLOSED — the alarm link was thickness-legal and structurally impossible
 
 Reported by eye: the horizontal lay shaft looks too thin. It is, and
 measuring it showed the check that should have caught it cannot see this
@@ -1398,3 +1398,38 @@ again — earned this time rather than reverted.
 
 Remaining in this item: only the **36:1 beak lever**, which needs the rod
 re-sited and is a §35-corridor change.
+
+### The stepped arbor was built, and CI rejected it too — read this first
+
+Two attempts, and the second is what matters:
+
+| attempt | shaft | result |
+|---|---|---|
+| uniform | r 0.447 | `Alarm link ⇄ Minute jumper`, overlap **0.312** |
+| stepped | body r 0.373, necks 0.12 | the same pair, overlap **0.310** |
+
+**Dropping the radius barely moved the number.** That refutes the
+diagnosis this item previously recorded: if the shaft's SECTION were the
+binding thing, 0.447 → 0.373 would have shown in the overlap. It did not.
+The alarm link's swept volume enters the minute jumper's swept region *at
+all*, and the depth reported is set by that region's shape, not by how fat
+the shaft is. **The "selector ring is the obstruction" conclusion above is
+therefore wrong** — the ring measurement was real but it was not this.
+
+**A local `sweptOverlap` said clean at r 0.373, and the disagreement is
+the lesson.** CI boots **virgin**; boot now runs `syncStart()`, which pulls
+the crown — and a pulled crown puts the minute jumper **in the star**. The
+local session carried persisted state with the jumper elsewhere. A swept
+check is only as good as the poses it starts from, and *"it passed
+locally"* meant *"it passed from my saved pose"*. Any future attempt must
+be validated from a virgin boot, not a working session.
+
+**What the next attempt needs, before touching geometry:** measure the
+minute jumper's **swept envelope** along the shaft's stations, from a
+virgin boot with the crown pulled. Only then is there a number to size
+against. Guessing costs a 15-minute CI run per iteration, and has now cost
+two.
+
+Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
+restored. The **beak tail** fix and the **inverted lever** fix stand — both
+movement-side, both verified, neither implicated.

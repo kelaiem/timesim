@@ -7242,39 +7242,30 @@ const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
 // before the parts that must clear it.
 const ALARM_LINK_CHORD_LEN = Math.hypot(
   ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y);
-// A STEPPED ARBOR — turned down at the ends, full section between, which is
-// how a real arbor is made and the only shape this corridor allows.
+// THE SHAFT STAYS AT ITS ORIGINAL SECTION. Two attempts to thicken it were
+// rejected by CI, and the second is the informative one.
 //
-// Sizing the WHOLE shaft from SLENDER_TARGET was tried and CI rejected it:
-// `Alarm link ⇄ Minute jumper` FORBIDDEN, overlap 0.312. Measuring why
-// retired the obvious suspect — the jumper's tail pin never comes closer than
-// 2.886 across its whole sweep, and the AABB test that accused it was reading
-// a long diagonal member's box, which spans half the movement. The real
-// obstruction is the SELECTOR RING, and it is symmetric: `alarmSelRing` sits
-// 0.16 above the shaft plane and 0.16 below. The shaft threads the plane of
-// the ring it exists to drive, so there is no direction to steal room from —
-// the clearance is a slot, not a stack-up.
+//   uniform r 0.447   → Alarm link ⇄ Minute jumper, overlap 0.312
+//   stepped, body r 0.373 → the same pair, overlap 0.310
 //
-// Hence necks at BOTH ends rather than one. That is not a compromise, it is
-// the better shape: both cranks live in the thin sections, so their radial
-// offsets and the whole ROD_FOOT chain derived from them do not move at all,
-// and §25's tab engagement and §35's corridor are untouched. The drive end's
-// 4.5 mm cantilever keeps its full section over 10 of its 12 units.
+// Dropping the radius barely moved the number, which refutes the diagnosis
+// that led to the stepped arbor: if the shaft's SECTION were the lever, 0.447
+// → 0.373 would have shown. It did not, so the binding thing is not how fat
+// the shaft is — the alarm link's swept volume enters the minute jumper's
+// swept region at all, and the overlap depth is set by that region's shape
+// rather than by the radius.
 //
-// What the tip neck costs, computed rather than assumed — the first guess
-// here was "very little" and that was wrong. Unit-load over the stepped
-// section gives 1387 N/m against 1980 for an unbroken 0.373 shaft: the neck
-// is 17% of the length but 30% of the compliance, because I falls by 93×
-// where it is turned down. So 70% of the ideal, not 95%. Against the 21 N/m
-// this started at, that is still 65×, and it drops the drive end from
-// deflecting 13× the selector's stroke under 20 mN to 20% of it.
+// A local sweptOverlap said clean at r 0.373, and the disagreement is itself
+// the lesson: CI boots VIRGIN, and boot now runs syncStart(), which pulls the
+// crown — and a pulled crown puts the minute jumper IN the star. The local
+// session carried persisted state with the jumper elsewhere. A swept check is
+// only as good as the poses it starts from, and "it passed on my machine"
+// meant "it passed from my saved pose".
 //
-// The body's radius is derived from the BODY's own length, not the whole
-// chord: it is the span that has to satisfy the ceiling.
-const ALARM_LINK_NECK_R = 0.12;                          // as-was, where it threads the ring
-const ALARM_LINK_NECK_LEN = 2.0;                         // past the ring (clearance is 1.90 by t≈2)
-const ALARM_LINK_BODY_LEN = ALARM_LINK_CHORD_LEN - 2 * ALARM_LINK_NECK_LEN;
-const ALARM_LINK_SHAFT_R = ALARM_LINK_BODY_LEN / SLENDER_TARGET / 2;   // 0.373
+// So: original section, and §54 goes on reporting λ 100.5. TODO 16 carries
+// what a real fix needs — the jumper's swept envelope measured first, so the
+// next attempt is sized against the thing that actually blocks it.
+const ALARM_LINK_SHAFT_R = 0.12;
 const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
 // now be buried inside a shaft of radius 0.402 — which is exactly why this
@@ -7421,22 +7412,10 @@ const alarmLinkParts = {};
   // It FITS: the shaft's radial clearance was probed along its whole length
   // and the tightest non-contact band is 0.97 (t 20–22). The 0.297 at t≈0.3 is
   // `Dial/alarmSelTab` — the crank's own working contact, not an obstruction.
-  // Body: the full-section span, named so §54 measures the member that governs.
-  const shaftRod = new THREE.Mesh(
-    new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, ALARM_LINK_BODY_LEN, 12), MATS.steel);
+  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 8), MATS.steel);
   shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
-  shaft.add(shaftRod);                // centred: the two necks are equal
-  // The turned-down ends. Each overlaps its shoulder slightly so the step
-  // reads as one arbor rather than three touching rods.
-  for (const sgn of [-1, 1]) {
-    const neck = new THREE.Mesh(
-      new THREE.CylinderGeometry(ALARM_LINK_NECK_R, ALARM_LINK_NECK_R, ALARM_LINK_NECK_LEN + 0.1, 8), MATS.steel);
-    neck.name = sgn < 0 ? 'alarmLinkShaftNeckCentre' : 'alarmLinkShaftNeckRim';
-    neck.rotation.z = Math.PI / 2;
-    neck.position.x = sgn * (chordLen / 2 - (ALARM_LINK_NECK_LEN - 0.1) / 2);
-    shaft.add(neck);
-  }
+  shaft.add(shaftRod);
   // cranks: rim end (up to the rod's foot), centre end (under the ring's tab).
   // §51 phase B: the INNER crank's jaw is LONGER than the rim's — it must
   // cover the tab across the selector's whole 0.19 travel plus wrap, and
@@ -7469,7 +7448,7 @@ const alarmLinkParts = {};
     // stock-floor so the bush is itself a real part.
     // Bore follows the BODY: both stations (t 12 and t 22) sit inside the full
     // section, and the exhaustive scan gives them 7.55 and 10.54 of room.
-    const bush = new THREE.Mesh(ringGeo(ALARM_LINK_SHAFT_R + 0.02, ALARM_LINK_SHAFT_R + 0.02 + STOCK_MIN_U, 0.3), MATS.nickel);
+    const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
     const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // reverted with the shaft — it runs the same congested dial-side column

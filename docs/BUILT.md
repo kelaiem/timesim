@@ -4604,3 +4604,29 @@ been counted as a takeover.
 
 Verified across both exit paths — second click, and running to completion —
 for all five buttons.
+
+### §54 postscript 3 — the stepped arbor was rejected too, and why that is informative
+
+The stepped arbor was built (body r 0.373 at λ 27, necks r 0.12) and CI
+rejected it: `Alarm link ⇄ Minute jumper`, overlap **0.310**, against
+**0.312** for the uniform r 0.447 shaft.
+
+**The radius barely moved the number.** That is the finding. If the
+shaft's section were the binding thing, 0.447 → 0.373 would have shown —
+so the alarm link's swept volume enters the jumper's swept region at all,
+and the reported depth belongs to that region's shape rather than to the
+shaft. The earlier "selector ring is the obstruction" conclusion is
+retracted: the 0.16-either-side measurement was real, but it was not what
+CI was reporting.
+
+**Local said clean; CI said no, and the gap between them is the useful
+part.** CI boots **virgin**, and boot now runs `syncStart()`, which pulls
+the crown — and a pulled crown puts the minute jumper **in the star**. The
+local session carried persisted state with the jumper elsewhere. *A swept
+check is only as good as the poses it starts from*, and "it passed
+locally" meant "it passed from my saved pose". That is the same family as
+every vacuous check in this session, one level up: not a check that
+searched too little, but a check that started somewhere too comfortable.
+
+Reverted to the section CI passes. The beak tail blade and the
+inverted-lever fix stand — movement-side, verified, not implicated.

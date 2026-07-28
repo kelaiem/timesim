@@ -2782,10 +2782,13 @@ export const SLENDER_MAX_BY_KIND = {
 const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
 // A waived row is still reported; the waiver records that someone has looked.
-// Empty again, and earned this time: the alarm link's shaft is a STEPPED
-// arbor (§54 postscript 2) whose body sits at λ 27, and its beak tail is a
-// blade at λ 27. Fixed, not waived.
-export const SLENDER_WAIVERS = {};
+// The alarm link's SHAFT is accepted debt: two attempts to thicken it were
+// rejected by CI (Alarm link ⇄ Minute jumper, overlap 0.312 then 0.310 — the
+// radius barely moved it, so section is not the lever). Its beak tail WAS
+// fixed and is off this report on merit. TODO 16 carries the rest.
+export const SLENDER_WAIVERS = {
+  'Alarm link': 'TODO 16',
+};
 
 // Young's modulus for the movement's steels/brasses, order of magnitude. The
 // stiffness column is INFORMATIONAL: a first-order cantilever estimate, good
