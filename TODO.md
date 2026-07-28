@@ -1236,3 +1236,49 @@ moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
 
 The lay shaft twelve lines below already carried this exact fix, with a
 comment explaining it. The arm did not.
+
+## 17. The gong's sound is not derived from the gong
+
+`sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
+musically ("A6-ish, a small bell" says the comment). The gong's actual
+dimensions imply something quite different.
+
+Wire 0.375 mm diameter, arc radius 13.125 mm, 90° of arc = **20.617 mm
+developed length**, L/d = 55. As a clamped–free steel bar (E 200 GPa,
+ρ 7850, bar wave speed 5048 m/s):
+
+| mode | frequency | ratio |
+|---|---|---|
+| fundamental | **623 Hz** | 1.00 |
+| 2nd | **3904 Hz** | 6.27 |
+| 3rd | 10932 Hz | 17.55 |
+
+Two mismatches, and the second is the interesting one:
+
+1. **Neither synthesised tone is a mode of this gong.** 880 Hz is 1.41× the
+   fundamental and 1760 Hz is 2.83× — the geometry offers 1× and 6.27×.
+2. **A struck bar's overtones are INHARMONIC.** 1 : 6.27 : 17.55, not
+   1 : 2 : 3. The octave pair models a *bell*, and the reason a steel wire
+   gong sounds like a "ting" rather than a pitched chime is precisely that
+   its partials are not harmonically related. Modelling it as an octave is
+   the one thing that removes the character being modelled.
+
+There is also a **design** question underneath the audio one: 623 Hz is
+low for an alarm. Real alarm-watch gongs (Memovox, Cricket) ring bright,
+in the low kHz, because that is what carries and what wakes someone. At
+these dimensions the fundamental is a low hum and the ring the ear would
+actually hear is the 3.9 kHz second mode. To put the FUNDAMENTAL in
+alarm territory (~2.5 kHz) the arc would need to be **45° instead of 90°**
+(10.3 mm developed), or the wire 1.50 mm thick at the current length —
+which is absurd for a gong. So the arc is roughly **twice as long as an
+alarm gong should be**.
+
+Closing this means deriving the tone from the geometry — `f_n = (β_nL)²
+·(d/4)·√(E/ρ) / (2πL²)`, struck at the modes the hammer actually excites —
+rather than picking notes. Note the hammer strikes IN-PLANE (radially at
+the free end), and a curved bar's in-plane modes sit somewhat above the
+straight-bar figures above, so the derivation should carry the curvature
+term rather than reuse this estimate.
+
+Filed rather than fixed: this is an audio-model change and a gong-geometry
+change, and the two want deciding together.

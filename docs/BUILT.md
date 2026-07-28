@@ -4454,3 +4454,22 @@ Sampled across separate tool calls with forced paints — this repo's rAF
 throttles hard under automation, and the first attempt to check it inside
 one eval sampled 14 consecutive frames (~0.2 s) against a 1.6 s
 half-period, a window in which no toggle could ever have appeared.
+
+### Defaults: synced on arrival, ribbing at its minimum
+
+**Synced.** The movement used to boot at an arbitrary epoch, so the first
+thing a viewer saw was a watch showing the wrong time. Boot now runs the
+SAME `syncStart()` the button does — crown out, set through the real
+keyless works, catch up — so the default is the mechanism doing its job
+rather than a number assigned to the hands. Skipped when a script owns the
+view (a deep-linked tour/demo/inspection is mid-flight and `syncStart`
+pulls the crown and forces scale 1 underneath it) and when `?tau` or
+`?sync` says the caller already chose an epoch.
+
+**Ribbing at a minimum.** `decoration.ribbing.widthUnits` is the band
+PITCH, so larger means fewer ribs: 6.7 → **30**, the bound maximum. The
+`_comment` now says which way the parameter runs, since "minimum ribbing"
+and "minimum widthUnits" are opposites and the next reader will meet that
+trap.
+
+Verified: dial reads 11:56:37 against a 23:56:37 wall clock; rib slider at 30.

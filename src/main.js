@@ -11006,6 +11006,20 @@ function applyDeepLink() {
 }
 applyDeepLink();
 
+// §54 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
+// arbitrary epoch, so the very first thing a viewer saw was a watch showing the
+// wrong time. Syncing on arrival runs the SAME syncStart() the button does —
+// crown out, set through the real keyless works, catch up — so the default is
+// the mechanism doing its job, not a number assigned to the hands.
+//
+// Skipped when a script owns the view (a deep-linked tour/demo/inspection is
+// mid-flight and syncStart pulls the crown and forces scale 1 under it), and
+// when ?tau or ?sync says the caller already chose an epoch.
+{
+  const q = new URLSearchParams(location.search);
+  if (!scriptSteps && !q.has('tau') && !q.has('sync')) syncStart();
+}
+
 // ---------------------------------------------------------------------------
 // Animation loop — fixed-timestep accumulation for the sim; render on rAF.
 // ---------------------------------------------------------------------------
