@@ -4362,6 +4362,28 @@ one states the test:
    tail: grounded at the stud, moving at the arm.
 9. **A sprung cam follower** — pressed onto its cam, not glued to it.
 
+### Stop 4 frames an END, not a centre — and the first attempt failed
+
+`frameOn` aims at a bounding-box centre, which is right for a wheel and
+wrong for a rod. The z-shaft runs 16 u through both plates, so its centre
+is buried in the plate sandwich while the joint worth looking at — where
+the beak's tail drives it — is 8 u away on the movement side.
+
+The first attempt framed the **contact** between tail and rod by
+intersecting their bounding boxes. It came back **empty**, and the
+fallback landed at z 5.76: mid-air, below the plate top, framing nothing.
+The reason is the lesson this project keeps relearning — an AABB of a long
+**diagonal** member describes a volume the part is nowhere near. The tail
+runs 26.8 u across the movement, so its box is enormous and its overlap
+with anything says nothing about where the two actually touch. Same
+instrument failure that produced a false collision reading during the
+alarm-link work an hour earlier.
+
+`frameOnEnd(target, end, axis)` takes the member's own extent and frames
+the requested end, closing in by the part's **section** rather than its
+length — otherwise the shot is as wide as the member is long. Stop 4 now
+lands on the rod's top at z 9.45, above the plate top at 8.5, at 4.2 units.
+
 Runs off an `Inspect` button beside `Tour` and `Demo`, through the same
 `scriptStart`/`scriptEnterStep` engine, so it stops the same way and takes
 the same camera tween. Dwells are 6–7 s rather than the showcase's 1–4:

@@ -10792,6 +10792,37 @@ function frameOn(target, dir = [0.5, -0.4, 0.75], pad = 3.4) {
            look: [_frameCen.x, _frameCen.y, _frameCen.z] };
 }
 
+// Framing the END of a long member, not its middle. `frameOn` aims at a
+// bounding-box centre, which is right for a wheel and wrong for a rod: the
+// z-shaft runs 16 u through both plates, so its centre is inside the plate
+// sandwich and its interesting end is 8 u away on the movement side.
+//
+// The first attempt at this framed the CONTACT between the tail and the rod by
+// intersecting their bounding boxes. It returned EMPTY, and the fallback
+// landed at z 5.76 — mid-air, below the plate top, framing nothing. The reason
+// is the one this project keeps relearning: an AABB of a long DIAGONAL member
+// describes a volume the part is nowhere near. The tail runs 26.8 u across the
+// movement, so its box is enormous and its overlap with anything says nothing
+// about where the two actually touch. Same instrument failure that produced a
+// false collision reading earlier in this work.
+//
+// So: take the member's own axis-aligned extent and frame the requested END.
+// Close in by the part's SECTION rather than its length, or the shot is as
+// wide as the member is long.
+const _eB = new THREE.Box3(), _eS = new THREE.Vector3(), _eC = new THREE.Vector3();
+function frameOnEnd(target, end = 'max', axis = 'z', dir = [0.6, -0.35, 0.55], pad = 6.0) {
+  const obj = labelEntries.find((x) => x.name === target)?.obj || scene.getObjectByName(target);
+  if (!obj) { console.warn(`§54: end-stop names '${target}', which is not in the scene`); return null; }
+  _eB.setFromObject(obj);
+  if (!isFinite(_eB.min.x)) return null;
+  _eB.getCenter(_eC); _eB.getSize(_eS);
+  const p = _eC.clone();
+  p[axis] = end === 'max' ? _eB.max[axis] : _eB.min[axis];
+  const section = Math.max(Math.min(_eS.x, _eS.y, _eS.z), 0.4);   // across, not along
+  const d = new THREE.Vector3(...dir).normalize().multiplyScalar(section * pad);
+  return { pos: [p.x + d.x, p.y + d.y, p.z + d.z], look: [p.x, p.y, p.z] };
+}
+
 // Each stop says WHAT TO LOOK FOR, not what the part is called. A caption that
 // only names the part gives the eye nothing to do.
 const INSPECT_STEPS = [
@@ -10810,8 +10841,11 @@ const INSPECT_STEPS = [
     caption: '3/9 Alarm ON. The wheel indexes as the pusher goes down. Watch the pawl drive the ratchet the way its teeth are cut.', dwell: 6.5 },
 
   // --- the alarm link, end to end: §53 / TODO 16 / the inverted lever
-  { camera: frameOn('alarmLinkBeak', [0.3, -0.35, 0.9], 5.0), scale: 0.25,
-    caption: '4/9 The beak on the castellations. Nose falls into a gap ⇒ tail RISES ⇒ rod rises. A lever inverts; if nose and tail move together it is wrong.', dwell: 7.0 },
+  // The lever test is judged where the tail MEETS THE ROD, on the movement
+  // side at the top of the z-shaft — not at the nose, which only shows the
+  // input. Framed on the contact so it keeps aiming there if either moves.
+  { camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0), scale: 0.25,
+    caption: '4/9 Where the beak’s tail meets the top of the vertical rod, movement side. Nose falls into a gap ⇒ tail RISES ⇒ the rod follows it up 1:1. A tail driving DOWN onto a rising rod is an inverted lever.', dwell: 7.5 },
   { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false,
     caption: '5/9 The lay shaft’s drive end. Its crank should carry the selector ring’s tab — and the shaft should look like an arbor, not a hair.', dwell: 7.0 },
 
