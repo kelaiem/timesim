@@ -1094,3 +1094,85 @@ A build-pose-only check could never have caught this — it is a check that
 searches for less than the thing it verifies, arrived at from a new
 direction: not a too-small search *range* this time, but a single sample
 of a quantity that only reveals itself in motion.
+
+## 16. The alarm link is thickness-legal and structurally impossible
+
+Reported by eye: the horizontal lay shaft looks too thin. It is, and
+measuring it showed the check that should have caught it cannot see this
+class of defect at all.
+
+### The feature-size checks DO reach these segments — and still pass them
+
+Every mesh in the unit is enumerated by `stockCensus`. Two things blunt
+that:
+
+1. **`STOCK_WAIVERS['Alarm link'] = 'TODO 11'` is a UNIT-level waiver.**
+   One entry excuses every segment, so a 0.09 mm hair and a marginally
+   thin decorative bracket read identically in the report.
+2. **More fundamental: the stock floor is a THICKNESS test with no notion
+   of SLENDERNESS.** The beak tail is 0.12 mm section — exactly
+   `STOCK_MIN_U`, i.e. built deliberately *to* the floor — and 10.0 mm
+   long. It passes by construction while being **84× longer than it is
+   thick**.
+
+Stiffness goes as t⁴/L³, so the floor ranks these backwards. Measured
+cantilever stiffnesses in this one unit:
+
+| part | section | length | stiffness | deflection @ 1 mN |
+|---|---|---|---|---|
+| centre crank | **0.045 mm** (thinnest) | 0.42 mm | **2843 N/m** | 0.0004 mm |
+| beak tail | 0.12 mm (at floor) | 10.05 mm | **10.2 N/m** | 0.098 mm |
+
+**The thinnest part in the unit is 280× stiffer than the one that passes
+the floor.** Thickness alone predicts nothing.
+
+### The shaft and its pillars
+
+- lay shaft **0.09 mm diameter, 9.05 mm long — L/d = 100.5**. A human
+  hair is about 0.07 mm.
+- bushes sit at shaft stations **−0.06 and +9.94** on a shaft running
+  ±12.06 — **both supports cluster at the rod end**.
+- the **centre crank, which drives the selector ring, overhangs 4.5 mm**
+  past the nearest bush: stiffness **21 N/m**.
+
+### Force transfer, pusher → ring: it divides force twice and bends
+
+- **beak lever** — nose arm 0.735 u, tail arm 26.79 u ⇒ displacement gain
+  **36.5×**, so force at the tail is **2.7%** of what the column applies
+  at the nose.
+- **beak tail** deflects 0.098 mm/mN against a required rod travel of
+  **0.158 mm**.
+- **shaft drive end** deflects 0.047 mm/mN against a selector travel of
+  **0.071 mm**.
+
+Two compliant members in series, each absorbing ~two-thirds of its own
+working stroke per millinewton, downstream of a 36:1 force reduction.
+**Stall force ≈ 1.5 mN** — the load at which the whole stroke goes into
+bending and nothing reaches the ring. A detented selector ring plausibly
+needs 5–50 mN, so this is short by one to two orders of magnitude.
+
+(First-order solid-steel cantilever estimates. The absolute numbers carry
+maybe a factor of two; the *ratios* — deflection against stroke — are what
+the conclusion rests on, and they are not close.)
+
+### What to fix
+
+- **Move the pillars.** Both bushes sit at one end. Stations near t≈2 and
+  t≈22 would give a long span and short overhangs at both ends, killing
+  the 4.5 mm cantilever. NOTE the existing comment: those two stations
+  were chosen because pose-swept ray probes found their vertical columns
+  clean, so any new station must be re-probed the same way.
+- **Thicken the shaft and the beak tail**, and derive both from a
+  SLENDERNESS budget rather than the thickness floor.
+- **Shorten the beak's tail arm** or re-site the rod: 36:1 is a
+  displacement gain nobody asked for; the rod only needs 0.42 u of travel.
+
+### The general lesson, and the check it implies
+
+§50 gave every part a minimum thickness. Nothing gives them a minimum
+*stiffness*, and stiffness is what "constructible" actually means for a
+lever or an arbor. A `checkSlenderness` in the §50 mould — report L/t per
+segment, waivers citing an item, gate on nothing at first — would catch
+this class everywhere rather than only where someone happens to look. The
+alarm link would be its first customer; the winding-train hangers
+(0.075 mm × 4.7 u) are probably its second.
