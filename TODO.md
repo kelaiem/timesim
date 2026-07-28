@@ -1223,3 +1223,16 @@ section change. The tail is also the chain's remaining weakest member —
 it still bends 42% of its stroke at 20 mN, against the shaft's 7% — so if
 anything here gets more work, it is that lever, and the two are the same
 problem: the tail is long *because* the rod is far away.
+
+### Postscript — the lever was also inverted (§53 postscript 2)
+
+Separately from the sections: `beakArm` set its aim on `rotation.z` and its
+lever action on `rotation.y` under the default `'XYZ'` order, so the tilt
+applied about world-Y *before* the aim. At this arm's 122.4° aim that
+scaled the throw by cos(122.4°) — **negative** — inverting the lever and
+costing 46% of its travel. The tail drove down onto a rod the same frame
+moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
+1:1 (+0.19 each) with the nose falling as the tail rises.
+
+The lay shaft twelve lines below already carried this exact fix, with a
+comment explaining it. The arm did not.

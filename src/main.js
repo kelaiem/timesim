@@ -7260,6 +7260,22 @@ const alarmLinkParts = {};
   const pivDist = ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04; // post r 0.16 fully clear of the wheel's skirt
   const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
   const beakArm = new THREE.Group();
+  // §53 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
+  // FOR, twelve lines below, unfixed here. The aim is `rotation.z`; the tick's
+  // lever action is `rotation.y`. Under the DEFAULT 'XYZ' the tilt is applied
+  // BEFORE the aim, i.e. about world-Y, so the throw comes out scaled by
+  // cos(beakAim) — and this arm aims at 122.4°, where the cosine is NEGATIVE.
+  //
+  // Measured: nose +0.0079 and tail −0.1436 per 0.02 rad, against a law whose
+  // own comment says "nose falls into the gap". The nose ROSE. So the tail
+  // drove DOWN onto a rod that the same frame was moving UP — the two members
+  // were pushed into each other, which is the collision reported by eye, and
+  // the lever ran at 54% of its intended throw as well.
+  //
+  // 'ZYX' applies the aim first and then tilts about the arm's OWN axis:
+  // nose −0.0147 = −beakLen·θ, tail +0.2679 = +(tailLen/2)·θ. Both exactly
+  // what the pose law says they should be.
+  beakArm.rotation.order = 'ZYX';
   beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_LOCK_Z + 0.80);
   const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
   beakArm.rotation.z = beakAim;

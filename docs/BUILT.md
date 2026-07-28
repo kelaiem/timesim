@@ -4270,3 +4270,46 @@ rows, and `SLENDER_WAIVERS` is now empty — fixed, not waived);
 selector, switch, dial, plate, jumper, drum and barrel: support 0, graph
 0, penetration none over budget, clearances 0; boot silent. Stall force
 along the chain ≈ 1.5 mN → ≈ 48 mN.
+
+### §53 postscript 2 — the beak lever was inverted, and my verification could not see it
+
+Reported by eye: the rod from the column wheel to the vertical rod levers
+the wrong way against a shaft that should be pushed dial-side and sprung
+back — with a collision to show for it.
+
+**The same Euler-order trap the lay shaft already carries a fix for, on the
+arm twelve lines above it.** The beak's aim is `rotation.z`, set at build;
+its lever action is `rotation.y`, set each tick. Under the default `'XYZ'`
+the tilt is applied *before* the aim — about world-Y — so the throw comes
+out scaled by `cos(beakAim)`, and this arm aims at **122.4°**, where the
+cosine is **negative**.
+
+Measured under `'XYZ'`: nose **+0.0079**, tail **−0.1436** per 0.02 rad,
+against a pose law whose own comment reads *"nose falls into the gap"*.
+The nose **rose**. So the tail drove **down** onto a rod the same frame was
+moving **up** — the two members pushed into each other — and the lever ran
+at **54%** of its intended throw as a bonus.
+
+`beakArm.rotation.order = 'ZYX'` applies the aim first, then tilts about
+the arm's own axis. Verified across the alarm's on/off poses:
+
+| | |
+|---|---|
+| tail tip travel | **+0.19** |
+| rod travel | **+0.19** — ratio **1.000** |
+| nose | −0.0065 — falls while the tail rises |
+| tail↔rod contact gap | constant at both poses |
+
+**On my own verification.** I reported the section fix as battery-clean
+having run `focusedCheck` — support, graph, penetration, clearances. Those
+test **declared pairs**. A brand-new overlap between an *undeclared* pair
+is invisible to every one of them, and `sweptOverlap` — the check that
+enumerates all pairs — is the one I skipped as "the slow one". The eye
+caught what the cheap subset structurally could not. Re-run in full here:
+**523 volumes, 0 still escaping, 0 confirmed, 0 tight, no Alarm link rows.**
+
+Three of my measurements during this fix were also vacuous before they
+were right — an AABB test on a long diagonal bar (its box overlaps half
+the movement), a pose sweep that never moved the column wheel, and the
+tail's AABB *floor*, which is pinned at the pivot end no matter how the
+lever swings. The tip is what moves; measure the thing that moves.
