@@ -8020,7 +8020,7 @@ panel.innerHTML = `
     <div class="ui-section-body">
       <div class="row">
         <span class="label-small">Alarm</span>
-        <button id="btn-alarm">Off</button>
+        <button id="btn-alarm">Off</button><button id="btn-alarm-cycle" title="Toggle the alarm on and off repeatedly, without moving the camera">Cycle</button>
       </div>
       <!-- ONE readout, and it is the time the alarm ACTUALLY rings.
            The trip is geometric: the pin bottoms when the disc's notch
@@ -9535,6 +9535,34 @@ function setAlarm(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!alarmOn));
+// §54 — THE ALARM CYCLER. Flips the alarm on and off on a timer and touches
+// NOTHING else: no camera, no preset, no time scale. That is the whole design.
+//
+// Force transfer is only legible in MOTION. A single state change gives the eye
+// two still frames and leaves it to assume the path between them — which is
+// exactly how a follower decoupled from its cam and a lever inverted by its
+// Euler order both survived review. Watching the chain cycle several times,
+// from wherever you have already aimed the camera, is what makes the pusher →
+// column wheel → beak → rod → shaft → crank → ring path either obviously work
+// or obviously not.
+//
+// Deliberately NOT a tour stop: a stop would move the camera, and the point is
+// to inspect the view you chose. It runs off the frame loop rather than
+// setInterval so it stops dead when the tab is backgrounded and cannot queue
+// up a burst of toggles to replay on return.
+const ALARM_CYCLE_PERIOD = 1.6;      // s per half-cycle — slow enough to follow a lever
+let alarmCycleOn = false, alarmCycleT = 0;
+function alarmCycleUpdate(realDt) {
+  if (!alarmCycleOn) return;
+  alarmCycleT += realDt;
+  if (alarmCycleT >= ALARM_CYCLE_PERIOD) { alarmCycleT = 0; setAlarm(!alarmOn); }
+}
+document.getElementById('btn-alarm-cycle').addEventListener('click', (e) => {
+  alarmCycleOn = !alarmCycleOn;
+  alarmCycleT = 0;
+  e.currentTarget.classList.toggle('on', alarmCycleOn);
+  e.currentTarget.textContent = alarmCycleOn ? 'Stop' : 'Cycle';
+});
 document.getElementById('btn-coupling').addEventListener('click', (e) => {
   const btn = e.currentTarget;
   if (scriptBtn === btn) scriptStop(); else scriptStart(ALARM_COUPLING_STEPS, btn); // §34 — same toggle as Demo/Tour: a running show's button STOPS it (it used to restart)
@@ -12144,6 +12172,7 @@ function advanceFrame(realDt) {
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
     } else {
       scriptUpdate(realDt); // scripted user (BUILT §5/§17): drives crown/scale before this frame's ticks
+      alarmCycleUpdate(realDt); // §54: the alarm cycler, same pre-tick slot — its toggle must land before this frame integrates
       syncUpdate(realDt);
       // The catch-up is a rate the slider does not know about, so it stands
       // in for timeScale rather than being written into it — the slider's

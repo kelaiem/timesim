@@ -4410,3 +4410,30 @@ Runs off an `Inspect` button beside `Tour` and `Demo`, through the same
 `scriptStart`/`scriptEnterStep` engine, so it stops the same way and takes
 the same camera tween. Dwells are 6–7 s rather than the showcase's 1–4:
 this one is meant to be looked at, not watched.
+
+### The alarm cycler — motion at the view you already chose
+
+A `Cycle` button beside the alarm's on/off. It flips the alarm on a 1.6 s
+timer and touches **nothing else**: no camera, no preset, no time scale.
+
+**Force transfer is only legible in motion.** A single state change gives
+the eye two still frames and leaves it to assume the path between them —
+which is exactly how a follower decoupled from its cam and a lever
+inverted by its Euler order both survived review. Watching the chain cycle
+several times makes pusher → column wheel → beak → rod → shaft → crank →
+ring either obviously work or obviously not.
+
+**Deliberately not a tour stop.** A stop moves the camera, and the point
+here is to inspect *the view you already framed* — park wherever you like
+and let the mechanism run. It also runs off the frame loop rather than
+`setInterval`, so it stops dead when the tab is backgrounded instead of
+queueing a burst of toggles to replay on return, and its toggle lands in
+the same pre-tick slot as the scripted crown turns so the state change is
+integrated by the frame that follows it.
+
+**Verified:** alarm state observed **On → Off** while cycling, with
+`cameraMoved` **0.0000**, and holding at a single state once stopped.
+Sampled across separate tool calls with forced paints — this repo's rAF
+throttles hard under automation, and the first attempt to check it inside
+one eval sampled 14 consecutive frames (~0.2 s) against a 1.6 s
+half-period, a window in which no toggle could ever have appeared.
