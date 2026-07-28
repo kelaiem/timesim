@@ -4544,3 +4544,33 @@ reporting λ 100.5, which is the honest state.
 The shaft wants a **stepped arbor** — turned down through the jumper's
 sweep, full section in the span and the overhang — which recovers most of
 the stiffness while respecting the corridor. Filed in `TODO.md` 16.
+
+### §54 postscript 2 — the stepped arbor
+
+The uniform fat shaft was rejected by CI; measuring why showed the
+obstruction is the **selector ring**, symmetric at 0.16 above and below the
+shaft plane. The shaft threads the plane of the ring it drives, so there is
+no direction to steal room from — the clearance is a slot, not a stack-up.
+That leaves exactly one shape, and it is the one a real arbor has anyway:
+**turned down at the ends, full section between**.
+
+Necking **both** ends rather than one is the better answer, not a
+compromise: both cranks then sit on thin sections, so their offsets and the
+`ROD_FOOT` chain derived from them do not move, leaving §25's tab
+engagement and §35's corridor untouched. The body's radius derives from the
+BODY's own length — it is the span that must satisfy the ceiling.
+
+Body r 0.373 × 20.13 u at **λ 27**; necks r 0.12 × 2.0 u.
+
+**Drive-end stiffness, by unit-load over the stepped section:** 21 → **1387
+N/m**, which is **65×** the original and **70%** of an unbroken 0.373 shaft.
+The code's first note claimed the tip neck would cost "very little"; that
+was wrong and is now corrected in place — the neck is 17% of the length but
+**30% of the compliance**, since I falls 93× where it is turned down. Under
+20 mN the drive end deflects **20%** of the selector stroke, against
+**1324%** before.
+
+Verified against the two gates that failed the previous attempt:
+`sweptOverlap` 0 confirmed / 0 tight / no Alarm link rows, `inspection` 0
+FORBIDDEN, `stockFloor` clean, and `SLENDER_WAIVERS` empty — fixed rather
+than waived.

@@ -1095,7 +1095,7 @@ searches for less than the thing it verifies, arrived at from a new
 direction: not a too-small search *range* this time, but a single sample
 of a quantity that only reveals itself in motion.
 
-## 16. PART CLOSED — the alarm link was thickness-legal and structurally impossible
+## 16. CLOSED — the alarm link was thickness-legal and structurally impossible
 
 Reported by eye: the horizontal lay shaft looks too thin. It is, and
 measuring it showed the check that should have caught it cannot see this
@@ -1360,3 +1360,41 @@ present 0.12 where it threads the ring, full section in the free span and
 the drive-end overhang, where the exhaustive scan shows 0.97–8.3 of room.
 Bending stiffness is set by the span, so most of the 4075 N/m survives.
 The neck length is bounded by the ring's own thickness plus margin.
+
+### CLOSED — the stepped arbor
+
+Necked at **both** ends, full section between. Necking both rather than one
+is not a compromise, it is the better shape: **both cranks sit on the thin
+sections**, so their radial offsets and the whole `ROD_FOOT` chain derived
+from them do not move at all, and §25's tab engagement and §35's corridor
+are untouched.
+
+| | |
+|---|---|
+| body | r 0.373, 20.13 u long, **λ 27** |
+| necks | r 0.12 × 2.0 u at each end — as-was, where it threads the ring |
+| body radius | derived from the BODY's own length, not the chord |
+
+**Stiffness at the drive end, computed by unit-load over the stepped
+section rather than assumed:**
+
+| | N/m |
+|---|---|
+| original uniform r 0.12 | 21 |
+| **stepped (built)** | **1387** |
+| uniform r 0.373 (CI rejected it) | 1980 |
+
+**65× the original, and 70% of the unbroken ideal.** My first note in the
+code said the tip neck would cost "very little" — wrong: it is 17% of the
+length but **30% of the compliance**, because I falls 93× where it is
+turned down. Under a 20 mN detent the drive end now deflects **20% of the
+selector's stroke**, against **1324%** before.
+
+**Verified against the gates that rejected the last attempt:**
+`sweptOverlap` 525 volumes, **0 confirmed, 0 tight, no Alarm link rows**;
+`inspection` **0 FORBIDDEN**; `stockFloor` ok, 0 degenerate, 0 unwaived;
+alarm link entirely off the §54 report and `SLENDER_WAIVERS` **empty**
+again — earned this time rather than reverted.
+
+Remaining in this item: only the **36:1 beak lever**, which needs the rod
+re-sited and is a §35-corridor change.
