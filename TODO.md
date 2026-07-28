@@ -724,7 +724,7 @@ stiffness. §48's scope guard puts spring RATE and force modelling
 outside that entry, and it stays outside this item too. The spring now
 exists and acts; it does not yet SET the frequency.
 
-## 15. The two alarm winding idlers mesh out of phase
+## 15. CLOSED (winding + setting chains) — mesh phase solved from measurement; two sites remain
 
 Reported by eye from the running sim: the two alarm winding idlers
 appear to **interlock tooth-on-tooth rather than tooth-into-gap** — the
@@ -747,3 +747,350 @@ this half-pitch error.
 
 Worth checking whether the same derivation is shared with any other
 meshing pair before fixing it in one place only.
+
+**Progress, and where it stopped.** Branch `claude/todo-15-idler-phase`
+carries the diagnosis and a fix for the I1⇄I2 mesh only. The cause was in
+plain sight: BOTH idlers were built with `rotation.z = Math.PI / teeth`,
+half of their OWN pitch, with no reference to the line of centres between
+them — which says nothing about where a wheel's teeth fall relative to
+its neighbour. `gearMeshPhase()` now solves I2 against I1, with a
+build-time tripwire on the anti-phase condition.
+
+**The setting wheel ⇄ I1 mesh is ALSO wrong** (reported by eye, second
+screenshot) and is NOT fixed. It is harder than the idler pair for a
+reason worth writing down before anyone attempts it:
+
+- The setting wheel is a **`dialFace` child**; the idlers are **`movement`
+  children**. Their positions are in different frames, so a line-of-centres
+  azimuth cannot be taken between them without transforming first.
+- `dialFace` is **Y-FLIPPED** (`dial-local (x,y) ↔ world (P.dial.x − x,
+  P.dial.y + y)`). A Y-flip MIRRORS the gear, which reverses the direction
+  its tooth pattern advances. So the setting wheel's effective phase in
+  world terms is not its `rotation.z`, and the sign of the pitch step
+  flips. Getting this wrong produces a fix that looks derived and is still
+  half a pitch out.
+- The setting wheel currently has **no explicit `rotation.z` at all**
+  (phase 0), so it is the natural datum — but only once expressed in the
+  frame the idlers live in.
+
+The right shape is a CHAIN solved from one datum — setting wheel → I1 →
+I2 → arbor pinion — since a gear's phase is determined by its mesh with
+the previous wheel, not chosen. Fixing pairs independently cannot work: I1
+cannot satisfy two meshes with two freely-chosen phases.
+
+**The chain solve is now written** (same branch). Setting wheel is the
+datum; i1 is solved against it, i2 against i1. Every wheel's tooth
+direction is READ from its own world matrix after it is built, and the
+sign of its response to `rotation.z` is measured by bumping it — so the
+dialFace frame, the Y-flip and the mirroring all come out in the wash
+instead of being reasoned about by hand. Two tripwires per mesh:
+anti-phase, and centre distance against the pitch-circle sum.
+
+Both tripwires are SILENT, and the centre-distance one is independent of
+the phase solve — it confirms the pairs genuinely mesh, which the phase
+result would be meaningless without.
+
+**Verification is the other open half.** The tripwire checks the formula
+against its own terms, which is not independent. An attempt to measure the
+built geometry failed twice because it could not SELECT the meshing pair —
+only one spin group sits under the `Alarm setting idler` label. Any
+instrument for this has to be able to name the two wheels before it can
+measure them, and that naming gap should be closed first. The battery
+cannot substitute: gears meshing out of phase sweep the same volumes as
+gears meshing correctly.
+
+The naming gap has a CAUSE, now known: `makeGear` returns a **Group**
+(rim mesh plus optional hub mesh), not a mesh. Both the first chain-solve
+attempt and both measurement attempts looked for `isMesh` and found
+nothing or found the wrong thing — the solve crashed the build outright,
+and the measurements silently compared the wrong pair of wheels and
+produced confident nonsense (a tip-circle gap of −9.05 for a meshing
+pair). A per-gear handle that returns exactly one geometry per wheel is
+the prerequisite for any real instrument here; a vertex-level pass still
+double-counts, because more than one extruded mesh sits under a single
+gear.
+
+---
+
+### CORRECTION — the branch fixes the WRONG TRAIN
+
+Both reports were about the **`Alarm winding train`** (`registerLabel` at
+`main.js:6705`). Branch `claude/todo-15-idler-phase` solves the **`Alarm
+setting`** chain instead — a different unit. That is exactly why its
+tripwires pass while the screenshots plainly disagree: they measure
+wheels the reports were never about. **Do not merge it as a fix for
+this.**
+
+**The actual site is `main.js:6756`:**
+
+```js
+w.rotation.z = Math.PI / ALARM_WIND_IDLER_TEETH;
+```
+
+Same bug, same shape: half of the wheel's OWN angular pitch, with no
+reference to the line of centres to its neighbour.
+
+**It is an IDIOM repeated across the file**, which is why fixing one
+place kept not being enough. Known sites:
+
+| Line | Wheels |
+|---|---|
+| 4870–4871 | power-reserve wheels 1 and 2 |
+| 5696 | alarm branch idler i1b |
+| 6756 | **alarm winding idlers — what was reported** |
+
+The chain-solve machinery on the branch (`worldToothPhase`, `alignGear`,
+`meshPhaseTarget`, and the two per-mesh tripwires) is written to be
+reusable and is the right tool — it measures each wheel's world tooth
+direction and the sign of its response to `rotation.z`, so frames, flips
+and mirroring need no hand reasoning. Point it at the winding train, then
+at the other sites, rather than writing a fourth bespoke fix.
+
+**Prerequisite, still unmet:** a per-gear handle returning exactly one
+geometry per wheel. `makeGear` returns a **Group** (rim plus optional
+hub). That single fact caused a build crash and two confidently wrong
+measurements, and it is why no independent instrument for mesh phase
+exists yet. The battery cannot substitute — gears meshing out of phase
+sweep the same volumes as gears meshing correctly.
+
+### The tripwire now FIRES, and that is the finding
+
+Pointed at the winding train (`solveGearChain` is now reusable; both
+trains run through it). Boot reports:
+
+```
+alarm setting: setting wheel ⇄ idler 1   0.2% of a pitch off
+alarm setting: idler 1 ⇄ idler 2        35.1% off
+alarm winding: climb pinion ⇄ idler 1   29.6% off
+alarm winding: idler 1 ⇄ idler 2        34.7% off
+```
+
+**The earlier silence was a FALSE PASS.** The old check read each wheel's
+phase as `local +x` transformed — the same assumption on both sides of
+the comparison — so it agreed with itself by construction. That is the
+session's recurring lesson in its purest form: *a check that searches for
+less than the thing it verifies always passes.* Measuring tooth position
+from the VERTICES breaks the circularity, and the disagreement appears
+immediately. The screenshots were right and the instrument was wrong.
+
+**But the solve is NOT converging.** `alignGear` sets each phase from the
+same measured function the tripwire then re-reads, so a working solve
+would leave ≈0% residual, not 35%. One of the two is still faulty. The
+most likely cause is tip selection inside `measuredToothPhase`: vertices
+within 0.5% of max radius are treated as tooth tips, but `makeGear`
+bevels its teeth, so that band may be a nearly-uniform ring rather than
+the tips — and a circular average over a uniform ring has no direction,
+returning noise. Worth printing the tip-vertex count and the resultant
+vector's LENGTH (near zero ⇒ no usable direction) before trusting any
+number this function returns.
+
+**Boot is no longer silent on this branch**, deliberately: the warnings
+are an accurate report of a real defect. They must be resolved, not
+silenced, before anything here merges.
+
+### The diagnostic ran — the instrument returns NOISE, and the percentages meant nothing
+
+Probing idler 1 of the winding train, sweeping the assumed tooth count:
+
+| N | tip verts | total verts | resultant length | phase° |
+|---|---|---|---|---|
+| 12 | 1224 | 11304 | **0** | 1.442 |
+| 14 | 1224 | 11304 | **0** | −11.415 |
+| 15 | 1224 | 11304 | **0** | −10.558 |
+| 16 | 1224 | 11304 | **0** | −9.808 |
+| 18 | 1224 | 11304 | **0** | 1.442 |
+| 20 | 1224 | 11304 | **0** | 1.442 |
+
+**The resultant vector is zero at every tooth count.** A circular average
+whose resultant has no length has no direction: `measuredToothPhase`
+returns pure noise, which is why `phase_deg` skitters between −11.4° and
++1.4° depending on a parameter that should barely matter.
+
+The cause is exactly as predicted, and the vertex COUNT shows it: 1224 of
+11304 vertices sit within 0.5% of max radius — about 11% of the whole
+wheel. Tooth tips of a ~16-tooth gear should be a hundred or so. That
+band is a continuous bevel ring, not the tips, and a uniform ring
+averages to nothing.
+
+**So the percentages in the previous entry — 29.6%, 34.7%, 35.1% — are
+NOT evidence of misalignment. They are readings from a broken gauge, and
+should not be quoted.** What still stands is the screenshots, which is
+observation rather than instrumentation, and the code fact that
+`rotation.z = Math.PI / teeth` cannot express a mesh relationship.
+
+What the previous entry got right is narrower than it claimed: the
+`local +x` reader was self-referential and could never fail. Replacing it
+with a broken gauge did not fix that; it swapped a check that always
+passes for one that always fires.
+
+**Next, and do this before anything else here:** find the real tip
+vertices. The tip land is `tipFrac = 0.18` of a pitch either side of
+tooth centre, at `tipR = pitchR + module * 0.95`, with the bevel taken
+off the FACE — so tips must be selected by radius AND by z (the flat
+face, not the bevel chamfer), or better, taken from
+`gearOutlineShape`'s own parameters rather than rediscovered from a vertex
+soup. A working gauge must show `resultantLen` near 1 for the true tooth
+count and near 0 for wrong ones — that ratio is itself the self-test, and
+it is the thing to build first.
+
+### The gauge, third attempt: a SPECTRUM — right shape, insufficient confidence
+
+Stop hunting for "tip vertices" at all. Sample the gear's silhouette
+radius as a function of azimuth, `R(θ)`, and the tooth pattern is a
+periodic signal: its **N-th Fourier component** gives the phase from its
+argument and a **confidence from its amplitude**. Convention-independent,
+bevel-tolerant, and — the part the first two gauges lacked — **it says
+how much to trust itself**. The true tooth count should stand out as a
+clear spectral peak; if no N stands out, the reading is refused rather
+than returned.
+
+Measured on winding idler 1, sweeping N from 6 to 40:
+
+| N | amplitude |
+|---|---|
+| **28** | 0.03802 |
+| 16 | 0.02913 |
+| 35 | 0.01766 |
+| 24 | 0.01708 |
+
+**It fails its own bar.** Best-to-second ratio is **1.31** — a real tooth
+count should tower over its neighbours, not edge past one. And only
+**699 of 2048** azimuth bins are populated.
+
+That second number is the cause and it is not subtle: raw VERTICES
+undersample the silhouette. A gear's vertices cluster at tooth corners
+and leave two thirds of the azimuth range empty, so `R(θ)` is a sparse,
+irregularly-spaced signal and the Fourier estimate aliases. The gauge is
+sound; its input is not.
+
+**The fix is to sample the silhouette properly** — walk the geometry's
+TRIANGLES and interpolate each edge across the azimuth bins it spans,
+rather than dropping in isolated vertices. Every bin then gets a value
+and `R(θ)` becomes the continuous outline it is meant to be. Expect the
+ratio to go from 1.31 to something unambiguous; that ratio is the
+acceptance test, and until it passes, no phase number from any of this
+should be quoted.
+
+**Three gauges, three failure modes, worth keeping as a set:**
+
+1. **`local +x`** — self-referential. Same assumption on both sides, so
+   it always passed.
+2. **Tip-vertex circular average** — resultant length 0. Averaged a
+   uniform bevel ring, so it always fired.
+3. **Silhouette spectrum** — the right idea, honestly under-confident.
+   Says "I don't know" instead of lying, which is the only one of the
+   three that is safe to build on.
+
+### Edge interpolation fixed the sampling — and exposed the real problem
+
+Walking every triangle EDGE across the azimuth bins it spans works
+exactly as intended: **2048 of 2048 bins populated**, up from 699. The
+sparse-signal aliasing is gone.
+
+But the spectrum did not sharpen — it **collapsed**:
+
+| N | amplitude |
+|---|---|
+| 8 | 0.00008 |
+| 32 | 0.00007 |
+| 16 | 0.00004 |
+
+Ratio 1.14, amplitudes ~0.008% of mean radius. With the sampling fixed,
+`R(θ)` came out **essentially CONSTANT** — a circle. There is no tooth
+modulation in the silhouette at all.
+
+**That is not a gauge failure; it is a finding about the object.** A
+toothed wheel's outer radius must swing by roughly a module between tip
+and root — several percent, not eight thousandths of one. A silhouette
+this flat means the max-radius outline is dominated by something
+**circular sitting at or beyond the tooth tips**. Consistent with the
+earlier probe, which found 1224 vertices bunched within 0.5% of max
+radius — that was never a bevel band on the teeth; it reads like a ring.
+
+So one of two things is true, and they are cheap to tell apart:
+
+1. the handle (`spin.userData.gear`) is not the toothed wheel, or carries
+   more than it, or
+2. there is a genuine circular part — a rim, collar or washer — at the
+   tip radius, in which case the mesh the screenshots show cannot be the
+   part this handle points at.
+
+**Next: list every mesh under the handle with its own max radius and
+vertex count.** One call, and it distinguishes the two immediately.
+Measure the toothed mesh ALONE and the spectrum should snap to the true
+tooth count — the ratio is still the acceptance test.
+
+Each attempt has moved the unknown one step outward: the check was
+circular, then the input was sparse, and now the input is clean and the
+OBJECT is wrong. That is progress, but the phase question remains
+unanswered and nothing here should be quoted as a measurement yet.
+
+### RESOLVED — the fourth gauge works, and the chains are solved
+
+The gap gauge (silhouette by outline-edge interpolation → threshold →
+count gaps → circular mean folded into one pitch) passes every self-test
+and closed the loop:
+
+- **51/51 gaps** found on each winding idler, matching
+  `ALARM_WIND_IDLER_TEETH` — the spectrum before it swept N only to 48,
+  below the true count; the constant was one grep away.
+- confidence **0.9997**; centre distance 15.300 = pitch-circle sum 15.300
+- measured the reported defect at **35.8% of a pitch** out of phase,
+  matching the screenshots; after the chain solve the same independent
+  gauge reads **0.00%**, and the teeth visibly interleave.
+
+Three build-time traps are now encoded in the gauge, each found by a
+failed measurement: face-triangulation chords that mask gaps (skip edges
+spanning ≥ half a pitch), stale child `matrixWorld` before first render
+(`updateWorldMatrix(true, true)` — the setting wheel passed with stale
+matrices only because it sits on the centre axis), and a slope-probe bump
+smaller than the gauge's own bin quantisation.
+
+`solveGearChain` refuses to solve on a non-credible reading (gap count ≠
+declared teeth, or weak resultant), loudly — a skipped chain is a boot
+warning, not a silent fallback.
+
+**Remaining sites, still `Math.PI / teeth`:** the power-reserve pair
+(4870–4871) and the alarm branch idler i1b (5696). Same fix shape: name
+the chain, pick the datum, call `solveGearChain`. Also note i1b shares an
+arbor with setting i1, whose phase the solve now moves — if the two are
+meant to be one rigid part, their relative phase is a constraint nobody
+has stated yet.
+
+### The barrel report exposed the real bug: the invariant was the wrong one
+
+Extending the winding chain past idler 2 to the **barrel** and on to the
+**striking pinion** was the easy half — the barrel is not a terminus but
+a wheel with two meshes, and stopping at idler 2 is the same
+"fixed one pair, ignored the next" mistake one link further down.
+
+The hard half is that the mesh condition itself was **wrong**, and the
+barrel report is what surfaced it. Measuring at the built pose gave 0.00%
+while measuring the *rendered* scene gave 13.67% — with a spin ratio of
+exactly −1, which is correct for two 51-tooth wheels. Correct rotation,
+drifting mesh: the condition could not be a property of the mesh.
+
+Let `uP` be where P's tooth pattern sits on the centre line as a fraction
+of its pitch, `uQ` the same for Q from the opposite direction. Meshing
+gears **counter-rotate**: turn P by +θ and Q goes −θ·(NP/NQ), under which
+`uP` decreases by θ/pP while `uQ` **increases** by the same. Therefore
+
+- `uQ − uP` changes continuously as the train runs — not a property of the
+  mesh at all;
+- `uP + uQ` is **invariant**, and the condition is `frac(uP + uQ) = 0.5`.
+
+The solve had been targeting `uQ = uP + 0.5` — the difference. That is
+true at exactly one rotational instant and false everywhere else, which
+is precisely the reported symptom: right at rest, tooth-on-tooth in the
+running sim. Every "verified 0.00%" before this measured the built pose
+only, so the wrong invariant was never exercised.
+
+**The test that separates right from lucky** is invariance: measure at
+the build pose, as rendered, and at an arbitrary third pose, and require
+agreement. Now **0.01% at all three** (spin ±7.938 and ±1.234), gap
+counts 51/51, boot silent, all five links credible.
+
+A build-pose-only check could never have caught this — it is a check that
+searches for less than the thing it verifies, arrived at from a new
+direction: not a too-small search *range* this time, but a single sample
+of a quantity that only reveals itself in motion.
