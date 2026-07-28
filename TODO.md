@@ -887,3 +887,48 @@ number this function returns.
 **Boot is no longer silent on this branch**, deliberately: the warnings
 are an accurate report of a real defect. They must be resolved, not
 silenced, before anything here merges.
+
+### The diagnostic ran — the instrument returns NOISE, and the percentages meant nothing
+
+Probing idler 1 of the winding train, sweeping the assumed tooth count:
+
+| N | tip verts | total verts | resultant length | phase° |
+|---|---|---|---|---|
+| 12 | 1224 | 11304 | **0** | 1.442 |
+| 14 | 1224 | 11304 | **0** | −11.415 |
+| 15 | 1224 | 11304 | **0** | −10.558 |
+| 16 | 1224 | 11304 | **0** | −9.808 |
+| 18 | 1224 | 11304 | **0** | 1.442 |
+| 20 | 1224 | 11304 | **0** | 1.442 |
+
+**The resultant vector is zero at every tooth count.** A circular average
+whose resultant has no length has no direction: `measuredToothPhase`
+returns pure noise, which is why `phase_deg` skitters between −11.4° and
++1.4° depending on a parameter that should barely matter.
+
+The cause is exactly as predicted, and the vertex COUNT shows it: 1224 of
+11304 vertices sit within 0.5% of max radius — about 11% of the whole
+wheel. Tooth tips of a ~16-tooth gear should be a hundred or so. That
+band is a continuous bevel ring, not the tips, and a uniform ring
+averages to nothing.
+
+**So the percentages in the previous entry — 29.6%, 34.7%, 35.1% — are
+NOT evidence of misalignment. They are readings from a broken gauge, and
+should not be quoted.** What still stands is the screenshots, which is
+observation rather than instrumentation, and the code fact that
+`rotation.z = Math.PI / teeth` cannot express a mesh relationship.
+
+What the previous entry got right is narrower than it claimed: the
+`local +x` reader was self-referential and could never fail. Replacing it
+with a broken gauge did not fix that; it swapped a check that always
+passes for one that always fires.
+
+**Next, and do this before anything else here:** find the real tip
+vertices. The tip land is `tipFrac = 0.18` of a pitch either side of
+tooth centre, at `tipR = pitchR + module * 0.95`, with the bevel taken
+off the FACE — so tips must be selected by radius AND by z (the flat
+face, not the bevel chamfer), or better, taken from
+`gearOutlineShape`'s own parameters rather than rediscovered from a vertex
+soup. A working gauge must show `resultantLen` near 1 for the true tooth
+count and near 0 for wrong ones — that ratio is itself the self-test, and
+it is the thing to build first.
