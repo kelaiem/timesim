@@ -5358,6 +5358,7 @@ alarmFollowerSpring.rotation.z = 1.9;
 // always implied): ARMED it turns the tube; DISARMED the tube follows the
 // heart underneath it and slips, so the crown's set position is kept. Retained
 // axially between the dial sheet (−7 world) and the carrier flange.
+let alarmSetWheelMesh = null;   // TODO 15
 const alarmSetWheelGroup = new THREE.Group();
 dialFace.add(alarmSetWheelGroup);
 registerLabel('Alarm setting wheel', alarmSetWheelGroup);
@@ -5368,6 +5369,7 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
   const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
   wheel.position.z = -(0.05 + ALARM_SET_T / 2); // band −0.05..−0.23 (dialFace local; ALARM_SET_Z is this plane in world)
+  alarmSetWheelMesh = wheel;   // TODO 15: the chain solve's datum
   alarmSetWheelGroup.add(wheel);
   // §34 first slice: the INDEX WEDGE — a chamfered blued mark proud of the
   // wheel's dial-side face, the readable half of the coupling. Proud 0.03
@@ -5480,52 +5482,73 @@ const ALARM_SET_I2 = (() => {
   const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
   if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
 }
-// --- TODO 15 — MESH PHASE IS NOT FREE ---------------------------------------
-// Reported by eye: the two winding idlers interlock tooth-on-tooth instead of
-// tooth-into-gap. They did, and the cause was in plain sight — BOTH idlers got
-// `rotation.z = Math.PI / teeth`, half of their own angular pitch, with no
-// reference to the line of centres between them. Half a pitch from a wheel's
-// own local zero says nothing about where its teeth fall relative to its
-// NEIGHBOUR; the two are only anti-phase by luck, and here they were not.
+// --- TODO 15 — MESH PHASE IS NOT FREE, AND IS SOLVED AS A CHAIN ------------
 //
-// A gear's phase is not a free parameter. `gearOutlineShape` puts a tooth
-// CENTRE at local angle 0, so where P's teeth land on the centre line is
-// fixed by P's own phase and tooth count — and Q must then present a GAP
-// exactly there. That is one equation, and it determines Q.
+// Reported by eye, twice: the winding idlers interlocked tooth-on-tooth, and
+// then so did the setting wheel. The cause was in plain sight — every wheel in
+// the dogleg got `rotation.z = Math.PI / teeth`, half of its OWN angular
+// pitch, with no reference to the line of centres to its neighbour. Half a
+// pitch from a wheel's local zero says nothing about where its teeth fall
+// relative to the wheel it meshes; they are anti-phase only by luck.
 //
-// The battery cannot see this and never could: two gears meshing out of phase
-// sweep the same volumes as two meshing correctly, so `sweptOverlap` is
-// equally happy either way. This is the fourth kinematic lie found by eye
-// (after the pawl driving backwards, the saw cut the wrong way, and the
-// follower decoupled from its cam), which is the argument for the assert
+// A gear's phase is NOT a free parameter, and that is why pairs cannot be
+// fixed independently: i1 meshes both the setting wheel and i2, so it cannot
+// carry two chosen phases. The train is solved as a CHAIN from one datum —
+// setting wheel → i1 → i2 — each wheel's phase determined by its mesh with the
+// one before, which is what a real train does when you drop the wheels in.
+//
+// MEASURED, NOT ASSUMED. The setting wheel is a `dialFace` child and the
+// idlers are `movement` children — different frames — and dialFace is
+// Y-FLIPPED, which MIRRORS the gear and reverses the direction its tooth
+// pattern advances. Reasoning about that sign by hand is how this gets a fix
+// that looks derived and is still half a pitch out. So instead every wheel's
+// tooth direction is read from its own WORLD MATRIX after it is built, and the
+// sign of its response to `rotation.z` is measured by bumping it. Mirroring,
+// frame and flip all come out in the wash.
+//
+// The battery cannot see any of this and never could: two gears meshing out of
+// phase sweep exactly the same volumes as two meshing correctly. This is the
+// fourth kinematic lie caught by eye, which is the argument for the asserts
 // below rather than for trusting a clean run.
 const _frac = (x) => x - Math.floor(x);
-// Where P's tooth pattern sits on the P→Q centre line, as a fraction of a
-// pitch; Q's phase is then whatever puts a gap opposite it.
-const gearMeshPhase = (p, phiP, NP, q, NQ) => {
-  const psi = Math.atan2(q.y - p.y, q.x - p.x);
-  const tP = _frac(((psi - phiP) * NP) / (Math.PI * 2));
-  return psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / NQ);
+const _gearAxis = new THREE.Vector3(), _gearOrig = new THREE.Vector3();
+// World azimuth of a tooth CENTRE (gearOutlineShape puts one at local angle 0).
+const worldToothPhase = (mesh) => {
+  mesh.updateWorldMatrix(true, false);
+  _gearOrig.set(0, 0, 0).applyMatrix4(mesh.matrixWorld);
+  _gearAxis.set(1, 0, 0).applyMatrix4(mesh.matrixWorld);
+  return Math.atan2(_gearAxis.y - _gearOrig.y, _gearAxis.x - _gearOrig.x);
 };
-// I1 keeps the old value as the DATUM — it is the wheel whose other mesh
-// (setting wheel → I1) this change does not touch, so moving it would trade
-// one unverified mesh for another. I2 is now solved against it.
-const ALARM_SET_I1_PHASE = Math.PI / ALARM_SET_I1_TEETH;
-const ALARM_SET_I2_PHASE = gearMeshPhase(
-  ALARM_SET_I1, ALARM_SET_I1_PHASE, ALARM_SET_I1_TEETH,
-  ALARM_SET_I2, ALARM_SET_I2_TEETH);
-{
-  // The tripwire. Checks the thing the eye caught, in the terms the eye caught
-  // it: at the line of centres, one wheel's tooth must sit against the other's
-  // gap — half a pitch apart, not zero.
-  const psi = Math.atan2(ALARM_SET_I2.y - ALARM_SET_I1.y, ALARM_SET_I2.x - ALARM_SET_I1.x);
-  const a = _frac(((psi - ALARM_SET_I1_PHASE) * ALARM_SET_I1_TEETH) / (Math.PI * 2));
-  const b = _frac(((psi + Math.PI - ALARM_SET_I2_PHASE) * ALARM_SET_I2_TEETH) / (Math.PI * 2));
-  const off = Math.min(_frac(b - a - 0.5), 1 - _frac(b - a - 0.5));
-  if (off > 1e-6)
-    console.warn(`TODO 15: the alarm winding idlers sit ${(off * 100).toFixed(1)}% of a pitch `
-      + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
-}
+const worldCentre = (mesh) => {
+  mesh.updateWorldMatrix(true, false);
+  _gearOrig.set(0, 0, 0).applyMatrix4(mesh.matrixWorld);
+  return { x: _gearOrig.x, y: _gearOrig.y };
+};
+// Where Q's tooth centre must point so that a GAP of Q faces a TOOTH of P
+// across the line of centres.
+const meshPhaseTarget = (pC, pPhase, pN, qC, qN) => {
+  const psi = Math.atan2(qC.y - pC.y, qC.x - pC.x);
+  const tP = _frac(((psi - pPhase) * pN) / (Math.PI * 2));
+  return psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / qN);
+};
+// Turn Q until its measured world tooth phase hits the target, to the nearest
+// equivalent tooth. The response of `rotation.z` is MEASURED, not assumed:
+// under a mirroring parent a positive local turn moves the teeth the other
+// way, and that sign is exactly what the dialFace flip changes.
+const alignGear = (mesh, target, N) => {
+  const pitch = (Math.PI * 2) / N;
+  const before = mesh.rotation.z;
+  const cur = worldToothPhase(mesh);
+  mesh.rotation.z = before + 1e-3;
+  let d = worldToothPhase(mesh) - cur;
+  mesh.rotation.z = before;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  const slope = Math.sign(d) || 1;
+  let need = target - cur;
+  need -= Math.round(need / pitch) * pitch;      // nearest tooth, not a whole turn
+  mesh.rotation.z = before + need / slope;
+};
 const alarmSetI1Spin = new THREE.Group();
 const alarmSetI2Spin = new THREE.Group();
 {
@@ -5540,9 +5563,52 @@ const alarmSetI2Spin = new THREE.Group();
     stud.position.set(pos.x, pos.y, (-2 + ALARM_SET_Z + ALARM_SET_T / 2) / 2);
     alarmIdlerGroup.add(stud);
   };
-  mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, ALARM_SET_I1_PHASE);
-  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, ALARM_SET_I2_PHASE);
+  mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, 0);
+  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, 0);
 }
+// THE CHAIN SOLVE. Setting wheel is the datum (it carries the alarm's own
+// index and must not move); i1 is solved against it, i2 against i1.
+// An IIFE, not a bare block: the missing-handle guard needs to bail out,
+// and `return` at module top level is a syntax error.
+(() => {
+  // makeGear returns a GROUP (rim mesh + optional hub mesh), not a mesh — the
+  // first version of this looked for `isMesh` and found nothing, crashing the
+  // whole build before `__clock` existed. The gear's own transform is what
+  // carries the phase, so the group IS the right handle.
+  const gearOf = (spin) => spin.children.find((o) => o.isGroup || o.isMesh);
+  const chain = [
+    { mesh: alarmSetWheelMesh, teeth: ALARM_SET_WHEEL_TEETH, name: 'setting wheel' },
+    { mesh: gearOf(alarmSetI1Spin), teeth: ALARM_SET_I1_TEETH, name: 'idler 1' },
+    { mesh: gearOf(alarmSetI2Spin), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
+  ];
+  for (const g of chain) {
+    if (!g.mesh) { console.warn(`TODO 15: no gear handle for the ${g.name} — chain solve skipped`); return; }
+    g.c = worldCentre(g.mesh);
+  }
+  for (let i = 1; i < chain.length; i++) {
+    const P = chain[i - 1], Q = chain[i];
+    alignGear(Q.mesh, meshPhaseTarget(P.c, worldToothPhase(P.mesh), P.teeth, Q.c, Q.teeth), Q.teeth);
+  }
+  // THE TRIPWIRE, in the terms the eye caught it: at each line of centres one
+  // wheel's tooth must sit against the other's GAP — half a pitch apart, not
+  // zero. Also checks the pitch circles actually reach each other, since a
+  // perfectly phased pair that does not touch is not a mesh either.
+  for (let i = 1; i < chain.length; i++) {
+    const P = chain[i - 1], Q = chain[i];
+    const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
+    const a = _frac(((psi - worldToothPhase(P.mesh)) * P.teeth) / (Math.PI * 2));
+    const b = _frac(((psi + Math.PI - worldToothPhase(Q.mesh)) * Q.teeth) / (Math.PI * 2));
+    const off = Math.min(_frac(b - a - 0.5), 1 - _frac(b - a - 0.5));
+    if (off > 1e-6)
+      console.warn(`TODO 15: ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch off `
+        + `anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
+    const d = Math.hypot(Q.c.x - P.c.x, Q.c.y - P.c.y);
+    const want = ALARM_SET_MODULE * (P.teeth + Q.teeth) / 2;
+    if (Math.abs(d - want) > 0.02)
+      console.warn(`TODO 15: ${P.name} ⇄ ${Q.name} centre distance ${d.toFixed(3)} is not the `
+        + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
+  }
+})();
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
 // A notched disc friction-riding the HOUR TUBE in the §29 disc band: driven

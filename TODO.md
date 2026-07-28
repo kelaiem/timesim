@@ -778,6 +778,18 @@ I2 → arbor pinion — since a gear's phase is determined by its mesh with
 the previous wheel, not chosen. Fixing pairs independently cannot work: I1
 cannot satisfy two meshes with two freely-chosen phases.
 
+**The chain solve is now written** (same branch). Setting wheel is the
+datum; i1 is solved against it, i2 against i1. Every wheel's tooth
+direction is READ from its own world matrix after it is built, and the
+sign of its response to `rotation.z` is measured by bumping it — so the
+dialFace frame, the Y-flip and the mirroring all come out in the wash
+instead of being reasoned about by hand. Two tripwires per mesh:
+anti-phase, and centre distance against the pitch-circle sum.
+
+Both tripwires are SILENT, and the centre-distance one is independent of
+the phase solve — it confirms the pairs genuinely mesh, which the phase
+result would be meaningless without.
+
 **Verification is the other open half.** The tripwire checks the formula
 against its own terms, which is not independent. An attempt to measure the
 built geometry failed twice because it could not SELECT the meshing pair —
@@ -786,3 +798,14 @@ instrument for this has to be able to name the two wheels before it can
 measure them, and that naming gap should be closed first. The battery
 cannot substitute: gears meshing out of phase sweep the same volumes as
 gears meshing correctly.
+
+The naming gap has a CAUSE, now known: `makeGear` returns a **Group**
+(rim mesh plus optional hub mesh), not a mesh. Both the first chain-solve
+attempt and both measurement attempts looked for `isMesh` and found
+nothing or found the wrong thing — the solve crashed the build outright,
+and the measurements silently compared the wrong pair of wheels and
+produced confident nonsense (a tip-circle gap of −9.05 for a meshing
+pair). A per-gear handle that returns exactly one geometry per wheel is
+the prerequisite for any real instrument here; a vertex-level pass still
+double-counts, because more than one extruded mesh sits under a single
+gear.
