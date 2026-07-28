@@ -9003,7 +9003,21 @@ function selectionMeasureBox() {
   return _selBox.isEmpty() ? null : _selBox;
 }
 function updateMeasureLeaders() {
-  if (!measureLeaders || !measureGroup || !measureGroup.visible) return;
+  if (!measureLeaders) return;
+  // THE LEADERS GO WHEN THE SCALE GOES. This was a bare early return, which
+  // left the last frame's segments standing: the scale hid, the stats line
+  // hid, the diagram hid, and four dimension lines stayed on screen pointing
+  // at a ruler that was no longer there. setAxes(false) even routes through
+  // here — it calls rebuildMeasureLeaders() precisely to clear them — so the
+  // one path that was meant to tidy up was the one that returned first.
+  // A leader that outlives its scale is not leftover geometry, it is a
+  // measurement with nothing to measure against.
+  if (!measureGroup || !measureGroup.visible) {
+    measureLeaders.geometry.setDrawRange(0, 0);
+    measureLeaders.visible = false;
+    return;
+  }
+  measureLeaders.visible = true;
   const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
   const X = measureGroup.position.x, yFoot = -Math.ceil(MM(R)) / UNIT_MM;
   const pos = measureLeaders.geometry.getAttribute('position');
