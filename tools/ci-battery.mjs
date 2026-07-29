@@ -11,7 +11,9 @@
 //   boot         __clock.bootWarns empty (standing rule 6 — boot is silent)
 //   support      0 failures
 //   graph        every violation list empty (declared `todo` edges allowed)
-//   penetration  every budget row OK
+//   penetration  every budget row OK or waived (waived rows reported as debt)
+//   alarmHandoffs every declared hand-off of the §35 arming run within ±tol
+//                of touch at both parities, or waived citing its TODO item
 //   stockFloor   0 degenerate AND 0 unwaived (waived rows reported as debt)
 //   inspection   includeExcluded: true, 0 FORBIDDEN pairs
 //   clearances   0 violations
@@ -66,8 +68,13 @@ const BATTERY = [
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
   { name: 'penetration', opts: {},
-    gate: 'every budget row OK',
-    fails: (r) => r.filter((row) => row.status !== 'OK') },
+    gate: 'every budget row OK or waived (waived rows reported as debt)',
+    fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
+    note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
+  { name: 'alarmHandoffs', opts: {},
+    gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
+    fails: (r) => r.unwaived,
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'stockFloor', opts: {},
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],

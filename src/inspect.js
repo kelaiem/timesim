@@ -1318,6 +1318,14 @@ function mtvDepth(bvh, wheelMatrixWorld, meshB) {
   return best; // Infinity if no candidate direction cleared it within the cap
 }
 
+// A working contact's tolerance, shared by the selector-family penetration
+// budgets below and the alarmHandoffs check that owns the gap side: the
+// tessellation-sag scale the finish already accepts as invisible
+// (geometry.js RADIAL_SEGS: silhouette sagitta ≈ 0.03 at the largest radii).
+// A truthfully modelled contact can miss exact touch by tri-tri slack of
+// that order, and no more.
+const HANDOFF_TRACK_TOL = 0.03;
+
 const PENETRATION_BUDGETS = [
   {
     pair: ['Escape wheel', 'Pallet fork'],
@@ -1489,8 +1497,14 @@ const PENETRATION_BUDGETS = [
     // §35: the link beak riding the castellations' tops — the §25 D click's
     // treatment for the new reader; swept on the strike axis (the column
     // steps through both parities as the alarm arms and re-arms).
+    // Budget DERIVED (was a bare 0.12 — 63% of the ring's 0.19 travel, wide
+    // enough that touching and buried were the same measurement): a working
+    // ride may interpenetrate by at most the tessellation-sag slack the
+    // finish already treats as invisible, HANDOFF_TRACK_TOL. NOTE this axis
+    // pins alarmOn: 1, so only the armed parity is swept here — the
+    // alarmHandoffs check poses both parities and owns the gap side.
     pair: ['Alarm switch', 'Alarm link'],
-    maxDepth: 0.12,
+    maxDepth: HANDOFF_TRACK_TOL,
     axis: 'alarmStrike',
     nSamples: 150,
     selectA(unit) {
@@ -1506,8 +1520,14 @@ const PENETRATION_BUDGETS = [
   },
   {
     // §35: the centre crank on the ring's drive tab — the run's last contact.
+    // RETARGETED: this row policed the crank against the RING and read a
+    // clean 0 for the life of the budget, because the crank never reaches
+    // the ring — the claimed contact is the drive TAB, where the crank
+    // measures 0.22–0.25 buried at the two parities (alarmHandoffs). An
+    // instrument pointed at the wrong face reports the defect as health.
     pair: ['Alarm link', 'Alarm selector'],
-    maxDepth: 0.12,
+    maxDepth: HANDOFF_TRACK_TOL,
+    waived: 'TODO 20 — the crank is buried 0.22–0.25 in the tab it claims to press; ring z is assigned, not driven',
     axis: 'alarm',
     nSamples: 150,
     selectA(unit) {
@@ -1517,7 +1537,7 @@ const PENETRATION_BUDGETS = [
     },
     selectB(unit) {
       const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmSelRing') out.push(o); });
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmSelTab') out.push(o); });
       return out;
     },
   },
@@ -1525,8 +1545,11 @@ const PENETRATION_BUDGETS = [
     // §34 pass 2b: the rocker's sensing pin on the selector ring's face —
     // the fixed⇄co-rotating interface, riding at every azimuth as the tube
     // turns. Swept on the alarm axis (a full relative revolution).
+    // Budget derived (was 0.12; see the beak row): at 0.12 the pin's
+    // measured 0.062 burial read as health for the life of the budget.
     pair: ['Alarm disc', 'Alarm selector'],
-    maxDepth: 0.12,
+    maxDepth: HANDOFF_TRACK_TOL,
+    waived: 'TODO 19 — the rocker tips about the wrong axis (no rotation.order) and under-travels the ring 0.152 vs 0.19; the pin is buried 0.024–0.062',
     axis: 'alarm',
     nSamples: 150,
     selectA(unit) {
@@ -1632,17 +1655,149 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
         }
       }
     }
+    // §50's convention, extended here: a waived row is accepted debt citing
+    // its TODO item, visible in the report, not a pass. The gate counts only
+    // unwaived overages.
     results.push({
       pair: pairKey(nameA, nameB),
       maxDepth: budget.maxDepth,
       worstDepth: +worst.toFixed(3),
       worstAt: worstF === null ? null : `${budget.axis}=${worstF.toFixed(3)}`,
-      status: worst <= budget.maxDepth ? 'OK' : 'EXCEEDS BUDGET',
+      status: worst <= budget.maxDepth ? 'OK' : budget.waived ? 'WAIVED' : 'EXCEEDS BUDGET',
+      ...(budget.waived ? { waived: budget.waived } : {}),
     });
   }
   window.__penetrationReport = results;
   console.table(results);
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// ALARM HAND-OFF TRACKING — the instrument TODO 5 says is missing, built for
+// the one run that hides in its blind spots.
+//
+// §35 claims the arming run is "an unbroken mechanical run… every hand-off is
+// a contact between two parts". No check ever measured those contacts, for
+// three structural reasons this file already documents separately:
+//   1. The pair sweep enumerates DISTINCT unit pairs, so rod⇄tail and
+//      rod⇄crank — both inside 'Alarm link' — are invisible (TODO 5).
+//   2. The selector-side penetration budgets carried maxDepth 0.12, which is
+//      63% of the ring's whole 0.19 travel: "touching", "0.12 apart" and
+//      "0.12 buried" were indistinguishable to the gate.
+//   3. No axis poses the DISARMED parity — 'alarm' and 'alarmStrike' both pin
+//      alarmOn: 1 — so the beak-on-column state was never swept at all.
+// This check closes all three for the arming run: it poses BOTH parities
+// exactly (setPose, zero-dt), and measures the signed separation of each
+// declared hand-off — exact BVH gap when clear, MTV depth when intersecting.
+//
+// The tolerance is HANDOFF_TRACK_TOL (defined with the penetration budgets,
+// which share it): anything wider is a functional gap; anything deeper is a
+// burial — either way the "contact" is a pose that happens to pass nearby,
+// not a transmission.
+// Both parities of the toggle, posed exactly. tau/crown/tension pins match
+// the fingerprint's rest pose so the run is measured on canonical geometry.
+const ALARM_HANDOFF_POSES = [
+  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0 }],
+  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1 }],
+];
+// The run as §35 states it, one row per claimed hand-off, in drive order.
+// A `missing` row is a member the claim requires that has no geometry at all
+// — reported, never silently skipped. A `waived` row is §50's convention:
+// accepted debt citing its TODO item, visible in the report, not a pass.
+const ALARM_HANDOFFS = [
+  {
+    label: 'pusher pawl → column wheel',
+    missing: 'no pawl exists between alarmPusherCap and the column wheel: '
+      + 'setAlarm() writes alarmOn and bumps alarmColSteps to match (§25 D '
+      + 'parity), so the flag drives the wheel, not the pusher',
+    waived: 'TODO 20 — the arming run is posed from its output, not driven from its input',
+  },
+  {
+    label: 'column relief ⇄ beak nose',
+    unitA: 'Alarm switch', meshA: 'alarmColWheel',
+    unitB: 'Alarm link', meshB: 'alarmLinkBeak',
+    waived: 'TODO 20 — the contact never closes: 0.02 clear on a column (disarmed), 0.16 clear over a gap (armed); the nose’s 0.005 dip never reaches the 0.55 relief it claims to ride',
+  },
+  {
+    label: 'beak tail ⇄ rod top',
+    unitA: 'Alarm link', meshA: 'alarmLinkBeakTail',
+    unitB: 'Alarm link', meshB: 'alarmLinkRod',
+    waived: 'TODO 20 — the tick lifts the rod by a stale 0.25 literal, not the derived ALARM_LINK_ROD_FOOT; the rod stands inside the tail bar',
+  },
+  {
+    label: 'rod foot ⇄ rim crank',
+    unitA: 'Alarm link', meshA: 'alarmLinkRod',
+    unitB: 'Alarm link', meshB: 'alarmLinkCrankRim',
+    waived: 'TODO 9 — the residual is carried at the rest end on purpose; 0.07/0.039 gaps, the hand-off never touches at either extreme',
+  },
+  {
+    label: 'centre crank ⇄ drive tab',
+    unitA: 'Alarm link', meshA: 'alarmLinkCrankCentre',
+    unitB: 'Alarm selector', meshB: 'alarmSelTab',
+    waived: 'TODO 20 — buried 0.22 (disarmed) to 0.25 (armed) in the tab: the ring z is assigned from alarmSelShownT, the crank radius appears in neither law, and the two poses cross rather than track (TODO 9’s thread, TODO 16’s slot)',
+  },
+  {
+    label: 'ring face ⇄ sensing pin',
+    unitA: 'Alarm selector', meshA: 'alarmSelRing',
+    unitB: 'Alarm disc', meshB: 'alarmSelPin',
+    waived: 'TODO 19 — the rocker never sets rotation.order, tips about the wrong axis, and travels 0.152 against the ring’s 0.19; buried at both ends',
+  },
+];
+
+export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALARM_HANDOFF_POSES, handoffs = ALARM_HANDOFFS } = {}) {
+  const units = collectUnits(clock, { includeExcluded: true });
+  const meshesIn = (unitName, meshName) => {
+    const u = units.find((x) => x.name === unitName);
+    if (!u) return [];
+    const out = [];
+    u.obj.traverse((o) => { if (o.isMesh && o.name === meshName) out.push(o); });
+    return out;
+  };
+  const rows = [];
+  for (const h of handoffs) {
+    if (h.missing) {
+      rows.push({ label: h.label, status: h.waived ? 'MISSING (waived)' : 'MISSING', note: h.missing, waived: h.waived || null });
+      continue;
+    }
+    const mA = meshesIn(h.unitA, h.meshA);
+    const mB = meshesIn(h.unitB, h.meshB);
+    if (!mA.length || !mB.length) {
+      rows.push({ label: h.label, status: 'ERROR', error: `mesh not found: ${!mA.length ? `${h.unitA}/${h.meshA}` : `${h.unitB}/${h.meshB}`}` });
+      continue;
+    }
+    const row = { label: h.label, tol, waived: h.waived || null };
+    let worst = 0;
+    for (const [poseName, pose] of poses) {
+      clock.setPose(pose);
+      clock.scene.updateMatrixWorld(true);
+      let gap = Infinity, depth = 0;
+      for (const a of mA) {
+        for (const b of mB) {
+          if (meshesIntersect(a, b)) {
+            gap = 0;
+            const d = mtvDepth(bvhFor(a), a.matrixWorld, b);
+            if (isFinite(d) && d > depth) depth = d;
+          } else if (gap > 0) {
+            const d = meshClearance(a, b, gap);
+            if (d < gap) gap = d;
+          }
+        }
+      }
+      // One signed number per pose: + is a gap, − is a burial, 0 is touch.
+      const sep = depth > 0 ? -depth : gap;
+      row[poseName] = +sep.toFixed(4);
+      worst = Math.max(worst, Math.abs(sep));
+    }
+    row.status = worst <= tol ? 'OK' : h.waived ? 'WAIVED' : 'FAIL';
+    rows.push(row);
+  }
+  const unwaived = rows.filter((r) => r.status === 'FAIL' || r.status === 'MISSING' || r.status === 'ERROR');
+  const waivedCount = rows.filter((r) => r.status === 'WAIVED' || r.status === 'MISSING (waived)').length;
+  return {
+    ok: unwaived.length === 0,
+    gate: 'GATING: every hand-off within ±tol of touch at BOTH parities, or waived citing its TODO item; a waived row is accepted debt, visible above, not a pass',
+    tol, rows, waivedCount, unwaived, unwaivedCount: unwaived.length,
+  };
 }
 
 export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includeExcluded = false } = {}) {
@@ -2913,6 +3068,7 @@ const CHECKS = {
   support: (clock, opts) => checkSupportGeometry(clock, opts),   // sync, still fine
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
+  alarmHandoffs: (clock, opts) => checkAlarmHandoffs(clock, opts),
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
