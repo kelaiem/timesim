@@ -1799,6 +1799,23 @@ session-independent · support 0 · graph clean (todo 2: §9's debt + the
 §35 run) · clearances 0 · inspection {includeExcluded} 0 FORBIDDEN ·
 budgets: pin-B⇄face-cam and sensing-pin⇄ring swept on the alarm axis.
 
+### §34 postscript — the sensing pin does not ride the face it reads
+
+Measured against the live build (2026-07-29): the pin is buried in the
+ring 0.024 disarmed and 0.062 armed — it passes through the face, with
+the burial changing by state. Two causes, both in the tick's one-line
+rocker law: the rocker group never sets `rotation.order`, so its tip
+axis is not the tangential axis this section specifies (the exact trap
+§54's postscript later fixed for the beak arm), and the `0.12`
+amplitude is a bare literal that moves the pin 0.152 against the
+ring's 0.19 — with a sign that is right only because of the
+Euler-order bug it was fitted around. The sensing-pin⇄ring budget that
+declared this contact healthy allowed 0.12 of penetration — 63% of the
+ring's travel — and has been tightened to the tessellation tolerance
+(0.03), with the overage carried as waived debt. TODO 19 owns the fix;
+the *principle* (axial contact at every azimuth) stands, the built
+registration does not.
+
 ## §35 — The unbroken link: pusher to arming, as one mechanical chain
 
 **The debt.** §34 armed and disarmed with real geometry, but the
@@ -1900,6 +1917,37 @@ alarmStrike, crank⇄ring on alarm) · inspection {includeExcluded}
 0 intersections over 720 spin steps (was 172 of 720 at the first
 site); ring slide and rod throw both 0.19 across the toggle; the
 coupling demo steps the column 30°/press with profLink flipping 0/1.
+
+### §35 postscript — "every hand-off is a contact" did not survive measurement
+
+An adversarial audit of this section's central claim, verified against
+the live build (2026-07-29), found it false as implemented — not by one
+defect but as the run's architecture. Every member's pose in `tick()` is
+its own closed-form function of the one scalar `alarmSelShownT`; no
+member reads the transform of the member that claims to drive it. "The
+chain is one fact end to end" (above) is true only in the sense that
+condemns it: one *number*, fanned out to five independent animations.
+The head is reversed too — `setAlarm()` writes the flag and bumps
+`alarmColSteps` to match, so there is no pawl and the pusher indexes
+nothing.
+
+Signed separations at the two parities (the `alarmHandoffs` check,
+which now carries these as waived debt): column⇄nose **+0.02/+0.16**
+(the nose's derived dip is 0.005 of the 0.55 relief); tail⇄rod
+**−0.22 both** (the tick lifts the rod by a stale `0.25` literal, not
+the derived `ALARM_LINK_ROD_FOOT`); rod⇄crank **+0.07/+0.06**
+(TODO 9); crank⇄tab **−0.22/−0.25**; ring⇄pin **−0.02/−0.06**
+(TODO 19). A working contact should sit within ±0.03.
+
+Why every battery line above was green while no hand-off closed: the
+intra-unit contacts are invisible to the pair sweep (TODO 5), the
+crank budget policed the *ring* — a mesh the crank never reaches —
+instead of the tab it presses, and the 0.12 budgets were 63% of the
+whole 0.19 travel, wide enough that touching and buried read the same.
+The instruments, not just the geometry, had to be fixed first; TODO 20
+holds the full account and the path out (an axial face cam on the
+column wheel — §34's own heart-B principle — in place of the six-member
+run).
 
 ## §10 level 1 — Grouped explode: the selector speaks in assemblies
 

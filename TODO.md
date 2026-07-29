@@ -1502,3 +1502,98 @@ two.
 Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
 restored. The **beak tail** fix and the **inverted lever** fix stand — both
 movement-side, both verified, neither implicated.
+## 19. The selector's sensing pin never touches the ring it reads
+
+The §34 design hinges on one interface: the rocker's ruby pin riding the
+selector ring's face — "the one contact a fixed member can make on a
+co-rotating one at every azimuth". Measured (BVH signed separation, both
+parities, virgin-boot geometry): the pin is **buried 0.024 in the ring
+disarmed and 0.062 armed**. It does not ride the face; it passes through
+it, and the burial *changes* with state, so it is not even a constant
+registration error.
+
+Two causes, both in the tick's rocker law
+(`alarmRocker.rotation.y = -0.12 * (alarmSelShownT * 2 - 1)`):
+
+- **The rocker never sets `rotation.order`.** Its group carries
+  `rotation.z = ALARM_ROCKER_AZ` (−155°), so the default `'XYZ'` order
+  makes the tick's `rotation.y` tip it about the tube-frame Y axis, not
+  the tangential axis the §34 design comment specifies. This is the §54
+  postscript's Euler-order trap, fixed for the beak arm
+  (`beakArm.rotation.order = 'ZYX'`, `main.js`) and unfixed here, twelve
+  hundred lines away.
+- **The amplitude `0.12` is a bare literal** (rule 1 failure). Worked
+  through the actual frames, the pin's z-travel over the full toggle is
+  **0.152 against the ring's 0.19** — 20% short, so the pin cannot stay
+  on the face at both ends no matter where it starts. And the sign is
+  right only by accident: `cos(−155°)` flips the throw, so correcting
+  the Euler order *alone* sends the pin **up** while the ring goes down
+  (separating by 0.358). The coefficient was fitted to the render with
+  the bug in place.
+
+The fix must therefore do both at once: set the pivot axis honestly
+(`'ZYX'`, per the §54 precedent) and derive the amplitude from the
+geometry it serves — pin arm reach and ring travel — with the constraint
+in the comment. Until then the row is **waived, not passed**: the
+`alarmHandoffs` check and the tightened `Alarm disc ⇄ Alarm selector`
+penetration budget (was 0.12, now `HANDOFF_TRACK_TOL`) both carry this
+item as accepted debt.
+
+## 20. The §35 arming run is posed from its output, not driven from its input
+
+§35's claim — "an unbroken mechanical run… every hand-off is a contact
+between two parts" — is false as implemented, and not by one defect but
+as the run's *architecture*. Every member's pose in `tick()` is its own
+closed-form function of the one scalar `alarmSelShownT`
+(`main.js`, "the chain's members wear the same derived state"): the rod
+never reads the beak, the shaft never reads the rod, the ring never
+reads the crank. The causality is also reversed at the head:
+`setAlarm()` writes `alarmOn` and bumps `alarmColSteps` to keep parity,
+so the flag drives the column wheel, not the pusher — there is no pawl
+geometry at all.
+
+Measured at both parities (the new `alarmHandoffs` check, which carries
+every row below as a waiver citing this item):
+
+| hand-off | disarmed | armed |
+|---|---|---|
+| pusher pawl → column wheel | *(no pawl exists)* | — |
+| column relief ⇄ beak nose | +0.020 | +0.160 |
+| beak tail ⇄ rod top | **−0.220** | **−0.222** |
+| rod foot ⇄ rim crank | +0.071 | +0.063 *(TODO 9)* |
+| centre crank ⇄ drive tab | **−0.220** | **−0.254** |
+| ring face ⇄ sensing pin | −0.024 | −0.062 *(TODO 19)* |
+
+(+ gap, − burial; a working contact should sit within ±0.03, the
+tessellation-sag tolerance.)
+
+The individual lies feeding this, each fixable but none sufficient
+alone:
+
+- **The tick lifts the rod by a stale `0.25` literal** where the build
+  uses the derived `ALARM_LINK_ROD_FOOT` (0.011): the rod rides ~0.12
+  above its built pose from the first tick, permanently, and stands
+  0.22 inside the beak's tail bar — invisible to the sweep because both
+  are `Alarm link` (item 5).
+- **The column wheel's ramp is fictional.** `profileAt` returns a
+  trapezoid with an 18%-of-pitch flank, but the columns are extruded
+  with `bevelEnabled: false` — vertical cliffs. The ramp exists only in
+  the function; nothing was ever cut to it. And the nose's derived dip
+  (0.005) is 1% of the 0.55 relief it claims to ride.
+- **`ALARM_LINK_ROD_TRAVEL = 0.42` is dead** — defined, commented as
+  "the beak's fall into a gap, at the rod", referenced nowhere. The
+  tick moves the rod 0.19.
+- **The crank⇄ring penetration budget policed the wrong mesh** for its
+  whole life: crank vs *ring* read 0 while crank vs *tab* (the claimed
+  contact) measures 0.25 buried. Retargeted and waived under this item.
+
+The honest fix is not six patches. §46/§29 already prove the codebase
+can do real contact laws (the follower iterates its cam; `intersectTail`
+solves a two-circle constraint per frame). The candidate that deletes
+the whole class: drive the ring from an **axial face cam** (heart-B's
+own principle, §34) on or with the column wheel — one contact, the
+travel falling out of the ramp height, no beak/rod/shaft/cranks to
+pose. The 36:1 lever TODO 16 calls "a displacement gain nobody asked
+for" goes with them. Prerequisite before any rebuild: this item's
+instruments stay red until the geometry actually closes the contacts —
+do not widen a tolerance to green them.

@@ -77,9 +77,13 @@ then open http://localhost:8347/ — no build step, no network access needed
   (1.75 turns of wind), striking wheel, hammer and coiled gong. The setting
   disc is read against a 12 h ring on the dial at quarter-hour marks; a
   release feeler drops into the disc's notch at the set time, unlocking the
-  striking train for ≈28 strikes (~12 s) on one wind. Every link from pusher
-  to arming is a modelled part — switch, link, selector, lock, release disc —
-  and the gong's tone is derived from its own arc geometry.
+  striking train for ≈28 strikes (~12 s) on one wind. The arming run's
+  members — switch, link, selector, lock, release disc — are modelled parts,
+  and the gong's tone is derived from its own arc geometry. (Honesty note:
+  the arming run is currently *posed*, not driven — its members share one
+  derived state rather than pressing each other, and the `alarmHandoffs`
+  check measures every claimed contact as open or buried. TODO 19/20 carry
+  the debt and the fix.)
 - **Keyless works**: knurled crown → stem → winding pinion → crown wheel →
   ratchet + click; the winding train turns with true tooth ratios when you
   wind, and the fusee chain migrates as the cone takes it up.
@@ -161,12 +165,15 @@ window.__inspect.show('<pair>', '<axis>');                  // jump camera to a 
 Beyond overlap the module carries `checkMechanicalGraph` (is every part
 grounded and driven), `checkPenetrationBudgets` (how *deep* an intended
 contact goes — being on `EXPECTED_PAIRS` proves contact was intended, not
-that its depth is reasonable; twelve pairs are budgeted, from the ruby stones
-to the alarm linkage), `checkSweptOverlap` against a swept-volume registry,
-`checkStockFloor` and `checkSlenderness` (a part can be thick enough and still
-be a noodle), `checkLowCorridor`, `auditOscillators`, `stockCensus` and
-`fingerprint` for determinism. `focusedCheck(clock, names)` runs the same
-budgets scoped to the parts you just moved, in seconds rather than minutes.
+that its depth is reasonable; budgeted pairs run from the ruby stones to the
+alarm linkage), `checkAlarmHandoffs` (does each claimed contact of the §35
+arming run actually *close* — signed gap-or-burial at both toggle parities,
+with out-of-band rows carried as waived debt citing their TODO items),
+`checkSweptOverlap` against a swept-volume registry, `checkStockFloor` and
+`checkSlenderness` (a part can be thick enough and still be a noodle),
+`checkLowCorridor`, `auditOscillators`, `stockCensus` and `fingerprint` for
+determinism. `focusedCheck(clock, names)` runs the same budgets scoped to the
+parts you just moved, in seconds rather than minutes.
 
 CI runs the whole bar on every PR: `.github/workflows/battery.yml` drives
 `tools/ci-battery.mjs` under headless Chromium, plus a boot-silence check and
@@ -176,6 +183,9 @@ same gate locally (needs `npm ci` in `tools/` and a Playwright Chromium).
 Two things the sweep structurally cannot see, both written up in `TODO.md`
 (items 5 and 6): a part colliding with another part of the *same* unit, and
 any second overlap between a pair that already has one declared contact.
+`checkAlarmHandoffs` closes both blind spots for the one run that was hiding
+in them — its rod⇄tail and rod⇄crank rows are intra-unit contacts the pair
+sweep can never enumerate.
 
 ## A note on the styling
 
