@@ -39,9 +39,9 @@ someone who wasn't in the conversation; match that.
    failures, graph clean, penetration within budgets (waived rows are
    accepted debt citing their TODO item, same convention as stockFloor),
    `alarmHandoffs` **0 unwaived** (every claimed contact of the §35
-   arming run within ±tol of touch at both parities, or waived — TODO
-   19/20 carry the current debt; do not widen a tolerance to green a
-   row), clearances 0 violations, full
+   arming run within ±tol of touch at both parities, or waived citing a
+   TODO — currently every row measures green with zero waivers; do not
+   widen a tolerance to green a row), clearances 0 violations, full
    `inspection { includeExcluded: true }` 0 FORBIDDEN,
    and `sweptOverlap` **0 CONFIRMED** (§36 job B — hull overlaps are
    pose-confirmed before they count; `tight` and `refuted` rows are

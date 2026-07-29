@@ -1661,7 +1661,26 @@ for" goes with them. Prerequisite before any rebuild: this item's
 instruments stay red until the geometry actually closes the contacts —
 do not widen a tolerance to green them.
 
-**Status 2026-07-29 — MOSTLY CLOSED; two contacts remain, filed below.**
+**Status 2026-07-29, later — CLOSED. All six hand-off rows measure green,
+zero waivers.** The second pass built the FORK: the drive tab is two
+plates flanking a groove with side webs, built at the registration solve
+ON the pin's solved engagement (the driven member derived from its
+driver), the lay shaft ends a fixed design retreat short of it, and the
+centre PIN rides the groove at its ±0.01 working clearance — measured
++0.017/+0.010 — driving the ring POSITIVELY BOTH WAYS, which retires
+both TODO 16's transfixion ("the clearance is a slot", now an actual
+slot) and the phantom bias spring. The pawl parks ON the tooth it
+drives (−0.025 bite; it was 0.18 buried). Fingerprint moved
+deliberately again: 4164572423 → 3141354577.
+
+One instrumentation gap remains filed here, not waived anywhere: the
+pawl's index STROKE (press travel 0.7 vs ~0.84 tooth arc at the
+engagement radius — marginal) is a transient the pose-based instrument
+cannot reach. A stroke-posed check (a `alarmPusherT` pose axis) is the
+tool that would close it. Everything below this line is the earlier
+status, kept for the record.
+
+**(superseded) Status 2026-07-29 — MOSTLY CLOSED; two contacts remained, filed below.**
 
 What closed, each measured and its `alarmHandoffs` row unwaived:
 

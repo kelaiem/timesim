@@ -1974,6 +1974,18 @@ numbers. One correction to this postscript's own text: "there is no
 pawl" was an overclaim — the pawl and its ratchet existed; the
 causality didn't.
 
+**Addendum 2 (same day): all six close.** The fork landed — two plates
+flanking a groove with side webs, built at the registration solve ON
+the pin's solved engagement, the shaft ending a fixed retreat short,
+the centre pin riding the groove at its working clearance and driving
+the ring positively both ways (the transfixion and the phantom bias
+spring retire together). The pawl parks on the tooth it drives. Every
+hand-off row measures green with ZERO waivers; the one filed gap is the
+pawl's index stroke, a transient that wants a pose axis of its own
+(TODO 20's closing status). The §35 run — pusher to arming as one
+mechanical chain — is, for the first time, what this section always
+claimed it was.
+
 ## §10 level 1 — Grouped explode: the selector speaks in assemblies
 
 **Shipped in part, on purpose.** §10 was filed as two levels: level 1
