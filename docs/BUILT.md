@@ -4630,3 +4630,93 @@ searched too little, but a check that started somewhere too comfortable.
 
 Reverted to the section CI passes. The beak tail blade and the
 inverted-lever fix stand — movement-side, verified, not implicated.
+
+## §58. Explore mode — free-drag the parts as they ARE
+
+The general case of explode (§7/§10): that layer displaces units along z
+by one shared amount; this one displaces any unit — or a §10 group — by
+its own XYZ vector, by pointer drag, and puts everything back with one
+action. The subject is the SHIPPED watch; only the view of it moves.
+
+### One table, and who reads it
+
+`dragOffsets` is a single name-keyed map of world-space vectors — the
+same string vocabulary `MECH_GRAPH` and the labels couple by. Only
+nonzero offsets live in it, so `size > 0` **is** the "anything displaced"
+test. It is view-only by construction: nothing in `tick()`'s solve,
+`setPose`, or the fingerprint reads it. It is session-scoped and never
+saved — §34 already caught a persisted input that moves units poisoning
+a sweep (the explode amount restored from saved UI state), and a saved
+drag would be that bug with three axes.
+
+Application composes rather than overwrites, which was the §10/§32
+refactor in its minimal honest form. `updateExplode` still owns z
+absolutely (explode's write, unchanged); x/y are touched **only while an
+entry is displaced**, with the rest position captured at first
+displacement and restored on the way out, so an undragged session's
+writes are bit-identical to before this feature existed. Offsets are
+world-space and rotate through the inverse of the parent's world
+orientation at apply time — applied raw, a dial-side drag would mirror
+in x and z under the Y-flipped `dialFace`.
+
+Three owners compose their own offset, exactly as §32's hazard list
+predicted: the reset rod (tick solves its position every frame and adds
+the offset after the solve), the chain (rebuilt by `updateChain`; it
+rides its offset at the object level, which survives every rebuild), and
+the label-only units with no explode entry (a generic capture/restore
+pass). `windSpinner` and `jumperLifter` needed nothing — tick writes
+their LOCAL positions inside groups that are themselves the drag
+handles, so they ride for free.
+
+### Tethers — the mode's signature, and its honesty
+
+While a unit is displaced, a dashed line runs from it to each
+`MECH_GRAPH` drive partner it has been **separated from** — offsets
+differing, not merely present, so a group dragged together stays
+internally silent and only the edges crossing the displacement boundary
+speak. A dragged-apart mesh keeps turning in ratio, which is a lie about
+contact; the tether is what makes it read as "really connected, pulled
+apart for you". The drive list is the declared data, imported from
+`inspect.js` on first enable (a dynamic import — the inspector and its
+BVH dependency stay out of the boot path). Verified: three tethers on a
+displaced fourth wheel, exactly its three drive edges; one tether on the
+escapement group moved as one, exactly the fork→balance edge crossing
+the boundary.
+
+Endpoints are live bounding-box centres, recomputed per frame, so
+tethers follow the drag, the explode lift and the mechanism's own
+motion. Like §49's ruler, the tether object is scene furniture — never
+registered as a unit, structurally invisible to the battery.
+
+### What stays true (measured, not asserted)
+
+- **Fingerprint**: a session with two units dragged hashes identically
+  to a virgin one (3706548518 both ways — and identical to the main
+  checkout's build, which is the proof this feature moved zero
+  geometry). `resetInputs` clears the table first, same as it zeroes
+  explode.
+- **§49 fallback**: with a unit selected and Measure on, 8 selection
+  leaders; drag anything and they fall back to the 4 whole-movement
+  leaders (built constants, immune by construction); clear and the 8
+  return.
+- **Reassembly is exact**: every probed unit returned to its rest
+  position to the fourth decimal, including the three special owners
+  across real ticks.
+- **Boot silent**, and `step()` gained tether and leader updates so the
+  unattended-verification path can see what rAF sees.
+
+### The gestures
+
+Hover affords (grab cursor), drag moves in the camera-parallel plane
+through the grab point — a pointer has two axes, and the third arrives
+by orbiting and dragging again. Shift drags the §10 group. Picking
+resolves the DEEPEST labelled ancestor under the ray, so the front-most
+part wins, as physical occlusion would suggest. The crowns and pusher
+keep first refusal — winding still works with explore on. Leaving the
+mode reassembles the watch: an offset surviving with no mode chrome
+around it would be a silently-displaced movement, and reset is free by
+construction (clear the table; nothing else to lose).
+
+Toggle: **View → Explore**; the row also carries Reassemble.
+`__clock.dragOffsets` and `__clock.setExplore` are exposed for the
+battery and for scripted verification.

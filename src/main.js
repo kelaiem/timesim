@@ -193,6 +193,20 @@ window.addEventListener('resize', () => {
 // derived-with-constraint, consumed unchanged by the assembly below.
 
 const explodeEntries = []; // { obj, baseZ, dir, layer }
+
+// §58 — EXPLORE DRAG OFFSETS. One table, keyed by unit NAME (the same string
+// vocabulary MECH_GRAPH and the labels couple by), each value a view-only XYZ
+// displacement composed on top of whatever explode is doing. VIEW-ONLY is the
+// whole contract: nothing in tick()'s kinematics, setPose, or the fingerprint
+// ever reads this table — a dragged wheel keeps turning at the angle the
+// train solves for its TRUE position. Session-scoped and never saved: §34
+// already caught a persistent input that moves units poisoning a sweep
+// (explode restored from saved UI state), and drag would be the same bug
+// with three axes. Only NONZERO offsets live here — dragOffsets.size is the
+// honest "is anything displaced" test the §49 fallback reads.
+const dragOffsets = new Map(); // name -> THREE.Vector3
+function dragOffsetOf(name) { return dragOffsets.get(name) || null; }
+
 function registerExplode(obj, baseZ, layer, dir = 1) {
   // updateExplode writes position.z = baseZ at rest EVERY FRAME, so a baseZ
   // that disagrees with the constructed position silently teleports the unit
@@ -8107,6 +8121,14 @@ panel.innerHTML = `
         <button id="btn-hud">Off</button>
       </div>
       <div class="row">
+        <span class="label-small">Explore</span>
+        <button id="btn-explore">Off</button>
+      </div>
+      <div class="row label-small" id="explore-reset-row" style="display:none;">
+        <span>Drag parts · ⇧ drags group</span>
+        <button id="btn-explore-reset">Reassemble</button>
+      </div>
+      <div class="row">
         <span class="label-small">Plate X-ray</span>
         <button id="btn-xray">Off</button>
       </div>
@@ -9181,7 +9203,12 @@ function updateMeasureStats() {
     : base;
 }
 function selectionMeasureBox() {
-  if (selectedUnit === 'All' || explodeAmount > 0) return null;
+  // §49's §32 rule, now with §58 in the condition: a ruler that measures a
+  // diagram of the watch is measuring nothing. Explode AND explore drags both
+  // displace geometry render-side, so while either is nonzero the selection
+  // leaders fall back to the whole-movement anchors — built constants,
+  // immune by construction.
+  if (selectedUnit === 'All' || explodeAmount > 0 || dragOffsets.size > 0) return null;
   const group = UNIT_GROUPS.get(selectedUnit);
   const names = group ? group : new Set([selectedUnit]);
   _selBox.makeEmpty();
@@ -9988,6 +10015,225 @@ for (const ev of ['pointerup', 'pointercancel']) {
     if (hudSvg.hasPointerCapture(e.pointerId)) hudSvg.releasePointerCapture(e.pointerId);
   });
 }
+
+// ---------------------------------------------------------------------------
+// §58 — EXPLORE MODE: free-drag the parts as they ARE.
+//
+// The general case of explode (§7/§10): that layer displaces units along z by
+// one shared amount; this one displaces any unit (or §10 group) by its own
+// XYZ vector, by pointer drag. Everything explode established carries over —
+// above all that displacement is RENDER-SIDE. tick() keeps solving the true
+// mechanism, a dragged-away escape wheel keeps beating in exact ratio, and
+// that is a lie about CONTACT that stays honest under three conditions, all
+// enforced here: the kinematics never read the offsets (they live in
+// dragOffsets, which nothing in tick's solve consults), the displacement is
+// VISIBLY a displacement (tethers, below), and §49's ruler falls back to the
+// whole-movement anchors while anything is displaced (selectionMeasureBox).
+//
+// THE DRAG PLANE. A pointer has two axes and a drag needs three; the classic
+// answers are gizmo handles (§33 may yet want them) or the camera-parallel
+// plane through the grab point, which is what a finger on a screen actually
+// means: "move it where I move". Chosen here; the third axis arrives by
+// orbiting and dragging again, which is how a viewer already thinks about
+// depth. The grab point rides the part (raycast hit), so the drag has no
+// lever-arm surprise — the point under the finger stays under the finger.
+//
+// TETHERS are the mode's signature and its honesty: while a unit is
+// displaced, a dashed line runs from it to each MECH_GRAPH drive partner it
+// has been SEPARATED from (offsets differing — a group dragged together
+// stays internally silent, and only the edges crossing the displacement
+// boundary speak). The drive list is declared data imported from inspect.js
+// on first enable; no inference, no second table to rot. Force-source nodes
+// ('mainspring', 'crown', 'plate') are not units and never tether.
+let exploreOn = false;
+let exploreDrive = null;      // MECH_GRAPH.drive, loaded on first enable
+let exploreHoverName = null;
+const exploreRay = new THREE.Raycaster();
+const _exNDC = new THREE.Vector2(), _exHit = new THREE.Vector3();
+const _exPlane = new THREE.Plane(), _exCamDir = new THREE.Vector3();
+const _exA = new THREE.Vector3(), _exB = new THREE.Vector3();
+
+// Screen ray → the unit under the pointer. Walk up from the hit mesh to the
+// nearest ancestor that is an explode entry's object or a labelled object —
+// the DEEPEST such ancestor, so clicking a motion-works wheel picks 'Motion
+// works', not the whole dial group it rides. Returns { name, point }.
+function explorePick(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  _exNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  _exNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  exploreRay.setFromCamera(_exNDC, camera);
+  const hits = exploreRay.intersectObject(movement, true);
+  for (const h of hits) {
+    if (h.object === chainMesh) return { name: 'Chain', point: h.point };
+    for (let o = h.object; o && o !== movement; o = o.parent) {
+      const lbl = labelEntries.find((l) => l.obj === o);
+      if (lbl) return { name: lbl.name, point: h.point };
+      const ent = explodeEntries.find((en) => en.obj === o);
+      if (ent) return { name: explodeEntryName(ent), point: h.point };
+    }
+  }
+  return null;
+}
+
+// The handle set for a grab: the unit itself, or (Shift) every unit of its
+// §10 group — the group displaces congruently, so its internal drive edges
+// hold the same offset and stay tether-silent by the separation test alone.
+function exploreHandleNames(name, wholeGroup) {
+  if (!wholeGroup) return [name];
+  for (const [, members] of UNIT_GROUPS) {
+    if (members.has(name)) return [...members.keys()];
+  }
+  return [name];
+}
+
+let exploreGrab = null; // { names, start (plane hit), base: Map<name, Vector3 at grab> }
+function setExploreHover(name) {
+  if (name === exploreHoverName) return;
+  exploreHoverName = name;
+  renderer.domElement.style.cursor = name ? 'grab' : '';
+}
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!exploreOn) return;
+  if (exploreGrab) {
+    exploreRay.setFromCamera(setExNDC(e), camera);
+    if (!exploreRay.ray.intersectPlane(_exPlane, _exHit)) return;
+    for (const n of exploreGrab.names) {
+      const off = dragOffsets.get(n) || new THREE.Vector3();
+      off.copy(exploreGrab.base.get(n)).add(_exHit).sub(exploreGrab.start);
+      if (off.lengthSq() < 1e-6) dragOffsets.delete(n); // zero offsets leave the table — its size is the "anything displaced" test
+      else dragOffsets.set(n, off);
+    }
+    return;
+  }
+  if (crownDragging || alarmDragging) return;
+  const pick = (!crownHitTest(e) && !alarmCrownHitTest(e) && !alarmColumnHitTest(e)) ? explorePick(e) : null;
+  setExploreHover(pick ? pick.name : null);
+});
+function setExNDC(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  _exNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  _exNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  return _exNDC;
+}
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!exploreOn || crownDragging || alarmDragging) return;
+  // Same first-refusal order as every other canvas gesture: the crowns and
+  // the pusher are CONTROLS and outrank a part-drag, so winding still works
+  // with explore on.
+  if (crownHitTest(e) || alarmCrownHitTest(e) || alarmColumnHitTest(e)) return;
+  const pick = explorePick(e);
+  if (!pick) return;
+  const names = exploreHandleNames(pick.name, e.shiftKey);
+  camera.getWorldDirection(_exCamDir);
+  _exPlane.setFromNormalAndCoplanarPoint(_exCamDir, pick.point); // camera-parallel plane through the grab point
+  exploreGrab = {
+    names,
+    start: pick.point.clone(),
+    base: new Map(names.map((n) => [n, (dragOffsets.get(n) || new THREE.Vector3()).clone()])),
+  };
+  ensureExploreDrive();
+  controls.enabled = false;
+  renderer.domElement.style.cursor = 'grabbing';
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+for (const ev of ['pointerup', 'pointercancel']) {
+  window.addEventListener(ev, (e) => {
+    if (!exploreGrab) return;
+    exploreGrab = null;
+    controls.enabled = true;
+    renderer.domElement.style.cursor = exploreHoverName ? 'grab' : '';
+    if (renderer.domElement.hasPointerCapture(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
+  });
+}
+
+// The drive list, once. A dynamic import so the inspector (and the BVH
+// module it pulls in) stays out of the boot path — rule 6's silence and the
+// boot cost are untouched until the first time someone actually explores.
+function ensureExploreDrive() {
+  if (exploreDrive) return;
+  import('./inspect.js').then((I) => {
+    exploreDrive = I.MECH_GRAPH.drive.filter(([a, b]) =>
+      labelEntries.some((l) => l.name === a) && labelEntries.some((l) => l.name === b));
+  });
+}
+
+// Tether geometry: preallocated segments, endpoints re-anchored per frame.
+// A unit's anchor is the world centre of its bounding box — computed live,
+// so it follows the drag, the explode lift and the mechanism's own motion.
+const EXPLORE_MAX_TETHERS = 24;
+let exploreTethers = null;
+const _exBox = new THREE.Box3();
+function exploreAnchor(name, out) {
+  const hit = labelEntries.find((l) => l.name === name)
+    || explodeEntries.find((en) => explodeEntryName(en) === name);
+  const obj = hit ? (hit.obj || hit) : null;
+  if (!obj || !obj.isObject3D) return null;
+  _exBox.setFromObject(obj);
+  if (!isFinite(_exBox.min.x)) return null;
+  return _exBox.getCenter(out);
+}
+function updateExploreTethers() {
+  if (!exploreTethers) return;
+  let w = 0;
+  const pos = exploreTethers.geometry.getAttribute('position');
+  if (exploreDrive && dragOffsets.size > 0) {
+    const Z = new THREE.Vector3();
+    for (const [a, b] of exploreDrive) {
+      if (w / 2 >= EXPLORE_MAX_TETHERS) break;
+      const offA = dragOffsets.get(a) || Z, offB = dragOffsets.get(b) || Z;
+      if (offA.distanceToSquared(offB) < 1e-6) continue; // moved together (or both home) — not separated
+      if (!exploreAnchor(a, _exA) || !exploreAnchor(b, _exB)) continue;
+      pos.setXYZ(w++, _exA.x, _exA.y, _exA.z);
+      pos.setXYZ(w++, _exB.x, _exB.y, _exB.z);
+    }
+  }
+  exploreTethers.geometry.setDrawRange(0, w);
+  exploreTethers.visible = w > 0;
+  if (w > 0) {
+    pos.needsUpdate = true;
+    exploreTethers.computeLineDistances();
+  }
+}
+function ensureExploreTethers() {
+  if (exploreTethers) return;
+  const gl = new THREE.BufferGeometry();
+  gl.setAttribute('position', new THREE.BufferAttribute(new Float32Array(EXPLORE_MAX_TETHERS * 6), 3));
+  gl.setDrawRange(0, 0);
+  // Dashed: a tether must read as annotation, not as a part — nothing in the
+  // movement is dashed, translucent and unlit. Distinct colour from §49's
+  // leaders (orange) because they answer different questions ("how big" vs
+  // "what drives what").
+  exploreTethers = new THREE.LineSegments(gl, new THREE.LineDashedMaterial({
+    // 1 px lines are all WebGL gives (linewidth is ignored), and the ACES
+    // tone mapping crushes saturated line colours to near-black at that
+    // width (measured: 0x2fb8ff sampled indistinguishable from background).
+    // §49's leaders survive because they are NEAR-WHITE with a hue; same
+    // recipe here — a bright cyan-white, full opacity, and dashes long
+    // enough to read as a line at the default framing.
+    color: 0xaeeaff, dashSize: 2.2, gapSize: 0.8,
+    transparent: true, opacity: 0.95, depthTest: false, depthWrite: false,
+  }));
+  exploreTethers.renderOrder = 996;
+  exploreTethers.frustumCulled = false;
+  scene.add(exploreTethers);
+}
+
+function setExplore(on) {
+  exploreOn = on;
+  const b = document.getElementById('btn-explore');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+  document.getElementById('explore-reset-row').style.display = on ? '' : 'none';
+  if (on) { ensureExploreTethers(); ensureExploreDrive(); }
+  // Leaving the mode reassembles the watch. An offset that survives with no
+  // mode chrome around it would be a silently-displaced movement — the §34
+  // failure as a UI state — and reset is free by construction (§32: clear
+  // the table, nothing else to lose).
+  if (!on) { dragOffsets.clear(); exploreGrab = null; setExploreHover(null); controls.enabled = true; }
+}
+document.getElementById('btn-explore').addEventListener('click', () => setExplore(!exploreOn));
+document.getElementById('btn-explore-reset').addEventListener('click', () => dragOffsets.clear());
 
 // --- POWER FLOW view -------------------------------------------------------
 // Tints the LIVE torque path so the maintaining sandwich's job is visible:
@@ -11341,7 +11587,82 @@ function updateExplode() {
     // A member's null layer means "keep your own registered staging", so an
     // unchoreographed group lifts as its slice of 'All' rather than as a slab.
     const layer = inGroup != null ? inGroup : e.layer; // group staging overrides only while the group is selected
-    e.obj.position.z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * layer * UNIT;
+    const z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * layer * UNIT;
+    // §58 — compose the explore drag on top. The §10/§32 refactor in its
+    // minimal honest form: z stays the absolute write it always was (explode
+    // owns it), and x/y are touched ONLY while this entry is displaced, with
+    // the rest position captured at first displacement and restored on the
+    // way out. Entries at rest keep their bit-identical constructed x/y —
+    // which is what lets the no-drag boot hash to the same fingerprint.
+    const off = dragOffsets.get(explodeEntryName(e));
+    if (off) {
+      if (e.dragBase === undefined) e.dragBase = { x: e.obj.position.x, y: e.obj.position.y };
+      dragWorldToParent(off, e.obj, _dragV);
+      e.obj.position.set(e.dragBase.x + _dragV.x, e.dragBase.y + _dragV.y, z + _dragV.z);
+    } else {
+      if (e.dragBase !== undefined) {
+        e.obj.position.x = e.dragBase.x;
+        e.obj.position.y = e.dragBase.y;
+        e.dragBase = undefined;
+      }
+      e.obj.position.z = z;
+    }
+  }
+  updateLabelDrags();
+}
+// §58 — offsets are WORLD-space vectors (a drag is a screen gesture; the
+// viewer thinks in the frame they see), but position writes are in the
+// parent's LOCAL frame, and the dial side hangs under a Y-flipped group —
+// applied raw, a dial-side drag would mirror in x and z. Rotate through the
+// inverse of the parent's world orientation, at apply time, every time.
+const _dragV = new THREE.Vector3(), _dragQ = new THREE.Quaternion();
+function dragWorldToParent(off, obj, out) {
+  out.copy(off);
+  if (obj.parent) {
+    obj.parent.getWorldQuaternion(_dragQ);
+    out.applyQuaternion(_dragQ.invert());
+  }
+  return out;
+}
+// §58 — the LABEL-ONLY units. Most drag handles are explode entries, written
+// above; a few units exist only as labels (Hack rod, Motion works, …). The
+// generic path: capture the object's rest position at first displacement,
+// write rest + offset while displaced, restore and forget on the way out.
+// Two are excluded because another owner writes their position — 'Reset rod'
+// (tick solves it every frame and composes its own offset there) and 'Chain'
+// (rebuilt by updateChain; its mesh rides its offset wholesale below).
+const labelDragBases = new Map(); // name -> { obj, x, y, z }
+function updateLabelDrags() {
+  // The chain's mesh is baked in movement-frame coordinates and rebuilt on
+  // tension deltas, so it cannot hold a persistent offset in its geometry —
+  // it rides its offset at the OBJECT level, which survives every rebuild
+  // (updateChain reuses the mesh) and costs one vector write. Checked before
+  // the early return so clearing the last offset also clears the chain.
+  if (chainMesh) {
+    const chainOff = dragOffsets.get('Chain');
+    if (chainOff) chainMesh.position.copy(chainOff);
+    else if (chainMesh.position.lengthSq() > 0) chainMesh.position.set(0, 0, 0);
+  }
+  if (dragOffsets.size === 0 && labelDragBases.size === 0) return;
+  for (const [name, base] of labelDragBases) {
+    if (!dragOffsets.has(name)) {
+      base.obj.position.set(base.x, base.y, base.z);
+      labelDragBases.delete(name);
+    }
+  }
+  if (dragOffsets.size === 0) return;
+  const entryNames = new Set(explodeEntries.map(explodeEntryName));
+  for (const [name, off] of dragOffsets) {
+    if (entryNames.has(name) || name === 'Reset rod' || name === 'Chain') continue;
+    let base = labelDragBases.get(name);
+    if (!base) {
+      const hit = labelEntries.find((l) => l.name === name);
+      if (!hit) continue;
+      base = { obj: hit.obj, x: hit.obj.position.x, y: hit.obj.position.y, z: hit.obj.position.z };
+      labelDragBases.set(name, base);
+    }
+    dragWorldToParent(off, base.obj, _dragV);
+    base.obj.position.set(base.x + _dragV.x, base.y + _dragV.y, base.z + _dragV.z);
   }
 }
 
@@ -11641,6 +11962,12 @@ function tick(t) {
     const dx = b.x - postNow.x, dy = b.y - postNow.y;
     resetRod.position.set((postNow.x + b.x) / 2, (postNow.y + b.y) / 2, ROD_PLANE_Z);
     resetRod.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+    // §58 — the rod is the one movement-level part whose POSITION tick owns
+    // (§32's hazard list), so its explore offset is composed here, after the
+    // solve, rather than written absolutely by updateExplode. The solve above
+    // still ran on TRUE geometry; only the mesh is displaced.
+    const rodOff = dragOffsets.get('Reset rod');
+    if (rodOff) resetRod.position.add(rodOff);
   }
 
   // Keyless works — the stem always spins with the crown; the two
@@ -12405,6 +12732,7 @@ function advanceFrame(realDt) {
   controls.update();
   updateLabels();
   hudUpdate();        // §57: the HUD's heads follow the eased stem positions, so they update with the frame
+  updateExploreTethers(); // §58: tether endpoints ride live boxes — drag, explode and the mechanism all move them
   updateScaleRef();   // §21: px/mm changes with every camera move
   updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
@@ -12460,6 +12788,8 @@ window.__clock = {
       if (camTween.t >= 1) camTween = null;
     }
     updateExplode();
+    updateExploreTethers(); // §58: step() is the unattended-verification path — tethers must be inspectable from it, not only from rAF
+    updateMeasureLeaders(); // …and so must §49's leaders: the §58 fallback (drag ⇒ whole-movement anchors) is asserted through step() by the battery
     controls.update();
     updateLabels();
     renderer.render(scene, camera);
@@ -12507,6 +12837,12 @@ window.__clock = {
   // whatever was last saved. Not a pose itself — follow with setPose().
   beginSweepHold() { sweepHold++; },
   endSweepHold() { sweepHold = Math.max(0, sweepHold - 1); },
+  // §58 — the explore drag table, live. Read by the battery's fingerprint
+  // assert (a dragged session must hash identically after resetInputs, and
+  // this is how a test drags without synthesizing pointer events) and by
+  // anyone diagnosing "why is this part not where it was built".
+  dragOffsets,
+  setExplore(on) { setExplore(!!on); },
   resetInputs() {
     crownRotation = 0; lastCrownRotation = 0;
     windPathRot = 0; setPathRot = 0; windAccumTurns = 0;
@@ -12523,6 +12859,13 @@ window.__clock = {
     // it open ran on displaced geometry (a phantom detent⇄chain zero that
     // pristine main clears by 0.64). The battery's canonical state is the
     // ASSEMBLED watch.
+    // §58: explore drags are §34's lesson again with three axes — a user
+    // input that MOVES UNITS. The battery's canonical state is the assembled
+    // watch, so the table is cleared and updateExplode's restore paths put
+    // every entry, label-only part and the chain back bit-exactly. This is
+    // also the fingerprint's immunity to drags: it calls resetInputs first,
+    // so a dragged session hashes the same geometry as a virgin one.
+    dragOffsets.clear(); setExploreHover(null);
     explodeAmount = 0; selectedUnit = 'All'; updateExplode();
     // …and the CHAIN's mesh is a BAKED PATH (the fingerprint's exclusion)
     // that only rebuilds on a tension DELTA — a chain baked around an
