@@ -4828,3 +4828,62 @@ the name as the readout shows it, and reading it RESOLVES any pending
 pick synchronously, because the interactive path throttles to the frame
 and a scripted check must not wait on an rAF that automation throttles to
 ~1 fps.
+## §22. Customisable power reserve and beat rate
+
+Both are knobs now — two URL parameters (`?reserveh=`, `?vph=`) read into
+`globalThis.__WATCH_SPEC` by a pre-module script in `index.html` before
+`layout.js` evaluates, and two reload-tier selects in the Time panel
+(the §23 subdial-size precedent: a knob that re-derives geometry earns a
+reload, not a live write). The identity spec {30 h, 18,000 A/h} is the
+regression gate: it reproduces the shipped movement **bit-exactly**
+(fingerprint 1974757747, equal to the recorded baseline on main).
+
+### Reserve — the cone re-solves
+
+`RELAX_SECONDS`, `RESERVE_BARREL_TURNS`, `FUSEE_WRAP_TURNS`, the groove
+turns and the cone height all derive from `SPEC.reserveHours` — the
+entry's one catch closed: `FUSEE_WRAP_TURNS` was a duplicate literal of
+`RESERVE_BARREL_TURNS` and `grooveTurns: 4` / `FUSEE_H = 2.8` were sized
+by hand for it. Now: wrap = hours/8, grooves = ceil(wrap + 0.25) (one
+spare turn keeping the anchor off the working grooves; = 4 at default),
+height = 0.7·grooves (the shipped snug pitch, unchanged).
+
+**The indicator re-solves with it** (TODO 18, held for every spec): the
+scale's graduation and figures are painted to `SPEC.reserveHours`, and
+the reduction's second-stage wheel is derived — R must be 0.3·h, stage
+one is fixed 4.5, so w2 = 2h/3, an integer because the spec snaps hours
+to multiples of 3 (w2 = 20 at the default, the shipped count). **24 h is
+a clean variant** — wrap 3 fits the same 4-groove cone, so the geometry
+changes are the indicator's own; boot silent. **36 h and up do not
+close at the shipped stratification**: the taller cone outgrows the
+hairspring stack, the plate floor rises off its designed bind, and the
+boot asserts name each consequence (plate floor, maintaining band, at
+48 h the alarm cam). The spec clamp stops at 48 h as a courtesy; the
+asserts are the real gate.
+
+### Beat rate — a menu, not a dial
+
+Rates a re-solved train can actually deliver: 18,000 / 21,600 / 28,800
+A/h. Each row of the rate table carries the fourth-wheel/escape-pinion
+pair that keeps the fourth wheel at exactly 1 rev/min with the escape
+wheel untouched (8/80 → 8/96 → 6/96; escPinion/fourthTeeth = 1800/vph,
+integer pairs only). The third mesh never changes, so minutes and hours
+are untouched by construction; `solveLayout` absorbs the moved
+fourth⇄escape centre distance. A boot assert measures 1 rev/min
+**through the same ratio chain the hands read** — a rate row whose
+counts don't divide out warns at boot, not on the dial.
+
+The faster rates run at the correct beat (6.0 / 8.0 beats/s readouts,
+seconds arithmetic asserted) but **do not close cleanly at the shipped
+layout angles**: the escape wheel steps outward, the balance lands near
+the stem line (keyless side-sign heuristic), and the stop-work reach
+constraint misses. Real per-rate layout tuning — per-rate walk angles
+and a battery run per accepted rate — is §33's validity story and is
+NOT claimed here.
+
+### The verdict is in the panel
+
+A non-default spec that fails its boot asserts shows an amber line under
+the selects — "this spec does not close: N structural asserts" — §33's
+refused-with-a-reason vocabulary arriving early. The identity spec keeps
+the row hidden by keeping the count at zero, which is rule 6 restated.
