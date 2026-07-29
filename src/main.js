@@ -10,6 +10,7 @@ import { loadState, saveState, clearState, hasState } from './state.js';
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
+  SPEC, SPEC_RATES,
   F_BALANCE, BEAT_DEG, AMPLITUDE_TRUE_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
@@ -314,7 +315,20 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // chain want ~0.62 pitch, so 2.8 of height carries them snugly (the old
 // 4.5 spread them a full unit apart and made the fusee the tallest thing
 // in the movement — its top bound the three-quarter plate's floor).
-const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 2.8;
+// §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
+// The reserve entry's one catch, closed: the wrap count, the groove turns
+// and the height are all functions of hours/8, so changing the reserve
+// re-derives the cone instead of just the readout. One spare groove turn
+// above the wrap (ceil(+0.25)) keeps the chain's anchor turn off the working
+// grooves — at the 30 h default that is ceil(4.0) = 4 turns and H = 2.8,
+// bit-identical to the shipped literals. Pitch stays 0.7 per turn (the
+// "snug" 0.62 chain pitch plus flange, unchanged); a longer reserve grows
+// the cone AXIALLY and FUSEE_BASE_Z's max() below decides what that costs —
+// with the three-quarter-plate boot assert as the honest failure mode if
+// the stack outgrows the plate band.
+const FUSEE_WRAP_TURNS = SPEC.reserveHours / 8; // = RESERVE_BARREL_TURNS (energy side, declared with the spring)
+const FUSEE_GROOVE_TURNS = Math.ceil(FUSEE_WRAP_TURNS + 0.25);
+const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 0.7 * FUSEE_GROOVE_TURNS;
 // Base DERIVED from the plate's design goal. The old bind (the chain's
 // lowest span clearing the movement-side crown wheel) vanished when the
 // keyless works moved to the dial side — after that, the only thing the
@@ -337,7 +351,7 @@ const FUSEE_BASE_Z = Math.max(
   SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
   (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + 0.3 - FUSEE_H * 0.06 - L_BARREL,
 );
-const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: 4 });
+const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: FUSEE_GROOVE_TURNS });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
 const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.pinion, thickness: 1.6, material: MATS.steel });
@@ -702,6 +716,17 @@ const ratioFourth = TRAIN.fourth.pinion / TRAIN.fourth.teeth; // escape pinion t
 const offFourth = meshOffset(P.escape, P.fourth, TRAIN.fourth.teeth, ratioFourth, escAt0);
 function fourthAngle(t) { return offFourth - ratioFourth * escapeAngle(t); }
 const fourthAt0 = fourthAngle(0);
+// §22 — THE SECONDS HAND MUST NOT LIE, at any beat rate. The spec re-gears
+// the fourth⇄escape mesh so the fourth wheel keeps 1 rev/min at the chosen
+// vph; this asserts the ARITHMETIC rather than trusting the table — measured
+// through the same ratio chain the hands read, so a rate row whose counts
+// don't divide out lands here at boot, not on a viewer's dial. (60 s at
+// 2·F_BALANCE beats/s · BEAT_DEG per beat · pinion/teeth must be one turn.)
+{
+  const rev = Math.abs(fourthAngle(60) - fourthAngle(0)) / (2 * Math.PI);
+  if (Math.abs(rev - 1) > 1e-9)
+    console.warn(`§22: fourth wheel turns ${rev.toFixed(6)} rev/min at ${SPEC.vph} vph — the seconds hand is wrong; RATE_TABLE row and F_BALANCE disagree`);
+}
 
 const ratioThird = TRAIN.third.pinion / TRAIN.third.teeth; // fourth pinion teeth / third wheel teeth
 const offThird = meshOffset(P.fourth, P.third, TRAIN.third.teeth, ratioThird, fourthAt0);
@@ -2880,7 +2905,8 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // ---------------------------------------------------------------------------
 const DRUM_R = DRUM_R_ACTUAL;
 const FUSEE_AVG_R = (FUSEE_R_SMALL + FUSEE_R_LARGE) / 2;
-const FUSEE_WRAP_TURNS = 3.75; // = RESERVE_BARREL_TURNS (declared later): 30 h at 1 rev/8 h
+// (§22: FUSEE_WRAP_TURNS is declared with the cone build above — one spec
+// derivation, no longer a duplicate literal of RESERVE_BARREL_TURNS.)
 const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length that moves over a full reserve
 // Drum direction: perpendicular-to-stem, blended outward (away from the
 // plate centre) so the chain's span stays clear of the train — the pure
@@ -4188,9 +4214,9 @@ const secondsSubR = subDialR;
 // reading); the hours are the movement's actual reserve; the gearing is
 // DERIVED from both. Everything downstream reads these two.
 const RESERVE_SWEEP_DEG = 150;      // graduated arc, math angle 180° (empty) → 30° (full)
-const RESERVE_SCALE_HOURS = 30;     // = RELAX_SECONDS / 3600 (declared later — same
-                                    // forward reference FUSEE_WRAP_TURNS makes, and
-                                    // asserted against it with the ratio below)
+const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated to the SPEC —
+                                    // = RELAX_SECONDS / 3600 by shared derivation, and
+                                    // asserted against it with the ratio below
 // --- Alarm period + reading resolution (BUILT §24) -------------------------
 // The alarm wraps on the SAME 12-hour period as the dial and formatTime (a
 // 12-hour dial carries no AM/PM, so a 24-hour alarm can't be set unambiguously
@@ -4906,7 +4932,15 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // the two waived §50 stock rows on this unit are 0.3-unit radial bands
 // that the module does not reach (measured before and after — unchanged
 // at 0.1125 mm), so this is a clearance question, not a stock one.
-const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 10, rsvTeethW2 = 20;
+// §22: the second-stage wheel is DERIVED from the reserve, closing TODO 18
+// for every spec rather than only the default. The chain of constraint:
+// p0 turns RESERVE_BARREL_TURNS (= h/8) lock-to-lock, the hand sweeps
+// RESERVE_SWEEP_DEG (150°), so R = (h/8)·360/150 = 0.3·h; stage one is
+// 36/8 = 4.5, so stage two must be R/4.5 = h/15, and with p1 = 10 that is
+// w2 = 2h/3 — an integer because the spec snaps hours to multiples of 3.
+// At the 30 h default: w2 = 20, the shipped count, bit-identical.
+const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 10;
+const rsvTeethW2 = (2 * SPEC.reserveHours) / 3;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
@@ -7655,10 +7689,13 @@ alarmSwitchUnit.add(alarmPusherGroup);
 // makes movement time non-monotonic. A real accumulator is the honest fix.)
 // ---------------------------------------------------------------------------
 const springChild = barrel.getObjectByName('spring');
-const RELAX_SECONDS = 30 * 3600; // simulated hours of running per full wind
+const RELAX_SECONDS = SPEC.reserveHours * 3600; // §22: the reserve is a spec knob (default 30 h)
 // Power reserve is MECHANICALLY geared off the barrel: the barrel turns once
-// per 8 h, so a 30 h reserve is exactly 3.75 barrel revolutions lock-to-lock.
-const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75
+// per 8 h, so the reserve is exactly hours/8 barrel revolutions lock-to-lock.
+// Same derivation as FUSEE_WRAP_TURNS up at the cone build — one spec value,
+// two names for the two sides (energy accounting here, geometry there) of
+// the same mechanical quantity.
+const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75 at the 30 h default
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 
 // TODO 18's gate. The reserve indicator is three quantities that must agree —
@@ -8050,6 +8087,9 @@ panel.innerHTML = `
       <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
       <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
       <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
+      <div class="row label-small"><span>Beat rate</span><select id="spec-vph"></select></div>
+      <div class="row label-small"><span>Reserve spec</span><select id="spec-reserve"></select></div>
+      <div class="row label-small" id="spec-verdict" style="display:none; color:#e0a355;"><span></span></div>
       <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
       <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
     </div>
@@ -8813,6 +8853,68 @@ document.getElementById('btn-ff').addEventListener('click', () => {
   fastForward = !fastForward;
 });
 updateCrownUI();
+
+// --- §22: the spec knobs — beat rate and reserve -----------------------------
+// RELOAD-TIER, deliberately (the §23 subdial-size precedent): both knobs
+// re-derive GEOMETRY — the train's fourth⇄escape counts, the fusee cone, the
+// solved layout downstream — and a movement that re-gears itself mid-run
+// would be a different watch wearing the same session. Changing either
+// rewrites the URL's §22 params and reloads; the pre-module script in
+// index.html reads them back into the spec before layout.js evaluates.
+// State (camera, wind, τ) survives via the §28 state layer, same as any
+// reload.
+{
+  const vphSel = document.getElementById('spec-vph');
+  for (const r of SPEC_RATES) {
+    const o = document.createElement('option');
+    o.value = String(r);
+    o.textContent = `${r.toLocaleString()} A/h`;
+    vphSel.appendChild(o);
+  }
+  vphSel.value = String(SPEC.vph);
+  const rsvSel = document.getElementById('spec-reserve');
+  for (const h of [24, 30, 36, 42, 48]) {
+    const o = document.createElement('option');
+    o.value = String(h);
+    o.textContent = `${h} h`;
+    rsvSel.appendChild(o);
+  }
+  rsvSel.value = String(SPEC.reserveHours);
+  if (rsvSel.value !== String(SPEC.reserveHours)) { // a URL hour off the menu (clamped or custom) still shows honestly
+    const o = document.createElement('option');
+    o.value = String(SPEC.reserveHours);
+    o.textContent = `${SPEC.reserveHours} h`;
+    rsvSel.appendChild(o);
+    rsvSel.value = String(SPEC.reserveHours);
+  }
+  const reloadWithSpec = () => {
+    const p = new URLSearchParams(location.search);
+    const setOrClear = (k, v, dflt) => { if (v === dflt) p.delete(k); else p.set(k, String(v)); };
+    setOrClear('vph', Number(vphSel.value), 18000);
+    setOrClear('reserveh', Number(rsvSel.value), 30);
+    location.search = p.toString(); // navigates; the identity spec keeps a clean URL
+  };
+  vphSel.addEventListener('change', reloadWithSpec);
+  rsvSel.addEventListener('change', reloadWithSpec);
+  // THE VERDICT, in the panel and not only the console. A non-default spec
+  // re-solves real geometry, and some specs do not close at the shipped
+  // layout: the boot asserts (rule 6) then name exactly what failed — the
+  // plate floor, the stop-work reach, the keyless side-sign. §33's language,
+  // arrived early: an arrangement is checkable, and one that fails checks is
+  // reported with a reason rather than silently displayed as if it worked.
+  // Deferred a tick past module eval because asserts fire throughout it (a
+  // 'load' listener is NOT enough — the vendor modules cache and load can
+  // beat this module's evaluation); the identity spec keeps the row hidden
+  // by staying at zero.
+  setTimeout(() => {
+    const w = __bootWarns.length;
+    if (w === 0) return;
+    const row = document.getElementById('spec-verdict');
+    row.style.display = '';
+    row.firstElementChild.textContent =
+      `⚠ this spec does not close: ${w} structural assert${w === 1 ? '' : 's'} (see console)`;
+  }, 0);
+}
 
 // The crown is directly interactive in the 3D view: click it to pull/push
 // (hacking), drag it to turn (winding or time-setting, depending on

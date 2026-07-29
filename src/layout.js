@@ -21,9 +21,53 @@ import { aesthetics } from './aesthetics.js';
 // position, so the hash is identical before and after.
 
 // ---------------------------------------------------------------------------
+// §22 — THE WATCH SPEC. Reserve and beat rate are KNOBS, not constants: two
+// numbers a URL can set (`?reserveh=`, `?vph=`, read by index.html into
+// `globalThis.__WATCH_SPEC` before any module loads — reload-tier, the §23
+// subdial-size precedent) that everything below DERIVES from. The identity
+// spec {30 h, 18,000 A/h} must reproduce the shipped movement bit-exactly:
+// that is the regression gate, asserted by the geometry fingerprint.
+//
+// BEAT RATE IS A MENU, NOT A DIAL, and the menu is the honest part. The
+// going train's tooth counts exist to make the fourth wheel turn once per
+// minute at the chosen beat — change the beat without re-deriving the counts
+// and the seconds hand lies, which is the class of shortcut this project
+// exists to close. So each rate carries the fourth-wheel/escape-pinion pair
+// that KEEPS fourth = 1 rev/min exactly, with the escape wheel (15 teeth,
+// 24° pitch, BEAT_DEG 12) untouched:
+//   fourth rev/hr = (vph/30 escape rev/hr) · (escPinion/fourthTeeth) = 60
+//   ⇒ escPinion/fourthTeeth = 1800/vph — integer pairs only.
+// The third mesh (fourth PINION on the third wheel) never changes, so the
+// minute and hour hands are untouched by construction; only the
+// fourth⇄escape mesh re-gears, and solveLayout absorbs the moved centre
+// distances the way §13 built it to.
+const RATE_TABLE = {
+  18000: { fourthTeeth: 80, escPinion: 8 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6 }, // 6/96 = 1/16
+};
+export const SPEC = (() => {
+  const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
+  // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
+  // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
+  // turn, one turn per 8 h) grows past what the plate floor can absorb —
+  // the three-quarter-plate boot assert is the backstop, this clamp is the
+  // courtesy that keeps a typo from tripping it.
+  // Snapped to a multiple of 3: the reserve indicator's second-stage wheel
+  // takes 2h/3 teeth (TODO 18 — its ratio is derived from the scale, so the
+  // spec must yield an integer wheel; see rsvTeethW2 in main.js), and a
+  // tooth count is not a place for rounding error.
+  const reserveHours = Number.isFinite(Number(raw.reserveHours))
+    ? Math.min(48, Math.max(12, Math.round(Number(raw.reserveHours) / 3) * 3)) : 30;
+  return Object.freeze({ vph, reserveHours });
+})();
+export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
+
+// ---------------------------------------------------------------------------
 // Kinematic constants (see SPEC.md "Gear train" + "Escapement behavior")
 // ---------------------------------------------------------------------------
-export const F_BALANCE = 2.5;           // Hz — balance oscillation frequency
+export const F_BALANCE = SPEC.vph / 7200; // Hz — balance frequency: vph/3600 beats/s, 2 beats per oscillation
 export const BEAT_DEG = 12;             // escape-wheel advance per beat (half of 24° tooth pitch)
 export const AMPLITUDE_TRUE_DEG = 270;  // "true" balance swing (physical reference, unused for mesh)
 export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
@@ -204,7 +248,9 @@ export const TRAIN = {
   barrel: { module: 0.36, teeth: 80, pinion: 10 }, // great wheel → center pinion
   center: { module: 0.30, teeth: 75, pinion: 10 }, // center wheel → third pinion
   third:  { module: 0.24, teeth: 80, pinion: 10 }, // third wheel → fourth pinion
-  fourth: { module: 0.21, teeth: 80, pinion: 8 },  // fourth wheel → escape pinion
+  // fourth wheel → escape pinion: the ONE mesh the beat-rate spec re-gears
+  // (§22, table above) — every other count is beat-independent.
+  fourth: { module: 0.21, teeth: RATE_TABLE[SPEC.vph].fourthTeeth, pinion: RATE_TABLE[SPEC.vph].escPinion },
 };
 
 // Keyless works + winding path (the SETTING side, not the going train).

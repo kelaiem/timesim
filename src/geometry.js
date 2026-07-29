@@ -2297,7 +2297,10 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     // N with a vinculum overbar, after the medieval computus tables' "nulla")
     // — this system has a 0 of its own.
     ctx.font = `500 ${sr * 0.11}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    for (const h of [0, 12, 24]) arcLabel(String(h), angAt(h), sr * 0.64);
+    // One figure per MAJOR tick, however many the graduation carries — a
+    // 48 h scale reads 0/12/24/36/48 where the 30 h default reads 0/12/24
+    // (identical to the fixed list this generalises).
+    for (let h = 0; h <= hours; h += 12) arcLabel(String(h), angAt(h), sr * 0.64);
     // No AB / AUF bookending the arc: the German pair was the Glashütte
     // marking for a Roman-figured reserve, and with the scale figured 0→24
     // in Arabic the words name what the numbers already say. The empty end
