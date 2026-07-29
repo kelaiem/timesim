@@ -4721,6 +4721,113 @@ Toggle: **View → Explore**; the row also carries Reassemble.
 `__clock.dragOffsets` and `__clock.setExplore` are exposed for the
 battery and for scripted verification.
 
+## §59. Name the part under the cursor, before it is dragged
+
+Explore mode (§58) lets a viewer pull any part out of the movement. This
+says which part that is, while there is still time to change your mind:
+hover in explore mode and the name appears under the cursor.
+
+### The expensive half was already built — and one gap was not
+
+§58's handle resolver already ran on pointer MOVE, not only on pointer
+down: that is where the grab cursor comes from. So the name was being
+computed on every hover before this entry existed, and the readout is a
+second reader of a resolve that was already happening. Nothing here
+authors a name. `explorePick` returns names that came from
+`registerLabel` or an explode entry, the group name comes from
+`UNIT_GROUPS`, and both are boot-asserted — so a sub-part with no true
+name resolves to nothing and shows nothing, which is §10's standard kept
+exactly: a confidently wrong label is worse than no label.
+
+The gap the entry predicted was real, and it was in the resolver rather
+than the readout.
+
+### X-ray is transparency, not visibility
+
+`setXray` swaps materials; the glass plate and dial stay in the scene and
+keep swallowing rays. So the frontmost hit was still the thing the viewer
+was looking THROUGH. Measured on the dial side with x-ray on, at one
+probe point, the hits ran glass Dial → opaque Reset hammer → opaque Third
+wheel — and the pick returned Dial. Hovering would have named the glass,
+and a drag would have grabbed it: with x-ray on, nothing under the plate
+could be picked up at all.
+
+A mesh the renderer is currently drawing as glass is now DEMOTED, not
+removed. The first solid hit wins; a glass hit is the fallback when there
+is nothing solid behind it, which keeps the plate and dial nameable and
+grabbable exactly where they are the only thing there. The test reads the
+declared set of materials `setXray` installs — not an opacity heuristic,
+which would be a second source and would also catch any transparent
+material the finish grows later. It is self-disabling: with x-ray off
+every mesh carries its solid material and nothing matches.
+
+The test is per-MESH, never per-unit. Some `dialGroup` meshes stay solid
+under x-ray, so "is this unit glassy" would be wrong for exactly those.
+
+This corrects §58's picking as well as feeding §59's readout, which is
+the honest consequence of the two sharing one resolver: what you can name
+and what you can grab are the same question.
+
+### The cost of hovering, bounded — and it needed bounding
+
+The pick is a raycast over the whole movement, measured on this build at
+**3.8 ms median, 7.5 ms worst** — about a fifth of a 60 Hz frame. Pointer
+moves fire FASTER than the frame on a high-rate pointer, so §58's handler
+could spend more than a frame's budget picking alone during one fast
+sweep. Pointer moves now only record the position; the pick runs at most
+once per frame, from where the tethers and leaders already update.
+Measured after: **200 synthetic pointer moves cost 6 ms in total** (0.03
+ms each) against roughly 760 ms of raycasting before, with one resolve at
+8.5 ms when the frame asks for it. Coalescing loses nothing — the latest
+position is the one resolved, and the skipped picks are ones no frame
+would ever have drawn.
+
+### Where it is, and why not the other two surfaces
+
+Cursor-adjacent, as its own element. §7's label layer already solves
+3D→screen, but its labels are a persistent MODE and this is a transient
+answer to "what am I about to grab?" — a hover must not silently switch
+labels on. §57's HUD is in the far corner, and a name that appears away
+from the pointer sends the eye off the very part it is about to grab. The
+grab cursor is already under the pointer, so the name goes in the same
+place at the same moment: the same visual language as `.clock-label`
+without being one, above the labels and below the HUD, never a pointer
+target itself, and flipped at the viewport edges because a name the
+window clips is a name that was not shown.
+
+Name only. The entry's scope guard reserves anything more for a later one.
+
+### The gestures it answers to
+
+Shift names the §10 GROUP rather than the unit, because Shift is what
+makes the grab take the group — the readout says what the gesture in your
+fingers would actually pick up. It re-renders without re-picking, since
+Shift changes what a grab takes, not what is under the pointer. The
+crowns and the pusher keep first refusal exactly as on pointerdown: a
+control the viewer is reaching for is not a part to drag, so it is not a
+part to name. The readout goes quiet the moment a grab is committed (the
+viewer has decided; a name chasing the cursor is noise over the thing it
+names) and speaks again on release. The pointer leaving the canvas ends
+it.
+
+### What stays true (measured, not asserted)
+
+- **Fingerprint**: 1974757747 with two units dragged and again after
+  clearing — identical to the recorded baseline. Render-side only; no
+  geometry, no `MECH_GRAPH`, no battery surface.
+- **Boot silent.** (A `§38`/TODO 8 alarm-granularity warning appears
+  after a fingerprint sweep, from its large τ jumps — verified identical
+  on pristine `origin/main`, so it is neither new nor a boot warning.)
+- **§7's label mode is untouched by hovering**: button still Off, layer
+  still hidden, after every probe.
+- **Hover outside explore mode is unchanged** — with the mode off,
+  nothing resolves and nothing is shown.
+
+`__clock.exploreHover` is exposed for scripted verification: it reports
+the name as the readout shows it, and reading it RESOLVES any pending
+pick synchronously, because the interactive path throttles to the frame
+and a scripted check must not wait on an rAF that automation throttles to
+~1 fps.
 ## §22. Customisable power reserve and beat rate
 
 Both are knobs now — two URL parameters (`?reserveh=`, `?vph=`) read into
