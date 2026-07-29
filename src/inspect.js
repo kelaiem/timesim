@@ -1707,35 +1707,52 @@ const ALARM_HANDOFF_POSES = [
 // accepted debt citing its TODO item, visible in the report, not a pass.
 const ALARM_HANDOFFS = [
   {
-    label: 'pusher pawl → column wheel',
-    missing: 'no pawl exists between alarmPusherCap and the column wheel: '
-      + 'setAlarm() writes alarmOn and bumps alarmColSteps to match (§25 D '
-      + 'parity), so the flag drives the wheel, not the pusher',
-    waived: 'TODO 20 — the arming run is posed from its output, not driven from its input',
+    // CORRECTED: the first filing of this row said "no pawl exists" — an
+    // overclaim. The pawl bar and the ratchet skirt both exist (§43 cut the
+    // saw teeth for this pawl and asserts their direction); what was absent
+    // is CAUSALITY, and TODO 20 fixed that side: pressAlarmPusher() is the
+    // primitive, the wheel's parity IS the state, alarmOn a readout. The
+    // row now measures the pawl PARKED clear of the skirt at both
+    // parities; the index STROKE itself is a transient the static poses
+    // cannot reach, carried below as the row's remaining waiver.
+    label: 'pusher pawl ⇄ ratchet skirt',
+    unitA: 'Alarm switch', meshA: 'alarmColWheel',
+    unitB: 'Alarm switch', meshB: 'alarmPusherPawl',
+    expect: { disarmed: 'free', armed: 'free' },
+    waived: 'TODO 20 (remainder) — the parked pawl measures 0.18 BURIED in the skirt at both parities (it should rest ON a tooth flank, as a click does), and the index stroke’s pawl-on-tooth drive is a transient the static poses cannot instrument',
   },
   {
+    // TODO 20 closed this row: the flank is cut (geometry.js), the nose
+    // rests ON the column top plane at the disarmed parity (measured 0),
+    // and armed it hangs at the seat over the gap — DESIGNED free, the
+    // classic column-wheel beak ride. UNWAIVED both ways.
     label: 'column relief ⇄ beak nose',
     unitA: 'Alarm switch', meshA: 'alarmColWheel',
     unitB: 'Alarm link', meshB: 'alarmLinkBeak',
-    waived: 'TODO 20 — the contact never closes: 0.02 clear on a column (disarmed), 0.16 clear over a gap (armed); the nose’s 0.005 dip never reaches the 0.55 relief it claims to ride',
+    expect: { disarmed: 'contact', armed: 'free' },
   },
   {
+    // TODO 20 closed this row: the rod's top is BUILT to the tail's
+    // underside and the tick derives its lift from the beak's lever —
+    // measured 0 disarmed, −0.0009 armed. UNWAIVED.
     label: 'beak tail ⇄ rod top',
     unitA: 'Alarm link', meshA: 'alarmLinkBeakTail',
     unitB: 'Alarm link', meshB: 'alarmLinkRod',
-    waived: 'TODO 20 — the tick lifts the rod by a stale 0.25 literal, not the derived ALARM_LINK_ROD_FOOT; the rod stands inside the tail bar',
   },
   {
+    // TODO 20 closed this row and retired TODO 9's constants: the rim
+    // finger presses with its TIP at a designed rest angle, the rod's foot
+    // is read off that contact, and the shaft's roll is solved from it per
+    // tick — measured +0.022/−0.014. UNWAIVED.
     label: 'rod foot ⇄ rim crank',
     unitA: 'Alarm link', meshA: 'alarmLinkRod',
     unitB: 'Alarm link', meshB: 'alarmLinkCrankRim',
-    waived: 'TODO 9 — the residual is carried at the rest end on purpose; 0.07/0.039 gaps, the hand-off never touches at either extreme',
   },
   {
     label: 'centre crank ⇄ drive tab',
     unitA: 'Alarm link', meshA: 'alarmLinkCrankCentre',
     unitB: 'Alarm selector', meshB: 'alarmSelTab',
-    waived: 'TODO 20 — buried 0.22 (disarmed) to 0.25 (armed) in the tab: the ring z is assigned from alarmSelShownT, the crank radius appears in neither law, and the two poses cross rather than track (TODO 9’s thread, TODO 16’s slot)',
+    waived: 'TODO 20 (remainder) — the finger’s TIP is keyed to kiss the tab’s underside, but the finger’s ROOT and the lay shaft itself pass through the tab’s underside plane inside its footprint (shaft z −6.82..−6.58 vs tab underside −6.86): TODO 16’s "the clearance is a slot" measured literally. The honest fix is the fork — a slotted tab the shaft passes through, the finger driving inside it — filed in TODO 20’s remainder',
   },
   {
     // TODO 19 closed this row: the rocker's angle is solved from the contact
@@ -1770,7 +1787,7 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
       continue;
     }
     const row = { label: h.label, tol, waived: h.waived || null };
-    let worst = 0;
+    let bad = false;
     for (const [poseName, pose] of poses) {
       clock.setPose(pose);
       clock.scene.updateMatrixWorld(true);
@@ -1782,7 +1799,35 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
             const d = mtvDepth(bvhFor(a), a.matrixWorld, b);
             if (isFinite(d) && d > depth) depth = d;
           } else if (gap > 0) {
-            const d = meshClearance(a, b, gap);
+            // EXACT distance, arbitrated by a Z-NUDGE BISECTION. Two
+            // documented liars meet at a knife-edge contact: the BVH's
+            // tri-tri distance measured this row's EXACTLY-COPLANAR
+            // touching faces as a 0.186 gap (edge distance, not face
+            // distance), and meshClearance's sampling fallback would keep
+            // that number. The nudge is decisive where both guess: push B
+            // along ±z (the working axis of every hand-off declared here)
+            // and bisect the smallest offset that makes the boolean
+            // intersect — that offset IS the axial separation. Falls back
+            // to the exact/sampled arbitration only when no nudge within
+            // 2·tol connects (the meshes genuinely stand apart).
+            const bvhA = bvhFor(a); bvhFor(b);
+            _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
+            const hit = bvhA.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, gap);
+            let d = hit ? hit.distance : Infinity;
+            const tryDz = (dz) => stoneIntersectsWheel(bvhA, a.matrixWorld, b, b.geometry, new THREE.Vector3(0, 0, dz));
+            let zSep = Infinity;
+            for (const sgn of [1, -1]) {
+              if (tryDz(sgn * 2 * tol)) {
+                let lo = 0, hi = 2 * tol;
+                for (let k = 0; k < 20; k++) {
+                  const mid = (lo + hi) / 2;
+                  if (tryDz(sgn * mid)) hi = mid; else lo = mid;
+                }
+                zSep = Math.min(zSep, hi);
+              }
+            }
+            if (zSep < Infinity) d = Math.min(d, zSep);
+            else if (d < 0.05) d = Math.max(d, sampledClearance(a, b, gap));
             if (d < gap) gap = d;
           }
         }
@@ -1790,9 +1835,14 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
       // One signed number per pose: + is a gap, − is a burial, 0 is touch.
       const sep = depth > 0 ? -depth : gap;
       row[poseName] = +sep.toFixed(4);
-      worst = Math.max(worst, Math.abs(sep));
+      // Per-pose expectation: 'contact' (|sep| ≤ tol) by default, or 'free'
+      // (sep ≥ tol: genuinely clear, not buried and not grazing) for a
+      // hand-off whose member is DESIGNED to hang off its partner in that
+      // parity — the armed nose over a column gap being the case in point.
+      const expect = (h.expect && h.expect[poseName]) || 'contact';
+      if (expect === 'free' ? !(sep >= tol) : !(Math.abs(sep) <= tol)) bad = true;
     }
-    row.status = worst <= tol ? 'OK' : h.waived ? 'WAIVED' : 'FAIL';
+    row.status = !bad ? 'OK' : h.waived ? 'WAIVED' : 'FAIL';
     rows.push(row);
   }
   const unwaived = rows.filter((r) => r.status === 'FAIL' || r.status === 'MISSING' || r.status === 'ERROR');
@@ -3138,14 +3188,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 19 complete; 47 units, 46 fingerprinted, 10 poses):
-// 2748333645
-// — moved from 1974757747 by TODO 19 deliberately: the sensing pin re-hung
-// through the rocker arm to protrude on the ring side, and the rocker posed
-// by the contact solve at every state, so every armed/disarmed pose carries
-// the corrected see-saw. Verified identical across two virgin boots.
-// Previous baseline (§57 + TODO 18 complete; 47 units, 46 fingerprinted,
-// 10 poses): 1974757747
+// Baseline (TODO 20 mostly closed; 47 units, 46 fingerprinted, 10 poses):
+// 4164572423
+// — moved from 2748333645 by TODO 20 deliberately: the castellations are
+// cut from profileAt (a new top surface), the beak nose rides the column
+// tops (arm raised, post lengthened), the rod is rebuilt between its two
+// contacts, the cranks sit in solved keys, and every armed/disarmed pose
+// carries the forward-solved chain. Verified identical across two virgin
+// boots by the battery's double-boot gate.
+// Previous baselines: 2748333645 (TODO 19 — pin re-hung, rocker contact-
+// solved), 1974757747 (§57 + TODO 18)
 // — verified IDENTICAL across two virgin boots (state file and localStorage
 // cleared first), boot silent. The §29-era value previously recorded here
 // (3868604154) was moved deliberately by the sections landed since — §53's

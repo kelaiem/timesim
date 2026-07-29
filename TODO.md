@@ -232,7 +232,24 @@ arc wedges for levers, the fan for the chain.
 linkage; it wants generalising into the battery so pair checks become
 pose-independent volume tests that cannot under-sample.
 
-## 9. `ALARM_LINK_ROD_SEAT` is measured, not derived
+## 9. CLOSED — `ALARM_LINK_ROD_SEAT` was measured, not derived; both retired
+
+**Closed 2026-07-29, by TODO 20's registration solve.** The entry's open
+question — "why is the lift not one travel" — is answered: the two crank
+contacts have DIFFERENT effective radii, so the rod's travel is not the
+ring's travel and never was; forcing both to 0.19 is exactly what held
+the 0.07/0.039 gaps open, and why closing one end opened the other.
+`ALARM_LINK_ROD_SEAT` and the `ALARM_LINK_ROD_FOOT` chain built on it
+are deleted. The rim finger now presses with its TIP at a designed rest
+angle (60° off its zenith, corridor side), the rod's foot is read off
+that built contact, its top off the tail's underside, and the shaft's
+roll is solved from the foot per tick. Measured after: **+0.022
+disarmed / −0.014 armed** — the hand-off touches at both extremes for
+the first time, and its `alarmHandoffs` row is UNWAIVED.
+
+The original filing follows, kept for the record:
+
+### (original text)
 
 The alarm selector rod's foot is derived from the crank arm's own top
 face (`ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2`) minus one
@@ -1643,3 +1660,58 @@ pose. The 36:1 lever TODO 16 calls "a displacement gain nobody asked
 for" goes with them. Prerequisite before any rebuild: this item's
 instruments stay red until the geometry actually closes the contacts —
 do not widen a tolerance to green them.
+
+**Status 2026-07-29 — MOSTLY CLOSED; two contacts remain, filed below.**
+
+What closed, each measured and its `alarmHandoffs` row unwaived:
+
+- **Causality head**: `pressAlarmPusher()` is the primitive — one press
+  advances the column wheel half a pitch, `alarmOn` is ASSIGNED from the
+  wheel's parity in one place and read everywhere else. `setPose` sets
+  parity the same direction.
+- **The flank is cut** (`geometry.js`): the castellations are one ring
+  whose top surface IS `colH·profileAt(θ)` — mesh and law from the same
+  function, the §29 raised-relief precedent. The fictional ramp is gone
+  because it is no longer fictional.
+- **The nose rides the cam** (0 disarmed, designed-free armed at the
+  seat): the arm's height is derived so the nose's underside rests on
+  the column top plane, restoring what TODO 11's "nose stays mid-band"
+  note recorded losing.
+- **Tail ⇄ rod** (0 / −0.0009) and **rod ⇄ rim crank** (+0.022 /
+  −0.014): the rod is built between its two contacts, TODO 9's constants
+  are retired, the cranks sit in per-crank KEYS (real cranks are keyed
+  where their contacts need them), and the shaft's roll is solved from
+  the rod's foot per tick through a corner-envelope contact model.
+- **The chain solves forward**: cam → nose → lever → rod → rim contact
+  → roll → centre contact → ring, `alarmSelShownT` a READOUT of the
+  ring's contact-derived travel (exactly 0.19 across the toggle,
+  measured; mildly nonlinear mid-flank because two sinusoidal contacts
+  genuinely compose that way).
+
+Note on the original filing: it said "there is no pawl and the pusher
+indexes nothing". Half right. The pawl and the ratchet skirt EXIST
+(§43 cut the saw teeth for this pawl); what was absent was causality,
+now fixed. The overclaim is corrected here and in the check's row.
+
+**The remainder, still red-by-waiver with measured numbers:**
+
+1. **The fork.** The centre finger's ROOT and the lay shaft itself pass
+   through the tab's underside plane inside its footprint (shaft z
+   −6.82..−6.58 against a tab underside at −6.86) — TODO 16's "the
+   clearance is not a stack-up, it is a slot", measured literally. The
+   finger's TIP is keyed to kiss the underside (burial at the working
+   face is down from 0.25 to 0.043), but the honest geometry is a
+   FORKED tab the shaft passes through with the finger driving inside
+   the slot — which would also give the ring a positive drive in both
+   directions and retire the unmodelled bias spring (next item).
+2. **The pawl's park.** The parked pawl measures 0.18 buried in the
+   ratchet skirt at both parities; a click rests ON a tooth flank. And
+   the index STROKE — pawl driving tooth through the press — is a
+   transient the pose-based instrument cannot reach; §43's direction
+   assert is the only guard on it.
+3. **The ring has no bias spring.** The chain transmits compression
+   from the column when DISARMING; what drives the ring toward ARMED
+   when the gap opens is nothing modelled — §48's "oscillators with no
+   spring" class, one level up. The fork (item 1) would retire this
+   honestly by driving both ways; a modelled bias spring is the
+   alternative.

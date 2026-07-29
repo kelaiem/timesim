@@ -735,21 +735,49 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
   const pitch = (Math.PI * 2) / columns;
   const duty = 0.5;             // column arc fraction of a pitch
   const flank = 0.18 * pitch;   // rise/fall arc — what the beak visibly climbs
-  for (let i = 0; i < columns; i++) {
-    const a0 = i * pitch - (duty * pitch) / 2;
-    const shape = new THREE.Shape();
-    const steps = 8;
-    for (let k = 0; k <= steps; k++) {
-      const a = a0 + (k / steps) * duty * pitch;
-      const x = Math.cos(a) * baseR, y = Math.sin(a) * baseR;
-      if (k === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+  // TODO 20 — THE FLANK IS CUT, NOT NARRATED. The columns used to be
+  // bevel-less angular-sector extrusions: vertical cliffs, while profileAt
+  // below returned a trapezoid with a 10.8° ramp — a surface that existed
+  // only in the function, so the beak's whole ride was against geometry
+  // nothing had cut (the §29 raised-relief lesson, unlearned here). The
+  // castellations are now ONE ring whose top surface is colH·profileAt(θ),
+  // sampled finely enough that the flank is faithful (48 segments per pitch
+  // ⇒ ~9 across each flank): the mesh and the law come from the same
+  // function and cannot drift. Gaps are the absence of height, columns its
+  // presence — visually the same castellations, with the chamfered
+  // rise/fall a real column wheel's beak actually climbs.
+  {
+    const SEG_PER_PITCH = 48;
+    const N = columns * SEG_PER_PITCH;
+    const pos = [], idx = [];
+    const prof = (a) => {
+      let rel = ((a % pitch) + pitch) % pitch;
+      if (rel > pitch / 2) rel = pitch - rel;
+      const edge = (duty * pitch) / 2;
+      if (rel <= edge - flank) return 1;
+      if (rel >= edge) return 0;
+      return (edge - rel) / flank;
+    };
+    // Ring of quads: inner/outer at floor, inner/outer at the profiled top.
+    for (let i = 0; i <= N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const top = colH * prof(a);
+      pos.push(ca * colInner, sa * colInner, 0);        // 0: inner floor
+      pos.push(ca * baseR, sa * baseR, 0);              // 1: outer floor
+      pos.push(ca * colInner, sa * colInner, top);      // 2: inner top
+      pos.push(ca * baseR, sa * baseR, top);            // 3: outer top
     }
-    for (let k = steps; k >= 0; k--) {
-      const a = a0 + (k / steps) * duty * pitch;
-      shape.lineTo(Math.cos(a) * colInner, Math.sin(a) * colInner);
+    for (let i = 0; i < N; i++) {
+      const b = i * 4, n = (i + 1) * 4;
+      idx.push(b + 2, n + 2, n + 3, b + 2, n + 3, b + 3); // top surface
+      idx.push(b + 0, n + 0, n + 2, b + 0, n + 2, b + 2); // inner wall
+      idx.push(b + 1, b + 3, n + 3, b + 1, n + 3, n + 1); // outer wall
     }
-    shape.closePath();
-    const colGeo = new THREE.ExtrudeGeometry(shape, { depth: colH, bevelEnabled: false, curveSegments: 2 });
+    const colGeo = new THREE.BufferGeometry();
+    colGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    colGeo.setIndex(idx);
+    colGeo.computeVertexNormals();
     colGeo.translate(0, 0, baseH / 2);
     g.add(new THREE.Mesh(colGeo, mat));
   }

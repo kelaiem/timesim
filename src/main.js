@@ -7331,12 +7331,10 @@ const ALARM_LINK_ROD_XY = { x: Math.cos(_rodAz) * ALARM_LINK_ROD_R, y: Math.sin(
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
 
-// §35 fix — the cranks' REST PHASE on the shaft. Built pointing local +z
-// (world-up) they sit at top dead centre, where height is 0.22·cos θ: even in
-// θ, zero first derivative, so the crank falls whichever way the shaft turns.
-// A quarter turn CCW puts them on the side of the circle, where height is
-// 0.22·sin θ and the crank tracks the rod that presses it.
-const ALARM_LINK_CRANK_PHASE = Math.PI / 2;
+// (§35's ALARM_LINK_CRANK_PHASE — the quarter-turn rest phase that kept the
+// cranks off top dead centre — is RETIRED by TODO 20: the rest roll is now
+// SOLVED from the rim contact at the registration solve, and the top-dead-
+// centre lesson survives as that solve's branch selection.)
 // The crank arm's own dimensions, hoisted because the ROD'S FOOT is derived
 // from them: the foot has to land ON the arm's top face, and two independent
 // literals for one contact is how a linkage ends up transmitting through a gap.
@@ -7378,24 +7376,19 @@ const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unch
 const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
 // Top face of the arm, measured from the shaft axis.
 const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
-// Where the rod's foot is BUILT. The tick lifts it by one ALARM_SEL_TRAVEL at
-// rest (disarmed), so the built height is the contact height minus that lift —
-// which puts the foot exactly on the arm when disarmed, and drives it down
-// with the arm as it arms. Was a bare 0.25, which left the foot hovering a
-// measured 0.159 above the arm at rest and 0.19 when armed: the linkage moved
-// correctly and never touched anything, which is the same class of lie as a
-// wheel meshing across empty space.
-// MEASURED residual -- see TODO.md item 9. Deriving the foot as (arm top - one
-// travel) assumed the tick lifts the rod by exactly ALARM_SEL_TRAVEL at rest;
-// it does not quite, and the rod still hovered 0.079 at the armed end. This is
-// standing rule 1's failure case and is filed as debt, not defended: the arm's
-// contact tracks the rod 1:1 only at r = travel/sin(travel/0.35) = 0.368
-// against the 0.28 built, but forcing that radius measured WORSE (spread
-// 0.031 -> 0.077), so the divisor is the thing to understand first.
-const ALARM_LINK_ROD_SEAT = 0.079;   // measured hover at the armed extreme
-const ALARM_LINK_ROD_FOOT = ALARM_LINK_CRANK_TOP - ALARM_SEL_TRAVEL - ALARM_LINK_ROD_SEAT;
+// (TODO 9's ALARM_LINK_ROD_SEAT = 0.079 — "read off the model and pasted
+// back in", standing rule 1's confessed failure case — and the
+// ALARM_LINK_ROD_FOOT chain built on it are RETIRED by TODO 20. The rod's
+// foot is now read off the rim finger's DESIGNED rest contact at the
+// registration solve, and the "why is the lift not one travel" mystery is
+// answered there: the two crank contacts have different effective radii,
+// so the rod's travel is not the ring's and never was — forcing both to
+// 0.19 is exactly what held TODO 9's gaps open.)
 const ALARM_LINK_BEAK_OFF = (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
-const ALARM_LINK_ROD_TRAVEL = 0.42;                 // the beak's fall into a gap, at the rod
+// (ALARM_LINK_ROD_TRAVEL = 0.42 — "the beak's fall into a gap, at the rod" —
+// is DELETED: defined for the life of §35, referenced nowhere, and wrong
+// (the tick moved the rod 0.19). The rod's travel is now a registration-
+// solve OUTPUT, alarmLinkParts.forward.rodTravel.)
 const alarmLinkUnit = new THREE.Group();
 movement.add(alarmLinkUnit);
 registerLabel('Alarm link', alarmLinkUnit);
@@ -7427,7 +7420,17 @@ const alarmLinkParts = {};
   // nose −0.0147 = −beakLen·θ, tail +0.2679 = +(tailLen/2)·θ. Both exactly
   // what the pose law says they should be.
   beakArm.rotation.order = 'ZYX';
-  beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_LOCK_Z + 0.80);
+  // TODO 20 — the nose RIDES THE CAM it reads. The arm sat at LOCK+0.80,
+  // which left the nose mid-band INSIDE the castellation slots (TODO 11's
+  // note recorded it: "the castellations ride up 0.02 and the beak nose
+  // stays mid-band") — measured, the nose never stood on a column top; at
+  // the on-column parity it hovered 0.02 from a flank WALL. The arm's
+  // height is now DERIVED so the nose's underside rests exactly on the
+  // column top plane at the disarmed parity — the plane the flank cut
+  // (geometry.js) rises to: spin z + base top + column height.
+  const ALARM_COL_TOP_Z = (ALARM_LOCK_Z + 0.22) + STOCK_MIN_U / 2 + 0.55;
+  const ALARM_BEAK_NOSE_H = 0.22;
+  beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_COL_TOP_Z + ALARM_BEAK_NOSE_H / 2);
   const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
   beakArm.rotation.z = beakAim;
   const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
@@ -7436,7 +7439,7 @@ const alarmLinkParts = {};
   beakBar.name = 'alarmLinkBeakBar';  // §54
   beakBar.position.x = beakLen / 2;
   beakArm.add(beakBar);
-  const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.22), MATS.steel);
+  const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, ALARM_BEAK_NOSE_H), MATS.steel);
   beakNose.name = 'alarmLinkBeak';
   beakNose.position.x = beakLen;
   beakArm.add(beakNose);
@@ -7465,15 +7468,23 @@ const alarmLinkParts = {};
   beakTail.position.x = -tailLen / 2;
   beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
   beakArm.add(beakTail);
-  const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.5, 10), MATS.steel);
+  // The post reaches whatever height the arm derivation put the pivot at —
+  // base end unmoved, length derived rather than the pair drifting apart.
+  const postBase = ALARM_LOCK_Z + 0.30;
+  const postLen = beakArm.position.z - postBase;
+  const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, postLen, 10), MATS.steel);
   beakPost.rotation.x = Math.PI / 2;
-  beakPost.position.set(beakPiv.x, beakPiv.y, ALARM_LOCK_Z + 0.55);
+  beakPost.position.set(beakPiv.x, beakPiv.y, postBase + postLen / 2);
   alarmLinkUnit.add(beakPost);
   alarmLinkUnit.add(beakArm);
   alarmLinkParts.beakArm = beakArm;
   alarmLinkParts.beakAim = beakAim;
-  // The ROD: from the beak's tail down through both plates to the rim crank.
-  const rodLen = (ALARM_LOCK_Z + 0.74) - (ALARM_LINK_SHAFT_Z + ALARM_LINK_ROD_FOOT);
+  alarmLinkParts.colTopZ = ALARM_COL_TOP_Z;
+  alarmLinkParts.noseH = ALARM_BEAK_NOSE_H;
+  // (The ROD is built AFTER the shaft and cranks now — its foot derives
+  // from the rim finger's designed rest contact, which needs the finger's
+  // probe fits. See the registration solve below.)
+  const ALARM_ROD_TOP_BUILT = beakArm.position.z - STOCK_MIN_U / 2;
   // Rod SECTION, derived rather than eyeballed. The rod passes a bore in both
   // plates whose radius is 0.45 — not because the rod is that fat, but because
   // the plate's extrude bevel collars small holes shut (MODELING.md rule 1) and
@@ -7482,12 +7493,6 @@ const alarmLinkParts = {};
   // to be opened to 0.45 for a rod implies a rod that fills it. Fill it less the
   // one clearance margin.
   const ALARM_LINK_ROD_R_SECTION = ALARM_LINK_ROD_BORE_R - CLEAR_MARGIN;   // 0.30
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_ROD_R_SECTION, ALARM_LINK_ROD_R_SECTION, rodLen, 12), MATS.steel);
-  rod.name = 'alarmLinkRod';
-  rod.rotation.x = Math.PI / 2;
-  rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, (ALARM_LOCK_Z + 0.74 + ALARM_LINK_SHAFT_Z + ALARM_LINK_ROD_FOOT) / 2);
-  alarmLinkUnit.add(rod);
-  alarmLinkParts.rod = rod;
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
   const chordLen = Math.hypot(chord.x, chord.y);
@@ -7527,17 +7532,228 @@ const alarmLinkParts = {};
   // (a 0.03 gap PRE-dating the dial move: the link's §35 fix closed the
   // rod-end contact and nobody measured this end). 0.45 + travel + wrap.
   const INNER_JAW_LEN = 0.45 + ALARM_SEL_TRAVEL + ALARM_SEL_T + 0.15; // §51: rides the sheet's thickness so a thicker tab stays embraced
+  // TODO 20 — each crank sits in its own KEY: a wrapper whose rotation
+  // about the shaft's length is that crank's phase on the arbor. Real
+  // cranks are keyed where their contact needs them; forcing both to one
+  // phase is why the rod end and the tab end could never both touch
+  // (TODO 9's "closing one end opened the other"). The rim key stays at 0
+  // (the rod's built foot is the datum); the centre key's phase is SOLVED
+  // below so its finger meets the tab's underside at rest.
   for (const [xLocal, nm, len] of [[chordLen / 2, 'alarmLinkCrankRim', 0.45], [-chordLen / 2, 'alarmLinkCrankCentre', INNER_JAW_LEN]]) {
+    const key = new THREE.Group();
+    key.position.x = xLocal;
     const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, len), MATS.steel);
     crank.name = nm;
-    crank.position.set(xLocal, 0, ALARM_LINK_CRANK_OFF); // radial offset on the shaft
-    shaft.add(crank);
+    crank.position.set(0, 0, ALARM_LINK_CRANK_OFF); // radial offset on the shaft
+    key.add(crank);
+    shaft.add(key);
+    alarmLinkParts[nm === 'alarmLinkCrankRim' ? 'rimKey' : 'centreKey'] = key;
+    alarmLinkParts[nm === 'alarmLinkCrankRim' ? 'rimLen' : 'centreLen'] = len;
   }
   alarmLinkUnit.add(shaft);
   alarmLinkParts.shaft = shaft;
-  alarmLinkParts.rodTop = ALARM_LOCK_Z + 0.74;
   alarmLinkParts.beakLen = beakLen;
   alarmLinkParts.tailLen = tailLen;
+
+  // -------------------------------------------------------------------------
+  // TODO 20 — THE REGISTRATION SOLVE. Every hand-off below is a contact, so
+  // every coefficient the tick needs is DERIVED here from the built faces —
+  // at construction time, when the tree is guaranteed to stand at rest (a
+  // lazy first-tick capture can find a restored session armed: the §34
+  // canonical-state lesson, learned again by TODO 19).
+  //
+  // The datum chain: the ROD's built foot is the rim contact's datum; the
+  // TAB's built underside is the centre contact's; the shaft's rest roll
+  // solves the rim side, the centre crank's KEY phase then closes its own
+  // side at that roll, and the armed roll comes back from the ring's full
+  // 0.19 travel through the centre contact. The rod's travel — and from it
+  // the nose's seat drop through the beak's lever — FALLS OUT of those two
+  // rolls: nobody assigns it, which is the whole point. TODO 9 measured
+  // 0.07/0.039 gaps that could not both close and asked "why is the lift
+  // not one travel"; the answer is that the two contacts have different
+  // effective radii, so the rod's travel is NOT the ring's — forcing both
+  // to 0.19 is exactly what held the gaps open.
+  {
+    const F = alarmLinkParts.forward = {};
+    scene.updateMatrixWorld(true);
+    const _v = new THREE.Vector3();
+    // World-z of a crank-key-local point under shaft roll θ is exactly
+    // A·sinθ + B·cosθ + C — three probes pin it down (the TODO 19 fit).
+    const fitRoll = (key, local) => {
+      const zAt = (th) => {
+        shaft.rotation.x = th;
+        key.updateWorldMatrix(true, false);
+        return _v.copy(local).applyMatrix4(key.matrixWorld).z;
+      };
+      const z0 = zAt(0), zp = zAt(0.3), zm = zAt(-0.3);
+      shaft.rotation.x = 0;
+      const A = (zp - zm) / (2 * Math.sin(0.3));
+      const B = (zp + zm - 2 * z0) / (2 * (Math.cos(0.3) - 1));
+      return { A, B, C: z0 - B, R: Math.hypot(A, B), phi: Math.atan2(B, A) };
+    };
+    // A square finger under a flat face contacts along its UPPER corner
+    // line — and which corner is upper swaps with the roll, so the contact
+    // height is the ENVELOPE of the two corner sinusoids (a single-corner
+    // solve buried the true corner one crank thickness deep, in both
+    // directions, whichever corner it picked). The envelope is solved by
+    // coarse scan + bisection: piecewise-sinusoidal, no closed form, and a
+    // per-tick bisection on one scalar is cheap.
+    const cornerPair = (key, d) => [
+      fitRoll(key, new THREE.Vector3(0, ALARM_LINK_CRANK_T / 2, d)),
+      fitRoll(key, new THREE.Vector3(0, -ALARM_LINK_CRANK_T / 2, d)),
+    ];
+    const envZ = (pair, th) => Math.max(
+      pair[0].A * Math.sin(th) + pair[0].B * Math.cos(th) + pair[0].C,
+      pair[1].A * Math.sin(th) + pair[1].B * Math.cos(th) + pair[1].C);
+    // Crossing of envZ = target nearest the seed, scanned over a bracket
+    // around it, then bisected. Deterministic: same inputs, same answer.
+    const solveEnv = (pair, target, seed, nm) => {
+      // Span covers the full turn: the rod's foot rides only 0.011 above
+      // the SHAFT AXIS, so the finger meets it nearly horizontal (|roll|
+      // ≈ 1.77 from vertical) — a ±1.6 scan missed every crossing. Ties
+      // between mirror crossings break toward POSITIVE roll, the side the
+      // §35 corridor was ray-probed on.
+      const SPAN = 3.2, N = 320;
+      let best = null;
+      let prevTh = seed - SPAN, prevD = envZ(pair, prevTh) - target;
+      for (let i = 1; i <= N; i++) {
+        const th = seed - SPAN + (2 * SPAN * i) / N;
+        const dd = envZ(pair, th) - target;
+        if (prevD === 0 || prevD * dd < 0) {
+          let lo = prevTh, hi = th, dLo = prevD;
+          for (let k = 0; k < 48; k++) {
+            const mid = (lo + hi) / 2, dm = envZ(pair, mid) - target;
+            if (dLo * dm <= 0) hi = mid; else { lo = mid; dLo = dm; }
+          }
+          const cand = (lo + hi) / 2;
+          if (best === null || Math.abs(cand - seed) < Math.abs(best - seed)) best = cand;
+        }
+        prevTh = th; prevD = dd;
+      }
+      if (best === null) console.warn(`TODO 20 registration: ${nm} — no envelope crossing within ±${SPAN} of the seed`);
+      return best ?? seed;
+    };
+    // All crossings in the span — for the one caller that must choose by a
+    // physical criterion (direction agreement) rather than by proximity.
+    const solveEnvAll = (pair, target, seed) => {
+      const SPAN = 3.2, N = 320, out = [];
+      let prevTh = seed - SPAN, prevD = envZ(pair, prevTh) - target;
+      for (let i = 1; i <= N; i++) {
+        const th = seed - SPAN + (2 * SPAN * i) / N;
+        const dd = envZ(pair, th) - target;
+        if (prevD === 0 || prevD * dd < 0) {
+          let lo = prevTh, hi = th, dLo = prevD;
+          for (let k = 0; k < 48; k++) {
+            const mid = (lo + hi) / 2, dm = envZ(pair, mid) - target;
+            if (dLo * dm <= 0) hi = mid; else { lo = mid; dLo = dm; }
+          }
+          out.push((lo + hi) / 2);
+        }
+        prevTh = th; prevD = dd;
+      }
+      return out;
+    };
+    // The datums first.
+    // The tab's built underside: the crank presses the face on the world
+    // side it approaches from — the lower one (it stands under the ring).
+    const tabBox = new THREE.Box3().setFromObject(alarmSelectorUnit.getObjectByName('alarmSelTab'));
+    const tabUnderRest = tabBox.min.z;
+    // The ring's travel in world sign, from the dial flip (TODO 19's capture).
+    const zCol = _v.set(0, 0, 1).transformDirection(alarmSelRing.parent.matrixWorld);
+    const travelW = -ALARM_SEL_TRAVEL * Math.sign(zCol.z);
+    // 1. THE RIM REST IS A DESIGN CHOICE, and the rod's foot is read off it.
+    //    TODO 9's chain ran the other way: a foot constant built from
+    //    CRANK_TOP − travel − a 0.079 residual "read off the model and
+    //    pasted back in", which parked the finger nearly HORIZONTAL (the
+    //    solve found its contact at |roll| ≈ 1.77 from zenith, where the
+    //    finger's ROOT outranks its tip and buried the rod's cap). The
+    //    finger now presses with its TIP corner — contact at a defined
+    //    radius, as a real crank presses a flat — resting 60° off its own
+    //    zenith on the positive-roll side the §35 corridor was probed on:
+    //    enough flank slope to work, bounded lateral sweep (the corridor
+    //    assert below measures it from the DERIVED rolls).
+    const rimTipD = ALARM_LINK_CRANK_OFF + alarmLinkParts.rimLen / 2 - 0.02;
+    const rimPair = cornerPair(alarmLinkParts.rimKey, rimTipD);
+    const zen = (f) => Math.atan2(f.A, f.B); // roll maximizing A sinθ + B cosθ
+    const rollZenith = (zen(rimPair[0]) + zen(rimPair[1])) / 2;
+    F.rollRest = rollZenith + 1.05;
+    const rodFootRest = envZ(rimPair, F.rollRest);
+    // 2. BUILD THE ROD — both of its ends are read off their partners now
+    //    (top: the tail's underside; foot: the finger's designed rest).
+    //    Frames: the link unit is world-identity; assert rather than assume.
+    if (Math.abs(_v.set(0, 0, 1).transformDirection(alarmLinkUnit.matrixWorld).z - 1) > 1e-9)
+      console.warn('TODO 20 registration: the link unit is no longer world-identity — every solved datum here is frame-mixed');
+    const rodLen = ALARM_ROD_TOP_BUILT - rodFootRest;
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_ROD_R_SECTION, ALARM_LINK_ROD_R_SECTION, rodLen, 12), MATS.steel);
+    rod.name = 'alarmLinkRod';
+    rod.rotation.x = Math.PI / 2;
+    rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, rodFootRest + rodLen / 2);
+    alarmLinkUnit.add(rod);
+    alarmLinkParts.rod = rod;
+    alarmLinkParts.rodLen = rodLen;
+    alarmLinkParts.rodZRest = rod.position.z;
+    // 3. The centre crank's KEY phase closes its contact at the rest roll.
+    const centrePair = cornerPair(alarmLinkParts.centreKey, ALARM_LINK_CRANK_OFF + alarmLinkParts.centreLen / 2 - 0.02);
+    const thCRest = solveEnv(centrePair, tabUnderRest, F.rollRest, 'centre rest');
+    const dPhi = thCRest - F.rollRest;
+    alarmLinkParts.centreKey.rotation.x = dPhi;
+    // 4. Armed roll from the ring's FULL travel through the centre contact —
+    //    picking, of the crossings, the one that moves the ROD the way the
+    //    ring moves (both measured co-travelling world-up on main; a
+    //    nearest-crossing pick alone could run the chain backwards).
+    const cands = solveEnvAll(centrePair, tabUnderRest + travelW, thCRest);
+    let rollArmed = null;
+    for (const cand of cands.sort((x, y) => Math.abs(x - thCRest) - Math.abs(y - thCRest))) {
+      const rt = envZ(rimPair, cand - dPhi) - rodFootRest;
+      if (Math.sign(rt) === Math.sign(travelW)) { rollArmed = cand - dPhi; break; }
+    }
+    if (rollArmed === null) {
+      console.warn('TODO 20 registration: no armed roll moves the rod with the ring — the chain cannot arm');
+      rollArmed = (cands[0] ?? thCRest) - dPhi;
+    }
+    F.rollArmed = rollArmed;
+    F.rimPair = rimPair; F.centrePair = centrePair; F.dPhi = dPhi;
+    F.envZ = envZ; F.solveEnv = solveEnv;
+    // 5. The rod's travel falls out — and the nose's seat drop through the
+    //    beak's measured lever arms.
+    F.rodTravel = envZ(rimPair, F.rollArmed) - rodFootRest;
+    // 6. Across the working span the TIP must stay the finger's contact —
+    //    the root corner riding BELOW the foot plane at both extremes.
+    const rootPair = cornerPair(alarmLinkParts.rimKey, 0.02);
+    if (envZ(rootPair, F.rollRest) > rodFootRest + 1e-6
+        || envZ(rootPair, F.rollArmed) > rodFootRest + F.rodTravel + 1e-6)
+      console.warn('TODO 20 registration: the rim finger’s ROOT outranks its tip somewhere in the working span — the contact model is wrong for this geometry');
+    F.seatNoseDrop = Math.abs(F.rodTravel) * (beakLen / tailLen);
+    F.tabUnderRest = tabUnderRest;
+    F.travelW = travelW;
+    F.rodFootRest = rodFootRest;
+    // 5. Which beakArm.rotation.y sign LOWERS the nose (frame-dependent):
+    const noseTip = new THREE.Vector3(beakLen, 0, 0);
+    const noseZAt = (ry) => { beakArm.rotation.y = ry; beakArm.updateWorldMatrix(true, false); return _v.copy(noseTip).applyMatrix4(beakArm.matrixWorld).z; };
+    F.noseRySign = noseZAt(0.05) < noseZAt(-0.05) ? 1 : -1;
+    beakArm.rotation.y = 0;
+    // 6. The nose's rest seat: its underside on the column top plane — the
+    //    build derivation above owes exactly this; measure, don't trust.
+    scene.updateMatrixWorld(true);
+    const noseBox = new THREE.Box3().setFromObject(beakArm.getObjectByName('alarmLinkBeak'));
+    const say = (nm, v) => console.warn(`TODO 20 registration: ${nm} — ${v}`);
+    if (Math.abs(noseBox.min.z - ALARM_COL_TOP_Z) > 0.02)
+      say('nose underside off the column top plane', `${noseBox.min.z.toFixed(3)} vs ${ALARM_COL_TOP_Z.toFixed(3)}`);
+    if (!(F.seatNoseDrop > 0.001 && F.seatNoseDrop < 0.55))
+      say('seat nose drop out of range', F.seatNoseDrop.toFixed(4));
+    if (Math.sign(F.rodTravel) !== Math.sign(travelW))
+      say('rod and ring travel disagree in sign', `${F.rodTravel.toFixed(3)} vs ${travelW.toFixed(3)}`);
+    // 7. The §54 corridor budget: the rim finger's contact ridge must not
+    //    sweep laterally past the ray-probed 0.2685 — now asserted from the
+    //    DERIVED rolls rather than narrated from an assumed 0.5429.
+    const xyAt = (key, d, th) => { shaft.rotation.x = th; key.updateWorldMatrix(true, false); _v.set(0, 0, d).applyMatrix4(key.matrixWorld); return { x: _v.x, y: _v.y }; };
+    const p0 = xyAt(alarmLinkParts.rimKey, rimTipD, F.rollRest);
+    const p1 = xyAt(alarmLinkParts.rimKey, rimTipD, F.rollArmed);
+    shaft.rotation.x = F.rollRest;
+    const lateral = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    if (lateral > 0.2685)
+      say('rim contact lateral sweep exceeds the ray-probed corridor', `${lateral.toFixed(4)} > 0.2685`);
+  }
   // bushes: hangers from the base plate's underside, at the two chord
   // stations whose full vertical columns the pose-swept ray probe found
   // clean AT THE BUSH'S 0.45 radius, cast DOWNWARD from free air to the
@@ -7662,6 +7878,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
   // The pawl — a slim bar at the stem's inner end, nose down at the skirt.
   const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
+  pawl.name = 'alarmPusherPawl'; // TODO 20: the hand-off row selects it by name (inspect.js couples by string)
   pawl.rotation.z = ALARM_PUSH_AZ;
   pawl.position.set(_pushU.x * 0.85, _pushU.y * 0.85, -0.17); // dropped from the raised axis to the skirt band, clear of the plate
   alarmPusherGroup.add(pawl);
@@ -9809,12 +10026,25 @@ window.addEventListener('keydown', () => {
 // and the readout below is derived from the disc's angle. Turning it on while
 // the display sits before the target arms silently until the crossing;
 // `alarmDropSpent` latches across each mute/FF gap so re-arming never machine-guns.
-function setAlarm(on) {
-  if (on !== alarmOn) { alarmColSteps += 1; alarmPusherT = 1; } // §25 D: one actuation = one pusher press = half a pitch
-  alarmOn = on;
+// TODO 20 — CAUSALITY RUNS PRESS → WHEEL → FLAG, not the other way. This
+// used to write `alarmOn` first and bump the step counter to keep parity:
+// the flag drove the wheel. The press is now the primitive — one actuation
+// advances the column wheel half a pitch, exactly what the pusher's pawl
+// does on the ratchet skirt — and `alarmOn` is ASSIGNED FROM the wheel's
+// parity in this one place, a readout everywhere else (odd = gap under the
+// beak = armed, §25 D's convention unchanged).
+function pressAlarmPusher() {
+  alarmColSteps += 1;
+  alarmPusherT = 1;
+  alarmOn = alarmColSteps % 2 === 1;
   const b = document.getElementById('btn-alarm');
-  b.textContent = on ? 'On' : 'Off';
-  b.classList.toggle('active', on);
+  b.textContent = alarmOn ? 'On' : 'Off';
+  b.classList.toggle('active', alarmOn);
+}
+// Convenience for callers that speak in the flag (UI, scripts, remote API,
+// saved state): press if — and only if — the wheel's parity disagrees.
+function setAlarm(on) {
+  if (on !== (alarmColSteps % 2 === 1)) pressAlarmPusher();
 }
 document.getElementById('btn-alarm').addEventListener('click', () => setAlarm(!alarmOn));
 // §55 — THE ALARM CYCLER. Flips the alarm on and off on a timer and touches
@@ -12609,23 +12839,42 @@ function tick(t) {
     // Now the follower is the profile, evaluated at the wheel's shown angle.
     // Every downstream member moves BECAUSE the wheel moved, and the flank's
     // slope is what you see lifting the beak.
-    alarmSelShownT = 1 - alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
-    // the chain's members wear the same derived state (stateless poses):
+    // TODO 20 — THE CHAIN IS SOLVED FORWARD, contact by contact. Each member
+    // below is a function of the member that PRESSES it, with every
+    // coefficient derived at the registration solve (see the link build):
+    //   cam surface → nose → beak lever → rod → rim contact → shaft roll
+    //   → centre contact → ring travel.
+    // The old block posed all five from one scalar with fitted multipliers
+    // ("the chain's members wear the same derived state") and no member
+    // touched its neighbour — TODO 20's table records every measured gap
+    // and burial. The nose rides the cam the flank cut actually built
+    // (geometry.js), falls when a gap arrives, and is caught by the SEAT —
+    // the ring's full travel reflected back through the lever and the two
+    // contact radii — before it can reach the gap floor: a real column-wheel
+    // beak's ride. alarmSelShownT is now a READOUT of the ring's own
+    // contact-derived travel, mildly nonlinear through the flank because
+    // two sinusoidal contacts genuinely compose that way.
     {
-      const drop = ALARM_SEL_TRAVEL * (alarmLinkParts.beakLen / alarmLinkParts.tailLen); // nose fall sized so the rod's throw IS the ring's travel (1:1 cranks)
-      alarmLinkParts.beakArm.rotation.y = (drop / alarmLinkParts.beakLen) * alarmSelShownT; // nose falls into the gap
-      alarmLinkParts.rod.position.z = (alarmLinkParts.rodTop + ALARM_LINK_SHAFT_Z + 0.25) / 2 + ALARM_SEL_TRAVEL * alarmSelShownT; // tail up ⇒ rod up
-      // The cranks are built at local +z — pointing straight world-up — which
-      // puts them at TOP DEAD CENTRE of their own circle. A crank there has
-      // height 0.22·cos θ, which is EVEN in θ: it falls for rotation in either
-      // direction, and dz/dθ = 0 at rest. That is why the rod rose while the
-      // crank it bears on fell (measured: rod +0.19, crank tip −0.095), and
-      // why flipping the rotation's sign changed nothing — a sign cannot move
-      // a stationary point.
-      // Rotating the shaft a quarter turn puts the cranks on the SIDE of the
-      // circle, where height goes as sin θ and dz/dθ is at its maximum, so the
-      // crank actually rises and falls with the rod it touches.
-      alarmLinkParts.shaft.rotation.x = ALARM_LINK_CRANK_PHASE - (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
+      const F = alarmLinkParts.forward;
+      const colH = alarmColumnWheel.userData.colH;
+      const profile = alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
+      const noseDrop = Math.min(colH * (1 - profile), F.seatNoseDrop);
+      alarmLinkParts.beakArm.rotation.y = F.noseRySign * (noseDrop / alarmLinkParts.beakLen);
+      // The tail's far end — the rod's station — rises by the lever ratio;
+      // the rod rides it, foot-down onto the rim finger.
+      const rodLift = noseDrop * (alarmLinkParts.tailLen / alarmLinkParts.beakLen) * Math.sign(F.rodTravel);
+      alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift;
+      // The rim finger follows its contact with the rod's foot: the
+      // envelope solve, seeded deterministically along the derived roll
+      // span so the answer is a pure function of the pose.
+      const rodFoot = F.rodFootRest + rodLift;
+      const tSeed = Math.max(0, Math.min(1, F.rodTravel === 0 ? 0 : (rodFoot - F.rodFootRest) / F.rodTravel));
+      const roll = F.solveEnv(F.rimPair, rodFoot, F.rollRest + (F.rollArmed - F.rollRest) * tSeed, 'rim tick');
+      alarmLinkParts.shaft.rotation.x = roll;
+      // The ring stands where the centre finger holds its tab — the
+      // travel READ from that contact, not assigned to it.
+      const centreZ = F.envZ(F.centrePair, roll + F.dPhi);
+      alarmSelShownT = Math.max(0, Math.min(1, (centreZ - F.tabUnderRest) / F.travelW));
     }
     alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
     // TODO 19 (closed) — the rocker's angle is SOLVED FROM THE CONTACT, not
@@ -13234,10 +13483,11 @@ window.__clock = {
     if (p.alarmCrownPullT !== undefined) { alarmCrownPullT = p.alarmCrownPullT; alarmCrownOut = p.alarmCrownPullT > 0.5; } // §25 C winding clutch
     if (p.alarmReleased !== undefined) alarmReleased = !!p.alarmReleased; // §25 B: posed so the strike axis sweeps with the brake LIFTED, as a real ring runs
     if (p.alarmOn !== undefined) { // §25 C: armed/disarmed — decides whether the tube holds the set time or follows the hour wheel
-      alarmOn = !!p.alarmOn;
-      // §25 D: the column wheel's parity IS the on/off — a pose that flips one
-      // must carry the other, or the beak sits on a column with the alarm on.
-      if ((alarmColSteps % 2 === 1) !== alarmOn) alarmColSteps += 1;
+      // TODO 20: the WHEEL is the state now — the pose sets the column's
+      // parity and the flag is assigned from it, the same direction the
+      // pusher drives (setPose is exact, so no pusher pulse).
+      if ((alarmColSteps % 2 === 1) !== !!p.alarmOn) alarmColSteps += 1;
+      alarmOn = alarmColSteps % 2 === 1;
     }
     if (p.alarmBarrelWind !== undefined) alarmBarrelWind = p.alarmBarrelWind; // §24 alarm-spring energy
     // §25 striking axis. Phase and wind are ONE mechanical quantity — the
