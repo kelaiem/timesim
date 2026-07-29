@@ -2974,10 +2974,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§29 complete, rebased on §14+§27 main; 45 units, 44
-// fingerprinted, 10 poses): 3868604154
-// — verified IDENTICAL on a virgin boot, after running, and after a
-// deliberately dirtied session, in one process. History: §29 step 0 found
+// Baseline (§57 + TODO 18 complete; 47 units, 46 fingerprinted, 10 poses):
+// 1974757747
+// — verified IDENTICAL across two virgin boots (state file and localStorage
+// cleared first), boot silent. The §29-era value previously recorded here
+// (3868604154) was moved deliberately by the sections landed since — §53's
+// alarm-link restiffening through TODO 18's derived reserve reduction —
+// which relaid geometry and added two fingerprinted units. CI's gate is
+// double-boot determinism, not this constant; this number is the recorded
+// go/no-go for refactors against the CURRENT tree, so re-measure and update
+// it when a section legitimately moves geometry. History: §29 step 0 found
 // the previous baseline (2407965539) was an ATTRACTOR — it embedded
 // updateExplode's frame-one teleport of the handsGroup (stale baseZ 2.5 vs
 // the derived 3.2: the minute hand rode 0.7 below its designed plane in
