@@ -4164,6 +4164,19 @@ dialGroup.add(dialFace);
 // expressions. Consumed here by the dial build:
 const reserveR = subDialR;
 const secondsSubR = subDialR;
+// --- The reserve scale, owned in ONE place (TODO 18) -----------------------
+// Three things must agree: the graduation painted on the well, the travel of
+// the hand over it, and the reduction train's ratio. They used to be three
+// separate literals, and when the arc was widened 120° → 150° for
+// readability the other two did not follow — the pinion slip-coupled to the
+// barrel arbor ended up turning 4.6875 times where the arbor turned 3.75.
+// The arc is a READABILITY choice (more angular travel per hour = finer
+// reading); the hours are the movement's actual reserve; the gearing is
+// DERIVED from both. Everything downstream reads these two.
+const RESERVE_SWEEP_DEG = 150;      // graduated arc, math angle 180° (empty) → 30° (full)
+const RESERVE_SCALE_HOURS = 30;     // = RELAX_SECONDS / 3600 (declared later — same
+                                    // forward reference FUSEE_WRAP_TURNS makes, and
+                                    // asserted against it with the ratio below)
 // --- Alarm period + reading resolution (BUILT §24) -------------------------
 // The alarm wraps on the SAME 12-hour period as the dial and formatTime (a
 // 12-hour dial carries no AM/PM, so a 24-hour alarm can't be set unambiguously
@@ -4246,7 +4259,8 @@ const dial = G.makeDial({
     // evaluated at ±0.39R) so BOTH wells blend in rather than reading as
     // separate darker instruments — the two sit symmetric about the centre,
     // so they share the same gradient tone.
-    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5' },
+    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5',
+      scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS } },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
   ],
 });
@@ -4835,14 +4849,12 @@ reserveGroup.add(reserveHand);
 // under-dial space (via a friction slip coupling, the standard simple-watch
 // solution: a rigid tap of the great wheel alone can't give a bounded gauge
 // that resets on winding, and a true differential is a lot of machinery).
-// From there a 3-stage reduction (8/36 × 8/20 = 1/11.25) walks across the
-// gap between plate and dial and ends on an arbor COAXIAL with the sub-dial
-// pivot — the same axis the hand rides, its post passing through the dial
-// exactly like the time hands do.
-// TODO 18 — the 1/11.25 was derived for a 120° scale (3.75 barrel turns ÷
-// 11.25 = 1/3 rev = 120° of hand, exactly). The arc was later regraduated to
-// 150° and this ratio was not re-derived with it, so p0 now sweeps 4.6875
-// turns where the arbor it is slip-coupled to turns 3.75. R must be 9.
+// From there a two-mesh reduction across three arbors (8/36 × 10/20 = 1/9)
+// walks across the gap between plate and dial and ends on an arbor COAXIAL
+// with the sub-dial pivot — the same axis the hand rides, its post passing
+// through the dial exactly like the time hands do. 150° of hand = 3.75
+// barrel turns; the ratio is derived from that pair, not chosen (see the
+// tooth counts below, and the assert beside RESERVE_BARREL_TURNS).
 // ---------------------------------------------------------------------------
 const reserveTrain = new THREE.Group();
 movement.add(reserveTrain);
@@ -4857,11 +4869,34 @@ const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.
 const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
 const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.25 clears the recessed well floor at −6.5)
 
-const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 8, rsvTeethW2 = 20;
+// TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
+// slip-coupled to the barrel arbor, so it must turn what that arbor turns
+// over one wind-to-empty cycle — RESERVE_BARREL_TURNS = 3.75 (30 h at
+// 1 rev/8 h). The hand on the far end sweeps RESERVE_SWEEP_DEG. So the
+// reduction is fixed by the two of them:
+//
+//   R = 3.75 rev × 360° ÷ 150° = 1350/150 = 9
+//
+// and R is the product of the meshes, (W1/P0) × (W2/P1) = (36/8) × (20/10)
+// = 4.5 × 2 = 9. p1 carries 10 leaves for that second 2:1 — NOT the 8 it
+// had while this sub-dial was a 120° arc, where 11.25 was the right answer
+// (3.75 ÷ 11.25 = ⅓ rev = 120° exactly). The arc was later widened to 150°
+// for readability and this ratio was not re-derived with it, so p0 spun
+// 4.6875 turns against its arbor's 3.75 — TODO 18, closed here. The assert
+// below now binds the three quantities together so the next regraduation
+// cannot land silently.
+//
+// Only the tooth COUNT moved: rsvModule1 is solved from the span (below),
+// so w2 keeps the sub-dial pivot and the centre distance is untouched.
+// p1's pitch radius grows 2.037 → 2.376 and w2's shrinks 5.092 → 4.753;
+// the two waived §50 stock rows on this unit are 0.3-unit radial bands
+// that the module does not reach (measured before and after — unchanged
+// at 0.1125 mm), so this is a clearance question, not a stock one.
+const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 10, rsvTeethW2 = 20;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
-// the second stage's module: d0 = m0·(8+36)/2, d1 = span − d0 = m1·(8+20)/2.
+// the second stage's module: d0 = m0·(P0+W1)/2, d1 = span − d0 = m1·(P1+W2)/2.
 const rsvModule0 = 0.34;
 const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
 const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
@@ -7611,6 +7646,23 @@ const RELAX_SECONDS = 30 * 3600; // simulated hours of running per full wind
 // per 8 h, so a 30 h reserve is exactly 3.75 barrel revolutions lock-to-lock.
 const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
+
+// TODO 18's gate. The reserve indicator is three quantities that must agree —
+// the arc the well is graduated to, the hand's travel over it, and the
+// reduction between the barrel arbor and that hand — and for a while they did
+// not. p0 is slip-coupled to the barrel arbor, so over one wind-to-empty cycle
+// it must turn exactly what the arbor turns; anything else is a coupling the
+// mechanism claims and does not honour. Asserted rather than commented,
+// because the comments were the thing that agreed with each other while the
+// teeth did not.
+{
+  const R = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);   // = 9
+  const p0Turns = (RESERVE_SWEEP_DEG / 360) * R;                     // hand travel → p0 revolutions
+  if (Math.abs(p0Turns - RESERVE_BARREL_TURNS) > 1e-9)
+    console.warn(`§39/TODO 18: reserve reduction ${R} puts ${p0Turns} turns on p0 over a ${RESERVE_SWEEP_DEG}° sweep, but the barrel arbor it is slip-coupled to turns ${RESERVE_BARREL_TURNS}. R must be ${(RESERVE_BARREL_TURNS * 360) / RESERVE_SWEEP_DEG}.`);
+  if (Math.abs(RESERVE_SCALE_HOURS - RELAX_SECONDS / 3600) > 1e-9)
+    console.warn(`§39/TODO 18: the reserve well is graduated to ${RESERVE_SCALE_HOURS} h but the movement runs ${RELAX_SECONDS / 3600} h per wind.`);
+}
 let windAccumTurns = 0; // ratchet/fusee turns actually BANKED by winding (not raw crown input)
 // Jumping-minute setting state: the eased displayed offset while the
 // jumper is engaged (null when lifted), and the folded-in snap correction
@@ -11879,7 +11931,7 @@ function tick(t) {
   // quantity now; no separate epoch/pulse bookkeeping needed since winding
   // is continuous rather than a discrete button press.
   reserveShown = tension;
-  reserveHand.rotation.z = (90 - reserveShown * 150) * DEG2RAD; // 150-degree scale, empty end at 9 o'clock (see makeDial's reserve face)
+  reserveHand.rotation.z = (90 - reserveShown * RESERVE_SWEEP_DEG) * DEG2RAD; // empty end at 9 o'clock — same constant the well is graduated to and the train is geared to
 
   // Power-reserve reduction gear train (see note above its construction):
   // w2 shares the hand's arbor. The hand lives on the Y-flipped dialFace

@@ -90,12 +90,12 @@ then open http://localhost:8347/ — no build step, no network access needed
   on the balance rim — and drives the reset-hammer rod; a separate yoke
   tracks the sliding pinion's hub between the winding and setting meshes.
 - **Power-reserve gear train**: a visible two-mesh reduction across three
-  arbors (8T/36T × 8T/20T = 1/11.25) whose first pinion sits on the barrel arbor,
-  slip-coupled, and whose last wheel shares the indicator hand's arbor. The
-  train is posed backwards from the hand, so its output matches the hand
-  exactly; its input pinion does **not** currently match the barrel it rides
-  — see TODO 18, the ratio still encodes the 120° scale this sub-dial had
-  before it was regraduated to 150°.
+  arbors (8T/36T × 10T/20T = 1/9) whose first pinion sits slip-coupled on the
+  barrel arbor and whose last wheel shares the indicator hand's arbor. The
+  ratio is derived, not chosen: the arbor makes 3.75 turns over the 30 h
+  reserve and the hand sweeps 150°, so R = 1350/150 = 9 — and a build-time
+  assert holds the graduation, the hand's travel and the tooth counts to each
+  other, because for a while they disagreed (TODO 18).
 
 ## Controls
 

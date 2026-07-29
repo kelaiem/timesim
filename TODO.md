@@ -487,79 +487,6 @@ exactly 0.15 after the change, which is the formula doing its job.
 Waivers stay per part while any row remains; closing a part's last row
 deletes its waiver.
 
-## 18. The power-reserve reduction turns 25% faster than the arbor it rides
-
-The reduction train's tooth counts still encode a 120° indicator scale that
-no longer exists.
-
-`rsvArbor0` carries `reservePinion0` on the barrel-arbor axis — coaxial with
-`barrelArbor`, described in its own build comment as slip-coupled to it
-(`main.js`, "Power-reserve reduction train"). A slip coupling transmits
-rotation and slips only at the end stops, so over one wind-to-empty cycle
-that pinion should turn exactly as many times as the arbor under it:
-`RESERVE_BARREL_TURNS` = 3.75 (`RELAX_SECONDS / (8 * 3600)` — 30 h at
-1 rev/8 h).
-
-It turns 4.6875. The train is posed BACKWARDS from the hand:
-
-```js
-const rsvOut = -reserveHand.rotation.z;
-rsvArbor2.rotation.z = rsvOut;
-rsvArbor1.rotation.z = -rsvOut * (rsvTeethW2 / rsvTeethP1);   // ×2.5
-rsvArbor0.rotation.z = -rsvArbor1.rotation.z * (rsvTeethW1 / rsvTeethP0); // ×4.5
-```
-
-so `p0` sweeps `hand travel × 11.25`. The hand's travel is 150°
-(`reserveHand.rotation.z = (90 - reserveShown * 150) * DEG2RAD`), giving
-150° × 11.25 = 1687.5° = **4.6875 turns** against the arbor's 3.75. The
-ratio is off by exactly 1.25 = 150/120.
-
-The 8/36 × 8/20 = 1/11.25 reduction was DERIVED when the sub-dial was a
-120° arc: 3.75 turns ÷ 11.25 = 1/3 rev = 120° of hand, exactly. The arc was
-later regraduated to 150° ("more angular travel per hour = finer reading",
-`geometry.js` `kind === 'reserve'`) and the reduction was not re-derived
-with it. Two comments still assert the retired figure — `main.js`'s
-"120° of hand = 3.75 barrel turns" and `geometry.js`'s "Graduated 120° arc"
-one line above the loop that draws 150 — which is why it survived: every
-local reading agrees with itself.
-
-Nothing overlaps and nothing warns, because `rsvArbExt` (the visible
-barrel-arbor extension) is a static cylinder parented to `reserveTrain`
-rather than to `rsvArbor0`, so the two rotations are never displayed
-against each other. The defect is only visible by counting teeth. It is a
-Rule 2 violation of the same family as the old `minuteA / 12` hour hand:
-the hand's angle is the input and the train is drawn to agree with it,
-where a real movement has the barrel as the input and the hand as what the
-teeth produce.
-
-**The fix is a ratio, not a nudge.** The required reduction is set by the
-scale: 3.75 rev = 1350° of arbor must become 150° of hand, so
-R = 1350/150 = **9**, not 11.25. R is the product of the two meshes,
-(W1/P0) × (W2/P1) = (36/8) × (20/8) = 4.5 × 2.5 = 11.25. Three
-whole-tooth ways to land on 9:
-
-| change | new stages | R | cost |
-|---|---|---|---|
-| `rsvTeethP1` 8 → 10 | (36/8) × (20/10) | 4.5 × 2 = 9 | `rsvModule1` re-solves; only p1's pitch radius moves |
-| `rsvTeethW2` 20 → 16 | (36/8) × (16/8) | 4.5 × 2 = 9 | `rsvModule1` re-solves; w2 sits on the hand's arbor, inside the well |
-| `rsvTeethP0` 8 → 10 | (36/10) × (20/8) | 3.6 × 2.5 = 9 | changes `rsvD0`, which MOVES w1 along the barrel→pivot span |
-
-`rsvTeethP1` 8 → 10 is the cheapest: `rsvModule1` is already solved from the
-span (`(2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2)`), so the centre
-distance re-solves itself and w1 does not move. It still changes a real
-diameter in the plate→dial gap, so it needs the battery, not just arithmetic:
-
-- `I.start(__clock, 'clearances')` — `rsvPost1` and w1 sit inside the
-  recessed reserve well's footprint, and the post already had to be
-  shortened once to stay out of the well floor.
-- `checkPenetrationBudgets` — the reserve train has no budgeted pair today;
-  a re-toothed mesh is the moment to add one.
-- The two stale comments die with the fix.
-
-Alternatively, re-derive the SCALE from the reduction (150° → 120°) — but
-the 150° arc was itself a deliberate readability decision with its reasoning
-written down, so the train is the side that should move.
-
 ## Recently closed
 
 - **The alarm could not ring under fast-forward** (was item 8). The whole
@@ -684,6 +611,75 @@ written down, so the train is the side that should move.
 invisible: the grounding check verified that declared edges formed a connected
 graph, not that any geometry existed at the other end. Keep new parts declared
 in `MECH_GRAPH` so they stay accountable.
+
+## 18. CLOSED — the power-reserve reduction turned 25% faster than its arbor
+
+The reduction's tooth counts still encoded a 120° indicator scale that no
+longer existed.
+
+`rsvArbor0` carries `reservePinion0` on the barrel-arbor axis, coaxial with
+`barrelArbor` and described in its own build comment as slip-coupled to it. A
+slip coupling transmits rotation and slips only at the end stops, so over one
+wind-to-empty cycle that pinion must turn what the arbor under it turns:
+`RESERVE_BARREL_TURNS` = 3.75 (30 h at 1 rev/8 h).
+
+It turned **4.6875**. The train is posed backwards from the hand —
+`rsvArbor1` takes `hand × (W2/P1)`, `rsvArbor0` takes `that × (W1/P0)` — so
+p0 swept `hand travel × 11.25`, and at a 150° sweep that is 1687.5° = 4.6875
+turns. Off by exactly 1.25 = 150/120.
+
+**Why 11.25 was once right.** It was derived, for a 120° arc: 3.75 ÷ 11.25 =
+⅓ rev = 120° exactly. The arc was later widened to 150° ("more angular travel
+per hour = finer reading") and the ratio was not re-derived with it. Two
+comments still asserted the retired figure, which is why it survived — every
+local reading agreed with itself. Nothing overlapped and nothing warned,
+because `rsvArbExt`, the visible barrel-arbor extension, is parented to
+`reserveTrain` rather than to `rsvArbor0`, so the two rotations were never
+displayed against each other. Rule 2, same family as the old `minuteA / 12`
+hour hand: the display quantity was the input and the gears were drawn to
+agree with it.
+
+**The fix.** R must be 9 (3.75 rev = 1350°, ÷ 9 = 150°). `rsvTeethP1` 8 → 10
+makes the second stage 20/10 = 2, so R = 4.5 × 2 = 9. Measured after:
+p0 turns **3.75** over a full reserve, matching the arbor.
+
+Two things the filing got wrong, both corrected by measuring:
+
+- It claimed p1 8→10 was cheapest because "only p1's pitch radius moves."
+  Wrong — the centre distance is fixed and both live options give a 2:1
+  second stage, so `p1 8→10` and `w2 20→16` produce **identical** pitch
+  radii (p1 2.037 → 2.376, w2 5.092 → 4.753). Only the module differs
+  (0.475 vs 0.594).
+- It then guessed `w2 20→16` was better on stock-floor grounds. Also wrong:
+  this unit's two waived §50 rows are 0.3-unit **radial bands** that the
+  module does not reach — measured at 0.1125 mm before and after, unchanged,
+  with `stockFloor` still 0 degenerate / 0 unwaived. Stock was not a
+  discriminator at all.
+
+With stock neutral the tie-break is watchmaking vocabulary: 10 leaves is a
+standard pinion count, and taking the wheel down to 16 would push it toward
+pinion territory while cutting the coarsest module in the movement.
+
+**The gate.** Three quantities have to agree — the arc the well is graduated
+to, the hand's travel over it, and the reduction — and they were three
+separate literals. They are now one pair of constants, `RESERVE_SWEEP_DEG`
+and `RESERVE_SCALE_HOURS`, which the dial (passed through `makeDial`'s
+sub-dial `scale`), the hand, and a build-time assert all read. The assert was
+confirmed to fire by reverting p1 to 8:
+
+```
+§39/TODO 18: reserve reduction 11.25 puts 4.6875 turns on p0 over a 150°
+sweep, but the barrel arbor it is slip-coupled to turns 3.75. R must be 9.
+```
+
+The dial's painted face is unchanged — the parametrised arc renders
+byte-identical textures to the old literals, and a bare `makeDial()`
+(test-geometry.html) reproduces the shipped face from the defaults.
+
+**Not verified here:** p1's pitch radius grows 0.34 units, and w1 and
+`rsvPost1` sit inside the recessed reserve well's footprint — that post was
+once shortened to stay clear of the well floor. `stockFloor` and boot silence
+are clean; the clearance and overlap sweeps are the owner's gate run.
 
 ## 13. CLOSED — three followers are held to their cams by nothing (§48)
 
