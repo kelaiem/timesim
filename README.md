@@ -77,13 +77,15 @@ then open http://localhost:8347/ — no build step, no network access needed
   (1.75 turns of wind), striking wheel, hammer and coiled gong. The setting
   disc is read against a 12 h ring on the dial at quarter-hour marks; a
   release feeler drops into the disc's notch at the set time, unlocking the
-  striking train for ≈28 strikes (~12 s) on one wind. The arming run's
-  members — switch, link, selector, lock, release disc — are modelled parts,
-  and the gong's tone is derived from its own arc geometry. (Honesty note:
-  the arming run is currently *posed*, not driven — its members share one
-  derived state rather than pressing each other, and the `alarmHandoffs`
-  check measures every claimed contact as open or buried. TODO 19/20 carry
-  the debt and the fix.)
+  striking train for ≈28 strikes (~12 s) on one wind. The arming run is
+  forward-driven: a press advances the column wheel (its parity IS the
+  on/off), the beak rides castellations cut from the same function the
+  tick reads, and each member's pose is solved from the contact that
+  drives it — the `alarmHandoffs` check measures four of the six
+  hand-offs closed and unwaived. (Honesty note: two remain as measured,
+  waived debt — the drive tab wants a fork the lay shaft passes through,
+  and the pusher's pawl parks buried in its ratchet. TODO 20's status
+  block carries the numbers.)
 - **Keyless works**: knurled crown → stem → winding pinion → crown wheel →
   ratchet + click; the winding train turns with true tooth ratios when you
   wind, and the fusee chain migrates as the cone takes it up.

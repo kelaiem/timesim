@@ -1958,6 +1958,22 @@ holds the full account and the path out (an axial face cam on the
 column wheel — §34's own heart-B principle — in place of the six-member
 run).
 
+**Addendum (2026-07-29, later the same day): the run is now driven.**
+TODO 20's rebuild landed: the press is the primitive and the wheel's
+parity the state; the castellations are cut from `profileAt` itself
+(mesh and law one function); the nose rides the column tops it reads;
+the rod is built between its two contacts with TODO 9's constants
+retired; the cranks sit in per-crank keys; and the tick solves cam →
+lever → rod → roll → ring forward, contact by contact, with the ring's
+0.19 a measured OUTPUT. Four of the six hand-offs measure closed and
+unwaived. Two remain as waived, measured debt — the forked tab (the
+centre finger's root and the shaft transfix the tab's plane: TODO 16's
+"slot", finally literal) and the pawl's park — with the ring's missing
+bias spring noted beside them; TODO 20's status block carries the
+numbers. One correction to this postscript's own text: "there is no
+pawl" was an overclaim — the pawl and its ratchet existed; the
+causality didn't.
+
 ## §10 level 1 — Grouped explode: the selector speaks in assemblies
 
 **Shipped in part, on purpose.** §10 was filed as two levels: level 1
