@@ -1519,20 +1519,20 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
-    // §35: the centre crank on the ring's drive tab — the run's last contact.
-    // RETARGETED: this row policed the crank against the RING and read a
-    // clean 0 for the life of the budget, because the crank never reaches
-    // the ring — the claimed contact is the drive TAB, where the crank
-    // measures 0.22–0.25 buried at the two parities (alarmHandoffs). An
-    // instrument pointed at the wrong face reports the defect as health.
+    // §35's last contact, twice re-aimed: this row once policed the crank
+    // against the RING (a mesh it never reached — clean 0 for the budget's
+    // whole life), then the crank against the solid tab it transfixed.
+    // TODO 20's fork made it honest: the centre PIN rides the fork's
+    // groove at the ±0.01 working clearance, swept here across the full
+    // co-rotating revolution. UNWAIVED — a burial past the tolerance
+    // means the fork engagement broke.
     pair: ['Alarm link', 'Alarm selector'],
     maxDepth: HANDOFF_TRACK_TOL,
-    waived: 'TODO 20 — the crank is buried 0.22–0.25 in the tab it claims to press; ring z is assigned, not driven',
     axis: 'alarm',
     nSamples: 150,
     selectA(unit) {
       const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLinkCrankCentre') out.push(o); });
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLinkCentrePin') out.push(o); });
       return out;
     },
     selectB(unit) {
@@ -1715,11 +1715,16 @@ const ALARM_HANDOFFS = [
     // row now measures the pawl PARKED clear of the skirt at both
     // parities; the index STROKE itself is a transient the static poses
     // cannot reach, carried below as the row's remaining waiver.
+    // TODO 20 (park) closed the STATIC half: the pawl rests on the tooth
+    // it will drive, a click's bite (−0.025, measured every run — it was
+    // parked 0.18 BURIED before). NOTE the row measures the PARK only:
+    // the index STROKE — press travel 0.7 against a ~0.84 tooth arc at
+    // the engagement radius, marginal — is a transient static poses
+    // cannot reach; TODO 20's status block files that gap, and §43's
+    // direction assert remains its only guard.
     label: 'pusher pawl ⇄ ratchet skirt',
     unitA: 'Alarm switch', meshA: 'alarmColWheel',
     unitB: 'Alarm switch', meshB: 'alarmPusherPawl',
-    expect: { disarmed: 'free', armed: 'free' },
-    waived: 'TODO 20 (remainder) — the parked pawl measures 0.18 BURIED in the skirt at both parities (it should rest ON a tooth flank, as a click does), and the index stroke’s pawl-on-tooth drive is a transient the static poses cannot instrument',
   },
   {
     // TODO 20 closed this row: the flank is cut (geometry.js), the nose
@@ -1749,10 +1754,15 @@ const ALARM_HANDOFFS = [
     unitB: 'Alarm link', meshB: 'alarmLinkCrankRim',
   },
   {
-    label: 'centre crank ⇄ drive tab',
-    unitA: 'Alarm link', meshA: 'alarmLinkCrankCentre',
+    // TODO 20 (fork) closed this row: the drive tab is a FORK — two plates
+    // flanking a groove — and the shaft ends short of it, only the centre
+    // PIN reaching in. The pin runs at the fork's working clearance
+    // (±0.01, which is what a running fit measures) and drives the ring
+    // POSITIVELY BOTH WAYS, which retired both the transfixion (TODO 16's
+    // "slot", now literal) and the phantom bias spring. UNWAIVED.
+    label: 'centre pin ⇄ fork groove',
+    unitA: 'Alarm link', meshA: 'alarmLinkCentrePin',
     unitB: 'Alarm selector', meshB: 'alarmSelTab',
-    waived: 'TODO 20 (remainder) — the finger’s TIP is keyed to kiss the tab’s underside, but the finger’s ROOT and the lay shaft itself pass through the tab’s underside plane inside its footprint (shaft z −6.82..−6.58 vs tab underside −6.86): TODO 16’s "the clearance is a slot" measured literally. The honest fix is the fork — a slotted tab the shaft passes through, the finger driving inside it — filed in TODO 20’s remainder',
   },
   {
     // TODO 19 closed this row: the rocker's angle is solved from the contact
@@ -2924,6 +2934,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmFeelerPin: 'pivot',
   alarmSelPin: 'pivot',
   alarmPinB: 'pivot',
+  alarmLinkCentrePin: 'pivot',    // TODO 20 fork — the crank pin riding the groove: pin stock (⌀ 0.105 mm ≥ the 0.07 pivot floor)
   // TODO 12 first tranche — honest kinds found during the thickening pass:
   shockLyreSpring: 'spring',   // the gold anti-shock lyre: real ones are 0.05-0.10 mm wire
   studPinScrew: 'pivot',       // the stud clamp's side pin: pin stock, clears the pivot floor
@@ -3188,16 +3199,18 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 20 mostly closed; 47 units, 46 fingerprinted, 10 poses):
-// 4164572423
-// — moved from 2748333645 by TODO 20 deliberately: the castellations are
-// cut from profileAt (a new top surface), the beak nose rides the column
-// tops (arm raised, post lengthened), the rod is rebuilt between its two
-// contacts, the cranks sit in solved keys, and every armed/disarmed pose
-// carries the forward-solved chain. Verified identical across two virgin
-// boots by the battery's double-boot gate.
-// Previous baselines: 2748333645 (TODO 19 — pin re-hung, rocker contact-
-// solved), 1974757747 (§57 + TODO 18)
+// Baseline (TODO 20 closed; 47 units, 46 fingerprinted, 10 poses):
+// 143293357
+// — moved from 4164572423 by TODO 20's fork deliberately: the drive tab is
+// a fork built on the pin's solved engagement (band outboard of the alarm
+// setting wheel's rim, hung from a single upper bracket — the lower level
+// has 0.03 of z inside the rim), the lay shaft ends short of it with the
+// centre pin riding the groove, and the pusher's pawl parks on the tooth
+// it drives. Verified identical across two virgin boots by the battery's
+// double-boot gate.
+// Previous baselines: 4164572423 (TODO 20 — cam cut, nose raised, rod
+// rebuilt between contacts, keyed cranks), 2748333645 (TODO 19 — pin
+// re-hung, rocker contact-solved), 1974757747 (§57 + TODO 18)
 // — verified IDENTICAL across two virgin boots (state file and localStorage
 // cleared first), boot silent. The §29-era value previously recorded here
 // (3868604154) was moved deliberately by the sections landed since — §53's

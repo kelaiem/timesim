@@ -78,14 +78,14 @@ then open http://localhost:8347/ — no build step, no network access needed
   disc is read against a 12 h ring on the dial at quarter-hour marks; a
   release feeler drops into the disc's notch at the set time, unlocking the
   striking train for ≈28 strikes (~12 s) on one wind. The arming run is
-  forward-driven: a press advances the column wheel (its parity IS the
-  on/off), the beak rides castellations cut from the same function the
-  tick reads, and each member's pose is solved from the contact that
-  drives it — the `alarmHandoffs` check measures four of the six
-  hand-offs closed and unwaived. (Honesty note: two remain as measured,
-  waived debt — the drive tab wants a fork the lay shaft passes through,
-  and the pusher's pawl parks buried in its ratchet. TODO 20's status
-  block carries the numbers.)
+  forward-driven end to end: a press advances the column wheel (its
+  parity IS the on/off), the beak rides castellations cut from the same
+  function the tick reads, the rod stands between its two contacts, and
+  a crank pin rides a forked tab's groove to drive the selector ring
+  positively both ways — the `alarmHandoffs` check measures all six
+  hand-offs closed, zero waivers. (The one filed gap: the pawl's index
+  stroke is a transient the pose-based instrument cannot reach; TODO
+  20's closing status carries it.)
 - **Keyless works**: knurled crown → stem → winding pinion → crown wheel →
   ratchet + click; the winding train turns with true tooth ratios when you
   wind, and the fusee chain migrates as the cone takes it up.

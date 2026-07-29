@@ -5289,6 +5289,14 @@ const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger thr
 const ALARM_SEL_Z_UP = -0.96 + ALARM_SEL_T;     // ring's top face, DISARMED (bottom pinned at −0.96)
 const ALARM_SEL_POST_R = 5.15;    // guides OUTSIDE the setting wheel's tips (4.83 + margin; asserted)
 const ALARM_SEL_POST_AZ = [60, 220, 300].map((d) => d * DEG2RAD); // world az — each wall asserted below
+// TODO 20 (fork) — shared by the fork build here and the pin build at the
+// link: pin at declared pin stock (⌀ 0.105 mm, the §34 posts' precedent),
+// groove = pin ⌀ + 2·working clearance. δ = 0.01 is small enough that the
+// alarmHandoffs row reads the running fit as contact (±0.03) and large
+// enough to clear tri-tri slack.
+const ALARM_FORK_PIN_R = 0.14;
+const ALARM_FORK_CLEAR = 0.01;
+const ALARM_FORK_GROOVE_H = 2 * (ALARM_FORK_PIN_R + ALARM_FORK_CLEAR);
 const alarmSelectorUnit = new THREE.Group();
 dialFace.add(alarmSelectorUnit);
 registerLabel('Alarm selector', alarmSelectorUnit);
@@ -5310,15 +5318,30 @@ const alarmSelRing = new THREE.Group();
     sleeve.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, 0);
     alarmSelRing.add(sleeve);
   }
-  // §35: the DRIVE TAB — the centre crank's landing, on the corridor's
-  // azimuth (dial-local mirror of world 155°). Its underside is the
-  // pressed face; the crank lifts it (world-up = armed).
-  const tabAz = Math.PI - ALARM_LINK_AZ_DEG * DEG2RAD;
-  const tab = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.35, ALARM_SEL_T), MATS.nickel);
-  tab.name = 'alarmSelTab';
-  tab.position.set(Math.cos(tabAz) * (ALARM_SEL_R_OUT + 0.45), Math.sin(tabAz) * (ALARM_SEL_R_OUT + 0.45), 0);
-  tab.rotation.z = tabAz;
-  alarmSelRing.add(tab);
+  // TODO 20 (fork) — the DRIVE TAB IS A FORK now, on the corridor's azimuth
+  // (dial-local mirror of world 155°). The solid tab was a plane the lay
+  // shaft and the old centre crank's root TRANSFIXED (TODO 16's "the
+  // clearance is not a stack-up, it is a slot", measured at shaft z
+  // −6.82..−6.58 against a −6.86 underside). The slot now exists: two
+  // plates flanking a groove, joined by a web at the outboard end, open on
+  // the shaft's side — the centre PIN rides inside and drives the ring
+  // POSITIVELY BOTH WAYS, which also retires the unmodelled bias spring
+  // (§48's no-spring class): disarming pushes the ring down, arming lifts
+  // it, both through the same groove faces.
+  //
+  // The groove is centred on the tab's own centre plane, which §51's
+  // stratification put exactly ON the lay shaft's axis plane (measured:
+  // both at −6.70) — so the fork is symmetric about local z 0, no solve
+  // needed here. Groove height = pin ⌀ + 2·δ where δ = 0.01 is the fork's
+  // working clearance: small enough that the alarmHandoffs row reads it as
+  // contact (±0.03), large enough to clear tri-tri slack. Plates at sheet
+  // floor stock; the web carries §50's kind for the block.
+  // (The FORK itself is BUILT AT THE REGISTRATION SOLVE, in the link block:
+  // it is the driven member, so its position derives from the pin's solved
+  // rest engagement — the same direction every other contact in this run
+  // derives. Building it here from the legacy tab constants created a
+  // feedback loop: the fork's box fed the shaft's retreat, which moved the
+  // pin, which moved where the fork needed to be.)
   alarmSelRing.position.z = ALARM_SEL_Z_UP - ALARM_SEL_T / 2;
   alarmSelectorUnit.add(alarmSelRing);
   // the posts: sheet's back face down past the ring's lowest travel
@@ -7495,13 +7518,32 @@ const alarmLinkParts = {};
   const ALARM_LINK_ROD_R_SECTION = ALARM_LINK_ROD_BORE_R - CLEAR_MARGIN;   // 0.30
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
-  const chordLen = Math.hypot(chord.x, chord.y);
-  if (Math.abs(chordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
+  const fullChordLen = Math.hypot(chord.x, chord.y);
+  if (Math.abs(fullChordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
     console.warn(`§54: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
-      + `${chordLen.toFixed(4)} — the shaft was sized against a length it does not have`);
-  const u = { x: chord.x / chordLen, y: chord.y / chordLen };
+      + `${fullChordLen.toFixed(4)} — the shaft was sized against a length it does not have`);
+  const u = { x: chord.x / fullChordLen, y: chord.y / fullChordLen };
+  // TODO 20 (fork) — the shaft ENDS SHORT of the fork. Its inner end used
+  // to sit AT the tab's mid-reach, which is exactly how the arbor came to
+  // transfix the plane it drove (TODO 16's slot, measured). The retreat is
+  // a DESIGN length, not a chase: the pin spans it (root at the shaft's
+  // end, tip at the old mid-reach), and the fork — built at the solve, on
+  // the pin's solved engagement — occupies the tip-side 0.7 of that span
+  // plus its 0.2 web, leaving the shaft's end 0.2 > CLEAR_MARGIN clear of
+  // the fork's far face. (The first cut derived the retreat from the
+  // fork's box while the fork chased the pin that moved with the retreat —
+  // a feedback loop; a fixed span with the fork derived from the pin is
+  // the same cure the rod build got.)
+  const ALARM_FORK_RETREAT = 1.1;
+  // The groove-mid datum is the RING SHEET's own mid-plane at rest — §51's
+  // stratification put it ON the shaft's axis plane, and the fork attaches
+  // to the ring at exactly that local height, so the pin seats to it.
+  alarmSelectorUnit.updateWorldMatrix(true, true);
+  const ALARM_FORK_GROOVE_MID_REST = new THREE.Vector3(0, 0, 0).applyMatrix4(alarmSelRing.matrixWorld).z;
+  const innerEnd = { x: ALARM_LINK_INNER_XY.x + u.x * ALARM_FORK_RETREAT, y: ALARM_LINK_INNER_XY.y + u.y * ALARM_FORK_RETREAT };
+  const chordLen = fullChordLen - ALARM_FORK_RETREAT;
   const shaft = new THREE.Group();
-  shaft.position.set((ALARM_LINK_INNER_XY.x + ALARM_LINK_ROD_XY.x) / 2, (ALARM_LINK_INNER_XY.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
+  shaft.position.set((innerEnd.x + ALARM_LINK_ROD_XY.x) / 2, (innerEnd.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
   // §54 / TODO 16 — THE SECTION IS DERIVED FROM THE SLENDERNESS CEILING.
@@ -7525,30 +7567,56 @@ const alarmLinkParts = {};
   shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
-  // cranks: rim end (up to the rod's foot), centre end (under the ring's tab).
-  // §51 phase B: the INNER crank's jaw is LONGER than the rim's — it must
-  // cover the tab across the selector's whole 0.19 travel plus wrap, and
-  // measurement showed the old 0.45 never actually reached the tab at rest
-  // (a 0.03 gap PRE-dating the dial move: the link's §35 fix closed the
-  // rod-end contact and nobody measured this end). 0.45 + travel + wrap.
-  const INNER_JAW_LEN = 0.45 + ALARM_SEL_TRAVEL + ALARM_SEL_T + 0.15; // §51: rides the sheet's thickness so a thicker tab stays embraced
-  // TODO 20 — each crank sits in its own KEY: a wrapper whose rotation
-  // about the shaft's length is that crank's phase on the arbor. Real
-  // cranks are keyed where their contact needs them; forcing both to one
-  // phase is why the rod end and the tab end could never both touch
-  // (TODO 9's "closing one end opened the other"). The rim key stays at 0
-  // (the rod's built foot is the datum); the centre key's phase is SOLVED
-  // below so its finger meets the tab's underside at rest.
-  for (const [xLocal, nm, len] of [[chordLen / 2, 'alarmLinkCrankRim', 0.45], [-chordLen / 2, 'alarmLinkCrankCentre', INNER_JAW_LEN]]) {
+  // TODO 20 — each drive sits in its own KEY: a wrapper whose rotation
+  // about the shaft's length is that member's phase on the arbor. Real
+  // cranks are keyed where their contacts need them; forcing both ends to
+  // one phase is why the rod end and the tab end could never both touch
+  // (TODO 9's "closing one end opened the other").
+  // RIM end: the finger under the rod's foot, key at 0 (the rod's datum).
+  {
     const key = new THREE.Group();
-    key.position.x = xLocal;
-    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, len), MATS.steel);
-    crank.name = nm;
-    crank.position.set(0, 0, ALARM_LINK_CRANK_OFF); // radial offset on the shaft
+    key.position.x = chordLen / 2;
+    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, 0.45), MATS.steel);
+    crank.name = 'alarmLinkCrankRim';
+    crank.position.set(0, 0, ALARM_LINK_CRANK_OFF);
     key.add(crank);
     shaft.add(key);
-    alarmLinkParts[nm === 'alarmLinkCrankRim' ? 'rimKey' : 'centreKey'] = key;
-    alarmLinkParts[nm === 'alarmLinkCrankRim' ? 'rimLen' : 'centreLen'] = len;
+    alarmLinkParts.rimKey = key;
+    alarmLinkParts.rimLen = 0.45;
+  }
+  // CENTRE end: the old jaw-finger (which pressed one face, needed a
+  // phantom bias spring for the return, and whose root transfixed the tab)
+  // is replaced by a CRANK PIN riding the fork's groove — drive in both
+  // directions through the groove's two faces. The pin's arm radius is
+  // derived from where §51's stratification put the groove: its mid-plane
+  // sits ON the shaft's axis plane (measured, both −6.70), so the pin
+  // RESTS HORIZONTAL (cos 0) and must deliver the full 0.19 inside its
+  // quarter-turn: r = 0.35 puts the armed pin at 57° with worst slope
+  // r·sin57° ≈ 0.29/rad and lateral sweep r·(1 − sin57°) ≈ 0.056 — well
+  // inside the 0.2685 ray-probed corridor. The pin reaches the fork's
+  // mid-plan: length = the retreat the shaft just gave up.
+  // r derives from TWO constraints meeting: the pin rests HORIZONTAL (the
+  // groove mid sits on the axis plane, §51 measured), so the roll span for
+  // the full 0.19 is asin(0.19/r) — and that same span sweeps the RIM
+  // finger's tip laterally through the rod's ray-probed corridor. At
+  // r 0.35 the span was 0.575 rad and the rim tip swept 0.60 — 2.2× the
+  // 0.2685 budget. Span ≤ 0.35 rad keeps the rim sweep ≈ 0.10 (measured
+  // by the corridor assert below), which needs r ≥ 0.19/sin(0.35) = 0.554.
+  const ALARM_FORK_PIN_ARM_R = 0.56;
+  {
+    const key = new THREE.Group();
+    key.position.x = -chordLen / 2;
+    const carrier = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, ALARM_FORK_PIN_ARM_R), MATS.steel);
+    carrier.name = 'alarmLinkCrankCentre'; // §54's slenderness rows resolve this member by name
+    carrier.position.set(0, 0, ALARM_FORK_PIN_ARM_R / 2);
+    key.add(carrier);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_FORK_PIN_R, ALARM_FORK_PIN_R, ALARM_FORK_RETREAT, 10), MATS.steel);
+    pin.name = 'alarmLinkCentrePin';
+    pin.rotation.z = Math.PI / 2; // cylinder axis along the chord, back toward the fork
+    pin.position.set(-ALARM_FORK_RETREAT / 2, 0, ALARM_FORK_PIN_ARM_R);
+    key.add(pin);
+    shaft.add(key);
+    alarmLinkParts.centreKey = key;
   }
   alarmLinkUnit.add(shaft);
   alarmLinkParts.shaft = shaft;
@@ -7633,31 +7701,8 @@ const alarmLinkParts = {};
       if (best === null) console.warn(`TODO 20 registration: ${nm} — no envelope crossing within ±${SPAN} of the seed`);
       return best ?? seed;
     };
-    // All crossings in the span — for the one caller that must choose by a
-    // physical criterion (direction agreement) rather than by proximity.
-    const solveEnvAll = (pair, target, seed) => {
-      const SPAN = 3.2, N = 320, out = [];
-      let prevTh = seed - SPAN, prevD = envZ(pair, prevTh) - target;
-      for (let i = 1; i <= N; i++) {
-        const th = seed - SPAN + (2 * SPAN * i) / N;
-        const dd = envZ(pair, th) - target;
-        if (prevD === 0 || prevD * dd < 0) {
-          let lo = prevTh, hi = th, dLo = prevD;
-          for (let k = 0; k < 48; k++) {
-            const mid = (lo + hi) / 2, dm = envZ(pair, mid) - target;
-            if (dLo * dm <= 0) hi = mid; else { lo = mid; dLo = dm; }
-          }
-          out.push((lo + hi) / 2);
-        }
-        prevTh = th; prevD = dd;
-      }
-      return out;
-    };
-    // The datums first.
-    // The tab's built underside: the crank presses the face on the world
-    // side it approaches from — the lower one (it stands under the ring).
-    const tabBox = new THREE.Box3().setFromObject(alarmSelectorUnit.getObjectByName('alarmSelTab'));
-    const tabUnderRest = tabBox.min.z;
+    // The datums first. (The fork's groove mid — the pin's drive datum —
+    // was captured at the shaft build above, from the fork's own box.)
     // The ring's travel in world sign, from the dial flip (TODO 19's capture).
     const zCol = _v.set(0, 0, 1).transformDirection(alarmSelRing.parent.matrixWorld);
     const travelW = -ALARM_SEL_TRAVEL * Math.sign(zCol.z);
@@ -7692,31 +7737,108 @@ const alarmLinkParts = {};
     alarmLinkParts.rod = rod;
     alarmLinkParts.rodLen = rodLen;
     alarmLinkParts.rodZRest = rod.position.z;
-    // 3. The centre crank's KEY phase closes its contact at the rest roll.
-    const centrePair = cornerPair(alarmLinkParts.centreKey, ALARM_LINK_CRANK_OFF + alarmLinkParts.centreLen / 2 - 0.02);
-    const thCRest = solveEnv(centrePair, tabUnderRest, F.rollRest, 'centre rest');
-    const dPhi = thCRest - F.rollRest;
+    // 3. The centre PIN's KEY phase seats it on the fork's groove mid at
+    //    the rest roll. The pin's axis height is a single exact sinusoid of
+    //    the roll (no corner envelope — a cylinder about the roll axis has
+    //    one centre line), fitted from three probes like everything else.
+    const pinFit = fitRoll(alarmLinkParts.centreKey, new THREE.Vector3(0, 0, ALARM_FORK_PIN_ARM_R));
+    const pinZ = (th) => pinFit.A * Math.sin(th) + pinFit.B * Math.cos(th) + pinFit.C;
+    // Two rolls put the pin at the groove mid; the physical one has the pin
+    // RISING with the same roll direction that lifts the rim finger (the
+    // rod and the ring co-travel — the fork drives both ways, but arming
+    // still lifts everything together).
+    const rimSlope = (th) => envZ(rimPair, th + 1e-4) - envZ(rimPair, th - 1e-4);
+    const sRest = Math.max(-1, Math.min(1, (ALARM_FORK_GROOVE_MID_REST - pinFit.C) / pinFit.R));
+    // The asin candidates are ABSOLUTE pin angles; the key's phase is that
+    // angle MINUS the rest roll (the mesh sees roll + dPhi — the first cut
+    // forgot the subtraction and parked the pin a rest-roll low).
+    let dPhi = null;
+    for (const th of [Math.asin(sRest) - pinFit.phi, Math.PI - Math.asin(sRest) - pinFit.phi]) {
+      const pinSlope = pinZ(th + 1e-4) - pinZ(th - 1e-4);
+      if (Math.sign(pinSlope) === Math.sign(rimSlope(F.rollRest))) { dPhi = th - F.rollRest; break; }
+    }
+    if (dPhi === null) {
+      console.warn('TODO 20 registration: no pin key phase rises with the rim finger — the fork cannot arm');
+      dPhi = Math.asin(sRest) - pinFit.phi - F.rollRest;
+    }
     alarmLinkParts.centreKey.rotation.x = dPhi;
-    // 4. Armed roll from the ring's FULL travel through the centre contact —
-    //    picking, of the crossings, the one that moves the ROD the way the
-    //    ring moves (both measured co-travelling world-up on main; a
-    //    nearest-crossing pick alone could run the chain backwards).
-    const cands = solveEnvAll(centrePair, tabUnderRest + travelW, thCRest);
+    // 4. Armed roll: the pin one full ring travel up its own sinusoid.
+    const sArmed = Math.max(-1, Math.min(1, (ALARM_FORK_GROOVE_MID_REST + travelW - pinFit.C) / pinFit.R));
     let rollArmed = null;
-    for (const cand of cands.sort((x, y) => Math.abs(x - thCRest) - Math.abs(y - thCRest))) {
-      const rt = envZ(rimPair, cand - dPhi) - rodFootRest;
-      if (Math.sign(rt) === Math.sign(travelW)) { rollArmed = cand - dPhi; break; }
+    for (const cand of [Math.asin(sArmed) - pinFit.phi - dPhi, Math.PI - Math.asin(sArmed) - pinFit.phi - dPhi]) {
+      if (Math.abs(cand - F.rollRest) < Math.PI / 2 + 0.5
+          && (rollArmed === null || Math.abs(cand - F.rollRest) < Math.abs(rollArmed - F.rollRest))) rollArmed = cand;
     }
     if (rollArmed === null) {
-      console.warn('TODO 20 registration: no armed roll moves the rod with the ring — the chain cannot arm');
-      rollArmed = (cands[0] ?? thCRest) - dPhi;
+      console.warn('TODO 20 registration: the fork cannot reach the armed travel — pin arm too short?');
+      rollArmed = F.rollRest;
     }
     F.rollArmed = rollArmed;
-    F.rimPair = rimPair; F.centrePair = centrePair; F.dPhi = dPhi;
+    F.rimPair = rimPair; F.pinFit = pinFit; F.dPhi = dPhi;
+    F.grooveMidRest = ALARM_FORK_GROOVE_MID_REST;
     F.envZ = envZ; F.solveEnv = solveEnv;
     // 5. The rod's travel falls out — and the nose's seat drop through the
     //    beak's measured lever arms.
     F.rodTravel = envZ(rimPair, F.rollArmed) - rodFootRest;
+    if (Math.sign(F.rodTravel) !== Math.sign(travelW))
+      console.warn('TODO 20 registration: rod and ring travel disagree in sign through the fork');
+    // THE FORK, built ON the pin it serves — the driven member derived
+    // from the driver, the same direction as every other contact here.
+    // Plates flank the pin's solved rest line at the ring-sheet mid-plane
+    // (ring-local z 0 — the groove datum the pin was just seated to),
+    // covering the tip-side band [0.1, 0.7] of the pin's span; the web
+    // closes the root side; two bracket bars carry the block back to the
+    // ring's rim at the plate levels.
+    {
+      shaft.rotation.x = F.rollRest;
+      alarmLinkParts.centreKey.updateWorldMatrix(true, false);
+      const km = alarmLinkParts.centreKey.matrixWorld;
+      const ringInv = alarmSelRing.matrixWorld.clone().invert();
+      const tipL = new THREE.Vector3(-ALARM_FORK_RETREAT, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km).applyMatrix4(ringInv);
+      const rootL = new THREE.Vector3(0, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km).applyMatrix4(ringInv);
+      const dirL = rootL.clone().sub(tipL); dirL.z = 0; dirL.normalize();
+      // Band [0.35, 0.95] of the pin's span — OUTBOARD, past the alarm
+      // setting wheel's rim: the wheel's top plane leaves only 0.03 of z
+      // under the groove's lower face inside its radius (measured: wheel
+      // top −7.03, groove lower face −6.85, margin 0.15), so the lower
+      // plate can only exist beyond the rim. A position-space resolution,
+      // per the design-priority order: the band slides along the pin; the
+      // pin, groove and clearances are untouched.
+      const midL = tipL.clone().addScaledVector(dirL, 0.65);
+      const grp = new THREE.Group();
+      grp.position.set(midL.x, midL.y, 0);
+      grp.rotation.z = Math.atan2(dirL.y, dirL.x);
+      // Plates above and below the pin; the block closes at its SIDES —
+      // webs outside the pin's lateral band (pin r 0.14 + 0.03 sweep,
+      // web inner faces at ±0.25) — because the pin's own line runs the
+      // full x of the slot: a web across x is a wall the pin transfixes,
+      // which is the exact defect the fork exists to retire.
+      for (const s of [1, -1]) {
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, ALARM_SEL_T), MATS.nickel);
+        plate.name = 'alarmSelTab';
+        plate.position.z = s * (ALARM_FORK_GROOVE_H + ALARM_SEL_T) / 2;
+        grp.add(plate);
+      }
+      for (const s of [1, -1]) {
+        const web = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, ALARM_FORK_GROOVE_H + 2 * ALARM_SEL_T), MATS.nickel);
+        web.name = 'alarmSelTab';
+        web.position.y = s * 0.275;
+        grp.add(web);
+      }
+      alarmSelRing.add(grp);
+      // ONE bracket bar, at the WORLD-UPPER plate level only: the lower
+      // level crosses the setting wheel's band on its way out to the fork
+      // (the same 0.03 that forbids the lower plate inside the rim). The
+      // block hangs from above, carried by the bar and its two side webs.
+      const upLocal = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.matrixWorld).z) < 0 ? -1 : 1;
+      const azF = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
+      const brLen = Math.max(0.2, rF - ALARM_SEL_R_OUT + 0.3);
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, 0.3, ALARM_SEL_T), MATS.nickel);
+      bar.name = 'alarmSelForkBracket';
+      bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), upLocal * (ALARM_FORK_GROOVE_H + ALARM_SEL_T) / 2);
+      bar.rotation.z = azF;
+      alarmSelRing.add(bar);
+    }
     // 6. Across the working span the TIP must stay the finger's contact —
     //    the root corner riding BELOW the foot plane at both extremes.
     const rootPair = cornerPair(alarmLinkParts.rimKey, 0.02);
@@ -7724,7 +7846,6 @@ const alarmLinkParts = {};
         || envZ(rootPair, F.rollArmed) > rodFootRest + F.rodTravel + 1e-6)
       console.warn('TODO 20 registration: the rim finger’s ROOT outranks its tip somewhere in the working span — the contact model is wrong for this geometry');
     F.seatNoseDrop = Math.abs(F.rodTravel) * (beakLen / tailLen);
-    F.tabUnderRest = tabUnderRest;
     F.travelW = travelW;
     F.rodFootRest = rodFootRest;
     // 5. Which beakArm.rotation.y sign LOWERS the nose (frame-dependent):
@@ -7880,7 +8001,15 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
   pawl.name = 'alarmPusherPawl'; // TODO 20: the hand-off row selects it by name (inspect.js couples by string)
   pawl.rotation.z = ALARM_PUSH_AZ;
-  pawl.position.set(_pushU.x * 0.85, _pushU.y * 0.85, -0.17); // dropped from the raised axis to the skirt band, clear of the plate
+  // TODO 20 (park) — a click RESTS ON the teeth; this one was parked 0.18
+  // BURIED in the skirt. The park offset is the measured press-axis
+  // clearance distance, bisected against the built skirt to the kiss
+  // point — and the alarmHandoffs row asserts that kiss every run, which
+  // is what keeps this measured-once number honest. (The saw's 30° period
+  // equals the per-press step, so the kiss reads the same at both
+  // parities.)
+  const ALARM_PAWL_PARK_OUT = 1.3557 + 0.039; // + the residual bite the mtv measured at the bisected point — flat-on-saw contact is knife-edged, and the row is the assert
+  pawl.position.set(_pushU.x * (0.85 + ALARM_PAWL_PARK_OUT), _pushU.y * (0.85 + ALARM_PAWL_PARK_OUT), -0.17); // dropped from the raised axis to the skirt band, clear of the plate
   alarmPusherGroup.add(pawl);
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
   // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
@@ -12871,10 +13000,12 @@ function tick(t) {
       const tSeed = Math.max(0, Math.min(1, F.rodTravel === 0 ? 0 : (rodFoot - F.rodFootRest) / F.rodTravel));
       const roll = F.solveEnv(F.rimPair, rodFoot, F.rollRest + (F.rollArmed - F.rollRest) * tSeed, 'rim tick');
       alarmLinkParts.shaft.rotation.x = roll;
-      // The ring stands where the centre finger holds its tab — the
-      // travel READ from that contact, not assigned to it.
-      const centreZ = F.envZ(F.centrePair, roll + F.dPhi);
-      alarmSelShownT = Math.max(0, Math.min(1, (centreZ - F.tabUnderRest) / F.travelW));
+      // The ring stands where the fork's groove holds its pin — the travel
+      // READ from that engagement, not assigned to it. Positive both ways:
+      // the pin lifts the ring through the groove's ceiling and lowers it
+      // through the floor, which is what retired the phantom bias spring.
+      const pinNow = F.pinFit.A * Math.sin(roll + F.dPhi) + F.pinFit.B * Math.cos(roll + F.dPhi) + F.pinFit.C;
+      alarmSelShownT = Math.max(0, Math.min(1, (pinNow - F.grooveMidRest) / F.travelW));
     }
     alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
     // TODO 19 (closed) — the rocker's angle is SOLVED FROM THE CONTACT, not
