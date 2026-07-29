@@ -2204,7 +2204,10 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
 // ---------------------------------------------------------------------------
 
 // Sub-dial face artwork, painted around (cx, cy) at radius sr (canvas px).
-function paintSubdialFace(ctx, scx, scy, sr, kind) {
+// `scale` carries the graduation the CALLER owns: for the reserve well,
+// { sweepDeg, hours } — see the `kind === 'reserve'` branch for why they
+// cannot be literals here.
+function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
   ctx.strokeStyle = '#1c1c22';
   ctx.fillStyle = '#1c1c22';
   const tickAt = (mathDeg, r1, len, w) => {
@@ -2267,18 +2270,21 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     ctx.restore();
   };
   if (kind === 'reserve') {
-    // Graduated 150° arc: math angle 180° (empty, left) → 30° (full,
-    // right). Major ticks every 12 hours of
-    // reserve (0/12/24), small minor ticks every 3 hours between them —
-    // the minors also anchor the full end of the arc (30 h).
-    // 150-degree arc riding near the well's edge (was 120 at 0.84): more
-    // angular travel per hour = finer reading, and the face's centre opens
-    // up for the figures.
-    // One minor per HOUR (the 150-degree sweep gives each its 5 degrees),
-    // slimmed to keep the comb fine; majors every 12 h as before.
-    for (let h = 0; h <= 30; h += 1) {
+    // Graduated arc: math angle 180° (empty, left) sweeping `sweepDeg` to
+    // 30° (full, right) over `hours` of reserve. Both arrive from the
+    // CALLER — main.js owns them, because the same two numbers set the
+    // indicator hand's travel and the reduction train's ratio, and the
+    // three drifting apart is exactly how TODO 18 happened: the arc was
+    // widened 120° → 150° here while the gearing kept the old figure.
+    // Major ticks every 12 hours (0/12/24), one minor per HOUR (at 150°
+    // that is 5° each), slimmed to keep the comb fine.
+    // Defaults reproduce the shipped face for a bare makeDial() call
+    // (test-geometry.html) — main.js always passes them.
+    const { sweepDeg = 150, hours = 30 } = scale;
+    const angAt = (h) => 180 - (h / hours) * sweepDeg;
+    for (let h = 0; h <= hours; h += 1) {
       const major = h % 12 === 0;
-      tickAt(180 - (h / 30) * 150, sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022)); // empty end anchored at 9 o'clock — the sweep sits asymmetric, 180 to 30
+      tickAt(angAt(h), sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022)); // empty end anchored at 9 o'clock — the sweep sits asymmetric
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -2291,9 +2297,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind) {
     // N with a vinculum overbar, after the medieval computus tables' "nulla")
     // — this system has a 0 of its own.
     ctx.font = `500 ${sr * 0.11}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    arcLabel('0', 180, sr * 0.64);
-    arcLabel('12', 120, sr * 0.64);
-    arcLabel('24', 60, sr * 0.64);
+    for (const h of [0, 12, 24]) arcLabel(String(h), angAt(h), sr * 0.64);
     // No AB / AUF bookending the arc: the German pair was the Glashütte
     // marking for a Roman-figured reserve, and with the scale figured 0→24
     // in Arabic the words name what the numbers already say. The empty end
@@ -2532,7 +2536,7 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
           // sub-dial may pass its own `face` colour to blend in instead.
           fctx.fillStyle = sd.face || '#d6d6ca';
           fctx.fillRect(0, 0, px, px);
-          paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind);
+          paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale);
           const ftex = new THREE.CanvasTexture(cv);
           ftex.colorSpace = THREE.SRGBColorSpace;
           ftex.anisotropy = 8;
