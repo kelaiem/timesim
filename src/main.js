@@ -7923,6 +7923,16 @@ style.textContent = `
   color: #cfe3ff; background: rgba(10,12,15,0.55); padding: 2px 6px; border-radius: 4px;
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
 }
+/* §59 — the hover readout. Cursor-adjacent, and deliberately the same visual
+   language as .clock-label without BEING one: §7's layer is a persistent mode
+   and this is a transient answer to "what am I about to grab?". Above the
+   labels (z 5), below the HUD (z 7); never a pointer target of its own. */
+#explore-hover {
+  position: fixed; z-index: 6; pointer-events: none; display: none;
+  font: 11px/1 -apple-system, sans-serif; color: #cfe3ff;
+  background: rgba(10,12,15,0.72); padding: 3px 7px; border-radius: 4px;
+  white-space: nowrap; border: 1px solid rgba(255,255,255,0.14);
+}
 #clock-ui .guided-btns { display: flex; gap: 5px; }
 #clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
 /* §57 — the control HUD. Lower RIGHT: the bottom-left corner is spoken for
@@ -9375,6 +9385,13 @@ for (const m of dialXrayMeshes) {
   m.userData.solidMat = m.material;
 }
 
+// §59 — the exact material set setXray installs, so a pick can ask "is the
+// renderer drawing this mesh as glass right now?" and get the DECLARED answer.
+// Inferring it from opacity would be a second source that also catches any
+// other transparent material the finish grows. Self-disabling: with x-ray off
+// every mesh carries its solid material and nothing matches.
+const xrayGlassMats = new Set([tqXrayMat, ...dialXrayClones.values()]);
+
 function setXray(on) {
   xrayOn = on;
   tqPlateMesh.material = on ? tqXrayMat : tqSolidMat;
@@ -10057,13 +10074,25 @@ const _exA = new THREE.Vector3(), _exB = new THREE.Vector3();
 // nearest ancestor that is an explode entry's object or a labelled object —
 // the DEEPEST such ancestor, so clicking a motion-works wheel picks 'Motion
 // works', not the whole dial group it rides. Returns { name, point }.
-function explorePick(e) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  _exNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  _exNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  exploreRay.setFromCamera(_exNDC, camera);
-  const hits = exploreRay.intersectObject(movement, true);
+//
+// §59 — RESOLVE AGAINST WHAT IS VISIBLE, not what the ray reaches first.
+// X-ray is TRANSPARENCY, not visibility (setXray swaps materials; the meshes
+// stay in the scene and keep swallowing rays), so with it on the glass plate
+// and dial took every pick: hovering the dial-side works named — and a drag
+// grabbed — 'Dial', while the viewer was plainly looking THROUGH it at the
+// reset hammer behind. Measured on this build at one probe point, x-ray on:
+// hits ran glass Dial → opaque Reset hammer → opaque Third wheel, and the
+// pick returned Dial.
+//
+// A mesh drawn as glass is therefore DEMOTED, not removed: the first solid
+// hit wins, and a glass hit is the fallback when nothing solid is behind it,
+// which keeps the plate and dial nameable and grabbable exactly where they
+// are the only thing there. The test is per-MESH, never per-unit — some
+// dialGroup meshes stay solid under x-ray, so 'is this unit glassy' would be
+// wrong for the ones that are not.
+function explorePickFrom(hits, throughGlass) {
   for (const h of hits) {
+    if (!throughGlass && xrayGlassMats.has(h.object.material)) continue;
     if (h.object === chainMesh) return { name: 'Chain', point: h.point };
     for (let o = h.object; o && o !== movement; o = o.parent) {
       const lbl = labelEntries.find((l) => l.obj === o);
@@ -10074,23 +10103,109 @@ function explorePick(e) {
   }
   return null;
 }
+function explorePick(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  _exNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  _exNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  exploreRay.setFromCamera(_exNDC, camera);
+  const hits = exploreRay.intersectObject(movement, true);
+  return explorePickFrom(hits, false) || explorePickFrom(hits, true);
+}
+
+// The §10 group a unit belongs to — ONE walk, read by both the grab (which
+// wants the MEMBERS) and §59's readout (which wants the group's NAME). Boot
+// already asserts every unit belongs to exactly one group, so this is a
+// lookup in declared data, not an inference.
+function exploreGroupOf(name) {
+  for (const [gname, members] of UNIT_GROUPS) {
+    if (members.has(name)) return { gname, members };
+  }
+  return null;
+}
 
 // The handle set for a grab: the unit itself, or (Shift) every unit of its
 // §10 group — the group displaces congruently, so its internal drive edges
 // hold the same offset and stay tether-silent by the separation test alone.
 function exploreHandleNames(name, wholeGroup) {
-  if (!wholeGroup) return [name];
-  for (const [, members] of UNIT_GROUPS) {
-    if (members.has(name)) return [...members.keys()];
-  }
-  return [name];
+  const g = wholeGroup ? exploreGroupOf(name) : null;
+  return g ? [...g.members.keys()] : [name];
 }
 
 let exploreGrab = null; // { names, start (plane hit), base: Map<name, Vector3 at grab> }
-function setExploreHover(name) {
-  if (name === exploreHoverName) return;
+
+// §59 — NAME THE PART UNDER THE CURSOR, before it is grabbed.
+//
+// THE SURFACE, decided rather than accumulated. §7's label layer already
+// solves 3D→screen and grows its DOM lazily, but its labels are a persistent
+// MODE and this readout is transient — a hover must never silently switch
+// labels on. §57's HUD is in the far corner, and a name that appears away
+// from the pointer sends the eye off the very part it is about to grab. The
+// grab cursor already appears under the pointer, so the name goes in the same
+// place at the same moment: one cursor-adjacent element, the NAME only (the
+// entry's scope guard reserves anything more for a later one).
+//
+// NOTHING IS AUTHORED HERE. explorePick returns names that came from
+// registerLabel or an explode entry, and the group name comes from
+// UNIT_GROUPS — all boot-asserted vocabulary. A sub-part with no true name
+// resolves to nothing and shows nothing, which is §10's standard held
+// exactly: a confidently wrong label is worse than no label.
+let exploreHoverShift = false; // Shift held ⇒ the grab takes the whole §10 group, so name the GROUP
+let exploreHoverPos = null;    // { x, y } client coords the readout follows
+const exploreHoverEl = document.createElement('div');
+exploreHoverEl.id = 'explore-hover';
+document.body.appendChild(exploreHoverEl);
+
+function exploreHoverLabel() {
+  if (!exploreHoverName) return null;
+  if (!exploreHoverShift) return exploreHoverName;
+  const g = exploreGroupOf(exploreHoverName);
+  return g ? g.gname : exploreHoverName;
+}
+
+function drawExploreHover() {
+  // Silent during a drag: the viewer has already committed, and a readout
+  // chasing the cursor through the movement is noise over the thing it names.
+  const text = exploreGrab ? null : exploreHoverLabel();
+  if (!text || !exploreHoverPos) { exploreHoverEl.style.display = 'none'; return; }
+  if (exploreHoverEl.textContent !== text) exploreHoverEl.textContent = text;
+  exploreHoverEl.style.display = 'block';
+  // Below-right of the pointer, flipped at the viewport edges — a name the
+  // window clips is a name that was not shown.
+  const w = exploreHoverEl.offsetWidth, h = exploreHoverEl.offsetHeight;
+  const flipX = exploreHoverPos.x + 12 + w > window.innerWidth;
+  const flipY = exploreHoverPos.y + 14 + h > window.innerHeight;
+  exploreHoverEl.style.left = `${exploreHoverPos.x + (flipX ? -12 - w : 12)}px`;
+  exploreHoverEl.style.top = `${exploreHoverPos.y + (flipY ? -14 - h : 14)}px`;
+}
+
+function setExploreHover(name, shift = false, pos = null) {
+  if (name !== exploreHoverName) renderer.domElement.style.cursor = name ? 'grab' : '';
   exploreHoverName = name;
-  renderer.domElement.style.cursor = name ? 'grab' : '';
+  exploreHoverShift = !!shift;
+  exploreHoverPos = pos;
+  drawExploreHover();
+}
+
+// THE COST OF HOVERING, BOUNDED — and it needed bounding. The pick is a
+// raycast over the whole movement: measured on this build at 3.8 ms median,
+// 7.5 ms worst, roughly a fifth of a 60 Hz frame — and pointermove fires
+// FASTER than the frame on a high-rate pointer, so the pre-§59 handler could
+// spend more than a frame's budget picking alone during one fast sweep.
+// Pointer moves now only RECORD the position; the pick runs at most once per
+// frame, from the same place the tethers and leaders update. Coalescing loses
+// nothing: the latest position is the one resolved, and the picks it skips
+// are ones no frame would ever have shown.
+let exploreHoverPending = null;
+function resolveExploreHover() {
+  if (!exploreHoverPending) return;
+  const e = exploreHoverPending;
+  exploreHoverPending = null;
+  if (!exploreOn || exploreGrab || crownDragging || alarmDragging) { setExploreHover(null); return; }
+  // The crowns and the pusher keep first refusal here exactly as on
+  // pointerdown: a CONTROL the viewer is reaching for is not a part to drag,
+  // so it is not a part to name either.
+  const pick = (!crownHitTest(e) && !alarmCrownHitTest(e) && !alarmColumnHitTest(e)) ? explorePick(e) : null;
+  setExploreHover(pick ? pick.name : null, e.shiftKey, { x: e.clientX, y: e.clientY });
 }
 
 renderer.domElement.addEventListener('pointermove', (e) => {
@@ -10107,9 +10222,26 @@ renderer.domElement.addEventListener('pointermove', (e) => {
     return;
   }
   if (crownDragging || alarmDragging) return;
-  const pick = (!crownHitTest(e) && !alarmCrownHitTest(e) && !alarmColumnHitTest(e)) ? explorePick(e) : null;
-  setExploreHover(pick ? pick.name : null);
+  exploreHoverPending = { clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey };
 });
+
+// The pointer leaving the canvas ends the hover — a name left standing over
+// the panel would be naming a part the pointer is no longer on.
+renderer.domElement.addEventListener('pointerleave', () => {
+  exploreHoverPending = null;
+  if (exploreHoverName) setExploreHover(null);
+});
+
+// Shift changes what a grab TAKES, not what is under the pointer, so it
+// re-renders the readout without re-picking — free, and correct while the
+// pointer is standing still.
+for (const ev of ['keydown', 'keyup']) {
+  window.addEventListener(ev, (e) => {
+    if (e.key !== 'Shift' || !exploreOn || !exploreHoverName) return;
+    exploreHoverShift = e.type === 'keydown';
+    drawExploreHover();
+  });
+}
 function setExNDC(e) {
   const rect = renderer.domElement.getBoundingClientRect();
   _exNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -10135,6 +10267,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   ensureExploreDrive();
   controls.enabled = false;
   renderer.domElement.style.cursor = 'grabbing';
+  drawExploreHover(); // §59: the grab is committed — the readout goes quiet (the drag branch of pointermove never redraws it)
   renderer.domElement.setPointerCapture(e.pointerId);
 });
 for (const ev of ['pointerup', 'pointercancel']) {
@@ -10143,6 +10276,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
     exploreGrab = null;
     controls.enabled = true;
     renderer.domElement.style.cursor = exploreHoverName ? 'grab' : '';
+    drawExploreHover(); // …and speaks again on release, naming whatever the pointer came to rest on
     if (renderer.domElement.hasPointerCapture(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
   });
 }
@@ -12733,6 +12867,7 @@ function advanceFrame(realDt) {
   updateLabels();
   hudUpdate();        // §57: the HUD's heads follow the eased stem positions, so they update with the frame
   updateExploreTethers(); // §58: tether endpoints ride live boxes — drag, explode and the mechanism all move them
+  resolveExploreHover();  // §59: one pick per frame at most — pointermove only records the position
   updateScaleRef();   // §21: px/mm changes with every camera move
   updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
@@ -12789,6 +12924,7 @@ window.__clock = {
     }
     updateExplode();
     updateExploreTethers(); // §58: step() is the unattended-verification path — tethers must be inspectable from it, not only from rAF
+    resolveExploreHover();  // §59: …and so must the hover readout, for the same reason
     updateMeasureLeaders(); // …and so must §49's leaders: the §58 fallback (drag ⇒ whole-movement anchors) is asserted through step() by the battery
     controls.update();
     updateLabels();
@@ -12843,6 +12979,12 @@ window.__clock = {
   // anyone diagnosing "why is this part not where it was built".
   dragOffsets,
   setExplore(on) { setExplore(!!on); },
+  // §59 — the name currently under the pointer (null when nothing resolves),
+  // as the readout shows it: the §10 group's name while Shift is held, the
+  // unit's otherwise. Reading it RESOLVES any pending pick synchronously,
+  // because the interactive path throttles to the frame and a scripted check
+  // must not wait on an rAF that automation throttles to ~1 fps.
+  get exploreHover() { resolveExploreHover(); return exploreHoverLabel(); },
   resetInputs() {
     crownRotation = 0; lastCrownRotation = 0;
     windPathRot = 0; setPathRot = 0; windAccumTurns = 0;
