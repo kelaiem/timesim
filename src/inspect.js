@@ -57,7 +57,11 @@ const EXCLUDED_UNITS = ['Dial', 'Power reserve', 'Small seconds'];
 // reported. Edges marked todo are declared-but-not-yet-modelled links
 // (reported as warnings, not failures).
 // ---------------------------------------------------------------------------
-const MECH_GRAPH = {
+// Exported for §58's tethers: explore mode draws a link between a displaced
+// unit and each drive partner it has been separated from, and the drive list
+// IS that data — main.js dynamic-imports this module when explore mode first
+// turns on (never at boot, so the boot bundle and its silence are untouched).
+export const MECH_GRAPH = {
   // node 'plate' is the ground; 'mainspring' and 'crown' are force sources.
   support: [
     ['Mainspring drum', 'plate'],            // drum arbor pivots in the plate
