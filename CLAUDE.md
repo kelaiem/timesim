@@ -53,6 +53,68 @@ someone who wasn't in the conversation; match that.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
    and required numbers; a warning at boot means something regressed.
 
+## Design priority — the mechanism outranks its accommodation
+
+An ACTION GROUP is the set of members that carry one input to one output
+through MECH_GRAPH's drive edges — pusher→pawl→column→…→ring,
+crown→keyless→hands, striker→hammer→gong. When work on a group conflicts
+with the space around it, the priorities are, highest first:
+
+**P0 — Mechanical truth within the group.** Causality enters at the input
+and arrives at the output through closed contacts. Every hand-off measures
+shut (±HANDOFF_TRACK_TOL); every member's pose derives from the member
+that drives it, against a surface that was actually cut; no coefficient
+exists because it made the picture right — rule 1, at mechanism scale.
+Instruments: alarmHandoffs-class contact checks, graph, the §48
+no-spring audits.
+
+**P1 — Structural truth within the group.** The members can do the job as
+matter: sections derived from load paths (§54's ceiling and §50's floors
+as consequences, not targets), lever ratios someone would DESIGN, stall
+forces inside the spring and detent budgets — filed as arithmetic,
+TODO 16's 1.5 mN vs 5–50 mN being the format. A ratio inherited from
+routing is a defect even while every sweep is green.
+
+**P2 — The group agrees with itself.** Members of one group must not foul
+each other anywhere in the action cycle — the pair sweep structurally
+cannot see this (TODO 5), so it is asserted per group — and
+working-contact budgets are sized SMALLER than the strokes they police
+(0.12 against a 0.19 travel graded touching, apart, and buried as one
+measurement). A geometric impossibility inside the group — §34's radial
+cardioid sweeping through its own follower's pivot — is a P0/P2 finding
+and rightly forces redesign; that authority is exactly what unrelated
+parts don't get.
+
+**P3 — The group fits the movement.** Zero contact with unrelated
+components across every axis. Still a hard gate to LAND — but resolved in
+POSITION space: move the station, renegotiate the stratum (§51's
+precedent), re-site the obstacle, re-solve the layout (§13/§22/§33
+machinery). Forbidden resolutions: stretching or shrinking a lever arm,
+opening a contact, thinning a member below P1, geometry that exists only
+in a function, widening a budget or waiver. If no arrangement exists
+without spending P0–P2, that is a LAYOUT problem to file and solve, not a
+mechanism problem to absorb.
+
+**P4 — Finish** (AESTHETICS.md), last, as now.
+
+**Why this is written down.** §35 ran the order backwards. Three corridor
+routes were torn out on collision grounds; the only region offering a
+short beak tail was corridor-unreachable, so the tail grew to 26.79 — a
+36.5× displacement gain "nobody asked for," a 1.5 mN stall force against
+a 5–50 mN detent, and a run in which, measured, NO hand-off touched —
+while every collision gate stayed green. The corridors were satisfied;
+the watch was not. Unrelated collisions keep their veto over LANDING and
+lose their authority over DESIGN: a corridor problem is solved in
+position space, never in mechanism space.
+
+**Order of work this implies.** Prove the group at P0–P2 first — in free
+space if necessary, its instruments red until the contacts genuinely
+close — then hunt the corridor at P3 with the mechanism's dimensions held
+fixed. A P3 conflict discovered late moves the group or the obstacle, or
+files the layout change; it does not reach back into the group. Waivers
+exist only at P0–P2 and only citing a TODO with a fix path; P3 is never
+waived, and never paid for out of P0–P2.
+
 ## Running it
 
 Use the `.claude/launch.json` preview config named `clock` (python3
