@@ -520,7 +520,19 @@ deletes its waiver.
   crossed in one tick without the pin bottoming, so §38 will hear about it
   rather than ship it. (The guard's first version fired on the first alarm
   anyone SET, because the crown moves the disc too; it now ignores ticks
-  where `alarmSetRot` moved.)
+  where `alarmSetRot` moved. Its SECOND blind spot surfaced 2026-07-29:
+  the boot sync moves scripted mega-motion — the 'pull' phase jumps
+  `crownRotation` to the wall clock in one assignment, and the catch-up
+  advances minutes per tick — so the guard fired on a **virgin boot
+  whenever the boot's wall-clock path happened to cross the default
+  coincidence: a boot-silence gate that failed at some hours of the day
+  and passed at others**, which is why CI never saw it (and why the first
+  fix, gating only `'catchup'`, passed interactively and failed in CI the
+  same afternoon — the crossing had moved phases). It now ignores
+  fast-forward, EVERY active sync phase, and ticks where the TIME crown's
+  `setPathRot` moved — quick-setting swings the hour phase under the disc,
+  so a set-drag crossing is the user's hand there too, exactly the
+  `alarmSetRot` case it already knew about.)
 
   Also surfaced while fixing it: the panel showed only the ROUNDED fire
   time under the label "Set for", which reads like the hand position. It
@@ -1502,7 +1514,41 @@ two.
 Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
 restored. The **beak tail** fix and the **inverted lever** fix stand — both
 movement-side, both verified, neither implicated.
-## 19. The selector's sensing pin never touches the ring it reads
+## 19. CLOSED — the selector's sensing pin never touched the ring it read
+
+**Closed 2026-07-29.** Three defects, one contact — the third was found
+only when the fix for the first two made it measurable:
+
+1. `rotation.order = 'ZYX'` set, so the see-saw tips about the
+   tangential axis §34 specifies (the §54 beak-arm trap).
+2. The fitted `0.12` amplitude is GONE: the rocker's angle is now
+   solved per tick from the contact constraint itself — the pin's cap
+   on the ring's riding face, `A·sinθ + B·cosθ + C = faceZ(T)`, the
+   three constants captured once from the built geometry (an exact
+   three-probe fit of the rotation's true form, not a regression) and
+   the face plane derived from the REST constants, never the live mesh
+   (a restored session's first tick can find the ring armed — §34's
+   canonical-state lesson). Two passes aim the flat cap's leading EDGE,
+   the way the heart follower iterates its cam contact.
+3. **The pin was built pointing away from the face.** The dialFace flip
+   maps rocker-local −z to world +z, so the pin hung toward the
+   movement, its ROOT cap doing the grazing and the ruby decorative —
+   and with the old under-rotating law the arm itself entered the
+   ring's slab when armed. The pin is re-hung THROUGH the arm,
+   protruding 0.06 on the ring side (derived: > the ±0.03 hand-off
+   tolerance, so pin-contact and arm-clearance are distinguishable
+   measurements).
+
+Measured after: pin⇄ring **−0.0007 disarmed / −0.0024 armed** (kissing,
+edge contact), arm clear of the annulus 0.04–0.08 at both parities.
+The `alarmHandoffs` row and the `Alarm disc ⇄ Alarm selector`
+penetration budget are both UNWAIVED — a regression fails the gate.
+Fingerprint moved deliberately, 1974757747 → 2748333645, re-verified
+across two virgin boots.
+
+The original filing follows, kept for the record:
+
+### (original text)
 
 The §34 design hinges on one interface: the rocker's ruby pin riding the
 selector ring's face — "the one contact a fixed member can make on a

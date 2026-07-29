@@ -1816,6 +1816,15 @@ ring's travel — and has been tightened to the tessellation tolerance
 the *principle* (axial contact at every azimuth) stands, the built
 registration does not.
 
+**Closed (2026-07-29).** TODO 19's fix found a third defect under the
+two filed ones: the pin was built pointing AWAY from the face (the
+dialFace flip maps rocker-local −z to world +z), so its root cap did
+the grazing and the ruby was decoration. The pin is re-hung through the
+arm to protrude on the ring side, and the rocker's angle is now solved
+per tick from the contact itself — measured kissing (−0.0007/−0.0024)
+at both parities, the row and its budget unwaived, the fingerprint
+moved deliberately to 2748333645.
+
 ## §35 — The unbroken link: pusher to arming, as one mechanical chain
 
 **The debt.** §34 armed and disarmed with real geometry, but the

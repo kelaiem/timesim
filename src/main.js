@@ -5354,6 +5354,12 @@ const alarmRocker = new THREE.Group();
 {
   const rx = Math.cos(ALARM_ROCKER_AZ) * 3.9, ry = Math.sin(ALARM_ROCKER_AZ) * 3.9;
   alarmRocker.position.set(rx, ry, ALARM_TUBE_BACK - ALARM_FLANGE_T / 2);
+  // TODO 19 (closed): 'ZYX', so the tick's rotation.y see-saws about the
+  // TANGENTIAL axis the §34 design specifies — the rocker's local y after
+  // its azimuth is applied. The default 'XYZ' tipped it about tube-frame y
+  // instead (the §54 beak-arm trap), and the old fitted amplitude carried
+  // a sign that was right only because of that bug.
+  alarmRocker.rotation.order = 'ZYX';
   alarmRocker.rotation.z = ALARM_ROCKER_AZ; // local +x = outboard radial
   // pivot lugs on the flange rim
   const lug = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.16), MATS.steel);
@@ -5362,10 +5368,21 @@ const alarmRocker = new THREE.Group();
   const armOut = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 0.10), MATS.steel);
   armOut.position.x = 0.35;
   alarmRocker.add(armOut);
+  // TODO 19 (closed): the pin is hung THROUGH the arm, protruding on the
+  // world-RING side. The dialFace flip maps rocker-local −z to world +z, so
+  // the old hang (centre −0.17, fully on local −z) pointed the pin AWAY
+  // from the face it reads — its root cap was what grazed the ring, and
+  // the ruby was decoration. Local +z is world-down here; the pin spans
+  // local −0.19..+0.11, housed 0.10 through the arm, protruding 0.06 below
+  // the arm's underside. The 0.06 is derived: it must exceed the
+  // hand-off instrument's ±0.03 contact tolerance, so "the pin rides the
+  // face" and "the arm rides the face" are DIFFERENT measurements — the
+  // pin reads contact while the arm reads clear — and it stays small so
+  // the see-saw's solved range barely moves.
   const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.30, 8), MATS.ruby);
   pin.name = 'alarmSelPin';
   pin.rotation.x = Math.PI / 2;
-  pin.position.set(0.7, 0, -(0.30 / 2) - 0.02);
+  pin.position.set(0.7, 0, -0.04);
   alarmRocker.add(pin);
   // §34 (groove redesign): ONE finger — the toggle is clean now. The
   // rocker's inboard arm rises to the pin-arm's TAIL (the band floor) and
@@ -7727,6 +7744,7 @@ let sndBeatN = null, sndBeatRaw = null, sndPawlIdx = null, sndDetIdx = null, snd
 let sndCrownOut = null, sndHammerHit = false;
 let alarmRingHoldTick = false; // TODO 8: skip the ring for the tick FF was dropped on (see the release block)
 let alarmPrevSetRot = 0;       // TODO 8 guard: the crown's own movement is not a missed alarm
+let alarmPrevSetPathRot = 0;   // …and neither is the TIME crown's: hand-setting swings the coincidence too
 let alarmPrevCentred = null;   // TODO 8 step-over guard: last tick's signed angle to the notch centre
 let alarmStepOverWarned = false; // warn once — a design-margin signal, not a per-tick log
 let discRotForTrip = 0;        // the disc angle the trip read this tick, shared with the guard
@@ -12396,10 +12414,25 @@ function tick(t) {
       // the viewer turns the alarm crown, and a set sweep crosses coincidence
       // at any speed it likes — that is the user's hand, not a missed alarm.
       // Watching the raw angle warned on the first alarm anyone set.
-      const setMoved = Math.abs(alarmSetRot - alarmPrevSetRot) > 1e-9;
+      const setMoved = Math.abs(alarmSetRot - alarmPrevSetRot) > 1e-9
+        || Math.abs(setPathRot - alarmPrevSetPathRot) > 1e-9;
       alarmPrevSetRot = alarmSetRot;
+      alarmPrevSetPathRot = setPathRot;
       const centred = wrapPi(discRotForTrip - ALARM_RELEASE_PHASE);
-      if (!setMoved && alarmPrevCentred !== null && centred * alarmPrevCentred < 0
+      // …the TIME crown counts as a hand too: quick-setting swings the
+      // hour phase under the disc, so a set-drag crossing is the user's
+      // hand, not a missed alarm — the boot sync's 'pull' phase proved it
+      // by jumping crownRotation to the wall clock in one assignment.
+      // And neither do the DELIBERATE mega-ticks: fast-forward and ANY
+      // active sync phase advance scripted motion by design, so a crossing
+      // there says nothing about the real-tick margin this guard measures —
+      // the catch-up one made boot silence TIME-OF-DAY FLAKY (the warn
+      // fired only when the boot's wall-clock path happened to cross the
+      // default coincidence — a boot gate that failed at some hours and not
+      // others, which is why CI never saw it). Same reason the sound path
+      // gates its own mega-ticks.
+      if (!setMoved && !fastForward && !syncPhase
+          && alarmPrevCentred !== null && centred * alarmPrevCentred < 0
           && Math.abs(centred - alarmPrevCentred) < Math.PI      // a real crossing, not a hand-set wrap
           && alarmPinDropNow < ALARM_PIN_DROP - 1e-9 && !alarmStepOverWarned) {
         alarmStepOverWarned = true;
@@ -12595,7 +12628,70 @@ function tick(t) {
       alarmLinkParts.shaft.rotation.x = ALARM_LINK_CRANK_PHASE - (ALARM_SEL_TRAVEL / 0.35) * alarmSelShownT; // crank contact ~0.35 up the 0.45 crank; tip's lateral sweep sin(0.54)·0.445 = 0.23 stays inside the ray-probed 0.2685 corridor
     }
     alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
-    alarmRocker.rotation.y = -0.12 * (alarmSelShownT * 2 - 1); // see-saw tip, ±: pin follows the ring's face
+    // TODO 19 (closed) — the rocker's angle is SOLVED FROM THE CONTACT, not
+    // amplitude-fitted: the sensing pin's tip must lie ON the ring's riding
+    // face at every state, which is one equation in the rocker's see-saw
+    // angle θ. A point riding a rotation is exactly A·sinθ + B·cosθ + C in
+    // world z, so the three constants are captured ONCE from the built
+    // geometry (three probe angles — an exact fit, not a regression: the
+    // form has three unknowns), the ring's face plane and travel sign
+    // likewise, and each tick solves tipZ(θ) = faceZ(T). The old law was
+    // rotation.y = -0.12·(2T−1): a bare amplitude that moved the pin 0.152
+    // against the ring's 0.19 and buried it 0.024–0.062 at the two ends —
+    // with a sign right only because of the missing rotation.order.
+    {
+      let cc = alarmRocker.userData.contact;
+      if (!cc) {
+        const tipLocal = new THREE.Vector3(0.7, 0, 0.11); // the pin's protruding cap: axis at x 0.7, local +z end (world-down under the dial flip)
+        const probe = (th) => {
+          alarmRocker.rotation.y = th;
+          alarmRocker.updateWorldMatrix(true, false);
+          return tipLocal.clone().applyMatrix4(alarmRocker.matrixWorld).z;
+        };
+        const z0 = probe(0), zp = probe(0.3), zm = probe(-0.3);
+        // z(θ) = A sinθ + B cosθ + C  ⇒  three samples pin it down exactly.
+        const A = (zp - zm) / (2 * Math.sin(0.3));
+        const B = (zp + zm - 2 * z0) / (2 * (Math.cos(0.3) - 1));
+        const C = z0 - B;
+        // The ring's riding face, FROM THE REST CONSTANTS — never from the
+        // live mesh: the first tick of a restored session can find the ring
+        // already armed, and a capture from that pose would bake a 0.19
+        // registration error in (the §34 canonical-state lesson). The pin
+        // approaches from world-above, so it rides whichever built face the
+        // dial's flip puts on top; the same sign gives the travel's world
+        // direction (dial-local −0.19·T).
+        alarmSelRing.updateWorldMatrix(true, false);
+        const zCol = new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.parent.matrixWorld);
+        const s = Math.sign(zCol.z);
+        const faceLocalZ = s < 0 ? (ALARM_SEL_Z_UP - ALARM_SEL_T) : ALARM_SEL_Z_UP;
+        const faceRest = new THREE.Vector3(0, 0, faceLocalZ).applyMatrix4(alarmSelRing.parent.matrixWorld).z;
+        const travelW = -ALARM_SEL_TRAVEL * s;
+        // Which side of the face the pin lives on (its housed root, at the
+        // arm): the flat cap's edge-dip correction must aim the cap centre
+        // AWAY from the face on this side.
+        alarmRocker.rotation.y = 0;
+        alarmRocker.updateWorldMatrix(true, false);
+        const side = Math.sign(new THREE.Vector3(0.7, 0, -0.19).applyMatrix4(alarmRocker.matrixWorld).z - faceRest);
+        cc = alarmRocker.userData.contact = { A, B, C, faceRest, travelW, side, R: Math.hypot(A, B), phi: Math.atan2(B, A) };
+        for (const [nm, t] of [['disarmed', 0], ['armed', 1]]) {
+          const c = cc.faceRest + cc.travelW * t - cc.C;
+          if (Math.abs(c) > cc.R)
+            console.warn(`TODO 19 rocker contact: the ring's ${nm} face is out of the pin's reach (|${c.toFixed(3)}| > ${cc.R.toFixed(3)}) — the registration regressed`);
+        }
+      }
+      // A sinθ + B cosθ = R sin(θ+φ); the principal branch is the small
+      // see-saw angle, which is the physical one. Two passes, like the
+      // heart follower's contact solve: the pin's cap is FLAT, so at angle
+      // θ its leading EDGE sits pinR·|sinθ| below the cap's centre — the
+      // first pass finds θ for the centre, the second re-aims the centre
+      // one edge-dip higher so the EDGE is what kisses the face.
+      let th = 0;
+      for (let pass = 0; pass < 2; pass++) {
+        const c = cc.faceRest + cc.travelW * alarmSelShownT + 0.07 * Math.abs(Math.sin(th)) * cc.side - cc.C;
+        th = Math.asin(Math.max(-1, Math.min(1, c / cc.R))) - cc.phi;
+      }
+      alarmRocker.rotation.y = th;
+    }
     const tubeTarget = (alarmSelShownT > 0.5) ? -alarmAngle : mwHourA;
     // Both transitions EASE live (the pose path assigns exactly): disarming is
     // the spring snapping the follower home along the cam slope, and arming is

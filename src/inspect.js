@@ -1547,9 +1547,10 @@ const PENETRATION_BUDGETS = [
     // turns. Swept on the alarm axis (a full relative revolution).
     // Budget derived (was 0.12; see the beak row): at 0.12 the pin's
     // measured 0.062 burial read as health for the life of the budget.
+    // TODO 19 closed the burial — the contact is solved per tick and the
+    // sweep must now hold it within the tessellation tolerance, unwaived.
     pair: ['Alarm disc', 'Alarm selector'],
     maxDepth: HANDOFF_TRACK_TOL,
-    waived: 'TODO 19 — the rocker tips about the wrong axis (no rotation.order) and under-travels the ring 0.152 vs 0.19; the pin is buried 0.024–0.062',
     axis: 'alarm',
     nSamples: 150,
     selectA(unit) {
@@ -1737,10 +1738,13 @@ const ALARM_HANDOFFS = [
     waived: 'TODO 20 — buried 0.22 (disarmed) to 0.25 (armed) in the tab: the ring z is assigned from alarmSelShownT, the crank radius appears in neither law, and the two poses cross rather than track (TODO 9’s thread, TODO 16’s slot)',
   },
   {
+    // TODO 19 closed this row: the rocker's angle is solved from the contact
+    // (main.js), the pin re-hung to protrude on the ring side, and the row
+    // measures kissing at both parities (−0.0007/−0.0024). UNWAIVED — a
+    // regression here fails the gate.
     label: 'ring face ⇄ sensing pin',
     unitA: 'Alarm selector', meshA: 'alarmSelRing',
     unitB: 'Alarm disc', meshB: 'alarmSelPin',
-    waived: 'TODO 19 — the rocker never sets rotation.order, tips about the wrong axis, and travels 0.152 against the ring’s 0.19; buried at both ends',
   },
 ];
 
@@ -3134,8 +3138,14 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§57 + TODO 18 complete; 47 units, 46 fingerprinted, 10 poses):
-// 1974757747
+// Baseline (TODO 19 complete; 47 units, 46 fingerprinted, 10 poses):
+// 2748333645
+// — moved from 1974757747 by TODO 19 deliberately: the sensing pin re-hung
+// through the rocker arm to protrude on the ring side, and the rocker posed
+// by the contact solve at every state, so every armed/disarmed pose carries
+// the corrected see-saw. Verified identical across two virgin boots.
+// Previous baseline (§57 + TODO 18 complete; 47 units, 46 fingerprinted,
+// 10 poses): 1974757747
 // — verified IDENTICAL across two virgin boots (state file and localStorage
 // cleared first), boot silent. The §29-era value previously recorded here
 // (3868604154) was moved deliberately by the sections landed since — §53's
