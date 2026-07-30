@@ -38,7 +38,7 @@
     if (p.has('escstep')) s.escapeStepDeg = Number(p.get('escstep'));         // arrangement angles are
     if (p.has('balstep')) s.balanceStepDeg = Number(p.get('balstep'));        // solveLayout's own inputs
     if (p.has('alarmaz')) s.alarmAzDeg = Number(p.get('alarmaz'));            // §33 — the alarm corner's azimuth, world degrees
-    if (p.has('pushaz')) s.pushAzDeg = Number(p.get('pushaz'));                // §33 — the alarm pusher's press axis, world degrees
+    if (p.has('alarmmod')) s.alarmModAzDeg = Number(p.get('alarmmod'));        // §33 — the whole alarm module's azimuth (striking-wheel station), world degrees
     if (p.has('stemaz')) s.stemAzDeg = Number(p.get('stemaz'));                // §33 step 2 — the stem decoupled, world degrees
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();

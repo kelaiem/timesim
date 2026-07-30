@@ -88,11 +88,16 @@ export const SPEC = (() => {
   // its solved two-candidate choice and its exact literals.
   const alarmAzDeg = Number.isFinite(Number(raw.alarmAzDeg))
     ? ((Number(raw.alarmAzDeg) % 360) + 360) % 360 : null;
-  // §33 (pusher handle) — the alarm pusher's press-axis azimuth (world
-  // degrees). null = as designed: the column wheel's own station's radial.
-  const pushAzDeg = Number.isFinite(Number(raw.pushAzDeg))
-    ? ((Number(raw.pushAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, pushAzDeg, stemAzDeg });
+  // §33 (pusher handle) — the ALARM MODULE's azimuth (world degrees): the
+  // striking wheel's station, from which the whole alarm work — gong,
+  // hammer, striker, barrel, lock, column, pawl, pusher — is seeded. null =
+  // as designed (160°). This RETIRED ?pushaz=: an independent press axis
+  // could park the pusher's chain inside the movement while the toggle it
+  // drives stayed at the corner; the pusher is the module's grip, not its
+  // own part, so the handle moves the module.
+  const alarmModAzDeg = Number.isFinite(Number(raw.alarmModAzDeg))
+    ? ((Number(raw.alarmModAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
