@@ -78,7 +78,16 @@ export const SPEC = (() => {
   const barrelStepDeg = stepDeg(raw.barrelStepDeg);
   const escapeStepDeg = stepDeg(raw.escapeStepDeg);
   const balanceStepDeg = stepDeg(raw.balanceStepDeg);
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg });
+  // §33 (alarm crown handle) — the ALARM corner's azimuth (movement-frame
+  // world degrees, like crownAzDeg). null = as designed: the corner keeps
+  // its solved two-candidate choice and its exact literals.
+  const alarmAzDeg = Number.isFinite(Number(raw.alarmAzDeg))
+    ? ((Number(raw.alarmAzDeg) % 360) + 360) % 360 : null;
+  // §33 (pusher handle) — the alarm pusher's press-axis azimuth (world
+  // degrees). null = as designed: the column wheel's own station's radial.
+  const pushAzDeg = Number.isFinite(Number(raw.pushAzDeg))
+    ? ((Number(raw.pushAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, pushAzDeg });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 

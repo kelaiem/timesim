@@ -111,11 +111,12 @@ fast-forward, sync-to-wall-clock, sound, camera presets (plus orbit/zoom),
 exploded view (whole-movement slider or one assembly at a time), part labels,
 x-ray, power-flow highlighting, a measurement overlay with an in-scene mm
 ruler, a guided tour and an inspection route, a control HUD, a reconfigure
-mode (§33: drag the crown, barrel, escapement or balance to propose a new
+mode (§33: drag either crown, the pusher, the barrel, escapement or balance to propose a new
 arrangement — the pure layout solver shadow-solves each candidate live,
 warnings and all, specs apply at reload and are refused with reasons where
-they cannot work, and named variants with history-based undo make the spec
-a document), save/load of the
+they cannot work, a Trial boot button reads a candidate's full boot-assert
+verdict from a hidden throwaway boot without committing the view, and named
+variants with history-based undo make the spec a document), save/load of the
 whole scene state, and the beat counter, simulated clock, reserve and alarm
 readouts. The alarm has its own crown and pusher. `?inspect=1` and `?cycle=1`
 deep-link into the inspection and alarm-cycler routes; an Advanced panel

@@ -5101,3 +5101,92 @@ re-solved against the plate radius and `LOW_LINKAGE_OBSTACLES` — the
 honest option and the bigger one, inheriting the design-priority
 order (prove the cluster at P0–P2, then hunt the corridor at P3). The
 roadmap entry carries it.
+
+### §33 addendum — the alarm crown joins the handle set
+
+The fifth handle, and structurally the most interesting: the alarm
+corner is DIAL-ANCHORED (it never rotated with step 1), its setting
+side reaches the CENTRE — rotationally symmetric, free to swing — and
+its winding side must still reach the fixed alarm barrel. `?alarmaz=`
+(world degrees) overrides `ALARM_LOCAL_AZ`, which was already a solve
+(§13 picked dial-local 3 or 9 o'clock, whichever cleared the main stem
+better); the spec makes the choice continuous. Everything derives:
+the corner cluster, the setting idlers, and the winding run — whose
+two idlers were ALWAYS solved (i1 at mesh distance toward the barrel,
+i2 by two-circle intersection), so a moved corner re-routes the climb→
+barrel chain by construction. Verified at 320°: the crown, climb and
+idlers all follow, the movement runs, and the boot asserts name the
+consequences.
+
+Fixing one landmine on the way: the climb arbor's station (and both
+plates' bores for it) was HARD-CODED at `(ALARM_CD, 0)` — a silent
+duplicate of the solve's current answer that would have orphaned the
+climb the day the two-candidate choice flipped (a `crownaz` spec near
+the corner's own azimuth can flip it). The station now derives from
+the corner's azimuth, with the solved branch mapped discretely (no
+trig on π) so the identity's exact literals survive bit-for-bit.
+
+The corner's closed-form windows differ from the main crown's: beyond
+the mutual crown/pusher arcs, the setting bevel stands AT the sub-dial
+wells' centre distance (`ALARM_CD ≡ RESERVE_LOCAL.y`), so each well
+projects a forbidden arc — refused live with the numbers ("fouls the
+reserve sub-dial's well, needs 47.8°"). And the layering earns its
+keep exactly at the boundary: 320° clears the coarse window by 2°,
+then boot's finer assert catches the setting idler grazing the seconds
+well ring at −0.24 — the closed form is the tripwire, the asserts are
+the court, as designed.
+
+### §33 addendum 2 — the pusher joins; the park becomes a derivation
+
+The sixth handle: `?pushaz=` sets the alarm pusher's press-axis azimuth.
+The assembly was already built along one direction symbol with its base
+offset to the chord circle — the tangent construction that gives the
+pawl its drive geometry — and that construction is azimuth-invariant:
+the line passes the column wheel at the pawl's offset for ANY azimuth,
+the §43 saw-direction assert holds unchanged, and the whole pusher
+(stem, cap, pawl, rim boss) follows one spec'd angle. Windows: the
+pusher's head against both crowns (each azimuth spec-aware). Measured
+at 195°: the pusher re-sites, the movement runs, and the spec closes
+CLEAN — zero structural asserts, the first legal non-identity variant
+the mode has produced.
+
+The honest work was the PARK. TODO 20 left it a measured-once constant
+(1.3557, bisected against the built skirt) — valid only at the azimuth
+it was measured at, which a movable pusher retires. The saw's outline
+is now EXPORTED from the same function that cuts it (`ratchetPoly`,
+the `profileAt` convention), and the park is solved in closed form:
+the pawl's leading face is a segment perpendicular to the press axis,
+so its kiss is exactly the outermost point of the saw inside the
+face's band — vertices in-band plus edge crossings, a maximum, no
+sweep. The pawl's hand-off row now reads **0/0 at identity and 0/0 at
+195°**: the derivation is better than the measurement it replaced, and
+the row asserts it every run at whatever azimuth the spec picks.
+
+(In the same change, the alarm crown's body height matches the main
+crown's — 3.4 → 4.55, completing the earlier radius match. The
+builder's origin is the knob's inner face, so the growth extends
+outward past the rim into free air; the stem interface and bushing are
+untouched, which is what the earlier "placement change" scoping worry
+turned out to miss.)
+
+### §33 addendum 3 — the trial boot: the court's verdict without the commitment
+
+Live validity's honest ceiling is the solver: the boot asserts judge
+what only built geometry shows, and building is reload-tier. The trial
+boot packages that court as a button. "Trial boot" loads the candidate
+spec in a hidden same-origin iframe with `?trial=1`; the page builds
+its REAL geometry, runs its REAL asserts, and the panel reports the
+verdict — count, first assert, the rest in the console — while the
+session's view, camera and state stay untouched. It is the CI
+battery's own pattern (virgin page → read `bootWarns`), ~15 s per
+verdict: not "live", but it deletes the apply → look → undo loop for
+exploratory dragging.
+
+The one safety that matters is in `state.js`, at the choke point: a
+`?trial=1` page NEITHER writes the session's state (an iframe's
+fire-and-forget PUT would clobber the real `/__state`) NOR reads it —
+trials boot on virgin defaults, the battery's own verdict standard,
+which also keeps them deterministic. Verified: the barrel −10°
+candidate reports its five asserts by name in the panel with the main
+URL untouched; pusher 195° reports "CLOSES — 0 structural asserts";
+the session's state file survives both.
