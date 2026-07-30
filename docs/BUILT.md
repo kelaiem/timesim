@@ -5101,3 +5101,37 @@ re-solved against the plate radius and `LOW_LINKAGE_OBSTACLES` — the
 honest option and the bigger one, inheriting the design-priority
 order (prove the cluster at P0–P2, then hunt the corridor at P3). The
 roadmap entry carries it.
+
+### §33 addendum — the alarm crown joins the handle set
+
+The fifth handle, and structurally the most interesting: the alarm
+corner is DIAL-ANCHORED (it never rotated with step 1), its setting
+side reaches the CENTRE — rotationally symmetric, free to swing — and
+its winding side must still reach the fixed alarm barrel. `?alarmaz=`
+(world degrees) overrides `ALARM_LOCAL_AZ`, which was already a solve
+(§13 picked dial-local 3 or 9 o'clock, whichever cleared the main stem
+better); the spec makes the choice continuous. Everything derives:
+the corner cluster, the setting idlers, and the winding run — whose
+two idlers were ALWAYS solved (i1 at mesh distance toward the barrel,
+i2 by two-circle intersection), so a moved corner re-routes the climb→
+barrel chain by construction. Verified at 320°: the crown, climb and
+idlers all follow, the movement runs, and the boot asserts name the
+consequences.
+
+Fixing one landmine on the way: the climb arbor's station (and both
+plates' bores for it) was HARD-CODED at `(ALARM_CD, 0)` — a silent
+duplicate of the solve's current answer that would have orphaned the
+climb the day the two-candidate choice flipped (a `crownaz` spec near
+the corner's own azimuth can flip it). The station now derives from
+the corner's azimuth, with the solved branch mapped discretely (no
+trig on π) so the identity's exact literals survive bit-for-bit.
+
+The corner's closed-form windows differ from the main crown's: beyond
+the mutual crown/pusher arcs, the setting bevel stands AT the sub-dial
+wells' centre distance (`ALARM_CD ≡ RESERVE_LOCAL.y`), so each well
+projects a forbidden arc — refused live with the numbers ("fouls the
+reserve sub-dial's well, needs 47.8°"). And the layering earns its
+keep exactly at the boundary: 320° clears the coarse window by 2°,
+then boot's finer assert catches the setting idler grazing the seconds
+well ring at −0.24 — the closed form is the tripwire, the asserts are
+the court, as designed.
