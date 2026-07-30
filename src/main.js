@@ -8363,8 +8363,16 @@ let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier 
 // Load persisted state now that every variable it writes has been declared.
 // loadState() is async (the primary store is the dev server's temp file);
 // top-level await is fine here — main.js is an ES module.
+// §60's calibration lives here rather than beside the rest of §60, ~3500 lines
+// below: the restore block underneath assigns it, and a `let` declared after
+// its first use is a module-level temporal dead zone — the failure mode that
+// took a build down earlier in this project's history, silently, before
+// __clock existed. Declared where it is first needed.
+let mmPerPxCal = null;
 {
   const savedState = await loadState();
+  mmPerPxCal = typeof savedState.mmPerPx === 'number' && isFinite(savedState.mmPerPx)
+    ? savedState.mmPerPx : null;   // absent, null or NaN all mean "not calibrated"
   barrelWindTurns = savedState.barrelWindTurns;
   tauIntegrated = savedState.tauIntegrated;
   crownRotation = savedState.crownRotation;
@@ -8670,6 +8678,7 @@ panel.innerHTML = `
         <button data-cam="Free">Free</button>
       </div>
       <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
+      <div class="row label-small"><span>Life size</span><span class="guided-btns"><button id="btn-lifesize">Life size</button><button id="btn-lifesize-cal">Calibrate</button></span></div>
       <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
     </div>
   </details>
@@ -11697,6 +11706,7 @@ function updateStateButtons() {
 // periodic auto-save so the two never drift out of sync.
 function captureState() {
   return {
+    mmPerPx: mmPerPxCal,   // §60: null until the viewer calibrates; never guessed
     barrelWindTurns,
     tauIntegrated,
     crownRotation,
@@ -12043,6 +12053,166 @@ function goToPreset(name) {
 document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
   b.addEventListener('click', () => goToPreset(b.dataset.cam));
 });
+
+// ---------------------------------------------------------------------------
+// §60 — LIFE SIZE. Render 32 mm as 32 mm, and let it be seen.
+//
+// Reported: zooming out far enough to see the watch at life size pushes it so
+// deep into the fog that it cannot be seen at all. That is three limits, not
+// one, and the fog is only the one you can see: `controls.maxDistance` blocks
+// the pose, the fog greys it out long before, and `camera.far` clips it.
+//
+// THE DISTANCE IS DERIVED, NOT THE 827 THE ENTRY MEASURED. For a perspective
+// camera the world height spanned at distance d is 2·d·tan(fov/2), so
+//
+//     px per unit  = viewportPx / (2 d tan(fov/2))
+//     mm on screen per unit = px per unit × mmPerPx
+//
+// and life size is the pose where that equals UNIT_MM:
+//
+//     d = screenHeightMM / (2 · UNIT_MM · tan(fov/2))
+//
+// Two honest inputs — the display's pixel pitch and the viewport's height —
+// and everything else follows. (Sanity: 900 px at the CSS reference pixel is
+// 238.1 mm; 238.1 / (2 × 0.375 × tan 21°) = 827, the entry's figure, arrived
+// at rather than copied.)
+//
+// WHY NOT WIDEN THE FOV INSTEAD. Holding the default distance, life size needs
+// fov 122.8°. That is a fisheye: it would distort the movement far worse than
+// the fog was hiding it. Distance is the only sane lever.
+//
+// THE HONESTY PROBLEM IS THE REAL WORK, and §21 already named it: a browser
+// cannot measure the display it is drawing on. The CSS reference pixel is
+// DEFINED as 1/96 inch and is wrong on most panels once OS scaling is in play,
+// so an uncalibrated claim of "life size" would be a label asserting a
+// measurement nobody made — exactly the decoration §21 refused when it would
+// not draw a clamped coin against a real diameter. So: uncalibrated says
+// NOMINAL and says why; calibrated against a manufactured standard says life
+// size plainly. Same move §39 made pinning UNIT_MM to real chain pitch.
+const CSS_REF_MM_PER_PX = 25.4 / 96;      // the DEFINITION, not a measurement
+const ID1_CARD_MM = 85.60;                // ISO/IEC 7810 ID-1 long edge, exact
+// (mmPerPxCal is declared beside the state restore — see there for why.)
+
+const lifeSizeMmPerPx = () => mmPerPxCal || CSS_REF_MM_PER_PX;
+const lifeSizeCalibrated = () => mmPerPxCal !== null;
+// The pose's distance. Reads the LIVE viewport and fov every time it is asked,
+// so a window resize or a browser-zoom change re-solves rather than quietly
+// invalidating the claim.
+function lifeSizeDistance() {
+  const screenHeightMM = window.innerHeight * lifeSizeMmPerPx();
+  return screenHeightMM / (2 * UNIT_MM * Math.tan(camera.fov * DEG2RAD / 2));
+}
+// What the movement will actually measure across the glass, for the caption —
+// derived from the same ruler rather than asserted.
+function lifeSizePlateMM() { return scaleReadout ? scaleReadout.plateMM : 0; }
+
+// The three limits, suspended FOR THE MODE and restored on leaving. The normal
+// view wants its fog: it is a depth cue tuned for the working range. At life
+// size the whole movement sits at essentially one depth, so fog contributes
+// nothing there but a grey wash.
+let lifeSizeOn = false;
+let lifeSizeSaved = null;
+function setLifeSize(on) {
+  if (on === lifeSizeOn) return;
+  lifeSizeOn = on;
+  if (on) {
+    lifeSizeSaved = { fogNear: scene.fog.near, fogFar: scene.fog.far,
+                      maxDistance: controls.maxDistance, far: camera.far };
+    const d = lifeSizeDistance();
+    scene.fog.near = d * 4; scene.fog.far = d * 8;      // pushed past the subject, not deleted
+    controls.maxDistance = d * 1.25;                     // admits the pose with room to orbit
+    camera.far = d * 1.6; camera.updateProjectionMatrix();
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    goToPose(controls.target.clone().addScaledVector(dir, d), controls.target.clone());
+  } else {
+    if (lifeSizeSaved) {
+      scene.fog.near = lifeSizeSaved.fogNear; scene.fog.far = lifeSizeSaved.fogFar;
+      controls.maxDistance = lifeSizeSaved.maxDistance;
+      camera.far = lifeSizeSaved.far; camera.updateProjectionMatrix();
+      lifeSizeSaved = null;
+    }
+    goToPreset('Free');
+  }
+  updateLifeSizeUI();
+}
+
+// SAY OUT LOUD THAT IT WILL LOOK SMALL. At life size the movement covers about
+// 13% of a 900 px viewport. That is the honest answer to "how big is this
+// really", and it is the whole point — but a viewer who expected a zoom
+// control and got a small watch will read it as a bug unless told.
+function updateLifeSizeUI() {
+  const b = document.getElementById('btn-lifesize');
+  if (b) { b.textContent = lifeSizeOn ? 'Exit' : 'Life size'; b.classList.toggle('active', lifeSizeOn); }
+  if (!lifeSizeOn) { captionEl.classList.remove('show'); return; }
+  const mm = lifeSizePlateMM();
+  captionEl.innerHTML = lifeSizeCalibrated()
+    ? `LIFE SIZE — the plate is ${mm.toFixed(1)} mm across, and that is how big it is on your screen. `
+      + `Hold a ruler to the glass. Yes, it is small: that is the answer.`
+    : `NOMINAL LIFE SIZE — ${mm.toFixed(1)} mm, assuming your display is exactly 96 px/inch. `
+      + `Browsers cannot measure the screen they draw on, so this is a definition, not a measurement. `
+      + `Calibrate with a bank card to make it true.`;
+  captionEl.style.display = 'block';
+  captionEl.classList.add('show');
+}
+
+// CALIBRATION — against a manufactured standard, the §39 move. The viewer
+// sizes an outline to an ID-1 card (85.60 mm, in every wallet); its width in
+// CSS pixels then GIVES the display's true pitch. Persisted through
+// src/state.js so it is asked once.
+function openLifeSizeCalibration() {
+  const wrap = document.createElement('div');
+  wrap.id = 'lifesize-cal';
+  wrap.style.cssText =
+    'position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;'
+    + 'flex-direction:column; gap:16px; background:rgba(8,10,13,0.88); backdrop-filter:blur(4px);'
+    + 'font:13px/1.5 ui-monospace,monospace; color:#e8edf2; text-align:center; padding:20px;';
+  const startPx = ID1_CARD_MM / lifeSizeMmPerPx();
+  wrap.innerHTML =
+    `<div style="max-width:34em;">Hold a <b>bank card</b> (any ISO ID-1 card — 85.60 mm) against the screen
+       and size the outline to match it. That measures your display; everything else follows.</div>
+     <div id="cal-card" style="width:${startPx.toFixed(1)}px; aspect-ratio:85.6/53.98;
+       border:2px solid #e8b44a; border-radius:calc(3.18mm * 0); box-shadow:0 0 0 1px rgba(0,0,0,0.6);"></div>
+     <input id="cal-slider" type="range" min="${(startPx*0.45).toFixed(0)}" max="${(startPx*2.2).toFixed(0)}"
+       step="0.5" value="${startPx.toFixed(1)}" style="width:min(70vw,420px);">
+     <div id="cal-readout" style="opacity:0.75;"></div>
+     <div style="display:flex; gap:10px;">
+       <button id="cal-save">Use this</button><button id="cal-cancel">Cancel</button>
+     </div>`;
+  document.body.appendChild(wrap);
+  const card = wrap.querySelector('#cal-card'), slider = wrap.querySelector('#cal-slider');
+  const readout = wrap.querySelector('#cal-readout');
+  const show = () => {
+    const px = parseFloat(slider.value);
+    card.style.width = `${px}px`;
+    readout.textContent = `${(ID1_CARD_MM / px).toFixed(4)} mm per pixel `
+      + `(${(25.4 / (ID1_CARD_MM / px)).toFixed(0)} px/inch — the CSS definition is 96)`;
+  };
+  slider.addEventListener('input', show); show();
+  wrap.querySelector('#cal-cancel').addEventListener('click', () => wrap.remove());
+  wrap.querySelector('#cal-save').addEventListener('click', () => {
+    mmPerPxCal = ID1_CARD_MM / parseFloat(slider.value);
+    wrap.remove();
+    if (lifeSizeOn) { lifeSizeOn = false; setLifeSize(true); } else updateLifeSizeUI();
+    saveState(captureState());
+  });
+}
+
+// Re-solve on anything that moves mm-per-CSS-pixel. Without this the claim
+// silently stops being true the moment someone drags a window edge — the
+// entry's own requirement, and the difference between a mode and a label.
+window.addEventListener('resize', () => {
+  if (!lifeSizeOn) return;
+  const d = lifeSizeDistance();
+  scene.fog.near = d * 4; scene.fog.far = d * 8;
+  controls.maxDistance = d * 1.25;
+  camera.far = d * 1.6; camera.updateProjectionMatrix();
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  goToPose(controls.target.clone().addScaledVector(dir, d), controls.target.clone(), { snap: true });
+  updateLifeSizeUI();
+});
+
+document.getElementById('btn-lifesize').addEventListener('click', () => setLifeSize(!lifeSizeOn));
+document.getElementById('btn-lifesize-cal').addEventListener('click', openLifeSizeCalibration);
 
 // §37 — SHARE VIEW. The link carries the pose the viewer is actually looking
 // at, read live off the camera, never reconstructed from the last preset they
@@ -12718,6 +12888,9 @@ function applyDeepLink() {
   // `?cycle=1` — the alarm cycler on arrival, for pairing with ?cam/?look:
   // aim at a linkage and watch it work without touching the page.
   if (params.has('cycle')) document.getElementById('btn-alarm-cycle').click();
+  // §60 — `?lifesize=1`. A pose, not a free-orbit state (§37's rule), so it is
+  // shareable and cannot be drifted out of without the caption saying so.
+  if (params.has('lifesize')) setLifeSize(params.get('lifesize') !== '0');
 }
 applyDeepLink();
 
