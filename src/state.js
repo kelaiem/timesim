@@ -7,6 +7,16 @@
 const STORAGE_KEY = 'timesim-state';
 const STATE_URL = '/__state';
 
+// §33 (trial boot) — a page loaded with ?trial=1 is a THROWAWAY VERDICT
+// BOOT: reconfigure mode loads a candidate spec in a hidden iframe purely
+// to read its boot asserts. A trial must neither WRITE the session's state
+// (a fire-and-forget PUT from the iframe would clobber the real session's
+// /__state) nor READ it (a virgin boot is the battery's own standard for a
+// verdict, and it keeps trials deterministic). One flag, guarded at this
+// choke point so no caller can forget.
+const TRIAL_BOOT = typeof location !== 'undefined'
+  && new URLSearchParams(location.search).has('trial');
+
 // Only dev_server.py serves /__state, and it is documented to run on loopback
 // (README: `python3 dev_server.py 8347`). Anywhere else — a plain static
 // server, GitHub Pages — every request to it is a guaranteed 404, and a GET
@@ -89,6 +99,7 @@ function loadLocal() {
 }
 
 export async function loadState() {
+  if (TRIAL_BOOT) return { ...defaultState }; // trial: virgin defaults, the verdict standard
   if (serverAvailable) {
     try {
       const r = await fetch(STATE_URL, { cache: 'no-store' });
@@ -107,6 +118,7 @@ export async function loadState() {
 }
 
 export function saveState(state) {
+  if (TRIAL_BOOT) return true; // trial: NEVER write the real session's state
   const body = JSON.stringify(sanitize(state));
   known = true;
   if (serverAvailable) {
@@ -129,6 +141,7 @@ export function saveState(state) {
 }
 
 export function clearState() {
+  if (TRIAL_BOOT) return true; // trial: hands off the real session's state
   known = false;
   if (serverAvailable) fetch(STATE_URL, { method: 'DELETE' }).catch(() => {});
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* no-op */ }
