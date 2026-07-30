@@ -34,6 +34,9 @@
     if (p.has('vph')) s.vph = Number(p.get('vph'));
     if (p.has('reserveh')) s.reserveHours = Number(p.get('reserveh'));
     if (p.has('crownaz')) s.crownAzDeg = Number(p.get('crownaz')); // §33 step 1 — stem azimuth, movement-frame degrees
+    if (p.has('barrelstep')) s.barrelStepDeg = Number(p.get('barrelstep'));   // §33 step 3 — the train's
+    if (p.has('escstep')) s.escapeStepDeg = Number(p.get('escstep'));         // arrangement angles are
+    if (p.has('balstep')) s.balanceStepDeg = Number(p.get('balstep'));        // solveLayout's own inputs
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();
 </script>

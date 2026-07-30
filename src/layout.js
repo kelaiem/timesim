@@ -66,7 +66,19 @@ export const SPEC = (() => {
   // skips the transform entirely so identity stays bit-exact.
   const crownAzDeg = Number.isFinite(Number(raw.crownAzDeg))
     ? ((Number(raw.crownAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg });
+  // §33 step 3 — the going train's ARRANGEMENT angles as specs. These are
+  // solveLayout's own inputs (they always were the arrangement's degrees
+  // of freedom; step 3 only hands the viewer the knobs): the barrel's
+  // step about the centre, the escape's about the fourth, the balance's
+  // TARGET about the escape (the solver still owns the feasible angle —
+  // a target it must move off is a warning, live and at boot). null = as
+  // designed: the argument is not even passed, so identity stays on the
+  // default constants bit-exactly.
+  const stepDeg = (v) => Number.isFinite(Number(v)) ? Math.max(-180, Math.min(180, Number(v))) : null;
+  const barrelStepDeg = stepDeg(raw.barrelStepDeg);
+  const escapeStepDeg = stepDeg(raw.escapeStepDeg);
+  const balanceStepDeg = stepDeg(raw.balanceStepDeg);
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -398,7 +410,7 @@ export function solveLayout({
   // members are relative and do not. Identity (crownAzDeg null) skips the
   // transform entirely, so the shipped spec stays BIT-exact — a rotation
   // by zero still churns floats, and the fingerprint gate would see it.
-  let forkBaseOut = forkBaseAngle, pinAimOut = PIN_AIM;
+  let forkBaseOut = forkBaseAngle, pinAimOut = PIN_AIM, rotApplied = 0;
   if (SPEC.crownAzDeg !== null) {
     const dAz = SPEC.crownAzDeg * DEG2RAD - Math.atan2(P.barrel.y, P.barrel.x);
     if (dAz !== 0) {
@@ -409,9 +421,13 @@ export function solveLayout({
       }
       forkBaseOut += dAz;
       pinAimOut += dAz;
+      rotApplied = dAz;
     }
   }
-  return { P, BALANCE_STEP_DEG, forkBaseAngle: forkBaseOut, PIN_AIM: pinAimOut };
+  // rotAppliedRad: §33 step 3's handles map pointer azimuths back into the
+  // solver's (unrotated) frame — the one place the applied rotation must
+  // be visible downstream.
+  return { P, BALANCE_STEP_DEG, forkBaseAngle: forkBaseOut, PIN_AIM: pinAimOut, rotAppliedRad: rotApplied };
 }
 
 // ---------------------------------------------------------------------------
