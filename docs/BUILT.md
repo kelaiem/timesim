@@ -5135,3 +5135,36 @@ keep exactly at the boundary: 320° clears the coarse window by 2°,
 then boot's finer assert catches the setting idler grazing the seconds
 well ring at −0.24 — the closed form is the tripwire, the asserts are
 the court, as designed.
+
+### §33 addendum 2 — the pusher joins; the park becomes a derivation
+
+The sixth handle: `?pushaz=` sets the alarm pusher's press-axis azimuth.
+The assembly was already built along one direction symbol with its base
+offset to the chord circle — the tangent construction that gives the
+pawl its drive geometry — and that construction is azimuth-invariant:
+the line passes the column wheel at the pawl's offset for ANY azimuth,
+the §43 saw-direction assert holds unchanged, and the whole pusher
+(stem, cap, pawl, rim boss) follows one spec'd angle. Windows: the
+pusher's head against both crowns (each azimuth spec-aware). Measured
+at 195°: the pusher re-sites, the movement runs, and the spec closes
+CLEAN — zero structural asserts, the first legal non-identity variant
+the mode has produced.
+
+The honest work was the PARK. TODO 20 left it a measured-once constant
+(1.3557, bisected against the built skirt) — valid only at the azimuth
+it was measured at, which a movable pusher retires. The saw's outline
+is now EXPORTED from the same function that cuts it (`ratchetPoly`,
+the `profileAt` convention), and the park is solved in closed form:
+the pawl's leading face is a segment perpendicular to the press axis,
+so its kiss is exactly the outermost point of the saw inside the
+face's band — vertices in-band plus edge crossings, a maximum, no
+sweep. The pawl's hand-off row now reads **0/0 at identity and 0/0 at
+195°**: the derivation is better than the measurement it replaced, and
+the row asserts it every run at whatever azimuth the spec picks.
+
+(In the same change, the alarm crown's body height matches the main
+crown's — 3.4 → 4.55, completing the earlier radius match. The
+builder's origin is the knob's inner face, so the growth extends
+outward past the rim into free air; the stem interface and bushing are
+untouched, which is what the earlier "placement change" scoping worry
+turned out to miss.)

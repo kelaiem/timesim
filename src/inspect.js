@@ -3199,8 +3199,17 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 20 closed; 47 units, 46 fingerprinted, 10 poses):
-// 143293357
+// Baseline (§33 handles + hardware parity; 47 units, 46 fingerprinted,
+// 10 poses):
+// 3104989635
+// — moved from 143293357 deliberately: the alarm crown's body height
+// matched to the main crown's (growth outward from the builder's
+// inner-face origin), and the pusher's pawl park DERIVED from the saw's
+// exported outline (the measured-once 1.3557 retired; the pawl now
+// parks at an exact kiss, 0/0 on its hand-off row, at any press
+// azimuth a spec chooses). Verified by the battery's double-boot gate.
+// Previous baseline (TODO 20 closed; 47 units, 46 fingerprinted, 10
+// poses): 143293357
 // — moved from 4164572423 by TODO 20's fork deliberately: the drive tab is
 // a fork built on the pin's solved engagement (band outboard of the alarm
 // setting wheel's rim, hung from a single upper bracket — the lower level
