@@ -937,10 +937,41 @@ registerLabel('Hairspring', hairspringGroup);
 // (CROWN_PULL_DIST) is what carries its sliding bevel from the corner to the
 // climb's contrate — the pull IS the clutch, no extra slide mechanism needed.
 const ALARM_CD = RESERVE_LOCAL.y;
+// §33 (alarm crown handle) — THE ALARM CORNER'S AZIMUTH, solved or
+// specified, hoisted here because the climb arbor's station (and both
+// plates' bores for it, just below) must FOLLOW the corner. The old code
+// hard-coded the climb at (ALARM_CD, 0) — a silent duplicate of the
+// solve's current answer that would have orphaned the climb the day the
+// solve flipped sides (a crownaz spec near the corner's own azimuth can
+// flip the two-candidate choice).
+//
+// The solve is §13's, unmoved in substance: dial-local 3 or 9 o'clock,
+// whichever stands angularly clearer of the MAIN winding stem. A spec
+// overrides it with a continuous world azimuth (the UI's handle).
+const _alarmWindBearing = Math.atan2(uWind.y, -uWind.x); // winding stem, dial-local frame
+const ALARM_LOCAL_AZ = (() => {
+  if (SPEC.alarmAzDeg !== null) {
+    const w = SPEC.alarmAzDeg * DEG2RAD;
+    return Math.atan2(Math.sin(w), -Math.cos(w)); // dial-local mirror of the spec's world azimuth
+  }
+  const angDist = (a) => Math.abs(((a - _alarmWindBearing + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+  let best = null;
+  for (const a of [0, Math.PI]) { // dial-local 3 o'clock, 9 o'clock
+    const s = angDist(a);
+    if (!best || s > best.s) best = { a, s };
+  }
+  return best.a;
+})();
+// World azimuth of the corner. On the SOLVED branch this is a discrete
+// mapping (no trig on π), so the identity's exact (ALARM_CD, 0) literals
+// survive bit-for-bit; the spec branch derives.
+const ALARM_CORNER_W_AZ = SPEC.alarmAzDeg !== null
+  ? SPEC.alarmAzDeg * DEG2RAD
+  : (ALARM_LOCAL_AZ === Math.PI ? 0 : Math.PI);
 // Crown-sense swap: the CLIMB stands at the stem's INNER radius (the crown's
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
-const ALARM_WIND_X = ALARM_CD, ALARM_WIND_Y = 0;
+const ALARM_WIND_X = Math.cos(ALARM_CORNER_W_AZ) * ALARM_CD, ALARM_WIND_Y = Math.sin(ALARM_CORNER_W_AZ) * ALARM_CD;
 const backPlate = G.makeBackPlate({
   radius: plateR, thickness: 2,
   holes: [
@@ -4262,17 +4293,10 @@ const ALARM_STRIKE_AMP = 0.09;   // rad — swings the head from its 0.4 rest ga
 // picks a bearing — score each candidate by angular clearance from that stem
 // and take the clearer — rather than eyeballed.
 // (ALARM_CD ≡ RESERVE_LOCAL.y by definition since §13 step 3b — both read
-// solveKeyless's one output, so the old hoist-drift assert is retired.)
-const _alarmWindBearing = Math.atan2(uWind.y, -uWind.x); // winding stem, dial-local frame
-const ALARM_LOCAL_AZ = (() => {
-  const angDist = (a) => Math.abs(((a - _alarmWindBearing + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
-  let best = null;
-  for (const a of [0, Math.PI]) { // dial-local 3 o'clock, 9 o'clock
-    const s = angDist(a);
-    if (!best || s > best.s) best = { a, s };
-  }
-  return best.a;
-})();
+// solveKeyless's one output, so the old hoist-drift assert is retired.
+// §33: ALARM_LOCAL_AZ itself is HOISTED to the climb-arbor block near the
+// plate build — the climb and both plates' bores must follow the corner,
+// so the corner's azimuth is solved once, up there, spec-overridable.)
 const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_LOCAL_AZ) * ALARM_CD };
 // Radius: the largest well leaving a comfortable band of dial to each
 // neighbour well. Two silvered recesses closer than a couple mm read as one
@@ -9416,6 +9440,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (crownDragging || !alarmCrownHitTest(e)) return; // winding crown gets first refusal
+  if (reconfOn) { reconfBeginDrag(e, 'alarmcrown'); return; } // §33: in reconfigure mode the alarm crown is a HANDLE for its corner's azimuth
   alarmDragging = true;
   alarmDragMoved = false;
   alarmDragStartX = e.clientX;
@@ -10930,8 +10955,25 @@ const reconfWindows = (() => {
   ];
 })();
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-function reconfConflict(az) {
-  for (const w of reconfWindows) {
+// The ALARM corner's own forbidden windows (§33 alarm-crown handle). Beyond
+// the mutual crown/pusher arcs, the corner has a constraint the main crown
+// does not: its setting bevel stands AT the sub-dial wells' centre distance
+// (ALARM_CD ≡ RESERVE_LOCAL.y by §13 step 3b), so an azimuth inside a
+// well's angular radius parks the corner cluster INSIDE the recess. The
+// well half-angle is the disc's angular radius seen from the centre at
+// that shared distance, plus the corner cluster's own width.
+const reconfAlarmWindows = () => {
+  const alarmCrownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);
+  const wellHalf = Math.asin(Math.min(0.99, (subDialR + CLEAR_MARGIN) / ALARM_CD)) + Math.atan2(1.5, ALARM_CD);
+  return [
+    { az: Math.atan2(uWind.y, uWind.x), half: alarmCrownHalf + Math.atan2(5.425, plateR), what: 'the winding crown' },
+    { az: ALARM_PUSH_AZ, half: alarmCrownHalf + Math.atan2(2.667, plateR), what: 'the alarm pusher' },
+    { az: Math.PI / 2, half: wellHalf, what: 'the reserve sub-dial’s well' },
+    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalf, what: 'the seconds sub-dial’s well' },
+  ];
+};
+function reconfConflict(az, windows = reconfWindows) {
+  for (const w of windows) {
     const d = Math.abs(wrapAngle(az - w.az));
     if (d < w.half) return { what: w.what, deg: d * 180 / Math.PI, needDeg: w.half * 180 / Math.PI };
   }
@@ -11055,11 +11097,12 @@ function reconfShowStatus() {
     span.className = '';
     const parts = [];
     if (SPEC.crownAzDeg !== null) parts.push(`crown az ${SPEC.crownAzDeg.toFixed(1)}\u00b0`);
+    if (SPEC.alarmAzDeg !== null) parts.push(`alarm crown az ${SPEC.alarmAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.barrelStepDeg !== null) parts.push(`barrel step ${SPEC.barrelStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.escapeStepDeg !== null) parts.push(`escape step ${SPEC.escapeStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : 'Drag the crown, barrel, escapement or balance';
+      : 'Drag either crown, the barrel, escapement or balance';
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
@@ -11081,7 +11124,7 @@ function reconfShowStatus() {
 function reconfBeginDrag(e, kind) {
   reconfDrag = { kind };
   controls.enabled = false;
-  if (kind === 'crown') { ensureReconfGhost(); reconfGhost.visible = true; }
+  if (kind === 'crown' || kind === 'alarmcrown') { ensureReconfGhost(); reconfGhost.visible = true; }
   renderer.domElement.setPointerCapture(e.pointerId);
   reconfMoveDrag(e);
 }
@@ -11095,15 +11138,16 @@ function reconfPointerWorld(e) {
 function reconfMoveDrag(e) {
   const hit = reconfPointerWorld(e);
   if (!hit) return;
-  if (reconfDrag.kind === 'crown') {
+  if (reconfDrag.kind === 'crown' || reconfDrag.kind === 'alarmcrown') {
+    const isAlarm = reconfDrag.kind === 'alarmcrown';
     const az = Math.atan2(hit.y, hit.x);
-    const conflict = reconfConflict(az);
+    const conflict = reconfConflict(az, isAlarm ? reconfAlarmWindows() : reconfWindows);
     reconfGhost.rotation.z = az;
     reconfGhost.children.forEach((ch) => ch.material.color.set(conflict ? 0xe08888 : 0xbfeee2));
     const deg = ((az * 180 / Math.PI) % 360 + 360) % 360;
     reconfCandidate = {
-      kind: 'crown', urlKey: 'crownaz', valueDeg: deg,
-      label: `proposed: crown az ${deg.toFixed(1)}\u00b0 (${reconfClockLabel(az)})`,
+      kind: reconfDrag.kind, urlKey: isAlarm ? 'alarmaz' : 'crownaz', valueDeg: deg,
+      label: `proposed: ${isAlarm ? 'alarm crown' : 'crown'} az ${deg.toFixed(1)}\u00b0 (${reconfClockLabel(az)})`,
       refuse: conflict ? `fouls ${conflict.what} (${conflict.deg.toFixed(1)}\u00b0 apart, needs ${conflict.needDeg.toFixed(1)}\u00b0)` : null,
       warns: [],
     };
@@ -11150,7 +11194,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'barrelstep', 'escstep', 'balstep'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'alarmaz', 'barrelstep', 'escstep', 'balstep'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
