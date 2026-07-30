@@ -5302,3 +5302,45 @@ the entire module moved and the mechanism went with it. At
 `?alarmmod=200` (mid-flank): the specific refusal at boot, the same
 warning live under the pointer mid-drag, and the movement still boots
 and runs under the amber verdict.
+
+## §53. Advanced Settings labels — authored, stacked, wrapping
+
+Reported: under Finishing → Advanced Settings almost every label was
+truncated. The controls worked; you could not tell what they did.
+
+The entry predicted the shape and it was right on both counts. The name
+was **derived from the schema key path** (`hands.second.counterweightOffsetFactor`),
+verbose by construction; and the row put it *beside* its control in a
+240 px panel under `text-overflow: ellipsis`. Two defects meeting.
+
+**Both are fixed, because either alone is insufficient.** Short authored
+names still truncate the first time one is long; stacking alone leaves 63
+readable-but-ugly key paths.
+
+1. **Authored in the schema.** `_labels` sits beside `_bounds` on the
+   containing object — the same convention — so the display name lives in
+   `aesthetics.json` with the value, per §23's single-source principle.
+   All **63** controls are covered, asserted at generation time: a leaf
+   with no `_labels` entry falls back to its key path *and warns by name*,
+   so a future control cannot be added silently unlabelled.
+2. **Stacked and wrapping.** `.adv-row` overrides the shared flex `.row`
+   inside Advanced only, rather than restyling every row in the app. No
+   `max-width`, no ellipsis — those two were the truncation — and the
+   control goes full width beneath its name.
+
+The key path stays as the `title`, but nothing *depends* on it: a tooltip
+does not exist on touch, and §15 exists because this panel must work on a
+phone. The panel was not widened either — that would trade a §23 defect
+for a §15 regression.
+
+**Verified at 375 × 667** (the phone case, not the desktop one): 63
+controls, **0 clipped**, and the entry's own acceptance test — a
+deliberately long label — **wraps to 3 lines** instead of truncating.
+
+**One trap worth recording.** The stylesheet is a template literal, and
+the first version of this CSS carried a comment mentioning the `.row`
+class *in backticks*. That silently ended the string. `node --check`
+stayed happy, because what remained was still valid JavaScript — just not
+this CSS — and the failure surfaced only as a `TypeError` at boot. Syntax
+checking cannot see a string that ends early and leaves something valid
+behind it.

@@ -9,7 +9,18 @@
       "subdialMarginFactor": 0.01,
       "weightBalanceExponent": 0.5,
       "minNumeralKeepFrac": 0.3,
-      "minLetterKeepFrac": 0.2
+      "minLetterKeepFrac": 0.2,
+      "_labels": {
+        "strokeWidthFactor": "Marker stroke width",
+        "reliefDepthFactor": "Marker relief depth",
+        "reliefDepthMin": "Marker relief, minimum",
+        "gapFactor": "Marker gap",
+        "slantWidthFactor": "Marker slant width",
+        "subdialMarginFactor": "Clearance around sub-dials",
+        "weightBalanceExponent": "Stroke weight balance",
+        "minNumeralKeepFrac": "Keep numeral if this whole",
+        "minLetterKeepFrac": "Keep letter if this whole"
+      }
     },
     "hands": {
       "hour": {
@@ -17,14 +28,28 @@
         "tailFactor": 0.22,
         "depthFactor": 0.012,
         "depthMin": 0.35,
-        "bossSizeFactor": 0.05
+        "bossSizeFactor": 0.05,
+        "_labels": {
+          "widthFactor": "Hour hand width",
+          "tailFactor": "Hour hand tail",
+          "depthFactor": "Hour hand depth",
+          "depthMin": "Hour hand depth, minimum",
+          "bossSizeFactor": "Hour hand boss"
+        }
       },
       "minute": {
         "widthFactor": 0.09,
         "tailFactor": 0.22,
         "depthFactor": 0.012,
         "depthMin": 0.35,
-        "bossSizeFactor": 0.035
+        "bossSizeFactor": 0.035,
+        "_labels": {
+          "widthFactor": "Minute hand width",
+          "tailFactor": "Minute hand tail",
+          "depthFactor": "Minute hand depth",
+          "depthMin": "Minute hand depth, minimum",
+          "bossSizeFactor": "Minute hand boss"
+        }
       },
       "second": {
         "widthFactor": 0.02,
@@ -33,63 +58,119 @@
         "depthMin": 0.28,
         "bossSizeFactor": 0.03,
         "counterweightSizeFactor": 0.045,
-        "counterweightOffsetFactor": 0.8
+        "counterweightOffsetFactor": 0.8,
+        "_labels": {
+          "widthFactor": "Seconds hand width",
+          "tailFactor": "Seconds hand tail",
+          "depthFactor": "Seconds hand depth",
+          "depthMin": "Seconds hand depth, minimum",
+          "bossSizeFactor": "Seconds hand boss",
+          "counterweightSizeFactor": "Seconds counterweight size",
+          "counterweightOffsetFactor": "Seconds counterweight offset"
+        }
       },
       "handsGroupZOffset": 3.2,
-      "fluteFactor": -0.03
+      "fluteFactor": -0.03,
+      "_labels": {
+        "handsGroupZOffset": "Hand stack height",
+        "fluteFactor": "Hand fluting"
+      }
     },
     "subdials": {
       "radiusFactor": 1.0,
-      "_comment": "Scales the SOLVED shared sub-dial radius (small seconds + reserve). Applied in solveLayout, so it needs a reload; the \u00a725 C boot assert still guards the wells against the central setting wheel, so an oversized factor warns rather than silently colliding. Position is solved layout and is deliberately NOT a knob. BOUNDS: max 1.0 because the solved radius already sits exactly on the \u00a725 C ceiling (well ring vs central setting wheel) \u2014 measured: factor 1.15 penetrates by 1.33; min 0.5 because below half size the wells swallow their own hands.",
+      "_comment": "Scales the SOLVED shared sub-dial radius (small seconds + reserve). Applied in solveLayout, so it needs a reload; the §25 C boot assert still guards the wells against the central setting wheel, so an oversized factor warns rather than silently colliding. Position is solved layout and is deliberately NOT a knob. BOUNDS: max 1.0 because the solved radius already sits exactly on the §25 C ceiling (well ring vs central setting wheel) — measured: factor 1.15 penetrates by 1.33; min 0.5 because below half size the wells swallow their own hands.",
       "_bounds": {
         "radiusFactor": [
           0.5,
           1.0
         ]
+      },
+      "_labels": {
+        "radiusFactor": "Sub-dial size"
       }
     }
   },
   "lighting": {
     "scene": {
       "backgroundColor": "#0a0b0d",
-      "fogColor": "#0a0b0d"
+      "fogColor": "#0a0b0d",
+      "_labels": {
+        "backgroundColor": "Background colour",
+        "fogColor": "Fog colour"
+      }
     },
     "hemisphere": {
       "skyColor": "#8fa6bf",
       "groundColor": "#0a0a0c",
-      "intensity": 0.65
+      "intensity": 0.65,
+      "_labels": {
+        "skyColor": "Ambient sky colour",
+        "groundColor": "Ambient ground colour",
+        "intensity": "Ambient strength"
+      }
     },
     "keyLight": {
       "color": "#fff1de",
       "intensity": 2.4,
-      "shadowBias": -0.0005
+      "shadowBias": -0.0005,
+      "_labels": {
+        "color": "Key light colour",
+        "intensity": "Key light strength",
+        "shadowBias": "Key light shadow bias"
+      }
     },
     "fillLight": {
       "color": "#cfe3ff",
-      "intensity": 0.55
+      "intensity": 0.55,
+      "_labels": {
+        "color": "Fill light colour",
+        "intensity": "Fill light strength"
+      }
     },
     "dialLight": {
       "color": "#fff4e2",
-      "intensity": 1.4
+      "intensity": 1.4,
+      "_labels": {
+        "color": "Dial light colour",
+        "intensity": "Dial light strength"
+      }
     },
     "rimSpot": {
       "color": "#ffffff",
       "intensity": 220,
       "penumbra": 0.35,
       "decay": 1.4,
-      "shadowBias": -0.0005
+      "shadowBias": -0.0005,
+      "_labels": {
+        "color": "Rim spot colour",
+        "intensity": "Rim spot strength",
+        "penumbra": "Rim spot softness",
+        "decay": "Rim spot falloff",
+        "shadowBias": "Rim spot shadow bias"
+      }
     },
     "backdrop": {
       "color": "#101317",
       "roughness": 1,
-      "metalness": 0
+      "metalness": 0,
+      "_labels": {
+        "color": "Backdrop colour",
+        "roughness": "Backdrop roughness",
+        "metalness": "Backdrop metalness"
+      }
     }
   },
   "camera": {
-    "dampingFactor": 0.07
+    "dampingFactor": 0.07,
+    "_labels": {
+      "dampingFactor": "Camera damping"
+    }
   },
   "rendering": {
-    "toneMappingExposure": 1.05
+    "toneMappingExposure": 1.05,
+    "_labels": {
+      "toneMappingExposure": "Exposure"
+    }
   },
   "gong": {
     "arcDeg": 90,
@@ -104,6 +185,10 @@
         0.4,
         2.0
       ]
+    },
+    "_labels": {
+      "arcDeg": "Gong arc (degrees)",
+      "wireDiaUnits": "Gong wire diameter"
     }
   },
   "decoration": {
@@ -111,7 +196,7 @@
       "widthUnits": 30,
       "angleDeg": 25,
       "tilt": 0.35,
-      "_comment": "Glashuette stripes on the 3/4 plate + escape bridge. widthUnits = band pitch in model units, so LARGER means FEWER ribs \u2014 the default sits at the bound maximum, i.e. ribbing at its minimum (was 6.7); angleDeg = direction the bands PROGRESS in (stripes run perpendicular); tilt = normal scallop strength (0 = off). Stripes are computed from WORLD position in the shader, so they continue across separate parts by construction.",
+      "_comment": "Glashuette stripes on the 3/4 plate + escape bridge. widthUnits = band pitch in model units, so LARGER means FEWER ribs — the default sits at the bound maximum, i.e. ribbing at its minimum (was 6.7); angleDeg = direction the bands PROGRESS in (stripes run perpendicular); tilt = normal scallop strength (0 = off). Stripes are computed from WORLD position in the shader, so they continue across separate parts by construction.",
       "_bounds": {
         "widthUnits": [
           2,
@@ -121,13 +206,18 @@
           0,
           1
         ]
+      },
+      "_labels": {
+        "widthUnits": "Rib pitch (fewer ribs →)",
+        "angleDeg": "Rib angle",
+        "tilt": "Rib scallop depth"
       }
     },
     "perlage": {
       "pitchUnits": 8.4,
       "ringFreq": 48.0,
       "tilt": 0.22,
-      "_comment": "Circular graining on the BASE plate, stamped like the real thing: pearls in a staggered grid, each fragment shaded by the LAST pearl (row-major application order) whose radius covers it \u2014 so every pearl overlaps its neighbours in one direction, shingled. pearlRadiusUnits > pitch/2 sets the overlap.",
+      "_comment": "Circular graining on the BASE plate, stamped like the real thing: pearls in a staggered grid, each fragment shaded by the LAST pearl (row-major application order) whose radius covers it — so every pearl overlaps its neighbours in one direction, shingled. pearlRadiusUnits > pitch/2 sets the overlap.",
       "pearlRadiusUnits": 6.5,
       "shingleFlip": true,
       "jitterFrac": 0.12,
@@ -140,13 +230,24 @@
           0,
           1
         ]
+      },
+      "_labels": {
+        "pitchUnits": "Perlage pitch",
+        "ringFreq": "Perlage ring spacing",
+        "tilt": "Perlage scallop depth",
+        "pearlRadiusUnits": "Pearl radius",
+        "shingleFlip": "Pearl shingle direction",
+        "jitterFrac": "Pearl jitter"
       }
     }
   },
   "materials": {
     "ruby": {
       "color": "#b01326",
-      "_comment": "Bearing jewels, pallet stones, impulse pin. Read at material creation and updatable live; the advanced panel writes here."
+      "_comment": "Bearing jewels, pallet stones, impulse pin. Read at material creation and updatable live; the advanced panel writes here.",
+      "_labels": {
+        "color": "Ruby colour"
+      }
     }
   }
 }
