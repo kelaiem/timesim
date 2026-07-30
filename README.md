@@ -112,7 +112,8 @@ exploded view (whole-movement slider or one assembly at a time), part labels,
 x-ray, power-flow highlighting, a measurement overlay with an in-scene mm
 ruler, a guided tour and an inspection route, a control HUD, a reconfigure
 mode (§33: drag either crown, the pusher, the barrel, escapement or balance to propose a new
-arrangement — the pure layout solver shadow-solves each candidate live,
+arrangement — dragging the crown re-solves the keyless cluster around a
+decoupled stem, idler and all; the pure solvers shadow-solve each candidate live,
 warnings and all, specs apply at reload and are refused with reasons where
 they cannot work, a Trial boot button reads a candidate's full boot-assert
 verdict from a hidden throwaway boot without committing the view, and named
