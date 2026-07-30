@@ -5239,3 +5239,66 @@ exactly what the verdicts exist to name.
 the trial boot, the spec as a document, and both decoupling operations
 (the movement in its case; the stem in the movement). What the
 verdicts name from here is layout work, not mode work.
+
+### §33 addendum 3 — the pusher grips the MODULE; `?pushaz=` is retired
+
+Addendum 2 gave the pusher its own press-axis spec, and the owner's
+first real drag with it exposed the design error: the pusher slid to
+45.8° and its stem, cap and pawl went with it — while the column, saw
+and lock they exist to drive stayed at the corner. The handle had
+manufactured a P2 self-disagreement inside the arming group and called
+it a feature. The pusher is the module's GRIP, not its own part.
+
+So `?pushaz=` is retired and the pusher handle now proposes
+`?alarmmod=`: the azimuth of the whole alarm work, named by its seed —
+the striking wheel's station, identity 160°. The complex is one action
+group positionally (the cam lifts the hammer tail, the hammer strikes
+the gong, the lock banks on the wheel, the column stands off the lock,
+the pawl and pusher stand off the column), so ONE delta added to four
+seed angle literals rotates all of it: the gong's free end (135°), the
+striking wheel (160°), the lock pivot's outboard bearing (160°), and
+the barrel's bearing off the striker (−60°). Everything else was
+already derived from those, which is what all the registration-solve
+work was for. Identity adds exactly 0.0 to each literal — bit-exact
+without a branch, since these are pure angle sums, not rotations
+through cos/sin. The press axis itself reverts to its identity
+derivation, the column wheel's own station, so it can never leave the
+toggle chain behind again.
+
+What does NOT rotate: the selector rod (az 210° is a §35 corridor
+solution against world-frame obstacles — the beak's long tail
+re-derives to reach it), the alarm crown corner (`?alarmaz=`, its
+winding run re-solving to the moved barrel by the same two-circle
+construction), and the centre setting work.
+
+**The discovery the feature forced: the column is read twice, and the
+second reader is world-anchored.** The link beak reads the same
+castellations as the lock beak, from the rod's direction — so rotating
+the module swings the wheel around a fixed reader, and the offset
+between the two reads is GEOMETRY, not the 120° literal the animation
+law carried. Measured, the literal was idealizing even at identity:
+the built nose centre sits 5.7° off the top's edge in profile space,
+and the contact closes because the nose's 0.35 footprint spans ±3.5°
+at its radius. That fact is now code: the offset derives from the
+built directions (snapping to the nearest column centre — the same
+idealization the literal encoded, now earned), and a footprint-credited
+parity check against the wheel's own `profileAt` law — full material
+under some of the box disarmed, the whole box free armed — runs at
+boot AND lives in the pusher handle's drag shadow, which names the
+nearest readable azimuths under the pointer. The consequence is real
+horology: with one wheel and two readers, the module is only
+re-placeable at DISCRETE azimuths, roughly a castellation apart.
+
+Also collected: the click-phase tripwire measured its integer-pitch
+claim as a raw modulus, which held only while `(ENGAGED + 2·pitch) −
+ENGAGED` rounded back exactly — a rotated ENGAGED landed the residue at
+pitch − ε and reported a phantom full-pitch disagreement made of one
+ulp. It now measures distance to the NEAREST integer pitch.
+
+**Verified.** Identity bit-exact at the recorded baseline, boot silent.
+At `?alarmmod=227` (a clean azimuth, 67° from home): boot silent, the
+alarm armed, and ALL SIX hand-offs of the §35 arming run measure shut —
+the entire module moved and the mechanism went with it. At
+`?alarmmod=200` (mid-flank): the specific refusal at boot, the same
+warning live under the pointer mid-drag, and the movement still boots
+and runs under the amber verdict.

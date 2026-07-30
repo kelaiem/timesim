@@ -6435,7 +6435,25 @@ alarmSpinner.add(alarmCrownKnob);
 // away from the balance/escapement in the lower-right), above the 3/4 plate.
 const Z_GONG = 9.6;              // above the 3/4 plate top (8.5), about the balance-cock height (9.4)
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
-const GONG_A1 = 135 * DEG2RAD;   // free (ringing) end — the hammer strikes here
+// §33 (pusher handle) — THE ALARM WORK ROTATES AS ONE MODULE (?alarmmod=).
+// The striking wheel's cam lifts the hammer tail, the hammer strikes the
+// gong, the lock lever banks on the wheel, the column stands off the lock,
+// and the pawl/pusher stand off the column: one action group, positionally.
+// So the spec is ONE azimuth — the striking wheel's station, identity 160° —
+// and the whole complex is seeded from four angle literals below, each
+// carrying this delta. Identity keeps every literal bit-exact: the delta is
+// exactly 0.0 and IEEE addition of 0.0 is the identity, so no branch is
+// needed (the crownaz skip-entirely pattern exists for rotations through
+// cos/sin, which this is not — these are pure angle sums).
+// What does NOT rotate: the selector link rod (az 210° is a §35 corridor
+// solution against world-frame obstacles — the beak's tail re-derives to
+// reach it), the alarm crown corner (?alarmaz=, its winding run re-solves
+// to the barrel by construction), and the centre setting work. Costs of a
+// rotated module — fusee-square clearance, plate rim, corridor reach — are
+// the boot asserts' court, per the mode's layering.
+const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
+  ? SPEC.alarmModAzDeg * DEG2RAD - 160 * DEG2RAD : 0;
+const GONG_A1 = 135 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the hammer strikes here
 // §56 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
 // direction is the whole trick: the struck end, the hammer, its pivot azimuth
 // (GONG_A1 + 11°), the head's rest radius and the strike emitter are all sited
@@ -6582,10 +6600,10 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // then follows at whatever centre distance the MESH dictates, on a bearing
 // picked to keep it off the fusee's let-down square (the one other thing
 // standing proud of this face).
-const ALARM_SW_AZ = 160 * DEG2RAD, ALARM_SW_R = 29;
+const ALARM_SW_AZ = 160 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29; // §33: the module seed — ?alarmmod= names THIS station
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
 const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_PINION_TEETH) / 2;
-const ALARM_BARREL_BEARING = -60 * DEG2RAD;
+const ALARM_BARREL_BEARING = -60 * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
 const alarmBarrelPos = {
   x: alarmSwPos.x + Math.cos(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
   y: alarmSwPos.y + Math.sin(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
@@ -7166,7 +7184,7 @@ const ALARM_LOCK_PAD_R = 0.3;
 const ALARM_LOCK_LIFT = 0.085;                  // rad — ~0.4 of radial air at the collar when released
 const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (8.68..8.98)
 const alarmLockPivot = (() => {
-  const a = 160 * DEG2RAD;                      // outboard-left of the striking wheel — probed clear
+  const a = 160 * DEG2RAD + ALARM_MOD_ROT;      // outboard-left of the striking wheel (module-relative) — probed clear at identity
   return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
 })();
 // Engaged arm angle: pad centre sits at collar radius + pad radius from the
@@ -7471,7 +7489,47 @@ const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   //
 // answered there: the two crank contacts have different effective radii,
 // so the rod's travel is not the ring's and never was — forcing both to
 // 0.19 is exactly what held TODO 9's gaps open.)
-const ALARM_LINK_BEAK_OFF = (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
+// §33 (pusher handle) — the link beak's read, MEASURED. The link beak
+// reads the SAME castellations as the lock beak, but from the ROD's
+// direction — and the rod is a §35 corridor solution in the WORLD frame
+// (az 210°), while the wheel's phase rides the module (?alarmmod=). So
+// the offset between the two readers is geometry, not a constant. At
+// identity the literal two-full-pitches stands VERBATIM (the law
+// idealizes the nose's read at a column centre; the built nose centre
+// measures 5.7° off the top's edge and the contact still closes because
+// the nose's own 0.35 footprint spans ±~3.5° at its radius — the
+// footprint-credited check below is the honest form of that fact). Under
+// a rotated module the offset derives from the built directions and
+// snaps to the nearest column centre — the same idealization the
+// literal always encoded, now earned rather than assumed.
+const ALARM_LINK_BEAK_TRUE = Math.atan2(ALARM_LINK_ROD_XY.y - ALARM_COL_POS.y,
+  ALARM_LINK_ROD_XY.x - ALARM_COL_POS.x) - ALARM_LOCK_ENGAGED;
+const ALARM_LINK_BEAK_OFF = SPEC.alarmModAzDeg !== null
+  ? Math.round(ALARM_LINK_BEAK_TRUE / (2 * ALARM_COL_STEP)) * (2 * ALARM_COL_STEP)
+  : (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
+// Can the nose actually read the toggle at a given wheel placement? The
+// wheel's own law (profileAt — the mesh's single source) sampled across
+// the nose's angular FOOTPRINT: disarmed needs full material under some
+// of the box (the read stands ON a top), armed needs the whole box free
+// (the read FALLS). Shared by the boot assert here and the pusher
+// handle's live shadow, so the drag warns with the same measure the
+// boot judges.
+function alarmLinkReadClean(colX, colY, lockEngaged) {
+  const trueOff = Math.atan2(ALARM_LINK_ROD_XY.y - colY, ALARM_LINK_ROD_XY.x - colX) - lockEngaged;
+  const noseHalf = Math.atan2(0.35 / 2, (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2);
+  const p = alarmColumnWheel.userData.profileAt;
+  let onTop = false, armedFree = true;
+  for (let a = trueOff - noseHalf; a <= trueOff + noseHalf + 1e-9; a += noseHalf / 8) {
+    if (p(a) === 1) onTop = true;
+    if (p(a + ALARM_COL_STEP) !== 0) armedFree = false;
+  }
+  return { clean: onTop && armedFree, trueOff, onTop, armedFree };
+}
+{
+  const _r = alarmLinkReadClean(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_ENGAGED);
+  if (!_r.clean)
+    console.warn(`§33/§35: the link beak cannot read the alarm toggle — its footprint at ${(_r.trueOff * 180 / Math.PI).toFixed(1)}° from the lock beak ${_r.onTop ? 'does not clear the gap when armed' : 'reaches no column top when disarmed'}. The selector rod is corridor-fixed (az ${ALARM_LINK_ROD_AZ_DEG}°), so only module azimuths that carry this offset onto a castellation keep the toggle readable through the link.`);
+}
 // (ALARM_LINK_ROD_TRAVEL = 0.42 — "the beak's fall into a gap, at the rod" —
 // is DELETED: defined for the life of §35, referenced nowhere, and wrong
 // (the tick moved the rod 0.19). The rod's travel is now a registration-
@@ -7995,16 +8053,18 @@ const alarmLinkParts = {};
     console.warn(`§35: the link's under-plate band tops at ${(ALARM_LINK_SHAFT_Z + 0.12 + 0.45).toFixed(2)} — no longer z-separated from the low linkage's floor (0.17); its 2D swept record would apply`);
 }
 
-// §33 (pusher handle) — THE PRESS AXIS IS A SPEC. The whole pusher
-// assembly is built along this azimuth with its base offset to the chord
-// circle, so the line passes the column wheel at the pawl's drive offset
-// FOR ANY azimuth — the tangent construction is azimuth-invariant, and
-// the §43 saw-direction assert below holds unchanged because the chord's
-// sign (the saw side) rotates with it. Identity keeps the literal path:
-// the axis of the column wheel's own station, as always.
-const ALARM_PUSH_AZ = SPEC.pushAzDeg !== null
-  ? SPEC.pushAzDeg * DEG2RAD
-  : Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
+// §33 (pusher handle) — THE PRESS AXIS RIDES THE MODULE, always. This was
+// briefly its own spec (?pushaz=), and that was retired by the owner's
+// call: an independent press axis parked the pusher's stem and pawl inside
+// the movement while the column, saw and lock it drives stayed at the
+// corner — a P2 self-disagreement the handle itself invited. The pusher is
+// the module's GRIP, not its own part: ?alarmmod= rotates the whole alarm
+// work and the press axis derives here from the column wheel's own station,
+// so it can never leave the toggle chain behind. The tangent construction
+// below stays azimuth-invariant (that work is what makes the module
+// rotation free), and the §43 saw-direction assert holds because the
+// chord's sign rotates with the module.
+const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
 const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
 const _pushPerp = { x: -_pushU.y, y: _pushU.x };
 // Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
@@ -8123,7 +8183,13 @@ alarmSwitchUnit.add(alarmPusherGroup);
   alarmSwitchUnit.add(boss);
 }
 {
-  const gap = ((ALARM_CLICK_AZ - ALARM_LOCK_ENGAGED) % (Math.PI * 2 / ALARM_COL_COLUMNS));
+  // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
+  // held only while (ENGAGED + 2·pitch) − ENGAGED rounded back to exactly
+  // 2·pitch, and a module-rotated ENGAGED (?alarmmod=) lands the residue at
+  // pitch − ε — a phantom full-pitch "disagreement" made of one ulp.
+  const _pitch = Math.PI * 2 / ALARM_COL_COLUMNS;
+  let gap = (((ALARM_CLICK_AZ - ALARM_LOCK_ENGAGED) % _pitch) + _pitch) % _pitch;
+  if (gap > _pitch / 2) gap -= _pitch;
   if (Math.abs(gap) > 1e-9) console.warn(`alarm click phase: contact azimuths differ by a non-integer pitch (${gap.toFixed(4)}) — the flag and the gate would disagree`);
 }
 // The tail BEAK — the lock lever grows a nose at its tail end, in the column
@@ -11178,7 +11244,7 @@ function reconfShowStatus() {
     if (SPEC.crownAzDeg !== null) parts.push(`case rotation ${SPEC.crownAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.stemAzDeg !== null) parts.push(`stem az ${SPEC.stemAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.alarmAzDeg !== null) parts.push(`alarm crown az ${SPEC.alarmAzDeg.toFixed(1)}\u00b0`);
-    if (SPEC.pushAzDeg !== null) parts.push(`pusher az ${SPEC.pushAzDeg.toFixed(1)}\u00b0`);
+    if (SPEC.alarmModAzDeg !== null) parts.push(`alarm module az ${SPEC.alarmModAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.barrelStepDeg !== null) parts.push(`barrel step ${SPEC.barrelStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.escapeStepDeg !== null) parts.push(`escape step ${SPEC.escapeStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
@@ -11238,7 +11304,39 @@ function reconfMoveDrag(e) {
       },
     },
     alarmcrown: { urlKey: 'alarmaz', label: 'alarm crown', windows: reconfAlarmWindows },
-    pusher: { urlKey: 'pushaz', label: 'alarm pusher', windows: reconfPusherWindows },
+    // The pusher handle proposes the MODULE (?alarmmod=), not its own axis:
+    // pointer az is where the PUSHER should land, so the proposed value is
+    // offset by the pusher's module-relative lead over the striker station
+    // (both effective values, so the offset is module-invariant and a
+    // redrag from a spec'd boot maps the same way).
+    pusher: {
+      urlKey: 'alarmmod', label: 'alarm module', clockPrefix: 'pusher ',
+      windows: reconfPusherWindows,
+      toValue: (az) => wrapAngle(az - (ALARM_PUSH_AZ - ALARM_SW_AZ)),
+      // Live parity shadow — the same read the boot assert measures: swing
+      // the module to the candidate azimuth (rigid about the centre; the
+      // lock beak's phase rides along, the rod stays corridor-fixed) and
+      // evaluate the wheel's own profileAt at the link beak's true offset.
+      // Pure trig + the law, so it runs per pointer move.
+      shadow: (mAz) => {
+        const cur = (SPEC.alarmModAzDeg !== null ? SPEC.alarmModAzDeg : 160) * DEG2RAD;
+        const read = (m) => {
+          const d = m - cur;
+          const cx = ALARM_COL_POS.x * Math.cos(d) - ALARM_COL_POS.y * Math.sin(d);
+          const cy = ALARM_COL_POS.x * Math.sin(d) + ALARM_COL_POS.y * Math.cos(d);
+          return alarmLinkReadClean(cx, cy, ALARM_LOCK_ENGAGED + d);
+        };
+        if (read(mAz).clean) return [];
+        const step = 0.5 * DEG2RAD;
+        let lo = null, hi = null;
+        for (let i = 1; i <= 720 && (lo === null || hi === null); i++) {
+          if (hi === null && read(mAz + i * step).clean) hi = mAz + i * step;
+          if (lo === null && read(mAz - i * step).clean) lo = mAz - i * step;
+        }
+        const fmt = (a) => a === null ? '?' : (((a * 180 / Math.PI) % 360 + 360) % 360).toFixed(1);
+        return [`the link beak cannot read the alarm toggle here — the selector rod is corridor-fixed, and the column's castellations only meet its beak at discrete module azimuths (nearest: ${fmt(lo)}° / ${fmt(hi)}°)`];
+      },
+    },
   };
   if (RIM_KINDS[reconfDrag.kind]) {
     const rk = RIM_KINDS[reconfDrag.kind];
@@ -11246,11 +11344,12 @@ function reconfMoveDrag(e) {
     const conflict = reconfConflict(az, rk.windows());
     reconfGhost.rotation.z = az;
     reconfGhost.children.forEach((ch) => ch.material.color.set(conflict ? 0xe08888 : 0xbfeee2));
-    const deg = ((az * 180 / Math.PI) % 360 + 360) % 360;
-    const shadowWarns = (!conflict && rk.shadow) ? rk.shadow(az) : [];
+    const vAz = rk.toValue ? rk.toValue(az) : az;
+    const deg = ((vAz * 180 / Math.PI) % 360 + 360) % 360;
+    const shadowWarns = (!conflict && rk.shadow) ? rk.shadow(vAz) : [];
     reconfCandidate = {
       kind: reconfDrag.kind, urlKey: rk.urlKey, valueDeg: deg,
-      label: `proposed: ${rk.label} az ${deg.toFixed(1)}\u00b0 (${reconfClockLabel(az)})`,
+      label: `proposed: ${rk.label} az ${deg.toFixed(1)}\u00b0 (${rk.clockPrefix || ''}${reconfClockLabel(az)})`,
       refuse: conflict ? `fouls ${conflict.what} (${conflict.deg.toFixed(1)}\u00b0 apart, needs ${conflict.needDeg.toFixed(1)}\u00b0)` : null,
       warns: shadowWarns,
       solverClean: !!rk.shadow && shadowWarns.length === 0,
@@ -11299,7 +11398,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'pushaz', 'barrelstep', 'escstep', 'balstep'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
