@@ -60,7 +60,13 @@ export const SPEC = (() => {
   // tooth count is not a place for rounding error.
   const reserveHours = Number.isFinite(Number(raw.reserveHours))
     ? Math.min(48, Math.max(12, Math.round(Number(raw.reserveHours) / 3) * 3)) : 30;
-  return Object.freeze({ vph, reserveHours });
+  // §33 step 1 — the crown's azimuth (movement-frame world degrees of the
+  // stem line; the UI speaks dial-clock and translates). null = as
+  // designed: the identity spec must not even ROTATE BY ZERO — the solve
+  // skips the transform entirely so identity stays bit-exact.
+  const crownAzDeg = Number.isFinite(Number(raw.crownAzDeg))
+    ? ((Number(raw.crownAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -377,7 +383,35 @@ export function solveLayout({
     fourth: shift(fourthPos), escape: shift(escapePos), balance: shift(balancePos),
     fork: shift(forkPivotPos), dial: shift(dialCenterXY),
   };
-  return { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM };
+  // §33 step 1 — CROWN AZIMUTH, by rigid rotation of the solved layout
+  // about the centre arbor (the dial's axis): the movement turns in its
+  // case while the dial's 12 stays up — the operation a casing watchmaker
+  // actually performs. Every internal centre distance, mesh and clearance
+  // is rotation-invariant, which is exactly why this is STEP 1: the train
+  // stays proven, and what genuinely changes is the layout's relation to
+  // the DIAL-ANCHORED world — the alarm cluster's corner, the reserve
+  // sub-dial at 12, the case furniture — which is where §33's validity
+  // verdicts live. (§13's "decouple the stem and re-solve the keyless
+  // cluster" remains the deeper step 2.)
+  //
+  // The angle outputs rotate with the frame; the step angles between
+  // members are relative and do not. Identity (crownAzDeg null) skips the
+  // transform entirely, so the shipped spec stays BIT-exact — a rotation
+  // by zero still churns floats, and the fingerprint gate would see it.
+  let forkBaseOut = forkBaseAngle, pinAimOut = PIN_AIM;
+  if (SPEC.crownAzDeg !== null) {
+    const dAz = SPEC.crownAzDeg * DEG2RAD - Math.atan2(P.barrel.y, P.barrel.x);
+    if (dAz !== 0) {
+      const c = Math.cos(dAz), s = Math.sin(dAz);
+      for (const k of Object.keys(P)) {
+        const p = P[k];
+        P[k] = { x: p.x * c - p.y * s, y: p.x * s + p.y * c };
+      }
+      forkBaseOut += dAz;
+      pinAimOut += dAz;
+    }
+  }
+  return { P, BALANCE_STEP_DEG, forkBaseAngle: forkBaseOut, PIN_AIM: pinAimOut };
 }
 
 // ---------------------------------------------------------------------------

@@ -110,7 +110,10 @@ where the unlock-impulse-drop sequence becomes followable by eye), Wind,
 fast-forward, sync-to-wall-clock, sound, camera presets (plus orbit/zoom),
 exploded view (whole-movement slider or one assembly at a time), part labels,
 x-ray, power-flow highlighting, a measurement overlay with an in-scene mm
-ruler, a guided tour and an inspection route, a control HUD, save/load of the
+ruler, a guided tour and an inspection route, a control HUD, a reconfigure
+mode (§33 step 1: drag the crown to a new azimuth — a spec applied by
+rotating the movement in its case at reload, refused with reasons where it
+cannot work), save/load of the
 whole scene state, and the beat counter, simulated clock, reserve and alarm
 readouts. The alarm has its own crown and pusher. `?inspect=1` and `?cycle=1`
 deep-link into the inspection and alarm-cycler routes; an Advanced panel
