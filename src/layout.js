@@ -83,7 +83,11 @@ export const SPEC = (() => {
   // its solved two-candidate choice and its exact literals.
   const alarmAzDeg = Number.isFinite(Number(raw.alarmAzDeg))
     ? ((Number(raw.alarmAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg });
+  // §33 (pusher handle) — the alarm pusher's press-axis azimuth (world
+  // degrees). null = as designed: the column wheel's own station's radial.
+  const pushAzDeg = Number.isFinite(Number(raw.pushAzDeg))
+    ? ((Number(raw.pushAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, pushAzDeg });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
