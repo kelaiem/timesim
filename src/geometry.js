@@ -806,6 +806,18 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     const geo = new THREE.ExtrudeGeometry(shape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 2 }); // TODO 11 tail: the pusher's pawl indexes here — floor stock, growing downward where the call site's raised seat left a full margin
     geo.translate(0, 0, -baseH / 2 - STOCK_MIN_U);
     g.add(new THREE.Mesh(geo, mat));
+    // §33 (pusher handle) — the saw's OUTLINE, exported the way profileAt
+    // is: the caller derives the pawl's park by casting against this same
+    // polygon, so the parked kiss cannot drift from the cut teeth (the
+    // park used to be a measured-once constant, valid only at the one
+    // azimuth it was measured at). Local frame, y-mirrored as built.
+    const ratchetPoly = [];
+    for (let i = 0; i < teethN; i++) {
+      const a0 = (i / teethN) * Math.PI * 2, a1 = ((i + 1) / teethN) * Math.PI * 2;
+      ratchetPoly.push({ x: Math.cos(a0) * tip, y: -Math.sin(a0) * tip });
+      ratchetPoly.push({ x: Math.cos(a1) * rr, y: -Math.sin(a1) * rr });
+    }
+    g.userData.ratchetPoly = ratchetPoly;
   }
   g.userData.columns = columns;
   g.userData.colH = colH;
