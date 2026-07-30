@@ -78,6 +78,11 @@ export const SPEC = (() => {
   const barrelStepDeg = stepDeg(raw.barrelStepDeg);
   const escapeStepDeg = stepDeg(raw.escapeStepDeg);
   const balanceStepDeg = stepDeg(raw.balanceStepDeg);
+  // §33 step 2 — THE STEM DECOUPLED: the stem line's own azimuth (world
+  // degrees), independent of the barrel. null = as designed: the stem
+  // derives from the barrel's azimuth exactly as §13 built it, bit-exact.
+  const stemAzDeg = Number.isFinite(Number(raw.stemAzDeg))
+    ? ((Number(raw.stemAzDeg) % 360) + 360) % 360 : null;
   // §33 (alarm crown handle) — the ALARM corner's azimuth (movement-frame
   // world degrees, like crownAzDeg). null = as designed: the corner keeps
   // its solved two-candidate choice and its exact literals.
@@ -87,7 +92,7 @@ export const SPEC = (() => {
   // degrees). null = as designed: the column wheel's own station's radial.
   const pushAzDeg = Number.isFinite(Number(raw.pushAzDeg))
     ? ((Number(raw.pushAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, pushAzDeg });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, pushAzDeg, stemAzDeg });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -467,10 +472,13 @@ export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of 
 export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
+  stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
-  const uWind = { x: P.barrel.x / barrelDist, y: P.barrel.y / barrelDist };
+  const uWind = stemAzRad === null
+    ? { x: P.barrel.x / barrelDist, y: P.barrel.y / barrelDist }
+    : { x: Math.cos(stemAzRad), y: Math.sin(stemAzRad) };
   const stemAngle = Math.atan2(uWind.y, uWind.x);
   // Which side of the stem line the balance (and hence the setting lever)
   // lives on. NOTE: with the tornado layout the balance sits
@@ -499,9 +507,65 @@ export function solveKeyless({
   // equal module makes the mesh honest — the old layout gear-meshed the
   // ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
   const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
-  // Winding transfer arbor axis — one spur-mesh distance outboard of the
-  // barrel, with the same +0.1 slop every keyless mesh uses (see mwFoldD).
-  const cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
+  // Winding transfer arbor axis. IDENTITY: one spur-mesh distance outboard
+  // of the barrel along the (barrel-derived) stem, with the same +0.1 slop
+  // every keyless mesh uses (see mwFoldD) — the §13 expression, verbatim.
+  //
+  // §33 step 2 — with the stem DECOUPLED the crown wheel stays on the stem
+  // ray but the barrel no longer lies on it, and the reach solves in two
+  // regimes. DIRECT (the ray passes within one mesh distance of the
+  // barrel, |Δaz| ≲ 21° at the shipped radii): slide the mesh point along
+  // the ray — cwDist = along + sqrt(R0² − c²), the outboard intersection
+  // of the ray with the mesh circle, exactly what the identity expression
+  // degenerates to at c = 0. IDLER (beyond direct reach): the crown wheel
+  // parks at the ray's nearest point to the barrel and an 18-tooth idler
+  // bridges by two-circle intersection — the alarm winding train's own
+  // pattern, and idler counts drop out of the ratio there as here. The
+  // idler's 18 teeth are sized so the §13 motivating example ("drag the
+  // crown to 3 o'clock", Δaz ≈ 35°) closes with margin: span = crownWheelR
+  // + 2·idlerR + windSpurR + 0.2 ≈ 13.9 covers Δaz ≤ asin(13.9/21.3) ≈
+  // 40°. Beyond THAT the solve refuses with the numbers — a warn here,
+  // the amber verdict at boot, the battery as always.
+  const KW_WIND_IDLER_TEETH = 18;
+  const windIdlerR = (KW_MODULE * KW_WIND_IDLER_TEETH) / 2;
+  let cwDist, windIdler = null;
+  if (stemAzRad === null) {
+    cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
+  } else {
+    const along = uWind.x * P.barrel.x + uWind.y * P.barrel.y;
+    const c = Math.abs(uWind.x * P.barrel.y - uWind.y * P.barrel.x);
+    const R0 = windSpurR + crownWheelR + 0.1;
+    if (c <= R0 - 0.5 && along > 0) {
+      // DIRECT: oblique mesh, outboard branch (the identity's topology).
+      cwDist = along + Math.sqrt(R0 * R0 - c * c);
+    } else if (along > 0) {
+      // IDLER: crown wheel at the ray's nearest point to the barrel.
+      cwDist = along;
+      const cwPos = { x: uWind.x * cwDist, y: uWind.y * cwDist };
+      const rA = crownWheelR + windIdlerR + 0.1;   // crown wheel ⇄ idler
+      const rB = windSpurR + windIdlerR + 0.1;     // idler ⇄ fusee spur
+      const dx = P.barrel.x - cwPos.x, dy = P.barrel.y - cwPos.y;
+      const d = Math.hypot(dx, dy);
+      if (d > rA + rB) {
+        warn(`stem azimuth: the winding idler cannot span crown wheel to fusee spur (${d.toFixed(1)} apart, reach ${(rA + rB).toFixed(1)}) — bring the stem within ~40° of the barrel`);
+        cwDist = barrelDist + windSpurR + crownWheelR + 0.1; // stand the cluster up anyway; the verdicts carry the refusal
+      } else {
+        const a = (rA * rA - rB * rB + d * d) / (2 * d);
+        const h = Math.sqrt(Math.max(0, rA * rA - a * a));
+        const mx = cwPos.x + (a * dx) / d, my = cwPos.y + (a * dy) / d;
+        // Two intersections; take the INBOARD one (smaller radius from the
+        // centre) so the idler stays inside the plate's enclosure — the
+        // trial boot and battery judge the arrangement either way.
+        const cand1 = { x: mx - (h * dy) / d, y: my + (h * dx) / d };
+        const cand2 = { x: mx + (h * dy) / d, y: my - (h * dx) / d };
+        const pick = Math.hypot(cand1.x, cand1.y) <= Math.hypot(cand2.x, cand2.y) ? cand1 : cand2;
+        windIdler = { x: pick.x, y: pick.y, r: windIdlerR, teeth: KW_WIND_IDLER_TEETH };
+      }
+    } else {
+      warn('stem azimuth: the stem ray points away from the barrel entirely — the winding path cannot exist');
+      cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
+    }
+  }
   const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // sliding pinion, pushed in (teeth overlap the wheel rim, bevel-style)
   const pinOutDist = pinDist + CROWN_PULL_DIST;              // ...pulled out → setting mesh
   const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
@@ -610,7 +674,7 @@ export function solveKeyless({
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,
     ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
-    cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY,
+    cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR,

@@ -620,20 +620,28 @@ const HAND_RAD_PER_SET_RAD = -(windPinionTeeth / minuteWheelTeeth) * (minutePini
 // (CROWN_PULL_DIST, SL_C / SL_TAIL / GROOVE_LOCAL, YK_C — the declared
 // keyless spec — imported from layout.js.)
 // ---------------------------------------------------------------------------
-const {
-  barrelDist, uWind, stemAngle, vPerp, sideSign,
-  ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
-  cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY,
-  settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
-  kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR,
-} = solveKeyless({
+// §33 step 2 — the keyless solver's inputs are CAPTURED like LAYOUT_INPUTS,
+// so reconfigure mode can shadow-solve a candidate stem azimuth live: pure
+// solver, same measured inputs, a collecting warn. The spec's azimuth
+// spreads in only when present; identity passes null and stays bit-exact.
+const KEYLESS_INPUTS = {
   P,
   outline: {
     barrel: barrelR_actual, center: centerWheelR, third: thirdWheelR,
     fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
     fork: 4, dial: 0,
   },
+  ...(SPEC.stemAzDeg !== null ? { stemAzRad: SPEC.stemAzDeg * DEG2RAD } : {}),
+};
+const {
+  barrelDist, uWind, stemAngle, vPerp, sideSign,
+  ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
+  cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
+  settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
+  kwPostBow, yokePivot, yokeAngleAt,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR,
+} = solveKeyless({
+  ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
 });
 
@@ -976,6 +984,7 @@ const backPlate = G.makeBackPlate({
   radius: plateR, thickness: 2,
   holes: [
     { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
+    ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
     { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
     { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
     { x: -22.517, y: -13.0, r: 0.45 },             // §35: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build). r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1) — 0.28 sealed, ray-verified open at 0.45
@@ -1721,6 +1730,23 @@ const transferArbor = new THREE.Mesh(
 transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + Z_KEYLESS) / 2);
 keyless.add(transferArbor);
+// §33 step 2 — THE WINDING IDLER, built only when the spec'd stem parks
+// one (solveKeyless returns its solved two-circle position). It bridges
+// the transfer wheel to the fusee spur in the SAME thin band the transfer
+// wheel occupies, its count dropping out of the ratio exactly as the
+// alarm winding train's idlers do; one extra mesh flips the winding
+// sense, so the spin below carries the extra negation.
+let windIdlerWheel = null;
+if (windIdler) {
+  windIdlerWheel = G.makeGear({ module: KW_MODULE, teeth: windIdler.teeth, thickness: RATCHET_T, boreR: 0.55, spokes: 0, material: MATS.steel, hub: false });
+  windIdlerWheel.name = 'kwWindIdler'; // §33 step 2 — instruments couple by string
+  windIdlerWheel.position.set(windIdler.x, windIdler.y, Z_TRANSFER);
+  keyless.add(windIdlerWheel);
+  const idlerArbor = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.6, 12), MATS.steel);
+  idlerArbor.rotation.x = Math.PI / 2;
+  idlerArbor.position.set(windIdler.x, windIdler.y, Z_TRANSFER - 0.2);
+  keyless.add(idlerArbor);
+}
 // The crown wheel's blued screw — on the arbor's dial-side end now (its
 // old spot atop the wheel is where the arbor leaves for the plate bore).
 const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.blueSteel);
@@ -11149,7 +11175,8 @@ function reconfShowStatus() {
   if (!reconfCandidate) {
     span.className = '';
     const parts = [];
-    if (SPEC.crownAzDeg !== null) parts.push(`crown az ${SPEC.crownAzDeg.toFixed(1)}\u00b0`);
+    if (SPEC.crownAzDeg !== null) parts.push(`case rotation ${SPEC.crownAzDeg.toFixed(1)}\u00b0`);
+    if (SPEC.stemAzDeg !== null) parts.push(`stem az ${SPEC.stemAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.alarmAzDeg !== null) parts.push(`alarm crown az ${SPEC.alarmAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.pushAzDeg !== null) parts.push(`pusher az ${SPEC.pushAzDeg.toFixed(1)}\u00b0`);
     if (SPEC.barrelStepDeg !== null) parts.push(`barrel step ${SPEC.barrelStepDeg.toFixed(1)}\u00b0`);
@@ -11192,8 +11219,24 @@ function reconfPointerWorld(e) {
 function reconfMoveDrag(e) {
   const hit = reconfPointerWorld(e);
   if (!hit) return;
+  // §33 step 2 — the crown handle now proposes the DECOUPLED stem
+  // (?stemaz=): the keyless cluster re-solves around the new stem line
+  // while the layout stays put — the honest operation §13 named. (Step 1's
+  // whole-layout rotation, ?crownaz=, remains a spec and composes; the
+  // handle just stopped being its mouthpiece.) The crown's candidates run
+  // the closed-form rim windows AND a live solveKeyless shadow — the same
+  // pure-solver pattern the train handles use, so the idler-reach refusal
+  // ("bring the stem within ~40° of the barrel") lands under the pointer.
   const RIM_KINDS = {
-    crown: { urlKey: 'crownaz', label: 'crown', windows: () => reconfWindows },
+    crown: {
+      urlKey: 'stemaz', label: 'stem', windows: () => reconfWindows,
+      shadow: (az) => {
+        const warns = [];
+        try { solveKeyless({ ...KEYLESS_INPUTS, stemAzRad: az, warn: (m) => warns.push(m) }); }
+        catch (err) { warns.push(`keyless solve failed (${err.message})`); }
+        return warns;
+      },
+    },
     alarmcrown: { urlKey: 'alarmaz', label: 'alarm crown', windows: reconfAlarmWindows },
     pusher: { urlKey: 'pushaz', label: 'alarm pusher', windows: reconfPusherWindows },
   };
@@ -11204,11 +11247,13 @@ function reconfMoveDrag(e) {
     reconfGhost.rotation.z = az;
     reconfGhost.children.forEach((ch) => ch.material.color.set(conflict ? 0xe08888 : 0xbfeee2));
     const deg = ((az * 180 / Math.PI) % 360 + 360) % 360;
+    const shadowWarns = (!conflict && rk.shadow) ? rk.shadow(az) : [];
     reconfCandidate = {
       kind: reconfDrag.kind, urlKey: rk.urlKey, valueDeg: deg,
       label: `proposed: ${rk.label} az ${deg.toFixed(1)}\u00b0 (${reconfClockLabel(az)})`,
       refuse: conflict ? `fouls ${conflict.what} (${conflict.deg.toFixed(1)}\u00b0 apart, needs ${conflict.needDeg.toFixed(1)}\u00b0)` : null,
-      warns: [],
+      warns: shadowWarns,
+      solverClean: !!rk.shadow && shadowWarns.length === 0,
     };
   } else {
     const h = RECONF_HANDLES.find((x) => x.kind === reconfDrag.kind);
@@ -11254,7 +11299,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'alarmaz', 'pushaz', 'barrelstep', 'escstep', 'balstep'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'pushaz', 'barrelstep', 'escstep', 'balstep'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
@@ -13150,6 +13195,7 @@ function tick(t) {
   const crownWheelSpin = windPathRot * (windPinionTeeth / crownWheelTeeth);
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
+  if (windIdlerWheel) windIdlerWheel.rotation.z = -crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream
   {
     // Winding spur, let-down square and fusee cone are keyed together,
     // and their rotation is a pure function of chain hauled: −2π per
