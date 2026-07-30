@@ -553,7 +553,13 @@ const sweptR = (obj) => {
   });
   return r;
 };
-const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM } = solveLayout({
+// §33 step 4 — the solver's inputs are CAPTURED so reconfigure mode can
+// shadow-solve candidates live while dragging: solveLayout is pure, so the
+// same measured inputs with a candidate step angle IS the validity check,
+// warnings and all. The spec's train angles (step 3) spread in only when
+// present, so the identity spec passes no argument and stays bit-exact on
+// the default constants.
+const LAYOUT_INPUTS = {
   radii: {
     barrel: barrelR_actual, centerPinion: centerPinionR,
     centerWheel: centerWheelR, thirdPinion: thirdPinionR,
@@ -567,6 +573,12 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM } = solveLayout({
     third: sweptR(thirdWheel), fourth: sweptR(fourthWheel),
     escape: sweptR(escapeWheel), balance: sweptR(balanceWheel),
   },
+  ...(SPEC.barrelStepDeg !== null ? { barrelStepDeg: SPEC.barrelStepDeg } : {}),
+  ...(SPEC.escapeStepDeg !== null ? { escapeStepDeg: SPEC.escapeStepDeg } : {}),
+  ...(SPEC.balanceStepDeg !== null ? { balanceStepTargetDeg: SPEC.balanceStepDeg } : {}),
+};
+const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayout({
+  ...LAYOUT_INPUTS,
   warn: (m) => console.warn(m),
 });
 
@@ -8343,6 +8355,11 @@ style.textContent = `
 #clock-ui button#btn-reconf.active { background: #1f8a70; border-color: #1f8a70; }
 #reconf-row span.refused { color: #e05555; }
 #reconf-row span.proposed { color: #4fd6b8; }
+#reconf-row span.warned { color: #e0a355; }
+#reconf-variants-row input, #reconf-variants-row select {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+  color: #e8edf2; border-radius: 6px; padding: 3px 5px; font-size: 10.5px; max-width: 88px;
+}
 /* §57 — the control HUD. Lower RIGHT: the bottom-left corner is spoken for
    (§21's comparison diagram, §28's update toast) and the caption owns the
    bottom centre, so this is the one free corner. touch-action:none because
@@ -8559,6 +8576,14 @@ panel.innerHTML = `
       <div class="row label-small" id="reconf-apply-row" style="display:none;">
         <button id="btn-reconf-apply">Apply (reloads)</button>
         <button id="btn-reconf-reset">As designed</button>
+        <button id="btn-reconf-undo">Undo</button>
+      </div>
+      <div class="row label-small" id="reconf-variants-row" style="display:none;">
+        <input id="reconf-var-name" placeholder="variant name" maxlength="24">
+        <button id="btn-var-save">Save</button>
+        <select id="reconf-var-sel"></select>
+        <button id="btn-var-load">Load</button>
+        <button id="btn-var-del">✕</button>
       </div>
       <div class="row">
         <span class="label-small">Plate X-ray</span>
@@ -9343,7 +9368,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (!crownHitTest(e)) return;
-  if (reconfOn) { reconfBeginDrag(e); return; } // §33: in reconfigure mode the crown is a HANDLE for its own azimuth, not a winding input
+  if (reconfOn) { reconfBeginDrag(e, 'crown'); return; } // §33: in reconfigure mode the crown is a HANDLE for its own azimuth, not a winding input
   syncCancel(); // ditto: a hand on the crown outranks the script
   crownDragging = true;
   crownDragMoved = false;
@@ -10867,32 +10892,35 @@ function setExplore(on) {
 document.getElementById('btn-explore').addEventListener('click', () => setExplore(!exploreOn));
 document.getElementById('btn-explore-reset').addEventListener('click', () => dragOffsets.clear());
 
-// --- §33 STEP 1 — RECONFIGURE MODE: the crown's azimuth as a spec ---------
+// --- §33 RECONFIGURE MODE (steps 1 + 3 + 4 + 5) ------------------------
 // The subject is a PROPOSED watch, not the shipped one (§32's opposite —
-// hence the teal chrome). Step 1 exposes ONE spatial parameter end-to-end:
-// drag the crown around the rim, and the candidate azimuth becomes a spec
-// (?crownaz=) applied by rigid rotation of the solved layout about the
-// centre arbor (layout.js) at reload — the §23/§22 tier: a knob that
-// re-derives geometry earns a reload, not a live write.
+// hence the teal chrome). Handles, one per exposed spec dimension:
 //
-// VALIDITY, in two honest layers. Pre-apply, the one class of conflict
-// this rotation can create that is knowable in closed form is checked
-// live: the crown sweeping into the DIAL-ANCHORED alarm cluster (its
-// crown and pusher do not rotate with the train). Everything else — the
-// plate cut vs carried pivots, the alarm barrel vs the let-down square,
-// the reserve train's reach — is judged where it is measured: the boot
-// asserts name each failed consequence after apply (§22's amber verdict
-// row), and the battery is the full court. A spec that fails is
-// REFUSED WITH REASONS, not silently displayed as if it worked.
+//   crown   → crownAzDeg   (step 1: rigid rotation of the layout in the case)
+//   barrel  → barrelStepDeg (step 3: the tornado's first step, about the centre)
+//   escape  → escapeStepDeg (about the fourth)
+//   balance → balanceStepDeg (a TARGET about the escape — the solver owns
+//                             the feasible angle, and says so when it moves)
+//
+// VALIDITY IS THE SOLVER'S, LIVE (step 4): solveLayout is pure, so every
+// drag frame shadow-solves the candidate through the same measured inputs
+// the boot used (LAYOUT_INPUTS) with a collecting warn — the ghost
+// constellation IS the solver's own position table for the candidate, and
+// the warnings under the pointer are the ones boot would print. The crown
+// handle keeps its closed-form alarm-cluster windows (rotation never
+// changes the solve). Apply stays reload-tier (§23/§22), boot asserts and
+// the battery remain the court of record; and a spec is a DOCUMENT
+// (step 5): applies stack in browser history (Undo = back), and named
+// variants save the spec-tier params — never the pose, never the boot
+// default — under their own storage key.
 let reconfOn = false;
-let reconfCandidateAz = null;  // radians, movement-frame; null = no proposal yet
-let reconfDragging = false;
-let reconfGhost = null;
+let reconfDrag = null;         // { kind, key?, anchor? } while dragging
+let reconfCandidate = null;    // { kind, azRad?, specKey?, specDeg?, warns, refuse }
+let reconfGhost = null;        // crown ghost (step 1)
+let reconfConstel = null;      // train constellation ghost (steps 3–4)
 const _rcNDC = new THREE.Vector2(), _rcHit = new THREE.Vector3();
-const _rcPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // the stem's z ≈ 0 plane
-// The alarm cluster's forbidden windows, derived from the parts that make
-// them: each window is the two heads' angular half-widths at the rim plus
-// the one clearance margin, converted to arc at the crown's rim distance.
+const _rcPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // the train plane z ≈ 0
+const RECONF_ROT_DEG = rotAppliedRad * 180 / Math.PI; // pointer az (rotated world) → solver frame
 const reconfWindows = (() => {
   const crownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);          // main crown body r (its own build constant)
   const alarmAz = Math.atan2(alarmDir.y, alarmDir.x);
@@ -10916,7 +10944,52 @@ function reconfClockLabel(az) {
   const bearing = Math.atan2(Math.sin(az), -Math.cos(az)) * 180 / Math.PI;
   const clockDeg = ((90 - bearing) % 360 + 360) % 360;
   const h = Math.round(clockDeg / 30) % 12;
-  return `≈ ${h === 0 ? 12 : h} o'clock`;
+  return `\u2248 ${h === 0 ? 12 : h} o'clock`;
+}
+// The three train handles. anchor: what the step angle is measured ABOUT
+// (in the CURRENT, possibly rotated frame); toSpec: pointer azimuth →
+// solver-frame degrees. Grab radius from the member's own swept radius.
+const RECONF_HANDLES = [
+  // The barrel steps FROM the barrel TO the centre in the solver, so with
+  // the centre at the recentred origin the barrel's azimuth about it is
+  // barrelStepDeg + 180.
+  { kind: 'barrel', specKeyName: 'barrelStepDeg', urlKey: 'barrelstep', defDeg: BARREL_STEP_DEG,
+    anchor: () => ({ x: 0, y: 0 }), grabAt: () => P.barrel, grabR: () => LAYOUT_INPUTS.swept.great + 2,
+    toSpec: (azDeg) => azDeg - 180 - RECONF_ROT_DEG },
+  { kind: 'escape', specKeyName: 'escapeStepDeg', urlKey: 'escstep', defDeg: ESCAPE_STEP_DEG,
+    anchor: () => P.fourth, grabAt: () => P.escape, grabR: () => LAYOUT_INPUTS.swept.escape + 2,
+    toSpec: (azDeg) => azDeg - RECONF_ROT_DEG },
+  { kind: 'balance', specKeyName: 'balanceStepTargetDeg', urlKey: 'balstep', defDeg: BALANCE_STEP_TARGET_DEG,
+    anchor: () => P.escape, grabAt: () => P.balance, grabR: () => LAYOUT_INPUTS.swept.balance + 2,
+    toSpec: (azDeg) => azDeg - RECONF_ROT_DEG },
+];
+// Shadow solve (step 4): the same pure solver, same measured inputs, a
+// candidate angle, a collecting warn. Returns its position table for the
+// ghost and its warnings for the verdict — plus a non-closure check the
+// solver can only express as NaN (an impossible centre–third–fourth
+// triangle makes acos go out of range).
+function reconfShadowSolve(overrides) {
+  const warns = [];
+  let sol = null;
+  try {
+    sol = solveLayout({ ...LAYOUT_INPUTS, ...overrides, warn: (m) => warns.push(m) });
+  } catch (err) {
+    warns.push(`the train cannot close here (${err.message})`);
+  }
+  if (sol) {
+    for (const k of Object.keys(sol.P)) {
+      if (!Number.isFinite(sol.P[k].x) || !Number.isFinite(sol.P[k].y)) {
+        warns.push('the train cannot close here (centre\u2013third\u2013fourth triangle impossible)');
+        sol = null;
+        break;
+      }
+    }
+  }
+  if (sol && overrides.balanceStepTargetDeg !== undefined
+      && Math.abs(sol.BALANCE_STEP_DEG - overrides.balanceStepTargetDeg) > 0.01) {
+    warns.push(`balance target infeasible \u2014 the solver settles at ${sol.BALANCE_STEP_DEG.toFixed(1)}\u00b0`);
+  }
+  return { sol, warns };
 }
 function ensureReconfGhost() {
   if (reconfGhost) return;
@@ -10927,66 +11000,180 @@ function ensureReconfGhost() {
   const line = new THREE.Line(geo, mat);
   line.computeLineDistances();
   reconfGhost.add(line);
-  const headGeo = new THREE.RingGeometry(4.4, 5.4, 24);
-  const head = new THREE.Mesh(headGeo, new THREE.MeshBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+  const head = new THREE.Mesh(new THREE.RingGeometry(4.4, 5.4, 24),
+    new THREE.MeshBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
   head.position.x = plateR + 4;
   reconfGhost.add(head);
   reconfGhost.visible = false;
   scene.add(reconfGhost); // scene furniture, like §49's ruler and §58's tethers — never a unit
 }
+// The constellation (steps 3–4): one dashed ring per train member at the
+// SOLVER'S candidate position, sized by the member's measured swept
+// radius, chained by a polyline — the proposed arrangement drawn from the
+// same table the boot would build from.
+const RECONF_MEMBERS = ['barrel', 'center', 'third', 'fourth', 'escape', 'balance'];
+function ensureReconfConstel() {
+  if (reconfConstel) return;
+  reconfConstel = new THREE.Group();
+  const sweptOf = { barrel: 'great', center: 'center', third: 'third', fourth: 'fourth', escape: 'escape', balance: 'balance' };
+  for (const m of RECONF_MEMBERS) {
+    const r = LAYOUT_INPUTS.swept[sweptOf[m]];
+    const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.5, r - 0.25), r + 0.25, 40),
+      new THREE.MeshBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.30, side: THREE.DoubleSide }));
+    ring.name = m;
+    reconfConstel.add(ring);
+  }
+  const chainGeo = new THREE.BufferGeometry().setFromPoints(RECONF_MEMBERS.map(() => new THREE.Vector3()));
+  const chain = new THREE.Line(chainGeo, new THREE.LineDashedMaterial({ color: 0xbfeee2, dashSize: 0.8, gapSize: 0.5, transparent: true, opacity: 0.8 }));
+  chain.name = 'chain';
+  reconfConstel.add(chain);
+  reconfConstel.position.z = 12; // hover the diagram above the movement — a proposal, not a part
+  reconfConstel.visible = false;
+  scene.add(reconfConstel);
+}
+function reconfPaintConstel(sol, bad) {
+  ensureReconfConstel();
+  const col = bad ? 0xe08888 : 0xbfeee2;
+  const pts = [];
+  for (const m of RECONF_MEMBERS) {
+    const ring = reconfConstel.getObjectByName(m);
+    ring.position.set(sol.P[m].x, sol.P[m].y, 0);
+    ring.material.color.set(col);
+    pts.push(new THREE.Vector3(sol.P[m].x, sol.P[m].y, 0));
+  }
+  const chain = reconfConstel.getObjectByName('chain');
+  chain.geometry.setFromPoints(pts);
+  chain.computeLineDistances();
+  chain.material.color.set(col);
+  reconfConstel.visible = true;
+}
 function reconfShowStatus() {
-  const row = document.getElementById('reconf-row');
   const span = document.getElementById('reconf-status');
   const applyRow = document.getElementById('reconf-apply-row');
-  row.style.display = '';
-  if (reconfCandidateAz === null) {
+  document.getElementById('reconf-row').style.display = '';
+  if (!reconfCandidate) {
     span.className = '';
-    span.textContent = SPEC.crownAzDeg !== null
-      ? `current spec: crown az ${SPEC.crownAzDeg.toFixed(1)}° (${reconfClockLabel(SPEC.crownAzDeg * Math.PI / 180)}) — drag to change`
-      : 'Drag the crown to a new azimuth';
-    applyRow.style.display = SPEC.crownAzDeg !== null ? '' : 'none';
+    const parts = [];
+    if (SPEC.crownAzDeg !== null) parts.push(`crown az ${SPEC.crownAzDeg.toFixed(1)}\u00b0`);
+    if (SPEC.barrelStepDeg !== null) parts.push(`barrel step ${SPEC.barrelStepDeg.toFixed(1)}\u00b0`);
+    if (SPEC.escapeStepDeg !== null) parts.push(`escape step ${SPEC.escapeStepDeg.toFixed(1)}\u00b0`);
+    if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
+    span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
+      : 'Drag the crown, barrel, escapement or balance';
+    applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
-  const deg = ((reconfCandidateAz * 180 / Math.PI) % 360 + 360) % 360;
-  const conflict = reconfConflict(reconfCandidateAz);
-  if (conflict) {
+  const c = reconfCandidate;
+  if (c.refuse) {
     span.className = 'refused';
-    span.textContent = `refused: fouls ${conflict.what} (${conflict.deg.toFixed(1)}° apart, needs ${conflict.needDeg.toFixed(1)}°)`;
+    span.textContent = `refused: ${c.refuse}`;
     applyRow.style.display = 'none';
+  } else if (c.warns && c.warns.length) {
+    span.className = 'warned';
+    span.textContent = `${c.label} \u2014 \u26a0 ${c.warns[0]}${c.warns.length > 1 ? ` (+${c.warns.length - 1} more)` : ''}`;
+    applyRow.style.display = ''; // a WARNED spec may still be applied — boot asserts repeat the verdict in amber
   } else {
     span.className = 'proposed';
-    span.textContent = `proposed: crown az ${deg.toFixed(1)}° (${reconfClockLabel(reconfCandidateAz)}) — boot asserts judge the rest`;
+    span.textContent = `${c.label} \u2014 solver clean; boot asserts judge the rest`;
     applyRow.style.display = '';
   }
 }
-function reconfBeginDrag(e) {
-  reconfDragging = true;
+function reconfBeginDrag(e, kind) {
+  reconfDrag = { kind };
   controls.enabled = false;
-  ensureReconfGhost();
-  reconfGhost.visible = true;
+  if (kind === 'crown') { ensureReconfGhost(); reconfGhost.visible = true; }
   renderer.domElement.setPointerCapture(e.pointerId);
   reconfMoveDrag(e);
 }
-function reconfMoveDrag(e) {
+function reconfPointerWorld(e) {
   const rect = renderer.domElement.getBoundingClientRect();
   _rcNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   _rcNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   crownRaycaster.setFromCamera(_rcNDC, camera);
-  if (!crownRaycaster.ray.intersectPlane(_rcPlane, _rcHit)) return;
-  reconfCandidateAz = Math.atan2(_rcHit.y, _rcHit.x);
-  reconfGhost.rotation.z = reconfCandidateAz;
-  const bad = !!reconfConflict(reconfCandidateAz);
-  reconfGhost.children.forEach((ch) => ch.material.color.set(bad ? 0xe08888 : 0xbfeee2));
+  return crownRaycaster.ray.intersectPlane(_rcPlane, _rcHit) ? _rcHit : null;
+}
+function reconfMoveDrag(e) {
+  const hit = reconfPointerWorld(e);
+  if (!hit) return;
+  if (reconfDrag.kind === 'crown') {
+    const az = Math.atan2(hit.y, hit.x);
+    const conflict = reconfConflict(az);
+    reconfGhost.rotation.z = az;
+    reconfGhost.children.forEach((ch) => ch.material.color.set(conflict ? 0xe08888 : 0xbfeee2));
+    const deg = ((az * 180 / Math.PI) % 360 + 360) % 360;
+    reconfCandidate = {
+      kind: 'crown', urlKey: 'crownaz', valueDeg: deg,
+      label: `proposed: crown az ${deg.toFixed(1)}\u00b0 (${reconfClockLabel(az)})`,
+      refuse: conflict ? `fouls ${conflict.what} (${conflict.deg.toFixed(1)}\u00b0 apart, needs ${conflict.needDeg.toFixed(1)}\u00b0)` : null,
+      warns: [],
+    };
+  } else {
+    const h = RECONF_HANDLES.find((x) => x.kind === reconfDrag.kind);
+    const a = h.anchor();
+    const azDeg = Math.atan2(hit.y - a.y, hit.x - a.x) * 180 / Math.PI;
+    const specDeg = wrapAngle((h.toSpec(azDeg)) * Math.PI / 180) * 180 / Math.PI;
+    const { sol, warns } = reconfShadowSolve({ [h.specKeyName]: specDeg });
+    if (sol) reconfPaintConstel(sol, warns.length > 0);
+    else if (reconfConstel) reconfConstel.visible = false;
+    reconfCandidate = {
+      kind: h.kind, urlKey: h.urlKey, valueDeg: specDeg,
+      label: `proposed: ${h.kind} step ${specDeg.toFixed(1)}\u00b0 (was ${h.defDeg.toFixed(1)}\u00b0)`,
+      refuse: sol ? null : (warns[0] || 'the train cannot close here'),
+      warns: sol ? warns : [],
+    };
+  }
   reconfShowStatus();
 }
-renderer.domElement.addEventListener('pointermove', (e) => { if (reconfDragging) reconfMoveDrag(e); });
+renderer.domElement.addEventListener('pointermove', (e) => { if (reconfDrag) reconfMoveDrag(e); });
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!reconfOn || reconfDrag) return;
+  if (crownHitTest(e)) return; // the crown intercept in the winding handler owns this
+  const hit = reconfPointerWorld(e);
+  if (!hit) return;
+  // Nearest train handle whose member the pointer landed on.
+  let best = null;
+  for (const h of RECONF_HANDLES) {
+    const g = h.grabAt();
+    const d = Math.hypot(hit.x - g.x, hit.y - g.y);
+    if (d <= h.grabR() && (best === null || d < best.d)) best = { h, d };
+  }
+  if (best) reconfBeginDrag(e, best.h.kind);
+});
 for (const ev of ['pointerup', 'pointercancel']) {
   window.addEventListener(ev, (e) => {
-    if (!reconfDragging) return;
-    reconfDragging = false;
+    if (!reconfDrag) return;
+    reconfDrag = null;
     controls.enabled = true;
     if (renderer.domElement.hasPointerCapture(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
   });
+}
+// --- step 5: the spec is a document -----------------------------------
+// Named variants persist ONLY the spec-tier params, under their own key —
+// never the pose, never the boot default (§26's DisplayState untouched).
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'barrelstep', 'escstep', 'balstep'];
+const VARIANTS_KEY = 'watchSpecVariants.v1';
+function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
+function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
+function currentSpecParams() {
+  const p = new URLSearchParams(location.search), out = {};
+  for (const k of SPEC_URL_KEYS) if (p.has(k)) out[k] = p.get(k);
+  return out;
+}
+function refreshVariantSelect() {
+  const sel = document.getElementById('reconf-var-sel');
+  const v = readVariants();
+  sel.innerHTML = '';
+  for (const name of Object.keys(v).sort()) {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  }
+}
+function navigateWithSpec(specParams) {
+  const p = new URLSearchParams(location.search);
+  for (const k of SPEC_URL_KEYS) p.delete(k);
+  for (const [k, val] of Object.entries(specParams)) p.set(k, val);
+  location.search = p.toString(); // each apply is a history entry: back IS undo
 }
 function setReconf(on) {
   reconfOn = on;
@@ -10996,22 +11183,42 @@ function setReconf(on) {
   if (on && exploreOn) setExplore(false); // one spatial drag mode at a time — they MEAN opposite things
   document.getElementById('reconf-row').style.display = on ? '' : 'none';
   document.getElementById('reconf-apply-row').style.display = 'none';
-  if (on) { ensureReconfGhost(); reconfShowStatus(); }
-  else { reconfCandidateAz = null; if (reconfGhost) reconfGhost.visible = false; }
+  document.getElementById('reconf-variants-row').style.display = on ? '' : 'none';
+  if (on) { ensureReconfGhost(); refreshVariantSelect(); reconfShowStatus(); }
+  else {
+    reconfCandidate = null;
+    if (reconfGhost) reconfGhost.visible = false;
+    if (reconfConstel) reconfConstel.visible = false;
+  }
 }
 document.getElementById('btn-reconf').addEventListener('click', () => setReconf(!reconfOn));
 document.getElementById('btn-reconf-apply').addEventListener('click', () => {
-  if (reconfCandidateAz === null || reconfConflict(reconfCandidateAz)) return;
+  if (!reconfCandidate || reconfCandidate.refuse) return;
   const p = new URLSearchParams(location.search);
-  p.set('crownaz', (((reconfCandidateAz * 180 / Math.PI) % 360 + 360) % 360).toFixed(1));
+  p.set(reconfCandidate.urlKey, reconfCandidate.valueDeg.toFixed(1));
   location.search = p.toString(); // reload-tier apply; /__state carries the session across
 });
-document.getElementById('btn-reconf-reset').addEventListener('click', () => {
-  const p = new URLSearchParams(location.search);
-  p.delete('crownaz');
-  location.search = p.toString();
+document.getElementById('btn-reconf-reset').addEventListener('click', () => navigateWithSpec({}));
+document.getElementById('btn-reconf-undo').addEventListener('click', () => history.back());
+document.getElementById('btn-var-save').addEventListener('click', () => {
+  const name = document.getElementById('reconf-var-name').value.trim();
+  if (!name) return;
+  const v = readVariants();
+  v[name] = currentSpecParams();
+  writeVariants(v);
+  refreshVariantSelect();
+  document.getElementById('reconf-var-sel').value = name;
 });
-
+document.getElementById('btn-var-load').addEventListener('click', () => {
+  const name = document.getElementById('reconf-var-sel').value;
+  const v = readVariants();
+  if (name && v[name]) navigateWithSpec(v[name]);
+});
+document.getElementById('btn-var-del').addEventListener('click', () => {
+  const name = document.getElementById('reconf-var-sel').value;
+  const v = readVariants();
+  if (name && v[name]) { delete v[name]; writeVariants(v); refreshVariantSelect(); }
+});
 // --- POWER FLOW view -------------------------------------------------------
 // Tints the LIVE torque path so the maintaining sandwich's job is visible:
 // while WINDING, the input side lights amber (energy flowing INTO the

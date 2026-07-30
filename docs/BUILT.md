@@ -5040,3 +5040,64 @@ deeper step 2, and the entry's steps 3–5 (group handle set, live
 validity, named variants with undo) remain. Per-spec battery runs stay
 manual: the boot asserts are the gate that ships with the knob, as
 they were for §22's rates.
+
+## §33 steps 3–5 — the handle set, the solver live, the spec as a document
+
+Step 1 shipped one handle; these steps ship the rest of the mode's
+machinery. (Step 2 — §13's stem decouple — is deliberately still open:
+it does not gate any of this, and this validity machinery is built to
+serve it when it lands.)
+
+### Step 3 — the train's arrangement angles are handles
+
+`?barrelstep=`, `?escstep=`, `?balstep=` reach `SPEC` and spread into
+the `solveLayout` call ONLY when present (the identity spec passes no
+argument and stays on the default constants, bit-exact). They were
+always the arrangement's degrees of freedom — solveLayout's own inputs;
+step 3 hands the viewer the knobs. In reconfigure mode the barrel,
+escapement and balance become drag handles: the barrel's step reads
+about the centre, the escape's about the fourth, the balance's TARGET
+about the escape — each mapped back through the step-1 rotation into
+the solver's frame, so the handles compose with a re-cased crown.
+
+### Step 4 — validity is the solver's, live
+
+Every drag frame SHADOW-SOLVES the candidate: `solveLayout` is pure, so
+the same measured inputs the boot used (captured as `LAYOUT_INPUTS`)
+with the candidate angle IS the check — no second model to rot. The
+ghost constellation is drawn from the shadow solve's own position
+table (dashed rings at each member's solved position, sized by its
+measured swept radius, chained in train order, hovering above the
+movement: a proposal, not a part); the warnings under the pointer are
+the ones boot would print, including the solver moving off an
+infeasible balance target ("the solver settles at 42.7°") and the
+train failing to close outright (the centre–third–fourth triangle's
+acos going out of range arrives as NaN, reported in words). Three
+verdict tiers, honestly distinct: REFUSED (no solution — Apply
+withheld), WARNED amber (solver settles elsewhere, or downstream
+consequences likely — appliable, and the boot asserts repeat the
+verdict in the panel after reload), PROPOSED teal (solver clean — the
+boot asserts still judge what the solver cannot see: measured at
+barrel −35°→−10°, the solver is clean and the boot names five
+structural asserts, which is the layering working, not failing).
+
+### Step 5 — the spec is a document
+
+Applies navigate (`location.search`), so every accepted spec is a
+browser-history entry: **Undo is `history.back()`**, redo is forward,
+and the identity URL stays clean. Named variants save ONLY the
+spec-tier params (`vph`, `reserveh`, `crownaz`, `barrelstep`,
+`escstep`, `balstep`) under their own localStorage key — never the
+pose, never §26's `DisplayState`, never the boot default. Verified
+round trip: apply barrel −10° → running, five named asserts → save as
+a variant → As designed → identity, silent → Load → the variant back
+at az 170° → Undo → identity. Sharing a variant is sharing its URL,
+which the params make inherent.
+
+### What remains of §33
+
+Step 2 alone: the stem decoupled from the barrel, the keyless cluster
+re-solved against the plate radius and `LOW_LINKAGE_OBSTACLES` — the
+honest option and the bigger one, inheriting the design-priority
+order (prove the cluster at P0–P2, then hunt the corridor at P3). The
+roadmap entry carries it.
