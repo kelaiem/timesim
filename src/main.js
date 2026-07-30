@@ -8636,6 +8636,7 @@ panel.innerHTML = `
         <span id="reconf-status">Drag the crown to a new azimuth</span>
       </div>
       <div class="row label-small" id="reconf-apply-row" style="display:none;">
+        <button id="btn-reconf-trial">Trial boot</button>
         <button id="btn-reconf-apply">Apply (reloads)</button>
         <button id="btn-reconf-reset">As designed</button>
         <button id="btn-reconf-undo">Undo</button>
@@ -11278,6 +11279,68 @@ function navigateWithSpec(specParams) {
   for (const [k, val] of Object.entries(specParams)) p.set(k, val);
   location.search = p.toString(); // each apply is a history entry: back IS undo
 }
+// §33 step 4, deepened — THE TRIAL BOOT: the court's verdict without the
+// commitment. The candidate spec loads in a hidden same-origin iframe with
+// ?trial=1 (state.js: a trial neither reads nor writes the session's
+// state — virgin defaults, the battery's own verdict standard), the boot
+// runs its REAL asserts on REAL geometry, and the panel reports what boot
+// would say — while your view, camera and session stay untouched. This is
+// the exact pattern the CI battery uses (virgin page → read bootWarns),
+// packaged as a button. ~15 s per verdict: not "live", but it deletes the
+// apply → look → undo loop for exploratory dragging.
+let trialFrame = null, trialTimer = null;
+function reconfKillTrial() {
+  if (trialTimer) { clearTimeout(trialTimer); trialTimer = null; }
+  if (trialFrame) { trialFrame.remove(); trialFrame = null; }
+}
+function reconfTrialBoot() {
+  if (!reconfCandidate || reconfCandidate.refuse) return;
+  reconfKillTrial();
+  const p = new URLSearchParams(location.search);
+  p.set(reconfCandidate.urlKey, reconfCandidate.valueDeg.toFixed(1));
+  p.delete('inspect'); p.delete('cycle'); // a verdict boot runs no routes
+  p.set('trial', '1');
+  const span = document.getElementById('reconf-status');
+  span.className = 'warned';
+  span.textContent = 'trial boot\u2026 (building the candidate in the background, ~15 s)';
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;width:2px;height:2px;left:-10px;top:-10px;border:0;visibility:hidden;pointer-events:none;';
+  f.src = `${location.pathname}?${p.toString()}`;
+  document.body.appendChild(f);
+  trialFrame = f;
+  const label = reconfCandidate.label.replace('proposed: ', '');
+  const t0 = performance.now();
+  const poll = () => {
+    trialTimer = null;
+    if (trialFrame !== f) return; // superseded or mode left
+    const clk = f.contentWindow && f.contentWindow.__clock;
+    if (clk) {
+      // one settle beat past __clock so the last build warns are in
+      trialTimer = setTimeout(() => {
+        if (trialFrame !== f) return;
+        const warns = [...(clk.bootWarns || [])];
+        reconfKillTrial();
+        if (warns.length === 0) {
+          span.className = 'proposed';
+          span.textContent = `trial: ${label} CLOSES \u2014 0 structural asserts`;
+        } else {
+          span.className = 'warned';
+          span.textContent = `trial: ${label} \u2014 ${warns.length} structural assert${warns.length === 1 ? '' : 's'}: ${warns[0]}${warns.length > 1 ? ' (all in console)' : ''}`;
+          console.log(`trial boot verdict (${label}):`, warns);
+        }
+      }, 800);
+      return;
+    }
+    if (performance.now() - t0 > 40000) {
+      reconfKillTrial();
+      span.className = 'refused';
+      span.textContent = 'trial: the candidate never booted \u2014 page error, see console';
+      return;
+    }
+    trialTimer = setTimeout(poll, 300);
+  };
+  poll();
+}
 function setReconf(on) {
   reconfOn = on;
   const b = document.getElementById('btn-reconf');
@@ -11290,11 +11353,13 @@ function setReconf(on) {
   if (on) { ensureReconfGhost(); refreshVariantSelect(); reconfShowStatus(); }
   else {
     reconfCandidate = null;
+    reconfKillTrial();
     if (reconfGhost) reconfGhost.visible = false;
     if (reconfConstel) reconfConstel.visible = false;
   }
 }
 document.getElementById('btn-reconf').addEventListener('click', () => setReconf(!reconfOn));
+document.getElementById('btn-reconf-trial').addEventListener('click', reconfTrialBoot);
 document.getElementById('btn-reconf-apply').addEventListener('click', () => {
   if (!reconfCandidate || reconfCandidate.refuse) return;
   const p = new URLSearchParams(location.search);

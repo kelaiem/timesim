@@ -5168,3 +5168,25 @@ builder's origin is the knob's inner face, so the growth extends
 outward past the rim into free air; the stem interface and bushing are
 untouched, which is what the earlier "placement change" scoping worry
 turned out to miss.)
+
+### §33 addendum 3 — the trial boot: the court's verdict without the commitment
+
+Live validity's honest ceiling is the solver: the boot asserts judge
+what only built geometry shows, and building is reload-tier. The trial
+boot packages that court as a button. "Trial boot" loads the candidate
+spec in a hidden same-origin iframe with `?trial=1`; the page builds
+its REAL geometry, runs its REAL asserts, and the panel reports the
+verdict — count, first assert, the rest in the console — while the
+session's view, camera and state stay untouched. It is the CI
+battery's own pattern (virgin page → read `bootWarns`), ~15 s per
+verdict: not "live", but it deletes the apply → look → undo loop for
+exploratory dragging.
+
+The one safety that matters is in `state.js`, at the choke point: a
+`?trial=1` page NEITHER writes the session's state (an iframe's
+fire-and-forget PUT would clobber the real `/__state`) NOR reads it —
+trials boot on virgin defaults, the battery's own verdict standard,
+which also keeps them deterministic. Verified: the barrel −10°
+candidate reports its five asserts by name in the panel with the main
+URL untouched; pusher 195° reports "CLOSES — 0 structural asserts";
+the session's state file survives both.
