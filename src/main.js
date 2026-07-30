@@ -8474,6 +8474,19 @@ style.textContent = `
 #clock-ui button#btn-crown.active { background: #c85a3a; border-color: #c85a3a; }
 #clock-ui .readout.hacking { color: #ffb454; }
 #clock-ui .presets { display: flex; flex-wrap: wrap; gap: 5px; }
+/* §53: Advanced rows stack — label ABOVE its control, free to wrap. The .row
+   class is a flex row shared with the rest of the panel, so this overrides
+   only inside Advanced rather than restyling every row in the app. No
+   max-width and no ellipsis: those two were the truncation.
+   (No backticks in here: this stylesheet is a template literal, and a stray
+   one silently ends the string — node --check stays happy because what is
+   left is still valid JS, just not this CSS.) */
+#clock-ui .adv-row { display: block; }
+#clock-ui .adv-row .adv-label {
+  display: block; white-space: normal; overflow-wrap: anywhere;
+  margin-bottom: 2px; line-height: 1.25; opacity: 0.85;
+}
+#clock-ui .adv-row input, #clock-ui .adv-row select { width: 100%; }
 #clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
 #clock-ui select {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
@@ -9087,12 +9100,32 @@ window.addEventListener('keydown', (e) => {
       const domain = r.path[0];
       const applier = APPLIERS[domain];
       const live = !!applier && !(domain === 'dial' && r.path[1] !== 'hands');
+      // §53 — AUTHORED NAME, STACKED, WRAPPING. Two separate defects met here.
+      // The name was DERIVED from the schema key path ('hands.second.
+      // counterweightOffsetFactor'), which is verbose by construction; and the
+      // row put it beside its control in a ~240 px panel with
+      // `text-overflow: ellipsis`, so it was cut off. Every control worked and
+      // almost none could be read.
+      //
+      // Fixing either alone is not enough, which is why both are here: short
+      // authored names still truncate once one is long, and stacking alone
+      // leaves 63 readable-but-ugly key paths. `_labels` sits beside `_bounds`
+      // on the containing object — the same convention, so the display name
+      // lives in `aesthetics.json` with the value, per §23's single-source
+      // principle. The key path stays as the `title` for anyone who wants it,
+      // but nothing DEPENDS on the tooltip: it does not exist on touch, and
+      // §15 exists because this panel has to work on a phone.
+      let lparent = aesthetics;
+      for (const k of r.path.slice(0, -1)) lparent = lparent[k];
+      const leaf = r.path[r.path.length - 1];
+      const authored = lparent._labels && lparent._labels[leaf];
+      if (!authored) console.warn(`§53: no _labels entry for '${r.path.join('.')}' — falling back to its key path`);
       const row = document.createElement('div');
-      row.className = 'row label-small';
+      row.className = 'row label-small adv-row';
       const label = document.createElement('span');
-      label.textContent = r.path.slice(1).join('.') + (live ? '' : ' ⟳');
+      label.className = 'adv-label';
+      label.textContent = (authored || r.path.slice(1).join('.')) + (live ? '' : ' ⟳');
       label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload';
-      label.style.cssText = 'overflow:hidden; text-overflow:ellipsis; max-width:11em;';
       row.appendChild(label);
       let input;
       if (typeof r.value === 'number') {
