@@ -83,6 +83,7 @@ function sanitize(state) {
     quality: state.quality,
     showBeat: state.showBeat,
     camera: state.camera,
+    mmPerPx: state.mmPerPx,   // §60: the display's measured pixel pitch, asked once
   };
 }
 

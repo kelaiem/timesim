@@ -5302,3 +5302,66 @@ the entire module moved and the mechanism went with it. At
 `?alarmmod=200` (mid-flank): the specific refusal at boot, the same
 warning live under the pointer mid-drag, and the movement still boots
 and runs under the amber verdict.
+
+## §60. Life size — render 32 mm as 32 mm, and let it be seen
+
+Reported: zooming out far enough to see the watch at life size pushes it so
+deep into the fog that it cannot be seen. That is **three limits, not one**,
+and the fog is only the one you can see — `controls.maxDistance` blocks the
+pose, and `camera.far` clips it.
+
+### The distance is derived, not the 827 the entry measured
+
+For a perspective camera the world height at distance *d* is
+`2·d·tan(fov/2)`, so `px per unit = viewportPx / (2 d tan(fov/2))` and life
+size is where that times the display's pitch equals `UNIT_MM`:
+
+> **d = screenHeightMM / (2 · UNIT_MM · tan(fov/2))**
+
+Two honest inputs — the display's pixel pitch and the live viewport — and
+everything else follows. The FOV lever was checked and rejected first: at
+the default distance life size needs **fov 122.8°**, a fisheye that would
+distort the movement far worse than fog was hiding it.
+
+### The honesty problem is the actual work
+
+A browser cannot measure the display it draws on. The CSS reference pixel
+is **defined** as 1/96 inch and is wrong on most panels once OS scaling is
+involved, so an uncalibrated "life size" would be a label asserting a
+measurement nobody made — exactly what §21 refused when it would not draw a
+clamped coin against a real diameter.
+
+So the mode says **NOMINAL** and says why, until calibrated against a
+manufactured standard: the viewer sizes an outline to an **ISO/IEC 7810
+ID-1 card (85.60 mm)**, which *gives* the true pitch. Same move §39 made
+pinning `UNIT_MM` to real chain pitch. Persisted through `state.js`, asked
+once. Absent, `null` or `NaN` all read as *not calibrated* — never guessed.
+
+### Verified with §21's own ruler, not a second one
+
+Measuring the plate's span along **world X** first gave ratio 0.947 — and
+that was the *measurement* being wrong, not the pose: an angled camera
+foreshortens it, §21's exact lesson. Measured properly, one unit along the
+camera's **own screen-right axis** at the target's depth:
+
+| | |
+|---|---|
+| camera distance | 917.18 (predicted 917.18) |
+| mm on screen per unit | **0.375000** |
+| `UNIT_MM` | 0.375 |
+| ratio | **1.0000** |
+| plate on screen | **32.19 mm** vs true 32.19 mm |
+| fraction of viewport height | 11.6% |
+
+### The three limits, suspended for the mode only
+
+Fog pushed to 4×/8× the pose distance, `maxDistance` to 1.25×, `camera.far`
+to 1.6× — all restored on leaving, because the normal view wants its fog:
+it is a depth cue tuned for the working range, and at life size the whole
+movement sits at essentially one depth where fog is only a grey wash.
+
+Re-solves on `resize`, or the claim silently stops being true the moment
+someone drags a window edge. A pose with a deep link (`?lifesize=1`) rather
+than a free-orbit state, per §37. And the caption says out loud that it
+will look small — a viewer who expected a zoom control and got a small
+watch would read the answer as a bug.
