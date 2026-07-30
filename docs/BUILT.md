@@ -4972,3 +4972,71 @@ A non-default spec that fails its boot asserts shows an amber line under
 the selects — "this spec does not close: N structural asserts" — §33's
 refused-with-a-reason vocabulary arriving early. The identity spec keeps
 the row hidden by keeping the count at zero, which is rule 6 restated.
+
+## §33 step 1 — Reconfigure mode: the crown's azimuth as a spec
+
+§33's goal is a watch you can re-arrange and still trust — "drag the
+crown to 3 o'clock … and get a watch that ACTUALLY WORKS at the end, or
+a clear, specific refusal saying why it does not." This step ships the
+loop for ONE spatial parameter, end-to-end: crown azimuth.
+
+### The mechanism: the movement turns in its case
+
+`?crownaz=` (degrees, movement frame) reaches `SPEC.crownAzDeg` through
+§22's pre-module script, and `solveLayout` applies it as a RIGID
+ROTATION of the solved position table about the centre arbor — the
+dial's own axis, so the numerals stay 12-up while the train, keyless
+belt and stem swing together. This is the operation a casing watchmaker
+actually performs, and it is why it is step 1: every internal centre
+distance, mesh and clearance is rotation-invariant, so the train stays
+proven, and what genuinely changes is the layout's relation to the
+DIAL-ANCHORED world — which is precisely where §33's verdicts live.
+The angle outputs (`forkBaseAngle`, `PIN_AIM`) rotate with the frame;
+the step angles between members are relative and do not. The
+small-seconds sub-dial follows its arbor for free (`SECONDS_LOCAL`
+already derives from `P.fourth`). The identity spec (param absent)
+skips the transform ENTIRELY — a rotation by zero still churns floats,
+and the fingerprint gate would see it; verified bit-exact at the
+recorded baseline.
+
+### Validity, in two honest layers
+
+Pre-apply, the one conflict class this rotation can create that is
+knowable in closed form is checked LIVE while dragging: the crown
+sweeping into the dial-anchored alarm cluster. The forbidden windows
+derive from the parts that make them (both crowns' body radii, the
+pusher's head, the one margin, all as arc at the plate radius), and a
+candidate inside one is REFUSED with the numbers — "fouls the alarm
+crown (0.0° apart, needs 14.6°)" — Apply withheld.
+
+Everything else is judged where it is measured, after apply: the boot
+asserts name each failed consequence (§22's amber verdict row —
+measured at +30°: the plate cut reaching two carried pivots, the alarm
+barrel fouling the fusee let-down square; at 200°: four plate-cut
+asserts), and the battery is the full court for any spec worth
+keeping. A rotated movement BOOTS AND RUNS either way — the refusal is
+information, not a crash.
+
+### The mode
+
+View → Reconfigure (teal — deliberately NOT §32's chrome: the two look
+alike on screen and mean opposite things, "this IS the watch, pulled
+apart" versus "this is a PROPOSED watch"; the §33 entry calls mode
+identity a safety requirement). In the mode the crown is a HANDLE for
+its own azimuth rather than a winding input; dragging swings a dashed
+near-white-teal ghost stem/crown around the rim (the §58 ACES lesson)
+with the live verdict in the panel, speaking both frames ("az 200.0°
+(≈ 4 o'clock)"). Apply is reload-tier (§23/§22: a knob that re-derives
+geometry earns a reload; `/__state` carries the session across) and
+"As designed" clears the spec — the identity round trip verified:
+apply 200° → rotated, running, 4 named asserts → reset → clean URL,
+baseline hash, silent boot. Explore and Reconfigure exclude each other.
+
+### What step 1 does NOT claim
+
+The stem still has no azimuth of its own relative to the movement —
+§13's "decouple the stem and re-solve the keyless cluster" is the
+deeper step 2, and the entry's steps 3–5 (group handle set, live
+validity, named variants with undo) remain. Per-spec battery runs stay
+manual: the boot asserts are the gate that ships with the knob, as
+they were for §22's rates.

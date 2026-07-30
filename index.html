@@ -25,14 +25,15 @@
   // be a plain pre-module script: layout.js derives F_BALANCE and the train
   // counts from globalThis.__WATCH_SPEC at import time, and module-graph
   // evaluation starts the moment the module script below is fetched. Only
-  // the two §22 knobs live here; every other URL param stays in
-  // applyDeepLink(), which runs after boot and poses state rather than
-  // geometry.
+  // the geometry-tier knobs live here (§22's two, §33's crown azimuth);
+  // every other URL param stays in applyDeepLink(), which runs after boot
+  // and poses state rather than geometry.
   (() => {
     const p = new URLSearchParams(location.search);
     const s = {};
     if (p.has('vph')) s.vph = Number(p.get('vph'));
     if (p.has('reserveh')) s.reserveHours = Number(p.get('reserveh'));
+    if (p.has('crownaz')) s.crownAzDeg = Number(p.get('crownaz')); // §33 step 1 — stem azimuth, movement-frame degrees
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();
 </script>

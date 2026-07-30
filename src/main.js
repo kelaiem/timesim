@@ -8336,6 +8336,13 @@ style.textContent = `
 }
 #clock-ui .guided-btns { display: flex; gap: 5px; }
 #clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
+/* §33 — reconfigure mode's chrome is DELIBERATELY its own colour (teal):
+   §32 and §33 look alike on screen — parts away from their places — and
+   mean opposite things ("this IS the watch, pulled apart" vs "this is a
+   PROPOSED watch"). The mode must be unmistakable. */
+#clock-ui button#btn-reconf.active { background: #1f8a70; border-color: #1f8a70; }
+#reconf-row span.refused { color: #e05555; }
+#reconf-row span.proposed { color: #4fd6b8; }
 /* §57 — the control HUD. Lower RIGHT: the bottom-left corner is spoken for
    (§21's comparison diagram, §28's update toast) and the caption owns the
    bottom centre, so this is the one free corner. touch-action:none because
@@ -8541,6 +8548,17 @@ panel.innerHTML = `
       <div class="row label-small" id="explore-reset-row" style="display:none;">
         <span>Drag parts · ⇧ drags group</span>
         <button id="btn-explore-reset">Reassemble</button>
+      </div>
+      <div class="row">
+        <span class="label-small">Reconfigure</span>
+        <button id="btn-reconf">Off</button>
+      </div>
+      <div class="row label-small" id="reconf-row" style="display:none;">
+        <span id="reconf-status">Drag the crown to a new azimuth</span>
+      </div>
+      <div class="row label-small" id="reconf-apply-row" style="display:none;">
+        <button id="btn-reconf-apply">Apply (reloads)</button>
+        <button id="btn-reconf-reset">As designed</button>
       </div>
       <div class="row">
         <span class="label-small">Plate X-ray</span>
@@ -9325,6 +9343,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (!crownHitTest(e)) return;
+  if (reconfOn) { reconfBeginDrag(e); return; } // §33: in reconfigure mode the crown is a HANDLE for its own azimuth, not a winding input
   syncCancel(); // ditto: a hand on the crown outranks the script
   crownDragging = true;
   crownDragMoved = false;
@@ -10838,7 +10857,7 @@ function setExplore(on) {
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
   document.getElementById('explore-reset-row').style.display = on ? '' : 'none';
-  if (on) { ensureExploreTethers(); ensureExploreDrive(); }
+  if (on) { ensureExploreTethers(); ensureExploreDrive(); if (typeof reconfOn !== 'undefined' && reconfOn) setReconf(false); } // §33: one spatial drag mode at a time
   // Leaving the mode reassembles the watch. An offset that survives with no
   // mode chrome around it would be a silently-displaced movement — the §34
   // failure as a UI state — and reset is free by construction (§32: clear
@@ -10847,6 +10866,151 @@ function setExplore(on) {
 }
 document.getElementById('btn-explore').addEventListener('click', () => setExplore(!exploreOn));
 document.getElementById('btn-explore-reset').addEventListener('click', () => dragOffsets.clear());
+
+// --- §33 STEP 1 — RECONFIGURE MODE: the crown's azimuth as a spec ---------
+// The subject is a PROPOSED watch, not the shipped one (§32's opposite —
+// hence the teal chrome). Step 1 exposes ONE spatial parameter end-to-end:
+// drag the crown around the rim, and the candidate azimuth becomes a spec
+// (?crownaz=) applied by rigid rotation of the solved layout about the
+// centre arbor (layout.js) at reload — the §23/§22 tier: a knob that
+// re-derives geometry earns a reload, not a live write.
+//
+// VALIDITY, in two honest layers. Pre-apply, the one class of conflict
+// this rotation can create that is knowable in closed form is checked
+// live: the crown sweeping into the DIAL-ANCHORED alarm cluster (its
+// crown and pusher do not rotate with the train). Everything else — the
+// plate cut vs carried pivots, the alarm barrel vs the let-down square,
+// the reserve train's reach — is judged where it is measured: the boot
+// asserts name each failed consequence after apply (§22's amber verdict
+// row), and the battery is the full court. A spec that fails is
+// REFUSED WITH REASONS, not silently displayed as if it worked.
+let reconfOn = false;
+let reconfCandidateAz = null;  // radians, movement-frame; null = no proposal yet
+let reconfDragging = false;
+let reconfGhost = null;
+const _rcNDC = new THREE.Vector2(), _rcHit = new THREE.Vector3();
+const _rcPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // the stem's z ≈ 0 plane
+// The alarm cluster's forbidden windows, derived from the parts that make
+// them: each window is the two heads' angular half-widths at the rim plus
+// the one clearance margin, converted to arc at the crown's rim distance.
+const reconfWindows = (() => {
+  const crownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);          // main crown body r (its own build constant)
+  const alarmAz = Math.atan2(alarmDir.y, alarmDir.x);
+  return [
+    { az: alarmAz, half: crownHalf + Math.atan2(5.425, plateR), what: 'the alarm crown' },      // both crowns share bodyR 5.425
+    { az: ALARM_PUSH_AZ, half: crownHalf + Math.atan2(2.667, plateR), what: 'the alarm pusher' }, // PUSHER_HEAD_R
+  ];
+})();
+const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+function reconfConflict(az) {
+  for (const w of reconfWindows) {
+    const d = Math.abs(wrapAngle(az - w.az));
+    if (d < w.half) return { what: w.what, deg: d * 180 / Math.PI, needDeg: w.half * 180 / Math.PI };
+  }
+  return null;
+}
+// Dial-clock speak: the viewer says "crown at 4 o'clock"; the dialFace
+// Y-flip mirrors world x, so the dial-local bearing is atan2(y, −x), and
+// clock position counts clockwise from 12.
+function reconfClockLabel(az) {
+  const bearing = Math.atan2(Math.sin(az), -Math.cos(az)) * 180 / Math.PI;
+  const clockDeg = ((90 - bearing) % 360 + 360) % 360;
+  const h = Math.round(clockDeg / 30) % 12;
+  return `≈ ${h === 0 ? 12 : h} o'clock`;
+}
+function ensureReconfGhost() {
+  if (reconfGhost) return;
+  reconfGhost = new THREE.Group();
+  // Near-white teal, the §58 lesson: ACES crushes saturated 1 px lines.
+  const mat = new THREE.LineDashedMaterial({ color: 0xbfeee2, dashSize: 0.8, gapSize: 0.5, transparent: true, opacity: 0.9 });
+  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(plateR + 8, 0, 0)]);
+  const line = new THREE.Line(geo, mat);
+  line.computeLineDistances();
+  reconfGhost.add(line);
+  const headGeo = new THREE.RingGeometry(4.4, 5.4, 24);
+  const head = new THREE.Mesh(headGeo, new THREE.MeshBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+  head.position.x = plateR + 4;
+  reconfGhost.add(head);
+  reconfGhost.visible = false;
+  scene.add(reconfGhost); // scene furniture, like §49's ruler and §58's tethers — never a unit
+}
+function reconfShowStatus() {
+  const row = document.getElementById('reconf-row');
+  const span = document.getElementById('reconf-status');
+  const applyRow = document.getElementById('reconf-apply-row');
+  row.style.display = '';
+  if (reconfCandidateAz === null) {
+    span.className = '';
+    span.textContent = SPEC.crownAzDeg !== null
+      ? `current spec: crown az ${SPEC.crownAzDeg.toFixed(1)}° (${reconfClockLabel(SPEC.crownAzDeg * Math.PI / 180)}) — drag to change`
+      : 'Drag the crown to a new azimuth';
+    applyRow.style.display = SPEC.crownAzDeg !== null ? '' : 'none';
+    return;
+  }
+  const deg = ((reconfCandidateAz * 180 / Math.PI) % 360 + 360) % 360;
+  const conflict = reconfConflict(reconfCandidateAz);
+  if (conflict) {
+    span.className = 'refused';
+    span.textContent = `refused: fouls ${conflict.what} (${conflict.deg.toFixed(1)}° apart, needs ${conflict.needDeg.toFixed(1)}°)`;
+    applyRow.style.display = 'none';
+  } else {
+    span.className = 'proposed';
+    span.textContent = `proposed: crown az ${deg.toFixed(1)}° (${reconfClockLabel(reconfCandidateAz)}) — boot asserts judge the rest`;
+    applyRow.style.display = '';
+  }
+}
+function reconfBeginDrag(e) {
+  reconfDragging = true;
+  controls.enabled = false;
+  ensureReconfGhost();
+  reconfGhost.visible = true;
+  renderer.domElement.setPointerCapture(e.pointerId);
+  reconfMoveDrag(e);
+}
+function reconfMoveDrag(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  _rcNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  _rcNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  crownRaycaster.setFromCamera(_rcNDC, camera);
+  if (!crownRaycaster.ray.intersectPlane(_rcPlane, _rcHit)) return;
+  reconfCandidateAz = Math.atan2(_rcHit.y, _rcHit.x);
+  reconfGhost.rotation.z = reconfCandidateAz;
+  const bad = !!reconfConflict(reconfCandidateAz);
+  reconfGhost.children.forEach((ch) => ch.material.color.set(bad ? 0xe08888 : 0xbfeee2));
+  reconfShowStatus();
+}
+renderer.domElement.addEventListener('pointermove', (e) => { if (reconfDragging) reconfMoveDrag(e); });
+for (const ev of ['pointerup', 'pointercancel']) {
+  window.addEventListener(ev, (e) => {
+    if (!reconfDragging) return;
+    reconfDragging = false;
+    controls.enabled = true;
+    if (renderer.domElement.hasPointerCapture(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
+  });
+}
+function setReconf(on) {
+  reconfOn = on;
+  const b = document.getElementById('btn-reconf');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+  if (on && exploreOn) setExplore(false); // one spatial drag mode at a time — they MEAN opposite things
+  document.getElementById('reconf-row').style.display = on ? '' : 'none';
+  document.getElementById('reconf-apply-row').style.display = 'none';
+  if (on) { ensureReconfGhost(); reconfShowStatus(); }
+  else { reconfCandidateAz = null; if (reconfGhost) reconfGhost.visible = false; }
+}
+document.getElementById('btn-reconf').addEventListener('click', () => setReconf(!reconfOn));
+document.getElementById('btn-reconf-apply').addEventListener('click', () => {
+  if (reconfCandidateAz === null || reconfConflict(reconfCandidateAz)) return;
+  const p = new URLSearchParams(location.search);
+  p.set('crownaz', (((reconfCandidateAz * 180 / Math.PI) % 360 + 360) % 360).toFixed(1));
+  location.search = p.toString(); // reload-tier apply; /__state carries the session across
+});
+document.getElementById('btn-reconf-reset').addEventListener('click', () => {
+  const p = new URLSearchParams(location.search);
+  p.delete('crownaz');
+  location.search = p.toString();
+});
 
 // --- POWER FLOW view -------------------------------------------------------
 // Tints the LIVE torque path so the maintaining sandwich's job is visible:
