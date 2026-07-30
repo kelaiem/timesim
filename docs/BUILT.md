@@ -5190,3 +5190,52 @@ which also keeps them deterministic. Verified: the barrel −10°
 candidate reports its five asserts by name in the panel with the main
 URL untouched; pusher 195° reports "CLOSES — 0 structural asserts";
 the session's state file survives both.
+
+## §33 step 2 — the stem decoupled: the keyless cluster re-solves
+
+The last step, and the one §13 called "the honest option and the bigger
+one": `?stemaz=` gives the stem line its OWN azimuth, independent of the
+barrel, and the keyless cluster re-solves around it while the layout
+stays put. The crown handle now proposes THIS (step 1's whole-layout
+rotation remains a spec, `?crownaz=`, and composes; the handle just
+stopped being its mouthpiece).
+
+### The winding reach, in two regimes
+
+Identity keeps §13's expression verbatim: the crown wheel one spur-mesh
+distance outboard of the barrel, colinear on the stem ray — bit-exact.
+Decoupled, the barrel leaves the ray and the reach solves in two
+regimes. DIRECT (the ray passes within one mesh distance, |Δaz| ≲ 21°
+at the shipped radii): the mesh point slides along the ray — the
+outboard intersection with the mesh circle, which is exactly what the
+identity expression degenerates to at zero offset. IDLER (beyond): the
+crown wheel parks at the ray's nearest point to the barrel and an
+18-tooth idler bridges by two-circle intersection — the alarm winding
+train's own pattern, its count dropping out of the ratio there as
+here. The 18 teeth are sized so §13's motivating example ("drag the
+crown to 3 o'clock", Δaz ≈ 35°) closes with margin: reach ≈ 13.9
+covers Δaz ≤ ~40°. Beyond that, refusal with the numbers — live under
+the pointer via the crown handle's solveKeyless shadow, amber at boot,
+the battery as always. The idler is built only when the spec parks one
+(mesh, arbor, plate bore, and its spin in the winding display chain,
+negated once for the extra mesh).
+
+### Verified
+
+Identity bit-exact at the recorded baseline. At `?stemaz=180` — the
+motivating example — the cluster re-solves to the 3-o'clock stem, the
+idler stands at its solved station, THE CROWN STILL WINDS THE BARREL
+through the new chain (measured: reserve banks through the idler), and
+the boot names the real costs of the arrangement: the reset-rod elbow
+fouling the low corridor, the stop work losing its bearing about the
+balance, its mast outgrowing the cock height. At 250° the solve
+refuses honestly — "the stem ray points away from the barrel entirely"
+— and the movement still boots on fallback geometry with the amber
+verdict. The setting side, lever/yoke, and hack chain all re-pose from
+the stem frame as §13 built them to; their downstream consequences are
+exactly what the verdicts exist to name.
+
+**§33 is complete.** Six handles, live solver validity at two depths,
+the trial boot, the spec as a document, and both decoupling operations
+(the movement in its case; the stem in the movement). What the
+verdicts name from here is layout work, not mode work.
