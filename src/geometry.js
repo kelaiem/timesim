@@ -1231,23 +1231,45 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // userData: rSmall, rLarge, height, grooveTurns.
 // ---------------------------------------------------------------------------
 
-export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
+// grooveW / grooveD / bandZ0 / bandSpan (§61): the CUT groove the chain
+// actually seats in, all in world units, derived by the caller from the
+// chain's own stock (main.js) — no dimension here is free to disagree with
+// the chain that rides it. rSmall/rLarge remain the ENVELOPE (land-crest)
+// radii: with the groove cut exactly one plate half-width deep, the chain's
+// centreline lies ON the envelope, so these stay the torque radii the
+// S(t)·r_f(t) equalisation was solved against.
+export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
+                            grooveW, grooveD, bandZ0, bandSpan }) {
   const g = new THREE.Group();
-  // Smooth cone core. The old version faked its grooves with annular
-  // RIPPLES — rotationally symmetric rings, which no chain could actually
-  // climb: a fusee's groove must be a HELIX, advancing axially as it goes
-  // around, or the chain has no way up the cone. The core surface follows
-  // exactly the r(f) = lerp(rLarge→rSmall) line the chain path rides
-  // (main.js fuseeGrooveAt), so the chain stays seated on the cone.
+  // Legacy proportions when the caller doesn't specify the cut (test pages).
+  if (grooveD === undefined) grooveD = Math.min((rLarge - rSmall) * 0.1, 0.5);
+  if (grooveW === undefined) grooveW = (0.88 * height) / grooveTurns * 0.8;
+  if (bandZ0 === undefined) bandZ0 = height * 0.06;
+  if (bandSpan === undefined) bandSpan = height * 0.88;
+  const env = (f) => rLarge + (rSmall - rLarge) * f;      // land-crest envelope
+  // GROOVED core (§61). The old build ran a smooth core at the envelope with
+  // a proud wire ridge whose "channel between adjacent flange turns,
+  // comfortably wider than the chain's diameter" was false arithmetic —
+  // the channel measured ~0.19 against a 0.66 chain stack, and the chain's
+  // inner half was buried in the core besides. What a real fusee has is a
+  // helical groove CUT into the cone: here the core is lathed at the GROOVE
+  // FLOOR (envelope − grooveD), and the land between adjacent wraps is a
+  // helical crest ribbon standing grooveD back up to the envelope. The
+  // chain's inner edge rides the floor; the wrap stands proud of the land
+  // by its outer half, as on the real thing.
   const pts = [];
-  pts.push(new THREE.Vector2(rLarge * 1.12, 0));
-  pts.push(new THREE.Vector2(rLarge * 1.12, height * 0.04));
+  // Base seat: kept INSIDE the bottom wrap's inner edge — the old 1.12·rLarge
+  // disc passed straight through the chain's lowest turn once the chain was
+  // drawn at true scale (its underside overhangs the base plane; the
+  // maintaining sandwich below is derived off exactly that overhang).
+  const seatR = rLarge - grooveD - 0.02;
+  pts.push(new THREE.Vector2(seatR, 0));
   const NCORE = 12;
   for (let i = 0; i <= NCORE; i++) {
     const f = i / NCORE;
-    pts.push(new THREE.Vector2(rLarge + (rSmall - rLarge) * f, height * (0.06 + 0.88 * f)));
+    pts.push(new THREE.Vector2(env(f) - grooveD, bandZ0 + bandSpan * f));
   }
-  pts.push(new THREE.Vector2(rSmall * 0.85, height * 0.97));
+  pts.push(new THREE.Vector2(rSmall - grooveD, height - 0.02));
   pts.push(new THREE.Vector2(rSmall * 0.45, height));
   // LatheGeometry revolves about +Y; every arbor here spins about +Z, so
   // stand the cone up (profile height axis Y → Z).
@@ -1256,27 +1278,52 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5 }) {
   const cone = new THREE.Mesh(geo, MATS.brass);
   g.add(cone);
 
-  // Helical guide flange — a screw-thread ridge standing slightly proud of
-  // the core, making grooveTurns turns from the large end to the small end
-  // over the same 0.06–0.94 band the chain occupies. The channel between
-  // adjacent flange turns (axial pitch 0.88·height/turns, comfortably wider
-  // than the chain's diameter) is the inclined groove that carries the
-  // chain up the cone.
-  const ridgeStand = Math.min((rLarge - rSmall) * 0.05, 0.24);
-  class ConeHelix extends THREE.Curve {
-    getPoint(t, target = new THREE.Vector3()) {
-      const a = t * grooveTurns * Math.PI * 2;
-      const r = rLarge + (rSmall - rLarge) * t + ridgeStand;
-      return target.set(Math.cos(a) * r, Math.sin(a) * r, height * (0.06 + 0.88 * t));
-    }
+  // The LAND: a helical crest ribbon between adjacent groove turns — the
+  // uncut material of the cut-groove model. Its centreline runs half a
+  // groove pitch above the groove helix; radially it spans floor → envelope.
+  // Cross-section: landW wide (what the pitch leaves over after the groove),
+  // grooveD tall. Built as an indexed quad strip: inner/outer rails at the
+  // two axial faces, outer face closing the crest.
+  const pitch = bandSpan / grooveTurns;
+  const landW = Math.max(pitch - grooveW, 0.02);
+  // The crest exists BETWEEN wraps: grooveTurns grooves have grooveTurns−1
+  // lands, so the helix stops half a pitch short of the band's top — a
+  // full-length run poked 0.2 past the cone's tip and it was the plate
+  // floor's boot assert that caught it.
+  const SEG = (grooveTurns - 1) * 48;
+  const pos = [], idx = [];
+  // 4 rails per station: (floor,lo) (env,lo) (env,hi) (floor,hi)
+  for (let i = 0; i <= SEG; i++) {
+    const t = i / (grooveTurns * 48);
+    const a = t * grooveTurns * Math.PI * 2;
+    const zc = bandZ0 + bandSpan * t + pitch / 2;         // land centreline
+    // Envelope evaluated at the land's OWN z, not the groove's t below it —
+    // half a pitch up a cone this steep is ~0.6 of radius, and sampling the
+    // lower station left the crest that far proud on the uphill side.
+    const fLand = t + (pitch / 2) / bandSpan;
+    const rIn = env(fLand) - grooveD, rOut = env(fLand);
+    const ca = Math.cos(a), sa = Math.sin(a);
+    for (const [r, dz] of [[rIn, -landW / 2], [rOut, -landW / 2], [rOut, landW / 2], [rIn, landW / 2]])
+      pos.push(ca * r, sa * r, zc + dz);
   }
-  const flangeGeo = new THREE.TubeGeometry(new ConeHelix(), grooveTurns * 32, ridgeStand * 0.9, 8, false);
-  g.add(new THREE.Mesh(flangeGeo, MATS.brass));
+  for (let i = 0; i < SEG; i++) {
+    const b = i * 4, c = b + 4;
+    for (const k of [0, 1, 2]) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+  }
+  const landGeo = new THREE.BufferGeometry();
+  landGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  landGeo.setIndex(idx);
+  landGeo.computeVertexNormals();
+  g.add(new THREE.Mesh(landGeo, MATS.brass));
 
   g.userData.rSmall = rSmall;
   g.userData.rLarge = rLarge;
   g.userData.height = height;
   g.userData.grooveTurns = grooveTurns;
+  // §61 — the cut, exported for the chain-seating instrument: the check
+  // measures the chain mesh against the same analytic floor this geometry
+  // was built from, so the two cannot drift apart.
+  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW };
   return g;
 }
 

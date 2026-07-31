@@ -17,7 +17,7 @@
 //    check entirely (EXPECTED-pair classification only proves contact was
 //    intended, not that its DEPTH is reasonable). Extend PENETRATION_BUDGETS
 //    to the other EXPECTED pairs that most need it: pin-in-notch (Pallet
-//    fork ⇄ Balance) and chain-on-cone (Chain ⇄ Fusee & great wheel);
+//    fork ⇄ Balance); chain-on-cone and chain-on-drum landed with §61;
 //  - allowed PHASE WINDOWS per budget (right now each budget checks its
 //    whole declared axis; a pair that should only touch near lock/impulse
 //    could additionally assert near-zero depth OUTSIDE that window);
@@ -1628,7 +1628,110 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  {
+    // §61 — chain-on-cone, the row the file header owed since the escape-
+    // wheel budgets landed (TODO 4). The pair is EXPECTED (the chain lies
+    // in the cone's grooves), so the overlap sweep is structurally blind
+    // here; this measures the SEATING.
+    //
+    // NOT mtvDepth: the chain ENCIRCLES the cone, and no translation
+    // separates a ring from what it wraps — the MTV search returns
+    // whichever large excursion first breaks all triangle contact (1.2+
+    // measured), a number about the search space, not the fit. Instead
+    // `measure` samples the chain mesh against the ANALYTIC groove floor
+    // the cone was lathed from (same constants, via userData.groove):
+    // radial depth of any chain point below envelope(f(z)) − grooveD, in
+    // the fusee's own frame. Registration-free — a pure function of z —
+    // which is also its honest limit: the wrap's rotational phase against
+    // the cone's spiral is display-approximate (the chain is not torque-
+    // coupled; TODO 1/7), so groove-vs-land axial registration is not
+    // asserted here.
+    //
+    // Budget DERIVED, three terms: (1) the 4-leaf stack is a rigid
+    // VERTICAL band on a floor that follows the cone's slope, so it
+    // contacts at its lower corner and the corner sits slope·stack/2 =
+    // (4.8/2.78)·0.33 = 0.57 below the floor at its own z; (2) link
+    // chording, pitch²/(8·r_min) = 1.9²/(8·2.9) = 0.16 at the smallest
+    // wrap radius; (3) HANDOFF_TRACK_TOL tessellation slack. Sum 0.76,
+    // held at 0.8 so the row polices the relationship, not float luck.
+    pair: ['Fusee & great wheel', 'Chain'],
+    maxDepth: 0.8,
+    axis: 'reserve',
+    nSamples: 60,
+    measure(clock, unitA, unitB) {
+      let fus = null;
+      unitA.obj.traverse((o) => { if (!fus && o.userData && o.userData.groove) fus = o; });
+      let chain = null;
+      unitB.obj.traverse((o) => { if (!chain && o.isMesh) chain = o; });
+      // Loud, not NaN: a silent non-finite depth reads as a clean 0 in the
+      // worst-tracking, which is exactly how this row's first run lied.
+      if (!fus || !chain) throw new Error('chain-on-cone seating: groove userData or chain mesh not found');
+      const { bandZ0, bandSpan, grooveD } = fus.userData.groove;
+      const rL = fus.userData.rLarge, rS = fus.userData.rSmall;
+      const toLocal = fus.matrixWorld.clone().invert().multiply(chain.matrixWorld);
+      return sampleRadialDepth(chain.geometry, toLocal, (z) => {
+        const f = Math.min(Math.max((z - bandZ0) / bandSpan, 0), 1);
+        return rL + (rS - rL) * f - grooveD;
+      }, -Infinity, Infinity);
+    },
+  },
+  {
+    // §61 — chain-on-drum: the coil's seating on the drum wall, same
+    // blindness argument and the same encircling-MTV disqualification as
+    // the cone row. The wrap rides at DRUM_WRAP_R (wall + plate
+    // half-width, inner edge kissing the wall), the wall is a straight
+    // cylinder — no slope term — so the residual is chording alone:
+    // 1.9²/(8·10.66) = 0.042, plus tessellation slack → 0.08. The hook's
+    // claw-and-link junction is naturally outside this measure (it stands
+    // proud of the wall): the end link dropped over the claw is the
+    // hook's working contact, and the baked chain has no physical hole
+    // for the claw — that fiction is TODO territory, not wall seating.
+    pair: ['Mainspring drum', 'Chain'],
+    maxDepth: 0.08,
+    axis: 'reserve',
+    nSamples: 60,
+    measure(clock, unitA, unitB) {
+      let drum = null;
+      unitA.obj.traverse((o) => { if (!drum && o.userData && o.userData.chainSeat) drum = o; });
+      let chain = null;
+      unitB.obj.traverse((o) => { if (!chain && o.isMesh) chain = o; });
+      if (!drum || !chain) throw new Error('chain-on-drum seating: chainSeat userData or chain mesh not found');
+      const { wallR, halfH } = drum.userData.chainSeat;
+      const toLocal = drum.matrixWorld.clone().invert().multiply(chain.matrixWorld);
+      return sampleRadialDepth(chain.geometry, toLocal, () => wallR, -halfH, halfH);
+    },
+  },
 ];
+
+// §61 helper — worst radial burial of a mesh below an axisymmetric surface
+// r = floorAt(z), in the surface's own frame. Samples every vertex AND each
+// triangle's centroid: the deepest point of a chording link is mid-edge,
+// which vertices alone never visit (the drum row would read ~0 without
+// centroids). zLo/zHi gate the band the surface claims; points outside it
+// are someone else's business (the span, the hook).
+function sampleRadialDepth(geometry, toLocal, floorAt, zLo, zHi) {
+  const pos = geometry.attributes.position;
+  const idx = geometry.index;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  let worst = 0;
+  const probe = (v) => {
+    if (v.z < zLo || v.z > zHi) return;
+    const d = floorAt(v.z) - Math.hypot(v.x, v.y);
+    if (d > worst) worst = d;
+  };
+  const triCount = (idx ? idx.count : pos.count) / 3;
+  for (let t = 0; t < triCount; t++) {
+    const i0 = idx ? idx.getX(t * 3) : t * 3;
+    const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    a.fromBufferAttribute(pos, i0).applyMatrix4(toLocal);
+    b.fromBufferAttribute(pos, i1).applyMatrix4(toLocal);
+    c.fromBufferAttribute(pos, i2).applyMatrix4(toLocal);
+    probe(a); probe(b); probe(c);
+    probe(a.add(b).add(c).multiplyScalar(1 / 3)); // centroid (a is consumed last)
+  }
+  return worst;
+}
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {
   const units = collectUnits(clock);
@@ -1638,8 +1741,11 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
     const unitA = units.find((u) => u.name === nameA);
     const unitB = units.find((u) => u.name === nameB);
     if (!unitA || !unitB) { results.push({ pair: pairKey(nameA, nameB), status: 'ERROR', error: 'unit missing' }); continue; }
-    const meshesA = budget.selectA(unitA); // wheel-side (bvh)
-    const meshesB = budget.selectB(unitB); // stone-side (translated)
+    // A row either carries a bespoke `measure` (§61's radial seating rows —
+    // MTV is meaningless for a chain that encircles what it wraps) or the
+    // default MTV machinery over selected meshes.
+    const meshesA = budget.measure ? [] : budget.selectA(unitA); // wheel-side (bvh)
+    const meshesB = budget.measure ? [] : budget.selectB(unitB); // stone-side (translated)
     meshesA.forEach(bvhFor);
     const axis = axes.find((a) => a.name === budget.axis);
     const n = budget.nSamples ?? axis.n;
@@ -1648,6 +1754,11 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
       const f = i / n;
       clock.setPose(axis.pose(f, clock));
       clock.scene.updateMatrixWorld(true);
+      if (budget.measure) {
+        const d = budget.measure(clock, unitA, unitB);
+        if (isFinite(d) && d > worst) { worst = d; worstF = f; }
+        continue;
+      }
       for (const meshA of meshesA) {
         const bvh = bvhFor(meshA);
         for (const meshB of meshesB) {

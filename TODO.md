@@ -71,9 +71,10 @@ that's its entry, not this one.)
   matrix updates dominated died by measurement). runInspection still runs
   uncapped narrow phase and remains the slow one (~6 min).
 - **Inspector milestones** (`src/inspect.js` header TODO): extend
-  `PENETRATION_BUDGETS` to pin-in-notch and chain-on-cone; allowed phase
-  windows per budget; a continuity check for linkage branch flips; a
-  known-good baseline so re-runs only flag regressions.
+  `PENETRATION_BUDGETS` to pin-in-notch (chain-on-cone and chain-on-drum
+  landed with §61's true groove seating); allowed phase windows per
+  budget; a continuity check for linkage branch flips; a known-good
+  baseline so re-runs only flag regressions.
 
 ## 5. The inspector cannot see INSIDE a unit
 

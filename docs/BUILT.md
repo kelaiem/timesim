@@ -5531,3 +5531,107 @@ into real parts — `MECH_GRAPH` entries, bores actually drilled through the
 plates it names, stock-floored sections — is Apply-shaped work in §33's
 sense, and it is where this connects to the standing design-priority rule:
 a routed linkage's lever ratios are still P1's business, not the router's.
+
+## §61. True groove seating — the chain rides the cone, it does not sink into it
+
+**Where this came from.** §39's true-scale chain kept the shipped seating
+convention: the chain's centreline rode `fuseeGrooveAt(f).r` on the cone
+and `DRUM_R` on the drum wall, burying half the (now 1.32 u wide) link in
+the parent surface — excused by the two EXPECTED pairs, which is exactly
+the per-pair blind spot TODO 6 documents, on top of TODO 4's missing
+budgets. The old cone's "groove" was a proud wire ridge whose comment
+claimed a channel "comfortably wider than the chain's diameter"; measured,
+the channel was ~0.19 against a 0.66 stack, and the wrap's delivered
+axial pitch (0.88·H·0.94/3.75 ≈ 0.65) was LESS than the stack — successive
+wraps interpenetrated. Every gate was green while all of it was wrong.
+
+### The cone: cut the groove, and the correction vanishes
+
+The planned fix was to offset the wrap radii by the plate half-width and
+carry an effective-radius correction into the torque equalisation. What
+shipped is better, and is what a real fusee is: the groove is CUT into
+the cone, exactly one plate half-width deep (`FUSEE_GROOVE_D =
+CHAIN_END_R_OUT`). The chain's inner edge rides the groove floor, its
+centreline lies ON the land-crest envelope — so the envelope constants
+(`FUSEE_R_SMALL/LARGE`), the S(t)·r_f(t) equalisation, and
+`CHAIN_ENGAGED` were already the centreline numbers and needed no
+correction at all. `makeFusee` now lathes the core at the groove floor
+and lays the land as a helical crest ribbon between wraps (grooveTurns
+grooves ⇒ grooveTurns−1 lands; the first cut of the ribbon ran a half
+pitch past the tip and the plate-floor boot assert caught it).
+
+### The pitch: derived from the movement's z budget, land as the slack
+
+The honest wrap pitch cannot be declared — it has to FIT. The groove band
+is wedged between the center wheel (the lowest wrap's underside clears
+its top face by the margin) and the hairspring stack (the plate floor's
+binding member; the tip may not outgrow it). What those two binds afford,
+divided by `FUSEE_GROOVE_TURNS`, is the pitch (0.695 at the 30 h
+default); pitch minus the groove's own width (stack + 0.01 seating
+clearance) is the LAND — 0.025, the movement's axial slack made visible,
+with a 0.02 floor and a boot warn as §22's honest cost report when a
+longer reserve thins it. The wrap's delivered pitch equals the groove
+pitch by construction now: the active fraction is
+`FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS` (0.9375), not a hand-rounded
+0.94, and the band is `GROOVE_TURNS` exact pitches. Growing H past the
+old 2.96 was NOT the answer: the maintaining sandwich below re-solves off
+the cone's base (§39), and the band-wedge derivation actually lands H at
+≈ 2.95 with the sandwich stock back at its 0.455 ceiling-adjacent value.
+
+### The drum: the +half-width is real and reaches the feed
+
+On the drum there is no groove to cut, so the offset is genuine:
+`DRUM_WRAP_R = DRUM_R + CHAIN_END_R_OUT` is the coil's centreline radius
+(inner edge kissing the wall) AND the feed radius — one drum turn pays
+out 2π·DRUM_WRAP_R of chain, so `drumGroup.rotation.z`, the takeoff
+turn-count solve and the `HOOK_A` congruence all read it. The tangent
+solve reads it on the drum side and the envelope on the cone side; the
+hook's claw already stood at exactly this standoff, so the end link now
+arrives without a radial jog.
+
+### Then measure it — the TODO 4 rows, and why they are not MTV
+
+Two `PENETRATION_BUDGETS` rows on the `reserve` axis close TODO 4 for
+this pair family — but not with `mtvDepth`. The chain ENCIRCLES both
+parents, and no translation separates a ring from what it wraps: the
+first MTV attempt reported 1.2 (cone) and 1.6 (drum), numbers about the
+direction-search's escape space, not the fit. The rows instead carry a
+bespoke `measure` (the budget machinery grew a per-row hook): every
+chain vertex AND triangle centroid — the deepest point of a chording
+link is mid-edge, which vertices never visit — is checked for radial
+burial below the ANALYTIC surface the parent was built from, in the
+parent's own frame: `envelope(f(z)) − grooveD` on the cone (read from
+the same `userData.groove` the lathe consumed, so geometry and
+instrument cannot drift apart), the wall cylinder on the drum.
+
+Budgets derived: the drum is chording alone plus tessellation slack —
+1.9²/(8·10.66) + 0.03 → **0.08**. The cone has a third, dominant term:
+the 4-leaf stack is a rigid VERTICAL band on a floor that follows the
+cone's slope, so it contacts at its lower corner, which sits
+slope·stack/2 = (4.8/2.78)·0.33 = 0.57 below the floor at its own z;
+plus chording at the smallest wrap radius (0.16) and the slack → 0.76,
+held at **0.8**. Measured: cone 0.67, drum 0.06.
+
+The drum row earned its keep before it ever gated anything: its first
+honest run read 0.139, and the excess was two real display defects, not
+budget pessimism — the coil's last control point COINCIDED with the claw
+point once the claw stood at the wrap radius (a degenerate Catmull-Rom
+tangent wobbling the end links into the wall), and the coil's 14
+points-per-turn let the interpolant sag measurably on a circle whose
+whole budget is 0.08. The coil now stops a short arc before the hook and
+runs 32 points per turn.
+
+**Not done, deliberately.** The radial measure is registration-FREE — a
+pure function of z — because the wrap's rotational phase against the
+cone's spiral cannot be asserted: the chain is display-only (TODO 1/7),
+and `setPose` sets `tension` and `windAccumTurns` independently, so no
+pose-time phase relation exists to check. Groove-vs-land axial
+registration (and the corner-on-slope term a locally square-cut spiral
+thread would eliminate) therefore stays open with the chain's
+torque-coupling debt. Also unbuilt: link-level articulation (the chain
+stays one baked mesh, so the claw still transfixes the end link rather
+than passing through a hole); a cut-thread taper on the land crest
+(rectangular section, P4); and the cone's absolute radii — a real fusee
+of this movement's class is fatter at the small end than our 2.6 u,
+which is why the chording term is as large as it is. Those radii are
+§22/§13 layout material if anyone wants them.
