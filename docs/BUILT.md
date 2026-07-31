@@ -5406,3 +5406,103 @@ stayed happy, because what remained was still valid JavaScript — just not
 this CSS — and the failure surfaced only as a `TypeError` at boot. Syntax
 checking cannot see a string that ends early and leaves something valid
 behind it.
+
+## §36 part three — routing as a spec
+
+§35's corridor hunt was done **by hand**: two shafts, one knuckle, four
+ray-proved bush stations, and a great deal of probing to establish that a
+rod could get from the column wheel to the selector ring without hitting
+anything. That hunt is what this automates — the drawn path becomes the
+**spec** and the parts are solved from it.
+
+### The rule that makes it routing and not collision testing
+
+- **Structural metal is drillable.** A plate, a bridge, a pillar — a route
+  through one is legal, because a bore gets drilled. §35 did exactly that:
+  the selector rod passes a bore through *both* plates.
+- **A swept volume is refused.** Anything a moving part can reach is not
+  negotiable: there is nothing to drill, because the space is occupied in
+  time rather than in matter.
+
+The registry already drew that line and did not know it — `static` is a
+part that never moves, `revolve`/`path` are the swept ones — so the routing
+question is answerable from §36's own output with **no new sampling**. That
+is why this is a §36 part and not its own entry.
+
+Refusal is **per-segment and names the volume**, inheriting §33's
+refused/warned/proposed vocabulary: a route that cannot be built says which
+leg is impossible and what occupies it.
+
+### Two findings that only appeared on running it
+
+**1. The linkage being routed was blocking itself.** §35's real corridor
+came back REFUSED, and every volume named was the alarm link's own — the
+rod objecting to the space the rod occupies. Re-routing an existing linkage
+means asking whether the space would be free *once it is lifted out*, so
+`exclude` is not a convenience, it is what makes the check usable for the
+only thing it is for.
+
+**2. Structural metal was invisible.** A `static` volume stored only its
+z band, so "through structural metal is fine" was **vacuously** true — the
+check could not see a plate at all, and reported no bores. Static parts now
+carry a `box` as well, which is *exact* rather than a hull because the part
+does not move. 172 static volumes gained one.
+
+### Verified against §35, both directions
+
+| control | result |
+|---|---|
+| §35's real route, excluding itself | **legal**, 0 refused legs |
+| …its reported bores | `Three-quarter plate/threeQuarterPlate` |
+| the same route **without** `exclude` | refused — by its own parts (so the exclude is load-bearing) |
+| a route driven through the balance | refused: *"leg 1 enters Pallet fork, Balance — swept volume, nothing to drill"* |
+
+**Synthesis on the legal route: 2 arbors (16.15 u, 15.42 u), 1 knuckle,
+3 bush stations.** §35 by hand was two shafts, one knuckle, four bush
+stations — so shafts and knuckle reproduce exactly, and the station count
+is one short. That is honest rather than matched: the polyline used here is
+a 3-point simplification of §35's actual run, and stations are merged per
+clear stretch, so 3 is an under-count of a coarser path rather than a
+disagreement with §35.
+
+### The sketch surface
+
+A **Route → Sketch** mode beside the reconfigure rows, in §33's grammar
+throughout: candidates are proposed / warned / refused, a refusal names
+what it hit, ghosts are scene furniture and never units.
+
+**The commit rule: a refused leg cannot be placed.** The click is rejected
+with the occupant named in the row — so a committed polyline is legal *by
+construction*, and Solve never has to un-refuse anything. Structural metal
+is the amber middle state: the leg commits, labelled with the bore it
+implies.
+
+**A 3D route with a 2D pointer**: points land on a depth plane a slider
+sets. Click at one depth, move the slider, click again — §35's rod (same
+x, y, two depths) is two clicks. The pending leg re-judges on every
+pointer move *and every slider change*, since depth changes what you hit.
+Click-not-drag placement (a pointer that moves >5 px is an orbit), Escape
+exits, and changing the re-route selector **clears the sketch** — the
+committed legs were judged under the old exclusion, and keeping them
+would keep verdicts that are no longer true.
+
+The registry builds once per session on first entry, which is sound
+because geometry only changes through §33's Apply, which reloads. The
+live leg-judge is a synchronous twin of `checkRoute`'s sampler — same
+step, same clearance, same occupant query — so the preview and the
+committed verdict cannot disagree.
+
+**Verified end to end by driving the real controls** (synthetic pointer
+events on the canvas, world→screen projected): a first point placed, a
+free-air leg committed as *"leg 1 clear"*, and a leg aimed into the train
+refused as *"refused: leg enters Center wheel — swept volume, nothing to
+drill"* with the click rejected. Solve on the legal polyline: *"1 arbor ·
+0 knuckles · 1 bush station — a spec, drawn as ghosts"*, and the scene
+graph agrees exactly — 2 dots, 1 committed leg, 1 ghost arbor, 1 bush
+ring, 1 pending line.
+
+**Still not built: Apply.** The ghosts are a spec. Turning a solved route
+into real parts — `MECH_GRAPH` entries, bores actually drilled through the
+plates it names, stock-floored sections — is Apply-shaped work in §33's
+sense, and it is where this connects to the standing design-priority rule:
+a routed linkage's lever ratios are still P1's business, not the router's.

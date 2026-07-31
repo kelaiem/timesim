@@ -8528,9 +8528,10 @@ style.textContent = `
    mean opposite things ("this IS the watch, pulled apart" vs "this is a
    PROPOSED watch"). The mode must be unmistakable. */
 #clock-ui button#btn-reconf.active { background: #1f8a70; border-color: #1f8a70; }
-#reconf-row span.refused { color: #e05555; }
-#reconf-row span.proposed { color: #4fd6b8; }
-#reconf-row span.warned { color: #e0a355; }
+#reconf-row span.refused, #route-row span.refused { color: #e05555; }
+#reconf-row span.proposed, #route-row span.proposed { color: #4fd6b8; }
+#reconf-row span.warned, #route-row span.warned { color: #e0a355; }
+#clock-ui button#btn-route.active { background: #1f8a70; border-color: #1f8a70; }
 #reconf-variants-row input, #reconf-variants-row select {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
   color: #e8edf2; border-radius: 6px; padding: 3px 5px; font-size: 10.5px; max-width: 88px;
@@ -8754,6 +8755,21 @@ panel.innerHTML = `
         <button id="btn-reconf-apply">Apply (reloads)</button>
         <button id="btn-reconf-reset">As designed</button>
         <button id="btn-reconf-undo">Undo</button>
+      </div>
+      <div class="row">
+        <span class="label-small">Route</span>
+        <button id="btn-route">Sketch</button>
+      </div>
+      <div class="row label-small" id="route-row" style="display:none;">
+        <span id="route-status">measuring swept volumes…</span>
+      </div>
+      <div class="row label-small" id="route-tools-row" style="display:none;">
+        <span>depth</span>
+        <input id="route-z" type="range" min="-8" max="12" step="0.05" value="0" style="width:80px;">
+        <span id="route-z-val">0.0</span>
+        <select id="route-exclude" title="Re-routing an existing linkage? Its own sweep must not block the new path."><option value="">new linkage</option></select>
+        <button id="btn-route-solve">Solve</button>
+        <button id="btn-route-clear">Clear</button>
       </div>
       <div class="row label-small" id="reconf-variants-row" style="display:none;">
         <input id="reconf-var-name" placeholder="variant name" maxlength="24">
@@ -11317,6 +11333,231 @@ function reconfBeginDrag(e, kind) {
   renderer.domElement.setPointerCapture(e.pointerId);
   reconfMoveDrag(e);
 }
+// ---------------------------------------------------------------------------
+// §36 PART THREE — THE SKETCH SURFACE. The engine (checkRoute / solveRoute,
+// src/inspect.js) judges a polyline; this is where one gets drawn. §33's
+// grammar throughout: a candidate is proposed / warned / refused, a refusal
+// NAMES what it hit, and ghosts are scene furniture, never units.
+//
+// THE COMMIT RULE: a refused leg cannot be placed. The click is rejected with
+// the occupant named in the row, so a committed polyline is legal by
+// construction and Solve never has to un-refuse anything. Structural metal is
+// the amber middle state — the leg commits, labelled with what it drills.
+//
+// POINTS GO ON A DEPTH PLANE the slider sets, so a 3D route is drawn with a
+// 2D pointer: click at one depth, move the slider, click again — §35's rod
+// (same x,y, two depths) is two clicks. The pending leg re-judges on every
+// pointer move and every slider change, because depth changes what you hit.
+let routeSketchOn = false;
+let routeI = null;            // the inspect module, loaded on first entry
+let routeReg = null;          // the swept registry, built once per session —
+                              // sound because geometry only changes via §33's
+                              // Apply, which reloads the page
+let routeRegBuilding = false;
+let routePts = [];            // committed points, [x,y,z]
+let routeLegInfo = [];        // per committed leg: { verdict, what }
+let routeExcludeSet = null;
+let routeSketchGroup = null, routePendingLine = null, routeSolveGroup = null;
+const _routePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const ROUTE_COL = { legal: 0xbfeee2, drills: 0xe0a355, refused: 0xe05555 };
+
+function routeStatus(cls, text) {
+  const el = document.getElementById('route-status');
+  el.className = cls; el.textContent = text;
+}
+function ensureRouteGroups() {
+  if (routeSketchGroup) return;
+  routeSketchGroup = new THREE.Group();
+  routeSolveGroup = new THREE.Group();
+  routePendingLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+    new THREE.LineDashedMaterial({ color: ROUTE_COL.legal, dashSize: 0.6, gapSize: 0.4, transparent: true, opacity: 0.95 }));
+  routePendingLine.visible = false;
+  routeSketchGroup.add(routePendingLine);
+  scene.add(routeSketchGroup);   // furniture, like reconfGhost — never a unit
+  scene.add(routeSolveGroup);
+}
+// The synchronous twin of checkRoute's sampler, for the leg under the cursor.
+// Same step, same clearance, same occupant query — one sampler's judgement,
+// spoken live. (checkRoute is async only because it may build the registry.)
+function routeLegVerdict(a, b) {
+  const len = Math.hypot(b[0]-a[0], b[1]-a[1], b[2]-a[2]);
+  const n = Math.max(2, Math.ceil(len / 0.25));
+  let drill = null;
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    const pnt = [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+    const occ = routeI.routeOccupantAt(routeReg, pnt, CLEAR_MARGIN, routeExcludeSet);
+    if (!occ) continue;
+    const name = occ.unit + (occ.mesh ? '/' + occ.mesh : '');
+    if (occ.swept) return { verdict: 'refused', what: name };
+    if (!drill) drill = name;
+  }
+  return drill ? { verdict: 'drills', what: drill } : { verdict: 'legal', what: null };
+}
+function routePointerWorld(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  _rcNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  _rcNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  crownRaycaster.setFromCamera(_rcNDC, camera);
+  _routePlane.constant = -parseFloat(document.getElementById('route-z').value);
+  return crownRaycaster.ray.intersectPlane(_routePlane, _rcHit) ? _rcHit : null;
+}
+function routeAddCommittedLeg(a, b, info) {
+  const mat = new THREE.LineBasicMaterial({ color: ROUTE_COL[info.verdict], transparent: true, opacity: 0.95 });
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+    [new THREE.Vector3(...a), new THREE.Vector3(...b)]), mat);
+  routeSketchGroup.add(line);
+}
+function routeAddDot(p) {
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8),
+    new THREE.MeshBasicMaterial({ color: ROUTE_COL.legal }));
+  dot.position.set(p[0], p[1], p[2]);
+  routeSketchGroup.add(dot);
+}
+function routeClearSketch() {
+  routePts = []; routeLegInfo = [];
+  if (routeSketchGroup) {
+    for (const c of [...routeSketchGroup.children]) if (c !== routePendingLine) { routeSketchGroup.remove(c); c.geometry?.dispose(); }
+    routePendingLine.visible = false;
+  }
+  if (routeSolveGroup) for (const c of [...routeSolveGroup.children]) { routeSolveGroup.remove(c); c.geometry?.dispose(); }
+  if (routeSketchOn) routeStatus('', routeReg ? 'click to place the first point' : 'measuring swept volumes…');
+}
+async function routeEnsureRegistry() {
+  if (routeReg || routeRegBuilding) return;
+  routeRegBuilding = true;
+  routeStatus('', 'measuring swept volumes… (one sweep, cached for the session)');
+  try {
+    routeI = await import('./inspect.js');
+    // Test seam: an automated pane throttles the sweep's yields to minutes
+    // (CLAUDE.md's yield trap), so verification may pre-build a registry and
+    // hand it over. A human at the tab just waits the ~half minute.
+    routeReg = window.__routeRegSeed || await routeI.buildSweptRegistry(__clock);
+    if (routeSketchOn) routeStatus('', 'click to place the first point — through metal is amber (a bore); into a sweep is refused');
+  } catch (err) {
+    routeStatus('refused', 'registry failed: ' + err.message);
+    routeRegBuilding = false;
+  }
+}
+function routeSetExclude() {
+  const v = document.getElementById('route-exclude').value;
+  routeExcludeSet = v ? new Set([v]) : null;
+  // committed legs were judged under the OLD exclusion — they no longer carry
+  // a valid verdict, so the sketch resets rather than silently lying.
+  routeClearSketch();
+}
+function setRouteSketch(on) {
+  routeSketchOn = on;
+  const b = document.getElementById('btn-route');
+  b.textContent = on ? 'Stop' : 'Sketch'; b.classList.toggle('active', on);
+  document.getElementById('route-row').style.display = on ? '' : 'none';
+  document.getElementById('route-tools-row').style.display = on ? '' : 'none';
+  ensureRouteGroups();
+  if (on) {
+    // populate the re-route selector once, from the label registry itself
+    const sel = document.getElementById('route-exclude');
+    if (sel.options.length === 1) for (const e of labelEntries) {
+      const o = document.createElement('option'); o.value = o.textContent = e.name; sel.appendChild(o);
+    }
+    routeEnsureRegistry();
+    if (routeReg) routeStatus('', 'click to place the first point');
+  } else {
+    routePendingLine.visible = false;
+  }
+}
+document.getElementById('btn-route').addEventListener('click', () => setRouteSketch(!routeSketchOn));
+document.getElementById('btn-route-clear').addEventListener('click', routeClearSketch);
+document.getElementById('route-exclude').addEventListener('change', routeSetExclude);
+document.getElementById('route-z').addEventListener('input', (e) => {
+  document.getElementById('route-z-val').textContent = parseFloat(e.target.value).toFixed(1);
+});
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && routeSketchOn) setRouteSketch(false); });
+
+// CLICK, NOT DRAG: a point places on pointerup only if the pointer barely
+// moved, so orbiting stays free while sketching. The crowns keep first
+// refusal exactly as every other canvas gesture does.
+let _routeDown = null;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (routeSketchOn) _routeDown = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!routeSketchOn || !_routeDown) return;
+  const moved = Math.hypot(e.clientX - _routeDown.x, e.clientY - _routeDown.y);
+  _routeDown = null;
+  if (moved > 5) return;                       // that was an orbit, not a click
+  if (!routeReg) { routeStatus('warned', 'still measuring swept volumes — a moment'); return; }
+  const hit = routePointerWorld(e);
+  if (!hit) return;
+  const p = [hit.x, hit.y, hit.z];
+  if (routePts.length) {
+    const info = routeLegVerdict(routePts[routePts.length - 1], p);
+    if (info.verdict === 'refused') {
+      // THE COMMIT RULE: the polyline stays legal by construction.
+      routeStatus('refused', 'refused: leg enters ' + info.what + ' — swept volume, nothing to drill');
+      return;
+    }
+    routeAddCommittedLeg(routePts[routePts.length - 1], p, info);
+    routeLegInfo.push(info);
+    routeStatus(info.verdict === 'drills' ? 'warned' : 'proposed',
+      info.verdict === 'drills'
+        ? 'leg ' + routePts.length + ' drills through ' + info.what + ' — legal, a bore'
+        : 'leg ' + routePts.length + ' clear');
+  } else {
+    routeStatus('proposed', 'first point placed — keep clicking; Escape or Stop to end');
+  }
+  routeAddDot(p);
+  routePts.push(p);
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!routeSketchOn || !routePts.length || !routeReg) return;
+  const hit = routePointerWorld(e);
+  if (!hit) { routePendingLine.visible = false; return; }
+  const last = routePts[routePts.length - 1];
+  const info = routeLegVerdict(last, [hit.x, hit.y, hit.z]);
+  routePendingLine.geometry.setFromPoints([new THREE.Vector3(...last), _rcHit.clone()]);
+  routePendingLine.computeLineDistances();
+  routePendingLine.material.color.setHex(ROUTE_COL[info.verdict]);
+  routePendingLine.visible = true;
+  if (info.verdict !== 'legal')
+    routeStatus(info.verdict === 'refused' ? 'refused' : 'warned',
+      (info.verdict === 'refused' ? 'would enter ' : 'would drill through ') + info.what);
+  else routeStatus('proposed', 'clear — click to place');
+});
+
+// SOLVE — the legal polyline becomes the parts §35 derived by hand: straight
+// arbors, knuckles at the bends, bush stations where the surrounding column
+// is clear at the bush's own radius. Drawn as ghosts: this is a SPEC, the
+// §33 grammar again — becoming real parts is Apply-shaped work, not a render.
+document.getElementById('btn-route-solve').addEventListener('click', async () => {
+  if (!routeReg || routePts.length < 2) { routeStatus('warned', 'place at least two points first'); return; }
+  const r = await routeI.solveRoute(__clock, routePts,
+    { registry: routeReg, exclude: routeExcludeSet ? [...routeExcludeSet] : undefined });
+  for (const c of [...routeSolveGroup.children]) { routeSolveGroup.remove(c); c.geometry?.dispose(); }
+  if (!r.ok) { routeStatus('refused', r.route.verdict); return; }
+  const ghostMat = new THREE.MeshBasicMaterial({ color: ROUTE_COL.legal, transparent: true, opacity: 0.35 });
+  for (const a of r.arbors) {
+    const from = new THREE.Vector3(...a.from), to = new THREE.Vector3(...a.to);
+    const arb = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, a.length, 8), ghostMat);
+    arb.position.copy(from).add(to).multiplyScalar(0.5);
+    arb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+    routeSolveGroup.add(arb);
+  }
+  for (const k of r.knuckles) {
+    const kn = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), ghostMat);
+    kn.position.set(...k.at); routeSolveGroup.add(kn);
+  }
+  for (const bu of r.bushes) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.1, 6, 18), ghostMat);
+    ring.position.set(...bu.at); routeSolveGroup.add(ring);
+  }
+  const bores = r.route.bores.length ? ' · bores: ' + r.route.bores.join(', ') : '';
+  routeStatus('proposed', r.arbors.length + ' arbor' + (r.arbors.length === 1 ? '' : 's') + ' · '
+    + r.knuckles.length + ' knuckle' + (r.knuckles.length === 1 ? '' : 's') + ' · '
+    + r.bushes.length + ' bush station' + (r.bushes.length === 1 ? '' : 's') + bores
+    + ' — a spec, drawn as ghosts');
+});
+
 function reconfPointerWorld(e) {
   const rect = renderer.domElement.getBoundingClientRect();
   _rcNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -14565,6 +14806,10 @@ window.__clock = {
   camera, controls, scene, labelEntries,
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
+  // §36 part three: the routing spec's own frame. A sketched polyline arrives
+  // in world units, and these are what a caller needs to place one without
+  // guessing at the movement's extents.
+  get routeBounds() { return { plateR, zLow: -8, zHigh: 12 }; },
   // §36 follow-up: the low-corridor table and its band, exposed so the
   // battery can VERIFY the hand-built footprint against sampled reality.
   // The table cannot be GENERATED from the registry — it is consumed
