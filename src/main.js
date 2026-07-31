@@ -313,26 +313,50 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // over it. The third-wheel clearance that used to drive the tall seat is
 // now handled in XY instead: the tornado layout keeps |third − barrel|
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
-// Cone COMPRESSED to what its grooves actually need: each turn carries the
-// chain's 0.66 stack plus the 0.08 of flange room the shipped cone allowed
-// over it, so 4 turns ride in ~2.96 of height (the old 4.5 spread them a
-// full unit apart and made the fusee the tallest thing in the movement —
-// its top bound the three-quarter plate's floor).
+// Cone SIZED to what its grooves actually need — and, since §61, the
+// grooves are REAL: a helical channel cut into the cone, one plate
+// half-width deep, so the chain's inner edge rides the groove floor and
+// its centreline stays on the land-crest envelope (= the torque radii the
+// S·r_f equalisation was solved against — the cut makes the shipped
+// centreline convention honest instead of buried).
 // §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
 // The reserve entry's one catch, closed: the wrap count, the groove turns
 // and the height are all functions of hours/8, so changing the reserve
 // re-derives the cone instead of just the readout. One spare groove turn
 // above the wrap (ceil(+0.25)) keeps the chain's anchor turn off the working
-// grooves — at the 30 h default that is ceil(4.0) = 4 turns. The groove
-// pitch is the chain's own stack height (§39 stock, the true-scale chain)
-// plus that same 0.08 flange room; a longer reserve grows the cone AXIALLY
-// and FUSEE_BASE_Z's max() below decides what that costs — with the
-// three-quarter-plate boot assert as the honest failure mode if the stack
-// outgrows the plate band.
+// grooves — at the 30 h default that is ceil(4.0) = 4 turns.
+// §61 closes the pitch's false arithmetic: the shipped build promised a
+// 0.7-per-turn groove but DELIVERED 0.88·H·0.94/3.75 ≈ 0.65 — less than
+// the chain's own 0.66 stack, successive wraps interpenetrating. The
+// honest derivation runs the other way round, and it runs from the
+// movement's own z budget: the groove band is WEDGED between the center
+// wheel (the lowest wrap's underside must clear its top face) and the
+// hairspring stack (the plate floor's binding member — the tip may not
+// outgrow it, or the plate rises off the balance cock). What those two
+// binds afford, divided by the groove turns, is the pitch; pitch minus
+// the groove's own width (stack + seating clearance) is the LAND — the
+// uncut crest between wraps. The land is therefore the movement's slack
+// made visible: grow the reserve (§22) and the land thins toward the
+// floor below, with the warn as the honest cost report.
 const FUSEE_WRAP_TURNS = SPEC.reserveHours / 8; // = RESERVE_BARREL_TURNS (energy side, declared with the spring)
 const FUSEE_GROOVE_TURNS = Math.ceil(FUSEE_WRAP_TURNS + 0.25);
-const FUSEE_GROOVE_PITCH = CHAIN_PIN_LEN + 0.08; // 0.74 — stack + the shipped flange room (0.7 was 0.62+0.08)
-const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = FUSEE_GROOVE_PITCH * FUSEE_GROOVE_TURNS;
+const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.9375 — the wrap's share of the groove band (was a hand-rounded 0.94)
+const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
+const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 0.01;  // 0.67 — the stack drops in with a seating clearance
+const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
+const FUSEE_BASE_INSET = CLEAR_MARGIN; // seat collar under the bottom groove (the cut opens out the base)
+// Lowest legal bottom-groove centreline: the center wheel's top face plus
+// the margin plus the chain's half-stack below its centreline.
+const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + CHAIN_PIN_LEN / 2;
+// Highest legal tip: the spring stack top, less a 0.02 float guard so the
+// plate-floor comparator binds on the SPRING, not on rounding at the tip.
+const FUSEE_BAND = SPRING_TOP_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN;
+const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 0.695 at the 30 h default
+const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.025 — the z budget's slack, made visible
+if (FUSEE_LAND_W < 0.02)
+  console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
+const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4;
+const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 2.95 — the band plus its insets, nothing else
 // Base DERIVED from the plate's design goal. The old bind (the chain's
 // lowest span clearing the movement-side crown wheel) vanished when the
 // keyless works moved to the dial side — after that, the only thing the
@@ -340,22 +364,31 @@ const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = FUSEE_GROOVE_PITCH * F
 // sits at max(tallest under-plate part, hairspring stack) + margin, and
 // the fusee tip was that tallest part by ~2.5, holding the whole back of
 // the movement high and the balance cock BELOW the plate band it is meant
-// to sit in (the long-standing console warning). Seat the cone so its tip
-// (plus ~0.1 for the helical ridge standing proud of the profile) lands AT
-// the hairspring stack's top: the spring becomes the plate's binding
-// member again and everything above — plate, rod planes, post, stop-work
-// tail — closes down with it. The FLOOR under the cone is the CENTER
-// WHEEL: its disc reaches under the cone's footprint (origin is only 16.2
-// from the barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's
-// lowest span — riding the groove at FUSEE_H·0.06 above the base, chain
-// radius below its centre-line — must clear the wheel's top face by the
-// margin. Both binds explicit; today the spring goal governs (the center
-// wheel was dropped onto its own bind to make that true).
+// to sit in (the long-standing console warning). Keep the tip AT or under
+// the hairspring stack's top so the spring stays the plate's binding
+// member and everything above — plate, rod planes, post, stop-work tail —
+// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
+// disc reaches under the cone's footprint (origin is only 16.2 from the
+// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
+// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
+// below its centre-line — must clear the wheel's top face by the margin.
+// Both binds explicit. Since §61 the CENTER bind governs by construction:
+// FUSEE_BAND was derived to fill exactly the space between the two binds,
+// so the max() seats the cone on the wheel-side bind with the tip 0.04
+// under the spring top (the guard pair in the band derivation). The
+// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
+// future change hands it back the governing role.
 const FUSEE_BASE_Z = Math.max(
   SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
-  (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + CHAIN_PIN_LEN / 2 - FUSEE_H * 0.06 - L_BARREL,
+  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
 );
-const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: FUSEE_GROOVE_TURNS });
+const fusee = G.makeFusee({
+  rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: FUSEE_GROOVE_TURNS,
+  // §61 — the cut is derived from the chain's stock, here, once: the cone
+  // and the chain path (fuseeGrooveAt) read the same constants.
+  grooveW: FUSEE_GROOVE_W, grooveD: FUSEE_GROOVE_D,
+  bandZ0: FUSEE_BASE_INSET, bandSpan: FUSEE_BAND,
+});
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
 const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.pinion, thickness: 1.6, material: MATS.steel });
@@ -2974,13 +3007,24 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // long arm) — the products match, so train torque stays level. The cone
 // profile and the spring model are chosen so S(t)·r_f(t) is constant:
 // S = 0.35 + 0.65·t (linear spring), r_f = lerp(rLarge, rSmall, t), with
-// rLarge/rSmall = S(1)/S(0) = 2.857.
+// rLarge/rSmall = S(1)/S(0) = 2.857. §61: r_f is the chain's CENTRELINE
+// radius, and the groove cut (one plate half-width deep, floor at
+// envelope − half-width) is what makes the envelope constants above BE the
+// centreline radii — the equalisation reads the same numbers the geometry
+// now honestly delivers.
 // ---------------------------------------------------------------------------
 const DRUM_R = DRUM_R_ACTUAL;
+// §61 — the chain wraps the drum at its CENTRELINE radius, one plate
+// half-width off the wall (the link's inner edge kisses the wall instead
+// of the centreline being buried in it). This is also the honest FEED
+// radius: one drum turn pays out 2π·(wall + half-width) of chain, so the
+// rotation↔tension bookkeeping and the hook-congruence solve below all
+// read this constant, not the bare wall.
+const DRUM_WRAP_R = DRUM_R + CHAIN_END_R_OUT;
 const FUSEE_AVG_R = (FUSEE_R_SMALL + FUSEE_R_LARGE) / 2;
 // (§22: FUSEE_WRAP_TURNS is declared with the cone build above — one spec
 // derivation, no longer a duplicate literal of RESERVE_BARREL_TURNS.)
-const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length that moves over a full reserve
+const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length over a full reserve, at CENTRELINE radii (honest since the §61 cut)
 // Drum direction: perpendicular-to-stem, blended outward (away from the
 // plate centre) so the chain's span stays clear of the train — the pure
 // perpendicular placement let the span cross the third wheel as the active
@@ -3008,6 +3052,9 @@ const barrel = G.makeBarrel({
 });
 const drumGroup = new THREE.Group();
 drumGroup.position.set(drumPos.x, drumPos.y, Z_DRUM);
+// §61 — the wall the chain-seating instrument measures against (drum-local
+// frame: body centred on the group origin).
+drumGroup.userData.chainSeat = { wallR: DRUM_R, halfH: DRUM_HEIGHT / 2 };
 drumGroup.add(barrel);
 movement.add(drumGroup);
 registerExplode(drumGroup, Z_DRUM, 1);
@@ -3017,8 +3064,8 @@ registerLabel('Mainspring drum', drumGroup);
 addLowerPivot(drumGroup, { staffR: 0.6, jewelR: 1.4 });
 
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
-const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_H * 0.06; // world z of the lowest groove
-const FUSEE_ZSPAN = FUSEE_H * 0.88;               // groove band height
+const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
+const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 let lastChainTension = -1;
@@ -3140,9 +3187,9 @@ const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid
 // centres that fractional solve on the +0.3 slack turn, giving the
 // round-to-nearest branch maximum headroom against the ±0.02-turn drift.
 const HOOK_A = (() => {
-  const midR = fuseeGrooveAt(0.5 * 0.94).r;
+  const midR = fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r;
   const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
-  const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_R) / Math.hypot(dx, dy), -1, 1));
+  const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_WRAP_R) / Math.hypot(dx, dy), -1, 1));
   return thetaMid + 0.3 * Math.PI * 2;
 })();
 {
@@ -3156,26 +3203,28 @@ const HOOK_A = (() => {
   // than the chain's own rivet but well under the link's opening
   // (pitch − 2·rivet ≈ 1.36 along, pitch/2 − rivet ≈ 0.68 across), and the
   // tab behind it reaches from the wall out to the claw's far side.
-  const CLAW_R = 0.3, CLAW_LEN = 1.2, CLAW_STAND = DRUM_R + CHAIN_END_R_OUT;
+  const CLAW_R = 0.3, CLAW_LEN = 1.2, CLAW_STAND = DRUM_WRAP_R;
   const tabD = CHAIN_END_R_OUT + CLAW_R;
   const tab = new THREE.Mesh(new THREE.BoxGeometry(tabD, CLAW_LEN + 0.2, 0.9), MATS.steel);
   tab.position.set(Math.cos(HOOK_A) * (DRUM_R + tabD / 2), Math.sin(HOOK_A) * (DRUM_R + tabD / 2), hookLocalZ);
   tab.rotation.z = HOOK_A;
+  tab.name = 'drumHookTab'; // named for the §61 chain-on-drum budget selector: the hook is a working contact, not wall seating
   drumGroup.add(tab);
   const claw = new THREE.Mesh(new THREE.CylinderGeometry(CLAW_R, CLAW_R, CLAW_LEN, 8), MATS.steel);
   claw.rotation.z = HOOK_A + Math.PI / 2; // pin lies tangentially along the wall
   claw.position.set(Math.cos(HOOK_A) * CLAW_STAND, Math.sin(HOOK_A) * CLAW_STAND, hookLocalZ);
+  claw.name = 'drumHookClaw';
   drumGroup.add(claw);
 }
 function rebuildChain(tension) {
   lastChainTension = tension;
-  const fActive = tension * 0.94;
+  const fActive = tension * FUSEE_F_ACTIVE; // full wind uses the wrap's share of the groove band exactly (§61)
   const active = fuseeGrooveAt(fActive);
   // External tangent between the fusee's active circle and the drum.
   const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
   const D = Math.hypot(dx, dy);
   const base = Math.atan2(dy, dx);
-  const alpha = Math.acos(clamp((active.r - DRUM_R) / D, -1, 1));
+  const alpha = Math.acos(clamp((active.r - DRUM_WRAP_R) / D, -1, 1));
   // Tangent BRANCH matters: the arbor runs CCW, so paying out requires the
   // cone's surface velocity at the departure point (its CCW tangent) to
   // point along the span toward the drum — that's the base−α branch. The
@@ -3207,30 +3256,53 @@ function rebuildChain(tension) {
   // (round-to-nearest is branch-stable: HOOK_A centres the offset — see
   // its comment). The coil hangs DOWN from the hook, one chain diameter
   // per turn, so the takeoff tangent point descends as the reserve drains.
-  const rot = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R; // = drumGroup.rotation.z in tick()
-  const baseTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_R) + 0.3;
+  const rot = ((1 - tension) * CHAIN_ENGAGED) / DRUM_WRAP_R; // = drumGroup.rotation.z in tick()
+  const baseTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_WRAP_R) + 0.3;
   let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
   if (frac < 0) frac += 1;
   const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
   const takeoffZ = COIL_TOP - drumTurns * CHAIN_COIL_PITCH;
-  const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_R, y: drumPos.y + Math.sin(thetaT) * DRUM_R };
+  const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_WRAP_R, y: drumPos.y + Math.sin(thetaT) * DRUM_WRAP_R };
   pts.push(new THREE.Vector3(TB.x, TB.y, takeoffZ));
-  const nD = Math.max(Math.ceil(drumTurns * SEG_PER_TURN), 2);
+  // Pin the span→coil corner: Catmull-Rom otherwise rounds it INSIDE the
+  // wall (the §61 seating row measured 0.139 of burial against its 0.08
+  // budget from this alone) — a short anchor on the circle just past the
+  // takeoff makes the spline enter the coil along the wall's tangent.
+  {
+    const sA = Math.min(0.03, drumTurns * 0.5);
+    const angA = thetaT + sA * Math.PI * 2;
+    pts.push(new THREE.Vector3(
+      drumPos.x + Math.cos(angA) * DRUM_WRAP_R,
+      drumPos.y + Math.sin(angA) * DRUM_WRAP_R,
+      COIL_TOP - (drumTurns - sA) * CHAIN_COIL_PITCH
+    ));
+  }
+  // Denser than the cone wrap: the coil's seating budget is 0.08 (no slope
+  // term to hide spline sag in), so the control points hug the circle at
+  // 32/turn — at 14 the interpolant's sag near the junctions measured as
+  // wall burial.
+  const nD = Math.max(Math.ceil(drumTurns * 32), 4);
+  // The coil stops a short arc before the hook: the claw stands at the same
+  // radius as the wrap now, so running the coil all the way to hookAng made
+  // the last two control points COINCIDE — a degenerate Catmull-Rom tangent
+  // that wobbled the end links 0.14 into the wall (the §61 seating row is
+  // what caught it).
+  const coilEnd = Math.max(drumTurns - 0.03, 0);
   for (let i = 1; i <= nD; i++) {
-    const s = (i / nD) * drumTurns;
+    const s = (i / nD) * coilEnd;
     const ang = thetaT + s * Math.PI * 2;
     pts.push(new THREE.Vector3(
-      drumPos.x + Math.cos(ang) * DRUM_R,
-      drumPos.y + Math.sin(ang) * DRUM_R,
+      drumPos.x + Math.cos(ang) * DRUM_WRAP_R,
+      drumPos.y + Math.sin(ang) * DRUM_WRAP_R,
       COIL_TOP - (drumTurns - s) * CHAIN_COIL_PITCH // climbs back up to the hook plane
     ));
   }
-  // ...and the end link steps out onto the hook's claw pin (the claw
-  // stands the link's half-width off the wall — see the hook build).
+  // ...and the end link steps onto the hook's claw pin — same standoff as
+  // the wrap, so the last link arrives without a radial jog.
   const hookAng = thetaT + drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
   pts.push(new THREE.Vector3(
-    drumPos.x + Math.cos(hookAng) * (DRUM_R + CHAIN_END_R_OUT),
-    drumPos.y + Math.sin(hookAng) * (DRUM_R + CHAIN_END_R_OUT),
+    drumPos.x + Math.cos(hookAng) * DRUM_WRAP_R,
+    drumPos.y + Math.sin(hookAng) * DRUM_WRAP_R,
     COIL_TOP
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
@@ -14025,7 +14097,7 @@ function tick(t) {
   // much chain has paid onto it. The chain MESH is not rebuilt here — tick
   // only records the tension; updateChainIfMoved() rebuilds once per
   // rendered/posed frame (§14), since the chain is display-only.
-  drumGroup.rotation.z = ((1 - tension) * CHAIN_ENGAGED) / DRUM_R;
+  drumGroup.rotation.z = ((1 - tension) * CHAIN_ENGAGED) / DRUM_WRAP_R; // feed at the chain's centreline radius (§61)
   chainTensionNow = tension;
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
