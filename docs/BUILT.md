@@ -5465,11 +5465,44 @@ a 3-point simplification of §35's actual run, and stations are merged per
 clear stretch, so 3 is an under-count of a coarser path rather than a
 disagreement with §35.
 
-### What is NOT built
+### The sketch surface
 
-**The sketch UI.** The entry places this in §33's reconfigure surface,
-where a user draws the polyline; what is shipped is the validity engine and
-the synthesis it feeds — the half §36 owns, callable as
-`checkRoute(clock, points, { exclude })` and `solveRoute(...)`. Drawing the
-polyline, and the drag/refuse loop around it, is §33-surface work and
-remains open.
+A **Route → Sketch** mode beside the reconfigure rows, in §33's grammar
+throughout: candidates are proposed / warned / refused, a refusal names
+what it hit, ghosts are scene furniture and never units.
+
+**The commit rule: a refused leg cannot be placed.** The click is rejected
+with the occupant named in the row — so a committed polyline is legal *by
+construction*, and Solve never has to un-refuse anything. Structural metal
+is the amber middle state: the leg commits, labelled with the bore it
+implies.
+
+**A 3D route with a 2D pointer**: points land on a depth plane a slider
+sets. Click at one depth, move the slider, click again — §35's rod (same
+x, y, two depths) is two clicks. The pending leg re-judges on every
+pointer move *and every slider change*, since depth changes what you hit.
+Click-not-drag placement (a pointer that moves >5 px is an orbit), Escape
+exits, and changing the re-route selector **clears the sketch** — the
+committed legs were judged under the old exclusion, and keeping them
+would keep verdicts that are no longer true.
+
+The registry builds once per session on first entry, which is sound
+because geometry only changes through §33's Apply, which reloads. The
+live leg-judge is a synchronous twin of `checkRoute`'s sampler — same
+step, same clearance, same occupant query — so the preview and the
+committed verdict cannot disagree.
+
+**Verified end to end by driving the real controls** (synthetic pointer
+events on the canvas, world→screen projected): a first point placed, a
+free-air leg committed as *"leg 1 clear"*, and a leg aimed into the train
+refused as *"refused: leg enters Center wheel — swept volume, nothing to
+drill"* with the click rejected. Solve on the legal polyline: *"1 arbor ·
+0 knuckles · 1 bush station — a spec, drawn as ghosts"*, and the scene
+graph agrees exactly — 2 dots, 1 committed leg, 1 ghost arbor, 1 bush
+ring, 1 pending line.
+
+**Still not built: Apply.** The ghosts are a spec. Turning a solved route
+into real parts — `MECH_GRAPH` entries, bores actually drilled through the
+plates it names, stock-floored sections — is Apply-shaped work in §33's
+sense, and it is where this connects to the standing design-priority rule:
+a routed linkage's lever ratios are still P1's business, not the router's.
