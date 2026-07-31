@@ -2387,7 +2387,19 @@ export async function buildSweptRegistry(clock, {
       let zLo = Infinity, zHi = -Infinity;
       for (const pts of series) for (let i = 2; i < pts.length; i += 3) { if (pts[i] < zLo) zLo = pts[i]; if (pts[i] > zHi) zHi = pts[i]; }
       if (!moves) {
-        volumes.push({ unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'static', zBand: [zLo, zHi], reversed: false });
+        // §36 part three needs a static part's spatial extent, not just its z
+        // band. It costs nothing to store — the part DOES NOT MOVE, so its
+        // world AABB is exact rather than a hull — and without it structural
+        // metal is invisible to the route check, which would make "through
+        // structural metal is fine" vacuously true instead of evidenced.
+        let bxLo = Infinity, byLo = Infinity, bxHi = -Infinity, byHi = -Infinity;
+        for (let i = 0; i < series[0].length; i += 3) {
+          const x = series[0][i], y = series[0][i + 1];
+          if (x < bxLo) bxLo = x; if (x > bxHi) bxHi = x;
+          if (y < byLo) byLo = y; if (y > byHi) byHi = y;
+        }
+        volumes.push({ unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'static',
+                       box: [bxLo, byLo, zLo, bxHi, byHi, zHi], zBand: [zLo, zHi], reversed: false });
         continue;
       }
       // Planar? (every vertex holds its z)
@@ -2805,6 +2817,165 @@ export async function buildSweptRegistry(clock, {
     _volumes: volumes,   // with mesh + bins, for checkSweptOverlap (§36 part two)
   };
   } finally { if (clock.endSweepHold) clock.endSweepHold(); }
+}
+
+// ---------------------------------------------------------------------------
+// §36 PART THREE — ROUTING AS A SPEC.
+//
+// §35's corridor hunt was done BY HAND: two shafts, one knuckle, four
+// ray-proved bush stations, and a great deal of probing to establish that a
+// rod could get from the column wheel to the selector ring without hitting
+// anything on the way. That hunt is the manual proof this automates — the
+// drawn path becomes the SPEC and the parts are solved from it.
+//
+// THE RULE THAT MAKES IT A ROUTING PROBLEM AND NOT A COLLISION TEST:
+//
+//   * STRUCTURAL METAL IS DRILLABLE. A plate, a bridge, a pillar — a route
+//     through one is legal, because a bore gets drilled. §35 did exactly
+//     this: the selector rod passes a bore through BOTH plates.
+//   * A SWEPT VOLUME IS REFUSED. Anything a moving part can reach is not
+//     negotiable, because there is nothing to drill — the space is occupied
+//     in time rather than in matter.
+//
+// The registry already draws that line and did not know it: a `static`
+// volume is a part that never moves, and `revolve`/`path` are the swept ones.
+// So the routing question is answerable from §36's own output with no new
+// sampling, which is the whole reason this is a §36 part and not its own
+// entry.
+//
+// REFUSAL IS PER-SEGMENT AND NAMES THE VOLUME, inheriting §33's vocabulary
+// (refused / warned / proposed): a route that cannot be built should say
+// which leg is impossible and what occupies it, not merely fail.
+const ROUTE_SAMPLE_STEP = 0.25;      // units along a segment — a quarter of the stock floor's diameter
+
+const _routeInRevolve = (v, p, clearance) => {
+  const dx = p[0] - v.axis[0], dy = p[1] - v.axis[1];
+  const r = Math.hypot(dx, dy);
+  if (r < v.rBand[0] - clearance || r > v.rBand[1] + clearance) return false;
+  if (p[2] < v.zBand[0] - clearance || p[2] > v.zBand[1] + clearance) return false;
+  if (v.full || !v.bins) return true;                 // full revolve: every azimuth
+  let a = Math.atan2(dy, dx); if (a < 0) a += Math.PI * 2;
+  const bin = Math.min(v.bins.length - 1, (a / (Math.PI * 2) * v.bins.length) | 0);
+  return v.bins[bin] === 1;
+};
+const _routeInBoxes = (boxes, p, clearance) => {
+  for (const b of boxes) {
+    if (p[0] >= b[0] - clearance && p[0] <= b[3] + clearance &&
+        p[1] >= b[1] - clearance && p[1] <= b[4] + clearance &&
+        p[2] >= b[2] - clearance && p[2] <= b[5] + clearance) return true;
+  }
+  return false;
+};
+
+// What occupies a point, or null. Structural metal is reported but not
+// refused — the caller decides, and the distinction is the entry's rule.
+export function routeOccupantAt(reg, p, clearance = CLEAR_MARGIN, exclude = null) {
+  const vols = reg._volumes || reg.registry || [];
+  for (const v of vols) {
+    // THE LINKAGE BEING ROUTED CANNOT BLOCK ITSELF. Without this the check is
+    // useless for the only thing it is for: §35's real corridor came back
+    // REFUSED, and every volume named was the alarm link's own — the rod
+    // objecting to the space the rod occupies. Re-routing an existing linkage
+    // means asking whether the space would be free once it is lifted out.
+    if (exclude && exclude.has(v.unit)) continue;
+    let hit = false;
+    if (v.kind === 'revolve') hit = _routeInRevolve(v, p, clearance);
+    else if (v.kind === 'path') hit = v.boxes ? _routeInBoxes(v.boxes, p, clearance)
+                                : v.box ? _routeInBoxes([v.box], p, clearance) : false;
+    else if (v.kind === 'static') hit = v.box ? _routeInBoxes([v.box], p, clearance)
+                                : (p[2] >= v.zBand[0] - clearance && p[2] <= v.zBand[1] + clearance
+                                   && v.rBand && _routeInRevolve({ ...v, full: true }, p, clearance));
+    else if (v.kind === 'approx' && v.box) hit = _routeInBoxes([v.box], p, clearance);
+    if (!hit) continue;
+    return { unit: v.unit, mesh: v.meshName || null, kind: v.kind,
+             swept: v.kind === 'revolve' || v.kind === 'path' || v.kind === 'approx' };
+  }
+  return null;
+}
+
+// THE CHECK. A polyline in world units; each segment judged on its own.
+export async function checkRoute(clock, points, opts = {}) {
+  const reg = opts.registry || await buildSweptRegistry(clock, opts);
+  const clearance = opts.clearance ?? CLEAR_MARGIN;
+  const exclude = opts.exclude ? new Set(opts.exclude) : null;
+  const segs = [];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i], b = points[i + 1];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    const n = Math.max(2, Math.ceil(len / ROUTE_SAMPLE_STEP));
+    const blocking = new Map(), drilled = new Map();
+    let firstBlockAt = null;
+    for (let k = 0; k <= n; k++) {
+      const t = k / n;
+      const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      const occ = routeOccupantAt(reg, p, clearance, exclude);
+      if (!occ) continue;
+      const key = `${occ.unit}${occ.mesh ? '/' + occ.mesh : ''}`;
+      if (occ.swept) {
+        if (!blocking.has(key)) blocking.set(key, { ...occ, atFraction: +t.toFixed(3) });
+        if (firstBlockAt === null) firstBlockAt = +t.toFixed(3);
+      } else if (!drilled.has(key)) drilled.set(key, occ);
+    }
+    const block = [...blocking.values()];
+    segs.push({
+      index: i, from: a, to: b, length: +len.toFixed(3),
+      verdict: block.length ? 'refused' : 'legal',
+      // §33's shape: a refusal states WHAT and WHERE, not just that it failed.
+      refuse: block.length
+        ? `leg ${i + 1} enters ${block.map((x) => x.unit + (x.mesh ? `/${x.mesh}` : '')).join(', ')}`
+          + ` at ${(firstBlockAt * 100).toFixed(0)}% along — swept volume, nothing to drill`
+        : null,
+      blockedBy: block,
+      drillsThrough: [...drilled.values()].map((d) => d.unit + (d.mesh ? `/${d.mesh}` : '')),
+    });
+  }
+  const refused = segs.filter((s) => s.verdict === 'refused');
+  return {
+    ok: refused.length === 0,
+    legs: segs.length, refusedLegs: refused.length,
+    // Structural metal crossed by a LEGAL route is not a problem, it is a
+    // bill of materials: every one of these is a bore somebody has to drill.
+    bores: [...new Set(segs.flatMap((s) => s.drillsThrough))],
+    verdict: refused.length ? refused[0].refuse : 'route is legal — every leg clears the swept volumes',
+    segments: segs,
+  };
+}
+
+// THE SYNTHESIS. A legal polyline is a spec; these are the parts it implies.
+// §35 derived exactly this by hand and is the shape to match: straight arbors
+// between knuckles, and bush stations wherever a run's surrounding column is
+// clear enough to hang one.
+export async function solveRoute(clock, points, opts = {}) {
+  const reg = opts.registry || await buildSweptRegistry(clock, opts);
+  const route = await checkRoute(clock, points, { ...opts, registry: reg });
+  if (!route.ok) return { ok: false, route, arbors: [], knuckles: [], bushes: [] };
+  const exclude = opts.exclude ? new Set(opts.exclude) : null;
+  const bushR = opts.bushRadius ?? 0.45;   // §35's ray-proved bush radius
+  const arbors = [], bushes = [];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i], b = points[i + 1];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    arbors.push({ index: i, from: a, to: b, length: +len.toFixed(3) });
+    // A bush needs its own clearance, wider than the rod's: it is a ring
+    // around the arbor, so it is tested at the BUSH's radius, which is what
+    // §35's note means by "ray-proved AT THE BUSH'S 0.45 RADIUS".
+    const n = Math.max(2, Math.ceil(len / ROUTE_SAMPLE_STEP));
+    for (let k = 1; k < n; k++) {
+      const t = k / n;
+      const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      if (routeOccupantAt(reg, p, bushR, exclude)) continue;
+      const prev = bushes[bushes.length - 1];
+      // One station per clear stretch, not one per sample.
+      if (prev && prev.arbor === i && Math.abs(prev.t - t) < 0.12) { prev.t = t; prev.at = p; continue; }
+      bushes.push({ arbor: i, t: +t.toFixed(3), at: p });
+    }
+  }
+  return {
+    ok: true, route,
+    arbors,
+    knuckles: points.slice(1, -1).map((p, i) => ({ between: [i, i + 1], at: p })),
+    bushes: bushes.map((b) => ({ arbor: b.arbor, at: b.at.map((v) => +v.toFixed(2)) })),
+  };
 }
 
 // §36 follow-up — VERIFY the low-corridor obstacle table.

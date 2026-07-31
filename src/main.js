@@ -14565,6 +14565,10 @@ window.__clock = {
   camera, controls, scene, labelEntries,
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
+  // §36 part three: the routing spec's own frame. A sketched polyline arrives
+  // in world units, and these are what a caller needs to place one without
+  // guessing at the movement's extents.
+  get routeBounds() { return { plateR, zLow: -8, zHigh: 12 }; },
   // §36 follow-up: the low-corridor table and its band, exposed so the
   // battery can VERIFY the hand-built footprint against sampled reality.
   // The table cannot be GENERATED from the registry — it is consumed
