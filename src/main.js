@@ -83,7 +83,7 @@ app.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const sceneAesthetic = aesthetics.lighting.scene;
 scene.background = new THREE.Color(sceneAesthetic.backgroundColor);
-scene.fog = new THREE.Fog(sceneAesthetic.fogColor, 180, 420);
+scene.fog = new THREE.Fog(sceneAesthetic.fogColor, 180, 420); // seed band; updateDepthLimits() re-derives it from the live camera every frame (§60 remainder)
 
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 2000);
 camera.position.set(60, 55, 90);
@@ -703,6 +703,36 @@ camera.position.set(plateR * 2.0, plateR * 1.8, plateR * 3.0);
 camera.near = Math.max(0.5, plateR * 0.02);
 camera.far = plateR * 20;
 camera.updateProjectionMatrix();
+
+// §60 remainder — DEPTH LIMITS TRACK THE CAMERA. The fog is a background
+// depth cue, not a curtain: at the shipped fixed band (180..420) it never
+// touched the movement at the working ~100-unit standoff (the movement's
+// far edge sits ≈ d + plateR), but zooming toward the life-size distance
+// (~820 at a 900 px viewport) buried the whole watch in it, camera.far
+// (plateR·20) clipped its far side, and maxDistance refused the pose
+// outside the mode. Derive the band from the camera's live distance
+// instead, pinned to the SHIPPED look: at the Free preset's ~100 standoff
+// the old band began 180−100 ≈ 1.9·plateR past the camera and ended
+// 420−100 ≈ 7.5·plateR past it. Those ratios ARE the depth-cue design;
+// carrying them at every distance keeps the working views bit-identical
+// in spirit and makes it impossible for the subject to sink into its own
+// backdrop at any legal pose.
+const FOG_NEAR_PAD = 1.9 * plateR;
+const FOG_FAR_PAD = 7.5 * plateR;
+function updateDepthLimits() {
+  const d = camera.position.distanceTo(controls.target);
+  scene.fog.near = d + FOG_NEAR_PAD;
+  scene.fog.far = d + FOG_FAR_PAD;
+  // Far plane: hold the shipped precision-tuned floor (plateR·20, chosen
+  // for depth-buffer precision at working range) and extend only when the
+  // pose actually needs the room, with 1% hysteresis — the projection
+  // matrix is not free to rebuild every frame.
+  const wantFar = Math.max(plateR * 20, d + FOG_FAR_PAD);
+  if (Math.abs(camera.far - wantFar) > wantFar * 0.01) {
+    camera.far = wantFar;
+    camera.updateProjectionMatrix();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Mesh-phase interleaving: choose each driven wheel's constant rotation
@@ -10271,7 +10301,9 @@ const _sndRight = new THREE.Vector3();
 // stays exactly as tuned by ear.
 const SND_REF = (Math.hypot(P.balance.x - P.escape.x, P.balance.y - P.escape.y) / 2 + balanceR) * 3.8;
 const SND_NEAR = plateR * 0.35; // controls.minDistance
-const SND_FAR = plateR * 12; // controls.maxDistance
+const SND_FAR = plateR * 12; // the WORKING-RANGE clamp floor — the clamp itself now reaches past this
+                             // to admit the life-size pose (updateMaxDistance), and a watch heard from
+                             // life-size distance fading below the -25 dB solve is correct, not a bug
 // rolloff solved so the far orbit limit lands at -25dB (10^(-25/20)) rather
 // than at silence; gain is clamped <=1 below so the near limit can't exceed
 // today's tuned levels (SND_NEAR < SND_REF would otherwise overshoot 1).
@@ -12404,6 +12436,10 @@ document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
 // deep into the fog that it cannot be seen at all. That is three limits, not
 // one, and the fog is only the one you can see: `controls.maxDistance` blocks
 // the pose, the fog greys it out long before, and `camera.far` clips it.
+// (§60's remainder retired all three AS LIMITS: the fog band and far plane
+// now ride the camera globally — updateDepthLimits, declared with the
+// camera — and the clamp admits the life-size standoff by hand. The mode
+// below is what is left: the derived pose and the honest caption.)
 //
 // THE DISTANCE IS DERIVED, NOT THE 827 THE ENTRY MEASURED. For a perspective
 // camera the world height spanned at distance d is 2·d·tan(fov/2), so
@@ -12450,35 +12486,34 @@ function lifeSizeDistance() {
 // derived from the same ruler rather than asserted.
 function lifeSizePlateMM() { return scaleReadout ? scaleReadout.plateMM : 0; }
 
-// The three limits, suspended FOR THE MODE and restored on leaving. The normal
-// view wants its fog: it is a depth cue tuned for the working range. At life
-// size the whole movement sits at essentially one depth, so fog contributes
-// nothing there but a grey wash.
+// The three limits used to be suspended FOR THE MODE and restored on
+// leaving; the §60 remainder retired that special case. Fog and camera.far
+// now track the camera globally (updateDepthLimits — the subject cannot
+// sink into the backdrop at any pose, life-size included), and the
+// distance clamp below admits the life-size standoff by hand as well as
+// through the mode. What remains of the mode is what only it can do: the
+// derived pose, and the caption that says out loud what it means.
 let lifeSizeOn = false;
-let lifeSizeSaved = null;
+// The clamp must admit the pose OUTSIDE the mode too — zooming out by
+// hand to the life-size distance is a legal way to arrive at it. Solved
+// live because the pose depends on the viewport (see lifeSizeDistance);
+// re-run on resize. The 1.25 is the shipped orbit headroom, unchanged.
+function updateMaxDistance() {
+  controls.maxDistance = Math.max(plateR * 12, lifeSizeDistance() * 1.25);
+}
 function setLifeSize(on) {
   if (on === lifeSizeOn) return;
   lifeSizeOn = on;
   if (on) {
-    lifeSizeSaved = { fogNear: scene.fog.near, fogFar: scene.fog.far,
-                      maxDistance: controls.maxDistance, far: camera.far };
     const d = lifeSizeDistance();
-    scene.fog.near = d * 4; scene.fog.far = d * 8;      // pushed past the subject, not deleted
-    controls.maxDistance = d * 1.25;                     // admits the pose with room to orbit
-    camera.far = d * 1.6; camera.updateProjectionMatrix();
     const dir = camera.position.clone().sub(controls.target).normalize();
     goToPose(controls.target.clone().addScaledVector(dir, d), controls.target.clone());
   } else {
-    if (lifeSizeSaved) {
-      scene.fog.near = lifeSizeSaved.fogNear; scene.fog.far = lifeSizeSaved.fogFar;
-      controls.maxDistance = lifeSizeSaved.maxDistance;
-      camera.far = lifeSizeSaved.far; camera.updateProjectionMatrix();
-      lifeSizeSaved = null;
-    }
     goToPreset('Free');
   }
   updateLifeSizeUI();
 }
+updateMaxDistance();
 
 // SAY OUT LOUD THAT IT WILL LOOK SMALL. At life size the movement covers about
 // 13% of a 900 px viewport. That is the honest answer to "how big is this
@@ -12545,11 +12580,9 @@ function openLifeSizeCalibration() {
 // silently stops being true the moment someone drags a window edge — the
 // entry's own requirement, and the difference between a mode and a label.
 window.addEventListener('resize', () => {
+  updateMaxDistance(); // the clamp's life-size term moved with the viewport
   if (!lifeSizeOn) return;
   const d = lifeSizeDistance();
-  scene.fog.near = d * 4; scene.fog.far = d * 8;
-  controls.maxDistance = d * 1.25;
-  camera.far = d * 1.6; camera.updateProjectionMatrix();
   const dir = camera.position.clone().sub(controls.target).normalize();
   goToPose(controls.target.clone().addScaledVector(dir, d), controls.target.clone(), { snap: true });
   updateLifeSizeUI();
@@ -14676,6 +14709,7 @@ function advanceFrame(realDt) {
   }
 
   controls.update();
+  updateDepthLimits(); // §60 remainder: fog band and far plane ride the camera's final position for this frame
   updateLabels();
   hudUpdate();        // §57: the HUD's heads follow the eased stem positions, so they update with the frame
   updateExploreTethers(); // §58: tether endpoints ride live boxes — drag, explode and the mechanism all move them

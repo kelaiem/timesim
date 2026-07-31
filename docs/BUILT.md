@@ -5390,6 +5390,39 @@ someone drags a window edge. A pose with a deep link (`?lifesize=1`) rather
 than a free-orbit state, per §37. And the caption says out loud that it
 will look small — a viewer who expected a zoom control and got a small
 watch would read the answer as a bug.
+
+### The remainder ships — "let it be visible" becomes true everywhere
+
+The entry's remaining half was the report itself: arriving at the
+life-size distance BY HAND still hit all three limits — the fixed
+`Fog(180, 420)` buried the watch past ~400, `camera.far` (plateR·20)
+clipped its far side at the ~820 pose, and `controls.maxDistance`
+(plateR·12 ≈ 515) refused the distance outright. The mode dodged them
+by suspending and restoring all three; navigation did not.
+
+What shipped is simpler than the planned "per-mode fog/far/maxDistance
+handling": the limits became GLOBAL functions of the camera, and the
+mode lost its special cases instead of gaining more. The fixed fog band
+never touched the movement at the working ~100 u standoff — it began
+180−100 ≈ 1.9·plateR past the camera and ended 420−100 ≈ 7.5·plateR
+past it. Those ratios ARE the depth-cue design, so `updateDepthLimits`
+(run each frame after `controls.update`) carries them at every
+distance: fog.near/far = camera-to-target distance + the two pads, and
+the far plane holds its precision-tuned plateR·20 floor, extending with
+1% hysteresis only when a pose needs the room. The clamp solves
+`max(plateR·12, lifeSizeDistance()·1.25)` live (re-run on resize, since
+the life-size distance depends on the viewport). `setLifeSize` shrank
+to what only the mode can do — the derived pose and the honest caption —
+and the save/push/restore state (`lifeSizeSaved`) is gone.
+
+Verified: manual pose at 911 u (1400×1000 viewport) renders the
+movement clear — fog band solved to 993→1233, far plane 1233 — and the
+default working views are visually unchanged, which is the pad
+derivation doing exactly what it was pinned to do. One knock-on comment
+made honest: `SND_FAR` still equals plateR·12, but that is now the
+clamp's FLOOR, not its value — a watch heard from life-size distance
+fading below the −25 dB solve is correct behaviour, stated at the
+constant.
 ## §53. Advanced Settings labels — authored, stacked, wrapping
 
 Reported: under Finishing → Advanced Settings almost every label was
