@@ -2586,6 +2586,31 @@ been decoration, which is precisely what §21 warned against.
 actually needed was one asserted constant. §2 keeps the compaction work
 and can now, for the first time, measure its own "≤ 40 mm" target.
 
+### Correction — the pin's real-world figure was wrong (true-scale chain)
+
+The method survived; the datum didn't. "Real fusee chain runs ~0.30 mm
+rivet-to-rivet" turned out to sit in the **width** band of small chains,
+not any pitch. The best-documented manufactured reference for this class
+of movement — A. Lange & Söhne cal. L044.1 (Richard Lange Pour le
+Mérite), a 31.6 mm fusee-and-chain wristwatch movement — runs a chain of
+212 links over 152 mm: **0.72 mm pitch, 0.50 mm wide, 0.25 mm thick**.
+Antique pocket-watch chains are coarser still (~0.36 mm thick × 0.8 mm
+tall sections).
+
+The falsifiability §39 built is exactly what caught it: drawn at true
+proportion against the 0.30 mm pin, the chain predicts a **77 mm plate**
+— the plate envelope assert fails by 2.4×. The fix re-pins
+`CHAIN_PITCH_MM = 0.72` and redraws the chain at `CHAIN_PITCH = 1.9 u`
+(the real pitch through §2's independent ~0.38 mm/u by-eye estimate,
+0.72 / 0.38 = 1.9), which lands `UNIT_MM` at **0.379** — the two methods
+now agree to 0.3%. The chain's cross-section (stack 0.66 u = 0.25 mm,
+plate width 1.32 u = 0.50 mm, rivet 0.29·pitch) moved into `layout.js`
+beside the pitch, because the fusee's groove pitch, its base seat and
+the drum's coil pitch are all derived from the stack — the cone consumes
+the chain's stock long before the chain itself is built. Predictions
+after the re-pin: plate 32.5 mm, balance 8.2 mm, depth ~9.8 mm — all
+still inside the envelopes, none tuned to be.
+
 ## §21 — Scale reference: making 32 mm mean something
 
 §39 gave the movement a real size. Millimetres only mean something to

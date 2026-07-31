@@ -29,6 +29,8 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
+  CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
+  CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
 } from './layout.js';
 
@@ -311,24 +313,26 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // over it. The third-wheel clearance that used to drive the tall seat is
 // now handled in XY instead: the tornado layout keeps |third − barrel|
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
-// Cone COMPRESSED to what its grooves actually need: 4 turns of 0.6-dia
-// chain want ~0.62 pitch, so 2.8 of height carries them snugly (the old
-// 4.5 spread them a full unit apart and made the fusee the tallest thing
-// in the movement — its top bound the three-quarter plate's floor).
+// Cone COMPRESSED to what its grooves actually need: each turn carries the
+// chain's 0.66 stack plus the 0.08 of flange room the shipped cone allowed
+// over it, so 4 turns ride in ~2.96 of height (the old 4.5 spread them a
+// full unit apart and made the fusee the tallest thing in the movement —
+// its top bound the three-quarter plate's floor).
 // §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
 // The reserve entry's one catch, closed: the wrap count, the groove turns
 // and the height are all functions of hours/8, so changing the reserve
 // re-derives the cone instead of just the readout. One spare groove turn
 // above the wrap (ceil(+0.25)) keeps the chain's anchor turn off the working
-// grooves — at the 30 h default that is ceil(4.0) = 4 turns and H = 2.8,
-// bit-identical to the shipped literals. Pitch stays 0.7 per turn (the
-// "snug" 0.62 chain pitch plus flange, unchanged); a longer reserve grows
-// the cone AXIALLY and FUSEE_BASE_Z's max() below decides what that costs —
-// with the three-quarter-plate boot assert as the honest failure mode if
-// the stack outgrows the plate band.
+// grooves — at the 30 h default that is ceil(4.0) = 4 turns. The groove
+// pitch is the chain's own stack height (§39 stock, the true-scale chain)
+// plus that same 0.08 flange room; a longer reserve grows the cone AXIALLY
+// and FUSEE_BASE_Z's max() below decides what that costs — with the
+// three-quarter-plate boot assert as the honest failure mode if the stack
+// outgrows the plate band.
 const FUSEE_WRAP_TURNS = SPEC.reserveHours / 8; // = RESERVE_BARREL_TURNS (energy side, declared with the spring)
 const FUSEE_GROOVE_TURNS = Math.ceil(FUSEE_WRAP_TURNS + 0.25);
-const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 0.7 * FUSEE_GROOVE_TURNS;
+const FUSEE_GROOVE_PITCH = CHAIN_PIN_LEN + 0.08; // 0.74 — stack + the shipped flange room (0.7 was 0.62+0.08)
+const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = FUSEE_GROOVE_PITCH * FUSEE_GROOVE_TURNS;
 // Base DERIVED from the plate's design goal. The old bind (the chain's
 // lowest span clearing the movement-side crown wheel) vanished when the
 // keyless works moved to the dial side — after that, the only thing the
@@ -349,7 +353,7 @@ const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4, FUSEE_H = 0.7 * FUSEE_GROOVE_TUR
 // wheel was dropped onto its own bind to make that true).
 const FUSEE_BASE_Z = Math.max(
   SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
-  (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + 0.3 - FUSEE_H * 0.06 - L_BARREL,
+  (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + CHAIN_PIN_LEN / 2 - FUSEE_H * 0.06 - L_BARREL,
 );
 const fusee = G.makeFusee({ rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: FUSEE_GROOVE_TURNS });
 
@@ -3023,16 +3027,16 @@ let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMo
 // alternating inner/outer plate pairs riveted through pins. The pin axes
 // stay parallel to the arbors the whole way round (cone wrap, span and
 // drum coil alike, as on the real thing), so the plates lie flat in the
-// coil and successive turns clear each other at the 0.65 coil pitch:
-// CHAIN_PITCH now lives in layout.js — §39 pins the whole unit→mm scale to it,
-// so the geometry and the scale cannot drift apart.
-const CHAIN_PIN_LEN = 0.62; // total stack height — inside the 0.65 coil pitch
-const CHAIN_PLATE_T = 0.11;
+// coil and successive turns clear each other at CHAIN_COIL_PITCH. The
+// stock itself (pitch, stack, plate leaves, rivet) lives in layout.js —
+// §39 pins the whole unit→mm scale to the pitch and the cone consumes the
+// stack, so the geometry and the scale cannot drift apart.
 // One template per part, kept as raw non-indexed arrays so a rebuild is a
 // plain transform-and-fill into one big buffer (no per-link allocations
 // beyond the buffer itself). Plate pair z-stack, mirrored about the chain
-// centreline: inner faces 0.06..0.17, outer 0.20..0.31 — the pins run
-// flush to the outer faces, their ends reading as rivet heads.
+// centreline: inner faces 0.02..0.165, outer 0.185..0.33 (a leaf-gap shim
+// between every leaf) — the pins run flush to the outer faces, their ends
+// reading as rivet heads.
 function chainPlatePairTemplate(endR, zOff) {
   const half = CHAIN_PITCH / 2;
   const s = new THREE.Shape(); // stadium: rivet-hole centres at ±half
@@ -3050,9 +3054,13 @@ function chainPlatePairTemplate(endR, zOff) {
   return { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm) };
 }
 const CHAIN_TMPL = (() => {
-  const inner = chainPlatePairTemplate(0.2, 0.115);
-  const outer = chainPlatePairTemplate(0.23, 0.255);
-  const pinGeo = new THREE.CylinderGeometry(0.13, 0.13, CHAIN_PIN_LEN, 8).rotateX(Math.PI / 2).toNonIndexed();
+  // The outer pair's outer faces sit flush with the pin ends (±stack/2);
+  // the inner pair nests one leaf plus one shim further in.
+  const zOffOuter = CHAIN_PIN_LEN / 2 - CHAIN_PLATE_T / 2;
+  const zOffInner = zOffOuter - CHAIN_PLATE_T - CHAIN_LEAF_GAP;
+  const inner = chainPlatePairTemplate(CHAIN_END_R_IN, zOffInner);
+  const outer = chainPlatePairTemplate(CHAIN_END_R_OUT, zOffOuter);
+  const pinGeo = new THREE.CylinderGeometry(CHAIN_PIN_R, CHAIN_PIN_R, CHAIN_PIN_LEN, 8).rotateX(Math.PI / 2).toNonIndexed();
   const pin = {
     pos: Float32Array.from(pinGeo.attributes.position.array),
     nrm: Float32Array.from(pinGeo.attributes.normal.array),
@@ -3143,13 +3151,20 @@ const HOOK_A = (() => {
   // barrel and the ['Chain','Mainspring drum'] support edge measures real
   // geometry (the chain's last point is placed ON this claw).
   const hookLocalZ = COIL_TOP - Z_DRUM;
-  const tab = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.9), MATS.steel);
-  tab.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.25), Math.sin(HOOK_A) * (DRUM_R + 0.25), hookLocalZ);
+  // Sized off the link that hangs on it: the claw pin stands the link's
+  // half-width off the wall (its inner edge kisses the drum), is thicker
+  // than the chain's own rivet but well under the link's opening
+  // (pitch − 2·rivet ≈ 1.36 along, pitch/2 − rivet ≈ 0.68 across), and the
+  // tab behind it reaches from the wall out to the claw's far side.
+  const CLAW_R = 0.3, CLAW_LEN = 1.2, CLAW_STAND = DRUM_R + CHAIN_END_R_OUT;
+  const tabD = CHAIN_END_R_OUT + CLAW_R;
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(tabD, CLAW_LEN + 0.2, 0.9), MATS.steel);
+  tab.position.set(Math.cos(HOOK_A) * (DRUM_R + tabD / 2), Math.sin(HOOK_A) * (DRUM_R + tabD / 2), hookLocalZ);
   tab.rotation.z = HOOK_A;
   drumGroup.add(tab);
-  const claw = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.8, 8), MATS.steel);
+  const claw = new THREE.Mesh(new THREE.CylinderGeometry(CLAW_R, CLAW_R, CLAW_LEN, 8), MATS.steel);
   claw.rotation.z = HOOK_A + Math.PI / 2; // pin lies tangentially along the wall
-  claw.position.set(Math.cos(HOOK_A) * (DRUM_R + 0.45), Math.sin(HOOK_A) * (DRUM_R + 0.45), hookLocalZ);
+  claw.position.set(Math.cos(HOOK_A) * CLAW_STAND, Math.sin(HOOK_A) * CLAW_STAND, hookLocalZ);
   drumGroup.add(claw);
 }
 function rebuildChain(tension) {
@@ -3197,7 +3212,7 @@ function rebuildChain(tension) {
   let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
   if (frac < 0) frac += 1;
   const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
-  const takeoffZ = COIL_TOP - drumTurns * 0.65;
+  const takeoffZ = COIL_TOP - drumTurns * CHAIN_COIL_PITCH;
   const TB = { x: drumPos.x + Math.cos(thetaT) * DRUM_R, y: drumPos.y + Math.sin(thetaT) * DRUM_R };
   pts.push(new THREE.Vector3(TB.x, TB.y, takeoffZ));
   const nD = Math.max(Math.ceil(drumTurns * SEG_PER_TURN), 2);
@@ -3207,14 +3222,15 @@ function rebuildChain(tension) {
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_R,
       drumPos.y + Math.sin(ang) * DRUM_R,
-      COIL_TOP - (drumTurns - s) * 0.65 // climbs back up to the hook plane
+      COIL_TOP - (drumTurns - s) * CHAIN_COIL_PITCH // climbs back up to the hook plane
     ));
   }
-  // ...and the end link steps out onto the hook's claw pin.
+  // ...and the end link steps out onto the hook's claw pin (the claw
+  // stands the link's half-width off the wall — see the hook build).
   const hookAng = thetaT + drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
   pts.push(new THREE.Vector3(
-    drumPos.x + Math.cos(hookAng) * (DRUM_R + 0.45),
-    drumPos.y + Math.sin(hookAng) * (DRUM_R + 0.45),
+    drumPos.x + Math.cos(hookAng) * (DRUM_R + CHAIN_END_R_OUT),
+    drumPos.y + Math.sin(hookAng) * (DRUM_R + CHAIN_END_R_OUT),
     COIL_TOP
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
@@ -3237,8 +3253,10 @@ function rebuildChain(tension) {
 // frame on a machine slow enough to hit the realDt clamp — the slower the
 // machine, the more geometry churn, exactly backwards.
 function updateChainIfMoved() {
-  // 0.0015 of tension ≈ one chain-diameter of takeoff travel — the smallest
-  // rebuild that is visible at all (the old in-tick threshold, unchanged).
+  // 0.0015 of tension ≈ 0.18 u of chain feed (CHAIN_ENGAGED · 0.0015) —
+  // under a tenth of a link, the smallest rebuild that is visible at all
+  // (the old in-tick threshold, unchanged by the §39 true-scale chain:
+  // rebuilds err toward smooth, not rare).
   if (Math.abs(chainTensionNow - lastChainTension) > 0.0015) rebuildChain(chainTensionNow);
 }
 
@@ -3300,8 +3318,20 @@ const MAINT_FLANGE_R = MAINT_PAWL_PIV / 1.28;
 // flange below the chain's lowest links on the cone's bottom groove.
 const GW_HUB_TOP = L_BARREL + (1.4 * 1.5) / 2; // makeGear hub ring: thickness·1.5, centred on the wheel
 const MAINT_CHAIN_LOW = FUSEE_Z0 - CHAIN_PIN_LEN / 2; // underside of the lowest chain wrap
-const MAINT_RING_T = 0.5, MAINT_FLANGE_T = 0.5;
+// Ring and flange stock: DERIVED from the band the sandwich actually gets —
+// hub + margin below, chain + margin above, one CLEAR_MARGIN of daylight
+// between the two moving halves. The old 0.5 literals collapsed the band
+// the moment the §39 true-scale chain thickened the lowest wrap and grew
+// the cone (the spring-top goal pushes the cone's BASE down, not its tip
+// up — see FUSEE_BASE_Z). 0.5 stays as the ceiling (a maintaining ratchet
+// has no business thicker); §50's stock floor is the floor, with the warn
+// below as the honest failure mode if a future squeeze reaches it.
 const MAINT_RING_BOT = GW_HUB_TOP + CLEAR_MARGIN;
+const MAINT_BAND = (MAINT_CHAIN_LOW - CLEAR_MARGIN) - MAINT_RING_BOT;
+const MAINT_T = Math.min(0.5, (MAINT_BAND - CLEAR_MARGIN) / 2);
+if (MAINT_T < STOCK_MIN_U)
+  console.warn(`maintaining power: band-solved stock ${MAINT_T.toFixed(3)} under the §50 floor ${STOCK_MIN_U.toFixed(3)} — the sandwich band collapsed past what thinning may pay`);
+const MAINT_RING_T = MAINT_T, MAINT_FLANGE_T = MAINT_T;
 const MAINT_RING_TOP = MAINT_RING_BOT + MAINT_RING_T;
 const MAINT_FLANGE_TOP = MAINT_CHAIN_LOW - CLEAR_MARGIN;
 const MAINT_FLANGE_BOT = MAINT_FLANGE_TOP - MAINT_FLANGE_T;
@@ -8115,7 +8145,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // Converted through §39's UNIT_MM rather than written as units, so the
   // ergonomic claim stays legible and survives a change of scale.
   const PUSHER_HEAD_MM = 1.0;                          // RADIUS floor ⇒ a 2 mm head
-  const PUSHER_HEAD_R = PUSHER_HEAD_MM / UNIT_MM;      // 2.667 u at 0.375 mm/u
+  const PUSHER_HEAD_R = PUSHER_HEAD_MM / UNIT_MM;      // 2.64 u at 0.379 mm/u
   // Head DEPTH follows the width so it still reads as a turned cap rather than
   // a wafer; at the old 1.1 u against a 5.3 u face it would have been a disc.
   // This is the HEAD, not the stem's travel — the throw that indexes the
@@ -12315,8 +12345,9 @@ document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
 //
 // Two honest inputs — the display's pixel pitch and the viewport's height —
 // and everything else follows. (Sanity: 900 px at the CSS reference pixel is
-// 238.1 mm; 238.1 / (2 × 0.375 × tan 21°) = 827, the entry's figure, arrived
-// at rather than copied.)
+// 238.1 mm; 238.1 / (2 × 0.375 × tan 21°) = 827, the entry's figure at the
+// UNIT_MM of its day, arrived at rather than copied — the true-scale chain's
+// re-pin to 0.379 solves ~818 through the same formula.)
 //
 // WHY NOT WIDEN THE FOV INSTEAD. Holding the default distance, life size needs
 // fov 122.8°. That is a fisheye: it would distort the movement far worse than
