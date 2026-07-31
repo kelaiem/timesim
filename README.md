@@ -14,11 +14,11 @@ linkage), the escapement trails to ~6:25 with the balance at 8, and the
 power-reserve sub-dial answers at 12. The going train no longer runs a uniform
 stride: the z-stack is solved bottom-up (`src/layout.js`), the escape wheel
 drops *below* the train while its pinion stays up in the fourth wheel's plane,
-and the fusee cone is squashed to 2.8 units — the height four turns of
-0.6-diameter chain actually need — which is what lets the three-quarter plate
+and the fusee cone is squashed to ~3 units — the height four turns of
+true-scale chain actually need — which is what lets the three-quarter plate
 floor come down. The whole assembly, hands to alarm barrel, measures ~26.4
-units front-to-back; at the scale pinned in §39 (0.375 mm/unit, derived from
-real fusee-chain pitch) that is ≈9.9 mm deep on a 32.2 mm plate.
+units front-to-back; at the scale pinned in §39 (0.379 mm/unit, derived from
+real fusee-chain pitch) that is ≈10 mm deep on a 32.5 mm plate.
 
 ## Run
 

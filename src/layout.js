@@ -143,23 +143,52 @@ export const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
 // That is circular: it makes the size target true by construction and tests
 // nothing. Instead the scale is pinned to the one dimension in this movement
 // that is a MANUFACTURED STANDARD rather than a style choice — fusee chain
-// pitch. Real fusee chain is made to ~0.30 mm rivet-to-rivet and the tolerance
-// on it is narrow, because it has to run in a groove cut to match.
+// pitch, whose tolerance is narrow because it has to run in a groove cut to
+// match.
+//
+// The reference chain: A. Lange & Söhne cal. L044.1 (Richard Lange Pour le
+// Mérite), the modern manufactured fusee-and-chain WRISTWATCH movement —
+// 31.6 mm, i.e. the same class of movement as this one. Its chain is 212
+// links over 152 mm → 0.72 mm rivet-to-rivet, 0.50 mm wide, 0.25 mm thick.
+// (The entry originally pinned to "~0.30 mm pitch"; that figure was wrong —
+// it sits in the WIDTH band of small chains, not any pitch. Pocket-watch
+// chains are coarser still: ~0.36 mm thick × 0.8 mm tall sections.)
+//
+// The drawn pitch below converts the real 0.72 mm through §2's mapping study,
+// which proposed ~0.38 mm/unit BY EYE from overall proportions, independent
+// of any chain: 0.72 / 0.38 = 1.9 u. The pin then lands UNIT_MM at 0.379 —
+// the two methods agreeing to 0.3% is the argument for the number.
 //
 // Everything else about the movement's real size is then a PREDICTION, and is
 // asserted as one at the end of the build. Those asserts are allowed to fail;
 // that is the whole point of deriving the scale from something else first.
-//
-// Cross-check, from a completely independent direction: §2's mapping study
-// proposed ~0.38 mm/unit by eye from overall proportions. This lands at
-// 0.375. Two methods agreeing to within 1.5% is the argument for the number.
-export const CHAIN_PITCH = 0.8;        // units, rivet-to-rivet (geometry)
-export const CHAIN_PITCH_MM = 0.30;    // REAL fusee chain — the manufactured standard this pins to
-export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.375 mm per unit
+// (Plate: 85.85 u → 32.5 mm. The reference movement carrying the same chain
+// is 31.6 mm — a 3% cross-check the old 0.30 mm pin failed by 2.4×: with the
+// chain drawn at true proportion it predicted a 77 mm plate.)
+export const CHAIN_PITCH = 1.9;        // units, rivet-to-rivet (geometry — 0.72 mm at §2's 0.38 mm/u)
+export const CHAIN_PITCH_MM = 0.72;    // REAL fusee chain — the manufactured standard this pins to
+export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.379 mm per unit
 export const MM = (units) => units * UNIT_MM;          // for readouts and asserts
+// The chain's CROSS-SECTION, from the same reference chain through UNIT_MM
+// (real mm in each comment). Lives here with the pitch — the fusee cone's
+// groove pitch and base seat consume the stack height long before the chain
+// itself is built, and stock that sets the movement's scale should not be
+// scattered as literals at its point of use.
+export const CHAIN_PIN_LEN = 0.66;     // 0.250 mm — the joint's plate stack (4 leaves), = pin length
+export const CHAIN_LEAF_GAP = 0.02;    // render shim between leaves: shows the rivet, avoids z-fighting
+// One plate leaf. The real stack is 4 solid leaves of ~0.06 mm; drawn with
+// the two shims per half-stack folded out: (0.66/2 − 2·0.02)/2 = 0.145 u
+// (0.055 mm).
+export const CHAIN_PLATE_T = (CHAIN_PIN_LEN / 2 - 2 * CHAIN_LEAF_GAP) / 2;
+export const CHAIN_END_R_OUT = 0.66;   // outer plate half-width: 2·0.66 u = 0.50 mm real width
+export const CHAIN_END_R_IN = 0.575;   // inner plate steps in by the same 0.87 the shipped chain drew
+export const CHAIN_PIN_R = 0.27;       // rivet: 0.54 u dia = 0.29·pitch, the roller-chain proportion (0.20 mm)
+// Successive coil turns on the drum lay one stack apart plus a lay gap so
+// they never bind — the gap is the 0.03 the shipped 0.65-over-0.62 implied.
+export const CHAIN_COIL_PITCH = CHAIN_PIN_LEN + 0.03;
 // §50/TODO 12: the wheel-and-plate stock floor, in UNITS, so a thickness can
 // be built to clear it rather than measured against it after the fact.
-export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.32 u
+export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.317 u
 // §54's slenderness ceiling, L/t. Lives HERE rather than in inspect.js so the
 // GEOMETRY can be derived from the same number the CHECK enforces — a part
 // sized against the check that measures it cannot drift away from it.
@@ -176,7 +205,7 @@ export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 // springs THICKER". A click detent or a feeler return is a flat blade, not a
 // hairspring, so it is sized at 0.05 mm — the low end of real flat-spring
 // stock, clearing the floor on merit rather than grazing it.
-export const SPRING_FLAT_U = 0.05 / UNIT_MM;          // 0.133 u
+export const SPRING_FLAT_U = 0.05 / UNIT_MM;          // 0.132 u
 
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by

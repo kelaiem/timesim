@@ -2000,8 +2000,8 @@ class LemniscateCurve extends THREE.Curve {
 // — means the relief is never a knife edge: at engraving scale a stroke
 // narrower than twice its relief cannot be cut, and reads as a scratch rather
 // than a mark. On the winding crown (bodyR 5.425) tubeR is 0.461 units, so the
-// strokes are 0.922 u = 0.346 mm wide standing 0.173 mm proud (§39's
-// UNIT_MM = 0.375). That is engraving scale and among the thinnest detail on
+// strokes are 0.922 u = 0.349 mm wide standing 0.175 mm proud (§39's
+// UNIT_MM = 0.379). That is engraving scale and among the thinnest detail on
 // the part, as §41 predicted; §40's census is the check on whether it is too
 // fine.
 //
@@ -2931,8 +2931,8 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     // second: same bur rod, slimmer. Floor on the radius — originally 0.14 so
     // a sub-dial-length rod would not vanish, now DERIVED from §50's hand
     // floor instead (TODO 12): the keeled section is 1.5·rBase thick, so
-    // rBase ≥ (0.10 mm + a hair) / UNIT_MM / 1.5 = 0.18 puts the blade at
-    // 0.101 mm against real hands' 0.10–0.20. Sub-dial hands ride the floor;
+    // rBase ≥ (0.10 mm + a hair) / UNIT_MM / 1.5 = 0.176 → 0.18 puts the blade
+    // at 0.102 mm against real hands' 0.10–0.20. Sub-dial hands ride the floor;
     // the central seconds (length·widthFactor·0.5 ≈ 0.195) clears it on its
     // own and is untouched.
     const rBase = Math.max(length * config.widthFactor * 0.5, 0.18);
