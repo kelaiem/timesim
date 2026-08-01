@@ -287,7 +287,7 @@ Measured on the current build: 0.07 disarmed, 0.039 armed, no
 penetration. Note the battery cannot see any of this — every part
 involved belongs to the `Alarm link` unit, which is item 5.
 
-## 10. `Minute jumper ⇄ Dial` measures exactly 0.1500 and nobody knows which surface sets it
+## 10. CLOSED — the 0.1500 is the released beak over the star, and the instrument now names surfaces
 
 The pair is the tightest in the battery: **min 0.1500, required 0.15**.
 `measureClearance` rounds to 4 decimals (neighbouring pairs report
@@ -343,6 +343,23 @@ useful well beyond this row — every tight pair in the report currently
 names two UNITS and leaves the actual surfaces to guesswork.
 
 Found while verifying §35; pre-existing and unrelated to that branch.
+
+**Status 2026-08-01 — CLOSED, both halves.** The cheap fix landed:
+`unitClearance` always knew the minimum's mesh pair and `sweepClearances`
+dropped it; the sweep state now carries it, `measureClearance` returns
+`meshes`, and every `checkClearances` row names its surfaces (unnamed
+meshes report as `GeometryType#index` within the unit). Run against this
+row, the answer is **hypothesis (1), no defect**: within the budget's
+axes the minimum is `jumperBeak ⇄ star` (the star's body reached through
+the Dial nesting), at beat f=0 — the RELEASED beak over the star's
+teeth. That clearance is its own solve (`JMP_LIFT_ROT`: retreat until
+the beak's whole outline clears `STAR_R + CLEAR_MARGIN + JMP_BIND_EPS`),
+and the measured 0.1500 is that 0.16 minus ~0.01 of tessellation sag on
+the star's fine tooth tips — the same sag class HANDOFF_TRACK_TOL
+exists for. The epsilon plane (`Z_JMP_LIFTER`, the lifter bar against
+the dial face) is NOT the closest pair, so `JMP_BIND_EPS` guards
+exactly what it was built to guard and this row was only ever
+mislabelled in the report, never wrong in the geometry.
 
 ## 11. The alarm work is built at quarter-to-half-scale stock
 

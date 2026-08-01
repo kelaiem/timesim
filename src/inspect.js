@@ -667,7 +667,7 @@ function unitsIntersect(A, B) {
 
 // Phase axes. Each pose object feeds __clock.setPose(); unspecified state
 // keeps its prior value, so every axis pins the others to a fixed default.
-const AXES = [
+export const AXES = [
   {
     name: 'beat',
     n: 96,
@@ -824,6 +824,13 @@ function meshClearance(a, b, upperBound = Infinity) {
 }
 
 const _cbA = new THREE.Box3(), _cbB = new THREE.Box3();
+// A mesh's diagnostic label: its registered name when it has one, else its
+// geometry type plus its index within the unit — enough to find the surface
+// in the build without demanding that every part be named (TODO 10).
+function meshLabel(unit, mesh) {
+  return mesh.name || `${mesh.geometry.type}#${unit.meshes.indexOf(mesh)}`;
+}
+
 function unitClearance(A, B, upperBound = Infinity) {
   let best = upperBound, pair = null;
   for (const a of A.meshes) {
@@ -890,8 +897,13 @@ async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBa
       // (measureClearance, no refineFloor) is uncapped as before.
       const cap = pr.refineFloor !== undefined ? pr.refineFloor + refineBand : Infinity;
       const bound = Math.min(refined ? st.min : st.min + refineBand, cap);
-      const { d } = unitClearance(pr.A, pr.B, bound);
-      if (d < st.min) { st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) }; }
+      const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound);
+      if (d < st.min) {
+        st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) };
+        // TODO 10 — carry WHICH SURFACES set the minimum, not just which
+        // units: unitClearance always knew; this row is where it was dropped.
+        st.meshes = meshPair ? [meshLabel(pr.A, meshPair[0]), meshLabel(pr.B, meshPair[1])] : null;
+      }
       (pr._samples ||= {})[i] = d; // per-axis scratch, reset below
     }
   };
@@ -943,10 +955,11 @@ async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBa
 export async function measureClearance(clock, nameA, nameB, { axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
   const A = unitByName(clock, nameA), B = unitByName(clock, nameB);
   const { state } = await sweepClearances(clock, [{ A, B }], { axes, coarse, refineBand, yieldEvery });
-  const { min, at } = state[0];
+  const { min, at, meshes } = state[0];
   return {
     min: +min.toFixed(4),
     at,
+    meshes, // TODO 10 — the two surfaces that set the minimum, by name (or geometry type when unnamed)
     show() {
       const axis = axes.find((a) => a.name === at.axis);
       clock.setPose(axis.pose(at.f, clock));
@@ -1138,6 +1151,7 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
       min: capped ? `≥ ${(bud.min + refineBand).toFixed(2)}` : +state[i].min.toFixed(4),
       required: bud.min,
       at: capped ? '(never within band)' : `${state[i].at.axis} f=${state[i].at.f}`,
+      meshes: capped ? undefined : (state[i].meshes ? state[i].meshes.join(' ⇄ ') : undefined), // TODO 10
       ok: capped || state[i].min >= bud.min,
     };
   });
