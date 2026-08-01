@@ -1267,11 +1267,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
   { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'alarmPusherPawl', why: 'the pawl PARKS ON the kiss — its leading face is derived onto the saw outline (ratchetPoly) and alarmHandoffs asserts the kiss every run' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#9', debt: 'TODO 22' }, // the pusher bar ends 0.9 from the wheel AXIS, inside its disc band
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'TorusGeometry#12', debt: 'TODO 22' },   // the pusher guide torus in the same band
+  // TODO 22 closed with the switch resize: the press axis rides above the
+  // wheel's stack and the stem's inner end is press-swept derived — the
+  // instrument measures the repair (0 rows).
   // TODO 23's nine rows are CLOSED: cock/guide arms now end at their
   // ring's outer wall, the setting cock's z derives against the bevel
   // above as well as the pinion below, and the lifter's lower guide —
