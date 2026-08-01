@@ -5909,3 +5909,41 @@ arrests with ZERO further spend; pushing back at the still-present
 coincidence re-fires. Two new hand-off rows (paddle: contact at every
 parity; finger: free at both crown-in parities, contact at setting),
 zero new stock waivers, full battery clean on the landed tree.
+
+## §65 — The mechanism explainer, in the movement's own dress
+
+**What.** `explain.html` at the repo root — a maintained companion page,
+one entry per significant mechanism, linked from the HUD's View section
+(`Mechanisms → How they work`). Served by the same dev server as the
+sim; no build step, no dependencies, one file.
+
+**Why a page and not the README.** The sim's owner reads the movement
+through the sim; an explainer that lives beside it, in its visual
+language, gets read. The page borrows the two HUD idioms verbatim: the
+panel chrome (glass `rgba(15,17,20,0.72)` + blur, hairline borders,
+uppercase spaced `#8fa6bf` section heads, §15's `<details>` disclosure
+per mechanism) and the §49 scale view's dimension voice (`ui-monospace`
+values, drawing-style leader lines and dimension ticks in the plates).
+Single dark theme, deliberately — the sim is.
+
+**The honesty contract, extended to prose.** Full entries carry
+numbered PLATES (SVG figures) whose every number is the real constant
+from `src/*.js`, with the constraint it was derived from — rule 1
+applied to documentation. Entries also carry the mechanism's OPEN debt
+(the motion-works entry names TODO 21 rather than hiding it): the page
+tells the same truth the battery does. The footer states the priority:
+if the page and the source disagree, the source is right and the page
+has a bug.
+
+**Shipped entries.** Fusee & chain, Swiss lever escapement, motion
+works & minute jumper, keyless works (compact prose seeds); the alarm
+release feeler (full: plan view, an interactive section driven by the
+real `alarmPinDropNow` trapezoid law with the §45 silence cap, the
+release chain, the crown→collar→lifter→rocker→tail silence linkage,
+and the constants table); the alarm train end-to-end (compact).
+
+**Maintenance rule.** When a significant mechanism ships or changes,
+its entry is added or refreshed in the same landing — CLAUDE.md carries
+the rule. Compact entries grow plates when their mechanisms get worked
+on; a stale explainer is the documentation version of the abandoned
+plan CLAUDE.md already forbids.

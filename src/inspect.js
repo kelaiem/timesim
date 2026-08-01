@@ -634,24 +634,21 @@ const _mat = new THREE.Matrix4();
 const _matRev = new THREE.Matrix4();
 function meshesIntersect(a, b) {
   const bvhA = bvhFor(a);
-  const bvhB = bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
+  bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
   if (!bvhA.intersectsGeometry(b.geometry, _mat)) return false;
-  // CROSS-CHECK a positive before believing it. The tree-vs-tree
-  // intersectsGeometry path has an observed FALSE-POSITIVE mode at specific
-  // relative transforms (2026-07: balance rim ⇄ fork-cock boss — two parts a
-  // provable 0.69 apart in XY, radially inscribed circles, flagged as
-  // intersecting at exactly 5 of 303 sweep poses; the same query run in
-  // REVERSE said clear, the raw-triangle path said clear, and
-  // closestPointToGeometry measured 0.699). So the boolean is only trusted
-  // when BOTH directions agree; on disagreement the exact distance query
-  // arbitrates — its tri-tri distance errs toward EXTRA zeros (the false-0
-  // mode documented at meshClearance below), so a genuine contact cannot
-  // slip through this branch as a non-zero.
-  _matRev.copy(b.matrixWorld).invert().multiply(a.matrixWorld);
-  if (bvhB.intersectsGeometry(a.geometry, _matRev)) return true;
-  const hit = bvhA.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, 1e-4);
-  return !!hit && hit.distance < 1e-4;
+  // A POSITIVE is never trusted raw. The tree-vs-tree path has a measured
+  // false-positive mode at specific relative transforms (2026-07: balance
+  // rim ⇄ fork-cock boss, 0.69 apart, one direction lying; 2026-08: alarm
+  // hand ⇄ hour tube, 2.32 apart, BOTH directions lying — which retired the
+  // both-directions cross-check this function used to run, and with it the
+  // closestPointToGeometry arbitration, whose own false-0 mode rubber-
+  // stamped the lie). sampledVerdict arbitrates: a contained sample (vertex
+  // or edge midpoint, parity raycast) proves the crossing; otherwise the
+  // sampled distance decides, and only a genuine running fit reads as
+  // contact.
+  const v = sampledVerdict(a, b, 1e-3);
+  return v.inside || v.d < 1e-4;
 }
 
 function unitsIntersect(A, B) {
@@ -667,7 +664,7 @@ function unitsIntersect(A, B) {
 
 // Phase axes. Each pose object feeds __clock.setPose(); unspecified state
 // keeps its prior value, so every axis pins the others to a fixed default.
-const AXES = [
+export const AXES = [
   {
     name: 'beat',
     n: 96,
@@ -802,7 +799,64 @@ function sampledClearance(a, b, upperBound = Infinity) {
   return best;
 }
 
-function meshClearance(a, b, upperBound = Infinity) {
+// --- The ARBITER the tri-tri machinery finally forced (TODO 6 pass) --------
+// Two failure modes are now MEASURED, in opposite directions, on live pairs:
+//   · intersectsGeometry said TRUE in BOTH directions and
+//     closestPointToGeometry said 0 for the alarm hand ⇄ hour tube — parts
+//     a provable 2.32 apart radially (the both-directions cross-check the
+//     2026-07 balance-rim case justified is defeated here).
+//   · the vertex-only ruler said 0.85 CLEAR for the minute star ⇄ hour
+//     tube while the star's tooth FLANKS pass through the tube's wall 0.22
+//     deep — a vertex in the bore's open air measures a positive distance
+//     to the surface it crossed between samples (the same blindness that
+//     let TODO 6's original probe under-report a standing collision as
+//     "0.0084 from touching").
+// So near-zeros are arbitrated by a sampler that neither mode can fool:
+// samples = vertices PLUS EDGE MIDPOINTS (edges see what vertices cannot),
+// each tested for distance (closestPointToPoint, the trusted single-tree
+// path) AND for containment (parity raycast against the other mesh's own
+// tree — every geometry this codebase builds is a closed extrude, lathe or
+// primitive, so odd crossing parity means inside). Any contained sample is
+// a genuine crossing; otherwise the min sampled distance stands.
+const _parityRay = new THREE.Ray();
+function pointInsideTree(tree, pLocal) {
+  _parityRay.origin.copy(pLocal);
+  _parityRay.direction.set(0.317, 0.591, 0.741).normalize(); // fixed oblique direction — axis-aligned rays graze coaxial walls
+  const hits = tree.raycast(_parityRay, THREE.DoubleSide);
+  let n = 0;
+  for (const h of hits) if (h.distance > 1e-9) n++;
+  return (n % 2) === 1;
+}
+function sampledVerdict(a, b, upperBound = Infinity) {
+  let best = upperBound, inside = false;
+  const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
+  for (const [src, dst] of [[b, a], [a, b]]) {
+    const tree = bvhFor(dst);
+    bvhFor(src); // indexing side effect — edge extraction below reads the index
+    _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
+    const pos = src.geometry.attributes.position;
+    const test = (v) => {
+      const hit = tree.closestPointToPoint(v, {}, 0, best);
+      if (hit && hit.distance < best) best = hit.distance;
+      if (!inside && pointInsideTree(tree, v)) inside = true;
+    };
+    for (let i = 0; i < pos.count; i++) test(_sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat));
+    const idx = src.geometry.index;
+    if (idx) {
+      for (let t = 0; t < idx.count; t += 3) {
+        for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
+          e0.fromBufferAttribute(pos, idx.getX(t + i0));
+          e1.fromBufferAttribute(pos, idx.getX(t + i1));
+          test(_sampleV.addVectors(e0, e1).multiplyScalar(0.5).applyMatrix4(_mat));
+        }
+      }
+    }
+    if (inside) return { inside: true, d: 0 };
+  }
+  return { inside, d: inside ? 0 : best };
+}
+
+export function meshClearance(a, b, upperBound = Infinity) {
   const bvh = bvhFor(a);
   bvhFor(b);
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
@@ -811,24 +865,33 @@ function meshClearance(a, b, upperBound = Infinity) {
   // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
   // short-circuits to 0 through its own triangle-intersection test, and
   // that test can FALSELY report an intersection for plainly separated
-  // meshes at specific relative transforms (observed: a balance timing
-  // screw vs the escape bridge's fork jewel — true separation ~0.2,
-  // reported 0 at exactly one beat pose, sane at its neighbours). Same
-  // lesson as the pallet-stone MTV story: the boolean BVH intersection is
-  // the primitive this codebase trusts — so a near-zero that the boolean
-  // test CONTRADICTS is re-measured with exact vertex→surface queries.
-  if (d < 0.05 && !meshesIntersect(a, b)) {
-    d = Math.max(d, sampledClearance(a, b, upperBound));
+  // meshes at specific relative transforms (first observed: a balance
+  // timing screw vs the escape bridge's fork jewel; later the alarm hand ⇄
+  // hour tube, 2.32 apart, where the boolean lied in BOTH directions too —
+  // so the boolean can no longer arbitrate). Near-zeros go to
+  // sampledVerdict: a contained sample proves the contact genuine; none,
+  // and the sampled minimum stands.
+  if (d < 0.05) {
+    const v = sampledVerdict(a, b, upperBound);
+    d = v.inside ? Math.min(d, 0) : Math.max(d, v.d);
   }
   return d;
 }
 
 const _cbA = new THREE.Box3(), _cbB = new THREE.Box3();
-function unitClearance(A, B, upperBound = Infinity) {
+// A mesh's diagnostic label: its registered name when it has one, else its
+// geometry type plus its index within the unit — enough to find the surface
+// in the build without demanding that every part be named (TODO 10).
+function meshLabel(unit, mesh) {
+  return mesh.name || `${mesh.geometry.type}#${unit.meshes.indexOf(mesh)}`;
+}
+
+function unitClearance(A, B, upperBound = Infinity, exclude = null) {
   let best = upperBound, pair = null;
   for (const a of A.meshes) {
     _cbA.setFromObject(a);
     for (const b of B.meshes) {
+      if (exclude && exclude(a, b)) continue; // TODO 6 — a declared contact is not this measurement's business
       _cbB.setFromObject(b);
       if (boxDistance(_cbA, _cbB) >= best) continue;
       const d = meshClearance(a, b, best);
@@ -890,8 +953,13 @@ async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBa
       // (measureClearance, no refineFloor) is uncapped as before.
       const cap = pr.refineFloor !== undefined ? pr.refineFloor + refineBand : Infinity;
       const bound = Math.min(refined ? st.min : st.min + refineBand, cap);
-      const { d } = unitClearance(pr.A, pr.B, bound);
-      if (d < st.min) { st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) }; }
+      const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound, pr.exclude);
+      if (d < st.min) {
+        st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) };
+        // TODO 10 — carry WHICH SURFACES set the minimum, not just which
+        // units: unitClearance always knew; this row is where it was dropped.
+        st.meshes = meshPair ? [meshLabel(pr.A, meshPair[0]), meshLabel(pr.B, meshPair[1])] : null;
+      }
       (pr._samples ||= {})[i] = d; // per-axis scratch, reset below
     }
   };
@@ -943,10 +1011,11 @@ async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBa
 export async function measureClearance(clock, nameA, nameB, { axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
   const A = unitByName(clock, nameA), B = unitByName(clock, nameB);
   const { state } = await sweepClearances(clock, [{ A, B }], { axes, coarse, refineBand, yieldEvery });
-  const { min, at } = state[0];
+  const { min, at, meshes } = state[0];
   return {
     min: +min.toFixed(4),
     at,
+    meshes, // TODO 10 — the two surfaces that set the minimum, by name (or geometry type when unnamed)
     show() {
       const axis = axes.find((a) => a.name === at.axis);
       clock.setPose(axis.pose(at.f, clock));
@@ -1045,6 +1114,248 @@ const CLEARANCE_BUDGETS = [
 ];
 
 // ---------------------------------------------------------------------------
+// TODO 6 — EXPECTED names the PAIR; these rows name the CONTACT. One declared
+// mesh used to grant a whole unit pair blanket immunity: the minute star ran
+// 0.0084 from the hour tube under the 12:1's blanket, and §45's post-mortems
+// added two more (the follower bar 0.108 into the heart's lobe, the lobe
+// sweeping through the pivot post) — four shipped defects in the class. Each
+// row here re-arms the margin for an EXPECTED pair: its `contacts` are the
+// pair's DECLARED touching mesh pairs (each citing the instrument that owns
+// that contact), excluded from the measurement; everything else between the
+// two units owes `min`. Mesh matching is by `.name` (string-coupled, like
+// every other table here); name a mesh rather than widening a row.
+export const EXPECTED_CONTACT_FLOORS = [
+  {
+    a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
+      ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure
+      ['alarmTailPin', 'alarmHeart'],     // same lever, same band — the flank sweep's geometry bounds it
+      ['alarmTubeBody', 'hourTube'],      // the §25 C running seat: bore 3.05 on the 3.0 tube IS the coupling
+      ['alarmPivotPost', 'alarmHeart'],   // §45: post inner edge DERIVED as lobe + working 0.03
+      ['alarmIndexLine', 'alarmHeart'],   // §34 first slice: the index line is DECLARED proud 0.02 into the
+                                          // flange→heart margin — this check measured the declared 0.13 exactly
+    ],
+  },
+  {
+    a: 'Hour wheel', b: 'Motion works', min: CLEAR_MARGIN,
+    contacts: [
+      ['mwHourWheel', 'mwMinutePinion'],  // the 12:1's second mesh — the row EXPECTED was written for
+    ],
+    // TODO 21 — a STANDING collision this check's first run surfaced: the
+    // minute wheel's and star's teeth pass through the hour tube's wall
+    // 0.22 deep at every pose (the 12:1's first mesh happens THROUGH the
+    // tube). Waived as accepted debt, §50's convention: the row stays red
+    // in the report with its citation until the architecture is fixed.
+    waived: 'TODO 21',
+  },
+  {
+    a: 'Alarm release sleeve', b: 'Alarm disc', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmSleeveSkirt', 'alarmTailPin'], // §45 working contact — handoffs row + band asserts own it
+      ['alarmSleeveFlat', 'alarmTailPin'],  // the flat's bore: rest flank + working 0.03, derived
+      ['alarmSleeveWeb', 'alarmTailPin'],   // the web rides the same derivation chain as the bore
+    ],
+  },
+];
+
+// TODO 6's check: sweep each row's unit pair with its declared contacts
+// EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
+// arc: report, triage, then gate) — `ok` is per-row and the caller decides.
+export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+  const pairs = rows.map((row) => ({
+    A: unitByName(clock, row.a),
+    B: unitByName(clock, row.b),
+    axes: row.axes,
+    refineFloor: row.min,
+    exclude: (ma, mb) => row.contacts.some(([na, nb]) =>
+      (ma.name === na && mb.name === nb) || (ma.name === nb && mb.name === na)),
+  }));
+  // a contact name that matches NOTHING is a silent hole — report it, the
+  // string-coupling convention's own failure mode
+  const unmatched = [];
+  rows.forEach((row, i) => {
+    const names = new Set([...pairs[i].A.meshes, ...pairs[i].B.meshes].map((m) => m.name).filter(Boolean));
+    for (const c of row.contacts) for (const n of c) if (!names.has(n)) unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
+  });
+  const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
+  const results = rows.map((row, i) => {
+    const capped = !isFinite(state[i].min);
+    const meets = capped || state[i].min >= row.min;
+    return {
+      pair: `${row.a} ⇄ ${row.b}`,
+      min: capped ? `≥ ${(row.min + refineBand).toFixed(2)}` : +state[i].min.toFixed(4),
+      floor: row.min,
+      at: capped ? '(never within band)' : `${state[i].at.axis} f=${state[i].at.f}`,
+      meshes: capped ? undefined : (state[i].meshes ? state[i].meshes.join(' ⇄ ') : undefined),
+      contactsExcluded: row.contacts.length,
+      waived: !meets && row.waived ? row.waived : undefined, // §50's convention: visible debt, cited
+      ok: meets,
+    };
+  });
+  console.table(results);
+  return {
+    violations: results.filter((r) => !r.ok && !r.waived),
+    waivedCount: results.filter((r) => !r.ok && r.waived).length,
+    unmatched, results,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// TODO 5 (interim) — the sweep cannot see INSIDE a unit, and units bundle a
+// FIXED mount with the thing that MOVES on it: exactly the pair most likely
+// to foul, hidden twice (the pair loop skips same-unit; the unit's own AABB
+// contains both). The stop-lever bracket carried 0.685 of penetration at
+// every pose through every battery run in the project's history this way.
+// The interim DERIVES the split instead of naming parts: pose the sweep
+// axes, diff each mesh's matrix RELATIVE TO ITS UNIT ROOT — meshes that
+// never move relative to their unit are its fixtures, the rest its movers —
+// then test movers against fixtures for genuine intersection (the honest
+// meshesIntersect: parity-raycast arbitrated). Designed running fits have
+// CLEARANCE and read as apart; only real interpenetration flags. Intended
+// mover-on-fixture contacts are declared in INTRA_UNIT_CONTACTS with the
+// instrument or derivation that owns them.
+// ---------------------------------------------------------------------------
+export const INTRA_UNIT_CONTACTS = [
+  // { unit, a, b, why } — labels are meshLabel outputs (name, or Type#index
+  // within the unit); string-coupled like every table here. Every row below
+  // was inspected on the first run (centre-aligned concentric fits, riveted
+  // anchors, sprung bites) — a rotating part ON its arbor models the joint
+  // as coincident solids, which is what an assembly IS; the check exists
+  // for parts that foul, not parts that join.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'sliding pinion on the stem square — the clutch joint' },
+  { unit: 'Keyless works', a: 'CylinderGeometry#6', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'TorusGeometry#30', why: 'crown collar on its bushing torus' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
+  { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
+  { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
+  { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed' },
+  { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'ExtrudeGeometry#0', why: 'the outer coil bears on the drum wall at the hook' },
+  { unit: 'Alarm striking wheel', a: 'CylinderGeometry#3', b: 'CylinderGeometry#0', why: 'collar pressed on the strike arbor' },
+  { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
+  { unit: 'Alarm barrel', a: 'CylinderGeometry#6', b: 'CylinderGeometry#0', why: 'barrel cap on the arbor boss' },
+  { unit: 'Alarm winding train', a: 'ExtrudeGeometry#3', b: 'CylinderGeometry#5', why: 'idler 1 on its stud' },
+  { unit: 'Alarm winding train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#4', why: 'lock lever on its pivot post' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#4', why: 'lever tail on the same post' },
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#3', why: 'column wheel on its stud' },
+  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
+  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
+  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'CylinderGeometry#0', why: 'beak lever on its pivot post' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'CylinderGeometry#0', why: 'beak tail on the same post' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#9', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations)' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#11', why: 'lay shaft in hanger bush 2' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },
+  { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
+  { unit: 'Dial', a: 'alarmIndexWedge', b: 'ShapeGeometry#3', why: '§34\'s index wedge stands proud THROUGH the face sheet by design — the face is a zero-volume decal plane, not stock (note: parity containment is undefined on open sheets; the crossing itself is real)' },
+  { unit: 'Minute jumper', a: 'jumperBeak', b: 'CylinderGeometry#3', why: 'beak lever on its pivot stud' },
+  { unit: 'Minute jumper', a: 'BoxGeometry#1', b: 'CylinderGeometry#3', why: 'lever body on the same stud' },
+  { unit: 'Minute jumper', a: 'jumperBeak', b: 'jumperClickSpring', why: 'return spring bearing on the beak — §48-declared spring contact' },
+  { unit: 'Minute jumper', a: 'BoxGeometry#1', b: 'jumperClickSpring', why: 'spring coil around the lever body at the stud' },
+  { unit: 'Minute jumper', a: 'jumperTailPin', b: 'jumperClickSpring', why: 'the tail pin the spring\'s working end presses' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#1', why: 'input wheel pressed on its arbor' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#5', why: 'intermediate wheel on its stud' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#5', why: 'its pinion, same stud — the wheel+pinion pair' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'differential wheel on its stud' },
+  { unit: 'Alarm setting idler', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: 'idler wheel on its stud' },
+  { unit: 'Alarm hammer', a: 'CylinderGeometry#1', b: 'CylinderGeometry#0', why: 'hammer arm riveted to the arbor boss' },
+  { unit: 'Alarm hammer', a: 'alarmTail', b: 'CylinderGeometry#0', why: 'hammer tail on the same boss' },
+  { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
+  { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
+];
+// Accepted debt, §50's convention — red in the report, cited, not silenced:
+export const INTRA_UNIT_WAIVERS = [
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#9', debt: 'TODO 22' }, // the pusher bar ends 0.9 from the wheel AXIS, inside its disc band
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'TorusGeometry#12', debt: 'TODO 22' },   // the pusher guide torus in the same band
+  // TODO 23 — bearing-cock arms modeled SOLID to the axis they carry: the
+  // bush/eye ring has a bore, the box arm behind it does not, so the running
+  // member passes through uncut arm stock (a box cannot carry a hole).
+  { unit: 'Alarm setting arbor', a: 'CylinderGeometry#0', b: 'BoxGeometry#4', debt: 'TODO 23' }, // rod through the cock arm's solid end
+  { unit: 'Alarm setting arbor', a: 'ExtrudeGeometry#2', b: 'BoxGeometry#4', debt: 'TODO 23' },  // bevel teeth graze the arm's top by 0.01
+  { unit: 'Alarm release lifter', a: 'alarmLifterHead', b: 'BoxGeometry#9', debt: 'TODO 23' },   // head through the upper guide arm's solid end
+  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'BoxGeometry#9', debt: 'TODO 23' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'BoxGeometry#11', debt: 'TODO 23' }, // and the lower guide arm
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'BoxGeometry#11', debt: 'TODO 23' }, // blade stub into the lower arm, 0.04 at rest
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'LatheGeometry#12', debt: 'TODO 23' }, // stub onto the lower eye's face, same 0.04
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'BoxGeometry#11', debt: 'TODO 23' },  // blade crosses the lower arm's top corner, 0.03
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'LatheGeometry#12', debt: 'TODO 23' },
+];
+export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
+  const units = collectUnits(clock, { includeExcluded: true });
+  const _m = new THREE.Matrix4();
+  const relSig = (unit, mesh) => {
+    _m.copy(unit.obj.matrixWorld).invert().multiply(mesh.matrixWorld);
+    let s = 0;
+    for (let i = 0; i < 16; i++) s += _m.elements[i] * (i + 1);
+    return s;
+  };
+  // pose set: endpoints + interior samples of every axis (the stop-lever
+  // class is present at EVERY pose; a coarse net catches standing fouls,
+  // which is the interim's whole claim — transients stay item 7's business)
+  const poses = [];
+  for (const axis of axes) {
+    for (let i = 0; i < samplesPerAxis; i++) poses.push([axis, i / (samplesPerAxis - 1)]);
+  }
+  // 1. classify: movers change their unit-relative matrix at ANY pose
+  const base = new Map();
+  clock.setPose(poses[0][0].pose(0, clock));
+  for (const u of units) for (const m of u.meshes) base.set(m, relSig(u, m));
+  const movers = new Set();
+  let n = 0;
+  for (const [axis, f] of poses) {
+    clock.setPose(axis.pose(f, clock));
+    for (const u of units) {
+      for (const m of u.meshes) {
+        if (movers.has(m)) continue;
+        if (Math.abs(relSig(u, m) - base.get(m)) > 1e-6) movers.add(m);
+      }
+    }
+    if (++n % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  // 2. measure movers against their own unit's fixtures at every sampled pose
+  const allowed = (u, la, lb) => contacts.some((c) => c.unit === u
+    && ((c.a === la && c.b === lb) || (c.a === lb && c.b === la)));
+  const seen = new Map(); // key → row (worst pose kept)
+  n = 0;
+  for (const [axis, f] of poses) {
+    clock.setPose(axis.pose(f, clock));
+    for (const u of units) {
+      const fix = u.meshes.filter((m) => !movers.has(m));
+      const mov = u.meshes.filter((m) => movers.has(m));
+      if (!fix.length || !mov.length) continue;
+      for (const a of mov) {
+        _cbA.setFromObject(a);
+        for (const b of fix) {
+          _cbB.setFromObject(b);
+          if (boxDistance(_cbA, _cbB) > 0) continue;
+          const la = meshLabel(u, a), lb = meshLabel(u, b);
+          const key = `${u.name} / ${la} ⇄ ${lb}`;
+          if (seen.has(key) || allowed(u.name, la, lb)) continue;
+          if (meshesIntersect(a, b)) {
+            seen.set(key, { unit: u.name, mover: la, fixture: lb, at: `${axis.name} f=${+f.toFixed(2)}` });
+          }
+        }
+      }
+    }
+    if (++n % 2 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  const all = [...seen.values()];
+  for (const v of all) {
+    const w = INTRA_UNIT_WAIVERS.find((x) => x.unit === v.unit
+      && ((x.a === v.mover && x.b === v.fixture) || (x.a === v.fixture && x.b === v.mover)));
+    if (w) v.waived = w.debt;
+  }
+  console.table(all);
+  return { violations: all.filter((v) => !v.waived), waived: all.filter((v) => v.waived), movers: movers.size, poses: poses.length };
+}
+
+
+// ---------------------------------------------------------------------------
 // Support-geometry verification — "is this part actually held by what the
 // graph says holds it?"
 //
@@ -1138,6 +1449,7 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
       min: capped ? `≥ ${(bud.min + refineBand).toFixed(2)}` : +state[i].min.toFixed(4),
       required: bud.min,
       at: capped ? '(never within band)' : `${state[i].at.axis} f=${state[i].at.f}`,
+      meshes: capped ? undefined : (state[i].meshes ? state[i].meshes.join(' ⇄ ') : undefined), // TODO 10
       ok: capped || state[i].min >= bud.min,
     };
   });
@@ -3504,6 +3816,8 @@ const CHECKS = {
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
   alarmHandoffs: (clock, opts) => checkAlarmHandoffs(clock, opts),
+  expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
+  intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 interim — movers vs their own fixtures
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.

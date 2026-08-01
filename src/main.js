@@ -4828,6 +4828,7 @@ mwMinuteWheel.position.z = MW_Z1;
 const mwMinutePinion = G.makePinion({
   module: MW_MODULE_2, teeth: MW_PINION_TEETH, thickness: 1.0, material: MATS.steel,
 });
+mwMinutePinion.traverse((o) => { if (o.isMesh) o.name = 'mwMinutePinion'; }); // TODO 6 contact-floor selector
 mwMinutePinion.position.z = MW_Z2;
 mwArbor.add(mwMinuteWheel, mwMinutePinion);
 motionWorks.add(mwArbor);
@@ -4856,6 +4857,7 @@ const mwHourWheel = G.makeGear({
   module: MW_MODULE_2, teeth: MW_HOUR_TEETH, thickness: 0.8,
   boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
 });
+mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
 {
@@ -4863,6 +4865,7 @@ hourWheelGroup.add(mwHourWheel);
   const tubeLen = tubeTop - MW_Z2;
   const tube = new THREE.Mesh(
     ringGeo(HOUR_TUBE_INNER, HOUR_TUBE_OUTER, tubeLen), MATS.steel);
+  tube.name = 'hourTube'; // TODO 6 contact-floor selector (string-coupled)
   tube.position.z = MW_Z2 + tubeLen / 2;
   hourWheelGroup.add(tube);
   // The hour hand is carried BY this wheel — mounted on the tube's front
@@ -5444,6 +5447,7 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
 {
   const tube = new THREE.Mesh(
     ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
+  tube.name = 'alarmTubeBody'; // TODO 6 contact-floor selector (the §25 C running seat)
   tube.position.z = (ALARM_TUBE_BACK + ALARM_HAND_Z) / 2;
   alarmTubeGroup.add(tube);
   // Carrier flange: retention AND the follower's mounting plate — the pivot
@@ -5464,6 +5468,7 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   // both ends DERIVED so the post tracks the §29 step 1 re-stratification.
   const postH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - (ALARM_HEART_Z - ALARM_HEART_T / 2);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, postH, 10), MATS.steel);
+  post.name = 'alarmPivotPost'; // TODO 6 contact-floor selector (§45: inner edge = lobe + working)
   post.rotation.x = Math.PI / 2;
   post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - postH / 2);
   alarmTubeGroup.add(post);
@@ -5899,6 +5904,7 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   // web under the flat's rim, joining the skirt's top band to the bore (the
   // two derive 2·0.03 apart in radius: face-cover slack + working clearance)
   const web = new THREE.Mesh(ringGeo(rTopS, ALARM_SLEEVE_R_IN + 0.05, STOCK_MIN_U), MATS.nickel);
+  web.name = 'alarmSleeveWeb'; // TODO 6 contact-floor selector
   web.position.z = -ALARM_SLEEVE_T - STOCK_MIN_U / 2;
   alarmSleeve.add(web);
   // guide bosses to the posts
@@ -6674,10 +6680,15 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
 // hour hand; split it reads as a distinct, quieter pointer (owner's styling:
 // subtle, steel).
-// Stacked-hand build: the collet (bore 2.65) passes the hour tube (outer 2.5)
-// with running clearance and seats on the alarm tube's annular face (2.6..3.0);
+// Stacked-hand build: the collet passes the hour tube (outer 2.5) holding
+// CLEAR_MARGIN — the two stacks rotate independently, so this is clearance,
+// not a bearing — and seats on the alarm tube's annular face (2.6..3.0);
 // bossR 3.3 gives it a visible seating lip. See ALARM_HAND_Z for the z budget.
-const alarmHand = G.makeHand({ length: HOUR_HAND_LEN - 1.2, kind: 'hour', boreR: 2.65, bossR: 3.3, bossH: 0.8 });
+// The bore is a 24-gon (makeHand's ringExtrude segment count): its INSCRIBED
+// radius is what faces the tube, so the vertex radius carries the 1/cos(π/24)
+// correction — at a bare 2.65 the facet midpoints dipped to 0.1443 of margin
+// (the expectedContacts floor row caught it).
+const alarmHand = G.makeHand({ length: HOUR_HAND_LEN - 1.2, kind: 'hour', boreR: (HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24), bossR: 3.3, bossH: 0.8 });
 alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
@@ -9266,6 +9277,14 @@ style.textContent = `
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.14);
 }
 #clock-ui .guided-btns { display: flex; gap: 5px; }
+/* §65 — the explainer link, dressed as a button so the row reads like its
+   neighbours (an <a> because it navigates; a button that navigates lies). */
+#clock-ui a.ui-link {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
+  border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; transition: background 0.15s;
+  text-decoration: none;
+}
+#clock-ui a.ui-link:hover { background: rgba(255,255,255,0.14); }
 #clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
 /* §33 — reconfigure mode's chrome is DELIBERATELY its own colour (teal):
    §32 and §33 look alike on screen — parts away from their places — and
@@ -9494,6 +9513,13 @@ panel.innerHTML = `
       <div class="row">
         <span class="label-small">Explore</span>
         <button id="btn-explore">Off</button>
+      </div>
+      <!-- §65: the mechanism explainer — a maintained companion page in the
+           HUD's own visual language; a plain link, not a mode, so it costs
+           the panel nothing. -->
+      <div class="row">
+        <span class="label-small">Mechanisms</span>
+        <a class="ui-link" href="./explain.html">How they work</a>
       </div>
       <div class="row label-small" id="explore-reset-row" style="display:none;">
         <span>Drag parts · ⇧ drags group</span>

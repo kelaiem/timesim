@@ -17,6 +17,12 @@ lever escapement. Everything is procedural — there are no model assets.
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
 
+`explain.html` is the mechanism explainer (§65) — linked from the HUD,
+styled as the HUD. When a significant mechanism ships or changes, add or
+refresh its entry there in the same landing; plate numbers quote the
+real source constants, and entries state their mechanism's open TODO
+debt rather than hiding it.
+
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying
 about how a watch works → `TODO.md`. Both are written to be actionable by
@@ -47,7 +53,12 @@ someone who wasn't in the conversation; match that.
    pose-confirmed before they count; `tight` and `refuted` rows are
    reports, not failures), and `stockFloor` **0 degenerate and 0
    unwaived** (§50 — a waived row is accepted debt citing its TODO
-   item, visible in the report).
+   item, visible in the report), and `intraUnit` **0 unwaived**
+   (TODO 5's interim — movers vs their own unit's fixtures; declared
+   joints live in `INTRA_UNIT_CONTACTS`, waived rows cite their TODO),
+   and `expectedContacts` **0 unwaived and 0 unmatched selectors**
+   (TODO 6 — per-contact clearance floors across EXPECTED pairs, the
+   declared meshes excluded; same waiver convention).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
@@ -156,20 +167,24 @@ yields and wedges the tab. Driving the browser through tooling changes the
 arithmetic entirely — see the yield-throttling trap below before starting a
 sweep that way.
 
-### Two things the battery structurally cannot see
+### Two blind spots, now partially instrumented
 
-Both are written up in `TODO.md` (items 5 and 6), and both have produced
-real defects that every clean run missed:
+Both are written up in `TODO.md` (items 5 and 6), and both produced
+real defects that every clean run missed. Each now has an instrument in
+the battery — with known residue:
 
-- **Inside a unit.** The sweep enumerates *distinct* unit pairs, so a part
-  colliding with another part of the same unit is invisible. A bracket post
-  standing inside its own crank's swing survived every run this way.
+- **Inside a unit.** The pair sweep cannot see it; `intraUnit` (TODO 5's
+  interim) now checks each unit's movers against its own fixtures over
+  the pose net. Still invisible: fixture-vs-fixture (the pallet's
+  ruby-in-slot instance) and mover-vs-mover within one unit.
 - **Anywhere between an EXPECTED pair.** `EXPECTED` is granted per unit
-  *pair*, not per contact, so one declared mesh excuses every other overlap
-  between those two units.
+  *pair*; `expectedContacts` (TODO 6) holds the pairs declared in
+  `EXPECTED_CONTACT_FLOORS` to `CLEAR_MARGIN` everywhere EXCEPT their
+  named contact meshes. Only seeded pairs are covered — an EXPECTED
+  pair without a floors row still gets the blanket excuse.
 
-If you are checking a fixture against the mover it carries, or two units
-that already touch somewhere, measure it yourself.
+If you are checking a residue case — two fixtures, two movers of one
+unit, or an EXPECTED pair with no floors row — measure it yourself.
 
 ## `window.__clock` — the inspection surface
 

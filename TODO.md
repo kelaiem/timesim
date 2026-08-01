@@ -158,7 +158,32 @@ those two sets is rare (a pivot's bearing surfaces are the main case),
 so the budget list stays short, and no part needs a name for the check
 to run. Report violations as `Unit/child` pairs.
 
-## 6. `EXPECTED` is granted per PAIR, not per contact
+**Status 2026-08-01 — the interim is BUILT** (`intraUnit` in
+`src/inspect.js`, report-only). It derives the split exactly as above:
+each child's unit-relative matrix is signatured across 40 poses (5
+samples × every battery axis), children whose signature changes are
+movers, the rest fixtures; mover×fixture pairs get an AABB gate then
+the honest boolean (the arbitrated `meshesIntersect`, so tri-tri lies
+don't fabricate findings). The full run flags 54 raw rows; triage
+sorted them into `INTRA_UNIT_CONTACTS` (44 declared joints — wheels
+seated on their arbors, pivots on their studs, the mainspring's hook
+and ribbon anchors, spring bites, blade anchors — each row carrying
+*why* the contact is a joint) and 11 real findings, waived: 2 citing
+item 22 (the alarm pusher's bar in its own column wheel's disc band)
+and 9 citing item 23 (bearing-cock arms modeled solid to the axis
+they carry — a CLASS the first run surfaced at two stations).
+Runtime ~2.8 s, so it can gate. Two footnotes from the triage: one
+keyless row (`ExtrudeGeometry#43 ⇄ CylinderGeometry#39`) sits at the
+arbiter's d≈1e-4 boundary and flips run-to-run — declared, since the
+joint is real at either reading; and parity containment is undefined
+against zero-volume open sheets (the dial face), where only the
+crossing itself is meaningful. What the interim still cannot see is
+exactly what this entry predicted: fixture-vs-fixture pairs (the
+ruby-in-slot instance above), and mover-vs-mover within one unit. The
+naming infrastructure and the bevel-vs-neighbour check remain open;
+this entry stays open at reduced scope until they exist.
+
+## 6. MOSTLY CLOSED — `EXPECTED_CONTACT_FLOORS` names the contact; the instance became item 21
 
 Item 5's blind spot has a sibling. Once two units appear in
 `EXPECTED_PAIRS`, **every** overlap between them anywhere in the
@@ -185,6 +210,18 @@ for this pair in `CLEARANCE_BUDGETS`, so no floor is asserted anywhere.
 It is two hundredths of a unit from being a real collision, and nothing
 in the battery would report it if it crossed.
 
+**CORRECTED 2026-08-01 — it had already crossed, and this measurement
+could not see it.** The vertex-based sweep above reports the closest
+NON-CONTACT vertex; a tooth flank that passes through the tube's wall
+leaves its tip vertex in the bore's open air, where its distance to the
+surface it crossed between samples is POSITIVE. Measured with a
+containment test (vertex + edge-midpoint samples, parity raycast): the
+star has **304 vertices inside the tube's wall band, 0.225 deep**, and
+the minute wheel 264 at 0.224 — a standing collision at every pose,
+now filed with its numbers as **item 21**. The per-contact floors check
+(this item's structural fix, `EXPECTED_CONTACT_FLOORS` in inspect.js)
+carries the pair as a red row waived under that item.
+
 **Fix, in two parts.** The instance: re-solve the star's root diameter
 or the tube's outer radius so the gap is a derived margin rather than
 an accident — the star's tooth depth already derives from its pitch
@@ -194,6 +231,19 @@ either a region/part qualifier, or a paired `CLEARANCE_BUDGETS` floor
 that says "these two units may touch HERE, and must keep the margin
 everywhere else." The second form is cheaper and uses machinery that
 already exists.
+
+**Status 2026-08-01 — the structural half SHIPPED.**
+`EXPECTED_CONTACT_FLOORS` + `checkExpectedContacts` (inspect.js): each
+row names an EXPECTED pair's declared touching mesh pairs (each citing
+the instrument that owns that contact), excludes exactly those from a
+clearance sweep, and holds everything else between the two units to the
+margin. Report-first per §50's arc; waivers carry citations. Seeded
+with the three highest-value pairs (the four-defect Alarm disc ⇄ Hour
+wheel blanket, this item's instance pair, §45's sleeve pair). Its FIRST
+RUN found: the §34 index line at its declared 0.13 (now a cited
+contact), and the standing star/wheel ⇄ tube collision above (item 21).
+Remaining scope: rows accrete like budgets — new EXPECTED pairs should
+land with a floors row; gate once item 21 clears the last red.
 
 ---
 
@@ -232,6 +282,16 @@ arc wedges for levers, the fan for the chain.
 `LOW_LINKAGE_OBSTACLES` is this idea, done by hand, in 2D, for one
 linkage; it wants generalising into the battery so pair checks become
 pose-independent volume tests that cannot under-sample.
+
+**Stale-note 2026-08-01: that registry has since SHIPPED** — §36
+(`buildSweptRegistry`: exact annulus sectors for revolvers, per-pose
+bound unions flagged approx for the rest) and the `sweptOverlap` gate
+built on it (§36 job B, with pose-confirmation so hull contact must be
+reproduced at a real pose before it counts). The two sampling classes
+this entry names are therefore covered for pair overlap; what remains
+open here is the narrower residue — the approx tier is a bounds union,
+not a hull, and probe-style questions (ray bundles, corridor fits)
+still sample unless they are rewritten against the registry.
 
 ## 9. CLOSED — `ALARM_LINK_ROD_SEAT` was measured, not derived; both retired
 
@@ -287,7 +347,7 @@ Measured on the current build: 0.07 disarmed, 0.039 armed, no
 penetration. Note the battery cannot see any of this — every part
 involved belongs to the `Alarm link` unit, which is item 5.
 
-## 10. `Minute jumper ⇄ Dial` measures exactly 0.1500 and nobody knows which surface sets it
+## 10. CLOSED — the 0.1500 is the released beak over the star, and the instrument now names surfaces
 
 The pair is the tightest in the battery: **min 0.1500, required 0.15**.
 `measureClearance` rounds to 4 decimals (neighbouring pairs report
@@ -343,6 +403,23 @@ useful well beyond this row — every tight pair in the report currently
 names two UNITS and leaves the actual surfaces to guesswork.
 
 Found while verifying §35; pre-existing and unrelated to that branch.
+
+**Status 2026-08-01 — CLOSED, both halves.** The cheap fix landed:
+`unitClearance` always knew the minimum's mesh pair and `sweepClearances`
+dropped it; the sweep state now carries it, `measureClearance` returns
+`meshes`, and every `checkClearances` row names its surfaces (unnamed
+meshes report as `GeometryType#index` within the unit). Run against this
+row, the answer is **hypothesis (1), no defect**: within the budget's
+axes the minimum is `jumperBeak ⇄ star` (the star's body reached through
+the Dial nesting), at beat f=0 — the RELEASED beak over the star's
+teeth. That clearance is its own solve (`JMP_LIFT_ROT`: retreat until
+the beak's whole outline clears `STAR_R + CLEAR_MARGIN + JMP_BIND_EPS`),
+and the measured 0.1500 is that 0.16 minus ~0.01 of tessellation sag on
+the star's fine tooth tips — the same sag class HANDOFF_TRACK_TOL
+exists for. The epsilon plane (`Z_JMP_LIFTER`, the lifter bar against
+the dial face) is NOT the closest pair, so `JMP_BIND_EPS` guards
+exactly what it was built to guard and this row was only ever
+mislabelled in the report, never wrong in the geometry.
 
 ## 11. The alarm work is built at quarter-to-half-scale stock
 
@@ -1735,3 +1812,111 @@ now fixed. The overclaim is corrected here and in the check's row.
    spring" class, one level up. The fork (item 1) would retire this
    honestly by driving both ways; a modelled bias spring is the
    alternative.
+
+---
+
+## 21. The minute wheel and star pass THROUGH the hour tube — the 12:1's first mesh is geometrically impossible
+
+Found by `checkExpectedContacts`' first run (item 6's structural fix),
+proven analytically with a containment sampler, invisible to every
+instrument before it and to two deliberate measurements:
+
+- The hour tube spans world z −11.60..−2.78 (hour wheel plane → hands),
+  wall r 2.05..2.50 — THROUGH the minute wheel's band (−4.75..−3.82)
+  and the minute star's (−3.67..−3.40).
+- The minute wheel's teeth reach within r 1.20 of the dial axis (tip
+  circle 4.8 about the stud at 6), the star's likewise — both cross the
+  tube's wall: **264 wheel vertices and 304 star vertices inside the
+  wall band, 0.22 deep, at rest, at every pose.**
+- The cannon ⇄ minute-wheel mesh — the 12:1's first stage, §29's "real
+  mesh" — therefore happens THROUGH the tube's wall: the wheel's tips
+  interleave with the cannon's leaves at r 1.2–1.8, inside the tube's
+  bore, having passed through its wall to get there.
+
+**Why nothing ever saw it.** The pair sweep: `['Hour wheel', 'Motion
+works']` is EXPECTED for the 12:1's second mesh — blanket immunity
+(item 6, fifth confirmed defect of that class). Item 6's own probe:
+vertex-based — a tooth tip standing in the bore's open air measures a
+POSITIVE distance to the wall its flanks crossed, so the sweep reported
+"0.0084 clear" over a standing intersection. The eye: buried at r 2 in
+the centre stack behind the dial, occluded from both sides.
+
+**The architecture is the defect.** In a real watch the hour wheel sits
+DIAL-WARD of the minute wheel: its tube rises from its own plane toward
+the dial and never shares z with the minute wheel's teeth. Here §29's
+z-chain lands the hour wheel PLATE-WARD of the minute wheel (MW_Z2
+below MW_Z1), so the tube must cross the minute wheel's and star's
+bands to reach the hands — and no radius can thread that crossing (the
+teeth reach 1.2; any tube is fatter). Candidate fixes, in order of
+honesty:
+
+1. **Re-stack the motion works the real way**: hour wheel at the
+   dial-most plane (MW_Z1 and MW_Z2 swap roles), tube rising clear of
+   both toothed bands. Touches the §29 chain, the star's slice, the
+   cannon's length, and every consumer of MW_Z1/MW_Z2 — a §-scale
+   re-derivation, but the chain is derived precisely so this class of
+   move can be made (the §45 stage-0 precedent, again).
+2. A crescent relief in the wheel/star at the tube's azimuth is NOT
+   available — both parts rotate; the crossing is at all azimuths in
+   turn.
+
+The `EXPECTED_CONTACT_FLOORS` row for the pair stays red, waived citing
+this item; closing this item deletes that waiver.
+
+## 22. The alarm pusher's bar ends inside its own column wheel
+
+Found by `intraUnit`'s first run (item 5's interim), confirmed by
+direct per-mesh measurement and by screenshot: within the Alarm switch
+unit, the pusher's press bar (`CylinderGeometry#9` — a 4.15 × 1.8 ×
+0.64 slab at roughly (−41.2, 14.3), z 8.70..9.34) runs toward the
+column wheel and its end face stops **0.9 from the wheel's axis** —
+well inside the wheel's disc silhouette, in the disc's own z band
+(8.94..9.26 vs the bar's 8.70..9.34). The wheel's crown torus
+(`TorusGeometry#12`) shares the band and overlaps the same bar. Two
+parts of one action group (§43's pusher → pawl → column chain)
+occupy the same matter at every pose; no inter-unit sweep could see it
+(item 5's exact blindness — both meshes live in one unit).
+
+This is a P2 finding — the group disagrees with itself — so the fix is
+in mechanism space, not a waiver-forever: the press geometry (§43)
+must end the bar CLEAR of the disc, either by shortening the bar to
+stop at the pawl it actually presses (the bar's job ends at the pawl
+tail; nothing it does requires reaching the wheel) or by dropping the
+bar's z to a stratum the disc doesn't occupy, re-deriving the pawl
+contact height with it. Until then the two `INTRA_UNIT_WAIVERS` rows
+in `src/inspect.js` cite this item; closing it deletes both.
+
+## 23. Bearing-cock arms are solid where their bores should be
+
+Item 5's interim surfaced this as a CLASS on its first full run: a
+bearing cock is modeled as post + arm + bush, the bush RING carries a
+real bore around the running member — and the box ARM behind the ring
+runs all the way to the axis, uncut, because `BoxGeometry` cannot
+carry a hole. The member the cock exists to bear therefore passes
+through the arm's solid matter at every pose. Two stations, nine
+measured overlaps, all waived in `INTRA_UNIT_WAIVERS` citing this
+item:
+
+- **Alarm setting arbor** (the §25 C lower cock): the arm (1.4 × 0.7
+  × 0.3 at bush z −6.3) spans post → arbor AXIS, so the 0.4-radius
+  rod runs through its end — the bush ring beside it (bore 0.45) is
+  the only part actually cut. And the disc bevel's teeth bottom at
+  −6.16 against the arm's top at −6.15: a 0.01 graze, because
+  `BUSH_Z` was derived against the pinion below ("top −6.70 with
+  clearance to spare") and never against the bevel above.
+- **Alarm release lifter** (the §45 guide bracket): BOTH guide arms
+  reach the plunger's axis — the eyes' 0.17 bores (0.02 running
+  clearance over the 0.15 plunger) are decoration on solid arms. The
+  head and plunger pass through the upper arm's end, the plunger
+  through the lower's; and the lower guide's whole assembly shares z
+  with the moving stub/blade stack (stub into the lower arm and eye
+  face by 0.04 at rest, blade across the arm's top corner by 0.03 —
+  growing with drop travel).
+
+The fix is derivation, not nudging (rule 1): an arm ends at its
+ring's OUTER radius (`armLen = span − ringROut`, butting the ring it
+carries), and a guide's z-station derives against EVERY moving
+neighbour that crosses it — both the pinion below and the bevel
+above for the setting cock, the stub/blade stack's full travel for
+the lifter's lower guide. Closing this item deletes the nine waiver
+rows; `intraUnit` then measures the repair.

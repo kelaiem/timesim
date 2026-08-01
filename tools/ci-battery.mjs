@@ -15,6 +15,10 @@
 //   alarmHandoffs every declared hand-off of the §35 arming run within ±tol
 //                of touch at both parities, or waived citing its TODO item
 //   stockFloor   0 degenerate AND 0 unwaived (waived rows reported as debt)
+//   intraUnit    0 unwaived mover-vs-fixture intersections inside a unit
+//                (TODO 5's interim; waived rows reported as debt)
+//   expectedContacts 0 unwaived floor rows and 0 unmatched contact selectors
+//                (TODO 6's per-contact floors; waived rows reported as debt)
 //   inspection   includeExcluded: true, 0 FORBIDDEN pairs
 //   clearances   0 violations
 //   sweptOverlap 0 CONFIRMED (tight / refuted rows are reports, not failures)
@@ -79,6 +83,14 @@ const BATTERY = [
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
+  { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY },
+    gate: '0 unwaived mover-vs-fixture intersections',
+    fails: (r) => r.violations,
+    note: (r) => `${r.movers} movers over ${r.poses} poses, ${r.waived.length} waived (accepted debt)` },
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY },
+    gate: '0 unwaived floor rows, 0 unmatched contact selectors',
+    fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
+    note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY },
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
