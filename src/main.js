@@ -4828,6 +4828,7 @@ mwMinuteWheel.position.z = MW_Z1;
 const mwMinutePinion = G.makePinion({
   module: MW_MODULE_2, teeth: MW_PINION_TEETH, thickness: 1.0, material: MATS.steel,
 });
+mwMinutePinion.traverse((o) => { if (o.isMesh) o.name = 'mwMinutePinion'; }); // TODO 6 contact-floor selector
 mwMinutePinion.position.z = MW_Z2;
 mwArbor.add(mwMinuteWheel, mwMinutePinion);
 motionWorks.add(mwArbor);
@@ -4856,6 +4857,7 @@ const mwHourWheel = G.makeGear({
   module: MW_MODULE_2, teeth: MW_HOUR_TEETH, thickness: 0.8,
   boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
 });
+mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
 {
@@ -4863,6 +4865,7 @@ hourWheelGroup.add(mwHourWheel);
   const tubeLen = tubeTop - MW_Z2;
   const tube = new THREE.Mesh(
     ringGeo(HOUR_TUBE_INNER, HOUR_TUBE_OUTER, tubeLen), MATS.steel);
+  tube.name = 'hourTube'; // TODO 6 contact-floor selector (string-coupled)
   tube.position.z = MW_Z2 + tubeLen / 2;
   hourWheelGroup.add(tube);
   // The hour hand is carried BY this wheel — mounted on the tube's front
@@ -5444,6 +5447,7 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
 {
   const tube = new THREE.Mesh(
     ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
+  tube.name = 'alarmTubeBody'; // TODO 6 contact-floor selector (the §25 C running seat)
   tube.position.z = (ALARM_TUBE_BACK + ALARM_HAND_Z) / 2;
   alarmTubeGroup.add(tube);
   // Carrier flange: retention AND the follower's mounting plate — the pivot
@@ -5464,6 +5468,7 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   // both ends DERIVED so the post tracks the §29 step 1 re-stratification.
   const postH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - (ALARM_HEART_Z - ALARM_HEART_T / 2);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, postH, 10), MATS.steel);
+  post.name = 'alarmPivotPost'; // TODO 6 contact-floor selector (§45: inner edge = lobe + working)
   post.rotation.x = Math.PI / 2;
   post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - postH / 2);
   alarmTubeGroup.add(post);
@@ -5899,6 +5904,7 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   // web under the flat's rim, joining the skirt's top band to the bore (the
   // two derive 2·0.03 apart in radius: face-cover slack + working clearance)
   const web = new THREE.Mesh(ringGeo(rTopS, ALARM_SLEEVE_R_IN + 0.05, STOCK_MIN_U), MATS.nickel);
+  web.name = 'alarmSleeveWeb'; // TODO 6 contact-floor selector
   web.position.z = -ALARM_SLEEVE_T - STOCK_MIN_U / 2;
   alarmSleeve.add(web);
   // guide bosses to the posts

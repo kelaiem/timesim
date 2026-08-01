@@ -158,7 +158,7 @@ those two sets is rare (a pivot's bearing surfaces are the main case),
 so the budget list stays short, and no part needs a name for the check
 to run. Report violations as `Unit/child` pairs.
 
-## 6. `EXPECTED` is granted per PAIR, not per contact
+## 6. MOSTLY CLOSED — `EXPECTED_CONTACT_FLOORS` names the contact; the instance became item 21
 
 Item 5's blind spot has a sibling. Once two units appear in
 `EXPECTED_PAIRS`, **every** overlap between them anywhere in the
@@ -185,6 +185,18 @@ for this pair in `CLEARANCE_BUDGETS`, so no floor is asserted anywhere.
 It is two hundredths of a unit from being a real collision, and nothing
 in the battery would report it if it crossed.
 
+**CORRECTED 2026-08-01 — it had already crossed, and this measurement
+could not see it.** The vertex-based sweep above reports the closest
+NON-CONTACT vertex; a tooth flank that passes through the tube's wall
+leaves its tip vertex in the bore's open air, where its distance to the
+surface it crossed between samples is POSITIVE. Measured with a
+containment test (vertex + edge-midpoint samples, parity raycast): the
+star has **304 vertices inside the tube's wall band, 0.225 deep**, and
+the minute wheel 264 at 0.224 — a standing collision at every pose,
+now filed with its numbers as **item 21**. The per-contact floors check
+(this item's structural fix, `EXPECTED_CONTACT_FLOORS` in inspect.js)
+carries the pair as a red row waived under that item.
+
 **Fix, in two parts.** The instance: re-solve the star's root diameter
 or the tube's outer radius so the gap is a derived margin rather than
 an accident — the star's tooth depth already derives from its pitch
@@ -194,6 +206,19 @@ either a region/part qualifier, or a paired `CLEARANCE_BUDGETS` floor
 that says "these two units may touch HERE, and must keep the margin
 everywhere else." The second form is cheaper and uses machinery that
 already exists.
+
+**Status 2026-08-01 — the structural half SHIPPED.**
+`EXPECTED_CONTACT_FLOORS` + `checkExpectedContacts` (inspect.js): each
+row names an EXPECTED pair's declared touching mesh pairs (each citing
+the instrument that owns that contact), excludes exactly those from a
+clearance sweep, and holds everything else between the two units to the
+margin. Report-first per §50's arc; waivers carry citations. Seeded
+with the three highest-value pairs (the four-defect Alarm disc ⇄ Hour
+wheel blanket, this item's instance pair, §45's sleeve pair). Its FIRST
+RUN found: the §34 index line at its declared 0.13 (now a cited
+contact), and the standing star/wheel ⇄ tube collision above (item 21).
+Remaining scope: rows accrete like budgets — new EXPECTED pairs should
+land with a floors row; gate once item 21 clears the last red.
 
 ---
 
@@ -1752,3 +1777,53 @@ now fixed. The overclaim is corrected here and in the check's row.
    spring" class, one level up. The fork (item 1) would retire this
    honestly by driving both ways; a modelled bias spring is the
    alternative.
+
+---
+
+## 21. The minute wheel and star pass THROUGH the hour tube — the 12:1's first mesh is geometrically impossible
+
+Found by `checkExpectedContacts`' first run (item 6's structural fix),
+proven analytically with a containment sampler, invisible to every
+instrument before it and to two deliberate measurements:
+
+- The hour tube spans world z −11.60..−2.78 (hour wheel plane → hands),
+  wall r 2.05..2.50 — THROUGH the minute wheel's band (−4.75..−3.82)
+  and the minute star's (−3.67..−3.40).
+- The minute wheel's teeth reach within r 1.20 of the dial axis (tip
+  circle 4.8 about the stud at 6), the star's likewise — both cross the
+  tube's wall: **264 wheel vertices and 304 star vertices inside the
+  wall band, 0.22 deep, at rest, at every pose.**
+- The cannon ⇄ minute-wheel mesh — the 12:1's first stage, §29's "real
+  mesh" — therefore happens THROUGH the tube's wall: the wheel's tips
+  interleave with the cannon's leaves at r 1.2–1.8, inside the tube's
+  bore, having passed through its wall to get there.
+
+**Why nothing ever saw it.** The pair sweep: `['Hour wheel', 'Motion
+works']` is EXPECTED for the 12:1's second mesh — blanket immunity
+(item 6, fifth confirmed defect of that class). Item 6's own probe:
+vertex-based — a tooth tip standing in the bore's open air measures a
+POSITIVE distance to the wall its flanks crossed, so the sweep reported
+"0.0084 clear" over a standing intersection. The eye: buried at r 2 in
+the centre stack behind the dial, occluded from both sides.
+
+**The architecture is the defect.** In a real watch the hour wheel sits
+DIAL-WARD of the minute wheel: its tube rises from its own plane toward
+the dial and never shares z with the minute wheel's teeth. Here §29's
+z-chain lands the hour wheel PLATE-WARD of the minute wheel (MW_Z2
+below MW_Z1), so the tube must cross the minute wheel's and star's
+bands to reach the hands — and no radius can thread that crossing (the
+teeth reach 1.2; any tube is fatter). Candidate fixes, in order of
+honesty:
+
+1. **Re-stack the motion works the real way**: hour wheel at the
+   dial-most plane (MW_Z1 and MW_Z2 swap roles), tube rising clear of
+   both toothed bands. Touches the §29 chain, the star's slice, the
+   cannon's length, and every consumer of MW_Z1/MW_Z2 — a §-scale
+   re-derivation, but the chain is derived precisely so this class of
+   move can be made (the §45 stage-0 precedent, again).
+2. A crescent relief in the wheel/star at the tube's azimuth is NOT
+   available — both parts rotate; the crossing is at all azimuths in
+   turn.
+
+The `EXPECTED_CONTACT_FLOORS` row for the pair stays red, waived citing
+this item; closing this item deletes that waiver.
