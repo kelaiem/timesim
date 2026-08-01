@@ -1,0 +1,67 @@
+# Build and upload a release payload artifact. This workflow builds the exact tracked tree
+# (excluding CI/dev tooling) for a commit and uploads it as an artifact named
+# payload-<commit-sha>. Use this once and then run the promotion workflow to deploy
+# that artifact to dev/staging/prod.
+#
+# Required repository secrets:
+#   DEPLOY_HOST        - target host for SSH/SFTP (e.g. app.example.com)
+#   DEPLOY_USER        - SSH user to connect as
+#   DEPLOY_SSH_KEY     - private key (PEM) for DEPLOY_USER on DEPLOY_HOST
+#
+# Required repository variables (Settings -> Secrets and variables -> Actions -> Variables):
+#   DEPLOY_PROJECT_PATH    - remote project root the sftp session will chdir into
+#   DEPLOY_RELEASES_PATH   - base dir under project path where releases are uploaded
+#
+name: Build Release Artifact
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Optional: commit-ish to build (defaults to workflow ref)'
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.set-name.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.commit || github.ref }}
+
+      - name: Compute artifact name
+        id: set-name
+        run: |
+          COMMIT=${GITHUB_SHA}
+          SHORT=${COMMIT:0:7}
+          ARTIFACT="payload-${SHORT}"
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Build payload
+        env:
+          ARTIFACT: ${{ steps.set-name.outputs.artifact }}
+        run: |
+          mkdir -p "$ARTIFACT"
+          # Archive tracked files at checkout (exclude workflow config and dev tools)
+          git archive --format=tar HEAD -- . ':(exclude).github' ':(exclude)tools' | tar -x -C "$ARTIFACT"
+
+      - name: Compress payload
+        env:
+          ARTIFACT: ${{ steps.set-name.outputs.artifact }}
+        run: |
+          tar -czf "$ARTIFACT.tar.gz" "$ARTIFACT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set-name.outputs.artifact }}
+          path: ${{ steps.set-name.outputs.artifact }}.tar.gz
+
+      - name: Output artifact name
+        run: echo "Artifact uploaded: ${{ steps.set-name.outputs.artifact }}"

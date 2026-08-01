@@ -1,0 +1,104 @@
+# Promotion workflow: download a build artifact and deploy it to an environment
+# over SFTP/SSH. This is a manual workflow (workflow_dispatch) that re-uses the
+# artifact produced by the build workflow.
+#
+# Inputs:
+#   commit_sha - the short commit SHA used when the artifact was created (e.g. 7 chars)
+#   environment - one of dev, staging, prod
+#
+# Required repository secrets:
+#   DEPLOY_HOST        - target host for SSH/SFTP (e.g. app.example.com)
+#   DEPLOY_PORT        - optional (defaults to 22)
+#   DEPLOY_USER        - SSH user to connect as
+#   DEPLOY_SSH_KEY     - private key (PEM) for DEPLOY_USER on DEPLOY_HOST
+#
+# Required repository variables:
+#   DEPLOY_PROJECT_PATH    - remote project root the sftp session is chdir'd into
+#   DEPLOY_RELEASES_PATH   - base dir (relative to project path) releases are uploaded into
+#   DEPLOY_DEV_SYMLINK     - symlink used by dev env (relative to project path)
+#   DEPLOY_STAGING_SYMLINK - symlink used by staging env
+#   DEPLOY_PROD_SYMLINK    - symlink used by prod env
+
+name: Promote Artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit short SHA used by the build artifact (e.g. abc1234)'
+        required: true
+      environment:
+        description: 'Target environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: payload-${{ inputs.commit_sha }}
+          path: ./payload
+
+      - name: Verify payload
+        run: |
+          ls -al ./payload || (echo 'payload not found' && exit 1)
+
+      - name: Configure SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s
+' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Determine target paths
+        id: paths
+        run: |
+          ENV=${{ inputs.environment }}
+          case "$ENV" in
+            dev) SYMLINK="${{ vars.DEPLOY_DEV_SYMLINK }}" ;;
+            staging) SYMLINK="${{ vars.DEPLOY_STAGING_SYMLINK }}" ;;
+            prod) SYMLINK="${{ vars.DEPLOY_PROD_SYMLINK }}" ;;
+            *) echo "Unknown environment $ENV" && exit 1 ;;
+          esac
+          echo "symlink=$SYMLINK" >> "$GITHUB_OUTPUT"
+          echo "env=$ENV" >> "$GITHUB_OUTPUT"
+
+      - name: Upload payload and repoint symlink
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PROJECT_PATH: ${{ vars.DEPLOY_PROJECT_PATH }}
+          DEPLOY_RELEASES_PATH: ${{ vars.DEPLOY_RELEASES_PATH }}
+          VERSION: ${{ inputs.commit_sha }}
+          SYMLINK: ${{ steps.paths.outputs.symlink }}
+        run: |
+          PORT="${DEPLOY_PORT:-22}"
+          # Upload the artifact dir (payload is a tar.gz containing payload-<sha>.tar.gz)
+          # Expand the tar into a temp dir then sftp the directory
+          mkdir -p tmp_unpack
+          tar -xzf payload/payload-${VERSION}.tar.gz -C tmp_unpack
+          # Use sftp to upload and repoint symlink
+          sftp -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -P "$PORT" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" <<SFTP_EOF
+          cd $DEPLOY_PROJECT_PATH
+          -mkdir $DEPLOY_RELEASES_PATH
+          put -r tmp_unpack $DEPLOY_RELEASES_PATH/$VERSION
+          -rm $SYMLINK
+          symlink $DEPLOY_RELEASES_PATH/$VERSION $SYMLINK
+          SFTP_EOF
+
+      - name: Done
+        run: echo "Deployed payload-${{ inputs.commit_sha }} to ${{ inputs.environment }}"
