@@ -185,6 +185,39 @@
       weaker force, longer lever. The product, torque into the train, stays near constant.
       Winding spools the chain back onto the fusee; a maintaining detent keeps the train
       driven while the wind briefly unloads it, so the escapement never runs backward.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The cone's bargain — falling force, growing lever</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 240" width="780" height="240" role="img" aria-label="Drum and fusee cone joined by the chain, with a graph showing spring torque falling, fusee radius rising, and their product near constant">
+            <circle cx="105" cy="95" r="58" fill="var(--brass-fill)" opacity="0.5" stroke="var(--brass)" stroke-width="1.6"/>
+            <circle cx="105" cy="95" r="12" fill="none" stroke="var(--brass)" stroke-width="1"/>
+            <text class="lbl" x="70" y="176">mainspring drum</text>
+            <path d="M 230 45 L 320 25 L 320 165 L 230 145 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+            <g stroke="var(--steel)" stroke-width="0.75" opacity="0.7">
+              <line x1="238" y1="47" x2="238" y2="143"/><line x1="256" y1="43" x2="256" y2="147"/>
+              <line x1="274" y1="39" x2="274" y2="151"/><line x1="292" y1="35" x2="292" y2="155"/><line x1="310" y1="30" x2="310" y2="160"/>
+            </g>
+            <text class="lbl" x="238" y="186">fusee cone · r 2.6 → 7.4</text>
+            <line x1="163" y1="66" x2="252" y2="52" stroke="var(--ruby)" stroke-width="2"/>
+            <text class="val val-ruby" x="150" y="42">chain — full wind pulls at the SMALL radius</text>
+            <line x1="420" y1="200" x2="740" y2="200" stroke="var(--text)" stroke-width="1"/>
+            <line x1="420" y1="30" x2="420" y2="200" stroke="var(--text)" stroke-width="1"/>
+            <text class="lbl" x="660" y="218">reserve 1 → 0</text>
+            <path d="M 420 62 L 740 152" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+            <text class="val val-brass" x="428" y="56">spring torque 1 → 0.35</text>
+            <path d="M 420 155 L 740 68" fill="none" stroke="var(--steel)" stroke-width="1.6" stroke-dasharray="5 3"/>
+            <text class="val val-steel" x="560" y="180">chain radius 2.6 → 7.4</text>
+            <path d="M 420 62 L 740 63" fill="none" stroke="var(--ruby)" stroke-width="2.2"/>
+            <text class="val val-ruby" x="560" y="48">train torque ≈ 1, the whole reserve</text>
+          </svg>
+        </div>
+        <figcaption>The graph is the HUD's own law, not an illustration:
+        <code>springTq = 0.35 + 0.65·reserve</code>,
+        <code>trainTq = springTq · fuseeR / FUSEE_R_SMALL</code> — at empty,
+        0.35 × 7.4 / 2.6 = 0.996. The two torque bars in the sim's Time panel display
+        exactly these expressions; the cone's r 2.6 → 7.4 spiral (with its §61 grooves) is
+        the geometry that makes the red line flat.</figcaption>
+      </figure>
       <p class="note">Honesty ledger: TODO 1 is half-closed — the spring's torque law is still
       partly authored rather than emerging from ribbon mechanics; the chain's swept fan is a
       first-class obstacle in the layout (§36's registry).</p>
@@ -479,6 +512,35 @@
       step at the minute — the beak's clearance over the star (0.1500, exactly one
       <code>CLEAR_MARGIN</code>) is the solved release gap, and the snap is an ease the sim's
       <code>setPose</code> deliberately cannot fake through.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">12:1 by tooth counts alone</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 210" width="780" height="210" role="img" aria-label="Gear diagram: cannon pinion ten teeth drives minute wheel thirty; compound minute pinion eight drives hour wheel thirty-two; three to one times four to one equals twelve to one">
+            <circle cx="150" cy="105" r="26" fill="none" stroke="var(--brass)" stroke-width="2"/>
+            <text class="lbl lbl-strong" x="104" y="52">cannon pinion · 10</text>
+            <text class="val" x="104" y="66">friction-fit, turns once/hour</text>
+            <circle cx="260" cy="105" r="66" fill="none" stroke="var(--steel)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="228" y="188">minute wheel · 30</text>
+            <circle cx="260" cy="105" r="20" fill="none" stroke="var(--steel)" stroke-width="1.2" stroke-dasharray="4 2"/>
+            <text class="val" x="292" y="98">minute pinion · 8 (compound)</text>
+            <circle cx="420" cy="105" r="74" fill="none" stroke="var(--brass)" stroke-width="2"/>
+            <text class="lbl lbl-strong" x="384" y="196">hour wheel · 32</text>
+            <text class="val" x="384" y="34">its TUBE carries the hour hand</text>
+            <circle cx="176" cy="105" r="4" fill="var(--ruby)"/><circle cx="290" cy="105" r="4" fill="var(--ruby)"/>
+            <text class="val" x="540" y="80">30/10 × 32/8</text>
+            <text class="val" x="540" y="98">= 3 × 4 = 12:1</text>
+            <text class="val" x="540" y="130">the hour hand arrives at 12:1</text>
+            <text class="val" x="540" y="144">because the counts multiply to it —</text>
+            <text class="val" x="540" y="158">rule 2: no display quantity is assigned</text>
+          </svg>
+        </div>
+        <figcaption>Both meshes share one centre distance (the minute wheel and its pinion
+        ride one stud), which is the constraint the moduli solve against. The counts are
+        <code>cannonPinionTeeth = 10</code>, <code>MW_MINUTE_TEETH = 30</code>,
+        <code>MW_PINION_TEETH = 8</code>, <code>MW_HOUR_TEETH = 32</code>
+        (<code>layout.js</code>) — greppable, and the same numbers hand-setting drives
+        forward through the keyless chain.</figcaption>
+      </figure>
       <p class="note">Honesty ledger: TODO 21 — the hour tube as currently stacked passes
       through the minute wheel's and star's tooth bands; the fix is a §-scale re-stack of the
       motion works (hour wheel to the dial-most plane). Found by the per-contact floors
@@ -500,6 +562,39 @@
       declared joints in the intra-unit instrument's table, because a pivot in its bearing is
       what an assembly <em>is</em>; the instrument exists for parts that foul, not parts that
       join.</p>
+    <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One crown, two paths — the clutch decides</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 230" width="780" height="230" role="img" aria-label="Two states of the keyless works: crown pushed routes the sliding pinion to the winding path; pulled drops it into the setting wheels">
+            <g transform="translate(20 24)">
+              <text class="lbl lbl-strong" x="0" y="0">pushed — WINDING</text>
+              <rect x="0" y="60" width="150" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+              <rect x="150" y="50" width="34" height="30" rx="4" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <path d="M 96 44 L 130 44 L 130 86 L 96 86 L 106 65 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <text class="val" x="60" y="36">sliding pinion on the stem square</text>
+              <circle cx="96" cy="44" r="4" fill="var(--ruby)"/>
+              <rect x="40" y="96" width="120" height="12" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+              <text class="val val-brass" x="40" y="126">→ ratchet + click → drum: chain spools onto the fusee</text>
+              <line x1="100" y1="86" x2="100" y2="96" stroke="var(--ruby)" stroke-width="1.5"/>
+            </g>
+            <g transform="translate(410 24)">
+              <text class="lbl lbl-strong" x="0" y="0">pulled — SETTING (and hacking)</text>
+              <rect x="0" y="60" width="150" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+              <rect x="158" y="50" width="34" height="30" rx="4" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <path d="M 60 44 L 94 44 L 94 86 L 60 86 L 70 65 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <circle cx="60" cy="86" r="4" fill="var(--ruby)"/>
+              <rect x="8" y="96" width="120" height="12" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+              <text class="val val-brass" x="8" y="126">→ setting wheels → motion works (the 12:1 above)</text>
+              <text class="val" x="8" y="144">…and the hack rod rises the stop pad (hacking entry)</text>
+              <line x1="70" y1="86" x2="70" y2="96" stroke="var(--ruby)" stroke-width="1.5"/>
+            </g>
+            <text class="val" x="20" y="210">the pull is a MOTION, eased over real travel — setPose cannot fake it; every mesh phase on both paths solved from measurement (§15)</text>
+          </svg>
+        </div>
+        <figcaption>The sliding pinion rides the stem's square: home, its dog teeth face the
+        winding path; pulled, it slides along the square into the setting wheels. Ruby marks
+        the live mesh in each state — one part, two jobs, no flag anywhere.</figcaption>
+      </figure>
     </div>
   </details>
 
@@ -1001,6 +1096,37 @@
       hammer — its fall a real sprung member, not a spring <em>law</em> (§48) — beats the
       gong; the ring runs down as the barrel empties, or stops early if the crown is pulled
       (§45's arrest, plate 4 above).</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The alarm at a glance — where each entry lives</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 170" width="780" height="170" role="img" aria-label="Overview of the alarm: setting and winding into the disc and barrel, the feeler reading coincidence, the strike train and gong, the silence hold">
+            <rect x="20" y="30" width="130" height="40" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="30" y="48">alarm crown</text><text class="val" x="30" y="62">set · wind · silence</text>
+            <rect x="200" y="14" width="130" height="34" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+            <text class="val" x="210" y="35">disc (set time)</text>
+            <rect x="200" y="56" width="130" height="34" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+            <text class="val" x="210" y="77">alarm barrel</text>
+            <rect x="200" y="112" width="130" height="34" fill="none" stroke="var(--steel)" stroke-width="1.2" stroke-dasharray="5 3"/>
+            <text class="val" x="210" y="133">silence rocker · §45</text>
+            <rect x="390" y="30" width="130" height="40" fill="none" stroke="var(--ruby)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="400" y="48">feeler</text><text class="val" x="400" y="62">reads coincidence</text>
+            <rect x="580" y="30" width="180" height="40" fill="none" stroke="var(--text)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="590" y="48">strike train → hammer</text><text class="val" x="590" y="62">→ gong (own modes)</text>
+            <line x1="150" y1="40" x2="196" y2="31" stroke="var(--muted)" stroke-width="1.2"/>
+            <line x1="150" y1="60" x2="196" y2="70" stroke="var(--muted)" stroke-width="1.2"/>
+            <line x1="150" y1="66" x2="196" y2="126" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <line x1="330" y1="31" x2="386" y2="45" stroke="var(--muted)" stroke-width="1.2"/>
+            <line x1="330" y1="73" x2="600" y2="73" stroke="var(--muted)" stroke-width="1.2"/>
+            <line x1="330" y1="129" x2="440" y2="74" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <line x1="520" y1="50" x2="576" y2="50" stroke="var(--ruby)" stroke-width="1.6"/>
+            <text class="val" x="20" y="160">detail entries: the column wheel · alarm arming · show/hide · the feeler (full plates) · the gong — each above</text>
+          </svg>
+        </div>
+        <figcaption>The overview: the crown sets the disc and winds the barrel; arming (the
+        column wheel → §35 link) enables the release; the feeler trips at coincidence and
+        the barrel drives hammer onto gong; the §45 rocker holds the feeler's tail to
+        silence or arrest. Each box has its own entry with plates on this page.</figcaption>
+      </figure>
       <p class="note">The arming run — pusher → pawl → column wheel → ring — is posed from
       measured contacts and checked every battery run by <code>alarmHandoffs</code>; TODO 20
       records where its causality still needs to be driven from the input side.</p>
