@@ -281,7 +281,15 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // shared-budget position is recorded in the roadmap entry. Every
 // dial↔movement coupling is tripwired, and this edit is deliberately made
 // ALONE first so the tripwire list measures the real blast radius.
-export const Z_DIAL = -7.5;
+// §45 stage 0: −7.5 → −8.40. The alarm-release CAM SLEEVE's band (sleeve
+// envelope 0.742 + one margin — arithmetic and agreement tripwire in
+// main.js's §29/§45 chain block) is funded HERE, not out of the plate-side
+// end gap: the chain below the heart grows by the same amount, so every
+// member below the insertion keeps its solved world plane and the landing
+// assert is untouched. 0.90 is the spend 0.8915 rounded up to the 0.01
+// grid; the ≤0.009 residue rides the end gap. Assembly depth grows
+// ≈ 0.34 mm, still inside §39's asserted 2.5–12 mm envelope.
+export const Z_DIAL = -8.4;
 // KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of
 // the base plate as in a real watch (it used to ride atop the barrel on the
 // movement side). Bracketed by two binds and set mid-band:

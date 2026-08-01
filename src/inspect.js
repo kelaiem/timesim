@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN, UNIT_MM, SLENDER_MAX as SLENDER_MAX_U } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U } from './layout.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -163,6 +163,8 @@ export const MECH_GRAPH = {
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
+    ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/345, the selector's pattern one band deeper)
+    ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
     ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes
 
@@ -237,6 +239,12 @@ export const MECH_GRAPH = {
                                              // cam's minimum and the slopes cam the rotation) — the coupling as geometry
     ['Alarm selector', 'Alarm disc'],        // §34 pass 2b: the ring's face tips the flange rocker (axial contact,
                                              // azimuth-independent) — the bias that picks which heart wins
+    ['Alarm crown', 'Alarm release lifter'], // §45: the stem's bevel collar cams the lifter's head down on the pull
+                                             // (the keyless sliding-pinion idiom — the ratio is the machined taper)
+    ['Alarm release lifter', 'Alarm release sleeve'], // §45: the fork's plates on the sleeve's tab — positive both ways
+    ['Alarm release sleeve', 'Alarm disc'],  // §45: the 45° cone on the follower's tail pin, at ANY tube azimuth —
+                                             // lifting follower A releases the tube to the §25 C friction coupling:
+                                             // the hider's second input, and the hand SWEEPS while being set
     ['Alarm switch', 'Alarm link'],          // §35: the link beak ON the castellations, 120° around — the same
                                              // parity the brake beak reads, now carried away as metal
     ['Alarm link', 'Alarm selector'],        // §35: the centre crank on the ring's drive tab — the run's last
@@ -349,7 +357,12 @@ export const MECH_GRAPH = {
       name: 'motion-works arbor cap reaches the cannon pinion',
       unit: 'Keyless works',
       target: 'Dial',
-      tol: 3.5,
+      // §45: the tol RIDES Z_DIAL — the anchor's nearest 'Dial' mesh is the
+      // sheet, which moves with every dial-band strata spend, while the cap
+      // itself still lands flush beside the cannon's plate-side end (world-
+      // fixed: the chain grows exactly what Z_DIAL deepens). 3.5 was the
+      // frozen −7.5-era figure — the same stale-absolute class §51 enumerated.
+      tol: 3.5 + (-7.5 - Z_DIAL),
       point: nearestMeshCenter,
     },
     {
@@ -550,6 +563,12 @@ const EXPECTED_PAIRS = [
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
                                             // corridor past Dial furniture is ray-asserted at the build
   ['Alarm selector', 'Dial'],               // the nesting artifact + the posts' sheet anchors
+  ['Alarm release sleeve', 'Dial'],         // §45: the same nesting artifact + the sleeve posts' sheet anchors
+  ['Alarm release sleeve', 'Alarm disc'],   // §45: the cone ⇄ tail-pin working contact (setting parity)
+  ['Alarm release lifter', 'Alarm release sleeve'], // §45: the fork's running fit on the tab
+  ['Alarm release lifter', 'Alarm crown'],  // §45: the head riding the stem collar
+  ['Alarm release lifter', 'Dial'],         // §45: the fork grips a dialFace descendant — the tab re-attributed
+                                            // through nesting (the Alarm link ⇄ Dial precedent)
   ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
                                             // is a dialFace descendant, so the Dial's traverse carries its beak
                                             // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
@@ -1809,8 +1828,13 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
 // Both parities of the toggle, posed exactly. tau/crown/tension pins match
 // the fingerprint's rest pose so the run is measured on canonical geometry.
 const ALARM_HANDOFF_POSES = [
-  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0 }],
-  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1 }],
+  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0, alarmCrownPullT: 0 }],
+  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmCrownPullT: 0 }],
+  // §45 — the SETTING parity: alarm crown pulled, disarmed. The release run
+  // (collar → lifter → sleeve → tail pin) must measure closed here, and the
+  // sleeve must measure FREE of the pin at both crown-in parities — riding
+  // must not feel the sleeve.
+  ['setting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0, alarmCrownPullT: 1 }],
 ];
 // The run as §35 states it, one row per claimed hand-off, in drive order.
 // A `missing` row is a member the claim requires that has no geometry at all
@@ -1883,6 +1907,28 @@ const ALARM_HANDOFFS = [
     label: 'ring face ⇄ sensing pin',
     unitA: 'Alarm selector', meshA: 'alarmSelRing',
     unitB: 'Alarm disc', meshB: 'alarmSelPin',
+  },
+  // §45 — the release run, in drive order. The blade preloads the head onto
+  // the collar at every parity (plateau or ramp), and the fork's plates run
+  // at the TODO 20 working clearance, so both measure as contact everywhere;
+  // the cone touches the tail pin ONLY at the setting parity — at rest the
+  // whole skirt sits one ALARM_SLEEVE_GAP below the pin's tip, and armed the
+  // sleeve does not move (the ring path owns that parity).
+  {
+    label: 'stem collar ⇄ lifter head',
+    unitA: 'Alarm crown', meshA: 'alarmStemCollar',
+    unitB: 'Alarm release lifter', meshB: 'alarmLifterHead',
+  },
+  {
+    label: 'lifter fork ⇄ sleeve tab',
+    unitA: 'Alarm release lifter', meshA: 'alarmLifterFork',
+    unitB: 'Alarm release sleeve', meshB: 'alarmSleeveTab',
+  },
+  {
+    label: 'sleeve cone ⇄ follower tail pin',
+    unitA: 'Alarm release sleeve', meshA: 'alarmSleeveSkirt',
+    unitB: 'Alarm disc', meshB: 'alarmTailPin',
+    expect: { disarmed: 'free', armed: 'free', setting: 'contact' },
   },
 ];
 
@@ -3230,6 +3276,22 @@ export const STOCK_KIND_BY_MESH = {
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
   alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
+  // §20 — every screw's merged slot inlay: a slot is a RECESS rendered as a
+  // dark film over the head (the chaton convention), not stock. Same class
+  // as alarmDiscTrack. The HEADS carry no entry on purpose: they are real
+  // stock at STOCK_MIN_U and must keep answering to the wheel floor.
+  screwSlots: 'marking',
+  // §45 — the release run's declared kinds, built to their floors (no new
+  // waivers): the tail pin and sleeve posts are pin stock at/over the pivot
+  // floor (the alarmSelPost precedent), the plunger and head are pin-class
+  // rod (⌀ 0.114 mm), and the return blade is a real flat spring at
+  // SPRING_FLAT_U. Everything else in both units is sheet at STOCK_MIN_U
+  // and answers to the wheel floor with no entry, on purpose.
+  alarmTailPin: 'pivot',
+  alarmSleevePost: 'pivot',
+  alarmLifterPlunger: 'pivot',
+  alarmLifterHead: 'pivot',
+  alarmLifterBlade: 'spring',
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none

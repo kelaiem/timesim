@@ -5719,3 +5719,142 @@ clears it after; crown pulled → hands appear and track the dial
 through setting; crown home → time hands fade while the still-out
 alarm crown keeps its hand; zero page errors; full battery green with
 the geometry fingerprint untouched (DOM/SVG only).
+
+## §20. Screw slots everywhere — one screw vocabulary, merged
+
+**Goal, met.** Screws look like screws: every screw in the movement is
+now the same object — a blued tapered head with a dark slot sunk across
+it — built by one shared `makeScrews` (geometry.js), whose template was
+`makeChaton`'s screw loop, exactly as the entry predicted.
+
+**The §14 warning was real and shaped the builder.** "Each screw is two
+more meshes" — and §41's crown work had already measured draw calls as
+the render cost that matters (69 for one knurl). So `makeScrews` MERGES:
+N screws cost two draw calls (one heads mesh, one slots mesh), not 2N.
+The chatons, refactored onto the shared builder with identical
+dimensions, each dropped from 6 meshes to 2 — the entry's cost worry
+ended up making the movement cheaper to draw than before the feature.
+
+**Call sites.**
+
+- `makeChaton` — the template, now a consumer; geometry unchanged.
+- Balance cock T-foot screws — were bare cylinders (TODO 12's "head
+  proud of the foot" note rides along); now slotted, same head radius
+  and seat, slot azimuth = each foot's bearing from the cock origin (the
+  derived stand-in for assembly scatter).
+- Escape-bridge (fork cock) foot screws — the §-era fix gave them heads
+  ("visually unfastened"), but with nothing to turn; now slotted.
+- **The plate screws, which did not exist**: the three-quarter plate has
+  rested on its pillars since the pillars existed with nothing visibly
+  holding it down. One screw per solved pillar seat (all four found at
+  boot), on the plate's top face, head FLUSH with the face — the chaton
+  convention, because the hack blade passes 0.18 over that face and
+  nothing may stand above it. Head radius derived from the pillar's own
+  widest land (capR·0.6, the bridge's head-to-seat proportion): the head
+  must bear on the land it clamps, not overhang it.
+
+**Deliberately not slotted:** the stud carrier's side pin screw
+(`studPinScrew`) — its head face is ~0.1 mm; a slot there is sub-texel
+at any legible zoom. Declared (TODO 12's triage note) and left. The
+balance's 16 timing screws keep their headless functional form.
+
+**Verified.** Numeric probe per site: cock 2 heads + 2 slots merged,
+slots sunk 0.03 below the head tops; plate 4 heads flush at z 8.508
+against the 8.51 face; bridge 1 + 1 sunk. Boot silent; battery run on
+the landed tree.
+
+## §45. The alarm hand is visible to set — stage 1 of 2, the release built
+
+**Scope shipped.** The visibility half of §45, complete: pulling the
+alarm crown RELEASES the alarm tube from its hour coupling, so the §25 C
+friction train turns it live and the hand SWEEPS while being set — in
+both arm states — and re-seats by evaluation when the crown goes home.
+`Hidden ⟺ ¬Armed ∧ ¬Setting` is asserted at boot as the biconditional
+(all four corners, evaluated on the mechanism's own laws), not as the
+three implications that would pass a permanently-visible hand. Stage 2 —
+setting an ARMED alarm rings today; the strike-hold finger — remains in
+the roadmap with a sited design (the silence rocker at the feeler).
+
+**The mechanism.** The build correction that reshaped this section: the
+selector chain is positively located end to end (TODO 19/20), so the
+"trivial OR" the entry first imagined had nowhere to press — the ONLY
+compliance in the whole hider is the heart-cam followers themselves.
+Stage 1 therefore lifts follower A:
+
+- **Tail pin** (`alarmTailPin`) — an axial ruby pin 0.45 past the arm's
+  pivot (post radius + boss + web: the shortest tail that exists, since
+  the pin's radial stroke grows with tail length), hanging plate-ward
+  into a band that did not exist before this build.
+- **Cam sleeve** (`Alarm release sleeve`) — a static guided ring below
+  the heart/arm band: flat annulus at floor stock, 45° cone skirt whose
+  face presses the pin inward at ANY tube azimuth as the sleeve rises
+  `ALARM_SLEEVE_TRAVEL`; three dial posts (az 105/250/345, the §34
+  selector's pattern one band deeper); a tab the lifter grips.
+- **Lifter** (`Alarm release lifter`) — one rigid L from the stem to the
+  tab: a bevel COLLAR on the sliding alarm stem (the keyless
+  sliding-pinion idiom; the pull's 5-unit throw becomes the 0.22 sleeve
+  travel as a 0.044 machined taper, not a tick() coefficient), a domed
+  head under it, plunger, tangential chord az 0 → 8°, radial run at the
+  tab's plane guided by a mid-cheek bracket at r 14, fork plates at the
+  TODO 20 working clearance. Return is a real blade (`SPRING_FLAT_U`)
+  re-seating the head — the §29 feeler's blade-onto-cam idiom — and the
+  arm spring's reflection through the cone agrees. The input station
+  lives OUTBOARD of the setting-corner cluster at both crown extremes
+  (head r 27.8, collar tip parked one margin past the bearing-cock post
+  even at rest): the first siting put the head at r 21.5 inside the disc
+  bevel's reach, the sweep confirmed the transfixion, and the fix was
+  position-space only — a P3 resolution, the mechanism untouched.
+
+The tube law reads the MEMBER, not a flag: the cone's radius at the pin's
+plane caps the follower's angle (`alarmPhiCapNow`, the B-side `max()`
+pattern on the A side), and "released" is that cap standing above the
+heart's whole profile. Re-engagement EVALUATES by construction — the max
+eases back to the cam solve; nothing is latched or replayed.
+
+**Stage 0 — the band, bought the §51 way.** No full-circle annulus
+existed (the flange→heart and heart→feeler gaps were each exactly one
+CLEAR_MARGIN — §51's own thinning). The chain block now owns the follower
+kinematics and prices the swing: release angle at nose orbit
+R + noseR + 0.05 (follower-B's lift-clearance figure), pin stroke 0.186,
+envelope = stock + skirt (stroke + 0.03 first-touch) + travel (stroke +
+0.05 rest gap) = 0.742. `Z_DIAL` −7.5 → −8.40 funds it exactly (spend
+0.8915 rounded up to the 0.01 grid; agreement tripwired at boot), so
+every member below the insertion kept its solved world plane and the
+plate-side landing never moved. `CANNON_T`'s fifth growth (+0.90) and one
+stale-absolute anchor tol (now riding `Z_DIAL`) were the whole blast
+radius — measured by making the spend ALONE first, §51 phase B's own
+discipline.
+
+**Two latent defects found by the arithmetic, fixed in the same build.**
+Both invisible to the battery behind the Alarm disc ⇄ Hour wheel
+EXPECTED blanket (TODO item 6's class):
+
+- The straight follower bar could NEVER clear the heart — the bar's
+  perpendicular foot lands mid-span at `PR·sinφ`, under `R + halfWidth`
+  for every reachable φ; measured 0.108 deep into the lobe during
+  today's riding cycle. The bar is now BOWED +0.10 outward over the
+  foot's range (full width kept — necking would thin the lever to
+  0.06 mm), verified by a boot-time flank sweep across both the riding
+  cycle (phase-locked) and the released free phase.
+- The heart's lobe (R 3.55) swept INSIDE the old pivot post's inner edge
+  (3.46) whenever armed. `ALARM_PIVOT_R` is now DERIVED as
+  lobe + post r + working (3.80); the post seats 0.03 inside the flange
+  rim.
+
+**Instruments.** Three graph edges (crown→lifter→sleeve→disc), two
+support edges, six EXPECTED rows; a third `alarmHandoffs` pose
+(`setting`: crown pulled) and three new rows — collar⇄head and fork⇄tab
+contact at every parity, cone⇄pin FREE at both crown-in parities
+(riding must not feel the sleeve) and contact at setting; §45 fit
+asserts at both travel extremes; the flank sweep; the biconditional.
+Every new part built to its §50 floor — zero new waivers (61→60: the
+bow retired the old bar's co-planarity slack, so its TODO 11 stock row
+closed on merit; the tail pin's ⌀ is cut so the 10-gon's FLATS measure
+the 0.07 mm pivot floor).
+
+**Verified.** Boot silent; support/graph/penetration/stockFloor/
+alarmHandoffs (9 rows, 0 waived) green through the build; full battery
+on the landed tree. Functional: pose probes measure the pull sweeping
+the tube from `mwHourA` to `−alarmAngle` with the arm capped at exactly
+the release angle, and the push-in re-seating everything to the seated
+triangle to 4 decimals.
