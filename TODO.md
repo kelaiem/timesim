@@ -158,6 +158,31 @@ those two sets is rare (a pivot's bearing surfaces are the main case),
 so the budget list stays short, and no part needs a name for the check
 to run. Report violations as `Unit/child` pairs.
 
+**Status 2026-08-01 — the interim is BUILT** (`intraUnit` in
+`src/inspect.js`, report-only). It derives the split exactly as above:
+each child's unit-relative matrix is signatured across 40 poses (5
+samples × every battery axis), children whose signature changes are
+movers, the rest fixtures; mover×fixture pairs get an AABB gate then
+the honest boolean (the arbitrated `meshesIntersect`, so tri-tri lies
+don't fabricate findings). The full run flags 54 raw rows; triage
+sorted them into `INTRA_UNIT_CONTACTS` (44 declared joints — wheels
+seated on their arbors, pivots on their studs, the mainspring's hook
+and ribbon anchors, spring bites, blade anchors — each row carrying
+*why* the contact is a joint) and 11 real findings, waived: 2 citing
+item 22 (the alarm pusher's bar in its own column wheel's disc band)
+and 9 citing item 23 (bearing-cock arms modeled solid to the axis
+they carry — a CLASS the first run surfaced at two stations).
+Runtime ~2.8 s, so it can gate. Two footnotes from the triage: one
+keyless row (`ExtrudeGeometry#43 ⇄ CylinderGeometry#39`) sits at the
+arbiter's d≈1e-4 boundary and flips run-to-run — declared, since the
+joint is real at either reading; and parity containment is undefined
+against zero-volume open sheets (the dial face), where only the
+crossing itself is meaningful. What the interim still cannot see is
+exactly what this entry predicted: fixture-vs-fixture pairs (the
+ruby-in-slot instance above), and mover-vs-mover within one unit. The
+naming infrastructure and the bevel-vs-neighbour check remain open;
+this entry stays open at reduced scope until they exist.
+
 ## 6. MOSTLY CLOSED — `EXPECTED_CONTACT_FLOORS` names the contact; the instance became item 21
 
 Item 5's blind spot has a sibling. Once two units appear in
@@ -257,6 +282,16 @@ arc wedges for levers, the fan for the chain.
 `LOW_LINKAGE_OBSTACLES` is this idea, done by hand, in 2D, for one
 linkage; it wants generalising into the battery so pair checks become
 pose-independent volume tests that cannot under-sample.
+
+**Stale-note 2026-08-01: that registry has since SHIPPED** — §36
+(`buildSweptRegistry`: exact annulus sectors for revolvers, per-pose
+bound unions flagged approx for the rest) and the `sweptOverlap` gate
+built on it (§36 job B, with pose-confirmation so hull contact must be
+reproduced at a real pose before it counts). The two sampling classes
+this entry names are therefore covered for pair overlap; what remains
+open here is the narrower residue — the approx tier is a bounds union,
+not a hull, and probe-style questions (ray bundles, corridor fits)
+still sample unless they are rewritten against the registry.
 
 ## 9. CLOSED — `ALARM_LINK_ROD_SEAT` was measured, not derived; both retired
 
@@ -1827,3 +1862,61 @@ honesty:
 
 The `EXPECTED_CONTACT_FLOORS` row for the pair stays red, waived citing
 this item; closing this item deletes that waiver.
+
+## 22. The alarm pusher's bar ends inside its own column wheel
+
+Found by `intraUnit`'s first run (item 5's interim), confirmed by
+direct per-mesh measurement and by screenshot: within the Alarm switch
+unit, the pusher's press bar (`CylinderGeometry#9` — a 4.15 × 1.8 ×
+0.64 slab at roughly (−41.2, 14.3), z 8.70..9.34) runs toward the
+column wheel and its end face stops **0.9 from the wheel's axis** —
+well inside the wheel's disc silhouette, in the disc's own z band
+(8.94..9.26 vs the bar's 8.70..9.34). The wheel's crown torus
+(`TorusGeometry#12`) shares the band and overlaps the same bar. Two
+parts of one action group (§43's pusher → pawl → column chain)
+occupy the same matter at every pose; no inter-unit sweep could see it
+(item 5's exact blindness — both meshes live in one unit).
+
+This is a P2 finding — the group disagrees with itself — so the fix is
+in mechanism space, not a waiver-forever: the press geometry (§43)
+must end the bar CLEAR of the disc, either by shortening the bar to
+stop at the pawl it actually presses (the bar's job ends at the pawl
+tail; nothing it does requires reaching the wheel) or by dropping the
+bar's z to a stratum the disc doesn't occupy, re-deriving the pawl
+contact height with it. Until then the two `INTRA_UNIT_WAIVERS` rows
+in `src/inspect.js` cite this item; closing it deletes both.
+
+## 23. Bearing-cock arms are solid where their bores should be
+
+Item 5's interim surfaced this as a CLASS on its first full run: a
+bearing cock is modeled as post + arm + bush, the bush RING carries a
+real bore around the running member — and the box ARM behind the ring
+runs all the way to the axis, uncut, because `BoxGeometry` cannot
+carry a hole. The member the cock exists to bear therefore passes
+through the arm's solid matter at every pose. Two stations, nine
+measured overlaps, all waived in `INTRA_UNIT_WAIVERS` citing this
+item:
+
+- **Alarm setting arbor** (the §25 C lower cock): the arm (1.4 × 0.7
+  × 0.3 at bush z −6.3) spans post → arbor AXIS, so the 0.4-radius
+  rod runs through its end — the bush ring beside it (bore 0.45) is
+  the only part actually cut. And the disc bevel's teeth bottom at
+  −6.16 against the arm's top at −6.15: a 0.01 graze, because
+  `BUSH_Z` was derived against the pinion below ("top −6.70 with
+  clearance to spare") and never against the bevel above.
+- **Alarm release lifter** (the §45 guide bracket): BOTH guide arms
+  reach the plunger's axis — the eyes' 0.17 bores (0.02 running
+  clearance over the 0.15 plunger) are decoration on solid arms. The
+  head and plunger pass through the upper arm's end, the plunger
+  through the lower's; and the lower guide's whole assembly shares z
+  with the moving stub/blade stack (stub into the lower arm and eye
+  face by 0.04 at rest, blade across the arm's top corner by 0.03 —
+  growing with drop travel).
+
+The fix is derivation, not nudging (rule 1): an arm ends at its
+ring's OUTER radius (`armLen = span − ringROut`, butting the ring it
+carries), and a guide's z-station derives against EVERY moving
+neighbour that crosses it — both the pinion below and the bevel
+above for the setting cock, the stub/blade stack's full travel for
+the lifter's lower guide. Closing this item deletes the nine waiver
+rows; `intraUnit` then measures the repair.

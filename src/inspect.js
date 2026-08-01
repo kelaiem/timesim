@@ -856,9 +856,6 @@ function sampledVerdict(a, b, upperBound = Infinity) {
   return { inside, d: inside ? 0 : best };
 }
 
-// TEMPORARY diagnostic surface for the false-zero investigation (TODO 6 pass)
-export const __meshDebug = { meshesIntersect, sampledClearance, bvhFor: (m) => bvhFor(m) };
-
 export function meshClearance(a, b, upperBound = Infinity) {
   const bvh = bvhFor(a);
   bvhFor(b);
@@ -1203,6 +1200,160 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     unmatched, results,
   };
 }
+
+// ---------------------------------------------------------------------------
+// TODO 5 (interim) — the sweep cannot see INSIDE a unit, and units bundle a
+// FIXED mount with the thing that MOVES on it: exactly the pair most likely
+// to foul, hidden twice (the pair loop skips same-unit; the unit's own AABB
+// contains both). The stop-lever bracket carried 0.685 of penetration at
+// every pose through every battery run in the project's history this way.
+// The interim DERIVES the split instead of naming parts: pose the sweep
+// axes, diff each mesh's matrix RELATIVE TO ITS UNIT ROOT — meshes that
+// never move relative to their unit are its fixtures, the rest its movers —
+// then test movers against fixtures for genuine intersection (the honest
+// meshesIntersect: parity-raycast arbitrated). Designed running fits have
+// CLEARANCE and read as apart; only real interpenetration flags. Intended
+// mover-on-fixture contacts are declared in INTRA_UNIT_CONTACTS with the
+// instrument or derivation that owns them.
+// ---------------------------------------------------------------------------
+export const INTRA_UNIT_CONTACTS = [
+  // { unit, a, b, why } — labels are meshLabel outputs (name, or Type#index
+  // within the unit); string-coupled like every table here. Every row below
+  // was inspected on the first run (centre-aligned concentric fits, riveted
+  // anchors, sprung bites) — a rotating part ON its arbor models the joint
+  // as coincident solids, which is what an assembly IS; the check exists
+  // for parts that foul, not parts that join.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'sliding pinion on the stem square — the clutch joint' },
+  { unit: 'Keyless works', a: 'CylinderGeometry#6', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'TorusGeometry#30', why: 'crown collar on its bushing torus' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
+  { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
+  { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
+  { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed' },
+  { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'ExtrudeGeometry#0', why: 'the outer coil bears on the drum wall at the hook' },
+  { unit: 'Alarm striking wheel', a: 'CylinderGeometry#3', b: 'CylinderGeometry#0', why: 'collar pressed on the strike arbor' },
+  { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
+  { unit: 'Alarm barrel', a: 'CylinderGeometry#6', b: 'CylinderGeometry#0', why: 'barrel cap on the arbor boss' },
+  { unit: 'Alarm winding train', a: 'ExtrudeGeometry#3', b: 'CylinderGeometry#5', why: 'idler 1 on its stud' },
+  { unit: 'Alarm winding train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#4', why: 'lock lever on its pivot post' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#4', why: 'lever tail on the same post' },
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#3', why: 'column wheel on its stud' },
+  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
+  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
+  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'CylinderGeometry#0', why: 'beak lever on its pivot post' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'CylinderGeometry#0', why: 'beak tail on the same post' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#9', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations)' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#11', why: 'lay shaft in hanger bush 2' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },
+  { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
+  { unit: 'Dial', a: 'alarmIndexWedge', b: 'ShapeGeometry#3', why: '§34\'s index wedge stands proud THROUGH the face sheet by design — the face is a zero-volume decal plane, not stock (note: parity containment is undefined on open sheets; the crossing itself is real)' },
+  { unit: 'Minute jumper', a: 'jumperBeak', b: 'CylinderGeometry#3', why: 'beak lever on its pivot stud' },
+  { unit: 'Minute jumper', a: 'BoxGeometry#1', b: 'CylinderGeometry#3', why: 'lever body on the same stud' },
+  { unit: 'Minute jumper', a: 'jumperBeak', b: 'jumperClickSpring', why: 'return spring bearing on the beak — §48-declared spring contact' },
+  { unit: 'Minute jumper', a: 'BoxGeometry#1', b: 'jumperClickSpring', why: 'spring coil around the lever body at the stud' },
+  { unit: 'Minute jumper', a: 'jumperTailPin', b: 'jumperClickSpring', why: 'the tail pin the spring\'s working end presses' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#1', why: 'input wheel pressed on its arbor' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#5', why: 'intermediate wheel on its stud' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#5', why: 'its pinion, same stud — the wheel+pinion pair' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'differential wheel on its stud' },
+  { unit: 'Alarm setting idler', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: 'idler wheel on its stud' },
+  { unit: 'Alarm hammer', a: 'CylinderGeometry#1', b: 'CylinderGeometry#0', why: 'hammer arm riveted to the arbor boss' },
+  { unit: 'Alarm hammer', a: 'alarmTail', b: 'CylinderGeometry#0', why: 'hammer tail on the same boss' },
+  { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
+  { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
+];
+// Accepted debt, §50's convention — red in the report, cited, not silenced:
+export const INTRA_UNIT_WAIVERS = [
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#9', debt: 'TODO 22' }, // the pusher bar ends 0.9 from the wheel AXIS, inside its disc band
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'TorusGeometry#12', debt: 'TODO 22' },   // the pusher guide torus in the same band
+  // TODO 23 — bearing-cock arms modeled SOLID to the axis they carry: the
+  // bush/eye ring has a bore, the box arm behind it does not, so the running
+  // member passes through uncut arm stock (a box cannot carry a hole).
+  { unit: 'Alarm setting arbor', a: 'CylinderGeometry#0', b: 'BoxGeometry#4', debt: 'TODO 23' }, // rod through the cock arm's solid end
+  { unit: 'Alarm setting arbor', a: 'ExtrudeGeometry#2', b: 'BoxGeometry#4', debt: 'TODO 23' },  // bevel teeth graze the arm's top by 0.01
+  { unit: 'Alarm release lifter', a: 'alarmLifterHead', b: 'BoxGeometry#9', debt: 'TODO 23' },   // head through the upper guide arm's solid end
+  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'BoxGeometry#9', debt: 'TODO 23' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'BoxGeometry#11', debt: 'TODO 23' }, // and the lower guide arm
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'BoxGeometry#11', debt: 'TODO 23' }, // blade stub into the lower arm, 0.04 at rest
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'LatheGeometry#12', debt: 'TODO 23' }, // stub onto the lower eye's face, same 0.04
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'BoxGeometry#11', debt: 'TODO 23' },  // blade crosses the lower arm's top corner, 0.03
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'LatheGeometry#12', debt: 'TODO 23' },
+];
+export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
+  const units = collectUnits(clock, { includeExcluded: true });
+  const _m = new THREE.Matrix4();
+  const relSig = (unit, mesh) => {
+    _m.copy(unit.obj.matrixWorld).invert().multiply(mesh.matrixWorld);
+    let s = 0;
+    for (let i = 0; i < 16; i++) s += _m.elements[i] * (i + 1);
+    return s;
+  };
+  // pose set: endpoints + interior samples of every axis (the stop-lever
+  // class is present at EVERY pose; a coarse net catches standing fouls,
+  // which is the interim's whole claim — transients stay item 7's business)
+  const poses = [];
+  for (const axis of axes) {
+    for (let i = 0; i < samplesPerAxis; i++) poses.push([axis, i / (samplesPerAxis - 1)]);
+  }
+  // 1. classify: movers change their unit-relative matrix at ANY pose
+  const base = new Map();
+  clock.setPose(poses[0][0].pose(0, clock));
+  for (const u of units) for (const m of u.meshes) base.set(m, relSig(u, m));
+  const movers = new Set();
+  let n = 0;
+  for (const [axis, f] of poses) {
+    clock.setPose(axis.pose(f, clock));
+    for (const u of units) {
+      for (const m of u.meshes) {
+        if (movers.has(m)) continue;
+        if (Math.abs(relSig(u, m) - base.get(m)) > 1e-6) movers.add(m);
+      }
+    }
+    if (++n % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  // 2. measure movers against their own unit's fixtures at every sampled pose
+  const allowed = (u, la, lb) => contacts.some((c) => c.unit === u
+    && ((c.a === la && c.b === lb) || (c.a === lb && c.b === la)));
+  const seen = new Map(); // key → row (worst pose kept)
+  n = 0;
+  for (const [axis, f] of poses) {
+    clock.setPose(axis.pose(f, clock));
+    for (const u of units) {
+      const fix = u.meshes.filter((m) => !movers.has(m));
+      const mov = u.meshes.filter((m) => movers.has(m));
+      if (!fix.length || !mov.length) continue;
+      for (const a of mov) {
+        _cbA.setFromObject(a);
+        for (const b of fix) {
+          _cbB.setFromObject(b);
+          if (boxDistance(_cbA, _cbB) > 0) continue;
+          const la = meshLabel(u, a), lb = meshLabel(u, b);
+          const key = `${u.name} / ${la} ⇄ ${lb}`;
+          if (seen.has(key) || allowed(u.name, la, lb)) continue;
+          if (meshesIntersect(a, b)) {
+            seen.set(key, { unit: u.name, mover: la, fixture: lb, at: `${axis.name} f=${+f.toFixed(2)}` });
+          }
+        }
+      }
+    }
+    if (++n % 2 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  const all = [...seen.values()];
+  for (const v of all) {
+    const w = INTRA_UNIT_WAIVERS.find((x) => x.unit === v.unit
+      && ((x.a === v.mover && x.b === v.fixture) || (x.a === v.fixture && x.b === v.mover)));
+    if (w) v.waived = w.debt;
+  }
+  console.table(all);
+  return { violations: all.filter((v) => !v.waived), waived: all.filter((v) => v.waived), movers: movers.size, poses: poses.length };
+}
+
 
 // ---------------------------------------------------------------------------
 // Support-geometry verification — "is this part actually held by what the
@@ -3666,6 +3817,7 @@ const CHECKS = {
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
   alarmHandoffs: (clock, opts) => checkAlarmHandoffs(clock, opts),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
+  intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 interim — movers vs their own fixtures
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.

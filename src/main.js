@@ -6680,10 +6680,15 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
 // hour hand; split it reads as a distinct, quieter pointer (owner's styling:
 // subtle, steel).
-// Stacked-hand build: the collet (bore 2.65) passes the hour tube (outer 2.5)
-// with running clearance and seats on the alarm tube's annular face (2.6..3.0);
+// Stacked-hand build: the collet passes the hour tube (outer 2.5) holding
+// CLEAR_MARGIN — the two stacks rotate independently, so this is clearance,
+// not a bearing — and seats on the alarm tube's annular face (2.6..3.0);
 // bossR 3.3 gives it a visible seating lip. See ALARM_HAND_Z for the z budget.
-const alarmHand = G.makeHand({ length: HOUR_HAND_LEN - 1.2, kind: 'hour', boreR: 2.65, bossR: 3.3, bossH: 0.8 });
+// The bore is a 24-gon (makeHand's ringExtrude segment count): its INSCRIBED
+// radius is what faces the tube, so the vertex radius carries the 1/cos(π/24)
+// correction — at a bare 2.65 the facet midpoints dipped to 0.1443 of margin
+// (the expectedContacts floor row caught it).
+const alarmHand = G.makeHand({ length: HOUR_HAND_LEN - 1.2, kind: 'hour', boreR: (HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24), bossR: 3.3, bossH: 0.8 });
 alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
