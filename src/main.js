@@ -4058,12 +4058,18 @@ const balanceCock = G.makeCock({
     pad.rotation.x = Math.PI / 2;
     pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
     balanceCock.add(pad);
-    const screw = new THREE.Mesh(
-      new THREE.CylinderGeometry(COCK_FOOT_R * 0.45, COCK_FOOT_R * 0.45, STOCK_MIN_U, 14), MATS.blueSteel); // TODO 12: head proud of the foot — free upward
-    screw.rotation.x = Math.PI / 2;
-    screw.position.set(s * BAR_HSPAN, yBar, COCK_T / 2 + 0.11);
-    balanceCock.add(screw);
   }
+  // §20: the T-foot screws, slotted like every screw now (were bare
+  // cylinders). Same head radius and seat; the slot azimuth is each foot's
+  // own bearing from the cock origin — the derived stand-in for assembly
+  // scatter. TODO 12: head proud of the foot — free upward.
+  balanceCock.add(G.makeScrews({
+    at: [-1, 1].map((s) => ({
+      x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + 0.11 + STOCK_MIN_U / 2,
+      a: Math.atan2(yBar, s * BAR_HSPAN),
+    })),
+    headR: COCK_FOOT_R * 0.45, headT: STOCK_MIN_U,
+  }));
 
   // ------------------------------------------------------------------
   // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
@@ -4331,6 +4337,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   const pillarsGroup = new THREE.Group();
   movement.add(pillarsGroup);
   registerLabel('pillars', pillarsGroup);
+  const pillarSeats = []; // §20: the plate screws land over the solved seats
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -4349,7 +4356,20 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
     pillarsGroup.add(pillar);
+    pillarSeats.push({ x: best.x, y: best.y });
   }
+  // §20 — THE PLATE SCREWS. The plate has rested on its pillars since the
+  // pillars existed, with nothing visibly holding it down. One screw over
+  // each solved seat, on the plate's top face: head FLUSH with the face
+  // (the chaton convention — the hack blade passes 0.18 over this face and
+  // nothing may stand above it), head radius derived from the pillar's own
+  // widest land (capR·0.6, the escape bridge's head-to-seat proportion —
+  // the head must bear on the land it clamps, not overhang it). Attached
+  // to the plate's group, plate-local frame (group origin at TQ_MID_Z).
+  threeQuarterPlate.add(G.makeScrews({
+    at: pillarSeats.map((p) => ({ x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x) })),
+    headR: capR * 0.6, headT: TQ_T * 0.35,
+  }));
 }
 
 // (The power-reserve reduction train is built after the dial side below — its

@@ -1796,6 +1796,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     bar.rotation.z = Math.atan2(dy, dx);
     g.add(bar);
   }
+  const footScrews = [];
   for (const n of chain) {
     if (!n.foot) continue;
     const legR = n.r * 0.62;
@@ -1816,11 +1817,13 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     shaft.geometry.rotateX(Math.PI / 2);
     shaft.position.set(n.x, n.y, 0);
     g.add(shaft);
-    const head = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.6, legR * 0.6, STOCK_MIN_U, 14), MATS.blueSteel); // TODO 12: floor stock — screw head proud of the leg, free upward
-    head.geometry.rotateX(Math.PI / 2);
-    head.position.set(n.x, n.y, thickness / 2 + 0.11);
-    g.add(head);
+    // §20: slotted like every screw now (was a bare cylinder — "visually
+    // unfastened" fixed, but with nothing to turn). Same head, same seat.
+    // TODO 12: floor stock — screw head proud of the leg, free upward.
+    footScrews.push({ x: n.x, y: n.y, z: thickness / 2 + 0.11 + STOCK_MIN_U / 2,
+                      a: Math.atan2(n.y, n.x), headR: legR * 0.6 });
   }
+  if (footScrews.length) g.add(makeScrews({ at: footScrews, headT: STOCK_MIN_U }));
   for (const j of jewels) {
     // Rubbed-in jewel, seated in its counterbore. Every face is kept OFF
     // the surrounding boss: the outer wall a hair inside the counterbore
@@ -1875,6 +1878,31 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
 // body hanging down `thickness`. userData.outerR is the counterbore radius
 // the caller must cut; userData.screwR/screwAt place the screws in the plate.
 // ---------------------------------------------------------------------------
+// §20 — SLOTTED SCREWS, shared and MERGED. Every screw in the movement is
+// the same object: a blued tapered head with a dark slot sunk across it —
+// the vocabulary makeChaton established. This factors it so a site cannot
+// draw a bare cylinder and call it a screw, and it merges: §14/§41 measured
+// draw calls as the render cost that matters (the crown knurl alone was 69),
+// so N screws cost TWO draw calls (one heads mesh, one slots mesh), not 2N.
+// at: [{x, y, z, a, headR?}] — head axis +z, TOP FACE at z (flush-mount
+// convention: pass the face the head must not stand above), slot azimuth a.
+export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
+  const heads = [], slots = [];
+  for (const p of at) {
+    const r = p.headR ?? headR;
+    heads.push(new THREE.CylinderGeometry(r, r * taper, headT, seg)
+      .rotateX(Math.PI / 2).translate(p.x, p.y, p.z - headT / 2));
+    // Slot proportions are the chaton's: 1.7r long (inside the 2r head),
+    // 0.28r wide, sunk 0.28·headT below the top face — never proud.
+    slots.push(new THREE.BoxGeometry(r * 1.7, r * 0.28, headT * 0.35)
+      .rotateZ(p.a || 0).translate(p.x, p.y, p.z - headT * 0.28));
+  }
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(mergeGeos(heads), MATS.blueSteel));
+  g.add(new THREE.Mesh(mergeGeos(slots), MATS.dark));
+  return g;
+}
+
 export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase = 0 }) {
   const g = new THREE.Group();
   const rubyR = boreR + 0.4;
@@ -1920,21 +1948,18 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
   g.add(sink);
 
   // Blued screws, heads FLUSH with the top face and straddling the rim: half
-  // over the chaton, half biting the plate outside the counterbore.
+  // over the chaton, half biting the plate outside the counterbore. Sunk,
+  // not proud: nothing on this face may stand above the plate — the hack
+  // blade passes 0.18 over it. (§20: the shared merged builder — this loop
+  // was its template, and each chaton's screws dropped from 6 meshes to 2.)
   const headR = Math.max(0.22, outerR * 0.19), headT = t * 0.5;
-  for (let i = 0; i < screwCount; i++) {
-    const a = screwPhase + (i / screwCount) * Math.PI * 2;
-    const head = new THREE.Mesh(new THREE.CylinderGeometry(headR, headR * 0.92, headT, 16), MATS.blueSteel);
-    head.geometry.rotateX(Math.PI / 2);
-    head.position.set(Math.cos(a) * outerR, Math.sin(a) * outerR, -headT / 2);
-    g.add(head);
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(headR * 1.7, headR * 0.28, headT * 0.35), MATS.dark);
-    // Sunk, not proud: nothing on this face may stand above the plate — the
-    // hack blade passes 0.18 over it.
-    slot.position.set(Math.cos(a) * outerR, Math.sin(a) * outerR, -headT * 0.28);
-    slot.rotation.z = a;
-    g.add(slot);
-  }
+  g.add(makeScrews({
+    at: Array.from({ length: screwCount }, (_, i) => {
+      const a = screwPhase + (i / screwCount) * Math.PI * 2;
+      return { x: Math.cos(a) * outerR, y: Math.sin(a) * outerR, z: 0, a };
+    }),
+    headR, headT,
+  }));
 
   g.userData.outerR = outerR;
   g.userData.rubyR = rubyR;

@@ -5719,3 +5719,46 @@ clears it after; crown pulled → hands appear and track the dial
 through setting; crown home → time hands fade while the still-out
 alarm crown keeps its hand; zero page errors; full battery green with
 the geometry fingerprint untouched (DOM/SVG only).
+
+## §20. Screw slots everywhere — one screw vocabulary, merged
+
+**Goal, met.** Screws look like screws: every screw in the movement is
+now the same object — a blued tapered head with a dark slot sunk across
+it — built by one shared `makeScrews` (geometry.js), whose template was
+`makeChaton`'s screw loop, exactly as the entry predicted.
+
+**The §14 warning was real and shaped the builder.** "Each screw is two
+more meshes" — and §41's crown work had already measured draw calls as
+the render cost that matters (69 for one knurl). So `makeScrews` MERGES:
+N screws cost two draw calls (one heads mesh, one slots mesh), not 2N.
+The chatons, refactored onto the shared builder with identical
+dimensions, each dropped from 6 meshes to 2 — the entry's cost worry
+ended up making the movement cheaper to draw than before the feature.
+
+**Call sites.**
+
+- `makeChaton` — the template, now a consumer; geometry unchanged.
+- Balance cock T-foot screws — were bare cylinders (TODO 12's "head
+  proud of the foot" note rides along); now slotted, same head radius
+  and seat, slot azimuth = each foot's bearing from the cock origin (the
+  derived stand-in for assembly scatter).
+- Escape-bridge (fork cock) foot screws — the §-era fix gave them heads
+  ("visually unfastened"), but with nothing to turn; now slotted.
+- **The plate screws, which did not exist**: the three-quarter plate has
+  rested on its pillars since the pillars existed with nothing visibly
+  holding it down. One screw per solved pillar seat (all four found at
+  boot), on the plate's top face, head FLUSH with the face — the chaton
+  convention, because the hack blade passes 0.18 over that face and
+  nothing may stand above it. Head radius derived from the pillar's own
+  widest land (capR·0.6, the bridge's head-to-seat proportion): the head
+  must bear on the land it clamps, not overhang it.
+
+**Deliberately not slotted:** the stud carrier's side pin screw
+(`studPinScrew`) — its head face is ~0.1 mm; a slot there is sub-texel
+at any legible zoom. Declared (TODO 12's triage note) and left. The
+balance's 16 timing screws keep their headless functional form.
+
+**Verified.** Numeric probe per site: cock 2 heads + 2 slots merged,
+slots sunk 0.03 below the head tops; plate 4 heads flush at z 8.508
+against the 8.51 face; bridge 1 + 1 sunk. Boot silent; battery run on
+the landed tree.
