@@ -3961,6 +3961,7 @@ function strHash(s) {
 // excluded here by name rather than left to add noise to every hash.
 const FINGERPRINT_EXCLUDE = new Set(['Chain']);
 
+const _fpb = new THREE.Box3(); // fingerprint scratch
 function fingerprintBoxes(clock, poses = FINGERPRINT_POSES) {
   const q = (n) => Math.round(n * 1000) / 1000 + 0; // +0 folds -0 → 0
   const box = new THREE.Box3();
@@ -3975,7 +3976,20 @@ function fingerprintBoxes(clock, poses = FINGERPRINT_POSES) {
     clock.setPose(pose);
     clock.scene.updateMatrixWorld(true);
     for (const e of entries) {
-      box.setFromObject(e.obj);
+      // setFromObject minus the §66 schematic tier: the line proxies DISPLAY
+      // the model; the fingerprint guards the METAL. Without the skip the
+      // tier's circles inflated unit boxes and moved the hash — the same
+      // geometry the instruments (isMesh collections) never see.
+      box.makeEmpty();
+      (function walk(o) {
+        if (o.userData && o.userData.schematic) return;
+        if (o.geometry) {
+          if (o.geometry.boundingBox === null) o.geometry.computeBoundingBox();
+          _fpb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+          box.union(_fpb);
+        }
+        for (const c of o.children) walk(c);
+      })(e.obj);
       rows[`${e.name}#${pi}`] =
         [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].map(q);
     }
