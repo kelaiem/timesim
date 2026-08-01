@@ -8025,7 +8025,21 @@ const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuatio
 // radius below DERIVES from this one constant; the wheel's stand-off from
 // the lock pivot grows by the same delta so the brake beak's reach is
 // unchanged.
-const ALARM_COL_BASE_R = 2.1;
+// TODO 11 (switch tranche) — the wheel grows to its POSITION BOUND, and
+// its features to real sections. Measured: the wheel was Ø 1.6 mm on a
+// Ø 32.5 mm movement (a real chronograph column wheel runs Ø 4–6 mm on
+// 30 mm) with the base disc at the 0.12 mm stock floor and 0.21 mm
+// columns. Full real scale is NOT reachable at this station: the wheel's
+// centre stands at r 39.97 with the plate edge at plateR 42.92, so the
+// saw-tip circle (1.12·baseR, geometry.js) is bounded at
+// plateEdge − centre − CLEAR_MARGIN ≈ 2.8 — a layout fact, filed with
+// TODO 11 (moving the station inboard is §33-machinery work). Within the
+// bound: the diameter takes all of it, and the FEATURE DEPTHS — which
+// the plate-top band leaves free — go to real proportions.
+const ALARM_COL_BASE_R = 2.5;      // tip 2.80 = the plate-edge bound taken exactly (Ø 1.9 mm, was 1.6)
+const ALARM_COL_BASE_H = 0.55;     // base disc 0.21 mm (was the 0.12 mm floor)
+const ALARM_COL_H = 0.8;           // castellation tier 0.30 mm (was 0.21) — ~0.16 of Ø, real proportion
+const ALARM_COL_BORE_R = 0.35;     // bore grows with the wheel; stud follows at bore − 0.06 running clearance
 const ALARM_COL_INNER = ALARM_COL_BASE_R * (0.95 / 1.5); // the original proportion, kept
 const ALARM_COL_POS = {
   x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
@@ -8035,7 +8049,7 @@ const ALARM_COL_POS = {
 // running clearance — the first build had bore = stud and the post punched
 // out through the castellations). Raised so the ratchet skirt clears the
 // plate top by a full margin instead of sitting dead on it.
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: STOCK_MIN_U, colH: 0.55, colInner: ALARM_COL_INNER, boreR: 0.30, material: MATS.steel }); // TODO 11 tail: base plate at floor stock — the castellations ride up 0.02 and the beak nose stays mid-band
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier)
 alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
 const alarmColSpin = new THREE.Group();
 alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + 0.22);
@@ -8049,7 +8063,8 @@ alarmSwitchUnit.add(alarmColSpin);
 {
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
   // (9.15, under the base's top face) — a pivot, not a pole through the crown.
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.95, 12), MATS.nickel);
+  const studR = ALARM_COL_BORE_R - 0.06; // the §43 running clearance, kept through the resize
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, 0.95, 12), MATS.nickel);
   stud.rotation.x = Math.PI / 2;
   stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, 8.675);
   alarmSwitchUnit.add(stud);
@@ -8069,7 +8084,9 @@ const ALARM_CLICK_AZ = ALARM_LOCK_ENGAGED + 2 * (Math.PI * 2 / ALARM_COL_COLUMNS
 // onto a column's outer face (1.5 + nose radius = 1.78). The first build's
 // radial arm rocked the nose sideways along the ring — and buried it in it.
 const ALARM_CLICK_NOSE_R = 0.28;
-const ALARM_CLICK_L = 2.0;
+// pivot post (r 0.28) fully clear of the saw tips: L = sqrt((tip + post + margin)² − seat²), held at a floor of 2.0
+const ALARM_CLICK_L = Math.max(2.0, Math.sqrt(
+  (1.12 * ALARM_COL_BASE_R + 0.28 + CLEAR_MARGIN) ** 2 - (ALARM_COL_BASE_R * (1.30 / 1.5)) ** 2));
 const ALARM_CLICK_SEAT = ALARM_COL_BASE_R * (1.30 / 1.5); // nose centre, dropped in a gap (proportion kept through the §35 resize)
 const ALARM_CLICK_OUT = ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R; // nose centre riding a column
 const ALARM_CLICK_SWING = (ALARM_CLICK_OUT - ALARM_CLICK_SEAT) / ALARM_CLICK_L;
@@ -8080,13 +8097,15 @@ const alarmClickPivot = {
   x: _clickSeatP.x + _clickTan.x * ALARM_CLICK_L,
   y: _clickSeatP.y + _clickTan.y * ALARM_CLICK_L,
 };
+const ALARM_COL_BAND_MID = 0.22 + ALARM_COL_BASE_H / 2 + ALARM_COL_H / 2; // castellation band's mid-plane above ALARM_LOCK_Z — the riders' z station, derived
 const alarmClickArm = new THREE.Group();
-alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + 0.80); // nose in the column band, clear of the base disc
+alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID); // nose mid-band, clear of the base disc
 alarmSwitchUnit.add(alarmClickArm);
 {
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.15, 10), MATS.nickel);
+  const clickPostLen = (ALARM_LOCK_Z + ALARM_COL_BAND_MID) - TQ_TOP_Z + 0.2; // plate top → just past the arm's plane
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, clickPostLen, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
-  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + 0.585 - 0.01);
+  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + clickPostLen / 2 - 0.01);
   alarmSwitchUnit.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top click arm, free upward
   arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the seat point
@@ -8114,7 +8133,12 @@ alarmSwitchUnit.add(alarmClickArm);
   const uArm = { x: toSeat.x / L, y: toSeat.y / L };          // pivot → nose
   const nOut = { x: -uArm.y, y: uArm.x };                     // arm's flank normal
   // the bearing point on the arm, and the anchor standing off it
-  const bear = { x: alarmClickPivot.x + uArm.x * (L * 0.55), y: alarmClickPivot.y + uArm.y * (L * 0.55) };
+  // Bear where the arm stands OUTSIDE the saw-tip circle + margin + the
+  // blade's half-depth — at the old 0.55·L the bear point sat over the
+  // grown castellation annulus and the columns swept through the blade.
+  const _bearTan = Math.sqrt(Math.max(0.01, (1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN + 0.2) ** 2 - ALARM_CLICK_SEAT ** 2));
+  const bearFrac = Math.max(0.12, 1 - _bearTan / L);
+  const bear = { x: alarmClickPivot.x + uArm.x * (L * bearFrac), y: alarmClickPivot.y + uArm.y * (L * bearFrac) };
   const SPRING_FREE = 1.5;                                    // blade length
   const anchor = { x: bear.x + nOut.x * 0.34 - uArm.x * SPRING_FREE * 0.5,
                    y: bear.y + nOut.y * 0.34 - uArm.y * SPRING_FREE * 0.5 };
@@ -8358,7 +8382,7 @@ const alarmLinkParts = {};
   // height is now DERIVED so the nose's underside rests exactly on the
   // column top plane at the disarmed parity — the plane the flank cut
   // (geometry.js) rises to: spin z + base top + column height.
-  const ALARM_COL_TOP_Z = (ALARM_LOCK_Z + 0.22) + STOCK_MIN_U / 2 + 0.55;
+  const ALARM_COL_TOP_Z = (ALARM_LOCK_Z + 0.22) + ALARM_COL_BASE_H / 2 + ALARM_COL_H; // base top + tier — rides the TODO 11 resize
   const ALARM_BEAK_NOSE_H = 0.22;
   beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_COL_TOP_Z + ALARM_BEAK_NOSE_H / 2);
   const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
@@ -8865,7 +8889,10 @@ const _pushPerp = { x: -_pushU.y, y: _pushU.x };
 // dragging the wheel backwards, which a pawl cannot do. Now derived from the
 // teeth themselves and asserted below.
 const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5);
-const ALARM_PUSH_TRAVEL = 0.7;
+// One press must sweep one ratchet tooth: the tooth pitch arc at the saw's
+// root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
+// throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
+const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -8875,13 +8902,28 @@ const _pushBase = {
   x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
   y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
 };
-alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + 0.17);
+// The press AXIS rides ABOVE the wheel's whole stack (castellation top +
+// margin + stem radius): the stem and its guide boss can then never meet
+// the wheel at any press depth — the old axis shared the disc band, which
+// is where TODO 22 lived. Only the pawl's dropper descends, and its
+// station carries the full travel's radial clearance below.
+const ALARM_PUSH_AXIS_REL = 0.22 + ALARM_COL_BASE_H / 2 + ALARM_COL_H + CLEAR_MARGIN + 0.32;
+alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
 {
-  const stemLen = plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4;
+  // TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
+  // saw-tip circle at s = sqrt((tip+margin)² − chord²); the rest station
+  // adds the full press travel so the pressed stem still stops there — the
+  // PAWL, on its dropped carrier below the disc, is the only member that
+  // reaches the teeth. (The first cut's hand-set 1.6 ended 0.9 from the
+  // wheel AXIS, inside the disc band at every pose.)
+  const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16; // saw tip circle (geometry.js) + margin + the dropper's own radius
+  const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
+  const stemOuterS = 1.6 + plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4; // the as-built case-band end
+  const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, stemLen, 10), MATS.steel);
   stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
-  stem.position.set(_pushU.x * (1.6 + stemLen / 2), _pushU.y * (1.6 + stemLen / 2), 0);
+  stem.position.set(_pushU.x * (ALARM_PUSH_INNER + stemLen / 2), _pushU.y * (ALARM_PUSH_INNER + stemLen / 2), 0);
   alarmPusherGroup.add(stem);
   // §43 — THE HEAD IS SIZED IN MILLIMETRES, because a pusher is the one part
   // of this movement a finger is supposed to operate, and "looks about right"
@@ -8910,8 +8952,8 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(PUSHER_HEAD_R, PUSHER_HEAD_R, PUSHER_HEAD_LEN, 20), MATS.steel);
   cap.name = 'alarmPusherCap';
   cap.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;
-  cap.position.set(_pushU.x * (1.6 + stemLen + PUSHER_HEAD_LEN / 2),
-                   _pushU.y * (1.6 + stemLen + PUSHER_HEAD_LEN / 2), 0);
+  cap.position.set(_pushU.x * (stemOuterS + PUSHER_HEAD_LEN / 2),
+                   _pushU.y * (stemOuterS + PUSHER_HEAD_LEN / 2), 0);
   alarmPusherGroup.add(cap);
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
@@ -8954,8 +8996,27 @@ alarmSwitchUnit.add(alarmPusherGroup);
       console.warn('§33 pusher: the pawl’s band misses the ratchet entirely at this azimuth — the press indexes nothing');
     return Number.isFinite(s) ? s : 2.2; // fall back near the old park so the boot still stands
   })();
-  pawl.position.set(_pushU.x * (ALARM_PAWL_KISS_S + 1.5 / 2), _pushU.y * (ALARM_PAWL_KISS_S + 1.5 / 2), -0.17); // leading face on the kiss; dropped from the raised axis to the skirt band, clear of the plate
+  // skirt band mid-plane, world→group local (the skirt hangs baseH/2 + its
+  // own stock under the spin plane — geometry.js): derived, was the frozen −0.17
+  const _pawlZ = (0.22 - ALARM_COL_BASE_H / 2 - STOCK_MIN_U / 2) - ALARM_PUSH_AXIS_REL;
+  pawl.position.set(_pushU.x * (ALARM_PAWL_KISS_S + 1.5 / 2), _pushU.y * (ALARM_PAWL_KISS_S + 1.5 / 2), _pawlZ); // leading face on the kiss
   alarmPusherGroup.add(pawl);
+  // The pawl's CARRIER — at the old scale the pawl sat under the stem's own
+  // span; at real scale the stem ends outside the tip circle, so the pawl
+  // hangs from a dropper at the stem's end and a reach bar at its own plane
+  // (the anatomy a real case-pusher pawl has).
+  {
+    const drop = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, -_pawlZ + 0.12, 10), MATS.steel);
+    drop.rotation.x = Math.PI / 2;
+    drop.position.set(_pushU.x * (ALARM_PUSH_INNER + 0.16), _pushU.y * (ALARM_PUSH_INNER + 0.16), _pawlZ / 2 + 0.03);
+    alarmPusherGroup.add(drop);
+    const reachLen = (ALARM_PUSH_INNER + 0.32) - (ALARM_PAWL_KISS_S + 1.5) + 0.4; // dropper → pawl tail, 0.4 of overlap onto the pawl
+    const reach = new THREE.Mesh(new THREE.BoxGeometry(reachLen, 0.3, 0.24), MATS.blueSteel);
+    reach.rotation.z = ALARM_PUSH_AZ;
+    const reachMid = (ALARM_PUSH_INNER + 0.32 + (ALARM_PAWL_KISS_S + 1.5 - 0.4)) / 2;
+    reach.position.set(_pushU.x * reachMid, _pushU.y * reachMid, _pawlZ);
+    alarmPusherGroup.add(reach);
+  }
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
   // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
   // sizings buried its underside in the plate by forgetting that.
@@ -8964,7 +9025,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const bossD = plateR - 1.2;
   boss.position.set(
     _pushU.x * bossD + _pushPerp.x * ALARM_PUSH_CHORD,
-    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z + 0.17); // on the raised pusher axis — its underside now CLEARS the plate top
+    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // ON the press axis — a bearing that does not follow its stem is not one (and the axis now rides above the wheel's stack)
   alarmSwitchUnit.add(boss);
 }
 {

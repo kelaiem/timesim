@@ -1865,7 +1865,7 @@ honesty:
 The `EXPECTED_CONTACT_FLOORS` row for the pair stays red, waived citing
 this item; closing this item deletes that waiver.
 
-## 22. The alarm pusher's bar ends inside its own column wheel
+## 22. CLOSED — the press axis rides above the wheel; the stem's end is press-swept derived
 
 Found by `intraUnit`'s first run (item 5's interim), confirmed by
 direct per-mesh measurement and by screenshot: within the Alarm switch
@@ -1887,6 +1887,22 @@ tail; nothing it does requires reaching the wheel) or by dropping the
 bar's z to a stratum the disc doesn't occupy, re-deriving the pawl
 contact height with it. Until then the two `INTRA_UNIT_WAIVERS` rows
 in `src/inspect.js` cite this item; closing it deletes both.
+
+**Closed 2026-08-01, absorbed into TODO 11's switch tranche.** The press
+AXIS now rides above the wheel's whole stack (castellation top + margin
++ stem radius, derived), so stem and guide boss can never meet the
+wheel at any press depth; the stem's inner end carries the full press
+travel's radial clearance for its pawl dropper; the pawl reaches the
+skirt on a real carrier (dropper + reach bar). The travel itself is now
+derived — one ratchet tooth arc at the saw tips (was a hand-set 0.7
+that under-swept even the old wheel). Both waiver rows deleted;
+`intraUnit` measures 0. The same tranche took the wheel to its POSITION
+BOUND (tip = plate edge − margin, Ø 1.9 mm), real feature depths
+(base 0.21 mm, tier 0.30 mm), and derived the click's arm length,
+bear point, and every rider z-station from the wheel's named constants.
+Full real scale (Ø 4+ mm) is blocked by the station itself — the
+wheel's centre stands 2.95 from the plate edge — recorded in TODO 11
+as layout work (§33 machinery), not absorbed here.
 
 ## 23. CLOSED — bearing-cock arms end at their rings; the lifter's lower guide was evicted by measurement
 
