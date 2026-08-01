@@ -323,6 +323,148 @@
     </div>
   </details>
 
+  <!-- ===================== FREE-SPRUNG REGULATION ===================== -->
+  <details class="mech" id="free-sprung">
+    <summary>Free-sprung balance — regulation without a regulator<span class="where">regulation · src/main.js ~4075–4165</span></summary>
+    <div class="mech-body">
+      <p>There is deliberately <em>no</em> regulator on this balance: no index arm, no curb
+      pins — the hairspring's terminal curve runs uninterrupted to its stud (the build's own
+      comment: "FREE-SPRUNG: there is deliberately NO regulator"). On an indexed watch the
+      curb pins pinch the spring to shorten its acting length; free-sprung watches delete
+      that interference and put the rate in the balance's own inertia instead — the
+      <b>timing screws</b> threaded into the rim. Screwing a pair in reduces the moment of
+      inertia and the watch gains; out, it loses. The spring is never touched.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The rim carries the rate</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 210" width="780" height="210" role="img" aria-label="Balance rim with timing screws; the hairspring terminal runs uninterrupted — no index, no curb pins">
+            <circle cx="200" cy="105" r="80" fill="none" stroke="var(--steel)" stroke-width="8" opacity="0.7"/>
+            <g stroke="var(--brass)" stroke-width="2">
+              <line x1="120" y1="105" x2="104" y2="105"/><line x1="280" y1="105" x2="296" y2="105"/>
+              <line x1="200" y1="25" x2="200" y2="9"/><line x1="200" y1="185" x2="200" y2="201"/>
+              <line x1="143" y1="48" x2="132" y2="37"/><line x1="257" y1="162" x2="268" y2="173"/>
+              <line x1="257" y1="48" x2="268" y2="37"/><line x1="143" y1="162" x2="132" y2="173"/>
+            </g>
+            <path d="M 200 105 m 6 0 a 6 6 0 1 1 -12 1 a 13 13 0 1 1 25 -3 a 20 20 0 1 1 -40 5 a 27 27 0 1 1 55 -7" fill="none" stroke="var(--ruby)" stroke-width="1.2"/>
+            <text class="lbl lbl-strong" x="330" y="46">timing screws (brass) — the rate adjusters</text>
+            <text class="val" x="330" y="62">inertia, not spring length: in = faster, out = slower</text>
+            <text class="lbl lbl-strong" x="330" y="96">hairspring terminal — uninterrupted</text>
+            <text class="val" x="330" y="112">no index arm, no curb pins anywhere on it</text>
+            <text class="lbl" x="330" y="146">the screws also set the hack contact:</text>
+            <text class="val" x="330" y="162">their heads sweep proud of the rim FACE, so the</text>
+            <text class="val" x="330" y="178">hack pad presses the rim's UNDERSIDE (next entry)</text>
+          </svg>
+        </div>
+        <figcaption>What the sim models, honestly bounded: the geometry above is built (rim,
+        screws, free terminal), and the beat rate comes from the spec's vph through derived
+        tooth counts — the sim does <em>not</em> model turning a timing screw to move the
+        rate, and this page draws no such mechanism. Amplitude varies with mainspring
+        tension (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism
+        story a free-sprung balance exists to tell.</figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== ZERO RESET ===================== -->
+  <details class="mech" id="zero-reset">
+    <summary>Zero reset — the heart cam's one low point<span class="where">display · src/main.js ~1281</span></summary>
+    <div class="mech-body">
+      <p>The seconds display can be snapped back to zero without stopping the train — the
+      stopwatch architecture, applied to the small seconds. The display rides a
+      <b>slip-coupled arbor</b> (a friction fit on the fourth wheel's axis), and that arbor
+      carries a <b>heart cam</b>: a spiral whose radius falls continuously to a single
+      lowest point. On reset, a spring-driven <b>hammer</b> falls against the heart's edge;
+      wherever the cam happens to be, the pressure on a falling-radius spiral produces
+      torque toward the low point, so the heart rotates until the hammer's pad seats in the
+      notch — and the low point is cut at the display's zero. The train never feels it: the
+      slip coupling pays for the jump.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Fall, roll, seat — any start, one end</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 220" width="780" height="220" role="img" aria-label="Three panels: hammer parked off the heart cam; hammer pressing the spiral edge which torques the cam; pad seated at the low point at zero">
+            <g transform="translate(30 30)">
+              <path d="M 60 60 C 100 20, 150 55, 90 120 C 30 55, 20 25, 60 60 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4" transform="rotate(140 85 70)"/>
+              <circle cx="85" cy="70" r="5" fill="none" stroke="var(--muted)"/>
+              <rect x="150" y="18" width="46" height="16" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <text class="lbl lbl-strong" x="0" y="0">1 · running</text>
+              <text class="val" x="0" y="160">hammer parked clear; the display turns with the train</text>
+            </g>
+            <g transform="translate(290 30)">
+              <path d="M 60 60 C 100 20, 150 55, 90 120 C 30 55, 20 25, 60 60 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4" transform="rotate(60 85 70)"/>
+              <circle cx="85" cy="70" r="5" fill="none" stroke="var(--muted)"/>
+              <rect x="132" y="52" width="46" height="16" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <circle cx="130" cy="60" r="4" fill="var(--ruby)"/>
+              <line x1="120" y1="34" x2="104" y2="48" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrZ)"/>
+              <text class="lbl lbl-strong" x="0" y="0">2 · reset pressed</text>
+              <text class="val" x="0" y="160">pad on the spiral edge → torque toward the low point</text>
+            </g>
+            <g transform="translate(550 30)">
+              <path d="M 60 60 C 100 20, 150 55, 90 120 C 30 55, 20 25, 60 60 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4" transform="rotate(-35 85 70)"/>
+              <circle cx="85" cy="70" r="5" fill="none" stroke="var(--muted)"/>
+              <rect x="120" y="86" width="46" height="16" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <circle cx="118" cy="94" r="4" fill="var(--ruby)"/>
+              <text class="lbl lbl-strong" x="0" y="0">3 · seated at zero</text>
+              <text class="val" x="0" y="160">pad in the notch — display at 0, train still running</text>
+            </g>
+            <defs><marker id="arrZ" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
+          </svg>
+        </div>
+        <figcaption>The seat is derived, not posed: the hammer's arm length puts the
+        roller's <em>surface</em> at the notch floor — the build's own correction, "the
+        roller surface just kisses the notch instead of rMin + armLen put the roller CENTRE
+        on the notch floor" — and the cam is phased so the notch faces the hammer's pivot at
+        the seated pose. The hammer is instrumented (<code>declareRestoring</code>,
+        <code>declareTravel</code>): its return is a real sprung member under the §48
+        no-spring audits, not an animation.</figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== HACKING SECONDS ===================== -->
+  <details class="mech" id="hacking">
+    <summary>Hacking seconds — a brake that respects the timing screws<span class="where">regulation · src/main.js ~1275, 2431–2447</span></summary>
+    <div class="mech-body">
+      <p>Pull the crown to set the time and the balance stops dead — hacking — so the watch
+      can be synchronised to a reference. The brake is the <b>stop work</b>: the setting
+      chain's motion travels a thin hack rod to a crank beside the balance, and the crank's
+      pad rises against the balance rim. Push the crown home and the pad falls away; the
+      hairspring restarts the balance itself.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Why the pad takes the UNDERSIDE</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 200" width="780" height="200" role="img" aria-label="Section of the balance rim: timing screw heads sweep proud of the face, so the hack pad contacts the rim's underside">
+            <rect x="200" y="70" width="380" height="26" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <text class="lbl" x="360" y="64">balance rim (section)</text>
+            <g fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2">
+              <rect x="250" y="58" width="26" height="12"/><rect x="360" y="58" width="26" height="12"/><rect x="470" y="58" width="26" height="12"/>
+            </g>
+            <text class="val val-brass" x="250" y="40">timing screw heads — proud of the FACE</text>
+            <path class="leader" d="M 300 44 L 268 58"/>
+            <line x1="200" y1="52" x2="580" y2="52" stroke="var(--brass)" stroke-width="0.75" stroke-dasharray="4 3"/>
+            <text class="val" x="586" y="55">screw sweep</text>
+            <rect x="386" y="112" width="60" height="18" rx="4" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+            <line x1="416" y1="112" x2="416" y2="98" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrH)"/>
+            <text class="lbl lbl-strong" x="470" y="128">hack pad — rises on the UNDERSIDE</text>
+            <text class="val" x="470" y="144">the face is not a usable contact: the screw</text>
+            <text class="val" x="470" y="158">heads sweep through it (HACK_SCREW_IN_R,</text>
+            <text class="val" x="470" y="172">HACK_SCREW_DROP — both derived from BAL_T)</text>
+            <rect x="398" y="130" width="14" height="50" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.2"/>
+            <text class="lbl" x="200" y="150">crank + hack rod from the</text>
+            <text class="lbl" x="200" y="163">setting chain (crown pulled)</text>
+            <defs><marker id="arrH" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
+          </svg>
+        </div>
+        <figcaption>The contact surface is a derived consequence of the free-sprung design
+        above: because the timing screws' heads sweep proud of the rim's face, the face
+        would batter them — so the pad's station and drop derive from the rim section and
+        the screws' inner tips (<code>HACK_SCREW_IN_R = balanceR − BAL_T·0.16</code>). The
+        crank stands in the plate's open cut and the whole chain arrives from the crown
+        through the keyless works — pulled is a motion, not a flag
+        (<code>setPose</code> deliberately cannot fake it).</figcaption>
+      </figure>
+    </div>
+  </details>
+
   <!-- ===================== MOTION WORKS ===================== -->
   <details class="mech" id="motion-works">
     <summary>Motion works &amp; minute jumper — 12:1 by tooth counts, minutes that snap<span class="where">display · src/main.js</span></summary>
@@ -358,6 +500,129 @@
       declared joints in the intra-unit instrument's table, because a pivot in its bearing is
       what an assembly <em>is</em>; the instrument exists for parts that foul, not parts that
       join.</p>
+    </div>
+  </details>
+
+  <!-- ===================== COLUMN WHEEL ===================== -->
+  <details class="mech" id="column-wheel">
+    <summary>The column wheel — a rotary switch with teeth<span class="where">alarm · src/main.js §43, §25 D</span></summary>
+    <div class="mech-body">
+      <p>The alarm's on/off switch is a chronograph's column wheel: a castellated crown of
+      six columns over a saw-toothed ratchet skirt. Each press of the case pusher drives a
+      pawl one saw tooth — half a column pitch — so every actuation flips the state: a
+      rider standing <b>on a column</b> is held out (alarm OFF); over <b>a gap</b> it drops
+      in (ON). Three members read the same castellations at whole pitches apart, so they
+      always agree: the lock lever's beak (gates the brake), the sprung click (indexes the
+      two stable states and makes the toggle read), and the §35 link beak (arms the ring).</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The castellation law, and who rides it</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 210" width="780" height="210" role="img" aria-label="The castellation height profile — columns, gaps, and cut flanks — with the three riders and pawl marked at their stations">
+            <path d="M 60 150 L 60 80 L 130 80 L 142 150 L 214 150 L 226 80 L 296 80 L 308 150 L 380 150 L 392 80 L 462 80 L 474 150 L 546 150 L 558 80 L 628 80 L 640 150 L 700 150"
+                  fill="none" stroke="var(--brass)" stroke-width="2"/>
+            <line x1="60" y1="150" x2="700" y2="150" stroke="var(--line)" stroke-width="0.75"/>
+            <text class="lbl" x="80" y="70">column</text><text class="lbl" x="164" y="142">gap</text>
+            <text class="val val-brass" x="128" y="170">flank = 0.18 pitch — CUT, not narrated (TODO 20: the mesh and the law are one function)</text>
+            <circle cx="95" cy="74" r="6" fill="var(--ruby)"/><text class="lbl lbl-strong" x="84" y="46">lock beak · OFF</text>
+            <circle cx="424" cy="74" r="6" fill="var(--steel)"/><text class="lbl lbl-strong" x="392" y="46">click nose · 2 pitches on</text>
+            <circle cx="592" cy="74" r="6" fill="var(--ruby)"/><text class="lbl lbl-strong" x="556" y="46">link beak · §35</text>
+            <text class="val" x="60" y="196">profileAt(θ): duty 0.5 · 48 segments per pitch (~9 per flank) — the ride every member takes is the surface that was cut</text>
+          </svg>
+        </div>
+        <figcaption>Ledger, current: the wheel just took its TODO 11 tranche — diameter to
+        its position bound (tip circle = plate edge − <code>CLEAR_MARGIN</code>, Ø 1.9 mm)
+        and real feature depths (base 0.21 mm, tier 0.30 mm); TODO 22 (the pusher's bar in
+        the disc band) is CLOSED — the press axis now rides above the wheel's stack and the
+        pawl hangs from a real carrier. Full real scale (Ø 4–6 mm) is blocked by the
+        station itself — the wheel's centre stands 2.95 from the plate edge — recorded in
+        TODO 11 as layout work. The press travel is one ratchet-tooth arc at the saw tips,
+        derived; the pawl's parked kiss is a declared contact the
+        <code>alarmHandoffs</code> battery asserts every run.</figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== ALARM ARMING ===================== -->
+  <details class="mech" id="alarm-arming">
+    <summary>Alarm arming — one press, thirty units of movement<span class="where">alarm · src/main.js §35</span></summary>
+    <div class="mech-body">
+      <p>The column wheel lives at the rim; the selector ring that actually arms the alarm
+      lives at the centre — 32 units apart, a span no lever should cross. The real-watch
+      answer is a <b>lay shaft</b>: the §35 link beak reads the castellations (same parity
+      as the lock beak, 120° around), and its long tail drives a vertical <b>rod</b> down
+      through bores in both plates, then a rim <b>crank</b>, the radial <b>shaft</b>, and a
+      centre <b>crank</b> pressing the ring's drive tab. Rod down = ring down = armed;
+      <code>alarmOn</code> is a readout of the geometry, not a flag.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The unbroken link — every member real</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 190" width="780" height="190" role="img" aria-label="Chain schematic: column wheel to link beak, tail to rod, rod to rim crank, lay shaft to centre crank, crank to ring tab">
+            <circle cx="70" cy="60" r="30" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+            <text class="lbl" x="42" y="112">column wheel</text>
+            <rect x="104" y="52" width="120" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <text class="lbl lbl-strong" x="104" y="40">beak + long tail</text>
+            <circle cx="104" cy="58" r="4" fill="var(--ruby)"/>
+            <rect x="224" y="58" width="10" height="70" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <text class="lbl lbl-strong" x="244" y="80">rod ↓ through both plates</text>
+            <circle cx="229" cy="128" r="4" fill="var(--ruby)"/>
+            <rect x="229" y="124" width="330" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <text class="lbl lbl-strong" x="320" y="118">rim crank → lay shaft → centre crank</text>
+            <circle cx="559" cy="129" r="4" fill="var(--ruby)"/>
+            <rect x="559" y="100" width="12" height="34" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <circle cx="640" cy="100" r="34" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+            <text class="lbl" x="614" y="152">selector ring</text>
+            <text class="val" x="586" y="88">drive tab</text>
+            <text class="val" x="42" y="176">● ruby marks a measured hand-off — beak ride, rod-end engagements and tab press are alarmHandoffs rows, shut at both parities</text>
+          </svg>
+        </div>
+        <figcaption>Honesty ledger, stated plainly: the run's geometry is real and every
+        hand-off measures shut, but <b>TODO 20 is open</b> — members of this chain are
+        still POSED from the output (the ring's state) rather than driven member-by-member
+        from the input, and this plate must not imply otherwise. The rod's site itself is a
+        story: five corridor routes died to probe blindnesses before the surviving az-212
+        column was swept across eleven poses (the §35 record, and the origin of the P0–P3
+        priority ladder).</figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== ARMING SHOWS/HIDES THE HAND ===================== -->
+  <details class="mech" id="hand-show-hide">
+    <summary>Arming shows the alarm hand — a biconditional, asserted<span class="where">alarm · src/main.js §45 stages 0/1</span></summary>
+    <div class="mech-body">
+      <p>The alarm hand is only present when it means something: <b>Hidden ⟺ ¬Armed ∧
+      ¬Setting</b>. Armed, the selector ring's parity holds the hand's tube up; setting,
+      the alarm crown's collar lifts it through the release sleeve so the owner can see
+      what they are aiming. The spec is a biconditional because the implications alone
+      would pass a hand left permanently visible — and it is asserted at boot at all four
+      corners, evaluated on the mechanism's own laws (the ring parity from the §35
+      registration solve, the sleeve's cone cap from the collar's two plateaus).</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The assert's truth table, live</span></div>
+        <div class="controls">
+          <label><input type="checkbox" id="shArmed"> armed (ring parity)</label>
+          <label><input type="checkbox" id="shSetting"> setting (alarm crown pulled)</label>
+          <span class="chip held" id="shChip">HIDDEN · parked under the hour hand</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 150" width="780" height="150" role="img" aria-label="Interactive truth table: armed and setting toggles determine whether the alarm hand is shown, per the asserted biconditional">
+            <g id="shCells" font-size="11"></g>
+            <line x1="60" y1="40" x2="560" y2="40" stroke="var(--line)" stroke-width="0.75"/>
+            <text class="lbl" x="60" y="30">armed</text><text class="lbl" x="180" y="30">setting</text><text class="lbl" x="300" y="30">hand</text><text class="lbl" x="420" y="30">via</text>
+            <g id="handIcon">
+              <circle cx="672" cy="76" r="42" fill="none" stroke="var(--line)"/>
+              <line id="shHand" x1="672" y1="76" x2="672" y2="42" stroke="var(--ruby)" stroke-width="3" visibility="hidden"/>
+              <circle cx="672" cy="76" r="4" fill="var(--muted)"/>
+            </g>
+          </svg>
+        </div>
+        <figcaption>The rows are computed by the same OR the tube law uses —
+        <code>hidden = !(armed || freed(setting))</code> — with the current toggle state
+        highlighted; flip both off and the hand parks under the hour hand as a steel
+        shadow (the §45 stage-0 styling). In the movement this is geometry end to end:
+        ring parity → clamp, collar plateau → lifter → sleeve → tube — every hand-off an
+        <code>alarmHandoffs</code> row.</figcaption>
+      </figure>
     </div>
   </details>
 
@@ -741,6 +1006,43 @@
       records where its causality still needs to be driven from the input side.</p>
     </div>
   </details>
+
+  <!-- ===================== THE GONG'S VOICE ===================== -->
+  <details class="mech" id="gong">
+    <summary>The gong's voice — partials from the bar, not a chosen note<span class="where">alarm · src/main.js §56</span></summary>
+    <div class="mech-body">
+      <p>The alarm's sound is not a sample and not a picked frequency: the gong is a
+      clamped-free steel bar, and its voice is derived from that bar's own bending modes.
+      A clamped-free bar's overtones are fixed by physics, not tuning: the second mode
+      rings at <b>6.27×</b> the fundamental — that is <code>(k₂L/k₁L)² = (4.694/1.875)²</code>
+      from the beam equation, and it is why struck gongs sound metallic rather than
+      musical (the partials are inharmonic). The build states it as its own comment: "the
+      wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the [fundamental]".</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Two mode shapes, one strike point</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 190" width="780" height="190" role="img" aria-label="Mode shapes of a clamped-free bar: the fundamental's single arc and the second mode with its node, with the hammer's strike point marked">
+            <rect x="50" y="40" width="16" height="110" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <text class="lbl" x="34" y="168">clamp (foot)</text>
+            <line x1="66" y1="95" x2="700" y2="95" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="4 3"/>
+            <path d="M 66 95 C 300 95, 520 88, 700 40" fill="none" stroke="var(--brass)" stroke-width="2"/>
+            <text class="val val-brass" x="596" y="34">mode 1 — the fundamental</text>
+            <path d="M 66 95 C 240 95, 330 130, 420 130 C 540 130, 620 70, 700 46" fill="none" stroke="var(--ruby)" stroke-width="1.6" stroke-dasharray="6 3"/>
+            <text class="val val-ruby" x="300" y="150">mode 2 — 6.27× (node marked)</text>
+            <circle cx="558" cy="99" r="4" fill="var(--ruby)"/>
+            <line x1="230" y1="60" x2="230" y2="88" stroke="var(--text)" stroke-width="1.5" marker-end="url(#arrG)"/>
+            <text class="lbl lbl-strong" x="196" y="50">hammer strikes here</text>
+            <text class="val" x="66" y="178">arc length is a LIVE parameter, measured back from the free end — shorten the bar and every partial rises together</text>
+            <defs><marker id="arrG" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
+          </svg>
+        </div>
+        <figcaption>Ledger: TODO 17 is MOSTLY closed by §56 — the synthesis takes its
+        partial ratios and decay from the modelled bar rather than a preset chord; the
+        residue TODO 17 still holds (the strike's excitation weighting across modes) is
+        catalogued there, and this plate draws only what is derived.</figcaption>
+      </figure>
+    </div>
+  </details>
 </div>
 
 <footer>
@@ -889,6 +1191,39 @@
         else { ch.classList.add('trip'); ch.textContent = 'DROP · onto the exit stone'; }
       }
       sl.addEventListener('input', upd);
+      upd();
+    })();
+
+    // —— Show/hide truth table: the §45 biconditional, the tube law's own OR ——
+    (function () {
+      var armed = document.getElementById('shArmed'), setting = document.getElementById('shSetting');
+      var chip = document.getElementById('shChip'), hand = document.getElementById('shHand');
+      var cells = document.getElementById('shCells');
+      var NS = 'http://www.w3.org/2000/svg';
+      function row(y, a, st, cur) {
+        var shown = a || st; // freed(setting) is true exactly when the collar sits on its pulled plateau
+        var t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', 60); t.setAttribute('y', y);
+        t.setAttribute('class', 'val' + (cur ? ' lbl-strong' : ''));
+        t.setAttribute('fill', cur ? 'var(--readout)' : 'var(--muted)');
+        t.textContent = (a ? '1' : '0') + '           ' + (st ? '1' : '0') + '            ' +
+          (shown ? 'SHOWN' : 'hidden') + '      ' + (a && st ? 'ring parity + sleeve' : a ? 'ring parity clamp' : st ? 'collar → lifter → sleeve' : '— parked, a steel shadow');
+        cells.appendChild(t);
+      }
+      function upd() {
+        while (cells.firstChild) cells.removeChild(cells.firstChild);
+        var y = 62;
+        [[0,0],[0,1],[1,0],[1,1]].forEach(function (r) {
+          row(y, !!r[0], !!r[1], r[0] === (armed.checked ? 1 : 0) && r[1] === (setting.checked ? 1 : 0));
+          y += 22;
+        });
+        var shown = armed.checked || setting.checked;
+        hand.setAttribute('visibility', shown ? 'visible' : 'hidden');
+        chip.className = 'chip ' + (shown ? 'trip' : 'held');
+        chip.textContent = shown ? 'SHOWN · Hidden ⟺ ¬Armed ∧ ¬Setting holds' : 'HIDDEN · parked under the hour hand';
+      }
+      armed.addEventListener('change', upd);
+      setting.addEventListener('change', upd);
       upd();
     })();
   })();
