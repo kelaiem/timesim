@@ -8702,6 +8702,18 @@ style.textContent = `
 #ctl-hud .hud-hint.dim { opacity: 0.16; }
 #ctl-hud .hud-hit { fill: transparent; cursor: grab; }
 #ctl-hud .hud-hit:active { cursor: grabbing; }
+/* §63 — the setting preview. Hands appear ONLY while a setting path is
+   engaged (their opacity is driven per-frame from the same eased pulls
+   the crown heads ride), so at rest the HUD remains §57's controls-only
+   plan. A hand with no reference is a needle, so a 12-tick ring fades in
+   with whichever hand is up. The alarm hand is dashed and wears the
+   pulled-crown red — the colour of the state that summons it. */
+#ctl-hud .hud-preview { pointer-events: none; }
+#ctl-hud .hud-tick { stroke: rgba(255,255,255,0.22); stroke-width: 1; }
+#ctl-hud .hud-hand { stroke-linecap: round; }
+#ctl-hud .hud-hand-hr  { stroke: rgba(255,255,255,0.85); stroke-width: 2.6; }
+#ctl-hud .hud-hand-min { stroke: rgba(255,255,255,0.85); stroke-width: 1.6; }
+#ctl-hud .hud-hand-al  { stroke: #e07a55; stroke-width: 1.6; stroke-dasharray: 2.5 2; }
 /* State, shown in the palette the rest of the UI already uses for it: the
    pulled crown wears #btn-crown's red, an armed alarm wears the torque bars'
    green. */
@@ -10758,6 +10770,21 @@ hudEl.innerHTML = `<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} $
     <path class="hud-hint" d="M 0 -20 Q -10 0 0 20"/>
     <path class="hud-hint" d="M -4.12 17.36 L 0 20 L 0.36 15.12"/>
     <path class="hud-hint" d="M -4.12 -17.36 L 0 -20 L 0.36 -15.12"/>
+    <!-- §63 — setting preview: hands + tick ring, opacity driven in
+         hudUpdate from the eased pulls; angles are readouts of what the
+         dial shows (see hudUpdate). Drawn under the hit circles and
+         pointer-transparent, so every §57 gesture lands exactly as before. -->
+    <g class="hud-preview">
+      <g class="hud-pv-ticks" opacity="0">${Array.from({ length: 12 }, (_, k) =>
+        `<line class="hud-tick" transform="rotate(${k * 30})" x1="0" y1="-40.5" x2="0" y2="-37"/>`).join('')}</g>
+      <g class="hud-pv-time" opacity="0">
+        <line class="hud-hand hud-hand-hr" x1="0" y1="4" x2="0" y2="-21"/>
+        <line class="hud-hand hud-hand-min" x1="0" y1="5" x2="0" y2="-33"/>
+      </g>
+      <g class="hud-pv-alarm" opacity="0">
+        <line class="hud-hand hud-hand-al" x1="0" y1="4" x2="0" y2="-27"/>
+      </g>
+    </g>
     ${HUD_CTLS.map(hudCtlMarkup).join('')}
     <circle class="hud-hit" data-ctl="spin" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
   </g>
@@ -10766,6 +10793,12 @@ document.body.appendChild(hudEl);
 const hudSvg = hudEl.querySelector('svg');
 const hudHeadG = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-head-g`)]));
 const hudOutHint = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-out`)]));
+const hudPvTicks = hudEl.querySelector('.hud-pv-ticks');
+const hudPvTime = hudEl.querySelector('.hud-pv-time');
+const hudPvAlarm = hudEl.querySelector('.hud-pv-alarm');
+const hudPvHr = hudEl.querySelector('.hud-hand-hr');
+const hudPvMin = hudEl.querySelector('.hud-hand-min');
+const hudPvAl = hudEl.querySelector('.hud-hand-al');
 const hudInHint = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-in`)]));
 
 // THE TRACKBALL. The dial face is an arcball: a drag across the middle tumbles
@@ -10831,6 +10864,31 @@ function hudUpdate() {
   hudEl.classList.toggle('crown-out', crownOut);
   hudEl.classList.toggle('alarm-crown-out', alarmCrownOut);
   hudEl.classList.toggle('alarm-on', alarmOn);
+  // §63 — the setting preview. Angles are READOUTS of what the dial shows,
+  // through the two accessors the project already trusts for exactly that:
+  // displayedSeconds() is defined as "what the HANDS read" (it carries the
+  // same handSetOffset tick gives the hands, jumper snap included), and
+  // alarmDiscAngle() is §25 C's through-the-train set angle. Nothing is
+  // re-derived from tau or the crown here — one source, the dial's own.
+  // Drawn as the front-view clock the HUD's dial-side plan already is:
+  // 12 up, clockwise positive (SVG's y-down makes rotate() clockwise on
+  // screen), so the Y-flip trap never enters — no mesh rotation is mapped.
+  const pvT = crownPullT, pvA = alarmCrownPullT;
+  hudPvTime.setAttribute('opacity', pvT.toFixed(3));
+  hudPvAlarm.setAttribute('opacity', pvA.toFixed(3));
+  hudPvTicks.setAttribute('opacity', Math.max(pvT, pvA).toFixed(3));
+  if (pvT > 0 || pvA > 0) {
+    const wrap = (x, m) => ((x % m) + m) % m;
+    const s = displayedSeconds();
+    hudPvMin.setAttribute('transform', `rotate(${(wrap(s, 3600) / 3600 * 360).toFixed(2)})`);
+    // The 12:1 between these two IS the motion works' tooth counts, not a
+    // convenience division: displayedSeconds is minute-hand state, and the
+    // dial's hour hand arrives at s/12h because MW_RATIO_1·MW_RATIO_2
+    // multiply to 1/12 by construction. The readout leans on that, the
+    // same way the panel clock's hh:mm already does.
+    hudPvHr.setAttribute('transform', `rotate(${(wrap(s, DIAL_PERIOD_S) / DIAL_PERIOD_S * 360).toFixed(2)})`);
+    hudPvAl.setAttribute('transform', `rotate(${(alarmDiscAngle() * 180 / Math.PI).toFixed(2)})`);
+  }
 }
 
 function setHud(on) {

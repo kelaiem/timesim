@@ -5668,3 +5668,54 @@ than passing through a hole); a cut-thread taper on the land crest
 of this movement's class is fatter at the small end than our 2.6 u,
 which is why the chording term is as large as it is. Those radii are
 §22/§13 layout material if anyone wants them.
+
+## §63. Setting preview in the HUD — hands you can read from the back
+
+**The need.** Setting is a crown interaction; the crowns live on the
+movement side; the dial is therefore off screen at exactly the moment
+its hands matter. §57's HUD reaches the *controls* from any framing —
+this makes the *result* readable: while a setting path is engaged, the
+HUD's ring previews the hour, minute and alarm hands.
+
+**§57's scope guard held.** "Only the controls are drawn" stays true at
+rest: the hands and a minimal 12-tick reference ring carry their
+opacity from the SAME eased pulls the crown heads already ride
+(`crownPullT` for hour/minute, `alarmCrownPullT` for the alarm hand),
+so they fade in and out with the physical stem. The preview is
+pointer-transparent and drawn under the hit circles — every §57
+gesture lands exactly as before. The boot wall-clock sync, which pulls
+the crown by machinery, summons the preview too; that fell out of
+reading the eased state rather than the button, and it is correct — the
+watch IS setting.
+
+**Stronger than the plan: the readouts were already unified.** The
+entry required consuming "the same derived angles the dial meshes
+consume." The build found the project had already distilled those into
+two accessors, each carrying its own Rule 2 provenance in a comment:
+`displayedSeconds()` — "what the HANDS read," the same
+`handSetOffset` tick gives the hands, jumper snap included — and
+`alarmDiscAngle()` — §25 C's through-the-train set angle, "the same
+quantity the trip reads," which the panel's ≈alarm readout already
+consumes. The preview draws those two numbers as a front-view clock
+and derives nothing else. The hour hand's 12:1 against
+`displayedSeconds` is the motion works' tooth counts by construction,
+leaned on the same way the panel's hh:mm already leans on it.
+
+**The Y-flip trap dissolved instead of being survived.** The entry
+named the dial-side mirror as the central hazard, expecting mesh
+rotations to be mapped through it. By consuming time-of-day readouts
+rather than mesh angles, no rotation crosses the flip at all — the
+handedness question reduces to "draw a clock": 12 up, clockwise
+positive, which SVG's y-down `rotate()` gives directly. Verified both
+ways regardless: dial and HUD agree on screen through a hand-set
+(1:11 → 1:26, hour and minute both), and the alarm hand's transform
+(`rotate(90)`) was probed against the panel readout (≈3:00) in the
+same frame — after a zoomed screenshot briefly misread the dashed
+hand's short tail as a 9:00 mirror, which is its own small §60-shadow
+lesson in trusting instruments over squinting.
+
+**Verified.** Boot sync shows the preview during its scripted pull and
+clears it after; crown pulled → hands appear and track the dial
+through setting; crown home → time hands fade while the still-out
+alarm crown keeps its hand; zero page errors; full battery green with
+the geometry fingerprint untouched (DOM/SVG only).
