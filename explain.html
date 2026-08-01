@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Watch Sim — Mechanisms</title>
+<!-- §65 — the mechanism explainer. A maintained companion page to the sim:
+     one entry per significant mechanism, in the movement's own visual
+     language (the HUD's glass panels and the §49 scale view's monospace
+     dimension voice — single dark theme, deliberately, because the sim is).
+     MAINTENANCE: when a significant mechanism ships or changes, add or
+     refresh its <details class="mech"> entry here; full entries carry
+     numbered plates (figures) whose every number is the real constant from
+     src/*.js, with the constraint it was derived from. Compact entries are
+     prose seeds awaiting plates. Values in the prose are quoted from source
+     constants — if a § redesign changes one, this page is part of the
+     reconciliation (see CLAUDE.md). -->
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: rgba(15,17,20,0.72);
+    --panel-solid: #14171c;
+    --hairline: rgba(255,255,255,0.08);
+    --hairline-strong: rgba(255,255,255,0.14);
+    --text: #d8dee6;
+    --muted: #8b95a1;
+    --head: #8fa6bf;
+    --head-hover: #b9cbe0;
+    --readout: #f2efe6;
+    --label-blue: #cfe3ff;
+    --mono-ink: #cfd6dd;
+    --accent: #3a6bd8;
+    --brass: #e0a355;
+    --brass-fill: #4a3b22;
+    --ruby: #e05555;
+    --ruby-fill: #5a2726;
+    --steel: #8fa6bf;
+    --steel-fill: #2a3644;
+    --green: #58b368;
+    --line: #3a4048;
+  }
+  html, body { margin: 0; background: var(--bg); }
+  body {
+    color: var(--text);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 74px 14px 60px;
+  }
+  a { color: var(--label-blue); }
+  code, .mono {
+    font: 11px/1.4 ui-monospace, monospace;
+    color: var(--mono-ink);
+  }
+  code { background: rgba(255,255,255,0.06); padding: 0.1em 0.35em; border-radius: 4px; }
+
+  /* top bar — the panel's own chrome */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: baseline; gap: 14px;
+    background: var(--panel); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--hairline);
+    padding: 14px 18px;
+  }
+  header h1 {
+    font-size: 12px; margin: 0; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--head); font-weight: 600;
+  }
+  header a.back {
+    font-size: 11px; color: var(--muted); text-decoration: none;
+    border: 1px solid var(--hairline-strong); border-radius: 6px; padding: 4px 9px;
+    background: rgba(255,255,255,0.06); transition: background 0.15s;
+  }
+  header a.back:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+  header .spacer { flex: 1; }
+  header .stamp { font: 10.5px/1 ui-monospace, monospace; color: var(--muted); }
+
+  .sheet { max-width: 840px; margin: 0 auto; }
+  .intro { color: var(--muted); max-width: 68ch; margin: 10px 0 26px; }
+  .intro b { color: var(--text); font-weight: 600; }
+
+  /* mechanism entries — BUILT §15's disclosure pattern, the panel's sections */
+  details.mech {
+    background: var(--panel); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--hairline); border-radius: 10px;
+    margin: 12px 0; padding: 0 18px;
+  }
+  details.mech > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px;
+    padding: 12px 0; margin: 0;
+    font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--head); font-weight: 600;
+  }
+  details.mech > summary::-webkit-details-marker { display: none; }
+  details.mech > summary::before { content: '▸'; font-size: 9px; color: #6b7683; transition: transform 0.15s; }
+  details.mech[open] > summary::before { transform: rotate(90deg); }
+  details.mech > summary:hover { color: var(--head-hover); }
+  details.mech > summary .where { margin-left: auto; font: 10px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  .mech-body { border-top: 1px solid var(--hairline); padding: 14px 0 18px; }
+  .mech-body p { max-width: 68ch; margin: 0 0 10px; }
+  .mech-body p.note { color: var(--muted); font-size: 12px; }
+
+  /* plates */
+  figure { margin: 20px 0; }
+  .fig-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .fig-no {
+    font: 10px/1 ui-monospace, monospace; letter-spacing: 0.08em;
+    color: var(--bg); background: var(--head); border-radius: 4px; padding: 3px 6px;
+  }
+  .fig-title { font-style: italic; color: var(--text); }
+  .fig-body { overflow-x: auto; background: rgba(10,12,15,0.45); border: 1px solid var(--hairline); border-radius: 8px; }
+  figcaption { max-width: 68ch; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+  svg { display: block; }
+  svg .lbl { font: 10px ui-monospace, monospace; letter-spacing: 0.05em; fill: var(--head); text-transform: uppercase; }
+  svg .lbl-strong { fill: var(--text); }
+  svg .val { font: 10.5px ui-monospace, monospace; fill: var(--mono-ink); }
+  svg .val-ruby { fill: var(--ruby); }
+  svg .val-brass { fill: var(--brass); }
+  svg .val-steel { fill: var(--steel); }
+  svg .leader { stroke: var(--muted); stroke-width: 0.75; fill: none; opacity: 0.8; }
+  svg .dim { stroke: var(--muted); stroke-width: 0.75; }
+
+  /* controls — the HUD's own buttons and slider */
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--hairline);
+    border-radius: 8px; padding: 9px 12px; margin-bottom: 10px;
+    font-size: 11px; color: var(--muted); user-select: none;
+  }
+  .controls label { display: flex; align-items: center; gap: 8px; }
+  .controls input[type="range"] { width: 200px; accent-color: var(--accent); }
+  .controls input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; }
+  .controls input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .readout { font: 11px/1 ui-monospace, monospace; color: var(--readout); font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+  .chip {
+    font: 10.5px/1 ui-monospace, monospace; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid; white-space: nowrap;
+  }
+  .chip.ride { color: var(--steel); border-color: var(--steel); }
+  .chip.ramp { color: var(--brass); border-color: var(--brass); }
+  .chip.trip { color: #fff; background: var(--ruby); border-color: var(--ruby); }
+  .chip.held { color: var(--muted); border-color: var(--muted); border-style: dashed; }
+
+  table { border-collapse: collapse; font-size: 12px; width: 100%; font-variant-numeric: tabular-nums; }
+  th {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--head);
+    font-weight: 600; text-align: left; padding: 6px 12px 6px 0;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  td:first-child { white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
+
+  footer { max-width: 840px; margin: 30px auto 0; color: var(--muted); font-size: 11px; border-top: 1px solid var(--hairline); padding-top: 12px; }
+
+  @media (prefers-reduced-motion: no-preference) { .anim { transition: transform 90ms linear; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Watch Sim — Mechanisms</h1>
+  <a class="back" href="./index.html">← the movement</a>
+  <span class="spacer"></span>
+  <span class="stamp">values quoted from src/*.js · constraints in captions</span>
+</header>
+
+<div class="sheet">
+  <p class="intro">How the significant mechanisms of this movement work — in the order power
+  flows. Entries with numbered <b>plates</b> are full treatments whose every dimension is the
+  real constant from the source, with the constraint it was derived from (the repo's rule 1:
+  no number exists because it looked right). Compact entries are seeds; they grow plates as
+  the mechanisms they describe get worked on.</p>
+
+  <!-- ===================== FUSEE & CHAIN ===================== -->
+  <details class="mech" id="fusee">
+    <summary>Fusee &amp; chain — constant force from a dying spring<span class="where">power · src/main.js</span></summary>
+    <div class="mech-body">
+      <p>The mainspring lives in a drum: a coiled ribbon hooked to the drum wall at its outer
+      end (the hook is riveted <em>into</em> the wall — a declared joint the intra-unit
+      instrument checks). As it unwinds, its torque falls — a spring near full wind pulls much
+      harder than one near empty, and a train driven directly would beat measurably differently
+      across the reserve.</p>
+      <p>The fusee is the correction: a cone with a spiral chain groove, chained to the drum.
+      Fully wound, the chain pulls at the cone's <em>small</em> radius — high spring force,
+      short lever. As the spring runs down the chain works toward the <em>large</em> radius —
+      weaker force, longer lever. The product, torque into the train, stays near constant.
+      Winding spools the chain back onto the fusee; a maintaining detent keeps the train
+      driven while the wind briefly unloads it, so the escapement never runs backward.</p>
+      <p class="note">Honesty ledger: TODO 1 is half-closed — the spring's torque law is still
+      partly authored rather than emerging from ribbon mechanics; the chain's swept fan is a
+      first-class obstacle in the layout (§36's registry).</p>
+    </div>
+  </details>
+
+  <!-- ===================== ESCAPEMENT ===================== -->
+  <details class="mech" id="escapement">
+    <summary>Swiss lever escapement — counting time by letting it go<span class="where">regulation · src/main.js, src/geometry.js</span></summary>
+    <div class="mech-body">
+      <p>The balance wheel and its hairspring are the oscillator; everything else exists to
+      keep it swinging and to count its swings. Twice per beat the balance's roller pin enters
+      the pallet fork's V-notch and knocks the fork across; the fork's two ruby pallets
+      alternately lock and release the escape wheel, one tooth per beat, and each release
+      gives the pin back an impulse that replaces the energy the swing lost.</p>
+      <p>The geometry is derived, not posed: the fork's banking angle comes from an arc-length
+      match — the roller pin's impulse sweep at the roller radius must equal the notch's sweep
+      at the fork's notch depth (<code>rollerR·Δθ = notchDepth·2·bank</code>), or the pin and
+      notch never coincide and the watch stops on paper before it stops in metal. The beat
+      rate is a spec knob (the HUD's <em>Beat rate</em> selector re-derives the train's tooth
+      counts to suit).</p>
+      <p class="note">The pallet stones seat in slots whose gap is derived from the arm's own
+      extrude bevel (<code>gGap = armBevel + SEAT_SHOW</code>) — a guard born from a defect
+      the battery structurally could not see (TODO 5's second instance).</p>
+    </div>
+  </details>
+
+  <!-- ===================== MOTION WORKS ===================== -->
+  <details class="mech" id="motion-works">
+    <summary>Motion works &amp; minute jumper — 12:1 by tooth counts, minutes that snap<span class="where">display · src/main.js</span></summary>
+    <div class="mech-body">
+      <p>The hands never receive a computed angle. The cannon pinion turns with the train;
+      the minute wheel and its pinion gear it down to the hour wheel, and the 12:1 arrives
+      because the tooth counts multiply to it — the repo's rule 2. Hand-setting drives the
+      same wheels forward from the crown through the keyless chain, so a set hand and a
+      driven hand are the same hand.</p>
+      <p>The minute display is a jumping minute: a star wheel, a sprung beak (the jumper),
+      and a click spring hold the minute hand parked between graduations, then snap it one
+      step at the minute — the beak's clearance over the star (0.1500, exactly one
+      <code>CLEAR_MARGIN</code>) is the solved release gap, and the snap is an ease the sim's
+      <code>setPose</code> deliberately cannot fake through.</p>
+      <p class="note">Honesty ledger: TODO 21 — the hour tube as currently stacked passes
+      through the minute wheel's and star's tooth bands; the fix is a §-scale re-stack of the
+      motion works (hour wheel to the dial-most plane). Found by the per-contact floors
+      instrument; the waiver is public in the battery report until the re-stack lands.</p>
+    </div>
+  </details>
+
+  <!-- ===================== KEYLESS WORKS ===================== -->
+  <details class="mech" id="keyless">
+    <summary>Keyless works — one crown, two jobs<span class="where">interface · src/main.js</span></summary>
+    <div class="mech-body">
+      <p>The crown's stem carries a sliding pinion on a square: pushed home, the clutch routes
+      the crown's turn into the winding path — ratchet and click onto the drum, spooling the
+      chain back onto the fusee. Pulled out, the sliding pinion drops into the setting wheels
+      and the same turn walks the motion works instead. The clutch's travel is eased in the
+      sim (a pulled crown is a motion, not a flag), and every mesh along both paths has its
+      phase solved from measurement rather than assumed (§15's closing work).</p>
+      <p>The stem rides a bushing block, the crown collar seats on a bushing torus — all of it
+      declared joints in the intra-unit instrument's table, because a pivot in its bearing is
+      what an assembly <em>is</em>; the instrument exists for parts that foul, not parts that
+      join.</p>
+    </div>
+  </details>
+
+  <!-- ===================== ALARM FEELER (full plates) ===================== -->
+  <details class="mech" id="alarm-feeler" open>
+    <summary>Alarm release feeler — reading the set time by touch<span class="where">alarm · src/main.js:6433</span></summary>
+    <div class="mech-body">
+      <p>The fixed reader of the alarm train, in the Vulcain Cricket / JLC Memovox pattern.
+      A spring-biased lever rides a raised track on the alarm disc; the disc turns with the
+      <em>difference</em> between the hour wheel and the set time, so its one notch arrives
+      under the lever's pin exactly at coincidence. The pin falls, the tail rises to a banked
+      stop, and the withdrawal of the climb pawl frees the strike train. No boolean anywhere:
+      causality enters at the crown and arrives at the gong through closed contacts (the
+      repo's P0 rule), and each hand-off below is a measured row of the
+      <code>alarmHandoffs</code> battery.</p>
+
+      <!-- —————— PLATE 1 : PLAN VIEW —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Plan view — the read station at the release azimuth</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 430" width="780" height="430" role="img"
+               aria-label="Top-down view of the alarm disc with its raised track and notch, and the feeler lever bracket outboard of the rim">
+            <circle cx="230" cy="215" r="150" fill="var(--brass-fill)" opacity="0.35"/>
+            <circle cx="230" cy="215" r="150" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+            <circle cx="230" cy="215" r="60" fill="none" stroke="var(--brass)" stroke-width="1"/>
+            <circle cx="230" cy="215" r="8" fill="none" stroke="var(--muted)" stroke-width="1"/>
+            <g stroke="var(--brass)" stroke-width="1.2" id="rimTeeth"></g>
+            <path id="trackArc" fill="none" stroke="var(--brass)" stroke-width="12" opacity="0.7"/>
+            <g id="notchEdges" stroke="var(--brass)" stroke-width="1"></g>
+
+            <line x1="230" y1="215" x2="700" y2="215" stroke="var(--muted)" stroke-width="0.75" stroke-dasharray="7 5"/>
+            <text class="lbl" x="565" y="205">release azimuth ℄</text>
+
+            <rect x="388" y="188" width="14" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+            <rect x="388" y="230" width="14" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+            <line x1="395" y1="192" x2="395" y2="238" stroke="var(--steel)" stroke-width="2.5"/>
+            <rect x="319" y="209.5" width="76" height="11" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <circle cx="321.5" cy="215" r="6.5" fill="var(--ruby)"/>
+            <rect x="395" y="211" width="27" height="8" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <rect x="413" y="206" width="14" height="18" fill="none" stroke="var(--steel)" stroke-width="1.4" stroke-dasharray="3 2"/>
+
+            <text class="lbl lbl-strong" x="96" y="72">alarm disc</text>
+            <text class="val val-brass" x="96" y="86">encodes hour − set time</text>
+
+            <text class="lbl lbl-strong" x="428" y="94">raised track</text>
+            <text class="val val-brass" x="428" y="108">r 2.85..3.25 · +0.17 proud</text>
+            <path class="leader" d="M 425 98 L 315 128"/>
+
+            <text class="lbl lbl-strong" x="480" y="330">notch</text>
+            <text class="val val-brass" x="480" y="344">gap 0.14 rad = pin ⌀ 0.28 + slop</text>
+            <path class="leader" d="M 477 333 L 330 300"/>
+
+            <text class="lbl lbl-strong" x="255" y="395">pin ⌀ 0.28, riding the ridge</text>
+            <path class="leader" d="M 300 382 L 321 224"/>
+
+            <text class="lbl lbl-strong" x="560" y="140">bracket lugs · pivot r 5.50</text>
+            <text class="val val-steel" x="560" y="154">inboard faces clear rim tips</text>
+            <text class="val val-steel" x="560" y="167">by CLEAR_MARGIN (asserted)</text>
+            <path class="leader" d="M 557 145 L 404 192"/>
+
+            <text class="lbl lbl-strong" x="560" y="256">tail 0.90 · banking stop</text>
+            <text class="val val-steel" x="560" y="270">step 4 extends to climb pawl</text>
+            <path class="leader" d="M 557 252 L 428 218"/>
+
+            <text class="lbl" x="96" y="330">rim teeth — the arm crosses</text>
+            <text class="lbl" x="96" y="343">the spinning rim above them</text>
+            <path class="leader" d="M 160 318 L 208 300"/>
+
+            <line class="dim" x1="321.5" y1="176" x2="395" y2="176"/>
+            <line class="dim" x1="321.5" y1="171" x2="321.5" y2="181"/>
+            <line class="dim" x1="395" y1="171" x2="395" y2="181"/>
+            <text class="val" x="332" y="170">arm 2.45</text>
+          </svg>
+        </div>
+        <figcaption>The disc turns with the difference between the hour wheel and the set
+        time, so its notch arrives at this fixed station exactly at coincidence. The lever's
+        arm crosses the spinning rim to put its pin on the track; bracket, pivot and stop are
+        static, hung from the dial sheet. Scale ≈ true in plan.</figcaption>
+      </figure>
+
+      <!-- —————— PLATE 2 : INTERACTIVE SECTION —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Section through the station — drive the disc under the pin</span></div>
+        <div class="controls">
+          <label>disc alignment
+            <input type="range" id="alignSlider" min="-150" max="150" value="-150" step="1"
+                   aria-label="Disc alignment relative to the notch, in milliradians">
+          </label>
+          <span class="readout" id="alignReadout">align −0.150 rad</span>
+          <label><input type="checkbox" id="silenceBox"> crown pulled — §45 silence holds the tail</label>
+          <span class="chip ride" id="stateChip">RIDING · armed</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 360" width="780" height="360" role="img"
+               aria-label="Interactive side section: the feeler lever pivoting as the notch passes under its pin">
+            <g id="trackGroup" class="anim">
+              <rect x="-400" y="272" width="1100" height="30" fill="var(--brass-fill)" opacity="0.4"/>
+              <line x1="-400" y1="272" x2="700" y2="272" stroke="var(--brass)" stroke-width="1"/>
+              <rect x="-400" y="220" width="608" height="52" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+              <rect x="292" y="220" width="408" height="52" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+              <path d="M 208 220 L 224 236 L 224 272 L 208 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
+              <path d="M 292 220 L 276 236 L 276 272 L 292 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
+              <text class="lbl" x="60" y="250">track ridge · h 0.17</text>
+              <text class="lbl" x="330" y="296">disc body — turning →</text>
+              <text class="lbl" x="216" y="212" text-anchor="middle">notch 0.14 rad</text>
+            </g>
+
+            <rect x="60" y="28" width="660" height="10" fill="none" stroke="var(--muted)" stroke-width="1"/>
+            <text class="lbl" x="64" y="24">dial sheet (static)</text>
+            <rect x="551" y="38" width="18" height="106" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <rect x="630" y="109" width="34" height="26" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <line x1="630" y1="135" x2="664" y2="135" stroke="var(--steel)" stroke-width="2.5"/>
+            <text class="lbl lbl-strong" x="600" y="88">banking stop</text>
+            <text class="val val-steel" x="600" y="76">gap = drop × tail/arm = 0.037</text>
+
+            <rect x="688" y="38" width="12" height="40" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <path d="M 694 78 C 610 92, 500 100, 424 138" fill="none" stroke="var(--ruby)" stroke-width="2.5" opacity="0.85"/>
+            <text class="lbl lbl-strong" x="640" y="170">return blade — §48, always pushing</text>
+            <text class="val val-ruby" x="640" y="184">free seat 0.25 = drop + margin</text>
+            <path class="leader" d="M 637 166 L 540 118"/>
+
+            <g id="rimGroup">
+              <path d="M 452 234 l 6 -12 l 6 12 l 6 -12 l 6 12 l 6 -12 l 6 12" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+              <text class="lbl" x="418" y="256">spinning rim</text>
+            </g>
+
+            <g id="fingerGroup" class="anim">
+              <rect x="597" y="96" width="16" height="30" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <line x1="597" y1="126" x2="613" y2="126" stroke="var(--steel)" stroke-width="2.5"/>
+            </g>
+            <text class="lbl lbl-strong" x="330" y="60">silence finger · §45 rocker (plate 4)</text>
+            <text class="val val-steel" x="330" y="74">throw = rest gap 0.05, exactly</text>
+            <path class="leader" d="M 500 64 L 603 96"/>
+
+            <g id="leverGroup" class="anim">
+              <rect x="250" y="143" width="310" height="14" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <rect x="243" y="157" width="14" height="46" fill="var(--ruby)" opacity="0.9"/>
+              <circle cx="250" cy="205" r="9" fill="var(--ruby)"/>
+              <rect x="560" y="145" width="88" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            </g>
+            <circle cx="560" cy="150" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="520" y="200">pivot</text>
+            <path class="leader" d="M 540 195 L 557 156"/>
+
+            <text class="lbl lbl-strong" x="120" y="150">arm 2.45 → pin</text>
+
+            <g id="dropDim">
+              <line class="dim" x1="200" y1="214" x2="200" y2="250" id="dropDimLine"/>
+              <line class="dim" x1="194" y1="214" x2="206" y2="214"/>
+              <line class="dim" x1="194" y1="250" x2="206" y2="250" id="dropDimEnd"/>
+              <text class="val val-ruby" x="120" y="236" id="dropDimText">drop ≤ 0.10</text>
+            </g>
+            <text class="val" x="96" y="330">banked at 0.10 — the notch floor is 0.17 down; the pin never touches it,</text>
+            <text class="val" x="96" y="344">because the dropped arm still owes the rim CLEAR_MARGIN (bound: 0.108)</text>
+            <text class="lbl" x="560" y="344">vertical travel exaggerated</text>
+          </svg>
+        </div>
+        <div class="fig-body" style="margin-top: 6px;">
+          <svg viewBox="0 0 780 170" width="780" height="170" role="img"
+               aria-label="Graph of pin drop against disc alignment: zero on the ridge, a linear ramp across each notch edge, full drop banked at 0.10 across the floor">
+            <line x1="70" y1="130" x2="740" y2="130" stroke="var(--text)" stroke-width="1"/>
+            <line x1="70" y1="20" x2="70" y2="130" stroke="var(--text)" stroke-width="1"/>
+            <text class="lbl" x="700" y="150">align (rad)</text>
+            <text class="lbl" x="8" y="32">drop</text>
+            <text class="val" x="30" y="49">0.10</text>
+            <line x1="66" y1="45" x2="74" y2="45" stroke="var(--text)" stroke-width="1"/>
+            <text class="val" x="46" y="134">0</text>
+            <text class="val" x="401" y="146">0</text>
+            <path d="M 70 130 L 146 130 L 351 45 L 459 45 L 664 130 L 740 130"
+                  fill="none" stroke="var(--ruby)" stroke-width="2"/>
+            <line x1="351" y1="45" x2="351" y2="130" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <line x1="459" y1="45" x2="459" y2="130" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <text class="val" x="322" y="144">−0.024</text>
+            <text class="val" x="440" y="144">+0.024</text>
+            <text class="lbl" x="180" y="112">ride · 0</text>
+            <text class="lbl" x="252" y="84">ramp</text>
+            <text class="lbl lbl-strong" x="376" y="36">floor — banked</text>
+            <text class="lbl" x="520" y="84">ramp</text>
+            <text class="lbl" x="560" y="112">ride · 0</text>
+            <line id="capLine" x1="70" y1="128" x2="740" y2="128" stroke="var(--steel)" stroke-width="1.5"
+                  stroke-dasharray="6 4" visibility="hidden"/>
+            <text id="capText" class="val val-steel" x="530" y="118" visibility="hidden">§45 cap = 0: pin held at its riding seat, min(law, cap)</text>
+            <circle id="lawMarker" cx="70" cy="130" r="5" fill="var(--ruby)"/>
+          </svg>
+        </div>
+        <figcaption>The drop is a pure function of alignment, recomputed every tick — nothing
+        accumulates (<code>alarmPinDropNow</code>, <code>main.js:14697</code>). The floor spans
+        <code>gapHalf − pinArcHalf = 0.024 rad</code> either side of coincidence — about
+        2.76 min of the 12-hour disc, the source of the ring window. With the crown pulled,
+        the §45 silence rocker's finger captures the tail at its rest height:
+        <code>alarmPinDropPhys = min(law, cap)</code> with the cap at exactly 0 — the notch
+        passes underneath and the pin stays on its riding seat. Releasing the hold onto a
+        still-present notch counts as a fresh drop, so un-silencing mid-window rings once.
+        The linkage that closes that finger is plate 4.</figcaption>
+      </figure>
+
+      <!-- —————— PLATE 3 : RELEASE CHAIN —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 3</span><span class="fig-title">The release chain — the trip is the pin's drop</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 290" width="780" height="290" role="img"
+               aria-label="Flow of the release: notch arrival and the silence cap combine through a minimum gate into the physical pin drop, which banks the lever, withdraws the pawl, and frees the strike train">
+            <rect x="20" y="30" width="180" height="52" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="34" y="52">disc law</text>
+            <text class="val val-brass" x="34" y="68">notch allows: 0 → 0.10</text>
+
+            <rect x="20" y="120" width="180" height="52" fill="none" stroke="var(--steel)" stroke-width="1.4" stroke-dasharray="5 3"/>
+            <text class="lbl lbl-strong" x="34" y="142">silence rocker · §45 (plate 4)</text>
+            <text class="val val-steel" x="34" y="158">crown pulled → cap = 0</text>
+
+            <circle cx="268" cy="101" r="26" fill="none" stroke="var(--text)" stroke-width="1.4"/>
+            <text class="val" x="268" y="106" text-anchor="middle">min()</text>
+            <path d="M 200 56 C 230 56, 240 78, 246 86" fill="none" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
+            <path d="M 200 146 C 230 146, 240 124, 246 116" fill="none" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
+
+            <rect x="330" y="75" width="170" height="52" fill="none" stroke="var(--ruby)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="344" y="97">physical pin drop</text>
+            <text class="val val-ruby" x="344" y="113">alarmPinDropPhys</text>
+            <line x1="294" y1="101" x2="326" y2="101" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
+
+            <rect x="546" y="75" width="214" height="52" fill="none" stroke="var(--ruby)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="560" y="97">lever banks on stop</text>
+            <text class="val val-ruby" x="560" y="113">drop ≥ 0.10 → tail fully up</text>
+            <line x1="500" y1="101" x2="542" y2="101" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
+
+            <rect x="546" y="170" width="214" height="52" fill="none" stroke="var(--text)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="560" y="192">climb pawl withdraws</text>
+            <text class="val" x="560" y="208">clear of the contrate</text>
+            <line x1="653" y1="127" x2="653" y2="166" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
+
+            <rect x="300" y="170" width="200" height="52" fill="none" stroke="var(--text)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="314" y="192">strike train free</text>
+            <text class="val" x="314" y="208">hammer rings the gong</text>
+            <line x1="542" y1="196" x2="504" y2="196" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
+
+            <path d="M 300 210 C 180 236, 120 220, 96 176" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+            <text class="lbl" x="120" y="250">one-shot: dropSpent re-arms when the pin lifts</text>
+            <text class="lbl" x="120" y="264">(a held pin re-arms too — releasing the hold is a fresh drop)</text>
+
+            <defs>
+              <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--muted)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>Causality runs left to right through closed contacts: the disc's law says
+        what the notch <em>allows</em>, the silence rocker caps it, and only the physical pin —
+        the <code>min()</code> of the two — trips the release. The old §25 angle-crossing
+        survives as an agreement assert only: a pin bottoming outside the coincidence window
+        is a defect, not a ring.</figcaption>
+      </figure>
+
+      <!-- —————— PLATE 4 : SILENCE LINKAGE —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 4</span><span class="fig-title">The silence linkage — alarm crown to captured tail, five members, all contact</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 310" width="780" height="310" role="img"
+               aria-label="Side schematic of the silence chain: pulling the alarm crown slides a stepped collar, the lifter's head rides the step and lifts, the lifter's run tips a seesaw rocker, and the rocker's finger descends onto the feeler's tail">
+            <rect x="30" y="18" width="720" height="8" fill="none" stroke="var(--muted)" stroke-width="1"/>
+            <text class="lbl" x="34" y="14">dial sheet (static)</text>
+
+            <g opacity="0.95">
+              <rect x="40" y="196" width="120" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <circle cx="46" cy="201" r="5" fill="var(--bg)" stroke="var(--text)" stroke-width="1.4"/>
+              <text class="lbl" x="40" y="228">feeler tail (plate 2)</text>
+              <text class="val val-steel" x="40" y="242">captured at rest → pin lever</text>
+              <text class="val val-steel" x="40" y="256">2.45/0.36 ≈ 6.8 → drop capped 0</text>
+            </g>
+
+            <rect x="102" y="120" width="14" height="58" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <line x1="102" y1="178" x2="116" y2="178" stroke="var(--steel)" stroke-width="2.5"/>
+            <circle cx="109" cy="184" r="3.5" fill="var(--ruby)"/>
+            <rect x="102" y="112" width="268" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <rect x="160" y="26" width="16" height="92" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <circle cx="168" cy="117" r="5.5" fill="var(--bg)" stroke="var(--text)" stroke-width="1.6"/>
+            <rect x="356" y="76" width="14" height="40" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <line x1="356" y1="76" x2="370" y2="76" stroke="var(--steel)" stroke-width="2.5"/>
+            <circle cx="363" cy="72" r="3.5" fill="var(--ruby)"/>
+            <text class="lbl lbl-strong" x="196" y="146">silence rocker — seesaw on dial lugs</text>
+            <text class="val val-steel" x="196" y="160">arm ratio = throw / lifter travel (designed)</text>
+            <text class="lbl lbl-strong" x="60" y="102">finger r 5.86</text>
+            <text class="val val-steel" x="60" y="88">throw = rest gap 0.05, exactly</text>
+            <line x1="130" y1="130" x2="130" y2="166" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+            <rect x="300" y="56" width="270" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="300" y="48">lifter run — paddle rides its underside</text>
+            <text class="val val-ruby" x="404" y="104">return blade seats the paddle both ways (§48)</text>
+            <rect x="562" y="68" width="12" height="120" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="588" y="140">lifter plunger</text>
+            <path class="leader" d="M 585 136 L 576 120"/>
+            <line x1="548" y1="120" x2="548" y2="84" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+            <circle cx="568" cy="196" r="9" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <circle cx="568" cy="207" r="3.5" fill="var(--ruby)"/>
+            <text class="lbl lbl-strong" x="470" y="176">domed head</text>
+            <path class="leader" d="M 520 180 L 560 192"/>
+            <rect x="500" y="210" width="110" height="16" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+            <rect x="610" y="204" width="70" height="22" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+            <path d="M 610 210 L 610 204" stroke="var(--brass)" stroke-width="1.2"/>
+            <text class="lbl lbl-strong" x="470" y="252">collar — turned profile on the stem</text>
+            <text class="val val-brass" x="470" y="266">thin plateau (rest) · raised land (pulled)</text>
+            <line x1="500" y1="218" x2="740" y2="218" stroke="var(--muted)" stroke-width="2"/>
+            <rect x="716" y="200" width="20" height="36" rx="3" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <text class="lbl lbl-strong" x="668" y="192">alarm crown</text>
+            <line x1="700" y1="248" x2="736" y2="248" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arr4)"/>
+            <text class="val val-ruby" x="620" y="252">pull</text>
+
+            <text class="val" x="40" y="292">● ruby marks a measured hand-off — each one a row of the alarmHandoffs battery, within ±tol of touch at both parities</text>
+
+            <defs>
+              <marker id="arr4" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>Entirely geometric — no boolean anywhere. Pulling the crown slides the
+        stepped collar under the lifter's domed head; the head climbs onto the raised land,
+        lifting the whole lifter; the run's underside carries the rocker's paddle up, and the
+        seesaw sends the finger down its designed throw — exactly the 0.05 rest gap, so a
+        resting tail is touched, never loaded, and a risen tail is pressed back to rest
+        (lifting the pin out of the notch mid-ring). Held this way the release pawl is seated
+        through <em>located</em> geometry rather than its spring, so the one-way ratchet
+        cannot cam it aside: a running ring is arrested on the next tooth, not paused. In
+        code the whole chain is one pure function of <code>alarmCrownPullT</code>
+        (<code>alarmSilFingerDropAt → alarmPinDropCapAt</code>, <code>main.js:7085</code>).</figcaption>
+      </figure>
+
+      <!-- —————— CONSTANTS —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">Every number, and the constraint it was derived from</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Constant</th><th>Value</th><th>Derivation (rule 1 — no number "looked right")</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>ALARM_PIN_DROP</code></td><td>0.10</td>
+                  <td>Stop-banked travel; the rim-crossing margin bounds it at 0.108.</td></tr>
+              <tr><td><code>ALARM_PIN_R</code></td><td>0.14</td>
+                  <td>Pin diameter equals the arm's width, so the arm fits the notch sector exactly when fully dropped.</td></tr>
+              <tr><td><code>ALARM_NOTCH_W</code></td><td>0.14 rad</td>
+                  <td>Pin diameter 0.28 + slop, over the track's mid radius.</td></tr>
+              <tr><td><code>ALARM_TRACK_RMID</code></td><td>3.05</td>
+                  <td>Annulus 2.85..3.25 — outside the hub (2.85), inside the rim's root circle (3.30).</td></tr>
+              <tr><td><code>ALARM_FEELER_PIVOT_R</code></td><td>5.50</td>
+                  <td>Bracket lugs' inboard faces clear the rim's tips by one <code>CLEAR_MARGIN</code> (asserted at boot).</td></tr>
+              <tr><td>stop gap</td><td>0.037</td>
+                  <td><code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.</td></tr>
+              <tr><td><code>ALARM_FEELER_SEAT_DROP</code></td><td>0.25</td>
+                  <td>Drop + <code>CLEAR_MARGIN</code>: the blade's free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.</td></tr>
+              <tr><td><code>ALARM_SIL_FINGER_R</code></td><td>5.86</td>
+                  <td>The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.</td></tr>
+              <tr><td><code>ALARM_SIL_THROW</code></td><td>0.05</td>
+                  <td>Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.</td></tr>
+              <tr><td>ring window</td><td>≈ 2.76 min</td>
+                  <td><code>gapHalf − pinArcHalf</code> = 0.024 rad of the 12-h disc. Hand lengths and display math never touch it.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== ALARM TRAIN (compact) ===================== -->
+  <details class="mech" id="alarm-train">
+    <summary>Alarm train — set, wound, struck, silenced<span class="where">alarm · src/main.js</span></summary>
+    <div class="mech-body">
+      <p>Setting: the alarm crown turns a bevel pair onto a friction-set disc under the dial
+      (the Vulcain/Memovox way — it holds wherever the crown leaves it, read to the nearest
+      quarter mark), while a central alarm hand rides its own tube through the hand stack,
+      styled as a steel shadow of the hour hand so parked it disappears under it. Winding: the
+      same crown pushed home spools the alarm barrel through its own train. Striking: when the
+      feeler trips (full entry above), the alarm barrel drives the striking wheel, and the
+      hammer — its fall a real sprung member, not a spring <em>law</em> (§48) — beats the
+      gong; the ring runs down as the barrel empties, or stops early if the crown is pulled
+      (§45's arrest, plate 4 above).</p>
+      <p class="note">The arming run — pusher → pawl → column wheel → ring — is posed from
+      measured contacts and checked every battery run by <code>alarmHandoffs</code>; TODO 20
+      records where its causality still needs to be driven from the input side.</p>
+    </div>
+  </details>
+</div>
+
+<footer>
+  <div class="sheet">
+    §65 — this page is maintained with the movement: significant mechanisms get an entry;
+    full entries carry plates whose numbers are the source constants. If a value here
+    disagrees with <code>src/*.js</code>, the source is right and this page has a bug —
+    file it like one.
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var PIN_DROP = 0.10, GAP_HALF = 0.07, PIN_ARC_HALF = 0.14 / 3.05;
+    var slider = document.getElementById('alignSlider');
+    var silence = document.getElementById('silenceBox');
+    var chip = document.getElementById('stateChip');
+    var readout = document.getElementById('alignReadout');
+    var trackG = document.getElementById('trackGroup');
+    var leverG = document.getElementById('leverGroup');
+    var marker = document.getElementById('lawMarker');
+    var capLine = document.getElementById('capLine');
+    var capText = document.getElementById('capText');
+    var dimText = document.getElementById('dropDimText');
+    var dimLine = document.getElementById('dropDimLine');
+    var dimEnd = document.getElementById('dropDimEnd');
+    var fingerG = document.getElementById('fingerGroup');
+
+    var PX_PER_RAD_TRACK = 600;
+    var GRAPH_X0 = 405, GRAPH_PX_PER_RAD = 2233;
+    var GRAPH_Y0 = 130, GRAPH_YFULL = 45;
+    var DRAW_DROP_PX = 36;
+    // §45: cap = (GAP − fingerDrop) × pinLever. The finger's throw IS the rest
+    // gap, so the full stroke captures the tail at exactly rest height → the
+    // pin is held at its RIDING SEAT (cap = 0), never lifted below it.
+    var CAP_HELD = 0;
+
+    function law(align) {
+      var a = Math.abs(align);
+      if (a >= GAP_HALF + PIN_ARC_HALF) return 0;
+      if (a <= GAP_HALF - PIN_ARC_HALF) return PIN_DROP;
+      return PIN_DROP * ((GAP_HALF + PIN_ARC_HALF - a) / (2 * PIN_ARC_HALF));
+    }
+
+    function update() {
+      var align = slider.value / 1000;
+      var allowed = law(align);
+      var phys = silence.checked ? Math.min(allowed, CAP_HELD) : allowed;
+
+      readout.textContent = 'align ' + (align < 0 ? '−' : '+') + Math.abs(align).toFixed(3) + ' rad';
+      trackG.setAttribute('transform', 'translate(' + (-align * PX_PER_RAD_TRACK) + ' 0)');
+
+      // The pin is LEFT of the pivot and SVG +rotation is clockwise, so a
+      // DROP (pin down, tail up toward the stop) is a NEGATIVE angle.
+      var dropFrac = phys / PIN_DROP;
+      var theta = Math.atan2(dropFrac * DRAW_DROP_PX, 310) * 180 / Math.PI;
+      leverG.setAttribute('transform', 'rotate(' + (-theta) + ' 560 150)');
+
+      fingerG.setAttribute('transform', 'translate(0 ' + (silence.checked ? 19 : 0) + ')');
+
+      var pinBottom = 214 + dropFrac * DRAW_DROP_PX;
+      dimLine.setAttribute('y2', Math.max(pinBottom, 215));
+      dimEnd.setAttribute('y1', pinBottom); dimEnd.setAttribute('y2', pinBottom);
+      dimText.textContent = 'drop ' + (phys < 0 ? '−' : '') + Math.abs(phys).toFixed(3);
+
+      marker.setAttribute('cx', GRAPH_X0 + align * GRAPH_PX_PER_RAD);
+      marker.setAttribute('cy', GRAPH_Y0 - (allowed / PIN_DROP) * (GRAPH_Y0 - GRAPH_YFULL));
+      capLine.setAttribute('visibility', silence.checked ? 'visible' : 'hidden');
+      capText.setAttribute('visibility', silence.checked ? 'visible' : 'hidden');
+
+      chip.className = 'chip';
+      if (silence.checked) { chip.classList.add('held'); chip.textContent = 'HELD · §45 silence — no release'; }
+      else if (allowed <= 0) { chip.classList.add('ride'); chip.textContent = 'RIDING · armed'; }
+      else if (allowed < PIN_DROP) { chip.classList.add('ramp'); chip.textContent = 'RAMP · crossing the edge'; }
+      else { chip.classList.add('trip'); chip.textContent = 'BANKED · TRIP — rings once'; }
+    }
+
+    slider.addEventListener('input', update);
+    silence.addEventListener('change', update);
+
+    // Plate 1: the track arc with its notch, and rim teeth, drawn procedurally.
+    var cx = 230, cy = 215, rTrack = 91.5;
+    var notchHalf = 0.07;
+    var a0 = notchHalf, a1 = 2 * Math.PI - notchHalf;
+    function pt(r, a) { return (cx + r * Math.cos(a)) + ' ' + (cy + r * Math.sin(a)); }
+    document.getElementById('trackArc').setAttribute('d',
+      'M ' + pt(rTrack, a0) + ' A ' + rTrack + ' ' + rTrack + ' 0 1 1 ' + pt(rTrack, a1));
+    var edges = document.getElementById('notchEdges');
+    [a0, a1].forEach(function (a) {
+      var l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', cx + 85.5 * Math.cos(a)); l.setAttribute('y1', cy + 85.5 * Math.sin(a));
+      l.setAttribute('x2', cx + 97.5 * Math.cos(a)); l.setAttribute('y2', cy + 97.5 * Math.sin(a));
+      edges.appendChild(l);
+    });
+    var teeth = document.getElementById('rimTeeth');
+    for (var i = 0; i < 72; i++) {
+      var a = (i / 72) * 2 * Math.PI;
+      var l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l2.setAttribute('x1', cx + 150 * Math.cos(a)); l2.setAttribute('y1', cy + 150 * Math.sin(a));
+      l2.setAttribute('x2', cx + 157 * Math.cos(a)); l2.setAttribute('y2', cy + 157 * Math.sin(a));
+      teeth.appendChild(l2);
+    }
+
+    update();
+  })();
+</script>
+</body>
+</html>

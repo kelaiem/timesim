@@ -9277,6 +9277,14 @@ style.textContent = `
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.14);
 }
 #clock-ui .guided-btns { display: flex; gap: 5px; }
+/* §65 — the explainer link, dressed as a button so the row reads like its
+   neighbours (an <a> because it navigates; a button that navigates lies). */
+#clock-ui a.ui-link {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
+  border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; transition: background 0.15s;
+  text-decoration: none;
+}
+#clock-ui a.ui-link:hover { background: rgba(255,255,255,0.14); }
 #clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
 /* §33 — reconfigure mode's chrome is DELIBERATELY its own colour (teal):
    §32 and §33 look alike on screen — parts away from their places — and
@@ -9505,6 +9513,13 @@ panel.innerHTML = `
       <div class="row">
         <span class="label-small">Explore</span>
         <button id="btn-explore">Off</button>
+      </div>
+      <!-- §65: the mechanism explainer — a maintained companion page in the
+           HUD's own visual language; a plain link, not a mode, so it costs
+           the panel nothing. -->
+      <div class="row">
+        <span class="label-small">Mechanisms</span>
+        <a class="ui-link" href="./explain.html">How they work</a>
       </div>
       <div class="row label-small" id="explore-reset-row" style="display:none;">
         <span>Drag parts · ⇧ drags group</span>

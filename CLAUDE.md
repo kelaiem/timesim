@@ -17,6 +17,12 @@ lever escapement. Everything is procedural — there are no model assets.
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
 
+`explain.html` is the mechanism explainer (§65) — linked from the HUD,
+styled as the HUD. When a significant mechanism ships or changes, add or
+refresh its entry there in the same landing; plate numbers quote the
+real source constants, and entries state their mechanism's open TODO
+debt rather than hiding it.
+
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying
 about how a watch works → `TODO.md`. Both are written to be actionable by
