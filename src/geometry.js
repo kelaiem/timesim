@@ -773,6 +773,14 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
       idx.push(b + 2, n + 2, n + 3, b + 2, n + 3, b + 3); // top surface
       idx.push(b + 0, n + 0, n + 2, b + 0, n + 2, b + 2); // inner wall
       idx.push(b + 1, b + 3, n + 3, b + 1, n + 3, n + 1); // outer wall
+      // FLOOR — without it the ring was an open-bottomed shell: from any
+      // oblique angle the eye looked straight into it and the columns read
+      // as bent sheet, not milled steel. Sealed wherever the segment has
+      // height; skipped in the gaps, where floor and top would coincide
+      // and z-fight the base's own top face (which renders there instead).
+      const hb = prof((i / N) * Math.PI * 2), hn = prof(((i + 1) / N) * Math.PI * 2);
+      if (Math.max(hb, hn) > 1e-4)
+        idx.push(b + 0, n + 1, n + 0, b + 0, b + 1, n + 1); // faces −z
     }
     const colGeo = new THREE.BufferGeometry();
     colGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
