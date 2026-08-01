@@ -165,6 +165,7 @@ export const MECH_GRAPH = {
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/345, the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
+    ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
     ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
     ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes
 
@@ -245,6 +246,8 @@ export const MECH_GRAPH = {
     ['Alarm release sleeve', 'Alarm disc'],  // §45: the 45° cone on the follower's tail pin, at ANY tube azimuth —
                                              // lifting follower A releases the tube to the §25 C friction coupling:
                                              // the hider's second input, and the hand SWEEPS while being set
+    ['Alarm release lifter', 'Alarm silence rocker'], // §45 stage 2: the run's underside presses the rocker's paddle
+    ['Alarm silence rocker', 'Alarm release feeler'], // §45 stage 2: the finger captures the tail — no rise, no drop, no ring
     ['Alarm switch', 'Alarm link'],          // §35: the link beak ON the castellations, 120° around — the same
                                              // parity the brake beak reads, now carried away as metal
     ['Alarm link', 'Alarm selector'],        // §35: the centre crank on the ring's drive tab — the run's last
@@ -569,6 +572,9 @@ const EXPECTED_PAIRS = [
   ['Alarm release lifter', 'Alarm crown'],  // §45: the head riding the stem collar
   ['Alarm release lifter', 'Dial'],         // §45: the fork grips a dialFace descendant — the tab re-attributed
                                             // through nesting (the Alarm link ⇄ Dial precedent)
+  ['Alarm release lifter', 'Alarm silence rocker'], // §45 stage 2: the run ⇄ paddle working contact (every parity)
+  ['Alarm silence rocker', 'Alarm release feeler'], // §45 stage 2: the finger ⇄ tail working contact (setting parity)
+  ['Alarm silence rocker', 'Dial'],         // §45 stage 2: nesting artifact + the lugs' sheet anchors
   ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
                                             // is a dialFace descendant, so the Dial's traverse carries its beak
                                             // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
@@ -1928,6 +1934,21 @@ const ALARM_HANDOFFS = [
     label: 'sleeve cone ⇄ follower tail pin',
     unitA: 'Alarm release sleeve', meshA: 'alarmSleeveSkirt',
     unitB: 'Alarm disc', meshB: 'alarmTailPin',
+    expect: { disarmed: 'free', armed: 'free', setting: 'contact' },
+  },
+  // §45 stage 2 — the silence run: the paddle is blade-biased onto the
+  // run's underside at every parity; the finger touches the tail only at
+  // the setting parity (riding must never feel the rocker — the rest cap
+  // exceeds the full drop, asserted at the build).
+  {
+    label: 'lifter run ⇄ rocker paddle',
+    unitA: 'Alarm release lifter', meshA: 'alarmLifterRun',
+    unitB: 'Alarm silence rocker', meshB: 'alarmSilPaddle',
+  },
+  {
+    label: 'rocker finger ⇄ feeler tail',
+    unitA: 'Alarm silence rocker', meshA: 'alarmSilFinger',
+    unitB: 'Alarm release feeler', meshB: 'alarmFeelerTail',
     expect: { disarmed: 'free', armed: 'free', setting: 'contact' },
   },
 ];
@@ -3292,6 +3313,11 @@ export const STOCK_KIND_BY_MESH = {
   alarmLifterPlunger: 'pivot',
   alarmLifterHead: 'pivot',
   alarmLifterBlade: 'spring',
+  // §45 stage 2:
+  alarmSilPivot: 'pivot',
+  alarmSilRiser: 'pivot',
+  alarmSilFinger: 'pivot', // the finger's contact tip — pin stock, ⌀ 0.072 mm over the 0.07 floor
+  alarmSilBlade: 'spring',
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none

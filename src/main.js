@@ -6492,6 +6492,7 @@ alarmFeelerUnit.add(alarmFeelerLever);
   arm.position.x = ALARM_FEELER_ARM_LEN / 2;
   alarmFeelerLever.add(arm);
   const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_TAIL, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
+  tail.name = 'alarmFeelerTail'; // §45 stage 2 hand-off selector (string-coupled)
   tail.position.x = -ALARM_FEELER_TAIL / 2;
   alarmFeelerLever.add(tail);
   // The pin: shank from inside the arm down to the riding tip.
@@ -7022,6 +7023,144 @@ const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); //
     if (hidden !== (armed === 0 && setting === 0))
       console.warn(`§45 biconditional: armed ${armed}, setting ${setting} → hidden ${hidden} — spec is Hidden ⟺ ¬Armed ∧ ¬Setting`);
   }
+}
+
+// --- '(§45 stage 2) Alarm silence rocker' — setting an ARMED alarm is silent
+// Visibility is not silence: armed, the sweep still carries the coincidence
+// under the feeler's pin and the release fires. The hold lives at the
+// DETECTION, three units from the lifter's run, not at the strike lock 13
+// units across the movement: a seesaw on a dial bracket whose PADDLE rides
+// the underside of the lifter's run (the §29 feeler's blade-onto-cam bias
+// keeps it seated there at every parity) and whose FINGER descends onto the
+// feeler's TAIL from above. The tail rises when the pin drops (the banking
+// stop's own geometry), so capturing the tail at its rest height means the
+// pin CANNOT drop — no drop, no trip, no ring — and pressing a risen tail
+// back down lifts the pin out of the notch mid-ring.
+//
+// Why the hold arrests a RUNNING train when the natural pin-return does
+// not: the release pawl is one-way (the §29 climb's long-ramp/steep-bank
+// saw). Spring-seated, the running contrate CAMS it out ramp by ramp — it
+// ratchets, and the ring runs down, which is the shipped model's story.
+// Held, the pawl is seated through the LEVER's located geometry (the same
+// authority that banks the drop), the ramp cannot cam a located member,
+// and the train is caught on the next tooth: arrested, not paused.
+//
+// The finger's radius is the ONE free slot on the tail: mid-window between
+// the bracket lugs' outer reach and the spring stud's inner face, both
+// margins exact. Its throw is a DESIGNED lever ratio off the lifter's
+// travel: close the rest gap, press a fully-risen tail back to rest, and a
+// 0.01 capture bite.
+const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (stud inner 6.11 − margin → 5.96), centred
+const ALARM_SIL_PADDLE_R = 6.9;    // on the run, outboard of the sleeve posts' band, inboard of i1's stand-off
+const ALARM_SIL_GAP = 0.05;        // rest gap, finger underside → tail top (the standard rest-gap figure)
+const ALARM_SIL_TAIL_ARM = ALARM_SIL_FINGER_R - ALARM_FEELER_PIVOT_R;  // the finger's arm on the feeler lever
+const ALARM_SIL_PIN_LEVER = ALARM_FEELER_ARM_LEN / ALARM_SIL_TAIL_ARM; // tail travel → pin travel through the pivot
+// The throw is EXACTLY the gap: the finger's full stroke ends at the
+// tail's REST height. A risen tail (pin dropped) is met early in the
+// stroke and pressed back to rest — the pin returns to its riding seat,
+// out of the notch — and an unrisen tail is touched, never loaded. Any
+// throw beyond the gap would bury the finger in a tail that had no rise
+// to give back (measured, the first cut's 0.055).
+const ALARM_SIL_THROW = ALARM_SIL_GAP;
+const ALARM_SIL_RATIO = ALARM_SIL_THROW / ALARM_SLEEVE_TRAVEL; // finger/paddle arm ratio — designed, not inherited
+// the physical pin: what the tail's remaining headroom under the finger
+// allows, in pin units; MIN'd with the disc's own law wherever the pin's
+// drop acts (pose, pawl, trip, re-arm). Negative = actively lifted.
+const alarmPinDropCapAt = (fingerDrop) => (ALARM_SIL_GAP - fingerDrop) * ALARM_SIL_PIN_LEVER;
+const alarmSilFingerDropAt = (pullT) => Math.max(0, (alarmCollarRAt((ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST) - ALARM_COLLAR_THIN_R)) * ALARM_SIL_RATIO;
+const alarmSilenceUnit = new THREE.Group();
+dialFace.add(alarmSilenceUnit);
+registerLabel('Alarm silence rocker', alarmSilenceUnit);
+registerExplode(alarmSilenceUnit, 0, 3, 1);
+const alarmSilRocker = new THREE.Group();
+let alarmSilBladeMesh = null;
+let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger end (read by tick)
+{
+  // ends in dial-local xy (world → dial-local mirror, the _uF convention)
+  const pd = { x: -Math.cos(ALARM_LIFT_RUN_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_LIFT_RUN_AZ) * ALARM_SIL_PADDLE_R };
+  const fg = { x: _uF.x * ALARM_SIL_FINGER_R, y: _uF.y * ALARM_SIL_FINGER_R };
+  const chord = Math.hypot(fg.x - pd.x, fg.y - pd.y);
+  const aF = chord * ALARM_SIL_RATIO / (1 + ALARM_SIL_RATIO); // finger arm; paddle arm = chord − aF
+  alarmSilPivotFrac = aF / chord;
+  const piv = { x: fg.x + (pd.x - fg.x) * alarmSilPivotFrac, y: fg.y + (pd.y - fg.y) * alarmSilPivotFrac };
+  // z stations (dial-local): paddle contact face δ under the run's local-top
+  // face at rest; finger underside one GAP above the tail's top; the bar
+  // carries cranked ends between them, pivot on the bar's own plane.
+  const paddleBotL = (Z_DIAL - ALARM_LIFT_RUN_Z) + STOCK_MIN_U / 2 + 0.01; // pad's contact face: 0.01 above the run's local-top face (running fit → reads contact)
+  const tailTopL = ALARM_FEELER_TOP;
+  const fingerBotL = tailTopL + ALARM_SIL_GAP;
+  const barZ = -2.28; // bar plane between the two cranked ends (asserted against both below)
+  alarmSilRocker.position.set(piv.x, piv.y, barZ);
+  alarmSilRocker.rotation.order = 'ZYX';
+  alarmSilRocker.rotation.z = Math.atan2(pd.y - fg.y, pd.x - fg.x); // local +x = finger → paddle direction
+  alarmSilRocker.userData = { aP: chord - aF, aF };
+  alarmSilenceUnit.add(alarmSilRocker);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(chord + 0.2, STOCK_MIN_U + 0.01, STOCK_MIN_U), MATS.steel);
+  bar.position.x = chord / 2 - aF;
+  alarmSilRocker.add(bar);
+  // paddle riser + pad (contact face UP, under the run)
+  const padRise = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, paddleBotL - barZ, 10), MATS.steel);
+  padRise.name = 'alarmSilRiser';
+  padRise.rotation.x = Math.PI / 2;
+  padRise.position.set(chord - aF, 0, (paddleBotL - barZ) / 2);
+  alarmSilRocker.add(padRise);
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, STOCK_MIN_U, 12), MATS.steel);
+  pad.name = 'alarmSilPaddle';
+  pad.rotation.x = Math.PI / 2;
+  pad.position.set(chord - aF, 0, (paddleBotL - barZ) + STOCK_MIN_U / 2); // rocker-frame: the group already sits at barZ
+  alarmSilRocker.add(pad);
+  // finger dropper + pad (contact face DOWN, over the tail)
+  const fingDrop = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, barZ - fingerBotL, 10), MATS.steel);
+  fingDrop.name = 'alarmSilRiser';
+  fingDrop.rotation.x = Math.PI / 2;
+  fingDrop.position.set(-aF, 0, -(barZ - fingerBotL) / 2);
+  alarmSilRocker.add(fingDrop);
+  const fing = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, STOCK_MIN_U, 10), MATS.steel);
+  fing.name = 'alarmSilFinger';
+  fing.rotation.x = Math.PI / 2;
+  fing.position.set(-aF, 0, fingerBotL - barZ + STOCK_MIN_U / 2);
+  alarmSilRocker.add(fing);
+  // pivot bracket: two lugs from the sheet's back face down past the bar,
+  // tangential pivot pin between them (the feeler bracket's own pattern)
+  const perp = { x: -Math.sin(alarmSilRocker.rotation.z), y: Math.cos(alarmSilRocker.rotation.z) };
+  for (const side of [-1, 1]) {
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(0.32, STOCK_MIN_U + 0.01, -0.05 - (barZ - 0.14)), MATS.nickel);
+    lug.position.set(piv.x + perp.x * 0.25 * side, piv.y + perp.y * 0.25 * side, (-0.05 + barZ - 0.14) / 2);
+    lug.rotation.z = alarmSilRocker.rotation.z;
+    alarmSilenceUnit.add(lug);
+  }
+  // pivot pin at pin stock — the 10-gon's flats measure the 0.07 mm pivot
+  // floor exactly (the tail pin's convention; the feeler's own 0.06 pivot
+  // is TODO 11 debt this build does not add to)
+  const pivotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.0924 / Math.cos(Math.PI / 10), 0.0924 / Math.cos(Math.PI / 10), 0.62, 10), MATS.steel);
+  pivotPin.name = 'alarmSilPivot';
+  pivotPin.rotation.order = 'ZYX';
+  pivotPin.rotation.z = alarmSilRocker.rotation.z;
+  pivotPin.position.set(piv.x, piv.y, barZ);
+  alarmSilenceUnit.add(pivotPin);
+  // return blade on the bracket, biasing the paddle side DOWN onto the run
+  // (so the paddle tracks the run both ways — the lifter head's own idiom)
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.2, SPRING_FLAT_U), MATS.blueSteel);
+  blade.name = 'alarmSilBlade';
+  alarmSilBladeMesh = blade;
+  blade.position.set(piv.x + (pd.x - piv.x) * 0.35, piv.y + (pd.y - piv.y) * 0.35, barZ + 0.2);
+  blade.rotation.z = alarmSilRocker.rotation.z;
+  alarmSilenceUnit.add(blade);
+  // §45 stage 2 fit asserts:
+  const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`§45 silence ${nm}: ${v.toFixed(3)}, need ${need}`); };
+  say('finger window: lug side', (ALARM_SIL_FINGER_R - 0.1) - (ALARM_FEELER_PIVOT_R + 0.11), CLEAR_MARGIN - 1e-6);
+  say('finger window: stud side', ((ALARM_FEELER_PIVOT_R + ALARM_FEELER_SPR_FREE) - 0.09) - (ALARM_SIL_FINGER_R + 0.1), CLEAR_MARGIN - 1e-6);
+  say('finger clear of the banking stop', (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL - 0.1) - (ALARM_SIL_FINGER_R + 0.1), CLEAR_MARGIN - 1e-6);
+  say('paddle plane meets the bar crank', paddleBotL - barZ, 0.1);
+  say('finger plane meets the bar crank', barZ - fingerBotL, 0.1);
+  // the law's two ends, asserted where the constants are minted: at full
+  // pull the cap reaches ZERO (the pin is pinned at its riding seat — no
+  // drop, no trip: armed setting is silent by geometry, and the finger
+  // never loads an unrisen tail), and at rest the cap exceeds the full
+  // drop (riding never feels the rocker)
+  say('full hold caps the pin at its riding seat', 1e-9 - alarmPinDropCapAt(alarmSilFingerDropAt(1)), 0);
+  say('throw never exceeds the gap', ALARM_SIL_GAP + 1e-9 - ALARM_SIL_THROW, 0);
+  say('free riding at rest', alarmPinDropCapAt(alarmSilFingerDropAt(0)) - ALARM_PIN_DROP, 1e-6);
 }
 
 // --- Alarm gong + hammer (BUILT §24) ---------------------------------------
@@ -9021,6 +9160,7 @@ let mmPerPxCal = null;
 let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
+let alarmPinDropPhys = 0; // §45 stage 2: the drop the HELD tail permits — min(disc's law, rocker cap); negative = lifted out
 let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column parity's physical consequence, and what the tube law reads
 let alarmSleeveLiftNow = 0; // §45: the sleeve's current drop from rest (0..TRAVEL) — a pure readout of the collar under the head
 let alarmPhiCapNow = 0;     // §45: the cone's floor under the follower arm's angle (0 = cone clear)
@@ -12739,6 +12879,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm selector', null], ['Alarm lock', null], ['Alarm switch', null],
     ['Alarm link', null],
     ['Alarm release sleeve', null], ['Alarm release lifter', null], // §45 — level-2 offsets are that story's to assign
+    ['Alarm silence rocker', null], // §45 stage 2
   ])],
 ]);
 const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Structure'], [handsGroup, 'Hands']]);
@@ -14545,6 +14686,14 @@ function tick(t) {
       alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
         : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
         : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
+      // §45 stage 2 — the PHYSICAL pin: the disc's law says what the notch
+      // ALLOWS; the silence rocker's finger caps what the tail may rise, in
+      // pin units (negative = actively lifted out mid-ring). Computed HERE
+      // from alarmCrownPullT through the same pure chain the pose block
+      // re-derives (collar → lifter → rocker) — the trip must read THIS
+      // tick's pin, the §29 step-5 discipline.
+      alarmPinDropPhys = Math.min(alarmPinDropNow,
+        alarmPinDropCapAt(alarmSilFingerDropAt(alarmCrownPullT)));
     }
     // §29 step 5: the trip IS the pin's drop. The physical chain — disc's
     // notch arriving under the pin, the lever bottoming on its stop, the
@@ -14555,7 +14704,7 @@ function tick(t) {
     // ring. One-shot per drop (alarmDropSpent re-arms when the pin lifts),
     // which also makes FF/catch-up jumps honest: landing mid-window rings
     // once, exactly as the skipped time would have.
-    if (alarmPinDropNow < ALARM_PIN_DROP - 1e-9) alarmDropSpent = false;
+    if (alarmPinDropPhys < ALARM_PIN_DROP - 1e-9) alarmDropSpent = false; // §45 stage 2: a HELD pin re-arms too — releasing the hold onto a still-present notch is a fresh mechanical drop
     // STEP-OVER GUARD (TODO 8's sizing note, made permanent). The pin only
     // bottoms across the notch's flat floor — |align| ≤ gapHalf − pinArcHalf,
     // about 2.76 min of the 12 h disc — while one fast-forward tick advances
@@ -14598,7 +14747,7 @@ function tick(t) {
       alarmPrevCentred = centred;
     }
     if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && !alarmDropSpent
-        && alarmPinDropNow >= ALARM_PIN_DROP - 1e-9) {
+        && alarmPinDropPhys >= ALARM_PIN_DROP - 1e-9) {
       // The agreement is checked in TARGET space (the tube's mechanical set
       // angle), not against alarmTubeShownA: the shown angle is an EASE and
       // cannot move under a zero-dt setPose tick (the documented trap), so
@@ -14630,6 +14779,16 @@ function tick(t) {
     // train stops and the lock re-seats — the ring ends because it RAN DOWN —
     // and it is re-armed for the next crossing. Turning the alarm OFF re-seats
     // it too, parking the hammer on its check.
+    // §45 stage 2 — pull while ringing STOPS it: the finger takes the tail
+    // below its free-rise point, the pin lifts out of the notch, and the
+    // pawl is re-seated through the lever's LOCATED geometry — the saw ramp
+    // cannot cam out a located member (unlike its own spring seat, which
+    // ratchets — why a ring otherwise runs down). Arrested, not paused: the
+    // re-armed drop above decides whether it re-fires when the crown goes
+    // home. The gate reads the rocker's finger, not the crown flag.
+    if (alarmReleased && alarmSilFingerDropAt(alarmCrownPullT) >= ALARM_SIL_GAP - 1e-9) {
+      alarmReleased = false;
+    }
     if (alarmRingHoldTick) {
       // The tick that fired the release still carries the FAST-FORWARD rawDt
       // (it was clamped at the top of this tick, before the drop-out below
@@ -14742,6 +14901,12 @@ function tick(t) {
     } else {
       alarmPhiCapNow = 0;
     }
+    // §45 stage 2 — the rocker wears the same chain: paddle up with the
+    // run, finger down onto the tail, blade tip following the bar it biases
+    const uD = alarmSilRocker.userData;
+    const tilt = Math.asin(clamp(alarmSleeveLiftNow / uD.aP, -1, 1));
+    alarmSilRocker.rotation.y = -tilt;
+    if (alarmSilBladeMesh) alarmSilBladeMesh.rotation.y = -tilt * 0.35 * uD.aP / 1.0;
   }
   {
     const aDelta = alarmCrownRotation - lastAlarmCrownRotation;
@@ -14983,7 +15148,7 @@ function tick(t) {
   // §48/TODO 13 — the blade presses the arm DOWN onto the disc; the pin's
   // height is what stops it. Seat one CLEAR_MARGIN below the deepest the pin
   // can drop, so the spring is still loaded at the bottom of the notch.
-  const feelerDrop = Math.min(alarmPinDropNow, ALARM_FEELER_SEAT_DROP);
+  const feelerDrop = Math.min(alarmPinDropPhys, ALARM_FEELER_SEAT_DROP); // §45 stage 2: the physical pin — a held/lifted lever shows it
   alarmFeelerLever.rotation.y = -feelerDrop / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
   // §48/TODO 13 — the blade follows the arm it presses, root fixed at the stud.
   if (alarmFeelerSpringBlade && alarmFeelerBearPoint) {
@@ -15013,7 +15178,7 @@ function tick(t) {
     // one-way convention). The trip's withdrawal comes from the LEVER (the
     // pin side owns that); this flex is only the click's compliance.
     {
-      const seatedT = 1 - clamp(alarmPinDropNow / ALARM_PIN_DROP, 0, 1);
+      const seatedT = 1 - clamp(alarmPinDropPhys / ALARM_PIN_DROP, 0, 1); // §45 stage 2: a held pin seats the pawl
       const ph = ((alarmWindUnit.userData.climb.rotation.z * ALARM_BEVEL_TEETH / (2 * Math.PI)) % 1 + 1) % 1;
       const saw = ph < 0.85 ? ph / 0.85 : (1 - ph) / 0.15;
       alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw; // cam-out is plate-ward (−local z), the withdrawal's own direction
