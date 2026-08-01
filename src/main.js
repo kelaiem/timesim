@@ -104,6 +104,12 @@ const keyLight = new THREE.DirectionalLight(keyLightAesthetic.color, keyLightAes
 keyLight.position.set(70, 90, 70);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
+// Seed frustum only — the REAL box and far plane are DERIVED after the
+// movement is built (see SHADOW TRUTH at the end of the boot sequence),
+// from the measured caster sphere and the backdrop the shadow lands on.
+// These literals were sized for the casters alone and nobody ever aimed
+// them at the receiver; the far plane at 320 sliced straight through the
+// backdrop's landing zone (~317-330 from the light).
 keyLight.shadow.camera.left = -110;
 keyLight.shadow.camera.right = 110;
 keyLight.shadow.camera.top = 110;
@@ -14618,6 +14624,43 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
     plateRUnits: plateR,
     zMinUnits: +box.min.z.toFixed(3), zMaxUnits: +box.max.z.toFixed(3),
   };
+}
+// ---------------------------------------------------------------------------
+// SHADOW TRUTH — the frustum aimed at what it must CONTAIN, and every part
+// casting. Two stacked defects made the backdrop shadow read as an
+// "inverted" cutaway wedge once §60 made the far views reachable:
+//   1. The shadow camera's box/far were sized for the CASTERS and never
+//      aimed at the RECEIVER: the backdrop's landing zone sits ~317–330
+//      from the light against a far plane of 320, so the frustum's clip
+//      planes sliced the disc shadow into a fan whose straight edges
+//      counterfeited the balance cutaway — at the wrong azimuth. Nothing
+//      was mirrored; it was cropped.
+//   2. Exactly ONE mesh of 476 cast (the three-quarter plate), so even the
+//      un-cropped shadow was a lone cut plate under a visibly solid watch.
+// Both derived away here, at the one point the movement is measurable.
+{
+  const sph = new THREE.Box3().setFromObject(movement).getBoundingSphere(new THREE.Sphere());
+  // Worst-case caster reach about the light axis, +5% so the PCF blur at
+  // the map's edge cannot clip.
+  const castR = (sph.center.length() + sph.radius) * 1.05;
+  const L = keyLight.position, lLen = L.length();
+  // Where the light's axis meets the backdrop plane, measured from the
+  // light — the receiver the shadow actually lands on.
+  const sWall = (L.z - backdrop.position.z) * lLen / L.z;
+  const cam = keyLight.shadow.camera;
+  // Lateral: a parallel projection preserves light-space lateral position,
+  // so every shadowable wall fragment lies inside the casters' own
+  // footprint — the box needs the casters and nothing more (and shrinking
+  // it from the old ±110 RAISES texel density on the movement).
+  cam.left = -castR; cam.right = castR; cam.top = castR; cam.bottom = -castR;
+  // Depth: the deepest shadowable wall point is the axis hit plus the
+  // lateral reach carried down the wall's obliquity in light space.
+  cam.far = Math.max(lLen + castR, sWall + castR * (lLen / L.z));
+  cam.updateProjectionMatrix();
+  // Every part casts. Cost is governed where render cost already lives:
+  // the §14 tiers scale the map (High 2048 → Balanced 1024) and Low stops
+  // casting at the LIGHT, so this traverse adds nothing a tier cannot shed.
+  movement.traverse((o) => { if (o.isMesh) o.castShadow = true; });
 }
 refreshUnitOptions(); // …and rebuild the selector now that it is (the boot call above ran a Chain short)
 
