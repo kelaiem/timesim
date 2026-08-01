@@ -4652,7 +4652,7 @@ smallSecondsGroup.add(smallSecondsHand);
 // thickening pushes the chain 0.38 again, so the leaves grow a third time.
 // Top face stays −0.5; the END is now DERIVED and shared with the coverage
 // assert below, so the third growth is the last one anybody hand-tracks.
-const CANNON_T = 4.27; // §45 sleeve band: fifth growth (2.0→2.1→2.5→2.9→3.35→4.27) as the chain deepened +0.92 — end derived below, so this line is the whole edit
+const CANNON_T = 4.25; // §45 sleeve band: fifth growth (2.0→2.1→2.5→2.9→3.35→4.25) as the chain deepened +0.90 — end derived below, so this line is the whole edit
 const CANNON_END = -0.5 - CANNON_T;
 const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
@@ -4717,7 +4717,14 @@ const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_
 // skirt's face covers the stroke plus first-touch at the instrument's ±0.03.
 const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // profile radii (thickness/z live above in this chain)
 const ALARM_NOSE_R = 0.2;                       // follower roller
-const ALARM_PIVOT_R = 3.68;                     // pivot post radius (tube frame, az π) — post edge (r+0.22) inside the 4.05 flange
+// §45: 3.68 → 3.80. Priced against the LOBE, not the flange: at 3.68 the
+// heart's max radius (3.55) swept INSIDE the post's inner edge (3.46) —
+// a 0.09 collision at every lobe-under-post pose whenever the tube and the
+// hour move relative (armed, and §45's released setting), invisible to the
+// sweep behind the pair's EXPECTED blanket (TODO item 6's class, measured
+// here). Inner edge now clears the lobe by the working 0.03; the outer edge
+// (4.02) still seats fully on the 4.05 flange, 0.03 inside its rim.
+const ALARM_PIVOT_R = 3.55 + 0.22 + 0.03;       // pivot post radius (tube frame, az π) = lobe + post r + working
 const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
 // Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
 // seated nose) — the same constants tick() solves against, so the built arm
@@ -4732,7 +4739,8 @@ const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
 const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
 const ALARM_A_RELEASE_D = ALARM_HEART_R + ALARM_NOSE_R + 0.05; // nose orbit, released (3.80)
 const ALARM_A_RELEASE_PHI = alarmArmAngleAt(ALARM_A_RELEASE_D);
-const ALARM_A_TAIL_LEN = 0.22 + 0.16 + 0.07; // post radius + pin boss (pin 0.09 + wall) + web
+const ALARM_A_PIN_R = 0.0924 / Math.cos(Math.PI / 10); // tail pin radius — the 10-gon's FLATS measure ⌀ 0.07 mm exactly (§50's census reads the tessellated stock, so the floor is built into the flats, not the circumradius)
+const ALARM_A_TAIL_LEN = 0.22 + 0.16 + 0.07; // post radius + pin boss (pin + wall) + web
 const alarmTailRAt = (phi) => Math.sqrt(ALARM_PIVOT_R * ALARM_PIVOT_R
   + 2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN * Math.cos(phi) + ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN);
 const ALARM_SLEEVE_DR = alarmTailRAt(ALARM_FOLLOWER_A0) - alarmTailRAt(ALARM_A_RELEASE_PHI); // 0.186 — the pin's radial stroke
@@ -4756,8 +4764,8 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - CLEAR_MARGIN; // 
 {
   const spend = ALARM_SLEEVE_ENV + CLEAR_MARGIN;  // chain growth vs the pre-§45 stack
   const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
-  if (fund < spend - 1e-9 || fund > spend + 0.005)
-    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up ≤ 0.005`);
+  if (fund < spend - 1e-9 || fund > spend + 0.01)
+    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
 }
 const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and track top
 // The track is TALL (0.17) and the pin's DROP is BANKED at 0.06 by a stop
@@ -5708,15 +5716,65 @@ alarmFollowerArm.position.set(-ALARM_PIVOT_R, 0, ALARM_HEART_Z); // §29 step 1:
 // centred, the arm's 0.3 bar exactly shares the heart band and keeps one
 // CLEAR_MARGIN to the flange above by the ALARM_HEART_Z derivation itself
 alarmTubeGroup.add(alarmFollowerArm);
+// §45 — the arm is a BOWED lever now, not a straight bar. A straight
+// 0.3-wide bar pivoted here can NEVER swing clear of the heart: the bar's
+// perpendicular foot from the dial axis lands mid-span at PR·sinφ, and
+// (PR·sinφ − halfWidth) < R for every reachable φ — measured, the old bar's
+// inner flank penetrated the lobe 0.108 deep in the RIDING cycle (the pair's
+// EXPECTED blanket hid it). The flank bows outward by ALARM_A_BOW over the
+// foot's range, full width kept (necking to clear would thin the lever to
+// 0.06 mm — census-debt class). Profile verified by the §45 flank sweep
+// assert below at both the riding cycle and the released free phase.
+const ALARM_A_BOW = 0.10;
+const alarmArmBowAt = (x) => x < 0.25 ? 0
+  : x < 0.45 ? ALARM_A_BOW * (x - 0.25) / 0.2
+  : x <= 1.70 ? ALARM_A_BOW
+  : ALARM_A_BOW * Math.max(0, ALARM_FOLLOWER_LEN - x) / (ALARM_FOLLOWER_LEN - 1.70);
 {
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FOLLOWER_LEN, 0.3, 0.3), MATS.steel);
-  bar.position.x = ALARM_FOLLOWER_LEN / 2;
+  // One extruded plate: both flanks displaced by the bow, tail included —
+  // pivot boss at x 0, nose at ALARM_FOLLOWER_LEN, tail back to the pin boss.
+  const s = new THREE.Shape();
+  const L = ALARM_FOLLOWER_LEN, TL = ALARM_A_TAIL_LEN + 0.16;
+  s.moveTo(-TL, -0.11);
+  s.lineTo(0, -0.15);
+  for (const x of [0.25, 0.45, 1.70, L]) s.lineTo(x, -0.15 + alarmArmBowAt(x));
+  s.lineTo(L, 0.15 + alarmArmBowAt(L));
+  for (const x of [1.70, 0.45, 0.25]) s.lineTo(x, 0.15 + alarmArmBowAt(x));
+  s.lineTo(0, 0.15);
+  s.lineTo(-TL, 0.11);
+  s.closePath();
+  // Full band depth: the bow keeps the flank OUTSIDE the heart's profile at
+  // every phase (the sweep assert below), so the bar never shares xy with the
+  // heart and owes no co-planarity slack — it can carry the whole floor, and
+  // the old 0.3 bar's TODO 11 stock row retires with the straight bar.
+  const barGeo = new THREE.ExtrudeGeometry(s, { depth: STOCK_MIN_U, bevelEnabled: false });
+  const bar = new THREE.Mesh(barGeo, MATS.steel);
+  bar.name = 'alarmFollowerBar';
+  bar.position.z = -STOCK_MIN_U / 2;
   alarmFollowerArm.add(bar);
   const nose = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_NOSE_R, ALARM_NOSE_R, 0.24, 12), MATS.ruby); // §29 step 1: 0.28 → 0.24 — stays inside the thinned 0.30 heart face (0.03 static margin each side; the two ride fixed, co-planar z)
   nose.name = 'alarmNose'; // penetration-budget selector (inspect.js couples by string)
   nose.rotation.x = Math.PI / 2;
   nose.position.x = ALARM_FOLLOWER_LEN;
   alarmFollowerArm.add(nose);
+  // §45 — the TAIL PIN: an axial ruby pin at ALARM_A_TAIL_LEN past the pivot,
+  // hanging plate-ward from the tail into the sleeve's band. Its tip reaches
+  // 0.03 past the skirt's engaged throat edge, so the cone's face (not its
+  // edge) carries the full press; at rest the whole skirt sits one
+  // ALARM_SLEEVE_GAP below this tip — derivations in the §29/§45 chain block.
+  // pin boss: full band height — unlike the bar it never crosses the heart
+  // radially (r ≥ 4.0 vs the 3.55 lobe), so it owes no co-planarity slack
+  // and can carry the whole STOCK_MIN_U floor.
+  const boss = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, STOCK_MIN_U, 10), MATS.steel);
+  boss.rotation.x = Math.PI / 2;
+  boss.position.x = -ALARM_A_TAIL_LEN;
+  alarmFollowerArm.add(boss);
+  const tipZ = (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03) - ALARM_HEART_Z; // arm-local
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_A_PIN_R, ALARM_A_PIN_R, -tipZ - 0.15 + 0.1, 10), MATS.ruby);
+  pin.name = 'alarmTailPin'; // penetration/hand-off selector (string-coupled)
+  pin.rotation.x = Math.PI / 2;
+  pin.position.set(-ALARM_A_TAIL_LEN, 0, (tipZ + (-0.15 + 0.1)) / 2);
+  alarmFollowerArm.add(pin);
 }
 // Return spring — a thin blade from a stub on the flange bearing on the arm's
 // outer edge. Its FORCE is representational (like the striker's hammer
@@ -5753,6 +5811,142 @@ alarmFollowerSpring.rotation.z = 1.9;
   heart.position.z = ALARM_HEART_Z;
   heart.rotation.z = ALARM_NOSE_AZ;
   hourWheelGroup.add(heart);
+}
+// §45 — the FLANK SWEEP, the group's own P2 instrument. The arm and the
+// heart are an EXPECTED pair, so the battery structurally cannot see the
+// bar's flank against the lobe (TODO item 6); this assert measures it the
+// way the old 0.108 penetration was found. Two regimes: RIDING (phase-
+// locked — the profile under each flank point is the profile that put the
+// nose where it is) and RELEASED (free phase — the lobe can sit under any
+// flank point while the sleeve holds the arm at its release angle).
+{
+  const flankAt = (x, phi) => {
+    const y = -0.15 + alarmArmBowAt(Math.max(0, x));
+    const px = -ALARM_PIVOT_R + x * Math.cos(phi) - y * Math.sin(phi);
+    const py = x * Math.sin(phi) + y * Math.cos(phi);
+    return { r: Math.hypot(px, py), az: Math.atan2(py, px) };
+  };
+  let worstRide = 1e9, worstRel = 1e9;
+  for (let i = 0; i < 720; i++) {
+    const psi = (i / 720) * Math.PI * 2;
+    const d = alarmHeartRAt(psi) + ALARM_NOSE_R;
+    const phi = alarmArmAngleAt(d);
+    const azNose = flankAt(ALARM_FOLLOWER_LEN, phi).az;
+    for (let xi = 0; xi <= 40; xi++) {
+      const x = (xi / 40) * ALARM_FOLLOWER_LEN;
+      const f = flankAt(x, phi);
+      worstRide = Math.min(worstRide, f.r - alarmHeartRAt(psi + (f.az - azNose)));
+    }
+  }
+  for (let xi = 0; xi <= 200; xi++) {
+    const f = flankAt((xi / 200) * ALARM_FOLLOWER_LEN, ALARM_A_RELEASE_PHI);
+    worstRel = Math.min(worstRel, f.r - ALARM_HEART_R);
+  }
+  if (worstRide < 0.03 - 1e-9)
+    console.warn(`§45 flank sweep: riding clearance ${worstRide.toFixed(3)} under the working 0.03 — the bow no longer covers the foot`);
+  if (worstRel < 0.03 - 1e-9)
+    console.warn(`§45 flank sweep: released clearance ${worstRel.toFixed(3)} under the working 0.03 — the lobe reaches the flank at some free phase`);
+}
+
+// --- '(§45) Alarm release sleeve' — the hider's second input, as parts -----
+// A static guided ring in the band stage 0 bought: flat annulus at floor
+// stock, a 45° cone SKIRT hanging from its bore, three dial posts guiding it
+// axially (the §34 selector's pattern, one band deeper), and a TAB the
+// lifter's fork grips. Rising ALARM_SLEEVE_TRAVEL, the skirt's face presses
+// the arm's tail pin inward at ANY tube azimuth — the follower lifts, the
+// nose clears the heart, the tube is free to be turned by the §25 C friction
+// coupling: the hand sweeps while being set. Radii are DERIVED from the pin
+// orbits the chain block computed; the band and travel were priced there.
+const ALARM_SLEEVE_THROAT_R = alarmTailRAt(ALARM_A_RELEASE_PHI) + ALARM_A_PIN_R - 0.03; // full-press flank − face cover
+const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
+const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
+const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
+const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (8)
+const ALARM_SLEEVE_TAB_AZ = 8 * DEG2RAD; // world az of the lifter run — between the arbor cluster (az 0) and i1 (az 18)
+const ALARM_SLEEVE_Z_ENGAGED = ALARM_SLEEVE_TOP;                    // flat top, engaged (margin under the arm band)
+const ALARM_SLEEVE_Z_REST = ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL; // flat top, at rest
+const alarmSleeveUnit = new THREE.Group();
+dialFace.add(alarmSleeveUnit);
+registerLabel('Alarm release sleeve', alarmSleeveUnit);
+registerExplode(alarmSleeveUnit, 0, 3, 1);
+const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses + tab)
+{
+  const flat = new THREE.Mesh(ringGeo(ALARM_SLEEVE_R_IN, ALARM_SLEEVE_R_OUT, ALARM_SLEEVE_T), MATS.nickel);
+  flat.name = 'alarmSleeveFlat';
+  flat.position.z = -ALARM_SLEEVE_T / 2;
+  alarmSleeve.add(flat);
+  // the skirt: a 45° cone shell from the flat's bore down to the throat,
+  // built as a lathe strip (crisp, like the §34 face cam: the notchless
+  // surface IS the mechanism)
+  // SOLID shell: the working (inner) cone surface carries its STOCK_MIN_U
+  // wall OUTWARD-UP, normal to the face — the pin side and the band floor
+  // are untouched, and the outer face merges into the flat's own band. A
+  // bare strip would be sheet with no stock at all (§50's degenerate class).
+  const zTopS = -ALARM_SLEEVE_T, zBotS = -ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H;
+  const rTopS = ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H, rBotS = ALARM_SLEEVE_THROAT_R;
+  const wOff = STOCK_MIN_U; // wall offset in +r and +z — a full floor stock in the census's thinnest-way-through measure (min of axial/radial extent), not just normal to the face
+  const skirtProfile = [
+    [rBotS, zBotS], [rTopS, zTopS],                       // the working face
+    [rTopS + wOff, zTopS],                                // flat-flush top cap
+    [rBotS + wOff, zBotS + wOff], [rBotS, zBotS],         // outer face + bottom lip
+  ];
+  const skirtGeo = new THREE.LatheGeometry(
+    skirtProfile.map(([r, z]) => new THREE.Vector2(r, z)), 64);
+  const skirt = new THREE.Mesh(skirtGeo, MATS.nickel);
+  skirt.rotation.x = Math.PI / 2; // lathe axis +Y → the sleeve's z, sign preserved
+  skirt.name = 'alarmSleeveSkirt';
+  alarmSleeve.add(skirt);
+  // web under the flat's rim, joining the skirt's top band to the bore (the
+  // two derive 2·0.03 apart in radius: face-cover slack + working clearance)
+  const web = new THREE.Mesh(ringGeo(rTopS, ALARM_SLEEVE_R_IN + 0.05, STOCK_MIN_U), MATS.nickel);
+  web.position.z = -ALARM_SLEEVE_T - STOCK_MIN_U / 2;
+  alarmSleeve.add(web);
+  // guide bosses to the posts
+  for (const az of ALARM_SLEEVE_POST_AZ) {
+    const dlx = -Math.cos(az), dly = Math.sin(az); // world → dial-local mirror
+    const boss = new THREE.Mesh(new THREE.BoxGeometry(ALARM_SLEEVE_POST_R - ALARM_SLEEVE_R_OUT + 0.3, STOCK_MIN_U + 0.01, ALARM_SLEEVE_T), MATS.nickel);
+    const mid = (ALARM_SLEEVE_R_OUT + ALARM_SLEEVE_POST_R) / 2;
+    boss.position.set(dlx * mid, dly * mid, -ALARM_SLEEVE_T / 2);
+    boss.rotation.z = Math.atan2(dly, dlx);
+    alarmSleeve.add(boss);
+    const eye = new THREE.Mesh(ringGeo(0.15, 0.26, ALARM_SLEEVE_T + 0.14), MATS.nickel);
+    eye.position.set(dlx * ALARM_SLEEVE_POST_R, dly * ALARM_SLEEVE_POST_R, -ALARM_SLEEVE_T / 2);
+    alarmSleeve.add(eye);
+  }
+  // the TAB — a plain radial sheet the lifter's fork grips (tab-in-fork:
+  // the groove lives on the DRIVEN side's partner, TODO 20's convention
+  // inverted to keep this band's z budget: the fork block rides the lifter)
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(0.55, STOCK_MIN_U + 0.01, ALARM_SLEEVE_T), MATS.nickel);
+  tab.name = 'alarmSleeveTab';
+  const tdx = -Math.cos(ALARM_SLEEVE_TAB_AZ), tdy = Math.sin(ALARM_SLEEVE_TAB_AZ);
+  tab.position.set(tdx * (ALARM_SLEEVE_R_OUT + 0.25), tdy * (ALARM_SLEEVE_R_OUT + 0.25), -ALARM_SLEEVE_T / 2);
+  tab.rotation.z = Math.atan2(tdy, tdx);
+  alarmSleeve.add(tab);
+  alarmSleeve.position.z = ALARM_SLEEVE_Z_REST;
+  alarmSleeveUnit.add(alarmSleeve);
+  // the posts: sheet's back face down past the ring's lowest travel
+  for (const az of ALARM_SLEEVE_POST_AZ) {
+    const dlx = -Math.cos(az), dly = Math.sin(az);
+    const postLen = (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - 0.06) - (-0.05);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, Math.abs(postLen), 10), MATS.steel);
+    post.name = 'alarmSleevePost'; // PIN stock, declared (the alarmSelPost precedent)
+    post.rotation.x = Math.PI / 2;
+    post.position.set(dlx * ALARM_SLEEVE_POST_R, dly * ALARM_SLEEVE_POST_R, -0.05 + postLen / 2);
+    alarmSleeveUnit.add(post);
+  }
+}
+// §45 sleeve band-fit asserts — the chain block priced the band; verify the
+// BUILT ring actually sits in it at both travel extremes:
+{
+  const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`§45 sleeve ${nm}: ${v.toFixed(3)}, need ${need}`); };
+  const armBot = ALARM_HEART_Z - 0.15; // the bar's underside shares the heart band's centreline − half bar
+  say('engaged flat top under the arm band', armBot - ALARM_SLEEVE_Z_ENGAGED, CLEAR_MARGIN);
+  const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03;
+  const restSkirtTop = ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T;
+  say('rest gap, skirt top edge to pin tip', tipZ - restSkirtTop, ALARM_SLEEVE_GAP - 1e-6);
+  say('envelope floor above the feeler', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_FEELER_TOP, CLEAR_MARGIN);
+  say('flat bore clears the resting pin', ALARM_SLEEVE_R_IN - (alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R), 0.03 - 1e-6);
+  say('sleeve outer inside the feeler lugs', 5.32 - CLEAR_MARGIN - ALARM_SLEEVE_R_OUT, 0);
 }
 
 // --- 'Alarm setting wheel' — the FRICTION-coupled crown of the centre stack.
@@ -6634,6 +6828,200 @@ alarmSpinner.add(alarmCrownKnob);
   alarmBush.rotation.order = 'ZYX';
   alarmBush.position.set(alarmDir.x * bushDist, alarmDir.y * bushDist, Z_ALARM_CORNER);
   alarmCrownUnit.add(alarmBush);
+}
+
+// --- '(§45) Alarm release lifter' — the stem's pull, delivered to the sleeve
+// The one new input §45 needs: pulling the alarm crown must PRESS the sleeve
+// toward the arm band (world-down here — dial-local +z), positively, so the
+// safety direction (release the hand to set it) is a located drive and the
+// return is the blade re-seating the head on the collar (the §29 feeler's
+// blade-onto-cam idiom; the arm spring's reflection through the 45° cone
+// agrees). The input is a BEVEL COLLAR on the sliding stem — the keyless
+// sliding-pinion idiom, and this stem's own §33 precedent: the pull's 5-unit
+// throw becomes the sleeve's 0.22 travel as a 0.044 taper, a ratio machined
+// into a surface rather than assigned in tick(). The lifter is one rigid L:
+// domed head under the collar, plunger, tangential chord to the run azimuth,
+// radial run at the tab's plane, fork block gripping the sleeve's tab.
+// Siting (probed): plunger at world az 0°, r ALARM_LIFT_HEAD_R — outboard of
+// the arbor cluster (bush cock to r 16.8) and short of the pulled collar's
+// inner end; run at az 8°, between the arbor (az 0) and i1 (az 18, station
+// 8.7, i1b sweep 4.5 — the az-8 line passes 5.64 from it, mid-guide
+// included); fork tip at the tab (az 8, r 4.65..5.15).
+// The SETTING-CORNER cluster (disc bevel to r 22.25, its bearing-cock post
+// to 22.65) owns the stem's inboard reach: the disc bevel's band rises to
+// z −4.5, so nothing fatter than the stem itself may slide over it — the
+// first siting (head at r 21.5) transfixed the cluster and the sweep
+// refused it. The whole input station therefore lives OUTBOARD of the
+// cluster at BOTH crown extremes: the collar's inboard tip parks one margin
+// past the cock post even at rest, and the head reads the thin plateau's
+// middle. All derived from the cluster's own numbers.
+const ALARM_LIFT_CLUSTER_OUT = 22.65;             // cock post's outer edge — the corner cluster's radial reach
+const ALARM_COLLAR_S0 = ALARM_LIFT_CLUSTER_OUT + CLEAR_MARGIN - ALARM_CD; // collar's inboard tip, stem-local (≈ 7.4)
+const ALARM_COLLAR_RAMP = { in: ALARM_COLLAR_S0 + 2.5, out: ALARM_COLLAR_S0 + 5.0 }; // fat plateau inboard of `in`, thin outboard of `out`
+const ALARM_COLLAR_S1 = ALARM_COLLAR_RAMP.out + 0.8;      // thin plateau's outboard end
+const ALARM_LIFT_HEAD_R = ALARM_CD + ALARM_COLLAR_RAMP.out + 0.4; // head reads the thin plateau at rest; pulled it lands mid-fat (station − 5)
+const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_AZ;
+const ALARM_COLLAR_THIN_R = 0.55;
+const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
+  : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL
+  : ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL * (ALARM_COLLAR_RAMP.out - s) / (ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in);
+{
+  // the collar itself rides the spinner (slides with the pull for free)
+  const thin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_THIN_R, ALARM_COLLAR_S1 - ALARM_COLLAR_RAMP.out, 16), MATS.steel);
+  thin.position.y = (ALARM_COLLAR_RAMP.out + ALARM_COLLAR_S1) / 2;
+  const ramp = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in, 16), MATS.steel);
+  ramp.position.y = (ALARM_COLLAR_RAMP.in + ALARM_COLLAR_RAMP.out) / 2;
+  const fat = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_RAMP.in - ALARM_COLLAR_S0, 16), MATS.steel);
+  fat.position.y = (ALARM_COLLAR_S0 + ALARM_COLLAR_RAMP.in) / 2;
+  for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
+}
+const alarmLifterUnit = new THREE.Group();
+movement.add(alarmLifterUnit);
+registerLabel('Alarm release lifter', alarmLifterUnit);
+registerExplode(alarmLifterUnit, 0, 2, -1);
+const alarmLifter = new THREE.Group(); // the moving L — tick slides it in world z
+const alarmLifterBladeGroup = new THREE.Group(); // return blade root (tick flexes it)
+const ALARM_LIFT_BLADE_LEN = Math.hypot(0.7, 1.3);
+const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); // run centreline = the tab's rest plane, world
+{
+  const hx = ALARM_LIFT_HEAD_R;
+  // domed head, top 0.01 under the collar's thin section at rest (the fork
+  // clearance figure — the hand-off row reads the running fit as contact)
+  const headTop = Z_ALARM_CORNER - ALARM_COLLAR_THIN_R - 0.01;
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.24, 10), MATS.steel);
+  head.name = 'alarmLifterHead';
+  head.rotation.x = Math.PI / 2;
+  head.position.set(hx, 0, headTop - 0.12);
+  alarmLifter.add(head);
+  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, (headTop - 0.24) - ALARM_LIFT_RUN_Z, 10), MATS.steel);
+  plunger.name = 'alarmLifterPlunger'; // pin-class stock, declared (kind table)
+  plunger.rotation.x = Math.PI / 2;
+  plunger.position.set(hx, 0, ((headTop - 0.24) + ALARM_LIFT_RUN_Z) / 2);
+  alarmLifter.add(plunger);
+  // blade stub — the return blade bears up under this (between the eyes,
+  // riding clear of both across the full travel)
+  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, STOCK_MIN_U, 10), MATS.steel);
+  stub.rotation.x = Math.PI / 2;
+  stub.position.set(hx, 0, -5.3);
+  alarmLifter.add(stub);
+  // tangential chord az 0 → run az, then the radial run inboard to the fork
+  const az = ALARM_LIFT_RUN_AZ;
+  const p0 = { x: hx, y: 0 }, p1 = { x: hx * Math.cos(az), y: hx * Math.sin(az) };
+  const chord = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(p1.x - p0.x, p1.y - p0.y) + 0.3, STOCK_MIN_U + 0.01, STOCK_MIN_U), MATS.steel);
+  chord.position.set((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, ALARM_LIFT_RUN_Z);
+  chord.rotation.z = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  alarmLifter.add(chord);
+  const rIn = ALARM_SLEEVE_R_OUT + 0.25; // fork lands at the tab's centre
+  const run = new THREE.Mesh(new THREE.BoxGeometry(hx - rIn, STOCK_MIN_U + 0.01, STOCK_MIN_U), MATS.steel);
+  run.name = 'alarmLifterRun';
+  run.position.set(Math.cos(az) * (hx + rIn) / 2, Math.sin(az) * (hx + rIn) / 2, ALARM_LIFT_RUN_Z);
+  run.rotation.z = az;
+  alarmLifter.add(run);
+  // fork block: plates flanking the sleeve's tab (gap = tab stock + 2·the
+  // TODO 20 working clearance), web on the outboard side
+  const gap = ALARM_SLEEVE_T + 2 * ALARM_FORK_CLEAR;
+  for (const s of [-1, 1]) {
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.34, STOCK_MIN_U), MATS.steel);
+    plate.name = 'alarmLifterFork';
+    plate.position.set(Math.cos(az) * rIn, Math.sin(az) * rIn, ALARM_LIFT_RUN_Z + s * (gap + STOCK_MIN_U) / 2);
+    plate.rotation.z = az;
+    alarmLifter.add(plate);
+  }
+  const web = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, 0.34, gap + 2 * STOCK_MIN_U), MATS.steel);
+  web.position.set(Math.cos(az) * (rIn + 0.31), Math.sin(az) * (rIn + 0.31), ALARM_LIFT_RUN_Z);
+  web.rotation.z = az;
+  alarmLifter.add(web);
+  alarmLifterUnit.add(alarmLifter);
+  // static guides: bracket post + two eyes at the plunger (from the base
+  // plate's dial-side face, the alarm arbor's bearing-cock pattern), a
+  // slotted mid-guide under the run, and the return blade.
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
+  post.position.set(hx + 0.7, 1.3, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
+  post.rotation.x = Math.PI / 2;
+  alarmLifterUnit.add(post);
+  for (const ez of [-5.15, ALARM_LIFT_RUN_Z + 0.45]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(0.7, 1.3) + 0.3, 0.32, STOCK_MIN_U), MATS.nickel);
+    arm.position.set(hx + 0.35, 0.65, ez);
+    arm.rotation.z = Math.atan2(-1.3, -0.7);
+    alarmLifterUnit.add(arm);
+    const eye = new THREE.Mesh(ringGeo(0.17, 0.17 + STOCK_MIN_U, STOCK_MIN_U), MATS.nickel);
+    eye.position.set(hx, 0, ez);
+    alarmLifterUnit.add(eye);
+  }
+  // return blade: root at the bracket post, tip bearing UP under the
+  // plunger's stub (thin in z — the flex direction; slaved in tick via the
+  // root group so the tip follows the stub's real travel, §48's convention)
+  alarmLifterBladeGroup.position.set(hx + 0.7, 1.3, -5.39);
+  alarmLifterBladeGroup.rotation.order = 'ZYX';
+  alarmLifterBladeGroup.rotation.z = Math.atan2(-1.3, -0.7);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
+  blade.name = 'alarmLifterBlade';
+  blade.position.x = ALARM_LIFT_BLADE_LEN / 2;
+  alarmLifterBladeGroup.add(blade);
+  alarmLifterUnit.add(alarmLifterBladeGroup);
+  // mid-guide: post beside the run with two vertical CHEEKS flanking it
+  // tangentially — lateral guidance that leaves the vertical travel free, so
+  // the long span is guided, not cantilevered (P1: the run only ever carries
+  // the arm spring's reflected preload, mN-scale, but an unguided 16-unit
+  // reach would still be the §35 tail's class of "nobody asked for this")
+  const mgR = 14, mgOff = 0.5; // post stands one 0.5 tangential stand-off from the run's centreline
+  const mgP = { x: Math.cos(az) * mgR - Math.sin(az) * mgOff, y: Math.sin(az) * mgR + Math.cos(az) * mgOff };
+  const mg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5), 10), MATS.nickel);
+  mg.position.set(mgP.x, mgP.y, (-2 + ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5) / 2);
+  mg.rotation.x = Math.PI / 2;
+  alarmLifterUnit.add(mg);
+  const cheekH = 0.16 + ALARM_SLEEVE_TRAVEL + 0.2;
+  for (const s of [-1, 1]) {
+    const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.7, STOCK_MIN_U, cheekH), MATS.nickel);
+    cheek.position.set(Math.cos(az) * mgR - Math.sin(az) * s * (0.2 + STOCK_MIN_U / 2), Math.sin(az) * mgR + Math.cos(az) * s * (0.2 + STOCK_MIN_U / 2),
+      ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL / 2);
+    cheek.rotation.z = az;
+    alarmLifterUnit.add(cheek);
+  }
+  const cheekBridge = new THREE.Mesh(new THREE.BoxGeometry(0.7, mgOff + 0.35, STOCK_MIN_U), MATS.nickel);
+  cheekBridge.position.set((mgP.x + Math.cos(az) * mgR) / 2, (mgP.y + Math.sin(az) * mgR) / 2,
+    ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - STOCK_MIN_U / 2 - 0.25);
+  cheekBridge.rotation.z = az;
+  alarmLifterUnit.add(cheekBridge);
+}
+// §45 lifter fit asserts:
+{
+  const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`§45 lifter ${nm}: ${v.toFixed(3)}, need ${need}`); };
+  const sRest = (ALARM_LIFT_HEAD_R - ALARM_CD), sPulled = sRest - CROWN_PULL_DIST;
+  say('pulled head station stays on the collar', sPulled - ALARM_COLLAR_S0, 0);
+  say('rest head station on the thin plateau', ALARM_COLLAR_S1 - sRest, 0);
+  say('rest station past the ramp', sRest - ALARM_COLLAR_RAMP.out, 0);
+  say('pulled station past the ramp', ALARM_COLLAR_RAMP.in - sPulled, 0);
+  // the collar clears the corner cluster at BOTH extremes (its whole reason
+  // to live outboard) — inboard tip at rest vs the cock post's outer edge
+  say('collar inboard tip clear of the cluster at rest', (ALARM_CD + ALARM_COLLAR_S0) - ALARM_LIFT_CLUSTER_OUT, CLEAR_MARGIN - 1e-6);
+  // the ramp's rise IS the sleeve travel — the tick law reads this same fn
+  say('collar rise = sleeve travel', 1e-9 + (alarmCollarRAt(ALARM_COLLAR_S0) - alarmCollarRAt(ALARM_COLLAR_S1)) - ALARM_SLEEVE_TRAVEL, 0);
+}
+// §45 — the BICONDITIONAL, asserted (the entry's acceptance): Hidden ⟺
+// ¬Armed ∧ ¬Setting, at all four corners, evaluated on the mechanism's own
+// laws — Armed through the ring's parity (the §35 fork registration solve
+// puts alarmSelShownT at 0/1 there, asserted at that solve), Setting through
+// the sleeve's cone cap at the collar's two plateaus. The implications alone
+// would pass a hand left permanently visible; the ⟺ does not.
+{
+  const freedAt = (pullT) => {
+    const s = (ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST;
+    const lift = alarmCollarRAt(s) - ALARM_COLLAR_THIN_R;
+    const hUp = ((ALARM_SLEEVE_Z_REST + lift) - ALARM_SLEEVE_T)
+      - (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03);
+    if (hUp <= 0) return false;
+    const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R;
+    const phiCap = Math.acos(clamp(
+      (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
+      / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
+    return phiCap >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
+  };
+  for (const armed of [0, 1]) for (const setting of [0, 1]) {
+    const hidden = !(armed === 1 || freedAt(setting)); // the tube law's own OR
+    if (hidden !== (armed === 0 && setting === 0))
+      console.warn(`§45 biconditional: armed ${armed}, setting ${setting} → hidden ${hidden} — spec is Hidden ⟺ ¬Armed ∧ ¬Setting`);
+  }
 }
 
 // --- Alarm gong + hammer (BUILT §24) ---------------------------------------
@@ -8634,6 +9022,8 @@ let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column parity's physical consequence, and what the tube law reads
+let alarmSleeveLiftNow = 0; // §45: the sleeve's current drop from rest (0..TRAVEL) — a pure readout of the collar under the head
+let alarmPhiCapNow = 0;     // §45: the cone's floor under the follower arm's angle (0 = cone clear)
 const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
                             // heart cam is a positive mechanical action, not
                             // a soft friction stop, so the reset reads snappier.
@@ -12348,6 +12738,7 @@ const UNIT_GROUPS = new Map([
     // them to be listed at all.
     ['Alarm selector', null], ['Alarm lock', null], ['Alarm switch', null],
     ['Alarm link', null],
+    ['Alarm release sleeve', null], ['Alarm release lifter', null], // §45 — level-2 offsets are that story's to assign
   ])],
 ]);
 const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Structure'], [handsGroup, 'Hands']]);
@@ -14329,6 +14720,29 @@ function tick(t) {
   alarmSpinner.position.set(
     alarmDir.x * (ALARM_CD + alarmCrownPullT * CROWN_PULL_DIST),
     alarmDir.y * (ALARM_CD + alarmCrownPullT * CROWN_PULL_DIST), Z_ALARM_CORNER);
+  // §45 — the lifter and sleeve, posed THROUGH the collar (Rule 2: the ratio
+  // is the machined ramp, read at the head's station, not a coefficient).
+  // The fork ties lifter and sleeve, so both wear the same drop; the cone's
+  // radius at the tail pin's plane caps the follower's angle from below —
+  // that cap, not a flag, is what the tube law reads.
+  {
+    const sHead = (ALARM_LIFT_HEAD_R - ALARM_CD) - alarmCrownPullT * CROWN_PULL_DIST;
+    alarmSleeveLiftNow = alarmCollarRAt(sHead) - ALARM_COLLAR_THIN_R; // 0 → ALARM_SLEEVE_TRAVEL
+    alarmLifter.position.z = -alarmSleeveLiftNow;                     // world: pressed toward the dial
+    alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow; // dial-local +z ≡ the same world direction
+    alarmLifterBladeGroup.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
+    const skirtTopZ = (ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow) - ALARM_SLEEVE_T;
+    const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
+    const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip
+    if (hUp > 0) {
+      const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R; // 45° cone at the tip's plane, minus the pin radius
+      alarmPhiCapNow = Math.acos(clamp(
+        (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
+        / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
+    } else {
+      alarmPhiCapNow = 0;
+    }
+  }
   {
     const aDelta = alarmCrownRotation - lastAlarmCrownRotation;
     lastAlarmCrownRotation = alarmCrownRotation;
@@ -14479,7 +14893,12 @@ function tick(t) {
       }
       alarmRocker.rotation.y = th;
     }
-    const tubeTarget = (alarmSelShownT > 0.5) ? -alarmAngle : mwHourA;
+    // §45 — the second input of the OR: the sleeve's cone holding the nose
+    // above the heart's whole profile frees the tube from the hour coupling,
+    // and the §25 C friction seat turns it live — the hand SWEEPS while
+    // being set. Read from the cone's cap (the member's pose), not a flag.
+    const alarmArmFreed = alarmPhiCapNow >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
+    const tubeTarget = (alarmSelShownT > 0.5 || alarmArmFreed) ? -alarmAngle : mwHourA;
     // Both transitions EASE live (the pose path assigns exactly): disarming is
     // the spring snapping the follower home along the cam slope, and arming is
     // the re-coupled friction wheel swinging the hand out to the set time —
@@ -14507,6 +14926,11 @@ function tick(t) {
       armA = alarmArmAngleAt(d);
       contactAz = Math.atan2(ALARM_FOLLOWER_LEN * Math.sin(armA), -ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * Math.cos(armA));
     }
+    // §45 — the sleeve's cone is a FLOOR under the arm's angle: whichever of
+    // cam and cone stands higher carries the arm (the B-side liftB's max(),
+    // on the A side). Re-seating on crown push-in is this same max easing
+    // back to the cam — re-engagement EVALUATES, nothing is replayed.
+    armA = Math.max(armA, alarmPhiCapNow);
     alarmFollowerArm.rotation.z = armA;
     // The blade flexes with the pump (its force is representational; its
     // MOTION is the arm's real lift).
