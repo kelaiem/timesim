@@ -4652,7 +4652,7 @@ smallSecondsGroup.add(smallSecondsHand);
 // thickening pushes the chain 0.38 again, so the leaves grow a third time.
 // Top face stays −0.5; the END is now DERIVED and shared with the coverage
 // assert below, so the third growth is the last one anybody hand-tracks.
-const CANNON_T = 3.35; // §51 strata spends: fourth growth (2.0→2.1→2.5→2.9→3.35) as the chain deepened +0.45 — end derived below, so this line is the whole edit
+const CANNON_T = 4.27; // §45 sleeve band: fifth growth (2.0→2.1→2.5→2.9→3.35→4.27) as the chain deepened +0.92 — end derived below, so this line is the whole edit
 const CANNON_END = -0.5 - CANNON_T;
 const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
@@ -4688,12 +4688,77 @@ const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinni
 const ALARM_TUBE_BACK = -(0.05 + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
 const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
 const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band, one CLEAR_MARGIN under the flange:
-const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // −0.46..−0.76
-// §29 step 2/3 stack under the heart: fixed feeler (one margin below the
-// co-rotating heart), its pin riding the disc's raised notch track, the
-// disc body, then one margin to the minute wheel.
+const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // band −1.30..−1.62
+// ---------------------------------------------------------------------------
+// §45 stage 0 — the CAM SLEEVE's band. Letting the alarm hand be SET visibly
+// needs follower-A lifted clear of its heart at any relative phase, and the
+// one interface in the selector chain with any compliance is the follower
+// itself (the roadmap entry's build correction). The lifter is a static
+// full-circle ring below the heart/arm band — a coned bore pressing an axial
+// TAIL PIN on the arm at any tube azimuth — and this block buys its band the
+// §51 way: every neighbour below re-derives deeper, and Z_DIAL deepens by the
+// same amount, so the chain's landing at the plate is untouched and every
+// member below the insertion keeps its solved WORLD plane. The geometry is
+// stage 1; the spend is made ALONE first so the tripwire list measures the
+// real blast radius (§51 phase B's own discipline).
+//
+// The lift, from the same triangle tick() solves (the follower kinematics are
+// hoisted here from the arm build — the chain must price the swing):
+//   seated:   nose orbit at RMIN + noseR
+//   released: nose clear of the heart's MAX radius by the 0.05 lift
+//             clearance follower-B's ALARM_PINB_LIFT already uses
+// The tail is the SHORTEST that physically exists past the pivot (post radius
+// + pin boss + web) — the pin's radial stroke GROWS with tail length, so
+// short is cheap. The cone is 45°: axial travel ≡ radial stroke, no invented
+// ratio. The band prices the whole ENGAGEMENT, not just the stroke: at rest
+// the skirt sits wholly BELOW the pin's tip with the same 0.05 gap (riding
+// must not feel the sleeve — a rest interference would hold the nose off its
+// heart and break the hour coupling), so the travel is stroke + gap; the
+// skirt's face covers the stroke plus first-touch at the instrument's ±0.03.
+const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // profile radii (thickness/z live above in this chain)
+const ALARM_NOSE_R = 0.2;                       // follower roller
+const ALARM_PIVOT_R = 3.68;                     // pivot post radius (tube frame, az π) — post edge (r+0.22) inside the 4.05 flange
+const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
+// Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
+// seated nose) — the same constants tick() solves against, so the built arm
+// and the posed arm cannot drift apart.
+const _alarmSeatD = ALARM_HEART_RMIN + ALARM_NOSE_R;
+const _alarmSeatT = { x: _alarmSeatD * Math.cos(ALARM_NOSE_AZ), y: _alarmSeatD * Math.sin(ALARM_NOSE_AZ) };
+const ALARM_FOLLOWER_LEN = Math.hypot(_alarmSeatT.x + ALARM_PIVOT_R, _alarmSeatT.y);
+const alarmArmAngleAt = (d) => Math.acos(clamp(
+  (ALARM_PIVOT_R * ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * ALARM_FOLLOWER_LEN - d * d)
+  / (2 * ALARM_PIVOT_R * ALARM_FOLLOWER_LEN), -1, 1));
+const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
+const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
+const ALARM_A_RELEASE_D = ALARM_HEART_R + ALARM_NOSE_R + 0.05; // nose orbit, released (3.80)
+const ALARM_A_RELEASE_PHI = alarmArmAngleAt(ALARM_A_RELEASE_D);
+const ALARM_A_TAIL_LEN = 0.22 + 0.16 + 0.07; // post radius + pin boss (pin 0.09 + wall) + web
+const alarmTailRAt = (phi) => Math.sqrt(ALARM_PIVOT_R * ALARM_PIVOT_R
+  + 2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN * Math.cos(phi) + ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN);
+const ALARM_SLEEVE_DR = alarmTailRAt(ALARM_FOLLOWER_A0) - alarmTailRAt(ALARM_A_RELEASE_PHI); // 0.186 — the pin's radial stroke
+const ALARM_SLEEVE_T = STOCK_MIN_U;                       // ring at sheet floor stock
+const ALARM_SLEEVE_GAP = 0.05;                            // rest gap, skirt top → pin tip (the B-side lift-clearance figure)
+const ALARM_SLEEVE_TRAVEL = ALARM_SLEEVE_DR + ALARM_SLEEVE_GAP;  // rise: close the gap, then press the stroke (45°: axial ≡ radial)
+const ALARM_SLEEVE_SKIRT_H = ALARM_SLEEVE_DR + 0.03;      // cone face: the stroke + first-touch cover at the instrument's tol
+const ALARM_SLEEVE_ENV = ALARM_SLEEVE_SKIRT_H + ALARM_SLEEVE_T + ALARM_SLEEVE_TRAVEL; // 0.770 — the swept band
+const ALARM_SLEEVE_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // envelope ceiling: one margin under the heart band
+// §29 step 2/3 stack under the heart: fixed feeler (§45: one margin below the
+// sleeve's swept band now, was one margin below the co-rotating heart), its
+// pin riding the disc's raised notch track, the disc body, then one margin to
+// the minute wheel.
 const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
-const ALARM_FEELER_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // −0.91
+const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - CLEAR_MARGIN; // −2.69 (§45; was −1.77)
+// §45 tripwire — the fund and the spend must agree: Z_DIAL deepened from the
+// §51-era −7.5 by exactly what the chain grew (the sleeve band replaced a
+// bare margin gap, so growth = envelope + one margin). Under-funded, the
+// landing eats the difference at the plate; over-funded past the rounding
+// grid, the dial carries slush no constraint asked for.
+{
+  const spend = ALARM_SLEEVE_ENV + CLEAR_MARGIN;  // chain growth vs the pre-§45 stack
+  const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
+  if (fund < spend - 1e-9 || fund > spend + 0.005)
+    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up ≤ 0.005`);
+}
 const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and track top
 // The track is TALL (0.17) and the pin's DROP is BANKED at 0.06 by a stop
 // on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
@@ -4709,19 +4774,19 @@ const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin b
 // §51 final spend, retried with the whole band DERIVED (the first attempt's
 // collision was measured against planes that hung off frozen literals).
 const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's teeth share this plane)
-const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −1.05
-const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −1.22 (body top)
-const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −1.35
+const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −3.02
+const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.19 (body top)
+const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.51
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
 // plane to mesh it; the minute pinion and hour wheel share a second plane
 // behind that. Both stay clear of the sub-dial well floors at −SUBDIAL_RECESS.
 // §29: MW_Z1 IS the end of the chain — one margin plus the wheel's bevelled
 // half-thickness below the disc body. Both planes move together (their 1.5
 // spacing is the jumper star's slice, untouched by construction); every
-// star/lever/stud z derives from them and follows. The cannon pinion (2.0
-// thick at −1.5, spanning −0.5..−2.5) covers MW_Z1 with full face
-// engagement down to −1.986+bevel; asserted below.
-const MW_Z1 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22)); // = −1.916
+// star/lever/stud z derives from them and follows. The cannon pinion
+// (CANNON_T thick from −0.5) covers MW_Z1 with full face engagement;
+// asserted below.
+const MW_Z1 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22)); // ≈ −4.13 (§45)
 const MW_Z2 = MW_Z1 - 1.5;   // minute pinion / hour wheel — the 1.5 IS the star slice spacing
 if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < CANNON_END + 0.1)
   console.warn(`§29/§34/§51: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end ${CANNON_END} — face engagement thinning`);
@@ -5347,10 +5412,12 @@ const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
 const ALARM_SET_DW1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_I1_TEETH) / 2; // centre wheel ⇄ i1
 const ALARM_SET_D12 = ALARM_SET_MODULE * (ALARM_SET_I1_TEETH + ALARM_SET_I2_TEETH) / 2;     // i1 ⇄ i2
 const ALARM_SET_D2P = ALARM_SET_MODULE * (ALARM_SET_I2_TEETH + ALARM_SET_PINION_TEETH) / 2; // i2 ⇄ arbor pinion
-const ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2; // WORLD gear plane (= −6.86) — the probed-empty lane under the
-                                                // reserve band, DERIVED: sheet (−7) + the 0.05 crisp-face gap + half the
-                                                // lane thickness. The corridor asserts below re-verify the lane.
-const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // (ALARM_HEART_T / ALARM_HEART_Z — §29 CENTRE Z-CHAIN block; heart 0.30 thick, band −0.46..−0.76, one margin under the flange by derivation)
+const ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2; // WORLD gear plane (≈ −8.19) — the probed-empty lane under the
+                                                // reserve band, DERIVED: sheet (Z_DIAL) + the 0.05 crisp-face gap + half
+                                                // the lane thickness. The corridor asserts below re-verify the lane.
+// (ALARM_HEART_R/RMIN, the follower triangle, alarmArmAngleAt and kin are
+// hoisted into the §29 CENTRE Z-CHAIN block — §45's sleeve band prices the
+// arm's swing, so the chain owns the kinematics now.)
 // §29: the DISC BAND is now a derivation chain (see the CENTRE Z-CHAIN
 // block), but re-verify its two hard edges from the same expressions that
 // place the neighbours — a future edit to any link must keep both margins.
@@ -5362,21 +5429,6 @@ const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // (ALARM_HEART_T / ALARM_H
   if (ALARM_DISC_BOT - mwTop < CLEAR_MARGIN - 1e-9)
     console.warn(`§29 stack: disc bottom ${ALARM_DISC_BOT.toFixed(2)} inside the minute wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
 }
-const ALARM_NOSE_R = 0.2;                       // follower roller
-const ALARM_PIVOT_R = 3.68;                     // pivot post radius (tube frame, az π) — post edge (r+0.22) inside the 4.05 flange
-const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
-// Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
-// seated nose) — the same constants tick() solves against, so the built arm
-// and the posed arm cannot drift apart.
-const _alarmSeatD = ALARM_HEART_RMIN + ALARM_NOSE_R;
-const _alarmSeatT = { x: _alarmSeatD * Math.cos(ALARM_NOSE_AZ), y: _alarmSeatD * Math.sin(ALARM_NOSE_AZ) };
-const ALARM_FOLLOWER_LEN = Math.hypot(_alarmSeatT.x + ALARM_PIVOT_R, _alarmSeatT.y);
-const alarmArmAngleAt = (d) => Math.acos(clamp(
-  (ALARM_PIVOT_R * ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * ALARM_FOLLOWER_LEN - d * d)
-  / (2 * ALARM_PIVOT_R * ALARM_FOLLOWER_LEN), -1, 1));
-const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
-const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
-
 const alarmTubeGroup = new THREE.Group();
 dialFace.add(alarmTubeGroup);
 registerLabel('Alarm disc', alarmTubeGroup);
@@ -5489,8 +5541,9 @@ const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75;
 const ALARM_SEL_T = STOCK_MIN_U;
 const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger throw it buys makes the
                                // armed B:A preload ratio 3.1 (the first cut, 0.14, measured 2.6 and
-                               // the assert refused it). Ring's lowest face −1.15 keeps 0.21 to the
-                               // §29 feeler slice; the posts' XY stand-off from i1b's sweep is 1.25.
+                               // the assert refused it). Ring's lowest face −1.15 keeps 1.52 to the
+                               // §29 feeler slice (0.21 pre-§45 — the sleeve band opened between);
+                               // the posts' XY stand-off from i1b's sweep is 1.25.
 // §51 strata spends: DERIVED from the tube-back plane it engages, was the
 // absolute −0.86 — which was −0.18 below the OLD tube back (−0.68). The
 // chain's growth moved the B-side fingers down and the frozen ring stayed,

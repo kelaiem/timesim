@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN, UNIT_MM, SLENDER_MAX as SLENDER_MAX_U } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U } from './layout.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -349,7 +349,12 @@ export const MECH_GRAPH = {
       name: 'motion-works arbor cap reaches the cannon pinion',
       unit: 'Keyless works',
       target: 'Dial',
-      tol: 3.5,
+      // §45: the tol RIDES Z_DIAL — the anchor's nearest 'Dial' mesh is the
+      // sheet, which moves with every dial-band strata spend, while the cap
+      // itself still lands flush beside the cannon's plate-side end (world-
+      // fixed: the chain grows exactly what Z_DIAL deepens). 3.5 was the
+      // frozen −7.5-era figure — the same stale-absolute class §51 enumerated.
+      tol: 3.5 + (-7.5 - Z_DIAL),
       point: nearestMeshCenter,
     },
     {
