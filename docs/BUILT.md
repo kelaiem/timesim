@@ -5763,17 +5763,18 @@ slots sunk 0.03 below the head tops; plate 4 heads flush at z 8.508
 against the 8.51 face; bridge 1 + 1 sunk. Boot silent; battery run on
 the landed tree.
 
-## §45. The alarm hand is visible to set — stage 1 of 2, the release built
+## §45. The alarm hand is visible to set, and setting cannot ring — complete
 
-**Scope shipped.** The visibility half of §45, complete: pulling the
+**Scope shipped, both stages.** Stage 1 (the release): pulling the
 alarm crown RELEASES the alarm tube from its hour coupling, so the §25 C
 friction train turns it live and the hand SWEEPS while being set — in
 both arm states — and re-seats by evaluation when the crown goes home.
 `Hidden ⟺ ¬Armed ∧ ¬Setting` is asserted at boot as the biconditional
 (all four corners, evaluated on the mechanism's own laws), not as the
-three implications that would pass a permanently-visible hand. Stage 2 —
-setting an ARMED alarm rings today; the strike-hold finger — remains in
-the roadmap with a sited design (the silence rocker at the feeler).
+three implications that would pass a permanently-visible hand. Stage 2
+(the silence): with the crown pulled, the coincidence CANNOT trip the
+release — silence enforced at the detection — and pulling mid-ring
+arrests the train. The stage-2 record is at the end of this section.
 
 **The mechanism.** The build correction that reshaped this section: the
 selector chain is positively located end to end (TODO 19/20), so the
@@ -5858,3 +5859,53 @@ on the landed tree. Functional: pose probes measure the pull sweeping
 the tube from `mwHourA` to `−alarmAngle` with the arm capped at exactly
 the release angle, and the push-in re-seating everything to the seated
 triangle to 4 decimals.
+
+### Stage 2 — the silence rocker
+
+**Where the hold lives, and why.** The entry said "hold the strike
+lock"; the lock lever lives at world z +8.83 by the column wheel, the
+alarm stem at −4.1 — a 13-unit cross-movement corridor nobody should
+build for a hold. The honest press point is the RELEASE FEELER, three
+units from the lifter's run: hold the feeler's pin off its track and the
+release never happens. Silence at the detection, and pulling mid-ring
+physically lifts the pin out of the notch.
+
+**The mechanism.** A seesaw (`Alarm silence rocker`) on a dial bracket:
+its PADDLE rides the underside of the lifter's run at az 8° (blade-
+biased, so it tracks the run at every parity), its FINGER descends onto
+the feeler's TAIL from above at the release azimuth. The tail RISES when
+the pin drops (the §29 banking stop's own geometry), so a finger whose
+stroke ends exactly at the tail's rest height captures it: no rise, no
+drop, no trip. A risen tail (mid-ring) is met early in the stroke and
+pressed back to riding — the pin leaves the notch. The throw is EXACTLY
+the rest gap, asserted: the first cut carried a "press-back + capture
+bite" allowance and measurably buried the finger 0.055 deep in a tail
+that had no rise to give back. The finger's radius is the one free slot
+on the tail — mid-window between the bracket lugs' outer reach and the
+spring stud's inner face, both margins exact, asserted. The lever ratio
+(finger/paddle arms) is DESIGNED from throw ÷ lifter travel, not
+inherited from routing.
+
+**Why the hold arrests a running train when the natural pin-return does
+not.** The release pawl is one-way (the climb's long-ramp/steep-bank
+saw). Spring-seated, the running contrate cams it out ramp by ramp — it
+ratchets, and a ring runs down, which is the shipped run-down story.
+Held, the pawl is seated through the lever's LOCATED geometry; a ramp
+cannot cam out a located member, and the train is caught on the next
+tooth: arrested, not paused.
+
+**The laws read members.** `alarmPinDropPhys` = min(the disc's law, the
+rocker's cap), computed in the strike section from the same pure chain
+the pose block re-derives (collar → lifter → rocker — the §29 this-tick
+discipline), and it drives the trip gate, the one-shot re-arm, the
+lever's pose and the pawl's seat. A held pin re-arms the one-shot, so
+releasing the hold onto a still-present coincidence is a FRESH
+mechanical drop and fires — re-engagement evaluates, nothing replayed.
+
+**Verified.** Measured end to end at the poses: the armed sweep crosses
+the coincidence with the crown pulled and nothing releases; push-in at
+the coincidence rings; the ring spends the barrel; pulling mid-ring
+arrests with ZERO further spend; pushing back at the still-present
+coincidence re-fires. Two new hand-off rows (paddle: contact at every
+parity; finger: free at both crown-in parities, contact at setting),
+zero new stock waivers, full battery clean on the landed tree.
