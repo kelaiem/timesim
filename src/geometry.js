@@ -1898,8 +1898,14 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
       .rotateZ(p.a || 0).translate(p.x, p.y, p.z - headT * 0.28));
   }
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(mergeGeos(heads), MATS.blueSteel));
-  g.add(new THREE.Mesh(mergeGeos(slots), MATS.dark));
+  const headsMesh = new THREE.Mesh(mergeGeos(heads), MATS.blueSteel);
+  headsMesh.name = 'screwHeads';
+  g.add(headsMesh);
+  // Named for §50's kind table: a slot is a RECESS rendered as a dark
+  // inlay — void, not stock — the same class as the disc's printed track.
+  const slotsMesh = new THREE.Mesh(mergeGeos(slots), MATS.dark);
+  slotsMesh.name = 'screwSlots';
+  g.add(slotsMesh);
   return g;
 }
 

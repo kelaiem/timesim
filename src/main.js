@@ -4368,7 +4368,10 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // to the plate's group, plate-local frame (group origin at TQ_MID_Z).
   threeQuarterPlate.add(G.makeScrews({
     at: pillarSeats.map((p) => ({ x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x) })),
-    headR: capR * 0.6, headT: TQ_T * 0.35,
+    // headT = STOCK_MIN_U like every §20 screw head — the first cut used
+    // TQ_T·0.35 (0.106 mm) and the §50 stockFloor gate refused it against
+    // the 0.12 wheel floor, which is the gate doing its job.
+    headR: capR * 0.6, headT: STOCK_MIN_U,
   }));
 }
 

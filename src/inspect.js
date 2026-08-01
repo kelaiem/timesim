@@ -3230,6 +3230,11 @@ export const STOCK_KIND_BY_MESH = {
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
   alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
+  // §20 — every screw's merged slot inlay: a slot is a RECESS rendered as a
+  // dark film over the head (the chaton convention), not stock. Same class
+  // as alarmDiscTrack. The HEADS carry no entry on purpose: they are real
+  // stock at STOCK_MIN_U and must keep answering to the wheel floor.
+  screwSlots: 'marking',
 };
 
 // §50 TRIAGE (2026-07-26) — every remaining violation dispositioned, none
