@@ -193,22 +193,133 @@
 
   <!-- ===================== ESCAPEMENT ===================== -->
   <details class="mech" id="escapement">
-    <summary>Swiss lever escapement — counting time by letting it go<span class="where">regulation · src/main.js, src/geometry.js</span></summary>
+    <summary>Swiss lever escapement — the four contact phases of a beat<span class="where">regulation · src/main.js, src/geometry.js, src/layout.js</span></summary>
     <div class="mech-body">
-      <p>The balance wheel and its hairspring are the oscillator; everything else exists to
-      keep it swinging and to count its swings. Twice per beat the balance's roller pin enters
-      the pallet fork's V-notch and knocks the fork across; the fork's two ruby pallets
-      alternately lock and release the escape wheel, one tooth per beat, and each release
-      gives the pin back an impulse that replaces the energy the swing lost.</p>
-      <p>The geometry is derived, not posed: the fork's banking angle comes from an arc-length
-      match — the roller pin's impulse sweep at the roller radius must equal the notch's sweep
-      at the fork's notch depth (<code>rollerR·Δθ = notchDepth·2·bank</code>), or the pin and
-      notch never coincide and the watch stops on paper before it stops in metal. The beat
-      rate is a spec knob (the HUD's <em>Beat rate</em> selector re-derives the train's tooth
-      counts to suit).</p>
-      <p class="note">The pallet stones seat in slots whose gap is derived from the arm's own
+      <p>The balance and its hairspring are the oscillator; everything else exists to keep it
+      swinging and to count its swings. Each beat is a fixed sequence of mechanical contacts,
+      and the source builds every one by name (<code>makePalletFork</code>): the stone's
+      locking corner solved <em>onto</em> the wheel's tooth circle, the impulse face cut as
+      the plane through that corner, and draw ("LEAN") as a locking face angled so the
+      wheel's own pressure pulls the fork <em>deeper</em> into its banking — with a
+      draw-torque-sign assert, because a draw that pushes the wrong way unlocks itself.</p>
+
+      <!-- —————— PLATE 1 : THE FOUR PHASES —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One beat, four contacts — at the entry stone</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 250" width="780" height="250" role="img"
+               aria-label="Four panels: locked with draw holding the fork on its bank; unlock with the wheel recoiling; impulse along the impulse face; drop onto the exit stone">
+            <g font-size="10">
+            <!-- panel frames -->
+            <line x1="195" y1="16" x2="195" y2="200" stroke="var(--line)" stroke-width="0.75"/>
+            <line x1="390" y1="16" x2="390" y2="200" stroke="var(--line)" stroke-width="0.75"/>
+            <line x1="585" y1="16" x2="585" y2="200" stroke="var(--line)" stroke-width="0.75"/>
+            </g>
+            <!-- P1 LOCKED: tooth tip resting on the stone's locking face, arrow into bank -->
+            <g transform="translate(20 30)">
+              <path d="M 30 120 L 90 90 L 96 118 L 40 142 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              <path d="M 118 60 L 92 96 L 76 88 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="90" cy="93" r="4" fill="var(--ruby)"/>
+              <line x1="60" y1="112" x2="34" y2="126" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <text class="lbl lbl-strong" x="8" y="0">1 · locked</text>
+              <text class="val" x="8" y="14">tooth tip ON the locking face;</text>
+              <text class="val" x="8" y="27">DRAW pulls the fork into its bank</text>
+              <text class="lbl" x="8" y="170">wheel held · balance swings free</text>
+            </g>
+            <!-- P2 UNLOCK: pin in notch, stone sliding off corner, wheel recoils -->
+            <g transform="translate(215 30)">
+              <path d="M 30 108 L 90 78 L 96 106 L 40 130 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              <path d="M 118 56 L 92 92 L 76 84 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="91" cy="86" r="4" fill="var(--ruby)"/>
+              <line x1="112" y1="70" x2="126" y2="56" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <text class="val val-brass" x="96" y="44">recoil −1.0°</text>
+              <text class="lbl lbl-strong" x="8" y="0">2 · unlock</text>
+              <text class="val" x="8" y="14">roller pin knocks the fork; the</text>
+              <text class="val" x="8" y="27">stone slides UP the draw face —</text>
+              <text class="val" x="8" y="40">the wheel visibly RECOILS</text>
+              <text class="lbl" x="8" y="170">p &lt; 0.04 of the beat</text>
+            </g>
+            <!-- P3 IMPULSE: tooth driving along impulse face -->
+            <g transform="translate(410 30)">
+              <path d="M 30 96 L 90 70 L 100 98 L 44 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              <path d="M 120 78 L 94 104 L 80 92 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="93" cy="97" r="4" fill="var(--ruby)"/>
+              <line x1="70" y1="86" x2="44" y2="74" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <text class="lbl lbl-strong" x="8" y="0">3 · impulse</text>
+              <text class="val" x="8" y="14">tooth drives along the impulse</text>
+              <text class="val" x="8" y="27">face — the beat's push, returned</text>
+              <text class="val" x="8" y="40">to the balance through the notch</text>
+              <text class="lbl" x="8" y="170">wheel advances +12°</text>
+            </g>
+            <!-- P4 DROP: tooth free, wheel falls to exit stone -->
+            <g transform="translate(605 30)">
+              <path d="M 30 96 L 88 70 L 98 98 L 42 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              <path d="M 128 96 L 102 122 L 88 110 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <text class="lbl lbl-strong" x="8" y="0">4 · drop</text>
+              <text class="val" x="8" y="14">the tooth leaves; the wheel</text>
+              <text class="val" x="8" y="27">falls onto the EXIT stone's</text>
+              <text class="val" x="8" y="40">locking face — lock, mirrored</text>
+              <text class="lbl" x="8" y="170">then the other half-beat</text>
+            </g>
+            <text class="lbl" x="20" y="235">schematic — stone (ruby), escape tooth (brass), contact marked; the built faces are solved, not drawn (geometry.js makePalletFork)</text>
+            <defs><marker id="arrE" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
+          </svg>
+        </div>
+        <figcaption>Lock is a contact, not a state: the tooth stands on the stone's locking
+        face and the face's LEAN converts wheel torque into a pull toward the banking (draw)
+        — asserted at build with the torque sign written out. Unlock spends real wheel motion
+        (the −1.0° recoil in the law below is draw made visible). Banking is derived from the
+        arc-length match <code>rollerR·Δθ = notchDepth·2·bank</code> — without it the pin and
+        notch never coincide.</figcaption>
+      </figure>
+
+      <!-- —————— PLATE 2 : THE BEAT LAW, INTERACTIVE —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Drive one beat through the real law</span></div>
+        <div class="controls">
+          <label>beat phase p
+            <input type="range" id="escSlider" min="0" max="1000" value="0" step="1" aria-label="Phase within one beat">
+          </label>
+          <span class="readout" id="escReadout">p 0.000</span>
+          <span class="chip ride" id="escChip">LOCKED · draw on the bank</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 200" width="780" height="200" role="img"
+               aria-label="Graph of escape wheel advance and fork swing across one beat: a recoil dip, a smoothstep advance of twelve degrees, then lock">
+            <line x1="60" y1="160" x2="740" y2="160" stroke="var(--text)" stroke-width="1"/>
+            <line x1="60" y1="20" x2="60" y2="160" stroke="var(--text)" stroke-width="1"/>
+            <text class="lbl" x="700" y="180">p (beat)</text>
+            <text class="val" x="14" y="40">+12°</text>
+            <text class="val" x="14" y="164">0°</text>
+            <text class="val" x="8" y="188">−1° recoil dip</text>
+            <line x1="169" y1="20" x2="169" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <text class="val" x="150" y="176">0.16</text>
+            <path id="escLaw" fill="none" stroke="var(--brass)" stroke-width="2"/>
+            <path id="forkLaw" fill="none" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 3"/>
+            <text class="lbl val-brass" x="240" y="46">escape wheel Δ (escapeDeltaDeg)</text>
+            <text class="lbl val-steel" x="240" y="64">fork swing, bank → bank (forkSwingRad, normalised)</text>
+            <circle id="escMarker" r="5" fill="var(--brass)"/>
+          </svg>
+        </div>
+        <figcaption>Ported arithmetic, not an animation: the curves are
+        <code>escapeDeltaDeg(p)</code> and <code>forkSwingRad</code> exactly as the tick
+        computes them — recoil dip of <code>RECOIL_DEG = 1.0°</code> over the first quarter
+        of the impulse window (<code>RECOIL_FRACTION = 0.25</code>), smoothstep advance of
+        <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch), all inside
+        <code>IMPULSE_WIDTH = 0.16</code> of the beat; the remaining 84% is lock, with the
+        balance detached. The wheel's angle is <code>n·BEAT_DEG + Δ(p)</code> — the whole
+        train hangs off this one function, never integrated, so it cannot drift.</figcaption>
+      </figure>
+
+      <p class="note">Ledger: the tick models the escapement KINEMATICALLY — the wheel's
+      angle is a law of balance phase; forces, lift angles and safety-action dynamics are
+      not simulated (the drawn contacts are the built geometry's, the motion law is the
+      shipped one). The pallet stones seat in slots whose gap is DERIVED from the arm's own
       extrude bevel (<code>gGap = armBevel + SEAT_SHOW</code>) — a guard born from a defect
-      the battery structurally could not see (TODO 5's second instance).</p>
+      every battery run missed; that seat is also TODO 5's fixture-vs-fixture residue: the
+      one intra-unit pair class the interim instrument still cannot see. Banking:
+      <code>FORK_BANK_DEG = rollerR·Δθ_pin / notchDepth / 2</code>, derived, with
+      <code>FORK_RECOIL_DEG</code> at a quarter of it.</p>
     </div>
   </details>
 
@@ -734,6 +845,52 @@
     }
 
     update();
+
+    // —— Escapement plate 2: the beat law, ported verbatim (layout.js/main.js) ——
+    (function () {
+      var BEAT_DEG = 12, IMPULSE_WIDTH = 0.16, RECOIL_FRACTION = 0.25, RECOIL_DEG = 1.0;
+      var smooth = function (x) { return x * x * (3 - 2 * x); };
+      function escDelta(p) {
+        if (p < IMPULSE_WIDTH) {
+          var s2 = p / IMPULSE_WIDTH;
+          if (s2 < RECOIL_FRACTION) return -Math.sin((s2 / RECOIL_FRACTION) * Math.PI) * RECOIL_DEG;
+          return smooth((s2 - RECOIL_FRACTION) / (1 - RECOIL_FRACTION)) * BEAT_DEG;
+        }
+        return BEAT_DEG;
+      }
+      function forkNorm(p) { // bank −1 → +1, with the recoil dip pressing INTO the bank
+        if (p < IMPULSE_WIDTH) {
+          var s2 = p / IMPULSE_WIDTH;
+          if (s2 < RECOIL_FRACTION) return -1 - 0.25 * Math.sin((s2 / RECOIL_FRACTION) * Math.PI);
+          return -1 + 2 * smooth((s2 - RECOIL_FRACTION) / (1 - RECOIL_FRACTION));
+        }
+        return 1;
+      }
+      var X0 = 60, XW = 680, Y0 = 160, YSC = (160 - 40) / 12; // 12° spans the graph height
+      var dEsc = [], dFork = [];
+      for (var i = 0; i <= 400; i++) {
+        var p = i / 400, x = X0 + p * XW;
+        dEsc.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + (Y0 - escDelta(p) * YSC).toFixed(1));
+        dFork.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + (Y0 - 30 - (forkNorm(p) + 1) * 30).toFixed(1));
+      }
+      document.getElementById('escLaw').setAttribute('d', dEsc.join(' '));
+      document.getElementById('forkLaw').setAttribute('d', dFork.join(' '));
+      var sl = document.getElementById('escSlider'), ro = document.getElementById('escReadout');
+      var ch = document.getElementById('escChip'), mk = document.getElementById('escMarker');
+      function upd() {
+        var p = sl.value / 1000;
+        ro.textContent = 'p ' + p.toFixed(3);
+        mk.setAttribute('cx', X0 + p * XW);
+        mk.setAttribute('cy', Y0 - escDelta(p) * YSC);
+        ch.className = 'chip';
+        if (p >= IMPULSE_WIDTH) { ch.classList.add('ride'); ch.textContent = 'LOCKED · draw on the bank — balance detached'; }
+        else if (p < IMPULSE_WIDTH * RECOIL_FRACTION) { ch.classList.add('held'); ch.textContent = 'UNLOCK · recoil — draw made visible'; }
+        else if (p < IMPULSE_WIDTH * 0.97) { ch.classList.add('ramp'); ch.textContent = 'IMPULSE · tooth on the impulse face'; }
+        else { ch.classList.add('trip'); ch.textContent = 'DROP · onto the exit stone'; }
+      }
+      sl.addEventListener('input', upd);
+      upd();
+    })();
   })();
 </script>
 </body>
