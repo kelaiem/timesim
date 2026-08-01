@@ -1272,18 +1272,12 @@ export const INTRA_UNIT_CONTACTS = [
 export const INTRA_UNIT_WAIVERS = [
   { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#9', debt: 'TODO 22' }, // the pusher bar ends 0.9 from the wheel AXIS, inside its disc band
   { unit: 'Alarm switch', a: 'alarmColWheel', b: 'TorusGeometry#12', debt: 'TODO 22' },   // the pusher guide torus in the same band
-  // TODO 23 — bearing-cock arms modeled SOLID to the axis they carry: the
-  // bush/eye ring has a bore, the box arm behind it does not, so the running
-  // member passes through uncut arm stock (a box cannot carry a hole).
-  { unit: 'Alarm setting arbor', a: 'CylinderGeometry#0', b: 'BoxGeometry#4', debt: 'TODO 23' }, // rod through the cock arm's solid end
-  { unit: 'Alarm setting arbor', a: 'ExtrudeGeometry#2', b: 'BoxGeometry#4', debt: 'TODO 23' },  // bevel teeth graze the arm's top by 0.01
-  { unit: 'Alarm release lifter', a: 'alarmLifterHead', b: 'BoxGeometry#9', debt: 'TODO 23' },   // head through the upper guide arm's solid end
-  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'BoxGeometry#9', debt: 'TODO 23' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'BoxGeometry#11', debt: 'TODO 23' }, // and the lower guide arm
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'BoxGeometry#11', debt: 'TODO 23' }, // blade stub into the lower arm, 0.04 at rest
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'LatheGeometry#12', debt: 'TODO 23' }, // stub onto the lower eye's face, same 0.04
-  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'BoxGeometry#11', debt: 'TODO 23' },  // blade crosses the lower arm's top corner, 0.03
-  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'LatheGeometry#12', debt: 'TODO 23' },
+  // TODO 23's nine rows are CLOSED: cock/guide arms now end at their
+  // ring's outer wall, the setting cock's z derives against the bevel
+  // above as well as the pinion below, and the lifter's lower guide —
+  // measured unable to coexist with the blade stub's swept corridor —
+  // was removed (the plunger eye + the run's cheek mid-guide are the
+  // two guidance stations).
 ];
 export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });

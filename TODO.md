@@ -171,7 +171,9 @@ and ribbon anchors, spring bites, blade anchors — each row carrying
 *why* the contact is a joint) and 11 real findings, waived: 2 citing
 item 22 (the alarm pusher's bar in its own column wheel's disc band)
 and 9 citing item 23 (bearing-cock arms modeled solid to the axis
-they carry — a CLASS the first run surfaced at two stations).
+they carry — a CLASS the first run surfaced at two stations; since
+CLOSED — those 9 rows are repaired and their waivers deleted, so the
+table now carries item 22's two rows only).
 Runtime ~2.8 s, so it can gate. Two footnotes from the triage: one
 keyless row (`ExtrudeGeometry#43 ⇄ CylinderGeometry#39`) sits at the
 arbiter's d≈1e-4 boundary and flips run-to-run — declared, since the
@@ -1886,7 +1888,7 @@ bar's z to a stratum the disc doesn't occupy, re-deriving the pawl
 contact height with it. Until then the two `INTRA_UNIT_WAIVERS` rows
 in `src/inspect.js` cite this item; closing it deletes both.
 
-## 23. Bearing-cock arms are solid where their bores should be
+## 23. CLOSED — bearing-cock arms end at their rings; the lifter's lower guide was evicted by measurement
 
 Item 5's interim surfaced this as a CLASS on its first full run: a
 bearing cock is modeled as post + arm + bush, the bush RING carries a
@@ -1920,3 +1922,25 @@ neighbour that crosses it — both the pinion below and the bevel
 above for the setting cock, the stub/blade stack's full travel for
 the lifter's lower guide. Closing this item deletes the nine waiver
 rows; `intraUnit` then measures the repair.
+
+**Closed 2026-08-01.** Both stations re-derived, one member evicted:
+
+- **Setting cock**: the arm now spans bush-ring outer wall (0.85) →
+  post (outer end unchanged), so the rod runs only through the ring's
+  real bore; and `BUSH_Z` derives as `bevel underside (−6.158, tooth
+  tips out to r 1.41) − CLEAR_MARGIN − stock/2` — the first cut's
+  −6.3 was placed against a stale pinion reading ("top −6.70"; the
+  built pinion's top is −7.99, 1.38 below the new station).
+- **Lifter**: the upper guide arm ends at the eye ring's outer wall
+  (0.49). The LOWER guide could not be re-derived into legality: the
+  corridor between the blade stub's swept bottom (−5.68) and the
+  run's swept top (−6.09) is 0.413, and the guide's 0.32 stock plus
+  two `CLEAR_MARGIN`s needs 0.62 — no z-station exists. It was
+  matter that could not do its claimed job (its bore was crossed by
+  the stub at rest), so it was REMOVED; guidance keeps two stations
+  without it (the plunger eye, the run's cheek mid-guide).
+
+All nine waiver rows deleted; `intraUnit` measures the repair (0
+unwaived, only item 22's two rows remain). The class lesson stands in
+MODELING.md's territory: a box cannot carry a bore — model the arm to
+the ring, never through it.
