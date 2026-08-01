@@ -6757,16 +6757,34 @@ alarmRotor.add(alarmArborRod);
 {
   const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD };
   const postXY = { x: alarmWorld.x + u.x * 1.4, y: alarmWorld.y + u.y * 1.4 };
-  const BUSH_Z = -6.3; // above the pinion (top −6.70) with clearance to spare
+  // TODO 23: the station derives against BOTH moving neighbours. Above,
+  // the corner bevel's underside reaches z −6.158 (tooth tips out to
+  // r 1.41 — over the whole arm), so the cock's top face sits one
+  // CLEAR_MARGIN under it. Below, the setting pinion's top is at −7.99,
+  // 1.38 clear — the first cut's −6.3 was placed against a stale reading
+  // of that pinion ("top −6.70") and grazed the bevel by 0.008.
+  const COCK_T = 0.3;
+  const BEVEL_UNDERSIDE = -6.158; // the §25 C corner bevel's lowest tooth extent, measured on the built gear
+  const BUSH_Z = BEVEL_UNDERSIDE - CLEAR_MARGIN - COCK_T / 2;
+  const BUSH_R_OUT = 0.85;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, -2 - BUSH_Z, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
   post.position.set(postXY.x, postXY.y, (-2 + BUSH_Z) / 2);
   alarmArborUnit.add(post);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.3), MATS.nickel);
-  arm.position.set((postXY.x + alarmWorld.x) / 2, (postXY.y + alarmWorld.y) / 2, BUSH_Z);
+  // TODO 23: the arm ends at the bush ring's OUTER wall — the ring
+  // carries the bore; the first cut ran the arm to the axis, through the
+  // 0.4-radius rod (a box cannot carry a bore). Outer end unchanged,
+  // 0.15 into the post's body.
+  const cockSpan = Math.hypot(postXY.x - alarmWorld.x, postXY.y - alarmWorld.y);
+  const armOuter = cockSpan - (cockSpan - 1.4) / 2; // the as-built outer end station
+  const armLen = armOuter - BUSH_R_OUT;
+  const armMid = (BUSH_R_OUT + armOuter) / 2;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.7, COCK_T), MATS.nickel);
+  arm.position.set(alarmWorld.x + (postXY.x - alarmWorld.x) / cockSpan * armMid,
+                   alarmWorld.y + (postXY.y - alarmWorld.y) / cockSpan * armMid, BUSH_Z);
   arm.rotation.z = Math.atan2(u.y, u.x);
   alarmArborUnit.add(arm);
-  const bush = new THREE.Mesh(ringGeo(0.45, 0.85, 0.3), MATS.nickel);
+  const bush = new THREE.Mesh(ringGeo(0.45, BUSH_R_OUT, COCK_T), MATS.nickel);
   bush.position.set(alarmWorld.x, alarmWorld.y, BUSH_Z);
   alarmArborUnit.add(bush);
 }
@@ -6910,8 +6928,8 @@ const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); //
   plunger.rotation.x = Math.PI / 2;
   plunger.position.set(hx, 0, ((headTop - 0.24) + ALARM_LIFT_RUN_Z) / 2);
   alarmLifter.add(plunger);
-  // blade stub — the return blade bears up under this (between the eyes,
-  // riding clear of both across the full travel)
+  // blade stub — the return blade bears up under this (under the guide
+  // eye, riding clear of it across the full travel)
   const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, STOCK_MIN_U, 10), MATS.steel);
   stub.rotation.x = Math.PI / 2;
   stub.position.set(hx, 0, -5.3);
@@ -6944,19 +6962,34 @@ const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); //
   web.rotation.z = az;
   alarmLifter.add(web);
   alarmLifterUnit.add(alarmLifter);
-  // static guides: bracket post + two eyes at the plunger (from the base
+  // static guides: bracket post + ONE eye at the plunger (from the base
   // plate's dial-side face, the alarm arbor's bearing-cock pattern), a
   // slotted mid-guide under the run, and the return blade.
+  // TODO 23 removed the first cut's second, lower eye: measured, the
+  // corridor between the blade stub's swept bottom (−5.68) and the run's
+  // swept top (−6.09) is 0.413 — the eye's 0.32 stock plus two
+  // CLEAR_MARGINs (0.62) cannot fit, so a guide there stood in its own
+  // unit's travel (0.04 into the stub at rest). Guidance keeps two
+  // stations without it: this eye at the plunger, the cheek mid-guide at
+  // the run.
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
   post.position.set(hx + 0.7, 1.3, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
   post.rotation.x = Math.PI / 2;
   alarmLifterUnit.add(post);
-  for (const ez of [-5.15, ALARM_LIFT_RUN_Z + 0.45]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(0.7, 1.3) + 0.3, 0.32, STOCK_MIN_U), MATS.nickel);
-    arm.position.set(hx + 0.35, 0.65, ez);
+  {
+    const ez = -5.15;
+    const eyeROut = 0.17 + STOCK_MIN_U;  // the RING carries the bore (0.02 running fit over the 0.15 plunger)
+    const span = Math.hypot(0.7, 1.3);   // post centre → plunger axis
+    // TODO 23: the arm ends at the eye ring's OUTER wall — an arm run to
+    // the axis is solid where the plunger travels (a box cannot carry a
+    // bore). Outer end keeps the as-built 0.15 overhang past the post.
+    const armLen = (span + 0.15) - eyeROut;
+    const mid = (-0.15 + (span - eyeROut)) / 2; // station along post→axis, from the post centre
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.32, STOCK_MIN_U), MATS.nickel);
+    arm.position.set(hx + 0.7 - (0.7 / span) * mid, 1.3 - (1.3 / span) * mid, ez);
     arm.rotation.z = Math.atan2(-1.3, -0.7);
     alarmLifterUnit.add(arm);
-    const eye = new THREE.Mesh(ringGeo(0.17, 0.17 + STOCK_MIN_U, STOCK_MIN_U), MATS.nickel);
+    const eye = new THREE.Mesh(ringGeo(0.17, eyeROut, STOCK_MIN_U), MATS.nickel);
     eye.position.set(hx, 0, ez);
     alarmLifterUnit.add(eye);
   }
