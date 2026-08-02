@@ -17,11 +17,22 @@ lever escapement. Everything is procedural — there are no model assets.
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
 
-`explain.html` is the mechanism explainer (§65) — linked from the HUD,
-styled as the HUD. When a significant mechanism ships or changes, add or
-refresh its entry there in the same landing; plate numbers quote the
-real source constants, and entries state their mechanism's open TODO
-debt rather than hiding it.
+`explain.html` is the mechanism explainer (§65, plates for every
+mechanism as of §67) — linked from the HUD, styled as the HUD. When a
+significant mechanism ships or changes, add or refresh its entry there
+in the same landing; plate numbers quote the real source constants, and
+entries state their mechanism's open TODO debt rather than hiding it.
+The page is sim-code-free, so explainer landings don't touch the battery.
+
+The sim's schematic mode (§66) is a parallel **Line-only** tier on
+camera layer 1: any rotor whose builder records `userData.r` gets its
+pitch-circle proxy for free, and contact dots are lit by
+`measureHandoffsNow` — the same `ALARM_HANDOFFS` rows the battery
+gates, measured at the current pose (a live display, not a gate). Two
+invariants, both boot-asserted: proxies are never Meshes (the
+inspectors collect `isMesh`, so a Mesh proxy silently joins the
+sweeps), and the mode swaps by camera layer, never by `mesh.visible`
+(parts whose visibility is a tick law must keep their state).
 
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying
@@ -141,6 +152,18 @@ http://localhost:8347/.claude/worktrees/<name>/index.html
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
 `GET /__state`, keep the JSON, `PUT` it back when done.
+
+## Releasing
+
+`release.yml` runs from the Actions tab only: it bumps the
+major.minor.patch tag on the tip of `main`, publishes a GitHub Release,
+and deploys the tagged tree to QA over SFTP, repointing the QA symlink.
+`tools/stamp-release.mjs` (§28) stamps every asset URL with
+`?v=<version>` so browsers can't serve stale modules — paths stay
+deliberately RELATIVE (the web root may be the symlink itself; an
+absolute `/<releases>/<version>/` rebase 404s the whole app). All
+dev/CI dependencies live under `tools/` so the app itself stays
+dependency-free, and the release payload excludes `tools/`.
 
 ## Inspecting
 
