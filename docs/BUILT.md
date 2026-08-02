@@ -6252,7 +6252,12 @@ tick, maintaining pawl/detent, minute jump, reset hammer, crown stem,
 gong strike point) carries a concentric-ring glyph in the event red,
 attached inside the emitter. Deliberately still undrawn: Fork cock and
 pillars (accommodation, not mechanism) and the Alarm release sleeve
-(not in the owner's list; the next natural entry).
+(not in the owner's list; the next natural entry). And X-RAY applies
+to the schematic too (owner call): the plate occluders' fills register
+with setXray and lift with the same toggle — one x-ray state meaning
+"see through the plates" in both views — while the rim and edge
+hairlines stay, so the plates remain drawn parts rather than opaque
+paper.
 
 **Palette note.** Hands take their own blued line color — the metal is
 MATS.bluedHand, and the tier mirrors the palette it abstracts; brass

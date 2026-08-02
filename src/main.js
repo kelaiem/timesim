@@ -10974,10 +10974,18 @@ const SCHEMATIC = { proxies: [], on: false };
     const occMat = new THREE.MeshBasicMaterial({ color: PAGE });
     const rimMat = new THREE.LineBasicMaterial({ color: 0x3d4654 }); // dim hairline — structure, not mechanism
     SCHEMATIC.occMat = occMat; SCHEMATIC.rimMat = rimMat; // §71: the 3/4 plate's occluder shares the ONE page color and hairline
+    // §71 (owner call): x-ray applies to the schematic too — the occluder
+    // FILLS register here and setXray hides them, so x-ray in the line
+    // drawing means what it means in the metal: see through the plates.
+    // The rim/edge hairlines stay — the plate remains a drawn part, it
+    // just stops being opaque paper. (These are tier furniture with no
+    // tick-law visibility, so the mesh.visible invariant does not apply.)
+    SCHEMATIC.occluderFills = [];
     for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
       const f = new THREE.Mesh(new THREE.CircleGeometry(plateR, 96), occMat);
       f.position.z = zf;
       if (zf < 0) f.rotation.x = Math.PI; // face outward
+      SCHEMATIC.occluderFills.push(f);
       const rim = new THREE.Line(circGeo(plateR, 96), rimMat);
       rim.position.z = zf;
       for (const o of [f, rim]) { o.userData.schematic = true; o.layers.set(1); backPlate.add(o); }
@@ -10985,6 +10993,7 @@ const SCHEMATIC = { proxies: [], on: false };
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(plateR, plateR, 2, 96, 1, true), occMat);
     wall.rotation.x = Math.PI / 2;
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
+    SCHEMATIC.occluderFills.push(wall);
   }
 }
 function setSchematic(on) {
@@ -11173,6 +11182,7 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
         const tq = byName('threeQuarterPlate');
         const occ = new THREE.Mesh(tq.geometry, SCHEMATIC.occMat);
         occ.userData.schematic = true; occ.layers.set(1); tq.add(occ);
+        SCHEMATIC.occluderFills.push(occ);
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tq.geometry, 30), SCHEMATIC.rimMat);
         edges.userData.schematic = true; edges.layers.set(1); tq.add(edges);
       }
@@ -11715,6 +11725,9 @@ const xrayGlassMats = new Set([tqXrayMat, ...dialXrayClones.values()]);
 function setXray(on) {
   xrayOn = on;
   tqPlateMesh.material = on ? tqXrayMat : tqSolidMat;
+  // §71 x-ray-in-schematic: the plate occluders' fills lift with the same
+  // toggle, so one x-ray state means "see through the plates" in both views
+  for (const o of SCHEMATIC.occluderFills || []) o.visible = !on;
   for (const m of dialXrayMeshes) {
     m.material = on ? dialXrayClones.get(m.userData.solidMat) : m.userData.solidMat;
   }
