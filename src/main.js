@@ -10797,6 +10797,7 @@ const SCHEMATIC = { proxies: [], on: false };
     const PAGE = 0x0b0d10; // the page background the line tier draws on
     const occMat = new THREE.MeshBasicMaterial({ color: PAGE });
     const rimMat = new THREE.LineBasicMaterial({ color: 0x3d4654 }); // dim hairline — structure, not mechanism
+    SCHEMATIC.occMat = occMat; SCHEMATIC.rimMat = rimMat; // §71: the 3/4 plate's occluder shares the ONE page color and hairline
     for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
       const f = new THREE.Mesh(new THREE.CircleGeometry(plateR, 96), occMat);
       f.position.z = zf;
@@ -10984,6 +10985,21 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
       // ride hammerGroup, the group the §36A reset law swings
       addLine(hammerLever, [V(0, 0, 0), V(0, hammerArmLen, 0)]);
       addAxisLine(hammerTailBar);
+      // the THREE-QUARTER PLATE occludes too (owner call) — and unlike the
+      // base plate it is not a disc: its silhouette IS its geometry (the
+      // three-quarter cut, every bore and slot), so the occluder is the
+      // plate's own extrude re-drawn in the page color, with its sharp
+      // edges as hairlines so the boundary and the openings read. It lives
+      // INSIDE the labelled unit, which is exactly what the §71 prune in
+      // inspect.js's collectUnits exists to permit — flagged display never
+      // joins the sweeps, wherever it is parented.
+      {
+        const tq = byName('threeQuarterPlate');
+        const occ = new THREE.Mesh(tq.geometry, SCHEMATIC.occMat);
+        occ.userData.schematic = true; occ.layers.set(1); tq.add(occ);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tq.geometry, 30), SCHEMATIC.rimMat);
+        edges.userData.schematic = true; edges.layers.set(1); tq.add(edges);
+      }
     }
   }
 

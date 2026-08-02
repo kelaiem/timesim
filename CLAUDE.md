@@ -29,10 +29,16 @@ camera layer 1: any rotor whose builder records `userData.r` gets its
 pitch-circle proxy for free, and contact dots are lit by
 `measureHandoffsNow` — the same `ALARM_HANDOFFS` rows the battery
 gates, measured at the current pose (a live display, not a gate). Two
-invariants, both boot-asserted: proxies are never Meshes (the
-inspectors collect `isMesh`, so a Mesh proxy silently joins the
-sweeps), and the mode swaps by camera layer, never by `mesh.visible`
-(parts whose visibility is a tick law must keep their state).
+invariants, both boot-asserted: the tier's proxies are never Meshes,
+and the mode swaps by camera layer, never by `mesh.visible` (parts
+whose visibility is a tick law must keep their state). The one meshy
+exception is the plate OCCLUDERS (§71's hidden-line convention —
+page-colored silhouettes of the base and three-quarter plates):
+`collectUnits` in `inspect.js` prunes anything flagged
+`userData.schematic` wherever it is parented, so flagged display never
+joins the sweeps — the same trust the fingerprint extends. Flag every
+schematic object directly; an unflagged child of a flagged parent is
+NOT protected.
 
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying

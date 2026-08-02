@@ -6225,7 +6225,16 @@ geometry dimension (the spring-zigzag convention, no restated
 lengths), both crank keys drawn from their built children so the
 registration solve's roll carries the drawing — and the ZERO-RESET
 HAMMER, lever and tail bar riding hammerGroup, the group the §36A
-reset law swings.
+reset law swings. And the THREE-QUARTER PLATE joined the base plate
+as an occluder — not a disc but the plate's own extrude re-drawn in
+the page color with its sharp edges as hairlines, so the cut, the
+bores, and the slots all read. That occluder lives INSIDE its labelled
+unit, which forced the §71 collector change: `collectUnits` in
+inspect.js now prunes anything flagged `userData.schematic` wherever
+it is parented — "invisible to all instruments" made structural in the
+one collector every unit-based check flows through, the same trust the
+fingerprint already extends. Flag every schematic object directly; an
+unflagged child of a flagged parent is not protected.
 
 **Palette note.** Hands take their own blued line color — the metal is
 MATS.bluedHand, and the tier mirrors the palette it abstracts; brass
