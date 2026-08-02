@@ -624,15 +624,18 @@
             <text class="val" x="60" y="196">profileAt(θ): duty 0.5 · 48 segments per pitch (~9 per flank) — the ride every member takes is the surface that was cut</text>
           </svg>
         </div>
-        <figcaption>Ledger, current: the wheel just took its TODO 11 tranche — diameter to
-        its position bound (tip circle = plate edge − <code>CLEAR_MARGIN</code>, Ø 1.9 mm)
-        and real feature depths (base 0.21 mm, tier 0.30 mm); TODO 22 (the pusher's bar in
-        the disc band) is CLOSED — the press axis now rides above the wheel's stack and the
-        pawl hangs from a real carrier. Full real scale (Ø 4–6 mm) is blocked by the
-        station itself — the wheel's centre stands 2.95 from the plate edge — recorded in
-        TODO 11 as layout work. The press travel is one ratchet-tooth arc at the saw tips,
-        derived; the pawl's parked kiss is a declared contact the
-        <code>alarmHandoffs</code> battery asserts every run.</figcaption>
+        <figcaption>Ledger, current: the wheel is at REAL chronograph scale — §68 landed
+        it at Ø 4.32 mm (<code>ALARM_COL_BASE_R</code> 5.7) with real feature depths (base
+        0.27 mm, tier 0.53 mm). The two walls TODO 11 measured are both down: the lock
+        pivot's azimuth re-derived 160° → 24° (a scored sweep — the old tail line pointed
+        AWAY from centre and no length could fit), and the wheel raised onto its lengthened
+        stud above the three-quarter plate (<code>ALARM_COL_RAISE</code>, skirt ≥ plate top
+        + <code>CLEAR_MARGIN</code>, asserted at boot) with every rider's z-station riding
+        the same constant up. TODO 22 (the pusher's bar in the disc band) is CLOSED — the
+        press axis rides above the wheel's stack and the pawl hangs from a real carrier.
+        The press travel is one ratchet-tooth arc at the saw tips, derived; the pawl's
+        parked kiss is a declared contact the <code>alarmHandoffs</code> battery asserts
+        every run.</figcaption>
       </figure>
       <!-- —————— PLATE 2 : PRESS THE PUSHER (interactive) —————— -->
       <figure>
@@ -658,8 +661,8 @@
               <text class="lbl lbl-strong" x="150" y="-24">lock beak · TODO 24's row</text>
               <g id="cwClick" transform="rotate(120)"><circle id="cwClickNose" cx="134" cy="0" r="13" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/><rect x="145" y="-5" width="70" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
               <text class="lbl lbl-strong" x="-150" y="130">click (indexes the two states)</text>
-              <g id="cwLink" transform="rotate(-120)"><rect id="cwLinkNose" x="86" y="-9" width="26" height="18" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.6"/><rect x="110" y="-5" width="90" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
-              <text class="lbl lbl-strong" x="-240" y="-120">link beak · rides the tops (§35)</text>
+              <g id="cwLink" transform="rotate(180)"><rect id="cwLinkNose" x="86" y="-9" width="26" height="18" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.6"/><rect x="110" y="-5" width="90" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
+              <text class="lbl lbl-strong" x="-272" y="-14">link beak · rides the tops (§35 · §68: opposite)</text>
               <g transform="rotate(45)"><rect x="98" y="-30" width="34" height="12" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/></g>
               <text class="lbl" x="86" y="-104">pawl at the saw</text>
             </g>
@@ -688,13 +691,15 @@
   <details class="mech" id="alarm-arming">
     <summary>Alarm arming — one press, thirty units of movement<span class="where">alarm · src/main.js §35</span></summary>
     <div class="mech-body">
-      <p>The column wheel lives at the rim; the selector ring that actually arms the alarm
-      lives at the centre — 32 units apart, a span no lever should cross. The real-watch
-      answer is a <b>lay shaft</b>: the §35 link beak reads the castellations (same parity
-      as the lock beak, 120° around), and its long tail drives a vertical <b>rod</b> down
-      through bores in both plates, then a rim <b>crank</b>, the radial <b>shaft</b>, and a
-      centre <b>crank</b> pressing the ring's drive tab. Rod down = ring down = armed;
-      <code>alarmOn</code> is a readout of the geometry, not a flag.</p>
+      <p>The column wheel lives out near the rim; the selector ring that actually arms the
+      alarm lives at the centre — a span no lever should cross. The real-watch answer is a
+      <b>lay shaft</b>: the §35 link beak reads the castellations (same parity as the lock
+      beak — §68 re-sited the rod diametrically opposite it, three whole pitches, so
+      parity holds by construction), and its tail (~3:1 to the beak since §68 — the 26.79
+      tail §35 grew to reach a corridor-fixed rod is retired) drives a vertical <b>rod</b>
+      down through bores in both plates, then a rim <b>crank</b>, the radial <b>shaft</b>,
+      and a centre <b>crank</b> pressing the ring's drive tab. Rod down = ring down =
+      armed; <code>alarmOn</code> is a readout of the geometry, not a flag.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The unbroken link — every member real</span></div>
         <div class="fig-body">
@@ -702,7 +707,7 @@
             <circle cx="70" cy="60" r="30" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
             <text class="lbl" x="42" y="112">column wheel</text>
             <rect x="104" y="52" width="120" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <text class="lbl lbl-strong" x="104" y="40">beak + long tail</text>
+            <text class="lbl lbl-strong" x="104" y="40">beak + tail (~3:1, §68)</text>
             <circle cx="104" cy="58" r="4" fill="var(--ruby)"/>
             <rect x="224" y="58" width="10" height="70" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
             <text class="lbl lbl-strong" x="244" y="80">rod ↓ through both plates</text>
@@ -721,9 +726,13 @@
         hand-off measures shut, but <b>TODO 20 is open</b> — members of this chain are
         still POSED from the output (the ring's state) rather than driven member-by-member
         from the input, and this plate must not imply otherwise. The rod's site itself is a
-        story: five corridor routes died to probe blindnesses before the surviving az-212
-        column was swept across eleven poses (the §35 record, and the origin of the P0–P3
-        priority ladder).</figcaption>
+        story in two acts: five §35 corridor routes died to probe blindnesses before a
+        surviving az-212 column was swept across eleven poses — and the beak's tail grew to
+        26.79 to reach it (the origin of the P0–P3 priority ladder). §68 closed that act:
+        the rod now derives its site FROM the mechanism — diametrically opposite the lock
+        beak at a derived offset, three whole pitches so parity holds by construction — and
+        the tail collapsed to ~3:1, with the lay shaft's bush stations re-solved around the
+        power-reserve train's swept web.</figcaption>
       </figure>
     </div>
   </details>
@@ -1456,8 +1465,9 @@
       var step = 0, anim = null;
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       function setStates(rot) {
-        // riders at az 0 (lock beak), 120° (click), −120° (link beak); wheel rotated by rot
-        var pB = prof(0 - rot), pC = prof(120 * Math.PI / 180 - rot), pL = prof(-120 * Math.PI / 180 - rot);
+        // riders at az 0 (lock beak), 120° (click), 180° (link beak — §68 re-sited it
+        // diametrically opposite, three whole pitches, so parity holds by construction)
+        var pB = prof(0 - rot), pC = prof(120 * Math.PI / 180 - rot), pL = prof(Math.PI - rot);
         var off = pB > 0.5;
         var par = document.getElementById('cwParity');
         par.className = 'chip ' + (off ? 'ride' : 'trip');
