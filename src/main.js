@@ -9615,6 +9615,11 @@ panel.innerHTML = `
         <span class="label-small">Mechanisms</span>
         <a class="ui-link" href="./explain.html">How they work</a>
       </div>
+      <!-- §66 part one: the schematic tier — draw the model, not the metal -->
+      <div class="row">
+        <span class="label-small">Schematic</span>
+        <button id="btn-schematic">Off</button>
+      </div>
       <div class="row label-small" id="explore-reset-row" style="display:none;">
         <span>Drag parts · ⇧ drags group</span>
         <button id="btn-explore-reset">Reassemble</button>
@@ -10572,6 +10577,59 @@ function setLabels(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
+
+// §66 part one — THE SCHEMATIC TIER: the movement drawn as the model the
+// solids merely dress. Every rotor's proxy derives from the SAME constant
+// that built its solid: the gear/pinion/balance builders all record their
+// pitch/functional radius as userData.r (geometry.js — "userData.r =
+// pitch/functional radius"), so the tier draws a LineLoop at exactly
+// module·teeth/2 plus one spoke, attached to the rotor's own posed group —
+// the tick's ratio laws move the proxies for free, and the train visibly
+// rolls at ratios that come from tooth counts alone. Line-tier only, by
+// construction: the inspectors collect isMesh, so proxies are invisible to
+// the whole battery (asserted below, not assumed). Rendering swaps by
+// CAMERA LAYER, never by touching mesh.visible — parts whose visibility is
+// a tick law (the §45 alarm hand) keep their state, and their proxies
+// inherit it through group visibility. Contact-dot lighting from the
+// instrument tables and lever/spring proxies are §66's parts two, still in
+// the roadmap.
+const SCHEMATIC = { proxies: [], on: false };
+{
+  const MAT_WHEEL = new THREE.LineBasicMaterial({ color: 0xe0a355 }); // the explainer's brass
+  const MAT_SPOKE = new THREE.LineBasicMaterial({ color: 0x8fa6bf }); // and steel
+  const circGeo = (r, n = 64) => {
+    const pts = [];
+    for (let i = 0; i <= n; i++) { const a = (i / n) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0)); }
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  };
+  const sites = [];
+  movement.traverse((o) => {
+    if (!o.isMesh && o.userData && typeof o.userData.r === 'number' && o.userData.r >= 0.5) sites.push(o);
+  });
+  for (const site of sites) {
+    const loop = new THREE.Line(circGeo(site.userData.r), MAT_WHEEL);
+    const spoke = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+      [new THREE.Vector3(0, 0, 0), new THREE.Vector3(site.userData.r, 0, 0)]), MAT_SPOKE);
+    for (const pr of [loop, spoke]) {
+      pr.userData.schematic = true;
+      pr.layers.set(1); // the tier's own render layer — the solid camera never sees it
+      site.add(pr);
+      SCHEMATIC.proxies.push(pr);
+    }
+  }
+  const meshProxies = SCHEMATIC.proxies.filter((pr) => pr.isMesh).length;
+  if (meshProxies) console.warn(`§66: ${meshProxies} schematic proxies are Meshes — they would join the battery's sweeps`);
+  if (sites.length < 10) console.warn(`§66: only ${sites.length} rotors carry userData.r — the schematic tier is nearly empty`);
+}
+function setSchematic(on) {
+  SCHEMATIC.on = on;
+  if (on) { camera.layers.disable(0); camera.layers.enable(1); }
+  else { camera.layers.enable(0); camera.layers.disable(1); }
+  const b = document.getElementById('btn-schematic');
+  b.textContent = on ? 'On' : 'Off';
+  b.classList.toggle('active', on);
+}
+document.getElementById('btn-schematic').addEventListener('click', () => setSchematic(!SCHEMATIC.on));
 
 // §39 fills this at the end of the build; the axes key reads it.
 let scaleReadout = null;

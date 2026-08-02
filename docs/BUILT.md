@@ -5947,3 +5947,37 @@ its entry is added or refreshed in the same landing — CLAUDE.md carries
 the rule. Compact entries grow plates when their mechanisms get worked
 on; a stale explainer is the documentation version of the abandoned
 plan CLAUDE.md already forbids.
+
+## §66 part one — The schematic tier: draw the model, not the metal
+
+**Shipped in part** (the §10/§36 convention): the line tier and its
+rotor proxies are built; contact-dot lighting from the instrument
+tables and lever/spring proxies stay in the roadmap as parts two.
+
+**What shipped.** A parallel non-Mesh line tier in the §65 explainer's
+vocabulary: every rotor whose builder records its pitch/functional
+radius (`userData.r` — the gear, pinion, and balance builders all do,
+`geometry.js`) gets a brass `Line` circle at exactly that radius plus
+one steel spoke, attached to the rotor's own posed group. The tick's
+ratio laws move the proxies for free, so in schematic mode the train
+visibly rolls at ratios that come from tooth counts alone — 130
+proxies over 65 rotors on the shipped movement, built in one generic
+traverse with no per-unit authoring.
+
+**Two structural choices carry the honesty.** (1) Line-tier only, by
+construction AND assertion: the inspectors collect `isMesh`, so
+proxies are invisible to every battery instrument — asserted at boot
+(a proxy that drifted into being a Mesh would silently join the
+sweeps), and the full battery ran byte-identical after the tier
+landed. (2) The mode swaps by CAMERA LAYER (proxies live on layer 1),
+never by touching `mesh.visible` — parts whose visibility is a tick
+law (the §45 alarm hand) keep their state, and their proxies inherit
+it through group visibility, so toggling round-trips with no state
+loss.
+
+**Why radii and not dressed wheels.** The tick laws never consult a
+tooth; a wheel IS its pitch radius and ratio as far as the model is
+concerned, and the §65 plates already proved that vocabulary explains
+the movement better than the metal does. Two renderings of one model
+cannot drift when both consume the same constants — §49's one-display
+principle at movement scale.
