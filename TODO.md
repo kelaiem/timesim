@@ -540,10 +540,13 @@ machinery)"; the attempt was made and the measurement says the move is
    lock tail reads it (the collar-bound lever cannot follow the
    wheel up) — which is also the honest fix for item 24 below.
 
-Until someone wants that §, the wheel stays at its position bound
-(Ø 1.9 mm) with real sections — legal, measured, and small.
+That § is now FILED as roadmap §68 (the switch at real scale — a
+bridge, an azimuth, and the lever that cannot follow), with the two
+walls as its spec and the TODO 24 beak as its acceptance instrument.
+Until it lands, the wheel stays at its position bound (Ø 1.9 mm)
+with real sections — legal, measured, and small.
 
-## 24. The lock tail reads the column wheel by LAW only — its beak never touches the castellations
+## 24. CLOSED — the lock beak is matter now, and a handoff row measures it
 
 Found by the TODO 11 layout measurement. The §25 D story is "beak on
 a COLUMN → the tail is blocked"; the built tail's z band is
@@ -563,6 +566,19 @@ size the nose to the column/gap sector, and add the
 expect contact-on-column / free-in-gap parity — the same shape as
 the link beak's row. Closing item 11's layout § would rework this
 joint anyway; whichever lands first carries it.
+
+**Closed 2026-08-02, exactly along that path.** The nose rises off
+the tail's end into the castellation band (mid-band, clear of the
+base disc below and the tier's top), and its inward face lands on
+the column's outer wall by the stand-off's own arithmetic —
+face reach = stand-off − baseR = 2.3, R-independent. Width 0.5
+against a 1.31 gap arc minus the lift's 0.20 tangential swing. The
+new `alarmHandoffs` row 'column outer face ⇄ lock beak' expects
+contact disarmed / free armed and measures green at both parities;
+the two Alarm-lock joint rows in `INTRA_UNIT_CONTACTS` re-pointed to
+the post's shifted index (string coupling, as documented). The lock
+side now has what TODO 20 won for the link side: no hand-off in the
+switch chain is law-only.
 
 ## 12. The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row
 
