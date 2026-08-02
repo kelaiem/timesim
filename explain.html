@@ -239,62 +239,106 @@
       <!-- —————— PLATE 1 : THE FOUR PHASES —————— -->
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One beat, four contacts — at the entry stone</span></div>
+        <!-- §67 rev: the four keyframes now PLAY. A looping playhead walks the
+             panels in beat order; each panel's tooth/stone animate through its
+             slice of the REAL beat law (the same escDelta/forkNorm plate 2
+             scrubs), with display time dilated — the action is 16% of the
+             beat, so a real-time loop would be 84% dwell. Paused, the plate
+             is exactly its four static keyframes. -->
+        <div class="controls">
+          <button id="escPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
+          <span class="chip ride" id="escPhaseChip">LOCKED · draw on the bank</span>
+          <span>display time dilates the 16% action window — every pose evaluates the ported law</span>
+        </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 250" width="780" height="250" role="img"
-               aria-label="Four panels: locked with draw holding the fork on its bank; unlock with the wheel recoiling; impulse along the impulse face; drop onto the exit stone">
+               aria-label="Four panels: locked with draw holding the fork on its bank; unlock with the wheel recoiling; impulse along the impulse face; drop onto the exit stone. When playing, a highlight steps through the panels and the parts move through each phase.">
             <g font-size="10">
             <!-- panel frames -->
             <line x1="195" y1="16" x2="195" y2="200" stroke="var(--line)" stroke-width="0.75"/>
             <line x1="390" y1="16" x2="390" y2="200" stroke="var(--line)" stroke-width="0.75"/>
             <line x1="585" y1="16" x2="585" y2="200" stroke="var(--line)" stroke-width="0.75"/>
             </g>
-            <!-- P1 LOCKED: tooth tip resting on the stone's locking face, arrow into bank -->
+            <rect id="escStepFrame" x="14" y="14" width="176" height="192" rx="6" fill="none" stroke="var(--steel)" stroke-width="1.2" opacity="0"/>
+            <!-- P1 LOCKED: tooth tip resting on the stone's locking face, arrow into bank.
+                 Contact points sit ON the face they name: the locking face runs
+                 (90,90)→(96,118), the tip and dot are at t=0.22 along it. The steel
+                 band behind the stone is the fork's pallet arm — shoulders a shade
+                 wider than the stone so the seat reads as a slot, run aimed at the
+                 (off-panel) pallet staff, lower left. -->
             <g transform="translate(20 30)">
+              <path d="M 28.5 117.5 L 41.5 144.5 L 15 155 L 5 133 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 120 L 90 90 L 96 118 L 40 142 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 118 60 L 92 96 L 76 88 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
-              <circle cx="90" cy="93" r="4" fill="var(--ruby)"/>
-              <line x1="60" y1="112" x2="34" y2="126" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <path d="M 118 60 L 91.5 96 L 76 88 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="91.5" cy="96" r="4" fill="var(--ruby)"/>
+              <line x1="60" y1="118" x2="34" y2="132" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
               <text class="lbl lbl-strong" x="8" y="0">1 · locked</text>
-              <text class="val" x="8" y="14">tooth tip ON the locking face;</text>
-              <text class="val" x="8" y="27">DRAW pulls the fork into its bank</text>
-              <text class="lbl" x="8" y="170">wheel held · balance swings free</text>
+              <text class="val" x="8" y="14">tooth tip ON the locking</text>
+              <text class="val" x="8" y="27">face; DRAW pulls the fork</text>
+              <text class="val" x="8" y="40">into its bank</text>
+              <text class="lbl" x="8" y="170">wheel held, balance free</text>
             </g>
-            <!-- P2 UNLOCK: pin in notch, stone sliding off corner, wheel recoils -->
+            <!-- P2 UNLOCK: pin in notch, stone sliding off corner, wheel recoils.
+                 Contact at t=0.12 of the locking face (90,78)→(96,106) — the tip has
+                 climbed nearly to the corner, the last instant before release. -->
             <g transform="translate(215 30)">
-              <path d="M 30 108 L 90 78 L 96 106 L 40 130 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 118 56 L 92 92 L 76 84 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
-              <circle cx="91" cy="86" r="4" fill="var(--ruby)"/>
-              <line x1="112" y1="70" x2="126" y2="56" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrE)"/>
-              <text class="val val-brass" x="96" y="44">recoil −1.0°</text>
+              <g id="esc2Stone">
+                <path d="M 28.5 105.5 L 41.5 132.5 L 15 143 L 5 121 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+                <path d="M 30 108 L 90 78 L 96 106 L 40 130 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              </g>
+              <g id="esc2Tooth">
+                <path d="M 117 45.5 L 90.7 81.5 L 74.5 73.5 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+                <circle cx="90.7" cy="81.5" r="4" fill="var(--ruby)"/>
+              </g>
+              <line x1="124" y1="78" x2="138" y2="64" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <text class="val val-brass" x="106" y="94">recoil −1.0°</text>
               <text class="lbl lbl-strong" x="8" y="0">2 · unlock</text>
-              <text class="val" x="8" y="14">roller pin knocks the fork; the</text>
-              <text class="val" x="8" y="27">stone slides UP the draw face —</text>
-              <text class="val" x="8" y="40">the wheel visibly RECOILS</text>
+              <text class="val" x="8" y="14">roller pin knocks the</text>
+              <text class="val" x="8" y="27">fork; the stone slides UP</text>
+              <text class="val" x="8" y="40">the draw face — the wheel</text>
+              <text class="val" x="8" y="53">visibly RECOILS</text>
               <text class="lbl" x="8" y="170">p &lt; 0.04 of the beat</text>
             </g>
-            <!-- P3 IMPULSE: tooth driving along impulse face -->
+            <!-- P3 IMPULSE: tooth driving along impulse face. The impulse face is
+                 the long top edge (30,96)→(90,70); tip and dot at t=0.6 along it —
+                 the tooth now rides the TOP of the stone (the old drawing had it
+                 below the stone, a side no tooth can reach), sliding toward the
+                 let-off corner. -->
             <g transform="translate(410 30)">
-              <path d="M 30 96 L 90 70 L 100 98 L 44 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 120 78 L 94 104 L 80 92 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
-              <circle cx="93" cy="97" r="4" fill="var(--ruby)"/>
-              <line x1="70" y1="86" x2="44" y2="74" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <g id="esc3Stone">
+                <path d="M 29 93 L 45 125 L 18 133 L 4 107 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+                <path d="M 30 96 L 90 70 L 100 98 L 44 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+                <line x1="78" y1="96" x2="52" y2="108" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              </g>
+              <g id="esc3Tooth">
+                <path d="M 92 44.5 L 66 80.5 L 50 72.5 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+                <circle cx="66" cy="80.5" r="4" fill="var(--ruby)"/>
+              </g>
               <text class="lbl lbl-strong" x="8" y="0">3 · impulse</text>
-              <text class="val" x="8" y="14">tooth drives along the impulse</text>
-              <text class="val" x="8" y="27">face — the beat's push, returned</text>
-              <text class="val" x="8" y="40">to the balance through the notch</text>
+              <text class="val" x="8" y="14">tooth drives along the</text>
+              <text class="val" x="8" y="27">impulse face — the beat's</text>
+              <text class="val" x="8" y="40">push through the notch</text>
               <text class="lbl" x="8" y="170">wheel advances +12°</text>
             </g>
-            <!-- P4 DROP: tooth free, wheel falls to exit stone -->
+            <!-- P4 DROP: tooth free, wheel falls to exit stone. No contact dot —
+                 drop is the one phase with nothing touching: the tip is aimed at
+                 the locking face (88,70)→(98,98) with a deliberate 6-unit gap
+                 along the face normal (the old drawing parked it under the stone). -->
             <g transform="translate(605 30)">
+              <path d="M 29 93.5 L 43 124.5 L 16 133 L 4 107 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 96 L 88 70 L 98 98 L 42 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 128 96 L 102 122 L 88 110 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <g id="esc4Tooth">
+                <path d="M 123 42 L 97 78 L 81 70 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              </g>
+              <circle id="esc4Dot" cx="91.5" cy="79.8" r="4" fill="var(--ruby)" opacity="0"/>
               <text class="lbl lbl-strong" x="8" y="0">4 · drop</text>
-              <text class="val" x="8" y="14">the tooth leaves; the wheel</text>
-              <text class="val" x="8" y="27">falls onto the EXIT stone's</text>
-              <text class="val" x="8" y="40">locking face — lock, mirrored</text>
+              <text class="val" x="8" y="14">the tooth leaves; the</text>
+              <text class="val" x="8" y="27">wheel falls onto the EXIT</text>
+              <text class="val" x="8" y="40">stone's locking face —</text>
+              <text class="val" x="8" y="53">lock, mirrored</text>
               <text class="lbl" x="8" y="170">then the other half-beat</text>
             </g>
-            <text class="lbl" x="20" y="235">schematic — stone (ruby), escape tooth (brass), contact marked; the built faces are solved, not drawn (geometry.js makePalletFork)</text>
+            <text class="lbl" x="20" y="235">schematic — stone (ruby) in its fork arm (steel), tooth (brass); faces are solved, not drawn (makePalletFork)</text>
             <defs><marker id="arrE" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
           </svg>
         </div>
@@ -303,7 +347,10 @@
         — asserted at build with the torque sign written out. Unlock spends real wheel motion
         (the −1.0° recoil in the law below is draw made visible). Banking is derived from the
         arc-length match <code>rollerR·Δθ = notchDepth·2·bank</code> — without it the pin and
-        notch never coincide.</figcaption>
+        notch never coincide. The play loop walks the panels in beat order and drives every
+        pose through the same ported law plate 2 scrubs (<code>escapeDeltaDeg</code> /
+        <code>forkSwingRad</code>); only DISPLAY time is dilated, since the whole action is
+        16% of the beat. Paused, the plate is exactly its four keyframes.</figcaption>
       </figure>
 
       <!-- —————— PLATE 2 : THE BEAT LAW, INTERACTIVE —————— -->
@@ -1427,6 +1474,106 @@
       }
       sl.addEventListener('input', upd);
       upd();
+
+      // —— Plate 1: animate the hand-offs between the four phases ——
+      // The same law, display-time dilated: the action lives in IMPULSE_WIDTH
+      // (16%) of the beat, so a real-time loop would be 84% motionless dwell.
+      // Each display segment maps its slice of REAL p onto a watchable
+      // duration — the sim's own time-scale trick — and every pose evaluates
+      // escDelta/forkNorm at the mapped p. Amplitudes are panel pixels; the
+      // directions are the drawn faces' own unit vectors, so the contact
+      // stays on the face it names throughout.
+      (function () {
+        var SEGS = [ // panel, display seconds, [p0, p1] of the real beat
+          { n: 1, dur: 1.6, p0: IMPULSE_WIDTH, p1: 1 },                                   // locked dwell
+          { n: 2, dur: 1.4, p0: 0, p1: IMPULSE_WIDTH * RECOIL_FRACTION },                 // unlock / recoil
+          { n: 3, dur: 2.2, p0: IMPULSE_WIDTH * RECOIL_FRACTION, p1: IMPULSE_WIDTH * 0.97 }, // impulse
+          { n: 4, dur: 1.0, p0: IMPULSE_WIDTH * 0.97, p1: IMPULSE_WIDTH },                // drop
+        ];
+        var TOTAL = SEGS.reduce(function (s, x) { return s + x.dur; }, 0);
+        var FRAME_X = { 1: 14, 2: 209, 3: 404, 4: 599 };
+        var CHIP = { // plate 2's chip vocabulary, verbatim
+          1: ['ride', 'LOCKED · draw on the bank'],
+          2: ['held', 'UNLOCK · recoil — draw made visible'],
+          3: ['ramp', 'IMPULSE · tooth on the impulse face'],
+          4: ['trip', 'DROP · onto the exit stone'],
+        };
+        var el = function (id) { return document.getElementById(id); };
+        var frame = el('escStepFrame'), chipEl = el('escPhaseChip'), btn = el('escPlay');
+        var s2 = el('esc2Stone'), t2 = el('esc2Tooth'), s3 = el('esc3Stone'), t3 = el('esc3Tooth');
+        var t4 = el('esc4Tooth'), d4 = el('esc4Dot');
+        var box = document.getElementById('escapement');
+        var tf = function (node, dx, dy) { node.setAttribute('transform', 'translate(' + dx.toFixed(2) + ' ' + dy.toFixed(2) + ')'); };
+        // The drawn faces' unit vectors (from the panels' own vertex coords):
+        var u2 = [0.894, -0.447];  // P2 stone axis — the wheel's drive line
+        var l2 = [0.210, 0.979];   // P2 locking face, corner-ward
+        var u3 = [0.917, -0.397];  // P3 impulse face (30,96)→(90,70)
+        var n4 = [0.943, -0.337];  // P4 exit locking face outward normal
+        function reset() {
+          tf(s2, 0, 0); tf(t2, 0, 0); tf(s3, 0, 0); tf(t3, 0, 0); tf(t4, 0, 0);
+          d4.setAttribute('opacity', '0');
+        }
+        function pose(seg, q) {
+          reset();
+          var p = seg.p0 + q * (seg.p1 - seg.p0);
+          if (seg.n === 2) {
+            // −escDelta is the recoil dip in degrees, drawn at 5 px/deg
+            // BACKWARD along the drive line; the stone slides its own locking
+            // face down past the tip (contact param 0.12 → 0 over the window).
+            var r = Math.max(0, -escDelta(p)) * 5;
+            tf(t2, r * u2[0], r * u2[1]);
+            var s = q * 0.12 * 28.6;
+            tf(s2, s * l2[0], s * l2[1]);
+          } else if (seg.n === 3) {
+            // wheel advance 0→12° carries the tip down the impulse face:
+            // face-parametric travel t 0.68 → 0.32 about the static 0.6 pose,
+            // the fork swinging bank→bank ahead of it (forkNorm −1 → +1).
+            var t = 0.68 - (escDelta(p) / 12) * 0.36;
+            var d = (t - 0.6) * 65.4;
+            tf(t3, d * u3[0], d * u3[1]);
+            var f = ((forkNorm(p) + 1) / 2) * 6;
+            tf(s3, -f * u3[0], -f * u3[1]);
+          } else if (seg.n === 4) {
+            // free flight: the 6 px gap closes along the face normal; the
+            // contact dot appears only when the tip LANDS — lock, mirrored.
+            var e = q * q * (3 - 2 * q);
+            tf(t4, -6 * e * n4[0], -6 * e * n4[1]);
+            if (q > 0.92) d4.setAttribute('opacity', '1');
+          }
+          frame.setAttribute('x', FRAME_X[seg.n]);
+          frame.setAttribute('opacity', '0.55');
+          chipEl.className = 'chip ' + CHIP[seg.n][0];
+          chipEl.textContent = CHIP[seg.n][1];
+        }
+        var playing = false, t0 = null, raf = 0;
+        function tick(now) {
+          if (!playing) return;
+          if (!box.open || document.hidden) { t0 = null; raf = requestAnimationFrame(tick); return; }
+          if (t0 === null) t0 = now;
+          var t = ((now - t0) / 1000) % TOTAL;
+          for (var i = 0; i < SEGS.length; i++) {
+            if (t < SEGS[i].dur) { pose(SEGS[i], t / SEGS[i].dur); break; }
+            t -= SEGS[i].dur;
+          }
+          raf = requestAnimationFrame(tick);
+        }
+        function setPlaying(on) {
+          playing = on;
+          btn.textContent = on ? '⏸ pause' : '▶ play';
+          if (on) { t0 = null; raf = requestAnimationFrame(tick); }
+          else {
+            cancelAnimationFrame(raf);
+            reset(); // paused = the plate's own four keyframes, frame off
+            frame.setAttribute('opacity', '0');
+            chipEl.className = 'chip ride';
+            chipEl.textContent = 'PAUSED · the four keyframes';
+          }
+        }
+        btn.addEventListener('click', function () { setPlaying(!playing); });
+        // Autoplay unless the viewer asked for reduced motion; the loop idles
+        // (no pose writes) while the section is closed or the tab is hidden.
+        setPlaying(!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      })();
     })();
 
     // —— Column wheel: press the pusher — profileAt ported, riders answer ——
