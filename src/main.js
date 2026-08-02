@@ -11216,10 +11216,12 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
             if (o.isMesh && o.geometry.attributes.position && !o.userData.schematic) discOrAxis(o);
           });
         }
-        // the fork's pallet STONES — the two working jewels, in the spring
-        // red the tier already uses for contact events, selected by their
-        // own material rather than a traversal index
-        byLabel('Pallet fork').traverse((o) => {
+        // the WORKING JEWELS — the fork's two pallet stones and the balance
+        // roller's impulse pin — in the spring red the tier already uses for
+        // contact events, selected by their own ruby material rather than a
+        // traversal index. Each jewel takes its axis line in place, so the
+        // pin swings with the balance and the stones rock with the fork.
+        const jewelLines = (unitName) => byLabel(unitName).traverse((o) => {
           if (!o.isMesh || o.material !== MATS.ruby) return;
           o.geometry.computeBoundingBox();
           const bb = o.geometry.boundingBox, s = bb.getSize(new THREE.Vector3());
@@ -11230,6 +11232,25 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
           const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), MAT_SPRING);
           l.userData.schematic = true; l.layers.set(1); o.add(l); SCHEMATIC.proxies.push(l);
         });
+        jewelLines('Pallet fork');
+        jewelLines('Balance');
+        // ...and the pin's ORBIT: a circle through the pin's own built
+        // position (radius and plane read off the mesh — the roller table's
+        // sweep, the arc the FORK_BANK_DEG derivation matches arc-length
+        // against), drawn in the balance wheel's frame so it spins with it
+        {
+          let pin = null;
+          byLabel('Balance').traverse((o) => { if (!pin && o.isMesh && o.material === MATS.ruby) pin = o; });
+          if (pin) {
+            const r = Math.hypot(pin.position.x, pin.position.y);
+            const pts = [];
+            for (let i = 0; i <= 48; i++) {
+              const a = (i / 48) * TWO_PI;
+              pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, pin.position.z));
+            }
+            addLine(pin.parent, pts);
+          }
+        }
         // the CHAIN — its own run, from the same curve rebuildChain cuts the
         // links along (declared up at chainMesh; refreshed there on every
         // re-wrap, so tension carries the drawing). Chain lives directly in
