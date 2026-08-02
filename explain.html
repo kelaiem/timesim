@@ -248,53 +248,71 @@
             <line x1="390" y1="16" x2="390" y2="200" stroke="var(--line)" stroke-width="0.75"/>
             <line x1="585" y1="16" x2="585" y2="200" stroke="var(--line)" stroke-width="0.75"/>
             </g>
-            <!-- P1 LOCKED: tooth tip resting on the stone's locking face, arrow into bank -->
+            <!-- P1 LOCKED: tooth tip resting on the stone's locking face, arrow into bank.
+                 Contact points sit ON the face they name: the locking face runs
+                 (90,90)→(96,118), the tip and dot are at t=0.22 along it. The steel
+                 band behind the stone is the fork's pallet arm — shoulders a shade
+                 wider than the stone so the seat reads as a slot, run aimed at the
+                 (off-panel) pallet staff, lower left. -->
             <g transform="translate(20 30)">
+              <path d="M 28.5 117.5 L 41.5 144.5 L 15 155 L 5 133 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 120 L 90 90 L 96 118 L 40 142 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 118 60 L 92 96 L 76 88 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
-              <circle cx="90" cy="93" r="4" fill="var(--ruby)"/>
-              <line x1="60" y1="112" x2="34" y2="126" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <path d="M 118 60 L 91.5 96 L 76 88 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="91.5" cy="96" r="4" fill="var(--ruby)"/>
+              <line x1="60" y1="118" x2="34" y2="132" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
               <text class="lbl lbl-strong" x="8" y="0">1 · locked</text>
               <text class="val" x="8" y="14">tooth tip ON the locking face;</text>
               <text class="val" x="8" y="27">DRAW pulls the fork into its bank</text>
               <text class="lbl" x="8" y="170">wheel held · balance swings free</text>
             </g>
-            <!-- P2 UNLOCK: pin in notch, stone sliding off corner, wheel recoils -->
+            <!-- P2 UNLOCK: pin in notch, stone sliding off corner, wheel recoils.
+                 Contact at t=0.12 of the locking face (90,78)→(96,106) — the tip has
+                 climbed nearly to the corner, the last instant before release. -->
             <g transform="translate(215 30)">
+              <path d="M 28.5 105.5 L 41.5 132.5 L 15 143 L 5 121 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 108 L 90 78 L 96 106 L 40 130 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 118 56 L 92 92 L 76 84 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
-              <circle cx="91" cy="86" r="4" fill="var(--ruby)"/>
-              <line x1="112" y1="70" x2="126" y2="56" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrE)"/>
-              <text class="val val-brass" x="96" y="44">recoil −1.0°</text>
+              <path d="M 117 45.5 L 90.7 81.5 L 74.5 73.5 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="90.7" cy="81.5" r="4" fill="var(--ruby)"/>
+              <line x1="124" y1="78" x2="138" y2="64" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <text class="val val-brass" x="114" y="94">recoil −1.0°</text>
               <text class="lbl lbl-strong" x="8" y="0">2 · unlock</text>
               <text class="val" x="8" y="14">roller pin knocks the fork; the</text>
               <text class="val" x="8" y="27">stone slides UP the draw face —</text>
               <text class="val" x="8" y="40">the wheel visibly RECOILS</text>
               <text class="lbl" x="8" y="170">p &lt; 0.04 of the beat</text>
             </g>
-            <!-- P3 IMPULSE: tooth driving along impulse face -->
+            <!-- P3 IMPULSE: tooth driving along impulse face. The impulse face is
+                 the long top edge (30,96)→(90,70); tip and dot at t=0.6 along it —
+                 the tooth now rides the TOP of the stone (the old drawing had it
+                 below the stone, a side no tooth can reach), sliding toward the
+                 let-off corner. -->
             <g transform="translate(410 30)">
+              <path d="M 29 93 L 45 125 L 18 133 L 4 107 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 96 L 90 70 L 100 98 L 44 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 120 78 L 94 104 L 80 92 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
-              <circle cx="93" cy="97" r="4" fill="var(--ruby)"/>
-              <line x1="70" y1="86" x2="44" y2="74" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <path d="M 92 44.5 L 66 80.5 L 50 72.5 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <circle cx="66" cy="80.5" r="4" fill="var(--ruby)"/>
+              <line x1="78" y1="96" x2="52" y2="108" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
               <text class="lbl lbl-strong" x="8" y="0">3 · impulse</text>
               <text class="val" x="8" y="14">tooth drives along the impulse</text>
               <text class="val" x="8" y="27">face — the beat's push, returned</text>
               <text class="val" x="8" y="40">to the balance through the notch</text>
               <text class="lbl" x="8" y="170">wheel advances +12°</text>
             </g>
-            <!-- P4 DROP: tooth free, wheel falls to exit stone -->
+            <!-- P4 DROP: tooth free, wheel falls to exit stone. No contact dot —
+                 drop is the one phase with nothing touching: the tip is aimed at
+                 the locking face (88,70)→(98,98) with a deliberate 6-unit gap
+                 along the face normal (the old drawing parked it under the stone). -->
             <g transform="translate(605 30)">
+              <path d="M 29 93.5 L 43 124.5 L 16 133 L 4 107 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 96 L 88 70 L 98 98 L 42 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-              <path d="M 128 96 L 102 122 L 88 110 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <path d="M 123 42 L 97 78 L 81 70 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
               <text class="lbl lbl-strong" x="8" y="0">4 · drop</text>
               <text class="val" x="8" y="14">the tooth leaves; the wheel</text>
               <text class="val" x="8" y="27">falls onto the EXIT stone's</text>
               <text class="val" x="8" y="40">locking face — lock, mirrored</text>
               <text class="lbl" x="8" y="170">then the other half-beat</text>
             </g>
-            <text class="lbl" x="20" y="235">schematic — stone (ruby), escape tooth (brass), contact marked; the built faces are solved, not drawn (geometry.js makePalletFork)</text>
+            <text class="lbl" x="20" y="235">schematic — stone (ruby) seated in its fork arm (steel), escape tooth (brass), contact marked ON the face it names; the built faces are solved, not drawn (geometry.js makePalletFork)</text>
             <defs><marker id="arrE" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
           </svg>
         </div>
