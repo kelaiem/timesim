@@ -3833,6 +3833,13 @@ tqHoles.push({ x: -9.80, y: 26.97, r: 0.45 }); // §35/§68: the selector rod pa
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
 // cut from kwPostBow, remains). One less opening in the display plate.
 const tqSlots = [];
+// §43 (under-plate press axis): the pusher's RISER climbs through the plate
+// from the stem below to the pawl at the skirt band above. The capsule spans
+// the riser's rest→pressed track (one press travel), r = riser 0.16 +
+// CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
+// derive long after this plate is cut — and the pusher build asserts the
+// derived track equals this slot (the §35/§68 tripwire pattern).
+tqSlots.push({ ax: -15.94, ay: 25.89, bx: -17.66, by: 27.96, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -8996,12 +9003,25 @@ const _pushBase = {
   x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
   y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
 };
-// The press AXIS rides ABOVE the wheel's whole stack (castellation top +
-// margin + stem radius): the stem and its guide boss can then never meet
-// the wheel at any press depth — the old axis shared the disc band, which
-// is where TODO 22 lived. Only the pawl's dropper descends, and its
-// station carries the full travel's radial clearance below.
-const ALARM_PUSH_AXIS_REL = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL_H + CLEAR_MARGIN + 0.32;
+// The press AXIS runs UNDER the three-quarter plate (owner call,
+// 2026-08-02): a case pusher belongs in the case band's plane, not above
+// the movement — after §68's raise the old above-stack axis had left the
+// pusher cap the TALLEST thing on the movement (14.18 vs the gong's 9.6).
+// The axis tucks against the plate's underside; the governing member is
+// the GUIDE BOSS, whose ring spans more z than the stem (0.48 half-span
+// vs the stem's 0.32 radius), so
+//     axis z = TQ_BOT_Z − CLEAR_MARGIN − bossHalf.
+// The pose-swept chord under the plate measured EMPTY from the riser
+// station to the rim (the gong post crosses this chord only ABOVE the
+// plate; the setting lever only below the base plate). Only the pawl
+// still lives at the skirt band: a RISER at the stem's inner end climbs
+// through a SLOT in the plate (tqSlots literal at the plate build,
+// tripwired below — the §35/§68 rod-bore pattern) to the reach bar.
+// AXIS_REL stays lock-relative for its consumers; it is simply negative
+// now (the axis sits below ALARM_LOCK_Z instead of above the stack).
+const ALARM_PUSH_STEM_R = 0.32;
+const ALARM_PUSH_GUIDE_HALF = 0.36 + 0.12;   // guide torus: ring r + tube r — its z half-span
+const ALARM_PUSH_AXIS_REL = (TQ_BOT_Z - CLEAR_MARGIN - ALARM_PUSH_GUIDE_HALF) - ALARM_LOCK_Z;
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
 {
@@ -9015,7 +9035,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
   const stemOuterS = 1.6 + plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4; // the as-built case-band end
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, stemLen, 10), MATS.steel);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
   stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
   stem.position.set(_pushU.x * (ALARM_PUSH_INNER + stemLen / 2), _pushU.y * (ALARM_PUSH_INNER + stemLen / 2), 0);
   alarmPusherGroup.add(stem);
@@ -9095,16 +9115,21 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const _pawlZ = (ALARM_COL_SPIN_REL - ALARM_COL_BASE_H / 2 - STOCK_MIN_U / 2) - ALARM_PUSH_AXIS_REL;
   pawl.position.set(_pushU.x * (ALARM_PAWL_KISS_S + 1.5 / 2), _pushU.y * (ALARM_PAWL_KISS_S + 1.5 / 2), _pawlZ); // leading face on the kiss
   alarmPusherGroup.add(pawl);
-  // The pawl's CARRIER — at the old scale the pawl sat under the stem's own
-  // span; at real scale the stem ends outside the tip circle, so the pawl
-  // hangs from a dropper at the stem's end and a reach bar at its own plane
-  // (the anatomy a real case-pusher pawl has).
+  // The pawl's CARRIER — the stem ends outside the tip circle, and the pawl
+  // lives at the skirt band ABOVE the under-plate axis, so a RISER at the
+  // stem's inner end climbs through the plate slot to a reach bar at the
+  // pawl's own plane (the anatomy a real case-pusher's under-plate
+  // operating lever has). The signed forms keep the member correct on
+  // either side of the pawl plane: length spans |_pawlZ| plus 0.12 of
+  // overlap, and the 0.03 end-bias lands 0.03 past the pawl plane and 0.09
+  // past the stem plane, exactly as the dropper form did when the axis was
+  // above.
   {
-    const drop = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, -_pawlZ + 0.12, 10), MATS.steel);
+    const drop = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, Math.abs(_pawlZ) + 0.12, 10), MATS.steel);
     drop.rotation.x = Math.PI / 2;
-    drop.position.set(_pushU.x * (ALARM_PUSH_INNER + 0.16), _pushU.y * (ALARM_PUSH_INNER + 0.16), _pawlZ / 2 + 0.03);
+    drop.position.set(_pushU.x * (ALARM_PUSH_INNER + 0.16), _pushU.y * (ALARM_PUSH_INNER + 0.16), _pawlZ / 2 - Math.sign(_pawlZ) * 0.03);
     alarmPusherGroup.add(drop);
-    const reachLen = (ALARM_PUSH_INNER + 0.32) - (ALARM_PAWL_KISS_S + 1.5) + 0.4; // dropper → pawl tail, 0.4 of overlap onto the pawl
+    const reachLen = (ALARM_PUSH_INNER + 0.32) - (ALARM_PAWL_KISS_S + 1.5) + 0.4; // riser → pawl tail, 0.4 of overlap onto the pawl
     const reach = new THREE.Mesh(new THREE.BoxGeometry(reachLen, 0.3, 0.24), MATS.blueSteel);
     reach.rotation.z = ALARM_PUSH_AZ;
     const reachMid = (ALARM_PUSH_INNER + 0.32 + (ALARM_PAWL_KISS_S + 1.5 - 0.4)) / 2;
@@ -9119,8 +9144,23 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const bossD = plateR - 1.2;
   boss.position.set(
     _pushU.x * bossD + _pushPerp.x * ALARM_PUSH_CHORD,
-    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // ON the press axis — a bearing that does not follow its stem is not one (and the axis now rides above the wheel's stack)
+    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // ON the press axis — a bearing that does not follow its stem is not one (the axis now runs under the plate; the boss's half-span is what derived the axis depth)
   alarmSwitchUnit.add(boss);
+  // §43 riser-slot tripwire (the §35/§68 rod-bore pattern): the plate's slot
+  // is a literal cut long before these constants exist — assert the derived
+  // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)
+  // sits on it. Grace 0.02, same as the rod bore's.
+  {
+    const riserS = ALARM_PUSH_INNER + 0.16;
+    const rest = { x: _pushBase.x + _pushU.x * riserS, y: _pushBase.y + _pushU.y * riserS };
+    const pressed = { x: rest.x - _pushU.x * ALARM_PUSH_TRAVEL, y: rest.y - _pushU.y * ALARM_PUSH_TRAVEL };
+    const slot = tqSlots[tqSlots.length - 1];
+    const need = 0.16 + CLEAR_MARGIN;
+    if (Math.hypot(rest.x - slot.bx, rest.y - slot.by) > 0.02 ||
+        Math.hypot(pressed.x - slot.ax, pressed.y - slot.ay) > 0.02 ||
+        Math.abs(slot.r - need) > 0.02)
+      console.warn(`§43: the plate's riser slot is off the derived track — literal (${slot.ax}, ${slot.ay})→(${slot.bx}, ${slot.by}) r ${slot.r} vs derived (${pressed.x.toFixed(2)}, ${pressed.y.toFixed(2)})→(${rest.x.toFixed(2)}, ${rest.y.toFixed(2)}) r ${need.toFixed(2)}`);
+  }
 }
 {
   // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
@@ -10731,14 +10771,15 @@ const SCHEMATIC = { proxies: [], on: false };
 }
 function setSchematic(on) {
   SCHEMATIC.on = on;
-  // §69: the solid tier STAYS rendered under the schematic. When no other
-  // translucency mode is speaking (no x-ray, no tap focus, no power flow),
-  // applyGhosting() draws every solid at the one x-ray opacity, so the line
-  // model reads against the real obstructions instead of a void; x-ray and
-  // tap focus, when active, own the solids' translucency exactly as they do
-  // without the schematic.
-  camera.layers.enable(0);
-  if (on) camera.layers.enable(1); else camera.layers.disable(1);
+  // Owner call (2026-08-02, reversing §69's ghost-underlay): schematic and
+  // realistic are EXCLUSIVE views — the line model draws alone, never over
+  // the solid tier, ghosted or otherwise. Layer 0 (every solid) and layer 1
+  // (the §66 proxies) simply swap: exactly one is enabled at a time. The
+  // ghost walk below no longer has a schematic case; x-ray, tap focus and
+  // power flow keep owning the solids' translucency in the realistic view,
+  // where the solids are visible to own.
+  if (on) { camera.layers.enable(1); camera.layers.disable(0); }
+  else { camera.layers.enable(0); camera.layers.disable(1); }
   const b = document.getElementById('btn-schematic');
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
@@ -13440,24 +13481,25 @@ function computeFocusSet(name) {
 // ONE walk owns every ghost. Restore first (only where the mesh still carries
 // OUR clone — x-ray may have re-swapped underneath, and its state is newer
 // truth), then re-apply for the current mode: the focus set if one is tapped,
-// everything if the schematic wants its obstruction preview, nothing
-// otherwise. Ownership per mesh is the same resolution §59's pick uses — the
-// deepest labelled / explode-entry ancestor; a mesh no unit claims counts as
+// nothing otherwise. (§69's ghost-everything schematic underlay is retired
+// by the owner's exclusive-views call — with the solid layer disabled under
+// the schematic there is nothing for an obstruction preview to draw on.)
+// Ownership per mesh is the same resolution §59's pick uses — the deepest
+// labelled / explode-entry ancestor; a mesh no unit claims counts as
 // unrelated (solid would visibly claim relatedness it cannot name).
 function applyGhosting() {
   for (const [m, base] of focusOverridden) {
     if (focusGlassMats.has(m.material)) m.material = base;
   }
   focusOverridden.clear();
-  const ghostAll = SCHEMATIC.on && !focusName && !xrayOn && !powerFlowOn;
-  if (!focusName && !ghostAll) return;
+  if (!focusName) return;
   const ownerOf = new Map();
   for (const en of explodeEntries) ownerOf.set(en.obj, explodeEntryName(en));
   for (const l of labelEntries) ownerOf.set(l.obj, l.name);
   const walk = (o, owner) => {
     if (o.userData && o.userData.schematic) return; // §66's line tier is never ghosted — it is what the ghosts are FOR
     owner = ownerOf.get(o) ?? owner;
-    if (o.material && !Array.isArray(o.material) && (ghostAll || !(owner && focusSet.has(owner)))) {
+    if (o.material && !Array.isArray(o.material) && !(owner && focusSet.has(owner))) {
       const g = focusGlassFor(o.material);
       if (g !== o.material) { focusOverridden.set(o, o.material); o.material = g; }
     }
