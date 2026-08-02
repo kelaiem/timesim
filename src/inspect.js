@@ -2261,6 +2261,57 @@ const ALARM_HANDOFFS = [
   },
 ];
 
+// §66 part two — the schematic tier's contact dots light from THESE rows,
+// measured at the CURRENT pose (no setPose, no resetInputs: the caller is a
+// live display, not a battery gate). Returns gap + the closest sample pair's
+// midpoint so the dot sits where the measurement was taken. Sampling is the
+// same vertex-against-tree primitive the arbiters trust; strided to cap cost.
+export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = ALARM_HANDOFFS } = {}) {
+  const units = collectUnits(clock, { includeExcluded: true });
+  clock.scene.updateMatrixWorld(true);
+  const meshesIn = (unitName, meshName) => {
+    const u = units.find((x) => x.name === unitName);
+    if (!u) return [];
+    const out = [];
+    u.obj.traverse((o) => { if (o.isMesh && o.name === meshName) out.push(o); });
+    return out;
+  };
+  const _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _tmp = new THREE.Vector3();
+  const _toB = new THREE.Matrix4();
+  const closestPair = (a, b) => {
+    bvhFor(a); const tree = bvhFor(b);
+    _toB.copy(b.matrixWorld).invert().multiply(a.matrixWorld);
+    const pos = a.geometry.attributes.position;
+    const stride = Math.max(1, Math.floor(pos.count / 400));
+    let d = Infinity; const target = { point: new THREE.Vector3() };
+    const bestA = new THREE.Vector3(), bestB = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i += stride) {
+      _tmp.fromBufferAttribute(pos, i).applyMatrix4(_toB);
+      const hit = tree.closestPointToPoint(_tmp, target);
+      if (hit && hit.distance < d) {
+        d = hit.distance;
+        bestA.copy(_tmp); bestB.copy(target.point);
+      }
+    }
+    _pa.copy(bestA).applyMatrix4(b.matrixWorld);
+    _pb.copy(bestB).applyMatrix4(b.matrixWorld);
+    return { d, p: _pa.clone().add(_pb).multiplyScalar(0.5) };
+  };
+  const out = [];
+  for (const h of handoffs) {
+    if (h.missing) continue;
+    const mA = meshesIn(h.unitA, h.meshA), mB = meshesIn(h.unitB, h.meshB);
+    if (!mA.length || !mB.length) continue;
+    let best = { d: Infinity, p: null };
+    for (const a of mA) for (const b of mB) {
+      const r = closestPair(a, b);
+      if (r.d < best.d) best = r;
+    }
+    out.push({ label: h.label, tol, gap: best.d, point: best.p, waived: h.waived || null });
+  }
+  return out;
+}
+
 export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALARM_HANDOFF_POSES, handoffs = ALARM_HANDOFFS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   const meshesIn = (unitName, meshName) => {

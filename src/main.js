@@ -10631,6 +10631,81 @@ function setSchematic(on) {
 }
 document.getElementById('btn-schematic').addEventListener('click', () => setSchematic(!SCHEMATIC.on));
 
+// §66 part two — the per-unit vocabulary a generic traverse cannot derive.
+// LEVERS as pivot-to-contact lines, attached to the moving groups the tick
+// already poses (each span quotes the constant that built the solid it
+// abstracts); SPRINGS as zigzags derived from each blade mesh's own
+// bounding box (found by the §48 naming convention); CONTACT DOTS measured
+// by the instrument itself: inspect.js's measureHandoffsNow runs the SAME
+// alarmHandoffs rows at the current pose and returns gap + contact point —
+// a dot is lit when |gap| ≤ the row's own tol, no parallel boolean
+// anywhere. inspect.js loads lazily on first entry (boot stays untouched);
+// dots re-measure on each mode ENTRY — live re-measure across pose changes
+// is the recorded residue.
+{
+  const MAT_LEVER = new THREE.LineBasicMaterial({ color: 0x8fa6bf });
+  const MAT_SPRING = new THREE.LineBasicMaterial({ color: 0xe05555 });
+  const addLine = (parent, pts) => {
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), MAT_LEVER);
+    l.userData.schematic = true; l.layers.set(1); parent.add(l); SCHEMATIC.proxies.push(l);
+  };
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  // the alarm group's levers — spans are the members' own solved reaches
+  addLine(alarmFeelerLever, [V(-ALARM_FEELER_TAIL, 0, 0), V(ALARM_FEELER_ARM_LEN, 0, 0)]); // §29 feeler: tail → pivot → pin arm
+  addLine(alarmFeelerLever, [V(ALARM_FEELER_ARM_LEN, 0, 0), V(ALARM_FEELER_ARM_LEN, 0, ALARM_PIN_DROP + ALARM_PIN_SHANK + 0.3)]); // the pin's drop leg
+  addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
+  addLine(alarmClickArm, [V(0, 0, 0), V(-ALARM_CLICK_L, 0, 0)]); // §43 click: pivot → nose
+  addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
+  // springs: every §48-named blade/spring mesh gets a zigzag along its own
+  // longest local axis — derived from the mesh, not authored per part
+  {
+    const springs = [];
+    movement.traverse((o) => { if (o.isMesh && /spring|blade/i.test(o.name || '')) springs.push(o); });
+    for (const m of springs) {
+      m.geometry.computeBoundingBox();
+      const bb = m.geometry.boundingBox, size = bb.getSize(new THREE.Vector3());
+      const axis = size.x >= size.y && size.x >= size.z ? 'x' : size.y >= size.z ? 'y' : 'z';
+      const other = axis === 'x' ? 'y' : 'x';
+      const amp = Math.min(0.18, Math.max(0.06, size[other]));
+      const pts = [];
+      for (let i = 0; i <= 8; i++) {
+        const p = new THREE.Vector3();
+        p[axis] = bb.min[axis] + (i / 8) * size[axis];
+        p[other] = (bb.min[other] + bb.max[other]) / 2 + (i % 2 ? amp : -amp) * 0.5;
+        pts.push(p);
+      }
+      const zz = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), MAT_SPRING);
+      zz.userData.schematic = true; zz.layers.set(1); m.add(zz); SCHEMATIC.proxies.push(zz);
+    }
+  }
+  // contact dots — instrument-measured, lazily
+  const DOTS = { group: null };
+  SCHEMATIC.refreshContacts = async () => {
+    const I = await import('./inspect.js');
+    const rows = I.measureHandoffsNow(window.__clock);
+    if (!DOTS.group) {
+      DOTS.group = new THREE.Group();
+      DOTS.group.userData.schematic = true;
+      scene.add(DOTS.group);
+    }
+    while (DOTS.group.children.length) DOTS.group.remove(DOTS.group.children[0]);
+    for (const r of rows) {
+      if (!r.point) continue;
+      const shut = Math.abs(r.gap) <= r.tol;
+      const geo = new THREE.BufferGeometry().setFromPoints([r.point]);
+      const dot = new THREE.Points(geo, new THREE.PointsMaterial({
+        color: shut ? 0xe05555 : 0x4a5561, size: shut ? 9 : 5, sizeAttenuation: false }));
+      dot.userData.schematic = true; dot.layers.set(1);
+      DOTS.group.add(dot);
+    }
+  };
+  const baseSetSchematic = setSchematic;
+  setSchematic = function (on) {
+    baseSetSchematic(on);
+    if (on) SCHEMATIC.refreshContacts();
+  };
+}
+
 // §39 fills this at the end of the build; the axes key reads it.
 let scaleReadout = null;
 

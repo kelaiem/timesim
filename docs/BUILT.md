@@ -5981,3 +5981,35 @@ concerned, and the §65 plates already proved that vocabulary explains
 the movement better than the metal does. Two renderings of one model
 cannot drift when both consume the same constants — §49's one-display
 principle at movement scale.
+
+## §66 part two — Levers, springs, and contact dots the instruments light
+
+**Completes §66** (part one above); the roadmap entry is retired and
+this record is its reconciliation.
+
+**Levers.** Pivot-to-contact lines attached to the moving groups the
+tick already poses — the §29 feeler (tail → pivot → pin arm, with the
+pin's drop leg), the §45 silence seesaw (finger arm ← pivot → paddle
+arm, spans from the rocker's own userData), the §43 click, the §25 D
+lock lever. Each span quotes the constant that built the solid it
+abstracts; nothing is measured off the meshes.
+
+**Springs.** Every §48-named blade/spring mesh (matched by the naming
+convention) carries a ruby zigzag derived from its own bounding box —
+longest local axis, amplitude from the cross axis — so spring symbols
+needed no per-part authoring either.
+
+**Contact dots — the instrument lights them.** inspect.js gained
+`measureHandoffsNow`: the SAME `ALARM_HANDOFFS` rows the battery
+gates, measured at the CURRENT pose (no setPose, no resetInputs — a
+live display, not a gate), returning each row's gap and the closest
+sample pair's midpoint. The schematic tier places one dot per row at
+that point, lit when |gap| ≤ the row's own tol — no parallel boolean
+anywhere, which was the entry's acceptance. inspect.js loads lazily on
+first mode entry, so boot is untouched; dots re-measure on each mode
+ENTRY, and live re-measure across pose changes is the recorded
+residue.
+
+**Verified.** 152 line proxies + 11 dots, zero Mesh proxies, boot
+silent; the battery ran with the fingerprint unchanged (the tier is
+skipped by scope, part one's rule).
