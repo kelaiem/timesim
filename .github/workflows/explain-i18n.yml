@@ -1,0 +1,67 @@
+# §73 tier two — the explainer's translation gate.
+#
+# Its own workflow rather than a step in Battery, for two reasons: it is
+# ~1 min against the battery's ~13, so a prose typo should not wait behind
+# the sweeps; and explain.html is sim-code-free by contract, so its gate has
+# no business inside the geometry one.
+#
+# What failing means, in order of how it usually happens:
+#   * a key stopped matching  — someone edited the English and its
+#     translation now falls back to English VISIBLY (the honest failure).
+#     Fix: re-translate, regenerating keys with --extract.
+#   * markup / <code> / id drift — a translation dropped a tag, changed a
+#     quoted constant, or lost an id an interactive plate looks up.
+#   * plate numbers — a number in a plate label did not survive translation.
+#     The page's whole promise is that its numbers are greppable in src/*.js.
+#   * plate fit — a translated label overran its plate or collided with the
+#     next one. German runs ~30% longer and SVG text does not wrap; English
+#     is the baseline, so only what a translation makes WORSE fails.
+#
+# Coverage is reported, not gated: an untranslated block renders English and
+# says so. A hard 100% gate would push a future contributor toward machine
+# filler to make the light green, which is the opposite of the point.
+
+name: Explainer i18n
+
+on:
+  pull_request:
+    paths:
+      - 'explain.html'
+      - 'src/explain-i18n*.js'
+      - 'src/i18n.js'
+      - 'tools/explain-i18n.mjs'
+      - '.github/workflows/explain-i18n.yml'
+  push:
+    branches: [main]
+
+concurrency:
+  group: explain-i18n-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  explain-i18n:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        working-directory: tools
+        run: npx playwright install --with-deps chromium
+
+      - name: Check the explainer's translations
+        run: node tools/explain-i18n.mjs --check
