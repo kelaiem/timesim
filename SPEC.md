@@ -102,9 +102,12 @@ ratios are exact and everything meshes with `module` consistent per mesh pair:
 | Escape wheel 15 teeth | ⇄ pallet fork ⇄ balance | — | 5 beats/s (2.5 Hz, 18 000 bph) |
 
 Wheel+its pinion co-rotate on one arbor. Adjacent meshed wheels counter-rotate.
-Center distance of a mesh = sum of pitch radii. Motion works for the hour hand may be
-computed (hourAngle = minuteAngle/12) rather than modeled, but a visible cannon
-pinion/hour wheel stack under the dial is a plus.
+Center distance of a mesh = sum of pitch radii. Motion works for the hour hand are
+BUILT and DRIVEN — cannon pinion 10 → minute wheel 30, minute pinion 8 → hour
+wheel 32, so the 12:1 arrives because the tooth counts multiply to it
+(3 × 4), never as `hourAngle = minuteA/12`. (The original spec allowed the
+computed shortcut; the build closed it the other way, and CLAUDE.md rule 2 —
+"angles travel the gears" — now forbids reopening it.)
 
 ## Escapement behavior (Agent B — the centerpiece)
 
