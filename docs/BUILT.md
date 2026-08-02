@@ -6387,9 +6387,10 @@ zero page errors, `html lang` set, 14 state buttons with
 `aria-pressed` agreeing with `data-state` (and still agreeing after a
 keyboard-driven toggle), the help overlay generating all 17 rows,
 canonical values intact, no overflow at 240 px, and the decimal /
-grouping rules per locale. Full battery 12/12 with the fingerprint
-unchanged — the landing touches strings, attributes and CSS only, no
-geometry.
+grouping rules per locale. Full battery 12/12. "No geometry moved" is
+MEASURED, not asserted: virgin boots of `origin/main` and this branch
+fingerprint identically (2476672552, 49 units over 10 poses) — the
+landing touches strings, attributes and CSS only.
 
 **Residue, recorded.** `explain.html` is English (tier two). The
 reconfigure/route TRIAL diagnostics quote solver assert text verbatim
