@@ -6236,6 +6236,24 @@ one collector every unit-based check flows through, the same trust the
 fingerprint already extends. Flag every schematic object directly; an
 unflagged child of a flagged parent is not protected.
 
+**Third growth (owner list + sound).** The remaining mechanism units —
+pallet fork, alarm selector, setting lever, yoke, stop lever,
+maintaining detent, reset rod, hack rod — draw GENERICALLY: each
+principal mesh (longest dimension ≥ 2.5) takes its axis line or, when
+its box reads as a disc, its outline circle; every line derives from
+the mesh it lives in, so the tick's poses carry the drawings. The
+fork's two pallet stones draw in the event red, selected by their own
+ruby material. The CHAIN draws as its actual run: rebuildChain hands
+the same curve it cuts the links along to one proxy line, refreshed in
+the one place the path is computed, so tension re-wraps the drawing
+with the metal. And the SOUND EMITTERS are visible: the SND table is
+the single source of what emits, so each distinct emitter object (fork
+tick, maintaining pawl/detent, minute jump, reset hammer, crown stem,
+gong strike point) carries a concentric-ring glyph in the event red,
+attached inside the emitter. Deliberately still undrawn: Fork cock and
+pillars (accommodation, not mechanism) and the Alarm release sleeve
+(not in the owner's list; the next natural entry).
+
 **Palette note.** Hands take their own blued line color — the metal is
 MATS.bluedHand, and the tier mirrors the palette it abstracts; brass
 stays wheels, steel stays levers/structure, red stays springs and lit

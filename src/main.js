@@ -3104,6 +3104,11 @@ const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the l
 const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
+// §71: the schematic draws the chain as ITS OWN RUN — rebuildChain hands
+// the same curve it cuts the links from to this proxy line, so the drawing
+// re-wraps with tension exactly as the metal does (no parallel state; the
+// line is refreshed in the one place the path is computed).
+let schemChainCurve = null, schemChainLine = null;
 let lastChainTension = -1;
 let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMoved() (§14)
 // The chain is drawn as what a fusee chain IS: a miniature bicycle chain —
@@ -3343,6 +3348,9 @@ function rebuildChain(tension) {
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
   const geo = buildChainLinkGeometry(curve);
+  // §71: hand the run to the schematic's chain line — same curve, same frame
+  schemChainCurve = curve;
+  if (schemChainLine) schemChainLine.geometry.setFromPoints(curve.getPoints(160));
   if (chainMesh) {
     chainMesh.geometry.dispose();
     chainMesh.geometry = geo;
@@ -11000,6 +11008,70 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tq.geometry, 30), SCHEMATIC.rimMat);
         edges.userData.schematic = true; edges.layers.set(1); tq.add(edges);
       }
+      // §71 third growth (owner list) — the remaining mechanism units, drawn
+      // GENERICALLY from each mesh's own geometry: a principal mesh (longest
+      // dimension ≥ 2.5) takes its axis line, or its outline circle when the
+      // box reads as a disc (two similar long dimensions over a thin third —
+      // the selector ring, the boss discs). Nothing restated: every line
+      // derives from the mesh it lives in, so whatever the tick poses
+      // carries its own drawing. Furniture under 2.5 stays undrawn — this is
+      // a glyph vocabulary, not hidden-line CAD.
+      {
+        const TWO_PI = Math.PI * 2;
+        const discOrAxis = (m) => {
+          m.geometry.computeBoundingBox();
+          const bb = m.geometry.boundingBox, s = bb.getSize(new THREE.Vector3());
+          const dims = [['x', s.x], ['y', s.y], ['z', s.z]].sort((p, q) => q[1] - p[1]);
+          if (dims[0][1] < 2.5) return;
+          const c = bb.getCenter(new THREE.Vector3());
+          if (dims[1][1] > dims[0][1] * 0.8 && dims[2][1] < dims[0][1] * 0.3) {
+            const r = (dims[0][1] + dims[1][1]) / 4;
+            const pts = [];
+            for (let i = 0; i <= 48; i++) {
+              const p = c.clone();
+              p[dims[0][0]] += Math.cos((i / 48) * TWO_PI) * r;
+              p[dims[1][0]] += Math.sin((i / 48) * TWO_PI) * r;
+              pts.push(p);
+            }
+            addLine(m, pts);
+          } else {
+            const a = c.clone(), b = c.clone();
+            a[dims[0][0]] = bb.min[dims[0][0]];
+            b[dims[0][0]] = bb.max[dims[0][0]];
+            addLine(m, [a, b]);
+          }
+        };
+        const byLabel = (n) => labelEntries.find((e) => e.name === n).obj;
+        for (const name of ['Pallet fork', 'Alarm selector', 'Setting lever', 'Yoke',
+          'Stop lever', 'Maintaining detent', 'Reset rod', 'Hack rod']) {
+          byLabel(name).traverse((o) => {
+            if (o.isMesh && o.geometry.attributes.position && !o.userData.schematic) discOrAxis(o);
+          });
+        }
+        // the fork's pallet STONES — the two working jewels, in the spring
+        // red the tier already uses for contact events, selected by their
+        // own material rather than a traversal index
+        byLabel('Pallet fork').traverse((o) => {
+          if (!o.isMesh || o.material !== MATS.ruby) return;
+          o.geometry.computeBoundingBox();
+          const bb = o.geometry.boundingBox, s = bb.getSize(new THREE.Vector3());
+          const axis = s.x >= s.y && s.x >= s.z ? 'x' : s.y >= s.z ? 'y' : 'z';
+          const c = bb.getCenter(new THREE.Vector3());
+          const a = c.clone(), b = c.clone();
+          a[axis] = bb.min[axis]; b[axis] = bb.max[axis];
+          const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), MAT_SPRING);
+          l.userData.schematic = true; l.layers.set(1); o.add(l); SCHEMATIC.proxies.push(l);
+        });
+        // the CHAIN — its own run, from the same curve rebuildChain cuts the
+        // links along (declared up at chainMesh; refreshed there on every
+        // re-wrap, so tension carries the drawing). Chain lives directly in
+        // `movement`, so the line does too — same frame.
+        schemChainLine = new THREE.Line(new THREE.BufferGeometry(), MAT_LEVER);
+        if (schemChainCurve) schemChainLine.geometry.setFromPoints(schemChainCurve.getPoints(160));
+        schemChainLine.userData.schematic = true; schemChainLine.layers.set(1);
+        movement.add(schemChainLine);
+        SCHEMATIC.proxies.push(schemChainLine);
+      }
     }
   }
 
@@ -11678,6 +11750,31 @@ const SND = {
     sndTone(gongF[0], 0.32, 0.14, 0, alarmEmitter);     // fundamental — the body under it
   },
 };
+// §71 — SOUND EMITTERS in the schematic (owner call: "it'd be good to see
+// all sound emitting elements"). The SND table above is the single source
+// of what emits, so the glyphs derive from it: one per DISTINCT emitter
+// object (fork tick, maintaining pawl/detent, minute jump, reset hammer,
+// crown stem, gong strike point), drawn as concentric rings plus one
+// orthogonal ring so the glyph survives any orbit, attached INSIDE the
+// emitter so it rides whatever the emitter rides. Ruby — the tier's event
+// color, which is what a sound is.
+{
+  const mat = new THREE.LineBasicMaterial({ color: 0xe05555 });
+  const ring = (em, plane, r) => {
+    const pts = [];
+    for (let i = 0; i <= 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      pts.push(plane === 'xy'
+        ? new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0)
+        : new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+    }
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    l.userData.schematic = true; l.layers.set(1); em.add(l); SCHEMATIC.proxies.push(l);
+  };
+  for (const em of new Set([forkGroup, maintDetent, jumperUnit, hammerGroup, crown, alarmEmitter])) {
+    ring(em, 'xy', 0.45); ring(em, 'xy', 0.85); ring(em, 'xz', 0.65);
+  }
+}
 // --- Sound-event highlight (BUILT §11) --------------------------------------
 // The part that just made a sound glows on its OWN surface -- a direct
 // emissive tint, not a separate overlay mesh -- so a click reads as coming
