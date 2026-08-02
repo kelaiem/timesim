@@ -6013,3 +6013,38 @@ residue.
 **Verified.** 152 line proxies + 11 dots, zero Mesh proxies, boot
 silent; the battery ran with the fingerprint unchanged (the tier is
 skipped by scope, part one's rule).
+
+## §67 — Eight explainer plates, the escapement's contact phases first
+
+**Shipped whole across four landings** (PRs #119–#121, #123-era);
+this record is the roadmap entry's reconciliation, and the entry is
+retired against it.
+
+**What was built, against what was filed.** All eight mechanisms got
+their entries in `explain.html`, in the owner's priority order — the
+escapement first, as asked: one figure per contact phase (lock with
+draw holding the fork on its bank, unlock with the wheel's visible
+1.0° recoil, impulse, drop) plus an interactive beat cycle whose
+curves ARE `escapeDeltaDeg`/`forkSwingRad` ported verbatim. Then zero
+reset (the heart cam in three panels, the roller-kiss correction
+quoted), hacking (why the pad takes the rim's underside — the
+timing-screw sweep), the column wheel (castellation law and its three
+riders; ledger kept current through the TODO 11 tranche and TODO 22
+closure that landed mid-arc), the gong (clamped-free mode shapes, the
+6.27× second partial derived as (k₂L/k₁L)²), free-sprung regulation
+(with the filed bar honored: no rate-adjuster drawn that the sim does
+not model), alarm arming (TODO 20 stated plainly — posed from output),
+and the show/hide biconditional as a live truth table computed by the
+tube law's own OR.
+
+**Deltas from the filing, recorded.** The planned "hack gap"
+interactive landed as the truth table instead (the filing offered
+either); and the four §65 seed entries (fusee & chain, motion works,
+keyless, alarm train) gained plates beyond the entry's scope — the
+fusee's torque graph is the HUD's own law
+(`springTq = 0.35 + 0.65·reserve`, `trainTq ≈ 1` by the cone), the
+12:1 drawn with its real counts (10→30, 8→32), the clutch's two
+states, and an alarm overview map. Every dimension on every plate
+resolves to a named, greppable constant; each entry's ledger names
+its mechanism's open TODO debt. Zero console errors; the page is
+sim-code-free, so the battery was untouched by all four landings.
