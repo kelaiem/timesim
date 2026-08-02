@@ -137,6 +137,27 @@ files the layout change; it does not reach back into the group. Waivers
 exist only at P0–P2 and only citing a TODO with a fix path; P3 is never
 waived, and never paid for out of P0–P2.
 
+**Design in a line, fold to fit.** "Free space" made physical, the way
+real calibers are developed: a new action group is designed as a
+STRAIGHT chain, input at one end, output at the other, no corridors —
+in the line it is structurally impossible to pay for packaging with a
+lever arm. The quantities the line establishes (mesh ratios, arm
+lengths, displacement gains, stall forces) are its LINE SPEC, the
+reference the folded build must measure back to (§70 in the roadmap
+files the instrument). Packaging is then a FOLD, and a fold's only
+currencies are position-space: azimuth about a mesh point, stratum,
+stations, and corners/idlers — each fold-added part a real part with
+its own P1 duties (the motion-works arbor's bevel corners are the
+template). A fold that changes a spec quantity goes red UNLESS it is a
+declared FORK: a named copy of the reference spec whose changed rows
+each re-derive their value from the movement constraint that forced
+them, written in place — rule 1 at mechanism scale. Budget ENVELOPES
+(detent force windows, §50 section floors) are inherited from the
+reference and are never forkable: §35's 26.79 tail fails as a fork
+too, which is the point. References are movement-independent, so a
+proven mechanism can be re-integrated — or forked again — into another
+layout.
+
 ## Running it
 
 Use the `.claude/launch.json` preview config named `clock` (python3
