@@ -453,11 +453,17 @@
           </svg>
         </div>
         <figcaption>What the sim models, honestly bounded: the geometry above is built (rim,
-        screws, free terminal), and the beat rate comes from the spec's vph through derived
-        tooth counts — the sim does <em>not</em> model turning a timing screw to move the
-        rate, and this page draws no such mechanism. Amplitude varies with mainspring
-        tension (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism
-        story a free-sprung balance exists to tell.</figcaption>
+        screws, free terminal), and since TODO 25 tier two the rate is a CONSEQUENCE of it.
+        The balance's inertia is weighed from its own published dimensions (rim 84.7%,
+        screws 10.5%, arms 4.8% of it), the spec's beat is what that wheel then demands of
+        its spring (<code>k = I·ω²</code>), and the hairspring's SECTION is solved to
+        deliver it — a ribbon 0.0244 mm thick, inside the 0.02–0.04 mm window real
+        hairspring stock occupies. <em>√(k/I)</em> lands on the spec as arithmetic rather
+        than assertion, and <code>checkOscillator</code> gates that solve every battery run.
+        Still NOT modelled, and this page draws no such mechanism: turning a timing screw to
+        move the rate. Amplitude varies with mainspring tension
+        (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a
+        free-sprung balance exists to tell.</figcaption>
       </figure>
     </div>
   </details>

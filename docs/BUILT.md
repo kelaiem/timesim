@@ -6485,6 +6485,21 @@ file named. Current state: 20 claims, 19 compared and agreeing, 1
 (`GONG_A1`, radians plus a layout rotation) reported as not statically
 comparable.
 
+**The maintenance loop, exercised once for real.** Rebasing onto a main
+that had landed TODO 25 tier two — which cuts the hairspring to the
+balance so the beat becomes a consequence — showed what each instrument
+can and cannot see. The quote audit passed: no NUMBER the page cites had
+moved. But the free-sprung entry's ledger still said the rate "comes
+from the spec's vph", which tier two had just made false, and no
+mechanical check can catch a sentence going stale. It was refreshed
+against the boot's own figures (I weighed at rim 84.7% / screws 10.5% /
+arms 4.8%, the spring solved to a 0.0244 mm ribbon inside real stock,
+√(k/I) landing on the spec), and that edit invalidated its two
+translations exactly as designed — the block fell back to visible
+English and `--check` reported the stale keys — until both were
+re-translated. Prose still needs a reader; the instruments narrow what
+the reader has to hold.
+
 **Residue, stated.** The Chinese is a working translation by the same
 hand that wrote the German; the roadmap has said from the start that
 this repo cannot self-certify Chinese to native quality, and it ships
