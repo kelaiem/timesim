@@ -10768,6 +10768,37 @@ const SCHEMATIC = { proxies: [], on: false };
   const meshProxies = SCHEMATIC.proxies.filter((pr) => pr.isMesh).length;
   if (meshProxies) console.warn(`§66: ${meshProxies} schematic proxies are Meshes — they would join the battery's sweeps`);
   if (sites.length < 10) console.warn(`§66: only ${sites.length} rotors carry userData.r — the schematic tier is nearly empty`);
+
+  // Owner call (2026-08-02, following the exclusive-views call): the BASE
+  // PLATE still obscures in the schematic. Without occlusion the line
+  // drawing reads the dial-side works and the train as one tangle; the
+  // movement's real partition is the base plate, so the schematic keeps
+  // exactly that one occluder — page-colored faces on the slab's two
+  // surfaces plus its rim wall, depth-writing on the tier's own layer, the
+  // hidden-line convention: lines behind the plate (viewed from either
+  // side) hide, and drawn rim circles make the boundary read as a part
+  // rather than a hole in the world. These ARE Meshes, deliberately kept
+  // OUT of SCHEMATIC.proxies and parented to backPlate, which no labelled
+  // unit contains: the sweeps collect unit subtrees, the support path
+  // collects by the exact mesh name 'backPlate', and the fingerprint boxes
+  // per unit — no instrument ever sees them. (The no-mesh-proxies warn
+  // above polices tier parts that live INSIDE units, which these do not.)
+  {
+    const PAGE = 0x0b0d10; // the page background the line tier draws on
+    const occMat = new THREE.MeshBasicMaterial({ color: PAGE });
+    const rimMat = new THREE.LineBasicMaterial({ color: 0x3d4654 }); // dim hairline — structure, not mechanism
+    for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
+      const f = new THREE.Mesh(new THREE.CircleGeometry(plateR, 96), occMat);
+      f.position.z = zf;
+      if (zf < 0) f.rotation.x = Math.PI; // face outward
+      const rim = new THREE.Line(circGeo(plateR, 96), rimMat);
+      rim.position.z = zf;
+      for (const o of [f, rim]) { o.userData.schematic = true; o.layers.set(1); backPlate.add(o); }
+    }
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(plateR, plateR, 2, 96, 1, true), occMat);
+    wall.rotation.x = Math.PI / 2;
+    wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
+  }
 }
 function setSchematic(on) {
   SCHEMATIC.on = on;
