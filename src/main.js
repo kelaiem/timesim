@@ -9502,6 +9502,12 @@ style.textContent = `
   display: block; white-space: normal; overflow-wrap: anywhere;
   margin-bottom: 2px; line-height: 1.25; opacity: 0.85;
 }
+/* the scalar readout rides the label line, right-aligned - the number a
+   slider is AT, not just where it sits in its groove (owner call) */
+#clock-ui .adv-row .adv-val {
+  float: right; opacity: 0.95; color: #e0a355;
+  font: 11px ui-monospace, monospace; margin-left: 8px;
+}
 #clock-ui .adv-row input, #clock-ui .adv-row select { width: 100%; }
 #clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
 #clock-ui select {
@@ -10367,6 +10373,11 @@ function askTour(onProceed) {
       label.textContent = (authored || r.path.slice(1).join('.')) + (live ? '' : ' ⟳');
       label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload';
       row.appendChild(label);
+      // §53 addendum (owner call): the scalar VALUE is shown beside the
+      // label and tracks the drag live - a slider without its number is a
+      // groove, not a control. Decimals derive from the slider's own step,
+      // so coarse knobs read coarse and fine knobs read fine.
+      let valEl = null, valDec = 2;
       let input;
       if (typeof r.value === 'number') {
         input = document.createElement('input');
@@ -10389,6 +10400,11 @@ function askTour(onProceed) {
         else { input.min = 0; input.max = 1; }
         input.step = step;
         input.value = r.value;
+        valDec = Math.max(0, Math.min(3, -Math.floor(Math.log10(step))));
+        valEl = document.createElement('span');
+        valEl.className = 'adv-val';
+        valEl.textContent = Number(r.value).toFixed(valDec);
+        label.insertAdjacentElement('beforebegin', valEl);
       } else if (typeof r.value === 'string' && /^#[0-9a-f]{6}$/i.test(r.value)) {
         input = document.createElement('input');
         input.type = 'color';
@@ -10399,6 +10415,7 @@ function askTour(onProceed) {
         input.checked = r.value;
       } else continue;
       input.addEventListener('input', () => {
+        if (valEl) valEl.textContent = Number(input.value).toFixed(valDec);
         let leaf = aesthetics;
         for (const k of r.path.slice(0, -1)) leaf = leaf[k];
         leaf[r.path[r.path.length - 1]] =
