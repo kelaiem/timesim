@@ -2099,6 +2099,64 @@ reference nothing consumes. Any inertia arithmetic must state which
 amplitude it means, and a derived rate would make the true swing
 consumable for the first time.
 
+**Tier one LANDED (2026-08-02) — and the number it produced.** The
+arithmetic is built and reporting: `makeBalanceWheel` and
+`makeHairspring` now publish the dimensions a rate is computed from
+(`rim`/`arm`/`screws`, and `devLen`/`section`), main.js weighs them into
+an `OSCILLATOR` payload, and the inspector's `oscillator` check reports
+it. Measured, from the built geometry:
+
+| Quantity | Value |
+|---|---|
+| `I` (rim 84.7%, screws 10.5%, arms 4.8%; neglected 0.38%) | 5.00e-10 kg·m² |
+| `k` (rhombic section, E 200 GPa) | 1.68e-6 N·m/rad |
+| **implied f = √(k/I)/2π** | **9.23 Hz** |
+| spec'd `F_BALANCE` | 2.5 Hz |
+| **ratio** | **3.69×** |
+
+**The wheel is not the problem.** 5.0 mg·cm² is a realistic inertia for
+a 6.8 mm balance, and the spring rate a regleur would fit to it —
+1.23e-7 N·m/rad — is a realistic hairspring rate. The disagreement is
+almost entirely the SPRING'S SECTION, and it is legibility debt, not
+physics debt: `ribbonR = max(((outerR − innerR) / coils) · 0.12, 0.05)`
+sizes the ribbon at 12% of the coil gap so the spiral READS on screen —
+0.058 mm thick where a real hairspring runs 0.02–0.04 mm (the figure
+`layout.js`'s own §50 spring-floor citation already carries) — and
+thickness enters `k` CUBED. A second, smaller factor is that the cut
+section is a RHOMBUS, not the rectangle a `b·h³/12` would assume:
+`TubeGeometry(..., radialSegments 4)` puts the 4-gon's diagonals on the
+Frenet normal and binormal, so the true second moment is `a³c/3` — a
+quarter of the bounding rectangle's, and the honest number to use.
+
+So the rate is 3.69× high because the spring is 13.6× too stiff for its
+wheel. That is written here rather than tuned away, which is tier one's
+whole point: **no constant of the balance or the spring was touched**.
+
+**Where the two numbers live, and why not in one place.** Rule 6 forbids
+a boot that warns forever, and a spec-vs-implied warn would do exactly
+that. So the comparison against the spec is an inspector ROW
+(`I.start(__clock, 'oscillator')`) — report-only, `agrees: false`,
+citing this item, the §50 arc — while the BOOT tripwire guards
+regression instead of agreement: `OSC_F_IMPLIED_RECORDED` pins the
+implied rate as built, and boot speaks only if reshaping the balance or
+spring moves it more than 0.5%, which is rule 6's own semantics. It is
+pinned to `f_implied` and not to the ratio, because `?vph=` moves the
+spec while the geometry stands still. Verified by negative test:
+`radius: 10` warns with 9.0931 against the recorded 9.2308 and is the
+only thing that makes it speak.
+
+The check also re-measures the METAL against those published dimensions
+(rim radii and height; the ribbon's radius against the scale that stands
+it on edge), because `userData` is a claim about geometry and a claim
+that stops matching is the drift every other check here exists to catch.
+
+**What tier two now owns**, unchanged by this landing: solving the
+spring's section or length so `√(k/I)` lands on the spec'd beat, at
+which point `checkOscillator` flips from report to gate (its payload is
+already gate-shaped — `agrees` plus its numbers) and `OSC_F_IMPLIED_RECORDED`
+is replaced by the spec comparison. The layout-contract trap above still
+applies.
+
 **Acceptance.** Tier one: a boot-time report (or inspector row) that
 states the balance's implied frequency from its own geometry, agreeing
 with the spec'd 2.5 Hz within a declared tolerance, with `I`, `k` and

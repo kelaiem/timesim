@@ -3829,6 +3829,89 @@ export function checkSlenderness(clock, opts = {}) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// TODO 25 tier one — THE OSCILLATOR'S RATE, WEIGHED AGAINST THE SPEC'S.
+// main.js computes the frequency the built balance and hairspring IMPLY
+// (I from the wheel's own published dimensions, k from the spring's cut
+// section and developed length); this check reports it against the rate the
+// spec declares, and re-measures the METAL to make sure those published
+// dimensions still describe it.
+//
+// A REPORT, not a gate (§40's rule, §50's arc: report, triage, then gate).
+// The two numbers do NOT agree today — the implied rate is ~3.7× the spec'd
+// one, because the hairspring's ribbon is sized so the spiral READS on screen
+// and section thickness enters the rate cubed. That disagreement is the
+// finding. Gating on it would only invite someone to widen a tolerance, and
+// item 25 owns the fix (tier two: solve the spring to the spec instead of
+// declaring the spec). When that lands, this payload is already gate-shaped:
+// `agrees` plus its numbers.
+//
+// The cross-check is what earns this a place in the inspector rather than a
+// readout: userData is a CLAIM about geometry, and a claim that stops matching
+// the metal is exactly the drift every other check here exists to catch.
+export function checkOscillator(clock) {
+  const O = clock.oscillator;
+  if (!O) return { ok: true, error: 'no oscillator payload on __clock (main.js TODO 25 block missing)' };
+  const mismatches = [];
+  const bal = clock.labelEntries.find((e) => e.name === 'Balance');   // string-coupled, verbatim
+  const hs = clock.labelEntries.find((e) => e.name === 'Hairspring');
+  // The rim as CUT: vertex radial extent and z-height of the balance's first
+  // mesh child, against the dimensions the builder published.
+  if (bal) {
+    let rim = null;
+    bal.obj.traverse((o) => { if (!rim && o.isMesh && !o.userData.schematic) rim = o; });
+    const wheel = bal.obj.children.find((c) => c.userData && c.userData.rim);
+    if (rim && wheel) {
+      const pos = rim.geometry.attributes.position;
+      let rMin = Infinity, rMax = 0, zMin = Infinity, zMax = -Infinity;
+      for (let i = 0; i < pos.count; i++) {
+        const r = Math.hypot(pos.getX(i), pos.getY(i));
+        if (r < rMin) rMin = r; if (r > rMax) rMax = r;
+        if (pos.getZ(i) < zMin) zMin = pos.getZ(i);
+        if (pos.getZ(i) > zMax) zMax = pos.getZ(i);
+      }
+      const d = wheel.userData.rim;
+      const near = (a, b) => Math.abs(a - b) <= 1e-3;
+      if (!near(rMax, d.rO) || !near(rMin, d.rI) || !near(zMax - zMin, d.h))
+        mismatches.push({ what: 'balance rim', declared: d,
+          cut: { rO: +rMax.toFixed(4), rI: +rMin.toFixed(4), h: +(zMax - zMin).toFixed(4) } });
+    }
+  }
+  // The spring's SECTION as cut: the tube's own radial/axial half-extents at
+  // its mid-ring, against the rhombus the builder declared. (Path length is
+  // not re-measured here: the tube is a CatmullRom resample of the polyline
+  // the builder summed, and the two differ by ~1% by construction.)
+  if (hs) {
+    let grp = null, tube = null;
+    hs.obj.traverse((o) => {
+      if (!grp && o.userData && o.userData.section) grp = o;
+      if (!tube && o.isMesh && !o.userData.schematic) tube = o;
+    });
+    const sec = grp && grp.userData.section;
+    if (sec && tube) {
+      // The ribbon is cut at radius `a` and then STOOD ON EDGE by the tube's
+      // scale.z, so the axial half-diagonal the section claims must be exactly
+      // what that scale produces: a·scale.z. This catches the real drift —
+      // someone changing the ribbon's radius or the standing scale without
+      // re-deriving the section the rate is computed from.
+      const s = tube.scale.z || 1;
+      if (Math.abs(sec.a * s - sec.c) > 1e-6 || Math.abs(sec.a - grp.userData.ribbonR) > 1e-9)
+        mismatches.push({ what: 'hairspring section', declared: sec,
+          cut: { ribbonR: grp.userData.ribbonR, scaleZ: s, axialHalf: sec.a * s } });
+    }
+  }
+  return {
+    ok: true,                        // §40 rule: a REPORT. Nothing here can fail.
+    agrees: O.agrees, debt: O.debt,
+    impliedHz: +O.fImpliedHz.toFixed(4), specHz: O.fSpecHz, ratio: +O.ratio.toFixed(3),
+    tolPct: O.agreeTolPct,
+    inertia: { I_kgm2: O.I_kgm2, ...O.terms },
+    spring: { k_Nm_per_rad: O.k_Nm_per_rad, ...O.spring },
+    mismatches,
+    summary: `implied ${O.fImpliedHz.toFixed(3)} Hz vs spec ${O.fSpecHz} Hz (${O.ratio.toFixed(2)}×) — ${O.agrees ? 'agrees' : 'DISAGREES, ' + O.debt}`,
+  };
+}
+
 export const STOCK_WAIVERS = {
   'Alarm release feeler': 'TODO 11', 'Alarm disc': 'TODO 11', 'Alarm switch': 'TODO 11',
   'Alarm selector': 'TODO 11', 'Alarm setting wheel': 'TODO 11', 'Alarm link': 'TODO 11',
@@ -3888,6 +3971,7 @@ const CHECKS = {
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 interim — movers vs their own fixtures
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
+  oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier one — the weighed rate vs the spec'd one (report)
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
