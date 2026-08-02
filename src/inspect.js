@@ -1239,8 +1239,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm barrel', a: 'CylinderGeometry#6', b: 'CylinderGeometry#0', why: 'barrel cap on the arbor boss' },
   { unit: 'Alarm winding train', a: 'ExtrudeGeometry#3', b: 'CylinderGeometry#5', why: 'idler 1 on its stud' },
   { unit: 'Alarm winding train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#4', why: 'lock lever on its pivot post' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#4', why: 'lever tail on the same post' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#6', why: 'lock lever on its pivot post (index moved 4→6 when TODO 24 added the beak riser+nose to the lever)' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#6', why: 'lever tail on the same post' },
   { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#3', why: 'column wheel on its stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
@@ -2174,6 +2174,17 @@ const ALARM_HANDOFFS = [
     label: 'pusher pawl ⇄ ratchet skirt',
     unitA: 'Alarm switch', meshA: 'alarmColWheel',
     unitB: 'Alarm switch', meshB: 'alarmPusherPawl',
+  },
+  {
+    // TODO 24 closed: the LOCK side's read was law-only — the tail's z band
+    // never overlapped the castellations, so 'blocked on a column' had no
+    // matter behind it. The raised beak nose now kisses the column's OUTER
+    // face at the disarmed parity and hangs over gap air armed — the link
+    // beak's row, mirrored to the lock side.
+    label: 'column outer face ⇄ lock beak',
+    unitA: 'Alarm switch', meshA: 'alarmColWheel',
+    unitB: 'Alarm lock', meshB: 'alarmLockBeak',
+    expect: { disarmed: 'contact', armed: 'free' },
   },
   {
     // TODO 20 closed this row: the flank is cut (geometry.js), the nose

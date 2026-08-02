@@ -516,6 +516,70 @@ Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means
 the alarm units clear their floors and their waivers are DELETED.
 
+
+**The switch's real-scale layout, MEASURED 2026-08-02 — two walls, not
+one.** The tranche's note said "move the station inboard (§33
+machinery)"; the attempt was made and the measurement says the move is
+§-scale, so the findings are filed instead of a half-fix:
+
+1. **The tail's ray runs outboard.** The wheel stands on the lock
+   tail's line (stand-off = tail + baseR + 0.3), and that line, from
+   the pivot at the as-built 160° azimuth, POINTS AWAY from centre:
+   the minimum reachable centre radius along it is 41.4 against a
+   real-scale bound of 36.4 (plateR − margin − 1.12·baseR at
+   baseR 5.7). No tail length fits; the pivot AZIMUTH (the 160°
+   constant around the striking wheel) is the next legal knob.
+2. **Every inboard azimuth hits the three-quarter plate.** The
+   switch's stratum is collar-bound (ALARM_LOCK_Z 8.83 — the pad must
+   press the strike collar's band), which hangs the wheel's ratchet
+   skirt at z ≈ 8.4..8.7: below the plate's top face. That only
+   works at the RIM, where the plate has ended — swept 0..360° at
+   2° steps, every radius-viable station overlaps plate matter.
+   Real scale therefore needs the §51 precedent: raise the wheel on
+   its own bridge above the plate + margin, and REDESIGN how the
+   lock tail reads it (the collar-bound lever cannot follow the
+   wheel up) — which is also the honest fix for item 24 below.
+
+That § is now FILED as roadmap §68 (the switch at real scale — a
+bridge, an azimuth, and the lever that cannot follow), with the two
+walls as its spec and the TODO 24 beak as its acceptance instrument.
+Until it lands, the wheel stays at its position bound (Ø 1.9 mm)
+with real sections — legal, measured, and small.
+
+## 24. CLOSED — the lock beak is matter now, and a handoff row measures it
+
+Found by the TODO 11 layout measurement. The §25 D story is "beak on
+a COLUMN → the tail is blocked"; the built tail's z band is
+8.68..8.98 and the castellation ring's is 9.33..10.13 — THEY NEVER
+OVERLAP. What the tail's end actually stands beside is the wheel's
+smooth BASE DISC rim (8.7..9.25), which has no castellations and
+gates nothing radially. The tick's `colBlock` law grants the block;
+no geometry backs it, and no `alarmHandoffs` row measures it — the
+lock side of the switch has the §35-class gap (a hand-off that never
+touches) that TODO 20 closed for the LINK side.
+
+Fix path: give the tail a raised BEAK NOSE whose z is derived into
+the castellation band (the §35 link beak's `ALARM_COL_TOP_Z`
+convention, already parameterized over the wheel's feature heights),
+size the nose to the column/gap sector, and add the
+`lock beak ⇄ castellations` row to `ALARM_HANDOFFS` with
+expect contact-on-column / free-in-gap parity — the same shape as
+the link beak's row. Closing item 11's layout § would rework this
+joint anyway; whichever lands first carries it.
+
+**Closed 2026-08-02, exactly along that path.** The nose rises off
+the tail's end into the castellation band (mid-band, clear of the
+base disc below and the tier's top), and its inward face lands on
+the column's outer wall by the stand-off's own arithmetic —
+face reach = stand-off − baseR = 2.3, R-independent. Width 0.5
+against a 1.31 gap arc minus the lift's 0.20 tangential swing. The
+new `alarmHandoffs` row 'column outer face ⇄ lock beak' expects
+contact disarmed / free armed and measures green at both parities;
+the two Alarm-lock joint rows in `INTRA_UNIT_CONTACTS` re-pointed to
+the post's shifted index (string coupling, as documented). The lock
+side now has what TODO 20 won for the link side: no hand-off in the
+switch chain is law-only.
+
 ## 12. The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row
 
 **Tranche four (shipped): 4 more rows — 11 remain, all bound-or-band.**

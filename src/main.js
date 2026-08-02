@@ -8049,6 +8049,34 @@ const ALARM_COL_POS = {
 // running clearance — the first build had bore = stud and the post punched
 // out through the castellations). Raised so the ratchet skirt clears the
 // plate top by a full margin instead of sitting dead on it.
+// TODO 24 CLOSED — the tail's castellation read becomes MATTER. The tick's
+// law was always lift × (1 − colBlock), and EXPECTED_PAIRS already declared
+// 'the tail beak riding the castellations' — but the built tail's z band
+// (±0.16 about ALARM_LOCK_Z) never overlapped the castellation band, so the
+// block was law-only. The nose now rises off the tail's end into the band
+// and its inward face lands EXACTLY on the column's outer wall:
+//   face reach = stand-off − BASE_R = (3.8 + R − 1.5) − R = 2.3 from the
+//   pivot along the tail's line — kiss at the disarmed parity (column
+//   centred on this azimuth by the spin group's phase), gap air when armed.
+// Width is bounded by the gap's arc minus the lift's tangential swing:
+//   gap arc at the ring ≈ 0.5·(π/3)·R = 1.31; swing = LOCK_LIFT·2.3 = 0.20;
+//   0.5 leaves 2× CLEAR_MARGIN and more. The alarmHandoffs row
+//   'column outer face ⇄ lock beak' measures both parities every run.
+{
+  const noseFaceReach = (3.8 + ALARM_COL_BASE_R - 1.5) - ALARM_COL_BASE_R; // = 2.3, R-independent by the stand-off's own form
+  const noseLen = 0.6, noseW = 0.5;
+  const bandBot = 0.22 + ALARM_COL_BASE_H / 2;   // castellation floor above ALARM_LOCK_Z (the wheel's own stack arithmetic)
+  const noseH = ALARM_COL_H * 0.6;
+  const noseZ = bandBot + ALARM_COL_H / 2;       // mid-band, clear of the base disc below and the tier's top above
+  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, noseZ - noseH / 2 - 0.1, 10), MATS.steel);
+  riser.rotation.x = Math.PI / 2;
+  riser.position.set(-(noseFaceReach - noseLen / 2 - 0.15), 0, (noseZ - noseH / 2 + 0.1) / 2);
+  alarmLockLever.add(riser);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(noseLen, noseW, noseH), MATS.steel);
+  nose.name = 'alarmLockBeak'; // the handoffs row selects it by name (inspect.js couples by string)
+  nose.position.set(-(noseFaceReach - noseLen / 2), 0, noseZ);
+  alarmLockLever.add(nose);
+}
 const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier)
 alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
 const alarmColSpin = new THREE.Group();
