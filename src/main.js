@@ -1060,7 +1060,7 @@ const backPlate = G.makeBackPlate({
     ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
     { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
     { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-    { x: -22.517, y: -13.0, r: 0.45 },             // §35: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build). r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1) — 0.28 sealed, ray-verified open at 0.45
+    { x: -9.80, y: 26.97, r: 0.45 },               // §35/§68: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
   ],
   slots: [{
     ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
@@ -3827,7 +3827,7 @@ checkCutVsPivots();
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
-tqHoles.push({ x: -22.517, y: -13.0, r: 0.45 }); // §35: the selector rod passes the plate top at the south-west, under the beak's long tail (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
+tqHoles.push({ x: -9.80, y: 26.97, r: 0.45 }); // §35/§68: the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -7972,8 +7972,16 @@ const ALARM_LOCK_L = 5.0;                       // pivot → pad centre
 const ALARM_LOCK_PAD_R = 0.3;
 const ALARM_LOCK_LIFT = 0.085;                  // rad — ~0.4 of radial air at the collar when released
 const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (8.68..8.98)
+// §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
+// tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
+// bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
+// wheel's RAISED band vertex-scored against every neighbouring mesh: 24°
+// puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
+// runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
+// pad, collar, and the engaged-angle triangle are untouched derivations.
+const ALARM_LOCK_PIV_AZ = 24 * DEG2RAD;
 const alarmLockPivot = (() => {
-  const a = 160 * DEG2RAD + ALARM_MOD_ROT;      // outboard-left of the striking wheel (module-relative) — probed clear at identity
+  const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
   return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
 })();
 // Engaged arm angle: pad centre sits at collar radius + pad radius from the
@@ -8040,15 +8048,34 @@ const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuatio
 // TODO 11 (moving the station inboard is §33-machinery work). Within the
 // bound: the diameter takes all of it, and the FEATURE DEPTHS — which
 // the plate-top band leaves free — go to real proportions.
-const ALARM_COL_BASE_R = 2.5;      // tip 2.80 = the plate-edge bound taken exactly (Ø 1.9 mm, was 1.6)
-const ALARM_COL_BASE_H = 0.55;     // base disc 0.21 mm (was the 0.12 mm floor)
-const ALARM_COL_H = 0.8;           // castellation tier 0.30 mm (was 0.21) — ~0.16 of Ø, real proportion
-const ALARM_COL_BORE_R = 0.35;     // bore grows with the wheel; stud follows at bore − 0.06 running clearance
+const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scale (4–6 mm on a 30 mm movement)
+const ALARM_COL_BASE_H = 0.7;      // base disc 0.27 mm
+const ALARM_COL_H = 1.4;           // castellation tier 0.53 mm — real proportion at real diameter
+const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
+// §68's second move — the RAISED STRATUM. Inboard of the rim the
+// three-quarter plate runs under the wheel, and the collar-bound lever z
+// hung the old skirt below the plate's top face. The whole wheel stack now
+// rides up exactly far enough that the ratchet skirt's underside clears
+// the plate top by one CLEAR_MARGIN; the taller stud (seated in the plate,
+// tip inside the bore) is the bridge, and every rider z-station derives
+// from ALARM_COL_SPIN_REL so the cluster rides up as one.
+const ALARM_COL_RAISE = Math.max(0,
+  (TQ_TOP_Z + CLEAR_MARGIN) - ((ALARM_LOCK_Z + 0.22) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U));
+const ALARM_COL_SPIN_REL = 0.22 + ALARM_COL_RAISE; // the spin plane above ALARM_LOCK_Z
 const ALARM_COL_INNER = ALARM_COL_BASE_R * (0.95 / 1.5); // the original proportion, kept
 const ALARM_COL_POS = {
   x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
   y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
 };
+// §68's two bounds, asserted with the achieved numbers (rule 6):
+{
+  const reach = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y) + 1.12 * ALARM_COL_BASE_R;
+  if (reach > plateR - CLEAR_MARGIN + 1e-6)
+    console.warn(`§68: wheel saw tips reach r ${reach.toFixed(2)}, plate-edge bound ${(plateR - CLEAR_MARGIN).toFixed(2)}`);
+  const skirtBot = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U;
+  if (skirtBot < TQ_TOP_Z + CLEAR_MARGIN - 1e-6)
+    console.warn(`§68: ratchet skirt bottom ${skirtBot.toFixed(2)} inside the plate-top margin (top ${TQ_TOP_Z.toFixed(2)} + ${CLEAR_MARGIN})`);
+}
 // Steel, not blued (owner's finish call), bore 0.30 over a 0.24 stud (0.06
 // running clearance — the first build had bore = stud and the post punched
 // out through the castellations). Raised so the ratchet skirt clears the
@@ -8069,7 +8096,7 @@ const ALARM_COL_POS = {
 {
   const noseFaceReach = (3.8 + ALARM_COL_BASE_R - 1.5) - ALARM_COL_BASE_R; // = 2.3, R-independent by the stand-off's own form
   const noseLen = 0.6, noseW = 0.5;
-  const bandBot = 0.22 + ALARM_COL_BASE_H / 2;   // castellation floor above ALARM_LOCK_Z (the wheel's own stack arithmetic)
+  const bandBot = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2;   // castellation floor above ALARM_LOCK_Z — rides the §68 raise
   const noseH = ALARM_COL_H * 0.6;
   const noseZ = bandBot + ALARM_COL_H / 2;       // mid-band, clear of the base disc below and the tier's top above
   const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, noseZ - noseH / 2 - 0.1, 10), MATS.steel);
@@ -8084,7 +8111,7 @@ const ALARM_COL_POS = {
 const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier)
 alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
 const alarmColSpin = new THREE.Group();
-alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + 0.22);
+alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + ALARM_COL_SPIN_REL);
 // Phase the wheel so the BEAK's azimuth (from the wheel toward the lock tail,
 // = ALARM_LOCK_ENGAGED) starts centred on a column: profileAt is written for
 // a beak at angle 0, so the spin group carries the beak azimuth and the wheel
@@ -8096,9 +8123,13 @@ alarmSwitchUnit.add(alarmColSpin);
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
   // (9.15, under the base's top face) — a pivot, not a pole through the crown.
   const studR = ALARM_COL_BORE_R - 0.06; // the §43 running clearance, kept through the resize
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, 0.95, 12), MATS.nickel);
+  // §68: the stud IS the bridge — seated 0.3 into the plate, tip ending
+  // inside the raised bore under the base's top face; both ends derived.
+  const studBot = TQ_TOP_Z - 0.3;
+  const studTip = ALARM_LOCK_Z + ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 - 0.05;
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, studTip - studBot, 12), MATS.nickel);
   stud.rotation.x = Math.PI / 2;
-  stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, 8.675);
+  stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, (studBot + studTip) / 2);
   alarmSwitchUnit.add(stud);
 }
 // The CLICK — the detent arm every real column wheel carries, and the part
@@ -8129,7 +8160,7 @@ const alarmClickPivot = {
   x: _clickSeatP.x + _clickTan.x * ALARM_CLICK_L,
   y: _clickSeatP.y + _clickTan.y * ALARM_CLICK_L,
 };
-const ALARM_COL_BAND_MID = 0.22 + ALARM_COL_BASE_H / 2 + ALARM_COL_H / 2; // castellation band's mid-plane above ALARM_LOCK_Z — the riders' z station, derived
+const ALARM_COL_BAND_MID = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL_H / 2; // castellation band's mid-plane above ALARM_LOCK_Z — the riders' z station, derived
 const alarmClickArm = new THREE.Group();
 alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID); // nose mid-band, clear of the base disc
 alarmSwitchUnit.add(alarmClickArm);
@@ -8267,13 +8298,30 @@ const ALARM_LINK_SHAFT_Z = Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2);
 // 208 was already nicked at 1 of 61 tensions when that span was probed, so 210
 // is the last azimuth with a clear degree between the rod and a moving chain.
 // Going further needs the chain span re-probed, not a bigger step here.
-const ALARM_LINK_ROD_AZ_DEG = 210, ALARM_LINK_ROD_R = 26;
+// §68 — THE ROD RE-SITED WITH THE WHEEL. The old az-210 site was the §35
+// corridor solve for a RIM wheel reached by a ~28-long tail; with the wheel
+// inboard the whole link re-solves. The rod now stands DIAMETRICALLY
+// OPPOSITE the lock beak (3 pitches = the same castellation parity, by
+// construction — the read assert below goes quiet instead of being aimed
+// at), at a distance chosen from two pose-swept probes over the §35
+// blindness list (crown, tension, strike, handSet):
+//   rod COLUMN at 10 from the wheel: 3.07 clear, worst neighbour the fusee;
+//   lay-shaft CHORD (rod foot → ring tab): 0.34 vs the dial's marker ring —
+//   STATIC matter, and ≥ the 0.30 the shipping az-210 chord scores under
+//   identical scoring. The beak tail collapses ~28 → 4.0: a ~3:1 lever
+//   someone would design, retiring the §35 tail's 36.5× as measured debt.
+const ALARM_LINK_ROD_DIST = 10; // from the wheel's axis, along the beak line
+const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPivot.x - ALARM_COL_POS.x);
+const ALARM_LINK_ROD_XY = {
+  x: ALARM_COL_POS.x + Math.cos(_linkBeakAz0 + Math.PI) * ALARM_LINK_ROD_DIST,
+  y: ALARM_COL_POS.y + Math.sin(_linkBeakAz0 + Math.PI) * ALARM_LINK_ROD_DIST,
+};
+const ALARM_LINK_ROD_R = Math.hypot(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y);
+const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY.x) / DEG2RAD + 360) % 360;
 // The bore both plates carry for this rod. Was written as a bare 0.45 at each
 // of the two hole sites and again implied at the rod; one name so the rod's
 // own section can be derived from it instead of racing it.
 const ALARM_LINK_ROD_BORE_R = 0.45;
-const _rodAz = ALARM_LINK_ROD_AZ_DEG * DEG2RAD;
-const ALARM_LINK_ROD_XY = { x: Math.cos(_rodAz) * ALARM_LINK_ROD_R, y: Math.sin(_rodAz) * ALARM_LINK_ROD_R };
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
 
@@ -8414,7 +8462,7 @@ const alarmLinkParts = {};
   // height is now DERIVED so the nose's underside rests exactly on the
   // column top plane at the disarmed parity — the plane the flank cut
   // (geometry.js) rises to: spin z + base top + column height.
-  const ALARM_COL_TOP_Z = (ALARM_LOCK_Z + 0.22) + ALARM_COL_BASE_H / 2 + ALARM_COL_H; // base top + tier — rides the TODO 11 resize
+  const ALARM_COL_TOP_Z = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H; // base top + tier — rides the TODO 11 resize and the §68 raise
   const ALARM_BEAK_NOSE_H = 0.22;
   beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_COL_TOP_Z + ALARM_BEAK_NOSE_H / 2);
   const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
@@ -8866,7 +8914,7 @@ const alarmLinkParts = {};
   // constant, so this is the tripwire between them. It has already earned its
   // keep once: moving the rod to az 210 left both bores behind at az 212 and
   // this is what said so.
-  const _boreXY = { x: -22.517, y: -13.0 };   // MUST equal both tqHoles entries for this rod
+  const _boreXY = { x: -9.80, y: 26.97 };     // MUST equal both tqHoles entries for this rod (§68 re-site)
   if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
     console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
   // the shaft's bottom vs the keyless piece under the run. §35 measured that
@@ -8939,7 +8987,7 @@ const _pushBase = {
 // the wheel at any press depth — the old axis shared the disc band, which
 // is where TODO 22 lived. Only the pawl's dropper descends, and its
 // station carries the full travel's radial clearance below.
-const ALARM_PUSH_AXIS_REL = 0.22 + ALARM_COL_BASE_H / 2 + ALARM_COL_H + CLEAR_MARGIN + 0.32;
+const ALARM_PUSH_AXIS_REL = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL_H + CLEAR_MARGIN + 0.32;
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
 {
@@ -9030,7 +9078,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
   })();
   // skirt band mid-plane, world→group local (the skirt hangs baseH/2 + its
   // own stock under the spin plane — geometry.js): derived, was the frozen −0.17
-  const _pawlZ = (0.22 - ALARM_COL_BASE_H / 2 - STOCK_MIN_U / 2) - ALARM_PUSH_AXIS_REL;
+  const _pawlZ = (ALARM_COL_SPIN_REL - ALARM_COL_BASE_H / 2 - STOCK_MIN_U / 2) - ALARM_PUSH_AXIS_REL;
   pawl.position.set(_pushU.x * (ALARM_PAWL_KISS_S + 1.5 / 2), _pushU.y * (ALARM_PAWL_KISS_S + 1.5 / 2), _pawlZ); // leading face on the kiss
   alarmPusherGroup.add(pawl);
   // The pawl's CARRIER — at the old scale the pawl sat under the stem's own
