@@ -6049,6 +6049,67 @@ resolves to a named, greppable constant; each entry's ledger names
 its mechanism's open TODO debt. Zero console errors; the page is
 sim-code-free, so the battery was untouched by all four landings.
 
+## §68 — The switch at real scale: the azimuth, the raise, and the link re-solved
+
+**Shipped whole.** TODO 11's layout measurement was the spec: real
+chronograph scale (Ø ≥ 4.0 mm) was blocked by two independent walls,
+and the entry predicted a two-move re-solve. Both moves landed, plus
+one the filing scoped smaller than it turned out to be.
+
+**Move one — the azimuth, from the sweep.** At the as-built 160° the
+lock tail's ray ran outboard (min reachable centre r 41.4 vs the
+real-scale bound 36.4). Swept 0..360° at 2° with the wheel's raised
+band vertex-scored against every neighbouring mesh, 24° wins: centre
+r 24.9 with 3.26 worst-case clearance (the gong), runners-up 22°/26°
+at 2.8. `ALARM_LOCK_PIV_AZ` carries the derivation; pad, collar, and
+the engaged-angle triangle are untouched derivations downstream.
+
+**Move two — the raise, on the stud it already had.** The filing
+asked for "one new bridge part"; the build got there without one.
+The wheel's guide stud lengthens into the bridge: seated 0.3 INTO
+the three-quarter plate's top (the §25 D expected contact), tip just
+under the wheel's base — both ends derived. `ALARM_COL_RAISE` is the
+constraint written as arithmetic — max(0, plate top + CLEAR_MARGIN −
+as-built skirt bottom) — folded into `ALARM_COL_SPIN_REL`, which
+every rider z-station already consumed: press axis, pawl, band-mid,
+the TODO 24 nose all rode up automatically. Two boot asserts hold
+the walls down (tips inside plate edge − margin; skirt above plate
+top + margin). The wheel stands at Ø 4.32 mm (`ALARM_COL_BASE_R`
+5.7), real feature depths (base 0.27 mm, castellations 0.53 mm).
+
+**The delta worth the record — the link re-solved, not re-derived.**
+The filing treated the §35 rod as corridor-fixed (az 212, r 26) and
+asked only that the re-derived tail be "bounded in review". Measured,
+that bound failed structurally: reaching the frozen rod from the new
+station would have kept a §35-class tail. So the rod moved — P3
+resolved in position space — and the move bought back the mechanism
+§35 had spent: the rod now derives its site FROM the lock beak
+(diametrically opposite, `ALARM_LINK_ROD_DIST` 10 — three whole
+pitches, so the link beak reads the same parity BY CONSTRUCTION, no
+rounding assert doing load-bearing work), and the beak's tail
+collapsed 26.79 → 3.95 (~3:1 to the nose arm), retiring the 36.5×
+displacement gain the P0–P3 ladder was written about. The plate
+bores and the §35 tripwire moved with it to (−9.80, 26.97).
+
+**What the battery caught that every probe missed.** With the chord
+moved, the lay shaft's inner bush hanger (station t 12 of the old
+chord's ray probe) stood inside the power-reserve sector's sweep —
+FORBIDDEN at 41/61 reserve poses. The measurement lesson is §36-class
+and now in the bush comment: a vertex-cloud scan reads a wheel's WEB
+as empty (no vertices between rim and bore), and it green-lit two
+stations in a row that stood inside solid matter. Re-scanned with
+wheels held to their annulus footprint, the honest bands are
+t 2.25–2.6 and 16.75–24; the inner bush took the inboard pocket's
+peak (t 2.45, room 0.587 vs the 0.41 need) — which also shrank the
+drive-end cantilever §54 sizes against from 4.5 to 0.93 mm. The
+outer bush kept t 22.
+
+**Acceptance, measured.** All 12 alarmHandoffs rows green unwaived at
+both parities, including TODO 24's 'column outer face ⇄ lock beak';
+boot silent; intraUnit 0 unwaived; stockFloor 0 new waivers;
+fingerprint changed (real geometry moved) and deterministic across
+virgin boots; the full battery 12/12.
+
 ## §69 — Tap focus, the ghost tier, and the schematic given real obstructions
 
 **Filed and shipped in one landing** (owner request, three connected

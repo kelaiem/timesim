@@ -540,11 +540,16 @@ machinery)"; the attempt was made and the measurement says the move is
    lock tail reads it (the collar-bound lever cannot follow the
    wheel up) — which is also the honest fix for item 24 below.
 
-That § is now FILED as roadmap §68 (the switch at real scale — a
-bridge, an azimuth, and the lever that cannot follow), with the two
-walls as its spec and the TODO 24 beak as its acceptance instrument.
-Until it lands, the wheel stays at its position bound (Ø 1.9 mm)
-with real sections — legal, measured, and small.
+**Both walls are DOWN — §68 landed (BUILT §68).** The pivot azimuth
+re-derived 160° → 24° from a scored sweep; the wheel rose onto its
+lengthened stud above the plate top (`ALARM_COL_RAISE`, asserted at
+boot) with every rider's z-station riding the same constant; the
+wheel now stands at Ø 4.32 mm (`ALARM_COL_BASE_R` 5.7) with the
+TODO 24 handoff row green at both parities. The §35 rod re-sited
+with it — diametrically opposite the lock beak, three whole pitches,
+parity by construction — and the beak tail collapsed ~28 → 4.0
+(~3:1), retiring §35's 36.5× displacement gain. What remains of this
+item is the STOCK debt above (the waived rows), not scale.
 
 ## 24. CLOSED — the lock beak is matter now, and a handoff row measures it
 
