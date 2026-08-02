@@ -2029,3 +2029,82 @@ All nine waiver rows deleted; `intraUnit` measures the repair (0
 unwaived, only item 22's two rows remain). The class lesson stands in
 MODELING.md's territory: a box cannot carry a bore — model the arm to
 the ring, never through it.
+## 25. The balance's RATE is a spec input, not a consequence of the balance
+
+Rule 2 says angles travel the gears, and the train obeys it — every wheel
+angle is a closed-form function of the escape wheel's, arriving at 12:1
+because tooth counts multiply to it. The OSCILLATOR does not obey the same
+principle. `F_BALANCE = SPEC.vph / 7200` (`layout.js`): the frequency is
+declared, and `balanceTheta(tau) = amp * sin(2*pi*F_BALANCE*tau)` reads it
+back. Nothing in the codebase computes a moment of inertia or a spring
+rate; grep for `inertia` returns one comment about the alarm hammer.
+
+So the balance wheel is MODELLED and not SIMULATED, in exactly the sense
+the README now defines: its rim, its 2.5 mm section, its timing screws and
+its arms are real geometry that contributes NOTHING causally. This is the
+escapement's version of `hourAngle = minuteA / 12` — the shortcut rule 2
+exists to forbid, surviving in the one place the train's discipline never
+reached.
+
+**Measured, 2026-08-02.** Booting the movement at balance radii 9 / 10 /
+11 / 12 / 14 (everything else untouched) changes the beat not at all: the
+watch keeps 18 000 A/h at every size, because the rate never consulted the
+wheel. A real watch does the opposite and loudly — period is
+`2*pi*sqrt(I/k)`, and for a rim-dominant wheel `I` climbs about with the
+CUBE of the radius (rim mass grows with radius, and each gram sits further
+out), so a third again of radius would run the watch grossly slow until
+the hairspring was re-sprung to match. That trade is the whole reason
+balance size is a design decision: more inertia buys rate stability
+against disturbance, and is paid for in torque and reserve.
+
+What the same sweep DID break is instructive by contrast, and belongs to
+layout rather than to this item: at +11% the three-quarter plate's cut
+(sized `balanceR * 1.35`) reaches a pivot it has to carry; at +33% the
+plate grows and pulls the alarm winding train out of mesh (item 15's
+asserts fire); at +56% the fork cock finds no footing and boot fails. The
+escapement itself follows a bigger balance without complaint — `rollerR`,
+the escape-to-balance distance, the lever, the notch and `FORK_BANK_DEG`
+all re-derive, and the bank moves only 2.57 deg to 2.35 deg from R 9 to
+R 12, because it is a ratio of two quantities that both scale.
+
+**Two tiers, and the first is cheap.**
+
+- **Tier one, a TRIPWIRE (report, do not drive).** Compute `I` from the
+  built balance (rim annulus at `BAL_T` 2.5 and `balanceR` 9, plus the
+  timing screws as point masses at their own radii) and `k` from the built
+  hairspring (`makeHairspring`: ribbon section, `coils` 10, `innerR`
+  ~1.5, `outerR` `balanceR * 0.88`, developed length from the spiral), in
+  SI through the section 39 unit pin (`UNIT_MM` 0.379) and a declared
+  steel density and modulus. Report the IMPLIED frequency beside the
+  spec'd one and warn when they disagree by more than a stated tolerance.
+  This is the section 54 move — file the arithmetic, let the number
+  argue — and it converts "the balance is decoration" into a measurable
+  claim without touching the layout contract.
+- **Tier two, DERIVE.** Make the spec's vph a TARGET rather than an
+  input: the hairspring's developed length (or section) is solved so
+  `sqrt(k/I)` lands on it, the way a regleur actually vibrates a balance
+  to a spring. Then a bigger balance genuinely runs slow until re-sprung,
+  and the sweep above becomes a real experiment rather than a null one.
+
+**The trap that makes tier two a layout change, named so nobody
+discovers it mid-fix**: `F_BALANCE` is a LAYOUT INPUT, not a leaf. The
+train's tooth counts are derived from it (the fourth wheel must turn once
+a minute at whatever the beat is, see layout.js), so reversing the
+dependency touches `SPEC.md`'s contract and `solveLayout`. Tier one has
+no such reach and should land first regardless.
+
+**Adjacent, in the same honesty family**: `AMPLITUDE_VISUAL_DEG` 45 is
+what the mesh performs while `AMPLITUDE_TRUE_DEG` 270 is the physical
+reference nothing consumes. Any inertia arithmetic must state which
+amplitude it means, and a derived rate would make the true swing
+consumable for the first time.
+
+**Acceptance.** Tier one: a boot-time report (or inspector row) that
+states the balance's implied frequency from its own geometry, agreeing
+with the spec'd 2.5 Hz within a declared tolerance, with `I`, `k` and
+every material constant derived and commented per rule 1 — and the
+disagreement, if there is one, WRITTEN DOWN here rather than tuned away.
+Tier two: `F_BALANCE` consumed from the spring/balance solve, the sweep
+above re-run to show the rate actually moving with radius, and SPEC.md's
+gear-train section updated to say the beat is a target the regulator
+hits rather than a number the movement is told.
