@@ -3837,14 +3837,18 @@ export function checkSlenderness(clock, opts = {}) {
 // spec declares, and re-measures the METAL to make sure those published
 // dimensions still describe it.
 //
-// A REPORT, not a gate (§40's rule, §50's arc: report, triage, then gate).
-// The two numbers do NOT agree today — the implied rate is ~3.7× the spec'd
-// one, because the hairspring's ribbon is sized so the spiral READS on screen
-// and section thickness enters the rate cubed. That disagreement is the
-// finding. Gating on it would only invite someone to widen a tolerance, and
-// item 25 owns the fix (tier two: solve the spring to the spec instead of
-// declaring the spec). When that lands, this payload is already gate-shaped:
-// `agrees` plus its numbers.
+// A GATE since tier two (§50's arc completed: report, triage, then gate). The
+// spring is now CUT to the balance it must beat with, so the two frequencies
+// agreeing is not a coincidence to be tolerated but the build's own claim —
+// and a claim that stops being true is a failure, not a report. What can break
+// it: a spiral plan (coils, radii, height) changed without re-solving the
+// section against the new length, or a balance whose inertia no longer matches
+// the spring it was cut for.
+//
+// The stock window is gated with it. §50's spring floor cites the real range
+// in its own basis — "real hairsprings run 0.02–0.04 mm" — and a solve that
+// leaves it means this balance cannot be sprung to this beat out of real wire.
+// That is a design finding, so it fails here rather than being clamped away.
 //
 // The cross-check is what earns this a place in the inspector rather than a
 // readout: userData is a CLAIM about geometry, and a claim that stops matching
@@ -3900,15 +3904,19 @@ export function checkOscillator(clock) {
           cut: { ribbonR: grp.userData.ribbonR, scaleZ: s, axialHalf: sec.a * s } });
     }
   }
+  const failures = [];
+  if (!O.agrees) failures.push({ what: 'rate', impliedHz: O.fImpliedHz, specHz: O.fSpecHz, tolPct: O.agreeTolPct });
+  if (!O.spring.inStock) failures.push({ what: 'spring stock', h_mm: O.spring.h_mm, window: O.stockWindowMm });
+  for (const m of mismatches) failures.push({ what: 'declared vs cut', ...m });
   return {
-    ok: true,                        // §40 rule: a REPORT. Nothing here can fail.
-    agrees: O.agrees, debt: O.debt,
-    impliedHz: +O.fImpliedHz.toFixed(4), specHz: O.fSpecHz, ratio: +O.ratio.toFixed(3),
+    ok: failures.length === 0,       // a GATE since tier two — the spring is cut to the rate
+    agrees: O.agrees, solved: O.solved,
+    impliedHz: +O.fImpliedHz.toFixed(4), specHz: O.fSpecHz, ratio: +O.ratio.toFixed(4),
     tolPct: O.agreeTolPct,
     inertia: { I_kgm2: O.I_kgm2, ...O.terms },
-    spring: { k_Nm_per_rad: O.k_Nm_per_rad, ...O.spring },
-    mismatches,
-    summary: `implied ${O.fImpliedHz.toFixed(3)} Hz vs spec ${O.fSpecHz} Hz (${O.ratio.toFixed(2)}×) — ${O.agrees ? 'agrees' : 'DISAGREES, ' + O.debt}`,
+    spring: { k_Nm_per_rad: O.k_Nm_per_rad, ...O.spring, windowMm: O.stockWindowMm },
+    mismatches, failures,
+    summary: `implied ${O.fImpliedHz.toFixed(3)} Hz vs spec ${O.fSpecHz} Hz (${O.ratio.toFixed(3)}×) — ${O.agrees ? 'the spring is cut to the beat' : 'DISAGREES'}; ribbon ${O.spring.h_mm.toFixed(4)} mm ${O.spring.inStock ? 'within' : 'OUTSIDE'} real stock ${O.stockWindowMm[0]}–${O.stockWindowMm[1]} mm`,
   };
 }
 
@@ -3971,7 +3979,7 @@ const CHECKS = {
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 interim — movers vs their own fixtures
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
-  oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier one — the weighed rate vs the spec'd one (report)
+  oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };

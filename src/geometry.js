@@ -1044,11 +1044,34 @@ export const HACK_RUBY_FLARE = 1.15;  // ruby cap's top radius over the post rad
 // via userData.setWind(θ). The stud itself is gone from this group — it
 // belongs to the COCK (main.js builds it there); userData tells the
 // caller where the terminal ends so stud and curb pins can meet it.
+// TODO 25 tier two — the spiral's DEVELOPED LENGTH as a pure function of its
+// plan, exported so the RATE SOLVE can ask how long the spring will be before
+// the spring exists. Length depends only on the coil plan (radii and turns),
+// never on the ribbon's section, so there is no circularity: main.js solves
+// the section from this length, then builds. Same sampling as the builder
+// below — one formula, one answer, no drift between the solve and the metal.
+export function hairspringSegs(coils) { return Math.max(coils * 48, 96); }
+export function hairspringDevLen({ innerR, outerR, coils = 12 }) {
+  const segs = hairspringSegs(coils), S0 = coils * Math.PI * 2;
+  let len = 0, px = 0, py = 0;
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs, a = t * S0, r = innerR + t * (outerR - innerR);
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    if (i) len += Math.hypot(x - px, y - py);
+    px = x; py = y;
+  }
+  return len;
+}
+
 export function makeHairspring({ innerR, outerR, coils = 12, height,
-                                 windFrames = 41, windMaxRad = 1.0 }) {
+                                 windFrames = 41, windMaxRad = 1.0, ribbonR: ribbonROverride = null }) {
   const g = new THREE.Group();
-  const ribbonR = Math.max(((outerR - innerR) / coils) * 0.12, 0.05);
-  const segs = Math.max(coils * 48, 96);
+  // TODO 25 tier two: the section is SOLVED BY THE CALLER from the balance it
+  // must beat with (main.js owns the physics, this file owns the metal). The
+  // legibility rule below survives only as the fallback for callers that have
+  // no rate to hit — test-geometry.html's part smoke test being the one.
+  const ribbonR = ribbonROverride ?? Math.max(((outerR - innerR) / coils) * 0.12, 0.05);
+  const segs = hairspringSegs(coils);
   const S0 = coils * Math.PI * 2; // unwound span; outer end angle ≡ S0
 
   // TODO 25 tier one: the DEVELOPED LENGTH of the as-built (θ = 0) spiral,
