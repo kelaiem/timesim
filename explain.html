@@ -72,6 +72,12 @@
   header a.back:hover { background: rgba(255,255,255,0.14); color: var(--text); }
   header .spacer { flex: 1; }
   header .stamp { font: 10.5px/1 ui-monospace, monospace; color: var(--muted); }
+  header #lang-select {
+    font: 11px system-ui, sans-serif; color: var(--text);
+    background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong);
+    border-radius: 6px; padding: 3px 6px;
+  }
+  header #lang-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .sheet { max-width: 840px; margin: 0 auto; }
   .intro { color: var(--muted); max-width: 68ch; margin: 10px 0 26px; }
@@ -160,6 +166,10 @@
   <h1>Watch Sim — Mechanisms</h1>
   <a class="back" href="./index.html">← the movement</a>
   <span class="spacer"></span>
+  <!-- §73 tier two: the same three locales as the app's chrome, chosen the
+       same way (?lang → localStorage → navigator.language) and applied the
+       same reload-tier way. Untranslated blocks render English visibly. -->
+  <select id="lang-select" aria-label="Language" title="Language"></select>
   <span class="stamp">values quoted from src/*.js · constraints in captions</span>
 </header>
 
@@ -443,11 +453,17 @@
           </svg>
         </div>
         <figcaption>What the sim models, honestly bounded: the geometry above is built (rim,
-        screws, free terminal), and the beat rate comes from the spec's vph through derived
-        tooth counts — the sim does <em>not</em> model turning a timing screw to move the
-        rate, and this page draws no such mechanism. Amplitude varies with mainspring
-        tension (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism
-        story a free-sprung balance exists to tell.</figcaption>
+        screws, free terminal), and since TODO 25 tier two the rate is a CONSEQUENCE of it.
+        The balance's inertia is weighed from its own published dimensions (rim 84.7%,
+        screws 10.5%, arms 4.8% of it), the spec's beat is what that wheel then demands of
+        its spring (<code>k = I·ω²</code>), and the hairspring's SECTION is solved to
+        deliver it — a ribbon 0.0244 mm thick, inside the 0.02–0.04 mm window real
+        hairspring stock occupies. <em>√(k/I)</em> lands on the spec as arithmetic rather
+        than assertion, and <code>checkOscillator</code> gates that solve every battery run.
+        Still NOT modelled, and this page draws no such mechanism: turning a timing screw to
+        move the rate. Amplitude varies with mainspring tension
+        (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a
+        free-sprung balance exists to tell.</figcaption>
       </figure>
     </div>
   </details>
@@ -1343,7 +1359,30 @@
   </div>
 </footer>
 
-<script>
+<script type="module">
+  // §73 tier two — LOCALIZE FIRST, then wire the plates. A module so this
+  // import can run before any interactive plate caches an element: the
+  // localizer replaces rich blocks' innerHTML, so a plate that had already
+  // grabbed a node inside one would be holding a detached copy. Ordering it
+  // first is what makes the swap safe; every dynamic string below then goes
+  // through t() rather than being written in English.
+  import { UI_LANG, setUiLang } from './src/i18n.js';
+  // `tr`, not `t`: the plates below already use `t` as a local (a text
+  // element in the truth table, elapsed seconds in the beat loop), and
+  // shadowing it made every localized write throw. The page-error check
+  // caught it; the rename is the fix.
+  import { localizeExplainer, t as tr } from './src/explain-i18n.js';
+  localizeExplainer();
+  {
+    const sel = document.getElementById('lang-select');
+    // Values are canonical codes, never display text — tier one's rule.
+    for (const [code, label] of [['en', 'English'], ['de', 'Deutsch'], ['zh', '中文']]) {
+      const o = document.createElement('option');
+      o.value = code; o.textContent = label; o.selected = code === UI_LANG;
+      sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => setUiLang(sel.value));
+  }
   (function () {
     var PIN_DROP = 0.10, GAP_HALF = 0.07, PIN_ARC_HALF = 0.14 / 3.05;
     var slider = document.getElementById('alignSlider');
@@ -1381,7 +1420,7 @@
       var allowed = law(align);
       var phys = silence.checked ? Math.min(allowed, CAP_HELD) : allowed;
 
-      readout.textContent = 'align ' + (align < 0 ? '−' : '+') + Math.abs(align).toFixed(3) + ' rad';
+      readout.textContent = tr('align') + ' ' + (align < 0 ? '−' : '+') + Math.abs(align).toFixed(3) + ' rad';
       trackG.setAttribute('transform', 'translate(' + (-align * PX_PER_RAD_TRACK) + ' 0)');
 
       // The pin is LEFT of the pivot and SVG +rotation is clockwise, so a
@@ -1395,7 +1434,7 @@
       var pinBottom = 214 + dropFrac * DRAW_DROP_PX;
       dimLine.setAttribute('y2', Math.max(pinBottom, 215));
       dimEnd.setAttribute('y1', pinBottom); dimEnd.setAttribute('y2', pinBottom);
-      dimText.textContent = 'drop ' + (phys < 0 ? '−' : '') + Math.abs(phys).toFixed(3);
+      dimText.textContent = tr('drop') + ' ' + (phys < 0 ? '−' : '') + Math.abs(phys).toFixed(3);
 
       marker.setAttribute('cx', GRAPH_X0 + align * GRAPH_PX_PER_RAD);
       marker.setAttribute('cy', GRAPH_Y0 - (allowed / PIN_DROP) * (GRAPH_Y0 - GRAPH_YFULL));
@@ -1403,10 +1442,10 @@
       capText.setAttribute('visibility', silence.checked ? 'visible' : 'hidden');
 
       chip.className = 'chip';
-      if (silence.checked) { chip.classList.add('held'); chip.textContent = 'HELD · §45 silence — no release'; }
-      else if (allowed <= 0) { chip.classList.add('ride'); chip.textContent = 'RIDING · armed'; }
-      else if (allowed < PIN_DROP) { chip.classList.add('ramp'); chip.textContent = 'RAMP · crossing the edge'; }
-      else { chip.classList.add('trip'); chip.textContent = 'BANKED · TRIP — rings once'; }
+      if (silence.checked) { chip.classList.add('held'); chip.textContent = tr('HELD · §45 silence — no release'); }
+      else if (allowed <= 0) { chip.classList.add('ride'); chip.textContent = tr('RIDING · armed'); }
+      else if (allowed < PIN_DROP) { chip.classList.add('ramp'); chip.textContent = tr('RAMP · crossing the edge'); }
+      else { chip.classList.add('trip'); chip.textContent = tr('BANKED · TRIP — rings once'); }
     }
 
     slider.addEventListener('input', update);
@@ -1474,10 +1513,10 @@
         mk.setAttribute('cx', X0 + p * XW);
         mk.setAttribute('cy', Y0 - escDelta(p) * YSC);
         ch.className = 'chip';
-        if (p >= IMPULSE_WIDTH) { ch.classList.add('ride'); ch.textContent = 'LOCKED · draw on the bank — balance detached'; }
-        else if (p < IMPULSE_WIDTH * RECOIL_FRACTION) { ch.classList.add('held'); ch.textContent = 'UNLOCK · recoil — draw made visible'; }
-        else if (p < IMPULSE_WIDTH * 0.97) { ch.classList.add('ramp'); ch.textContent = 'IMPULSE · tooth on the impulse face'; }
-        else { ch.classList.add('trip'); ch.textContent = 'DROP · onto the exit stone'; }
+        if (p >= IMPULSE_WIDTH) { ch.classList.add('ride'); ch.textContent = tr('LOCKED · draw on the bank — balance detached'); }
+        else if (p < IMPULSE_WIDTH * RECOIL_FRACTION) { ch.classList.add('held'); ch.textContent = tr('UNLOCK · recoil — draw made visible'); }
+        else if (p < IMPULSE_WIDTH * 0.97) { ch.classList.add('ramp'); ch.textContent = tr('IMPULSE · tooth on the impulse face'); }
+        else { ch.classList.add('trip'); ch.textContent = tr('DROP · onto the exit stone'); }
       }
       sl.addEventListener('input', upd);
       upd();
@@ -1550,7 +1589,7 @@
           frame.setAttribute('x', FRAME_X[seg.n]);
           frame.setAttribute('opacity', '0.55');
           chipEl.className = 'chip ' + CHIP[seg.n][0];
-          chipEl.textContent = CHIP[seg.n][1];
+          chipEl.textContent = tr(CHIP[seg.n][1]);
         }
         var playing = false, t0 = null, raf = 0;
         function tick(now) {
@@ -1566,14 +1605,14 @@
         }
         function setPlaying(on) {
           playing = on;
-          btn.textContent = on ? '⏸ pause' : '▶ play';
+          btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
           if (on) { t0 = null; raf = requestAnimationFrame(tick); }
           else {
             cancelAnimationFrame(raf);
             reset(); // paused = the plate's own four keyframes, frame off
             frame.setAttribute('opacity', '0');
             chipEl.className = 'chip ride';
-            chipEl.textContent = 'PAUSED · the four keyframes';
+            chipEl.textContent = tr('PAUSED · the four keyframes');
           }
         }
         btn.addEventListener('click', function () { setPlaying(!playing); });
@@ -1628,13 +1667,13 @@
         var off = pB > 0.5;
         var par = document.getElementById('cwParity');
         par.className = 'chip ' + (off ? 'ride' : 'trip');
-        par.textContent = off ? 'ALARM OFF · beak on a column' : 'ALARM ON · beak over a gap';
-        document.getElementById('cwBeakState').textContent = off ? 'blocked — brake held' : 'free — the release can lift';
-        document.getElementById('cwClickState').textContent = pC > 0.5 ? 'click OUT on a column' : 'click DROPPED in a gap';
-        document.getElementById('cwLinkState').textContent = pL > 0.5 ? 'link beak UP → ring up (disarmed)' : 'link beak DOWN → ring down (armed)';
+        par.textContent = tr(off ? 'ALARM OFF · beak on a column' : 'ALARM ON · beak over a gap');
+        document.getElementById('cwBeakState').textContent = tr(off ? 'blocked — brake held' : 'free — the release can lift');
+        document.getElementById('cwClickState').textContent = tr(pC > 0.5 ? 'click OUT on a column' : 'click DROPPED in a gap');
+        document.getElementById('cwLinkState').textContent = tr(pL > 0.5 ? 'link beak UP → ring up (disarmed)' : 'link beak DOWN → ring down (armed)');
         document.getElementById('cwClickNose').setAttribute('cx', pC > 0.5 ? 134 : 104);
         document.getElementById('cwLinkNose').setAttribute('x', pL > 0.5 ? 86 : 80);
-        document.getElementById('cwStep').textContent = 'step ' + step + ' · wheel ' + Math.round(rot * 180 / Math.PI) + '°';
+        document.getElementById('cwStep').textContent = tr('step') + ' ' + step + ' · ' + tr('wheel') + ' ' + Math.round(rot * 180 / Math.PI) + '°';
       }
       function press() {
         if (anim) return;
@@ -1681,7 +1720,7 @@
         var shown = armed.checked || setting.checked;
         hand.setAttribute('visibility', shown ? 'visible' : 'hidden');
         chip.className = 'chip ' + (shown ? 'trip' : 'held');
-        chip.textContent = shown ? 'SHOWN · Hidden ⟺ ¬Armed ∧ ¬Setting holds' : 'HIDDEN · parked under the hour hand';
+        chip.textContent = tr(shown ? 'SHOWN · Hidden ⟺ ¬Armed ∧ ¬Setting holds' : 'HIDDEN · parked under the hour hand');
       }
       armed.addEventListener('change', upd);
       setting.addEventListener('change', upd);
@@ -1747,12 +1786,12 @@
         var fp = pt(A1 - arc);
         footRect.setAttribute('x', fp[0] - 6); footRect.setAttribute('y', fp[1] - 6);
         footLbl.setAttribute('x', fp[0] + 12); footLbl.setAttribute('y', fp[1] + 4);
-        readout.textContent = 'arc ' + arc + '° · Ø ' + dia.toFixed(2) + ' u (' + (dia * UNIT_MM).toFixed(2) + ' mm)';
-        fEls[0].textContent = 'f₁ ' + fmtHz(f[0]) + (f[0] > AUDIBLE_TOP ? ' — beyond hearing, skipped' : '');
-        fEls[1].textContent = 'f₂ ' + fmtHz(f[1]) + ' · 6.27×' + (f[1] > AUDIBLE_TOP ? ' — beyond hearing, skipped' : '');
-        fEls[2].textContent = '(f₃ ' + fmtHz(f[2]) + ' — computed, not struck)';
+        readout.textContent = tr('arc') + ' ' + arc + '° · Ø ' + dia.toFixed(2) + ' u (' + (dia * UNIT_MM).toFixed(2) + ' mm)';
+        fEls[0].textContent = 'f₁ ' + fmtHz(f[0]) + (f[0] > AUDIBLE_TOP ? ' — ' + tr('beyond hearing, skipped') : '');
+        fEls[1].textContent = 'f₂ ' + fmtHz(f[1]) + ' · 6.27×' + (f[1] > AUDIBLE_TOP ? ' — ' + tr('beyond hearing, skipped') : '');
+        fEls[2].textContent = '(f₃ ' + fmtHz(f[2]) + ' — ' + tr('computed, not struck') + ')';
         chip.className = 'chip ' + (arc === 90 && dia === 1 ? 'ride' : 'ramp');
-        chip.textContent = arc === 90 && dia === 1 ? 'SHIPPED VOICE' : 'RE-DIMENSIONED · f₁ ' + fmtHz(f[0]);
+        chip.textContent = arc === 90 && dia === 1 ? tr('SHIPPED VOICE') : tr('RE-DIMENSIONED · f₁') + ' ' + fmtHz(f[0]);
         return f;
       }
 

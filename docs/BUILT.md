@@ -6398,3 +6398,111 @@ and stay English with it. Console warnings, boot asserts and developer
 key paths are English by contract. The Chinese chrome is authored
 here and wants a native review pass before tier two ships in that
 locale — §73 budgeted exactly that.
+
+## §73 tier two — The explainer speaks them too
+
+**Completes §73** (tier one above); the roadmap entry is retired and
+this record is its reconciliation. `explain.html` — 5,411 words of
+prose plus 205 SVG plate labels — now renders in German and Chinese,
+100% covered in both, with the page still authored in English.
+
+**The unit of translation changed, and that decided the design.** Tier
+one keys words; a paragraph flows THROUGH its inline markup and word
+order differs per language, so rich blocks are keyed by their
+normalized `innerHTML` and the markup travels with the sentence.
+`src/explain-i18n.js` holds the mechanism and the one definition of
+"translatable"; `explain-i18n.de.js` / `.zh.js` hold the tables,
+loaded on demand so a reader of the English page pays nothing for
+either. The collector is imported by the tooling rather than copied,
+so extraction, verification and rendering cannot drift apart, and
+keys are never retyped — `--extract` regenerates them from the real
+DOM, which makes the silent-typo class of error structurally
+impossible.
+
+**Editing the English invalidates its translation, on purpose.**
+Change a paragraph and its key stops matching, so that block renders
+English again until someone re-translates it. A stale German
+paragraph confidently describing changed English is exactly the lie
+this repo's maintenance rule exists to prevent; visible English is
+the honest failure, and the checker reports the coverage drop.
+
+**Four gates, because prose can break things silently.** Markup
+preservation (tag sequence identical, so a translation cannot drop a
+`<code>` or break a `<b>`); `<code>` byte-identity and id
+preservation (an id inside a rich block is a HANDLE an interactive
+plate looks up by name — dropping one would break that plate with no
+error); plate-number survival (the page's promise is that its numbers
+are greppable in `src/*.js`); and PLATE FIT — measured, not eyeballed.
+
+**Numbers are NOT localized here, and that is a deliberate divergence
+from tier one.** The header says "values quoted from `src/*.js`";
+rendering `CLEAR_MARGIN` as "0,15" in German while the source reads
+`0.15` would break exactly that promise. These are identifiers being
+quoted, not quantities being read aloud. 24 keys are classified
+INVARIANT (no letters outside a `<code>` span — a constant rendered as
+text), excluded from the coverage denominator and counted out loud so
+the exclusion is visible rather than assumed; four more (an SI unit,
+a quoted arithmetic, two identifiers) carry explicit identical
+entries so the record says "decided", not "missed".
+
+**What the gates caught, all three of them real.** (a) `t` was
+already a local variable in two plates — a text element in the truth
+table, elapsed seconds in the beat loop — so the localized writes
+threw `t is not a function` and the plates silently stopped updating;
+the import is `tr` now. (b) Four Chinese paragraphs had gained an
+`<em>` the English did not have. (c) EIGHTEEN German plate labels
+overran their plate or collided with a neighbour — the §53
+truncation problem moved from a 240 px column into a fixed-geometry
+drawing. Those were fixed by shortening the German, which is right
+here and was wrong in tier one: a panel is a drawing sized for its
+labels, not a layout that should have flexed.
+
+**Verified.** `--check`: 363/363 translated in both languages, 0
+unmatched keys, 0 markup drift, 0 `<code>` drift, 0 plate-number
+drift, 0 new overflow or collision against the English baseline. Per
+locale: boot with zero page errors, `html lang` set, picker values
+canonical (`en,de,zh`), and both interactive plates still live after
+the innerHTML swaps (the feeler slider updates its readout, the
+column wheel still indexes a step per press). No sim source changed —
+the battery is untouched by construction, and the new gate runs in
+its own ~1-minute workflow rather than behind the sweeps.
+
+**And one instrument that outlived the translation job.** Rebasing
+onto a main that had moved raised a question the translations could not
+answer: the §73 gate checks English against its translations, never the
+page against the SOURCE — yet the page's header promises "values quoted
+from src/*.js" and CLAUDE.md makes it part of a §'s reconciliation.
+`tools/explain-quotes.mjs` is that promise as an exit code. It reads
+both sides statically (no browser, under a second), resolving source
+expressions only where every identifier is already known, and treats a
+plate's degrees against the source's radians as agreement rather than
+false drift. What it cannot compare it REPORTS — a name the source
+declares but whose value needs geometry is held apart from a name the
+source has never heard of, because collapsing them would teach the
+reader to skim the line that matters. Negative-tested: quoting
+`IMPULSE_WIDTH = 0.20` against the source's 0.16 fails it with the
+file named. Current state: 20 claims, 19 compared and agreeing, 1
+(`GONG_A1`, radians plus a layout rotation) reported as not statically
+comparable.
+
+**The maintenance loop, exercised once for real.** Rebasing onto a main
+that had landed TODO 25 tier two — which cuts the hairspring to the
+balance so the beat becomes a consequence — showed what each instrument
+can and cannot see. The quote audit passed: no NUMBER the page cites had
+moved. But the free-sprung entry's ledger still said the rate "comes
+from the spec's vph", which tier two had just made false, and no
+mechanical check can catch a sentence going stale. It was refreshed
+against the boot's own figures (I weighed at rim 84.7% / screws 10.5% /
+arms 4.8%, the spring solved to a 0.0244 mm ribbon inside real stock,
+√(k/I) landing on the spec), and that edit invalidated its two
+translations exactly as designed — the block fell back to visible
+English and `--check` reported the stale keys — until both were
+re-translated. Prose still needs a reader; the instruments narrow what
+the reader has to hold.
+
+**Residue, stated.** The Chinese is a working translation by the same
+hand that wrote the German; the roadmap has said from the start that
+this repo cannot self-certify Chinese to native quality, and it ships
+usable and checkable with that caveat recorded rather than as a
+certified one. The reconfigure/route trial diagnostics quote solver
+asserts verbatim and stay English with them, as in tier one.
