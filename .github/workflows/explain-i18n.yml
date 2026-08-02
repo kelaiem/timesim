@@ -17,11 +17,17 @@
 #     next one. German runs ~30% longer and SVG text does not wrap; English
 #     is the baseline, so only what a translation makes WORSE fails.
 #
+# The job also runs tools/explain-quotes.mjs, which answers a question older
+# than the translations: does the page still quote src/*.js accurately? The
+# header promises it does and CLAUDE.md makes the page part of a §'s
+# reconciliation; until now nothing checked it. It needs no browser and runs
+# in under a second, so it goes first.
+#
 # Coverage is reported, not gated: an untranslated block renders English and
 # says so. A hard 100% gate would push a future contributor toward machine
 # filler to make the light green, which is the opposite of the point.
 
-name: Explainer i18n
+name: Explainer
 
 on:
   pull_request:
@@ -30,7 +36,13 @@ on:
       - 'src/explain-i18n*.js'
       - 'src/i18n.js'
       - 'tools/explain-i18n.mjs'
+      - 'tools/explain-quotes.mjs'
       - '.github/workflows/explain-i18n.yml'
+      # the quote audit compares the page against these, so a constant moving
+      # here must re-run it — that is the whole point of the check
+      - 'src/layout.js'
+      - 'src/main.js'
+      - 'src/geometry.js'
   push:
     branches: [main]
 
@@ -62,6 +74,11 @@ jobs:
       - name: Install Chromium
         working-directory: tools
         run: npx playwright install --with-deps chromium
+
+      # Cheapest first, and it needs no browser: if the page has drifted from
+      # the source, that is worth knowing before spending a Chromium on prose.
+      - name: Check the explainer still quotes the source
+        run: node tools/explain-quotes.mjs
 
       - name: Check the explainer's translations
         run: node tools/explain-i18n.mjs --check

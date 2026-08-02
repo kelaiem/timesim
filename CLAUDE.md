@@ -63,7 +63,11 @@ which beats a stale paragraph confidently describing changed prose. Never
 retype a key — `node tools/explain-i18n.mjs --extract` regenerates them from
 the DOM; `--check` is the gate (0 unmatched keys, 0 markup/`<code>`/id drift,
 0 plate-number drift, and no label overrunning its plate against the English
-baseline) and runs in its own fast CI workflow. The explainer's numbers stay
+baseline). A second instrument, `node tools/explain-quotes.mjs`, answers the
+older question the page's header promises — do its numbers still match
+`src/*.js`? — comparing every quoted constant against the source (literals
+and expressions it can resolve; the rest reported, never silently passed).
+Both run in one fast CI workflow, separate from the battery. The explainer's numbers stay
 in SOURCE form in every language — they are identifiers being quoted, not
 quantities being read aloud, which is the one place tier one's `fmtNum` rule
 deliberately does not apply.

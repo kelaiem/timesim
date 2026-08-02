@@ -6467,6 +6467,24 @@ column wheel still indexes a step per press). No sim source changed —
 the battery is untouched by construction, and the new gate runs in
 its own ~1-minute workflow rather than behind the sweeps.
 
+**And one instrument that outlived the translation job.** Rebasing
+onto a main that had moved raised a question the translations could not
+answer: the §73 gate checks English against its translations, never the
+page against the SOURCE — yet the page's header promises "values quoted
+from src/*.js" and CLAUDE.md makes it part of a §'s reconciliation.
+`tools/explain-quotes.mjs` is that promise as an exit code. It reads
+both sides statically (no browser, under a second), resolving source
+expressions only where every identifier is already known, and treats a
+plate's degrees against the source's radians as agreement rather than
+false drift. What it cannot compare it REPORTS — a name the source
+declares but whose value needs geometry is held apart from a name the
+source has never heard of, because collapsing them would teach the
+reader to skim the line that matters. Negative-tested: quoting
+`IMPULSE_WIDTH = 0.20` against the source's 0.16 fails it with the
+file named. Current state: 20 claims, 19 compared and agreeing, 1
+(`GONG_A1`, radians plus a layout rotation) reported as not statically
+comparable.
+
 **Residue, stated.** The Chinese is a working translation by the same
 hand that wrote the German; the roadmap has said from the start that
 this repo cannot self-certify Chinese to native quality, and it ships
