@@ -3350,6 +3350,10 @@ function rebuildChain(tension) {
     chainMesh = new THREE.Mesh(geo, chainMat);
     movement.add(chainMesh);
     registerLabel('Chain', chainMesh);
+    // §69: the chain is the one mesh built AFTER the boot restore applies its
+    // ghosting (this lazy first build) — re-run the walk so it joins whatever
+    // ghost tier is active instead of standing solid in a ghosted movement.
+    applyGhosting();
   }
 }
 // The chain is DISPLAY-only — nothing reads its geometry back into the
@@ -9182,6 +9186,8 @@ let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
 let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
 let restoredSound = false; // sound toggle, applied once the UI exists
+let restoredSchematic = true; // §69: the schematic tier is the boot DEFAULT — a save can only turn it off
+let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene + drive graph exist
 
 // A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
 // (or running dry) kills the balance's rate within a fraction of that;
@@ -9264,6 +9270,11 @@ let mmPerPxCal = null;
   fastForward = savedState.fastForward;
   restoredCamera = savedState.camera;
   restoredXray = !!savedState.plateXray;
+  // §69: ?? true, not !! — schematic is the DEFAULT view, so a state saved
+  // before the field existed (and a fresh visitor's absent state) both mean
+  // ON; only an explicit saved false turns it off.
+  restoredSchematic = savedState.schematic ?? true;
+  restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
   restoredSound = !!savedState.soundOn;
   alarmCrownRotation = savedState.alarmCrownRotation ?? 0; // ?? — states saved before §24 have no such field
   // §25 re-derived ALARM_BARREL_TURNS from the striking train, so a state
@@ -9690,6 +9701,13 @@ panel.innerHTML = `
       <div class="row">
         <span class="label-small">Plate X-ray</span>
         <button id="btn-xray">Off</button>
+      </div>
+      <!-- §69: tap-focus readout + clear. The SETTER is the scene itself (tap
+           a part); the panel only names the focused unit and offers the way
+           out, so the row never competes with the gesture it reports on. -->
+      <div class="row">
+        <span class="label-small">Tap focus</span>
+        <button id="btn-focus" title="Tap a part to keep its mechanism solid and ghost everything unrelated. Tap empty space, the same part, or this button to clear.">Off</button>
       </div>
       <div class="row">
         <span class="label-small">Power flow</span>
@@ -10651,11 +10669,18 @@ const SCHEMATIC = { proxies: [], on: false };
 }
 function setSchematic(on) {
   SCHEMATIC.on = on;
-  if (on) { camera.layers.disable(0); camera.layers.enable(1); }
-  else { camera.layers.enable(0); camera.layers.disable(1); }
+  // §69: the solid tier STAYS rendered under the schematic. When no other
+  // translucency mode is speaking (no x-ray, no tap focus, no power flow),
+  // applyGhosting() draws every solid at the one x-ray opacity, so the line
+  // model reads against the real obstructions instead of a void; x-ray and
+  // tap focus, when active, own the solids' translucency exactly as they do
+  // without the schematic.
+  camera.layers.enable(0);
+  if (on) camera.layers.enable(1); else camera.layers.disable(1);
   const b = document.getElementById('btn-schematic');
   b.textContent = on ? 'On' : 'Off';
   b.classList.toggle('active', on);
+  applyGhosting();
 }
 document.getElementById('btn-schematic').addEventListener('click', () => setSchematic(!SCHEMATIC.on));
 
@@ -11915,7 +11940,10 @@ const _exA = new THREE.Vector3(), _exB = new THREE.Vector3();
 // wrong for the ones that are not.
 function explorePickFrom(hits, throughGlass) {
   for (const h of hits) {
-    if (!throughGlass && xrayGlassMats.has(h.object.material)) continue;
+    // §69's ghost materials demote exactly as §6's x-ray glass does: a tap
+    // resolves through the ghosted surroundings to the solid mechanism, and
+    // a ghosted part is still nameable where it is the only thing there.
+    if (!throughGlass && (xrayGlassMats.has(h.object.material) || focusGlassMats.has(h.object.material))) continue;
     if (h.object === chainMesh) return { name: 'Chain', point: h.point };
     for (let o = h.object; o && o !== movement; o = o.parent) {
       const lbl = labelEntries.find((l) => l.obj === o);
@@ -12107,12 +12135,19 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // The drive list, once. A dynamic import so the inspector (and the BVH
 // module it pulls in) stays out of the boot path — rule 6's silence and the
 // boot cost are untouched until the first time someone actually explores.
+let exploreDrivePromise = null;
 function ensureExploreDrive() {
-  if (exploreDrive) return;
-  import('./inspect.js').then((I) => {
-    exploreDrive = I.MECH_GRAPH.drive.filter(([a, b]) =>
-      labelEntries.some((l) => l.name === a) && labelEntries.some((l) => l.name === b));
-  });
+  // Returns the load promise so §69's focus computation (which needs the
+  // edges, not just their eventual arrival) can sequence on it; explore's
+  // own callers keep ignoring the return value as before.
+  if (!exploreDrivePromise) {
+    exploreDrivePromise = import('./inspect.js').then((I) => {
+      exploreDrive = I.MECH_GRAPH.drive.filter(([a, b]) =>
+        labelEntries.some((l) => l.name === a) && labelEntries.some((l) => l.name === b));
+      return exploreDrive;
+    });
+  }
+  return exploreDrivePromise;
 }
 
 // Tether geometry: preallocated segments, endpoints re-anchored per frame.
@@ -13042,6 +13077,8 @@ function captureState() {
     timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
     showLabels: labelsOn,
     plateXray: xrayOn,
+    schematic: SCHEMATIC.on, // §69: default-ON — restore treats absent as true
+    focusUnit: focusName,    // §69: tap-focus selection, null when none
     soundOn,
     alarmOn,
     alarmCrownRotation, // raw input; the disc angle + target re-derive deterministically (§24)
@@ -13266,6 +13303,182 @@ function refreshUnitOptions() {
 refreshUnitOptions();
 unitSelect.addEventListener('pointerdown', refreshUnitOptions);
 unitSelect.addEventListener('change', () => { selectedUnit = unitSelect.value; updateMeasureStats(); });
+
+// --- §69 TAP FOCUS + THE GHOST TIER ---------------------------------------
+// Tap a part and everything unrelated to its mechanism goes glassy in place:
+// the answer to "how does the alarm selector work IN THERE" that §7's explode
+// and §58's drag answer by taking the watch apart, given without moving a
+// single part or hunting a camera angle.
+//
+// WHAT STAYS SOLID is declared data, never inference: the tapped unit's §10
+// group (the hand-curated functional assembly — tapping the alarm crown keeps
+// the whole alarm complication) plus ONE hop of MECH_GRAPH drive contact
+// across the group boundary (the alarm rides and is driven by the hour wheel;
+// that context is exactly what "in place" means). Drive edges only — support
+// edges land on plates and would flood the set with structure. The occluders
+// (the 'Frame & plates' group and the dial sheet) always ghost unless tapped
+// directly: they are the accommodation, and this mode exists to see through
+// them — the P3 hierarchy as a view.
+//
+// GHOSTING IS §6's X-RAY GENERALISED: per-BASE-material glassy clones at the
+// ONE x-ray opacity (tqXrayMat's — rule 1: no second translucency constant),
+// swapped per MESH so shared MATS entries never leak between units, and a
+// material already installed as x-ray glass is left alone — the two modes
+// compose instead of stacking transparency. The same walk serves the
+// schematic tier's preview: with the schematic on and NO other translucency
+// mode active (no x-ray, no focus, no power flow), every solid ghosts, so the
+// line model reads against the real obstructions.
+//
+// POWER FLOW IS EXCLUSIVE with tap focus: both swap mesh.material per mesh
+// (pfApply clones lazily and restores from userData.pfOrig), and two owners
+// of the same slot corrupt each other's restore paths — the §33 "one spatial
+// drag mode at a time" precedent, applied to materials.
+let focusName = null; // the tapped unit's registered name, or null
+let focusSet = null;  // Set of unit names kept solid while focusName is set
+const focusGlassCache = new Map();  // base material → its glassy clone, made once
+const focusGlassMats = new Set();   // the clones, for §59's pick demotion + restore test
+const focusOverridden = new Map();  // mesh → the material it carried before we ghosted it
+
+function focusGlassFor(base) {
+  if (xrayGlassMats.has(base) || focusGlassMats.has(base)) return base; // already glass — compose, don't stack
+  let g = focusGlassCache.get(base);
+  if (!g) {
+    g = base.clone();
+    g.transparent = true;
+    g.opacity = tqXrayMat.opacity; // the ONE x-ray opacity (§6)
+    g.depthWrite = false;
+    if (g.roughness !== undefined) g.roughness = Math.min(1, g.roughness + 0.1); // §6's less-mirror-more-glass, where the material has roughness at all
+    focusGlassCache.set(base, g);
+    focusGlassMats.add(g);
+  }
+  return g;
+}
+
+// The occluder set, derived from the declared partition rather than a second
+// hand list: the structural group plus the dial sheet.
+function focusOccluders() {
+  return new Set([...UNIT_GROUPS.get('Frame & plates').keys(), 'Dial']);
+}
+
+// Requires exploreDrive loaded (setFocus sequences on ensureExploreDrive).
+function computeFocusSet(name) {
+  const g = exploreGroupOf(name);
+  const base = new Set(g ? g.members.keys() : [name]);
+  base.add(name);
+  const set = new Set(base);
+  for (const [a, b] of exploreDrive) { // one hop of drive contact across the boundary
+    if (base.has(a)) set.add(b);
+    if (base.has(b)) set.add(a);
+  }
+  const occ = focusOccluders();
+  if (!occ.has(name)) for (const n of occ) set.delete(n);
+  return set;
+}
+
+// ONE walk owns every ghost. Restore first (only where the mesh still carries
+// OUR clone — x-ray may have re-swapped underneath, and its state is newer
+// truth), then re-apply for the current mode: the focus set if one is tapped,
+// everything if the schematic wants its obstruction preview, nothing
+// otherwise. Ownership per mesh is the same resolution §59's pick uses — the
+// deepest labelled / explode-entry ancestor; a mesh no unit claims counts as
+// unrelated (solid would visibly claim relatedness it cannot name).
+function applyGhosting() {
+  for (const [m, base] of focusOverridden) {
+    if (focusGlassMats.has(m.material)) m.material = base;
+  }
+  focusOverridden.clear();
+  const ghostAll = SCHEMATIC.on && !focusName && !xrayOn && !powerFlowOn;
+  if (!focusName && !ghostAll) return;
+  const ownerOf = new Map();
+  for (const en of explodeEntries) ownerOf.set(en.obj, explodeEntryName(en));
+  for (const l of labelEntries) ownerOf.set(l.obj, l.name);
+  const walk = (o, owner) => {
+    if (o.userData && o.userData.schematic) return; // §66's line tier is never ghosted — it is what the ghosts are FOR
+    owner = ownerOf.get(o) ?? owner;
+    if (o.material && !Array.isArray(o.material) && (ghostAll || !(owner && focusSet.has(owner)))) {
+      const g = focusGlassFor(o.material);
+      if (g !== o.material) { focusOverridden.set(o, o.material); o.material = g; }
+    }
+    for (const c of o.children) walk(c, owner);
+  };
+  walk(movement, null);
+}
+
+function focusSyncUI() {
+  const b = document.getElementById('btn-focus');
+  b.textContent = focusName ?? 'Off';
+  b.classList.toggle('active', !!focusName);
+}
+
+// Valid targets are the registered vocabulary only — a stale saved name or a
+// mistyped ?focus= silently does nothing, §59's "confidently wrong is worse
+// than nothing" applied to a restore. Group membership is checked as well as
+// the live universe because the Chain's label registers lazily (§7) and a
+// restore can arrive before the first chain build.
+function focusValidName(name) {
+  return unitUniverse().includes(name) || [...UNIT_GROUPS.values()].some((m) => m.has(name));
+}
+
+function setFocus(name) {
+  ensureExploreDrive().then(() => {
+    if (!focusValidName(name)) return;
+    if (powerFlowOn) setPowerFlow(false); // exclusive — see the header
+    focusName = name;
+    focusSet = computeFocusSet(name);
+    applyGhosting();
+    focusSyncUI();
+  });
+}
+function clearFocus() {
+  focusName = null;
+  focusSet = null;
+  applyGhosting();
+  focusSyncUI();
+}
+document.getElementById('btn-focus').addEventListener('click', clearFocus);
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && focusName) clearFocus(); });
+
+// The TAP. Click-vs-drag is decided exactly as the crowns decide it —
+// pointer travel under CROWN_DRAG_THRESHOLD_PX is a click (one threshold,
+// rule 1) — so an orbit, a crown turn or an explore drag never focuses.
+// The controls keep first refusal (a crown or the pusher is not a part to
+// focus), and the two authoring modes (§33 reconfigure, §22 route sketch)
+// own their canvas clicks outright. Tapping the focused unit again, or
+// empty space, clears — the gesture is its own way out.
+let focusTapDown = null;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  focusTapDown = null;
+  if (e.button !== 0 || !e.isPrimary) return;
+  if (reconfOn || routeSketchOn) return;
+  if (crownHitTest(e) || alarmCrownHitTest(e) || alarmColumnHitTest(e)) return;
+  focusTapDown = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+  const d = focusTapDown;
+  focusTapDown = null;
+  if (!d || !e.isPrimary) return;
+  if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > CROWN_DRAG_THRESHOLD_PX) return;
+  const pick = explorePick(e);
+  if (!pick || pick.name === focusName) { if (focusName) clearFocus(); return; }
+  setFocus(pick.name);
+});
+
+// §6's x-ray swaps plate/dial materials directly; re-running the walk after
+// it keeps the two modes composed in both directions (x-ray glass is left
+// alone by focusGlassFor; a dial mesh x-ray un-glasses while unfocused gets
+// re-ghosted). Same treatment for power flow: entering it clears any focus
+// (exclusivity) and re-evaluates the schematic preview, leaving it restores
+// whatever ghosting the remaining modes want.
+{
+  const baseSetXray = setXray;
+  setXray = function (on) { baseSetXray(on); applyGhosting(); };
+  const baseSetPowerFlow = setPowerFlow;
+  setPowerFlow = function (on) {
+    if (on && focusName) clearFocus();
+    baseSetPowerFlow(on);
+    applyGhosting();
+  };
+}
 
 // --- camera presets (tweened) ---------------------------------------------
 // Distances are derived from the actual computed plate radius so framing
@@ -13563,6 +13776,8 @@ function currentViewLink() {
   // different by the time it arrives.
   if (timeScale !== 1) p.set('scale', String(timeScale));
   if (xrayOn) p.set('xray', '1');
+  if (!SCHEMATIC.on) p.set('schematic', '0'); // §69: ON is the default, so only OFF travels
+  if (focusName) p.set('focus', focusName);   // §69: the tapped unit rides the link
   if (labelsOn) p.set('labels', '1');
   if (powerFlowOn) p.set('powerflow', '1');
   if (soundOn) p.set('sound', '1');
@@ -13687,6 +13902,7 @@ function scriptEnterStep(i) {
   // same precedence ?cam has over ?preset.
   if (s.camera) goToPose(new THREE.Vector3(...s.camera.pos), new THREE.Vector3(...s.camera.look));
   if (s.xray !== undefined) setXray(s.xray);
+  if (s.schematic !== undefined) setSchematic(s.schematic); // §69: scripts narrate the finished watch, so their reset steps force solids
   if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
   if (s.turnMinutes) scriptTurnRad = settingTurnRad(s.turnMinutes);
   // §34 first slice — the alarm vocabulary, same shape as the crown's:
@@ -13840,7 +14056,7 @@ function scriptStart(steps, btn) {
 // §5 — "See the minute jumper in action": frame the jumper, then pull → snap →
 // set → push, unattended, ending with the watch running on an index.
 const DEMO_STEPS = [
-  { preset: 'Setting', scale: 0.3, caption: 'The jumping-minute setting works, behind the dial', dwell: 1.4 },
+  { preset: 'Setting', scale: 0.3, schematic: false, caption: 'The jumping-minute setting works, behind the dial', dwell: 1.4 },
   { crown: 'out', caption: 'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star', dwell: 0.7 },
   { turnMinutes: 4, caption: 'Turn to set — the beak snaps the hand one exact minute per detent', dwell: 0.9 },
   { crown: 'in', scale: 1, caption: 'Push home — the jumper lifts and the watch runs on, synchronised', dwell: 1.6 },
@@ -13853,7 +14069,7 @@ const DEMO_STEPS = [
 // wheel turns alone while the heart holds the tube), which no time-scale
 // wait could show as crisply.
 const ALARM_COUPLING_STEPS = [
-  { preset: 'Dial', xray: true, alarm: false, alarmCrown: 'in', scale: 1, labels: false, explode: 0,
+  { preset: 'Dial', xray: true, alarm: false, alarmCrown: 'in', scale: 1, labels: false, explode: 0, schematic: false,
     caption: 'The alarm coupling, behind the dial: a blued index WEDGE on the setting wheel, its partner LINE on the tube\u2019s flange', dwell: 3.0 },
   { alarmCrown: 'out',
     caption: 'Disarmed, pull the alarm crown\u2026', dwell: 1.2 },
@@ -13946,7 +14162,7 @@ const _tabShot = (() => {
     console.warn(`§37 tab stop: derived world z ${_tabAt.z.toFixed(3)} but the selector ring sits at ${ringAt.z.toFixed(3)} — the dialFace flip is wrong`);
 }
 const ALARM_LINK_STEPS = [
-  { camera: linkShot(_pushAt, 4.0), alarm: false, alarmCrown: 'in', xray: false, explode: 0, labels: false, scale: 1,
+  { camera: linkShot(_pushAt, 4.0), alarm: false, alarmCrown: 'in', xray: false, explode: 0, labels: false, scale: 1, schematic: false,
     caption: 'The PUSHER at the rim — the one thing an owner touches. A cased movement cannot reach a plate-top column wheel, so §3’s case band will bore for exactly this stem', dwell: 3.4 },
   { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, 0.8), alarm: true,
     caption: 'One press = one index = half a column pitch. A SECOND beak, 120° round — two full pitches, so identical parity — reads the same castellations the §25 D lock does', dwell: 4.0 },
@@ -13970,7 +14186,7 @@ const ALARM_LINK_STEPS = [
 // the demo's own pull/turn/push vocabulary (not a second machine), and the sync
 // stop leans on §12's honest scale readout to narrate the catch-up rate.
 const TOUR_STEPS = [
-  { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false, powerflow: false, sound: false, unit: 'All',
+  { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false, powerflow: false, sound: false, unit: 'All', schematic: false,
     caption: 'A fusee-and-chain watch movement — every part built from geometry, no models', dwell: 3.6 },
   { preset: 'Escapement', scale: 0.05,
     caption: 'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat', dwell: 6.0 },
@@ -14078,7 +14294,7 @@ function frameOnEnd(target, end = 'max', axis = 'z', dir = [0.6, -0.35, 0.55], p
 // only names the part gives the eye nothing to do.
 const INSPECT_STEPS = [
   { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false,
-    powerflow: false, sound: false, unit: 'All', alarm: false,
+    powerflow: false, sound: false, unit: 'All', alarm: false, schematic: false,
     // Do NOT tell the viewer to press Inspect: scriptStart calls
     // hidePanelForScript(), so the control this used to name is not on screen
     // while the route runs. Any pointerdown, key or wheel aborts (scriptAbort),
@@ -14186,6 +14402,11 @@ function applyDeepLink() {
   }
   if (params.has('scale')) setTimeScale(parseFloat(params.get('scale')) || 1);
   if (params.has('xray')) setXray(flag(params.get('xray')));
+  // §69 — ?schematic=0 opts a link out of the default line tier; ?focus=<unit>
+  // arrives ghost-focused on one mechanism (an invalid name degrades to
+  // nothing, this block's standing rule).
+  if (params.has('schematic')) setSchematic(flag(params.get('schematic')));
+  if (params.has('focus')) setFocus(params.get('focus'));
   if (params.has('labels')) setLabels(flag(params.get('labels')));
   if (params.has('powerflow')) setPowerFlow(flag(params.get('powerflow')));
   if (params.has('sound')) setSound(flag(params.get('sound')));
@@ -14222,6 +14443,14 @@ function applyDeepLink() {
   // shareable and cannot be drifted out of without the caption saying so.
   if (params.has('lifesize')) setLifeSize(params.get('lifesize') !== '0');
 }
+// §69 — the schematic tier is the boot DEFAULT (restoredSchematic is true
+// unless a save explicitly turned it off), and a saved tap focus comes back
+// with it. Applied here, after every mode they compose with exists; the deep
+// link runs after and wins where it disagrees (?schematic=0 overrides the
+// default synchronously, ?focus=<unit> lands after the restored focus because
+// both sequence FIFO on the same ensureExploreDrive promise).
+if (restoredSchematic) setSchematic(true);
+if (restoredFocus) setFocus(restoredFocus);
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
@@ -15878,6 +16107,12 @@ window.__clock = {
   // because the interactive path throttles to the frame and a scripted check
   // must not wait on an rAF that automation throttles to ~1 fps.
   get exploreHover() { resolveExploreHover(); return exploreHoverLabel(); },
+  // §69 — tap focus, scriptable: the focused unit's name (null when none) and
+  // the same setter the tap gesture drives. Setting resolves ASYNC on first
+  // use (the drive graph dynamic-imports, §58's tether pattern) — poll
+  // focusUnit rather than assuming the swap landed synchronously.
+  get focusUnit() { return focusName; },
+  setFocusUnit(name) { if (name) setFocus(name); else clearFocus(); },
   resetInputs() {
     crownRotation = 0; lastCrownRotation = 0;
     windPathRot = 0; setPathRot = 0; windAccumTurns = 0;

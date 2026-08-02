@@ -6048,3 +6048,90 @@ states, and an alarm overview map. Every dimension on every plate
 resolves to a named, greppable constant; each entry's ledger names
 its mechanism's open TODO debt. Zero console errors; the page is
 sim-code-free, so the battery was untouched by all four landings.
+
+## §69 — Tap focus, the ghost tier, and the schematic given real obstructions
+
+**Filed and shipped in one landing** (owner request, three connected
+asks), so this record is the filing: no roadmap entry preceded it.
+
+**Tap focus.** Tap a part and everything unrelated to its mechanism
+goes glassy IN PLACE — the answer to "how does the alarm selector
+work in there" that §7's explode and §58's drag give by taking the
+watch apart, now given without moving a part or hunting a camera
+angle. What stays solid is declared data, never inference: the tapped
+unit's §10 group (the hand-curated functional assembly — tapping the
+alarm crown keeps the whole alarm complication) plus ONE hop of
+`MECH_GRAPH` drive contact across the group boundary (the alarm rides
+and is driven by the hour wheel; that context is exactly what "in
+place" means). Drive edges only — support edges land on plates and
+would flood the set with structure. The occluders (the
+'Frame & plates' group and the dial sheet, derived from the declared
+partition rather than a second hand list) always ghost unless tapped
+directly: they are the accommodation, and the mode exists to see
+through them — the P3 hierarchy expressed as a view. Full transitive
+closure was rejected because the drive graph is CONNECTED (hour wheel
+→ motion works → center wheel → everything): the closure of any tap
+is nearly the whole watch, which answers nothing.
+
+**The gesture and the resolution are inherited, not invented.**
+Click-vs-drag is `CROWN_DRAG_THRESHOLD_PX`, the crowns' own rule (one
+threshold — rule 1); the tap resolves through §59's pick, and the
+ghost materials join §6's x-ray glass in the pick's demotion set, so
+a tap resolves THROUGH the ghosted surroundings to the solid
+mechanism while a ghosted part stays nameable where it is the only
+thing there. The controls keep first refusal (a crown is not a part
+to focus); §33 reconfigure and §22 route sketch own their canvas
+clicks outright. Tapping the focused unit again, empty space, Escape,
+or the panel's readout button clears. The selection persists (saved
+state `focusUnit`), rides the §37 share link (`?focus=<unit>`), and
+is scriptable (`__clock.setFocusUnit` / `focusUnit` — async on first
+use, §58's lazy-import pattern for the drive list).
+
+**Ghosting is §6's x-ray generalised.** Per-BASE-material glassy
+clones at the ONE x-ray opacity (`tqXrayMat.opacity` — no second
+translucency constant), swapped per MESH so shared `MATS` entries
+never leak across units, `depthWrite:false` for §6's reason. A
+material already installed as x-ray glass is left alone, so the two
+modes compose instead of stacking transparency, and one walk
+(`applyGhosting`) owns every ghost: restore only where the mesh still
+carries OUR clone (x-ray may have re-swapped underneath — its state
+is newer truth), then re-apply for the current mode. Power flow is
+EXCLUSIVE with focus: both swap `mesh.material` per mesh with their
+own restore bookkeeping, and two owners of one slot corrupt each
+other's restores — the §33 "one spatial drag mode at a time"
+precedent, applied to materials. Ownership per mesh is §59's
+resolution (deepest labelled/explode-entry ancestor); a mesh no unit
+claims ghosts, because solid would visibly claim a relatedness
+nothing can name.
+
+**The schematic given real obstructions.** §66's line tier used to
+drop the solid camera layer entirely; now the solids STAY rendered,
+and with no other translucency mode speaking (no x-ray, no focus, no
+power flow) the same walk ghosts them all — the line model read
+against the real metal it abstracts, previewing exactly what a
+routing or a lever span is up against. X-ray, tap focus and power
+flow each take the solids over when active. §66's honesty holds: the
+proxies are still layer-swapped and never ghosted (the `schematic`
+userData guard), `mesh.visible` is still untouched, and the tier is
+still invisible to the battery.
+
+**Schematic is now the boot default.** Restored state treats an
+absent `schematic` field as ON (`?? true` — fresh visitors and
+pre-§69 saves both land in the model view over ghosted metal); a save
+or `?schematic=0` turns it off, and only OFF travels on the share
+link. The scripted narrators (tour, demo, coupling, link, inspection
+route) force `schematic: false` in their reset steps — their captions
+narrate the finished watch. The one cost recorded: default-on means
+§66 part two's lazy inspect.js import now happens on every boot
+(async, after `__clock` exists); boot silence and the fingerprint
+were re-verified with it (the fingerprint hashes posed bounding
+boxes, so the BVH indexing side effect cannot touch it).
+
+**Verified.** Headless: boot silent, both camera layers on, ghost-all
+at 0.28 on boot including the lazily-built chain (the one mesh born
+after the restore applies — its build re-runs the walk); alarm-crown
+focus keeps all 21 alarm units + the hour wheel solid with train,
+escapement and dial ghosted; clear returns the preview; x-ray
+round-trips it; a 60 px drag does not focus; power flow clears focus;
+`?schematic=0&focus=Alarm crown` lands focused with solids. Full
+battery green (§52 gate).
