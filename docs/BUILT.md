@@ -6264,3 +6264,41 @@ assert holds), attached inside existing groups, fingerprint unchanged
 by the skip rule. Verified: boot silent, per-unit proxy census (gong,
 hammer, switch, both subdials, all five hands) and screenshots from
 both sides with the §69-era base-plate occlusion doing its work.
+
+## §72 — The keyboard and screen-reader layer
+
+**Filed and shipped in one landing** (owner request: an accessibility
+audit, then shortcuts). The audit found the HUD built from native
+elements — buttons, ranges, selects, details/summary, all focusable —
+but NAMELESS: row labels lived in sibling spans with no programmatic
+link, so a screen reader heard "Off, button" forty times; state
+buttons carried no aria-pressed; the canvas was an unlabelled void;
+every canvas interaction (orbit, tap focus, crown, pusher) was
+pointer-only; the only shortcut was H; and the 0.9 s camera sweeps
+ignored prefers-reduced-motion. explain.html was already in good
+shape (24 aria-labels, native disclosure, reduced-motion honored).
+
+**Four principles, implemented.** (1) Shortcuts CLICK the same
+buttons the pointer does — one path of authority, no forked state.
+(2) Names derive from the panel's own row labels via aria-labelledby
+with the control's own id appended, so a toggle's Off→On text change
+updates its accessible name with no second copy to go stale;
+aria-pressed syncs from the same text through one MutationObserver.
+(3) Every shortcut announces through one polite live region.
+(4) The ? help overlay is GENERATED from the shortcut table — the
+list the viewer reads is the list the handler runs.
+
+**The map**: Space pause · W wind · C crown · A alarm · S schematic ·
+X x-ray · L labels · F focus · M sound · E explode/reassemble ·
+1–5 camera presets · arrows orbit/tilt · +/− zoom · H panel · ? help
+· Esc closes. Shortcuts stand down while an input/select has focus,
+and Space/Enter keep native activation on focused controls. Mapped
+buttons carry their key in their title. Focus is visible
+(focus-visible outline in the blued accent, pointer users unaffected),
+the canvas names itself as an image and points at the panel, and
+goToPose snaps instead of flying under prefers-reduced-motion.
+
+**Still open, honestly**: the spatial drags (crown azimuth, explore
+part-drag, reconfigure) have no keyboard equivalent — they are
+position-space editors, and a keyboard path there is real design
+work, not a shortcut; filed as the natural next entry if wanted.

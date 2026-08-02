@@ -10073,9 +10073,177 @@ function askTour(onProceed) {
   skipBtn.onclick = () => finish(false);
 }
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
-});
+// §72 — THE KEYBOARD AND SCREEN-READER LAYER (owner request: an a11y audit
+// found the HUD's native elements sound but nameless, and every canvas
+// interaction pointer-only). Four principles:
+//   1. Shortcuts CLICK the same buttons the pointer does — one path of
+//      authority, so a shortcut can never fork state from the panel.
+//   2. Names come from the panel's own row labels via aria-labelledby with
+//      the control's own id appended, so a toggle's "Off"→"On" text change
+//      updates its accessible name for free — no second copy to go stale.
+//   3. Every shortcut announces through ONE polite live region.
+//   4. The help overlay is generated FROM the shortcut table — the list the
+//      viewer reads is the list the handler runs.
+{
+  const a11yStyle = document.createElement('style');
+  a11yStyle.textContent = `
+  /* §72: focus is VISIBLE — the HUD's own blued-hand accent, only on
+     keyboard focus (focus-visible), so pointer users see no change */
+  #clock-ui button:focus-visible, #clock-ui input:focus-visible,
+  #clock-ui select:focus-visible, #clock-ui a:focus-visible,
+  #clock-ui summary:focus-visible, #kbd-help:focus-visible {
+    outline: 2px solid #7b96e8; outline-offset: 1px; border-radius: 3px;
+  }
+  #a11y-live { position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; }
+  #kbd-help { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 40; background: rgba(15,17,20,0.92); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+    padding: 16px 20px; width: 300px; color: #cfd6df;
+    font: 12px system-ui, sans-serif; }
+  #kbd-help h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #8fa6bf; }
+  #kbd-help .kbd-row { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; }
+  #kbd-help kbd { min-width: 44px; text-align: center; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 4px; padding: 1px 6px;
+    font: 11px ui-monospace, monospace; }
+  #kbd-help .kbd-note { color: #6c7683; margin-top: 8px; }`;
+  document.head.appendChild(a11yStyle);
+  // -- programmatic names: each .row's label span names its controls
+  let aid = 0;
+  for (const row of panel.querySelectorAll('.row')) {
+    const spans = row.querySelectorAll('span');
+    const lbl = [...spans].find((s) => !s.classList.contains('readout') && s.textContent.trim());
+    if (!lbl) continue;
+    if (!lbl.id) lbl.id = `a11y-l${aid++}`;
+    for (const c of row.querySelectorAll('button, input, select')) {
+      if (c.getAttribute('aria-label') || c.getAttribute('aria-labelledby')) continue;
+      if (!c.id) c.id = `a11y-c${aid++}`;
+      c.setAttribute('aria-labelledby', c.tagName === 'BUTTON' ? `${lbl.id} ${c.id}` : lbl.id);
+    }
+  }
+  // -- aria-pressed on state buttons, synced from the text the app already
+  // maintains ("On"/"Off"): one observer, no per-button wiring
+  const pressedObs = new MutationObserver((muts) => {
+    for (const m of muts) {
+      const b = m.target.nodeType === 3 ? m.target.parentElement : m.target;
+      if (b && b.tagName === 'BUTTON') {
+        const t = b.textContent.trim();
+        if (t === 'On' || t === 'Off') b.setAttribute('aria-pressed', t === 'On' ? 'true' : 'false');
+      }
+    }
+  });
+  pressedObs.observe(panel, { subtree: true, childList: true, characterData: true });
+  for (const b of panel.querySelectorAll('button')) {
+    const t = b.textContent.trim();
+    if (t === 'On' || t === 'Off') b.setAttribute('aria-pressed', t === 'On' ? 'true' : 'false');
+  }
+  // -- the canvas names itself; the HUD is the operable surface
+  renderer.domElement.setAttribute('role', 'img');
+  renderer.domElement.setAttribute('aria-label', '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.');
+  // -- one polite live region for shortcut feedback
+  const live = document.createElement('div');
+  live.id = 'a11y-live';
+  live.setAttribute('aria-live', 'polite');
+  document.body.appendChild(live);
+  const announce = (msg) => { live.textContent = ''; requestAnimationFrame(() => { live.textContent = msg; }); };
+  // -- the shortcut table (single source: handler AND help list)
+  const click = (id, label) => () => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.click();
+    const t = b.textContent.trim();
+    announce(`${label}${t === 'On' || t === 'Off' ? ' ' + t.toLowerCase() : ''}`);
+  };
+  const orbit = (dAz, dPol) => () => {
+    camTween = null;
+    const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+    sph.theta += dAz; sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPol));
+    camera.position.copy(new THREE.Vector3().setFromSpherical(sph).add(controls.target));
+    controls.update();
+  };
+  const zoom = (f) => () => {
+    camTween = null;
+    camera.position.sub(controls.target).multiplyScalar(f).add(controls.target);
+    controls.update();
+  };
+  const preset = (name) => () => {
+    const b = panel.querySelector(`[data-cam="${name}"]`);
+    if (b) { b.click(); announce(`Camera: ${name}`); }
+  };
+  const STEP = 6 * DEG2RAD;
+  const SHORTCUTS = [
+    ['Space', 'Pause / resume', click('btn-pause', 'Pause')],
+    ['W', 'Wind the mainspring', click('btn-wind', 'Wind')],
+    ['C', 'Crown pull / push', click('btn-crown', 'Crown')],
+    ['A', 'Alarm arm / disarm', click('btn-alarm', 'Alarm')],
+    ['S', 'Schematic view', click('btn-schematic', 'Schematic')],
+    ['X', 'X-ray plate', click('btn-xray', 'X-ray')],
+    ['L', 'Part labels', click('btn-labels', 'Labels')],
+    ['F', 'Tap-focus mode', click('btn-focus', 'Focus')],
+    ['M', 'Sound on / off', click('btn-sound', 'Sound')],
+    ['E', 'Explode / reassemble', () => {
+      const s = document.getElementById('explode-slider');
+      s.value = +s.value > 0 ? 0 : 100;
+      s.dispatchEvent(new Event('input', { bubbles: true }));
+      announce(+s.value > 0 ? 'Exploded' : 'Reassembled');
+    }],
+    ['1–5', 'Camera presets', null], // expanded below; one help row for five keys
+    ['←/→', 'Orbit camera', null],
+    ['↑/↓', 'Tilt camera', null],
+    ['+/−', 'Zoom', null],
+    ['H', 'Hide / show panel', () => setPanelHidden(panel.style.display !== 'none')],
+    ['?', 'This help', null],
+  ];
+  const KEYMAP = new Map([
+    [' ', SHORTCUTS[0][2]], ['w', SHORTCUTS[1][2]], ['c', SHORTCUTS[2][2]],
+    ['a', SHORTCUTS[3][2]], ['s', SHORTCUTS[4][2]], ['x', SHORTCUTS[5][2]],
+    ['l', SHORTCUTS[6][2]], ['f', SHORTCUTS[7][2]], ['m', SHORTCUTS[8][2]],
+    ['e', SHORTCUTS[9][2]],
+    ['1', preset('Escapement')], ['2', preset('Train')], ['3', preset('Dial')],
+    ['4', preset('Setting')], ['5', preset('Free')],
+    ['ArrowLeft', orbit(STEP, 0)], ['ArrowRight', orbit(-STEP, 0)],
+    ['ArrowUp', orbit(0, -STEP)], ['ArrowDown', orbit(0, STEP)],
+    ['+', zoom(0.92)], ['=', zoom(0.92)], ['-', zoom(1.08)],
+    ['h', SHORTCUTS[14][2]],
+  ]);
+  // shortcut hints on the buttons they drive (title = discoverability)
+  for (const [id, key] of [['btn-pause', 'Space'], ['btn-wind', 'W'], ['btn-crown', 'C'],
+    ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-xray', 'X'], ['btn-labels', 'L'],
+    ['btn-focus', 'F'], ['btn-sound', 'M']]) {
+    const b = document.getElementById(id);
+    if (b) b.title = (b.title ? b.title + ' ' : '') + `(${key})`;
+  }
+  // -- the help overlay, generated from SHORTCUTS
+  const help = document.createElement('div');
+  help.id = 'kbd-help';
+  help.setAttribute('role', 'dialog');
+  help.setAttribute('aria-label', 'Keyboard shortcuts');
+  help.tabIndex = -1;
+  help.style.display = 'none';
+  help.innerHTML = '<h2>Keyboard shortcuts</h2>' +
+    SHORTCUTS.map(([k, d]) => `<div class="kbd-row"><kbd>${k}</kbd><span>${d}</span></div>`).join('') +
+    '<div class="kbd-row kbd-note">Shortcuts pause while a slider or menu has focus. Esc closes.</div>';
+  document.body.appendChild(help);
+  let helpReturnFocus = null;
+  const setHelp = (on) => {
+    help.style.display = on ? 'block' : 'none';
+    if (on) { helpReturnFocus = document.activeElement; help.focus(); }
+    else if (helpReturnFocus && helpReturnFocus.focus) helpReturnFocus.focus();
+  };
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { if (help.style.display !== 'none') { setHelp(false); e.stopImmediatePropagation(); } return; }
+    const t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea, [contenteditable]')) return;
+    if (e.key === '?') { setHelp(help.style.display === 'none'); e.preventDefault(); return; }
+    // Space and Enter must keep activating a focused button/link/summary
+    if (e.key === ' ' && t && t.closest && t.closest('button, a, summary')) return;
+    const fn = KEYMAP.get(e.key.length === 1 ? e.key.toLowerCase() : e.key)
+      || (e.key === ' ' ? KEYMAP.get(' ') : null);
+    if (fn) { fn(); e.preventDefault(); }
+  });
+}
 
 // --- Finish: hand flute + lighting -----------------------------------------
 // The flute slider re-cuts the hands LIVE: every hand keeps its group (tick
@@ -13928,6 +14096,9 @@ let camTween = null; // { fromPos, fromTarget, toPos, toTarget, t0, dur }
 // __clock.camera in a console and sharing that view meant a screenshot.
 const CAM_TWEEN_DUR = 0.9; // s — the one ease every consumer inherits
 function goToPose(pos, target, { snap = false } = {}) {
+  // §72: prefers-reduced-motion means every fly-to is a snap — the 0.9 s
+  // camera sweep is exactly the class of motion the preference asks off.
+  if (!snap && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) snap = true;
   if (snap) {
     // Snap is for a pose that is ALREADY the answer — a restored session or a
     // shared link. Flying to it from wherever the default framing left us
