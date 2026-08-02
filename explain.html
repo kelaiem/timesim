@@ -1214,6 +1214,56 @@
         residue TODO 17 still holds (the strike's excitation weighting across modes) is
         catalogued there, and this plate draws only what is derived.</figcaption>
       </figure>
+      <!-- —————— PLATE 2 : DIMENSION THE WIRE, THEN STRIKE IT (interactive, audible) —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Dimension the wire, then strike it — the pitch its dimensions imply</span></div>
+        <div class="controls">
+          <label>arc
+            <input type="range" id="gongArc" min="25" max="120" value="90" step="1" aria-label="Gong arc in degrees, measured back from the free end">
+          </label>
+          <label>wire Ø
+            <input type="range" id="gongDia" min="40" max="200" value="100" step="5" aria-label="Gong wire diameter in hundredths of a unit">
+          </label>
+          <button id="gongStrike" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">STRIKE</button>
+          <span class="readout" id="gongReadout">arc 90° · Ø 1.00 u</span>
+          <span class="chip ride" id="gongChip">SHIPPED VOICE</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 280" width="780" height="280" role="img"
+               aria-label="Interactive plan view of the gong arc: the free end and hammer stay fixed while the arc slider moves the foot, and the wire slider thickens the wire; frequencies of the first two modes update from the beam law and the STRIKE button plays them">
+            <line x1="380" y1="255" x2="400" y2="255" stroke="var(--line)" stroke-width="1"/>
+            <line x1="390" y1="245" x2="390" y2="265" stroke="var(--line)" stroke-width="1"/>
+            <text class="val" x="404" y="268">movement axis · GONG_R 35</text>
+            <path id="gongGhost" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text class="val" x="580" y="120" id="gongGhostLbl">shipped arc 90°</text>
+            <path id="gongGlow" fill="none" stroke="var(--brass)" stroke-linecap="round" opacity="0"/>
+            <path id="gongWire" fill="none" stroke="var(--steel)" stroke-linecap="round"/>
+            <g id="gongFootG">
+              <rect id="gongFootRect" width="12" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <text class="lbl" id="gongFootLbl">foot (moves)</text>
+            </g>
+            <circle cx="266" cy="131" r="7" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <line x1="249" y1="112" x2="262" y2="126" stroke="var(--text)" stroke-width="1.5" marker-end="url(#arrGA)"/>
+            <text class="lbl lbl-strong" x="150" y="104">hammer — fixed at the free end</text>
+            <text class="val" x="150" y="118">GONG_A1 135° · pivot at +11°</text>
+            <text class="val val-brass" x="24" y="180" id="gongF1">f₁ 617 Hz</text>
+            <text class="val val-ruby" x="24" y="198" id="gongF2">f₂ 3 868 Hz · 6.27×</text>
+            <text class="val" x="24" y="216" id="gongF3">(f₃ 10 832 Hz — computed, not struck)</text>
+            <defs><marker id="arrGA" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
+          </svg>
+        </div>
+        <figcaption>The sound is the law run live: <code>fₙ = (βₙL)²·(d/4)·√(E/ρ) / (2πL²)</code>
+        with <code>(βₙL)² = 3.516, 22.03</code>, steel's <code>E/ρ = 200 GPa / 7850</code>, and
+        <code>L = GONG_R·arc·UNIT_MM</code> (GONG_R 35, UNIT_MM 0.379) — <code>gongModes()</code>
+        ported verbatim, so the readout at the defaults IS the shipped voice (~620 Hz; TODO 17
+        notes that is low for an alarm — try ~45°). STRIKE plays what the sim plays on a hammer
+        hit: the same two partials through <code>sndTone</code>'s envelope, ported number for
+        number — mode 2 at gain 0.30 decaying 0.55 s, mode 1 at 0.14 over 0.32 s, each a ±4-cent
+        sine pair. Ledger: those four envelope numbers are TODO 17's open residue (chosen, not
+        derived from strike mechanics), and this plate plays the same chosen numbers; the third
+        mode is computed by the law but not voiced, matching the build. A partial the law pushes
+        past hearing is marked and skipped, not folded back.</figcaption>
+      </figure>
     </div>
   </details>
 </div>
@@ -1468,6 +1518,112 @@
       }
       armed.addEventListener('change', upd);
       setting.addEventListener('change', upd);
+      upd();
+    })();
+
+    // —— The gong's voice: gongModes() ported, sndTone's envelope ported, audible ——
+    (function () {
+      // §56 gongModes(), verbatim: f_n = (β_nL)²·(d/4)·√(E/ρ) / (2πL²).
+      // UNIT_MM is layout.js's pin (0.72 mm chain pitch / 1.9 u), GONG_R the
+      // build's 35. Only the two aesthetics knobs vary — same domain as the sim.
+      var GONG_R = 35, UNIT_MM = 0.72 / 1.9;
+      var GONG_STEEL_C = Math.sqrt(200e9 / 7850);
+      function modes(arcDeg, diaUnits) {
+        var L = GONG_R * arcDeg * Math.PI / 180 * UNIT_MM / 1000;
+        var k = (diaUnits * UNIT_MM / 1000) / 4;
+        return [3.5160, 22.034, 61.70].map(function (bl2) {
+          return bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L);
+        });
+      }
+
+      var arcSl = document.getElementById('gongArc');
+      var diaSl = document.getElementById('gongDia');
+      var btn = document.getElementById('gongStrike');
+      var readout = document.getElementById('gongReadout');
+      var chip = document.getElementById('gongChip');
+      var wire = document.getElementById('gongWire');
+      var glowP = document.getElementById('gongGlow');
+      var ghost = document.getElementById('gongGhost');
+      var footG = document.getElementById('gongFootG');
+      var footRect = document.getElementById('gongFootRect');
+      var footLbl = document.getElementById('gongFootLbl');
+      var fEls = [document.getElementById('gongF1'), document.getElementById('gongF2'), document.getElementById('gongF3')];
+
+      // Plan view: world az CCW from +x, y up; free end fixed at GONG_A1 = 135°,
+      // the foot at GONG_A1 − arc (measured back from the free end, §56's trick).
+      var CX = 390, CY = 255, RPX = 175, A1 = 135;
+      function pt(azDeg, r) {
+        var a = azDeg * Math.PI / 180;
+        return [CX + (r || RPX) * Math.cos(a), CY - (r || RPX) * Math.sin(a)];
+      }
+      function arcPath(a0, a1) {
+        var d = [], n = 48;
+        for (var i = 0; i <= n; i++) {
+          var p = pt(a0 + (a1 - a0) * i / n);
+          d.push((i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1));
+        }
+        return d.join(' ');
+      }
+      ghost.setAttribute('d', arcPath(A1 - 90, A1));
+
+      function fmtHz(f) {
+        return f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : Math.round(f) + ' Hz';
+      }
+      var AUDIBLE_TOP = 20000;
+      function upd() {
+        var arc = +arcSl.value, dia = diaSl.value / 100;
+        var f = modes(arc, dia);
+        wire.setAttribute('d', arcPath(A1 - arc, A1));
+        wire.setAttribute('stroke-width', Math.max(1.5, dia * 5));
+        glowP.setAttribute('d', arcPath(A1 - arc, A1));
+        glowP.setAttribute('stroke-width', Math.max(1.5, dia * 5) + 6);
+        var fp = pt(A1 - arc);
+        footRect.setAttribute('x', fp[0] - 6); footRect.setAttribute('y', fp[1] - 6);
+        footLbl.setAttribute('x', fp[0] + 12); footLbl.setAttribute('y', fp[1] + 4);
+        readout.textContent = 'arc ' + arc + '° · Ø ' + dia.toFixed(2) + ' u (' + (dia * UNIT_MM).toFixed(2) + ' mm)';
+        fEls[0].textContent = 'f₁ ' + fmtHz(f[0]) + (f[0] > AUDIBLE_TOP ? ' — beyond hearing, skipped' : '');
+        fEls[1].textContent = 'f₂ ' + fmtHz(f[1]) + ' · 6.27×' + (f[1] > AUDIBLE_TOP ? ' — beyond hearing, skipped' : '');
+        fEls[2].textContent = '(f₃ ' + fmtHz(f[2]) + ' — computed, not struck)';
+        chip.className = 'chip ' + (arc === 90 && dia === 1 ? 'ride' : 'ramp');
+        chip.textContent = arc === 90 && dia === 1 ? 'SHIPPED VOICE' : 'RE-DIMENSIONED · f₁ ' + fmtHz(f[0]);
+        return f;
+      }
+
+      // sndTone's voice, ported: per partial a ±4-cent sine pair into one gain
+      // with the same exponential decay to 0.0005. Context is created inside
+      // the click (autoplay policy); no spatialization — the page has no camera.
+      var actx = null;
+      function tone(freq, decay, gain) {
+        if (freq > AUDIBLE_TOP || freq > actx.sampleRate / 2) return; // marked in the readout, not folded back
+        var t0 = actx.currentTime;
+        var g = actx.createGain();
+        g.gain.setValueAtTime(gain, t0);
+        g.gain.exponentialRampToValueAtTime(0.0005, t0 + decay);
+        g.connect(actx.destination);
+        [-4, 4].forEach(function (detune) {
+          var o = actx.createOscillator();
+          o.type = 'sine'; o.frequency.value = freq; o.detune.value = detune;
+          o.connect(g); o.start(t0); o.stop(t0 + decay + 0.05);
+        });
+      }
+      var glowT0 = 0;
+      function glowStep(ts) {
+        if (!glowT0) glowT0 = ts;
+        var s = (ts - glowT0) / 1000;
+        if (s > 0.55) { glowP.setAttribute('opacity', 0); glowT0 = 0; return; }
+        glowP.setAttribute('opacity', (0.55 * (1 - s / 0.55)).toFixed(3));
+        requestAnimationFrame(glowStep);
+      }
+      btn.addEventListener('click', function () {
+        var f = upd();
+        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+        if (actx.state === 'suspended') actx.resume();
+        tone(f[1], 0.55, 0.30);   // 2nd flexural mode — the ring that carries
+        tone(f[0], 0.32, 0.14);   // fundamental — the body under it
+        glowT0 = 0; requestAnimationFrame(glowStep);
+      });
+      arcSl.addEventListener('input', upd);
+      diaSl.addEventListener('input', upd);
       upd();
     })();
   })();
