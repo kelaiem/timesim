@@ -8564,9 +8564,10 @@ const alarmLinkParts = {};
   //
   // Two independent derivations land on the same number, which is the reason
   // to trust it. §54's ceiling gives d ≥ chordLen/30. And the load path gives
-  // the same: the drive end is a 4.5 mm cantilever (the dial-side congestion
-  // fixes that — every station inboard of the current one is under dial
-  // hardware, which is why the bushes sit where they do), and holding its
+  // the same: the drive end was a 4.5 mm cantilever on the pre-§68 chord
+  // (every station inboard of its bush was under dial hardware; the §68
+  // chord's re-scan found an inboard pocket and the cantilever is now
+  // 0.93 mm — see the bush stations below), and holding the old span's
   // deflection to a tenth of the selector's 0.071 mm stroke under a ~20 mN
   // detent load needs 3EI/L³ ≳ 2800 N/m, i.e. r ≈ 0.41. Geometry budget and
   // force budget agreeing to two decimals is not a coincidence worth ignoring.
@@ -8887,19 +8888,32 @@ const alarmLinkParts = {};
       say('rim contact lateral sweep exceeds the ray-probed corridor', `${lateral.toFixed(4)} > 0.2685`);
   }
   // bushes: hangers from the base plate's underside, at the two chord
-  // stations whose full vertical columns the pose-swept ray probe found
-  // clean AT THE BUSH'S 0.45 radius, cast DOWNWARD from free air to the
-  // bush's true floor −6.67. Two probe artifacts taught that phrasing: a
-  // floor at −6.43 missed the jumper blade's top (−6.54) under the bush
-  // ring's bottom (−6.52), and an upward ray STARTED at −6.67 sat inside
-  // the blade and had its exit face backface-culled — the same station
-  // passed while 0.02 from contact
-  for (const t of [12, 22]) {
+  // stations whose full vertical columns (bush ring bottom to the plate at
+  // −2) a pose-swept scan found clean. §68 moved the chord — the rod now
+  // stands diametrically opposite the lock beak — and the old station t 12
+  // landed inside the power-reserve train's sector sweep (contact at 41/61
+  // reserve poses; the shaft itself passes UNDER that cluster at −7.6 and
+  // was never the problem — only the columns rising through it are).
+  // Re-scanned over the full pose net including the reserve axis, at the
+  // column's need of 0.41 (bush r 0.26 + CLEAR_MARGIN) — and with the
+  // reserve/going wheels held to their ANNULUS footprint, not their vertex
+  // cloud: a wheel's web has no vertices, and a cloud scan reads "clean"
+  // straight through it (that artifact green-lit t 12 on the old chord's
+  // numbers and t 5.5 on the first re-scan; both stand inside the sector's
+  // web). The honest bands along the new chord are t 2.25–2.6 and 16.75–24.
+  // Station ONE takes the inboard pocket's peak — t 2.45, measured room
+  // 0.587, walled by the motion works' wheel inboard and the reserve
+  // sector's inner edge outboard — which also SHORTENS the drive-end
+  // cantilever the §54 note above sizes against (12 → 2.45 chord-units,
+  // 4.5 → 0.93 mm): the bush now sits next to the load it carries, so the
+  // stiffness bound tightens rather than being spent on the corridor.
+  // Station TWO keeps t 22 (measured room 2.77, in the outboard run the
+  // reserve cluster never reaches).
+  for (const t of [2.45, 22]) {
     const hx = ALARM_LINK_INNER_XY.x + u.x * t, hy = ALARM_LINK_INNER_XY.y + u.y * t;
     // §54: the bore follows the shaft, with a running clearance; the wall is
-    // stock-floor so the bush is itself a real part.
-    // Bore follows the BODY: both stations (t 12 and t 22) sit inside the full
-    // section, and the exhaustive scan gives them 7.55 and 10.54 of room.
+    // stock-floor so the bush is itself a real part. Both stations sit inside
+    // the full section (the shaft is one uniform cylinder end to end).
     const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
