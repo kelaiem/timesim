@@ -45,6 +45,16 @@ repo, not here. Something already built is lying
 about how a watch works → `TODO.md`. Both are written to be actionable by
 someone who wasn't in the conversation; match that.
 
+**Say "modelled" and "simulated" precisely** (README has the full
+definitions): the MODEL is the description — geometry, derived constants,
+declared structure — and *modelled* claims only that a thing is described;
+the SIMULATION is the model advanced by causality through drive edges, and
+*simulated* claims behavior is DRIVEN, not posed. Most honesty debt lives
+exactly in the gap (a "simulation fiction" animates with no force path;
+TODO 20's run was posed from its output). Claiming "simulated" for what is
+merely modelled is the lie most of `TODO.md` exists to catch — don't write
+it into prose either.
+
 ## Standing rules
 
 1. **Constants are DERIVED from constraints, with the constraint written in

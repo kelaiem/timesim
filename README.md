@@ -35,6 +35,31 @@ then open http://localhost:8347/ — no build step, no network access needed
 (`python3 -m http.server 8347`) also works; state then falls back to
 `localStorage`.
 
+## Simulation vs. model — how this project uses the words
+
+Two words carry precise, different claims here, and the honesty ledger
+(`TODO.md`) trades on the difference:
+
+- **The model** is the description: parametric geometry generated from its
+  own dimensions and constraints, constants derived from stated
+  relationships, and declared structure (`MECH_GRAPH` — what supports what,
+  what drives what). The model exists at boot, motionless. Saying a thing
+  is *modelled* claims only that it is described — a spring can be
+  modelled as matter yet have no force law.
+- **The simulation** is the model advanced through time by causality:
+  `step(dt)` carrying force from its sources (mainspring, crown) through
+  drive edges to every display. Saying a thing is *simulated* is the
+  stronger claim — its behavior is **driven**, not posed. The negative
+  space has names of its own: a part that animates with no force path is
+  a *simulation fiction* (the `graph` check's term), and a run whose
+  members are *posed from the output* rather than driven from the input
+  (TODO 20) is modelled truthfully but not yet simulated.
+
+"The sim" is shorthand for the running artifact — model, simulation,
+rendering and panel together. The schematic view's motto ("draw the
+model, not the metal") uses *model* in a narrower, idealized sense: the
+pitch circles, ratios and laws the solids embody.
+
 ## What's simulated
 
 - **Balance**: 2.5 Hz torsional oscillator (18,000 bph, 5 beats/s).
