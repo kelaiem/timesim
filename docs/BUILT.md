@@ -6196,3 +6196,37 @@ escapement and dial ghosted; clear returns the preview; x-ray
 round-trips it; a 60 px drag does not focus; power flow clears focus;
 `?schematic=0&focus=Alarm crown` lands focused with solids. Full
 battery green (§52 gate).
+
+## §71 — The display side and the strike work join the line tier
+
+**Filed and shipped in one landing** (owner request: "we should see the
+hands, subdials, pusher, and alarm gong, and striker in schematic view
+too"), the §69 precedent — this record is the filing.
+
+**What was added, all §66-doctrine.** Every proxy attaches to the group
+the tick already poses, so nothing keeps parallel state: the five
+HANDS (hour, minute, small seconds, power reserve, alarm) are blued
+lines inside their own hand objects — local +Y with the real
+tailFactor, so the hour hand turns with the hour wheel and the alarm
+hand rides the §45 tube, parked or presented, exactly where the metal
+goes. The SUBDIAL BEZELS are rings at the wells' own radii on the
+hands' plane. The GONG is its arc at GONG_R across GONG_A0..A1 plus
+the foot post — drawn at the boot arc, with the live-aesthetics
+staleness noted in place (same residue class as the dots'
+re-measure-on-entry). The STRIKER is pivot→head inside
+alarmHammerPivot — the group the strike law swings — with the head at
+its own ALARM_HEAD_R. The PUSHER is stem, cap face, and the
+riser-to-pawl run, all group-local from spans the build records in
+`userData.stem` (the userData.r convention generalized to a slider),
+so the whole drawing slides on press.
+
+**Palette note.** Hands take their own blued line color — the metal is
+MATS.bluedHand, and the tier mirrors the palette it abstracts; brass
+stays wheels, steel stays levers/structure, red stays springs and lit
+contacts.
+
+**Battery untouched by construction**: line-only proxies (the §66 boot
+assert holds), attached inside existing groups, fingerprint unchanged
+by the skip rule. Verified: boot silent, per-unit proxy census (gong,
+hammer, switch, both subdials, all five hands) and screenshots from
+both sides with the §69-era base-plate occlusion doing its work.

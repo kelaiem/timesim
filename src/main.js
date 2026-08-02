@@ -9161,6 +9161,16 @@ alarmSwitchUnit.add(alarmPusherGroup);
         Math.abs(slot.r - need) > 0.02)
       console.warn(`§43: the plate's riser slot is off the derived track — literal (${slot.ax}, ${slot.ay})→(${slot.bx}, ${slot.by}) r ${slot.r} vs derived (${pressed.x.toFixed(2)}, ${pressed.y.toFixed(2)})→(${rest.x.toFixed(2)}, ${rest.y.toFixed(2)}) r ${need.toFixed(2)}`);
   }
+  // §71 — the schematic tier draws the pusher from these spans (the
+  // userData.r convention, generalized to a slider): everything here is
+  // group-local, so the proxy slides with the press exactly as the metal
+  // does. Recorded at the build because the spans are block-scoped.
+  alarmPusherGroup.userData.stem = {
+    ux: _pushU.x, uy: _pushU.y,
+    inner: ALARM_PUSH_INNER, capS: stemOuterS,
+    capR: PUSHER_HEAD_R, capLen: PUSHER_HEAD_LEN,
+    pawlZ: _pawlZ, pawlS: ALARM_PAWL_KISS_S,
+  };
 }
 {
   // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
@@ -10865,6 +10875,86 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
       zz.userData.schematic = true; zz.layers.set(1); m.add(zz); SCHEMATIC.proxies.push(zz);
     }
   }
+  // §71 — the DISPLAY SIDE and the STRIKE WORK join the line tier (owner
+  // call: "we should see the hands, subdials, pusher, and alarm gong, and
+  // striker in schematic view too"). Same doctrine as the levers above:
+  // every proxy attaches to the group the tick already poses, so hands
+  // turn, the hammer swings, and the pusher slides with no parallel state
+  // anywhere — and every span quotes the constant that built the solid it
+  // abstracts. Hands take their own blued color (the metal is
+  // MATS.bluedHand; the tier mirrors the palette it abstracts).
+  {
+    const MAT_HAND = new THREE.LineBasicMaterial({ color: 0x7b96e8 });
+    const addHand = (obj, len, kind) => {
+      const tail = len * aesthetics.dial.hands[kind].tailFactor;
+      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+        [V(0, -tail, 0), V(0, len, 0)]), MAT_HAND);
+      l.userData.schematic = true; l.layers.set(1); obj.add(l); SCHEMATIC.proxies.push(l);
+    };
+    // a circle of radius r about (cx, cy) at height z, in the parent's frame
+    const addRing = (parent, r, cx = 0, cy = 0, z = 0, mat = MAT_LEVER, n = 48) => {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pts.push(V(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z));
+      }
+      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+      l.userData.schematic = true; l.layers.set(1); parent.add(l); SCHEMATIC.proxies.push(l);
+    };
+    // hands — each inside its own hand object (makeHand points local +Y, tail
+    // −Y·tailFactor), so hour rides the hour wheel, the alarm hand rides the
+    // §45 tube (parked or presented, the proxy goes where the metal goes)
+    addHand(hourHand, HOUR_HAND_LEN, 'hour');
+    addHand(minuteHand, MINUTE_HAND_LEN, 'minute');
+    addHand(smallSecondsHand, secondsSubR * 0.8, 'second');
+    addHand(reserveHand, reserveR * 0.8, 'minute');
+    addHand(alarmHand, HOUR_HAND_LEN - 1.2, 'hour');
+    // subdial bezels — rings at the wells' own radii, on the hands' plane
+    addRing(smallSecondsGroup, secondsSubR, 0, 0, -(SUBDIAL_RECESS - 0.3));
+    addRing(reserveGroup, reserveR, 0, 0, -(SUBDIAL_RECESS - 0.3));
+    // the gong — its arc at GONG_R across GONG_A0..GONG_A1 (§56: measured
+    // back from the free end) and the foot post down to the plate. Drawn at
+    // the BOOT arc: a live aesthetics edit re-voices gongF but leaves this
+    // line stale until reload — the same residue class as the contact dots'
+    // re-measure-on-entry.
+    {
+      const pts = [];
+      for (let i = 0; i <= 48; i++) {
+        const a = GONG_A0 + (i / 48) * (GONG_A1 - GONG_A0);
+        pts.push(V(Math.cos(a) * GONG_R, Math.sin(a) * GONG_R, Z_GONG));
+      }
+      addLine(alarmGongUnit, pts);
+      addLine(alarmGongUnit, [
+        V(Math.cos(GONG_A0) * GONG_R, Math.sin(GONG_A0) * GONG_R, Z_GONG),
+        V(Math.cos(GONG_A0) * GONG_R, Math.sin(GONG_A0) * GONG_R, TQ_TOP_Z - 0.5)]);
+    }
+    // the striker — pivot → head inside alarmHammerPivot (the group the
+    // strike law swings), head drawn at its own ALARM_HEAD_R
+    {
+      const hx = headRest.x - hammerPiv.x, hy = headRest.y - hammerPiv.y;
+      addLine(alarmHammerPivot, [V(0, 0, 0), V(hx, hy, 0)]);
+      addRing(alarmHammerPivot, ALARM_HEAD_R, hx, hy, 0);
+    }
+    // the pusher — stem, cap, and the riser-to-pawl run, all group-local
+    // from the spans the build recorded (userData.stem), so the whole
+    // drawing slides on press exactly as the metal does
+    {
+      const s = alarmPusherGroup.userData.stem;
+      const U = (d, z = 0) => V(s.ux * d, s.uy * d, z);
+      addLine(alarmPusherGroup, [U(s.inner), U(s.capS + s.capLen)]);
+      { // cap face: a ring in the plane ⊥ the press axis
+        const pts = [];
+        for (let i = 0; i <= 32; i++) {
+          const a = (i / 32) * Math.PI * 2;
+          const w = Math.cos(a) * s.capR, z = Math.sin(a) * s.capR;
+          pts.push(V(s.ux * s.capS - s.uy * w, s.uy * s.capS + s.ux * w, z));
+        }
+        addLine(alarmPusherGroup, pts);
+      }
+      addLine(alarmPusherGroup, [U(s.inner + 0.16), U(s.inner + 0.16, s.pawlZ), U(s.pawlS + 0.75, s.pawlZ)]);
+    }
+  }
+
   // contact dots — instrument-measured, lazily
   const DOTS = { group: null };
   SCHEMATIC.refreshContacts = async () => {
