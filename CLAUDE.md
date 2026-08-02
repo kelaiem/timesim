@@ -101,7 +101,12 @@ it into prose either.
    joints live in `INTRA_UNIT_CONTACTS`, waived rows cite their TODO),
    and `expectedContacts` **0 unwaived and 0 unmatched selectors**
    (TODO 6 — per-contact clearance floors across EXPECTED pairs, the
-   declared meshes excluded; same waiver convention).
+   declared meshes excluded; same waiver convention), and `oscillator`
+   **0 failures** (TODO 25 tier two — the hairspring's section is SOLVED
+   from the balance's inertia so `√(k/I)` lands on `F_BALANCE`; the gate
+   holds that solve true and holds the ribbon inside real hairspring
+   stock, 0.02–0.04 mm. Change the spiral's plan — coils, radii, height —
+   and re-solve; never re-target the beat to match a spring).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved

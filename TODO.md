@@ -2029,7 +2029,7 @@ All nine waiver rows deleted; `intraUnit` measures the repair (0
 unwaived, only item 22's two rows remain). The class lesson stands in
 MODELING.md's territory: a box cannot carry a bore — model the arm to
 the ring, never through it.
-## 25. The balance's RATE is a spec input, not a consequence of the balance
+## 25. CLOSED — the spring is cut to the balance, and the beat is a consequence
 
 Rule 2 says angles travel the gears, and the train obeys it — every wheel
 angle is a closed-form function of the escape wheel's, arriving at 12:1
@@ -2156,6 +2156,54 @@ which point `checkOscillator` flips from report to gate (its payload is
 already gate-shaped — `agrees` plus its numbers) and `OSC_F_IMPLIED_RECORDED`
 is replaced by the spec comparison. The layout-contract trap above still
 applies.
+
+**Tier two LANDED (2026-08-02) — CLOSED.** The spring is now fitted to the
+wheel. The build order runs balance → inertia → SOLVE → spring: `OSC_I` is
+computed from the dimensions `makeBalanceWheel` publishes, the rate the spec
+demands of that wheel fixes `k = I·ω²`, the spiral's own developed length
+(a function of the coil plan alone — `hairspringDevLen`, exported so the
+solve can ask before the spring exists, and no circularity because length
+never depended on section) fixes `I_sec = k·L/E`, and the rhombic section
+`I_sec = a³c/3` gives the ribbon's radius as a cube root.
+`HAIRSPRING_RIBBON_R` is that solve. The legibility rule it replaced —
+12% of the coil gap — survives only as `makeHairspring`'s fallback for
+callers with no rate to hit.
+
+**The number it produced, and why it is the honest one**: 0.0244 mm thick,
+inside the 0.02–0.04 mm window §50's spring floor cites in its own basis.
+The rate arrives at 2.5000 Hz — not as a claim, as an arithmetic
+consequence. The fear that drove the old constant (a real hairspring is too
+thin to see) was tested before it was believed: rendered at the solved
+section the spiral still reads clearly.
+
+**A bigger balance is now a real design question**, which was the whole
+point of the item. Swept with the solve live: R 9 → I 5.00e-10, ribbon
+0.0244 mm; R 11 → I 9.30e-10, ribbon 0.0318 mm; R 12 → I 1.22e-9, ribbon
+0.0357 mm — the wheel grows, the spring thickens to match, and the watch
+keeps time, exactly as a re-sprung watch would. Past that the ribbon leaves
+real hairspring stock and the build says so rather than clamping. (The
+LAYOUT still fails first — the plate cut at +11%, the alarm train out of
+mesh at +33%, the fork cock footless at ~+45% — so both walls now exist and
+are separately reported.)
+
+**The instrument changed shape with it.** `checkOscillator` is a GATE now,
+not a report (§50's arc completed), and it joins the battery — 13 gates.
+It fails on three things: the solve not delivering the beat, the ribbon
+leaving real stock, and `userData` drifting from the metal it describes.
+The tier-one boot tripwire (`OSC_F_IMPLIED_RECORDED`, which pinned a
+disagreement against regression) is GONE — there is no disagreement left to
+pin, and the boot assert now says the plainer thing: if the solved spring
+does not deliver the spec'd beat, the section was solved against a spiral
+plan the built spring no longer has.
+
+**The fingerprint moved** (2476672552 → 641449485), correctly and for the
+first time in this item's history: tier one weighed the metal and changed
+none of it; tier two re-cut the spring.
+
+`SPEC.md`'s gear-train section now says the beat is a target the oscillator
+is built to hit rather than a number the movement is told, and CLAUDE.md's
+rule 4 carries the new gate. Rule 2's discipline finally reaches the
+oscillator: the rate travels the metal.
 
 **Acceptance.** Tier one: a boot-time report (or inspector row) that
 states the balance's implied frequency from its own geometry, agreeing

@@ -559,26 +559,16 @@ const palletFork = G.makePalletFork({
   beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
 });
 
-const hairspring = G.makeHairspring({
-  innerR: Math.max(rollerR * 0.5, 1.5),
-  outerR: balanceR * 0.88,
-  coils: 10,
-  height: HAIRSPRING_H, // shared with the cock's z-solve: its slab sits one margin above this stack
-});
-
-// --- TODO 25 tier one: THE OSCILLATOR, WEIGHED --------------------------------
-// Rule 2 says angles travel the gears, and the train obeys it. The oscillator
-// does not: F_BALANCE is SPEC.vph / 7200, declared, and balanceTheta reads it
-// back — so the balance wheel is MODELLED (real rim, real screws) and not
-// SIMULATED (nothing it is made of reaches the rate). This block does not fix
-// that; tier two does. What it does is make the gap MEASURABLE: weigh the wheel
-// and the spring as built, and publish the frequency they IMPLY beside the one
-// the spec asserts. §54's move — file the arithmetic and let the number argue.
+// --- TODO 25 tier two: THE SPRING IS FITTED TO THE BALANCE --------------------
+// Tier one weighed the oscillator and found the rate it implied was 3.69× the
+// rate the spec declared, because the ribbon's section was sized so the spiral
+// would READ (12% of the coil gap) and section thickness enters a spring rate
+// CUBED. Tier two closes it the way a régleur does: the balance is weighed, the
+// rate is the target, and the SPRING IS SOLVED to it. F_BALANCE stops being a
+// number the movement is merely told and becomes one its parts produce.
 //
-// Amplitude appears nowhere below, and that is not an oversight: under the
-// linear (isochronous) model f = √(k/I)/2π has no amplitude term, so neither
-// AMPLITUDE_VISUAL_DEG (45, what the mesh performs) nor AMPLITUDE_TRUE_DEG
-// (270, the physical reference) belongs in it.
+// Order matters here — the inertia must exist before the spring can be cut, so
+// this block sits between the two builds and the rate check follows the spring.
 //
 // Materials, cited rather than chosen (rule 1). Steel's pair is the SAME pair
 // §56's gong voice is built from (GONG_STEEL_C = √(200e9 / 7850)) — one set of
@@ -587,59 +577,96 @@ const OSC_STEEL_E = 200e9;      // Pa — carbon/spring steel Young's modulus (�
 const OSC_STEEL_RHO = 7850;     // kg/m³ — steel density (§56's value)
 const OSC_BRASS_RHO = 8500;     // kg/m³ — wrought CuZn brass runs 8400–8730; 8500 for common CuZn37 (the rim's MATS.brass)
 const OSC_U = UNIT_MM / 1000;   // m per model unit — §39's pin, the one conversion
-const OSCILLATOR = (() => {
+// The BALANCE'S MOMENT OF INERTIA, from the dimensions the builder publishes
+// (rule 1's single source — nothing restated here that makeBalanceWheel knows).
+const OSC_I = (() => {
   const B = balanceWheel.userData;
-  const u5 = OSC_U ** 5;        // a moment of inertia is ρ·(volume)·(radius²) — five lengths
+  const u5 = OSC_U ** 5;        // ρ·(volume)·(radius²) — five lengths
   // Rim: a brass annulus about its own axis, I = m·(rO² + rI²)/2.
   const rimVol = Math.PI * (B.rim.rO ** 2 - B.rim.rI ** 2) * B.rim.h;
-  const rimI = OSC_BRASS_RHO * rimVol * (B.rim.rO ** 2 + B.rim.rI ** 2) / 2 * u5;
+  const rim = OSC_BRASS_RHO * rimVol * (B.rim.rO ** 2 + B.rim.rI ** 2) / 2 * u5;
   // Arms: one steel bar across the full inner diameter (= the two arms),
   // about its centre — I = m·(x² + y²)/12 for the in-plane pair of sides.
-  const armVol = B.arm.x * B.arm.y * B.arm.z;
-  const armI = OSC_STEEL_RHO * armVol * (B.arm.x ** 2 + B.arm.y ** 2) / 12 * u5;
-  // Timing screws: 16 steel frusta, taken as POINT MASSES at their centres.
-  // The neglect is bounded and small — a screw's own transverse term is about
-  // 0.116 u² against rc² ≈ 80, i.e. 0.14% of the screws' contribution.
+  const arm = OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) * (B.arm.x ** 2 + B.arm.y ** 2) / 12 * u5;
+  // Timing screws: 16 steel frusta as POINT MASSES at their centres. The
+  // neglect is bounded: a screw's own transverse term is ~0.116 u² against
+  // rc² ≈ 80, i.e. 0.14% of the screws' contribution.
   const screwVol = (Math.PI * B.screws.len / 3)
     * (B.screws.r1 ** 2 + B.screws.r1 * B.screws.r2 + B.screws.r2 ** 2);
-  const screwI = OSC_STEEL_RHO * B.screws.n * screwVol * (B.screws.rc ** 2) * u5;
-  const I = rimI + armI + screwI;
+  const screw = OSC_STEEL_RHO * B.screws.n * screwVol * (B.screws.rc ** 2) * u5;
   // NOT counted, with the measured bound rather than a shrug: roller table
   // (0.10% of the above), safety roller (0.18%, over-counted as a full disc),
   // staff (0.10%) and the ruby impulse pin (0.06%) — 0.38% together, so 0.19%
-  // in frequency. They stay out because naming them would imply the arithmetic
-  // depends on them; at 5× their size they would still be under 2%.
-  //
-  // Spring rate of a flat spiral, k = E·I_section / L. I_section is the cut
-  // rhombus (see makeHairspring), L the as-built developed length.
+  // in frequency, and still under 2% at five times their size.
+  return { total: rim + arm + screw, rim, arm, screw };
+})();
+// THE SOLVE. k = I·ω² is the rate the spec demands of this wheel; the spiral's
+// own length (a function of the coil plan alone, so no circularity) then fixes
+// the section that delivers it: k = E·I_sec / L, and the cut section is a
+// rhombus of half-diagonals a (radial, the bending direction) and c (axial),
+// I_sec = a³c/3. With c set by the ribbon standing on edge at HAIRSPRING_H/2,
+// a falls out as a cube root. This is the constant that used to be 12% of a
+// coil gap; it is now the thickness this balance must be sprung with.
+const HAIRSPRING_PLAN = { innerR: Math.max(rollerR * 0.5, 1.5), outerR: balanceR * 0.88, coils: 10 };
+const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
+const HAIRSPRING_RIBBON_R = (() => {
+  const L = G.hairspringDevLen(HAIRSPRING_PLAN) * OSC_U;         // m
+  const iSecNeeded = OSC_K_TARGET * L / OSC_STEEL_E;             // m⁴
+  const c = (HAIRSPRING_H / 2) * OSC_U;                          // m — the axial half-diagonal
+  const a = Math.cbrt(3 * iSecNeeded / c);                       // m
+  return a / OSC_U;                                              // back to units
+})();
+// A spring is stock, not an arbitrary ribbon: §50's spring floor cites the real
+// window in its own basis — "real hairsprings run 0.02–0.04 mm". A solve that
+// leaves it is telling you this balance cannot be sprung to this beat out of
+// real hairspring wire, which is a genuine design finding (grow the balance far
+// enough and it arrives), so it warns rather than clamping.
+const HAIRSPRING_H_MM = MM(2 * HAIRSPRING_RIBBON_R);
+if (HAIRSPRING_H_MM < 0.02 - 1e-9 || HAIRSPRING_H_MM > 0.04 + 1e-9)
+  console.warn(`TODO 25: springing this balance to ${F_BALANCE} Hz needs ribbon ${HAIRSPRING_H_MM.toFixed(4)} mm thick — outside real hairspring stock (0.02–0.04 mm). The balance and the beat cannot both stand.`);
+// The ribbon must also still stand ON EDGE (the section's axial half-diagonal
+// is max(height/2, ribbonR) — a ribbon thicker than it is tall would flip which
+// diagonal bends and silently invalidate the solve above).
+if (HAIRSPRING_RIBBON_R >= HAIRSPRING_H / 2)
+  console.warn(`TODO 25: solved ribbon radius ${HAIRSPRING_RIBBON_R.toFixed(4)} is not under the half-height ${(HAIRSPRING_H / 2).toFixed(4)} — the section no longer stands on edge and I_sec = a³c/3 no longer describes it.`);
+
+const hairspring = G.makeHairspring({
+  ...HAIRSPRING_PLAN,
+  height: HAIRSPRING_H, // shared with the cock's z-solve: its slab sits one margin above this stack
+  ribbonR: HAIRSPRING_RIBBON_R,   // TODO 25 tier two — solved from the balance above, not from legibility
+});
+
+// --- TODO 25 tier two: THE RATE, NOW A CONSEQUENCE ---------------------------
+// The spring above was cut to this balance, so the frequency below is not a
+// second opinion about F_BALANCE — it is F_BALANCE, arrived at through I and k.
+// The two agreeing is the POINT, and the assert is what keeps it true: change
+// the wheel and the spring re-solves with it; change the spring's plan (coils,
+// radii, height) and this fires, because the section was solved against the
+// old plan's length.
+//
+// Amplitude appears nowhere, and that is not an oversight: under the linear
+// (isochronous) model f = √(k/I)/2π has no amplitude term, so neither
+// AMPLITUDE_VISUAL_DEG (45, what the mesh performs) nor AMPLITUDE_TRUE_DEG
+// (270, the physical reference) belongs in it.
+const OSCILLATOR = (() => {
   const H = hairspring.userData;
   const k = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4) / (H.devLen * OSC_U);
-  const fImplied = Math.sqrt(k / I) / (2 * Math.PI);
-  const pct = (x) => +(100 * x / I).toFixed(1);
+  const f = Math.sqrt(k / OSC_I.total) / (2 * Math.PI);
+  const pct = (x) => +(100 * x / OSC_I.total).toFixed(1);
   return Object.freeze({
-    I_kgm2: I, k_Nm_per_rad: k, fImpliedHz: fImplied,
-    fSpecHz: F_BALANCE, ratio: fImplied / F_BALANCE,
-    agreeTolPct: 5,                                   // a rate this far out is a different watch
-    agrees: Math.abs(fImplied / F_BALANCE - 1) * 100 <= 5,
-    debt: 'TODO 25',
-    terms: { rimPct: pct(rimI), armsPct: pct(armI), screwsPct: pct(screwI), neglectedPct: 0.38 },
-    spring: { h_mm: MM(2 * H.section.a), b_mm: MM(2 * H.section.c), L_mm: MM(H.devLen), shape: H.section.shape },
+    I_kgm2: OSC_I.total, k_Nm_per_rad: k, fImpliedHz: f,
+    fSpecHz: F_BALANCE, ratio: f / F_BALANCE,
+    agreeTolPct: 0.5,                 // the spring is CUT to the rate; a solve that misses by more is broken arithmetic, not a tolerance
+    agrees: Math.abs(f / F_BALANCE - 1) * 100 <= 0.5,
+    solved: true, debt: null,
+    stockWindowMm: [0.02, 0.04],      // §50's own cited hairspring range
+    terms: { rimPct: pct(OSC_I.rim), armsPct: pct(OSC_I.arm), screwsPct: pct(OSC_I.screw), neglectedPct: 0.38 },
+    spring: { h_mm: MM(2 * H.section.a), b_mm: MM(2 * H.section.c), L_mm: MM(H.devLen), shape: H.section.shape,
+              inStock: MM(2 * H.section.a) >= 0.02 && MM(2 * H.section.a) <= 0.04 },
   });
 })();
-// The boot tripwire guards REGRESSION, not agreement. The implied rate does
-// NOT match the spec today — it is 3.7× high, because the ribbon's section is
-// sized for legibility (12% of the coil gap) and thickness enters k cubed —
-// and that disagreement is written down in TODO 25, not tuned away. Warning
-// about it every boot would make rule 6 meaningless, so what is asserted here
-// is the arithmetic's own stability: if reshaping the balance or the spring
-// moves the implied rate, the number in the source and the note in TODO 25 are
-// both stale, and the boot says so. Recorded from the built code path, not
-// copied from a plan. f_implied itself, NOT its ratio to F_BALANCE: ?vph=
-// moves the spec while the geometry stands still, and a ratio would false-fire
-// on every legitimate spec URL.
-const OSC_F_IMPLIED_RECORDED = 9.2308; // Hz — balance + hairspring as built, read off this code path 2026-08-02
-if (Math.abs(OSCILLATOR.fImpliedHz / OSC_F_IMPLIED_RECORDED - 1) > 0.005)
-  console.warn(`TODO 25: the oscillator's implied rate moved — ${OSCILLATOR.fImpliedHz.toFixed(4)} Hz against the recorded ${OSC_F_IMPLIED_RECORDED} Hz. The balance or the hairspring changed shape; re-record this constant and re-file item 25's measured note.`);
+if (!OSCILLATOR.agrees)
+  console.warn(`TODO 25: the solved spring does not deliver the spec'd beat — ${OSCILLATOR.fImpliedHz.toFixed(4)} Hz against ${F_BALANCE} Hz. The section was solved against a spiral plan the built spring no longer has.`);
 
 // ---------------------------------------------------------------------------
 // Planar layout (XY plane; assembly only sets position, no extra rotation

@@ -101,6 +101,16 @@ ratios are exact and everything meshes with `module` consistent per mesh pair:
 | Fourth wheel 80 | → escape pinion 8 | 10:1 | escape wheel = 6 s/rev |
 | Escape wheel 15 teeth | ⇄ pallet fork ⇄ balance | — | 5 beats/s (2.5 Hz, 18 000 bph) |
 
+The beat is a TARGET the oscillator is built to hit, not a number the movement
+is told (TODO 25 tier two). `F_BALANCE` (= `vph / 7200`) sets the goal; the
+balance's moment of inertia is computed from its own rim, arms and timing
+screws, and the hairspring's section is then SOLVED so `√(k/I)` lands on it —
+the way a régleur vibrates a balance to its spring. The `oscillator` check
+gates that the solve holds and that the resulting ribbon stays inside real
+hairspring stock (0.02–0.04 mm), so a balance that cannot be sprung to the
+spec'd beat out of real wire is a build-time finding rather than a silent
+fiction.
+
 Wheel+its pinion co-rotate on one arbor. Adjacent meshed wheels counter-rotate.
 Center distance of a mesh = sum of pitch radii. Motion works for the hour hand are
 BUILT and DRIVEN — cannon pinion 10 → minute wheel 30, minute pinion 8 → hour
