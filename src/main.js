@@ -10953,6 +10953,38 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
       }
       addLine(alarmPusherGroup, [U(s.inner + 0.16), U(s.inner + 0.16, s.pawlZ), U(s.pawlS + 0.75, s.pawlZ)]);
     }
+    // the §35 alarm link — beak lever in its own rotating arm (nose +x
+    // toward the wheel, tail −x over the rod, spans from alarmLinkParts),
+    // rod and lay shaft as axis lines derived from each mesh's own longest
+    // geometry dimension (the spring-zigzag convention — no restated
+    // lengths), and the two crank keys drawn from their built children so
+    // the roll the registration solve poses carries the drawing with it
+    {
+      const byName = (n) => { let m = null; movement.traverse((o) => { if (!m && o.isMesh && o.name === n) m = o; }); return m; };
+      const addAxisLine = (m) => {
+        m.geometry.computeBoundingBox();
+        const bb = m.geometry.boundingBox, size = bb.getSize(new THREE.Vector3());
+        const axis = size.x >= size.y && size.x >= size.z ? 'x' : size.y >= size.z ? 'y' : 'z';
+        const c = bb.getCenter(new THREE.Vector3());
+        const a = c.clone(), b = c.clone();
+        a[axis] = bb.min[axis]; b[axis] = bb.max[axis];
+        addLine(m, [a, b]);
+      };
+      addLine(alarmLinkParts.beakArm, [V(-alarmLinkParts.tailLen, 0, 0), V(alarmLinkParts.beakLen, 0, 0)]);
+      addAxisLine(byName('alarmLinkRod'));
+      addAxisLine(byName('alarmLinkShaft'));
+      addLine(alarmLinkParts.rimKey, [V(0, 0, 0), V(0, 0, ALARM_LINK_CRANK_OFF + alarmLinkParts.rimLen / 2)]);
+      {
+        const ck = alarmLinkParts.centreKey;
+        const pin = ck.children.find((o) => o.name === 'alarmLinkCentrePin');
+        addLine(ck, [V(0, 0, 0), V(0, 0, pin.position.z), V(pin.position.x * 2, 0, pin.position.z)]);
+      }
+      // the zero-reset hammer — lever line inside makeHammerLever's own
+      // group (pad at +Y·hammerArmLen), tail bar as its axis line; both
+      // ride hammerGroup, the group the §36A reset law swings
+      addLine(hammerLever, [V(0, 0, 0), V(0, hammerArmLen, 0)]);
+      addAxisLine(hammerTailBar);
+    }
   }
 
   // contact dots — instrument-measured, lazily

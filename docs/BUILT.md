@@ -6218,7 +6218,14 @@ alarmHammerPivot — the group the strike law swings — with the head at
 its own ALARM_HEAD_R. The PUSHER is stem, cap face, and the
 riser-to-pawl run, all group-local from spans the build records in
 `userData.stem` (the userData.r convention generalized to a slider),
-so the whole drawing slides on press.
+so the whole drawing slides on press. A follow-up ask in the same
+landing added the §35 ALARM LINK — beak lever in its rotating arm, rod
+and lay shaft as axis lines derived from each mesh's own longest
+geometry dimension (the spring-zigzag convention, no restated
+lengths), both crank keys drawn from their built children so the
+registration solve's roll carries the drawing — and the ZERO-RESET
+HAMMER, lever and tail bar riding hammerGroup, the group the §36A
+reset law swings.
 
 **Palette note.** Hands take their own blued line color — the metal is
 MATS.bluedHand, and the tier mirrors the palette it abstracts; brass
