@@ -616,13 +616,15 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // must stay ≥ 0.7. HACK_SCREW_IN_R in main.js mirrors the inner tips.
   const SCREW_PROTRUSION = 0.3;
   const screwLen = SCREW_PROTRUSION + thickness * 0.16;
-  const screwGeo = new THREE.CylinderGeometry(thickness * 0.20, thickness * 0.24, screwLen, 10);
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
+  const SCREW_N = 16;
+  const screwR1 = thickness * 0.20, screwR2 = thickness * 0.24;
+  const screwRC = rimO - (screwLen / 2 - SCREW_PROTRUSION); // tip lands at rimO + PROTRUSION
+  const screwGeo = new THREE.CylinderGeometry(screwR1, screwR2, screwLen, 10);
+  for (let i = 0; i < SCREW_N; i++) {
+    const a = (i / SCREW_N) * Math.PI * 2;
     const sc = new THREE.Mesh(screwGeo, MATS.blueSteel);
     sc.rotation.z = a - Math.PI / 2; // cylinder Y-axis -> radial
-    const rc = rimO - (screwLen / 2 - SCREW_PROTRUSION); // tip lands at rimO + PROTRUSION
-    sc.position.set(Math.cos(a) * rc, Math.sin(a) * rc, 0);
+    sc.position.set(Math.cos(a) * screwRC, Math.sin(a) * screwRC, 0);
     g.add(sc);
   }
 
@@ -671,6 +673,16 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
+  // TODO 25 tier one — the INERTIA-BEARING DIMENSIONS, published so the
+  // oscillator arithmetic in main.js can weigh this wheel without restating
+  // a single number the builder already knows (rule 1's single source). Units,
+  // not SI: geometry.js stays unit-space and main.js converts through §39's
+  // UNIT_MM. Harvesting these by traversing children would be the wrong
+  // answer twice over — the §66 schematic tier appends Line proxies to this
+  // very group, and a traversal cannot tell a rim from a roller.
+  g.userData.rim = { rO: rimO, rI: rimI, h: thickness * 0.55 };            // brass annulus
+  g.userData.arm = { x: rimI * 2, y: thickness * 0.5, z: thickness * 0.4 }; // steel bar across the middle (= 2 arms)
+  g.userData.screws = { n: SCREW_N, rc: screwRC, len: screwLen, r1: screwR1, r2: screwR2 };
   return g;
 }
 
@@ -1039,14 +1051,27 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   const segs = Math.max(coils * 48, 96);
   const S0 = coils * Math.PI * 2; // unwound span; outer end angle ≡ S0
 
+  // TODO 25 tier one: the DEVELOPED LENGTH of the as-built (θ = 0) spiral,
+  // accumulated as the same polyline the tube is swept along rather than
+  // re-integrated from the spiral's closed form — one sampling, one answer.
+  // Captured at θ = 0 exactly: windFrames is ODD, so frame (windFrames−1)>>1
+  // lands on −windMaxRad + 0.5·2·windMaxRad = 0 in exact arithmetic, and that
+  // middle frame is the one `tube` is built with below. The wind frames each
+  // bunch or spread the coils (±1.6% in length at ±1 rad); the REST frame is
+  // the spring as cut, which is what a rate is computed from.
+  let restDevLen = 0;
   const spiralGeo = (theta) => {
     const pts = [];
+    let len = 0;
     for (let i = 0; i <= segs; i++) {
       const t = i / segs;
       const a = theta + t * (S0 - theta); // inner (turned) → outer (fixed)
       const r = innerR + t * (outerR - innerR);
-      pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0));
+      const p = new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0);
+      if (i) len += p.distanceTo(pts[i - 1]);
+      pts.push(p);
     }
+    if (theta === 0) restDevLen = len;
     return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false);
   };
   const frames = [];
@@ -1081,6 +1106,21 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
 
   g.userData.r = outerR;
   g.userData.ribbonR = ribbonR;
+  // TODO 25 tier one — the SECTION AS CUT, not as imagined. TubeGeometry with
+  // radialSegments 4 cuts a RHOMBUS, not a rectangle: the 4-gon's diagonals
+  // ride the Frenet frame's normal (radial — the bending direction) and
+  // binormal (axial), so the half-diagonals are ribbonR and, after the
+  // scale.z above stands the ribbon on edge, max(height/2, ribbonR) — the
+  // floor mirrors scale.z's own Math.max, which is why this is not simply
+  // height/2. Second moment about the axial diagonal: the width at radial
+  // offset x is 2c(1 − |x|/a), so ∫x² dA = a³c/3 — a quarter of the
+  // bounding rectangle's, and the honest number for a rate that goes as
+  // section I. Units^4; main.js converts through §39's UNIT_MM.
+  g.userData.devLen = restDevLen;
+  g.userData.section = (() => {
+    const a = ribbonR, c = Math.max(height / 2, ribbonR);
+    return { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+  })();
   g.userData.endAngle = S0 + 0.9;                 // local angle where the STUD must sit
   g.userData.termEndR = outerR + ribbonR * 3;     // ...at this radius
   g.userData.termEndZ = height * 0.55;            // ...and this height above mid-plane
