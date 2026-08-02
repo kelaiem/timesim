@@ -244,6 +244,16 @@ German horology for well over a century. They belong to the craft, not to any
 one maker. Nothing in the list is exclusive to one house, and none of it is
 borrowed from a specific caliber.
 
+**"Swiss lever" names the escapement's design, not its passport.** The term
+means the straight-line layout (escape-wheel centre, pallet pivot and balance
+centre collinear — this build measures exactly 180.0° at the fork, from the
+layout solve's own positions) with a club-tooth escape wheel splitting the
+impulse between tooth face and pallet stone — as opposed to the English
+lever's right-angle layout and pointed teeth. A German-styled movement
+carrying a Swiss lever is the industry's norm, Glashütte's included; the
+historical Glashütte lever escapement (*Glashütter Ankerhemmung*) is a
+distinct variant of the lever family and is not what is built here.
+
 The movement itself is an original parametric model: every part is generated
 from its own dimensions and constraints in `src/geometry.js`, not traced or
 measured from any manufacturer's caliber. No maker's name, logo, or trademark
