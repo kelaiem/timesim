@@ -6307,3 +6307,93 @@ goToPose snaps instead of flying under prefers-reduced-motion.
 part-drag, reconfigure) have no keyboard equivalent — they are
 position-space editors, and a keyboard path there is real design
 work, not a shortcut; filed as the natural next entry if wanted.
+
+## §73 tier one — The chrome speaks German and Chinese
+
+**Shipped in part** (the §10/§36/§66 convention): the app's chrome is
+localized; `explain.html` (tier two, and the bulk of the prose) stays
+English with the roadmap entry's staging note. A mixed state between
+the app and its explainer was explicitly acceptable; a mixed state
+WITHIN the panel was not, and there is none.
+
+**Why these two locales.** German because the movement's whole
+finishing vocabulary is Glashütte — the audience most likely to care
+reads German — and because it is the LAYOUT stress test: strings run
+~30% longer against a 240 px column with §53 in its history. Chinese
+because it is the TYPOGRAPHY stress test: CJK fallback in the
+`system-ui` stack, no-space line breaking, legibility at 11–12 px.
+
+**The refactor that had to come first (§73 coupling 1).** "On"/"Off"
+was load-bearing STATE text: §72's MutationObserver derived
+`aria-pressed` by reading button text, and a dozen sites wrote the
+literal. Translating it would have silently broken the screen-reader
+layer. Toggles now carry `data-state="on|off"` written by one
+`setBtnState`, the observer watches that ATTRIBUTE
+(`attributeFilter: ['data-state']`, no more characterData walking),
+and zero literal `'On'`/`'Off'` comparisons remain. Same treatment for
+the light-mode button, whose click handler used to read its own face
+to decide the next mode (`data-mode`), the crown, alarm crown, life
+size and §69's focus button. Worth landing without any locale, which
+is exactly why it is separable.
+
+**One table, keyed by the English source** (`src/i18n.js`). The app
+keeps authoring in English; `t()` resolves at the display site and
+`localizeTree()` walks the already-built panel once at boot (text
+nodes plus `title`/`placeholder`/`aria-label`). A missing entry falls
+back to its English input — visible, never blank. `UI_LANG` resolves
+ONCE at import: `?lang=` → `localStorage` → `navigator.language` →
+`en`, and the Language row records the choice and RELOADS (§22's
+reload-tier precedent — a second live re-render path would be a copy
+to rot). Option faces are written in their own language, so a viewer
+hunting for theirs need not read the current one.
+
+**Display translates; values do not.** The line the whole landing
+holds: `<option value>`, `data-cam`, unit and group names as
+MECH_GRAPH vocabulary, `qualityMode`, persisted state and every
+deep-link param stay canonical English. The unit and quality selects
+gained explicit `value` attributes precisely because their value used
+to BE their label. Verified per locale: `explode-unit` reads `All`,
+`quality-select` reads `Auto`, the preset keys read
+`Escapement,Train,Dial,Setting,Free` — in all three languages.
+
+**Numbers (§73 coupling 5).** `fmtNum` at the display layer only —
+German reads `30,0 h` and `5,0 Halbschw./s` while the stored value
+keeps its `.`. `fmtInt` is separate and is a CORRECTNESS fix, not a
+cosmetic one: the beat-rate menu's `18,000 A/h` reads as *eighteen* in
+German, where `,` is the decimal mark; it now renders `18.000 A/h`
+there with the option's value still `18000`. The §53 slider readouts,
+the §49 measurement stats and the §60 life-size caption all route
+through the same pair.
+
+**Couplings 2–4, as filed.** The §72 shortcut table localizes its
+DESCRIPTIONS in place (the list read is the list run) while key
+letters stay physical — the German help note says where `?` lives on
+that layout. Announcements compose from the localized row labels
+through the existing aria-labelledby chains, so they localized for
+free. `aesthetics.json`'s `_labels` are joined by their authored
+English text rather than forked per language — §53's single source is
+untouched.
+
+**The German gate found a real defect, and it was fixed in layout.**
+The acceptance sweep measures every panel element against the 240 px
+column: `Lebensgröße` + `Kalibrieren` overflowed the Life-size row —
+§53's failure with a new cause. The fix is `flex-wrap` on `.row` and
+`.guided-btns`, locale-independent and invisible in English (whose
+rows still fit one line); shortening the German would have been the
+translation paying for a layout bug.
+
+**Verified.** 42 headless checks across en/de/zh: boot silent in each,
+zero page errors, `html lang` set, 14 state buttons with
+`aria-pressed` agreeing with `data-state` (and still agreeing after a
+keyboard-driven toggle), the help overlay generating all 17 rows,
+canonical values intact, no overflow at 240 px, and the decimal /
+grouping rules per locale. Full battery 12/12 with the fingerprint
+unchanged — the landing touches strings, attributes and CSS only, no
+geometry.
+
+**Residue, recorded.** `explain.html` is English (tier two). The
+reconfigure/route TRIAL diagnostics quote solver assert text verbatim
+and stay English with it. Console warnings, boot asserts and developer
+key paths are English by contract. The Chinese chrome is authored
+here and wants a native review pass before tier two ships in that
+locale — §73 budgeted exactly that.

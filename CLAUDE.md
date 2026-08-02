@@ -40,6 +40,22 @@ joins the sweeps — the same trust the fingerprint extends. Flag every
 schematic object directly; an unflagged child of a flagged parent is
 NOT protected.
 
+The chrome is LOCALIZED (§73 tier one — English, German, Chinese):
+`src/i18n.js` holds one table keyed by the English source string, so the
+app keeps authoring its UI in English and `t()` / `localizeTree()`
+resolve at the display site; a missing entry falls back to English
+VISIBLY. Two rules when touching UI text. **State is an attribute, never
+the text**: toggles carry `data-state="on|off"` (`setBtnState`), §72's
+`aria-pressed` observer watches that attribute, and no code may compare
+button text to `'On'`. **Display translates, values do not**: option
+`value`, `data-cam`, unit and group names in `MECH_GRAPH`, persisted
+state and deep-link params stay canonical English — `t()` only ever
+reaches `textContent`, `title`, `placeholder` and `aria-label`. Numbers
+go through `fmtNum`/`fmtInt` at the display layer only (German reads
+`30,0 h` and `18.000 A/h`; the stored value keeps its `.`). Locale is
+reload-tier (§22's precedent), so there is exactly one path that builds
+a localized panel. The explainer is tier two and still English.
+
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying
 about how a watch works → `TODO.md`. Both are written to be actionable by

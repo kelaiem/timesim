@@ -5,6 +5,10 @@ import * as G from './geometry.js';
 import { MATS, applyDecorationFromAesthetics } from './materials.js';
 import { aesthetics, confirmAestheticsBoot } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
+// §73 tier one — the chrome's strings. UI_LANG resolves once at import
+// (?lang → localStorage → navigator.language → en); t() falls back to its
+// English input when an entry is missing, so a gap is visible, never blank.
+import { UI_LANG, setUiLang, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
 // consumed unchanged below; the geometry fingerprint proves the move changed
@@ -9479,7 +9483,7 @@ style.textContent = `
   cursor: pointer; transition: background 0.15s;
 }
 #clock-ui-show:hover { background: rgba(255,255,255,0.14); }
-#clock-ui .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; }
+#clock-ui .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; flex-wrap: wrap; }
 #clock-ui button {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
   border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; transition: background 0.15s;
@@ -9535,7 +9539,7 @@ style.textContent = `
   background: rgba(10,12,15,0.72); padding: 3px 7px; border-radius: 4px;
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.14);
 }
-#clock-ui .guided-btns { display: flex; gap: 5px; }
+#clock-ui .guided-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 /* §65 — the explainer link, dressed as a button so the row reads like its
    neighbours (an <a> because it navigates; a button that navigates lies). */
 #clock-ui a.ui-link {
@@ -9710,7 +9714,7 @@ panel.innerHTML = `
         <button data-cam="Train">Train</button>
         <button data-cam="Dial">Dial</button>
         <button data-cam="Setting">Setting</button>
-        <button data-cam="Free">Free</button>
+        <button data-cam="Free">Free</button><!-- data-cam is the canonical key; the FACE localizes (§73) -->
       </div>
       <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
       <div class="row label-small"><span>Life size</span><span class="guided-btns"><button id="btn-lifesize">Life size</button><button id="btn-lifesize-cal">Calibrate</button></span></div>
@@ -9843,6 +9847,19 @@ panel.innerHTML = `
         <span class="label-small">Sound</span>
         <button id="btn-sound">Off</button>
       </div>
+      <!-- §73: the locale row. Changing it RELOADS (the §22 reload-tier
+           precedent) — the panel is built from UI_LANG, and a second live
+           re-render path would be a copy to rot. Option faces are written in
+           their OWN language: a viewer looking for their language should not
+           have to read the current one to find it. -->
+      <div class="row">
+        <span class="label-small">Language</span>
+        <select id="lang-select">
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="zh">中文</option>
+        </select>
+      </div>
     </div>
   </details>
   <details class="ui-section">
@@ -9912,7 +9929,7 @@ panel.innerHTML = `
       <div class="row label-small"><span>Ticks/frame</span><span class="readout" id="readout-ticks" style="font-size:13px;">0</span></div>
       <div class="row">
         <span class="label-small">Quality</span>
-        <select id="quality-select"><option>Auto</option><option>High</option><option>Balanced</option><option>Low</option></select>
+        <select id="quality-select"><option value="Auto">Auto</option><option value="High">High</option><option value="Balanced">Balanced</option><option value="Low">Low</option></select>
       </div>
       <div class="row label-small"><span>Tier</span><span class="readout" id="readout-tier" style="font-size:13px;">High</span></div>
     </div>
@@ -9920,13 +9937,37 @@ panel.innerHTML = `
 `;
 document.body.appendChild(panel);
 
+// §73 A — STATE IS AN ATTRIBUTE; TEXT IS DISPLAY ONLY.
+//
+// Before this, a dozen sites wrote the literal 'On'/'Off' as button text and
+// §72's observer READ that text back to derive aria-pressed — so the state of
+// half the panel lived in a display string, and translating that string would
+// have silently broken the screen-reader layer. `data-state` is now the state
+// ("on"/"off", canonical, never translated); the text is whatever the locale
+// says. Worth landing on its own as a §72 correctness fix, which is why it is
+// separable from any locale.
+function setBtnState(b, on) {
+  if (!b) return;
+  b.dataset.state = on ? 'on' : 'off';
+  b.textContent = t(on ? 'On' : 'Off');
+}
+// The template ships its toggles reading "Off" — seed the attribute from that
+// one authored source before anything localizes the text away.
+for (const b of panel.querySelectorAll('button')) {
+  const s = b.textContent.trim();
+  if (s === 'On' || s === 'Off') b.dataset.state = s.toLowerCase();
+}
+// …then the whole panel goes through the table, once, at build (locale is a
+// reload-tier choice — §22's precedent — so nothing re-renders per frame).
+localizeTree(panel);
+
 // --- panel hide/show -------------------------------------------------------
 // "Hide" collapses the whole panel to a small ☰ chip; the chip (or the H key)
 // brings it back. Pure display toggling — no state inside the panel is lost.
 const showPanelBtn = document.createElement('button');
 showPanelBtn.id = 'clock-ui-show';
 showPanelBtn.textContent = '☰';
-showPanelBtn.title = 'Show control panel (H)';
+showPanelBtn.title = t('Show control panel (H)');
 document.body.appendChild(showPanelBtn);
 function setPanelHidden(hidden) {
   panel.style.display = hidden ? 'none' : '';
@@ -10058,10 +10099,10 @@ const tourGateEl = document.createElement('div');
 tourGateEl.id = 'clock-tour-gate';
 tourGateEl.innerHTML = `
   <div class="box">
-    <p>Take a guided tour of the movement?</p>
+    <p>${t('Take a guided tour of the movement?')}</p>
     <div class="row">
-      <button id="tour-gate-skip">Skip</button>
-      <button id="tour-gate-go" class="primary">Start Tour</button>
+      <button id="tour-gate-skip">${t('Skip')}</button>
+      <button id="tour-gate-go" class="primary">${t('Start Tour')}</button>
     </div>
   </div>`;
 document.body.appendChild(tourGateEl);
@@ -10128,25 +10169,24 @@ function askTour(onProceed) {
       c.setAttribute('aria-labelledby', c.tagName === 'BUTTON' ? `${lbl.id} ${c.id}` : lbl.id);
     }
   }
-  // -- aria-pressed on state buttons, synced from the text the app already
-  // maintains ("On"/"Off"): one observer, no per-button wiring
+  // -- aria-pressed on state buttons, synced from `data-state` — the §73 A
+  // refactor's payoff: the observer watches the ATTRIBUTE the app maintains,
+  // not the display text, so a translated button still announces its state
+  // (and a mis-translated one cannot silently un-press itself).
   const pressedObs = new MutationObserver((muts) => {
     for (const m of muts) {
-      const b = m.target.nodeType === 3 ? m.target.parentElement : m.target;
-      if (b && b.tagName === 'BUTTON') {
-        const t = b.textContent.trim();
-        if (t === 'On' || t === 'Off') b.setAttribute('aria-pressed', t === 'On' ? 'true' : 'false');
-      }
+      const b = m.target;
+      if (b && b.tagName === 'BUTTON' && b.dataset.state)
+        b.setAttribute('aria-pressed', b.dataset.state === 'on' ? 'true' : 'false');
     }
   });
-  pressedObs.observe(panel, { subtree: true, childList: true, characterData: true });
+  pressedObs.observe(panel, { subtree: true, attributes: true, attributeFilter: ['data-state'] });
   for (const b of panel.querySelectorAll('button')) {
-    const t = b.textContent.trim();
-    if (t === 'On' || t === 'Off') b.setAttribute('aria-pressed', t === 'On' ? 'true' : 'false');
+    if (b.dataset.state) b.setAttribute('aria-pressed', b.dataset.state === 'on' ? 'true' : 'false');
   }
   // -- the canvas names itself; the HUD is the operable surface
   renderer.domElement.setAttribute('role', 'img');
-  renderer.domElement.setAttribute('aria-label', '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.');
+  renderer.domElement.setAttribute('aria-label', t('3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.'));
   // -- one polite live region for shortcut feedback
   const live = document.createElement('div');
   live.id = 'a11y-live';
@@ -10154,12 +10194,14 @@ function askTour(onProceed) {
   document.body.appendChild(live);
   const announce = (msg) => { live.textContent = ''; requestAnimationFrame(() => { live.textContent = msg; }); };
   // -- the shortcut table (single source: handler AND help list)
+  // The announcement composes the localized label with the localized state
+  // WORD, read from data-state (§73 A) rather than scraped off the button.
   const click = (id, label) => () => {
     const b = document.getElementById(id);
     if (!b) return;
     b.click();
-    const t = b.textContent.trim();
-    announce(`${label}${t === 'On' || t === 'Off' ? ' ' + t.toLowerCase() : ''}`);
+    const st = b.dataset.state;
+    announce(`${t(label)}${st ? ' ' + t(st === 'on' ? 'On' : 'Off').toLowerCase() : ''}`);
   };
   const orbit = (dAz, dPol) => () => {
     camTween = null;
@@ -10175,7 +10217,7 @@ function askTour(onProceed) {
   };
   const preset = (name) => () => {
     const b = panel.querySelector(`[data-cam="${name}"]`);
-    if (b) { b.click(); announce(`Camera: ${name}`); }
+    if (b) { b.click(); announce(`${t('Camera:')} ${t(name)}`); }
   };
   const STEP = 6 * DEG2RAD;
   const SHORTCUTS = [
@@ -10192,7 +10234,7 @@ function askTour(onProceed) {
       const s = document.getElementById('explode-slider');
       s.value = +s.value > 0 ? 0 : 100;
       s.dispatchEvent(new Event('input', { bubbles: true }));
-      announce(+s.value > 0 ? 'Exploded' : 'Reassembled');
+      announce(t(+s.value > 0 ? 'Exploded' : 'Reassembled'));
     }],
     ['1–5', 'Camera presets', null], // expanded below; one help row for five keys
     ['←/→', 'Orbit camera', null],
@@ -10224,12 +10266,15 @@ function askTour(onProceed) {
   const help = document.createElement('div');
   help.id = 'kbd-help';
   help.setAttribute('role', 'dialog');
-  help.setAttribute('aria-label', 'Keyboard shortcuts');
+  help.setAttribute('aria-label', t('Keyboard shortcuts'));
   help.tabIndex = -1;
   help.style.display = 'none';
-  help.innerHTML = '<h2>Keyboard shortcuts</h2>' +
-    SHORTCUTS.map(([k, d]) => `<div class="kbd-row"><kbd>${k}</kbd><span>${d}</span></div>`).join('') +
-    '<div class="kbd-row kbd-note">Shortcuts pause while a slider or menu has focus. Esc closes.</div>';
+  // §73 coupling 2: the DESCRIPTIONS localize here, in the one table that
+  // is also the handler list; key letters stay PHYSICAL (S is S on a German
+  // keyboard — the German note says where ? lives on that layout).
+  help.innerHTML = `<h2>${t('Keyboard shortcuts')}</h2>` +
+    SHORTCUTS.map(([k, d]) => `<div class="kbd-row"><kbd>${k}</kbd><span>${t(d)}</span></div>`).join('') +
+    `<div class="kbd-row kbd-note">${t('Shortcuts pause while a slider or menu has focus. Esc closes.')}</div>`;
   document.body.appendChild(help);
   let helpReturnFocus = null;
   const setHelp = (on) => {
@@ -10370,8 +10415,8 @@ function askTour(onProceed) {
       row.className = 'row label-small adv-row';
       const label = document.createElement('span');
       label.className = 'adv-label';
-      label.textContent = (authored || r.path.slice(1).join('.')) + (live ? '' : ' ⟳');
-      label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload';
+      label.textContent = (authored ? t(authored) : r.path.slice(1).join('.')) + (live ? '' : ' ⟳');
+      label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload'; // the PATH is developer vocabulary — English by contract
       row.appendChild(label);
       // §53 addendum (owner call): the scalar VALUE is shown beside the
       // label and tracks the drag live - a slider without its number is a
@@ -10403,7 +10448,7 @@ function askTour(onProceed) {
         valDec = Math.max(0, Math.min(3, -Math.floor(Math.log10(step))));
         valEl = document.createElement('span');
         valEl.className = 'adv-val';
-        valEl.textContent = Number(r.value).toFixed(valDec);
+        valEl.textContent = fmtNum(r.value, valDec); // §73 coupling 5: display decimal separator, never the stored value
         label.insertAdjacentElement('beforebegin', valEl);
       } else if (typeof r.value === 'string' && /^#[0-9a-f]{6}$/i.test(r.value)) {
         input = document.createElement('input');
@@ -10415,7 +10460,7 @@ function askTour(onProceed) {
         input.checked = r.value;
       } else continue;
       input.addEventListener('input', () => {
-        if (valEl) valEl.textContent = Number(input.value).toFixed(valDec);
+        if (valEl) valEl.textContent = fmtNum(input.value, valDec);
         let leaf = aesthetics;
         for (const k of r.path.slice(0, -1)) leaf = leaf[k];
         leaf[r.path[r.path.length - 1]] =
@@ -10479,11 +10524,16 @@ function askTour(onProceed) {
     renderer.toneMappingExposure = p.exposure;
     scene.background.set(p.bg);
     if (scene.fog) scene.fog.color.set(p.bg);
-    lightModeBtn.textContent = name;
+    // §73 A: the MODE NAME is state (canonical, on the element); the text is
+    // its translation. Reading the text back would have made the toggle a
+    // no-op the moment 'Studio' stopped being the string on screen.
+    lightModeBtn.dataset.mode = name;
+    lightModeBtn.textContent = t(name);
   }
   lightModeBtn.addEventListener('click', () => {
-    applyLightMode(lightModeBtn.textContent === 'Studio' ? 'Natural' : 'Studio');
+    applyLightMode(lightModeBtn.dataset.mode === 'Studio' ? 'Natural' : 'Studio');
   });
+  applyLightMode(lightModeBtn.dataset.mode || 'Studio'); // seed the attribute the template's text used to carry
 }
 
 const labelsContainer = document.createElement('div');
@@ -10493,7 +10543,7 @@ document.body.appendChild(labelsContainer);
 const labelEls = labelEntries.map(({ name }) => {
   const el = document.createElement('div');
   el.className = 'clock-label';
-  el.textContent = name;
+  el.textContent = t(name); // display only — `name` stays the canonical MECH_GRAPH string
   labelsContainer.appendChild(el);
   return el;
 });
@@ -10530,22 +10580,22 @@ const scaleNoteEl = document.getElementById('scale-note');
 // to be detected exactly.
 function atRealTime() { return Number(scaleSlider.value) >= Number(scaleSlider.max); }
 function formatScale() {
-  if (paused) return { value: 'paused', note: 'movement stopped' };
-  if (fastForward) return { value: 'fast-forward', note: '≈5400× — the whole reserve in ~20 s' };
-  if (syncPhase === 'catchup') return { value: `${catchUpRate.toFixed(1)}×`, note: 'catching up to the wall clock' };
+  if (paused) return { value: t('paused'), note: t('movement stopped') };
+  if (fastForward) return { value: t('fast-forward'), note: t('≈5400× — the whole reserve in ~20 s') };
+  if (syncPhase === 'catchup') return { value: `${fmtNum(catchUpRate, 1)}×`, note: t('catching up to the wall clock') };
   const beats = 2 * F_BALANCE * timeScale; // 5/s at 1× — 18,000 vph
-  const beatsText = `${(beats >= 1 ? beats.toFixed(1) : beats.toFixed(2))} beats/s`;
+  const beatsText = `${beats >= 1 ? fmtNum(beats, 1) : fmtNum(beats, 2)} ${t('beats/s')}`;
   if (atRealTime()) return { value: '1×', note: beatsText };
   // Two decimals round the notch below the top to "1.00×", which claims a
   // unity this position does not have — and its slow-ratio rounds to
   // "1.0× slow", which is noise. Unity is a distinct state here, so the
   // readout gains a digit rather than borrowing the top's identity, and the
   // ratio clause drops out once it stops saying anything.
-  const shown = timeScale.toFixed(2);
+  const shown = timeScale.toFixed(2); // the UNITY TEST stays on the canonical '.' form
   const slow = 1 / timeScale;
   return {
-    value: `${shown === '1.00' ? timeScale.toFixed(3) : shown}×`,
-    note: slow >= 1.05 ? `${slow.toFixed(1)}× slow · ${beatsText}` : beatsText,
+    value: `${shown === '1.00' ? fmtNum(timeScale, 3) : fmtNum(timeScale, 2)}×`,
+    note: slow >= 1.05 ? `${fmtNum(slow, 1)}× ${t('slow')} · ${beatsText}` : beatsText,
   };
 }
 function paintScale() {
@@ -10682,7 +10732,8 @@ const crownBtn = document.getElementById('btn-crown');
 const windBtnEl = document.getElementById('btn-wind');
 const timeReadoutEl = document.getElementById('readout-time');
 function updateCrownUI() {
-  crownBtn.textContent = crownOut ? 'Push in' : 'Pull out';
+  crownBtn.dataset.state = crownOut ? 'on' : 'off';  // §73 A: 'on' = the ENGAGED position (pulled), so aria-pressed reads true
+  crownBtn.textContent = t(crownOut ? 'Push in' : 'Pull out');
   crownBtn.classList.toggle('active', crownOut);
   windBtnEl.disabled = crownOut;
   timeReadoutEl.classList.toggle('hacking', crownOut);
@@ -10705,7 +10756,7 @@ syncBtn.addEventListener('click', () => {
 });
 const SYNC_LABEL = { pull: 'Pulling…', settle: 'Setting…', push: 'Pushing in…', catchup: 'Catching up' };
 function updateSyncUI() {
-  syncBtn.textContent = syncPhase ? SYNC_LABEL[syncPhase] : 'Now';
+  syncBtn.textContent = t(syncPhase ? SYNC_LABEL[syncPhase] : 'Now');
   syncBtn.classList.toggle('active', !!syncPhase);
   syncBtn.disabled = fastForward || paused;
 }
@@ -10730,7 +10781,7 @@ updateCrownUI();
   for (const r of SPEC_RATES) {
     const o = document.createElement('option');
     o.value = String(r);
-    o.textContent = `${r.toLocaleString()} A/h`;
+    o.textContent = `${fmtInt(r)} A/h`; // §73: the browser default groups by the PAGE locale, not the UI one — 18,000 reads as eighteen in German
     vphSel.appendChild(o);
   }
   vphSel.value = String(SPEC.vph);
@@ -10924,7 +10975,7 @@ function setLabels(on) {
   labelsOn = on;
   labelsContainer.style.display = on ? 'block' : 'none';
   const b = document.getElementById('btn-labels');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
@@ -11025,7 +11076,7 @@ function setSchematic(on) {
   if (on) { camera.layers.enable(1); camera.layers.disable(0); }
   else { camera.layers.enable(0); camera.layers.disable(1); }
   const b = document.getElementById('btn-schematic');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
   applyGhosting();
 }
@@ -11390,7 +11441,7 @@ function setAxes(on) {
   document.getElementById('measure-slide-row').style.display = on ? '' : 'none';
   setScaleRef(on);   // §49 merge: the comparison diagram and stats are the same overlay
   const b = document.getElementById('btn-axes');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
   document.getElementById('axes-key').style.display = on ? '' : 'none';
   const scaleRow = document.getElementById('axes-scale');
@@ -11398,8 +11449,8 @@ function setAxes(on) {
   if (on) {
     const arm = plateR * 1.15;   // the AxesHelper's arm length, above
     scaleRow.firstElementChild.textContent =
-      `ticks ${AXIS_TICK_MM} mm · long ${AXIS_TICK_MAJOR_MM} mm · arm ${MM(arm).toFixed(1)} mm` +
-      (scaleReadout ? ` · ⌀${scaleReadout.plateMM.toFixed(1)} mm plate, ${scaleReadout.movMM.toFixed(1)} mm deep` : '');
+      `${t('ticks')} ${fmtNum(AXIS_TICK_MM, 1)} mm · ${t('long')} ${fmtNum(AXIS_TICK_MAJOR_MM, 1)} mm · ${t('arm')} ${fmtNum(MM(arm), 1)} mm` +
+      (scaleReadout ? ` · ⌀${fmtNum(scaleReadout.plateMM, 1)} mm ${t('plate')}, ${fmtNum(scaleReadout.movMM, 1)} mm ${t('deep')}` : '');
   }
 }
 document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
@@ -11552,11 +11603,11 @@ const _selBox = new THREE.Box3();
 function updateMeasureStats() {
   const stats = document.getElementById('scale-stats');
   if (!stats || !scaleReadout) return;
-  const base = `⌀${scaleReadout.plateMM.toFixed(1)} × ${scaleReadout.movMM.toFixed(1)} mm · ` +
-    `${(F_BALANCE * 7200).toLocaleString()} A/h · ${(RELAX_SECONDS / 3600).toFixed(0)} h reserve`;
+  const base = `⌀${fmtNum(scaleReadout.plateMM, 1)} × ${fmtNum(scaleReadout.movMM, 1)} mm · ` +
+    `${fmtInt(F_BALANCE * 7200)} A/h · ${fmtNum(RELAX_SECONDS / 3600, 0)} ${t('h reserve')}`;
   const sel = selectionMeasureBox();
   stats.firstElementChild.textContent = sel
-    ? `${selectedUnit}: ≈${MM(sel.max.y - sel.min.y).toFixed(2)} mm tall · ≈${MM(sel.max.z - sel.min.z).toFixed(2)} mm deep · ${base}`
+    ? `${t(selectedUnit)}: ≈${fmtNum(MM(sel.max.y - sel.min.y), 2)} mm ${t('tall')} · ≈${fmtNum(MM(sel.max.z - sel.min.z), 2)} mm ${t('deep')} · ${base}`
     : base;
 }
 function selectionMeasureBox() {
@@ -11749,7 +11800,7 @@ function setXray(on) {
     m.material = on ? dialXrayClones.get(m.userData.solidMat) : m.userData.solidMat;
   }
   const b = document.getElementById('btn-xray');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-xray').addEventListener('click', () => setXray(!xrayOn));
@@ -12043,10 +12094,19 @@ function setSound(on) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
   const b = document.getElementById('btn-sound');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-sound').addEventListener('click', () => setSound(!soundOn));
+
+// §73 — the Language row. UI_LANG is resolved at import; this only records the
+// CHOICE and reloads, so there is exactly one path that builds a localized
+// panel (boot) rather than two.
+{
+  const sel = document.getElementById('lang-select');
+  sel.value = UI_LANG;
+  sel.addEventListener('change', () => setUiLang(sel.value));
+}
 if (restoredSound) setSound(true); // context resume may still await a gesture; the first click supplies it
 // setSound(true) can run with no real gesture behind it — restored state
 // above, a `?sound=1` deep link, or the tour's own `sound:true` step — and
@@ -12078,7 +12138,7 @@ function pressAlarmPusher() {
   alarmPusherT = 1;
   alarmOn = alarmColSteps % 2 === 1;
   const b = document.getElementById('btn-alarm');
-  b.textContent = alarmOn ? 'On' : 'Off';
+  setBtnState(b, alarmOn);
   b.classList.toggle('active', alarmOn);
 }
 // Convenience for callers that speak in the flag (UI, scripts, remote API,
@@ -12127,7 +12187,8 @@ document.getElementById('btn-link').addEventListener('click', (e) => {
 });
 function alarmCrownSyncLabel() {
   const b = document.getElementById('btn-alarm-crown');
-  b.textContent = alarmCrownOut ? 'Push to wind' : 'Pull to set';
+  b.dataset.state = alarmCrownOut ? 'on' : 'off';   // engaged = pulled to wind
+  b.textContent = t(alarmCrownOut ? 'Push to wind' : 'Pull to set');
   b.classList.toggle('active', alarmCrownOut);
 }
 function toggleAlarmCrown() {
@@ -12395,7 +12456,7 @@ function setHud(on) {
   hudOn = on;
   hudEl.style.display = on ? 'block' : 'none';
   const b = document.getElementById('btn-hud');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
   hudUpdate();
 }
@@ -12606,7 +12667,8 @@ function drawExploreHover() {
   // chasing the cursor through the movement is noise over the thing it names.
   const text = exploreGrab ? null : exploreHoverLabel();
   if (!text || !exploreHoverPos) { exploreHoverEl.style.display = 'none'; return; }
-  if (exploreHoverEl.textContent !== text) exploreHoverEl.textContent = text;
+  const shown = t(text); // §73: the readout displays, exploreHoverName stays canonical
+  if (exploreHoverEl.textContent !== shown) exploreHoverEl.textContent = shown;
   exploreHoverEl.style.display = 'block';
   // Below-right of the pointer, flipped at the viewport edges — a name the
   // window clips is a name that was not shown.
@@ -12802,7 +12864,7 @@ function ensureExploreTethers() {
 function setExplore(on) {
   exploreOn = on;
   const b = document.getElementById('btn-explore');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
   document.getElementById('explore-reset-row').style.display = on ? '' : 'none';
   if (on) { ensureExploreTethers(); ensureExploreDrive(); if (typeof reconfOn !== 'undefined' && reconfOn) setReconf(false); } // §33: one spatial drag mode at a time
@@ -13479,7 +13541,7 @@ function reconfTrialBoot() {
 function setReconf(on) {
   reconfOn = on;
   const b = document.getElementById('btn-reconf');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
   if (on && exploreOn) setExplore(false); // one spatial drag mode at a time — they MEAN opposite things
   document.getElementById('reconf-row').style.display = on ? '' : 'none';
@@ -13616,7 +13678,7 @@ function setPowerFlow(on) {
   powerFlowOn = on;
   if (!on) pfRestore();
   const b = document.getElementById('btn-powerflow');
-  b.textContent = on ? 'On' : 'Off';
+  setBtnState(b, on);
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-powerflow').addEventListener('click', () => setPowerFlow(!powerFlowOn));
@@ -13685,10 +13747,10 @@ function captureState() {
 saveStateBtn.addEventListener('click', () => {
   const currentState = captureState();
   if (saveState(currentState)) {
-    saveStateBtn.textContent = 'Saved!';
+    saveStateBtn.textContent = t('Saved!');
     saveStateBtn.classList.add('active');
     setTimeout(() => {
-      saveStateBtn.textContent = 'Save';
+      saveStateBtn.textContent = t('Save');
       saveStateBtn.classList.remove('active');
     }, 1200);
     updateStateButtons();
@@ -13702,11 +13764,11 @@ loadStateBtn.addEventListener('click', () => {
 });
 
 clearStateBtn.addEventListener('click', () => {
-  if (confirm('Clear saved state?')) {
+  if (confirm(t('Clear saved state?'))) {
     clearState();
     updateStateButtons();
-    clearStateBtn.textContent = 'Cleared';
-    setTimeout(() => { clearStateBtn.textContent = 'Clear'; }, 1200);
+    clearStateBtn.textContent = t('Cleared');
+    setTimeout(() => { clearStateBtn.textContent = t('Clear'); }, 1200);
   }
 });
 
@@ -13856,12 +13918,13 @@ function refreshUnitOptions() {
   unitSelect.innerHTML = '';
   const addOption = (parent, n) => {
     const o = document.createElement('option');
-    o.textContent = n;
+    o.value = n;          // canonical — unitSelect.value is read as state
+    o.textContent = t(n); // display only
     parent.appendChild(o);
   };
   const addGroupBox = (label) => {
     const og = document.createElement('optgroup');
-    og.label = label;
+    og.label = t(label);
     unitSelect.appendChild(og);
     return og;
   };
@@ -13995,7 +14058,8 @@ function applyGhosting() {
 
 function focusSyncUI() {
   const b = document.getElementById('btn-focus');
-  b.textContent = focusName ?? 'Off';
+  b.textContent = focusName ? t(focusName) : t('Off');
+  b.dataset.state = focusName ? 'on' : 'off';
   b.classList.toggle('active', !!focusName);
 }
 
@@ -14279,15 +14343,15 @@ updateMaxDistance();
 // control and got a small watch will read it as a bug unless told.
 function updateLifeSizeUI() {
   const b = document.getElementById('btn-lifesize');
-  if (b) { b.textContent = lifeSizeOn ? 'Exit' : 'Life size'; b.classList.toggle('active', lifeSizeOn); }
+  if (b) { b.dataset.state = lifeSizeOn ? 'on' : 'off'; b.textContent = t(lifeSizeOn ? 'Exit' : 'Life size'); b.classList.toggle('active', lifeSizeOn); }
   if (!lifeSizeOn) { captionEl.classList.remove('show'); return; }
   const mm = lifeSizePlateMM();
   captionEl.innerHTML = lifeSizeCalibrated()
-    ? `LIFE SIZE — the plate is ${mm.toFixed(1)} mm across, and that is how big it is on your screen. `
-      + `Hold a ruler to the glass. Yes, it is small: that is the answer.`
-    : `NOMINAL LIFE SIZE — ${mm.toFixed(1)} mm, assuming your display is exactly 96 px/inch. `
-      + `Browsers cannot measure the screen they draw on, so this is a definition, not a measurement. `
-      + `Calibrate with a bank card to make it true.`;
+    ? `${t('LIFE SIZE — the plate is')} ${fmtNum(mm, 1)} ${t('mm across, and that is how big it is on your screen.')} `
+      + t('Hold a ruler to the glass. Yes, it is small: that is the answer.')
+    : `${t('NOMINAL LIFE SIZE —')} ${fmtNum(mm, 1)} ${t('mm, assuming your display is exactly 96 px/inch.')} `
+      + `${t('Browsers cannot measure the screen they draw on, so this is a definition, not a measurement.')} `
+      + t('Calibrate with a bank card to make it true.');
   captionEl.style.display = 'block';
   captionEl.classList.add('show');
 }
@@ -14368,6 +14432,7 @@ function currentViewLink() {
   // different by the time it arrives.
   if (timeScale !== 1) p.set('scale', String(timeScale));
   if (xrayOn) p.set('xray', '1');
+  if (UI_LANG !== 'en') p.set('lang', UI_LANG); // §73: only a non-default locale travels
   if (!SCHEMATIC.on) p.set('schematic', '0'); // §69: ON is the default, so only OFF travels
   if (focusName) p.set('focus', focusName);   // §69: the tapped unit rides the link
   if (labelsOn) p.set('labels', '1');
@@ -14389,7 +14454,7 @@ function currentViewLink() {
   const flash = (msg) => {
     clearTimeout(copyRestore);
     btn.textContent = msg;
-    copyRestore = setTimeout(() => { btn.textContent = 'Copy view'; }, 1600);
+    copyRestore = setTimeout(() => { btn.textContent = t('Copy view'); }, 1600);
   };
   btn.addEventListener('click', async () => {
     const url = currentViewLink();
@@ -14400,7 +14465,7 @@ function currentViewLink() {
     try {
       if (!navigator.clipboard) throw new Error('no clipboard api');
       await navigator.clipboard.writeText(url);
-      flash('Copied');
+      flash(t('Copied'));
       return;
     } catch (err) {
       try {
@@ -14412,10 +14477,10 @@ function currentViewLink() {
         const ok = document.execCommand('copy');
         ta.remove();
         if (!ok) throw new Error('execCommand refused');
-        flash('Copied');
+        flash(t('Copied'));
       } catch (err2) {
-        flash('Copy failed');
-        window.prompt('Copy this view link:', url);
+        flash(t('Copy failed'));
+        window.prompt(t('Copy this view link:'), url);
       }
     }
   });
@@ -14503,7 +14568,7 @@ function scriptEnterStep(i) {
   if (s.turnAlarmHours) scriptAlarmTurnRad = s.turnAlarmHours * (2 * Math.PI / 4); // one crown rev = 4 h through the 10/30 train
   if (s.wind) autoWindRemaining += s.wind * 2 * Math.PI;
   if (s.sync) { syncStart(); updateCrownUI(); }
-  if (s.caption !== undefined) captionEl.textContent = s.caption;
+  if (s.caption !== undefined) captionEl.textContent = t(s.caption); // §73: step tables stay English; display resolves
   captionEl.style.display = 'block';
   captionEl.classList.add('show');
 }
@@ -14994,6 +15059,7 @@ function applyDeepLink() {
   }
   if (params.has('scale')) setTimeScale(parseFloat(params.get('scale')) || 1);
   if (params.has('xray')) setXray(flag(params.get('xray')));
+  // ?lang is consumed by i18n.js at import (the panel is BUILT from it) — nothing to apply here.
   // §69 — ?schematic=0 opts a link out of the default line tier; ?focus=<unit>
   // arrives ghost-focused on one mechanism (an invalid name degrades to
   // nothing, this block's standing rule).
@@ -16547,18 +16613,18 @@ function advanceFrame(realDt) {
   // the trip reads — not from the rounded mark, which the mechanism ignores.
   document.getElementById('readout-alarm').textContent =
     '≈' + formatTime((alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S).slice(0, -3);
-  document.getElementById('readout-alarm-wind').textContent = Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100) + '%';
+  document.getElementById('readout-alarm-wind').textContent = fmtNum(Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100), 0) + '%';
   paintScale();
   updateSyncUI();
   document.getElementById('readout-beats').textContent = String(beatPhase(tauNow).n);
   document.getElementById('reserve-value').textContent =
-    (reserveShown * (RELAX_SECONDS / 3600)).toFixed(1) + ' h';
+    fmtNum(reserveShown * (RELAX_SECONDS / 3600), 1) + ' h';
 
   // Fast-forward button state + fusee torque readouts: the spring's torque
   // sags as the reserve drains, while the fusee's growing radius keeps the
   // torque delivered to the train level — the whole point of the mechanism.
   const ffBtn = document.getElementById('btn-ff');
-  ffBtn.textContent = fastForward ? 'On' : 'Off';
+  setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
   const springTq = 0.35 + 0.65 * reserveShown;
   const fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * reserveShown;
@@ -16610,7 +16676,7 @@ function frame(now) {
     document.getElementById('readout-frame').textContent =
       `${frameMsEma.toFixed(1)} ms · ${Math.round(1000 / frameMsEma)} fps`;
     document.getElementById('readout-ticks').textContent = String(ticksThisFrame);
-    document.getElementById('readout-tier').textContent = qualityTier;
+    document.getElementById('readout-tier').textContent = t(qualityTier);
   }
 
   // Auto-save state every 5 seconds
