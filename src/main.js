@@ -3104,6 +3104,11 @@ const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the l
 const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
+// §71: the schematic draws the chain as ITS OWN RUN — rebuildChain hands
+// the same curve it cuts the links from to this proxy line, so the drawing
+// re-wraps with tension exactly as the metal does (no parallel state; the
+// line is refreshed in the one place the path is computed).
+let schemChainCurve = null, schemChainLine = null;
 let lastChainTension = -1;
 let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMoved() (§14)
 // The chain is drawn as what a fusee chain IS: a miniature bicycle chain —
@@ -3343,6 +3348,9 @@ function rebuildChain(tension) {
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
   const geo = buildChainLinkGeometry(curve);
+  // §71: hand the run to the schematic's chain line — same curve, same frame
+  schemChainCurve = curve;
+  if (schemChainLine) schemChainLine.geometry.setFromPoints(curve.getPoints(160));
   if (chainMesh) {
     chainMesh.geometry.dispose();
     chainMesh.geometry = geo;
@@ -9161,6 +9169,16 @@ alarmSwitchUnit.add(alarmPusherGroup);
         Math.abs(slot.r - need) > 0.02)
       console.warn(`§43: the plate's riser slot is off the derived track — literal (${slot.ax}, ${slot.ay})→(${slot.bx}, ${slot.by}) r ${slot.r} vs derived (${pressed.x.toFixed(2)}, ${pressed.y.toFixed(2)})→(${rest.x.toFixed(2)}, ${rest.y.toFixed(2)}) r ${need.toFixed(2)}`);
   }
+  // §71 — the schematic tier draws the pusher from these spans (the
+  // userData.r convention, generalized to a slider): everything here is
+  // group-local, so the proxy slides with the press exactly as the metal
+  // does. Recorded at the build because the spans are block-scoped.
+  alarmPusherGroup.userData.stem = {
+    ux: _pushU.x, uy: _pushU.y,
+    inner: ALARM_PUSH_INNER, capS: stemOuterS,
+    capR: PUSHER_HEAD_R, capLen: PUSHER_HEAD_LEN,
+    pawlZ: _pawlZ, pawlS: ALARM_PAWL_KISS_S,
+  };
 }
 {
   // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
@@ -9483,6 +9501,12 @@ style.textContent = `
 #clock-ui .adv-row .adv-label {
   display: block; white-space: normal; overflow-wrap: anywhere;
   margin-bottom: 2px; line-height: 1.25; opacity: 0.85;
+}
+/* the scalar readout rides the label line, right-aligned - the number a
+   slider is AT, not just where it sits in its groove (owner call) */
+#clock-ui .adv-row .adv-val {
+  float: right; opacity: 0.95; color: #e0a355;
+  font: 11px ui-monospace, monospace; margin-left: 8px;
 }
 #clock-ui .adv-row input, #clock-ui .adv-row select { width: 100%; }
 #clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
@@ -10055,9 +10079,177 @@ function askTour(onProceed) {
   skipBtn.onclick = () => finish(false);
 }
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'h' || e.key === 'H') setPanelHidden(panel.style.display !== 'none');
-});
+// §72 — THE KEYBOARD AND SCREEN-READER LAYER (owner request: an a11y audit
+// found the HUD's native elements sound but nameless, and every canvas
+// interaction pointer-only). Four principles:
+//   1. Shortcuts CLICK the same buttons the pointer does — one path of
+//      authority, so a shortcut can never fork state from the panel.
+//   2. Names come from the panel's own row labels via aria-labelledby with
+//      the control's own id appended, so a toggle's "Off"→"On" text change
+//      updates its accessible name for free — no second copy to go stale.
+//   3. Every shortcut announces through ONE polite live region.
+//   4. The help overlay is generated FROM the shortcut table — the list the
+//      viewer reads is the list the handler runs.
+{
+  const a11yStyle = document.createElement('style');
+  a11yStyle.textContent = `
+  /* §72: focus is VISIBLE — the HUD's own blued-hand accent, only on
+     keyboard focus (focus-visible), so pointer users see no change */
+  #clock-ui button:focus-visible, #clock-ui input:focus-visible,
+  #clock-ui select:focus-visible, #clock-ui a:focus-visible,
+  #clock-ui summary:focus-visible, #kbd-help:focus-visible {
+    outline: 2px solid #7b96e8; outline-offset: 1px; border-radius: 3px;
+  }
+  #a11y-live { position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; }
+  #kbd-help { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 40; background: rgba(15,17,20,0.92); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+    padding: 16px 20px; width: 300px; color: #cfd6df;
+    font: 12px system-ui, sans-serif; }
+  #kbd-help h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #8fa6bf; }
+  #kbd-help .kbd-row { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; }
+  #kbd-help kbd { min-width: 44px; text-align: center; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 4px; padding: 1px 6px;
+    font: 11px ui-monospace, monospace; }
+  #kbd-help .kbd-note { color: #6c7683; margin-top: 8px; }`;
+  document.head.appendChild(a11yStyle);
+  // -- programmatic names: each .row's label span names its controls
+  let aid = 0;
+  for (const row of panel.querySelectorAll('.row')) {
+    const spans = row.querySelectorAll('span');
+    const lbl = [...spans].find((s) => !s.classList.contains('readout') && s.textContent.trim());
+    if (!lbl) continue;
+    if (!lbl.id) lbl.id = `a11y-l${aid++}`;
+    for (const c of row.querySelectorAll('button, input, select')) {
+      if (c.getAttribute('aria-label') || c.getAttribute('aria-labelledby')) continue;
+      if (!c.id) c.id = `a11y-c${aid++}`;
+      c.setAttribute('aria-labelledby', c.tagName === 'BUTTON' ? `${lbl.id} ${c.id}` : lbl.id);
+    }
+  }
+  // -- aria-pressed on state buttons, synced from the text the app already
+  // maintains ("On"/"Off"): one observer, no per-button wiring
+  const pressedObs = new MutationObserver((muts) => {
+    for (const m of muts) {
+      const b = m.target.nodeType === 3 ? m.target.parentElement : m.target;
+      if (b && b.tagName === 'BUTTON') {
+        const t = b.textContent.trim();
+        if (t === 'On' || t === 'Off') b.setAttribute('aria-pressed', t === 'On' ? 'true' : 'false');
+      }
+    }
+  });
+  pressedObs.observe(panel, { subtree: true, childList: true, characterData: true });
+  for (const b of panel.querySelectorAll('button')) {
+    const t = b.textContent.trim();
+    if (t === 'On' || t === 'Off') b.setAttribute('aria-pressed', t === 'On' ? 'true' : 'false');
+  }
+  // -- the canvas names itself; the HUD is the operable surface
+  renderer.domElement.setAttribute('role', 'img');
+  renderer.domElement.setAttribute('aria-label', '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.');
+  // -- one polite live region for shortcut feedback
+  const live = document.createElement('div');
+  live.id = 'a11y-live';
+  live.setAttribute('aria-live', 'polite');
+  document.body.appendChild(live);
+  const announce = (msg) => { live.textContent = ''; requestAnimationFrame(() => { live.textContent = msg; }); };
+  // -- the shortcut table (single source: handler AND help list)
+  const click = (id, label) => () => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.click();
+    const t = b.textContent.trim();
+    announce(`${label}${t === 'On' || t === 'Off' ? ' ' + t.toLowerCase() : ''}`);
+  };
+  const orbit = (dAz, dPol) => () => {
+    camTween = null;
+    const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+    sph.theta += dAz; sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPol));
+    camera.position.copy(new THREE.Vector3().setFromSpherical(sph).add(controls.target));
+    controls.update();
+  };
+  const zoom = (f) => () => {
+    camTween = null;
+    camera.position.sub(controls.target).multiplyScalar(f).add(controls.target);
+    controls.update();
+  };
+  const preset = (name) => () => {
+    const b = panel.querySelector(`[data-cam="${name}"]`);
+    if (b) { b.click(); announce(`Camera: ${name}`); }
+  };
+  const STEP = 6 * DEG2RAD;
+  const SHORTCUTS = [
+    ['Space', 'Pause / resume', click('btn-pause', 'Pause')],
+    ['W', 'Wind the mainspring', click('btn-wind', 'Wind')],
+    ['C', 'Crown pull / push', click('btn-crown', 'Crown')],
+    ['A', 'Alarm arm / disarm', click('btn-alarm', 'Alarm')],
+    ['S', 'Schematic view', click('btn-schematic', 'Schematic')],
+    ['X', 'X-ray plate', click('btn-xray', 'X-ray')],
+    ['L', 'Part labels', click('btn-labels', 'Labels')],
+    ['F', 'Tap-focus mode', click('btn-focus', 'Focus')],
+    ['M', 'Sound on / off', click('btn-sound', 'Sound')],
+    ['E', 'Explode / reassemble', () => {
+      const s = document.getElementById('explode-slider');
+      s.value = +s.value > 0 ? 0 : 100;
+      s.dispatchEvent(new Event('input', { bubbles: true }));
+      announce(+s.value > 0 ? 'Exploded' : 'Reassembled');
+    }],
+    ['1–5', 'Camera presets', null], // expanded below; one help row for five keys
+    ['←/→', 'Orbit camera', null],
+    ['↑/↓', 'Tilt camera', null],
+    ['+/−', 'Zoom', null],
+    ['H', 'Hide / show panel', () => setPanelHidden(panel.style.display !== 'none')],
+    ['?', 'This help', null],
+  ];
+  const KEYMAP = new Map([
+    [' ', SHORTCUTS[0][2]], ['w', SHORTCUTS[1][2]], ['c', SHORTCUTS[2][2]],
+    ['a', SHORTCUTS[3][2]], ['s', SHORTCUTS[4][2]], ['x', SHORTCUTS[5][2]],
+    ['l', SHORTCUTS[6][2]], ['f', SHORTCUTS[7][2]], ['m', SHORTCUTS[8][2]],
+    ['e', SHORTCUTS[9][2]],
+    ['1', preset('Escapement')], ['2', preset('Train')], ['3', preset('Dial')],
+    ['4', preset('Setting')], ['5', preset('Free')],
+    ['ArrowLeft', orbit(STEP, 0)], ['ArrowRight', orbit(-STEP, 0)],
+    ['ArrowUp', orbit(0, -STEP)], ['ArrowDown', orbit(0, STEP)],
+    ['+', zoom(0.92)], ['=', zoom(0.92)], ['-', zoom(1.08)],
+    ['h', SHORTCUTS[14][2]],
+  ]);
+  // shortcut hints on the buttons they drive (title = discoverability)
+  for (const [id, key] of [['btn-pause', 'Space'], ['btn-wind', 'W'], ['btn-crown', 'C'],
+    ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-xray', 'X'], ['btn-labels', 'L'],
+    ['btn-focus', 'F'], ['btn-sound', 'M']]) {
+    const b = document.getElementById(id);
+    if (b) b.title = (b.title ? b.title + ' ' : '') + `(${key})`;
+  }
+  // -- the help overlay, generated from SHORTCUTS
+  const help = document.createElement('div');
+  help.id = 'kbd-help';
+  help.setAttribute('role', 'dialog');
+  help.setAttribute('aria-label', 'Keyboard shortcuts');
+  help.tabIndex = -1;
+  help.style.display = 'none';
+  help.innerHTML = '<h2>Keyboard shortcuts</h2>' +
+    SHORTCUTS.map(([k, d]) => `<div class="kbd-row"><kbd>${k}</kbd><span>${d}</span></div>`).join('') +
+    '<div class="kbd-row kbd-note">Shortcuts pause while a slider or menu has focus. Esc closes.</div>';
+  document.body.appendChild(help);
+  let helpReturnFocus = null;
+  const setHelp = (on) => {
+    help.style.display = on ? 'block' : 'none';
+    if (on) { helpReturnFocus = document.activeElement; help.focus(); }
+    else if (helpReturnFocus && helpReturnFocus.focus) helpReturnFocus.focus();
+  };
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { if (help.style.display !== 'none') { setHelp(false); e.stopImmediatePropagation(); } return; }
+    const t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea, [contenteditable]')) return;
+    if (e.key === '?') { setHelp(help.style.display === 'none'); e.preventDefault(); return; }
+    // Space and Enter must keep activating a focused button/link/summary
+    if (e.key === ' ' && t && t.closest && t.closest('button, a, summary')) return;
+    const fn = KEYMAP.get(e.key.length === 1 ? e.key.toLowerCase() : e.key)
+      || (e.key === ' ' ? KEYMAP.get(' ') : null);
+    if (fn) { fn(); e.preventDefault(); }
+  });
+}
 
 // --- Finish: hand flute + lighting -----------------------------------------
 // The flute slider re-cuts the hands LIVE: every hand keeps its group (tick
@@ -10181,6 +10373,11 @@ window.addEventListener('keydown', (e) => {
       label.textContent = (authored || r.path.slice(1).join('.')) + (live ? '' : ' ⟳');
       label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload';
       row.appendChild(label);
+      // §53 addendum (owner call): the scalar VALUE is shown beside the
+      // label and tracks the drag live - a slider without its number is a
+      // groove, not a control. Decimals derive from the slider's own step,
+      // so coarse knobs read coarse and fine knobs read fine.
+      let valEl = null, valDec = 2;
       let input;
       if (typeof r.value === 'number') {
         input = document.createElement('input');
@@ -10203,6 +10400,11 @@ window.addEventListener('keydown', (e) => {
         else { input.min = 0; input.max = 1; }
         input.step = step;
         input.value = r.value;
+        valDec = Math.max(0, Math.min(3, -Math.floor(Math.log10(step))));
+        valEl = document.createElement('span');
+        valEl.className = 'adv-val';
+        valEl.textContent = Number(r.value).toFixed(valDec);
+        label.insertAdjacentElement('beforebegin', valEl);
       } else if (typeof r.value === 'string' && /^#[0-9a-f]{6}$/i.test(r.value)) {
         input = document.createElement('input');
         input.type = 'color';
@@ -10213,6 +10415,7 @@ window.addEventListener('keydown', (e) => {
         input.checked = r.value;
       } else continue;
       input.addEventListener('input', () => {
+        if (valEl) valEl.textContent = Number(input.value).toFixed(valDec);
         let leaf = aesthetics;
         for (const k of r.path.slice(0, -1)) leaf = leaf[k];
         leaf[r.path[r.path.length - 1]] =
@@ -10787,10 +10990,19 @@ const SCHEMATIC = { proxies: [], on: false };
     const PAGE = 0x0b0d10; // the page background the line tier draws on
     const occMat = new THREE.MeshBasicMaterial({ color: PAGE });
     const rimMat = new THREE.LineBasicMaterial({ color: 0x3d4654 }); // dim hairline — structure, not mechanism
+    SCHEMATIC.occMat = occMat; SCHEMATIC.rimMat = rimMat; // §71: the 3/4 plate's occluder shares the ONE page color and hairline
+    // §71 (owner call): x-ray applies to the schematic too — the occluder
+    // FILLS register here and setXray hides them, so x-ray in the line
+    // drawing means what it means in the metal: see through the plates.
+    // The rim/edge hairlines stay — the plate remains a drawn part, it
+    // just stops being opaque paper. (These are tier furniture with no
+    // tick-law visibility, so the mesh.visible invariant does not apply.)
+    SCHEMATIC.occluderFills = [];
     for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
       const f = new THREE.Mesh(new THREE.CircleGeometry(plateR, 96), occMat);
       f.position.z = zf;
       if (zf < 0) f.rotation.x = Math.PI; // face outward
+      SCHEMATIC.occluderFills.push(f);
       const rim = new THREE.Line(circGeo(plateR, 96), rimMat);
       rim.position.z = zf;
       for (const o of [f, rim]) { o.userData.schematic = true; o.layers.set(1); backPlate.add(o); }
@@ -10798,6 +11010,7 @@ const SCHEMATIC = { proxies: [], on: false };
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(plateR, plateR, 2, 96, 1, true), occMat);
     wall.rotation.x = Math.PI / 2;
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
+    SCHEMATIC.occluderFills.push(wall);
   }
 }
 function setSchematic(on) {
@@ -10865,6 +11078,219 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
       zz.userData.schematic = true; zz.layers.set(1); m.add(zz); SCHEMATIC.proxies.push(zz);
     }
   }
+  // §71 — the DISPLAY SIDE and the STRIKE WORK join the line tier (owner
+  // call: "we should see the hands, subdials, pusher, and alarm gong, and
+  // striker in schematic view too"). Same doctrine as the levers above:
+  // every proxy attaches to the group the tick already poses, so hands
+  // turn, the hammer swings, and the pusher slides with no parallel state
+  // anywhere — and every span quotes the constant that built the solid it
+  // abstracts. Hands take their own blued color (the metal is
+  // MATS.bluedHand; the tier mirrors the palette it abstracts).
+  {
+    const MAT_HAND = new THREE.LineBasicMaterial({ color: 0x7b96e8 });
+    const addHand = (obj, len, kind) => {
+      const tail = len * aesthetics.dial.hands[kind].tailFactor;
+      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+        [V(0, -tail, 0), V(0, len, 0)]), MAT_HAND);
+      l.userData.schematic = true; l.layers.set(1); obj.add(l); SCHEMATIC.proxies.push(l);
+    };
+    // a circle of radius r about (cx, cy) at height z, in the parent's frame
+    const addRing = (parent, r, cx = 0, cy = 0, z = 0, mat = MAT_LEVER, n = 48) => {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pts.push(V(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z));
+      }
+      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+      l.userData.schematic = true; l.layers.set(1); parent.add(l); SCHEMATIC.proxies.push(l);
+    };
+    // hands — each inside its own hand object (makeHand points local +Y, tail
+    // −Y·tailFactor), so hour rides the hour wheel, the alarm hand rides the
+    // §45 tube (parked or presented, the proxy goes where the metal goes)
+    addHand(hourHand, HOUR_HAND_LEN, 'hour');
+    addHand(minuteHand, MINUTE_HAND_LEN, 'minute');
+    addHand(smallSecondsHand, secondsSubR * 0.8, 'second');
+    addHand(reserveHand, reserveR * 0.8, 'minute');
+    addHand(alarmHand, HOUR_HAND_LEN - 1.2, 'hour');
+    // subdial bezels — rings at the wells' own radii, on the hands' plane
+    addRing(smallSecondsGroup, secondsSubR, 0, 0, -(SUBDIAL_RECESS - 0.3));
+    addRing(reserveGroup, reserveR, 0, 0, -(SUBDIAL_RECESS - 0.3));
+    // the gong — its arc at GONG_R across GONG_A0..GONG_A1 (§56: measured
+    // back from the free end) and the foot post down to the plate. Drawn at
+    // the BOOT arc: a live aesthetics edit re-voices gongF but leaves this
+    // line stale until reload — the same residue class as the contact dots'
+    // re-measure-on-entry.
+    {
+      const pts = [];
+      for (let i = 0; i <= 48; i++) {
+        const a = GONG_A0 + (i / 48) * (GONG_A1 - GONG_A0);
+        pts.push(V(Math.cos(a) * GONG_R, Math.sin(a) * GONG_R, Z_GONG));
+      }
+      addLine(alarmGongUnit, pts);
+      addLine(alarmGongUnit, [
+        V(Math.cos(GONG_A0) * GONG_R, Math.sin(GONG_A0) * GONG_R, Z_GONG),
+        V(Math.cos(GONG_A0) * GONG_R, Math.sin(GONG_A0) * GONG_R, TQ_TOP_Z - 0.5)]);
+    }
+    // the striker — pivot → head inside alarmHammerPivot (the group the
+    // strike law swings), head drawn at its own ALARM_HEAD_R
+    {
+      const hx = headRest.x - hammerPiv.x, hy = headRest.y - hammerPiv.y;
+      addLine(alarmHammerPivot, [V(0, 0, 0), V(hx, hy, 0)]);
+      addRing(alarmHammerPivot, ALARM_HEAD_R, hx, hy, 0);
+    }
+    // the pusher — stem, cap, and the riser-to-pawl run, all group-local
+    // from the spans the build recorded (userData.stem), so the whole
+    // drawing slides on press exactly as the metal does
+    {
+      const s = alarmPusherGroup.userData.stem;
+      const U = (d, z = 0) => V(s.ux * d, s.uy * d, z);
+      addLine(alarmPusherGroup, [U(s.inner), U(s.capS + s.capLen)]);
+      { // cap face: a ring in the plane ⊥ the press axis
+        const pts = [];
+        for (let i = 0; i <= 32; i++) {
+          const a = (i / 32) * Math.PI * 2;
+          const w = Math.cos(a) * s.capR, z = Math.sin(a) * s.capR;
+          pts.push(V(s.ux * s.capS - s.uy * w, s.uy * s.capS + s.ux * w, z));
+        }
+        addLine(alarmPusherGroup, pts);
+      }
+      addLine(alarmPusherGroup, [U(s.inner + 0.16), U(s.inner + 0.16, s.pawlZ), U(s.pawlS + 0.75, s.pawlZ)]);
+    }
+    // the §35 alarm link — beak lever in its own rotating arm (nose +x
+    // toward the wheel, tail −x over the rod, spans from alarmLinkParts),
+    // rod and lay shaft as axis lines derived from each mesh's own longest
+    // geometry dimension (the spring-zigzag convention — no restated
+    // lengths), and the two crank keys drawn from their built children so
+    // the roll the registration solve poses carries the drawing with it
+    {
+      const byName = (n) => { let m = null; movement.traverse((o) => { if (!m && o.isMesh && o.name === n) m = o; }); return m; };
+      const addAxisLine = (m) => {
+        m.geometry.computeBoundingBox();
+        const bb = m.geometry.boundingBox, size = bb.getSize(new THREE.Vector3());
+        const axis = size.x >= size.y && size.x >= size.z ? 'x' : size.y >= size.z ? 'y' : 'z';
+        const c = bb.getCenter(new THREE.Vector3());
+        const a = c.clone(), b = c.clone();
+        a[axis] = bb.min[axis]; b[axis] = bb.max[axis];
+        addLine(m, [a, b]);
+      };
+      addLine(alarmLinkParts.beakArm, [V(-alarmLinkParts.tailLen, 0, 0), V(alarmLinkParts.beakLen, 0, 0)]);
+      addAxisLine(byName('alarmLinkRod'));
+      addAxisLine(byName('alarmLinkShaft'));
+      addLine(alarmLinkParts.rimKey, [V(0, 0, 0), V(0, 0, ALARM_LINK_CRANK_OFF + alarmLinkParts.rimLen / 2)]);
+      {
+        const ck = alarmLinkParts.centreKey;
+        const pin = ck.children.find((o) => o.name === 'alarmLinkCentrePin');
+        addLine(ck, [V(0, 0, 0), V(0, 0, pin.position.z), V(pin.position.x * 2, 0, pin.position.z)]);
+      }
+      // the zero-reset hammer — lever line inside makeHammerLever's own
+      // group (pad at +Y·hammerArmLen), tail bar as its axis line; both
+      // ride hammerGroup, the group the §36A reset law swings
+      addLine(hammerLever, [V(0, 0, 0), V(0, hammerArmLen, 0)]);
+      addAxisLine(hammerTailBar);
+      // the THREE-QUARTER PLATE occludes too (owner call) — and unlike the
+      // base plate it is not a disc: its silhouette IS its geometry (the
+      // three-quarter cut, every bore and slot), so the occluder is the
+      // plate's own extrude re-drawn in the page color, with its sharp
+      // edges as hairlines so the boundary and the openings read. It lives
+      // INSIDE the labelled unit, which is exactly what the §71 prune in
+      // inspect.js's collectUnits exists to permit — flagged display never
+      // joins the sweeps, wherever it is parented.
+      {
+        const tq = byName('threeQuarterPlate');
+        const occ = new THREE.Mesh(tq.geometry, SCHEMATIC.occMat);
+        occ.userData.schematic = true; occ.layers.set(1); tq.add(occ);
+        SCHEMATIC.occluderFills.push(occ);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tq.geometry, 30), SCHEMATIC.rimMat);
+        edges.userData.schematic = true; edges.layers.set(1); tq.add(edges);
+      }
+      // §71 third growth (owner list) — the remaining mechanism units, drawn
+      // GENERICALLY from each mesh's own geometry: a principal mesh (longest
+      // dimension ≥ 2.5) takes its axis line, or its outline circle when the
+      // box reads as a disc (two similar long dimensions over a thin third —
+      // the selector ring, the boss discs). Nothing restated: every line
+      // derives from the mesh it lives in, so whatever the tick poses
+      // carries its own drawing. Furniture under 2.5 stays undrawn — this is
+      // a glyph vocabulary, not hidden-line CAD.
+      {
+        const TWO_PI = Math.PI * 2;
+        const discOrAxis = (m) => {
+          m.geometry.computeBoundingBox();
+          const bb = m.geometry.boundingBox, s = bb.getSize(new THREE.Vector3());
+          const dims = [['x', s.x], ['y', s.y], ['z', s.z]].sort((p, q) => q[1] - p[1]);
+          if (dims[0][1] < 2.5) return;
+          const c = bb.getCenter(new THREE.Vector3());
+          if (dims[1][1] > dims[0][1] * 0.8 && dims[2][1] < dims[0][1] * 0.3) {
+            const r = (dims[0][1] + dims[1][1]) / 4;
+            const pts = [];
+            for (let i = 0; i <= 48; i++) {
+              const p = c.clone();
+              p[dims[0][0]] += Math.cos((i / 48) * TWO_PI) * r;
+              p[dims[1][0]] += Math.sin((i / 48) * TWO_PI) * r;
+              pts.push(p);
+            }
+            addLine(m, pts);
+          } else {
+            const a = c.clone(), b = c.clone();
+            a[dims[0][0]] = bb.min[dims[0][0]];
+            b[dims[0][0]] = bb.max[dims[0][0]];
+            addLine(m, [a, b]);
+          }
+        };
+        const byLabel = (n) => labelEntries.find((e) => e.name === n).obj;
+        for (const name of ['Pallet fork', 'Alarm selector', 'Setting lever', 'Yoke',
+          'Stop lever', 'Maintaining detent', 'Reset rod', 'Hack rod']) {
+          byLabel(name).traverse((o) => {
+            if (o.isMesh && o.geometry.attributes.position && !o.userData.schematic) discOrAxis(o);
+          });
+        }
+        // the WORKING JEWELS — the fork's two pallet stones and the balance
+        // roller's impulse pin — in the spring red the tier already uses for
+        // contact events, selected by their own ruby material rather than a
+        // traversal index. Each jewel takes its axis line in place, so the
+        // pin swings with the balance and the stones rock with the fork.
+        const jewelLines = (unitName) => byLabel(unitName).traverse((o) => {
+          if (!o.isMesh || o.material !== MATS.ruby) return;
+          o.geometry.computeBoundingBox();
+          const bb = o.geometry.boundingBox, s = bb.getSize(new THREE.Vector3());
+          const axis = s.x >= s.y && s.x >= s.z ? 'x' : s.y >= s.z ? 'y' : 'z';
+          const c = bb.getCenter(new THREE.Vector3());
+          const a = c.clone(), b = c.clone();
+          a[axis] = bb.min[axis]; b[axis] = bb.max[axis];
+          const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), MAT_SPRING);
+          l.userData.schematic = true; l.layers.set(1); o.add(l); SCHEMATIC.proxies.push(l);
+        });
+        jewelLines('Pallet fork');
+        jewelLines('Balance');
+        // ...and the pin's ORBIT: a circle through the pin's own built
+        // position (radius and plane read off the mesh — the roller table's
+        // sweep, the arc the FORK_BANK_DEG derivation matches arc-length
+        // against), drawn in the balance wheel's frame so it spins with it
+        {
+          let pin = null;
+          byLabel('Balance').traverse((o) => { if (!pin && o.isMesh && o.material === MATS.ruby) pin = o; });
+          if (pin) {
+            const r = Math.hypot(pin.position.x, pin.position.y);
+            const pts = [];
+            for (let i = 0; i <= 48; i++) {
+              const a = (i / 48) * TWO_PI;
+              pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, pin.position.z));
+            }
+            addLine(pin.parent, pts);
+          }
+        }
+        // the CHAIN — its own run, from the same curve rebuildChain cuts the
+        // links along (declared up at chainMesh; refreshed there on every
+        // re-wrap, so tension carries the drawing). Chain lives directly in
+        // `movement`, so the line does too — same frame.
+        schemChainLine = new THREE.Line(new THREE.BufferGeometry(), MAT_LEVER);
+        if (schemChainCurve) schemChainLine.geometry.setFromPoints(schemChainCurve.getPoints(160));
+        schemChainLine.userData.schematic = true; schemChainLine.layers.set(1);
+        movement.add(schemChainLine);
+        SCHEMATIC.proxies.push(schemChainLine);
+      }
+    }
+  }
+
   // contact dots — instrument-measured, lazily
   const DOTS = { group: null };
   SCHEMATIC.refreshContacts = async () => {
@@ -11316,6 +11742,9 @@ const xrayGlassMats = new Set([tqXrayMat, ...dialXrayClones.values()]);
 function setXray(on) {
   xrayOn = on;
   tqPlateMesh.material = on ? tqXrayMat : tqSolidMat;
+  // §71 x-ray-in-schematic: the plate occluders' fills lift with the same
+  // toggle, so one x-ray state means "see through the plates" in both views
+  for (const o of SCHEMATIC.occluderFills || []) o.visible = !on;
   for (const m of dialXrayMeshes) {
     m.material = on ? dialXrayClones.get(m.userData.solidMat) : m.userData.solidMat;
   }
@@ -11540,6 +11969,31 @@ const SND = {
     sndTone(gongF[0], 0.32, 0.14, 0, alarmEmitter);     // fundamental — the body under it
   },
 };
+// §71 — SOUND EMITTERS in the schematic (owner call: "it'd be good to see
+// all sound emitting elements"). The SND table above is the single source
+// of what emits, so the glyphs derive from it: one per DISTINCT emitter
+// object (fork tick, maintaining pawl/detent, minute jump, reset hammer,
+// crown stem, gong strike point), drawn as concentric rings plus one
+// orthogonal ring so the glyph survives any orbit, attached INSIDE the
+// emitter so it rides whatever the emitter rides. Ruby — the tier's event
+// color, which is what a sound is.
+{
+  const mat = new THREE.LineBasicMaterial({ color: 0xe05555 });
+  const ring = (em, plane, r) => {
+    const pts = [];
+    for (let i = 0; i <= 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      pts.push(plane === 'xy'
+        ? new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0)
+        : new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+    }
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    l.userData.schematic = true; l.layers.set(1); em.add(l); SCHEMATIC.proxies.push(l);
+  };
+  for (const em of new Set([forkGroup, maintDetent, jumperUnit, hammerGroup, crown, alarmEmitter])) {
+    ring(em, 'xy', 0.45); ring(em, 'xy', 0.85); ring(em, 'xz', 0.65);
+  }
+}
 // --- Sound-event highlight (BUILT §11) --------------------------------------
 // The part that just made a sound glows on its OWN surface -- a direct
 // emissive tint, not a separate overlay mesh -- so a click reads as coming
@@ -13693,6 +14147,9 @@ let camTween = null; // { fromPos, fromTarget, toPos, toTarget, t0, dur }
 // __clock.camera in a console and sharing that view meant a screenshot.
 const CAM_TWEEN_DUR = 0.9; // s — the one ease every consumer inherits
 function goToPose(pos, target, { snap = false } = {}) {
+  // §72: prefers-reduced-motion means every fly-to is a snap — the 0.9 s
+  // camera sweep is exactly the class of motion the preference asks off.
+  if (!snap && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) snap = true;
   if (snap) {
     // Snap is for a pose that is ALREADY the answer — a restored session or a
     // shared link. Flying to it from wherever the default framing left us

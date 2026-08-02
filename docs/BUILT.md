@@ -6196,3 +6196,114 @@ escapement and dial ghosted; clear returns the preview; x-ray
 round-trips it; a 60 px drag does not focus; power flow clears focus;
 `?schematic=0&focus=Alarm crown` lands focused with solids. Full
 battery green (§52 gate).
+
+## §71 — The display side and the strike work join the line tier
+
+**Filed and shipped in one landing** (owner request: "we should see the
+hands, subdials, pusher, and alarm gong, and striker in schematic view
+too"), the §69 precedent — this record is the filing.
+
+**What was added, all §66-doctrine.** Every proxy attaches to the group
+the tick already poses, so nothing keeps parallel state: the five
+HANDS (hour, minute, small seconds, power reserve, alarm) are blued
+lines inside their own hand objects — local +Y with the real
+tailFactor, so the hour hand turns with the hour wheel and the alarm
+hand rides the §45 tube, parked or presented, exactly where the metal
+goes. The SUBDIAL BEZELS are rings at the wells' own radii on the
+hands' plane. The GONG is its arc at GONG_R across GONG_A0..A1 plus
+the foot post — drawn at the boot arc, with the live-aesthetics
+staleness noted in place (same residue class as the dots'
+re-measure-on-entry). The STRIKER is pivot→head inside
+alarmHammerPivot — the group the strike law swings — with the head at
+its own ALARM_HEAD_R. The PUSHER is stem, cap face, and the
+riser-to-pawl run, all group-local from spans the build records in
+`userData.stem` (the userData.r convention generalized to a slider),
+so the whole drawing slides on press. A follow-up ask in the same
+landing added the §35 ALARM LINK — beak lever in its rotating arm, rod
+and lay shaft as axis lines derived from each mesh's own longest
+geometry dimension (the spring-zigzag convention, no restated
+lengths), both crank keys drawn from their built children so the
+registration solve's roll carries the drawing — and the ZERO-RESET
+HAMMER, lever and tail bar riding hammerGroup, the group the §36A
+reset law swings. And the THREE-QUARTER PLATE joined the base plate
+as an occluder — not a disc but the plate's own extrude re-drawn in
+the page color with its sharp edges as hairlines, so the cut, the
+bores, and the slots all read. That occluder lives INSIDE its labelled
+unit, which forced the §71 collector change: `collectUnits` in
+inspect.js now prunes anything flagged `userData.schematic` wherever
+it is parented — "invisible to all instruments" made structural in the
+one collector every unit-based check flows through, the same trust the
+fingerprint already extends. Flag every schematic object directly; an
+unflagged child of a flagged parent is not protected.
+
+**Third growth (owner list + sound).** The remaining mechanism units —
+pallet fork, alarm selector, setting lever, yoke, stop lever,
+maintaining detent, reset rod, hack rod — draw GENERICALLY: each
+principal mesh (longest dimension ≥ 2.5) takes its axis line or, when
+its box reads as a disc, its outline circle; every line derives from
+the mesh it lives in, so the tick's poses carry the drawings. The
+fork's two pallet stones draw in the event red, selected by their own
+ruby material. The CHAIN draws as its actual run: rebuildChain hands
+the same curve it cuts the links along to one proxy line, refreshed in
+the one place the path is computed, so tension re-wraps the drawing
+with the metal. And the SOUND EMITTERS are visible: the SND table is
+the single source of what emits, so each distinct emitter object (fork
+tick, maintaining pawl/detent, minute jump, reset hammer, crown stem,
+gong strike point) carries a concentric-ring glyph in the event red,
+attached inside the emitter. Deliberately still undrawn: Fork cock and
+pillars (accommodation, not mechanism) and the Alarm release sleeve
+(not in the owner's list; the next natural entry). And X-RAY applies
+to the schematic too (owner call): the plate occluders' fills register
+with setXray and lift with the same toggle — one x-ray state meaning
+"see through the plates" in both views — while the rim and edge
+hairlines stay, so the plates remain drawn parts rather than opaque
+paper.
+
+**Palette note.** Hands take their own blued line color — the metal is
+MATS.bluedHand, and the tier mirrors the palette it abstracts; brass
+stays wheels, steel stays levers/structure, red stays springs and lit
+contacts.
+
+**Battery untouched by construction**: line-only proxies (the §66 boot
+assert holds), attached inside existing groups, fingerprint unchanged
+by the skip rule. Verified: boot silent, per-unit proxy census (gong,
+hammer, switch, both subdials, all five hands) and screenshots from
+both sides with the §69-era base-plate occlusion doing its work.
+
+## §72 — The keyboard and screen-reader layer
+
+**Filed and shipped in one landing** (owner request: an accessibility
+audit, then shortcuts). The audit found the HUD built from native
+elements — buttons, ranges, selects, details/summary, all focusable —
+but NAMELESS: row labels lived in sibling spans with no programmatic
+link, so a screen reader heard "Off, button" forty times; state
+buttons carried no aria-pressed; the canvas was an unlabelled void;
+every canvas interaction (orbit, tap focus, crown, pusher) was
+pointer-only; the only shortcut was H; and the 0.9 s camera sweeps
+ignored prefers-reduced-motion. explain.html was already in good
+shape (24 aria-labels, native disclosure, reduced-motion honored).
+
+**Four principles, implemented.** (1) Shortcuts CLICK the same
+buttons the pointer does — one path of authority, no forked state.
+(2) Names derive from the panel's own row labels via aria-labelledby
+with the control's own id appended, so a toggle's Off→On text change
+updates its accessible name with no second copy to go stale;
+aria-pressed syncs from the same text through one MutationObserver.
+(3) Every shortcut announces through one polite live region.
+(4) The ? help overlay is GENERATED from the shortcut table — the
+list the viewer reads is the list the handler runs.
+
+**The map**: Space pause · W wind · C crown · A alarm · S schematic ·
+X x-ray · L labels · F focus · M sound · E explode/reassemble ·
+1–5 camera presets · arrows orbit/tilt · +/− zoom · H panel · ? help
+· Esc closes. Shortcuts stand down while an input/select has focus,
+and Space/Enter keep native activation on focused controls. Mapped
+buttons carry their key in their title. Focus is visible
+(focus-visible outline in the blued accent, pointer users unaffected),
+the canvas names itself as an image and points at the panel, and
+goToPose snaps instead of flying under prefers-reduced-motion.
+
+**Still open, honestly**: the spatial drags (crown azimuth, explore
+part-drag, reconfigure) have no keyboard equivalent — they are
+position-space editors, and a keyboard path there is real design
+work, not a shortcut; filed as the natural next entry if wanted.

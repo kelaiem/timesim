@@ -611,9 +611,19 @@ function collectUnits(clock, { includeExcluded = false } = {}) {
   for (const { name, obj } of clock.labelEntries) {
     if (!includeExcluded && EXCLUDED_UNITS.includes(name)) continue;
     const meshes = [];
-    obj.traverse((o) => {
+    // §71: prune the §66 schematic tier wherever it roots — the tier is
+    // display, never metal, the same trust the fingerprint already extends
+    // (its per-unit boxes skip the flag). This is what lets an occluder
+    // MESH live inside a labelled unit (the 3/4 plate's silhouette) without
+    // joining the sweeps: "invisible to all instruments" becomes structural
+    // in the one collector every unit-based check flows through, instead of
+    // resting on where a proxy happens to be parented.
+    const walk = (o) => {
+      if (o.userData && o.userData.schematic) return;
       if (o.isMesh && o.geometry && o.geometry.attributes.position) meshes.push(o);
-    });
+      for (const c of o.children) walk(c);
+    };
+    walk(obj);
     if (meshes.length) units.push({ name, obj, meshes });
   }
   return units;
