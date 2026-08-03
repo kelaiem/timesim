@@ -99,12 +99,6 @@ export default {
   ['The seat is derived, not posed: the hammer\'s arm length puts the roller\'s <em>surface</em> at the notch floor — the build\'s own correction, "the roller surface just kisses the notch instead of rMin + armLen put the roller CENTRE on the notch floor" — and the cam is phased so the notch faces the hammer\'s pivot at the seated pose. The hammer is instrumented (<code>declareRestoring</code>, <code>declareTravel</code>): its return is a real sprung member under the §48 no-spring audits, not an animation.']: '这个落座是推导出来的，不是摆出来的：音锤的臂长使滚轮的<em>表面</em>正好落在凹口底面——构建代码自己的修正，“the roller surface just kisses the notch instead of rMin + armLen put the roller CENTRE on the notch floor”——并且凸轮的相位使得落座姿态下凹口正对音锤支点。音锤已被仪器化（<code>declareRestoring</code>、<code>declareTravel</code>）：在 §48 的“无弹簧”审查下，它的回位是一个真实的弹性构件，不是动画。',
   ['Zero reset — the heart cam\'s one low point<span class="where">display · src/main.js ~1281</span>']: '归零 — 心形凸轮唯一的低点<span class="where">显示 · src/main.js ~1281</span>',
   ['Fall, roll, seat — any start, one end']: '落下、滚动、落座 — 任何起点，唯一终点',
-  ['1 · running']: '1 · 运行中',
-  ['hammer parked clear; the display turns with the train']: '音锤停在一旁；显示随轮系转动',
-  ['2 · reset pressed']: '2 · 按下归零',
-  ['pad on the spiral edge → torque toward the low point']: '锤面压在螺线边缘 → 产生指向低点的扭矩',
-  ['3 · seated at zero']: '3 · 落座于零位',
-  ['pad in the notch — display at 0, train still running']: '锤面进入凹口 — 显示为 0，轮系仍在运行',
 
   // ---- hacking ----
   ['Pull the crown to set the time and the balance stops dead — hacking — so the watch can be synchronised to a reference. The brake is the <b>stop work</b>: the setting chain\'s motion travels a thin hack rod to a crank beside the balance, and the crank\'s pad rises against the balance rim. Push the crown home and the pad falls away; the hairspring restarts the balance itself.']: '拔出表冠调时，摆轮立即停住——即停秒——以便把表对到某个基准上。刹车装置是<b>停秒机构</b>：拨针系的运动经一根细停秒杆传到摆轮旁的曲柄，曲柄上的垫块升起抵住摆轮缘。把表冠推回，垫块落下；游丝会自行让摆轮重新起振。',
@@ -380,4 +374,21 @@ export default {
   ['SHOWN · Hidden ⟺ ¬Armed ∧ ¬Setting holds']: '显示 · 隐藏 ⟺ ¬已上闩 ∧ ¬调校中 成立',
 
   ['What the sim models, honestly bounded: the geometry above is built (rim, screws, free terminal), and since TODO 25 tier two the rate is a CONSEQUENCE of it. The balance\'s inertia is weighed from its own published dimensions (rim 84.7%, screws 10.5%, arms 4.8% of it), the spec\'s beat is what that wheel then demands of its spring (<code>k = I·ω²</code>), and the hairspring\'s SECTION is solved to deliver it — a ribbon 0.0244 mm thick, inside the 0.02–0.04 mm window real hairspring stock occupies. <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and <code>checkOscillator</code> gates that solve every battery run. Still NOT modelled, and this page draws no such mechanism: turning a timing screw to move the rate. Amplitude varies with mainspring tension (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a free-sprung balance exists to tell.']: '模拟器建模的范围，诚实划界：上方的几何是真建出来的（摆轮缘、螺钉、自由末端），而自 TODO 25 第二阶段起，走时快慢是它的一个结果。摆轮的转动惯量由它自己公开的尺寸称量而得（摆轮缘占 84.7%，螺钉 10.5%，摆臂 4.8%），规格中的振频则是这枚摆轮对其游丝提出的要求（<code>k = I·ω²</code>），而游丝的截面就是为交付它而求解出来的——一条 0.0244 mm 厚的钢带，落在真实游丝材料所处的 0.02–0.04 mm 区间内。<em>√(k/I)</em> 于是以算术而非断言的方式落在规格值上，并由 <code>checkOscillator</code> 在每次电池检测中把关。仍未建模、本页也未绘出的机构：拧动微调螺钉来改变走时快慢。摆幅随发条张力变化（<code>AMPLITUDE_VISUAL_DEG</code> 随之缩放），而这正是无快慢针摆轮所要讲述的等时性故事。',
+
+  // ---- zero reset, rebuilt (§73 follow-up) ----
+  ['RUNNING · hammer clear']: '运行中 · 音锤已让开',
+  ['swept disc']: '扫掠圆盘',
+  ['r + bevel']: 'r + 倒角',
+  ['notch · the one low point']: '凹口 · 唯一的最低点',
+  ['heart cam · r 3.36 → rMin 1.08 (0.32 r)']: '心形凸轮 · r 3.36 → rMin 1.08（0.32 r）',
+  ['r(θ) = rMin + (r − rMin)(1 − cos θ)/2']: 'r(θ) = rMin + (r − rMin)(1 − cos θ)/2',
+  ['lever arm 7.73 · roller ⌀ 1.4']: '杠杆臂 7.73 · 滚轮 ⌀ 1.4',
+  ['pivot = rMin + bevel + roller + arm']: '支点 = rMin + 倒角 + 滚轮 + 臂',
+  ['small seconds']: '小秒盘',
+  ['the notch IS this zero']: '凹口就是这个零位',
+  ['generated from the source profile, solved each frame — the roller rides r(θ) and the lever follows it']: '由源码轮廓生成，逐帧求解——滚轮沿 r(θ) 滚动，杠杆随之而动',
+  ['cam angle θ']: '凸轮角 θ',
+  ['PRESS · roller meets the falling radius']: '按下 · 滚轮触到递减的半径',
+  ['RESET · the spiral torques itself to the low point']: '归零 · 螺线把自己转向最低点',
+  ['SEATED · pad in the notch — display at 0, train still running']: '已落座 · 滚轮进入凹口 — 显示为 0，轮系仍在运行',
 };

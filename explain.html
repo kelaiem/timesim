@@ -483,33 +483,51 @@
       slip coupling pays for the jump.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Fall, roll, seat — any start, one end</span></div>
+        <!-- §73 follow-up: the three static panels this replaces drew a leaf
+             beside a floating block — no pivot, no roller, no notch, no zero,
+             and a cam whose outline was not the profile the source cuts. This
+             one is GENERATED from that profile and SOLVED each frame: the
+             roller rides r(θ), the lever follows, and the hand is the cam. -->
+        <div class="controls">
+          <button id="zrPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
+          <span class="chip ride" id="zrChip">RUNNING · hammer clear</span>
+          <span class="readout" id="zrReadout">θ 0°</span>
+          <label>cam angle θ
+            <input type="range" id="zrSlider" min="0" max="359" value="215" aria-label="Cam angle">
+          </label>
+        </div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 220" width="780" height="220" role="img" aria-label="Three panels: hammer parked off the heart cam; hammer pressing the spiral edge which torques the cam; pad seated at the low point at zero">
-            <g transform="translate(30 30)">
-              <path d="M 60 60 C 100 20, 150 55, 90 120 C 30 55, 20 25, 60 60 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4" transform="rotate(140 85 70)"/>
-              <circle cx="85" cy="70" r="5" fill="none" stroke="var(--muted)"/>
-              <rect x="150" y="18" width="46" height="16" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-              <text class="lbl lbl-strong" x="0" y="0">1 · running</text>
-              <text class="val" x="0" y="160">hammer parked clear; the display turns with the train</text>
+          <svg viewBox="0 0 780 300" width="780" height="300" role="img"
+               aria-label="The heart cam with its hammer lever and the small-seconds hand: the roller rides the cam's falling radius to the notch, and the hand arrives at zero with it.">
+            <!-- cam station, 20 px per unit -->
+            <circle id="zrSweep" cx="180" cy="150" r="70.4" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+            <path id="zrCam" d="" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <circle cx="180" cy="150" r="5" fill="none" stroke="var(--muted)"/>
+            <line id="zrNotchRay" x1="180" y1="150" x2="180" y2="150" stroke="var(--ruby)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <g id="zrLever">
+              <line id="zrArm" x1="373" y1="150" x2="218" y2="150" stroke="var(--steel)" stroke-width="6" stroke-linecap="round"/>
+              <circle id="zrRoller" cx="218" cy="150" r="14" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
             </g>
-            <g transform="translate(290 30)">
-              <path d="M 60 60 C 100 20, 150 55, 90 120 C 30 55, 20 25, 60 60 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4" transform="rotate(60 85 70)"/>
-              <circle cx="85" cy="70" r="5" fill="none" stroke="var(--muted)"/>
-              <rect x="132" y="52" width="46" height="16" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-              <circle cx="130" cy="60" r="4" fill="var(--ruby)"/>
-              <line x1="120" y1="34" x2="104" y2="48" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrZ)"/>
-              <text class="lbl lbl-strong" x="0" y="0">2 · reset pressed</text>
-              <text class="val" x="0" y="160">pad on the spiral edge → torque toward the low point</text>
-            </g>
-            <g transform="translate(550 30)">
-              <path d="M 60 60 C 100 20, 150 55, 90 120 C 30 55, 20 25, 60 60 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4" transform="rotate(-35 85 70)"/>
-              <circle cx="85" cy="70" r="5" fill="none" stroke="var(--muted)"/>
-              <rect x="120" y="86" width="46" height="16" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-              <circle cx="118" cy="94" r="4" fill="var(--ruby)"/>
-              <text class="lbl lbl-strong" x="0" y="0">3 · seated at zero</text>
-              <text class="val" x="0" y="160">pad in the notch — display at 0, train still running</text>
-            </g>
-            <defs><marker id="arrZ" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
+            <circle cx="373" cy="150" r="26" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <circle cx="373" cy="150" r="4" fill="var(--muted)"/>
+            <circle id="zrContact" cx="0" cy="0" r="4.5" fill="var(--ruby)" opacity="0"/>
+            <text class="val" x="24" y="62">swept disc</text>
+            <text class="val" x="24" y="75">r + bevel</text>
+            <text class="val val-ruby" x="24" y="238">notch · the one low point</text>
+            <text class="lbl" x="370" y="196">pivot</text>
+            <text class="lbl" x="24" y="262">heart cam · r 3.36 → rMin 1.08 (0.32 r)</text>
+            <text class="val" x="24" y="276">r(θ) = rMin + (r − rMin)(1 − cos θ)/2</text>
+            <text class="lbl" x="300" y="262">lever arm 7.73 · roller ⌀ 1.4</text>
+            <text class="val" x="300" y="276">pivot = rMin + bevel + roller + arm</text>
+            <!-- the display: the cam IS the hand -->
+            <circle cx="648" cy="128" r="66" fill="none" stroke="var(--line)" stroke-width="1"/>
+            <g id="zrTicks" stroke="var(--muted)" stroke-width="1"></g>
+            <line id="zrHand" x1="648" y1="128" x2="648" y2="70" stroke="var(--readout)" stroke-width="2.4" stroke-linecap="round"/>
+            <circle cx="648" cy="128" r="3" fill="var(--readout)"/>
+            <text class="lbl lbl-strong" x="641" y="48">0</text>
+            <text class="lbl" x="592" y="238">small seconds</text>
+            <text class="val" x="592" y="252">the notch IS this zero</text>
+            <text class="lbl" x="24" y="294">generated from the source profile, solved each frame — the roller rides r(θ) and the lever follows it</text>
           </svg>
         </div>
         <figcaption>The seat is derived, not posed: the hammer's arm length puts the
@@ -1620,6 +1638,152 @@
         // (no pose writes) while the section is closed or the tab is hidden.
         setPlaying(!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
       })();
+    })();
+
+    // —— Zero reset: the heart cam, generated and SOLVED ——
+    // The old plate drew a leaf beside a floating block. This one takes the
+    // profile from the source law and then solves the linkage rather than
+    // posing it: for a cam angle theta, the roller must sit one roller radius
+    // off the profile it touches, and its centre must lie on the lever's own
+    // arc about the pivot. That is a 1-D root find (bisection on the lever
+    // angle), so what you see is the mechanism agreeing with itself, not a
+    // drawing that was nudged until it looked right.
+    (function () {
+      // makeHeartCam's numbers, as built: radius = fourthWheelR*0.4, rMin =
+      // 0.32 of it, and the extrude bevel that EXPANDS the outline in XY.
+      var R = 3.36, RMIN = 1.0752, BEVEL = 0.16, ROLL = 0.7, ARM = 7.728;
+      var PIVD = RMIN + BEVEL + ROLL + ARM;      // the build's hammerPivotDist
+      var S = 20, CX = 180, CY = 150;            // px per unit, cam centre
+      var PX = CX + PIVD * S, PY = CY;           // pivot — notch faces it when seated
+      // geometry.js makeHeartCam, verbatim: the profile is this line.
+      function rAt(th) { return RMIN + (R - RMIN) * (1 - Math.cos(th)) / 2; }
+
+      var el = function (id) { return document.getElementById(id); };
+      var camEl = el('zrCam'), armEl = el('zrArm'), rollEl = el('zrRoller');
+      var contact = el('zrContact'), handEl = el('zrHand'), notchRay = el('zrNotchRay');
+      var chip = el('zrChip'), readout = el('zrReadout'), slider = el('zrSlider'), btn = el('zrPlay');
+
+      // cam outline at theta = 0, drawn once; the group is then rotated.
+      (function () {
+        var d = [];
+        for (var i = 0; i <= 240; i++) {
+          var th = (i / 240) * Math.PI * 2;
+          var r = rAt(th) * S;
+          d.push((i ? 'L' : 'M') + (CX + Math.cos(th) * r).toFixed(2) + ' ' + (CY + Math.sin(th) * r).toFixed(2));
+        }
+        camEl.setAttribute('d', d.join(' ') + ' Z');
+      })();
+      (function () {
+        var g = el('zrTicks'), NS = 'http://www.w3.org/2000/svg';
+        for (var i = 0; i < 60; i++) {
+          var a = (i / 60) * Math.PI * 2 - Math.PI / 2, big = i % 5 === 0;
+          var l = document.createElementNS(NS, 'line');
+          l.setAttribute('x1', 648 + Math.cos(a) * (big ? 57 : 61));
+          l.setAttribute('y1', 128 + Math.sin(a) * (big ? 57 : 61));
+          l.setAttribute('x2', 648 + Math.cos(a) * 65);
+          l.setAttribute('y2', 128 + Math.sin(a) * 65);
+          l.setAttribute('opacity', big ? '0.9' : '0.4');
+          g.appendChild(l);
+        }
+      })();
+
+      // Roller centre for a lever angle a (measured at the pivot, 180° = aimed
+      // at the cam centre), and the gap between it and the profile it faces.
+      function rollerAt(a) { return { x: PX + Math.cos(a) * ARM * S, y: PY + Math.sin(a) * ARM * S }; }
+      function gapAt(a, theta) {
+        var p = rollerAt(a), dx = (p.x - CX) / S, dy = (p.y - CY) / S;
+        var d = Math.hypot(dx, dy);
+        var phi = Math.atan2(dy, dx) - theta;           // where on the cam it faces
+        return d - (rAt(phi) + BEVEL + ROLL);           // >0 clear, 0 touching
+      }
+      // Seated is a aimed straight at the cam centre (PI); retracted is
+      // wherever the roller clears the swept disc. Bisect between them.
+      var A_SEAT = Math.PI;
+      var A_RETRACT = (function () {
+        var need = R + BEVEL + ROLL;
+        for (var a = Math.PI; a > Math.PI * 0.3; a -= 0.005) {
+          var p = rollerAt(a);
+          if (Math.hypot((p.x - CX) / S, (p.y - CY) / S) >= need) return a;
+        }
+        return Math.PI * 0.6;
+      })();
+      function solveLever(theta) {
+        var lo = A_SEAT, hi = A_RETRACT;              // gap(lo) <= 0 <= gap(hi)
+        if (gapAt(lo, theta) > 0) return lo;          // notch deeper than the roller reaches
+        for (var i = 0; i < 40; i++) {
+          var mid = (lo + hi) / 2;
+          if (gapAt(mid, theta) > 0) hi = mid; else lo = mid;
+        }
+        return (lo + hi) / 2;
+      }
+
+      function draw(theta, leverA, touching) {
+        camEl.setAttribute('transform', 'rotate(' + (theta * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+        var nr = rAt(0) * S;
+        notchRay.setAttribute('x2', CX + Math.cos(theta) * nr * 1.9);
+        notchRay.setAttribute('y2', CY + Math.sin(theta) * nr * 1.9);
+        var p = rollerAt(leverA);
+        armEl.setAttribute('x2', p.x.toFixed(2)); armEl.setAttribute('y2', p.y.toFixed(2));
+        rollEl.setAttribute('cx', p.x.toFixed(2)); rollEl.setAttribute('cy', p.y.toFixed(2));
+        if (touching) {
+          var dx = (p.x - CX), dy = (p.y - CY), m = Math.hypot(dx, dy) || 1;
+          contact.setAttribute('cx', (p.x - dx / m * ROLL * S).toFixed(2));
+          contact.setAttribute('cy', (p.y - dy / m * ROLL * S).toFixed(2));
+        }
+        contact.setAttribute('opacity', touching ? '1' : '0');
+        // The hand IS the cam: one arbor, so the display's zero is the notch.
+        var ha = theta - Math.PI / 2;
+        handEl.setAttribute('x2', (648 + Math.cos(ha) * 58).toFixed(2));
+        handEl.setAttribute('y2', (128 + Math.sin(ha) * 58).toFixed(2));
+        var deg = ((theta * 180 / Math.PI) % 360 + 360) % 360;
+        readout.textContent = 'θ ' + deg.toFixed(0) + '° · ' + (deg / 6).toFixed(1) + ' s';
+      }
+      function setChip(cls, text) { chip.className = 'chip ' + cls; chip.textContent = text; }
+
+      // Scrubbing is the honest default: the viewer drives theta and watches
+      // the lever solve to it. Play then walks one whole reset.
+      var playing = false, t0 = null, raf = 0, SEG = [2.0, 0.7, 1.6, 1.2];
+      var TOTAL = SEG.reduce(function (a, b) { return a + b; }, 0);
+      function scrub() {
+        var theta = (Number(slider.value) * Math.PI) / 180;
+        draw(theta, A_RETRACT, false);
+        setChip('ride', tr('RUNNING · hammer clear'));
+      }
+      function frame(now) {
+        if (!playing) return;
+        if (!document.getElementById('zero-reset').open || document.hidden) { t0 = null; raf = requestAnimationFrame(frame); return; }
+        if (t0 === null) t0 = now;
+        var t = ((now - t0) / 1000) % TOTAL, start = (Number(slider.value) * Math.PI) / 180;
+        if (t < SEG[0]) {                                   // running: cam turns, hammer clear
+          draw(start + (t / SEG[0]) * 1.2, A_RETRACT, false);
+          setChip('ride', tr('RUNNING · hammer clear'));
+        } else if (t < SEG[0] + SEG[1]) {                   // the press: lever swings in
+          var q = (t - SEG[0]) / SEG[1], th = start + 1.2;
+          var a = A_RETRACT + (solveLever(th) - A_RETRACT) * (q * q * (3 - 2 * q));
+          draw(th, a, q > 0.985);
+          setChip('ramp', tr('PRESS · roller meets the falling radius'));
+        } else if (t < SEG[0] + SEG[1] + SEG[2]) {          // the reset: cam runs down to the notch
+          var q2 = (t - SEG[0] - SEG[1]) / SEG[2], th0 = start + 1.2;
+          var e = q2 * q2 * (3 - 2 * q2);
+          var th2 = th0 + (Math.PI * 2 - th0 % (Math.PI * 2)) * e;   // toward the next theta = 0
+          draw(th2, solveLever(th2), true);
+          setChip('trip', tr('RESET · the spiral torques itself to the low point'));
+        } else {                                            // seated
+          draw(0, A_SEAT, true);
+          setChip('held', tr('SEATED · pad in the notch — display at 0, train still running'));
+        }
+        raf = requestAnimationFrame(frame);
+      }
+      function setPlaying(on) {
+        playing = on;
+        btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+        if (on) { t0 = null; raf = requestAnimationFrame(frame); }
+        else { cancelAnimationFrame(raf); scrub(); }
+      }
+      slider.addEventListener('input', function () { if (playing) setPlaying(false); else scrub(); });
+      btn.addEventListener('click', function () { setPlaying(!playing); });
+      scrub();
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(true);
     })();
 
     // —— Column wheel: press the pusher — profileAt ported, riders answer ——
