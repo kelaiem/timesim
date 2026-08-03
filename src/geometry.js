@@ -2579,7 +2579,7 @@ export const DIAL_MARKER_OUTER_F = 0.795; // markers hug the railroad track
 export const DIAL_MARKER_H_F = 0.21;      // cap height (tall proportion)
 export const DIAL_MARKER_INNER_F = DIAL_MARKER_OUTER_F - DIAL_MARKER_H_F; // = 0.585
 
-export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0 }) {
+export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0 }) {
   const g = new THREE.Group();
   let mat = null;
 
@@ -2674,7 +2674,7 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
   if (!mat) mat = MATS.silver;
 
   // Dial disc — with a circular hole cut through it at each sub-dial.
-  let discGeo;
+  let discGeo, discShapeForBody = null;
   if (subdials.length || centerBoreR > 0) {
     const discShape = new THREE.Shape();
     discShape.absarc(0, 0, radius, 0, Math.PI * 2, false);
@@ -2688,6 +2688,7 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
       bore.absarc(0, 0, centerBoreR, 0, Math.PI * 2, true);
       discShape.holes.push(bore);
     }
+    discShapeForBody = discShape;
     discGeo = new THREE.ShapeGeometry(discShape, 96);
     // ShapeGeometry UVs are raw local coordinates — remap to the 0..1 disc
     // mapping CircleGeometry uses, so the canvas texture lands identically.
@@ -2700,6 +2701,26 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
   }
   const disc = new THREE.Mesh(discGeo, mat);
   g.add(disc);
+  // TODO 26 — THE DIAL AS MATTER. The textured face above is the FRONT
+  // surface; this is the plate behind it, the same outline (sub-dial holes and
+  // centre bore included) extruded `thickness` into local −z, which the
+  // dialFace flip sends AWAY from the viewer. So the plate spans local 0 (face)
+  // to −thickness (back), and the caller lands that back face on Z_DIAL — the
+  // datum every dial-side work already stands off, which is why giving the
+  // dial substance moves nothing behind it.
+  //
+  // The face keeps its own flat mesh rather than becoming the extrusion's cap:
+  // ExtrudeGeometry's UV generator does not produce the disc mapping the
+  // canvas texture is painted for, and re-deriving it would put the dial's
+  // whole printed face at the mercy of a geometry detail. The body is plain
+  // brass — a dial's edge and back are not silvered.
+  if (thickness > 0 && discGeo.type === 'ShapeGeometry') {
+    const bodyGeo = new THREE.ExtrudeGeometry(discShapeForBody, { depth: thickness, bevelEnabled: false, curveSegments: 96 });
+    bodyGeo.translate(0, 0, -thickness);
+    const body = new THREE.Mesh(bodyGeo, MATS.brass);
+    body.name = 'dialPlate';
+    g.add(body);
+  }
   // Slight raised chapter ring for depth.
   const ring = new THREE.Mesh(ringExtrude(radius, radius * 0.97, radius * 0.02, 96), MATS.silver);
   ring.position.z = radius * 0.01;

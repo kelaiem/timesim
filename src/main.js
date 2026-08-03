@@ -19,7 +19,7 @@ import {
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_KEYLESS,
+  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -1149,12 +1149,24 @@ const ALARM_LOCAL_AZ = (() => {
   }
   return best.a;
 })();
-// World azimuth of the corner. On the SOLVED branch this is a discrete
-// mapping (no trig on π), so the identity's exact (ALARM_CD, 0) literals
-// survive bit-for-bit; the spec branch derives.
+// World azimuth of the corner — the INVERSE of the dial-local mirror above
+// (the map x → −x is its own inverse, so the same atan2 form runs both ways).
+//
+// This was written as a two-case discrete mapping back when the solve could
+// only return dial-local 3 or 9 o'clock: local π → world 0, ELSE world π. The
+// `else` was a stand-in for "local 0", correct only while those were the only
+// two answers. §74's measured 90° corner falls through it and comes back π —
+// so parts placed from the WORLD azimuth (the climb bores, the lifter unit)
+// and parts placed from the LOCAL one (§33's stations) sat 35.5 apart, which
+// is exactly what alarmHandoffs read on the stem collar ⇄ lifter head.
+// The two exact cases stay FIRST so the identity's (ALARM_CD, 0) literals
+// still survive bit-for-bit on the corners that have them; everything else
+// derives.
 const ALARM_CORNER_W_AZ = SPEC.alarmAzDeg !== null
   ? SPEC.alarmAzDeg * DEG2RAD
-  : (ALARM_LOCAL_AZ === Math.PI ? 0 : Math.PI);
+  : ALARM_LOCAL_AZ === Math.PI ? 0
+  : ALARM_LOCAL_AZ === 0 ? Math.PI
+  : Math.atan2(Math.sin(ALARM_LOCAL_AZ), -Math.cos(ALARM_LOCAL_AZ));
 // Crown-sense swap: the CLIMB stands at the stem's INNER radius (the crown's
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
@@ -4641,6 +4653,7 @@ const ALARM_TUBE_OUTER = ALARM_TUBE_INNER + 0.4;
 const dial = G.makeDial({
   radius: dialRadius,
   subdialRecess: SUBDIAL_RECESS,
+  thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   centerBoreR: ALARM_TUBE_OUTER + 0.2, // the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
@@ -4652,11 +4665,28 @@ const dial = G.makeDial({
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
   ],
 });
-dialFace.add(dial);
+// TODO 26 — THE DIAL'S OWN FURNITURE RIDES ONE PLATE-THICKNESS FORWARD.
+// dialFace is two frames wearing one name: the dial's furniture (this plate,
+// its printed face, the wells, the hands that sweep them) AND ten dial-side
+// WORKS that merely borrow its flipped frame (cannon pinion, motion works,
+// hour wheel, jumper, the alarm selector/sleeve/disc/feeler/rocker/setting
+// wheel). Only the furniture may move: the works are datumed to Z_DIAL and
+// to each other, and shifting them was how the first cut of this change broke
+// the §35 registration and §37's tab stop by exactly DIAL_T.
+//
+// So the furniture gets its own frame, one thickness toward the viewer
+// (dialFace-local +z is forward, past the y-flip). The plate is built local
+// 0..−DIAL_T inside it, which lands its BACK FACE on Z_DIAL — the datum the
+// works already stand off. The dial gains substance out of z in front of it,
+// which nothing was using, and nothing behind it moves at all.
+const dialPlateFace = new THREE.Group();
+dialPlateFace.position.z = DIAL_T;
+dialFace.add(dialPlateFace);
+dialPlateFace.add(dial);
 
 const handsGroup = new THREE.Group();
 handsGroup.position.z = aesthetics.dial.hands.handsGroupZOffset;
-dialFace.add(handsGroup);
+dialPlateFace.add(handsGroup);   // TODO 26: dial furniture — rides the face
 // NOTE: handsGroup's parent is dialFace (which is flipped 180° about Y), so
 // baseZ here is LOCAL to dialFace — not the world-ish Z_DIAL convention used
 // for movement's direct children. dir is also flipped (+1) because the
@@ -4714,7 +4744,7 @@ handsGroup.add(minuteHand);
 // being the same physical rotation seen from opposite sides.
 const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
-dialFace.add(smallSecondsGroup);
+dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Small seconds', smallSecondsGroup);
 const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second' });
 smallSecondsHand.name = 'smallSecondsHand';
@@ -4732,7 +4762,7 @@ smallSecondsGroup.add(smallSecondsHand);
   // Hub inside the recessed well: through the floor's bore (r 1.0 > hub
   // 0.9), stopping just short of the dial's surface plane. The hand rides
   // at world Z_DIAL + 0.2, straddled by the hub's span.
-  const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15; // hub centre (world)
+  const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15 - DIAL_T; // hub centre (world) — TODO 26: follows the well floor one plate forward; rodLen below grows to match
   const rodLen = Z_SECONDS_ARBOR - hubZ;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
   rod.rotation.x = Math.PI / 2;
@@ -4986,7 +5016,11 @@ mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
 {
-  const tubeTop = aesthetics.dial.hands.handsGroupZOffset; // the hour hand's plane
+  // TODO 26 — the hour tube CROSSES the dial, so a thicker dial makes it
+  // LONGER, not shorter: the hand plane rides forward with the face (the
+  // minute hand's own group already moved with dialPlateFace) while the wheel
+  // stays on the works' side. tubeLen below picks the growth up for free.
+  const tubeTop = aesthetics.dial.hands.handsGroupZOffset + DIAL_T; // the hour hand's plane, one plate forward
   const tubeLen = tubeTop - MW_Z2;
   const tube = new THREE.Mesh(
     ringGeo(HOUR_TUBE_INNER, HOUR_TUBE_OUTER, tubeLen), MATS.steel);
@@ -5301,7 +5335,7 @@ const _jmpPostW = new THREE.Vector3(), _jmpPinW = new THREE.Vector3(); // tick s
 // ---------------------------------------------------------------------------
 const reserveGroup = new THREE.Group();
 reserveGroup.position.set(RESERVE_LOCAL.x, RESERVE_LOCAL.y, 0);
-dialFace.add(reserveGroup);
+dialPlateFace.add(reserveGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Power reserve', reserveGroup);
 const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute' });
 reserveHand.position.z = -(SUBDIAL_RECESS - 0.3);
@@ -5415,7 +5449,7 @@ rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
 // Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
-const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2; // through the well floor's bore, just behind the hand
+const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2 - DIAL_T; // through the well floor's bore, just behind the hand — TODO 26: the bore moved forward with the plate, so this arbor lengthens
 const rsvHandArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(0.4, 0.4, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
 rsvHandArbor.rotation.x = Math.PI / 2;
@@ -5493,7 +5527,15 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // (0.39 over the furniture), blade top at 1.35 (0.34 under the hour hub), and
 // its bored collet (0.9..1.3 after the same 0.5× z-scale, straddling the
 // tube's front face at 1.1) clears the hour blade's keel (2.04) by 0.74.
-const ALARM_HAND_Z = 1.1;
+// TODO 26 — the alarm tube is ONE part that SPANS the dial, exactly as a real
+// one does: its flange, heart and sensing pin work behind the plate (they read
+// the selector ring and must not move), while its hand is read on the front.
+// So the tube stays in the works' frame and its hand plane grows by the
+// plate's thickness — the tube gets longer, which is what a thicker dial asks
+// of any arbor that crosses it. Moving the whole tube instead is what the
+// first cut did, and TODO 19's rocker rows caught it: the pin left the ring's
+// reach by |1.02| against a 0.709 budget.
+const ALARM_HAND_Z = 1.1 + DIAL_T;
 // §25 C stage 2 — the rattrapante follow. A HEART CAM pressed on the hour
 // tube and a sprung FOLLOWER carried by the alarm tube: disarmed, the spring
 // seats the follower's nose in the heart's notch and the alarm hand snaps to
@@ -5992,7 +6034,22 @@ const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03
 const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
 const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (8)
-const ALARM_SLEEVE_TAB_AZ = 8 * DEG2RAD; // world az of the lifter run — between the arbor cluster (az 0) and i1 (az 18)
+// §74 — THE SILENCE CHAIN IS CORNER-RELATIVE. This was a world constant, and
+// its own comment gave the defect away: "between the arbor cluster (az 0) and
+// i1 (az 18)" describes positions measured OFF THE ALARM CORNER, written as
+// if the corner were pinned at world 0. It is, today — which is why the run
+// was correct and the dependency invisible. Move the corner (?alarmaz=, or a
+// balance that forces it) and the crown's stem goes with it while the lifter
+// stayed behind: measured 35.5 apart at the 'stem collar ⇄ lifter head'
+// hand-off, a contact that must read 0.
+//
+// So the offset is stated RELATIVE to the corner and the world azimuth is
+// derived from it. Two frames consume these and they need different ones:
+// the lifter's own unit is rotated onto the corner (its internals stay
+// relative), while the sleeve's tab and the rocker's paddle are built in the
+// dial's mirrored frame from absolute world azimuths.
+const ALARM_SLEEVE_TAB_REL_AZ = 8 * DEG2RAD;  // off the corner — between the arbor cluster (corner + 0) and i1 (corner + 18)
+const ALARM_SLEEVE_TAB_AZ = ALARM_CORNER_W_AZ + ALARM_SLEEVE_TAB_REL_AZ; // world
 const ALARM_SLEEVE_Z_ENGAGED = ALARM_SLEEVE_TOP;                    // flat top, engaged (margin under the arm band)
 const ALARM_SLEEVE_Z_REST = ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL; // flat top, at rest
 const alarmSleeveUnit = new THREE.Group();
@@ -6143,10 +6200,17 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   faceCam.position.z = ALARM_WHEEL_BOT_B; // seated on the wheel's plate-side face (derived — was the frozen −0.23); heights grow into pass 1's band
   faceCam.rotation.z = ALARM_NOSE_AZ; // notch (minimum height) phased to the pin's azimuth: seated ⇒ tube ≡ wheel
   alarmSetWheelGroup.add(faceCam);
-  const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, 0.42, 3), MATS.blueSteel);
+  // TODO 26 — the wedge's tip is bounded by the DIAL'S BACK FACE. It used to
+  // stand 0.175 past the dial's plane, which cost nothing while the dial was a
+  // sheet with no substance to intersect and is a real collision now that it is
+  // a plate: the same lie the sub-dial wells told, in the other direction.
+  // dialFace's flip makes local +z run toward the dial and puts this group on
+  // Z_DIAL, so a tip one margin clear of the dial's back is local −CLEAR_MARGIN.
+  const WEDGE_LEN = 0.42;
+  const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, WEDGE_LEN, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
-  wedge.position.set(4.45, 0, -0.05 + 0.015); // proud 0.03 of the face at −0.05
+  wedge.position.set(4.45, 0, -CLEAR_MARGIN - WEDGE_LEN / 2);
   wedge.rotation.x = Math.PI / 2;
   alarmSetWheelGroup.add(wedge);
 }
@@ -6188,17 +6252,28 @@ const ALARM_SET_I2 = (() => {
   const WALL_HALF = 0.2;
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
   const wells = [[-RESERVE_LOCAL.x, RESERVE_LOCAL.y], [-SECONDS_LOCAL.x, SECONDS_LOCAL.y]];
+  // TODO 26 — the well rings are only a wall for this run WHERE THEY SHARE ITS
+  // LANE. They used to, and not by design: with the dial a sheet of no
+  // thickness, each sub-dial recess had to be built as a floor PROTRUDING 0.5
+  // behind it, which is what reached down into the setting train's plane. Now
+  // that the dial is a plate the recess lives inside its own thickness, and
+  // the two bands are 0.6 apart. Gated on the measurement rather than deleted:
+  // move either the dial's stratum or the setting lane back into contact and
+  // this wakes up on its own.
+  const wellLo = Z_DIAL - DIAL_T, wellHi = Z_DIAL - DIAL_T + SUBDIAL_RECESS;
+  const laneLo = ALARM_SET_Z - ALARM_SET_T / 2, laneHi = ALARM_SET_Z + ALARM_SET_T / 2;
+  const wellsInLane = laneLo < wellHi && laneHi > wellLo;
   const members = [
     ['setting wheel', { x: 0, y: 0 }, ALARM_SET_MODULE * ALARM_SET_WHEEL_TEETH / 2 + ALARM_SET_MODULE],
     ['i1', ALARM_SET_I1, ALARM_SET_MODULE * ALARM_SET_I1_TEETH / 2 + ALARM_SET_MODULE],
     ['i2', ALARM_SET_I2, ALARM_SET_MODULE * ALARM_SET_I2_TEETH / 2 + ALARM_SET_MODULE],
   ];
   for (const [nm, p, tip] of members) {
-    for (const [wx, wy] of wells) {
+    if (wellsInLane) for (const [wx, wy] of wells) {
       const d = Math.hypot(p.x - wx, p.y - wy);
       const clr = Math.abs(d - subDialR) - WALL_HALF - tip; // distance from the RING, less wall and tooth tip
       if (clr < CLEAR_MARGIN)
-        console.warn(`alarm setting ${nm} vs well ring at (${wx.toFixed(1)},${wy.toFixed(1)}): clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`);
+        console.warn(`alarm setting ${nm} vs well ring at (${wx.toFixed(1)},${wy.toFixed(1)}): clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN} (bands overlap: well ${wellLo.toFixed(2)}..${wellHi.toFixed(2)}, lane ${laneLo.toFixed(2)}..${laneHi.toFixed(2)})`);
     }
   }
   for (const [nm, p, tip] of members.slice(1)) {
@@ -7015,7 +7090,10 @@ const ALARM_COLLAR_S0 = ALARM_LIFT_CLUSTER_OUT + CLEAR_MARGIN - ALARM_CD; // col
 const ALARM_COLLAR_RAMP = { in: ALARM_COLLAR_S0 + 2.5, out: ALARM_COLLAR_S0 + 5.0 }; // fat plateau inboard of `in`, thin outboard of `out`
 const ALARM_COLLAR_S1 = ALARM_COLLAR_RAMP.out + 0.8;      // thin plateau's outboard end
 const ALARM_LIFT_HEAD_R = ALARM_CD + ALARM_COLLAR_RAMP.out + 0.4; // head reads the thin plateau at rest; pulled it lands mid-fat (station − 5)
-const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_AZ;
+// RELATIVE: the lifter's own members are built inside alarmLifterUnit, which
+// is rotated onto the corner below — its head sits at the unit's local az 0,
+// which IS the corner, and its run one tab-offset round from there.
+const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_REL_AZ;
 const ALARM_COLLAR_THIN_R = 0.55;
 const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL
@@ -7031,6 +7109,10 @@ const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
 }
 const alarmLifterUnit = new THREE.Group();
+// §74: the whole L rides the alarm corner. Its head reads the crown's stem
+// collar, so it goes where the crown goes — rigidly, one rotation, rather
+// than each member carrying its own copy of the corner's azimuth.
+alarmLifterUnit.rotation.z = ALARM_CORNER_W_AZ;
 movement.add(alarmLifterUnit);
 registerLabel('Alarm release lifter', alarmLifterUnit);
 registerExplode(alarmLifterUnit, 0, 2, -1);
@@ -7246,7 +7328,7 @@ let alarmSilBladeMesh = null;
 let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger end (read by tick)
 {
   // ends in dial-local xy (world → dial-local mirror, the _uF convention)
-  const pd = { x: -Math.cos(ALARM_LIFT_RUN_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_LIFT_RUN_AZ) * ALARM_SIL_PADDLE_R };
+  const pd = { x: -Math.cos(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R }; // §74: absolute — this unit is not rotated onto the corner
   const fg = { x: _uF.x * ALARM_SIL_FINGER_R, y: _uF.y * ALARM_SIL_FINGER_R };
   const chord = Math.hypot(fg.x - pd.x, fg.y - pd.y);
   const aF = chord * ALARM_SIL_RATIO / (1 + ALARM_SIL_RATIO); // finger arm; paddle arm = chord − aF

@@ -2214,3 +2214,116 @@ Tier two: `F_BALANCE` consumed from the spring/balance solve, the sweep
 above re-run to show the rate actually moving with radius, and SPEC.md's
 gear-train section updated to say the beat is a target the regulator
 hits rather than a number the movement is told.
+
+## 26. MOSTLY CLOSED — the dial is a plate now; the works stand behind it
+
+The dial is a zero-thickness sheet: one `ShapeGeometry` plane, measured at
+world z −8.40, with the applied markers and the minute track laid on its
+front and everything else behind it. A real dial is a brass plate about
+0.35–0.5 mm thick — at §39's pin (0.379 mm/unit) that is **1.0–1.3 units**
+of matter this movement does not have.
+
+**What the fiction is paying for.** The dial-side stack is packed against
+that plane with a 0.05 gap: `ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T/2`
+puts the alarm setting train's gear band at −8.35..−8.17, five hundredths
+behind a dial that occupies no space at all. Measured, the slab a
+flat-backed dial of even HALF real thickness would fill (−8.40..−7.90)
+currently contains **fifteen units**: the alarm setting train, selector,
+disc, release sleeve, feeler and silence rocker, both sub-dial hands, the
+minute jumper, the heart cam, the setting lever and the power-reserve
+train. They are not badly placed — they are placed correctly against a
+dial that isn't there.
+
+**The sub-dial wells are the tell.** They are the ONE piece of dial
+furniture modelled at its true depth: `makeDial` builds each well as a
+floor sunk `subdialRecess` (0.5) behind the sheet plus a cylindrical wall
+bridging −8.40 → −7.90. That is a recess drawn as a PROTRUSION, which is
+the only way to sink something into a plane with no thickness. And because
+the wells alone reach back into the works' lane, they alone collide with
+them — which is exactly the wall §74 hit: the alarm setting run's corridor
+audit reports i1 fouling the reserve well's ring at −1.62 to −3.34 for
+every corner azimuth but the shipped one. The wells are not an unlucky
+obstacle. They are the dial's thickness, showing up in the one place it
+was modelled.
+
+**Why this is an honesty item and not a feature.** Nothing here is
+missing; something here is LYING. A dial you can see through in section,
+whose sub-dials hang off the back like cups, is not how a watch is built,
+and the layout it permits — a setting train 0.05 behind the dial — is a
+layout no real movement could assemble.
+
+**What a fix costs, measured before filing.** The dial cannot simply grow.
+Backwards it swallows those fifteen units. Forwards (−8.95..−8.45) it
+meets its own applied markers, the alarm setting ring (a real part riding
+the dial face, out to r 20.4), the hour tube and the power-reserve hand.
+So giving the dial its thickness IS a dial-side re-stratification — §51's
+move, one stratum further out — and the honest sequence is:
+
+1. Decide the dial's true thickness and its FLAT back plane (a real plate:
+   front face carries the markers, back face is one z for the whole dial,
+   sub-dial recesses cut INTO the front and never through).
+2. Re-derive the dial-side z-chain from that back face the way §51 derived
+   the alarm band from the wheel's plate-side face — every consumer of
+   `Z_DIAL` re-solved, not nudged.
+3. Delete the wells' protruding wall/floor construction in favour of a
+   recess within the plate, at which point §74's wall one may evaporate on
+   its own: with the wells no longer reaching into the works' lane, the
+   alarm setting run's corridor is bounded by the dial's back face alone.
+
+**LANDED 2026-08-02 — the dial is matter.** `DIAL_T` = 0.4 mm / `UNIT_MM` =
+1.056 u, derived from real brass dial stock (0.35–0.5 mm) with its floor
+stated where it is minted: a dial must be at least as thick as the recess it
+carries, or the wells punch through its back — the defect this item filed.
+
+The plate grows FORWARD, into z in front of the dial that nothing was using,
+so its BACK FACE lands on `Z_DIAL` — the datum every dial-side work already
+stands off — and **nothing behind the dial moved**. The re-stratification
+this entry feared was not needed; the z budget grew instead. Measured: plate
+−9.456..−8.400, well floor −8.96 (was −7.90, protruding 0.5 past `Z_DIAL`
+into the alarm setting train's lane).
+
+**Three findings came out of it, each the same lie in a different place.**
+
+1. `dialFace` was TWO FRAMES WEARING ONE NAME — the dial's furniture and ten
+   dial-side WORKS that merely borrow its flipped frame. Moving it shifted
+   the works and broke the §35 registration and §37's tab stop by exactly
+   `DIAL_T`. The furniture has its own frame (`dialPlateFace`) now.
+2. EVERY ARBOR THAT CROSSES THE DIAL GREW — hour tube, small-seconds hub,
+   reserve indicator arbor, and the alarm tube. That last one is the
+   instructive case: it is ONE part spanning the dial, flange and sensing pin
+   working behind, hand read in front, so a thicker dial makes it LONGER.
+   Moving it whole instead pulled the sensing pin |1.02| off the selector
+   ring against a 0.709 budget, which TODO 19's rocker rows caught.
+3. THE ALARM INDEX WEDGE stood 0.175 PAST the dial's plane — free through a
+   sheet with no substance, a collision against a plate. Its tip is bounded
+   by the dial's back face now, derived rather than hand-set.
+
+**And the payoff, which was the point.** With the wells living inside the
+plate's own thickness, they are 0.606 clear of the alarm setting run's lane
+— so the corridor audit's well-ring walls, a 2D test that never knew about
+z, were measuring a wall that is no longer there. Gated on the measured
+overlap (not deleted: move either stratum back into contact and it wakes
+up), and the alarm crown corner is FREE at azimuths it could never occupy:
+45°, 90° and 120° all boot silent where every one of them used to foul the
+reserve well by −1.2 to −3.3.
+
+That takes down §74's wall one. Measured with the corner at 90°: a balance
+at **R 10 boots silent** (+11%) and **R 11 boots silent** (+22%), where both
+warned twice before — and §74's own acceptance line asked for R ≥ 10.8. The
+spring re-solves to each wheel (0.0281 / 0.0318 mm, inside real stock, 2.500
+Hz). R 12 reaches §74's wall TWO, the alarm winding train's mesh, which this
+item never claimed.
+
+**What keeps this MOSTLY closed rather than closed**: the dial's back face
+is flat where it matters but the sub-dial apertures are still through-holes
+with a floor hung in them rather than a blind pocket machined into the
+plate, and the dial's thickness is one constant rather than a profile (a
+real dial is thinner at its rim). Neither reaches into any lane, so neither
+is load-bearing — filed here so the next reader knows the difference.
+
+**Do NOT waive this by widening the setting run's clearances** — the run
+is correctly placed for the dial it was given. The dial is the defect.
+
+Filed rather than fixed because step 2 is the whole dial side, and doing
+it under a §74 balance-growth banner would bury an architectural change
+inside a layout experiment. §74's wall one now cites this item.
