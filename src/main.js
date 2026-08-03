@@ -1155,7 +1155,7 @@ const ALARM_LOCAL_AZ = (() => {
 // This was written as a two-case discrete mapping back when the solve could
 // only return dial-local 3 or 9 o'clock: local π → world 0, ELSE world π. The
 // `else` was a stand-in for "local 0", correct only while those were the only
-// two answers. §74's measured 90° corner falls through it and comes back π —
+// two answers. §76's measured 90° corner falls through it and comes back π —
 // so parts placed from the WORLD azimuth (the climb bores, the lifter unit)
 // and parts placed from the LOCAL one (§33's stations) sat 35.5 apart, which
 // is exactly what alarmHandoffs read on the stem collar ⇄ lifter head.
@@ -6034,7 +6034,7 @@ const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03
 const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
 const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (8)
-// §74 — THE SILENCE CHAIN IS CORNER-RELATIVE. This was a world constant, and
+// §76 — THE SILENCE CHAIN IS CORNER-RELATIVE. This was a world constant, and
 // its own comment gave the defect away: "between the arbor cluster (az 0) and
 // i1 (az 18)" describes positions measured OFF THE ALARM CORNER, written as
 // if the corner were pinned at world 0. It is, today — which is why the run
@@ -7109,7 +7109,7 @@ const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
 }
 const alarmLifterUnit = new THREE.Group();
-// §74: the whole L rides the alarm corner. Its head reads the crown's stem
+// §76: the whole L rides the alarm corner. Its head reads the crown's stem
 // collar, so it goes where the crown goes — rigidly, one rotation, rather
 // than each member carrying its own copy of the corner's azimuth.
 alarmLifterUnit.rotation.z = ALARM_CORNER_W_AZ;
@@ -7328,7 +7328,7 @@ let alarmSilBladeMesh = null;
 let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger end (read by tick)
 {
   // ends in dial-local xy (world → dial-local mirror, the _uF convention)
-  const pd = { x: -Math.cos(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R }; // §74: absolute — this unit is not rotated onto the corner
+  const pd = { x: -Math.cos(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R }; // §76: absolute — this unit is not rotated onto the corner
   const fg = { x: _uF.x * ALARM_SIL_FINGER_R, y: _uF.y * ALARM_SIL_FINGER_R };
   const chord = Math.hypot(fg.x - pd.x, fg.y - pd.y);
   const aF = chord * ALARM_SIL_RATIO / (1 + ALARM_SIL_RATIO); // finger arm; paddle arm = chord − aF

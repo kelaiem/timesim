@@ -2240,7 +2240,7 @@ floor sunk `subdialRecess` (0.5) behind the sheet plus a cylindrical wall
 bridging −8.40 → −7.90. That is a recess drawn as a PROTRUSION, which is
 the only way to sink something into a plane with no thickness. And because
 the wells alone reach back into the works' lane, they alone collide with
-them — which is exactly the wall §74 hit: the alarm setting run's corridor
+them — which is exactly the wall §76 hit: the alarm setting run's corridor
 audit reports i1 fouling the reserve well's ring at −1.62 to −3.34 for
 every corner azimuth but the shipped one. The wells are not an unlucky
 obstacle. They are the dial's thickness, showing up in the one place it
@@ -2266,7 +2266,7 @@ move, one stratum further out — and the honest sequence is:
    the alarm band from the wheel's plate-side face — every consumer of
    `Z_DIAL` re-solved, not nudged.
 3. Delete the wells' protruding wall/floor construction in favour of a
-   recess within the plate, at which point §74's wall one may evaporate on
+   recess within the plate, at which point §76's wall one may evaporate on
    its own: with the wells no longer reaching into the works' lane, the
    alarm setting run's corridor is bounded by the dial's back face alone.
 
@@ -2307,11 +2307,11 @@ up), and the alarm crown corner is FREE at azimuths it could never occupy:
 45°, 90° and 120° all boot silent where every one of them used to foul the
 reserve well by −1.2 to −3.3.
 
-That takes down §74's wall one. Measured with the corner at 90°: a balance
+That takes down §76's wall one. Measured with the corner at 90°: a balance
 at **R 10 boots silent** (+11%) and **R 11 boots silent** (+22%), where both
-warned twice before — and §74's own acceptance line asked for R ≥ 10.8. The
+warned twice before — and §76's own acceptance line asked for R ≥ 10.8. The
 spring re-solves to each wheel (0.0281 / 0.0318 mm, inside real stock, 2.500
-Hz). R 12 reaches §74's wall TWO, the alarm winding train's mesh, which this
+Hz). R 12 reaches §76's wall TWO, the alarm winding train's mesh, which this
 item never claimed.
 
 **What keeps this MOSTLY closed rather than closed**: the dial's back face
@@ -2325,5 +2325,5 @@ is load-bearing — filed here so the next reader knows the difference.
 is correctly placed for the dial it was given. The dial is the defect.
 
 Filed rather than fixed because step 2 is the whole dial side, and doing
-it under a §74 balance-growth banner would bury an architectural change
-inside a layout experiment. §74's wall one now cites this item.
+it under a §76 balance-growth banner would bury an architectural change
+inside a layout experiment. §76's wall one now cites this item.
