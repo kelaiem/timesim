@@ -6500,6 +6500,26 @@ English and `--check` reported the stale keys — until both were
 re-translated. Prose still needs a reader; the instruments narrow what
 the reader has to hold.
 
+**The zero-reset plate, rebuilt (owner report: "the diagram doesn't
+make sense").** It didn't. The old plate drew a leaf beside a floating
+block across three static panels: no hammer pivot, no roller, no
+visible notch, no zero, and an outline that was not the profile
+`makeHeartCam` cuts. The replacement is GENERATED from that profile —
+`r(θ) = rMin + (r − rMin)(1 − cos θ)/2`, the source line — and SOLVED
+each frame rather than posed: for a cam angle the roller must sit one
+roller radius off the profile it faces AND its centre must lie on the
+lever's arc about the pivot, which is a 1-D root find (bisection on
+the lever angle). So the linkage agrees with itself by construction.
+Dimensions came from a live boot's own `userData`, not from reading
+the build: r 3.36, rMin 1.08 (0.32 r), arm 7.73, roller ⌀ 1.4, pivot
+at rMin + bevel + roller + arm. It plays the whole reset — run, press,
+run-down, seat — and scrubs by cam angle when paused, and the
+small-seconds hand IS the cam, so "the low point is cut at the
+display's zero" is visible rather than asserted. Recorded
+simplification: the plate's retract clears the ROLLER against the
+swept disc, where the build's solved `HAMMER_SWING_RAD` clears the
+whole bevel-expanded lever outline.
+
 **Residue, stated.** The Chinese is a working translation by the same
 hand that wrote the German; the roadmap has said from the start that
 this repo cannot self-certify Chinese to native quality, and it ships

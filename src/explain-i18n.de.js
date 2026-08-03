@@ -94,12 +94,6 @@ export default {
   ['The seat is derived, not posed: the hammer\'s arm length puts the roller\'s <em>surface</em> at the notch floor — the build\'s own correction, "the roller surface just kisses the notch instead of rMin + armLen put the roller CENTRE on the notch floor" — and the cam is phased so the notch faces the hammer\'s pivot at the seated pose. The hammer is instrumented (<code>declareRestoring</code>, <code>declareTravel</code>): its return is a real sprung member under the §48 no-spring audits, not an animation.']: 'Der Sitz ist abgeleitet, nicht gestellt: die Armlänge des Hammers legt die <em>Oberfläche</em> der Rolle auf den Kerbengrund — die Korrektur im Aufbau selbst, „the roller surface just kisses the notch instead of rMin + armLen put the roller CENTRE on the notch floor" — und der Nocken ist so phasiert, dass die Kerbe im gesetzten Zustand zum Hammerdrehpunkt weist. Der Hammer ist instrumentiert (<code>declareRestoring</code>, <code>declareTravel</code>): seine Rückstellung ist unter den §48-Federprüfungen ein echtes gefedertes Glied, keine Animation.',
   ['Zero reset — the heart cam\'s one low point<span class="where">display · src/main.js ~1281</span>']: 'Nullstellung — der eine Tiefpunkt des Herznockens<span class="where">Anzeige · src/main.js ~1281</span>',
   ['Fall, roll, seat — any start, one end']: 'Fallen, rollen, sitzen — jeder Anfang, ein Ende',
-  ['1 · running']: '1 · läuft',
-  ['hammer parked clear; the display turns with the train']: 'Hammer geparkt und frei; die Anzeige dreht mit dem Räderwerk',
-  ['2 · reset pressed']: '2 · Nullstellung gedrückt',
-  ['pad on the spiral edge → torque toward the low point']: 'Fläche auf der Spiralkante → Moment zum Tiefpunkt',
-  ['3 · seated at zero']: '3 · sitzt auf null',
-  ['pad in the notch — display at 0, train still running']: 'Fläche in der Kerbe — Anzeige auf 0, Räderwerk läuft weiter',
 
   // ---- hacking ----
   ['Pull the crown to set the time and the balance stops dead — hacking — so the watch can be synchronised to a reference. The brake is the <b>stop work</b>: the setting chain\'s motion travels a thin hack rod to a crank beside the balance, and the crank\'s pad rises against the balance rim. Push the crown home and the pad falls away; the hairspring restarts the balance itself.']: 'Zieht man die Krone zum Stellen, bleibt die Unruh sofort stehen — Sekundenstopp — damit die Uhr auf eine Referenz synchronisiert werden kann. Die Bremse ist das <b>Stoppwerk</b>: die Bewegung der Stellkette läuft über eine dünne Stoppstange zu einer Kurbel neben der Unruh, und deren Fläche hebt sich gegen den Unruhreif. Drückt man die Krone hinein, fällt die Fläche weg; die Spirale startet die Unruh von selbst wieder.',
@@ -376,4 +370,21 @@ export default {
   ['SHOWN · Hidden ⟺ ¬Armed ∧ ¬Setting holds']: 'SICHTBAR · Verborgen ⟺ ¬Scharf ∧ ¬Stellen gilt',
 
   ['What the sim models, honestly bounded: the geometry above is built (rim, screws, free terminal), and since TODO 25 tier two the rate is a CONSEQUENCE of it. The balance\'s inertia is weighed from its own published dimensions (rim 84.7%, screws 10.5%, arms 4.8% of it), the spec\'s beat is what that wheel then demands of its spring (<code>k = I·ω²</code>), and the hairspring\'s SECTION is solved to deliver it — a ribbon 0.0244 mm thick, inside the 0.02–0.04 mm window real hairspring stock occupies. <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and <code>checkOscillator</code> gates that solve every battery run. Still NOT modelled, and this page draws no such mechanism: turning a timing screw to move the rate. Amplitude varies with mainspring tension (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a free-sprung balance exists to tell.']: 'Was die Simulation modelliert, ehrlich abgegrenzt: die Geometrie oben ist gebaut (Reif, Schrauben, freie Endkurve), und seit TODO 25 Stufe zwei ist der Gang eine FOLGE davon. Das Trägheitsmoment der Unruh wird aus ihren eigenen veröffentlichten Maßen gewogen (Reif 84.7%, Schrauben 10.5%, Arme 4.8% davon), die Schlagzahl der Spezifikation ist das, was dieses Rad dann von seiner Spirale verlangt (<code>k = I·ω²</code>), und der QUERSCHNITT der Spirale wird so gelöst, dass er es liefert — ein Band von 0.0244 mm Dicke, innerhalb des Fensters von 0.02–0.04 mm, das echtes Spiralband einnimmt. <em>√(k/I)</em> trifft die Spezifikation als Arithmetik statt als Behauptung, und <code>checkOscillator</code> sichert diesen Solve in jedem Batterielauf zu. Weiterhin NICHT modelliert, und diese Seite zeichnet keinen solchen Mechanismus: das Drehen einer Regulierschraube, um den Gang zu verstellen. Die Amplitude ändert sich mit der Federspannung (<code>AMPLITUDE_VISUAL_DEG</code> skaliert damit), und das ist die Isochronismus-Geschichte, für die eine freischwingende Unruh existiert.',
+
+  // ---- zero reset, rebuilt (§73 follow-up) ----
+  ['RUNNING · hammer clear']: 'LÄUFT · Hammer frei',
+  ['swept disc']: 'überstrichene Scheibe',
+  ['r + bevel']: 'r + Fase',
+  ['notch · the one low point']: 'Kerbe · der eine Tiefpunkt',
+  ['heart cam · r 3.36 → rMin 1.08 (0.32 r)']: 'Herznocken · r 3.36 → rMin 1.08 (0.32 r)',
+  ['r(θ) = rMin + (r − rMin)(1 − cos θ)/2']: 'r(θ) = rMin + (r − rMin)(1 − cos θ)/2',
+  ['lever arm 7.73 · roller ⌀ 1.4']: 'Hebelarm 7.73 · Rolle ⌀ 1.4',
+  ['pivot = rMin + bevel + roller + arm']: 'Drehpunkt = rMin + Fase + Rolle + Arm',
+  ['small seconds']: 'kleine Sekunde',
+  ['the notch IS this zero']: 'die Kerbe IST diese Null',
+  ['generated from the source profile, solved each frame — the roller rides r(θ) and the lever follows it']: 'aus dem Quellprofil erzeugt, je Bild gelöst — die Rolle folgt r(θ), der Hebel folgt ihr',
+  ['cam angle θ']: 'Nockenwinkel θ',
+  ['PRESS · roller meets the falling radius']: 'DRUCK · die Rolle trifft den fallenden Radius',
+  ['RESET · the spiral torques itself to the low point']: 'NULLSTELLUNG · die Spirale dreht sich zum Tiefpunkt',
+  ['SEATED · pad in the notch — display at 0, train still running']: 'SITZT · Rolle in der Kerbe — Anzeige auf 0, Räderwerk läuft weiter',
 };
