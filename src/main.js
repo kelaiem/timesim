@@ -6022,7 +6022,22 @@ const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03
 const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
 const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (8)
-const ALARM_SLEEVE_TAB_AZ = 8 * DEG2RAD; // world az of the lifter run — between the arbor cluster (az 0) and i1 (az 18)
+// §74 — THE SILENCE CHAIN IS CORNER-RELATIVE. This was a world constant, and
+// its own comment gave the defect away: "between the arbor cluster (az 0) and
+// i1 (az 18)" describes positions measured OFF THE ALARM CORNER, written as
+// if the corner were pinned at world 0. It is, today — which is why the run
+// was correct and the dependency invisible. Move the corner (?alarmaz=, or a
+// balance that forces it) and the crown's stem goes with it while the lifter
+// stayed behind: measured 35.5 apart at the 'stem collar ⇄ lifter head'
+// hand-off, a contact that must read 0.
+//
+// So the offset is stated RELATIVE to the corner and the world azimuth is
+// derived from it. Two frames consume these and they need different ones:
+// the lifter's own unit is rotated onto the corner (its internals stay
+// relative), while the sleeve's tab and the rocker's paddle are built in the
+// dial's mirrored frame from absolute world azimuths.
+const ALARM_SLEEVE_TAB_REL_AZ = 8 * DEG2RAD;  // off the corner — between the arbor cluster (corner + 0) and i1 (corner + 18)
+const ALARM_SLEEVE_TAB_AZ = ALARM_CORNER_W_AZ + ALARM_SLEEVE_TAB_REL_AZ; // world
 const ALARM_SLEEVE_Z_ENGAGED = ALARM_SLEEVE_TOP;                    // flat top, engaged (margin under the arm band)
 const ALARM_SLEEVE_Z_REST = ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL; // flat top, at rest
 const alarmSleeveUnit = new THREE.Group();
@@ -7063,7 +7078,10 @@ const ALARM_COLLAR_S0 = ALARM_LIFT_CLUSTER_OUT + CLEAR_MARGIN - ALARM_CD; // col
 const ALARM_COLLAR_RAMP = { in: ALARM_COLLAR_S0 + 2.5, out: ALARM_COLLAR_S0 + 5.0 }; // fat plateau inboard of `in`, thin outboard of `out`
 const ALARM_COLLAR_S1 = ALARM_COLLAR_RAMP.out + 0.8;      // thin plateau's outboard end
 const ALARM_LIFT_HEAD_R = ALARM_CD + ALARM_COLLAR_RAMP.out + 0.4; // head reads the thin plateau at rest; pulled it lands mid-fat (station − 5)
-const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_AZ;
+// RELATIVE: the lifter's own members are built inside alarmLifterUnit, which
+// is rotated onto the corner below — its head sits at the unit's local az 0,
+// which IS the corner, and its run one tab-offset round from there.
+const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_REL_AZ;
 const ALARM_COLLAR_THIN_R = 0.55;
 const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL
@@ -7079,6 +7097,10 @@ const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
 }
 const alarmLifterUnit = new THREE.Group();
+// §74: the whole L rides the alarm corner. Its head reads the crown's stem
+// collar, so it goes where the crown goes — rigidly, one rotation, rather
+// than each member carrying its own copy of the corner's azimuth.
+alarmLifterUnit.rotation.z = ALARM_CORNER_W_AZ;
 movement.add(alarmLifterUnit);
 registerLabel('Alarm release lifter', alarmLifterUnit);
 registerExplode(alarmLifterUnit, 0, 2, -1);
@@ -7294,7 +7316,7 @@ let alarmSilBladeMesh = null;
 let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger end (read by tick)
 {
   // ends in dial-local xy (world → dial-local mirror, the _uF convention)
-  const pd = { x: -Math.cos(ALARM_LIFT_RUN_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_LIFT_RUN_AZ) * ALARM_SIL_PADDLE_R };
+  const pd = { x: -Math.cos(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R }; // §74: absolute — this unit is not rotated onto the corner
   const fg = { x: _uF.x * ALARM_SIL_FINGER_R, y: _uF.y * ALARM_SIL_FINGER_R };
   const chord = Math.hypot(fg.x - pd.x, fg.y - pd.y);
   const aF = chord * ALARM_SIL_RATIO / (1 + ALARM_SIL_RATIO); // finger arm; paddle arm = chord − aF
