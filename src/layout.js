@@ -289,7 +289,21 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // assert is untouched. 0.90 is the spend 0.8915 rounded up to the 0.01
 // grid; the ≤0.009 residue rides the end gap. Assembly depth grows
 // ≈ 0.34 mm, still inside §39's asserted 2.5–12 mm envelope.
+// TODO 26 — Z_DIAL is the dial's BACK FACE, and every dial-side work stands
+// off it (cannon pinion, jumper lifter, the alarm setting plane and band, the
+// dial feet). It kept that job when the dial gained thickness, which is why
+// giving the dial substance moved nothing behind it: the plate grows FORWARD,
+// toward the viewer, out of z the movement did not previously spend.
 export const Z_DIAL = -8.4;
+// The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
+// mid-stock and the figure §50's own citations use for plate-like sheet. In
+// §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must
+// be at least as thick as the sub-dial recess it carries (SUBDIAL_RECESS 0.5),
+// or the wells punch through its back — which is precisely the defect TODO 26
+// filed, a recess drawn as a protrusion because the sheet had no thickness to
+// sink into.
+export const DIAL_T = 0.4 / UNIT_MM;   // 1.056 u — 0.4 mm of brass
+export const Z_DIAL_FACE = Z_DIAL - DIAL_T;  // the VISIBLE face, one plate forward
 // KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of
 // the base plate as in a real watch (it used to ride atop the barrel on the
 // movement side). Bracketed by two binds and set mid-band:

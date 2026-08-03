@@ -19,7 +19,7 @@ import {
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_KEYLESS,
+  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -4641,6 +4641,7 @@ const ALARM_TUBE_OUTER = ALARM_TUBE_INNER + 0.4;
 const dial = G.makeDial({
   radius: dialRadius,
   subdialRecess: SUBDIAL_RECESS,
+  thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   centerBoreR: ALARM_TUBE_OUTER + 0.2, // the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
@@ -4652,11 +4653,28 @@ const dial = G.makeDial({
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
   ],
 });
-dialFace.add(dial);
+// TODO 26 — THE DIAL'S OWN FURNITURE RIDES ONE PLATE-THICKNESS FORWARD.
+// dialFace is two frames wearing one name: the dial's furniture (this plate,
+// its printed face, the wells, the hands that sweep them) AND ten dial-side
+// WORKS that merely borrow its flipped frame (cannon pinion, motion works,
+// hour wheel, jumper, the alarm selector/sleeve/disc/feeler/rocker/setting
+// wheel). Only the furniture may move: the works are datumed to Z_DIAL and
+// to each other, and shifting them was how the first cut of this change broke
+// the §35 registration and §37's tab stop by exactly DIAL_T.
+//
+// So the furniture gets its own frame, one thickness toward the viewer
+// (dialFace-local +z is forward, past the y-flip). The plate is built local
+// 0..−DIAL_T inside it, which lands its BACK FACE on Z_DIAL — the datum the
+// works already stand off. The dial gains substance out of z in front of it,
+// which nothing was using, and nothing behind it moves at all.
+const dialPlateFace = new THREE.Group();
+dialPlateFace.position.z = DIAL_T;
+dialFace.add(dialPlateFace);
+dialPlateFace.add(dial);
 
 const handsGroup = new THREE.Group();
 handsGroup.position.z = aesthetics.dial.hands.handsGroupZOffset;
-dialFace.add(handsGroup);
+dialPlateFace.add(handsGroup);   // TODO 26: dial furniture — rides the face
 // NOTE: handsGroup's parent is dialFace (which is flipped 180° about Y), so
 // baseZ here is LOCAL to dialFace — not the world-ish Z_DIAL convention used
 // for movement's direct children. dir is also flipped (+1) because the
@@ -4714,7 +4732,7 @@ handsGroup.add(minuteHand);
 // being the same physical rotation seen from opposite sides.
 const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
-dialFace.add(smallSecondsGroup);
+dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Small seconds', smallSecondsGroup);
 const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second' });
 smallSecondsHand.name = 'smallSecondsHand';
@@ -5301,7 +5319,7 @@ const _jmpPostW = new THREE.Vector3(), _jmpPinW = new THREE.Vector3(); // tick s
 // ---------------------------------------------------------------------------
 const reserveGroup = new THREE.Group();
 reserveGroup.position.set(RESERVE_LOCAL.x, RESERVE_LOCAL.y, 0);
-dialFace.add(reserveGroup);
+dialPlateFace.add(reserveGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Power reserve', reserveGroup);
 const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute' });
 reserveHand.position.z = -(SUBDIAL_RECESS - 0.3);
@@ -5493,7 +5511,15 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // (0.39 over the furniture), blade top at 1.35 (0.34 under the hour hub), and
 // its bored collet (0.9..1.3 after the same 0.5× z-scale, straddling the
 // tube's front face at 1.1) clears the hour blade's keel (2.04) by 0.74.
-const ALARM_HAND_Z = 1.1;
+// TODO 26 — the alarm tube is ONE part that SPANS the dial, exactly as a real
+// one does: its flange, heart and sensing pin work behind the plate (they read
+// the selector ring and must not move), while its hand is read on the front.
+// So the tube stays in the works' frame and its hand plane grows by the
+// plate's thickness — the tube gets longer, which is what a thicker dial asks
+// of any arbor that crosses it. Moving the whole tube instead is what the
+// first cut did, and TODO 19's rocker rows caught it: the pin left the ring's
+// reach by |1.02| against a 0.709 budget.
+const ALARM_HAND_Z = 1.1 + DIAL_T;
 // §25 C stage 2 — the rattrapante follow. A HEART CAM pressed on the hour
 // tube and a sprung FOLLOWER carried by the alarm tube: disarmed, the spring
 // seats the follower's nose in the heart's notch and the alarm hand snaps to
