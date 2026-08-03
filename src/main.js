@@ -449,7 +449,11 @@ const escapeWheelR = escapeWheel.userData.r || 4.5;
 // roller — the wheel sits low in the movement but the cock sits low too, so
 // a symmetric staff would spike out through the cock.
 const balanceWheel = G.makeBalanceWheel({
-  radius: 9,
+  // §74 — R 11 (+22%): the layout carries it since TODO 26 gave the dial its
+  // thickness and freed the alarm corner. More inertia is the point — it buys
+  // rate stability against disturbance, and the hairspring re-solves to it
+  // (TODO 25 tier two), so the watch still beats 2.5 Hz on a heavier wheel.
+  radius: 11,
   thickness: BAL_T,
   staffTop: COCK_SLAB_TOP + 0.5 - L_BALANCE,
   // pinDrop + 0.4·t = safety-roller plane (mirrors the builder's stack);
@@ -1092,6 +1096,33 @@ hairspring.name = 'hairspringCoil';   // §48: the restoring element has to be n
 hairspringGroup.add(hairspring);
 movement.add(hairspringGroup);
 registerExplode(hairspringGroup, L_HAIRSPRING, 8);
+
+// swings with the pose. Radii about the staff axis are rotation-invariant, so
+// this is the real swept radius.
+function xyRadiusAbout(obj, c, zMax = Infinity) {
+  obj.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  let r = 0;
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (v.z <= zMax) r = Math.max(r, Math.hypot(v.x - c.x, v.y - c.y));
+    }
+  });
+  return r;
+}
+const BAL_OUTER_R = Math.max(
+  xyRadiusAbout(balanceGroup, P.balance),
+  xyRadiusAbout(hairspringGroup, P.balance),
+);
+// §74/TODO 26 — the plate's balance window opens to this radius plus its
+// service margin, and the alarm corner's solve below has to keep the winding
+// climb's upper pivot out of it. Hoisted here with the measurement it needs;
+// the plate build consumes the same constants further down.
+const TQ_CUT_MARGIN = 0.5; // service + running clearance around the balance's swept radius
+
 registerLabel('Hairspring', hairspringGroup);
 
 // ---------------------------------------------------------------------------
@@ -1141,13 +1172,38 @@ const ALARM_LOCAL_AZ = (() => {
     const w = SPEC.alarmAzDeg * DEG2RAD;
     return Math.atan2(Math.sin(w), -Math.cos(w)); // dial-local mirror of the spec's world azimuth
   }
-  const angDist = (a) => Math.abs(((a - _alarmWindBearing + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
-  let best = null;
-  for (const a of [0, Math.PI]) { // dial-local 3 o'clock, 9 o'clock
-    const s = angDist(a);
-    if (!best || s > best.s) best = { a, s };
+  // §74 — WHERE THE ALARM CROWN GOES, AT THIS BALANCE.
+  //
+  // This used to pick between dial-local 3 and 9 o'clock, whichever sat
+  // further from the winding stem. That rule cannot survive the larger
+  // balance (R 11): 3 o'clock puts the alarm winding climb's UPPER PIVOT
+  // (§25 C, at ALARM_CD along this azimuth) inside the plate's balance
+  // window, and 9 o'clock drives the §29 branch sleeve 1.97 into the minute
+  // wheel. Both conventional corners are gone, so the movement states its
+  // own, and states how it was found.
+  //
+  // MEASURED, not chosen — the §68 azimuth precedent. Swept across world
+  // azimuth at R 11 with the whole boot battery reading, the corners that
+  // come back SILENT are 45°, 90° and 120°; everything else fouls the
+  // reserve well's ring, the minute wheel, or the plate's own cut. 90° is
+  // the furthest of the three from the winding stem — the quantity the old
+  // rule maximised — so the choice keeps that intent instead of replacing
+  // it with a taste.
+  //
+  // It is a constant rather than a solve because the constraints that
+  // eliminate 3 and 9 o'clock live thousands of lines downstream and derive
+  // FROM this corner (the setting run's i1 sleeve, the well rings): they
+  // cannot be consulted before it exists. What CAN be checked here is the
+  // balance window, because both sides are known — so that one is an assert,
+  // and it is the one that will fire first if the balance grows again.
+  const ALARM_CORNER_W = 90 * DEG2RAD;
+  {
+    const px = Math.cos(ALARM_CORNER_W) * ALARM_CD, py = Math.sin(ALARM_CORNER_W) * ALARM_CD;
+    const clear = Math.hypot(px - P.balance.x, py - P.balance.y) - 1.7 - CLEAR_MARGIN; // 1.7: the pivot's chaton boss (jewelR 1.0 × 1.7)
+    if (clear < BAL_OUTER_R + TQ_CUT_MARGIN)
+      console.warn(`§74: the alarm corner's winding pivot is inside the balance's window — ${clear.toFixed(2)} against ${(BAL_OUTER_R + TQ_CUT_MARGIN).toFixed(2)}. Re-sweep the corner for this balance.`);
   }
-  return best.a;
+  return Math.atan2(Math.sin(ALARM_CORNER_W), -Math.cos(ALARM_CORNER_W)); // world → dial-local
 })();
 // World azimuth of the corner. On the SOLVED branch this is a discrete
 // mapping (no trig on π), so the identity's exact (ALARM_CD, 0) literals
@@ -1352,26 +1408,9 @@ barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', whi
 // Measured from VERTICES, not from a bounding box: Box3.setFromObject unions
 // each child's box TRANSFORMED, which for a ring of tilted screw cylinders
 // over-reports by 24% (12.73 for a wheel that actually reaches 10.27) and
-// swings with the pose. Radii about the staff axis are rotation-invariant, so
-// this is the real swept radius.
-function xyRadiusAbout(obj, c, zMax = Infinity) {
-  obj.updateMatrixWorld(true);
-  const v = new THREE.Vector3();
-  let r = 0;
-  obj.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position) return;
-    const pos = o.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      if (v.z <= zMax) r = Math.max(r, Math.hypot(v.x - c.x, v.y - c.y));
-    }
-  });
-  return r;
-}
-const BAL_OUTER_R = Math.max(
-  xyRadiusAbout(balanceGroup, P.balance),
-  xyRadiusAbout(hairspringGroup, P.balance),
-);
+// (xyRadiusAbout and BAL_OUTER_R are hoisted ABOVE the alarm corner's solve —
+// that solve has to miss the balance's window, so it needs this measurement.)
+
 
 // (The balance cock, and the plate itself, are built at the end of the
 // movement assembly — both need the drum, the setting lever's post sweep and
@@ -1708,7 +1747,7 @@ const forkCock = (() => {
 // keeps every scrap of material that nothing needs — which is what stops this
 // from becoming a skeleton frame. Sampled across the beat because the fork
 // banks and the escape wheel turns.
-const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: with the
+// TQ_CUT_MARGIN is hoisted above the alarm corner's solve. Its basis: a RUNNING clearance as well as a service one — with the
                            // balance lowered into the plate band, the wheel + its timing
                            // screws (tips at BAL_OUTER_R) sweep INSIDE the plate's z-band,
                            // so the cut's base edge (BAL_OUTER_R + this) is what physically
