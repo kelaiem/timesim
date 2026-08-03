@@ -1205,12 +1205,24 @@ const ALARM_LOCAL_AZ = (() => {
   }
   return Math.atan2(Math.sin(ALARM_CORNER_W), -Math.cos(ALARM_CORNER_W)); // world → dial-local
 })();
-// World azimuth of the corner. On the SOLVED branch this is a discrete
-// mapping (no trig on π), so the identity's exact (ALARM_CD, 0) literals
-// survive bit-for-bit; the spec branch derives.
+// World azimuth of the corner — the INVERSE of the dial-local mirror above
+// (the map x → −x is its own inverse, so the same atan2 form runs both ways).
+//
+// This was written as a two-case discrete mapping back when the solve could
+// only return dial-local 3 or 9 o'clock: local π → world 0, ELSE world π. The
+// `else` was a stand-in for "local 0", correct only while those were the only
+// two answers. §74's measured 90° corner falls through it and comes back π —
+// so parts placed from the WORLD azimuth (the climb bores, the lifter unit)
+// and parts placed from the LOCAL one (§33's stations) sat 35.5 apart, which
+// is exactly what alarmHandoffs read on the stem collar ⇄ lifter head.
+// The two exact cases stay FIRST so the identity's (ALARM_CD, 0) literals
+// still survive bit-for-bit on the corners that have them; everything else
+// derives.
 const ALARM_CORNER_W_AZ = SPEC.alarmAzDeg !== null
   ? SPEC.alarmAzDeg * DEG2RAD
-  : (ALARM_LOCAL_AZ === Math.PI ? 0 : Math.PI);
+  : ALARM_LOCAL_AZ === Math.PI ? 0
+  : ALARM_LOCAL_AZ === 0 ? Math.PI
+  : Math.atan2(Math.sin(ALARM_LOCAL_AZ), -Math.cos(ALARM_LOCAL_AZ));
 // Crown-sense swap: the CLIMB stands at the stem's INNER radius (the crown's
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
