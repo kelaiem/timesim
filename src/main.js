@@ -4750,7 +4750,7 @@ smallSecondsGroup.add(smallSecondsHand);
   // Hub inside the recessed well: through the floor's bore (r 1.0 > hub
   // 0.9), stopping just short of the dial's surface plane. The hand rides
   // at world Z_DIAL + 0.2, straddled by the hub's span.
-  const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15; // hub centre (world)
+  const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15 - DIAL_T; // hub centre (world) — TODO 26: follows the well floor one plate forward; rodLen below grows to match
   const rodLen = Z_SECONDS_ARBOR - hubZ;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
   rod.rotation.x = Math.PI / 2;
@@ -5004,7 +5004,11 @@ mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
 {
-  const tubeTop = aesthetics.dial.hands.handsGroupZOffset; // the hour hand's plane
+  // TODO 26 — the hour tube CROSSES the dial, so a thicker dial makes it
+  // LONGER, not shorter: the hand plane rides forward with the face (the
+  // minute hand's own group already moved with dialPlateFace) while the wheel
+  // stays on the works' side. tubeLen below picks the growth up for free.
+  const tubeTop = aesthetics.dial.hands.handsGroupZOffset + DIAL_T; // the hour hand's plane, one plate forward
   const tubeLen = tubeTop - MW_Z2;
   const tube = new THREE.Mesh(
     ringGeo(HOUR_TUBE_INNER, HOUR_TUBE_OUTER, tubeLen), MATS.steel);
@@ -5433,7 +5437,7 @@ rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
 // Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
-const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2; // through the well floor's bore, just behind the hand
+const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2 - DIAL_T; // through the well floor's bore, just behind the hand — TODO 26: the bore moved forward with the plate, so this arbor lengthens
 const rsvHandArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(0.4, 0.4, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
 rsvHandArbor.rotation.x = Math.PI / 2;
@@ -6169,10 +6173,17 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   faceCam.position.z = ALARM_WHEEL_BOT_B; // seated on the wheel's plate-side face (derived — was the frozen −0.23); heights grow into pass 1's band
   faceCam.rotation.z = ALARM_NOSE_AZ; // notch (minimum height) phased to the pin's azimuth: seated ⇒ tube ≡ wheel
   alarmSetWheelGroup.add(faceCam);
-  const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, 0.42, 3), MATS.blueSteel);
+  // TODO 26 — the wedge's tip is bounded by the DIAL'S BACK FACE. It used to
+  // stand 0.175 past the dial's plane, which cost nothing while the dial was a
+  // sheet with no substance to intersect and is a real collision now that it is
+  // a plate: the same lie the sub-dial wells told, in the other direction.
+  // dialFace's flip makes local +z run toward the dial and puts this group on
+  // Z_DIAL, so a tip one margin clear of the dial's back is local −CLEAR_MARGIN.
+  const WEDGE_LEN = 0.42;
+  const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, WEDGE_LEN, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
-  wedge.position.set(4.45, 0, -0.05 + 0.015); // proud 0.03 of the face at −0.05
+  wedge.position.set(4.45, 0, -CLEAR_MARGIN - WEDGE_LEN / 2);
   wedge.rotation.x = Math.PI / 2;
   alarmSetWheelGroup.add(wedge);
 }
