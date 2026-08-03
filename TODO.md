@@ -1886,7 +1886,7 @@ now fixed. The overclaim is corrected here and in the check's row.
 
 ---
 
-## 21. The minute wheel and star pass THROUGH the hour tube — the 12:1's first mesh is geometrically impossible
+## 21. CLOSED — the hour wheel went dial-most, and the 12:1's first mesh stopped happening through the tube
 
 Found by `checkExpectedContacts`' first run (item 6's structural fix),
 proven analytically with a containment sampler, invisible to every
@@ -1931,8 +1931,35 @@ honesty:
    available — both parts rotate; the crossing is at all azimuths in
    turn.
 
-The `EXPECTED_CONTACT_FLOORS` row for the pair stays red, waived citing
-this item; closing this item deletes that waiver.
+**CLOSED** by candidate 1, the re-stack. The chain now lands on the HOUR
+wheel — one margin plus its own bevelled half-thickness below the disc body
+— and the minute wheel hangs the same 1.5 behind it, so the tube rises from
+the dial-most plane and crosses nothing that is not coaxial with it. What
+made this affordable is that the alarm stack above IS coaxial (every bore ≥
+`ALARM_TUBE_INNER` = `HOUR_TUBE_OUTER` + 0.1): the tube was always allowed
+through that band, and never through the two parts on the offset stud.
+
+Measured after, same sampler as above: **0 vertices inside the wall band,
+from 568**; the tube spans −12.66..−4.28 instead of −12.66..−2.78. Boot
+silent, battery 13/13, `inspection` down to 72 contacting pairs from 74, and
+`expectedContacts` at **0 waived** — that row's waiver is DELETED, not
+renewed, which is what closing an item is supposed to look like.
+
+Three consequences worth knowing, because each removes a future footgun:
+
+- `CANNON_T` is DERIVED from the plane it must cover. It had chased the
+  chain downward by hand five times (2.0 → 2.1 → 2.5 → 2.9 → 3.35 → 4.25)
+  and this re-stack would have been the sixth. The leaves now reach past the
+  minute wheel and are the deepest thing on the centre axis, so that end has
+  its own floor against the plate, asserted.
+- The star slice changed SIDES and is now named for the faces that bound it
+  (`_mwSliceBot`/`_mwSliceTop`) rather than for the parts, so a future
+  re-order cannot leave it reading backwards while still computing a
+  positive thickness.
+- `MW_TOP` names the motion works' dial-most face once. The two band asserts
+  that each re-spelled that expression consume it, so they follow a re-stack
+  by construction instead of silently guarding the wrong wheel — which is
+  the specific way this defect stayed invisible.
 
 ## 22. CLOSED — the press axis rides above the wheel; the stem's end is press-swept derived
 
