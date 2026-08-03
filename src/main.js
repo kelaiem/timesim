@@ -6225,17 +6225,28 @@ const ALARM_SET_I2 = (() => {
   const WALL_HALF = 0.2;
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
   const wells = [[-RESERVE_LOCAL.x, RESERVE_LOCAL.y], [-SECONDS_LOCAL.x, SECONDS_LOCAL.y]];
+  // TODO 26 — the well rings are only a wall for this run WHERE THEY SHARE ITS
+  // LANE. They used to, and not by design: with the dial a sheet of no
+  // thickness, each sub-dial recess had to be built as a floor PROTRUDING 0.5
+  // behind it, which is what reached down into the setting train's plane. Now
+  // that the dial is a plate the recess lives inside its own thickness, and
+  // the two bands are 0.6 apart. Gated on the measurement rather than deleted:
+  // move either the dial's stratum or the setting lane back into contact and
+  // this wakes up on its own.
+  const wellLo = Z_DIAL - DIAL_T, wellHi = Z_DIAL - DIAL_T + SUBDIAL_RECESS;
+  const laneLo = ALARM_SET_Z - ALARM_SET_T / 2, laneHi = ALARM_SET_Z + ALARM_SET_T / 2;
+  const wellsInLane = laneLo < wellHi && laneHi > wellLo;
   const members = [
     ['setting wheel', { x: 0, y: 0 }, ALARM_SET_MODULE * ALARM_SET_WHEEL_TEETH / 2 + ALARM_SET_MODULE],
     ['i1', ALARM_SET_I1, ALARM_SET_MODULE * ALARM_SET_I1_TEETH / 2 + ALARM_SET_MODULE],
     ['i2', ALARM_SET_I2, ALARM_SET_MODULE * ALARM_SET_I2_TEETH / 2 + ALARM_SET_MODULE],
   ];
   for (const [nm, p, tip] of members) {
-    for (const [wx, wy] of wells) {
+    if (wellsInLane) for (const [wx, wy] of wells) {
       const d = Math.hypot(p.x - wx, p.y - wy);
       const clr = Math.abs(d - subDialR) - WALL_HALF - tip; // distance from the RING, less wall and tooth tip
       if (clr < CLEAR_MARGIN)
-        console.warn(`alarm setting ${nm} vs well ring at (${wx.toFixed(1)},${wy.toFixed(1)}): clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`);
+        console.warn(`alarm setting ${nm} vs well ring at (${wx.toFixed(1)},${wy.toFixed(1)}): clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN} (bands overlap: well ${wellLo.toFixed(2)}..${wellHi.toFixed(2)}, lane ${laneLo.toFixed(2)}..${laneHi.toFixed(2)})`);
     }
   }
   for (const [nm, p, tip] of members.slice(1)) {

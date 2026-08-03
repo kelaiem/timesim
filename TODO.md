@@ -2215,7 +2215,7 @@ above re-run to show the rate actually moving with radius, and SPEC.md's
 gear-train section updated to say the beat is a target the regulator
 hits rather than a number the movement is told.
 
-## 26. The dial has no thickness, and the works are standing in it
+## 26. MOSTLY CLOSED — the dial is a plate now; the works stand behind it
 
 The dial is a zero-thickness sheet: one `ShapeGeometry` plane, measured at
 world z −8.40, with the applied markers and the minute track laid on its
@@ -2269,6 +2269,57 @@ move, one stratum further out — and the honest sequence is:
    recess within the plate, at which point §74's wall one may evaporate on
    its own: with the wells no longer reaching into the works' lane, the
    alarm setting run's corridor is bounded by the dial's back face alone.
+
+**LANDED 2026-08-02 — the dial is matter.** `DIAL_T` = 0.4 mm / `UNIT_MM` =
+1.056 u, derived from real brass dial stock (0.35–0.5 mm) with its floor
+stated where it is minted: a dial must be at least as thick as the recess it
+carries, or the wells punch through its back — the defect this item filed.
+
+The plate grows FORWARD, into z in front of the dial that nothing was using,
+so its BACK FACE lands on `Z_DIAL` — the datum every dial-side work already
+stands off — and **nothing behind the dial moved**. The re-stratification
+this entry feared was not needed; the z budget grew instead. Measured: plate
+−9.456..−8.400, well floor −8.96 (was −7.90, protruding 0.5 past `Z_DIAL`
+into the alarm setting train's lane).
+
+**Three findings came out of it, each the same lie in a different place.**
+
+1. `dialFace` was TWO FRAMES WEARING ONE NAME — the dial's furniture and ten
+   dial-side WORKS that merely borrow its flipped frame. Moving it shifted
+   the works and broke the §35 registration and §37's tab stop by exactly
+   `DIAL_T`. The furniture has its own frame (`dialPlateFace`) now.
+2. EVERY ARBOR THAT CROSSES THE DIAL GREW — hour tube, small-seconds hub,
+   reserve indicator arbor, and the alarm tube. That last one is the
+   instructive case: it is ONE part spanning the dial, flange and sensing pin
+   working behind, hand read in front, so a thicker dial makes it LONGER.
+   Moving it whole instead pulled the sensing pin |1.02| off the selector
+   ring against a 0.709 budget, which TODO 19's rocker rows caught.
+3. THE ALARM INDEX WEDGE stood 0.175 PAST the dial's plane — free through a
+   sheet with no substance, a collision against a plate. Its tip is bounded
+   by the dial's back face now, derived rather than hand-set.
+
+**And the payoff, which was the point.** With the wells living inside the
+plate's own thickness, they are 0.606 clear of the alarm setting run's lane
+— so the corridor audit's well-ring walls, a 2D test that never knew about
+z, were measuring a wall that is no longer there. Gated on the measured
+overlap (not deleted: move either stratum back into contact and it wakes
+up), and the alarm crown corner is FREE at azimuths it could never occupy:
+45°, 90° and 120° all boot silent where every one of them used to foul the
+reserve well by −1.2 to −3.3.
+
+That takes down §74's wall one. Measured with the corner at 90°: a balance
+at **R 10 boots silent** (+11%) and **R 11 boots silent** (+22%), where both
+warned twice before — and §74's own acceptance line asked for R ≥ 10.8. The
+spring re-solves to each wheel (0.0281 / 0.0318 mm, inside real stock, 2.500
+Hz). R 12 reaches §74's wall TWO, the alarm winding train's mesh, which this
+item never claimed.
+
+**What keeps this MOSTLY closed rather than closed**: the dial's back face
+is flat where it matters but the sub-dial apertures are still through-holes
+with a floor hung in them rather than a blind pocket machined into the
+plate, and the dial's thickness is one constant rather than a profile (a
+real dial is thinner at its rim). Neither reaches into any lane, so neither
+is load-bearing — filed here so the next reader knows the difference.
 
 **Do NOT waive this by widening the setting run's clearances** — the run
 is correctly placed for the dial it was given. The dial is the defect.
