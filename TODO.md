@@ -70,6 +70,40 @@ that's its entry, not this one.)
   `stockFloor`'s "0 degenerate" gate does not see them (it measures a mesh's
   extents, not its triangles: [item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s third blindness class again). The fix
   belongs in the shared builders, so it would clear every consumer at once.
+- **The column wheel's pillars are wound INSIDE-OUT** — reported as "missing
+  surfaces on the columns", which is exactly what it looks like. NOT the
+  degenerate triangles above, and not the sliver guard that skips them: a
+  dropped zero-area triangle contributes no surface to miss. Every triangle
+  the pillar loop emits is simply wound the wrong way round, so with the
+  material's default `side: FrontSide` the outward faces are culled and the
+  columns read as holes with their far inner walls showing through.
+
+  Measured by signed volume from the winding — positive for a body wound
+  CCW seen from outside, which is three.js's front-face convention:
+
+  | mesh of `makeColumnWheel` | tris | signed volume |
+  |---|---|---|
+  | base disc (`ringExtrude`) | 776 | **+70.44** |
+  | castellations (item 28's pillars) | 1224 | **−27.52** |
+  | ratchet skirt (`ExtrudeGeometry`) | 116 | **+31.20** |
+
+  Controls run in the same probe to validate the sign: `BoxGeometry(2,2,2)`
+  → +8.0000 exactly, `CylinderGeometry(1,1,2,24)` → +6.2117 against a true
+  6.283 (faceted). The wheel's other two meshes come from stock builders and
+  are correct; only the hand-emitted pillars are reversed, and all four of
+  their surface families are — top, inner wall, outer wall and floor, so it
+  is one consistent orientation error rather than a mixed mesh. Confirms by
+  hand: the top surface's `tri(b+2, n+2, n+3)` has normal θ̂ × r̂ = −ẑ, and a
+  column's top must face +z.
+
+  **Fix** is to reverse each `tri()` triple's order (or emit the index
+  buffer and call it once), then re-run `computeVertexNormals`. Positions do
+  not move, so the fingerprint and every clearance verdict are untouched —
+  which is also why no gate caught this. Nothing in the battery reads
+  winding at all; it is one more thing that lives inside a single mesh
+  ([item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s class, and a candidate row for the roadmap's `meshIntegrity`
+  instrument, where "is this body inside-out?" is a cheap closed-form test
+  next to self-intersection).
 
 - **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
   showed ~all of it was ONE cost — unbounded closest-point queries against
