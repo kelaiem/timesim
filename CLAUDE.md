@@ -124,7 +124,19 @@ it into prose either.
    from the balance's inertia so `√(k/I)` lands on `F_BALANCE`; the gate
    holds that solve true and holds the ribbon inside real hairspring
    stock, 0.02–0.04 mm. Change the spiral's plan — coils, radii, height —
-   and re-solve; never re-target the beat to match a spring).
+   and re-solve; never re-target the beat to match a spring),
+   and `restoring` **0 unwaived, 0 malformed, 0 stale, control PASS**
+   (§48's no-spring audit, gated by TODO 29 — every part that RECIPROCATES
+   either has a restoring element that exists as a mesh, is driven both ways,
+   or is waived citing its TODO. §48's rule that the audit is a REPORT is
+   kept: `ok` is always true and the rows are the product, so the gate holds
+   only what can be held. **Its population comes from the §36 registry's
+   `reversed` flag over `AXES`, so a part no axis MOVES is a part it cannot
+   judge** — ship a mechanism with its own input and you must ship the axis
+   that exercises it, or this passes it in silence. That is not theoretical:
+   before TODO 29 no axis anywhere varied `alarmOn`, and the alarm lock —
+   the movement's clearest no-spring case — was invisible for exactly that
+   reason).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved

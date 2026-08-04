@@ -765,6 +765,38 @@ export const AXES = [
       alarmOn: 1, alarmReleased: 1,
     }),
   },
+  {
+    // TODO 29 — THE PARITY ITSELF, SWEPT. Every other alarm axis PINS
+    // `alarmOn` (the `alarm` axis at 1 for its whole run, `alarmStrike`
+    // likewise), so before this one no axis anywhere varied it — and the
+    // §48 audit's population comes from the §36 registry's `reversed` flag,
+    // which is measured over these axes. A part whose only motion is the
+    // toggle therefore never moved during a sweep, never registered as
+    // reversing, and was never asked what restores it. The alarm LOCK is
+    // exactly that part: its lift tracks `alarmOn`, so across every previous
+    // axis it was constant — armed on `alarm`, released everywhere else.
+    //
+    // RELEASED → ARMED → RELEASED, because one step is not a reversal: the
+    // registry calls a volume reversed when successive steps change sign, so
+    // a monotonic 0→1 would sweep the same swept volume as a part that only
+    // ever moves one way. The wheel is genuinely bistable and both states are
+    // reachable by pressing the pusher, so visiting them in that order is a
+    // real sequence, not a contrivance.
+    //
+    // setPose writes the parity, not just the flag: it nudges `alarmColSteps`
+    // to the requested parity and re-derives `alarmOn` from it, so this axis
+    // turns the COLUMN WHEEL and everything the wheel drives — which is the
+    // point. And the tick snaps `alarmLockLiftT` to its target when `rawDt`
+    // is 0, so the lock's 0.08 s ease does not silently freeze the lever at
+    // its start value under a pose sweep (CLAUDE.md's zero-dt trap, which
+    // would otherwise make this axis measure nothing).
+    name: 'alarmToggle',
+    n: 48,
+    pose: (f) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      alarmOn: f > 0.25 && f < 0.75 ? 1 : 0,
+    }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -3981,6 +4013,14 @@ const CHECKS = {
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
+  // §48's no-spring audit. Named `restoring` rather than `oscillators`: one
+  // character from `oscillator` above would be a trap, and the two answer
+  // different questions — that one asks whether the hairspring is cut to the
+  // beat, this one asks whether every part that RECIPROCATES has something
+  // bringing it back. It was exported and never registered here, so
+  // `start(clock, …)` answered "unknown check" and the only way to run §48's
+  // instrument was to import the module and call it by hand (TODO 29).
+  restoring: (clock, opts) => auditOscillators(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
@@ -4408,6 +4448,29 @@ export async function stockCensus(clock, opts = {}) {
 // against the part, which is where that debt lives.
 export const RESTORING_KINDS = ['two-way', 'spring', 'gravity'];
 
+// Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
+// A waived row is STILL REPORTED; the waiver records that someone has looked
+// and that the fix is filed, not that the finding went away. Added with
+// TODO 29, when the alarm-parity axis first made these parts reciprocate
+// under a sweep and the audit could finally see them.
+export const RESTORING_WAIVERS = {
+  // TODO 28's headline: the lock's lift is an 0.08 s ease on the `alarmOn`
+  // flag, gated by the column rather than driven by it. It is restored by
+  // nothing because nothing restores it — the rebuild is what closes this,
+  // and greening the row any other way would be inventing a spring.
+  'Alarm lock': 'TODO 28',
+  // TODO 29's own residue, and honestly the reason this waiver table has two
+  // entries instead of one. Of the 23 reversing volumes the parity axis
+  // attributes to 'Dial', 22 are ALSO claimed by a nearer unit (Alarm disc,
+  // Alarm selector, Alarm release feeler, Power reserve) and are correctly
+  // deduped away. One is not: an unnamed ExtrudeGeometry that no nearer unit
+  // claims. Until it is identified this cannot be answered — it is either a
+  // real dial-side part with no return, or the nesting artifact the audit's
+  // own dedupe comment warns is a FALSE finding. Naming the mesh is the fix
+  // (§54's lesson: a row that cannot name its member is not actionable).
+  Dial: 'TODO 29',
+};
+
 // How load-bearing a part is: how much of the movement is downstream of it in
 // MECH_GRAPH.drive, transitively. A missing return on the pallet fork would
 // mis-state the whole train below it; a missing return on a dial-side flag
@@ -4531,6 +4594,14 @@ export async function auditOscillators(clock, opts = {}) {
     twoWayDriven: twoWay,
     restoredByDeclaredElement: restored,
     restoredByNothing: unrestored,
+    // TODO 29 — the gateable split. §48's rule that this is a REPORT stands
+    // (`ok` is still always true); what a gate can hold is that every
+    // restored-by-nothing row is either fixed or WAIVED against a filed item.
+    // Reported both ways so the debt stays visible in the payload rather than
+    // being subtracted out of it.
+    unwaived: unrestored.filter((r) => !RESTORING_WAIVERS[r.unit]),
+    waived: unrestored.filter((r) => RESTORING_WAIVERS[r.unit])
+      .map((r) => ({ ...r, waiver: RESTORING_WAIVERS[r.unit] })),
     malformedDeclarations: malformed,
     staleDeclarations: stale,
   };

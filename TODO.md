@@ -2504,7 +2504,7 @@ the lock is what physically holds the alarm train.
 The wheel is currently a correct-looking silhouette with a ramp profile
 nothing designed and a lock that is posed from a boolean.
 
-## 29. §48's no-spring audit is not wired in — and the alarm lock is invisible to it twice over
+## 29. MOSTLY CLOSED — §48's audit is wired in, the parity is swept, and the lock's debt is now VISIBLE
 
 The instrument that exists to catch "a part that reciprocates with nothing
 restoring it" cannot be reached by the battery, and the part item 28 filed
@@ -2575,6 +2575,66 @@ battery check — one of the two is out of date.
 Closing this and item 28 together is the cheaper order: the axis and the
 declaration make the lock's defect FAIL, and then the rebuild fixes it
 against a check that can see it.
+
+### CLOSED, and what each step actually found
+
+**The check is registered and gated.** `auditOscillators` is in `CHECKS` as
+`restoring` — named for what it checks, and deliberately NOT `oscillators`,
+which is one character from TODO 25's `oscillator` and asks a different
+question. `tools/ci-battery.mjs` gates it at **0 unwaived, 0 malformed,
+0 stale, control PASS**, and CLAUDE.md's rule 4 lists it. §48's rule that the
+audit is a REPORT is kept intact: `ok` is still always true, and the gate
+holds only the part that can be held.
+
+**The parity is swept.** A new `alarmToggle` axis runs RELEASED → ARMED →
+RELEASED. One step would not do: the registry calls a volume reversed when
+successive steps change sign, so a monotonic 0→1 sweeps the same volume as a
+part that only ever moves one way. `setPose` writes the PARITY rather than
+just the flag, so the axis turns the column wheel and everything it drives.
+
+**What the axis surfaced, measured: population 18 → 23.** Five units
+reciprocated for the first time. Four resolved to mechanisms that were
+already there and had simply never been asked:
+
+| unit | answer | why |
+|---|---|---|
+| Alarm switch | `spring` | the click arm's own blade, `switchClickSpring` — a real mesh, which §48's geometry guard checks |
+| Alarm link | `two-way` | TODO 20's forked tab drives the chain both ways; this is the very thing that retired its phantom bias spring |
+| Alarm selector | `two-way` | same solve — the centre pin in the groove pushes and pulls the ring |
+| **Alarm lock** | **WAIVED, TODO 28** | restored by nothing, because nothing restores it |
+
+The lock is the point. Its debt is now a row in a gated check citing the
+item that fixes it, rather than a sentence in a file. **Do not green it by
+declaring a spring** — the audit's geometry guard would demand the mesh, and
+inventing one is the exact dishonesty §48 exists to catch. Item 28's rebuild
+is what deletes this waiver.
+
+### What keeps this MOSTLY closed — the Dial row
+
+The fifth unit is unresolved and waived under this item. Of the 23 reversing
+volumes the axis attributes to `Dial`, **22 are also claimed by a nearer unit**
+(Alarm disc, Alarm selector, Alarm release feeler, Power reserve) and are
+correctly deduped away. **One is not**: an unnamed `ExtrudeGeometry` that no
+nearer unit claims. It is either a real dial-side part with no return, or the
+nesting artifact the audit's own dedupe comment calls a FALSE finding — and
+which of those it is cannot be decided without naming the mesh.
+
+Naming it IS the fix, and §54 already wrote the rule this breaks: a row that
+cannot name its member is not actionable. Closing this item means giving that
+mesh a name at its build, re-running `restoring`, and then either declaring
+its restoring element or deleting the `Dial` waiver as the artifact it turns
+out to be.
+
+### The general lesson, worth more than the fix
+
+**The audit's population is whatever the axes move.** A part with its own
+input that no axis exercises is not judged clean — it is not judged. Before
+this item, the alarm parity was pinned at 1 by the `alarm` axis and at 0
+everywhere else, so the movement's clearest no-spring case sat outside a
+healthy-looking instrument for its whole life. That is the same shape as
+items 5, 6 and 27: the defect was hidden by the instrument's population, not
+by any subtlety in the geometry. Rule 4 now says so where someone adding a
+mechanism will read it.
 
 ## 30. §76's walls two and three exist only as roadmap prose
 

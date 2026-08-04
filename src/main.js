@@ -8282,6 +8282,17 @@ declareRestoring('Alarm disc', 'two-way',
 declareRestoring('Alarm hammer', 'spring',
   'alarmHammerAngle() falls as cos(ALARM_HAMMER_W t) with decay — a spring-and-inertia law; the blade is grounded to its own stud and bears on the tail (TODO 14)',
   'alarmHammerSpring');
+// TODO 29 — the parity axis made these three RECIPROCATE for the first time.
+// None of them is new geometry; what is new is that a sweep finally moves
+// them, so the §48 audit can ask the question it exists to ask. Each answer
+// below is the mechanism that was already there, now stated.
+declareRestoring('Alarm switch', 'spring',
+  'the click arm is held to the castellations by its own blade — a real flat spring, grounded to its stud and bearing on the arm (TODO 11 sized it to flat-spring stock)',
+  'switchClickSpring');
+declareRestoring('Alarm link', 'two-way',
+  'TODO 20 second pass: the centre pin rides the drive tab\'s GROOVE at its ±0.01 working clearance, so the chain is pushed and pulled — which is exactly what retired the phantom bias spring the first build needed');
+declareRestoring('Alarm selector', 'two-way',
+  'driven both ways by the link\'s centre pin in the forked tab (the same TODO 20 solve); the ring has no bias spring because it needs none');
 declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_RAD, +ALARM_DRAW_RAD]');
 // Where the tail rests. Measured out from the pivot⇄wheel bearing: the larger
 // this is, the further the nose sits from the wheel's centre and the bigger
