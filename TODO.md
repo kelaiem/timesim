@@ -1817,6 +1817,24 @@ drives it).
 with it — without that the next tick reads a held angle from before the pose
 and walks the wheel back.
 
+**Postscript, 2026-08-04 — the one time constant that survived this close.**
+"Nothing in the run carries a time constant of its own" was true of every
+member except the pusher's own return, which decayed
+`alarmPusherT *= Math.exp(-rawDt / 0.15)` — a rate derived from nothing, and,
+worse, an ASYMPTOTE. Two readers ask "is the head still off its seat?" by
+testing `alarmPusherT > 1e-6`: `pressAlarmPusher`, to refuse a second press,
+and the tick, to re-arm the click on the next tooth. Against an exponential
+that threshold is not a position, it is a TIMEOUT of `0.15·ln(1e6)` = 2.07 s.
+Measured on the shipped tree, a second press landed at a 2.0 s gap and was
+swallowed at every gap ≤ 1.5 s — with the head sitting visibly home and no
+feedback of any kind. That was the whole of "the alarm pusher doesn't work
+consistently". The return is now a SETTLING TIME derived from the stroke it
+undoes — `ALARM_RETURN_S = ALARM_PRESS_S`, an unloaded return spring being at
+least as fast as a deliberate press — decaying linearly and clamping ON zero,
+so the threshold means what it reads. Measured after: both presses land at a
+0.24 s gap (stroke + return, as designed) and the second is refused below it.
+The only rate left in the run is now genuinely how fast a finger presses.
+
 **What is NOT claimed.** This is a kinematic chain, not a dynamic one: no
 force, friction or spring rate appears anywhere in it, and the pawl "carries"
 the wheel because the geometry says where the contact goes, not because a

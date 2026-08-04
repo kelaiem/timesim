@@ -9804,6 +9804,18 @@ if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)
 // pawl driving there is nothing left to ease — the wheel goes exactly where
 // its pawl has pushed it. Human pusher presses run ~0.1–0.2 s.
 const ALARM_PRESS_S = 0.12;
+// ...and the spring's return, which is a SETTLING TIME, not an asymptote.
+// The head goes in at the finger's rate and comes out on its return spring
+// alone; an unloaded spring returns at least as fast as a deliberate press,
+// so the press stroke is the conservative bound on the return and the head
+// is provably home ALARM_RETURN_S after release. It has to be finite because
+// two readers ask "is the head still off its seat?" by testing
+// alarmPusherT > 1e-6 — pressAlarmPusher, to refuse a second press, and the
+// tick, to re-arm the click on the next tooth. The old return decayed
+// `*= exp(-rawDt / 0.15)`, which never reaches zero, so that threshold was a
+// disguised timeout of 0.15·ln(1e6) = 2.07 s: every re-press inside two
+// seconds of the last one was swallowed with the head visibly back home.
+const ALARM_RETURN_S = ALARM_PRESS_S;
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -12996,7 +13008,10 @@ function alarmParityLatched() {
 function pressAlarmPusher() {
   // A finger cannot start a second press while the head is still down or
   // springing back — and neither can the pawl re-engage before it has
-  // retracted over the next tooth's back.
+  // retracted over the next tooth's back. The test means exactly that now:
+  // ALARM_RETURN_S lands alarmPusherT ON zero, so the window this refuses
+  // is the stroke plus the return (~0.24 s), not the 2.07 s the old
+  // exponential's floor-crossing time made it.
   if (alarmPusherStroke || alarmPusherT > 1e-6) return;
   alarmPusherStroke = true;
 }
@@ -17266,12 +17281,13 @@ function tick(t) {
     // pawl rides the ratchet skirt through the same eased step.
     // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
     // pawl nothing to carry the wheel through. Held or stroking, it advances
-    // at the finger's rate; released, it springs back as before. A zero-dt
-    // pose lands it exactly, so setPose stays deterministic.
+    // at the finger's rate; released, its spring returns it over
+    // ALARM_RETURN_S and STOPS at the seat. A zero-dt pose lands it exactly,
+    // so setPose stays deterministic.
     if (alarmPusherHeld || alarmPusherStroke) {
       alarmPusherT = rawDt > 0 ? Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S) : 1;
       if (alarmPusherT >= 1) alarmPusherStroke = false;         // bottomed; the spring takes it back
-    } else if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
+    } else if (rawDt > 0) alarmPusherT = Math.max(0, alarmPusherT - rawDt / ALARM_RETURN_S); else alarmPusherT = 0;
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived
