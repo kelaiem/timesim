@@ -59,6 +59,18 @@ that's its entry, not this one.)
   rotates up under the rim. Trivial with the see-saw crank (the released pose
   IS the drop-clear pose), but worth a comment in the code so the constraint
   isn't lost.
+- **Degenerate triangles in two of the column wheel's three meshes.** Found
+  while measuring item 28's pillar rebuild, and NOT caused by it: the base
+  disc carries **8** zero-area triangles out of 776 (from `ringExtrude`) and
+  the ratchet skirt **6** out of 116 (from its saw-outline `ExtrudeGeometry`).
+  The rebuilt castellations measure 1224 triangles and **0** degenerate, which
+  is what makes the other two stand out. Neither is a zero-thickness REGION —
+  both are triangulation slivers inside otherwise solid bodies, so nothing
+  reads as sheet — but they are geometry a mesh should not carry, and
+  `stockFloor`'s "0 degenerate" gate does not see them (it measures a mesh's
+  extents, not its triangles: [item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s third blindness class again). The fix
+  belongs in the shared builders, so it would clear every consumer at once.
+
 - **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
   showed ~all of it was ONE cost — unbounded closest-point queries against
   the plate's ~21k-triangle extrusion (180 ms/query, 6 of 13 budgets). Now
@@ -2751,3 +2763,46 @@ instead of reporting: a defect in an instrument, not a layout preference.
 Both are honesty debt in what exists — they would be worth closing if §76
 were abandoned tomorrow, which is the test for belonging here rather than
 in the roadmap.
+
+## 31. The alarm lock has no return — the column can push it, nothing pulls it back
+
+The direct remainder of [item 28](#28-mostly-closed--pillars-a-derived-profile-and-a-lock-the-column-actually-lifts), and what `Alarm lock`'s waiver in
+`RESTORING_WAIVERS` points at. Item 28 made the lever move BECAUSE the wheel
+moved — the 0.08 s ease on a boolean is gone and the angle is now a pure
+function of the castellations at the beak's azimuth. That fixed the direction
+the column drives. It did not give the lever a way back.
+
+**The linkage is honest one way and silent the other.** A column presses the
+beak and holds the lever engaged; when the gap arrives, nothing lifts it. The
+pose law says it rises, and no element in the movement does the rising. §48's
+audit agrees and says so every run: `Alarm lock` sits in `restoredByNothing`,
+gated but waived. That waiver is the finding, not a suppression — deleting it
+means adding the spring, and greening it any other way would be inventing one.
+
+**What to build.** A flat return blade, grounded to its own stud on the plate
+top and bearing on the lever's arm, biasing it toward LIFTED so the column has
+something to work against. The construction already exists two units away:
+`switchClickSpring` is the same part doing the same job for the click arm, at
+`SPRING_FLAT_U` stock, and §48's geometry guard will check the named mesh is
+really in the scene. Declare it with `declareRestoring('Alarm lock', 'spring',
+…, 'alarmLockSpring')` and the waiver comes out.
+
+Note the sense before building it: the spring pushes toward RELEASED and the
+column overcomes it to ENGAGE. That is what a column wheel does — the column
+holds the lever against its spring — but it means the spring-only rest state
+is "lock lifted", which is worth stating out loud rather than discovering from
+a screenshot.
+
+**And then `ALARM_LOCK_LIFT` becomes derivable.** It is 0.085 rad, commented
+"~0.4 of radial air at the collar when released" — a chosen fraction of the
+space available, which is the one number item 28 could not fix because a lift
+with no load path has nothing to be derived FROM. With the spring in, the
+travel falls out of the pad's required clearance over the lever's length:
+`lift = (pad clearance at the collar) / ALARM_LOCK_L`, with the constraint
+written in the comment.
+
+**Why this is its own item rather than item 28's tail.** It is new geometry on
+the plate top with its own clearance consequences (the §62 window solve and the
+pillar seats both live up there), so it wants its own battery run and its own
+record. Item 28 is finished as a profile-and-drive rebuild; this is a part that
+does not exist yet.
