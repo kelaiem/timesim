@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
-import { STOCK_MIN_U } from './layout.js'; // §50/TODO 12: build to the stock floor
+import { STOCK_MIN_U, CLEAR_MARGIN } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -739,14 +739,36 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 // tick() poses against, so the cut columns and the ridden profile cannot
 // drift apart (the §25 A cam convention).
 // ---------------------------------------------------------------------------
-export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material }) {
+export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28 }) {
   const mat = material || MATS.blueSteel;
   const g = new THREE.Group();
   const base = new THREE.Mesh(ringExtrude(baseR, boreR, baseH, 48), mat);
   g.add(base);
   const pitch = (Math.PI * 2) / columns;
-  const duty = 0.5;             // column arc fraction of a pitch
-  const flank = 0.18 * pitch;   // rise/fall arc — what the beak visibly climbs
+  // TODO 28 — DUTY AND FLANK ARE DERIVED NOW. Both were bare literals
+  // (`0.5` and `0.18 * pitch`) with nothing behind them but the look of the
+  // result: standing rule 1's exact failure case, and between them they made
+  // each column 72% ramp — a flat top NARROWER than either flank, so the
+  // "columns" read as triangular ridges rather than pillars with plateaus.
+  //
+  // DUTY is forced, not chosen. One actuation indexes the wheel HALF a pitch
+  // (the caller's ALARM_COL_STEP), so the two stable states are half a pitch
+  // apart. For a rider to sit centred on a column in one state and centred in
+  // a gap in the other, column and gap must be equal — which is duty 0.5 and
+  // can be nothing else while the index is half a pitch.
+  const duty = 0.5;
+  // FLANK is a CONSEQUENCE of the flat top, and the flat top is what a
+  // rider's nose needs to rest on: half of it must clear the nose's own
+  // radius plus the margin, measured as arc at the radius the noses ride.
+  // The chamfer is then whatever is left of the column's half-arc. (At the
+  // shipped numbers this lands within 0.12° of the old literal, which is why
+  // the old one looked right — it was right, and undeclared.)
+  const edge = (duty * pitch) / 2;                       // column half-arc
+  const flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR;   // arc → radians at the ridden radius
+  const flank = edge - flatHalf;
+  if (!(flank > 0))
+    console.warn(`§25 D column wheel: a nose of r ${riderNoseR} needs ${(2 * flatHalf * 180 / Math.PI).toFixed(1)}° of flat, `
+      + `more than the column's ${(2 * edge * 180 / Math.PI).toFixed(1)}° arc — no chamfer is left`);
   // TODO 20 — THE FLANK IS CUT, NOT NARRATED. The columns used to be
   // bevel-less angular-sector extrusions: vertical cliffs, while profileAt
   // below returned a trapezoid with a 10.8° ramp — a surface that existed
@@ -759,40 +781,64 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
   // presence — visually the same castellations, with the chamfered
   // rise/fall a real column wheel's beak actually climbs.
   {
-    const SEG_PER_PITCH = 48;
-    const N = columns * SEG_PER_PITCH;
-    const pos = [], idx = [];
     const prof = (a) => {
       let rel = ((a % pitch) + pitch) % pitch;
       if (rel > pitch / 2) rel = pitch - rel;
-      const edge = (duty * pitch) / 2;
       if (rel <= edge - flank) return 1;
       if (rel >= edge) return 0;
       return (edge - rel) / flank;
     };
-    // Ring of quads: inner/outer at floor, inner/outer at the profiled top.
-    for (let i = 0; i <= N; i++) {
-      const a = (i / N) * Math.PI * 2;
-      const ca = Math.cos(a), sa = Math.sin(a);
-      const top = colH * prof(a);
-      pos.push(ca * colInner, sa * colInner, 0);        // 0: inner floor
-      pos.push(ca * baseR, sa * baseR, 0);              // 1: outer floor
-      pos.push(ca * colInner, sa * colInner, top);      // 2: inner top
-      pos.push(ca * baseR, sa * baseR, top);            // 3: outer top
-    }
-    for (let i = 0; i < N; i++) {
-      const b = i * 4, n = (i + 1) * 4;
-      idx.push(b + 2, n + 2, n + 3, b + 2, n + 3, b + 3); // top surface
-      idx.push(b + 0, n + 0, n + 2, b + 0, n + 2, b + 2); // inner wall
-      idx.push(b + 1, b + 3, n + 3, b + 1, n + 3, n + 1); // outer wall
-      // FLOOR — without it the ring was an open-bottomed shell: from any
-      // oblique angle the eye looked straight into it and the columns read
-      // as bent sheet, not milled steel. Sealed wherever the segment has
-      // height; skipped in the gaps, where floor and top would coincide
-      // and z-fight the base's own top face (which renders there instead).
-      const hb = prof((i / N) * Math.PI * 2), hn = prof(((i + 1) / N) * Math.PI * 2);
-      if (Math.max(hb, hn) > 1e-4)
-        idx.push(b + 0, n + 1, n + 0, b + 0, b + 1, n + 1); // faces −z
+    // TODO 28 — PILLARS, NOT A HEIGHT FIELD. TODO 20's invariant is kept
+    // exactly: the top of every column still IS colH·profileAt(θ), one
+    // function for the cut surface and the ridden law. What that fix left
+    // behind was the SHAPE of the body carrying it — a single ring spanning
+    // the whole circle, so across every GAP the inner wall, the outer wall
+    // and the top surface were all still emitted, at zero height. Between
+    // each pair of columns the part was a degenerate strip of zero area, and
+    // the floor triangles had to be skipped there to stop them z-fighting the
+    // base disc, which is the tell that was sitting in this comment all along.
+    //
+    // Each column is now its own closed solid spanning only its own arc.
+    // Where there is no column there is no geometry, and a gap's floor is the
+    // base disc's top face — which is what a real column wheel has. The two
+    // ends of each pillar are where the chamfer meets the base: the top
+    // surface and the floor converge there, so the body closes on that edge
+    // and no end cap is needed (an emitted one would have zero area, which is
+    // the very thing this change exists to remove).
+    const SEG_PER_FLANK = 9;    // TODO 20's fidelity, expressed against the derived flank
+    const M = Math.max(2, Math.round(SEG_PER_FLANK * (edge / flank)));  // samples per column half-arc
+    const pos = [], idx = [];
+    for (let c = 0; c < columns; c++) {
+      const centre = c * pitch;
+      const base0 = pos.length / 3;
+      for (let i = 0; i <= 2 * M; i++) {
+        const a = centre - edge + (i / (2 * M)) * 2 * edge;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        const top = colH * prof(a);
+        pos.push(ca * colInner, sa * colInner, 0);        // 0: inner floor
+        pos.push(ca * baseR, sa * baseR, 0);              // 1: outer floor
+        pos.push(ca * colInner, sa * colInner, top);      // 2: inner top
+        pos.push(ca * baseR, sa * baseR, top);            // 3: outer top
+      }
+      // A pillar's two ends are knife edges — the chamfer runs down to meet
+      // the base, so at the extreme ring the top vertices COINCIDE with the
+      // floor ones and any quad spanning that ring contributes one zero-area
+      // triangle. Those are exactly what this rebuild exists to remove, so
+      // each triangle is emitted only if its three vertices are distinct
+      // POSITIONS. The shape is unchanged; the degenerate slivers are not
+      // drawn, and the body still closes because the surfaces genuinely meet
+      // along that edge.
+      const same = (u, v) => Math.abs(pos[u * 3] - pos[v * 3]) < 1e-9
+        && Math.abs(pos[u * 3 + 1] - pos[v * 3 + 1]) < 1e-9
+        && Math.abs(pos[u * 3 + 2] - pos[v * 3 + 2]) < 1e-9;
+      const tri = (x, y, z) => { if (!same(x, y) && !same(y, z) && !same(x, z)) idx.push(x, y, z); };
+      for (let i = 0; i < 2 * M; i++) {
+        const b = base0 + i * 4, n = base0 + (i + 1) * 4;
+        tri(b + 2, n + 2, n + 3); tri(b + 2, n + 3, b + 3); // top surface
+        tri(b + 0, n + 0, n + 2); tri(b + 0, n + 2, b + 2); // inner wall
+        tri(b + 1, b + 3, n + 3); tri(b + 1, n + 3, n + 1); // outer wall
+        tri(b + 0, n + 1, n + 0); tri(b + 0, b + 1, n + 1); // floor, faces −z
+      }
     }
     const colGeo = new THREE.BufferGeometry();
     colGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -851,11 +897,15 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
   g.userData.profileAt = (a) => {
     let rel = ((a % pitch) + pitch) % pitch;             // distance past the nearest column centre
     if (rel > pitch / 2) rel = pitch - rel;              // fold to [0, pitch/2]
-    const edge = (duty * pitch) / 2;
     if (rel <= edge - flank) return 1;
     if (rel >= edge) return 0;
     return (edge - rel) / flank;
   };
+  // The derived profile's own numbers, exported so a caller (or a check) can
+  // quote them rather than re-deriving them and drifting.
+  g.userData.colDuty = duty;
+  g.userData.colFlank = flank;
+  g.userData.colFlatHalf = edge - flank;
   return g;
 }
 

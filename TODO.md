@@ -2392,7 +2392,7 @@ currently failing, which is the point. The fix has to add geometry, and the
 instrument gap has to be closed separately or the next instance will be just
 as invisible as this one.
 
-## 28. The column wheel: zero-thickness gaps, a ramp where a pillar should be, and a lock that animates instead of being lifted
+## 28. MOSTLY CLOSED — pillars, a derived profile, and a lock the column actually lifts
 
 Reported by eye ("the columns are zero thickness and the riders seem to have
 superficial state-change animations"), and both halves survive measurement —
@@ -2503,6 +2503,77 @@ the lock is what physically holds the alarm train.
 **Do not close this by re-tuning 0.18 or 0.085.** Both are the symptom.
 The wheel is currently a correct-looking silhouette with a ramp profile
 nothing designed and a lock that is posed from a boolean.
+
+### CLOSED — three of the four, each measured
+
+**1. Pillars, not a height field.** Each column is now its own closed solid
+spanning only its own arc; where there is no column there is no geometry, and
+a gap's floor is the base disc's top face. TODO 20's invariant is untouched —
+the top of every column still IS `colH · profileAt(θ)`, one function for the
+cut surface and the ridden law.
+
+Measured on the castellation mesh: **1224 triangles, 0 degenerate.** The
+zero-area strip between every pair of columns is gone. A pillar's two ends are
+knife edges where the chamfer meets the base, so a quad spanning the extreme
+ring would still contribute one zero-area sliver; those are dropped by a
+vertex-distinctness test rather than being drawn, which is why the count is a
+clean zero rather than "small".
+
+*(Two degenerate counts remain nearby and are NOT this item's: 8 in the base
+disc from `ringExtrude` and 6 in the ratchet skirt's `ExtrudeGeometry`. Both
+predate this work and neither is a zero-thickness region — they are
+triangulation slivers in otherwise solid bodies. Recorded so the next reader
+does not think this item missed them.)*
+
+**2. `duty` and `flank` are derived.** DUTY is forced: one actuation indexes
+the wheel HALF a pitch, so the two stable states are half a pitch apart, and a
+rider can only sit centred on a column in one and centred in a gap in the
+other if column and gap are equal. `duty = 0.5` and can be nothing else while
+the index is half a pitch — it was a bare literal describing a constraint.
+
+FLANK is now a CONSEQUENCE of the flat top, and the flat top is what a rider's
+nose needs to rest on: `flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR`, and
+the chamfer is whatever is left of the column's half-arc. The click's nose is
+the binding one (the largest of the riders) and is hoisted above the wheel
+build so the wheel cannot be cut before it exists.
+
+| | before (literal) | after (derived) |
+|---|---|---|
+| flat, total | 8.400° | **8.645°** |
+| flank, each | 10.800° | **10.678°** |
+
+The old numbers were within 0.12° of the derivation, which is why they looked
+right — they WERE right, and undeclared. That is the outcome rule 1 predicts:
+deriving a good guess mostly confirms it and takes away its ability to drift.
+
+**3. The column lifts the lock; a boolean used to.** The 0.08 s exponential
+ease on `alarmOn` is deleted, `alarmLockLiftT` is retired, and the lever's
+angle is now a pure function of where the castellations stand at its beak's
+azimuth — engaged on a column, lifted over a gap, and PARTLY lifted on the
+flank, riding the chamfer the way the §35 link beak already does. Measured
+across the parity: the lever swings **0.08500 rad**, and it swings *because
+the wheel turned*. The motion is still smooth: the easing belongs to the
+WHEEL, which is the thing that physically moves.
+
+### What keeps this MOSTLY closed — the lock's RETURN
+
+The linkage is now honest in one direction and still silent in the other. The
+column PUSHES the lever to engaged; nothing pulls it back when the gap
+arrives. §48's audit agrees — `Alarm lock` is still `restoredByNothing`, and
+its waiver in `RESTORING_WAIVERS` still cites this item.
+
+Closing it means modelling the return spring: a blade grounded to its own stud
+and bearing on the lever's arm, biasing it toward LIFTED so the column has
+something to work against — the construction `switchClickSpring` already uses
+two units away, and which §48's geometry guard will check by name. It was left
+out of this pass deliberately: it is new plate-top geometry with its own
+clearance consequences, and it is a cleaner change on its own than bolted to a
+profile rebuild.
+
+`ALARM_LOCK_LIFT = 0.085` is also still a chosen fraction of the collar's air
+rather than a derived travel. It should fall out of the pad's required
+clearance over the lever's length once the spring gives the lift a load path
+to be derived against.
 
 ## 29. MOSTLY CLOSED — §48's audit is wired in, the parity is swept, and the lock's debt is now VISIBLE
 
