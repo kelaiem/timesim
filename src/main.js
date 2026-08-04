@@ -9227,6 +9227,23 @@ const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * 1.15 * (ALARM_
 // root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
 // throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
 const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
+// TODO 20 — WHAT THE PAWL CARRIES, so the tick can turn the wheel BY ITS
+// PAWL instead of easing it toward a counter. The pusher translates along
+// −û with its pawl standing ALARM_PUSH_CHORD off the wheel's axis, and for
+// a line of action that offset IS the moment arm: a travel s about it turns
+// the wheel s/arm. The stroke must cover a whole tooth or the pawl runs out
+// of flank mid-index — asserted, because it is the constraint that made
+// this fix impossible until §68 and TODO 11 sized the wheel and derived the
+// throw (the old hand-set 0.7 carried 83% of a tooth).
+const ALARM_PAWL_ARM = Math.abs(ALARM_PUSH_CHORD);
+const ALARM_PAWL_SWEEP = ALARM_PUSH_TRAVEL / ALARM_PAWL_ARM;
+if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)
+  console.warn(`TODO 20: one press carries ${ALARM_PAWL_SWEEP.toFixed(4)} rad but the wheel indexes ${ALARM_COL_STEP.toFixed(4)} — the pawl cannot complete a tooth`);
+// A finger's press stroke. This is the ONLY rate left in the chain: the
+// wheel used to carry its own 0.10 s ease toward the counter, and with the
+// pawl driving there is nothing left to ease — the wheel goes exactly where
+// its pawl has pushed it. Human pusher presses run ~0.1–0.2 s.
+const ALARM_PRESS_S = 0.12;
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -9496,6 +9513,9 @@ let alarmPusherT = 0;    // §25 D: pusher press pulse — 1 at the actuation, s
 // pins the pulse down under the finger; the ACTUATION deliberately stays on
 // click, so dragging off still cancels, as any button should.
 let alarmPusherHeld = false;
+let alarmPusherStroke = false;  // TODO 20: a press is in flight — the tick drives the head in
+let alarmColHeldA = 0;          // TODO 20: where the click last ratcheted the wheel; the pawl carries it from here
+let alarmColLatched = false;    // TODO 20: this stroke's tooth is already banked — the pawl is retracting
 let jumpSnapIdx = null; // written by the quantize block; read by the sound block
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
@@ -12354,13 +12374,22 @@ window.addEventListener('keydown', () => {
 // does on the ratchet skirt — and `alarmOn` is ASSIGNED FROM the wheel's
 // parity in this one place, a readout everywhere else (odd = gap under the
 // beak = armed, §25 D's convention unchanged).
-function pressAlarmPusher() {
-  alarmColSteps += 1;
-  alarmPusherT = 1;
+// TODO 20 — the press is now an INPUT, not an assignment. It drives the
+// head in; the pawl carries the wheel; the click latches the tooth and only
+// THEN does the parity change. alarmColSteps became a readout of the wheel,
+// the way alarmOn is already a readout of the parity.
+function alarmParityLatched() {
   alarmOn = alarmColSteps % 2 === 1;
   const b = document.getElementById('btn-alarm');
   setBtnState(b, alarmOn);
   b.classList.toggle('active', alarmOn);
+}
+function pressAlarmPusher() {
+  // A finger cannot start a second press while the head is still down or
+  // springing back — and neither can the pawl re-engage before it has
+  // retracted over the next tooth's back.
+  if (alarmPusherStroke || alarmPusherT > 1e-6) return;
+  alarmPusherStroke = true;
 }
 // Convenience for callers that speak in the flag (UI, scripts, remote API,
 // saved state): press if — and only if — the wheel's parity disagrees.
@@ -16327,9 +16356,25 @@ function tick(t) {
     // order. (The strike section's brake block reads it later the same
     // tick; §29 step 5's one-tick-stale lesson, applied the third time.)
     {
-      const colTarget = alarmColSteps * ALARM_COL_STEP;
-      if (rawDt > 0) alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
-      else alarmColShownA = colTarget;
+      // TODO 20 — THE PAWL TURNS THE WHEEL. This was `colTarget = steps *
+      // STEP` eased at 0.10 s: the counter was the input and the wheel wore
+      // its answer, which is the last posed link the arming run had. Now the
+      // pawl's travel carries the wheel about its own moment arm, capped at
+      // one tooth because that is where the flank ends; when the tooth
+      // completes, the CLICK banks it and the parity changes as a
+      // consequence. Nothing here has a time constant — the only rate in the
+      // chain is how fast the finger presses.
+      const carried = alarmColLatched ? 0
+        : Math.min(ALARM_COL_STEP, (ALARM_PUSH_TRAVEL * alarmPusherT) / ALARM_PAWL_ARM);
+      alarmColShownA = alarmColHeldA + carried;
+      if (!alarmColLatched && carried >= ALARM_COL_STEP - 1e-9) {
+        alarmColLatched = true;          // the click has dropped behind this tooth
+        alarmColHeldA += ALARM_COL_STEP;
+        alarmColShownA = alarmColHeldA;
+        alarmColSteps += 1;              // a READOUT of the wheel now, not the driver
+        alarmParityLatched();
+      }
+      if (alarmPusherT <= 1e-6) alarmColLatched = false;  // head returned: the click re-arms on the next tooth
     }
     // A CAM FOLLOWER HAS NO DYNAMICS OF ITS OWN. Its position is a pure
     // function of the cam's angle, and the whole §35 chain — beak, rod,
@@ -16602,8 +16647,14 @@ function tick(t) {
     alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;
     // The pusher: presses IN with the actuation pulse and springs back — its
     // pawl rides the ratchet skirt through the same eased step.
-    if (alarmPusherHeld) alarmPusherT = 1;                       // §43: down under the finger
-    else if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
+    // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
+    // pawl nothing to carry the wheel through. Held or stroking, it advances
+    // at the finger's rate; released, it springs back as before. A zero-dt
+    // pose lands it exactly, so setPose stays deterministic.
+    if (alarmPusherHeld || alarmPusherStroke) {
+      alarmPusherT = rawDt > 0 ? Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S) : 1;
+      if (alarmPusherT >= 1) alarmPusherStroke = false;         // bottomed; the spring takes it back
+    } else if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived
@@ -17002,7 +17053,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmColHeldA = 0; alarmColLatched = false; alarmPusherStroke = false; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
     // §34 harvest (found by §31's battery, independent of its geometry):
     // the EXPLODE is a persistent user input that MOVES UNITS, restored
     // from saved UI state across reloads — a sweep on a session that left
@@ -17049,6 +17100,13 @@ window.__clock = {
       // pusher drives (setPose is exact, so no pusher pulse).
       if ((alarmColSteps % 2 === 1) !== !!p.alarmOn) alarmColSteps += 1;
       alarmOn = alarmColSteps % 2 === 1;
+      // TODO 20: the wheel is carried by its pawl now, so a pose must land
+      // the CLICK's station too — otherwise the next tick reads a held angle
+      // from before the pose and walks the wheel back. No stroke is in
+      // flight after a pose, by construction.
+      alarmColHeldA = alarmColSteps * ALARM_COL_STEP;
+      alarmColShownA = alarmColHeldA;
+      alarmPusherStroke = false; alarmColLatched = false; alarmPusherT = 0;
     }
     if (p.alarmBarrelWind !== undefined) alarmBarrelWind = p.alarmBarrelWind; // §24 alarm-spring energy
     // §25 striking axis. Phase and wind are ONE mechanical quantity — the
