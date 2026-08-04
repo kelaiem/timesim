@@ -2391,3 +2391,115 @@ how far proud, derived from real chain practice rather than chosen.
 currently failing, which is the point. The fix has to add geometry, and the
 instrument gap has to be closed separately or the next instance will be just
 as invisible as this one.
+
+## 28. The column wheel: zero-thickness gaps, a ramp where a pillar should be, and a lock that animates instead of being lifted
+
+Reported by eye ("the columns are zero thickness and the riders seem to have
+superficial state-change animations"), and both halves survive measurement —
+the first in a narrower and sharper form than reported, the second for the
+one rider that matters most.
+
+### The tier is a HEIGHT FIELD on one ring, not six pillars
+
+`makeColumnWheel` builds the castellations as a single ring whose top surface
+is `colH · profileAt(θ)`. That was TODO 20's fix and it was the right one:
+before it, the columns were bevel-less sector extrusions with vertical
+cliffs while `profileAt` returned a ramp, so the beak rode a surface nothing
+had cut. Mesh and law now come from one function. What the fix carried in
+with it is that the columns stopped being BODIES:
+
+- **In the gaps the ring has zero thickness.** `prof(a) = 0` there, so
+  `top = 0`, the inner and outer walls have zero height, and the floor
+  triangles are deliberately skipped — the builder's own comment says why:
+  "skipped in the gaps, where floor and top would coincide and z-fight the
+  base's own top face". So between every pair of columns the part is a
+  degenerate strip of zero area. That is the reported defect, exactly, and
+  it is in the source as an acknowledged consequence rather than a finding.
+- **A real column wheel has discrete pillars** standing on a base disc with
+  air between them, and the gap's floor IS the disc's top face. Here the
+  inner and outer walls run unbroken around the full circle at zero height.
+
+`stockFloor` gates "0 degenerate" and does not see this: the census measures
+a mesh's extents, not per-region collapse. Another instance of item 27's
+third blindness class — one mesh, judged whole.
+
+### The column is 72% ramp, from two undeviated literals
+
+Measured from the built profile at `ALARM_COL_COLUMNS` = 6:
+
+| | arc | at the outer radius |
+|---|---|---|
+| flat top | **8.40°** | 0.836 u |
+| each flank | 10.80° | 1.074 u |
+| raised total | 30.0° | — |
+
+So each column's raised arc is **21.6° of ramp against 8.4° of flat** — the
+flat top is narrower than either flank, and the column reads as a triangular
+ridge rather than a pillar with a plateau. A real chronograph column is a
+squared pillar whose sides are near-radial walls with a chamfer for the beak
+to climb, not a chamfer with a hint of pillar between.
+
+Both numbers are bare literals in `geometry.js` with nothing behind them:
+
+```js
+const duty = 0.5;             // column arc fraction of a pitch
+const flank = 0.18 * pitch;   // rise/fall arc — what the beak visibly climbs
+```
+
+Standing rule 1's exact failure case — numbers that are there because they
+looked right. The flank should derive from what the beak must climb (its
+nose radius and the lift it has to deliver over the wheel's step time), and
+the duty from the gate the beak has to hold; neither is a free parameter.
+
+### Three riders, three different levels of honesty — and the LOCK is the fiction
+
+Not all riders are animations. Sorted by how much the column actually does:
+
+1. **The §35 link beak — genuinely driven.** `noseDrop = colH · (1 − profile)`
+   and the arm's angle is `noseDrop / beakLen`, then forward through rod →
+   rim contact → roll → ring. A real geometric solve with no amplitude
+   constant anywhere. This is TODO 20's closed work and it is the template
+   the other two should meet.
+2. **The click arm — driven, with a derived amplitude.**
+   `ALARM_CLICK_BASE + ALARM_CLICK_SWING · colBlock`, where
+   `ALARM_CLICK_SWING = (ALARM_CLICK_OUT − ALARM_CLICK_SEAT) / ALARM_CLICK_L`
+   is a chord over a lever length. Acceptable: the profile drives it and the
+   scale is derived.
+3. **The lock lever — a tween on a FLAG, gated by the column.** This is the
+   defect:
+
+```js
+const liftTarget = alarmOn ? 1 : 0;
+alarmLockLiftT += (liftTarget - alarmLockLiftT) * (1 - Math.exp(-rawDt / 0.08));
+alarmLockLever.rotation.z = ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT * alarmLockLiftT * (1 - colBlock);
+```
+
+The column does not lift this lever. A boolean does, on an 0.08 s
+exponential ease, and the column's only role is to MULTIPLY the result by
+`(1 − colBlock)` — a veto, not a drive. The amplitude is
+`ALARM_LOCK_LIFT = 0.085` rad, commented "~0.4 of radial air at the collar
+when released": a fraction of the space available, not a lift the column
+height and the beak's lever ratio produce. Change `colH` and this lever's
+travel does not move.
+
+That is a simulation fiction in the README's precise sense — the part
+animates with no force path — and it is the rider that matters most, because
+the lock is what physically holds the alarm train.
+
+### What closing this looks like
+
+- **Pillars, not a height field.** Build the castellations as N discrete
+  bodies on the base disc so a gap is absence of matter rather than absence
+  of height, and the degenerate strip disappears with it. Keep TODO 20's
+  invariant — the ridden law and the cut surface stay one function — by
+  deriving each pillar's flank from `profileAt` rather than re-typing it.
+- **Derive `duty` and `flank`.** State the constraint in the comment: the
+  flank from the beak nose's climb, the duty from the gate the beak holds.
+- **Drive the lock from its beak**, as the §35 link beak already is: lever
+  angle from the contact height at the beak's own azimuth, so `ALARM_LOCK_LIFT`
+  and the 0.08 s ease both disappear. If a return spring is what closes it,
+  model the spring (§48's class) rather than easing a flag.
+
+**Do not close this by re-tuning 0.18 or 0.085.** Both are the symptom.
+The wheel is currently a correct-looking silhouette with a ramp profile
+nothing designed and a lock that is posed from a boolean.
