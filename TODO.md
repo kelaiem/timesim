@@ -70,6 +70,50 @@ that's its entry, not this one.)
   `stockFloor`'s "0 degenerate" gate does not see them (it measures a mesh's
   extents, not its triangles: [item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s third blindness class again). The fix
   belongs in the shared builders, so it would clear every consumer at once.
+- **FIXED — the column wheel's pillars were wound INSIDE-OUT.** Reported as
+  "missing surfaces on the columns", which is exactly what it looked like. NOT the
+  degenerate triangles above, and not the sliver guard that skips them: a
+  dropped zero-area triangle contributes no surface to miss. Every triangle
+  the pillar loop emitted was wound the wrong way round, so with the
+  material's default `side: FrontSide` the outward faces were culled and the
+  columns read as holes with their far inner walls showing through.
+
+  Measured by signed volume from the winding — positive for a body wound
+  CCW seen from outside, which is three.js's front-face convention:
+
+  | mesh of `makeColumnWheel` | tris | before | after |
+  |---|---|---|---|
+  | base disc (`ringExtrude`) | 776 | +70.44 | +70.44 |
+  | castellations (item 28's pillars) | 1224 | **−27.52** | **+27.52** |
+  | ratchet skirt (`ExtrudeGeometry`) | 116 | +31.20 | +31.20 |
+
+  Controls run in the same probe to fix the sign: `BoxGeometry(2,2,2)` →
+  +8.0000 exactly, `CylinderGeometry(1,1,2,24)` → +6.2117 against a true
+  6.283 (faceted). The wheel's other two meshes come from stock builders and
+  were always correct; only the hand-emitted pillars were reversed, and all
+  four of their surface families alike — one consistent orientation error,
+  not a mixed mesh. It confirms by hand: the top surface's
+  `tri(b+2, n+2, n+3)` had normal θ̂ × r̂ = −ẑ where a column's top must
+  face +z.
+
+  **Fixed** by reversing the triple inside `tri()` — one reversal is
+  provably uniform where eight quad re-orderings are eight chances to get
+  one wrong. Verified per surface family at the mesh, not by eye: the
+  plateau's 72 triangles all face +z, the floor's 312 all face −z, the inner
+  wall's 300 (r 3.610) all face inward and the outer wall's 300 (r 5.700)
+  all face outward. Magnitude is identical before and after because the
+  triangles are the same ones.
+
+  **The regression guard is local, because the battery has none.** No check
+  anywhere reads winding — which is exactly how this shipped, and why
+  positions being untouched (fingerprint and every clearance verdict
+  unchanged) was no protection. `makeColumnWheel` now computes the signed
+  volume at build time and `console.warn`s if it is not positive; each
+  pillar closes on its two knife edges, so the castellations are a union of
+  closed bodies and the test is exact rather than heuristic. The general
+  case is still open: this lives inside a single mesh ([item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s class),
+  and "is this body inside-out?" is a cheap closed-form row for the
+  roadmap's `meshIntegrity` instrument next to self-intersection.
 
 - **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
   showed ~all of it was ONE cost — unbounded closest-point queries against
@@ -1816,6 +1860,24 @@ drives it).
 `setPose` still lands the parity exactly and now lands the click's station
 with it — without that the next tick reads a held angle from before the pose
 and walks the wheel back.
+
+**Postscript, 2026-08-04 — the one time constant that survived this close.**
+"Nothing in the run carries a time constant of its own" was true of every
+member except the pusher's own return, which decayed
+`alarmPusherT *= Math.exp(-rawDt / 0.15)` — a rate derived from nothing, and,
+worse, an ASYMPTOTE. Two readers ask "is the head still off its seat?" by
+testing `alarmPusherT > 1e-6`: `pressAlarmPusher`, to refuse a second press,
+and the tick, to re-arm the click on the next tooth. Against an exponential
+that threshold is not a position, it is a TIMEOUT of `0.15·ln(1e6)` = 2.07 s.
+Measured on the shipped tree, a second press landed at a 2.0 s gap and was
+swallowed at every gap ≤ 1.5 s — with the head sitting visibly home and no
+feedback of any kind. That was the whole of "the alarm pusher doesn't work
+consistently". The return is now a SETTLING TIME derived from the stroke it
+undoes — `ALARM_RETURN_S = ALARM_PRESS_S`, an unloaded return spring being at
+least as fast as a deliberate press — decaying linearly and clamping ON zero,
+so the threshold means what it reads. Measured after: both presses land at a
+0.24 s gap (stroke + return, as designed) and the second is refused below it.
+The only rate left in the run is now genuinely how fast a finger presses.
 
 **What is NOT claimed.** This is a kinematic chain, not a dynamic one: no
 force, friction or spring rate appears anywhere in it, and the pawl "carries"
