@@ -2288,3 +2288,106 @@ is correctly placed for the dial it was given. The dial is the defect.
 Filed rather than fixed because step 2 is the whole dial side, and doing
 it under a §76 balance-growth banner would bury an architectural change
 inside a layout experiment. §76's wall one now cites this item.
+
+## 27. Fasteners are modelled; the openings and heads they need are not
+
+Three sites, one cause: the movement draws a fastener where a fastener
+goes, and never cuts the feature the fastener needs to be there. Found by
+reading, confirmed by measurement, and filed together because the fix is one
+idea applied three times — **the opening is part of the fastener, not
+scenery around it.** The jewel settings already do it right and are the
+worked precedent: `tqHoles` opens each pivot right through at the
+counterbore diameter and the bearing collar is put back under the
+counterbore's floor, so the recess a chaton sits in is genuinely cut.
+
+**1. Screw seats are not bored — the head is drawn inside solid stock.**
+Measured, every screw in the movement, by raycasting each head's axis
+against its own unit:
+
+| site | head reaches INTO solid host | bore cut for it |
+|---|---|---|
+| Three-quarter plate ×4 | **0.317** (of a 0.800 plate — 40%) | none |
+| Balance cock ×8 | 0.048 | none |
+| Fork cock ×1 | 0.048 | none |
+
+`tqHoles` is fully enumerated at the plate build: one bore per upper pivot
+plus the §35 selector-rod bore. Pillar/screw seats appear in neither
+`tqHoles` nor `tqSlots`, and `makeScrews` only builds two merged meshes — it
+cuts nothing. §20 records the plate screws as "head FLUSH with the face" and
+verified the position ("plate 4 heads flush at z 8.508 against the 8.51
+face"); flush was achieved by PLACEMENT, with nothing cut for the head to be
+flush *in*. The cock and bridge screws at 0.048 are the milder version:
+essentially proud, with a hair of overlap.
+
+**A stale claim goes with it.** `makeThreeQuarterPlate`'s docstring says its
+holes are "(barrel/drum, pivot bores, **pillar seats**)". Pillar seats are
+named there and have never been passed. Fix the code or the sentence; do not
+leave a comment describing an intent the builder does not implement.
+
+**2. The chain's rivet holes are not cut either.** `chainPlatePairTemplate`
+builds each link plate as a stadium from two `absarc` calls and extrudes it;
+`shape.holes` is never populated. The comment on that very line reads
+`// stadium: rivet-hole centres at ±half` — it names the holes in order to
+locate them, and cuts none. Every `CHAIN_PIN_R` = 0.27 pin therefore passes
+through solid plate, at all 211 joints of the shipped chain.
+
+**3. The chain's rivets are flush-cut, where a real rivet is upset.**
+Derived from the stock constants, exactly, because `CHAIN_PIN_LEN` IS the
+joint's stack height by definition and the plate offsets are derived
+backwards from it:
+
+```
+pin spans          −0.3300 .. +0.3300     (CHAIN_PIN_LEN = 0.66)
+outer plate spans   0.1850 ..  0.3300     (CHAIN_PLATE_T = 0.145)
+RIVET PROUD PER END = 0.000000
+```
+
+Not approximately flush — the pin end and the outer plate face are the same
+plane. A real fusee-chain rivet is upset over the outer plate and stands
+proud of it, or is seated in a countersink; a cylinder cut off level with
+its plate is the one form that needs no riveting at all. The build says
+"the pins run flush to the outer faces, their ends READING AS rivet heads",
+which is honest about what was drawn — it claims appearance, not
+construction — but it is declared only in a source comment, and nothing
+asserts it.
+
+### Why no instrument has ever seen any of this
+
+Each site is invisible for its own reason, and the second one is the finding
+worth keeping:
+
+- **Screws**: a screw and its host are the same labelled unit, so both are
+  FIXTURES. That is item 5's explicitly named residue — "still invisible:
+  fixture-vs-fixture" — and `intraUnit` only checks movers against fixtures.
+  A 0.317 interpenetration sits under a green battery because no check looks
+  at that pair.
+- **The chain**: worse, and OUTSIDE the map rather than in a named blind
+  spot. The whole chain is ONE merged `BufferGeometry`, so the pin and the
+  plate it pierces are not separate meshes at all. Nothing in the battery
+  examines self-intersection WITHIN a single mesh. Items 5 and 6 catalogue
+  blindness between units and between meshes of a unit; this is a third
+  class — blindness *inside* a mesh — and it is not written down anywhere
+  else. **That gap is arguably the more valuable half of this item**: it is
+  a whole category of geometry the instruments structurally cannot judge,
+  and merged buffers are used wherever draw calls matter (§20's own screw
+  merge, §41's crown).
+
+### What closing this looks like
+
+Rows 1 and 2 are the same edit twice: pass the seats as holes. The plate's
+screw seats join `tqHoles` (they are already solved — `pillarSeats` — and
+§62's `seatClearance` already reads the windows, so the ordering exists),
+and the link plate's stadium gains two `shape.holes` at the rivet centres it
+already names. Both want the counterbore convention the chatons use: cut
+through at the head diameter, put the bearing land back underneath, so the
+recess has a floor rather than being a bare hole.
+
+Row 3 is a shape change, not an opening: the pin gains an upset head at each
+end — a short flare proud of the outer face — or the outer plate gains a
+countersink and the pin a matching taper. Either way the number to state is
+how far proud, derived from real chain practice rather than chosen.
+
+**Do not close this by widening a clearance or waiving a row** — nothing is
+currently failing, which is the point. The fix has to add geometry, and the
+instrument gap has to be closed separately or the next instance will be just
+as invisible as this one.
