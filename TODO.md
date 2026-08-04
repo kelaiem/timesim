@@ -2503,3 +2503,120 @@ the lock is what physically holds the alarm train.
 **Do not close this by re-tuning 0.18 or 0.085.** Both are the symptom.
 The wheel is currently a correct-looking silhouette with a ramp profile
 nothing designed and a lock that is posed from a boolean.
+
+## 29. §48's no-spring audit is not wired in — and the alarm lock is invisible to it twice over
+
+The instrument that exists to catch "a part that reciprocates with nothing
+restoring it" cannot be reached by the battery, and the part item 28 filed
+as the movement's clearest instance of exactly that would not appear in it
+even if it could.
+
+**It is not registered, so nothing can run it.** `auditOscillators` is
+`export`ed from `inspect.js` and is absent from the `CHECKS` registry, so
+`start(clock, 'oscillators')` answers `unknown check`. `tools/ci-battery.mjs`
+never names it either. The only way to run §48's audit today is to import
+the module and call the function by hand — which is how the numbers below
+were obtained.
+
+**Run by hand it is HEALTHY, which is why nobody noticed.** Measured on the
+shipped build: control **PASS** ("the pallet fork is classified two-way
+driven"), population **18** units that reverse, **0** restored-by-nothing,
+0 malformed, 0 stale, 12 two-way and 6 restored by a declared element. A
+clean report from an instrument nothing runs is the worst of both worlds:
+it looks like coverage and is not.
+
+**The alarm lock is missing from that population, for two separate reasons,
+and either alone would hide it:**
+
+1. **Nothing is declared.** Neither `Alarm lock` nor `Alarm switch` has a
+   `declareRestoring` entry — grep returns zero for both. Eighteen other
+   units have one.
+2. **No axis moves it.** The audit's population comes from the §36
+   registry's `reversed` flag, which is measured over `AXES`. Every axis
+   that touches the alarm pins the parity: `alarm` poses
+   `alarmOn: 1` for its whole sweep, and **no axis anywhere varies
+   `alarmOn`** (0 matches for a swept parity across the whole table). The
+   lock lever's lift is `ALARM_LOCK_LIFT · alarmLockLiftT · (1 − colBlock)`
+   with `alarmLockLiftT` tracking `alarmOn ? 1 : 0`, so across every sweep
+   it is CONSTANT — armed on the alarm axis, released everywhere else. A
+   part that never changes never reverses, and a part that never reverses is
+   never asked what restores it.
+
+So item 28's finding — the lock is posed from a boolean rather than lifted
+by its column — is not merely unasserted; it is outside the reach of the one
+check designed to assert it. That is the same shape as items 5, 6 and 27:
+the defect is not hidden by subtlety, it is hidden by the instrument's
+population.
+
+**`lowCorridor` is in the same position, less severely.** It IS in `CHECKS`
+(so it can be run) but is absent from `tools/ci-battery.mjs`, so CI never
+runs it either. Worth confirming against §36's own claim that it is a
+battery check — one of the two is out of date.
+
+### What closing this looks like
+
+- Register `auditOscillators` in `CHECKS` and add it to the battery. §48's
+  own rule is that it is a REPORT, not a gate ("`ok` is always true; the rows
+  are the product") — so gate the thing that can be gated: **0
+  restoredByNothing, 0 malformed, 0 stale**, with the control asserted PASS.
+  A control that silently stops passing is how this class of check dies.
+- Add an **alarm-parity pose axis** so the toggle is swept rather than
+  pinned, and the lock, the click and the §35 link beak all reverse under it.
+  Note the CLAUDE.md trap: `setPose` ticks with zero dt, so the lock's
+  0.08 s ease cannot run under a pose sweep — the tick already snaps
+  `alarmLockLiftT` to its target when `rawDt` is 0, which is what makes a
+  parity axis viable at all. Confirm that before relying on it.
+- Give `Alarm lock` and `Alarm switch` their `declareRestoring` entries —
+  honestly. If the lock's return is a spring, the spring has to be in the
+  scene (§48's geometry-only guard checks the named mesh exists); if it is
+  driven both ways by the column, it is `two-way` and item 28's rebuild is
+  what makes that true.
+
+Closing this and item 28 together is the cheaper order: the axis and the
+declaration make the lock's defect FAIL, and then the rebuild fixes it
+against a check that can see it.
+
+## 30. §76's walls two and three exist only as roadmap prose
+
+The balance-growth entry (§76, roadmap) records three walls. Wall one is
+down — [item 26](#26-mostly-closed--the-dial-is-a-plate-now-the-works-stand-behind-it) took it down when the dial gained real thickness, and a
+balance at R 11 now boots silent. The other two are real, measured, and
+written down **only inside a roadmap entry in another repository**, where
+nobody reading `TODO.md` will find them and no instrument covers them.
+Filed here so they are visible to the repo whose geometry they constrain.
+
+**Wall two — the alarm winding stations do not derive from the plate they
+sit on.** `plateR` takes the balance's outline as `balanceR × 1.35`, so
+growing the balance grows the plate: at R 12 it goes 42.92 → 45.36
+(movement Ø 32.5 → 34.4 mm) and the alarm winding chain, stationed against
+the rim at radii that were correct for one plate size, stops meshing —
+idler 1 ⇄ idler 2 centre distance 15.541 against a pitch-circle sum of
+15.300, idler 2 ⇄ barrel 14.509 against 14.250, plus `alarm setting i2
+fouls the winding climb: clearance −0.25`. TODO 15's asserts catch it, which
+is the system working; the defect is that the stations are placed rather
+than derived. **This is standing rule 1 at station scale** and it is worth
+fixing whether or not the balance ever grows.
+
+**Wall three — the fork cock's seat search gives up instead of reporting.**
+At R 13 the boot FAILS outright: `fork cock: no clear footing for its leg`,
+followed by a null dereference downstream. The scan looks for a landing
+clear of the balance's swept radius and the plate's cut, and past R 12 no
+seat survives. Two separate defects in one line: the search has no fallback,
+and its failure mode is a crash rather than a diagnosis. **A solver that
+cannot find an answer should report its best near-miss with numbers** — the
+pillar seat scan's `no seat found near` warn is the precedent in this same
+file, and it does not take the boot down with it.
+
+**Neither has been re-measured since the dial changed.** Every number above
+predates item 26, and this entry's own history is that walls fall to changes
+made for other reasons — three times so far in §76. Re-measure before
+planning against either.
+
+### Why these are TODO rows and not just roadmap prose
+
+Wall two is a placed-not-derived station set: rule 1, in the shipped build,
+today, at the current balance size. Wall three is a solver that crashes
+instead of reporting: a defect in an instrument, not a layout preference.
+Both are honesty debt in what exists — they would be worth closing if §76
+were abandoned tomorrow, which is the test for belonging here rather than
+in the roadmap.
