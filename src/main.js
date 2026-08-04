@@ -8282,6 +8282,17 @@ declareRestoring('Alarm disc', 'two-way',
 declareRestoring('Alarm hammer', 'spring',
   'alarmHammerAngle() falls as cos(ALARM_HAMMER_W t) with decay — a spring-and-inertia law; the blade is grounded to its own stud and bears on the tail (TODO 14)',
   'alarmHammerSpring');
+// TODO 29 — the parity axis made these three RECIPROCATE for the first time.
+// None of them is new geometry; what is new is that a sweep finally moves
+// them, so the §48 audit can ask the question it exists to ask. Each answer
+// below is the mechanism that was already there, now stated.
+declareRestoring('Alarm switch', 'spring',
+  'the click arm is held to the castellations by its own blade — a real flat spring, grounded to its stud and bearing on the arm (TODO 11 sized it to flat-spring stock)',
+  'switchClickSpring');
+declareRestoring('Alarm link', 'two-way',
+  'TODO 20 second pass: the centre pin rides the drive tab\'s GROOVE at its ±0.01 working clearance, so the chain is pushed and pulled — which is exactly what retired the phantom bias spring the first build needed');
+declareRestoring('Alarm selector', 'two-way',
+  'driven both ways by the link\'s centre pin in the forked tab (the same TODO 20 solve); the ring has no bias spring because it needs none');
 declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_RAD, +ALARM_DRAW_RAD]');
 // Where the tail rests. Measured out from the pivot⇄wheel bearing: the larger
 // this is, the further the nose sits from the wheel's centre and the bigger
@@ -8889,7 +8900,14 @@ const ALARM_COL_POS = {
   nose.position.set(-(noseFaceReach - noseLen / 2), 0, noseZ);
   alarmLockLever.add(nose);
 }
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier)
+// The rounded nose every rider presents to the castellations. HOISTED here
+// from the click block below because TODO 28 made the column's flat top a
+// consequence of it: half the flat must clear the nose's own radius plus the
+// margin, so the wheel cannot be cut before the nose is known. The click's
+// nose is the one that matters — it is the largest of the riders and so the
+// binding one.
+const ALARM_CLICK_NOSE_R = 0.28;
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel, riderNoseR: ALARM_CLICK_NOSE_R }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier); TODO 28: the nose sets the flat top
 alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
 const alarmColSpin = new THREE.Group();
 alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + ALARM_COL_SPIN_REL);
@@ -8927,7 +8945,8 @@ const ALARM_CLICK_AZ = ALARM_LOCK_ENGAGED + 2 * (Math.PI * 2 / ALARM_COL_COLUMNS
 // visibly drops INTO a gap (nose centre 1.30 from the axis) and rides OUT
 // onto a column's outer face (1.5 + nose radius = 1.78). The first build's
 // radial arm rocked the nose sideways along the ring — and buried it in it.
-const ALARM_CLICK_NOSE_R = 0.28;
+// (ALARM_CLICK_NOSE_R is hoisted above the wheel build — TODO 28 derives the
+// castellation's flat top from it, so the wheel cannot be cut before it exists.)
 // pivot post (r 0.28) fully clear of the saw tips: L = sqrt((tip + post + margin)² − seat²), held at a floor of 2.0
 const ALARM_CLICK_L = Math.max(2.0, Math.sqrt(
   (1.12 * ALARM_COL_BASE_R + 0.28 + CLEAR_MARGIN) ** 2 - (ALARM_COL_BASE_R * (1.30 / 1.5)) ** 2));
@@ -10042,7 +10061,6 @@ let alarmPrevCentred = null;   // TODO 8 step-over guard: last tick's signed ang
 let alarmStepOverWarned = false; // warn once — a design-margin signal, not a per-tick log
 let discRotForTrip = 0;        // the disc angle the trip read this tick, shared with the guard
 let alarmDropSpent = false; // §29 step 5: one-shot latch — the pin's current drop has already fired its release (re-arms when the pin lifts off the notch)
-let alarmLockLiftT = 0;  // §25 B: eased brake-lever lift (1 = released, pad clear of the collar)
 let alarmColSteps = 0;   // §25 D: column-wheel actuations — parity IS the on/off (odd = gap under the beak = ON)
 let alarmColShownA = 0;  // eased wheel angle (transient; the pose path assigns exactly)
 let alarmPusherT = 0;    // §25 D: pusher press pulse — 1 at the actuation, spring-back decay
@@ -17225,13 +17243,21 @@ function tick(t) {
     // two holds, each real, each with its own master, as in actual alarm
     // calibers. After run-down the lock stays lifted (still armed) and the
     // re-seated pawl holds the parked train.
-    const liftTarget = alarmOn ? 1 : 0;
-    if (rawDt > 0) {
-      alarmLockLiftT += (liftTarget - alarmLockLiftT) * (1 - Math.exp(-rawDt / 0.08));
-    } else {
-      alarmLockLiftT = liftTarget;
-    }
-    alarmLockLever.rotation.z = ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT * alarmLockLiftT * (1 - colBlock);
+    // TODO 28 — THE COLUMN LIFTS THIS LEVER; A BOOLEAN USED TO. The lift was
+    // an 0.08 s exponential ease on `alarmOn`, MULTIPLIED by (1 − colBlock):
+    // the column's only role was to veto a tween, so the lever's travel was a
+    // chosen amplitude on a flag and changing colH moved it not at all. That
+    // is a simulation fiction in the README's sense — the part animated with
+    // no force path — and it was the rider that matters most, the hold on the
+    // alarm train.
+    //
+    // Now the lever's angle is a pure function of where the castellations
+    // stand at its beak's azimuth: fully engaged on a column, fully lifted
+    // over a gap, and PARTLY lifted on the flank, riding the chamfer the way
+    // the §35 link beak already does. The motion stays smooth because the
+    // WHEEL eases to its stepped angle — the easing is the wheel's, which is
+    // the thing that physically moves, rather than the lever's own.
+    alarmLockLever.rotation.z = ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT * (1 - colBlock);
     // The click rocks with the SAME ridden profile (its contact sits whole
     // pitches from the beak's): out on a column, dropped into a gap — the
     // visible flip on every actuation, mid-flank included.
@@ -17650,7 +17676,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmColHeldA = 0; alarmColLatched = false; alarmPusherStroke = false; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmColSteps = 0; alarmColShownA = 0; alarmColHeldA = 0; alarmColLatched = false; alarmPusherStroke = false; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
     // §34 harvest (found by §31's battery, independent of its geometry):
     // the EXPLODE is a persistent user input that MOVES UNITS, restored
     // from saved UI state across reloads — a sweep on a session that left

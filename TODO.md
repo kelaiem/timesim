@@ -59,6 +59,18 @@ that's its entry, not this one.)
   rotates up under the rim. Trivial with the see-saw crank (the released pose
   IS the drop-clear pose), but worth a comment in the code so the constraint
   isn't lost.
+- **Degenerate triangles in two of the column wheel's three meshes.** Found
+  while measuring item 28's pillar rebuild, and NOT caused by it: the base
+  disc carries **8** zero-area triangles out of 776 (from `ringExtrude`) and
+  the ratchet skirt **6** out of 116 (from its saw-outline `ExtrudeGeometry`).
+  The rebuilt castellations measure 1224 triangles and **0** degenerate, which
+  is what makes the other two stand out. Neither is a zero-thickness REGION —
+  both are triangulation slivers inside otherwise solid bodies, so nothing
+  reads as sheet — but they are geometry a mesh should not carry, and
+  `stockFloor`'s "0 degenerate" gate does not see them (it measures a mesh's
+  extents, not its triangles: [item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s third blindness class again). The fix
+  belongs in the shared builders, so it would clear every consumer at once.
+
 - **Sweep runtime.** Post-restride the clearance sweep hit ~355 s; profiling
   showed ~all of it was ONE cost — unbounded closest-point queries against
   the plate's ~21k-triangle extrusion (180 ms/query, 6 of 13 budgets). Now
@@ -2372,6 +2384,14 @@ worth keeping:
   and merged buffers are used wherever draw calls matter (§20's own screw
   merge, §41's crown).
 
+  **The instrument for it is filed as roadmap §77** — as a capability, not
+  here, on the §36/§40 precedent: this file names a blindness, the roadmap
+  builds the check that ends it, exactly as item 7 named pose-sampling and
+  §36 built the swept registry. Three instances seed it (this item's rivets,
+  item 28's rebuilt gaps as the regression case, item 4's degenerate
+  builders), and it must FIRE on the rivets on arrival or the check is
+  wrong.
+
 ### What closing this looks like
 
 Rows 1 and 2 are the same edit twice: pass the seats as holes. The plate's
@@ -2392,7 +2412,7 @@ currently failing, which is the point. The fix has to add geometry, and the
 instrument gap has to be closed separately or the next instance will be just
 as invisible as this one.
 
-## 28. The column wheel: zero-thickness gaps, a ramp where a pillar should be, and a lock that animates instead of being lifted
+## 28. MOSTLY CLOSED — pillars, a derived profile, and a lock the column actually lifts
 
 Reported by eye ("the columns are zero thickness and the riders seem to have
 superficial state-change animations"), and both halves survive measurement —
@@ -2503,3 +2523,294 @@ the lock is what physically holds the alarm train.
 **Do not close this by re-tuning 0.18 or 0.085.** Both are the symptom.
 The wheel is currently a correct-looking silhouette with a ramp profile
 nothing designed and a lock that is posed from a boolean.
+
+### CLOSED — three of the four, each measured
+
+**1. Pillars, not a height field.** Each column is now its own closed solid
+spanning only its own arc; where there is no column there is no geometry, and
+a gap's floor is the base disc's top face. TODO 20's invariant is untouched —
+the top of every column still IS `colH · profileAt(θ)`, one function for the
+cut surface and the ridden law.
+
+Measured on the castellation mesh: **1224 triangles, 0 degenerate.** The
+zero-area strip between every pair of columns is gone. A pillar's two ends are
+knife edges where the chamfer meets the base, so a quad spanning the extreme
+ring would still contribute one zero-area sliver; those are dropped by a
+vertex-distinctness test rather than being drawn, which is why the count is a
+clean zero rather than "small".
+
+*(Two degenerate counts remain nearby and are NOT this item's: 8 in the base
+disc from `ringExtrude` and 6 in the ratchet skirt's `ExtrudeGeometry`. Both
+predate this work and neither is a zero-thickness region — they are
+triangulation slivers in otherwise solid bodies. Recorded so the next reader
+does not think this item missed them.)*
+
+**2. `duty` and `flank` are derived.** DUTY is forced: one actuation indexes
+the wheel HALF a pitch, so the two stable states are half a pitch apart, and a
+rider can only sit centred on a column in one and centred in a gap in the
+other if column and gap are equal. `duty = 0.5` and can be nothing else while
+the index is half a pitch — it was a bare literal describing a constraint.
+
+FLANK is now a CONSEQUENCE of the flat top, and the flat top is what a rider's
+nose needs to rest on: `flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR`, and
+the chamfer is whatever is left of the column's half-arc. The click's nose is
+the binding one (the largest of the riders) and is hoisted above the wheel
+build so the wheel cannot be cut before it exists.
+
+| | before (literal) | after (derived) |
+|---|---|---|
+| flat, total | 8.400° | **8.645°** |
+| flank, each | 10.800° | **10.678°** |
+
+The old numbers were within 0.12° of the derivation, which is why they looked
+right — they WERE right, and undeclared. That is the outcome rule 1 predicts:
+deriving a good guess mostly confirms it and takes away its ability to drift.
+
+**3. The column lifts the lock; a boolean used to.** The 0.08 s exponential
+ease on `alarmOn` is deleted, `alarmLockLiftT` is retired, and the lever's
+angle is now a pure function of where the castellations stand at its beak's
+azimuth — engaged on a column, lifted over a gap, and PARTLY lifted on the
+flank, riding the chamfer the way the §35 link beak already does. Measured
+across the parity: the lever swings **0.08500 rad**, and it swings *because
+the wheel turned*. The motion is still smooth: the easing belongs to the
+WHEEL, which is the thing that physically moves.
+
+### What keeps this MOSTLY closed — the lock's RETURN
+
+The linkage is now honest in one direction and still silent in the other. The
+column PUSHES the lever to engaged; nothing pulls it back when the gap
+arrives. §48's audit agrees — `Alarm lock` is still `restoredByNothing`, and
+its waiver in `RESTORING_WAIVERS` still cites this item.
+
+Closing it means modelling the return spring: a blade grounded to its own stud
+and bearing on the lever's arm, biasing it toward LIFTED so the column has
+something to work against — the construction `switchClickSpring` already uses
+two units away, and which §48's geometry guard will check by name. It was left
+out of this pass deliberately: it is new plate-top geometry with its own
+clearance consequences, and it is a cleaner change on its own than bolted to a
+profile rebuild.
+
+`ALARM_LOCK_LIFT = 0.085` is also still a chosen fraction of the collar's air
+rather than a derived travel. It should fall out of the pad's required
+clearance over the lever's length once the spring gives the lift a load path
+to be derived against.
+
+## 29. MOSTLY CLOSED — §48's audit is wired in, the parity is swept, and the lock's debt is now VISIBLE
+
+The instrument that exists to catch "a part that reciprocates with nothing
+restoring it" cannot be reached by the battery, and the part item 28 filed
+as the movement's clearest instance of exactly that would not appear in it
+even if it could.
+
+**It is not registered, so nothing can run it.** `auditOscillators` is
+`export`ed from `inspect.js` and is absent from the `CHECKS` registry, so
+`start(clock, 'oscillators')` answers `unknown check`. `tools/ci-battery.mjs`
+never names it either. The only way to run §48's audit today is to import
+the module and call the function by hand — which is how the numbers below
+were obtained.
+
+**Run by hand it is HEALTHY, which is why nobody noticed.** Measured on the
+shipped build: control **PASS** ("the pallet fork is classified two-way
+driven"), population **18** units that reverse, **0** restored-by-nothing,
+0 malformed, 0 stale, 12 two-way and 6 restored by a declared element. A
+clean report from an instrument nothing runs is the worst of both worlds:
+it looks like coverage and is not.
+
+**The alarm lock is missing from that population, for two separate reasons,
+and either alone would hide it:**
+
+1. **Nothing is declared.** Neither `Alarm lock` nor `Alarm switch` has a
+   `declareRestoring` entry — grep returns zero for both. Eighteen other
+   units have one.
+2. **No axis moves it.** The audit's population comes from the §36
+   registry's `reversed` flag, which is measured over `AXES`. Every axis
+   that touches the alarm pins the parity: `alarm` poses
+   `alarmOn: 1` for its whole sweep, and **no axis anywhere varies
+   `alarmOn`** (0 matches for a swept parity across the whole table). The
+   lock lever's lift is `ALARM_LOCK_LIFT · alarmLockLiftT · (1 − colBlock)`
+   with `alarmLockLiftT` tracking `alarmOn ? 1 : 0`, so across every sweep
+   it is CONSTANT — armed on the alarm axis, released everywhere else. A
+   part that never changes never reverses, and a part that never reverses is
+   never asked what restores it.
+
+So item 28's finding — the lock is posed from a boolean rather than lifted
+by its column — is not merely unasserted; it is outside the reach of the one
+check designed to assert it. That is the same shape as items 5, 6 and 27:
+the defect is not hidden by subtlety, it is hidden by the instrument's
+population.
+
+**`lowCorridor` is in the same position, less severely.** It IS in `CHECKS`
+(so it can be run) but is absent from `tools/ci-battery.mjs`, so CI never
+runs it either. Worth confirming against §36's own claim that it is a
+battery check — one of the two is out of date.
+
+### What closing this looks like
+
+- Register `auditOscillators` in `CHECKS` and add it to the battery. §48's
+  own rule is that it is a REPORT, not a gate ("`ok` is always true; the rows
+  are the product") — so gate the thing that can be gated: **0
+  restoredByNothing, 0 malformed, 0 stale**, with the control asserted PASS.
+  A control that silently stops passing is how this class of check dies.
+- Add an **alarm-parity pose axis** so the toggle is swept rather than
+  pinned, and the lock, the click and the §35 link beak all reverse under it.
+  Note the CLAUDE.md trap: `setPose` ticks with zero dt, so the lock's
+  0.08 s ease cannot run under a pose sweep — the tick already snaps
+  `alarmLockLiftT` to its target when `rawDt` is 0, which is what makes a
+  parity axis viable at all. Confirm that before relying on it.
+- Give `Alarm lock` and `Alarm switch` their `declareRestoring` entries —
+  honestly. If the lock's return is a spring, the spring has to be in the
+  scene (§48's geometry-only guard checks the named mesh exists); if it is
+  driven both ways by the column, it is `two-way` and item 28's rebuild is
+  what makes that true.
+
+Closing this and item 28 together is the cheaper order: the axis and the
+declaration make the lock's defect FAIL, and then the rebuild fixes it
+against a check that can see it.
+
+### CLOSED, and what each step actually found
+
+**The check is registered and gated.** `auditOscillators` is in `CHECKS` as
+`restoring` — named for what it checks, and deliberately NOT `oscillators`,
+which is one character from TODO 25's `oscillator` and asks a different
+question. `tools/ci-battery.mjs` gates it at **0 unwaived, 0 malformed,
+0 stale, control PASS**, and CLAUDE.md's rule 4 lists it. §48's rule that the
+audit is a REPORT is kept intact: `ok` is still always true, and the gate
+holds only the part that can be held.
+
+**The parity is swept.** A new `alarmToggle` axis runs RELEASED → ARMED →
+RELEASED. One step would not do: the registry calls a volume reversed when
+successive steps change sign, so a monotonic 0→1 sweeps the same volume as a
+part that only ever moves one way. `setPose` writes the PARITY rather than
+just the flag, so the axis turns the column wheel and everything it drives.
+
+**What the axis surfaced, measured: population 18 → 23.** Five units
+reciprocated for the first time. Four resolved to mechanisms that were
+already there and had simply never been asked:
+
+| unit | answer | why |
+|---|---|---|
+| Alarm switch | `spring` | the click arm's own blade, `switchClickSpring` — a real mesh, which §48's geometry guard checks |
+| Alarm link | `two-way` | TODO 20's forked tab drives the chain both ways; this is the very thing that retired its phantom bias spring |
+| Alarm selector | `two-way` | same solve — the centre pin in the groove pushes and pulls the ring |
+| **Alarm lock** | **WAIVED, TODO 28** | restored by nothing, because nothing restores it |
+
+The lock is the point. Its debt is now a row in a gated check citing the
+item that fixes it, rather than a sentence in a file. **Do not green it by
+declaring a spring** — the audit's geometry guard would demand the mesh, and
+inventing one is the exact dishonesty §48 exists to catch. Item 28's rebuild
+is what deletes this waiver.
+
+### What keeps this MOSTLY closed — the Dial row
+
+The fifth unit is unresolved and waived under this item. Of the 23 reversing
+volumes the axis attributes to `Dial`, **22 are also claimed by a nearer unit**
+(Alarm disc, Alarm selector, Alarm release feeler, Power reserve) and are
+correctly deduped away. **One is not**: an unnamed `ExtrudeGeometry` that no
+nearer unit claims. It is either a real dial-side part with no return, or the
+nesting artifact the audit's own dedupe comment calls a FALSE finding — and
+which of those it is cannot be decided without naming the mesh.
+
+Naming it IS the fix, and §54 already wrote the rule this breaks: a row that
+cannot name its member is not actionable. Closing this item means giving that
+mesh a name at its build, re-running `restoring`, and then either declaring
+its restoring element or deleting the `Dial` waiver as the artifact it turns
+out to be.
+
+### The general lesson, worth more than the fix
+
+**The audit's population is whatever the axes move.** A part with its own
+input that no axis exercises is not judged clean — it is not judged. Before
+this item, the alarm parity was pinned at 1 by the `alarm` axis and at 0
+everywhere else, so the movement's clearest no-spring case sat outside a
+healthy-looking instrument for its whole life. That is the same shape as
+items 5, 6 and 27: the defect was hidden by the instrument's population, not
+by any subtlety in the geometry. Rule 4 now says so where someone adding a
+mechanism will read it.
+
+## 30. §76's walls two and three exist only as roadmap prose
+
+The balance-growth entry (§76, roadmap) records three walls. Wall one is
+down — [item 26](#26-mostly-closed--the-dial-is-a-plate-now-the-works-stand-behind-it) took it down when the dial gained real thickness, and a
+balance at R 11 now boots silent. The other two are real, measured, and
+written down **only inside a roadmap entry in another repository**, where
+nobody reading `TODO.md` will find them and no instrument covers them.
+Filed here so they are visible to the repo whose geometry they constrain.
+
+**Wall two — the alarm winding stations do not derive from the plate they
+sit on.** `plateR` takes the balance's outline as `balanceR × 1.35`, so
+growing the balance grows the plate: at R 12 it goes 42.92 → 45.36
+(movement Ø 32.5 → 34.4 mm) and the alarm winding chain, stationed against
+the rim at radii that were correct for one plate size, stops meshing —
+idler 1 ⇄ idler 2 centre distance 15.541 against a pitch-circle sum of
+15.300, idler 2 ⇄ barrel 14.509 against 14.250, plus `alarm setting i2
+fouls the winding climb: clearance −0.25`. TODO 15's asserts catch it, which
+is the system working; the defect is that the stations are placed rather
+than derived. **This is standing rule 1 at station scale** and it is worth
+fixing whether or not the balance ever grows.
+
+**Wall three — the fork cock's seat search gives up instead of reporting.**
+At R 13 the boot FAILS outright: `fork cock: no clear footing for its leg`,
+followed by a null dereference downstream. The scan looks for a landing
+clear of the balance's swept radius and the plate's cut, and past R 12 no
+seat survives. Two separate defects in one line: the search has no fallback,
+and its failure mode is a crash rather than a diagnosis. **A solver that
+cannot find an answer should report its best near-miss with numbers** — the
+pillar seat scan's `no seat found near` warn is the precedent in this same
+file, and it does not take the boot down with it.
+
+**Neither has been re-measured since the dial changed.** Every number above
+predates item 26, and this entry's own history is that walls fall to changes
+made for other reasons — three times so far in §76. Re-measure before
+planning against either.
+
+### Why these are TODO rows and not just roadmap prose
+
+Wall two is a placed-not-derived station set: rule 1, in the shipped build,
+today, at the current balance size. Wall three is a solver that crashes
+instead of reporting: a defect in an instrument, not a layout preference.
+Both are honesty debt in what exists — they would be worth closing if §76
+were abandoned tomorrow, which is the test for belonging here rather than
+in the roadmap.
+
+## 31. The alarm lock has no return — the column can push it, nothing pulls it back
+
+The direct remainder of [item 28](#28-mostly-closed--pillars-a-derived-profile-and-a-lock-the-column-actually-lifts), and what `Alarm lock`'s waiver in
+`RESTORING_WAIVERS` points at. Item 28 made the lever move BECAUSE the wheel
+moved — the 0.08 s ease on a boolean is gone and the angle is now a pure
+function of the castellations at the beak's azimuth. That fixed the direction
+the column drives. It did not give the lever a way back.
+
+**The linkage is honest one way and silent the other.** A column presses the
+beak and holds the lever engaged; when the gap arrives, nothing lifts it. The
+pose law says it rises, and no element in the movement does the rising. §48's
+audit agrees and says so every run: `Alarm lock` sits in `restoredByNothing`,
+gated but waived. That waiver is the finding, not a suppression — deleting it
+means adding the spring, and greening it any other way would be inventing one.
+
+**What to build.** A flat return blade, grounded to its own stud on the plate
+top and bearing on the lever's arm, biasing it toward LIFTED so the column has
+something to work against. The construction already exists two units away:
+`switchClickSpring` is the same part doing the same job for the click arm, at
+`SPRING_FLAT_U` stock, and §48's geometry guard will check the named mesh is
+really in the scene. Declare it with `declareRestoring('Alarm lock', 'spring',
+…, 'alarmLockSpring')` and the waiver comes out.
+
+Note the sense before building it: the spring pushes toward RELEASED and the
+column overcomes it to ENGAGE. That is what a column wheel does — the column
+holds the lever against its spring — but it means the spring-only rest state
+is "lock lifted", which is worth stating out loud rather than discovering from
+a screenshot.
+
+**And then `ALARM_LOCK_LIFT` becomes derivable.** It is 0.085 rad, commented
+"~0.4 of radial air at the collar when released" — a chosen fraction of the
+space available, which is the one number item 28 could not fix because a lift
+with no load path has nothing to be derived FROM. With the spring in, the
+travel falls out of the pad's required clearance over the lever's length:
+`lift = (pad clearance at the collar) / ALARM_LOCK_L`, with the constraint
+written in the comment.
+
+**Why this is its own item rather than item 28's tail.** It is new geometry on
+the plate top with its own clearance consequences (the §62 window solve and the
+pillar seats both live up there), so it wants its own battery run and its own
+record. Item 28 is finished as a profile-and-drive rebuild; this is a part that
+does not exist yet.

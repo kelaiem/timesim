@@ -95,6 +95,24 @@ const BATTERY = [
     gate: 'the spring is cut to the beat, in real hairspring stock',
     fails: (r) => r.failures,
     note: (r) => `implied ${r.impliedHz} Hz vs spec ${r.specHz} Hz, ribbon ${r.spring.h_mm.toFixed(4)} mm (stock ${r.spring.windowMm[0]}–${r.spring.windowMm[1]})` },
+  // §48's no-spring audit, gated for the first time (TODO 29). It was
+  // exported and never registered, so nothing could run it — a clean report
+  // from an instrument nobody runs looks like coverage and is not. §48's own
+  // rule that it is a REPORT is kept: `ok` is always true and the rows are
+  // the product, so what is gated is the part that CAN be gated — every
+  // reversing part either has a restoring element, is driven both ways, or is
+  // waived against a filed TODO. The control is gated too: a positive control
+  // that quietly stops passing is how this class of check dies.
+  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY },
+    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
+    fails: (r) => [
+      ...r.unwaived,
+      ...r.malformedDeclarations,
+      ...r.staleDeclarations,
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+    ],
+    note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
+      + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
   { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY },
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
