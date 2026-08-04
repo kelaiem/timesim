@@ -83,7 +83,9 @@ declared structure — and *modelled* claims only that a thing is described;
 the SIMULATION is the model advanced by causality through drive edges, and
 *simulated* claims behavior is DRIVEN, not posed. Most honesty debt lives
 exactly in the gap (a "simulation fiction" animates with no force path;
-TODO 20's run was posed from its output). Claiming "simulated" for what is
+TODO 20's arming run WAS posed from its output and is now driven from its
+input, pawl to ring — the worked example of closing that gap, not of
+living with it). Claiming "simulated" for what is
 merely modelled is the lie most of `TODO.md` exists to catch — don't write
 it into prose either.
 

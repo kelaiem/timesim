@@ -1152,12 +1152,13 @@ export const EXPECTED_CONTACT_FLOORS = [
     contacts: [
       ['mwHourWheel', 'mwMinutePinion'],  // the 12:1's second mesh — the row EXPECTED was written for
     ],
-    // TODO 21 — a STANDING collision this check's first run surfaced: the
-    // minute wheel's and star's teeth pass through the hour tube's wall
-    // 0.22 deep at every pose (the 12:1's first mesh happens THROUGH the
-    // tube). Waived as accepted debt, §50's convention: the row stays red
-    // in the report with its citation until the architecture is fixed.
-    waived: 'TODO 21',
+    // TODO 21 CLOSED — the waiver is deleted, not renewed. This row's first
+    // run found the minute wheel's and star's teeth standing inside the hour
+    // tube's wall 0.22 deep at every pose, so the 12:1's first mesh happened
+    // THROUGH the tube; the motion works has since been re-stacked with the
+    // hour wheel dial-most, the way a watch is built, and the tube now rises
+    // from that plane crossing nothing but coaxial bores. Measured after:
+    // 0 vertices inside the wall band, from 568.
   },
   {
     a: 'Alarm release sleeve', b: 'Alarm disc', min: CLEAR_MARGIN,

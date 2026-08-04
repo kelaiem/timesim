@@ -1751,142 +1751,76 @@ in the comment. Until then the row is **waived, not passed**: the
 penetration budget (was 0.12, now `HANDOFF_TRACK_TOL`) both carry this
 item as accepted debt.
 
-## 20. The §35 arming run is posed from its output, not driven from its input
+## 20. CLOSED — the arming run is driven from its input, contact by contact, from the pawl to the ring
 
-§35's claim — "an unbroken mechanical run… every hand-off is a contact
-between two parts" — is false as implemented, and not by one defect but
-as the run's *architecture*. Every member's pose in `tick()` is its own
-closed-form function of the one scalar `alarmSelShownT`
-(`main.js`, "the chain's members wear the same derived state"): the rod
-never reads the beak, the shaft never reads the rod, the ring never
-reads the crank. The causality is also reversed at the head:
-`setAlarm()` writes `alarmOn` and bumps `alarmColSteps` to keep parity,
-so the flag drives the column wheel, not the pusher — there is no pawl
-geometry at all.
+The original filing said §35's arming run was "false as implemented, and
+not by one defect but as the run's *architecture*" — every member posed
+from the one scalar `alarmSelShownT`, causality reversed at the head. That
+was true. It is now false in every link, closed 2026-08-04 with the last
+one.
 
-Measured at both parities (the new `alarmHandoffs` check, which carries
-every row below as a waiver citing this item):
+**The chain, input to output.** A press drives the head in at a finger's
+rate; the pawl's travel carries the column wheel about its own moment arm
+until the tooth completes; the click banks it; the beak rides the cam the
+flank actually cut and falls when a gap arrives; the rod rides the beak's
+tail through its lever ratio; the rim finger follows its contact with the
+rod's foot by envelope solve; the ring stands where the fork's groove holds
+its pin. `alarmSelShownT` is a READOUT of the ring's travel, `alarmColSteps`
+a readout of the wheel, `alarmOn` a readout of the parity. Nothing in the
+run carries a time constant of its own — the only rate left is how fast a
+finger presses.
 
-| hand-off | disarmed | armed |
-|---|---|---|
-| pusher pawl → column wheel | *(no pawl exists)* | — |
-| column relief ⇄ beak nose | +0.020 | +0.160 |
-| beak tail ⇄ rod top | **−0.220** | **−0.222** |
-| rod foot ⇄ rim crank | +0.071 | +0.063 *(TODO 9)* |
-| centre crank ⇄ drive tab | **−0.220** | **−0.254** |
-| ring face ⇄ sensing pin | −0.024 | −0.062 *(TODO 19)* |
+**The last link, and why it could not be closed until now.** The wheel's
+angle was eased toward a counter:
 
-(+ gap, − burial; a working contact should sit within ±0.03, the
-tessellation-sag tolerance.)
+```js
+const colTarget = alarmColSteps * ALARM_COL_STEP;
+alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
+```
 
-The individual lies feeding this, each fixable but none sufficient
-alone:
+`pressAlarmPusher()` incremented the counter and the wheel wore the answer.
+Replacing that needed the pawl to be able to finish a tooth, and for most of
+this item's life it could not: the hand-set throw of 0.7 carried 83% of one,
+so a pawl-driven wheel would have stalled mid-index. §68 sized the wheel to
+real chronograph scale (Ø 4.32 mm) and TODO 11's switch tranche derived
+`ALARM_PUSH_TRAVEL` from the tooth pitch arc — and only then was this
+arithmetic available. `ALARM_PAWL_SWEEP` now asserts it so it cannot regress
+silently.
 
-- **The tick lifts the rod by a stale `0.25` literal** where the build
-  uses the derived `ALARM_LINK_ROD_FOOT` (0.011): the rod rides ~0.12
-  above its built pose from the first tick, permanently, and stands
-  0.22 inside the beak's tail bar — invisible to the sweep because both
-  are `Alarm link` (item 5).
-- **The column wheel's ramp is fictional.** `profileAt` returns a
-  trapezoid with an 18%-of-pitch flank, but the columns are extruded
-  with `bevelEnabled: false` — vertical cliffs. The ramp exists only in
-  the function; nothing was ever cut to it. And the nose's derived dip
-  (0.005) is 1% of the 0.55 relief it claims to ride.
-- **`ALARM_LINK_ROD_TRAVEL = 0.42` is dead** — defined, commented as
-  "the beak's fall into a gap, at the rod", referenced nowhere. The
-  tick moves the rod 0.19.
-- **The crank⇄ring penetration budget policed the wrong mesh** for its
-  whole life: crank vs *ring* read 0 while crank vs *tab* (the claimed
-  contact) measures 0.25 buried. Retargeted and waived under this item.
+| quantity | value |
+|---|---|
+| moment arm, wheel axis → pawl's line of travel | 4.376 (`ALARM_PUSH_CHORD`) |
+| one press carries (`travel / arm`) | 0.6147 rad |
+| one tooth (`ALARM_COL_STEP`, 12 saw teeth) | 0.5236 rad |
+| delivered | **117% of a tooth** |
 
-The honest fix is not six patches. §46/§29 already prove the codebase
-can do real contact laws (the follower iterates its cam; `intersectTail`
-solves a two-circle constraint per frame). The candidate that deletes
-the whole class: drive the ring from an **axial face cam** (heart-B's
-own principle, §34) on or with the column wheel — one contact, the
-travel falling out of the ramp height, no beak/rod/shaft/cranks to
-pose. The 36:1 lever TODO 16 calls "a displacement gain nobody asked
-for" goes with them. Prerequisite before any rebuild: this item's
-instruments stay red until the geometry actually closes the contacts —
-do not widen a tolerance to green them.
+The press also had to become a STROKE: it snapped `alarmPusherT` to 1, which
+left the pawl nothing to carry the wheel through. Measured after — the carry
+is LINEAR at 0.0854 rad/frame, exactly `(1/60)/0.12 × 2.690/4.376`, latching
+at one step, where the old ease was exponential. Battery 13/13, boot silent,
+fingerprint unchanged at 3682902459 (the geometry did not move; only what
+drives it).
 
-**Status 2026-07-29, later — CLOSED. All six hand-off rows measure green,
-zero waivers.** The second pass built the FORK: the drive tab is two
-plates flanking a groove with side webs, built at the registration solve
-ON the pin's solved engagement (the driven member derived from its
-driver), the lay shaft ends a fixed design retreat short of it, and the
-centre PIN rides the groove at its ±0.01 working clearance — measured
-+0.017/+0.010 — driving the ring POSITIVELY BOTH WAYS, which retires
-both TODO 16's transfixion ("the clearance is a slot", now an actual
-slot) and the phantom bias spring. The pawl parks ON the tooth it
-drives (−0.025 bite; it was 0.18 buried). Fingerprint moved
-deliberately again: 4164572423 → 3141354577.
+`setPose` still lands the parity exactly and now lands the click's station
+with it — without that the next tick reads a held angle from before the pose
+and walks the wheel back.
 
-One instrumentation gap remains filed here, not waived anywhere: the
-pawl's index STROKE (press travel 0.7 vs ~0.84 tooth arc at the
-engagement radius — marginal) is a transient the pose-based instrument
-cannot reach. A stroke-posed check (a `alarmPusherT` pose axis) is the
-tool that would close it. Everything below this line is the earlier
-status, kept for the record.
+**What is NOT claimed.** This is a kinematic chain, not a dynamic one: no
+force, friction or spring rate appears anywhere in it, and the pawl "carries"
+the wheel because the geometry says where the contact goes, not because a
+force was integrated. The run is *driven* in this repo's sense — causality
+enters at the input and arrives at the output through contacts that measure
+shut — and that is the whole of what the word claims here.
 
-**(superseded) Status 2026-07-29 — MOSTLY CLOSED; two contacts remained, filed below.**
+**A note on this entry's history**, because it cost real time twice. Every
+stale claim in it shared one cause: numbers written against a tree that then
+moved underneath them. The "~0.84 tooth arc, marginal" figure predated the
+wheel reaching its position bound; the 2026-08-03 reconciliation was itself
+first drafted against a rolled-back checkout, asserted a hand-set 0.7 that
+had already been derived away, and had to be re-measured. Quote a measurement
+with its date and the tree it came from, or expect to re-take it.
 
-What closed, each measured and its `alarmHandoffs` row unwaived:
-
-- **Causality head**: `pressAlarmPusher()` is the primitive — one press
-  advances the column wheel half a pitch, `alarmOn` is ASSIGNED from the
-  wheel's parity in one place and read everywhere else. `setPose` sets
-  parity the same direction.
-- **The flank is cut** (`geometry.js`): the castellations are one ring
-  whose top surface IS `colH·profileAt(θ)` — mesh and law from the same
-  function, the §29 raised-relief precedent. The fictional ramp is gone
-  because it is no longer fictional.
-- **The nose rides the cam** (0 disarmed, designed-free armed at the
-  seat): the arm's height is derived so the nose's underside rests on
-  the column top plane, restoring what TODO 11's "nose stays mid-band"
-  note recorded losing.
-- **Tail ⇄ rod** (0 / −0.0009) and **rod ⇄ rim crank** (+0.022 /
-  −0.014): the rod is built between its two contacts, TODO 9's constants
-  are retired, the cranks sit in per-crank KEYS (real cranks are keyed
-  where their contacts need them), and the shaft's roll is solved from
-  the rod's foot per tick through a corner-envelope contact model.
-- **The chain solves forward**: cam → nose → lever → rod → rim contact
-  → roll → centre contact → ring, `alarmSelShownT` a READOUT of the
-  ring's contact-derived travel (exactly 0.19 across the toggle,
-  measured; mildly nonlinear mid-flank because two sinusoidal contacts
-  genuinely compose that way).
-
-Note on the original filing: it said "there is no pawl and the pusher
-indexes nothing". Half right. The pawl and the ratchet skirt EXIST
-(§43 cut the saw teeth for this pawl); what was absent was causality,
-now fixed. The overclaim is corrected here and in the check's row.
-
-**The remainder, still red-by-waiver with measured numbers:**
-
-1. **The fork.** The centre finger's ROOT and the lay shaft itself pass
-   through the tab's underside plane inside its footprint (shaft z
-   −6.82..−6.58 against a tab underside at −6.86) — TODO 16's "the
-   clearance is not a stack-up, it is a slot", measured literally. The
-   finger's TIP is keyed to kiss the underside (burial at the working
-   face is down from 0.25 to 0.043), but the honest geometry is a
-   FORKED tab the shaft passes through with the finger driving inside
-   the slot — which would also give the ring a positive drive in both
-   directions and retire the unmodelled bias spring (next item).
-2. **The pawl's park.** The parked pawl measures 0.18 buried in the
-   ratchet skirt at both parities; a click rests ON a tooth flank. And
-   the index STROKE — pawl driving tooth through the press — is a
-   transient the pose-based instrument cannot reach; §43's direction
-   assert is the only guard on it.
-3. **The ring has no bias spring.** The chain transmits compression
-   from the column when DISARMING; what drives the ring toward ARMED
-   when the gap opens is nothing modelled — §48's "oscillators with no
-   spring" class, one level up. The fork (item 1) would retire this
-   honestly by driving both ways; a modelled bias spring is the
-   alternative.
-
----
-
-## 21. The minute wheel and star pass THROUGH the hour tube — the 12:1's first mesh is geometrically impossible
+## 21. CLOSED — the hour wheel went dial-most, and the 12:1's first mesh stopped happening through the tube
 
 Found by `checkExpectedContacts`' first run (item 6's structural fix),
 proven analytically with a containment sampler, invisible to every
@@ -1931,8 +1865,35 @@ honesty:
    available — both parts rotate; the crossing is at all azimuths in
    turn.
 
-The `EXPECTED_CONTACT_FLOORS` row for the pair stays red, waived citing
-this item; closing this item deletes that waiver.
+**CLOSED** by candidate 1, the re-stack. The chain now lands on the HOUR
+wheel — one margin plus its own bevelled half-thickness below the disc body
+— and the minute wheel hangs the same 1.5 behind it, so the tube rises from
+the dial-most plane and crosses nothing that is not coaxial with it. What
+made this affordable is that the alarm stack above IS coaxial (every bore ≥
+`ALARM_TUBE_INNER` = `HOUR_TUBE_OUTER` + 0.1): the tube was always allowed
+through that band, and never through the two parts on the offset stud.
+
+Measured after, same sampler as above: **0 vertices inside the wall band,
+from 568**; the tube spans −12.66..−4.28 instead of −12.66..−2.78. Boot
+silent, battery 13/13, `inspection` down to 72 contacting pairs from 74, and
+`expectedContacts` at **0 waived** — that row's waiver is DELETED, not
+renewed, which is what closing an item is supposed to look like.
+
+Three consequences worth knowing, because each removes a future footgun:
+
+- `CANNON_T` is DERIVED from the plane it must cover. It had chased the
+  chain downward by hand five times (2.0 → 2.1 → 2.5 → 2.9 → 3.35 → 4.25)
+  and this re-stack would have been the sixth. The leaves now reach past the
+  minute wheel and are the deepest thing on the centre axis, so that end has
+  its own floor against the plate, asserted.
+- The star slice changed SIDES and is now named for the faces that bound it
+  (`_mwSliceBot`/`_mwSliceTop`) rather than for the parts, so a future
+  re-order cannot leave it reading backwards while still computing a
+  positive thickness.
+- `MW_TOP` names the motion works' dial-most face once. The two band asserts
+  that each re-spelled that expression consume it, so they follow a re-stack
+  by construction instead of silently guarding the wrong wheel — which is
+  the specific way this defect stayed invisible.
 
 ## 22. CLOSED — the press axis rides above the wheel; the stem's end is press-swept derived
 

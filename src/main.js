@@ -4805,13 +4805,9 @@ smallSecondsGroup.add(smallSecondsHand);
 // §29 lengthened this once (2.0 → 2.1) for its deeper MW_Z1; §34's
 // heart-B band pushed 0.45 further (→ 2.5); §51 phase A's flange-and-lane
 // thickening pushes the chain 0.38 again, so the leaves grow a third time.
-// Top face stays −0.5; the END is now DERIVED and shared with the coverage
-// assert below, so the third growth is the last one anybody hand-tracks.
-const CANNON_T = 4.25; // §45 sleeve band: fifth growth (2.0→2.1→2.5→2.9→3.35→4.25) as the chain deepened +0.90 — end derived below, so this line is the whole edit
-const CANNON_END = -0.5 - CANNON_T;
-const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
-cannonPinion.position.z = -0.5 - CANNON_T / 2;
-dialFace.add(cannonPinion);
+// TODO 21: the length is DERIVED now, at the motion-works planes below —
+// it chased the chain by hand five times (2.0 → 2.1 → 2.5 → 2.9 → 3.35 →
+// 4.25) and the re-stack would have been the sixth. See CANNON_T there.
 
 // ---------------------------------------------------------------------------
 // §29 CENTRE Z-CHAIN (steps 1–2) — the whole stack behind the dial sheet,
@@ -4941,18 +4937,52 @@ const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // 
 const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.19 (body top)
 const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.51
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
-// plane to mesh it; the minute pinion and hour wheel share a second plane
-// behind that. Both stay clear of the sub-dial well floors at −SUBDIAL_RECESS.
-// §29: MW_Z1 IS the end of the chain — one margin plus the wheel's bevelled
-// half-thickness below the disc body. Both planes move together (their 1.5
-// spacing is the jumper star's slice, untouched by construction); every
-// star/lever/stud z derives from them and follows. The cannon pinion
-// (CANNON_T thick from −0.5) covers MW_Z1 with full face engagement;
-// asserted below.
-const MW_Z1 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22)); // ≈ −4.13 (§45)
-const MW_Z2 = MW_Z1 - 1.5;   // minute pinion / hour wheel — the 1.5 IS the star slice spacing
-if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < CANNON_END + 0.1)
-  console.warn(`§29/§34/§51: minute wheel's bevelled underside ${(MW_Z1 - 0.466).toFixed(2)} approaches the cannon pinion's end ${CANNON_END} — face engagement thinning`);
+// plane to mesh it; the minute pinion and hour wheel share a second plane.
+// Both stay clear of the sub-dial well floors at −SUBDIAL_RECESS.
+//
+// TODO 21 — THE HOUR WHEEL IS DIAL-MOST, WHICH IS THE ONLY ARRANGEMENT THAT
+// EXISTS. These two planes used to be the other way up: the chain landed on
+// the MINUTE wheel and hung the hour wheel 1.5 behind it, so the hour tube
+// had to climb from the plate-most plane to the hands THROUGH the minute
+// wheel's band and the star's. It did exactly that — 568 vertices of the two
+// stud parts standing inside the tube's wall (r 2.05..2.50), 0.225 deep, at
+// rest, at every pose, with the 12:1's first mesh happening through the wall.
+// No radius threads that crossing: the wheel's teeth reach within r 1.20 of
+// the dial axis and any tube is fatter. The defect was the stacking ORDER,
+// so the fix is the order and not a dimension.
+//
+// In a watch the hour wheel sits dial-ward of the minute wheel and its tube
+// rises from there, crossing nothing that is not coaxial with it. The alarm
+// stack above IS coaxial — every bore ≥ ALARM_TUBE_INNER = HOUR_TUBE_OUTER
+// + 0.1 — which is exactly why the tube may pass through that z band and may
+// not pass through the two parts on the offset stud.
+//
+// So the chain now lands on the HOUR wheel, one margin plus its own bevelled
+// half-thickness below the disc body, and the minute wheel hangs 1.5 behind
+// it — that 1.5 still the jumper star's slice, which simply changes sides.
+// Every star/lever/stud z derives from the pair and follows.
+const MW_Z2 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22)); // hour wheel + minute pinion — DIAL-most
+const MW_Z1 = MW_Z2 - 1.5;   // minute wheel, in the cannon pinion's plane — the 1.5 IS the star slice spacing
+// The motion works' dial-most face — what the alarm stack above must clear.
+// One expression, consumed by every band assert that used to re-spell it.
+const MW_TOP = MW_Z2 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);
+// The cannon pinion's leaves must COVER the minute wheel's band with face
+// engagement to spare — 0.1 past its bevelled underside, the floor the old
+// hand-tracked coverage assert used. Derived from the plane it has to reach,
+// so the chain can deepen again without anyone re-counting leaves.
+const CANNON_T = -0.5 - (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) - 0.1);
+const CANNON_END = -0.5 - CANNON_T;
+const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
+cannonPinion.position.z = -0.5 - CANNON_T / 2;
+dialFace.add(cannonPinion);
+// …and the new floor that derivation creates: the leaves now reach PAST the
+// minute wheel toward the plate, so the pinion's end is the deepest thing on
+// the centre axis. It must still stand off the plate's dial-side face.
+{
+  const PLATE_DIAL_FACE_LOCAL = Z_DIAL - (-2.0);
+  if (CANNON_END - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL)
+    console.warn(`TODO 21: the cannon pinion's end ${CANNON_END.toFixed(2)} is inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)}, need ${CLEAR_MARGIN})`);
+}
 // §34: the chain grew downward — assert the landing still clears the plate
 // by at least the one margin + the hour wheel's own bevelled band. §51: the
 // plate face is MOVEMENT-frame (world −2.0); its dial-local coordinate was
@@ -4961,9 +4991,11 @@ if (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) < CANNON_END + 0.
 // now derived the same way.
 {
   const PLATE_DIAL_FACE_LOCAL = Z_DIAL - (-2.0);   // world −2.0 in dialFace-local
-  const hourBot = (MW_Z1 - 1.5) - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
-  if (hourBot - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL)
-    console.warn(`§34: hour wheel's underside ${hourBot.toFixed(2)} inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)})`);
+  // TODO 21: the plate-most wheel is the MINUTE wheel now, not the hour
+  // wheel — the same assert, pointed at whichever one the re-stack put last.
+  const mwBot = MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+  if (mwBot - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL)
+    console.warn(`§34: minute wheel's underside ${mwBot.toFixed(2)} inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)})`);
 }
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
 // and below the centre).
@@ -5052,14 +5084,19 @@ const STAR_POINTS = Math.round(60 / Math.abs(MW_RATIO_1));
 if (Math.abs(60 / Math.abs(MW_RATIO_1) - STAR_POINTS) > 1e-9)
   console.warn('jumping minutes: motion-works ratio gives a NON-INTEGER star count', 60 / Math.abs(MW_RATIO_1));
 const STAR_PITCH = (Math.PI * 2) / STAR_POINTS;
-// z slice DERIVED between the minute wheel's underside and the hour
-// wheel's top face (both with their extrude bevels), one margin each way.
-const _mwWheelBot = MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
-const _hourWheelTop = MW_Z2 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);
-const STAR_T = (_mwWheelBot - _hourWheelTop) - 2 * CLEAR_MARGIN;
+// z slice DERIVED between the two motion-works planes, one margin each way.
+// TODO 21: the slice is the same 1.5 gap it always was, but it changed
+// SIDES with the re-stack — it used to run from the hour wheel's top face up
+// to the minute wheel's underside, and now runs from the minute wheel's top
+// face up to the hour wheel's underside. Named for the faces that bound it
+// rather than for the parts, so the next re-order cannot leave this reading
+// backwards while still computing a positive thickness.
+const _mwSliceBot = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);   // minute wheel's top face
+const _mwSliceTop = MW_Z2 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);   // hour wheel's underside
+const STAR_T = (_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN;
 if (STAR_T < 0.2)
   console.warn(`jumping minutes: star slice collapsed to ${STAR_T.toFixed(2)} between the motion-works planes`);
-const STAR_BOT = _hourWheelTop + CLEAR_MARGIN;      // 0-based extrude sits here
+const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
 const STAR_MID = STAR_BOT + STAR_T / 2;
 // Radius inside the minute wheel's root circle (the star must never be
 // the mesh).
@@ -5601,7 +5638,7 @@ const ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2; // WORLD gear plane (≈ �
 // place the neighbours — a future edit to any link must keep both margins.
 {
   const heartBot = ALARM_HEART_Z - ALARM_HEART_T / 2;
-  const mwTop = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+  const mwTop = MW_TOP;   // TODO 21: the dial-most face is the hour wheel's now — one name, defined at the planes
   if (heartBot - ALARM_FEELER_TOP < CLEAR_MARGIN - 1e-9)
     console.warn(`§29 stack: feeler top ${ALARM_FEELER_TOP.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
   if (ALARM_DISC_BOT - mwTop < CLEAR_MARGIN - 1e-9)
@@ -6852,7 +6889,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 branch ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
   // i1b's swept tips vs the minute-wheel circle — XY only matters if the z
   // bands touch; they are separated by the chain, so assert THAT instead:
-  const mwTopL = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
+  const mwTopL = MW_TOP;  // TODO 21: as above — the band assert follows the re-stack by construction
   if (ALARM_DISC_BOT - mwTopL < CLEAR_MARGIN - 1e-9)
     console.warn(`§29 branch: band gears' underside ${ALARM_DISC_BOT.toFixed(2)} inside the minute wheel's margin (top ${mwTopL.toFixed(2)})`);
   // i1b vs the minute-wheel circle in ITS OWN plane (the sleeve crosses nothing, but the tips do XY-wise at other azimuths — z-separated; the real XY bind is the RIM):
@@ -9190,6 +9227,23 @@ const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * 1.15 * (ALARM_
 // root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
 // throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
 const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
+// TODO 20 — WHAT THE PAWL CARRIES, so the tick can turn the wheel BY ITS
+// PAWL instead of easing it toward a counter. The pusher translates along
+// −û with its pawl standing ALARM_PUSH_CHORD off the wheel's axis, and for
+// a line of action that offset IS the moment arm: a travel s about it turns
+// the wheel s/arm. The stroke must cover a whole tooth or the pawl runs out
+// of flank mid-index — asserted, because it is the constraint that made
+// this fix impossible until §68 and TODO 11 sized the wheel and derived the
+// throw (the old hand-set 0.7 carried 83% of a tooth).
+const ALARM_PAWL_ARM = Math.abs(ALARM_PUSH_CHORD);
+const ALARM_PAWL_SWEEP = ALARM_PUSH_TRAVEL / ALARM_PAWL_ARM;
+if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)
+  console.warn(`TODO 20: one press carries ${ALARM_PAWL_SWEEP.toFixed(4)} rad but the wheel indexes ${ALARM_COL_STEP.toFixed(4)} — the pawl cannot complete a tooth`);
+// A finger's press stroke. This is the ONLY rate left in the chain: the
+// wheel used to carry its own 0.10 s ease toward the counter, and with the
+// pawl driving there is nothing left to ease — the wheel goes exactly where
+// its pawl has pushed it. Human pusher presses run ~0.1–0.2 s.
+const ALARM_PRESS_S = 0.12;
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -9459,6 +9513,9 @@ let alarmPusherT = 0;    // §25 D: pusher press pulse — 1 at the actuation, s
 // pins the pulse down under the finger; the ACTUATION deliberately stays on
 // click, so dragging off still cancels, as any button should.
 let alarmPusherHeld = false;
+let alarmPusherStroke = false;  // TODO 20: a press is in flight — the tick drives the head in
+let alarmColHeldA = 0;          // TODO 20: where the click last ratcheted the wheel; the pawl carries it from here
+let alarmColLatched = false;    // TODO 20: this stroke's tooth is already banked — the pawl is retracting
 let jumpSnapIdx = null; // written by the quantize block; read by the sound block
 let reserveShown = 1; // = tension each frame; kept as its own var for the UI readout
 
@@ -12317,13 +12374,22 @@ window.addEventListener('keydown', () => {
 // does on the ratchet skirt — and `alarmOn` is ASSIGNED FROM the wheel's
 // parity in this one place, a readout everywhere else (odd = gap under the
 // beak = armed, §25 D's convention unchanged).
-function pressAlarmPusher() {
-  alarmColSteps += 1;
-  alarmPusherT = 1;
+// TODO 20 — the press is now an INPUT, not an assignment. It drives the
+// head in; the pawl carries the wheel; the click latches the tooth and only
+// THEN does the parity change. alarmColSteps became a readout of the wheel,
+// the way alarmOn is already a readout of the parity.
+function alarmParityLatched() {
   alarmOn = alarmColSteps % 2 === 1;
   const b = document.getElementById('btn-alarm');
   setBtnState(b, alarmOn);
   b.classList.toggle('active', alarmOn);
+}
+function pressAlarmPusher() {
+  // A finger cannot start a second press while the head is still down or
+  // springing back — and neither can the pawl re-engage before it has
+  // retracted over the next tooth's back.
+  if (alarmPusherStroke || alarmPusherT > 1e-6) return;
+  alarmPusherStroke = true;
 }
 // Convenience for callers that speak in the flag (UI, scripts, remote API,
 // saved state): press if — and only if — the wheel's parity disagrees.
@@ -16290,9 +16356,25 @@ function tick(t) {
     // order. (The strike section's brake block reads it later the same
     // tick; §29 step 5's one-tick-stale lesson, applied the third time.)
     {
-      const colTarget = alarmColSteps * ALARM_COL_STEP;
-      if (rawDt > 0) alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
-      else alarmColShownA = colTarget;
+      // TODO 20 — THE PAWL TURNS THE WHEEL. This was `colTarget = steps *
+      // STEP` eased at 0.10 s: the counter was the input and the wheel wore
+      // its answer, which is the last posed link the arming run had. Now the
+      // pawl's travel carries the wheel about its own moment arm, capped at
+      // one tooth because that is where the flank ends; when the tooth
+      // completes, the CLICK banks it and the parity changes as a
+      // consequence. Nothing here has a time constant — the only rate in the
+      // chain is how fast the finger presses.
+      const carried = alarmColLatched ? 0
+        : Math.min(ALARM_COL_STEP, (ALARM_PUSH_TRAVEL * alarmPusherT) / ALARM_PAWL_ARM);
+      alarmColShownA = alarmColHeldA + carried;
+      if (!alarmColLatched && carried >= ALARM_COL_STEP - 1e-9) {
+        alarmColLatched = true;          // the click has dropped behind this tooth
+        alarmColHeldA += ALARM_COL_STEP;
+        alarmColShownA = alarmColHeldA;
+        alarmColSteps += 1;              // a READOUT of the wheel now, not the driver
+        alarmParityLatched();
+      }
+      if (alarmPusherT <= 1e-6) alarmColLatched = false;  // head returned: the click re-arms on the next tooth
     }
     // A CAM FOLLOWER HAS NO DYNAMICS OF ITS OWN. Its position is a pure
     // function of the cam's angle, and the whole §35 chain — beak, rod,
@@ -16565,8 +16647,14 @@ function tick(t) {
     alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;
     // The pusher: presses IN with the actuation pulse and springs back — its
     // pawl rides the ratchet skirt through the same eased step.
-    if (alarmPusherHeld) alarmPusherT = 1;                       // §43: down under the finger
-    else if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
+    // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
+    // pawl nothing to carry the wheel through. Held or stroking, it advances
+    // at the finger's rate; released, it springs back as before. A zero-dt
+    // pose lands it exactly, so setPose stays deterministic.
+    if (alarmPusherHeld || alarmPusherStroke) {
+      alarmPusherT = rawDt > 0 ? Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S) : 1;
+      if (alarmPusherT >= 1) alarmPusherStroke = false;         // bottomed; the spring takes it back
+    } else if (rawDt > 0) alarmPusherT *= Math.exp(-rawDt / 0.15); else alarmPusherT = 0;
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived
@@ -16965,7 +17053,7 @@ window.__clock = {
     alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmSetRot = 0; lastAlarmCrownRotation = 0;
-    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
+    alarmDropSpent = false; alarmPinDropNow = 0; alarmLockLiftT = 0; alarmColSteps = 0; alarmColShownA = 0; alarmColHeldA = 0; alarmColLatched = false; alarmPusherStroke = false; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
     // §34 harvest (found by §31's battery, independent of its geometry):
     // the EXPLODE is a persistent user input that MOVES UNITS, restored
     // from saved UI state across reloads — a sweep on a session that left
@@ -17012,6 +17100,13 @@ window.__clock = {
       // pusher drives (setPose is exact, so no pusher pulse).
       if ((alarmColSteps % 2 === 1) !== !!p.alarmOn) alarmColSteps += 1;
       alarmOn = alarmColSteps % 2 === 1;
+      // TODO 20: the wheel is carried by its pawl now, so a pose must land
+      // the CLICK's station too — otherwise the next tick reads a held angle
+      // from before the pose and walks the wheel back. No stroke is in
+      // flight after a pose, by construction.
+      alarmColHeldA = alarmColSteps * ALARM_COL_STEP;
+      alarmColShownA = alarmColHeldA;
+      alarmPusherStroke = false; alarmColLatched = false; alarmPusherT = 0;
     }
     if (p.alarmBarrelWind !== undefined) alarmBarrelWind = p.alarmBarrelWind; // §24 alarm-spring energy
     // §25 striking axis. Phase and wind are ONE mechanical quantity — the
