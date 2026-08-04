@@ -2384,6 +2384,14 @@ worth keeping:
   and merged buffers are used wherever draw calls matter (§20's own screw
   merge, §41's crown).
 
+  **The instrument for it is filed as roadmap §77** — as a capability, not
+  here, on the §36/§40 precedent: this file names a blindness, the roadmap
+  builds the check that ends it, exactly as item 7 named pose-sampling and
+  §36 built the swept registry. Three instances seed it (this item's rivets,
+  item 28's rebuilt gaps as the regression case, item 4's degenerate
+  builders), and it must FIRE on the rivets on arrival or the check is
+  wrong.
+
 ### What closing this looks like
 
 Rows 1 and 2 are the same edit twice: pass the seats as holes. The plate's
