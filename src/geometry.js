@@ -831,15 +831,44 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
       const same = (u, v) => Math.abs(pos[u * 3] - pos[v * 3]) < 1e-9
         && Math.abs(pos[u * 3 + 1] - pos[v * 3 + 1]) < 1e-9
         && Math.abs(pos[u * 3 + 2] - pos[v * 3 + 2]) < 1e-9;
-      const tri = (x, y, z) => { if (!same(x, y) && !same(y, z) && !same(x, z)) idx.push(x, y, z); };
+      // TODO 4 — AND THE ORIENTATION IS REVERSED, in ONE place. Each quad
+      // below is written in the order that reads naturally along the sweep
+      // (this ring → next ring, inner → outer), and that order winds every
+      // face CLOCKWISE seen from outside the pillar: the top surface came out
+      // with normal θ̂ × r̂ = −ẑ where a column's top must face +z, and all
+      // four families were reversed alike. With the default `side:
+      // FrontSide` the outward faces were culled, so the columns rendered as
+      // holes with their far inner walls showing through — "missing surfaces
+      // on the columns", the whole of it. Flipping here rather than
+      // re-ordering eight quads is deliberate: one reversal is provably
+      // uniform, eight orderings are eight chances to get one wrong.
+      const tri = (x, y, z) => { if (!same(x, y) && !same(y, z) && !same(x, z)) idx.push(x, z, y); };
       for (let i = 0; i < 2 * M; i++) {
         const b = base0 + i * 4, n = base0 + (i + 1) * 4;
-        tri(b + 2, n + 2, n + 3); tri(b + 2, n + 3, b + 3); // top surface
-        tri(b + 0, n + 0, n + 2); tri(b + 0, n + 2, b + 2); // inner wall
-        tri(b + 1, b + 3, n + 3); tri(b + 1, n + 3, n + 1); // outer wall
+        tri(b + 2, n + 2, n + 3); tri(b + 2, n + 3, b + 3); // top surface, faces +z
+        tri(b + 0, n + 0, n + 2); tri(b + 0, n + 2, b + 2); // inner wall, faces −r
+        tri(b + 1, b + 3, n + 3); tri(b + 1, n + 3, n + 1); // outer wall, faces +r
         tri(b + 0, n + 1, n + 0); tri(b + 0, b + 1, n + 1); // floor, faces −z
       }
     }
+    // Each pillar closes on its two knife edges, so the castellations are a
+    // union of closed bodies and their signed volume is exactly the test:
+    // positive for the CCW-seen-from-outside winding three.js treats as
+    // front-facing. Cheap, closed-form, and it is the only thing standing
+    // between this mesh and a silent regression — no check in the battery
+    // reads winding at all, which is how the reversal above shipped.
+    const signedVol = (() => {
+      let v = 0;
+      for (let t = 0; t < idx.length; t += 3) {
+        const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
+        v += (pos[a] * (pos[b + 1] * pos[c + 2] - pos[b + 2] * pos[c + 1])
+            + pos[a + 1] * (pos[b + 2] * pos[c] - pos[b] * pos[c + 2])
+            + pos[a + 2] * (pos[b] * pos[c + 1] - pos[b + 1] * pos[c])) / 6;
+      }
+      return v;
+    })();
+    if (!(signedVol > 0))
+      console.warn(`TODO 4 column wheel: the castellations are wound inside-out (signed volume ${signedVol.toFixed(3)} ≤ 0) — FrontSide culling hides the columns`);
     const colGeo = new THREE.BufferGeometry();
     colGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     colGeo.setIndex(idx);
