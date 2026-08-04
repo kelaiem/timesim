@@ -1751,86 +1751,74 @@ in the comment. Until then the row is **waived, not passed**: the
 penetration budget (was 0.12, now `HANDOFF_TRACK_TOL`) both carry this
 item as accepted debt.
 
-## 20. MOSTLY CLOSED — the run is driven contact-by-contact; only the wheel's own angle is still a counter
+## 20. CLOSED — the arming run is driven from its input, contact by contact, from the pawl to the ring
 
 The original filing said §35's arming run was "false as implemented, and
 not by one defect but as the run's *architecture*" — every member posed
 from the one scalar `alarmSelShownT`, causality reversed at the head. That
-was true, and it has since been fixed nearly everywhere. **Reconciled
-2026-08-03 by measurement**, because the entry had drifted far enough from
-the code to be its own kind of lie: it still carried a table of gaps and
-burials described as "red-by-waiver" when **no waiver anywhere in `src/`
-cites this item** and `alarmHandoffs` reports 12 rows, 0 waived.
+was true. It is now false in every link, closed 2026-08-04 with the last
+one.
 
-**What closed, and where the evidence lives:**
+**The chain, input to output.** A press drives the head in at a finger's
+rate; the pawl's travel carries the column wheel about its own moment arm
+until the tooth completes; the click banks it; the beak rides the cam the
+flank actually cut and falls when a gap arrives; the rod rides the beak's
+tail through its lever ratio; the rim finger follows its contact with the
+rod's foot by envelope solve; the ring stands where the fork's groove holds
+its pin. `alarmSelShownT` is a READOUT of the ring's travel, `alarmColSteps`
+a readout of the wheel, `alarmOn` a readout of the parity. Nothing in the
+run carries a time constant of its own — the only rate left is how fast a
+finger presses.
 
-- **The chain is solved forward, contact by contact** (`main.js`, "THE CHAIN
-  IS SOLVED FORWARD"). The nose rides the cam the flank actually cut, the
-  rod rides the tail through the beak's lever ratio, the rim finger follows
-  its contact with the rod's foot by envelope solve, and the ring stands
-  where the fork's groove holds its pin. `alarmSelShownT` is now a READOUT
-  of the ring's own travel, not the scalar the run is posed from.
-- **Causality runs press → wheel → flag.** `setAlarm()` calls
-  `pressAlarmPusher()`; the wheel's parity IS the state and `alarmOn` is
-  assigned from it.
-- **The cam is cut, not narrated** (`geometry.js`): the castellations are one
-  ring whose top surface is `colH·profileAt(θ)`, so the ramp `profileAt`
-  returns is the ramp that exists.
-- **The fork was built** — the drive tab is a real fork the shaft passes
-  through, which also gave the ring a positive drive both ways and retired
-  the unmodelled bias spring. Old remainder items 1 and 3: closed.
-- **The pawl's park** is derived by casting against the same polygon the
-  teeth were cut from, at any azimuth: −0.025, a click's bite, measured
-  every run. It was 0.18 buried.
-- **The index STROKE is sufficient**, which it was not when this entry was
-  written. TODO 11's switch tranche derived `ALARM_PUSH_TRAVEL` from the
-  tooth pitch arc at the saw's root circle, retiring the hand-set 0.7 that
-  "under-swept even the old wheel". Old remainder item 2: closed, both
-  halves. Measured 2026-08-03 by driving `#btn-alarm` and sampling
-  `step(1/60)`:
-
-  | quantity | measured |
-  |---|---|
-  | pawl travel through one press | 2.4036 |
-  | moment arm, wheel axis → pawl's line of travel | 4.3700 |
-  | travel needed for one tooth (`arm · π/6`, 12 saw teeth) | 2.2881 |
-  | delivered | **105.0% of one tooth** |
-
-**What survives — one link, and it is the first one.** The column wheel's
-angle is not driven by the pawl. It is eased toward a COUNTER:
+**The last link, and why it could not be closed until now.** The wheel's
+angle was eased toward a counter:
 
 ```js
 const colTarget = alarmColSteps * ALARM_COL_STEP;
 alarmColShownA += (colTarget - alarmColShownA) * (1 - Math.exp(-rawDt / 0.10));
 ```
 
-`pressAlarmPusher()` increments `alarmColSteps` and the pawl's geometry
-never enters the calculation, so the run is contact-driven from the wheel
-onward and posed at its head. The sampled angles through a press —
-0.0804, 0.1484, 0.2060, 0.2548 … — are the signature of that exponential,
-not of a tooth being carried. The pose-based instrument cannot reach it:
-`alarmHandoffs` measures the pawl PARKED at both parities and says so in
-its row.
+`pressAlarmPusher()` incremented the counter and the wheel wore the answer.
+Replacing that needed the pawl to be able to finish a tooth, and for most of
+this item's life it could not: the hand-set throw of 0.7 carried 83% of one,
+so a pawl-driven wheel would have stalled mid-index. §68 sized the wheel to
+real chronograph scale (Ø 4.32 mm) and TODO 11's switch tranche derived
+`ALARM_PUSH_TRAVEL` from the tooth pitch arc — and only then was this
+arithmetic available. `ALARM_PAWL_SWEEP` now asserts it so it cannot regress
+silently.
 
-**The fix is now unblocked, which is the point of this reconciliation.**
-Driving the wheel from its pawl was geometrically impossible while the
-stroke delivered less than one tooth; at 105% it is simply work. Replace
-the ease with a contact solve — the pawl's leading face against the tooth
-flank it rests on, the wheel turning by what that contact carries — so
-`alarmColSteps` becomes a readout the way `alarmOn` already is, and the
-0.10 s time constant disappears with it rather than being retuned. Two
-guards to keep: the wheel must not run on when the pawl reverses (the
-click's job, and §43's direction assert is the only thing watching it
-today), and `setPose` must still land the parity exactly, since the
-inspector poses depend on it.
+| quantity | value |
+|---|---|
+| moment arm, wheel axis → pawl's line of travel | 4.376 (`ALARM_PUSH_CHORD`) |
+| one press carries (`travel / arm`) | 0.6147 rad |
+| one tooth (`ALARM_COL_STEP`, 12 saw teeth) | 0.5236 rad |
+| delivered | **117% of a tooth** |
 
-**A note on this entry's own history**, because it cost real time twice.
-Every stale claim here shared one cause: the numbers were written against a
-tree that then moved underneath them. The "~0.84 tooth arc, marginal"
-figure was measured before the wheel went out to its position bound, and
-the reconciliation above was itself first drafted against a rolled-back
-checkout and had to be re-measured. Quote a measurement with the date and
-the tree it came from, or expect to re-take it.
+The press also had to become a STROKE: it snapped `alarmPusherT` to 1, which
+left the pawl nothing to carry the wheel through. Measured after — the carry
+is LINEAR at 0.0854 rad/frame, exactly `(1/60)/0.12 × 2.690/4.376`, latching
+at one step, where the old ease was exponential. Battery 13/13, boot silent,
+fingerprint unchanged at 3682902459 (the geometry did not move; only what
+drives it).
+
+`setPose` still lands the parity exactly and now lands the click's station
+with it — without that the next tick reads a held angle from before the pose
+and walks the wheel back.
+
+**What is NOT claimed.** This is a kinematic chain, not a dynamic one: no
+force, friction or spring rate appears anywhere in it, and the pawl "carries"
+the wheel because the geometry says where the contact goes, not because a
+force was integrated. The run is *driven* in this repo's sense — causality
+enters at the input and arrives at the output through contacts that measure
+shut — and that is the whole of what the word claims here.
+
+**A note on this entry's history**, because it cost real time twice. Every
+stale claim in it shared one cause: numbers written against a tree that then
+moved underneath them. The "~0.84 tooth arc, marginal" figure predated the
+wheel reaching its position bound; the 2026-08-03 reconciliation was itself
+first drafted against a rolled-back checkout, asserted a hand-set 0.7 that
+had already been derived away, and had to be re-measured. Quote a measurement
+with its date and the tree it came from, or expect to re-take it.
 
 ## 21. CLOSED — the hour wheel went dial-most, and the 12:1's first mesh stopped happening through the tube
 
