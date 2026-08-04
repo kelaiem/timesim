@@ -3928,6 +3928,13 @@ const setupWork = new THREE.Group();
   registerLabel('Set-up work', setupWork);
 }
 
+// The annular boss of plate a bore may not eat into: the chaton's collar
+// where there is a jewel, the bare bore where there is not. Defined ONCE and
+// consumed by the cut check below and by §62's window solver — two openings
+// judging the same boss by two expressions is how PR #140's `MW_TOP` defect
+// survived long enough to matter.
+const pivotBossR = (p) => Math.max(p.jewelR * 1.7, p.boreR);
+
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
 // Factored: it re-runs after the balance-cock reveal grows the cut.
@@ -3936,7 +3943,7 @@ function checkCutVsPivots() {
     const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
     const d = Math.hypot(dx, dy);
     const phi = Math.atan2(dy, dx) - TQ_CUT.aim;
-    const bossR = Math.max(p.jewelR * 1.7, p.boreR);
+    const bossR = pivotBossR(p);
     const edge = G.cutEdgeRadius(TQ_CUT, phi);
     const inWedge = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi))) <= TQ_CUT.phiOpen;
     if (inWedge || d - bossR - CLEAR_MARGIN < edge)
@@ -4371,15 +4378,543 @@ registerLabel('Balance cock', balanceCock);
   checkCutVsPivots();
 }
 
+// How much plate stands at (x, y) before the balance cut takes it: positive
+// outside the opening, negative inside. Hoisted out of the pillar seat scan
+// (its only consumer until now) so §62's windows shrink against the SAME
+// description of the cut that the pillars seat against.
+const inCutClearance = (x, y) => {
+  const d = Math.hypot(x - TQ_CUT.x, y - TQ_CUT.y);
+  let phi = Math.atan2(y - TQ_CUT.y, x - TQ_CUT.x) - TQ_CUT.aim;
+  phi = Math.atan2(Math.sin(phi), Math.cos(phi));
+  const radial = d - G.cutEdgeRadius(TQ_CUT, phi);
+  if (Math.abs(phi) <= TQ_CUT.phiOpen) return -Math.abs(radial) - 1; // inside the open wedge
+  return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
+};
+
+// ---------------------------------------------------------------------------
+// §62 — OPENWORKED WINDOWS. The three-quarter plate is the largest opaque
+// surface in the movement, and everything §61 made honest — the grooved cone,
+// the chain seated in it, the maintaining sandwich — turns underneath it.
+// These are the framed views an openworked plate carries: specific action,
+// not lace.
+//
+// A window is DERIVED from what it frames, never drawn. Its outer edge starts
+// as the measured swept silhouette of the parts it reveals plus one
+// CLEAR_MARGIN of visual reveal — the same construction TQ_CUT's kidney edge
+// uses for the escapement — and then SHRINKS, per degree, against everything
+// the plate must still DO. The plate is a BEARING first: where a wanted window
+// and a required web cannot coexist, the WINDOW is what gives. (§35's lesson
+// pointed the other way round, and this is the case where the accommodation
+// legitimately outranks the view — a window carries no force.)
+// ---------------------------------------------------------------------------
+
+// The narrowest strip of plate an opening may leave beside another opening.
+// §50 floors the stock (STOCK_MIN_U); §54 ceilings the slenderness, and it
+// measures against the STIFFEST section dimension — for a strip cut from a
+// plate that is max(width, TQ_T). So a strip narrower in plane than the plate
+// is thick is a blade standing on edge: its weak axis is the in-plane one,
+// and every unit of width below TQ_T is spent buying stiffness on the axis
+// that is already the stronger of the two. TQ_T is therefore the width at
+// which an in-plane land stops being the weak direction, and it is the floor.
+// STOCK_MIN_U is smaller (0.317 against 0.8) so it never binds today; it stays
+// inside the max so the two floors cannot silently swap places if either moves.
+const TQ_LAND_MIN = Math.max(STOCK_MIN_U, TQ_T);
+// A WEB is a land that carries something: the arm re-attaching a pivot boss
+// the window has islanded. Its span is the radial gap it bridges, its depth is
+// the plate's own thickness, and its width is what this returns — the §50
+// floor, or §54's ceiling where the span is long enough to bind. At TQ_T = 0.8
+// and SLENDER_TARGET = 27 the ceiling takes over past a span of 21.6 units.
+const tqWebWidthFor = (span) => Math.max(TQ_LAND_MIN, span / SLENDER_TARGET);
+// Three webs, and the count is derived rather than chosen: a bearing reaction
+// can arrive from any azimuth (the fusee arbor's reverses between running and
+// winding), and two arms leave the direction perpendicular to their common
+// line carried in BENDING alone. Three is the smallest number that restrains
+// an islanded boss in tension and compression whatever the load's bearing —
+// the same reason a real openworked bar carries three arms and not two.
+const TQ_WEBS_MIN = 3;
+
+// --- The KEEP field: every scrap of plate that has a job, measured.
+//
+// A window edge stands off a KEEP by CLEAR_MARGIN (the same standoff
+// checkCutVsPivots holds the balance cut to) and off another OPENING by
+// TQ_LAND_MIN (the land between two holes is a member, not a clearance).
+//
+// Measured, not listed. The hand-written obstacle lists in this file have been
+// patched twice for parts someone forgot — the escapement bridge's waisted bar
+// and the train's own discs, both found only when a scan seated a leg through
+// them — and §76's wall-list finding is the same lesson at movement scale. So
+// the keep set is swept out of the scene: every mesh that CROSSES the plate's
+// z-band (it is bored or slotted for, and the plate carries its collar) or
+// STANDS ON its top face (the plate is its footing).
+//
+// The band is taken EXACTLY, not inflated. Inflating it by a margin would
+// enrol the fusee cone itself — its crown stands 0.167 under the plate's
+// underside — and a window cannot be blocked by the very part it frames.
+function sweepTqKeeps() {
+  const keeps = [];
+  const v = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  const consider = (o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position || o.userData?.schematic) return;
+    o.geometry.computeBoundingBox();
+    const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    const crosses = b.min.z < TQ_TOP_Z - 1e-6 && b.max.z > TQ_BOT_Z + 1e-6;
+    // FOOTED means TOUCHING, not hovering. The band above the top face is
+    // half a CLEAR_MARGIN deep because nothing may legally sit closer than a
+    // whole one without touching — the clearance budgets gate exactly that —
+    // so any underside inside it is resting on the face and any underside
+    // above it is carried by something else. Taking the whole margin instead
+    // enrolled the alarm column wheel, whose body clears the face by 0.152 and
+    // is carried entirely by its own stud: the window then had to shrink for a
+    // part the plate does not support, which is a keep field describing the
+    // z-stack rather than the load path.
+    const footed = b.min.z >= TQ_TOP_Z - 1e-6 && b.min.z <= TQ_TOP_Z + CLEAR_MARGIN / 2;
+    if (!crosses && !footed) return;
+    // TWO footprints per mesh, and the DISTANCE is the greater of the two.
+    // An AABB is a poor description of a round part (the alarm column wheel's
+    // box reads 0.83 from the fusee axis where its true silhouette stands
+    // 1.65 off), and a bounding circle is a poor one for a bar. Each is
+    // separately a conservative under-estimate of the true distance, so the
+    // larger of the two is conservative as well — and tight where either fits.
+    let cr = 0;
+    const cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
+    }
+    keeps.push({ b, cx, cy, cr });
+  };
+  // THE PLATE IS NOT AN OBSTACLE TO ITS OWN OPENINGS. On the second call the
+  // plate exists, and its own mesh crosses its own band over the whole disc —
+  // so every window measured zero clearance against the material it was cut
+  // out of. Its plate SCREWS go with it: they are seated by the pillar scan,
+  // which reads these windows (see seatClearance), so enrolling them here as
+  // well would make the two solves argue in a circle rather than in an order.
+  for (const child of movement.children) {
+    if (child.userData?.tqPlate) continue;
+    child.traverse(consider);
+  }
+  return keeps;
+}
+let TQ_KEEPS = sweepTqKeeps();
+// Distance from (x, y) to the nearest material the plate must keep.
+const tqKeepClearance = (x, y) => {
+  let c = Infinity;
+  for (const k of TQ_KEEPS) {
+    const bx = clamp(x, k.b.min.x, k.b.max.x), by = clamp(y, k.b.min.y, k.b.max.y);
+    c = Math.min(c, Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr));
+  }
+  for (const p of tqPivots) c = Math.min(c, Math.hypot(x - p.x, y - p.y) - pivotBossR(p));
+  return c;
+};
+// Distance from (x, y) to the nearest EXISTING opening — the bores, the
+// slots, the balance cut and the rim. A window that came closer than
+// TQ_LAND_MIN to one of these would merge with it, and the strip between
+// them would be the member that failed.
+const tqOpeningClearance = (x, y) => {
+  let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
+  for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
+  for (const s of tqSlots) {
+    const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
+    const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
+    c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
+  }
+  return c;
+};
+
+// --- The intents: what deserves to be seen, and about which axis.
+//
+// Each intent names the action it frames and MEASURES its own reveal radius;
+// nothing here is a drawn dimension. A window onto a coaxial stack is sized to
+// the circle the stack's widest TURNING member sweeps — for a revolver that
+// silhouette is EXACTLY a circle about its own axis, so no sampling is
+// involved and no spoke can slip between samples (TODO 7's class, answered by
+// construction rather than by a finer net).
+const TQ_WINDOW_INTENTS = [
+  {
+    name: 'fusee',
+    // §61's showpiece. The window is sized to the CHAIN's outer edge where it
+    // wraps the cone, not to the cone: the wraps are the thing being shown,
+    // they stand proud of the groove floor, and the widest wrap — the bottom
+    // groove at FUSEE_R_LARGE — is occupied at every state of the reserve, so
+    // a window that contains it shows the chain seated at any tension. The
+    // cone (crown radius 6.74) and its crest lands (6.80) fall inside that
+    // circle, and the maintaining sandwich and great wheel below are seen past
+    // the cone's flank: a window onto a stack is sized to the member it is a
+    // window ONTO, not to the widest thing anywhere under it, or it stops
+    // being a frame and becomes a hole.
+    at: () => P.barrel,
+    reveal: () => {
+      let r = 0;
+      for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+      return r + CHAIN_END_R_OUT + CLEAR_MARGIN;
+    },
+  },
+  {
+    name: 'escapement',
+    // The entry names the escape wheel and pallet fork as a framed view, and
+    // most of it already IS one: measured against the shipped plate, 96% of
+    // the fork's under-plate footprint and 45% of the escape wheel's stand in
+    // TQ_CUT's open wedge. The fork wants nothing. The escape wheel is the
+    // half-covered one — it pivots IN this plate (which is why it stopped
+    // voting on the cut when the cut was solved), so the rest of it is a
+    // window with its own islanded boss rather than more cutaway.
+    at: () => P.escape,
+    reveal: () => {
+      let r = 0;
+      const v = new THREE.Vector3();
+      escapeArbor.updateMatrixWorld(true);
+      escapeArbor.traverse((o) => {
+        if (!o.isMesh || !o.geometry?.attributes?.position) return;
+        o.geometry.computeBoundingBox();
+        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (b.max.z > TQ_BOT_Z) return;      // the staff crossing the plate is the boss, not the view
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          r = Math.max(r, Math.hypot(v.x - P.escape.x, v.y - P.escape.y));
+        }
+      });
+      // A revolver's swept silhouette IS this circle — exactly, at every pose.
+      // No sample net is involved, so no spoke or tooth can fall between two
+      // of them (TODO 7's first blindness class, answered by construction).
+      return r + CLEAR_MARGIN;
+    },
+  },
+];
+
+function solveTqWindows() {
+  const polys = [], report = [];
+  for (const intent of TQ_WINDOW_INTENTS) {
+    const c = intent.at();
+    const wanted = intent.reveal();
+    // The boss this window islands, if any: an upper pivot standing at the
+    // window's own axis. Its plate has to be kept, so the window is an
+    // ANNULUS about it and the webs below re-attach it.
+    const boss = tqPivots.find((p) => Math.hypot(p.x - c.x, p.y - c.y) < wanted);
+    // The window stands one LAND outside the boss, not one clearance. The
+    // boss is the annulus of plate the staff actually runs in — a member,
+    // carrying the whole bearing reaction into the webs — and a clearance is
+    // what separates two parts, not what sizes one. The first cut used
+    // CLEAR_MARGIN and left the fusee's bearing collar 0.15 of nickel wide,
+    // under both §50's floor and §54's; the land check said so at boot, which
+    // is the assert doing its job on the very solve that added it.
+    const r0 = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
+    // Step 1 — the outer edge, per degree: the wanted reveal, pulled in by
+    // whichever bound binds first at that bearing.
+    const rOut = new Array(360).fill(wanted);
+    for (let i = 0; i < 360; i++) {
+      const a = i * DEG2RAD;
+      const cs = Math.cos(a), sn = Math.sin(a);
+      // Bisect for the largest radius whose point still clears both fields.
+      const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN
+        && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN;
+      if (ok(wanted)) continue;
+      let lo = r0, hi = wanted;
+      if (!ok(lo)) { rOut[i] = 0; continue; }   // pinched shut at this bearing
+      for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+      rOut[i] = lo;
+    }
+    // Step 2 — where the window is worth cutting at all. A ring of material
+    // narrower than one land is not a window, it is a scratch: it would leave
+    // the strip beside it exactly as thin as the opening.
+    const open = rOut.map((r) => r >= r0 + TQ_LAND_MIN);
+    // Contiguous runs of open bearings, wrapped.
+    const runs = [];
+    let i0 = 0;
+    while (i0 < 360 && open[i0]) i0++;
+    if (i0 === 360) {
+      runs.push({ a: 0, b: 360 });             // open all the way round
+    } else {
+      for (let k = 0; k < 360; k++) {
+        const i = (i0 + k) % 360;
+        if (!open[i]) continue;
+        const last = runs[runs.length - 1];
+        if (last && (last.a + last.b) % 360 === i) last.b++;
+        else runs.push({ a: i, b: 1 });
+      }
+      for (const r of runs) r.b = r.a + r.b;   // → [a, b) in absolute degrees
+    }
+    // Step 3 — the webs. Every gap the shrink left between runs is ALREADY a
+    // web of solid plate; a boss needs TQ_WEBS_MIN of them, so runs are split
+    // until there are enough. The extra splits are allocated across the runs
+    // by arc length and then applied EVENLY inside each run. Splitting the
+    // longest run repeatedly instead puts the third arm beside the second —
+    // for a window open all the way round it lands them at 0°, 90° and 180°,
+    // leaving a 180° stretch with no arm in it, which restrains the boss no
+    // better than two arms do. That is the failure this step exists to avoid,
+    // and it was the first thing the solve actually did.
+    const webSpan = boss ? wanted - r0 : 0;
+    const webW = boss ? tqWebWidthFor(webSpan) : 0;
+    // A run too narrow to be a window is not a web either — it is a nick in
+    // the plate that leaves NO opening once the two web edges have trimmed it.
+    // Counting them was how the fusee came back with "three webs" of which one
+    // spanned 352° and the other two were a degree wide: the count was right
+    // and the boss was still a cantilever. Measured at the reveal radius,
+    // because that is where a run is widest and so most likely to survive.
+    if (boss) {
+      for (let k = runs.length - 1; k >= 0; k--) {
+        const arc = wanted * (runs[k].b - runs[k].a) * DEG2RAD;
+        if (arc < webW + TQ_LAND_MIN) runs.splice(k, 1);
+      }
+    }
+    if (boss && runs.length && runs.length < TQ_WEBS_MIN) {
+      const total = runs.reduce((s, r) => s + (r.b - r.a), 0);
+      const share = runs.map((r) => ((r.b - r.a) / total) * TQ_WEBS_MIN);
+      const pieces = share.map((s) => Math.max(1, Math.floor(s)));
+      // Largest remainder, so the pieces sum to exactly the web count.
+      while (pieces.reduce((s, p) => s + p, 0) < TQ_WEBS_MIN) {
+        let best = 0;
+        for (let k = 1; k < pieces.length; k++) {
+          if (share[k] - pieces[k] > share[best] - pieces[best]) best = k;
+        }
+        pieces[best]++;
+      }
+      const split = [];
+      runs.forEach((r, k) => {
+        for (let j = 0; j < pieces[k]; j++) {
+          split.push({
+            a: r.a + ((r.b - r.a) * j) / pieces[k],
+            b: r.a + ((r.b - r.a) * (j + 1)) / pieces[k],
+          });
+        }
+      });
+      runs.length = 0;
+      runs.push(...split);
+    }
+    // Step 4 — each surviving run becomes a sector polygon, and the WEB is
+    // what bounds it at each end. A web is a bridge arm: PARALLEL-SIDED, so
+    // it measures `webW` across at every radius along its span. That makes its
+    // edge the locus `r·sin(θ − θweb) = webW / 2` — a straight line offset
+    // webW/2 from the web's axis — rather than a constant-angle wedge, which
+    // would measure webW only at the boss and flare to 5.8 units by the time
+    // it reached the reveal, spending most of the window on stock nothing
+    // asked for.
+    //
+    // So the sector is the region
+    //     r0 ≤ r ≤ rOut(θ)   and   r·sin(θ − a) ≥ webW/2   and   r·sin(b − θ) ≥ webW/2
+    // and its boundary is walked as one outer sweep (θ up, r = rHi) and one
+    // inner return (θ down, r = rLo) — the inner return following the boss
+    // circle in the middle of the sector and the two web edges at its ends,
+    // which is the same polygon a watchmaker's cutter would leave.
+    const kept = [];
+    for (const run of runs) {
+      const aRaw = run.a * DEG2RAD, bRaw = run.b * DEG2RAD;
+      // Read the outer table INSIDE THIS RUN ONLY. A run is bounded by CLOSED
+      // bearings, whose entry is 0, and interpolating toward one drags the
+      // outline down to the window's own axis: a spike that crosses the inner
+      // boundary and leaves the polygon self-intersecting. That is not a
+      // cosmetic defect — the first solve shrank nothing, so no run had an
+      // edge and nothing showed; the re-solve against the finished movement
+      // closed the bearings under the alarm lock's post, run edges appeared,
+      // and the triangulator walked the crossing until the boot stopped
+      // finishing at all. Clamping to the run's own open bearings ends the
+      // sector on a straight radial edge, which is what the cutter leaves.
+      const lo = Math.ceil(run.a), hi = Math.floor(run.b - 1e-9);
+      const rAt = (a) => {
+        const d = clamp(a / DEG2RAD, lo, hi);
+        const i = Math.floor(d), f = d - i;
+        const j = Math.min(i + 1, hi);
+        return rOut[((i % 360) + 360) % 360] * (1 - f) + rOut[((j % 360) + 360) % 360] * f;
+      };
+      // Least radius clear of the web at angular offset dA. The locus
+      // r·sin(dA) = w/2 is the web's own straight edge, and it only describes
+      // the edge while the point is BESIDE the arm: past a quarter turn the
+      // point has rounded the arm's shoulder and no radius is excluded. Not
+      // saying so let sin(dA) go negative on any run longer than half a turn,
+      // which read as "excluded at every radius" and quietly deleted the whole
+      // sector — the fusee window came back as ten points.
+      const webEdge = (dA) => {
+        if (dA >= Math.PI / 2) return 0;
+        const s = Math.sin(Math.max(dA, 0));
+        return s <= 1e-6 ? Infinity : (webW / 2) / s;
+      };
+      const N = Math.max(24, Math.round(((bRaw - aRaw) / DEG2RAD) * 2));
+      const outer = [], inner = [];
+      for (let k = 0; k <= N; k++) {
+        const a = aRaw + ((bRaw - aRaw) * k) / N;
+        const rHi = rAt(a);
+        // Clear of BOTH webs, so the greater of the two edges binds — taking
+        // the lesser lets the sector swallow the web it is bounded by, and
+        // the polygon then crosses itself into triangulation garbage (a patch
+        // of PHANTOM PLATE, not a hole, which is how this was caught).
+        const rLo = boss
+          ? Math.max(r0, webEdge(a - aRaw), webEdge(bRaw - a))
+          : 0;
+        if (rLo > rHi) continue;          // pinched by a web (or by the shrink)
+        outer.push([c.x + Math.cos(a) * rHi, c.y + Math.sin(a) * rHi]);
+        if (boss) inner.push([c.x + Math.cos(a) * rLo, c.y + Math.sin(a) * rLo]);
+      }
+      if (outer.length < 4) continue;     // the webs met: no sector left
+      kept.push({ pts: [...outer, ...inner.reverse()], a: aRaw, b: bRaw });
+    }
+    polys.push(...kept.map((s) => ({ pts: s.pts, name: intent.name })));
+    report.push({ name: intent.name, c, wanted, r0, boss: !!boss, webW, webSpan, sectors: kept, rOut });
+  }
+  return { polys, report };
+}
+let TQ_WINDOWS = solveTqWindows();
+
+// --- What the windows must still be true of, asserted rather than assumed.
+//
+// Called TWICE — once here, on the plate's own geometry, and once at the end
+// of the build. The keep set is RE-SWEPT on every call, so the second run sees
+// the parts that did not exist when the windows were solved: the alarm work is
+// stationed on this plate's top face and is built six thousand lines later, so
+// the solve's own keep field is structurally blind to it. Two calls of one
+// function rather than two checks that could disagree about the walls — §76's
+// finding, applied before it can happen again.
+function checkPlateWindows(stage) {
+  const wins = TQ_WINDOWS.polys;
+  if (!wins.length) return;
+  TQ_KEEPS = sweepTqKeeps();   // re-measured, so a late call sees late parts
+  const segDist = (px, py, ax, ay, bx, by) => {
+    const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1e-9;
+    const t = clamp(((px - ax) * vx + (py - ay) * vy) / L2, 0, 1);
+    return Math.hypot(px - ax - t * vx, py - ay - t * vy);
+  };
+  // 1. Every window edge stands off the material the plate must keep.
+  for (const w of wins) {
+    let worst = Infinity, at = null;
+    for (const [x, y] of w.pts) {
+      const c = tqKeepClearance(x, y);
+      if (c < worst) { worst = c; at = [x, y]; }
+    }
+    if (worst < CLEAR_MARGIN - 1e-6)
+      console.warn(`§62 window '${w.name}' (${stage}): edge comes ${worst.toFixed(3)} from material the plate must carry at `
+        + `(${at[0].toFixed(2)}, ${at[1].toFixed(2)}) — need ${CLEAR_MARGIN}`);
+  }
+  // 2. …and off every other opening by a land, not a clearance: the strip
+  //    between two holes is a member of the plate, and TQ_LAND_MIN is what
+  //    §50 and §54 leave it.
+  for (const w of wins) {
+    let worst = Infinity, at = null;
+    for (const [x, y] of w.pts) {
+      const c = tqOpeningClearance(x, y);
+      if (c < worst) { worst = c; at = [x, y]; }
+    }
+    if (worst < TQ_LAND_MIN - 1e-6)
+      console.warn(`§62 window '${w.name}' (${stage}): edge leaves a ${worst.toFixed(3)} land against another opening at `
+        + `(${at[0].toFixed(2)}, ${at[1].toFixed(2)}) — need ${TQ_LAND_MIN.toFixed(3)}`);
+  }
+  // 3. The WEBS: the land between two windows is the arm carrying the boss
+  //    they island. Measured between the built outlines, not recomputed from
+  //    the angles that drew them — a web that measures thin is thin whatever
+  //    the solve believed. Two windows that OVERLAP measure zero here, which
+  //    is the guard that matters: ExtrudeGeometry triangulates overlapping
+  //    holes into phantom plate rather than failing, and that is exactly how
+  //    the first web solve (which let neighbouring sectors swallow the web
+  //    between them) was caught.
+  //    Measured through a spatial HASH rather than every point against every
+  //    segment: six outlines of ~460 points is 15 pairs of ~210,000 distance
+  //    computations each, three times a boot, and the all-pairs version took
+  //    the boot from seconds to minutes. The hash is sound on one condition —
+  //    that no outline segment is longer than a cell, so the closest segment's
+  //    endpoints always lie in a neighbouring cell.
+  //    The cell is SIZED FROM THE DATA, never smaller than the land it is
+  //    measuring: a window's outline carries long segments where the shrink
+  //    steps radially at a run's edge, and a fixed cell would silently stop
+  //    covering them. Growing the cell only ever widens the search.
+  let CELL = TQ_LAND_MIN;
+  for (const w of wins) {
+    for (let q = 0; q < w.pts.length; q++) {
+      const a = w.pts[q], b = w.pts[(q + 1) % w.pts.length];
+      CELL = Math.max(CELL, Math.hypot(b[0] - a[0], b[1] - a[1]));
+    }
+  }
+  const hashOf = (pts) => {
+    const h = new Map();
+    for (let q = 0; q < pts.length; q++) {
+      const k = `${Math.floor(pts[q][0] / CELL)},${Math.floor(pts[q][1] / CELL)}`;
+      if (!h.has(k)) h.set(k, []);
+      h.get(k).push(q);
+    }
+    return h;
+  };
+  for (let i = 0; i < wins.length; i++) {
+    for (let j = i + 1; j < wins.length; j++) {
+      const A = wins[i].pts, B = wins[j].pts;
+      const HB = hashOf(B);
+      let d = Infinity;
+      for (let p = 0; p < A.length; p++) {
+        const cx = Math.floor(A[p][0] / CELL), cy = Math.floor(A[p][1] / CELL);
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (const q of HB.get(`${cx + dx},${cy + dy}`) ?? []) {
+              for (const r of [q, (q + B.length - 1) % B.length]) {  // both segments at that point
+                d = Math.min(d, segDist(A[p][0], A[p][1], B[r][0], B[r][1],
+                  B[(r + 1) % B.length][0], B[(r + 1) % B.length][1]));
+              }
+            }
+          }
+        }
+      }
+      // Nothing of B within a cell of A means the land between them is at
+      // least one cell — TQ_LAND_MIN — so silence here is a PASS, not a gap
+      // in the measurement.
+      if (d === Infinity) continue;
+      const row = TQ_WINDOWS.report.find((r) => r.name === wins[i].name);
+      const req = row?.webW ?? TQ_LAND_MIN;
+      if (wins[i].name === wins[j].name && d < req - 1e-6)
+        console.warn(`§62 web (${stage}): '${wins[i].name}' sectors ${i}/${j} leave ${d.toFixed(3)} of plate — `
+          + `need ${req.toFixed(3)} (§50 floor / §54 ceiling over a ${row?.webSpan.toFixed(2)} span)`);
+      // The width above is the web's BODY, at the plate's mid-thickness. Its
+      // top and bottom edges are chamfered by the plate's anglage, so the face
+      // width is 2·PLATE_BEVEL less — and THAT is the number §50's floor is
+      // written against (the thinnest dimension a part actually presents). The
+      // chamfer is finish on a member, not a thinner member, so the two are
+      // asserted separately rather than one standing in for the other.
+      else if (wins[i].name === wins[j].name && d - 2 * G.PLATE_BEVEL < STOCK_MIN_U - 1e-6)
+        console.warn(`§62 web (${stage}): '${wins[i].name}' sectors ${i}/${j} measure `
+          + `${(d - 2 * G.PLATE_BEVEL).toFixed(3)} across the chamfered face — under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
+      else if (wins[i].name !== wins[j].name && d < TQ_LAND_MIN - 1e-6)
+        console.warn(`§62 (${stage}): windows '${wins[i].name}' and '${wins[j].name}' leave a ${d.toFixed(3)} land — need ${TQ_LAND_MIN.toFixed(3)}`);
+    }
+  }
+  // 4. An islanded boss must not be a CANTILEVER. Three arms restrain it in
+  //    tension and compression only if no half-plane through the boss contains
+  //    them all; three arms inside one half-plane carry a load from the other
+  //    side in bending, which is the failure TQ_WEBS_MIN exists to prevent and
+  //    which a count alone cannot see.
+  for (const r of TQ_WINDOWS.report) {
+    if (!r.boss) continue;
+    if (r.sectors.length < TQ_WEBS_MIN) {
+      console.warn(`§62 window '${r.name}' (${stage}): ${r.sectors.length} webs carry its pivot boss — need ${TQ_WEBS_MIN}`);
+      continue;
+    }
+    // Web azimuths are the gaps BETWEEN sectors: each sector's end and the
+    // next sector's start bracket one arm.
+    const az = r.sectors.map((s, i) => {
+      const nxt = r.sectors[(i + 1) % r.sectors.length];
+      let a = nxt.a - s.b;
+      while (a < 0) a += Math.PI * 2;
+      return s.b + a / 2;
+    });
+    // No half-plane holds them all ⇔ the largest angular gap between
+    // consecutive arms is under half a turn.
+    const sorted = az.map((a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)).sort((p, q) => p - q);
+    let gap = sorted[0] + Math.PI * 2 - sorted[sorted.length - 1];
+    for (let i = 1; i < sorted.length; i++) gap = Math.max(gap, sorted[i] - sorted[i - 1]);
+    if (gap > Math.PI + 1e-6)
+      console.warn(`§62 window '${r.name}' (${stage}): its ${r.sectors.length} webs leave a ${(gap / DEG2RAD).toFixed(1)}° arc `
+        + 'with no arm in it — the boss is a cantilever against a load from that bearing');
+  }
+}
+
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
+const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
+  radius: plateR, thickness: TQ_T, cut: TQ_CUT, holes: tqHoles, slots: tqSlots,
+  windows: TQ_WINDOWS.polys,
+});
+let tqPlateMesh = null;
 {
-  const mesh = G.makeThreeQuarterPlate({
-    radius: plateR, thickness: TQ_T, cut: TQ_CUT, holes: tqHoles, slots: tqSlots,
-  });
+  const mesh = buildTqPlateGeometry();
   mesh.name = 'threeQuarterPlate'; // structural node — see checkSupportGeometry
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  tqPlateMesh = mesh;
   threeQuarterPlate.add(mesh);
   // Screwed gold chatons, set into real counterbores. tqHoles opened each
   // pivot right through at the counterbore diameter, so the BEARING COLLAR —
@@ -4412,7 +4947,9 @@ const threeQuarterPlate = new THREE.Group();
     threeQuarterPlate.add(jewel);
   }
 }
+checkPlateWindows('as cut');
 threeQuarterPlate.position.set(0, 0, TQ_MID_Z);
+threeQuarterPlate.userData.tqPlate = true; // §62: the keep sweep must not enrol the plate against itself
 movement.add(threeQuarterPlate);
 registerExplode(threeQuarterPlate, TQ_MID_Z, 8);
 registerLabel('Three-quarter plate', threeQuarterPlate);
@@ -4424,14 +4961,6 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
 // balance cut).
 {
   const pillarR = plateR - 8;
-  const inCutClearance = (x, y) => {
-    const d = Math.hypot(x - TQ_CUT.x, y - TQ_CUT.y);
-    let phi = Math.atan2(y - TQ_CUT.y, x - TQ_CUT.x) - TQ_CUT.aim;
-    phi = Math.atan2(Math.sin(phi), Math.cos(phi));
-    const radial = d - G.cutEdgeRadius(TQ_CUT, phi);
-    if (Math.abs(phi) <= TQ_CUT.phiOpen) return -Math.abs(radial) - 1; // inside the open wedge
-    return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
-  };
   const capR = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
   // The stop work's BRACKET lives in the plate cut's open wedge (where
   // inCutClearance already forbids seats), but the low reset/hack linkage
@@ -4450,6 +4979,18 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       return Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r;
     };
     for (const s of tqSlots) c = Math.min(c, stadium(s));
+    // §62's windows join the same opening list: a pillar seats under the
+    // plate and its screw is driven through the top face, so both need
+    // material there. (They also want a LAND, not a clearance — the strip
+    // between a window and a screw seat carries the clamping load.)
+    for (const w of TQ_WINDOWS.polys) {
+      for (let i = 0; i < w.pts.length; i++) {
+        const a = w.pts[i], b = w.pts[(i + 1) % w.pts.length];
+        const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-9;
+        const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / L2, 0, 1);
+        c = Math.min(c, Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy) - TQ_LAND_MIN);
+      }
+    }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
     // ...and it must not foul what is UNDER the plate either: the pillar runs
@@ -11164,6 +11705,54 @@ function setLabels(on) {
 }
 document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
 
+// ---------------------------------------------------------------------------
+// §62 — THE WINDOWS, RE-SOLVED against the finished movement, and the plate
+// re-cut to the answer.
+//
+// The plate's own comment calls it "deliberately the LAST structural step:
+// every opening in it … measured off parts that already exist." That was true
+// of the openings it had; it is NOT true of a window, because a window is
+// large enough to reach parts the plate is the footing for — and every one of
+// those is stationed on its top face six thousand lines further down. The
+// first solve is blind to them by construction, and it duly cut the fusee
+// window straight through the alarm lock's pivot post at bearing 153°.
+//
+// So the outline is solved TWICE, by one function, and the second answer is
+// the one that gets cut. What makes that safe rather than merely later is
+// that the re-solve can only ever SHRINK: the keep field grows monotonically
+// as parts are added, and every consumer of the first outline — the pillar
+// seats, their screws — was solved against a LARGER opening than the one it
+// ends up beside. That property is asserted, not assumed; if a bearing ever
+// grew, a seat solved against the old edge could be sitting in the new one.
+// ---------------------------------------------------------------------------
+{
+  const before = TQ_WINDOWS.report.map((r) => ({ name: r.name, rOut: r.rOut.slice(), r0: r.r0 }));
+  TQ_KEEPS = sweepTqKeeps();   // the whole point: the field the first solve could not see
+  TQ_WINDOWS = solveTqWindows();
+  for (const b of before) {
+    const a = TQ_WINDOWS.report.find((r) => r.name === b.name);
+    if (!a) continue;
+    let grew = 0, worstAt = -1, worstBy = 0;
+    for (let i = 0; i < 360; i++) {
+      const by = a.rOut[i] - b.rOut[i];
+      if (by > 1e-9) { grew++; if (by > worstBy) { worstBy = by; worstAt = i; } }
+    }
+    if (grew)
+      console.warn(`§62 window '${b.name}': the re-solve GREW it at ${grew} bearings (worst +${worstBy.toFixed(3)} at ${worstAt}°) — `
+        + 'the pillar seats and plate screws were solved against the first outline and are no longer conservative');
+    if (a.r0 < b.r0 - 1e-9)
+      console.warn(`§62 window '${b.name}': the re-solve shrank its boss ${b.r0.toFixed(3)} → ${a.r0.toFixed(3)}`);
+  }
+  // Re-cut the plate to the second answer. The mesh object is kept and only
+  // its geometry replaced, so everything already parented to it — the chatons,
+  // the bearing collars, the plate screws, §71's occluder (which shares this
+  // very geometry, and is built below) — follows without being rebuilt.
+  const next = buildTqPlateGeometry();
+  tqPlateMesh.geometry.dispose();
+  tqPlateMesh.geometry = next.geometry;
+  checkPlateWindows('re-cut');
+}
+
 // §66 part one — THE SCHEMATIC TIER: the movement drawn as the model the
 // solids merely dress. Every rotor's proxy derives from the SAME constant
 // that built its solid: the gear/pinion/balance builders all record their
@@ -11932,7 +12521,9 @@ function updateScaleRef() {
 // The plate mesh only — the base plate, the escapement bridge and the balance
 // cock stay solid, so the movement still reads as a structure.
 let xrayOn = false;
-const tqPlateMesh = threeQuarterPlate.children.find((o) => o.name === 'threeQuarterPlate');
+// (`tqPlateMesh` is the plate build's own handle on this mesh — §62 re-cuts
+// its geometry, so a second lookup by name would be a second way to refer to
+// one object.)
 const tqSolidMat = tqPlateMesh.material;
 const tqXrayMat = tqSolidMat.clone();
 tqXrayMat.transparent = true;
@@ -16636,6 +17227,12 @@ function tick(t) {
     console.warn(`§38 alarm hand: reach ${reach.toFixed(2)} leaves only ${(markerInnerR - reach).toFixed(2)} to the hour markers' inner edge ${markerInnerR.toFixed(2)} — need ${CLEAR_MARGIN}`);
 }
 
+// §62, second pass: the same window check against the FINISHED movement. The
+// alarm work stands on this plate's top face and is built long after the plate
+// is cut, so the solve could not see its footings; this is where a window that
+// undermined one says so.
+checkPlateWindows('movement complete');
+
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
 assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete
@@ -17066,6 +17663,10 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  // §62: what each openworked window asked for, what it got, and the sections
+  // it left behind — the solve's own numbers, so a reader (or a check) can
+  // measure the plate against what it was told rather than against a picture.
+  get tqWindows() { return TQ_WINDOWS.report; },
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
   // §36 part three: the routing spec's own frame. A sketched polyline arrives
