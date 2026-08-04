@@ -6666,6 +6666,20 @@ silent, so all of it is a gate.
 Windows join the shared opening list: `seatClearance` reads them, so pillars
 and the §20 plate screws over them keep a land against every window edge.
 
+**Connectivity was measured, not inferred.** The web width and the
+no-cantilever rule together IMPLY the plate is still one piece, and implying
+is not measuring — so it was flood-filled, on a 0.2 grid (a quarter of the
+0.8 web, fine enough that a web cannot be missed and read as a break) over a
+box round each window. Both bosses reach the plate body, and **0** cells in
+either box are material without being reached from the boss: no island, at
+either window. Two probe defects on the way to that number are worth the
+line, because both would have read as a broken plate — seeding the fill at
+the boss's own AXIS finds the pivot's through-bore, and seeding it at a fixed
+bearing on the annulus can land in TQ_CUT's open wedge, which is where the
+escapement's boss sits. An instrument that reports a defect it invented is
+the failure mode this repo keeps cataloguing; it is recorded here rather than
+quietly fixed.
+
 ### Four defects the asserts found, all in this work
 
 Written down because each was invisible to every other instrument and three
