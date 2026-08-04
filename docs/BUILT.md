@@ -6526,3 +6526,254 @@ this repo cannot self-certify Chinese to native quality, and it ships
 usable and checkable with that caveat recorded rather than as a
 certified one. The reconfigure/route trial diagnostics quote solver
 asserts verbatim and stay English with them, as in tier one.
+
+## §62 — Openworked three-quarter plate: windows derived from what they frame
+
+**The goal, and the constraint that outranks it.** The three-quarter plate
+is the largest opaque surface in the movement, and everything §61 made
+honest — the grooved cone, the chain seated in it, the maintaining
+sandwich — turns underneath it. This carves WINDOWS through it, the way an
+openworked plate does on a real movement. The entry's own priority stands:
+the plate is a BEARING first, so where a wanted window and a required web
+cannot coexist, the WINDOW is what gives. Every number below is a
+consequence of that ordering, not a drawn dimension.
+
+### Windows are measured, and the builder stays dumb
+
+`makeThreeQuarterPlate` gains one input, `windows`: closed polygons, wound
+clockwise by the builder whatever the solver hands over, grown by
+`PLATE_BEVEL` through a new miter `offsetPolygon` exactly as holes and slots
+are. A polygon rather than another parametric primitive because a window is
+not one shape — an annular sector broken by webs here, whatever the shrink
+leaves there. `PLATE_BEVEL` is exported now: it is 0.06, and §62's web
+sections are quoted against it (an asked-for 0.80 web measures 0.80 through
+its body and 0.68 across its chamfered face), which makes it a number the
+caller reasons about rather than an implementation detail.
+
+### The solve: reveal, then shrink, then web
+
+An intent names the action it frames and MEASURES its own reveal. For a
+coaxial stack that reveal is exactly a circle about the axis — a revolver's
+swept silhouette is a circle, so no sample net is involved and no spoke can
+slip between two samples (TODO 7's first blindness class, answered by
+construction rather than by a finer net).
+
+- **fusee** — sized to the CHAIN's outer edge where it wraps the cone
+  (`max fuseeGrooveAt(f).r + CHAIN_END_R_OUT + CLEAR_MARGIN` = **8.210**),
+  not to the cone. The wraps are the thing being shown, the widest of them
+  (the bottom groove at `FUSEE_R_LARGE`) is occupied at every state of the
+  reserve, so a window containing it shows the chain seated at any tension —
+  which is the entry's acceptance criterion, met by construction rather than
+  by sampling tensions. The cone's crown (6.74) and its crest lands (6.80)
+  fall inside; the maintaining sandwich and great wheel are seen past the
+  cone's flank. **A window onto a stack is sized to the member it is a window
+  ONTO** — size it to the widest thing anywhere under it and it stops being a
+  frame and becomes a hole.
+- **escapement** — the entry named the escape wheel and pallet fork, and
+  measured against the shipped plate most of it already WAS a framed view:
+  **96%** of the fork's under-plate footprint and **45%** of the escape
+  wheel's already stood in TQ_CUT's open wedge. The fork wanted nothing. The
+  escape wheel is the half-covered one, and it pivots IN this plate, so the
+  rest of it is a window with its own islanded boss (reveal **4.770**).
+
+Then the outline SHRINKS, per degree, by bisection against two fields, each
+with its own floor and its own reason:
+
+- **keeps** — material the plate must carry, held off by `CLEAR_MARGIN`,
+  the same standoff `checkCutVsPivots` holds the balance cut to;
+- **openings** — the bores, slots, balance cut and rim, held off by
+  `TQ_LAND_MIN`, because the strip between two holes is a MEMBER, not a
+  clearance.
+
+`TQ_LAND_MIN = max(STOCK_MIN_U, TQ_T)` = **0.8**, and the max is the
+derivation: §54 measures slenderness against the stiffest section dimension,
+which for a strip cut from a plate is `max(width, TQ_T)`, so a strip narrower
+in plane than the plate is thick is a blade standing on edge — TQ_T is the
+width at which an in-plane land stops being the weak direction. `STOCK_MIN_U`
+(0.317) never binds today and stays inside the max so the two floors cannot
+silently swap places.
+
+The keep field is SWEPT, not listed. The hand-written obstacle lists in this
+file have been patched twice for parts someone forgot, and §76's wall-list
+finding is the same lesson at movement scale. A mesh is a keep if it CROSSES
+the plate's z-band or is FOOTED on its top face, each mesh carrying two
+footprints — an AABB and a bounding circle — with the greater distance taken,
+since each is separately conservative and an AABB describes a round part
+badly (the alarm column wheel's box reads 0.83 from the fusee axis where its
+silhouette stands 1.65 off).
+
+### Webs, and why three
+
+A window about an arbor that pivots in this plate ISLANDS its boss, and the
+webs are what re-attach it.
+
+- **Width** `max(TQ_LAND_MIN, span / SLENDER_TARGET)` — §50's floor, or §54's
+  ceiling where the span is long enough to bind (past 21.6 units at
+  TQ_T 0.8). Both windows land on the floor: **0.800** over spans of 6.860
+  (fusee) and 1.760 (escapement).
+- **Shape** parallel-sided, the locus `r·sin(θ − θweb) = w/2`. A
+  constant-angle wedge measures w at the boss and flares to 5.8 units by the
+  reveal, spending most of the window on stock nothing asked for — that was
+  the first cut, and the map of it is why this one is a straight edge.
+- **Count** three, derived: a bearing reaction can arrive from any azimuth
+  (the fusee arbor's reverses between running and winding), and two arms
+  leave the perpendicular direction carried in BENDING alone. Three is the
+  smallest number restraining an islanded boss in tension and compression
+  whatever the load's bearing — the same reason a real openworked bar carries
+  three arms.
+- **Placement** every gap the shrink already left IS a web; runs are split
+  only to make up the count, by arc length and then evenly inside each run.
+
+The boss itself is `pivotBossR + TQ_LAND_MIN`: the window stands one LAND
+outside it, not one clearance, because the boss is the annulus the staff runs
+in and carries the whole bearing reaction into the webs. `pivotBossR` is
+hoisted out of `checkCutVsPivots` and shared, so the cut and the windows
+cannot judge one boss by two expressions — PR #140's `MW_TOP` defect, not
+repeated.
+
+### The plate is now solved LAST, because a window reaches further than a bore
+
+The plate build's own comment has always called it "deliberately the LAST
+structural step: every opening in it … measured off parts that already
+exist." That was true of the openings it had and is NOT true of a window: a
+window is large enough to reach the parts the plate is the FOOTING for, and
+every one of those is stationed on its top face six thousand lines further
+down. The first solve is blind to them by construction, and it duly cut the
+fusee window straight through the alarm lock's pivot post at bearing 153°.
+
+So the outline is solved TWICE by one function — §76's "one list, used
+twice" — and the second answer is the one that gets cut: the geometry is
+rebuilt in place on the same mesh object, so the chatons, bearing collars,
+plate screws and §71's occluder (which shares this very geometry) follow
+without being rebuilt. What makes that safe rather than merely later is that
+the re-solve can only ever SHRINK, since the keep field grows monotonically
+as parts are added — and that property is ASSERTED, because the pillar seats
+and their screws were solved against the first outline and are only
+conservative if it never grew. Measured: the re-solve closes **5** bearings
+and shrinks **8** of the fusee window's 360, taking its edge from 8.21 to
+7.80 under the alarm lock.
+
+### What is asserted at build time
+
+`checkPlateWindows(stage)`, called at each stage with the keep field
+re-swept, so the late call sees the late parts: every edge off the keeps by
+`CLEAR_MARGIN` and off every other opening by `TQ_LAND_MIN`; every web at or
+above its derived width AND its chamfered face above `STOCK_MIN_U`; and no
+islanded boss left a CANTILEVER — three arms inside one half-plane carry a
+load from the other side in bending, which a count alone cannot see. Boot is
+silent, so all of it is a gate.
+
+Windows join the shared opening list: `seatClearance` reads them, so pillars
+and the §20 plate screws over them keep a land against every window edge.
+
+**Connectivity was measured, not inferred.** The web width and the
+no-cantilever rule together IMPLY the plate is still one piece, and implying
+is not measuring — so it was flood-filled, on a 0.2 grid (a quarter of the
+0.8 web, fine enough that a web cannot be missed and read as a break) over a
+box round each window. Both bosses reach the plate body, and **0** cells in
+either box are material without being reached from the boss: no island, at
+either window. Two probe defects on the way to that number are worth the
+line, because both would have read as a broken plate — seeding the fill at
+the boss's own AXIS finds the pivot's through-bore, and seeding it at a fixed
+bearing on the annulus can land in TQ_CUT's open wedge, which is where the
+escapement's boss sits. An instrument that reports a defect it invented is
+the failure mode this repo keeps cataloguing; it is recorded here rather than
+quietly fixed.
+
+### Four defects the asserts found, all in this work
+
+Written down because each was invisible to every other instrument and three
+of them looked like working geometry:
+
+1. **The fusee's bearing collar was 0.15 of nickel.** The first cut set the
+   window's inner radius at `pivotBossR + CLEAR_MARGIN`, and for an
+   unjewelled bore `pivotBossR` IS the bore — zero wall. The land check said
+   so on the very solve that added it.
+2. **The keep sweep enrolled the plate against itself.** On the second call
+   the plate exists and its own mesh crosses its own band over the whole
+   disc, so every window measured zero clearance against the material it was
+   cut out of. Its screws go with it — they are seated by a scan that reads
+   these windows, so enrolling them here would make the two solves argue in a
+   circle rather than in an order.
+3. **"Footed" was reading the z-stack, not the load path.** Taking the whole
+   `CLEAR_MARGIN` above the top face enrolled the alarm column wheel, which
+   clears the face by 0.152 and is carried entirely by its own stud. The band
+   is half a margin deep now: nothing may legally sit closer than a whole one
+   without touching, so an underside inside it is resting and one above it is
+   carried elsewhere.
+4. **Two sector polygons that swallowed the web between them.** The web-edge
+   test took the lesser of the two edges where it needed the greater, so
+   neighbouring sectors overlapped — and ExtrudeGeometry triangulates
+   overlapping holes into PHANTOM PLATE rather than failing. The land
+   measurement between windows is the guard that catches it, and it is why
+   that check measures the built outlines rather than re-reading the angles
+   that drew them.
+
+Two further traps, both found by the boot ceasing to finish rather than by a
+check, and both now commented at their site: interpolating the outer table
+across a run's CLOSED neighbour drags the outline to the window's own axis
+and self-intersects the polygon (the first solve shrank nothing, so no run
+had an edge and nothing showed); and the parallel-web locus is only the
+web's edge while the point is beside the arm — past a quarter turn `sin`
+goes negative, which read as "excluded at every radius" and deleted a whole
+sector.
+
+### The acceptance, measured rather than argued
+
+The entry asks that the fusee window show the grooves and the wraps "through
+the full reserve without the plate edge clipping the view at any tension".
+Measured by raycasting the real chain's own vertices against the finished
+plate, at seven tensions, counting only the chain the window was SIZED to show
+(under the plate, inside the reveal):
+
+| tension | wrap vertices in the reveal | covered by plate | max wrap radius |
+|---|---|---|---|
+| 0 | 142 | 0 (0.0%) | 8.201 |
+| 0.25 | 1052 | 79 (7.5%) | 8.188 |
+| 0.5 | 1874 | 150 (8.0%) | 8.197 |
+| 0.75 | 2624 | 201 (7.7%) | 8.048 |
+| 1 | 3282 | 339 (10.3%) | 8.204 |
+
+Three arms of 0.80 across a 6.86 span account for **8.0%** of the window's
+annulus, so the coverage IS the webs and nothing else — which is the result
+the acceptance wanted, arrived at by measurement rather than by looking.
+
+**One residue, stated because it is thin.** The chain's measured outer reach
+is **8.204** against a derived reveal of **8.210**: six thousandths of
+daylight. The derivation is a CENTRELINE one — `max fuseeGrooveAt(f).r` plus
+one plate half-width — and a chain link is a chord, so its corner sits outside
+the circle through its pin centres by an amount that derivation cannot see.
+The `CLEAR_MARGIN` of visual reveal is therefore entirely spent absorbing it
+rather than being daylight. It fits today and nothing is clipped; a change to
+`CHAIN_END_R_OUT`, `CHAIN_PITCH` or the groove envelope would need this
+re-measured, and there is deliberately no assert standing in for that — a
+tripwire at whatever tension a session happened to restore would be a partial
+check wearing a complete one's clothes.
+
+Separately, the alarm lock's pivot post closes bearings 152, 153, 155, 158,
+159 outright and pulls 154, 156 and 157 in to 7.80 — **8 of 360**, a ~8° bite
+out of the outermost wrap. That is the re-solve doing its job, not a defect:
+the post is footing the plate owes a real part.
+
+### What was measured and NOT taken
+
+The going train is genuinely hidden — of their under-plate footprints, the
+third wheel is **8%** open, the fusee unit 12%, the chain 22%, the fourth
+24%, the centre 26%. Windows over the centre and third wheels (r 16.5 and
+14) were not cut: at that size the plate stops being a bearing carrying every
+upper pivot and becomes lace, which is the one trade this entry's own
+priority forbids. The numbers are recorded here so a later § can argue with
+them rather than re-measure.
+
+`explain.html` gains nothing: its entries are MECHANISMS, and an openworked
+plate is structure and finish. Adding prose there would have invalidated its
+German and Chinese by design (§73) for a page whose subject this is not.
+
+**Battery:** 13/13, zero waivers added — support 0 failures, graph clean,
+penetration and alarmHandoffs (0 waived) OK, stockFloor 0 degenerate and 0
+unwaived over 501 rows, intraUnit and expectedContacts clean, oscillator
+2.5000 Hz on a 0.0244 mm ribbon, `inspection` **0 FORBIDDEN** over 50 units
+and 74 contacting pairs, `clearances` 0 violations over 30 budgets, and
+`sweptOverlap` **0 CONFIRMED** over 57,294 pairs (2 tight, 13 refuted). Boot
+silent. The fingerprint moves by construction — the plate's mesh changes
+shape — and lands deterministic at **4226139235** across two virgin boots.

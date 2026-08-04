@@ -1579,6 +1579,12 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [] }) {
 //   slots stadium-shaped openings for parts that SWEEP through the plate
 //         (the setting lever's tail post and its ramp collar) — the swept
 //         union of a circle of radius r along the segment a → b.
+//   windows §62's openworked openings — arbitrary closed polygons
+//         `{ pts: [[x, y], …] }`, already SOLVED by the caller against the
+//         silhouettes they frame and the material the plate must keep. A
+//         polygon rather than another parametric primitive because a window
+//         is not one shape: an annular sector broken by webs, a span, a disc.
+//         The builder stays what it is — a description turned into material.
 //
 // Style follows makeBackPlate: nickel, bevelled edge, extruded about z = 0.
 // ---------------------------------------------------------------------------
@@ -1596,17 +1602,62 @@ export function cutEdgeRadius(cut, phi) {
   return a + (b - a) * f;
 }
 
-export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [] }) {
+// Grow a closed polygon by `d` along its own outward normals — the MITER
+// offset, so a corner lands where the two offset edges actually meet rather
+// than being rounded or cut off. Used to pre-grow §62's window outlines by the
+// bevel size, exactly as holes and slots grow by it: the caller solved its
+// webs against the FINISHED edge, and a bevelled extrusion eats `bevelSize`
+// of material into every opening.
+//
+// Sign-safe: the outward direction is taken from the polygon's own signed
+// area, so a window may be wound either way. The miter length blows up as a
+// vertex approaches a 180° reversal (a degenerate spike), so the turn is
+// clamped — a spike in a window outline is a caller bug, and quietly
+// producing a finite offset for it beats producing Infinity.
+export function offsetPolygon(pts, d) {
+  const n = pts.length;
+  if (n < 3 || d === 0) return pts.map((p) => [p[0], p[1]]);
+  let area2 = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    area2 += a[0] * b[1] - b[0] * a[1];
+  }
+  const s = area2 >= 0 ? 1 : -1; // CCW: outward normal of (dx,dy) is (dy,−dx)
+  const nrm = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const L = Math.hypot(dx, dy) || 1e-9;
+    nrm.push([(s * dy) / L, (-s * dx) / L]);
+  }
+  return pts.map((p, i) => {
+    const n1 = nrm[i], n0 = nrm[(i + n - 1) % n];
+    const dot = Math.max(-0.9, n0[0] * n1[0] + n0[1] * n1[1]); // clamp: no infinite miter
+    const k = d / (1 + dot);
+    return [p[0] + k * (n0[0] + n1[0]), p[1] + k * (n0[1] + n1[1])];
+  });
+}
+
+// The plate's edge bevel — the anglage chamfer. Exported because §62's web
+// sections are quoted against it: the caller's asked-for outline lands at the
+// plate's MID-thickness, and each face edge is this much inside it, so a web
+// asked for at 0.80 measures 0.80 through its body and 0.68 across its top
+// face. A number the caller has to reason about is not an implementation
+// detail of this builder.
+export const PLATE_BEVEL = 0.06;
+
+export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [], windows = [] }) {
   // A bevelled extrusion grows its material OUTWARD from the drawn profile by
   // bevelSize — into every hole and into the balance cut. The caller solved
   // its clearances against the finished EDGES, so shrink the drawn outline
   // and grow the drawn openings by exactly that much and the mesh lands where
   // it was asked to.
-  const bevelSize = 0.06;
+  const bevelSize = PLATE_BEVEL;
   radius -= bevelSize;
   const cut = { ...cutIn, radii: cutIn.radii.map((r) => r + bevelSize) };
   holes = holes.map((h) => ({ ...h, r: h.r + bevelSize }));
   slots = slots.map((s) => ({ ...s, r: s.r + bevelSize }));
+  windows = windows.map((w) => ({ ...w, pts: offsetPolygon(w.pts, bevelSize) }));
   // Where the wedge's two edges leave the rim: |C + t·d| = radius, t > 0.
   const rimHit = (ang) => {
     const dx = Math.cos(ang), dy = Math.sin(ang);
@@ -1715,6 +1766,23 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     // so that arc belongs to the FAR end (b) and the −90° → −270° one to a.
     p.absarc(sl.bx, sl.by, sl.r, ang + Math.PI / 2, ang - Math.PI / 2, true);
     p.absarc(sl.ax, sl.ay, sl.r, ang - Math.PI / 2, ang - Math.PI * 1.5, true);
+    p.closePath();
+    s.holes.push(p);
+  }
+  // §62's windows. Wound CLOCKWISE here whatever the solver handed over —
+  // ExtrudeGeometry reads a hole's winding, and a window emitted the other way
+  // round triangulates into a patch of solid plate rather than an opening
+  // (the same failure the slots' arc directions are commented for).
+  for (const w of windows) {
+    let area2 = 0;
+    for (let i = 0; i < w.pts.length; i++) {
+      const a = w.pts[i], b = w.pts[(i + 1) % w.pts.length];
+      area2 += a[0] * b[1] - b[0] * a[1];
+    }
+    const pts = area2 > 0 ? [...w.pts].reverse() : w.pts;
+    const p = new THREE.Path();
+    p.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) p.lineTo(pts[i][0], pts[i][1]);
     p.closePath();
     s.holes.push(p);
   }
