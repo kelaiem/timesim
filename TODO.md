@@ -2363,7 +2363,49 @@ Filed rather than fixed because step 2 is the whole dial side, and doing
 it under a §76 balance-growth banner would bury an architectural change
 inside a layout experiment. §76's wall one now cites this item.
 
-## 27. Fasteners are modelled; the openings and heads they need are not
+## 27. CLOSED — every opening is cut: seats bored, joints drilled, and the rivet is a formed head
+
+All three rows landed, each measured before and after. What follows is the
+original filing, edited in place to record what was built and what it cost;
+the one thing that did NOT close is the instrument gap, and it says so at
+the end.
+
+**Measured after, by the raycast that found the defect and then by a wider
+one** — every screw head in the movement against its own unit's solid, first
+down the head's axis and then over its whole FOOTPRINT (centre plus twelve
+azimuths at 0.95 of the head radius, so a seat that was merely too narrow
+would show):
+
+| site | head into solid host, before | after |
+|---|---|---|
+| Three-quarter plate ×4 | 0.317 (40% of the plate) | **0** |
+| Balance cock ×2 | 0.048 | **0** |
+| Fork cock ×1 | 0.048 | **0** |
+
+(The original filing says "Balance cock ×8". There are TWO screws there — one
+per T-foot leg, which is what the builder writes and what the re-measurement
+finds; the 8 was that measurement's own clustering splitting one 1.35-radius
+head into several. The depths were right, which is what mattered.)
+
+**The two answers are different because the constraints are.** A head that
+may not stand proud has to be SUNK, and a sunk head needs a recess: the
+plate screws are counterbored (`tqHoles` gains the four solved seats at
+head diameter + `SEAT_FIT`, with the bearing land put back underneath and
+bored for the shank — the chatons' construction, exactly). A head that may
+stand proud BEARS on the face: the cock and bridge screws sit their
+undersides on the top face and their hosts are bored for the shank that
+passes through — the T-foot crossbar became an extrusion with two clearance
+holes instead of a solid box, and the bridge's foot boss became a tube
+instead of a disc with a shaft drawn inside it.
+
+**What is deliberately still not drawn**, stated so the next reader does not
+file it again: the thread, and the tapped hole it takes. `shank` is passed
+only as far as the fastener's own drawn body goes — through the plate, or
+through the bar — and below that last face the screw threads into the pillar
+or the leg. A tapped hole under a seated screw is invisible in the real
+movement too.
+
+### (original filing)
 
 Three sites, one cause: the movement draws a fastener where a fastener
 goes, and never cuts the feature the fastener needs to be there. Found by
@@ -2454,25 +2496,85 @@ worth keeping:
   builders), and it must FIRE on the rivets on arrival or the check is
   wrong.
 
-### What closing this looks like
+### How the chain closed — and why the rivet ended up FLUSH
 
-Rows 1 and 2 are the same edit twice: pass the seats as holes. The plate's
-screw seats join `tqHoles` (they are already solved — `pillarSeats` — and
-§62's `seatClearance` already reads the windows, so the ordering exists),
-and the link plate's stadium gains two `shape.holes` at the rivet centres it
-already names. Both want the counterbore convention the chatons use: cut
-through at the head diameter, put the bearing land back underneath, so the
-recess has a floor rather than being a bare hole.
+The joint is drilled and riveted now: every leaf carries the two bores its
+own outline is drawn from, and the outer pair is counterbored for the head
+with the bearing land put back underneath — the chatons' construction, in
+`chainPlatePairTemplate`. The three numbers are in `layout.js` beside the
+rest of the chain's stock:
 
-Row 3 is a shape change, not an opening: the pin gains an upset head at each
-end — a short flare proud of the outer face — or the outer plate gains a
-countersink and the pin a matching taper. Either way the number to state is
-how far proud, derived from real chain practice rather than chosen.
+| | value | where it comes from |
+|---|---|---|
+| `CHAIN_RIVET_FIT` | 0.013 u (0.005 mm) | the inner pair TURNS on the pin, so its bore is one running fit over it — 0.01 mm diametral, a real watch pivot's shake in its jewel, at this pin's 0.20 mm |
+| `CHAIN_RIVET_HEAD_R` | 0.405 u (0.31 mm dia) | 1.5× the shank, the formed-rivet proportion; leaves 0.255 u (0.097 mm) of plate around the recess in the 0.66 outer leaf |
+| `CHAIN_RIVET_HEAD_T` | 0.072 u | half the outer leaf, so the formed head and the land it bears on are the same thickness and neither is the weaker member |
 
-**Do not close this by widening a clearance or waiving a row** — nothing is
-currently failing, which is the point. The fix has to add geometry, and the
+**Row 3 asked "how far proud"; the movement answered ZERO, and that is the
+finding.** The fusee's groove land is `FUSEE_LAND_W` ≈ 0.025 over a 0.02
+crest floor — 0.005 u of extra chain width the axial budget can afford,
+0.0025 a side — and successive drum coils lie `CHAIN_COIL_PITCH` = stack +
+0.03 apart. No head worth forming fits in that. A rivet that may not stand
+proud is COUNTERSUNK, which is what flush riveting exists for: the head is
+formed inside the leaf, in a recess, and the pin is captured by a head
+rather than being a cylinder cut off level with its plate. The stated number
+moved from "how far proud" to the recess it is formed in, and the axial
+budget is the derivation.
+
+**The bore is polygonal and so is the pin**, so the fit is stated as the
+pin's circumscribed radius against the bore's INSCRIBED one. That is not
+pedantry: sizing an 8-gon bore by circumradius would have closed it on the
+pin's flats by cos(π/8) — 7.6% of the radius, five times the fit itself.
+
+**What it cost, measured**: the chain went 45,960 → 148,152 vertices (one
+mesh still, so no new draw call), and the per-rebuild cost went 2.24 ms →
+3.32 ms — less than the geometry, because the rebuild stopped allocating two
+megabyte-scale `Float32Array`s per frame and now keeps them. That
+reallocation was affordable at the old size and would not have been at this
+one; `total` only changes when the run gains or loses a link.
+
+### The instrument gap did NOT close, and §77's control had to move
+
+There is now a build-time assert at the chain template — run the rivet's own
+surface down its axis through the leaves and require no plate material where
+the rivet is — and it FIRES on the shipped defect: un-bore either leaf and
+boot reports `the rivet runs 0.1450 u through solid plate`, which is exactly
+the leaf's thickness. That is a check of ONE part's template, not of the
+class. Blindness inside a merged mesh is still real and still roadmap §77's
+to end.
+
+**And this item removed §77's positive control.** That entry seeds itself on
+the rivets and says the check "must FIRE there on arrival or the check is
+wrong" — true when it was written, false now. §77 has been edited: the chain
+becomes a second REGRESSION case (a merged buffer that must come back
+silent), and the control it needs is a synthetic one — an un-bored copy of
+the template, which is how the assert above was validated.
+
+### What closing this looked like
+
+Rows 1 and 2 were the same edit twice: pass the seats as holes. The plate's
+screw seats join `tqHoles` (they were already solved — `pillarSeats` — but
+were solved AFTER the plate was cut, so the seat solve moved above the plate
+build; it must stay this side of the push, since a pillar may not avoid its
+own screw's seat), and the link plate's stadium gained two `shape.holes` at
+the rivet centres it already named. Both took the counterbore convention the
+chatons use: cut through at the head diameter, put the bearing land back
+underneath, so the recess has a floor rather than being a bare hole.
+
+Row 3 was a shape change, not an opening: the pin gains an upset head at
+each end — a short flare proud of the outer face — or the outer plate gains
+a countersink and the pin a matching taper. Either way the number to state
+is how far proud, derived from real chain practice rather than chosen. (The
+countersink is the one that survived the movement's axial budget; see above.)
+
+**Do not close this by widening a clearance or waiving a row** — nothing was
+failing, which was the point. The fix had to add geometry, and the
 instrument gap has to be closed separately or the next instance will be just
-as invisible as this one.
+as invisible as this one. Nothing here is waived, and no budget moved.
+
+**The stale claim is fixed too.** `makeThreeQuarterPlate`'s docstring named
+"pillar seats" among its holes and had never been passed one. It is passed
+them now, and the sentence says what the construction is.
 
 ## 28. MOSTLY CLOSED — pillars, a derived profile, and a lock the column actually lifts
 

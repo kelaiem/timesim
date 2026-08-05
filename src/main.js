@@ -35,6 +35,7 @@ import {
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
+  CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
 } from './layout.js';
 
@@ -3241,22 +3242,65 @@ let chainTensionNow = 0; // written by every tick(); consumed by updateChainIfMo
 // plain transform-and-fill into one big buffer (no per-link allocations
 // beyond the buffer itself). Plate pair z-stack, mirrored about the chain
 // centreline: inner faces 0.02..0.165, outer 0.185..0.33 (a leaf-gap shim
-// between every leaf) — the pins run flush to the outer faces, their ends
-// reading as rivet heads.
-function chainPlatePairTemplate(endR, zOff) {
-  const half = CHAIN_PITCH / 2;
-  const s = new THREE.Shape(); // stadium: rivet-hole centres at ±half
-  s.absarc(-half, 0, endR, Math.PI / 2, Math.PI * 1.5, false);
-  s.absarc(half, 0, endR, Math.PI * 1.5, Math.PI / 2, false);
-  const one = new THREE.ExtrudeGeometry(s, { depth: CHAIN_PLATE_T, bevelEnabled: false, curveSegments: 4 });
-  const pos = [], nrm = [];
-  for (const zc of [zOff - CHAIN_PLATE_T / 2, -zOff - CHAIN_PLATE_T / 2]) {
-    const g = one.clone().translate(0, 0, zc);
-    pos.push(...g.attributes.position.array);
-    nrm.push(...g.attributes.normal.array);
-    g.dispose();
+// between every leaf).
+//
+// TODO 27 rows 2 and 3 — THE JOINT IS DRILLED AND RIVETED. Every leaf is
+// bored at the rivet centres its own outline is drawn from (the stadium
+// named the hole positions in order to place its ends, and cut none of
+// them: 211 joints of pin through solid plate). The bore is polygonal and
+// so is the pin, so the fit is stated as the pin's circumscribed radius
+// against the bore's INSCRIBED one — the flats are what would touch.
+// The outer leaf is counterbored for the head, chaton-fashion: cut through
+// at the head diameter with the bearing land put back underneath, so the
+// recess has a floor for the head to bear on. See CHAIN_RIVET_* in
+// layout.js for why the head is formed inside the leaf instead of proud
+// of it.
+const CHAIN_BORE_SEG = 8;                    // = the pin's own segment count
+const chainBoreR = CHAIN_PIN_R + CHAIN_RIVET_FIT;   // wanted as an APOTHEM
+// A hole path as an explicit n-gon, wound CW (ExtrudeGeometry reads the
+// winding). Sized by apothem, not circumradius: an inscribed polygon is the
+// smaller solid, so a circumradius-sized bore would close on the pin's flats
+// by cos(pi/n) — 7.6% of the radius at n = 8, five times the fit itself.
+const chainBorePath = (cx, apothem) => {
+  const R = apothem / Math.cos(Math.PI / CHAIN_BORE_SEG);
+  const p = new THREE.Path();
+  for (let i = 0; i <= CHAIN_BORE_SEG; i++) {
+    const a = -(i / CHAIN_BORE_SEG) * Math.PI * 2;   // CW
+    const x = cx + Math.cos(a) * R, y = Math.sin(a) * R;
+    if (i === 0) p.moveTo(x, y); else p.lineTo(x, y);
   }
-  one.dispose();
+  p.closePath();
+  return p;
+};
+// One leaf, as a stack of layers from its INNER face outward: [depth, boreR].
+// The inner pair is one layer bored for the pin; the outer pair is two — the
+// land it rides on, then the counterbore that takes the head.
+function chainLeafLayers(counterbored) {
+  return counterbored
+    ? [[CHAIN_PLATE_T - CHAIN_RIVET_HEAD_T, chainBoreR], [CHAIN_RIVET_HEAD_T, CHAIN_RIVET_HEAD_R]]
+    : [[CHAIN_PLATE_T, chainBoreR]];
+}
+function chainPlatePairTemplate(endR, zOff, counterbored) {
+  const half = CHAIN_PITCH / 2;
+  const layers = chainLeafLayers(counterbored);
+  const pos = [], nrm = [];
+  // zOff is the leaf's centre; `out` is which way its OUTER face points, so
+  // the mirrored leaf gets its counterbore on the correct side.
+  for (const out of [1, -1]) {
+    let z = out * zOff - out * CHAIN_PLATE_T / 2;    // inner face of this leaf
+    for (const [depth, boreR] of layers) {
+      const s = new THREE.Shape(); // stadium: rivet-hole centres at ±half
+      s.absarc(-half, 0, endR, Math.PI / 2, Math.PI * 1.5, false);
+      s.absarc(half, 0, endR, Math.PI * 1.5, Math.PI / 2, false);
+      s.holes.push(chainBorePath(-half, boreR), chainBorePath(half, boreR));
+      const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 4 });
+      g.translate(0, 0, out > 0 ? z : z - depth);     // extrusion runs +z from its origin
+      pos.push(...g.attributes.position.array);
+      nrm.push(...g.attributes.normal.array);
+      g.dispose();
+      z += out * depth;
+    }
+  }
   return { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm) };
 }
 const CHAIN_TMPL = (() => {
@@ -3264,16 +3308,77 @@ const CHAIN_TMPL = (() => {
   // the inner pair nests one leaf plus one shim further in.
   const zOffOuter = CHAIN_PIN_LEN / 2 - CHAIN_PLATE_T / 2;
   const zOffInner = zOffOuter - CHAIN_PLATE_T - CHAIN_LEAF_GAP;
-  const inner = chainPlatePairTemplate(CHAIN_END_R_IN, zOffInner);
-  const outer = chainPlatePairTemplate(CHAIN_END_R_OUT, zOffOuter);
-  const pinGeo = new THREE.CylinderGeometry(CHAIN_PIN_R, CHAIN_PIN_R, CHAIN_PIN_LEN, 8).rotateX(Math.PI / 2).toNonIndexed();
-  const pin = {
-    pos: Float32Array.from(pinGeo.attributes.position.array),
-    nrm: Float32Array.from(pinGeo.attributes.normal.array),
-  };
-  pinGeo.dispose();
+  const inner = chainPlatePairTemplate(CHAIN_END_R_IN, zOffInner, false);
+  const outer = chainPlatePairTemplate(CHAIN_END_R_OUT, zOffOuter, true);
+  // The rivet: a shank between the two counterbore floors, upset at each end
+  // into the recess it fills — the head one fit inside the recess wall, so
+  // the formed head reads as the separate body it is rather than fusing to
+  // the plate. The shank stops AT the floor: run through and its end cap
+  // would be coplanar with the head's outer face for no gain.
+  const pos = [], nrm = [];
+  const shankLen = CHAIN_PIN_LEN - 2 * CHAIN_RIVET_HEAD_T;
+  const parts = [
+    [CHAIN_PIN_R, shankLen, 0],
+    [CHAIN_RIVET_HEAD_R - CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_T, (CHAIN_PIN_LEN - CHAIN_RIVET_HEAD_T) / 2],
+    [CHAIN_RIVET_HEAD_R - CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_T, -(CHAIN_PIN_LEN - CHAIN_RIVET_HEAD_T) / 2],
+  ];
+  for (const [r, len, z] of parts) {
+    const g = new THREE.CylinderGeometry(r, r, len, CHAIN_BORE_SEG)
+      .rotateX(Math.PI / 2).translate(0, 0, z).toNonIndexed();
+    pos.push(...g.attributes.position.array);
+    nrm.push(...g.attributes.normal.array);
+    g.dispose();
+  }
+  const pin = { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm), parts };
   return { inner, outer, pin };
 })();
+// ...and the bore is ASSERTED, not assumed. Nothing in the battery can look
+// inside a merged buffer — the chain is ONE mesh, so its pin and the leaf it
+// pierces are not two meshes to sweep against each other, and that blindness
+// is a whole class of geometry (TODO 27; the general instrument is roadmap
+// §77's to build). What CAN be measured here is the TEMPLATE the buffer is
+// written from, and the measurement is exactly the one the shipped joint
+// would have failed: run the rivet's own surface down the axis and require
+// no plate material anywhere the rivet is. Un-bore either leaf and this
+// fires with the depth of the overlap.
+{
+  const half = CHAIN_PITCH / 2;
+  const AZ = 16;
+  let worst = 0, worstAt = '';
+  const hitsAt = (tmpl, px, py) => {          // z of every triangle the vertical line at (px,py) crosses
+    const P = tmpl.pos, zs = [];
+    for (let i = 0; i < P.length; i += 9) {
+      const ax = P[i], ay = P[i + 1], bx = P[i + 3], by = P[i + 4], cx2 = P[i + 6], cy2 = P[i + 7];
+      const d = (by - cy2) * (ax - cx2) + (cx2 - bx) * (ay - cy2);
+      if (Math.abs(d) < 1e-12) continue;      // edge-on (a side wall) — no cap to cross
+      const l1 = ((by - cy2) * (px - cx2) + (cx2 - bx) * (py - cy2)) / d;
+      const l2 = ((cy2 - ay) * (px - cx2) + (ax - cx2) * (py - cy2)) / d;
+      const l3 = 1 - l1 - l2;
+      if (l1 < 0 || l2 < 0 || l3 < 0) continue;
+      zs.push(l1 * P[i + 2] + l2 * P[i + 5] + l3 * P[i + 8]);
+    }
+    return zs.sort((a, b) => a - b);
+  };
+  for (const [name, tmpl] of [['inner', CHAIN_TMPL.inner], ['outer', CHAIN_TMPL.outer]]) {
+    for (const cx of [-half, half]) {
+      for (const [r, len, zc] of CHAIN_TMPL.pin.parts) {
+        const z0 = zc - len / 2, z1 = zc + len / 2;
+        for (let k = 0; k < AZ; k++) {
+          const a = (k / AZ) * Math.PI * 2;
+          const zs = hitsAt(tmpl, cx + Math.cos(a) * r, Math.sin(a) * r);
+          for (let i = 0; i + 1 < zs.length; i += 2) {   // material spans, entry/exit pairs
+            const ov = Math.min(zs[i + 1], z1) - Math.max(zs[i], z0);
+            if (ov > worst) { worst = ov; worstAt = `${name} leaf, rivet r ${r.toFixed(3)}`; }
+          }
+        }
+      }
+    }
+  }
+  if (worst > 1e-6)
+    console.warn(`chain joint: the rivet runs ${worst.toFixed(4)} u through solid plate (${worstAt}) — `
+      + `the leaf is not bored for it (bore apothem ${chainBoreR.toFixed(3)}, head recess ${CHAIN_RIVET_HEAD_R.toFixed(3)})`);
+}
+let chainBuf = null;   // reused position/normal buffers — see buildChainLinkGeometry
 function buildChainLinkGeometry(curve) {
   curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
   const len = curve.getLength();
@@ -3285,7 +3390,15 @@ function buildChainLinkGeometry(curve) {
   const isOuter = (i) => (N - 1 - i) % 2 === 0;
   let total = (N + 1) * pin.pos.length;
   for (let i = 0; i < N; i++) total += (isOuter(i) ? outer : inner).pos.length;
-  const pos = new Float32Array(total), nrm = new Float32Array(total);
+  // Buffers are KEPT between rebuilds. The drilled-and-riveted joint (TODO
+  // 27) tripled the chain's vertex count, and this runs once per frame while
+  // the chain is moving: allocating two megabyte-scale Float32Arrays per
+  // frame and handing them straight to the collector was affordable at the
+  // old size and is not at this one. `total` only changes when the run
+  // gains or loses a link, so the reallocation is rare.
+  if (!chainBuf || chainBuf.pos.length !== total)
+    chainBuf = { pos: new Float32Array(total), nrm: new Float32Array(total) };
+  const { pos, nrm } = chainBuf;
   let off = 0;
   // Write a template transformed by the orthonormal frame with basis
   // columns (t̂,ŷ,k̂) and translation c — normals rotate by the same basis.
@@ -4185,10 +4298,29 @@ const balanceCock = G.makeCock({
   if (Math.hypot(BAR_HSPAN, dyLegBuild) < legBound - 1e-6)
     console.warn('balance cock: T-foot legs inside the balance sweep',
       Math.hypot(BAR_HSPAN, dyLegBuild).toFixed(2), '<', legBound.toFixed(2));
-  const bar = new THREE.Mesh(
-    new THREE.BoxGeometry(BAR_HSPAN * 2 + LEG_R * 2, 2.4, COCK_T), MATS.nickel);
-  bar.position.set(0, yBar, 0);
-  balanceCock.add(bar);
+  // The crossbar, BORED at both screw stations (TODO 27). It was a solid
+  // box, and the two screws that hold the cock down were drawn standing in
+  // it with nothing cut for them — the opening is part of the fastener, so
+  // the bar is an extruded rectangle with two clearance holes rather than a
+  // primitive with a screw parked on top.
+  const COCK_SCREW_HEAD_R = COCK_FOOT_R * 0.45;
+  {
+    const bw = BAR_HSPAN * 2 + LEG_R * 2, bh = 2.4;
+    const s = new THREE.Shape();
+    s.moveTo(-bw / 2, -bh / 2); s.lineTo(bw / 2, -bh / 2);
+    s.lineTo(bw / 2, bh / 2); s.lineTo(-bw / 2, bh / 2); s.closePath();
+    for (const sg of [-1, 1]) {
+      const p = new THREE.Path();
+      p.absarc(sg * BAR_HSPAN, 0, G.screwBoreR(COCK_SCREW_HEAD_R), 0, Math.PI * 2, true);
+      s.holes.push(p);
+    }
+    const bar = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(s, { depth: COCK_T, bevelEnabled: false, curveSegments: 16 }),
+      MATS.nickel);
+    bar.geometry.translate(0, 0, -COCK_T / 2);
+    bar.position.set(0, yBar, 0);
+    balanceCock.add(bar);
+  }
   const legTopWorld = COCK_MID_Z - COCK_T / 2;       // slab underside
   const legLen = legTopWorld - PLATE_TOP;
   for (const s of [-1, 1]) {
@@ -4206,13 +4338,18 @@ const balanceCock = G.makeCock({
   // §20: the T-foot screws, slotted like every screw now (were bare
   // cylinders). Same head radius and seat; the slot azimuth is each foot's
   // own bearing from the cock origin — the derived stand-in for assembly
-  // scatter. TODO 12: head proud of the foot — free upward.
+  // scatter. TODO 27: the head BEARS on the bar's top face and its shank
+  // runs through the bore cut above. It used to be placed 0.11 clear of the
+  // face and then thickened to §50's floor from the middle, which put its
+  // underside 0.048 INSIDE solid nickel — a screw drawn where a screw goes,
+  // in stock that was never opened for it. Below the bar the thread takes
+  // the leg and then the plate: not drawn, so not cut.
   balanceCock.add(G.makeScrews({
     at: [-1, 1].map((s) => ({
-      x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + 0.11 + STOCK_MIN_U / 2,
-      a: Math.atan2(yBar, s * BAR_HSPAN),
+      x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
+      a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
     })),
-    headR: COCK_FOOT_R * 0.45, headT: STOCK_MIN_U,
+    headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
   }));
 
   // ------------------------------------------------------------------
@@ -4902,66 +5039,27 @@ function checkPlateWindows(stage) {
   }
 }
 
-// --- The plate itself.
-const threeQuarterPlate = new THREE.Group();
-const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
-  radius: plateR, thickness: TQ_T, cut: TQ_CUT, holes: tqHoles, slots: tqSlots,
-  windows: TQ_WINDOWS.polys,
-});
-let tqPlateMesh = null;
-{
-  const mesh = buildTqPlateGeometry();
-  mesh.name = 'threeQuarterPlate'; // structural node — see checkSupportGeometry
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  tqPlateMesh = mesh;
-  threeQuarterPlate.add(mesh);
-  // Screwed gold chatons, set into real counterbores. tqHoles opened each
-  // pivot right through at the counterbore diameter, so the BEARING COLLAR —
-  // the full-thickness ring of plate the staff actually runs in — is put
-  // back here, under the counterbore's floor. That collar is what makes the
-  // step visible: plate face, chaton dropped into its recess, then the plate
-  // stepping in to the bore below.
-  //
-  // Nothing here may stand proud of the plate's top face: the reset and
-  // hack rods run just above it, and a chaton perched on the surface would
-  // be straight through them.
-  for (const p of tqPivots) {
-    if (!p.jewelR) continue; // plain bushing (the barrel arbor)
-    const collar = new THREE.Mesh(
-      ringGeo(p.boreR, chatonOuterFor(p.boreR) + 0.15, TQ_T - CHATON_DEPTH),
-      MATS.nickel);
-    collar.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - CHATON_DEPTH) / 2);
-    threeQuarterPlate.add(collar);
-    // Rubbed-in jewel: the ruby FILLS its counterbore, top face flush with
-    // the plate. The screwed-gold-chaton version read as a stone sunk at the
-    // bottom of a gold well — unavoidably, because the plate is thin and
-    // nothing here may stand proud of it (the rods run just above this
-    // face), so the gold rim had to rise around the stone rather than the
-    // stone sitting up in the rim. Filling the recess reads as pressed-in,
-    // and a jewel set directly into the plate is the older, simpler bearing
-    // anyway — what this movement used before chatons were introduced.
-    const jewel = new THREE.Mesh(
-      jewelFaceGeo(p.boreR, chatonOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
-    jewel.position.set(p.x, p.y, TQ_T / 2 - CHATON_DEPTH / 2);
-    threeQuarterPlate.add(jewel);
-  }
-}
-checkPlateWindows('as cut');
-threeQuarterPlate.position.set(0, 0, TQ_MID_Z);
-threeQuarterPlate.userData.tqPlate = true; // §62: the keep sweep must not enrol the plate against itself
-movement.add(threeQuarterPlate);
-registerExplode(threeQuarterPlate, TQ_MID_Z, 8);
-registerLabel('Three-quarter plate', threeQuarterPlate);
-
 // --- Pillars. They used to rise to z ≈ 19.9 holding nothing at all; they now
 // do the job pillars exist for — they carry the upper plate. Height is the
 // plate's underside, and the seating angles are scanned so all four land on
 // material (the old fixed 45/135/225/315 put one of them squarely under the
 // balance cut).
+//
+// They are solved BEFORE the plate is cut, because their screws are openings
+// in it (TODO 27) — see the seat counterbores pushed into tqHoles at the end
+// of this block. The scan itself is unchanged, and must stay this side of the
+// push: a pillar may not avoid its own screw's seat.
+const pillarSeats = []; // §20: the plate screws land over the solved seats
+const PILLAR_CAP_R = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
+// Head radius derived from the pillar's own widest land (capR·0.6, the escape
+// bridge's head-to-seat proportion — the head must bear on the land it
+// clamps, not overhang it), and the seat cut one fit larger so the head drops
+// into it.
+const PILLAR_SCREW_HEAD_R = PILLAR_CAP_R * 0.6;
+const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
 {
   const pillarR = plateR - 8;
-  const capR = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
+  const capR = PILLAR_CAP_R;
   // The stop work's BRACKET lives in the plate cut's open wedge (where
   // inCutClearance already forbids seats), but the low reset/hack linkage
   // does NOT: both elbow rods, the setting-lever tail post's swing arc and
@@ -5015,7 +5113,6 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   const pillarsGroup = new THREE.Group();
   movement.add(pillarsGroup);
   registerLabel('pillars', pillarsGroup);
-  const pillarSeats = []; // §20: the plate screws land over the solved seats
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -5036,20 +5133,103 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     pillarsGroup.add(pillar);
     pillarSeats.push({ x: best.x, y: best.y });
   }
-  // §20 — THE PLATE SCREWS. The plate has rested on its pillars since the
-  // pillars existed, with nothing visibly holding it down. One screw over
-  // each solved seat, on the plate's top face: head FLUSH with the face
-  // (the chaton convention — the hack blade passes 0.18 over this face and
-  // nothing may stand above it), head radius derived from the pillar's own
-  // widest land (capR·0.6, the escape bridge's head-to-seat proportion —
-  // the head must bear on the land it clamps, not overhang it). Attached
-  // to the plate's group, plate-local frame (group origin at TQ_MID_Z).
+  // TODO 27 — AND THE SEATS ARE BORED. §20 recorded the plate screws as
+  // "head FLUSH with the face" and verified the position; flush was achieved
+  // by PLACEMENT, with nothing cut for the head to be flush IN, so each head
+  // stood 0.317 (40% of the plate) inside solid nickel. A screw and its host
+  // are the same labelled unit, so no sweep in the battery looks at that
+  // pair — item 5's named residue, and why a 40% interpenetration sat under
+  // a green board. The seat joins the plate's other openings here, and the
+  // bearing land goes back under it at the plate build below: the chatons'
+  // convention exactly, cut through at the head diameter with the land put
+  // back so the recess has a floor to bear on rather than being a bare hole.
+  for (const p of pillarSeats) tqHoles.push({ x: p.x, y: p.y, r: PILLAR_SEAT_R });
+}
+
+// --- The plate itself.
+const threeQuarterPlate = new THREE.Group();
+const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
+  radius: plateR, thickness: TQ_T, cut: TQ_CUT, holes: tqHoles, slots: tqSlots,
+  windows: TQ_WINDOWS.polys,
+});
+let tqPlateMesh = null;
+{
+  const mesh = buildTqPlateGeometry();
+  mesh.name = 'threeQuarterPlate'; // structural node — see checkSupportGeometry
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  tqPlateMesh = mesh;
+  threeQuarterPlate.add(mesh);
+  // Screwed gold chatons, set into real counterbores. tqHoles opened each
+  // pivot right through at the counterbore diameter, so the BEARING COLLAR —
+  // the full-thickness ring of plate the staff actually runs in — is put
+  // back here, under the counterbore's floor. That collar is what makes the
+  // step visible: plate face, chaton dropped into its recess, then the plate
+  // stepping in to the bore below.
+  //
+  // Nothing here may stand proud of the plate's top face: the reset and
+  // hack rods run just above it, and a chaton perched on the surface would
+  // be straight through them.
+  for (const p of tqPivots) {
+    if (!p.jewelR) continue; // plain bushing (the barrel arbor)
+    const collar = new THREE.Mesh(
+      ringGeo(p.boreR, chatonOuterFor(p.boreR) + 0.15, TQ_T - CHATON_DEPTH),
+      MATS.nickel);
+    collar.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - CHATON_DEPTH) / 2);
+    threeQuarterPlate.add(collar);
+    // Rubbed-in jewel: the ruby FILLS its counterbore, top face flush with
+    // the plate. The screwed-gold-chaton version read as a stone sunk at the
+    // bottom of a gold well — unavoidably, because the plate is thin and
+    // nothing here may stand proud of it (the rods run just above this
+    // face), so the gold rim had to rise around the stone rather than the
+    // stone sitting up in the rim. Filling the recess reads as pressed-in,
+    // and a jewel set directly into the plate is the older, simpler bearing
+    // anyway — what this movement used before chatons were introduced.
+    const jewel = new THREE.Mesh(
+      jewelFaceGeo(p.boreR, chatonOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
+    jewel.position.set(p.x, p.y, TQ_T / 2 - CHATON_DEPTH / 2);
+    threeQuarterPlate.add(jewel);
+  }
+}
+checkPlateWindows('as cut');
+threeQuarterPlate.position.set(0, 0, TQ_MID_Z);
+threeQuarterPlate.userData.tqPlate = true; // §62: the keep sweep must not enrol the plate against itself
+movement.add(threeQuarterPlate);
+registerExplode(threeQuarterPlate, TQ_MID_Z, 8);
+registerLabel('Three-quarter plate', threeQuarterPlate);
+
+// §20 — THE PLATE SCREWS, in the seats cut for them (TODO 27). The plate has
+// rested on its pillars since the pillars existed, with nothing visibly
+// holding it down. One screw over each solved seat, on the plate's top face:
+// head FLUSH with the face (the chaton convention — the hack blade passes
+// 0.18 over this face and nothing may stand above it). FLUSH IS WHY THIS ONE
+// IS COUNTERBORED and the cock and bridge screws are not: a head that may not
+// stand proud has to be sunk, and a sunk head needs a recess to sit in.
+// Attached to the plate's group, plate-local frame (group origin at TQ_MID_Z).
+{
+  // The land put back under each seat — the ring of plate the head bears on,
+  // bored for the shank that passes through it. Same construction as the
+  // bearing collars above, lapped 0.15 into the stock around the seat so no
+  // two walls end up coincident.
+  for (const p of pillarSeats) {
+    const land = new THREE.Mesh(
+      ringGeo(G.screwBoreR(PILLAR_SCREW_HEAD_R), PILLAR_SEAT_R + 0.15, TQ_T - STOCK_MIN_U),
+      MATS.nickel);
+    land.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - STOCK_MIN_U) / 2);
+    threeQuarterPlate.add(land);
+  }
   threeQuarterPlate.add(G.makeScrews({
-    at: pillarSeats.map((p) => ({ x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x) })),
+    at: pillarSeats.map((p) => ({
+      x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
+      // Through the plate and no further: below the underside the thread
+      // takes the pillar, and a tapped hole under a seated screw is invisible
+      // in the real movement too.
+      shank: TQ_T - STOCK_MIN_U,
+    })),
     // headT = STOCK_MIN_U like every §20 screw head — the first cut used
     // TQ_T·0.35 (0.106 mm) and the §50 stockFloor gate refused it against
     // the 0.12 wheel floor, which is the gate doing its job.
-    headR: capR * 0.6, headT: STOCK_MIN_U,
+    headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
   }));
 }
 

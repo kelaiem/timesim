@@ -1654,7 +1654,13 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [] }) {
 //         escape wheel, the pallet fork and the bridge that carries them,
 //         which stand off to one side of the balance — see the TQ_CUT solve
 //         in main.js.
-//   holes circular openings (barrel/drum, pivot bores, pillar seats).
+//   holes circular openings — the barrel/drum, the pivot bores (cut at the
+//         SETTING's diameter, with the bearing land put back under the
+//         counterbore by the caller), and the pillar seats, which are the
+//         same construction for a screw head: the caller passes the seat
+//         diameter and puts the head's land back the same way. That
+//         sentence used to name the pillar seats and never receive one —
+//         TODO 27's stale claim; they arrive now.
 //   slots stadium-shaped openings for parts that SWEEP through the plate
 //         (the setting lever's tail post and its ramp collar) — the swept
 //         union of a circle of radius r along the segment a → b.
@@ -1972,6 +1978,9 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
 // ---------------------------------------------------------------------------
 export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
   const g = new THREE.Group();
+  // The foot screw's head, needed twice: once by the boss that has to be
+  // bored for its shank, once by the screw itself further down.
+  const footHeadR = (n) => n.r * 0.62 * 0.6;   // = legR · 0.6
   // Striped like the plate it serves under — one world-space pattern, so
   // the lines run unbroken from plate to bridge (legs/walls stay plain:
   // the shader gates the stripes to upward-facing surfaces).
@@ -1996,6 +2005,19 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
       const bossG = new THREE.LatheGeometry(pts, 40);
       bossG.rotateX(Math.PI / 2); // lathe revolves about +Y; stand it along Z
       disc = new THREE.Mesh(bossG, slabMat);
+    } else if (n.foot) {
+      // A FOOT boss, and the foot screw runs down through it — so it is a
+      // tube, bored one seat fit over the shank (TODO 27: the screw's shaft
+      // used to be drawn inside solid nickel with nothing cut for it).
+      const t2 = thickness / 2, br = screwBoreR(footHeadR(n));
+      const pts = [
+        new THREE.Vector2(br, -t2), new THREE.Vector2(br, t2),
+        new THREE.Vector2(n.r, t2), new THREE.Vector2(n.r, -t2),
+        new THREE.Vector2(br, -t2),
+      ];
+      const tubeG = new THREE.LatheGeometry(pts, 28);
+      tubeG.rotateX(Math.PI / 2);
+      disc = new THREE.Mesh(tubeG, slabMat);
     } else {
       disc = new THREE.Mesh(new THREE.CylinderGeometry(n.r, n.r, thickness, 28), slabMat);
       disc.geometry.rotateX(Math.PI / 2);
@@ -2023,7 +2045,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     leg.position.set(n.x, n.y, -thickness / 2 - footDrop / 2);
     g.add(leg);
     // Spread pad where it lands on the base plate, and the screw that holds
-    // the whole bridge down: shaft through the slab plus a PROUD blued head
+    // the whole bridge down: shank through the slab plus a PROUD blued head
     // seated on the top face (the old version sank the whole screw inside
     // the slab, leaving the bridge visually unfastened — the same pattern
     // as the balance cock's T-foot screws).
@@ -2031,15 +2053,16 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     pad.geometry.rotateX(Math.PI / 2);
     pad.position.set(n.x, n.y, -thickness / 2 - footDrop + thickness * 0.25);
     g.add(pad);
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(legR * 0.35, legR * 0.35, thickness, 14), MATS.blueSteel);
-    shaft.geometry.rotateX(Math.PI / 2);
-    shaft.position.set(n.x, n.y, 0);
-    g.add(shaft);
     // §20: slotted like every screw now (was a bare cylinder — "visually
     // unfastened" fixed, but with nothing to turn). Same head, same seat.
-    // TODO 12: floor stock — screw head proud of the leg, free upward.
-    footScrews.push({ x: n.x, y: n.y, z: thickness / 2 + 0.11 + STOCK_MIN_U / 2,
-                      a: Math.atan2(n.y, n.x), headR: legR * 0.6 });
+    // TODO 27: the head BEARS on the top face — it used to be placed 0.11
+    // above a gap that its own §50 thickening then swallowed, ending 0.048
+    // INSIDE a slab with no seat cut for it. Nothing here is flush-mounted
+    // (that convention belongs to the three-quarter plate, which has rods
+    // sweeping over it), so the honest seat is the face itself, and the
+    // opening the screw needs is the bore through the boss above.
+    footScrews.push({ x: n.x, y: n.y, z: thickness / 2 + STOCK_MIN_U,
+                      a: Math.atan2(n.y, n.x), headR: footHeadR(n), shank: thickness });
   }
   if (footScrews.length) g.add(makeScrews({ at: footScrews, headT: STOCK_MIN_U }));
   for (const j of jewels) {
@@ -2051,7 +2074,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     // red/white checkerboard and read as a stone lying IN the surface
     // rather than set into a bore. (The plate jewels avoid this with the
     // same margins.)
-    const seatGap = 0.08;
+    const seatGap = SEAT_FIT;   // TODO 27: the one named fit for a set part
     const outerR = (j.cbR ?? j.boreR + 0.95) - 0.1; // inside the counterbore wall
     const jd = Math.max(j.depth - seatGap, j.depth * 0.6);
     // Dished face (flat seating rim, concave oil sink to the bore) instead
@@ -2096,16 +2119,38 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
 // body hanging down `thickness`. userData.outerR is the counterbore radius
 // the caller must cut; userData.screwR/screwAt place the screws in the plate.
 // ---------------------------------------------------------------------------
+// TODO 27 — AN OPENING IS PART OF ITS FASTENER, not scenery around it.
+// ONE fit for everything that has to DROP INTO a recess someone cut for it:
+// a jewel into its counterbore, a screw head into its seat, a screw's body
+// through its clearance hole. This is the 0.08 the bridge and plate jewels
+// were already set with, named once so the same job never grows a second
+// number. (It is NOT CLEAR_MARGIN's business: that is the structural margin
+// between parts that must never touch, and these parts are assembled
+// touching.)
+export const SEAT_FIT = 0.08;
+// A screw's body against its head. Watch screw heads run about twice the
+// thread across — a cheese head on a 0.25 mm thread measures around 0.5 mm —
+// so the shank is half the head's radius, and its hole one seat fit larger.
+export const screwShankR = (headR) => headR / 2;
+export const screwBoreR = (headR) => screwShankR(headR) + SEAT_FIT;
+// What is NOT drawn, and therefore not cut: the thread, and the tapped hole
+// it takes. A seated screw hides both in the real movement too — pass
+// `shank` only as far as the fastener's own drawn body goes, which is the
+// last face it comes out of.
+// ---------------------------------------------------------------------------
 // §20 — SLOTTED SCREWS, shared and MERGED. Every screw in the movement is
 // the same object: a blued tapered head with a dark slot sunk across it —
 // the vocabulary makeChaton established. This factors it so a site cannot
 // draw a bare cylinder and call it a screw, and it merges: §14/§41 measured
 // draw calls as the render cost that matters (the crown knurl alone was 69),
 // so N screws cost TWO draw calls (one heads mesh, one slots mesh), not 2N.
-// at: [{x, y, z, a, headR?}] — head axis +z, TOP FACE at z (flush-mount
-// convention: pass the face the head must not stand above), slot azimuth a.
+// at: [{x, y, z, a, headR?, shank?}] — head axis +z, TOP FACE at z
+// (flush-mount convention: pass the face the head must not stand above),
+// slot azimuth a. `shank` is how far the screw's body runs BELOW the head,
+// drawn at screwShankR(headR): pass it wherever the shank crosses drawn
+// stock, and cut the host for it — see SEAT_FIT.
 export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
-  const heads = [], slots = [];
+  const heads = [], slots = [], shanks = [];
   for (const p of at) {
     const r = p.headR ?? headR;
     heads.push(new THREE.CylinderGeometry(r, r * taper, headT, seg)
@@ -2114,6 +2159,11 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
     // 0.28r wide, sunk 0.28·headT below the top face — never proud.
     slots.push(new THREE.BoxGeometry(r * 1.7, r * 0.28, headT * 0.35)
       .rotateZ(p.a || 0).translate(p.x, p.y, p.z - headT * 0.28));
+    if (p.shank) {
+      const sr = screwShankR(r);
+      shanks.push(new THREE.CylinderGeometry(sr, sr, p.shank, Math.max(8, seg / 2))
+        .rotateX(Math.PI / 2).translate(p.x, p.y, p.z - headT - p.shank / 2));
+    }
   }
   const g = new THREE.Group();
   const headsMesh = new THREE.Mesh(mergeGeos(heads), MATS.blueSteel);
@@ -2124,6 +2174,11 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
   const slotsMesh = new THREE.Mesh(mergeGeos(slots), MATS.dark);
   slotsMesh.name = 'screwSlots';
   g.add(slotsMesh);
+  if (shanks.length) {
+    const shanksMesh = new THREE.Mesh(mergeGeos(shanks), MATS.blueSteel);
+    shanksMesh.name = 'screwShanks';
+    g.add(shanksMesh);
+  }
   return g;
 }
 
@@ -2204,7 +2259,7 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
 export function makeJewelSetting({ r }) {
   const g = new THREE.Group();
   const rimTop = 0.1;                    // hair proud of the host face
-  const seatGap = 0.08;                  // same margin the bridge uses
+  const seatGap = SEAT_FIT;              // same fit the bridge uses (TODO 27)
   const wallR = r * 1.15;                // counterbore wall
   const outerR = r * 1.6;
   const d = Math.max(r * 0.35, 0.3);     // recess depth into the host

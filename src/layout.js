@@ -183,6 +183,31 @@ export const CHAIN_PLATE_T = (CHAIN_PIN_LEN / 2 - 2 * CHAIN_LEAF_GAP) / 2;
 export const CHAIN_END_R_OUT = 0.66;   // outer plate half-width: 2·0.66 u = 0.50 mm real width
 export const CHAIN_END_R_IN = 0.575;   // inner plate steps in by the same 0.87 the shipped chain drew
 export const CHAIN_PIN_R = 0.27;       // rivet: 0.54 u dia = 0.29·pitch, the roller-chain proportion (0.20 mm)
+// THE RIVETED JOINT (TODO 27 rows 2 and 3). The pin passes through four
+// drilled leaves and is upset at each end; all three numbers below are that
+// sentence made buildable.
+//
+// The joint's running fit. The inner pair TURNS on the pin — that is what a
+// chain joint is — so its bore is one running clearance over the pin: 0.01 mm
+// diametral, the shake a real watch pivot runs in its jewel, at this pin's
+// 0.20 mm diameter. Half of it, radially:
+export const CHAIN_RIVET_FIT = 0.005 / UNIT_MM;   // 0.013 u
+// The head. Formed rivet heads run 1.5x the shank across, in this movement as
+// in every other riveted thing; at the outer leaf's 0.66 half-width that
+// leaves 0.255 u (0.097 mm) of plate around the recess, which is why the
+// proportion is affordable here at all.
+export const CHAIN_RIVET_HEAD_R = CHAIN_PIN_R * 1.5;   // 0.405 u — 0.31 mm across
+// ...and the head is formed INSIDE the outer leaf, not proud of it. That is
+// forced, not chosen: the fusee's groove land is 0.025 u over its 0.02 crest
+// floor (FUSEE_LAND_W in main.js), which is 0.005 u of extra chain width the
+// movement can afford — 0.0025 a side — and the drum's coils lie only 0.03
+// apart (CHAIN_COIL_PITCH below). No head worth forming fits in that. A rivet
+// that may
+// not stand proud is countersunk: the outer leaf is counterbored at the head
+// diameter and the pin upset into the recess, flush with the face. Depth
+// splits the outer leaf in half, so the formed head and the land it bears on
+// are the same thickness and neither is the joint's weaker member.
+export const CHAIN_RIVET_HEAD_T = CHAIN_PLATE_T / 2;   // 0.072 u — 0.027 mm
 // Successive coil turns on the drum lay one stack apart plus a lay gap so
 // they never bind — the gap is the 0.03 the shipped 0.65-over-0.62 implied.
 export const CHAIN_COIL_PITCH = CHAIN_PIN_LEN + 0.03;
