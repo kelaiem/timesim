@@ -1208,6 +1208,15 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
 
   g.userData.r = outerR;
   g.userData.ribbonR = ribbonR;
+  // §78 part two — THE SPIRAL'S PLAN, exported so the schematic can quote it.
+  // The tier used to draw this group's userData.r as a pitch circle plus a
+  // spoke, which states that the oscillator's restoring element is a ROTOR of
+  // radius outerR. It is a flat spiral, and its content is the three numbers
+  // below — the same three TODO 25's solve turns on. Exported in the
+  // ArchimedeanSpiral parametrisation the tube above is swept along at θ = 0
+  // (r linear in t, angle t·coils·2π), so one polyline serves the glyph and
+  // the geometry cannot drift from it.
+  g.userData.spiral = { innerR, outerR, coils };
   // TODO 25 tier one — the SECTION AS CUT, not as imagined. TubeGeometry with
   // radialSegments 4 cuts a RHOMBUS, not a rectangle: the 4-gon's diagonals
   // ride the Frenet frame's normal (radial — the bending direction) and
@@ -1555,6 +1564,13 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   );
   const springMesh = new THREE.Mesh(sGeo, MATS.steel);
   springMesh.name = 'mainspringRibbon'; // TODO 12 triage: SPRING stock — the coil IS the mainspring (real ones 0.05–0.20 mm); named so §50's kind table sees it
+  // §78 part two — the ribbon's own winding, exported for the schematic. The
+  // §66 blade pass finds this mesh by its name and drew a 9-point zigzag along
+  // its longest local axis, which is the glyph for a straight LEAF spring:
+  // wrong about the one thing a coiled ribbon is. These are the exact
+  // arguments the ArchimedeanSpiral above is swept along, so the line and the
+  // tube are the same curve at different fidelities.
+  springMesh.userData.spiral = { innerR: springInner, outerR: springOuter, coils: sCoils };
   springMesh.scale.z = Math.max((height * 0.7) / (sRibbon * 2), 1);
   const spring = new THREE.Group();
   spring.name = 'spring';

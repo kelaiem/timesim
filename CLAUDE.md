@@ -33,12 +33,26 @@ invariants, both boot-asserted: the tier's proxies are never Meshes,
 and the mode swaps by camera layer, never by `mesh.visible` (parts
 whose visibility is a tick law must keep their state). The one meshy
 exception is the plate OCCLUDERS (§71's hidden-line convention —
-page-colored silhouettes of the base and three-quarter plates):
+page-colored silhouettes of the base, three-quarter and dial plates):
 `collectUnits` in `inspect.js` prunes anything flagged
 `userData.schematic` wherever it is parented, so flagged display never
 joins the sweeps — the same trust the fingerprint extends. Flag every
 schematic object directly; an unflagged child of a flagged parent is
 NOT protected.
+
+Two §78 rules govern what the tier is allowed to SAY. **A generic glyph
+is a claim, so a part may opt out of one**: a builder that records
+`userData.spiral = { innerR, outerR, coils }` gets the spiral glyph and
+is skipped by both the rotor pass (which would call it a wheel) and the
+§48 blade pass (which would call it a leaf spring) — the pattern to
+follow when the generic vocabulary would state something false, since
+overdrawing leaves the wrong glyph in place. **And x-ray means one
+thing in both views**: `setXray` empties `SCHEMATIC.occluderFills`,
+which holds exactly the two fills the realistic view glasses (the
+three-quarter plate and the dial). The base plate's fills live in
+`SCHEMATIC.baseFills` and no toggle reads them — its occlusion is the
+line drawing's only partition between the dial-side works and the
+train. Both halves are boot-asserted.
 
 The chrome is LOCALIZED (§73 tier one — English, German, Chinese):
 `src/i18n.js` holds one table keyed by the English source string, so the
