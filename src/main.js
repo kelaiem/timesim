@@ -4603,19 +4603,22 @@ function solveTqWindows() {
     const r0 = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
     // Step 1 — the outer edge, per degree: the wanted reveal, pulled in by
     // whichever bound binds first at that bearing.
-    const rOut = new Array(360).fill(wanted);
-    for (let i = 0; i < 360; i++) {
-      const a = i * DEG2RAD;
+    // Bisect for the largest radius at this bearing whose point still clears
+    // both fields. ONE function: the per-degree table below is built from it,
+    // and step 4's outline sampler calls it AGAIN at its own bearings — see
+    // there for why the outline may not simply interpolate this table.
+    const solveR = (a) => {
       const cs = Math.cos(a), sn = Math.sin(a);
-      // Bisect for the largest radius whose point still clears both fields.
       const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN
         && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN;
-      if (ok(wanted)) continue;
+      if (ok(wanted)) return wanted;
+      if (!ok(r0)) return 0;                   // pinched shut at this bearing
       let lo = r0, hi = wanted;
-      if (!ok(lo)) { rOut[i] = 0; continue; }   // pinched shut at this bearing
       for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
-      rOut[i] = lo;
-    }
+      return lo;
+    };
+    const rOut = new Array(360);
+    for (let i = 0; i < 360; i++) rOut[i] = solveR(i * DEG2RAD);
     // Step 2 — where the window is worth cutting at all. A ring of material
     // narrower than one land is not a window, it is a scratch: it would leave
     // the strip beside it exactly as thin as the opening.
@@ -4734,7 +4737,22 @@ function solveTqWindows() {
       const outer = [], inner = [];
       for (let k = 0; k <= N; k++) {
         const a = aRaw + ((bRaw - aRaw) * k) / N;
-        const rHi = rAt(a);
+        // THE OUTLINE IS SOLVED AT ITS OWN BEARINGS, not read off the table.
+        // The table is per DEGREE and this loop samples every half degree, so
+        // interpolating it asserts nothing about the vertex actually emitted:
+        // between two solved bearings a straight chord in (θ, r) rides OUTSIDE
+        // a boundary that curves toward the window, and the vertex lands short
+        // of the land it was supposed to keep. Measured on the escapement
+        // window with the balance grown to R 11 — vertex 95 of 200, a
+        // half-degree sample, leaving 0.798 against TQ_LAND_MIN's 0.800. The
+        // error is second-order in the sample spacing, which is why it stayed
+        // invisible at R 9 and appeared the moment a growing balance cut
+        // brought a curved boundary close (roadmap §76's fourth moved premise).
+        // The table still binds as an upper bound, so the outline can only
+        // shrink relative to what shipped — never grow into new territory.
+        const rSolved = solveR(a);
+        if (rSolved <= 0) continue;       // pinched at this exact bearing
+        const rHi = Math.min(rAt(a), rSolved);
         // Clear of BOTH webs, so the greater of the two edges binds — taking
         // the lesser lets the sector swallow the web it is bounded by, and
         // the polygon then crosses itself into triangulation garbage (a patch
