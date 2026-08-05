@@ -6959,8 +6959,12 @@ TODO 28's remainder), anything that changes what `userData.r` means for
 the solid builders, and §66 part two's recorded residue — the live
 re-measure of contact dots across pose changes.
 
-**Battery:** clean, boot silent, no page errors. No geometry changed and
-no new mesh joined a sweep: the two new Meshes are occluder fills
+**Battery: 14/14, boot silent, no page errors, fingerprint UNCHANGED at
+3682902459.** The hash not moving is the load-bearing number here: the
+tier grew ten polylines, three spiral glyphs and a dial occluder, and
+the per-unit boxes did not shift — which is the §66/§71 skip rules
+doing exactly what they promise. No geometry changed and no new mesh
+joined a sweep: the one new Mesh is an occluder fill
 (three-quarter-plate precedent), flagged and pruned by `collectUnits`
 and by the fingerprint's walk, and the five flagged meshes in the scene
 are exactly three base-plate fills, one three-quarter-plate fill and one
