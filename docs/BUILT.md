@@ -6777,3 +6777,55 @@ and 74 contacting pairs, `clearances` 0 violations over 30 budgets, and
 `sweptOverlap` **0 CONFIRMED** over 57,294 pairs (2 tight, 13 refuted). Boot
 silent. The fingerprint moves by construction — the plate's mesh changes
 shape — and lands deterministic at **4226139235** across two virgin boots.
+
+### Postscript, 2026-08-05 — the outline was interpolated, and the assert was right
+
+The solve bisects the outer edge **per degree** and step 4 walked each run
+at **half** a degree, reading the table by linear interpolation. That
+asserts nothing about the vertex actually emitted: between two solved
+bearings a straight chord in (θ, r) rides OUTSIDE a boundary that curves
+toward the window, so the vertex can land short of the land the solve
+believed it had kept. Second-order in the sample spacing, and at the
+shipped balance it measured zero — which is why it shipped.
+
+It surfaced against a growing balance. Roadmap §76 (a bigger balance) had
+recorded R 10 and R 11 booting silent; re-measured on this tree they did
+not, and the new warning was §62's own:
+
+```
+§62 window 'escapement': edge leaves a 0.798 land
+against another opening at (5.67, -27.89) — need 0.800
+```
+
+Vertex **95 of 200** — a half-degree sample, on the outer sweep. 0.002 on
+0.800, from nothing but the interpolation; the growing balance cut had
+brought a curved boundary close enough for the chord to matter.
+
+**The outline is now solved at its own bearings.** The bisection that built
+the per-degree table is hoisted to one `solveR(a)` and called again by the
+sampler, so the polygon that gets asserted is the polygon that was solved —
+the same "one function, used twice" discipline `checkPlateWindows` already
+applies to the keep field. The table still binds as an upper bound
+(`min(rAt(a), solveR(a))`), so the outline can only shrink against what
+shipped, never grow into new territory; a bearing that bisects to zero is
+pinched and its sample is dropped rather than spiking to the axis, which was
+§62's original self-intersection failure.
+
+Measured after, balance radius swept with the alarm corner at 45°:
+
+| R | before | after |
+|---|---|---|
+| 9 (shipped) | silent | silent |
+| 10 | 3 warns, all this | **silent** |
+| 11 | 3 warns, all this | **silent** |
+| 12 | 4 warns | 1 — §76's wall two only |
+
+So §76's acceptance line (R ≥ 10.8) is met again at R 11, and this time by
+measurement rather than by a claim that had gone stale.
+
+**Battery:** 14/14 (the count grew by `restoring`), boot silent,
+fingerprint **unchanged at 3682902459** — the windows move by at most the
+interpolation error and the plate's extent is set by its rim, so the
+per-unit boxes do not shift. The lesson is the cheerful one: a boot assert
+written during §62 caught a §62 defect three days later, in a configuration
+§62 never ran.

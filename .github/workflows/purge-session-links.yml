@@ -1,0 +1,109 @@
+name: purge-session-links
+
+# A session link is a PRIVATE identifier. `Claude-Session:` trailers and
+# claude.ai/code/session URLs name one authoring session, and this repo is
+# public, so CLAUDE.md forbids them in commit messages and PR bodies both.
+# The tooling appends them by default — a convention alone will not hold.
+#
+# .githooks/commit-msg purges them from commit MESSAGES. It cannot reach a PR
+# body: that text is composed on GitHub, long after any local hook has run.
+# This workflow covers the other half.
+#
+# Two targets, and — as in the roadmap's links.yml — they want opposite things:
+#
+#   the PR body/title -> FIX.  Strip it and write it back. Nobody is blocked,
+#                              and the private id stops being published within
+#                              seconds of appearing.
+#   commit messages   -> GATE. Report and FAIL. A message can only be changed
+#                              by rewriting history, which is a human's call
+#                              (interactive rebase, force-push) and must never
+#                              be something CI does behind a contributor.
+#
+# The message gate is the backstop for the hook, not a duplicate of it:
+# core.hooksPath is set per CLONE, so a fresh checkout has no hooks at all
+# until someone remembers. This catches that case at the one moment it matters.
+#
+# `Co-Authored-By: Claude` is deliberately untouched everywhere — it credits
+# the author without naming the session.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+# Least privilege: the body rewrite needs pull-requests:write and nothing else.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            // One definition of the two patterns, shared by both halves —
+            // .githooks/commit-msg strips exactly these. Leading whitespace
+            // travels with the URL so a link lifted out of prose leaves no
+            // double space; nothing else is re-spaced.
+            const URL_RE = /[ \t]*https?:\/\/[^\s]*claude\.ai\/code\/session[^\s]*/gi;
+            const isTrailer = (l) => /^[ \t]*Claude-Session:/i.test(l);
+            const strip = (s) => {
+              if (!s) return s;
+              const out = [];
+              for (const line of s.split('\n')) {
+                if (isTrailer(line)) continue;                 // the trailer, whole line
+                const t = line.replace(URL_RE, '').replace(/[ \t]+$/, '');
+                // A line that held nothing but a link goes entirely, rather
+                // than becoming a blank line in the middle of someone's prose.
+                if (t === '' && line.trim() !== '') continue;
+                out.push(t);
+              }
+              // Only blanks a removal stranded at the END are dropped. Interior
+              // blanks are left alone: a body formats itself however it likes.
+              while (out.length && out[out.length - 1] === '') out.pop();
+              return out.join('\n');
+            };
+
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+
+            // ---- half one: the body and title, FIXED in place ----
+            const body = pr.body ?? '';
+            const title = pr.title ?? '';
+            // A title stripped to nothing would be rejected by the API and is
+            // not a title anyway, so it stays as-is and half two's report is
+            // what surfaces it. Only a real replacement is written.
+            const newBody = strip(body);
+            const strippedTitle = strip(title);
+            const newTitle = strippedTitle.trim() === '' ? title : strippedTitle;
+            if (newBody !== body || newTitle !== title) {
+              core.warning('purged a session link from this PR\'s ' +
+                (newBody !== body && newTitle !== title ? 'body and title'
+                  : newBody !== body ? 'body' : 'title') +
+                ' — a session id is private and this repo is public.');
+              await github.rest.pulls.update({
+                owner, repo, pull_number: pr.number,
+                body: newBody, title: newTitle,
+              });
+            }
+
+            // ---- half two: commit messages, GATED ----
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner, repo, pull_number: pr.number, per_page: 100,
+            });
+            const dirty = commits.filter((c) => {
+              const m = c.commit.message ?? '';
+              return /https?:\/\/[^\s]*claude\.ai\/code\/session/i.test(m)
+                || /^[ \t]*Claude-Session:/im.test(m);
+            });
+            if (dirty.length) {
+              for (const c of dirty) {
+                core.error(`${c.sha.slice(0, 9)} ${c.commit.message.split('\n')[0]}`);
+              }
+              core.setFailed(
+                `${dirty.length} commit message(s) carry a session link. CI cannot fix these — ` +
+                'rewriting a message rewrites history, which is yours to do: rebase the ' +
+                'listed commits (git rebase -i, reword) and force-push. Then enable the ' +
+                'hook so it cannot recur: git config core.hooksPath .githooks');
+            }

@@ -1,0 +1,53 @@
+#!/bin/sh
+# A session link is a PRIVATE identifier. `Claude-Session:` trailers and
+# claude.ai/code/session URLs identify one authoring session, and this repo's
+# history is public — so CLAUDE.md forbids them in commit messages and PR
+# bodies both. The tooling appends them by default, which is exactly why a
+# convention is not enough: this hook is the hard stop, the same role
+# pre-commit plays for BACKLOG.md.
+#
+# It PURGES rather than rejects. Rejecting would fail every commit the default
+# tooling composes, which trains people to pass --no-verify — and --no-verify
+# skips the BACKLOG.md guard next door too. Stripping keeps the guard cheap to
+# obey. What was removed is reported on stderr, so the edit is never silent.
+#
+# A `Co-Authored-By: Claude` trailer is welcome and is deliberately untouched:
+# it credits the author without naming the session.
+#
+# SCOPE — this hook reaches commit MESSAGES only. A PR body is composed on
+# GitHub, after any hook has run, so it needs its own instrument: see
+# .github/workflows/purge-session-links.yml, which strips the same two patterns
+# from PR bodies as they are opened and edited.
+#
+# Runs on commit, amend, cherry-pick, merge and each rebase pick (git calls
+# commit-msg for all of them). Enable once per clone, with the other hooks:
+#   git config core.hooksPath .githooks
+msg="$1"
+[ -f "$msg" ] || exit 0
+
+tmp="$msg.purged.$$"
+awk '
+	# The URL in any scheme/host form the tooling emits, and the trailer whole.
+	# Interior blank lines are LEFT ALONE — a commit message may format itself
+	# however it likes, and the only blanks a removal can strand are at the end,
+	# which the END block drops.
+	{
+		s = $0
+		# Leading whitespace goes WITH the URL, so a link lifted out of prose
+		# does not leave a double space behind it. Nothing else is re-spaced:
+		# a message may align a table however it likes.
+		gsub(/[ \t]*[hH][tT][tT][pP][sS]?:\/\/[^ \t]*claude\.ai\/code\/session[^ \t]*/, "", s)
+		if (s ~ /^[ \t]*Claude-Session:/) { removed++; next }
+		if ($0 !~ /^[ \t]*$/ && s ~ /^[ \t]*$/) { removed++; next }   # the line was only a link
+		if (s != $0) removed++
+		sub(/[ \t]+$/, "", s)
+		lines[++n] = s
+	}
+	END {
+		while (n > 0 && lines[n] == "") n--          # blanks a removal stranded at the end
+		for (i = 1; i <= n; i++) print lines[i]
+		if (removed) print "commit-msg: purged " removed " session-link line(s) — a session id is private and this history is public." > "/dev/stderr"
+	}
+' "$msg" > "$tmp" || { rm -f "$tmp"; exit 1; }
+mv "$tmp" "$msg"
+exit 0

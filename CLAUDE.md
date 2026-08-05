@@ -350,6 +350,18 @@ fine and welcome; the session link is not, because it leaks a private
 session identifier into public history. This holds regardless of any default
 tooling behaviour that would otherwise append it.
 
+**This one is enforced, not just asked for**, because the tooling appends it
+by default and a convention loses that argument every time.
+`.githooks/commit-msg` PURGES both patterns from commit messages — it strips
+rather than rejects, so nobody is trained to reach for `--no-verify` (which
+would skip the `BACKLOG.md` guard next door), and it reports on stderr what
+it took out. `Co-Authored-By: Claude` is untouched. A hook cannot reach a PR
+body — that text is composed on GitHub after every hook has run — so
+`.github/workflows/purge-session-links.yml` covers the other half: it FIXES
+the body and title in place, and separately GATES commit messages, failing
+with the offending SHAs. Fix-vs-gate splits on who can act: CI may rewrite a
+PR body, and must never rewrite history behind a contributor.
+
 When a `BACKLOG.md` entry lands, reconcile the entry with what was actually
 built rather than only marking it BUILT — then move the whole section from
 the private roadmap repo into `docs/BUILT.md` here, which is the public
