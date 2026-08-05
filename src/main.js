@@ -12080,7 +12080,15 @@ const SCHEMATIC = { proxies: [], on: false };
   };
   const sites = [];
   movement.traverse((o) => {
-    if (!o.isMesh && o.userData && typeof o.userData.r === 'number' && o.userData.r >= 0.5) sites.push(o);
+    // §78 part two: a builder that exported a SPIRAL plan has said its part is
+    // not a rotor. makeHairspring records userData.r by the file's blanket
+    // convention ("pitch/functional radius" — here the spiral's outer radius),
+    // which enrolled it here and drew the oscillator's restoring element as a
+    // wheel of radius 7.92. The spiral pass below draws it instead; the pitch
+    // circle is SKIPPED rather than drawn and hidden, so a part has exactly
+    // one glyph and the wrong one is not merely covered up.
+    if (!o.isMesh && o.userData && typeof o.userData.r === 'number' && o.userData.r >= 0.5
+        && !o.userData.spiral) sites.push(o);
   });
   for (const site of sites) {
     const loop = new THREE.Line(circGeo(site.userData.r), MAT_WHEEL);
@@ -12122,12 +12130,25 @@ const SCHEMATIC = { proxies: [], on: false };
     // The rim/edge hairlines stay — the plate remains a drawn part, it
     // just stops being opaque paper. (These are tier furniture with no
     // tick-law visibility, so the mesh.visible invariant does not apply.)
+    //
+    // §78 part four — TWO SETS, because x-ray does not mean "dissolve every
+    // page-colored surface". §71 put the base plate's fills in the same array
+    // setXray empties, so schematic x-ray lifted THE BASE PLATE — which the
+    // realistic view's x-ray never touches (it glasses the three-quarter plate
+    // and the Dial unit and nothing else), and which destroys the one thing
+    // the paragraph above says this occluder is for: without it the line
+    // drawing reads the dial-side works and the train as one tangle. So
+    // occluderFills is now exactly the x-ray-lifted set — the three-quarter
+    // plate's fill and the dial's, the two the realistic x-ray glasses — and
+    // the base plate's fills live in their own array that no toggle reads.
+    // Asserted at the end of the §71/§78 block, not merely intended.
     SCHEMATIC.occluderFills = [];
+    SCHEMATIC.baseFills = [];
     for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
       const f = new THREE.Mesh(new THREE.CircleGeometry(plateR, 96), occMat);
       f.position.z = zf;
       if (zf < 0) f.rotation.x = Math.PI; // face outward
-      SCHEMATIC.occluderFills.push(f);
+      SCHEMATIC.baseFills.push(f);
       const rim = new THREE.Line(circGeo(plateR, 96), rimMat);
       rim.position.z = zf;
       for (const o of [f, rim]) { o.userData.schematic = true; o.layers.set(1); backPlate.add(o); }
@@ -12135,7 +12156,7 @@ const SCHEMATIC = { proxies: [], on: false };
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(plateR, plateR, 2, 96, 1, true), occMat);
     wall.rotation.x = Math.PI / 2;
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
-    SCHEMATIC.occluderFills.push(wall);
+    SCHEMATIC.baseFills.push(wall);
   }
 }
 function setSchematic(on) {
@@ -12185,7 +12206,11 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
   // longest local axis — derived from the mesh, not authored per part
   {
     const springs = [];
-    movement.traverse((o) => { if (o.isMesh && /spring|blade/i.test(o.name || '')) springs.push(o); });
+    // §78 part two: the zigzag is the LEAF-spring glyph — it is derived from a
+    // blade's bounding box and reads as a straight strip flexing. A mesh whose
+    // builder exported a spiral plan is a wound ribbon, not a blade, and takes
+    // the spiral glyph below instead.
+    movement.traverse((o) => { if (o.isMesh && /spring|blade/i.test(o.name || '') && !o.userData.spiral) springs.push(o); });
     for (const m of springs) {
       m.geometry.computeBoundingBox();
       const bb = m.geometry.boundingBox, size = bb.getSize(new THREE.Vector3());
@@ -12412,6 +12437,161 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
         schemChainLine.userData.schematic = true; schemChainLine.layers.set(1);
         movement.add(schemChainLine);
         SCHEMATIC.proxies.push(schemChainLine);
+      }
+      // §78 — THE VOCABULARY'S THREE MISSING WORDS, and one it was saying
+      // wrongly. Every part below keeps §66's doctrine exactly: each line
+      // derives from the constant or the mesh the SOLID was cut from, and
+      // hangs off the group the tick already poses, so nothing here is a
+      // second copy of any state.
+      {
+        // PART ONE — THE COLUMN WHEEL, which no pass drew at all. The generic
+        // rotor pass enrols non-Meshes carrying userData.r and this wheel
+        // carries none anywhere in its ancestry; the §71 discOrAxis pass
+        // enrols eight named units and 'Alarm switch' is not one. So the one
+        // part that decides the alarm's PARITY — alarmColSteps is a readout of
+        // this wheel, alarmOn a readout of its parity — was the single blank
+        // in the drawing, while the pusher's pawl, the lock's beak and the
+        // ring it commands were all drawn.
+        //
+        // A pitch circle would not fix it: a pitch circle is the vocabulary
+        // for "a rotor of this radius", and this wheel's entire content is its
+        // castellated profile. So the glyph is the BOUNDARY OF THE CUT
+        // SURFACE — for each pillar, the closed outline of the top face
+        // makeColumnWheel emits, whose height is colH·profileAt(θ) at both the
+        // inner and the outer radius, joined by the two knife edges where the
+        // chamfers run down to meet the base. It uses profileAt itself, so the
+        // drawing, the mesh and the ridden law are one function (TODO 20's
+        // invariant, extended to the tier). Face-on it reads as six blocks
+        // with six gaps between them and turns with the parity; from the side
+        // the flats and the chamfers read as the pillars they are.
+        {
+          const cw = alarmColumnWheel.userData;
+          const pitch = (Math.PI * 2) / ALARM_COL_COLUMNS;
+          const edge = cw.colFlatHalf + cw.colFlank;   // the column's half-arc, recomposed from the two derived pieces the builder exports
+          const zFloor = ALARM_COL_BASE_H / 2;         // makeColumnWheel translates the pillars onto the base disc's top face
+          // Sample angles across ONE column, keeping both breakpoints exactly:
+          // sampling straight through them would round the plateau's corners
+          // and read as a cam lobe rather than a column with a flat top.
+          const angs = [];
+          const span = (a0, a1, n, last) => {
+            for (let i = 0; i < n + (last ? 1 : 0); i++) angs.push(a0 + (i / n) * (a1 - a0));
+          };
+          span(-edge, -cw.colFlatHalf, 3, false);      // rising chamfer
+          span(-cw.colFlatHalf, cw.colFlatHalf, 8, false); // the flat the riders' noses rest on
+          span(cw.colFlatHalf, edge, 3, true);         // falling chamfer
+          const crest = (centre, r, reverse) => {
+            const out = angs.map((d) => {
+              const a = centre + d;
+              return V(Math.cos(a) * r, Math.sin(a) * r, zFloor + ALARM_COL_H * cw.profileAt(a));
+            });
+            return reverse ? out.reverse() : out;
+          };
+          for (let c = 0; c < ALARM_COL_COLUMNS; c++) {
+            const centre = c * pitch;                  // column i is centred at i·pitch, the frame profileAt is written in
+            const inner = crest(centre, ALARM_COL_INNER, false);
+            addLine(alarmColumnWheel, [...inner, ...crest(centre, ALARM_COL_BASE_R, true), inner[0]]);
+          }
+          // The BASE DISC the pillars stand on — its two rims and its bore.
+          // Not decoration: without a body the six top faces read as plates
+          // floating in a ring, and the knife edges each pillar closes on lie
+          // exactly on the disc's top face, so this is the surface the drawing
+          // already says the chamfers run down to. ringExtrude centres the
+          // disc on the group's origin, which is why zFloor is also its rim.
+          addRing(alarmColumnWheel, ALARM_COL_BASE_R, 0, 0, zFloor);
+          addRing(alarmColumnWheel, ALARM_COL_BASE_R, 0, 0, -zFloor);
+          addRing(alarmColumnWheel, ALARM_COL_BORE_R, 0, 0, zFloor);
+          // ...and the RATCHET SKIRT's saw, drawn from ratchetPoly — the same
+          // polygon §33 casts the pusher pawl's park against, so the teeth the
+          // drawing shows are the teeth the pawl actually indexes. Local frame
+          // and y-mirrored as built; z is the skirt's top face, which the
+          // builder puts one base-half-height below the wheel's mid-plane.
+          const saw = cw.ratchetPoly.map((p) => V(p.x, p.y, -ALARM_COL_BASE_H / 2));
+          addLine(alarmColumnWheel, [...saw, saw[0]]);
+        }
+
+        // PART TWO — THE SPIRALS. Two of the movement's three wound springs
+        // were drawn as things they are not: the hairspring took the GEAR
+        // glyph (a loop and a spoke at its userData.r, stating that the
+        // oscillator's restoring element is a rotor), and every mainspring
+        // ribbon took the §66 blade ZIGZAG derived from its bounding box,
+        // which is the glyph for a straight leaf spring. A spiral needs its
+        // own word. One function, three consumers, and its parametrisation is
+        // ArchimedeanSpiral's own — the curve the ribbons are swept along and
+        // the curve makeHairspring's tube follows at rest — so the line quotes
+        // the coil count and the two radii rather than approximating them.
+        //
+        // Residue, declared: the hairspring's glyph is drawn at REST. The
+        // breathing swaps a precomputed geometry frame rather than posing a
+        // group, so the proxy cannot ride it for free — the same residue class
+        // as the gong's boot arc and the contact dots' re-measure-on-entry.
+        {
+          const spiralPts = (s) => {
+            const n = Math.round(s.coils * 32);  // 32 samples/turn: the chord error at the innermost coil is well under the hairline it is drawn with
+            const pts = [];
+            for (let i = 0; i <= n; i++) {
+              const t = i / n;
+              const r = s.innerR + (s.outerR - s.innerR) * t;
+              const a = t * s.coils * Math.PI * 2;
+              pts.push(V(Math.cos(a) * r, Math.sin(a) * r, 0));
+            }
+            return pts;
+          };
+          const wound = [];
+          movement.traverse((o) => { if (o.userData && o.userData.spiral) wound.push(o); });
+          for (const o of wound) {
+            const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(spiralPts(o.userData.spiral)), MAT_SPRING);
+            l.userData.schematic = true; l.layers.set(1); o.add(l); SCHEMATIC.proxies.push(l);
+          }
+          // The two passes above SKIP a part carrying a spiral plan, so a
+          // spring that stops exporting one does not go undrawn — it silently
+          // falls back to the very glyph this part exists to retire, which is
+          // the regression worth a tripwire. A FLOOR, not an equality (§66's
+          // rotor-site assert, same shape): the movement's three wound springs
+          // are the hairspring and the going and alarm barrels' ribbons, and a
+          // fourth spring would simply draw.
+          if (wound.length < 3)
+            console.warn(`§78: only ${wound.length} spiral springs export a plan — the movement has 3 (hairspring, going-barrel ribbon, alarm-barrel ribbon); the rest have fallen back to the gear or blade glyph`);
+        }
+
+        // PART THREE — THE DIAL IS A SLAB. §71's hidden-line convention gives
+        // the base plate two page-colored faces and a rim wall so the boundary
+        // reads as a part rather than a hole in the world; the dial, a
+        // DIAL_T-thick plate spanning its own z extents, got flat circles at
+        // single z values and read as a sheet in a drawing whose one
+        // structural idea is that plates are solid.
+        //
+        // It gets the three-quarter plate's treatment rather than the base
+        // plate's, and for the same reason that one does: the dial is NOT a
+        // plain disc. The sub-dial wells and the centre bore are holes through
+        // it, so a bbox-derived pair of faces would paper over the very
+        // openings the wells' bezels are drawn at. Re-using dialPlate's own
+        // extrude IS two faces and a rim at exactly its measured extents, with
+        // the holes, and restates nothing. The occluder lands INSIDE the
+        // labelled 'Dial' unit, which is what §71's collectUnits prune exists
+        // to permit — every object flagged directly, since an unflagged child
+        // of a flagged parent is not protected.
+        {
+          const dp = byName('dialPlate');
+          const occ = new THREE.Mesh(dp.geometry, SCHEMATIC.occMat);
+          occ.userData.schematic = true; occ.layers.set(1); dp.add(occ);
+          SCHEMATIC.occluderFills.push(occ);   // §78 part four: the dial IS one of the two things the realistic x-ray glasses
+          const edges = new THREE.LineSegments(new THREE.EdgesGeometry(dp.geometry, 30), SCHEMATIC.rimMat);
+          edges.userData.schematic = true; edges.layers.set(1); dp.add(edges);
+        }
+
+        // PART FOUR's invariant, asserted rather than intended: x-ray in the
+        // schematic must lift exactly what x-ray in the realistic view lifts —
+        // the three-quarter plate and the dial — and must leave the base plate
+        // opaque, because the base plate is the movement's real partition and
+        // dissolving it is what §71's own comment says the occluder exists to
+        // prevent.
+        {
+          const leaked = SCHEMATIC.baseFills.filter((o) => SCHEMATIC.occluderFills.includes(o));
+          if (leaked.length)
+            console.warn(`§78: ${leaked.length} base-plate fills are in the x-ray set — schematic x-ray would dissolve the movement's partition`);
+          if (SCHEMATIC.occluderFills.length !== 2)
+            console.warn(`§78: schematic x-ray lifts ${SCHEMATIC.occluderFills.length} fills — the realistic view glasses exactly 2 (three-quarter plate, dial)`);
+        }
       }
     }
   }
@@ -12869,8 +13049,13 @@ const xrayGlassMats = new Set([tqXrayMat, ...dialXrayClones.values()]);
 function setXray(on) {
   xrayOn = on;
   tqPlateMesh.material = on ? tqXrayMat : tqSolidMat;
-  // §71 x-ray-in-schematic: the plate occluders' fills lift with the same
-  // toggle, so one x-ray state means "see through the plates" in both views
+  // §71 x-ray-in-schematic, as §78 part four narrowed it: one x-ray state, and
+  // it means the SAME THING in both views. The two lines above are the whole
+  // of the realistic view's x-ray — the three-quarter plate's material and the
+  // Dial unit's — and occluderFills now holds exactly those two parts'
+  // schematic fills. SCHEMATIC.baseFills is deliberately absent: nothing here
+  // may reach the base plate, whose occlusion is the line drawing's only
+  // partition between the dial-side works and the train.
   for (const o of SCHEMATIC.occluderFills || []) o.visible = !on;
   for (const m of dialXrayMeshes) {
     m.material = on ? dialXrayClones.get(m.userData.solidMat) : m.userData.solidMat;

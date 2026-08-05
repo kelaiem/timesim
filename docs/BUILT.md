@@ -6829,3 +6829,141 @@ interpolation error and the plate's extent is set by its rim, so the
 per-unit boxes do not shift. The lesson is the cheerful one: a boot assert
 written during §62 caught a §62 defect three days later, in a configuration
 §62 never ran.
+
+## §78 — The schematic's missing vocabulary, and an x-ray that dissolved the page
+
+**Filed from an owner walk-through of the shipped line tier**, and
+measured on the shipped tree rather than eyeballed. Four parts: three
+things the drawing did not say, and one it said wrongly.
+
+### Part one — the column wheel, drawn by nothing
+
+The alarm column wheel is three meshes, all named `alarmColWheel`.
+Probed: none of them — and no group in their ancestry up to `movement`
+— carried `userData.r`, so the generic §66 rotor pass never enrolled
+them; the §71 `discOrAxis` pass enrols eight named units and `Alarm
+switch` is not one. The wheel was the single blank in the drawing, and
+it is the worst possible blank: `alarmColSteps` is a readout of this
+wheel and `alarmOn` a readout of its parity, so the tier could show the
+pusher's pawl, the lock's beak and the ring it commands while omitting
+the part that decides which state they are in.
+
+**A pitch circle would not have fixed it.** A pitch circle is the
+vocabulary for "a rotor of this radius"; this wheel's entire content is
+its castellated profile. So the glyph is **the boundary of the cut
+surface**: for each pillar, the closed outline of the top face
+`makeColumnWheel` emits — height `colH·profileAt(θ)` traced at the
+inner radius and back at the outer, joined by the two knife edges where
+the chamfers run down to meet the base. It calls `profileAt` itself, so
+TODO 20's invariant (one function for the cut surface and the ridden
+law) now extends to the drawing: mesh, law and glyph cannot drift.
+Both breakpoints — `colFlatHalf` and `colFlatHalf + colFlank` — are
+kept exactly in the sample list, because sampling straight through them
+rounds the plateau's corners and the result reads as a cam lobe rather
+than a column with a flat top. The `ratchetPoly` the pusher's pawl
+already casts its park against draws the skirt's saw, so the teeth in
+the drawing are the teeth the pawl indexes.
+
+**One addition the plan did not have, from looking at the render.** The
+six top faces alone read as plates floating in a ring — there was no
+body to hang them on. The base disc's two rims and its bore were added
+(`ringExtrude` centres the disc on the group origin, which is why the
+pillars' floor height is also its rim). Ten polylines in total: six
+pillars, three rings, one saw.
+
+Measured on the built glyph: plateau half-angle 0.0754 rad =
+`colFlatHalf`, pillar half-arc 0.2618 rad = `colFlatHalf + colFlank`,
+crest z 0.35 → 1.75 = `baseH/2` → `baseH/2 + colH`. The glyph rides the
+parity — toggling the alarm rotates every vertex about the wheel's axis
+with z unchanged — because it is parented to `alarmColumnWheel`, the
+group `alarmColShownA` already turns.
+
+### Part two — two of three wound springs drawn as things they are not
+
+| spring | its solid | what the tier drew |
+|---|---|---|
+| Hairspring | `TubeGeometry` 15.58 × 15.26 × 0.06 — a flat spiral | a brass LOOP + spoke at r 7.92, from `userData.r` |
+| Mainspring ribbons (×2) | coiled ribbons | the §48 9-point ZIGZAG along the longest local axis |
+
+Both wrong in a specific way rather than merely absent: the hairspring
+got the GEAR glyph, stating that the oscillator's restoring element is
+a rotor of radius 7.92, and the ribbons got the BLADE glyph, which is
+derived from a bounding box and reads as a straight leaf spring.
+
+A spiral needed its own word. `makeHairspring` and `makeBarrel` now
+export `userData.spiral = { innerR, outerR, coils }` — the exact
+arguments their own `ArchimedeanSpiral` / rest-frame polyline are swept
+along — and one glyph function with three consumers draws it, so coil
+count and both radii are **quoted, not approximated**. The two older
+passes now SKIP any part carrying a spiral plan, which is what makes
+this a replacement rather than an overdraw; a boot assert holds the
+count at 3, because a spring that stops exporting a plan would fall
+back silently to the glyph this part exists to retire.
+
+This matters beyond legibility: §76's balance work and TODO 25's solve
+both turn on the hairspring's plan (coils, radii, height), and a
+schematic that drew a circle there could not show what either was
+talking about.
+
+**Residue, declared:** the hairspring's glyph is drawn at REST. The
+breathing swaps a precomputed geometry frame rather than posing a
+group, so the proxy cannot ride it for free — the same residue class as
+the gong's boot arc and the contact dots' re-measure-on-entry.
+
+### Part three — the dial had no thickness
+
+§71's hidden-line convention gives the base plate two page-colored
+faces and a rim wall so its boundary reads as a part rather than a hole
+in the world. The dial got flat circles at single z values while
+`dialPlate` is a 1.056-thick slab spanning world z −9.46 … −8.40 — a
+sheet, in a drawing whose one structural idea is that plates are solid.
+
+It takes the **three-quarter plate's** treatment rather than the base
+plate's, and for the same reason that one does: the dial is not a plain
+disc. The sub-dial wells and the centre bore are holes through it, so a
+bounding-box pair of faces would paper over the very openings the
+wells' bezels are drawn at. Re-using `dialPlate`'s own extrude is two
+faces and a rim at exactly its measured extents, with the holes, and
+restates nothing — the render confirms it, the works reading through
+the wells and nowhere else. The occluder lands INSIDE the labelled
+`Dial` unit, which is precisely what §71's `collectUnits` prune exists
+to permit; every object is flagged directly, since an unflagged child
+of a flagged parent is not protected.
+
+### Part four — x-ray must not lift the base plate
+
+`setXray` emptied `SCHEMATIC.occluderFills`, and §71 had put the base
+plate's two faces and rim wall in that array alongside the
+three-quarter plate's fill. So x-ray in the schematic dissolved the
+base plate — which **the realistic view's x-ray never does** (it swaps
+`tqPlateMesh`'s material and the Dial unit's, and touches the base
+plate nowhere). The two views disagreed about what the word meant, and
+the schematic's reading destroyed the one thing the tier's own comment
+says the occluder is for: *"without occlusion the line drawing reads
+the dial-side works and the train as one tangle; the movement's real
+partition is the base plate."*
+
+Now there are two sets. `occluderFills` is exactly the x-ray-lifted
+set — the three-quarter plate's fill and the dial's, the two parts the
+realistic x-ray glasses — and `SCHEMATIC.baseFills` holds the base
+plate's three, read by no toggle. Both halves are boot-asserted (no
+base fill in the x-ray set; the x-ray set is exactly 2), so the
+invariant is held rather than intended. Measured through the app's own
+button: with x-ray on, the three-quarter and dial fills go invisible
+and all three base fills stay visible.
+
+### Scope kept out
+
+The column wheel's own geometry defects (TODO 4's inside-out pillars,
+TODO 28's remainder), anything that changes what `userData.r` means for
+the solid builders, and §66 part two's recorded residue — the live
+re-measure of contact dots across pose changes.
+
+**Battery:** clean, boot silent, no page errors. No geometry changed and
+no new mesh joined a sweep: the two new Meshes are occluder fills
+(three-quarter-plate precedent), flagged and pruned by `collectUnits`
+and by the fingerprint's walk, and the five flagged meshes in the scene
+are exactly three base-plate fills, one three-quarter-plate fill and one
+dial fill. Both §66 boot asserts stay silent — proxies are never Meshes,
+and dropping the hairspring from the rotor pass leaves 64 rotor sites
+against the required 10.
