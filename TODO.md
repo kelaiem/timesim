@@ -2812,18 +2812,48 @@ fixing whether or not the balance ever grows.
 
 **Wall three — the fork cock's seat search gives up instead of reporting.**
 At R 13 the boot FAILS outright: `fork cock: no clear footing for its leg`,
-followed by a null dereference downstream. The scan looks for a landing
-clear of the balance's swept radius and the plate's cut, and past R 12 no
-seat survives. Two separate defects in one line: the search has no fallback,
-and its failure mode is a crash rather than a diagnosis. **A solver that
-cannot find an answer should report its best near-miss with numbers** — the
-pillar seat scan's `no seat found near` warn is the precedent in this same
-file, and it does not take the boot down with it.
+followed by a null dereference downstream (`TypeError: Cannot read
+properties of null (reading 'x')`). The scan looks for a landing clear of the
+balance's swept radius and the plate's cut, and past R 12 no seat survives.
+Two separate defects in one line: the search has no fallback, and its failure
+mode is a crash rather than a diagnosis. **A solver that cannot find an
+answer should report its best near-miss with numbers** — the pillar seat
+scan's `no seat found near` warn is the precedent in this same file, and it
+does not take the boot down with it.
 
-**Neither has been re-measured since the dial changed.** Every number above
-predates item 26, and this entry's own history is that walls fall to changes
-made for other reasons — three times so far in §76. Re-measure before
-planning against either.
+**And the diagnosis does not survive the crash.** The warn reaches
+`console.warn`, but `__clock.bootWarns` never exists, because boot dies
+before publishing it. So every instrument that reads `bootWarns` — the CI
+battery, §33's trial-boot panel — sees NOTHING AT ALL, not a failure: a
+`waitForFunction` timeout with no message attached. A build that cannot boot
+is invisible to the very machinery meant to report on boots, which makes
+this a third defect in the same line and the reason the fallback matters more
+than it looks. Publishing `bootWarns` incrementally (or in a `finally`)
+would make the crash legible even without fixing the search.
+
+### Re-measured 2026-08-05 — one wall softened, one unchanged, one NEW
+
+The paragraph that used to stand here said neither wall had been re-measured
+since item 26. Both have now been, on merged `main`, sweeping balance radius
+at the shipped corner and at 45° (roadmap §76's Layer 4 carries the full
+table):
+
+- **Wall two is partly down, and only at 45°.** At the shipped corner R 12
+  still gives the whole breakdown above. At 45° only `alarm setting i2 fouls
+  the winding climb: clearance −0.25` survives — the two centre distances
+  mesh. The placed-not-derived defect is unchanged; the SIZE of the job at
+  the corner §76 wants is one clearance, not a broken train.
+- **Wall three is unchanged and corner-independent** — R 13 dies identically
+  at both corners.
+- **A wall that was DOWN came back, and then went down again.** §62's
+  openworked plate shipped after §76's wall-one measurement and put a new
+  warning at R 10, 11 and 12: `§62 window 'escapement': edge leaves a 0.798
+  land against another opening — need 0.800`, from the window outline being
+  interpolated between per-degree solved bearings. Fixed (BUILT §62's
+  postscript); R 10 and R 11 boot silent again at 45°. Recorded here because
+  it is the general lesson these two rows exist to carry: **a wall list is a
+  measurement with a date on it, and every landing can add a wall to
+  somebody else's entry.**
 
 ### Why these are TODO rows and not just roadmap prose
 
