@@ -333,6 +333,17 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   NEGATED rotation of the hand it drives.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
+- **An OPEN mesh reads as a colliding one.** `meshClearance` guards its BVH
+  near-zeros with `sampledVerdict`, which is a PARITY RAYCAST — it counts
+  crossings, so it assumes the solid is closed. Build a body open-ended and
+  the count goes odd, and the check reports contact with parts that are
+  nowhere near it. Measured (TODO 27): opening the chain's rivets to drop
+  four enclosed caps — 6% of that mesh's vertices — made `sweptOverlap`
+  CONFIRM `Chain ⇄ Set-up work` against a spring **3.7 units away in z**,
+  with not one chain vertex inside its box. **A face nobody can SEE is still
+  a face the instruments READ**: cap every body, including the faces buried
+  inside a joint, and look for cheap geometry somewhere that isn't load
+  bearing for a check.
 - **Metals are `metalness ≈ 1`** and render black without `scene.environment`
   (a procedural PMREM studio). Any new page needs the same.
 - **Camera preset tweens run ~0.9 s** and overwrite scripted camera writes

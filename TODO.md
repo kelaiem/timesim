@@ -2526,18 +2526,27 @@ pin's circumscribed radius against the bore's INSCRIBED one. That is not
 pedantry: sizing an 8-gon bore by circumradius would have closed it on the
 pin's flats by cos(π/8) — 7.6% of the radius, five times the fit itself.
 
-**What it cost, measured**: the chain went 45,996 → 130,176 vertices (one
+**What it cost, measured**: the chain went 45,996 → 138,432 vertices (one
 mesh still, so no new draw call), and the per-rebuild cost went 2.24 ms →
 3.32 ms — less than the geometry, because the rebuild stopped allocating two
 megabyte-scale `Float32Array`s per frame and now keeps them. That
 reallocation was affordable at the old size and would not have been at this
 one; `total` only changes when the run gains or loses a link.
 
-Only the two rivet FACES are drawn: the shank's ends butt against the heads
-and each head's inner face lies on the counterbore floor, so four of the six
-caps are enclosed by the joint and are not drawn at all. A face nobody can
-see is not a claim the model needs to make, and at 211 joints it is 6% of the
-chain.
+**A face nobody can SEE is still a face the instruments READ** — learned by
+breaking it. Four of the rivet's six caps are enclosed by the joint (the
+shank's ends butt against the heads; each head's inner face lies on the
+counterbore floor), so they were built open-ended to save 6% of the chain's
+vertices. `sweptOverlap` promptly went red on `Chain ⇄ Set-up work`: a
+CONFIRMED contact with `setupClickSpring`, a part whose box is **3.7 units
+away in z** with not one chain vertex inside it. The cause is in
+`meshClearance`'s own comment — `closestPointToGeometry` short-circuits to 0
+through a triangle-intersection test that is known to lie, and the guard
+against it is `sampledVerdict`, which is a PARITY RAYCAST. Parity counts
+crossings, so it assumes a closed solid; open the pins and the count goes
+odd. With the caps restored the pair measures 5.0125 at reserve f = 1 —
+identical to `main`. The caps stay, and cheap invisible geometry is not free
+when a check downstream depends on the solid being solid.
 
 **And it cost the battery, which is the part worth reading.** `sweptOverlap`
 went **352 s → ~1400 s** on the same CI runner class and blew the harness's

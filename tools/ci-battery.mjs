@@ -59,7 +59,7 @@ const YIELD_EVERY = 64;
 // Per check. This is a WEDGED-TAB GUARD, not a budget: no check is supposed
 // to approach it, and a check that does has told us something. TODO 27 is the
 // worked example — drilling the chain's 211 joints tripled that mesh
-// (14,312 → 45,072 triangles) and `sweptOverlap` went 352 s → ~1400 s on this
+// (14,312 → 46,144 triangles) and `sweptOverlap` went 352 s → ~1400 s on this
 // runner class, blowing the old 20-minute guard while REPORTING the same
 // green result (0 CONFIRMED, 59,216 pairs). The cost is the §36 registry's
 // own: `samplePoses` transforms every vertex of every mesh at every pose into
