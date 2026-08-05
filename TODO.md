@@ -2526,12 +2526,31 @@ pin's circumscribed radius against the bore's INSCRIBED one. That is not
 pedantry: sizing an 8-gon bore by circumradius would have closed it on the
 pin's flats by cos(π/8) — 7.6% of the radius, five times the fit itself.
 
-**What it cost, measured**: the chain went 45,960 → 148,152 vertices (one
+**What it cost, measured**: the chain went 45,996 → 130,176 vertices (one
 mesh still, so no new draw call), and the per-rebuild cost went 2.24 ms →
 3.32 ms — less than the geometry, because the rebuild stopped allocating two
 megabyte-scale `Float32Array`s per frame and now keeps them. That
 reallocation was affordable at the old size and would not have been at this
 one; `total` only changes when the run gains or loses a link.
+
+Only the two rivet FACES are drawn: the shank's ends butt against the heads
+and each head's inner face lies on the counterbore floor, so four of the six
+caps are enclosed by the joint and are not drawn at all. A face nobody can
+see is not a claim the model needs to make, and at 211 joints it is 6% of the
+chain.
+
+**And it cost the battery, which is the part worth reading.** `sweptOverlap`
+went **352 s → ~1400 s** on the same CI runner class and blew the harness's
+20-minute per-check guard — while reporting the same green result (0
+CONFIRMED, 59,216 pairs). The guard is raised to 45 minutes with the
+measurement written at the constant. That is a stopgap and it is labelled as
+one: the cost is the §36 registry's, not the chain's. `samplePoses`
+transforms every vertex of every mesh at every pose into Float64 and holds
+all 108 frames at once, to produce **one AABB per pose** — 3.0× the vertices
+bought ~4× the wall clock, which is memory pressure, not arithmetic. Filed as
+roadmap §80, which is required to put the guard back to 20 minutes when it
+lands. What was NOT done: trim the joint until the clock fit. The geometry is
+right; the instrument is what should change.
 
 ### The instrument gap did NOT close, and §77's control had to move
 

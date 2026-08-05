@@ -56,7 +56,18 @@ import { chromium } from 'playwright';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const YIELD_EVERY = 64;
-const CHECK_TIMEOUT_MS = 20 * 60 * 1000; // per check — clearances is the long pole
+// Per check. This is a WEDGED-TAB GUARD, not a budget: no check is supposed
+// to approach it, and a check that does has told us something. TODO 27 is the
+// worked example — drilling the chain's 211 joints tripled that mesh
+// (14,312 → 45,072 triangles) and `sweptOverlap` went 352 s → ~1400 s on this
+// runner class, blowing the old 20-minute guard while REPORTING the same
+// green result (0 CONFIRMED, 59,216 pairs). The cost is the §36 registry's
+// own: `samplePoses` transforms every vertex of every mesh at every pose into
+// Float64 and holds all 9 axes × 12 poses at once, to produce one AABB per
+// pose. That is the thing to fix (roadmap §80); until it is, the guard has to
+// clear the honest cost of the geometry with room to spare, so 45 minutes —
+// still ~2x the slowest check, which is what a guard is for.
+const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
 // The battery, in the order the checks are run: cheap and synchronous first so

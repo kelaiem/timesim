@@ -3315,19 +3315,38 @@ const CHAIN_TMPL = (() => {
   // the formed head reads as the separate body it is rather than fusing to
   // the plate. The shank stops AT the floor: run through and its end cap
   // would be coplanar with the head's outer face for no gain.
+  //
+  // Only the two head faces are ever SEEN — the shank's ends butt against the
+  // heads and each head's inner face lies on the counterbore floor, all four
+  // enclosed by the joint they are inside. So the three bodies are built
+  // open-ended and exactly two caps are drawn. That is not a saving for its
+  // own sake: 211 joints put this template through the §36 registry, which
+  // transforms every vertex of every mesh at every pose, and a face nobody
+  // can see is not a claim the model needs to make. (The rest of that cost
+  // is the registry's own, filed as roadmap §80.)
   const pos = [], nrm = [];
+  const push = (g) => {
+    const n = g.toNonIndexed();
+    pos.push(...n.attributes.position.array);
+    nrm.push(...n.attributes.normal.array);
+    g.dispose(); n.dispose();
+  };
   const shankLen = CHAIN_PIN_LEN - 2 * CHAIN_RIVET_HEAD_T;
+  const headR = CHAIN_RIVET_HEAD_R - CHAIN_RIVET_FIT;
+  const headZ = (CHAIN_PIN_LEN - CHAIN_RIVET_HEAD_T) / 2;
   const parts = [
     [CHAIN_PIN_R, shankLen, 0],
-    [CHAIN_RIVET_HEAD_R - CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_T, (CHAIN_PIN_LEN - CHAIN_RIVET_HEAD_T) / 2],
-    [CHAIN_RIVET_HEAD_R - CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_T, -(CHAIN_PIN_LEN - CHAIN_RIVET_HEAD_T) / 2],
+    [headR, CHAIN_RIVET_HEAD_T, headZ],
+    [headR, CHAIN_RIVET_HEAD_T, -headZ],
   ];
   for (const [r, len, z] of parts) {
-    const g = new THREE.CylinderGeometry(r, r, len, CHAIN_BORE_SEG)
-      .rotateX(Math.PI / 2).translate(0, 0, z).toNonIndexed();
-    pos.push(...g.attributes.position.array);
-    nrm.push(...g.attributes.normal.array);
-    g.dispose();
+    push(new THREE.CylinderGeometry(r, r, len, CHAIN_BORE_SEG, 1, true)
+      .rotateX(Math.PI / 2).translate(0, 0, z));
+  }
+  for (const s of [1, -1]) {   // the two faces that show: the formed heads
+    const cap = new THREE.CircleGeometry(headR, CHAIN_BORE_SEG);
+    if (s < 0) cap.rotateX(Math.PI);
+    push(cap.translate(0, 0, s * CHAIN_PIN_LEN / 2));
   }
   const pin = { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm), parts };
   return { inner, outer, pin };
