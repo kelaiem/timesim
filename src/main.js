@@ -3180,6 +3180,24 @@ const FUSEE_AVG_R = (FUSEE_R_SMALL + FUSEE_R_LARGE) / 2;
 // (§22: FUSEE_WRAP_TURNS is declared with the cone build above — one spec
 // derivation, no longer a duplicate literal of RESERVE_BARREL_TURNS.)
 const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length over a full reserve, at CENTRELINE radii (honest since the §61 cut)
+// The drum's own travel over that reserve — all the chain, taken up at the
+// feed radius. It was written out three times (the chain rebuild, the tick,
+// and nothing else that knew it); it is now also the MAINSPRING's wind range,
+// because the drum turning against a static arbor IS the spring winding, so
+// the three readings have to be one number. (TODO 1)
+const DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R;
+// The static arbor's spring seat inside the drum, built with the set-up work
+// far below — hoisted here because the ribbon's inner coil BEARS on it, so the
+// spring's inner radius and its section both derive from this number now
+// (previously the spring took `radius · 0.16` and the two disagreed by 0.036,
+// which is how the ribbon came to be buried in the collar it sits on).
+// The 1.5 itself is carried forward unchanged from the as-built seat — a
+// 0.6-thick boss pressed on the drum arbor's 0.9 — so this change moves no
+// geometry it did not have to. It is the one dimension here that is inherited
+// rather than derived; deriving it is a spring-proportion question (arbor core
+// against barrel bore), and it belongs to TODO 32's torque work, where the
+// ribbon's length and section stop being free.
+const MS_COLLAR_R = 1.5;
 // Drum direction: perpendicular-to-stem, blended outward (away from the
 // plate centre) so the chain's span stays clear of the train — the pure
 // perpendicular placement let the span cross the third wheel as the active
@@ -3204,7 +3222,25 @@ const Z_DRUM = (DRUM_BOT_Z + DRUM_TOP_Z) / 2; // drum body is built centred; ban
 const barrel = G.makeBarrel({
   radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true,
   arborH: 2 * (TQ_MID_Z - Z_DRUM),
+  // TODO 1's remaining half: the ribbon is a WIND MORPH between two fixed
+  // ends, not a spiral rotated and scaled by tension. Its inner end is on the
+  // set-up work's static collar, its outer on the drum wall, and the drum's
+  // full travel is the relative angle between them.
+  springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
 });
+const mainspring = barrel.getObjectByName('spring').userData.mainspring;
+// §48/TODO 29 — the ribbon RECIPROCATES now, so the audit has an opinion about
+// it, and it did not before: the retired readout rotated the spiral rigidly
+// with tension, which the §36 registry read as one more monotonic rotor. The
+// morph makes the wound↔run-down cycle a shape change, the registry flags it
+// reversing, and the population the audit judges gains the one part in the
+// movement that is unambiguously a spring. Declared HERE, beside the build, by
+// the file's convention. What drives it the other way is the winding path —
+// the same two-way drive already declared on 'Chain' and
+// 'Fusee & great wheel', arriving through the chain onto this drum.
+declareRestoring('Mainspring drum', 'spring',
+  'the ribbon IS the restoring element — it reverses because the drum wall its outer end is hooked to does, and the winding path (keyless → fusee → chain) is what carries it back the other way',
+  'mainspringRibbon');
 const drumGroup = new THREE.Group();
 drumGroup.position.set(drumPos.x, drumPos.y, Z_DRUM);
 // §61 — the wall the chain-seating instrument measures against (drum-local
@@ -3544,8 +3580,8 @@ function rebuildChain(tension) {
   // (round-to-nearest is branch-stable: HOOK_A centres the offset — see
   // its comment). The coil hangs DOWN from the hook, one chain diameter
   // per turn, so the takeoff tangent point descends as the reserve drains.
-  const rot = ((1 - tension) * CHAIN_ENGAGED) / DRUM_WRAP_R; // = drumGroup.rotation.z in tick()
-  const baseTurns = ((1 - tension) * CHAIN_ENGAGED) / (2 * Math.PI * DRUM_WRAP_R) + 0.3;
+  const rot = (1 - tension) * DRUM_ROT_FULL; // = drumGroup.rotation.z in tick()
+  const baseTurns = ((1 - tension) * DRUM_ROT_FULL) / (2 * Math.PI) + 0.3;
   let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
   if (frac < 0) frac += 1;
   const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
@@ -4041,17 +4077,48 @@ const setupWork = new THREE.Group();
   springHead.rotation.x = Math.PI / 2;
   springHead.position.set(A.x, A.y, springZ + STOCK_MIN_U / 2);
   az.add(springHead);
-  // The spring's INNER-END ANCHOR, inside the drum: a collar on the
-  // static arbor with a radial hook pin at the spiral's heart. The drum
-  // body (and the readout spiral) rotate around it — the arbor holds.
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 1.2, 14), MATS.steel);
+  // The spring's INNER-END ANCHOR, inside the drum: a collar on the static
+  // arbor carrying the hook the ribbon's inner end butts against. The drum
+  // body turns around it — the arbor holds — and since TODO 1's morph the
+  // ribbon's inner end is genuinely pinned here rather than riding round.
+  //
+  // The collar is as TALL as the ribbon, bounded by the drum's own cavity:
+  // an inner coil bearing on 1.2 units of collar over 3.2 units of ribbon was
+  // standing on nothing for two thirds of its height, and the morph presses
+  // it down onto this face at full wind. Both parts are centred on the drum
+  // body's mid-plane, so the cavity's own faces (published by makeBarrel, not
+  // re-derived here) bound the half-height directly. The FLOOR is what bites,
+  // which is why this is a min and not simply the ribbon's height.
+  const cav = barrel.userData.cavity;
+  const collarHalfH = Math.min(
+    mainspring.height / 2,
+    cav.lidBotZ - CLEAR_MARGIN,
+    -cav.floorTopZ - CLEAR_MARGIN,
+  );
+  if (collarHalfH < mainspring.height / 2 - 0.2)
+    console.warn(`TODO 1: the arbor collar reaches ${(collarHalfH * 2).toFixed(2)} of the ribbon's ${mainspring.height.toFixed(2)} height — the drum cavity is squeezing the anchor`);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(MS_COLLAR_R, MS_COLLAR_R, collarHalfH * 2, 14), MATS.steel);
   collar.rotation.x = Math.PI / 2;
   collar.position.z = Z_DRUM;
   az.add(collar);
-  const hookPin = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 8), MATS.blueSteel);
-  hookPin.rotation.z = Math.PI / 2; // cylinder Y-axis laid radially along +x
-  hookPin.position.set(1.5 + 0.7, 0, Z_DRUM);
-  az.add(hookPin);
+  // The HOOK. Its azimuth is DERIVED, not placed: the ribbon's inner end sits
+  // at a fixed angle in this frame (drum-local sweep + drum rotation is
+  // constant by construction — that IS the anchoring claim), and the builder
+  // reports it as innerAnchorAz. Its radial reach is bounded by the SECOND
+  // coil: at full wind the turns lie at coil bind, so anything standing more
+  // than one ribbon thickness proud of the collar is buried in the coil behind
+  // it — a real barrel-arbor hook is exactly this stub, and the ribbon's end
+  // FACE bears on its flank rather than wrapping it. The spring drives the
+  // drum +z, so the end pushes the flank on the +angle side; the lug is
+  // offset half its width that way so the two butt instead of overlapping.
+  const lugW = mainspring.pBind;
+  const lugR = MS_COLLAR_R + lugW / 2;
+  const lugAz = mainspring.innerAnchorAz + Math.atan2(lugW / 2, lugR);
+  const hookLug = new THREE.Mesh(new THREE.BoxGeometry(lugW, lugW, mainspring.height), MATS.blueSteel);
+  hookLug.name = 'mainspringArborHook'; // §50 kind: PIN stock — its section is the ribbon's own thickness, which is what the coil behind it leaves
+  hookLug.position.set(Math.cos(lugAz) * lugR, Math.sin(lugAz) * lugR, Z_DRUM);
+  hookLug.rotation.z = lugAz;
+  az.add(hookLug);
   movement.add(setupWork);
   registerExplode(setupWork, 0, 1); // base-plate furniture now
   registerLabel('Set-up work', setupWork);
@@ -10257,7 +10324,6 @@ alarmSwitchUnit.add(alarmPusherGroup);
 // can't represent incremental winding: shifting the epoch to add reserve
 // makes movement time non-monotonic. A real accumulator is the honest fix.)
 // ---------------------------------------------------------------------------
-const springChild = barrel.getObjectByName('spring');
 const RELAX_SECONDS = SPEC.reserveHours * 3600; // §22: the reserve is a spec knob (default 30 h)
 // Power reserve is MECHANICALLY geared off the barrel: the barrel turns once
 // per 8 h, so the reserve is exactly hours/8 barrel revolutions lock-to-lock.
@@ -12553,7 +12619,17 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
           const wound = [];
           movement.traverse((o) => { if (o.userData && o.userData.spiral) wound.push(o); });
           for (const o of wound) {
-            const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(spiralPts(o.userData.spiral)), MAT_SPRING);
+            // TODO 1: a ribbon that MORPHS carries its wind states' own
+            // polylines, and the plan above is only true of it at k = 1 (the
+            // free coil). Draw the frame it is actually wearing, and register
+            // the line so setWind rewrites it — the residue this pass declares
+            // for the hairspring ("the glyph is drawn at REST, the proxy cannot
+            // ride a geometry swap for free") is closed here rather than
+            // inherited, because the swap now has a hook to hang the line on.
+            const fr = o.userData.spiralFrames;
+            const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+              fr ? fr[o.userData.spiralFrame].map(([x, y]) => V(x, y, 0)) : spiralPts(o.userData.spiral)), MAT_SPRING);
+            if (fr) o.userData.spiralLine = l;
             l.userData.schematic = true; l.layers.set(1); o.add(l); SCHEMATIC.proxies.push(l);
           }
           // The two passes above SKIP a part carrying a spiral plan, so a
@@ -16916,13 +16992,8 @@ function tick(t) {
   smallSecondsHand.rotation.z = fourthA - secondsZeroRef;
   cannonPinion.rotation.z = minuteA;
 
-  // Mainspring relax — a direct readout of tension now that winding is
-  // continuous rather than a discrete button press (no more settle-pulse
-  // to blend against).
-  if (springChild) {
-    springChild.rotation.z = tension * Math.PI * 1.4;
-    springChild.scale.setScalar(1 + (1 - tension) * 0.06);
-  }
+  // (The mainspring is wound further down, off the drum's own angle — it is
+  // not a readout of tension any more. TODO 1.)
 
   // Hacking seconds: the stem/crown/winding-pinion group's position along
   // the stem axis (local +Y = outward) — crownPullT itself was updated at
@@ -17275,8 +17346,16 @@ function tick(t) {
   // much chain has paid onto it. The chain MESH is not rebuilt here — tick
   // only records the tension; updateChainIfMoved() rebuilds once per
   // rendered/posed frame (§14), since the chain is display-only.
-  drumGroup.rotation.z = ((1 - tension) * CHAIN_ENGAGED) / DRUM_WRAP_R; // feed at the chain's centreline radius (§61)
+  const drumRot = (1 - tension) * DRUM_ROT_FULL; // feed at the chain's centreline radius (§61)
+  drumGroup.rotation.z = drumRot;
   chainTensionNow = tension;
+  // ...and the mainspring winds with it. The ribbon's outer end is on the wall
+  // that just moved and its inner end is on an arbor that did not, so the angle
+  // the spiral spans is the full-wind sweep LESS whatever the drum has already
+  // paid out. No tension term appears here on purpose: the spring's shape is a
+  // consequence of where the drum is, not a second reading of the same state.
+  // (TODO 1 — this was `rotation.z = tension · 1.4π` plus a 6% scale.)
+  mainspring.setWind(mainspring.sweepFull - drumRot);
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;

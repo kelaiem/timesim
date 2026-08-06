@@ -300,8 +300,12 @@ the battery — with known residue:
 
 - **Inside a unit.** The pair sweep cannot see it; `intraUnit` (TODO 5's
   interim) now checks each unit's movers against its own fixtures over
-  the pose net. Still invisible: fixture-vs-fixture (the pallet's
-  ruby-in-slot instance) and mover-vs-mover within one unit.
+  the pose net. A MORPH COUNTS AS MOTION — the signature carries
+  `geometry.id` as well as the unit-relative matrix, so a part that swaps
+  a wind frame without moving (the mainspring, the hairspring) stays a
+  mover; see MODELING.md rule 6 before shipping another one. Still
+  invisible: fixture-vs-fixture (the pallet's ruby-in-slot instance) and
+  mover-vs-mover within one unit.
 - **Anywhere between an EXPECTED pair.** `EXPECTED` is granted per unit
   *pair*; `expectedContacts` (TODO 6) holds the pairs declared in
   `EXPECTED_CONTACT_FLOORS` to `CLEAR_MARGIN` everywhere EXCEPT their

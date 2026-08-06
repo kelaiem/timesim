@@ -1275,8 +1275,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
   { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
-  { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed' },
-  { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'ExtrudeGeometry#0', why: 'the outer coil bears on the drum wall at the hook' },
+  { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed. Since the wind morph the hook is a FIXTURE (it rides the drum and nothing else), so this row is no longer reachable by a mover-vs-fixture check; the geometry is unchanged and the declaration is kept as the record of it' },
+  { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'mainspringHook', why: 'the ribbon\'s outer end is riveted into the wall hook — TODO 1\'s fixed end, and now the only intersection the ribbon has inside its own unit. (The old row against the drum WALL is gone with the readout that caused it: the retired law scaled the whole spiral 6% at empty, which put the outer coil at r 9.027 against a wall bored to 8.680 — 0.347 of standing penetration in a ribbon built 0.164 clear. The morph pins that end instead of stretching it.)' },
   { unit: 'Alarm striking wheel', a: 'CylinderGeometry#3', b: 'CylinderGeometry#0', why: 'collar pressed on the strike arbor' },
   { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
   { unit: 'Alarm barrel', a: 'CylinderGeometry#6', b: 'CylinderGeometry#0', why: 'barrel cap on the arbor boss' },
@@ -1311,6 +1311,12 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
   { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
   { unit: 'Alarm switch', a: 'alarmColWheel', b: 'alarmPusherPawl', why: 'the pawl PARKS ON the kiss — its leading face is derived onto the saw outline (ratchetPoly) and alarmHandoffs asserts the kiss every run' },
+  // Surfaced the moment the signature above started reading geometry swaps
+  // (TODO 1). Both are the hairspring's two ends, and both were always there:
+  // the breathing spiral is a mover by morph, and the parts it is pinned
+  // BETWEEN are exactly the parts a spiral has to be pinned between.
+  { unit: 'Hairspring', a: 'TubeGeometry#0', b: 'CylinderGeometry#1', why: 'the spiral\'s inner coil is pinned to the COLLET it turns with — makeHairspring starts the curve at the collet radius, so the two share that surface by construction' },
+  { unit: 'Hairspring', a: 'TubeGeometry#0', b: 'TubeGeometry#2', why: 'the raised terminal curve continues from the spiral\'s outer end — one ribbon, two meshes, joined end to end at the fixed outer angle' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
@@ -1327,9 +1333,19 @@ export const INTRA_UNIT_WAIVERS = [
 export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   const _m = new THREE.Matrix4();
+  // A MORPH IS MOTION. The signature carries the mesh's geometry identity as
+  // well as its unit-relative matrix, because a part can change where its
+  // surfaces are without changing its matrix at all: the mainspring's ribbon
+  // (TODO 1) redistributes its coils by swapping a precomputed wind frame, and
+  // the hairspring breathes the same way. On the matrix alone both read as
+  // FIXTURES, and this check only ever compares movers against fixtures — so
+  // the moment TODO 1 replaced the ribbon's rigid rotation with the honest
+  // morph, the ribbon would have dropped out of the instrument's sight
+  // entirely. geometry.id is a monotonic per-BufferGeometry counter, so a swap
+  // moves the signature by at least 1 and the 1e-6 threshold below sees it.
   const relSig = (unit, mesh) => {
     _m.copy(unit.obj.matrixWorld).invert().multiply(mesh.matrixWorld);
-    let s = 0;
+    let s = mesh.geometry.id;
     for (let i = 0; i < 16; i++) s += _m.elements[i] * (i + 1);
     return s;
   };
@@ -3705,6 +3721,11 @@ export const STOCK_KIND_BY_MESH = {
   jumperClickSpring: 'spring', // the minute jumper's return spring — same construction, 0.075 mm
   mainspringRibbon: 'spring',  // the coil IS the mainspring
   mainspringHook: 'spring',    // its hook tab, same stock
+  // TODO 1 — the ARBOR's hook, the ribbon's other end. Pin stock at 0.101 mm
+  // (clears the 0.07 pivot floor). Its section is not a choice: it is one
+  // ribbon thickness, because at full wind the second coil comes down to coil
+  // bind and anything standing further proud of the collar is buried in it.
+  mainspringArborHook: 'pivot',
   barrelClickPawl: 'spring',   // integral click: spring-tempered pawl stock
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
