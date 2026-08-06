@@ -2776,17 +2776,24 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
 // subdials: [{ x, y, r, kind: 'seconds' | 'reserve' }] in dial-local units
 // (same frame the numerals use: +y = 12 o'clock, +x = 3 o'clock as authored;
 // the caller's dialFace Y-flip makes that read correctly from the front).
-// Each entry becomes a real recessed WELL: a hole cut through the dial disc,
-// a silvered cylindrical wall, and a floor sunk `subdialRecess` below the
-// surface carrying the painted face (with a central bore for the hand
-// arbor). The caller adds its hand inside the well at the same local
-// position. Any hour numeral whose marker would land on a sub-dial is
-// skipped automatically (computed, replacing the old hard-coded VI
-// omission).
+// Each entry becomes a real recessed WELL: a blind pocket `subdialRecess`
+// deep, machined into the plate's front, its floor carrying the painted
+// sub-dial face and pierced by one bore for the hand's arbor. The caller adds
+// its hand inside the well at the same local position. Any hour numeral whose
+// marker would land on a sub-dial is skipped automatically (computed,
+// replacing the old hard-coded VI omission).
 // centerBoreR: hole at the dial centre for the motion works' hand arbors —
 // the hour-wheel TUBE (carrying the hour hand) and the cannon pinion inside
 // it have to physically reach the front of the dial. Without it the hands
 // were mounted in front of an unbroken disc with nothing passing through.
+// thickness: the plate's stock. 0 builds the printed sheet alone (the
+// per-part smoke test's bare call) — every other consumer gives the dial its
+// matter, and the plate spans local 0 (face) to −thickness (back).
+// edgeBreak: the chamfer taken off both faces at the rim (TODO 26 — the
+// dial's thickness is a profile, not one number).
+// subdialBoreR: the arbor bore through each pocket floor. ONE size for both
+// wells — one drill — so the caller derives it from the largest member that
+// passes through any of them.
 // The applied hour markers' radial band, as FACTORS of the dial radius.
 // Exported because the HOUR HAND's length is derived from it (main.js): the
 // hand is sized to the markers' inner edge, so the two cannot drift apart.
@@ -2797,7 +2804,103 @@ export const DIAL_MARKER_OUTER_F = 0.795; // markers hug the railroad track
 export const DIAL_MARKER_H_F = 0.21;      // cap height (tall proportion)
 export const DIAL_MARKER_INNER_F = DIAL_MARKER_OUTER_F - DIAL_MARKER_H_F; // = 0.585
 
-export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0 }) {
+// --- The dial plate's own geometry kit (TODO 26) ---------------------------
+// A plate with BLIND POCKETS cannot be extruded: ExtrudeGeometry cuts one
+// outline clean through, which is exactly the defect TODO 26 shipped with —
+// wells that were holes with a floor hung in them. So the plate is built
+// surface by surface, and these three helpers are what keep that build a
+// SOLID rather than a pile of sheets.
+//
+// `circleLoop` is the reason it is watertight. Every circle in the plate is
+// generated ONCE and the same point array feeds the cap that ends on that
+// edge and the wall that starts from it. Two different tessellations of one
+// circle — a 96-gon cap against a 48-gon wall — leave chord-shaped slivers,
+// and a parity raycast crawls straight through them (CLAUDE.md's open-mesh
+// trap, one step further on: a mesh can be closed as authored and still leak
+// at a seam its two halves disagree about).
+//
+// `mode` is the other half of honesty here. An INSCRIBED polygon is smaller
+// than the circle it stands for, which is what an outer silhouette wants (the
+// part is never bigger than nominal) and what a HOLE must never be: a bore
+// drilled to clear a hub by CLEAR_MARGIN would clear it by less than that on
+// every flat. Holes are CIRCUMSCRIBED so the nominal radius is the closest
+// any flat comes to the axis.
+function circleLoop(cx, cy, r, n, mode = 'in') {
+  const rr = mode === 'out' ? r / Math.cos(Math.PI / n) : r;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push(new THREE.Vector2(cx + rr * Math.cos(a), cy + rr * Math.sin(a)));
+  }
+  return pts;
+}
+
+// Reverse an indexed geometry's faces (winding + normals) — for the one cap
+// of a solid that faces away from the builder's +z.
+function flipFaces(g) {
+  const idx = g.index;
+  for (let i = 0; i < idx.count; i += 3) {
+    const t = idx.getX(i);
+    idx.setX(i, idx.getX(i + 2));
+    idx.setX(i + 2, t);
+  }
+  idx.needsUpdate = true;
+  const n = g.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  return g;
+}
+
+// A flat face at z, bounded by `outer` and pierced by `holes` — all of them
+// point arrays from circleLoop, so the face's edges are the same polygons its
+// walls are built from. ShapeGeometry over a Shape made of straight segments
+// adds no vertices of its own (CurvePath.getPoints uses one division per
+// LineCurve), which is what makes that guarantee hold.
+function plateCap(outer, holes, z, facing) {
+  const shape = new THREE.Shape(outer);
+  for (const h of holes) shape.holes.push(new THREE.Path(h.slice().reverse()));
+  const geo = new THREE.ShapeGeometry(shape);
+  geo.translate(0, 0, z);
+  return facing < 0 ? flipFaces(geo) : geo;
+}
+
+// The wall between two coaxial loops — A in front (zA), B behind (zB), same
+// point count. Straight when the radii match, a cone (a chamfer) when they do
+// not. `outward` faces a rim; otherwise the normals face the axis, which is
+// what a bore or a pocket wall is seen from.
+function plateWall(cx, cy, A, zA, B, zB, outward) {
+  const n = A.length;
+  const rA = Math.hypot(A[0].x - cx, A[0].y - cy);
+  const rB = Math.hypot(B[0].x - cx, B[0].y - cy);
+  // Profile normal in (r, z): perpendicular to the profile tangent
+  // (Δr, Δz), taken on the side that points away from the material.
+  const dr = rB - rA, dz = zB - zA;
+  const len = Math.hypot(dr, dz) || 1;
+  const s = outward ? 1 : -1;
+  const nr = (s * -dz) / len, nz = (s * dr) / len;
+  const pos = new Float32Array(n * 18), nrm = new Float32Array(n * 18);
+  let o = 0;
+  const put = ([p, r, z]) => {
+    pos[o] = p.x; pos[o + 1] = p.y; pos[o + 2] = z;
+    nrm[o] = ((p.x - cx) / r) * nr; nrm[o + 1] = ((p.y - cy) / r) * nr; nrm[o + 2] = nz;
+    o += 3;
+  };
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ai = [A[i], rA, zA], aj = [A[j], rA, zA], bi = [B[i], rB, zB], bj = [B[j], rB, zB];
+    // Outward winding is (A_i, B_i, A_j) / (A_j, B_i, B_j); inward reverses.
+    const tris = outward ? [ai, bi, aj, aj, bi, bj] : [ai, aj, bi, aj, bj, bi];
+    for (const v of tris) put(v);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  return geo;
+}
+
+export function makeDial({
+  radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0,
+  edgeBreak = 0, subdialBoreR = 1.0,
+}) {
   const g = new THREE.Group();
   let mat = null;
 
@@ -2891,63 +2994,134 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
   }
   if (!mat) mat = MATS.silver;
 
-  // Dial disc — with a circular hole cut through it at each sub-dial.
-  let discGeo, discShapeForBody = null;
+  // SEG is the one tessellation of every circle in the dial — the face's
+  // printed sheet, the plate under it, the wells and their bores all read the
+  // same polygon, so no two of them disagree about where a circle is.
+  const SEG = 96;
+  // The plate's front FLAT. `edgeBreak` is a chamfer, so the flat stops one
+  // break short of the nominal radius (see the plate build below); the printed
+  // face and the applied chapter ring are finish laid ON that flat, so they
+  // end where it does.
+  const faceR = radius - edgeBreak;
+  // Every circle the plate and its finish share, generated once. The pocket
+  // and bore loops are in the DIAL's frame, not each well's, because the
+  // finish meshes below are built from these same arrays and must land on the
+  // machined surfaces BIT for bit — see FINISH_ORDER.
+  const wells = subdials.map((sd) => ({
+    pocket: circleLoop(sd.x, sd.y, sd.r, SEG, 'out'),
+    bore: circleLoop(sd.x, sd.y, subdialBoreR, SEG, 'out'),
+  }));
+  // Printing and plating lie ON the plate's own surfaces — the same plane, the
+  // same polygon — so which one the viewer sees is decided by draw order under
+  // a LESS-EQUAL depth test, and the finish must be drawn last. Two things
+  // make that hold, and both are needed: the finish geometry is BAKED at the
+  // same coordinates as the matter (a mesh positioned by its matrix instead
+  // rounds differently and the two surfaces shred each other — measured, on
+  // the sub-dial faces), and the order is DECLARED here rather than inherited
+  // from the accident that three.js sorts opaque draws by material id.
+  const FINISH_ORDER = 1;
+
+  // Dial disc — the PRINTING, a zero-thickness sheet on the plate's front
+  // flat, with a circular hole at each sub-dial (the pocket is machined and
+  // printed on its own floor) and one at the centre for the hand arbors.
+  let discGeo;
   if (subdials.length || centerBoreR > 0) {
-    const discShape = new THREE.Shape();
-    discShape.absarc(0, 0, radius, 0, Math.PI * 2, false);
-    for (const sd of subdials) {
-      const h = new THREE.Path();
-      h.absarc(sd.x, sd.y, sd.r, 0, Math.PI * 2, true);
-      discShape.holes.push(h);
-    }
-    if (centerBoreR > 0) {
-      const bore = new THREE.Path();
-      bore.absarc(0, 0, centerBoreR, 0, Math.PI * 2, true);
-      discShape.holes.push(bore);
-    }
-    discShapeForBody = discShape;
-    discGeo = new THREE.ShapeGeometry(discShape, 96);
+    const discShape = new THREE.Shape(circleLoop(0, 0, faceR, SEG));
+    for (const w of wells) discShape.holes.push(new THREE.Path(w.pocket.slice().reverse()));
+    if (centerBoreR > 0) discShape.holes.push(new THREE.Path(circleLoop(0, 0, centerBoreR, SEG, 'out').reverse()));
+    discGeo = new THREE.ShapeGeometry(discShape);
     // ShapeGeometry UVs are raw local coordinates — remap to the 0..1 disc
     // mapping CircleGeometry uses, so the canvas texture lands identically.
+    // Normalised by the NOMINAL radius, not the flat's: the printed image is
+    // painted in world units (the minute hand's length is derived from where
+    // the railroad lands), so breaking the plate's edge may clip the sheet —
+    // it may not rescale what is on it.
     const uv = discGeo.attributes.uv, pos = discGeo.attributes.position;
     for (let i = 0; i < uv.count; i++) {
       uv.setXY(i, pos.getX(i) / (2 * radius) + 0.5, pos.getY(i) / (2 * radius) + 0.5);
     }
   } else {
-    discGeo = new THREE.CircleGeometry(radius, 96);
+    discGeo = new THREE.CircleGeometry(faceR, SEG);
   }
   const disc = new THREE.Mesh(discGeo, mat);
+  disc.renderOrder = FINISH_ORDER;
   g.add(disc);
-  // TODO 26 — THE DIAL AS MATTER. The textured face above is the FRONT
-  // surface; this is the plate behind it, the same outline (sub-dial holes and
-  // centre bore included) extruded `thickness` into local −z, which the
-  // dialFace flip sends AWAY from the viewer. So the plate spans local 0 (face)
-  // to −thickness (back), and the caller lands that back face on Z_DIAL — the
-  // datum every dial-side work already stands off, which is why giving the
-  // dial substance moves nothing behind it.
+
+  // TODO 26 — THE DIAL AS MATTER, AND THE WELLS AS POCKETS IN IT.
+  // The sheet above is the dial's printing; this is the plate it is printed
+  // on — one closed brass solid spanning local 0 (face) to −thickness (back),
+  // whose BACK the caller lands on Z_DIAL, the datum every dial-side work
+  // already stands off. That is why giving the dial substance moved nothing
+  // behind it: the plate grew forward, into z nothing was using.
   //
-  // The face keeps its own flat mesh rather than becoming the extrusion's cap:
-  // ExtrudeGeometry's UV generator does not produce the disc mapping the
-  // canvas texture is painted for, and re-deriving it would put the dial's
-  // whole printed face at the mercy of a geometry detail. The body is plain
-  // brass — a dial's edge and back are not silvered.
-  if (thickness > 0 && discGeo.type === 'ShapeGeometry') {
-    const bodyGeo = new THREE.ExtrudeGeometry(discShapeForBody, { depth: thickness, bevelEnabled: false, curveSegments: 96 });
-    bodyGeo.translate(0, 0, -thickness);
-    const body = new THREE.Mesh(bodyGeo, MATS.brass);
+  // Two things this build says that the extrusion it replaces could not:
+  //
+  //  · A SUB-DIAL IS A BLIND POCKET. An extrusion of the printed outline is
+  //    cut clean through at every well, so the recess had to be drawn as a
+  //    floor hung in the hole — TODO 26's own filing, "a recess drawn as a
+  //    PROTRUSION". Machined instead: the pocket is sunk `subdialRecess` into
+  //    the FRONT and leaves `thickness − subdialRecess` of brass behind it,
+  //    pierced only by the bore the hand's arbor actually needs.
+  //  · THE PLATE IS THINNER AT ITS RIM. A turned brass plate carries an edge
+  //    break; `edgeBreak` is that chamfer, taken off both faces, so the rim's
+  //    straight land is `thickness − 2·edgeBreak` and the front flat stops at
+  //    `faceR`. The pocket MOUTH is deliberately left sharp: the crisp turned
+  //    corner is what reads as sunk, and a bright chamfer ring around each
+  //    well is the raised-bezel failure the wall material exists to avoid.
+  //
+  // The face keeps its own flat mesh rather than becoming the solid's front
+  // cap: the canvas texture is painted for a disc mapping, and re-deriving
+  // that from a cap's UVs would put the dial's whole printed face at the mercy
+  // of a geometry detail. Same for the two sub-dial faces, which lie on their
+  // pocket floors exactly as the big sheet lies on the front flat. The solid
+  // is plain brass — a dial's edge and back are not silvered.
+  if (thickness > 0) {
+    // Boot asserts (standing rule 6), both stating the constraint they hold:
+    const floorT = thickness - subdialRecess;
+    if (subdials.length && floorT <= 0)
+      console.warn(`dial: sub-dial pocket punches through the plate — floor ${floorT.toFixed(3)}, need > 0 (thickness ${thickness.toFixed(3)}, recess ${subdialRecess})`);
+    if (thickness - 2 * edgeBreak <= 0)
+      console.warn(`dial: the edge break eats the stock — rim land ${(thickness - 2 * edgeBreak).toFixed(3)}, need > 0 (thickness ${thickness.toFixed(3)}, break ${edgeBreak})`);
+
+    const face = circleLoop(0, 0, faceR, SEG);           // front/back flats' edge
+    const rim = circleLoop(0, 0, radius, SEG);           // the nominal silhouette
+    const bore = centerBoreR > 0 ? circleLoop(0, 0, centerBoreR, SEG, 'out') : null;
+    const zF = 0, zB = -thickness, b = edgeBreak;
+    // A sub-dial with no recess is a plain aperture, not a well — the pocket
+    // walls below would be zero deep and its floor would land on the face.
+    const sunk = subdialRecess > 0;
+    const parts = [
+      plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => w.pocket)], zF, +1),
+      plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => (sunk ? w.bore : w.pocket))], zB, -1),
+      plateWall(0, 0, face, zF, rim, zF - b, true),        // front edge break
+      plateWall(0, 0, rim, zF - b, rim, zB + b, true),     // the rim's land
+      plateWall(0, 0, rim, zB + b, face, zB, true),        // back edge break
+    ];
+    if (bore) parts.push(plateWall(0, 0, bore, zF, bore, zB, false));
+    subdials.forEach((sd, i) => {
+      const { pocket, bore: hole } = wells[i];
+      if (!sunk) { parts.push(plateWall(sd.x, sd.y, pocket, zF, pocket, zB, false)); return; }
+      parts.push(
+        plateWall(sd.x, sd.y, pocket, zF, pocket, -subdialRecess, false),   // pocket wall
+        plateCap(pocket, [hole], -subdialRecess, +1),                       // pocket floor
+        plateWall(sd.x, sd.y, hole, -subdialRecess, hole, zB, false),       // arbor bore
+      );
+    });
+    const body = new THREE.Mesh(mergeGeos(parts), MATS.brass);
     body.name = 'dialPlate';
     g.add(body);
   }
-  // Slight raised chapter ring for depth.
-  const ring = new THREE.Mesh(ringExtrude(radius, radius * 0.97, radius * 0.02, 96), MATS.silver);
+  // Slight raised chapter ring for depth — applied on the front flat, so it
+  // ends where the flat does rather than overhanging the broken edge.
+  const ring = new THREE.Mesh(ringExtrude(faceR, radius * 0.97, radius * 0.02, SEG), MATS.silver);
   ring.position.z = radius * 0.01;
   g.add(ring);
 
-  // Recessed sub-dial wells: silvered wall down from the hole's edge, and a
-  // floor sunk subdialRecess below the surface carrying the painted face.
-  // The floor has a central bore for the hand arbor (r 1.0 — the arbors'
-  // hand hubs in main.js are r ≤ 0.9).
+  // The wells' FINISH. The well itself is matter — a pocket machined into the
+  // plate above, floor and wall both brass — and these two meshes are what is
+  // printed and plated onto it: the painted sub-dial face on the pocket floor,
+  // the matte silvering up its wall. Both are built from `wells[i]`, the same
+  // loops the pocket was cut with, and carry FINISH_ORDER.
   if (subdials.length && subdialRecess > 0) {
     // Matte and darker than the dial: the wall is the SHADOWED side of a
     // recess. A polished/metallic wall catches highlights and reads as a
@@ -2955,7 +3129,7 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
     const wallMat = new THREE.MeshStandardMaterial({
       color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
     });
-    for (const sd of subdials) {
+    subdials.forEach((sd, i) => {
       let floorMat = null;
       if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
         const px = 512;
@@ -2977,26 +3151,28 @@ export function makeDial({ radius, subdials = [], subdialRecess = 0.5, centerBor
       }
       if (!floorMat) floorMat = MATS.silver;
 
-      const floorShape = new THREE.Shape();
-      floorShape.absarc(0, 0, sd.r, 0, Math.PI * 2, false);
-      const bore = new THREE.Path();
-      bore.absarc(0, 0, 1.0, 0, Math.PI * 2, true);
-      floorShape.holes.push(bore);
-      const floorGeo = new THREE.ShapeGeometry(floorShape, 48);
+      // The printed face, laid on the machined floor: the pocket's own loop
+      // and bore, baked at the dial's coordinates (no mesh offset), so the two
+      // surfaces are the same plane to the last bit.
+      const floorShape = new THREE.Shape(wells[i].pocket);
+      floorShape.holes.push(new THREE.Path(wells[i].bore.slice().reverse()));
+      const floorGeo = new THREE.ShapeGeometry(floorShape);
+      floorGeo.translate(0, 0, -subdialRecess);
       const fuv = floorGeo.attributes.uv, fpos = floorGeo.attributes.position;
-      for (let i = 0; i < fuv.count; i++) {
-        fuv.setXY(i, fpos.getX(i) / (2 * sd.r) + 0.5, fpos.getY(i) / (2 * sd.r) + 0.5);
+      for (let k = 0; k < fuv.count; k++) {
+        fuv.setXY(k, (fpos.getX(k) - sd.x) / (2 * sd.r) + 0.5, (fpos.getY(k) - sd.y) / (2 * sd.r) + 0.5);
       }
       const floor = new THREE.Mesh(floorGeo, floorMat);
-      floor.position.set(sd.x, sd.y, -subdialRecess);
+      floor.renderOrder = FINISH_ORDER;
       g.add(floor);
 
-      const wallGeo = new THREE.CylinderGeometry(sd.r, sd.r, subdialRecess, 48, 1, true);
-      wallGeo.rotateX(Math.PI / 2);
-      const wall = new THREE.Mesh(wallGeo, wallMat);
-      wall.position.set(sd.x, sd.y, -subdialRecess / 2);
+      // The silvering up the wall — the pocket wall's own surface, so the same
+      // call with the same loops the plate cut it with.
+      const wall = new THREE.Mesh(
+        plateWall(sd.x, sd.y, wells[i].pocket, 0, wells[i].pocket, -subdialRecess, false), wallMat);
+      wall.renderOrder = FINISH_ORDER;
       g.add(wall);
-    }
+    });
   }
 
   // Applied Roman-numeral hour markers: raised polished-brass indices built

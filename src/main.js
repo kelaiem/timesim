@@ -19,7 +19,7 @@ import {
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, Z_KEYLESS,
+  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -5386,11 +5386,22 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // dial CENTRE, so the dial face heals over the old 3-o'clock recess. ALARM_CD /
 // ALARM_LOCAL survive: they still place the crown, its stem and the setting
 // arbor, which the future az-0 train taps.)
-// Sub-dials are recessed WELLS sunk into the dial (hole + wall + painted
-// floor, all built by makeDial); the hands ride inside the well, below the
-// dial surface. In dial-local coordinates the well floor is at
-// −SUBDIAL_RECESS and the hands at −(SUBDIAL_RECESS − 0.3).
+// Sub-dials are recessed WELLS: blind pockets machined into the dial plate's
+// front (makeDial cuts them), the hands riding inside below the dial surface.
+// In dial-local coordinates the pocket floor is at −SUBDIAL_RECESS and the
+// hands at −(SUBDIAL_RECESS − 0.3). The pocket leaves DIAL_T − SUBDIAL_RECESS
+// = 0.556 of brass behind it, which is the floor rule DIAL_T is minted under.
 const SUBDIAL_RECESS = 0.5;
+// What passes through a pocket floor, and therefore what the bore through it
+// must clear. Both members are built further down — the small-seconds display
+// arbor's hand HUB and the reserve indicator arbor — and are named here
+// because the hole is derived from them, not measured off them later.
+const SECONDS_HUB_R = 0.9;
+const RSV_HAND_ARBOR_R = 0.4;
+// ONE bore for both wells — one drill — so it is sized by the larger member,
+// at the standing margin. (makeDial circumscribes a hole's polygon, so the
+// margin holds on the flats and not just on the nominal circle.)
+const SUBDIAL_BORE_R = Math.max(SECONDS_HUB_R, RSV_HAND_ARBOR_R) + CLEAR_MARGIN;
 // Motion-works constants the DIAL needs (its centre bore must clear the
 // hour-wheel tube). Declared here rather than with the rest of the motion
 // works further down, which is built after the dial.
@@ -5409,6 +5420,8 @@ const dial = G.makeDial({
   radius: dialRadius,
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
+  edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
+  subdialBoreR: SUBDIAL_BORE_R,
   centerBoreR: ALARM_TUBE_OUTER + 0.2, // the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
@@ -5514,16 +5527,17 @@ smallSecondsGroup.add(smallSecondsHand);
 // physically honest: the hand's axis is a real rod coaxial with the real
 // fourth wheel, not a representational hop across the movement.
 {
-  // Hub inside the recessed well: through the floor's bore (r 1.0 > hub
-  // 0.9), stopping just short of the dial's surface plane. The hand rides
-  // at world Z_DIAL + 0.2, straddled by the hub's span.
+  // Hub inside the recessed well: through the floor's bore (SUBDIAL_BORE_R is
+  // derived from SECONDS_HUB_R, this hub being the larger of the two members
+  // that pass a pocket floor), stopping just short of the dial's surface
+  // plane. The hand rides at world Z_DIAL + 0.2, straddled by the hub's span.
   const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15 - DIAL_T; // hub centre (world) — TODO 26: follows the well floor one plate forward; rodLen below grows to match
   const rodLen = Z_SECONDS_ARBOR - hubZ;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
   rod.rotation.x = Math.PI / 2;
   rod.position.z = -rodLen / 2; // local: from the cam plane down/forward to the hub
   secondsCamArbor.add(rod);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 12), MATS.steel);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(SECONDS_HUB_R, SECONDS_HUB_R, 0.6, 12), MATS.steel);
   hub.rotation.x = Math.PI / 2;
   hub.position.z = hubZ - Z_SECONDS_ARBOR;
   secondsCamArbor.add(hub);
@@ -6243,7 +6257,7 @@ reserveTrain.add(rsvArbor2);
 // Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
 const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2 - DIAL_T; // through the well floor's bore, just behind the hand — TODO 26: the bore moved forward with the plate, so this arbor lengthens
 const rsvHandArbor = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.4, 0.4, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
+  new THREE.CylinderGeometry(RSV_HAND_ARBOR_R, RSV_HAND_ARBOR_R, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
 rsvHandArbor.rotation.x = Math.PI / 2;
 rsvHandArbor.position.set(rsvPivotXY.x, rsvPivotXY.y, ((Z_RSV - RSV_Z_STEP) + rsvHandZ) / 2);
 reserveTrain.add(rsvHandArbor);

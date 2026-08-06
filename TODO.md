@@ -2250,7 +2250,7 @@ above re-run to show the rate actually moving with radius, and SPEC.md's
 gear-train section updated to say the beat is a target the regulator
 hits rather than a number the movement is told.
 
-## 26. MOSTLY CLOSED — the dial is a plate now; the works stand behind it
+## 26. CLOSED — the dial is a plate, and the wells are pockets machined into it
 
 The dial is a zero-thickness sheet: one `ShapeGeometry` plane, measured at
 world z −8.40, with the applied markers and the minute track laid on its
@@ -2349,19 +2349,87 @@ spring re-solves to each wheel (0.0281 / 0.0318 mm, inside real stock, 2.500
 Hz). R 12 reaches §76's wall TWO, the alarm winding train's mesh, which this
 item never claimed.
 
-**What keeps this MOSTLY closed rather than closed**: the dial's back face
-is flat where it matters but the sub-dial apertures are still through-holes
-with a floor hung in them rather than a blind pocket machined into the
-plate, and the dial's thickness is one constant rather than a profile (a
-real dial is thinner at its rim). Neither reaches into any lane, so neither
-is load-bearing — filed here so the next reader knows the difference.
-
 **Do NOT waive this by widening the setting run's clearances** — the run
 is correctly placed for the dial it was given. The dial is the defect.
 
 Filed rather than fixed because step 2 is the whole dial side, and doing
 it under a §76 balance-growth banner would bury an architectural change
 inside a layout experiment. §76's wall one now cites this item.
+
+### The two rows that kept it MOSTLY closed — both paid, 2026-08-06
+
+They were filed as: the sub-dial apertures are still through-holes with a
+floor hung in them rather than a blind pocket machined into the plate, and
+the dial's thickness is one constant rather than a profile. Neither reached
+into a lane, so neither was load-bearing — which is exactly why they are
+worth reading as a pair: what closed them was not clearance work.
+
+**1. The wells are pockets now.** The plate was an `ExtrudeGeometry` of the
+PRINTED outline, and an extrusion cuts one outline clean through — so every
+sub-dial was a hole all the way to the back, with the painted floor hung in
+it as a separate sheet. Giving the dial thickness had moved that sheet
+forward without ever making it matter. `makeDial` builds the plate surface by
+surface instead: front and back flats, rim, and per well a pocket sunk
+`SUBDIAL_RECESS` 0.5 into the FRONT, leaving **0.556 u (0.21 mm) of brass**
+behind each one — the floor `DIAL_T` was minted to guarantee and never
+actually had. Measured on the built mesh, 4000 points sampled across the
+plate's own box: **73.2%** land inside the solid, against **68.0%** for the
+same outline cut through at the wells — the 5.2 points being precisely the
+two pocket columns that had no brass in them. The solid's volume, by the
+divergence theorem, is 4798 u³ = **261 mm³**, which is a number only a closed
+mesh has at all.
+
+The pocket floors are pierced by ONE bore, and it is derived rather than
+literal: **1.05 = 0.9 + CLEAR_MARGIN**, the seconds display arbor's hand hub
+being the larger of the two members that pass a floor (the reserve indicator
+arbor is 0.4). The old floor sheet's hole was a flat 1.0 with a comment that
+the hubs are "r ≤ 0.9" — 0.10 of clearance where the movement's one margin
+says 0.15, in a sheet with no depth for it to matter through. Both radii are
+named constants now (`SECONDS_HUB_R`, `RSV_HAND_ARBOR_R`) consumed by their
+own build sites, so the hole cannot drift from what goes through it. Nothing
+else crosses that band: swept by clipping every triangle edge in the scene to
+the pocket-floor→back slab inside each well circle, exactly two bodies appear,
+those two, at r 0.9 and r 0.4.
+
+**2. The plate is thinner at its rim — by the profile a dial really has.**
+The filing guessed at a taper. A dial plate is parallel-faced over its field;
+what it carries at the rim is an EDGE BREAK, the chamfer that takes the arris
+off a turned brass edge. `DIAL_EDGE_BREAK` = 0.05 mm = 0.132 u, off both
+faces, so the rim's straight land is 0.792 u (0.30 mm, 75% of stock) and the
+front flat stops one break short of nominal — the printed sheet and the
+applied chapter ring end there with it, since both are finish laid ON that
+flat. `makeDial` boot-asserts the rule (the break must leave a land, the
+pocket must leave a floor) rather than the numbers. The stepped and sector
+dials that really are thinner in places are a STYLE, not this dial; its
+raised chapter ring stays applied, which is the other real way to get that
+look.
+
+**Three things came out of the build.**
+
+1. WATERTIGHT IS NOT THE SAME AS CLOSED. A plate with blind pockets cannot be
+   extruded, so it is assembled from caps and walls — and two different
+   tessellations of one circle (a 96-gon cap against a 48-gon wall) leave
+   chord-shaped slivers that a parity raycast walks straight through. That is
+   the open-mesh trap one step on: a mesh can be closed as authored and still
+   leak at a seam its two halves disagree about. Every circle in the dial is
+   now generated ONCE and shared by the cap that ends on it and the wall that
+   starts from it. Verified the way the trap deserves: 4000 points across the
+   plate's box, five ray directions each, **0 disagreements**.
+2. A HOLE MUST BE CIRCUMSCRIBED. An inscribed polygon is smaller than the
+   circle it stands for, which is what an outer silhouette wants and what a
+   bore must never be — a bore drilled to clear a hub by CLEAR_MARGIN clears
+   it by 0.1494 on every flat. Holes take the polygon that circumscribes, so
+   the nominal radius is the closest any flat comes to the axis and the
+   margin binds exactly.
+3. FINISH ON MATTER NEEDS ITS ORDER DECLARED. Printing and plating lie ON the
+   plate's own surfaces — same plane, same polygon — so the depth test alone
+   cannot choose between them. The first cut shredded both sub-dial faces
+   into brass stripes, because the painted sheet was positioned by its matrix
+   while the machined floor had its coordinates baked, and the two rounded
+   differently. The finish is baked at the same coordinates now and carries
+   an explicit `renderOrder`, instead of inheriting the accident that three.js
+   sorts opaque draws by material id — which is all that was ever holding the
+   dial's main face in front of its own plate.
 
 ## 27. CLOSED — every opening is cut: seats bored, joints drilled, and the rivet is a formed head
 

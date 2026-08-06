@@ -329,6 +329,17 @@ export const Z_DIAL = -8.4;
 // sink into.
 export const DIAL_T = 0.4 / UNIT_MM;   // 1.056 u — 0.4 mm of brass
 export const Z_DIAL_FACE = Z_DIAL - DIAL_T;  // the VISIBLE face, one plate forward
+// TODO 26's second remaining row: the dial's thickness was ONE NUMBER, and a
+// turned plate's is a profile. The profile a dial plate really carries at its
+// rim is the EDGE BREAK — the chamfer that takes the arris off a turned brass
+// edge — not a taper: a dial is parallel-faced over its field (the stepped and
+// sector dials that are thinner in places are a STYLE, and this dial's raised
+// chapter ring is applied, which is the other real way to get that look).
+// 0.05 mm is the light break used on thin sheet (0.05–0.1 typical). Its
+// ceiling is the stock itself: the break is taken off BOTH faces, so 2× must
+// leave the rim a straight land — 0.4 − 2×0.05 = 0.30 mm, 75% of stock, and
+// makeDial boot-asserts the rule rather than the number.
+export const DIAL_EDGE_BREAK = 0.05 / UNIT_MM;  // 0.132 u
 // KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of
 // the base plate as in a real watch (it used to ride atop the barrel on the
 // movement side). Bracketed by two binds and set mid-band:
