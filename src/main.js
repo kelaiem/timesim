@@ -7152,66 +7152,197 @@ const alarmIdlerGroup = new THREE.Group();
 movement.add(alarmIdlerGroup);
 registerLabel('Alarm setting idler', alarmIdlerGroup);
 registerExplode(alarmIdlerGroup, 0, 2, -1);
-// Route: i1 leaves the az-0 line at +35°, i2 lands by two-circle intersection
-// (+y solution) — the same construction the winding chain's dogleg uses.
+// --- §76 wall one, the HOIST -----------------------------------------------
+// These nine were declared 300–500 lines BELOW the route they constrain, so
+// the route was solved without them and they could only complain afterwards
+// — which is exactly how the setting run acquired two FORBIDDEN pairs that
+// every boot passed. They are moved here, ahead of ALARM_SET_WALLS, because
+// a wall the solver cannot see is not a wall, it is a post-mortem. Each one
+// keeps its original derivation; nothing below re-declares them.
+const ALARM_DISC_TEETH = 30; // rim — with i1b (28) the branch nets −(28/30), the tube path's mirror (see the branch block)
+// The branch MODULE is closure-derived: i1 stands ALARM_SET_DW1 from the
+// centre, and the i1b⇄rim mesh must span exactly that — m = 2·DW1/(28+30).
+const ALARM_BRANCH_MODULE = 2 * ALARM_SET_DW1 / (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH);
+const ALARM_FEELER_AZ_OFF = 0.44;
+const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
+const ALARM_BAND_Z = Z_DIAL - ALARM_DISC_TOP + ALARM_DISC_BODY_T / 2; // WORLD plane of the band gears (= the disc body's mid-plane mirrored)
+const ALARM_FEELER_PIVOT_R = 5.5; // bracket lugs' inboard faces clear the rim's tips by one margin (asserted)
+const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
+const _climbDial = { x: -ALARM_WIND_X, y: ALARM_WIND_Y };      // climb axis, dial-local
+const _pivotDial = { x: _uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R };
+// The §29 tail RUN's world plane, and its stock. Hoisted out of the tail
+// build's inline literal so the wall list and the part read one number: the
+// run is the corridor, and its BAND is what decides which members it can
+// touch at all. §29 got the same answer by hand-picking the two arbors as
+// the only members to check — true, but only because the run rides above the
+// gear lane and below i1b's. Stated as a band, the lane gate derives that
+// member selection instead of a reader having to know it.
+const ALARM_TAIL_RUN_Z = -6.29;   // world, run mid (empty at its radii — the flange stops at 4.05, the heart at 3.75)
+const ALARM_TAIL_RUN_T = 0.10;    // the run's z stock
+const ALARM_TAIL_RUN_HALFW = 0.13; // half of the run's 0.26 width — §29's own corridor radius
+
+// Route: i1 leaves the az-0 line at the BEARING, i2 lands by two-circle
+// intersection (+y solution) — the same construction the winding chain's
+// dogleg uses. §76 wall one: the route is now a FUNCTION of its one free
+// parameter, so the wall audit and the build read the same construction
+// instead of the audit re-deriving what the build already decided.
 const _setU = { x: alarmWorld.x / ALARM_ARBOR_R, y: alarmWorld.y / ALARM_ARBOR_R }; // TRUE unit (an un-normalized copy of this once planted the idler in the climb)
 const _setPerp = { x: -_setU.y, y: _setU.x };
-const _setB = ALARM_SET_I1_BEARING;
-const ALARM_SET_I1 = {
-  x: (_setU.x * Math.cos(_setB) + _setPerp.x * Math.sin(_setB)) * ALARM_SET_DW1,
-  y: (_setU.y * Math.cos(_setB) + _setPerp.y * Math.sin(_setB)) * ALARM_SET_DW1,
-};
-const ALARM_SET_I2 = (() => {
-  const dx = alarmWorld.x - ALARM_SET_I1.x, dy = alarmWorld.y - ALARM_SET_I1.y;
+const alarmSetRouteAt = (bearing) => {
+  const i1 = {
+    x: (_setU.x * Math.cos(bearing) + _setPerp.x * Math.sin(bearing)) * ALARM_SET_DW1,
+    y: (_setU.y * Math.cos(bearing) + _setPerp.y * Math.sin(bearing)) * ALARM_SET_DW1,
+  };
+  const dx = alarmWorld.x - i1.x, dy = alarmWorld.y - i1.y;
   const d = Math.hypot(dx, dy);
   const a = (ALARM_SET_D12 * ALARM_SET_D12 - ALARM_SET_D2P * ALARM_SET_D2P + d * d) / (2 * d);
-  const h = Math.sqrt(Math.max(0, ALARM_SET_D12 * ALARM_SET_D12 - a * a));
-  const mx = ALARM_SET_I1.x + (a * dx) / d, my = ALARM_SET_I1.y + (a * dy) / d;
+  const disc = ALARM_SET_D12 * ALARM_SET_D12 - a * a;
+  if (disc < 0) return null; // the dogleg cannot close at this bearing — not a route
+  const h = Math.sqrt(disc);
+  const mx = i1.x + (a * dx) / d, my = i1.y + (a * dy) / d;
   const s1 = { x: mx - (h * dy) / d, y: my + (h * dx) / d }, s2 = { x: mx + (h * dy) / d, y: my - (h * dx) / d };
   // pick the +perp side (away from the az-0 line, around the climb)
-  return (s1.x * _setPerp.x + s1.y * _setPerp.y) > (s2.x * _setPerp.x + s2.y * _setPerp.y) ? s1 : s2;
-})();
-// The full corridor audit, asserted at boot — every wall this route threads:
-// the two sub-dial well RINGS, the climb column, the cock post, and the chain
-// closure itself. (The first route was probed with the Dial unit skipped and
-// its collision then blanketed by an EXPECTED row; these asserts see what
-// that pipeline could not.)
-{
-  const WALL_HALF = 0.2;
+  const i2 = (s1.x * _setPerp.x + s1.y * _setPerp.y) > (s2.x * _setPerp.x + s2.y * _setPerp.y) ? s1 : s2;
+  return { i1, i2 };
+};
+const _setB = ALARM_SET_I1_BEARING;
+const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = alarmSetRouteAt(_setB);
+// --- §76 wall one — ONE wall list, used twice -------------------------------
+// The audit that used to stand here saw four walls: the two sub-dial well
+// RINGS, the climb column and the cock post. Three more constrain this route
+// and were nowhere in it, which is how the run acquired two FORBIDDEN pairs
+// that every boot passed — the §34 selector's guide posts, and the reserve
+// train, in BOTH of the lanes this run occupies.
+//
+// TWO LANES, not one. The old audit policed the gear lane and nothing else,
+// but i1 carries a COMPOUND: the band pinion i1b rides 3 units above it at
+// ALARM_BAND_Z. Layer 3's second FORBIDDEN pair was i1b against the reserve's
+// w2, sharing 0.12 of z — structurally invisible to a one-lane audit.
+//
+// A member is (station, exact tip radius, lane). A wall is (footprint, z
+// band). A wall constrains a member only where their bands OVERLAP — the
+// generalisation of the wells' own z-gate, which was the only z-awareness
+// this audit had.
+//
+// The walls are MEASURED off parts already built above, not re-derived from
+// their constants. Two scars say so. Half of them live under dialFace's
+// Y-flip, where a hand-derived world z is one sign error from being
+// confidently wrong (CLAUDE.md's own trap). And §76 lost three separate
+// arguments to 2D reasoning about these exact parts — including tip radii
+// read off ROTATED boxes, which inflated a 4.5 tip to 6.05. A box overstates
+// a rotated mesh's radius, so it is safe for a WALL (conservative) and wrong
+// for a MEMBER — which is why the members below keep their exact derived
+// tips and only the walls are measured this way.
+const alarmSetWallsOf = (root, label) => {
+  const out = [];
+  root.updateWorldMatrix(true, true);
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    out.push({
+      name: `${label}/${o.name || o.geometry.type}`,
+      x: (bb.min.x + bb.max.x) / 2, y: (bb.min.y + bb.max.y) / 2,
+      r: Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y) / 2,
+      lo: bb.min.z, hi: bb.max.z,
+    });
+  });
+  return out;
+};
+// TODO 26 — the well rings are only a wall for this run WHERE THEY SHARE ITS
+// LANE. They used to, and not by design: with the dial a sheet of no
+// thickness, each sub-dial recess had to be built as a floor PROTRUDING 0.5
+// behind it, which is what reached down into the setting train's plane. Now
+// that the dial is a plate the recess lives inside its own thickness. Gated
+// on the measurement rather than deleted: move either the dial's stratum or
+// the setting lane back into contact and this wakes up on its own.
+const ALARM_SET_WALLS = [
+  // Rods that pierce every lane, so they carry no z gate.
+  { name: 'winding climb', x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, lo: -Infinity, hi: Infinity },
+  { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
-  const wells = [[-RESERVE_LOCAL.x, RESERVE_LOCAL.y], [-SECONDS_LOCAL.x, SECONDS_LOCAL.y]];
-  // TODO 26 — the well rings are only a wall for this run WHERE THEY SHARE ITS
-  // LANE. They used to, and not by design: with the dial a sheet of no
-  // thickness, each sub-dial recess had to be built as a floor PROTRUDING 0.5
-  // behind it, which is what reached down into the setting train's plane. Now
-  // that the dial is a plate the recess lives inside its own thickness, and
-  // the two bands are 0.6 apart. Gated on the measurement rather than deleted:
-  // move either the dial's stratum or the setting lane back into contact and
-  // this wakes up on its own.
-  const wellLo = Z_DIAL - DIAL_T, wellHi = Z_DIAL - DIAL_T + SUBDIAL_RECESS;
-  const laneLo = ALARM_SET_Z - ALARM_SET_T / 2, laneHi = ALARM_SET_Z + ALARM_SET_T / 2;
-  const wellsInLane = laneLo < wellHi && laneHi > wellLo;
-  const members = [
-    ['setting wheel', { x: 0, y: 0 }, ALARM_SET_MODULE * ALARM_SET_WHEEL_TEETH / 2 + ALARM_SET_MODULE],
-    ['i1', ALARM_SET_I1, ALARM_SET_MODULE * ALARM_SET_I1_TEETH / 2 + ALARM_SET_MODULE],
-    ['i2', ALARM_SET_I2, ALARM_SET_MODULE * ALARM_SET_I2_TEETH / 2 + ALARM_SET_MODULE],
-  ];
-  for (const [nm, p, tip] of members) {
-    if (wellsInLane) for (const [wx, wy] of wells) {
-      const d = Math.hypot(p.x - wx, p.y - wy);
-      const clr = Math.abs(d - subDialR) - WALL_HALF - tip; // distance from the RING, less wall and tooth tip
-      if (clr < CLEAR_MARGIN)
-        console.warn(`alarm setting ${nm} vs well ring at (${wx.toFixed(1)},${wy.toFixed(1)}): clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN} (bands overlap: well ${wellLo.toFixed(2)}..${wellHi.toFixed(2)}, lane ${laneLo.toFixed(2)}..${laneHi.toFixed(2)})`);
-    }
+  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: subDialR, halfW: 0.2,
+    lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
+  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: subDialR, halfW: 0.2,
+    lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
+  ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
+  ...alarmSetWallsOf(reserveTrain, 'reserve train'),
+  // §29's two walls, which until now were asserted 500 lines DOWNSTREAM of the
+  // route they constrain — the half of "one list, used twice" that Layer 1's
+  // reverted bearing sweep paid for: it traded away a §29 feeler clearance
+  // that was not in the objective, because it was not in any list. Both keep
+  // §29's own radii and, like the rods, carry no z gate, so this is the same
+  // check moved rather than a new one invented.
+  { name: '§29 pawl tail corridor', kind: 'seg', r: ALARM_TAIL_RUN_HALFW,
+    lo: ALARM_TAIL_RUN_Z - ALARM_TAIL_RUN_T / 2, hi: ALARM_TAIL_RUN_Z + ALARM_TAIL_RUN_T / 2,
+    ax: -_pivotDial.x, ay: _pivotDial.y, bx: ALARM_WIND_X, by: ALARM_WIND_Y },
+  { name: '§29 feeler bracket', x: -_uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R, r: 0.31, lo: -Infinity, hi: Infinity },
+];
+// The members, with EXACT tips. i1b is the compound rider — same station as
+// i1, its own lane, its own tip (the §29 feeler assert's own formula).
+const ALARM_SET_LANE_LO = ALARM_SET_Z - ALARM_SET_T / 2, ALARM_SET_LANE_HI = ALARM_SET_Z + ALARM_SET_T / 2;
+const alarmSetMembersAt = (route) => [
+  { name: 'setting wheel', x: 0, y: 0, tip: ALARM_SET_MODULE * ALARM_SET_WHEEL_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI },
+  { name: 'i1', x: route.i1.x, y: route.i1.y, tip: ALARM_SET_MODULE * ALARM_SET_I1_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI },
+  { name: 'i2', x: route.i2.x, y: route.i2.y, tip: ALARM_SET_MODULE * ALARM_SET_I2_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI },
+  { name: 'i1b (band lane)', x: route.i1.x, y: route.i1.y, tip: ALARM_BRANCH_MODULE * ALARM_SET_I1_TEETH / 2 + 1.25 * ALARM_BRANCH_MODULE,
+    lo: ALARM_BAND_Z - ALARM_DISC_BODY_T / 2, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 },
+  // The two ARBORS, §29's radii. They stand in no gear lane — they rise
+  // THROUGH both, which is why they meet walls the wheels never do.
+  { name: 'i1 sleeve', x: route.i1.x, y: route.i1.y, tip: 0.62, lo: ALARM_SET_LANE_LO, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 },
+  { name: 'i2 stud', x: route.i2.x, y: route.i2.y, tip: 0.45, lo: ALARM_SET_LANE_LO, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 },
+];
+// Clearance of one member against one wall, or Infinity when their lanes do
+// not meet. This is THE function — the boot assert below and the bearing
+// solve both call it, so the two can never again disagree about the walls.
+const alarmSetClearance = (m, w) => {
+  if (!(m.lo < w.hi && m.hi > w.lo)) return Infinity;
+  if (w.kind === 'seg') { // point-to-segment, §29's own construction
+    const dx = w.bx - w.ax, dy = w.by - w.ay, L2 = dx * dx + dy * dy || 1e-9;
+    const t = clamp(((m.x - w.ax) * dx + (m.y - w.ay) * dy) / L2, 0, 1);
+    return Math.hypot(m.x - (w.ax + t * dx), m.y - (w.ay + t * dy)) - w.r - m.tip;
   }
-  for (const [nm, p, tip] of members.slice(1)) {
-    const dc = Math.hypot(p.x - ALARM_WIND_X, p.y - ALARM_WIND_Y) - 0.45 - tip;
-    if (dc < CLEAR_MARGIN) console.warn(`alarm setting ${nm} fouls the winding climb: clearance ${dc.toFixed(2)}`);
-    const dk = Math.hypot(p.x - (alarmWorld.x + alarmDir.x * 1.4), p.y - (alarmWorld.y + alarmDir.y * 1.4)) - 0.4 - tip;
-    if (dk < CLEAR_MARGIN) console.warn(`alarm setting ${nm} fouls the arbor cock post: clearance ${dk.toFixed(2)}`);
+  const d = Math.hypot(m.x - w.x, m.y - w.y);
+  return (w.kind === 'ring' ? Math.abs(d - w.R) - w.halfW : d - w.r) - m.tip;
+};
+// The route's worst wall clearance — the solve's objective, one number.
+const alarmSetWorst = (route) => {
+  let worst = { clr: Infinity, m: null, w: null };
+  for (const m of alarmSetMembersAt(route)) for (const w of ALARM_SET_WALLS) {
+    const clr = alarmSetClearance(m, w);
+    if (clr < worst.clr) worst = { clr, m: m.name, w: w.name };
+  }
+  return worst;
+};
+// The boot assert — the same list, reporting every wall this route fouls.
+{
+  const route = { i1: ALARM_SET_I1, i2: ALARM_SET_I2 };
+  for (const m of alarmSetMembersAt(route)) for (const w of ALARM_SET_WALLS) {
+    const clr = alarmSetClearance(m, w);
+    if (clr < CLEAR_MARGIN)
+      console.warn(`alarm setting ${m.name} fouls ${w.name}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`);
   }
   const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
   if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
+  // The SECOND use of the same list. When the incumbent bearing fouls a wall,
+  // sweeping the one free parameter against the SAME objective says whether
+  // the corner is unreachable or merely unsolved — the question Layer 1 could
+  // not answer honestly, because its objective was a subset of the walls and
+  // the bearing it picked traded away a §29 clearance nobody had listed.
+  // Reported, not applied: moving ALARM_SET_I1_BEARING moves shipped geometry
+  // and is a decision with a battery attached, not a silent boot-time solve.
+  if (alarmSetWorst({ i1: ALARM_SET_I1, i2: ALARM_SET_I2 }).clr < CLEAR_MARGIN) {
+    let best = null;
+    for (let deg = 0; deg < 360; deg += 0.5) {
+      const route = alarmSetRouteAt(deg * DEG2RAD);
+      if (!route) continue; // the dogleg cannot close here
+      const w = alarmSetWorst(route);
+      if (!best || w.clr > best.clr) best = { ...w, deg };
+    }
+    console.warn(best && best.clr >= CLEAR_MARGIN
+      ? `alarm setting: the corner IS reachable — bearing ${best.deg}° clears every wall by ${best.clr.toFixed(2)} (incumbent ALARM_SET_I1_BEARING is ${(ALARM_SET_I1_BEARING / DEG2RAD).toFixed(0)}°)`
+      : `alarm setting: NO bearing clears every wall — best is ${best ? `${best.deg}° at ${best.clr.toFixed(2)} (worst wall: ${best.m} vs ${best.w})` : 'none, the dogleg never closes'}; this is a LAYOUT problem, not a bearing one`);
+  }
 }
 // --- TODO 15 — MESH PHASE IS NOT FREE, AND IS SOLVED AS A CHAIN ------------
 //
@@ -7481,22 +7612,15 @@ const solveGearChain = (label, chain, module) => {
 // the same pair as the lane — and the extra mesh provides the sign. j drops
 // out of the ratio; 18 teeth is its GEOMETRY: big enough that its dial-hung
 // stud stands clear of the setting wheel's tips (asserted below).
-const ALARM_DISC_TEETH = 30; // rim — with i1b (28) the branch nets −(28/30), the tube path's mirror (see the branch block)
-// The branch MODULE is closure-derived: i1 stands ALARM_SET_DW1 from the
-// centre, and the i1b⇄rim mesh must span exactly that — m = 2·DW1/(28+30).
-const ALARM_BRANCH_MODULE = 2 * ALARM_SET_DW1 / (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH);
 // The READ STATION sits 0.44 rad off the stem line: the feeler's bracket
 // needs |bracket − i1| ≥ i1b's tip reach + margin (4.74) at bracket radius
 // 5.5, and on the az-0 line that distance is only 3.9 — the offset swings
 // it clear (6.0 achieved, asserted at the feeler). The release azimuth is
 // a free phase (Φ absorbs it); only the TAIL's corridor cares, and it
 // dog-legs back to the climb one band above the gear lane (step 4).
-const ALARM_FEELER_AZ_OFF = 0.44;
-const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
 const ALARM_RELEASE_PHASE = Math.PI - ALARM_RELEASE_AZ; // dialFace mirror: a disc-local-az-0 feature sits at world ALARM_RELEASE_AZ when rotation.z == this
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
 const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.85), inside the rim's root circle (3.30)
-const ALARM_BAND_Z = Z_DIAL - ALARM_DISC_TOP + ALARM_DISC_BODY_T / 2; // WORLD plane of the band gears (= the disc body's mid-plane mirrored)
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
 // invariants (disc tracks hour when idle; setting re-phases it equal and
 // opposite to the tube; the notch az at trip is setting-independent) —
@@ -7565,7 +7689,6 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 // is BANKED at ALARM_PIN_DROP by a stop on the bracket — NOT by bottoming
 // in the notch — because the dropped arm still owes the rim its margin
 // (asserted below with the lever fraction written out).
-const ALARM_FEELER_PIVOT_R = 5.5; // bracket lugs' inboard faces clear the rim's tips by one margin (asserted)
 const ALARM_PIN_R = 0.14;         // pin radius — its diameter equals the arm's width, so the arm fits the
                                   // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
                                   // 0.092 rad pin arc at the track radius; the edge ramp below is what
@@ -7576,7 +7699,6 @@ registerLabel('Alarm release feeler', alarmFeelerUnit);
 registerExplode(alarmFeelerUnit, 0, 2, 1); // dialFace child: children carry local z
 // dial-local frame: world (x,y) ↔ dial-local (−x, y); uF = outward radial
 // at the release azimuth, phiF = the inboard direction's dial-local angle.
-const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
 const _phiF = Math.atan2(-_uF.y, -_uF.x);
 const ALARM_FEELER_ARM_LEN = ALARM_FEELER_PIVOT_R - ALARM_TRACK_RMID; // pivot → pin
 const ALARM_FEELER_TAIL = 0.9;   // outboard stub — step 4 extends it to the climb pawl
@@ -7686,8 +7808,6 @@ alarmFeelerUnit.add(alarmFeelerLever);
 // track contact fixes its other end; the compliance is the pawl's own.
 const ALARM_PAWL_ENGAGE = 0.06;  // beak's z reach into the contrate band's top edge — sized so the
                                  // pin's stop-banked drop withdraws it a full margin clear
-const _climbDial = { x: -ALARM_WIND_X, y: ALARM_WIND_Y };      // climb axis, dial-local
-const _pivotDial = { x: _uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R };
 const _toClimb = { x: _climbDial.x - _pivotDial.x, y: _climbDial.y - _pivotDial.y };
 const _toClimbL = {  // lever-local (undo the lever's z-rotation)
   x: Math.cos(-_phiF) * _toClimb.x - Math.sin(-_phiF) * _toClimb.y,
@@ -7709,9 +7829,9 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // 0.21 static, and the DROPPED lever's rise ate it — the sweep caught the
   // graze at exactly the notch-alignment poses. The jogged run clears i1b
   // by 0.46 even dropped, and still rides 0.43 above the gear lane.
-  const _tailRunZ = (-7 - (-6.29)) - _armMidZ; // world −6.29 (run mid) → lever-local
+  const _tailRunZ = (-7 - ALARM_TAIL_RUN_Z) - _armMidZ; // world ALARM_TAIL_RUN_Z (run mid) → lever-local
   const jog = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, Math.abs(_tailRunZ) + ALARM_FEELER_T), MATS.steel);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 0.26, 0.10), MATS.steel);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 2 * ALARM_TAIL_RUN_HALFW, ALARM_TAIL_RUN_T), MATS.steel);
   tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
   const tailG = new THREE.Group();
   tailG.rotation.z = dirL;
