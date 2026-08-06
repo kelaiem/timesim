@@ -24,21 +24,176 @@ the main thread for the whole sweep, and wedges the tab.
 
 ---
 
-## 1. The mainspring is not a force source (HALF CLOSED)
+## 1. CLOSED — the mainspring winds; its TORQUE is now item 32
 
-The spring spiral is a child of the drum whose rotation/scale are a direct
-*readout* of tension (`main.js`, `springChild` in `tick()`).
+The spring spiral was a child of the drum whose rotation/scale were a
+direct *readout* of tension (`main.js`, `springChild` in `tick()`).
 
-CLOSED half: the inner-end anchor and set-up ratchet now exist — the
-`Set-up work` unit puts a static collar + hook pin on the drum arbor at the
+CLOSED half one: the inner-end anchor and set-up ratchet exist — the
+`Set-up work` unit puts a static collar + hook on the drum arbor at the
 spiral's heart, and the arbor ends in a plate-top square carrying the
 classic set-up ratchet + click (static in service, exactly like the real
-thing). The drum→chain torque path now closes on a fixture.
+thing). The drum→chain torque path closes on a fixture.
 
-REMAINING half: the spiral's wind state is still a scale/rotation readout
-rather than a keyframed morph whose inner boundary follows the (now
-anchored) arbor and whose outer end follows the drum wall — the
-makeHairspring wind-keyframe trick would close it.
+**CLOSED half two, 2026-08-06 — the wind is a MORPH.** The remaining half
+was "the spiral's wind state is still a scale/rotation readout rather than
+a keyframed morph whose inner boundary follows the (now anchored) arbor
+and whose outer end follows the drum wall". It is now exactly that
+(`mainspringFrames` in `geometry.js`, `makeBarrel`'s `springArborR` /
+`springWindSweep`).
+
+**What a mainspring actually is, and what the model now says.** Two ends,
+both fixed: the inner on the static arbor, the outer on the wall that
+turns. So the only quantity that changes is **A**, the angle the ribbon
+spans from one end to the other, and `dA = −dθ_drum`. Both end RADII are
+pinned, so the one freedom left is how radius is distributed along the
+sweep — and two constraints, neither of them a taste, fix it:
+
+```
+r(a) = innerR + (p/2π)·a + S·(a/A)^k        a ∈ [0, A]
+```
+
+- `p = 2·ribbonR = 0.2698` is **coil bind**: the ribbon's own radial
+  thickness, the closest two turns can lie without merging. The affine
+  term carries it at every `a`, so no wind state can draw the coils
+  through each other. What is left, `S = (outerR − innerR) − p·A/2π`, is
+  the spring's **capacity** — 4.9215 at full wind, and the number that
+  says whether a reserve fits in a drum at all.
+- `k` is **solved per frame** (bisection; length falls monotonically with
+  k) so every frame's developed length is the free ribbon's **157.4889**.
+  Steel does not grow. `k > 1` packs the turns onto the arbor and leaves
+  one long sweep out to the wall — a wound spring — and `k = 1` is the
+  plain Archimedean spiral, so the FREE coil (5 even turns, the ribbon as
+  cut) is a member of the family rather than a special case.
+
+**Handedness came out of the drum, not out of a preference.**
+`drumGroup.rotation.z` RISES as the reserve falls, so the ribbon has to
+LOSE sweep as the drum turns +z: the spiral runs clockwise outward. Wound
+the other way, the spring would gain turns while it drove. Nothing could
+see that error while the whole spiral rotated rigidly; the morph makes
+the sense a fact about the geometry.
+
+**The measured build**, all of it derived and all of it boot-asserted:
+
+| quantity | value | where it comes from |
+|---|---|---|
+| wind range | 11.0516 rad = 1.7589 turns | `DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R` — all the chain, at the feed radius. One constant now, where the chain rebuild and the tick each wrote it out |
+| sweep, empty → full | 5.000 → 6.759 turns | free coil + the range above |
+| innerR | 1.63490 | the arbor collar (1.5) + one ribbonR: the inner coil BEARS on it |
+| ribbonR | 0.13490 | solved out of its own definition — `rib = q(outerR − arborR)/(1 + q)`, `q = 0.1/coils` — because innerR now depends on it |
+| developed length | 157.4889, spread 4e-13 | the length constraint, measured on one quadrature so it is compared with itself |
+| capacity S at full wind | 4.9215 | > 0, so the annulus holds 6.759 turns at bind |
+| min coil pitch | 0.2797 vs 0.2698 bind | at full wind the spring is within 4% of coil-bound — which is what a fusee spring sized to its reserve should be |
+| frames | 88 | no point may move more than one ribbon thickness between frames, at the MEASURED sensitivity 2.12 u/rad |
+| segments | 266 | the chord may sag at most a tenth of the bind gap into it at the tightest radius |
+| cut-length spread | 0.0998 vs 0.2698 | the tessellation's residue on the length constraint, held to the ribbon's own thickness |
+
+**Swept across the reserve SPEC, not just the reserve.** §22 makes the
+reserve a knob (12–48 h, clamped in `layout.js`), and it drives the wind
+range through the chain, so the spring has to survive the whole menu.
+Measured at boot for 12 / 24 / 30 / 48 h: the wound sweep runs 5.704 →
+7.814 turns, frames 35 → 179, capacity 5.206 → 4.637 (always positive),
+length error ~4e-13 throughout, and the tightest coil gap 0.579 → 0.2698.
+At 48 h that last number IS coil bind: the drum is exactly full, which is
+the honest report rather than a failure. Boot stays silent at every
+setting except 48 h, where it emits the §22/§61 fusee crest warning —
+pre-existing, reproduced identically on `main`, and not this entry's.
+
+**The residue of keyframing, stated rather than implied.** The wind is
+quantised to 88 states, so the "pinned" inner end does not hold its world
+azimuth exactly — measured across the reserve it sits at −1.515 rad and
+wanders ±0.048, which at r 1.635 is ±0.078 of arc. That is the frame rule
+doing precisely what it was derived to do (bounded by one ribbon
+thickness, 0.270), and it is smaller than the ribbon's own half-thickness,
+so the end never leaves the hook it butts. It is a quantisation, not a
+drift: the same tension always gives the same frame.
+
+**One implementation detail worth keeping, because it looked like a
+defect in the mechanism and was not.** The length is integrated from
+√(r² + r′²) with a composite 2-point Gauss rule, which is OPEN — it never
+evaluates a = 0. That is a correctness requirement, not a speed one:
+r′(0) is discontinuous in k across k = 1 (the distribution term
+contributes S/A there at k = 1 exactly, and nothing at all for any
+k > 1, since 0^ε = 0), so a closed rule gives the FREE frame an endpoint
+bump every wound frame lacks — 5.5e-4 of phantom stretch in the one
+quantity whose whole job is to be identical. The discontinuity is a
+single point of a curve and means nothing physically. Picking the
+quadrature that cannot see it also took the build from 2.6 s to 0.23 s
+(the chord sum it replaced wanted 20 000 samples to reach what 128
+panels reach exactly), so the honest instrument was the fast one.
+
+**Three things the morph fixed that nothing had been measuring.**
+
+1. **The old readout was driving the spring through the drum wall.** At
+   empty the law scaled the whole spiral by 6%, putting the outer coil at
+   r 9.027 against a wall bored to 8.680 — **0.347 of standing
+   penetration**, in a ribbon built 0.164 clear. It was invisible because
+   both parts are `Mainspring drum`, and it had been *declared* as an
+   intra-unit joint ("the outer coil bears on the drum wall at the hook"),
+   which is how a defect gets a certificate. The morph pins that end
+   instead of stretching it and the row is gone.
+2. **The ribbon was buried 0.036 in the collar it was supposed to sit
+   on**, because `springInner` was a fraction of the drum (`radius·0.16`)
+   and the collar's radius was a separate literal. Deriving one from the
+   other makes them tangent by construction.
+3. **The arbor hook could not have been a pin.** The old one was a 1.4-long
+   radial pin reaching r 2.9. At full wind the turns lie at bind from
+   1.635 — 1.635, 1.905, 2.175, 2.445, 2.715 — so that pin crosses **five
+   coils**. A real barrel-arbor hook is a stub standing one ribbon
+   thickness proud of the collar, with the ribbon's end FACE bearing on
+   its flank, and that is what it is now; its azimuth is derived from the
+   full-wind sweep rather than placed. The collar grew with it, 1.2 → 3.217
+   against a 3.239 ribbon (the drum floor is what stops it being exact) —
+   an inner coil standing on nothing for two thirds of its height was the
+   other half of "anchored".
+
+**Keyframes, not an in-place morph, for a reason worth keeping.** The
+inspector caches a BVH per `BufferGeometry`. Rewriting one geometry's
+positions between poses would leave every sweep measuring the boot pose's
+surfaces — silently. Distinct geometry objects are what that cache keys
+on. (~4 MB for 88 frames; the alternative is wrong, not just cheaper.)
+
+**And it cost the instruments something, which is now repaired.**
+`intraUnit` derived its mover/fixture split from each mesh's
+unit-relative MATRIX. A morphing part's matrix never changes — so the
+moment the ribbon stopped rotating rigidly it would have become a
+"fixture" and dropped out of the check entirely, and this entry would
+have closed by making the movement less watched. `relSig` now carries
+`geometry.id` as well: **a morph is motion**. It immediately surfaced two
+joints nobody had ever measured, both real and both declared — the
+hairspring's spiral against its collet, and against its own terminal
+curve. The hairspring breathes by the same mechanism and had been
+invisible for the same reason.
+
+**The §48 audit gained a member the same way, and this one is the
+movement's clearest spring.** The retired readout rotated the spiral
+rigidly with tension, which the §36 registry read as one more monotonic
+rotor; the morph makes wound↔run-down a SHAPE change, the registry flags
+`mainspringRibbon` reversing, and `Mainspring drum` appears in the
+audit's population for the first time — as restored-by-nothing, until
+declared. It is now `declareRestoring('Mainspring drum', 'spring', …,
+'mainspringRibbon')`: the ribbon *is* the restoring element, and the
+winding path (keyless → fusee → chain) is what carries it the other way,
+which is the same two-way drive already declared on `Chain` and
+`Fusee & great wheel`. Both instruments say the same thing about this
+change — an honest law is one the battery can see.
+
+Verified: `tools/ci-battery.mjs` locally, **14/14 gates, 3055 s** — boot
+silent, support, graph, penetration, alarmHandoffs, stockFloor (507 rows,
+64 waived, the same 64 `main` carries), intraUnit, expectedContacts,
+oscillator, restoring, inspection 0 FORBIDDEN, clearances 0 violations
+over 30 budgets, sweptOverlap **0 CONFIRMED** over 59 216 pairs (2 tight,
+13 refuted), and the fingerprint identical across two virgin boots. Both
+explainer gates pass too (i18n 100% in all three locales, 0 unmatched
+keys; explain-quotes 0 disagreements). The schematic's spiral line rides
+the morph rather than quoting a plan the metal has left behind — §78's
+declared residue for this ribbon, closed in passing.
+
+**What is NOT closed, and is now [item 32](#32-the-mainsprings-shape-is-real-its-torque-is-still-authored):** the spring's
+TORQUE. The HUD's `springTq = 0.35 + 0.65·reserve` is authored prose, not
+a consequence of this ribbon's section and wind. The title of this entry
+overpromised against its own body; the body's remaining half is done, and
+the force half has its own entry with its own numbers.
 
 ## 3. CLOSED — `handSetOffset` derived through the setting path
 
@@ -3104,3 +3259,69 @@ the plate top with its own clearance consequences (the §62 window solve and the
 pillar seats both live up there), so it wants its own battery run and its own
 record. Item 28 is finished as a profile-and-drive rebuild; this is a part that
 does not exist yet.
+
+## 32. The mainspring's SHAPE is real; its torque is still authored
+
+[Item 1](#1-closed--the-mainspring-winds-its-torque-is-now-item-32) closed the geometry half: the ribbon is a fixed length of steel
+between two fixed ends, and its wind state is that length redistributed.
+What it does NOT do is push. The torque the rest of the movement reads is
+one line of authored prose in the HUD update (`main.js`):
+
+```js
+const springTq = 0.35 + 0.65 * reserveShown;
+```
+
+and the fusee's whole taper is derived FROM it — the cone build says so in
+as many words: "the cone profile and the spring model are chosen so
+S(t)·r_f(t) is constant: S = 0.35 + 0.65·t (linear spring), … with
+rLarge/rSmall = S(1)/S(0) = 2.857". So `FUSEE_R_SMALL 2.6 / FUSEE_R_LARGE
+7.4` is a consequence of a spring curve nobody derived from a spring.
+Rule 2's family: the display quantity is the input, and the geometry was
+drawn to agree with it.
+
+**This is now cheap, because item 1 built everything the solve needs.** A
+flat spiral spring's torque is the standard `M = E·I·θ / L`, and every
+term is already a published number on the built part
+(`spring.userData.mainspring`):
+
+| term | value | source |
+|---|---|---|
+| `I = b·h³/12` | b = 3.2393 u (ribbon height), h = 0.2698 u (thickness = `pBind`) | the ribbon as cut |
+| `L` | 157.4889 u | `devLen` — the length constraint the frames are solved against |
+| `θ` | `A − sweepFree`, 0 → 11.0516 rad | the wind, straight off the drum |
+| unit pin | `UNIT_MM` | §39, as TODO 25 used it for the hairspring |
+
+TODO 25 is the worked precedent at the other end of the movement: the
+hairspring's section is SOLVED from the balance's inertia so `√(k/I)`
+lands on the spec beat, and `checkOscillator` holds the solve true. The
+same shape applies here — solve or verify the ribbon against the torque
+the train needs, and let the HUD read the result instead of declaring it.
+
+**A finding to start from: the 0.35 is a SET-UP, and this movement has the
+ratchet for it.** With `M ∝ θ`, torque at the free coil is exactly zero,
+so a linear spring can only read 0.35 at empty if it is still wound by
+0.35/0.65 of the drum's own range:
+
+```
+θ_empty / (θ_empty + 11.0516) = 0.35   ⇒   θ_empty = 5.951 rad = 0.947 turns
+```
+
+The set-up ratchet is a 24-tooth wheel, so it can only hold multiples of
+15°: **23 clicks = 0.9583 turns gives 0.3527**, which is the authored 0.35
+to within a click. That is a strong hint that the number was never
+arbitrary — it was a set-up in disguise — and it makes the fix concrete:
+give `mainspringFrames` a `setupTurns` quantised to the ratchet's pitch,
+wind the free state by it, and derive `springTq` from `E·I·θ/L`. Capacity
+holds: at 0.9583 turns of set-up the full-wind sweep goes 6.759 → 7.717
+turns and `S` falls 4.92 → 4.66, still clear of coil bind.
+
+*(Arithmetic only — none of the above has been built or measured. It is
+written down here so the next pass starts from the numbers rather than
+rediscovering them.)*
+
+**Order matters.** Do the torque solve BEFORE re-deriving the cone: today
+the cone is a consequence of the authored curve, and if the real curve
+differs, `FUSEE_R_SMALL`/`FUSEE_R_LARGE` and every clearance chain hanging
+off the cone's envelope move with it. That is a layout consequence, which
+is the P3 half of the design-priority note — position space, not a nudge
+to either radius.

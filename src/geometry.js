@@ -1487,6 +1487,179 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 }
 
 // ---------------------------------------------------------------------------
+// THE MAINSPRING AS A WIND MORPH — TODO 1's remaining half.
+//
+// A mainspring has TWO fixed ends: the inner one hooked to the barrel arbor
+// (static here — the set-up ratchet holds it, which is the half TODO 1 closed
+// first) and the outer one to the drum wall, which turns. So winding is a
+// change of GEOMETRY, exactly as makeHairspring's is: the same length of steel
+// redistributed across a different number of turns between the same two radii.
+// It is not a rigid rotation and it is not a scale, which is what the drum's
+// spiral used to be — hence "a readout of tension", not a spring.
+//
+// THE FAMILY. Let A be the total angle the ribbon sweeps from its inner end to
+// its outer end. Turning the drum by dθ changes A by −dθ and nothing else: both
+// end RADII are pinned, so the only freedom left is how radius is distributed
+// along the sweep. Two constraints fix it, and neither is a taste:
+//
+//   r(a) = innerR + (p/2π)·a + S·(a/A)^k          a ∈ [0, A]
+//
+//   · p = 2·ribbonR is COIL BIND — the ribbon's own radial thickness, the
+//     closest two turns can lie without merging. The affine term carries it
+//     everywhere, so NO wind state can draw the coils through each other, and
+//     the leftover S = (outerR − innerR) − p·A/2π is the spring's CAPACITY:
+//     S > 0 says the annulus can still hold this many turns at bind, and it is
+//     the quantity that decides whether a reserve fits in a drum at all.
+//   · k is SOLVED per frame (bisection; length falls monotonically with k) so
+//     every frame's DEVELOPED LENGTH equals the free ribbon's. Steel does not
+//     grow. k > 1 packs the turns onto the arbor and leaves one long sweep out
+//     to the wall — a wound spring; k < 1 would bunch them against the wall.
+//     k = 1 is the plain Archimedean spiral, so the FREE state (`coils` turns
+//     of even pitch — the ribbon as coiled) is a member of the family rather
+//     than a special case, and the geometry at zero wind is unchanged.
+//
+// HANDEDNESS IS DERIVED, not chosen. The drum's rotation.z RISES as the reserve
+// falls, so the ribbon must LOSE sweep as the drum turns +z: the spiral runs
+// clockwise outward (angle(t) = A·(1 − t), outer end at drum-local 0). Wind the
+// other way and the spring would gain turns while it drove — the sense error
+// that stayed invisible for as long as the whole spiral rotated rigidly.
+//
+// WHY KEYFRAMES rather than one geometry morphed in place: the inspector caches
+// a BVH per BufferGeometry, so rewriting a geometry's positions between poses
+// would leave every sweep measuring the boot pose's surfaces. Distinct geometry
+// objects are what that cache keys on — the same reason makeHairspring
+// precomputes, arrived at from the other end.
+// ---------------------------------------------------------------------------
+export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep }) {
+  const pBind = ribbonR * 2;              // coil bind — see above
+  const P = pBind / (Math.PI * 2);        // ...as radius gained per radian
+  const A_free = coils * Math.PI * 2;     // the ribbon as coiled: even pitch, k = 1
+  const A_full = A_free + sweep;          // fully wound: the drum has taken `sweep` off the static arbor
+  const slack = (A) => (outerR - innerR) - P * A;   // S — what is left over for the distribution
+  const radiusAt = (A, k, S, a) => innerR + P * a + S * Math.pow(a / A, k);
+
+  // LENGTH, from the integrand rather than from a chord sum: ∫₀^A √(r² + r′²).
+  // Composite 2-point Gauss-Legendre, which is both accurate (converged to 1e-9
+  // by 128 panels, where a chord sum still wants 20 000 samples) and, more
+  // importantly, OPEN — it never evaluates a = 0.
+  //
+  // That is not an optimisation, it is a correctness requirement. r′(0) is
+  // discontinuous in k across k = 1: at k = 1 exactly the distribution term
+  // contributes S/A there, and for any k > 1 it contributes nothing (0^ε = 0).
+  // A closed rule samples that point, so the FREE frame's length picks up an
+  // endpoint bump every wound frame lacks — measured, 5.5e-4 of phantom
+  // difference, in a quantity whose whole job is to be identical. The
+  // discontinuity is one point of a curve and means nothing physically; a
+  // quadrature that cannot see it is the honest instrument.
+  //
+  // One rule for the solve, the reference and the assert, so "every frame is
+  // the same length" is one measurement compared with itself. (Comparing two
+  // different measures was this function's first bug: 0.09% of apparent
+  // stretch that was entirely the gap between a t-uniform integral and an
+  // arc-length-resampled chord sum.)
+  const QN = 128, GX = 1 / Math.sqrt(3);
+  const arcLen = (A, k) => {
+    const S = slack(A), h = A / QN;
+    const f = (a) => Math.hypot(radiusAt(A, k, S, a), P + (S * k * Math.pow(a / A, k - 1)) / A);
+    let s = 0;
+    for (let i = 0; i < QN; i++) {
+      const c = (i + 0.5) * h, e = (h / 2) * GX;
+      s += f(c - e) + f(c + e);
+    }
+    return s * (h / 2);
+  };
+  const DENSE = 2000;                     // sampling the frame that is actually cut
+  const walk = (A, k, n) => {
+    const S = slack(A);
+    const pts = new Array(n + 1);
+    for (let i = 0; i <= n; i++) {
+      const a = (A * i) / n;
+      const r = radiusAt(A, k, S, a);
+      const ang = A - a;                  // clockwise outward — the handedness note above
+      pts[i] = [Math.cos(ang) * r, Math.sin(ang) * r];
+    }
+    return pts;
+  };
+  const devLen = arcLen(A_free, 1);
+  const solveK = (A) => {
+    let lo = 0.02, hi = 60;               // brackets the whole family; L(k) is monotone falling
+    for (let i = 0; i < 44; i++) {
+      const m = (lo + hi) / 2;
+      if (arcLen(A, m) > devLen) lo = m; else hi = m;
+    }
+    return (lo + hi) / 2;
+  };
+  // SEGMENTATION is a property of the metal, not of the wind state: the
+  // polyline is resampled at equal ARC LENGTH, and its chord may sag at most a
+  // tenth of the bind gap into it at the tightest radius the ribbon ever takes
+  // (the inner coil). sagitta ≈ chord²/8r, so chord = √(8·s·r).
+  const SAG_FRAC = 0.1;
+  const segs = Math.max(Math.ceil(devLen / Math.sqrt(8 * SAG_FRAC * pBind * innerR)), coils * 48);
+  const frameAt = (A) => {
+    const k = solveK(A);
+    const pts = walk(A, k, DENSE);
+    const cum = [0];
+    for (let i = 1; i <= DENSE; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const L = cum[DENSE];
+    const out = new Array(segs + 1);
+    for (let i = 0, j = 0; i <= segs; i++) {
+      const s = (L * i) / segs;
+      while (j < DENSE - 1 && cum[j + 1] < s) j++;
+      const f = (s - cum[j]) / ((cum[j + 1] - cum[j]) || 1);
+      out[i] = [pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f, pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f];
+    }
+    let cut = 0;
+    for (let i = 1; i <= segs; i++) cut += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]);
+    return { pts: out, k, curveLen: arcLen(A, k), cutLen: cut };
+  };
+  // FRAME COUNT, derived from the same ribbon: no point of the spiral may move
+  // further than the ribbon's own thickness between adjacent frames — a step
+  // that jumps a coil past itself is a step the eye reads as a jump. The
+  // sensitivity |dP/dA| is MEASURED (it peaks mid-radius, not at the inner end
+  // where the analytic guess put it — 2.12 against 1.63 as built), sampled at
+  // both extremes and the middle, and the achieved step is asserted below.
+  const h = sweep / 512;
+  const sens = (A) => {
+    const a = frameAt(A - h).pts, b = frameAt(A + h).pts;
+    let m = 0;
+    for (let i = 0; i <= segs; i++) m = Math.max(m, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
+    return m / (2 * h);
+  };
+  const dPdA = Math.max(sens(A_free + h), sens((A_free + A_full) / 2), sens(A_full - h));
+  const nFrames = Math.max(Math.ceil((sweep * dPdA) / pBind) + 1, 3);
+
+  const frames = [], cutLens = [];
+  let maxStep = 0, minPitch = Infinity, lenErr = 0;
+  for (let i = 0; i < nFrames; i++) {
+    const A = A_full - (sweep * i) / (nFrames - 1);   // frame 0 = fully wound
+    const f = frameAt(A);
+    if (i) for (let j = 0; j <= segs; j++) {
+      const q = frames[i - 1];
+      maxStep = Math.max(maxStep, Math.hypot(f.pts[j][0] - q[j][0], f.pts[j][1] - q[j][1]));
+    }
+    lenErr = Math.max(lenErr, Math.abs(f.curveLen - devLen) / devLen);
+    cutLens.push(f.cutLen);
+    // radial gap between turn n and turn n+1, measured on the built law
+    const S = slack(A);
+    for (let a = 0; a + Math.PI * 2 <= A; a += A / 256)
+      minPitch = Math.min(minPitch, radiusAt(A, f.k, S, a + Math.PI * 2) - radiusAt(A, f.k, S, a));
+    frames.push(f.pts);
+  }
+  return {
+    frames, segs, devLen, sweepFree: A_free, sweepFull: A_full,
+    capacity: slack(A_full),
+    pBind, maxStep, minPitch, lenErr, dPdA,
+    // The CUT ribbon is an inscribed chord run, so it is always a little
+    // shorter than the curve it follows, by an amount that rides the local
+    // curvature and therefore varies with the wind. The curve length above is
+    // the constraint; this is the tessellation's residue on it, and the bound
+    // it is held to is the ribbon's own thickness — no wind state's metal may
+    // be a ribbon thicker or thinner than another's.
+    cutSpread: Math.max(...cutLens) - Math.min(...cutLens),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Going barrel — drum + toothed great-wheel rim, mainspring, ratchet + click.
 // With `plain: true` it becomes a fusee-style spring DRUM: smooth wall, no
 // gear teeth, no ratchet/click (the fusee arbor carries those instead).
@@ -1500,8 +1673,17 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // path yet — a click riding round with the barrel it is supposed to HOLD is a
 // display fiction, and an unwound barrel is better shown with no click at all
 // than with one that turns.
+// springArborR / springWindSweep: pass BOTH to get the wind morph above
+// instead of a spiral posed once. springArborR is the radius of the static
+// arbor collar the inner coil bears on (so the inner radius is DERIVED from
+// what is actually there, rather than a fraction of the drum); springWindSweep
+// is the relative rotation the drum makes against that arbor over a full
+// reserve. Omit them and the spiral is built exactly as before — which is what
+// the alarm barrel wants: it is a single-member barrel whose whole body IS its
+// wound state (its arbor turns with it), so it has no relative angle to morph
+// against, and the two-member split that would give it one is filed debt.
 export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
-                             ratchet = !plain }) {
+                             ratchet = !plain, springArborR = null, springWindSweep = 0 }) {
   const g = new THREE.Group();
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
@@ -1552,10 +1734,28 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 
   // Spiral mainspring ribbon (tall in Z), hooked to wall & arbor. name='spring'.
   const springOuter = drumInnerR - wallModule * 0.5;
-  const springInner = radius * 0.16;
   const sCoils = 5;
-  const sRibbon = Math.max(((springOuter - springInner) / sCoils) * 0.1, 0.08);
-  const sGeo = new THREE.TubeGeometry(
+  // The ribbon's section, and with it the inner radius. Legacy form: the inner
+  // radius is a fraction of the drum and the section follows. Morph form: the
+  // inner coil BEARS ON the arbor collar, so springInner = arborR + sRibbon and
+  // the section solves out of its own definition —
+  //   rib = (0.1/coils)(outerR − arborR − rib)  ⇒  rib = q(outerR − arborR)/(1 + q)
+  // — which also closes a 0.036 burial of the ribbon in the collar that the
+  // fraction had left standing (an EXPECTED pair, so nothing measured it).
+  const morph = springArborR !== null && springWindSweep > 0;
+  const q = 0.1 / sCoils;
+  const sRibbon = morph
+    ? Math.max((q * (springOuter - springArborR)) / (1 + q), 0.08)
+    : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
+  const springInner = morph ? springArborR + sRibbon : radius * 0.16;
+  const wind = morph ? mainspringFrames({
+    innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon, sweep: springWindSweep,
+  }) : null;
+  const tubeOf = (pts) => new THREE.TubeGeometry(
+    new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))),
+    wind.segs, sRibbon, 4, false);
+  const windGeos = morph ? wind.frames.map(tubeOf) : null;
+  const sGeo = morph ? windGeos[windGeos.length - 1] : new THREE.TubeGeometry(
     new ArchimedeanSpiral(springInner, springOuter, sCoils),
     sCoils * 48,
     sRibbon,
@@ -1570,6 +1770,11 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   // wrong about the one thing a coiled ribbon is. These are the exact
   // arguments the ArchimedeanSpiral above is swept along, so the line and the
   // tube are the same curve at different fidelities.
+  // (Morph form: `spiral` stays the FREE plan — the ribbon as coiled, which is
+  // what the three-spring tripwire counts — and `spiralFrames` carries the
+  // wind states' real polylines so the drawn line rides the morph instead of
+  // quoting a plan the metal has left behind. Consumers that find frames must
+  // use them: the linear parametrisation is only true at k = 1.)
   springMesh.userData.spiral = { innerR: springInner, outerR: springOuter, coils: sCoils };
   springMesh.scale.z = Math.max((height * 0.7) / (sRibbon * 2), 1);
   const spring = new THREE.Group();
@@ -1581,9 +1786,70 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     MATS.steel
   );
   oh.name = 'mainspringHook'; // TODO 12 triage: the spring's own hook tab — spring stock with the ribbon it belongs to
-  oh.position.set(springOuter, 0, 0);
+  oh.position.set(springOuter, 0, 0);   // drum-local azimuth 0 — the morph's fixed outer end
   spring.add(oh);
   g.add(spring);
+
+  if (morph) {
+    // The wind state, and everything the caller needs to place the OTHER end.
+    // The inner end sits at drum-local angle A, so its azimuth in the frame the
+    // drum turns in is A + drumRot ≡ sweepFull — constant, which is the whole
+    // claim: that end is bolted to a static arbor and the drum turns under it.
+    // The arbor's hook lug therefore goes at `innerAnchorAz`, DERIVED, not
+    // placed by eye.
+    const last = windGeos.length - 1;
+    let cur = last;
+    const setWind = (A) => {
+      const f = (A - wind.sweepFree) / springWindSweep;         // 0 free … 1 fully wound
+      const i = Math.max(0, Math.min(last, Math.round((1 - f) * last)));
+      if (i === cur) return;
+      cur = i;
+      springMesh.geometry = windGeos[i];
+      springMesh.userData.spiralFrame = i;
+      const line = springMesh.userData.spiralLine;
+      if (line) {
+        const pos = line.geometry.attributes.position;
+        const pts = wind.frames[i];
+        for (let j = 0; j < pts.length; j++) pos.setXYZ(j, pts[j][0], pts[j][1], 0);
+        pos.needsUpdate = true;
+        line.geometry.computeBoundingSphere();
+      }
+    };
+    springMesh.userData.spiralFrames = wind.frames;
+    springMesh.userData.spiralFrame = last;
+    spring.userData.mainspring = {
+      setWind,
+      sweepFree: wind.sweepFree, sweepFull: wind.sweepFull,
+      innerAnchorAz: wind.sweepFull % (Math.PI * 2),
+      innerR: springInner, outerR: springOuter, ribbonR: sRibbon, pBind: wind.pBind,
+      height: height * 0.7, frames: windGeos.length, segs: wind.segs,
+      devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
+      maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
+    };
+    setWind(wind.sweepFull);   // built fully wound, which is where the sim boots
+    // Rule 6 asserts — every one of them a constraint the family above claims.
+    // Two of them can bite and two are tripwires, and the difference is worth
+    // stating. CAPACITY and LENGTH are the real gates: run the reserve spec up
+    // and the annulus eventually cannot hold the turns (capacity), and before
+    // that the k-solve stops reaching the ribbon's length (lenErr) — which is
+    // what "this spring is too short for this reserve" looks like as a number.
+    // COIL BIND cannot fail while the affine term exists, since that term IS
+    // the bind; it is kept as a regression tripwire on the radial law, not as
+    // a design gate. Measured across the spec's whole 12–48 h range, the wound
+    // sweep runs 5.704 → 7.814 turns and the tightest gap 0.579 → 0.2698: at
+    // 48 h the spring is exactly coil-bound, which is the honest report that
+    // the drum is then completely full.
+    if (wind.capacity <= 0)
+      console.warn(`TODO 1: the drum's annulus (${(springOuter - springInner).toFixed(3)}) cannot hold ${(wind.sweepFull / (Math.PI * 2)).toFixed(3)} turns of ${wind.pBind.toFixed(4)}-thick ribbon at coil bind — capacity ${wind.capacity.toFixed(3)}`);
+    if (wind.lenErr > 1e-6)
+      console.warn(`TODO 1: mainspring wind frames differ in developed length by ${(wind.lenErr * 100).toFixed(4)}% — the k-solve is not reaching ${wind.devLen.toFixed(3)}, so the ribbon is being stretched rather than wound`);
+    if (wind.cutSpread > wind.pBind)
+      console.warn(`TODO 1: the CUT mainspring varies ${wind.cutSpread.toFixed(3)} in length across the wind range against a ${wind.pBind.toFixed(4)} ribbon — ${wind.segs} segments is too coarse a tessellation to hold the length constraint`);
+    if (wind.minPitch < wind.pBind)
+      console.warn(`TODO 1: mainspring coils close to ${wind.minPitch.toFixed(4)} against a ${wind.pBind.toFixed(4)} ribbon — the turns pass through each other`);
+    if (wind.maxStep > wind.pBind)
+      console.warn(`TODO 1: mainspring wind steps ${wind.maxStep.toFixed(4)} between frames against a ${wind.pBind.toFixed(4)} ribbon — ${windGeos.length} frames is too few for the measured ${wind.dPdA.toFixed(3)} u/rad`);
+  }
 
   // Central arbor.
   const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, arborH ?? height * 2.4, 16);
@@ -1600,6 +1866,16 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 
   g.userData.r = pitchR;
   g.userData.drumR = radius;
+  // The cavity the spring lives in, body-local: what a part standing on the
+  // static arbor INSIDE the drum has to clear. Exported rather than
+  // re-derived by the caller — the floor's 0.12·h and the lid's 0.1·h are
+  // this builder's business, and a second copy of them is a second thing to
+  // forget when either moves.
+  g.userData.cavity = {
+    innerR: drumInnerR,
+    floorTopZ: -height / 2 + height * 0.12,
+    lidBotZ: height / 2 - height * 0.1,
+  };
   return g;
 }
 

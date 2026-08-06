@@ -56,6 +56,26 @@ Use a single named clearance margin per constraint (e.g. `HAMMER_SWING_MARGIN =
 falsifiable: the post-fix sweep reads `+0.3500` — anything else means the solver
 and the mesh disagree.
 
+### 6. A part that changes SHAPE is a moving part
+
+Some parts move without moving: the hairspring breathes and the mainspring
+winds (TODO 1) by swapping a precomputed geometry frame while their matrix
+stands still. Two consequences, both learned the expensive way.
+
+**Build the states as distinct geometry objects, never by rewriting one
+geometry's positions in place.** The inspector caches a BVH per
+`BufferGeometry`. An in-place morph keeps the same object, so every sweep
+after the first would measure the *boot pose's* surfaces — silently, with
+every gate green. Distinct objects are what that cache keys on.
+
+**And check that the instruments can still see it.** `intraUnit` derives its
+mover/fixture split from each mesh's unit-relative matrix; a morphing part
+reads as a FIXTURE there, and fixtures are only ever tested against movers.
+Replacing a rigid rotation with an honest morph therefore *removes* the part
+from the check unless the signature also carries `geometry.id` (it does now).
+The same shape of question applies to any instrument keyed on pose: ship a
+morph and ask which checks stop watching.
+
 ## Derive, don't nudge
 
 Clearance-bearing constants must be *derived* from the geometry with an explicit
