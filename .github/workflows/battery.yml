@@ -9,9 +9,26 @@
 # Sized by measurement, per the entry's own order: the full battery took
 # ~13 min wall (clearances ~370 s and sweptOverlap ~220 s the long poles,
 # boot ~26 s) on a 2025 dev container. CI hardware is slower and SwiftShader
-# does the GL, so the job budget is 3× that measurement — if the battery
-# genuinely outgrows a per-PR gate someday, the entry's fallback is a tiered
-# split (cheap checks per-PR, sweeps nightly), not a longer timeout.
+# does the GL, so the job budget was 3× that measurement — 45 min.
+#
+# 45 → 60, and the reason is not that a PR wanted more room. TODO 27 drilled
+# the chain's 211 joints, tripling that mesh, and sweptOverlap went 352 s →
+# ~1400 s; ci-battery.mjs raised its PER-CHECK guard to 45 min for exactly
+# that and left this one alone. Two 45s is one too many: the job cap includes
+# checkout, npm ci and the Chromium install, so it always bites FIRST, and a
+# check that genuinely wedges can never reach the guard written to catch it.
+# Measured, every run after TODO 27 merged died here — 188 (41.7 min, the last
+# one to finish at all), then 189/190/191/193/194 at 45.4–45.6 min, run 191 and
+# 194 being pushes to MAIN. GitHub reports a job-timeout kill as `cancelled`,
+# which is why a gate that had stopped running for a day still read like
+# somebody's force-push.
+#
+# So 60 restores the ordering the two timeouts were supposed to have — check
+# guard 45 < job 60, wedge diagnosable — and it is a STAY, not a fix. The cost
+# itself is roadmap §80's (samplePoses transforms every vertex of every mesh at
+# every pose into Float64 and holds all 9 axes × 12 poses at once), and the
+# entry's own fallback if the battery outgrows a per-PR gate is still a tiered
+# split — cheap checks per-PR, sweeps nightly — not another number here.
 #
 # Playwright is pinned in tools/package.json so the browser build is stable;
 # the browser download is cached keyed on that pin. python3 for dev_server.py
@@ -33,7 +50,7 @@ concurrency:
 jobs:
   battery:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60   # must stay ABOVE ci-battery.mjs's per-check guard (45)
     steps:
       - uses: actions/checkout@v4
 
