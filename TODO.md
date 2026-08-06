@@ -3325,3 +3325,54 @@ differs, `FUSEE_R_SMALL`/`FUSEE_R_LARGE` and every clearance chain hanging
 off the cone's envelope move with it. That is a layout consequence, which
 is the P3 half of the design-priority note — position space, not a nudge
 to either radius.
+
+## 33. Nothing guards the sub-dial pockets against the dial's centre bore
+
+`makeDial` cuts each sub-dial well as a pocket loop and the centre stack as
+its own bore, both holes in one plate. Nothing checks that they are disjoint.
+Push `dial.subdials.radiusFactor` past ~1.196 and the pockets **overlap the
+centre bore** — and the build says nothing at all.
+
+**Measured, on the shipped tree.** `centerBoreR = ALARM_TUBE_OUTER + 0.2 =
+3.20`; the reserve well's inner edge is `RESERVE_LOCAL.y − subDialR =
+15.401 − 10.201·factor`. The two meet at factor 1.196. Booted across the
+range, the dial's triangle count quietly falls as the triangulator drops the
+overlapping region, with **zero boot warnings at every step**:
+
+| factor | subDialR | reserve inner edge | vs bore 3.20 | dial tris | boot warns |
+|---|---|---|---|---|---|
+| 1.00 | 10.20 | 5.20 | clear | 5392 | 0 |
+| 1.15 | 11.73 | 3.67 | clear | 5392 | 0 |
+| 1.20 | 12.24 | 3.16 | **breach** | 5384 | 0 |
+| 1.30 | 13.26 | 2.14 | **breach** | 5320 | 0 |
+| 1.50 | 15.30 | 0.10 | **breach** | 5306 | 0 |
+
+**The battery does not catch it either.** At factor 1.30 — pockets 1.06 into
+the bore — `support` reported 0 failures, `clearances` 0 violations, and
+`inspection { includeExcluded: true }` 0 FORBIDDEN. It is a degeneracy INSIDE
+one part's geometry, so it falls in the blind-spot family of items 5 and 6:
+the pair sweep compares units, and this is one unit disagreeing with itself.
+Standing rule 6 is the only instrument that could have spoken here, and it had
+nothing to say.
+
+**What to build.** The assert the old ceiling used to imply, written in the
+same form as every other clearance floor:
+
+    subDialR ≤ min(RESERVE_LOCAL.y, −SECONDS_LOCAL.y)
+               − (centerBoreR + WALL_HALF + CLEAR_MARGIN)
+
+At the shipped stations that is `15.401 − (3.20 + 0.2 + 0.15) = 11.85`. Warn
+with the achieved and required numbers, per rule 6. Site it beside the §25 C
+well/setting-wheel assert in `main.js` so the wells' two ceilings — inboard
+against the centre stack, and against the setting lane when the bands overlap
+— read as one block.
+
+**Why this exists as debt rather than as part of the sizing work.** The
+constant that USED to bound the wells inboard (`−5.2`, §25 C's setting-wheel
+tip + wall + margin) stopped binding when item 26 gave the dial real thickness
+and lifted the pockets out of the setting lane; `wellsInLane` is false and that
+assert is dormant. So the wells lost their inboard guard as a side effect of a
+change made for another reason, and nothing replaced it. That is true whatever
+anyone decides about sub-dial size — a factor of 1.5 should have been refused
+by the build, and instead it rendered a dial with two holes eating the centre
+bore. Fix the guard independently of any decision to use the headroom.
