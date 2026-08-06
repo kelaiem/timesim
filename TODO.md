@@ -3311,6 +3311,26 @@ before deriving it would be swapping one magic number for a larger one.
   bound §76 should record whatever the layout does: R 13 is out of spec as a
   wristwatch before any wall is consulted.
 
+**Battery: 14/14, fingerprint unchanged.** `node tools/ci-battery.mjs`,
+3055 s. Every gate green — `inspection` 0 FORBIDDEN (50 units, 72 contacting
+pairs), `clearances` 0 violations, `sweptOverlap` 0 CONFIRMED (59 216 pairs,
+2 tight, 13 refuted), `restoring` 0 unwaived with control PASS,
+`stockFloor` 507 rows / 64 waived, `oscillator` 2.5 Hz on a 0.0244 mm
+ribbon — and the fingerprint is 1436114427 across both virgin boots, the
+same hash HEAD produces. That last number is the load-bearing one for this
+change: the seat scan was refactored from three `continue`s to three graded
+margins, and an identical fingerprint is what says the refactor picks the
+same seat rather than a similar one.
+
+One thing the battery does NOT cover, stated rather than implied: the new
+reporting paths only execute when a boot fails, which a green run never
+does. `virginBoot`'s timeout handler and the trial panel's dead-frame read
+were exercised directly instead — the boot-failure case by booting R 13
+under a patched balance radius, and the handler's four report shapes
+(wedged, absent buffer, warns present, no warns) by driving the branch
+logic on its own. A wedged page is the one shape with no live test; it is
+why that read is raced against 10 s rather than awaited.
+
 ## 31. The alarm lock has no return — the column can push it, nothing pulls it back
 
 The direct remainder of [item 28](#28-mostly-closed--pillars-a-derived-profile-and-a-lock-the-column-actually-lifts), and what `Alarm lock`'s waiver in
