@@ -59,6 +59,29 @@ const __bootWarns = [];
     _w(...a);
   };
 }
+// TODO 30 — the buffer is ALSO published here, live, from the module's first
+// lines. It is deliberately NOT on __clock: that object's EXISTENCE is the
+// boot-complete handshake (ci-battery.mjs waits on `!!window.__clock`, §33's
+// trial-boot panel polls the iframe for the same thing), and it is assigned
+// ~18k lines below. A boot that dies mid-build — the measured case is the
+// fork cock's null dereference at balance R 13 — never reaches that
+// assignment, so every instrument that reads bootWarns saw NOTHING AT ALL:
+// a waitForFunction timeout with no message, not a failure. A build that
+// cannot boot was invisible to the machinery meant to report on boots.
+//
+// Publishing a STUB named __clock would be worse than the crash: both readers
+// would proceed on a half-built module and report "silent" — the exact
+// false-silence this buffer was added to kill. So the warns get their own
+// surface, which means "there are warns" and never "the boot finished".
+window.__bootWarns = __bootWarns;
+// The fatal error itself, for the same reason: at R 13 the diagnosis is the
+// TypeError, not the warn that precedes it. Only claimed while __clock is
+// absent — after boot, an error belongs to whatever raised it.
+window.__bootError = null;
+window.addEventListener('error', (e) => {
+  if (window.__clock || window.__bootError) return;
+  window.__bootError = { message: String(e.message || e.error || e), stack: (e.error && e.error.stack) || null };
+});
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
@@ -1632,14 +1655,21 @@ const forkCock = (() => {
     // balance rode above the slab and bites now that they share a z-band.
     const nodeR = legR * 1.35;
     const barHW = Math.min(hostBossR, nodeR) * 0.8; // makeEscapeBridge's bar half-width
-    let best = null;
+    // TODO 30 wall three — the three walls are GRADED as signed margins rather
+    // than tested, so a scan that finds nothing can still say WHICH wall
+    // stopped it and BY HOW MUCH. The feasibility test is unchanged: a seat
+    // clears iff all three margins are ≥ 0, which is exactly the three
+    // `continue`s this replaces, so the seat chosen at the shipped balance
+    // size is the same seat. What is new is `near` — the least-short
+    // candidate, kept for the report when nothing clears.
+    let best = null, near = null;
     for (let dd = 0; dd <= 100; dd += 2) {
       for (const sgn of dd === 0 ? [1] : [1, -1]) {
         const a = away + sgn * dd * DEG2RAD;
         for (let reach = 3; reach <= 16; reach += 0.25) {
           const x = host.x + Math.cos(a) * reach, y = host.y + Math.sin(a) * reach;
-          if (Math.hypot(x, y) > plateR - legR - 1) continue;
-          if (floorClear(x, y) < nodeR + CLEAR_MARGIN) continue;
+          const mPlate = (plateR - legR - 1) - Math.hypot(x, y);      // seat stays on the plate
+          const mFloor = floorClear(x, y) - (nodeR + CLEAR_MARGIN);   // node clears every swept disc
           // The BAR from the host boss to this seat rides in the slab's own
           // z-band — the band the balance (rim + timing screws) now sweeps —
           // so the bar's edge must clear the balance's swept disc in XY.
@@ -1649,17 +1679,42 @@ const forkCock = (() => {
           const L2 = vx * vx + vy * vy || 1e-9;
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
-          if (dBar < BAL_OUTER_R + barHW + CLEAR_MARGIN) continue;
-          if (!best || reach < best.reach) best = { x, y, reach, a };
+          const mBar = dBar - (BAL_OUTER_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance
+          const short = Math.min(mPlate, mFloor, mBar);
+          if (!near || short > near.short) near = { x, y, reach, a, short, mPlate, mFloor, mBar };
+          if (short < 0) continue;
+          if (!best || reach < best.reach) best = { x, y, reach, a, short, mPlate, mFloor, mBar };
         }
       }
-      if (best) break;
+      if (best) break; // nearest feasible bearing to the ideal wins — unchanged
     }
-    return best;
+    return best || { ...near, missed: true };
   };
   const legR = 1.15;
   const legB = legFor(P.fork, P.escape, legR, bossFork);
-  if (!legB) console.warn('fork cock: no clear footing for its leg');
+  if (legB.missed) {
+    // TODO 30 wall three — this used to be a bare warn followed by a null
+    // dereference on the next line, which took the boot down and with it every
+    // instrument that reads bootWarns. It now REPORTS and CONTINUES, on the
+    // precedent of the pillar seat scan's 'no seat found near' warn a few
+    // thousand lines below, which likewise does not take the boot down.
+    // The seat returned is KNOWN BAD and says so; rule 6 makes the warn a
+    // failure, which is the honest verdict for a balance the layout cannot
+    // carry — and the rest of the boot still runs, so §76 can name the wall
+    // that stops it with numbers instead of inferring it from a crash.
+    const wall = legB.mPlate <= legB.mFloor && legB.mPlate <= legB.mBar
+      ? `the plate runs out (radius ${plateR.toFixed(2)})`
+      : legB.mFloor <= legB.mBar
+        ? "a swept disc below the seat (train wheel, fork, hammer or the balance's own footprint)"
+        : `the bar's edge against the balance's swept disc (BAL_OUTER_R ${BAL_OUTER_R.toFixed(2)})`;
+    console.warn(
+      `fork cock: no clear footing for its leg — best near-miss is short by ${(-legB.short).toFixed(3)} `
+      + `at (${legB.x.toFixed(2)}, ${legB.y.toFixed(2)}), reach ${legB.reach.toFixed(2)}, `
+      + `bearing ${(((legB.a / DEG2RAD) % 360 + 360) % 360).toFixed(1)}°; bound by ${wall} `
+      + `[margins: plate ${legB.mPlate.toFixed(3)}, floor ${legB.mFloor.toFixed(3)}, bar ${legB.mBar.toFixed(3)}; each needs ≥ 0]. `
+      + 'Seated there anyway so the rest of the boot reports — the cock is KNOWN BAD at this balance size.',
+    );
+  }
   // The jewel is seated FULLY: a fork-sized counterbore (bore + 0.55, not
   // the chaton family's bore + 0.95) sunk 0.65·T deep, so the ruby sits
   // its whole height in the bore with a 0.35·T bearing collar beneath and
@@ -14892,9 +14947,23 @@ function reconfTrialBoot() {
       return;
     }
     if (performance.now() - t0 > 40000) {
+      // TODO 30 — a candidate that never boots used to report only that it
+      // never booted: __clock is the completion handshake, so a build that
+      // dies mid-way looks exactly like one that is slow. Read the warn buffer
+      // and the fatal error off the iframe FIRST (reconfKillTrial removes it),
+      // and say which wall stopped it — that is the whole point of a trial.
+      const dead = trialFrame === f && f.contentWindow ? {
+        warns: f.contentWindow.__bootWarns ? [...f.contentWindow.__bootWarns] : null,
+        err: f.contentWindow.__bootError || null,
+      } : { warns: null, err: null };
       reconfKillTrial();
       span.className = 'refused';
-      span.textContent = 'trial: the candidate never booted \u2014 page error, see console';
+      const why = dead.err ? dead.err.message
+        : dead.warns === null ? 'main.js never reached its first lines (parse or import failure)'
+        : dead.warns.length ? dead.warns[0]
+        : 'no warn and no error \u2014 it is still building';
+      span.textContent = `trial: ${label} never booted \u2014 ${why}${dead.warns && dead.warns.length > 1 ? ` (+${dead.warns.length - 1} more in console)` : ''}`;
+      console.log(`trial boot DIED (${label}):`, dead.err || '(no fatal error)', dead.warns || '(no warn buffer)');
       return;
     }
     trialTimer = setTimeout(poll, 300);
