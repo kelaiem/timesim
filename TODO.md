@@ -178,16 +178,16 @@ which is the same two-way drive already declared on `Chain` and
 `Fusee & great wheel`. Both instruments say the same thing about this
 change — an honest law is one the battery can see.
 
-Verified: `tools/ci-battery.mjs` locally — boot silent, support, graph,
-penetration, alarmHandoffs, stockFloor (507 rows, 64 waived, the same 64
-`main` carries), intraUnit, expectedContacts, oscillator, restoring and
-inspection (0 FORBIDDEN) all PASS; `clearances` and `sweptOverlap` were
-still running on this runner when the branch was pushed, and CI's own run
-is the record for those two. Both explainer gates pass (i18n 100% in all
-three locales, 0 unmatched keys; explain-quotes 0 disagreements). The
-schematic's spiral line rides the morph rather than quoting a plan the
-metal has left behind — §78's declared residue for this ribbon, closed in
-passing.
+Verified: `tools/ci-battery.mjs` locally, **14/14 gates, 3055 s** — boot
+silent, support, graph, penetration, alarmHandoffs, stockFloor (507 rows,
+64 waived, the same 64 `main` carries), intraUnit, expectedContacts,
+oscillator, restoring, inspection 0 FORBIDDEN, clearances 0 violations
+over 30 budgets, sweptOverlap **0 CONFIRMED** over 59 216 pairs (2 tight,
+13 refuted), and the fingerprint identical across two virgin boots. Both
+explainer gates pass too (i18n 100% in all three locales, 0 unmatched
+keys; explain-quotes 0 disagreements). The schematic's spiral line rides
+the morph rather than quoting a plan the metal has left behind — §78's
+declared residue for this ribbon, closed in passing.
 
 **What is NOT closed, and is now [item 32](#32-the-mainsprings-shape-is-real-its-torque-is-still-authored):** the spring's
 TORQUE. The HUD's `springTq = 0.35 + 0.65·reserve` is authored prose, not
