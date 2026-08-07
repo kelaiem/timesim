@@ -23,18 +23,26 @@
 # is why a gate that had stopped running for a day still read like somebody's
 # force-push. 60 restored the ordering and was declared a STAY, not a fix.
 #
-# §81 is the fix, so the stay is repaid. Two reductions, both verified
-# byte-identical against the pre-change report: the scene is welded (every mesh
-# indexed, ~30% of vertices were duplicates) and the harness SHARDS the checks
-# across browser contexts by their measured cost, so the wall is max(shard)
-# rather than sum(checks). Measured on a 4-vCPU dev container: 3525.6 s
-# (58.8 min) → 1588.1 s (26.5 min), and sweptOverlap alone 2075 s → 1573 s.
-# That let ci-battery.mjs re-derive its per-check guard to 40 min, which is
-# what makes 45 available here again with the ordering intact — check guard
-# 40 < job 45, and a job that measures ~19 min of battery plus setup against
-# it. The remaining long pole is still sweptOverlap's confirm tier (roadmap
-# §82); if that lands, re-derive both numbers from the new measurement rather
-# than trimming either one on its own.
+# §81 CUT THE WALL AND DID NOT EARN THIS NUMBER BACK, so 60 stands. Its two
+# reductions are real and verified byte-identical against the pre-change
+# report: the scene is welded (every mesh indexed, ~30% of vertices were
+# duplicates) and the harness SHARDS the checks across browser contexts by
+# their measured cost, so the wall is max(shard) rather than sum(checks). This
+# job went from dying at 45 to finishing at 37.5 min.
+#
+# But 45 was tried first and reverted, on the measurement. §81 derived it from
+# a dev container, where the battery is 26.5 min; on THIS runner the same tree
+# takes 36.7 min, because ubuntu-latest is ~1.45x slower (4082.8 s of check
+# time against 2807.8 s). A 45 cap over a 37.5 min job is 1.20x — the very
+# ratio that killed runs 188-194 — so it would have re-armed the failure the
+# 60 was raised to stop, with a green run to point at as evidence it was fine.
+#
+# The reason sharding cannot buy this number is worth keeping: the wall is
+# max(shard), but the cap is set by the slowest single CHECK, and no partition
+# subdivides a check. sweptOverlap alone is 2184.6 s (36.4 min) on CI and is
+# 57% of all check time. Roadmap §82 owns it. When it lands, re-derive this
+# cap AND ci-battery.mjs's per-check guard together, from a CI run — not from
+# whatever machine the work happened to be done on.
 #
 # Playwright is pinned in tools/package.json so the browser build is stable;
 # the browser download is cached keyed on that pin. python3 for dev_server.py
@@ -56,7 +64,7 @@ concurrency:
 jobs:
   battery:
     runs-on: ubuntu-latest
-    timeout-minutes: 45   # must stay ABOVE ci-battery.mjs's per-check guard (40)
+    timeout-minutes: 60   # must stay ABOVE ci-battery.mjs's per-check guard (45)
     steps:
       - uses: actions/checkout@v4
 

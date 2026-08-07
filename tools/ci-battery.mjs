@@ -78,15 +78,30 @@ const YIELD_EVERY = 64;
 // `measureClearance` BVH sweep over all 9 axes, and TODO 27's chain is on two
 // of them. Roadmap §82 still owns that tier and has not landed.
 //
-// 45 → 40, DERIVED, not trimmed for tidiness. §81's weld took `sweptOverlap`
-// 2075 s → 1598 s single-file and it measures 1573 s (26.2 min) inside a
-// 2-shard run on this container, so the rule this guard has always been sized
-// by — about 1.5x the slowest check — puts it at 40 minutes (1.53x), and the
-// same measurement is what lets battery.yml's job cap come back to 45 with the
-// required ordering (check guard < job cap) intact and a real margin, instead
-// of the 45/60 pair where the two were one step apart. Both numbers now derive
-// from one measured quantity; when §82 moves that quantity, re-derive both.
-const CHECK_TIMEOUT_MS = 40 * 60 * 1000;
+// §81 SHARDED THE HARNESS AND THIS GUARD DID NOT MOVE, which took one wrong
+// answer to establish. The entry's acceptance asked for 45 → 20; §81 first
+// tried 45 → 40, derived from `sweptOverlap` measuring 26.2 min inside a
+// 2-shard run — on a DEV CONTAINER. Measured on the runner this gate actually
+// runs on, the same check is 2184.6 s (36.4 min), because ubuntu-latest is
+// ~1.45x slower here than that container (4082.8 s of check time against
+// 2807.8 s for the identical tree). 40 minutes would have left a healthy run
+// 1.10x of headroom on a WEDGE guard. Reverted to 45 before it shipped.
+//
+// The general rule, since this is the second entry to trip on it: A GUARD IS
+// SIZED BY THE SLOWEST ENVIRONMENT IT RUNS IN, NOT THE ONE YOU MEASURED ON.
+// And note what sharding can and cannot buy — the wall is now max(shard), but
+// this guard and battery.yml's job cap are both set by the slowest single
+// CHECK, which no partition can subdivide. Sharding moved the wall 2.2x and
+// moved neither timeout.
+//
+// Even 45 is only 1.24x over that 36.4 min, which is thinner than a guard
+// should be. It is not raised, because raising a guard to fit a check is how
+// the 45/60 pair got into trouble in the first place; the number that has to
+// come down is `sweptOverlap`'s, and that is roadmap §82's confirm tier — 15
+// raw hull overlaps each re-measured by an uncapped `measureClearance` sweep
+// over all 9 axes, with TODO 27's chain on two of them. When §82 lands,
+// re-derive this and the job cap together, from a CI run.
+const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
 // The battery, in the order the gates are REPORTED: cheap and synchronous
@@ -103,6 +118,9 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // 4-vCPU dev container after §80 landed — `--report` writes the same column
 // back out as `ms`, which is how they get refreshed. They are used ONLY to
 // balance the shards: a stale number costs wall clock, never a wrong verdict.
+// They are dev-container numbers and CI is ~1.45x slower ACROSS THE BOARD,
+// which does not matter here — the partition is decided by ratios, and the
+// measured CI run splits 2184.6 s against 1898.2 s on exactly this column.
 const BATTERY = [
   { name: 'support', opts: {}, cost: 22,
     gate: '0 failures',

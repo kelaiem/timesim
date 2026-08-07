@@ -7246,6 +7246,12 @@ to the pre-change one — every check, every row, every number**, fingerprint
 `1436114427` unchanged. That identity is the acceptance; the stopwatch on its
 own would prove nothing.
 
+On `ubuntu-latest`, where the gate actually lives, the same tree takes 36.7 min
+against a job that had been **dying at its 45-minute cap** — six runs, two of
+them pushes to main. The gate runs again. Read the dev-container numbers in
+this section as ratios: that machine is ~1.45× faster than the runner, a
+difference this entry got wrong once and paid for (see the last section).
+
 ### Tranche A — the weld, and its real ceiling
 
 `ExtrudeGeometry`, `toNonIndexed()` and hand-written soup all store a vertex
@@ -7348,24 +7354,45 @@ tables to `BufferGeometry#N` was the alternative and would have collapsed
 `CylinderGeometry#6` and `BoxGeometry#31` into the same undifferentiated name,
 destroying the information the label exists to carry.
 
-### The timings, and the two guards that come back down
+### The timings, and the two guards that DO NOT come down
 
-| check | before | after | | check | before | after |
-|---|---|---|---|---|---|---|
-| sweptOverlap | 2075.5 | 1573 | | support | 32.4 | 22 |
-| inspection | 768.8 | 607 | | penetration | 17.7 | 17 |
-| clearances | 455.7 | 395 | | stockFloor | 6.0 | 4 |
-| expectedContacts | 145.4 | 147 | | restoring | 4.5 | 3 |
+| check | dev before | dev after | CI after |
+|---|---|---|---|
+| sweptOverlap | 2075.5 | 1532.7 | **2184.6** |
+| inspection | 768.8 | 607 | 976.2 |
+| clearances | 455.7 | 395 | 628.5 |
+| expectedContacts | 145.4 | 147 | 211.6 |
+| support | 32.4 | 22 | 37.0 |
 
 Two of the entry's own cost-table rows were already stale before any of this
 (`inspection` 985 → 769, `clearances` 497 → 456), which is the case for the
-column being measured data rather than a hand-argued partition.
+column being measured data rather than a hand-argued partition. CI is ~1.45×
+slower than the dev container across the board (4082.8 s of check time against
+2807.8 s for the identical tree), which does not disturb the partition — that
+is decided by ratios, and the CI run splits 2184.6 s against 1898.2 s.
 
-So both timeouts come down, and both are now derived from ONE measured
-quantity. `CHECK_TIMEOUT_MS` 45 → **40 min**, the ~1.5× rule it has always been
-sized by applied to `sweptOverlap`'s 26.2 min (1.53×); `battery.yml`'s
-`timeout-minutes` 60 → **45**, which the 40 makes available with the required
-ordering (check guard < job cap) and a real margin rather than one step. §80
-declined the equivalent line and said so; §81 pays it. The remaining long pole
-is still `sweptOverlap`'s confirm tier — roadmap §82 — and when that lands both
-numbers are re-derived from the new measurement, not trimmed one at a time.
+**The entry's last acceptance line is not delivered, and the way it failed is
+the more useful half.** `battery.yml` was to return 60 → 45. It was changed to
+45, with `CHECK_TIMEOUT_MS` re-derived 45 → 40 to keep the required ordering,
+and both were **reverted before shipping** when the first CI run measured what
+they had been derived from wrongly. The derivation used the dev container,
+where the battery is 26.5 min and `sweptOverlap` 25.5; on `ubuntu-latest` the
+same tree is 36.7 and 36.4. That would have left a 40-minute WEDGE guard 1.10×
+of headroom over a healthy run, and a 45-minute job cap 1.20× over a 37.5-minute
+job — the exact ratio that killed runs 188–194. Both numbers stand where they
+were.
+
+So the general rule, written at the constant because this is the second entry
+to trip on it: **a guard is sized by the slowest environment it runs in, not
+the one you measured on.**
+
+And the structural reason sharding cannot buy those numbers, which is worth
+separating from the mistake: the wall is now `max(shard)`, but both timeouts are
+set by the slowest single CHECK, and no partition subdivides a check.
+`sweptOverlap` is 57% of all check time and 36.4 min on CI by itself. Sharding
+moved the wall 2.2× and moved neither timeout. That is roadmap §82's to move —
+when it does, re-derive both together, from a CI run.
+
+What §81 does deliver on this front is the thing the entry actually asked for
+in its first paragraph: the job went from **dying at 45 minutes** — six runs,
+two of them pushes to main — to finishing in 37.5. The gate runs again.
