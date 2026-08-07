@@ -3513,3 +3513,48 @@ change made for another reason, and nothing replaced it. That is true whatever
 anyone decides about sub-dial size — a factor of 1.5 should have been refused
 by the build, and instead it rendered a dial with two holes eating the centre
 bore. Fix the guard independently of any decision to use the headroom.
+
+## 34. The §36 sleeve validation cannot fail — the dilation is measured from the sweep that then approves it
+
+`buildSweptRegistry`'s path hulls are validated against a finer, phase-shifted
+pose set than the one they were derived from, which is the right shape: a hull
+checked only against its own samples proves nothing. A sleeve that escapes that
+finer sweep is not thrown away — it is **dilated by its own measured overshoot,
+doubled** — and a second pass then re-checks the dilated sleeve and demotes
+whatever still escapes. The comment at that second pass has always conceded
+half the problem ("partly self-fulfilling") while claiming the pass redeems it:
+*"the honest arbiter is the second pass below … what this pass genuinely
+arbitrates is whether the doubled headroom holds."*
+
+**It arbitrates nothing.** §80 reduced the pass to the single comparison that
+decides it, and the algebra is then plain. Growing every box of a sleeve by `g`
+takes a vertex's Chebyshev distance to the nearest box from `best` to
+`max(0, best − g)`, so "still outside" means `best > g + tol`. But `g` is
+`2·over + tol` where `over` is the largest `best` the same fine sweep produced,
+so `best ≤ over < g` for every vertex it measured. The test cannot fire. On the
+shipped tree it does not: 43 sleeves are dilated and `stillEscapingAfterWidening`
+is empty, and it would be empty for any geometry whatsoever.
+
+**Why that matters and is not merely tidy.** The registry's whole claim is that
+a volume CONTAINS its part at every pose. For the 43 dilated sleeves that claim
+currently rests on one sample set both deriving the correction and grading it —
+the containment is true of those 261 poses by construction and is an
+extrapolation everywhere else. Every one of the 43 feeds `sweptOverlap`'s
+static-vs-swept test as a hull, so an under-sized sleeve is an under-report, in
+the one error direction §36 says it will not accept.
+
+**What to build.** Give the dilated set an arbiter that did not set its own
+homework. Cheapest honest form: a THIRD pose set — a different `validatePerAxis`
+with a different phase offset, walked only over the dilated sleeves (a small
+population, so the lap is cheap) — and demote what escapes it. Note the
+constraint §80 documents at `walkPoses`: some of what `setPose` writes is
+cumulative, so an extra lap re-poses those parts and moves the registry's
+numbers. The third sweep therefore has to be designed as part of the walk
+sequence, and the before/after report compared with that expected difference
+understood, not asserted away. Second option, stronger and more work: bound the
+sleeve from the part's DECLARED travel the way §36 job A bounds a revolve's arc,
+so the correction stops being a sample statistic at all.
+
+Until then the dilation is an honest measurement graded by itself, and the
+second pass is kept — with the algebra written at it — because an assertion
+that cannot fail should say so rather than quietly disappear.

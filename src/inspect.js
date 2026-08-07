@@ -2874,20 +2874,32 @@ export async function findFreeAnnulus(clock, {
 // sweep's end to the next sweep's start — unioning across that would bridge
 // two unrelated configurations and inflate the sleeve back to an AABB. This is
 // the same boundary rule the spoke and oscillation tests already carry.
-function buildPathHull(series, perAxis) {
+//
+// §80: the input is the list of PER-POSE BOXES, not the per-pose point sets.
+// It always was, arithmetically — the old signature took the points and its
+// first act was to reduce each pose to its six extremes. Taking the boxes is
+// the same union of the same numbers with the vertices already dropped at the
+// place they were measured, which is the whole of §80's point 1: a box is what
+// this consumer READS, so a box is what the sweep should keep.
+function buildPathHull(poseBoxes, perAxis) {
   const boxes = [];
-  const acc = (b, pts) => {
-    for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i] < b[0]) b[0] = pts[i];       if (pts[i] > b[3]) b[3] = pts[i];
-      if (pts[i + 1] < b[1]) b[1] = pts[i + 1]; if (pts[i + 1] > b[4]) b[4] = pts[i + 1];
-      if (pts[i + 2] < b[2]) b[2] = pts[i + 2]; if (pts[i + 2] > b[5]) b[5] = pts[i + 2];
-    }
+  const acc = (b, o) => {
+    if (o[0] < b[0]) b[0] = o[0];  if (o[3] > b[3]) b[3] = o[3];
+    if (o[1] < b[1]) b[1] = o[1];  if (o[4] > b[4]) b[4] = o[4];
+    if (o[2] < b[2]) b[2] = o[2];  if (o[5] > b[5]) b[5] = o[5];
   };
-  for (let i = 0; i < series.length; i++) {
-    const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
-    acc(b, series[i]);
+  // Both callers used to hand this the POINTS, and a 3n-long point array
+  // reads as a box whose first six numbers happen to be vertices — wrong
+  // sleeves, silently, with every downstream count still plausible. Six is
+  // the contract, so six is checked.
+  if (poseBoxes.length && poseBoxes[0].length !== 6) throw new Error('buildPathHull wants per-pose boxes, not points');
+  for (let i = 0; i < poseBoxes.length; i++) {
+    // A fresh PLAIN array per pose: poses a part stood still through SHARE one
+    // box object upstream, and the sleeve dilation below mutates these in place.
+    const o = poseBoxes[i];
+    const b = [o[0], o[1], o[2], o[3], o[4], o[5]];
     const sameAxis = (i + 1) % perAxis !== 0;
-    if (sameAxis && i + 1 < series.length) acc(b, series[i + 1]);
+    if (sameAxis && i + 1 < poseBoxes.length) acc(b, poseBoxes[i + 1]);
     boxes.push(b);
   }
   // Drop any box wholly inside another — a part at rest on most axes produces
@@ -2907,6 +2919,65 @@ function buildPathHull(series, perAxis) {
 const THETA_BINS = 2048;                              // 0.0031 rad per bin
 const THETA_BIN_W = (Math.PI * 2) / THETA_BINS;
 const thetaBin = (a) => ((Math.floor(a / THETA_BIN_W) % THETA_BINS) + THETA_BINS) % THETA_BINS;
+
+// ---------------------------------------------------------------------------
+// §80 — A MESH'S POSE STATE, and why the sweep may trust it.
+//
+// The registry's bill was 369 poses x every vertex of every mesh, transformed
+// into a Float64Array and HELD (measured: 640,558 vertices over 608 meshes, so
+// ~15 MB per frame and ~5.7 GB alive at the peak — which is what "3.0x the
+// vertices bought ~4x the wall clock" was really reporting). Most of those
+// transforms compute a number the sweep already has: each axis PINS the state
+// every other axis varies, so a part only the alarm crown moves stands
+// perfectly still through the other eight sweeps and is re-transformed 300-odd
+// times into the same place.
+//
+// A mesh's POSE STATE is its geometry object plus its world matrix. Equal at
+// two poses ⇒ equal world vertices, to the last bit: the same arithmetic over
+// the same inputs. So the sweep transforms once per state and shares the
+// result — an EXACT reduction, not an approximation, and one that needs no
+// waiver.
+//
+// It rests on geometry IDENTITY standing for geometry CONTENT — a part that
+// rewrote one BufferGeometry's positions in place would keep its id and lie
+// here. That is not a new trust: `bvhFor` caches by geometry the same way, and
+// MODELING.md rule 6 already forbids the in-place morph for exactly that
+// reason ("build the states as distinct geometry objects"). The mainspring and
+// the hairspring obey it (a pool of wind frames), and so does the chain (a
+// fresh geometry per rebuild) — so a morph reads here as a new state, which is
+// what rule 6's "a part that changes SHAPE is a moving part" demands.
+const _stateBits = new Float64Array(1);
+const _stateWords = new Uint32Array(_stateBits.buffer);
+function poseStateOf(store, mesh) {
+  let s = store.get(mesh);
+  if (!s) { s = { byHash: new Map(), sigs: [] }; store.set(mesh, s); }
+  const e = mesh.matrixWorld.elements;
+  const gid = mesh.geometry.id;
+  let h = gid | 0;
+  for (let k = 0; k < 16; k++) {                       // FNV-1a over the raw bits
+    _stateBits[0] = e[k];
+    h = Math.imul(h ^ _stateWords[0], 16777619) >>> 0;
+    h = Math.imul(h ^ _stateWords[1], 16777619) >>> 0;
+  }
+  const bucket = s.byHash.get(h);
+  if (bucket) {
+    // The hash only nominates candidates; the sig comparison DECIDES. A hash
+    // collision must not be able to make two different poses share a frame.
+    outer: for (const id of bucket) {
+      const sig = s.sigs[id];
+      if (sig[0] !== gid) continue;
+      for (let k = 0; k < 16; k++) if (sig[k + 1] !== e[k]) continue outer;
+      return id;
+    }
+  }
+  const sig = new Float64Array(17);
+  sig[0] = gid;
+  for (let k = 0; k < 16; k++) sig[k + 1] = e[k];
+  const id = s.sigs.length;
+  s.sigs.push(sig);
+  if (bucket) bucket.push(id); else s.byHash.set(h, [id]);
+  return id;
+}
 
 export async function buildSweptRegistry(clock, {
   axes = AXES, perAxis = 12, validatePerAxis = 29, eps = 1e-6, yieldEvery = 4,
@@ -2929,32 +3000,77 @@ export async function buildSweptRegistry(clock, {
   if (clock.beginSweepHold) clock.beginSweepHold();
   try {
   const units = collectUnits(clock, { includeExcluded: true });
-  // Sample every mesh's world vertices over a pose set.
-  const samplePoses = async (n) => {
-    const frames = [];
+  const meshes = [];
+  for (const u of units) for (const m of u.meshes) if (!meshes.includes(m)) meshes.push(m);
+  const poseStates = new Map();                    // mesh → its distinct-state table
+  const _wv = new THREE.Vector3();
+  let vertexTransforms = 0, vertexTransformsNaive = 0;
+
+  // THE POSE WALK, shared by both sweeps. Exactly TWO of these run per build,
+  // in the order they always have, and that is not a stylistic choice: some of
+  // what setPose writes is CUMULATIVE (TODO 20's alarm column advances a step
+  // each time a pose flips the parity, so its angle depends on how many flips
+  // came before), so the pose a walk lands on is a function of the walk history
+  // as well as of the axis fraction. Inserting a third walk — or reordering
+  // these two — silently re-poses those parts and moves the registry's numbers.
+  // Any new quantity a sweep needs has to be accumulated inside the walk that
+  // is already running, not bought with another lap.
+  const walkPoses = async (n, visit) => {
+    let k = 0;
     for (const axis of axes) {
       for (let s = 0; s < n; s++) {
+        // setPose ends in scene.updateMatrixWorld(true) — the explicit second
+        // call this used to make forced a whole-scene matrix rebuild per pose
+        // for nothing.
         clock.setPose(axis.pose(s / Math.max(1, n - 1)));
-        clock.scene.updateMatrixWorld(true);
-        const frame = new Map();
-        for (const u of units) for (const m of u.meshes) {
-          const pos = m.geometry.getAttribute('position');
-          const pts = new Float64Array(pos.count * 3);
-          const v = new THREE.Vector3();
-          for (let i = 0; i < pos.count; i++) {
-            v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
-            pts[i * 3] = v.x; pts[i * 3 + 1] = v.y; pts[i * 3 + 2] = v.z;
-          }
-          frame.set(m, pts);
-        }
-        frames.push(frame);
-        if (frames.length % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+        visit(k);
+        k++;
+        if (k % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
       }
     }
-    return frames;
+    return k;
   };
 
-  const frames = await samplePoses(perAxis);
+  // THE COARSE SWEEP. Still materialised — the derivation below is mesh-major
+  // (a circle fitted through one vertex's whole track, an arc per pose) and
+  // cannot be folded into a pose-major walk without a second lap the paragraph
+  // above forbids. What it no longer does is keep a COPY per pose: `stateAt`
+  // maps pose → state and the frames are shared, so a part that never moves
+  // holds one frame instead of 108.
+  const sampleCoarse = async (n) => {
+    const total = axes.length * n;
+    const per = new Map();
+    for (const m of meshes) per.set(m, { states: [], byId: new Map(), stateAt: new Int32Array(total) });
+    await walkPoses(n, (k) => {
+      for (const m of meshes) {
+        const rec = per.get(m);
+        const id = poseStateOf(poseStates, m);
+        const pos = m.geometry.getAttribute('position');
+        vertexTransformsNaive += pos.count;
+        let slot = rec.byId.get(id);
+        if (slot === undefined) {
+          const pts = new Float64Array(pos.count * 3);
+          const box = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+          for (let i = 0; i < pos.count; i++) {
+            _wv.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+            const x = _wv.x, y = _wv.y, z = _wv.z;
+            pts[i * 3] = x; pts[i * 3 + 1] = y; pts[i * 3 + 2] = z;
+            if (x < box[0]) box[0] = x; if (x > box[3]) box[3] = x;
+            if (y < box[1]) box[1] = y; if (y > box[4]) box[4] = y;
+            if (z < box[2]) box[2] = z; if (z > box[5]) box[5] = z;
+          }
+          vertexTransforms += pos.count;
+          slot = rec.states.length;
+          rec.states.push({ pts, box, cen: null, arc: null });
+          rec.byId.set(id, slot);
+        }
+        rec.stateAt[k] = slot;
+      }
+    });
+    return per;
+  };
+
+  let coarse = await sampleCoarse(perAxis);
 
   // Kåsa algebraic circle fit — centre of the arc a point travels on.
   const fitCircle = (xs, ys) => {
@@ -2983,35 +3099,44 @@ export async function buildSweptRegistry(clock, {
   const volumes = [];
   for (const u of units) {
     for (const m of u.meshes) {
-      const series = frames.map((f) => f.get(m));
-      const n0 = series[0].length / 3;
-      // Does it move at all?
+      const rec = coarse.get(m);
+      const states = rec.states, stateAt = rec.stateAt;
+      const series = Array.from(stateAt, (s) => states[s].pts);   // per pose, SHARED
+      const poseBoxes = Array.from(stateAt, (s) => states[s].box);
+      // Does it move at all? One pose state over the whole sweep IS "it never
+      // moved" — the geometry and the world matrix were identical every time,
+      // so no comparison can find a displacement. Otherwise compare the
+      // distinct frames against pose 0, which is the same set of comparisons
+      // the per-pose loop made with the repeats removed.
       let moves = false;
-      for (const pts of series) {
-        for (let i = 0; i < pts.length; i++) if (Math.abs(pts[i] - series[0][i]) > eps) { moves = true; break; }
-        if (moves) break;
+      if (states.length > 1) {
+        const p0 = series[0];
+        for (const st of states) {
+          const pts = st.pts;
+          for (let i = 0; i < pts.length; i++) if (Math.abs(pts[i] - p0[i]) > eps) { moves = true; break; }
+          if (moves) break;
+        }
       }
+      // z band from the per-pose boxes: min/max of a min/max, over the same
+      // vertices.
       let zLo = Infinity, zHi = -Infinity;
-      for (const pts of series) for (let i = 2; i < pts.length; i += 3) { if (pts[i] < zLo) zLo = pts[i]; if (pts[i] > zHi) zHi = pts[i]; }
+      for (const st of states) { if (st.box[2] < zLo) zLo = st.box[2]; if (st.box[5] > zHi) zHi = st.box[5]; }
       if (!moves) {
         // §36 part three needs a static part's spatial extent, not just its z
         // band. It costs nothing to store — the part DOES NOT MOVE, so its
         // world AABB is exact rather than a hull — and without it structural
         // metal is invisible to the route check, which would make "through
         // structural metal is fine" vacuously true instead of evidenced.
-        let bxLo = Infinity, byLo = Infinity, bxHi = -Infinity, byHi = -Infinity;
-        for (let i = 0; i < series[0].length; i += 3) {
-          const x = series[0][i], y = series[0][i + 1];
-          if (x < bxLo) bxLo = x; if (x > bxHi) bxHi = x;
-          if (y < byLo) byLo = y; if (y > byHi) byHi = y;
-        }
+        const b0 = poseBoxes[0];
+        const bxLo = b0[0], byLo = b0[1], bxHi = b0[3], byHi = b0[4];
         volumes.push({ unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'static',
                        box: [bxLo, byLo, zLo, bxHi, byHi, zHi], zBand: [zLo, zHi], reversed: false });
         continue;
       }
-      // Planar? (every vertex holds its z)
+      // Planar? (every vertex holds its z) — over the distinct frames, same
+      // reason as `moves` above.
       let planar = true;
-      for (const pts of series) { for (let i = 2; i < pts.length && planar; i += 3) if (Math.abs(pts[i] - series[0][i]) > 1e-4) planar = false; if (!planar) break; }
+      for (const st of states) { const pts = st.pts; for (let i = 2; i < pts.length && planar; i += 3) if (Math.abs(pts[i] - series[0][i]) > 1e-4) planar = false; if (!planar) break; }
       // Track one witness vertex's path and fit a circle to it.
       let fit = null;
       if (planar) {
@@ -3022,9 +3147,9 @@ export async function buildSweptRegistry(clock, {
       }
       if (!fit) {
         let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity;
-        for (const pts of series) for (let i = 0; i < pts.length; i += 3) {
-          if (pts[i] < xLo) xLo = pts[i]; if (pts[i] > xHi) xHi = pts[i];
-          if (pts[i + 1] < yLo) yLo = pts[i + 1]; if (pts[i + 1] > yHi) yHi = pts[i + 1];
+        for (const st of states) {
+          if (st.box[0] < xLo) xLo = st.box[0]; if (st.box[3] > xHi) xHi = st.box[3];
+          if (st.box[1] < yLo) yLo = st.box[1]; if (st.box[4] > yHi) yHi = st.box[4];
         }
         // §48: a compound mover has no angle to reverse, so the arc test
         // below never sees it — but a part that SLIDES out and back is
@@ -3033,10 +3158,17 @@ export async function buildSweptRegistry(clock, {
         // change in the CENTROID's direction of travel: consecutive step
         // vectors pointing against each other (dot < 0). Same axis-boundary
         // skip, since a pose jump between sweeps is not motion the part made.
-        const cen = series.map((pts) => {
-          let sx = 0, sy = 0, sz = 0, n = 0;
-          for (let i = 0; i < pts.length; i += 3) { sx += pts[i]; sy += pts[i+1]; sz += pts[i+2]; n++; }
-          return n ? [sx/n, sy/n, sz/n] : [0, 0, 0];
+        // Summed per DISTINCT frame and shared: two poses holding the same
+        // vertices have the same centroid, down to the summation order.
+        const cen = Array.from(stateAt, (s) => {
+          const st = states[s];
+          if (!st.cen) {
+            const pts = st.pts;
+            let sx = 0, sy = 0, sz = 0, n = 0;
+            for (let i = 0; i < pts.length; i += 3) { sx += pts[i]; sy += pts[i+1]; sz += pts[i+2]; n++; }
+            st.cen = n ? [sx/n, sy/n, sz/n] : [0, 0, 0];
+          }
+          return st.cen;
         });
         const dv = [];
         for (let i = 1; i < cen.length; i++) {
@@ -3085,17 +3217,23 @@ export async function buildSweptRegistry(clock, {
         volumes.push({
           unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'path',
           box: [xLo, yLo, zLo, xHi, yHi, zHi],
-          boxes: buildPathHull(series, perAxis),
+          boxes: buildPathHull(poseBoxes, perAxis),
           zBand: [zLo, zHi], reversed: pathReversed,
           reversedVia: pathReversed ? 'track' : undefined,   // centroid translated out and back
         });
         continue;
       }
       // REVOLVE about (cx, cy) ∥ z. r-band and per-frame θ extent.
+      // This is the ONE consumer that genuinely wants per-vertex data (§80's
+      // point 2): an r band and an angular extent about an axis that is not
+      // known until the fit above has run, so no reduction taken during the
+      // walk could have served it. It is still paid once per distinct frame,
+      // not once per pose — `st.arc` is keyed to the frame, and the r band is
+      // a min/max, so repeats add nothing either way.
       const { cx, cy } = fit;
       let rLo = Infinity, rHi = -Infinity;
-      const arcs = [];
-      for (const pts of series) {
+      for (const st of states) {
+        const pts = st.pts;
         let aLo = Infinity, aHi = -Infinity;
         const base = Math.atan2(pts[1] - cy, pts[0] - cx);
         for (let i = 0; i < pts.length; i += 3) {
@@ -3107,8 +3245,9 @@ export async function buildSweptRegistry(clock, {
           while (d < -Math.PI) d += Math.PI * 2;
           if (d < aLo) aLo = d; if (d > aHi) aHi = d;
         }
-        arcs.push({ lo: base + aLo, hi: base + aHi, width: aHi - aLo });
+        st.arc = { lo: base + aLo, hi: base + aHi, width: aHi - aLo };
       }
+      const arcs = Array.from(stateAt, (s) => states[s].arc);
       // The spoke rule: if the part advances further between consecutive
       // samples than its own angular width, the sampled arcs do not overlap
       // and their union is NOT the swept set. Promote to a full revolve.
@@ -3218,7 +3357,7 @@ export async function buildSweptRegistry(clock, {
       if (full && reason === 'oscillates') {
         volumes.push({
           unit: u.name, mesh: m, meshName: m.name || undefined, kind: 'path',
-          box: null, boxes: buildPathHull(series, perAxis), zBand: [zLo, zHi],
+          box: null, boxes: buildPathHull(poseBoxes, perAxis), zBand: [zLo, zHi],
           from: 'oscillates', reversed,
           reversedVia: reversed ? 'arc' : undefined,         // turned one way then the other
         });
@@ -3239,103 +3378,179 @@ export async function buildSweptRegistry(clock, {
   // every pose. Validated against a FINER, phase-shifted sample set than the
   // one the hull was derived from — checking a hull against its own samples
   // would be vacuous, and catching a hull that is merely stale is the point.
-  const fine = await samplePoses(validatePerAxis);
+  //
+  // §80: the fine sweep is STREAMED. It used to be materialised exactly like
+  // the coarse one — 261 frames of every vertex of every mesh, ~4 GB alive —
+  // and then read three times, by the containment pass, the sleeve dilation
+  // and the demotion pass. But nothing downstream of it wants POINTS: those
+  // three passes want a verdict, a worst overshoot and a pair of bands. So
+  // each vertex is now transformed, asked its questions and dropped, and what
+  // survives the pose is the handful of numbers below. Nothing is thrown away
+  // that a later pass turns out to need — which is why the containment test no
+  // longer stops at the first escaping vertex for the two kinds whose later
+  // passes measure the whole sweep. Everything a lap of the walk could have
+  // been asked for is asked for on that lap, because a second lap is not
+  // available (see walkPoses).
   const tol = 1e-3;
+  let coarseFrames = 0, coarseVertices = 0;
+  for (const rec of coarse.values()) {
+    coarseFrames += rec.states.length;
+    for (const st of rec.states) coarseVertices += st.pts.length / 3;
+  }
+  coarse = null;                    // derivation is done: let the frames go
+
+  const measureFine = (vol, m, pos) => {
+    const mw = m.matrixWorld, n = pos.count;
+    if (vol.kind === 'static') {
+      const zl = vol.zBand[0] - tol, zh = vol.zBand[1] + tol;
+      for (let i = 0; i < n; i++) {
+        _wv.fromBufferAttribute(pos, i).applyMatrix4(mw);
+        if (_wv.z < zl || _wv.z > zh) return { bad: 'z' };
+      }
+      return { bad: null };
+    }
+    if (vol.kind === 'approx') {
+      const b = vol.box;
+      for (let i = 0; i < n; i++) {
+        _wv.fromBufferAttribute(pos, i).applyMatrix4(mw);
+        if (_wv.x < b[0] - tol || _wv.x > b[3] + tol || _wv.y < b[1] - tol
+            || _wv.y > b[4] + tol || _wv.z < b[2] - tol || _wv.z > b[5] + tol) return { bad: 'box' };
+      }
+      return { bad: null };
+    }
+    if (vol.kind === 'path') {
+      // §36 job B's sleeve: contained if the vertex is inside ANY of its
+      // boxes. Adding this case was the fix for a hard crash — job B
+      // introduced a FOURTH volume shape and the dispatch had three arms, the
+      // last of which assumed revolve and read vol.axis[0]. A path volume fell
+      // into it and threw on an axis it never has, taking buildSweptRegistry
+      // down and with it every check built on the registry.
+      //
+      // Worth naming the shape of the mistake: the bug was not the missing
+      // field, it was an `else` standing in for "therefore revolve". A dispatch
+      // whose default arm assumes one specific kind silently inherits every
+      // kind added later.
+      //
+      // ONE number answers both questions the sleeve is asked. `best` is the
+      // vertex's Chebyshev distance to the nearest box (0 inside), so
+      // containment is `best <= tol` — the same test the old boolean loop ran,
+      // with the same `break` the moment a box contains the point — and the
+      // dilation's overshoot is the largest `best` over the sweep. Measuring
+      // both at once is what lets the dilation be computed without the second
+      // read of a stored fine sweep.
+      const boxes = vol.boxes;
+      let over = 0;
+      for (let i = 0; i < n; i++) {
+        _wv.fromBufferAttribute(pos, i).applyMatrix4(mw);
+        const x = _wv.x, y = _wv.y, z = _wv.z;
+        let best = Infinity;
+        for (const b of boxes) {
+          const dx = Math.max(b[0] - x, 0, x - b[3]);
+          const dy = Math.max(b[1] - y, 0, y - b[4]);
+          const dz = Math.max(b[2] - z, 0, z - b[5]);
+          const dd = Math.max(dx, dy, dz);
+          if (dd < best) best = dd;
+          if (best === 0) break;
+        }
+        if (best > over && isFinite(best)) over = best;
+      }
+      return { bad: over > tol ? 'sleeve' : null, over };
+    }
+    // REVOLVE. `bad` is the containment verdict (r, then z, then the arc);
+    // `rzWhy` is the same verdict with the ARC left out, which is the question
+    // the demotion pass asks of a volume the arc test has already widened.
+    const cx = vol.axis[0], cy = vol.axis[1];
+    const rl = vol.rBand[0] - tol, rh = vol.rBand[1] + tol;
+    const zl = vol.zBand[0] - tol, zh = vol.zBand[1] + tol;
+    const box = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    let rLo = Infinity, rHi = -Infinity, bad = null, rzWhy = null;
+    for (let i = 0; i < n; i++) {
+      _wv.fromBufferAttribute(pos, i).applyMatrix4(mw);
+      const x = _wv.x, y = _wv.y, z = _wv.z;
+      const r = Math.hypot(x - cx, y - cy);
+      if (r < rLo) rLo = r; if (r > rHi) rHi = r;
+      if (x < box[0]) box[0] = x; if (x > box[3]) box[3] = x;
+      if (y < box[1]) box[1] = y; if (y > box[4]) box[4] = y;
+      if (z < box[2]) box[2] = z; if (z > box[5]) box[5] = z;
+      const rBad = r < rl || r > rh, zBad = z < zl || z > zh;
+      if (!bad) {
+        if (rBad) bad = `r=${r.toFixed(3)}`;
+        else if (zBad) bad = `z=${z.toFixed(3)}`;
+        else if (!vol.full) {
+          // A vertex is contained if its bin, or either neighbour, is
+          // covered — one bin of slack for the discretisation itself.
+          const b = thetaBin(Math.atan2(y - cy, x - cx));
+          if (!vol.bins[b] && !vol.bins[(b + 1) % THETA_BINS] && !vol.bins[(b + THETA_BINS - 1) % THETA_BINS]) bad = 'θ';
+        }
+      }
+      if (!rzWhy) { if (rBad) rzWhy = 'r'; else if (zBad) rzWhy = 'z'; }
+    }
+    return { bad, rzWhy, rLo, rHi, box };
+  };
+
+  for (const vol of volumes) {
+    vol._fine = { byState: new Map(), bad: null, over: 0, rzWhy: null,
+                  rLo: Infinity, rHi: -Infinity,
+                  box: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity] };
+  }
+  await walkPoses(validatePerAxis, () => {
+    for (const vol of volumes) {
+      const F = vol._fine;
+      const m = vol.mesh, pos = m.geometry.getAttribute('position');
+      vertexTransformsNaive += pos.count;
+      // A verdict is all these two kinds ever produce, so once they have one
+      // there is nothing left to measure. The other two are accumulating over
+      // the whole sweep and must run it out.
+      if (F.bad && (vol.kind === 'static' || vol.kind === 'approx')) continue;
+      const id = poseStateOf(poseStates, m);
+      let v = F.byState.get(id);
+      if (v === undefined) {
+        v = measureFine(vol, m, pos);
+        vertexTransforms += pos.count;
+        F.byState.set(id, v);
+      }
+      if (v.bad && !F.bad) F.bad = v.bad;             // folded in POSE order
+      if (vol.kind === 'path') { if (v.over > F.over) F.over = v.over; }
+      else if (vol.kind === 'revolve') {
+        if (v.rzWhy && !F.rzWhy) F.rzWhy = v.rzWhy;
+        if (v.rLo < F.rLo) F.rLo = v.rLo; if (v.rHi > F.rHi) F.rHi = v.rHi;
+        for (let k = 0; k < 3; k++) {
+          if (v.box[k] < F.box[k]) F.box[k] = v.box[k];
+          if (v.box[3 + k] > F.box[3 + k]) F.box[3 + k] = v.box[3 + k];
+        }
+      }
+    }
+  });
+
   const escapes = [];
   for (const vol of volumes) {
-    for (const frame of fine) {
-      const pts = frame.get(vol.mesh);
-      if (!pts) continue;
-      let bad = null;
-      for (let i = 0; i < pts.length; i += 3) {
-        const x = pts[i], y = pts[i + 1], z = pts[i + 2];
-        if (vol.kind === 'static') {
-          if (z < vol.zBand[0] - tol || z > vol.zBand[1] + tol) { bad = 'z'; break; }
-        } else if (vol.kind === 'approx') {
-          if (x < vol.box[0] - tol || x > vol.box[3] + tol || y < vol.box[1] - tol
-              || y > vol.box[4] + tol || z < vol.box[2] - tol || z > vol.box[5] + tol) { bad = 'box'; break; }
-        } else if (vol.kind === 'path') {
-          // §36 job B's sleeve: contained if the vertex is inside ANY of its
-          // boxes. Adding this case is the fix for a hard crash — job B
-          // introduced a FOURTH volume shape and this dispatch had three
-          // arms, the last of which assumes revolve and reads vol.axis[0].
-          // A path volume fell into it and threw on an axis it never has,
-          // taking buildSweptRegistry down and with it every check built on
-          // the registry.
-          //
-          // Worth naming the shape of the mistake: the bug was not the
-          // missing field, it was an `else` standing in for "therefore
-          // revolve". A dispatch whose default arm assumes one specific kind
-          // silently inherits every kind added later.
-          let inside = false;
-          for (const b of vol.boxes) {
-            if (x >= b[0] - tol && x <= b[3] + tol && y >= b[1] - tol
-                && y <= b[4] + tol && z >= b[2] - tol && z <= b[5] + tol) { inside = true; break; }
-          }
-          if (!inside) { bad = 'sleeve'; break; }
-        } else {
-          const r = Math.hypot(x - vol.axis[0], y - vol.axis[1]);
-          if (r < vol.rBand[0] - tol || r > vol.rBand[1] + tol) { bad = `r=${r.toFixed(3)}`; break; }
-          if (z < vol.zBand[0] - tol || z > vol.zBand[1] + tol) { bad = `z=${z.toFixed(3)}`; break; }
-          if (!vol.full) {
-            // A vertex is contained if its bin, or either neighbour, is
-            // covered — one bin of slack for the discretisation itself.
-            const b = thetaBin(Math.atan2(y - vol.axis[1], x - vol.axis[0]));
-            if (!vol.bins[b] && !vol.bins[(b + 1) % THETA_BINS] && !vol.bins[(b + THETA_BINS - 1) % THETA_BINS]) { bad = 'θ'; break; }
-          }
-        }
-      }
-      if (bad) {
-        // A DERIVED arc that does not survive validation is widened to the
-        // full circle rather than shipped. Deriving tight and validating
-        // wider is only sound if the failure has somewhere safe to fall
-        // back to — otherwise tightening the hulls just trades a loose
-        // registry for a wrong one, which is worse. Recorded either way, so
-        // the count stays a signal: it says how much of the registry cannot
-        // be pinned from samples and is therefore waiting on a declared
-        // pose law.
-        // §36 job B, second pass at the sleeve fix. The FIRST attempt dilated
-        // every box of every sleeve by 0.25x the inter-sample chord — sound
-        // reasoning about arc sagitta, catastrophic economics: fast movers
-        // have multi-unit chords, so every sleeve grew by up to a unit, raw
-        // hull hits multiplied, and the confirm tier ground for 20+ minutes.
-        // The check's own precedent is surgical: a revolve that escapes is
-        // widened — THAT volume, not all of them. So an escaping sleeve is
-        // dilated by ITS OWN measured overshoot (max distance of any escaping
-        // vertex outside the sleeve, over the whole fine sweep), doubled for
-        // headroom. The 90 sleeves that already hold stay exactly as tight as
-        // before, which is what keeps the overlap check's raw-hit count sane.
-        //
-        // The dilation is derived from the same sweep that validates it, so
-        // its containment there is partly self-fulfilling — the honest arbiter
-        // is the second pass below, which re-checks widened sleeves and
-        // DEMOTES whatever still fails, same as an unfixable revolve.
-        escapes.push({ unit: vol.unit, kind: vol.kind, why: bad, widened: vol.kind === 'revolve' || vol.kind === 'path' });
-        if (vol.kind === 'revolve') { vol.full = true; vol.bins = null; vol.reason = 'validation'; }
-        else if (vol.kind === 'path') {
-          let over = 0;
-          for (const f2 of fine) {
-            const q = f2.get(vol.mesh); if (!q) continue;
-            for (let i = 0; i < q.length; i += 3) {
-              let best = Infinity;
-              for (const bx of vol.boxes) {
-                const dx = Math.max(bx[0] - q[i], 0, q[i] - bx[3]);
-                const dy = Math.max(bx[1] - q[i + 1], 0, q[i + 1] - bx[4]);
-                const dz = Math.max(bx[2] - q[i + 2], 0, q[i + 2] - bx[5]);
-                const dd = Math.max(dx, dy, dz);
-                if (dd < best) best = dd;
-                if (best === 0) break;
-              }
-              if (best > over && isFinite(best)) over = best;
-            }
-          }
-          const grow = over * 2 + tol;
-          for (const bx of vol.boxes) { bx[0] -= grow; bx[1] -= grow; bx[2] -= grow; bx[3] += grow; bx[4] += grow; bx[5] += grow; }
-          vol.dilatedBy = +grow.toFixed(4);
-          break;
-        }
-        break;
-      }
+    const F = vol._fine;
+    if (!F.bad) continue;
+    // A DERIVED arc that does not survive validation is widened to the
+    // full circle rather than shipped. Deriving tight and validating
+    // wider is only sound if the failure has somewhere safe to fall
+    // back to — otherwise tightening the hulls just trades a loose
+    // registry for a wrong one, which is worse. Recorded either way, so
+    // the count stays a signal: it says how much of the registry cannot
+    // be pinned from samples and is therefore waiting on a declared
+    // pose law.
+    // §36 job B, second pass at the sleeve fix. The FIRST attempt dilated
+    // every box of every sleeve by 0.25x the inter-sample chord — sound
+    // reasoning about arc sagitta, catastrophic economics: fast movers
+    // have multi-unit chords, so every sleeve grew by up to a unit, raw
+    // hull hits multiplied, and the confirm tier ground for 20+ minutes.
+    // The check's own precedent is surgical: a revolve that escapes is
+    // widened — THAT volume, not all of them. So an escaping sleeve is
+    // dilated by ITS OWN measured overshoot (max distance of any escaping
+    // vertex outside the sleeve, over the whole fine sweep), doubled for
+    // headroom. The 90 sleeves that already hold stay exactly as tight as
+    // before, which is what keeps the overlap check's raw-hit count sane.
+    escapes.push({ unit: vol.unit, kind: vol.kind, why: F.bad, widened: vol.kind === 'revolve' || vol.kind === 'path' });
+    if (vol.kind === 'revolve') { vol.full = true; vol.bins = null; vol.reason = 'validation'; }
+    else if (vol.kind === 'path') {
+      const grow = F.over * 2 + tol;
+      for (const bx of vol.boxes) { bx[0] -= grow; bx[1] -= grow; bx[2] -= grow; bx[3] += grow; bx[4] += grow; bx[5] += grow; }
+      vol.dilatedBy = +grow.toFixed(4);
     }
   }
 
@@ -3343,27 +3558,24 @@ export async function buildSweptRegistry(clock, {
   // failure of the hull's SHAPE (its r or z band), not of its arc, and no
   // amount of angular widening fixes it. This is the number that must be 0.
   const stillEscaping = [];
-  // Widened SLEEVES are re-checked here too — the dilation above was derived
-  // from this same fine sweep, so passing it is partly self-fulfilling; what
-  // this pass genuinely arbitrates is whether the doubled headroom holds. A
-  // sleeve that STILL escapes demotes to approx over the union of its own
-  // boxes, the registry saying plainly it cannot hull the part.
+  // Widened SLEEVES are re-checked here too. §80 makes this pass's standing
+  // plain, and it is weaker than the old comment here claimed ("the honest
+  // arbiter … what this pass genuinely arbitrates is whether the doubled
+  // headroom holds"). Growing every box of the sleeve by g moves a vertex's
+  // Chebyshev distance to the nearest box from `best` to max(0, best − g), so
+  // "still outside" means best > g + tol; g is 2·over + tol and `over` is the
+  // largest `best` the fine sweep produced, so best ≤ over < g and the test
+  // CANNOT fire. It is vacuous by construction, not merely self-fulfilling.
+  // Kept as written — it is the assertion the shape of the dilation earns, and
+  // an assertion that cannot fail should say so rather than disappear — but
+  // recorded as debt (TODO 34): a sleeve validated only against the sweep its
+  // own dilation was measured from has not been validated by anything
+  // independent. Reduced here to the one comparison that decided it, because
+  // that is what makes the emptiness legible instead of hiding it behind a
+  // per-vertex loop over a stored sweep.
   for (const vol of volumes) {
     if (!(vol.kind === 'path' && vol.dilatedBy)) continue;
-    let bad = false;
-    for (const frame of fine) {
-      const pts = frame.get(vol.mesh);
-      if (!pts) continue;
-      for (let i = 0; i < pts.length && !bad; i += 3) {
-        let inside = false;
-        for (const bx of vol.boxes) {
-          if (pts[i] >= bx[0] - tol && pts[i] <= bx[3] + tol && pts[i+1] >= bx[1] - tol
-              && pts[i+1] <= bx[4] + tol && pts[i+2] >= bx[2] - tol && pts[i+2] <= bx[5] + tol) { inside = true; break; }
-        }
-        if (!inside) bad = true;
-      }
-      if (bad) break;
-    }
+    const bad = vol._fine.over > vol.dilatedBy + tol;
     if (bad) {
       let xLo = Infinity, yLo = Infinity, zL = Infinity, xHi = -Infinity, yHi = -Infinity, zH = -Infinity;
       for (const bx of vol.boxes) {
@@ -3376,44 +3588,48 @@ export async function buildSweptRegistry(clock, {
       delete vol.boxes; delete vol.hullBox;
     }
   }
+  // The same question of a full revolve — does its r or z band hold the part
+  // over the whole fine sweep? — answered from what the walk measured rather
+  // than from a stored copy of it. `rzWhy` is the first r-or-z escape in pose
+  // then vertex order, which is the offender the per-frame loop used to report;
+  // `box` is the fine sweep's own extent, which is where the demoted hull came
+  // from. Note that this pass is NOT vacuous the way the sleeve pass above is:
+  // an arc widened by the containment test leaves r and z untouched, so a
+  // volume can still fail here — the registry says plainly it cannot hull the
+  // part rather than shipping a hull that does not contain it.
   for (const vol of volumes) {
     if (vol.kind !== 'revolve' || !vol.full) continue;
-    for (const frame of fine) {
-      const pts = frame.get(vol.mesh);
-      if (!pts) continue;
-      let bad = null;
-      for (let i = 0; i < pts.length; i += 3) {
-        const r = Math.hypot(pts[i] - vol.axis[0], pts[i + 1] - vol.axis[1]);
-        if (r < vol.rBand[0] - tol || r > vol.rBand[1] + tol) { bad = 'r'; break; }
-        if (pts[i + 2] < vol.zBand[0] - tol || pts[i + 2] > vol.zBand[1] + tol) { bad = 'z'; break; }
-      }
-      if (bad) {
-        // Its r or z band cannot hold it, so the motion is not really a
-        // rotation about the fitted axis — the circle fit was a coincidence
-        // of the sampled path. DEMOTE to approx: the registry says plainly
-        // that it cannot hull this part, rather than shipping a hull that
-        // does not contain it. Bounds come from the FINE sample set.
-        let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity, zL = Infinity, zH = -Infinity;
-        for (const f2 of fine) {
-          const q = f2.get(vol.mesh); if (!q) continue;
-          for (let i = 0; i < q.length; i += 3) {
-            if (q[i] < xLo) xLo = q[i]; if (q[i] > xHi) xHi = q[i];
-            if (q[i+1] < yLo) yLo = q[i+1]; if (q[i+1] > yHi) yHi = q[i+1];
-            if (q[i+2] < zL) zL = q[i+2]; if (q[i+2] > zH) zH = q[i+2];
-          }
-        }
-        stillEscaping.push({ unit: vol.unit, why: bad, demotedToApprox: true });
-        vol.kind = 'approx'; vol.box = [xLo, yLo, zL, xHi, yHi, zH];
-        delete vol.axis; delete vol.rBand; delete vol.bins; vol.full = false;
-        break;
-      }
+    const bad = vol._fine.rzWhy;
+    if (bad) {
+      // Its r or z band cannot hold it, so the motion is not really a
+      // rotation about the fitted axis — the circle fit was a coincidence
+      // of the sampled path.
+      const b = vol._fine.box;
+      stillEscaping.push({ unit: vol.unit, why: bad, demotedToApprox: true });
+      vol.kind = 'approx'; vol.box = [b[0], b[1], b[2], b[3], b[4], b[5]];
+      delete vol.axis; delete vol.rBand; delete vol.bins; vol.full = false;
     }
   }
+  for (const vol of volumes) delete vol._fine;
 
   clock.resetInputs();
   const byKind = volumes.reduce((a, v) => (a[v.kind] = (a[v.kind] || 0) + 1, a), {});
   return {
     derivedFrom: { axes: axes.length, perAxis, validatedAt: validatePerAxis },
+    // §80 — what the sweep paid, against what it would have paid transforming
+    // every mesh afresh at every pose (which is what it used to do). The ratio
+    // is a property of the MOVEMENT, not of the code: it is how much of the
+    // scene each pose axis leaves standing still, so it is worth reporting
+    // rather than assuming. `coarseFrames` is the peak number of distinct
+    // world-vertex frames held at once — the old figure was meshes x poses, for
+    // the coarse sweep AND again, 2.4x larger, for the fine one, which now
+    // holds none at all. `coarseVertices` x 24 bytes is that peak in memory.
+    sampling: {
+      vertexTransforms, vertexTransformsNaive,
+      saved: +(1 - vertexTransforms / vertexTransformsNaive).toFixed(4),
+      coarseFrames, coarseFramesNaive: meshes.length * axes.length * perAxis,
+      coarseVertices, fineFrames: 0,
+    },
     volumes: volumes.length, byKind,
     fullRevolves: volumes.filter((v) => v.full).length,
     approximate: volumes.filter((v) => v.kind === 'approx').map((v) => v.unit).filter((n, i, a) => a.indexOf(n) === i),
