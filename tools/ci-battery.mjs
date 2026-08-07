@@ -267,6 +267,12 @@ const SHARDS = (() => {
 // only whether its failure list is empty, so a report that moved while
 // staying empty passes the gate and fails the entry.
 const REPORT_PATH = argOf('--report');
+// TODO 36 — run the spec-boot tier ALONE. The sweeps take tens of minutes and
+// this tier takes about one, so iterating on the declared set (or debugging a
+// single spec that stopped building) should not require the whole battery.
+// It is a focused-check flag in CLAUDE.md's sense, not a second gate: the
+// full run always includes these points.
+const SPEC_ONLY = argv.includes('--spec-only');
 
 async function freePort() {
   return new Promise((resolve, reject) => {
@@ -340,6 +346,86 @@ async function virginBoot(browser, base) {
   return { context, page };
 }
 
+// --- TODO 36 — THE RECONFIGURE SURFACE, BOOTED --------------------------
+//
+// Every gate above boots the DEFAULT spec. Six §33 handles, the §22 knobs,
+// deep links and saved variants reached the builders through a path no check
+// had ever executed — and TODO 35 was the bill: a build that did not boot at
+// all for ?alarmaz= 175-180, shipped in a PR whose battery read 15/15 green,
+// found only because §74 Tier B swept corner azimuths by hand.
+//
+// THE ASSERTION IS LIVENESS, NOT SILENCE, and that is the whole design. A
+// moved station legitimately warns — that IS its true verdict — so demanding
+// a silent boot would gate the wrong thing and make every honest red look
+// like a defect. What this holds is narrower and absolute: the build must
+// EXIST. No __clock means no instrument can speak at all, which is the one
+// outcome that is always wrong (TODO 30's class, arriving from a spec value).
+//
+// So a point that warns PASSES, and its warning count is reported as data.
+// A point that dies FAILS and says how it died, because virginBoot's TODO 30
+// diagnosis separates dead from wedged from merely slow.
+//
+// DECLARED, NOT SWEPT. A sweep would find the same 175-180 band and then
+// re-find it every run with nobody able to say whether that was expected.
+// Each row states what it is for, so a point that is EXPECTED to warn says so
+// beside itself, and a point that starts warning when it used to be silent is
+// a visible change in the report rather than a silent one.
+const SPEC_POINTS = [
+  // The identity, as a control: if this ever warns, the trial harness itself
+  // is lying, because the default spec is what every gate above boots.
+  { name: 'identity', q: '', expect: 'silent', why: 'the control — the same spec every other gate boots' },
+  // §33 step 1 / step 2 — the stem and crown azimuths, each a shipped handle.
+  { name: 'crownaz=90', q: 'crownaz=90', expect: 'any', why: '§33 step 1 — the crown a quarter turn round' },
+  { name: 'stemaz=200', q: 'stemaz=200', expect: 'any', why: '§33 step 2 — the stem decoupled from the barrel' },
+  // §33 step 3 — solveLayout's own arrangement angles.
+  { name: 'barrelstep=-20', q: 'barrelstep=-20', expect: 'any', why: '§33 step 3 — the barrel step off its default -35' },
+  { name: 'escstep=-70', q: 'escstep=-70', expect: 'any', why: '§33 step 3 — the escape step off its default -57.9' },
+  { name: 'balstep=60', q: 'balstep=60', expect: 'any', why: '§33 step 3 — a balance TARGET the solver must move off' },
+  // The alarm corner, including the band that did not build. 175 is TODO 35's
+  // own regression case and is here so it can never come back unnoticed.
+  { name: 'alarmaz=90', q: 'alarmaz=90', expect: 'any', why: '§33 — the alarm corner at 90°' },
+  { name: 'alarmaz=175', q: 'alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
+  { name: 'alarmaz=180', q: 'alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
+  { name: 'alarmmod=200', q: 'alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
+  // §22's two knobs, at both ends of their clamped ranges.
+  { name: 'vph=28800', q: 'vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
+  { name: 'reserveh=48', q: 'reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
+];
+
+// A spec boot. Deliberately NOT virginBoot: that one imports inspect.js and
+// throws on any page error, which is right for a gate that will then run
+// checks, and wrong here where the page error IS the measurement. ?trial=1
+// carries the state isolation (state.js guards it at the choke point: a trial
+// neither reads nor writes /__state), so these need no serialising against
+// each other and no DELETE — they cannot race the file they never touch.
+async function specBoot(browser, base, q) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e.message || e)));
+  const url = `${base}/index.html?trial=1${q ? `&${q}` : ''}`;
+  try {
+    await page.goto(url, { waitUntil: 'load', timeout: BOOT_TIMEOUT_MS });
+    await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
+    const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
+    return { alive: true, warns, errors };
+  } catch {
+    // Same three-way diagnosis virginBoot makes, for the same reason: dead,
+    // wedged and slow are different findings and a timeout alone says none
+    // of them. Raced, so a wedged main thread cannot hang the harness too.
+    const d = await Promise.race([
+      page.evaluate(() => ({
+        warns: window.__bootWarns ? window.__bootWarns.slice() : null,
+        err: window.__bootError ? { message: window.__bootError.message } : null,
+      })).catch(() => ({ warns: null, err: null })),
+      new Promise((r) => setTimeout(() => r({ warns: null, err: null, wedged: true }), 10000)),
+    ]);
+    return { alive: false, warns: d.warns, fatal: d.err, wedged: d.wedged, errors };
+  } finally {
+    await context.close().catch(() => {});
+  }
+}
+
 async function runCheck(page, name, opts) {
   const t0 = Date.now();
   await page.evaluate(([n, o]) => window.__I.start(window.__clock, n, o), [name, opts]);
@@ -384,7 +470,8 @@ try {
   ] });
 
   const t0 = Date.now();
-  const shards = partition(BATTERY, SHARDS);
+  const shards = SPEC_ONLY ? [] : partition(BATTERY, SHARDS);
+  if (SPEC_ONLY) console.log('--spec-only: skipping the sweeps and the fingerprint anchor.');
   const bootInTurn = serialiser();
   console.log(`${shards.length} shard(s), partitioned by measured cost:`);
   shards.forEach((s, i) => console.log(
@@ -444,6 +531,7 @@ try {
   // Boot silence is gated on EVERY shard, not just the first: each is a real
   // virgin boot of the same tree, so a warning that only some boots produce is
   // a nondeterminism this gate should not be able to miss.
+  if (!SPEC_ONLY) {
   gate('boot silent (rule 6)', shardOut.flatMap((s, i) => s.warns.map((w) => ({ shard: i, warn: w }))));
   gate('every shard completed', shardOut.flatMap((s, i) => (s.error ? [{ shard: i, error: s.error }] : [])));
 
@@ -466,6 +554,7 @@ try {
   // Determinism anchor: a SECOND virgin boot must reproduce the hash exactly.
   // Deliberately NOT sharded — its whole content is that two virgin contexts
   // of this tree agree, so it stays one boot after the shards have closed.
+  if (!SPEC_ONLY) {
   console.log('boot B (virgin, fresh context)…');
   const B = await virginBoot(browser, base);
   const fpB = await B.page.evaluate(() => window.__I.fingerprint(window.__clock));
@@ -474,6 +563,41 @@ try {
     fpA && fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
     `hash ${fpA ? fpA.hash : 'shard 0 never reported one'}`);
   await B.context.close();
+  }
+  }
+
+  // TODO 36 tier one — every declared spec point must BUILD. Runs after the
+  // shards so it never competes with them for cores; the boots are ~15 s each
+  // and concurrent (?trial=1 pages share no state), so the whole set costs a
+  // fraction of one sweep. A point that WARNS passes and its count is data;
+  // only a point that fails to produce a __clock is a failure.
+  console.log(`spec boots (${SPEC_POINTS.length} declared points)…`);
+  const specT0 = Date.now();
+  const specRows = await Promise.all(SPEC_POINTS.map(async (pt) => {
+    const r = await specBoot(browser, base, pt.q);
+    return { ...pt, ...r };
+  }));
+  for (const r of specRows) {
+    const how = r.alive ? (r.warns.length ? `builds, ${r.warns.length} warn(s)` : 'builds, silent')
+      : r.wedged ? 'WEDGED' : 'DEAD';
+    console.log(`  ${r.alive ? '·' : '✗'} ${r.name.padEnd(16)} ${how}`);
+  }
+  // The failure list is liveness only. The control is held tighter — identity
+  // warning would mean the trial harness itself is lying, since every gate
+  // above boots that same spec and found it silent.
+  gate('spec boots: every declared spec point builds',
+    specRows.filter((r) => !r.alive).map((r) => ({
+      spec: r.name, why: r.why, outcome: r.wedged ? 'wedged' : 'never produced a __clock',
+      fatal: r.fatal ? r.fatal.message : null,
+      warnsBeforeDeath: r.warns ? r.warns.length : 'none recorded (main.js did not reach its first lines)',
+      pageErrors: r.errors.slice(0, 3),
+    })),
+    `${specRows.filter((r) => r.alive).length}/${specRows.length} build`
+    + `, ${specRows.filter((r) => r.alive && r.warns.length).length} of them with warnings (expected — a moved station warns)`
+    + ` · ${secs(Date.now() - specT0)}`);
+  gate('spec boots: the identity control is silent',
+    specRows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
+      .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
 
   const failed = gates.filter((g) => !g.pass);
   const totalMs = Date.now() - t0;

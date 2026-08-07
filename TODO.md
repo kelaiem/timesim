@@ -3677,7 +3677,7 @@ readings was a whole dead build. When a constant becomes a derivation, the
 question is not only "is the formula right" but "what did the old literal
 also quietly guarantee" — 51 was never going to be 0.
 
-## 36. Nothing in CI ever boots a non-identity spec
+## 36. TIER ONE BUILT — nothing in CI ever booted a non-identity spec
 
 Every gate in the battery boots the DEFAULT spec. `?crownaz=`, `?alarmaz=`,
 `?alarmmod=`, `?stemaz=`, `?barrelstep=`, `?escstep=`, `?balstep=`,
@@ -3729,3 +3729,41 @@ distinguishable in the report. The point of item 35 was that they were not:
 the check should say "spec X does not build" separately from "spec X builds
 and warns", because the first is always a defect and the second is often the
 honest answer.
+
+### Tier one shipped: `spec boots`
+
+A declared set of 12 spec points, each booted `?trial=1` in its own context,
+asserting **liveness only**. `--spec-only` runs the tier alone (~51 s) so
+iterating on the set does not cost a full battery.
+
+**It caught its own motivating defect on the first run, and one more.** Run
+against `5379d32` — the commit before item 35's fix — the gate fails and
+names three dead points:
+
+| spec | outcome |
+|---|---|
+| `?crownaz=90` | never produced a `__clock` |
+| `?alarmaz=175` | never produced a `__clock` |
+| `?alarmaz=180` | never produced a `__clock` |
+
+**`?crownaz=90` is the one nobody knew about.** Item 35 was found by
+hand-sweeping the ALARM corner, so it documented a 175–180 band; the crown
+azimuth collapses the same winding span by a different route and died the
+same way. The fix already covered it — the floor is in the derivation, so it
+does not care which spec shortened the run — but nothing had ever ASKED, and
+the entry for item 35 therefore understates the blast radius. This is the
+argument for a declared set over a hand sweep, made by the set on day one.
+
+Each failure reports the fatal message, the boot warns recorded before death,
+and the page errors, because item 30's diagnosis machinery (`__bootError`,
+`__bootWarns` published from main.js's first lines) was already there to read.
+
+**What it deliberately does not assert.** Not silence: 10 of the 12 points
+warn, and that is their true verdict, not a defect. The identity control is
+held separately and tighter — if the default spec warns *here* while every
+other gate finds it silent, the trial path differs from the real one, and
+that is worth knowing on its own.
+
+**Tier two — the warning-set baseline — is still unbuilt**, deliberately.
+Live with tier one first; a snapshot test adopted early is a snapshot test
+nobody trusts later.
