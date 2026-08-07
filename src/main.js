@@ -7087,6 +7087,30 @@ const alarmSetRouteAt = (bearing) => {
   const mx = i1.x + (a * dx) / d, my = i1.y + (a * dy) / d;
   const s1 = { x: mx - (h * dy) / d, y: my + (h * dx) / d }, s2 = { x: mx + (h * dy) / d, y: my - (h * dx) / d };
   // pick the +perp side (away from the az-0 line, around the climb)
+  //
+  // §74 Tier B step 3 TESTED THE OTHER ROOT, so nobody has to ask again. A
+  // two-circle solve has two solutions and this line has always taken one of
+  // them — which meant step 2's 720-bearing sweep, thorough as it looked,
+  // explored half the space. Swept bearing × root at ALARM_CD 15.4 → 22:
+  //
+  //   CD     +perp (this pick)        −perp (the other root)
+  //   15.40  12°   +0.21              1°     −0.40
+  //   16     19°   −0.06              358.5° −0.61
+  //   17     17.5° −0.75              353.5° −0.97
+  //   18     15°   −1.51              345°   −1.51   ← identical
+  //   19     12°   −2.39              348°   −2.39   ← identical
+  //   20     7°    −3.50              353°   −3.50   ← identical
+  //
+  // The other root is never better, and from 18 out it is EXACTLY equal —
+  // which is the useful part. The binding wall there is i2 against the
+  // winding climb, and the climb stands ON the stem line between i1 and the
+  // setting arbor it must reach, so the obstruction is symmetric: routing
+  // round it clockwise and anticlockwise are the same problem mirrored. No
+  // choice of side escapes an obstacle sitting on the line.
+  //
+  // So the pick stays hard-coded rather than becoming a solved parameter:
+  // making it free would add a branch that measurement says never wins, and
+  // a knob that cannot help is worse than none. The comment above was right.
   const i2 = (s1.x * _setPerp.x + s1.y * _setPerp.y) > (s2.x * _setPerp.x + s2.y * _setPerp.y) ? s1 : s2;
   return { i1, i2 };
 };
