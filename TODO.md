@@ -3676,3 +3676,56 @@ derived from a distance and consumed as matter, and the gap between those two
 readings was a whole dead build. When a constant becomes a derivation, the
 question is not only "is the formula right" but "what did the old literal
 also quietly guarantee" — 51 was never going to be 0.
+
+## 36. Nothing in CI ever boots a non-identity spec
+
+Every gate in the battery boots the DEFAULT spec. `?crownaz=`, `?alarmaz=`,
+`?alarmmod=`, `?stemaz=`, `?barrelstep=`, `?escstep=`, `?balstep=`,
+`?reserveh=`, `?vph=`, and every saved §33 variant reach the builders through
+a path **no automated check has ever executed**. Six §33 handles, the §22
+knobs, deep links and stored variants: the whole reconfigure surface is
+uncovered.
+
+**This is not hypothetical debt — it has already cost a shipped defect.**
+Item 35 was a build that did not boot at all for `?alarmaz=` 175–180, shipped
+in a PR whose battery was 15/15 green, and found only because §74 Tier B
+happened to sweep corner azimuths by hand. A build that cannot boot has no
+`__clock`, so *every* instrument is unreachable and nothing can distinguish
+"this arrangement is illegal" from "the app is broken" — item 30's failure
+class, arriving from a spec value rather than a code change.
+
+**The machinery already exists**, which is what makes this cheap. §33
+addendum 3's trial boot loads a candidate spec in a hidden same-origin
+iframe with `?trial=1`, builds the REAL geometry, runs the REAL asserts and
+reads `bootWarns` — and its own record notes it "is the CI battery's own
+pattern (virgin page → read `bootWarns`), ~15 s per verdict". `state.js`
+already guarantees a `?trial=1` page neither reads nor writes the session
+state, so trials boot on virgin defaults: the battery's own verdict standard,
+and deterministic.
+
+**What to build — and note the assertion is NOT "boot is silent".** A moved
+station legitimately warns; that is the true verdict, and demanding silence
+would gate the wrong thing. So:
+
+- **Tier one, liveness.** Every spec point in a declared set must produce a
+  `__clock`. Unambiguous, no baseline to rot, and it catches item 35's whole
+  class. A dozen points at ~15 s is ~3 minutes against `sweptOverlap`'s ~26,
+  and it shards like everything else.
+- **Tier two, characterisation.** Each point's boot-warning SET matches a
+  recorded baseline, in §81's `--report` spirit: a gate that only checks
+  "list empty" cannot see a report that moved. Worth having, but it is a
+  snapshot test — it needs updating whenever a warning legitimately changes,
+  and a stale baseline trains people to bulk-refresh it, which is how these
+  die. Build tier one first and live with it a while.
+
+**Choosing the spec set is the real design work.** It should cover each
+handle's range including the corners that historically broke (the alarm
+corner's 175–180 band, `d4` past 16 where the keyless side sign goes
+degenerate), and it should be a DECLARED list in the repo rather than a
+sweep, so a point that is expected to warn can say so beside itself.
+
+**One caveat for whoever builds it.** A refusal and a crash must stay
+distinguishable in the report. The point of item 35 was that they were not:
+the check should say "spec X does not build" separately from "spec X builds
+and warns", because the first is always a defect and the second is often the
+honest answer.
