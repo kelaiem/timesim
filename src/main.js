@@ -34,7 +34,7 @@ import {
   solveLayout,
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
-  segCircleClear, solveElbow, solveStopWork,   // §83 step A: the stop work solves like the layout does
+  segCircleClear, solveElbow, solveStopWork,   // §85 step A: the stop work solves like the layout does
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
@@ -2558,7 +2558,7 @@ function solveHammerRotation(post) {
 // STOP WORK (hacking) — a local stop crank at the balance, driven by a thin
 // LOW hack rod. The whole derivation — the bearing scan, the pivot height the
 // stroke sizes, the rod's calibrated length and its elbow through the low
-// corridor — is solveStopWork in layout.js now (§83 step A), pure like
+// corridor — is solveStopWork in layout.js now (§85 step A), pure like
 // solveLayout and solveKeyless. main.js keeps the MEASUREMENT and the BUILD.
 //
 // The obstacle circles the bearing scan avoids are measured here, from parts
@@ -2577,7 +2577,7 @@ const stopBearingObstaclesAt = (p) => [
   { x: p.fourth.x, y: p.fourth.y, r: fourthWheelR + 1 },
   { x: hammerPivotPos.x, y: hammerPivotPos.y, r: hammerArmLen + 4 },
 ];
-// §83 step A — CAPTURED like LAYOUT_INPUTS / KEYLESS_INPUTS, so reconfigure
+// §85 step A — CAPTURED like LAYOUT_INPUTS / KEYLESS_INPUTS, so reconfigure
 // mode can ask the same solver where the linkage would stand under a
 // candidate layout: `solveStopWork({ ...STOPWORK_INPUTS, P: candidateP,
 // warn: collect })` is the whole shadow.

@@ -814,7 +814,7 @@ export function solveKeyless({
 }
 
 // ---------------------------------------------------------------------------
-// STOP WORK (hacking) — the SOLVE, pure (§83 step A).
+// STOP WORK (hacking) — the SOLVE, pure (§85 step A).
 //
 // Everything from the bearing scan to the hack rod's elbow used to be
 // module-scope IIFEs in main.js reading module-scope constants, so nothing
