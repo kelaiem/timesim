@@ -843,22 +843,65 @@ export function segCircleClear(p, q, c) {
 // The obstacle table is a PARAMETER now rather than a closed-over constant:
 // the solver has to be able to score a candidate route against a corridor
 // its caller measured.
+// The z at which a segment ENTERS a circle it fouls, and the z at which it
+// leaves — the rod climbs along its run, so an obstacle standing above the
+// corridor only counts where the rod is actually high enough to meet it.
+// Returns the highest z the segment reaches INSIDE the circle, or null when
+// it never enters. (z is linear along the segment, so the extreme is at one
+// end of the inside interval; no sampling.)
+function maxZInside(p, q, zp, zq, c) {
+  const vx = q.x - p.x, vy = q.y - p.y;
+  const fx = p.x - c.x, fy = p.y - c.y;
+  const A = vx * vx + vy * vy;
+  if (A < 1e-12) return Math.hypot(fx, fy) <= c.r ? Math.max(zp, zq) : null;
+  const B = 2 * (fx * vx + fy * vy);
+  const C = fx * fx + fy * fy - c.r * c.r;
+  const disc = B * B - 4 * A * C;
+  if (disc < 0) return null;                       // the line misses the circle
+  const s = Math.sqrt(disc);
+  const t0 = Math.max(0, (-B - s) / (2 * A));
+  const t1 = Math.min(1, (-B + s) / (2 * A));
+  if (t0 > t1) return null;                        // the crossing is off the segment
+  return Math.max(zp + (zq - zp) * t0, zp + (zq - zp) * t1);
+}
 // `at` is the obstacle that BOUND the chosen route — the one a fouled run has
 // to name. Tracking it changes no arithmetic: Math.min over the same two
 // distances, just kept alongside the row that produced it.
-export function solveElbow(len, posesAB, obstacles) {
+//
+// §85 step C1 — an obstacle row may declare `zAbove`, the height its body
+// begins at. The low corridor's whole design is that the rod passes UNDER the
+// great wheel (ROD2_PLANE_Z is derived as GW_UNDER_Z − CLEAR_MARGIN − ROD_R),
+// and a flat 2D circle cannot express "under": give the fusee station the
+// wheel's real radius unconditionally and the shipped route is forbidden;
+// leave the row out, as it was, and the wheel is invisible to the check that
+// exists to keep the rod clear of it. The rod does not stay in its plane —
+// its far end HANGS from a raised pivot and climbs as the crank swings — so
+// the test is per-segment and per-pose: a banded row bites only where the rod
+// rises into its body.
+export function solveElbow(len, posesAB, obstacles, rodR = 0) {
   let best = { clear: -Infinity, f: 0.5, e: 0, at: null };
   for (let f = 0.25; f <= 0.751; f += 0.05) {
     for (let e = -6; e <= 6.01; e += 0.2) {
       let worst = Infinity, worstAt = null;
-      for (const { a, b } of posesAB) {
+      for (const { a, b, za = 0, zb = 0 } of posesAB) {
         const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
         // Lateral unit = the chord's RIGHT-perp — the direction the mesh's
         // local +X maps to under the placement rotation (atan2 − π/2).
         const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
         const E = { x: a.x + ux * L * f + nx * e, y: a.y + uy * L * f + ny * e };
+        const zE = za + (zb - za) * f;   // z runs with the bend, not around it
         for (const o of obstacles) {
-          const d = Math.min(segCircleClear(a, E, o), segCircleClear(E, b, o));
+          let d;
+          if (o.zAbove === undefined) {
+            d = Math.min(segCircleClear(a, E, o), segCircleClear(E, b, o));
+          } else {
+            // Each half is judged on its own height: the post half runs low
+            // and under the wheel, the crank half is the one that climbs.
+            const z1 = maxZInside(a, E, za, zE, o), z2 = maxZInside(E, b, zE, zb, o);
+            const d1 = z1 !== null && z1 + rodR >= o.zAbove ? segCircleClear(a, E, o) : Infinity;
+            const d2 = z2 !== null && z2 + rodR >= o.zAbove ? segCircleClear(E, b, o) : Infinity;
+            d = Math.min(d1, d2);
+          }
           if (d < worst) { worst = d; worstAt = o; }
         }
       }
@@ -878,6 +921,7 @@ export function solveStopWork({
   TQ_CUT,             // the three-quarter plate's open wedge { aim, phiOpen }
   TQ_TOP_Z,           // the balance cock's height — the mast's case-fit ceiling
   ROD2_PLANE_Z,       // the low rod plane
+  rodR,               // the rod's own radius — the height a banded row is met at
   bearingObstaclesAt, // (P) → circles the bearing scan must keep the crank clear of
   lowRodObstacles,    // the corridor table the rod's elbow is scored against
   rubyFlare,          // geometry.js's HACK_RUBY_FLARE
@@ -1132,9 +1176,13 @@ export function solveStopWork({
       const psi = stopSolvePsi(post, prev);
       prev = psi;
       const tt = stopTailTopAt(psi);
-      poses.push({ a: post, b: { x: tt.x, y: tt.y } });
+      // §85 C1 — the pose carries its HEIGHTS as well as its plan: the post
+      // end is pinned to the rod plane, the crank end rides the hanging
+      // tail's top and climbs with ψ. That climb is the whole reason a flat
+      // corridor model could not see the great wheel.
+      poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles);
+    const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles, rodR);
     if (best.clear < 0)
       warn(`hack rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled${best.at?.what ? ` at ${best.at.what}` : ''}`);
     return best;
