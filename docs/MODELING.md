@@ -76,6 +76,41 @@ from the check unless the signature also carries `geometry.id` (it does now).
 The same shape of question applies to any instrument keyed on pose: ship a
 morph and ask which checks stop watching.
 
+### 7. Geometry reaches the scene INDEXED, and the weld is the pass that does it
+
+`ExtrudeGeometry`, `toNonIndexed()` and hand-written triangle soup all store a
+vertex once per adjacent triangle, and the inspector pays for the duplicates in
+three places: `bvhFor` builds its tree over the raw position count,
+`sampledVerdict` tests every vertex and every edge midpoint of both meshes in
+both directions, and the §36 pose walk transforms every vertex at every
+distinct pose state. §81 added `weldGeometry` / `weldTree` (`geometry.js`) and
+runs the pass once over the scene at the end of boot; `weldAssert` warns —
+standing rule 6 — if anything reaches the scene non-indexed after it.
+
+Three things to know before shipping a new builder:
+
+**The traversal only sees the graph.** Geometry built after boot, or held in a
+pool with one member installed at a time, has to weld itself. The chain welds
+its three TEMPLATES (it is N rigid copies of them, rebuilt every frame — welding
+the output would move a boot cost into the frame loop) and the flute slider
+welds each re-cut hand. The mainspring's and hairspring's wind frames need
+nothing, because `weldTree` deliberately skips geometry that is already
+indexed and `TubeGeometry` is.
+
+**The key is the whole attribute tuple, not the position.** That is what keeps
+a crease's two normals two vertices, so `facetFlat` in `makeHand` stays
+flat-shaded and nothing about the finish moves. It also caps what the weld can
+recover, and the cap is large: measured on the shipped tree, the pass takes the
+scene 729,594 → 591,481 vertices (18.9%), while a position-only weld of the same
+488 distinct geometries would take the 458,897 vertices they hold down to
+124,998 — a further 72.8%. That whole 72.8% is split normals. They are not
+duplicates; they are the model, and this is the cheapest place in the codebase
+to mistake one for the other.
+
+**Never weld to a tolerance.** Snapping positions can only ever UNDER-report a
+clearance, by up to the tolerance, and under-reporting is the one error
+direction no instrument downstream catches. Exact bit equality or no merge.
+
 ## Derive, don't nudge
 
 Clearance-bearing constants must be *derived* from the geometry with an explicit
