@@ -2511,6 +2511,16 @@ const lowRodObstaclesFor = (p, kw) => [
   { x: p.barrel.x, y: p.barrel.y, r: kw.windSpurR + KW_MODULE + ROD_R + CLEAR_MARGIN, what: 'the winding spur' },
   { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar' },
   { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar' },
+  // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
+  // never contained. The fusee station was represented by the winding SPUR
+  // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
+  // UNDER is the great wheel, three times wider (its measured swept radius),
+  // and the rod only stays under it while it is in its plane. `zAbove` is
+  // GW_UNDER_Z — the same constant ROD2_PLANE_Z is derived FROM, so the row
+  // states the corridor's own premise instead of assuming it, and bites
+  // exactly where the rod climbs out of the band that premise bought.
+  { x: p.barrel.x, y: p.barrel.y, r: LAYOUT_INPUTS.swept.great + ROD_R + CLEAR_MARGIN,
+    zAbove: GW_UNDER_Z, what: 'the great wheel' },
 ];
 // The keyless radii the corridor reads, captured like the solver's own
 // inputs — the stem handle re-solves these, the train handles do not.
@@ -2544,9 +2554,10 @@ const RESET_ROD_ELBOW = (() => {
     const post = tailPostWorldAt(t);
     const r = intersectTail(post, RESET_ROD_LEN, prev);
     prev = r.q;
-    poses.push({ a: post, b: { x: r.q.x, y: r.q.y } });
+    // Flat, both ends on the reset plane (§85 C1: heights are declared now).
+    poses.push({ a: post, b: { x: r.q.x, y: r.q.y }, za: ROD_PLANE_Z, zb: ROD_PLANE_Z });
   }
-  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES);
+  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES, ROD_R);
   if (best.clear < 0)
     console.warn(`reset rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
   return best;
@@ -2617,7 +2628,7 @@ const stopBearingObstaclesAt = (p) => [
 // warn: collect })` is the whole shadow.
 const STOPWORK_INPUTS = {
   P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
-  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z,
+  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_R,
   bearingObstaclesAt: stopBearingObstaclesAt,
   lowRodObstacles: LOW_ROD_OBSTACLES,
   rubyFlare: G.HACK_RUBY_FLARE,
