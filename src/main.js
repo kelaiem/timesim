@@ -12625,6 +12625,16 @@ const SCHEMATIC = { proxies: [], on: false };
 {
   const MAT_WHEEL = new THREE.LineBasicMaterial({ color: 0xe0a355 }); // the explainer's brass
   const MAT_SPOKE = new THREE.LineBasicMaterial({ color: 0x8fa6bf }); // and steel
+  SCHEMATIC.matWheel = MAT_WHEEL; // §83: a part that opts OUT of the pitch circle still draws in the wheel palette
+  // §78/§83 — THE OPT-OUT SET. A generic glyph is a claim, so a builder may
+  // decline one by exporting its own: `spiral` (a wound ribbon, not a rotor),
+  // `profile` (a wheel whose content is its cut outline — the escape wheel's
+  // club teeth), `crown` (a knurled knob a hand turns, not a gear). Each is
+  // drawn by its own pass below or in §83, so the part keeps exactly one glyph
+  // and the wrong one is SKIPPED rather than drawn and overdrawn.
+  const OWN_GLYPH = ['spiral', 'profile', 'crown'];
+  const optedOut = (o) => OWN_GLYPH.some((k) => o.userData[k] !== undefined);
+  SCHEMATIC.ownGlyph = optedOut;  // the §48 blade pass lives in another closure and asks the same question
   const circGeo = (r, n = 64) => {
     const pts = [];
     for (let i = 0; i <= n; i++) { const a = (i / n) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0)); }
@@ -12638,9 +12648,11 @@ const SCHEMATIC = { proxies: [], on: false };
     // which enrolled it here and drew the oscillator's restoring element as a
     // wheel of radius 7.92. The spiral pass below draws it instead; the pitch
     // circle is SKIPPED rather than drawn and hidden, so a part has exactly
-    // one glyph and the wrong one is not merely covered up.
+    // one glyph and the wrong one is not merely covered up. (§83 generalised
+    // that one skip into OWN_GLYPH above — the escape wheel and the two crowns
+    // decline the pitch circle on exactly the same grounds.)
     if (!o.isMesh && o.userData && typeof o.userData.r === 'number' && o.userData.r >= 0.5
-        && !o.userData.spiral) sites.push(o);
+        && !optedOut(o)) sites.push(o);
   });
   for (const site of sites) {
     const loop = new THREE.Line(circGeo(site.userData.r), MAT_WHEEL);
@@ -12743,8 +12755,8 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
 {
   const MAT_LEVER = new THREE.LineBasicMaterial({ color: 0x8fa6bf });
   const MAT_SPRING = new THREE.LineBasicMaterial({ color: 0xe05555 });
-  const addLine = (parent, pts) => {
-    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), MAT_LEVER);
+  const addLine = (parent, pts, mat = MAT_LEVER) => {
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
     l.userData.schematic = true; l.layers.set(1); parent.add(l); SCHEMATIC.proxies.push(l);
   };
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -12762,7 +12774,7 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
     // blade's bounding box and reads as a straight strip flexing. A mesh whose
     // builder exported a spiral plan is a wound ribbon, not a blade, and takes
     // the spiral glyph below instead.
-    movement.traverse((o) => { if (o.isMesh && /spring|blade/i.test(o.name || '') && !o.userData.spiral) springs.push(o); });
+    movement.traverse((o) => { if (o.isMesh && /spring|blade/i.test(o.name || '') && !SCHEMATIC.ownGlyph(o)) springs.push(o); });
     for (const m of springs) {
       m.geometry.computeBoundingBox();
       const bb = m.geometry.boundingBox, size = bb.getSize(new THREE.Vector3());
@@ -13153,6 +13165,105 @@ document.getElementById('btn-schematic').addEventListener('click', () => setSche
             console.warn(`§78: ${leaked.length} base-plate fills are in the x-ray set — schematic x-ray would dissolve the movement's partition`);
           if (SCHEMATIC.occluderFills.length !== 2)
             console.warn(`§78: schematic x-ray lifts ${SCHEMATIC.occluderFills.length} fills — the realistic view glasses exactly 2 (three-quarter plate, dial)`);
+        }
+      }
+
+      // §83 — TWO MORE WORDS AND ONE ANIMATION, all three of them cases the
+      // tier was already SAYING something, wrongly or statically. Same doctrine
+      // as everything above: every line derives from the constant or the mesh
+      // the solid was cut from, and hangs off the group the tick already poses.
+      {
+        // PART ONE — THE ESCAPE WHEEL'S TEETH. §66's rotor pass drew this wheel
+        // as a pitch circle at userData.r, which for an escape wheel lands
+        // exactly on the tooth tips: a plain circle where the escapement is.
+        // The builder now exports the boundary of its own cut (geometry.js —
+        // `shape` at the extrude's own curveSegments), so the drawing shows the
+        // club heel, the impulse face and the locking hook the pallet stones
+        // are cut against, and shows fifteen of them going past the fork. It
+        // opts out of the pitch circle through OWN_GLYPH rather than drawing
+        // over it, so the wheel keeps exactly one glyph.
+        //
+        // The wheel is drawn in the WHEEL palette, not the lever's: it is still
+        // a member of the train, and it stops being one visually the moment its
+        // outline is the only train part in steel. Hub and bore rims come with
+        // it — a rim of teeth with nothing inside reads as an annulus, and the
+        // bore is where the arbor it is riding actually is.
+        {
+          const p = escapeWheel.userData.profile;
+          if (!p) console.warn('§83: the escape wheel exports no cut profile — the tier has fallen back to a pitch circle through its tooth tips');
+          else {
+            const W = SCHEMATIC.matWheel;
+            addLine(escapeWheel, p.poly.map(([x, y]) => V(x, y, 0)), W); // closePath() already carries the loop home
+            addRing(escapeWheel, p.hubR, 0, 0, 0, W);
+            addRing(escapeWheel, p.boreR, 0, 0, 0, W);
+          }
+        }
+
+        // PART TWO — THE CROWNS AND THEIR STEMS, which is where a viewer's hand
+        // goes and which the drawing had nothing to say about. Two halves:
+        //
+        // The STEMS were simply absent — a plain cylinder each, in a unit no
+        // pass covers, so the winding train ended at the pinion and the alarm
+        // bevel corner ended at its bevel, both hanging in air. Each is one
+        // axis line in its SPINNER's frame, spanning the length the cylinder
+        // was cut to (stemLen / alarmStemLen, from the plate radius out past
+        // the case rim), so the crown-pull slide and the winding spin — both
+        // written on the spinner by tick() — carry the drawing with no second
+        // copy of either state.
+        //
+        // The KNOBS were worse than absent: makeCrown records userData.r (its
+        // knurl crest, the clearance envelope), so the rotor pass enrolled both
+        // crowns and drew each as a PITCH CIRCLE PLUS A SPOKE in the plane ⊥
+        // the stem — a gear, on the two parts of this watch that are not gears
+        // and are the only two a hand touches. The barrel glyph below is drawn
+        // from the plan the builder now exports, in the knob's own frame (local
+        // +Z outward along the stem, which is what the −π/2 mount at both call
+        // sites arranges): the two rims, the chamfered cap face, and four
+        // meridians. The meridians are not decoration — a circle about the spin
+        // axis is invariant under the spin, so without them the winding crown
+        // would turn invisibly, which is the one thing this part DOES.
+        {
+          addLine(windSpinner, [V(0, 0, 0), V(0, stemLen, 0)]);
+          addLine(alarmSpinner, [V(0, 0, 0), V(0, alarmStemLen, 0)]);
+          const knobs = [];
+          movement.traverse((o) => { if (o.userData && o.userData.crown) knobs.push(o); });
+          for (const k of knobs) {
+            const c = k.userData.crown;
+            addRing(k, c.rimR, 0, 0, 0);          // inner rim — where the knob meets the stem
+            addRing(k, c.rimR, 0, 0, c.bodyH);    // outer rim of the knurled barrel
+            addRing(k, c.capR, 0, 0, c.faceZ);    // the chamfer's face rim
+            for (let i = 0; i < 4; i++) {
+              const a = (i / 4) * Math.PI * 2;
+              addLine(k, [
+                V(Math.cos(a) * c.rimR, Math.sin(a) * c.rimR, 0),
+                V(Math.cos(a) * c.rimR, Math.sin(a) * c.rimR, c.bodyH),
+                V(Math.cos(a) * c.capR, Math.sin(a) * c.capR, c.faceZ),
+              ]);
+            }
+          }
+          // A FLOOR, not an equality (§78's tripwire shape): this movement has
+          // two crowns — winding and alarm — and a third would simply draw. A
+          // knob that stops exporting its plan does not go undrawn, it falls
+          // back to the gear glyph this part exists to retire.
+          if (knobs.length < 2)
+            console.warn(`§83: only ${knobs.length} crowns export a knob plan — the movement has 2 (winding, alarm); the rest have fallen back to the rotor glyph`);
+        }
+
+        // PART THREE — THE HAIRSPRING BREATHES. §78 drew this spring's spiral
+        // and declared its own residue in writing: the glyph was quoted from
+        // the REST plan, because the breathing swaps a precomputed geometry
+        // frame rather than posing a group and "the proxy cannot ride it for
+        // free". The mainspring closed exactly that residue in the same
+        // section, by publishing its wind frames and rewriting the line on each
+        // swap; makeHairspring now publishes its own (geometry.js, §83), so the
+        // spiral pass above already finds `spiralFrames` here and registers
+        // `spiralLine` for setWind to write. Nothing is needed at this site —
+        // this comment is the assert's reason, and the assert is that the
+        // oscillator's spring is no longer the one wound spring drawn frozen.
+        {
+          const hs = hairspring.userData;
+          if (!hs.spiralFrames || !hs.spiralLine)
+            console.warn('§83: the hairspring has no drawn wind frames — the schematic is showing the oscillator\'s spring at rest while the balance swings');
         }
       }
     }
