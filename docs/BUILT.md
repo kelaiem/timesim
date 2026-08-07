@@ -7371,20 +7371,34 @@ slower than the dev container across the board (4082.8 s of check time against
 2807.8 s for the identical tree), which does not disturb the partition — that
 is decided by ratios, and the CI run splits 2184.6 s against 1898.2 s.
 
-**The entry's last acceptance line is not delivered, and the way it failed is
-the more useful half.** `battery.yml` was to return 60 → 45. It was changed to
-45, with `CHECK_TIMEOUT_MS` re-derived 45 → 40 to keep the required ordering,
-and both were **reverted before shipping** when the first CI run measured what
-they had been derived from wrongly. The derivation used the dev container,
-where the battery is 26.5 min and `sweptOverlap` 25.5; on `ubuntu-latest` the
-same tree is 36.7 and 36.4. That would have left a 40-minute WEDGE guard 1.10×
-of headroom over a healthy run, and a 45-minute job cap 1.20× over a 37.5-minute
-job — the exact ratio that killed runs 188–194. Both numbers stand where they
-were.
+**The entry's last acceptance line is not delivered, and the way it failed —
+twice — is the more useful half.** `battery.yml` was to return 60 → 45. It was
+changed to 45, with `CHECK_TIMEOUT_MS` re-derived 45 → 40 to keep the required
+ordering, and both were **reverted before shipping** when the first CI run
+showed the derivation had used the dev container (battery 26.5 min,
+`sweptOverlap` 25.5) while `ubuntu-latest` gave 36.7 and 36.4. A 40-minute
+WEDGE guard would have had 1.10× of headroom over a healthy run, and a
+45-minute cap 1.20× over a 37.5-minute job — the ratio that killed runs
+188–194.
 
-So the general rule, written at the constant because this is the second entry
-to trip on it: **a guard is sized by the slowest environment it runs in, not
-the one you measured on.**
+**Then the correction was wrong too.** The revert was written up as
+"`ubuntu-latest` is ~1.45× slower than the dev container", a tidy ratio from
+one run. The next CI run of the same harness on the same tree took **2459.1 s
+of check time against 4082.8 s — a 1.66× spread between two CI runs**, wall
+22.3 min against 36.7. The dev container (2807.8 s) sits *inside* CI's own
+spread. There is no ratio to correct for, only a distribution.
+
+| | checks | wall |
+|---|---|---|
+| dev container | 2807.8 s | 25.7 min |
+| CI run A | 4082.8 s | 36.7 min |
+| CI run B | 2459.1 s | 22.3 min |
+
+So the rule, written at the constant because two successive attempts tripped on
+it: **a guard is sized by the slow tail of the environment it runs in, and one
+run does not measure a tail.** Both wrong answers came from a single *green*
+run — which is the trap, because a green run is exactly what makes a too-tight
+guard look justified right up until it fires on a healthy build.
 
 And the structural reason sharding cannot buy those numbers, which is worth
 separating from the mistake: the wall is now `max(shard)`, but both timeouts are

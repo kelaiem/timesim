@@ -78,29 +78,40 @@ const YIELD_EVERY = 64;
 // `measureClearance` BVH sweep over all 9 axes, and TODO 27's chain is on two
 // of them. Roadmap §82 still owns that tier and has not landed.
 //
-// §81 SHARDED THE HARNESS AND THIS GUARD DID NOT MOVE, which took one wrong
-// answer to establish. The entry's acceptance asked for 45 → 20; §81 first
+// §81 SHARDED THE HARNESS AND THIS GUARD DID NOT MOVE, which took two wrong
+// answers to establish. The entry's acceptance asked for 45 → 20; §81 first
 // tried 45 → 40, derived from `sweptOverlap` measuring 26.2 min inside a
-// 2-shard run — on a DEV CONTAINER. Measured on the runner this gate actually
-// runs on, the same check is 2184.6 s (36.4 min), because ubuntu-latest is
-// ~1.45x slower here than that container (4082.8 s of check time against
-// 2807.8 s for the identical tree). 40 minutes would have left a healthy run
-// 1.10x of headroom on a WEDGE guard. Reverted to 45 before it shipped.
+// 2-shard run on a DEV CONTAINER. The first CI run said 2184.6 s (36.4 min)
+// for the same check, so 40 would have left a WEDGE guard 1.10x of headroom
+// over a healthy run. Reverted to 45 before shipping.
 //
-// The general rule, since this is the second entry to trip on it: A GUARD IS
-// SIZED BY THE SLOWEST ENVIRONMENT IT RUNS IN, NOT THE ONE YOU MEASURED ON.
-// And note what sharding can and cannot buy — the wall is now max(shard), but
+// THE SECOND WRONG ANSWER WAS THE EXPLANATION. That revert was written up as
+// "ubuntu-latest is ~1.45x slower than the dev container" — a tidy ratio, from
+// one run. The next CI run of the same harness on the same tree came in at
+// 2459.1 s of check time against the first run's 4082.8 s: a 1.66x SPREAD
+// between two CI runs, wall 22.3 min against 36.7. There is no stable
+// dev-vs-CI ratio to derive anything from; the dev container sits inside CI's
+// own spread (2807.8 s).
+//
+// So the rule is not about which machine. A GUARD IS SIZED BY THE SLOW TAIL OF
+// THE ENVIRONMENT IT RUNS IN, AND ONE RUN DOES NOT MEASURE A TAIL. Both wrong
+// answers here came from a single green run — which is the trap worth
+// remembering, because a green run is exactly what makes a too-tight guard
+// look justified right up until it fires on a healthy build.
+//
+// 45 is 1.24x over the worst `sweptOverlap` yet observed (36.4 min), which is
+// thinner than a guard should be. It is not raised, because raising a guard to
+// fit a check is how the 45/60 pair got into trouble in the first place; the
+// number that has to come down is `sweptOverlap`'s, and that is roadmap §82's
+// confirm tier — 15 raw hull overlaps each re-measured by an uncapped
+// `measureClearance` sweep over all 9 axes, with TODO 27's chain on two of
+// them. When §82 lands, re-derive this and the job cap together, from SEVERAL
+// CI runs.
+//
+// Note also what sharding can and cannot buy: the wall is now max(shard), but
 // this guard and battery.yml's job cap are both set by the slowest single
-// CHECK, which no partition can subdivide. Sharding moved the wall 2.2x and
-// moved neither timeout.
-//
-// Even 45 is only 1.24x over that 36.4 min, which is thinner than a guard
-// should be. It is not raised, because raising a guard to fit a check is how
-// the 45/60 pair got into trouble in the first place; the number that has to
-// come down is `sweptOverlap`'s, and that is roadmap §82's confirm tier — 15
-// raw hull overlaps each re-measured by an uncapped `measureClearance` sweep
-// over all 9 axes, with TODO 27's chain on two of them. When §82 lands,
-// re-derive this and the job cap together, from a CI run.
+// CHECK, which no partition subdivides. Sharding moved the wall 2.2x and moved
+// neither timeout.
 const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
@@ -118,9 +129,11 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // 4-vCPU dev container after §80 landed — `--report` writes the same column
 // back out as `ms`, which is how they get refreshed. They are used ONLY to
 // balance the shards: a stale number costs wall clock, never a wrong verdict.
-// They are dev-container numbers and CI is ~1.45x slower ACROSS THE BOARD,
-// which does not matter here — the partition is decided by ratios, and the
-// measured CI run splits 2184.6 s against 1898.2 s on exactly this column.
+// They are dev-container numbers, and CI's absolute times swing widely around
+// them (two runs of one tree: 4082.8 s and 2459.1 s of check time). That does
+// not matter here — the partition is decided by RATIOS between checks, which
+// are stable, and the slow CI run split 2184.6 s against 1898.2 s on exactly
+// this column.
 const BATTERY = [
   { name: 'support', opts: {}, cost: 22,
     gate: '0 failures',

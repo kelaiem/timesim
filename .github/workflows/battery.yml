@@ -28,21 +28,27 @@
 # report: the scene is welded (every mesh indexed, ~30% of vertices were
 # duplicates) and the harness SHARDS the checks across browser contexts by
 # their measured cost, so the wall is max(shard) rather than sum(checks). This
-# job went from dying at 45 to finishing at 37.5 min.
+# job stopped dying at 45 and now finishes in 22-37 min.
 #
-# But 45 was tried first and reverted, on the measurement. §81 derived it from
-# a dev container, where the battery is 26.5 min; on THIS runner the same tree
-# takes 36.7 min, because ubuntu-latest is ~1.45x slower (4082.8 s of check
-# time against 2807.8 s). A 45 cap over a 37.5 min job is 1.20x — the very
-# ratio that killed runs 188-194 — so it would have re-armed the failure the
-# 60 was raised to stop, with a green run to point at as evidence it was fine.
+# But 45 was tried first and reverted. §81 derived it from a dev container
+# where the battery is 26.5 min; the first run on THIS runner took 36.7 min,
+# which makes a 45 cap 1.20x over a 37.5 min job — the very ratio that killed
+# runs 188-194.
 #
-# The reason sharding cannot buy this number is worth keeping: the wall is
+# AND THE RUNNER IS NOT EVEN CONSISTENT, which is the part to keep. The next
+# run of the same harness on the same tree took 22.3 min: 2459.1 s of check
+# time against 4082.8 s, a 1.66x spread between two CI runs. So there is no
+# dev-vs-CI ratio to correct for, only a distribution — and a cap has to clear
+# its SLOW TAIL, which one run cannot measure. Both of §81's attempts at these
+# numbers came from a single green run, and a green run is exactly what makes
+# a too-tight cap look justified until it fires on a healthy build.
+#
+# The reason sharding cannot buy this number is worth keeping too: the wall is
 # max(shard), but the cap is set by the slowest single CHECK, and no partition
-# subdivides a check. sweptOverlap alone is 2184.6 s (36.4 min) on CI and is
-# 57% of all check time. Roadmap §82 owns it. When it lands, re-derive this
-# cap AND ci-battery.mjs's per-check guard together, from a CI run — not from
-# whatever machine the work happened to be done on.
+# subdivides a check. sweptOverlap alone was 2184.6 s (36.4 min) on the slow
+# run and is 57% of all check time. Roadmap §82 owns it. When it lands,
+# re-derive this cap AND ci-battery.mjs's per-check guard together, from
+# SEVERAL CI runs rather than one.
 #
 # Playwright is pinned in tools/package.json so the browser build is stable;
 # the browser download is cached keyed on that pin. python3 for dev_server.py
