@@ -311,9 +311,37 @@ class ArchimedeanSpiral extends THREE.Curve {
 // than the extrude bevel's expansion (bevelThickness ≈ 0.18·t) must be cut
 // CRISP: the rendered outline is what collides, not the authored one
 // (docs/MODELING.md rule 1). Default true — every existing gear unchanged.
+// The smallest tooth count that is still a WHEEL at this module and bore.
+// DERIVED from makeGear's own radii, so the guard and the builder cannot
+// drift: rootR = module·(teeth/2 − 1.15) has to clear the bore, or the
+// "gear" is a ring of air with its teeth hanging off nothing.
+//
+// The floor also has a hard lower leg at 3, and that one is not aesthetic:
+// below it `gearOutlineShape` emits no curves at all, and `Shape.closePath()`
+// then reads `curves[curves.length - 1].getPoint` off undefined — a
+// TypeError during module evaluation, which kills the whole build. A boot
+// that does not happen has no `__clock`, so every instrument in the battery
+// is unreachable and nothing can say WHY (TODO 30's failure class, TODO 35's
+// instance of it).
+export function minGearTeeth(module, boreR = 1) {
+  return Math.max(3, Math.ceil(2 * (boreR / module + 1.15)));
+}
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
                            material, hub = true, bevel: bevelOn = true }) {
   const mat = material || MATS.brass;
+  // THE TRAP DISARMED AT THE SOURCE (§81's weldAssert precedent). A caller
+  // that computes its tooth count — and since §74 Tier B the alarm winding
+  // idler does — can hand this builder a count that is not a gear. Warned
+  // with the achieved and required numbers per rule 6, then CLAMPED so the
+  // build survives to report it: a loud wrong wheel is inspectable, a
+  // TypeError is not. Callers should not rely on the clamp; it is the
+  // backstop, and the derivation is where the floor belongs.
+  const floor = minGearTeeth(module, boreR);
+  if (!Number.isFinite(teeth) || teeth < floor) {
+    console.warn(`makeGear: ${teeth} teeth is not a wheel at module ${module}, bore ${boreR} `
+      + `— need ≥ ${floor} (root radius must clear the bore); clamped to ${floor}`);
+    teeth = floor;
+  }
   const pitchR = pitchRadius(module, teeth);
   const tipR = pitchR + module * 0.95;
   const rootR = pitchR - module * 1.15;

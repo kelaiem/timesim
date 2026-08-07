@@ -3599,41 +3599,80 @@ Until then the dilation is an honest measurement graded by itself, and the
 second pass is kept — with the algebra written at it — because an assertion
 that cannot fail should say so rather than quietly disappear.
 
-## 35. An alarm-corner azimuth band crashes the build instead of being refused
+## 35. CLOSED — a derived tooth count went to zero, and a gear with no teeth killed the build
 
-`?alarmaz=` is a §33 spec handle with a documented refusal path — the corner
-has forbidden windows (`reconfAlarmWindows`) and the drag is supposed to be
-REFUSED inside them. A band around 180° does not reach that path: it throws.
+`?alarmaz=175` and `180` did not boot: `Cannot read properties of undefined
+(reading 'getPoint')`, thrown during module evaluation, so there was no
+`__clock` and every instrument in the battery was unreachable.
 
-**Measured on `main`**, no other spec changed:
+**This entry was filed with the wrong cause, and the correction is the
+point.** It originally said the defect "reproduces on `main`" and was
+"unrelated to Tier B". Both were wrong. It was measured on a working tree
+that already carried §74 Tier B step 1, and step 1 is what introduced it —
+verified after the fact by booting `?alarmaz=175` against the commit before
+it (`65ea7bb`), where it builds fine. The filing generalised from one tree to
+"main" without checking, which is exactly the kind of claim this file exists
+to stop people making about the movement.
 
-| `?alarmaz=` | result |
-|---|---|
-| 175 | **never boots** — `Cannot read properties of undefined (reading 'getPoint')` |
-| 180 | **never boots** — same |
-| 185 | boots |
+**The real chain, from the stack rather than from a guess.** Step 1 made the
+winding idler's tooth count DERIVED from the span it must cross:
 
-A build that does not boot has no `__clock`, so every instrument in the
-battery is unreachable — this is the failure class item 30 named, arriving
-from a spec value rather than from a code change. It is worse than a warning
-and worse than a refusal: the page is simply dead, and nothing in the harness
-distinguishes "this arrangement is illegal" from "the app is broken".
+    I ≥ (wSpan − (m/2)(B + P)) / (2m)
 
-**What to build.** Find the `getPoint` consumer that assumes a curve exists
-(the alarm corner's routing builds one of the setting/winding runs through a
-`THREE.Curve`; at these azimuths the run degenerates and the curve is never
-created) and give it the refusal the handle already promises: the corner's
-window list should REFUSE the azimuth, the way §33's crown handle refuses a
-drag past the two-bar bound, rather than letting the build proceed into a
-null. A refusal is a legal answer; a throw is not.
+That expression answers "how many teeth to SPAN this run" and knows nothing
+about a tooth count also being a piece of matter. Swing the alarm corner
+round to ~175° and the climb arbor lands near the barrel: the span collapses
+from 38.63 to **7.91**, the reach floor goes negative, and `Math.ceil` returns
+**0**. `makeGear` then built a 0-tooth wheel — `gearOutlineShape` iterates
+`for (i = 0; i < teeth; i++)`, so it emitted no curves at all, and
+`Shape.closePath()` read `curves[curves.length - 1].getPoint` off `undefined`.
 
-**Note the scope.** This is not the reconfigure UI's problem — the UI's
-windows are closed-form and may well already refuse the drag. The defect is
-that the URL/spec path reaches the builders without that check, so a
-deep-link (or a variant saved before the windows were tightened) can hand the
-app an arrangement it cannot construct. Whatever refuses it must sit where
-the spec is READ, not only where the pointer is dragged.
+A TypeError, during evaluation, from a spec value the UI offers as a drag.
 
-**Found while sweeping corner azimuths for §74 Tier B**, which is the only
-reason anyone tried 175° — the shipped corner is 0° and the band is invisible
-from there.
+### What shipped, in three layers
+
+**The floor belongs in the derivation, so that is where it went.** The count
+is now the larger of the two floors — enough teeth to reach, and enough to be
+a wheel at all. At the shipped corner both give 51, so the identity build is
+bit-exact (fingerprint 2217227919).
+
+**The trap is disarmed at the source** (§81's `weldAssert` precedent).
+`makeGear` now refuses a count that is not a wheel, derived from its own radii
+so the guard cannot drift from the builder: `rootR = module·(teeth/2 − 1.15)`
+must clear the bore, with a hard leg at 3 below which the outline has no
+curves to close. It warns with achieved and required numbers and CLAMPS, so a
+future caller that computes a bad count gets a loud wrong wheel rather than a
+dead page — inspectable instead of invisible. It is the backstop; the
+derivation is the fix, and the guard is currently unexercised because of that.
+
+**The closure's other bound is asserted too.** Step 1 checked only
+`d ≤ r1 + r2`. A two-circle intersection also needs `|r1 − r2| ≤ d`, and a run
+that is too SHORT is as unbuildable as one that is too long — no tooth count
+fixes it, because growing the idler moves both bounds outward together. That
+condition now has a name at the point it occurs:
+
+    alarm winding chain: i1 → barrel 5.215 is INSIDE the chain's minimum
+    reach 5.700 — the span (7.91) is too SHORT for a 3-mesh chain here;
+    this run wants fewer idlers, not smaller ones
+
+### Verified
+
+`?alarmaz=` 175 and 180 now BOOT, reporting 9 named warnings each — the
+corridor conflicts that were always there at those azimuths and were
+previously hidden behind the crash. Identity boots silent at fingerprint
+2217227919. The former crash band no longer differs in kind from any other
+unreachable arrangement: it is red, and it says why.
+
+### What this does not close
+
+The refusal §33 promises at the UI layer is still not consulted by the
+URL/spec path — a deep link or a saved variant still reaches the builders
+directly. That is now a QUALITY question rather than a liveness one, because
+the builders no longer die; it is worth doing, and it is not this item.
+
+**And the general lesson, which outlives the bug.** A derived quantity
+inherits every constraint its expression does not mention. This one was
+derived from a distance and consumed as matter, and the gap between those two
+readings was a whole dead build. When a constant becomes a derivation, the
+question is not only "is the formula right" but "what did the old literal
+also quietly guarantee" — 51 was never going to be 0.

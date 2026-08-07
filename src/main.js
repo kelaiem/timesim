@@ -9121,7 +9121,20 @@ const _wSpan = Math.hypot(alarmBarrelPos.x - _wc.x, alarmBarrelPos.y - _wc.y);
 const ALARM_WIND_IDLER_MIN = Math.ceil(
   (_wSpan - (ALARM_TRAIN_MODULE / 2) * (ALARM_BARREL_TEETH + ALARM_WIND_PINION_TEETH))
   / (2 * ALARM_TRAIN_MODULE));
-const ALARM_WIND_IDLER_TEETH = ALARM_WIND_IDLER_MIN;
+// THE REACH FLOOR IS NOT THE ONLY FLOOR — TODO 35. The expression above
+// answers "how many teeth to SPAN this run", and nothing in it knows that a
+// tooth count is also a piece of matter. Move the alarm corner round to
+// ~175° and the climb swings near the barrel: the span collapses to ~7.9,
+// the reach floor goes NEGATIVE, and this handed makeGear a 0-tooth wheel —
+// whose outline has no curves, so `Shape.closePath()` threw and the build
+// never booted. Measured on the shipped corner it is 51 either way; the
+// bound only binds where the run is SHORT, which is the regime the shipped
+// layout never visits and the §33 handles do.
+//
+// So the count is the larger of the two floors: enough teeth to reach, and
+// enough to be a wheel at all (root circle clear of its own bore — the same
+// expression makeGear checks, imported rather than restated).
+const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5));
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_BARREL_TEETH; // barrel turns per crown turn — idlers drop out
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
@@ -9156,6 +9169,17 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     console.warn(`alarm winding chain: i1 → barrel ${reach.toFixed(3)} exceeds the chain's reach `
       + `${(_wd2 + _wd3).toFixed(3)} (idler ${ALARM_WIND_IDLER_TEETH} t at module ${ALARM_TRAIN_MODULE}) `
       + `— the span (${_wSpan.toFixed(2)}) outgrew the sizing`);
+  // AND THE OTHER SIDE OF THE SAME CLOSURE, which the sizing above cannot
+  // reach (TODO 35). A two-circle intersection needs |r1 − r2| ≤ d as well as
+  // d ≤ r1 + r2: a run that is too SHORT is as unbuildable as one that is too
+  // long, and no tooth count fixes it — growing the idler moves BOTH bounds
+  // outward. This is the condition a corner swung round toward the barrel
+  // actually hits, and it deserves its own name rather than arriving as a
+  // degenerate wheel further down.
+  if (reach < Math.abs(_wd2 - _wd3))
+    console.warn(`alarm winding chain: i1 → barrel ${reach.toFixed(3)} is INSIDE the chain's `
+      + `minimum reach ${Math.abs(_wd2 - _wd3).toFixed(3)} — the span (${_wSpan.toFixed(2)}) is too `
+      + `SHORT for a 3-mesh chain here; this run wants fewer idlers, not smaller ones`);
   // A CEILING ON THE CHEAP CURRENCY. Growing the idler bridges distance
   // without touching the module, but an idler is a real wheel on a real
   // pivot: past the barrel's own diameter it is the largest rotor in the
