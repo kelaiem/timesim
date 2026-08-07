@@ -459,18 +459,36 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
   addCrossingHoles(shape, 4, hubR + radius * 0.05, baseR - radius * 0.06, boreR, 0.5);
 
   const bevel = Math.min(thickness * 0.25, radius * 0.02);
+  const CURVE_SEGS = 3;   // the tessellation of the quadratics above — shared with the §83 outline below
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,
     bevelThickness: bevel,
     bevelSize: bevel,
     bevelSegments: 1,
-    curveSegments: 3,
+    curveSegments: CURVE_SEGS,
   });
   geo.translate(0, 0, -thickness / 2);
   g.add(new THREE.Mesh(geo, mat));
   g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * 1.3, 20), mat));
   g.userData.r = radius;
+  // §83 — THE BOUNDARY OF THE CUT, exported so the schematic can draw the
+  // TEETH. The tier's generic rotor glyph is a pitch circle plus a spoke, which
+  // for this wheel lands a plain circle exactly on the tooth tips and states
+  // "a rotor of radius `radius`" — true, and the least interesting true thing
+  // about the one wheel in the train whose entire content is its profile: the
+  // club heel, the slanted impulse face, the undercut locking hook and the
+  // scallop between them are what the pallet stones are cut against (§16), and
+  // the escapement is the mechanism a viewer opens the schematic to watch.
+  // This is `shape` itself at the extrude's own curveSegments, so the line and
+  // the metal are one description; closePath() already carries the loop back to
+  // its first point, so the polyline is closed as it stands. z is the wheel's
+  // MID-PLANE (the translate above centres the extrude), which is where a
+  // section line belongs — one line per wheel, not a face pair.
+  g.userData.profile = {
+    poly: shape.getPoints(CURVE_SEGS).map((p) => [p.x, p.y]),
+    hubR, boreR,
+  };
   return g;
 }
 
@@ -1343,6 +1361,22 @@ export function hairspringDevLen({ innerR, outerR, coils = 12 }) {
   return len;
 }
 
+// §83 — ONE writer for the schematic's spiral line, shared by both morphing
+// springs (this one and makeBarrel's ribbon). The line's position buffer is
+// allocated from a frame's polyline and every frame of a given spring has the
+// same point count — the sampling is a property of the plan, not of the wind
+// state — so a swap is a rewrite in place: no reallocation, and no bounding
+// sphere left describing the frame before. A spring with no line attached (a
+// caller that draws nothing) is the silent no-op rather than a branch at each
+// call site.
+export function writeSpiralLine(line, pts) {
+  if (!line || !pts) return;
+  const pos = line.geometry.attributes.position;
+  for (let j = 0; j < pts.length; j++) pos.setXYZ(j, pts[j][0], pts[j][1], 0);
+  pos.needsUpdate = true;
+  line.geometry.computeBoundingSphere();
+}
+
 export function makeHairspring({ innerR, outerR, coils = 12, height,
                                  windFrames = 41, windMaxRad = 1.0, ribbonR: ribbonROverride = null }) {
   const g = new THREE.Group();
@@ -1363,6 +1397,13 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   // bunch or spread the coils (±1.6% in length at ±1 rad); the REST frame is
   // the spring as cut, which is what a rate is computed from.
   let restDevLen = 0;
+  // §83 — the frames' own POLYLINES, kept alongside the tubes. The schematic
+  // draws this spring from `spiralFrames` (see writeSpiralLine below), and the
+  // only honest source for "the shape it is wearing right now" is the very
+  // sampling the tube for that frame was swept along. Pushed from inside
+  // spiralGeo so the two can never be built from different sweeps; the frame
+  // loop below is its only caller, which is what keeps index k aligned.
+  const framePolys = [];
   const spiralGeo = (theta) => {
     const pts = [];
     let len = 0;
@@ -1375,19 +1416,29 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
       pts.push(p);
     }
     if (theta === 0) restDevLen = len;
+    framePolys.push(pts.map((p) => [p.x, p.y]));
     return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false);
   };
   const frames = [];
   for (let k = 0; k < windFrames; k++) {
     frames.push(spiralGeo(-windMaxRad + (k / (windFrames - 1)) * 2 * windMaxRad));
   }
-  const tube = new THREE.Mesh(frames[(windFrames - 1) >> 1], MATS.blueSteel);
+  const REST_FRAME = (windFrames - 1) >> 1;   // θ = 0 exactly — see the restDevLen note above
+  const tube = new THREE.Mesh(frames[REST_FRAME], MATS.blueSteel);
   tube.scale.z = Math.max(height / (ribbonR * 2), 1); // stand the ribbon on edge
   g.add(tube);
+  let curFrame = REST_FRAME;
   g.userData.setWind = (theta) => {
     const t = Math.max(-windMaxRad, Math.min(windMaxRad, theta));
     const k = Math.round(((t + windMaxRad) / (2 * windMaxRad)) * (windFrames - 1));
-    if (tube.geometry !== frames[k]) tube.geometry = frames[k];
+    if (k === curFrame) return;
+    curFrame = k;
+    tube.geometry = frames[k];
+    // §83: the drawn line rides the swap with the metal. The index is published
+    // rather than only consumed, so a consumer that attaches AFTER boot still
+    // draws the frame the spring is actually wearing.
+    g.userData.spiralFrame = k;
+    writeSpiralLine(g.userData.spiralLine, framePolys[k]);
   };
 
   // Collet at center (turns with the staff; a cylinder, so no visual spin).
@@ -1418,6 +1469,17 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   // (r linear in t, angle t·coils·2π), so one polyline serves the glyph and
   // the geometry cannot drift from it.
   g.userData.spiral = { innerR, outerR, coils };
+  // §83 — ...and the WIND STATES, so the glyph BREATHES. §78 shipped this
+  // spring's line as a static quote of the plan above and declared the residue
+  // in writing: "the glyph is drawn at REST; the breathing swaps a precomputed
+  // geometry frame rather than posing a group, so the proxy cannot ride it for
+  // free." The mainspring closed exactly that residue in the same section by
+  // publishing its frames and writing the line on each swap; this is the same
+  // close for the oscillator, which is the one spring a viewer watches move.
+  // The plan stays the REST spiral (the three numbers TODO 25's rate solve
+  // turns on); `spiralFrames` is what the metal is actually wearing.
+  g.userData.spiralFrames = framePolys;
+  g.userData.spiralFrame = REST_FRAME;
   // TODO 25 tier one — the SECTION AS CUT, not as imagined. TubeGeometry with
   // radialSegments 4 cuts a RHOMBUS, not a rectangle: the 4-gon's diagonals
   // ride the Frenet frame's normal (radial — the bending direction) and
@@ -2007,14 +2069,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       cur = i;
       springMesh.geometry = windGeos[i];
       springMesh.userData.spiralFrame = i;
-      const line = springMesh.userData.spiralLine;
-      if (line) {
-        const pos = line.geometry.attributes.position;
-        const pts = wind.frames[i];
-        for (let j = 0; j < pts.length; j++) pos.setXYZ(j, pts[j][0], pts[j][1], 0);
-        pos.needsUpdate = true;
-        line.geometry.computeBoundingSphere();
-      }
+      writeSpiralLine(springMesh.userData.spiralLine, wind.frames[i]); // §83: one writer, shared with the hairspring
     };
     springMesh.userData.spiralFrames = wind.frames;
     springMesh.userData.spiralFrame = last;
@@ -3066,8 +3121,12 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   }
 
   // Chamfered cap closing the outer face (top radius < bottom radius) —
-  // unchanged from the knurl era.
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(bodyR - 0.35, bodyR, CAP_H, RADIAL_SEGS, 1), material);
+  // unchanged from the knurl era. The chamfer's drop is named rather than
+  // spelled twice: the face mark below sizes itself against this same rim, and
+  // the §83 schematic profile draws it, so one number now serves three readers.
+  const CAP_DROP = 0.35;
+  const capTopR = bodyR - CAP_DROP;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(capTopR, bodyR, CAP_H, RADIAL_SEGS, 1), material);
   cap.geometry.rotateX(Math.PI / 2);
   cap.position.z = bodyH + CAP_H / 2;
   g.add(cap);
@@ -3075,17 +3134,28 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
   // Face mark: stroke first, then the span it leaves room for. The stroke
   // is 0.085·bodyR — well under the 0.16·bodyR the axial envelope allows
   // for its proud half (asserted below) — and the mark's half-width is
-  // whatever fits inside the cap's face rim (bodyR − 0.35) leaving one
+  // whatever fits inside the cap's face rim (capTopR) leaving one
   // stroke-width of quiet border reveal: markR + tubeR (ink edge) +
   // tubeR (reveal) = face rim.
   const tubeR = bodyR * 0.085;
-  const markR = (bodyR - 0.35) - 2 * tubeR;
+  const markR = capTopR - 2 * tubeR;
   const mark = makeBrandMark({ r: markR, tubeR, material });
   mark.position.z = faceZ; // half-embedded: centreline on the face plane
   g.add(mark);
 
   g.userData.r = knurlSeat + KNURL_R; // widest point: the knurl crests — ON the budget by construction
   g.userData.totalH = faceZ + tubeR;  // tallest point: face + the mark's proud half
+  // §83 — THE KNOB'S PROFILE, exported so the schematic stops calling a crown a
+  // gear. A crown carries userData.r, so the tier's generic rotor pass enrolled
+  // it and drew a pitch circle plus a spoke in the plane ⊥ the stem: the glyph
+  // for "a wheel of this radius", on the one part of the movement a hand turns.
+  // The word it wants is a BARREL — two rims, a chamfered face, and meridians
+  // that make the winding spin legible — and these are the numbers it is cut
+  // from. The barrel radius is the KNURL CREST, not bodyR: the crests are the
+  // silhouette an eye sees and the radius every clearance row is written
+  // against (R_BUDGET above), so drawing bodyR would understate the part by the
+  // 0.112 the ridges stand proud.
+  g.userData.crown = { rimR: g.userData.r, bodyH, capR: capTopR, faceZ };
   if (g.userData.r > R_BUDGET + 1e-9 || g.userData.totalH > H_BUDGET + 1e-9)
     console.warn(`makeCrown §27 envelope exceeded: r ${g.userData.r.toFixed(3)} (budget ${R_BUDGET.toFixed(3)}), totalH ${g.userData.totalH.toFixed(3)} (budget ${H_BUDGET.toFixed(3)})`);
   return g;

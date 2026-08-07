@@ -7410,3 +7410,211 @@ when it does, re-derive both together, from a CI run.
 What §81 does deliver on this front is the thing the entry actually asked for
 in its first paragraph: the job went from **dying at 45 minutes** — six runs,
 two of them pushes to main — to finishing in 37.5. The gate runs again.
+
+---
+
+## §83 — Three things the schematic was already saying, two of them wrong and one of them frozen
+
+**Filed from an owner walk-through of the line tier**, same origin as §78
+and the same shape: none of these three is a part the drawing OMITTED.
+Each is a part the drawing already had a mark for, and the mark was
+either the wrong word or the right word held still. That distinction is
+what decides the fix — an omission is closed by adding a pass, a wrong
+word is closed by RETIRING one, and §78's rule is that overdrawing
+leaves the wrong glyph in place underneath.
+
+### Part one — the escape wheel, drawn as a circle through its own tooth tips
+
+`makeEscapeWheel` records `userData.r = radius`, so §66's generic rotor
+pass enrolled it and drew a brass pitch circle plus a spoke. For every
+other wheel in the train that is exactly right: a gear's content IS its
+pitch radius, which is what makes the tooth counts multiply. For this
+one it lands a plain circle on the tooth tips at r 4.5 and says "a rotor
+of radius 4.5" — true, and the least interesting true thing about the
+one wheel in the train whose entire content is its profile.
+
+Same argument §78 made for the column wheel, and the same glyph: **the
+boundary of the cut**. The builder now exports
+
+```
+userData.profile = { poly: shape.getPoints(CURVE_SEGS), hubR, boreR }
+```
+
+where `shape` is the Shape the extrude is cut from and `CURVE_SEGS` is
+the extrude's own `curveSegments`, so the line and the metal are one
+description at one tessellation — 130 points over 15 teeth, radius
+sweeping 3.06 (`baseR`, the scallop bottom) to 4.5 (the club tip).
+`closePath()` already carries the polyline home, so the loop closes as
+it stands. Drawn at the wheel's MID-PLANE, which is where the extrude's
+own `translate(0, 0, −thickness/2)` puts z = 0 and where a section line
+belongs; one line per wheel, not a face pair.
+
+Two additions from looking at the render rather than the plan, exactly
+as §78's base disc was: the hub (0.72) and bore (0.5) rims. A ring of
+teeth with nothing inside it reads as an annulus, and the bore is where
+the arbor it rides actually is.
+
+It is drawn in the WHEEL palette, not the lever's. The escape wheel is
+still a member of the going train, and it stops reading as one the
+moment its outline is the only train part in steel.
+
+**What the drawing now shows that it could not before:** the club heel,
+the slanted impulse face and the undercut locking hook — the three
+surfaces §16's pallet stones are cut against — going past the fork,
+fifteen times a turn, in the mechanism a viewer opens the schematic to
+watch.
+
+### Part two — the two crowns, drawn as gears, on stems drawn as nothing
+
+Two halves, and the worse half is not the missing one.
+
+**The stems were absent.** Each is a plain `CylinderGeometry` in a unit
+no pass covers — §71's `discOrAxis` enrols eight named units and neither
+`Keyless works` nor `Alarm crown` is one — so the winding train ended at
+the pinion and the alarm's bevel corner ended at its bevel, both hanging
+in air at the plate rim. Each is now one axis line in its SPINNER's
+frame, spanning the length the cylinder was cut to (`stemLen` /
+`alarmStemLen`, each `plateR + 2.2` less its own inboard station — the
+winding pinion's, the alarm climb's). Parented to
+the spinner, which is the group `tick()` already both slides (the crown
+pull) and spins (the winding turn), so the drawing carries both with no
+second copy of either state.
+
+**The knobs were worse than absent.** `makeCrown` records
+`userData.r` — its knurl crest, which is the clearance envelope §27
+proved — so the rotor pass enrolled both crowns and drew each as a pitch
+circle plus a spoke in the plane ⊥ the stem. A gear, on the only two
+parts of this watch a hand touches, and neither of them a gear.
+
+The word a crown wants is a BARREL, and the builder now exports the
+numbers it is cut from:
+
+```
+userData.crown = { rimR: 5.537, bodyH: 4.55, capR: 5.075, faceZ: 5.1 }
+```
+
+drawn in the knob's own frame (local +Z outward along the stem, which is
+what the −π/2 mount at both call sites arranges): the two rims, the
+chamfered cap's face rim, and four meridians running rim → rim → face.
+
+Two decisions inside that are not taste:
+
+- **The barrel radius is the knurl CREST, not `bodyR`.** The crests are
+  the silhouette an eye sees and the radius every clearance row is
+  written against (`R_BUDGET` in `makeCrown`); drawing `bodyR` would
+  understate the part by the 0.112 the ridges stand proud of it.
+- **The meridians are structural, not decoration.** A circle about the
+  spin axis is invariant under the spin, so a knob drawn as rings alone
+  would turn invisibly — and turning is the one thing this part DOES.
+  The same reasoning as §66's spoke on every pitch circle, arriving at
+  four lines instead of one because a barrel has length.
+
+`CAP_DROP` was named in passing: the chamfer's 0.35 was spelled twice in
+`makeCrown` (the cap cylinder and the face mark's span) and is now read
+by a third party, and rule 1 does not survive a constant with three
+readers and no name.
+
+### Part three — the hairspring, drawn at rest while the balance swung
+
+§78 shipped the spiral glyph and declared this residue in its own words:
+"the hairspring's glyph is drawn at REST. The breathing swaps a
+precomputed geometry frame rather than posing a group, so the proxy
+cannot ride it for free — the same residue class as the gong's boot arc
+and the contact dots' re-measure-on-entry."
+
+That comparison was the part worth revisiting. The gong's arc is stale
+only against a live aesthetics edit and the dots are stale only between
+mode entries; **this one was stale against the tick**, on the movement's
+only continuously moving spring, in the one view whose whole claim is
+that it draws the model the tick poses. And the fix was already written
+in the same section: the mainspring closed exactly this residue by
+publishing its wind frames as polylines and rewriting the drawn line on
+each swap.
+
+So `makeHairspring` publishes its own. The frames' polylines are pushed
+from inside `spiralGeo`, the function that builds each tube — not
+re-derived alongside it — so the line and the tube for frame *k* cannot
+come from different sweeps: 41 frames, 481 points each, the same
+`hairspringSegs` sampling `restDevLen` is accumulated from. `setWind`
+now tracks the frame INDEX rather than comparing geometry identity,
+publishes it (`userData.spiralFrame`), and writes the line.
+
+`writeSpiralLine` is the one writer, shared with the mainspring, which
+is where the duplicated buffer-rewrite went. Every frame of a given
+spring has the same point count — the sampling is a property of the
+plan, not of the wind state — so a swap is a rewrite in place with the
+bounding sphere recomputed, never a reallocation.
+
+The plan stays what it was. `userData.spiral` is still the REST spiral,
+because that is the geometry TODO 25's rate solve turns on and the
+three-spring tripwire counts; `spiralFrames` is what the metal is
+actually wearing. A caller that finds frames must use them — §78's own
+rule, since the linear parametrisation is only true of the free coil.
+
+**Measured**, by sweeping one full beat cycle through `setPose` and
+reading the drawn line rather than the tube:
+
+| tension | frames the line visits | θ span |
+|---|---|---|
+| 1.0 | 4…36 (33 of 41) | ±0.80 rad |
+| 0.25 | 10…30 (21 of 41) | ±0.50 rad |
+
+The line's points match the frame it claims to be wearing to 2.4e-7 —
+Float32, i.e. exactly — and its inner end travels with the collet while
+its outer end stays pinned at the stud, which is the entire mechanical
+claim the spiral is making. The second row is the one worth keeping: the
+amplitude falls with tension (`balanceTheta(tau, tension)`), so a
+running-down watch visibly breathes less, and the drawing now says so.
+
+### What did not change, and why that is the check
+
+No mesh moved and no geometry changed: `capTopR` is `bodyR − 0.35`
+spelled once, `CURVE_SEGS` is the 3 the extrude already used, and
+`setWind`'s new early-out is index equality where it was geometry
+identity — the same swap on the same frames. Every proxy this section
+adds is a `Line`, which no instrument collects, and every one is flagged
+`userData.schematic`, which `collectUnits` prunes.
+
+So the acceptance instrument is the one CLAUDE.md names for a change that
+should not have moved anything: `--report` before and after, diffed, not
+the PASS/FAIL column. Both runs are on the same machine with isolated
+`/__state` files — a shared state file lets one run's auto-save (every 5
+simulated seconds, from `frame()`) reach the other's virgin boot, which
+is worth knowing before running two batteries at once. The result is
+recorded in the commit that follows this one.
+
+The one behavioural cost is real and bounded: the hairspring's line is
+rewritten whenever its frame index changes, 481 positions plus a bounding
+sphere. `setWind` is called once per tick, so that is **at most once per
+frame** — the 2.5 Hz swing wants ~160 index changes a second and a 60 Hz
+tick can only deliver 60 of them. It happens whether or not the schematic
+is on, exactly as the mainspring's has since §78, and the alternative
+(teaching `geometry.js` about a view toggle that lives in `main.js`)
+buys the cost back by coupling the two files.
+
+### The rule this leaves behind
+
+§78 established that a generic glyph is a claim and a builder may opt
+out of one by exporting its own. That opt-out was a single hard-coded
+test for `userData.spiral` in two passes. It is now a NAMED SET —
+
+```
+const OWN_GLYPH = ['spiral', 'profile', 'crown'];
+```
+
+— consulted through `SCHEMATIC.ownGlyph`, so the rotor pass and the §48
+blade pass ask one question and a fourth word costs one string. Every
+member skips the generic pass and draws its own, so a part still has
+exactly one glyph and the wrong one is never merely covered up.
+
+Both new words carry §78's tripwire shape: a FLOOR, not an equality.
+The movement has two crowns and a boot warn fires below that, because a
+knob that stops exporting its plan does not go undrawn — it falls back
+to the very gear glyph this section retired.
+
+### What this did NOT close
+
+Four labelled units still draw nothing at all, and a unit's proxy count
+is a weak proxy for "is drawn" besides. That census, and the instrument
+that should be reporting it instead of a session's probe script, is
+filed as roadmap §84.

@@ -76,6 +76,18 @@ from the check unless the signature also carries `geometry.id` (it does now).
 The same shape of question applies to any instrument keyed on pose: ship a
 morph and ask which checks stop watching.
 
+**And its DRAWING has to swap too** (§83). The §66 schematic tier gets a
+posed part's proxy for free, because the proxy is parented to the group the
+tick moves — a morph moves no group, so a proxy hangs there frozen while the
+metal changes shape. Both morphing springs now publish their frames as
+polylines (`userData.spiralFrames`, indexed by `userData.spiralFrame`) and
+call the one writer, `writeSpiralLine`, from inside `setWind`. The hairspring
+shipped drawn at rest for exactly this reason, with the residue declared in a
+comment rather than fixed, while the mainspring beside it — same section, same
+file — was already riding its frames. If a new morph is worth drawing,
+publish its frames in the same shape; if it is not worth drawing, say so where
+the glyph would have been.
+
 ### 7. Geometry reaches the scene INDEXED, and the weld is the pass that does it
 
 `ExtrudeGeometry`, `toNonIndexed()` and hand-written triangle soup all store a

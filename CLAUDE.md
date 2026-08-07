@@ -41,12 +41,19 @@ schematic object directly; an unflagged child of a flagged parent is
 NOT protected.
 
 Two §78 rules govern what the tier is allowed to SAY. **A generic glyph
-is a claim, so a part may opt out of one**: a builder that records
-`userData.spiral = { innerR, outerR, coils }` gets the spiral glyph and
-is skipped by both the rotor pass (which would call it a wheel) and the
-§48 blade pass (which would call it a leaf spring) — the pattern to
-follow when the generic vocabulary would state something false, since
-overdrawing leaves the wrong glyph in place. **And x-ray means one
+is a claim, so a part may opt out of one**: the opt-out is the named set
+`OWN_GLYPH`, consulted through `SCHEMATIC.ownGlyph` by both the rotor
+pass (which would call the part a wheel) and the §48 blade pass (which
+would call it a leaf spring). Three words so far — `userData.spiral =
+{ innerR, outerR, coils }` (a wound ribbon), `userData.profile =
+{ poly, hubR, boreR }` (§83 — a wheel whose content is its cut outline,
+the escape wheel's club teeth), `userData.crown` (§83 — a knurled knob a
+hand turns). Each member is drawn by its own pass instead, which is the
+pattern to follow when the generic vocabulary would state something
+false: overdrawing leaves the wrong glyph in place underneath, so the
+generic pass must SKIP. A morphing part draws its current frame, not its
+plan — `spiralFrames` + `writeSpiralLine` is how both the mainspring and
+(since §83) the hairspring ride their own wind. **And x-ray means one
 thing in both views**: `setXray` empties `SCHEMATIC.occluderFills`,
 which holds exactly the two fills the realistic view glasses (the
 three-quarter plate and the dial). The base plate's fills live in
