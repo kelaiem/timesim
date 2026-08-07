@@ -3463,17 +3463,17 @@ off the cone's envelope move with it. That is a layout consequence, which
 is the P3 half of the design-priority note — position space, not a nudge
 to either radius.
 
-## 33. Nothing guards the sub-dial pockets against the dial's centre bore
+## 33. CLOSED — the wells are bounded inboard again, by the bore instead of a wheel they no longer reach
 
 `makeDial` cuts each sub-dial well as a pocket loop and the centre stack as
-its own bore, both holes in one plate. Nothing checks that they are disjoint.
-Push `dial.subdials.radiusFactor` past ~1.196 and the pockets **overlap the
-centre bore** — and the build says nothing at all.
+its own bore, both holes in one plate, and nothing checked they were disjoint.
+Past `dial.subdials.radiusFactor` ≈ 1.196 the pockets **overlapped the centre
+bore** and the build said nothing at all.
 
-**Measured, on the shipped tree.** `centerBoreR = ALARM_TUBE_OUTER + 0.2 =
-3.20`; the reserve well's inner edge is `RESERVE_LOCAL.y − subDialR =
-15.401 − 10.201·factor`. The two meet at factor 1.196. Booted across the
-range, the dial's triangle count quietly falls as the triangulator drops the
+**Measured before the fix.** `centerBoreR = ALARM_TUBE_OUTER + 0.2 = 3.20`;
+the reserve well's inner edge is `RESERVE_LOCAL.y − subDialR =
+15.401 − 10.201·factor`. The two meet at 1.196. Booted across the range, the
+dial's triangle count quietly fell as the triangulator dropped the
 overlapping region, with **zero boot warnings at every step**:
 
 | factor | subDialR | reserve inner edge | vs bore 3.20 | dial tris | boot warns |
@@ -3484,35 +3484,75 @@ overlapping region, with **zero boot warnings at every step**:
 | 1.30 | 13.26 | 2.14 | **breach** | 5320 | 0 |
 | 1.50 | 15.30 | 0.10 | **breach** | 5306 | 0 |
 
-**The battery does not catch it either.** At factor 1.30 — pockets 1.06 into
+**The battery could not catch it either.** At factor 1.30 — pockets 1.06 into
 the bore — `support` reported 0 failures, `clearances` 0 violations, and
 `inspection { includeExcluded: true }` 0 FORBIDDEN. It is a degeneracy INSIDE
-one part's geometry, so it falls in the blind-spot family of items 5 and 6:
-the pair sweep compares units, and this is one unit disagreeing with itself.
-Standing rule 6 is the only instrument that could have spoken here, and it had
-nothing to say.
+one part's geometry, so it fell in the blind-spot family of items 5 and 6:
+the pair sweep compares units, and this was one unit disagreeing with itself.
+Rule 6 was the only instrument with standing, which is why the fix is a boot
+assert and not a check.
 
-**What to build.** The assert the old ceiling used to imply, written in the
-same form as every other clearance floor:
+**How the guard went missing**, which is the part worth keeping. The wells
+DID have an inboard bound — §25 C's `−5.2`, against the central setting
+wheel's tip — and it was correct for as long as the well WALLS descended
+through the setting lane. Item 26 gave the dial real thickness and moved the
+pockets inside it; the rings stopped reaching that lane, `wellsInLane` went
+false, and the assert went dormant. Nothing was done wrong: the guard simply
+stopped applying, as a SIDE EFFECT of a change made for another reason, and
+no one owed a replacement because no one noticed one was owed.
 
-    subDialR ≤ min(RESERVE_LOCAL.y, −SECONDS_LOCAL.y)
-               − (centerBoreR + WALL_HALF + CLEAR_MARGIN)
+### What shipped
 
-At the shipped stations that is `15.401 − (3.20 + 0.2 + 0.15) = 11.85`. Warn
-with the achieved and required numbers, per rule 6. Site it beside the §25 C
-well/setting-wheel assert in `main.js` so the wells' two ceilings — inboard
-against the centre stack, and against the setting lane when the bands overlap
-— read as one block.
+Landed with §74 Tier A, because the same staleness that removed the guard was
+also holding the wells 16% smaller than the movement allows.
 
-**Why this exists as debt rather than as part of the sizing work.** The
-constant that USED to bound the wells inboard (`−5.2`, §25 C's setting-wheel
-tip + wall + margin) stopped binding when item 26 gave the dial real thickness
-and lifted the pockets out of the setting lane; `wellsInLane` is false and that
-assert is dormant. So the wells lost their inboard guard as a side effect of a
-change made for another reason, and nothing replaced it. That is true whatever
-anyone decides about sub-dial size — a factor of 1.5 should have been refused
-by the build, and instead it rendered a dial with two holes eating the centre
-bore. Fix the guard independently of any decision to use the headroom.
+- **The ceiling, re-derived against what binds now** and written in that form,
+  per rule 1 — `subDialR ≤ min(stations) − (centerBoreR + WALL_HALF +
+  CLEAR_MARGIN)` = `15.401 − 3.55` = **11.85**, where the stale form gave
+  10.20. §25 C's version is kept in the comment rather than deleted: move the
+  dial's stratum or the setting lane back into contact and it binds again.
+- **The assert**, reporting the achieved web against the required margin per
+  rule 6. Verified in both directions: silent at factor 1.0, and it fires at
+  **1.02** (`reserve … web −0.09, need 0.15`) — the solve now sits exactly on
+  its ceiling, which is what `radiusFactor`'s max of 1.0 has always claimed
+  and, until this, no longer meant.
+- **The centre stack moved to `layout.js`** (`HOUR_TUBE_*`, `ALARM_TUBE_*`,
+  `DIAL_CENTER_BORE_R`, `DIAL_WALL_HALF`, `SUBDIAL_INBOARD_CLEAR`), so the
+  solve that SIZES the wells and the geometry that CUTS the bore read one
+  source. That duplication is precisely what let the old ceiling go stale, so
+  fixing the number without fixing the split would have re-armed the trap.
+
+**Two more copies of the well geometry existed, and both were wrong.** The
+§34 selector's corridor assert carried the rings as literals — centres
+(0, ±15.4) and radius 10.2, with the seconds centre already 0.1 stale (it is
+at −15.5, on the fourth wheel's axis). It had been asserting a wall that
+stopped existing the moment the wells resized. Read from the solve, it now
+catches a selector post fouling the seconds well at factor 1.1 that the
+literals missed entirely — a live bound recovered, not just tidier code.
+
+### What this cost elsewhere, recorded because it was not predicted
+
+Growing the wells **moved a mechanism part**. `JMP_AZ` — the minute jumper's
+bearing — is *scanned* for clearance against the well rings, so re-sizing them
+re-ran the scan and the bearing moved **304° → 320°**. Re-siting a station is
+the sanctioned position-space resolution, and the old bearing stays legal at
+the new radius (0.48 clear against the 0.15 margin; the scan simply prefers
+320°) — but a DIAL parameter reaching a jumper through an obstacle scan means
+this was never a finish-only change. The scan's comment now says so.
+
+That move then made §48's audit surface a reversal **that was always real**:
+the star is indexed by a sprung jumper, so it reciprocates by design, but no
+axis had ever sampled it *through* the reversal, so the §36 registry never set
+`reversed` and `restoring` had nothing to judge. It is declared against the
+click spring the jumper unit already names. This is item 29's failure mode
+reached from the other side — not a part no axis moves, but a part the axes
+move and do not sample finely enough — and the general lesson is that the
+audit's population is a function of the ARRANGEMENT, so a layout change can
+hand it parts it never had.
+
+**Verified**: 15/15 battery gates on the rebased tree, fingerprint
+2217227919 deterministic across virgin boots, `restoring` 8 sprung → 9 (this
+declaration and nothing else).
 
 ## 34. The §36 sleeve validation cannot fail — the dilation is measured from the sweep that then approves it
 

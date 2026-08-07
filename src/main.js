@@ -28,6 +28,8 @@ import {
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
   minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH,
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
+  HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
+  DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   solveLayout,
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
@@ -5566,19 +5568,38 @@ const RSV_HAND_ARBOR_R = 0.4;
 // at the standing margin. (makeDial circumscribes a hole's polygon, so the
 // margin holds on the flats and not just on the nominal circle.)
 const SUBDIAL_BORE_R = Math.max(SECONDS_HUB_R, RSV_HAND_ARBOR_R) + CLEAR_MARGIN;
-// Motion-works constants the DIAL needs (its centre bore must clear the
-// hour-wheel tube). Declared here rather than with the rest of the motion
-// works further down, which is built after the dial.
-// (cannonPinionTeeth / MW_MODULE_1 are hoisted to the top of the file with
-// the layout constants — the keyless works' setting arbor needs them.)
-const HOUR_TUBE_INNER = (MW_MODULE_1 * cannonPinionTeeth) / 2 + MW_MODULE_1 + 0.25;
-const HOUR_TUBE_OUTER = HOUR_TUBE_INNER + 0.45;
-// §25 C rattrapante centre stack: the alarm hand rides its OWN tube around the
-// hour-wheel tube — third member of the co-axial stack (cannon pinion → hour
-// tube → alarm tube), the way a real central-alarm watch carries its pointer.
-// 0.1 running clearance on the hour tube (its bearing), 0.4 wall.
-const ALARM_TUBE_INNER = HOUR_TUBE_OUTER + 0.1;
-const ALARM_TUBE_OUTER = ALARM_TUBE_INNER + 0.4;
+// The §25 C rattrapante centre stack (cannon pinion → hour tube → alarm
+// tube) and the dial bore it passes through are DECLARED IN layout.js and
+// imported at the top of this file. They moved there when TODO 33 made the
+// sub-dial wells' inboard ceiling depend on the bore: the solve that sizes
+// the wells and the geometry that cuts the bore must read one source, or the
+// ceiling can go stale exactly the way §25 C's did.
+
+// TODO 33 — THE WELLS' INBOARD GUARD. A sub-dial pocket and the dial's centre
+// bore are two holes in one plate, and nothing checked they stay disjoint:
+// past factor 1.196 the pockets OVERLAPPED the bore and the build said
+// nothing at all — the triangulator quietly dropped the overlapping region
+// while boot, support, clearances and inspection all read green (measured at
+// factor 1.30, pockets 1.06 into the bore, dial triangles 5392 → 5320).
+//
+// It is one part's geometry disagreeing with itself, so it sits in items 5
+// and 6's blind spot: the pair sweep compares UNITS, and this is inside one.
+// Rule 6 is the only instrument with standing here, which is why it is a boot
+// assert rather than a check.
+//
+// The wells lost their old inboard guard as a SIDE EFFECT: §25 C bounded them
+// against the central setting wheel while their walls crossed its lane, and
+// TODO 26 lifted them out of it. So this asserts the ceiling that binds now,
+// in the same form — bore + wall + the one margin — and reports the achieved
+// and required numbers per rule 6.
+for (const [nm, cy] of [['reserve', RESERVE_LOCAL.y], ['seconds', -SECONDS_LOCAL.y]]) {
+  const innerEdge = cy - subDialR;                     // the ring's closest approach to the dial centre
+  const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
+  if (innerEdge - need < CLEAR_MARGIN)
+    console.warn(`${nm} sub-dial pocket vs the dial's centre bore: web ${(innerEdge - need).toFixed(2)}, need ${CLEAR_MARGIN} `
+      + `(well r ${subDialR.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
+      + `— dial.subdials.radiusFactor is too large for this station`);
+}
 
 const dial = G.makeDial({
   radius: dialRadius,
@@ -5586,7 +5607,7 @@ const dial = G.makeDial({
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
   subdialBoreR: SUBDIAL_BORE_R,
-  centerBoreR: ALARM_TUBE_OUTER + 0.2, // the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
+  centerBoreR: DIAL_CENTER_BORE_R, // = ALARM_TUBE_OUTER + 0.2 — the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
     // evaluated at ±0.39R) so BOTH wells blend in rather than reading as
@@ -6091,6 +6112,16 @@ const JMP_REACH = JMP_LEVER - JMP_W * 0.45;
 // head (its z-band overlaps this plane), the sub-dial wells, and the
 // hour-wheel tube; prefer the bearing farthest from the setting cap so
 // the lifter link has a clean run from the tail post.
+//
+// NOTE THAT THIS COUPLES THE JUMPER'S STATION TO THE WELL RADIUS. The wells
+// are obstacles in this scan, so resizing them re-runs it and the bearing can
+// land somewhere else: TODO 33's ceiling took `subDialR` 10.20 → 11.85 and
+// this moved 304° → 320°. That is the sanctioned resolution — a layout
+// conflict settled in POSITION space, which is what the scan is for — but it
+// is worth saying out loud that a DIAL parameter reaches a mechanism part
+// through here, so a change that looks like finish is not confined to finish.
+// Measured at the new radius, the old 304° is still legal (0.48 clear of the
+// seconds well against the 0.15 margin); the scan simply prefers 320°.
 const JMP_AZ = (() => {
   const capLocal = { x: -SETTING_CAP_XY.x, y: SETTING_CAP_XY.y }; // world→dialFace: R_y(π) mirrors x
   const obstacles = [
@@ -6537,9 +6568,15 @@ const ALARM_FLANGE_OUT = 4.05;                  // carrier flange: retention + t
 // 10/30 — one crown rev sets 4 h (see alarmDiscAngle).
 const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_I1_TEETH = 28, ALARM_SET_I2_TEETH = 37, ALARM_SET_PINION_TEETH = 10;
 // TWO ASYMMETRIC idlers (28 t, 37 t) on a DOGLEG. The corridor is walled on
-// every side, each bound measured: the two sub-dial WELL RINGS (r 10.2 about
-// (0, ±15.4), walls descending through this exact z-band — the owner SAW the
-// first 40 t idler poking through the reserve well), the winding CLIMB column
+// every side, each bound measured: the two sub-dial WELL RINGS (radius and
+// centres read from the solve — `subDialR` about RESERVE_LOCAL/SECONDS_LOCAL,
+// r 10.2 about (0, ±15.4) when this route was cut, r 11.85 since TODO 33
+// re-derived the wells' inboard ceiling — whose walls descended through this
+// exact z-band when the dial was a sheet; the owner SAW the first 40 t idler
+// poking through the reserve well. TODO 26 gave the dial thickness and moved
+// the pockets inside it, so those rings no longer reach this lane and the
+// ring walls are z-gated dormant — which is why the wells could grow without
+// re-opening this corridor), the winding CLIMB column
 // on the az-0 line, and the setting arbor's cock post one throw beyond. The
 // 28 t i1 threads between the rings at bearing +18°; the 37 t i2 stands wide
 // of the climb's protection zone north of the arbor. Idlers drop out of the
@@ -6787,8 +6824,17 @@ const alarmSelRing = new THREE.Group();
   say('posts vs setting-wheel tips', ALARM_SEL_POST_R - 0.14 - 4.83);
   for (const az of ALARM_SEL_POST_AZ) {
     const p2 = { x: Math.cos(az) * ALARM_SEL_POST_R, y: Math.sin(az) * ALARM_SEL_POST_R };
-    for (const [nm, c, rr] of [['12-well ring', { x: 0, y: 15.4 }, 10.2], ['seconds-well ring', { x: 0, y: -15.4 }, 10.2]]) {
-      const d = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - rr) - 0.2 - 0.14;
+    // The well rings, READ FROM THE SOLVE. These were literals — centres
+    // (0, ±15.4) and radius 10.2 transcribed from what the solve happened to
+    // produce — so they asserted a wall that had stopped existing the moment
+    // the wells were resized, and the seconds centre was already 0.1 stale
+    // (it is at −15.5, on the fourth wheel's axis, not −15.4). Same
+    // dial-local → world flip the ALARM_SET_WALLS rings use: (−Lx, +Ly).
+    for (const [nm, c, rr] of [
+      ['12-well ring', { x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y }, subDialR],
+      ['seconds-well ring', { x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y }, subDialR],
+    ]) {
+      const d = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - rr) - DIAL_WALL_HALF - 0.14;
       say(`post az${Math.round(az / DEG2RAD)} vs ${nm}`, d);
     }
   }
@@ -7303,9 +7349,9 @@ const ALARM_SET_WALLS = [
   { name: 'winding climb', x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, lo: -Infinity, hi: Infinity },
   { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
-  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: subDialR, halfW: 0.2,
+  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: subDialR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
-  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: subDialR, halfW: 0.2,
+  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: subDialR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
   ...alarmSetWallsOf(reserveTrain, 'reserve train'),
@@ -8774,6 +8820,25 @@ declareRestoring('Alarm release feeler', 'spring',
   'alarmFeelerSpring');
 declareRestoring('Minute jumper', 'spring',
   'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
+  'jumperClickSpring');
+// The STAR's own reversal, which is the same blade acting on the other side
+// of the same contact. The jumper unit is the lever; 'Motion works' carries
+// the star it indexes, and a jumper-indexed star reciprocates BY DESIGN — the
+// beak rides up a flank, backs the star off, and the click spring snaps it
+// down into the next valley. One spring, two parts, and it is declared
+// against both because §48 asks the question per UNIT.
+//
+// This was always true and was merely UNOBSERVED: on the shipped arrangement
+// no axis sampled the star through a reversal, so the §36 registry never set
+// `reversed` and the audit had nothing to judge — TODO 29's exact failure
+// mode ("a part no axis MOVES is a part it cannot judge"), reached here by a
+// part the axes did move but not far enough to catch. TODO 33's larger wells
+// re-solved JMP_AZ (the jumper's bearing is scanned for clearance against the
+// well rings, so it moved 304° → 320°), the sampling landed differently, and
+// the star's reversal became visible. Nothing about the mechanism changed;
+// what changed is that the instrument can now see it.
+declareRestoring('Motion works', 'spring',
+  'the star is indexed by the minute jumper — the beak rides the flank, backs the star off, and the click spring drives it into the valley; the same blade the jumper unit declares, acting on the wheel it indexes',
   'jumperClickSpring');
 declareRestoring('Maintaining detent', 'spring',
   'the detent spring seats the beak one CLEAR_MARGIN past the ring root; the saw teeth obstruct',

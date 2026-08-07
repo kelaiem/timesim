@@ -3617,7 +3617,18 @@ export function makeDial({
     subdials.forEach((sd, i) => {
       let floorMat = null;
       if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-        const px = 512;
+        // Sub-dial legibility has TWO axes, and the well's radius is only
+        // one of them. This canvas is a FIXED size at any world radius, and
+        // every feature paintSubdialFace draws is a fraction of sr = px/2 —
+        // so the reserve's hour figures (0.11·sr) and its caption (0.08·sr)
+        // are described by the same texel count however large the well is.
+        // Growing the well spreads those texels wider: the print gets bigger
+        // without getting sharper, and screen-px-per-texel does not improve
+        // at all. At 512 the caption was 20 px of type magnified over ~24
+        // world units, and it read soft. 1024 is the axis that actually
+        // sharpens it; it changes no geometry, so the fingerprint is
+        // untouched and this stays a finish change (P4).
+        const px = 1024;
         const cv = document.createElement('canvas');
         cv.width = cv.height = px;
         const fctx = cv.getContext && cv.getContext('2d');

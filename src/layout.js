@@ -390,6 +390,27 @@ export const cannonPinionTeeth = 10;
 export const MW_MODULE_1 = 0.3;                                 // cannon ⇄ minute wheel
 export const MW_MINUTE_TEETH = 30, MW_PINION_TEETH = 8, MW_HOUR_TEETH = 32;
 
+// The CO-AXIAL CENTRE STACK, and the dial bore it needs (§25 C's rattrapante
+// arrangement: cannon pinion → hour tube → alarm tube, three members turning
+// about one axis). Hoisted here from main.js because the solve below now
+// depends on the outermost member: the sub-dial wells' inboard ceiling is the
+// clearance this bore needs, so the two must not be able to drift apart.
+// main.js imports these rather than recomputing them, and asserts the bore
+// against the tube it is cut for.
+export const HOUR_TUBE_INNER = (MW_MODULE_1 * cannonPinionTeeth) / 2 + MW_MODULE_1 + 0.25;
+export const HOUR_TUBE_OUTER = HOUR_TUBE_INNER + 0.45;   // 0.45 wall
+export const ALARM_TUBE_INNER = HOUR_TUBE_OUTER + 0.1;   // 0.1 running clearance on the hour tube (its bearing)
+export const ALARM_TUBE_OUTER = ALARM_TUBE_INNER + 0.4;  // 0.4 wall
+export const DIAL_CENTER_BORE_R = ALARM_TUBE_OUTER + 0.2; // the stack's outermost member passes with running clearance
+// One wall thickness, shared by the dial's bore and its sub-dial pockets —
+// the same 0.2 §25 C's well/setting-wheel form used, kept as one name so the
+// two ceilings cannot disagree about how much brass a wall is.
+export const DIAL_WALL_HALF = 0.2;
+// The sub-dial wells' INBOARD ceiling: how close a well's ring may come to
+// the dial centre. See the derivation at the subDialR solve below — this is
+// the bore, plus a wall, plus the one structural margin.
+export const SUBDIAL_INBOARD_CLEAR = DIAL_CENTER_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN;
+
 // ---------------------------------------------------------------------------
 // Planar layout inputs — the "positions" the tornado solve steps off. These
 // are the pure ANGLES and one distance that decide where each arbor lands;
@@ -749,18 +770,37 @@ export function solveKeyless({
   // central hands' boss needs around the dial centre. This lands ≈ 0.30 of
   // the dial radius (up from 0.2); the bigger wells swallow the XI/I and
   // V/VII numerals symmetrically, leaving II–IIII and VIII–X.
-  // §25 C tightened this constant: the sub-dial WELLS' walls descend through
-  // the gear lane (z −7.0..−6.5), and their rings pass within (centre distance
-  // − wellR) of the dial centre — the central SETTING WHEEL (tip 4.83) needs
-  // wellR ≤ 15.4 − 4.83 − 0.2 (wall) − 0.15 (margin) ≈ 10.2. The old −4.5
-  // (wellR 10.9) had the wall passing straight through the wheel's teeth,
-  // masked in the sweep by the wheel⇄Dial EXPECTED blanket; the clearance is
-  // boot-asserted at the alarm block.
+  // The INBOARD ceiling — what the wells' rings must clear on their way
+  // toward the dial centre. It has moved once, and the move is the point:
+  //
+  // §25 C set it to −5.2 against the central SETTING WHEEL: the well WALLS
+  // descended through the gear lane (z −7.0..−6.5), so the ring had to clear
+  // the wheel's tip 4.83 + 0.2 (wall) + 0.15 (margin) ≈ 5.18. (The −4.5
+  // before it had the wall passing straight through the wheel's teeth, masked
+  // in the sweep by the wheel⇄Dial EXPECTED blanket.)
+  //
+  // TODO 26 ended that geometry. The dial is a plate and the pockets are
+  // machined INSIDE its own thickness, so the rings no longer reach the
+  // setting lane at all — `wellsInLane` is false and the §25 C assert is
+  // dormant. Its form is kept, not deleted: move the dial's stratum or the
+  // setting lane back into contact and it wakes up and binds again.
+  //
+  // What bounds the wells inboard NOW is the dial's own CENTRE BORE, which
+  // carries the co-axial hand stack (cannon → hour tube → §25 C alarm tube):
+  // centerBoreR = ALARM_TUBE_OUTER + 0.2 = 3.20, plus the same wall and
+  // margin the old form used. Measured before this changed: the pockets
+  // overlapped that bore from factor 1.196 and the build said NOTHING — the
+  // triangulator quietly dropped the overlap while boot, support, clearances
+  // and inspection all stayed green (TODO 33, whose assert now enforces this
+  // line rather than leaving it to a comment).
+  //
+  //   wellR ≤ 15.401 − (3.20 + 0.2 + 0.15) = 11.85
+  //
   // §23: the owner's size knob — a factor over the SOLVED radius, so the
-  // solve stays the source and the knob is a taste adjustment on top. The
-  // §25 C boot assert still guards the wells against the setting wheel, so an
-  // oversized factor warns at boot instead of silently colliding.
-  const subDialR = (Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - 5.2)
+  // solve stays the source and the knob is a taste adjustment on top. Its
+  // bound in aesthetics.json is 1.0 because the SOLVE already sits on the
+  // ceiling; TODO 33's assert catches an oversized factor at boot.
+  const subDialR = (Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR)
     * ((aesthetics.dial.subdials && aesthetics.dial.subdials.radiusFactor) || 1);
 
   return {
