@@ -7293,46 +7293,7 @@ const alarmSetRouteAt = (bearing) => {
   const i2 = (s1.x * _setPerp.x + s1.y * _setPerp.y) > (s2.x * _setPerp.x + s2.y * _setPerp.y) ? s1 : s2;
   return { i1, i2 };
 };
-const _setB = ALARM_SET_I1_BEARING;
-{
-  // THE SAME MOVING QUESTION AS THE WINDING CHAIN, answered differently
-  // because this chain's second idler is not sized by reach. i1 stands at
-  // ALARM_SET_DW1 from the centre and must reach the setting arbor, which
-  // sits at ALARM_ARBOR_R = ALARM_CD + CROWN_PULL_DIST — so the run grows
-  // with the reserve station while D12 + D2P stays fixed, and past
-  // ALARM_CD ≈ 19.9 the two-circle solve has no intersection at all
-  // (alarmSetRouteAt returns null, which is a HARD failure, not a warning).
-  //
-  // The floor the reach imposes:
-  //     reach ≤ D12 + D2P = m(I1 + 2·I2 + P)/2
-  //   → I2 ≥ (2·reach/m − I1 − P) / 2
-  // Measured at the shipped station that is 23 — and I2 is 37, because this
-  // idler is NOT sized by reach. Its diameter is what BENDS the dogleg wide
-  // of the winding climb (see the corridor audit below); reach has 4.38 of
-  // slack at the shipped layout and has never been the binding constraint.
-  //
-  // So this is an assert, not a derivation: the designed value keeps its
-  // corridor reason and the floor is checked against it, which is the honest
-  // shape when a number has a reason the constraint does not capture.
-  // Deriving I2 from reach alone would shrink it to 23 and quietly hand the
-  // dogleg's routing job back to nobody.
-  const arborD = Math.hypot(alarmWorld.x, alarmWorld.y);
-  const i1 = {
-    x: (_setU.x * Math.cos(_setB) + _setPerp.x * Math.sin(_setB)) * ALARM_SET_DW1,
-    y: (_setU.y * Math.cos(_setB) + _setPerp.y * Math.sin(_setB)) * ALARM_SET_DW1,
-  };
-  const reach = Math.hypot(alarmWorld.x - i1.x, alarmWorld.y - i1.y);
-  const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
-  if (ALARM_SET_I2_TEETH < floor)
-    console.warn(`alarm setting dogleg: i2 ${ALARM_SET_I2_TEETH} t cannot reach the arbor — needs ≥ ${floor} t `
-      + `(i1 → arbor ${reach.toFixed(3)} against a reach of ${(ALARM_SET_D12 + ALARM_SET_D2P).toFixed(3)}; `
-      + `arbor at ${arborD.toFixed(2)} = ALARM_CD + CROWN_PULL_DIST)`);
-}
-const _setRoute = alarmSetRouteAt(_setB);
-if (!_setRoute)
-  console.warn(`alarm setting dogleg: no i2 exists at bearing ${(_setB / DEG2RAD).toFixed(1)}° `
-    + `— the arbor is outside the chain's reach entirely, so the route below is not a route`);
-const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = _setRoute || { i1: { x: NaN, y: NaN }, i2: { x: NaN, y: NaN } };
+const _setB = ALARM_SET_I1_BEARING; // the INCUMBENT bearing; the solve below may move it
 // --- §76 wall one — ONE wall list, used twice -------------------------------
 // The audit that used to stand here saw four walls: the two sub-dial well
 // RINGS, the climb column and the cock post. Three more constrain this route
@@ -7440,6 +7401,94 @@ const alarmSetWorst = (route) => {
   }
   return worst;
 };
+// --- §74 Tier B step 2 — THE BEARING IS SOLVED, NOT ASSUMED ----------------
+//
+// §76 built everything needed for this and deliberately stopped one step
+// short: it swept the bearing against the SAME wall list and REPORTED that a
+// better one existed, because "moving ALARM_SET_I1_BEARING moves shipped
+// geometry and is a decision with a battery attached". That was the right
+// call then. What makes it applicable now is the guard, not new confidence:
+// the incumbent is TRIED FIRST and kept whenever it works, so the shipped
+// arrangement is untouched and only a layout the incumbent cannot serve
+// reaches the sweep.
+//
+// This is the P3 resolution the design-priority note prescribes — a corridor
+// conflict settled in POSITION SPACE, by azimuth about a mesh point, with
+// every mechanism dimension held fixed. Nothing here resizes a wheel, opens
+// a contact or widens a budget; i2 keeps the 37 t its routing job earned.
+//
+// The bearing moves TWO things at once, which is why it is the right handle:
+// it swings i1 around the centre, changing both the corridor clearances AND
+// the distance i1 → arbor that the dogleg has to close. So as ALARM_CD grows
+// and the arbor walks outward, a bearing exists that both clears the walls
+// and keeps the chain in reach, long after 18° has stopped doing either.
+const ALARM_SET_BEARING_SOLVED = (() => {
+  const incumbent = alarmSetRouteAt(_setB);
+  if (incumbent && alarmSetWorst(incumbent).clr >= CLEAR_MARGIN) return _setB; // shipped case: bit-exact
+  let best = null;
+  for (let deg = 0; deg < 360; deg += 0.5) {
+    const route = alarmSetRouteAt(deg * DEG2RAD);
+    if (!route) continue;                       // the dogleg cannot close at this bearing
+    const w = alarmSetWorst(route);
+    if (!best || w.clr > best.clr) best = { ...w, rad: deg * DEG2RAD, deg };
+  }
+  if (!best) {
+    console.warn(`alarm setting: the dogleg closes at NO bearing — the arbor is beyond `
+      + `i2's reach all the way round; this is a LAYOUT problem, not a bearing one`);
+    return _setB;
+  }
+  if (best.clr < CLEAR_MARGIN) {
+    // Refused rather than applied. Taking the least-bad bearing would be
+    // exactly §35's mistake: paying for packaging out of a clearance nobody
+    // chose to spend. Boot stays loud and the incumbent stands.
+    console.warn(`alarm setting: NO bearing clears every wall — best is ${best.deg}° at `
+      + `${best.clr.toFixed(2)} (worst wall: ${best.m} vs ${best.w}); keeping the incumbent `
+      + `${(_setB / DEG2RAD).toFixed(0)}° and leaving this red — a LAYOUT problem, not a bearing one`);
+    return _setB;
+  }
+  console.warn(`alarm setting: the incumbent bearing ${(_setB / DEG2RAD).toFixed(0)}° no longer serves this `
+    + `layout — re-solved to ${best.deg}°, which clears every wall by ${best.clr.toFixed(2)}`);
+  return best.rad;
+})();
+{
+  // THE SAME MOVING QUESTION AS THE WINDING CHAIN, answered differently
+  // because this chain's second idler is not sized by reach. i1 stands at
+  // ALARM_SET_DW1 from the centre and must reach the setting arbor, which
+  // sits at ALARM_ARBOR_R = ALARM_CD + CROWN_PULL_DIST — so the run grows
+  // with the reserve station while D12 + D2P stays fixed, and past
+  // ALARM_CD ≈ 19.9 the two-circle solve has no intersection at all
+  // (alarmSetRouteAt returns null, which is a HARD failure, not a warning).
+  //
+  // The floor the reach imposes:
+  //     reach ≤ D12 + D2P = m(I1 + 2·I2 + P)/2
+  //   → I2 ≥ (2·reach/m − I1 − P) / 2
+  // Measured at the shipped station that is 23 — and I2 is 37, because this
+  // idler is NOT sized by reach. Its diameter is what BENDS the dogleg wide
+  // of the winding climb (see the corridor audit below); reach has 4.38 of
+  // slack at the shipped layout and has never been the binding constraint.
+  //
+  // So this is an assert, not a derivation: the designed value keeps its
+  // corridor reason and the floor is checked against it, which is the honest
+  // shape when a number has a reason the constraint does not capture.
+  // Deriving I2 from reach alone would shrink it to 23 and quietly hand the
+  // dogleg's routing job back to nobody.
+  const arborD = Math.hypot(alarmWorld.x, alarmWorld.y);
+  const i1 = {
+    x: (_setU.x * Math.cos(ALARM_SET_BEARING_SOLVED) + _setPerp.x * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
+    y: (_setU.y * Math.cos(ALARM_SET_BEARING_SOLVED) + _setPerp.y * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
+  };
+  const reach = Math.hypot(alarmWorld.x - i1.x, alarmWorld.y - i1.y);
+  const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
+  if (ALARM_SET_I2_TEETH < floor)
+    console.warn(`alarm setting dogleg: i2 ${ALARM_SET_I2_TEETH} t cannot reach the arbor — needs ≥ ${floor} t `
+      + `(i1 → arbor ${reach.toFixed(3)} against a reach of ${(ALARM_SET_D12 + ALARM_SET_D2P).toFixed(3)}; `
+      + `arbor at ${arborD.toFixed(2)} = ALARM_CD + CROWN_PULL_DIST)`);
+}
+const _setRoute = alarmSetRouteAt(ALARM_SET_BEARING_SOLVED);
+if (!_setRoute)
+  console.warn(`alarm setting dogleg: no i2 exists at bearing ${(ALARM_SET_BEARING_SOLVED / DEG2RAD).toFixed(1)}° `
+    + `— the arbor is outside the chain's reach entirely, so the route below is not a route`);
+const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = _setRoute || { i1: { x: NaN, y: NaN }, i2: { x: NaN, y: NaN } };
 // The boot assert — the same list, reporting every wall this route fouls.
 {
   const route = { i1: ALARM_SET_I1, i2: ALARM_SET_I2 };
@@ -7450,25 +7499,11 @@ const alarmSetWorst = (route) => {
   }
   const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
   if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
-  // The SECOND use of the same list. When the incumbent bearing fouls a wall,
-  // sweeping the one free parameter against the SAME objective says whether
-  // the corner is unreachable or merely unsolved — the question Layer 1 could
-  // not answer honestly, because its objective was a subset of the walls and
-  // the bearing it picked traded away a §29 clearance nobody had listed.
-  // Reported, not applied: moving ALARM_SET_I1_BEARING moves shipped geometry
-  // and is a decision with a battery attached, not a silent boot-time solve.
-  if (alarmSetWorst({ i1: ALARM_SET_I1, i2: ALARM_SET_I2 }).clr < CLEAR_MARGIN) {
-    let best = null;
-    for (let deg = 0; deg < 360; deg += 0.5) {
-      const route = alarmSetRouteAt(deg * DEG2RAD);
-      if (!route) continue; // the dogleg cannot close here
-      const w = alarmSetWorst(route);
-      if (!best || w.clr > best.clr) best = { ...w, deg };
-    }
-    console.warn(best && best.clr >= CLEAR_MARGIN
-      ? `alarm setting: the corner IS reachable — bearing ${best.deg}° clears every wall by ${best.clr.toFixed(2)} (incumbent ALARM_SET_I1_BEARING is ${(ALARM_SET_I1_BEARING / DEG2RAD).toFixed(0)}°)`
-      : `alarm setting: NO bearing clears every wall — best is ${best ? `${best.deg}° at ${best.clr.toFixed(2)} (worst wall: ${best.m} vs ${best.w})` : 'none, the dogleg never closes'}; this is a LAYOUT problem, not a bearing one`);
-  }
+  // (§76's report-only bearing sweep used to sit here. It is now the SOLVE
+  // above, which runs before the route is built rather than after it — the
+  // same wall list, the same objective, applied instead of narrated. Its
+  // refusal branch keeps §76's honesty: when no bearing clears, the incumbent
+  // stands and boot stays loud rather than spending a clearance to go green.)
 }
 // --- TODO 15 — MESH PHASE IS NOT FREE, AND IS SOLVED AS A CHAIN ------------
 //
