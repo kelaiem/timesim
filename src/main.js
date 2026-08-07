@@ -2500,12 +2500,22 @@ hammerGroup.add(hammerTailBar);
 // solves are untouched; only the mesh is bent. (The drum's set-up
 // cluster is 15+ units off both routes — checked analytically, not
 // scanned, because drumPos is declared later in the build.)
-const LOW_ROD_OBSTACLES = [
-  { x: uWind.x * cwDist, y: uWind.y * cwDist, r: crownWheelR + 0.4 + ROD_R + CLEAR_MARGIN }, // transfer wheel
-  { x: P.barrel.x, y: P.barrel.y, r: windSpurR + KW_MODULE + ROD_R + CLEAR_MARGIN },         // winding spur
-  { x: P.center.x, y: P.center.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN },                     // centre lower-pivot collar
-  { x: P.fourth.x, y: P.fourth.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN },                     // fourth lower-pivot collar
+// §85 step B — the table takes the stations and the keyless radii it reads as
+// ARGUMENTS: a candidate arrangement moves three of these four circles (the
+// barrel handle carries the winding spur, the escape handle the fourth
+// collar), so a shadow solve has to be scored against its OWN corridor, not
+// the built one. Each row carries `what` it is, so a fouled route can name
+// the body it cannot get past instead of only reporting a negative number.
+const lowRodObstaclesFor = (p, kw) => [
+  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: kw.crownWheelR + 0.4 + ROD_R + CLEAR_MARGIN, what: 'the transfer wheel' },
+  { x: p.barrel.x, y: p.barrel.y, r: kw.windSpurR + KW_MODULE + ROD_R + CLEAR_MARGIN, what: 'the winding spur' },
+  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar' },
+  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar' },
 ];
+// The keyless radii the corridor reads, captured like the solver's own
+// inputs — the stem handle re-solves these, the train handles do not.
+const LOW_ROD_KEYLESS = { uWind, cwDist, crownWheelR, windSpurR };
+const LOW_ROD_OBSTACLES = lowRodObstaclesFor(P, LOW_ROD_KEYLESS);
 // Mesh in the pose frame the placement code already uses: local +Y is the
 // chord (post end at −len/2), so position-at-midpoint + rotation.z works
 // exactly as it did for the straight tube.
@@ -2570,8 +2580,32 @@ function solveHammerRotation(post) {
 // BUILT. Under a candidate layout the cock would be re-seated too, so a
 // shadow solve reads those discs at their identity positions — good enough
 // to score a bearing, not a substitute for the boot asserts.)
+// The fork cock RIDES the escapement. Its legs are seated by their own scan,
+// so they cannot simply be re-derived here — but they do not have to be: the
+// fork sits ON the escape→balance line at a fixed distance, so
+// {escape, fork, balance} is a RIGID trio and the cock's seats come out
+// identical in its frame. Mapping the built chain by that frame's motion
+// (rotate about the escape station by the change in the escape→balance
+// azimuth, then translate) predicted the re-seated discs with 0.00 error at
+// `?escstep=-73`, `?escstep=-85` and `?balstep=27.6`, where leaving them
+// where they were built is off by up to 10.09 — and that error is what made
+// the first version of this shadow report a bearing the real boot cannot
+// find (|K| 0.934 against 0.646, and silence where boot warns).
+const ESC_FRAME_AZ = Math.atan2(P.balance.y - P.escape.y, P.balance.x - P.escape.x);
+const cockDiscsAt = (p) => {
+  const dth = Math.atan2(p.balance.y - p.escape.y, p.balance.x - p.escape.x) - ESC_FRAME_AZ;
+  const dx0 = p.escape.x - P.escape.x, dy0 = p.escape.y - P.escape.y;
+  // The BUILD's own call takes the chain untouched: a + (b − a) is not b in
+  // IEEE754, and the fingerprint is what proves this work moved nothing.
+  if (dth === 0 && dx0 === 0 && dy0 === 0) return forkCock.chain.map((n) => ({ x: n.x, y: n.y, r: n.r }));
+  const cs = Math.cos(dth), sn = Math.sin(dth);
+  return forkCock.chain.map((n) => {
+    const dx = n.x - P.escape.x, dy = n.y - P.escape.y;
+    return { x: p.escape.x + dx * cs - dy * sn, y: p.escape.y + dx * sn + dy * cs, r: n.r };
+  });
+};
 const stopBearingObstaclesAt = (p) => [
-  ...forkCock.chain.map((n) => ({ x: n.x, y: n.y, r: n.r })),
+  ...cockDiscsAt(p),
   { x: p.fork.x, y: p.fork.y, r: 4 },
   { x: p.escape.x, y: p.escape.y, r: escapeWheelR + 1 },
   { x: p.fourth.x, y: p.fourth.y, r: fourthWheelR + 1 },
@@ -14750,6 +14784,54 @@ function reconfShadowSolve(overrides) {
   }
   return { sol, warns };
 }
+// §85 step B — the STOP WORK's own verdict for a candidate, from the same
+// solver the build uses (step A made it callable). The linkage is the one
+// group in the movement that hangs off a station these handles move: the
+// crank sits on the balance, the rod's far end rides the crank, and its near
+// end rides the keyless corner — so four of the six handles can break it and
+// none of them could say so.
+//
+// Which handle moves what, and why the whole context has to travel:
+//  · escape / balance — move the balance, so the bearing scan, the pivot
+//    height and the rod's entire route change;
+//  · barrel — moves the winding spur, an obstacle IN the rod's corridor;
+//  · crown/stem — moves the post the rod is pinned to, and the transfer
+//    wheel and spur radii the corridor is drawn from.
+// The corridor table is therefore rebuilt from the candidate rather than
+// borrowed from the build — scoring a proposed route against the shipped
+// layout's obstacles is exactly the error §85 filed.
+// The keyless outputs the stop work and the corridor read. Boot's order is
+// solveLayout → solveKeyless → solveStopWork, and a shadow has to run the
+// WHOLE chain: the keyless cluster reads the stations, so a moved TRAIN
+// moves the post the hack rod is pinned to. Measured at `?balstep=27.6`,
+// holding the BUILT keyless frame reports |K| 0.935, a mast that fits and
+// 13.11 of route clearance; re-solving it reports |K| 0.666, the mast the
+// boot actually warns about, and 3.11. Skipping the middle link is not an
+// approximation — it is a different watch, and an OPTIMISTIC one.
+const keylessKwOf = (kl) => ({
+  postEng: kl.postEng, postRel: kl.postRel, tailPostWorldAt: kl.tailPostWorldAt,
+  plateR: kl.plateR, uWind: kl.uWind, cwDist: kl.cwDist,
+  crownWheelR: kl.crownWheelR, windSpurR: kl.windSpurR,
+});
+function stopWorkShadowWarns(candP, kwOverride = null) {
+  const warns = [];
+  try {
+    // The stem handle hands its own candidate cluster in (same layout, moved
+    // stem); every other handle moves the layout, so the cluster re-solves
+    // here — and its OWN warnings join the verdict, since boot would print
+    // those too and this path never asked for them either.
+    const kw = kwOverride
+      || keylessKwOf(solveKeyless({ ...KEYLESS_INPUTS, P: candP, warn: (m) => warns.push(m) }));
+    solveStopWork({
+      ...STOPWORK_INPUTS, ...kw, P: candP,
+      lowRodObstacles: lowRodObstaclesFor(candP, { ...LOW_ROD_KEYLESS, ...kw }),
+      warn: (m) => warns.push(m),
+    });
+  } catch (err) {
+    warns.push(`the stop work cannot be solved here (${err.message})`);
+  }
+  return warns;
+}
 function ensureReconfGhost() {
   if (reconfGhost) return;
   reconfGhost = new THREE.Group();
@@ -15095,8 +15177,13 @@ function reconfMoveDrag(e) {
       urlKey: 'stemaz', label: 'stem', windows: () => reconfWindows,
       shadow: (az) => {
         const warns = [];
-        try { solveKeyless({ ...KEYLESS_INPUTS, stemAzRad: az, warn: (m) => warns.push(m) }); }
-        catch (err) { warns.push(`keyless solve failed (${err.message})`); }
+        try {
+          const kl = solveKeyless({ ...KEYLESS_INPUTS, stemAzRad: az, warn: (m) => warns.push(m) });
+          // §85 step B — the stem carries the hack rod's POST end with it,
+          // and re-solves two of the corridor's own circles. Same layout,
+          // candidate keyless frame.
+          warns.push(...stopWorkShadowWarns(P, keylessKwOf(kl)));
+        } catch (err) { warns.push(`keyless solve failed (${err.message})`); }
         return warns;
       },
     },
@@ -15157,14 +15244,20 @@ function reconfMoveDrag(e) {
     const azDeg = Math.atan2(hit.y - a.y, hit.x - a.x) * 180 / Math.PI;
     const specDeg = wrapAngle((h.toSpec(azDeg)) * Math.PI / 180) * 180 / Math.PI;
     const { sol, warns } = reconfShadowSolve({ [h.specKeyName]: specDeg });
-    if (sol) reconfPaintConstel(sol, warns.length > 0);
+    // \u00a783 step B \u2014 the train's own solve is clean long before the movement
+    // is: ask the stop work whether it can still stand and route here. Its
+    // warnings join the candidate's, so the existing amber tier reports
+    // them and Apply stays available (a WARNED spec is appliable \u2014 refusing
+    // an unbuildable route is step C's job, not this one's).
+    const linkWarns = sol ? stopWorkShadowWarns(sol.P) : [];
+    if (sol) reconfPaintConstel(sol, warns.length + linkWarns.length > 0);
     else if (reconfConstel) reconfConstel.visible = false;
     reconfCandidate = {
       kind: h.kind, urlKey: h.urlKey, valueDeg: specDeg,
       label: `proposed: ${h.kind} step ${specDeg.toFixed(1)}\u00b0 (was ${h.defDeg.toFixed(1)}\u00b0)`,
       refuse: sol ? null : (warns[0] || 'the train cannot close here'),
-      warns: sol ? warns : [],
-      solverClean: !!sol && warns.length === 0,
+      warns: sol ? [...warns, ...linkWarns] : [],
+      solverClean: !!sol && warns.length === 0 && linkWarns.length === 0,
     };
   }
   reconfShowStatus();

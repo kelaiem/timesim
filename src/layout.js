@@ -843,11 +843,14 @@ export function segCircleClear(p, q, c) {
 // The obstacle table is a PARAMETER now rather than a closed-over constant:
 // the solver has to be able to score a candidate route against a corridor
 // its caller measured.
+// `at` is the obstacle that BOUND the chosen route — the one a fouled run has
+// to name. Tracking it changes no arithmetic: Math.min over the same two
+// distances, just kept alongside the row that produced it.
 export function solveElbow(len, posesAB, obstacles) {
-  let best = { clear: -Infinity, f: 0.5, e: 0 };
+  let best = { clear: -Infinity, f: 0.5, e: 0, at: null };
   for (let f = 0.25; f <= 0.751; f += 0.05) {
     for (let e = -6; e <= 6.01; e += 0.2) {
-      let worst = Infinity;
+      let worst = Infinity, worstAt = null;
       for (const { a, b } of posesAB) {
         const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
         // Lateral unit = the chord's RIGHT-perp — the direction the mesh's
@@ -855,10 +858,11 @@ export function solveElbow(len, posesAB, obstacles) {
         const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
         const E = { x: a.x + ux * L * f + nx * e, y: a.y + uy * L * f + ny * e };
         for (const o of obstacles) {
-          worst = Math.min(worst, segCircleClear(a, E, o), segCircleClear(E, b, o));
+          const d = Math.min(segCircleClear(a, E, o), segCircleClear(E, b, o));
+          if (d < worst) { worst = d; worstAt = o; }
         }
       }
-      if (worst > best.clear) best = { clear: worst, f, e };
+      if (worst > best.clear) best = { clear: worst, f, e, at: worstAt };
     }
   }
   return best;
@@ -1132,7 +1136,7 @@ export function solveStopWork({
     }
     const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles);
     if (best.clear < 0)
-      warn(`hack rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
+      warn(`hack rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled${best.at?.what ? ` at ${best.at.what}` : ''}`);
     return best;
   })();
 
