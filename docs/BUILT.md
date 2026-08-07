@@ -7236,3 +7236,136 @@ distance from `best` to `max(0, best − g)`, so "still outside" means
 neither — it is vacuous by construction, for any geometry. The pass is kept,
 with the algebra written at it, because an assertion that cannot fail should
 say so rather than quietly disappear.
+
+## §81 — The battery welds its vertices and stops running in single file, and the only thing that moved was a name
+
+Two independent reductions, both required to leave every reported number
+alone. Measured on a 4-vCPU dev container, the full battery went **3525.6 s
+(58.8 min) → 1588.1 s (26.5 min)**, 2.22×, with the final report **identical
+to the pre-change one — every check, every row, every number**, fingerprint
+`1436114427` unchanged. That identity is the acceptance; the stopwatch on its
+own would prove nothing.
+
+### Tranche A — the weld, and its real ceiling
+
+`ExtrudeGeometry`, `toNonIndexed()` and hand-written soup all store a vertex
+once per adjacent triangle. `weldGeometry` merges vertex slots that are
+**bit-equal across every component of every attribute** and emits an index.
+Three properties make that exact rather than approximate: nothing moves (so no
+clearance can be under-reported — the one error direction nothing downstream
+catches); the triangle list is unchanged, so no mesh opens and TODO 27's parity
+trap has no purchase; and the sampled points are the same SET, which is all
+`sampledVerdict`'s min-over-vertices and or-over-containment can see.
+
+It runs as a traversal at the end of boot, because there is no chokepoint to
+run it in — 315 `new THREE.Mesh(...)` sites, no factory. The cost of a
+traversal is that it only sees the graph, so `weldAssert` warns at boot
+(standing rule 6) if anything reaches the scene non-indexed. Two things weld
+themselves: the CHAIN welds its three TEMPLATES rather than its output (it is N
+rigid copies rebuilt every frame — welding the output would move a boot cost
+into the frame loop; its bore assert now reads through the index instead of
+assuming soup), and the flute slider welds each re-cut hand. Already-indexed
+geometry is skipped, which keeps the pass out of the mainspring's and
+hairspring's wind-frame pools entirely. `mergeGeos` emits indexed output.
+
+**The entry's ≥2× target was not reachable, and the reason is that the entry
+contradicted itself.** It predicted 656k → 250–300k while also requiring that
+"split normals survive by construction". Those are incompatible: the ~3–6×
+duplication it costed is recoverable only by welding on POSITION. Measured over
+the scene's 488 distinct geometries:
+
+| | pre-weld | welded |
+|---|---|---|
+| raw vertices | 653,950 | 458,897 |
+| distinct attribute tuples | 437,566 | **437,566** |
+| distinct positions | 124,998 | **124,998** |
+
+29.8% removed, against 80.9% a position-only weld would reach. The whole
+difference is split normals — `ExtrudeGeometry` calls `computeVertexNormals` on
+soup, so two quads meeting along a contour edge share a position and disagree
+about the normal. They are not duplicates; they are the shading model, and
+merging them would smooth every crease in the movement. The crease is kept and
+the ceiling is written at the code.
+
+The two bottom rows are worth more than the top one: they are **equalities**,
+and they are the proof the argument above is not just an argument. Tuples
+unchanged ⇒ not one split normal merged or invented. Positions unchanged ⇒
+`sampledVerdict`'s sample set is exactly what it was.
+
+A screenshot comparison was tried first and is not usable at this precision:
+the same tree rendered twice through SwiftShader differs in **3.2%** of its
+pixels, against 1.5% for the weld — the camera-preset tween and the software
+rasteriser are noisier than the signal, so the control drowned it. The tuple
+count is the instrument; the pixels are not.
+
+### Tranche B — the shard
+
+`ci-battery.mjs` partitions the checks across K browser contexts by a measured
+`cost` column and runs them concurrently, so the wall is max(shard) rather than
+sum(checks). The partition is DATA, so it re-derives itself when the column
+moves instead of being re-argued; LPT greedy over it, which converges on
+`{sweptOverlap}` against `{the rest}` because one check is 57% of the total.
+That also bounds what sharding can ever buy: **no K goes below the slowest
+single check**, since no check is subdivided.
+
+It is sound for one reason: `start()` calls `clock.resetInputs()` before every
+check, so nothing a check can observe depends on which ran before it. (It has
+to — some of what `setPose` writes is CUMULATIVE, §80's finding at `walkPoses`.)
+Verified rather than assumed: `--shards 1` against `--shards 2` on one tree is
+byte-identical. If that ever stops being true, the check that moved is the bug.
+
+Boots are serialised against the dev server's single `/__state` file; gates are
+still evaluated in canonical `BATTERY` order so the log does not depend on the
+partition; each shard catches its own failure so one dying shard does not
+discard what the others measured; the fingerprint double-boot is deliberately
+not sharded.
+
+`--report FILE` writes every check's full payload. **That, not the PASS/FAIL
+column, is what a performance change has to be accepted against**: a gate
+reports only whether its failure list is empty, so a report that moved while
+staying empty passes every gate and is still a regression. Both §80 and §81
+were landed by diffing one of these.
+
+### What actually broke, which was not geometry
+
+The weld was geometrically exact on the first full run and **still turned a
+gate red**. Diffed against the pre-weld report, the entire difference was 19
+rows and not one was a distance, a count or a verdict:
+
+- 4 `clearances` rows relabelled `ExtrudeGeometry#0` → `BufferGeometry#0`, same
+  measured distances;
+- 14 `intraUnit` violations — exactly the `INTRA_UNIT_CONTACTS` rows declared
+  against `ExtrudeGeometry#N`, re-reporting their DECLARED joints as fresh
+  interpenetrations.
+
+`meshLabel` names an unnamed mesh `${geometry.type}#${index}` and the
+hand-written tables are string-coupled to those labels. This is CLAUDE.md's own
+"inspect.js couples by string" trap reached from a direction it does not list:
+not by renaming a part, but by **rebuilding its geometry**. The fix is to carry
+`geo.type` onto the welded copy — the tag is PROVENANCE, which builder cut this
+surface, and provenance is precisely what a weld does not change. Rewriting the
+tables to `BufferGeometry#N` was the alternative and would have collapsed
+`CylinderGeometry#6` and `BoxGeometry#31` into the same undifferentiated name,
+destroying the information the label exists to carry.
+
+### The timings, and the two guards that come back down
+
+| check | before | after | | check | before | after |
+|---|---|---|---|---|---|---|
+| sweptOverlap | 2075.5 | 1573 | | support | 32.4 | 22 |
+| inspection | 768.8 | 607 | | penetration | 17.7 | 17 |
+| clearances | 455.7 | 395 | | stockFloor | 6.0 | 4 |
+| expectedContacts | 145.4 | 147 | | restoring | 4.5 | 3 |
+
+Two of the entry's own cost-table rows were already stale before any of this
+(`inspection` 985 → 769, `clearances` 497 → 456), which is the case for the
+column being measured data rather than a hand-argued partition.
+
+So both timeouts come down, and both are now derived from ONE measured
+quantity. `CHECK_TIMEOUT_MS` 45 → **40 min**, the ~1.5× rule it has always been
+sized by applied to `sweptOverlap`'s 26.2 min (1.53×); `battery.yml`'s
+`timeout-minutes` 60 → **45**, which the 40 makes available with the required
+ordering (check guard < job cap) and a real margin rather than one step. §80
+declined the equivalent line and said so; §81 pays it. The remaining long pole
+is still `sweptOverlap`'s confirm tier — roadmap §82 — and when that lands both
+numbers are re-derived from the new measurement, not trimmed one at a time.

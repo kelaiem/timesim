@@ -11,24 +11,30 @@
 # boot ~26 s) on a 2025 dev container. CI hardware is slower and SwiftShader
 # does the GL, so the job budget was 3× that measurement — 45 min.
 #
-# 45 → 60, and the reason is not that a PR wanted more room. TODO 27 drilled
-# the chain's 211 joints, tripling that mesh, and sweptOverlap went 352 s →
-# ~1400 s; ci-battery.mjs raised its PER-CHECK guard to 45 min for exactly
-# that and left this one alone. Two 45s is one too many: the job cap includes
-# checkout, npm ci and the Chromium install, so it always bites FIRST, and a
-# check that genuinely wedges can never reach the guard written to catch it.
-# Measured, every run after TODO 27 merged died here — 188 (41.7 min, the last
-# one to finish at all), then 189/190/191/193/194 at 45.4–45.6 min, run 191 and
-# 194 being pushes to MAIN. GitHub reports a job-timeout kill as `cancelled`,
-# which is why a gate that had stopped running for a day still read like
-# somebody's force-push.
+# 45 → 60 → 45, and the round trip is the point. TODO 27 drilled the chain's
+# 211 joints, tripling that mesh, and sweptOverlap went 352 s → ~1400 s;
+# ci-battery.mjs raised its PER-CHECK guard to 45 min for exactly that and left
+# this one alone. Two 45s is one too many: the job cap includes checkout, npm
+# ci and the Chromium install, so it always bites FIRST, and a check that
+# genuinely wedges can never reach the guard written to catch it. Measured,
+# every run after TODO 27 merged died here — 188 (41.7 min, the last one to
+# finish at all), then 189/190/191/193/194 at 45.4–45.6 min, run 191 and 194
+# being pushes to MAIN. GitHub reports a job-timeout kill as `cancelled`, which
+# is why a gate that had stopped running for a day still read like somebody's
+# force-push. 60 restored the ordering and was declared a STAY, not a fix.
 #
-# So 60 restores the ordering the two timeouts were supposed to have — check
-# guard 45 < job 60, wedge diagnosable — and it is a STAY, not a fix. The cost
-# itself is roadmap §80's (samplePoses transforms every vertex of every mesh at
-# every pose into Float64 and holds all 9 axes × 12 poses at once), and the
-# entry's own fallback if the battery outgrows a per-PR gate is still a tiered
-# split — cheap checks per-PR, sweeps nightly — not another number here.
+# §81 is the fix, so the stay is repaid. Two reductions, both verified
+# byte-identical against the pre-change report: the scene is welded (every mesh
+# indexed, ~30% of vertices were duplicates) and the harness SHARDS the checks
+# across browser contexts by their measured cost, so the wall is max(shard)
+# rather than sum(checks). Measured on a 4-vCPU dev container: 3525.6 s
+# (58.8 min) → 1588.1 s (26.5 min), and sweptOverlap alone 2075 s → 1573 s.
+# That let ci-battery.mjs re-derive its per-check guard to 40 min, which is
+# what makes 45 available here again with the ordering intact — check guard
+# 40 < job 45, and a job that measures ~19 min of battery plus setup against
+# it. The remaining long pole is still sweptOverlap's confirm tier (roadmap
+# §82); if that lands, re-derive both numbers from the new measurement rather
+# than trimming either one on its own.
 #
 # Playwright is pinned in tools/package.json so the browser build is stable;
 # the browser download is cached keyed on that pin. python3 for dev_server.py
@@ -50,7 +56,7 @@ concurrency:
 jobs:
   battery:
     runs-on: ubuntu-latest
-    timeout-minutes: 60   # must stay ABOVE ci-battery.mjs's per-check guard (45)
+    timeout-minutes: 45   # must stay ABOVE ci-battery.mjs's per-check guard (40)
     steps:
       - uses: actions/checkout@v4
 

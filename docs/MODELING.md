@@ -99,13 +99,36 @@ indexed and `TubeGeometry` is.
 
 **The key is the whole attribute tuple, not the position.** That is what keeps
 a crease's two normals two vertices, so `facetFlat` in `makeHand` stays
-flat-shaded and nothing about the finish moves. It also caps what the weld can
-recover, and the cap is large: measured on the shipped tree, the pass takes the
-scene 729,594 → 591,481 vertices (18.9%), while a position-only weld of the same
-488 distinct geometries would take the 458,897 vertices they hold down to
-124,998 — a further 72.8%. That whole 72.8% is split normals. They are not
-duplicates; they are the model, and this is the cheapest place in the codebase
-to mistake one for the other.
+flat-shaded and nothing about the finish moves. Measured over the scene's 488
+distinct geometries, before and after the pass:
+
+| | pre-weld | welded |
+|---|---|---|
+| raw vertices | 653,950 | 458,897 |
+| distinct attribute tuples | 437,566 | **437,566** |
+| distinct positions | 124,998 | **124,998** |
+
+Both bottom rows are the acceptance, and they are equalities rather than
+ratios. Tuples unchanged ⇒ not one split normal was merged or invented.
+Positions unchanged ⇒ `sampledVerdict`'s sample set is exactly what it was,
+which is the whole reason the battery's numbers can be required to be
+identical. (Don't reach for a screenshot to check the first one: measured, the
+same tree rendered twice through SwiftShader differs in 3.2% of its pixels —
+the camera-preset tween and the software rasteriser are noisier than any weld,
+so the control drowns the signal. Count tuples instead.)
+
+It also caps what the weld can recover, and the cap is large: 653,950 → 458,897
+is 29.8% removed, where position-only welding would reach 124,998 — 80.9%. That
+whole difference is split normals. They are not duplicates; they are the model,
+and this is the cheapest place in the codebase to mistake one for the other.
+
+The welded copy also carries `geometry.type` forward, and that is load-bearing
+rather than cosmetic: `meshLabel` names an unnamed mesh `${geometry.type}#${i}`
+and `INTRA_UNIT_CONTACTS` is string-coupled to those labels, so a welded
+`ExtrudeGeometry` becoming a plain `BufferGeometry` un-declares every joint
+declared against it. Measured when it happened: 14 declared joints re-reported
+as violations with not one distance changed. Read `type` as PROVENANCE — which
+builder cut this surface — not as an instance test.
 
 **Never weld to a tolerance.** Snapping positions can only ever UNDER-report a
 clearance, by up to the tolerance, and under-reporting is the one error

@@ -76,10 +76,17 @@ const YIELD_EVERY = 64;
 // tests) to 3.6 s, which moved the check to ~1755 s. The other 96.5% is the
 // CONFIRM TIER: 15 raw hull overlaps, each re-measured by an uncapped
 // `measureClearance` BVH sweep over all 9 axes, and TODO 27's chain is on two
-// of them. Roadmap §82 owns that; the guard stays at 45 minutes until it
-// lands, because it has to clear the honest cost of the check with room to
-// spare — still ~1.5x the slowest check, which is what a guard is for.
-const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
+// of them. Roadmap §82 still owns that tier and has not landed.
+//
+// 45 → 40, DERIVED, not trimmed for tidiness. §81's weld took `sweptOverlap`
+// 2075 s → 1598 s single-file and it measures 1573 s (26.2 min) inside a
+// 2-shard run on this container, so the rule this guard has always been sized
+// by — about 1.5x the slowest check — puts it at 40 minutes (1.53x), and the
+// same measurement is what lets battery.yml's job cap come back to 45 with the
+// required ordering (check guard < job cap) intact and a real margin, instead
+// of the 45/60 pair where the two were one step apart. Both numbers now derive
+// from one measured quantity; when §82 moves that quantity, re-derive both.
+const CHECK_TIMEOUT_MS = 40 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
 // The battery, in the order the gates are REPORTED: cheap and synchronous
@@ -97,31 +104,31 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // back out as `ms`, which is how they get refreshed. They are used ONLY to
 // balance the shards: a stale number costs wall clock, never a wrong verdict.
 const BATTERY = [
-  { name: 'support', opts: {}, cost: 29,
+  { name: 'support', opts: {}, cost: 22,
     gate: '0 failures',
     fails: (r) => r.failures },
-  { name: 'graph', opts: {}, cost: 2,
+  { name: 'graph', opts: {}, cost: 1,
     gate: 'every violation list empty (todo allowed)',
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  { name: 'penetration', opts: {}, cost: 21,
+  { name: 'penetration', opts: {}, cost: 17,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
     fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
     note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
-  { name: 'alarmHandoffs', opts: {}, cost: 2,
+  { name: 'alarmHandoffs', opts: {}, cost: 1,
     gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'stockFloor', opts: {}, cost: 3,
+  { name: 'stockFloor', opts: {}, cost: 4,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY }, cost: 4,
+  { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY }, cost: 3,
     gate: '0 unwaived mover-vs-fixture intersections',
     fails: (r) => r.violations,
     note: (r) => `${r.movers} movers over ${r.poses} poses, ${r.waived.length} waived (accepted debt)` },
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 169,
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 147,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -147,15 +154,15 @@ const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 985,
+  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 607,
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 497,
+  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 395,
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 1990,
+  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 1573,
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
     note: (r) => {
