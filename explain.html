@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Watch Sim — Mechanisms</title>
+<link rel="manifest" href="./manifest.webmanifest" />
 <!-- §65 — the mechanism explainer. A maintained companion page to the sim:
      one entry per significant mechanism, in the movement's own visual
      language (the HUD's glass panels and the §49 scale view's monospace
@@ -2077,6 +2078,19 @@
       upd();
     })();
   })();
+</script>
+<script>
+  // §79 — the offline worker, release-gated on the app-version meta that
+  // tools/stamp-release.mjs bakes in: a source tree (dev server, worktrees)
+  // has no meta, registers no worker, and so nothing ever caches editable
+  // sources. Failure is silent by design (standing rule 6): an absent or
+  // refused worker is the normal case, and the page runs identically without
+  // one — just not offline.
+  // updateViaCache 'none' for the reason given at the index.html
+  // registration (src/main.js §79): sw.js is the update signal and its
+  // update check must bypass the HTTP cache regardless of server headers.
+  if ('serviceWorker' in navigator && document.querySelector('meta[name="app-version"]'))
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
 </script>
 </body>
 </html>

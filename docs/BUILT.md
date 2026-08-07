@@ -6973,7 +6973,107 @@ dial fill. Both §66 boot asserts stay silent — proxies are never Meshes,
 and dropping the hairspring from the rotor pass leaves 64 rotor sites
 against the required 10.
 
----
+## §79 — Load with the network gone: the service worker, and the two things it did not break
+
+The app was already the hard half of an offline app — everything it needs
+is static and same-origin, no CDN, no webfont, no model assets, two
+runtime network calls total (`version.json` and `/__state`), both written
+to survive failing. §79 spent that: a stamped release now loads cold with
+the network off — `index.html` and `explain.html` both, deep links
+included — from a service worker cache, once any release page has been
+visited online.
+
+**The shape.** `sw.js` at the web root plus `manifest.webmanifest`,
+registered from `main.js` (index) and a small inline script
+(explain.html). Cache-first for the precached release set, network-only
+for everything else — the cheap strategy that is CORRECT here precisely
+because §28 exists: every asset URL is stamped `?v=<version>`, so a cache
+hit is exact by construction, a new release asks for new URLs out of a
+new cache (`timesim-<version>`), and activation drops the old cache
+whole. Cache keys stay relative to the worker's scope for §28's stated
+reason (the web root may be the QA symlink). The two documents are the
+exception to exact matching: they are matched on path IGNORING query, so
+`?lang` / §22-spec deep links load offline too.
+
+**The precache manifest is a by-product of the §28 stamping walk** —
+`stamp-release.mjs` collects every URL it rewrites and bakes the list
+plus the version into `sw.js`'s two placeholder consts, failing the
+release if either placeholder is missing (a worker shipped unstamped
+would be silently inert). A hand-kept list was the failure mode the
+entry named; now a file cannot be shipped and forgotten. Building that
+walk found two classes of URL the §28 stamp had silently missed, both
+now closed: **dynamic `import()` specifiers** (`src/inspect.js` — the
+documented console entry for the battery — and the two `explain-i18n`
+locale tables) and **all of `explain.html`**, whose two module imports
+shipped unversioned and which carried no `app-version` meta. Both
+documents now get the same rewrite and the same baked meta; the leftover
+scan matches everything the rewrite does, per its own rule.
+
+**The two things it must not break, kept, explicitly.** The fetch
+handler passes `version.json` through by name — it is the staleness
+detector, and a worker that answers it from cache makes the app
+permanently and invisibly stale — and never touches `/__state`, because
+`state.js` falls back to `localStorage` exactly when that fetch FAILS,
+which is what offline means. Both exclusions are written in the handler,
+not left to set-membership accident.
+
+**One toast, and the Reload that crosses the worker boundary.** A
+waiting worker and a `version.json` mismatch are the same event to a
+viewer, so a waiting worker feeds the EXISTING §28 toast
+(`checkForUpdate(true)`) rather than a second prompt. The toast's Reload
+is now `swReload()`: nudge the registration, wait for the new worker,
+promote it (`skip-waiting`), and reload on `controllerchange` — because
+with the active worker serving `index.html` cache-first, a bare
+`location.reload()` would land on the exact stale bytes the toast warns
+about. Two measured races shaped it: `update()` can resolve before
+`reg.installing` is even populated (so the dance waits for the
+registration to ANNOUNCE the worker via `updatefound`, bounded at
+4000 ms only for the no-announcement case — sized after 1500 ms flaked
+under a concurrently-running battery, and benign to overrun: a plain
+reload re-shows the toast rather than losing the update), and
+registration now passes
+`updateViaCache: 'none'` because a host serving `sw.js` with no
+`Cache-Control` leaves update checks heuristically fresh — `sw.js` is
+the update signal, so it gets `version.json`'s treatment. The scripted
+acceptance run also caught the toast itself sitting UNDER the HUD panel
+(z-index 9 vs 10) — a prompt whose one job is to be clicked, swallowed
+on short viewports; it now stacks above (11).
+
+**Two deltas from the filing.** (1) The dev-server `Clear-Site-Data:
+"storage"` belt-and-braces was NOT shipped: measured, `localStorage` on
+loopback genuinely carries the §73 locale choice, `aestheticsOverrides`,
+and §23's `aestheticsBootPending` reboot handshake — the directive has
+no worker-only granularity and would have broken the §23 tuning reboot
+on every dev load. Its job moved into the worker itself: an unstamped
+`sw.js` is INERT (VERSION null caches nothing, intercepts nothing) and
+self-dismantles (install → activate → `unregister()`), so a worker
+hand-registered against `:8347`'s editable sources does not survive to
+shadow an edit. (2) Registration is gated on the baked `app-version`
+meta rather than probing `version.json` — same release-only signal,
+zero network, and it works identically for both documents now that
+explain.html is stamped.
+
+**Measured — and the measurement is now an instrument:**
+`tools/offline-check.mjs` builds two stamped trees from the working
+tree, serves them behind a repointed symlink (the QA topology, headless
+Chromium), and asserts all of the below; run it when touching `sw.js`,
+`stamp-release.mjs`, the registration, or the toast. It is not in the
+PR battery because it exercises the release machinery the battery's
+source tree deliberately never runs. One trap it encodes: the two trees
+are stamped seconds apart, so tree A is BACKDATED 10 s —
+`Last-Modified` has one-second granularity, and same-second trees make
+every conditional revalidation answer 304, which reads as a broken
+reload dance but is an artifact no real deploy can produce. 17/17:
+worker controls on first
+load; one cache named for the version; `version.json` and `/__state`
+absent from it; precache complete at 18 URLs; offline reload boots the
+movement; offline `?lang=de` deep link boots; offline `explain.html`
+renders; deploy → toast via focus poll; Reload lands on the NEW version
+with the old cache dropped; the source tree registers no worker; a
+hand-registered stub unregisters itself having cached nothing; console
+silent throughout (rule 6) in both trees. Battery: no geometry, no
+`MECH_GRAPH`, no layout change — the only `src` diffs are the
+registration, the toast handler, and the toast's z-index.
 
 ## §80 — The swept registry stops paying by the vertex, and the bill turns out to be somewhere else
 
