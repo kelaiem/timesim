@@ -10908,7 +10908,11 @@ style.textContent = `
    phone §15's panel collapses upward), because this can appear at any moment
    including mid-tour and must never cover what the viewer came for. */
 #clock-update {
-  position: fixed; left: 16px; bottom: 16px; z-index: 9;
+  /* z-index 11: ABOVE #clock-ui (10). Found by §79's scripted acceptance
+     run: on a short viewport the HUD panel's box reaches the bottom-left
+     corner and, stacked higher, swallowed the toast's clicks — a prompt
+     whose whole job is to be clicked cannot sit under passive chrome. */
+  position: fixed; left: 16px; bottom: 16px; z-index: 11;
   background: rgba(15,17,20,0.9); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.16); border-radius: 10px;
   padding: 10px 12px; color: #eaf0f7; display: none; align-items: center; gap: 10px;
@@ -11311,10 +11315,72 @@ const updateEl = document.createElement('div');
 updateEl.id = 'clock-update';
 updateEl.innerHTML = '<span>A new version is available</span>';
 document.body.appendChild(updateEl);
+// §79 — the registration, if one exists (set below, only in a stamped tree).
+// The toast's Reload must cross the WORKER boundary when there is one: the
+// active worker serves index.html cache-first out of the old release's cache,
+// so a bare location.reload() would land on the exact stale bytes the toast
+// is warning about. The dance: nudge the registration (update() fetches
+// sw.js; a new release means new bytes, so an install starts if one hasn't),
+// promote the waiting worker ('skip-waiting'), and reload only on
+// controllerchange — when the NEW worker, and its new precache, owns the
+// page. Without a worker this degrades to exactly the old behavior.
+let swReg = null;
+async function swReload() {
+  if (swReg) {
+    try { await swReg.update(); } catch { /* offline or dev: plain reload below */ }
+    // update() resolving does NOT mean the new worker is visible yet —
+    // measured in §79's acceptance run: reg.installing and reg.waiting were
+    // both still null on the microtask after update() settled, and the new
+    // worker only appeared (already 'installed') moments later. Racing the
+    // properties alone therefore takes the plain-reload path and lands back
+    // on the stale cache. So: take waiting if it is already there, else wait
+    // for the registration to ANNOUNCE the new worker (updatefound) and
+    // follow that worker to 'installed'. The 4000 ms bound guards only the
+    // announcement — a browser-internal scheduling latency, not the install
+    // (which may be fetching the whole precache and takes as long as it
+    // takes); no announcement inside it means update() was a no-op and
+    // there is nothing to promote, so the cost of the bound is only a
+    // slower plain reload in that case. Sized generously because it is
+    // LOAD-SENSITIVE: at 1500 ms the scripted acceptance run flaked under a
+    // concurrently-running battery — the announcement arrived late, the
+    // dance degraded to a plain reload, and the page landed back on the
+    // stale cache. Degradation stays benign: a plain reload re-shows the
+    // toast rather than losing the update.
+    const w = await new Promise((res) => {
+      if (swReg.waiting) return res(swReg.waiting);
+      const follow = (i) => {
+        if (!i) return res(null);
+        i.addEventListener('statechange', () => {
+          if (i.state === 'installed') res(i);
+          else if (i.state === 'redundant') res(null);
+        });
+      };
+      if (swReg.installing) return follow(swReg.installing);
+      let announced = false;
+      swReg.addEventListener('updatefound', () => { announced = true; follow(swReg.installing); }, { once: true });
+      setTimeout(() => { if (!announced) res(swReg.waiting || null); }, 4000);
+    });
+    if (w) {
+      let done = false;
+      const go = () => { if (!done) { done = true; location.reload(); } };
+      navigator.serviceWorker.addEventListener('controllerchange', go, { once: true });
+      w.postMessage('skip-waiting');
+      // Fallback: skipWaiting can be refused or raced (another tab already
+      // promoted it, controllerchange already fired before the listener).
+      // 2 s is a UX bound, not a protocol one — long enough for the
+      // promote+claim round trip anywhere, short enough to still feel like
+      // the reload that was clicked; a fallback reload is always safe, at
+      // worst it re-shows the toast.
+      setTimeout(go, 2000);
+      return;
+    }
+  }
+  location.reload();
+}
 {
   const reload = document.createElement('button');
   reload.textContent = 'Reload';
-  reload.addEventListener('click', () => location.reload());
+  reload.addEventListener('click', () => { swReload(); });
   const dismiss = document.createElement('button');
   dismiss.className = 'dismiss';
   dismiss.textContent = '✕';
@@ -11369,6 +11435,39 @@ if (builtVersion) {
   window.addEventListener('focus', () => checkForUpdate(true));
   setInterval(() => { if (!document.hidden) checkForUpdate(); }, UPDATE_POLL_MS);
   checkForUpdate(true);
+
+  // §79 — the offline worker, on the SAME release gate: dev_server.py serves
+  // the editable source tree (worktrees too, all on one origin and one worker
+  // registry), and a worker caching sources would shadow every edit — the
+  // classic SW development trap. No meta, no registration, so a source tree
+  // never has a worker to begin with; sw.js itself is additionally inert and
+  // self-unregistering when unstamped, for the hand-registered case.
+  // Registration failure is SILENT by design (rule 6): an absent or refused
+  // worker is the normal case, and the app runs identically without one.
+  // updateViaCache 'none': the update check for sw.js must BYPASS the HTTP
+  // cache, or a server without Cache-Control on sw.js (heuristic freshness
+  // from Last-Modified — measured against the stamped test tree: update()
+  // resolved with no updatefound while a no-store fetch already returned the
+  // new script) leaves update() blind to a landed release. sw.js is the
+  // update SIGNAL, so it gets version.json's treatment for version.json's
+  // stated reason; nothing here may depend on the QA host's header config.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      swReg = reg;
+      // A WAITING worker is a landed release — the same fact a version.json
+      // mismatch reports, so it feeds the SAME toast (§79: two prompts for
+      // one event would be a bug). checkForUpdate re-fetches version.json
+      // no-store, so the toast still learns the version it re-arms on; a
+      // waiting worker with no reachable version.json cannot happen, since
+      // both only change when a deploy is reachable.
+      const armIfWaiting = () => { if (reg.waiting && navigator.serviceWorker.controller) checkForUpdate(true); };
+      armIfWaiting();
+      reg.addEventListener('updatefound', () => {
+        const w = reg.installing;
+        if (w) w.addEventListener('statechange', armIfWaiting);
+      });
+    }).catch(() => {});
+  }
 }
 // No meta tag means an unstamped tree — development. Nothing is fetched at
 // all, so dev never polls a file that is not there.

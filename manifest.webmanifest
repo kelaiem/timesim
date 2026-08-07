@@ -1,0 +1,10 @@
+{
+  "name": "Watch Sim — Mechanical Clock Simulation",
+  "short_name": "Watch Sim",
+  "description": "A browser 3D simulation of a fusee-and-chain watch movement with a Swiss lever escapement — procedural, dependency-free, offline-capable.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0d10",
+  "theme_color": "#0b0d10"
+}

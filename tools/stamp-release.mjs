@@ -21,7 +21,7 @@
 //
 // Usage:  node tools/stamp-release.mjs <version>
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 
 const version = process.argv[2];
 if (!version) {
@@ -31,21 +31,41 @@ if (!version) {
 const q = `?v=${encodeURIComponent(version)}`;
 let rewrites = 0;
 
-// index.html: the module entry point and the importmap targets.
-let html = readFileSync('index.html', 'utf8');
-html = html.replace(/(["'])(\.\/(?:vendor|src)\/[^"'?]+?)(["'])/g, (_m, a, url, b) => { rewrites++; return `${a}${url}${q}${b}`; });
+// §79 — the precache manifest is a BY-PRODUCT of this walk: every URL the
+// stamp rewrites is a URL a shipped page will ask for, so collecting them
+// here is what makes it impossible to ship a file the worker forgot. Keys
+// are root-relative WITH their stamp, because the stamped URL is the one
+// the page requests. The three seeds are the unstamped stable URLs: the two
+// documents (the symlink's own entry points) and the manifest they link.
+// version.json is deliberately absent — it is the one file that must never
+// come from a cache — and sw.js caches itself via the browser's own
+// registration machinery, not via its own manifest.
+const precache = new Set(['index.html', 'explain.html', 'manifest.webmanifest']);
 
-// BAKE the version into the document. This is what makes a stale index.html
-// detectable: the app compares the version it was BUILT with against the one
-// the server serves now. Reading "what am I running" from a runtime fetch
-// would report the NEW version even when the browser replayed an old cached
-// index.html — the one case layer 2 exists for, silently undetectable.
-if (/name=["']app-version["']/.test(html)) {
-  html = html.replace(/(<meta\s+name=["']app-version["']\s+content=)["'][^"']*["']/, `$1"${version}"`);
-} else {
-  html = html.replace(/<\/head>/, `<meta name="app-version" content="${version}" />\n</head>`);
+// The documents: module entry points, importmap targets, and (explain.html)
+// the explainer's module imports. Both carry the baked app-version meta —
+// index.html so layer 2 can compare baked-vs-live, explain.html so its §79
+// worker registration has the same "am I a release" signal without a fetch.
+for (const doc of ['index.html', 'explain.html']) {
+  let html = readFileSync(doc, 'utf8');
+  html = html.replace(/(["'])(\.\/(?:vendor|src)\/[^"'?]+?)(["'])/g, (_m, a, url, b) => {
+    rewrites++;
+    precache.add(url.slice(2) + q);
+    return `${a}${url}${q}${b}`;
+  });
+
+  // BAKE the version into the document. This is what makes a stale index.html
+  // detectable: the app compares the version it was BUILT with against the one
+  // the server serves now. Reading "what am I running" from a runtime fetch
+  // would report the NEW version even when the browser replayed an old cached
+  // index.html — the one case layer 2 exists for, silently undetectable.
+  if (/name=["']app-version["']/.test(html)) {
+    html = html.replace(/(<meta\s+name=["']app-version["']\s+content=)["'][^"']*["']/, `$1"${version}"`);
+  } else {
+    html = html.replace(/<\/head>/, `<meta name="app-version" content="${version}" />\n</head>`);
+  }
+  writeFileSync(doc, html);
 }
-writeFileSync('index.html', html);
 
 // Every relative specifier inside the module graph — ./ AND ../, since
 // inspect.js reaches up into vendor/. A module's imports resolve against ITS
@@ -53,11 +73,23 @@ writeFileSync('index.html', html);
 // version itself or that file keeps coming from cache. The first version of
 // this matched only ./ and silently left the bvh vendor import unversioned,
 // which is why the leftover scan below matches both forms too: a scan that
-// looks for less than the rewrite did will always report success.
+// looks for less than the rewrite did will always report success. Dynamic
+// import('...') specifiers are the same class of URL — inspect.js (the
+// documented console entry) and the explain-i18n locale tables come in ONLY
+// that way, and shipped unversioned until §79's precache walk needed the
+// URLs the pages actually request.
+const stampSpec = (file) => (_m, a, url, b) => {
+  rewrites++;
+  precache.add(posix.normalize(posix.join(posix.dirname(file), url)) + q);
+  return `${a}${url}${q}${b}`;
+};
 for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
   const p = join('src', f);
+  const stamp = stampSpec(`src/${f}`);
   const before = readFileSync(p, 'utf8');
-  const after = before.replace(/(\bfrom\s+['"])(\.\.?\/[^'"?]+?)(['"])/g, (_m, a, url, b) => { rewrites++; return `${a}${url}${q}${b}`; });
+  const after = before
+    .replace(/(\bfrom\s+['"])(\.\.?\/[^'"?]+?)(['"])/g, stamp)
+    .replace(/(\bimport\(\s*['"])(\.\.?\/[^'"?]+?)(['"]\s*\))/g, stamp);
   if (after !== before) writeFileSync(p, after);
 }
 
@@ -67,7 +99,11 @@ for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
 const leftovers = [];
 const scan = (p, re) => { const s = readFileSync(p, 'utf8'); let m; while ((m = re.exec(s))) leftovers.push(`${p}: ${m[0].trim()}`); };
 scan('index.html', /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
-for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) scan(join('src', f), /\bfrom\s+['"]\.\.?\/[^'"?]+['"]/g);
+scan('explain.html', /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
+for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
+  scan(join('src', f), /\bfrom\s+['"]\.\.?\/[^'"?]+['"]/g);
+  scan(join('src', f), /\bimport\(\s*['"]\.\.?\/[^'"?]+['"]\s*\)/g);
+}
 if (leftovers.length) {
   console.error('stamp-release: unversioned asset url(s) left behind — these would be served stale:\n  ' + leftovers.join('\n  '));
   process.exit(1);
@@ -77,7 +113,23 @@ if (rewrites === 0) {
   process.exit(1);
 }
 
+// §79 — bake the worker. VERSION names the release's cache (activation drops
+// every other timesim-* cache), and PRECACHE is the manifest gathered above.
+// Both placeholders must exist and must be consumed: a worker shipped with
+// VERSION still null is INERT by design (that is the source-tree stub), so
+// shipping one in a release would silently deliver no offline support at all.
+{
+  const sw = readFileSync('sw.js', 'utf8')
+    .replace(/^const VERSION = null;.*$/m, `const VERSION = ${JSON.stringify(version)};`)
+    .replace(/^const PRECACHE = \[\];.*$/m, `const PRECACHE = ${JSON.stringify([...precache].sort())};`);
+  if (/^const (?:VERSION = null|PRECACHE = \[\]);/m.test(sw)) {
+    console.error('stamp-release: sw.js placeholder(s) not replaced — the worker would ship inert, offline support silently absent');
+    process.exit(1);
+  }
+  writeFileSync('sw.js', sw);
+}
+
 // version.json is what layer 2 polls. Served no-store: it is the one file that
 // must never come from a cache, since its whole job is to reveal a stale one.
 writeFileSync('version.json', JSON.stringify({ version }) + '\n');
-console.log(`stamp-release: ${version} — ${rewrites} url(s) versioned, none left unversioned, version.json written`);
+console.log(`stamp-release: ${version} — ${rewrites} url(s) versioned, none left unversioned, ${precache.size} url(s) precached in sw.js, version.json written`);
