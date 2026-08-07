@@ -878,14 +878,29 @@ function maxZInside(p, q, zp, zq, c) {
 // its far end HANGS from a raised pivot and climbs as the crank swings — so
 // the test is per-segment and per-pose: a banded row bites only where the rod
 // rises into its body.
-export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eStep = 0.2 } = {}) {
-  let best = { clear: -Infinity, f: 0.5, e: 0, at: null };
+export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eStep = 0.2, eMax = 6, plateLimit = Infinity } = {}) {
+  // §85 step C3 — WHAT THE SEARCH IS FOR. This scan used to maximise
+  // worst-case clearance, and a maximiser with no cost for bending bends as
+  // far as it is allowed: the shipped rod sat at f 0.25, e −6.0 — BOTH box
+  // corners — holding 13.54 of clearance against a margin that asks for 0.15.
+  // That is a dimension set by the search bounds rather than by a constraint,
+  // §35's defect in miniature, and widening the box only moved it to the new
+  // corner (e −16.0, a dogleg on a 58.7 rod).
+  //
+  // A rod is straight unless something makes it bend. So the objective is the
+  // LEAST bend that clears the corridor by the margin the obstacle radii
+  // already carry, and the bound may then be generous without buying absurd
+  // geometry — extra range is only ever spent when a smaller bend cannot
+  // thread. If nothing clears, the most-clearance route is still returned so
+  // the caller can report how badly (C1's named warning, C2's scan).
+  let best = null;                                   // least-bent route that clears
+  let fallback = { clear: -Infinity, f: 0.5, e: 0, at: null };
   // A COARSE probe is a strict SUBSET of the fine grid (0.25 + k·0.25 and
   // ±k·1 both land on fine gridpoints), so a route the probe can find the
   // fine solve can only match or beat — which is what lets §85 C2 use it as
   // a feasibility test without lying to the scan.
   for (let f = 0.25; f <= 0.751; f += fStep) {
-    for (let e = -6; e <= 6.01; e += eStep) {
+    for (let e = -eMax; e <= eMax + 0.01; e += eStep) {
       let worst = Infinity, worstAt = null;
       for (const { a, b, za = 0, zb = 0 } of posesAB) {
         const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
@@ -893,6 +908,11 @@ export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eS
         // local +X maps to under the placement rotation (atan2 − π/2).
         const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
         const E = { x: a.x + ux * L * f + nx * e, y: a.y + uy * L * f + ny * e };
+        // The bend is a real knuckle on a real plate: it has to BE somewhere.
+        // With C3's least-bend objective the search bound no longer sets the
+        // geometry, so the bound may be generous and this is what actually
+        // limits it — the physical constraint instead of the magic number.
+        if (Math.hypot(E.x, E.y) > plateLimit) { worst = -Infinity; break; }
         const zE = za + (zb - za) * f;   // z runs with the bend, not around it
         for (const o of obstacles) {
           let d;
@@ -909,11 +929,24 @@ export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eS
           if (d < worst) { worst = d; worstAt = o; }
         }
       }
-      if (worst > best.clear) best = { clear: worst, f, e, at: worstAt };
+      if (worst >= 0) {
+        const bend = Math.abs(e);
+        // Least bend; among equally bent routes, the one with more air.
+        if (!best || bend < best.bend - 1e-9 || (bend <= best.bend + 1e-9 && worst > best.clear)) {
+          best = { clear: worst, f, e, at: worstAt, bend };
+        }
+      }
+      if (worst > fallback.clear) fallback = { clear: worst, f, e, at: worstAt };
     }
   }
-  return best;
+  return best || fallback;
 }
+
+// How far the search may LOOK, not how far the rod may bend — C3's objective
+// decides that, and the plate decides what is reachable. Generous enough that
+// a corridor needing a real detour can be threaded; the identity build spends
+// 0.8 of it.
+export const ELBOW_E_MAX = 16;
 
 export function solveStopWork({
   P,                  // solved layout stations (balance, fork, escape, fourth)
@@ -1102,7 +1135,9 @@ export function solveStopWork({
       const tt = tailTopIn(fr, psi);
       poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    return solveElbow(len, poses, lowRodObstacles, rodR, coarse ? { fStep: 0.25, eStep: 1 } : {});
+    const opts = { eMax: ELBOW_E_MAX, plateLimit: plateR - rodR - CLEAR_MARGIN };
+    return solveElbow(len, poses, lowRodObstacles, rodR,
+      coarse ? { ...opts, fStep: 0.25, eStep: 1 } : opts);
   };
   const STOP_BEARING = (() => {
     const ideal = Math.atan2(P.balance.y, P.balance.x);
@@ -1244,7 +1279,8 @@ export function solveStopWork({
       // corridor model could not see the great wheel.
       poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles, rodR);
+    const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles, rodR,
+      { eMax: ELBOW_E_MAX, plateLimit: plateR - rodR - CLEAR_MARGIN });
     if (best.clear < 0)
       warn(`hack rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled${best.at?.what ? ` at ${best.at.what}` : ''}`);
     return best;

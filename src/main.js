@@ -34,7 +34,7 @@ import {
   solveLayout,
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
-  segCircleClear, solveElbow, solveStopWork,   // §85 step A: the stop work solves like the layout does
+  segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
@@ -2557,7 +2557,8 @@ const RESET_ROD_ELBOW = (() => {
     // Flat, both ends on the reset plane (§85 C1: heights are declared now).
     poses.push({ a: post, b: { x: r.q.x, y: r.q.y }, za: ROD_PLANE_Z, zb: ROD_PLANE_Z });
   }
-  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES, ROD_R);
+  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES, ROD_R,
+    { eMax: ELBOW_E_MAX, plateLimit: plateR - ROD_R - CLEAR_MARGIN }); // §85 C3: least bend, plate-bounded
   if (best.clear < 0)
     console.warn(`reset rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
   return best;
