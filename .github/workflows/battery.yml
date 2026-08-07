@@ -11,24 +11,44 @@
 # boot ~26 s) on a 2025 dev container. CI hardware is slower and SwiftShader
 # does the GL, so the job budget was 3× that measurement — 45 min.
 #
-# 45 → 60, and the reason is not that a PR wanted more room. TODO 27 drilled
-# the chain's 211 joints, tripling that mesh, and sweptOverlap went 352 s →
-# ~1400 s; ci-battery.mjs raised its PER-CHECK guard to 45 min for exactly
-# that and left this one alone. Two 45s is one too many: the job cap includes
-# checkout, npm ci and the Chromium install, so it always bites FIRST, and a
-# check that genuinely wedges can never reach the guard written to catch it.
-# Measured, every run after TODO 27 merged died here — 188 (41.7 min, the last
-# one to finish at all), then 189/190/191/193/194 at 45.4–45.6 min, run 191 and
-# 194 being pushes to MAIN. GitHub reports a job-timeout kill as `cancelled`,
-# which is why a gate that had stopped running for a day still read like
-# somebody's force-push.
+# 45 → 60 → 45, and the round trip is the point. TODO 27 drilled the chain's
+# 211 joints, tripling that mesh, and sweptOverlap went 352 s → ~1400 s;
+# ci-battery.mjs raised its PER-CHECK guard to 45 min for exactly that and left
+# this one alone. Two 45s is one too many: the job cap includes checkout, npm
+# ci and the Chromium install, so it always bites FIRST, and a check that
+# genuinely wedges can never reach the guard written to catch it. Measured,
+# every run after TODO 27 merged died here — 188 (41.7 min, the last one to
+# finish at all), then 189/190/191/193/194 at 45.4–45.6 min, run 191 and 194
+# being pushes to MAIN. GitHub reports a job-timeout kill as `cancelled`, which
+# is why a gate that had stopped running for a day still read like somebody's
+# force-push. 60 restored the ordering and was declared a STAY, not a fix.
 #
-# So 60 restores the ordering the two timeouts were supposed to have — check
-# guard 45 < job 60, wedge diagnosable — and it is a STAY, not a fix. The cost
-# itself is roadmap §80's (samplePoses transforms every vertex of every mesh at
-# every pose into Float64 and holds all 9 axes × 12 poses at once), and the
-# entry's own fallback if the battery outgrows a per-PR gate is still a tiered
-# split — cheap checks per-PR, sweeps nightly — not another number here.
+# §81 CUT THE WALL AND DID NOT EARN THIS NUMBER BACK, so 60 stands. Its two
+# reductions are real and verified byte-identical against the pre-change
+# report: the scene is welded (every mesh indexed, ~30% of vertices were
+# duplicates) and the harness SHARDS the checks across browser contexts by
+# their measured cost, so the wall is max(shard) rather than sum(checks). This
+# job stopped dying at 45 and now finishes in 22-37 min.
+#
+# But 45 was tried first and reverted. §81 derived it from a dev container
+# where the battery is 26.5 min; the first run on THIS runner took 36.7 min,
+# which makes a 45 cap 1.20x over a 37.5 min job — the very ratio that killed
+# runs 188-194.
+#
+# AND THE RUNNER IS NOT EVEN CONSISTENT, which is the part to keep. The next
+# run of the same harness on the same tree took 22.3 min: 2459.1 s of check
+# time against 4082.8 s, a 1.66x spread between two CI runs. So there is no
+# dev-vs-CI ratio to correct for, only a distribution — and a cap has to clear
+# its SLOW TAIL, which one run cannot measure. Both of §81's attempts at these
+# numbers came from a single green run, and a green run is exactly what makes
+# a too-tight cap look justified until it fires on a healthy build.
+#
+# The reason sharding cannot buy this number is worth keeping too: the wall is
+# max(shard), but the cap is set by the slowest single CHECK, and no partition
+# subdivides a check. sweptOverlap alone was 2184.6 s (36.4 min) on the slow
+# run and is 57% of all check time. Roadmap §82 owns it. When it lands,
+# re-derive this cap AND ci-battery.mjs's per-check guard together, from
+# SEVERAL CI runs rather than one.
 #
 # Playwright is pinned in tools/package.json so the browser build is stable;
 # the browser download is cached keyed on that pin. python3 for dev_server.py

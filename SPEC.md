@@ -86,6 +86,16 @@ export function makePillar({ height })
 // hour/minute/second hands (blued, counterweighted shapes, pivot at origin, point +Y).
 export function makeDial({ radius })
 export function makeHand({ length, kind })          // kind: 'hour'|'minute'|'second'
+
+// §81 — the exact weld. Builders keep emitting whatever ExtrudeGeometry and
+// hand-written soup emit; main.js runs weldTree over the scene once at the end
+// of boot, so every mesh reaches the inspector INDEXED. Merges only on
+// bit-equal full attribute tuples (never a tolerance, never position-only), so
+// positions do not move and split normals survive. See MODELING.md rule 7
+// before shipping a builder that runs after boot or holds a geometry pool.
+export function weldGeometry(geo)                   // → a NEW indexed geometry
+export function weldTree(root)                      // → { meshes, before, after }
+export function weldAssert(root)                    // rule 6: warns on non-indexed
 ```
 
 ## Gear train (Agent B assembles & animates)

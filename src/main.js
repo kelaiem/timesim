@@ -3371,6 +3371,16 @@ function chainLeafLayers(counterbored) {
     ? [[CHAIN_PLATE_T - CHAIN_RIVET_HEAD_T, chainBoreR], [CHAIN_RIVET_HEAD_T, CHAIN_RIVET_HEAD_R]]
     : [[CHAIN_PLATE_T, chainBoreR]];
 }
+// A chain template as the builder wants it: welded vertices plus the triangle
+// index that puts them back together. Same triangles, same positions — see
+// weldGeometry's header for why that makes it exact rather than approximate.
+function weldTmpl(t) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(t.pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(t.nrm, 3));
+  const w = G.weldGeometry(g);
+  return { ...t, pos: w.attributes.position.array, nrm: w.attributes.normal.array, idx: w.index.array };
+}
 function chainPlatePairTemplate(endR, zOff, counterbored) {
   const half = CHAIN_PITCH / 2;
   const layers = chainLeafLayers(counterbored);
@@ -3437,7 +3447,16 @@ const CHAIN_TMPL = (() => {
     g.dispose();
   }
   const pin = { pos: Float32Array.from(pos), nrm: Float32Array.from(nrm), parts };
-  return { inner, outer, pin };
+  // §81 tranche A, the chain's shape of it. The scene-wide weld pass is a
+  // boot-time traversal and this mesh is rebuilt every frame the chain moves,
+  // so welding the OUTPUT would move a per-boot cost into the frame loop. The
+  // chain does not need that: it is N rigid copies of three templates, so
+  // welding each TEMPLATE once here buys the same reduction, permanently —
+  // fewer vertices to transform per frame as well as fewer for the inspector
+  // to walk. What it does not do is merge across the seam between two links;
+  // that leaves a few duplicate vertices where a leaf meets its neighbour,
+  // which is a SUPERSET of the fully welded mesh and therefore still exact.
+  return { inner: weldTmpl(inner), outer: weldTmpl(outer), pin: weldTmpl(pin) };
 })();
 // ...and the bore is ASSERTED, not assumed. Nothing in the battery can look
 // inside a merged buffer — the chain is ONE mesh, so its pin and the leaf it
@@ -3452,17 +3471,23 @@ const CHAIN_TMPL = (() => {
   const half = CHAIN_PITCH / 2;
   const AZ = 16;
   let worst = 0, worstAt = '';
+  // §81: the templates are welded now, so a triangle is three INDICES rather
+  // than nine consecutive floats. Reading through the index keeps this assert
+  // on the same template the builder writes from — the alternative, keeping an
+  // unwelded copy just to assert against, would let the two drift apart, which
+  // is the failure this assert exists to prevent in the first place.
   const hitsAt = (tmpl, px, py) => {          // z of every triangle the vertical line at (px,py) crosses
-    const P = tmpl.pos, zs = [];
-    for (let i = 0; i < P.length; i += 9) {
-      const ax = P[i], ay = P[i + 1], bx = P[i + 3], by = P[i + 4], cx2 = P[i + 6], cy2 = P[i + 7];
+    const P = tmpl.pos, I = tmpl.idx, zs = [];
+    for (let e = 0; e < I.length; e += 3) {
+      const a0 = I[e] * 3, b0 = I[e + 1] * 3, c0 = I[e + 2] * 3;
+      const ax = P[a0], ay = P[a0 + 1], bx = P[b0], by = P[b0 + 1], cx2 = P[c0], cy2 = P[c0 + 1];
       const d = (by - cy2) * (ax - cx2) + (cx2 - bx) * (ay - cy2);
       if (Math.abs(d) < 1e-12) continue;      // edge-on (a side wall) — no cap to cross
       const l1 = ((by - cy2) * (px - cx2) + (cx2 - bx) * (py - cy2)) / d;
       const l2 = ((cy2 - ay) * (px - cx2) + (ax - cx2) * (py - cy2)) / d;
       const l3 = 1 - l1 - l2;
       if (l1 < 0 || l2 < 0 || l3 < 0) continue;
-      zs.push(l1 * P[i + 2] + l2 * P[i + 5] + l3 * P[i + 8]);
+      zs.push(l1 * P[a0 + 2] + l2 * P[b0 + 2] + l3 * P[c0 + 2]);
     }
     return zs.sort((a, b) => a - b);
   };
@@ -3503,9 +3528,25 @@ function buildChainLinkGeometry(curve) {
   // frame and handing them straight to the collector was affordable at the
   // old size and is not at this one. `total` only changes when the run
   // gains or loses a link, so the reallocation is rare.
-  if (!chainBuf || chainBuf.pos.length !== total)
-    chainBuf = { pos: new Float32Array(total), nrm: new Float32Array(total) };
-  const { pos, nrm } = chainBuf;
+  //
+  // §81: the INDEX is kept the same way and for a stronger reason — it is a
+  // function of the template sequence alone, so it changes only when N does.
+  // The templates are welded, so `total` is now the welded vertex count and
+  // the per-frame transform loop below shrinks with it.
+  if (!chainBuf || chainBuf.pos.length !== total) {
+    let tris = (N + 1) * pin.idx.length;
+    for (let i = 0; i < N; i++) tris += (isOuter(i) ? outer : inner).idx.length;
+    chainBuf = { pos: new Float32Array(total), nrm: new Float32Array(total), idx: new Uint32Array(tris) };
+    let e = 0, base = 0;
+    const stamp = (tmpl) => {
+      for (let i = 0; i < tmpl.idx.length; i++) chainBuf.idx[e + i] = tmpl.idx[i] + base;
+      e += tmpl.idx.length;
+      base += tmpl.pos.length / 3;
+    };
+    for (let i = 0; i < N; i++) stamp(isOuter(i) ? outer : inner);
+    for (let i = 0; i <= N; i++) stamp(pin);
+  }
+  const { pos, nrm, idx } = chainBuf;
   let off = 0;
   // Write a template transformed by the orthonormal frame with basis
   // columns (t̂,ŷ,k̂) and translation c — normals rotate by the same basis.
@@ -3540,6 +3581,7 @@ function buildChainLinkGeometry(curve) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
   return geo;
 }
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
@@ -11695,6 +11737,12 @@ function askTour(onProceed) {
       hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
       hand.clear();
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
+      // §81: makeHand's facetFlat emits non-indexed soup BY DESIGN (duplicated
+      // vertices are what give the flutes their per-face normals), and this
+      // runs long after the boot-time weld pass. Weld the fresh build here or
+      // a slider drag quietly un-welds four units. The weld keys on the full
+      // attribute tuple, so the facets survive it — see weldGeometry.
+      G.weldTree(hand);
     }
   };
   fluteSlider.addEventListener('input', () => {
@@ -18379,6 +18427,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+let WELD_CENSUS = null;   // §81 tranche A — filled by the weld pass at the end of boot
+
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
@@ -18600,6 +18650,30 @@ window.__clock = {
   lowCorridorZBand: LOW_CORRIDOR_Z_BAND,
   // Layout introspection for the realism-inspection tooling.
   P, plateR, dialRadius,
+  // §81 tranche A: what the weld pass found and removed, so the reduction is
+  // a number the battery can read rather than a claim in a comment.
+  get weldCensus() { return WELD_CENSUS; },
 };
+
+// §81 tranche A — weld the scene, once, after every builder has run and before
+// the first frame. Placed here rather than inside the builders because there
+// is no chokepoint to place it in: 315 `new THREE.Mesh(...)` sites across this
+// file and geometry.js, and no factory they pass through. See weldGeometry's
+// header for why the reduction is EXACT and therefore needs no waiver, and
+// weldTree's for what it deliberately leaves alone.
+//
+// Geometry built after this point welds itself, because a traversal cannot
+// reach it: the CHAIN (rebuilt every frame, welded at its three templates) and
+// the HANDS (re-cut by the flute slider). §62's three-quarter plate re-cut is
+// not on that list — it runs at boot, above, so the traversal covers it, and
+// so does §71's occluder, which shares the plate's very geometry and gets the
+// same welded object rather than a second copy of it. weldAssert is what makes
+// the list self-maintaining rather than a comment to be trusted — standing
+// rule 6: a mesh that reaches the scene non-indexed says so at boot.
+{
+  const w = G.weldTree(scene);
+  WELD_CENSUS = { ...w, saved: w.before - w.after };
+  G.weldAssert(scene);
+}
 
 requestAnimationFrame(frame);

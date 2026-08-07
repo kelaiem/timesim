@@ -279,11 +279,30 @@ I.start(__clock, 'clearances');                             // 0 violations
 ```
 
 CI runs this whole bar on every PR (§52): `.github/workflows/battery.yml`
-drives `tools/ci-battery.mjs` — headless Chromium, one check at a time,
-plus boot-silence and a fingerprint-determinism double-boot. `node
-tools/ci-battery.mjs` runs the same gate locally (needs `npm ci` in
-`tools/` and a Playwright Chromium). It enforces rule 4; it does not
-replace the focused checks below while iterating.
+drives `tools/ci-battery.mjs` — headless Chromium, plus boot-silence and a
+fingerprint-determinism double-boot. `node tools/ci-battery.mjs` runs the
+same gate locally (needs `npm ci` in `tools/` and a Playwright Chromium).
+It enforces rule 4; it does not replace the focused checks below while
+iterating.
+
+Since §81 the harness SHARDS: it partitions the checks across K browser
+contexts by the measured `cost` column in `BATTERY` (`--shards`, default 2)
+so the wall is max(shard) rather than sum(checks). That is sound because
+`start()` calls `clock.resetInputs()` before every check, so no check can
+observe which ones ran before it — **if a report ever moves between
+`--shards 1` and `--shards 2`, the check that moved has broken that
+invariant and is the bug.** Two rules follow. Keep the cost column
+roughly true (`--report` writes the times back out as `ms`); a stale
+number costs wall clock, never a verdict. And when a check gets much
+faster or slower, re-read the partition before concluding anything about
+the battery's wall — no number of shards can go below the slowest single
+check, because no check is subdivided.
+
+`--report FILE` writes every check's FULL payload as JSON. **That, not the
+PASS/FAIL column, is what a performance change is accepted against**: a
+gate reports only whether its failure list is empty, so a report that
+moved while staying empty passes every gate and is still a regression.
+§80 and §81 were both landed by diffing one of these before and after.
 
 Use `start()`/`status()`, never `await` the sweep directly — full runs take
 100 s+ and blow a browser-eval timeout. Do **not** pass
@@ -351,6 +370,12 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   NEGATED rotation of the hand it drives.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
+  **Disarmed at the source by §81**: every mesh now reaches the scene
+  INDEXED (`weldTree` runs once at the end of boot; `weldAssert` warns if
+  one does not), so `bvhFor` gets a real index rather than bolting on an
+  identity one. The defensive `bvhFor(src)` calls stay — the trap is
+  disarmed, not the discipline, and a builder that ships after the pass
+  can still re-arm it. See MODELING.md rule 7 before adding one.
 - **An OPEN mesh reads as a colliding one.** `meshClearance` guards its BVH
   near-zeros with `sampledVerdict`, which is a PARITY RAYCAST — it counts
   crossings, so it assumes the solid is closed. Build a body open-ended and

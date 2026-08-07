@@ -44,13 +44,19 @@
 // Usage:  node tools/ci-battery.mjs            (from anywhere; paths are
 //         resolved from this file). Needs python3 on PATH for dev_server.py
 //         and a Playwright Chromium (npx playwright install chromium).
+//         --shards N        run the battery across N browser contexts,
+//                           partitioned by the measured `cost` column
+//                           (default 2; 1 is the pre-§81 single-file run).
+//         --report FILE     write every check's FULL payload as JSON — the
+//                           "same rows, same numbers" instrument §80 and §81
+//                           are both accepted against.
 // Exits 0 only when every gate passes; failing gates dump their payloads.
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -70,45 +76,94 @@ const YIELD_EVERY = 64;
 // tests) to 3.6 s, which moved the check to ~1755 s. The other 96.5% is the
 // CONFIRM TIER: 15 raw hull overlaps, each re-measured by an uncapped
 // `measureClearance` BVH sweep over all 9 axes, and TODO 27's chain is on two
-// of them. Roadmap §82 owns that; the guard stays at 45 minutes until it
-// lands, because it has to clear the honest cost of the check with room to
-// spare — still ~1.5x the slowest check, which is what a guard is for.
+// of them. Roadmap §82 still owns that tier and has not landed.
+//
+// §81 SHARDED THE HARNESS AND THIS GUARD DID NOT MOVE, which took two wrong
+// answers to establish. The entry's acceptance asked for 45 → 20; §81 first
+// tried 45 → 40, derived from `sweptOverlap` measuring 26.2 min inside a
+// 2-shard run on a DEV CONTAINER. The first CI run said 2184.6 s (36.4 min)
+// for the same check, so 40 would have left a WEDGE guard 1.10x of headroom
+// over a healthy run. Reverted to 45 before shipping.
+//
+// THE SECOND WRONG ANSWER WAS THE EXPLANATION. That revert was written up as
+// "ubuntu-latest is ~1.45x slower than the dev container" — a tidy ratio, from
+// one run. The next CI run of the same harness on the same tree came in at
+// 2459.1 s of check time against the first run's 4082.8 s: a 1.66x SPREAD
+// between two CI runs, wall 22.3 min against 36.7. There is no stable
+// dev-vs-CI ratio to derive anything from; the dev container sits inside CI's
+// own spread (2807.8 s).
+//
+// So the rule is not about which machine. A GUARD IS SIZED BY THE SLOW TAIL OF
+// THE ENVIRONMENT IT RUNS IN, AND ONE RUN DOES NOT MEASURE A TAIL. Both wrong
+// answers here came from a single green run — which is the trap worth
+// remembering, because a green run is exactly what makes a too-tight guard
+// look justified right up until it fires on a healthy build.
+//
+// 45 is 1.24x over the worst `sweptOverlap` yet observed (36.4 min), which is
+// thinner than a guard should be. It is not raised, because raising a guard to
+// fit a check is how the 45/60 pair got into trouble in the first place; the
+// number that has to come down is `sweptOverlap`'s, and that is roadmap §82's
+// confirm tier — 15 raw hull overlaps each re-measured by an uncapped
+// `measureClearance` sweep over all 9 axes, with TODO 27's chain on two of
+// them. When §82 lands, re-derive this and the job cap together, from SEVERAL
+// CI runs.
+//
+// Note also what sharding can and cannot buy: the wall is now max(shard), but
+// this guard and battery.yml's job cap are both set by the slowest single
+// CHECK, which no partition subdivides. Sharding moved the wall 2.2x and moved
+// neither timeout.
 const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
-// The battery, in the order the checks are run: cheap and synchronous first so
-// a broken graph fails in seconds, the expensive sweeps last. Each entry names
-// the gate standing rule 4 states for it and how to judge the check's payload.
+// The battery, in the order the gates are REPORTED: cheap and synchronous
+// first so a broken graph reads first, the expensive sweeps last. Each entry
+// names the gate standing rule 4 states for it and how to judge the check's
+// payload — plus `cost`, its measured wall clock in seconds.
+//
+// §81 — WHY THE COST IS DATA. The harness shards the battery across K browser
+// contexts and partitions the checks by `cost` (longest-processing-time
+// greedy, below), so the wall is max(shard) instead of sum(checks). A
+// partition written as code would have to be re-argued every time a check
+// gets faster; a partition computed from a measured column is re-derived by
+// editing the column. These numbers are one full run of this harness on a
+// 4-vCPU dev container after §80 landed — `--report` writes the same column
+// back out as `ms`, which is how they get refreshed. They are used ONLY to
+// balance the shards: a stale number costs wall clock, never a wrong verdict.
+// They are dev-container numbers, and CI's absolute times swing widely around
+// them (two runs of one tree: 4082.8 s and 2459.1 s of check time). That does
+// not matter here — the partition is decided by RATIOS between checks, which
+// are stable, and the slow CI run split 2184.6 s against 1898.2 s on exactly
+// this column.
 const BATTERY = [
-  { name: 'support', opts: {},
+  { name: 'support', opts: {}, cost: 22,
     gate: '0 failures',
     fails: (r) => r.failures },
-  { name: 'graph', opts: {},
+  { name: 'graph', opts: {}, cost: 1,
     gate: 'every violation list empty (todo allowed)',
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  { name: 'penetration', opts: {},
+  { name: 'penetration', opts: {}, cost: 17,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
     fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
     note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
-  { name: 'alarmHandoffs', opts: {},
+  { name: 'alarmHandoffs', opts: {}, cost: 1,
     gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'stockFloor', opts: {},
+  { name: 'stockFloor', opts: {}, cost: 4,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY },
+  { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY }, cost: 3,
     gate: '0 unwaived mover-vs-fixture intersections',
     fails: (r) => r.violations,
     note: (r) => `${r.movers} movers over ${r.poses} poses, ${r.waived.length} waived (accepted debt)` },
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY },
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 147,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'oscillator', opts: {},
+  { name: 'oscillator', opts: {}, cost: 1,
     gate: 'the spring is cut to the beat, in real hairspring stock',
     fails: (r) => r.failures,
     note: (r) => `implied ${r.impliedHz} Hz vs spec ${r.specHz} Hz, ribbon ${r.spring.h_mm.toFixed(4)} mm (stock ${r.spring.windowMm[0]}–${r.spring.windowMm[1]})` },
@@ -120,7 +175,7 @@ const BATTERY = [
   // reversing part either has a restoring element, is driven both ways, or is
   // waived against a filed TODO. The control is gated too: a positive control
   // that quietly stops passing is how this class of check dies.
-  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY },
+  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 3,
     gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
     fails: (r) => [
       ...r.unwaived,
@@ -130,15 +185,15 @@ const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY },
+  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 607,
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY },
+  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 395,
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY },
+  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 1573,
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
     note: (r) => {
@@ -148,6 +203,70 @@ const BATTERY = [
 ];
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
+
+// §81 tranche B — the partition, longest-processing-time greedy: sort the
+// checks by measured cost descending and drop each onto the shard that is
+// currently lightest. LPT is the classic 4/3-competitive heuristic for
+// makespan, which is more than enough here because ONE check dominates the
+// column — `sweptOverlap` at ~33 min against ~29 min for the other eleven put
+// together, so every sensible partition converges on {sweptOverlap} against
+// {the rest} and the wall is that check's own cost plus a boot. That also
+// says what more shards can and cannot buy: K > 2 cannot go below the
+// slowest single check, because no check is subdivided. When §82 takes
+// `sweptOverlap` out of the dominant slot the column moves and this
+// re-partitions on its own — which is the whole reason it reads a column
+// instead of naming the checks.
+function partition(entries, k) {
+  const shards = Array.from({ length: k }, () => ({ entries: [], cost: 0 }));
+  for (const e of [...entries].sort((a, b) => b.cost - a.cost)) {
+    const lightest = shards.reduce((m, s) => (s.cost < m.cost ? s : m));
+    lightest.entries.push(e);
+    lightest.cost += e.cost;
+  }
+  // Report each shard's checks in the canonical BATTERY order, so a shard's
+  // own log reads like the battery it came from.
+  for (const s of shards) s.entries.sort((a, b) => entries.indexOf(a) - entries.indexOf(b));
+  return shards.filter((s) => s.entries.length);
+}
+
+// Serialises the virgin boots. Two shards booting at once would race on the
+// dev server's single /__state file — one shard's DELETE against another's
+// startup GET — and a virgin boot is only virgin if nothing else is touching
+// that file. The boots cost ~26 s each and the checks are the expensive part,
+// so serialising them costs a fraction of what the sharding saves.
+function serialiser() {
+  let tail = Promise.resolve();
+  return (fn) => {
+    const next = tail.then(fn, fn);
+    tail = next.then(() => {}, () => {});
+    return next;
+  };
+}
+
+const argv = process.argv.slice(2);
+const argOf = (flag) => {
+  const i = argv.indexOf(flag);
+  return i === -1 ? null : argv[i + 1];
+};
+// Default 2, not cpus().length: the runner this gate lives on (ubuntu-latest)
+// has 4 vCPU, the checks are single-threaded JS holding their page's main
+// thread, and the partition above cannot use a third shard anyway while one
+// check owns the critical path. `--shards 1` is the pre-§81 single-file run,
+// kept because it is the reference the sharded run has to agree with.
+const SHARDS = (() => {
+  const raw = argOf('--shards') ?? process.env.BATTERY_SHARDS ?? '2';
+  const k = Number(raw);
+  // Refuse a garbage count rather than silently falling back: `--shards tow`
+  // quietly running 2 is how a run gets misreported as a sharded one.
+  if (!Number.isInteger(k) || k < 1) throw new Error(`--shards wants a positive integer, got "${raw}"`);
+  return Math.min(k, BATTERY.length);   // more shards than checks is just idle boots
+})();
+// Every check's FULL payload, written as JSON. This is §81's (and §80's)
+// acceptance instrument: "same rows, same numbers" is a diff of two of these
+// across the change, not a reading of the PASS/FAIL column — a gate reports
+// only whether its failure list is empty, so a report that moved while
+// staying empty passes the gate and fails the entry.
+const REPORT_PATH = argOf('--report');
 
 async function freePort() {
   return new Promise((resolve, reject) => {
@@ -265,39 +384,117 @@ try {
   ] });
 
   const t0 = Date.now();
-  console.log('boot A (virgin)…');
-  const A = await virginBoot(browser, base);
-  console.log(`  __clock up at ${secs(Date.now() - t0)}`);
+  const shards = partition(BATTERY, SHARDS);
+  const bootInTurn = serialiser();
+  console.log(`${shards.length} shard(s), partitioned by measured cost:`);
+  shards.forEach((s, i) => console.log(
+    `  shard ${i}  ~${Math.round(s.cost / 60)} min  ${s.entries.map((e) => e.name).join(' ')}`));
 
-  const bootWarns = await A.page.evaluate(() => window.__clock.bootWarns.slice());
-  gate('boot silent (rule 6)', bootWarns);
+  // Every shard is a VIRGIN boot running a subset of the battery, and that is
+  // sound for exactly one reason, which is worth stating because the whole
+  // tranche rests on it: `start()` in inspect.js calls `clock.resetInputs()`
+  // before every check, so a check's result cannot depend on which checks ran
+  // before it on that page. (It has to — some of what setPose writes is
+  // CUMULATIVE, §80's finding at walkPoses.) Sharding therefore changes the
+  // GROUPING of checks and nothing a check can observe. If a report ever
+  // moves between `--shards 1` and `--shards 2`, that invariant has broken
+  // and the check that moved is the bug, not the harness.
+  const results = new Map();  // name → { result, ms }
+  // Each shard catches its own failure instead of rejecting: one shard dying
+  // must not throw away what the others measured, because the surviving
+  // reports are how you tell a broken harness from a broken build.
+  const shardOut = await Promise.all(shards.map(async (shard, i) => {
+    const tag = shards.length > 1 ? `[shard ${i}] ` : '';
+    let context = null;
+    try {
+      const boot = await bootInTurn(async () => {
+        console.log(`${tag}boot (virgin)…`);
+        const p = await virginBoot(browser, base);
+        console.log(`${tag}  __clock up at ${secs(Date.now() - t0)}`);
+        return p;
+      });
+      context = boot.context;
+      const page = boot.page;
+      const warns = await page.evaluate(() => {
+        window.__clock.beginSweepHold(); // frozen for the whole battery — see header
+        return window.__clock.bootWarns.slice();
+      });
+      // The fingerprint is read on shard 0 only. It is not a per-shard property
+      // — it is the identity build's hash, and shard 0's boot is as virgin as
+      // any other. Reading it here rather than on its own boot keeps the boot
+      // count at shards + 1, which is what the double-boot anchor needs.
+      const fp = i === 0
+        ? await page.evaluate(() => window.__I.fingerprint(window.__clock))
+        : null;
+      for (const { name, opts } of shard.entries) {
+        const t = Date.now();
+        const { result, ms } = await runCheck(page, name, opts);
+        results.set(name, { result, ms });
+        console.log(`${tag}${name}… ${secs(ms)} (at ${secs(t - t0 + ms)})`);
+      }
+      return { warns, fp };
+    } catch (err) {
+      console.error(`${tag}shard FAILED: ${err.message}`);
+      return { warns: [], fp: null, error: String(err.message) };
+    } finally {
+      await context?.close().catch(() => {});
+    }
+  }));
 
-  const fpA = await A.page.evaluate(() => {
-    window.__clock.beginSweepHold(); // frozen for the whole battery — see header
-    return window.__I.fingerprint(window.__clock);
-  });
-  console.log(`  fingerprint A: ${fpA.hash} (${fpA.units} units, ${fpA.poseCount} poses)`);
+  // Boot silence is gated on EVERY shard, not just the first: each is a real
+  // virgin boot of the same tree, so a warning that only some boots produce is
+  // a nondeterminism this gate should not be able to miss.
+  gate('boot silent (rule 6)', shardOut.flatMap((s, i) => s.warns.map((w) => ({ shard: i, warn: w }))));
+  gate('every shard completed', shardOut.flatMap((s, i) => (s.error ? [{ shard: i, error: s.error }] : [])));
 
-  for (const { name, opts, gate: gateDesc, fails, note } of BATTERY) {
-    process.stdout.write(`${name}… `);
-    const { result, ms } = await runCheck(A.page, name, opts);
-    console.log(secs(ms));
-    gate(`${name}: ${gateDesc}`, fails(result), note?.(result));
+  const fpA = shardOut[0].fp;
+  if (fpA) console.log(`  fingerprint A: ${fpA.hash} (${fpA.units} units, ${fpA.poseCount} poses)`);
+
+  // Gates are evaluated in canonical BATTERY order regardless of which shard
+  // produced which result, so the log a human reads (and a report diff) does
+  // not depend on the partition.
+  for (const { name, gate: gateDesc, fails, note } of BATTERY) {
+    const got = results.get(name);
+    // A shard that dies takes its remaining checks with it. Say which ones
+    // rather than throwing on the first missing payload: a battery that
+    // reports "sweptOverlap never ran" is diagnosable, and one that dies with
+    // a TypeError reading `result` of undefined is not.
+    if (!got) { gate(`${name}: ${gateDesc}`, [{ neverRan: name, reason: 'its shard failed before reaching it' }]); continue; }
+    gate(`${name}: ${gateDesc}`, fails(got.result), note?.(got.result));
   }
-  await A.context.close();
 
   // Determinism anchor: a SECOND virgin boot must reproduce the hash exactly.
+  // Deliberately NOT sharded — its whole content is that two virgin contexts
+  // of this tree agree, so it stays one boot after the shards have closed.
   console.log('boot B (virgin, fresh context)…');
   const B = await virginBoot(browser, base);
   const fpB = await B.page.evaluate(() => window.__I.fingerprint(window.__clock));
   console.log(`  fingerprint B: ${fpB.hash}`);
   gate('fingerprint deterministic across virgin boots',
-    fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
-    `hash ${fpA.hash}`);
+    fpA && fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
+    `hash ${fpA ? fpA.hash : 'shard 0 never reported one'}`);
   await B.context.close();
 
   const failed = gates.filter((g) => !g.pass);
-  console.log(`\n${gates.length - failed.length}/${gates.length} gates pass · total ${secs(Date.now() - t0)}`);
+  const totalMs = Date.now() - t0;
+  console.log(`\n${gates.length - failed.length}/${gates.length} gates pass · total ${secs(totalMs)}`
+    + ` (checks ${secs([...results.values()].reduce((a, r) => a + r.ms, 0))} across ${shards.length} shard(s))`);
+
+  if (REPORT_PATH) {
+    // Sorted keys and 2-space JSON so two runs diff line-for-line. `ms` is
+    // here to refresh the cost column and is the ONE field expected to move
+    // between runs — diff with it filtered out when comparing reports.
+    const report = {
+      fingerprint: fpA,
+      checks: Object.fromEntries(BATTERY.map(({ name }) =>
+        [name, results.has(name)
+          ? { ms: results.get(name).ms, result: results.get(name).result }
+          : { neverRan: true }])),
+    };
+    writeFileSync(resolve(REPORT_PATH), `${JSON.stringify(report, null, 2)}\n`);
+    console.log(`report written to ${resolve(REPORT_PATH)}`);
+  }
+
   if (failed.length) {
     console.error(`FAILED: ${failed.map((g) => g.name).join(' · ')}`);
     process.exitCode = 1;

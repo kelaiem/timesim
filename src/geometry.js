@@ -15,6 +15,207 @@ function pitchRadius(module, teeth) {
   return (module * teeth) / 2;
 }
 
+// ---------------------------------------------------------------------------
+// §81 tranche A — THE EXACT WELD
+//
+// The big meshes here come from `ExtrudeGeometry`, from `toNonIndexed()` and
+// from hand-written triangle soup, and all three emit NON-INDEXED geometry:
+// every triangle carries its own three vertices, so a contour vertex is stored
+// once per adjacent triangle. On the shipped tree that was 147 meshes holding
+// 93.6% of the scene's vertices, and the inspector pays for the duplicates
+// three separate ways: `bvhFor` builds its tree (and its side-effect index)
+// over the raw position count, `sampledVerdict` tests EVERY vertex of both
+// meshes in both directions, and §80's pose walk transforms every vertex at
+// every distinct pose state. (three.js's own indexed primitives — Tube, Lathe,
+// Cylinder, Torus — already share their vertices and are not the problem.)
+//
+// The weld deduplicates vertex SLOTS and emits an index. Three properties make
+// it exact rather than an approximation, and they are the whole argument for
+// needing no waiver anywhere downstream:
+//
+//   1. Two slots merge only when EVERY component of EVERY attribute is
+//      bit-equal. Nothing moves. Tolerance welding is forbidden here — it
+//      would shift positions, which can only UNDER-report a clearance, and
+//      under-reporting is the error direction nothing downstream catches.
+//   2. The triangle list is unchanged: same triangles, same winding, same
+//      count, just referred to by index. No mesh opens, so the parity raycast
+//      in `sampledVerdict` — which assumes a closed solid, and which TODO 27
+//      caught being wrong about an opened chain — sees exactly what it saw.
+//   3. As a SET, the sampled points are unchanged. `sampledVerdict` takes a
+//      MIN over vertices and an OR over containment, and duplicates
+//      contribute nothing to either; its edge midpoints come from the
+//      triangle list, which (2) preserves. So its verdict is invariant, which
+//      is why the battery's numbers can be — and are — required to be
+//      identical across this change.
+//
+// Split normals survive by construction, because the key is the full
+// attribute tuple: a crease's two normals are two different tuples at the same
+// position and stay two vertices. That is what keeps `facetFlat` in makeHand
+// flat-shaded, and it is why the key is not position-only.
+//
+// IT IS ALSO WHAT CAPS THE SAVING, and by a lot — measured, the pass takes the
+// scene 729,594 → 591,481 vertices, where welding on POSITION alone would take
+// the 458,897 vertices its 488 distinct geometries hold down to 124,998. The
+// missing 72.8% is entirely split normals: `ExtrudeGeometry` calls
+// `computeVertexNormals` on soup, which hands every triangle its own face
+// normal, so two quads meeting along a contour edge share a position and
+// disagree about the normal. They are not duplicates — they are the shading
+// model — and merging them would smooth every crease in the movement. So the
+// honest ceiling on a render-safe weld is well under 2x, which is a smaller
+// number than the plan for this work assumed.
+//
+// It also retires a trap: "three-mesh-bvh crashes on non-indexed geometry —
+// indexing is a side effect of bvhFor". A welded scene hands the BVH a real
+// index instead of the identity one `ensureIndex` used to bolt on.
+const _weldF32 = new Float32Array(1);
+const _weldU32 = new Uint32Array(_weldF32.buffer);
+
+// Returns a NEW indexed BufferGeometry — never mutates its input, and never
+// returns it. Geometry OBJECT IDENTITY stands for geometry CONTENT throughout
+// the inspector (`bvhFor` caches by it, MODELING rule 6 requires it), so a
+// weld that edited in place would leave a stale BVH keyed to changed content.
+// Returns the input unchanged only when it cannot weld it exactly: a
+// non-Float32 or interleaved attribute would make the bit comparison either
+// lossy or wrong, and a wrong merge is the one outcome with no safe direction.
+export function weldGeometry(geo) {
+  const attrs = Object.entries(geo.attributes);
+  const pos = geo.getAttribute('position');
+  if (!pos || !attrs.length) return geo;
+  for (const [, a] of attrs)
+    if (a.isInterleavedBufferAttribute || !(a.array instanceof Float32Array)) return geo;
+
+  const n = pos.count;
+  // Open hashing over a 32-bit FNV-1a of the tuple's raw BITS, with an exact
+  // component compare on every hash hit — the hash only chooses who to
+  // compare, so a collision costs a comparison and can never cause a merge.
+  const head = new Map();          // hash → head of that bucket's chain
+  const chain = new Int32Array(n).fill(-1);  // new index → next new index in bucket
+  const keep = new Uint32Array(n); // new index → the old slot it was taken from
+  const remap = new Uint32Array(n);// old slot → new index
+  let m = 0;
+  const same = (i, j) => {
+    for (const [, a] of attrs) {
+      const s = a.itemSize, arr = a.array;
+      for (let k = 0; k < s; k++) if (arr[i * s + k] !== arr[j * s + k]) return false;
+    }
+    return true;
+  };
+  for (let i = 0; i < n; i++) {
+    let h = 0x811c9dc5;
+    for (const [, a] of attrs) {
+      const s = a.itemSize, arr = a.array;
+      for (let k = 0; k < s; k++) {
+        _weldF32[0] = arr[i * s + k];
+        h = Math.imul(h ^ _weldU32[0], 0x01000193);
+      }
+    }
+    let hit = -1;
+    for (let c = head.has(h) ? head.get(h) : -1; c !== -1; c = chain[c])
+      if (same(i, keep[c])) { hit = c; break; }
+    if (hit === -1) {
+      hit = m;
+      keep[m] = i;
+      chain[m] = head.has(h) ? head.get(h) : -1;
+      head.set(h, m);
+      m++;
+    }
+    remap[i] = hit;
+  }
+
+  const out = new THREE.BufferGeometry();
+  for (const [name, a] of attrs) {
+    const s = a.itemSize, src = a.array, dst = new Float32Array(m * s);
+    for (let v = 0; v < m; v++) {
+      const o = keep[v] * s;
+      for (let k = 0; k < s; k++) dst[v * s + k] = src[o + k];
+    }
+    out.setAttribute(name, new THREE.BufferAttribute(dst, s, a.normalized));
+  }
+  const src = geo.index;
+  const count = src ? src.count : n;
+  // Uint16 while it fits — half the index buffer, and the BVH reads either.
+  const idx = m > 65535 ? new Uint32Array(count) : new Uint16Array(count);
+  for (let t = 0; t < count; t++) idx[t] = remap[src ? src.getX(t) : t];
+  out.setIndex(new THREE.BufferAttribute(idx, 1));
+  for (const g of geo.groups) out.addGroup(g.start, g.count, g.materialIndex);
+  // CARRY THE TYPE TAG, and the reason is a measured one rather than a tidy
+  // one. `meshLabel` in inspect.js names an unnamed mesh `${geometry.type}#${i}`,
+  // and two hand-written tables are string-coupled to those labels —
+  // INTRA_UNIT_CONTACTS above all. A welded ExtrudeGeometry is a plain
+  // BufferGeometry, so without this line every `ExtrudeGeometry#N` declaration
+  // stops matching and its declared joint reports as a fresh violation:
+  // measured, 14 of them, with not one distance changed. That was this
+  // change's only difference against the pre-weld report, which is worth
+  // recording — the weld was geometrically exact on the first run and still
+  // moved a gate, through a NAME.
+  //
+  // So `type` here is PROVENANCE — which builder cut this surface — not a
+  // constructor name. Nothing reads it as an instance test (checked: the two
+  // readers in the tree both build labels), and provenance is exactly what the
+  // weld does not change.
+  out.type = geo.type;
+  return out;
+}
+
+// Weld every mesh under `root`, in place on the scene graph: each mesh's
+// geometry is REPLACED by its welded copy and the original disposed. Returns
+// the census, which is what the boot assert and the acceptance both read.
+//
+// This is a traversal rather than a hook inside the builders because there is
+// no chokepoint to hook — 315 `new THREE.Mesh(...)` sites across two files,
+// no factory. The cost of that is stated plainly: a traversal only sees
+// geometry that is IN the graph when it runs, so anything built later or held
+// in a pool must weld itself. `weldAssert` below is what stops that from
+// being a silent gap.
+// It welds only what arrives NON-INDEXED, which is both the whole census this
+// entry is about (147 meshes holding 93.6% of the scene's vertices) and the
+// rule that keeps the pass out of trouble. three.js's own indexed primitives
+// — Tube, Lathe, Cylinder, Torus — already share their vertices, and two of
+// them are held in POOLS the traversal cannot see all of: the mainspring's and
+// the hairspring's wind frames are a run of geometry objects with one member
+// installed at a time. Replacing the installed member would weld one frame of
+// a pool and leave the rest, so the pass leaves indexed geometry alone and
+// nothing has to know about frame pools at all.
+//
+// Geometries SHARED by several meshes are welded once and shared again: two
+// trees where there was one would give `bvhFor` two entries to build and hold
+// for a part that is one part, which is the opposite of the point.
+export function weldTree(root) {
+  const done = new Map();
+  let meshes = 0, before = 0, after = 0;
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+    const old = o.geometry;
+    meshes++;
+    before += old.attributes.position.count;
+    if (old.index) { after += old.attributes.position.count; return; }
+    let welded = done.get(old);
+    if (!welded) { welded = weldGeometry(old); done.set(old, welded); }
+    if (welded !== old) o.geometry = welded;
+    after += welded.attributes.position.count;
+  });
+  for (const [old, welded] of done) if (welded !== old) old.dispose();
+  return { meshes, before, after };
+}
+
+// Standing rule 6, for the weld: a mesh reaching the scene non-indexed is a
+// builder that ran after (or around) the pass, and it costs every
+// vertex-walking instrument silently. Names the worst offender so the warning
+// points at the builder rather than at the traversal.
+export function weldAssert(root) {
+  let worst = null, count = 0, verts = 0;
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+    if (o.geometry.index) return;
+    const v = o.geometry.attributes.position.count;
+    count++; verts += v;
+    if (!worst || v > worst.v) worst = { name: o.name || o.parent?.name || '(unnamed)', v };
+  });
+  if (count)
+    console.warn(`weld: ${count} mesh(es) reached the scene non-indexed, holding ${verts} vertices `
+      + `(worst: ${worst.name} at ${worst.v}) — every vertex-walking check pays for the duplicates`);
+}
+
 // Flat annulus (ring) extruded along +Z, centered on z=0. Used for hubs, rims,
 // jewel chatons — anything that needs a clean central bore.
 function ringExtrude(outerR, innerR, thickness, seg = 32) {
@@ -2772,8 +2973,14 @@ export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments =
 }
 
 // Minimal geometry merge — the three examples' BufferGeometryUtils is not
-// vendored, and the monogram is the only caller. Non-indexed, position+normal
-// only, which is all ExtrudeGeometry produces here.
+// vendored. Position+normal only, which is all ExtrudeGeometry produces here.
+// Callers: the ∞ monogram and makeScrews' three batched bodies.
+//
+// §81: it concatenates as triangle soup (that is the cheap way to merge
+// unlike geometries) and then WELDS, so it emits indexed output. It is the
+// in-house builder of exactly the mesh class tranche A exists for, and it
+// merges REPEATED bodies — every screw head is the same lathe — so the weld
+// has more to find here than anywhere else.
 function mergeGeos(geos) {
   const parts = geos.map((g) => (g.index ? g.toNonIndexed() : g));
   let n = 0;
@@ -2786,10 +2993,12 @@ function mergeGeos(geos) {
     if (q) nrm.set(q.array.subarray(0, q.count * 3), o * 3);
     o += p.count;
   }
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  out.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  const soup = new THREE.BufferGeometry();
+  soup.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  soup.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   for (const g of parts) g.dispose();
+  const out = weldGeometry(soup);
+  if (out !== soup) soup.dispose();
   return out;
 }
 

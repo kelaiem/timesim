@@ -7236,3 +7236,177 @@ distance from `best` to `max(0, best − g)`, so "still outside" means
 neither — it is vacuous by construction, for any geometry. The pass is kept,
 with the algebra written at it, because an assertion that cannot fail should
 say so rather than quietly disappear.
+
+## §81 — The battery welds its vertices and stops running in single file, and the only thing that moved was a name
+
+Two independent reductions, both required to leave every reported number
+alone. Measured on a 4-vCPU dev container, the full battery went **3525.6 s
+(58.8 min) → 1588.1 s (26.5 min)**, 2.22×, with the final report **identical
+to the pre-change one — every check, every row, every number**, fingerprint
+`1436114427` unchanged. That identity is the acceptance; the stopwatch on its
+own would prove nothing.
+
+On `ubuntu-latest`, where the gate actually lives, the same tree takes 36.7 min
+against a job that had been **dying at its 45-minute cap** — six runs, two of
+them pushes to main. The gate runs again. Read the dev-container numbers in
+this section as ratios: that machine is ~1.45× faster than the runner, a
+difference this entry got wrong once and paid for (see the last section).
+
+### Tranche A — the weld, and its real ceiling
+
+`ExtrudeGeometry`, `toNonIndexed()` and hand-written soup all store a vertex
+once per adjacent triangle. `weldGeometry` merges vertex slots that are
+**bit-equal across every component of every attribute** and emits an index.
+Three properties make that exact rather than approximate: nothing moves (so no
+clearance can be under-reported — the one error direction nothing downstream
+catches); the triangle list is unchanged, so no mesh opens and TODO 27's parity
+trap has no purchase; and the sampled points are the same SET, which is all
+`sampledVerdict`'s min-over-vertices and or-over-containment can see.
+
+It runs as a traversal at the end of boot, because there is no chokepoint to
+run it in — 315 `new THREE.Mesh(...)` sites, no factory. The cost of a
+traversal is that it only sees the graph, so `weldAssert` warns at boot
+(standing rule 6) if anything reaches the scene non-indexed. Two things weld
+themselves: the CHAIN welds its three TEMPLATES rather than its output (it is N
+rigid copies rebuilt every frame — welding the output would move a boot cost
+into the frame loop; its bore assert now reads through the index instead of
+assuming soup), and the flute slider welds each re-cut hand. Already-indexed
+geometry is skipped, which keeps the pass out of the mainspring's and
+hairspring's wind-frame pools entirely. `mergeGeos` emits indexed output.
+
+**The entry's ≥2× target was not reachable, and the reason is that the entry
+contradicted itself.** It predicted 656k → 250–300k while also requiring that
+"split normals survive by construction". Those are incompatible: the ~3–6×
+duplication it costed is recoverable only by welding on POSITION. Measured over
+the scene's 488 distinct geometries:
+
+| | pre-weld | welded |
+|---|---|---|
+| raw vertices | 653,950 | 458,897 |
+| distinct attribute tuples | 437,566 | **437,566** |
+| distinct positions | 124,998 | **124,998** |
+
+29.8% removed, against 80.9% a position-only weld would reach. The whole
+difference is split normals — `ExtrudeGeometry` calls `computeVertexNormals` on
+soup, so two quads meeting along a contour edge share a position and disagree
+about the normal. They are not duplicates; they are the shading model, and
+merging them would smooth every crease in the movement. The crease is kept and
+the ceiling is written at the code.
+
+The two bottom rows are worth more than the top one: they are **equalities**,
+and they are the proof the argument above is not just an argument. Tuples
+unchanged ⇒ not one split normal merged or invented. Positions unchanged ⇒
+`sampledVerdict`'s sample set is exactly what it was.
+
+A screenshot comparison was tried first and is not usable at this precision:
+the same tree rendered twice through SwiftShader differs in **3.2%** of its
+pixels, against 1.5% for the weld — the camera-preset tween and the software
+rasteriser are noisier than the signal, so the control drowned it. The tuple
+count is the instrument; the pixels are not.
+
+### Tranche B — the shard
+
+`ci-battery.mjs` partitions the checks across K browser contexts by a measured
+`cost` column and runs them concurrently, so the wall is max(shard) rather than
+sum(checks). The partition is DATA, so it re-derives itself when the column
+moves instead of being re-argued; LPT greedy over it, which converges on
+`{sweptOverlap}` against `{the rest}` because one check is 57% of the total.
+That also bounds what sharding can ever buy: **no K goes below the slowest
+single check**, since no check is subdivided.
+
+It is sound for one reason: `start()` calls `clock.resetInputs()` before every
+check, so nothing a check can observe depends on which ran before it. (It has
+to — some of what `setPose` writes is CUMULATIVE, §80's finding at `walkPoses`.)
+Verified rather than assumed: `--shards 1` against `--shards 2` on one tree is
+byte-identical. If that ever stops being true, the check that moved is the bug.
+
+Boots are serialised against the dev server's single `/__state` file; gates are
+still evaluated in canonical `BATTERY` order so the log does not depend on the
+partition; each shard catches its own failure so one dying shard does not
+discard what the others measured; the fingerprint double-boot is deliberately
+not sharded.
+
+`--report FILE` writes every check's full payload. **That, not the PASS/FAIL
+column, is what a performance change has to be accepted against**: a gate
+reports only whether its failure list is empty, so a report that moved while
+staying empty passes every gate and is still a regression. Both §80 and §81
+were landed by diffing one of these.
+
+### What actually broke, which was not geometry
+
+The weld was geometrically exact on the first full run and **still turned a
+gate red**. Diffed against the pre-weld report, the entire difference was 19
+rows and not one was a distance, a count or a verdict:
+
+- 4 `clearances` rows relabelled `ExtrudeGeometry#0` → `BufferGeometry#0`, same
+  measured distances;
+- 14 `intraUnit` violations — exactly the `INTRA_UNIT_CONTACTS` rows declared
+  against `ExtrudeGeometry#N`, re-reporting their DECLARED joints as fresh
+  interpenetrations.
+
+`meshLabel` names an unnamed mesh `${geometry.type}#${index}` and the
+hand-written tables are string-coupled to those labels. This is CLAUDE.md's own
+"inspect.js couples by string" trap reached from a direction it does not list:
+not by renaming a part, but by **rebuilding its geometry**. The fix is to carry
+`geo.type` onto the welded copy — the tag is PROVENANCE, which builder cut this
+surface, and provenance is precisely what a weld does not change. Rewriting the
+tables to `BufferGeometry#N` was the alternative and would have collapsed
+`CylinderGeometry#6` and `BoxGeometry#31` into the same undifferentiated name,
+destroying the information the label exists to carry.
+
+### The timings, and the two guards that DO NOT come down
+
+| check | dev before | dev after | CI after |
+|---|---|---|---|
+| sweptOverlap | 2075.5 | 1532.7 | **2184.6** |
+| inspection | 768.8 | 607 | 976.2 |
+| clearances | 455.7 | 395 | 628.5 |
+| expectedContacts | 145.4 | 147 | 211.6 |
+| support | 32.4 | 22 | 37.0 |
+
+Two of the entry's own cost-table rows were already stale before any of this
+(`inspection` 985 → 769, `clearances` 497 → 456), which is the case for the
+column being measured data rather than a hand-argued partition. CI is ~1.45×
+slower than the dev container across the board (4082.8 s of check time against
+2807.8 s for the identical tree), which does not disturb the partition — that
+is decided by ratios, and the CI run splits 2184.6 s against 1898.2 s.
+
+**The entry's last acceptance line is not delivered, and the way it failed —
+twice — is the more useful half.** `battery.yml` was to return 60 → 45. It was
+changed to 45, with `CHECK_TIMEOUT_MS` re-derived 45 → 40 to keep the required
+ordering, and both were **reverted before shipping** when the first CI run
+showed the derivation had used the dev container (battery 26.5 min,
+`sweptOverlap` 25.5) while `ubuntu-latest` gave 36.7 and 36.4. A 40-minute
+WEDGE guard would have had 1.10× of headroom over a healthy run, and a
+45-minute cap 1.20× over a 37.5-minute job — the ratio that killed runs
+188–194.
+
+**Then the correction was wrong too.** The revert was written up as
+"`ubuntu-latest` is ~1.45× slower than the dev container", a tidy ratio from
+one run. The next CI run of the same harness on the same tree took **2459.1 s
+of check time against 4082.8 s — a 1.66× spread between two CI runs**, wall
+22.3 min against 36.7. The dev container (2807.8 s) sits *inside* CI's own
+spread. There is no ratio to correct for, only a distribution.
+
+| | checks | wall |
+|---|---|---|
+| dev container | 2807.8 s | 25.7 min |
+| CI run A | 4082.8 s | 36.7 min |
+| CI run B | 2459.1 s | 22.3 min |
+
+So the rule, written at the constant because two successive attempts tripped on
+it: **a guard is sized by the slow tail of the environment it runs in, and one
+run does not measure a tail.** Both wrong answers came from a single *green*
+run — which is the trap, because a green run is exactly what makes a too-tight
+guard look justified right up until it fires on a healthy build.
+
+And the structural reason sharding cannot buy those numbers, which is worth
+separating from the mistake: the wall is now `max(shard)`, but both timeouts are
+set by the slowest single CHECK, and no partition subdivides a check.
+`sweptOverlap` is 57% of all check time and 36.4 min on CI by itself. Sharding
+moved the wall 2.2× and moved neither timeout. That is roadmap §82's to move —
+when it does, re-derive both together, from a CI run.
+
+What §81 does deliver on this front is the thing the entry actually asked for
+in its first paragraph: the job went from **dying at 45 minutes** — six runs,
+two of them pushes to main — to finishing in 37.5. The gate runs again.
