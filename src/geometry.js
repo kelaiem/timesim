@@ -138,6 +138,22 @@ export function weldGeometry(geo) {
   for (let t = 0; t < count; t++) idx[t] = remap[src ? src.getX(t) : t];
   out.setIndex(new THREE.BufferAttribute(idx, 1));
   for (const g of geo.groups) out.addGroup(g.start, g.count, g.materialIndex);
+  // CARRY THE TYPE TAG, and the reason is a measured one rather than a tidy
+  // one. `meshLabel` in inspect.js names an unnamed mesh `${geometry.type}#${i}`,
+  // and two hand-written tables are string-coupled to those labels —
+  // INTRA_UNIT_CONTACTS above all. A welded ExtrudeGeometry is a plain
+  // BufferGeometry, so without this line every `ExtrudeGeometry#N` declaration
+  // stops matching and its declared joint reports as a fresh violation:
+  // measured, 14 of them, with not one distance changed. That was this
+  // change's only difference against the pre-weld report, which is worth
+  // recording — the weld was geometrically exact on the first run and still
+  // moved a gate, through a NAME.
+  //
+  // So `type` here is PROVENANCE — which builder cut this surface — not a
+  // constructor name. Nothing reads it as an instance test (checked: the two
+  // readers in the tree both build labels), and provenance is exactly what the
+  // weld does not change.
+  out.type = geo.type;
   return out;
 }
 
