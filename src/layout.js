@@ -878,10 +878,14 @@ function maxZInside(p, q, zp, zq, c) {
 // its far end HANGS from a raised pivot and climbs as the crank swings — so
 // the test is per-segment and per-pose: a banded row bites only where the rod
 // rises into its body.
-export function solveElbow(len, posesAB, obstacles, rodR = 0) {
+export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eStep = 0.2 } = {}) {
   let best = { clear: -Infinity, f: 0.5, e: 0, at: null };
-  for (let f = 0.25; f <= 0.751; f += 0.05) {
-    for (let e = -6; e <= 6.01; e += 0.2) {
+  // A COARSE probe is a strict SUBSET of the fine grid (0.25 + k·0.25 and
+  // ±k·1 both land on fine gridpoints), so a route the probe can find the
+  // fine solve can only match or beat — which is what lets §85 C2 use it as
+  // a feasibility test without lying to the scan.
+  for (let f = 0.25; f <= 0.751; f += fStep) {
+    for (let e = -6; e <= 6.01; e += eStep) {
       let worst = Infinity, worstAt = null;
       for (const { a, b, za = 0, zb = 0 } of posesAB) {
         const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
@@ -1041,10 +1045,69 @@ export function solveStopWork({
   // plane, and the hinge is radial). The released tail sweeps tangentially
   // toward the post, so the whole swept segment is tested, not the pivot
   // point alone.
+  // §85 step C2 — the pose maths takes its FRAME as an argument. The build
+  // binds the chosen station's frame (stopTailTopAt / stopSolvePsi below);
+  // the bearing scan binds a CANDIDATE's, so it can ask the same questions of
+  // a station it is only considering. One model, two callers — the same rule
+  // step A moved this whole solve into layout.js for.
+  const tailTopIn = (fr, psi) => {
+    const sw = -fr.tailH * Math.sin(psi); // tangential swing (H < 0)
+    return {
+      x: fr.pivot.x + fr.tHat.x * sw,
+      y: fr.pivot.y + fr.tHat.y * sw,
+      z: fr.zPivot + fr.tailH * Math.cos(psi),
+    };
+  };
+  const solvePsiIn = (fr, len, post, prev) => {
+    const wx = post.x - fr.pivot.x, wy = post.y - fr.pivot.y, wz = ROD2_PLANE_Z - fr.zPivot;
+    const a = -(wx * fr.tHat.x + wy * fr.tHat.y), b = wz;
+    const c = (wx * wx + wy * wy + wz * wz + fr.tailH * fr.tailH - len * len)
+      / (2 * fr.tailH);
+    const m = Math.hypot(a, b) || 1e-9;
+    const base = Math.atan2(a, b);
+    const off = Math.acos(clamp(c / m, -1, 1));
+    const c1 = base - off, c2 = base + off;
+    return Math.abs(c1 - prev) <= Math.abs(c2 - prev) ? c1 : c2;
+  };
+  // A station's whole linkage, derived the way the build derives it: pivot,
+  // coupling, the pivot height the stroke buys through that coupling, and the
+  // hanging tail it implies.
+  const frameAt = (phi) => {
+    const rHat = { x: Math.cos(phi), y: Math.sin(phi) };
+    const tHat = { x: -rHat.y, y: rHat.x };
+    const pivot = {
+      x: P.balance.x + rHat.x * STOP_PIVOT_R,
+      y: P.balance.y + rHat.y * STOP_PIVOT_R,
+    };
+    const dx = pivot.x - postEng.x, dy = pivot.y - postEng.y;
+    const tangK = (dx * tHat.x + dy * tHat.y) / Math.hypot(dx, dy);
+    const zPivot = ROD2_PLANE_Z + POST_STROKE / (Math.abs(tangK) * Math.sin(STOP_PSI_TARGET));
+    return { rHat, tHat, pivot, tangK, zPivot, tailH: ROD2_PLANE_Z - zPivot };
+  };
+  // The ROUTE that station commits the rod to: calibrate the length at the
+  // engaged pose, track ψ across the crown stroke, and ask the corridor
+  // whether any elbow threads it. Coarse grid — a strict subset of the fine
+  // one, so a pass here is a pass there.
+  const routeAt = (fr, coarse) => {
+    const len = (() => {
+      const t = tailTopIn(fr, 0);
+      return Math.hypot(postEng.x - t.x, postEng.y - t.y, ROD2_PLANE_Z - t.z);
+    })();
+    const poses = [];
+    let prev = solvePsiIn(fr, len, postRel, 0);
+    for (let t = 0; t <= 1.0001; t += 0.125) {
+      const post = tailPostWorldAt(t);
+      const psi = solvePsiIn(fr, len, post, prev);
+      prev = psi;
+      const tt = tailTopIn(fr, psi);
+      poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
+    }
+    return solveElbow(len, poses, lowRodObstacles, rodR, coarse ? { fStep: 0.25, eStep: 1 } : {});
+  };
   const STOP_BEARING = (() => {
     const ideal = Math.atan2(P.balance.y, P.balance.x);
     const obstacles = bearingObstaclesAt(P);
-    let best = null;
+    let best = null, bestAny = null;
     // Scan bound: the plate cut's open wedge (±phiOpen about the same
     // balance-centred aim), less the bracket's own angular half-width —
     // the mast crosses the plate band and must stay in open air. The old
@@ -1069,13 +1132,33 @@ export function solveStopWork({
       for (const o of obstacles)
         clr = Math.min(clr, segCircleClear({ x: bx, y: by }, swept, o) - 2);
       if (clr < HACK_CLEAR_MARGIN) continue;
+      // §85 step C2 — AND the rod must be able to GET here. The scan used to
+      // choose the station on the crank's own merits and discover the route
+      // afterwards, which is how a station whose corridor is impossible could
+      // win on coupling alone. Probing the route costs one coarse elbow solve
+      // per candidate; the station is a position-space choice, so paying for
+      // routability with it is legal where paying with the rod's dimensions
+      // would not be.
+      const routable = routeAt(frameAt(phi), true).clear >= 0;
       // MAXIMIZE the coupling, with clearance as the constraint it always
       // really was (the old clearance-maximizing score let K sit at its
       // 0.6 gate, inflating the tail lever — and the mast — by ~40%: the
       // pivot height divides by |K|, see Z_STOP_PIVOT). Tiny clearance
       // tiebreak so equal-K bearings still prefer open air.
       const score = Math.abs(rodK) + clr * 0.01;
-      if (!best || score > best.score) best = { phi, score };
+      if (routable && (!best || score > best.score)) best = { phi, score };
+      if (!bestAny || score > bestAny.score) bestAny = { phi, score };
+    }
+    // Degrade in ONE step at a time, and say which step was taken. A station
+    // that cannot route is still better than the outward ideal, which meets
+    // none of the constraints — so an unroutable movement keeps the
+    // best-coupled station (what this scan chose before C2) and says the
+    // corridor is the thing that failed. That is a LAYOUT finding, not a
+    // reason to accept a station nothing was checked against; C4 turns it
+    // into a refusal, and C1's elbow warning names the body in the way.
+    if (!best && bestAny) {
+      warn('stop work: no station about the balance can route the hack rod through the low corridor — keeping the best-coupled one');
+      best = bestAny;
     }
     if (!best) {
       warn('stop work: no clear bearing about the balance — using the outward ideal');
@@ -1083,22 +1166,18 @@ export function solveStopWork({
     }
     return best.phi;
   })();
-  const STOP_R_HAT = { x: Math.cos(STOP_BEARING), y: Math.sin(STOP_BEARING) };
-  const STOP_T_HAT = { x: -STOP_R_HAT.y, y: STOP_R_HAT.x }; // hinge plane's horizontal axis
-  const STOP_PIVOT = {
-    x: P.balance.x + STOP_R_HAT.x * STOP_PIVOT_R,
-    y: P.balance.y + STOP_R_HAT.y * STOP_PIVOT_R,
-  };
-  // Rod coupling: tangential fraction of the rod's run at the engaged pose
-  // (|K| ≥ 0.6 guaranteed by the bearing scan above).
-  const STOP_TANG_K = (() => {
-    const dx = STOP_PIVOT.x - postEng.x, dy = STOP_PIVOT.y - postEng.y;
-    return (dx * STOP_T_HAT.x + dy * STOP_T_HAT.y) / Math.hypot(dx, dy);
-  })();
-  // Pivot height from the stroke THROUGH the coupling:
+  // The chosen station's frame, from the same derivation every candidate was
+  // judged by (§85 C2): pivot, coupling |K| (≥ 0.6 by the scan), the pivot
+  // height the stroke buys through that coupling —
   //   |STOP_TAIL_H| · sin(ψ_target) · |K| = POST_STROKE
-  const Z_STOP_PIVOT = ROD2_PLANE_Z + POST_STROKE / (Math.abs(STOP_TANG_K) * Math.sin(STOP_PSI_TARGET));
-  const STOP_TAIL_H = ROD2_PLANE_Z - Z_STOP_PIVOT; // NEGATIVE: the tail hangs down to the rod plane
+  // — and the tail that hangs from it (NEGATIVE: down to the rod plane).
+  const STOP_FRAME = frameAt(STOP_BEARING);
+  const STOP_R_HAT = STOP_FRAME.rHat;
+  const STOP_T_HAT = STOP_FRAME.tHat; // hinge plane's horizontal axis
+  const STOP_PIVOT = STOP_FRAME.pivot;
+  const STOP_TANG_K = STOP_FRAME.tangK;
+  const Z_STOP_PIVOT = STOP_FRAME.zPivot;
+  const STOP_TAIL_H = STOP_FRAME.tailH;
   // CASE-FIT assert: the mast (pivot + clevis cheeks, top = pivot + 0.85)
   // must not stand above the balance cock's own height — the cock sets the
   // display side's silhouette, and the K-maximizing bearing scan above is
@@ -1121,25 +1200,8 @@ export function solveStopWork({
   // because the rim itself is the hard stop the pad presses against.
   // Rotation about local X maps (y, z) → (y·cosψ − z·sinψ, y·sinψ + z·cosψ):
   // the tail-end pin swings in the TANGENTIAL-vertical plane.
-  function stopTailTopAt(psi) {
-    const sw = -STOP_TAIL_H * Math.sin(psi); // tangential swing (H < 0)
-    return {
-      x: STOP_PIVOT.x + STOP_T_HAT.x * sw,
-      y: STOP_PIVOT.y + STOP_T_HAT.y * sw,
-      z: Z_STOP_PIVOT + STOP_TAIL_H * Math.cos(psi),
-    };
-  }
-  function stopSolvePsi(post, prev) {
-    const wx = post.x - STOP_PIVOT.x, wy = post.y - STOP_PIVOT.y, wz = ROD2_PLANE_Z - Z_STOP_PIVOT;
-    const a = -(wx * STOP_T_HAT.x + wy * STOP_T_HAT.y), b = wz;
-    const c = (wx * wx + wy * wy + wz * wz + STOP_TAIL_H * STOP_TAIL_H - HACK_ROD_LEN * HACK_ROD_LEN)
-      / (2 * STOP_TAIL_H);
-    const m = Math.hypot(a, b) || 1e-9;
-    const base = Math.atan2(a, b);
-    const off = Math.acos(clamp(c / m, -1, 1));
-    const c1 = base - off, c2 = base + off;
-    return Math.abs(c1 - prev) <= Math.abs(c2 - prev) ? c1 : c2;
-  }
+  function stopTailTopAt(psi) { return tailTopIn(STOP_FRAME, psi); }
+  function stopSolvePsi(post, prev) { return solvePsiIn(STOP_FRAME, HACK_ROD_LEN, post, prev); }
   const HACK_ROD_LEN = (() => {
     const t = stopTailTopAt(0);
     return Math.hypot(postEng.x - t.x, postEng.y - t.y, ROD2_PLANE_Z - t.z);
