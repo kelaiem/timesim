@@ -3311,6 +3311,29 @@ before deriving it would be swapping one magic number for a larger one.
   bound §76 should record whatever the layout does: R 13 is out of spec as a
   wristwatch before any wall is consulted.
 
+### Wall two got smaller again, and the reason is worth keeping
+
+§76's wall-one restructure (roadmap Layer 7) landed the setting run's real
+wall list, and in doing so it separated two things this item had filed
+together. **The setting run is solved at the shipped corner** — its 25-wall
+audit measures 0.210 clear, which is the ceiling the whole family shares, so
+`ALARM_SET_I1_BEARING = 18°` is already optimal. What remains of wall one at
+the shipped corner is the three-quarter plate's cut reaching the alarm
+winding pivot, which is a different wall from anything in this item.
+
+Wall two is unchanged and still open: `ALARM_WIND_IDLER_TEETH = 51` and
+`ALARM_SET_MODULE = 0.30` both carry their derivations in comments rather
+than in code, while the span they must cover grows with `plateR`.
+
+**The general lesson, which is this item's own lesson repeating.** The
+setting run's walls were split between an audit that ran at the route and
+asserts that ran 500 lines downstream, with three walls in neither — so the
+route was solved against a subset and the leftovers could only complain
+afterwards. That is the same shape as the instrument gaps in items 5, 6, 27
+and 29: **the defect was not hidden by subtlety, it was hidden by what the
+instrument was allowed to look at.** A wall the solver cannot see is not a
+wall, it is a post-mortem.
+
 **Battery: 14/14, fingerprint unchanged.** `node tools/ci-battery.mjs`,
 3055 s. Every gate green — `inspection` 0 FORBIDDEN (50 units, 72 contacting
 pairs), `clearances` 0 violations, `sweptOverlap` 0 CONFIRMED (59 216 pairs,
