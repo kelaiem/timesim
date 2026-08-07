@@ -46,14 +46,25 @@ jobs:
             // .githooks/commit-msg strips exactly these. Leading whitespace
             // travels with the URL so a link lifted out of prose leaves no
             // double space; nothing else is re-spaced.
-            const URL_RE = /[ \t]*https?:\/\/[^\s]*claude\.ai\/code\/session[^\s]*/gi;
+            // A session URL inside a MARKDOWN LINK is removed with its whole
+            // link, text and all, so the sentence closes. Doing only the bare
+            // URL left `[Claude Code](` behind — which is exactly what happened
+            // to every PR body this repo has purged: the tooling appends its
+            // attribution footer carrying a SESSION url, and the bare-URL rule
+            // below ate the closing `)_` with it, because `[^\s]*` does not
+            // stop at a bracket. The purge was right and the markup was broken.
+            const MD_LINK_RE = /\[([^\]]*)\]\([ \t]*https?:\/\/[^\s)]*claude\.ai\/code\/session[^\s)]*[ \t]*\)/gi;
+            // Bare URLs in prose. `[^\s)]` rather than `[^\s]`: a closing
+            // bracket is never part of the URL we are removing, and letting the
+            // match run past one is how punctuation next door got eaten.
+            const URL_RE = /[ \t]*https?:\/\/[^\s)]*claude\.ai\/code\/session[^\s)]*/gi;
             const isTrailer = (l) => /^[ \t]*Claude-Session:/i.test(l);
             const strip = (s) => {
               if (!s) return s;
               const out = [];
               for (const line of s.split('\n')) {
                 if (isTrailer(line)) continue;                 // the trailer, whole line
-                const t = line.replace(URL_RE, '').replace(/[ \t]+$/, '');
+                const t = line.replace(MD_LINK_RE, '$1').replace(URL_RE, '').replace(/[ \t]+$/, '');
                 // A line that held nothing but a link goes entirely, rather
                 // than becoming a blank line in the middle of someone's prose.
                 if (t === '' && line.trim() !== '') continue;

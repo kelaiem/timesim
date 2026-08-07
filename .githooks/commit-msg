@@ -36,7 +36,15 @@ awk '
 		# Leading whitespace goes WITH the URL, so a link lifted out of prose
 		# does not leave a double space behind it. Nothing else is re-spaced:
 		# a message may align a table however it likes.
-		gsub(/[ \t]*[hH][tT][tT][pP][sS]?:\/\/[^ \t]*claude\.ai\/code\/session[^ \t]*/, "", s)
+		# [^ \t)] rather than [^ \t]: a closing bracket is never part of the
+		# URL being removed, and letting the match run past one ate the
+		# punctuation next door. That is not hypothetical — the workflow
+		# next door shares this pattern and left `[Claude Code](` on every
+		# PR body it purged, because the appended attribution footer wraps
+		# a session URL in a markdown link. Commit messages are plain text,
+		# so the link-aware rule stays on the workflow side; this half only
+		# needs to stop eating brackets.
+		gsub(/[ \t]*[hH][tT][tT][pP][sS]?:\/\/[^ \t)]*claude\.ai\/code\/session[^ \t)]*/, "", s)
 		if (s ~ /^[ \t]*Claude-Session:/) { removed++; next }
 		if ($0 !~ /^[ \t]*$/ && s ~ /^[ \t]*$/) { removed++; next }   # the line was only a link
 		if (s != $0) removed++
