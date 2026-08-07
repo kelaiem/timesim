@@ -3217,6 +3217,143 @@ Both are honesty debt in what exists — they would be worth closing if §76
 were abandoned tomorrow, which is the test for belonging here rather than
 in the roadmap.
 
+### The crash is FIXED, the diagnosis is published — and wall three was misdiagnosed
+
+Two of this item's three defects are closed. Wall two is untouched and still
+open; what follows is measured, not argued.
+
+**The warn buffer is published from main.js's first lines, on its own
+surface.** `window.__bootWarns` (and `window.__bootError`, filled by an
+`error` listener while `__clock` is still absent) go up beside the
+`console.warn` capture, ~18k lines before `window.__clock` is assigned.
+
+The one trap here is worth stating, because the obvious fix is the wrong
+one: **`__clock`'s EXISTENCE is the boot-complete handshake.**
+`ci-battery.mjs` waits on `!!window.__clock` and §33's trial-boot panel
+polls the iframe for the same thing. Publishing a STUB named `__clock`
+early would make both readers proceed on a half-built module and report
+`silent` — the exact false-silence the buffer was added to kill in §29
+step 0's postscript. So the warns get a separate name, which means "there
+are warns" and never "the boot finished".
+
+Both readers now say what happened instead of timing out blind.
+`virginBoot` catches its own `waitForFunction` timeout and reports the
+fatal error, the warns, and the page errors — the last of which it was
+*already collecting* and discarding, because the timeout threw before the
+`if (errors.length)` check could run. The trial panel reads the same two
+values off the iframe before `reconfKillTrial` removes it.
+
+**The fork cock's seat scan reports and continues.** Its three walls (plate
+radius, swept-disc floor, the bar's edge against the balance) are now graded
+as signed margins instead of tested, so the scan keeps its least-short
+candidate and names which wall bound it and by how much. The feasibility
+test is unchanged — a seat clears iff all three margins are ≥ 0, which is
+exactly the three `continue`s it replaces — and the fingerprint is
+byte-identical to HEAD's at the shipped size (1436114427, 49 units,
+10 poses, measured both ways). When nothing clears it seats on the
+near-miss and warns that the cock is KNOWN BAD, on the precedent of the
+pillar seat scan's `no seat found near`: rule 6 still makes the warn a
+failure, but the boot completes and every other assert gets to speak.
+
+**What R 13 says now, where it used to say nothing at all.** Eight warns
+instead of a `TypeError` and an empty buffer — this item's whole point, and
+it immediately produced a correction to §76:
+
+```
+fork cock: no clear footing for its leg — best near-miss is short by 0.689
+at (19.09, -32.72), reach 16.00, bearing 304.6°; bound by a swept disc below
+the seat [margins: plate 7.680, floor -0.689, bar 1.736; each needs ≥ 0]
+3/4 plate: the cut reaches a pivot it has to carry at 17.1 0.0 — edge 13.81 vs 9.81   (×2)
+alarm setting i2 fouls the winding climb: clearance -0.84
+alarm winding chain: i2 failed to close on the barrel mesh distance
+TODO 15: alarm winding: idler 1 ⇄ idler 2 centre distance 15.947 vs pitch-circle sum 15.300
+TODO 15: alarm winding: idler 2 ⇄ barrel centre distance 14.943 vs pitch-circle sum 14.250
+§39: balance 13.78 mm outside the 6–13 mm wristwatch envelope
+```
+
+**Read the near-miss: `reach 16.00` is the scan's own ceiling, and `plate
+7.680` says there was plate left.** Measured — raise `reach <= 16` to 26 at
+R 13 and a seat is found; the fork cock warn disappears and the other seven
+remain. So wall three's recorded cause, "past R 12 no seat survives", is
+WRONG. What runs out at R 13 is not footing, it is the scan's undeclared
+compactness cap. `16` is a magic number: the comment says the scan takes the
+nearest feasible seat "which keeps the bridge compact", so compactness is
+the intent, but no constraint derives the number — rule 1, sitting inside
+the solver this item was filed against.
+
+**That is a re-diagnosis, NOT wall three coming down**, and the difference
+matters. A seat past reach 16 is a much longer bar, which has P1 duties
+(§50's section floors on a longer unsupported span) and P3 consequences (the
+bar sweeps more of the plate, in the slab z-band the balance already
+shares). None of that is measured. Raising the ceiling to green a warn
+before deriving it would be swapping one magic number for a larger one.
+
+**What is left on this item**, in the order that suits §76:
+
+- **Derive the reach ceiling** from what actually limits the bridge — the
+  bar's own section against its unsupported span — and re-measure R 12/R 13
+  against the derived cap. Only then is it known whether wall three is a
+  layout wall or was never one.
+- **Wall two, untouched.** The R 13 rows above show it: the winding chain's
+  link lengths are `ALARM_TRAIN_MODULE × tooth counts` with
+  `ALARM_WIND_IDLER_TEETH = 51` carrying its constraint in a COMMENT
+  ("sized so the 3-mesh chain … spans the SHORTER inner-climb → barrel
+  run") — evaluated once by hand and pasted, while the span it must cover
+  grows with `plateR`. The setting train has the same shape: the comment
+  states `m·(30 + 2·31 + 10)/2 = ALARM_CD → m ≈ 0.302` and the code ships
+  `ALARM_SET_MODULE = 0.30`. So wall two is not "stations placed at radii"
+  as filed above — the climb station *does* follow the plate through
+  `ALARM_CD ← RESERVE_LOCAL.y ← dialRadius ← plateR`. It is two constants
+  whose derivations live in prose instead of in code. Fix them where they
+  are declared, and note the tooth counts are integers, so the module
+  absorbs the residue against TODO 15's asserts.
+- **`§39: balance 13.78 mm outside the 6–13 mm wristwatch envelope`** is a
+  bound §76 should record whatever the layout does: R 13 is out of spec as a
+  wristwatch before any wall is consulted.
+
+### Wall two got smaller again, and the reason is worth keeping
+
+§76's wall-one restructure (roadmap Layer 7) landed the setting run's real
+wall list, and in doing so it separated two things this item had filed
+together. **The setting run is solved at the shipped corner** — its 25-wall
+audit measures 0.210 clear, which is the ceiling the whole family shares, so
+`ALARM_SET_I1_BEARING = 18°` is already optimal. What remains of wall one at
+the shipped corner is the three-quarter plate's cut reaching the alarm
+winding pivot, which is a different wall from anything in this item.
+
+Wall two is unchanged and still open: `ALARM_WIND_IDLER_TEETH = 51` and
+`ALARM_SET_MODULE = 0.30` both carry their derivations in comments rather
+than in code, while the span they must cover grows with `plateR`.
+
+**The general lesson, which is this item's own lesson repeating.** The
+setting run's walls were split between an audit that ran at the route and
+asserts that ran 500 lines downstream, with three walls in neither — so the
+route was solved against a subset and the leftovers could only complain
+afterwards. That is the same shape as the instrument gaps in items 5, 6, 27
+and 29: **the defect was not hidden by subtlety, it was hidden by what the
+instrument was allowed to look at.** A wall the solver cannot see is not a
+wall, it is a post-mortem.
+
+**Battery: 14/14, fingerprint unchanged.** `node tools/ci-battery.mjs`,
+3055 s. Every gate green — `inspection` 0 FORBIDDEN (50 units, 72 contacting
+pairs), `clearances` 0 violations, `sweptOverlap` 0 CONFIRMED (59 216 pairs,
+2 tight, 13 refuted), `restoring` 0 unwaived with control PASS,
+`stockFloor` 507 rows / 64 waived, `oscillator` 2.5 Hz on a 0.0244 mm
+ribbon — and the fingerprint is 1436114427 across both virgin boots, the
+same hash HEAD produces. That last number is the load-bearing one for this
+change: the seat scan was refactored from three `continue`s to three graded
+margins, and an identical fingerprint is what says the refactor picks the
+same seat rather than a similar one.
+
+One thing the battery does NOT cover, stated rather than implied: the new
+reporting paths only execute when a boot fails, which a green run never
+does. `virginBoot`'s timeout handler and the trial panel's dead-frame read
+were exercised directly instead — the boot-failure case by booting R 13
+under a patched balance radius, and the handler's four report shapes
+(wedged, absent buffer, warns present, no warns) by driving the branch
+logic on its own. A wedged page is the one shape with no live test; it is
+why that read is raced against 10 s rather than awaited.
+
 ## 31. The alarm lock has no return — the column can push it, nothing pulls it back
 
 The direct remainder of [item 28](#28-mostly-closed--pillars-a-derived-profile-and-a-lock-the-column-actually-lifts), and what `Alarm lock`'s waiver in

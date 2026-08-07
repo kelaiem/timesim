@@ -179,7 +179,37 @@ async function virginBoot(browser, base) {
     if (m.type() === 'error' && !(m.location()?.url ?? '').endsWith('/__state')) errors.push(m.text());
   });
   await page.goto(`${base}/index.html`, { waitUntil: 'load', timeout: BOOT_TIMEOUT_MS });
-  await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
+  try {
+    await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
+  } catch {
+    // TODO 30 — a boot that DIES is not a boot that is slow, and until now the
+    // two were indistinguishable here: __clock never appears, this times out,
+    // and the timeout carries no message. The diagnosis existed the whole time
+    // and was thrown away by ordering — `errors` already holds the pageerror,
+    // and the `if (errors.length)` check below is unreachable once this throws.
+    // main.js now publishes the warn buffer and the fatal error from its first
+    // lines, on their own surface, so read all three and say what happened.
+    // RACED, not awaited: a boot can fail by WEDGING as well as by dying (see
+    // CLAUDE.md's yield-throttling trap), and evaluate() on a blocked main
+    // thread never resolves — reading the diagnosis must not become a second
+    // way for CI to hang with no message.
+    const d = await Promise.race([
+      page.evaluate(() => ({
+        warns: window.__bootWarns ? window.__bootWarns.slice() : null,
+        err: window.__bootError || null,
+      })).catch(() => ({ warns: null, err: null })),
+      new Promise((r) => setTimeout(() => r({ warns: null, err: null, wedged: true }), 10000)),
+    ]);
+    const lines = [`the build never finished booting (no __clock after ${secs(BOOT_TIMEOUT_MS)})`];
+    if (d.wedged) lines.push('and its main thread did not answer in 10s — the page is WEDGED, not dead.');
+    if (d.err) lines.push(`fatal: ${d.err.message}`, ...(d.err.stack ? [d.err.stack] : []));
+    if (d.warns === null) {
+      if (!d.wedged) lines.push('__bootWarns is absent too — main.js did not reach its first 60 lines (a parse or import failure).');
+    } else if (d.warns.length) lines.push(`${d.warns.length} boot warn(s) before it died:`, ...d.warns.map((w) => `  · ${w}`));
+    else lines.push('no boot warns were recorded before it died.');
+    if (errors.length) lines.push('page errors:', ...errors.map((e) => `  · ${e}`));
+    throw new Error(lines.join('\n'));
+  }
   await page.evaluate(async () => { window.__I = await import('./src/inspect.js'); });
   if (errors.length) throw new Error(`page errors during boot:\n${errors.join('\n')}`);
   return { context, page };
