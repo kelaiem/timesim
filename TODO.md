@@ -3598,3 +3598,42 @@ so the correction stops being a sample statistic at all.
 Until then the dilation is an honest measurement graded by itself, and the
 second pass is kept — with the algebra written at it — because an assertion
 that cannot fail should say so rather than quietly disappear.
+
+## 35. An alarm-corner azimuth band crashes the build instead of being refused
+
+`?alarmaz=` is a §33 spec handle with a documented refusal path — the corner
+has forbidden windows (`reconfAlarmWindows`) and the drag is supposed to be
+REFUSED inside them. A band around 180° does not reach that path: it throws.
+
+**Measured on `main`**, no other spec changed:
+
+| `?alarmaz=` | result |
+|---|---|
+| 175 | **never boots** — `Cannot read properties of undefined (reading 'getPoint')` |
+| 180 | **never boots** — same |
+| 185 | boots |
+
+A build that does not boot has no `__clock`, so every instrument in the
+battery is unreachable — this is the failure class item 30 named, arriving
+from a spec value rather than from a code change. It is worse than a warning
+and worse than a refusal: the page is simply dead, and nothing in the harness
+distinguishes "this arrangement is illegal" from "the app is broken".
+
+**What to build.** Find the `getPoint` consumer that assumes a curve exists
+(the alarm corner's routing builds one of the setting/winding runs through a
+`THREE.Curve`; at these azimuths the run degenerates and the curve is never
+created) and give it the refusal the handle already promises: the corner's
+window list should REFUSE the azimuth, the way §33's crown handle refuses a
+drag past the two-bar bound, rather than letting the build proceed into a
+null. A refusal is a legal answer; a throw is not.
+
+**Note the scope.** This is not the reconfigure UI's problem — the UI's
+windows are closed-form and may well already refuse the drag. The defect is
+that the URL/spec path reaches the builders without that check, so a
+deep-link (or a variant saved before the windows were tightened) can hand the
+app an arrangement it cannot construct. Whatever refuses it must sit where
+the spec is READ, not only where the pointer is dragged.
+
+**Found while sweeping corner azimuths for §74 Tier B**, which is the only
+reason anyone tried 175° — the shipped corner is 0° and the band is invisible
+from there.

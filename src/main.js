@@ -7294,7 +7294,45 @@ const alarmSetRouteAt = (bearing) => {
   return { i1, i2 };
 };
 const _setB = ALARM_SET_I1_BEARING;
-const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = alarmSetRouteAt(_setB);
+{
+  // THE SAME MOVING QUESTION AS THE WINDING CHAIN, answered differently
+  // because this chain's second idler is not sized by reach. i1 stands at
+  // ALARM_SET_DW1 from the centre and must reach the setting arbor, which
+  // sits at ALARM_ARBOR_R = ALARM_CD + CROWN_PULL_DIST — so the run grows
+  // with the reserve station while D12 + D2P stays fixed, and past
+  // ALARM_CD ≈ 19.9 the two-circle solve has no intersection at all
+  // (alarmSetRouteAt returns null, which is a HARD failure, not a warning).
+  //
+  // The floor the reach imposes:
+  //     reach ≤ D12 + D2P = m(I1 + 2·I2 + P)/2
+  //   → I2 ≥ (2·reach/m − I1 − P) / 2
+  // Measured at the shipped station that is 23 — and I2 is 37, because this
+  // idler is NOT sized by reach. Its diameter is what BENDS the dogleg wide
+  // of the winding climb (see the corridor audit below); reach has 4.38 of
+  // slack at the shipped layout and has never been the binding constraint.
+  //
+  // So this is an assert, not a derivation: the designed value keeps its
+  // corridor reason and the floor is checked against it, which is the honest
+  // shape when a number has a reason the constraint does not capture.
+  // Deriving I2 from reach alone would shrink it to 23 and quietly hand the
+  // dogleg's routing job back to nobody.
+  const arborD = Math.hypot(alarmWorld.x, alarmWorld.y);
+  const i1 = {
+    x: (_setU.x * Math.cos(_setB) + _setPerp.x * Math.sin(_setB)) * ALARM_SET_DW1,
+    y: (_setU.y * Math.cos(_setB) + _setPerp.y * Math.sin(_setB)) * ALARM_SET_DW1,
+  };
+  const reach = Math.hypot(alarmWorld.x - i1.x, alarmWorld.y - i1.y);
+  const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
+  if (ALARM_SET_I2_TEETH < floor)
+    console.warn(`alarm setting dogleg: i2 ${ALARM_SET_I2_TEETH} t cannot reach the arbor — needs ≥ ${floor} t `
+      + `(i1 → arbor ${reach.toFixed(3)} against a reach of ${(ALARM_SET_D12 + ALARM_SET_D2P).toFixed(3)}; `
+      + `arbor at ${arborD.toFixed(2)} = ALARM_CD + CROWN_PULL_DIST)`);
+}
+const _setRoute = alarmSetRouteAt(_setB);
+if (!_setRoute)
+  console.warn(`alarm setting dogleg: no i2 exists at bearing ${(_setB / DEG2RAD).toFixed(1)}° `
+    + `— the arbor is outside the chain's reach entirely, so the route below is not a route`);
+const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = _setRoute || { i1: { x: NaN, y: NaN }, i2: { x: NaN, y: NaN } };
 // --- §76 wall one — ONE wall list, used twice -------------------------------
 // The audit that used to stand here saw four walls: the two sub-dial well
 // RINGS, the climb column and the cock post. Three more constrain this route
@@ -9224,18 +9262,43 @@ alarmBarrelUnit.add(alarmBarrelRotor);
 // click is filed as debt.
 // ---------------------------------------------------------------------------
 const ALARM_WIND_PINION_TEETH = 12;
-const ALARM_WIND_IDLER_TEETH = 51; // sized so the 3-mesh chain (with a small dogleg) spans the SHORTER inner-climb → barrel run
-const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_BARREL_TEETH; // barrel turns per crown turn
+// The climb → barrel span this chain has to cover. It is NOT a constant: the
+// climb stands at ALARM_CD (≡ RESERVE_LOCAL.y, §13 step 3b) while the barrel
+// is seeded from the alarm module's own azimuth and does not move with it, so
+// the span grows about 1:1 with the reserve station.
+const _wc = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
+const _wSpan = Math.hypot(alarmBarrelPos.x - _wc.x, alarmBarrelPos.y - _wc.y);
+// THE IDLER IS SIZED BY THE SPAN, which is what "sized so the chain spans the
+// run" always meant — but it was recorded as the number that solve produced
+// (51) rather than as the solve, and a frozen answer to a moving question is
+// rule 1's exact failure. The three meshes are climb⇄i1, i1⇄i2, i2⇄barrel, so
+// the chain reaches at most
+//     wd1 + wd2 + wd3 = m(P+I)/2 + mI + m(I+B)/2 = 2mI + (m/2)(B+P)
+// and the closure needs that to cover the span:
+//     I ≥ (wSpan − (m/2)(B + P)) / (2m)
+// At the shipped span (38.63) that is 50.38 → 51, reproducing the literal it
+// replaces bit for bit, so the identity build is untouched. Past it, the
+// idler grows instead of the chain silently failing to close: the two-circle
+// solve below clamps a negative discriminant with Math.max(0, …), so an
+// unreachable barrel used to come out as a chain that simply did not mesh —
+// measured, ALARM_CD 16.0 gave i1⇄i2 at 15.408 against a 15.300 pitch sum.
+// A LONG RUN IS BRIDGED WITH MORE TEETH ONLY SO FAR: this keeps the module
+// (tooth strength, shared by the whole alarm train) fixed and spends the
+// span on the idler's diameter, which is the cheap currency until the wheel
+// stops being a plausible watch part. The ceiling is asserted below.
+const ALARM_WIND_IDLER_MIN = Math.ceil(
+  (_wSpan - (ALARM_TRAIN_MODULE / 2) * (ALARM_BARREL_TEETH + ALARM_WIND_PINION_TEETH))
+  / (2 * ALARM_TRAIN_MODULE));
+const ALARM_WIND_IDLER_TEETH = ALARM_WIND_IDLER_MIN;
+const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_BARREL_TEETH; // barrel turns per crown turn — idlers drop out
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
 registerLabel('Alarm winding train', alarmWindUnit);
 registerExplode(alarmWindUnit, 0, 9); // rides with the back stack, like the striking works
 // Idler centres: i1 at its mesh distance from the climb along the line toward
 // the barrel; i2 by two-circle intersection (radii: mesh distances to i1 and
-// to the barrel), +y solution — the small dogleg that absorbs the 0.2 slack
+// to the barrel), +y solution — the small dogleg that absorbs the slack
 // between the chain's link lengths and the straight span.
-const _wc = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
-const _wSpan = Math.hypot(alarmBarrelPos.x - _wc.x, alarmBarrelPos.y - _wc.y);
 const _wu = { x: (alarmBarrelPos.x - _wc.x) / _wSpan, y: (alarmBarrelPos.y - _wc.y) / _wSpan };
 const _wd1 = ALARM_TRAIN_MODULE * (ALARM_WIND_PINION_TEETH + ALARM_WIND_IDLER_TEETH) / 2;  // climb ⇄ i1
 const _wd2 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_IDLER_TEETH) / 2;   // i1 ⇄ i2
@@ -9252,6 +9315,28 @@ const alarmWindI2 = (() => {
 })();
 if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
+{
+  // The reach the sizing above bought, reported rather than assumed. Kept as
+  // its own assert because the closure test upstream can only say the chain
+  // did not close — not that it was ASKED to cover more than it can.
+  const reach = Math.hypot(alarmBarrelPos.x - alarmWindI1.x, alarmBarrelPos.y - alarmWindI1.y);
+  if (reach > _wd2 + _wd3)
+    console.warn(`alarm winding chain: i1 → barrel ${reach.toFixed(3)} exceeds the chain's reach `
+      + `${(_wd2 + _wd3).toFixed(3)} (idler ${ALARM_WIND_IDLER_TEETH} t at module ${ALARM_TRAIN_MODULE}) `
+      + `— the span (${_wSpan.toFixed(2)}) outgrew the sizing`);
+  // A CEILING ON THE CHEAP CURRENCY. Growing the idler bridges distance
+  // without touching the module, but an idler is a real wheel on a real
+  // pivot: past the barrel's own diameter it is the largest rotor in the
+  // alarm work and stops reading as a transmission wheel. Beyond here the
+  // honest answer is another idler, not a bigger one — a fold's currency is
+  // corners and idlers (design-priority note), and that is the next
+  // increment rather than a number to widen.
+  const idlerR = ALARM_TRAIN_MODULE * ALARM_WIND_IDLER_TEETH / 2;
+  const barrelR = ALARM_TRAIN_MODULE * ALARM_BARREL_TEETH / 2;
+  if (idlerR > barrelR * 1.5)
+    console.warn(`alarm winding idler ${ALARM_WIND_IDLER_TEETH} t (r ${idlerR.toFixed(2)}) exceeds 1.5× the `
+      + `barrel it drives (r ${barrelR.toFixed(2)}) — this span wants an added idler, not a larger one`);
+}
 {
   // Climb arbor: contrate at the stem plane, rod through both plate bores,
   // pinion up in the barrel's tooth band.
