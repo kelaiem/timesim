@@ -7577,11 +7577,28 @@ adds is a `Line`, which no instrument collects, and every one is flagged
 
 So the acceptance instrument is the one CLAUDE.md names for a change that
 should not have moved anything: `--report` before and after, diffed, not
-the PASS/FAIL column. Both runs are on the same machine with isolated
-`/__state` files — a shared state file lets one run's auto-save (every 5
-simulated seconds, from `frame()`) reach the other's virgin boot, which
-is worth knowing before running two batteries at once. The result is
-recorded in the commit that follows this one.
+the PASS/FAIL column. **Measured, both at 15/15 gates:**
+
+| | baseline (`1ab933c`) | §83 |
+|---|---|---|
+| gates | 15/15 | 15/15 |
+| geometry fingerprint | 2217227919 | 2217227919 |
+| report payload, `ms` stripped | 410,933 bytes | 410,933 bytes |
+| differing paths | — | **0** |
+
+Every check's full payload matches — not just every failure list being
+empty, which is all the PASS column would have told us.
+
+Two notes for the next person who runs this comparison. Both runs used
+isolated `/__state` files (`TMPDIR`): the app auto-saves every 5 simulated
+seconds from `frame()`, and `dev_server.py` puts its state file in the
+system temp dir, so two concurrent batteries share one — letting one run's
+save reach the other's *virgin* boot, which is the one thing the
+fingerprint gate depends on being virgin. And the wall clock is not
+comparable between them: run them concurrently on a 4-core box and both
+shards roughly halve in throughput (`inspection` 815 s, `sweptOverlap`
+1963 s here, against ~46 s and ~1755 s for a run with the machine to
+itself). That is why `ms` is stripped rather than compared.
 
 The one behavioural cost is real and bounded: the hairspring's line is
 rewritten whenever its frame index changes, 481 positions plus a bounding
