@@ -61,12 +61,18 @@ const YIELD_EVERY = 64;
 // worked example — drilling the chain's 211 joints tripled that mesh
 // (14,312 → 46,144 triangles) and `sweptOverlap` went 352 s → ~1400 s on this
 // runner class, blowing the old 20-minute guard while REPORTING the same
-// green result (0 CONFIRMED, 59,216 pairs). The cost is the §36 registry's
-// own: `samplePoses` transforms every vertex of every mesh at every pose into
-// Float64 and holds all 9 axes × 12 poses at once, to produce one AABB per
-// pose. That is the thing to fix (roadmap §80); until it is, the guard has to
-// clear the honest cost of the geometry with room to spare, so 45 minutes —
-// still ~2x the slowest check, which is what a guard is for.
+// green result (0 CONFIRMED, 59,216 pairs).
+//
+// §80 BLAMED THE REGISTRY FOR THAT, AND MEASURED, THE REGISTRY WAS NOT IT.
+// This comment used to read "the cost is the §36 registry's own"; building the
+// registry ran 63.8 s of `sweptOverlap`'s 1816 s on a dev container — 3.5%.
+// §80 took it to 3.5 s and the whole hull phase (registry + all 59,216 pair
+// tests) to 3.6 s, which moved the check to ~1755 s. The other 96.5% is the
+// CONFIRM TIER: 15 raw hull overlaps, each re-measured by an uncapped
+// `measureClearance` BVH sweep over all 9 axes, and TODO 27's chain is on two
+// of them. Roadmap §82 owns that; the guard stays at 45 minutes until it
+// lands, because it has to clear the honest cost of the check with room to
+// spare — still ~1.5x the slowest check, which is what a guard is for.
 const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 

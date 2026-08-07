@@ -6972,3 +6972,167 @@ are exactly three base-plate fills, one three-quarter-plate fill and one
 dial fill. Both §66 boot asserts stay silent — proxies are never Meshes,
 and dropping the hairspring from the rotor pass leaves 64 rotor sites
 against the required 10.
+
+---
+
+## §80 — The swept registry stops paying by the vertex, and the bill turns out to be somewhere else
+
+**The entry that planned this was right about the registry and wrong about
+why it mattered**, and the second half is the more useful finding. The plan
+opened "`buildSweptRegistry` is the battery's most expensive instrument."
+It is not. It was 3.5% of the check that was blowing CI, and the fix below
+— an 18× one, verified byte-identical — moves that check by about that
+much. The other 96.5% is named at the end and filed as roadmap §82.
+
+### What the registry was paying
+
+Measured on the shipped tree (dev container, 4 vCPU) by instrumenting the
+build rather than reasoning about it:
+
+| phase | s | what it is |
+|---|---|---|
+| coarse sample | 11.6 | 108 poses × every vertex of every mesh, stored |
+| derive | 3.5 | the volumes, read back out of those frames |
+| fine sample | 22.7 | 261 poses × the same, stored again |
+| validate + two demotion passes | 5.6 | three more reads of the fine frames |
+
+**78% of the build is sampling**, and the shape of the storage is why. The
+scene collects 608 meshes holding 640,558 vertices, so one frame is
+~15.4 MB of `Float64Array` and the build holds **369 of them — about
+5.7 GB — alive at its peak**: the coarse 108 stay referenced through the
+whole function, and the fine 261 are read three times, so they all have to
+exist at once. That is what "3.0× the vertices bought ~4× the wall clock"
+was really reporting — allocation, not arithmetic.
+
+### The two reductions, both exact
+
+**1. A mesh's POSE STATE — its geometry object plus its world matrix.**
+Equal at two poses ⇒ equal world vertices, to the last bit, because it is
+the same arithmetic over the same inputs. The sweep transforms once per
+state and shares the frame. It is worth so much because of how the axes are
+built: each `AXES` entry PINS the state every other axis varies, so a part
+only the alarm crown moves stands perfectly still through the other eight
+sweeps and used to be re-transformed ~300 times into the same place.
+Measured over a whole build: **26,132,459 vertex transforms against
+232,495,398 — 88.8% of them were repeats.** The coarse sweep now holds
+5,882 frames instead of 55,188, which is 7.27 M stored vertices (~174 MB)
+against 236 M (~5.7 GB).
+
+It rests on geometry IDENTITY standing for geometry CONTENT, which is not a
+new trust: `bvhFor` caches by geometry the same way, and MODELING.md rule 6
+already forbids the in-place morph ("build the states as distinct geometry
+objects") for exactly that reason. The mainspring and hairspring obey it
+with a pool of wind frames and the chain with a fresh geometry per rebuild,
+so a morph reads here as a NEW state — which is what rule 6's "a part that
+changes SHAPE is a moving part" demands.
+
+**2. The fine sweep is streamed — it stores nothing at all.** Its three
+consumers never wanted points: the containment pass wants a verdict, the
+sleeve dilation wants a worst overshoot, the demotion pass wants an r band,
+a z band and the sweep's own extent. So each vertex is transformed, asked
+its questions and dropped. Two consequences that had to be designed rather
+than fallen into:
+
+- The containment test no longer stops at the first escaping vertex for
+  path and revolve volumes, because the later passes need quantities
+  measured over the WHOLE sweep. It still stops for static and approx,
+  whose only product is the verdict.
+- The sleeve's containment test and its dilation became one measurement.
+  `best` is a vertex's Chebyshev distance to the nearest box of the sleeve
+  (0 inside), so containment is `best ≤ tol` — with the same early break the
+  boolean loop had — and the overshoot is the largest `best` over the sweep.
+  One number, both answers.
+
+A third, smaller reduction: `buildPathHull` takes the per-pose BOXES now
+instead of the per-pose points. It always did, arithmetically — its first
+act was to reduce each pose to its six extremes — so this only moves the
+reduction to where the numbers are measured. Both call sites had to move
+together and the first patch moved one: a 3n-long point array reads as a box
+whose first six numbers happen to be vertices, which produced wrong sleeves
+with every downstream count still plausible (43 escapes became 62, silently).
+Six is the contract, so six is checked now.
+
+### The rule the walk had to obey, which is this entry's real trap
+
+The obvious way to strip the fine sweep is extra laps — one to find the
+escapes, one to measure their overshoot, one to re-grade. **There is no
+budget for a third lap, and not because of its cost.** Some of what
+`setPose` writes is CUMULATIVE: TODO 20's alarm column advances a step each
+time a pose flips the parity, so its angle is a function of how many flips
+came before. The pose a walk lands on depends on the walk HISTORY as well as
+on the axis fraction, and the registry's numbers depend on the coarse walk
+running first and the fine walk second, exactly twice. Insert a lap and
+those parts are re-posed and the result moves. That constraint is now
+written at `walkPoses`, because nothing in the file said it and the next
+person to optimise this will reach for another lap first.
+
+So everything a later pass could want is accumulated on the lap already
+running — including `rzWhy`, the first r-or-z escape in pose-then-vertex
+order, which lets the demotion pass ask its question of numbers instead of
+of a stored sweep.
+
+### What it cost and what it bought
+
+Same page, same order, no contention:
+
+| | before | after |
+|---|---|---|
+| `sweptRegistry` (first check on a fresh boot) | 63.8 s | 3.5 s |
+| frames held at peak | 369 full (~5.7 GB) | 5,882 shared coarse, 0 fine (~174 MB) |
+| `stockFloor` | 44.4 s | 3.2 s |
+| `restoring` | 22.6 s | 3.1 s |
+| `sweptOverlap`, confirm tier off | 41.0 s | 2.8 s |
+
+Every one of those reports is **byte-identical** on the shipped tree — the
+registry's 608 volumes in the same 200 revolve / 193 path / 215 static
+split, the same 43 containment escapes, the same 0 still escaping, the same
+z bands and `reversed` flags; `stockFloor`'s 507 rows and 64 waivers;
+`restoring`'s 24-unit population. The fingerprint is unchanged at
+1436114427 and the full battery is 14/14. That identity was the acceptance
+and it is the only reason the speedup is worth anything: a cheaper registry
+that is also a blinder one is a regression wearing a stopwatch.
+
+The build now reports what it saved, in a `sampling` block on the registry's
+own output. The ratio is a property of the MOVEMENT — how much of the scene
+each pose axis leaves standing still — not of the code, so it is measured
+rather than assumed.
+
+### What this did NOT deliver, and where the time really is
+
+The plan's acceptance ended "wall clock is back near the pre-TODO-27 figure
+or better, and `CHECK_TIMEOUT_MS` … drop it to 20 minutes again in the same
+change." **That is not delivered and the guard stays at 45 minutes**,
+because the premise under it was wrong. Splitting `sweptOverlap`:
+
+| phase | before | after |
+|---|---|---|
+| build the §36 registry | 63.8 s | 3.5 s |
+| all 59,216 static-vs-swept hull pair tests | ~0.1 s | ~0.1 s |
+| the CONFIRM TIER | ~1750 s | ~1750 s |
+
+The whole hull phase — registry plus every pair test the check exists to run
+— is 2.8 s. Everything else is fifteen raw hull overlaps each re-measured by
+an **uncapped** `measureClearance`: a BVH sweep over all nine pose axes with
+refinement, with TODO 27's 46,144-triangle chain on two of them. The check
+measured 1816 s standalone before and 1988 s inside the battery after, which
+says exactly what it should — the confirm tier's own run-to-run spread is
+larger than the 60 s §80 removes from it.
+
+Nothing in §80's scope reaches that, and the two obvious ways to reach it
+(capping the query at `CLEAR_MARGIN + refineBand`, or batching the fifteen
+pairs into one `sweepClearances` call) both CHANGE the reported numbers,
+which is the one thing this entry's own rule forbids. So it is filed whole,
+with its measurement, as roadmap §82 — and the comment at `CHECK_TIMEOUT_MS`,
+which used to read "the cost is the §36 registry's own", now says what the
+cost is.
+
+One further finding fell out of the reduction and is filed as **TODO 34**.
+Reducing the sleeve re-validation to the single comparison that decides it
+makes plain that it cannot fail: growing every box by `g` takes a vertex's
+distance from `best` to `max(0, best − g)`, so "still outside" means
+`best > g + tol`, and `g` is `2·over + tol` where `over` is the largest
+`best` that same sweep produced. The old comment there conceded the pass was
+"partly self-fulfilling" while calling it "the honest arbiter". It is
+neither — it is vacuous by construction, for any geometry. The pass is kept,
+with the algebra written at it, because an assertion that cannot fail should
+say so rather than quietly disappear.
