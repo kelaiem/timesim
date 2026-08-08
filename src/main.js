@@ -9440,10 +9440,18 @@ declareRestoring('Alarm barrel', 'spring',
 // behaviour of real alarm crowns). A crown turned backward free-slips at the
 // stem⇄contrate bevel without unbanking — the same convention the time
 // crown's ratchet documents ("only what actually banked moves the wheel").
-// No click is modelled: in §25 A's single-member barrel (rotation IS wound
-// state) a barrel click would block the ring itself; the hold is stage B's
-// striking-wheel lock. The two-member (arbor + shell) split that earns a real
-// click is filed as debt.
+// No click is modelled, and §89 changed why. §25 A's reason was that in a
+// SINGLE-member barrel (rotation IS the wound state) a barrel click would
+// block the ring itself — true of that barrel, and no longer true of this
+// one: the arbor is fixed, the body is wound at its rim, and the ribbon
+// between them is the wound state. What survives is the consequence, on new
+// grounds. A click has to hold the member the winding torque enters, and here
+// that member is the toothed BODY, which is also the member the spring drives
+// the strike train from; holding it holds the ring. The arrangement that
+// earns a real click is the other split — winding the ARBOR through a ratchet
+// — and that re-sites this train's last mesh, so it is layout work and stays
+// filed (TODO 37). Until then the hold is stage B's striking-wheel lock, four
+// meshes downstream of the spring it is holding.
 // ---------------------------------------------------------------------------
 const ALARM_WIND_PINION_TEETH = 12;
 // The climb → barrel span this chain has to cover. It is NOT a constant: the
