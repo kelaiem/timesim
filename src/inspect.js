@@ -125,7 +125,17 @@ export const MECH_GRAPH = {
                                              // overhangs the wheel to reach the maintaining ring
     ['Stop lever', 'plate'],                 // clevis bracket stands on the BASE plate in the
                                              // balance cut's open wedge (the crank see-saws in it)
-    ['Hack rod', 'Setting lever'],           // pinned at the tail post, under the reset rod's pin
+    // §87: the hack rod no longer shares the reset rod's tail post at every
+    // spec. It is pinned to the setting lever's own HACK-ROD PIN — the same
+    // stud, the same stock, seated in the same lever body at HACK_PIN_K of
+    // the tail arm, where HACK_PIN_K is derived from the coupling this
+    // movement's station achieves (main.js, onHackPin). Where the coupling
+    // affords the full stroke that fraction is 1 and the pin IS the tail
+    // post, which is what the shipped movement builds. The pin is a stud of
+    // the LEVER, not a unit: it has no motion of its own to detect and no
+    // fixture of its own to reach, exactly like the beak pin and the post
+    // beside it, so its support and its drive are declared on these two rows.
+    ['Hack rod', 'Setting lever'],           // pinned at the lever's hack-rod pin, inboard of the reset rod's
     ['Hack rod', 'Stop lever'],              // pinned at the crank's tail top
     ['Reset hammer', 'plate'],               // its arbor stands footed on the BASE plate — the whole
                                              // reset/hack linkage lives in the low band now
@@ -207,7 +217,8 @@ export const MECH_GRAPH = {
                                                // — that is the whole point of the sandwich)
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
     ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
-    ['Setting lever', 'Hack rod'],             // the rod rides the lever's tail post
+    ['Setting lever', 'Hack rod'],             // §87: the rod rides the lever's own pin — the tail arm at
+                                               // HACK_PIN_K, so the stroke it takes is r/SL_TAIL of the post's
     ['Hack rod', 'Stop lever'],                // rigid rod rocks the stop crank
     ['Setting lever', 'Reset rod'],
     ['Reset rod', 'Reset hammer'],
@@ -473,7 +484,7 @@ const EXPECTED_PAIRS = [
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
   ['Chain', 'Mainspring drum'],              // chain wraps the drum
   ['Power-reserve train', 'Fusee & great wheel'], // p0 slip-coupled on the arbor
-  ['Hack rod', 'Setting lever'],             // rod pinned to the post (its support edge)
+  ['Hack rod', 'Setting lever'],             // rod pinned to the lever's hack-rod pin (its support edge)
   ['Hack rod', 'Stop lever'],                // rod pinned to the crank's tail top
   ['Setting lever', 'Reset rod'],            // rod pinned to the post
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
@@ -519,10 +530,15 @@ const EXPECTED_PAIRS = [
   // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
   // and its anchor post lands on the base plate, which is a structure node,
   // not a swept unit.)
-  // The two rods share the tail post's pin stack in a 0.22-unit corridor
-  // now — near the post their tubes converge and touch, as two levers on
-  // one stud do; the angular spread to their destinations separates them
-  // beyond it.
+  // The two rods run a 0.22-unit corridor and touch where their routes
+  // converge; the angular spread to their destinations separates them
+  // beyond that. At the shipped spec that convergence is the tail post
+  // itself — one stud, two eyes, as two levers stacked on one stud are —
+  // and where §87 gives the hack rod its OWN pin they no longer share a
+  // stud, but they still meet in the corridor (measured 0 at both, over
+  // the whole crown stroke). The pair has no EXPECTED_CONTACT_FLOORS row,
+  // so it still takes TODO 6's blanket excuse rather than a per-contact
+  // floor — this entry's own residue, unchanged by §87.
   ['Hack rod', 'Reset rod'],
   // Small-seconds display arbor (tornado): the through rod runs coaxially
   // inside the fourth wheel/pinion bores (this contact IS the friction

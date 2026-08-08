@@ -528,6 +528,14 @@ try {
     }
   }));
 
+  // Declared OUTSIDE the !SPEC_ONLY block that sets it, because --report reads
+  // it after that block closes: as a `const` in there, every --report run died
+  // on `fpA is not defined` AFTER printing its gate verdicts. CI never passes
+  // --report, so nothing caught it — and CLAUDE.md makes this the file a
+  // performance change is accepted against, so the instrument was broken for
+  // exactly the use it exists for. null under --spec-only, which has no
+  // fingerprint to report.
+  let fpA = null;
   // Boot silence is gated on EVERY shard, not just the first: each is a real
   // virgin boot of the same tree, so a warning that only some boots produce is
   // a nondeterminism this gate should not be able to miss.
@@ -535,7 +543,7 @@ try {
   gate('boot silent (rule 6)', shardOut.flatMap((s, i) => s.warns.map((w) => ({ shard: i, warn: w }))));
   gate('every shard completed', shardOut.flatMap((s, i) => (s.error ? [{ shard: i, error: s.error }] : [])));
 
-  const fpA = shardOut[0].fp;
+  fpA = shardOut[0].fp;
   if (fpA) console.log(`  fingerprint A: ${fpA.hash} (${fpA.units} units, ${fpA.poseCount} poses)`);
 
   // Gates are evaluated in canonical BATTERY order regardless of which shard

@@ -3767,3 +3767,29 @@ that is worth knowing on its own.
 **Tier two — the warning-set baseline — is still unbuilt**, deliberately.
 Live with tier one first; a snapshot test adopted early is a snapshot test
 nobody trusts later.
+
+### Addendum (§87) — a spec can now change which PARTS EXIST, and liveness cannot see that
+
+§87 gave the hack rod its own pin on the setting lever, at a radius DERIVED
+from the coupling each station achieves and capped at 1. The shipped movement
+is the capped case: the pin lands on the tail post, which already carries that
+eye, so **no stud is built and the identity fingerprint is unchanged**. At
+`?escstep=-77.9`, `?escstep=-66.7` and `?balstep=27.6` the fraction is
+0.696–0.761 and a real stud IS built — with its own §50 stock, its own
+clearance through the base plate (which is cut as ONE sector for both studs,
+because two slots overlap), and its own row in `LOW_LINKAGE_OBSTACLES`.
+
+**Every instrument that would judge that stud runs at the identity spec only,
+where it does not exist.** Tier one boots those specs and asks whether they
+LIVE, which they do. Nothing asks whether the new part clears anything. The
+gap was closed for §87 by hand — stud vs base plate 0.170 across the whole
+crown stroke at every moved spec (the same 0.17 the tail post gets), closest
+unit after the rod it carries is the reset rod at 0.61–0.97 — and a
+measurement made by hand once is exactly the kind this file exists to name.
+
+This does not change tier two's design; it widens what tier two is FOR. A
+warning-set baseline compares words. What a spec-conditional part needs is a
+per-point *structural* pass — at minimum `support` and `clearances` at two or
+three declared points — and the honest reason not to have built it here is
+cost, not doubt: those two checks are ~5½ minutes of the battery's wall at
+one spec, and there are twelve points.
