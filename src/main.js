@@ -11573,6 +11573,13 @@ panel.innerHTML = `
       <div class="row label-small" id="reconf-row" style="display:none;">
         <span id="reconf-status">Drag the crown to a new azimuth</span>
       </div>
+      <!-- §93: the handle readout. Separate from the status span because the
+           two answer different questions at the same time — "what have you
+           proposed" (status, which must survive a hover) and "what is under
+           the pointer" (this one). -->
+      <div class="row label-small" id="reconf-hint-row" style="display:none;">
+        <span id="reconf-hint">Six parts wear a ring — each one is a handle</span>
+      </div>
       <div class="row label-small" id="reconf-apply-row" style="display:none;">
         <button id="btn-reconf-trial">Trial boot</button>
         <button id="btn-reconf-apply">Apply (reloads)</button>
@@ -13035,7 +13042,13 @@ function setSchematic(on) {
   b.classList.toggle('active', on);
   applyGhosting();
 }
-document.getElementById('btn-schematic').addEventListener('click', () => setSchematic(!SCHEMATIC.on));
+document.getElementById('btn-schematic').addEventListener('click', () => {
+  setSchematic(!SCHEMATIC.on);
+  // §93 — reconfigure mode forces the solid tier on entry and puts the tier
+  // back on exit. A deliberate click WHILE in the mode is the new preference,
+  // or leaving the mode would silently undo the click just made.
+  if (reconfOn) reconfSchematicWas = SCHEMATIC.on;
+});
 
 // §66 part two — the per-unit vocabulary a generic traverse cannot derive.
 // LEVERS as pivot-to-contact lines, attached to the moving groups the tick
@@ -15169,6 +15182,10 @@ let reconfDrag = null;         // { kind, key?, anchor? } while dragging
 let reconfCandidate = null;    // { kind, azRad?, specKey?, specDeg?, warns, refuse }
 let reconfGhost = null;        // crown ghost (step 1)
 let reconfConstel = null;      // train constellation ghost (steps 3–4)
+let reconfRings = null;        // §93 handle rings — scene furniture, built on first entry
+let reconfHover = null;        // §93 handle kind under the pointer, resolved once per frame
+let reconfHoverAt = null;      // …from the last pointer position, §59's one-pick-per-frame rule
+let reconfSchematicWas = null; // §93 the view tier this mode interrupted, null when not in it
 const _rcNDC = new THREE.Vector2(), _rcHit = new THREE.Vector3();
 const _rcPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // the train plane z ≈ 0
 const RECONF_ROT_DEG = rotAppliedRad * 180 / Math.PI; // pointer az (rotated world) → solver frame
@@ -15396,6 +15413,167 @@ function reconfPaintConstel(sol, bad) {
   chain.material.color.set(col);
   reconfConstel.visible = true;
 }
+// --- §93 — THE HANDLES SAY WHICH THEY ARE ------------------------------
+// Six parts of this movement are handles and every other part is not, and
+// until now nothing on screen told them apart: the affordance lived in one
+// sentence in the panel ("Drag either crown, the pusher, barrel, escapement
+// or balance") and in whatever the reader already knew about watches. Each
+// handle now wears a ring while the mode is on.
+//
+// The ring is a MEASUREMENT, not a decoration: for the three train handles
+// its radius IS h.grabR(), the radius the pointer test uses, so what is
+// circled is exactly what is grabbable and a handle cannot advertise a
+// catchment it does not have. The rim handles are picked by raycast against
+// their own meshes instead, so theirs is drawn from the part's own bounding
+// box — one fifth outside the silhouette, which scales with the part rather
+// than being a number that looked right at one zoom.
+//
+// Drawn depth-test-free and billboarded, the axes legend's precedent (§21):
+// a reference must never end up buried inside the movement it refers to.
+// Near-white teal, the §58 lesson — ACES crushes saturated 1 px lines.
+const RECONF_HINTS = {
+  crown: 'Winding crown — drag it round the rim to move the stem',
+  alarmcrown: 'Alarm crown — drag it round the rim to move the alarm corner',
+  pusher: 'Alarm pusher — drag it round the rim to swing the alarm module',
+  barrel: 'Fusee & great wheel — drag it about the centre wheel',
+  escape: 'Escape wheel — drag it about the fourth wheel',
+  balance: 'Balance — drag it about the escape wheel',
+};
+const RECONF_HINT_IDLE = 'Six parts wear a ring — each one is a handle';
+// The rim handles' meshes, by the same objects their hit tests use — the
+// pusher by name because its cap is what a finger goes for, while the hit
+// test generously accepts the whole switch unit.
+const reconfRimTargets = () => [
+  { kind: 'crown', obj: crown },
+  { kind: 'alarmcrown', obj: alarmCrownKnob },
+  { kind: 'pusher', obj: scene.getObjectByName('alarmPusherCap') },
+];
+function ensureReconfRings() {
+  if (reconfRings) return;
+  reconfRings = new THREE.Group();
+  // A ring drawn as ARCS with gaps, plus four radial ticks: a broken circle
+  // reads as an overlay, where a closed one would read as another part's
+  // outline — the one thing this ring must never be mistaken for.
+  // A 1 px line is the thinnest mark this renderer can draw and it is thinner
+  // than the guilloché it has to lie over — and `linewidth` is a no-op in
+  // WebGL, so weight has to come from GEOMETRY. Every ring is a PAIR of
+  // concentric lines 0.15 u apart: at the framings this mode is used at that
+  // reads as one bolder stroke rather than as two rings.
+  const RING_STROKE_U = 0.15;
+  const ringGeo = (r) => {
+    const pts = [];
+    const ARCS = 12, DUTY = 0.55, SEG = 4;      // 12 dashes at 55% duty is a ring at a glance and never a rim
+    for (const rr of [r, r + RING_STROKE_U]) {
+      for (let i = 0; i < ARCS; i++) {
+        const a0 = (i / ARCS) * Math.PI * 2, span = (Math.PI * 2 / ARCS) * DUTY;
+        for (let s = 0; s < SEG; s++) {
+          for (const t of [s / SEG, (s + 1) / SEG]) {
+            const a = a0 + span * t;
+            pts.push(new THREE.Vector3(Math.cos(a) * rr, Math.sin(a) * rr, 0));
+          }
+        }
+      }
+      for (let i = 0; i < 4; i++) {             // the ticks aim at the centre: "this circle has a subject"
+        const a = i * Math.PI / 2 + (rr === r ? 0 : 0.012);   // the pair's second tick offset by its own stroke, in angle
+        pts.push(new THREE.Vector3(Math.cos(a) * rr * 0.82, Math.sin(a) * rr * 0.82, 0));
+        pts.push(new THREE.Vector3(Math.cos(a) * rr * 0.98, Math.sin(a) * rr * 0.98, 0));
+      }
+    }
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  };
+  // TWO rings, and the second one is not a flourish. The first cut drew one
+  // near-white teal line at 0.45, which read beautifully where a handle sat
+  // against the dark page — both crowns — and VANISHED over the polished
+  // plate, which is where the fusee, escape wheel and balance all are. A mark
+  // that only shows on one of the two backgrounds it must cross is not a
+  // mark. So each ring carries a dark backing ring just outside it: the pale
+  // line survives the plate because the dark one edges it, and the dark line
+  // is invisible against the page where the pale one is already doing the
+  // work. The offset is a constant 0.4 u rather than a percentage, so the
+  // outline does not thin as the ring grows from a crown to the great wheel —
+  // measured from the pale ring's inner line, which leaves 0.25 u of clear
+  // space between the two strokes below.
+  const RING_HALO_U = 0.4;
+  const lineMat = (color, opacity) => new THREE.LineBasicMaterial({
+    color, transparent: true, opacity, depthTest: false, depthWrite: false,
+  });
+  const marker = (r) => {
+    const g = new THREE.Group();
+    const halo = new THREE.LineSegments(ringGeo(r + RING_HALO_U), lineMat(0x081412, 0.85));
+    const core = new THREE.LineSegments(ringGeo(r), lineMat(0xbfeee2, 0.9));
+    halo.renderOrder = 997; core.renderOrder = 998;  // over the metal, under nothing — a reference, not a part
+    g.add(halo, core);
+    return g;
+  };
+  const add = (kind, at, r) => {
+    const m = marker(r);
+    m.position.copy(at);
+    m.userData.kind = kind;
+    reconfRings.add(m);
+  };
+  const box = new THREE.Box3(), c = new THREE.Vector3(), s = new THREE.Vector3();
+  for (const { kind, obj } of reconfRimTargets()) {
+    if (!obj) continue;       // a spec that builds no alarm corner has no handle to ring
+    box.setFromObject(obj); box.getCenter(c); box.getSize(s);
+    add(kind, c, (Math.max(s.x, s.y, s.z) / 2) * 1.2);
+  }
+  for (const h of RECONF_HANDLES) {
+    const g = h.grabAt();
+    add(h.kind, new THREE.Vector3(g.x, g.y, 0), h.grabR());
+  }
+  reconfRings.visible = false;
+  scene.add(reconfRings);     // furniture, like reconfGhost and §49's ruler — never a unit
+}
+// Which handle is under a pointer position — the SAME order and the same
+// tests the pointerdown handlers dispatch on, so the ring that lights is the
+// handle that will move. (Any second answer would be this mode lying about
+// itself, which is the defect §93 exists to fix.)
+function reconfHandleAt(pos) {
+  if (crownHitTest(pos)) return 'crown';
+  if (alarmCrownHitTest(pos)) return 'alarmcrown';
+  if (alarmColumnHitTest(pos)) return 'pusher';
+  const hit = reconfPointerWorld(pos);
+  if (!hit) return null;
+  let best = null;
+  for (const h of RECONF_HANDLES) {
+    const g = h.grabAt();
+    const d = Math.hypot(hit.x - g.x, hit.y - g.y);
+    if (d <= h.grabR() && (best === null || d < best.d)) best = { kind: h.kind, d };
+  }
+  return best && best.kind;
+}
+function reconfShowHint(kind) {
+  const el = document.getElementById('reconf-hint');
+  if (el.dataset.k === (kind || '')) return;   // touched on change only: a per-frame DOM write costs frames
+  el.dataset.k = kind || '';
+  el.textContent = t(kind ? RECONF_HINTS[kind] : RECONF_HINT_IDLE);
+}
+// One pick per frame at most, §59's rule for the explore hover: pointermove
+// only records where the pointer is, and the raycasts happen here.
+function updateReconfHandles() {
+  if (!reconfOn || !reconfRings) return;
+  if (reconfDrag) {
+    renderer.domElement.style.cursor = 'grabbing';
+    reconfHover = reconfDrag.kind;              // the ring you are holding stays lit
+  } else if (reconfHoverAt) {
+    reconfHover = reconfHandleAt(reconfHoverAt);
+    reconfHoverAt = null;
+    renderer.domElement.style.cursor = reconfHover ? 'grab' : '';
+    reconfShowHint(reconfHover);
+  }
+  for (const m of reconfRings.children) {
+    m.quaternion.copy(camera.quaternion);       // face the viewer from any orbit
+    // The hot state changes SIZE as well as opacity: a 1 px line has no other
+    // weight to gain, and over a bright plate the opacity step alone is the
+    // difference this mark cannot rely on (that is what the first cut got wrong).
+    const hot = m.userData.kind === reconfHover;
+    m.scale.setScalar(hot ? 1.06 : 1);
+    for (const part of m.children) part.material.opacity = hot ? 1 : (part.renderOrder === 997 ? 0.6 : 0.7);
+  }
+}
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (reconfOn && !reconfDrag) reconfHoverAt = { clientX: e.clientX, clientY: e.clientY };
+});
 function reconfShowStatus() {
   const span = document.getElementById('reconf-status');
   const applyRow = document.getElementById('reconf-apply-row');
@@ -15410,8 +15588,12 @@ function reconfShowStatus() {
     if (SPEC.barrelStepDeg !== null) parts.push(`barrel step ${SPEC.barrelStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.escapeStepDeg !== null) parts.push(`escape step ${SPEC.escapeStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
+    // The spec line quotes solver-tier values and stays English with them
+    // (the i18n.js residue); the empty-spec sentence is chrome, so it
+    // translates. §93 names the FUSEE rather than "barrel": the ring sits on
+    // the fusee and great wheel, which is the part a viewer sees move.
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : 'Drag either crown, the pusher, barrel, escapement or balance';
+      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the escape wheel or the balance');
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
@@ -15783,18 +15965,13 @@ function reconfMoveDrag(e) {
 }
 renderer.domElement.addEventListener('pointermove', (e) => { if (reconfDrag) reconfMoveDrag(e); });
 renderer.domElement.addEventListener('pointerdown', (e) => {
+  // A rim handle's own listener runs first and has already set reconfDrag if
+  // it claimed the pointer; the three TRAIN handles are this one's to place.
+  // §93: the nearest-member search moved into reconfHandleAt so the ring that
+  // lights under the pointer and the handle that starts moving are one answer.
   if (!reconfOn || reconfDrag) return;
-  if (crownHitTest(e)) return; // the crown intercept in the winding handler owns this
-  const hit = reconfPointerWorld(e);
-  if (!hit) return;
-  // Nearest train handle whose member the pointer landed on.
-  let best = null;
-  for (const h of RECONF_HANDLES) {
-    const g = h.grabAt();
-    const d = Math.hypot(hit.x - g.x, hit.y - g.y);
-    if (d <= h.grabR() && (best === null || d < best.d)) best = { h, d };
-  }
-  if (best) reconfBeginDrag(e, best.h.kind);
+  const kind = reconfHandleAt(e);
+  if (kind && RECONF_HANDLES.some((h) => h.kind === kind)) reconfBeginDrag(e, kind);
 });
 for (const ev of ['pointerup', 'pointercancel']) {
   window.addEventListener(ev, (e) => {
@@ -15852,6 +16029,7 @@ function reconfTrialBoot() {
   const p = new URLSearchParams(location.search);
   p.set(reconfCandidate.urlKey, reconfCandidate.valueDeg.toFixed(1));
   p.delete('inspect'); p.delete('cycle'); // a verdict boot runs no routes
+  p.delete('reconf');                     // §93: nor does it reconfigure — a trial is a plain boot of the candidate
   p.set('trial', '1');
   const span = document.getElementById('reconf-status');
   span.className = 'warned';
@@ -15908,21 +16086,71 @@ function reconfTrialBoot() {
   };
   poll();
 }
+// §93 — THE MODE IS IN THE URL, and that is what makes it survive its own
+// Apply. Reconfiguring is iterative and every apply is a page load (§33 step
+// 5: apply is reload-tier, Undo is history.back), so a mode that lived only
+// in a variable put the viewer back in the finished watch after every single
+// change they made — the one moment they are most certainly not finished.
+// The param rides Apply, "As designed" and Load variant for free: those all
+// navigate from location.search, and none of them is a SPEC_URL_KEY.
+//
+// replaceState, never pushState: entering a mode is not a document edit, and
+// a history entry for it would put a mode change between an apply and its
+// Undo — the one thing back must never mean here.
+function reconfSyncUrl(on) {
+  const url = new URL(location.href);
+  if (on) url.searchParams.set('reconf', '1'); else url.searchParams.delete('reconf');
+  if (url.href === location.href) return;
+  // A page opened from disk (file://) refuses replaceState in some browsers.
+  // The mode still works; only its survival across a reload is lost, which is
+  // not worth throwing over.
+  try { history.replaceState(history.state, '', url); } catch { /* mode stays session-local */ }
+}
 function setReconf(on) {
   reconfOn = on;
   const b = document.getElementById('btn-reconf');
   setBtnState(b, on);
   b.classList.toggle('active', on);
   if (on && exploreOn) setExplore(false); // one spatial drag mode at a time — they MEAN opposite things
+  // §93 — the handles are METAL you grab. The schematic tier disables camera
+  // layer 0 while the raycaster keeps hitting the solids, so every handle in
+  // this mode was invisible and draggable at the same time: you could drag a
+  // crown that was not being drawn. Entering forces the solid tier and
+  // REMEMBERS the one it interrupted; leaving puts it back. captureState
+  // persists the remembered tier rather than this override — a mode is not a
+  // view preference, and an autosave taken mid-reconfigure must not turn one
+  // into the other.
+  if (on) {
+    reconfSchematicWas = SCHEMATIC.on;
+    if (SCHEMATIC.on) setSchematic(false);
+  } else if (reconfSchematicWas !== null) {
+    if (SCHEMATIC.on !== reconfSchematicWas) setSchematic(reconfSchematicWas);
+    reconfSchematicWas = null;
+  }
   document.getElementById('reconf-row').style.display = on ? '' : 'none';
   document.getElementById('reconf-apply-row').style.display = 'none';
+  document.getElementById('reconf-hint-row').style.display = on ? '' : 'none';
   document.getElementById('reconf-variants-row').style.display = on ? '' : 'none';
-  if (on) { ensureReconfGhost(); refreshVariantSelect(); reconfShowStatus(); }
-  else {
+  reconfSyncUrl(on);
+  if (on) {
+    // §93 — the mode's rows live in the View section's <details>, which is
+    // collapsed by default (§15). A mode arriving from its own Apply or from
+    // a deep link would otherwise come back with its status, Apply and
+    // variant rows shut in a drawer: the same "you cannot carry on" this
+    // section exists to fix, one level up. Ancestors too, for a nested one.
+    for (let d = document.getElementById('reconf-row').closest('details'); d;
+      d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+    ensureReconfGhost(); ensureReconfRings(); refreshVariantSelect(); reconfShowStatus();
+    reconfRings.visible = true;
+    reconfHover = null; reconfHoverAt = null;
+    reconfShowHint(null);
+  } else {
     reconfCandidate = null;
     reconfKillTrial();
     if (reconfGhost) reconfGhost.visible = false;
     if (reconfConstel) reconfConstel.visible = false;
+    if (reconfRings) reconfRings.visible = false;
+    renderer.domElement.style.cursor = '';
   }
 }
 document.getElementById('btn-reconf').addEventListener('click', () => setReconf(!reconfOn));
@@ -16097,7 +16325,11 @@ function captureState() {
     timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
     showLabels: labelsOn,
     plateXray: xrayOn,
-    schematic: SCHEMATIC.on, // §69: default-ON — restore treats absent as true
+    // §69: default-ON — restore treats absent as true. §93: while reconfigure
+    // mode holds the solid tier open, the PREFERENCE is the tier it
+    // interrupted; persisting the override would let a 5-second autosave
+    // taken mid-drag quietly become the viewer's saved choice of view.
+    schematic: reconfOn && reconfSchematicWas !== null ? reconfSchematicWas : SCHEMATIC.on,
     focusUnit: focusName,    // §69: tap-focus selection, null when none
     soundOn,
     alarmOn,
@@ -17435,6 +17667,11 @@ function applyDeepLink() {
   // nothing, this block's standing rule).
   if (params.has('schematic')) setSchematic(flag(params.get('schematic')));
   if (params.has('focus')) setFocus(params.get('focus'));
+  // §93 — `?reconf=1` arrives IN reconfigure mode, which is how the mode
+  // survives its own Apply (setReconf writes this param). Applied AFTER
+  // ?schematic so the mode's own view rule wins over a link asking for the
+  // line tier: its handles are metal, and metal is only drawn on layer 0.
+  if (params.has('reconf')) setReconf(flag(params.get('reconf')));
   if (params.has('labels')) setLabels(flag(params.get('labels')));
   if (params.has('powerflow')) setPowerFlow(flag(params.get('powerflow')));
   if (params.has('sound')) setSound(flag(params.get('sound')));
@@ -19099,6 +19336,7 @@ function advanceFrame(realDt) {
   hudUpdate();        // §57: the HUD's heads follow the eased stem positions, so they update with the frame
   updateExploreTethers(); // §58: tether endpoints ride live boxes — drag, explode and the mechanism all move them
   resolveExploreHover();  // §59: one pick per frame at most — pointermove only records the position
+  updateReconfHandles();  // §93: the handle rings billboard, and the hover pick obeys the same one-per-frame rule
   updateScaleRef();   // §21: px/mm changes with every camera move
   updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
