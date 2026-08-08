@@ -231,6 +231,25 @@ export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 // hairspring, so it is sized at 0.05 mm — the low end of real flat-spring
 // stock, clearing the floor on merit rather than grazing it.
 export const SPRING_FLAT_U = 0.05 / UNIT_MM;          // 0.132 u
+// §50's PIVOT floor, in units, beside the wheel floor for the same reason:
+// pin and post stock should be CUT to it, not measured against it afterwards.
+// Basis is the check's own — "real train pivots run 0.07-0.12 mm".
+export const PIVOT_MIN_U = 0.07 / UNIT_MM;            // 0.185 u
+// A ROUND BAR'S RADIUS, so that its FLATS carry a thickness floor.
+//
+// §50's census reads the TESSELLATED stock: a bar drawn with `n` radial
+// segments is an n-gon, and its geometry-local box measures the flats
+// (2·r·cos(π/n)), not the circumcircle. That is a deliberate reading, not a
+// ruler bug — the mesh is what every other instrument collides against too —
+// so a bar that must clear a floor has to clear it ACROSS THE FLATS. At the
+// n = 10 this movement's posts and pins are drawn with, the difference is
+// 4.9%: a nominal ⌀ 0.12 mm bar measures 0.114 and lands in the debt.
+//
+// `ALARM_A_PIN_R` was the first constant derived this way (§45's tail pin,
+// against the pivot floor) and wrote the rule out longhand; this is that
+// derivation named once so the next bar does not re-litigate it.
+export const flatsR = (thicknessU, segments) => (thicknessU / 2) / Math.cos(Math.PI / segments);
+export const STOCK_MIN_R10 = flatsR(STOCK_MIN_U, 10);  // 0.167 u — ⌀ 0.12 mm across the flats
 
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by

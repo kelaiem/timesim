@@ -1293,7 +1293,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
   { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed. Since the wind morph the hook is a FIXTURE (it rides the drum and nothing else), so this row is no longer reachable by a mover-vs-fixture check; the geometry is unchanged and the declaration is kept as the record of it' },
   { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'mainspringHook', why: 'the ribbon\'s outer end is riveted into the wall hook — TODO 1\'s fixed end, and now the only intersection the ribbon has inside its own unit. (The old row against the drum WALL is gone with the readout that caused it: the retired law scaled the whole spiral 6% at empty, which put the outer coil at r 9.027 against a wall bored to 8.680 — 0.347 of standing penetration in a ribbon built 0.164 clear. The morph pins that end instead of stretching it.)' },
-  { unit: 'Alarm striking wheel', a: 'CylinderGeometry#3', b: 'CylinderGeometry#0', why: 'collar pressed on the strike arbor' },
+  // TODO 11 tranche five gave this mesh a name, which MOVED ITS LABEL: an
+  // index label is what a mesh gets for having none, so naming one silently
+  // stales every row that referenced it (`unit.meshes.indexOf` is over the
+  // whole unit, so no OTHER row renumbers — only the named mesh's own). This
+  // check is what caught it. Naming also let the row say what the joint is:
+  // it was recorded as the collar, and the collar is the separate row below.
+  { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
   { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
@@ -1312,8 +1318,10 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'CylinderGeometry#0', why: 'beak lever on its pivot post' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'CylinderGeometry#0', why: 'beak tail on the same post' },
+  // Both were 'CylinderGeometry#0' until TODO 11 tranche five named the post
+  // (see the strike sleeve above for why that stales a row).
+  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkBeakPost', why: 'beak tail on the same post' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#9', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#11', why: 'lay shaft in hanger bush 2' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },
@@ -3977,6 +3985,15 @@ export const STOCK_KIND_BY_MESH = {
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
   alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
+  // TODO 11 tranche five. Three parts that were being judged as WHEELS for
+  // want of a name, each measured and kinded rather than thickened:
+  alarmLockBeakRiser: 'pivot',       // the beak's post off the lock tail — ⌀ 0.1061 mm on its flats, over the pivot floor
+  alarmFollowerSpringStud: 'pivot',  // the follower blade's grounded stud — ⌀ 0.1137 mm (alarmHammerSpringStud's twin)
+  // The striking arbor's turned step between cam and pinion. Its row is the
+  // STEP's length (0.3 u), not a section: the census does not subdivide an
+  // arbor, so a shaft drawn in three meshes reports each one's extent. The
+  // stock is the shaft — ⌀ 1.5 u, 0.57 mm.
+  alarmStrikeSleeve: 'pivot',
   // §20 — every screw's merged slot inlay: a slot is a RECESS rendered as a
   // dark film over the head (the chaton convention), not stock. Same class
   // as alarmDiscTrack. The HEADS carry no entry on purpose: they are real
@@ -4244,7 +4261,9 @@ export async function checkStockFloor(clock, opts = {}) {
     const kind = STOCK_KIND_BY_MESH[r.mesh] || STOCK_KIND_BY_PART[r.part] || 'wheel';
     if (!STOCK_KIND_BY_MESH[r.mesh] && !STOCK_KIND_BY_PART[r.part]) defaulted.add(r.part);
     const floor = STOCK_FLOORS[kind];
-    const row = { part: r.part, mesh: r.mesh, kind, mm: r.thinnestMM, floorMM: floor.mm };
+    // `where` travels with the row: this list is where the triage happens, and
+    // a waived row nobody can find in the source is a debt nobody can pay.
+    const row = { part: r.part, mesh: r.mesh, kind, mm: r.thinnestMM, floorMM: floor.mm, where: r.where };
     if (r.thinnestMM < floor.mm) {
       if (r.thinnestMM < DEGENERATE_STOCK_MM && floor.mm >= DEGENERATE_STOCK_MM) degenerate.push(row);
       else if (STOCK_WAIVERS[r.part]) waived.push({ ...row, debt: STOCK_WAIVERS[r.part] });
@@ -4571,6 +4590,34 @@ export function fingerprintDiff(before, after) {
 // measures BODIES ONLY and the header says so — a list that silently omits the
 // thinnest feature on a part is the confident-but-incomplete artifact this
 // project keeps closing.
+// WHERE A ROW LIVES IN THE SOURCE — the census's own weak claim, strengthened.
+//
+// The header used to say an (unnamed) row "is identified by its unit and
+// dimensions", and it is not: a unit is a subtree of dozens of meshes and a
+// bounding box is three numbers that appear nowhere in the code. Every TODO 11
+// tranche has paid the same toll — the entry records three identification
+// probes for two winding-train posts, and 26 of the 56 rows it is still
+// carrying were anonymous when tranche five opened them.
+//
+// What a builder actually writes is a CONSTRUCTOR CALL, so that is what this
+// reports: the geometry's type and its numeric parameters, verbatim, plus the
+// mesh's own local position. `new THREE.CylinderGeometry(0.16, 0.16, ...)` is
+// greppable; "thin 0.1153 somewhere in Alarm link" is not. Parameters are
+// three.js's own `geometry.parameters`, so a type that publishes none (an
+// ExtrudeGeometry, a hand-built BufferGeometry) reports its type alone rather
+// than a guess — the same "say so wherever the ruler is wrong" rule the rest
+// of this census follows.
+function whereOf(mesh) {
+  const g = mesh.geometry;
+  const p = g.parameters || {};
+  const args = Object.entries(p)
+    .filter(([, x]) => typeof x === 'number')
+    .map(([k, x]) => `${k} ${+x.toFixed(4)}`);
+  const at = mesh.position;
+  return `${g.type}(${args.join(', ')}) at local `
+    + `${[at.x, at.y, at.z].map((c) => +c.toFixed(3)).join(', ')}`;
+}
+
 export async function stockCensus(clock, opts = {}) {
   const reg = await buildSweptRegistry(clock, opts);
   const rows = [], unmeasured = [];
@@ -4597,7 +4644,7 @@ export async function stockCensus(clock, opts = {}) {
   for (const v of byMesh.values()) {
     const name = v.mesh.name || '(unnamed)';
     if (v.kind === 'approx') {
-      unmeasured.push({ part: v.unit, mesh: name,
+      unmeasured.push({ part: v.unit, mesh: name, where: whereOf(v.mesh),
         why: 'approx hull — box spans every pose, so its extents are motion, not stock' });
       continue;
     }
@@ -4647,11 +4694,11 @@ export async function stockCensus(clock, opts = {}) {
     // Listed as not-measured with the reason, per the entry's rule that the
     // report says so wherever its ruler is wrong.
     if (!(thin > 1e-3) || !isFinite(thin)) {
-      unmeasured.push({ part: v.unit, mesh: name,
+      unmeasured.push({ part: v.unit, mesh: name, where: whereOf(v.mesh),
         why: `zero-thickness ${via} extent — open surface in the mesh, not stock` });
       continue;
     }
-    rows.push({ part: v.unit, mesh: name, via, source,
+    rows.push({ part: v.unit, mesh: name, via, source, where: whereOf(v.mesh),
       thinnestUnits: +thin.toFixed(4), thinnestMM: +(thin * UNIT_MM).toFixed(4),
       ...(axial !== null ? { axialUnits: +axial.toFixed(4), radialUnits: +radial.toFixed(4) } : { extentsUnits: extents }) });
   }
@@ -4673,7 +4720,7 @@ export async function stockCensus(clock, opts = {}) {
       gates: 'none — this report cannot fail the battery',
       counted: rows.length, notMeasured: unmeasured.length,
       dedupe: 'one row per MESH, attributed to its most specific (nearest-ancestor) unit — nested units otherwise list the same part twice',
-      naming: 'every PART (unit) is named; individual meshes are named only where the model names them — an (unnamed) row is identified by its unit and dimensions',
+      naming: "every PART (unit) is named; individual meshes are named only where the model names them — an (unnamed) row carries `where`, its geometry's constructor call and local position, which is greppable in src/",
     },
     thinnestFirst: rows,
     perPart: [...byPart.values()],

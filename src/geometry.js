@@ -353,7 +353,16 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
   // beyond the root land: the earlier 0.45 push read paper-thin under the
   // bevel (0.22·module bite per edge left almost no flat face), so the rim
   // takes back a little meat while arms and hub stay at their leanest.
-  const hubR = hub ? Math.max(boreR * 1.6, pitchR * 0.085) : boreR * 1.6;
+  // TODO 11 tranche five — THE HUB'S WALL IS STOCK. `boreR * 1.6` is a
+  // proportion, and a proportion of a small bore is a thin ring: at the
+  // boreR 0.5 the alarm winding idlers, the motion-works minute wheel and
+  // both power-reserve wheels are cut with, the wall came out 0.30 u
+  // (0.1137 mm) — under §50's floor, and reported as such by five census
+  // rows across two debts. The proportion stays (it is what makes a hub look
+  // pared rather than sized), with the floor under it as the third term: a
+  // ring around a bore is a member, so its WALL answers to STOCK_MIN_U, not
+  // to whatever fraction of the bore it happened to be.
+  const hubR = hub ? Math.max(boreR * 1.6, boreR + STOCK_MIN_U, pitchR * 0.085) : boreR * 1.6;
   const innerR = Math.max(hubR + module * 0.35, boreR * 2.0);
   const outerR = rootR - module * 0.7;
   const useSpokes = outerR > innerR + module ? spokes : 0;

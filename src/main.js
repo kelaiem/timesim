@@ -40,6 +40,7 @@ import {
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
+  PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -5886,8 +5887,8 @@ const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
 const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
 const ALARM_A_RELEASE_D = ALARM_HEART_R + ALARM_NOSE_R + 0.05; // nose orbit, released (3.80)
 const ALARM_A_RELEASE_PHI = alarmArmAngleAt(ALARM_A_RELEASE_D);
-const ALARM_A_PIN_R = 0.0924 / Math.cos(Math.PI / 10); // tail pin radius — the 10-gon's FLATS measure ⌀ 0.07 mm exactly (§50's census reads the tessellated stock, so the floor is built into the flats, not the circumradius)
-const ALARM_A_TAIL_LEN = 0.22 + 0.16 + 0.07; // post radius + pin boss (pin + wall) + web
+const ALARM_A_PIN_R = flatsR(PIVOT_MIN_U, 10); // tail pin radius — the 10-gon's FLATS measure ⌀ 0.07 mm exactly (§50's census reads the tessellated stock, so the floor is built into the flats, not the circumradius). TODO 11 tranche five named this derivation `flatsR`; the 0.0924 it used to spell out is PIVOT_MIN_U / 2.
+const ALARM_A_TAIL_LEN = 0.22 + STOCK_MIN_R10 + 0.07; // post radius + pin boss (pin + wall) + web
 const alarmTailRAt = (phi) => Math.sqrt(ALARM_PIVOT_R * ALARM_PIVOT_R
   + 2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN * Math.cos(phi) + ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN);
 const ALARM_SLEEVE_DR = alarmTailRAt(ALARM_FOLLOWER_A0) - alarmTailRAt(ALARM_A_RELEASE_PHI); // 0.186 — the pin's radial stroke
@@ -6995,7 +6996,12 @@ const alarmArmBowAt = (x) => x < 0.25 ? 0
   // pin boss: full band height — unlike the bar it never crosses the heart
   // radially (r ≥ 4.0 vs the 3.55 lobe), so it owes no co-planarity slack
   // and can carry the whole STOCK_MIN_U floor.
-  const boss = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, STOCK_MIN_U, 10), MATS.steel);
+  // TODO 11 tranche five: and it now carries it in the OTHER free dimension
+  // too — the 0.16 radius made the 10-gon's flats 0.1153 mm, 4% under the
+  // floor its height already cleared, which is the whole reason `flatsR`
+  // exists. STOCK_MIN_R10 is that same 0.12 mm read across the flats.
+  const boss = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, STOCK_MIN_U, 10), MATS.steel);
+  boss.name = 'alarmTailPinBoss';
   boss.rotation.x = Math.PI / 2;
   boss.position.x = -ALARM_A_TAIL_LEN;
   alarmFollowerArm.add(boss);
@@ -7018,6 +7024,10 @@ alarmTubeGroup.add(alarmFollowerSpring);
   alarmFollowerSpring.add(blade);
   const stubH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - ALARM_HEART_Z; // spring plane up to the flange underside — its anchor (derived, §29 step 1)
   const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, stubH, 8), MATS.steel);
+  // TODO 11 tranche five: the blade's grounded STUD — pin stock at ⌀ 0.1137 mm,
+  // over the 0.07 pivot floor. Declared, not thickened: the
+  // alarmHammerSpringStud precedent, and the same measurement.
+  stub.name = 'alarmFollowerSpringStud';
   stub.rotation.x = Math.PI / 2;
   stub.position.z = stubH / 2;
   alarmFollowerSpring.add(stub);
@@ -7866,7 +7876,10 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 {
   // Friction hub — the running seat ON the hour tube (bore +0.05, the
   // setting wheel's snug-fit precedent: the fit IS the coupling).
-  const hub = new THREE.Mesh(ringGeo(HOUR_TUBE_OUTER + 0.05, HOUR_TUBE_OUTER + 0.35, ALARM_TRACK_TOP - ALARM_DISC_BOT), MATS.steel);
+  // TODO 11 tranche five: the WALL is stock, and 0.35 − 0.05 = 0.30 made it
+  // 0.1137 mm — under the floor. Written as bore + STOCK_MIN_U so the wall
+  // reads as the thing being sized, not as the gap between two radii.
+  const hub = new THREE.Mesh(ringGeo(HOUR_TUBE_OUTER + 0.05, HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U, ALARM_TRACK_TOP - ALARM_DISC_BOT), MATS.steel);
   hub.name = 'alarmDiscHub';
   hub.position.z = (ALARM_TRACK_TOP + ALARM_DISC_BOT) / 2;
   alarmDiscGroup.add(hub);
@@ -8238,7 +8251,12 @@ alarmRotor.add(alarmArborRod);
   // CLEAR_MARGIN under it. Below, the setting pinion's top is at −7.99,
   // 1.38 clear — the first cut's −6.3 was placed against a stale reading
   // of that pinion ("top −6.70") and grazed the bevel by 0.008.
-  const COCK_T = 0.3;
+  // TODO 11 tranche five: floor stock. The 0.3 here was a literal, not a
+  // decision — 0.1137 mm, 5% under the wheel floor a cock answers to. BUSH_Z
+  // below already derives from it, so the whole cock re-solves rather than
+  // drifting: the bush drops 0.008 and its 1.38 of air over the setting
+  // pinion is spent down to 1.37.
+  const COCK_T = STOCK_MIN_U;
   const BEVEL_UNDERSIDE = -6.158; // the §25 C corner bevel's lowest tooth extent, measured on the built gear
   const BUSH_Z = BEVEL_UNDERSIDE - CLEAR_MARGIN - COCK_T / 2;
   const BUSH_R_OUT = 0.85;
@@ -8255,11 +8273,13 @@ alarmRotor.add(alarmArborRod);
   const armLen = armOuter - BUSH_R_OUT;
   const armMid = (BUSH_R_OUT + armOuter) / 2;
   const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.7, COCK_T), MATS.nickel);
+  arm.name = 'alarmArborCockArm';
   arm.position.set(alarmWorld.x + (postXY.x - alarmWorld.x) / cockSpan * armMid,
                    alarmWorld.y + (postXY.y - alarmWorld.y) / cockSpan * armMid, BUSH_Z);
   arm.rotation.z = Math.atan2(u.y, u.x);
   alarmArborUnit.add(arm);
   const bush = new THREE.Mesh(ringGeo(0.45, BUSH_R_OUT, COCK_T), MATS.nickel);
+  bush.name = 'alarmArborCockBush';
   bush.position.set(alarmWorld.x, alarmWorld.y, BUSH_Z);
   alarmArborUnit.add(bush);
 }
@@ -9281,6 +9301,14 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // Sleeve up to the pinion, and the pinion itself in the barrel's tooth band.
   const sleeveZ0 = ALARM_CAM_Z1, sleeveZ1 = ALARM_BARREL_Z - ALARM_PINION_T / 2;
   const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sleeveZ1 - sleeveZ0, 16), MATS.steel);
+  // TODO 11 tranche five: a turned STEP on the striking arbor, not a piece of
+  // sheet. The census is per mesh and does not subdivide an arbor (its own
+  // header says so), so drawing this shaft as cam + sleeve + pinion makes the
+  // sleeve's row report the step's LENGTH — 0.3 u between the cam's top and
+  // the pinion's underside, both of which are derived stations. The stock
+  // here is the shaft's ⌀ 0.57 mm. Declared shaft stock; the alarmNose
+  // precedent, where the flagged dimension was likewise a derived station.
+  sleeve.name = 'alarmStrikeSleeve';
   // §25 B: the LOCK COLLAR — a smooth braking surface under the cam that the
   // lock lever's pad bears on when the train is held. Smooth, not notched: a
   // partial wind can park the train at ANY phase (the winding lockstep), so
@@ -9678,7 +9706,11 @@ alarmLockUnit.add(alarmLockLever);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LOCK_L, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top lever
   arm.position.x = ALARM_LOCK_L / 2;
   alarmLockLever.add(arm);
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LOCK_PAD_R, ALARM_LOCK_PAD_R, 0.3, 12), MATS.ruby);
+  // TODO 11 tranche five: the pad is as thick as the band it brakes. Its 0.3
+  // was a literal at 0.1137 mm, under the floor; STOCK_MIN_U is both the floor
+  // and `alarmLockCollar`'s own thickness, so pad and collar are now one
+  // z-band by construction instead of two numbers that happened to be close.
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LOCK_PAD_R, ALARM_LOCK_PAD_R, STOCK_MIN_U, 12), MATS.ruby);
   pad.name = 'alarmLockPad';
   pad.rotation.x = Math.PI / 2;
   pad.position.x = ALARM_LOCK_L;
@@ -9770,6 +9802,11 @@ const ALARM_COL_POS = {
   const noseH = ALARM_COL_H * 0.6;
   const noseZ = bandBot + ALARM_COL_H / 2;       // mid-band, clear of the base disc below and the tier's top above
   const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, noseZ - noseH / 2 - 0.1, 10), MATS.steel);
+  // TODO 11 tranche five: POST stock, declared rather than thickened — the
+  // 10-gon's flats read 0.1061 mm, over the 0.07 pivot floor and under the
+  // 0.12 wheel floor it was being judged by for want of a name. The
+  // alarmSelPost precedent; zero geometry moved.
+  riser.name = 'alarmLockBeakRiser';
   riser.rotation.x = Math.PI / 2;
   riser.position.set(-(noseFaceReach - noseLen / 2 - 0.15), 0, (noseZ - noseH / 2 + 0.1) / 2);
   alarmLockLever.add(riser);
@@ -10184,7 +10221,10 @@ const alarmLinkParts = {};
   // base end unmoved, length derived rather than the pair drifting apart.
   const postBase = ALARM_LOCK_Z + 0.30;
   const postLen = beakArm.position.z - postBase;
-  const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, postLen, 10), MATS.steel);
+  // TODO 11 tranche five: post stock across the FLATS. At r 0.16 the 10-gon
+  // measured 0.1153 mm — a nominal ⌀ 0.121 bar reading 4% under the floor.
+  const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, postLen, 10), MATS.steel);
+  beakPost.name = 'alarmLinkBeakPost';
   beakPost.rotation.x = Math.PI / 2;
   beakPost.position.set(beakPiv.x, beakPiv.y, postBase + postLen / 2);
   alarmLinkUnit.add(beakPost);
@@ -10523,7 +10563,13 @@ const alarmLinkParts = {};
       const upLocal = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.matrixWorld).z) < 0 ? -1 : 1;
       const azF = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
       const brLen = Math.max(0.2, rF - ALARM_SEL_R_OUT + 0.3);
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, 0.3, ALARM_SEL_T), MATS.nickel);
+      // TODO 11 tranche five: the bar's WIDTH was a 0.3 literal (0.1137 mm,
+      // under the floor) while its thickness was already ALARM_SEL_T. Floor
+      // stock in both free dimensions — the lesson §51 paid for on the feeler
+      // blade, where thickening the dimension that was not the thinnest
+      // changed nothing the census measures. It still clears the fork block's
+      // webs, whose inner faces stand at ±0.25.
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, STOCK_MIN_U, ALARM_SEL_T), MATS.nickel);
       bar.name = 'alarmSelForkBracket';
       bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), upLocal * (ALARM_FORK_GROOVE_H + ALARM_SEL_T) / 2);
       bar.rotation.z = azF;
@@ -10825,14 +10871,21 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // past the stem plane, exactly as the dropper form did when the axis was
   // above.
   {
-    const drop = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, Math.abs(_pawlZ) + 0.12, 10), MATS.steel);
+    // TODO 11 tranche five: riser stock across the FLATS (see STOCK_MIN_R10) —
+    // the 0.16 radius read 0.1153 mm on the 10-gon, under the floor. Its
+    // station still stands its own radius clear of ALARM_PUSH_INNER, so the
+    // seat moves with the section rather than the two drifting apart.
+    const drop = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, Math.abs(_pawlZ) + 0.12, 10), MATS.steel);
+    drop.name = 'alarmPusherRiser';
     drop.rotation.x = Math.PI / 2;
-    drop.position.set(_pushU.x * (ALARM_PUSH_INNER + 0.16), _pushU.y * (ALARM_PUSH_INNER + 0.16), _pawlZ / 2 - Math.sign(_pawlZ) * 0.03);
+    drop.position.set(_pushU.x * (ALARM_PUSH_INNER + STOCK_MIN_R10), _pushU.y * (ALARM_PUSH_INNER + STOCK_MIN_R10), _pawlZ / 2 - Math.sign(_pawlZ) * 0.03);
     alarmPusherGroup.add(drop);
-    const reachLen = (ALARM_PUSH_INNER + 0.32) - (ALARM_PAWL_KISS_S + 1.5) + 0.4; // riser → pawl tail, 0.4 of overlap onto the pawl
+    const riserFar = ALARM_PUSH_INNER + 2 * STOCK_MIN_R10;  // the riser's outboard face — its own diameter past the stem's inner end
+    const reachLen = riserFar - (ALARM_PAWL_KISS_S + 1.5) + 0.4; // riser → pawl tail, 0.4 of overlap onto the pawl
     const reach = new THREE.Mesh(new THREE.BoxGeometry(reachLen, 0.3, 0.24), MATS.blueSteel);
+    reach.name = 'alarmPusherReach';
     reach.rotation.z = ALARM_PUSH_AZ;
-    const reachMid = (ALARM_PUSH_INNER + 0.32 + (ALARM_PAWL_KISS_S + 1.5 - 0.4)) / 2;
+    const reachMid = (riserFar + (ALARM_PAWL_KISS_S + 1.5 - 0.4)) / 2;
     reach.position.set(_pushU.x * reachMid, _pushU.y * reachMid, _pawlZ);
     alarmPusherGroup.add(reach);
   }

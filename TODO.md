@@ -723,6 +723,109 @@ said so).
   thinnest changes nothing the census measures. Both flexing dimensions
   now carry the stock.
 
+**Tranche five re-derived the 0.3 family — 16 rows closed** (13 of this
+  item's, 3 of TODO 12's in passing): waived 64 → 48, this item 56 → 43.
+  Not one of them was the re-buy-z design task. 0.3 u is 0.1137 mm — 95%
+  of the wheel floor — and it is what gets typed where a thickness was
+  never derived; the rest were parts being judged as WHEELS for want of a
+  name.
+
+  - **The 0.3 literal, four sites.** The setting arbor's bearing cock
+    (`COCK_T`, and its `BUSH_Z` re-solves with it rather than drifting —
+    the bush drops 0.008 and spends its 1.38 of air over the setting
+    pinion down to 1.37). The lock PAD, now the same `STOCK_MIN_U` as
+    `alarmLockCollar`, so the pad and the band it brakes are one z-band by
+    construction instead of two numbers that happened to be close. The
+    selector's fork-bracket bar — its **width**; its thickness was already
+    `ALARM_SEL_T`, tranche four's lesson arriving a second time. And the
+    disc's friction hub, whose wall was the gap between two radii
+    (`0.35 − 0.05`) and is now written `bore + STOCK_MIN_U`, so the wall
+    reads as the thing being sized.
+  - **`makeGear`'s hub wall — one derivation, five rows.** `hubR =
+    boreR * 1.6` is a proportion, and a proportion of a small bore is a
+    thin ring: at the boreR 0.5 that both alarm winding idlers, the
+    motion-works minute wheel and both power-reserve wheels are cut with,
+    the wall came out 0.30 u. The proportion stays — it is what makes a
+    hub look pared rather than sized — with the floor under it as a third
+    term: `max(boreR * 1.6, boreR + STOCK_MIN_U, pitchR * 0.085)`. A ring
+    around a bore is a member, so its wall answers to the floor and not to
+    whatever fraction of the bore it happened to be.
+  - **Round bars measured across their FLATS, three sites.** The census
+    reads the TESSELLATED stock, and that is a deliberate reading rather
+    than a ruler bug — the n-gon is what every other instrument collides
+    against too. A 10-gon bar's box is `2·r·cos(π/10)`, 4.9% under its
+    nominal diameter, so a nominal ⌀ 0.121 mm post measures 0.1153 and
+    lands in the debt. §45's `ALARM_A_PIN_R` was already derived this way
+    and wrote the rule out longhand as a literal 0.0924; this tranche
+    named the derivation `flatsR(thicknessU, segments)` in `layout.js`,
+    put `PIVOT_MIN_U` and `STOCK_MIN_R10` beside it, re-expressed
+    `ALARM_A_PIN_R` through it, and re-cut the three bars that were under:
+    the link's beak post, the pusher's riser (whose reach bar stations off
+    the riser's diameter and moved with it), and the follower's pin boss —
+    whose HEIGHT was already floor stock, tranche four's lesson a third
+    time.
+  - **Three parts kinded, not thickened**, each measured first: the lock
+    beak's riser (⌀ 0.1061 mm on its flats, over the pivot floor — the
+    `alarmSelPost` precedent), the follower spring's grounded stud
+    (⌀ 0.1137, `alarmHammerSpringStud`'s twin), and the striking arbor's
+    sleeve, whose row was never a section at all. The census is per mesh
+    and does not subdivide an arbor, so a shaft drawn as cam + sleeve +
+    pinion reports the sleeve's 0.3 u STEP LENGTH between two derived
+    stations. The stock there is the shaft: ⌀ 0.57 mm.
+
+  **And the census now says WHERE.** Its header claimed an unnamed row
+  "is identified by its unit and dimensions", and it is not — a unit is a
+  subtree of dozens of meshes and a bounding box is three numbers that
+  appear nowhere in the source. This item has paid that toll every
+  tranche (three identification probes for two winding-train posts is in
+  the record above), and 26 of the 56 rows it was carrying were
+  anonymous. Every census row — and every waived row in
+  `checkStockFloor`, which is where the triage actually happens — now
+  carries `where`: the geometry's constructor call with its numeric
+  parameters, plus the mesh's local position.
+  `CylinderGeometry(radiusTop 0.16, …) at local 0, 0, 0` is greppable;
+  "thin 0.1153 mm somewhere in Alarm link" is not. Naming a mesh is still
+  better and the tranche named the nine it touched, but the report no
+  longer depends on someone having done so.
+
+  **What naming COSTS, since the tranche paid it.** An index label is what
+  a mesh gets for having none, so NAMING one moves its label and stales
+  every string-coupled row that referenced it. `intraUnit` failed on
+  exactly three declared joints — the strike sleeve on its arbor, and the
+  beak lever and its tail on the beak post — and it is the check that
+  catches this class. Two things make it survivable and are worth knowing
+  before the next naming pass: `meshLabel`'s index is
+  `unit.meshes.indexOf`, over the WHOLE unit, so no OTHER row renumbers;
+  and the failure is loud rather than silent, because a stale declaration
+  stops excusing a real intersection instead of quietly excusing the wrong
+  one. Naming also let one of those rows say what it is — it had been
+  recorded as "collar pressed on the strike arbor", and the collar is a
+  separate row.
+
+  **The one thing tranche five found and did NOT fix: a BUSH reads as its
+  outer diameter.** For a `static` or `path` part the census's ruler is
+  the geometry-local BOX, and a ring's box is its OUTER extent — so a
+  bush's wall, the one dimension that is actually stock, is invisible.
+  `revolve`-kind parts do not have this problem: the registry measures
+  their r-band and reports walls correctly, which is how the winding
+  idlers' hubs above were caught at all.
+  Measured, on the alarm link's two shaft bushes: `ringGeo(0.14, 0.26,
+  0.3)` under a comment reading "the wall is stock-floor so the bush is
+  itself a real part". That wall is 0.12 **units** — **0.0455 mm**, and
+  `STOCK_MIN_U` is **0.3167 u**. The comment read the floor's 0.12 as
+  units when it is millimetres, and nothing could catch it: the two rows
+  report at 0.1137 mm (their HEIGHT), so the debt list understates them by
+  2.5×. `ringGeo(0.5, 0.62, …)` on the setting idler's sleeve is the same
+  class, at the same 0.12 u wall.
+  This is filed rather than fixed because the fix is two separable pieces
+  and only one of them is cheap. The RULER — measuring a static revolve's
+  wall the way the registry already measures a rotating one's — can only
+  make rows thinner, so it may open unwaived violations in units that
+  carry no waiver today; that blast radius wants measuring before it
+  lands, not after. The PARTS then want real walls: bore + `STOCK_MIN_U`
+  takes the link's bushes from ⌀ 0.52 to ⌀ 0.91 u, which is a P3 packaging
+  question in the dial-side strata, not a one-line edit.
+
 Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means
 the alarm units clear their floors and their waivers are DELETED.
