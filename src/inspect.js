@@ -3977,6 +3977,15 @@ export const STOCK_KIND_BY_MESH = {
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
   alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
+  // TODO 11 tranche five. Three parts that were being judged as WHEELS for
+  // want of a name, each measured and kinded rather than thickened:
+  alarmLockBeakRiser: 'pivot',       // the beak's post off the lock tail — ⌀ 0.1061 mm on its flats, over the pivot floor
+  alarmFollowerSpringStud: 'pivot',  // the follower blade's grounded stud — ⌀ 0.1137 mm (alarmHammerSpringStud's twin)
+  // The striking arbor's turned step between cam and pinion. Its row is the
+  // STEP's length (0.3 u), not a section: the census does not subdivide an
+  // arbor, so a shaft drawn in three meshes reports each one's extent. The
+  // stock is the shaft — ⌀ 1.5 u, 0.57 mm.
+  alarmStrikeSleeve: 'pivot',
   // §20 — every screw's merged slot inlay: a slot is a RECESS rendered as a
   // dark film over the head (the chaton convention), not stock. Same class
   // as alarmDiscTrack. The HEADS carry no entry on purpose: they are real
@@ -4244,7 +4253,9 @@ export async function checkStockFloor(clock, opts = {}) {
     const kind = STOCK_KIND_BY_MESH[r.mesh] || STOCK_KIND_BY_PART[r.part] || 'wheel';
     if (!STOCK_KIND_BY_MESH[r.mesh] && !STOCK_KIND_BY_PART[r.part]) defaulted.add(r.part);
     const floor = STOCK_FLOORS[kind];
-    const row = { part: r.part, mesh: r.mesh, kind, mm: r.thinnestMM, floorMM: floor.mm };
+    // `where` travels with the row: this list is where the triage happens, and
+    // a waived row nobody can find in the source is a debt nobody can pay.
+    const row = { part: r.part, mesh: r.mesh, kind, mm: r.thinnestMM, floorMM: floor.mm, where: r.where };
     if (r.thinnestMM < floor.mm) {
       if (r.thinnestMM < DEGENERATE_STOCK_MM && floor.mm >= DEGENERATE_STOCK_MM) degenerate.push(row);
       else if (STOCK_WAIVERS[r.part]) waived.push({ ...row, debt: STOCK_WAIVERS[r.part] });
@@ -4571,6 +4582,34 @@ export function fingerprintDiff(before, after) {
 // measures BODIES ONLY and the header says so — a list that silently omits the
 // thinnest feature on a part is the confident-but-incomplete artifact this
 // project keeps closing.
+// WHERE A ROW LIVES IN THE SOURCE — the census's own weak claim, strengthened.
+//
+// The header used to say an (unnamed) row "is identified by its unit and
+// dimensions", and it is not: a unit is a subtree of dozens of meshes and a
+// bounding box is three numbers that appear nowhere in the code. Every TODO 11
+// tranche has paid the same toll — the entry records three identification
+// probes for two winding-train posts, and 26 of the 56 rows it is still
+// carrying were anonymous when tranche five opened them.
+//
+// What a builder actually writes is a CONSTRUCTOR CALL, so that is what this
+// reports: the geometry's type and its numeric parameters, verbatim, plus the
+// mesh's own local position. `new THREE.CylinderGeometry(0.16, 0.16, ...)` is
+// greppable; "thin 0.1153 somewhere in Alarm link" is not. Parameters are
+// three.js's own `geometry.parameters`, so a type that publishes none (an
+// ExtrudeGeometry, a hand-built BufferGeometry) reports its type alone rather
+// than a guess — the same "say so wherever the ruler is wrong" rule the rest
+// of this census follows.
+function whereOf(mesh) {
+  const g = mesh.geometry;
+  const p = g.parameters || {};
+  const args = Object.entries(p)
+    .filter(([, x]) => typeof x === 'number')
+    .map(([k, x]) => `${k} ${+x.toFixed(4)}`);
+  const at = mesh.position;
+  return `${g.type}(${args.join(', ')}) at local `
+    + `${[at.x, at.y, at.z].map((c) => +c.toFixed(3)).join(', ')}`;
+}
+
 export async function stockCensus(clock, opts = {}) {
   const reg = await buildSweptRegistry(clock, opts);
   const rows = [], unmeasured = [];
@@ -4597,7 +4636,7 @@ export async function stockCensus(clock, opts = {}) {
   for (const v of byMesh.values()) {
     const name = v.mesh.name || '(unnamed)';
     if (v.kind === 'approx') {
-      unmeasured.push({ part: v.unit, mesh: name,
+      unmeasured.push({ part: v.unit, mesh: name, where: whereOf(v.mesh),
         why: 'approx hull — box spans every pose, so its extents are motion, not stock' });
       continue;
     }
@@ -4647,11 +4686,11 @@ export async function stockCensus(clock, opts = {}) {
     // Listed as not-measured with the reason, per the entry's rule that the
     // report says so wherever its ruler is wrong.
     if (!(thin > 1e-3) || !isFinite(thin)) {
-      unmeasured.push({ part: v.unit, mesh: name,
+      unmeasured.push({ part: v.unit, mesh: name, where: whereOf(v.mesh),
         why: `zero-thickness ${via} extent — open surface in the mesh, not stock` });
       continue;
     }
-    rows.push({ part: v.unit, mesh: name, via, source,
+    rows.push({ part: v.unit, mesh: name, via, source, where: whereOf(v.mesh),
       thinnestUnits: +thin.toFixed(4), thinnestMM: +(thin * UNIT_MM).toFixed(4),
       ...(axial !== null ? { axialUnits: +axial.toFixed(4), radialUnits: +radial.toFixed(4) } : { extentsUnits: extents }) });
   }
@@ -4673,7 +4712,7 @@ export async function stockCensus(clock, opts = {}) {
       gates: 'none — this report cannot fail the battery',
       counted: rows.length, notMeasured: unmeasured.length,
       dedupe: 'one row per MESH, attributed to its most specific (nearest-ancestor) unit — nested units otherwise list the same part twice',
-      naming: 'every PART (unit) is named; individual meshes are named only where the model names them — an (unnamed) row is identified by its unit and dimensions',
+      naming: "every PART (unit) is named; individual meshes are named only where the model names them — an (unnamed) row carries `where`, its geometry's constructor call and local position, which is greppable in src/",
     },
     thinnestFirst: rows,
     perPart: [...byPart.values()],
