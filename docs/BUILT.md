@@ -7830,3 +7830,208 @@ still-evicting production are both true at the same time for a while.
 organisation policy forbids it — `actions/configure-pages` asks, and the
 one-time Settings → Pages → Source = "GitHub Actions" remains a manual
 prerequisite.
+
+## §89 — The alarm spring stops turning with its barrel and starts winding against it
+
+**Filed from an owner report on the line tier** — the alarm spring "doesn't
+seem to wind and unwind realistically in schematic mode, but check regular
+mode too; the mainspring looks realistic, model that similarly" — and the
+report was right in both views, for one reason common to them. The
+schematic was not the defect. It was drawing exactly what the metal was
+doing, which was nothing.
+
+### The finding — one member cannot wind
+
+§25 A built this barrel as a SINGLE member: toothed body, arbor and ribbon
+all in one rotating group, `alarmBarrelRotor`, whose angle is
+`(ALARM_BARREL_TURNS − alarmBarrelWind)·2π`. So the coil turned *rigidly*
+with the drum it sits in. Nothing about it changed shape between a full
+wind and a dead barrel — the same spiral, at a different azimuth, at every
+state of the alarm. `makeBarrel` said so in as many words, in the note on
+the wind-morph arguments TODO 1 had added for the going drum:
+
+> Omit them and the spiral is built exactly as before — which is what the
+> alarm barrel wants: it is a single-member barrel whose whole body IS its
+> wound state (its arbor turns with it), so it has no relative angle to
+> morph against, and the two-member split that would give it one is filed
+> debt.
+
+That paragraph is the whole diagnosis, including the fix, and the "filed
+debt" it points at was never actually filed anywhere — it existed only in
+that comment and in the matching one at the build site.
+
+**A ribbon with both ends on the same part cannot store anything**, and
+the two views inherit that identically: the realistic view rotated a fixed
+spiral behind the lid cutaway, and §78's spiral glyph quoted
+`userData.spiral` — the free plan — because there were no wind frames to
+draw instead. Winding is the RELATIVE angle between two members. There was
+only one.
+
+### The split taken — a fixed arbor, not a wound one
+
+Two splits give a barrel a second member, and they are not equally priced.
+
+A **going barrel** winds its ARBOR and holds it with a click; the body
+delivers. That is the textbook alarm barrel, and it moves the winding
+train's last mesh off the barrel rim and onto a ratchet on the arbor —
+different centre distance, re-solved idler chain, a click and its spring,
+all of it in position space with two plate lanes to re-probe. Layout work,
+by the design-priority note's own definition.
+
+A **fixed-arbor barrel** plants the arbor in the frame and winds the BODY
+at its teeth. This movement already claims one: the going drum, whose
+arbor is held by the set-up work while the chain winds its wall — TODO 1
+built the static collar and hook that make its spring's inner end real,
+and TODO 39, filed in this landing, records that the arbor CYLINDER under
+them is still parented to the drum, so the drum states this arrangement
+without quite modelling it.
+
+The alarm's winding train already arrives at the barrel's rim (12/44
+through two idlers), and the hold when it is not ringing is already the
+striking wheel's lock, not a click. So the second split costs *nothing in position
+space* — same station, same z, same two meshes — and buys the same thing
+the first one would: an inner end pinned to the movement while the outer
+end rides the body.
+
+It is the second one. No part moved to get it, which is what makes this a
+P0/P1 change rather than a layout change; the wound-arbor form stays filed
+(TODO 37) as the thing that would earn this barrel a real click.
+
+### What the barrel is made of now
+
+`makeBarrel` grew two options, and one export:
+
+- `arbor: false` — the builder stops putting an arbor inside the rotating
+  group, because a static member cannot live in one.
+- `arborBoreR` — floor AND lid are opened to that radius. This is the
+  part that is easy to miss: the body used to be solid to r 0.33 at the
+  floor and solid to the centre at the lid, and both faces were fixtures
+  of the same group as the arbor, so nothing measured the fact that they
+  passed straight through it. The moment the arbor stands still, those two
+  faces are a MOVER against a FIXTURE, and `intraUnit` sees them.
+- `export const barrelArborR = (radius) => radius · 0.09` — the arbor's own
+  proportion, which the caller now needs *before* the body exists, since
+  the bore is an argument to the builder.
+
+At this barrel (pitch radius 6.6) that is an arbor of **0.594** and a bore
+of **0.644** — `PIVOT_BORE_CLEAR` (0.05) over it, the same running
+clearance every other journal in the movement is cut with, because that
+is what the fit now is: the body turns on the arbor.
+
+The ribbon bears **directly on the arbor**, with no collar. The drum needs
+one — its ribbon is 3.24 tall over a 0.9 pivot, so the seat has to be
+built up — but this arbor is already `2 × ALARM_BARREL_H` long and spans
+the whole cavity, so a collar would add a second radius to justify and
+nothing else. `springArborR` is therefore the arbor itself, and
+`makeBarrel`'s own solve does the rest:
+
+```
+rib = q(outerR − arborR)/(1 + q),  q = 0.1/coils      ⇒ ribbonR = 0.09512
+springInner = arborR + rib                             ⇒ 0.68912
+```
+
+so the inner coil's inner surface is at 0.68912 − 0.09512 = **0.594** —
+the arbor's own radius, exactly. The ribbon is not near its seat; it is
+on it.
+
+`springWindSweep` is `ALARM_BARREL_TURNS · 2π` and that is not a second
+literal: the body's angle IS `(TURNS − wind)·2π`, so the sweep and the
+reserve are one quantity written twice. `tick()` closes the loop with the
+drum's own line —
+
+```js
+alarmSpring.setWind(alarmSpring.sweepFull − alarmBarrelRotor.rotation.z);
+```
+
+— which is why the sense comes out right without choosing it:
+`mainspringFrames` derives its handedness from "the body's rotation RISES
+as the reserve FALLS", and this rotor's does.
+
+### The numbers the family solved to
+
+| quantity | value | what holds it |
+|---|---|---|
+| ribbon `ribbonR` / `pBind` | 0.09512 / 0.19024 | the section solve above |
+| inner / outer radius | 0.68912 / 5.445 | the arbor, and the drum's bore |
+| free / full sweep | 31.4159 → 42.4115 rad | 5 coils as cut, plus 1.75 turns of wind |
+| developed length | 96.511 | the constraint every frame is solved against |
+| `lenErr` | 4.8e-13 | the k-solve reaches that length at every frame |
+| capacity `S` at full wind | 3.4718 | the annulus is nowhere near full |
+| tightest coil pitch | 0.2108 vs 0.19024 bind | the turns never pass through each other |
+| frames | 61 | derived: `maxStep` 0.187 stays inside one ribbon thickness |
+| `cutSpread` | 0.05736 | tessellation residue, well inside the ribbon |
+
+Every one of those is asserted at build time by the same `TODO 1` rule-6
+asserts the drum answers, and boot is silent.
+
+### The anchor, derived rather than placed
+
+The inner end sits at a constant azimuth in the movement frame — that IS
+the anchoring claim, and `makeBarrel` reports it as `innerAnchorAz`
+(3π/2 here). The hook lug on the arbor is placed from it, one ribbon
+thickness wide, its flank offset `atan2(lugW/2, lugR)` onto the +angle
+side so the ribbon's end FACE butts it instead of overlapping it — the
+going drum's `mainspringArborHook` derivation, part for part. Measured
+across the wind range, the inner end holds world x within ±0.045 of its
+anchor, which is the frame quantisation (half of `maxStep`) and nothing
+else; the outer end sweeps the full 1.75 turns with the body.
+
+### What the instruments say
+
+Three rows moved in `INTRA_UNIT_CONTACTS`, and each is a real joint:
+
+- `mainspringRibbon ⇄ alarmBarrelArbor` — the inner coil on its seat.
+  Same statement the drum makes against its collar, which is invisible to
+  this check there because it crosses a unit boundary (`Set-up work ⇄
+  Mainspring drum`) and visible here because it does not.
+- `mainspringRibbon ⇄ alarmSpringArborHook` — the butt joint above.
+- `alarmBarrelArbor ⇄ CylinderGeometry#0` — the arbor planted in its
+  boss, rewritten from the old `CylinderGeometry#6` label. It is now
+  UNREACHABLE by a mover-vs-fixture check, because both sides are
+  fixtures; the row is kept as the record, the same way TODO 1 kept the
+  drum's wall-hook row.
+
+And the §48 audit had never had an opinion about this unit, which is worth
+more than the declaration that closes it. Measured on the tree before this
+landing, the reversing population was 25 units and `Alarm barrel` was not
+one of them: a ribbon that rotates rigidly reads to the §36 registry as one
+more monotonic rotor, so the movement's second mainspring was passed *in
+silence* by the audit whose whole job is to ask what brings a reciprocating
+part back. This is standing rule 4's own warning arriving from a direction
+it does not name — not "no axis moves it" but "nothing it does looks like
+reciprocation" — and it is the same sequence TODO 1 produced on the going
+drum, which also only became visible to the audit once its ribbon morphed.
+
+The morph makes the wound↔run-down cycle a shape change; the registry flags
+it (`mainspringRibbon:arc`, population 26), and the unit is asked the
+question for the first time. It has an answer now, true in both directions:
+
+> the ribbon IS the restoring element — its inner end is hooked to an
+> arbor fixed in the frame and its outer end to the body, so the body's
+> travel winds it; the alarm winding train (crown → climb → idlers → rim)
+> is what carries it back the other way.
+
+### The schematic got it for free, and that is the point
+
+Nothing in `main.js`'s line tier was touched. §83 built one writer —
+`spiralFrames` + `writeSpiralLine` — and the rule that a morphing part
+draws its CURRENT FRAME, not its plan; the moment this ribbon publishes
+frames, the spiral pass finds them, registers the line, and `setWind`
+rewrites it on every swap. Both views now read the same wound state
+because they are reading the same array.
+
+### What this did NOT close
+
+- **The torque is still authored**, exactly as TODO 32 says of the going
+  spring — and now for the same reason, on a spring with the same
+  published section and length. The ring's cadence is
+  `ALARM_STRIKE_GAP = 0.42 s`, a literal; nothing derives it from
+  `E·I·θ/L` on this ribbon. Filed under item 32, which already owns the
+  class.
+- **No axis WINDS this barrel.** `alarmStrike` runs it down (`setPose`
+  derives the wind from the striking phase) and nothing anywhere poses the
+  wind-up, so the sweeps only ever see one direction of a part that goes
+  both ways. Filed as TODO 38.
+- **The wound-arbor split** — arbor, ratchet and click, with the winding
+  train re-routed onto it — is what would let this barrel hold its own
+  wind instead of borrowing the striking lock's hold. TODO 37.

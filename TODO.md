@@ -3456,6 +3456,30 @@ turns and `S` falls 4.92 → 4.66, still clear of coil bind.
 written down here so the next pass starts from the numbers rather than
 rediscovering them.)*
 
+### The ALARM barrel is now the same case, on the same terms (§89)
+
+§89 gave the alarm ribbon the identical treatment item 1 gave this one: a
+fixed arbor, a body wound at its teeth, and a wind morph between the two.
+So it arrives at exactly the same place — the SHAPE is real and the push is
+not. Its cadence is one literal,
+
+```js
+const ALARM_STRIKE_GAP = 0.42;   // s between strikes (the bell cadence)
+```
+
+and `ALARM_RING_SECONDS` is derived from it, so the ring's whole time base
+rests on a number no spring produced. Nothing in the alarm reads the
+ribbon's torque; the barrel drains at a rate set by that gap.
+
+The same `M = E·I·θ/L` closes it, and the terms are published on the built
+part exactly as they are for the going spring
+(`spring.userData.mainspring`): b = 0.91 (ribbon height), h = 0.19024
+(`pBind`), L = 96.511 (`devLen`), θ = `A − sweepFree`, 0 → 10.9956 rad.
+Kept under this item rather than filed as its own, because it is one class
+of debt with one fix; the difference is only which train reads the answer —
+the going side reads it through the fusee (which is why the ORDER note below
+matters there), the alarm side would read it as a strike rate.
+
 **Order matters.** Do the torque solve BEFORE re-deriving the cone: today
 the cone is a consequence of the authored curve, and if the real curve
 differs, `FUSEE_R_SMALL`/`FUSEE_R_LARGE` and every clearance chain hanging
@@ -3793,3 +3817,137 @@ per-point *structural* pass — at minimum `support` and `clearances` at two or
 three declared points — and the honest reason not to have built it here is
 cost, not doubt: those two checks are ~5½ minutes of the battery's wall at
 one spec, and there are twelve points.
+
+## 37. The alarm barrel holds its wind with somebody else's lock
+
+§89 split this barrel into a fixed arbor and a body wound at its rim, which
+is a real arrangement — this movement's own going drum is the other one —
+and it is deliberately NOT the arrangement a textbook alarm barrel has.
+A going barrel winds its ARBOR and a click holds it; the body delivers.
+
+What that costs here is written into the build comment at the winding
+train, and has been since §25 C:
+
+> No click is modelled: in §25 A's single-member barrel (rotation IS wound
+> state) a barrel click would block the ring itself; the hold is stage B's
+> striking-wheel lock.
+
+§89 removed the reason (rotation is no longer the wound state — the ribbon
+is) and did not remove the consequence. **Nothing in the alarm barrel holds
+its own wind.** What stops the body running back through the winding train
+is the striking wheel's lock, four meshes downstream, and a wound alarm
+whose lock is lifted for any other reason unwinds through the crown. The
+crown's documented backward free-spin while ringing is the same fact seen
+from the other end.
+
+**The fix is the other split, and it is layout work, not mechanism work.**
+Give the arbor a ratchet and a click, and re-route the winding train's last
+mesh from the barrel's rim onto that ratchet: a different centre distance,
+so `ALARM_WIND_IDLER_TEETH`'s reach solve re-runs against a new target, the
+i1/i2 two-circle closure moves, and the upper-plate lane both idlers cross
+(vertex-probed clear at z 10.1–11.6) has to be re-probed for wherever they
+land. The click and its spring are two more parts in a band that is already
+`LOW_LINKAGE_OBSTACLES`-adjacent.
+
+Filed rather than done because §89's own priority note applies to it: the
+spring is honest now without it, and this is a change whose only currency
+is position space. Do it when the alarm's winding side is opened for
+another reason.
+
+## 38. No axis WINDS anything — the sweeps only ever see the alarm run down
+
+The §36 registry, and everything sourced from it (the §48 restoring audit's
+whole population), measures over `AXES`. Two axes touch the alarm's power:
+`alarmStrike` poses `alarmStrikePhase`, and `setPose` derives
+`alarmBarrelWind` from it — full to empty, monotonically. `alarm` poses the
+setting crown. **Neither poses a wind-up**, and no other axis writes
+`alarmBarrelWind` at all.
+
+So the whole alarm winding chain — crown, climb arbor, two idlers, the
+barrel's rim, and now (§89) the ribbon that stores the result — is swept in
+exactly one direction, the one it travels while ringing. The direction a
+user's hand drives it is uncovered. The going train has the same shape of
+gap in a milder form: `reserve` sweeps tension 1 → 0 and `windAccumTurns`
+is pinned at 0 on every axis.
+
+This is the failure mode standing rule 4 already names for the restoring
+audit — "a part no axis MOVES is a part it cannot judge" — one step out:
+a part no axis moves BACKWARD is a part whose return nothing has swept.
+TODO 29 is the precedent for what closing it looks like (`alarmToggle`
+exists because nothing varied `alarmOn`), and it is also the warning: an
+axis is not free. `sweptOverlap`'s confirm tier re-measures every candidate
+over ALL axes, it is the battery's slowest check by an order of magnitude,
+and its wedge guard already sits at 1.24× the worst observed run. A wind
+axis has to be sized against that, and the honest sizing is not "n = 96
+because the others are".
+
+**The cheap version, if the budget is the problem:** the wind-up traverses
+the same one-dimensional pose manifold `alarmStrike` already sweeps, in the
+other direction. An axis that revisits those poses adds no NEW pose to any
+collision check — only a direction change, which is the one thing the
+registry cannot infer from a monotone run. That argues for a small n
+chosen to keep the per-step hulls no coarser than `alarmStrike`'s, and for
+measuring `sweptOverlap` before and after with `--report` rather than
+assuming the cost.
+
+**What this does NOT cost, measured at §89:** the restoring audit is not
+blind here in the way it was for the alarm lock. The registry's `reversed`
+flag is read from the step-to-step change in a mesh's own angular BOUND, so
+a MORPHING part can trip it under a perfectly monotone axis: as the coils
+redistribute, the extent the bound is measured from wanders rather than
+advancing, and the sign of the step changes. The alarm ribbon trips it on
+`alarmStrike` alone (the only axis that moves `alarmBarrelWind` at all),
+which is why §89 could declare this barrel's spring without first adding an
+axis. That is also the limit of the consolation, and worth stating plainly:
+what the sweep sees is the ribbon changing shape, not the chain being driven
+backwards through it. Every member of the winding train is a plain rotor,
+and plain rotors stay monotone in every axis there is.
+
+## 39. The going drum's arbor turns with the drum it is supposed to hold
+
+The mainspring's inner end is genuinely pinned — TODO 1 built that, and the
+parts it is pinned to are static: the collar and its hook lug belong to the
+`Set-up work` unit, which does not rotate. The claim underneath that, the one
+the explainer states in a sentence, is that the drum's ARBOR is held by the
+set-up ratchet and the drum turns around it. This is a fusee movement, so it
+is the right claim: a fusee's going barrel has a fixed arbor with set-up work
+on it, which is exactly why the collar is where it is.
+
+**The arbor cylinder does not model it.** `makeBarrel` builds the arbor inside
+the group it returns, that group is a child of `drumGroup`, and `tick()` writes
+`drumGroup.rotation.z`. Measured over the `reserve` axis, every mesh in the
+`Mainspring drum` unit changes its world matrix, the arbor and its pivot staffs
+included. The unit contains no static part at all.
+
+**Nothing can see it and nothing measures it**, which is the whole reason to
+write it down. A cylinder rotating about its own axis is visually identical to
+one standing still, so no screenshot shows it; `intraUnit` compares movers
+against fixtures *within* a unit and this unit has no fixtures; the collar it
+is supposed to be held by lives in another unit, so their overlap is an
+EXPECTED pair. A wrong claim that no instrument can reach is exactly what this
+file is for.
+
+**§89 built the fix and used it on the other barrel.** `makeBarrel` now takes
+`arbor: false` (it stops putting an arbor in the rotating group) and
+`arborBoreR` (floor and lid are bored for a fixed one, `PIVOT_BORE_CLEAR` over
+its radius), and the alarm barrel is assembled that way: static arbor in the
+unit, body turning on it. The going drum needs the same two arguments and one
+thing the alarm barrel did not:
+
+- **its pivots move with the arbor.** `addLowerPivot(drumGroup, …)` and
+  `addUpperPivot(drumGroup, …)` hang the plate engagements on the ROTATING
+  group. On a fixed arbor those are not pivots at all — they are the arbor's
+  own ends planted in the plates, and they belong to whatever static parent the
+  arbor gets (the set-up work is the natural one: it already owns the collar
+  and the hook at that axis, and the set-up ratchet is what holds the arbor in
+  the first place).
+- **that moves a support edge.** `MECH_GRAPH` grounds `Mainspring drum` on
+  `plate` and `Three-quarter plate` through those very meshes, measured at gaps
+  of 0 and 0.05. With them re-parented the drum is supported BY THE ARBOR and
+  the edge has to say so, which is a graph change and a re-run of the support
+  sweep, not a rename.
+
+So it is cheap in geometry and not free in declarations, which is why it is
+filed rather than folded into §89: that landing had no reason to touch the
+going train, and a change that moves support edges deserves its own battery
+run and its own record.
