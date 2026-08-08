@@ -1393,7 +1393,7 @@ barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', whi
 // over-reports by 24% (12.73 for a wheel that actually reaches 10.27) and
 // swings with the pose. Radii about the staff axis are rotation-invariant, so
 // this is the real swept radius.
-function xyRadiusAbout(obj, c, zMax = Infinity) {
+function xyRadiusAbout(obj, c, zMax = Infinity, zMin = -Infinity) {
   obj.updateMatrixWorld(true);
   const v = new THREE.Vector3();
   let r = 0;
@@ -1402,7 +1402,7 @@ function xyRadiusAbout(obj, c, zMax = Infinity) {
     const pos = o.geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      if (v.z <= zMax) r = Math.max(r, Math.hypot(v.x - c.x, v.y - c.y));
+      if (v.z <= zMax && v.z >= zMin) r = Math.max(r, Math.hypot(v.x - c.x, v.y - c.y));
     }
   });
   return r;
@@ -2513,11 +2513,21 @@ hammerGroup.add(hammerTailBar);
 // collar), so a shadow solve has to be scored against its OWN corridor, not
 // the built one. Each row carries `what` it is, so a fouled route can name
 // the body it cannot get past instead of only reporting a negative number.
+// MEASURED once, because a formula is a claim about a part and these two were
+// both wrong (§86 B found them on its first run): the transfer wheel's row was
+// 0.028 under its metal and the spur's `pitch + module` understated its real
+// tip circle by 0.094 — which is the number CI measured as 0.0849 on the reset
+// rod. The parts are rigid, so their radius is a constant even when a spec
+// moves their station; only the centre travels.
+const CORRIDOR_Z_BOT = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - ROD_KNUCKLE_R;
+const TRANSFER_SWEPT_R = xyRadiusAbout(transferWheel,
+  { x: uWind.x * cwDist, y: uWind.y * cwDist }, GW_UNDER_Z, CORRIDOR_Z_BOT);
+const WIND_SPUR_SWEPT_R = xyRadiusAbout(windSpur, P.barrel, GW_UNDER_Z, CORRIDOR_Z_BOT);
 const lowRodObstaclesFor = (p, kw) => [
-  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: kw.crownWheelR + 0.4 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the transfer wheel' },
-  { x: p.barrel.x, y: p.barrel.y, r: kw.windSpurR + KW_MODULE + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the winding spur' },
-  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar' },
-  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar' },
+  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: TRANSFER_SWEPT_R + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the transfer wheel', of: () => transferWheel },
+  { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
+  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
+  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
@@ -2527,7 +2537,7 @@ const lowRodObstaclesFor = (p, kw) => [
   // states the corridor's own premise instead of assuming it, and bites
   // exactly where the rod climbs out of the band that premise bought.
   { x: p.barrel.x, y: p.barrel.y, r: LAYOUT_INPUTS.swept.great + ROD_KNUCKLE_R + CLEAR_MARGIN,
-    zAbove: GW_UNDER_Z, what: 'the great wheel' },
+    zAbove: GW_UNDER_Z, what: 'the great wheel', of: () => greatWheel },
 ];
 // The keyless radii the corridor reads, captured like the solver's own
 // inputs — the stem handle re-solves these, the train handles do not.
@@ -2649,6 +2659,7 @@ const {
   STOP_PIVOT_R, POST_STROKE, Z_STOP_PIVOT_LOW,
   STOP_BEARING, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
   Z_STOP_PIVOT, STOP_TAIL_H, STOP_MAST_TOP, PAD_ARM_LOCAL_Z,
+  corners: STOPWORK_CORNERS,
   stopTailTopAt, stopSolvePsi, HACK_ROD_LEN, STOP_PSI0,
   STOP_PAD_TOP_LZ, STOP_PAD_Y, STOP_PAD_X,
   HACK_ROD_ELBOW,
@@ -2971,6 +2982,46 @@ function updateStopWork(post) {
   hackRod.quaternion.setFromUnitVectors(_rodUp, _rodDir);
 }
 updateStopWork(postRel); // rest pose (crown in)
+
+// §86 instrument A — THE CORNER REPORT, published rather than warned. A scan
+// whose winner sits on its own search bound is saying the fence decided, not
+// the field: §85 C3 found the hack rod's bend at BOTH corners of its box,
+// holding 13.54 of clearance against a margin asking 0.15, and the shape was
+// the bound rather than a decision. Rule 6 keeps boot silent, and §86 is
+// explicit that this must not become a gate — plenty of solved values sit
+// legitimately at a limit — so the rows are the product and a reader decides
+// which ones nobody can explain.
+const CORNER_REPORT = [...STOPWORK_CORNERS];
+
+// §86 instrument B — THE ENVELOPE CHECK. Every row above is a circle standing
+// in for a real part, and a circle that is smaller than the metal it
+// represents is a check that passes while the rod is inside the wheel. That
+// is not hypothetical: the table priced these rods at ROD_R for as long as it
+// existed, when their widest point is the knuckle, and the 0.05 error only
+// surfaced when §85 C3's least-bend objective stopped leaving slack for it to
+// hide in — as a CI failure on the RESET rod, which never had a corridor
+// problem of its own. Slack elsewhere is not a measurement.
+//
+// So each row names the part it stands for, and the part is MEASURED: within
+// the corridor's own z band for the rows that sit in it, and above its own
+// floor for a banded row. A row must cover the metal plus the rod's widest
+// radius plus the margin — which is exactly what its author intended it to
+// mean, now checked rather than assumed.
+{
+  const zBot = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - ROD_KNUCKLE_R;
+  for (const o of LOW_ROD_OBSTACLES) {
+    if (!o.of) continue;                       // an unnamed row is §86's own debt
+    const obj = o.of();
+    const measured = o.zAbove === undefined
+      ? xyRadiusAbout(obj, o, GW_UNDER_Z, zBot) // in the corridor band
+      : xyRadiusAbout(obj, o, Infinity, o.zAbove); // the body the corridor passes under
+    const need = measured + ROD_KNUCKLE_R + CLEAR_MARGIN;
+    if (measured > 0 && o.r < need - 1e-9)
+      console.warn(`§86 envelope: the corridor's circle for ${o.what} is ${o.r.toFixed(3)}, `
+        + `under the ${measured.toFixed(3)} it measures plus rod ${ROD_KNUCKLE_R.toFixed(3)} `
+        + `and margin ${CLEAR_MARGIN} — need ${need.toFixed(3)}`);
+  }
+}
 
 // --- LOW-LINKAGE SWEPT CORRIDOR — the one obstacle model for every LATER
 // seat scan (balance-cock legs, pillar seats). Both rods were built before
@@ -18849,6 +18900,7 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  cornerReport: CORNER_REPORT,   // §86 instrument A — values their own search bound chose
   // §62: what each openworked window asked for, what it got, and the sections
   // it left behind — the solve's own numbers, so a reader (or a check) can
   // measure the plate against what it was told rather than against a picture.
