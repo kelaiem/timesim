@@ -353,10 +353,13 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
 // Cone SIZED to what its grooves actually need — and, since §61, the
 // grooves are REAL: a helical channel cut into the cone, one plate
-// half-width deep, so the chain's inner edge rides the groove floor and
-// its centreline stays on the land-crest envelope (= the torque radii the
-// S·r_f equalisation was solved against — the cut makes the shipped
-// centreline convention honest instead of buried).
+// half-width deep at the wrap's own station, with the chain's centreline on
+// the land-crest envelope (= the torque radii the S·r_f equalisation was
+// solved against — the cut makes the shipped centreline convention honest
+// instead of buried). Since TODO 40 the floor is additionally RELIEVED by
+// half the chain's stack (see reliefHalf at the makeFusee call): on the
+// equalising hyperbola's steep base, un-relieved metal below the groove
+// stood into the chain's lower half.
 // §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
 // The reserve entry's one catch, closed: the wrap count, the groove turns
 // and the height are all functions of hours/8, so changing the reserve
@@ -460,6 +463,15 @@ const fusee = G.makeFusee({
   // radii (the builder still seats the base and closes the tip on them);
   // what envR changes is everything between.
   envR: fuseeEnvR,
+  // ...and the curve forces the RELIEVED cut. A radial-depth groove fits a
+  // flank only while |dr/dz| ≤ grooveD / (chain half-stack) = 0.66 / 0.33 =
+  // 2.42; the hyperbola runs 5.28 at its base (79.3° from the axis, against
+  // the straight cone's 59.9°), so there the metal half a stack below the
+  // groove stood up to 1.22 proud of the chain's inner-bottom corner — the
+  // §61 seating row's red 1.989. The builder relieves the floor by exactly
+  // this half-stack; the chain's CENTRELINE stays on the envelope, so the
+  // torque radii and the wrap integral above are untouched.
+  reliefHalf: CHAIN_PIN_LEN / 2,
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -3297,10 +3309,10 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // profile and the spring model are chosen so S(t)·r_f(t) is constant:
 // S = 0.35 + 0.65·t (linear spring), r_f = lerp(rLarge, rSmall, t), with
 // rLarge/rSmall = S(1)/S(0) = 2.857. §61: r_f is the chain's CENTRELINE
-// radius, and the groove cut (one plate half-width deep, floor at
-// envelope − half-width) is what makes the envelope constants above BE the
-// centreline radii — the equalisation reads the same numbers the geometry
-// now honestly delivers.
+// radius, and the groove cut — one plate half-width deep at the wrap's own
+// station, floor relieved a half-stack below it (TODO 40) — is what makes
+// the envelope constants above BE the centreline radii: the equalisation
+// reads the same numbers the geometry now honestly delivers.
 // ---------------------------------------------------------------------------
 const DRUM_R = DRUM_R_ACTUAL;
 // §61 — the chain wraps the drum at its CENTRELINE radius, one plate
