@@ -287,6 +287,20 @@ deploy does not exist there, and that is why it is shaped that way.
 second kind of build — do not fork the stamper) and adds the
 environment's own marks.
 
+**`pages.yml` only ever runs from `main`, and that is load-bearing.**
+Each environment's TREE comes from its own ref via `git archive`, but
+that archive excludes `tools/` — so the STAMPER comes from the
+checkout. `release.yml` therefore DISPATCHES the workflow on `main`
+rather than `pages.yml` carrying a `release:` trigger, which would
+check out the tag and make "which stamper built production" depend on
+what woke the run. Do not add a `release:` or `push: tags:` trigger
+back: besides the ambiguity, no tag predating §88 contains
+`build-pages.mjs`, so those refs cannot build these environments at
+all. The consequence to know is that the site is a function of the
+three refs PLUS main's tooling — editing the stamper moves
+production's bytes without production's ref moving, which is why
+`offline.yml` gates that file.
+
 **Anything served under a path shares its origin with the other two.**
 Cache Storage is partitioned by origin, not path, so `sw.js` names its
 cache for its SCOPE as well as its version; a flat name let each

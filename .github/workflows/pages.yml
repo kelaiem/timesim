@@ -17,8 +17,9 @@
 # reproducible from the repository alone and no state hides in Actions settings:
 #
 #   development  tip of `main`         — automatic on every merge
-#   testing      the newest release tag — automatic when release.yml publishes,
-#                                         i.e. the same tree QA gets over SFTP
+#   testing      the newest release tag — automatic when release.yml publishes
+#                                         (it dispatches this workflow), i.e.
+#                                         the same tree QA gets over SFTP
 #   production   branch `production`    — moved ONLY by running this workflow
 #                                         with `promote: <version>`
 #
@@ -49,11 +50,22 @@
 
 name: Pages
 
+# THIS WORKFLOW ONLY EVER RUNS FROM `main`, and that is load-bearing rather
+# than tidy. The three environment TREES come from their own refs via
+# `git archive`, but `tools/` is excluded from that archive — so the tooling
+# that stamps them comes from the CHECKOUT, not from the ref being built. With
+# a `release: published` trigger the checkout was the tag, so which stamper
+# built production depended on what woke the workflow. Now `release.yml`
+# DISPATCHES this workflow on main when it publishes (see its `pages` job), so
+# the workflow file and the tooling it calls always come from the same place
+# and a rebuild is reproducible.
+#
+# Do not add a `release:` or `push: tags:` trigger back. Both check out the tag
+# and would restore exactly that ambiguity — and older tags do not contain
+# tools/build-pages.mjs at all, so they cannot build these environments.
 on:
   push:
     branches: [main]
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       promote:

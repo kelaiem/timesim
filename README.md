@@ -46,13 +46,17 @@ deep under the origin it is being served.
 | Environment | URL | What it is | Moved by |
 |---|---|---|---|
 | production | https://kelaiem.github.io/timesim/ | the promoted release | running the Pages workflow with `promote: <version>` |
-| testing | https://kelaiem.github.io/timesim/testing/ | the newest release — the same tree QA gets over SFTP | `release.yml` publishing a release |
+| testing | https://kelaiem.github.io/timesim/testing/ | the newest release — the same tree QA gets over SFTP | `release.yml`, which dispatches the Pages workflow when it publishes |
 | development | https://kelaiem.github.io/timesim/development/ | the tip of `main` | any merge to `main` |
 
 So the ladder is **merge → cut a release → promote**, and every pointer is a
 git ref: `main`, the newest `major.minor.patch` tag, and a `production`
 branch the promote step moves. Nothing about which environment serves what
 lives outside the repository.
+
+The Pages workflow itself only ever runs from `main` — each environment's
+tree comes from its own ref, but the tooling that stamps them comes from the
+checkout, so pinning that to one place is what makes a rebuild reproducible.
 
 Each carries the version it was built with, readable without a fetch:
 

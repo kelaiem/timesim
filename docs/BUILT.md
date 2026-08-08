@@ -7689,6 +7689,40 @@ Nothing had to invent a scheme for "main's version", and because the
 string changes on every merge it re-arms §28 layer 2's update toast and
 rotates §79's cache for free.
 
+**Which tooling stamps an old ref — the question this is the first thing
+in the repo to have to answer.** The environment trees come from their own
+refs, but `git archive` excludes `tools/`, so the stamper comes from the
+CHECKOUT. `release.yml` looks like a precedent for "the release's own
+tooling" — it checks out the tag and runs that tag's `stamp-release.mjs` —
+but it never actually chose: it cuts the tag from `main` and deploys it in
+the same run, so the two are the same bytes. Pages is the first thing here
+that rebuilds an OLD ref.
+
+Answering it "from the ref itself" is not a stricter option being declined,
+it is impossible. No tag from 2.1.4 to 2.1.9 contains
+`tools/build-pages.mjs`; 2.1.5 has no `offline-check.mjs` either; and
+`stamp-release.mjs` genuinely differs between 2.1.7 and 2.1.9. Tag 2.1.9
+does not know what an environment IS — it cannot emit `app-environment` or
+the `noindex`. And a bug in the deploy layer could then only be fixed by
+cutting and promoting a release, which for this particular file is not
+hypothetical: §79 found the stamper silently missing two whole classes of
+URL.
+
+So the tooling is pinned to `main`, and pinning the checkout turned out to
+be only half of it — on a `release: published` run the WORKFLOW FILE comes
+from the tag too. `pages.yml` therefore dropped that trigger entirely and
+`release.yml` DISPATCHES it on `main` instead (`gh workflow run pages.yml
+--ref main`, which works under `GITHUB_TOKEN` because `workflow_dispatch`
+is one of the two documented exceptions to the no-recursive-runs rule).
+File and tooling now always come from the same place.
+
+The cost, stated rather than hidden: the site is a function of the three
+refs PLUS main's tooling, not of the three refs alone. Editing the stamper
+moves production's bytes without production's ref moving. That is guarded
+by review and by `offline.yml`, not by immutability — and the way to get
+the audit trail back is to RECORD the tooling commit in `version.json`
+rather than to pin it, which is deferred, not rejected.
+
 **Why it rebuilds all three every run.** `actions/deploy-pages` publishes
 one artifact that REPLACES the whole site; there is no partial deploy and
 no previous state to merge into, so anything absent from the artifact is
