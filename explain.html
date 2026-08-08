@@ -393,9 +393,11 @@
         </div>
         <figcaption><b>The cone is cut to the law now, so the two curves in the left panel are
         one curve.</b> A linear spring needs a <em>hyperbolic</em> flank —
-        <code>r = FUSEE_TORQUE_K / springTq</code> — and that is what
-        <code>makeFusee</code> lathes, from the same expression <code>fuseeGrooveAt</code>
-        hands the chain and the readout. Only one number was free to set it: the base radius
+        <code>r = FUSEE_TORQUE_K / springTq</code> — and that is the envelope
+        <code>makeFusee</code> cuts its groove to, from the same expression
+        <code>fuseeGrooveAt</code> hands the chain and the readout (the lathed core is that
+        envelope relieved half a chain-stack — the ledger below says why a hyperbola forces
+        the relief). Only one number was free to set it: the base radius
         is a layout constant (the drum's station hangs off it), so the constant product
         follows as <code>FUSEE_TORQUE_K = 2.59</code> and the small radius stops being a
         choice at all — 2.4824 at the tip, 2.59 where the wrap ends. The old hand-picked 2.6
@@ -471,7 +473,14 @@
 
       <p class="note">Honesty ledger: <b>TODO 40 rows 1 and 2 are closed.</b> The flank is the
       equalising hyperbola, and the readout reads the radius the chain is on through
-      <code>fuseeGrooveAt</code>. <b>Row 3 is most of the way</b>: <code>CHAIN_ENGAGED</code>
+      <code>fuseeGrooveAt</code>. The curve forced the CUT to change with it: a radial-depth
+      groove only fits a flank up to <code>grooveD</code> over half the chain's stack —
+      2.42 of slope — and the hyperbola's base runs 5.28 (79° from the axis), so the floor
+      is relieved half a stack and the crest between wraps is capped at §54's proportion
+      where a full-height fin would stand λ 48 against the ceiling of 30. At the steep base
+      the chain is retained by the step of the turn below, as on a real steep-flanked fusee,
+      and the §61 seating row now holds the lathe's own <code>floorAt</code> with its budget
+      re-derived <em>down</em>, 0.8 → 0.25. <b>Row 3 is most of the way</b>: <code>CHAIN_ENGAGED</code>
       is now the integral of that radius over the wrap rather than a guessed mean, and the
       drum's angle comes from the same expression, so the two spools balance exactly and the
       shipped mesh's link count swings 1.7% over the reserve where it swung 9.6%. What is
@@ -2223,7 +2232,9 @@
         drumEl.setAttribute('width', 2 * DRUM_R * S); drumEl.setAttribute('height', (DRUM_TOP - DRUM_BOT) * SZ);
         // The cone's own silhouette, sampled from envR rather than drawn as a
         // trapezoid — concave now, which is what an equalising flank looks
-        // like, and what the lathe in makeFusee actually cuts.
+        // like. This is the ENVELOPE the chain rides (the crest line, the
+        // torque radius); the lathe cuts its groove floor a relieved
+        // half-stack inside it, which an elevation at this scale cannot show.
         (function () {
           var N = 40, d = ['M ' + X(-R_LARGE) + ' ' + Y(BASE_Z), 'L ' + X(R_LARGE) + ' ' + Y(BASE_Z)];
           var side = function (sign, from, to) {

@@ -4130,6 +4130,31 @@ lathe's station count went 12 → 48 with it: a straight generator is exact
 at any count and a curve is not (worst chord sag 0.0400 → 0.0030, against
 the 0.08 the §61 seating budget works to).
 
+**The curve forced the cut to change too — and caught the instrument
+measuring a floor nobody had lathed.** A radial-depth groove fits a flank
+only while `|dr/dz| ≤ grooveD / (chain half-stack)` = 0.66/0.33 = 2.42; the
+hyperbola runs 5.28 at its base (79.3° from the axis, against the straight
+cone's 59.9°), so metal half a stack below the groove stood up to 1.22 into
+the chain's lower half — the §61 seating row went red at 1.989 against its
+0.8 budget. Two defects were stacked in that number. The real one: the cut.
+`makeFusee` now RELIEVES the floor — `floorAt(z) = env(clamp((z − bandZ0 +
+reliefHalf)/bandSpan, 0, 1)) − grooveD`, the envelope sheared down half a
+chain-stack — so the ideal wrap box touches the floor at its bottom-inner
+corner and owes it nothing; at `reliefHalf = 0` the law reduces to the old
+cut, which is the legacy path's proof. The crest between wraps stands on the
+relieved floor capped at §54's `SLENDER_TARGET · landW` (a 0.025-wide fin
+1.2 tall is λ 48 against the ceiling of 30), so at the steep base it
+honestly stops short of the envelope and the chain there is retained by the
+step of the turn below, as on a real steep-flanked fusee. The instrument
+one: the seating row was RECONSTRUCTING its floor as a straight chord from
+`rLarge/rSmall` — right only while the flank was straight; on the convex
+hyperbola its floor sat ~1.3 outside the metal at mid-band. It now holds
+`userData.groove.floorAt`, the lathe's own closure, and its budget
+re-derives SMALLER: the slope term (0.57) dies with the relief, leaving
+chording at the new smallest wrap radius (1.9²/(8·2.59) = 0.174) plus
+HANDOFF_TRACK_TOL 0.03 — sum 0.204, held at 0.25 where 0.8 stood. Measured
+after: worstDepth 0.133 at reserve 0.033, OK.
+
 **It is still standing on item 32,** and now more visibly: the flank is
 solved FROM `springTq`, so an exactly equalising cone is exact arithmetic
 on an authored law. Deriving that law from the ribbon re-cuts this cone —
