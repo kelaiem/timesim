@@ -29,9 +29,10 @@
 // curveSegments = 10 because that is a sensible triangle budget on a part a
 // few millimetres wide; an icon has no such budget, so they are sampled at
 // ARC_DIVISIONS below. Same curve, finer — not a different shape.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import { chromium } from 'playwright';
 import { brandMarkShapes, makeCrown } from '../src/geometry.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -111,3 +112,30 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" rol
 writeFileSync(join(ROOT, 'favicon.svg'), svg);
 console.log(`make-favicon: favicon.svg — ${shapes.length} outlines, ink ${inkW.toFixed(3)}x${inkH.toFixed(3)}, ` +
   `canvas ${S} (margin = one stroke ${sw.toFixed(3)}), ${svg.length} bytes`);
+
+// RASTERIZE to PNG using Playwright. Two sizes: favicon.png (32×32, the standard
+// size property for favicon.ico, used as fallback when SVG is not supported) and
+// apple-touch-icon.png (180×180, iOS app icon). Both use the same SVG source, so
+// hand-drawing a raster cannot happen — they stay a derived consequence of the
+// monogram, which is the same discipline as the SVG.
+const renderPNG = async (width, height, filename) => {
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    const svgData = readFileSync(join(ROOT, 'favicon.svg'), 'utf8');
+    const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgData).toString('base64')}`;
+    await page.goto(dataUrl, { waitUntil: 'load' });
+    await page.setViewportSize({ width, height });
+    const png = await page.screenshot({ type: 'png' });
+    writeFileSync(join(ROOT, filename), png);
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+};
+
+await renderPNG(32, 32, 'favicon.png');
+console.log(`make-favicon: favicon.png — 32×32, Safari fallback for SVG`);
+await renderPNG(180, 180, 'apple-touch-icon.png');
+console.log(`make-favicon: apple-touch-icon.png — 180×180, iOS home screen`);
