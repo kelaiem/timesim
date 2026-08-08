@@ -269,43 +269,204 @@
       weaker force, longer lever. The product, torque into the train, stays near constant.
       Winding spools the chain back onto the fusee; a maintaining detent keeps the train
       driven while the wind briefly unloads it, so the escapement never runs backward.</p>
+      <p>Seen from the side, the whole bargain is one drawing. The chain leaves the drum's
+      coil, crosses a span of open plate and climbs the cone's groove, and BOTH of its ends
+      travel while it does: the cone's active groove rises as the wrap builds, and the drum's
+      coil descends from its hook one chain thickness per turn. Plate 1 is that elevation,
+      driven by the reserve — every wrap and every coil turn plotted from the parametric curve
+      the sim cuts its links from.</p>
+
+      <!-- —————— PLATE 1 : THE WIND, DRIVEN —————— -->
       <figure>
-        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The cone's bargain — falling force, growing lever</span></div>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Elevation — where the chain is, at every state of wind</span></div>
+        <div class="controls">
+          <button id="fzPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
+          <label>reserve
+            <input type="range" id="fzSlider" min="0" max="1000" value="1000" step="1"
+                   aria-label="Reserve remaining, as a fraction of a full wind">
+          </label>
+          <span class="readout" id="fzReadout">reserve 30.0 h</span>
+          <span class="readout" id="fzChain">chain in the run</span>
+          <span class="chip ride" id="fzChip">FULLY WOUND · chain home</span>
+        </div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 240" width="780" height="240" role="img" aria-label="Drum and fusee cone joined by the chain, with a graph showing spring torque falling, fusee radius rising, and their product near constant">
-            <circle cx="105" cy="95" r="58" fill="var(--brass-fill)" opacity="0.5" stroke="var(--brass)" stroke-width="1.6"/>
-            <circle cx="105" cy="95" r="12" fill="none" stroke="var(--brass)" stroke-width="1"/>
-            <text class="lbl" x="70" y="176">mainspring drum</text>
-            <path d="M 230 45 L 320 25 L 320 165 L 230 145 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
-            <g stroke="var(--steel)" stroke-width="0.75" opacity="0.7">
-              <line x1="238" y1="47" x2="238" y2="143"/><line x1="256" y1="43" x2="256" y2="147"/>
-              <line x1="274" y1="39" x2="274" y2="151"/><line x1="292" y1="35" x2="292" y2="155"/><line x1="310" y1="30" x2="310" y2="160"/>
-            </g>
-            <text class="lbl" x="238" y="186">fusee cone · r 2.6 → 7.4</text>
-            <line x1="163" y1="66" x2="252" y2="52" stroke="var(--ruby)" stroke-width="2"/>
-            <text class="val val-ruby" x="150" y="42">chain — full wind pulls at the SMALL radius</text>
-            <line x1="420" y1="200" x2="740" y2="200" stroke="var(--text)" stroke-width="1"/>
-            <line x1="420" y1="30" x2="420" y2="200" stroke="var(--text)" stroke-width="1"/>
-            <text class="lbl" x="660" y="218">reserve 1 → 0</text>
-            <path d="M 420 62 L 740 152" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
-            <text class="val val-brass" x="428" y="56">spring torque 1 → 0.35</text>
-            <path d="M 420 155 L 740 68" fill="none" stroke="var(--steel)" stroke-width="1.6" stroke-dasharray="5 3"/>
-            <text class="val val-steel" x="560" y="180">chain radius 2.6 → 7.4</text>
-            <path d="M 420 62 L 740 63" fill="none" stroke="var(--ruby)" stroke-width="2.2"/>
-            <text class="val val-ruby" x="560" y="48">train torque ≈ 1, the whole reserve</text>
+          <svg viewBox="0 0 780 316" width="780" height="316" role="img"
+               aria-label="Side elevation of the mainspring drum and the fusee cone joined by the chain, with the chain's coil on the drum and its wrap on the cone plotted from the built path law">
+            <!-- Everything with an id is written by the script from the SAME
+                 constants src/main.js builds from: the drum body, the cone's
+                 generator, the four groove turns, and the two helices — each
+                 a true elevation projection of the parametric curve in
+                 rebuildChain (front strands solid, the strands running behind
+                 the body faint, §71's hidden-line convention). -->
+            <g id="fzPlanes"></g>
+            <rect id="fzDrum" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <path id="fzCone" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+            <g id="fzGrooves" stroke="var(--steel)" stroke-width="0.75" opacity="0.55"></g>
+            <g id="fzHook"></g>
+            <path id="fzCoilBack" fill="none" stroke="var(--ruby)" stroke-width="1.6" opacity="0.22"/>
+            <path id="fzWrapBack" fill="none" stroke="var(--ruby)" stroke-width="1.6" opacity="0.22"/>
+            <line id="fzSpan" stroke="var(--ruby)" stroke-width="2.2"/>
+            <path id="fzCoil" fill="none" stroke="var(--ruby)" stroke-width="1.8"/>
+            <path id="fzWrap" fill="none" stroke="var(--ruby)" stroke-width="1.8"/>
+            <circle id="fzTakeoff" r="3.5" fill="var(--ruby)"/>
+            <text class="lbl lbl-strong" x="95" y="24">mainspring drum · r 10</text>
+            <text class="val val-brass" x="95" y="38">coil descends from its hook, a turn at a time</text>
+            <text class="lbl lbl-strong" x="480" y="24">fusee cone</text>
+            <text class="val val-steel" x="480" y="38">4 groove turns over a 2.7775 band</text>
+            <text class="val" x="736" y="86">7.5575</text>
+            <text class="val" x="736" y="198">4.26</text>
+            <text class="lbl" x="60" y="266">CENTER WHEEL TOP — the floor under the cone</text>
+            <text class="val" x="60" y="280">+ CLEAR_MARGIN + half the chain's stack 0.33 → groove 4.74</text>
+            <text class="lbl" x="450" y="266">HAIRSPRING STACK TOP — the ceiling</text>
+            <text class="val" x="450" y="280">cone tip 7.5375: the spring sets the plate floor</text>
+            <text class="val val-ruby" x="60" y="302">the span is the only chain doing work — and both of its ends move</text>
+            <text class="lbl" x="600" y="302">z exaggerated ×2</text>
           </svg>
         </div>
-        <figcaption>The graph is the HUD's own law, not an illustration:
-        <code>springTq = 0.35 + 0.65·reserve</code>,
-        <code>trainTq = springTq · fuseeR / FUSEE_R_SMALL</code> — at empty,
-        0.35 × 7.4 / 2.6 = 0.996. The two torque bars in the sim's Time panel display
-        exactly these expressions; the cone's r 2.6 → 7.4 spiral (with its §61 grooves) is
-        the geometry that makes the red line flat.</figcaption>
+        <figcaption>Radially true; z is drawn at twice that scale, because at one scale the
+        whole story here — a 0.69 coil pitch, a 0.694 groove pitch, a 2.7775 band — collapses
+        into the thickness of a few strokes. The wrap climbs one groove pitch per turn
+        (<code>f = s / FUSEE_GROOVE_TURNS</code>, so a full 3.75-turn wind reaches
+        <code>f</code> 0.9375 and never the tip), while the coil descends
+        <code>CHAIN_COIL_PITCH</code> per turn from a hook fixed on the drum wall. The two
+        descents are why the span only tilts about 0.7 over a 19.9 run instead of raking
+        across the train. The cone's z is pinned at both ends by parts that are not the cone:
+        the center wheel's top face below and the hairspring stack above
+        (<code>FUSEE_Z0_MIN</code>, <code>FUSEE_BASE_Z</code>) — the band between them is
+        <code>FUSEE_BAND = 2.7775</code>, and the groove pitch, the land width and the reserve
+        the movement can hold all fall out of it. <b>Watch the chain readout while it
+        runs.</b> The three lengths are the model's own arithmetic, and their sum — the chain
+        — is the one number in the plate that should not move. It moves: about 9% between the
+        ends of the reserve and its middle, which is TODO 40's third row and is measurable on
+        the shipped mesh, not just here.</figcaption>
       </figure>
-      <p class="note">Honesty ledger: the spring's torque law is still authored rather than
-      emerging from ribbon mechanics, which is TODO 32 (TODO 1, the ribbon's geometry, closed —
-      see the mainspring entry above); the chain's swept fan is a first-class obstacle in the
-      layout (§36's registry).</p>
+
+      <p>So much for where the chain is. What it is <em>for</em> is the product of two numbers:
+      the spring's torque, which falls as it unwinds, and the radius the chain pulls at, which
+      grows. Multiply them and the train should feel nothing change. That is the claim, and it
+      is worth drawing rather than asserting — because the taper that would actually hold the
+      product level is not a straight line.</p>
+
+      <!-- —————— PLATE 2 : THE BARGAIN, AND WHERE IT DOES NOT BALANCE —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">The taper the equalisation needs, against the taper that is cut</span></div>
+        <div class="controls">
+          <span class="readout" id="feqReadout">reserve 1.000</span>
+          <span class="chip ramp" id="feqChip">follows plate 1's reserve</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 300" width="780" height="300" role="img"
+               aria-label="Two graphs: chain radius against reserve, comparing the cut cone's straight taper with the hyperbola constant torque requires; and the resulting train torque, which bulges in mid reserve instead of staying flat">
+            <g id="feqA"></g>
+            <g id="feqB"></g>
+            <text class="lbl lbl-strong" x="60" y="26">RADIUS THE CHAIN PULLS AT</text>
+            <text class="lbl lbl-strong" x="440" y="26">TORQUE INTO THE TRAIN</text>
+            <text class="val val-steel" x="60" y="40">cut: a straight generator</text>
+            <text class="val val-ruby" x="440" y="40">what the straight taper delivers</text>
+            <text class="val" x="52" y="87">7.4</text>
+            <text class="val" x="52" y="164">5.0</text>
+            <text class="val" x="52" y="241">2.6</text>
+            <text class="val val-steel" x="198" y="126">seat — where the chain sits</text>
+            <text class="val val-brass" x="96" y="236">needed: r = k / springTq</text>
+            <text class="val" x="432" y="144">1.0</text>
+            <text class="val" x="426" y="246">0.35</text>
+            <text class="val val-ruby" x="556" y="58">dashed — at the seat radius</text>
+            <text class="val val-ruby" x="540" y="80">1.34 at mid-reserve</text>
+            <text class="lbl" x="74" y="270">FULL WIND</text>
+            <text class="lbl" x="310" y="270">EMPTY →</text>
+            <text class="lbl" x="454" y="270">FULL WIND</text>
+            <text class="lbl" x="690" y="270">EMPTY →</text>
+            <text class="val val-brass" x="60" y="288">cut tip 2.6, ringed — the wrap stops a groove short of it</text>
+            <text class="val val-brass" x="440" y="288">spring torque alone, 0.35 → 1</text>
+          </svg>
+        </div>
+        <figcaption>Both panels are the shipped arithmetic, plotted rather than drawn:
+        <code>springTq = 0.35 + 0.65·reserve</code> and
+        <code>trainTq = springTq · fuseeR / FUSEE_R_SMALL</code>, the two expressions the Time
+        panel's torque bars display. <b>They agree at the two ends and nowhere between.</b>
+        A linear spring needs a <em>hyperbolic</em> cone — <code>r = k / springTq</code> — and
+        this cone's generator is straight, so the product bulges to 1.34 near mid-reserve
+        against 1.0 at full wind: a ±15% swing where the old plate drew a flat line. Worse,
+        the radius the chain actually sits at is not the one the equalisation quotes. The wrap
+        stops at <code>f</code> 0.9375, so at full wind the chain pulls at <b>2.9</b>, not the
+        <code>FUSEE_R_SMALL</code> 2.6 the HUD multiplies by. Both are filed as TODO 40; the
+        plate shows the gap rather than hiding it, which is the point of drawing the law
+        instead of a picture of the law.</figcaption>
+      </figure>
+
+      <p>One mechanism is left, and it is the one that makes a fusee usable. Winding turns the
+      cone <em>backwards</em> against the train — so for as long as you are winding, the thing
+      that drives the watch has let go of it. Harrison's answer is a sandwich at the great
+      wheel: the wheel runs loose on the arbor, and drive reaches it through a second spring
+      that is kept wound by the train itself. While the fusee reverses, that spring is what
+      feeds the escapement, and a detent on the plate holds the wheel it pushes against.</p>
+
+      <!-- —————— PLATE 3 : MAINTAINING POWER —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 3</span><span class="fig-title">Maintaining power — what drives the watch while you wind it</span></div>
+        <div class="controls">
+          <button id="fmPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
+          <button id="fmMode" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">start winding</button>
+          <span class="readout" id="fmReadout">running</span>
+          <span class="chip ride" id="fmChip">RUNNING · pawls locked, the sandwich creeps</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 330" width="780" height="330" role="img"
+               aria-label="Plan view of the maintaining power sandwich: the base ratchet flange keyed to the fusee, two pawls carried on the maintaining wheel, the wheel's rim teeth and the plate detent, with the drive path shown alongside">
+            <g id="fmRingG"></g>
+            <g id="fmFlangeG"></g>
+            <g id="fmPawls"></g>
+            <g id="fmDetent"></g>
+            <!-- the spring lies UNDER the ring and under the flange's footprint,
+                 so it is drawn last but dashed: hidden line, §71's convention. -->
+            <path id="fmSpring" fill="none" stroke="var(--ruby)" stroke-width="2"
+                  stroke-dasharray="5 4" opacity="0.9"/>
+            <circle cx="250" cy="165" r="4" fill="var(--muted)"/>
+            <path class="leader" d="M 92 108 L 214 56"/>
+            <path class="leader" d="M 74 136 L 170 162"/>
+            <path class="leader" d="M 100 166 L 198 168"/>
+            <text class="lbl" x="14" y="22">PLAN AT THE GREAT WHEEL · barrel axis</text>
+            <text class="val val-brass" x="14" y="40">outer ring — maintaining wheel, rim teeth for the detent</text>
+            <text class="lbl" x="14" y="112">PLATE DETENT</text>
+            <text class="lbl" x="14" y="140">PAWLS ×2</text>
+            <text class="lbl" x="14" y="170">SPRING · under</text>
+            <text class="val val-steel" x="14" y="300">inner ring — base ratchet flange, keyed to the fusee</text>
+            <text class="val val-steel" x="14" y="318">MAINT_TEETH 24 both rings · two pawls π apart = 12 pitches, so they act in unison</text>
+            <g id="fmFlow"></g>
+            <text class="lbl lbl-strong" x="390" y="40">THE LIVE TORQUE PATH</text>
+            <text class="val" x="476" y="68">crown → winding spur</text>
+            <text class="val" x="476" y="108">fusee cone → base ratchet flange</text>
+            <text class="val" x="476" y="148">pawls, in the flange's teeth</text>
+            <text class="val" x="476" y="188">maintaining wheel · plate detent</text>
+            <text class="val" x="476" y="228">maintaining spring → great wheel</text>
+            <text class="val val-brass" x="390" y="262">amber stores · green delivers · red holds</text>
+            <text class="val" x="390" y="280">the sim's own POWER FLOW verdicts, same three colours</text>
+          </svg>
+        </div>
+        <figcaption>The saw profile is the builder's own — root at 0.8·R, tip over the last
+        28% of the pitch (<code>sawRadiusAt</code>) — and both the pawl ride and the detent's
+        return are the shipped laws: the pawls are placed by the relative angle flange-vs-wheel
+        (exactly <code>windBack</code>, zero while running), and the detent is a §48 one-sided
+        follower — a spring seeking a seat it can never reach, with the ring's teeth standing
+        in the way — not a part welded to a profile. <b>The detent never sees reverse
+        motion</b>, which is what makes a fixed pawl legal here and nowhere on the arbor: the
+        maintaining wheel is a child of the train's rotation only, so winding cannot drag it
+        backwards. The rates are the movement's own: one pawl snap per flange tooth, 24 to the
+        fusee turn and 90 over a full 3.75-turn wind; one detent tick per rim tooth, which at
+        one barrel revolution per 8 h is a tick every 20 minutes.</figcaption>
+      </figure>
+
+      <p class="note">Honesty ledger: the equalisation is the open item here. <b>TODO 40</b>
+      (new, from plate 2) files three arithmetic gaps in one place — the straight generator
+      cannot level a linear spring's product, the HUD multiplies by a radius the chain never
+      reaches, and <code>CHAIN_ENGAGED</code> books the wind at <code>FUSEE_AVG_R</code> 5.0
+      when the wrap's own mean radius is 5.15, so the drum turns about 3% short of the chain
+      the cone takes up. <b>TODO 32</b> is upstream of all of it: the spring's torque law is
+      authored rather than emerging from ribbon mechanics, and the cone's taper was derived
+      from that curve (TODO 1, the ribbon's geometry, is closed — see the mainspring entry).
+      The maintaining sandwich is P0-clean by comparison: pawls, detent and spring are real
+      meshes on real pivots, driven from the fusee's own reverse rotation. The chain's swept
+      fan is a first-class obstacle in the layout (§36's registry).</p>
     </div>
   </details>
 
@@ -1862,6 +2023,469 @@
         // Autoplay unless the viewer asked for reduced motion; the loop idles
         // (no pose writes) while the section is closed or the tab is hidden.
         setPlaying(!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      })();
+    })();
+
+    // —— Fusee & chain: three plates, every curve ported from the build ——
+    //
+    // Plate 1 REPLOTS rebuildChain's own parametric path in elevation — the
+    // helical wrap on the cone and the hook-anchored coil on the drum are the
+    // source's expressions, projected onto the plane the two arbors share, so
+    // what moves on screen is the run the sim cuts its links from rather than
+    // a drawing of one. Plate 2 plots the HUD's two torque expressions against
+    // the taper a level product would actually need. Plate 3 runs the
+    // maintaining sandwich's shipped laws (sawRadiusAt, the pawl ride, §48's
+    // one-sided detent) in each of its two states.
+    (function () {
+      var NS = 'http://www.w3.org/2000/svg';
+      var el = function (id) { return document.getElementById(id); };
+      var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+      var box = document.getElementById('fusee');
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var svgEl = function (name, attrs) {
+        var n = document.createElementNS(NS, name);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        return n;
+      };
+
+      // ---- the constants, named as src/main.js names them ----------------
+      var R_SMALL = 2.6, R_LARGE = 7.4;                   // FUSEE_R_SMALL / FUSEE_R_LARGE
+      var HOURS = 30;                                     // SPEC.reserveHours — the §22 knob
+      var WRAP_TURNS = HOURS / 8;                         // FUSEE_WRAP_TURNS = 3.75
+      var GROOVE_TURNS = Math.ceil(WRAP_TURNS + 0.25);    // FUSEE_GROOVE_TURNS = 4
+      var F_ACTIVE = WRAP_TURNS / GROOVE_TURNS;           // FUSEE_F_ACTIVE = 0.9375
+      var AVG_R = (R_SMALL + R_LARGE) / 2;                // FUSEE_AVG_R = 5
+      var BAND = 2.7775, Z0 = 4.74;                       // FUSEE_BAND, FUSEE_Z0 (= FUSEE_Z0_MIN)
+      var BASE_Z = 4.59, TIP_Z = 7.5375;                  // cone base and tip in world z
+      var CW_TOP = 4.26, SPRING_TOP = 7.5575;             // the two planes the band is solved between
+      var DRUM_R = 10, WRAP_R = 10.66;                    // DRUM_R_ACTUAL, + CHAIN_END_R_OUT = DRUM_WRAP_R
+      var DRUM_BOT = 2.93, DRUM_TOP = 7.5575;
+      var COIL_TOP = DRUM_TOP - 0.6;                      // hook plane, just under the drum's lid
+      var COIL_PITCH = 0.69;                              // CHAIN_COIL_PITCH = CHAIN_PIN_LEN + 0.03
+      var D = R_LARGE + DRUM_R + 2.5;                     // drumPos: the cone, the drum, and a 2.5 gap
+      var ENGAGED = 2 * Math.PI * AVG_R * WRAP_TURNS;     // CHAIN_ENGAGED = 117.81
+      var ROT_FULL = ENGAGED / WRAP_R;                    // DRUM_ROT_FULL, radians
+      var PITCH_U = 1.9;                                  // CHAIN_PITCH — for the link count
+
+      // fuseeGrooveAt, verbatim. f: 0 = bottom/large end … 1 = top/small end.
+      function grooveAt(f) { return { r: R_LARGE + (R_SMALL - R_LARGE) * f, z: Z0 + BAND * f }; }
+      // The HUD's own two lines (main.js, the Time panel's torque bars).
+      function springTq(t) { return 0.35 + 0.65 * t; }
+      function hudR(t) { return R_LARGE + (R_SMALL - R_LARGE) * t; }
+      function trainTq(t, r) { return (springTq(t) * r) / R_SMALL; }
+      // What the chain actually sits on: the wrap stops at F_ACTIVE.
+      function seatR(t) { return grooveAt(t * F_ACTIVE).r; }
+      // ...and what a LEVEL product would require, in the same units: the
+      // radius that makes trainTq exactly 1 is r = FUSEE_R_SMALL / springTq.
+      function needR(t) { return R_SMALL / springTq(t); }
+
+      // The pose rebuildChain computes for a given tension.
+      function chainState(t) {
+        var fActive = t * F_ACTIVE;
+        var active = grooveAt(fActive);
+        var wraps = Math.max(t * WRAP_TURNS, 0.05);
+        // baseTurns — the build then solves the fractional turn so the last
+        // link lands on the drum-local hook; that congruence needs the
+        // layout's azimuths, so the plate draws the accounting turn count.
+        var drumTurns = Math.max((1 - t) * ROT_FULL / (2 * Math.PI) + 0.3, 0.05);
+        // The external tangent, same branch the source takes: the radii to
+        // the two tangent points are PARALLEL, so one angle serves both.
+        var alpha = Math.acos(clamp((active.r - WRAP_R) / D, -1, 1));
+        return {
+          t: t, active: active, wraps: wraps, drumTurns: drumTurns, alpha: alpha,
+          takeoffZ: COIL_TOP - drumTurns * COIL_PITCH,
+        };
+      }
+
+      // ================= PLATE 2 — the bargain ============================
+      // Two panels, both plotted from the expressions above. x is the reserve
+      // with FULL WIND at the left, so the eye reads it running down.
+      var AX0 = 80, AX1 = 360, BX0 = 460, BX1 = 740, PY0 = 250, PY1 = 70;
+      var RLO = 2.2, RHI = 7.8, TQLO = 0.3, TQHI = 1.45;
+      var plate2 = (function () {
+        var gA = el('feqA'), gB = el('feqB');
+        var readout = el('feqReadout'), chip = el('feqChip');
+        function ax(t) { return AX0 + (1 - t) * (AX1 - AX0); }
+        function bx(t) { return BX0 + (1 - t) * (BX1 - BX0); }
+        function ay(r) { return PY0 - ((r - RLO) / (RHI - RLO)) * (PY0 - PY1); }
+        function by(q) { return PY0 - ((q - TQLO) / (TQHI - TQLO)) * (PY0 - PY1); }
+        function curve(px, py, f, n) {
+          var d = [];
+          for (var i = 0; i <= n; i++) { var t = i / n; d.push((i ? 'L' : 'M') + px(t).toFixed(1) + ' ' + py(f(t)).toFixed(1)); }
+          return d.join(' ');
+        }
+        function frame(g, x0, x1) {
+          g.appendChild(svgEl('line', { x1: x0, y1: PY0, x2: x1, y2: PY0, stroke: 'var(--text)', 'stroke-width': 1 }));
+          g.appendChild(svgEl('line', { x1: x0, y1: PY1, x2: x0, y2: PY0, stroke: 'var(--text)', 'stroke-width': 1 }));
+        }
+        frame(gA, AX0, AX1); frame(gB, BX0, BX1);
+        // Panel A — the gap between the seat and the hyperbola, as an area.
+        var fill = [];
+        for (var i = 0; i <= 60; i++) { var t = i / 60; fill.push((i ? 'L' : 'M') + ax(t).toFixed(1) + ' ' + ay(seatR(t)).toFixed(1)); }
+        for (var j = 60; j >= 0; j--) { var t2 = j / 60; fill.push('L' + ax(t2).toFixed(1) + ' ' + ay(needR(t2)).toFixed(1)); }
+        gA.appendChild(svgEl('path', { d: fill.join(' ') + ' Z', fill: 'var(--ruby)', opacity: 0.16 }));
+        gA.appendChild(svgEl('path', { d: curve(ax, ay, needR, 80), fill: 'none', stroke: 'var(--brass)', 'stroke-width': 2 }));
+        gA.appendChild(svgEl('path', { d: curve(ax, ay, seatR, 40), fill: 'none', stroke: 'var(--steel)', 'stroke-width': 2 }));
+        gA.appendChild(svgEl('line', {   // the cut tip — a radius no wrap ever reaches
+          x1: AX0, y1: ay(R_SMALL), x2: AX1, y2: ay(R_SMALL),
+          stroke: 'var(--steel)', 'stroke-width': 1, 'stroke-dasharray': '3 4', opacity: 0.6,
+        }));
+        gA.appendChild(svgEl('circle', { cx: ax(1), cy: ay(R_SMALL), r: 3, fill: 'none', stroke: 'var(--steel)', 'stroke-width': 1.2 }));
+        // Panel B — the reference the flat line claimed, and the two products.
+        gB.appendChild(svgEl('line', {
+          x1: BX0, y1: by(1), x2: BX1, y2: by(1), stroke: 'var(--muted)', 'stroke-width': 1, 'stroke-dasharray': '5 4',
+        }));
+        gB.appendChild(svgEl('path', { d: curve(bx, by, springTq, 40), fill: 'none', stroke: 'var(--brass)', 'stroke-width': 1.6 }));
+        gB.appendChild(svgEl('path', {
+          d: curve(bx, by, function (t) { return trainTq(t, hudR(t)); }, 80),
+          fill: 'none', stroke: 'var(--ruby)', 'stroke-width': 2.2,
+        }));
+        gB.appendChild(svgEl('path', {
+          d: curve(bx, by, function (t) { return trainTq(t, seatR(t)); }, 80),
+          fill: 'none', stroke: 'var(--ruby)', 'stroke-width': 1.4, 'stroke-dasharray': '5 3', opacity: 0.85,
+        }));
+        var mA = svgEl('circle', { r: 5, fill: 'var(--steel)' }), mB = svgEl('circle', { r: 5, fill: 'var(--ruby)' });
+        gA.appendChild(mA); gB.appendChild(mB);
+
+        return function (t) {
+          var r = seatR(t), q = trainTq(t, hudR(t));
+          mA.setAttribute('cx', ax(t)); mA.setAttribute('cy', ay(r));
+          mB.setAttribute('cx', bx(t)); mB.setAttribute('cy', by(q));
+          readout.textContent = tr('reserve') + ' ' + t.toFixed(3) + ' · ' + tr('seat r') + ' ' + r.toFixed(2) +
+            ' · ' + tr('needs') + ' ' + needR(t).toFixed(2) + ' · ' + tr('train') + ' ' + q.toFixed(3);
+          // The sign is suppressed inside a twentieth of a percent: at full
+          // wind the product is 1 to float noise, and "−0.0%" would be a
+          // rounding artefact presented as a finding.
+          var err = (q - 1) * 100;
+          chip.className = 'chip ' + (Math.abs(err) < 2 ? 'ride' : 'ramp');
+          chip.textContent = Math.abs(err) < 0.05 ? tr('level — the two ends agree')
+            : (err >= 0 ? '+' : '−') + Math.abs(err).toFixed(1) + '% ' + tr('off the level product');
+        };
+      })();
+
+      // ================= PLATE 1 — the elevation ==========================
+      // Projected onto the plane the two arbors share: u runs along that
+      // line (fusee axis at u = 0, drum axis at u = −D) and z is world z.
+      // z is drawn at TWICE the radial scale and the plate says so — at one
+      // scale the whole z story (a 0.69 coil pitch, a 0.694 groove pitch, a
+      // 2.7775 band) collapses into the thickness of a few strokes, which is
+      // the one thing this view exists to show. Radially it is true.
+      var S = 17, SZ = 34, OX = 590, BY = 339.6;
+      function X(u) { return OX + u * S; }
+      function Y(z) { return BY - z * SZ; }
+
+      (function () {
+        var slider = el('fzSlider'), btn = el('fzPlay'), chip = el('fzChip');
+        var readout = el('fzReadout'), chainOut = el('fzChain');
+        var coneEl = el('fzCone'), drumEl = el('fzDrum'), grooveG = el('fzGrooves'), planeG = el('fzPlanes');
+        var wrapF = el('fzWrap'), wrapB = el('fzWrapBack'), coilF = el('fzCoil'), coilB = el('fzCoilBack');
+        var spanEl = el('fzSpan'), dotEl = el('fzTakeoff'), hookG = el('fzHook');
+
+        // ---- static frame, drawn from the same constants ----------------
+        drumEl.setAttribute('x', X(-D - DRUM_R)); drumEl.setAttribute('y', Y(DRUM_TOP));
+        drumEl.setAttribute('width', 2 * DRUM_R * S); drumEl.setAttribute('height', (DRUM_TOP - DRUM_BOT) * SZ);
+        coneEl.setAttribute('d', 'M ' + X(-R_LARGE) + ' ' + Y(BASE_Z) + ' L ' + X(R_LARGE) + ' ' + Y(BASE_Z) +
+          ' L ' + X(R_SMALL) + ' ' + Y(TIP_Z) + ' L ' + X(-R_SMALL) + ' ' + Y(TIP_Z) + ' Z');
+        for (var g = 0; g <= GROOVE_TURNS; g++) {   // one line per groove turn, edge-on
+          var gp = grooveAt(g / GROOVE_TURNS);
+          grooveG.appendChild(svgEl('line', { x1: X(-gp.r), y1: Y(gp.z), x2: X(gp.r), y2: Y(gp.z) }));
+        }
+        [[CW_TOP, 'var(--muted)'], [SPRING_TOP, 'var(--muted)']].forEach(function (p) {
+          planeG.appendChild(svgEl('line', {
+            x1: X(-D - DRUM_R - 1), y1: Y(p[0]), x2: X(R_LARGE + 1), y2: Y(p[0]),
+            stroke: p[1], 'stroke-width': 0.75, 'stroke-dasharray': '7 5',
+          }));
+        });
+        // The lowest groove, dimensioned off the plane that forced it.
+        planeG.appendChild(svgEl('line', {
+          x1: X(R_LARGE + 0.6), y1: Y(CW_TOP), x2: X(R_LARGE + 0.6), y2: Y(Z0),
+          stroke: 'var(--muted)', 'stroke-width': 0.75,
+        }));
+
+        function strands(sample, n) {
+          var d = { f: '', b: '' }, last = null;
+          for (var i = 0; i <= n; i++) {
+            var p = sample(i / n), key = p.front ? 'f' : 'b';
+            var xy = ' ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+            if (last !== null && last !== key) d[last] += ' L' + xy;   // meet at the silhouette
+            d[key] += (last === key ? ' L' : ' M') + xy;
+            last = key;
+          }
+          return d;
+        }
+
+        function draw(t) {
+          var st = chainState(t);
+          // Cone wrap: rebuildChain's own sweep, ang = thetaT − (wraps − s)·2π,
+          // with the tangent departure put where this projection sees it.
+          var phi0 = Math.PI - st.alpha;
+          var wr = strands(function (q) {
+            var s = q * st.wraps, gp = grooveAt(s / GROOVE_TURNS);
+            var ph = phi0 - (st.wraps - s) * Math.PI * 2;
+            return { x: X(gp.r * Math.cos(ph)), y: Y(gp.z), front: Math.sin(ph) > 0 };
+          }, Math.max(Math.ceil(st.wraps * 28), 8));
+          wrapF.setAttribute('d', wr.f); wrapB.setAttribute('d', wr.b);
+          // Drum coil: hook-anchored, hanging one chain thickness a turn.
+          var co = strands(function (q) {
+            var s = q * st.drumTurns, ph = phi0 + s * Math.PI * 2;
+            return {
+              x: X(-D + WRAP_R * Math.cos(ph)),
+              y: Y(COIL_TOP - (st.drumTurns - s) * COIL_PITCH),
+              front: Math.sin(ph) > 0,
+            };
+          }, Math.max(Math.ceil(st.drumTurns * 28), 8));
+          coilF.setAttribute('d', co.f); coilB.setAttribute('d', co.b);
+          // The span, between the two parallel radii's tangent points.
+          var uc = -st.active.r * Math.cos(st.alpha), ud = -D - WRAP_R * Math.cos(st.alpha);
+          spanEl.setAttribute('x1', X(ud)); spanEl.setAttribute('y1', Y(st.takeoffZ));
+          spanEl.setAttribute('x2', X(uc)); spanEl.setAttribute('y2', Y(st.active.z));
+          dotEl.setAttribute('cx', X(uc)); dotEl.setAttribute('cy', Y(st.active.z));
+          while (hookG.firstChild) hookG.removeChild(hookG.firstChild);
+          hookG.appendChild(svgEl('rect', {
+            x: X(-D + WRAP_R) - 3, y: Y(COIL_TOP) - 4, width: 6, height: 8,
+            fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.2,
+          }));
+
+          // The chain LEDGER, as arithmetic rather than assertion. The wrap's
+          // length integrates a radius that falls linearly along it, so its
+          // mean is the mean of its END radii — and the drum pays out at a
+          // fixed one. The two therefore cannot agree at every state, and
+          // this readout is where you watch them fail to: the total is the
+          // one number in the plate that ought not to move. (TODO 40.)
+          var onCone = 2 * Math.PI * st.wraps * (R_LARGE + st.active.r) / 2;
+          var onDrum = 2 * Math.PI * WRAP_R * st.drumTurns;
+          var span = Math.sqrt(Math.max(D * D - Math.pow(WRAP_R - st.active.r, 2), 0));
+          var total = onCone + onDrum + span;
+          readout.textContent = tr('reserve') + ' ' + (t * HOURS).toFixed(1) + ' h · ' +
+            tr('wraps') + ' ' + st.wraps.toFixed(3) + ' · ' + tr('coils') + ' ' + st.drumTurns.toFixed(3) +
+            ' · r ' + st.active.r.toFixed(2);
+          chainOut.textContent = tr('chain') + ' ' + onCone.toFixed(1) + ' + ' + span.toFixed(1) + ' + ' +
+            onDrum.toFixed(1) + ' = ' + total.toFixed(1) + ' u ≈ ' + Math.round(total / PITCH_U) + ' ' + tr('links');
+
+          chip.className = 'chip';
+          if (t > 0.995) { chip.classList.add('ride'); chip.textContent = tr('FULLY WOUND · chain home'); }
+          else if (t < 0.005) { chip.classList.add('trip'); chip.textContent = tr('RUN DOWN · the cone is bare'); }
+          else if (t > 0.5) { chip.classList.add('ramp'); chip.textContent = tr('WOUND · pulling near the small radius'); }
+          else { chip.classList.add('ramp'); chip.textContent = tr('LOW · pulling near the large radius'); }
+          plate2(t);
+        }
+
+        // Scrubbing is the honest default; play walks a whole run-down and
+        // the wind that follows it (winding is the fast half, as on the wrist).
+        var playing = false, t0 = null, raf = 0, RUN = 7.0, WIND = 2.2;
+        function frame(now) {
+          if (!playing) return;
+          if (!box.open || document.hidden) { t0 = null; raf = requestAnimationFrame(frame); return; }
+          if (t0 === null) t0 = now;
+          var e = ((now - t0) / 1000) % (RUN + WIND);
+          var t = e < RUN ? 1 - e / RUN : (e - RUN) / WIND;
+          slider.value = String(Math.round(t * 1000));
+          draw(t);
+          raf = requestAnimationFrame(frame);
+        }
+        function setPlaying(on) {
+          playing = on;
+          btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+          if (on) { t0 = null; raf = requestAnimationFrame(frame); }
+          else { cancelAnimationFrame(raf); draw(slider.value / 1000); }
+        }
+        slider.addEventListener('input', function () {
+          if (playing) setPlaying(false); else draw(slider.value / 1000);
+        });
+        btn.addEventListener('click', function () { setPlaying(!playing); });
+        draw(1);
+        if (!reduce) setPlaying(true);
+      })();
+
+      // ================= PLATE 3 — maintaining power ======================
+      (function () {
+        // Radii, derived the way the source derives them. barrelDist is the
+        // great wheel's own mesh distance (14.4 + 1.8), the center wheel is
+        // 11.25, and 0.36 is its addendum: the sandwich lives inside the
+        // closest approach of a wheel that sweeps under the cone.
+        var CM = 0.15, TEETH = 24;                              // CLEAR_MARGIN, MAINT_TEETH
+        var RING_R = 16.2 - 11.25 - 0.36 - CM;                  // MAINT_RING_R = 4.44
+        var RING_ROOT = RING_R * 0.8;
+        var PAWL_PIV = RING_ROOT - 0.25;                        // stud footed inside the root land
+        var FLANGE_R = PAWL_PIV / 1.28;                         // the builder pivots a click at 1.28·r
+        var KW = 0.34, SPUR_R = (KW * 24) / 2;                  // KW_MODULE, WIND_SPUR_TEETH
+        // sawRadiusAt, verbatim: root→tip chord over 72% of the pitch, face
+        // over the last 28%. Both rings and the detent read this one profile.
+        function sawR(u, R) {
+          var rootR = R * 0.8, depth = R * 0.2;
+          return u <= 0.72 ? rootR + (depth * u) / 0.72 : R - (depth * (u - 0.72)) / 0.28;
+        }
+        // The pawl, as built: beak tip 0.8·FLANGE_R out from its stud.
+        var PAWL_BASE = Math.PI * 0.778;
+        function pawlTip(rot) { return { x: PAWL_PIV + Math.cos(rot) * FLANGE_R * 0.8, y: Math.sin(rot) * FLANGE_R * 0.8 }; }
+        var p0 = pawlTip(PAWL_BASE);
+        var PAWL_TIP_R = Math.hypot(p0.x, p0.y), PAWL_TIP_AZ = Math.atan2(p0.y, p0.x);
+        var pE = pawlTip(PAWL_BASE + 1e-4);
+        var PAWL_SIGN = Math.sign(Math.hypot(pE.x, pE.y) - PAWL_TIP_R) || 1;
+        // The detent's aim, SOLVED by the source's own scan for the seat
+        // closest to a working bite (root + 0.35 of the tooth's depth).
+        var pivR = SPUR_R + KW + CM + 0.4;
+        var LEVER = pivR - RING_ROOT + 1.1;
+        var targetR = RING_ROOT + 0.35 * (RING_R - RING_ROOT);
+        var DET_BASE = Math.PI * 0.8, bestErr = Infinity;
+        for (var aim = Math.PI * 0.6; aim <= Math.PI * 0.98; aim += 0.005) {
+          var tx = pivR + Math.cos(aim) * LEVER, ty = Math.sin(aim) * LEVER;
+          var err = Math.abs(Math.hypot(tx, ty) - targetR);
+          if (err < bestErr) { bestErr = err; DET_BASE = aim; }
+        }
+        var dt = { x: pivR + Math.cos(DET_BASE) * LEVER, y: Math.sin(DET_BASE) * LEVER };
+        var DET_TIP_R = Math.hypot(dt.x, dt.y), DET_TIP_AZ = Math.atan2(dt.y, dt.x);
+        var dtE = { x: pivR + Math.cos(DET_BASE + 1e-4) * LEVER, y: Math.sin(DET_BASE + 1e-4) * LEVER };
+        var DET_SIGN = Math.sign(Math.hypot(dtE.x, dtE.y) - DET_TIP_R) || 1;
+        var DET_PRELOAD = CM / LEVER;   // §48: still pushing at the tooth's bottom
+        // The beak's own azimuth about the barrel, snapped so its tip seats
+        // in a valley at rotation 0 — the build's registration, kept.
+        var pitch = (Math.PI * 2) / TEETH;
+        var DET_AZ = Math.round((Math.PI * 0.62 + DET_TIP_AZ) / pitch) * pitch - DET_TIP_AZ;
+
+        var CX = 250, CY = 165, SC = 24;
+        var px = function (x) { return CX + x * SC; }, py = function (y) { return CY - y * SC; };
+        function toothPath(R) {
+          var d = [];
+          for (var i = 0; i < TEETH; i++) {
+            for (var k = 0; k < 8; k++) {
+              var u = k / 8, a = ((i + u) / TEETH) * Math.PI * 2, r = sawR(u, R);
+              d.push((d.length ? 'L' : 'M') + px(Math.cos(a) * r).toFixed(1) + ' ' + py(Math.sin(a) * r).toFixed(1));
+            }
+          }
+          return d.join(' ') + ' Z';
+        }
+
+        var ringG = el('fmRingG'), flangeG = el('fmFlangeG'), pawlG = el('fmPawls');
+        var detG = el('fmDetent'), springEl = el('fmSpring'), flowG = el('fmFlow');
+        ringG.appendChild(svgEl('path', { d: toothPath(RING_R), fill: 'none', stroke: 'var(--brass)', 'stroke-width': 1.4 }));
+        ringG.appendChild(svgEl('circle', { cx: CX, cy: CY, r: RING_ROOT * SC, fill: 'var(--brass-fill)', opacity: 0.16, stroke: 'var(--brass)', 'stroke-width': 1 }));
+        flangeG.appendChild(svgEl('path', { d: toothPath(FLANGE_R), fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.4 }));
+        // The maintaining SPRING: the build's flat coil in the gap under the
+        // ring, TorusGeometry(RING_ROOT·0.6, …, π·1.5) — three quarters of a
+        // turn at that radius, drawn here as the arc it is.
+        (function () {
+          var sr = RING_ROOT * 0.6 * SC, d = [];
+          for (var i = 0; i <= 48; i++) {
+            var a = (i / 48) * Math.PI * 1.5;
+            d.push((i ? 'L' : 'M') + (CX + Math.cos(a) * sr).toFixed(1) + ' ' + (CY - Math.sin(a) * sr).toFixed(1));
+          }
+          springEl.setAttribute('d', d.join(' '));
+        })();
+        // Two pawls, π apart — 12 of 24 pitches, so they act in unison.
+        var pawls = [0, 1].map(function (k) {
+          var g = svgEl('g', { transform: 'rotate(' + (k * 180) + ' ' + CX + ' ' + CY + ')' });
+          var arm = svgEl('g', {});
+          arm.appendChild(svgEl('line', {
+            x1: px(PAWL_PIV), y1: py(0), x2: px(PAWL_PIV), y2: py(0),
+            stroke: 'var(--steel)', 'stroke-width': 5, 'stroke-linecap': 'round',
+          }));
+          arm.appendChild(svgEl('circle', { cx: px(PAWL_PIV), cy: py(0), r: 3.5, fill: 'var(--steel)' }));
+          g.appendChild(arm); pawlG.appendChild(g);
+          return arm.firstChild;
+        });
+        var detArm = svgEl('line', { stroke: 'var(--steel)', 'stroke-width': 5, 'stroke-linecap': 'round' });
+        var detPiv = svgEl('circle', { r: 3.5, fill: 'var(--muted)' });
+        detG.appendChild(detArm); detG.appendChild(detPiv);
+        // The flow strip — the sim's POWER FLOW palette, same three verdicts
+        // (main.js: PF_STORE amber, PF_DELIVER green, PF_HOLD red). Which
+        // member is which, in each state, is this plate's claim. The labels
+        // are static text in the SVG so they translate with the page.
+        var flowBars = [0, 1, 2, 3, 4].map(function (i) {
+          var r = svgEl('rect', { x: 452, y: 56 + i * 40, width: 14, height: 14, rx: 3 });
+          flowG.appendChild(r);
+          if (i < 4) flowG.appendChild(svgEl('line', {
+            x1: 459, y1: 70 + i * 40, x2: 459, y2: 96 + i * 40,
+            stroke: 'var(--line)', 'stroke-width': 1.5,
+          }));
+          return r;
+        });
+
+        function poseAt(windBack, wheelRot) {
+          flangeG.setAttribute('transform', 'rotate(' + (windBack * 180 / Math.PI + wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+          ringG.setAttribute('transform', 'rotate(' + (wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+          pawlG.setAttribute('transform', 'rotate(' + (wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+          springEl.setAttribute('transform', 'rotate(' + (wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+          // updateMaintaining, verbatim: the pawls ride the RELATIVE angle.
+          var u = (((PAWL_TIP_AZ - windBack) * TEETH) / (Math.PI * 2)) % 1;
+          if (u < 0) u += 1;
+          var lift = Math.max(sawR(u, FLANGE_R) - PAWL_TIP_R, 0) / (FLANGE_R * 0.8);
+          var rot = PAWL_BASE + PAWL_SIGN * lift;
+          var tip = pawlTip(rot);
+          pawls.forEach(function (ln) {
+            ln.setAttribute('x1', px(PAWL_PIV)); ln.setAttribute('y1', py(0));
+            ln.setAttribute('x2', px(tip.x)); ln.setAttribute('y2', py(tip.y));
+          });
+          // ...and the detent rides the wheel's ABSOLUTE rotation, never a
+          // reverse pass. §48's one-sided law: seek the seat, stop at the cam.
+          var un = (((DET_TIP_AZ - (wheelRot - DET_AZ)) * TEETH) / (Math.PI * 2)) % 1;
+          if (un < 0) un += 1;
+          var dLift = Math.max(sawR(un, RING_R) - DET_TIP_R, 0) / LEVER;
+          var seat = DET_BASE - DET_SIGN * DET_PRELOAD, cam = DET_BASE + DET_SIGN * dLift;
+          var a = DET_SIGN > 0 ? Math.max(seat, cam) : Math.min(seat, cam);
+          var dTip = { x: pivR + Math.cos(a) * LEVER, y: Math.sin(a) * LEVER };
+          var rotD = function (p) {
+            return { x: p.x * Math.cos(DET_AZ) - p.y * Math.sin(DET_AZ), y: p.x * Math.sin(DET_AZ) + p.y * Math.cos(DET_AZ) };
+          };
+          var wp = rotD({ x: pivR, y: 0 }), wt = rotD(dTip);
+          detArm.setAttribute('x1', px(wp.x)); detArm.setAttribute('y1', py(wp.y));
+          detArm.setAttribute('x2', px(wt.x)); detArm.setAttribute('y2', py(wt.y));
+          detPiv.setAttribute('cx', px(wp.x)); detPiv.setAttribute('cy', py(wp.y));
+          return { pawlIdx: Math.floor((PAWL_TIP_AZ - windBack) / pitch), detIdx: Math.floor((wheelRot - DET_AZ) / pitch) };
+        }
+
+        var STORE = 'var(--brass)', DELIVER = 'var(--green)', HOLD = 'var(--ruby)', DIM = 'var(--line)';
+        function setFlow(winding) {
+          var c = winding ? [STORE, STORE, HOLD, HOLD, DELIVER] : [DIM, DELIVER, DELIVER, DELIVER, DELIVER];
+          flowBars.forEach(function (r, i) { r.setAttribute('fill', c[i]); });
+        }
+
+        var chip = el('fmChip'), readout = el('fmReadout'), btn = el('fmPlay'), modeBtn = el('fmMode');
+        var winding = false, playing = false, t0 = null, raf = 0;
+        var wheelRot = 0, windBack = 0, snaps = 0, ticks = 0, lastIdx = null;
+        // Display-time dilated, both rates from the movement: the wheel creeps
+        // one barrel turn per 8 h (so one rim tooth = 20 min), and the flange
+        // reverses one turn per banked winding turn, 24 snaps to the turn.
+        var CREEP = 0.13, REVERSE = 0.9;   // rad/s on screen
+        function paint() {
+          var idx = poseAt(windBack, wheelRot);
+          if (lastIdx) {
+            if (idx.pawlIdx !== lastIdx.pawlIdx) snaps += Math.abs(idx.pawlIdx - lastIdx.pawlIdx);
+            if (idx.detIdx !== lastIdx.detIdx) ticks += Math.abs(idx.detIdx - lastIdx.detIdx);
+          }
+          lastIdx = idx;
+          setFlow(winding);
+          chip.className = 'chip ' + (winding ? 'trip' : 'ride');
+          chip.textContent = winding
+            ? tr('WINDING · flange clicks back, the detent holds, the spring feeds the train')
+            : tr('RUNNING · pawls locked, the whole sandwich creeps');
+          readout.textContent = tr('pawl snaps') + ' ' + snaps + ' / 90 ' + tr('per wind') +
+            ' · ' + tr('detent ticks') + ' ' + ticks + ' × 20 min';
+        }
+        function frame(now) {
+          if (!playing) return;
+          if (!box.open || document.hidden) { t0 = null; raf = requestAnimationFrame(frame); return; }
+          if (t0 === null) t0 = now;
+          var dt2 = Math.min((now - t0) / 1000, 0.1);
+          t0 = now;
+          wheelRot += CREEP * dt2;                       // the train never stops
+          if (winding) windBack -= REVERSE * dt2;        // the fusee goes backward under the pawls
+          paint();
+          raf = requestAnimationFrame(frame);
+        }
+        function setPlaying(on) {
+          playing = on;
+          btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+          if (on) { t0 = null; raf = requestAnimationFrame(frame); } else { cancelAnimationFrame(raf); paint(); }
+        }
+        modeBtn.addEventListener('click', function () {
+          winding = !winding;
+          modeBtn.textContent = winding ? tr('stop winding') : tr('start winding');
+          paint();
+        });
+        btn.addEventListener('click', function () { setPlaying(!playing); });
+        paint();
+        if (!reduce) setPlaying(true);
       })();
     })();
 

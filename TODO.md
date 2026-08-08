@@ -4057,3 +4057,101 @@ So it is cheap in geometry and not free in declarations, which is why it is
 filed rather than folded into §89: that landing had no reason to touch the
 going train, and a change that moves support edges deserves its own battery
 run and its own record.
+
+## 40. The fusee does not equalise, and the chain is not a constant length
+
+Three arithmetic gaps in one mechanism, found by plotting the shipped
+expressions in `explain.html`'s fusee plates (BUILT §91) rather than
+drawing a picture of them. They share a cause — every one of them quotes
+a fusee radius that is not the radius the chain is on — so they are one
+item, with three rows that can be fixed independently.
+
+The cone build states the goal in as many words:
+
+```
+// The cone profile and the spring model are chosen so S(t)·r_f(t) is
+// constant: S = 0.35 + 0.65·t (linear spring), r_f = lerp(rLarge, rSmall, t),
+// with rLarge/rSmall = S(1)/S(0) = 2.857.
+```
+
+The ratio is right and the conclusion does not follow.
+
+**Row 1 — a straight generator cannot level a linear spring.** With `S`
+linear rising and `r_f` linear falling, the product is a downward parabola:
+it matches at the two ends by construction (that is all `rLarge/rSmall =
+S(1)/S(0)` buys) and bulges everywhere between. Measured on the HUD's own
+line, `trainTq = springTq · fuseeR / FUSEE_R_SMALL`:
+
+| reserve | springTq | fuseeR (HUD) | trainTq |
+|---|---|---|---|
+| 1.000 | 1.000 | 2.6 | 1.000 |
+| 0.502 | 0.676 | 4.992 | **1.298** |
+| 0.000 | 0.350 | 7.4 | 0.996 |
+
+...and against the radius the chain is really on (row 2), the peak is
+**1.340** at reserve 0.553. A ±15% swing, from a mechanism whose entire
+reason to exist is that there is no swing. What a level product needs is
+`r(t) = FUSEE_R_SMALL / S(t)` — a HYPERBOLA, 7.4286 → 2.6, which is why
+the endpoint ratio looked like a proof. At mid-reserve it wants 3.852
+where the cone offers 5.15.
+
+**Fix path.** The honest one is geometry: make `fuseeGrooveAt`'s radius
+`k / S(f)` instead of a lerp, and let the groove cut and the chain path
+follow it (they both already read that one function). That is a
+`makeFusee` change too — the cone's silhouette stops being a straight
+generator, which is what a real fusee looks like anyway. It is also
+coupled to **item 32**: `S` is authored, so re-deriving the taper from it
+only moves the arbitrariness one level. Either do 32 first and solve the
+cone against a real ribbon, or land this and re-solve when 32 lands. What
+is NOT acceptable is the current comment, which claims the product is
+constant when the code it sits on says otherwise.
+
+**Row 2 — the equalisation multiplies by a radius the chain never
+reaches.** The HUD's `fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL −
+FUSEE_R_LARGE) * reserveShown` sweeps the FULL 7.4 → 2.6 band. The chain's
+own take-off does not: `rebuildChain` puts the active groove at
+`fuseeGrooveAt(tension * FUSEE_F_ACTIVE)`, and `FUSEE_F_ACTIVE` is 0.9375
+(3.75 wrap turns over 4 cut groove turns), so at full wind the chain pulls
+at **2.9**. The tip's 2.6 carries the runout and nothing else. One line:
+the HUD should read `fuseeGrooveAt(tension * FUSEE_F_ACTIVE).r`, the same
+function the geometry uses. Note it makes the bulge WORSE on paper
+(1.115 at full wind, not 1.000) — which is the point, and row 1's problem,
+not this row's.
+
+**Row 3 — the drum's rotation is linear in the reserve where the chain's
+take-up is quadratic, so the chain changes length.** The cone gathers
+`2π · turns · r̄` of chain, and `r̄` is the mean of the radii the wrap
+spans — `(7.4 + 2.9)/2 = 5.15`, not the `FUSEE_AVG_R` 5.0 that
+`CHAIN_ENGAGED` books it at. Worse than the 3% that costs at the endpoint
+(`DRUM_ROT_FULL` = 1.759 turns where the chain wants 1.812), the
+relationship is not linear at all: chain on the cone goes as
+`174.36·t − 53.02·t²` while the drum pays out `117.81·t`. The drawn path
+is therefore ~160 u at both ends of the reserve and ~172 u in the middle.
+
+**This one is measurable on the shipped mesh, not just on paper.**
+`rebuildChain` sets the link count from the curve's own length, so the
+chain physically gains and gives back links as the watch runs down —
+vertex counts over `setPose({ tension })`:
+
+| reserve | 0 | 0.25 | 0.5 | 0.75 | 1 |
+|---|---|---|---|---|---|
+| chain mesh vertices | 64,552 | 68,226 | 70,744 | 69,196 | 66,100 |
+
++9.6% at mid-reserve against empty, ~8 links appearing and disappearing.
+Nothing measures it today: the chain is display-only (nothing reads its
+geometry back), the sweeps see a rebuilt mesh as a mover and never compare
+its length across poses, and no assert states that a chain is a fixed
+length of steel — the same class of hole `devLen` closed for the
+mainspring in item 1, and the same fix shape: assert the run's length is
+constant across the reserve axis, then make it true.
+
+**Order.** Row 2 is a one-liner and can land alone. Row 3 wants the drum's
+rotation derived from the chain actually consumed
+(`rot(t) = C(t) / DRUM_WRAP_R` with `C` the wrap integral) rather than
+from `(1 − t) · DRUM_ROT_FULL`, and it must be landed carefully:
+`DRUM_ROT_FULL` is ALSO the mainspring's wind sweep (`springWindSweep`
+into `makeBarrel`, item 1's morph), so changing it moves the ribbon's
+frames and wants an `oscillator`-style re-check of the spring's own
+geometry, plus the reserve hand's gearing assert. Row 1 is the redesign
+and should wait for item 32 unless the cone is being cut for other
+reasons anyway.

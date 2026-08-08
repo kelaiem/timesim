@@ -8246,3 +8246,109 @@ the way it did before, because the box's width and x are unchanged and
 only its top edge moved up 42 px into ground the panel already covered.
 Both readout rows clear the panel's bottom edge there. Nothing about
 that layering is new, and moving the HUD would be a different change.
+## §91 — Three driven plates for the fusee, and the one that would not stay flat
+
+**Filed from an owner request** — "improve the explainer for the fusee and
+chain using animations; the alarm feeler explainer is the gold standard."
+The feeler entry is the right standard: a section plate you drive with a
+slider, a graph plotting `alarmPinDropNow`'s own law, and a chip vocabulary
+that names the state. Beside it, the fusee entry was one static plate and a
+paragraph. Everything it *claimed* — that both ends of the chain travel,
+that the cone equalises, that a detent feeds the train while you wind — was
+prose with a drawing next to it.
+
+The entry now carries three plates, all driven, and the second one
+disagreed with the caption it replaced. That is written up as **TODO 40**;
+this section is the landing, and the finding is the reason it was worth
+doing rather than a footnote to it.
+
+### Plate 1 — elevation, scrubbed by the reserve
+
+The plate is a true elevation projection of `rebuildChain`'s own
+parametric curve onto the plane the two arbors share, not a drawing of
+one. Both helices are the source's expressions, sampled:
+
+- the cone wrap at `ang = thetaT − (wraps − s)·2π` over
+  `fuseeGrooveAt(s / FUSEE_GROOVE_TURNS)`, so it climbs exactly one groove
+  pitch per turn and a full 3.75-turn wind reaches `f` 0.9375;
+- the drum coil hanging from its hook at `COIL_TOP − (drumTurns − s)·CHAIN_COIL_PITCH`;
+- the span between the two tangent points of the same external tangent the
+  build solves (`alpha = acos((r_active − DRUM_WRAP_R)/D)`), which is why it
+  crosses in front of both bodies at 113° off the centre line rather than
+  running from silhouette to silhouette. That looked wrong and is right.
+
+Strands whose depth puts them behind the body are drawn faint — §71's
+hidden-line convention, borrowed. **z is drawn at twice the radial scale
+and the plate says so**: at one scale a 0.69 coil pitch and a 0.694 groove
+pitch are the width of a stroke, and the z story is the only thing this
+view exists to tell. The two planes that pin the cone are dimensioned in,
+because `FUSEE_Z0` is *solved* between them — the center wheel's top face
+below, the hairspring stack above.
+
+A `play` button runs a whole let-down and the faster wind that follows it;
+scrubbing the slider takes over, on the zero-reset plate's precedent.
+
+### Plate 2 — the taper the equalisation needs, against the taper that is cut
+
+Two panels, both plotting the shipped arithmetic: radius against reserve
+(the seat the chain is on, the hyperbola a level product requires, the gap
+between them shaded) and torque against reserve (`springTq`, and `trainTq`
+computed both ways). Its marker follows plate 1's reserve — one input,
+two views, the feeler's arrangement.
+
+**The old caption said "train torque ≈ 1, the whole reserve" and drew a
+flat red line. It is a parabola.** A linear spring needs a hyperbolic
+cone; this cone's generator is straight, so the product matches at the two
+ends by construction and bulges to 1.34 between them. Two more gaps came
+out with it — the HUD multiplies by `FUSEE_R_SMALL` 2.6 where the wrap
+stops at 2.9, and `CHAIN_ENGAGED` books the wind at `FUSEE_AVG_R` 5.0 where
+the wrap's own mean radius is 5.15. All three are TODO 40.
+
+The third one is not a paper finding. `rebuildChain` sets its link count
+from the curve's length, so the chain gains and gives back about 9% of its
+links over one let-down, measurable on the shipped mesh: 64,552 / 70,744 /
+66,100 vertices at reserve 0 / 0.5 / 1. **A chain is a fixed length of
+steel and nothing in the battery says so** — the same hole `devLen` closed
+for the mainspring, still open here.
+
+### Plate 3 — maintaining power, in its two states
+
+The mechanism the entry had named in half a sentence for two years. Plan
+view at the great wheel: the base ratchet flange keyed to the fusee, the
+maintaining wheel carrying two pawls, its rim teeth, and the plate detent —
+every radius derived the way the source derives it (the sandwich lives
+inside the center wheel's closest approach, `MAINT_RING_R` = 16.2 − 11.25 −
+0.36 − `CLEAR_MARGIN`), and the detent's aim re-solved by the same scan for
+the seat closest to a working bite. `sawRadiusAt` is ported verbatim, the
+pawl ride reads `windBack`, and the detent is §48's one-sided follower —
+seek the seat, stop at the cam — rather than a part placed on a profile.
+
+A `winding` toggle runs the state that makes a fusee usable: the flange
+reverses under the pawls while the wheel, held by a detent that never sees
+reverse motion, keeps creeping with the train. The flow strip alongside
+uses the sim's own POWER FLOW verdicts and colours (amber stores, green
+delivers, red holds), so the plate states which member is carrying torque
+in each state instead of implying it. The rates are the movement's: 24 pawl
+snaps to the fusee turn, 90 over a full wind, one detent tick per rim tooth
+= one every 20 minutes.
+
+### What this cost in localisation, and why that is the design working
+
+Ten keys' English no longer exists, so ten German and ten Chinese entries
+became unmatched — the gate's failure mode by design, and the reason
+`--check` is a gate rather than a report. They are gone; the 68 new keys
+are translated in both languages, three German plate labels shortened to
+stay inside their plates (the fit check caught all three), and coverage is
+back to 100%. `explain-quotes` gained four comparable claims and still
+passes.
+
+### The rule this landing is evidence for
+
+The entry's own sentence, now: *the plate shows the gap rather than hiding
+it, which is the point of drawing the law instead of a picture of the law.*
+A picture of a law is a claim about it. Plot the expression and the claim
+either holds or it does not, and this one had not held since the cone was
+cut. **An explainer plate is an instrument** — the cheapest one in the
+repo, since it costs no battery time — and it found something three
+collision-clean sweeps could not, because none of them has an opinion about
+torque.
