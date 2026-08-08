@@ -14,12 +14,14 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (17): worker controls on first load · one cache, named for
-// the version · version.json and /__state NOT cached · precache complete ·
-// OFFLINE: index boots, deep link boots, explain.html renders · deploy →
-// toast → Reload lands on the NEW version and drops the old cache · the
-// source tree registers NO worker · a hand-registered stub dismantles itself
-// having cached nothing · console silent (rule 6) in both trees.
+// What it asserts (20): worker controls on first load · one cache, named for
+// the scope AND the version · version.json and /__state NOT cached · precache
+// complete · OFFLINE: index boots, deep link boots, explain.html renders ·
+// deploy → toast → Reload lands on the NEW version and drops the old cache ·
+// TWO ENVIRONMENTS UNDER ONE ORIGIN keep one cache each and both still boot
+// offline (§88) · the source tree registers NO worker · a hand-registered stub
+// dismantles itself having cached nothing · console silent (rule 6) in all
+// three trees.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -31,6 +33,12 @@ import { execFileSync } from 'node:child_process';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VA = '0.0.0-offline-check-a', VB = '0.0.0-offline-check-b';
+
+// §88 — the cache name is the worker's SCOPE PATH and its version, so a name
+// cannot be written here without saying where the release is served from. That
+// is the whole content of the change this mirrors: before it, the name was the
+// version alone, and two releases sharing an origin evicted each other.
+const cacheName = (scopePath, version) => `timesim-${scopePath}-${version}`;
 
 const freePort = () => new Promise((res, rej) => {
   const srv = createServer();
@@ -78,10 +86,14 @@ const wireNoise = (page, sink) => {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') sink.push(`${m.type()}: ${m.text()}`); });
 };
 
-const relPort = await freePort(), devPort = await freePort();
+// Three roots: the "QA symlink" (one release at the server root), the editable
+// source tree, and — for §88 — the work directory itself, which already holds
+// both stamped trees as a/ and b/ and so IS a two-environment origin.
+const relPort = await freePort(), devPort = await freePort(), multiPort = await freePort();
 const servers = [
   spawn('python3', ['-m', 'http.server', String(relPort), '--bind', '127.0.0.1', '--directory', site], { stdio: 'ignore' }),
   spawn('python3', ['-m', 'http.server', String(devPort), '--bind', '127.0.0.1', '--directory', ROOT], { stdio: 'ignore' }),
+  spawn('python3', ['-m', 'http.server', String(multiPort), '--bind', '127.0.0.1', '--directory', work], { stdio: 'ignore' }),
 ];
 const browser = await chromium.launch();
 try {
@@ -97,13 +109,14 @@ try {
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 });
   check('release: worker active and controlling on first load', true);
 
+  const cacheA = cacheName('/', VA), cacheB = cacheName('/', VB); // served at the server root
   const keys = await page.evaluate(() => caches.keys());
-  check('release: one cache, named for the version', keys.length === 1 && keys[0] === `timesim-${VA}`, keys.join());
-  const vjson = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('version.json')), `timesim-${VA}`);
+  check('release: one cache, named for the scope and the version', keys.length === 1 && keys[0] === cacheA, keys.join());
+  const vjson = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('version.json')), cacheA);
   check('release: version.json NOT in the cache', !vjson);
-  const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), `timesim-${VA}`);
+  const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), cacheA);
   check('release: /__state NOT in the cache', !stateCached);
-  const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, `timesim-${VA}`);
+  const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, cacheA);
   check('release: precache complete', counts === 18, `${counts}/18`);
 
   // ---- offline: the whole point ----
@@ -132,7 +145,7 @@ try {
   await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VB, { timeout: 30000 });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   check('update: Reload crosses the worker boundary to the NEW release', true);
-  await page.waitForFunction(async (k) => (await caches.keys()).join() === k, `timesim-${VB}`, { timeout: 30000 });
+  await page.waitForFunction(async (k) => (await caches.keys()).join() === k, cacheB, { timeout: 30000 });
   check('update: old release cache dropped on activation', true);
 
   let bad = noise.filter((n) => !IGNORE.test(n));
@@ -164,6 +177,65 @@ try {
   bad = dnoise.filter((n) => !IGNORE.test(n));
   check('dev: boot silent (rule 6)', bad.length === 0, bad.slice(0, 3).join(' | '));
   await dctx.close();
+
+  // ---- §88: two environments, one origin ----
+  //
+  // The GitHub Pages topology, minimally reproduced: the SAME origin serving
+  // two stamped releases at two paths (/a/ and /b/ here; /timesim/testing/ and
+  // /timesim/development/ there). Cache Storage is partitioned by ORIGIN, not
+  // by path, so both workers' caches land in one bucket and each activation
+  // sees the other's keys.
+  //
+  // This is the regression, and it is not hypothetical — it is what the flat
+  // `timesim-<version>` name did: activation deleted every `timesim-`-prefixed
+  // key that was not its own, so bringing up the second environment threw away
+  // the first's precache and §79's offline guarantee survived only for
+  // whichever environment was visited last. Order matters: a is brought up
+  // FIRST and b second, so under the old name it is a's cache that is gone.
+  //
+  // WHICH OF THE TWO CHECKS BELOW ACTUALLY FIRES, measured against the
+  // pre-§88 worker rather than assumed. The CACHE-KEY check is the
+  // discriminator: it read back one key, `timesim-<b's version>`, a's having
+  // been deleted. The OFFLINE BOOT check passed anyway — three ways of asking
+  // (reload; reload after a CDP Network.clearBrowserCache; a fresh page after
+  // closing both) all still booted a, because python3's http.server sends no
+  // Cache-Control and the browser answered from its own caches. So the offline
+  // boot is kept as a statement of the GUARANTEE, end to end, and is not
+  // evidence about the service worker's cache on its own. Do not "strengthen"
+  // it by clearing the HTTP cache — that was tried and changed nothing.
+  const mctx = await browser.newContext();
+  const mnoise = [];
+  const bootAt = async (path) => {
+    const p = await mctx.newPage();
+    wireNoise(p, mnoise);
+    await p.goto(`http://127.0.0.1:${multiPort}${path}index.html`, { waitUntil: 'load' });
+    await p.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+    await p.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 });
+    return p;
+  };
+  const pa = await bootAt('/a/');
+  const pb = await bootAt('/b/');
+  const mkeys = (await pa.evaluate(() => caches.keys())).sort();
+  const want = [cacheName('/a/', VA), cacheName('/b/', VB)].sort();
+  check('two environments: one cache each, named for its own scope — neither evicted the other',
+    mkeys.length === 2 && mkeys.join() === want.join(), mkeys.join(' '));
+
+  await mctx.setOffline(true);
+  await pa.reload({ waitUntil: 'load' });
+  await pa.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+  const va = await pa.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
+  await pb.reload({ waitUntil: 'load' });
+  await pb.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+  const vb = await pb.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
+  // Named for what it holds, not for what it would be nice to hold: see the
+  // section comment above — this one passed against the broken worker too.
+  check('two environments: OFFLINE, both boot, each its own build',
+    va === VA && vb === VB, `${va} / ${vb}`);
+  await mctx.setOffline(false);
+
+  bad = mnoise.filter((n) => !IGNORE.test(n));
+  check('two environments: console silent (rule 6)', bad.length === 0, bad.slice(0, 3).join(' | '));
+  await mctx.close();
 } finally {
   await browser.close();
   for (const s of servers) s.kill();

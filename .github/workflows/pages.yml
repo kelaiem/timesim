@@ -1,0 +1,240 @@
+# §88 — the three GitHub Pages environments.
+#
+# GitHub Pages gives a repository ONE site, so "three environments" is three
+# paths under it, not three sites:
+#
+#   production   https://kelaiem.github.io/timesim/
+#   testing      https://kelaiem.github.io/timesim/testing/
+#   development  https://kelaiem.github.io/timesim/development/
+#
+# That layout is only possible because §28 decided asset URLs stay RELATIVE and
+# carry ?v=<version> rather than being rebased onto an absolute release path —
+# see tools/stamp-release.mjs for the original reasoning. The same property that
+# let the app be served from a symlink of unknown depth lets it be served from
+# an arbitrary subdirectory here, with no build-time knowledge of where.
+#
+# WHERE EACH ENVIRONMENT COMES FROM. Every pointer lives in git, so a deploy is
+# reproducible from the repository alone and no state hides in Actions settings:
+#
+#   development  tip of `main`         — automatic on every merge
+#   testing      the newest release tag — automatic when release.yml publishes,
+#                                         i.e. the same tree QA gets over SFTP
+#   production   branch `production`    — moved ONLY by running this workflow
+#                                         with `promote: <version>`
+#
+# The ladder is therefore merge → cut a release → promote, and each rung is an
+# act somebody performs. Development deliberately does NOT wait for battery.yml
+# on the same commit: it is the unstable tier and its job is to show what main
+# is right now. Testing and production carry tags, and a tag is cut from a main
+# whose battery already passed.
+#
+# WHY IT REBUILDS ALL THREE EVERY TIME. actions/deploy-pages publishes ONE
+# artifact that REPLACES the whole site — there is no partial deploy and no
+# previous state to merge into, so anything not in this artifact is deleted.
+# Assembling all three from their current refs on every run is the only shape
+# that is correct, and it has the nice property of being idempotent: re-running
+# with no input republishes exactly what the three pointers say, whatever the
+# trigger was.
+#
+# VERSION STRINGS ARE READ FROM GIT, NEVER INVENTED (standing rule 1 applied to
+# a deploy). Testing and production carry their release tag. Development carries
+# `git describe --tags`, e.g. `2.1.9-14-g9caa098`, which states exactly what the
+# tip of main is: fourteen commits past 2.1.9. That string changes on every
+# merge, which is what re-arms §28 layer 2's update toast and rotates §79's
+# cache for viewers of the development environment.
+#
+# ONE-TIME REPOSITORY SETUP: Settings → Pages → Build and deployment → Source =
+# "GitHub Actions". The configure-pages step below asks for that automatically,
+# but it cannot switch a repo that has Pages disabled at the organisation level.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      promote:
+        description: "Release tag to promote to production (e.g. 2.1.9). Leave blank to republish all three from where they already point."
+        required: false
+        default: ''
+        type: string
+
+# Never cancel in progress: a half-published site is worse than a slow one, and
+# these runs are short enough to queue.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # the promote step moves refs/heads/production
+      pages: write      # configure-pages
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # checkout already brings branches and tags at fetch-depth 0; this makes
+      # the tags explicit and prunes deleted ones, so `newest tag` cannot be
+      # answered from a stale local ref. Same belt-and-braces as release.yml.
+      - name: Fetch every ref
+        run: git fetch --tags --force --prune origin '+refs/heads/*:refs/remotes/origin/*'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Promotion is a git push, not a setting: the production pointer is a real
+      # branch anyone can read, `git log` and revert. Validated before it moves —
+      # promoting a version that was never released would publish a tree that no
+      # release exists for, and the whole point of the rung is that it cannot.
+      - name: Promote a release to production
+        if: github.event_name == 'workflow_dispatch' && inputs.promote != ''
+        env:
+          PROMOTE: ${{ inputs.promote }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$PROMOTE" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::promote must be a major.minor.patch version — got '$PROMOTE'"
+            exit 1
+          fi
+          if ! git rev-parse -q --verify "refs/tags/$PROMOTE^{commit}" >/dev/null; then
+            echo "::error::no release tag '$PROMOTE' in this repository"
+            exit 1
+          fi
+          SHA=$(git rev-parse "refs/tags/$PROMOTE^{commit}")
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push --force origin "$SHA:refs/heads/production"
+          git fetch --force origin '+refs/heads/production:refs/remotes/origin/production'
+          echo "::notice::production promoted to $PROMOTE ($SHA)"
+
+      - name: Resolve the three pointers
+        id: refs
+        run: |
+          set -euo pipefail
+          LATEST=$(git tag -l | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "::error::no release tag exists — cut one with release.yml before publishing Pages"
+            exit 1
+          fi
+
+          # development: the tip of main, named for what it is
+          echo "dev_ref=origin/main" >> "$GITHUB_OUTPUT"
+          echo "dev_version=$(git describe --tags --always origin/main)" >> "$GITHUB_OUTPUT"
+
+          # testing: the newest release, the same tree release.yml sends to QA
+          echo "test_ref=refs/tags/$LATEST" >> "$GITHUB_OUTPUT"
+          echo "test_version=$LATEST" >> "$GITHUB_OUTPUT"
+
+          # production: the promoted pointer, or the newest release as a
+          # bootstrap so the site root is never a 404 before the first promote
+          if git rev-parse -q --verify refs/remotes/origin/production >/dev/null; then
+            echo "prod_ref=refs/remotes/origin/production" >> "$GITHUB_OUTPUT"
+            echo "prod_version=$(git describe --tags --always refs/remotes/origin/production)" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::no production branch yet — bootstrapping production from $LATEST. Re-run this workflow with 'promote' to set it deliberately."
+            echo "prod_ref=refs/tags/$LATEST" >> "$GITHUB_OUTPUT"
+            echo "prod_version=$LATEST" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Assemble the site
+        env:
+          DEV_REF: ${{ steps.refs.outputs.dev_ref }}
+          DEV_VERSION: ${{ steps.refs.outputs.dev_version }}
+          TEST_REF: ${{ steps.refs.outputs.test_ref }}
+          TEST_VERSION: ${{ steps.refs.outputs.test_version }}
+          PROD_REF: ${{ steps.refs.outputs.prod_ref }}
+          PROD_VERSION: ${{ steps.refs.outputs.prod_version }}
+        run: |
+          set -euo pipefail
+          # The payload is defined ONCE, identically to release.yml: the tracked
+          # files at that ref, minus CI/dev-tool config with no bearing on the
+          # running app. Pages and QA therefore serve the same bytes.
+          build() {
+            name=$1; ref=$2; version=$3; dest=$4
+            echo "--- $name  <-  $ref  ($version)"
+            mkdir -p "$dest"
+            git archive --format=tar "$ref" -- . ':(exclude).github' ':(exclude).claude' \
+              ':(exclude)tools' | tar -x -C "$dest"
+            node tools/build-pages.mjs "$dest" "$version" "$name"
+          }
+          rm -rf _site
+          # Production first: it owns the root, the other two are directories
+          # inside it.
+          build production  "$PROD_REF" "$PROD_VERSION" _site
+          build testing     "$TEST_REF" "$TEST_VERSION" _site/testing
+          build development "$DEV_REF"  "$DEV_VERSION"  _site/development
+
+      # Each environment must answer for itself with the version it was built
+      # with — a mixed-up artifact is otherwise invisible until a viewer reports
+      # the wrong build, and this is the one moment all three are on one disk.
+      - name: Verify each environment is what it claims
+        env:
+          DEV_VERSION: ${{ steps.refs.outputs.dev_version }}
+          TEST_VERSION: ${{ steps.refs.outputs.test_version }}
+          PROD_VERSION: ${{ steps.refs.outputs.prod_version }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          meta() { grep -o "name=\"$2\" content=\"[^\"]*\"" "$1" | cut -d'"' -f4; }
+          check() {
+            dir=$1; name=$2; version=$3
+            got_env=$(meta "$dir/index.html" app-environment)
+            got_ver=$(meta "$dir/index.html" app-version)
+            [ "$got_env" = "$name" ] || fail "$dir: app-environment is '$got_env', expected '$name'"
+            [ "$got_ver" = "$version" ] || fail "$dir: app-version is '$got_ver', expected '$version'"
+            grep -qF "\"version\":\"$version\"" "$dir/version.json" || fail "$dir: version.json does not name $version"
+            grep -qF "\"environment\":\"$name\"" "$dir/version.json" || fail "$dir: version.json does not name $name"
+            # A worker that shipped with VERSION still null is the source-tree
+            # stub: it unregisters itself, so the environment would have no
+            # offline support at all and nothing would say so.
+            if grep -q '^const VERSION = null;' "$dir/sw.js"; then fail "$dir: sw.js shipped inert"; fi
+            echo "ok  $name  $version"
+          }
+          check _site             production  "$PROD_VERSION"
+          check _site/testing     testing     "$TEST_VERSION"
+          check _site/development development "$DEV_VERSION"
+          # Only production may be indexed; the other two carry noindex, since a
+          # project Pages site cannot exclude them any other way (no robots.txt
+          # at the origin root — see tools/build-pages.mjs).
+          if grep -q 'name="robots"' _site/index.html; then fail "production must not be noindex"; fi
+          for d in _site/testing _site/development; do
+            grep -q 'name="robots" content="noindex"' "$d/index.html" || fail "$d is missing its noindex"
+          done
+          # No check here that the three versions DIFFER, deliberately: right
+          # after a release is cut and promoted with nothing merged since, all
+          # three legitimately name the same tag. What must differ is the
+          # environment mark, and `check` above holds that per directory.
+
+      # enablement: switch the repository's Pages source to "GitHub Actions" if
+      # it is not already. It cannot override an organisation policy that
+      # forbids Pages, so Settings → Pages remains the fallback.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
