@@ -274,7 +274,7 @@ absolute `/<releases>/<version>/` rebase 404s the whole app). All
 dev/CI dependencies live under `tools/` so the app itself stays
 dependency-free, and the release payload excludes `tools/`.
 
-`pages.yml` (§88) publishes the same payload to GitHub Pages in three
+`pages.yml` (§88) publishes to GitHub Pages in three
 environments — `development` ← tip of `main`, `testing` ← the newest
 release tag, `production` ← the `production` branch, which only that
 workflow's `promote: <version>` input moves. **Every pointer is a git
@@ -286,6 +286,26 @@ deploy does not exist there, and that is why it is shaped that way.
 `stamp-release.mjs` (the environments are stamped releases, not a
 second kind of build — do not fork the stamper) and adds the
 environment's own marks.
+
+**The deployed payload is `tools/payload.sh`, and it is the ONLY
+definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,
+so the two deploys serve the same bytes by construction rather than by
+two pathspec lists someone keeps in step. The rule is "the app,
+`vendor/`, and the licences"; everything else is repository, not site —
+every `*.md` (including `docs/`), `.githooks`, `.gitignore` and
+`dev_server.py` are cut. Add a doc anywhere and it stays unpublished by
+default, which is the intended direction. `test-geometry.html` DOES ship,
+and §88 made it a third STAMPED document when it decided so — it had been
+shipping unstamped since §28, the one page in a release whose URLs could go
+stale. Ship a new page and stamp it in the same change.
+
+Both deploys ASSERT both halves, because a pathspec breaks silently and
+the symptom — a release quietly carrying the repo's documentation —
+looks exactly like a healthy one: no doc may appear in the payload, and
+`LICENSE` plus both `vendor/LICENSE-*.txt` must. That second half is not
+paranoia: those files survive the `*.md` rule only by being
+extensionless and `.txt`, and a build shipping vendored three.js must
+carry its licences.
 
 **`pages.yml` only ever runs from `main`, and that is load-bearing.**
 Each environment's TREE comes from its own ref via `git archive`, but

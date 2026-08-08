@@ -7815,6 +7815,96 @@ left under the old scope would match neither clause — they contain a `/`,
 so they are not orphans — and would sit there until the browser evicted
 them.
 
+### The payload, narrowed after the first deploy
+
+§88 shipped serving exactly release.yml's payload, on the principle that
+Pages and QA should not drift. The first real deploy showed what that
+principle had actually published: the artifact listing carried `CLAUDE.md`,
+`TODO.md` (213 KB of internal debt notes), `docs/BUILT.md`, `SPEC.md`,
+`AESTHETICS.md`, `README.md`, `dev_server.py`, `test-geometry.html`,
+`.gitignore` and both git hooks — three times, once per environment.
+
+That was not a new policy so much as an old one meeting a new audience.
+The same files already went to QA, but QA is reached by people who have
+been given it and a Pages site is reached by anyone with the URL. The
+deploy is what converted a payload decision into publication.
+
+So the Pages payload is now NARROWER than the release's, and only ever
+subtractively — nothing is added here that a release does not have. It
+carries the app, `vendor/`, and the licences. Everything else is cut:
+every `*.md` (repo documentation is not site content), `.githooks` and
+`.gitignore` (clone-time tooling), and `dev_server.py` (inert when served
+statically).
+
+**`test-geometry.html` was cut and then put back, and putting it back cost
+more than the line it took.** Auditing the payload turned up that it had
+shipped in every release without ever being STAMPED: `stamp-release.mjs`
+processed two documents, so that page's importmap and its
+`./src/geometry.js` import were the only unversioned asset URLs in a
+release — one page that could be served stale forever, which is precisely
+what §28 exists to prevent. Cutting it made that moot; keeping it does not,
+so it became a third stamped document instead. Its three URLs now version
+(27 → 30 rewrites) and the page itself precaches (18 → 19), which is the
+§79 count moving for a stated reason rather than drifting. Being in the
+payload and being stamped are the same decision, and it had been half-made
+since §28.
+
+`build-pages.mjs` additionally marks it `noindex` in EVERY environment,
+production included. The per-environment rule is about which deployment is
+the canonical one to find; this is about the page — a per-part geometry
+smoke test is a developer instrument, and no copy of it should turn up in a
+search.
+
+`LICENSE` and `vendor/LICENSE-*.txt` survive the `*.md` rule by being
+extensionless and `.txt`, and that is not luck to be left to chance: a
+published site carrying vendored three.js must carry its licences, so the
+workflow asserts their PRESENCE in the same step that asserts the docs'
+absence. A pathspec breaks silently — a new doc at a new path, someone
+widening the archive — and the symptom, repo documentation served from the
+site, looks exactly like a healthy deploy. Checked across the whole
+artifact rather than per environment, so a leak into any one of the three
+is caught.
+
+**And then the same cut was made to the SFTP release, which is the better
+end state.** Narrowing Pages alone bought the fix at the price of the
+property the original shape was chosen for — the two deploys no longer
+serving the same bytes — and left two pathspec lists to keep in step. The
+question "should a deployed artifact carry the repository's documentation"
+has the same answer at QA as on a public URL, so it is answered once:
+`tools/payload.sh` holds the definition and BOTH workflows call it. Same
+bytes by construction, and a list nobody can update in one place only.
+
+"Same bytes" is measured, not asserted. Building tag 2.1.9 both ways —
+release.yml's path and pages.yml's testing environment, same tag, same
+stamper — and diffing the trees produces exactly three differences, all of
+them the environment marks that are supposed to be there:
+
+```
+index.html    + <meta name="app-environment" content="testing" />
+              + <meta name="robots" content="noindex" />
+explain.html  (the same two)
+version.json  {"version":"2.1.9"} → {"version":"2.1.9","environment":"testing"}
+```
+
+Every other file is identical, `sw.js` included — which means the two
+builds agree on the precache manifest, the one thing a payload change could
+plausibly have desynchronised.
+
+Both deploys assert both halves — no doc in the payload, and `LICENSE`
+plus both `vendor/LICENSE-*.txt` present. The second assertion is the one
+worth keeping: those files survive the `*.md` rule only by being
+extensionless and `.txt`, which is a coincidence, and a build shipping
+vendored three.js must carry its licences whatever the rule happens to
+match.
+
+The obvious alternative, `.gitattributes` `export-ignore`, is the native
+mechanism and would need no arguments at all. It was rejected for a
+concrete reason: git reads that attribute from the tree BEING ARCHIVED,
+and `pages.yml` archives old release tags. A tag cut before the file
+existed carries no such attributes, so its payload would silently stay
+wide — the same shape of trap as the tooling question above, and the same
+answer: the definition comes from the caller, which is main.
+
 ### What this did NOT close
 
 The environments only stop evicting each other once the release PROMOTED

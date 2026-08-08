@@ -69,6 +69,13 @@ Development's version is `git describe` — literally "28 commits past 2.1.9",
 which is what the tip of `main` is. Testing and production name their release
 tag. Only production is indexable; the other two are served `noindex`.
 
+Every deploy — Pages and the SFTP release alike — ships the payload defined
+by `tools/payload.sh`: the app, `vendor/`, and the licences, and nothing
+else. Repo documentation (every `*.md`, including `docs/`), `dev_server.py` and
+the git hooks describe the project to people working on it and are not site
+content, so they stay in the repository. Both workflows assert both halves —
+no doc leaks in, no licence goes missing.
+
 ## Simulation vs. model — how this project uses the words
 
 Two words carry precise, different claims here, and the honesty ledger
@@ -182,6 +189,14 @@ readouts. The alarm has its own crown and pusher. `?inspect=1` and `?cycle=1`
 deep-link into the inspection and alarm-cycler routes; an Advanced panel
 exposes the finish parameters from `src/aesthetics.json`.
 
+The chrome is localised — English, German and Chinese — selectable in the
+panel or by `?lang=de` / `?lang=zh`; `explain.html`, the mechanism explainer
+linked from the HUD, is translated too. A released build also **loads with
+the network gone**: a service worker precaches the release, so a page that
+has been visited online once boots offline, deep links included. Neither
+applies to a source tree, which registers no worker at all so that an edit is
+never shadowed by a cache.
+
 ## Files
 
 - `src/layout.js` — the layout contract: tooth counts, the z-stack, the
@@ -198,6 +213,14 @@ exposes the finish parameters from `src/aesthetics.json`.
   back to `localStorage`.
 - `src/aesthetics.js`, `src/aesthetics.json` — finish parameters; see
   `AESTHETICS.md` for the reasoning.
+- `src/i18n.js`, `src/explain-i18n*.js` — the UI and explainer localisations
+  (English, German, Chinese), keyed by the English source string.
+- `explain.html` — the mechanism explainer: a plate per mechanism, quoting the
+  real source constants, linked from the HUD and styled as it.
+- `sw.js`, `manifest.webmanifest`, `favicon.svg` — the offline worker (inert in
+  a source tree; baked at release time), the web-app manifest, and the icon,
+  which `tools/make-favicon.mjs` generates from the same monogram the winding
+  crown carries.
 - `dev_server.py` — the static server plus `/__state` and `no-store`.
 - `test-geometry.html` — standalone visual smoke-test page for every part builder.
 - `SPEC.md` (architecture contract), `docs/BUILT.md` (how each shipped
@@ -210,9 +233,9 @@ exposes the finish parameters from `src/aesthetics.json`.
 
 ## Realism inspector
 
-`src/inspect.js` sweeps the mechanism deterministically through eight phase
+`src/inspect.js` sweeps the mechanism deterministically through nine phase
 axes — `beat`, `crown`, `reserve`, `train`, `jumperEngage`, `handSet`, `alarm`,
-`alarmStrike` — via `__clock.setPose()` and reports every pair of functional
+`alarmStrike`, `alarmToggle` — via `__clock.setPose()` and reports every pair of functional
 units whose meshes intersect (exact triangle tests via the vendored
 `three-mesh-bvh`). Pairs with intended mechanical contact (gear meshes, pallet
 lock, chain-on-cone…) are classified EXPECTED and reported separately;
@@ -240,20 +263,29 @@ with out-of-band rows carried as waived debt citing their TODO items),
 `checkSweptOverlap` against a swept-volume registry, `checkStockFloor` and
 `checkSlenderness` (a part can be thick enough and still be a noodle),
 `checkLowCorridor`, `auditOscillators`, `stockCensus` and `fingerprint` for
-determinism. `focusedCheck(clock, names)` runs the same budgets scoped to the
-parts you just moved, in seconds rather than minutes.
+determinism, plus the three that answer the blind spots below —
+`intraUnit` (a unit's movers against its own fixtures), `expectedContacts`
+(per-contact clearance floors across declared pairs) and `restoring` (§48's
+no-spring audit: anything that reciprocates has a restoring element, is
+driven both ways, or is waived citing its TODO). `focusedCheck(clock, names)`
+runs the same budgets scoped to the parts you just moved, in seconds rather
+than minutes.
 
 CI runs the whole bar on every PR: `.github/workflows/battery.yml` drives
 `tools/ci-battery.mjs` under headless Chromium, plus a boot-silence check and
 a double-boot fingerprint comparison. `node tools/ci-battery.mjs` runs the
 same gate locally (needs `npm ci` in `tools/` and a Playwright Chromium).
 
-Two things the sweep structurally cannot see, both written up in `TODO.md`
-(items 5 and 6): a part colliding with another part of the *same* unit, and
-any second overlap between a pair that already has one declared contact.
-`checkAlarmHandoffs` closes both blind spots for the one run that was hiding
-in them — its rod⇄tail and rod⇄crank rows are intra-unit contacts the pair
-sweep can never enumerate.
+Two things the pair sweep structurally cannot see, both written up in
+`TODO.md` (items 5 and 6): a part colliding with another part of the *same*
+unit, and any second overlap between a pair that already has one declared
+contact. `checkAlarmHandoffs` closed both for the one run that was hiding in
+them — its rod⇄tail and rod⇄crank rows are intra-unit contacts the pair sweep
+can never enumerate — and each now has a general instrument as well
+(`intraUnit`, `expectedContacts`), each with known residue: fixture-vs-fixture
+and mover-vs-mover inside one unit are still invisible, and an EXPECTED pair
+with no declared floors row still gets the blanket excuse. If you are checking
+one of those cases, measure it yourself.
 
 ## A note on the styling
 
@@ -296,6 +328,21 @@ appears in this project or on the dial.
 This project is not affiliated with, endorsed by, or a product of any watch
 manufacturer. If the result puts you in mind of a particular Glashütte house,
 that is the shared vocabulary of the school, borrowed admiringly.
+
+## Made with Claude
+
+This project was made possible by **Claude**, Anthropic's AI model. The
+movement, the layout solver, the inspector and every document in this
+repository — this file included — were designed and built in collaboration
+with it, and the reasoning behind each shipped decision is recorded in
+`docs/BUILT.md` rather than left implicit.
+
+That is a statement about *authorship*, not a warranty. Nothing here asks to
+be believed because of who wrote it: the constants are derived from stated
+constraints, the derivations are written next to them, and the checks above
+are what hold them — which is exactly why so much of this repository is
+instruments and so much of `TODO.md` is the gap between what is modelled and
+what is genuinely simulated.
 
 ## License
 

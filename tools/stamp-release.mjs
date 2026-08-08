@@ -20,7 +20,7 @@
 // whether the site is served from the symlink or from the project root.
 //
 // Usage:  node tools/stamp-release.mjs <version>
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
 
 const version = process.argv[2];
@@ -40,13 +40,36 @@ let rewrites = 0;
 // version.json is deliberately absent — it is the one file that must never
 // come from a cache — and sw.js caches itself via the browser's own
 // registration machinery, not via its own manifest.
-const precache = new Set(['index.html', 'explain.html', 'manifest.webmanifest']);
+// §88 — test-geometry.html joined this list when the payload decided it was
+// cargo. It had shipped in every release before that WITHOUT being stamped or
+// precached: its importmap and its `./src/geometry.js` import were the only
+// unversioned asset URLs left in a release, so that one page could be served
+// stale forever. Being in the payload and being stamped are the same decision.
+// favicon.svg joins the unstamped seeds for the manifest's reason: the three
+// documents and the manifest all reference it by a stable path, and an icon
+// missing offline is a small but visible hole in a page that otherwise loads.
+const SEEDS = ['index.html', 'explain.html', 'test-geometry.html',
+  'manifest.webmanifest', 'favicon.svg'];
+// A seed is listed by NAME, not discovered by the walk, so a typo or a file the
+// payload does not carry is invisible here and fatal at the far end: addAll is
+// all-or-nothing, so a worker that precaches one URL the release lacks NEVER
+// ACTIVATES, and this script would still exit 0. Caught while adding
+// favicon.svg — the seed was in the list a run before the file was in the tree,
+// and the stamp reported a healthy 20 precached URLs over a release that could
+// not have worked offline at all.
+for (const f of SEEDS) {
+  if (!existsSync(f)) {
+    console.error(`stamp-release: precache seed '${f}' is not in this tree — the worker would list a URL the release does not carry, and addAll being all-or-nothing it would never activate`);
+    process.exit(1);
+  }
+}
+const precache = new Set(SEEDS);
 
 // The documents: module entry points, importmap targets, and (explain.html)
 // the explainer's module imports. Both carry the baked app-version meta —
 // index.html so layer 2 can compare baked-vs-live, explain.html so its §79
 // worker registration has the same "am I a release" signal without a fetch.
-for (const doc of ['index.html', 'explain.html']) {
+for (const doc of ['index.html', 'explain.html', 'test-geometry.html']) {
   let html = readFileSync(doc, 'utf8');
   html = html.replace(/(["'])(\.\/(?:vendor|src)\/[^"'?]+?)(["'])/g, (_m, a, url, b) => {
     rewrites++;
@@ -98,8 +121,8 @@ for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
 // a silently-missed import is exactly how this class of bug survives.
 const leftovers = [];
 const scan = (p, re) => { const s = readFileSync(p, 'utf8'); let m; while ((m = re.exec(s))) leftovers.push(`${p}: ${m[0].trim()}`); };
-scan('index.html', /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
-scan('explain.html', /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
+for (const doc of ['index.html', 'explain.html', 'test-geometry.html'])
+  scan(doc, /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
 for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
   scan(join('src', f), /\bfrom\s+['"]\.\.?\/[^'"?]+['"]/g);
   scan(join('src', f), /\bimport\(\s*['"]\.\.?\/[^'"?]+['"]\s*\)/g);

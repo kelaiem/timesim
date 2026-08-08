@@ -161,6 +161,7 @@
 
   @media (prefers-reduced-motion: no-preference) { .anim { transition: transform 90ms linear; } }
 </style>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
 </head>
 <body>
 <header>
@@ -1497,6 +1498,21 @@
     full entries carry plates whose numbers are the source constants. If a value here
     disagrees with <code>src/*.js</code>, the source is right and this page has a bug —
     file it like one.
+  </div>
+</footer>
+
+<!-- A SECOND <footer>, not a second .sheet inside the first, and deliberately:
+     §73 tier two keys a rich block by its whole innerHTML, so adding a div to
+     the footer above would have invalidated the §65 text's German and Chinese —
+     prose nobody edited. `footer` is itself a RICH_SELECTOR and
+     querySelectorAll returns both, so this is its own key and translates on its
+     own. -->
+<footer>
+  <div class="sheet">
+    This project was made possible by <b>Claude</b>, Anthropic's AI model: the movement,
+    its instruments and these pages were designed and built in collaboration with it.
+    Every constant here is still held to its constraint by the checks the repository
+    runs — the claim is about who did the work, not a warrant that the work is right.
   </div>
 </footer>
 

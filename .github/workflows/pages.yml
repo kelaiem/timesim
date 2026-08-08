@@ -168,15 +168,14 @@ jobs:
           PROD_VERSION: ${{ steps.refs.outputs.prod_version }}
         run: |
           set -euo pipefail
-          # The payload is defined ONCE, identically to release.yml: the tracked
-          # files at that ref, minus CI/dev-tool config with no bearing on the
-          # running app. Pages and QA therefore serve the same bytes.
+          # The payload is tools/payload.sh's, which release.yml calls too — one
+          # definition, so the two deploys serve the same bytes by construction
+          # rather than by two pathspec lists someone keeps in step. Read that
+          # file for what is cut and why.
           build() {
             name=$1; ref=$2; version=$3; dest=$4
             echo "--- $name  <-  $ref  ($version)"
-            mkdir -p "$dest"
-            git archive --format=tar "$ref" -- . ':(exclude).github' ':(exclude).claude' \
-              ':(exclude)tools' | tar -x -C "$dest"
+            sh tools/payload.sh "$ref" "$dest"
             node tools/build-pages.mjs "$dest" "$version" "$name"
           }
           rm -rf _site
@@ -222,6 +221,26 @@ jobs:
           for d in _site/testing _site/development; do
             grep -q 'name="robots" content="noindex"' "$d/index.html" || fail "$d is missing its noindex"
           done
+          # The payload cuts are ASSERTED, not just configured. A pathspec is
+          # easy to break by accident (a new doc at a new path, someone widening
+          # the archive) and the symptom — repo documentation quietly served
+          # from the site — looks like a healthy deploy. Checked over the whole
+          # artifact rather than per environment, so a leak into any one of the
+          # three is caught.
+          leaked=$(find _site \( -name '*.md' -o -name 'dev_server.py' \
+            -o -name '.gitignore' -o -name '.githooks' \) -print)
+          if [ -n "$leaked" ]; then
+            echo "$leaked"
+            fail "files that must not be published are in the artifact (see list above)"
+          fi
+          # And the other half of the same rule: the licences MUST be there — in
+          # every environment, not just the root, since each is a complete site.
+          for d in _site _site/testing _site/development; do
+            for f in "$d/LICENSE" "$d/vendor/LICENSE-three.txt" "$d/vendor/LICENSE-three-mesh-bvh.txt"; do
+              [ -f "$f" ] || fail "$f is missing — a published site carrying vendored three.js must carry its licences"
+            done
+          done
+
           # No check here that the three versions DIFFER, deliberately: right
           # after a release is cut and promoted with nothing merged since, all
           # three legitimately name the same tag. What must differ is the
