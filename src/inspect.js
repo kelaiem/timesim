@@ -1295,7 +1295,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'mainspringHook', why: 'the ribbon\'s outer end is riveted into the wall hook — TODO 1\'s fixed end, and now the only intersection the ribbon has inside its own unit. (The old row against the drum WALL is gone with the readout that caused it: the retired law scaled the whole spiral 6% at empty, which put the outer coil at r 9.027 against a wall bored to 8.680 — 0.347 of standing penetration in a ribbon built 0.164 clear. The morph pins that end instead of stretching it.)' },
   { unit: 'Alarm striking wheel', a: 'CylinderGeometry#3', b: 'CylinderGeometry#0', why: 'collar pressed on the strike arbor' },
   { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
-  { unit: 'Alarm barrel', a: 'CylinderGeometry#6', b: 'CylinderGeometry#0', why: 'barrel cap on the arbor boss' },
+  // §89 split the alarm barrel into a fixed arbor and a body wound at its
+  // teeth, so its rows changed shape the way the drum's did at TODO 1. The
+  // arbor row is kept as the record of a joint that is still there and no
+  // longer REACHABLE by a mover-vs-fixture check: arbor and boss are now both
+  // fixtures (the arbor stands in the frame, planted in the boss's bore), and
+  // the label moved from an index to a name in the same change.
+  { unit: 'Alarm barrel', a: 'alarmBarrelArbor', b: 'CylinderGeometry#0', why: 'the fixed arbor planted in its boss — the ground. Both sides are fixtures since §89, so this row is unreachable; the geometry is unchanged and the declaration is its record' },
+  { unit: 'Alarm barrel', a: 'mainspringRibbon', b: 'alarmBarrelArbor', why: '§89: the inner coil BEARS ON the fixed arbor — springInner is arborR + one ribbon radius by construction, so the coil\'s inner surface and the arbor\'s are the same surface. The drum states this against its collar across a unit boundary (Set-up work ⇄ Mainspring drum); here the seat is inside the unit, so it is declared here' },
+  { unit: 'Alarm barrel', a: 'mainspringRibbon', b: 'alarmSpringArborHook', why: '§89: the ribbon\'s inner END butts the arbor hook\'s flank — TODO 1\'s anchor, on this barrel\'s own arbor. The lug\'s azimuth is derived from innerAnchorAz and it stands one ribbon thickness proud, so at full wind the second coil comes down onto it at coil bind' },
   { unit: 'Alarm winding train', a: 'ExtrudeGeometry#3', b: 'CylinderGeometry#5', why: 'idler 1 on its stud' },
   { unit: 'Alarm winding train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
   { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#6', why: 'lock lever on its pivot post (index moved 4→6 when TODO 24 added the beak riser+nose to the lever)' },
@@ -3958,6 +3966,12 @@ export const STOCK_KIND_BY_MESH = {
   // ribbon thickness, because at full wind the second coil comes down to coil
   // bind and anything standing further proud of the collar is buried in it.
   mainspringArborHook: 'pivot',
+  // §89 — the ALARM barrel's arbor hook, the same part on the smaller barrel
+  // and the same argument: its section is one ribbon thickness (0.19024 u,
+  // 0.0712 mm) because the second coil comes down to bind on it. Pin stock,
+  // and it clears the 0.07 pivot floor by 0.0012 — the alarm work's
+  // quarter-to-half scale (TODO 11) leaves nothing spare here.
+  alarmSpringArborHook: 'pivot',
   barrelClickPawl: 'spring',   // integral click: spring-tempered pawl stock
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened

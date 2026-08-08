@@ -9323,22 +9323,105 @@ registerExplode(alarmBarrelUnit, 0, 9);
 const alarmBarrelRotor = new THREE.Group();
 alarmBarrelRotor.position.set(alarmBarrelPos.x, alarmBarrelPos.y, ALARM_BARREL_Z);
 alarmBarrelUnit.add(alarmBarrelRotor);
+// §89 — THE ARBOR IS FIXED, and that is what lets the spring be a spring.
+// §25 A built this as a SINGLE member: body, arbor and ribbon in one rotating
+// group, so the coil turned rigidly with the drum and stored nothing — the
+// same fiction TODO 1 deleted from the going drum, left standing here because
+// nothing else in the alarm needed a second member. A ribbon with both ends on
+// the same part cannot wind; winding is the relative angle between two.
+//
+// The split taken is the going drum's own, not a going barrel's: the arbor is
+// planted in the frame and the BODY is wound at its teeth (the drum is wound
+// at its wall by the chain, this one at its rim by the winding train), so the
+// ribbon's inner end is pinned to the movement while its outer end rides the
+// body. Nothing moves in position space to buy it — the same station, the same
+// z, the same mesh with the strike pinion and the same 12/44 with the winding
+// train — which is what makes it a P0/P1 change and not a layout one. The
+// alternative split (wound arbor + click, the true going barrel) re-sites the
+// winding train's last mesh onto a ratchet and is layout work; it is not
+// needed to make the spring honest, and it stays filed.
+const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R);
+let alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
 {
   // A going barrel: the toothed wall IS the wheel that drives the pinion and
-  // the lid's cutaway shows the spring inside. Its arbor runs down into the
-  // boss's bore — that engagement is the pivot. NO ratchet or click yet: the
-  // wind arrives with stage C's alarm crown, and a click riding round with the
-  // barrel would be exactly the kind of display fiction §24 spent its effort
-  // deleting.
+  // the lid's cutaway shows the spring inside. The body turns ON the fixed
+  // arbor — floor and lid are bored PIVOT_BORE_CLEAR over it, which is the
+  // pivot. NO ratchet or click yet: the wind arrives with stage C's alarm
+  // crown, and a click riding round with the barrel would be exactly the kind
+  // of display fiction §24 spent its effort deleting.
   const arborH = ALARM_BARREL_H * 2;
   const alarmBarrel = G.makeBarrel({
     radius: ALARM_BARREL_PITCH_R, height: ALARM_BARREL_H, ratchet: false,
-    teeth: ALARM_BARREL_TEETH, module: ALARM_TRAIN_MODULE, arborH });
+    teeth: ALARM_BARREL_TEETH, module: ALARM_TRAIN_MODULE, arborH,
+    arbor: false, arborBoreR: ALARM_BARREL_ARBOR_R + PIVOT_BORE_CLEAR,
+    // The ribbon bears DIRECTLY on the arbor: this barrel's arbor already
+    // spans the whole cavity (arborH is 2× the body), so unlike the drum —
+    // whose ribbon needed a collar built up over a thin pivot — there is
+    // nothing here for a collar to add but a second radius to justify.
+    springArborR: ALARM_BARREL_ARBOR_R,
+    // A full wind IS the body's travel against that fixed arbor: the rotor's
+    // angle below is (TURNS − wind)·2π, so the reserve and the sweep are the
+    // same quantity written twice, which is why this is not a literal.
+    springWindSweep: ALARM_BARREL_TURNS * Math.PI * 2,
+  });
   alarmBarrelRotor.add(alarmBarrel);
   alarmBarrelGear = alarmBarrel;   // TODO 15: the winding chain's last link
+  alarmSpring = alarmBarrel.getObjectByName('spring').userData.mainspring;
+
+  // The arbor itself — STATIC, so it hangs in the unit and not in the rotor.
+  // Its foot runs down into the boss's bore; that engagement is what grounds
+  // it, and the assert below is the same one the turning arbor answered.
+  const arbor = new THREE.Mesh(
+    new THREE.CylinderGeometry(ALARM_BARREL_ARBOR_R, ALARM_BARREL_ARBOR_R, arborH, 16), MATS.steel);
+  arbor.name = 'alarmBarrelArbor';
+  arbor.rotation.x = Math.PI / 2;
+  arbor.position.set(alarmBarrelPos.x, alarmBarrelPos.y, ALARM_BARREL_Z);
+  alarmBarrelUnit.add(arbor);
   if (ALARM_BARREL_Z - arborH / 2 > ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2)
     console.warn(`alarm barrel arbor stops at ${(ALARM_BARREL_Z - arborH / 2).toFixed(2)}, short of its boss top ${(ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2).toFixed(2)} — no pivot engagement`);
+
+  // The INNER-END HOOK, on the arbor, in the movement frame — the drum's
+  // derivation part for part (see the set-up work's hookLug): the ribbon's
+  // inner end sits at a constant azimuth by construction (drum-local sweep
+  // plus body rotation is invariant — that IS the anchoring claim) and the
+  // builder reports it as innerAnchorAz, so nothing here is placed by eye.
+  // The lug stands ONE ribbon thickness proud, because at full wind the
+  // second coil comes down to coil bind and anything further out is buried in
+  // it; the ribbon's end FACE butts the flank on the +angle side, which is
+  // the side the spring drives the body from.
+  const lugW = alarmSpring.pBind;
+  const lugR = ALARM_BARREL_ARBOR_R + lugW / 2;
+  const lugAz = alarmSpring.innerAnchorAz + Math.atan2(lugW / 2, lugR);
+  const hookLug = new THREE.Mesh(new THREE.BoxGeometry(lugW, lugW, alarmSpring.height), MATS.blueSteel);
+  hookLug.name = 'alarmSpringArborHook';
+  hookLug.position.set(
+    alarmBarrelPos.x + Math.cos(lugAz) * lugR,
+    alarmBarrelPos.y + Math.sin(lugAz) * lugR, ALARM_BARREL_Z);
+  hookLug.rotation.z = lugAz;
+  alarmBarrelUnit.add(hookLug);
+  // The ribbon must stand clear of the faces it turns between — the drum's
+  // collar assert in the other direction, since here it is the SPRING that is
+  // as tall as the caller made it and the cavity that has to hold it.
+  const cav = alarmBarrel.userData.cavity;
+  if (alarmSpring.height / 2 > Math.min(cav.lidBotZ, -cav.floorTopZ))
+    console.warn(`alarm barrel: the ribbon's ${alarmSpring.height.toFixed(2)} height overruns its cavity `
+      + `(${(2 * Math.min(cav.lidBotZ, -cav.floorTopZ)).toFixed(2)}) — the coil is rubbing on the floor or the lid`);
 }
+// §48/TODO 29 — and the audit had NO opinion about this unit until now, which
+// is the finding rather than the paperwork. Measured on the tree before §89,
+// 'Alarm barrel' was not in the reversing population at all (25 units, this one
+// absent): the ribbon rotated rigidly with the body, the registry read one more
+// monotonic rotor, and the movement's second mainspring was passed in silence
+// by the audit that exists to ask what brings a part back. The morph makes the
+// wound↔run-down cycle a shape change, the registry flags it reversing (26
+// units now), and the unit is asked the question for the first time — the same
+// sequence TODO 1 produced on the going drum. The other way is the WINDING PATH
+// — alarm crown → climb → idlers → the barrel's own rim — which is the same
+// both-ways drive the going train's chain and fusee carry, arriving here at the
+// teeth instead of at an arbor.
+declareRestoring('Alarm barrel', 'spring',
+  'the ribbon IS the restoring element — its inner end is hooked to an arbor fixed in the frame and its outer end to the body, so the body\'s travel winds it; the alarm winding train (crown → climb → idlers → rim) is what carries it back the other way',
+  'mainspringRibbon');
 
 // ---------------------------------------------------------------------------
 // 'Alarm winding train' (§25 C) — the crown's path to the barrel. Pull the
@@ -18620,6 +18703,13 @@ function tick(t) {
   // at. Moved out of frame() and into tick() by §25 — the striker is driven
   // now, so the inspector's 'alarmStrike' axis has to be able to pose it.
   alarmBarrelRotor.rotation.z = (ALARM_BARREL_TURNS - alarmBarrelWind) * Math.PI * 2;
+  // §89 — and the ribbon inside takes the shape that angle leaves it in. The
+  // sweep it has left is what the body has NOT yet taken off the fixed arbor,
+  // so this is the drum's own line with the drum's own sense: the rotation
+  // rises as the energy falls, and the coil spreads toward its free pitch as
+  // it does. Same writer, so the schematic's line rides the swap with the
+  // metal (§83) and neither view can show a wound state the other does not.
+  alarmSpring.setWind(alarmSpring.sweepFull - alarmBarrelRotor.rotation.z);
   alarmStrikeRotor.rotation.z = alarmStrikeWheelAngle();
   alarmHammerPivot.rotation.z = alarmHammerAngle();
   // §48 / TODO 14 — the spring bears on the tail wherever the tail now is.

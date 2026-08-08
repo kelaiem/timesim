@@ -1956,9 +1956,26 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep }) {
 // gear teeth, no ratchet/click (the fusee arbor carries those instead).
 // ---------------------------------------------------------------------------
 
+// THE ARBOR'S RADIUS, as a proportion of the body. Exported because a barrel
+// that runs on a FIXED arbor needs the number BEFORE the body exists — the
+// bore the body turns on is an argument to the builder below — and a
+// proportion that lives in two places is a proportion that will disagree with
+// itself.
+export const barrelArborR = (radius) => radius * 0.09;
+
 // arborH: full length of the central arbor (centred on the body's
 // mid-plane) — the caller sizes it to reach its actual bearings; the
 // default reproduces the old fixed proportion.
+// arbor: the going/fusee form carries its arbor INSIDE the body, so the two
+// turn together. Pass `arbor: false` when the barrel runs on an arbor the
+// caller plants in the FRAME (the alarm barrel, §89): a static member cannot
+// live in a rotating group, so the builder leaves that metal to the caller and
+// bores the body for it instead.
+// arborBoreR: the bore the body turns on — floor and lid are opened to it,
+// and it is REQUIRED with `arbor: false` (a body with no arbor and no bore is
+// a body sitting on the metal it is supposed to run on). The caller owns the
+// number because the fit is a BEARING (its running clearance), not a
+// proportion of the drum.
 // ratchet: the going-barrel form carries a ratchet + click on its lid by
 // default. Pass `ratchet: false` when the caller has not built the winding
 // path yet — a click riding round with the barrel it is supposed to HOLD is a
@@ -1966,16 +1983,20 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep }) {
 // than with one that turns.
 // springArborR / springWindSweep: pass BOTH to get the wind morph above
 // instead of a spiral posed once. springArborR is the radius of the static
-// arbor collar the inner coil bears on (so the inner radius is DERIVED from
-// what is actually there, rather than a fraction of the drum); springWindSweep
-// is the relative rotation the drum makes against that arbor over a full
-// reserve. Omit them and the spiral is built exactly as before — which is what
-// the alarm barrel wants: it is a single-member barrel whose whole body IS its
-// wound state (its arbor turns with it), so it has no relative angle to morph
-// against, and the two-member split that would give it one is filed debt.
+// seat the inner coil bears on — the going drum's arbor collar, the alarm
+// barrel's arbor itself — so the inner radius is DERIVED from what is actually
+// there rather than a fraction of the drum; springWindSweep is the relative
+// rotation the body makes against that seat over a full reserve. Omit them and
+// the spiral is built exactly as before: one rigid coil that stores nothing,
+// which is what BOTH barrels used to be and is now only the fallback for a
+// caller with no second member to wind against (test-geometry.html's part
+// smoke test being the one).
 export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
-                             ratchet = !plain, springArborR = null, springWindSweep = 0 }) {
+                             ratchet = !plain, springArborR = null, springWindSweep = 0,
+                             arbor = true, arborBoreR = null }) {
   const g = new THREE.Group();
+  if (!arbor && arborBoreR === null)
+    console.warn('makeBarrel: arbor: false without arborBoreR — the body has nothing to turn on and no bore to turn on it');
   const pitchR = plain ? radius : pitchRadius(module, teeth);
   const rootR = plain ? radius : pitchR - module * 1.15;
   const wallModule = module || radius * 0.06;
@@ -2005,15 +2026,20 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     g.add(new THREE.Mesh(wallGeo, MATS.brass));
   }
 
-  // Floor disc.
-  const floorGeo = ringExtrude(rootR, radius * 0.05, height * 0.12, 48);
+  // Floor disc. Its bore is the body's own when the arbor turns with it, and
+  // the BEARING the caller asked for when the arbor is fixed — a body that
+  // runs on a static arbor is bored for it through both faces, or it is
+  // sitting on the very metal it turns on.
+  const bodyBoreR = arborBoreR ?? radius * 0.05;
+  const floorGeo = ringExtrude(rootR, bodyBoreR, height * 0.12, 48);
   floorGeo.translate(0, 0, -height / 2 + height * 0.06);
   g.add(new THREE.Mesh(floorGeo, MATS.brass));
 
   // Lid with a ~90° pie cutaway revealing the mainspring inside.
   const lidShape = new THREE.Shape();
   lidShape.absarc(0, 0, rootR, Math.PI * 0.5, Math.PI * 2, false); // omit 0..90deg
-  lidShape.lineTo(0, 0);
+  if (arborBoreR !== null) lidShape.absarc(0, 0, arborBoreR, Math.PI * 2, Math.PI * 0.5, true); // the same bore, the other face
+  else lidShape.lineTo(0, 0);
   lidShape.closePath();
   const lidGeo = new THREE.ExtrudeGeometry(lidShape, {
     depth: height * 0.1,
@@ -2135,10 +2161,13 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       console.warn(`TODO 1: mainspring wind steps ${wind.maxStep.toFixed(4)} between frames against a ${wind.pBind.toFixed(4)} ribbon — ${windGeos.length} frames is too few for the measured ${wind.dPdA.toFixed(3)} u/rad`);
   }
 
-  // Central arbor.
-  const arborGeo = new THREE.CylinderGeometry(radius * 0.09, radius * 0.09, arborH ?? height * 2.4, 16);
-  arborGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(arborGeo, MATS.steel));
+  // Central arbor — only where it TURNS WITH the body (see the `arbor` note).
+  if (arbor) {
+    const aR = barrelArborR(radius);
+    const arborGeo = new THREE.CylinderGeometry(aR, aR, arborH ?? height * 2.4, 16);
+    arborGeo.rotateX(Math.PI / 2);
+    g.add(new THREE.Mesh(arborGeo, MATS.steel));
+  }
 
   // Ratchet wheel + click on top (going-barrel form only — a plain fusee
   // drum has its ratchet on the fusee arbor instead).
@@ -2157,6 +2186,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   // forget when either moves.
   g.userData.cavity = {
     innerR: drumInnerR,
+    boreR: bodyBoreR,
     floorTopZ: -height / 2 + height * 0.12,
     lidBotZ: height / 2 - height * 0.1,
   };
