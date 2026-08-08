@@ -1293,7 +1293,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
   { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed. Since the wind morph the hook is a FIXTURE (it rides the drum and nothing else), so this row is no longer reachable by a mover-vs-fixture check; the geometry is unchanged and the declaration is kept as the record of it' },
   { unit: 'Mainspring drum', a: 'mainspringRibbon', b: 'mainspringHook', why: 'the ribbon\'s outer end is riveted into the wall hook — TODO 1\'s fixed end, and now the only intersection the ribbon has inside its own unit. (The old row against the drum WALL is gone with the readout that caused it: the retired law scaled the whole spiral 6% at empty, which put the outer coil at r 9.027 against a wall bored to 8.680 — 0.347 of standing penetration in a ribbon built 0.164 clear. The morph pins that end instead of stretching it.)' },
-  { unit: 'Alarm striking wheel', a: 'CylinderGeometry#3', b: 'CylinderGeometry#0', why: 'collar pressed on the strike arbor' },
+  // TODO 11 tranche five gave this mesh a name, which MOVED ITS LABEL: an
+  // index label is what a mesh gets for having none, so naming one silently
+  // stales every row that referenced it (`unit.meshes.indexOf` is over the
+  // whole unit, so no OTHER row renumbers — only the named mesh's own). This
+  // check is what caught it. Naming also let the row say what the joint is:
+  // it was recorded as the collar, and the collar is the separate row below.
+  { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
   { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
@@ -1312,8 +1318,10 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'CylinderGeometry#0', why: 'beak lever on its pivot post' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'CylinderGeometry#0', why: 'beak tail on the same post' },
+  // Both were 'CylinderGeometry#0' until TODO 11 tranche five named the post
+  // (see the strike sleeve above for why that stales a row).
+  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkBeakPost', why: 'beak tail on the same post' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#9', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#11', why: 'lay shaft in hanger bush 2' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },

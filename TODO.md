@@ -788,6 +788,44 @@ said so).
   better and the tranche named the nine it touched, but the report no
   longer depends on someone having done so.
 
+  **What naming COSTS, since the tranche paid it.** An index label is what
+  a mesh gets for having none, so NAMING one moves its label and stales
+  every string-coupled row that referenced it. `intraUnit` failed on
+  exactly three declared joints — the strike sleeve on its arbor, and the
+  beak lever and its tail on the beak post — and it is the check that
+  catches this class. Two things make it survivable and are worth knowing
+  before the next naming pass: `meshLabel`'s index is
+  `unit.meshes.indexOf`, over the WHOLE unit, so no OTHER row renumbers;
+  and the failure is loud rather than silent, because a stale declaration
+  stops excusing a real intersection instead of quietly excusing the wrong
+  one. Naming also let one of those rows say what it is — it had been
+  recorded as "collar pressed on the strike arbor", and the collar is a
+  separate row.
+
+  **The one thing tranche five found and did NOT fix: a BUSH reads as its
+  outer diameter.** For a `static` or `path` part the census's ruler is
+  the geometry-local BOX, and a ring's box is its OUTER extent — so a
+  bush's wall, the one dimension that is actually stock, is invisible.
+  `revolve`-kind parts do not have this problem: the registry measures
+  their r-band and reports walls correctly, which is how the winding
+  idlers' hubs above were caught at all.
+  Measured, on the alarm link's two shaft bushes: `ringGeo(0.14, 0.26,
+  0.3)` under a comment reading "the wall is stock-floor so the bush is
+  itself a real part". That wall is 0.12 **units** — **0.0455 mm**, and
+  `STOCK_MIN_U` is **0.3167 u**. The comment read the floor's 0.12 as
+  units when it is millimetres, and nothing could catch it: the two rows
+  report at 0.1137 mm (their HEIGHT), so the debt list understates them by
+  2.5×. `ringGeo(0.5, 0.62, …)` on the setting idler's sleeve is the same
+  class, at the same 0.12 u wall.
+  This is filed rather than fixed because the fix is two separable pieces
+  and only one of them is cheap. The RULER — measuring a static revolve's
+  wall the way the registry already measures a rotating one's — can only
+  make rows thinner, so it may open unwaived violations in units that
+  carry no waiver today; that blast radius wants measuring before it
+  lands, not after. The PARTS then want real walls: bore + `STOCK_MIN_U`
+  takes the link's bushes from ⌀ 0.52 to ⌀ 0.91 u, which is a P3 packaging
+  question in the dial-side strata, not a one-line edit.
+
 Waived in `checkStockFloor` as accepted debt citing this item; the
 waiver keeps every row visible in the report. Closing this item means
 the alarm units clear their floors and their waivers are DELETED.
