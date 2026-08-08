@@ -3502,6 +3502,19 @@ does not exist yet.
 
 ## 32. The mainspring's SHAPE is real; its torque is still authored
 
+> **Item 40 raised the stakes here.** The fusee's flank is now SOLVED from
+> `springTorqueAt`, so an exactly-equalising cone is exact arithmetic on an
+> authored law: deriving the law from the ribbon re-cuts the cone, and the
+> two are one job rather than two. It also left a loose proportion. The
+> re-cut cone takes up less chain, so the drum turns 1.4716 turns over the
+> reserve where it turned 1.7589, and this spring now winds through a
+> smaller angle for the same 30 h — at full wind it stands 12.6% clear of
+> coil bind where it stood 4%. The barrel is no longer sized tight to its
+> own wind. Nothing is WRONG (the reserve is a spec constant and the torque
+> is authored, so no energy claim is broken), but the ribbon's section and
+> the barrel's radii were chosen against a sweep that has since moved, and
+> whatever settles the torque law settles those too.
+
 [Item 1](#1-closed--the-mainspring-winds-its-torque-is-now-item-32) closed the geometry half: the ribbon is a fixed length of steel
 between two fixed ends, and its wind state is that length redistributed.
 What it does NOT do is push. The torque the rest of the movement reads is
@@ -4058,11 +4071,11 @@ filed rather than folded into §89: that landing had no reason to touch the
 going train, and a change that moves support edges deserves its own battery
 run and its own record.
 
-## 40. The fusee does not equalise, and the chain is not a constant length
+## 40. The fusee equalises now — and the chain is nearly a constant length
 
-**Row 2 is CLOSED** (the readout now reads the radius the chain is on).
-Rows 1 and 3 are open, and closing row 2 made row 1 measurably worse on
-paper — which is what it was for.
+**Rows 1 and 2 are CLOSED.** The cone is cut to the equalising hyperbola
+and the readout reads the radius the chain is on. **Row 3 is most of the
+way**: the two spools now balance exactly, and one named term is left.
 
 Three arithmetic gaps in one mechanism, found by plotting the shipped
 expressions in `explain.html`'s fusee plates (BUILT §91) rather than
@@ -4080,7 +4093,7 @@ The cone build states the goal in as many words:
 
 The ratio is right and the conclusion does not follow.
 
-**Row 1 — a straight generator cannot level a linear spring.** With `S`
+**Row 1 — CLOSED. A straight generator cannot level a linear spring.** With `S`
 linear rising and `r_f` linear falling, the product is a downward parabola:
 it matches at the two ends by construction (that is all `rLarge/rSmall =
 S(1)/S(0)` buys) and bulges everywhere between. Measured on the HUD's own
@@ -4099,16 +4112,28 @@ reason to exist is that there is no swing. What a level product needs is
 the endpoint ratio looked like a proof. At mid-reserve it wants 3.852
 where the cone offers 5.15.
 
-**Fix path.** The honest one is geometry: make `fuseeGrooveAt`'s radius
-`k / S(f)` instead of a lerp, and let the groove cut and the chain path
-follow it (they both already read that one function). That is a
-`makeFusee` change too — the cone's silhouette stops being a straight
-generator, which is what a real fusee looks like anyway. It is also
-coupled to **item 32**: `S` is authored, so re-deriving the taper from it
-only moves the arbitrariness one level. Either do 32 first and solve the
-cone against a real ribbon, or land this and re-solve when 32 lands. What
-is NOT acceptable is the current comment, which claims the product is
-constant when the code it sits on says otherwise.
+**What was built.** `fuseeEnvR(f) = FUSEE_TORQUE_K / springTorqueAt(f /
+FUSEE_F_ACTIVE)` — the hyperbola — and `makeFusee` lathes it, taking the
+law from the caller through a new `envR` argument rather than restating it.
+`fuseeGrooveAt` reads the same function, so the cut, the chain path and the
+HUD are one expression. Measured, `trainTq` is **1.000000 at every reserve**
+where it ran 0.996 → 1.340 → 1.115 before.
+
+**Only one number was free, and it is not the small radius.**
+`FUSEE_R_LARGE` is a layout constant — the drum's station is derived from
+it — so the constant product follows as `FUSEE_TORQUE_K = FUSEE_R_LARGE ·
+SPRING_TQ_MIN` = 2.59, and `FUSEE_R_SMALL` stops being a choice: 2.4824 at
+the band's top, 2.59 where the wrap ends. The hand-picked 2.6 was within
+0.4% of the second, which is exactly how far the `S(1)/S(0)` = 2.857
+reasoning got — right about the ends, silent about everything between. The
+lathe's station count went 12 → 48 with it: a straight generator is exact
+at any count and a curve is not (worst chord sag 0.0400 → 0.0030, against
+the 0.08 the §61 seating budget works to).
+
+**It is still standing on item 32,** and now more visibly: the flank is
+solved FROM `springTq`, so an exactly equalising cone is exact arithmetic
+on an authored law. Deriving that law from the ribbon re-cuts this cone —
+the same work, not a separate errand.
 
 **Row 2 — CLOSED. The equalisation multiplied by a radius the chain never
 reaches.** The HUD's `fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL −
@@ -4157,20 +4182,34 @@ vertex counts over `setPose({ tension })`:
 | chain mesh vertices | 64,552 | 68,226 | 70,744 | 69,196 | 66,100 |
 
 +9.6% at mid-reserve against empty, ~8 links appearing and disappearing.
-Nothing measures it today: the chain is display-only (nothing reads its
-geometry back), the sweeps see a rebuilt mesh as a mover and never compare
-its length across poses, and no assert states that a chain is a fixed
-length of steel — the same class of hole `devLen` closed for the
-mainspring in item 1, and the same fix shape: assert the run's length is
-constant across the reserve axis, then make it true.
 
-**Order.** Row 2 landed alone, as a one-liner. Row 3 wants the drum's
-rotation derived from the chain actually consumed
-(`rot(t) = C(t) / DRUM_WRAP_R` with `C` the wrap integral) rather than
-from `(1 − t) · DRUM_ROT_FULL`, and it must be landed carefully:
-`DRUM_ROT_FULL` is ALSO the mainspring's wind sweep (`springWindSweep`
-into `makeBarrel`, item 1's morph), so changing it moves the ribbon's
-frames and wants an `oscillator`-style re-check of the spring's own
-geometry, plus the reserve hand's gearing assert. Row 1 is the redesign
-and should wait for item 32 unless the cone is being cut for other
-reasons anyway.
+**MOSTLY BUILT with row 1.** `fuseeChainTo(t)` is the wrap integral in
+closed form and `drumRotAt(t) = (CHAIN_ENGAGED − fuseeChainTo(t)) /
+DRUM_WRAP_R` replaced `(1 − t)·DRUM_ROT_FULL`, so the two SPOOLS balance by
+construction at every state rather than only at the ends. Re-measured the
+same way:
+
+| reserve | 0 | 0.25 | 0.5 | 0.75 | 1 |
+|---|---|---|---|---|---|
+| chain mesh vertices | 56,812 | 55,842 | 55,842 | 55,842 | 56,812 |
+
+1.7% peak-to-peak, and flat across the whole middle.
+
+**What is left is ONE named term: the free span.** Its length is
+`√(D² − (DRUM_WRAP_R − r(t))²)`, so it shortens from 19.63 to 18.19 as the
+take-off radius falls — 1.4 of chain, 1.1% of the run, that nothing takes
+up. Balancing it is a small change (add `span(1) − span(t)` to
+`drumRotAt`), and it is filed rather than done because it drags the drum's
+STATION into the wind accounting: `D` is `FUSEE_R_LARGE + DRUM_R + 2.5`,
+declared after the accounting block, and `DRUM_ROT_FULL` moves again with
+it — 1.4716 → 1.4507 turns — which moves the mainspring's frames and the
+explainer's plate a second time for a fifth of a turn. Do it when the
+spring's proportions are next opened (item 32), not on its own.
+
+**And nothing asserts any of this.** The chain is display-only, the sweeps
+see a rebuilt mesh as a mover and never compare its length across poses,
+and no check states that a chain is a fixed length of steel — the hole
+`devLen` closed for the mainspring in item 1. The instrument is the real
+remainder of this row: assert the run's length is constant across the
+reserve axis to a stated tolerance, and the 1.1% above is what it would
+report on day one.

@@ -1697,15 +1697,30 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // radii: with the groove cut exactly one plate half-width deep, the chain's
 // centreline lies ON the envelope, so these stay the torque radii the
 // S(t)·r_f(t) equalisation was solved against.
+// envR (TODO 40 row 1): the land-crest envelope as a function of band
+// fraction, supplied by the caller because the CURVE is the equalisation's,
+// not this builder's — a straight generator cannot level a linear spring's
+// product, so the shipped cone hands in r = K / S(t) and the flank comes out
+// concave, as a real fusee's is. Omitted (test pages), the envelope falls
+// back to the straight generator between the two end radii.
 export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
-                            grooveW, grooveD, bandZ0, bandSpan }) {
+                            grooveW, grooveD, bandZ0, bandSpan, envR = null }) {
   const g = new THREE.Group();
   // Legacy proportions when the caller doesn't specify the cut (test pages).
   if (grooveD === undefined) grooveD = Math.min((rLarge - rSmall) * 0.1, 0.5);
   if (grooveW === undefined) grooveW = (0.88 * height) / grooveTurns * 0.8;
   if (bandZ0 === undefined) bandZ0 = height * 0.06;
   if (bandSpan === undefined) bandSpan = height * 0.88;
-  const env = (f) => rLarge + (rSmall - rLarge) * f;      // land-crest envelope
+  const env = envR || ((f) => rLarge + (rSmall - rLarge) * f); // land-crest envelope
+  // The core is lathed at NCORE stations; a straight generator is exact at
+  // any count, a curved one is not, so the count is what decides how much of
+  // the curve survives. Measured on the shipped hyperbola, worst chord sag
+  // against the true profile, near the base where it bends hardest:
+  //   12 → 0.0400   24 → 0.0112   48 → 0.0030   96 → 0.0008
+  // 48 is the first that lands an order of magnitude inside the 0.08 the §61
+  // chain-seating budget works to, so the facets cannot be what a seating row
+  // is measuring. The straight case keeps 12: exact is exact.
+  const NCORE = envR ? 48 : 12;
   // GROOVED core (§61). The old build ran a smooth core at the envelope with
   // a proud wire ridge whose "channel between adjacent flange turns,
   // comfortably wider than the chain's diameter" was false arithmetic —
@@ -1723,7 +1738,6 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // maintaining sandwich below is derived off exactly that overhang).
   const seatR = rLarge - grooveD - 0.02;
   pts.push(new THREE.Vector2(seatR, 0));
-  const NCORE = 12;
   for (let i = 0; i <= NCORE; i++) {
     const f = i / NCORE;
     pts.push(new THREE.Vector2(env(f) - grooveD, bandZ0 + bandSpan * f));
