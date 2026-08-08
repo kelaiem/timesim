@@ -8223,18 +8223,22 @@ with the §63 hand drawn above it in the same screenshot. Zero page
 errors on boot and through the gestures. Battery 17/17 (3 shards,
 25 min): boot silent, every gate PASS, `sweptOverlap` 0 CONFIRMED over
 59 768 pairs, `clearances` 0 violations, fingerprint deterministic
-across virgin boots at `1307831341`.
+across virgin boots.
 
 **The fingerprint claim was measured, not assumed**, and the first
 measurement was wrong in the instructive direction: booting this branch
 against a `main` worktree gave two different hashes, which for a
 DOM-only change reads as a real geometry move. The local `main` was 30
-commits stale. Re-run against the branch's actual base (780d41c), both
-trees from a cleared state file and a fresh browser context, both hash
-`1307831341` — the same value the battery's two virgin boots produced.
-The lesson is the cheap one: a fingerprint is only a claim about the
-two trees you actually compared, so name the base commit, not the
-branch name.
+commits stale. Re-run against the branch's actual base, both trees from
+a cleared state file and a fresh browser context, both hashed the same
+value the battery's two virgin boots produced. The lesson is the cheap
+one: a fingerprint is only a claim about the two trees you actually
+compared, so name the base commit, not the branch name — and re-measure
+when the base moves. This section landed on 780d41c, hashing
+`1307831341`; TODO 11 tranche five moved geometry underneath it, so the
+rebased pair (base `a370a6b` and this branch) both hash `3811459283`.
+The claim survived the rebase; the number did not, which is exactly
+what a fingerprint is for.
 
 One pre-existing condition, re-measured rather than assumed: on a
 390×740 viewport the panel (z 10) still overlaps the HUD's left sliver
