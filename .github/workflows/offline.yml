@@ -17,13 +17,23 @@
 # whole point of a release-machinery check is that release machinery is stable —
 # so most PRs never see this job.
 #
-# On the timeout: NOT derived from a measurement on this runner, because there
-# are none yet. It is ~25 min on a dev container and CI hardware is slower with
-# SwiftShader doing the GL. battery.yml's own history is the argument for
-# generosity here — 45 was set from one green run, killed six consecutive runs
+# On the timeout, and on the assumption it was first written with. This file
+# originally said 60 min because "it is ~25 min on a dev container and CI
+# hardware is slower with SwiftShader doing the GL." The first real run said
+# otherwise: 2 min 29 s for the whole job, of which 113 s was the twenty checks
+# (05:33:21 → 05:35:14, run 31241925116). The dev container is the SLOW one
+# here by an order of magnitude — the opposite of the premise — so the sentence
+# is corrected rather than left standing next to a number it no longer
+# explains.
+#
+# 20 min is therefore ~8x the measured job. That is deliberately not tight:
+# battery.yml's history is the standing argument against deriving a cap from
+# one green run — 45 was set that way, then killed six consecutive runs
 # including two on main, and a job-timeout kill is reported as `cancelled`,
-# which reads like somebody's force-push. Re-derive this from several real runs
-# rather than tightening it after one.
+# which reads like somebody's force-push. But 60 was not generosity, it was
+# 24x a job nobody had timed; the documented failure mode this cap exists for
+# is a WEDGED tab, and an hour is a long time to spend discovering one.
+# Re-derive from several runs if the tail ever proves fatter than this.
 
 name: Offline
 
@@ -47,7 +57,7 @@ concurrency:
 jobs:
   offline:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20   # ~8x the measured 2 min 29 s job; see the note above
     steps:
       - uses: actions/checkout@v4
 
