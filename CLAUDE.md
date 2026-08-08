@@ -292,9 +292,12 @@ definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,
 so the two deploys serve the same bytes by construction rather than by
 two pathspec lists someone keeps in step. The rule is "the app,
 `vendor/`, and the licences"; everything else is repository, not site —
-every `*.md` (including `docs/`), `.githooks`, `.gitignore`,
-`dev_server.py` and `test-geometry.html` are cut. Add a doc anywhere and
-it stays unpublished by default, which is the intended direction.
+every `*.md` (including `docs/`), `.githooks`, `.gitignore` and
+`dev_server.py` are cut. Add a doc anywhere and it stays unpublished by
+default, which is the intended direction. `test-geometry.html` DOES ship,
+and §88 made it a third STAMPED document when it decided so — it had been
+shipping unstamped since §28, the one page in a release whose URLs could go
+stale. Ship a new page and stamp it in the same change.
 
 Both deploys ASSERT both halves, because a pathspec breaks silently and
 the symptom — a release quietly carrying the repo's documentation —

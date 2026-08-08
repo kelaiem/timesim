@@ -40,13 +40,18 @@ let rewrites = 0;
 // version.json is deliberately absent — it is the one file that must never
 // come from a cache — and sw.js caches itself via the browser's own
 // registration machinery, not via its own manifest.
-const precache = new Set(['index.html', 'explain.html', 'manifest.webmanifest']);
+// §88 — test-geometry.html joined this list when the payload decided it was
+// cargo. It had shipped in every release before that WITHOUT being stamped or
+// precached: its importmap and its `./src/geometry.js` import were the only
+// unversioned asset URLs left in a release, so that one page could be served
+// stale forever. Being in the payload and being stamped are the same decision.
+const precache = new Set(['index.html', 'explain.html', 'test-geometry.html', 'manifest.webmanifest']);
 
 // The documents: module entry points, importmap targets, and (explain.html)
 // the explainer's module imports. Both carry the baked app-version meta —
 // index.html so layer 2 can compare baked-vs-live, explain.html so its §79
 // worker registration has the same "am I a release" signal without a fetch.
-for (const doc of ['index.html', 'explain.html']) {
+for (const doc of ['index.html', 'explain.html', 'test-geometry.html']) {
   let html = readFileSync(doc, 'utf8');
   html = html.replace(/(["'])(\.\/(?:vendor|src)\/[^"'?]+?)(["'])/g, (_m, a, url, b) => {
     rewrites++;
@@ -98,8 +103,8 @@ for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
 // a silently-missed import is exactly how this class of bug survives.
 const leftovers = [];
 const scan = (p, re) => { const s = readFileSync(p, 'utf8'); let m; while ((m = re.exec(s))) leftovers.push(`${p}: ${m[0].trim()}`); };
-scan('index.html', /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
-scan('explain.html', /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
+for (const doc of ['index.html', 'explain.html', 'test-geometry.html'])
+  scan(doc, /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
 for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
   scan(join('src', f), /\bfrom\s+['"]\.\.?\/[^'"?]+['"]/g);
   scan(join('src', f), /\bimport\(\s*['"]\.\.?\/[^'"?]+['"]\s*\)/g);

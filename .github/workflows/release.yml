@@ -143,7 +143,7 @@ jobs:
           # pathspec breaks silently, and a release that quietly carries the
           # repo's documentation looks exactly like a healthy one.
           leaked=$(find "$VERSION" \( -name '*.md' -o -name 'dev_server.py' \
-            -o -name 'test-geometry.html' -o -name '.gitignore' -o -name '.githooks' \) -print)
+            -o -name '.gitignore' -o -name '.githooks' \) -print)
           if [ -n "$leaked" ]; then
             echo "$leaked"
             echo "::error::files that must not be released are in the payload (see list above)"

@@ -7833,10 +7833,27 @@ So the Pages payload is now NARROWER than the release's, and only ever
 subtractively — nothing is added here that a release does not have. It
 carries the app, `vendor/`, and the licences. Everything else is cut:
 every `*.md` (repo documentation is not site content), `.githooks` and
-`.gitignore` (clone-time tooling), `dev_server.py` (inert when served
-statically), and `test-geometry.html` — which the stamper never versioned
-and the worker never precached, so it was already riding along rather than
-shipped.
+`.gitignore` (clone-time tooling), and `dev_server.py` (inert when served
+statically).
+
+**`test-geometry.html` was cut and then put back, and putting it back cost
+more than the line it took.** Auditing the payload turned up that it had
+shipped in every release without ever being STAMPED: `stamp-release.mjs`
+processed two documents, so that page's importmap and its
+`./src/geometry.js` import were the only unversioned asset URLs in a
+release — one page that could be served stale forever, which is precisely
+what §28 exists to prevent. Cutting it made that moot; keeping it does not,
+so it became a third stamped document instead. Its three URLs now version
+(27 → 30 rewrites) and the page itself precaches (18 → 19), which is the
+§79 count moving for a stated reason rather than drifting. Being in the
+payload and being stamped are the same decision, and it had been half-made
+since §28.
+
+`build-pages.mjs` additionally marks it `noindex` in EVERY environment,
+production included. The per-environment rule is about which deployment is
+the canonical one to find; this is about the page — a per-part geometry
+smoke test is a developer instrument, and no copy of it should turn up in a
+search.
 
 `LICENSE` and `vendor/LICENSE-*.txt` survive the `*.md` rule by being
 extensionless and `.txt`, and that is not luck to be left to chance: a

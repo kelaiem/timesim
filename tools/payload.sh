@@ -21,11 +21,12 @@
 #                             which is not what a deployed site is for.
 #   .githooks .gitignore      clone-time tooling, meaningless over HTTP
 #   dev_server.py             inert when served statically
-#   test-geometry.html        a per-part visual smoke test. It was already a
-#                             passenger rather than cargo: stamp-release.mjs
-#                             never versioned it and sw.js never precached it,
-#                             so it shipped with unversioned URLs and no
-#                             offline support. Run it from a checkout.
+#
+# test-geometry.html SHIPS, and is a third stamped document as of the same
+# change that decided so. It had been riding along unstamped for every release
+# before that — stamp-release.mjs never versioned its URLs and sw.js never
+# precached it — which is the exact staleness §28 exists to prevent, quietly
+# true of one page. Deciding it is cargo means it gets cargo's treatment.
 #
 # WHAT SURVIVES, DELIBERATELY. LICENSE and vendor/LICENSE-*.txt are
 # extensionless and .txt, so the *.md rule misses them — but that is a
@@ -52,5 +53,4 @@ git archive --format=tar "$ref" -- . \
   ':(exclude).githooks' \
   ':(exclude).gitignore' \
   ':(exclude)dev_server.py' \
-  ':(exclude)test-geometry.html' \
   | tar -x -C "$dest"

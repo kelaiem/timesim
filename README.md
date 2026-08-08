@@ -71,10 +71,10 @@ tag. Only production is indexable; the other two are served `noindex`.
 
 Every deploy — Pages and the SFTP release alike — ships the payload defined
 by `tools/payload.sh`: the app, `vendor/`, and the licences, and nothing
-else. Repo documentation (every `*.md`, including `docs/`), `dev_server.py`,
-`test-geometry.html` and the git hooks describe the project to people
-working on it and are not site content, so they stay in the repository. Both
-workflows assert both halves — no doc leaks in, no licence goes missing.
+else. Repo documentation (every `*.md`, including `docs/`), `dev_server.py` and
+the git hooks describe the project to people working on it and are not site
+content, so they stay in the repository. Both workflows assert both halves —
+no doc leaks in, no licence goes missing.
 
 ## Simulation vs. model — how this project uses the words
 

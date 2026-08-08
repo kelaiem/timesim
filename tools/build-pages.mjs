@@ -65,14 +65,21 @@ execFileSync('node', [join(HERE, 'stamp-release.mjs'), version], { cwd: root, st
 // here cannot invalidate a key the worker will ask for.
 const marks = [`<meta name="app-environment" content="${environment}" />`];
 if (environment !== 'production') marks.push('<meta name="robots" content="noindex" />');
-for (const doc of ['index.html', 'explain.html']) {
+// test-geometry.html is noindex in EVERY environment, production included. The
+// per-environment rule above is about which deployment is the canonical one to
+// find; this is about the page itself — a per-part geometry smoke test is a
+// developer instrument, and no environment's copy should turn up in a search.
+const testMarks = marks.includes('<meta name="robots" content="noindex" />')
+  ? marks : [...marks, '<meta name="robots" content="noindex" />'];
+for (const doc of ['index.html', 'explain.html', 'test-geometry.html']) {
   const p = join(root, doc);
   let html = readFileSync(p, 'utf8');
   if (!html.includes('</head>')) {
     console.error(`build-pages: ${doc} has no </head> to insert the environment marks before`);
     process.exit(1);
   }
-  html = html.replace('</head>', `${marks.join('\n')}\n</head>`);
+  const m = doc === 'test-geometry.html' ? testMarks : marks;
+  html = html.replace('</head>', `${m.join('\n')}\n</head>`);
   writeFileSync(p, html);
 }
 

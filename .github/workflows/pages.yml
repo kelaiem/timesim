@@ -228,7 +228,7 @@ jobs:
           # artifact rather than per environment, so a leak into any one of the
           # three is caught.
           leaked=$(find _site \( -name '*.md' -o -name 'dev_server.py' \
-            -o -name 'test-geometry.html' -o -name '.gitignore' -o -name '.githooks' \) -print)
+            -o -name '.gitignore' -o -name '.githooks' \) -print)
           if [ -n "$leaked" ]; then
             echo "$leaked"
             fail "files that must not be published are in the artifact (see list above)"
