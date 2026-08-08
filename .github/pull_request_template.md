@@ -31,7 +31,36 @@ and diff it against the base. §80 and §81 were both accepted that way.
 - Battery — `N/M gates pass`:
 - `--report` diffed against the base (only if this change could move a report):
 
-### Battery: did it run, and should it have?
+### Where the battery ran
+
+<!--
+CI and local are DIFFERENT EVIDENCE, so say which you have. Same harness, but
+CI is the merge gate and runs the ubuntu-latest / SwiftShader path nothing else
+exercises. A local run is pre-flight — and, on a PR the filter below caught, it
+is the only battery evidence that exists.
+
+Tick both if both. Neither is a claim too, and an honest one.
+-->
+
+- [ ] **CI** — this PR's Battery job
+- [ ] **Locally** — `node tools/ci-battery.mjs` (say on what, roughly)
+- [ ] **Not run** — why, and what was run instead
+
+<!--
+Two things a local run does NOT license.
+
+  · Its TIMINGS are not CI's, in either direction. battery.yml measured a 1.66×
+    spread between two CI runs on the SAME tree, and offline.yml's header
+    records the dev container being an order of magnitude slower than CI on a
+    job whose premise said the opposite. Never re-derive the `cost` column, the
+    job cap or the per-check guard from one run, local or not.
+  · Green focused checks are not a green battery — CLAUDE.md says so, and this
+    is the failure mode: an automated pane throttles the sweeps' own yields, so
+    a focused check driven by tooling without the sweep hold reports poses the
+    rAF loop moved underneath it. Rows appear that the harness does not see.
+-->
+
+### Battery: did it run in CI, and should it have?
 
 <!--
 THERE IS NO BOX HERE THAT SKIPS THE RUN, on purpose. `.githooks/commit-msg`
@@ -47,7 +76,8 @@ Tick whichever is true:
 - [ ] **`battery.yml` filtered it out**, and that is right — the invariant that
       makes this change unable to move the built scene is: <!-- e.g. "explain.html
       is sim-code-free (CLAUDE.md), so an explainer landing cannot touch the
-      battery" / "docs only" -->
+      battery" / "docs only" --> <!-- and if you ran it locally anyway, that is
+      the only battery evidence on this PR: paste the line above. -->
 - [ ] **It ran and I believe it should not have.** Say which path class is
       battery-irrelevant and what makes that true. That is a change to
       `battery.yml`'s filter, in its own PR — not a skip taken here.
