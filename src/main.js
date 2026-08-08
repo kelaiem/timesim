@@ -19066,8 +19066,20 @@ function advanceFrame(realDt) {
   setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
   const springTq = 0.35 + 0.65 * reserveShown;
-  const fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * reserveShown;
-  const trainTq = (springTq * fuseeR) / FUSEE_R_SMALL; // ≈ 1, by the cone's design
+  // TODO 40 row 2 — read the radius the chain is ACTUALLY on, from the same
+  // function the chain path is cut from. The wrap occupies FUSEE_F_ACTIVE
+  // (0.9375) of the groove band, so full wind seats it at 2.9 and the cut
+  // tip's FUSEE_R_SMALL carries only the runout. This used to lerp the whole
+  // 7.4 → 2.6 band against the reserve, quoting a radius no wrap ever
+  // reaches; two expressions for one quantity is how they drift apart.
+  const fuseeR = fuseeGrooveAt(reserveShown * FUSEE_F_ACTIVE).r;
+  // NOT ≈ 1, and this line no longer says it is. A straight generator cannot
+  // level a linear spring's product: on the radius above it runs 0.996 empty,
+  // peaks at 1.340 near mid-reserve and lands at 1.115 wound. TODO 40 row 1
+  // owns the fix — the cone wants r = FUSEE_R_SMALL / springTq, a hyperbola —
+  // and until it lands this comment states what the expression computes
+  // rather than what the cone was meant to achieve.
+  const trainTq = (springTq * fuseeR) / FUSEE_R_SMALL;
   document.getElementById('bar-spring').style.width = `${(springTq * 100).toFixed(1)}%`;
   document.getElementById('bar-train').style.width = `${clamp(trainTq * 100, 0, 100).toFixed(1)}%`;
 
