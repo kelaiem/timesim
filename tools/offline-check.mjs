@@ -60,13 +60,15 @@ const touchTree = (dir, when) => {
   }
 };
 
-// Two stamped trees from the working tree — exactly the release payload's
-// app half (the payload excludes tools/, but stamping runs FROM tools
-// against the tree, same as release.yml).
+// Two stamped trees from the working tree — the release payload as
+// tools/payload.sh defines it (§88: the app, vendor/ and the licences; no
+// repo documentation, no dev_server.py). Copied by name rather than shelling
+// out to payload.sh because this must include UNCOMMITTED work — it is a
+// pre-land check, and git archive only sees what is committed.
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'sw.js', 'manifest.webmanifest', 'dev_server.py', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'sw.js', 'manifest.webmanifest', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;

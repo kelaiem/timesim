@@ -287,16 +287,22 @@ deploy does not exist there, and that is why it is shaped that way.
 second kind of build — do not fork the stamper) and adds the
 environment's own marks.
 
-**The Pages payload is NARROWER than the SFTP release's, and only ever
-subtractively.** A Pages site is served to whoever has the URL, so it
-carries the app, `vendor/` and the licences and nothing else — every
-`*.md` (including `docs/`), `.githooks`, `.gitignore`, `dev_server.py`
-and `test-geometry.html` are cut. Both halves are asserted in the
-workflow, because a pathspec breaks silently and the symptom (repo
-documentation served from the site) looks like a healthy deploy: no
-doc may appear in the artifact, and `LICENSE` plus both
-`vendor/LICENSE-*.txt` must. Add a doc anywhere and it stays unpublished
-by default — that is the intended direction.
+**The deployed payload is `tools/payload.sh`, and it is the ONLY
+definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,
+so the two deploys serve the same bytes by construction rather than by
+two pathspec lists someone keeps in step. The rule is "the app,
+`vendor/`, and the licences"; everything else is repository, not site —
+every `*.md` (including `docs/`), `.githooks`, `.gitignore`,
+`dev_server.py` and `test-geometry.html` are cut. Add a doc anywhere and
+it stays unpublished by default, which is the intended direction.
+
+Both deploys ASSERT both halves, because a pathspec breaks silently and
+the symptom — a release quietly carrying the repo's documentation —
+looks exactly like a healthy one: no doc may appear in the payload, and
+`LICENSE` plus both `vendor/LICENSE-*.txt` must. That second half is not
+paranoia: those files survive the `*.md` rule only by being
+extensionless and `.txt`, and a build shipping vendored three.js must
+carry its licences.
 
 **`pages.yml` only ever runs from `main`, and that is load-bearing.**
 Each environment's TREE comes from its own ref via `git archive`, but

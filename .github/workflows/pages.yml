@@ -168,31 +168,14 @@ jobs:
           PROD_VERSION: ${{ steps.refs.outputs.prod_version }}
         run: |
           set -euo pipefail
-          # The payload starts from release.yml's — the tracked files at that
-          # ref, minus CI/dev-tool config — and then cuts further, so this is
-          # NARROWER than what QA gets over SFTP. It is deliberately not the
-          # same bytes, and the difference is only ever subtractive: nothing is
-          # added here that a release does not have.
-          #
-          # What the extra excludes drop, and why. A Pages site is served to
-          # whoever has the URL, and none of these are part of the running app:
-          # every *.md (README, CLAUDE.md, TODO.md, SPEC.md, AESTHETICS.md and
-          # docs/ — repo documentation, not site content), .githooks and
-          # .gitignore (clone-time tooling), dev_server.py (inert when served
-          # statically), and test-geometry.html (a dev smoke-test page, which
-          # the stamper never versioned and the worker never precached — it was
-          # already a second-class passenger).
-          #
-          # LICENSE and vendor/LICENSE-*.txt STAY. They are .txt or extensionless
-          # and so survive the *.md rule, which is not luck — a published site
-          # carrying vendored three.js must carry its licences.
+          # The payload is tools/payload.sh's, which release.yml calls too — one
+          # definition, so the two deploys serve the same bytes by construction
+          # rather than by two pathspec lists someone keeps in step. Read that
+          # file for what is cut and why.
           build() {
             name=$1; ref=$2; version=$3; dest=$4
             echo "--- $name  <-  $ref  ($version)"
-            mkdir -p "$dest"
-            git archive --format=tar "$ref" -- . ':(exclude).github' ':(exclude).claude' \
-              ':(exclude)tools' ':(exclude)*.md' ':(exclude).githooks' ':(exclude).gitignore' \
-              ':(exclude)dev_server.py' ':(exclude)test-geometry.html' | tar -x -C "$dest"
+            sh tools/payload.sh "$ref" "$dest"
             node tools/build-pages.mjs "$dest" "$version" "$name"
           }
           rm -rf _site

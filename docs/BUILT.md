@@ -7848,10 +7848,45 @@ site, looks exactly like a healthy deploy. Checked across the whole
 artifact rather than per environment, so a leak into any one of the three
 is caught.
 
-The cost is the property the original shape was chosen for: Pages and QA
-no longer serve the same bytes, and the comment that said they did is
-corrected rather than left standing. What they still share is the tag and
-the stamper, which is what actually makes testing a meaningful mirror.
+**And then the same cut was made to the SFTP release, which is the better
+end state.** Narrowing Pages alone bought the fix at the price of the
+property the original shape was chosen for — the two deploys no longer
+serving the same bytes — and left two pathspec lists to keep in step. The
+question "should a deployed artifact carry the repository's documentation"
+has the same answer at QA as on a public URL, so it is answered once:
+`tools/payload.sh` holds the definition and BOTH workflows call it. Same
+bytes by construction, and a list nobody can update in one place only.
+
+"Same bytes" is measured, not asserted. Building tag 2.1.9 both ways —
+release.yml's path and pages.yml's testing environment, same tag, same
+stamper — and diffing the trees produces exactly three differences, all of
+them the environment marks that are supposed to be there:
+
+```
+index.html    + <meta name="app-environment" content="testing" />
+              + <meta name="robots" content="noindex" />
+explain.html  (the same two)
+version.json  {"version":"2.1.9"} → {"version":"2.1.9","environment":"testing"}
+```
+
+Every other file is identical, `sw.js` included — which means the two
+builds agree on the precache manifest, the one thing a payload change could
+plausibly have desynchronised.
+
+Both deploys assert both halves — no doc in the payload, and `LICENSE`
+plus both `vendor/LICENSE-*.txt` present. The second assertion is the one
+worth keeping: those files survive the `*.md` rule only by being
+extensionless and `.txt`, which is a coincidence, and a build shipping
+vendored three.js must carry its licences whatever the rule happens to
+match.
+
+The obvious alternative, `.gitattributes` `export-ignore`, is the native
+mechanism and would need no arguments at all. It was rejected for a
+concrete reason: git reads that attribute from the tree BEING ARCHIVED,
+and `pages.yml` archives old release tags. A tag cut before the file
+existed carries no such attributes, so its payload would silently stay
+wide — the same shape of trap as the tooling question above, and the same
+answer: the definition comes from the caller, which is main.
 
 ### What this did NOT close
 

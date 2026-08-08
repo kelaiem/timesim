@@ -129,14 +129,33 @@ jobs:
         env:
           VERSION: ${{ needs.release.outputs.version }}
         run: |
-          # Exactly the tracked files at this tag, minus CI/dev-tool config
-          # that has no bearing on the running app.
-          mkdir -p "$VERSION"
-          git archive --format=tar HEAD -- . ':(exclude).github' ':(exclude).claude' \
-            ':(exclude)tools' \
-            | tar -x -C "$VERSION"
-          # tools/ is excluded from the PAYLOAD but still present in the
-          # checkout, which is where the stamp step below runs it from.
+          set -euo pipefail
+          # §88 — the payload is tools/payload.sh's, which pages.yml calls too,
+          # so QA and the Pages environments serve the same bytes by
+          # construction. Read that file for what is cut and why; the short
+          # version is "the app, vendor/, and the licences", with repo
+          # documentation and dev tooling left in the repository where they
+          # belong. tools/ is excluded from the PAYLOAD but still present in
+          # the checkout, which is where this and the stamp step run from.
+          sh tools/payload.sh HEAD "$VERSION"
+
+          # Asserted, not merely configured — same reasoning as pages.yml. A
+          # pathspec breaks silently, and a release that quietly carries the
+          # repo's documentation looks exactly like a healthy one.
+          leaked=$(find "$VERSION" \( -name '*.md' -o -name 'dev_server.py' \
+            -o -name 'test-geometry.html' -o -name '.gitignore' -o -name '.githooks' \) -print)
+          if [ -n "$leaked" ]; then
+            echo "$leaked"
+            echo "::error::files that must not be released are in the payload (see list above)"
+            exit 1
+          fi
+          # The other half: LICENSE and the vendor licences survive the *.md
+          # rule only by being extensionless and .txt, which is a coincidence.
+          # A release carrying vendored three.js must carry its licences.
+          for f in "$VERSION/LICENSE" "$VERSION/vendor/LICENSE-three.txt" \
+                   "$VERSION/vendor/LICENSE-three-mesh-bvh.txt"; do
+            [ -f "$f" ] || { echo "::error::$f is missing from the release payload"; exit 1; }
+          done
 
       # §28 layer 1 — version every asset URL so a browser cannot serve a
       # stale one, and emit version.json for the running app to poll. URLs
