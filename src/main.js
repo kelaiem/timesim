@@ -2248,6 +2248,13 @@ const Z_SETTING_LEVER = Z_KEYLESS - (0.75 + CLEAR_MARGIN + 0.5 + 0.1);
 // linkage below) because it sizes the lever's tail post: the post's whole
 // job is to carry the two rod pins.
 const ROD_R = 0.35; // rod radius — reset and hack rods share it
+// The KNUCKLE is the rod's widest point, not the tube: an elbow rod's bend
+// carries a ball a little proud of the shaft. Every clearance question about
+// these rods is really about this radius, and asking it about ROD_R
+// understates the part by 0.05 — which §85 C3 surfaced the moment its
+// least-bend objective stopped leaving slack for the model's own optimism
+// (CI: Reset rod ⇄ the winding spur at 0.0849 against a 0.15 floor).
+const ROD_KNUCKLE_R = ROD_R * 1.15;
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 // The rods run LOW now — between the base plate and the GREAT WHEEL's
 // underside. The mid-band (just under the plate floor) is closed by the
@@ -2507,10 +2514,10 @@ hammerGroup.add(hammerTailBar);
 // the built one. Each row carries `what` it is, so a fouled route can name
 // the body it cannot get past instead of only reporting a negative number.
 const lowRodObstaclesFor = (p, kw) => [
-  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: kw.crownWheelR + 0.4 + ROD_R + CLEAR_MARGIN, what: 'the transfer wheel' },
-  { x: p.barrel.x, y: p.barrel.y, r: kw.windSpurR + KW_MODULE + ROD_R + CLEAR_MARGIN, what: 'the winding spur' },
-  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar' },
-  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar' },
+  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: kw.crownWheelR + 0.4 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the transfer wheel' },
+  { x: p.barrel.x, y: p.barrel.y, r: kw.windSpurR + KW_MODULE + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the winding spur' },
+  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar' },
+  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar' },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
@@ -2519,7 +2526,7 @@ const lowRodObstaclesFor = (p, kw) => [
   // GW_UNDER_Z — the same constant ROD2_PLANE_Z is derived FROM, so the row
   // states the corridor's own premise instead of assuming it, and bites
   // exactly where the rod climbs out of the band that premise bought.
-  { x: p.barrel.x, y: p.barrel.y, r: LAYOUT_INPUTS.swept.great + ROD_R + CLEAR_MARGIN,
+  { x: p.barrel.x, y: p.barrel.y, r: LAYOUT_INPUTS.swept.great + ROD_KNUCKLE_R + CLEAR_MARGIN,
     zAbove: GW_UNDER_Z, what: 'the great wheel' },
 ];
 // The keyless radii the corridor reads, captured like the solver's own
@@ -2540,7 +2547,7 @@ function makeElbowRodMesh(len, f, e) {
     seg.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
     g.add(seg);
   }
-  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(ROD_R * 1.15, 10, 8), MATS.steel);
+  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(ROD_KNUCKLE_R, 10, 8), MATS.steel);
   knuckle.position.set(E.x, E.y, 0);
   g.add(knuckle);
   return g;
@@ -2557,8 +2564,8 @@ const RESET_ROD_ELBOW = (() => {
     // Flat, both ends on the reset plane (§85 C1: heights are declared now).
     poses.push({ a: post, b: { x: r.q.x, y: r.q.y }, za: ROD_PLANE_Z, zb: ROD_PLANE_Z });
   }
-  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES, ROD_R,
-    { eMax: ELBOW_E_MAX, plateLimit: plateR - ROD_R - CLEAR_MARGIN }); // §85 C3: least bend, plate-bounded
+  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES, ROD_KNUCKLE_R,
+    { eMax: ELBOW_E_MAX, plateLimit: plateR - ROD_KNUCKLE_R - CLEAR_MARGIN }); // §85 C3: least bend, plate-bounded
   if (best.clear < 0)
     console.warn(`reset rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
   return best;
@@ -2629,7 +2636,7 @@ const stopBearingObstaclesAt = (p) => [
 // warn: collect })` is the whole shadow.
 const STOPWORK_INPUTS = {
   P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
-  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_R,
+  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
   bearingObstaclesAt: stopBearingObstaclesAt,
   lowRodObstacles: LOW_ROD_OBSTACLES,
   rubyFlare: G.HACK_RUBY_FLARE,
@@ -2981,7 +2988,7 @@ const LOW_LINKAGE_OBSTACLES = (() => {
     const E = { x: a.x + ux * L * elbow.f + nx * elbow.e, y: a.y + uy * L * elbow.f + ny * elbow.e };
     obs.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: ROD_R });
     obs.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: ROD_R });
-    obs.push({ x: E.x, y: E.y, r: ROD_R * 1.15 });
+    obs.push({ x: E.x, y: E.y, r: ROD_KNUCKLE_R });
   };
   let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
   let psi = STOP_PSI0;
