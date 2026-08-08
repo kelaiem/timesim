@@ -45,11 +45,12 @@ let rewrites = 0;
 // precached: its importmap and its `./src/geometry.js` import were the only
 // unversioned asset URLs left in a release, so that one page could be served
 // stale forever. Being in the payload and being stamped are the same decision.
-// favicon.svg joins the unstamped seeds for the manifest's reason: the three
-// documents and the manifest all reference it by a stable path, and an icon
-// missing offline is a small but visible hole in a page that otherwise loads.
+// favicon.svg, favicon.png, and apple-touch-icon.png join the unstamped seeds
+// for the manifest's reason: the documents and the manifest all reference them
+// by a stable path, and icons missing offline are a small but visible hole in
+// pages that otherwise load. Safari uses favicon.png as an SVG fallback.
 const SEEDS = ['index.html', 'explain.html', 'test-geometry.html',
-  'manifest.webmanifest', 'favicon.svg'];
+  'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png'];
 // A seed is listed by NAME, not discovered by the walk, so a typo or a file the
 // payload does not carry is invisible here and fatal at the far end: addAll is
 // all-or-nothing, so a worker that precaches one URL the release lacks NEVER
