@@ -7758,6 +7758,29 @@ alternative — leaving a cache-clearing line in that measurement says
 changes nothing, so the check reads rigorous — is the failure this repo
 spends most of `TODO.md` catching, one layer up.
 
+**What it does to the SFTP release, which is the deploy that already
+exists.** `sw.js` is the only functional file in this change that is
+inside the release payload (`tools/` and `.github/` are excluded; the
+three markdown files that ship are inert). `release.yml` and
+`stamp-release.mjs` are untouched, and the two placeholder lines the
+stamper rewrites are intact — a stamped tree still reports 27 URLs
+versioned and 18 precached, as before.
+
+The one behavioural change at QA is the cache rename, so the UPGRADE was
+run rather than argued: tree A carrying the pre-§88 worker, the symlink
+repointed at tree B carrying this one, which is exactly what `release.yml`
+does. The viewer went `["timesim-0.0.0-qa-old"]` → toast → reload → lands
+on the new version → `["timesim-/-0.0.0-qa-new"]`, still boots offline,
+console silent. The orphan clause swept the flat cache on that first
+upgrade, so nothing leaks and nothing needs doing by hand.
+
+That sweep rests on one condition worth naming: QA's scope path is stable
+across releases, because the site is distributed as a symlink whose URL
+does not change. If QA were ever re-rooted at a different path, caches
+left under the old scope would match neither clause — they contain a `/`,
+so they are not orphans — and would sit there until the browser evicted
+them.
+
 ### What this did NOT close
 
 The environments only stop evicting each other once the release PROMOTED
