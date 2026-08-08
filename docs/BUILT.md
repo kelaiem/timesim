@@ -1390,7 +1390,12 @@ what shipped, reconciled against the plan above):**
    deliberate deviation from the plan: in §25 A's single-member barrel
    (rotation IS wound state) a click would block the ring itself; the hold
    is B's lock, and the arbor/shell split that earns a real click is filed
-   as debt. Winding banks wind AND un-rides the cam in lockstep (the exact
+   as debt. (**§89 built half of that split** — a FIXED arbor with the body
+   wound at its rim, so the ribbon is the wound state and this paragraph's
+   reason no longer holds. The conclusion does, on new grounds: the click
+   would still have to hold the toothed body, which is the member the
+   spring drives the strike train from. The wound-arbor form is what is
+   still filed, now as TODO 37.) Winding banks wind AND un-rides the cam in lockstep (the exact
    mirror of the ring's spend), and the three phase RESETS (trip, run-down,
    switch-off) are GONE — each silently slipped the barrel⇄cam mesh.
    Verified: wind → trip → 28-strike ring lands the phase at exactly REST

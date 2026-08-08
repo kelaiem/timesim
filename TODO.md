@@ -3825,16 +3825,19 @@ is a real arrangement — this movement's own going drum is the other one —
 and it is deliberately NOT the arrangement a textbook alarm barrel has.
 A going barrel winds its ARBOR and a click holds it; the body delivers.
 
-What that costs here is written into the build comment at the winding
-train, and has been since §25 C:
+What that costs here was written into the build comment at the winding
+train, and had been since §25 C — in a form §89 falsified:
 
 > No click is modelled: in §25 A's single-member barrel (rotation IS wound
 > state) a barrel click would block the ring itself; the hold is stage B's
 > striking-wheel lock.
 
-§89 removed the reason (rotation is no longer the wound state — the ribbon
-is) and did not remove the consequence. **Nothing in the alarm barrel holds
-its own wind.** What stops the body running back through the winding train
+§89 removed that reason (rotation is no longer the wound state — the ribbon
+is) and did not remove the consequence, so the comment has been rewritten
+on the grounds that survive: a click must hold the member the winding torque
+enters, which here is the toothed BODY — the same member the spring drives
+the strike train from, so holding it holds the ring. **Nothing in the alarm
+barrel holds its own wind.** What stops the body running back through the winding train
 is the striking wheel's lock, four meshes downstream, and a wound alarm
 whose lock is lifted for any other reason unwinds through the crown. The
 crown's documented backward free-spin while ringing is the same fact seen
