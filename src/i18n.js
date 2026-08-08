@@ -36,7 +36,17 @@ document.documentElement.lang = UI_LANG; // screen readers pick pronunciation fr
 
 export function setUiLang(v) {
   try { localStorage.setItem('uiLang', v); } catch { /* then the choice lasts this load */ }
-  location.reload(); // §22 reload-tier: the panel is BUILT from UI_LANG
+  // UI_LANG's resolution above puts ?lang= FIRST, ahead of this very choice —
+  // right for a shared deep link (states what the sharer saw), wrong for an
+  // explicit switch made while that link's param is still in the address bar:
+  // a bare reload would re-resolve to the stale param and silently discard
+  // the click. An explicit switch overrides it instead: only a non-default
+  // locale travels (the Copy-view convention, main.js), so 'en' drops the
+  // param rather than writing the default explicitly.
+  const url = new URL(location.href);
+  if (v === 'en') url.searchParams.delete('lang');
+  else url.searchParams.set('lang', v);
+  location.href = url; // navigation to the corrected URL IS the reload
 }
 
 // Display-layer number formatting (§73 coupling 5): German reads 12,5 where
