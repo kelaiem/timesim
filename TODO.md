@@ -4060,6 +4060,10 @@ run and its own record.
 
 ## 40. The fusee does not equalise, and the chain is not a constant length
 
+**Row 2 is CLOSED** (the readout now reads the radius the chain is on).
+Rows 1 and 3 are open, and closing row 2 made row 1 measurably worse on
+paper — which is what it was for.
+
 Three arithmetic gaps in one mechanism, found by plotting the shipped
 expressions in `explain.html`'s fusee plates (BUILT §91) rather than
 drawing a picture of them. They share a cause — every one of them quotes
@@ -4106,17 +4110,32 @@ cone against a real ribbon, or land this and re-solve when 32 lands. What
 is NOT acceptable is the current comment, which claims the product is
 constant when the code it sits on says otherwise.
 
-**Row 2 — the equalisation multiplies by a radius the chain never
+**Row 2 — CLOSED. The equalisation multiplied by a radius the chain never
 reaches.** The HUD's `fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL −
-FUSEE_R_LARGE) * reserveShown` sweeps the FULL 7.4 → 2.6 band. The chain's
+FUSEE_R_LARGE) * reserveShown` swept the FULL 7.4 → 2.6 band. The chain's
 own take-off does not: `rebuildChain` puts the active groove at
 `fuseeGrooveAt(tension * FUSEE_F_ACTIVE)`, and `FUSEE_F_ACTIVE` is 0.9375
 (3.75 wrap turns over 4 cut groove turns), so at full wind the chain pulls
-at **2.9**. The tip's 2.6 carries the runout and nothing else. One line:
-the HUD should read `fuseeGrooveAt(tension * FUSEE_F_ACTIVE).r`, the same
-function the geometry uses. Note it makes the bulge WORSE on paper
-(1.115 at full wind, not 1.000) — which is the point, and row 1's problem,
-not this row's.
+at **2.9**. The tip's 2.6 carries the runout and nothing else. The readout
+now calls `fuseeGrooveAt(reserveShown * FUSEE_F_ACTIVE).r` — the same
+function the geometry is cut from, so there is one expression for the
+quantity instead of two that drifted 11.5% apart at full wind.
+
+It made the bulge WORSE, as predicted: the product now reads 1.115 wound
+rather than 1.000. That is the honest direction — the old number flattered
+the cone by quoting a lever it does not have — and the flattening itself is
+row 1's problem, not this row's.
+
+**And it exposed a display claim nobody had measured.** The bar is
+`clamp(trainTq * 100, 0, 100)`, and BOTH the old and the new expression
+exceed 1 everywhere except at empty, where they agree — so the rendered
+width did not change by a pixel, and the train-torque bar has been PEGGED
+at 100% across essentially the whole reserve. It shows "level" by
+saturating, not because the mechanism levels it, and its CSS class is
+literally `.flat`. Filed here rather than fixed: what that bar's scale
+should mean (a window around 1? the ±15% swing at full deflection?) is a
+display decision, and the honest version of it is only worth designing
+after row 1 decides what the number is going to be.
 
 **Row 3 — the drum's rotation is linear in the reserve where the chain's
 take-up is quadratic, so the chain changes length.** The cone gathers
@@ -4145,7 +4164,7 @@ length of steel — the same class of hole `devLen` closed for the
 mainspring in item 1, and the same fix shape: assert the run's length is
 constant across the reserve axis, then make it true.
 
-**Order.** Row 2 is a one-liner and can land alone. Row 3 wants the drum's
+**Order.** Row 2 landed alone, as a one-liner. Row 3 wants the drum's
 rotation derived from the chain actually consumed
 (`rot(t) = C(t) / DRUM_WRAP_R` with `C` the wrap integral) rather than
 from `(1 − t) · DRUM_ROT_FULL`, and it must be landed carefully:
