@@ -54,10 +54,81 @@
 # the browser download is cached keyed on that pin. python3 for dev_server.py
 # is preinstalled on ubuntu-latest.
 
+# WHAT THIS JOB IS NOT ABOUT, filtered out by path — offline.yml's precedent.
+#
+# Everything above is about making a 22-37 minute job survive. The other half
+# is not running it when it cannot say anything: this triggered on every pull
+# request, so a TODO.md typo cost a full battery, and the reasoning it produced
+# was "the same 17 gates, again."
+#
+# THE FILTER IS THE MECHANISM, and it has to be. A PR body cannot reach a job's
+# trigger — that text is composed on GitHub after every hook has run, which is
+# why purge-session-links.yml exists beside .githooks/commit-msg — so a "safe
+# to skip" checkbox would document an intention and save nothing.
+# .github/pull_request_template.md therefore records the OUTCOME and sends a
+# disagreement here, to a PR against this list.
+#
+# `paths-ignore` skips only when EVERY changed file matches, so a path nobody
+# has classified still runs the job. That is the safe direction and it is the
+# reason this list may stay short: it never has to be complete, only true.
+#
+# Every entry is an invariant, not a guess about what usually matters:
+#
+#   **/*.md            the battery boots index.html; no markdown is ever loaded
+#   explain.html       "sim-code-free, so explainer landings don't touch the
+#                      battery" (CLAUDE.md). explain-i18n.yml is its gate.
+#   src/explain-i18n*  that page's tables — imported by explain.html and by
+#                      nothing else; index.html loads only src/main.js
+#   test-geometry.html a separate page. The battery never opens it
+#   sw.js              the battery "runs the source tree and so deliberately
+#                      has no worker at all" (CLAUDE.md). offline.yml owns it
+#   .githooks, .gitignore, LICENSE, vendor/LICENSE-*.txt
+#                      repository, not app — none of it reaches the scene
+#
+# AND WHAT IS DELIBERATELY ABSENT, because four of them look ignorable:
+#
+#   tools/**                   contains ci-battery.mjs. Changing the harness is
+#                              the one change that most needs the harness run
+#   .github/workflows/**       editing the gate must run the gate
+#   dev_server.py              the battery's own server
+#   src/aesthetics.json        the BUILD. AESTHETICS.md beside it is
+#                              documentation and is ignored above; the pair
+#                              looks symmetric and is not
+#   vendor/*.js                three.js itself
+#
+# ON REQUIRED CHECKS, since this filter is unsafe the moment that changes.
+# Battery is not a required status check today. If it becomes one, a filtered
+# run never reports and every docs-only PR blocks forever on a status that will
+# not arrive — GitHub's answer is a companion job with the SAME name on the
+# inverse filter that exits 0. Add that in the same change, or not at all.
+#
+# THE PUSH TRIGGER IS DELIBERATELY NOT FILTERED, and it is not an oversight.
+# main is the only place the MERGED tree is ever tested — a PR job runs the
+# merge preview, and two PRs that were each individually battery-irrelevant
+# still land as one tree nobody swept. That run is the post-merge net, it costs
+# one job per merge rather than one per pushed commit, and a net with a
+# cleverness in it is a net with a hole in it.
+#
+# It also keeps this list SINGLE. YAML anchors would share it between the two
+# triggers, but no workflow here uses one and Actions' support for them is not
+# worth a gate on: an unsupported alias does not make the battery lenient, it
+# makes the file fail to parse, and payload.sh's header already names the
+# alternative failure — two pathspec lists someone keeps in step.
+
 name: Battery
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'explain.html'
+      - 'src/explain-i18n*.js'
+      - 'test-geometry.html'
+      - 'sw.js'
+      - '.githooks/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - 'vendor/LICENSE-*.txt'
   push:
     branches: [main]
 
