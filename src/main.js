@@ -14931,8 +14931,14 @@ const keylessKwOf = (kl) => ({
   plateR: kl.plateR, uWind: kl.uWind, cwDist: kl.cwDist,
   crownWheelR: kl.crownWheelR, windSpurR: kl.windSpurR,
 });
+// §85 step C4 — this returns TWO things now: what to tell the viewer, and
+// whether the candidate can be BUILT at all. Unbuildable is a structural
+// fact, not a phrase to match on — the rod's route either threads the
+// corridor or it does not — so the fatal case reads the elbow's own clearance
+// rather than sniffing the warning text.
 function stopWorkShadowWarns(candP, kwOverride = null) {
   const warns = [];
+  let refuse = null;
   try {
     // The stem handle hands its own candidate cluster in (same layout, moved
     // stem); every other handle moves the layout, so the cluster re-solves
@@ -14940,15 +14946,20 @@ function stopWorkShadowWarns(candP, kwOverride = null) {
     // those too and this path never asked for them either.
     const kw = kwOverride
       || keylessKwOf(solveKeyless({ ...KEYLESS_INPUTS, P: candP, warn: (m) => warns.push(m) }));
-    solveStopWork({
+    const r = solveStopWork({
       ...STOPWORK_INPUTS, ...kw, P: candP,
       lowRodObstacles: lowRodObstaclesFor(candP, { ...LOW_ROD_KEYLESS, ...kw }),
       warn: (m) => warns.push(m),
     });
+    if (r.HACK_ROD_ELBOW.clear < 0)
+      refuse = `the hack rod cannot be routed here — no bend clears `
+        + `${r.HACK_ROD_ELBOW.at?.what || 'the low corridor'} `
+        + `(best ${r.HACK_ROD_ELBOW.clear.toFixed(2)})`;
   } catch (err) {
     warns.push(`the stop work cannot be solved here (${err.message})`);
+    refuse = `the stop work cannot be solved here (${err.message})`;
   }
-  return warns;
+  return { warns, refuse };
 }
 function ensureReconfGhost() {
   if (reconfGhost) return;
@@ -15295,14 +15306,17 @@ function reconfMoveDrag(e) {
       urlKey: 'stemaz', label: 'stem', windows: () => reconfWindows,
       shadow: (az) => {
         const warns = [];
+        let refuse = null;
         try {
           const kl = solveKeyless({ ...KEYLESS_INPUTS, stemAzRad: az, warn: (m) => warns.push(m) });
           // §85 step B — the stem carries the hack rod's POST end with it,
           // and re-solves two of the corridor's own circles. Same layout,
           // candidate keyless frame.
-          warns.push(...stopWorkShadowWarns(P, keylessKwOf(kl)));
+          const link = stopWorkShadowWarns(P, keylessKwOf(kl));
+          warns.push(...link.warns);
+          refuse = link.refuse;   // §85 C4
         } catch (err) { warns.push(`keyless solve failed (${err.message})`); }
-        return warns;
+        return { warns, refuse };
       },
     },
     alarmcrown: { urlKey: 'alarmaz', label: 'alarm crown', windows: reconfAlarmWindows },
@@ -15348,7 +15362,12 @@ function reconfMoveDrag(e) {
     reconfGhost.children.forEach((ch) => ch.material.color.set(conflict ? 0xe08888 : 0xbfeee2));
     const vAz = rk.toValue ? rk.toValue(az) : az;
     const deg = ((vAz * 180 / Math.PI) % 360 + 360) % 360;
-    const shadowWarns = (!conflict && rk.shadow) ? rk.shadow(vAz) : [];
+    // A shadow may answer with a bare warning list, or with a verdict that
+    // also refuses (§85 C4 — the stem can move the rod somewhere it cannot be
+    // routed). Both shapes are accepted so the pusher's own shadow is unchanged.
+    const shadowOut = (!conflict && rk.shadow) ? rk.shadow(vAz) : [];
+    const shadowWarns = Array.isArray(shadowOut) ? shadowOut : shadowOut.warns;
+    const shadowRefuse = Array.isArray(shadowOut) ? null : shadowOut.refuse;
     reconfCandidate = {
       kind: reconfDrag.kind, urlKey: rk.urlKey, valueDeg: deg,
       label: `proposed: ${rk.label} az ${deg.toFixed(1)}\u00b0 (${rk.clockPrefix || ''}${reconfClockLabel(az)})`,
@@ -15367,15 +15386,18 @@ function reconfMoveDrag(e) {
     // warnings join the candidate's, so the existing amber tier reports
     // them and Apply stays available (a WARNED spec is appliable \u2014 refusing
     // an unbuildable route is step C's job, not this one's).
-    const linkWarns = sol ? stopWorkShadowWarns(sol.P) : [];
-    if (sol) reconfPaintConstel(sol, warns.length + linkWarns.length > 0);
+    const link = sol ? stopWorkShadowWarns(sol.P) : { warns: [], refuse: null };
+    if (sol) reconfPaintConstel(sol, warns.length + link.warns.length > 0);
     else if (reconfConstel) reconfConstel.visible = false;
     reconfCandidate = {
       kind: h.kind, urlKey: h.urlKey, valueDeg: specDeg,
       label: `proposed: ${h.kind} step ${specDeg.toFixed(1)}\u00b0 (was ${h.defDeg.toFixed(1)}\u00b0)`,
-      refuse: sol ? null : (warns[0] || 'the train cannot close here'),
-      warns: sol ? [...warns, ...linkWarns] : [],
-      solverClean: !!sol && warns.length === 0 && linkWarns.length === 0,
+      // §85 C4 — a route that cannot be threaded is not a warning to apply
+      // past; it is a spec with no build. Refusing widens the handle's
+      // forbidden zone, which is this mode making a real constraint visible.
+      refuse: sol ? link.refuse : (warns[0] || 'the train cannot close here'),
+      warns: sol ? [...warns, ...link.warns] : [],
+      solverClean: !!sol && warns.length === 0 && link.warns.length === 0,
     };
   }
   reconfShowStatus();
