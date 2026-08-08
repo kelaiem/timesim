@@ -2644,8 +2644,59 @@ const stopBearingObstaclesAt = (p) => [
 // mode can ask the same solver where the linkage would stand under a
 // candidate layout: `solveStopWork({ ...STOPWORK_INPUTS, P: candidateP,
 // warn: collect })` is the whole shadow.
+// §87 — THE HACK ROD'S OWN PIN. The rod used to share the reset rod's tail
+// post at the very end of the setting lever's arm, taking the full stroke,
+// and the mast that stroke buys stands above the balance cock at every moved
+// station: the pivot height is POST_STROKE / (|K| · sin ψ), so a stroke the
+// coupling cannot afford becomes height.
+//
+// The fix is to change what the linkage is GIVEN, not what it produces. A
+// dedicated pin further down the SAME arm takes a smaller bite of the same
+// motion — stroke scales with r / SL_TAIL, exactly — and the arithmetic says
+// how far down: the movement can afford POST_STROKE ≤ 6.94 · sin(ψ) · |K|,
+// the stroke at the post is 2.911, and |K| across the handles bottoms out
+// near 0.61, so the pin belongs at ≈ 0.70 of the arm. (§87 also priced the
+// other route — widening the plate cut's wedge to buy |K| — at 25–30° of new
+// cut through the band that carries §62's windows and the pillar seats. One
+// part against a redesigned plate is not a close call.)
+//
+// Force goes the right way, which is why this is the honest end to pull:
+// the same lever torque at a smaller radius delivers MORE to the rod, and a
+// brake wants force rather than travel.
+// DERIVED, not chosen: the pin comes in only as far as the coupling makes it,
+// which is rule 1 applied to a lever ratio. A first solve at the post reports
+// the |K| this movement's station achieves; the mast fits when
+//   stroke ≤ (TQ_TOP_Z − mast clevis − ROD2_PLANE_Z) · sin(ψ_target) · |K|
+// so the pin's fraction of the arm is that ceiling over the stroke, capped at
+// 1 — a movement whose coupling already affords the full stroke keeps the
+// post it always used, and IDENTITY is exactly that movement. (A flat 0.70
+// was measured first: it fixes every moved station and breaks the shipped
+// one, dropping the pivot so far that the crank sweeps its own bracket at
+// −0.159. The reduction is a remedy, not an improvement — take none of it
+// where none is needed.)
+const HACK_PIN_K = (() => {
+  const probe = solveStopWork({
+    P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
+    plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
+    bearingObstaclesAt: stopBearingObstaclesAt,
+    lowRodObstacles: LOW_ROD_OBSTACLES,
+    rubyFlare: G.HACK_RUBY_FLARE,
+    warn: () => {},                     // the real solve below does the reporting
+  });
+  const headroom = TQ_TOP_Z - (probe.STOP_MAST_TOP - probe.Z_STOP_PIVOT) - ROD2_PLANE_Z;
+  const stroke = Math.hypot(postEng.x - postRel.x, postEng.y - postRel.y);
+  const ceiling = headroom * Math.sin(probe.STOP_PSI_TARGET) * Math.abs(probe.STOP_TANG_K);
+  return Math.min(1, ceiling / stroke);
+})();
+const pinAt = (post) => ({
+  x: settingLeverPivot.x + (post.x - settingLeverPivot.x) * HACK_PIN_K,
+  y: settingLeverPivot.y + (post.y - settingLeverPivot.y) * HACK_PIN_K,
+});
+const hackPinEng = pinAt(postEng), hackPinRel = pinAt(postRel);
+const hackPinWorldAt = (t) => pinAt(tailPostWorldAt(t));
 const STOPWORK_INPUTS = {
-  P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
+  P, balanceR, BAL_OUTER_R,
+  postEng: hackPinEng, postRel: hackPinRel, tailPostWorldAt: hackPinWorldAt,
   plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
   bearingObstaclesAt: stopBearingObstaclesAt,
   lowRodObstacles: LOW_ROD_OBSTACLES,
