@@ -939,7 +939,19 @@ export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eS
       if (worst > fallback.clear) fallback = { clear: worst, f, e, at: worstAt };
     }
   }
-  return best || fallback;
+  const chosen = best || fallback;
+  // §86 instrument A — did the FENCE decide, or the field? A winner sitting on
+  // its own search bound means the scan ran out of room rather than finding an
+  // optimum, and the value is the bound wearing an answer's clothes. Reported,
+  // never warned: a value legitimately at a limit is common (a floor is a
+  // constraint doing its job), so the row is the product and only a row nobody
+  // can explain is debt.
+  chosen.atBound = [
+    Math.abs(Math.abs(chosen.e) - eMax) < eStep / 2 ? `e at ±${eMax}` : null,
+    chosen.f <= 0.25 + fStep / 2 ? 'f at its low bound' : null,
+    chosen.f >= 0.75 - fStep / 2 ? 'f at its high bound' : null,
+  ].filter(Boolean);
+  return chosen;
 }
 
 // How far the search may LOOK, not how far the rod may bend — C3's objective
@@ -965,6 +977,7 @@ export function solveStopWork({
   warn = () => {},
 }) {
   const DEG2RAD = Math.PI / 180;
+  const corners = [];   // §86 instrument A — values their own search bound chose
 
   // ---------------------------------------------------------------------------
   // STOP WORK (hacking) — a local stop crank at the balance, driven by a
@@ -1181,8 +1194,8 @@ export function solveStopWork({
       // pivot height divides by |K|, see Z_STOP_PIVOT). Tiny clearance
       // tiebreak so equal-K bearings still prefer open air.
       const score = Math.abs(rodK) + clr * 0.01;
-      if (routable && (!best || score > best.score)) best = { phi, score };
-      if (!bestAny || score > bestAny.score) bestAny = { phi, score };
+      if (routable && (!best || score > best.score)) best = { phi, score, d };
+      if (!bestAny || score > bestAny.score) bestAny = { phi, score, d };
     }
     // Degrade in ONE step at a time, and say which step was taken. A station
     // that cannot route is still better than the outward ideal, which meets
@@ -1199,6 +1212,11 @@ export function solveStopWork({
       warn('stop work: no clear bearing about the balance — using the outward ideal');
       best = { phi: ideal };
     }
+    // §86 A — the wedge is this scan's fence. A winner at its edge means the
+    // plate cut chose the station, not the coupling the scan is scoring for.
+    if (best.d !== undefined && Math.abs(Math.abs(best.d) - Math.floor(wedgeBound)) < 0.5)
+      corners.push({ what: 'the stop work\'s bearing', value: `${best.d.toFixed(0)}° off the ideal`,
+        bound: `the plate cut's wedge, ±${Math.floor(wedgeBound)}°` });
     return best.phi;
   })();
   // The chosen station's frame, from the same derivation every candidate was
@@ -1281,6 +1299,9 @@ export function solveStopWork({
     }
     const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles, rodR,
       { eMax: ELBOW_E_MAX, plateLimit: plateR - rodR - CLEAR_MARGIN });
+    if (best.atBound?.length)
+      corners.push({ what: 'the hack rod\'s bend', value: `f ${best.f.toFixed(2)}, e ${best.e.toFixed(1)}`,
+        bound: best.atBound.join(' and ') });
     if (best.clear < 0)
       warn(`hack rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled${best.at?.what ? ` at ${best.at.what}` : ''}`);
     return best;
@@ -1296,6 +1317,8 @@ export function solveStopWork({
     STOP_PIVOT_R, POST_STROKE, Z_STOP_PIVOT_LOW,
     STOP_BEARING, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
     Z_STOP_PIVOT, STOP_TAIL_H, STOP_MAST_TOP, PAD_ARM_LOCAL_Z,
+    // §86 A — which of these were decided by a fence rather than a field
+    corners,
     // the linkage: its pose functions, its calibrated length, its route
     stopTailTopAt, stopSolvePsi, HACK_ROD_LEN, STOP_PSI0,
     STOP_PAD_TOP_LZ, STOP_PAD_Y, STOP_PAD_X,

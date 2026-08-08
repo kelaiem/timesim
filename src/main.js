@@ -2659,6 +2659,7 @@ const {
   STOP_PIVOT_R, POST_STROKE, Z_STOP_PIVOT_LOW,
   STOP_BEARING, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
   Z_STOP_PIVOT, STOP_TAIL_H, STOP_MAST_TOP, PAD_ARM_LOCAL_Z,
+  corners: STOPWORK_CORNERS,
   stopTailTopAt, stopSolvePsi, HACK_ROD_LEN, STOP_PSI0,
   STOP_PAD_TOP_LZ, STOP_PAD_Y, STOP_PAD_X,
   HACK_ROD_ELBOW,
@@ -2981,6 +2982,16 @@ function updateStopWork(post) {
   hackRod.quaternion.setFromUnitVectors(_rodUp, _rodDir);
 }
 updateStopWork(postRel); // rest pose (crown in)
+
+// §86 instrument A — THE CORNER REPORT, published rather than warned. A scan
+// whose winner sits on its own search bound is saying the fence decided, not
+// the field: §85 C3 found the hack rod's bend at BOTH corners of its box,
+// holding 13.54 of clearance against a margin asking 0.15, and the shape was
+// the bound rather than a decision. Rule 6 keeps boot silent, and §86 is
+// explicit that this must not become a gate — plenty of solved values sit
+// legitimately at a limit — so the rows are the product and a reader decides
+// which ones nobody can explain.
+const CORNER_REPORT = [...STOPWORK_CORNERS];
 
 // §86 instrument B — THE ENVELOPE CHECK. Every row above is a circle standing
 // in for a real part, and a circle that is smaller than the metal it
@@ -18889,6 +18900,7 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  cornerReport: CORNER_REPORT,   // §86 instrument A — values their own search bound chose
   // §62: what each openworked window asked for, what it got, and the sections
   // it left behind — the solve's own numbers, so a reader (or a check) can
   // measure the plate against what it was told rather than against a picture.
