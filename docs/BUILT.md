@@ -8220,9 +8220,21 @@ as usual. Driven end to end through the HUD's OWN gestures — a radial
 drag pulls the alarm crown, a tangential drag around the ring turns it
 — the alarm row tracks the disc live (`≈12:00` → `≈1:12`) and agrees
 with the §63 hand drawn above it in the same screenshot. Zero page
-errors on boot and through the gestures. Battery green; the change is
-DOM/CSS plus one moved declaration, so the geometry fingerprint is
-untouched.
+errors on boot and through the gestures. Battery 17/17 (3 shards,
+25 min): boot silent, every gate PASS, `sweptOverlap` 0 CONFIRMED over
+59 768 pairs, `clearances` 0 violations, fingerprint deterministic
+across virgin boots at `1307831341`.
+
+**The fingerprint claim was measured, not assumed**, and the first
+measurement was wrong in the instructive direction: booting this branch
+against a `main` worktree gave two different hashes, which for a
+DOM-only change reads as a real geometry move. The local `main` was 30
+commits stale. Re-run against the branch's actual base (780d41c), both
+trees from a cleared state file and a fresh browser context, both hash
+`1307831341` — the same value the battery's two virgin boots produced.
+The lesson is the cheap one: a fingerprint is only a claim about the
+two trees you actually compared, so name the base commit, not the
+branch name.
 
 One pre-existing condition, re-measured rather than assumed: on a
 390×740 viewport the panel (z 10) still overlaps the HUD's left sliver
