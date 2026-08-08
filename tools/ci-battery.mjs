@@ -387,6 +387,11 @@ const SPEC_POINTS = [
   { name: 'alarmaz=175', q: 'alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
   { name: 'alarmaz=180', q: 'alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
   { name: 'alarmmod=200', q: 'alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
+  // §93 made the MODE itself a deep link, so entering it is now a boot-time
+  // path: rings measured off six parts, the schematic tier forced, the panel
+  // rows opened — all before a viewer has clicked anything. Silent, because
+  // this point changes no station: it is the default spec with the tool open.
+  { name: 'reconf=1', q: 'reconf=1', expect: 'silent', why: '§93 — reconfigure mode entered at boot from its own deep link' },
   // §22's two knobs, at both ends of their clamped ranges.
   { name: 'vph=28800', q: 'vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
   { name: 'reserveh=48', q: 'reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },

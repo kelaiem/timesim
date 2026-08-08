@@ -8352,3 +8352,156 @@ cut. **An explainer plate is an instrument** — the cheapest one in the
 repo, since it costs no battery time — and it found something three
 collision-clean sweeps could not, because none of them has an opinion about
 torque.
+
+## §93 — Reconfigure mode survives its own Apply, and its six handles stop being a secret
+
+**Filed from an owner report on the mode itself**: "applying a
+reconfiguration is usually an iterative process and after a refresh should
+land you back in the same mode in which we can make other reconfigurations.
+Entering reconfigure mode should also land us in non-schematic mode. It
+should also be more clear which parts are draggable (i.e. fusee, escapement,
+crowns, etc.)." Three findings, one mode, and none of them is about the
+solver — §33's machinery was right and its front door was not.
+
+### 1. The mode did not survive the thing it exists to do
+
+§33 step 5 settled that a spec is a DOCUMENT: Apply is reload-tier, applies
+stack in browser history, and Undo is `history.back()`. The MODE was a
+`let reconfOn = false` — a variable a page load resets. So every single
+apply, the operation the whole mode exists for, ended with the tool closed:
+the viewer landed in the finished watch, opened the panel, found
+Reconfigure, turned it on, and started again. The cost scaled with exactly
+the thing the report names — iteration.
+
+The mode is now a URL param, `?reconf=1`, written by `history.replaceState`
+on entry and deleted on exit, read by `applyDeepLink` like every other mode
+flag. Three consequences fall out rather than being arranged:
+
+- **Apply, "As designed" and Load variant all carry it for free.** Each
+  navigates from `location.search`, and `reconf` is not a `SPEC_URL_KEY`, so
+  `navigateWithSpec`'s delete-then-set pass leaves it alone.
+- **A plain refresh keeps it**, because a refresh keeps the query string —
+  which is what the report asked for and what a variable never could give.
+- **`replaceState`, never `pushState`.** Entering a mode is not a document
+  edit; a history entry for it would put a mode change between an apply and
+  its Undo, and back must mean "the previous spec" here.
+
+The trial boot deletes the param with `inspect` and `cycle`, on the same
+grounds those two are deleted: a verdict boot is a plain boot of the
+candidate, not a second copy of the tool.
+
+**And the mode's ROWS had to come back with it.** They sit inside the View
+section's `<details>`, collapsed by default since §15, so a mode restored by
+its own Apply arrived with its status, Apply and variant rows shut in a
+drawer — the same "you cannot carry on" one level up, and invisible from the
+scene where the rings had just appeared. Entering the mode opens every
+ancestor `<details>`; leaving closes none of them, because a drawer the
+viewer opened is theirs.
+
+Session state was the other candidate and is the wrong one: state saves are
+fire-and-forget PUTs on a 5-second autosave, so a mode entered and applied
+inside one tick would not have been written yet, and the URL is already the
+tier this mode does everything else in.
+
+### 2. Entering it left you dragging metal that was not being drawn
+
+Schematic and realistic are EXCLUSIVE views by camera layer (the owner call
+that reversed §69's ghost underlay): the line tier enables layer 1 and
+disables layer 0. Only the CAMERA's mask moves — the solids stay on layer 0,
+and `THREE.Raycaster` carries its own mask, which is layer 0 and pays no
+attention to the camera's. So in the schematic tier every handle in this
+mode was still hittable and none of them was on screen: you could drag a
+crown that was not being rendered, and the constellation ghost would answer.
+
+Entering the mode now forces the solid tier and REMEMBERS the one it
+interrupted; leaving puts that back. A deliberate click on Schematic while
+the mode is on becomes the new remembered tier, or leaving would silently
+undo the click just made.
+
+`captureState` persists the REMEMBERED tier rather than the live one while
+the mode holds it open. Without that the 5-second autosave turns a mode into
+a preference: reconfigure for a minute, and the viewer's saved choice of
+view has quietly become "realistic" forever.
+
+### 3. Six handles among every other part, announced in a sentence
+
+The affordance was one line of panel text — "Drag either crown, the pusher,
+barrel, escapement or balance" — plus whatever the reader already knew about
+watch trains. Each handle now wears a ring for as long as the mode is on.
+
+**The ring is a measurement, not a decoration.** For the three train handles
+its radius IS `h.grabR()`, the radius the pointer test uses, so what is
+circled is exactly what is grabbable and a handle cannot advertise a
+catchment it does not have. The rim handles are picked by raycast against
+their own meshes, so theirs comes from the part's own bounding box at 1.2×
+— an offset that scales with the part instead of being a number that looked
+right at one zoom.
+
+Drawn depth-test-free and billboarded, the §21 axes legend's precedent: a
+reference must never end up buried inside the movement it refers to. The
+circle is BROKEN into twelve arcs with four radial ticks, because a closed
+circle at a wheel's radius reads as that wheel's rim — the one thing this
+mark must never be mistaken for.
+
+**The first cut of it was a mark you could not see, and that was found by
+looking.** One near-white teal line at 0.45 opacity — §58's lesson applied
+on its own — read beautifully where a handle sits against the dark page,
+which is both crowns, and VANISHED over the polished plate, which is where
+the fusee, the escape wheel and the balance all are. Every automated
+assertion was green while three of the six handles were invisible: the
+check could confirm the rings EXISTED and lit on hover, and existence is
+not legibility. Two changes fixed it, both stated as constraints rather
+than taste:
+
+- **A mark that must cross two backgrounds needs both values.** Each ring
+  now carries a dark backing ring 0.4 u outside it. The pale line survives
+  the plate because the dark one edges it; the dark line is invisible
+  against the page, where the pale one is already doing the work. The
+  offset is a constant in units, not a percentage, so the outline does not
+  thin as the ring grows from a crown to the great wheel.
+- **Weight has to come from geometry.** `linewidth` is a no-op in WebGL and
+  1 px is thinner than the guilloché underneath it, so every ring is a PAIR
+  of concentric lines 0.15 u apart, reading as one bolder stroke. The hover
+  state changes SIZE (1.06×) as well as opacity for the same reason: over a
+  bright plate an opacity step alone is exactly the difference this mark
+  cannot rely on.
+
+Hovering lights exactly one ring and names it in its own panel row, separate
+from the status span because the two answer different questions at the same
+time ("what have you proposed" must survive a hover). The pick is one per
+frame, §59's rule for the explore hover: `pointermove` records the position
+and the raycasts happen in the frame.
+
+**And the ring that lights is the handle that will move**, because both come
+from one function. The nearest-member search moved OUT of the pointerdown
+handler into `reconfHandleAt`, which the hover and the press now share; two
+copies of that loop could disagree, and a handle that lies about itself is
+precisely the defect this section exists to fix.
+
+The panel also stopped saying "barrel" where the ring sits on the fusee and
+great wheel — the part a viewer watches turn.
+
+### The gate
+
+`ci-battery.mjs`'s TODO 36 table gains a point: `?reconf=1`, expected
+SILENT. §93 made the mode a boot-time path — six parts measured for rings,
+the schematic tier forced, panel rows opened — before a viewer has clicked
+anything, and the spec-boot harness is where a deep link that does not build
+gets caught. It changes no station, so unlike its neighbours it must boot
+without a warning.
+
+### What this did not close
+
+- **The status line still quotes the solver in English.** The new chrome —
+  the hint row, the six handle sentences, the idle line — is in all three
+  locales; the candidate verdicts remain the recorded `i18n.js` residue,
+  because they quote boot asserts verbatim.
+- **The rings are placed once per entry**, from bounding boxes. A crown
+  pulled out afterwards slides a fraction of its own radius inside a ring
+  drawn at 1.2× that radius, so it stays ringed; recomputing would cost a
+  `Box3` traverse per handle per frame to move the mark by less than it is
+  wide.
+- **Hovering the alarm column wheel lights the pusher's ring**, which is on
+  the pusher cap. That is the hit test being honest — `alarmColumnHitTest`
+  accepts the whole switch unit as one control — rather than the ring being
+  wrong.
