@@ -11045,6 +11045,7 @@ let leverEngage = 0;         // 0..1 eased lever swing-in (0=clear, 1=pad on rim
 let balanceRate = 1;         // dτ/dt — the balance's own angular rate (1 = free-running)
 let tauIntegrated = 0;       // ∫ balanceRate dt — movement time τ's actual source
 let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
+let handSetOffsetNow = 0;    // last value tick() gave the hands — displayedSeconds()'s other half (declared here so a boot-time readout can't hit its TDZ)
 
 // Persisted state is restored further down, once every state variable it
 // writes (crownRotation and the crown vars in particular) has been declared —
@@ -11311,12 +11312,16 @@ style.textContent = `
    of turning the crown. */
 #ctl-hud {
   position: fixed; right: 16px; bottom: 16px; z-index: 7; display: none;
-  width: 150px; height: 150px; padding: 6px; touch-action: none;
+  width: 150px; padding: 6px; touch-action: none;
   background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
 }
-#ctl-hud svg { width: 100%; height: 100%; display: block; }
+/* The ring keeps its 1:1 aspect from the viewBox rather than from a fixed
+   box height (§90 hung a text strip below it, and the box now grows to fit
+   what it carries). hudLocal() reads the SVG's own rect, so its arithmetic
+   is unchanged by anything sharing the box. */
+#ctl-hud svg { width: 100%; height: auto; display: block; }
 #ctl-hud .hud-rim { fill: none; stroke: rgba(255,255,255,0.26); stroke-width: 1.4; }
 #ctl-hud .hud-dial { fill: rgba(255,255,255,0.03); stroke: rgba(255,255,255,0.12); stroke-width: 1; stroke-dasharray: 3 5; }
 #ctl-hud .hud-ball { fill: rgba(255,255,255,0.05); stroke: rgba(255,255,255,0.16); stroke-width: 1; }
@@ -11344,6 +11349,28 @@ style.textContent = `
 #ctl-hud .hud-hand-hr  { stroke: rgba(255,255,255,0.85); stroke-width: 2.6; }
 #ctl-hud .hud-hand-min { stroke: rgba(255,255,255,0.85); stroke-width: 1.6; }
 #ctl-hud .hud-hand-al  { stroke: #e07a55; stroke-width: 1.6; stroke-dasharray: 2.5 2; }
+/* §90 — the two times, in figures, under the ring. Deliberately the panel's
+   own row idiom (dim label left, tabular value right) rather than a second
+   typographic language in the corner: it is the same pair of readouts the
+   Time and Alarm sections carry, said where the crowns are. The alarm value
+   wears the alarm hand's red so the number and the hand above it are
+   visibly the same quantity. */
+#ctl-hud .hud-readout { padding: 5px 3px 1px; }
+#ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+/* The label WRAPS rather than ellipsing — §53's lesson, applied before it
+   costs anything: a hidden overflow is a label that silently stops saying
+   what it says, and the box already grows to fit its contents. All three
+   locales measure inside 150 px on one line today (German's "Klingelt um"
+   is the long one); a fourth that does not simply gets two lines. */
+#ctl-hud .hud-ro-label {
+  color: #8b95a1; font: 10px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+}
+#ctl-hud .hud-ro-val {
+  color: #f2efe6; font: 12px/1.5 ui-monospace, monospace;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em; flex: none;
+}
+#ctl-hud .hud-ro-val.alarm { color: #e07a55; }
 /* State, shown in the palette the rest of the UI already uses for it: the
    pulled crown wears #btn-crown's red, an armed alarm wears the torque bars'
    green. */
@@ -14564,7 +14591,20 @@ hudEl.innerHTML = `<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} $
     ${HUD_CTLS.map(hudCtlMarkup).join('')}
     <circle class="hud-hit" data-ctl="spin" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
   </g>
-</svg>`;
+</svg>
+<!-- §90 — the two times the corner has to answer for, in figures, whenever
+     the HUD is up. §63's hands appear only while a setting path is engaged,
+     which is one step too late for the question that sends a hand to the
+     alarm crown in the first place: what is it set to now, and how far is
+     that from the time on the dial? Figures, not a second pair of hands,
+     because that comparison is arithmetic — "≈7:15 against 10:24" is a
+     glance; two more needles on a 41 u ring is a squint. Labels go through
+     t() at the display site (§73) and reuse the panel's own two keys; the
+     values are written per frame in hudUpdate. -->
+<div class="hud-readout">
+  <div class="hud-ro-row"><span class="hud-ro-label">${t('Time')}</span><span class="hud-ro-val" id="hud-ro-time">00:00:00</span></div>
+  <div class="hud-ro-row"><span class="hud-ro-label">${t('Rings at')}</span><span class="hud-ro-val alarm" id="hud-ro-alarm">≈12:00</span></div>
+</div>`;
 document.body.appendChild(hudEl);
 const hudSvg = hudEl.querySelector('svg');
 const hudHeadG = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-head-g`)]));
@@ -14576,6 +14616,8 @@ const hudPvHr = hudEl.querySelector('.hud-hand-hr');
 const hudPvMin = hudEl.querySelector('.hud-hand-min');
 const hudPvAl = hudEl.querySelector('.hud-hand-al');
 const hudInHint = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-in`)]));
+const hudRoTime = hudEl.querySelector('#hud-ro-time');
+const hudRoAlarm = hudEl.querySelector('#hud-ro-alarm');
 
 // THE TRACKBALL. The dial face is an arcball: a drag across the middle tumbles
 // the watch, a drag around the edge rolls it on its own axis, which is what a
@@ -14665,6 +14707,15 @@ function hudUpdate() {
     hudPvHr.setAttribute('transform', `rotate(${(wrap(s, DIAL_PERIOD_S) / DIAL_PERIOD_S * 360).toFixed(2)})`);
     hudPvAl.setAttribute('transform', `rotate(${(alarmDiscAngle() * 180 / Math.PI).toFixed(2)})`);
   }
+  // §90 — the same two quantities in figures, unconditionally. Not a second
+  // derivation of either: the strings are the panel's, through the same
+  // displayedSeconds() the hands above read and the same
+  // alarmRingsAtSeconds() the panel's own "Rings at" row reads, so the
+  // corner and the panel cannot state different times for one watch.
+  // Written every frame like the panel's clock — the value changes at least
+  // once a second at 1× and every frame under fast-forward.
+  hudRoTime.textContent = formatTime(displayedSeconds());
+  hudRoAlarm.textContent = '≈' + fmtHM(alarmRingsAtSeconds());
 }
 
 function setHud(on) {
@@ -17551,7 +17602,11 @@ const projected = new THREE.Vector3();
 // disagree with its own dial the moment the crown was turned. The hands are
 // τ displaced by the setting offset and the dial epoch, so the readout is
 // too, converted back through the minute hand's own rate.
-let handSetOffsetNow = 0; // last value tick() gave the hands
+// (handSetOffsetNow, the state this reads, is declared up with τ's own state
+// rather than here: §90 made this callable during boot — ?hud=1 reaches
+// setHud() from applyDeepLink() — and a `let` left at this line is in its
+// temporal dead zone until several thousand lines later. The function itself
+// is a declaration, so it was never the half that was late.)
 function displayedSeconds() {
   return tauIntegrated + (handSetOffsetNow + DIAL_EPOCH_ANGLE) / MIN_HAND_RAD_PER_SEC;
 }
@@ -17604,6 +17659,22 @@ function alarmTargetSeconds() {
   const idx = ((alarmMarkIndex() % ALARM_MARK_STEPS) + ALARM_MARK_STEPS) % ALARM_MARK_STEPS;
   return idx * ALARM_STEP_SECONDS;
 }
+// WHEN IT ACTUALLY RINGS, in dial seconds — the CONTINUOUS set angle, which
+// is the quantity the trip reads (the pin bottoms on the notch floor), not
+// the rounded mark above. Two readouts consume it — the panel's "Rings at"
+// row and §90's HUD strip — and they consume THIS rather than each carrying
+// its own copy of the conversion: the panel once announced a time the
+// movement did not ring at, and one expression is how that stays fixed.
+function alarmRingsAtSeconds() {
+  return (alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S;
+}
+// hh:mm, seconds dropped — the form both alarm readouts show, and the reason
+// they prefix ≈. The pin bottoms across ~2.76 min of disc travel, so the ring
+// lands within about ±1.4 min of the hand; a seconds field would be claiming
+// a precision the notch floor does not have. (A function, not a const: the
+// HUD's per-frame update is reachable from a deep link that runs before this
+// line is evaluated, and only a declaration is hoisted past that.)
+function fmtHM(displaySeconds) { return formatTime(displaySeconds).slice(0, -3); }
 // (The hammer's strike angle used to be defined here as a half-sine of the
 // striking phase. §25 replaced it with alarmHammerAngle() up at the striking
 // works, where it is read off the PIN that is actually holding the tail.)
@@ -18976,12 +19047,11 @@ function advanceFrame(realDt) {
   // dial epoch — so the panel and the dial can no longer disagree.
   const tauNow = tauIntegrated;
   document.getElementById('readout-time').textContent = formatTime(displayedSeconds());
-  // Alarm readout (§24): derived from the disc's detented angle, hours:minutes
-  // only (the target is quantized to the quarter hour, so seconds are always 00).
-  // Derived forward from the disc's own angle (Rule 2) — the same quantity
-  // the trip reads — not from the rounded mark, which the mechanism ignores.
-  document.getElementById('readout-alarm').textContent =
-    '≈' + formatTime((alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S).slice(0, -3);
+  // Alarm readout (§24): derived forward from the disc's own angle (Rule 2) —
+  // the same quantity the trip reads — not from the rounded mark, which the
+  // mechanism ignores. §90 moved the conversion into alarmRingsAtSeconds()
+  // so the HUD's copy of this row cannot drift from it.
+  document.getElementById('readout-alarm').textContent = '≈' + fmtHM(alarmRingsAtSeconds());
   document.getElementById('readout-alarm-wind').textContent = fmtNum(Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100), 0) + '%';
   paintScale();
   updateSyncUI();
