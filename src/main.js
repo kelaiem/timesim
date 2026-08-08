@@ -1198,25 +1198,32 @@ const ALARM_CORNER_W_AZ = SPEC.alarmAzDeg !== null
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
 const ALARM_WIND_X = Math.cos(ALARM_CORNER_W_AZ) * ALARM_CD, ALARM_WIND_Y = Math.sin(ALARM_CORNER_W_AZ) * ALARM_CD;
-const backPlate = G.makeBackPlate({
-  radius: plateR, thickness: 2,
-  holes: [
-    { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
-    ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
-    { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
-    { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-    { x: -9.80, y: 26.97, r: 0.45 },               // §35/§68: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
-  ],
-  slots: [{
-    ax: postRel.x, ay: postRel.y, bx: postEng.x, by: postEng.y,
-    r: G.SETTING_LEVER_POST_R + kwPostBow + CLEAR_MARGIN + 0.02,
-  }],
+// The base plate's PLANE is declared here, where the layout needs it; the
+// plate itself is CUT further down, once the keyless linkage has solved
+// (search BASE PLATE — CUT). §87 is why: the setting lever carries a second
+// stud through this plate now, at a radius no one knows until the stop work
+// has reported its coupling, and an opening this plate does not have is a
+// stud driven through solid metal. Everything between here and the cut reads
+// the PLANE, never the mesh — the two constants below are that plane, and the
+// geometry fingerprint is what proves the deferral cost nothing: the shipped
+// movement hashes exactly as it did with the cut up here.
+const BACK_PLATE_Z = -1;   // the slab's centre
+const BACK_PLATE_T = 2;    // ...spanning [z−1, z+1]
+const BACK_PLATE_HOLES = [
+  { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
+  ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
+  { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
+  { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
+  { x: -9.80, y: 26.97, r: 0.45 },               // §35/§68: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
+];
+// A single stud's slot, from the arc it sweeps between the two crown poses:
+// the track is an ARC, not the chord, so the bow joins the stud's own radius
+// and the margin. (Two studs on one arm are cut as a SECTOR instead — see
+// the plate's own block below.)
+const studSlot = (rel, eng, bow) => ({
+  ax: rel.x, ay: rel.y, bx: eng.x, by: eng.y,
+  r: G.SETTING_LEVER_POST_R + bow + CLEAR_MARGIN + 0.02,
 });
-backPlate.name = 'backPlate';
-backPlate.position.set(0, 0, -1);
-backPlate.receiveShadow = true;
-movement.add(backPlate);
-registerExplode(backPlate, -1, 0);
 
 // ---------------------------------------------------------------------------
 // THREE-QUARTER PLATE — the movement's upper plate, and the single structural
@@ -1734,7 +1741,7 @@ const forkCock = (() => {
     thickness: FORK_COCK_T,
     // The leg reaches the BASE plate's top face (it spans [z−1, z+1]) —
     // measured from the slab's underside, where makeEscapeBridge hangs it.
-    footDrop: FORK_COCK_BOT - (backPlate.position.z + 1),
+    footDrop: FORK_COCK_BOT - (BACK_PLATE_Z + BACK_PLATE_T / 2),
     jewels: [
       { x: P.fork.x, y: P.fork.y, boreR: forkBore, cbR: forkCbR, depth: forkCbDepth },
     ],
@@ -1871,8 +1878,8 @@ const TQ_CUT = (() => {
 // each arbor's actual bounding box, so re-layering the Z-stack moves the
 // pivots with it rather than stranding hand-written lengths.
 // ---------------------------------------------------------------------------
-const PLATE_TOP = backPlate.position.z + 1;   // back plate spans [z−1, z+1]
-const PIVOT_SEAT_Z = backPlate.position.z;    // pivot bottoms out mid-plate
+const PLATE_TOP = BACK_PLATE_Z + BACK_PLATE_T / 2;   // back plate spans [z−1, z+1]
+const PIVOT_SEAT_Z = BACK_PLATE_Z;    // pivot bottoms out mid-plate
 const _pivotBox = new THREE.Box3();
 function addLowerPivot(arbor, { staffR = 0.5, jewelR = 1.3 } = {}) {
   arbor.updateMatrixWorld(true);
@@ -1898,7 +1905,7 @@ for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeAr
 // face, mirroring the movement-side convention above. The caller passes the
 // part's plane explicitly (a box measure is wrong here: the lever's tail
 // post spans the whole movement, so its box top is nowhere near its body).
-const PLATE_BACK = backPlate.position.z - 1; // back plate spans [z−1, z+1]
+const PLATE_BACK = BACK_PLATE_Z - BACK_PLATE_T / 2; // back plate spans [z−1, z+1]
 function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ } = {}) {
   const len = PIVOT_SEAT_Z - fromZ;
   if (len <= 0.05) return;
@@ -2272,17 +2279,23 @@ const ROD2_PLANE_Z = GW_UNDER_Z - CLEAR_MARGIN - ROD_R;            // ceiling-bo
 if (ROD2_PLANE_Z < ROD_PLANE_Z)
   console.warn(`rod corridor collapsed: hack plane ${ROD2_PLANE_Z.toFixed(2)} under reset plane ${ROD_PLANE_Z.toFixed(2)}`);
 // The two rods CANNOT keep the old 2r+gap vertical separation in this
-// 0.22-unit corridor — near the shared post their tubes converge and
-// touch, exactly as two levers stacked on one stud do. That contact is
-// declared EXPECTED (see inspect.js); away from the post the angular
-// spread to their different destinations separates them.
+// 0.22-unit corridor — where their routes converge their tubes touch,
+// exactly as two levers stacked on one stud do. That contact is declared
+// EXPECTED (see inspect.js); away from the convergence the angular spread
+// to their different destinations separates them. (At the shipped spec the
+// convergence IS the shared post; §87 gives the hack rod its own pin where
+// the coupling asks for one, and the rods still meet in the corridor.)
 // The cam sits comfortably above the whole plane by construction:
 if (Z_SECONDS_ARBOR - CAM_T / 2 < ROD_PLANE_Z + ROD_TAILBAR_T / 2 + CLEAR_MARGIN)
   console.warn('heart cam crowds the reset-rod plane from above');
-// Post height — SIZED TO ITS JOBS, no taller: the topmost pin (the hack
-// rod's, at ROD2_PLANE_Z) plus a pin-retaining land above it. The post no
-// longer crosses the three-quarter plate AT ALL — it tops out ~1.4, so
-// the plate loses its arc slot (see tqSlots).
+// Post height — SIZED TO ITS JOBS, no taller: the topmost rod plane it can
+// be asked to carry (the hack rod's, at ROD2_PLANE_Z) plus a pin-retaining
+// land above it. §87 can move the hack rod off this post onto its own pin,
+// but not before the stop work has solved — which is long after the lever is
+// built — so the post is cut for the plane it may still have to serve, and
+// the 0.17 that buys where the rod does move away is land, not a lie. The
+// post no longer crosses the three-quarter plate AT ALL — it tops out ~1.4,
+// so the plate loses its arc slot (see tqSlots).
 const HACK_ROD_PIN_LAND = 0.35; // post material kept above the top pin
 const POST_TOP_Z = ROD2_PLANE_Z + ROD_R + HACK_ROD_PIN_LAND;
 const settingLever = G.makeSettingLever({
@@ -2674,34 +2687,106 @@ const stopBearingObstaclesAt = (p) => [
 // one, dropping the pivot so far that the crank sweeps its own bracket at
 // −0.159. The reduction is a remedy, not an improvement — take none of it
 // where none is needed.)
-const HACK_PIN_K = (() => {
-  const probe = solveStopWork({
-    P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
-    plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
-    bearingObstaclesAt: stopBearingObstaclesAt,
-    lowRodObstacles: LOW_ROD_OBSTACLES,
-    rubyFlare: G.HACK_RUBY_FLARE,
-    warn: () => {},                     // the real solve below does the reporting
-  });
-  const headroom = TQ_TOP_Z - (probe.STOP_MAST_TOP - probe.Z_STOP_PIVOT) - ROD2_PLANE_Z;
-  const stroke = Math.hypot(postEng.x - postRel.x, postEng.y - postRel.y);
-  const ceiling = headroom * Math.sin(probe.STOP_PSI_TARGET) * Math.abs(probe.STOP_TANG_K);
-  return Math.min(1, ceiling / stroke);
-})();
-const pinAt = (post) => ({
-  x: settingLeverPivot.x + (post.x - settingLeverPivot.x) * HACK_PIN_K,
-  y: settingLeverPivot.y + (post.y - settingLeverPivot.y) * HACK_PIN_K,
-});
-const hackPinEng = pinAt(postEng), hackPinRel = pinAt(postRel);
-const hackPinWorldAt = (t) => pinAt(tailPostWorldAt(t));
-const STOPWORK_INPUTS = {
-  P, balanceR, BAL_OUTER_R,
-  postEng: hackPinEng, postRel: hackPinRel, tailPostWorldAt: hackPinWorldAt,
+//
+// It is a FUNCTION of the inputs, not a closure over the built ones, for the
+// same reason STOPWORK_INPUTS was captured in the first place: reconfigure
+// mode solves this linkage for candidate layouts, and a preview that priced
+// the rod at the post while boot builds it at the pin is §85's error with its
+// sign flipped — a shadow reporting a mast the watch does not have.
+const STOPWORK_AT_POST = {
+  P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
   plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
   bearingObstaclesAt: stopBearingObstaclesAt,
   lowRodObstacles: LOW_ROD_OBSTACLES,
   rubyFlare: G.HACK_RUBY_FLARE,
 };
+// The same inputs with the rod moved onto its own pin, plus the fraction that
+// put it there. `k === 1` hands the post back UNTOUCHED rather than
+// pivot + (post − pivot)·1: a + (b − a) is not b in IEEE754 (the cockDiscsAt
+// precedent three screens up), and a movement that needs no reduction must be
+// the build it always was, float for float.
+function onHackPin(inputs, pivot) {
+  const probe = solveStopWork({ ...inputs, warn: () => {} }); // the real solve reports
+  const headroom = inputs.TQ_TOP_Z - (probe.STOP_MAST_TOP - probe.Z_STOP_PIVOT) - inputs.ROD2_PLANE_Z;
+  const stroke = Math.hypot(inputs.postEng.x - inputs.postRel.x, inputs.postEng.y - inputs.postRel.y);
+  const ceiling = headroom * Math.sin(probe.STOP_PSI_TARGET) * Math.abs(probe.STOP_TANG_K);
+  const k = Math.min(1, ceiling / stroke);
+  if (k === 1) return { inputs, k };
+  const at = (p) => ({ x: pivot.x + (p.x - pivot.x) * k, y: pivot.y + (p.y - pivot.y) * k });
+  return {
+    k,
+    inputs: {
+      ...inputs,
+      postEng: at(inputs.postEng), postRel: at(inputs.postRel),
+      tailPostWorldAt: (t) => at(inputs.tailPostWorldAt(t)),
+    },
+  };
+}
+const { inputs: STOPWORK_INPUTS, k: HACK_PIN_K } = onHackPin(STOPWORK_AT_POST, settingLeverPivot);
+// The pin as a RADIUS on the arm, and whether it is a stud of its own at all:
+// at k = 1 the derivation leaves it exactly where the tail post already
+// stands, and the post has carried this rod's eye since the linkage was
+// built. Nothing is added there, because nothing is missing there.
+const HACK_PIN_ARM_R = SL_TAIL * HACK_PIN_K;
+const HACK_PIN_OWN = HACK_PIN_K < 1;
+const hackPinWorldAt = STOPWORK_INPUTS.tailPostWorldAt;
+const hackPinEng = STOPWORK_INPUTS.postEng, hackPinRel = STOPWORK_INPUTS.postRel;
+// THE PIN AS METAL. It is the tail post at another radius — same stock, same
+// seat in the lever body, same land over the top pin — because it inherits
+// the post's job outright, and it does that job under MORE load: the same
+// lever torque at HACK_PIN_K of the radius delivers 1/HACK_PIN_K of the
+// post's force to the rod (1.44× at the worst station measured). A thinner
+// pin would be the reduction paid for twice. §50's floor is therefore
+// asserted, not aimed at — the pin's thinnest dimension is its diameter:
+const HACK_PIN_R = G.SETTING_LEVER_POST_R;
+if (2 * HACK_PIN_R < STOCK_MIN_U)
+  console.warn(`hack-rod pin: ⌀ ${(2 * HACK_PIN_R).toFixed(3)} under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
+if (HACK_PIN_OWN) {
+  // Local frame: the lever group sits at Z_SETTING_LEVER, unflipped, its body
+  // 1 thick — so the stud is seated on the +z face at local 0.5 and rises to
+  // the same POST_TOP_Z the post does (the land is the HACK rod's; the post
+  // was always sized by it). The cylinder is CAPPED at both ends, including
+  // the face buried in the lever: an open body reads as a colliding one.
+  const pin = new THREE.Mesh(
+    new THREE.CylinderGeometry(HACK_PIN_R, HACK_PIN_R, POST_TOP_Z - (Z_SETTING_LEVER + 0.5), 12), MATS.steel);
+  pin.name = 'hackRodPin';
+  pin.rotation.x = Math.PI / 2;
+  pin.position.set(0, -HACK_PIN_ARM_R, (POST_TOP_Z + Z_SETTING_LEVER + 0.5) / 2 - Z_SETTING_LEVER);
+  settingLever.add(pin);
+}
+
+// --- BASE PLATE — CUT ------------------------------------------------------
+// Deferred from the layout block above (see BACK_PLATE_Z) because the last of
+// its openings is only known now: the setting lever crosses this plate with
+// every stud it carries, and §87 gave the hack rod one of its own at a radius
+// the stop work's coupling decides. At HACK_PIN_K = 1 there is no second stud
+// and no second slot, which is why the shipped movement's plate is the plate
+// it always was.
+const backPlate = G.makeBackPlate({
+  radius: plateR, thickness: BACK_PLATE_T,
+  holes: BACK_PLATE_HOLES,
+  // One stud on the arm: the stadium it has always had, unchanged.
+  slots: HACK_PIN_OWN ? [] : [studSlot(postRel, postEng, kwPostBow)],
+  // TWO studs on the arm: ONE opening, the sector they sweep between them.
+  // Not two stadiums — at HACK_PIN_K 0.696 the studs stand 1.82 apart and
+  // their two slots ask for 0.74 and 0.80 of radius, so the paths cross and
+  // the plate is cut wrong rather than cut wide (measured: 0.05 of clearance
+  // on the inner stud against the 0.17 its own slot specifies). Even drawn
+  // cleanly, the land between them is 0.276 — a sliver, and §62's rule that
+  // the land between two openings is a MEMBER applies to this plate too.
+  sectors: HACK_PIN_OWN ? [{
+    cx: settingLeverPivot.x, cy: settingLeverPivot.y,
+    r0: HACK_PIN_ARM_R, r1: SL_TAIL,
+    a0: Math.atan2(postRel.y - settingLeverPivot.y, postRel.x - settingLeverPivot.x),
+    a1: Math.atan2(postEng.y - settingLeverPivot.y, postEng.x - settingLeverPivot.x),
+    pad: G.SETTING_LEVER_POST_R + CLEAR_MARGIN + 0.02,   // studSlot's own dilation, minus the bow the sector no longer approximates away
+  }] : [],
+});
+backPlate.name = 'backPlate';
+backPlate.position.set(0, 0, BACK_PLATE_Z);
+backPlate.receiveShadow = true;
+movement.add(backPlate);
+registerExplode(backPlate, BACK_PLATE_Z, 0);
 const {
   HACK_CLEAR_MARGIN, HACK_RIM_I, HACK_SCREW_IN_R, HACK_SCREW_DROP, HACK_SCREW_STANDOFF,
   HACK_PAD_TOP_R, HACK_PAD_R, HACK_CONTACT_R, HACK_CONTACT_Z, HACK_DROP_MIN,
@@ -2763,7 +2848,37 @@ stopLeverGroup.add(stopCrank);
 }
 // Released pad drop, from the EXACT rotation of the pad's WORST top-face
 // edge — binds at HACK_DROP_MIN by the PAD_Y solve above (tolerance for
-// the float round-trip):
+// the float round-trip).
+//
+// §87 — THE DROP IS NOT SCALE-INVARIANT UNDER THE PIN, AND IS RE-SOLVED, NOT
+// INHERITED. Filed as arithmetic in TODO 16's format, because it is the P1
+// quantity the reduction was most likely to spend without saying so. The
+// drop is two terms, both of which the pin moves:
+//
+//     drop = padLZ·(1 − cos ψ0)  −  edgeY·sin ψ0
+//            └─ TILT ─┘             └─ SWING ─┘
+//     padLZ = HACK_CONTACT_Z − Z_STOP_PIVOT   (the pad's height in the crank's
+//                                              own frame — it moves when the
+//                                              pivot does, which is the point)
+//     edgeY = STOP_PAD_Y + HACK_PAD_TOP_R·sign(sin ψ0)   (the WORST top edge)
+//
+//   spec            Z_STOP_PIVOT   padLZ     ψ0       STOP_PAD_Y    tilt     swing    drop
+//   identity            7.1133   −1.8633   0.5016      −1.5694    −0.2296   +0.5796   0.3500
+//   ?escstep=−77.9      7.4250   −2.1750   0.4852      −1.6528    −0.2510   +0.6010   0.3500
+//   ?escstep=−66.7      7.4701   −2.2201   0.4708      −1.6682    −0.2415   +0.5915   0.3500
+//   ?balstep=27.6       7.5004   −2.2504   0.4707      −1.6755    −0.2447   +0.5947   0.3500
+//
+// Read the middle columns, not the last one. `padLZ` deepens 17–21% and ψ0
+// falls 3–6% at every moved station — a shorter stroke does NOT leave this
+// equation where it found it — and STOP_PAD_Y answers by moving 0.08–0.11
+// outboard. The achieved drop is HACK_DROP_MIN exactly, at every station
+// measured, because PAD_Y is SOLVED to bind it there; the floor is met with
+// no margin by construction, which is why the assert below carries a float
+// tolerance rather than a slack budget. A drop that came out ABOVE 0.35
+// would mean the solve had stopped binding and is worth the same look as one
+// below it.
+// (HACK_DROP_MIN 0.35 is the released gap the brake must open — the pad has
+// to leave the rim, not merely stop pressing it.)
 const _padEdgeY = STOP_PAD_Y + HACK_PAD_TOP_R * Math.sign(Math.sin(STOP_PSI0));
 const _padZAt = (psi) => _padEdgeY * Math.sin(psi) + STOP_PAD_TOP_LZ * Math.cos(psi);
 const STOP_RELEASE_DROP = _padZAt(0) - _padZAt(STOP_PSI0);
@@ -3019,20 +3134,23 @@ registerLabel('Hack rod', hackRod);
 let stopPsiState = STOP_PSI0;
 const _rodUp = new THREE.Vector3(0, 1, 0);
 const _rodDir = new THREE.Vector3();
-function updateStopWork(post) {
+// `pin` is the rod's END ON THE LEVER — hackPinWorldAt, never the tail post
+// (§87). Both are the same point at the shipped spec and 1.8 apart at a
+// moved one, and the rod's length was calibrated at the pin.
+function updateStopWork(pin) {
   // Rim = hard stop: the rod can never rotate the crank past the tangent
   // pose (ψ = 0), however the eased crownPullT overshoots numerically.
   // The released side's SIGN follows the hanging-tail geometry, so the
   // clamp keeps ψ on STOP_PSI0's side of zero.
-  const psi = stopSolvePsi(post, stopPsiState);
+  const psi = stopSolvePsi(pin, stopPsiState);
   stopPsiState = STOP_PSI0 <= 0 ? Math.min(0, psi) : Math.max(0, psi);
   stopCrank.rotation.x = stopPsiState;
   const t = stopTailTopAt(stopPsiState);
-  hackRod.position.set((post.x + t.x) / 2, (post.y + t.y) / 2, (ROD2_PLANE_Z + t.z) / 2);
-  _rodDir.set(t.x - post.x, t.y - post.y, t.z - ROD2_PLANE_Z).normalize();
+  hackRod.position.set((pin.x + t.x) / 2, (pin.y + t.y) / 2, (ROD2_PLANE_Z + t.z) / 2);
+  _rodDir.set(t.x - pin.x, t.y - pin.y, t.z - ROD2_PLANE_Z).normalize();
   hackRod.quaternion.setFromUnitVectors(_rodUp, _rodDir);
 }
-updateStopWork(postRel); // rest pose (crown in)
+updateStopWork(hackPinRel); // rest pose (crown in)
 
 // §86 instrument A — THE CORNER REPORT, published rather than warned. A scan
 // whose winner sits on its own search bound is saying the fence decided, not
@@ -3118,8 +3236,14 @@ const LOW_LINKAGE_OBSTACLES = (() => {
       obs.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: hx, by: hy, r: _hamHalfW });
       obs.push({ x: hx, y: hy, r: _hamHalfW + _ham.rollerR });
     }
-    psi = stopSolvePsi(post, psi);
-    pushElbow(post, stopTailTopAt(psi), HACK_ROD_ELBOW);
+    // §87: the hack rod leaves the lever at its OWN pin, so both the pin's
+    // swept stud and the rod's route from it belong here. Where the
+    // derivation left the rod on the post (HACK_PIN_K = 1) the pin IS the
+    // post and pushes no second circle — the table is the shipped one.
+    const pin = hackPinWorldAt(i / 12);
+    if (HACK_PIN_OWN) obs.push({ x: pin.x, y: pin.y, r: HACK_PIN_R });
+    psi = stopSolvePsi(pin, psi);
+    pushElbow(pin, stopTailTopAt(psi), HACK_ROD_ELBOW);
   }
   return obs;
 })();
@@ -14981,6 +15105,9 @@ const keylessKwOf = (kl) => ({
   postEng: kl.postEng, postRel: kl.postRel, tailPostWorldAt: kl.tailPostWorldAt,
   plateR: kl.plateR, uWind: kl.uWind, cwDist: kl.cwDist,
   crownWheelR: kl.crownWheelR, windSpurR: kl.windSpurR,
+  // §87: the pin is a fraction of the TAIL ARM, so the shadow needs the
+  // candidate's lever pivot to place it — the arm is what moved.
+  settingLeverPivot: kl.settingLeverPivot,
 });
 // §85 step C4 — this returns TWO things now: what to tell the viewer, and
 // whether the candidate can be BUILT at all. Unbuildable is a structural
@@ -14997,9 +15124,15 @@ function stopWorkShadowWarns(candP, kwOverride = null) {
     // those too and this path never asked for them either.
     const kw = kwOverride
       || keylessKwOf(solveKeyless({ ...KEYLESS_INPUTS, P: candP, warn: (m) => warns.push(m) }));
+    // §87: the candidate's rod goes on the candidate's PIN, derived by the
+    // same function boot uses. STOPWORK_INPUTS already carries the shipped
+    // movement's reduction, so the post-level inputs are what onHackPin must
+    // be handed — otherwise the shadow reduces an already-reduced arm.
     const r = solveStopWork({
-      ...STOPWORK_INPUTS, ...kw, P: candP,
-      lowRodObstacles: lowRodObstaclesFor(candP, { ...LOW_ROD_KEYLESS, ...kw }),
+      ...onHackPin({
+        ...STOPWORK_AT_POST, ...kw, P: candP,
+        lowRodObstacles: lowRodObstaclesFor(candP, { ...LOW_ROD_KEYLESS, ...kw }),
+      }, kw.settingLeverPivot).inputs,
       warn: (m) => warns.push(m),
     });
     if (r.HACK_ROD_ELBOW.clear < 0)
@@ -17684,17 +17817,20 @@ function tick(t) {
   // groove actually is right now (crownPullT), so the beak pin stays in the
   // groove through the whole slide; the yoke does the same against the
   // sliding pinion's hub. The stop crank is NOT keyframed either: the hack
-  // rod is rigid, so the crank's angle is solved from the post's actual
+  // rod is rigid, so the crank's angle is solved from its OWN PIN's actual
   // position each frame (updateStopWork) — crown out levels the pad arm
   // onto the rim's underside, crown in drops it the derived release gap.
+  // §87: the pin, not the post. The rod's length was calibrated at the pin
+  // and the crank's whole geometry solved from its stroke, so driving the
+  // solve from the post here would run a linkage the watch is not built as.
   // §48: pulling the crown drives these out, pushing it drives them back in.
   // Both directions are driven by the same input, so no return spring is
   // required to explain the reversal. (The setting-lever DETENT that holds
   // each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
   yokeGroup.rotation.z = yokeAngleAt(crownPullT);
-  const postNow = tailPostWorldAt(crownPullT);
-  updateStopWork(postNow);
+  const postNow = tailPostWorldAt(crownPullT);   // the reset rod's end, below
+  updateStopWork(hackPinWorldAt(crownPullT));
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
   // rod — its angle is solved from the setting-lever post's position through

@@ -2173,7 +2173,20 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 // makeThreeQuarterPlate. The bevel grows material INTO every drawn opening,
 // so openings are drawn oversized by bevelSize and the finished edges land
 // on the caller's requested radii.
-export function makeBackPlate({ radius, thickness, holes = [], slots = [] }) {
+//
+// sectors: annular-sector openings {cx, cy, r0, r1, a0, a1, pad} — ONE
+// opening for a lever that crosses the plate with more than one stud on the
+// same arm (§87: the setting lever's tail post and the hack rod's own pin).
+// Two stadiums cannot express that: their paths OVERLAP long before the studs
+// do, and overlapping holes in a THREE.Shape are not a wider opening but a
+// broken one — measured, the inner stud came out with 0.05 of clearance where
+// its own slot asked for 0.17, and the land between them would have been a
+// 0.276 sliver of a 2-thick plate even if the triangulation had held. A
+// sector is the swept region itself: the arm's radial band r0…r1 over the
+// angles a0…a1, dilated by `pad` (the stud's radius plus its margin) at every
+// edge — which at the inner radius costs more ANGLE for the same metal, so
+// the angular pad is taken there.
+export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [] }) {
   const bevelSize = radius * 0.008;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
@@ -2193,6 +2206,25 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [] }) {
     // makeThreeQuarterPlate for the arc-direction reasoning).
     p.absarc(sl.bx, sl.by, r, ang + Math.PI / 2, ang - Math.PI / 2, true);
     p.absarc(sl.ax, sl.ay, r, ang - Math.PI / 2, ang - Math.PI * 1.5, true);
+    p.closePath();
+    shape.holes.push(p);
+  }
+  for (const sc of sectors) {
+    const pad = sc.pad + bevelSize;
+    const r1 = sc.r1 + pad, r0 = Math.max(1e-6, sc.r0 - pad);
+    const da = pad / r0;                       // widest angular cost is at the inner edge
+    // Unwrap before ordering: a sweep that straddles ±π has a1 < a0 by 2π and
+    // a raw min/max would cut the COMPLEMENT of the sector — the whole plate
+    // but the bit the lever needs.
+    let a1u = sc.a1;
+    while (a1u - sc.a0 > Math.PI) a1u -= Math.PI * 2;
+    while (sc.a0 - a1u > Math.PI) a1u += Math.PI * 2;
+    const a0 = Math.min(sc.a0, a1u) - da, a1 = Math.max(sc.a0, a1u) + da;
+    const p = new THREE.Path();
+    // Clockwise, like every other opening here: the outer arc backwards, the
+    // inner arc forwards, closed across the two ends.
+    p.absarc(sc.cx, sc.cy, r1, a1, a0, true);
+    p.absarc(sc.cx, sc.cy, r0, a0, a1, false);
     p.closePath();
     shape.holes.push(p);
   }
