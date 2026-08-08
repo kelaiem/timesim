@@ -311,6 +311,16 @@
       the plane through that corner, and draw ("LEAN") as a locking face angled so the
       wheel's own pressure pulls the fork <em>deeper</em> into its banking — with a
       draw-torque-sign assert, because a draw that pushes the wrong way unlocks itself.</p>
+      <p><b>Two arrows, and they run opposite ways.</b> ENERGY travels wheel → stone → fork →
+      roller pin → balance: the train pushes, and the escapement exists to hand a sip of that
+      push to the oscillator twice a beat. POSITION travels the other way. The escape wheel is
+      not a wheel that turns and is occasionally interrupted — it is a wheel that stands still,
+      and moves only in the instants a stone lets it, exactly half a tooth pitch and no
+      further, because the other stone is already waiting. Ask <em>what moved the wheel</em>
+      and the answer, in every phase but one, is: the stones did. That is the reading the plate
+      below is drawn in, and it is also the one this build computes —
+      <code>escapeAngle</code> is a function of the balance's phase (plate 2), so in the code
+      the stones do not merely gate the wheel, they are its clock.</p>
       <p class="note">"Swiss" names the DESIGN, not a provenance — and this build earns the
       name in geometry: the straight-line layout (escape centre, fork pivot, and balance
       centre measure exactly collinear — 180.0° at the fork, from <code>solveLayout</code>'s
@@ -321,7 +331,7 @@
 
       <!-- —————— PLATE 1 : THE FOUR PHASES —————— -->
       <figure>
-        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One beat, four contacts — at the entry stone</span></div>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One beat, four contacts — who moves whom, at the entry stone</span></div>
         <!-- §67 rev: the four keyframes now PLAY. A looping playhead walks the
              panels in beat order; each panel's tooth/stone animate through its
              slice of the REAL beat law (the same escDelta/forkNorm plate 2
@@ -334,8 +344,8 @@
           <span>display time dilates the 16% action window — every pose evaluates the ported law</span>
         </div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 250" width="780" height="250" role="img"
-               aria-label="Four panels: locked with draw holding the fork on its bank; unlock with the wheel recoiling; impulse along the impulse face; drop onto the exit stone. When playing, a highlight steps through the panels and the parts move through each phase.">
+          <svg viewBox="0 0 780 266" width="780" height="266" role="img"
+               aria-label="Four panels read by who drives whom: the stone holding the wheel while the wheel's torque pulls the fork onto its bank; the stone shoving the wheel backward to unlock; the wheel leading once, along the impulse face; and the wheel running free until the exit stone catches it. Solid arrows mark the part that drives, dashed arrows the motion that follows. When playing, a highlight steps through the panels and the parts move through each phase.">
             <g font-size="10">
             <!-- panel frames -->
             <line x1="195" y1="16" x2="195" y2="200" stroke="var(--line)" stroke-width="0.75"/>
@@ -348,17 +358,25 @@
                  (90,90)→(96,118), the tip and dot are at t=0.22 along it. The steel
                  band behind the stone is the fork's pallet arm — shoulders a shade
                  wider than the stone so the seat reads as a slot, run aimed at the
-                 (off-panel) pallet staff, lower left. -->
+                 (off-panel) pallet staff, lower left.
+                 Two arrows now, because lock is where both directions are visible
+                 at once: the wheel PUSHES (solid brass, along the advance direction
+                 the other panels animate, −u3) and gets nowhere, and the lean turns
+                 that push into the fork's pull onto its bank (dashed ruby — a motion
+                 that follows, not a drive). The plate's convention throughout:
+                 SOLID = this part drives, DASHED = this part is moved. -->
             <g transform="translate(20 30)">
               <path d="M 28.5 117.5 L 41.5 144.5 L 15 155 L 5 133 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <path d="M 30 120 L 90 90 L 96 118 L 40 142 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
               <path d="M 118 60 L 91.5 96 L 76 88 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
               <circle cx="91.5" cy="96" r="4" fill="var(--ruby)"/>
-              <line x1="60" y1="118" x2="34" y2="132" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <line x1="124" y1="84" x2="106" y2="91.8" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrEb)"/>
+              <line x1="60" y1="118" x2="34" y2="132" stroke="var(--ruby)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrE)"/>
               <text class="lbl lbl-strong" x="8" y="0">1 · locked</text>
-              <text class="val" x="8" y="14">tooth tip ON the locking</text>
-              <text class="val" x="8" y="27">face; DRAW pulls the fork</text>
-              <text class="val" x="8" y="40">into its bank</text>
+              <text class="val" x="8" y="14">the STONE holds the</text>
+              <text class="val" x="8" y="27">wheel; the wheel's own</text>
+              <text class="val" x="8" y="40">torque pulls the fork</text>
+              <text class="val" x="8" y="53">onto its bank — DRAW</text>
               <text class="lbl" x="8" y="170">wheel held, balance free</text>
             </g>
             <!-- P2 UNLOCK: pin in notch, stone sliding off corner, wheel recoils.
@@ -368,18 +386,19 @@
               <g id="esc2Stone">
                 <path d="M 28.5 105.5 L 41.5 132.5 L 15 143 L 5 121 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
                 <path d="M 30 108 L 90 78 L 96 106 L 40 130 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+                <line x1="14" y1="98" x2="20" y2="126" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
               </g>
               <g id="esc2Tooth">
                 <path d="M 117 45.5 L 90.7 81.5 L 74.5 73.5 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
                 <circle cx="90.7" cy="81.5" r="4" fill="var(--ruby)"/>
               </g>
-              <line x1="124" y1="78" x2="138" y2="64" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrE)"/>
+              <line x1="124" y1="78" x2="138" y2="64" stroke="var(--brass)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrEb)"/>
               <text class="val val-brass" x="106" y="94">recoil −1.0°</text>
               <text class="lbl lbl-strong" x="8" y="0">2 · unlock</text>
-              <text class="val" x="8" y="14">roller pin knocks the</text>
-              <text class="val" x="8" y="27">fork; the stone slides UP</text>
-              <text class="val" x="8" y="40">the draw face — the wheel</text>
-              <text class="val" x="8" y="53">visibly RECOILS</text>
+              <text class="val" x="8" y="14">the balance knocks the</text>
+              <text class="val" x="8" y="27">fork; the STONE slides up</text>
+              <text class="val" x="8" y="40">the draw face and SHOVES</text>
+              <text class="val" x="8" y="53">the wheel backward</text>
               <text class="lbl" x="8" y="170">p &lt; 0.04 of the beat</text>
             </g>
             <!-- P3 IMPULSE: tooth driving along impulse face. The impulse face is
@@ -391,16 +410,18 @@
               <g id="esc3Stone">
                 <path d="M 29 93 L 45 125 L 18 133 L 4 107 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
                 <path d="M 30 96 L 90 70 L 100 98 L 44 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-                <line x1="78" y1="96" x2="52" y2="108" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrE)"/>
+                <line x1="78" y1="96" x2="52" y2="108" stroke="var(--ruby)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrE)"/>
               </g>
               <g id="esc3Tooth">
                 <path d="M 92 44.5 L 66 80.5 L 50 72.5 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
                 <circle cx="66" cy="80.5" r="4" fill="var(--ruby)"/>
+                <line x1="110" y1="62" x2="92" y2="69.8" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#arrEb)"/>
               </g>
               <text class="lbl lbl-strong" x="8" y="0">3 · impulse</text>
-              <text class="val" x="8" y="14">tooth drives along the</text>
-              <text class="val" x="8" y="27">impulse face — the beat's</text>
-              <text class="val" x="8" y="40">push through the notch</text>
+              <text class="val" x="8" y="14">the one phase the WHEEL</text>
+              <text class="val" x="8" y="27">leads: the tooth pays its</text>
+              <text class="val" x="8" y="40">push into the impulse</text>
+              <text class="val" x="8" y="53">face — energy, not timing</text>
               <text class="lbl" x="8" y="170">wheel advances +12°</text>
             </g>
             <!-- P4 DROP: tooth free, wheel falls to exit stone. No contact dot —
@@ -412,23 +433,33 @@
               <path d="M 30 96 L 88 70 L 98 98 L 42 122 Z" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
               <g id="esc4Tooth">
                 <path d="M 123 42 L 97 78 L 81 70 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+                <line x1="130" y1="64" x2="112" y2="70.4" stroke="var(--brass)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrEb)"/>
               </g>
               <circle id="esc4Dot" cx="91.5" cy="79.8" r="4" fill="var(--ruby)" opacity="0"/>
               <text class="lbl lbl-strong" x="8" y="0">4 · drop</text>
-              <text class="val" x="8" y="14">the tooth leaves; the</text>
-              <text class="val" x="8" y="27">wheel falls onto the EXIT</text>
-              <text class="val" x="8" y="40">stone's locking face —</text>
-              <text class="val" x="8" y="53">lock, mirrored</text>
+              <text class="val" x="8" y="14">nothing touches — the</text>
+              <text class="val" x="8" y="27">beat's only such instant;</text>
+              <text class="val" x="8" y="40">the wheel runs free, and</text>
+              <text class="val" x="8" y="53">the EXIT stone stops it</text>
               <text class="lbl" x="8" y="170">then the other half-beat</text>
             </g>
-            <text class="lbl" x="20" y="235">schematic — stone (ruby) in its fork arm (steel), tooth (brass); faces are solved, not drawn (makePalletFork)</text>
-            <defs><marker id="arrE" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
+            <text class="lbl" x="20" y="232">solid arrow — the part that DRIVES; dashed — the motion that follows</text>
+            <text class="lbl" x="20" y="250">schematic — stone (ruby) in its fork arm (steel), tooth (brass); faces are solved, not drawn (makePalletFork)</text>
+            <defs>
+              <marker id="arrE" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker>
+              <marker id="arrEb" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--brass)"/></marker>
+            </defs>
           </svg>
         </div>
-        <figcaption>Lock is a contact, not a state: the tooth stands on the stone's locking
-        face and the face's LEAN converts wheel torque into a pull toward the banking (draw)
-        — asserted at build with the torque sign written out. Unlock spends real wheel motion
-        (the −1.0° recoil in the law below is draw made visible). Banking is derived from the
+        <figcaption>Read the plate by its arrows: solid is a drive, dashed is what results.
+        Three of the four contacts are the STONE's — it holds the wheel (1), it shoves the
+        wheel backward to get out of its own way (2), and it decides where the wheel stops
+        (4). The wheel leads exactly once, in panel 3, and what it delivers there is ENERGY,
+        not timing: the impulse face is where the train pays the oscillator for the swing it
+        just borrowed. Lock is a contact, not a state — the face's LEAN converts wheel torque
+        into a pull toward the banking (draw), asserted at build with the torque sign written
+        out; the −1.0° recoil in the law below is that same draw made visible, the stone
+        spending real wheel motion to climb off the corner. Banking is derived from the
         arc-length match <code>rollerR·Δθ = notchDepth·2·bank</code> — without it the pin and
         notch never coincide. The play loop walks the panels in beat order and drives every
         pose through the same ported law plate 2 scrubs (<code>escapeDeltaDeg</code> /
@@ -471,13 +502,24 @@
         <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch), all inside
         <code>IMPULSE_WIDTH = 0.16</code> of the beat; the remaining 84% is lock, with the
         balance detached. The wheel's angle is <code>n·BEAT_DEG + Δ(p)</code> — the whole
-        train hangs off this one function, never integrated, so it cannot drift.</figcaption>
+        train hangs off this one function, never integrated, so it cannot drift. Which is the
+        position arrow with nothing left over: <code>p</code> is the balance's phase, so the
+        wheel's angle is READ OUT of the oscillator, and every wheel behind it is read out of
+        the wheel. The train does not turn the escape wheel here; the escape wheel is what
+        tells the train where it is.</figcaption>
       </figure>
 
       <p class="note">Ledger: the tick models the escapement KINEMATICALLY — the wheel's
-      angle is a law of balance phase; forces, lift angles and safety-action dynamics are
-      not simulated (the drawn contacts are the built geometry's, the motion law is the
-      shipped one). The pallet stones seat in slots whose gap is DERIVED from the arm's own
+      angle is a law of balance phase, which is the POSITION arrow and only that. The energy
+      arrow is drawn here, not driven: nothing in this movement makes a torque yet (TODO 32
+      — the mainspring's shape is real, its torque is one authored line), so the impulse of
+      panel 3 transfers no energy, the amplitude it would sustain is a declared constant, and
+      lift angles and safety-action dynamics are not simulated. The drawn contacts are the
+      built geometry's and the motion law is the shipped one. Note what that leaves standing:
+      the stones of a real escapement DO command the wheel's position — the plates above claim
+      no more than that — and here they command it absolutely, because there is no torque to
+      argue with. The pallet stones
+      seat in slots whose gap is DERIVED from the arm's own
       extrude bevel (<code>gGap = armBevel + SEAT_SHOW</code>) — a guard born from a defect
       every battery run missed; that seat is also TODO 5's fixture-vs-fixture residue: the
       one intra-unit pair class the interim instrument still cannot see. Banking:
@@ -1627,7 +1669,9 @@
       // duration — the sim's own time-scale trick — and every pose evaluates
       // escDelta/forkNorm at the mapped p. Amplitudes are panel pixels; the
       // directions are the drawn faces' own unit vectors, so the contact
-      // stays on the face it names throughout.
+      // stays on the face it names throughout. Each drive/result arrow lives
+      // INSIDE the group of the part it belongs to, so it travels with that
+      // part rather than pointing at where the part used to be.
       (function () {
         var SEGS = [ // panel, display seconds, [p0, p1] of the real beat
           { n: 1, dur: 1.6, p0: IMPULSE_WIDTH, p1: 1 },                                   // locked dwell
