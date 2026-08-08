@@ -8130,3 +8130,119 @@ because they are reading the same array.
 - **The wound-arbor split** — arbor, ratchet and click, with the winding
   train re-routed onto it — is what would let this barrel hold its own
   wind instead of borrowing the striking lock's hold. TODO 37.
+
+## §90 — The HUD says what time it is and when it rings
+
+**The need, in the owner's words.** "When the HUD is displayed, we
+should see the estimated alarm time and estimated current time. This
+makes it especially easier to set the alarm."
+
+**Why §63 did not already answer it.** §57 put the *controls* in the
+corner and §63 put the *result* there — hour, minute and alarm hands
+that fade in with the eased stem pulls, so the ring previews what the
+dial shows while a setting path is engaged. That is one step too late
+for the question that sends a hand to the alarm crown in the first
+place: *what is it set to now, and how far is that from the time on the
+dial?* Both hands only exist once you have already committed to the
+gesture, and even then they answer by angle. So §90's strip is
+UNCONDITIONAL — it is up whenever the HUD is up — and §57's "only the
+controls are drawn" scope guard is spent deliberately here rather than
+by accident: the two times are not decoration on the plan, they are the
+two numbers the pusher and the alarm crown are operated against.
+
+**Figures, not a third and fourth hand.** The comparison the owner
+named is arithmetic — "≈1:12 against 7:01" is a glance, where two more
+needles on a 41 u ring is a squint, and a second alarm hand drawn under
+§63's would say the same thing twice in the weaker notation. The strip
+is the panel's own row idiom (dim label left, tabular value right)
+under the ring, deliberately not a second typographic language in the
+corner: it carries the same two rows the panel's Time and Alarm
+sections carry, said where the crowns are.
+
+**One derivation, because this row has lied before.** The panel's
+"Rings at" row was already the careful one: §24 wired it to
+`alarmTargetSeconds()` — the nearest quarter MARK — and it announced
+3:00 for an alarm that rang at 2:52, because the trip is geometric (the
+pin bottoms on the disc's notch floor) and runs off the CONTINUOUS set
+angle. Copying that expression into the HUD would have been copying a
+mistake that has already been made once, so the conversion moved into
+`alarmRingsAtSeconds()` and both readouts consume it; the hh:mm
+formatting moved with it into `fmtHM`. The time row consumes
+`displayedSeconds()` — "what the HANDS read" — which is the same
+accessor §63's hands read. Neither number is re-derived from τ or from
+a crown angle anywhere in this feature.
+
+**Only one of the two is estimated, and only one wears the ≈.** The
+time row is exact: it is a readout of the hand positions, and the panel
+clock prints the same string in the same frame. The alarm row keeps the
+≈ it has always had, and now the reason is written where the conversion
+is: the pin bottoms across ~2.76 min of disc travel, so the ring lands
+within about ±1.4 min of the hand, and a seconds field would be
+claiming a precision the notch floor does not have. Putting ≈ on both
+would blur which of the two is uncertain — the seconds ticking in the
+time row are the honest half of the pair.
+
+**What it cost the box.** `#ctl-hud` loses its fixed 150 px height and
+grows to fit what it carries; the SVG keeps its 1:1 aspect from the
+viewBox (`height: auto`). The gesture math is untouched — `hudLocal()`
+reads the SVG's own `getBoundingClientRect()`, not the box's — and the
+strip is inert text with no `data-ctl`, below the only element carrying
+pointer handlers. Labels resolve through `t()` at the display site
+(§73) and reuse the panel's existing `Time` / `Rings at` keys, so the
+feature added no translation debt in either locale — and they WRAP
+rather than ellipse, §53's lesson applied before it could cost
+anything: a hidden overflow is a label that silently stops saying what
+it says, and this box grows to fit its contents by construction.
+
+**The finding: a boot-order trap the §63 guard had been hiding.**
+`hudUpdate()` runs on every frame, but `setHud()` also calls it
+directly, and `?hud=1` reaches `setHud()` from `applyDeepLink()` during
+boot. §63's hands were computed inside `if (pvT > 0 || pvA > 0)`, which
+is false at boot, so nothing there had ever called `displayedSeconds()`
+that early. An unconditional readout does, and `handSetOffsetNow` — a
+`let` sitting with `displayedSeconds()` several thousand lines further
+down — was still in its temporal dead zone: `Cannot access
+'handSetOffsetNow' before initialization`, a boot that never produced a
+`__clock`. The declaration now lives with τ's own tick state
+(`tauIntegrated`, `lastTickRawT`), which is where a variable `tick()`
+writes belongs anyway; `displayedSeconds()` keeps its comment and a
+note saying where its other half went. `fmtHM` is a function
+declaration rather than a `const` for the same reason, stated in place.
+Worth keeping: the deep-link path is the one that finds this class of
+bug, and it is cheap to test — `?hud=1` on a cold load.
+
+**Verified.** Headless Chromium against the dev server, all three
+locales: HUD and panel agree string-for-string on both rows at rest and
+after setting (`7:01:36` / `≈1:14` in both places); labels resolve to
+`Zeit` / `Klingelt um` and `时间` / `响铃时刻` with zero row overflow at
+150 px, which is the §53 wrapping constraint met by the German column
+as usual. Driven end to end through the HUD's OWN gestures — a radial
+drag pulls the alarm crown, a tangential drag around the ring turns it
+— the alarm row tracks the disc live (`≈12:00` → `≈1:12`) and agrees
+with the §63 hand drawn above it in the same screenshot. Zero page
+errors on boot and through the gestures. Battery 17/17 (3 shards,
+25 min): boot silent, every gate PASS, `sweptOverlap` 0 CONFIRMED over
+59 768 pairs, `clearances` 0 violations, fingerprint deterministic
+across virgin boots.
+
+**The fingerprint claim was measured, not assumed**, and the first
+measurement was wrong in the instructive direction: booting this branch
+against a `main` worktree gave two different hashes, which for a
+DOM-only change reads as a real geometry move. The local `main` was 30
+commits stale. Re-run against the branch's actual base, both trees from
+a cleared state file and a fresh browser context, both hashed the same
+value the battery's two virgin boots produced. The lesson is the cheap
+one: a fingerprint is only a claim about the two trees you actually
+compared, so name the base commit, not the branch name — and re-measure
+when the base moves. This section landed on 780d41c, hashing
+`1307831341`; TODO 11 tranche five moved geometry underneath it, so the
+rebased pair (base `a370a6b` and this branch) both hash `3811459283`.
+The claim survived the rebase; the number did not, which is exactly
+what a fingerprint is for.
+
+One pre-existing condition, re-measured rather than assumed: on a
+390×740 viewport the panel (z 10) still overlaps the HUD's left sliver
+the way it did before, because the box's width and x are unchanged and
+only its top edge moved up 42 px into ground the panel already covered.
+Both readout rows clear the panel's bottom edge there. Nothing about
+that layering is new, and moving the HUD would be a different change.

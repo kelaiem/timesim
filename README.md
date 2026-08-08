@@ -176,7 +176,9 @@ where the unlock-impulse-drop sequence becomes followable by eye), Wind,
 fast-forward, sync-to-wall-clock, sound, camera presets (plus orbit/zoom),
 exploded view (whole-movement slider or one assembly at a time), part labels,
 x-ray, power-flow highlighting, a measurement overlay with an in-scene mm
-ruler, a guided tour and an inspection route, a control HUD, a reconfigure
+ruler, a guided tour and an inspection route, a control HUD (which carries
+the clock and alarm-time readouts with it, so the alarm can be set without
+the panel), a reconfigure
 mode (§33: drag either crown, the pusher (which carries the whole alarm module with it), the barrel, escapement or balance to propose a new
 arrangement — dragging the crown re-solves the keyless cluster around a
 decoupled stem, idler and all; the pure solvers shadow-solve each candidate live,
