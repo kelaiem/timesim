@@ -168,15 +168,31 @@ jobs:
           PROD_VERSION: ${{ steps.refs.outputs.prod_version }}
         run: |
           set -euo pipefail
-          # The payload is defined ONCE, identically to release.yml: the tracked
-          # files at that ref, minus CI/dev-tool config with no bearing on the
-          # running app. Pages and QA therefore serve the same bytes.
+          # The payload starts from release.yml's — the tracked files at that
+          # ref, minus CI/dev-tool config — and then cuts further, so this is
+          # NARROWER than what QA gets over SFTP. It is deliberately not the
+          # same bytes, and the difference is only ever subtractive: nothing is
+          # added here that a release does not have.
+          #
+          # What the extra excludes drop, and why. A Pages site is served to
+          # whoever has the URL, and none of these are part of the running app:
+          # every *.md (README, CLAUDE.md, TODO.md, SPEC.md, AESTHETICS.md and
+          # docs/ — repo documentation, not site content), .githooks and
+          # .gitignore (clone-time tooling), dev_server.py (inert when served
+          # statically), and test-geometry.html (a dev smoke-test page, which
+          # the stamper never versioned and the worker never precached — it was
+          # already a second-class passenger).
+          #
+          # LICENSE and vendor/LICENSE-*.txt STAY. They are .txt or extensionless
+          # and so survive the *.md rule, which is not luck — a published site
+          # carrying vendored three.js must carry its licences.
           build() {
             name=$1; ref=$2; version=$3; dest=$4
             echo "--- $name  <-  $ref  ($version)"
             mkdir -p "$dest"
             git archive --format=tar "$ref" -- . ':(exclude).github' ':(exclude).claude' \
-              ':(exclude)tools' | tar -x -C "$dest"
+              ':(exclude)tools' ':(exclude)*.md' ':(exclude).githooks' ':(exclude).gitignore' \
+              ':(exclude)dev_server.py' ':(exclude)test-geometry.html' | tar -x -C "$dest"
             node tools/build-pages.mjs "$dest" "$version" "$name"
           }
           rm -rf _site
@@ -222,6 +238,26 @@ jobs:
           for d in _site/testing _site/development; do
             grep -q 'name="robots" content="noindex"' "$d/index.html" || fail "$d is missing its noindex"
           done
+          # The payload cuts are ASSERTED, not just configured. A pathspec is
+          # easy to break by accident (a new doc at a new path, someone widening
+          # the archive) and the symptom — repo documentation quietly served
+          # from the site — looks like a healthy deploy. Checked over the whole
+          # artifact rather than per environment, so a leak into any one of the
+          # three is caught.
+          leaked=$(find _site \( -name '*.md' -o -name 'dev_server.py' \
+            -o -name 'test-geometry.html' -o -name '.gitignore' -o -name '.githooks' \) -print)
+          if [ -n "$leaked" ]; then
+            echo "$leaked"
+            fail "files that must not be published are in the artifact (see list above)"
+          fi
+          # And the other half of the same rule: the licences MUST be there — in
+          # every environment, not just the root, since each is a complete site.
+          for d in _site _site/testing _site/development; do
+            for f in "$d/LICENSE" "$d/vendor/LICENSE-three.txt" "$d/vendor/LICENSE-three-mesh-bvh.txt"; do
+              [ -f "$f" ] || fail "$f is missing — a published site carrying vendored three.js must carry its licences"
+            done
+          done
+
           # No check here that the three versions DIFFER, deliberately: right
           # after a release is cut and promoted with nothing merged since, all
           # three legitimately name the same tag. What must differ is the

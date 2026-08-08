@@ -46,7 +46,7 @@ deep under the origin it is being served.
 | Environment | URL | What it is | Moved by |
 |---|---|---|---|
 | production | https://kelaiem.github.io/timesim/ | the promoted release | running the Pages workflow with `promote: <version>` |
-| testing | https://kelaiem.github.io/timesim/testing/ | the newest release — the same tree QA gets over SFTP | `release.yml`, which dispatches the Pages workflow when it publishes |
+| testing | https://kelaiem.github.io/timesim/testing/ | the newest release — the same tag QA gets over SFTP | `release.yml`, which dispatches the Pages workflow when it publishes |
 | development | https://kelaiem.github.io/timesim/development/ | the tip of `main` | any merge to `main` |
 
 So the ladder is **merge → cut a release → promote**, and every pointer is a
@@ -68,6 +68,12 @@ curl -s https://kelaiem.github.io/timesim/development/version.json
 Development's version is `git describe` — literally "28 commits past 2.1.9",
 which is what the tip of `main` is. Testing and production name their release
 tag. Only production is indexable; the other two are served `noindex`.
+
+The Pages payload is **narrower than the SFTP release**: the app, `vendor/`
+and the licences, and nothing else. Repo documentation (every `*.md`,
+including `docs/`), `dev_server.py`, `test-geometry.html` and the git hooks
+are not site content and are not published. The workflow asserts both halves
+of that — no doc leaks in, no licence goes missing.
 
 ## Simulation vs. model — how this project uses the words
 

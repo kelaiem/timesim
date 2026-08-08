@@ -274,7 +274,7 @@ absolute `/<releases>/<version>/` rebase 404s the whole app). All
 dev/CI dependencies live under `tools/` so the app itself stays
 dependency-free, and the release payload excludes `tools/`.
 
-`pages.yml` (§88) publishes the same payload to GitHub Pages in three
+`pages.yml` (§88) publishes to GitHub Pages in three
 environments — `development` ← tip of `main`, `testing` ← the newest
 release tag, `production` ← the `production` branch, which only that
 workflow's `promote: <version>` input moves. **Every pointer is a git
@@ -286,6 +286,17 @@ deploy does not exist there, and that is why it is shaped that way.
 `stamp-release.mjs` (the environments are stamped releases, not a
 second kind of build — do not fork the stamper) and adds the
 environment's own marks.
+
+**The Pages payload is NARROWER than the SFTP release's, and only ever
+subtractively.** A Pages site is served to whoever has the URL, so it
+carries the app, `vendor/` and the licences and nothing else — every
+`*.md` (including `docs/`), `.githooks`, `.gitignore`, `dev_server.py`
+and `test-geometry.html` are cut. Both halves are asserted in the
+workflow, because a pathspec breaks silently and the symptom (repo
+documentation served from the site) looks like a healthy deploy: no
+doc may appear in the artifact, and `LICENSE` plus both
+`vendor/LICENSE-*.txt` must. Add a doc anywhere and it stays unpublished
+by default — that is the intended direction.
 
 **`pages.yml` only ever runs from `main`, and that is load-bearing.**
 Each environment's TREE comes from its own ref via `git archive`, but

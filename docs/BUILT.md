@@ -7815,6 +7815,44 @@ left under the old scope would match neither clause — they contain a `/`,
 so they are not orphans — and would sit there until the browser evicted
 them.
 
+### The payload, narrowed after the first deploy
+
+§88 shipped serving exactly release.yml's payload, on the principle that
+Pages and QA should not drift. The first real deploy showed what that
+principle had actually published: the artifact listing carried `CLAUDE.md`,
+`TODO.md` (213 KB of internal debt notes), `docs/BUILT.md`, `SPEC.md`,
+`AESTHETICS.md`, `README.md`, `dev_server.py`, `test-geometry.html`,
+`.gitignore` and both git hooks — three times, once per environment.
+
+That was not a new policy so much as an old one meeting a new audience.
+The same files already went to QA, but QA is reached by people who have
+been given it and a Pages site is reached by anyone with the URL. The
+deploy is what converted a payload decision into publication.
+
+So the Pages payload is now NARROWER than the release's, and only ever
+subtractively — nothing is added here that a release does not have. It
+carries the app, `vendor/`, and the licences. Everything else is cut:
+every `*.md` (repo documentation is not site content), `.githooks` and
+`.gitignore` (clone-time tooling), `dev_server.py` (inert when served
+statically), and `test-geometry.html` — which the stamper never versioned
+and the worker never precached, so it was already riding along rather than
+shipped.
+
+`LICENSE` and `vendor/LICENSE-*.txt` survive the `*.md` rule by being
+extensionless and `.txt`, and that is not luck to be left to chance: a
+published site carrying vendored three.js must carry its licences, so the
+workflow asserts their PRESENCE in the same step that asserts the docs'
+absence. A pathspec breaks silently — a new doc at a new path, someone
+widening the archive — and the symptom, repo documentation served from the
+site, looks exactly like a healthy deploy. Checked across the whole
+artifact rather than per environment, so a leak into any one of the three
+is caught.
+
+The cost is the property the original shape was chosen for: Pages and QA
+no longer serve the same bytes, and the comment that said they did is
+corrected rather than left standing. What they still share is the tag and
+the stamper, which is what actually makes testing a meaningful mirror.
+
 ### What this did NOT close
 
 The environments only stop evicting each other once the release PROMOTED
