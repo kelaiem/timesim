@@ -20,6 +20,8 @@ export default {
   ['← the movement']: '← 返回机芯',
   ['values quoted from src/*.js · constraints in captions']: '数值引自 src/*.js · 约束见图注',
   ['How the significant mechanisms of this movement work — in the order power flows. Entries with numbered <b>plates</b> are full treatments whose every dimension is the real constant from the source, with the constraint it was derived from (the repo\'s rule 1: no number exists because it looked right). Compact entries are seeds; they grow plates as the mechanisms they describe get worked on.']: '本机芯各主要机构的工作原理——按动力传递的顺序排列。带编号<b>图版</b>的条目是完整论述，其中每一个尺寸都是源码里的真实常数，并附上它所依据的约束（本仓库的规则 1：没有任何数字是因为“看着合适”而存在的）。简短条目是种子，随着所述机构被继续打磨而长出图版。',
+  ['<div class="sheet"> This project was made possible by <b>Claude</b>, Anthropic\'s AI model: the movement, its instruments and these pages were designed and built in collaboration with it. Every constant here is still held to its constraint by the checks the repository runs — the claim is about who did the work, not a warrant that the work is right. </div>']:
+    '<div class="sheet"> 本项目由 Anthropic 的 AI 模型 <b>Claude</b> 促成：机芯、其检测工具以及这些页面均是与它协作设计并构建的。此处的每一个常数仍由本仓库运行的各项检查约束于其约束条件——这句话说明的是由谁完成了工作，并不担保工作本身正确。 </div>',
   ['<div class="sheet"> §65 — this page is maintained with the movement: significant mechanisms get an entry; full entries carry plates whose numbers are the source constants. If a value here disagrees with <code>src/*.js</code>, the source is right and this page has a bug — file it like one. </div>']: '<div class="sheet"> §65 — 本页与机芯同步维护：主要机构都有条目；完整条目配有图版，其数字即源码常数。若此处的数值与 <code>src/*.js</code> 不符，以源码为准，本页即为缺陷——请照缺陷提交。 </div>',
 
   // ---- mainspring (TODO 1: the ribbon is a wind morph, not a posed spiral) ----

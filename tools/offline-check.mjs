@@ -68,7 +68,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'test-geometry.html', 'sw.js', 'manifest.webmanifest', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'test-geometry.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -119,9 +119,9 @@ try {
   const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), cacheA);
   check('release: /__state NOT in the cache', !stateCached);
   const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, cacheA);
-  // 19 since §88 made test-geometry.html a stamped, precached document; it was
-  // 18 while that page shipped unstamped and uncached.
-  check('release: precache complete', counts === 19, `${counts}/19`);
+  // 20 since §88: 18 + test-geometry.html (made a stamped document) +
+  // favicon.svg (an unstamped seed, like the manifest it is referenced beside).
+  check('release: precache complete', counts === 20, `${counts}/20`);
 
   // ---- offline: the whole point ----
   await ctx.setOffline(true);

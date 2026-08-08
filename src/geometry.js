@@ -2972,7 +2972,13 @@ class LemniscateCurve extends THREE.Curve {
 // of every turn. Accepted, per §41: real crowns carry brand marks and they
 // spin. §27's ∞ read the same either way; this deliberately trades that for
 // brand specificity.
-export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments = 10 }) {
+// §88 — the SHAPES, split out of the mesh so ONE construction serves two
+// outputs. `tools/make-favicon.mjs` renders these same outlines to
+// `favicon.svg`: a favicon drawn by eye would be a second definition of the
+// house mark, free to drift from the crown the moment either was touched.
+// Nothing below changed when it moved out here — the mesh builder now calls
+// this and extrudes what it returns.
+export function brandMarkShapes({ r, tubeR }) {
   // FIT. The call site sizes its budget for the ∞, which was a wide, flat curve
   // using almost none of the vertical box. Two upright letters use ALL of it,
   // so filling the same budget crowds the cap rim and the quiet reveal
@@ -3076,14 +3082,21 @@ export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments =
   shapes.push(bowl(cyTop, FREE, Math.PI * 1.5, false));
   shapes.push(bowl(cyBot, Math.PI * 0.5, -Math.PI * 0.75, true));
 
-  const geos = shapes.map((sh) => {
-    const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments });
-    g.translate(0, -H / 2, -depth / 2);   // centre the monogram on the face, half-embedded
+  // r and tubeR travel with the shapes because FIT scaled them: every consumer
+  // needs the FITTED figures, not the caller's budget.
+  return { shapes, r, tubeR, H, sw, depth };
+}
+
+export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments = 10 }) {
+  const m = brandMarkShapes({ r, tubeR });
+  const geos = m.shapes.map((sh) => {
+    const g = new THREE.ExtrudeGeometry(sh, { depth: m.depth, bevelEnabled: false, curveSegments });
+    g.translate(0, -m.H / 2, -m.depth / 2); // centre the monogram on the face, half-embedded
     return g;
   });
   const merged = mergeGeos(geos);
   const mesh = new THREE.Mesh(merged, material);
-  mesh.userData = { r, tubeR, height: H, strokeWidth: sw, proud: tubeR };
+  mesh.userData = { r: m.r, tubeR: m.tubeR, height: m.H, strokeWidth: m.sw, proud: m.tubeR };
   return mesh;
 }
 
