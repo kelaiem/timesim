@@ -274,6 +274,44 @@ absolute `/<releases>/<version>/` rebase 404s the whole app). All
 dev/CI dependencies live under `tools/` so the app itself stays
 dependency-free, and the release payload excludes `tools/`.
 
+`pages.yml` (§88) publishes the same payload to GitHub Pages in three
+environments — `development` ← tip of `main`, `testing` ← the newest
+release tag, `production` ← the `production` branch, which only that
+workflow's `promote: <version>` input moves. **Every pointer is a git
+ref**; nothing about which environment serves what lives in Actions
+settings. Pages replaces the WHOLE site per deploy, so the workflow
+rebuilds all three from their current pointers every run — a partial
+deploy does not exist there, and that is why it is shaped that way.
+`tools/build-pages.mjs` finishes each tree: it runs the same
+`stamp-release.mjs` (the environments are stamped releases, not a
+second kind of build — do not fork the stamper) and adds the
+environment's own marks.
+
+**`pages.yml` only ever runs from `main`, and that is load-bearing.**
+Each environment's TREE comes from its own ref via `git archive`, but
+that archive excludes `tools/` — so the STAMPER comes from the
+checkout. `release.yml` therefore DISPATCHES the workflow on `main`
+rather than `pages.yml` carrying a `release:` trigger, which would
+check out the tag and make "which stamper built production" depend on
+what woke the run. Do not add a `release:` or `push: tags:` trigger
+back: besides the ambiguity, no tag predating §88 contains
+`build-pages.mjs`, so those refs cannot build these environments at
+all. The consequence to know is that the site is a function of the
+three refs PLUS main's tooling — editing the stamper moves
+production's bytes without production's ref moving, which is why
+`offline.yml` gates that file.
+
+**Anything served under a path shares its origin with the other two.**
+Cache Storage is partitioned by origin, not path, so `sw.js` names its
+cache for its SCOPE as well as its version; a flat name let each
+environment's activation evict the others'. `tools/offline-check.mjs`
+holds that: it stands up two stamped releases on one origin and boots
+both offline. **`offline.yml` now runs it on PRs that touch those files**
+(`sw.js`, the two documents, `stamp-release.mjs`, `build-pages.mjs`,
+`offline-check.mjs`) — separate from the battery, which runs the source
+tree and so deliberately has no worker at all. Run it by hand when
+iterating; the paths filter keeps it off every other PR.
+
 ## Inspecting
 
 Verify with `src/inspect.js`, not by eye:

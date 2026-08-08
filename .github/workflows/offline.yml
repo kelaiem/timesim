@@ -1,0 +1,86 @@
+# §88 — tools/offline-check.mjs as a gate, on the files it is about.
+#
+# §79 shipped this instrument and CLAUDE.md asked, by convention, that it be run
+# when touching sw.js, stamp-release.mjs, the registration or the update toast.
+# §88 is the case that shows why a convention is not enough: the flat cache name
+# was correct for one environment per origin and silently wrong for three, every
+# other gate stayed green, and nothing in CI would have said so. The repo has
+# already made this call once — .githooks/commit-msg enforces the session-link
+# rule rather than asking, because "a convention loses that argument every
+# time." Same reasoning, same answer.
+#
+# It is NOT in battery.yml and must not be: the battery runs the source tree,
+# which deliberately has no worker at all, while this builds two stamped
+# RELEASE trees and serves them. Different subject, different job.
+#
+# The paths filter is what makes it affordable. These files change rarely — the
+# whole point of a release-machinery check is that release machinery is stable —
+# so most PRs never see this job.
+#
+# On the timeout, and on the assumption it was first written with. This file
+# originally said 60 min because "it is ~25 min on a dev container and CI
+# hardware is slower with SwiftShader doing the GL." The first real run said
+# otherwise: 2 min 29 s for the whole job, of which 113 s was the twenty checks
+# (05:33:21 → 05:35:14, run 31241925116). The dev container is the SLOW one
+# here by an order of magnitude — the opposite of the premise — so the sentence
+# is corrected rather than left standing next to a number it no longer
+# explains.
+#
+# 20 min is therefore ~8x the measured job. That is deliberately not tight:
+# battery.yml's history is the standing argument against deriving a cap from
+# one green run — 45 was set that way, then killed six consecutive runs
+# including two on main, and a job-timeout kill is reported as `cancelled`,
+# which reads like somebody's force-push. But 60 was not generosity, it was
+# 24x a job nobody had timed; the documented failure mode this cap exists for
+# is a WEDGED tab, and an hour is a long time to spend discovering one.
+# Re-derive from several runs if the tail ever proves fatter than this.
+
+name: Offline
+
+on:
+  pull_request:
+    paths:
+      - 'sw.js'
+      - 'index.html'
+      - 'explain.html'
+      - 'manifest.webmanifest'
+      - 'tools/offline-check.mjs'
+      - 'tools/stamp-release.mjs'
+      - 'tools/build-pages.mjs'
+      - '.github/workflows/offline.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20   # ~8x the measured 2 min 29 s job; see the note above
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      # --with-deps also apt-installs the shared libraries Chromium needs, which
+      # the browser cache above cannot carry — so it runs every time.
+      - name: Install Chromium
+        working-directory: tools
+        run: npx playwright install --with-deps chromium
+
+      - name: Offline acceptance
+        working-directory: tools
+        run: node offline-check.mjs

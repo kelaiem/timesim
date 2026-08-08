@@ -35,6 +35,40 @@ then open http://localhost:8347/ — no build step, no network access needed
 (`python3 -m http.server 8347`) also works; state then falls back to
 `localStorage`.
 
+## Deployed environments
+
+Three of them, published to GitHub Pages by `.github/workflows/pages.yml`
+(§88). GitHub Pages gives a repository one site, so they are three paths
+under it rather than three sites — which works only because release URLs are
+relative (see §28 in `docs/BUILT.md`), and so the app never needs to know how
+deep under the origin it is being served.
+
+| Environment | URL | What it is | Moved by |
+|---|---|---|---|
+| production | https://kelaiem.github.io/timesim/ | the promoted release | running the Pages workflow with `promote: <version>` |
+| testing | https://kelaiem.github.io/timesim/testing/ | the newest release — the same tree QA gets over SFTP | `release.yml`, which dispatches the Pages workflow when it publishes |
+| development | https://kelaiem.github.io/timesim/development/ | the tip of `main` | any merge to `main` |
+
+So the ladder is **merge → cut a release → promote**, and every pointer is a
+git ref: `main`, the newest `major.minor.patch` tag, and a `production`
+branch the promote step moves. Nothing about which environment serves what
+lives outside the repository.
+
+The Pages workflow itself only ever runs from `main` — each environment's
+tree comes from its own ref, but the tooling that stamps them comes from the
+checkout, so pinning that to one place is what makes a rebuild reproducible.
+
+Each carries the version it was built with, readable without a fetch:
+
+```sh
+curl -s https://kelaiem.github.io/timesim/development/version.json
+# {"version":"2.1.9-28-g4b64e7d","environment":"development"}
+```
+
+Development's version is `git describe` — literally "28 commits past 2.1.9",
+which is what the tip of `main` is. Testing and production name their release
+tag. Only production is indexable; the other two are served `noindex`.
+
 ## Simulation vs. model — how this project uses the words
 
 Two words carry precise, different claims here, and the honesty ledger

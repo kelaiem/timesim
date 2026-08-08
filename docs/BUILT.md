@@ -7635,3 +7635,198 @@ Four labelled units still draw nothing at all, and a unit's proxy count
 is a weak proxy for "is drawn" besides. That census, and the instrument
 that should be reporting it instead of a session's probe script, is
 filed as roadmap §84.
+
+## §88 — Three environments on one Pages site, and the cache name that could not tell them apart
+
+The app had one deployed environment: `release.yml` cuts a tag, publishes
+a GitHub Release, and uploads the tagged tree over SFTP to a QA host,
+repointing a symlink at it. §88 adds three more on GitHub Pages —
+development, testing, production — and the interesting part is that
+almost none of the work was the deploy.
+
+**The layout, and why it is legal.** GitHub Pages gives a repository ONE
+site, so three environments are three paths, not three sites:
+
+```
+production   https://kelaiem.github.io/timesim/
+testing      https://kelaiem.github.io/timesim/testing/
+development  https://kelaiem.github.io/timesim/development/
+```
+
+That is only possible because §28 refused the obvious move. Its stamper
+could have rebased every asset onto an absolute `/<releases>/<version>/`
+path — the release directory as the fingerprint — and declined, because
+whether that directory is inside the web root is not knowable from this
+repo when the site is distributed as a symlink. URLs stayed RELATIVE and
+carried `?v=<version>` instead. The consequence, unplanned and collected
+here: the app can be served from an arbitrary subdirectory at an
+arbitrary depth with no build-time knowledge of where. A subdirectory
+environment needed zero changes to how a release is built.
+
+**Where each environment comes from.** Every pointer is a git ref, so a
+deploy is reproducible from the repository alone and no state hides in
+Actions settings:
+
+| environment | ref | moved by |
+|---|---|---|
+| development | tip of `main` | any merge |
+| testing | the newest `major.minor.patch` tag | `release.yml` publishing |
+| production | branch `production` | `pages.yml` run with `promote: <version>` |
+
+The ladder is merge → cut a release → promote, and each rung is an act
+somebody performs. Promotion is a `git push` of a validated tag's commit
+onto `refs/heads/production` — a real branch anyone can read, log and
+revert — not a setting. Development deliberately does not wait for
+`battery.yml` on the same commit: it is the unstable tier and its job is
+to show what `main` is right now. Testing and production carry tags, and
+a tag is cut from a `main` whose battery already passed.
+
+**Version strings are read from git, never invented** (standing rule 1,
+applied to a deploy). Testing and production carry their release tag.
+Development carries `git describe --tags` — `2.1.9-28-g4b64e7d`, which
+states exactly what the tip of main is: twenty-eight commits past 2.1.9.
+Nothing had to invent a scheme for "main's version", and because the
+string changes on every merge it re-arms §28 layer 2's update toast and
+rotates §79's cache for free.
+
+**Which tooling stamps an old ref — the question this is the first thing
+in the repo to have to answer.** The environment trees come from their own
+refs, but `git archive` excludes `tools/`, so the stamper comes from the
+CHECKOUT. `release.yml` looks like a precedent for "the release's own
+tooling" — it checks out the tag and runs that tag's `stamp-release.mjs` —
+but it never actually chose: it cuts the tag from `main` and deploys it in
+the same run, so the two are the same bytes. Pages is the first thing here
+that rebuilds an OLD ref.
+
+Answering it "from the ref itself" is not a stricter option being declined,
+it is impossible. No tag from 2.1.4 to 2.1.9 contains
+`tools/build-pages.mjs`; 2.1.5 has no `offline-check.mjs` either; and
+`stamp-release.mjs` genuinely differs between 2.1.7 and 2.1.9. Tag 2.1.9
+does not know what an environment IS — it cannot emit `app-environment` or
+the `noindex`. And a bug in the deploy layer could then only be fixed by
+cutting and promoting a release, which for this particular file is not
+hypothetical: §79 found the stamper silently missing two whole classes of
+URL.
+
+So the tooling is pinned to `main`, and pinning the checkout turned out to
+be only half of it — on a `release: published` run the WORKFLOW FILE comes
+from the tag too. `pages.yml` therefore dropped that trigger entirely and
+`release.yml` DISPATCHES it on `main` instead (`gh workflow run pages.yml
+--ref main`, which works under `GITHUB_TOKEN` because `workflow_dispatch`
+is one of the two documented exceptions to the no-recursive-runs rule).
+File and tooling now always come from the same place.
+
+The cost, stated rather than hidden: the site is a function of the three
+refs PLUS main's tooling, not of the three refs alone. Editing the stamper
+moves production's bytes without production's ref moving. That is guarded
+by review and by `offline.yml`, not by immutability — and the way to get
+the audit trail back is to RECORD the tooling commit in `version.json`
+rather than to pin it, which is deferred, not rejected.
+
+**Why it rebuilds all three every run.** `actions/deploy-pages` publishes
+one artifact that REPLACES the whole site; there is no partial deploy and
+no previous state to merge into, so anything absent from the artifact is
+deleted. Assembling all three from their current pointers on every run is
+the only correct shape, and it buys idempotence: a re-run with no input
+republishes exactly what the three pointers say, whatever the trigger
+was. `tools/build-pages.mjs` finishes each extracted tree by running the
+SAME `stamp-release.mjs` from inside it — the environments are stamped
+releases, not a second kind of build, and a forked stamper is precisely
+how the two topologies would drift apart unnoticed.
+
+### The defect the topology exposed
+
+`sw.js` named its cache `timesim-<version>` and, on activation, deleted
+every `timesim-`-prefixed key that was not its own. That was right for
+one environment per origin, which is all that had ever existed: dropping
+per release IS §79's eviction policy.
+
+**Cache Storage is partitioned by ORIGIN, not by path.** All three
+environments share `kelaiem.github.io`. So each one's activation would
+have deleted the other two's precaches — visiting development took
+production offline-capable no more, and §79's guarantee would have held
+for whichever environment was visited last and no other. Every existing
+check stayed green while it did, because every existing check stood up
+exactly one release at a time.
+
+The fix is to name the cache for the thing that is distinct per
+environment and identical across an environment's successive releases —
+its scope path, which the worker already computed for its fetch handler:
+
+```
+const CACHE_PREFIX = `timesim-${SCOPE_PATH}-`;
+const CACHE = CACHE_PREFIX + VERSION;
+```
+
+Per-release rotation within an environment is unchanged, and so is the
+QA symlink (its scope is stable across releases because the symlink URL
+is). Activation now drops two things and only two: ours from an older
+release, and the pre-§88 flat name — recognisable because a version
+string cannot contain the `/` a scope path always does. That second
+clause is a one-time sweep for viewers holding a cache from a release cut
+before this namespace existed; under the new scheme nothing claims those
+keys, so without it they leak a whole app's worth of storage forever. It
+cannot reach another environment's cache, because every one of those
+begins `timesim-/`.
+
+**The instrument, not the reasoning, is the deliverable.**
+`tools/offline-check.mjs` grew a third tree — the same two stamped
+releases it already builds, served at `/a/` and `/b/` on one origin,
+which is the Pages topology reduced to what matters. It brings up `a`,
+then `b`, and asks three things (20 checks now, from 17): one cache each
+named for its own scope, both boot offline, console silent. The cache
+name is also no longer writable in that file without saying where the
+release is served from, which is the change stated as an API.
+
+**And one of those three is the discriminator, which was measured rather
+than assumed.** Run against the pre-§88 worker, the CACHE-KEY check fires
+exactly as intended: it reads back a single key, `timesim-<b's version>`,
+a's having been deleted out from under it. The OFFLINE BOOT check does
+NOT fire — `a` still booted with no network in all three ways of asking
+(reload; reload after a CDP `Network.clearBrowserCache`; a fresh page
+after closing both), because `python3 -m http.server` sends no
+`Cache-Control` and the browser answered from its own caches. That check
+is kept, as a statement of the guarantee end to end, and its comment now
+says it is not evidence about the service worker's cache by itself. The
+alternative — leaving a cache-clearing line in that measurement says
+changes nothing, so the check reads rigorous — is the failure this repo
+spends most of `TODO.md` catching, one layer up.
+
+**What it does to the SFTP release, which is the deploy that already
+exists.** `sw.js` is the only functional file in this change that is
+inside the release payload (`tools/` and `.github/` are excluded; the
+three markdown files that ship are inert). `release.yml` and
+`stamp-release.mjs` are untouched, and the two placeholder lines the
+stamper rewrites are intact — a stamped tree still reports 27 URLs
+versioned and 18 precached, as before.
+
+The one behavioural change at QA is the cache rename, so the UPGRADE was
+run rather than argued: tree A carrying the pre-§88 worker, the symlink
+repointed at tree B carrying this one, which is exactly what `release.yml`
+does. The viewer went `["timesim-0.0.0-qa-old"]` → toast → reload → lands
+on the new version → `["timesim-/-0.0.0-qa-new"]`, still boots offline,
+console silent. The orphan clause swept the flat cache on that first
+upgrade, so nothing leaks and nothing needs doing by hand.
+
+That sweep rests on one condition worth naming: QA's scope path is stable
+across releases, because the site is distributed as a symlink whose URL
+does not change. If QA were ever re-rooted at a different path, caches
+left under the old scope would match neither clause — they contain a `/`,
+so they are not orphans — and would sit there until the browser evicted
+them.
+
+### What this did NOT close
+
+The environments only stop evicting each other once the release PROMOTED
+to production contains this `sw.js`. Production serves an old tag by
+design, and an old tag's worker still has the flat name and still sweeps
+its neighbours — so between this landing and the first promote of a
+release cut after it, development and testing keep losing their caches to
+production's activation. It self-heals at the first such promote and
+needs no action; it is written down because a green `offline-check` and a
+still-evicting production are both true at the same time for a while.
+
+`pages.yml` also cannot enable Pages on a repository where an
+organisation policy forbids it — `actions/configure-pages` asks, and the
+one-time Settings → Pages → Source = "GitHub Actions" remains a manual
+prerequisite.

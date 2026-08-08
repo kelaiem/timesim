@@ -82,6 +82,41 @@ jobs:
           VERSION: ${{ steps.bump.outputs.version }}
         run: gh release create "$VERSION" --title "$VERSION" --generate-notes
 
+  # §88 — hand off to the GitHub Pages environments, so `testing` picks up the
+  # release this run just published.
+  #
+  # A DISPATCH rather than a `release: published` trigger on pages.yml, and the
+  # difference is which tooling stamps the site. pages.yml builds each
+  # environment's tree from its own ref with `git archive`, but that archive
+  # EXCLUDES tools/ — so the stamper comes from the checkout. A release-event
+  # trigger checks out the tag, which made "which stamper built production"
+  # depend on what woke the workflow, and which older tags cannot satisfy at all
+  # (none of them contain tools/build-pages.mjs). Dispatching --ref main pins
+  # the workflow file and its tooling to the same place, every time.
+  #
+  # It needs `actions: write`, and it works with GITHUB_TOKEN because
+  # workflow_dispatch is one of the two documented exceptions to "events
+  # triggered by GITHUB_TOKEN do not create a workflow run". If it ever stops
+  # firing, the symptom is a missing Pages run (not a failed one) and the
+  # fallback is running pages.yml by hand from the Actions tab.
+  #
+  # `needs: release`, NOT `needs: deploy`: the two deploy targets are
+  # independent, and a QA SFTP failure should not also withhold the published
+  # release from Pages.
+  pages:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Publish the Pages environments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          gh workflow run pages.yml --ref main -R "$GITHUB_REPOSITORY"
+          echo "::notice::dispatched pages.yml on main — testing will pick up $VERSION"
+
   deploy:
     needs: release
     runs-on: ubuntu-latest

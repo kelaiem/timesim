@@ -4,7 +4,9 @@
 // ?v=<version>, so a cache hit is exact BY CONSTRUCTION — cache-first for the
 // precached release set, network-only for everything else. A new release asks
 // for new URLs out of a new cache, and activation drops the old cache whole;
-// dropping per release IS the eviction policy.
+// dropping per release IS the eviction policy. Per release AND per deployment
+// SCOPE since §88 — see the CACHE_PREFIX note below for what shares an origin
+// now, and what a flat name cost when it did.
 //
 // The two pass-throughs are the §79 contract, excluded EXPLICITLY rather than
 // by accident of set membership:
@@ -29,7 +31,25 @@
 const VERSION = null; // baked by tools/stamp-release.mjs — null means source tree, worker inert
 const PRECACHE = [];  // baked by tools/stamp-release.mjs from the §28 stamping walk
 
-const CACHE = `timesim-${VERSION}`;
+// Cache keys are RELATIVE to the worker's own scope, for §28's stated reason:
+// the web root may be the QA symlink itself, so nothing here may assume where
+// under the origin the release sits.
+const SCOPE_PATH = new URL(self.registration.scope).pathname;
+
+// §88 — the cache is named for the SCOPE as well as the version, because Cache
+// Storage is partitioned by ORIGIN and the three GitHub Pages environments share
+// one: production at /timesim/, testing at /timesim/testing/, development at
+// /timesim/development/. Under the flat `timesim-<version>` name this file
+// shipped with, activation deleted every `timesim-`-prefixed key that was not
+// its own — so installing any one environment's worker threw away the other
+// two's precaches, and §79's offline guarantee held for whichever environment
+// was visited last and no other. The scope path is the one thing that is
+// distinct per environment and identical across an environment's successive
+// releases, which is exactly the partition the name needs; per-release rotation
+// WITHIN an environment is unchanged, and so is the QA symlink topology (its
+// scope is stable across releases because the symlink URL is).
+const CACHE_PREFIX = `timesim-${SCOPE_PATH}-`;
+const CACHE = CACHE_PREFIX + VERSION;
 const PRECACHED = new Set(PRECACHE);
 
 self.addEventListener('install', (e) => {
@@ -47,8 +67,19 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     if (!VERSION) { await self.registration.unregister(); return; }
-    for (const k of await caches.keys())
-      if (k.startsWith('timesim-') && k !== CACHE) await caches.delete(k);
+    for (const k of await caches.keys()) {
+      // Two things get dropped, and only two. Ours from an older release of THIS
+      // environment; and the pre-§88 flat name, recognisable because a version
+      // string cannot contain a '/' where a scope path always does. That second
+      // clause is a one-time sweep for viewers who hold a cache from a release
+      // that shipped before this namespace existed: under the new scheme nothing
+      // claims those keys, so without it they leak a whole app's worth of
+      // storage forever. It cannot reach another environment's cache — every one
+      // of those is `timesim-/…`.
+      const mine = k.startsWith(CACHE_PREFIX);
+      const orphan = k.startsWith('timesim-') && !k.startsWith('timesim-/');
+      if ((mine || orphan) && k !== CACHE) await caches.delete(k);
+    }
     await self.clients.claim();
   })());
 });
@@ -56,11 +87,6 @@ self.addEventListener('activate', (e) => {
 // The update toast's Reload promotes the waiting release — one prompt, one
 // path: main.js (§28 layer 2) posts this after the viewer chooses to reload.
 self.addEventListener('message', (e) => { if (e.data === 'skip-waiting') self.skipWaiting(); });
-
-// Cache keys are RELATIVE to the worker's own scope, for §28's stated reason:
-// the web root may be the QA symlink itself, so nothing here may assume where
-// under the origin the release sits.
-const SCOPE_PATH = new URL(self.registration.scope).pathname;
 
 self.addEventListener('fetch', (e) => {
   if (!VERSION) return;
