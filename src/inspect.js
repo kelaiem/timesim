@@ -1442,7 +1442,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#1', why: 'input wheel pressed on its arbor' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#5', why: 'intermediate wheel on its stud' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#5', why: 'its pinion, same stud — the wheel+pinion pair' },
-  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'differential wheel on its stud' },
+  // §94 tier C named the arbor for the floors rows, and this row's `b`
+  // followed it: the selector was the mesh's index label (CylinderGeometry#8)
+  // only because the mesh had no name, and a label is not a stable ID —
+  // the full battery caught the stale selector as an undeclared
+  // intersection the moment the name landed (the couple-by-string trap,
+  // fired exactly as designed).
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'rsvHandArbor', why: 'differential wheel on its stud' },
   { unit: 'Alarm setting idler', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: 'idler wheel on its stud' },
   { unit: 'Alarm hammer', a: 'CylinderGeometry#1', b: 'CylinderGeometry#0', why: 'hammer arm riveted to the arbor boss' },
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'CylinderGeometry#0', why: 'hammer tail on the same boss' },
