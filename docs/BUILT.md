@@ -9190,3 +9190,42 @@ a GERMAN primer booting offline — the locale tables arrive by dynamic import,
 the one class of URL that reaches the precache through the stamper's module
 walk rather than a document's markup, and a German reader offline is exactly
 who would have found that gap (precache 23 → 27).
+
+#### The skip list is now held true by the battery itself
+
+`battery.yml` skips the whole job when every changed file matches its
+`paths-ignore` list, and §95's two pages belong on it for the reason
+`explain.html` already did — sim-code-free by contract, gated by the
+Explainer workflow instead. Three entries were added: `primer.html`,
+`src/primer-i18n*.js`, and `src/page-i18n.js` (tier two's shared engine, which
+imports `src/i18n.js` rather than being imported by it — the arrow points away
+from the app, so nothing on `index.html`'s graph reaches it).
+
+Adding them is also what exposed how sharp that list is. **The obvious glob
+for the two pages' tables is `src/*i18n*.js`, and it matches `src/i18n.js` —
+which `src/main.js` imports.** One character of convenience between a correct
+list and one that lets every tier-one chrome change skip the battery, silently,
+with a green tick. Every entry there makes the same claim ("the battery cannot
+see this file"), it was kept by reading, and it is the one class of claim whose
+failure is invisible by construction: a wrong entry disarms the gate on exactly
+the change that needed it, and no run happens to say so.
+
+So `ci-battery.mjs` now walks `index.html`'s transitive module graph — its
+entry points, then every relative `import` and `import()`, to a fixed point —
+and fails if any file the list ignores is ON that graph. It reads the list out
+of the YAML rather than restating it, because a copy is a second list someone
+keeps in step, which is the failure `tools/payload.sh`'s header already names.
+It also fails when it cannot READ the list: a regex that stops matching yields
+an empty list, an empty list intersects nothing, and that is how an
+empty-set instrument passes for the wrong reason.
+
+It lives in the harness rather than in its own workflow because
+`.github/workflows/**` is deliberately absent from the ignore list — so a
+change to the list always runs the battery, and therefore always runs the check
+that judges it.
+
+Verified against five dangerous entries, each caught: `src/*i18n*.js` (→
+`src/i18n.js`), `src/main.js`, `src/*.json` (→ `src/aesthetics.json`, the
+asymmetry the workflow's own header warns about), `vendor/*.js`, `**/*.js` —
+plus both unreadable cases, a renamed key and a missing file. The current list
+passes: 12 patterns against the 12 files reachable from `index.html`.

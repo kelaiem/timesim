@@ -368,12 +368,31 @@ I.start(__clock, 'support');                                // 0 failures
 I.start(__clock, 'clearances');                             // 0 violations
 ```
 
-CI runs this whole bar on every PR (§52): `.github/workflows/battery.yml`
-drives `tools/ci-battery.mjs` — headless Chromium, plus boot-silence and a
-fingerprint-determinism double-boot. `node tools/ci-battery.mjs` runs the
-same gate locally (needs `npm ci` in `tools/` and a Playwright Chromium).
-It enforces rule 4; it does not replace the focused checks below while
-iterating.
+CI runs this whole bar on every PR that could move it (§52):
+`.github/workflows/battery.yml` drives `tools/ci-battery.mjs` — headless
+Chromium, plus boot-silence and a fingerprint-determinism double-boot.
+`node tools/ci-battery.mjs` runs the same gate locally (needs `npm ci` in
+`tools/` and a Playwright Chromium). It enforces rule 4; it does not replace
+the focused checks below while iterating.
+
+**"That could move it" is a `paths-ignore` list, and every entry on it claims
+the battery cannot SEE that file** — markdown, the two static pages and their
+i18n modules, `test-geometry.html`, `sw.js`, repository furniture. The list
+never has to be complete, only true: `paths-ignore` skips only when EVERY
+changed file matches, so an unclassified path still runs the job. Deliberately
+absent, because four of them look ignorable: `tools/**` (changing the harness
+is the change that most needs the harness), `.github/workflows/**`,
+`dev_server.py`, `src/aesthetics.json` (the BUILD — `AESTHETICS.md` beside it
+is documentation and IS ignored; the pair looks symmetric and is not) and
+`vendor/*.js`. **The battery now holds that list true itself**: it walks
+`index.html`'s transitive module graph and fails if anything the list ignores
+is on it, and fails equally if it could not read the list — an empty list
+intersects nothing and would otherwise pass for that reason alone. The near
+miss it exists for is one character wide: `src/*i18n*.js` is the obvious glob
+for the pages' tables and it also matches `src/i18n.js`, which `main.js`
+imports. The check lives in the harness because editing the list touches
+`.github/workflows/**`, which the list does not ignore — so the change that
+could break it always runs the job that judges it.
 
 Since §81 the harness SHARDS: it partitions the checks across K browser
 contexts by the measured `cost` column in `BATTERY` (`--shards`, default 2)

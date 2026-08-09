@@ -72,13 +72,33 @@
 # has classified still runs the job. That is the safe direction and it is the
 # reason this list may stay short: it never has to be complete, only true.
 #
+# TRUE IS NOW MEASURED, NOT ASSERTED (§95 tier two). ci-battery.mjs walks
+# index.html's transitive module graph and fails if any file this list ignores
+# is ON it — because every claim above is the same claim, "the battery cannot
+# see this file," and one wrong entry silently disarms the gate on exactly the
+# change that needed it. The near miss that motivated it: `src/*i18n*.js` would
+# be the obvious glob for the entries below and it matches `src/i18n.js`, which
+# main.js imports — one character's worth of convenience between this list and
+# letting tier-one chrome changes skip the battery entirely.
+#
+# That check lives in the harness rather than beside this file for a reason
+# worth keeping: editing this list touches `.github/workflows/**`, which is
+# DELIBERATELY ABSENT from it, so a change to the list always runs the battery
+# and therefore always runs the check that judges it.
+#
 # Every entry is an invariant, not a guess about what usually matters:
 #
 #   **/*.md            the battery boots index.html; no markdown is ever loaded
 #   explain.html       "sim-code-free, so explainer landings don't touch the
 #                      battery" (CLAUDE.md). explain-i18n.yml is its gate.
+#   primer.html        §95 — the same invariant, same gate. Sim-code-free by
+#                      contract: its ONE tie to the app was an href in the HUD
 #   src/explain-i18n*  that page's tables — imported by explain.html and by
-#                      nothing else; index.html loads only src/main.js
+#   src/primer-i18n*   nothing else; index.html loads only src/main.js
+#   src/page-i18n.js   §95 tier two's shared engine. It is imported BY the two
+#                      pages' i18n modules and imports src/i18n.js in turn —
+#                      the arrow points away from the app, so nothing on
+#                      index.html's graph reaches it
 #   test-geometry.html a separate page. The battery never opens it
 #   sw.js              the battery "runs the source tree and so deliberately
 #                      has no worker at all" (CLAUDE.md). offline.yml owns it
@@ -122,7 +142,10 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'explain.html'
+      - 'primer.html'
       - 'src/explain-i18n*.js'
+      - 'src/primer-i18n*.js'
+      - 'src/page-i18n.js'
       - 'test-geometry.html'
       - 'sw.js'
       - '.githooks/**'
