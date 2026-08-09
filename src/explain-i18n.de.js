@@ -13,6 +13,7 @@ export default {
   // ---- page ----
   ['Watch Sim — Mechanisms']: 'Watch Sim — Mechanismen',
   ['← the movement']: '← zum Werk',
+  ['just want to understand it? →']: 'einfach nur verstehen? →',
   ['values quoted from src/*.js · constraints in captions']: 'Werte zitiert aus src/*.js · Randbedingungen in den Bildunterschriften',
   ['How the significant mechanisms of this movement work — in the order power flows. Entries with numbered <b>plates</b> are full treatments whose every dimension is the real constant from the source, with the constraint it was derived from (the repo\'s rule 1: no number exists because it looked right). Compact entries are seeds; they grow plates as the mechanisms they describe get worked on.']: 'Wie die wesentlichen Mechanismen dieses Werks arbeiten — in der Reihenfolge, in der die Kraft fließt. Einträge mit nummerierten <b>Tafeln</b> sind vollständige Darstellungen, in denen jede Abmessung die echte Konstante aus dem Quelltext ist, samt der Randbedingung, aus der sie abgeleitet wurde (Regel 1 des Repos: keine Zahl existiert, weil sie gut aussah). Kompakte Einträge sind Saatkörner; sie bekommen Tafeln, sobald an ihren Mechanismen gearbeitet wird.',
   ['<div class="sheet"> This project was made possible by <b>Claude</b>, Anthropic\'s AI model: the movement, its instruments and these pages were designed and built in collaboration with it. Every constant here is still held to its constraint by the checks the repository runs — the claim is about who did the work, not a warrant that the work is right. </div>']:

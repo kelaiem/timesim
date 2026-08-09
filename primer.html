@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Watch Sim — A Primer</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<!-- §95 — the primer. The explainer for readers who don't read the source:
+     torque and inertia as ideas, gear ratios as arithmetic you can check on
+     your fingers. Same visual system as explain.html, OPPOSITE contract —
+     that page quotes source identifiers exactly and is gated on matching
+     them; this page quotes NONE, states quantities rounded with units, and
+     tools/explain-quotes.mjs fails the build if a source identifier ever
+     appears here. The modelled-vs-simulated honesty rule binds this prose
+     exactly as it binds the technical page: nothing below claims "simulated"
+     for what is merely described. English-first; localization is a later
+     tier (§73's pattern). -->
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: rgba(15,17,20,0.72);
+    --panel-solid: #14171c;
+    --hairline: rgba(255,255,255,0.08);
+    --hairline-strong: rgba(255,255,255,0.14);
+    --text: #d8dee6;
+    --muted: #8b95a1;
+    --head: #8fa6bf;
+    --head-hover: #b9cbe0;
+    --readout: #f2efe6;
+    --label-blue: #cfe3ff;
+    --mono-ink: #cfd6dd;
+    --accent: #3a6bd8;
+    --brass: #e0a355;
+    --brass-fill: #4a3b22;
+    --ruby: #e05555;
+    --ruby-fill: #5a2726;
+    --steel: #8fa6bf;
+    --steel-fill: #2a3644;
+    --green: #58b368;
+    --line: #3a4048;
+  }
+  html, body { margin: 0; background: var(--bg); }
+  body {
+    color: var(--text);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 74px 14px 60px;
+  }
+  a { color: var(--label-blue); }
+
+  /* top bar — the panel's own chrome */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: baseline; gap: 14px;
+    background: var(--panel); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--hairline);
+    padding: 14px 18px;
+  }
+  header h1 {
+    font-size: 12px; margin: 0; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--head); font-weight: 600;
+  }
+  header a.back {
+    font-size: 11px; color: var(--muted); text-decoration: none;
+    border: 1px solid var(--hairline-strong); border-radius: 6px; padding: 4px 9px;
+    background: rgba(255,255,255,0.06); transition: background 0.15s;
+  }
+  header a.back:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+  header .spacer { flex: 1; }
+  header .stamp { font: 10.5px/1 ui-monospace, monospace; color: var(--muted); }
+
+  .sheet { max-width: 840px; margin: 0 auto; }
+  .intro { color: var(--muted); max-width: 68ch; margin: 10px 0 26px; }
+  .intro b { color: var(--text); font-weight: 600; }
+
+  /* entries — the same disclosure pattern as the technical page */
+  details.mech {
+    background: var(--panel); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--hairline); border-radius: 10px;
+    margin: 12px 0; padding: 0 18px;
+  }
+  details.mech > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px;
+    padding: 12px 0; margin: 0;
+    font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--head); font-weight: 600;
+  }
+  details.mech > summary::-webkit-details-marker { display: none; }
+  details.mech > summary::before { content: '▸'; font-size: 9px; color: #6b7683; transition: transform 0.15s; }
+  details.mech[open] > summary::before { transform: rotate(90deg); }
+  details.mech > summary:hover { color: var(--head-hover); }
+  details.mech > summary .where { margin-left: auto; font: 10px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  .mech-body { border-top: 1px solid var(--hairline); padding: 14px 0 18px; }
+  .mech-body p { max-width: 68ch; margin: 0 0 10px; }
+  .mech-body p.note { color: var(--muted); font-size: 12px; }
+
+  /* plates */
+  figure { margin: 20px 0; }
+  .fig-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .fig-no {
+    font: 10px/1 ui-monospace, monospace; letter-spacing: 0.08em;
+    color: var(--bg); background: var(--head); border-radius: 4px; padding: 3px 6px;
+  }
+  .fig-title { font-style: italic; color: var(--text); }
+  .fig-body { overflow-x: auto; background: rgba(10,12,15,0.45); border: 1px solid var(--hairline); border-radius: 8px; }
+  figcaption { max-width: 68ch; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+  svg { display: block; }
+  svg .lbl { font: 10px ui-monospace, monospace; letter-spacing: 0.05em; fill: var(--head); text-transform: uppercase; }
+  svg .lbl-strong { fill: var(--text); }
+  svg .val { font: 10.5px ui-monospace, monospace; fill: var(--mono-ink); }
+  svg .val-ruby { fill: var(--ruby); }
+  svg .val-brass { fill: var(--brass); }
+  svg .val-steel { fill: var(--steel); }
+  svg .leader { stroke: var(--muted); stroke-width: 0.75; fill: none; opacity: 0.8; }
+  svg .dim { stroke: var(--muted); stroke-width: 0.75; }
+
+  footer { max-width: 840px; margin: 30px auto 0; color: var(--muted); font-size: 11px; border-top: 1px solid var(--hairline); padding-top: 12px; }
+</style>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="alternate icon" href="./favicon.png" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+</head>
+<body>
+<header>
+  <h1>Watch Sim — A Primer</h1>
+  <a class="back" href="./index.html">← the movement</a>
+  <a class="back" href="./explain.html">want the numbers? →</a>
+  <span class="spacer"></span>
+  <span class="stamp">quantities rounded, with units · no source identifiers</span>
+</header>
+
+<div class="sheet">
+  <p class="intro">What you are looking at is a <b>fusee-and-chain watch movement</b>: a
+  machine that stores a day's energy in a bent ribbon of steel and spends it five clicks
+  at a time, on the say-so of a wheel that swings back and forth two and a half times a
+  second. This page explains how, for a reader with a little physics and no horology.
+  Every quantity here is rounded and carries its unit; none of it requires the source
+  code. The companion page — <a href="./explain.html">Mechanisms</a> — is the opposite
+  document: the same machine with every number quoted exactly from the source, for
+  readers who want to check.</p>
+
+  <!-- ===================== ENERGY ===================== -->
+  <details class="mech" id="energy" open>
+    <summary>Where the energy comes from<span class="where">power</span></summary>
+    <div class="mech-body">
+      <p>Wind a watch and you are bending steel. The mainspring is a long, thin ribbon
+      coiled inside a drum: its outer end is riveted to the drum wall, its inner end is
+      hooked to a shaft that stands still. Winding does not <em>rotate</em> the spring so
+      much as change its <em>shape</em> — the same length of ribbon crowds into tight
+      turns near the centre, and the energy of a wind is stored the way a drawn bow
+      stores it, in elastic bending all along the ribbon's length.</p>
+      <p>As the watch runs, the ribbon relaxes turn by turn and its stored energy flows
+      out through the drum. One full wind here holds about <b>30 hours</b> of running,
+      and the machinery spends it very slowly: the first wheel of the gear train makes
+      one revolution every 8 hours — a little under four turns over the whole
+      reserve. Everything faster than that is gearing, which has its own entry below.</p>
+      <p class="note">Honesty note: the ribbon in the simulation is not a decoration. Its
+      shape is recomputed as the wind changes, under two constraints a real spring obeys —
+      neighbouring turns may touch but never merge, and every shape must be the same
+      length of steel, because steel does not stretch. The picture of a wound spring
+      bunched at the centre and a spent one spread against the wall is the geometry those
+      two rules force.</p>
+    </div>
+  </details>
+
+  <!-- ===================== FUSEE ===================== -->
+  <details class="mech" id="fusee">
+    <summary>The fusee — evening out a dying spring<span class="where">power</span></summary>
+    <div class="mech-body">
+      <p>A spring's pull is not constant: freshly wound it is strong, nearly spent it is
+      weak. A timekeeper hates that, because the size of the push reaching the balance
+      changes how it swings. The classical fix — this movement's namesake — is the
+      <b>fusee</b>: a cone-shaped pulley connected to the spring's drum by a miniature
+      chain — built like a bicycle chain, with links well under a millimetre long.</p>
+      <p>The trick is leverage. Torque — turning force — is pull times lever arm.
+      When the spring is strong, the chain pulls on the cone's <em>narrow</em> end: big
+      pull, short lever. As the spring runs down, the chain walks along the cone's spiral
+      groove toward the <em>wide</em> end: smaller pull, longer lever. The product, the
+      torque handed to the gears, stays nearly level from full wind to empty.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Pull × lever arm ≈ constant</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 240" width="780" height="240" role="img"
+               aria-label="Two states of the fusee: freshly wound, a strong chain pull acts at the cone's small radius; nearly run down, a weak pull acts at the large radius. The product of pull and radius is about the same in both.">
+            <!-- freshly wound -->
+            <text class="lbl lbl-strong" x="60" y="30">freshly wound</text>
+            <polygon points="120,60 200,90 200,150 120,180" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <line x1="120" y1="120" x2="200" y2="120" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <line x1="200" y1="120" x2="200" y2="94" stroke="var(--steel)" stroke-width="1.4"/>
+            <text class="val val-steel" x="212" y="116">short lever</text>
+            <line x1="200" y1="90" x2="280" y2="90" stroke="var(--ruby)" stroke-width="2.4" marker-end="url(#arr)"/>
+            <text class="val val-ruby" x="212" y="78">strong pull</text>
+            <text class="val" x="64" y="212">big pull × small radius</text>
+            <!-- nearly run down -->
+            <text class="lbl lbl-strong" x="440" y="30">nearly run down</text>
+            <polygon points="500,60 580,90 580,150 500,180" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <line x1="500" y1="120" x2="580" y2="120" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <line x1="500" y1="120" x2="500" y2="62" stroke="var(--steel)" stroke-width="1.4"/>
+            <text class="val val-steel" x="404" y="88">long lever</text>
+            <line x1="500" y1="58" x2="452" y2="58" stroke="var(--ruby)" stroke-width="1.2" marker-end="url(#arr)"/>
+            <text class="val val-ruby" x="380" y="46">weak pull</text>
+            <text class="val" x="444" y="212">small pull × big radius</text>
+            <text class="val val-brass" x="288" y="122">≈ the same torque</text>
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 z" fill="var(--ruby)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>The cone is cut against the spring's own measured decline, so the two
+        curves cancel. The chain also explains the winding feel of such watches: winding
+        spools the chain back from drum to cone, and a small detent keeps the gears driven
+        during the seconds the wind would otherwise unload them.</figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== GEARS ===================== -->
+  <details class="mech" id="gears">
+    <summary>Gears are arithmetic<span class="where">power → display</span></summary>
+    <div class="mech-body">
+      <p>Everything between the drum and the ticking is multiplication. When a wheel with
+      many teeth drives a small pinion, the pinion turns faster in exact proportion to
+      the tooth counts — a wheel of 80 teeth driving a pinion of 10 turns it exactly
+      8 times per revolution, and there is nothing more to know. Speed is bought at the
+      price of force, the same trade as a bicycle's gears.</p>
+      <p>Four such steps stand between the power and the escapement, and you can check
+      each on your fingers: 8 × 7½ × 8 × 10 = 4 800. The first wheel — the "great
+      wheel", riding on the fusee cone itself — turns once in 8 hours; at the far end
+      of the chain of meshes a wheel spins once every 6 seconds.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One turn in 8 hours becomes one turn in 6 seconds</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 190" width="780" height="190" role="img"
+               aria-label="The gear train as a chain of multiplications: the great wheel on the fusee turns once per 8 hours; times 8 gives the centre wheel at once per hour, which carries the minute hand; times seven and a half then times 8 gives the fourth wheel at once per minute, which carries the seconds hand; times 10 gives the escape wheel at once per 6 seconds.">
+            <circle cx="90" cy="80" r="44" fill="none" stroke="var(--brass)" stroke-width="1.8"/>
+            <text class="lbl lbl-strong" x="46" y="150">great wheel · 80 teeth</text>
+            <text class="val" x="46" y="166">1 turn / 8 h</text>
+            <line x1="134" y1="80" x2="196" y2="80" stroke="var(--muted)" stroke-width="1" marker-end="url(#arrT)"/>
+            <text class="val val-brass" x="148" y="68">× 8</text>
+            <circle cx="250" cy="80" r="40" fill="none" stroke="var(--steel)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="212" y="150">centre wheel</text>
+            <text class="val" x="212" y="166">1 turn / hour</text>
+            <text class="val val-steel" x="212" y="30">carries the minute hand</text>
+            <line x1="290" y1="80" x2="352" y2="80" stroke="var(--muted)" stroke-width="1" marker-end="url(#arrT)"/>
+            <text class="val val-brass" x="300" y="68">× 7½</text>
+            <circle cx="400" cy="80" r="34" fill="none" stroke="var(--steel)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="372" y="150">third wheel</text>
+            <line x1="434" y1="80" x2="496" y2="80" stroke="var(--muted)" stroke-width="1" marker-end="url(#arrT)"/>
+            <text class="val val-brass" x="450" y="68">× 8</text>
+            <circle cx="546" cy="80" r="32" fill="none" stroke="var(--steel)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="514" y="150">fourth wheel</text>
+            <text class="val" x="514" y="166">1 turn / minute</text>
+            <text class="val val-steel" x="514" y="30">carries the seconds hand</text>
+            <line x1="578" y1="80" x2="640" y2="80" stroke="var(--muted)" stroke-width="1" marker-end="url(#arrT)"/>
+            <text class="val val-brass" x="592" y="68">× 10</text>
+            <circle cx="690" cy="80" r="28" fill="none" stroke="var(--ruby)" stroke-width="1.6"/>
+            <text class="lbl lbl-strong" x="658" y="150">escape wheel</text>
+            <text class="val" x="658" y="166">1 turn / 6 s</text>
+            <defs>
+              <marker id="arrT" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 z" fill="var(--muted)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>Two of the train's wheels double as the display: the centre wheel
+        turns once an hour and carries the minute hand; the fourth wheel turns once a
+        minute and carries the seconds hand. No hand is ever <em>told</em> where to
+        point — its angle arrives through the teeth.</figcaption>
+      </figure>
+      <p>The hour hand is one more piece of the same arithmetic. A small gear turning
+      with the minute hand drives a wheel three times its size, and a pinion on that
+      wheel drives the hour wheel at 4:1 more — 3 × 4 = <b>12:1</b>, which is why the
+      hour hand makes one circuit while the minute hand makes twelve. In this simulation
+      that ratio is never written down anywhere: it emerges because those four tooth
+      counts multiply to it, exactly as in the metal.</p>
+    </div>
+  </details>
+
+  <!-- ===================== ESCAPEMENT ===================== -->
+  <details class="mech" id="escapement">
+    <summary>The escapement — spending energy five clicks a second<span class="where">timekeeping</span></summary>
+    <div class="mech-body">
+      <p>Left alone, the gear train would spin the whole reserve away in moments. The
+      <b>escapement</b> is the checkout counter: it lets the train advance one fixed
+      step at a time, and only when the timekeeper says so. Its three players are the
+      escape wheel (the train's last, fastest wheel), a see-sawing lever with two
+      jewelled pallet stones, and the balance — the swinging wheel of the next entry.</p>
+      <p>Most of the time the escape wheel is simply <em>held</em>: a tooth presses on a
+      stone, and the geometry of the stone's face is angled so that the pressure locks it
+      tighter rather than slipping — like a door wedge that a push only seats deeper.
+      When the swinging balance flicks the lever, the stone lifts, the wheel escapes
+      forward by <b>12°</b> — half a tooth spacing, no more, because the lever's other
+      stone is already in the way — and in that brief slide the tooth's face pushes on
+      the stone, handing the balance a small shove that pays back what friction and air
+      took from its swing. Then the wheel is caught again, and waits.</p>
+      <p>That cycle is the tick: <b>5 per second</b> here, 18 000 per hour, each one an
+      unlock–slide–catch. The wheel is in motion for only about a sixth of each beat —
+      a watch is a machine that is almost always standing still.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Held, then let go — one step at a time</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 220" width="780" height="220" role="img"
+               aria-label="Two panels: locked, a wheel tooth presses on a pallet stone whose angled face holds it fast; impulse, the stone lifts and the tooth slides across it, pushing the lever which flicks the balance, while the wheel advances twelve degrees.">
+            <text class="lbl lbl-strong" x="70" y="28">locked — most of the beat</text>
+            <circle cx="150" cy="130" r="62" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+            <polygon points="150,68 162,88 148,92" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+            <rect x="160" y="52" width="26" height="14" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.2" transform="rotate(24 160 52)"/>
+            <text class="val val-ruby" x="200" y="46">stone holds the tooth</text>
+            <text class="val" x="200" y="62">pressure seats it deeper</text>
+            <text class="val" x="70" y="206">the train pushes; nothing moves</text>
+            <text class="lbl lbl-strong" x="470" y="28">impulse — a sixth of the beat</text>
+            <circle cx="550" cy="130" r="62" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+            <polygon points="562,70 576,88 560,94" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+            <rect x="580" y="46" width="26" height="14" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.2" transform="rotate(38 580 46)"/>
+            <path d="M 540 58 A 72 72 0 0 1 576 62" fill="none" stroke="var(--ruby)" stroke-width="1.6" marker-end="url(#arrE)"/>
+            <text class="val val-ruby" x="618" y="72">tooth shoves the stone,</text>
+            <text class="val" x="618" y="88">flicking lever + balance</text>
+            <text class="val val-brass" x="470" y="206">the wheel advances 12° and is caught</text>
+            <defs>
+              <marker id="arrE" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 z" fill="var(--ruby)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>Two ideas travel through one contact, in opposite directions. Energy
+        flows outward: train → wheel → stone → lever → balance, a shove per beat.
+        Position flows inward: the wheel stands where the stones allow, so the balance —
+        not the spring in the drum — decides what time it is.</figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <!-- ===================== BALANCE ===================== -->
+  <details class="mech" id="balance">
+    <summary>Why the balance keeps time<span class="where">timekeeping</span></summary>
+    <div class="mech-body">
+      <p>The timekeeper itself is the <b>balance</b>: a weighted rim on pivots, with a
+      spiralled hairspring that twists as the rim turns and pushes it back toward centre.
+      Twist it further, and the spring pushes back harder — restoring torque proportional
+      to angle. Newton's law for rotation then gives the balance's angular acceleration
+      as spring stiffness over rotational inertia, times the angle — and that equation is
+      the same one a mass on a spring obeys. Its solution is a steady oscillation whose
+      frequency depends on exactly two things: the <em>stiffness</em> of the spring and
+      the <em>inertia</em> of the wheel. Frequency is the square root of stiffness over
+      inertia — and nothing else.</p>
+      <p>The remarkable consequence: the <em>amplitude is not in the formula</em>. Swing
+      the balance wide or barely at all and each swing takes the same time — a big swing
+      moves faster through a longer arc, and the two effects cancel. That property, called
+      <b>isochronism</b>, is why a watch can keep time while its mainspring's push (and so
+      its balance's swing) sags across 30 hours. Galileo noticed it in a swinging lamp;
+      every mechanical watch since is a bet placed on it.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Big swing or small — the same time per swing</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 200" width="780" height="200" role="img"
+               aria-label="Two balance wheels, one swinging through a wide arc and one through a narrow arc, both completing a swing in the same time: wider travel at higher speed cancels exactly.">
+            <circle cx="200" cy="100" r="58" fill="none" stroke="var(--steel)" stroke-width="6" opacity="0.7"/>
+            <path d="M 130 52 A 86 86 0 0 1 270 52" fill="none" stroke="var(--ruby)" stroke-width="1.6" stroke-dasharray="5 3"/>
+            <text class="lbl lbl-strong" x="150" y="26">wide swing</text>
+            <text class="val" x="132" y="186">long arc, high speed</text>
+            <circle cx="560" cy="100" r="58" fill="none" stroke="var(--steel)" stroke-width="6" opacity="0.7"/>
+            <path d="M 522 42 A 70 70 0 0 1 598 42" fill="none" stroke="var(--ruby)" stroke-width="1.6" stroke-dasharray="5 3"/>
+            <text class="lbl lbl-strong" x="518" y="26">narrow swing</text>
+            <text class="val" x="496" y="186">short arc, low speed</text>
+            <text class="val val-brass" x="330" y="98">same period —</text>
+            <text class="val val-brass" x="330" y="114">2½ swings per second</text>
+          </svg>
+        </div>
+        <figcaption>Here the balance completes 2½ full oscillations per second, and each
+        oscillation crosses the escapement twice — once each way — giving the 5 ticks per
+        second of the previous entry. A healthy real balance swings roughly three-quarters
+        of a turn each way; on screen the swing is drawn smaller than life so the beat
+        stays readable at a glance.</figcaption>
+      </figure>
+      <p>The physics also says how to <em>adjust</em> such a watch. This balance is
+      "free-sprung": nothing ever pinches or shortens the hairspring. Instead the rim
+      carries threaded timing screws — screw a pair inward and the rim's mass moves
+      toward the axis, the inertia drops, and the watch runs faster; outward, slower.
+      Rate lives in the denominator of that square root.</p>
+      <p class="note">Honesty note: in this simulation the spring is real arithmetic, not
+      a prop. The wheel's inertia is computed from its drawn dimensions — about 85% of it
+      in the rim, a tenth in the screws, the rest in the arms — and the hairspring's
+      cross-section is then <em>solved</em> so that the square root lands exactly on the
+      advertised rate. The ribbon that comes out of the solve is about 0.024 mm thick, inside
+      the 0.02–0.04 mm range real hairspring stock is drawn in. The one liberty is the
+      drawn amplitude, above.</p>
+    </div>
+  </details>
+
+  <!-- ===================== KEYLESS ===================== -->
+  <details class="mech" id="keyless">
+    <summary>One crown, two jobs<span class="where">interface</span></summary>
+    <div class="mech-body">
+      <p>The crown at the movement's edge does two unrelated things — winds the spring,
+      sets the hands — and the mechanism that decides which is a small axial clutch on
+      the crown's stem. Pushed home, the stem's gear engages the winding path: each turn
+      of the crown spools chain back onto the fusee cone, storing energy. Pulled out one
+      stop, a pivoting lever slides that gear a couple of millimetres along the stem into
+      the setting path, where it reaches the hand wheels instead.</p>
+      <p>Setting the hands turns the <em>same</em> wheels the train drives — the 12:1
+      arithmetic of the gears entry is driven backwards from the crown, so a set hand and
+      a running hand are the same hand at the same angle. Pulling the crown also brakes
+      the balance ("hacking"): a sprung pad rises against the balance rim and holds it
+      still, so the seconds hand freezes and the watch can be synchronised to a signal.
+      Push the crown home and the balance is released to swing again.</p>
+    </div>
+  </details>
+
+  <!-- ===================== ALARM ===================== -->
+  <details class="mech" id="alarm">
+    <summary>The alarm — a second spring with a voice<span class="where">alarm</span></summary>
+    <div class="mech-body">
+      <p>This movement carries a complete second power system for its alarm, with its own
+      crown, its own barrel-spring, and its own release. The alarm crown does for the
+      alarm what the main crown does for the time: turned one way it sets a disc under
+      the dial to the chosen alarm time (a central alarm hand shows it, riding beneath
+      the hour hand); pushed home it winds the alarm's own spring.</p>
+      <p>The release is a mechanical comparison, made by touch. A spring-loaded finger —
+      the <b>feeler</b> — rests against the edge of the rotating alarm disc, which turns
+      with the hours. The disc's edge carries a notch at the set time; everywhere else
+      the feeler rides the high rim and the alarm stays blocked. When the dial's time
+      reaches the set time, the notch arrives under the feeler, the feeler drops in, and
+      the block is withdrawn: the alarm spring is free to run. It spins a small train
+      that swings a hammer against a gong, and rings until the spring is spent — or
+      until a pull of the alarm crown lifts the feeler out and parks it.</p>
+      <p>Arming is its own little machine: pressing the pusher ratchets a star-shaped
+      column wheel round one tooth per press, alternately enabling and disabling the
+      release — the same switch-by-column that chronograph buttons use.</p>
+      <p class="note">Honesty note, both directions. The arming chain is genuinely
+      <em>driven</em>: the press moves the pawl, the pawl indexes the column, and every
+      part downstream stands where the surface pushing it puts it — the simulation
+      measures every one of those contacts closed on every test run. The ringing is not:
+      the hammer's <em>tempo</em> while the alarm rings is authored, chosen rather than
+      derived from the spring's torque, because deriving it would need a model of the
+      spinning governor that real alarms use as a speed limiter. The model states that
+      debt rather than hiding it.</p>
+    </div>
+  </details>
+
+  <!-- ===================== GONG ===================== -->
+  <details class="mech" id="gong">
+    <summary>Why the gong sounds like metal, not music<span class="where">alarm</span></summary>
+    <div class="mech-body">
+      <p>The alarm's voice is a steel bar clamped at one end — a stiff one-sided beam the
+      hammer strikes near its foot. Strike any such bar and it rings at several
+      frequencies at once: the fundamental, plus overtones whose positions are fixed by
+      the physics of a bending beam, not by any tuner. For a clamped-free bar the second
+      mode lands at about <b>6.3×</b> the fundamental — not 2×, not 3×, nothing on the
+      musical ladder. Overtones that miss the whole-number rungs are what your ear calls
+      "metallic"; a guitar string's overtones land exactly on them, which is why a string
+      is a note and a struck bar is a <em>clang</em>.</p>
+      <p>In the simulation the sound is synthesised from the drawn bar itself: its length
+      and thickness set the fundamental, the beam equation sets the overtone ratios, and
+      shortening the bar raises every partial together — exactly as filing a real gong
+      would. Nothing about the sound is a recording, and no frequency is picked by
+      hand.</p>
+    </div>
+  </details>
+
+  <!-- ===================== HONESTY ===================== -->
+  <details class="mech" id="honesty">
+    <summary>What this simulation claims — and what it doesn't<span class="where">the rules</span></summary>
+    <div class="mech-body">
+      <p>This project polices its own language, and the primer is bound by the same rule
+      as everything else. Two words are used precisely. <b>Modelled</b> means
+      <em>described</em>: the geometry exists, its dimensions are derived from stated
+      constraints, and instruments check the description for contradictions.
+      <b>Simulated</b> means <em>driven</em>: the part moves because another part pushes
+      it, cause to effect through real contacts — not because an animation poses it where
+      the answer should be.</p>
+      <p>The gap between those words is where simulations usually lie, and this one keeps
+      a public ledger of exactly that gap. The hands are simulated — their angles arrive
+      through tooth counts, never assigned. The arming run is simulated — measured
+      contact by contact. The hairspring's stiffness is modelled honestly enough that the
+      beat follows from it as arithmetic. The alarm's ringing tempo, by contrast, is
+      merely authored, and the project's debt list says so in writing rather than letting
+      the animation imply otherwise.</p>
+      <p class="note">If a claim on this page overstates what the machine underneath
+      actually does, that is a bug in this page — the ledger, not the prose, is the
+      record.</p>
+    </div>
+  </details>
+
+  <footer>
+    <div class="sheet">
+      This page is maintained with the movement, in plain quantities — rounded, with
+      units, and free of source identifiers by contract (a check enforces it). For the
+      same mechanisms with every number quoted exactly from the source, see
+      <a href="./explain.html">Mechanisms — how they work</a>. This project was made
+      possible by <b>Claude</b>, Anthropic's AI model: the movement, its instruments and
+      these pages were designed and built in collaboration with it.
+    </div>
+  </footer>
+</div>
+
+<script>
+  // §79 — the offline worker, release-gated on the app-version meta that
+  // tools/stamp-release.mjs bakes in: a source tree (dev server, worktrees)
+  // has no meta, registers no worker, and so nothing ever caches editable
+  // sources. Failure is silent by design (standing rule 6): an absent or
+  // refused worker is the normal case, and the page runs identically without
+  // one — just not offline.
+  // updateViaCache 'none' for the reason given at the index.html
+  // registration (src/main.js §79): sw.js is the update signal and its
+  // update check must bypass the HTTP cache regardless of server headers.
+  if ('serviceWorker' in navigator && document.querySelector('meta[name="app-version"]'))
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+</script>
+</body>
+</html>

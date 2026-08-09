@@ -18,6 +18,7 @@ export default {
   // ---- page ----
   ['Watch Sim — Mechanisms']: 'Watch Sim — 机构详解',
   ['← the movement']: '← 返回机芯',
+  ['just want to understand it? →']: '只想弄懂原理？→',
   ['values quoted from src/*.js · constraints in captions']: '数值引自 src/*.js · 约束见图注',
   ['How the significant mechanisms of this movement work — in the order power flows. Entries with numbered <b>plates</b> are full treatments whose every dimension is the real constant from the source, with the constraint it was derived from (the repo\'s rule 1: no number exists because it looked right). Compact entries are seeds; they grow plates as the mechanisms they describe get worked on.']: '本机芯各主要机构的工作原理——按动力传递的顺序排列。带编号<b>图版</b>的条目是完整论述，其中每一个尺寸都是源码里的真实常数，并附上它所依据的约束（本仓库的规则 1：没有任何数字是因为“看着合适”而存在的）。简短条目是种子，随着所述机构被继续打磨而长出图版。',
   ['<div class="sheet"> This project was made possible by <b>Claude</b>, Anthropic\'s AI model: the movement, its instruments and these pages were designed and built in collaboration with it. Every constant here is still held to its constraint by the checks the repository runs — the claim is about who did the work, not a warrant that the work is right. </div>']:

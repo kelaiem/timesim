@@ -43,6 +43,7 @@ on:
       - 'sw.js'
       - 'index.html'
       - 'explain.html'
+      - 'primer.html'
       - 'manifest.webmanifest'
       - 'tools/offline-check.mjs'
       - 'tools/stamp-release.mjs'

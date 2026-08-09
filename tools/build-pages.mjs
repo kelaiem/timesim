@@ -71,7 +71,14 @@ if (environment !== 'production') marks.push('<meta name="robots" content="noind
 // developer instrument, and no environment's copy should turn up in a search.
 const testMarks = marks.includes('<meta name="robots" content="noindex" />')
   ? marks : [...marks, '<meta name="robots" content="noindex" />'];
-for (const doc of ['index.html', 'explain.html', 'test-geometry.html']) {
+// §95 — primer.html gets explain.html's treatment (indexable in production; a
+// visitor-facing document, unlike test-geometry). Filtered by existence, not
+// hard-listed, for the stamper's reason: this script runs over trees archived
+// from release tags, and tags cut before §95 have no primer — see the ADOPTED
+// note in stamp-release.mjs for where the missing-by-typo case is caught.
+const docs = ['index.html', 'explain.html', 'primer.html', 'test-geometry.html']
+  .filter((doc) => doc !== 'primer.html' || existsSync(join(root, doc)));
+for (const doc of docs) {
   const p = join(root, doc);
   let html = readFileSync(p, 'utf8');
   if (!html.includes('</head>')) {

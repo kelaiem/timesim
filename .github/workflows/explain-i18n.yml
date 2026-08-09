@@ -33,6 +33,9 @@ on:
   pull_request:
     paths:
       - 'explain.html'
+      # §95 — explain-quotes.mjs also gates primer.html (zero identifier
+      # claims), so the primer changing must re-run it
+      - 'primer.html'
       - 'src/explain-i18n*.js'
       - 'src/i18n.js'
       - 'tools/explain-i18n.mjs'

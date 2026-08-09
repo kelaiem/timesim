@@ -29,6 +29,15 @@
 // REPORTED, never silently passed: an instrument that hides what it cannot
 // see teaches you to trust it further than it deserves.
 //
+// §95 — THE SAME INSTRUMENT ENFORCES THE OPPOSITE RULE NEXT DOOR. primer.html
+// is the novice page, and its header promises the inverse contract: rounded
+// quantities with units, NO source identifiers. "Stays out of this gate by
+// construction" is only true while something checks the construction, so the
+// primer is scanned with the same claim extractors as explain.html plus a
+// source-identifier sweep (every SCREAMING_SNAKE token, and every ALL-CAPS
+// name src/*.js declares), and the required count is ZERO. An instrument
+// asserting an empty set is still an instrument.
+//
 // Usage: node tools/explain-quotes.mjs [--verbose]
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -129,5 +138,31 @@ for (const r of bad) {
 }
 if (VERBOSE) for (const r of agree) console.log(`     ok  ${r.name} = ${r.value}  (${r.src.file}${r.src.derived ? ' — ' + r.src.derived : ''})`);
 
-console.log(bad.length ? '\nFAIL — reconcile explain.html with the source (CLAUDE.md: the source is right)' : '\nPASS — every comparable quoted value matches src/*.js');
-process.exit(bad.length ? 1 : 0);
+// ---- primer (§95): the identifier-FREE page ------------------------------
+// The same extractors that find claims on explain.html must find NOTHING on
+// primer.html — plus a broader sweep, because on the primer an identifier is
+// a violation even without a number beside it: any SCREAMING_SNAKE token, and
+// any ALL-CAPS name the source declares (STOP-listed page furniture like
+// PLATE excepted, same as above).
+const primer = readFileSync(join(ROOT, 'primer.html'), 'utf8');
+const pClaims = [];
+const pAdd = (name, ctx) => { if (!STOP.has(name)) pClaims.push({ name, ctx: ctx.replace(/\s+/g, ' ').slice(0, 76) }); };
+for (const m of primer.matchAll(/<code>([A-Za-z_][\w]{2,})\s*=\s*(-?\d+(?:\.\d+)?)\s*(°)?\s*(?:rad|mm|u)?\s*<\/code>/g)) pAdd(m[1], m[0]);
+for (const m of primer.matchAll(/<code>([A-Z_][A-Z0-9_]{2,})<\/code>/g)) pAdd(m[1], m[0]);
+for (const m of primer.matchAll(/\b([A-Z][A-Z0-9_]{3,})\s+(-?\d+(?:\.\d+)?)/g)) pAdd(m[1], m[0]);
+const srcCaps = new Set([...declared.keys()].filter((n) => /^[A-Z][A-Z0-9_]{2,}$/.test(n) && !STOP.has(n)));
+for (const m of primer.matchAll(/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b|\b[A-Z][A-Z0-9]{2,}\b/g)) {
+  const name = m[0];
+  if (name.includes('_') ? !STOP.has(name) : srcCaps.has(name))
+    pAdd(name, primer.slice(Math.max(0, m.index - 30), m.index + name.length + 30));
+}
+const pSeen = new Set();
+const pBad = pClaims.filter((c) => !pSeen.has(c.name + '|' + c.ctx) && pSeen.add(c.name + '|' + c.ctx));
+console.log(`\nprimer: ${pBad.length} identifier claim(s) in primer.html (contract: 0)${pBad.length ? '  <-- the primer quotes no source identifiers, by its own header' : ''}`);
+for (const r of pBad) console.log(`     ${r.name}   ${r.ctx}`);
+
+const failed = bad.length + pBad.length;
+console.log(failed
+  ? `\nFAIL — ${bad.length ? 'reconcile explain.html with the source (CLAUDE.md: the source is right)' : ''}${bad.length && pBad.length ? '; ' : ''}${pBad.length ? 'strip the identifier(s) from primer.html or say it in quantities' : ''}`
+  : '\nPASS — every comparable quoted value matches src/*.js, and primer.html quotes no identifiers');
+process.exit(failed ? 1 : 0);
