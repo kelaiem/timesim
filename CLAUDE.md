@@ -13,6 +13,7 @@ lever escapement. Everything is procedural — there are no model assets.
 | `TODO.md` | Mechanical-realism debt: honesty fixes to what exists. |
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
+| `.github/pull_request_template.md` | The PR body's layout. Read before opening one — see Conventions. |
 
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
@@ -486,6 +487,33 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
 
 Branch for the work; don't commit to `main`. Commit messages explain *why*
 the number changed, not just that it did — the reasoning is the artifact.
+
+**PRs are written to `.github/pull_request_template.md`**, which GitHub
+prefills into the body. It is a LAYOUT, not a checklist to satisfy: the
+commit-message rule one level up, so "What this changes, and why" wants the
+CONSTRAINT each new or moved number derives from (rule 1), not what it was
+changed to — the diff already says that. Four things about it that are easy
+to get wrong, all of them written in the template's own comments:
+
+- **A section answered "none" is worth more than one quietly deleted.** "No
+  new waivers" is a claim someone can check; a missing Debt section is not.
+  Delete only what genuinely does not apply.
+- **Paste the instrument lines with their numbers**, and say WHERE the battery
+  ran — CI and local are different evidence, and CI runs the
+  ubuntu-latest/SwiftShader path nothing else exercises. For anything that
+  could move a report, `--report` diffed against the base is the acceptance,
+  not the PASS/FAIL column (see Inspecting).
+- **No box skips the battery.** A PR body cannot skip a job — only
+  `battery.yml`'s trigger can — so that section records an OUTCOME. If the
+  path filter took the job out, name the invariant that makes the change
+  unable to move the built scene; if you think it ran and should not have,
+  that is a change to the filter in its own PR, not a skip taken here.
+- **The Record section is this file's reconciliation rule as a checkbox**:
+  `TODO.md`, `docs/BUILT.md`, `explain.html` — whichever the change owes.
+
+Keep the template and this file in step. It cites standing rule 1, rule 4's
+instruments and the session-link rule below; edit one of those and the
+template is the second place to look.
 
 **Never put a session link in a commit message or PR body.** No
 `Claude-Session:` trailer and no `claude.ai/code/session…` URL — anywhere in
