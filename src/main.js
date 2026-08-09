@@ -5714,7 +5714,8 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // Sub-dials are recessed WELLS: blind pockets machined into the dial plate's
 // front (makeDial cuts them), the hands riding inside below the dial surface.
 // In dial-local coordinates the pocket floor is at −SUBDIAL_RECESS and the
-// hands at −(SUBDIAL_RECESS − 0.3). The pocket leaves DIAL_T − SUBDIAL_RECESS
+// hands on a plane DERIVED from their own section (TODO 41 — see wellHandZ
+// beside the small-seconds hand). The pocket leaves DIAL_T − SUBDIAL_RECESS
 // = 0.556 of brass behind it, which is the floor rule DIAL_T is minted under.
 const SUBDIAL_RECESS = 0.5;
 // What passes through a pocket floor, and therefore what the bore through it
@@ -5866,9 +5867,45 @@ const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
 dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Small seconds', smallSecondsGroup);
-const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second', namePrefix: 'smallSeconds' });
+const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds' });
 smallSecondsHand.name = 'smallSecondsHand';
-smallSecondsHand.position.z = -(SUBDIAL_RECESS - 0.3);
+// TODO 41 CLOSED — a well hand's plane is DERIVED from the section it
+// carries, not authored (the 0.3 this replaces spent the one margin without
+// saying so: keel 0.18 under a 0.30 standoff left 0.12 against 0.15, and the
+// reserve hand's inherited 0.299 left 0.0014). Two constraints bound the
+// lift over the pocket floor, both read off the hand's own section
+// (makeHand exports floorDrop/topRise on userData):
+//   floor: lift ≥ floorDrop + CLEAR_MARGIN — the deepest open metal (keel,
+//          and the seconds counterweight) clears the floor — and the
+//          printed face, which lies on it "the same plane to the last
+//          bit" — by the one margin;
+//   face:  lift ≤ SUBDIAL_RECESS − topRise — the tallest open metal stays
+//          sunk below the dial surface, the well's design claim.
+// The hand rides the MIDDLE of that band: equal slack both ways, no free
+// number, and the floor-side gate (expectedContacts' Dial rows, a strict
+// `min ≥ CLEAR_MARGIN` over float32 meshes) is held clear of float equality
+// by construction rather than by an epsilon. The BOSS is outside both
+// figures on purpose: it is the collet, the joint's own member. Below the
+// plane it dips past the keel (bossH/2 > floorDrop) and its column is
+// excused by the bore it rides over — asserted, not assumed. Above the
+// plane it stands proud of the dial face by bossH/2 − (SUBDIAL_RECESS −
+// lift): sinking the collet too would need recess ≥ floorDrop + margin +
+// bossH/2 ≈ 0.57, a dial z-stack renegotiation this fix does not own, and
+// a hub dome over a sub-dial face is how real small hands mount anyway.
+// Both asserts warn per rule 6.
+const wellHandZ = (hand) => {
+  const { floorDrop, topRise, bossR } = hand.userData;
+  const lo = floorDrop + CLEAR_MARGIN;
+  const hi = SUBDIAL_RECESS - topRise;
+  if (hi < lo)
+    console.warn(`sub-dial hand: pocket cannot hold this section — recess ${SUBDIAL_RECESS} `
+      + `needs ≥ ${(floorDrop + topRise + CLEAR_MARGIN).toFixed(3)} (drop ${floorDrop.toFixed(3)} + margin ${CLEAR_MARGIN} + rise ${topRise.toFixed(3)})`);
+  if (bossR + CLEAR_MARGIN > SUBDIAL_BORE_R)
+    console.warn(`sub-dial hand: boss r ${bossR.toFixed(3)} + margin ${CLEAR_MARGIN} exceeds the pocket bore `
+      + `${SUBDIAL_BORE_R.toFixed(2)} — its below-keel column no longer rides over the bore`);
+  return -(SUBDIAL_RECESS - (lo + hi) / 2);
+};
+smallSecondsHand.position.z = wellHandZ(smallSecondsHand);
 smallSecondsGroup.add(smallSecondsHand);
 
 // The display arbor itself: extend the slip-coupled seconds arbor (heart
@@ -5882,7 +5919,9 @@ smallSecondsGroup.add(smallSecondsHand);
   // Hub inside the recessed well: through the floor's bore (SUBDIAL_BORE_R is
   // derived from SECONDS_HUB_R, this hub being the larger of the two members
   // that pass a pocket floor), stopping just short of the dial's surface
-  // plane. The hand rides at world Z_DIAL + 0.2, straddled by the hub's span.
+  // plane. The hand rides its derived plane (wellHandZ — lift 0.345 over the
+  // floor at the current section), straddled by the hub's span (floor − 0.15
+  // to floor + 0.45).
   const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15 - DIAL_T; // hub centre (world) — TODO 26: follows the well floor one plate forward; rodLen below grows to match
   const rodLen = Z_SECONDS_ARBOR - hubZ;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
@@ -6507,8 +6546,15 @@ const reserveGroup = new THREE.Group();
 reserveGroup.position.set(RESERVE_LOCAL.x, RESERVE_LOCAL.y, 0);
 dialPlateFace.add(reserveGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Power reserve', reserveGroup);
-const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute' });
-reserveHand.position.z = -(SUBDIAL_RECESS - 0.3);
+// TODO 41 — `subdial` takes the hand off the central minute width law and
+// onto §50's floor section: at this length the central law made the blade
+// 1.5·0.299 = 0.45 thick, which the 0.5 pocket cannot hold at the one
+// margin — measured before the fix, the keel rode 0.0014 over the well
+// floor, with no instrument on the pair (it is EXPECTED, and had no floors
+// row). The plane is derived by the same wellHandZ as the small seconds.
+// namePrefix names the meshes so floors rows can select them (§94's rule).
+const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' });
+reserveHand.position.z = wellHandZ(reserveHand);
 reserveGroup.add(reserveHand);
 
 // ---------------------------------------------------------------------------
@@ -13330,8 +13376,10 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
     addHand(reserveHand, reserveR * 0.8, 'minute');
     addHand(alarmHand, HOUR_HAND_LEN - 1.2, 'hour');
     // subdial bezels — rings at the wells' own radii, on the hands' plane
-    addRing(smallSecondsGroup, secondsSubR, 0, 0, -(SUBDIAL_RECESS - 0.3));
-    addRing(reserveGroup, reserveR, 0, 0, -(SUBDIAL_RECESS - 0.3));
+    // (quoted from the hands themselves, so the TODO 41 derivation cannot
+    // go stale here)
+    addRing(smallSecondsGroup, secondsSubR, 0, 0, smallSecondsHand.position.z);
+    addRing(reserveGroup, reserveR, 0, 0, reserveHand.position.z);
     // the gong — its arc at GONG_R across GONG_A0..GONG_A1 (§56: measured
     // back from the free end) and the foot post down to the plate. Drawn at
     // the BOOT arc: a live aesthetics edit re-voices gongF but leaves this

@@ -4167,8 +4167,13 @@ export function makeDial({
 // enough to seat on its own tube's annular face, bored so the inner tubes
 // pass through, and short so it tucks under the hand above. Defaults preserve
 // the classic solid boss bit-for-bit for every existing hand.
+// §50's hand floor (TODO 12): the keeled bur-rod section is 1.5·rBase thick,
+// so rBase ≥ (0.10 mm + a hair) / UNIT_MM / 1.5 = 0.176 → 0.18 puts the blade
+// at 0.102 mm against real hands' 0.10–0.20.
+const HAND_RBASE_FLOOR = 0.18;
+
 export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
-  namePrefix = null }) {
+  namePrefix = null, subdial = false }) {
   // §94 — namePrefix NAMES this hand's four meshes. inspect.js couples by
   // `.name`, and an unnamed mesh only has an index label, which no
   // EXPECTED_CONTACT_FLOORS row can select — so a hand whose contacts a
@@ -4272,19 +4277,26 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     return grp;
   };
 
+  let rBase;
   if (kind === 'hour' || kind === 'minute') {
-    const rBase = length * config.widthFactor * 0.35;
+    // TODO 41: a SUB-DIAL hand does not inherit the central width law.
+    // length·widthFactor was tuned on hands ~3× this long, and at sub-dial
+    // length it makes a blade (1.5·rBase thick) the 0.5 pocket cannot hold
+    // at the one margin — the recess caps rBase at (0.5 − 0.15)/1.5 ≈ 0.233,
+    // and the reserve hand's inherited 0.299 left its keel 0.0014 off the
+    // well floor. Sub-dial hands ride §50's floor section instead — the rule
+    // TODO 12's tranche four declared for the class, which only the 'second'
+    // branch below had been applying.
+    rBase = subdial ? HAND_RBASE_FLOOR : length * config.widthFactor * 0.35;
     g.add(burRod(rBase));
     bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
   } else {
     // second: same bur rod, slimmer. Floor on the radius — originally 0.14 so
     // a sub-dial-length rod would not vanish, now DERIVED from §50's hand
-    // floor instead (TODO 12): the keeled section is 1.5·rBase thick, so
-    // rBase ≥ (0.10 mm + a hair) / UNIT_MM / 1.5 = 0.176 → 0.18 puts the blade
-    // at 0.102 mm against real hands' 0.10–0.20. Sub-dial hands ride the floor;
-    // the central seconds (length·widthFactor·0.5 ≈ 0.195) clears it on its
-    // own and is untouched.
-    const rBase = Math.max(length * config.widthFactor * 0.5, 0.18);
+    // floor instead (TODO 12): see HAND_RBASE_FLOOR above. Sub-dial hands
+    // ride the floor; the central seconds (length·widthFactor·0.5 ≈ 0.195)
+    // clears it on its own and is untouched.
+    rBase = Math.max(length * config.widthFactor * 0.5, HAND_RBASE_FLOOR);
     g.add(burRod(rBase));
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
@@ -4307,5 +4319,26 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
 
   g.userData.length = length;
   g.userData.kind = kind;
+  // TODO 41 — the section's facts, exported for the placement site so a
+  // standoff derived "off the hand's own section" reads the builder rather
+  // than restating its arithmetic:
+  //   floorDrop — deepest metal below the mounting plane, boss excluded:
+  //     the bur rod's keel at rBase, and the second kind's counterweight
+  //     disc at depth/2 (0.14 < 0.18 today, kept in the max so a depth
+  //     change cannot silently take the governing role unannounced);
+  //   topRise — tallest metal above the plane, boss excluded: the blade's
+  //     corner plane at rBase/2 (a positive crown bows the flute above it
+  //     by `crown`), and the same counterweight;
+  //   bossR/bossH — the collet, deliberately NOT in either figure: it is a
+  //     centred cylinder ±bossH/2 when unbored (a collet extruded 0..bossH
+  //     when bored), and where it dips or stands is the placement site's
+  //     question — over a bore, on a hub — not the open section's.
+  const crown = rBase * (handAesthetics.fluteFactor ?? -0.3);
+  const cwHalf = kind === 'second' ? depth / 2 : 0;
+  g.userData.rBase = rBase;
+  g.userData.floorDrop = Math.max(rBase, cwHalf);
+  g.userData.topRise = Math.max(rBase * 0.5 + Math.max(0, crown), cwHalf);
+  g.userData.bossR = bossR;
+  g.userData.bossH = bossH;
   return g;
 }
