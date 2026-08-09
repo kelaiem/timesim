@@ -159,7 +159,14 @@ const BATTERY = [
     gate: '0 unwaived mover-vs-fixture intersections',
     fails: (r) => r.violations,
     note: (r) => `${r.movers} movers over ${r.poses} poses, ${r.waived.length} waived (accepted debt)` },
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 147,
+  // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
+  // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
+  // loop is quadratic in exactly that. Measured, unscaled, on the container
+  // that ran the landing battery — where the unchanged checks scatter
+  // 0.99–1.43x against this column, so no single factor was applied (the
+  // header's own lesson about one run). The partition does not move either
+  // way: shard 1's total is 1298 against sweptOverlap's 1573 alone.
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 243,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -395,6 +402,25 @@ const SPEC_POINTS = [
   { name: 'alarmaz=175', q: 'alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
   { name: 'alarmaz=180', q: 'alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
   { name: 'alarmmod=200', q: 'alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
+  // §94 tier A — the small-seconds station. Three points, each measured on
+  // this tree before it was written down (roadmap §74 kept the arithmetic;
+  // every number below was re-measured, and one of its figures moved):
+  //   · 20 is the OUTWARD point, and it boots SILENT here — §74 measured 1
+  //     warning at this value, so the tree has improved under it since;
+  //   · 16 is inside the [16, 17] window where solveKeyless reports the side
+  //     sign nearly degenerate (balance −0.48 off the stem line). It is here
+  //     BECAUSE it warns: the window is documented by a row that expects it,
+  //     not suppressed. It also fouls the §34 selector post against the
+  //     moved well, which is the second warning and the honest one;
+  //   · 24 is past the two-bar's closure window (1.95 ≤ d4 ≤ 23.55, the
+  //     first NaN §74 measured). It must BOOT — the solve reports the
+  //     refusal and keeps D4 rather than handing the build a NaN layout —
+  //     so this row is the guard on that fallback, not on the bound.
+  // The warning count is non-monotonic in d4 (17 → 1, 17.5 → 5, 20 → 0), so
+  // read these as three declared points, never as a range to interpolate.
+  { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§94 tier A — the small-seconds station moved out; measured silent on this tree' },
+  { name: 'd4=16', q: 'd4=16', expect: 'any', why: '§94 tier A — inside the keyless side-sign window: this point is EXPECTED to warn' },
+  { name: 'd4=24', q: 'd4=24', expect: 'any', why: '§94 tier A — past the two-bar closure: must fall back to D4 and warn, never NaN' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because

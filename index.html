@@ -44,6 +44,7 @@
     if (p.has('alarmaz')) s.alarmAzDeg = Number(p.get('alarmaz'));            // §33 — the alarm corner's azimuth, world degrees
     if (p.has('alarmmod')) s.alarmModAzDeg = Number(p.get('alarmmod'));        // §33 — the whole alarm module's azimuth (striking-wheel station), world degrees
     if (p.has('stemaz')) s.stemAzDeg = Number(p.get('stemaz'));                // §33 step 2 — the stem decoupled, world degrees
+    if (p.has('d4')) s.d4 = Number(p.get('d4'));                              // §94 tier A — centre→fourth distance: the small-seconds station, in movement units
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();
 </script>

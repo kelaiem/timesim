@@ -31,7 +31,7 @@ import {
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
-  solveLayout,
+  solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
@@ -835,6 +835,10 @@ const LAYOUT_INPUTS = {
   ...(SPEC.barrelStepDeg !== null ? { barrelStepDeg: SPEC.barrelStepDeg } : {}),
   ...(SPEC.escapeStepDeg !== null ? { escapeStepDeg: SPEC.escapeStepDeg } : {}),
   ...(SPEC.balanceStepDeg !== null ? { balanceStepTargetDeg: SPEC.balanceStepDeg } : {}),
+  // §94 tier A — the small-seconds station, same null rule as the step
+  // angles: absent means the argument is not passed and the solve runs on
+  // layout.js's D4 constant, so identity never even re-multiplies a float.
+  ...(SPEC.d4 !== null ? { d4: SPEC.d4 } : {}),
 };
 const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayout({
   ...LAYOUT_INPUTS,
@@ -5750,7 +5754,15 @@ const SUBDIAL_BORE_R = Math.max(SECONDS_HUB_R, RSV_HAND_ARBOR_R) + CLEAR_MARGIN;
 for (const [nm, cy] of [['reserve', RESERVE_LOCAL.y], ['seconds', -SECONDS_LOCAL.y]]) {
   const innerEdge = cy - subDialR;                     // the ring's closest approach to the dial centre
   const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
-  if (innerEdge - need < CLEAR_MARGIN)
+  // §94 tier A — the epsilon is a FLOAT-EQUALITY guard, not a widened budget.
+  // subDialR is solved as `min(station) − (need + CLEAR_MARGIN)`, so for
+  // whichever station is the inner one this web is CLEAR_MARGIN by algebra
+  // and the only real breaches are a radiusFactor over the ceiling. While
+  // both stations were literals that arithmetic happened to land on the
+  // right side of the last bit; a spec'd d4 re-does it at an arbitrary
+  // value, and every inward station reported a 1e-16 breach of its own
+  // definition. Measured at d4 6: web 0.14999999999999991 against 0.15.
+  if (innerEdge - need < CLEAR_MARGIN - 1e-9)
     console.warn(`${nm} sub-dial pocket vs the dial's centre bore: web ${(innerEdge - need).toFixed(2)}, need ${CLEAR_MARGIN} `
       + `(well r ${subDialR.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
       + `— dial.subdials.radiusFactor is too large for this station`);
@@ -5854,7 +5866,7 @@ const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
 dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Small seconds', smallSecondsGroup);
-const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second' });
+const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second', namePrefix: 'smallSeconds' });
 smallSecondsHand.name = 'smallSecondsHand';
 smallSecondsHand.position.z = -(SUBDIAL_RECESS - 0.3);
 smallSecondsGroup.add(smallSecondsHand);
@@ -5874,10 +5886,12 @@ smallSecondsGroup.add(smallSecondsHand);
   const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15 - DIAL_T; // hub centre (world) — TODO 26: follows the well floor one plate forward; rodLen below grows to match
   const rodLen = Z_SECONDS_ARBOR - hubZ;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
+  rod.name = 'secondsArborRod';   // §94: named so the sub-dial floors rows can declare their contacts
   rod.rotation.x = Math.PI / 2;
   rod.position.z = -rodLen / 2; // local: from the cam plane down/forward to the hub
   secondsCamArbor.add(rod);
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(SECONDS_HUB_R, SECONDS_HUB_R, 0.6, 12), MATS.steel);
+  hub.name = 'secondsArborHub';   // §94: the hand rides THIS — the declared contact of two floors rows
   hub.rotation.x = Math.PI / 2;
   hub.position.z = hubZ - Z_SECONDS_ARBOR;
   secondsCamArbor.add(hub);
@@ -11758,7 +11772,7 @@ panel.innerHTML = `
            proposed" (status, which must survive a hover) and "what is under
            the pointer" (this one). -->
       <div class="row label-small" id="reconf-hint-row" style="display:none;">
-        <span id="reconf-hint">Six parts wear a ring — each one is a handle</span>
+        <span id="reconf-hint">Seven parts wear a ring — each one is a handle</span>
       </div>
       <div class="row label-small" id="reconf-apply-row" style="display:none;">
         <button id="btn-reconf-trial">Trial boot</button>
@@ -15424,22 +15438,52 @@ function reconfClockLabel(az) {
   const h = Math.round(clockDeg / 30) % 12;
   return `\u2248 ${h === 0 ? 12 : h} o'clock`;
 }
-// The three train handles. anchor: what the step angle is measured ABOUT
-// (in the CURRENT, possibly rotated frame); toSpec: pointer azimuth →
-// solver-frame degrees. Grab radius from the member's own swept radius.
+// The four train handles. anchor: what the reading is taken ABOUT (in the
+// CURRENT, possibly rotated frame); toSpec: pointer reading → solver-frame
+// spec value. Grab radius from the member's own swept radius.
+//
+// §94 tier A — THREE OF THESE ARE ANGLES AND ONE IS A DISTANCE, and the row
+// says which. Every §33 handle before this one proposed an azimuth about a
+// mesh point, so `toSpec` took a pointer azimuth and the drag branch had one
+// shape. The small-seconds station is not an angle: the two-bar puts the
+// fourth wheel EXACTLY d4 below the centre and solves the third wheel's
+// wedge to get it there, so the fourth's only freedom is radial and the
+// pointer's reading is its DISTANCE from the anchor. `radial: true` selects
+// that reading, and the candidate's label branches on it — degrees and units
+// are not interchangeable in a sentence either.
+//
+// One consequence worth naming: a distance is rotation-invariant, so the
+// radial row needs no RECONF_ROT_DEG term — a ?crownaz= boot rotates the
+// anchor and the pointer together and the reading is unchanged.
+
+// The small-seconds handle's refusal, closed form from the two bars it hangs
+// between — the same window solveLayout falls back to D4 outside. Measured
+// once: the radii are the build's own and nothing in this mode moves them.
+const D4_WINDOW = d4Window(LAYOUT_INPUTS.radii);
 const RECONF_HANDLES = [
   // The barrel steps FROM the barrel TO the centre in the solver, so with
   // the centre at the recentred origin the barrel's azimuth about it is
   // barrelStepDeg + 180.
-  { kind: 'barrel', specKeyName: 'barrelStepDeg', urlKey: 'barrelstep', defDeg: BARREL_STEP_DEG,
+  { kind: 'barrel', specKeyName: 'barrelStepDeg', urlKey: 'barrelstep', def: BARREL_STEP_DEG,
     anchor: () => ({ x: 0, y: 0 }), grabAt: () => P.barrel, grabR: () => LAYOUT_INPUTS.swept.great + 2,
     toSpec: (azDeg) => azDeg - 180 - RECONF_ROT_DEG },
-  { kind: 'escape', specKeyName: 'escapeStepDeg', urlKey: 'escstep', defDeg: ESCAPE_STEP_DEG,
+  { kind: 'escape', specKeyName: 'escapeStepDeg', urlKey: 'escstep', def: ESCAPE_STEP_DEG,
     anchor: () => P.fourth, grabAt: () => P.escape, grabR: () => LAYOUT_INPUTS.swept.escape + 2,
     toSpec: (azDeg) => azDeg - RECONF_ROT_DEG },
-  { kind: 'balance', specKeyName: 'balanceStepTargetDeg', urlKey: 'balstep', defDeg: BALANCE_STEP_TARGET_DEG,
+  { kind: 'balance', specKeyName: 'balanceStepTargetDeg', urlKey: 'balstep', def: BALANCE_STEP_TARGET_DEG,
     anchor: () => P.escape, grabAt: () => P.balance, grabR: () => LAYOUT_INPUTS.swept.balance + 2,
     toSpec: (azDeg) => azDeg - RECONF_ROT_DEG },
+  // The fourth wheel IS the small-seconds pivot, so this handle moves the
+  // sub-dial by moving the arbor under it — the honest grip, and the reason
+  // the ring goes on the wheel rather than on the printed well.
+  { kind: 'fourth', specKeyName: 'd4', urlKey: 'd4', def: D4, radial: true,
+    anchor: () => P.center, grabAt: () => P.fourth, grabR: () => LAYOUT_INPUTS.swept.fourth + 2,
+    toSpec: (dist) => dist,
+    refuseAt: (v) => (v >= D4_WINDOW.min && v <= D4_WINDOW.max) ? null
+      : `the centre–third–fourth triangle cannot close at ${v.toFixed(2)} `
+        + `— the two bars are ${D4_WINDOW.d1CT.toFixed(2)} and ${D4_WINDOW.d2TF.toFixed(2)}, `
+        + `so the station must lie between ${D4_WINDOW.min.toFixed(2)} and ${D4_WINDOW.max.toFixed(2)}`,
+  },
 ];
 // Shadow solve (step 4): the same pure solver, same measured inputs, a
 // candidate angle, a collecting warn. Returns its position table for the
@@ -15618,8 +15662,9 @@ const RECONF_HINTS = {
   barrel: 'Fusee & great wheel — drag it about the centre wheel',
   escape: 'Escape wheel — drag it about the fourth wheel',
   balance: 'Balance — drag it about the escape wheel',
+  fourth: 'Fourth wheel — drag it toward or away from the centre to move the small-seconds station',
 };
-const RECONF_HINT_IDLE = 'Six parts wear a ring — each one is a handle';
+const RECONF_HINT_IDLE = 'Seven parts wear a ring — each one is a handle';
 // The rim handles' meshes, by the same objects their hit tests use — the
 // pusher by name because its cap is what a finger goes for, while the hit
 // test generously accepts the whole switch unit.
@@ -15768,12 +15813,13 @@ function reconfShowStatus() {
     if (SPEC.barrelStepDeg !== null) parts.push(`barrel step ${SPEC.barrelStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.escapeStepDeg !== null) parts.push(`escape step ${SPEC.escapeStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
+    if (SPEC.d4 !== null) parts.push(`small-seconds station ${SPEC.d4.toFixed(2)} from the centre`);
     // The spec line quotes solver-tier values and stays English with them
     // (the i18n.js residue); the empty-spec sentence is chrome, so it
     // translates. §93 names the FUSEE rather than "barrel": the ring sits on
     // the fusee and great wheel, which is the part a viewer sees move.
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the escape wheel or the balance');
+      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the escape wheel or the balance');
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
@@ -16110,7 +16156,7 @@ function reconfMoveDrag(e) {
     const shadowWarns = Array.isArray(shadowOut) ? shadowOut : shadowOut.warns;
     const shadowRefuse = Array.isArray(shadowOut) ? null : shadowOut.refuse;
     reconfCandidate = {
-      kind: reconfDrag.kind, urlKey: rk.urlKey, valueDeg: deg,
+      kind: reconfDrag.kind, urlKey: rk.urlKey, value: deg,
       label: `proposed: ${rk.label} az ${deg.toFixed(1)}\u00b0 (${rk.clockPrefix || ''}${reconfClockLabel(az)})`,
       refuse: conflict ? `fouls ${conflict.what} (${conflict.deg.toFixed(1)}\u00b0 apart, needs ${conflict.needDeg.toFixed(1)}\u00b0)` : null,
       warns: shadowWarns,
@@ -16119,24 +16165,46 @@ function reconfMoveDrag(e) {
   } else {
     const h = RECONF_HANDLES.find((x) => x.kind === reconfDrag.kind);
     const a = h.anchor();
-    const azDeg = Math.atan2(hit.y - a.y, hit.x - a.x) * 180 / Math.PI;
-    const specDeg = wrapAngle((h.toSpec(azDeg)) * Math.PI / 180) * 180 / Math.PI;
-    const { sol, warns } = reconfShadowSolve({ [h.specKeyName]: specDeg });
+    // §94 tier A — the row says how the pointer READS. Three handles take an
+    // azimuth about their anchor and wrap it into (−180, 180]; the
+    // small-seconds handle takes a distance from its anchor, which is not an
+    // angle and must not be wrapped.
+    const specVal = h.radial
+      ? h.toSpec(Math.hypot(hit.x - a.x, hit.y - a.y))
+      : wrapAngle(h.toSpec(Math.atan2(hit.y - a.y, hit.x - a.x) * 180 / Math.PI) * Math.PI / 180) * 180 / Math.PI;
+    // A refusal the shadow-solve CANNOT express, which is why it is closed
+    // form and runs first: outside the two-bar's window solveLayout keeps the
+    // designed D4 and warns, so a shadow of an impossible d4 would come back
+    // as the DEFAULT layout — a ghost that is not the proposal under the
+    // pointer, and an Apply that silently builds a different watch.
+    const windowRefuse = h.refuseAt ? h.refuseAt(specVal) : null;
+    const { sol, warns } = windowRefuse
+      ? { sol: null, warns: [] }
+      : reconfShadowSolve({ [h.specKeyName]: specVal });
     // \u00a783 step B \u2014 the train's own solve is clean long before the movement
     // is: ask the stop work whether it can still stand and route here. Its
     // warnings join the candidate's, so the existing amber tier reports
     // them and Apply stays available (a WARNED spec is appliable \u2014 refusing
     // an unbuildable route is step C's job, not this one's).
+    // \u00a794 \u2014 and everything DOWNSTREAM of solveLayout that a moved station
+    // breaks arrives through this same call: stopWorkShadowWarns re-solves the
+    // whole keyless frame for the candidate P, and that solve is where the
+    // sub-dial wells are sized. Dragging the fourth wheel inside the wells'
+    // inboard ceiling therefore reports under the pointer without this branch
+    // knowing anything about dials \u2014 the \u00a785 lesson (re-solve the middle
+    // link, never borrow the built one) paying for itself a second time.
     const link = sol ? stopWorkShadowWarns(sol.P) : { warns: [], refuse: null };
     if (sol) reconfPaintConstel(sol, warns.length + link.warns.length > 0);
     else if (reconfConstel) reconfConstel.visible = false;
     reconfCandidate = {
-      kind: h.kind, urlKey: h.urlKey, valueDeg: specDeg,
-      label: `proposed: ${h.kind} step ${specDeg.toFixed(1)}\u00b0 (was ${h.defDeg.toFixed(1)}\u00b0)`,
+      kind: h.kind, urlKey: h.urlKey, value: specVal,
+      label: h.radial
+        ? `proposed: ${h.kind} at ${specVal.toFixed(2)} from the centre (was ${h.def.toFixed(2)})`
+        : `proposed: ${h.kind} step ${specVal.toFixed(1)}\u00b0 (was ${h.def.toFixed(1)}\u00b0)`,
       // §85 C4 — a route that cannot be threaded is not a warning to apply
       // past; it is a spec with no build. Refusing widens the handle's
       // forbidden zone, which is this mode making a real constraint visible.
-      refuse: sol ? link.refuse : (warns[0] || 'the train cannot close here'),
+      refuse: windowRefuse || (sol ? link.refuse : (warns[0] || 'the train cannot close here')),
       warns: sol ? [...warns, ...link.warns] : [],
       solverClean: !!sol && warns.length === 0 && link.warns.length === 0,
     };
@@ -16164,7 +16232,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
@@ -16207,7 +16275,7 @@ function reconfTrialBoot() {
   if (!reconfCandidate || reconfCandidate.refuse) return;
   reconfKillTrial();
   const p = new URLSearchParams(location.search);
-  p.set(reconfCandidate.urlKey, reconfCandidate.valueDeg.toFixed(1));
+  p.set(reconfCandidate.urlKey, reconfCandidate.value.toFixed(1));
   p.delete('inspect'); p.delete('cycle'); // a verdict boot runs no routes
   p.delete('reconf');                     // §93: nor does it reconfigure — a trial is a plain boot of the candidate
   p.set('trial', '1');
@@ -16338,7 +16406,7 @@ document.getElementById('btn-reconf-trial').addEventListener('click', reconfTria
 document.getElementById('btn-reconf-apply').addEventListener('click', () => {
   if (!reconfCandidate || reconfCandidate.refuse) return;
   const p = new URLSearchParams(location.search);
-  p.set(reconfCandidate.urlKey, reconfCandidate.valueDeg.toFixed(1));
+  p.set(reconfCandidate.urlKey, reconfCandidate.value.toFixed(1));
   location.search = p.toString(); // reload-tier apply; /__state carries the session across
 });
 document.getElementById('btn-reconf-reset').addEventListener('click', () => navigateWithSpec({}));
