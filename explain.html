@@ -769,7 +769,7 @@
             <text class="lbl lbl-strong" x="330" y="96">hairspring terminal — uninterrupted</text>
             <text class="val" x="330" y="112">no index arm, no curb pins anywhere on it</text>
             <text class="lbl" x="330" y="146">the screws also set the hack contact:</text>
-            <text class="val" x="330" y="162">their heads sweep proud of the rim FACE, so the</text>
+            <text class="val" x="330" y="162">they stand proud of the rim's OUTER EDGE, so the</text>
             <text class="val" x="330" y="178">hack pad presses the rim's UNDERSIDE (next entry)</text>
           </svg>
         </div>
@@ -869,40 +869,146 @@
       <p>Pull the crown to set the time and the balance stops dead — hacking — so the watch
       can be synchronised to a reference. The brake is the <b>stop work</b>: the setting
       chain's motion travels a thin hack rod to a crank beside the balance, and the crank's
-      pad rises against the balance rim. Push the crown home and the pad falls away; the
-      hairspring restarts the balance itself.</p>
+      ruby pad rises against the <b>flat underside</b> of the balance rim. Push the crown
+      home and the pad falls away; the hairspring restarts the balance itself.</p>
+      <p>Which surface, and why it is not the obvious one. The rim's <b>outer edge</b> is
+      where a brake would naturally press, and that is the one surface it cannot have: the
+      timing screws are radial, and they stand proud of that edge all the way round. They do
+      <em>not</em> stand proud of either flat face — the screw stock is thinner than the rim
+      is tall, so the screws lie inside the rim's z-band — which is exactly why the
+      underside is free. The pad presses that underside on a flat annulus starting at the
+      rim's inner edge. It is <em>not</em> the rim's inner wall, and it is not a gap between
+      two screws: the rim swings under a station that stays put, so the clearance has to
+      hold at every angle of the balance at once.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Why the pad takes the UNDERSIDE</span></div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 200" width="780" height="200" role="img" aria-label="Section of the balance rim: timing screw heads sweep proud of the face, so the hack pad contacts the rim's underside">
-            <rect x="200" y="70" width="380" height="26" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-            <text class="lbl" x="360" y="64">balance rim (section)</text>
-            <g fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2">
-              <rect x="250" y="58" width="26" height="12"/><rect x="360" y="58" width="26" height="12"/><rect x="470" y="58" width="26" height="12"/>
-            </g>
-            <text class="val val-brass" x="250" y="40">timing screw heads — proud of the FACE</text>
-            <path class="leader" d="M 300 44 L 268 58"/>
-            <line x1="200" y1="52" x2="580" y2="52" stroke="var(--brass)" stroke-width="0.75" stroke-dasharray="4 3"/>
-            <text class="val" x="586" y="55">screw sweep</text>
-            <rect x="386" y="112" width="60" height="18" rx="4" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
-            <line x1="416" y1="112" x2="416" y2="98" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrH)"/>
-            <text class="lbl lbl-strong" x="470" y="128">hack pad — rises on the UNDERSIDE</text>
-            <text class="val" x="470" y="144">the face is not a usable contact: the screw</text>
-            <text class="val" x="470" y="158">heads sweep through it (HACK_SCREW_IN_R,</text>
-            <text class="val" x="470" y="172">HACK_SCREW_DROP — both derived from BAL_T)</text>
-            <rect x="398" y="130" width="14" height="50" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.2"/>
-            <text class="lbl" x="200" y="150">crank + hack rod from the</text>
-            <text class="lbl" x="200" y="163">setting chain (crown pulled)</text>
-            <defs><marker id="arrH" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker></defs>
+          <svg viewBox="0 0 780 392" width="780" height="392" role="img" aria-label="Radial section through the balance rim: a timing screw lies inside the rim's z-band and stands proud only of the outer edge, so the hack pad's ruby face presses the flat underside on an annulus that starts at the rim's inner edge and stops short of the screw's inner tip; a magnified detail shows the drop and standoff that make up the clearance margin.">
+            <!-- BAND A — radial section, 80 px per unit (z up, r to the right) -->
+            <text class="lbl" x="24" y="28">← balance axis · outward (r) →</text>
+            <rect x="60" y="60" width="100" height="110" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <text class="lbl" x="24" y="48">balance rim (section)</text>
+            <path class="leader" d="M 66 52 L 84 60"/>
+            <line x1="160" y1="44" x2="160" y2="214" stroke="var(--brass)" stroke-width="0.75" stroke-dasharray="4 3"/>
+            <polygon points="128,67 184,75 184,155 128,163" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <rect x="60" y="170" width="58.3" height="32" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+            <rect x="63.8" y="202" width="50.7" height="34" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <line x1="40" y1="212" x2="40" y2="176" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arrHack)"/>
+            <text class="val val-ruby" x="18" y="228">rises</text>
+            <circle cx="118.3" cy="170" r="3" fill="var(--ruby)"/>
+            <circle cx="128" cy="163" r="3" fill="var(--steel)"/>
+            <line x1="118.3" y1="170" x2="128" y2="163" stroke="var(--ruby)" stroke-width="1" stroke-dasharray="2 2"/>
+            <text class="lbl lbl-strong" x="230" y="52">THE OUTER EDGE — where a brake would press</text>
+            <text class="val" x="230" y="68">and cannot. The 16 timing screws lie radially in</text>
+            <text class="val" x="230" y="82">the rim's mid-plane and stand 0.3 proud of this</text>
+            <text class="val" x="230" y="96">edge, all the way round.</text>
+            <text class="lbl lbl-strong" x="230" y="122">THEY STAND PROUD OF NO FACE</text>
+            <text class="val" x="230" y="138">Screw half-thickness 0.6 against the rim's</text>
+            <text class="val" x="230" y="152">half-height 0.6875: the screws sit inside the</text>
+            <text class="val" x="230" y="166">rim's z-band, top and bottom.</text>
+            <text class="lbl lbl-strong" x="230" y="192">THE UNDERSIDE — what the pad takes</text>
+            <text class="val" x="230" y="208">A flat annulus, not the inner wall. The ruby</text>
+            <text class="val" x="230" y="222">face ⌀ 0.728 starts at the rim's inner edge</text>
+            <text class="val" x="230" y="236">(HACK_RIM_I) and stops a standoff short of the</text>
+            <text class="val" x="230" y="250">screws' tips (HACK_SCREW_IN_R) — full-face seating.</text>
+            <!-- BAND B — the corner, 400 px per unit -->
+            <line x1="24" y1="266" x2="756" y2="266" stroke="var(--hairline-strong)" stroke-width="1"/>
+            <rect x="120" y="272" width="350" height="63" fill="var(--brass-fill)"/>
+            <polygon points="300,300 470,276 470,272 300,272" fill="var(--steel-fill)"/>
+            <line x1="120" y1="335" x2="470" y2="335" stroke="var(--brass)" stroke-width="1.4"/>
+            <polyline points="300,272 300,300 470,276" fill="none" stroke="var(--steel)" stroke-width="1.4"/>
+            <rect x="120" y="335" width="131.3" height="27" fill="var(--ruby-fill)"/>
+            <polyline points="120,335 251.3,335 251.3,362 120,362" fill="none" stroke="var(--ruby)" stroke-width="1.4"/>
+            <circle cx="251.3" cy="335" r="3" fill="var(--ruby)"/>
+            <circle cx="300" cy="300" r="3" fill="var(--steel)"/>
+            <line x1="251.3" y1="335" x2="300" y2="300" stroke="var(--ruby)" stroke-width="1.2" stroke-dasharray="3 3"/>
+            <line x1="300" y1="300" x2="300" y2="335" stroke="var(--muted)" stroke-width="0.9" marker-start="url(#dimHack)" marker-end="url(#dimHack)"/>
+            <text class="val" x="308" y="321">drop</text>
+            <line x1="251.3" y1="350" x2="300" y2="350" stroke="var(--muted)" stroke-width="0.9" marker-start="url(#dimHack)" marker-end="url(#dimHack)"/>
+            <text class="val" x="256" y="372">standoff</text>
+            <text class="lbl" x="500" y="282">detail ×5 — real edges only</text>
+            <text class="lbl lbl-strong" x="500" y="302">THE CORNER THAT SIZES BOTH</text>
+            <text class="val" x="500" y="320">HACK_SCREW_DROP 0.0875 — z, at the tip</text>
+            <text class="val" x="500" y="334">HACK_SCREW_STANDOFF 0.1218 — radial</text>
+            <text class="val" x="500" y="348">hypotenuse = CLEAR_MARGIN 0.15</text>
+            <text class="val" x="500" y="366">z alone cannot clear the screws;</text>
+            <text class="val" x="500" y="380">the rest of the separation is radial.</text>
+            <defs>
+              <marker id="arrHack" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker>
+              <marker id="dimHack" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--muted)"/></marker>
+            </defs>
           </svg>
         </div>
-        <figcaption>The contact surface is a derived consequence of the free-sprung design
-        above: because the timing screws' heads sweep proud of the rim's face, the face
-        would batter them — so the pad's station and drop derive from the rim section and
-        the screws' inner tips (<code>HACK_SCREW_IN_R = balanceR − BAL_T·0.16</code>). The
+        <figcaption>The two clearances are solved, not chosen. The rim's underside hangs
+        below the screws' deepest sweep by <code>HACK_SCREW_DROP</code> alone — less than one
+        <code>CLEAR_MARGIN</code> — so z cannot do the job by itself, and
+        <code>HACK_SCREW_STANDOFF</code> is whatever the corner-to-corner distance still
+        owes. The ruby face then fills exactly what is left: from the rim's inner edge out to
+        the screws' inner tips less that standoff (<code>HACK_SCREW_IN_R = balanceR −
+        BAL_T·0.16</code>), which is full-face seating rather than an edge bite. Reshape the
+        balance and the brake follows it — every quantity on this plate comes from
+        <code>BAL_T</code> and the rim proportions <code>makeBalanceWheel</code> cuts. The
         crank stands in the plate's open cut and the whole chain arrives from the crown
         through the keyless works — pulled is a motion, not a flag
         (<code>setPose</code> deliberately cannot fake it).</figcaption>
+      </figure>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">The rim swings — there is no gap to aim at</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 292" width="780" height="292" role="img" aria-label="Plan view of the balance rim with its sixteen radial timing screws: the hack pad's footprint is a small disc on a circle inside the screws' inner tips, and the rim swings under it, so every screw passes over the pad's station.">
+            <circle cx="170" cy="150" r="108.9" fill="none" stroke="var(--brass-fill)" stroke-width="16.25"/>
+            <circle cx="170" cy="150" r="117" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+            <circle cx="170" cy="150" r="100.75" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
+            <g stroke="var(--steel)" stroke-width="15.6">
+              <line x1="281.8" y1="150.0" x2="290.9" y2="150.0"/>
+              <line x1="273.3" y1="192.8" x2="281.7" y2="196.3"/>
+              <line x1="249.1" y1="229.1" x2="255.5" y2="235.5"/>
+              <line x1="212.8" y1="253.3" x2="216.3" y2="261.7"/>
+              <line x1="170.0" y1="261.8" x2="170.0" y2="270.9"/>
+              <line x1="127.2" y1="253.3" x2="123.7" y2="261.7"/>
+              <line x1="90.9" y1="229.1" x2="84.5" y2="235.5"/>
+              <line x1="66.7" y1="192.8" x2="58.3" y2="196.3"/>
+              <line x1="58.2" y1="150.0" x2="49.1" y2="150.0"/>
+              <line x1="66.7" y1="107.2" x2="58.3" y2="103.7"/>
+              <line x1="90.9" y1="70.9" x2="84.5" y2="64.5"/>
+              <line x1="127.2" y1="46.7" x2="123.7" y2="38.3"/>
+              <line x1="170.0" y1="38.2" x2="170.0" y2="29.1"/>
+              <line x1="212.8" y1="46.7" x2="216.3" y2="38.3"/>
+              <line x1="249.1" y1="70.9" x2="255.5" y2="64.5"/>
+              <line x1="273.3" y1="107.2" x2="281.7" y2="103.7"/>
+            </g>
+            <circle cx="170" cy="150" r="105.5" fill="none" stroke="var(--ruby)" stroke-width="0.9" stroke-dasharray="4 4"/>
+            <circle cx="170" cy="255.5" r="4.7" fill="var(--ruby)"/>
+            <path class="leader" d="M 174 258 L 198 274"/>
+            <text class="val val-ruby" x="200" y="278">the pad's footprint — under a screw, and clear of it</text>
+            <path d="M 46 104.9 A 132 132 0 0 1 294 104.9" fill="none" stroke="var(--muted)" stroke-width="1.2" marker-start="url(#swHack)" marker-end="url(#swHack)"/>
+            <path class="leader" d="M 326 44 L 300 100"/>
+            <text class="lbl" x="332" y="36">the rim swings under the pad, both ways</text>
+            <text class="lbl lbl-strong" x="310" y="80">THE PAD'S STATION IS A CIRCLE</text>
+            <text class="val" x="310" y="98">The rim swings under a pad that stays put, so a</text>
+            <text class="val" x="310" y="112">screw can be over it at any moment — and when the</text>
+            <text class="val" x="310" y="126">brake lands, the balance stops wherever it is.</text>
+            <text class="val" x="310" y="148">So the clearance can never be azimuthal: there is</text>
+            <text class="val" x="310" y="162">no gap between screws to aim at. It is radial,</text>
+            <text class="val" x="310" y="176">plus what little z the rim's underside gives.</text>
+            <text class="lbl lbl-strong" x="310" y="204">NOT THE INNER PERIMETER</text>
+            <text class="val" x="310" y="222">The pad presses up on the flat underside. Its</text>
+            <text class="val" x="310" y="236">face lies in the annulus between the rim's inner</text>
+            <text class="val" x="310" y="250">edge and the screws' inner tips — see the section.</text>
+            <defs>
+              <marker id="swHack" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--muted)"/></marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>Drawn to the same scale as the section: the pad's footprint really does
+        clear the screws' inner tips by that little. Nothing here aims the pad between two
+        screws, because nothing could — where the balance comes to rest is whatever the
+        escapement left it. What the layout solves is a STATION instead: one radius on one
+        plane, clear of all 16 screws at once. Open debt, from <code>TODO.md</code>'s smaller
+        items: because the pad sits radially <em>inside</em> the rim's annulus, the crank
+        cannot be dropped vertically into its clevis with the arm level — it goes in swung
+        down and rotates up under the rim. The see-saw crank makes that free (the released
+        pose is the drop-clear pose), but the code does not yet say so.</figcaption>
       </figure>
     </div>
   </details>
