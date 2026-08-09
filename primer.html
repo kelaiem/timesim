@@ -55,18 +55,38 @@
     border-bottom: 1px solid var(--hairline);
     padding: 14px 18px;
   }
+  /* §95 tier two — THE BAR IS ONE LINE IN EVERY LANGUAGE. It is FIXED, and
+     the body's top padding is a constant, so a header that grows to two lines
+     does not just look wrong: it covers the first paragraph. German runs ~30%
+     longer and this page carries the most crowded header in the project (title
+     + two cross-links + the locale select + the contract stamp), so every item
+     refuses to wrap and the STAMP is the one that yields — it ellipses, and
+     below a narrow breakpoint it leaves altogether. It is the right thing to
+     drop: the cross-links are navigation and the stamp restates what the page
+     itself says in its first paragraph. Measured on the German build, which is
+     what caught it. */
   header h1 {
     font-size: 12px; margin: 0; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--head); font-weight: 600;
+    color: var(--head); font-weight: 600; white-space: nowrap;
   }
   header a.back {
-    font-size: 11px; color: var(--muted); text-decoration: none;
+    font-size: 11px; color: var(--muted); text-decoration: none; white-space: nowrap;
     border: 1px solid var(--hairline-strong); border-radius: 6px; padding: 4px 9px;
     background: rgba(255,255,255,0.06); transition: background 0.15s;
   }
   header a.back:hover { background: rgba(255,255,255,0.14); color: var(--text); }
   header .spacer { flex: 1; }
-  header .stamp { font: 10.5px/1 ui-monospace, monospace; color: var(--muted); }
+  header .stamp {
+    font: 10.5px/1 ui-monospace, monospace; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+  @media (max-width: 820px) { header .stamp { display: none; } }
+  header #lang-select {
+    font: 11px system-ui, sans-serif; color: var(--text);
+    background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong);
+    border-radius: 6px; padding: 3px 6px;
+  }
+  header #lang-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .sheet { max-width: 840px; margin: 0 auto; }
   .intro { color: var(--muted); max-width: 68ch; margin: 10px 0 26px; }
@@ -126,6 +146,10 @@
   <a class="back" href="./index.html">← the movement</a>
   <a class="back" href="./explain.html">want the numbers? →</a>
   <span class="spacer"></span>
+  <!-- §73 tier two: the same three locales as the app's chrome, chosen the
+       same way (?lang → localStorage → navigator.language) and applied the
+       same reload-tier way. Untranslated blocks render English visibly. -->
+  <select id="lang-select" aria-label="Language" title="Language"></select>
   <span class="stamp">quantities rounded, with units · no source identifiers</span>
 </header>
 
@@ -226,7 +250,7 @@
       8 times per revolution, and there is nothing more to know. Speed is bought at the
       price of force, the same trade as a bicycle's gears.</p>
       <p>Four such steps stand between the power and the escapement, and you can check
-      each on your fingers: 8 × 7½ × 8 × 10 = 4 800. The first wheel — the "great
+      each on your fingers: 8 × 7½ × 8 × 10 = 4,800. The first wheel — the "great
       wheel", riding on the fusee cone itself — turns once in 8 hours; at the far end
       of the chain of meshes a wheel spins once every 6 seconds.</p>
       <figure>
@@ -296,7 +320,7 @@
       stone is already in the way — and in that brief slide the tooth's face pushes on
       the stone, handing the balance a small shove that pays back what friction and air
       took from its swing. Then the wheel is caught again, and waits.</p>
-      <p>That cycle is the tick: <b>5 per second</b> here, 18 000 per hour, each one an
+      <p>That cycle is the tick: <b>5 per second</b> here, 18,000 per hour, each one an
       unlock–slide–catch. The wheel is in motion for only about a sixth of each beat —
       a watch is a machine that is almost always standing still.</p>
       <figure>
@@ -497,6 +521,27 @@
   </footer>
 </div>
 
+<script type="module">
+  // §95 tier two — localize the page. A module, and the only script that
+  // touches this page's prose: the localizer replaces rich blocks' innerHTML
+  // wholesale, so anything that had cached a node inside one would be holding
+  // a detached copy. The primer has no interactive plates, so unlike the
+  // explainer there is nothing here to order against — the rule is kept
+  // anyway, because the next plate added to this page should inherit it.
+  import { UI_LANG, setUiLang } from './src/i18n.js';
+  import { localizePrimer } from './src/primer-i18n.js';
+  localizePrimer();
+  {
+    const sel = document.getElementById('lang-select');
+    // Values are canonical codes, never display text — tier one's rule.
+    for (const [code, label] of [['en', 'English'], ['de', 'Deutsch'], ['zh', '中文']]) {
+      const o = document.createElement('option');
+      o.value = code; o.textContent = label; o.selected = code === UI_LANG;
+      sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => setUiLang(sel.value));
+  }
+</script>
 <script>
   // §79 — the offline worker, release-gated on the app-version meta that
   // tools/stamp-release.mjs bakes in: a source tree (dev server, worktrees)

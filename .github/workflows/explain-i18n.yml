@@ -37,6 +37,9 @@ on:
       # claims), so the primer changing must re-run it
       - 'primer.html'
       - 'src/explain-i18n*.js'
+      # §95 tier two — the primer's tables and the engine both pages share
+      - 'src/primer-i18n*.js'
+      - 'src/page-i18n.js'
       - 'src/i18n.js'
       - 'tools/explain-i18n.mjs'
       - 'tools/explain-quotes.mjs'

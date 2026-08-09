@@ -14,7 +14,7 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (21): worker controls on first load · one cache, named for
+// What it asserts (22): worker controls on first load · one cache, named for
 // the scope AND the version · version.json and /__state NOT cached · precache
 // complete · OFFLINE: index boots, deep link boots, explain.html renders,
 // primer.html renders (§95 — this boot is also the assert that catches a
@@ -123,11 +123,14 @@ try {
   const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), cacheA);
   check('release: /__state NOT in the cache', !stateCached);
   const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, cacheA);
-  // 23 since §95: 20 + favicon.png (Safari SVG fallback) + apple-touch-icon.png
-  // (iOS home screen) + primer.html (§95 — the novice explainer, an unstamped
-  // seed like the other documents). All are referenced by stable path from the
-  // documents and manifest.
-  check('release: precache complete', counts === 23, `${counts}/23`);
+  // 27 since §95 tier two: 20 + favicon.png (Safari SVG fallback) +
+  // apple-touch-icon.png (iOS home screen) + primer.html (the novice
+  // explainer, an unstamped seed like the other documents) + the four modules
+  // its localization pulls in (the shared page-i18n engine, the primer's own
+  // i18n module and its two locale tables — dynamic imports, so they reach
+  // this manifest through the stamper's module walk, not through the
+  // document's).
+  check('release: precache complete', counts === 27, `${counts}/27`);
 
   // ---- offline: the whole point ----
   await ctx.setOffline(true);
@@ -145,6 +148,15 @@ try {
   await page.goto(`http://127.0.0.1:${relPort}/primer.html`, { waitUntil: 'load' });
   const primerOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
   check('OFFLINE: primer.html loads with content (also the mis-listed-seed assert — see header)', primerOk);
+  // §95 tier two — a LOCALIZED boot, offline. The locale tables arrive by
+  // dynamic import, which is the one class of URL that reaches the precache
+  // through the module walk rather than through a document's own markup; a
+  // German reader offline is exactly who would find that gap, and English
+  // prose under a German header is what they would see instead of a failure.
+  await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=de`, { waitUntil: 'load' });
+  const primerDe = await page.evaluate(() =>
+    document.documentElement.lang === 'de' && !/^What you are looking at/.test(document.querySelector('p.intro')?.textContent || ''));
+  check('OFFLINE: primer.html localizes (de table came from the cache)', primerDe);
   await page.goto(`http://127.0.0.1:${relPort}/index.html`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   await ctx.setOffline(false);
