@@ -146,6 +146,14 @@ it into prose either.
    holds that solve true and holds the ribbon inside real hairspring
    stock, 0.02–0.04 mm. Change the spiral's plan — coils, radii, height —
    and re-solve; never re-target the beat to match a spring),
+   and `equalisation` **0 failures** (TODO 32 — the going spring's torque
+   law is DERIVED from its ribbon and the fusee cut against it: the set-up
+   must land on an integer set-up-ratchet click, the level product
+   springTq·r/K must hold at float noise over the reserve, and both
+   mainspring ribbons' published sections must still describe the cut
+   metal. The alarm's k and moment range are REPORTED in the same record;
+   its cadence stays authored — torque→cadence needs a governor model,
+   item 32's open remainder — so no gate pretends to hold it),
    and `restoring` **0 unwaived, 0 malformed, 0 stale, control PASS**
    (§48's no-spring audit, gated by TODO 29 — every part that RECIPROCATES
    either has a restoring element that exists as a mesh, is driven both ways,

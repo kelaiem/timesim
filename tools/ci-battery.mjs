@@ -167,6 +167,14 @@ const BATTERY = [
     gate: 'the spring is cut to the beat, in real hairspring stock',
     fails: (r) => r.failures,
     note: (r) => `implied ${r.impliedHz} Hz vs spec ${r.specHz} Hz, ribbon ${r.spring.h_mm.toFixed(4)} mm (stock ${r.spring.windowMm[0]}–${r.spring.windowMm[1]})` },
+  // TODO 32 — the going spring's torque law is DERIVED now, and this holds
+  // the derivation: set-up quantised to the ratchet, the fusee's level
+  // product an identity at float noise, and both ribbons' published sections
+  // still describing the metal the records' k was computed from.
+  { name: 'equalisation', opts: {}, cost: 1,
+    gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
+    fails: (r) => r.failures,
+    note: (r) => r.summary },
   // §48's no-spring audit, gated for the first time (TODO 29). It was
   // exported and never registered, so nothing could run it — a clean report
   // from an instrument nobody runs looks like coverage and is not. §48's own
