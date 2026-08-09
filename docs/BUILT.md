@@ -8898,3 +8898,80 @@ coverage not moved (100% both languages, the one new key translated in
 the same landing). The battery is untouched by construction — the page is
 sim-code-free, and the one `src/main.js` edit is an href in the HUD's
 static template.
+
+### §95 tier two — the primer, localized
+
+§95 shipped English-first and said localization was a later tier on §73's
+pattern. This is that tier: `primer.html` in German and Chinese, at 100%
+coverage (91/91 keys in both), with the locale select in its header and the
+same reload-tier resolution as everything else (`?lang` → `localStorage` →
+`navigator.language`).
+
+**One engine, not a second copy.** §73's tier two lived in
+`src/explain-i18n.js`: the collector, the swap and the explainer's tables in
+one file. The moment a SECOND page wanted it, the choice was one engine with
+per-page tables or two copies of the collector — and two copies is the exact
+failure this tier already guards against, because extraction, verification and
+rendering must not be able to disagree about what "translatable" means. So the
+walk and the swap moved to `src/page-i18n.js`, and each page now contributes a
+dozen-line module that names its own tables and nothing else
+(`explain-i18n.js`, `primer-i18n.js`). `explain.html`'s import path and public
+API are unchanged; its 513 keys and 100% coverage did not move.
+
+`tools/explain-i18n.mjs` grew the `--page` it was always going to need — the
+filing predicted this, noting the tool "fetches explain.html by name in four
+places." `--check` with no page checks EVERY page, because a gate that only
+looks at the page you remembered to name is not a gate.
+
+**The number rule INVERTS between the two pages, and that is the interesting
+part.** `explain.html`'s numbers are identifiers being quoted: `0.15` must
+survive translation byte for byte, because the page's promise is that its
+numbers are greppable in `src/*.js`. CLAUDE.md called that "the one place tier
+one's `fmtNum` rule deliberately does not apply" — and the primer is the case
+that shows the rule was right to be stated as an exception. It quotes no
+identifiers, so its numbers are quantities being READ ALOUD, and a German
+reader is owed `0,024 mm` and `18.000` exactly as the app's chrome owes them
+`30,0 h`.
+
+So the gate is per page, and the page DECLARES which rule applies (its i18n
+module's `NUMBERS` export; the checker reads it rather than assuming). On a
+source page the check is glyph identity, as before. On a quantity page it is
+VALUE identity after locale parsing — `,` and `.` swap roles per locale, so
+`0,024` passes and `0,25` fails. Both directions were verified rather than
+assumed: the German table's localized punctuation passes, and an injected
+`0,25` fails with exit 1.
+
+Two things fell out of doing it, both real:
+
+- **A fixed header cannot be allowed to wrap.** Both pages' bars are
+  `position: fixed` above a constant body padding, so a second line does not
+  just look wrong — it covers the first paragraph. German (~30% longer) put
+  the primer's bar on two lines and clipped the intro, and `explain.html` was
+  already one cross-link away from the same fate after §95 added it. Every
+  item is now `nowrap` and the STAMP is the one that yields — it ellipses,
+  and below 820 px it leaves. It is the right thing to drop: the cross-links
+  are navigation, and the stamp restates what the page says in its own first
+  paragraph. Measured after: header 56 px, nothing clipped, no horizontal
+  scroll, across both pages × three languages × three widths.
+- **`explain-quotes` was measuring the FILE where its contract is about the
+  PAGE.** The primer's new module script tripped the identifier scan on
+  `import { UI_LANG }` — correct by the letter of "no identifier appears in
+  primer.html", wrong by its meaning. Markup and text are now scanned whole
+  while a script contributes only its STRING LITERALS, which is precisely the
+  part a reader can end up looking at; stripping scripts entirely would have
+  gone blind exactly when the primer gains its first interactive plate. That
+  fix needed a fix of its own, and it is the better story: an apostrophe in an
+  English comment (`rich blocks' innerHTML`) opens a phantom string literal
+  that runs to the next quote and drags real code in with it, which is how the
+  scan kept reporting a line it was supposed to have dropped. Comments come
+  out first now. All three states are verified — clean passes, a prose
+  identifier fails, an identifier inside a script's string literal fails.
+
+Measured: `explain-i18n --check` PASS on both pages (explain 513/513 de and
+zh, primer 91/91 de and zh, 0 unmatched, 0 markup/`<code>`/number drift, 0 new
+plate-fit collisions); `explain-quotes` PASS with 0 primer identifier claims
+and the explain verdicts unchanged; `offline-check` 22/22, the new check being
+a GERMAN primer booting offline — the locale tables arrive by dynamic import,
+the one class of URL that reaches the precache through the stamper's module
+walk rather than a document's markup, and a German reader offline is exactly
+who would have found that gap (precache 23 → 27).

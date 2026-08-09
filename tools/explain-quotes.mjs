@@ -144,7 +144,35 @@ if (VERBOSE) for (const r of agree) console.log(`     ok  ${r.name} = ${r.value}
 // a violation even without a number beside it: any SCREAMING_SNAKE token, and
 // any ALL-CAPS name the source declares (STOP-listed page furniture like
 // PLATE excepted, same as above).
-const primer = readFileSync(join(ROOT, 'primer.html'), 'utf8');
+// THE PAGE AS A READER SEES IT, not the file. §95 tier two gave the primer a
+// module script (it localizes like the explainer), and `import { UI_LANG }`
+// tripped this scan immediately — correctly, by the letter of "no identifier
+// appears in primer.html", and wrongly by its meaning: the promise in the
+// page's header is about what the page SAYS. A module's own machinery is not
+// a claim, and a <style> block is not prose.
+//
+// So markup and text are scanned whole, while a script contributes only its
+// STRING LITERALS — which is precisely the part of a script a reader can end
+// up looking at, since that is what a plate would write into the DOM. Strip
+// scripts entirely and this gate would go blind exactly when the primer gains
+// its first interactive plate.
+const primer = (() => {
+  const raw = readFileSync(join(ROOT, 'primer.html'), 'utf8');
+  return raw
+    .replace(/<style[\s\S]*?<\/style>/g, ' ')
+    .replace(/<script[\s\S]*?<\/script>/g, (block) => {
+      // COMMENTS COME OUT FIRST, and that is not tidiness. An apostrophe in
+      // English prose — "rich blocks' innerHTML" — opens a phantom string
+      // literal that runs to the next quote and drags real code in with it,
+      // which is exactly how this scan reported `UI_LANG` from a line it was
+      // supposed to have dropped. Line comments are only stripped at line
+      // START, so a '//' inside a URL literal survives.
+      const code = block
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, ' ');
+      return (code.match(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`/g) || []).join(' ');
+    });
+})();
 const pClaims = [];
 const pAdd = (name, ctx) => { if (!STOP.has(name)) pClaims.push({ name, ctx: ctx.replace(/\s+/g, ' ').slice(0, 76) }); };
 for (const m of primer.matchAll(/<code>([A-Za-z_][\w]{2,})\s*=\s*(-?\d+(?:\.\d+)?)\s*(°)?\s*(?:rad|mm|u)?\s*<\/code>/g)) pAdd(m[1], m[0]);

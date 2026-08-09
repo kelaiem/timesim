@@ -75,23 +75,40 @@ reaches `textContent`, `title`, `placeholder` and `aria-label`. Numbers
 go through `fmtNum`/`fmtInt` at the display layer only (German reads
 `30,0 h` and `18.000 A/h`; the stored value keeps its `.`). Locale is
 reload-tier (§22's precedent), so there is exactly one path that builds
-a localized panel. **`explain.html` is localized too** (§73 tier two):
-`src/explain-i18n.js` + one table per locale, keyed by the English source —
-rich blocks by their normalized `innerHTML`, so a sentence's inline markup
-travels with it. EDITING THE ENGLISH INVALIDATES ITS TRANSLATION BY DESIGN:
-the key stops matching and that block renders English until re-translated,
-which beats a stale paragraph confidently describing changed prose. Never
-retype a key — `node tools/explain-i18n.mjs --extract` regenerates them from
-the DOM; `--check` is the gate (0 unmatched keys, 0 markup/`<code>`/id drift,
-0 plate-number drift, and no label overrunning its plate against the English
-baseline). A second instrument, `node tools/explain-quotes.mjs`, answers the
-older question the page's header promises — do its numbers still match
+a localized panel. **The static pages are localized too** (§73 tier two,
+§95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
+copy — and each page adds a dozen-line module naming its own tables
+(`src/explain-i18n.js`, `src/primer-i18n.js`), one per locale, keyed by the
+English source. Rich blocks are keyed by their normalized `innerHTML`, so a
+sentence's inline markup travels with it. EDITING THE ENGLISH INVALIDATES ITS
+TRANSLATION BY DESIGN: the key stops matching and that block renders English
+until re-translated, which beats a stale paragraph confidently describing
+changed prose. Never retype a key —
+`node tools/explain-i18n.mjs --extract --page <name>` regenerates them from the
+DOM; `--check` is the gate and with no `--page` it checks EVERY page (0
+unmatched keys, 0 markup/`<code>`/id drift, 0 number drift, and no label
+overrunning its plate against the English baseline). **A translated header must
+not wrap**: both bars are `position: fixed` above a constant body padding, so a
+second line covers the first paragraph — every item is `nowrap` and the stamp
+is the one that yields (ellipsis, then hidden under 820 px). German found that.
+
+A second instrument, `node tools/explain-quotes.mjs`, answers the
+older question `explain.html`'s header promises — do its numbers still match
 `src/*.js`? — comparing every quoted constant against the source (literals
 and expressions it can resolve; the rest reported, never silently passed).
-Both run in one fast CI workflow, separate from the battery. The explainer's numbers stay
-in SOURCE form in every language — they are identifiers being quoted, not
-quantities being read aloud, which is the one place tier one's `fmtNum` rule
-deliberately does not apply.
+The same instrument holds `primer.html` to the OPPOSITE promise: zero source
+identifiers, scanned as a reader sees the page (markup and text whole, a
+script contributing only its string literals — machinery is not a claim).
+Both run in one fast CI workflow, separate from the battery.
+
+**The two pages disagree about numbers on purpose, and each page DECLARES its
+rule** (its i18n module's `NUMBERS` export; the checker reads it rather than
+assuming). The explainer's numbers stay in SOURCE form in every language —
+identifiers being quoted, not quantities being read aloud, which is the one
+place tier one's `fmtNum` rule deliberately does not apply. The primer quotes
+no identifiers, so its numbers ARE quantities and tier one's rule applies
+normally: German reads `0,024 mm` and `18.000`, and the gate compares parsed
+VALUES, so the punctuation is free to localize and the quantity is not.
 
 New feature → file it in `BACKLOG.md` in the private `timesim-roadmap`
 repo, not here. Something already built is lying
