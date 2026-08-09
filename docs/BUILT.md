@@ -8767,3 +8767,134 @@ without a warning.
   the pusher cap. That is the hit test being honest — `alarmColumnHitTest`
   accepts the whole switch unit as one control — rather than the ring being
   wrong.
+
+## §95 — A primer page: the explainer for readers who don't read the source
+
+Filed from an owner decision after timesim#189, where one hacking-seconds
+plate had to serve two audiences in the same figure: a novice's misreading
+("the pad's station is a circle — there is no gap to aim at") and a
+contributor's derivation, three quoted constants below it.
+
+**The problem was a page paying two audiences in one paragraph.**
+`explain.html`'s whole contract is contributor-facing, deliberately: its
+header promises "values quoted from src/*.js", `tools/explain-quotes.mjs`
+holds that promise as an exit code, and plates quote constant names
+because the § convention is "the number IS the identifier." It is, in
+everything but filename, the movement's repair manual. A curious reader
+with physics 101 needs a different page — torque and inertia as ideas,
+`√(k/I)` as the reason a balance keeps time, gear ratios as arithmetic
+you can check on your fingers — and NO identifiers, because to that
+reader a constant name is noise standing where an explanation should be.
+
+**Why a second page, not a rewrite — two rejected shapes, recorded.**
+Refocusing `explain.html` on novices was rejected: its prose is keyed
+into the repo's two largest translation tables (~500 de/zh keys), editing
+the English invalidates translations BY DESIGN, and a novice rewrite
+would strip the quotes gate of its subject while demoting a page already
+doing its job. One-page-two-tiers (a collapsible "the numbers" block per
+entry) was rejected: it muddies the header's one-sentence promise,
+doubles every entry, and makes the i18n keys carry both registers at
+once. A separate page keeps both contracts clean and each page's gate
+about one thing.
+
+### What shipped
+
+**The page.** `primer.html` — same visual system as `explain.html` (dark
+HUD styling, `details.mech` sections, SVG plates), opposite contract,
+stated in its header stamp the way the technical page states its own:
+*quantities rounded, with units · no source identifiers*. Nine entries in
+power-flow order: the mainspring as bent steel, the fusee as
+pull-times-lever-arm, the train as checkable multiplication (one turn in
+8 hours becomes one turn in 6 seconds; 12:1 from 3 × 4), the escapement
+as held-then-released, isochronism as the amplitude falling out of the
+formula, the keyless works, the alarm, the gong's inharmonic partials,
+and a closing entry that teaches the repo's modelled-vs-simulated
+vocabulary in plain words — because that honesty rule binds this prose
+exactly as it binds the technical page, and several entries carry their
+own plain-language honesty notes (the authored strike tempo; the
+scaled-down drawn amplitude). English-first; localization is a later tier
+on §73's pattern (the i18n tooling hardcodes `explain.html` by name in
+four places, so the primer earning translation is also the change that
+gives that tool a page parameter).
+
+**The links.** The HUD's one link site (§65's "Mechanisms · How they
+work" row) now fronts the primer — the sim's default audience is the
+curious visitor — and each page cross-links the other in its header
+("want the numbers? →" / "just want to understand it? →"). One deviation
+from the filing, in the cheap direction: the HUD row's STRINGS are
+unchanged, so its existing tier-one translations carry over and
+`src/i18n.js` needed nothing. The new header link on `explain.html` is a
+new translatable key and was translated into both tables in the same
+landing — coverage held at 100% (513/513 both languages) rather than
+moving.
+
+**The gate.** `explain-quotes.mjs` now also scans `primer.html` and
+requires ZERO identifier claims — the identifier-free rule enforced by
+the same instrument that enforces the opposite rule next door. It runs
+the same claim extractors the explain half uses, plus a broader sweep the
+primer alone gets: any SCREAMING_SNAKE token, and any ALL-CAPS name
+`src/*.js` declares (STOP-listed page furniture like PLATE excepted),
+because on this page an identifier is a violation even without a number
+beside it. The gate was proven able to fail before it was trusted to
+pass: an injected constant name produced 2 findings and exit 1.
+`explain-i18n.yml`'s paths filter gains `primer.html` so the page
+changing re-runs it; the explain half's verdicts were untouched.
+
+### The shipping checklist, and where the filing's plan met the archive
+
+The filing said: hardcode the new page into every list (`stamp-release`'s
+seeds and both document loops, `build-pages`' lists, `offline-check`'s
+copies, two workflows' paths filters), because nothing discovers pages
+and `test-geometry.html` shipped unstamped for sixty sections. All of
+that happened — with one structural correction the §88 machinery forced.
+
+**A hard seed assert would have frozen Pages.** `pages.yml` stamps
+testing and production from trees archived at their release TAGS, with
+main's tooling — and every tag cut before §95 has no `primer.html`.
+`stamp-release.mjs`'s seed check is a hard exit, so the filing's
+unconditional list would have failed every Pages deploy (all three
+environments — one artifact) until a release carrying the page was cut
+AND manually promoted. `test-geometry.html` never met this in §88 because
+it existed in every old tag; §95 is the first page ADDED after the
+archive-stamping machinery, so it is the first to need an answer. The
+answer: the primer joins as an ADOPTED seed — present, it is stamped,
+precached, version-baked and scanned like the other documents; absent,
+the stamper says "pre-§95 tree, stamping without it" and proceeds,
+because a pre-§95 tree is a normal input, not a broken one. What absence
+must never be is a silent typo, and the discriminating assert lives where
+the two cases split: `offline-check.mjs` builds its trees from the SOURCE
+checkout — where the page does exist, copied by a hard list that throws
+if it is missing — and boots `primer.html` OFFLINE (check 10 of its 21).
+A mis-listed seed drops the primer from the precache and that boot fails.
+`build-pages.mjs` filters the same way for the same reason; the primer
+gets `explain.html`'s environment treatment (indexable in production,
+noindex elsewhere), not `test-geometry.html`'s (noindex everywhere).
+
+**A six-section-old bug surfaced under the new page's feet.** The
+stamper's app-version bake tested presence with `/name=["']app-version["']/`
+— and `explain.html`'s own §79 registration script contains that exact
+text, inside `querySelector('meta[name="app-version"]')`. The test read
+the page's selector as "meta already present", skipped the insert, found
+no actual tag to update, and shipped `explain.html` WITHOUT a baked
+version in every release since §79 — meaning its release-gated worker
+registration never fired on a direct landing. Invisible, because
+`index.html`'s worker controls the whole scope once the app has been
+visited, so every offline assert passed. The primer registers the worker
+the same way and would have inherited the same dead code. Fixed at the
+source: the presence test now matches the TAG (`/<meta\s+name=…/`), and a
+new assert reads the bake back — every stamped document must carry its
+version meta or the stamp exits 1, because this failure was silent for
+six sections precisely because nothing read the result back.
+
+### Acceptance, measured
+
+The primer ships stamped in the change that creates it — the §88 leftover
+scan covers it and reports nothing unversioned; `offline-check` 21/21,
+including the primer booting offline in a release tree and the two-
+environment origin; both pages cross-link; `explain-quotes` reports 0
+identifier claims on `primer.html` with the explain verdicts unchanged
+(26 agree, 3 opaque, 0 disagree); `explain-i18n --check` passes with
+coverage not moved (100% both languages, the one new key translated in
+the same landing). The battery is untouched by construction — the page is
+sim-code-free, and the one `src/main.js` edit is an href in the HUD's
+static template.

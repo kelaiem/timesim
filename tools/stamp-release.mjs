@@ -51,6 +51,21 @@ let rewrites = 0;
 // pages that otherwise load. Safari uses favicon.png as an SVG fallback.
 const SEEDS = ['index.html', 'explain.html', 'test-geometry.html',
   'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png'];
+// §95 — primer.html ships stamped from the PR that creates it: the payload
+// half of "in the payload and stamped are the same decision" happens for free
+// (payload.sh is an exclude list), and this list is the half that does not.
+// It is NOT in SEEDS' hard assert, because this stamper also runs over
+// ARCHIVED trees: pages.yml stamps testing and production from their release
+// tags with MAIN's tooling, and every tag cut before §95 has no primer to
+// stamp — a hard assert would refuse to build those environments until a
+// release carrying the page was cut AND promoted. Absence is tolerated and
+// SAID (a pre-§95 tree is a normal input, not a broken one). What absence
+// must never be is a silent typo: the case split lives in
+// tools/offline-check.mjs, which builds its trees from the SOURCE checkout —
+// where the page does exist — and boots the primer OFFLINE, so a mis-listed
+// seed drops it from the precache and that boot fails.
+const ADOPTED = ['primer.html'].filter((f) => existsSync(f));
+if (ADOPTED.length === 0) console.log('stamp-release: primer.html absent — pre-§95 tree, stamping without it');
 // A seed is listed by NAME, not discovered by the walk, so a typo or a file the
 // payload does not carry is invisible here and fatal at the far end: addAll is
 // all-or-nothing, so a worker that precaches one URL the release lacks NEVER
@@ -64,13 +79,15 @@ for (const f of SEEDS) {
     process.exit(1);
   }
 }
-const precache = new Set(SEEDS);
+const precache = new Set([...SEEDS, ...ADOPTED]);
 
 // The documents: module entry points, importmap targets, and (explain.html)
-// the explainer's module imports. Both carry the baked app-version meta —
-// index.html so layer 2 can compare baked-vs-live, explain.html so its §79
-// worker registration has the same "am I a release" signal without a fetch.
-for (const doc of ['index.html', 'explain.html', 'test-geometry.html']) {
+// the explainer's module imports. All carry the baked app-version meta —
+// index.html so layer 2 can compare baked-vs-live, explain.html and
+// primer.html so their §79 worker registrations have the same "am I a
+// release" signal without a fetch.
+const DOCS = ['index.html', 'explain.html', ...ADOPTED, 'test-geometry.html'];
+for (const doc of DOCS) {
   let html = readFileSync(doc, 'utf8');
   html = html.replace(/(["'])(\.\/(?:vendor|src)\/[^"'?]+?)(["'])/g, (_m, a, url, b) => {
     rewrites++;
@@ -83,10 +100,25 @@ for (const doc of ['index.html', 'explain.html', 'test-geometry.html']) {
   // the server serves now. Reading "what am I running" from a runtime fetch
   // would report the NEW version even when the browser replayed an old cached
   // index.html — the one case layer 2 exists for, silently undetectable.
-  if (/name=["']app-version["']/.test(html)) {
+  // The presence test must match the TAG, not the string: explain.html and
+  // primer.html carry `meta[name="app-version"]` inside their own inline
+  // registration scripts, and until §95 the looser /name=["']…/ test read
+  // that selector text as "meta already present", skipped the insert, found
+  // no tag to update — and shipped explain.html with NO baked version at all.
+  // Its release-gated worker registration was therefore inert on direct
+  // landings for every release since §79, invisibly: index.html's worker
+  // controls the whole scope once the app has been visited, so every
+  // offline assert still passed.
+  if (/<meta\s+name=["']app-version["']/.test(html)) {
     html = html.replace(/(<meta\s+name=["']app-version["']\s+content=)["'][^"']*["']/, `$1"${version}"`);
   } else {
     html = html.replace(/<\/head>/, `<meta name="app-version" content="${version}" />\n</head>`);
+  }
+  // And assert the bake LANDED — the failure above was silent for six
+  // sections precisely because nothing read the result back.
+  if (!new RegExp(`<meta\\s+name=["']app-version["']\\s+content=["']${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`).test(html)) {
+    console.error(`stamp-release: ${doc} did not receive its app-version meta — the document would ship unable to say what release it is`);
+    process.exit(1);
   }
   writeFileSync(doc, html);
 }
@@ -122,7 +154,7 @@ for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
 // a silently-missed import is exactly how this class of bug survives.
 const leftovers = [];
 const scan = (p, re) => { const s = readFileSync(p, 'utf8'); let m; while ((m = re.exec(s))) leftovers.push(`${p}: ${m[0].trim()}`); };
-for (const doc of ['index.html', 'explain.html', 'test-geometry.html'])
+for (const doc of DOCS)
   scan(doc, /["']\.\/(?:vendor|src)\/[^"'?]+["']/g);
 for (const f of readdirSync('src').filter((n) => n.endsWith('.js'))) {
   scan(join('src', f), /\bfrom\s+['"]\.\.?\/[^'"?]+['"]/g);

@@ -11728,10 +11728,14 @@ panel.innerHTML = `
       </div>
       <!-- §65: the mechanism explainer — a maintained companion page in the
            HUD's own visual language; a plain link, not a mode, so it costs
-           the panel nothing. -->
+           the panel nothing. §95: the link's front door is now the PRIMER
+           (the sim's default audience is the curious visitor, not the
+           contributor); each page cross-links the other in its header, so
+           the technical page is one click further, not gone. The strings
+           are unchanged, so their tier-one translations carry over. -->
       <div class="row">
         <span class="label-small">Mechanisms</span>
-        <a class="ui-link" href="./explain.html">How they work</a>
+        <a class="ui-link" href="./primer.html">How they work</a>
       </div>
       <!-- §66 part one: the schematic tier — draw the model, not the metal -->
       <div class="row">

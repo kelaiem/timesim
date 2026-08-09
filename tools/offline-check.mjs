@@ -14,9 +14,13 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (20): worker controls on first load · one cache, named for
+// What it asserts (21): worker controls on first load · one cache, named for
 // the scope AND the version · version.json and /__state NOT cached · precache
-// complete · OFFLINE: index boots, deep link boots, explain.html renders ·
+// complete · OFFLINE: index boots, deep link boots, explain.html renders,
+// primer.html renders (§95 — this boot is also the assert that catches a
+// mis-listed primer seed: the stamper tolerates an absent primer because
+// archived pre-§95 trees legitimately lack one, so only HERE, where the tree
+// is built from the source checkout, can absence-by-typo be told apart) ·
 // deploy → toast → Reload lands on the NEW version and drops the old cache ·
 // TWO ENVIRONMENTS UNDER ONE ORIGIN keep one cache each and both still boot
 // offline (§88) · the source tree registers NO worker · a hand-registered stub
@@ -68,7 +72,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'test-geometry.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -119,10 +123,11 @@ try {
   const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), cacheA);
   check('release: /__state NOT in the cache', !stateCached);
   const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, cacheA);
-  // 22 since PNG fallbacks: 20 + favicon.png (Safari SVG fallback) +
-  // apple-touch-icon.png (iOS home screen). All are unstamped seeds, referenced
-  // by stable path from the documents and manifest.
-  check('release: precache complete', counts === 22, `${counts}/22`);
+  // 23 since §95: 20 + favicon.png (Safari SVG fallback) + apple-touch-icon.png
+  // (iOS home screen) + primer.html (§95 — the novice explainer, an unstamped
+  // seed like the other documents). All are referenced by stable path from the
+  // documents and manifest.
+  check('release: precache complete', counts === 23, `${counts}/23`);
 
   // ---- offline: the whole point ----
   await ctx.setOffline(true);
@@ -137,6 +142,9 @@ try {
   await page.goto(`http://127.0.0.1:${relPort}/explain.html`, { waitUntil: 'load' });
   const explainOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
   check('OFFLINE: explain.html loads with content', explainOk);
+  await page.goto(`http://127.0.0.1:${relPort}/primer.html`, { waitUntil: 'load' });
+  const primerOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
+  check('OFFLINE: primer.html loads with content (also the mis-listed-seed assert — see header)', primerOk);
   await page.goto(`http://127.0.0.1:${relPort}/index.html`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   await ctx.setOffline(false);
