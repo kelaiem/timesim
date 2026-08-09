@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
-import { STOCK_MIN_U, CLEAR_MARGIN } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else
+import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40)
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -1697,15 +1697,55 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // radii: with the groove cut exactly one plate half-width deep, the chain's
 // centreline lies ON the envelope, so these stay the torque radii the
 // S(t)·r_f(t) equalisation was solved against.
+// envR (TODO 40 row 1): the land-crest envelope as a function of band
+// fraction, supplied by the caller because the CURVE is the equalisation's,
+// not this builder's — a straight generator cannot level a linear spring's
+// product, so the shipped cone hands in r = K / S(t) and the flank comes out
+// concave, as a real fusee's is. Omitted (test pages), the envelope falls
+// back to the straight generator between the two end radii.
+//
+// reliefHalf (TODO 40 row 1, the cut): half the chain's axial stack. The
+// chain is an axis-aligned box train — pin axes parallel to the arbor, as on
+// the real thing — so each wrap's box spans ±reliefHalf in z around its
+// groove point, and on a steep flank the box's LOWER half overhangs metal
+// the radial-depth cut left standing: a radial cut only fits while
+// |dr/dz| ≤ grooveD / reliefHalf (2.42 in the shipped stock), and the
+// equalising hyperbola runs 5.28 at its base. So the floor at height z is
+// relieved to clear the box of the HIGHEST wrap covering z (the envelope
+// falls with z, so that wrap is the binding one):
+//
+//   floorAt(z) = env(clamp((z − bandZ0 + reliefHalf) / bandSpan, 0, 1)) − grooveD
+//
+// — the envelope sheared down by half a stack, minus the same depth. At
+// reliefHalf = 0 this is exactly the un-relieved law, which is why the
+// legacy/test path needs no second branch. The ideal wrap box touches this
+// floor along its bottom-inner corner and clears it everywhere else, which
+// is what the §61 seating row now measures (userData.groove.floorAt below).
 export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
-                            grooveW, grooveD, bandZ0, bandSpan }) {
+                            grooveW, grooveD, bandZ0, bandSpan, envR = null,
+                            reliefHalf = 0 }) {
   const g = new THREE.Group();
   // Legacy proportions when the caller doesn't specify the cut (test pages).
   if (grooveD === undefined) grooveD = Math.min((rLarge - rSmall) * 0.1, 0.5);
   if (grooveW === undefined) grooveW = (0.88 * height) / grooveTurns * 0.8;
   if (bandZ0 === undefined) bandZ0 = height * 0.06;
   if (bandSpan === undefined) bandSpan = height * 0.88;
-  const env = (f) => rLarge + (rSmall - rLarge) * f;      // land-crest envelope
+  const env = envR || ((f) => rLarge + (rSmall - rLarge) * f); // land-crest envelope
+  // The relieved groove floor — ONE law for the seat, the band and the tip
+  // runout (the clamp handles all three), shared with the §61 seating
+  // instrument via userData.groove so the cut and the check cannot drift
+  // apart: they hold the same closure.
+  const floorAt = (z) =>
+    env(Math.min(Math.max((z - bandZ0 + reliefHalf) / bandSpan, 0), 1)) - grooveD;
+  // The core is lathed at NCORE stations; a straight generator is exact at
+  // any count, a curved one is not, so the count is what decides how much of
+  // the curve survives. Measured on the shipped hyperbola, worst chord sag
+  // against the true profile, near the base where it bends hardest:
+  //   12 → 0.0400   24 → 0.0112   48 → 0.0030   96 → 0.0008
+  // 48 is the first that lands an order of magnitude inside the 0.08 the §61
+  // chain-seating budget works to, so the facets cannot be what a seating row
+  // is measuring. The straight case keeps 12: exact is exact.
+  const NCORE = envR ? 48 : 12;
   // GROOVED core (§61). The old build ran a smooth core at the envelope with
   // a proud wire ridge whose "channel between adjacent flange turns,
   // comfortably wider than the chain's diameter" was false arithmetic —
@@ -1721,14 +1761,16 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // disc passed straight through the chain's lowest turn once the chain was
   // drawn at true scale (its underside overhangs the base plane; the
   // maintaining sandwich below is derived off exactly that overhang).
-  const seatR = rLarge - grooveD - 0.02;
+  // floorAt(0), not rLarge − grooveD: the bottom wrap's box reaches
+  // reliefHalf below its groove point, so the seat plane z = 0 is already
+  // inside that box's span and owes it the same relief as the band.
+  const seatR = floorAt(0) - 0.02;
   pts.push(new THREE.Vector2(seatR, 0));
-  const NCORE = 12;
   for (let i = 0; i <= NCORE; i++) {
-    const f = i / NCORE;
-    pts.push(new THREE.Vector2(env(f) - grooveD, bandZ0 + bandSpan * f));
+    const z = bandZ0 + bandSpan * (i / NCORE);
+    pts.push(new THREE.Vector2(floorAt(z), z));
   }
-  pts.push(new THREE.Vector2(rSmall - grooveD, height - 0.02));
+  pts.push(new THREE.Vector2(floorAt(height - 0.02), height - 0.02));
   pts.push(new THREE.Vector2(rSmall * 0.45, height));
   // LatheGeometry revolves about +Y; every arbor here spins about +Z, so
   // stand the cone up (profile height axis Y → Z).
@@ -1760,7 +1802,18 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     // half a pitch up a cone this steep is ~0.6 of radius, and sampling the
     // lower station left the crest that far proud on the uphill side.
     const fLand = t + (pitch / 2) / bandSpan;
-    const rIn = env(fLand) - grooveD, rOut = env(fLand);
+    // Inner rail on the RELIEVED floor; outer rail at the envelope, capped by
+    // §54's build-to proportion (SLENDER_TARGET · width — layout.js, the same
+    // number the slenderness check enforces). Un-relieved, full height is
+    // grooveD and the cap never binds (0.66 < 27·0.025). Relieved, the crest
+    // at the steep base would be grooveD + relief ≈ 1.2 over a 0.025 width —
+    // λ ≈ 48 against §54's 30 — so it honestly stops short of the envelope
+    // there: on that stretch the chain is retained by the step of the turn
+    // below (the un-relieved metal between wraps) and by its own departing
+    // tangent, which is what the base of a real steep-flanked fusee looks
+    // like. A fin nobody could cut is not a land.
+    const rIn = floorAt(zc);
+    const rOut = Math.min(env(fLand), rIn + SLENDER_TARGET * landW);
     const ca = Math.cos(a), sa = Math.sin(a);
     for (const [r, dz] of [[rIn, -landW / 2], [rOut, -landW / 2], [rOut, landW / 2], [rIn, landW / 2]])
       pos.push(ca * r, sa * r, zc + dz);
@@ -1779,10 +1832,14 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   g.userData.rLarge = rLarge;
   g.userData.height = height;
   g.userData.grooveTurns = grooveTurns;
-  // §61 — the cut, exported for the chain-seating instrument: the check
-  // measures the chain mesh against the same analytic floor this geometry
-  // was built from, so the two cannot drift apart.
-  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW };
+  // §61 — the cut, exported for the chain-seating instrument. Since TODO 40
+  // the export carries floorAt ITSELF — the closure the lathe just consumed —
+  // so "the check measures the same analytic floor this geometry was built
+  // from" is true by identity rather than by a re-derivation kept in step.
+  // (The first hyperbolic cut proved the distinction: the check went on
+  // reconstructing a straight chord from rLarge/rSmall and measured against
+  // a floor ~1.3 outside the metal at mid-band.)
+  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, floorAt };
   return g;
 }
 

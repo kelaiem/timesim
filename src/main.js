@@ -353,10 +353,13 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // ≥ 16.4, so the cone's large end passes the third wheel's rim with margin.
 // Cone SIZED to what its grooves actually need — and, since §61, the
 // grooves are REAL: a helical channel cut into the cone, one plate
-// half-width deep, so the chain's inner edge rides the groove floor and
-// its centreline stays on the land-crest envelope (= the torque radii the
-// S·r_f equalisation was solved against — the cut makes the shipped
-// centreline convention honest instead of buried).
+// half-width deep at the wrap's own station, with the chain's centreline on
+// the land-crest envelope (= the torque radii the S·r_f equalisation was
+// solved against — the cut makes the shipped centreline convention honest
+// instead of buried). Since TODO 40 the floor is additionally RELIEVED by
+// half the chain's stack (see reliefHalf at the makeFusee call): on the
+// equalising hyperbola's steep base, un-relieved metal below the groove
+// stood into the chain's lower half.
 // §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
 // The reserve entry's one catch, closed: the wrap count, the groove turns
 // and the height are all functions of hours/8, so changing the reserve
@@ -393,7 +396,36 @@ const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 0.695 at the 30 h
 const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.025 — the z budget's slack, made visible
 if (FUSEE_LAND_W < 0.02)
   console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
-const FUSEE_R_SMALL = 2.6, FUSEE_R_LARGE = 7.4;
+// THE CONE'S PROFILE — solved from the equalisation, not chosen to look like
+// one (TODO 40 row 1). The job is to hold S(t)·r(t) constant while S falls,
+// and a STRAIGHT generator cannot: with S linear rising and r linear falling
+// the product is a parabola, level at the two ends by construction and 34%
+// over in the middle. The curve that does hold it is r = K / S(t) — a
+// hyperbola, which is why a real fusee's flank is visibly concave.
+//
+// Two constants fix it, and only one of them is free here:
+//  · FUSEE_R_LARGE is a LAYOUT number, held: the drum's station is derived
+//    from it (drumPos below) and the base seat, the maintaining sandwich and
+//    the chain's swept fan all hang off that station. Position space is not
+//    what a profile problem gets to spend (CLAUDE.md's P3 rule).
+//  · K, the constant product, is then forced: at the bottom of the wrap the
+//    spring is at its weakest, so K = FUSEE_R_LARGE · SPRING_TQ_MIN.
+// Everything else about the cone — its small radius included — falls out.
+const SPRING_TQ_MIN = 0.35;   // the authored spring law's empty end (TODO 32 owns the law itself)
+const springTorqueAt = (t) => SPRING_TQ_MIN + (1 - SPRING_TQ_MIN) * t; // t: 0 empty … 1 wound
+const FUSEE_R_LARGE = 7.4;
+const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_MIN; // 2.59 — the level product, as a radius
+// The envelope at band fraction f. The wrap occupies f ∈ [0, FUSEE_F_ACTIVE]
+// and maps to reserve t = f / FUSEE_F_ACTIVE; past it the cut runs on to the
+// tip carrying the runout, so the law is simply evaluated at t > 1 there.
+const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(f / FUSEE_F_ACTIVE);
+// ...which makes the small radius a CONSEQUENCE. 2.4824 at the band's top,
+// and 2.59 at the top of the WRAP, where the chain actually stops — the old
+// hand-picked 2.6 was within 0.4% of that second number, which is the sense
+// in which the S(1)/S(0) = 2.857 ratio was right about the ends and only the
+// ends. (This is the tip: what the equalisation multiplies by is the working
+// radius, and the HUD reads that through fuseeGrooveAt.)
+const FUSEE_R_SMALL = fuseeEnvR(1);
 const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 2.95 — the band plus its insets, nothing else
 // Base DERIVED from the plate's design goal. The old bind (the chain's
 // lowest span clearing the movement-side crown wheel) vanished when the
@@ -426,6 +458,20 @@ const fusee = G.makeFusee({
   // and the chain path (fuseeGrooveAt) read the same constants.
   grooveW: FUSEE_GROOVE_W, grooveD: FUSEE_GROOVE_D,
   bandZ0: FUSEE_BASE_INSET, bandSpan: FUSEE_BAND,
+  // TODO 40 row 1 — the flank is the equalisation's own curve, handed to the
+  // builder rather than re-stated there. rSmall/rLarge stay the band's end
+  // radii (the builder still seats the base and closes the tip on them);
+  // what envR changes is everything between.
+  envR: fuseeEnvR,
+  // ...and the curve forces the RELIEVED cut. A radial-depth groove fits a
+  // flank only while |dr/dz| ≤ grooveD / (chain half-stack) = 0.66 / 0.33 =
+  // 2.42; the hyperbola runs 5.28 at its base (79.3° from the axis, against
+  // the straight cone's 59.9°), so there the metal half a stack below the
+  // groove stood up to 1.22 proud of the chain's inner-bottom corner — the
+  // §61 seating row's red 1.989. The builder relieves the floor by exactly
+  // this half-stack; the chain's CENTRELINE stays on the envelope, so the
+  // torque radii and the wrap integral above are untouched.
+  reliefHalf: CHAIN_PIN_LEN / 2,
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -3263,10 +3309,10 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // profile and the spring model are chosen so S(t)·r_f(t) is constant:
 // S = 0.35 + 0.65·t (linear spring), r_f = lerp(rLarge, rSmall, t), with
 // rLarge/rSmall = S(1)/S(0) = 2.857. §61: r_f is the chain's CENTRELINE
-// radius, and the groove cut (one plate half-width deep, floor at
-// envelope − half-width) is what makes the envelope constants above BE the
-// centreline radii — the equalisation reads the same numbers the geometry
-// now honestly delivers.
+// radius, and the groove cut — one plate half-width deep at the wrap's own
+// station, floor relieved a half-stack below it (TODO 40) — is what makes
+// the envelope constants above BE the centreline radii: the equalisation
+// reads the same numbers the geometry now honestly delivers.
 // ---------------------------------------------------------------------------
 const DRUM_R = DRUM_R_ACTUAL;
 // §61 — the chain wraps the drum at its CENTRELINE radius, one plate
@@ -3276,16 +3322,40 @@ const DRUM_R = DRUM_R_ACTUAL;
 // rotation↔tension bookkeeping and the hook-congruence solve below all
 // read this constant, not the bare wall.
 const DRUM_WRAP_R = DRUM_R + CHAIN_END_R_OUT;
-const FUSEE_AVG_R = (FUSEE_R_SMALL + FUSEE_R_LARGE) / 2;
 // (§22: FUSEE_WRAP_TURNS is declared with the cone build above — one spec
 // derivation, no longer a duplicate literal of RESERVE_BARREL_TURNS.)
-const CHAIN_ENGAGED = 2 * Math.PI * FUSEE_AVG_R * FUSEE_WRAP_TURNS; // chain length over a full reserve, at CENTRELINE radii (honest since the §61 cut)
+//
+// HOW MUCH CHAIN IS ON THE CONE AT RESERVE t — integrated, not averaged
+// (TODO 40 row 3). Each turn of wrap takes up 2π·r at the radius it sits at,
+// so the total is ∫2π·r ds over the turns, and the old
+// `2π·FUSEE_AVG_R·FUSEE_WRAP_TURNS` was that integral with the mean radius
+// guessed. It was wrong twice over: the mean of the END radii is not the
+// mean of a LINEAR sweep between them once FUSEE_F_ACTIVE holds the top
+// wrap off the tip, and it is not the mean of the hyperbola at all. With
+// r = K/S the integral is closed-form —
+//   ∫₀^{tW} 2πK/S(s/W) ds = 2πKW/(1−Smin) · ln(S(t)/Smin)
+// — which is exact rather than approximate, and is the same expression the
+// drum's rotation is derived from below, so the two cannot disagree.
+const fuseeChainTo = (t) =>
+  ((2 * Math.PI * FUSEE_TORQUE_K * FUSEE_WRAP_TURNS) / (1 - SPRING_TQ_MIN))
+  * Math.log(springTorqueAt(t) / SPRING_TQ_MIN);
+const CHAIN_ENGAGED = fuseeChainTo(1); // chain the cone gathers over a full wind, at CENTRELINE radii (§61)
 // The drum's own travel over that reserve — all the chain, taken up at the
 // feed radius. It was written out three times (the chain rebuild, the tick,
 // and nothing else that knew it); it is now also the MAINSPRING's wind range,
 // because the drum turning against a static arbor IS the spring winding, so
 // the three readings have to be one number. (TODO 1)
 const DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R;
+// ...and the drum's angle AT ANY STATE, which is the same accounting rather
+// than a straight line drawn between its ends (TODO 40 row 3). Whatever the
+// cone is not holding, the drum is, so the drum has turned by the chain that
+// came off the cone divided by the feed radius. The old `(1 − t)·
+// DRUM_ROT_FULL` was linear in the reserve while the cone's take-up never
+// has been — with the straight generator that mismatch put ~9% more links in
+// the run at mid-reserve than at either end, measured on the shipped mesh:
+// the chain grew and shrank as the watch ran. A chain is a fixed length of
+// steel, and this is the expression that makes the model say so.
+const drumRotAt = (t) => (CHAIN_ENGAGED - fuseeChainTo(t)) / DRUM_WRAP_R;
 // The static arbor's spring seat inside the drum, built with the set-up work
 // far below — hoisted here because the ribbon's inner coil BEARS on it, so the
 // spring's inner radius and its section both derive from this number now
@@ -3630,10 +3700,11 @@ function buildChainLinkGeometry(curve) {
   return geo;
 }
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
-  return {
-    r: FUSEE_R_LARGE + (FUSEE_R_SMALL - FUSEE_R_LARGE) * f,
-    z: FUSEE_Z0 + FUSEE_ZSPAN * f,
-  };
+  // ONE law for the flank, shared with the cone the chain rides (fuseeEnvR
+  // is what makeFusee lathed) — the groove centreline lies on the envelope
+  // by the §61 cut, so this is the radius the chain pulls at, and the HUD's
+  // torque readout takes it from here rather than re-deriving it.
+  return { r: fuseeEnvR(f), z: FUSEE_Z0 + FUSEE_ZSPAN * f };
 }
 // --- The chain's BARREL ATTACHMENT. The chain hooks to the drum wall at a
 // fixed point and the accumulating wraps STACK DOWNWARD from it: the hook
@@ -3722,8 +3793,8 @@ function rebuildChain(tension) {
   // (round-to-nearest is branch-stable: HOOK_A centres the offset — see
   // its comment). The coil hangs DOWN from the hook, one chain diameter
   // per turn, so the takeoff tangent point descends as the reserve drains.
-  const rot = (1 - tension) * DRUM_ROT_FULL; // = drumGroup.rotation.z in tick()
-  const baseTurns = ((1 - tension) * DRUM_ROT_FULL) / (2 * Math.PI) + 0.3;
+  const rot = drumRotAt(tension); // = drumGroup.rotation.z in tick()
+  const baseTurns = rot / (2 * Math.PI) + 0.3;
   let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
   if (frac < 0) frac += 1;
   const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
@@ -18613,7 +18684,7 @@ function tick(t) {
   // much chain has paid onto it. The chain MESH is not rebuilt here — tick
   // only records the tension; updateChainIfMoved() rebuilds once per
   // rendered/posed frame (§14), since the chain is display-only.
-  const drumRot = (1 - tension) * DRUM_ROT_FULL; // feed at the chain's centreline radius (§61)
+  const drumRot = drumRotAt(tension); // the chain off the cone, at the feed radius (§61)
   drumGroup.rotation.z = drumRot;
   chainTensionNow = tension;
   // ...and the mainspring winds with it. The ribbon's outer end is on the wall
@@ -19302,21 +19373,21 @@ function advanceFrame(realDt) {
   const ffBtn = document.getElementById('btn-ff');
   setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
-  const springTq = 0.35 + 0.65 * reserveShown;
+  const springTq = springTorqueAt(reserveShown);
   // TODO 40 row 2 — read the radius the chain is ACTUALLY on, from the same
   // function the chain path is cut from. The wrap occupies FUSEE_F_ACTIVE
-  // (0.9375) of the groove band, so full wind seats it at 2.9 and the cut
-  // tip's FUSEE_R_SMALL carries only the runout. This used to lerp the whole
-  // 7.4 → 2.6 band against the reserve, quoting a radius no wrap ever
-  // reaches; two expressions for one quantity is how they drift apart.
+  // (0.9375) of the groove band, so the cut tip carries only the runout and
+  // never a working turn. This used to lerp the whole band against the
+  // reserve, quoting a radius no wrap ever reaches; two expressions for one
+  // quantity is how they drift apart.
   const fuseeR = fuseeGrooveAt(reserveShown * FUSEE_F_ACTIVE).r;
-  // NOT ≈ 1, and this line no longer says it is. A straight generator cannot
-  // level a linear spring's product: on the radius above it runs 0.996 empty,
-  // peaks at 1.340 near mid-reserve and lands at 1.115 wound. TODO 40 row 1
-  // owns the fix — the cone wants r = FUSEE_R_SMALL / springTq, a hyperbola —
-  // and until it lands this comment states what the expression computes
-  // rather than what the cone was meant to achieve.
-  const trainTq = (springTq * fuseeR) / FUSEE_R_SMALL;
+  // Against FUSEE_TORQUE_K, the product the cone was CUT to hold (row 1) —
+  // so the bar reads 1.000 the whole way down, and reads it because the
+  // geometry delivers it rather than because the scale was picked to say so.
+  // Both factors come from elsewhere: springTq from the spring law, fuseeR
+  // from the lathed flank. Re-cut the cone without re-deriving the law and
+  // this is the readout that moves off 1 to tell you.
+  const trainTq = (springTq * fuseeR) / FUSEE_TORQUE_K;
   document.getElementById('bar-spring').style.width = `${(springTq * 100).toFixed(1)}%`;
   document.getElementById('bar-train').style.width = `${clamp(trainTq * 100, 0, 100).toFixed(1)}%`;
 

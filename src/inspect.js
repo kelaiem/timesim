@@ -2063,23 +2063,33 @@ const PENETRATION_BUDGETS = [
     // whichever large excursion first breaks all triangle contact (1.2+
     // measured), a number about the search space, not the fit. Instead
     // `measure` samples the chain mesh against the ANALYTIC groove floor
-    // the cone was lathed from (same constants, via userData.groove):
-    // radial depth of any chain point below envelope(f(z)) − grooveD, in
-    // the fusee's own frame. Registration-free — a pure function of z —
+    // the cone was lathed from — since TODO 40, the LATHE'S OWN CLOSURE
+    // (userData.groove.floorAt), not a reconstruction. This row used to
+    // rebuild the floor as a straight chord from rLarge/rSmall, which was
+    // the same law only while the flank was straight: on the equalising
+    // hyperbola (convex, below every chord) the rebuilt floor sat ~1.3
+    // OUTSIDE the metal at mid-band, and the row measured that gap as
+    // burial. Holding the closure makes "the cut and the check share one
+    // law" true by identity. Registration-free — a pure function of z —
     // which is also its honest limit: the wrap's rotational phase against
     // the cone's spiral is display-approximate (the chain is not torque-
     // coupled; TODO 1/7), so groove-vs-land axial registration is not
     // asserted here.
     //
-    // Budget DERIVED, three terms: (1) the 4-leaf stack is a rigid
-    // VERTICAL band on a floor that follows the cone's slope, so it
-    // contacts at its lower corner and the corner sits slope·stack/2 =
-    // (4.8/2.78)·0.33 = 0.57 below the floor at its own z; (2) link
-    // chording, pitch²/(8·r_min) = 1.9²/(8·2.9) = 0.16 at the smallest
-    // wrap radius; (3) HANDOFF_TRACK_TOL tessellation slack. Sum 0.76,
-    // held at 0.8 so the row polices the relationship, not float luck.
+    // Budget DERIVED, and SMALLER than it was. The old first term — the
+    // rigid vertical stack's lower corner sitting slope·stack/2 =
+    // (4.8/2.78)·0.33 = 0.57 below a floor that follows the flank — is
+    // gone BY THE RELIEF'S DEFINITION: the floor is now cut to clear
+    // exactly that corner (floorAt = envelope sheared down a half-stack,
+    // minus grooveD), so the ideal wrap box touches it and owes it
+    // nothing. What remains: (1) link chording, pitch²/(8·r_min) =
+    // 1.9²/(8·2.59) = 0.174 at the smallest wrap radius (2.59 since the
+    // hyperbolic cut — the wrap's top, not the runout tip); (2)
+    // HANDOFF_TRACK_TOL tessellation slack, 0.03. Sum 0.204, held at
+    // 0.25 so the row polices the relationship, not float luck — the
+    // same round-up that held 0.76 at 0.8, at a third of the size.
     pair: ['Fusee & great wheel', 'Chain'],
-    maxDepth: 0.8,
+    maxDepth: 0.25,
     axis: 'reserve',
     nSamples: 60,
     measure(clock, unitA, unitB) {
@@ -2090,13 +2100,13 @@ const PENETRATION_BUDGETS = [
       // Loud, not NaN: a silent non-finite depth reads as a clean 0 in the
       // worst-tracking, which is exactly how this row's first run lied.
       if (!fus || !chain) throw new Error('chain-on-cone seating: groove userData or chain mesh not found');
-      const { bandZ0, bandSpan, grooveD } = fus.userData.groove;
-      const rL = fus.userData.rLarge, rS = fus.userData.rSmall;
+      const { floorAt } = fus.userData.groove;
+      // Loud again, and for the same reason: falling back to a rebuilt
+      // straight-chord floor here is exactly the drift this row already
+      // committed once.
+      if (typeof floorAt !== 'function') throw new Error('chain-on-cone seating: userData.groove.floorAt missing — the cut and the check must hold one law');
       const toLocal = fus.matrixWorld.clone().invert().multiply(chain.matrixWorld);
-      return sampleRadialDepth(chain.geometry, toLocal, (z) => {
-        const f = Math.min(Math.max((z - bandZ0) / bandSpan, 0), 1);
-        return rL + (rS - rL) * f - grooveD;
-      }, -Infinity, Infinity);
+      return sampleRadialDepth(chain.geometry, toLocal, floorAt, -Infinity, Infinity);
     },
   },
   {
