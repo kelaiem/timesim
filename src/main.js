@@ -895,6 +895,9 @@ const KEYLESS_INPUTS = {
     fork: 4, dial: 0,
   },
   ...(SPEC.stemAzDeg !== null ? { stemAzRad: SPEC.stemAzDeg * DEG2RAD } : {}),
+  // §94 tier C — the reserve station's radius spreads in only when present,
+  // so identity passes nothing and stays bit-exact (d4's null rule).
+  ...(SPEC.rsvr !== null ? { rsvR: SPEC.rsvr } : {}),
 };
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -902,7 +905,7 @@ const {
   cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR, rsvrWindow,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
@@ -6626,6 +6629,56 @@ const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.b
 const rsvModule0 = 0.34;
 const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
 const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+// §94 tier C — THE MODULE'S OWN BOUNDS, jointly in (rsvr, reserveh): the
+// span solves the module, the hours solve w2's tooth count, and neither
+// spec key can see the other's consequence — a moved station silently
+// rescales stage-two teeth, rule 1's exact failure one solve later. This
+// function is shared by the boot assert below and the reconfigure handle's
+// shadow, so the pointer reports what boot would (rule 6, live).
+//  · NO TRAIN — the station inside stage one's centre distance leaves the
+//    second mesh negative metal: module ≤ 0 is not thin, it is no answer.
+//  · FLOOR — tooth stock. §50's wheel floor is 0.12 mm (STOCK_FLOORS.wheel
+//    in inspect.js owns that number; the census still measures the metal,
+//    so a drifted copy here fails loudly, never silently). The thickest
+//    section a tooth has is its pitch-line width π·m/2 — if even that is
+//    under the floor, every tooth section is. Deliberately the LENIENT
+//    closed form: this assert catches the absurd module, the §50 census
+//    stays the instrument for the marginal one.
+//  · CEILINGS — TODO 33's form (bore + wall + the one margin), radial:
+//    w2's tip circle against the dial centre's tube stack, and against
+//    its own well's ring wall (subDialR shrinks as the station walks in,
+//    while a longer reserveh GROWS the tip — the joint worst case).
+const RSV_TOOTH_FLOOR_MM = 0.12;
+const rsvTrainWarnsAt = (station) => {
+  const out = [];
+  const pivot = { x: P.dial.x - station.x, y: P.dial.y + station.y };
+  const span = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
+  const m1 = (2 * (span - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+  if (m1 <= 0) {
+    out.push(`reserve train: the station sits inside stage one's centre distance `
+      + `(barrel→pivot ${span.toFixed(2)} vs d0 ${rsvD0.toFixed(2)}) — the second mesh has no metal `
+      + `(module ${m1.toFixed(3)})`);
+    return out; // every figure below is meaningless at a negative module
+  }
+  const pitchLineMM = (Math.PI * m1 / 2) * UNIT_MM;
+  if (pitchLineMM < RSV_TOOTH_FLOOR_MM)
+    out.push(`reserve train: stage-two module ${m1.toFixed(3)} puts even the pitch-line tooth width `
+      + `${pitchLineMM.toFixed(3)} mm under the §50 wheel floor ${RSV_TOOTH_FLOOR_MM} mm `
+      + `(span ${span.toFixed(2)}, w2 ${rsvTeethW2} t)`);
+  const w2Tip = (m1 * (rsvTeethW2 + 2)) / 2;
+  const stationDist = Math.hypot(station.x, station.y);
+  const boreNeed = DIAL_CENTER_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN;
+  if (stationDist - w2Tip < boreNeed)
+    out.push(`reserve train: w2's tip circle reaches ${(stationDist - w2Tip).toFixed(2)} from the dial `
+      + `centre, inside the ${boreNeed.toFixed(2)} the centre bore, its wall and the margin need `
+      + `(tip r ${w2Tip.toFixed(2)} at station ${stationDist.toFixed(2)})`);
+  if (w2Tip > subDialR - DIAL_WALL_HALF - CLEAR_MARGIN)
+    out.push(`reserve train: w2's tip circle ${w2Tip.toFixed(2)} reaches its own well's ring wall — `
+      + `the well allows ${(subDialR - DIAL_WALL_HALF - CLEAR_MARGIN).toFixed(2)} `
+      + `(subDialR ${subDialR.toFixed(2)} − wall − margin)`);
+  return out;
+};
+for (const m of rsvTrainWarnsAt(RESERVE_LOCAL)) console.warn(m);
 
 const reservePinion0 = G.makePinion({ module: rsvModule0, teeth: rsvTeethP0, thickness: 1.2, material: MATS.steel });
 const rsvWheel1 = G.makeGear({ module: rsvModule0, teeth: rsvTeethW1, thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
@@ -6672,6 +6725,7 @@ reserveTrain.add(rsvArbor2);
 const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2 - DIAL_T; // through the well floor's bore, just behind the hand — TODO 26: the bore moved forward with the plate, so this arbor lengthens
 const rsvHandArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(RSV_HAND_ARBOR_R, RSV_HAND_ARBOR_R, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
+rsvHandArbor.name = 'rsvHandArbor'; // §94 tier C — the floors rows select it by name
 rsvHandArbor.rotation.x = Math.PI / 2;
 rsvHandArbor.position.set(rsvPivotXY.x, rsvPivotXY.y, ((Z_RSV - RSV_Z_STEP) + rsvHandZ) / 2);
 reserveTrain.add(rsvHandArbor);
@@ -12426,8 +12480,13 @@ function askTour(onProceed) {
   const HAND_SPECS = [
     [hourHand, { length: HOUR_HAND_LEN, kind: 'hour' }],
     [minuteHand, { length: MINUTE_HAND_LEN, kind: 'minute' }], // was 0.905R here vs 0.84R at build — a latent flute-slider length jump, now one constant
-    [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second' }],
-    [reserveHand, { length: reserveR * 0.8, kind: 'minute' }],
+    // §94 / TODO 41 — the two well hands keep their FULL build spec through
+    // a re-cut: namePrefix because the floors rows select their meshes by
+    // name, and `subdial` because a recut that dropped it would silently
+    // regrow the blade the fix slimmed — a flute drag must change the
+    // flute, never the section law or the selectors.
+    [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds' }],
+    [reserveHand, { length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' }],
   ];
   const recutHands = () => {
     for (const [hand, spec] of HAND_SPECS) {
@@ -15468,7 +15527,10 @@ const reconfAlarmWindows = () => {
   return [
     { az: Math.atan2(uWind.y, uWind.x), half: alarmCrownHalf + Math.atan2(5.425, plateR), what: 'the winding crown' },
     { az: ALARM_PUSH_AZ, half: alarmCrownHalf + Math.atan2(2.667, plateR), what: 'the alarm pusher' },
-    { az: Math.PI / 2, half: wellHalfAt(RESERVE_LOCAL.y), what: 'the reserve sub-dial’s well' },
+    // §94 tier C — the azimuth READS the station (dial-local → world mirrors
+    // x), so a later azimuth key finds no literal; with x = 0 this is
+    // exactly π/2, bit-for-bit.
+    { az: Math.atan2(RESERVE_LOCAL.y, -RESERVE_LOCAL.x), half: wellHalfAt(Math.hypot(RESERVE_LOCAL.x, RESERVE_LOCAL.y)), what: 'the reserve sub-dial’s well' },
     { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalfAt(Math.hypot(P.fourth.x, P.fourth.y)), what: 'the seconds sub-dial’s well' },
   ];
 };
@@ -15546,6 +15608,30 @@ const RECONF_HANDLES = [
       : `the centre–third–fourth triangle cannot close at ${v.toFixed(2)} `
         + `— the two bars are ${D4_WINDOW.d1CT.toFixed(2)} and ${D4_WINDOW.d2TF.toFixed(2)}, `
         + `so the station must lie between ${D4_WINDOW.min.toFixed(2)} and ${D4_WINDOW.max.toFixed(2)}`,
+  },
+  // §94 tier C — the RESERVE station, the second radial row, tier A's shape
+  // verbatim. The honest grip is w2's real arbor at the sub-dial pivot (the
+  // wheel a station move re-solves), never the printed well. The refusal is
+  // CLOSED FORM against solveKeyless's own window — never read from a
+  // shadow-solve, tier A's fallback lesson — and this handle is
+  // KEYLESS-TIER: the station never enters solveLayout, so the row carries
+  // its OWN shadow (solveKeyless on the candidate radius, plus the train
+  // bounds beside rsvModule1). The layout shadow would come back the
+  // identity build — the ghost-that-is-not-the-proposal trap, one solver
+  // down. No constellation paints because the train honestly does not move.
+  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: dialRadius * 0.39, radial: true,
+    anchor: () => P.dial, grabAt: () => rsvPivotXY, grabR: () => (rsvModule1 * (rsvTeethW2 + 2)) / 2 + 2,
+    toSpec: (dist) => dist,
+    refuseAt: (v) => (v > rsvrWindow.min && v <= rsvrWindow.max) ? null
+      : `the reserve well cannot exist at ${v.toFixed(2)} — at or inside ${rsvrWindow.min.toFixed(2)} `
+        + `the centre bore, its wall and the margin leave the well no radius; past `
+        + `${rsvrWindow.max.toFixed(2)} its ring runs off the ${dialRadius.toFixed(2)} face`,
+    shadow: (v) => {
+      const warns = [];
+      solveKeyless({ ...KEYLESS_INPUTS, rsvR: v, warn: (m) => warns.push(m) });
+      warns.push(...rsvTrainWarnsAt({ x: 0, y: v }));
+      return { warns, refuse: null };
+    },
   },
 ];
 // Shadow solve (step 4): the same pure solver, same measured inputs, a
@@ -15726,8 +15812,9 @@ const RECONF_HINTS = {
   escape: 'Escape wheel — drag it about the fourth wheel',
   balance: 'Balance — drag it about the escape wheel',
   fourth: 'Fourth wheel — drag it toward or away from the centre to move the small-seconds station',
+  reserve: 'Reserve wheel — drag it toward or away from the centre to move the power-reserve station',
 };
-const RECONF_HINT_IDLE = 'Seven parts wear a ring — each one is a handle';
+const RECONF_HINT_IDLE = 'Eight parts wear a ring — each one is a handle';
 // The rim handles' meshes, by the same objects their hit tests use — the
 // pusher by name because its cap is what a finger goes for, while the hit
 // test generously accepts the whole switch unit.
@@ -15877,12 +15964,13 @@ function reconfShowStatus() {
     if (SPEC.escapeStepDeg !== null) parts.push(`escape step ${SPEC.escapeStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.d4 !== null) parts.push(`small-seconds station ${SPEC.d4.toFixed(2)} from the centre`);
+    if (SPEC.rsvr !== null) parts.push(`reserve station ${SPEC.rsvr.toFixed(2)} from the centre`);
     // The spec line quotes solver-tier values and stays English with them
     // (the i18n.js residue); the empty-spec sentence is chrome, so it
     // translates. §93 names the FUSEE rather than "barrel": the ring sits on
     // the fusee and great wheel, which is the part a viewer sees move.
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the escape wheel or the balance');
+      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the escape wheel or the balance');
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
@@ -16241,6 +16329,23 @@ function reconfMoveDrag(e) {
     // as the DEFAULT layout — a ghost that is not the proposal under the
     // pointer, and an Apply that silently builds a different watch.
     const windowRefuse = h.refuseAt ? h.refuseAt(specVal) : null;
+    // §94 tier C — a KEYLESS-TIER handle brings its own shadow (see the
+    // row): its station never enters solveLayout, so the layout shadow
+    // would come back the identity build and the ghost would not be the
+    // proposal. The train does not move, so no constellation paints.
+    if (!windowRefuse && h.shadow) {
+      const sh = h.shadow(specVal);
+      if (reconfConstel) reconfConstel.visible = false;
+      reconfCandidate = {
+        kind: h.kind, urlKey: h.urlKey, value: specVal,
+        label: `proposed: ${h.kind} at ${specVal.toFixed(2)} from the centre (was ${h.def.toFixed(2)})`,
+        refuse: sh.refuse || null,
+        warns: sh.warns,
+        solverClean: !sh.refuse && sh.warns.length === 0,
+      };
+      reconfShowStatus();
+      return;
+    }
     const { sol, warns } = windowRefuse
       ? { sol: null, warns: [] }
       : reconfShadowSolve({ [h.specKeyName]: specVal });
@@ -16295,7 +16400,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4', 'rsvr'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }

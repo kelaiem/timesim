@@ -427,6 +427,27 @@ const SPEC_POINTS = [
   { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§94 tier A — the small-seconds station moved out; measured silent on this tree' },
   { name: 'd4=16', q: 'd4=16', expect: 'any', why: '§94 tier A — inside the keyless side-sign window: this point is EXPECTED to warn' },
   { name: 'd4=24', q: 'd4=24', expect: 'any', why: '§94 tier A — past the two-bar closure: must fall back to D4 and warn, never NaN' },
+  // §94 tier C — the reserve station. Four points, each measured on this
+  // tree before it was written down:
+  //   · 20 is the OUTWARD point, and it boots silent;
+  //   · 8 is inside the window and EXPECTED to warn twice — w2's tip
+  //     against its own shrunken well ring (4.29 vs 4.10) and §34's
+  //     selector post fouling the moved 12-well ring (−0.27 vs 0.15), the
+  //     same instrument that polices d4 16's move, one station over;
+  //   · 30 is past the well window (3.55, 27.54]. It must BOOT — there is
+  //     no fallback to hide behind, because an off-face well is nonsense,
+  //     not NaN: solveKeyless warns with the window, builds, and the
+  //     battery judges the result;
+  //   · reserveh=48&rsvr=27 is the JOINT row C3's bound exists for: at
+  //     48 h w2 carries 32 teeth, so the tip-vs-well threshold the default
+  //     hours keep OUTSIDE the window (rsvr 28.44) moves inside it
+  //     (26.60) — the worst case neither key shows alone (tip 11.86
+  //     against the well's 11.60; reserveh=48's own fusee warn rides
+  //     along, same as its solo row).
+  { name: 'rsvr=20', q: 'rsvr=20', expect: 'any', why: '§94 tier C — the reserve station moved out; measured silent on this tree' },
+  { name: 'rsvr=8', q: 'rsvr=8', expect: 'any', why: '§94 tier C — inside the window, EXPECTED to warn: w2 tip vs its shrunken well, §34 post vs the moved ring' },
+  { name: 'rsvr=30', q: 'rsvr=30', expect: 'any', why: '§94 tier C — past the well window: must warn and BOOT (an off-face well is nonsense, not NaN)' },
+  { name: 'reserveh=48&rsvr=27', q: 'reserveh=48&rsvr=27', expect: 'any', why: '§94 tier C — the joint case: 48 h teeth meet a well the station outran; neither key alone shows it' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because
