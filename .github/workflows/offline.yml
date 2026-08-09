@@ -44,6 +44,14 @@ on:
       - 'index.html'
       - 'explain.html'
       - 'primer.html'
+      # §95 tier two — the primer's localization is PRECACHED: its tables
+      # arrive by dynamic import, which is the one class of URL that reaches
+      # the manifest through the stamper's module walk rather than a
+      # document's markup. Adding or dropping one moves the precache count
+      # this job asserts, and offline-check boots the German primer, so a
+      # change here is a change to what this job measures.
+      - 'src/page-i18n.js'
+      - 'src/*-i18n*.js'
       - 'manifest.webmanifest'
       - 'tools/offline-check.mjs'
       - 'tools/stamp-release.mjs'

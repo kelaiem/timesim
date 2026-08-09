@@ -53,10 +53,10 @@
 // Exits 0 only when every gate passes; failing gates dump their payloads.
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -645,6 +645,87 @@ try {
   gate('spec boots: the identity control is silent',
     specRows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
       .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
+
+  // ---- §95 tier two: the SKIP LIST is held true --------------------------
+  //
+  // battery.yml skips this whole job when every changed file matches its
+  // `paths-ignore` list, and every entry on that list makes one claim: "the
+  // battery cannot see this file." Until now that claim was kept by reading —
+  // and it is the one claim in the repo whose failure is silent by
+  // construction, because a wrong entry disarms the gate on exactly the change
+  // that needed it, and no run happens to say so.
+  //
+  // So: walk index.html's transitive module graph and fail if anything the
+  // list ignores is ON it. The near miss this exists for is one character
+  // wide — `src/*i18n*.js` is the obvious glob for the two pages' tables and
+  // it also matches `src/i18n.js`, which src/main.js imports.
+  //
+  // Reading the list from the YAML rather than restating it here is the whole
+  // point: a copy would be a second list someone keeps in step, which is the
+  // failure tools/payload.sh's header already names.
+  //
+  // It is safe to run in-process and costs milliseconds, and it belongs HERE
+  // rather than in its own workflow because editing the list touches
+  // .github/workflows/**, which the list deliberately does not ignore — so the
+  // change that could break this always runs the job that checks it.
+  {
+    const ymlPath = join(ROOT, '.github/workflows/battery.yml');
+    const yml = existsSync(ymlPath) ? readFileSync(ymlPath, 'utf8') : null;
+    const block = yml && yml.match(/paths-ignore:\n((?:\s*-\s*'[^']*'\n)+)/);
+    const ignored = block ? [...block[1].matchAll(/-\s*'([^']*)'/g)].map((m) => m[1]) : [];
+    // READING NOTHING MUST NOT READ AS PASSING. A regex that stops matching —
+    // the list reformatted, quotes changed, the key renamed — yields an empty
+    // list, and an empty list trivially intersects nothing. That is the failure
+    // mode of every instrument that asserts an empty set, and the fix is to
+    // check that the instrument SAW something before believing what it says.
+    const unreadable = ignored.length === 0
+      ? [{ file: '.github/workflows/battery.yml',
+        why: yml === null ? 'not found from the harness ROOT'
+          : 'its paths-ignore list did not parse — this check would then compare against nothing and pass for that reason alone' }]
+      : [];
+    // Reachability: the documents' own entry points, then every relative
+    // import and dynamic import(), to a fixed point. Same shape as the walk
+    // stamp-release.mjs does, and deliberately static — a module that never
+    // loads cannot be observed from a boot.
+    const graph = new Set();
+    const queue = [];
+    for (const m of readFileSync(join(ROOT, 'index.html'), 'utf8').matchAll(/["'](\.\/(?:src|vendor)\/[^"'?]+)["']/g))
+      queue.push(m[1].slice(2));
+    while (queue.length) {
+      const f = queue.shift();
+      if (graph.has(f) || !existsSync(join(ROOT, f))) continue;
+      graph.add(f);
+      if (!f.endsWith('.js')) continue;
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      for (const m of src.matchAll(/\bfrom\s+['"](\.\.?\/[^'"?]+)['"]|\bimport\(\s*['"](\.\.?\/[^'"?]+)['"]/g))
+        queue.push(posix.normalize(posix.join(posix.dirname(f), m[1] || m[2])));
+    }
+    // Minimal glob, scanned rather than chain-replaced (a sentinel pass is
+    // how you get a pattern that eats its own placeholder): ** spans
+    // separators, * does not — so 'src/*-i18n*.js' cannot silently reach into
+    // a subdirectory, while '**/*.md' matches a doc at any depth.
+    const matches = (pattern, file) => {
+      let re = '';
+      for (let i = 0; i < pattern.length; i++) {
+        if (pattern[i] === '*' && pattern[i + 1] === '*') {
+          if (pattern[i + 2] === '/') { re += '(?:.*/)?'; i += 2; } else { re += '.*'; i += 1; }
+        } else if (pattern[i] === '*') {
+          re += '[^/]*';
+        } else {
+          re += pattern[i].replace(/[.+^${}()|[\]\\?]/, '\\$&');
+        }
+      }
+      return new RegExp(`^${re}$`).test(file);
+    };
+    gate('battery.yml: nothing it skips is on index.html\'s module graph',
+      [...unreadable, ...ignored.flatMap((pattern) => [...graph]
+        .filter((f) => matches(pattern, f))
+        .map((f) => ({
+          pattern, file: f,
+          why: 'battery.yml would skip the whole job for a change to this file, and the battery LOADS it',
+        })))],
+      `${ignored.length} ignore patterns vs ${graph.size} files reachable from index.html`);
+  }
 
   const failed = gates.filter((g) => !g.pass);
   const totalMs = Date.now() - t0;

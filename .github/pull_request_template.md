@@ -75,21 +75,28 @@ Tick whichever is true:
 - [ ] **It ran.** Line pasted above.
 - [ ] **`battery.yml` filtered it out**, and that is right — the invariant that
       makes this change unable to move the built scene is: <!-- e.g. "explain.html
-      is sim-code-free (CLAUDE.md), so an explainer landing cannot touch the
-      battery" / "docs only" --> <!-- and if you ran it locally anyway, that is
-      the only battery evidence on this PR: paste the line above. -->
+      and primer.html are sim-code-free (CLAUDE.md), so a page landing cannot
+      touch the battery" / "docs only" --> <!-- and if you ran it locally anyway,
+      that is the only battery evidence on this PR: paste the line above. -->
 - [ ] **It ran and I believe it should not have.** Say which path class is
       battery-irrelevant and what makes that true. That is a change to
       `battery.yml`'s filter, in its own PR — not a skip taken here.
 
 <!--
-Two traps, if you are extending that filter:
+Three traps, if you are extending that filter:
 
   · `paths-ignore` skips only when EVERY changed file matches, so an unknown
     path still runs the job. That is the safe direction; keep it.
   · `AESTHETICS.md` is documentation and `src/aesthetics.json` is the build.
-    The pair looks symmetric and is not. Same for `explain.html` (a separate
-    page) against `index.html`.
+    The pair looks symmetric and is not. Same for `explain.html` and
+    `primer.html` (separate pages) against `index.html`.
+  · A GLOB REACHES FURTHER THAN THE FILES YOU MEANT. `src/*i18n*.js` is the
+    obvious entry for the two pages' translation tables and it also matches
+    `src/i18n.js`, which `src/main.js` imports — one character between a
+    correct list and one that skips the battery for every chrome change. The
+    battery now checks this itself (it fails if anything the list ignores is on
+    `index.html`'s module graph), which is why extending the filter runs the
+    job: `.github/workflows/**` is deliberately not ignored.
 -->
 
 ## Debt
@@ -116,7 +123,11 @@ abandoned approach is worse than no plan.
       actually built and moved over from the private roadmap repo
 - [ ] `explain.html` — a mechanism shipped or changed, with its plate numbers
       re-quoted and its open TODO debt stated rather than hidden
-      (`node tools/explain-quotes.mjs` and `node tools/explain-i18n.mjs --check`)
+- [ ] `primer.html` — the same mechanism in the reader's register, if it has an
+      entry there: rounded quantities with units, no source identifiers, and
+      the same modelled-vs-simulated honesty the technical page owes
+      (both pages: `node tools/explain-quotes.mjs` and
+      `node tools/explain-i18n.mjs --check`)
 - [ ] Nothing above applies
 
 <!--
