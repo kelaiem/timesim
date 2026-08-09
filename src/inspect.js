@@ -1250,9 +1250,23 @@ export const EXPECTED_CONTACT_FLOORS = [
     // No contact at all, which is the finding: this pair is EXPECTED for a
     // touch that does not exist between these two units. What it owes is a
     // CLEARANCE — the hand over its well — and that is what this row asks.
+    // TODO 41 CLOSED the waiver this row shipped with: the hand's standoff
+    // is now derived mid-band from its own section (wellHandZ in main.js —
+    // keel + the margin below, blade top sunk above), so the row measures
+    // clear of the floor with real slack, not float luck.
     a: 'Dial', b: 'Small seconds', min: CLEAR_MARGIN,
     contacts: [],
-    waived: 'TODO 41 — the hand rides 0.12 over the well floor: its 0.3 standoff is an authored literal and the blade\'s keel eats 0.18 of it',
+  },
+  {
+    // The reserve well's copy of the row above, seeded by TODO 41's fix
+    // pass when it measured the pair nothing had ever asked about: the
+    // reserve hand — a 'minute' whose central width law hung its keel
+    // 0.299 below its plane — rode 0.0014 over its well floor, invisible
+    // because an EXPECTED pair without a floors row still gets TODO 6's
+    // blanket. Same claim as the seconds row: no contact exists between
+    // these two units, so what the pair owes is clearance everywhere.
+    a: 'Dial', b: 'Power reserve', min: CLEAR_MARGIN,
+    contacts: [],
   },
   {
     a: 'Alarm release sleeve', b: 'Alarm disc', min: CLEAR_MARGIN,

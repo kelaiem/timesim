@@ -164,9 +164,15 @@ const BATTERY = [
   // loop is quadratic in exactly that. Measured, unscaled, on the container
   // that ran the landing battery — where the unchanged checks scatter
   // 0.99–1.43x against this column, so no single factor was applied (the
-  // header's own lesson about one run). The partition does not move either
-  // way: shard 1's total is 1298 against sweptOverlap's 1573 alone.
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 243,
+  // header's own lesson about one run).
+  // 243 → 281 with TODO 41's Dial ⇄ Power reserve row — a fourth
+  // small-unit × Dial pair of the same quadratic class. The landing ran
+  // base and changed trees side by side on one container, so the changed
+  // tree's 305 s is deflated by the base's own drift on the same run
+  // (264 s against this column's 243): 305 × 243/264 ≈ 281. The partition
+  // does not move either way: shard 1's total is 1336 against
+  // sweptOverlap's 1573 alone.
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 281,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },

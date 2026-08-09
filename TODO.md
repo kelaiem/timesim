@@ -19,7 +19,7 @@ refreshed 2026-08-09 — items with work left first, with what remains:
 |---|---|---|
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | OPEN, interim instrument | `intraUnit` covers movers-vs-fixtures; fixture-vs-fixture and mover-vs-mover inside one unit are still invisible |
-| 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; the reserve station's are still unseeded) |
+| 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded) |
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
@@ -37,13 +37,12 @@ refreshed 2026-08-09 — items with work left first, with what remains:
 | 38 | OPEN | No axis WINDS anything, so the sweeps only ever see the alarm run down |
 | 39 | OPEN | The going drum's arbor turns with the drum it is supposed to hold |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
-| 41 | OPEN | The small-seconds hand rides 0.12 over its well floor, on an authored 0.3 standoff |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
 named residue — the instrument gap is roadmap §77's subject, not this
-item's), 33, 35 — plus the *Recently closed* bucket at the end (former
-items 2 and 8 live there).
+item's), 33, 35, 41 — plus the *Recently closed* bucket at the end
+(former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
@@ -4285,14 +4284,14 @@ remainder of this row: assert the run's length is constant across the
 reserve axis to a stated tolerance, and the 1.1% above is what it would
 report on day one.
 
-## 41. The small-seconds hand rides 0.12 over its well, on an authored 0.3
+## 41. CLOSED — both well hands ride a plane derived from their own section; the reserve hand was 0.0014 off its floor
 
 Found by seeding §94 tier A's `EXPECTED_CONTACT_FLOORS` rows: `Dial ⇄ Small
-seconds` measures **0.12** at every pose, against `CLEAR_MARGIN` 0.15, and
-the row ships WAIVED citing this item.
+seconds` measured **0.12** at every pose, against `CLEAR_MARGIN` 0.15, and
+the row shipped WAIVED citing this item.
 
-The number is not a collision and not a near miss — it is the same figure
-everywhere, because it is a standoff someone typed:
+The number was not a collision and not a near miss — it was the same figure
+everywhere, because it was a standoff someone typed:
 
 ```js
 smallSecondsHand.position.z = -(SUBDIAL_RECESS - 0.3);
@@ -4301,8 +4300,8 @@ smallSecondsHand.position.z = -(SUBDIAL_RECESS - 0.3);
 0.3 above the pocket floor, and the hand's bur rod is a keeled triangular
 section whose keel hangs `rBase` below the mounting plane — 0.18 at this
 hand's `rBase` 0.18 (§50's hand floor, TODO 12). 0.30 − 0.18 = **0.12**,
-and the one clearance margin is 0.15. Rule 1: the 0.3 states no
-constraint, and the constraint it happens to be spending is the margin.
+and the one clearance margin is 0.15. Rule 1: the 0.3 stated no
+constraint, and the constraint it happened to be spending was the margin.
 
 **Why this pair could not say so before §94.** `Dial ⇄ Small seconds` is
 EXPECTED, so TODO 6's blanket covered it, and the pair is also a LABEL
@@ -4314,18 +4313,51 @@ clearance be read at all. Worth noting what the EXPECTED grant was ever
 FOR: there is no contact between these two units — the well, its bezel and
 its printed face are Dial meshes and the unit contains only the hand.
 
-**The fix is a derivation, not a nudge.** The standoff wants to be written
-as what it must clear: the keel's depth below the mounting plane, plus the
-margin, measured off the hand's own section rather than assumed —
-`bossH`/`rBase` are both available where the hand is placed. Check the
-other three hands in the same pass (the hour, minute and reserve hands are
-placed by three more literals of the same kind, and none of their pairs
-has a floors row yet); and re-measure `SUBDIAL_RECESS` afterwards, since
-raising the hand spends the pocket's depth, which the §94 tier A record
-notes is the budget this lands in.
+**The check-the-other-hands pass found the worse case.** The reserve hand
+is a `'minute'`, so its blade inherited the CENTRAL minute hand's width
+law — `length·widthFactor·0.35`, tuned on a hand ~3× as long — giving
+`rBase` 0.2986 at sub-dial length. Measured before the fix, its keel rode
+**0.0014** over its well floor and its boss dipped 0.088 below the floor
+plane into the bore, with no instrument on the pair: it is EXPECTED and
+had no floors row, exactly this item's residue warning. The 0.5 pocket
+mathematically cannot hold that blade at the margin (it caps `rBase` at
+(0.5 − 0.15)/1.5 ≈ 0.233), so the section was the defect, not the
+standoff: TODO 12's tranche four had already declared the class rule —
+"sub-dial hands ride the floor" (`rBase` 0.18) — and only the `'second'`
+builder branch was applying it. `makeHand` now takes `subdial`, which puts
+an hour/minute-kind hand on the same §50 floor section (`HAND_RBASE_FLOOR`
+in `geometry.js`); the reserve hand passes it, and slims from a blade the
+pocket could not hold to the one its well-mate already wears.
 
-**Not a §94 blocker.** The gap is 0.12 at the shipped station and 0.12 at
-every moved one — `d4` does not touch it, because the hand's z is measured
-off the pocket floor and the pocket rides the dial. That is why tier A
-waives the row rather than fixing it: the finding is real and pre-existing,
-and the tier that exposed it is not the tier that owns the dial's z-stack.
+**The fix is the derivation the item asked for.** `makeHand` exports the
+section's facts on `userData` (`floorDrop`, `topRise`, `bossR`/`bossH`),
+and `wellHandZ` (`src/main.js`, beside the small-seconds hand) derives the
+plane from two constraints instead of a number: keel-side, `lift ≥
+floorDrop + CLEAR_MARGIN` over the pocket floor (whose printed face lies
+on it at zero offset); face-side, `lift ≤ SUBDIAL_RECESS − topRise` so the
+open metal stays sunk below the dial surface. The hand rides the middle of
+that band — equal slack both ways, no free number, and the floors-row gate
+(a strict `min ≥ CLEAR_MARGIN` over float32 meshes) is held off float
+equality by construction. The boss is outside both figures as the joint's
+own member: its below-keel column is excused by the bore it rides over
+(asserted: `bossR + CLEAR_MARGIN ≤ SUBDIAL_BORE_R`), and it stands proud
+of the dial face by `bossH/2 − (SUBDIAL_RECESS − lift)` — sinking the
+collet too would need recess ≈ 0.57, a dial z-stack renegotiation this
+close does not own. Both budget asserts warn per rule 6, which is the
+`SUBDIAL_RECESS` re-measure the item called for: the pocket must hold
+`floorDrop + CLEAR_MARGIN + topRise` (0.47 for the seconds hand, 0.42 for
+the reserve, against 0.5).
+
+Measured after: seconds keel 0.165 over the floor (lift 0.345), reserve
+keel 0.19 (lift 0.37); everything but the collets sunk below the face.
+The `Dial ⇄ Small seconds` waiver is deleted, and the pass seeded `Dial ⇄
+Power reserve` as the same claim — no contact exists between the units, so
+the pair owes clearance everywhere (TODO 6's index row records what that
+leaves unseeded).
+
+**The central hands were checked and left alone.** The minute hand's 2.3
+and the hour/alarm planes are z-stack quantities datumed against
+`ALARM_HAND_Z`'s derived lane (the `handsGroupZOffset` record in
+`aesthetics.json` documents that derivation), not floor standoffs of this
+class; their pairs have no wells to scrape and their crossing envelope is
+bounded where the rod widths are set (`makeHand`'s crossing note).
