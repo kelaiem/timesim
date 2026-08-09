@@ -7641,6 +7641,268 @@ is a weak proxy for "is drawn" besides. That census, and the instrument
 that should be reporting it instead of a session's probe script, is
 filed as roadmap §84.
 
+## §87 — The hack rod’s mast is taller than the watch, and the ceiling is the plate cut
+
+Shipped as timesim#173, closing §85’s P1 residue: the pin is derived,
+built as metal, and the mast assert is green at every spec tested. Three
+of this entry’s own numbers did not survive contact and one of its
+acceptance criteria was wrong — the reconciliation comes first below,
+and the plan as filed is kept after it.
+
+### What was built, against what this entry planned
+
+**The ratio is DERIVED per movement, not the flat 0.70 proposed below — and
+the flat one BREAKS the shipped watch.** The table below reasons over the
+handle range and concludes "one number covers the whole range: ≈ 4.18, or
+0.70 · `SL_TAIL`". Measured, 0.70 fixes every moved station and drops the
+shipped one's pivot so far that the crank sweeps its own bracket at **−0.159**
+and the balance cock loses its seat. So the pin's fraction is solved from the
+coupling the station actually achieves — a probe solve at the post reports
+`|K|`, the mast fits when the stroke is under `headroom · sin ψ_target · |K|`,
+and the fraction is that ceiling over the stroke, **capped at 1**. The cap is
+the whole point: a movement whose coupling already affords the full stroke
+keeps the post it always used, and takes none of a reduction that is a REMEDY
+rather than an improvement.
+
+| spec | `\|K\|` achieved | `HACK_PIN_K` | pin radius | mast top vs `TQ_TOP_Z` 8.5075 |
+|---|---|---|---|---|
+| identity | 0.9496 | **1** (capped) | 6.000 — the tail post, no second stud | 7.963 |
+| `?escstep=-77.9` | 0.6305 | 0.6963 | **4.178** | 8.275 |
+| `?escstep=-66.7` | 0.6635 | 0.7376 | 4.426 | 8.320 |
+| `?balstep=27.6` | 0.6812 | 0.7607 | 4.564 | 8.350 |
+
+The entry's predicted 4.18 for the worst station is right to three figures;
+what it got wrong is that the same number must not be applied everywhere.
+
+**The acceptance criterion "identity's fingerprint moves deliberately" is
+WRONG, and the build proves it.** Identity's proportions do not change,
+because the cap leaves them alone: the shipped movement hashes **1307831341**,
+bit for bit, before and after. `HACK_PIN_K === 1` hands the post back
+untouched rather than computing `pivot + (post − pivot)·1` — `a + (b − a)` is
+not `b` in IEEE754, and this is the same care `cockDiscsAt` already takes.
+A fingerprint that MOVED here would have meant the pin was taking stroke
+identity did not need.
+
+**The pad drop is re-solved, and the achieved value is filed as arithmetic**
+(in `src/main.js`, at the drop assert, TODO 16's format). It is two terms and
+the pin moves both:
+
+```
+drop = padLZ·(1 − cos ψ0) − edgeY·sin ψ0
+padLZ = HACK_CONTACT_Z − Z_STOP_PIVOT        edgeY = STOP_PAD_Y + HACK_PAD_TOP_R·sign(sin ψ0)
+```
+
+| spec | `Z_STOP_PIVOT` | `padLZ` | ψ0 | `STOP_PAD_Y` | tilt | swing | drop |
+|---|---|---|---|---|---|---|---|
+| identity | 7.1133 | −1.8633 | 0.5016 | −1.5694 | −0.2296 | +0.5796 | **0.3500** |
+| `?escstep=-77.9` | 7.4250 | −2.1750 | 0.4852 | −1.6528 | −0.2510 | +0.6010 | **0.3500** |
+| `?escstep=-66.7` | 7.4701 | −2.2201 | 0.4708 | −1.6682 | −0.2415 | +0.5915 | **0.3500** |
+| `?balstep=27.6` | 7.5004 | −2.2504 | 0.4707 | −1.6755 | −0.2447 | +0.5947 | **0.3500** |
+
+`padLZ` deepens 17–21% and ψ0 falls 3–6% at every moved station, so the entry
+was right that the drop is not scale-invariant; `STOP_PAD_Y` answers by moving
+0.08–0.11 outboard, and the achieved drop is `HACK_DROP_MIN` **exactly** at
+every station, because `STOP_PAD_Y` is solved to bind it there. The floor is
+met with no margin by construction — a drop that came out ABOVE 0.35 would
+mean the solve had stopped binding, and deserves the same look as one below.
+
+### Three things this entry did not foresee
+
+**1. Two studs on one arm cannot have two slots.** The pin crosses the base
+plate exactly as the tail post does, and its own stadium slot overlaps the
+post's long before the studs overlap: at `HACK_PIN_K` 0.696 they stand 1.82
+apart and their slots ask for 0.74 and 0.80 of radius. Overlapping holes in a
+`THREE.Shape` are not a wider opening but a broken one — measured, the inner
+stud came out with **0.05** of clearance against the 0.17 its own slot
+specifies. Even drawn cleanly the land between them is **0.276**, a sliver of
+a 2-thick plate, and §62's rule that the land between two openings is a MEMBER
+applies here too. `makeBackPlate` gained a `sectors` opening: the arm's radial
+band swept through the crown stroke, dilated by the stud radius and the
+margin. Both studs now measure **0.170** — `CLEAR_MARGIN` plus the same 0.02
+the post's slot always carried — across the whole stroke.
+
+**2. The base plate's cut had to be DEFERRED.** Its last opening is not known
+until the stop work has reported its coupling, which is ~1500 lines after the
+plate was being built. The plate's PLANE stays where the layout needs it
+(`BACK_PLATE_Z`/`BACK_PLATE_T`); the cut moved down to the linkage. Nothing
+between reads the mesh, and the unchanged identity hash is the proof.
+
+**3. The kinematics-only commit left the linkage solved for the pin and DRIVEN
+from the post.** Two sites: `tick()` passed `tailPostWorldAt(crownPullT)` to
+`updateStopWork`, and the reconfigure shadow spread the candidate keyless
+cluster's post-level inputs over `STOPWORK_INPUTS`, overriding the reduction.
+Both are fixed — the pin derivation is a FUNCTION of the inputs now
+(`onHackPin`), so boot and the shadow ask the same question. Neither defect
+could warn: the mast assert is a build-time constant check, and at identity
+the pin IS the post, so both were invisible at the only spec the battery boots.
+
+### What the graph says, and why the pin is not a unit
+
+Declared on the two rows that already carried the rod's attachment —
+`['Hack rod', 'Setting lever']` in `support` and `['Setting lever', 'Hack rod']`
+in `drive` — both rewritten to name the pin and its derived radius. The pin is
+a stud OF the lever, like the beak pin and the tail post beside it: it has no
+motion of its own for `unitSignature` to detect and no fixture of its own to
+reach, so a `registerLabel` of its own would be modelling fiction, and would
+add fingerprint rows to a movement whose geometry did not change.
+
+**Neither knob under "What must not happen" was touched.** `HACK_ROD_LEN` is
+still calibrated at the engaged pose and the tail height still derived from
+the stroke through the coupling; both differ between specs only because the
+solve answers a different station, and identity's are bit-identical to what
+shipped. The mast fits at the moved stations because the linkage is GIVEN
+less stroke, which is the one end this entry said was legal to pull.
+
+**And the plan's Battery note is half right.** `LOW_LINKAGE_OBSTACLES` does
+shift where the pin is built — it carries the pin's swept stud and the hack
+rod's route now leaves the pin rather than the post — but at identity it does
+not shift at all, so the balance-cock legs and pillar seats re-seat at moved
+specs only, and the shipped movement's seats are untouched. That is the same
+fact as the unchanged fingerprint, seen from the corridor's side.
+
+### §86 A, re-read afterwards — the ceiling is still the plate cut
+
+The acceptance below asks for this, and the answer is that nothing moved: the
+bearing scan's winner sits at **65° against the wedge's ±65°** at identity and
+at both moved specs, after the pin landed. So the coupling ceiling is still
+the plate cut and not the linkage. The wedge pricing below settles what
+that costs: 25–30° of extra wedge would solve the mast, but only by opening
+`TQ_CUT.phiOpen` itself (±75° → ±100–105°), through the band that carries §62's
+windows, the pillar seats and pivots the plate has to CARRY. One new part on an
+existing lever against a redesigned plate is not a close call, and the build
+confirms the pricing's premise rather than disturbing it: the pin landed, the
+winner is still on the fence, so the ceiling is still the cut. The row stays
+open as §86 A's, not as §87's — and the pricing's closing note stands, that a
+plate cut redesigned for any other reason hands the stop work 0.09 of mast per
+degree for free.
+
+### The plan as filed
+
+§85 cleared the corridor. The MECHANISM still does not fit: at every
+moved-escape spec the stop work's mast stands above the balance cock, and the
+case-fit assert says so with its numbers — `?escstep=-77.9` achieves `|K|`
+0.609 where 0.875 is needed. This is the P1 half of §85's finding, left
+deliberately untouched by C1–C4 because those work in position space and this
+is a question about the mechanism's own dimensions.
+
+### The arithmetic, which is short
+
+The pivot height is sized from the stroke through the coupling, and the mast
+is the pivot plus its clevis:
+
+```
+Z_STOP_PIVOT = ROD2_PLANE_Z + POST_STROKE / (|K| · sin ψ_target)
+mast top     = Z_STOP_PIVOT + 0.85   ≤ TQ_TOP_Z
+```
+
+With `TQ_TOP_Z` 8.51, `ROD2_PLANE_Z` 0.72 and `ψ_target` 0.5, the headroom
+above the rod plane is **6.94**, so the stroke the movement can afford is
+
+```
+POST_STROKE ≤ 6.94 · sin(0.5) · |K| = 3.327 · |K|
+```
+
+The stroke today is **2.911**, taken at the setting lever's tail post,
+`SL_TAIL` = 6.0. Measured `|K|` across the handles runs 0.609 … 0.950:
+
+| `\|K\|` | stroke ceiling | pin radius that meets it |
+|---|---|---|
+| 0.950 (identity) | 3.161 | 6.51 — above `SL_TAIL`, which is why identity fits |
+| 0.664 | 2.209 | 4.55 |
+| 0.611 | 2.033 | 4.19 |
+| 0.609 (worst measured) | 2.026 | **4.18** |
+
+**One number covers the whole range: a dedicated hack-rod pin at ≈ 4.18, or
+0.70 · `SL_TAIL`.** Round down to 4.0 and it covers `|K| ≥ 0.583`, below
+anything measured.
+
+### Two fixes, and §86 A changed which one looks primary
+
+**1. Reduce the INPUT — the pin at reduced radius.** The fix the mast
+assert's own comment already names: the hack rod stops sharing the reset rod's
+tail post and takes its own pin closer to the lever pivot, stroke scaling with
+`r / SL_TAIL`. This redesigns what the linkage is GIVEN, not what it produces,
+which is why it is legal where re-tuning the tail height is not.
+
+Note the force side goes the right way: the same lever torque at a smaller
+radius delivers MORE force to the rod, and the brake wants force, not travel.
+What must be re-solved rather than assumed is the pad drop — `STOP_PAD_Y` is
+solved from ψ0 against `HACK_DROP_MIN` (0.35), and the pad's crank-local
+height `HACK_CONTACT_Z − Z_STOP_PIVOT` changes when the pivot comes down, so
+the drop equation is not scale-invariant. File the achieved drop as arithmetic
+the way TODO 16 files its stall force.
+
+**2. Get more coupling — and this is the new information.** §86's corner
+report says the bearing scan's winner sits AT the plate cut's wedge, ±65°,
+every time. That scan MAXIMISES `|K|`, so a winner on the fence means a better
+coupling exists just outside the wedge and **the plate cut is what caps the
+coupling** — the ceiling is not in the linkage at all. The wedge exists
+because the mast crosses the plate band and needs open air, so widening it
+trades directly against the three-quarter plate's own cut (§62's window
+machinery is the neighbouring constraint). Worth pricing before building the
+pin: if 15° of wedge buys `|K|` 0.7, the pin gets smaller or unnecessary.
+
+### The wedge, PRICED — measured, and it settles the order
+
+Both halves were measured by widening the bearing scan's bound and booting
+`?escstep=-77.9`. **What it buys**, roughly +0.011 of `|K|` and −0.09 of mast
+per degree:
+
+| extra wedge | `\|K\|` | mast top | against the cock at 8.51 |
+|---|---|---|---|
+| +0° | 0.609 | 11.53 | over by 3.02 |
+| +5° | 0.668 | 10.66 | over by 2.15 |
+| +10° | 0.723 | 9.97 | over by 1.46 |
+| +15° | 0.774 | 9.41 | over by 0.90 |
+| +20° | 0.821 | 8.96 | over by 0.45 |
+| +30° | — | — | **fits** |
+
+So ~25–30° of extra wedge fully solves the mast at the worst measured spec.
+
+**What it costs, and this is the part that decides.** Widening the SCAN's
+allowance alone does not buy anything real: at +20° and +30° the mast fits and
+a different assert fires instead — *the bracket reaches out of the plate cut
+wedge by 1.96 … 5.14*, at IDENTITY as well. The mast needs actual air, and
+`wedgeBound` is derived FROM `TQ_CUT.phiOpen`, so the coupling can only be
+bought by opening the CUT by the same 25–30°: `phiOpen` from ±75° to ±100–105°.
+
+That is not a tweak to a bound; it is a redesign of the three-quarter plate's
+escapement cut, in the band where §62's windows, the pillar seats and the
+pivots the plate has to CARRY all live — and the moved-station boots already
+produce "the cut reaches a pivot it has to carry" warnings without any of this.
+
+**Order this implies: build the pin.** Option 1 costs one new part on an
+existing lever; option 2 costs the plate. The wedge stays worth knowing about
+because it explains WHY the coupling ceiling exists — and if the plate cut is
+ever redesigned for another reason, this entry is what says the stop work
+would take 0.09 of mast per degree as a free side effect.
+
+### What must not happen
+
+`HACK_ROD_LEN` is CALIBRATED at the engaged pose and the released pad drop
+follows from it; the tail height is DERIVED from the stroke through the
+coupling. Neither is an adjustment knob — shortening either to fit the cock
+is paying a structural problem out of the mechanism's own truth, which is
+§35's failure and the reason §85 wrote this residue down instead of absorbing
+it.
+
+### Acceptance
+
+The mast assert green across the handle range, not only at identity; the pad
+drop still ≥ `HACK_DROP_MIN` with its achieved value filed; the new pin
+declared in `MECH_GRAPH` with what supports and drives it; identity's
+fingerprint moves deliberately (the linkage's proportions change) and the
+battery is the court. §86 A's row for the bearing should be re-read
+afterwards: if the pin lands and the winner still sits on the wedge, the
+coupling ceiling is still there and still worth pricing.
+
+Feasibility: the pin is a real part on an existing lever, and the stop work
+solves purely now (§85 A), so a candidate radius can be evaluated without
+building it · Cost: the pad-drop re-solve is the uncertain half · Battery:
+fingerprint moves; `LOW_LINKAGE_OBSTACLES` shifts with the rod, so the cock
+legs and pillar seats re-seat as they did for §85 C3.
+
+
 ## §88 — Three environments on one Pages site, and the cache name that could not tell them apart
 
 The app had one deployed environment: `release.yml` cuts a tag, publishes
