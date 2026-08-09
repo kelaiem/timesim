@@ -172,7 +172,11 @@ const BATTERY = [
   // (264 s against this column's 243): 305 × 243/264 ≈ 281. The partition
   // does not move either way: shard 1's total is 1336 against
   // sweptOverlap's 1573 alone.
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 281,
+  // 281 → 320 with §94 tier C's two reserve-train rows (7 → 9 pairs, one
+  // of them another Dial pair of the quadratic class). Measured unscaled
+  // on the tier's landing container; the partition still does not move —
+  // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 320,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
