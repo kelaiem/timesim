@@ -8983,6 +8983,110 @@ of a NaN).
   the point of it. Identity moves nothing: same fingerprint, same boot
   silence, same battery payloads.
 
+## §94 tier B — the alarm corner's radius stops borrowing the reserve station's
+
+**Ships in PART, second tranche** (tier A above). Tier C — the reserve
+station as spec dimensions — stays in the roadmap, gated on the §44/§46
+agreement about who owns the reserve subdial. Tier B touched no station and
+waited on no agreement: it removes the alarm module's secret dependence on
+one, which every OUTCOME of that agreement needs — §44's second train needs
+a corner that does not follow a re-scaled station, §46's removal is
+impossible while the alarm's radius is DEFINED as the removed
+complication's centre distance, and tier C's move needs it by construction.
+
+### The identity, and what it cost to keep
+
+`ALARM_CD = RESERVE_LOCAL.y` made the reserve subdial's centre distance the
+radius of the ENTIRE alarm module. Downstream of that one line: the
+winding-climb station (which pierces BOTH plates, so both plates' bores
+follow it), `ALARM_LOCAL` and `ALARM_ARBOR_R`, the setting train's module
+solve, the stem length and its unit vector, the collar geometry and its
+boot asserts, the silence-rocker ratio, the crown's tick position, the
+barrel-climb span records, reconfigure mode's forbidden windows, and the
+two-circle dogleg solve that has no intersection at all past
+`ALARM_CD ≈ 19.9`. Any future spec that moved the reserve station would
+have dragged all of it behind the indicator.
+
+The decoupling is a rename with a default. `alarmCornerR` is derived in
+`solveKeyless` beside `RESERVE_LOCAL` — deliberately the SAME
+`dialRadius · 0.39` on the same input, so identity geometry is bit-exact —
+and its comment states the ALARM's own bounds, which rule 1 makes the whole
+point of the rename: the dogleg's ≈ 19.9 ceiling; the winding chain's
+climb→barrel span, which grows ~1:1 with the corner (the idler DERIVES from
+the span since the corner-16.0 measurement, i1⇄i2 at 15.408 against a
+15.300 pitch sum — a chain that silently did not mesh); and the stem's
+positive length inside the rim (`alarmStemLen = plateR + 2.2 − corner`).
+§13 step 3b's one-solver property survives intact: the two quantities stop
+sharing a NAME, not a home.
+
+### The census
+
+Every read site classified corner-vs-station against the build plan's
+fresh line map (the tier prose's line numbers had drifted; the plan re-ran
+the audit and found the stem's unit vector, the collar's boot asserts and
+the barrel-climb records the prose did not list). All are corner reads and
+survive the rename unchanged, except the one formula below. The one site
+that legitimately reads BOTH quantities — the well-ring radius comment's
+`hypot(ALARM_CD, RESERVE_LOCAL.y)` span — is after the split
+self-documenting rather than a tautology. The acceptance line ("no
+consumer of the alarm corner reads `RESERVE_LOCAL` any more") was checked
+by enumeration: every surviving `RESERVE_LOCAL` read is a genuine station
+read — `subDialR`, the per-station centre-bore assert, the dial artwork,
+the stud obstacle row, `reserveGroup`, `rsvPivotXY`, the selector-corridor
+and `ALARM_SET_WALLS` well rings, and the reconfigure reserve-well row.
+
+### The one real geometry: `wellHalf`, and a premise that half held
+
+`reconfAlarmWindows`' well term fused three distances into one name:
+
+    asin((subDialR + margin) / ALARM_CD) + atan2(1.5, ALARM_CD)
+
+— the well disc's angular radius read at the CORNER's distance, valid only
+while every radius was the same number. Re-derived with each name in its
+true role: each well DISC subtends its `asin` at ITS OWN station's centre
+distance, and the corner CLUSTER's width subtends at the corner's own
+sweep radius. The reconfigure windows are not fingerprinted, so the build
+plan demanded verification by direct comparison and predicted exact
+reproduction ("at identity the radii are equal"). Measured — booted
+headless before and after, rows compared as hex-dumped doubles — the
+premise held for the reserve row only:
+
+| row | fused form | split form | |
+|---|---|---|---|
+| the winding crown, the alarm pusher | — | — | bit-identical |
+| reserve well half | 0.9905302108927505 | 0.9905302108927505 | bit-identical |
+| seconds well half | 0.9905302108927505 | 0.9826072522576832 | **−0.0079 rad (0.45°)** |
+
+The seconds station has sat at `D4 = 15.5` since tier A lifted it to the
+spec — 0.099 outboard of `dialRadius · 0.39 ≈ 15.40` — so the fused form
+was reading the corner's radius for a disc that was never there, and under
+a live `?d4=` the error scaled with the move. The 0.45° narrowing at
+identity is the fused form's own measuring error surfacing, in the
+correcting direction — not new behaviour, and invisible against the
+window's 56.8° half-angle. Recorded here precisely BECAUSE the plan
+predicted zero: an equivalence check that finds a delta must say where the
+premise failed, and this one failed where tier A had already moved a
+station out from under a shared constant.
+
+### The gate
+
+Full battery at identity, run locally in this container's headless
+Chromium (CI's ubuntu-latest/SwiftShader path runs on the PR): **19/19
+gates pass**, boot silent, fingerprint **1118637705 on both virgin
+boots** — the same hash tier A recorded for the unmodified tree. `spec
+boots` 16/16 with the identity control silent; no new spec key, so it
+gains no rows, and the scope guard held (`?alarmaz=` already owns the
+corner's azimuth; a corner-radius HANDLE stays unfiled).
+
+The acceptance for a change that could move a report is the `--report`
+diff, not the PASS column, so the same harness ran on the base tree
+(`50990a1`) and both full payloads were compared leaf by leaf: **12
+differing leaves, every one a per-check `ms` wall-clock field** — every
+row, pose, verdict and number in every check is byte-identical. The
+reconfigure windows' 0.45° seconds-row correction is invisible here by
+construction: the windows are UI refusal arcs, not battery rows, which is
+exactly why the plan demanded the direct comparison above instead.
+
 ## §95 — A primer page: the explainer for readers who don't read the source
 
 Filed from an owner decision after timesim#189, where one hacking-seconds
