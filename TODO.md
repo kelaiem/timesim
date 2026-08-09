@@ -73,40 +73,45 @@ the other way, the spring would gain turns while it drove. Nothing could
 see that error while the whole spiral rotated rigidly; the morph makes
 the sense a fact about the geometry.
 
-**The measured build**, all of it derived and all of it boot-asserted:
+**The measured build**, all of it derived and all of it boot-asserted
+(re-quoted 2026-08-09: items 40 and 32 moved the wind range — the re-cut
+cone takes up different chain, and the service band now rides above item
+32's set-up — so every row downstream of the range moved with them):
 
 | quantity | value | where it comes from |
 |---|---|---|
-| wind range | 11.0516 rad = 1.7589 turns | `DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R` — all the chain, at the feed radius. One constant now, where the chain rebuild and the tick each wrote it out |
-| sweep, empty → full | 5.000 → 6.759 turns | free coil + the range above |
+| wind range | 8.4101 rad = 1.3386 turns | `DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R` — all the chain, at the feed radius. One constant now, where the chain rebuild and the tick each wrote it out |
+| sweep, run-down → full | 5.7083 → 7.0468 turns | free coil + item 32's 17-click set-up (0.7083 turns) + the range above — the free 5.000 coil is a BENCH state now, reachable only by letting the set-up down |
 | innerR | 1.63490 | the arbor collar (1.5) + one ribbonR: the inner coil BEARS on it |
 | ribbonR | 0.13490 | solved out of its own definition — `rib = q(outerR − arborR)/(1 + q)`, `q = 0.1/coils` — because innerR now depends on it |
-| developed length | 157.4889, spread 4e-13 | the length constraint, measured on one quadrature so it is compared with itself |
-| capacity S at full wind | 4.9215 | > 0, so the annulus holds 6.759 turns at bind |
-| min coil pitch | 0.2797 vs 0.2698 bind | at full wind the spring is within 4% of coil-bound — which is what a fusee spring sized to its reserve should be |
-| frames | 88 | no point may move more than one ribbon thickness between frames, at the MEASURED sensitivity 2.12 u/rad |
+| developed length | 157.4889, spread 3e-13 | the length constraint, measured on one quadrature so it is compared with itself |
+| capacity S at full wind | 4.8438 | > 0, so the annulus holds 7.047 turns at bind |
+| min coil pitch | 0.27175 vs 0.2698 bind | at full wind the spring is within 0.8% of coil-bound — the set-up wound the slack TODO 40 left back into the band, which its header note asked for |
+| frames | 71 | no point may move more than one ribbon thickness between frames, at the MEASURED sensitivity |
 | segments | 266 | the chord may sag at most a tenth of the bind gap into it at the tightest radius |
-| cut-length spread | 0.0998 vs 0.2698 | the tessellation's residue on the length constraint, held to the ribbon's own thickness |
+| cut-length spread | 0.0764 vs 0.2698 | the tessellation's residue on the length constraint, held to the ribbon's own thickness |
 
 **Swept across the reserve SPEC, not just the reserve.** §22 makes the
 reserve a knob (12–48 h, clamped in `layout.js`), and it drives the wind
 range through the chain, so the spring has to survive the whole menu.
-Measured at boot for 12 / 24 / 30 / 48 h: the wound sweep runs 5.704 →
-7.814 turns, frames 35 → 179, capacity 5.206 → 4.637 (always positive),
-length error ~4e-13 throughout, and the tightest coil gap 0.579 → 0.2698.
-At 48 h that last number IS coil bind: the drum is exactly full, which is
-the honest report rather than a failure. Boot stays silent at every
-setting except 48 h, where it emits the §22/§61 fusee crest warning —
-pre-existing, reproduced identically on `main`, and not this entry's.
+Measured at boot for 12 / 24 / 30 / 48 h (under item 32's law): the wound
+sweep runs 6.406 → 7.530 turns, frames 34 → 108, capacity 5.017 → 4.713
+(always positive), length error ~3e-13 throughout, and the tightest coil
+pitch 0.3132 → 0.26983. At 48 h that last number IS coil bind (0.26980):
+the drum is exactly full, which is the honest report rather than a
+failure. Boot stays silent at every setting except 48 h, where it emits
+the §22/§61 fusee crest warning — pre-existing, reproduced identically on
+`main`, and not this entry's.
 
 **The residue of keyframing, stated rather than implied.** The wind is
-quantised to 88 states, so the "pinned" inner end does not hold its world
-azimuth exactly — measured across the reserve it sits at −1.515 rad and
-wanders ±0.048, which at r 1.635 is ±0.078 of arc. That is the frame rule
-doing precisely what it was derived to do (bounded by one ribbon
-thickness, 0.270), and it is smaller than the ribbon's own half-thickness,
-so the end never leaves the hook it butts. It is a quantisation, not a
-drift: the same tension always gives the same frame.
+quantised to 71 states (re-measured under item 32's law), so the "pinned"
+inner end does not hold its world azimuth exactly — measured across the
+reserve it wanders ±0.059 rad about `innerAnchorAz`, which at r 1.635 is
+±0.096 of arc. That is the frame rule doing precisely what it was derived
+to do (bounded by one ribbon thickness, 0.270), and it is smaller than
+the ribbon's own half-thickness, so the end never leaves the hook it
+butts. It is a quantisation, not a drift: the same tension always gives
+the same frame.
 
 **One implementation detail worth keeping, because it looked like a
 defect in the mechanism and was not.** The length is integrated from
@@ -189,11 +194,13 @@ keys; explain-quotes 0 disagreements). The schematic's spiral line rides
 the morph rather than quoting a plan the metal has left behind — §78's
 declared residue for this ribbon, closed in passing.
 
-**What is NOT closed, and is now [item 32](#32-the-mainsprings-shape-is-real-its-torque-is-still-authored):** the spring's
-TORQUE. The HUD's `springTq = 0.35 + 0.65·reserve` is authored prose, not
-a consequence of this ribbon's section and wind. The title of this entry
-overpromised against its own body; the body's remaining half is done, and
-the force half has its own entry with its own numbers.
+**What was NOT closed here — the spring's TORQUE — became
+[item 32](#32-part-closed--the-going-springs-torque-is-derived-from-its-ribbon-the-alarms-cadence-is-the-remainder),
+and is now closed there for the going train:** `springTorqueAt` is derived
+from this ribbon's section and wind (with the 0.35 revealed as a 17-click
+set-up on the ratchet this movement already builds), the fusee is cut
+against the derived law, and the `equalisation` gate holds the solve. The
+alarm's cadence is item 32's open remainder.
 
 ## 3. CLOSED — `handSetOffset` derived through the setting path
 
@@ -3500,108 +3507,101 @@ pillar seats both live up there), so it wants its own battery run and its own
 record. Item 28 is finished as a profile-and-drive rebuild; this is a part that
 does not exist yet.
 
-## 32. The mainspring's SHAPE is real; its torque is still authored
+## 32. PART CLOSED — the going spring's torque is derived from its ribbon; the alarm's cadence is the remainder
 
-> **Item 40 raised the stakes here.** The fusee's flank is now SOLVED from
-> `springTorqueAt`, so an exactly-equalising cone is exact arithmetic on an
-> authored law: deriving the law from the ribbon re-cuts the cone, and the
-> two are one job rather than two. It also left a loose proportion. The
-> re-cut cone takes up less chain, so the drum turns 1.4716 turns over the
-> reserve where it turned 1.7589, and this spring now winds through a
-> smaller angle for the same 30 h — at full wind it stands 12.6% clear of
-> coil bind where it stood 4%. The barrel is no longer sized tight to its
-> own wind. Nothing is WRONG (the reserve is a spec constant and the torque
-> is authored, so no energy claim is broken), but the ribbon's section and
-> the barrel's radii were chosen against a sweep that has since moved, and
-> whatever settles the torque law settles those too.
+**The going train's half is CLOSED (2026-08-09).** `springTq = 0.35 +
+0.65·t` — the last authored number in the fusee mechanism, and since item
+40 the load-bearing one — is gone. The law is now solved from the ribbon
+item 1 built, the fusee is cut against the solved law (the third re-cut,
+the one item 40's closing note predicted), and a battery gate holds the
+derivation. What follows records the as-built solve, because two of the
+entry's own sketch numbers turned out wrong in instructive ways.
 
-[Item 1](#1-closed--the-mainspring-winds-its-torque-is-now-item-32) closed the geometry half: the ribbon is a fixed length of steel
-between two fixed ends, and its wind state is that length redistributed.
-What it does NOT do is push. The torque the rest of the movement reads is
-one line of authored prose in the HUD update (`main.js`):
-
-```js
-const springTq = 0.35 + 0.65 * reserveShown;
-```
-
-and the fusee's whole taper is derived FROM it — the cone build says so in
-as many words: "the cone profile and the spring model are chosen so
-S(t)·r_f(t) is constant: S = 0.35 + 0.65·t (linear spring), … with
-rLarge/rSmall = S(1)/S(0) = 2.857". So `FUSEE_R_SMALL 2.6 / FUSEE_R_LARGE
-7.4` is a consequence of a spring curve nobody derived from a spring.
-Rule 2's family: the display quantity is the input, and the geometry was
-drawn to agree with it.
-
-**This is now cheap, because item 1 built everything the solve needs.** A
-flat spiral spring's torque is the standard `M = E·I·θ / L`, and every
-term is already a published number on the built part
-(`spring.userData.mainspring`):
-
-| term | value | source |
-|---|---|---|
-| `I = b·h³/12` | b = 3.2393 u (ribbon height), h = 0.2698 u (thickness = `pBind`) | the ribbon as cut |
-| `L` | 157.4889 u | `devLen` — the length constraint the frames are solved against |
-| `θ` | `A − sweepFree`, 0 → 11.0516 rad | the wind, straight off the drum |
-| unit pin | `UNIT_MM` | §39, as TODO 25 used it for the hairspring |
-
-TODO 25 is the worked precedent at the other end of the movement: the
-hairspring's section is SOLVED from the balance's inertia so `√(k/I)`
-lands on the spec beat, and `checkOscillator` holds the solve true. The
-same shape applies here — solve or verify the ribbon against the torque
-the train needs, and let the HUD read the result instead of declaring it.
-
-**A finding to start from: the 0.35 is a SET-UP, and this movement has the
-ratchet for it.** With `M ∝ θ`, torque at the free coil is exactly zero,
-so a linear spring can only read 0.35 at empty if it is still wound by
-0.35/0.65 of the drum's own range:
+**The derivation (`main.js`, the law block).** Three laws close on each
+other: the ribbon `M = k·(θ_s + C/R_wrap)`, the equalisation
+`M(t)·r(t) = const`, and the chain feed `dC/dt = 2π·W·r(t)`. Substitute
+`u = θ_s + C/R_wrap` and the system integrates in one line:
 
 ```
-θ_empty / (θ_empty + 11.0516) = 0.35   ⇒   θ_empty = 5.951 rad = 0.947 turns
+u(t) = √(θ_s² + β·t)      β = 4π·W·r₀·θ_s / R_wrap    (k cancels)
+r(t) = r₀·θ_s / u(t)      the flank — inverse square root, not a hyperbola
+C(t) = R_wrap·(u(t) − θ_s)
 ```
 
-The set-up ratchet is a 24-tooth wheel, so it can only hold multiples of
-15°: **23 clicks = 0.9583 turns gives 0.3527**, which is the authored 0.35
-to within a click. That is a strong hint that the number was never
-arbitrary — it was a set-up in disguise — and it makes the fix concrete:
-give `mainspringFrames` a `setupTurns` quantised to the ratchet's pitch,
-wind the free state by it, and derive `springTq` from `E·I·θ/L`. Capacity
-holds: at 0.9583 turns of set-up the full-wind sweep goes 6.759 → 7.717
-turns and `S` falls 4.92 → 4.66, still clear of coil bind.
+`k` cancels from everything geometric — the entire cone, chain and drum
+accounting is pure shape — and comes back only in the published absolute
+arithmetic (below). One state variable `u` carries the spring's angle, the
+drum's rotation and the chain's whereabouts; the tick's existing
+`setWind(sweepFull − drumRot)` lands the ribbon at exactly `A_free + u(t)`
+with no tick change at all.
 
-*(Arithmetic only — none of the above has been built or measured. It is
-written down here so the next pass starts from the numbers rather than
-rediscovering them.)*
+**The set-up finding held; the click count did not.** The entry predicted
+the 0.35 was a set-up in disguise, and it is — but its 23-click figure was
+solved against the pre-item-40 wind range (11.0516 rad) with the naive
+`θ_s/(θ_s + range)` criterion. Re-run SELF-CONSISTENTLY (θ_s changes β
+changes the range changes S(0)) against the re-cut cone's geometry, the
+ratchet click whose solved empty-end fraction lands nearest the authored
+0.35 is **17 clicks = 0.70833 turns = 4.45059 rad → S(0) = 0.34606**
+(18 clicks gives 0.35484 — the answer is still within half a click, which
+was the entry's real claim). The one pinned number in the law is that
+INTEGER, `SETUP_CLICKS = 17`; the quantisation is the 24-tooth set-up
+ratchet's, and the ratchet build now consumes the same constant.
 
-### The ALARM barrel is now the same case, on the same terms (§89)
+**The entry's `I = b·h³/12` was the bounding rectangle, not the section.**
+TubeGeometry with radialSegments 4 cuts a RHOMBUS — the correction item 25
+already made for the hairspring, factor 4 — so the solve uses the as-cut
+`I = a³c/3` (a = 0.13490, c = 1.61965), now published as
+`userData.mainspring.section` on both mainsprings, hairspring-style.
 
-§89 gave the alarm ribbon the identical treatment item 1 gave this one: a
-fixed arbor, a body wound at its teeth, and a wind morph between the two.
-So it arrives at exactly the same place — the SHAPE is real and the push is
-not. Its cadence is one literal,
+**The as-built numbers** (all in the frozen `EQUALISATION` record on
+`__clock`, computed where E and the sections live):
+
+- k = 9.159e-5 N·m/rad; arbor moment 0.408 → 1.178 N·mm over the service
+  band — inside the real small-barrel range, the scale-pin sanity anchor.
+- u(1) = 12.8609 rad; `DRUM_ROT_FULL` = 8.4101 rad = 1.3386 turns;
+  `CHAIN_ENGAGED` = 89.65 u.
+- `FUSEE_TORQUE_K = r₀·S(0)` = 2.5608 — still the level product as a
+  radius, still r_min at the wrap's top by identity; tip 2.4889.
+- Service band 5.7083 → 7.0468 turns: at full wind the coils sit 0.8%
+  off bind, so the set-up wound back the slack the item-40 header note
+  flagged ("the barrel is no longer sized tight to its own wind" — it is
+  again).
+- HUD: `springTorqueAt` bottoms at `SPRING_TQ_EMPTY` 0.34606, DERIVED,
+  where 0.35 was authored; `trainTq` measures 1.000000 at every reserve.
+
+**The instrument** is the `equalisation` battery gate (`checkEqualisation`,
+oscillator-pattern): θ_s must sit on an integer ratchet click, the level
+product `springTq·r/K` must hold at float noise over the sampled reserve
+(measured 2.2e-16 — the pre-item-40 cone, a flank cut to a law the display
+no longer obeyed, is exactly what this catches), and both ribbons'
+published sections must still describe the cut metal, with the frozen
+record cross-checked against the live build.
+
+### OPEN — the ALARM barrel's cadence is still authored (§89)
+
+The alarm ribbon's ARITHMETIC is now computed and published on the same
+terms as the going spring's — the `EQUALISATION` record's report half
+carries k = 1.472e-5 N·m/rad from its as-cut section (a = 0.09512,
+c = 0.455, L = 96.511) and the moment range 0 → 0.162 N·mm over its
+0 → 10.9956 rad wind. What it is NOT is read by anything. The cadence is
+still one literal,
 
 ```js
 const ALARM_STRIKE_GAP = 0.42;   // s between strikes (the bell cadence)
 ```
 
-and `ALARM_RING_SECONDS` is derived from it, so the ring's whole time base
-rests on a number no spring produced. Nothing in the alarm reads the
-ribbon's torque; the barrel drains at a rate set by that gap.
-
-The same `M = E·I·θ/L` closes it, and the terms are published on the built
-part exactly as they are for the going spring
-(`spring.userData.mainspring`): b = 0.91 (ribbon height), h = 0.19024
-(`pBind`), L = 96.511 (`devLen`), θ = `A − sweepFree`, 0 → 10.9956 rad.
-Kept under this item rather than filed as its own, because it is one class
-of debt with one fix; the difference is only which train reads the answer —
-the going side reads it through the fusee (which is why the ORDER note below
-matters there), the alarm side would read it as a strike rate.
-
-**Order matters.** Do the torque solve BEFORE re-deriving the cone: today
-the cone is a consequence of the authored curve, and if the real curve
-differs, `FUSEE_R_SMALL`/`FUSEE_R_LARGE` and every clearance chain hanging
-off the cone's envelope move with it. That is a layout consequence, which
-is the P3 half of the design-priority note — position space, not a nudge
-to either radius.
+and `ALARM_RING_SECONDS` is derived from it, so the ring's time base rests
+on a number no spring produced. Deriving cadence from torque needs what a
+real alarm has and this model does not: a GOVERNOR — the recoil anchor /
+fan brake whose drag balances the barrel's drive at a terminal rate. With
+no governor model, `M(θ)` alone cannot produce a strike interval; the
+gate therefore reports the alarm's k and says `cadence: 'authored'` rather
+than pretending the derived stiffness implies a rate. The remainder of
+this item is that governor model (the §25 A striking work is where its
+output would land), and it should note in passing that the alarm spring
+also has no set-up — its M(0) = 0, so its last strikes are driven by
+almost nothing, which a set-up or a stop-work would fix the same way the
+going side's is.
 
 ## 33. CLOSED — the wells are bounded inboard again, by the bore instead of a wheel they no longer reach
 
@@ -4155,10 +4155,16 @@ chording at the new smallest wrap radius (1.9²/(8·2.59) = 0.174) plus
 HANDOFF_TRACK_TOL 0.03 — sum 0.204, held at 0.25 where 0.8 stood. Measured
 after: worstDepth 0.133 at reserve 0.033, OK.
 
-**It is still standing on item 32,** and now more visibly: the flank is
-solved FROM `springTq`, so an exactly equalising cone is exact arithmetic
-on an authored law. Deriving that law from the ribbon re-cuts this cone —
-the same work, not a separate errand.
+**Re-cut by item 32, as predicted.** The flank was solved FROM
+`springTq`, so an exactly equalising cone was exact arithmetic on an
+authored law — and deriving the law from the ribbon re-cut this cone a
+third time, the same work rather than a separate errand: the hyperbola
+`K/S(t)` became the inverse square root `r₀·θ_s/u(t)` (r_min 2.5608, tip
+2.4889), the NCORE sag table and the relief prose were re-measured (base
+slope 5.28 → 10.44), and the §61 budget's chording term re-derived at
+the new r_min (0.174 → 0.176, sum 0.206, still held at 0.25). Item 32's
+entry records the derivation; the `equalisation` gate holds the level
+product at float noise.
 
 **Row 2 — CLOSED. The equalisation multiplied by a radius the chain never
 reaches.** The HUD's `fuseeR = FUSEE_R_LARGE + (FUSEE_R_SMALL −
@@ -4221,15 +4227,18 @@ same way:
 1.7% peak-to-peak, and flat across the whole middle.
 
 **What is left is ONE named term: the free span.** Its length is
-`√(D² − (DRUM_WRAP_R − r(t))²)`, so it shortens from 19.63 to 18.19 as the
-take-off radius falls — 1.4 of chain, 1.1% of the run, that nothing takes
-up. Balancing it is a small change (add `span(1) − span(t)` to
-`drumRotAt`), and it is filed rather than done because it drags the drum's
-STATION into the wind accounting: `D` is `FUSEE_R_LARGE + DRUM_R + 2.5`,
-declared after the accounting block, and `DRUM_ROT_FULL` moves again with
-it — 1.4716 → 1.4507 turns — which moves the mainspring's frames and the
-explainer's plate a second time for a fifth of a turn. Do it when the
-spring's proportions are next opened (item 32), not on its own.
+`√(D² − (DRUM_WRAP_R − r(t))²)`, so it shortens as the take-off radius
+falls — ~1.4 of chain, ~1.1% of the run, that nothing takes up (measured
+on the mesh under item 32's law: vertex count swings 1.10% over the
+reserve, the same order as before). Item 32 opened the spring's
+proportions and deliberately did NOT absorb this term, for a reason the
+derivation makes concrete: the law's closed form `u(t) = √(θ_s² + β·t)`
+integrates `dC/dt = 2π·W·r` with every unit of chain exchanged cone↔drum,
+and adding the span's give turns the self-consistent solve into an ODE
+with no closed form — a numerical integration whose output would then cut
+the cone. That is buildable but is its own step with its own instrument
+(`D` also drags the drum's STATION into the wind accounting), so it stays
+filed. `DRUM_ROT_FULL` is 1.3386 turns under the derived law.
 
 **And nothing asserts any of this.** The chain is display-only, the sweeps
 see a rebuilt mesh as a mover and never compare its length across poses,
