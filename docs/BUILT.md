@@ -9068,6 +9068,25 @@ predicted zero: an equivalence check that finds a delta must say where the
 premise failed, and this one failed where tier A had already moved a
 station out from under a shared constant.
 
+### The gate
+
+Full battery at identity, run locally in this container's headless
+Chromium (CI's ubuntu-latest/SwiftShader path runs on the PR): **19/19
+gates pass**, boot silent, fingerprint **1118637705 on both virgin
+boots** — the same hash tier A recorded for the unmodified tree. `spec
+boots` 16/16 with the identity control silent; no new spec key, so it
+gains no rows, and the scope guard held (`?alarmaz=` already owns the
+corner's azimuth; a corner-radius HANDLE stays unfiled).
+
+The acceptance for a change that could move a report is the `--report`
+diff, not the PASS column, so the same harness ran on the base tree
+(`50990a1`) and both full payloads were compared leaf by leaf: **12
+differing leaves, every one a per-check `ms` wall-clock field** — every
+row, pose, verdict and number in every check is byte-identical. The
+reconfigure windows' 0.45° seconds-row correction is invisible here by
+construction: the windows are UI refusal arcs, not battery rows, which is
+exactly why the plan demanded the direct comparison above instead.
+
 ## §95 — A primer page: the explainer for readers who don't read the source
 
 Filed from an owner decision after timesim#189, where one hacking-seconds
