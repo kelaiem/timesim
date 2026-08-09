@@ -834,6 +834,25 @@ export function solveKeyless({
   // projection than the old 6-o'clock spot, so the reserve reduction train
   // spans a shorter, cleaner run.
   const RESERVE_LOCAL = { x: 0, y: dialRadius * 0.39 };
+  // §94 tier B — THE ALARM CORNER'S OWN RADIUS. Until this tier it did not
+  // exist: main.js defined ALARM_CD as a read of RESERVE_LOCAL.y, which made
+  // "the reserve indicator happens to sit there" the radius of the entire
+  // alarm module — never the constraint that sizes the ALARM corner. What
+  // actually bounds it, each asserted where it lives in main.js:
+  //   · CEILING — the setting dogleg's two-circle solve has no intersection
+  //     past ≈ 19.9 (the i1 → arbor run outgrows the chain's reach; the
+  //     route solve returns null and boot says so);
+  //   · the winding chain's climb→barrel span grows ~1:1 with the corner —
+  //     the idler now DERIVES from the span (measured before it did: corner
+  //     16.0 left i1⇄i2 at 15.408 against a 15.300 pitch sum, a chain that
+  //     silently did not mesh), and its plate ceiling is asserted;
+  //   · the stem must reach the case rim with positive length
+  //     (alarmStemLen = plateR + 2.2 − corner).
+  // Default: dialRadius · 0.39 — deliberately the SAME expression on the
+  // same input as the reserve station above, so identity geometry is
+  // bit-exact; the two quantities stop sharing a NAME, not a home (§13
+  // step 3b's one-solver property survives intact).
+  const alarmCornerR = dialRadius * 0.39;
   // Small seconds live ON the fourth wheel's axis — dial-local coordinates
   // mirror world x through the dialFace Y-flip.
   const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
@@ -894,7 +913,7 @@ export function solveKeyless({
     cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt,
-    plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR,
+    plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR,
   };
 }
 

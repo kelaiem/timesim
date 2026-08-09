@@ -902,7 +902,7 @@ const {
   cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
@@ -1230,14 +1230,17 @@ registerLabel('Hairspring', hairspringGroup);
 //    three-quarter plate's slot for this same post higher up).
 // §25 C winding — hoisted: the CLIMB ARBOR (the alarm crown's winding path up
 // to the plate top) pierces BOTH plates, so its axis must exist before either
-// builds. ALARM_CD is the alarm stem corner's radius — its canonical
-// definition IS RESERVE_LOCAL.y (dialRadius·0.39), and since §13 step 3b
-// that value comes from solveKeyless as one source, so the old repeated
-// arithmetic (and the drift assert that guarded it) is gone. The climb sits
+// builds. ALARM_CD is the alarm stem corner's radius — since §94 tier B the
+// corner's OWN solveKeyless output (alarmCornerR, whose derivation states
+// the alarm's own bounds), no longer a read of RESERVE_LOCAL.y: the two are
+// equal at identity by sharing one EXPRESSION, not one name, so the reserve
+// station can move without dragging the climb's bores, the stem and the
+// dogleg behind it. Still solveKeyless's one source (§13 step 3b — the old
+// repeated arithmetic and its drift assert stay gone). The climb sits
 // ONE CROWN THROW outboard of the setting corner: the stem's own pull
 // (CROWN_PULL_DIST) is what carries its sliding bevel from the corner to the
 // climb's contrate — the pull IS the clutch, no extra slide mechanism needed.
-const ALARM_CD = RESERVE_LOCAL.y;
+const ALARM_CD = alarmCornerR;
 // §33 (alarm crown handle) — THE ALARM CORNER'S AZIMUTH, solved or
 // specified, hoisted here because the climb arbor's station (and both
 // plates' bores for it, just below) must FOLLOW the corner. The old code
@@ -5696,8 +5699,9 @@ const ALARM_STRIKE_AMP = 0.09;   // rad — swings the head from its 0.4 rest ga
 // bearing is atan2(uWind.y, −uWind.x). The side is chosen the way §1's JMP_AZ
 // picks a bearing — score each candidate by angular clearance from that stem
 // and take the clearer — rather than eyeballed.
-// (ALARM_CD ≡ RESERVE_LOCAL.y by definition since §13 step 3b — both read
-// solveKeyless's one output, so the old hoist-drift assert is retired.
+// (ALARM_CD is the corner's own solveKeyless output since §94 tier B —
+// equal to RESERVE_LOCAL.y at identity by shared expression, not by name;
+// the old hoist-drift assert stays retired, one solver, two outputs.
 // §33: ALARM_LOCAL_AZ itself is HOISTED to the climb-arbor block near the
 // plate build — the climb and both plates' bores must follow the corner,
 // so the corner's azimuth is solved once, up there, spec-overridable.)
@@ -7657,7 +7661,7 @@ const ALARM_SET_BEARING_SOLVED = (() => {
   // because this chain's second idler is not sized by reach. i1 stands at
   // ALARM_SET_DW1 from the centre and must reach the setting arbor, which
   // sits at ALARM_ARBOR_R = ALARM_CD + CROWN_PULL_DIST — so the run grows
-  // with the reserve station while D12 + D2P stays fixed, and past
+  // with the alarm corner while D12 + D2P stays fixed, and past
   // ALARM_CD ≈ 19.9 the two-circle solve has no intersection at all
   // (alarmSetRouteAt returns null, which is a HARD failure, not a warning).
   //
@@ -9673,9 +9677,9 @@ const EQUALISATION = (() => {
 // ---------------------------------------------------------------------------
 const ALARM_WIND_PINION_TEETH = 12;
 // The climb → barrel span this chain has to cover. It is NOT a constant: the
-// climb stands at ALARM_CD (≡ RESERVE_LOCAL.y, §13 step 3b) while the barrel
-// is seeded from the alarm module's own azimuth and does not move with it, so
-// the span grows about 1:1 with the reserve station.
+// climb stands at ALARM_CD (the corner's own dimension since §94 tier B)
+// while the barrel is seeded from the alarm module's own azimuth and does not
+// move with it, so the span grows about 1:1 with the alarm corner.
 const _wc = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
 const _wSpan = Math.hypot(alarmBarrelPos.x - _wc.x, alarmBarrelPos.y - _wc.y);
 // THE IDLER IS SIZED BY THE SPAN, which is what "sized so the chain spans the
@@ -15394,19 +15398,30 @@ const reconfWindows = (() => {
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // The ALARM corner's own forbidden windows (§33 alarm-crown handle). Beyond
 // the mutual crown/pusher arcs, the corner has a constraint the main crown
-// does not: its setting bevel stands AT the sub-dial wells' centre distance
-// (ALARM_CD ≡ RESERVE_LOCAL.y by §13 step 3b), so an azimuth inside a
-// well's angular radius parks the corner cluster INSIDE the recess. The
-// well half-angle is the disc's angular radius seen from the centre at
-// that shared distance, plus the corner cluster's own width.
+// does not: its setting bevel stands in the sub-dial wells' radial band, so
+// an azimuth inside a well's angular radius parks the corner cluster INSIDE
+// the recess. §94 tier B split the two radii the one formula used to fuse:
+// each well DISC (radius subDialR) subtends its asin at ITS OWN station's
+// centre distance, while the corner CLUSTER's width subtends at the
+// corner's own sweep radius (ALARM_CD) — the fused form was valid only
+// while every radius was the same number. At identity the reserve station
+// and the corner still share one expression (dialRadius · 0.39), so that
+// row is bit-identical to the fused form (verified by direct comparison —
+// the windows are not fingerprinted); the seconds row now reads its true
+// station (D4 = 15.5, which tier A's spec key already moves — the fused
+// form kept reading the corner's 15.40 for a disc that was never there).
+// Measured at identity: the seconds half narrows 0.0079 rad (0.45°), the
+// fused form's own error surfacing, not new behaviour.
 const reconfAlarmWindows = () => {
   const alarmCrownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);
-  const wellHalf = Math.asin(Math.min(0.99, (subDialR + CLEAR_MARGIN) / ALARM_CD)) + Math.atan2(1.5, ALARM_CD);
+  const clusterHalf = Math.atan2(1.5, ALARM_CD);
+  const wellHalfAt = (stationR) =>
+    Math.asin(Math.min(0.99, (subDialR + CLEAR_MARGIN) / stationR)) + clusterHalf;
   return [
     { az: Math.atan2(uWind.y, uWind.x), half: alarmCrownHalf + Math.atan2(5.425, plateR), what: 'the winding crown' },
     { az: ALARM_PUSH_AZ, half: alarmCrownHalf + Math.atan2(2.667, plateR), what: 'the alarm pusher' },
-    { az: Math.PI / 2, half: wellHalf, what: 'the reserve sub-dial’s well' },
-    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalf, what: 'the seconds sub-dial’s well' },
+    { az: Math.PI / 2, half: wellHalfAt(RESERVE_LOCAL.y), what: 'the reserve sub-dial’s well' },
+    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalfAt(Math.hypot(P.fourth.x, P.fourth.y)), what: 'the seconds sub-dial’s well' },
   ];
 };
 // The PUSHER's windows: its head against the two crowns (both azimuths
