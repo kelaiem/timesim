@@ -1208,6 +1208,52 @@ export const EXPECTED_CONTACT_FLOORS = [
     // from that plane crossing nothing but coaxial bores. Measured after:
     // 0 vertices inside the wall band, from 568.
   },
+  // §94 tier A — THE SMALL-SECONDS STATION'S OWN PAIRS. `d4` became a spec
+  // key, so this station MOVES, and it moves the fourth arbor, its display
+  // rod and the sub-dial well through a dial-side neighbourhood none of
+  // these three pairs had ever been measured across: all three were
+  // EXPECTED, so TODO 6's blanket excused everything between them. The
+  // reserve station's pairs are deliberately NOT seeded here — nothing in
+  // this tier moves that station, and §94's tier C is where it earns its
+  // rows.
+  {
+    // The station's mount, at the dial end. The 'Small seconds' unit is
+    // only the HAND: the well, its bezel and its printed face are Dial
+    // meshes, so the pair's whole real content is the hand on its arbor.
+    a: 'Heart cam (seconds reset)', b: 'Small seconds', min: CLEAR_MARGIN,
+    contacts: [
+      ['secondsArborHub', 'smallSecondsBoss'],   // the hand's collet ON the hub — the display joint
+      ['secondsArborHub', 'smallSecondsShaft'],  // the blade crosses the axis over that hub
+      ['secondsArborRod', 'smallSecondsShaft'],  // …and over the rod's last 0.15 behind it
+      ['secondsArborRod', 'smallSecondsBoss'],   // same joint, collet side
+    ],
+  },
+  {
+    // The same arbor against the DIAL: partly the joint above re-attributed
+    // through nesting (the hand is a dialFace descendant, so the Dial unit
+    // carries its meshes — the Dial ⇄ Hour wheel precedent), partly the
+    // real pass-through, the hub going up through the pocket floor's bore.
+    a: 'Heart cam (seconds reset)', b: 'Dial', min: CLEAR_MARGIN,
+    contacts: [
+      ['secondsArborHub', 'smallSecondsBoss'],   // the four rows above, re-attributed
+      ['secondsArborHub', 'smallSecondsShaft'],
+      ['secondsArborRod', 'smallSecondsShaft'],
+      ['secondsArborRod', 'smallSecondsBoss'],
+      ['secondsArborHub', 'dialPlate'],          // the hub passes the well floor's bore (SUBDIAL_BORE_R is derived from its radius)
+      ['secondsArborRod', 'dialPlate'],          // and the rod behind it through the same bore
+      ['secondsArborHub', 'secondsSubdialFace'], // the hub's standoff from the PRINT on that floor —
+                                                 // hubZ derives it as exactly CLEAR_MARGIN, and the face
+                                                 // is a zero-volume decal, not stock
+    ],
+  },
+  {
+    // No contact at all, which is the finding: this pair is EXPECTED for a
+    // touch that does not exist between these two units. What it owes is a
+    // CLEARANCE — the hand over its well — and that is what this row asks.
+    a: 'Dial', b: 'Small seconds', min: CLEAR_MARGIN,
+    contacts: [],
+    waived: 'TODO 41 — the hand rides 0.12 over the well floor: its 0.3 standoff is an authored literal and the blade\'s keel eats 0.18 of it',
+  },
   {
     a: 'Alarm release sleeve', b: 'Alarm disc', min: CLEAR_MARGIN,
     contacts: [
@@ -1222,14 +1268,30 @@ export const EXPECTED_CONTACT_FLOORS = [
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
 // arc: report, triage, then gate) — `ok` is per-row and the caller decides.
 export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
-  const pairs = rows.map((row) => ({
-    A: unitByName(clock, row.a),
-    B: unitByName(clock, row.b),
-    axes: row.axes,
-    refineFloor: row.min,
-    exclude: (ma, mb) => row.contacts.some(([na, nb]) =>
-      (ma.name === na && mb.name === nb) || (ma.name === nb && mb.name === na)),
-  }));
+  const pairs = rows.map((row) => {
+    const A = unitByName(clock, row.a), B = unitByName(clock, row.b);
+    // §94 — THE NESTED PAIRS, made measurable. Several EXPECTED pairs are a
+    // LABEL NESTING rather than two disjoint assemblies: 'Small seconds',
+    // 'Power reserve' and 'Motion works' are labelled children of the
+    // dialFace group, so every one of their meshes is ALSO a 'Dial' mesh
+    // (collectUnits does no nested-label exclusion — see the Dial ⇄ Hour
+    // wheel note in EXPECTED_PAIRS). The pair loop therefore measures the
+    // shared meshes against EACH OTHER: the small-seconds hand's blade
+    // against its own tip, 0 at every pose. That is an INTRA-unit question,
+    // which TODO 5's check owns and this one has no standing over, and
+    // before §94 it made a floors row on a nested pair unwritable — the row
+    // would have had to declare a part's own meshes as contacts with each
+    // other before it could ask the real question, which is what those
+    // meshes clear in the parts the OTHER unit does not share.
+    const shared = new Set(A.meshes.filter((m) => B.meshes.includes(m)));
+    return {
+      A, B,
+      axes: row.axes,
+      refineFloor: row.min,
+      exclude: (ma, mb) => (shared.has(ma) && shared.has(mb)) || row.contacts.some(([na, nb]) =>
+        (ma.name === na && mb.name === nb) || (ma.name === nb && mb.name === na)),
+    };
+  });
   // a contact name that matches NOTHING is a silent hole — report it, the
   // string-coupling convention's own failure mode
   const unmatched = [];

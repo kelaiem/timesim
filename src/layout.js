@@ -97,7 +97,23 @@ export const SPEC = (() => {
   // own part, so the handle moves the module.
   const alarmModAzDeg = Number.isFinite(Number(raw.alarmModAzDeg))
     ? ((Number(raw.alarmModAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg });
+  // §94 tier A — THE SMALL-SECONDS STATION. d4 is the centre→fourth
+  // distance, already solveLayout's own argument (D4 below): the two-bar
+  // solves the third wheel's wedge so the fourth lands exactly d4 below the
+  // centre, and the fourth's axis IS the small-seconds pivot. So this one
+  // number moves that sub-dial — and, because the escapement hangs off the
+  // fourth, the escape, fork and balance with it.
+  //
+  // NOT clamped here, deliberately. The bound that matters is the two-bar's
+  // own closure window, which is a function of the train's pitch radii —
+  // TRAIN is declared 340 lines below this IIFE, so nothing at this point in
+  // the file can state it. `d4Window` derives it where the radii are, and
+  // two places consume it: solveLayout falls back to D4 rather than going
+  // NaN, and reconfigure mode REFUSES against the same window before a drag
+  // can propose one. null = as designed: LAYOUT_INPUTS passes no `d4` at
+  // all, so the solve runs on the D4 constant and identity stays bit-exact.
+  const d4 = Number.isFinite(Number(raw.d4)) ? Number(raw.d4) : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4 });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -465,6 +481,27 @@ export function stepPos(prev, angleDeg, dist) {
   return { x: prev.x + Math.cos(a) * dist, y: prev.y + Math.sin(a) * dist };
 }
 
+// §94 tier A — THE TWO-BAR'S CLOSURE WINDOW, from the two bars themselves.
+// The centre→third→fourth linkage is a triangle whose two fixed sides are the
+// mesh centre distances d1CT (centre wheel ⇄ third pinion) and d2TF (third
+// wheel ⇄ fourth pinion); the third side is d4. A triangle exists iff
+//
+//     |d1CT − d2TF| ≤ d4 ≤ d1CT + d2TF
+//
+// and outside that the wedge's `acos` argument leaves [−1, 1], so every
+// position downstream of the third wheel is NaN. At the shipped radii the
+// window is 1.95 ≤ d4 ≤ 23.55 (roadmap §74, measured; the first NaN observed
+// at d4 24 is that upper bound plus float slack — the bound itself is exact).
+// Both ends are DEGENERATE rather than merely tight: the three arbors go
+// collinear there, which is not an arrangement anybody would cut. This
+// returns the mathematical window; its two consumers say what they do at the
+// edges (solveLayout falls back to D4, reconfigure mode refuses).
+export function d4Window(radii) {
+  const d1CT = radii.centerWheel + radii.thirdPinion;
+  const d2TF = radii.thirdWheel + radii.fourthPinion;
+  return { min: Math.abs(d1CT - d2TF), max: d1CT + d2TF, d1CT, d2TF };
+}
+
 export function solveLayout({
   barrelStepDeg = BARREL_STEP_DEG,
   d4 = D4,
@@ -483,10 +520,27 @@ export function solveLayout({
   // centre→third→fourth two-bar: the fourth lands EXACTLY d4 below the centre.
   const d1CT = radii.centerWheel + radii.thirdPinion;
   const d2TF = radii.thirdWheel + radii.fourthPinion;
+  // §94 tier A — d4 is a URL spec key now, so a value the two-bar cannot
+  // close can arrive from a hand-typed link (reconfigure mode refuses those
+  // against d4Window before they ever get here). A NaN layout is not a
+  // degraded answer, it is NO answer — every position downstream of the
+  // third wheel goes NaN and the build has nothing to stand on — so the
+  // solve REPORTS the refusal with its numbers (rule 6) and keeps the
+  // designed D4 rather than clamping onto a collinear degeneracy.
+  // Identity passes no d4 at all, so this compares D4 against a window it
+  // sits well inside and the value is untouched.
+  const w = d4Window(radii);
+  let d4e = d4;
+  if (!(d4 >= w.min && d4 <= w.max)) {
+    warn(`d4 ${d4} is outside the centre→third→fourth two-bar's closure window `
+      + `[${w.min.toFixed(2)}, ${w.max.toFixed(2)}] (bars ${w.d1CT.toFixed(2)} and ${w.d2TF.toFixed(2)}) `
+      + `— the triangle does not close, so the layout keeps the designed D4 ${D4}`);
+    d4e = D4;
+  }
   const thirdWedgeDeg =
-    Math.acos((d1CT * d1CT + d4 * d4 - d2TF * d2TF) / (2 * d1CT * d4)) / DEG2RAD;
+    Math.acos((d1CT * d1CT + d4e * d4e - d2TF * d2TF) / (2 * d1CT * d4e)) / DEG2RAD;
   const thirdPos = stepPos(centerPos, -90 - thirdWedgeDeg, d1CT);
-  const fourthPos = { x: centerPos.x, y: centerPos.y - d4 };
+  const fourthPos = { x: centerPos.x, y: centerPos.y - d4e };
   const escapePos = stepPos(fourthPos, escapeStepDeg, radii.fourthWheel + radii.escapePinion);
   // BALANCE_STEP_DEG — solved from the swept-radius clearance constraint.
   const rBal = swept.balance;
@@ -821,6 +875,18 @@ export function solveKeyless({
   // ceiling; TODO 33's assert catches an oversized factor at boot.
   const subDialR = (Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR)
     * ((aesthetics.dial.subdials && aesthetics.dial.subdials.radiusFactor) || 1);
+  // §94 tier A — THE WELLS MUST HAVE A RADIUS AT ALL, which nothing checked
+  // while both stations were literals comfortably outside the ceiling. Make
+  // the small-seconds station a spec key and the inboard end of its range
+  // walks the inner station straight through SUBDIAL_INBOARD_CLEAR: at d4
+  // 2 the expression above returns −1.55 and the dial built a well with a
+  // NEGATIVE radius in silence. The centre-bore assert next door cannot see
+  // it — it measures the ring's inner edge, which a negative radius pushes
+  // back OUTSIDE the bore, so a nonsense well reads as a compliant one.
+  if (subDialR <= 0)
+    warn(`sub-dial wells have no radius: ${subDialR.toFixed(2)} — the inner station sits `
+      + `${Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y).toFixed(2)} from the dial centre, inside the `
+      + `${SUBDIAL_INBOARD_CLEAR.toFixed(2)} the centre bore, its wall and the margin need`);
 
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,

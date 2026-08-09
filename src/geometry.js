@@ -3932,6 +3932,12 @@ export function makeDial({
         fuv.setXY(k, (fpos.getX(k) - sd.x) / (2 * sd.r) + 0.5, (fpos.getY(k) - sd.y) / (2 * sd.r) + 0.5);
       }
       const floor = new THREE.Mesh(floorGeo, floorMat);
+      // §94 — named per well, because a floors row has to be able to SAY
+      // "the arbor's standoff from the printed face". It is a decal plane,
+      // not stock: zero volume, laid on the machined floor at the same
+      // coordinates, so a clearance measured against it is measured against
+      // a print (the Dial unit's alarmIndexWedge row makes the same point).
+      floor.name = `${sd.kind}SubdialFace`;
       floor.renderOrder = FINISH_ORDER;
       g.add(floor);
 
@@ -4161,7 +4167,15 @@ export function makeDial({
 // enough to seat on its own tube's annular face, bored so the inner tubes
 // pass through, and short so it tucks under the hand above. Defaults preserve
 // the classic solid boss bit-for-bit for every existing hand.
-export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null }) {
+export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
+  namePrefix = null }) {
+  // §94 — namePrefix NAMES this hand's four meshes. inspect.js couples by
+  // `.name`, and an unnamed mesh only has an index label, which no
+  // EXPECTED_CONTACT_FLOORS row can select — so a hand whose contacts a
+  // floors row has to declare asks for one. Per-hand rather than per-kind
+  // because `kind` is not unique: the alarm hand is an 'hour' and the
+  // reserve hand is a 'minute', so kind-derived names would collide across
+  // units and a row naming one would silently excuse the other.
   const g = new THREE.Group();
   const handAesthetics = aesthetics.dial.hands;
   const config = handAesthetics[kind];
@@ -4211,6 +4225,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     shaftGeo.rotateZ(Math.PI);
     shaftGeo.translate(0, -tail, 0);
     const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.bluedHand);
+    if (namePrefix) shaft.name = `${namePrefix}Shaft`;
     // Tip: a LOFT scaled about the TOP-FACE PLANE (y = apothem), not the
     // axis — so the fluted upper surface runs dead STRAIGHT through to
     // the tip while the width and the keel sweep up to meet it (the
@@ -4252,6 +4267,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     tipGeo.rotateZ(Math.PI);
     tipGeo.translate(0, length - tipLen, 0);
     const tip = new THREE.Mesh(tipGeo, MATS.bluedHand);
+    if (namePrefix) tip.name = `${namePrefix}Tip`;
     grp.add(shaft, tip);
     return grp;
   };
@@ -4277,6 +4293,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     );
     cw.rotateX(Math.PI / 2);
     cw.position.set(0, -tail * config.counterweightOffsetFactor, 0);
+    if (namePrefix) cw.name = `${namePrefix}Counterweight`;
     g.add(cw);
   }
 
@@ -4285,6 +4302,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   const boss = boreR > 0
     ? new THREE.Mesh(ringExtrude(bossR, boreR, bossH, 24), MATS.bluedHand) // bored collet (already axis-z)
     : (() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 18), MATS.bluedHand); m.rotateX(Math.PI / 2); return m; })();
+  if (namePrefix) boss.name = `${namePrefix}Boss`;
   g.add(boss);
 
   g.userData.length = length;

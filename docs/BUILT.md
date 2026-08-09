@@ -8768,6 +8768,221 @@ without a warning.
   accepts the whole switch unit as one control — rather than the ring being
   wrong.
 
+## §94 tier A — `?d4=` : the small-seconds station becomes a spec dimension
+
+**Ships in PART.** §94 filed three tiers; this is tier A. Tiers B (name the
+alarm corner's radius, which today borrows `RESERVE_LOCAL.y`) and C (the
+reserve station as spec dimensions) stay in the roadmap, gated on the
+§44/§46 agreement about who owns the reserve subdial. Tier A is independent
+of that decision and was always unblocked.
+
+### What moved, and what it cost
+
+`D4 = 15.5` — the centre→fourth distance — was already a named parameter of
+`solveLayout`; nobody had lifted it to the spec. That is the whole tier:
+`?d4=` joins `SPEC`, the `index.html` reader, `SPEC_URL_KEYS`,
+`LAYOUT_INPUTS` and `RECONF_HANDLES`. The fourth wheel's axis IS the
+small-seconds pivot, so one number moves that sub-dial — and, because
+`escapePos = stepPos(fourthPos, …)`, the escape, fork and balance with it.
+
+The null rule is load-bearing and unchanged: an absent `d4` means
+`LAYOUT_INPUTS` passes no argument at all, so the solve runs on the `D4`
+constant and never re-multiplies a float. **Identity fingerprints
+1118637705 before and after**, and `?d4=15.5` — the same value passed
+explicitly — hashes identically too, which is the stronger statement.
+
+### The handle is RADIAL, and three of its neighbours are not
+
+Every §33 handle before this one proposed an azimuth about a mesh point, so
+`RECONF_HANDLES` rows were azimuth-shaped: `toSpec(azDeg)`, a `defDeg`, a
+wrap into (−180, 180]. The small-seconds station is not an angle. The
+two-bar puts the fourth EXACTLY `d4` below the centre and solves the third
+wheel's wedge to get it there, so the fourth's only freedom is radial and
+the pointer's reading is its DISTANCE from the anchor.
+
+The row shape generalised rather than forked: `radial: true` selects the
+reading and the candidate's label branches on it (degrees and units are not
+interchangeable in a sentence either), and `defDeg` became `def`. One
+consequence is worth naming — a distance is rotation-invariant, so the
+radial row is the only one with no `RECONF_ROT_DEG` term: a `?crownaz=`
+boot rotates the anchor and the pointer together and the reading does not
+change.
+
+`reconfCandidate.valueDeg` became `value` in the same pass. Apply and Trial
+both wrote `valueDeg.toFixed(1)` into a URL, which was true of six handles
+and would have been a lie in the seventh.
+
+### The refusal, and why a NaN boot is not a bound
+
+The centre→third→fourth two-bar is a triangle whose two fixed sides are the
+mesh centre distances `d1CT` 12.75 and `d2TF` 10.80. It closes iff
+
+    |d1CT − d2TF| ≤ d4 ≤ d1CT + d2TF        →   1.95 ≤ d4 ≤ 23.55
+
+and outside it `acos` leaves [−1, 1] and every position downstream of the
+third wheel is NaN. `d4Window(radii)` derives that from the bars, and TWO
+places consume it, deliberately differently:
+
+- **`solveLayout` falls back to `D4` and warns**, with the achieved and
+  required numbers (rule 6). A NaN layout is not a degraded answer, it is
+  no answer — the build has nothing to stand on — and a hand-typed URL can
+  ask for one. Measured: `?d4=24`, `?d4=23.6` and `?d4=1.9` all boot, all
+  warn, all hash identity, where before this tier they would have produced
+  a movement with no positions.
+- **The handle REFUSES**, closed form, before the drag can propose one. It
+  has to be its own check rather than reading the shadow-solve's verdict:
+  with the fallback in place a shadow of an impossible `d4` comes back as
+  the DEFAULT layout, so the ghost would be a proposal that is not the one
+  under the pointer and Apply would silently build a different watch.
+
+Everything else the handle says arrives through the existing §85 link:
+`stopWorkShadowWarns` re-solves the whole keyless frame for the candidate
+`P`, and that solve is where the sub-dial wells are sized — so dragging the
+fourth wheel inside the wells' inboard ceiling reports under the pointer
+without the drag branch knowing anything about dials.
+
+### Measured, not interpolated — and one of §74's figures moved
+
+Booted headless at 29 values of `d4`, on the shipped tree with both new
+asserts in place. The traps §74 measured transfer intact, with one
+correction and two additions:
+
+| `d4` | warns | what it says |
+|---|---|---|
+| 1.9, 1.95 | 1 | outside closure — falls back to `D4`, hashes identity |
+| 2, 3.5 | 3 | **wells with no radius** (new assert) + the plate cut reaching a pivot, twice |
+| 3.6, 4, 6 | 2 | the plate cut reaching a pivot the balance has walked toward |
+| 8, 10, 12 | 3 | …plus §34's selector post fouling the moved seconds well (−0.31 to 0.14 against 0.15) |
+| 13, 14 | 2 | the plate cut alone again |
+| 15 | 3 | …plus the selector post, this time against the 12-well ring |
+| 16, 16.5 | 2 | **the keyless side-sign window**, exactly as §74 measured, plus the selector post |
+| 17 | 1 | still in the side-sign window, selector post now clear |
+| 17.5, 18, 19 | 5 | balance cock has no seat; §62's escapement window left on a 0.12 land |
+| **20**, 21, 22, 23, 23.5 | **0** | silent — §74 measured 1 warning at 20 |
+| 23.55, 23.6, 24, 26 | 1 | the closure refusal, falling back to `D4`, hashing identity |
+
+`plateR` is 42.923 for every value up to 22 and then grows: 42.968 at 23,
+43.334 at 23.5. The dial follows it (39.489 → 39.868), which is the
+measurement that retires the face-headroom trap below.
+
+**Non-monotonic, confirmed**: 17 gives 1 warning, 17.5 gives 5, 20 gives 0.
+Nobody bisecting this range for a clean value will be led to one.
+
+**The dial-face bound does NOT bind for `d4` alone**, which contradicts the
+plan this tier was written from. §74 measured face headroom reaching 0 at
+centre ≈ 22.34 — with BOTH stations moving in lockstep, so `subDialR` grew
+with them. Moving `d4` alone leaves `subDialR` pinned at 11.85 (the reserve
+station is the `min`), so the seconds well's outboard edge is `d4 + 11.85`
+against a `dialRadius` of 39.489: headroom would reach 0 at `d4` ≈ 27.6,
+past the two-bar's 23.55. And above `d4` ≈ 22.5 the plate GROWS with the
+station (42.923 → 43.334 at 23.5), so the face comes out to meet the well
+rather than the well running off the face. The two-bar is the only bound
+here; the trap was inherited from a different experiment and is recorded
+as not applying.
+
+### Two instruments the knob exposed on its first day
+
+Both were invisible while both stations were literals, and both are the
+same shape: an expression DERIVED to sit exactly on a limit, read at an
+arbitrary value for the first time.
+
+**The wells could have no radius at all.** `subDialR = min(stations) −
+SUBDIAL_INBOARD_CLEAR`, and at `d4` 2 that returns **−1.55** — a dial built
+with a negative well radius, in silence. The centre-bore assert next door
+cannot see it: it measures the ring's inner edge, and a negative radius
+pushes that edge back OUTSIDE the bore, so a nonsense well reads as a
+compliant one. `solveKeyless` now warns with the station, the ceiling and
+the achieved radius.
+
+**And the centre-bore assert itself fired on float noise.** For whichever
+station is the inner one, that web is `CLEAR_MARGIN` by algebra — so the
+only real breach is a `radiusFactor` over the ceiling. While both stations
+were literals the arithmetic landed on the right side of the last bit; a
+spec'd `d4` re-does it at an arbitrary value, and every inward station
+reported a 1e-16 breach of its own definition (measured at `d4` 6: web
+0.14999999999999991 against 0.15). The comparison now carries a 1e-9
+float-equality guard, which is a guard against equality, not a widened
+budget.
+
+### The instrument gap this tier had to seed shut
+
+No `EXPECTED_CONTACT_FLOORS` row existed for any sub-dial pair, so the
+three pairs the small-seconds station participates in rode TODO 6's blanket
+excuse — and this tier moves that station. Three rows now:
+
+| pair | measured | contacts declared |
+|---|---|---|
+| `Heart cam (seconds reset)` ⇄ `Small seconds` | 0.55 | 4 — the hand on its arbor |
+| `Heart cam (seconds reset)` ⇄ `Dial` | 0.55 | 7 — the same joint re-attributed through nesting, plus the hub through the pocket floor's bore |
+| `Dial` ⇄ `Small seconds` | **0.12**, WAIVED | 0 — there is no contact |
+
+**Writing them needed the check to handle NESTED pairs, which it could
+not.** 'Small seconds' is a labelled child of the `dialFace` group, so every
+one of its meshes is also a 'Dial' mesh and the pair loop was measuring the
+hand's blade against its own tip: 0 at every pose, at every station. That
+is an intra-unit question — TODO 5's, not this check's — and it made a
+floors row on any nested pair unwritable, since the row would have had to
+declare a part's own meshes as contacts with each other before reaching the
+real question. `checkExpectedContacts` now excludes pairs where BOTH meshes
+belong to both units. The same fix makes `Dial ⇄ Power reserve` and
+`Dial ⇄ Motion works` writable whenever someone wants them.
+
+**Four meshes gained names**, because `inspect.js` couples by `.name` and an
+unnamed mesh has only an index label no row can select: `secondsArborRod`,
+`secondsArborHub`, the sub-dial floor decals (`secondsSubdialFace` /
+`reserveSubdialFace`), and the small-seconds hand's four parts via
+`makeHand`'s new `namePrefix`. Per-hand rather than per-kind, because `kind`
+is not unique — the alarm hand is an `'hour'` and the reserve hand is a
+`'minute'`, so kind-derived names would collide across units and a row
+naming one would silently excuse the other.
+
+The three pre-existing floors rows were re-measured against the unmodified
+tree to prove the nesting change moved nothing it should not: `Alarm disc ⇄
+Hour wheel` 0.15, `Hour wheel ⇄ Motion works` 0.15, `Alarm release sleeve ⇄
+Alarm disc` 0.1972 — identical minima and identical mesh pairs before and
+after. (One row's reported `at` pose moved between two ties at the same
+minimum; the number did not.)
+
+**And the third row is a finding, not a pass.** `Dial ⇄ Small seconds` has
+no contact between the two units at all — the well, its bezel and its
+printed face are Dial meshes; the unit contains only the hand — so what the
+pair owes is a clearance, and it measures **0.12** against the one margin's
+0.15. The hand's standoff is an authored `-(SUBDIAL_RECESS - 0.3)` and the
+bur rod's keel hangs 0.18 below its mounting plane. Filed as **TODO 41**
+with the derivation the 0.3 should have been, and the row ships waived
+citing it. It is pre-existing and `d4`-independent: the hand's z is measured
+off the pocket floor, and the pocket rides the dial.
+
+### The gate
+
+18/18 gates pass, fingerprint 1118637705 on both virgin boots — the same
+hash the unmodified tree produces. `expectedContacts` is the one check that
+moved and it moved by design: 3 pairs → 6, 0 waived → 1, and 147 s → 243 s,
+because two of the new rows pair a 3-mesh and a 4-mesh unit against the
+Dial's 147 meshes and the pair loop is quadratic in exactly that. The
+`cost` column is updated to the measured figure; the partition does not
+move, since shard 1's total is 1298 against `sweptOverlap`'s 1573 alone.
+
+`ci-battery.mjs`'s TODO 36 table gains three points, chosen so the table
+records the traps rather than avoiding them: `?d4=20` (moved and silent),
+`?d4=16` (inside the side-sign window, EXPECTED to warn — documented by a
+row that expects it, not suppressed), and `?d4=24` (past the closure
+window: it must BOOT, because the fallback is what this tier ships in place
+of a NaN).
+
+### What this did not do
+
+- **No `MECH_GRAPH` entry**, because no part was added. Every consequence
+  of a moved station is an existing part landing somewhere else.
+- **The reserve station's pairs are still unseeded.** Nothing in tier A
+  moves that station; §94 tier C is where it earns its rows.
+- **The status line still quotes the solver in English** — §93's recorded
+  `i18n.js` residue, unchanged. The new chrome (the fourth-wheel handle's
+  hint, the seven-part idle line) is in all three locales.
+- **`?d4=` moves reports at non-identity specs by construction**, which is
+  the point of it. Identity moves nothing: same fingerprint, same boot
+  silence, same battery payloads.
+
 ## §95 — A primer page: the explainer for readers who don't read the source
 
 Filed from an owner decision after timesim#189, where one hacking-seconds
