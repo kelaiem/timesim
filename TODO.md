@@ -8,6 +8,42 @@ the movement's gaps by how badly they undermine "could this watch actually be
 built". The support-structure findings (items 2, 3, 4, 7 of that review) are
 closed — see *Recently closed* at the end. What remains is listed here.
 
+## Status index
+
+The heading convention: a bare `## N.` heading is OPEN; closed and
+part-closed items say so in the heading and keep their text, edited in
+place to record what was built. This table is the at-a-glance version,
+refreshed 2026-08-09 — items with work left first, with what remains:
+
+| item | state | what remains |
+|---|---|---|
+| 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
+| 5 | OPEN, interim instrument | `intraUnit` covers movers-vs-fixtures; fixture-vs-fixture and mover-vs-mover inside one unit are still invisible |
+| 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (no subdial pair is seeded) |
+| 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
+| 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
+| 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
+| 15 | PART CLOSED | Winding + setting chains closed; two sites remain |
+| 16 | PART CLOSED | One item deliberately left, recorded in place |
+| 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
+| 28 | MOSTLY CLOSED | The lock's RETURN — filed as item 31 |
+| 29 | MOSTLY CLOSED | The Dial row |
+| 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
+| 31 | OPEN | The alarm lock has no return; what `RESTORING_WAIVERS` points at |
+| 32 | PART CLOSED | The going half is closed; the alarm's cadence stays authored until a governor model exists |
+| 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
+| 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
+| 37 | OPEN | The alarm barrel holds its wind with somebody else's lock |
+| 38 | OPEN | No axis WINDS anything, so the sweeps only ever see the alarm run down |
+| 39 | OPEN | The going drum's arbor turns with the drum it is supposed to hold |
+| 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
+
+Closed in place, text kept as the record: 1 (torque became item 32), 3,
+9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
+named residue — the instrument gap is roadmap §77's subject, not this
+item's), 33, 35 — plus the *Recently closed* bucket at the end (former
+items 2 and 8 live there).
+
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
 ```js
