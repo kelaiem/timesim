@@ -2083,11 +2083,12 @@ const PENETRATION_BUDGETS = [
     // exactly that corner (floorAt = envelope sheared down a half-stack,
     // minus grooveD), so the ideal wrap box touches it and owes it
     // nothing. What remains: (1) link chording, pitch²/(8·r_min) =
-    // 1.9²/(8·2.59) = 0.174 at the smallest wrap radius (2.59 since the
-    // hyperbolic cut — the wrap's top, not the runout tip); (2)
-    // HANDOFF_TRACK_TOL tessellation slack, 0.03. Sum 0.204, held at
-    // 0.25 so the row polices the relationship, not float luck — the
-    // same round-up that held 0.76 at 0.8, at a third of the size.
+    // 1.9²/(8·2.5608) = 0.176 at the smallest wrap radius (2.5608 =
+    // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law —
+    // the wrap's top, not the runout tip); (2) HANDOFF_TRACK_TOL
+    // tessellation slack, 0.03. Sum 0.206, held at 0.25 so the row
+    // polices the relationship, not float luck — the same round-up that
+    // held 0.76 at 0.8, at a third of the size.
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
     axis: 'reserve',
@@ -4247,6 +4248,90 @@ export function checkOscillator(clock) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// TODO 32 — THE EQUALISATION, HELD. main.js derives the going spring's torque
+// law from the ribbon (M = k·θ, set-up as integer ratchet clicks) and cuts
+// the fusee against it; this check holds the three claims that keep that
+// derivation honest, and reports the arithmetic (the oscillator's
+// report→gate arc, applied to the movement's other solved spring):
+//
+//  1. QUANTISATION — θ_s is a whole number of set-up ratchet clicks. The one
+//     pinned number in the law is an integer detent count; a θ_s that stops
+//     landing on the ratchet is an authored angle wearing the ratchet's
+//     clothes, which is exactly the costume TODO 32 took off the old 0.35.
+//  2. THE LEVEL PRODUCT — max |springTq(t)·r(t)/K − 1| over the sampled
+//     reserve at float noise. The fusee's construction makes this an
+//     IDENTITY, so the tolerance is not engineering slack but arithmetic
+//     consistency: the pre-TODO-40 cone is what a violation looks like — a
+//     flank cut to a law the torque display no longer obeyed.
+//  3. DECLARED VS CUT — the section the record's k was computed from still
+//     describes the metal, for BOTH ribbons (going drum and alarm barrel):
+//     a = the tube's cut radius, c = a·scale.z (the standing-on-edge scale),
+//     I = a³c/3, and the frozen record's numbers match the live build's.
+//     The oscillator's cross-check, verbatim, because the drift it catches
+//     is the same: someone re-cutting a ribbon without re-deriving the
+//     record that quotes it.
+//
+// The alarm's cadence is NOT gated: the record says 'authored' because a
+// torque→cadence model needs a governor that does not exist (item 32's open
+// remainder), and gating a number at its authored value would hold nothing.
+export function checkEqualisation(clock) {
+  const E = clock.equalisation;
+  if (!E) return { ok: true, error: 'no equalisation payload on __clock (main.js TODO 32 block missing)' };
+  const failures = [];
+  if (!E.going.setup.quantised)
+    failures.push({ what: 'set-up quantisation', setup: E.going.setup });
+  if (!(E.going.levelMaxDev <= 1e-9))
+    failures.push({ what: 'level product', maxDev: E.going.levelMaxDev, tol: 1e-9 });
+  // Declared vs cut, per ribbon. String-coupled to the label names, verbatim.
+  const crossCheck = (unitName, record) => {
+    const entry = clock.labelEntries.find((e) => e.name === unitName);
+    if (!entry) { failures.push({ what: 'declared vs cut', unit: unitName, error: 'unit not found' }); return; }
+    let ms = null, tube = null;
+    entry.obj.traverse((o) => {
+      if (!ms && o.userData && o.userData.mainspring) ms = o.userData.mainspring;
+      if (!tube && o.isMesh && o.name === 'mainspringRibbon') tube = o;
+    });
+    if (!ms || !ms.section || !tube) { failures.push({ what: 'declared vs cut', unit: unitName, error: 'mainspring payload or ribbon mesh not found' }); return; }
+    const sec = ms.section, s = tube.scale.z || 1;
+    if (Math.abs(sec.a - ms.ribbonR) > 1e-9 || Math.abs(sec.a * s - sec.c) > 1e-6
+        || Math.abs(sec.I_u4 - (sec.a ** 3) * sec.c / 3) > 1e-12)
+      failures.push({ what: 'declared vs cut', unit: unitName, declared: sec,
+        cut: { ribbonR: ms.ribbonR, scaleZ: s, axialHalf: sec.a * s } });
+    // ...and the frozen record against the live declaration: the payload was
+    // computed at boot, so a rebuilt ribbon leaves it quoting stale metal.
+    if (Math.abs(record.section.I_u4 - sec.I_u4) > 1e-12 || Math.abs(record.devLen_u - ms.devLen) > 1e-9)
+      failures.push({ what: 'record vs build', unit: unitName,
+        record: { I_u4: record.section.I_u4, devLen_u: record.devLen_u },
+        build: { I_u4: sec.I_u4, devLen_u: ms.devLen } });
+  };
+  crossCheck('Mainspring drum', E.going);
+  crossCheck('Alarm barrel', E.alarm);
+  const g = E.going, a = E.alarm;
+  return {
+    ok: failures.length === 0,
+    going: {
+      k_Nm_per_rad: g.k_Nm_per_rad,
+      setupClicks: g.setup.clicks, setupTeeth: g.setup.teeth,
+      setupTurns: +(g.setup.sweepRad / (2 * Math.PI)).toFixed(5),
+      windFullTurns: +(g.windFullRad / (2 * Math.PI)).toFixed(5),
+      tqEmpty: +g.tqEmpty.toFixed(5), fuseeK: +g.fuseeK.toFixed(4),
+      momentRange_Nmm: g.momentRange_Nmm.map((x) => +x.toFixed(4)),
+      levelMaxDev: g.levelMaxDev,
+    },
+    alarm: {
+      k_Nm_per_rad: a.k_Nm_per_rad,
+      windRangeTurns: a.windRangeRad.map((x) => +(x / (2 * Math.PI)).toFixed(4)),
+      momentRange_Nmm: a.momentRange_Nmm.map((x) => +x.toFixed(4)),
+      cadence: a.cadence,
+    },
+    failures,
+    summary: `going k ${g.k_Nm_per_rad.toExponential(3)} N·m/rad, set-up ${g.setup.clicks}/${g.setup.teeth} clicks, `
+      + `M ${g.momentRange_Nmm[0].toFixed(2)}–${g.momentRange_Nmm[1].toFixed(2)} N·mm, level |dev| ${g.levelMaxDev.toExponential(1)}; `
+      + `alarm k ${a.k_Nm_per_rad.toExponential(3)} N·m/rad (cadence authored — TODO 32 remainder)`,
+  };
+}
+
 export const STOCK_WAIVERS = {
   'Alarm release feeler': 'TODO 11', 'Alarm disc': 'TODO 11', 'Alarm switch': 'TODO 11',
   'Alarm selector': 'TODO 11', 'Alarm setting wheel': 'TODO 11', 'Alarm link': 'TODO 11',
@@ -4309,6 +4394,7 @@ const CHECKS = {
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
+  equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 — the going spring's derived law holds; the alarm's arithmetic reported
   // §48's no-spring audit. Named `restoring` rather than `oscillators`: one
   // character from `oscillator` above would be a trap, and the two answer
   // different questions — that one asks whether the hairspring is cut to the

@@ -1709,8 +1709,11 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // the real thing — so each wrap's box spans ±reliefHalf in z around its
 // groove point, and on a steep flank the box's LOWER half overhangs metal
 // the radial-depth cut left standing: a radial cut only fits while
-// |dr/dz| ≤ grooveD / reliefHalf (2.42 in the shipped stock), and the
-// equalising hyperbola runs 5.28 at its base. So the floor at height z is
+// |dr/dz| ≤ grooveD / reliefHalf (0.66/0.33 = 2.0 in the shipped stock —
+// the 2.42 this first said was a slip of arithmetic), and the equalising
+// 1/√ flank runs 10.44 at its base (TODO 32's law; the hyperbola it
+// replaced ran 5.28 — the relief is slope-agnostic, so only these prose
+// numbers moved). So the floor at height z is
 // relieved to clear the box of the HIGHEST wrap covering z (the envelope
 // falls with z, so that wrap is the binding one):
 //
@@ -1739,12 +1742,16 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     env(Math.min(Math.max((z - bandZ0 + reliefHalf) / bandSpan, 0), 1)) - grooveD;
   // The core is lathed at NCORE stations; a straight generator is exact at
   // any count, a curved one is not, so the count is what decides how much of
-  // the curve survives. Measured on the shipped hyperbola, worst chord sag
-  // against the true profile, near the base where it bends hardest:
-  //   12 → 0.0400   24 → 0.0112   48 → 0.0030   96 → 0.0008
-  // 48 is the first that lands an order of magnitude inside the 0.08 the §61
-  // chain-seating budget works to, so the facets cannot be what a seating row
-  // is measuring. The straight case keeps 12: exact is exact.
+  // the curve survives. Measured on the shipped 1/√ flank (TODO 32), worst
+  // chord sag against the true profile:
+  //   12 → 0.0394   24 → 0.0117   48 → 0.0048   96 → 0.0028
+  // Below 48 the worst chord sits near the base, where the curve bends
+  // hardest; from 48 up it moves to the relief clamp's kink near the band's
+  // top (an O(h) corner no station count removes — the smooth-region sag at
+  // 48 is 0.0032 and still falling as N²). 48 lands the whole table an order
+  // of magnitude inside the 0.08 the §61 chain-seating budget works to, so
+  // the facets cannot be what a seating row is measuring. The straight case
+  // keeps 12: exact is exact.
   const NCORE = envR ? 48 : 12;
   // GROOVED core (§61). The old build ran a smooth core at the envelope with
   // a proud wire ridge whose "channel between adjacent flange turns,
@@ -1806,8 +1813,9 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     // §54's build-to proportion (SLENDER_TARGET · width — layout.js, the same
     // number the slenderness check enforces). Un-relieved, full height is
     // grooveD and the cap never binds (0.66 < 27·0.025). Relieved, the crest
-    // at the steep base would be grooveD + relief ≈ 1.2 over a 0.025 width —
-    // λ ≈ 48 against §54's 30 — so it honestly stops short of the envelope
+    // at the steep base would be grooveD + relief ≈ 1.6 over a 0.024 width —
+    // λ ≈ 65 against §54's 30 (TODO 32's flank bends harder at the base than
+    // the hyperbola this first shipped against) — so it honestly stops short of the envelope
     // there: on that stretch the chain is retained by the step of the turn
     // below (the un-relieved metal between wraps) and by its own departing
     // tangent, which is what the base of a real steep-flanked fusee looks
@@ -1887,11 +1895,20 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // objects are what that cache keys on — the same reason makeHairspring
 // precomputes, arrived at from the other end.
 // ---------------------------------------------------------------------------
-export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep }) {
+// setup (TODO 32): pre-tension wound in at the bench and held by the set-up
+// ratchet for the life of the watch — the SERVICE band therefore spans
+// [A_free + setup, A_free + setup + sweep], and that is the band the frames
+// cover. The free coil (A_free, k = 1) stays the LENGTH REFERENCE — it is
+// the ribbon as cut, and devLen must be measured where the distribution law
+// is exactly Archimedean (the open-quadrature note below is why) — but it is
+// no longer a frame: no service state ever shows it. Default 0 keeps the
+// alarm barrel (§89) exactly as it was.
+export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0 }) {
   const pBind = ribbonR * 2;              // coil bind — see above
   const P = pBind / (Math.PI * 2);        // ...as radius gained per radian
   const A_free = coils * Math.PI * 2;     // the ribbon as coiled: even pitch, k = 1
-  const A_full = A_free + sweep;          // fully wound: the drum has taken `sweep` off the static arbor
+  const A_down = A_free + setup;          // run down IN SERVICE: the set-up still holds
+  const A_full = A_down + sweep;          // fully wound: the drum has taken `sweep` more off the static arbor
   const slack = (A) => (outerR - innerR) - P * A;   // S — what is left over for the distribution
   const radiusAt = (A, k, S, a) => innerR + P * a + S * Math.pow(a / A, k);
 
@@ -1982,13 +1999,13 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep }) {
     for (let i = 0; i <= segs; i++) m = Math.max(m, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
     return m / (2 * h);
   };
-  const dPdA = Math.max(sens(A_free + h), sens((A_free + A_full) / 2), sens(A_full - h));
+  const dPdA = Math.max(sens(A_down + h), sens((A_down + A_full) / 2), sens(A_full - h));
   const nFrames = Math.max(Math.ceil((sweep * dPdA) / pBind) + 1, 3);
 
   const frames = [], cutLens = [];
   let maxStep = 0, minPitch = Infinity, lenErr = 0;
   for (let i = 0; i < nFrames; i++) {
-    const A = A_full - (sweep * i) / (nFrames - 1);   // frame 0 = fully wound
+    const A = A_full - (sweep * i) / (nFrames - 1);   // frame 0 = fully wound; frame last = A_down (service run-down)
     const f = frameAt(A);
     if (i) for (let j = 0; j <= segs; j++) {
       const q = frames[i - 1];
@@ -2003,7 +2020,8 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep }) {
     frames.push(f.pts);
   }
   return {
-    frames, segs, devLen, sweepFree: A_free, sweepFull: A_full,
+    frames, segs, devLen, sweepFree: A_free, sweepDown: A_down, sweepFull: A_full,
+    setupSweep: setup,
     capacity: slack(A_full),
     pBind, maxStep, minPitch, lenErr, dPdA,
     // The CUT ribbon is an inscribed chord run, so it is always a little
@@ -2057,8 +2075,11 @@ export const barrelArborR = (radius) => radius * 0.09;
 // which is what BOTH barrels used to be and is now only the fallback for a
 // caller with no second member to wind against (test-geometry.html's part
 // smoke test being the one).
+// springSetupSweep (TODO 32): pre-tension under the whole service band —
+// see mainspringFrames. Default 0, so the alarm barrel (§89) is untouched.
 export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
+                             springSetupSweep = 0,
                              arbor = true, arborBoreR = null }) {
   const g = new THREE.Group();
   if (!arbor && arborBoreR === null)
@@ -2132,7 +2153,8 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
   const springInner = morph ? springArborR + sRibbon : radius * 0.16;
   const wind = morph ? mainspringFrames({
-    innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon, sweep: springWindSweep,
+    innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
+    sweep: springWindSweep, setup: springSetupSweep,
   }) : null;
   const tubeOf = (pts) => new THREE.TubeGeometry(
     new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))),
@@ -2183,7 +2205,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     const last = windGeos.length - 1;
     let cur = last;
     const setWind = (A) => {
-      const f = (A - wind.sweepFree) / springWindSweep;         // 0 free … 1 fully wound
+      const f = (A - wind.sweepDown) / springWindSweep;         // 0 run down (set-up held) … 1 fully wound
       const i = Math.max(0, Math.min(last, Math.round((1 - f) * last)));
       if (i === cur) return;
       cur = i;
@@ -2195,12 +2217,24 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     springMesh.userData.spiralFrame = last;
     spring.userData.mainspring = {
       setWind,
-      sweepFree: wind.sweepFree, sweepFull: wind.sweepFull,
+      sweepFree: wind.sweepFree, sweepDown: wind.sweepDown, sweepFull: wind.sweepFull,
+      setupSweep: wind.setupSweep,
       innerAnchorAz: wind.sweepFull % (Math.PI * 2),
       innerR: springInner, outerR: springOuter, ribbonR: sRibbon, pBind: wind.pBind,
       height: height * 0.7, frames: windGeos.length, segs: wind.segs,
       devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
       maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
+      // TODO 32 — the SECTION AS CUT, the hairspring's TODO 25 publish
+      // verbatim: radialSegments 4 cuts a RHOMBUS whose half-diagonals are
+      // ribbonR (radial — the bending direction) and, after scale.z stands
+      // the ribbon on edge, max(height·0.7/2, ribbonR) — the floor mirrors
+      // scale.z's own Math.max. I about the axial diagonal = a³c/3, a
+      // quarter of the bounding rectangle's b·h³/12 sketch. Units^4;
+      // main.js converts through §39's UNIT_MM for the EQUALISATION record.
+      section: (() => {
+        const a = sRibbon, c = Math.max((height * 0.7) / 2, sRibbon);
+        return { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+      })(),
     };
     setWind(wind.sweepFull);   // built fully wound, which is where the sim boots
     // Rule 6 asserts — every one of them a constraint the family above claims.

@@ -396,35 +396,71 @@ const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 0.695 at the 30 h
 const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.025 — the z budget's slack, made visible
 if (FUSEE_LAND_W < 0.02)
   console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
-// THE CONE'S PROFILE — solved from the equalisation, not chosen to look like
-// one (TODO 40 row 1). The job is to hold S(t)·r(t) constant while S falls,
-// and a STRAIGHT generator cannot: with S linear rising and r linear falling
-// the product is a parabola, level at the two ends by construction and 34%
-// over in the middle. The curve that does hold it is r = K / S(t) — a
-// hyperbola, which is why a real fusee's flank is visibly concave.
+// THE SPRING'S TORQUE LAW — derived from the ribbon, and the cone solved
+// against it (TODO 32, closing; TODO 40 row 1 built the machinery).
 //
-// Two constants fix it, and only one of them is free here:
-//  · FUSEE_R_LARGE is a LAYOUT number, held: the drum's station is derived
-//    from it (drumPos below) and the base seat, the maintaining sandwich and
-//    the chain's swept fan all hang off that station. Position space is not
-//    what a profile problem gets to spend (CLAUDE.md's P3 rule).
-//  · K, the constant product, is then forced: at the bottom of the wrap the
-//    spring is at its weakest, so K = FUSEE_R_LARGE · SPRING_TQ_MIN.
-// Everything else about the cone — its small radius included — falls out.
-const SPRING_TQ_MIN = 0.35;   // the authored spring law's empty end (TODO 32 owns the law itself)
-const springTorqueAt = (t) => SPRING_TQ_MIN + (1 - SPRING_TQ_MIN) * t; // t: 0 empty … 1 wound
+// An ideal elastic ribbon exerts arbor moment M = k·θ, k = E·I/L, with θ the
+// wind angle from its zero-moment coil — and item 1 built every term: the
+// ribbon's section, its developed length, and a wind angle that is exactly
+// the drum's rotation off the free coil. The absolute k lives in the
+// EQUALISATION record (after the barrel builds, where E and the section
+// are); it CANCELS out of everything geometric below, which is why this
+// block is pure shape: normalize M by its full-wind value and the law is
+// θ(t)/θ(1), no material constant in sight.
+//
+// θ at empty is NOT zero — that is the set-up. A linear spring that still
+// pulls at run-down is pre-tensioned, and this movement builds the ratchet
+// that holds it (Set-up work: 24 teeth, 15° a click, bench-only). The old
+// authored floor `springTq = 0.35 + 0.65·t` was that set-up wearing a
+// costume: solve θ_s/(θ_s + wind range) = 0.35 through the self-consistent
+// system below and the answer lands within HALF A CLICK of a ratchet
+// detent. So the one pinned number here is an INTEGER click count — the
+// quantisation is the ratchet's, not ours — chosen as the click whose
+// solved empty-end torque fraction lands nearest the authored 0.35 it
+// replaces (17 → 0.34606; 18 → 0.35484; the entry's own criterion, re-run
+// against the post-TODO-40 wind range its sketch predates).
+const SETUP_RATCHET_TEETH = 24;   // the set-up ratchet's cut — its build below consumes THIS
+const SETUP_CLICKS = 17;          // integer detents of pre-tension — 0.70833 turns, 4.45059 rad
+const SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
+//
+// The self-consistent solve (fusee design as the trade actually did it).
+// Three laws close on each other: M = k·(θ_s + C/R_wrap) (the ribbon),
+// M(t)·r(t) = const (the equalisation), dC/dt = 2π·W·r(t) (one wrap turn of
+// chain per turn of reserve, at the radius it lands on). Substitute
+// u = θ_s + C/R_wrap and the system integrates in one line: u·du ∝ dt, so
+//
+//   u(t) = √(θ_s² + β·t)         β = 4π·W·r₀·θ_s / R_wrap   (k cancels)
+//   r(t) = r₀·θ_s / u(t)         the flank — inverse square root, not the
+//                                 hyperbola the linear-in-t law wanted
+//   C(t) = R_wrap·(u(t) − θ_s)   the chain, closed form, from the same u
+//
+//  · FUSEE_R_LARGE (r₀) is a LAYOUT number, held: the drum's station is
+//    derived from it and the base seat, the maintaining sandwich and the
+//    chain's swept fan all hang off that station (CLAUDE.md's P3 rule).
+//  · R_wrap is the chain's CENTRELINE feed radius on the drum (§61) —
+//    declared here now, because the LAW consumes it before the drum builds;
+//    the drum block below reads this constant rather than re-deriving it.
+const DRUM_WRAP_R = DRUM_R_ACTUAL + CHAIN_END_R_OUT;
 const FUSEE_R_LARGE = 7.4;
-const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_MIN; // 2.59 — the level product, as a radius
+const SPRING_WIND_BETA = (4 * Math.PI * FUSEE_WRAP_TURNS * FUSEE_R_LARGE * SETUP_SWEEP) / DRUM_WRAP_R;
+// u(t): the spring's wind angle off its free coil at reserve t — set-up
+// plus everything the drum has taken up. THE one state variable: the tick's
+// setWind lands the ribbon at exactly A_free + u(t), and M(t) = k·u(t).
+const springWindAt = (t) => Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA * t);
+const SPRING_WIND_FULL = springWindAt(1);              // 12.8609 rad at the 30 h spec
+// Normalized torque for display: M(t)/M(1) = u(t)/u(1). Concave in t — a
+// real spring spends its top turns faster than its bottom ones.
+const springTorqueAt = (t) => springWindAt(t) / SPRING_WIND_FULL;
+const SPRING_TQ_EMPTY = SETUP_SWEEP / SPRING_WIND_FULL; // 0.34606 — DERIVED, where 0.35 was authored
+const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_EMPTY; // 2.5608 — the level product, as a radius
 // The envelope at band fraction f. The wrap occupies f ∈ [0, FUSEE_F_ACTIVE]
 // and maps to reserve t = f / FUSEE_F_ACTIVE; past it the cut runs on to the
 // tip carrying the runout, so the law is simply evaluated at t > 1 there.
 const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(f / FUSEE_F_ACTIVE);
-// ...which makes the small radius a CONSEQUENCE. 2.4824 at the band's top,
-// and 2.59 at the top of the WRAP, where the chain actually stops — the old
-// hand-picked 2.6 was within 0.4% of that second number, which is the sense
-// in which the S(1)/S(0) = 2.857 ratio was right about the ends and only the
-// ends. (This is the tip: what the equalisation multiplies by is the working
-// radius, and the HUD reads that through fuseeGrooveAt.)
+// ...which keeps the small radius a CONSEQUENCE: 2.4889 at the band's top,
+// 2.5608 at the top of the WRAP, where the chain actually stops — and that
+// second number is FUSEE_TORQUE_K by identity (r·M/M₁ constant with M₁ at
+// the wrap's top), the same identity the §61 seating budget's r_min leans on.
 const FUSEE_R_SMALL = fuseeEnvR(1);
 const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 2.95 — the band plus its insets, nothing else
 // Base DERIVED from the plate's design goal. The old bind (the chain's
@@ -3306,9 +3342,10 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // cone helically. Fully wound: the chain pulls at the cone's SMALL radius
 // (strong spring × short arm); run down: at the LARGE radius (weak spring ×
 // long arm) — the products match, so train torque stays level. The cone
-// profile and the spring model are chosen so S(t)·r_f(t) is constant:
-// S = 0.35 + 0.65·t (linear spring), r_f = lerp(rLarge, rSmall, t), with
-// rLarge/rSmall = S(1)/S(0) = 2.857. §61: r_f is the chain's CENTRELINE
+// profile and the spring law are ONE derivation (TODO 32, the law block up
+// top), so S(t)·r_f(t) is constant by construction: S = u(t)/u(1) with
+// u = √(θ_s² + β·t), r_f = r₀·θ_s/u(t), and the working ratio
+// rLarge/r(wrap end) = 1/S(0) = 2.890. §61: r_f is the chain's CENTRELINE
 // radius, and the groove cut — one plate half-width deep at the wrap's own
 // station, floor relieved a half-stack below it (TODO 40) — is what makes
 // the envelope constants above BE the centreline radii: the equalisation
@@ -3316,29 +3353,22 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // ---------------------------------------------------------------------------
 const DRUM_R = DRUM_R_ACTUAL;
 // §61 — the chain wraps the drum at its CENTRELINE radius, one plate
-// half-width off the wall (the link's inner edge kisses the wall instead
-// of the centreline being buried in it). This is also the honest FEED
-// radius: one drum turn pays out 2π·(wall + half-width) of chain, so the
-// rotation↔tension bookkeeping and the hook-congruence solve below all
-// read this constant, not the bare wall.
-const DRUM_WRAP_R = DRUM_R + CHAIN_END_R_OUT;
+// half-width off the wall. DRUM_WRAP_R itself is declared UP at the torque
+// law (TODO 32): the law consumes the feed radius before the drum builds,
+// and two declarations of one radius is how they drift apart.
 // (§22: FUSEE_WRAP_TURNS is declared with the cone build above — one spec
 // derivation, no longer a duplicate literal of RESERVE_BARREL_TURNS.)
 //
 // HOW MUCH CHAIN IS ON THE CONE AT RESERVE t — integrated, not averaged
-// (TODO 40 row 3). Each turn of wrap takes up 2π·r at the radius it sits at,
-// so the total is ∫2π·r ds over the turns, and the old
-// `2π·FUSEE_AVG_R·FUSEE_WRAP_TURNS` was that integral with the mean radius
-// guessed. It was wrong twice over: the mean of the END radii is not the
-// mean of a LINEAR sweep between them once FUSEE_F_ACTIVE holds the top
-// wrap off the tip, and it is not the mean of the hyperbola at all. With
-// r = K/S the integral is closed-form —
-//   ∫₀^{tW} 2πK/S(s/W) ds = 2πKW/(1−Smin) · ln(S(t)/Smin)
-// — which is exact rather than approximate, and is the same expression the
-// drum's rotation is derived from below, so the two cannot disagree.
-const fuseeChainTo = (t) =>
-  ((2 * Math.PI * FUSEE_TORQUE_K * FUSEE_WRAP_TURNS) / (1 - SPRING_TQ_MIN))
-  * Math.log(springTorqueAt(t) / SPRING_TQ_MIN);
+// (TODO 40 row 3). Each turn of wrap takes up 2π·r at the radius it sits
+// at, so the total is ∫2π·r ds over the turns. Under the derived law this
+// is not even a fresh integral: dC/dt = 2π·W·r was one of the three
+// equations the law's u(t) was SOLVED from, so the chain is just
+// C(t) = R_wrap·(u(t) − θ_s) — the drum's feed radius times the wind the
+// spring has gained past its set-up. One state variable u carries the
+// spring's angle, the drum's rotation and the chain's whereabouts, which
+// is what makes the three unable to disagree.
+const fuseeChainTo = (t) => DRUM_WRAP_R * (springWindAt(t) - SETUP_SWEEP);
 const CHAIN_ENGAGED = fuseeChainTo(1); // chain the cone gathers over a full wind, at CENTRELINE radii (§61)
 // The drum's own travel over that reserve — all the chain, taken up at the
 // feed radius. It was written out three times (the chain rebuild, the tick,
@@ -3348,13 +3378,11 @@ const CHAIN_ENGAGED = fuseeChainTo(1); // chain the cone gathers over a full win
 const DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R;
 // ...and the drum's angle AT ANY STATE, which is the same accounting rather
 // than a straight line drawn between its ends (TODO 40 row 3). Whatever the
-// cone is not holding, the drum is, so the drum has turned by the chain that
-// came off the cone divided by the feed radius. The old `(1 − t)·
-// DRUM_ROT_FULL` was linear in the reserve while the cone's take-up never
-// has been — with the straight generator that mismatch put ~9% more links in
-// the run at mid-reserve than at either end, measured on the shipped mesh:
-// the chain grew and shrank as the watch ran. A chain is a fixed length of
-// steel, and this is the expression that makes the model say so.
+// cone is not holding, the drum is — and in u-terms that collapses to
+// u(1) − u(t): the drum's remaining travel IS the wind the spring has yet
+// to gain. The tick's setWind(sweepFull − drumRot) therefore lands the
+// ribbon at exactly A_free + u(t), which closes TODO 32's loop: the angle
+// the torque law reads and the angle the metal wears are one number.
 const drumRotAt = (t) => (CHAIN_ENGAGED - fuseeChainTo(t)) / DRUM_WRAP_R;
 // The static arbor's spring seat inside the drum, built with the set-up work
 // far below — hoisted here because the ribbon's inner coil BEARS on it, so the
@@ -3396,7 +3424,12 @@ const barrel = G.makeBarrel({
   // ends, not a spiral rotated and scaled by tension. Its inner end is on the
   // set-up work's static collar, its outer on the drum wall, and the drum's
   // full travel is the relative angle between them.
+  // TODO 32 — the SET-UP rides beneath that travel: the service band runs
+  // from A_free + SETUP_SWEEP (run down, ratchet still holding 17 clicks)
+  // to A_free + SETUP_SWEEP + DRUM_ROT_FULL (full wind). The free coil
+  // itself is a bench state, reachable only by letting the set-up down.
   springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
+  springSetupSweep: SETUP_SWEEP,
 });
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
 // §48/TODO 29 — the ribbon RECIPROCATES now, so the audit has an opinion about
@@ -3717,12 +3750,17 @@ function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
 // no attachment at all.
 const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid
 // Hook angle, drum-local. The wrap's far end lands at world angle
-// thetaT + turns·2π and the drum's rotation is rot = (1−tension)·C/R, so
-// a fixed drum-local hook works iff the wrap's fractional turn absorbs
+// thetaT + turns·2π and the drum's rotation is rot = drumRotAt(tension) —
+// (C(1) − C(t))/R_wrap, the same u-accounting as everything else — so a
+// fixed drum-local hook works iff the wrap's fractional turn absorbs
 // thetaT's small drift with tension (the wrap length IS set by geometry —
 // see rebuildChain). Placing the hook at thetaT(mid-reserve) + 0.3 turns
 // centres that fractional solve on the +0.3 slack turn, giving the
-// round-to-nearest branch maximum headroom against the ±0.02-turn drift.
+// round-to-nearest branch maximum headroom against the drift (measured
+// under TODO 32's law: −0.033..+0.007 turns off the mid-reserve anchor
+// over the full reserve, against the branch's ±0.5 flip point — the 1/√
+// flank visits the same radius continuum as the old law, only earlier
+// in t, so the mid-reserve anchor sits nearer the run-down end's angle).
 const HOOK_A = (() => {
   const midR = fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r;
   const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
@@ -4208,8 +4246,11 @@ const MAINT_DET_PRELOAD = CLEAR_MARGIN / MAINT_DET_LEVER;
 // the great wheel's rim passes 5.2 from the drum axis but only above
 // z 1.2, so the low band clears it in both axes. Closes the anchor half
 // of TODO.md item 1: the drum→chain torque path now ends on a fixture
-// instead of thin air. (The spiral itself is still the tension readout
-// child — its morph remains representational.)
+// instead of thin air. Since TODO 32 the pre-tension this hardware holds
+// is ARITHMETIC, not prose: SETUP_CLICKS detents of the
+// SETUP_RATCHET_TEETH cut below IS the θ_s in the spring's torque law,
+// and the ribbon's morph rides the service band above that set-up —
+// the spiral never visits its free coil in the built movement.
 // ---------------------------------------------------------------------------
 const setupWork = new THREE.Group();
 {
@@ -4228,7 +4269,7 @@ const setupWork = new THREE.Group();
   const square = new THREE.Mesh(new THREE.BoxGeometry(SQ, SQ, sqH), MATS.steel);
   square.position.z = Z_RATCHET_BOT - 0.05 + sqH / 2;
   az.add(square);
-  const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: 24, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
+  const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: SETUP_RATCHET_TEETH, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
   ratchet.position.z = Z_RATCHET_BOT;
   az.add(ratchet);
   // Click on its shoulder screw + curved click spring pressing the
@@ -9521,6 +9562,70 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
 declareRestoring('Alarm barrel', 'spring',
   'the ribbon IS the restoring element — its inner end is hooked to an arbor fixed in the frame and its outer end to the body, so the body\'s travel winds it; the alarm winding train (crown → climb → idlers → rim) is what carries it back the other way',
   'mainspringRibbon');
+
+// --- TODO 32: THE EQUALISATION, NOW A RECORD -------------------------------
+// The OSCILLATOR block's twin, sited here because it needs BOTH ribbons
+// built (the going drum's and this alarm barrel's). The torque law up top is
+// deliberately normalized — k cancels from every geometric consequence — so
+// this is where the material constants come back in and the absolute
+// arithmetic is published for the inspector's `equalisation` gate:
+//
+//  · GOING half, fully derived: k = E·I/L from the ribbon AS CUT (the
+//    rhombus4 section the builder publishes — the entry's own b·h³/12
+//    sketch is the bounding rectangle, 4× this), the set-up as integer
+//    ratchet clicks, and the level check — springTq(t)·r(t)/K over the
+//    sampled reserve, which the fusee's construction makes an identity;
+//    the gate holds it to float noise so the identity can never silently
+//    stop being one (the pre-TODO-40 cone was exactly that: a flank cut
+//    to a law the torque display no longer obeyed).
+//  · ALARM half, a REPORT (TODO 25 tier-one style): its ribbon's k and
+//    moment range from the same arithmetic — but the cadence stays
+//    AUTHORED (ALARM_STRIKE_GAP), because torque→cadence needs a governor
+//    model (escape-wheel brake power vs drive) that does not exist. That
+//    remainder is item 32's open half; `cadence` says so in the record
+//    rather than letting the derived k imply more than it delivers.
+//
+// Sanity anchor for the going k: ~9.2e-5 N·m/rad ⇒ full-wind arbor moment
+// ~1.2 N·mm — inside the real small-movement barrel range (roughly
+// 0.5–5 N·mm), which is the cross-check that the §39 scale pin, the
+// section and the length are telling one consistent story.
+const EQUALISATION = (() => {
+  const u4 = OSC_U ** 4;
+  const kOf = (sp) => OSC_STEEL_E * (sp.section.I_u4 * u4) / (sp.devLen * OSC_U); // N·m/rad
+  const k = kOf(mainspring);
+  // The level product over the reserve, sampled: springTq·envR/K − 1.
+  // 257 samples ties the gate's grid to a fixed, odd count (endpoints + midpoint on the grid).
+  let levelMaxDev = 0;
+  for (let i = 0; i <= 256; i++) {
+    const t = i / 256;
+    const d = Math.abs(springTorqueAt(t) * fuseeEnvR(t * FUSEE_F_ACTIVE) / FUSEE_TORQUE_K - 1);
+    if (d > levelMaxDev) levelMaxDev = d;
+  }
+  const kAlarm = kOf(alarmSpring);
+  const alarmSweep = alarmSpring.sweepFull - alarmSpring.sweepFree; // rad — no set-up on this barrel
+  return Object.freeze({
+    going: {
+      k_Nm_per_rad: k,
+      section: { ...mainspring.section }, devLen_u: mainspring.devLen,
+      setup: {
+        clicks: SETUP_CLICKS, teeth: SETUP_RATCHET_TEETH, sweepRad: SETUP_SWEEP,
+        quantised: Number.isInteger(SETUP_CLICKS)
+          && Math.abs(SETUP_SWEEP - SETUP_CLICKS * 2 * Math.PI / SETUP_RATCHET_TEETH) < 1e-12,
+      },
+      windFullRad: SPRING_WIND_FULL, tqEmpty: SPRING_TQ_EMPTY,
+      fuseeK: FUSEE_TORQUE_K, rLarge: FUSEE_R_LARGE,
+      momentRange_Nmm: [k * SETUP_SWEEP * 1000, k * SPRING_WIND_FULL * 1000],
+      levelMaxDev,
+    },
+    alarm: {
+      k_Nm_per_rad: kAlarm,
+      section: { ...alarmSpring.section }, devLen_u: alarmSpring.devLen,
+      windRangeRad: [0, alarmSweep],
+      momentRange_Nmm: [0, kAlarm * alarmSweep * 1000],
+      cadence: 'authored — ALARM_STRIKE_GAP; torque→cadence needs a governor model (TODO 32 remainder)',
+    },
+  });
+})();
 
 // ---------------------------------------------------------------------------
 // 'Alarm winding train' (§25 C) — the crown's path to the barrel. Pull the
@@ -19370,6 +19475,9 @@ function advanceFrame(realDt) {
   // Fast-forward button state + fusee torque readouts: the spring's torque
   // sags as the reserve drains, while the fusee's growing radius keeps the
   // torque delivered to the train level — the whole point of the mechanism.
+  // The sag bottoms at SPRING_TQ_EMPTY (0.346, the set-up ratchet's held
+  // pre-tension — TODO 32), so the spring bar never empties; the concave
+  // 1/√ droop against the reserve is the law's own shape, not an ease.
   const ffBtn = document.getElementById('btn-ff');
   setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
@@ -19482,6 +19590,7 @@ window.__clock = {
   get dialEpoch() { return DIAL_EPOCH_S; },
   get balanceRate() { return balanceRate; },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
+  get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   get bootWarns() { return __bootWarns; },
