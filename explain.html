@@ -1736,20 +1736,24 @@
 
   <!-- ===================== ALARM BARREL ===================== -->
   <details class="mech" id="alarm-barrel">
-    <summary>Alarm barrel &mdash; the second spring, wound at its teeth<span class="where">alarm &middot; src/main.js &sect;89, src/geometry.js</span></summary>
+    <summary>Alarm barrel &mdash; the second spring, wound at its arbor<span class="where">alarm &middot; src/main.js &sect;89 &sect;99, src/geometry.js</span></summary>
     <div class="mech-body">
       <p>The alarm runs on its own mainspring, and until &sect;89 that spring was not one. Body,
       arbor and ribbon were a single rotating member, so the coil turned <em>with</em> the drum
       it sits in and its shape never changed between a full wind and a dead barrel. A ribbon
       with both ends on the same part cannot store anything: winding is the relative angle
       between two members, and there was only one.</p>
-      <p>It is the going drum's arrangement now, not a textbook alarm barrel's. The arbor is
-      planted in the frame and the <em>body</em> is wound at its teeth &mdash; the drum is wound
-      at its wall by the fusee chain, this one at its rim by the winding train, 12 into 44
-      through two idlers &mdash; so the ribbon's inner end is pinned to the movement while its
-      outer end rides the body. Nothing moved to buy that: same station, same height, same two
-      meshes. The other split, a wound arbor with a click on it, re-sites the winding train's
-      last mesh and is filed as layout work rather than done here.</p>
+      <p>Since &sect;99 it is the textbook alarm barrel: a true going barrel that winds its
+      <em>arbor</em>. The winding train &mdash; 12 into 44 through two idlers, the same ratio the
+      rim-wound era had, because the arbor's winding wheel deliberately takes the rim's own
+      tooth count &mdash; lands on a wheel keyed to the arbor; a saw-toothed ratchet beside it is
+      held by a plate-grounded click, and the body delivers to the striking train from its rim.
+      Winding turns the arbor over a parked body (the striker stands through a wind); ringing
+      runs the body under a parked arbor &mdash; the click's hold, one mesh from the spring it
+      is holding. The hook-shaped click is a measured necessity, not a style: a straight blade
+      at this tooth pitch fouls an adjacent tooth at every park, so the arm stays outside the
+      tooth tips and only a pointed nose dips in, its seat re-solved every tick against the
+      saw the teeth were actually cut from.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The alarm ribbon at both ends of its wind</span></div>
         <div class="fig-body">
@@ -1806,11 +1810,13 @@
       is <code>ALARM_STRIKE_GAP</code> 0.42 s, a literal, because turning torque into a
       strike rate needs a GOVERNOR model this movement does not have; the record says
       <code>cadence: 'authored'</code> rather than letting the derived k imply one.
-      <b>TODO 37 is open</b>: the barrel holds its wind through the striking
-      wheel's lock four meshes downstream, because a fixed-arbor barrel wound at its rim has
-      nowhere to put a click. <b>TODO 38 is open</b>: no inspector axis winds it &mdash; the
-      sweeps run this barrel down and never back up, so one direction of a part that goes both
-      ways is uncovered.</p>
+      <b>TODO 37 is closed</b> (&sect;99): the arbor's own ratchet and click hold the wind one
+      mesh from the spring &mdash; the striking wheel's lock is back to being only the ring's
+      brake. <b>TODO 38 is closed</b> for this side: the <code>alarmWind</code> axis sweeps the
+      winding direction, and it existed a day before the click did, by sequencing &mdash; the
+      click's working ride was policed from its first boot. The honest residue: the crown's
+      one-way is still a software edge backed by the click's geometry; back-driving torque
+      through a camming click is modelled, not simulated.</p>
     </div>
   </details>
 

@@ -3970,7 +3970,7 @@ three declared points — and the honest reason not to have built it here is
 cost, not doubt: those two checks are ~5½ minutes of the battery's wall at
 one spec, and there are twelve points.
 
-## 37. The alarm barrel holds its wind with somebody else's lock
+## 37. CLOSED (§99) — the alarm barrel holds its own wind: wound arbor, ratchet, and a click one mesh from the spring
 
 §89 split this barrel into a fixed arbor and a body wound at its rim, which
 is a real arrangement — this movement's own going drum is the other one —
@@ -4008,6 +4008,51 @@ Filed rather than done because §89's own priority note applies to it: the
 spring is honest now without it, and this is a change whose only currency
 is position space. Do it when the alarm's winding side is opened for
 another reason.
+
+**CLOSED by §99, the day after TODO 38's axis landed — the sequencing the
+build plan ordered, so the click's working direction was policed from its
+first boot.** What was built, against this entry's own predictions:
+
+- **The "different centre distance" did not survive contact with the
+  layout.** The arbor is COAXIAL with the rim the mesh was leaving, so the
+  winding wheel takes the rim's own tooth count (`ALARM_WIND_W = 44`) and
+  the reach solve, the i1/i2 two-circle closure, and the 12/44 crown ratio
+  are bit-identical; the entire re-route is a STRATUM change — the arbor
+  tier at z 11.61–12.97, each band derived body-top + `CLEAR_MARGIN` + the
+  float-bind centi-unit. The lane re-probe this entry demanded came back
+  EMPTY: zero foreign meshes cross the lifted band.
+- **The state split is the real work.** `alarmBarrelWind` (relative
+  arbor-vs-body wind) and `alarmStrikePhase` decoupled: the body's angle is
+  a pure function of phase — which put the body⇄striking-wheel mesh on the
+  coupled family at EVERY state, where the wind-derived law had the rest
+  pose ~0.3 pin off-family, invisible to the pin⇄tail budget — and the
+  arbor rides body + wind. Winding parks the striker; ringing parks the
+  crown (both §25 C fictions retired). The `alarmWind` axis's phase
+  back-out went with them, and its coverage claim was rewritten to what it
+  now sweeps: the arbor's travel and the click's 56-cycle saw ride, n = 109
+  coprime to 56 as it was to 28.
+- **Two measured redesigns inside the click itself**, both of the class
+  instruments exist for: `makeClick`'s straight blade fouls a 32-tooth saw
+  at every park (its inner edge crosses the annulus over more than one
+  pitch; the set-up click ships this invisibly because both its sides are
+  fixtures) — the click is HOOKED, arm boot-asserted outside the tips, a
+  V-nosed point the only dipping vertex. And the detent's fixed-azimuth
+  ride shortcut parked that nose 0.24 inside a tooth (the nose's azimuth
+  moves with its own lift) — the contact is SOLVED per tick, a three-step
+  fixed-point on the exact tip kinematics. Park kiss measured 0.0113 at
+  every handoff parity, green against `HANDOFF_TRACK_TOL`.
+- **The hold is arithmetic** (TODO 16's format, in the build comment):
+  ≈74 mN at the flank from the equalisation record's own M_max, carried by
+  a face 15.4° off radial into the pivot side — the same closing geometry
+  the set-up and maintaining clicks ship at 20.6°; the spring only
+  re-seats after cam-out. The equalisation record reports the hold
+  quantum: 2π/32 of arbor angle, half a strike's stored travel.
+
+Remaining honest residue, stated rather than hidden: the interactive
+`aDelta > 0` guard is still the software edge of the one-way — the click's
+metal now stands behind it (the saw's face geometry closes), but
+back-driving torque through the train to a camming click is not simulated,
+only modelled; same class as the crown's free-slip convention.
 
 ## 38. NARROWED — the alarm wind is swept (`alarmWind`); the going tranche remains, now with its cost measured
 

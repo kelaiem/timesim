@@ -9614,3 +9614,73 @@ retirement and the promotion, the entry's IEEE-754 claim held by the
 instrument. The persisted-override boot proved clean, every declared
 spec point was probed before its row was written, and the `--report`
 diff against the §94 tier C tree is 13 `ms` leaves and nothing else.
+
+## §99 — the alarm barrel holds its own wind: wound arbor, ratchet wheel, and a hooked click (TODO 37 closed)
+
+TODO 38's `alarmWind` axis landed a day ahead of this section, by
+deliberate sequencing: the click's working direction was policed by the
+battery from its first boot. This section is the "other split" §89 filed —
+the true going barrel — with the state law as its P0 core and one derived
+identity as its whole layout story.
+
+### The state law
+
+`alarmBarrelWind` and `alarmStrikePhase` become independent states. The
+BODY's angle is a pure function of the phase (`bodyA = phase·2π/16`), so
+the body and its striking pinion sit on the coupled mesh family at every
+state — under the §25 C wind-derived law the rest pose carried the
+striking wheel ~0.3 pin off-family, invisible to the pin⇄tail budget,
+which sweeps only the identity-coupled axis. The ARBOR rides
+`bodyA + (wind − 1.75)·2π`, so the ribbon is wound between the two rotors
+and `arborA − bodyA` IS the wind: winding advances the arbor over a
+parked body (the striker stands through a posed or a hand wind), and a
+ring runs the body under a parked arbor (`arborA ≡ 0` across the whole
+`alarmStrike` axis — the click's hold, visible in the numbers). The
+ribbon's morph is untouched: `setWind` reads the relative angle, which is
+bit-identical to the fixed-arbor law's value at every wind.
+
+### The coaxial identity
+
+TODO 37 predicted a re-derived centre distance, moved idlers, and a
+re-probed lane. The arbor is coaxial with the rim, so the winding wheel
+takes the rim's own count — `ALARM_WIND_W = ALARM_BARREL_TEETH` — and the
+reach solve, the two-circle closure, and the crown ratio survive
+bit-identical. The whole re-route is a stratum: the ARBOR TIER, each band
+derived (body top + `CLEAR_MARGIN` + the float-bind centi-unit; wheel,
+then ratchet, then the arbor's shoulder), the idlers and climb pinion
+lifted to the same plane, and the chain solve split in two — the winding
+run ends at the arbor wheel (a saw cannot be a gauge member), the body
+keeps exactly one mesh into the striking pinion. The re-probed lane came
+back empty: zero foreign meshes cross 11.61..13.2.
+
+### The click, twice redesigned by measurement
+
+The ratchet: R 5.9 from the click's grounding lane (`1.28·R` ≥ body tip
+circle + stud + margin), N 32 = 2 × strikes-per-barrel-turn (give-back ≤
+half a strike). The click could NOT be `makeClick`'s straight blade: its
+inner edge crosses the tooth annulus over more than one 32-tooth pitch
+and fouls a tooth at every park (measured −0.28; the set-up click ships
+the same geometry invisibly — both its sides are fixtures, the class
+CLAUDE.md's blind-spot note names). The hook keeps the arm outside the
+tip circle (boot-asserted per vertex) and drops a V-nosed point whose
+sides are steeper than both ramp and face. And the ride could not be the
+maintaining detent's fixed-azimuth read: at this lift the nose's azimuth
+moves with its own rotation, and the shortcut parked it 0.24 inside a
+tooth — the contact is solved per tick, a three-step fixed-point on the
+exact tip kinematics through the tip's own dr/dθ. Park kiss: **0.0113 at
+every handoff parity** against `HANDOFF_TRACK_TOL` 0.03.
+
+### The instruments
+
+New unit `'Alarm click'` with support/drive rows and the `alarmWind` case
+in `sourceFor`; a `click beak ⇄ arbor ratchet` handoff row; a penetration
+budget on the `alarmWind` axis at `HANDOFF_TRACK_TOL`, 480 samples (the
+pin⇄tail row's per-cycle density over the ride's 56 cycles); floors rows
+that retire the winding pair's blanket excuse; declared intra-unit joints
+(including two pre-existing marginal keyless wheel-on-arbor joints,
+measured flickering on pristine main); stock kinds; `declareTravel` +
+`declareRestoring('Alarm click', 'spring', …)`; the schematic hook line
+and the ratchet drawn from its own cut outline (`userData.profile` — a
+saw drawn as a pitch circle is a false glyph); a wound-at-rest
+fingerprint pose (the state class the split created); and the
+equalisation record's hold quantum (2π/32, half a strike).
