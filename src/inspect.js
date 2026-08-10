@@ -4739,8 +4739,21 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§33 handles + hardware parity; 47 units, 46 fingerprinted,
-// 10 poses):
+// Baseline (§99 — the alarm barrel's own click; 50 units, 11 poses):
+// 3724996819
+// — moved from 2134288613 (main's MEASURED value at 49 units, 10 poses)
+// deliberately: §99 adds the 'Alarm click' unit, lifts the winding train
+// to the arbor tier, shifts the barrel body's rest by 77.0 tooth pitches
+// (the state law's split of strike phase from wind), and adds the
+// wound-at-rest pose {alarmBarrelWind: 1.75} — the state class the split
+// created. Verified by the battery's double-boot gate. NOTE: the
+// previously RECORDED value below (3104989635, 47 units) had gone stale
+// without a record — sections since §33 added two fingerprinted units
+// and moved main to 2134288613 with this comment unrevised, exactly the
+// drift this constant exists to catch. Re-measure and update it in the
+// SAME change that moves geometry.
+// Previous baseline (§33 handles + hardware parity; 47 units, 46
+// fingerprinted, 10 poses):
 // 3104989635
 // — moved from 143293357 deliberately: the alarm crown's body height
 // matched to the main crown's (growth outward from the builder's
