@@ -2312,7 +2312,9 @@ const PENETRATION_BUDGETS = [
         if (v.z < zLo || v.z > zHi) continue;      // outside the saw's own band
         const r = Math.hypot(v.x, v.y);
         if (r >= R) continue;
-        let u = ((Math.atan2(v.y, v.x) / pitch) % 1 + 1) % 1;
+        // §101: the arbor ratchet is a REVERSE cut, so the mesh-frame
+        // mapping is u = (−az)/pitch — mirror the sign, keep the shape.
+        let u = ((-Math.atan2(v.y, v.x) / pitch) % 1 + 1) % 1;
         const saw = u <= 0.72 ? rootR + ((R - rootR) * u) / 0.72 : R - ((R - rootR) * (u - 0.72)) / 0.28;
         if (saw - r > worst) worst = saw - r;
       }

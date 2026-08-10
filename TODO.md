@@ -4053,11 +4053,34 @@ first boot.** What was built, against this entry's own predictions:
   re-seats after cam-out. The equalisation record reports the hold
   quantum: 2π/32 of arbor angle, half a strike's stored travel.
 
+**§101 re-measured this mechanism against the eye** (a user report: "the
+click doesn't interlock, worst while winding") and found three things the
+instruments structurally could not: the saw was cut BACKWARD — winding
+climbed the steep face and slid down the ramp, the exact mirror of a
+ratchet's one-way, green under every gate because nothing gates
+DIRECTION — fixed by `makeRatchetAndClick`'s new `reverse` cut with the
+mapping's sign mirrored at every consumer; the V-nose's point contact was
+invisible at the movement's scale — the beak is now cut TO the tooth
+space (leading edge parallel to the face it holds against, back relieved
+along the ramp + 0.02, only the point touching, arm slimmed 0.25 → 0.18);
+and the deferred give-back is ENACTED (`settleAlarmClick`): on the wind's
+falling edge and once at boot for a restored wound state, the arbor
+recoils the parked fraction of one pitch — ≤ 2π/32, the hold quantum the
+equalisation record was already publishing — as a STATE change that
+travels the gears. Measured at landing: winding rides root→tip on the
+ramp and snaps off the face; settle 0.0254 turns < the 0.03125 quantum,
+seat at u = 0 exactly; park kiss 0.0164; pawl⇄saw penetration 0 over the
+fine ride.
+
 Remaining honest residue, stated rather than hidden: the interactive
 `aDelta > 0` guard is still the software edge of the one-way — the click's
-metal now stands behind it (the saw's face geometry closes), but
-back-driving torque through the train to a camming click is not simulated,
-only modelled; same class as the crown's free-slip convention.
+metal now stands behind it (the saw's face geometry closes, and since §101
+it faces the right way), but back-driving torque through the train to a
+camming click is not simulated, only modelled; same class as the crown's
+free-slip convention. The going side's set-up click and the maintaining
+ratchet have never had their saw DIRECTIONS exercised either — both are
+static or bench-only today, but §101's lesson (nothing gates one-way-ness)
+applies to them the day either moves.
 
 ## 38. NARROWED — the alarm wind is swept (`alarmWind`); the going tranche remains, now with its cost measured
 
