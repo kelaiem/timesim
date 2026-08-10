@@ -30,6 +30,7 @@ import {
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
+  SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
   BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
@@ -898,6 +899,10 @@ const KEYLESS_INPUTS = {
   // §94 tier C — the reserve station's radius spreads in only when present,
   // so identity passes nothing and stays bit-exact (d4's null rule).
   ...(SPEC.rsvr !== null ? { rsvR: SPEC.rsvr } : {}),
+  // §98 — the alarm corner's radius, same null rule.
+  ...(SPEC.alarmr !== null ? { alarmR: SPEC.alarmr } : {}),
+  // §97 — the shared well radius, same null rule.
+  ...(SPEC.subdialr !== null ? { subDialRadius: SPEC.subdialr } : {}),
 };
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -5725,16 +5730,12 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // beside the small-seconds hand). The pocket leaves DIAL_T − SUBDIAL_RECESS
 // = 0.556 of brass behind it, which is the floor rule DIAL_T is minted under.
 const SUBDIAL_RECESS = 0.5;
-// What passes through a pocket floor, and therefore what the bore through it
-// must clear. Both members are built further down — the small-seconds display
-// arbor's hand HUB and the reserve indicator arbor — and are named here
-// because the hole is derived from them, not measured off them later.
-const SECONDS_HUB_R = 0.9;
-const RSV_HAND_ARBOR_R = 0.4;
-// ONE bore for both wells — one drill — so it is sized by the larger member,
-// at the standing margin. (makeDial circumscribes a hole's polygon, so the
-// margin holds on the flats and not just on the nominal circle.)
-const SUBDIAL_BORE_R = Math.max(SECONDS_HUB_R, RSV_HAND_ARBOR_R) + CLEAR_MARGIN;
+// What passes through a pocket floor — SECONDS_HUB_R / RSV_HAND_ARBOR_R /
+// SUBDIAL_BORE_R — moved to layout.js (§97), the TODO 33 hoist one bore
+// over: the wells' radius is a spec dimension whose FLOOR is this bore
+// plus a wall plus the margin, so the solve that bounds the radius and the
+// geometry that drills the hole must read one source. Imported at the top
+// of this file with the centre stack.
 // The §25 C rattrapante centre stack (cannon pinion → hour tube → alarm
 // tube) and the dial bore it passes through are DECLARED IN layout.js and
 // imported at the top of this file. They moved there when TODO 33 made the
@@ -5763,17 +5764,19 @@ for (const [nm, cy] of [['reserve', RESERVE_LOCAL.y], ['seconds', -SECONDS_LOCAL
   const innerEdge = cy - subDialR;                     // the ring's closest approach to the dial centre
   const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
   // §94 tier A — the epsilon is a FLOAT-EQUALITY guard, not a widened budget.
-  // subDialR is solved as `min(station) − (need + CLEAR_MARGIN)`, so for
-  // whichever station is the inner one this web is CLEAR_MARGIN by algebra
-  // and the only real breaches are a radiusFactor over the ceiling. While
-  // both stations were literals that arithmetic happened to land on the
-  // right side of the last bit; a spec'd d4 re-does it at an arbitrary
-  // value, and every inward station reported a 1e-16 breach of its own
-  // definition. Measured at d4 6: web 0.14999999999999991 against 0.15.
+  // subDialR solves to `min(station) − (need + CLEAR_MARGIN)` when derived,
+  // so for whichever station is the inner one this web is CLEAR_MARGIN by
+  // algebra; while both stations were literals that arithmetic happened to
+  // land on the right side of the last bit, and a spec'd d4 re-does it at
+  // an arbitrary value — every inward station reported a 1e-16 breach of
+  // its own definition. Measured at d4 6: web 0.14999999999999991 vs 0.15.
+  // §97 retired the finish factor and CLAMPS a spec'd radius to the same
+  // ceiling in the solver, so this assert should now be unreachable except
+  // through a defect in that clamp — which is exactly why it stays.
   if (innerEdge - need < CLEAR_MARGIN - 1e-9)
     console.warn(`${nm} sub-dial pocket vs the dial's centre bore: web ${(innerEdge - need).toFixed(2)}, need ${CLEAR_MARGIN} `
       + `(well r ${subDialR.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
-      + `— dial.subdials.radiusFactor is too large for this station`);
+      + `— the well radius outran the ceiling the solver holds it under`);
 }
 
 const dial = G.makeDial({
@@ -6649,7 +6652,11 @@ const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
 //    its own well's ring wall (subDialR shrinks as the station walks in,
 //    while a longer reserveh GROWS the tip — the joint worst case).
 const RSV_TOOTH_FLOOR_MM = 0.12;
-const rsvTrainWarnsAt = (station) => {
+const rsvTrainWarnsAt = (station, sdR = subDialR) => {
+  // §97 — sdR: the well radius the candidate carries. The boot call passes
+  // nothing and reads the built value; the subdial handle's shadow passes
+  // its candidate so the tip-vs-well ceiling is judged against the well
+  // being PROPOSED, not the one built.
   const out = [];
   const pivot = { x: P.dial.x - station.x, y: P.dial.y + station.y };
   const span = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
@@ -6672,10 +6679,10 @@ const rsvTrainWarnsAt = (station) => {
     out.push(`reserve train: w2's tip circle reaches ${(stationDist - w2Tip).toFixed(2)} from the dial `
       + `centre, inside the ${boreNeed.toFixed(2)} the centre bore, its wall and the margin need `
       + `(tip r ${w2Tip.toFixed(2)} at station ${stationDist.toFixed(2)})`);
-  if (w2Tip > subDialR - DIAL_WALL_HALF - CLEAR_MARGIN)
+  if (w2Tip > sdR - DIAL_WALL_HALF - CLEAR_MARGIN)
     out.push(`reserve train: w2's tip circle ${w2Tip.toFixed(2)} reaches its own well's ring wall — `
-      + `the well allows ${(subDialR - DIAL_WALL_HALF - CLEAR_MARGIN).toFixed(2)} `
-      + `(subDialR ${subDialR.toFixed(2)} − wall − margin)`);
+      + `the well allows ${(sdR - DIAL_WALL_HALF - CLEAR_MARGIN).toFixed(2)} `
+      + `(subDialR ${sdR.toFixed(2)} − wall − margin)`);
   return out;
 };
 for (const m of rsvTrainWarnsAt(RESERVE_LOCAL)) console.warn(m);
@@ -15633,7 +15640,61 @@ const RECONF_HANDLES = [
       return { warns, refuse: null };
     },
   },
+  // §97 — the shared WELL RADIUS, the third radial row, and its one honest
+  // concession stated: a radius has no arbor. The ring sits on the SECONDS
+  // well (whose centre IS the fourth wheel's real arbor) at the well's own
+  // radius, so what is circled is the ring being dragged and the reading is
+  // its distance from that station. One radius serves BOTH wells, so the
+  // proposal ghosts both (wellGhost) — highlighting only the ring under the
+  // pointer would state something false about what the drag does. Keyless-
+  // tier like the reserve row: the radius never enters solveLayout, so the
+  // row carries its own shadow, plus the reserve train's tip-vs-well bound
+  // judged against the well being PROPOSED.
+  { kind: 'subdial', specKeyName: 'subdialr', urlKey: 'subdialr',
+    def: Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR, radial: true,
+    anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => subDialR + 2,
+    toSpec: (dist) => dist,
+    label: (v, def) => `proposed: well radius ${v.toFixed(2)} for both sub-dials (was ${def.toFixed(2)})`,
+    refuseAt: (v) => {
+      const ceil = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR;
+      return (v >= SUBDIAL_FLOOR && v <= ceil) ? null
+        : `the wells cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
+          + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the dial's centre bore `
+          + `(inner station − keep-out)`;
+    },
+    shadow: (v) => {
+      const warns = [];
+      solveKeyless({ ...KEYLESS_INPUTS, subDialRadius: v, warn: (m) => warns.push(m) });
+      warns.push(...rsvTrainWarnsAt(RESERVE_LOCAL, v));
+      return { warns, refuse: null };
+    },
+    wellGhost: true,
+  },
 ];
+// §97 — the both-wells ghost. Two rings, one per well, at the candidate
+// radius: the proposal shows everything the drag changes. Furniture like
+// reconfGhost — parented to the scene, never a unit, so no sweep reads it.
+let reconfWellGhost = null;
+function reconfShowWellGhost(v) {
+  if (!reconfWellGhost) {
+    reconfWellGhost = new THREE.Group();
+    const mat = new THREE.LineBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false });
+    for (let i = 0; i < 2; i++) {
+      const pts = [];
+      for (let s = 0; s <= 64; s++) { const a = (s / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0)); }
+      const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+      ring.renderOrder = 998;
+      reconfWellGhost.add(ring);
+    }
+    scene.add(reconfWellGhost);
+  }
+  const wells = [{ x: P.fourth.x, y: P.fourth.y }, rsvPivotXY];
+  reconfWellGhost.children.forEach((ring, i) => {
+    ring.position.set(wells[i].x, wells[i].y, 0);
+    ring.scale.setScalar(Math.max(v, 0.01));
+  });
+  reconfWellGhost.visible = true;
+}
 // Shadow solve (step 4): the same pure solver, same measured inputs, a
 // candidate angle, a collecting warn. Returns its position table for the
 // ghost and its warnings for the verdict — plus a non-closure check the
@@ -15813,8 +15874,9 @@ const RECONF_HINTS = {
   balance: 'Balance — drag it about the escape wheel',
   fourth: 'Fourth wheel — drag it toward or away from the centre to move the small-seconds station',
   reserve: 'Reserve wheel — drag it toward or away from the centre to move the power-reserve station',
+  subdial: 'Sub-dial wells — drag the seconds well’s ring to resize both wells',
 };
-const RECONF_HINT_IDLE = 'Eight parts wear a ring — each one is a handle';
+const RECONF_HINT_IDLE = 'Nine rings — each one is a handle';
 // The rim handles' meshes, by the same objects their hit tests use — the
 // pusher by name because its cap is what a finger goes for, while the hit
 // test generously accepts the whole switch unit.
@@ -15965,12 +16027,14 @@ function reconfShowStatus() {
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.d4 !== null) parts.push(`small-seconds station ${SPEC.d4.toFixed(2)} from the centre`);
     if (SPEC.rsvr !== null) parts.push(`reserve station ${SPEC.rsvr.toFixed(2)} from the centre`);
+    if (SPEC.alarmr !== null) parts.push(`alarm corner ${SPEC.alarmr.toFixed(2)} from the centre`);
+    if (SPEC.subdialr !== null) parts.push(`sub-dial radius ${SPEC.subdialr.toFixed(2)}`);
     // The spec line quotes solver-tier values and stays English with them
     // (the i18n.js residue); the empty-spec sentence is chrome, so it
     // translates. §93 names the FUSEE rather than "barrel": the ring sits on
     // the fusee and great wheel, which is the part a viewer sees move.
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the escape wheel or the balance');
+      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the sub-dial ring, the escape wheel or the balance');
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
@@ -16336,9 +16400,14 @@ function reconfMoveDrag(e) {
     if (!windowRefuse && h.shadow) {
       const sh = h.shadow(specVal);
       if (reconfConstel) reconfConstel.visible = false;
+      // §97 — a row that changes BOTH wells ghosts both; every other
+      // keyless row paints nothing (its train honestly does not move).
+      if (h.wellGhost) reconfShowWellGhost(specVal);
+      else if (reconfWellGhost) reconfWellGhost.visible = false;
       reconfCandidate = {
         kind: h.kind, urlKey: h.urlKey, value: specVal,
-        label: `proposed: ${h.kind} at ${specVal.toFixed(2)} from the centre (was ${h.def.toFixed(2)})`,
+        label: h.label ? h.label(specVal, h.def)
+          : `proposed: ${h.kind} at ${specVal.toFixed(2)} from the centre (was ${h.def.toFixed(2)})`,
         refuse: sh.refuse || null,
         warns: sh.warns,
         solverClean: !sh.refuse && sh.warns.length === 0,
@@ -16346,6 +16415,7 @@ function reconfMoveDrag(e) {
       reconfShowStatus();
       return;
     }
+    if (reconfWellGhost) reconfWellGhost.visible = false;
     const { sol, warns } = windowRefuse
       ? { sol: null, warns: [] }
       : reconfShadowSolve({ [h.specKeyName]: specVal });
@@ -16400,7 +16470,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4', 'rsvr'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4', 'rsvr', 'alarmr', 'subdialr'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
@@ -16565,6 +16635,7 @@ function setReconf(on) {
     reconfKillTrial();
     if (reconfGhost) reconfGhost.visible = false;
     if (reconfConstel) reconfConstel.visible = false;
+    if (reconfWellGhost) reconfWellGhost.visible = false;
     if (reconfRings) reconfRings.visible = false;
     renderer.domElement.style.cursor = '';
   }

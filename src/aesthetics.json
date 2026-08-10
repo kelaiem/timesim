@@ -77,17 +77,7 @@
       }
     },
     "subdials": {
-      "radiusFactor": 1.0,
-      "_comment": "Scales the SOLVED shared sub-dial radius (small seconds + reserve). Applied in solveLayout, so it needs a reload; TODO 33's boot assert guards the wells against the dial's CENTRE BORE, so an oversized factor warns rather than silently colliding. Position stays a non-knob of THIS layer and is a dimension of the SPEC (§94: ?d4= moves the seconds station, ?rsvr= the reserve station) — finish scales the solved radius and never places a well. BOUNDS: max 1.0 because the solved radius already sits on the ceiling. That ceiling MOVED: it used to be §25 C's (well ring vs the central setting wheel, wellR 10.20) and the note here read 'factor 1.15 penetrates by 1.33' — measured before TODO 26 gave the dial thickness and lifted the wells out of the setting lane, which retired that wall. What binds now is the centre bore (3.20 + 0.2 wall + 0.15 margin), so the solve grew 10.20 → 11.85 and 1.0 is again exactly the ceiling; measured, factor 1.02 already goes NEGATIVE on the reserve well (web -0.09 against the required 0.15) and leaves 0.01 on the seconds. Min 0.5 because below half size the wells swallow their own hands.",
-      "_bounds": {
-        "radiusFactor": [
-          0.5,
-          1.0
-        ]
-      },
-      "_labels": {
-        "radiusFactor": "Sub-dial size"
-      }
+      "_comment": "This layer holds NO sub-dial knob, deliberately. Both properties are dimensions of the SPEC: position (§94 — ?d4= moves the seconds station, ?rsvr= the reserve station) and size (§97 — ?subdialr= sets the shared well radius, held by the solver between its derived floor and TODO 33's ceiling). The radiusFactor that lived here was §23's finish knob over the solved radius; §97 retired it because a spec must be reproducible from its URL, and a browser-local multiplier on a spec dimension meant the link and the picture could disagree silently, per machine. A persisted override of the removed key is refused by the loader's type anchoring (aesthetics.js) — proven, not assumed."
     }
   },
   "lighting": {

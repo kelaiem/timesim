@@ -1,4 +1,8 @@
-import { aesthetics } from './aesthetics.js';
+// §97 — the aesthetics import is GONE, and that is the point: the finish
+// layer's factor used to reach the solver as a module import, which is a
+// number the shadow-solve could never override and the URL could never
+// carry. The solver now reads only its arguments; finish holds no
+// sub-dial knob.
 // Mechanical Clock Simulation — LAYOUT SPEC (BUILT §13, step 1).
 //
 // The movement's geometry is genuinely parametric — barrel at the origin,
@@ -124,7 +128,30 @@ export const SPEC = (() => {
   // KEYLESS_INPUTS passes no radius at all, so the station derives from
   // dialRadius · 0.39 and identity stays bit-exact.
   const rsvr = Number.isFinite(Number(raw.rsvr)) ? Number(raw.rsvr) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4, rsvr });
+  // §98 — THE ALARM CORNER'S RADIUS, §76's missing pin. The corner's
+  // DEFAULT tracks the plate (alarmCornerR = dialRadius·0.39 since §94
+  // tier B), so a grown balance grows the plate and carries the whole
+  // setting cluster outward into fixed-radius neighbours — §76 measured
+  // every remaining balance wall down to exactly that. A spec'd radius
+  // pins the corner where the movement wants it. Like d4/rsvr, NOT
+  // clamped here: solveKeyless warns at the stem bound it owns, and the
+  // interior bounds are the setting dogleg's own asserts (no intersection
+  // past ≈19.9) and the winding chain's derived idler — all loud, all
+  // with numbers. null = as designed: identity passes nothing and the
+  // default arithmetic is untouched, bit-exact.
+  const alarmr = Number.isFinite(Number(raw.alarmr)) ? Number(raw.alarmr) : null;
+  // §97 — THE SHARED SUB-DIAL WELL RADIUS. One radius serves both wells
+  // (their pivots are fixed on their arbors, so radius is the only shared
+  // freedom), and it stops being a browser-local finish multiplier: a spec
+  // must be reproducible from its URL. NOT clamped here — solveKeyless
+  // holds it between the derived FLOOR (the pocket's own centre bore plus
+  // a wall plus the margin, SUBDIAL_FLOOR) and the derived CEILING
+  // (min(stations) − SUBDIAL_INBOARD_CLEAR), falling back WITH a warn
+  // rather than building a well that breaches either bore — the exact
+  // degeneracy TODO 33 closed. null = as designed: the solve runs on the
+  // ceiling, which is today's value exactly.
+  const subdialr = Number.isFinite(Number(raw.subdialr)) ? Number(raw.subdialr) : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -456,6 +483,24 @@ export const DIAL_WALL_HALF = 0.2;
 // the dial centre. See the derivation at the subDialR solve below — this is
 // the bore, plus a wall, plus the one structural margin.
 export const SUBDIAL_INBOARD_CLEAR = DIAL_CENTER_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN;
+// §97 — what passes through a well's own pocket FLOOR, hoisted from main.js
+// the same way the centre stack was when TODO 33 made the ceiling depend on
+// the bore: the wells' radius is a SPEC dimension now, and its geometric
+// FLOOR is this bore plus a wall plus the margin — the solve that bounds
+// the radius and the geometry that drills the hole must read one source.
+// Both members are built in main.js — the small-seconds display arbor's
+// hand HUB and the reserve indicator arbor; ONE bore for both wells (one
+// drill), sized by the larger member at the standing margin (makeDial
+// circumscribes a hole's polygon, so the margin holds on the flats).
+export const SECONDS_HUB_R = 0.9;
+export const RSV_HAND_ARBOR_R = 0.4;
+export const SUBDIAL_BORE_R = Math.max(SECONDS_HUB_R, RSV_HAND_ARBOR_R) + CLEAR_MARGIN;
+// §97 — the wells' geometric FLOOR: below this the pocket cannot carry its
+// own centre bore's wall. The retired finish knob's 0.5 minimum landed at
+// 5.93 — four times this floor — a legibility choice wearing a geometry
+// reason (§86's subject); the spec key declares the geometric floor and
+// leaves the useless-but-legal band to the viewer.
+export const SUBDIAL_FLOOR = SUBDIAL_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN;
 
 // ---------------------------------------------------------------------------
 // Planar layout inputs — the "positions" the tornado solve steps off. These
@@ -671,6 +716,8 @@ export function solveKeyless({
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
   stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
   rsvR = null,      // §94 tier C — the reserve station's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
+  alarmR = null,    // §98 — the alarm corner's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
+  subDialRadius = null, // §97 — the shared well radius; null = the derived ceiling (today's value exactly, bit-exact)
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -867,7 +914,22 @@ export function solveKeyless({
   // same input as the reserve station above, so identity geometry is
   // bit-exact; the two quantities stop sharing a NAME, not a home (§13
   // step 3b's one-solver property survives intact).
-  const alarmCornerR = dialRadius * 0.39;
+  // §98 — and since the default TRACKS the plate, a grown movement drags
+  // the whole setting cluster outward into fixed-radius neighbours (§76
+  // measured every remaining balance wall down to that). A spec'd radius
+  // pins the corner; identity passes null and keeps the arithmetic.
+  const alarmCornerR = alarmR !== null ? alarmR : dialRadius * 0.39;
+  // The one bound THIS solver owns for a spec'd corner: the stem must
+  // reach the case rim with positive length (alarmStemLen = plateR + 2.2
+  // − corner in main.js). The interior bounds live with their own
+  // instruments — the dogleg's two-circle solve goes route-null past
+  // ≈ 19.9 and says so, and the winding chain's idler derives from the
+  // span with its plate ceiling asserted — so this warn brackets only
+  // what they cannot see.
+  if (alarmR !== null && !(alarmR > 0 && alarmR < plateR + 2.2))
+    warn(`alarm corner radius ${alarmR.toFixed(2)} is outside (0, ${(plateR + 2.2).toFixed(2)}) — `
+      + `past the ceiling the stem has no length inside the case rim; the build proceeds and its own `
+      + `asserts judge the interior`);
   // Small seconds live ON the fourth wheel's axis — dial-local coordinates
   // mirror world x through the dialFace Y-flip.
   const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
@@ -903,20 +965,41 @@ export function solveKeyless({
   //
   //   wellR ≤ 15.401 − (3.20 + 0.2 + 0.15) = 11.85
   //
-  // §23: the owner's size knob — a factor over the SOLVED radius, so the
-  // solve stays the source and the knob is a taste adjustment on top. Its
-  // bound in aesthetics.json is 1.0 because the SOLVE already sits on the
-  // ceiling; TODO 33's assert catches an oversized factor at boot.
-  const subDialR = (Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR)
-    * ((aesthetics.dial.subdials && aesthetics.dial.subdials.radiusFactor) || 1);
+  // §97 — THE RADIUS IS A SPEC DIMENSION, and the finish knob is retired
+  // (one quantity, one control; §23's factor was the right description of
+  // a finish knob and the wrong tier for a movement dimension — a spec
+  // must be reproducible from its URL, and the solver could never be
+  // asked about a factor that reached it as a module import). The ceiling
+  // is TODO 33's, split out by name; the value is the spec'd radius held
+  // between the derived FLOOR and that ceiling, falling back WITH a warn
+  // rather than building a well that breaches either bore. Identity is
+  // bit-exact by construction: the retired factor was 1.0, and
+  // multiplication by 1.0 is exact in IEEE-754.
+  const wellCeiling = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR;
+  let subDialR = subDialRadius !== null ? subDialRadius : wellCeiling;
+  if (subDialRadius !== null && subDialRadius > wellCeiling) {
+    warn(`sub-dial radius ${subDialRadius.toFixed(2)} is over the derived ceiling ${wellCeiling.toFixed(2)} `
+      + `(inner station − centre-bore keep-out) — keeping the ceiling; a larger well breaches the `
+      + `centre bore, the degeneracy TODO 33 closed`);
+    subDialR = wellCeiling;
+  }
+  if (subDialRadius !== null && subDialRadius < SUBDIAL_FLOOR) {
+    warn(`sub-dial radius ${subDialRadius.toFixed(2)} is under the derived floor ${SUBDIAL_FLOOR.toFixed(2)} `
+      + `(the pocket's own bore + wall + margin) — keeping the floor; a smaller well cannot carry `
+      + `its centre bore's wall`);
+    subDialR = SUBDIAL_FLOOR;
+  }
   // §94 tier A — THE WELLS MUST HAVE A RADIUS AT ALL, which nothing checked
   // while both stations were literals comfortably outside the ceiling. Make
   // the small-seconds station a spec key and the inboard end of its range
   // walks the inner station straight through SUBDIAL_INBOARD_CLEAR: at d4
-  // 2 the expression above returns −1.55 and the dial built a well with a
+  // 2 the ceiling comes out at −1.55 and the dial built a well with a
   // NEGATIVE radius in silence. The centre-bore assert next door cannot see
   // it — it measures the ring's inner edge, which a negative radius pushes
   // back OUTSIDE the bore, so a nonsense well reads as a compliant one.
+  // (A spec'd radius under a NEGATIVE ceiling still falls back to the
+  // ceiling above — the station question outranks the radius question, and
+  // this warn is the one that names it.)
   if (subDialR <= 0)
     warn(`sub-dial wells have no radius: ${subDialR.toFixed(2)} — the inner station sits `
       + `${Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y).toFixed(2)} from the dial centre, inside the `
@@ -930,25 +1013,30 @@ export function solveKeyless({
   //
   //     station + subDialR(station) ≤ dialRadius
   //
-  // with subDialR(station) = (min(station, seconds) − clear) · factor.
-  // subDialR is PINNED by the inner station, so a reserve station moved
-  // outward alone carries a well of the seconds-pinned radius until the
-  // face runs out; the edge grows monotonically with the station either
-  // way, so the bound is closed-form in two branches on which station is
-  // the min. Deliberately NOT here: §74's "headroom 0 at ≈22.34", a
-  // lockstep artifact tier A already corrected, and the ≈19.9 dogleg
-  // ceiling, which has been the ALARM corner's own dimension since tier B.
-  // The reduction train adds its own inward floor — the span-solved module
-  // goes below tooth stock long before the well degenerates — asserted
-  // beside rsvModule1 in main.js; the reconfigure handle composes both.
-  const _sdFactor = (aesthetics.dial.subdials && aesthetics.dial.subdials.radiusFactor) || 1;
+  // with subDialR(station) = min(station, seconds) − clear (§97 retired
+  // the finish factor — its 1.0 multiplied out exactly, and the branch
+  // arithmetic below simplifies with it). subDialR is PINNED by the inner
+  // station, so a reserve station moved outward alone carries a well of
+  // the seconds-pinned radius until the face runs out; the edge grows
+  // monotonically with the station either way, so the bound is closed-form
+  // in two branches on which station is the min — and when §97's key PINS
+  // the radius outright, the derivation collapses to one branch, the fixed
+  // well against the face. Deliberately NOT here: §74's "headroom 0 at
+  // ≈22.34", a lockstep artifact tier A already corrected, and the ≈19.9
+  // dogleg ceiling, which has been the ALARM corner's own dimension since
+  // tier B. The reduction train adds its own inward floor — the span-solved
+  // module goes below tooth stock long before the well degenerates —
+  // asserted beside rsvModule1 in main.js; the reconfigure handle composes
+  // both.
   const _secDist = -SECONDS_LOCAL.y;
-  const _rsvrPinnedMax = dialRadius - (_secDist - SUBDIAL_INBOARD_CLEAR) * _sdFactor;
+  const _rsvrPinnedMax = dialRadius - (_secDist - SUBDIAL_INBOARD_CLEAR);
   const rsvrWindow = {
     min: SUBDIAL_INBOARD_CLEAR,
-    max: _rsvrPinnedMax >= _secDist
-      ? _rsvrPinnedMax
-      : (dialRadius + _sdFactor * SUBDIAL_INBOARD_CLEAR) / (1 + _sdFactor),
+    max: subDialRadius !== null
+      ? dialRadius - subDialR
+      : _rsvrPinnedMax >= _secDist
+        ? _rsvrPinnedMax
+        : (dialRadius + SUBDIAL_INBOARD_CLEAR) / 2,
   };
   if (rsvR !== null && !(rsvR > rsvrWindow.min && rsvR <= rsvrWindow.max))
     warn(`reserve station ${rsvR.toFixed(2)} is outside its window (${rsvrWindow.min.toFixed(2)}, `

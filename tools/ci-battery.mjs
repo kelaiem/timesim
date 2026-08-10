@@ -452,6 +452,32 @@ const SPEC_POINTS = [
   { name: 'rsvr=8', q: 'rsvr=8', expect: 'any', why: '§94 tier C — inside the window, EXPECTED to warn: w2 tip vs its shrunken well, §34 post vs the moved ring' },
   { name: 'rsvr=30', q: 'rsvr=30', expect: 'any', why: '§94 tier C — past the well window: must warn and BOOT (an off-face well is nonsense, not NaN)' },
   { name: 'reserveh=48&rsvr=27', q: 'reserveh=48&rsvr=27', expect: 'any', why: '§94 tier C — the joint case: 48 h teeth meet a well the station outran; neither key alone shows it' },
+  // §98 — the alarm corner's radius, §76's pin. Three points, measured on
+  // this tree before written down (all at the default balance):
+  //   · 14 is the INWARD pin and boots silent;
+  //   · 20 is past the dogleg's ≈19.9 reach — the setting chain's own
+  //     assert reports with numbers (i2 37 t cannot reach the arbor,
+  //     needs ≥ 38 t), which is the interior bound doing this window's
+  //     work exactly as the §98 filing scoped it;
+  //   · 46 is past the stem's (0, plateR + 2.2) window — the solver's own
+  //     warn fires and the boot proceeds (nonsense, not NaN), with the
+  //     dogleg reporting no route at any bearing behind it.
+  { name: 'alarmr=14', q: 'alarmr=14', expect: 'any', why: '§98 — the corner pinned inward; measured silent on this tree' },
+  { name: 'alarmr=20', q: 'alarmr=20', expect: 'any', why: '§98 — past the dogleg reach: the chain\'s own assert reports, boot proceeds' },
+  { name: 'alarmr=46', q: 'alarmr=46', expect: 'any', why: '§98 — past the stem window: the solver warns with both bounds, boot proceeds' },
+  // §97 — the shared well radius. Three points, measured before written:
+  //   · 8 is the interior value and boots silent (wells and both hands
+  //     shrink together, every consumer reading the solve);
+  //   · 13 is over the derived ceiling (11.85): the solver warns and KEEPS
+  //     the ceiling — a larger well breaches the centre bore, TODO 33's
+  //     degeneracy, so this key clamps where rsvr builds-and-judges;
+  //   · 1 is under the derived floor (1.40): the solver clamps to the
+  //     floor and warns, and the reserve train's tip check then reports
+  //     w2 reaching through even the clamped well (5.23 vs 1.05) — two
+  //     instruments composing on one nonsense spec.
+  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', why: '§97 — the wells resized inward; measured silent on this tree' },
+  { name: 'subdialr=13', q: 'subdialr=13', expect: 'any', why: '§97 — over the ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
+  { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns; the train\'s tip check reports the rest' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because

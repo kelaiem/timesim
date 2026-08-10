@@ -9488,3 +9488,129 @@ Verified against five dangerous entries, each caught: `src/*i18n*.js` (→
 asymmetry the workflow's own header warns about), `vendor/*.js`, `**/*.js` —
 plus both unreadable cases, a renamed key and a missing file. The current list
 passes: 12 patterns against the 12 files reachable from `index.html`.
+
+## §98 — `?alarmr=` : the alarm corner's radius as a spec dimension, §76's missing pin
+
+Filed and built 2026-08-10, from §76's Phase A re-measure. That sweep
+reduced every remaining balance wall to ONE cause: the corner's default
+radius tracks the plate (`alarmCornerR = dialRadius · 0.39` since §94
+tier B), so a grown balance grows the plate and carries the whole
+setting cluster outward into fixed-radius neighbours — the climb pivot
+into the balance's plate cut, i2 into the winding climb (azimuth-
+invariant, both ride the corner), i1 into the §34 selector posts.
+§94's scope guard had deliberately left this key unfiled; §76 needing
+it was the trigger to file it, and tier B's decoupling is what makes it
+ONE key instead of ten edits — the climb, the stem, the collar, the
+dogleg and both plates' bores all follow `alarmCornerR` already.
+
+### The build is §94 tier C's C1, one dimension over
+
+`alarmR = null` joins `solveKeyless`; `SPEC.alarmr` defaults null and
+`KEYLESS_INPUTS` spreads it in only when present, so identity passes
+nothing, evaluates the same arithmetic, and fingerprints 2134288613 on
+both virgin boots — bit-exact. The solver warns on the one bound IT
+owns for a spec'd corner — the stem must have positive length inside
+the case rim, `(0, plateR + 2.2)` — and deliberately leaves the
+interior to the instruments that already state it with numbers: the
+setting dogleg goes route-null past ≈ 19.9 (`i2 37 t cannot reach the
+arbor — needs ≥ 38 t`, measured at `alarmr=20`), and the winding
+chain's idler derives from the span with its plate ceiling asserted.
+Measured before written: `alarmr=14` boots silent; 17 walks the pivot
+into the shipped balance's own plate cut (reported); 20 hits the dogleg
+reach; 46 fires the stem window warn and still boots. Three `spec
+boots` rows declare the points. No reconfigure handle — the alarm
+crown's rim grip owns the corner's AZIMUTH by angular drag, and a
+radius reading on the same member is new interaction vocabulary,
+deferred inside the §98 filing, stated.
+
+### What the pin buys, measured — §76's Layer 8 in one line
+
+With the corner pinned at its shipped value and the §94 keys doing the
+rest, **a 33% larger balance boots SILENT**:
+`?alarmaz=235&rsvr=14&alarmr=15.4` at R 12 — zero warns (245 likewise;
+240 shows TODO 15's anti-phase mesh report, an instrument, not a
+wall). The §76 record in the roadmap carries the full layer: which wall
+each key retired, and the full check suite's verdict at that spec.
+
+### The gate
+
+Full battery at identity on the finished branch (this key plus §97
+beside it, local): **19/19 gates pass**, boot silent, fingerprint
+**2134288613 on both virgin boots** — bit-identical through both keys.
+`spec boots` 26/26 with the identity control silent. The `--report`
+diff against the §94 tier C tree: 13 leaves, all per-check `ms` wall
+clock — neither key adds geometry or check rows at the default spec.
+
+## §97 — `?subdialr=` : the sub-dial well radius as a spec dimension, and the finish knob retired
+
+One quantity, one control, in the right tier. `radiusFactor` was §23's
+finish knob over the solved radius — the right description of a finish
+knob and the wrong tier for a movement dimension, in three measured ways
+the filing named: the factor reached the solver as a MODULE IMPORT, so
+no shadow-solve could override it and the reconfigure ghost could never
+draw a candidate; a browser-local multiplier on a spec dimension let the
+URL and the picture disagree silently, per machine; and the range was
+one-sided at identity (the solve sits exactly on its ceiling), §74's
+"every position past the incumbent is refused" shape.
+
+### The promotion, and the floor that never existed
+
+`subDialRadius` joins `solveKeyless`; the old expression splits into the
+named CEILING (TODO 33's — `min(stations) − SUBDIAL_INBOARD_CLEAR`,
+11.85 today) and the value, and the retired factor's `× 1.0` multiplies
+out exactly in IEEE-754 — identity is bit-exact by construction and by
+measurement (fingerprint 2134288613, double-boot). The FLOOR is new:
+the pocket's own centre bore plus a wall plus the one margin —
+`SUBDIAL_FLOOR = SUBDIAL_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN = 1.40`
+— with the bore constants HOISTED to `layout.js` (TODO 33's hoist, one
+bore over), so the solve that bounds the radius and the geometry that
+drills the hole read one source. The retired knob's 0.5 minimum landed
+at 5.93 — four times the geometric floor, a legibility choice wearing a
+geometry reason (§86's subject) — and was not carried across. A spec'd
+radius outside either bound CLAMPS with a warn, deliberately unlike
+`rsvr`'s build-and-judge: a breached bore is the exact degeneracy
+TODO 33 closed, so there is nothing honest to build there.
+
+Measured before written (`spec boots` rows): `subdialr=8` boots silent;
+13 clamps to the ceiling and says why; 1 clamps to the floor and the
+reserve train's tip check then reports w2 reaching through even the
+clamped well (5.23 against 1.05) — two instruments composing on one
+nonsense spec.
+
+### The aesthetics import leaves the solver
+
+The one-line diff that carries the tier argument: `layout.js` no longer
+imports the finish layer at all. A persisted browser-local override of
+the removed key cannot crash or alter the boot — the §23 loader's TYPE
+ANCHORING refuses a key the file no longer carries — and that was
+PROVEN with a seeded-localStorage boot (0 warns), not assumed. The
+`dial.subdials` block keeps only its contract sentence, now true about
+both properties: position and size are dimensions of the SPEC, and
+finish holds no sub-dial knob.
+
+### The handle, and its stated concession
+
+The third radial `RECONF_HANDLES` row. A radius has no arbor, so the
+ring sits on the SECONDS well — whose centre IS the fourth wheel's real
+arbor — at the well's own radius, and the reading is the pointer's
+distance from that station. One radius serves BOTH wells, so the
+proposal ghosts both (`reconfShowWellGhost`, two rings at the two
+stations at the candidate radius): highlighting only the ring under the
+pointer would state something false about what the drag does. The row
+is keyless-tier (the radius never enters `solveLayout`), carries its own
+shadow, and judges the reserve train's tip-vs-well bound against the
+well being PROPOSED (`rsvTrainWarnsAt` gained the candidate-radius
+argument). Refusal is closed form against both derived bounds. The
+row's grab disc shares its centre with the `d4` handle's — the
+tie-break gives the inner disc to the wheel and the outer annulus to
+the ring, which is also what a finger would expect.
+
+### The gate
+
+Full battery at identity on the finished branch (this key plus §98
+beside it, local): **19/19 gates pass**, boot silent, fingerprint
+**2134288613 on both virgin boots** — bit-exact through the factor's
+retirement and the promotion, the entry's IEEE-754 claim held by the
+instrument. The persisted-override boot proved clean, every declared
+spec point was probed before its row was written, and the `--report`
+diff against the §94 tier C tree is 13 `ms` leaves and nothing else.
