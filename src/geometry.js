@@ -1654,6 +1654,20 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
   ratchet.name = 'ratchet';
   g.add(ratchet);
   if (!includeClick) {
+    // §99 — the saw's OUTLINE, exported the way the column wheel's is: a
+    // caller derives its click's parked kiss by casting against the same
+    // polygon the teeth were cut from (a park measured once is valid only
+    // at the azimuth it was measured at), and a caller that wants the
+    // schematic to draw the CUT rather than a pitch-circle claim builds its
+    // userData.profile from this. Root→tip chord over 0.72 of the pitch,
+    // face over the last 0.28 — main.js's sawRadiusAt is the analytic twin.
+    const poly = [];
+    for (let i = 0; i < teeth; i++) {
+      const a0 = (i / teeth) * Math.PI * 2, a1 = ((i + 0.72) / teeth) * Math.PI * 2;
+      poly.push([Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8]);
+      poly.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
+    }
+    g.userData.ratchetPoly = poly;
     g.userData.r = radius;
     g.userData.teeth = teeth;
     return g;

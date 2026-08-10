@@ -9504,6 +9504,7 @@ registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like
 // which reads in the console as a SILENT boot — no warnings because nothing
 // ran. Third time this session; the tell is `__clock` missing, not the log.
 let alarmBarrelGear = null, alarmStrikePinion = null;
+let alarmWindTargetGear = null; // §99: the arbor's winding wheel — the chain's last link since the re-route
 const alarmStrikeRotor = new THREE.Group(); // everything that turns with the striking train
 alarmStrikeRotor.position.set(alarmSwPos.x, alarmSwPos.y, 0);
 alarmStrikeUnit.add(alarmStrikeRotor);
@@ -9600,42 +9601,110 @@ movement.add(alarmBarrelUnit);
 registerLabel('Alarm barrel', alarmBarrelUnit);
 registerExplode(alarmBarrelUnit, 0, 9);
 {
+  // §99: the boss is BORED — the arbor turns in it now (a solid boss around
+  // a turning arbor is exactly the standing foul TODO 42's eye documents,
+  // pre-empted here; §27's rule that every opening is cut). Lathe profile
+  // keeps the original 0.9→1.1 taper; bore is the pivot fit over the arbor.
   const bossTop = ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2;
   const bossBase = TQ_TOP_Z - 0.5;
-  const boss = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, bossTop - bossBase, 16), MATS.nickel);
-  boss.rotation.x = Math.PI / 2;
+  const boreR = G.barrelArborR(ALARM_BARREL_PITCH_R) + PIVOT_BORE_CLEAR;
+  const h = bossTop - bossBase;
+  const bossGeo = new THREE.LatheGeometry([
+    new THREE.Vector2(boreR, -h / 2), new THREE.Vector2(1.1, -h / 2),
+    new THREE.Vector2(0.9, h / 2), new THREE.Vector2(boreR, h / 2),
+    new THREE.Vector2(boreR, -h / 2),
+  ], 24);
+  bossGeo.rotateX(Math.PI / 2); // Lathe revolves about +Y — stand it along Z
+  const boss = new THREE.Mesh(bossGeo, MATS.nickel);
   boss.position.set(alarmBarrelPos.x, alarmBarrelPos.y, (bossTop + bossBase) / 2);
   alarmBarrelUnit.add(boss);
 }
 const alarmBarrelRotor = new THREE.Group();
 alarmBarrelRotor.position.set(alarmBarrelPos.x, alarmBarrelPos.y, ALARM_BARREL_Z);
 alarmBarrelUnit.add(alarmBarrelRotor);
-// §89 — THE ARBOR IS FIXED, and that is what lets the spring be a spring.
-// §25 A built this as a SINGLE member: body, arbor and ribbon in one rotating
-// group, so the coil turned rigidly with the drum and stored nothing — the
-// same fiction TODO 1 deleted from the going drum, left standing here because
-// nothing else in the alarm needed a second member. A ribbon with both ends on
-// the same part cannot wind; winding is the relative angle between two.
-//
-// The split taken is the going drum's own, not a going barrel's: the arbor is
-// planted in the frame and the BODY is wound at its teeth (the drum is wound
-// at its wall by the chain, this one at its rim by the winding train), so the
-// ribbon's inner end is pinned to the movement while its outer end rides the
-// body. Nothing moves in position space to buy it — the same station, the same
-// z, the same mesh with the strike pinion and the same 12/44 with the winding
-// train — which is what makes it a P0/P1 change and not a layout one. The
-// alternative split (wound arbor + click, the true going barrel) re-sites the
-// winding train's last mesh onto a ratchet and is layout work; it is not
-// needed to make the spring honest, and it stays filed.
+// §99: the ARBOR'S OWN ROTOR — the wound member. Same origin as the body's
+// rotor; tick writes its angle as body + relative wind, so the ribbon is
+// wound between the two rotors and nothing else is (the state law at the
+// striking-works block).
+const alarmArborRotor = new THREE.Group();
+alarmArborRotor.position.set(alarmBarrelPos.x, alarmBarrelPos.y, ALARM_BARREL_Z);
+alarmBarrelUnit.add(alarmArborRotor);
+// §89 split the single member; §99 took the OTHER split — the true going
+// barrel. §25 A built this as ONE member: body, arbor and ribbon in one
+// rotating group, so the coil turned rigidly with the drum and stored
+// nothing — the fiction TODO 1 deleted from the going drum. §89's split
+// planted the arbor in the frame and wound the BODY at its rim (the going
+// drum's arrangement), which made the spring honest but left the wind held
+// by the striking wheel's lock four meshes downstream (TODO 37). §99 winds
+// the ARBOR: the winding train's last mesh lands on the arbor's own wheel,
+// a saw ratchet keyed beside it is held by a plate-grounded click, and the
+// body — the delivery member — keeps its mesh with the striking pinion.
+// A ribbon with both ends on the same part cannot wind; winding is the
+// relative angle between two, and now each end's member has its own job:
+// arbor = input (click-held), body = output (lock-held while parked).
 const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R);
+// §99 — the ARBOR TIER's z-stack, derived up from the body. With the winding
+// wheel coaxial to the barrel, i2's tip circle overflies the body's rim in
+// XY, so the whole last-mesh plane stands ABOVE the body's lid. THE LANE,
+// re-probed at the lifted tier (the §25 C probe covered 10.1..11.6, the
+// body-band plane this stack retired): vertex-probed at rest, ZERO meshes
+// from any unit outside the action group cross the band 11.61..13.2 — the
+// tier stands above everything else on this corner, and the battery's
+// sweeps hold that over every axis.
+//   wheel bottom = body top + CLEAR_MARGIN + 0.01 — the centi-unit is
+//   JMP_BIND_EPS's lesson (a stack solved exactly to the bind measured gap
+//   0.1500 against required 0.15 and a float hair failed the sweep);
+//   ratchet bottom = wheel top + the same margin, so the click's plane
+//   clears i2's disc at every azimuth.
+const ALARM_WIND_WHEEL_T = 0.8;   // the winding tier's mesh stock — the idlers' own 0.8, one band
+const ALARM_RATCHET_T = RATCHET_T / 2; // the going ratchet's stock at the alarm's half scale (TODO 11's standing note)
+// makeGear's edge bevel EXTRUDES BEYOND the stock on both faces
+// (min(t·0.18, m·0.22) per side — the module term binds at these stocks),
+// so the tier's clearance is between BEVEL surfaces, not band surfaces:
+// the body's bevel rises above its band and the wheels' bevels drop below
+// theirs, and the first cut of this stack lost 2 bevels of its margin to
+// exactly that (measured 0.034 where 0.15 was owed).
+const ALARM_GEAR_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_BODY_BEVEL = Math.min(ALARM_BARREL_H * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_WIND_TIER_BOT = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + ALARM_BODY_BEVEL + CLEAR_MARGIN + 0.01; // the tier's lowest METAL
+const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_GEAR_BEVEL + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
+const ALARM_RATCHET_BOT_Z = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL + CLEAR_MARGIN + 0.01;
+const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatchetAndClick extrudes bevel-free — exact band
+// §99 — the WINDING WHEEL takes the rim's own tooth count, deliberately:
+// the arbor is coaxial with the rim the mesh is leaving, so W = the rim's
+// 44 keeps the idler reach solve, the i1/i2 two-circle closure, and the
+// crown→wind ratio (12/44) bit-identical — the re-route spends NOTHING in
+// XY, and the whole layout change is the tier's z above. (TODO 37 predicted
+// "a different centre distance"; the coaxial identity is why that
+// prediction did not survive contact with the layout.)
+const ALARM_WIND_W = ALARM_BARREL_TEETH;
+// The RATCHET the click holds. R from the click's grounding lane — the
+// click's pivot stud (r 0.5, the set-up screw's stock) rises from the plate
+// past EVERY toothed band on this axis: the body's tip circle below AND the
+// arbor wheel's addendum at the tier, where makeGear's bevelSize EXPANDS
+// the outline in XY by ALARM_GEAR_BEVEL (geometry.js — the same two-bevel
+// lesson the z-stack above already paid). The wheel binds: 6.9 + 0.066 over
+// the body's 6.885. So 1.28·R (makeClick's pivot registration) clears the
+// TALLER of the two by one margin:
+//   R ≥ (max(bodyTip, wheelTip + bevel) + 0.5 + CLEAR_MARGIN) / 1.28  →  5.950, cut 6.0.
+// (First cut used the body tip alone → 5.9, and the stud measured 0.0651
+// to the wheel where the floor owed 0.15.)
+// N = 2 × ALARM_STRIKES_PER_BARREL_TURN: a released crown gives back at
+// most 1/32 turn of arbor — half a strike's stored travel (the set-up
+// ratchet's 24 is the family precedent; the finer count is this barrel's
+// own hold quantum, not taste).
+const ALARM_WIND_TIP_R = ALARM_TRAIN_MODULE * (ALARM_WIND_W + 2) / 2; // the arbor wheel's addendum circle
+const ALARM_RATCHET_R = Math.ceil(10 * (Math.max(ALARM_BARREL_TIP_R, ALARM_WIND_TIP_R + ALARM_GEAR_BEVEL) + 0.5 + CLEAR_MARGIN) / 1.28) / 10;
+const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
 let alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
 {
   // A going barrel: the toothed wall IS the wheel that drives the pinion and
-  // the lid's cutaway shows the spring inside. The body turns ON the fixed
-  // arbor — floor and lid are bored PIVOT_BORE_CLEAR over it, which is the
-  // pivot. NO ratchet or click yet: the wind arrives with stage C's alarm
-  // crown, and a click riding round with the barrel would be exactly the kind
-  // of display fiction §24 spent its effort deleting.
+  // the lid's cutaway shows the spring inside. The body turns ON the arbor —
+  // floor and lid are bored PIVOT_BORE_CLEAR over it, which is the pivot;
+  // since §99 the arbor turns too (winding), so the bore is a genuine
+  // running fit on both sides. The builder's own `ratchet: true` would put
+  // the click's wheel on the BODY's lid — §25 A's fiction — so the ratchet
+  // is built caller-side on the arbor rotor below.
   const arborH = ALARM_BARREL_H * 2;
   const alarmBarrel = G.makeBarrel({
     radius: ALARM_BARREL_PITCH_R, height: ALARM_BARREL_H, ratchet: false,
@@ -9646,32 +9715,40 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
     // whose ribbon needed a collar built up over a thin pivot — there is
     // nothing here for a collar to add but a second radius to justify.
     springArborR: ALARM_BARREL_ARBOR_R,
-    // A full wind IS the body's travel against that fixed arbor: the rotor's
-    // angle below is (TURNS − wind)·2π, so the reserve and the sweep are the
-    // same quantity written twice, which is why this is not a literal.
+    // A full wind IS the relative travel between the two rotors: since §99
+    // tick winds the ribbon by (bodyA − arborA), which spans TURNS·2π from
+    // run-down to full, so the reserve and the sweep are the same quantity
+    // written twice, which is why this is not a literal.
     springWindSweep: ALARM_BARREL_TURNS * Math.PI * 2,
   });
   alarmBarrelRotor.add(alarmBarrel);
   alarmBarrelGear = alarmBarrel;   // TODO 15: the winding chain's last link
   alarmSpring = alarmBarrel.getObjectByName('spring').userData.mainspring;
 
-  // The arbor itself — STATIC, so it hangs in the unit and not in the rotor.
-  // Its foot runs down into the boss's bore; that engagement is what grounds
-  // it, and the assert below is the same one the turning arbor answered.
+  // The arbor itself — §99: the WOUND member, so it rides its own rotor.
+  // Its foot still runs down into the (now bored) boss, which is its lower
+  // bearing rather than its ground; the CLICK is what grounds its angle.
+  // Lengthened past the body's lid to carry the winding wheel and the
+  // ratchet on the tier above (ALARM_WIND_TIER_Z's derivation at the
+  // winding train): bottom pinned where §89 had it — the boss engagement
+  // assert below is unchanged — top = ratchet top + a 0.2 shoulder.
+  const arborBotZ = ALARM_BARREL_Z - arborH / 2;              // §89's foot, kept
+  const arborTopZ = ALARM_RATCHET_TOP_Z + 0.2;
   const arbor = new THREE.Mesh(
-    new THREE.CylinderGeometry(ALARM_BARREL_ARBOR_R, ALARM_BARREL_ARBOR_R, arborH, 16), MATS.steel);
+    new THREE.CylinderGeometry(ALARM_BARREL_ARBOR_R, ALARM_BARREL_ARBOR_R, arborTopZ - arborBotZ, 16), MATS.steel);
   arbor.name = 'alarmBarrelArbor';
   arbor.rotation.x = Math.PI / 2;
-  arbor.position.set(alarmBarrelPos.x, alarmBarrelPos.y, ALARM_BARREL_Z);
-  alarmBarrelUnit.add(arbor);
-  if (ALARM_BARREL_Z - arborH / 2 > ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2)
-    console.warn(`alarm barrel arbor stops at ${(ALARM_BARREL_Z - arborH / 2).toFixed(2)}, short of its boss top ${(ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2).toFixed(2)} — no pivot engagement`);
+  arbor.position.set(0, 0, (arborTopZ + arborBotZ) / 2 - ALARM_BARREL_Z); // arbor-rotor-local
+  alarmArborRotor.add(arbor);
+  if (arborBotZ > ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2)
+    console.warn(`alarm barrel arbor stops at ${arborBotZ.toFixed(2)}, short of its boss top ${(ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2).toFixed(2)} — no pivot engagement`);
 
-  // The INNER-END HOOK, on the arbor, in the movement frame — the drum's
-  // derivation part for part (see the set-up work's hookLug): the ribbon's
-  // inner end sits at a constant azimuth by construction (drum-local sweep
-  // plus body rotation is invariant — that IS the anchoring claim) and the
-  // builder reports it as innerAnchorAz, so nothing here is placed by eye.
+  // The INNER-END HOOK — §99: on the arbor's ROTOR, in the arbor's frame.
+  // The §89 claim ("drum-local sweep plus body rotation is invariant")
+  // generalises exactly: setWind's sweep is the RELATIVE angle, so the
+  // ribbon's inner end sits at innerAnchorAz + arborA in the world — it
+  // tracks the arbor, and a lug keyed to the arbor at the same builder-
+  // reported azimuth stays butted at every state of wind and phase.
   // The lug stands ONE ribbon thickness proud, because at full wind the
   // second coil comes down to coil bind and anything further out is buried in
   // it; the ribbon's end FACE butts the flank on the +angle side, which is
@@ -9681,11 +9758,41 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   const lugAz = alarmSpring.innerAnchorAz + Math.atan2(lugW / 2, lugR);
   const hookLug = new THREE.Mesh(new THREE.BoxGeometry(lugW, lugW, alarmSpring.height), MATS.blueSteel);
   hookLug.name = 'alarmSpringArborHook';
-  hookLug.position.set(
-    alarmBarrelPos.x + Math.cos(lugAz) * lugR,
-    alarmBarrelPos.y + Math.sin(lugAz) * lugR, ALARM_BARREL_Z);
+  hookLug.position.set(Math.cos(lugAz) * lugR, Math.sin(lugAz) * lugR, 0); // arbor-rotor-local
   hookLug.rotation.z = lugAz;
-  alarmBarrelUnit.add(hookLug);
+  alarmArborRotor.add(hookLug);
+
+  // §99 — the ARBOR'S TWO WHEELS (constants and their constraints above).
+  // The winding wheel is INVOLUTE because it is a chain-solve member — the
+  // tooth-phase gauge refuses a saw — and the saw ratchet is its sibling on
+  // the arbor, never a child of the solve handle (the gauge traverses every
+  // child mesh of the handle it is given). Wheel pressed on the arbor
+  // (declared joint); ratchet on a filed square, across-corners = the
+  // arbor's own diameter (the set-up ratchet's convention).
+  const windWheel = G.makeGear({
+    module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, thickness: ALARM_WIND_WHEEL_T,
+    boreR: ALARM_BARREL_ARBOR_R, spokes: 5, material: MATS.steel,
+  });
+  windWheel.traverse((o) => { if (o.isMesh) o.name = 'alarmArborWheel'; });
+  windWheel.position.z = ALARM_WIND_TIER_Z - ALARM_BARREL_Z; // arbor-rotor-local
+  alarmArborRotor.add(windWheel);
+  alarmWindTargetGear = windWheel; // §99: the winding chain's last link (was the body's rim)
+  const arborSq = (2 * ALARM_BARREL_ARBOR_R) / Math.SQRT2; // filed square, across-corners = arbor ⌀
+  const arborRatchet = G.makeRatchetAndClick({
+    radius: ALARM_RATCHET_R, teeth: ALARM_RATCHET_N, thickness: ALARM_RATCHET_T,
+    includeClick: false, squareBore: arborSq,
+  });
+  arborRatchet.traverse((o) => { if (o.isMesh) o.name = 'alarmArborRatchet'; });
+  arborRatchet.position.z = ALARM_RATCHET_BOT_Z - ALARM_BARREL_Z; // extrude runs bottom→up
+  // §83's word for "a wheel whose content is its cut outline": the profile
+  // is both the OWN_GLYPH opt-out (a saw drawn as a smooth pitch circle is
+  // a false claim) and the drawing the schematic renders instead.
+  arborRatchet.userData.profile = {
+    poly: arborRatchet.userData.ratchetPoly,
+    hubR: ALARM_RATCHET_R * 0.8,     // the root circle the saw stands on
+    boreR: (arborSq + 0.03) / 2,     // the keyed square's across-flats half
+  };
+  alarmArborRotor.add(arborRatchet);
   // The ribbon must stand clear of the faces it turns between — the drum's
   // collar assert in the other direction, since here it is the SPRING that is
   // as tall as the caller made it and the cavity that has to hold it.
@@ -9703,11 +9810,11 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
 // wound↔run-down cycle a shape change, the registry flags it reversing (26
 // units now), and the unit is asked the question for the first time — the same
 // sequence TODO 1 produced on the going drum. The other way is the WINDING PATH
-// — alarm crown → climb → idlers → the barrel's own rim — which is the same
-// both-ways drive the going train's chain and fusee carry, arriving here at the
-// teeth instead of at an arbor.
+// — alarm crown → climb → idlers → the arbor's own wheel (§99; the rim before
+// it) — the same both-ways drive the going train's chain and fusee carry,
+// arriving at an arbor now exactly as the going side's does.
 declareRestoring('Alarm barrel', 'spring',
-  'the ribbon IS the restoring element — its inner end is hooked to an arbor fixed in the frame and its outer end to the body, so the body\'s travel winds it; the alarm winding train (crown → climb → idlers → rim) is what carries it back the other way',
+  'the ribbon IS the restoring element — its inner end is hooked to the wound arbor and its outer end to the body, so their relative travel winds it; the winding train carries the arbor back through its wheel, and the §99 click holds what the hand banked',
   'mainspringRibbon');
 
 // --- TODO 32: THE EQUALISATION, NOW A RECORD -------------------------------
@@ -9770,6 +9877,13 @@ const EQUALISATION = (() => {
       windRangeRad: [0, alarmSweep],
       momentRange_Nmm: [0, kAlarm * alarmSweep * 1000],
       cadence: 'authored — ALARM_STRIKE_GAP; torque→cadence needs a governor model (TODO 32 remainder)',
+      // §99 — the arbor click quantises the HOLD: a released crown gives
+      // back at most one saw pitch of arbor angle before the face catches.
+      // Reported, not gated — unlike the going set-up there is no integer-
+      // click constraint to land (the wind is the user's, not a set-up);
+      // the quantum is the record, in both natural units.
+      holdQuantumRad: (Math.PI * 2) / ALARM_RATCHET_N,
+      holdQuantumStrikes: ALARM_STRIKES_PER_BARREL_TURN / ALARM_RATCHET_N,
     },
   });
 })();
@@ -9780,29 +9894,26 @@ const EQUALISATION = (() => {
 // crown throw outboard of the setting corner — the pull IS the clutch); the
 // climb rises through both plates (its bores are its bearings: the base
 // plate's at −2..0, a jeweled pivot in the three-quarter plate at 7.7..8.5)
-// to a pinion in the barrel's own tooth band, where two idlers cross the
-// EMPTY upper-plate lane (vertex-probed clear at z 10.1..11.6 along the whole
-// run) to the barrel rim. Idler counts drop out: crown → barrel is
-// pinion/barrel = 12/44, so a full wind (1.75 turns) is ~6.4 crown turns.
+// to a pinion at the ARBOR TIER (§99 — the mesh plane above the body's lid,
+// ALARM_WIND_TIER_Z; §25 C's plane sat in the body's own tooth band), where
+// two idlers cross the EMPTY upper-plate lane (vertex-probed clear at
+// z 10.1..11.6 along the whole run when the tier sat in the body's band;
+// re-probed at the lifted tier — the numbers at the tier constants) to the
+// ARBOR'S WINDING WHEEL. Idler counts drop out: crown → arbor is
+// pinion/wheel = 12/44, so a full wind (1.75 turns) is ~6.4 crown turns —
+// bit-identical to the rim-mesh era, because the wheel takes the rim's own
+// count (the coaxial identity at ALARM_WIND_W).
 //
-// The whole train's VISUAL pose derives rigidly from the BARREL angle — so
-// while the alarm RINGS, the train (and a pulled-out crown) visibly free-
-// spins backward, which is what rigid meshing honestly implies (the classic
-// behaviour of real alarm crowns). A crown turned backward free-slips at the
-// stem⇄contrate bevel without unbanking — the same convention the time
-// crown's ratchet documents ("only what actually banked moves the wheel").
-// No click is modelled, and §89 changed why. §25 A's reason was that in a
-// SINGLE-member barrel (rotation IS the wound state) a barrel click would
-// block the ring itself — true of that barrel, and no longer true of this
-// one: the arbor is fixed, the body is wound at its rim, and the ribbon
-// between them is the wound state. What survives is the consequence, on new
-// grounds. A click has to hold the member the winding torque enters, and here
-// that member is the toothed BODY, which is also the member the spring drives
-// the strike train from; holding it holds the ring. The arrangement that
-// earns a real click is the other split — winding the ARBOR through a ratchet
-// — and that re-sites this train's last mesh, so it is layout work and stays
-// filed (TODO 37). Until then the hold is stage B's striking-wheel lock, four
-// meshes downstream of the spring it is holding.
+// §99 — THE CLICK EXISTS, and the train poses from the ARBOR. While the
+// alarm rings the body runs and the arbor stands (the click's hold), so the
+// winding train and the crown stand parked too — the §25 C-era backward
+// free-spin retired with the rim mesh that caused it. A crown turned
+// backward still free-slips at the stem⇄contrate bevel without unbanking
+// ("only what actually banked moves the wheel"); what BANKS is now held by
+// modelled metal: the arbor ratchet's saw, the plate-grounded click, and
+// the click spring that re-seats it — the true going-barrel arrangement
+// TODO 37 filed, with the wind held one mesh from the spring instead of
+// four.
 // ---------------------------------------------------------------------------
 const ALARM_WIND_PINION_TEETH = 12;
 // The climb → barrel span this chain has to cover. It is NOT a constant: the
@@ -9830,7 +9941,7 @@ const _wSpan = Math.hypot(alarmBarrelPos.x - _wc.x, alarmBarrelPos.y - _wc.y);
 // span on the idler's diameter, which is the cheap currency until the wheel
 // stops being a plausible watch part. The ceiling is asserted below.
 const ALARM_WIND_IDLER_MIN = Math.ceil(
-  (_wSpan - (ALARM_TRAIN_MODULE / 2) * (ALARM_BARREL_TEETH + ALARM_WIND_PINION_TEETH))
+  (_wSpan - (ALARM_TRAIN_MODULE / 2) * (ALARM_WIND_W + ALARM_WIND_PINION_TEETH))
   / (2 * ALARM_TRAIN_MODULE));
 // THE REACH FLOOR IS NOT THE ONLY FLOOR — TODO 35. The expression above
 // answers "how many teeth to SPAN this run", and nothing in it knows that a
@@ -9846,7 +9957,7 @@ const ALARM_WIND_IDLER_MIN = Math.ceil(
 // enough to be a wheel at all (root circle clear of its own bore — the same
 // expression makeGear checks, imported rather than restated).
 const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5));
-const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_BARREL_TEETH; // barrel turns per crown turn — idlers drop out
+const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_WIND_W; // §99: ARBOR turns per crown turn — idlers drop out; value unchanged from the rim era (W = the rim's count)
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
 registerLabel('Alarm winding train', alarmWindUnit);
@@ -9858,7 +9969,7 @@ registerExplode(alarmWindUnit, 0, 9); // rides with the back stack, like the str
 const _wu = { x: (alarmBarrelPos.x - _wc.x) / _wSpan, y: (alarmBarrelPos.y - _wc.y) / _wSpan };
 const _wd1 = ALARM_TRAIN_MODULE * (ALARM_WIND_PINION_TEETH + ALARM_WIND_IDLER_TEETH) / 2;  // climb ⇄ i1
 const _wd2 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_IDLER_TEETH) / 2;   // i1 ⇄ i2
-const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_BARREL_TEETH) / 2;       // i2 ⇄ barrel rim
+const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_W) / 2;             // i2 ⇄ arbor wheel (§99; same value as the rim it replaced — W is the rim's count)
 const alarmWindI1 = { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 };
 const alarmWindI2 = (() => {
   // circles: centre alarmWindI1 radius _wd2; centre alarmBarrelPos radius _wd3
@@ -9899,10 +10010,10 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   // corners and idlers (design-priority note), and that is the next
   // increment rather than a number to widen.
   const idlerR = ALARM_TRAIN_MODULE * ALARM_WIND_IDLER_TEETH / 2;
-  const barrelR = ALARM_TRAIN_MODULE * ALARM_BARREL_TEETH / 2;
-  if (idlerR > barrelR * 1.5)
+  const targetR = ALARM_TRAIN_MODULE * ALARM_WIND_W / 2; // §99: the arbor wheel — same radius as the rim it replaced
+  if (idlerR > targetR * 1.5)
     console.warn(`alarm winding idler ${ALARM_WIND_IDLER_TEETH} t (r ${idlerR.toFixed(2)}) exceeds 1.5× the `
-      + `barrel it drives (r ${barrelR.toFixed(2)}) — this span wants an added idler, not a larger one`);
+      + `wheel it drives (r ${targetR.toFixed(2)}) — this span wants an added idler, not a larger one`);
 }
 {
   // Climb arbor: contrate at the stem plane, rod through both plate bores,
@@ -9910,7 +10021,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   const climb = new THREE.Group();
   climb.position.set(ALARM_WIND_X, ALARM_WIND_Y, 0);
   alarmWindUnit.add(climb);
-  const rodTop = ALARM_BARREL_Z + 0.4;
+  const rodTop = ALARM_WIND_TIER_Z + 0.4; // §99: the pinion rides the arbor tier now; the rod keeps its 0.4 overrun
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, rodTop - Z_ALARM_CORNER, 12), MATS.steel);
   rod.rotation.x = Math.PI / 2;
   rod.position.z = (rodTop + Z_ALARM_CORNER) / 2;
@@ -9923,14 +10034,17 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   cMount.add(contrate);
   climb.add(cMount);
   const pin = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_PINION_TEETH, thickness: 0.8, material: MATS.steel });
-  pin.position.z = ALARM_BARREL_Z;
+  pin.position.z = ALARM_WIND_TIER_Z;
   climb.add(pin);
   alarmWindUnit.userData.climb = climb;
-  // Idlers: brass wheels on plate-top studs, spinning in the barrel's band.
+  // Idlers: brass wheels on plate-top studs, spinning at the arbor tier
+  // (§99 — one mesh plane for the whole last leg, ALARM_WIND_TIER_Z's
+  // derivation at the barrel; §25 C's plane sat in the body's tooth band).
   const mkIdler = (pos) => {
     const spin = new THREE.Group();
-    spin.position.set(pos.x, pos.y, ALARM_BARREL_Z);
+    spin.position.set(pos.x, pos.y, ALARM_WIND_TIER_Z);
     const w = G.makeGear({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass });
+    w.traverse((o) => { if (o.isMesh) o.name = 'alarmWindIdler' }); // §99: named so the winding pair's floors row can select the mesh (the couple-by-string trap: the intraUnit idler-on-stud rows re-labelled with it)
     // TODO 15: phase left at zero — the chain solve below sets it. The old
     // `Math.PI / teeth` here was half of this wheel's OWN pitch and said
     // nothing about the wheel it meshes; this is the pair that was reported
@@ -9938,9 +10052,9 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     spin.add(w);
     spin.userData.gear = w;
     alarmWindUnit.add(spin);
-    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_BARREL_Z + 0.3 - (TQ_TOP_Z - 0.5), 10), MATS.steel);
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_WIND_TIER_Z + 0.3 - (TQ_TOP_Z - 0.5), 10), MATS.steel);
     stud.rotation.x = Math.PI / 2;
-    stud.position.set(pos.x, pos.y, (ALARM_BARREL_Z + 0.3 + TQ_TOP_Z - 0.5) / 2);
+    stud.position.set(pos.x, pos.y, (ALARM_WIND_TIER_Z + 0.3 + TQ_TOP_Z - 0.5) / 2);
     alarmWindUnit.add(stud);
     return spin;
   };
@@ -9951,20 +10065,250 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   // The pinion comes from makePinion rather than makeGear, which is exactly
   // why the phase is measured from vertices rather than assumed from a local
   // axis — nothing guarantees the two builders agree on where local 0 sits.
-  // The chain runs to the BARREL and on to the striking pinion. The barrel is
-  // not a terminus: it is a wheel with two meshes, and a phase that satisfies
-  // the idler it is driven by must then be the datum for the pinion it drives.
-  // Stopping at idler 2 is what left the barrel meeting the idlers tip-on-tip
-  // — the same "fixed one pair, ignored the next" mistake as the setting
-  // wheel, one link further down.
+  // §99 SPLIT THE CHAIN IN TWO, because the barrel stopped being a two-mesh
+  // wheel: the winding run now ends at the ARBOR'S WHEEL (the ratchet beside
+  // it is a saw, not a solve member — the gauge would refuse it — and it is
+  // the wheel's sibling on the rotor, never a child of the solve handle),
+  // while the BODY keeps exactly one mesh, its rim into the striking pinion.
+  // Two chains, each solved to its own datum; the old warning about stopping
+  // early ("the barrel is not a terminus") retired with the second mesh.
   solveGearChain('alarm winding:', [
     { obj: pin, teeth: ALARM_WIND_PINION_TEETH, name: 'climb pinion' },
     { obj: alarmWindUnit.userData.i1.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 1' },
     { obj: alarmWindUnit.userData.i2.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 2' },
+    { obj: alarmWindTargetGear, teeth: ALARM_WIND_W, name: 'arbor wheel' },
+  ], ALARM_TRAIN_MODULE);
+  solveGearChain('alarm striking:', [
     { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel' },
     { obj: alarmStrikePinion, teeth: ALARM_STRIKE_PINION_TEETH, name: 'striking pinion' },
   ], ALARM_TRAIN_MODULE);
 }
+
+// ---------------------------------------------------------------------------
+// 'Alarm click' (§99) — the hold TODO 37 filed: a plate-grounded click on
+// the arbor ratchet, so the barrel holds its own wind one mesh from the
+// spring instead of borrowing the striking wheel's lock four meshes down.
+// Construction is the set-up work's, part for part (click blade, shoulder
+// screw, solved-arc spring on its own post) at the arbor tier's z.
+// ---------------------------------------------------------------------------
+const alarmClickUnit = new THREE.Group();
+movement.add(alarmClickUnit);
+registerLabel('Alarm click', alarmClickUnit);
+registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the winding train
+{
+  // STUD AZIMUTH — P3, solved in position space at build time: candidates
+  // every 2° at the pivot radius, scored by XY clearance to the named
+  // neighbours whose bands the stud crosses on its way up from the plate
+  // (idler discs at their tip circles, the climb rod, the strike cam's tip
+  // circle, the gong post — each at its OWN radius, this consumer adding
+  // its stud and the margin, the LOW_LINKAGE convention). The winner is
+  // asserted, not hoped for (rule 6).
+  const pivotR = ALARM_RATCHET_R * 1.28; // makeClick's beak-at-valley registration (geometry.js)
+  const studR = 0.5;                     // the set-up click screw's stock
+  const idlerTipR = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + 2) / 2;
+  const obst = [
+    { x: alarmWindI1.x, y: alarmWindI1.y, r: idlerTipR, what: 'idler 1' },
+    { x: alarmWindI2.x, y: alarmWindI2.y, r: idlerTipR, what: 'idler 2' },
+    { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, what: 'climb rod' },
+    { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_CAM_TIP_R, what: 'strike cam' },
+    { x: gongFoot.x, y: gongFoot.y, r: 0.7, what: 'gong post' },
+  ];
+  let bestAz = 0, bestClear = -Infinity;
+  for (let k = 0; k < 180; k++) {
+    const cand = (k / 180) * Math.PI * 2;
+    const px = alarmBarrelPos.x + Math.cos(cand) * pivotR, py = alarmBarrelPos.y + Math.sin(cand) * pivotR;
+    let c = Infinity;
+    for (const o of obst) c = Math.min(c, Math.hypot(px - o.x, py - o.y) - o.r - studR);
+    if (c > bestClear) { bestClear = c; bestAz = cand; }
+  }
+  if (bestClear < CLEAR_MARGIN)
+    console.warn(`alarm click stud: best azimuth clears its neighbours by ${bestClear.toFixed(2)} < ${CLEAR_MARGIN} — the corner has no lane for the stud`);
+  const az = new THREE.Group();
+  az.position.set(alarmBarrelPos.x, alarmBarrelPos.y, 0);
+  az.rotation.z = bestAz;
+  alarmClickUnit.add(az);
+
+  const CLICK_T = ALARM_RATCHET_T * 0.75;                       // the composite builder's own proportion
+  const clickBot = ALARM_RATCHET_BOT_Z + (ALARM_RATCHET_T - CLICK_T) / 2;
+  // THE CLICK IS HOOKED, and that is a measured necessity, not a style:
+  // makeClick's straight blade at the family registration dips its inner
+  // edge through the tooth annulus over ~11.9° — more than one 32-tooth
+  // pitch (11.25°) — so its body would foul an adjacent tooth at EVERY
+  // park (measured −0.28 on the first cut; the set-up click ships the
+  // same geometry invisibly because both its sides are fixtures — this
+  // one moves, so the instruments see it). The hook keeps the whole ARM
+  // outside the tip circle (asserted below) and drops only a narrow NOSE
+  // into the teeth, ≤ a quarter-pitch wide — the shape every real click
+  // on a fine ratchet has, for this exact reason.
+  const rootR = ALARM_RATCHET_R * 0.8;                          // the builder's root circle
+  const noseAz = 0.63;                                          // rad round from the pivot — leaves the spring's lane between (a placement, asserted clear below)
+  const armR = ALARM_RATCHET_R + 0.4;                           // arm centreline: one half-width + margin outside the tips
+  const dirN = { x: Math.cos(noseAz), y: Math.sin(noseAz) };
+  const perpN = { x: -dirN.y, y: dirN.x };
+  const P = { x: pivotR, y: 0 };
+  const E = { x: armR * dirN.x, y: armR * dirN.y };             // elbow, on the nose azimuth
+  const Tn = { x: rootR * dirN.x, y: rootR * dirN.y };          // nose tip at the root circle — the valley seat
+  const ua = { x: E.x - P.x, y: E.y - P.y };
+  const la = Math.hypot(ua.x, ua.y);
+  const va = { x: -ua.y / la, y: ua.x / la };                   // arm's own perp
+  const wa = 0.25, wp = 0.35, wn = 0.175;                       // arm, pivot-end, nose half-widths
+  const sawPitchArc = (Math.PI * 2 / ALARM_RATCHET_N) * ALARM_RATCHET_R; // one pitch of arc at the tips ≈ 1.16
+  if (2 * wn > 0.5 * sawPitchArc)
+    console.warn(`alarm click nose ${(2 * wn).toFixed(2)} wide exceeds half a saw pitch ${(0.5 * sawPitchArc).toFixed(2)} — it cannot thread the teeth`);
+  // The nose's underside is a V — a POINT at the root circle with
+  // shoulders just clear of the tooth tips. Measured necessity again: a
+  // flat-bottomed nose 0.38 pitch wide digs its corner ~0.31 into the
+  // ramp's slope (the V's sides run ~32 radial per radian of azimuth,
+  // steeper than both the ramp's 8.4 and the face's 21.5, so only the
+  // point ever touches the saw — which is what the ride law poses).
+  const Sr = ALARM_RATCHET_R + 0.02;                            // nose shoulders: just clear of the tips at every lift
+  const Sp = { x: Sr * dirN.x + perpN.x * wn, y: Sr * dirN.y + perpN.y * wn };
+  const Sm = { x: Sr * dirN.x - perpN.x * wn, y: Sr * dirN.y - perpN.y * wn };
+  const clickShape = new THREE.Shape();
+  const pts = [
+    { x: P.x + va.x * wp, y: P.y + va.y * wp },
+    { x: E.x + va.x * wa, y: E.y + va.y * wa },
+    { x: E.x + perpN.x * wn, y: E.y + perpN.y * wn },
+    Sp,
+    { x: Tn.x, y: Tn.y },                                       // the point — the only vertex that dips into the teeth
+    Sm,
+    { x: E.x - perpN.x * wn, y: E.y - perpN.y * wn },
+    { x: E.x - va.x * wa, y: E.y - va.y * wa },
+    { x: P.x - va.x * wp, y: P.y - va.y * wp },
+  ];
+  // Rule 6: the arm must genuinely stay outside the tips — assert every
+  // vertex except the nose's own three.
+  for (const [i, p] of pts.entries()) {
+    if (i === 3 || i === 4 || i === 5) continue; // the V: shoulders at Sr, point at the root
+    const r = Math.hypot(p.x, p.y);
+    if (r < ALARM_RATCHET_R + 0.1)
+      console.warn(`alarm click arm vertex ${i} at r ${r.toFixed(2)} is inside the tip circle + margin (${(ALARM_RATCHET_R + 0.1).toFixed(2)}) — the hook has sagged into the teeth`);
+  }
+  clickShape.moveTo(pts[0].x - P.x, pts[0].y - P.y);            // pivot-local, so rotation.z rides about the stud
+  for (let i = 1; i < pts.length; i++) clickShape.lineTo(pts[i].x - P.x, pts[i].y - P.y);
+  clickShape.closePath();
+  const click = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(clickShape, { depth: CLICK_T, bevelEnabled: false }), MATS.blueSteel);
+  click.name = 'alarmClickPawl';
+  click.position.set(pivotR, 0, clickBot);
+  az.add(click);
+  // Shoulder screw: post from the plate top through the tier, head above.
+  // Nothing stands over the arbor tier on this corner (the lane claim at
+  // the §99 tier constants), so the head takes floor stock, free upward.
+  const postBase = TQ_TOP_Z - 0.5;
+  const postTop = clickBot + CLICK_T;
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, postTop - postBase, 10), MATS.steel);
+  post.name = 'alarmClickStud';
+  post.rotation.x = Math.PI / 2;
+  post.position.set(pivotR, 0, (postTop + postBase) / 2);
+  az.add(post);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, STOCK_MIN_U, 12), MATS.blueSteel);
+  head.name = 'alarmClickScrewHead'; // retains the click axially — a declared joint, so it carries a name
+  head.rotation.x = Math.PI / 2;
+  head.position.set(pivotR, 0, postTop + STOCK_MIN_U / 2);
+  az.add(head);
+  // Click spring — the set-up solved-arc construction (anchor A on its own
+  // post, circumcentre at the family's springR, torus through the span),
+  // bearing on the hook's ELBOW from outside: pressing the elbow toward
+  // the wheel's centre is the torque that seats the nose, so the outer
+  // edge at the elbow is the honest flank — a kiss by construction (elbow
+  // outer edge + tube radius).
+  const B = { x: (armR + wa + 0.1) * dirN.x, y: (armR + wa + 0.1) * dirN.y }; // elbow outer edge + tube r
+  const A = { x: 7.8 * Math.cos(0.38), y: 7.8 * Math.sin(0.38) }; // its post: between the stud (az 0) and the nose lane (az 0.63), |A−B| inside the 2·springR chord
+  const springR = 1.3;
+  const dxs = B.x - A.x, dys = B.y - A.y, ds = Math.hypot(dxs, dys);
+  const hs = Math.sqrt(Math.max(springR * springR - (ds / 2) ** 2, 0.01));
+  // Two circumcentres solve the chord; the arc must bulge AWAY from the
+  // ratchet (the first cut picked the wheel-ward side and the torus lay on
+  // the teeth — measured 0). Chosen by arithmetic, not by sign convention:
+  // take the candidate whose arc keeps the larger minimum radius from the
+  // barrel axis, and assert it clears the tips (rule 6).
+  const C = (() => {
+    const cand = [
+      { x: (A.x + B.x) / 2 + (-dys / ds) * hs, y: (A.y + B.y) / 2 + (dxs / ds) * hs },
+      { x: (A.x + B.x) / 2 - (-dys / ds) * hs, y: (A.y + B.y) / 2 - (dxs / ds) * hs },
+    ].map((c) => {
+      const a0 = Math.atan2(B.y - c.y, B.x - c.x);
+      let sp = Math.atan2(A.y - c.y, A.x - c.x) - a0;
+      if (sp < 0) sp += Math.PI * 2;
+      let minR = Infinity;
+      for (let i = 0; i <= 24; i++) {
+        const th = a0 + (sp * i) / 24;
+        minR = Math.min(minR, Math.hypot(c.x + springR * Math.cos(th), c.y + springR * Math.sin(th)) - 0.1);
+      }
+      return { c, minR };
+    }).sort((p, q) => q.minR - p.minR)[0];
+    if (cand.minR < ALARM_RATCHET_R + CLEAR_MARGIN)
+      console.warn(`alarm click spring arc dips to r ${cand.minR.toFixed(2)} — inside the ratchet tips + margin (${(ALARM_RATCHET_R + CLEAR_MARGIN).toFixed(2)})`);
+    return cand.c;
+  })();
+  const thT = Math.atan2(B.y - C.y, B.x - C.x);
+  let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
+  if (span < 0) span += Math.PI * 2;
+  const springZ = clickBot + CLICK_T / 2;
+  const spring = new THREE.Mesh(new THREE.TorusGeometry(springR, 0.1, 8, 24, span), MATS.blueSteel);
+  spring.name = 'alarmClickSpring'; // SPRING stock — §50's kind table row
+  spring.position.set(C.x, C.y, springZ);
+  spring.rotation.z = thT;
+  az.add(spring);
+  const springPost = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, springZ - postBase, 10), MATS.steel);
+  springPost.rotation.x = Math.PI / 2;
+  springPost.position.set(A.x, A.y, (springZ + postBase) / 2);
+  az.add(springPost);
+  const springHead = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, STOCK_MIN_U, 12), MATS.blueSteel);
+  springHead.rotation.x = Math.PI / 2;
+  springHead.position.set(A.x, A.y, springZ + STOCK_MIN_U / 2);
+  az.add(springHead);
+
+  // RIDE CONSTANTS — derived from the built geometry, the maintaining
+  // detent's scheme: the nose tip is the hook's own Tn (pivot-local, base
+  // rotation 0), lift sign and lever (radial gain per radian of click
+  // rotation) by finite difference about the pivot.
+  const tipAt = (rot) => {
+    const lx = Tn.x - P.x, ly = Tn.y - P.y;
+    const c = Math.cos(rot), s = Math.sin(rot);
+    return { x: P.x + lx * c - ly * s, y: P.y + lx * s + ly * c };
+  };
+  const t0 = tipAt(0);
+  const tipR = Math.hypot(t0.x, t0.y);                           // = the root circle, the valley seat, by construction
+  const tipAzWorld = bestAz + Math.atan2(t0.y, t0.x);            // the beak's azimuth in the ratchet's (world) frame
+  const t1 = tipAt(1e-4);
+  const dRdTheta = (Math.hypot(t1.x, t1.y) - tipR) / 1e-4;       // radial gain per radian — the lever
+  const sign = Math.sign(dRdTheta) || 1;
+  const lever = Math.abs(dRdTheta);
+  // P1 — THE HOLD AS ARITHMETIC (TODO 16's format). Full-wind spring moment
+  // is the equalisation record's own alarm M_max ≈ 0.16 N·mm; at the
+  // ratchet's flank (R 6.0 u = 2.25 mm) that is ≈ 71 mN carried by the
+  // face. The face is the builder's 0.28-pitch chord: arc 0.28·2π·R/32 =
+  // 0.33 u against the 0.2·R = 1.20 u radial drop, atan(0.33/1.20) =
+  // 15.4° off radial — the reaction points INTO the pivot side the beak
+  // approaches from, the same closing geometry the set-up and maintaining
+  // clicks ship (theirs is 20.6° at 24 teeth). The spring only re-seats
+  // the beak after cam-out; it is sized by the torus stock, not the hold.
+  alarmClickUnit.userData.ride = {
+    click, base: 0, sign,                                        // base 0: the hook is built seated (nose at the root circle)
+    px: P.x, lx: Tn.x - P.x, ly: Tn.y - P.y,                     // the tip's kinematics: pivot station + pivot-local nose (P.y = 0 in the az frame)
+    gain: dRdTheta,                                              // signed dr/dθ at the tip
+    tipRest: tipR,                                               // the tip's rest radius (= the root circle) — the lift cap derives from it
+    // The whole V UNDERSIDE, pivot-local — the ride must clear the EDGES,
+    // not just the point: with the tip just past a tooth's corner the V's
+    // side is what would cross it (a hair, but the instruments read it).
+    underside: (() => {
+      const out = [];
+      for (let k = 0; k <= 6; k++) out.push({ x: Sp.x + ((Tn.x - Sp.x) * k) / 6 - P.x, y: Sp.y + ((Tn.y - Sp.y) * k) / 6 - P.y });
+      for (let k = 1; k <= 6; k++) out.push({ x: Tn.x + ((Sm.x - Tn.x) * k) / 6 - P.x, y: Tn.y + ((Sm.y - Tn.y) * k) / 6 - P.y });
+      return out;
+    })(),
+    azGroupRot: bestAz,                                          // the az group's rotation: ratchet angle in this frame = wA − azGroupRot
+    elbowLocal: { x: E.x - P.x, y: E.y - P.y }, noseLocal: { x: Tn.x - P.x, y: Tn.y - P.y }, // the hook's own span, for the schematic line
+    preload: CLEAR_MARGIN / Math.max(lever, 1e-6),               // one margin of travel at the contact radius
+  };
+}
+declareTravel('Alarm click', 0.35,
+  'the beak rides the saw between root and tip: lift ≈ 0.2·R/lever ≈ 0.25 rad plus the seat preload — the registry\'s containment assert widens this if the built ride exceeds it');
+declareRestoring('Alarm click', 'spring',
+  'the click spring re-seats the beak after each tooth cams it out — a real blade on its own post, bearing on the click\'s flank; the HOLD is the saw face\'s own closing geometry, not the spring',
+  'alarmClickSpring');
 
 // ---------------------------------------------------------------------------
 // 'Alarm lock' + 'Alarm switch' (§25 B + D) — the hold and the on/off.
@@ -13407,6 +13751,25 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
   addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
   addLine(alarmClickArm, [V(0, 0, 0), V(-ALARM_CLICK_L, 0, 0)]); // §43 click: pivot → nose
   addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
+  // §99 — the barrel click's lever: pivot → beak, makeClick's own length
+  // (the ride law rocks the mesh, so the line rides with it for free); its
+  // spring is named alarmClickSpring and takes the zigzag below. The arbor
+  // RATCHET's saw is drawn in the wheel palette from its own cut outline —
+  // its userData.profile opts it out of the pitch-circle pass (§83: a saw
+  // drawn as a smooth circle is a false glyph) — and the winding wheel
+  // beside it keeps the pitch circle makeGear's userData.r earns it.
+  {
+    const rd = alarmClickUnit.userData.ride;
+    addLine(rd.click, [V(0, 0, 0), V(rd.elbowLocal.x, rd.elbowLocal.y, 0), V(rd.noseLocal.x, rd.noseLocal.y, 0)]); // pivot → elbow → nose, the hook's own span
+  }
+  {
+    const rat = alarmArborRotor.getObjectByName('alarmArborRatchet')?.parent ?? null;
+    const prof = rat && rat.userData.profile;
+    if (!prof) console.warn('§99: the arbor ratchet exports no cut profile — the tier would claim a smooth wheel');
+    else {
+      addLine(rat, prof.poly.map(([x, y]) => V(x, y, 0)).concat([V(prof.poly[0][0], prof.poly[0][1], 0)]), SCHEMATIC.matWheel);
+    }
+  }
   // springs: every §48-named blade/spring mesh gets a zigzag along its own
   // longest local axis — derived from the mesh, not authored per part
   {
@@ -16724,7 +17087,7 @@ function pfBuildGroups() {
     // §25 D: the alarm's own torque path — input (crown-side winding train),
     // store (the alarm barrel), strike (barrel → cam → hammer → gong).
     alarmInput: pfCollect([alarmWindUnit, alarmCrownUnit]),
-    alarmStore: pfCollect([alarmBarrelRotor]),
+    alarmStore: pfCollect([alarmBarrelRotor, alarmArborRotor]), // §99: the store is the ribbon between the two rotors — both glow with it
     alarmStrike: pfCollect([alarmStrikeRotor, alarmHammerPivot, gongArc]),
   };
 }
@@ -16951,6 +17314,7 @@ const UNIT_GROUPS = new Map([
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm hammer', 9], ['Alarm gong', 11],
+    ['Alarm click', 4], // §99: rides between the winding train and the barrel it holds
     // §34/§35 additions — the release path and the long link to it. Uncho-
     // reographed (null) on purpose: their working order through the column
     // wheel is a level-2 story, and the partition assert below is what forced
@@ -19224,9 +19588,14 @@ function tick(t) {
     if (alarmCrownPullT > 0.5) {
       alarmSetRot += aDelta;
     } else if (alarmCrownPullT < 0.5 && aDelta > 0) {
-      const before = alarmBarrelWind;
+      // §99: winding turns the ARBOR only — the body (and the striker one
+      // mesh down from it) stands parked, so the strike phase does not move
+      // with a wind any more (§25 C backed it out here because the wound
+      // member WAS the body). The one-way is the click's law, now modelled
+      // as metal: the ratchet's saw cams the click out on this sense and
+      // its steep bank holds the return; a backward crown free-slips at the
+      // stem⇄contrate bevel without unbanking.
       alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
-      alarmStrikePhase -= (alarmBarrelWind - before) * ALARM_STRIKES_PER_BARREL_TURN;
     }
   }
   const alarmAngle = alarmDiscAngle();
@@ -19490,14 +19859,20 @@ function tick(t) {
     alarmFeelerSpringBlade.scale.x = Math.hypot(flat, dz);
   }
   alarmSetWheelGroup.rotation.z = -alarmSetRot * ALARM_SET_RATIO;
-  // §25 C winding train — posed RIGIDLY from the barrel's angle, so winding,
-  // ringing and rest are one consistent mesh (while ringing, the train and a
-  // pulled-out crown visibly free-spin — what rigid meshing honestly implies).
+  // §25 C winding train — §99: posed RIGIDLY from the ARBOR's angle, its
+  // one mesh since the re-route. Winding turns it; ringing does not (the
+  // click holds the arbor while the body runs), so the train and the crown
+  // stand parked through a ring — the honest going-barrel behaviour that
+  // retired the §25 C free-spin. The datum is COMPUTED from state rather
+  // than read off the arbor rotor: this block runs before the striking
+  // block that poses the rotor, and a read would be one tick stale (§29
+  // step 5's lesson, applied before it fired this time).
   {
-    const bA = (ALARM_BARREL_TURNS - alarmBarrelWind) * Math.PI * 2;
-    alarmWindUnit.userData.i2.rotation.z = -bA * (ALARM_BARREL_TEETH / ALARM_WIND_IDLER_TEETH);
-    alarmWindUnit.userData.i1.rotation.z = bA * (ALARM_BARREL_TEETH / ALARM_WIND_IDLER_TEETH);
-    alarmWindUnit.userData.climb.rotation.z = -bA * (ALARM_BARREL_TEETH / ALARM_WIND_PINION_TEETH);
+    const wA = (alarmStrikePhase * Math.PI * 2 / ALARM_STRIKES_PER_BARREL_TURN)
+             + (alarmBarrelWind - ALARM_BARREL_TURNS) * Math.PI * 2;
+    alarmWindUnit.userData.i2.rotation.z = -wA * (ALARM_WIND_W / ALARM_WIND_IDLER_TEETH);
+    alarmWindUnit.userData.i1.rotation.z = wA * (ALARM_WIND_W / ALARM_WIND_IDLER_TEETH);
+    alarmWindUnit.userData.climb.rotation.z = -wA * (ALARM_WIND_W / ALARM_WIND_PINION_TEETH);
     // §29 step 4: the pawl's spring-steel tip follows the contrate tooth
     // profile under it while seated — stateless, like the pin on the track
     // (winding visibly clicks it; the long-ramp/steep-bank saw shape is the
@@ -19508,6 +19883,59 @@ function tick(t) {
       const ph = ((alarmWindUnit.userData.climb.rotation.z * ALARM_BEVEL_TEETH / (2 * Math.PI)) % 1 + 1) % 1;
       const saw = ph < 0.85 ? ph / 0.85 : (1 - ph) / 0.15;
       alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw; // cam-out is plate-ward (−local z), the withdrawal's own direction
+    }
+    // §99 — the CLICK rides the arbor ratchet: the maintaining detent's
+    // one-sided constraint (seek the seat, stop at the cam — the spring
+    // produces the return, the saw only ever obstructs; the seat is
+    // preloaded one CLEAR_MARGIN of travel past the deepest valley, so a
+    // beak the saw fell away from would drop to it) — SOLVED as "the
+    // smallest lift that clears the metal". Not a fixed-azimuth read (the
+    // nose's azimuth moves with its own lift; the shortcut parked it 0.24
+    // inside a tooth) and not Newton (the tooth face's slope, 21.5 radial
+    // per radian of azimuth against the tip's 4.45 lever, makes that map
+    // diverge — measured, it left the nose 0.35 buried at one axis pose):
+    // a coarse scan over the lift range finds the first clear sample and
+    // bisection tightens it to float noise. The ratchet turns with the
+    // arbor: winding clicks the beak tooth by tooth, a ring leaves it
+    // seated still.
+    {
+      const rd = alarmClickUnit.userData.ride;
+      const rel = wA - rd.azGroupRot;                            // ratchet angle in the click's az frame
+      const clearAt = (t) => {                                   // t = lift magnitude; ≥ 0 means the whole V underside is on/above the saw
+        const lam = rd.sign * t;
+        const c = Math.cos(lam), s = Math.sin(lam);
+        let min = Infinity;
+        for (const p of rd.underside) {
+          const tx = rd.px + p.x * c - p.y * s;
+          const ty = p.x * s + p.y * c;
+          const r = Math.hypot(tx, ty);
+          if (r >= ALARM_RATCHET_R) continue;                    // above every tooth — cannot bind
+          let u = (((Math.atan2(ty, tx) - rel) * ALARM_RATCHET_N) / (Math.PI * 2)) % 1;
+          if (u < 0) u += 1;
+          const d = r - sawRadiusAt(u, ALARM_RATCHET_R);
+          if (d < min) min = d;
+        }
+        return min === Infinity ? 1 : min;
+      };
+      let t = 0;
+      if (clearAt(0) < 0) {
+        // lift cap: enough rotation to put the tip past the tip circle
+        // everywhere — clear by construction
+        const cap = ((ALARM_RATCHET_R - rd.tipRest) / Math.abs(rd.gain)) * 1.15;
+        let lo = 0, hi = cap;
+        for (let i = 1; i <= 24; i++) {
+          const cand = (cap * i) / 24;
+          if (clearAt(cand) >= 0) { hi = cand; lo = (cap * (i - 1)) / 24; break; }
+        }
+        for (let i = 0; i < 20; i++) {
+          const mid = (lo + hi) / 2;
+          if (clearAt(mid) >= 0) hi = mid; else lo = mid;
+        }
+        t = hi;
+      }
+      const seat = rd.base - rd.sign * rd.preload;               // where the spring alone would put it
+      const cam = rd.base + rd.sign * t;                         // where the saw lets it sit
+      rd.click.rotation.z = rd.sign > 0 ? Math.max(seat, cam) : Math.min(seat, cam);
     }
   }
   // §25 B + D — the brake and the column-wheel switch. The wheel eases to its
@@ -19573,21 +20001,30 @@ function tick(t) {
   alarmCrownCreepLastBd = _bd;
   alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep; // free stem, continuous with the drag
 
-  // Alarm striking works (BUILT §25 A). All three poses come off ONE state
-  // pair that tick() advances together, so the mesh cannot slip: the barrel's
-  // angle IS how far it has unwound from full, the striking wheel steps one
-  // pin pitch per strike in the OPPOSITE sense (an external mesh reverses),
-  // and the hammer takes whatever angle the pin currently on its tail holds it
-  // at. Moved out of frame() and into tick() by §25 — the striker is driven
-  // now, so the inspector's 'alarmStrike' axis has to be able to pose it.
-  alarmBarrelRotor.rotation.z = (ALARM_BARREL_TURNS - alarmBarrelWind) * Math.PI * 2;
-  // §89 — and the ribbon inside takes the shape that angle leaves it in. The
-  // sweep it has left is what the body has NOT yet taken off the fixed arbor,
-  // so this is the drum's own line with the drum's own sense: the rotation
-  // rises as the energy falls, and the coil spreads toward its free pitch as
-  // it does. Same writer, so the schematic's line rides the swap with the
-  // metal (§83) and neither view can show a wound state the other does not.
-  alarmSpring.setWind(alarmSpring.sweepFull - alarmBarrelRotor.rotation.z);
+  // Alarm striking works (BUILT §25 A; §99 split the members' states). The
+  // BODY's angle is a pure function of the STRIKE PHASE — body and striking
+  // wheel are one mesh, so they sit on the coupled family at EVERY state
+  // (the §25 C wind-derived law put the body at whole pitches from the solve
+  // pose while the striking wheel carried ALARM_PHASE_REST's −0.62 offset —
+  // ~0.3 pin off-family at rest, invisible to the pin⇄tail budget, which
+  // sweeps only the identity-coupled axis). The ARBOR carries the wind ON
+  // TOP of the body's angle: the ribbon is wound BETWEEN the two rotors, so
+  // arborA − bodyA is the wind and nothing else is. Check both motions:
+  // winding (phase const) advances the arbor and parks the body — the
+  // ratchet's job; ringing (Δwind = −Δphase/16) runs the body and parks the
+  // arbor — the click's hold. Moved out of frame() and into tick() by §25 —
+  // the striker is driven, so the 'alarmStrike' axis can pose it.
+  const alarmBodyA = alarmStrikePhase * Math.PI * 2 / ALARM_STRIKES_PER_BARREL_TURN;
+  alarmBarrelRotor.rotation.z = alarmBodyA;
+  alarmArborRotor.rotation.z = alarmBodyA + (alarmBarrelWind - ALARM_BARREL_TURNS) * Math.PI * 2;
+  // §89 — and the ribbon takes the shape the RELATIVE angle leaves it in
+  // (§99: bodyA − arborA, which is (TURNS − wind)·2π — the same value the
+  // fixed-arbor law produced, so the morph's frames are untouched). The
+  // rotation rises as the energy falls, and the coil spreads toward its
+  // free pitch as it does. Same writer, so the schematic's line rides the
+  // swap with the metal (§83) and neither view can show a wound state the
+  // other does not.
+  alarmSpring.setWind(alarmSpring.sweepFull - (alarmBarrelRotor.rotation.z - alarmArborRotor.rotation.z));
   alarmStrikeRotor.rotation.z = alarmStrikeWheelAngle();
   alarmHammerPivot.rotation.z = alarmHammerAngle();
   // §48 / TODO 14 — the spring bears on the tail wherever the tail now is.
@@ -19927,7 +20364,7 @@ window.__clock = {
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   get bootWarns() { return __bootWarns; },
-  get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface
+  get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
@@ -20044,26 +20481,33 @@ window.__clock = {
     // TODO 38 — the wind axis poses the winding INPUT: the crown's pushed-in
     // rotation, banked from EMPTY (resetInputs' state). This is the closed
     // form of the interactive wind path in tick() — the same ALARM_WIND_RATIO
-    // carries crown angle to barrel turns (the idlers drop out of the ratio
-    // but every wheel still poses rigidly from the barrel's angle below), and
-    // the phase backs out by ALARM_STRIKES_PER_BARREL_TURN exactly as winding
-    // decrements it live — assigned rather than integrated because a sweep
-    // revisits fractions non-monotonically and the live path only ever winds
-    // (aDelta > 0), so the pose must be a pure function of the input, not of
-    // pose history.
+    // carries crown angle to ARBOR turns (§99: the idlers drop out and the
+    // wheels pose rigidly from the arbor's angle) — assigned rather than
+    // integrated because a sweep revisits fractions non-monotonically and
+    // the live path only ever winds (aDelta > 0), so the pose must be a
+    // pure function of the input, not of pose history. §99 removed the
+    // phase back-out that lived here: winding no longer turns the body, so
+    // the striker stands parked through the whole posed wind — which is the
+    // combination this axis exists to sweep, now with the click riding the
+    // ratchet's 1.75 · 32 = 56 saw cycles (n = 109 is coprime to 56 as it
+    // was to 28; the span reasoning at the axis is untouched).
     if (p.alarmWindRotation !== undefined) {
       alarmCrownRotation = p.alarmWindRotation;
       lastAlarmCrownRotation = p.alarmWindRotation; // no delta leaks into the next tick
       alarmBarrelWind = clamp((p.alarmWindRotation / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
-      alarmStrikePhase = ALARM_PHASE_REST - alarmBarrelWind * ALARM_STRIKES_PER_BARREL_TURN;
     }
-    // §25 striking axis. Phase and wind are ONE mechanical quantity — the
-    // barrel and the striking wheel are a single mesh — so posing the phase
-    // must move the barrel with it, or the axis would sweep a striking train
-    // running off a barrel that never turned.
+    // §25 striking axis — §99 rewrote the contract. Phase and wind WERE one
+    // mechanical quantity (the §25 C body was both the wound and the meshed
+    // member); they are two now, so posing the phase derives the wind ONLY
+    // when the pose does not state it — and the derived value is the honest
+    // RING trajectory from full (a ring spends wind as phase advances),
+    // which is the same number every §25-era pose produced. A pose naming
+    // BOTH is a real state too (a part-wound barrel mid-ring), and §25 C
+    // silently overwrote the named wind here; it binds now.
     if (p.alarmStrikePhase !== undefined) {
       alarmStrikePhase = p.alarmStrikePhase;
-      alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
+      if (p.alarmBarrelWind === undefined)
+        alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
     }
     tick(lastTickRawT);
     // The support sweep measures the chain's REAL geometry against the drum's
