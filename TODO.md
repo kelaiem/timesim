@@ -4058,7 +4058,61 @@ what the sweep sees is the ribbon changing shape, not the chain being driven
 backwards through it. Every member of the winding train is a plain rotor,
 and plain rotors stay monotone in every axis there is.
 
-## 39. The going drum's arbor turns with the drum it is supposed to hold
+**Build plan — filed 2026-08-10, audited against the shipped `AXES`.**
+One correction to this entry's own "cheap version" first, because it
+changes what the axis is FOR: a plain rotor's swept hull over a span is
+direction-independent, so revisiting `alarmStrike`'s poses backwards
+would indeed add nothing to any hull — but the wind does not happen in
+`alarmStrike`'s COMPANION STATE. That axis runs released and ringing
+(`alarmReleased: 1`, §25 B's honest ring); a wind happens with the
+striker PARKED and the §29 lock ENGAGED, and the strike pins backing
+past the engaged pawl — the saw-tooth cam-out that IS the ratcheting a
+real wind produces, the shipped model's own story for why a held pawl
+still permits winding — is a pose combination no axis has ever swept.
+The axis adds new poses after all; the entry's "only a direction
+change" undersold its own subject.
+
+- **W1 — baseline.** The current `main` battery `--report` is the
+  acceptance base (one exists from §97/§98's landing). Nothing starts
+  without it.
+- **W2 — the `alarmWind` axis.** Poses the winding INPUT, not the
+  output (TODO 20's law): the crown's pushed-in rotation over one full
+  wind, `alarmBarrelWind` rising THROUGH the climb/idler/barrel ratios
+  (rule 2 — the angles travel the gears; setPose gains the input field
+  and derives the chain). Companion state is the honest wind:
+  `alarmOn: 0, alarmReleased: 0`, striker parked, lock engaged. n
+  matches `alarmStrike`'s per-step angular density over the same barrel
+  span (its 109-over-28-cycles reasoning transfers verbatim, coprime
+  argument included) — NOT "96 because the others are", per this
+  entry's own warning.
+- **W3 — cost, measured not assumed.** `sweptOverlap`'s confirm tier
+  re-measures candidates over ALL axes; a ~109-pose axis grows the pose
+  set ~14%. Run the full battery with `--report`, diff against W1:
+  expected movement is `sweptOverlap`'s pairsTested/timings, the §36
+  registry summary (revolve/path counts), and possibly `restoring`
+  ROWS — parts newly driven both ways change class, which is the
+  audit's population becoming more true, not noise. Re-measure the
+  wedge guard's basis and re-derive its constant from the new worst
+  run; the cost column follows the measured `ms`.
+- **W4 — the going-train tranche, separately sized.** The milder gap
+  (`reserve` sweeps tension 1 → 0, `windAccumTurns` pinned 0 on every
+  axis) is the same shape but a different bill: winding the FUSEE
+  re-wraps the chain, a morphing part with real hull churn. Measure a
+  candidate axis's cost before committing to it in the same tranche;
+  splitting the item is better than sneaking an unmeasured sweep in.
+- **W5 — records.** This item closes (or narrows to the going tranche)
+  with the before/after report diff quoted; no BUILT § — an axis is
+  instrument work, TODO 29's `alarmToggle` being the precedent and the
+  record format.
+
+**Order against TODO 37, and why 38 goes first.** 37's fix is layout
+work — the arbor ratchet, a click and click spring (new parts: MECH_GRAPH
+rows, a `restoring` row for the spring, §50 sections), and the winding
+train's last mesh re-routed onto the ratchet. A click is a
+direction-dependent mechanism; landing it while the sweeps still only
+run the ring-down direction would leave its working engagement — the
+exact thing it exists for — unswept. Build 38's axis first and 37's
+click lands with its working direction policed from day one.
 
 The mainspring's inner end is genuinely pinned — TODO 1 built that, and the
 parts it is pinned to are static: the collar and its hook lug belong to the
