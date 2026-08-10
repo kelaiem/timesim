@@ -465,6 +465,19 @@ const SPEC_POINTS = [
   { name: 'alarmr=14', q: 'alarmr=14', expect: 'any', why: '§98 — the corner pinned inward; measured silent on this tree' },
   { name: 'alarmr=20', q: 'alarmr=20', expect: 'any', why: '§98 — past the dogleg reach: the chain\'s own assert reports, boot proceeds' },
   { name: 'alarmr=46', q: 'alarmr=46', expect: 'any', why: '§98 — past the stem window: the solver warns with both bounds, boot proceeds' },
+  // §97 — the shared well radius. Three points, measured before written:
+  //   · 8 is the interior value and boots silent (wells and both hands
+  //     shrink together, every consumer reading the solve);
+  //   · 13 is over the derived ceiling (11.85): the solver warns and KEEPS
+  //     the ceiling — a larger well breaches the centre bore, TODO 33's
+  //     degeneracy, so this key clamps where rsvr builds-and-judges;
+  //   · 1 is under the derived floor (1.40): the solver clamps to the
+  //     floor and warns, and the reserve train's tip check then reports
+  //     w2 reaching through even the clamped well (5.23 vs 1.05) — two
+  //     instruments composing on one nonsense spec.
+  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', why: '§97 — the wells resized inward; measured silent on this tree' },
+  { name: 'subdialr=13', q: 'subdialr=13', expect: 'any', why: '§97 — over the ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
+  { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns; the train\'s tip check reports the rest' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because
