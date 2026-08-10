@@ -64,8 +64,14 @@ const EXCLUDED_UNITS = ['Dial', 'Power reserve', 'Small seconds'];
 export const MECH_GRAPH = {
   // node 'plate' is the ground; 'mainspring' and 'crown' are force sources.
   support: [
-    ['Mainspring drum', 'plate'],            // drum arbor pivots in the plate
-    ['Mainspring drum', 'Three-quarter plate'], // ...and in a plain bushing in the upper plate
+    // §100 (TODO 39): the drum is supported BY ITS ARBOR — the body's bored
+    // floor and lid run on the set-up work's static arbor, so the support
+    // path is drum → set-up work → plates. The old rows grounded the drum
+    // on both plates through pivot furniture that was parented to the
+    // ROTATING group — shafts that were not pivots but the arbor's own
+    // ends, drawn on the wrong member.
+    ['Mainspring drum', 'Set-up work'],      // body runs on the static arbor (floor + lid bores)
+    ['Set-up work', 'Three-quarter plate'],  // the arbor's top stands in the plate's plain bushing
     ['Fusee & great wheel', 'plate'],        // fusee arbor pivots plate/bridge
     ['Center wheel', 'plate'],
     ['Third wheel', 'plate'],
@@ -479,8 +485,9 @@ const EXPECTED_PAIRS = [
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ winding spur (+ shared band under the great wheel)
   ['Maintaining detent', 'Fusee & great wheel'], // detent beak seated in the maintaining ring's teeth
-  ['Set-up work', 'Mainspring drum'],        // the static arbor parts (square, collar, hook pin)
-                                             // thread the rotating body and its lower-pivot furniture
+  ['Set-up work', 'Mainspring drum'],        // §100: the static arbor and everything on it (square,
+                                             // collar, hook pin) thread the rotating body — the
+                                             // body's bored floor and lid RUN on the arbor now
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
   ['Keyless works', 'Yoke'],                 // prongs on the sliding-pinion hub
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
@@ -517,7 +524,11 @@ const EXPECTED_PAIRS = [
   // inside the hack collar's swing without a single check firing). The one
   // contact that IS the design: the plate sits on their caps.
   ['Three-quarter plate', 'pillars'],
-  ['Mainspring drum', 'Three-quarter plate'],
+  // §100 (TODO 39): the drum row became a SET-UP WORK row — the member in
+  // the plate's bushing is the static arbor now, and the drum itself has
+  // nothing that reaches the plate. (An EXPECTED grant on a pair that can
+  // no longer touch is a standing excuse; the swap keeps the list true.)
+  ['Set-up work', 'Three-quarter plate'],
   ['Center wheel', 'Three-quarter plate'],
   ['Third wheel', 'Three-quarter plate'],
   ['Fourth wheel', 'Three-quarter plate'],
@@ -620,7 +631,7 @@ const EXPECTED_PAIRS = [
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
   ['Balance', 'Hairspring'],
-  ['Fusee & great wheel', 'Mainspring drum'], // far apart; drum arbor visuals overlap fusee AABB during explode only
+  ['Fusee & great wheel', 'Mainspring drum'], // far apart; the drum body's AABB meets the wheel's during explode only (§100 moved the tall arbor to Set-up work)
 ];
 
 const pairKey = (a, b) => [a, b].sort().join(' ⇄ ');
@@ -4265,6 +4276,12 @@ export const STOCK_KIND_BY_MESH = {
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
   alarmClickStud: 'pivot',     // the shoulder screw's post — pin-class, ⌀ 1.0 u over the pivot floor
+  // §100 (TODO 39) — the going drum's FIXED arbor, now built where it is
+  // static (Set-up work). Shaft stock, kinded as the striking arbor's
+  // sleeve is: the census reports each mesh's extent, and both sections
+  // clear the pivot floor by an order of magnitude (⌀ 1.8 u and 1.2 u).
+  mainspringDrumArbor: 'pivot',
+  mainspringDrumStaff: 'pivot',
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
