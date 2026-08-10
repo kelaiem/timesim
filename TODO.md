@@ -4038,11 +4038,15 @@ first boot.** What was built, against this entry's own predictions:
   fixtures) — the click is HOOKED, arm boot-asserted outside the tips, a
   V-nosed point the only dipping vertex. And the detent's fixed-azimuth
   ride shortcut parked that nose 0.24 inside a tooth (the nose's azimuth
-  moves with its own lift) — the contact is SOLVED per tick, a three-step
-  fixed-point on the exact tip kinematics. Park kiss measured 0.0113 at
-  every handoff parity, green against `HANDOFF_TRACK_TOL`.
+  moves with its own lift) — the contact is SOLVED per tick, a coarse
+  scan plus bisection for the smallest lift that clears the V's whole
+  underside (Newton diverges at the tooth face's slope; the point alone
+  misses a V edge on a tooth corner). Park kiss measured 0.0115, green
+  against `HANDOFF_TRACK_TOL`. The ratchet's R took a third lesson: the
+  grounding stud must also clear the arbor WHEEL's addendum plus its
+  extrude bevel, which binds over the body's tip circle — R 5.9 → 6.0.
 - **The hold is arithmetic** (TODO 16's format, in the build comment):
-  ≈74 mN at the flank from the equalisation record's own M_max, carried by
+  ≈71 mN at the flank from the equalisation record's own M_max, carried by
   a face 15.4° off radial into the pivot side — the same closing geometry
   the set-up and maintaining clicks ship at 20.6°; the spring only
   re-seats after cam-out. The equalisation record reports the hold

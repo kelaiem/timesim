@@ -9655,9 +9655,15 @@ back empty: zero foreign meshes cross 11.61..13.2.
 
 ### The click, twice redesigned by measurement
 
-The ratchet: R 5.9 from the click's grounding lane (`1.28·R` ≥ body tip
-circle + stud + margin), N 32 = 2 × strikes-per-barrel-turn (give-back ≤
-half a strike). The click could NOT be `makeClick`'s straight blade: its
+The ratchet: R 6.0 from the click's grounding lane — the pivot stud at
+`1.28·R` must clear the TALLER of the two toothed bands it rises past,
+the body's tip circle and the arbor wheel's addendum plus its extrude
+bevel (`makeGear`'s `bevelSize` expands the outline in XY; the wheel
+binds at 6.9 + 0.066 over the body's 6.885), by stud + margin. The first
+cut used the body alone (R 5.9) and the stud measured 0.0651 to the
+wheel where the floor owed 0.15 — the two-bevel lesson the tier's
+z-stack had already paid, re-learned radially. N 32 =
+2 × strikes-per-barrel-turn (give-back ≤ half a strike). The click could NOT be `makeClick`'s straight blade: its
 inner edge crosses the tooth annulus over more than one 32-tooth pitch
 and fouls a tooth at every park (measured −0.28; the set-up click ships
 the same geometry invisibly — both its sides are fixtures, the class
@@ -9666,16 +9672,26 @@ tip circle (boot-asserted per vertex) and drops a V-nosed point whose
 sides are steeper than both ramp and face. And the ride could not be the
 maintaining detent's fixed-azimuth read: at this lift the nose's azimuth
 moves with its own rotation, and the shortcut parked it 0.24 inside a
-tooth — the contact is solved per tick, a three-step fixed-point on the
-exact tip kinematics through the tip's own dr/dθ. Park kiss: **0.0113 at
-every handoff parity** against `HANDOFF_TRACK_TOL` 0.03.
+tooth — the contact is solved per tick as "the smallest lift that clears
+the metal": a coarse scan over the lift range plus bisection, because a
+Newton/fixed-point iteration on the tip kinematics DIVERGES at the tooth
+face (its slope, 21.5 radial per radian of azimuth against the tip's
+~4.5 lever, made the map leave the nose 0.35 buried at one axis pose).
+The constraint is the V's whole UNDERSIDE — thirteen points along both
+edges, not the point alone — so a V edge resting on a tooth corner is a
+solved contact, not a phantom penetration. Park kiss: **0.0115** against
+`HANDOFF_TRACK_TOL` 0.03.
 
 ### The instruments
 
 New unit `'Alarm click'` with support/drive rows and the `alarmWind` case
 in `sourceFor`; a `click beak ⇄ arbor ratchet` handoff row; a penetration
 budget on the `alarmWind` axis at `HANDOFF_TRACK_TOL`, 480 samples (the
-pin⇄tail row's per-cycle density over the ride's 56 cycles); floors rows
+pin⇄tail row's per-cycle density over the ride's 56 cycles) measured
+BESPOKE — pawl vertices against the analytic saw the teeth were cut
+from, because the generic MTV resolves a hair of edge contact on the
+wrapped valley as the full 0.35 axial pop-out (§61's "a number about
+the search space, not the fit", again); floors rows
 that retire the winding pair's blanket excuse; declared intra-unit joints
 (including two pre-existing marginal keyless wheel-on-arbor joints,
 measured flickering on pristine main); stock kinds; `declareTravel` +

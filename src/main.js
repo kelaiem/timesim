@@ -9658,10 +9658,18 @@ const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R);
 //   clears i2's disc at every azimuth.
 const ALARM_WIND_WHEEL_T = 0.8;   // the winding tier's mesh stock — the idlers' own 0.8, one band
 const ALARM_RATCHET_T = RATCHET_T / 2; // the going ratchet's stock at the alarm's half scale (TODO 11's standing note)
-const ALARM_WIND_TIER_BOT = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + CLEAR_MARGIN + 0.01;
-const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
-const ALARM_RATCHET_BOT_Z = ALARM_WIND_TIER_BOT + ALARM_WIND_WHEEL_T + CLEAR_MARGIN + 0.01;
-const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T;
+// makeGear's edge bevel EXTRUDES BEYOND the stock on both faces
+// (min(t·0.18, m·0.22) per side — the module term binds at these stocks),
+// so the tier's clearance is between BEVEL surfaces, not band surfaces:
+// the body's bevel rises above its band and the wheels' bevels drop below
+// theirs, and the first cut of this stack lost 2 bevels of its margin to
+// exactly that (measured 0.034 where 0.15 was owed).
+const ALARM_GEAR_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_BODY_BEVEL = Math.min(ALARM_BARREL_H * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_WIND_TIER_BOT = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + ALARM_BODY_BEVEL + CLEAR_MARGIN + 0.01; // the tier's lowest METAL
+const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_GEAR_BEVEL + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
+const ALARM_RATCHET_BOT_Z = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL + CLEAR_MARGIN + 0.01;
+const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatchetAndClick extrudes bevel-free — exact band
 // §99 — the WINDING WHEEL takes the rim's own tooth count, deliberately:
 // the arbor is coaxial with the rim the mesh is leaving, so W = the rim's
 // 44 keeps the idler reach solve, the i1/i2 two-circle closure, and the
@@ -9672,14 +9680,21 @@ const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T;
 const ALARM_WIND_W = ALARM_BARREL_TEETH;
 // The RATCHET the click holds. R from the click's grounding lane — the
 // click's pivot stud (r 0.5, the set-up screw's stock) rises from the plate
-// past the BODY's tooth band, so 1.28·R (makeClick's pivot registration)
-// must clear the body's tip circle by one margin:
-//   R ≥ (ALARM_BARREL_TIP_R + 0.5 + CLEAR_MARGIN) / 1.28  →  5.887, cut 5.9.
+// past EVERY toothed band on this axis: the body's tip circle below AND the
+// arbor wheel's addendum at the tier, where makeGear's bevelSize EXPANDS
+// the outline in XY by ALARM_GEAR_BEVEL (geometry.js — the same two-bevel
+// lesson the z-stack above already paid). The wheel binds: 6.9 + 0.066 over
+// the body's 6.885. So 1.28·R (makeClick's pivot registration) clears the
+// TALLER of the two by one margin:
+//   R ≥ (max(bodyTip, wheelTip + bevel) + 0.5 + CLEAR_MARGIN) / 1.28  →  5.950, cut 6.0.
+// (First cut used the body tip alone → 5.9, and the stud measured 0.0651
+// to the wheel where the floor owed 0.15.)
 // N = 2 × ALARM_STRIKES_PER_BARREL_TURN: a released crown gives back at
 // most 1/32 turn of arbor — half a strike's stored travel (the set-up
 // ratchet's 24 is the family precedent; the finer count is this barrel's
 // own hold quantum, not taste).
-const ALARM_RATCHET_R = Math.ceil(10 * (ALARM_BARREL_TIP_R + 0.5 + CLEAR_MARGIN) / 1.28) / 10;
+const ALARM_WIND_TIP_R = ALARM_TRAIN_MODULE * (ALARM_WIND_W + 2) / 2; // the arbor wheel's addendum circle
+const ALARM_RATCHET_R = Math.ceil(10 * (Math.max(ALARM_BARREL_TIP_R, ALARM_WIND_TIP_R + ALARM_GEAR_BEVEL) + 0.5 + CLEAR_MARGIN) / 1.28) / 10;
 const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
 let alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
 {
@@ -10147,14 +10162,16 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // steeper than both the ramp's 8.4 and the face's 21.5, so only the
   // point ever touches the saw — which is what the ride law poses).
   const Sr = ALARM_RATCHET_R + 0.02;                            // nose shoulders: just clear of the tips at every lift
+  const Sp = { x: Sr * dirN.x + perpN.x * wn, y: Sr * dirN.y + perpN.y * wn };
+  const Sm = { x: Sr * dirN.x - perpN.x * wn, y: Sr * dirN.y - perpN.y * wn };
   const clickShape = new THREE.Shape();
   const pts = [
     { x: P.x + va.x * wp, y: P.y + va.y * wp },
     { x: E.x + va.x * wa, y: E.y + va.y * wa },
     { x: E.x + perpN.x * wn, y: E.y + perpN.y * wn },
-    { x: Sr * dirN.x + perpN.x * wn, y: Sr * dirN.y + perpN.y * wn },
+    Sp,
     { x: Tn.x, y: Tn.y },                                       // the point — the only vertex that dips into the teeth
-    { x: Sr * dirN.x - perpN.x * wn, y: Sr * dirN.y - perpN.y * wn },
+    Sm,
     { x: E.x - perpN.x * wn, y: E.y - perpN.y * wn },
     { x: E.x - va.x * wa, y: E.y - va.y * wa },
     { x: P.x - va.x * wp, y: P.y - va.y * wp },
@@ -10201,7 +10218,30 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   const springR = 1.3;
   const dxs = B.x - A.x, dys = B.y - A.y, ds = Math.hypot(dxs, dys);
   const hs = Math.sqrt(Math.max(springR * springR - (ds / 2) ** 2, 0.01));
-  const C = { x: (A.x + B.x) / 2 + (-dys / ds) * hs, y: (A.y + B.y) / 2 + (dxs / ds) * hs };
+  // Two circumcentres solve the chord; the arc must bulge AWAY from the
+  // ratchet (the first cut picked the wheel-ward side and the torus lay on
+  // the teeth — measured 0). Chosen by arithmetic, not by sign convention:
+  // take the candidate whose arc keeps the larger minimum radius from the
+  // barrel axis, and assert it clears the tips (rule 6).
+  const C = (() => {
+    const cand = [
+      { x: (A.x + B.x) / 2 + (-dys / ds) * hs, y: (A.y + B.y) / 2 + (dxs / ds) * hs },
+      { x: (A.x + B.x) / 2 - (-dys / ds) * hs, y: (A.y + B.y) / 2 - (dxs / ds) * hs },
+    ].map((c) => {
+      const a0 = Math.atan2(B.y - c.y, B.x - c.x);
+      let sp = Math.atan2(A.y - c.y, A.x - c.x) - a0;
+      if (sp < 0) sp += Math.PI * 2;
+      let minR = Infinity;
+      for (let i = 0; i <= 24; i++) {
+        const th = a0 + (sp * i) / 24;
+        minR = Math.min(minR, Math.hypot(c.x + springR * Math.cos(th), c.y + springR * Math.sin(th)) - 0.1);
+      }
+      return { c, minR };
+    }).sort((p, q) => q.minR - p.minR)[0];
+    if (cand.minR < ALARM_RATCHET_R + CLEAR_MARGIN)
+      console.warn(`alarm click spring arc dips to r ${cand.minR.toFixed(2)} — inside the ratchet tips + margin (${(ALARM_RATCHET_R + CLEAR_MARGIN).toFixed(2)})`);
+    return cand.c;
+  })();
   const thT = Math.atan2(B.y - C.y, B.x - C.x);
   let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
   if (span < 0) span += Math.PI * 2;
@@ -10238,9 +10278,9 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   const lever = Math.abs(dRdTheta);
   // P1 — THE HOLD AS ARITHMETIC (TODO 16's format). Full-wind spring moment
   // is the equalisation record's own alarm M_max ≈ 0.16 N·mm; at the
-  // ratchet's flank (R 5.9 u = 2.21 mm) that is ≈ 74 mN carried by the
+  // ratchet's flank (R 6.0 u = 2.25 mm) that is ≈ 71 mN carried by the
   // face. The face is the builder's 0.28-pitch chord: arc 0.28·2π·R/32 =
-  // 0.325 u against the 0.2·R = 1.18 u radial drop, atan(0.325/1.18) =
+  // 0.33 u against the 0.2·R = 1.20 u radial drop, atan(0.33/1.20) =
   // 15.4° off radial — the reaction points INTO the pivot side the beak
   // approaches from, the same closing geometry the set-up and maintaining
   // clicks ship (theirs is 20.6° at 24 teeth). The spring only re-seats
@@ -10248,7 +10288,17 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   alarmClickUnit.userData.ride = {
     click, base: 0, sign,                                        // base 0: the hook is built seated (nose at the root circle)
     px: P.x, lx: Tn.x - P.x, ly: Tn.y - P.y,                     // the tip's kinematics: pivot station + pivot-local nose (P.y = 0 in the az frame)
-    gain: dRdTheta,                                              // signed dr/dθ at the tip — the Newton step's divisor
+    gain: dRdTheta,                                              // signed dr/dθ at the tip
+    tipRest: tipR,                                               // the tip's rest radius (= the root circle) — the lift cap derives from it
+    // The whole V UNDERSIDE, pivot-local — the ride must clear the EDGES,
+    // not just the point: with the tip just past a tooth's corner the V's
+    // side is what would cross it (a hair, but the instruments read it).
+    underside: (() => {
+      const out = [];
+      for (let k = 0; k <= 6; k++) out.push({ x: Sp.x + ((Tn.x - Sp.x) * k) / 6 - P.x, y: Sp.y + ((Tn.y - Sp.y) * k) / 6 - P.y });
+      for (let k = 1; k <= 6; k++) out.push({ x: Tn.x + ((Sm.x - Tn.x) * k) / 6 - P.x, y: Tn.y + ((Sm.y - Tn.y) * k) / 6 - P.y });
+      return out;
+    })(),
     azGroupRot: bestAz,                                          // the az group's rotation: ratchet angle in this frame = wA − azGroupRot
     elbowLocal: { x: E.x - P.x, y: E.y - P.y }, noseLocal: { x: Tn.x - P.x, y: Tn.y - P.y }, // the hook's own span, for the schematic line
     preload: CLEAR_MARGIN / Math.max(lever, 1e-6),               // one margin of travel at the contact radius
@@ -19838,29 +19888,53 @@ function tick(t) {
     // one-sided constraint (seek the seat, stop at the cam — the spring
     // produces the return, the saw only ever obstructs; the seat is
     // preloaded one CLEAR_MARGIN of travel past the deepest valley, so a
-    // beak the saw fell away from would drop to it) — SOLVED, not read
-    // once: the nose's azimuth moves with its own lift (a large-lift ride
-    // the detent's fixed-azimuth shortcut cannot carry — measured, the
-    // shortcut parked the nose 0.24 inside a tooth), so the contact is a
-    // 3-step fixed-point on the exact tip kinematics, Newton steps through
-    // the tip's own dr/dθ. The ratchet turns with the arbor: winding
-    // clicks the beak tooth by tooth, a ring leaves it seated still.
+    // beak the saw fell away from would drop to it) — SOLVED as "the
+    // smallest lift that clears the metal". Not a fixed-azimuth read (the
+    // nose's azimuth moves with its own lift; the shortcut parked it 0.24
+    // inside a tooth) and not Newton (the tooth face's slope, 21.5 radial
+    // per radian of azimuth against the tip's 4.45 lever, makes that map
+    // diverge — measured, it left the nose 0.35 buried at one axis pose):
+    // a coarse scan over the lift range finds the first clear sample and
+    // bisection tightens it to float noise. The ratchet turns with the
+    // arbor: winding clicks the beak tooth by tooth, a ring leaves it
+    // seated still.
     {
       const rd = alarmClickUnit.userData.ride;
       const rel = wA - rd.azGroupRot;                            // ratchet angle in the click's az frame
-      let lam = 0;
-      for (let it = 0; it < 3; it++) {
+      const clearAt = (t) => {                                   // t = lift magnitude; ≥ 0 means the whole V underside is on/above the saw
+        const lam = rd.sign * t;
         const c = Math.cos(lam), s = Math.sin(lam);
-        const tx = rd.px + rd.lx * c - rd.ly * s;
-        const ty = rd.lx * s + rd.ly * c;
-        const r = Math.hypot(tx, ty);
-        let u = (((Math.atan2(ty, tx) - rel) * ALARM_RATCHET_N) / (Math.PI * 2)) % 1;
-        if (u < 0) u += 1;
-        lam += (sawRadiusAt(u, ALARM_RATCHET_R) - r) / rd.gain;
-        if (rd.sign > 0 ? lam < 0 : lam > 0) lam = 0;            // the saw can only lift the beak off its seat
+        let min = Infinity;
+        for (const p of rd.underside) {
+          const tx = rd.px + p.x * c - p.y * s;
+          const ty = p.x * s + p.y * c;
+          const r = Math.hypot(tx, ty);
+          if (r >= ALARM_RATCHET_R) continue;                    // above every tooth — cannot bind
+          let u = (((Math.atan2(ty, tx) - rel) * ALARM_RATCHET_N) / (Math.PI * 2)) % 1;
+          if (u < 0) u += 1;
+          const d = r - sawRadiusAt(u, ALARM_RATCHET_R);
+          if (d < min) min = d;
+        }
+        return min === Infinity ? 1 : min;
+      };
+      let t = 0;
+      if (clearAt(0) < 0) {
+        // lift cap: enough rotation to put the tip past the tip circle
+        // everywhere — clear by construction
+        const cap = ((ALARM_RATCHET_R - rd.tipRest) / Math.abs(rd.gain)) * 1.15;
+        let lo = 0, hi = cap;
+        for (let i = 1; i <= 24; i++) {
+          const cand = (cap * i) / 24;
+          if (clearAt(cand) >= 0) { hi = cand; lo = (cap * (i - 1)) / 24; break; }
+        }
+        for (let i = 0; i < 20; i++) {
+          const mid = (lo + hi) / 2;
+          if (clearAt(mid) >= 0) hi = mid; else lo = mid;
+        }
+        t = hi;
       }
       const seat = rd.base - rd.sign * rd.preload;               // where the spring alone would put it
-      const cam = rd.base + lam;                                 // where the saw lets it sit, azimuth-consistent
+      const cam = rd.base + rd.sign * t;                         // where the saw lets it sit
       rd.click.rotation.z = rd.sign > 0 ? Math.max(seat, cam) : Math.min(seat, cam);
     }
   }

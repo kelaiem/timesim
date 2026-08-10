@@ -2272,15 +2272,40 @@ const PENETRATION_BUDGETS = [
     // 240 samples over 28 pin cycles = 8.57 per cycle; this ride has 56 saw
     // cycles, so 480 holds the same per-cycle net.
     nSamples: 480,
-    selectA(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmArborRatchet') out.push(o); });
-      return out;
-    },
-    selectB(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmClickPawl') out.push(o); });
-      return out;
+    // NOT mtvDepth — the §61 lesson at a click's scale: a beak seated in a
+    // valley is locally wrapped, so a hair of edge contact resolves as the
+    // full AXIAL pop-out (0.35 — the click's whole escape from the
+    // ratchet's band, a number about the search space, not the fit).
+    // Instead the pawl MESH is sampled against the ANALYTIC saw the teeth
+    // were cut from (root→tip over 0.72 of the pitch, face over 0.28 —
+    // main.js's sawRadiusAt twin), vertex-exact and conservative: the cut
+    // chords sit BELOW the analytic profile, so mesh-vs-law reports at
+    // least what metal-vs-metal would.
+    measure(clock, unitA, unitB) {
+      let rat = null;
+      unitA.obj.traverse((o) => { if (!rat && o.isMesh && o.name === 'alarmArborRatchet') rat = o; });
+      let pawl = null;
+      unitB.obj.traverse((o) => { if (!pawl && o.isMesh && o.name === 'alarmClickPawl') pawl = o; });
+      if (!rat || !pawl) throw new Error('click⇄ratchet ride: alarmArborRatchet or alarmClickPawl not found');
+      const g = rat.parent;                        // makeRatchetAndClick's group carries teeth + r
+      const N = g.userData.teeth, R = g.userData.r, rootR = R * 0.8;
+      const pitch = (Math.PI * 2) / N;
+      if (!rat.geometry.boundingBox) rat.geometry.computeBoundingBox();
+      const zLo = rat.geometry.boundingBox.min.z, zHi = rat.geometry.boundingBox.max.z;
+      const m = new THREE.Matrix4().copy(rat.matrixWorld).invert().multiply(pawl.matrixWorld);
+      const pos = pawl.geometry.getAttribute('position');
+      const v = new THREE.Vector3();
+      let worst = 0;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m);
+        if (v.z < zLo || v.z > zHi) continue;      // outside the saw's own band
+        const r = Math.hypot(v.x, v.y);
+        if (r >= R) continue;
+        let u = ((Math.atan2(v.y, v.x) / pitch) % 1 + 1) % 1;
+        const saw = u <= 0.72 ? rootR + ((R - rootR) * u) / 0.72 : R - ((R - rootR) * (u - 0.72)) / 0.28;
+        if (saw - r > worst) worst = saw - r;
+      }
+      return worst;
     },
   },
   {
