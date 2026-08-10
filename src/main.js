@@ -10242,23 +10242,32 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   const faceEdge = [1.15, 1.0, 0.66, 0.33].map((s) => facePt(s, faceRelief));   // 1.15 extends past the crest to r ≈ R+0.14, outside the tips
   const rampEdge = [0.25, 0.5, 0.75, 1.0].map(rampPt);
   const RT = polarPt(azV - 0.6 * pitchAz, ALARM_RATCHET_R + 0.15);              // rise out of the pocket at the trailing azimuth, one margin over the tips
+  // Walk order is TOPOLOGY, not taste: at the elbow the arm runs nearly
+  // tangentially, so ±va is nearly RADIAL there — the +va side is the
+  // radially INNER edge and must connect to the beak's ramp (trailing)
+  // side, the −va side is the OUTER edge and closes over the crest to the
+  // face side. The first cut of this shape paired them the other way
+  // round, the outline self-intersected, earcut dropped four cap
+  // triangles, and the OPEN mesh made every parity raycast lie (the
+  // TODO 27 trap, re-armed by a walk order — the handoff read −0.35 and
+  // intraUnit saw the pawl inside a post 0.71 away).
   const pts = [
-    { x: P.x + va.x * wp, y: P.y + va.y * wp },
-    { x: E.x + va.x * wa, y: E.y + va.y * wa },
-    polarPt(azV + 0.30 * pitchAz, ALARM_RATCHET_R + 0.35),      // beak top, face side — over the crest, outside the tips
-    ...faceEdge,
-    { x: Tn.x, y: Tn.y },                                       // the point — the seat, the one touching vertex
-    ...rampEdge,
+    { x: P.x + va.x * wp, y: P.y + va.y * wp },                 // pivot, inner corner
+    { x: E.x + va.x * wa, y: E.y + va.y * wa },                 // elbow, inner edge
     RT,
-    { x: E.x - va.x * wa, y: E.y - va.y * wa },
-    { x: P.x - va.x * wp, y: P.y - va.y * wp },
+    ...[...rampEdge].reverse(),
+    { x: Tn.x, y: Tn.y },                                       // the point — the seat, the one touching vertex
+    ...[...faceEdge].reverse(),
+    polarPt(azV + 0.30 * pitchAz, ALARM_RATCHET_R + 0.35),      // beak top, face side — over the crest, outside the tips
+    { x: E.x - va.x * wa, y: E.y - va.y * wa },                 // elbow, outer edge
+    { x: P.x - va.x * wp, y: P.y - va.y * wp },                 // pivot, outer corner
   ];
   // Rule 6, upgraded from the vertex loop: every EDGE outside the beak's
   // pocket must clear the tip circle — a chord between two legal vertices
   // can still dip inside it (segment minimum, not endpoint minimum).
   // Pocket vertices (the sampled tooth-space profiles) are exempt by
   // construction: they are the saw's own curves plus their reliefs.
-  const pocketFrom = 3, pocketTo = 3 + faceEdge.length + 1 + rampEdge.length; // faceEdge + point + rampEdge
+  const pocketFrom = 3, pocketTo = 3 + rampEdge.length + 1 + faceEdge.length; // rampEdge + point + faceEdge
   const segMinR = (a, b) => {
     const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1e-12;
     const t = clamp(-(a.x * dx + a.y * dy) / L2, 0, 1);
@@ -10271,11 +10280,36 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
     if (m < ALARM_RATCHET_R + 0.1)
       console.warn(`alarm click edge ${i}→${j} passes r ${m.toFixed(2)} — inside the tip circle + margin (${(ALARM_RATCHET_R + 0.1).toFixed(2)}); the hook has sagged into the teeth`);
   }
+  // Rule 6: the outline must be SIMPLE. A self-intersecting polygon does
+  // not fail loudly — earcut silently drops the unreachable ears, the
+  // caps ship with holes, and every parity-raycast instrument downstream
+  // reads the open mesh as colliding with parts it is nowhere near.
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 2; j < pts.length; j++) {
+      if (i === 0 && j === pts.length - 1) continue;             // shared pivot corner
+      const a = pts[i], b = pts[(i + 1) % pts.length], c = pts[j], d = pts[(j + 1) % pts.length];
+      const s1 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      const s2 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
+      const s3 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x);
+      const s4 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x);
+      if (s1 * s2 < 0 && s3 * s4 < 0)
+        console.warn(`alarm click outline self-intersects: edge ${i}→${i + 1} crosses ${j}→${(j + 1) % pts.length} — earcut will drop ears and the mesh will ship open`);
+    }
+  }
   clickShape.moveTo(pts[0].x - P.x, pts[0].y - P.y);            // pivot-local, so rotation.z rides about the stud
   for (let i = 1; i < pts.length; i++) clickShape.lineTo(pts[i].x - P.x, pts[i].y - P.y);
   clickShape.closePath();
   const click = new THREE.Mesh(
     new THREE.ExtrudeGeometry(clickShape, { depth: CLICK_T, bevelEnabled: false }), MATS.blueSteel);
+  // Rule 6, the same defect from the mesh side: a bevel-free n-gon extrude
+  // is exactly 4n − 4 triangles (two caps at n − 2, sides at 2n). Fewer
+  // means earcut dropped ears and the caps have holes — the mesh reads as
+  // OPEN to every parity raycast even though nothing looks wrong.
+  {
+    const tris = click.geometry.attributes.position.count / 3;
+    if (tris !== 4 * pts.length - 4)
+      console.warn(`alarm click pawl extruded to ${tris} triangles where a simple ${pts.length}-gon gives ${4 * pts.length - 4} — earcut dropped ears; the outline self-intersects`);
+  }
   click.name = 'alarmClickPawl';
   click.position.set(pivotR, 0, clickBot);
   az.add(click);
