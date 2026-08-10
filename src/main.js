@@ -10342,9 +10342,37 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // edge at the elbow is the honest flank — a kiss by construction (elbow
   // outer edge + tube radius).
   const B = { x: (armR + wa + 0.1) * dirN.x, y: (armR + wa + 0.1) * dirN.y }; // elbow outer edge + tube r
-  const A = { x: 7.8 * Math.cos(0.38), y: 7.8 * Math.sin(0.38) }; // its post: between the stud (az 0) and the nose lane (az 0.63), |A−B| inside the 2·springR chord
-  const springR = 1.3;
+  // The anchor post's STATION is derived from the arm's SWEPT LANE, not
+  // placed: at azimuth 0.38 (between the stud's az 0 and the nose lane
+  // 0.63), its radius must keep the post's HEAD clear of the arm's flank
+  // at the ride's CAP lift — the §101 lesson, found by the intraUnit gate
+  // at a pose net's leftover state after a vertex-sampled sweep had called
+  // the same lane clear (vertices under-sample a long flank; the head's
+  // z-band overlaps the pawl's by 0.15, so the graze was face-to-face).
+  // The perpendicular from A to the arm's centreline swings closed as the
+  // click lifts: d(λ) = d0·cos λ − (A−P)∥·sin λ, so the radius is chosen
+  // so d(cap) still holds headR + arm half-width + CLEAR_MARGIN, and the
+  // achieved number is asserted below (rule 6), not hoped for.
+  const A = { x: 8.55 * Math.cos(0.38), y: 8.55 * Math.sin(0.38) };
+  {
+    const liftCap = ((ALARM_RATCHET_R - rootR) / (Math.hypot(Tn.x - P.x, Tn.y - P.y))) * 1.15 + 0.05; // rotation that fully escapes the annulus (the ride's own cap) + the preload's order
+    const rel = { x: A.x - P.x, y: A.y - P.y };
+    const uArm = { x: (E.x - P.x) / la, y: (E.y - P.y) / la };
+    const d0 = Math.abs(uArm.x * rel.y - uArm.y * rel.x);
+    const par = uArm.x * rel.x + uArm.y * rel.y;
+    const dCap = Math.abs(d0 * Math.cos(liftCap)) - Math.abs(par * Math.sin(liftCap));
+    const need = 0.55 + wa + CLEAR_MARGIN; // spring-head radius + arm half-width + the margin
+    if (dCap < need)
+      console.warn(`alarm click spring post: arm flank clears its head by ${dCap.toFixed(2)} at cap lift — needs ${need.toFixed(2)}; move the anchor's station`);
+  }
   const dxs = B.x - A.x, dys = B.y - A.y, ds = Math.hypot(dxs, dys);
+  // The spring's radius is DERIVED from its own chord (rule 1): the arc
+  // must genuinely span anchor to flank, so r = max(the family's 1.3, half
+  // the chord + a bulge that keeps the circumcentre solve real). The
+  // outboard anchor station stretched the chord past the family radius's
+  // diameter, and a clamped-h arc would have quietly shipped an arc that
+  // reaches neither end.
+  const springR = Math.max(1.3, ds / 2 + 0.08);
   const hs = Math.sqrt(Math.max(springR * springR - (ds / 2) ** 2, 0.01));
   // Two circumcentres solve the chord; the arc must bulge AWAY from the
   // ratchet (the first cut picked the wheel-ward side and the torus lay on

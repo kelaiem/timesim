@@ -9818,9 +9818,26 @@ EDGE-triggered only: setPose'd transients (the axis sweeps) must render
 exactly as posed, and an every-tick snap would quantise them into a
 staircase. Measured: settle 0.0254 turns < the 0.03125 quantum, seat at
 u = 0 exactly, park kiss 0.0164 against `HANDOFF_TRACK_TOL` 0.03,
-pawl⇄saw penetration 0 over the fine ride, pawl⇄spring-post minimum
-0.71 over 480 poses (the reported "collision with the post" was
-projection — the measured lane was never closer than 0.7).
+pawl⇄saw penetration 0 over the fine ride.
+
+### The post collision was real, and the instrument beat the probe
+
+The user's "collides with the post next to it" was first dismissed as
+projection on the strength of a 480-pose vertex-sampled sweep
+(pawl-vertex to post-surface minimum 0.71). The `intraUnit` gate then
+failed the pair at a pose-net leftover state, and dissection proved the
+gate RIGHT: the graze is face-to-face — the spring HEAD's z-band
+overlaps the pawl's by 0.15, and the arm's long flank has vertices only
+at its ends, so vertex sampling is structurally blind to exactly this
+contact. The fix is position-space: the anchor post's station is now
+DERIVED from the arm's swept lane (its radius holds head + arm
+half-width + `CLEAR_MARGIN` at the ride's cap lift, asserted at boot),
+and the spring's radius is derived from its own chord rather than
+clamped (the outboard station stretched the chord past the family
+radius, and a clamped arc would have quietly reached neither end).
+Method note for the next probe: a vertex-min sweep is not a clearance
+measurement on long-flanked parts — use surface-to-surface
+(`meshClearance`) or trust the gate.
 
 ### The class, named for next time
 

@@ -4070,7 +4070,11 @@ equalisation record was already publishing — as a STATE change that
 travels the gears. Measured at landing: winding rides root→tip on the
 ramp and snaps off the face; settle 0.0254 turns < the 0.03125 quantum,
 seat at u = 0 exactly; park kiss 0.0164; pawl⇄saw penetration 0 over the
-fine ride.
+fine ride. The user's "collides with the post" was REAL — the arm's
+flank grazed the spring HEAD face-to-face at high lift, invisible to a
+vertex-sampled sweep and caught by the intraUnit gate — so the anchor
+post's station is now derived from the arm's swept lane (asserted at
+boot) and the spring's radius from its own chord.
 
 Remaining honest residue, stated rather than hidden: the interactive
 `aDelta > 0` guard is still the software edge of the one-way — the click's
