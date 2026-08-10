@@ -4009,7 +4009,7 @@ spring is honest now without it, and this is a change whose only currency
 is position space. Do it when the alarm's winding side is opened for
 another reason.
 
-## 38. No axis WINDS anything — the sweeps only ever see the alarm run down
+## 38. NARROWED — the alarm wind is swept (`alarmWind`); the going tranche remains, now with its cost measured
 
 The §36 registry, and everything sourced from it (the §48 restoring audit's
 whole population), measures over `AXES`. Two axes touch the alarm's power:
@@ -4057,6 +4057,116 @@ axis. That is also the limit of the consolation, and worth stating plainly:
 what the sweep sees is the ribbon changing shape, not the chain being driven
 backwards through it. Every member of the winding train is a plain rotor,
 and plain rotors stay monotone in every axis there is.
+
+**Build plan — filed 2026-08-10, audited against the shipped `AXES`.**
+One correction to this entry's own "cheap version" first, because it
+changes what the axis is FOR: a plain rotor's swept hull over a span is
+direction-independent, so revisiting `alarmStrike`'s poses backwards
+would indeed add nothing to any hull — but the wind does not happen in
+`alarmStrike`'s COMPANION STATE. That axis runs released and ringing
+(`alarmReleased: 1`, §25 B's honest ring); a wind happens with the
+striker PARKED and the §29 lock ENGAGED, and the strike pins backing
+past the engaged pawl — the saw-tooth cam-out that IS the ratcheting a
+real wind produces, the shipped model's own story for why a held pawl
+still permits winding — is a pose combination no axis has ever swept.
+The axis adds new poses after all; the entry's "only a direction
+change" undersold its own subject.
+
+- **W1 — baseline.** The current `main` battery `--report` is the
+  acceptance base (one exists from §97/§98's landing). Nothing starts
+  without it.
+- **W2 — the `alarmWind` axis.** Poses the winding INPUT, not the
+  output (TODO 20's law): the crown's pushed-in rotation over one full
+  wind, `alarmBarrelWind` rising THROUGH the climb/idler/barrel ratios
+  (rule 2 — the angles travel the gears; setPose gains the input field
+  and derives the chain). Companion state is the honest wind:
+  `alarmOn: 0, alarmReleased: 0`, striker parked, lock engaged. n
+  matches `alarmStrike`'s per-step angular density over the same barrel
+  span (its 109-over-28-cycles reasoning transfers verbatim, coprime
+  argument included) — NOT "96 because the others are", per this
+  entry's own warning.
+- **W3 — cost, measured not assumed.** `sweptOverlap`'s confirm tier
+  re-measures candidates over ALL axes; a ~109-pose axis grows the pose
+  set ~14%. Run the full battery with `--report`, diff against W1:
+  expected movement is `sweptOverlap`'s pairsTested/timings, the §36
+  registry summary (revolve/path counts), and possibly `restoring`
+  ROWS — parts newly driven both ways change class, which is the
+  audit's population becoming more true, not noise. Re-measure the
+  wedge guard's basis and re-derive its constant from the new worst
+  run; the cost column follows the measured `ms`.
+- **W4 — the going-train tranche, separately sized.** The milder gap
+  (`reserve` sweeps tension 1 → 0, `windAccumTurns` pinned 0 on every
+  axis) is the same shape but a different bill: winding the FUSEE
+  re-wraps the chain, a morphing part with real hull churn. Measure a
+  candidate axis's cost before committing to it in the same tranche;
+  splitting the item is better than sneaking an unmeasured sweep in.
+- **W5 — records.** This item closes (or narrows to the going tranche)
+  with the before/after report diff quoted; no BUILT § — an axis is
+  instrument work, TODO 29's `alarmToggle` being the precedent and the
+  record format.
+
+**Order against TODO 37, and why 38 goes first.** 37's fix is layout
+work — the arbor ratchet, a click and click spring (new parts: MECH_GRAPH
+rows, a `restoring` row for the spring, §50 sections), and the winding
+train's last mesh re-routed onto the ratchet. A click is a
+direction-dependent mechanism; landing it while the sweeps still only
+run the ring-down direction would leave its working engagement — the
+exact thing it exists for — unswept. Build 38's axis first and 37's
+click lands with its working direction policed from day one.
+
+**What landed — filed 2026-08-10, the same day, measured.** The
+`alarmWind` axis exists (`src/inspect.js`, between `alarmStrike` and
+`alarmToggle` — that station is load-bearing: its parity flip falls
+exactly where `alarmToggle`'s first flip fell in the old walk, so the
+column wheel's cumulative angle is bit-identical at every pose the old
+walk had). It poses the winding INPUT as planned: `setPose` gained
+`alarmWindRotation` — the crown's pushed-in rotation banked from empty,
+the closed form of tick()'s own wind path through `ALARM_WIND_RATIO`,
+assigned rather than integrated because a sweep revisits fractions
+non-monotonically. n = 109 by `alarmStrike`'s transferred reasoning
+(same 1.75-turn span, same 28 pin cycles, coprime, ~3.9 samples per pin
+pitch). One correction to the plan's own correction, measured: the
+saw-tooth cam-out was NOT the new coverage — the pin's withdrawal is a
+physical ease no zero-dt sweep integrates, so the pawl rides the saw
+under `alarmStrike` too. What is new is the companion-state combination
+(lock engaged over a turning collar; the backing phase range below
+`ALARM_PHASE_REST`) — the axis comment states it precisely.
+
+**The before/after report diff, every moved row explained.** Baseline
+19/19 (fingerprint 2134288613); landing run 19/19, fingerprint
+bit-identical, both boots. `sweptOverlap`: pairsTested 59762 → 59372 and
+registry path 196 → 186 / revolve 196 → 206 (ten Alarm-crown meshes
+promoted to full revolves by the spoke rule at 210°/registry-step — true
+semantics for a crown a wind spins); tight 2 → 4 (the two baseline rows
+persist bit-identically; `feeler ⇄ sleeve` 0.1251 and `sleeve ⇄ silence
+rocker` 0.1066 became measurable once poses stopped inheriting the
+pulled-crown displacement — reports, real reachable clearances); refuted
+19 → 19 (two Keyless-works hull overlaps entered and were refuted at 2.1
+and 4.8). `intraUnit` 45 → 50 poses: the axis UNMASKED a standing foul at
+the as-booted rest pose (TODO 42 — the first pose anywhere to name
+`alarmCrownPullT: 0`). `restoring` 26 → 25: 'Alarm crown' entered
+(declared two-way on the hand's grounds), 'Motion works' and 'Dial' left
+— both had been carried by detector artifacts (TODO 43; ground truth
+measured: star matrices bit-identical across walks, angle steps monotone
+in every axis). The retired 'Motion works' declaration and the new
+'Alarm crown' one carry the full reasoning at their sites. Wedge guard
+45 → 59 min and the cost column re-derived from the measured runs, the
+arithmetic in `ci-battery.mjs`'s comment (1.24 × 36.4 CI-worst × 1.295
+measured workload growth).
+
+**The going tranche stays open, and now has its bill.** Measured
+(120-pose probes, same machine): a candidate `wind` axis (tension +
+`windAccumTurns` rising together through the crown→ratchet chain) costs
+1.27 ms/pose against `reserve`'s 1.45 — per-pose cost is NOT the
+problem; the chain re-bakes every pose under both (121 distinct
+geometries in 121 poses). The bill is the honest n: `windBack =
+−windAccumTurns·2π` turns the fusee 3.75 revolutions over a full wind,
+so the `train` axis's own density standard (96/rev) wants n ≈ 360 —
++40% on the total axis-sample count (1262/902), which projects the
+sweptOverlap CI worst past an hour and moves the guard/job-cap pair
+again. Land it after roadmap §82 shrinks the confirm tier, or accept
+the hour explicitly; either way the number is now measured, not
+assumed.
 
 ## 39. The going drum's arbor turns with the drum it is supposed to hold
 
@@ -4361,3 +4471,88 @@ and the hour/alarm planes are z-stack quantities datumed against
 `aesthetics.json` documents that derivation), not floor standoffs of this
 class; their pairs have no wells to scrape and their crossing envelope is
 bounded where the rod widths are set (`makeHand`'s crossing note).
+
+## 42. The lifter's blade stub stands 0.167 into its own guide eye at rest — and the instrument only just gained the pose that shows it
+
+Found by TODO 38's `alarmWind` axis, which is the first pose anywhere to
+NAME `alarmCrownPullT: 0`. That matters because the pose net carries
+residue: fields a pose does not name ride through from the previous pose,
+and the `alarm` axis (which precedes everything alarm-side in `AXES`)
+poses `alarmCrownPullT: 1`. Every `intraUnit` measurement pass therefore
+inherited a pulled alarm crown, and the release lifter — whose L slides
+down when the head reads the stem collar's fat plateau — was only ever
+measured DEPRESSED (blade stub at z −5.52, clear of everything). The wind
+axis resets the pull, the measurement pass finally sees the REST pose, and
+there the stub stands inside the eye.
+
+**The numbers.** The stub (r 0.3 cylinder on the sliding L, built at
+z −5.3, `STOCK_MIN_U` thick) tops out at −5.14; the guide eye
+(`ringGeo(0.17, …)` at `ez = −5.15`, same stock) spans −5.31..−4.99. That
+is 0.167 of z overlap with radial metal crossing from the bore (0.17) to
+the stub's rim (0.30) — at the AS-BOOTED pose, the worst case, since the
+L's whole travel is downward from rest. The build's own comment claims the
+blade bears "under the guide eye, riding clear of it across the full
+travel"; measured, it does not ride clear at the top of that travel.
+
+**Why it was invisible.** `intraUnit`'s classification pass DOES visit the
+rest pose (its base signature is taken right after `resetInputs`) — but
+classification only marks movers; the measurement pass re-walks the poses
+with residue, and residue kept the L off its rest station. Not a sampling
+gap: a state-coverage gap of exactly TODO 38's kind, one field over.
+
+**The fix is the eye's station, not the stub.** TODO 23 already did this
+arithmetic for the guide it removed ("0.04 into the stub at rest" was that
+guide's verdict); the surviving eye wants the same treatment: derive `ez`
+from the constraint that its lower face clears the stub's top at rest —
+`ez ≥ (stub z) + STOCK_MIN_U + CLEAR_MARGIN` — and re-site the carrier arm
+with it (the plunger is long; the eye still has plunger to guide at the
+raised station, but the head's rest bottom and the collar above bound how
+far up it may go — check both when moving it). Until then the row is
+waived in `INTRA_UNIT_WAIVERS` citing this item.
+
+## 43. The §36 registry's `reversed` flag is a function of walk composition, not just of motion — three measured artifacts
+
+TODO 38's axis changed `restoring` verdicts for two units whose geometry
+tracks were BIT-IDENTICAL at every shared pose (measured: 0 differing
+matrix elements across the whole double walk). Both flips were detector
+artifacts, and both mechanisms are worth writing down because any future
+axis — W4's going-train wind first among them — will stir them again:
+
+1. **The witness-circle fit weights per-pose duplicates.** `series` is
+   per-POSE ("per pose, SHARED"), and `fitCircle` runs over it — so a part
+   that rests through nine axes and moves in one has its fitted centre
+   dragged toward ~100 copies of the rest frame. The registry's own header
+   states the convention this violates: "repeats add nothing either way"
+   — arcs and r-bands are per-frame, the fit is the one consumer where
+   repeats still vote. The 'Motion works' star lived on this: its
+   ~1e-4 rad beat steps, parametrized about the biased centre, flipped
+   sign-change verdicts with the pose population; adding 12 inert poses
+   evaporated the reversal that TODO 33's resample had conjured. Ground
+   truth (angle steps from the star's own matrix): monotone in every axis
+   — the jumper's back-off is the SNAP, an ease, invisible at zero dt.
+   Fix: fit over distinct states. This will move rows for every planar
+   mover with a resting majority — re-derive against a fresh `--report`
+   diff, not the PASS column.
+2. **Seam vertices bias vertex-averaged centroids off-axis.** three.js
+   cylinders duplicate the θ=0 ring vertex, so the 'track' path's centroid
+   sits ~2r/(segs·2+2) off the rotation axis (measured 0.031 on the
+   r 0.55 stem collar) and ROTATES with the mesh — a pure rotation reads
+   as a small circular translation.
+3. **Long-span axes alias the step direction.** At the registry's 12
+   samples, `alarmWind`'s 6.42 crown turns are 210° per step; consecutive
+   chords of the seam-bias circle then point against each other and the
+   deadband passes them (the track extent is real). 'Alarm crown' entered
+   the population exactly this way — a monotone spin read as out-and-back.
+   The unit IS hand-driven both ways, so its new `two-way` declaration is
+   true on the mechanism's grounds and the landing is honest — but the
+   detector said so for the wrong reason, and the next unit this fires on
+   may have no true declaration to give.
+
+The registry's §80 comment already owns the walk-history sensitivity for
+POSES ("the pose a walk lands on is a function of the walk history");
+this item extends it to VERDICTS, with the three concrete mechanisms.
+None of this weakens what `reversed` is for — the §48 population — but a
+population whose membership can flip on inert pose insertions will keep
+spending diagnosis time exactly like TODO 38's landing did. Fix order:
+(1) is the load-bearing one, (2) and (3) mostly matter because they feed
+it and the track test.

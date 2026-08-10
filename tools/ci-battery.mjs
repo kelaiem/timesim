@@ -99,20 +99,33 @@ const YIELD_EVERY = 64;
 // remembering, because a green run is exactly what makes a too-tight guard
 // look justified right up until it fires on a healthy build.
 //
-// 45 is 1.24x over the worst `sweptOverlap` yet observed (36.4 min), which is
-// thinner than a guard should be. It is not raised, because raising a guard to
-// fit a check is how the 45/60 pair got into trouble in the first place; the
-// number that has to come down is `sweptOverlap`'s, and that is roadmap §82's
-// confirm tier — 15 raw hull overlaps each re-measured by an uncapped
-// `measureClearance` sweep over all 9 axes, with TODO 27's chain on two of
-// them. When §82 lands, re-derive this and the job cap together, from SEVERAL
-// CI runs.
+// 45 was 1.24x over the worst `sweptOverlap` then observed (36.4 min CI),
+// which is thinner than a guard should be — and deliberately NOT raised to
+// fit the check, because raising a guard to fit a check is how the 45/60
+// pair got into trouble; the number that has to come down is
+// `sweptOverlap`'s, and that is roadmap §82's confirm tier.
+//
+// TODO 38 then GREW THE WORKLOAD BY DESIGN — the `alarmWind` axis adds 109
+// poses to the confirm tier's per-candidate sweeps (902/793 = 1.137x the
+// axis-sample total) and its hull growth moved the candidate list 21 → 23 —
+// so the guard follows the workload by arithmetic, which is a re-derivation,
+// not an accommodation: leaving 45 would have thinned the headroom to
+// 45 / (36.4 x measured growth) ≈ 1.03x, the exact fires-on-a-healthy-run
+// failure the 40-minute mistake above documents. Measured on one machine,
+// same conditions, base tree vs axis tree: 1854.2 s → 2219.7 s and 2400.7 s
+// (two runs of the new workload; an 8% local spread, inside CI's own 1.66x).
+// Worst measured growth 2400.7 / 1854.2 = 1.295. Projected CI worst =
+// 2184.6 s x 1.295 = 2829 s (47.1 min); guard = 1.24 x 47.1 = 58.5 →
+// 59 min — the same headroom factor over the same anchor, workload-scaled.
+// battery.yml's job cap moves with it (guard + the ~15 min the 45/60 pair
+// kept above it). §82's caveat stands: when the confirm tier shrinks,
+// re-derive BOTH from several CI runs.
 //
 // Note also what sharding can and cannot buy: the wall is now max(shard), but
 // this guard and battery.yml's job cap are both set by the slowest single
 // CHECK, which no partition subdivides. Sharding moved the wall 2.2x and moved
 // neither timeout.
-const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
+const CHECK_TIMEOUT_MS = 59 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
 // The battery, in the order the gates are REPORTED: cheap and synchronous
@@ -176,7 +189,7 @@ const BATTERY = [
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 320,
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 360,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -200,7 +213,7 @@ const BATTERY = [
   // reversing part either has a restoring element, is driven both ways, or is
   // waived against a filed TODO. The control is gated too: a positive control
   // that quietly stops passing is how this class of check dies.
-  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 3,
+  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 2,
     gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
     fails: (r) => [
       ...r.unwaived,
@@ -210,15 +223,15 @@ const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 607,
+  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 567,
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 395,
+  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 475,
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 1573,
+  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 2401,
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
     note: (r) => {
