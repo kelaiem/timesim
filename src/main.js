@@ -11997,6 +11997,13 @@ let mmPerPxCal = null;
 // u = 0 is the seat. Runs on the interactive wind's falling edge (tick) and
 // once at boot for a restored wound state — never on posed transients.
 let alarmWindWasActive = false;
+let alarmWindIdleT = 0;
+// The release debounce: longer than any input-sampling gap (pointer events
+// arrive at 20 Hz or better, so gaps are ≤ 0.05 s), shorter than the pause a
+// hand makes when it actually lets go — the same order as the crown's other
+// eased inputs. Not a physics constant: it distinguishes "the event stream
+// is between samples" from "the hand left the crown".
+const ALARM_SETTLE_IDLE_S = 0.25;
 function settleAlarmClick() {
   const rd = alarmClickUnit.userData.ride;
   if (!rd || alarmBarrelWind <= 0) return;
@@ -19785,6 +19792,7 @@ function tick(t) {
       // stem⇄contrate bevel without unbanking.
       alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
       alarmWindWasActive = true;
+      alarmWindIdleT = 0;
     } else if (alarmWindWasActive) {
       // §101 — THE GIVE-BACK, enacted (§99 deferred it with its own record):
       // the hand leaves the crown and the loaded arbor recoils until the
@@ -19792,11 +19800,20 @@ function tick(t) {
       // most 1/32 turn, the equalisation record's own hold quantum. It is
       // a STATE change, so the recoil travels the gears: wA drops, the
       // winding train and the crown visibly snap back a hair, which is
-      // what a released crown does on a real barrel. EDGE-triggered only —
-      // setPose'd transients (the axis sweeps) must render exactly as
-      // posed, and an every-tick snap would quantise them into a staircase.
-      alarmWindWasActive = false;
-      settleAlarmClick();
+      // what a released crown does on a real barrel.
+      // DEBOUNCED past input sampling, and that is measured necessity: a
+      // crown drag delivers rotation on pointer events that do not align
+      // with the frame loop, so a one-tick gap is not a release. Settling
+      // there ate every sub-pitch advance — slow winding (3-on/2-off
+      // bursts at 0.08 rad/tick) accumulated 0.0 of an ideal 0.5 turn,
+      // the reported "hit or miss". A release is ALARM_SETTLE_IDLE_S of
+      // accumulated REAL time; the pose paths tick dt = 0 and so can
+      // never accumulate one — the axis sweeps stay exactly as posed.
+      alarmWindIdleT += rawDt;
+      if (alarmWindIdleT >= ALARM_SETTLE_IDLE_S) {
+        alarmWindWasActive = false;
+        settleAlarmClick();
+      }
     }
   }
   const alarmAngle = alarmDiscAngle();
