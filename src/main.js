@@ -10230,7 +10230,14 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   //    ride law unchanged, but the metal now occupies the valley wedge.
   const pitchAz = (Math.PI * 2) / ALARM_RATCHET_N;
   const azV = noseAz;                                           // the valley the beak is built seated in
-  const faceRelief = 0.01 / ALARM_RATCHET_R;                    // hairline, as rotation about the wheel axis
+  // Hairline relief for the face edge, as rotation about the wheel axis.
+  // SIGN: under the reverse-cut mapping u = (rel − az)·N/2π, rotating +az
+  // DECREASES u, which on the face (saw falling with u) is INTO the metal —
+  // the first sign put the edge 0.036 inside the tooth at the seat and the
+  // ride parked the beak 0.12 rad lifted to clear its own relief. −az backs
+  // the edge off the face; the gap grows from 0 at the point to ~0.04 at
+  // the crest — still a hairline at scale.
+  const faceRelief = -0.01 / ALARM_RATCHET_R;
   const polarPt = (a, r) => ({ x: r * Math.cos(a), y: r * Math.sin(a) });
   // face edge: valley → crest is u 1 → 0.72 of the REVERSED mapping, which
   // in azimuth is azV → azV + 0.28·pitch, radius rootR → R
