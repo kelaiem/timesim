@@ -113,7 +113,18 @@ export const SPEC = (() => {
   // can propose one. null = as designed: LAYOUT_INPUTS passes no `d4` at
   // all, so the solve runs on the D4 constant and identity stays bit-exact.
   const d4 = Number.isFinite(Number(raw.d4)) ? Number(raw.d4) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4 });
+  // §94 tier C — THE RESERVE STATION'S RADIUS. The power-reserve subdial's
+  // centre distance, dial-local; the station sits on the dial's 12-o'clock
+  // axis (x = 0), so one radius key places it and an azimuth key can join
+  // later without disturbing this one. Like d4, NOT clamped here — the
+  // bounds live where the radii are: solveKeyless derives the well window
+  // (rsvrWindow — inboard the centre bore's keep-out, outboard the dial
+  // face) and the reduction train's own module bounds are asserted beside
+  // the span solve in main.js, jointly with reserveh. null = as designed:
+  // KEYLESS_INPUTS passes no radius at all, so the station derives from
+  // dialRadius · 0.39 and identity stays bit-exact.
+  const rsvr = Number.isFinite(Number(raw.rsvr)) ? Number(raw.rsvr) : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4, rsvr });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -659,6 +670,7 @@ export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
   stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
+  rsvR = null,      // §94 tier C — the reserve station's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -833,7 +845,10 @@ export function solveKeyless({
   // wheel sits D4 below centre); also much closer to the barrel's dial-side
   // projection than the old 6-o'clock spot, so the reserve reduction train
   // spans a shorter, cleaner run.
-  const RESERVE_LOCAL = { x: 0, y: dialRadius * 0.39 };
+  // §94 tier C — the station is a SPEC DIMENSION now: a spec'd radius
+  // replaces the derived default outright, and identity stays bit-exact
+  // because identity passes nothing (d4's null rule, one solver down).
+  const RESERVE_LOCAL = { x: 0, y: rsvR !== null ? rsvR : dialRadius * 0.39 };
   // §94 tier B — THE ALARM CORNER'S OWN RADIUS. Until this tier it did not
   // exist: main.js defined ALARM_CD as a read of RESERVE_LOCAL.y, which made
   // "the reserve indicator happens to sit there" the radius of the entire
@@ -907,13 +922,46 @@ export function solveKeyless({
       + `${Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y).toFixed(2)} from the dial centre, inside the `
       + `${SUBDIAL_INBOARD_CLEAR.toFixed(2)} the centre bore, its wall and the margin need`);
 
+  // §94 tier C — THE RESERVE STATION'S WINDOW, derived where the radii are
+  // (d4Window's precedent). INBOARD: the well must have a radius at all —
+  // the station against SUBDIAL_INBOARD_CLEAR (the warn above is the
+  // backstop; TODO 33's centre-bore assert fires per-station in main.js).
+  // OUTBOARD: the well's outer edge against the dial face,
+  //
+  //     station + subDialR(station) ≤ dialRadius
+  //
+  // with subDialR(station) = (min(station, seconds) − clear) · factor.
+  // subDialR is PINNED by the inner station, so a reserve station moved
+  // outward alone carries a well of the seconds-pinned radius until the
+  // face runs out; the edge grows monotonically with the station either
+  // way, so the bound is closed-form in two branches on which station is
+  // the min. Deliberately NOT here: §74's "headroom 0 at ≈22.34", a
+  // lockstep artifact tier A already corrected, and the ≈19.9 dogleg
+  // ceiling, which has been the ALARM corner's own dimension since tier B.
+  // The reduction train adds its own inward floor — the span-solved module
+  // goes below tooth stock long before the well degenerates — asserted
+  // beside rsvModule1 in main.js; the reconfigure handle composes both.
+  const _sdFactor = (aesthetics.dial.subdials && aesthetics.dial.subdials.radiusFactor) || 1;
+  const _secDist = -SECONDS_LOCAL.y;
+  const _rsvrPinnedMax = dialRadius - (_secDist - SUBDIAL_INBOARD_CLEAR) * _sdFactor;
+  const rsvrWindow = {
+    min: SUBDIAL_INBOARD_CLEAR,
+    max: _rsvrPinnedMax >= _secDist
+      ? _rsvrPinnedMax
+      : (dialRadius + _sdFactor * SUBDIAL_INBOARD_CLEAR) / (1 + _sdFactor),
+  };
+  if (rsvR !== null && !(rsvR > rsvrWindow.min && rsvR <= rsvrWindow.max))
+    warn(`reserve station ${rsvR.toFixed(2)} is outside its window (${rsvrWindow.min.toFixed(2)}, `
+      + `${rsvrWindow.max.toFixed(2)}] — at or inside the bore keep-out the well has no radius; past the `
+      + `ceiling its ring runs off the ${dialRadius.toFixed(2)} face. The build proceeds; the battery judges it`);
+
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,
     ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
     cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt,
-    plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR,
+    plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR, rsvrWindow,
   };
 }
 

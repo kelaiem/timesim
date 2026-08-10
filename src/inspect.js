@@ -1268,6 +1268,37 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Dial', b: 'Power reserve', min: CLEAR_MARGIN,
     contacts: [],
   },
+  // §94 tier C — THE RESERVE STATION'S TRAIN PAIRS, two of the three rows
+  // tier A left on the shelf ("nothing in tier A moves that station; tier C
+  // is where it earns its rows"). `rsvr` is a spec key now, so this station
+  // moves — the hand, its arbor and the well through the same dial-side
+  // neighbourhood the seconds rows police one station over. The third
+  // shelf row, `Dial ⇄ Power reserve`, was seeded by TODO 41's fix pass
+  // (above) in the same landing window — tier C measured the same 0.0014
+  // that pass fixed, and the fixed row needs no waiver.
+  {
+    // The station's mount: the w2 output arbor rises through the well
+    // floor's bore and the hand's bored collet seats on it — that joint
+    // is the display coupling, and it is the pair's whole content.
+    a: 'Power reserve', b: 'Power-reserve train', min: CLEAR_MARGIN,
+    contacts: [
+      ['reserveBoss', 'rsvHandArbor'],   // the collet ON the arbor — the display joint
+      ['reserveShaft', 'rsvHandArbor'],  // the blade crosses the axis over that collet
+    ],
+  },
+  {
+    // The same arbor against the DIAL: the joint above re-attributed
+    // through nesting (the hand is a dialFace descendant, so the Dial unit
+    // carries its meshes — the seconds rows' precedent), plus the real
+    // pass-through of the arbor in the well floor's bore.
+    a: 'Dial', b: 'Power-reserve train', min: CLEAR_MARGIN,
+    contacts: [
+      ['reserveBoss', 'rsvHandArbor'],   // the two rows above, re-attributed
+      ['reserveShaft', 'rsvHandArbor'],
+      ['rsvHandArbor', 'dialPlate'],         // the arbor passes the well floor's bore (SUBDIAL_BORE_R is derived from its radius)
+      ['rsvHandArbor', 'reserveSubdialFace'], // …and crosses the printed floor's plane inside that bore (the face is a zero-volume decal)
+    ],
+  },
   {
     a: 'Alarm release sleeve', b: 'Alarm disc', min: CLEAR_MARGIN,
     contacts: [
@@ -1411,7 +1442,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#1', why: 'input wheel pressed on its arbor' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#5', why: 'intermediate wheel on its stud' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#5', why: 'its pinion, same stud — the wheel+pinion pair' },
-  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'differential wheel on its stud' },
+  // §94 tier C named the arbor for the floors rows, and this row's `b`
+  // followed it: the selector was the mesh's index label (CylinderGeometry#8)
+  // only because the mesh had no name, and a label is not a stable ID —
+  // the full battery caught the stale selector as an undeclared
+  // intersection the moment the name landed (the couple-by-string trap,
+  // fired exactly as designed).
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'rsvHandArbor', why: 'differential wheel on its stud' },
   { unit: 'Alarm setting idler', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: 'idler wheel on its stud' },
   { unit: 'Alarm hammer', a: 'CylinderGeometry#1', b: 'CylinderGeometry#0', why: 'hammer arm riveted to the arbor boss' },
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'CylinderGeometry#0', why: 'hammer tail on the same boss' },
