@@ -9233,14 +9233,36 @@ declareRestoring('Minute jumper', 'spring',
 // well rings, so it moved 304° → 320°), the sampling landed differently, and
 // the star's reversal became visible. Nothing about the mechanism changed;
 // what changed is that the instrument can now see it.
-declareRestoring('Motion works', 'spring',
-  'the star is indexed by the minute jumper — the beak rides the flank, backs the star off, and the click spring drives it into the valley; the same blade the jumper unit declares, acting on the wheel it indexes',
-  'jumperClickSpring');
+// RETIRED by TODO 38's landing, measured. In pose space the star never
+// reverses: its angle steps are monotone within every axis (the back-off is
+// part of the jumper's SNAP, an ease, and CLAUDE.md's zero-dt trap means no
+// pose sweep can run it) — so the reversal the paragraph above describes was
+// never the star's own motion becoming visible. What set `reversed` was the
+// registry's witness-circle fit weighting per-POSE duplicates: the rest
+// frame's ~100 copies bias the fitted centre, the angle track about that
+// off-centre parametrization flips signs among the star's ~1e-4 rad beat
+// steps, and adding TODO 38's 12 inert poses moved the bias enough that the
+// artifact evaporated (star matrices bit-identical at every shared pose,
+// verdict flipped — TODO 43 files the detector debt). §48's stale rule then
+// did its exact job: the declaration outlived its reason. The spring itself
+// stays truthfully declared on 'Minute jumper', whose beak genuinely
+// reciprocates in pose space; the star-side physics (jumper indexes the
+// star) is real, ease-tier, and uninstrumented — TODO 29's class.
 declareRestoring('Maintaining detent', 'spring',
   'the detent spring seats the beak one CLEAR_MARGIN past the ring root; the saw teeth obstruct',
   'maintSpring');
 declareRestoring('Alarm setting arbor', 'two-way',
   'the alarm crown turns it in either direction; there is no return to provide');
+// TODO 38: the wind axis put 'Alarm crown' in the §48 population (the only
+// axis that spins it far enough to register). The mechanism's answer is the
+// setting arbor's, one member up the chain: the hand turns the crown both
+// ways — winding banks only forward because the CLIMB PAWL's saw is the
+// one-way element, not any return on the crown — so two-way driven is the
+// honest kind. (What the registry actually detected is an artifact — the
+// seam-vertex-biased centroid aliasing at 210° per registry step, TODO 43 —
+// but the declaration stands on the hand, not on the detector.)
+declareRestoring('Alarm crown', 'two-way',
+  'the hand turns it in either direction — the winding bank\'s one-way click is the climb pawl\'s saw, not a return on the crown; pulled, the set path is bidirectional by design');
 declareRestoring('Alarm disc', 'two-way',
   'geared to the alarm setting arbor, so the crown drives it both ways');
 // §48 — THE CASE THAT PROMPTED THE ENTRY, and it does not resolve the way
@@ -20019,6 +20041,22 @@ window.__clock = {
       alarmPusherStroke = false; alarmColLatched = false; alarmPusherT = 0;
     }
     if (p.alarmBarrelWind !== undefined) alarmBarrelWind = p.alarmBarrelWind; // §24 alarm-spring energy
+    // TODO 38 — the wind axis poses the winding INPUT: the crown's pushed-in
+    // rotation, banked from EMPTY (resetInputs' state). This is the closed
+    // form of the interactive wind path in tick() — the same ALARM_WIND_RATIO
+    // carries crown angle to barrel turns (the idlers drop out of the ratio
+    // but every wheel still poses rigidly from the barrel's angle below), and
+    // the phase backs out by ALARM_STRIKES_PER_BARREL_TURN exactly as winding
+    // decrements it live — assigned rather than integrated because a sweep
+    // revisits fractions non-monotonically and the live path only ever winds
+    // (aDelta > 0), so the pose must be a pure function of the input, not of
+    // pose history.
+    if (p.alarmWindRotation !== undefined) {
+      alarmCrownRotation = p.alarmWindRotation;
+      lastAlarmCrownRotation = p.alarmWindRotation; // no delta leaks into the next tick
+      alarmBarrelWind = clamp((p.alarmWindRotation / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
+      alarmStrikePhase = ALARM_PHASE_REST - alarmBarrelWind * ALARM_STRIKES_PER_BARREL_TURN;
+    }
     // §25 striking axis. Phase and wind are ONE mechanical quantity — the
     // barrel and the striking wheel are a single mesh — so posing the phase
     // must move the barrel with it, or the axis would sweep a striking train
@@ -20066,6 +20104,12 @@ window.__clock = {
   // Striking-train constants the inspector's 'alarmStrike' axis needs to sweep
   // a whole wind, and that a reader needs to check the ring against (§25).
   get alarmStrikesPerWind() { return ALARM_STRIKES_PER_WIND; },
+  // TODO 38 — crown turns for one full wind from empty, derived through the
+  // winding chain (ALARM_WIND_RATIO = pinion/barrel teeth; the idlers drop
+  // out): the 'alarmWind' axis's span. The axis's no-clock fallback quotes
+  // the same expression term for term — 1.75 / (12 / 44) — so both paths
+  // produce the identical double.
+  get alarmWindCrownTurns() { return ALARM_BARREL_TURNS / ALARM_WIND_RATIO; },
   get alarmRingSeconds() { return ALARM_RING_SECONDS; },
   get alarmBarrelTurns() { return ALARM_BARREL_TURNS; },
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry

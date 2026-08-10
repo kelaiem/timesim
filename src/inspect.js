@@ -782,6 +782,50 @@ export const AXES = [
     }),
   },
   {
+    // TODO 38 — THE WIND ITSELF, SWEPT. alarmStrike above is the only other
+    // axis that turns this barrel, and it runs RELEASED and ringing
+    // (alarmReleased: 1, §25 B) — so the whole winding chain had only ever
+    // been swept in the direction, and in the companion state, of a ring.
+    // A hand winds in the OTHER state: striker parked, §29 lock engaged
+    // (alarmOn: 0, alarmReleased: 0). What that adds is the combination,
+    // not the pawl's own excursion — measured, the §29 saw-tooth cam-out
+    // rides under alarmStrike too, because the pin's withdrawal
+    // (alarmPinDropPhys) is a physical ease a zero-dt pose sweep never
+    // integrates, so in pose space the pawl is seated on every axis. New
+    // here: the engaged lock lever over a collar at every barrel angle
+    // (alarmStrike turns the collar with the lever LIFTED; alarmToggle
+    // engages the lever over a PARKED barrel), and the striking train
+    // posed through the backing direction's phase range (below
+    // ALARM_PHASE_REST), which no monotone ring-down reaches.
+    //
+    // The axis poses the winding INPUT, not the output (TODO 20's law): the
+    // crown's pushed-in rotation over one full wind from empty. setPose
+    // derives alarmBarrelWind from it through ALARM_WIND_RATIO — the same
+    // derived constant tick()'s interactive wind path integrates — so the
+    // axis and a user's hand share one ratio chain (rule 2: angles travel
+    // the gears). The span is ALARM_BARREL_TURNS / ALARM_WIND_RATIO crown
+    // turns = 1.75 / (12 / 44); the literal fallback below is that SAME
+    // expression, term for term, because the §36 registry walks call
+    // pose(f) without a clock and the two paths must land bit-identical
+    // poses.
+    //
+    // n = 109 by alarmStrike's own reasoning, which transfers verbatim: the
+    // sweep crosses the same 1.75-turn barrel span, so the same 28 pin
+    // cycles (ALARM_BARREL_TURNS × 16 strikes/turn) pass the pawl — and the
+    // cam-out is a fast excursion within each cycle, so an n sharing a
+    // factor with 28 resamples the same in-cycle phases and steps over it.
+    // 109 is prime, hence coprime to 28, and gives the same per-step
+    // angular density over the same span (~5.8° of barrel per step, ~3.9
+    // samples per pin pitch, each at a distinct in-pitch phase).
+    name: 'alarmWind',
+    n: 109,
+    pose: (f, clock) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      alarmWindRotation: f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
+      alarmOn: 0, alarmReleased: 0, alarmCrownPullT: 0,
+    }),
+  },
+  {
     // TODO 29 — THE PARITY ITSELF, SWEPT. Every other alarm axis PINS
     // `alarmOn` (the `alarm` axis at 1 for its whole run, `alarmStrike`
     // likewise), so before this one no axis anywhere varied it — and the
@@ -1474,6 +1518,17 @@ export const INTRA_UNIT_WAIVERS = [
   // measured unable to coexist with the blade stub's swept corridor —
   // was removed (the plunger eye + the run's cheek mid-guide are the
   // two guidance stations).
+  // TODO 42 — the lifter's blade stub stands 0.167 into its own guide eye
+  // at the REST pose (crown pushed in, the as-booted state): stub top
+  // −5.14 vs the eye's band −5.31..−4.99, radial metal overlap 0.17..0.30.
+  // Unmasked by TODO 38's axis, which is the first to NAME
+  // alarmCrownPullT: 0 — every earlier measurement pass inherited
+  // alarmCrownPullT = 1 residue from the `alarm` axis, so the pair was
+  // only ever tested with the L depressed (stub at −5.52, clear). The fix
+  // is the eye's station, not this waiver: re-derive its z from the
+  // stub's rest top plus clearance (TODO 23's own arithmetic, one guide
+  // up).
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'LatheGeometry#10', debt: 'TODO 42' },
 ];
 export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
