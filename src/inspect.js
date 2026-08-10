@@ -181,6 +181,7 @@ export const MECH_GRAPH = {
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
     ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
+    ['Alarm click', 'Three-quarter plate'],  // §99: the click's shoulder screw and the spring's post stand on the plate top (the idler-stud convention)
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
     ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
@@ -238,7 +239,8 @@ export const MECH_GRAPH = {
     // reachable on the 'alarm' pose axis — nothing else writes it.
     ['Alarm crown', 'Alarm setting arbor'],  // 90° bevel mesh (crown PULLED OUT — set)
     ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
-    ['Alarm winding train', 'Alarm barrel'], // §25 C: climb pinion → idlers → barrel rim (12/44)
+    ['Alarm winding train', 'Alarm barrel'], // §99: climb pinion → idlers → the ARBOR's winding wheel (12/44 — W takes the rim's count, so the ratio survived the re-route)
+    ['Alarm barrel', 'Alarm click'],         // §99: the arbor ratchet's saw drives the click's rock (winding cams it out; the face holds the return — the maintaining detent's row, alarm-side)
     ['Alarm switch', 'Alarm lock'],          // §25 D: the column wheel blocks the lever's tail beak (column = OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
     ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
@@ -596,7 +598,9 @@ const EXPECTED_PAIRS = [
                                             // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
   ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
-  ['Alarm winding train', 'Alarm barrel'],  // §25 C: idler ⇄ barrel rim mesh
+  ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
+  ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
+  ['Alarm click', 'Three-quarter plate'],   // §99: the click stud and spring post stand on the plate top
   ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
@@ -783,20 +787,18 @@ export const AXES = [
   },
   {
     // TODO 38 — THE WIND ITSELF, SWEPT. alarmStrike above is the only other
-    // axis that turns this barrel, and it runs RELEASED and ringing
-    // (alarmReleased: 1, §25 B) — so the whole winding chain had only ever
-    // been swept in the direction, and in the companion state, of a ring.
-    // A hand winds in the OTHER state: striker parked, §29 lock engaged
-    // (alarmOn: 0, alarmReleased: 0). What that adds is the combination,
-    // not the pawl's own excursion — measured, the §29 saw-tooth cam-out
-    // rides under alarmStrike too, because the pin's withdrawal
-    // (alarmPinDropPhys) is a physical ease a zero-dt pose sweep never
-    // integrates, so in pose space the pawl is seated on every axis. New
-    // here: the engaged lock lever over a collar at every barrel angle
-    // (alarmStrike turns the collar with the lever LIFTED; alarmToggle
-    // engages the lever over a PARKED barrel), and the striking train
-    // posed through the backing direction's phase range (below
-    // ALARM_PHASE_REST), which no monotone ring-down reaches.
+    // axis that turns this barrel's members, and it runs RELEASED and
+    // ringing (alarmReleased: 1, §25 B); a hand winds in the OTHER state —
+    // striker parked, §29 lock engaged (alarmOn: 0, alarmReleased: 0).
+    // §99 changed WHAT MOVES under this axis, and the coverage claim moved
+    // with it: winding turns the ARBOR (wheel, ratchet, hook, winding
+    // train, crown) while the body and the whole strike side stand parked
+    // — the §25 C era's phase back-out (strike pins riding backward) was
+    // the rim-wound barrel's story and retired with it. What this axis
+    // uniquely sweeps now is the WIND side in its honest state: the arbor's
+    // full 1.75-turn travel under the parked companion state, and the
+    // CLICK riding the ratchet's 1.75 × 32 = 56 saw cam-outs — the working
+    // direction TODO 38 built this axis to police before the click existed.
     //
     // The axis poses the winding INPUT, not the output (TODO 20's law): the
     // crown's pushed-in rotation over one full wind from empty. setPose
@@ -804,19 +806,19 @@ export const AXES = [
     // derived constant tick()'s interactive wind path integrates — so the
     // axis and a user's hand share one ratio chain (rule 2: angles travel
     // the gears). The span is ALARM_BARREL_TURNS / ALARM_WIND_RATIO crown
-    // turns = 1.75 / (12 / 44); the literal fallback below is that SAME
-    // expression, term for term, because the §36 registry walks call
-    // pose(f) without a clock and the two paths must land bit-identical
-    // poses.
+    // turns = 1.75 / (12 / 44) — §99 re-based the ratio onto the arbor
+    // wheel, whose W is the rim's own count, so the value and this fallback
+    // survived verbatim; the literal below is that SAME expression, term
+    // for term, because the §36 registry walks call pose(f) without a
+    // clock and the two paths must land bit-identical poses.
     //
-    // n = 109 by alarmStrike's own reasoning, which transfers verbatim: the
-    // sweep crosses the same 1.75-turn barrel span, so the same 28 pin
-    // cycles (ALARM_BARREL_TURNS × 16 strikes/turn) pass the pawl — and the
-    // cam-out is a fast excursion within each cycle, so an n sharing a
-    // factor with 28 resamples the same in-cycle phases and steps over it.
-    // 109 is prime, hence coprime to 28, and gives the same per-step
-    // angular density over the same span (~5.8° of barrel per step, ~3.9
-    // samples per pin pitch, each at a distinct in-pitch phase).
+    // n = 109: prime, so coprime to every cycle count this sweep crosses —
+    // the §25 C sizing argued it against 28 strike-pin cycles, and §99's
+    // ride argues it against the ratchet's 56 (gcd(109, 56) = 1): the
+    // cam-out is a fast excursion within each tooth pitch, and an n
+    // sharing a factor with the cycle count would resample the same
+    // in-pitch phases and step over it. ~5.8° of arbor per step, ~1.9
+    // samples per saw pitch at distinct in-pitch phases.
     name: 'alarmWind',
     n: 109,
     pose: (f, clock) => ({
@@ -1351,6 +1353,25 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmSleeveWeb', 'alarmTailPin'],   // the web rides the same derivation chain as the bore
     ],
   },
+  // §99 — the winding pair's blanket excuse retired: the ONE contact is the
+  // idler⇄arbor-wheel mesh; everything else between the units (i2's disc
+  // over the body's lid at the tier's derived margin+ε, the climb pinion,
+  // the studs) owes the floor.
+  {
+    a: 'Alarm winding train', b: 'Alarm barrel', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmWindIdler', 'alarmArborWheel'], // §99 working mesh — the chain solve phases it, the battery's mesh checks own it
+    ],
+  },
+  // §99 — the hold: the beak parks ON the saw (the handoffs row measures the
+  // kiss; the alarmWind penetration budget polices the ride), and nothing
+  // else of the click may touch the barrel anywhere in the cycle.
+  {
+    a: 'Alarm click', b: 'Alarm barrel', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmClickPawl', 'alarmArborRatchet'], // the parked kiss + the ratcheting ride
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -1458,11 +1479,16 @@ export const INTRA_UNIT_CONTACTS = [
   // longer REACHABLE by a mover-vs-fixture check: arbor and boss are now both
   // fixtures (the arbor stands in the frame, planted in the boss's bore), and
   // the label moved from an index to a name in the same change.
-  { unit: 'Alarm barrel', a: 'alarmBarrelArbor', b: 'CylinderGeometry#0', why: 'the fixed arbor planted in its boss — the ground. Both sides are fixtures since §89, so this row is unreachable; the geometry is unchanged and the declaration is its record' },
-  { unit: 'Alarm barrel', a: 'mainspringRibbon', b: 'alarmBarrelArbor', why: '§89: the inner coil BEARS ON the fixed arbor — springInner is arborR + one ribbon radius by construction, so the coil\'s inner surface and the arbor\'s are the same surface. The drum states this against its collar across a unit boundary (Set-up work ⇄ Mainspring drum); here the seat is inside the unit, so it is declared here' },
-  { unit: 'Alarm barrel', a: 'mainspringRibbon', b: 'alarmSpringArborHook', why: '§89: the ribbon\'s inner END butts the arbor hook\'s flank — TODO 1\'s anchor, on this barrel\'s own arbor. The lug\'s azimuth is derived from innerAnchorAz and it stands one ribbon thickness proud, so at full wind the second coil comes down onto it at coil bind' },
-  { unit: 'Alarm winding train', a: 'ExtrudeGeometry#3', b: 'CylinderGeometry#5', why: 'idler 1 on its stud' },
-  { unit: 'Alarm winding train', a: 'ExtrudeGeometry#6', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
+  { unit: 'Alarm barrel', a: 'alarmBarrelArbor', b: 'LatheGeometry#0', why: '§99: the arbor RUNS in its bored boss now (PIVOT_BORE_CLEAR fit, so the pair measures clear rather than joined); the row is the bearing\'s record — §89\'s "both fixtures, unreachable" flipped to mover-vs-fixture the day the arbor became the wound member, and the boss became a lathe when it gained its bore' },
+  { unit: 'Alarm barrel', a: 'mainspringRibbon', b: 'alarmBarrelArbor', why: '§89: the inner coil BEARS ON the arbor — springInner is arborR + one ribbon radius by construction, so the coil\'s inner surface and the arbor\'s are the same surface. §99 made both sides MOVERS (the arbor winds, the ribbon morphs), so the mover-vs-fixture check no longer reaches this pair — the row stays as the joint\'s record (TODO 5\'s mover-vs-mover residue)' },
+  { unit: 'Alarm barrel', a: 'mainspringRibbon', b: 'alarmSpringArborHook', why: '§89: the ribbon\'s inner END butts the arbor hook\'s flank — TODO 1\'s anchor. §99 moved the hook onto the arbor ROTOR (the inner end tracks the arbor: setWind\'s sweep is the relative angle), so both sides are movers and the pair sits in TODO 5\'s residue; the row stays as the anchor\'s record' },
+  { unit: 'Alarm barrel', a: 'alarmArborWheel', b: 'alarmBarrelArbor', why: '§99: the winding wheel pressed on the arbor — bore cut at the arbor\'s own radius, the drive fit IS the joint (the power-reserve train\'s "wheel pressed on its arbor" convention)' },
+  { unit: 'Alarm barrel', a: 'alarmArborRatchet', b: 'alarmBarrelArbor', why: '§99: the ratchet keyed on the arbor\'s filed square (across-corners = the arbor\'s diameter — the set-up ratchet\'s convention)' },
+  { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#5', why: 'idler 1 on its stud (§99 named the idler meshes for the winding pair\'s floors row; the stud keeps its index label)' },
+  { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
+  { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickStud', why: '§99: the click on its shoulder screw (the hook carries no bore — the blade seats on the stud, the set-up click\'s own construction)' },
+  { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickScrewHead', why: '§99: the click under its screw head — the head retains it axially, faces sharing the plane' },
+  { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
   { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#6', why: 'lock lever on its pivot post (index moved 4→6 when TODO 24 added the beak riser+nose to the lever)' },
   { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#6', why: 'lever tail on the same post' },
   { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#3', why: 'column wheel on its stud' },
@@ -1476,6 +1502,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#9', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#11', why: 'lay shaft in hanger bush 2' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },
+  // §99 found the other two joints of the same cluster, the same way the
+  // declared row below found its first: the two wheels keyed to the long
+  // keyless arbor sit at the measurement boundary and the flag flips
+  // run-to-run (measured on pristine main: present in one run, absent in
+  // the next, wandering across poses). The joints are real — wheels
+  // pressed on their arbor, the power-reserve convention — and declaring
+  // them is what stops the battery flickering on float noise.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#41', b: 'CylinderGeometry#38', why: 'crown-end wheel pressed on the long keyless arbor (d≈1e-4 marginal, like its neighbour row)' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#42', b: 'CylinderGeometry#38', why: 'centre-end wheel pressed on the same arbor (same marginal cluster)' },
   { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
   { unit: 'Dial', a: 'alarmIndexWedge', b: 'ShapeGeometry#3', why: '§34\'s index wedge stands proud THROUGH the face sheet by design — the face is a zero-volume decal plane, not stock (note: parity containment is undefined on open sheets; the crossing itself is real)' },
   { unit: 'Minute jumper', a: 'jumperBeak', b: 'CylinderGeometry#3', why: 'beak lever on its pivot stud' },
@@ -1781,11 +1816,11 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const fromAlarmSpring = reachable(MECH_GRAPH.drive, 'alarm mainspring'); // §25 striking-works force source
   const undriven = [];
   const sourceFor = (name) => (name === 'crown' ? fromCrown
-    : name === 'alarm' ? fromAlarm
+    : name === 'alarm' || name === 'alarmWind' ? fromAlarm // §99: the wind axis's force is the alarm crown's hand (documentary while reachable() is undirected — every set is the connected component — but the honest source the day it grows a direction)
     : name === 'alarmStrike' ? fromAlarmSpring
     : fromSpring);
   const forceFor = (name) => (name === 'crown' ? 'crown'
-    : name === 'alarm' ? 'Alarm crown'
+    : name === 'alarm' || name === 'alarmWind' ? 'Alarm crown'
     : name === 'alarmStrike' ? 'alarm mainspring'
     : 'mainspring');
   for (const axis of axes) {
@@ -2221,6 +2256,34 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
+    // §99 — the click's ride over the arbor ratchet, swept on the axis that
+    // exists for it (TODO 38 sequenced the axis before this click so the
+    // working direction is policed from day one): 1.75 turns × 32 teeth =
+    // 56 cam-outs per full wind. The pair is EXPECTED (the beak parks on
+    // the saw), so the overlap sweep is structurally blind here. Budget at
+    // HANDOFF_TRACK_TOL, the P2 rule — a working ride may interpenetrate by
+    // at most the tessellation-sag slack the finish already treats as
+    // invisible; the beak's full lift is ~1.2, so a 0.12 budget would grade
+    // touching and buried as one measurement.
+    pair: ['Alarm barrel', 'Alarm click'],
+    maxDepth: HANDOFF_TRACK_TOL,
+    axis: 'alarmWind',
+    // Density inherited from the pin⇄tail row, the family's calibration:
+    // 240 samples over 28 pin cycles = 8.57 per cycle; this ride has 56 saw
+    // cycles, so 480 holds the same per-cycle net.
+    nSamples: 480,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmArborRatchet') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmClickPawl') out.push(o); });
+      return out;
+    },
+  },
+  {
     // §61 — chain-on-cone, the row the file header owed since the escape-
     // wheel budgets landed (TODO 4). The pair is EXPECTED (the chain lies
     // in the cone's grooves), so the overlap sweep is structurally blind
@@ -2444,6 +2507,19 @@ const ALARM_HANDOFFS = [
     label: 'pusher pawl ⇄ ratchet skirt',
     unitA: 'Alarm switch', meshA: 'alarmColWheel',
     unitB: 'Alarm switch', meshB: 'alarmPusherPawl',
+  },
+  {
+    // §99 — THE HOLD TODO 37 BUILT: the click's beak parked on the arbor
+    // ratchet's saw. The park is not a measured-once constant: tick's ride
+    // law poses the beak ON sawRadiusAt (the builder's own cut, exported as
+    // ratchetPoly), so the kiss holds at every parity and every wind — the
+    // pusher-pawl row's convention on the wheel this movement was missing.
+    // The ratcheting STROKE (winding cams the beak out tooth by tooth) is a
+    // transient these static poses cannot reach; the alarmWind penetration
+    // budget polices it over the full 56-cycle ride.
+    label: 'click beak ⇄ arbor ratchet',
+    unitA: 'Alarm barrel', meshA: 'alarmArborRatchet',
+    unitB: 'Alarm click', meshB: 'alarmClickPawl',
   },
   {
     // TODO 24 closed: the LOCK side's read was law-only — the tail's z band
@@ -4160,6 +4236,10 @@ export const STOCK_KIND_BY_MESH = {
   // quarter-to-half scale (TODO 11) leaves nothing spare here.
   alarmSpringArborHook: 'pivot',
   barrelClickPawl: 'spring',   // integral click: spring-tempered pawl stock
+  // §99 — the alarm barrel's own click:
+  alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
+  alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
+  alarmClickStud: 'pivot',     // the shoulder screw's post — pin-class, ⌀ 1.0 u over the pivot floor
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
@@ -4691,6 +4771,13 @@ const FINGERPRINT_POSES = [
   // — mid-RING: armed, released, part-wound — the brake lever lifted off the
   //   collar, the column wheel in a gap, the striker mid-cycle.
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 5.2 },
+  // — §99: WOUND AT REST — the state class the wound-arbor split created
+  //   (wind and phase independent: a full ribbon over a parked striker).
+  //   The arbor stands a full 1.75 turns from its run-down angle, the click
+  //   parked on a different tooth, the ribbon at coil bind — none of which
+  //   any pose above reaches, and the wind path's refactors go unguarded
+  //   without it (the list's own rule).
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmBarrelWind: 1.75 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,
