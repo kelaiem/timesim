@@ -9534,13 +9534,12 @@ each key retired, and the full check suite's verdict at that spec.
 
 ### The gate
 
-Measured at the build: identity boots SILENT and fingerprints
-2134288613 — bit-identical to the tree this landed on — and every
-declared spec point was probed before its row was written. The full
-battery on the finished branch (this key plus §97 beside it) and the
-`--report` diff against the §94 tier C tree are the landing run's; its
-confirmed lines are in the landing PR, per the repo's convention that a
-record claims no number before it exists.
+Full battery at identity on the finished branch (this key plus §97
+beside it, local): **19/19 gates pass**, boot silent, fingerprint
+**2134288613 on both virgin boots** — bit-identical through both keys.
+`spec boots` 26/26 with the identity control silent. The `--report`
+diff against the §94 tier C tree: 13 leaves, all per-check `ms` wall
+clock — neither key adds geometry or check rows at the default spec.
 
 ## §97 — `?subdialr=` : the sub-dial well radius as a spec dimension, and the finish knob retired
 
@@ -9608,10 +9607,10 @@ the ring, which is also what a finger would expect.
 
 ### The gate
 
-Measured at the build: identity boots SILENT and fingerprints
-2134288613 — bit-exact through the factor's retirement and the
-promotion — the persisted-override boot proved clean, and every
-declared spec point was probed before its row was written. The full
-battery on the finished branch (this key plus §98 beside it) and the
-`--report` diff against the §94 tier C tree are the landing run's; its
-confirmed lines are in the landing PR, same convention as above.
+Full battery at identity on the finished branch (this key plus §98
+beside it, local): **19/19 gates pass**, boot silent, fingerprint
+**2134288613 on both virgin boots** — bit-exact through the factor's
+retirement and the promotion, the entry's IEEE-754 claim held by the
+instrument. The persisted-override boot proved clean, every declared
+spec point was probed before its row was written, and the `--report`
+diff against the §94 tier C tree is 13 `ms` leaves and nothing else.
