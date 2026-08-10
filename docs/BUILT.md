@@ -9700,3 +9700,64 @@ and the ratchet drawn from its own cut outline (`userData.profile` — a
 saw drawn as a pitch circle is a false glyph); a wound-at-rest
 fingerprint pose (the state class the split created); and the
 equalisation record's hold quantum (2π/32, half a strike).
+
+## §100 — the going drum turns ON its arbor: the fixed member moves to the set-up work (TODO 39 closed)
+
+The claim was always right and the model was always wrong. A fusee
+movement's going barrel has a FIXED arbor: the set-up ratchet holds it,
+the drum turns around it, and the mainspring's inner end is pinned to a
+collar on it — which is exactly why the collar and hook have lived in the
+static `Set-up work` unit since TODO 1. But the arbor CYLINDER those
+parts claim to sit on was built by `makeBarrel` inside the rotating
+group, so it turned with the drum — a lie no instrument could see,
+because a cylinder rotating about its own axis is visually identical to
+one standing still, `intraUnit` had no fixture in the unit to compare
+against, and the collar's overlap lives in an EXPECTED pair. TODO 39
+filed it for exactly that reason; §89 had already built the fix and
+proven it on the alarm barrel.
+
+### What moved, and why each piece belongs where it landed
+
+`makeBarrel` gets the §89 arguments (`arbor: false`, `arborBoreR =
+barrelArborR + PIVOT_BORE_CLEAR`), so the drum's floor and lid are bored
+for the arbor they run on — the bearing is body-on-arbor now, the alarm
+barrel's arrangement. The arbor itself is built with the set-up work,
+same spans and radii the rotating copy carried, each now derived where it
+lives: the working section (`barrelArborR` = 0.9) from the old `arborH`'s
+own bottom up to `TQ_MID_Z`, where it stands in the plate's plain
+bushing; below, it necks to the 0.6 staff the set-up square was always
+filed onto (`SQ` across-corners has quoted that staff's diameter since
+the square was built) and runs to the base plate's seat.
+
+The old `addLowerPivot`/`addUpperPivot` calls on the rotating group are
+deleted. On a fixed arbor those were not pivots — they were the arbor's
+own ends drawn on the wrong member. The plate-bore registration moved to
+the arbor build (same derived radii the calls carried as 0.9/0.95
+literals), and the lower JEWEL is gone outright: a jewel bears a rotating
+staff, and this one no longer rotates — the fusee arbor's own "plain
+bushed bore, no jewel" argument, one member over. The bore stays a
+running clearance rather than a press fit because the arbor must be able
+to turn at the BENCH: lift the click and let the spring down — that is
+what the let-down convention on this movement's other arbors already
+models.
+
+### The support graph now tells the fusee story
+
+`Mainspring drum → Set-up work` (body on its arbor, measured gap 0) and
+`Set-up work → Three-quarter plate` (arbor top in the bushing, gap 0.05 =
+`PIVOT_BORE_CLEAR`) replace the two rows that grounded the drum on both
+plates. The drum's EXPECTED grant against the plate became a `Set-up
+work` row for the same reason — an EXPECTED grant on a pair that can no
+longer touch is a standing excuse. Measured at landing: the arbor's world
+matrix is bit-identical across the `reserve` axis while the body's
+moves; support 0 failures with both new edges green.
+
+### Residue, stated
+
+The arbor⇄square and arbor⇄collar joints are fixture-vs-fixture inside
+one unit — TODO 5's still-invisible class, recorded in the TODO rather
+than as dead declarations. The drum-bore⇄arbor bearing is cross-unit
+inside an EXPECTED pair with no floors row — TODO 6's catalogued residue.
+The new meshes are kinded (`mainspringDrumArbor`, `mainspringDrumStaff` —
+shaft stock over the pivot floor by an order of magnitude) rather than
+left to swell the unit's default-kind waiver.

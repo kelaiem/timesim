@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-09 — items with work left first, with what remains:
+refreshed 2026-08-10 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -33,16 +33,17 @@ refreshed 2026-08-09 — items with work left first, with what remains:
 | 32 | PART CLOSED | The going half is closed; the alarm's cadence stays authored until a governor model exists |
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
-| 37 | OPEN | The alarm barrel holds its wind with somebody else's lock |
-| 38 | OPEN | No axis WINDS anything, so the sweeps only ever see the alarm run down |
-| 39 | OPEN | The going drum's arbor turns with the drum it is supposed to hold |
+| 38 | NARROWED | Alarm wind swept (the `alarmWind` axis); the GOING tranche remains — its honest n (~360) projects sweptOverlap's CI worst past an hour, parked on roadmap §82's confirm-tier shrink or an explicit acceptance |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
+| 42 | OPEN, waived | The lifter's blade stub stands 0.167 into its own guide eye at rest — the `intraUnit` waiver cites this item |
+| 43 | OPEN | Three measured detector artifacts in the §36 registry's `reversed` flag |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
 named residue — the instrument gap is roadmap §77's subject, not this
-item's), 33, 35, 41 — plus the *Recently closed* bucket at the end
-(former items 2 and 8 live there).
+item's), 33, 35, 37 (§99 — the wound arbor and its click), 39 (§100 —
+the going drum's fixed arbor), 41 — plus the *Recently closed* bucket at
+the end (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
@@ -4217,7 +4218,43 @@ again. Land it after roadmap §82 shrinks the confirm tier, or accept
 the hour explicitly; either way the number is now measured, not
 assumed.
 
-## 39. The going drum's arbor turns with the drum it is supposed to hold
+## 39. CLOSED (§100) — the going drum turns ON its arbor; the arbor and its ends live with the set-up work
+
+**Closed as filed, with one prediction sharpened.** The fix was exactly the
+two `makeBarrel` arguments §89 built (`arbor: false`, `arborBoreR` =
+`barrelArborR + PIVOT_BORE_CLEAR`) plus the member move this item priced:
+the arbor cylinder, its lower staff (the 0.6 the set-up square was always
+filed onto — `SQ` across-corners quoted that staff's diameter from the
+day it was built), and the three-quarter plate's bore registration all
+belong to `Set-up work` now, built beside the collar, hook, square,
+ratchet and click that always claimed to sit on them. The old
+`addLowerPivot`/`addUpperPivot` calls on the rotating group are deleted —
+and the lower JEWEL went with them: a jewel bears a rotating staff, and
+this staff no longer rotates (the plain-seat arrangement the fusee's own
+"no chaton" comment already argued). Measured: the arbor's world matrix is
+bit-identical across the `reserve` axis while the body's moves, and the
+member is continuous from the base plate's seat (−1) through the square
+band to the plate bushing (8.107).
+
+**The support edges moved as priced, and the graph now tells the fusee
+story**: `Mainspring drum → Set-up work` (the body's bored floor and lid
+run on the arbor — measured gap 0 through the ribbon-on-collar contact)
+and `Set-up work → Three-quarter plate` (the arbor's top in the plate's
+plain bushing, gap 0.05 = `PIVOT_BORE_CLEAR`) replace the two rows that
+grounded the drum on both plates through furniture drawn on the wrong
+member. The drum's EXPECTED grant against the plate became a Set-up work
+row for the same reason.
+
+**Residue, stated**: the arbor⇄square and arbor⇄collar joints are
+fixture-vs-fixture inside one unit — TODO 5's still-invisible class, so
+they are recorded here rather than as dead `INTRA_UNIT_CONTACTS` rows no
+instrument can reach. The drum-bore⇄arbor bearing is cross-unit inside an
+EXPECTED pair with no floors row — TODO 6's catalogued residue, not new
+debt.
+
+The original filing, kept as the record:
+
+### The going drum's arbor turns with the drum it is supposed to hold (original)
 
 The mainspring's inner end is genuinely pinned — TODO 1 built that, and the
 parts it is pinned to are static: the collar and its hook lug belong to the

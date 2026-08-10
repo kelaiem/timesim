@@ -3434,7 +3434,15 @@ const Z_DRUM = (DRUM_BOT_Z + DRUM_TOP_Z) / 2; // drum body is built centred; ban
 // pivot to continue.
 const barrel = G.makeBarrel({
   radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true,
-  arborH: 2 * (TQ_MID_Z - Z_DRUM),
+  // §100 (TODO 39) — the drum turns ON a FIXED arbor now, as a fusee
+  // barrel does: `arbor: false` stops the builder putting a rotating copy
+  // in this group, and the floor and lid are bored one PIVOT_BORE_CLEAR
+  // over the static arbor they run on. The arbor itself is built with the
+  // set-up work below — the unit that already owns everything else on
+  // that axis (square, ratchet, click, collar, hook), because the set-up
+  // ratchet is what HOLDS the arbor. §89 built this option for the alarm
+  // barrel; this is the going drum taking it.
+  arbor: false, arborBoreR: G.barrelArborR(DRUM_R_ACTUAL) + PIVOT_BORE_CLEAR,
   // TODO 1's remaining half: the ribbon is a WIND MORPH between two fixed
   // ends, not a spiral rotated and scaled by tension. Its inner end is on the
   // set-up work's static collar, its outer on the drum wall, and the drum's
@@ -3468,9 +3476,12 @@ drumGroup.add(barrel);
 movement.add(drumGroup);
 registerExplode(drumGroup, Z_DRUM, 1);
 registerLabel('Mainspring drum', drumGroup);
-// The drum turns on its own arbor between the plates — lower pivot into
-// the main plate, same as every train arbor (see addLowerPivot above).
-addLowerPivot(drumGroup, { staffR: 0.6, jewelR: 1.4 });
+// §100 (TODO 39): NO pivot furniture on this group any more. The old
+// addLowerPivot/addUpperPivot calls hung a staff and a bore-reaching
+// shaft on the ROTATING group — on a fixed arbor those are not pivots at
+// all, they are the arbor's own ends planted in the plates, and they
+// belong to the static member. Both live with the set-up work now; the
+// drum's bearings are its own bored floor and lid running on that arbor.
 
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
 const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
@@ -3945,12 +3956,13 @@ function updateChainIfMoved() {
 //
 // The spring DRUM does NOT get an opening. Its body tops out at 9.5, a full
 // 3.3 under the plate — the 13.0 that made it look like a through-part is its
-// ARBOR, and an arbor reaching the plate is a pivot, not an obstruction. So
-// it is bored and bushed like everything else (plain brass, no jewel: this is
-// the slow, heavily-loaded barrel arbor, and a 0.8 plate cannot swallow a
-// chaton wide enough for it anyway) — which also gives the drum the upper
-// bearing it never had.
-addUpperPivot(drumGroup, { staffR: 0.9, jewelR: 0, boreR: 0.95 });
+// ARBOR, and an arbor reaching the plate is located there, not obstructed. So
+// it is bored plain like everything else (no jewel: this is the slow,
+// heavily-loaded barrel arbor, and a 0.8 plate cannot swallow a chaton wide
+// enough for it anyway). §100 (TODO 39): the bore registration moved to the
+// set-up work's arbor build — the member that actually stands in it — with
+// the same derived radii (staff = barrelArborR, bore = staff +
+// PIVOT_BORE_CLEAR, the 0.9/0.95 this call carried as literals).
 
 // ---------------------------------------------------------------------------
 // MAINTAINING POWER — Harrison's sandwich at the great wheel, the honest
@@ -4388,6 +4400,47 @@ const setupWork = new THREE.Group();
   hookLug.position.set(Math.cos(lugAz) * lugR, Math.sin(lugAz) * lugR, Z_DRUM);
   hookLug.rotation.z = lugAz;
   az.add(hookLug);
+  // §100 (TODO 39) — the ARBOR ITSELF, the static member everything above
+  // sits on. Until now the collar, hook, square and ratchet were static
+  // while the arbor CYLINDER they claim to sit on was parented to the drum
+  // and turned with it — a lie no instrument could see (a cylinder
+  // rotating about its own axis looks identical to one standing still).
+  // Same spans and radii as the rotating copy carried, now derived where
+  // they live: the working section is barrelArborR thick from the old
+  // arborH's own bottom (2·Z_DRUM − TQ_MID_Z — centred on the body,
+  // reaching the plate's bearing plane) up to TQ_MID_Z, where it stands in
+  // the three-quarter plate's plain bore; below, it necks to the 0.6 staff
+  // the set-up square is filed onto (SQ across-corners = that staff's
+  // diameter, declared at the top of this block) and runs down to the base
+  // plate's seat. The drum's bored floor and lid run ON the working
+  // section, PIVOT_BORE_CLEAR over it — the bearing is body-on-arbor,
+  // exactly the alarm barrel's §89 arrangement.
+  const arborR = G.barrelArborR(DRUM_R);
+  const arborTopZ = TQ_MID_Z;
+  const arborBotZ = 2 * Z_DRUM - TQ_MID_Z;
+  // Rule 6: the working section must span the whole body, or the floor and
+  // lid bores (cut for arborR) are running on the thin staff instead.
+  if (arborBotZ > Z_DRUM - DRUM_HEIGHT / 2)
+    console.warn(`TODO 39: arbor's working section bottoms at ${arborBotZ.toFixed(2)}, above the drum floor ${(Z_DRUM - DRUM_HEIGHT / 2).toFixed(2)} — the body's bores are riding the neck`);
+  const arbor = new THREE.Mesh(
+    new THREE.CylinderGeometry(arborR, arborR, arborTopZ - arborBotZ, 16), MATS.steel);
+  arbor.name = 'mainspringDrumArbor';
+  arbor.rotation.x = Math.PI / 2;
+  arbor.position.z = (arborTopZ + arborBotZ) / 2;
+  az.add(arbor);
+  const staff = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.6, 0.6, arborBotZ - PIVOT_SEAT_Z, 12), MATS.steel);
+  staff.name = 'mainspringDrumStaff';
+  staff.rotation.x = Math.PI / 2;
+  staff.position.z = (arborBotZ + PIVOT_SEAT_Z) / 2;
+  az.add(staff);
+  // The plate's bore, registered by the member that stands in it (the
+  // rotating group used to claim this): plain bushing, no jewel — bore =
+  // arbor + the running clearance, so the arbor can be let down at the
+  // bench when the click is lifted. addUpperPivot measures this group's
+  // box top (= the arbor's own top now), so it records the bore and adds
+  // no shaft.
+  addUpperPivot(setupWork, { staffR: arborR, jewelR: 0, boreR: arborR + PIVOT_BORE_CLEAR });
   movement.add(setupWork);
   registerExplode(setupWork, 0, 1); // base-plate furniture now
   registerLabel('Set-up work', setupWork);
