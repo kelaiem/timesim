@@ -898,6 +898,8 @@ const KEYLESS_INPUTS = {
   // §94 tier C — the reserve station's radius spreads in only when present,
   // so identity passes nothing and stays bit-exact (d4's null rule).
   ...(SPEC.rsvr !== null ? { rsvR: SPEC.rsvr } : {}),
+  // §98 — the alarm corner's radius, same null rule.
+  ...(SPEC.alarmr !== null ? { alarmR: SPEC.alarmr } : {}),
 };
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -15965,6 +15967,7 @@ function reconfShowStatus() {
     if (SPEC.balanceStepDeg !== null) parts.push(`balance target ${SPEC.balanceStepDeg.toFixed(1)}\u00b0`);
     if (SPEC.d4 !== null) parts.push(`small-seconds station ${SPEC.d4.toFixed(2)} from the centre`);
     if (SPEC.rsvr !== null) parts.push(`reserve station ${SPEC.rsvr.toFixed(2)} from the centre`);
+    if (SPEC.alarmr !== null) parts.push(`alarm corner ${SPEC.alarmr.toFixed(2)} from the centre`);
     // The spec line quotes solver-tier values and stays English with them
     // (the i18n.js residue); the empty-spec sentence is chrome, so it
     // translates. §93 names the FUSEE rather than "barrel": the ring sits on
@@ -16400,7 +16403,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4', 'rsvr'];
+const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4', 'rsvr', 'alarmr'];
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }

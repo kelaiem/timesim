@@ -124,7 +124,19 @@ export const SPEC = (() => {
   // KEYLESS_INPUTS passes no radius at all, so the station derives from
   // dialRadius · 0.39 and identity stays bit-exact.
   const rsvr = Number.isFinite(Number(raw.rsvr)) ? Number(raw.rsvr) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4, rsvr });
+  // §98 — THE ALARM CORNER'S RADIUS, §76's missing pin. The corner's
+  // DEFAULT tracks the plate (alarmCornerR = dialRadius·0.39 since §94
+  // tier B), so a grown balance grows the plate and carries the whole
+  // setting cluster outward into fixed-radius neighbours — §76 measured
+  // every remaining balance wall down to exactly that. A spec'd radius
+  // pins the corner where the movement wants it. Like d4/rsvr, NOT
+  // clamped here: solveKeyless warns at the stem bound it owns, and the
+  // interior bounds are the setting dogleg's own asserts (no intersection
+  // past ≈19.9) and the winding chain's derived idler — all loud, all
+  // with numbers. null = as designed: identity passes nothing and the
+  // default arithmetic is untouched, bit-exact.
+  const alarmr = Number.isFinite(Number(raw.alarmr)) ? Number(raw.alarmr) : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4, rsvr, alarmr });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -671,6 +683,7 @@ export function solveKeyless({
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
   stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
   rsvR = null,      // §94 tier C — the reserve station's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
+  alarmR = null,    // §98 — the alarm corner's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -867,7 +880,22 @@ export function solveKeyless({
   // same input as the reserve station above, so identity geometry is
   // bit-exact; the two quantities stop sharing a NAME, not a home (§13
   // step 3b's one-solver property survives intact).
-  const alarmCornerR = dialRadius * 0.39;
+  // §98 — and since the default TRACKS the plate, a grown movement drags
+  // the whole setting cluster outward into fixed-radius neighbours (§76
+  // measured every remaining balance wall down to that). A spec'd radius
+  // pins the corner; identity passes null and keeps the arithmetic.
+  const alarmCornerR = alarmR !== null ? alarmR : dialRadius * 0.39;
+  // The one bound THIS solver owns for a spec'd corner: the stem must
+  // reach the case rim with positive length (alarmStemLen = plateR + 2.2
+  // − corner in main.js). The interior bounds live with their own
+  // instruments — the dogleg's two-circle solve goes route-null past
+  // ≈ 19.9 and says so, and the winding chain's idler derives from the
+  // span with its plate ceiling asserted — so this warn brackets only
+  // what they cannot see.
+  if (alarmR !== null && !(alarmR > 0 && alarmR < plateR + 2.2))
+    warn(`alarm corner radius ${alarmR.toFixed(2)} is outside (0, ${(plateR + 2.2).toFixed(2)}) — `
+      + `past the ceiling the stem has no length inside the case rim; the build proceeds and its own `
+      + `asserts judge the interior`);
   // Small seconds live ON the fourth wheel's axis — dial-local coordinates
   // mirror world x through the dialFace Y-flip.
   const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };

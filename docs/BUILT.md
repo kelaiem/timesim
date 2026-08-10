@@ -9488,3 +9488,55 @@ Verified against five dangerous entries, each caught: `src/*i18n*.js` (→
 asymmetry the workflow's own header warns about), `vendor/*.js`, `**/*.js` —
 plus both unreadable cases, a renamed key and a missing file. The current list
 passes: 12 patterns against the 12 files reachable from `index.html`.
+
+## §98 — `?alarmr=` : the alarm corner's radius as a spec dimension, §76's missing pin
+
+Filed and built 2026-08-10, from §76's Phase A re-measure. That sweep
+reduced every remaining balance wall to ONE cause: the corner's default
+radius tracks the plate (`alarmCornerR = dialRadius · 0.39` since §94
+tier B), so a grown balance grows the plate and carries the whole
+setting cluster outward into fixed-radius neighbours — the climb pivot
+into the balance's plate cut, i2 into the winding climb (azimuth-
+invariant, both ride the corner), i1 into the §34 selector posts.
+§94's scope guard had deliberately left this key unfiled; §76 needing
+it was the trigger to file it, and tier B's decoupling is what makes it
+ONE key instead of ten edits — the climb, the stem, the collar, the
+dogleg and both plates' bores all follow `alarmCornerR` already.
+
+### The build is §94 tier C's C1, one dimension over
+
+`alarmR = null` joins `solveKeyless`; `SPEC.alarmr` defaults null and
+`KEYLESS_INPUTS` spreads it in only when present, so identity passes
+nothing, evaluates the same arithmetic, and fingerprints 2134288613 on
+both virgin boots — bit-exact. The solver warns on the one bound IT
+owns for a spec'd corner — the stem must have positive length inside
+the case rim, `(0, plateR + 2.2)` — and deliberately leaves the
+interior to the instruments that already state it with numbers: the
+setting dogleg goes route-null past ≈ 19.9 (`i2 37 t cannot reach the
+arbor — needs ≥ 38 t`, measured at `alarmr=20`), and the winding
+chain's idler derives from the span with its plate ceiling asserted.
+Measured before written: `alarmr=14` boots silent; 17 walks the pivot
+into the shipped balance's own plate cut (reported); 20 hits the dogleg
+reach; 46 fires the stem window warn and still boots. Three `spec
+boots` rows declare the points. No reconfigure handle — the alarm
+crown's rim grip owns the corner's AZIMUTH by angular drag, and a
+radius reading on the same member is new interaction vocabulary,
+deferred inside the §98 filing, stated.
+
+### What the pin buys, measured — §76's Layer 8 in one line
+
+With the corner pinned at its shipped value and the §94 keys doing the
+rest, **a 33% larger balance boots SILENT**:
+`?alarmaz=235&rsvr=14&alarmr=15.4` at R 12 — zero warns (245 likewise;
+240 shows TODO 15's anti-phase mesh report, an instrument, not a
+wall). The §76 record in the roadmap carries the full layer: which wall
+each key retired, and the full check suite's verdict at that spec.
+
+### The gate
+
+Full battery at identity (local): 19/19 gates pass, boot silent,
+fingerprint 2134288613 on both virgin boots — bit-identical to the tree
+it landed on. `spec boots` 23/23 with the three `alarmr` rows above.
+The `--report` diff against the §94 tier C tree is per-check `ms`
+timing noise only — the key adds no geometry at identity and no check
+rows at the default spec.
