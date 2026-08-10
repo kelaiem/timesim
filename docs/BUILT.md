@@ -9087,6 +9087,161 @@ reconfigure windows' 0.45° seconds-row correction is invisible here by
 construction: the windows are UI refusal arcs, not battery rows, which is
 exactly why the plan demanded the direct comparison above instead.
 
+## §94 tier C — `?rsvr=` : the reserve station as a spec dimension, and the entry ships whole
+
+**Ships WHOLE.** Tier A moved the seconds station, tier B cut the alarm
+module's borrowed radius, and this tier finishes the entry: the
+power-reserve station is a dimension of the movement — a `rsvr` spec key,
+a §33 radial handle with a closed-form refusal, derived bounds with their
+constraints written in place, and the identity spec bit-exact against the
+shipped fingerprint. The §44/§46 agreement that gated this landing was
+settled by the owner (2026-08-09): the going-train reserve owns the
+subdial while its complication exists, §46 owns the subdial's withdrawal,
+and §44's alarm-reserve half is optional and never claims it. The one seam
+left open is assigned, not dangling — what `rsvr` means for a station §46
+has removed is §46's to define when it builds, with `d4`'s
+ignore-with-warn fallback named as the pattern.
+
+### The promotion, tier A's plumbing verbatim
+
+`RESERVE_LOCAL` was a literal inside `solveKeyless`; it is now the
+solver's own argument (`rsvR`, dial-local radius — the station sits on the
+dial's 12-o'clock axis, so one key places it and an azimuth key can join
+later without disturbing this one). `SPEC.rsvr` defaults null;
+`KEYLESS_INPUTS` spreads it in only when present, so identity passes
+nothing, evaluates the same `dialRadius · 0.39`, and fingerprints
+2134288613 on both virgin boots — bit-identical to the tree it landed on
+(the baseline hash moved under this tier mid-build: TODO 41's fix landed
+concurrently and re-planed both well hands; this tier rebased onto it).
+`index.html`, `SPEC_URL_KEYS`, variants and the trial boot all ride the
+existing machinery.
+
+### The window, derived where the radii are — and what is deliberately NOT in it
+
+`rsvrWindow` derives in `solveKeyless` (`d4Window`'s precedent): INBOARD
+the station against `SUBDIAL_INBOARD_CLEAR` 3.55 — at or inside it the
+well has no radius (tier A's negative-well warn is the backstop); OUTBOARD
+the well's outer edge against the dial face, `station + subDialR(station)
+≤ dialRadius`, closed-form in two branches because `subDialR` is pinned by
+the INNER station — a reserve station moved outward alone carries the
+seconds-pinned well until the face runs out at **27.54**. Two bounds are
+deliberately absent, each recorded by the tier that retired it: §74's
+"headroom 0 at ≈ 22.34" was a lockstep artifact (tier A's correction), and
+the ≈ 19.9 dogleg ceiling has been the ALARM corner's own dimension since
+tier B — re-importing it here would undo exactly what B bought. A spec'd
+`rsvr` outside the window warns with both bounds and BUILDS: an off-face
+well is nonsense, not NaN, so there is no fallback to hide behind and the
+battery judges the result.
+
+### The train's own bounds, joint in (`rsvr`, `reserveh`) — and where they actually bite
+
+`rsvModule1` solves from the barrel→pivot span and `rsvTeethW2 =
+2·reserveHours/3` (§22), so each key rescales stage-two teeth the other
+cannot see. `rsvTrainWarnsAt` states the bounds once, shared by the boot
+assert and the handle's shadow: NO TRAIN (module ≤ 0 — the station inside
+stage one's centre distance); a tooth-stock FLOOR (the pitch-line width
+π·m/2 under §50's 0.12 mm wheel floor — deliberately the lenient closed
+form, the census stays the instrument for marginal teeth); and two
+TODO 33-class radial CEILINGS, w2's tip against the dial centre's tube
+stack and against its own well's ring wall.
+
+Measured, the geometry is kinder than the plan feared: `P.barrel` sits
+13.27 off the station's axis, so the span never drops below 13.27 and the
+module floor and no-train cases CANNOT fire inside the window at any
+`reserveh` — both stay as dormant guards, which this record says so nobody
+wonders. What does bite is the tip-vs-well ceiling, and it is genuinely
+JOINT: at the default 30 h the threshold sits at `rsvr` 28.44, OUTSIDE the
+27.54 window; at 48 h (w2 32 t) it moves INSIDE to 26.60. The
+`reserveh=48&rsvr=27` spec-boots row is that case — tip 11.86 against the
+well's 11.60 — the worst case neither key shows alone, exactly the row the
+plan's C3 asked for.
+
+### Consumers that follow, and the two that needed edits
+
+`rsvPivotXY`, `reserveGroup`, the dial artwork, the motion-works stud
+obstacle row, the selector-corridor '12-well ring' and `ALARM_SET_WALLS`'
+reserve ring all derive from `RESERVE_LOCAL` and follow free —
+`ALARM_SET_WALLS`' row confirmed DORMANT at every probed variant (8, 13,
+20, 27, 30), not assumed. Two sites were edits: `reconfAlarmWindows`'
+reserve-well row read a hard-coded `π/2` because the station's x is 0
+today — it now reads the station (`atan2(y, −x)` through the dial mirror,
+bit-exact at identity), so a later azimuth key finds no literal; and the
+§34 selector-post corridor assert turned out to be the instrument that
+polices an inward-moved station (`rsvr=8`: post vs the moved 12-well ring
+at −0.27 against 0.15), the same instrument that caught `d4=16` one
+station over.
+
+### The floors rows, and the finding two builds measured on the same day
+
+The three rows tier A left on the shelf are seeded — two by this tier,
+and the third by TODO 41's fix pass, which landed CONCURRENTLY (its PR
+merged while this tier's battery ran). Both builds independently measured
+the same defect: the reserve hand rode **0.0014** over its well floor —
+the plan's predicted finding, far worse than the seconds side's 0.12,
+because the `'minute'` kind's central width law hung this short blade's
+keel ≈ 0.299 below its plane under the same authored 0.3 standoff. This
+tier measured it and waived citing TODO 41; the fix pass measured it,
+re-planed BOTH well hands onto a derived plane (`wellHandZ`, the item's
+own fix path), seeded the `Dial ⇄ Power reserve` row unwaived, and
+CLOSED the item. The rebase keeps the fix and drops the waiver — the
+better outcome, recorded here because "two builds, one number, hours
+apart" is also evidence the instrument measures what it claims. Measured
+at identity on the rebased tree:
+
+| pair | seeded by | measured | contacts declared |
+|---|---|---|---|
+| `Power reserve ⇄ Power-reserve train` | this tier | 0.55 | 2 — the hand's collet and blade on the w2 output arbor |
+| `Dial ⇄ Power-reserve train` | this tier | 0.55 | 4 — the same joint re-attributed through nesting, plus the arbor through the well floor's bore and across the printed floor's plane |
+| `Dial ⇄ Power reserve` | TODO 41's fix pass | 0.19 | 0 — no contact exists; the pair owes clearance everywhere, and post-fix it has it (0.0014 before) |
+
+Nine pairs, zero waived: the fix pass's derived planes retired both
+TODO 41 waivers, so `expectedContacts` runs entirely unwaived for the
+first time since the check existed.
+
+The hand's meshes come named by the fix (`namePrefix: 'reserve'`); this
+tier's residue on that front is the arbor's name (`rsvHandArbor`) and one
+hardening — both well hands now carry their FULL build spec (`subdial`
+and `namePrefix`) through the flute-slider's re-cut, where the fix had
+left the recut table on the old args: a flute drag would have silently
+regrown the blade the fix slimmed and unmatched every selector. Naming
+the arbor also tripped a wire worth recording: `INTRA_UNIT_CONTACTS`'
+"differential wheel on its stud" joint selected the arbor by its INDEX
+label (`CylinderGeometry#8`) — the only handle an unnamed mesh has — and
+the full battery failed `intraUnit` the moment the name landed, the
+declared press-fit reading as an undeclared intersection. The
+couple-by-string trap, fired exactly as designed; the joint now selects
+by name, which is what index labels were always standing in for.
+
+### The handle is keyless-tier, and that needed one honest branch
+
+The `RECONF_HANDLES` row is tier A's radial shape verbatim — `radial:
+true`, `def` = `dialRadius · 0.39`, refusal in CLOSED FORM against
+`rsvrWindow` (never read from a shadow-solve; tier A's fallback lesson),
+the ring on w2's real arbor at `rsvPivotXY` rather than on the printed
+well. But this station never enters `solveLayout`, so the generic drag
+path would shadow-solve the LAYOUT and get the identity build back — the
+ghost-that-is-not-the-proposal trap, one solver down from where tier A
+found it. The row therefore carries its OWN shadow: `solveKeyless` re-run
+on the candidate radius (its warnings join the verdict) plus
+`rsvTrainWarnsAt` on the candidate station, and no constellation paints
+because the train honestly does not move. The chrome grew its eighth
+ring, and the hint, idle line and handle list are in all three locales.
+
+### The gate
+
+Full battery at identity on this tree (local, this container's headless
+Chromium): **19/19 gates pass**, boot silent, fingerprint **2134288613 on
+both virgin boots** — the same hash the rebase base (`c69c0ff`, TODO 41's
+fix landed) produces. `spec boots` 20/20 (16 on the base) — the four
+new `rsvr` rows declared above, each measured before it was written
+down. The `--report` diff against a base-tree run of the same harness
+(also 19/19) shows exactly the designed delta and nothing else: 20
+differing leaves, of which 13 are per-check `ms` wall clock and 7 are
+`expectedContacts`' results array growing 7 → 9 by the two seeded
+train rows — the seven shared pairs are byte-identical (0 waived on
+both sides; the fix retired TODO 41's waivers on the base), and every
+other check's rows and numbers are byte-identical.
+
 ## §95 — A primer page: the explainer for readers who don't read the source
 
 Filed from an owner decision after timesim#189, where one hacking-seconds
