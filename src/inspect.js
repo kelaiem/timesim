@@ -4756,7 +4756,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§99 — the alarm barrel's own click; 50 units, 11 poses):
+// Baseline (§100 — the going drum's fixed arbor; 50 units, 11 poses):
+// 3121848351
+// — moved from 3724996819 deliberately: §100 re-homes the drum arbor and
+// its lower staff to the static Set-up work (two rotor meshes became
+// static — the registry census says the same, revolve 212 → 210), bores
+// the drum's floor and lid for the arbor they now run on, and deletes
+// the rotating group's pivot furniture with its wrong-member jewel. Unit
+// and pose counts unchanged; verified by the battery's double-boot gate.
+// Previous baseline (§99 — the alarm barrel's own click; 50 units, 11
+// poses):
 // 3724996819
 // — moved from 2134288613 (main's MEASURED value at 49 units, 10 poses)
 // deliberately: §99 adds the 'Alarm click' unit, lifts the winding train
