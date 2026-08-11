@@ -124,15 +124,25 @@ const YIELD_EVERY = 64;
 // derived when `inspection` measured 567 s — the number moved because the
 // check grew (TODO 27's chain, TODO 38's axis, three landings of report
 // growth since), and following the stale target instead of the arithmetic
-// is exactly the 40-minute mistake again. ONE MORE PASS IS OWED: a local
-// run is not a CI tail — re-derive from several CI runs of this harness
-// once they exist, per the standing rule above.
+// is exactly the 40-minute mistake again.
+//
+// TODO 38's GOING-WIND AXIS then spent part of §82's win, knowingly: 720
+// poses at the train axis's own density standard grew every dense sweep
+// (`inspection` 719 → 991 s, `clearances` 534 → 744 s on the same
+// machine), and the guard follows the workload by the same arithmetic —
+// projected CI worst = 16.5 min × 1.66 = 27.4 min; guard = 1.24 × 27.4
+// = 34.0 → 35. The axis's n is derived (96/fusee-rev, 3.75 rev each
+// way), so the number that could come down here is inspection's
+// per-pose cost, not the coverage — that is roadmap-scale work if
+// anyone wants the minutes back. ONE MORE PASS IS OWED: a local run is
+// not a CI tail — re-derive from several CI runs of this harness once
+// they exist, per the standing rule above.
 //
 // Note also what sharding can and cannot buy: the wall is now max(shard), but
 // this guard and battery.yml's job cap are both set by the slowest single
 // CHECK, which no partition subdivides. Sharding moved the wall 2.2x and moved
 // neither timeout.
-const CHECK_TIMEOUT_MS = 25 * 60 * 1000;
+const CHECK_TIMEOUT_MS = 35 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
 // The battery, in the order the gates are REPORTED: cheap and synchronous
@@ -155,7 +165,7 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // are stable, and the slow CI run split 2184.6 s against 1898.2 s on exactly
 // this column.
 const BATTERY = [
-  { name: 'support', opts: {}, cost: 26,
+  { name: 'support', opts: {}, cost: 20,
     gate: '0 failures',
     fails: (r) => r.failures },
   { name: 'graph', opts: {}, cost: 1,
@@ -163,7 +173,7 @@ const BATTERY = [
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  { name: 'penetration', opts: {}, cost: 22,
+  { name: 'penetration', opts: {}, cost: 17,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
     fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
     note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
@@ -171,7 +181,7 @@ const BATTERY = [
     gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'stockFloor', opts: {}, cost: 7,
+  { name: 'stockFloor', opts: {}, cost: 10,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
@@ -196,7 +206,7 @@ const BATTERY = [
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 287,
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 410,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -220,7 +230,7 @@ const BATTERY = [
   // reversing part either has a restoring element, is driven both ways, or is
   // waived against a filed TODO. The control is gated too: a positive control
   // that quietly stops passing is how this class of check dies.
-  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 5,
+  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 6,
     gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
     fails: (r) => [
       ...r.unwaived,
@@ -230,15 +240,15 @@ const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 719,
+  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 991,
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 534,
+  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 744,
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 352,
+  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 428,
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
     note: (r) => {

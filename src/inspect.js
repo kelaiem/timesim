@@ -1525,6 +1525,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
+  // TODO 38 W4's wind axis lifted the fixture-vs-fixture blindness on the
+  // fusee stack: the ratchet and the great wheel became MOVERS the moment an
+  // axis wound them, and two standing contacts that were always there became
+  // visible at the rest pose. Both measured (d = 0.0000, seated not buried)
+  // and both are the assembly, not a foul:
+  { unit: 'Fusee & great wheel', a: 'ExtrudeGeometry#2', b: 'ExtrudeGeometry#1', why: 'the great wheel plate and its own hub ring — one part, two meshes (makeGear builds the hub as a separate solid riveted through the plate)' },
+  { unit: 'Fusee & great wheel', a: 'ratchet', b: 'maintPawl', why: 'the maintaining pawl SEATED in its saw — the working joint the maintaining-power block exists for. (Two meshes in this unit share each name — the base ratchet and the maintaining ratchet, the pawl and its mate — so this row excuses the label pair; the far combination measures 0.1955 clear and never needs the excuse.)' },
   { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
   { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed. Since the wind morph the hook is a FIXTURE (it rides the drum and nothing else), so this row is no longer reachable by a mover-vs-fixture check; the geometry is unchanged and the declaration is kept as the record of it' },

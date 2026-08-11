@@ -32,7 +32,6 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 32 | PART CLOSED | The going half is closed; the alarm's cadence stays authored until a governor model exists |
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
-| 38 | NARROWED | Alarm wind swept (the `alarmWind` axis); the GOING tranche remains — its honest n (~360) projects sweptOverlap's CI worst past an hour, parked on roadmap §82's confirm-tier shrink or an explicit acceptance |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
@@ -44,8 +43,10 @@ saw, valley-filling beak, the give-back enacted), 39 (§100 — the going
 drum's fixed arbor), 41, 42 (§103 — the guide stack derived downward;
 the item's own window was measured empty, TODO 23's verdict one guide
 up), 43 (§105 — five detector artifacts fixed, ten units measured out
-of the §48 population by the item's own arbiter) — plus the *Recently
-closed* bucket at the end (former items 2 and 8 live there).
+of the §48 population by the item's own arbiter), 38 (both winds swept;
+the going axis is a cycle, and it found an undeclared reciprocator and
+two blind-spot joints in its first hour) — plus the *Recently closed*
+bucket at the end (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
@@ -4119,7 +4120,66 @@ ratchet have never had their saw DIRECTIONS exercised either — both are
 static or bench-only today, but §101's lesson (nothing gates one-way-ness)
 applies to them the day either moves.
 
-## 38. NARROWED — the alarm wind is swept (`alarmWind`); the going tranche remains, now with its cost measured
+## 38. CLOSED — both winds are swept; the going axis is a CYCLE, and it found an undeclared reciprocator in its first hour
+
+**The going tranche landed the way the item prescribed — after §82 shrank
+the confirm tier — and the axis is a cycle, which the filing's own
+"cheap version" almost talked itself out of.** The `wind` axis performs
+a full wind from empty and the run back down within ONE axis
+(w = 1−|2f−1|), because the registry's reversal test is within-axis by
+design (an axis boundary is not motion the part made): a monotone wind
+would have covered the states and still left the fusee's genuine
+two-way drive unobserved. `tension` and `windAccumTurns` move as the
+coupled pair they are, the span reads the live spec (`fuseeWrapTurns` =
+reserveHours/8 — a `?reserveh=` boot sweeps the wind that spec
+performs), and n = 720 is derived, not chosen: the train axis's own
+standard is 96 samples per fusee revolution, and the wind turns that
+arbor 3.75 revolutions each way. The ratchet-tooth-pitch features
+(24/rev) are budget-tier work with their own `nSamples` override —
+TODO 37's click will bring that budget.
+
+**What the axis did, measured, in its first hour:**
+
+- The §105-retired declarations returned exactly as their retirement
+  comments promised: 'Fusee & great wheel' and 'Power reserve' re-entered
+  the §48 population two-way and SURVIVED the confirm tier's 4×
+  re-sampling — measured membership, not artifact.
+- **It found an undeclared reciprocator**: 'Power-reserve train' entered
+  restored-by-nothing the moment an axis performed the cycle it lives in
+  — the gearing between the slip-coupled arbor and the hand, driven up
+  by winding and down by running, TODO 29's alarm-lock story re-run in
+  miniature. Declared two-way on the same grounds as both its neighbours.
+- **It lifted the fixture-vs-fixture blindness on the fusee stack**
+  (TODO 5's documented residue): the ratchet and great wheel became
+  MOVERS the moment an axis wound them, and two standing rest-pose
+  contacts became visible — the maintaining pawl seated in its saw
+  (d = 0.0000, the working joint the maintaining-power block exists
+  for) and the great wheel plate against its own makeGear hub ring (one
+  part, two meshes). Both measured seated-not-buried and declared in
+  `INTRA_UNIT_CONTACTS`; the restoring audit reads 19 units, 8 two-way,
+  11 sprung, 0 unwaived, 0 stale, control PASS.
+
+**The bill, paid knowingly.** The 720 poses grew every dense sweep —
+`inspection` 719 → 991 s, `clearances` 534 → 744 s, `sweptOverlap`
+352 → 428 s, same machine — and the guard pair re-derived by its own
+arithmetic to 35/50 (the constant's comment carries it). Part of §82's
+win, spent on coverage: the n is derived, so the number that could come
+down is inspection's per-pose cost, roadmap-scale work if anyone wants
+the minutes back. The projection the filing parked on — "sweptOverlap's
+CI worst past an hour" — priced only the confirm tier; §82 fixed that
+tier, and the dense sweeps' share is what remained.
+
+**Stated residue:** the raw winding INPUT (`windPathRot` — the crown
+wheel's own spin while winding) is still posed by no axis; `setPose`
+has no field for it, the crown-side winding wheels are round rotors
+whose hulls a spin barely moves, and nothing reciprocates there (the
+click is one-way by design). Rule-4's population caveat covers it: a
+part no axis moves is a part the audit cannot judge — filed here so
+nobody mistakes the silence for a verdict.
+
+The original filing, kept as the record:
+
+### The alarm wind is swept (`alarmWind`); the going tranche remains (original)
 
 The §36 registry, and everything sourced from it (the §48 restoring audit's
 whole population), measures over `AXES`. Two axes touch the alarm's power:
