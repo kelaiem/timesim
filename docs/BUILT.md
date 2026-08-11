@@ -9846,3 +9846,44 @@ contact, penetration, and clearance check. The going set-up click and
 the maintaining ratchet have never had their directions exercised
 either — both are static or bench-only today; the TODO 37 block carries
 the note.
+
+## §102 — the lock's return: a blade the column works against (TODO 31 closed)
+
+Item 28 made the lock lever move BECAUSE the column moved; it did not
+give the lever a way back. A column pressed the beak and held the lever
+engaged; when the gap arrived, the pose law said it rose and no element
+in the movement did the rising — §48's audit said so every run ('Alarm
+lock' in `restoredByNothing`, waived citing TODO 28, the waiver being
+the finding rather than a suppression).
+
+The fix is the item's own prescription, part for part: a flat return
+blade (`alarmLockSpring`, `SPRING_FLAT_U` stock) on its own plate-top
+stud, bearing on the arm's wheel-side flank with a 0.05 preload at the
+lifted pose, biasing the lever toward LIFTED — so the column has
+something to work against, which is what a column wheel is for. Said out
+loud, as the item asked: the spring-only rest state is LOCK LIFTED (beak
+seated in a gap, pad off the collar); a column overcomes the blade to
+hold the brake on. `declareRestoring('Alarm lock', 'spring', …)` beside
+the build; the `RESTORING_WAIVERS` row deleted — the audit's last
+geometry-backed waiver, leaving only the Dial row (TODO 29's unnamed
+mesh).
+
+Two derivations rode along, both promised by the item. `ALARM_LOCK_LIFT`
+was 0.085, commented "~0.4 of the radial air" — a chosen fraction of the
+space available, underivable while the lift had no load path. It is now
+`(CLEAR_MARGIN + 0.01) / ALARM_LOCK_L` = 0.032 rad: the pad's required
+clearance at the collar over the lever's length, float-bind centi-unit
+included; the beak's width bound only loosened (tangential swing
+0.20 → 0.07). And the blade's BEAR STATION is position-space, not
+placed: it shares the collar's z band, so the wheel-ward lane is the
+scarce one — the bear point stands at the smallest arm fraction that
+clears the pivot's own hardware, which is also the station farthest from
+the collar; both lanes are asserted at boot, and the asserts print the
+achieved clearances if either regresses (both passed silently at
+landing).
+
+P1, TODO 16's format, in the build comment: the only load the spring
+carries is the lever's own lift (no counterforce meets it at the gap),
+tip-force order single mN against the pusher-driven column arriving
+through a 2.3 lever — three orders of headroom. The blade is sized by
+its stock convention; the HOLD when braked is the column's.

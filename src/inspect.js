@@ -1502,6 +1502,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
   { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#6', why: 'lock lever on its pivot post (index moved 4→6 when TODO 24 added the beak riser+nose to the lever)' },
   { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#6', why: 'lever tail on the same post' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'alarmLockSpring', why: '§102: the return blade\'s tip pressing the arm\'s wheel-side flank — the §48-declared spring contact (a 0.05 preload overlap at the lifted pose, deeper as the column presses the lever engaged)' },
   { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#3', why: 'column wheel on its stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
@@ -4287,6 +4288,8 @@ export const STOCK_KIND_BY_MESH = {
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
+  alarmLockSpring: 'spring',   // §102 — the lock's return blade, the same SPRING_FLAT_U stock and the same standing debt
+  alarmLockSpringStud: 'pivot', // ...and its plate-top anchor — pin stock over the pivot floor
   alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
   // TODO 11 tranche five. Three parts that were being judged as WHEELS for
   // want of a name, each measured and kinded rather than thickened:
@@ -4758,7 +4761,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§101 — the click faces the right way; 50 units, 11 poses):
+// Baseline (§102 — the lock's return blade; 50 units, 11 poses):
+// 284533079
+// — moved from 949908343 deliberately: §102 adds the return blade and
+// its anchor stud to the Alarm lock (two meshes, the unit's box grows on
+// the pivot side) and derives ALARM_LOCK_LIFT down from the authored
+// 0.085 to the pad clearance over the lever length (0.032) — the
+// released lever parks 0.05 rad lower, which moves every lifted-pose
+// box the lock appears in. Verified by the battery's double-boot gate.
+// Previous baseline (§101 — the click faces the right way; 50 units,
+// 11 poses):
 // 949908343
 // — moved from 3121848351 deliberately: §101 re-cut the click's outline
 // (the valley-filling beak replaced the V-nose, arm slimmed) and mirrored
@@ -5195,11 +5207,10 @@ export const RESTORING_KINDS = ['two-way', 'spring', 'gravity'];
 // TODO 29, when the alarm-parity axis first made these parts reciprocate
 // under a sweep and the audit could finally see them.
 export const RESTORING_WAIVERS = {
-  // TODO 28's headline: the lock's lift is an 0.08 s ease on the `alarmOn`
-  // flag, gated by the column rather than driven by it. It is restored by
-  // nothing because nothing restores it — the rebuild is what closes this,
-  // and greening the row any other way would be inventing a spring.
-  'Alarm lock': 'TODO 28',
+  // ('Alarm lock' left this table when §102 built the return blade TODO 31
+  // prescribed — the waiver was the finding, and deleting it MEANT adding
+  // the spring: alarmLockSpring now exists as metal, declared beside its
+  // build, and the audit's geometry guard holds the name to a mesh.)
   // TODO 29's own residue, and honestly the reason this waiver table has two
   // entries instead of one. Of the 23 reversing volumes the parity axis
   // attributes to 'Dial', 22 are ALSO claimed by a nearer unit (Alarm disc,

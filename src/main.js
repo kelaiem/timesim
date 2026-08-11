@@ -10501,7 +10501,14 @@ declareRestoring('Alarm click', 'spring',
 const ALARM_LOCK_D = 7.0;                       // pivot → striking-wheel axis
 const ALARM_LOCK_L = 5.0;                       // pivot → pad centre
 const ALARM_LOCK_PAD_R = 0.3;
-const ALARM_LOCK_LIFT = 0.085;                  // rad — ~0.4 of radial air at the collar when released
+// §102 (TODO 31): DERIVED — the item's own promise, redeemable only once a
+// spring existed to give the lift a load path. The travel is what the pad's
+// clearance demands and nothing more: released, the pad must stand one
+// margin plus the float-bind centi-unit off the collar it brakes, and the
+// angle falls out over the lever's length. (The old 0.085 was "~0.4 of the
+// radial air" — a chosen fraction of the space available, the one number
+// item 28 could not fix.)
+const ALARM_LOCK_LIFT = (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L;   // = 0.032 rad
 const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (8.68..8.98)
 // §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
 // tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
@@ -10625,9 +10632,11 @@ const ALARM_COL_POS = {
 //   pivot along the tail's line — kiss at the disarmed parity (column
 //   centred on this azimuth by the spin group's phase), gap air when armed.
 // Width is bounded by the gap's arc minus the lift's tangential swing:
-//   gap arc at the ring ≈ 0.5·(π/3)·R = 1.31; swing = LOCK_LIFT·2.3 = 0.20;
-//   0.5 leaves 2× CLEAR_MARGIN and more. The alarmHandoffs row
-//   'column outer face ⇄ lock beak' measures both parities every run.
+//   gap arc at the ring ≈ 0.5·(π/3)·R = 1.31; swing = LOCK_LIFT·2.3 = 0.07
+//   (§102's derived lift — the bound only loosened when the 0.085 became
+//   the pad clearance over the lever length); 0.5 leaves 2× CLEAR_MARGIN
+//   and more. The alarmHandoffs row 'column outer face ⇄ lock beak'
+//   measures both parities every run.
 {
   const noseFaceReach = (3.8 + ALARM_COL_BASE_R - 1.5) - ALARM_COL_BASE_R; // = 2.3, R-independent by the stand-off's own form
   const noseLen = 0.6, noseW = 0.5;
@@ -10648,6 +10657,68 @@ const ALARM_COL_POS = {
   nose.position.set(-(noseFaceReach - noseLen / 2), 0, noseZ);
   alarmLockLever.add(nose);
 }
+// §102 (TODO 31) — THE RETURN. The column could press the lever ENGAGED
+// and nothing lifted it: the pose law rose on (1 − colBlock) and §48's
+// audit said so every run ('Alarm lock' in restoredByNothing, waived
+// citing TODO 28 — the waiver was the finding). A flat blade on its own
+// plate-top stud now bears on the arm's wheel-side flank and biases the
+// lever toward LIFTED, so the column has something to work against —
+// which is what a column wheel is for. Said out loud, as the item asked:
+// the spring-only rest state is LOCK LIFTED (beak seated in a gap, pad
+// off the collar); a column overcomes the blade to hold the brake on.
+// Construction is switchClickSpring's, one unit over.
+//
+// THE BEAR STATION is derived in position space, not placed: the blade
+// shares the collar's z band, so the wheel-ward lane is the scarce one —
+// the bear point goes at the SMALLEST arm fraction that clears the
+// pivot's own hardware (anchor stud fully off the pivot post plus the
+// margin), which is also the station FARTHEST from the collar. Both
+// clearances are asserted (rule 6), not hoped for.
+//
+// P1, TODO 16's format: the only load this spring carries is the
+// lever's own lift — no counterforce meets it at the gap — and the
+// column's press must overcome it: at SPRING_FLAT_U section over the
+// 1.5 free length, the tip-force order is single mN, against the
+// pusher-driven column's whole-finger input arriving through a 2.3
+// lever — three orders of headroom. The blade is sized by its stock
+// convention, not by the hold; the HOLD is the column's.
+{
+  const SPRING_FREE = 1.5;
+  const uA = { x: Math.cos(ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT), y: Math.sin(ALARM_LOCK_ENGAGED + ALARM_LOCK_LIFT) };
+  const nIn = { x: uA.y, y: -uA.x };            // the arm's wheel-side flank normal; a push along −nIn torques the lever toward +lift
+  // smallest arm fraction clearing the pivot hardware: the anchor sits
+  // FREE/2 back along the arm from the bear, so the bear must stand at
+  // least (FREE/2 + post r + stud r + CLEAR_MARGIN) out from the pivot
+  const bearAlong = SPRING_FREE / 2 + 0.4 + 0.22 + CLEAR_MARGIN;   // = 1.52
+  const bear = { x: alarmLockPivot.x + uA.x * bearAlong + nIn.x * (0.25 - 0.05),   // flank half-width minus the blade's preload overlap — the declared kiss
+                 y: alarmLockPivot.y + uA.y * bearAlong + nIn.y * (0.25 - 0.05) };
+  const anchor = { x: bear.x + nIn.x * 0.34 - uA.x * SPRING_FREE * 0.5,
+                   y: bear.y + nIn.y * 0.34 - uA.y * SPRING_FREE * 0.5 };
+  // rule 6 — both scarce lanes, measured: everything must clear the
+  // striking-wheel axis by the collar's reach + margin (the shared band),
+  // and the anchor must genuinely stand off the pivot post
+  const _axisClear = Math.min(
+    Math.hypot(bear.x - alarmSwPos.x, bear.y - alarmSwPos.y),
+    Math.hypot(anchor.x - alarmSwPos.x, anchor.y - alarmSwPos.y)) - 3.2 - 0.22;
+  if (_axisClear < CLEAR_MARGIN)
+    console.warn(`§102: lock return spring stands ${_axisClear.toFixed(2)} off the collar's band — needs ${CLEAR_MARGIN}`);
+  const _postClear = Math.hypot(anchor.x - alarmLockPivot.x, anchor.y - alarmLockPivot.y) - 0.4 - 0.22;
+  if (_postClear < CLEAR_MARGIN)
+    console.warn(`§102: lock return spring's anchor stands ${_postClear.toFixed(2)} off the pivot post — needs ${CLEAR_MARGIN}`);
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, ALARM_LOCK_Z - TQ_TOP_Z + 0.1, 10), MATS.nickel);
+  stud.name = 'alarmLockSpringStud';
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(anchor.x, anchor.y, (ALARM_LOCK_Z + 0.1 + TQ_TOP_Z) / 2);
+  alarmLockUnit.add(stud);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, SPRING_FLAT_U, 0.2), MATS.blueSteel);
+  blade.name = 'alarmLockSpring';
+  blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z);
+  blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
+  alarmLockUnit.add(blade);
+}
+declareRestoring('Alarm lock', 'spring',
+  'the return blade biases the lever toward LIFTED (beak into the gap, pad off the collar) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank; the HOLD when braked is the column\'s, not the spring\'s',
+  'alarmLockSpring');
 // The rounded nose every rider presents to the castellations. HOISTED here
 // from the click block below because TODO 28 made the column's flat top a
 // consequence of it: half the flat must clear the nose's own radius plus the
