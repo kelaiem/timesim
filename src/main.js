@@ -9831,9 +9831,17 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   alarmArborRotor.add(windWheel);
   alarmWindTargetGear = windWheel; // §99: the winding chain's last link (was the body's rim)
   const arborSq = (2 * ALARM_BARREL_ARBOR_R) / Math.SQRT2; // filed square, across-corners = arbor ⌀
+  // §101 — REVERSE cut, and the direction is derived, not chosen: winding
+  // INCREASES wA (the interactive law adds aDelta), the nose's tooth
+  // coordinate under the mirrored mapping is u = (rel − az)·N/2π, so
+  // du/dwA > 0 and winding climbs the RAMP (u 0→0.72, the gentle 8.4°)
+  // and snaps off the FACE — the classic click. The first cut ran the
+  // saw the other way round (measured: winding climbed the steep face
+  // and slid down the ramp, the exact mirror), and no instrument gates
+  // one-way-ness, so it stayed green while inverted.
   const arborRatchet = G.makeRatchetAndClick({
     radius: ALARM_RATCHET_R, teeth: ALARM_RATCHET_N, thickness: ALARM_RATCHET_T,
-    includeClick: false, squareBore: arborSq,
+    includeClick: false, squareBore: arborSq, reverse: true,
   });
   arborRatchet.traverse((o) => { if (o.isMesh) o.name = 'alarmArborRatchet'; });
   arborRatchet.position.z = ALARM_RATCHET_BOT_Z - ALARM_BARREL_Z; // extrude runs bottom→up
@@ -9932,9 +9940,11 @@ const EQUALISATION = (() => {
       cadence: 'authored — ALARM_STRIKE_GAP; torque→cadence needs a governor model (TODO 32 remainder)',
       // §99 — the arbor click quantises the HOLD: a released crown gives
       // back at most one saw pitch of arbor angle before the face catches.
-      // Reported, not gated — unlike the going set-up there is no integer-
-      // click constraint to land (the wind is the user's, not a set-up);
-      // the quantum is the record, in both natural units.
+      // §101 ENACTED it (settleAlarmClick — the recoil is a state change
+      // through the gears on the wind's falling edge). Still reported, not
+      // gated — unlike the going set-up there is no integer-click
+      // constraint to land (the wind is the user's, not a set-up); the
+      // quantum is the record, in both natural units.
       holdQuantumRad: (Math.PI * 2) / ALARM_RATCHET_N,
       holdQuantumStrikes: ALARM_STRIKES_PER_BARREL_TURN / ALARM_RATCHET_N,
     },
@@ -10190,58 +10200,123 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // park (measured −0.28 on the first cut; the set-up click ships the
   // same geometry invisibly because both its sides are fixtures — this
   // one moves, so the instruments see it). The hook keeps the whole ARM
-  // outside the tip circle (asserted below) and drops only a narrow NOSE
-  // into the teeth, ≤ a quarter-pitch wide — the shape every real click
-  // on a fine ratchet has, for this exact reason.
+  // outside the tip circle (asserted below, per EDGE) and drops a BEAK
+  // cut to the tooth space itself — §101's shape; the first hooked cut
+  // was a narrow V whose point-contact was invisible at the movement's
+  // scale, and this is the same hook with the beak the valley deserves.
   const rootR = ALARM_RATCHET_R * 0.8;                          // the builder's root circle
   const noseAz = 0.63;                                          // rad round from the pivot — leaves the spring's lane between (a placement, asserted clear below)
   const armR = ALARM_RATCHET_R + 0.4;                           // arm centreline: one half-width + margin outside the tips
   const dirN = { x: Math.cos(noseAz), y: Math.sin(noseAz) };
-  const perpN = { x: -dirN.y, y: dirN.x };
   const P = { x: pivotR, y: 0 };
   const E = { x: armR * dirN.x, y: armR * dirN.y };             // elbow, on the nose azimuth
   const Tn = { x: rootR * dirN.x, y: rootR * dirN.y };          // nose tip at the root circle — the valley seat
   const ua = { x: E.x - P.x, y: E.y - P.y };
   const la = Math.hypot(ua.x, ua.y);
   const va = { x: -ua.y / la, y: ua.x / la };                   // arm's own perp
-  const wa = 0.25, wp = 0.35, wn = 0.175;                       // arm, pivot-end, nose half-widths
-  const sawPitchArc = (Math.PI * 2 / ALARM_RATCHET_N) * ALARM_RATCHET_R; // one pitch of arc at the tips ≈ 1.16
-  if (2 * wn > 0.5 * sawPitchArc)
-    console.warn(`alarm click nose ${(2 * wn).toFixed(2)} wide exceeds half a saw pitch ${(0.5 * sawPitchArc).toFixed(2)} — it cannot thread the teeth`);
-  // The nose's underside is a V — a POINT at the root circle with
-  // shoulders just clear of the tooth tips. Measured necessity again: a
-  // flat-bottomed nose 0.38 pitch wide digs its corner ~0.31 into the
-  // ramp's slope (the V's sides run ~32 radial per radian of azimuth,
-  // steeper than both the ramp's 8.4 and the face's 21.5, so only the
-  // point ever touches the saw — which is what the ride law poses).
-  const Sr = ALARM_RATCHET_R + 0.02;                            // nose shoulders: just clear of the tips at every lift
-  const Sp = { x: Sr * dirN.x + perpN.x * wn, y: Sr * dirN.y + perpN.y * wn };
-  const Sm = { x: Sr * dirN.x - perpN.x * wn, y: Sr * dirN.y - perpN.y * wn };
+  const wa = 0.18, wp = 0.35;                                   // arm and pivot-end half-widths — the arm slimmed from 0.25 (§101): its load is compression against the face, and the fat line-with-width read as a slab lying on the wheel
+  // §101 — THE BEAK FILLS THE VALLEY IT PARKS IN. The first cut was a
+  // narrow V (a third of a pitch, shoulders grazing the crest circle):
+  // measured green everywhere and it still LOOKED disengaged, because a
+  // point contact is invisible at the movement's scale. This beak is cut
+  // TO the tooth space (both profiles sampled from the same sawRadiusAt
+  // the teeth were cut from, through the reverse mapping):
+  //  · the LEADING edge lies along the tooth FACE — the flank the hold
+  //    bears on — offset one hairline (0.01 at the crest, touching at the
+  //    point) so coincident surfaces don't flicker the instruments;
+  //  · the TRAILING underside is the RAMP + 0.02 over 0.6 of the pitch,
+  //    so the beak's back clears the flank it rides during winding;
+  //  · only the POINT touches at seat — contact stays a solved kiss, the
+  //    ride law unchanged, but the metal now occupies the valley wedge.
+  const pitchAz = (Math.PI * 2) / ALARM_RATCHET_N;
+  const azV = noseAz;                                           // the valley the beak is built seated in
+  // Hairline relief for the face edge, as rotation about the wheel axis.
+  // SIGN: under the reverse-cut mapping u = (rel − az)·N/2π, rotating +az
+  // DECREASES u, which on the face (saw falling with u) is INTO the metal —
+  // the first sign put the edge 0.036 inside the tooth at the seat and the
+  // ride parked the beak 0.12 rad lifted to clear its own relief. −az backs
+  // the edge off the face; the gap grows from 0 at the point to ~0.04 at
+  // the crest — still a hairline at scale.
+  const faceRelief = -0.01 / ALARM_RATCHET_R;
+  const polarPt = (a, r) => ({ x: r * Math.cos(a), y: r * Math.sin(a) });
+  // face edge: valley → crest is u 1 → 0.72 of the REVERSED mapping, which
+  // in azimuth is azV → azV + 0.28·pitch, radius rootR → R
+  const facePt = (s, rot) => polarPt(azV + s * 0.28 * pitchAz + rot, rootR + s * (ALARM_RATCHET_R - rootR));
+  // ramp relief: azV − t·0.6·pitch at ramp radius + 0.02 (the ramp spans
+  // 0.72 of the pitch; the beak covers 0.6 of it)
+  const rampPt = (t) => polarPt(azV - t * 0.6 * pitchAz, rootR + (t * 0.6 / 0.72) * (ALARM_RATCHET_R - rootR) + 0.02);
   const clickShape = new THREE.Shape();
+  const faceEdge = [1.15, 1.0, 0.66, 0.33].map((s) => facePt(s, faceRelief));   // 1.15 extends past the crest to r ≈ R+0.14, outside the tips
+  const rampEdge = [0.25, 0.5, 0.75, 1.0].map(rampPt);
+  const RT = polarPt(azV - 0.6 * pitchAz, ALARM_RATCHET_R + 0.15);              // rise out of the pocket at the trailing azimuth, one margin over the tips
+  // Walk order is TOPOLOGY, not taste: at the elbow the arm runs nearly
+  // tangentially, so ±va is nearly RADIAL there — the +va side is the
+  // radially INNER edge and must connect to the beak's ramp (trailing)
+  // side, the −va side is the OUTER edge and closes over the crest to the
+  // face side. The first cut of this shape paired them the other way
+  // round, the outline self-intersected, earcut dropped four cap
+  // triangles, and the OPEN mesh made every parity raycast lie (the
+  // TODO 27 trap, re-armed by a walk order — the handoff read −0.35 and
+  // intraUnit saw the pawl inside a post 0.71 away).
   const pts = [
-    { x: P.x + va.x * wp, y: P.y + va.y * wp },
-    { x: E.x + va.x * wa, y: E.y + va.y * wa },
-    { x: E.x + perpN.x * wn, y: E.y + perpN.y * wn },
-    Sp,
-    { x: Tn.x, y: Tn.y },                                       // the point — the only vertex that dips into the teeth
-    Sm,
-    { x: E.x - perpN.x * wn, y: E.y - perpN.y * wn },
-    { x: E.x - va.x * wa, y: E.y - va.y * wa },
-    { x: P.x - va.x * wp, y: P.y - va.y * wp },
+    { x: P.x + va.x * wp, y: P.y + va.y * wp },                 // pivot, inner corner
+    { x: E.x + va.x * wa, y: E.y + va.y * wa },                 // elbow, inner edge
+    RT,
+    ...[...rampEdge].reverse(),
+    { x: Tn.x, y: Tn.y },                                       // the point — the seat, the one touching vertex
+    ...[...faceEdge].reverse(),
+    polarPt(azV + 0.30 * pitchAz, ALARM_RATCHET_R + 0.35),      // beak top, face side — over the crest, outside the tips
+    { x: E.x - va.x * wa, y: E.y - va.y * wa },                 // elbow, outer edge
+    { x: P.x - va.x * wp, y: P.y - va.y * wp },                 // pivot, outer corner
   ];
-  // Rule 6: the arm must genuinely stay outside the tips — assert every
-  // vertex except the nose's own three.
-  for (const [i, p] of pts.entries()) {
-    if (i === 3 || i === 4 || i === 5) continue; // the V: shoulders at Sr, point at the root
-    const r = Math.hypot(p.x, p.y);
-    if (r < ALARM_RATCHET_R + 0.1)
-      console.warn(`alarm click arm vertex ${i} at r ${r.toFixed(2)} is inside the tip circle + margin (${(ALARM_RATCHET_R + 0.1).toFixed(2)}) — the hook has sagged into the teeth`);
+  // Rule 6, upgraded from the vertex loop: every EDGE outside the beak's
+  // pocket must clear the tip circle — a chord between two legal vertices
+  // can still dip inside it (segment minimum, not endpoint minimum).
+  // Pocket vertices (the sampled tooth-space profiles) are exempt by
+  // construction: they are the saw's own curves plus their reliefs.
+  const pocketFrom = 3, pocketTo = 3 + rampEdge.length + 1 + faceEdge.length; // rampEdge + point + faceEdge
+  const segMinR = (a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1e-12;
+    const t = clamp(-(a.x * dx + a.y * dy) / L2, 0, 1);
+    return Math.hypot(a.x + t * dx, a.y + t * dy);
+  };
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i + 1) % pts.length;
+    if (i >= pocketFrom - 1 && i < pocketTo) continue;           // edges touching pocket vertices
+    const m = segMinR(pts[i], pts[j]);
+    if (m < ALARM_RATCHET_R + 0.1)
+      console.warn(`alarm click edge ${i}→${j} passes r ${m.toFixed(2)} — inside the tip circle + margin (${(ALARM_RATCHET_R + 0.1).toFixed(2)}); the hook has sagged into the teeth`);
+  }
+  // Rule 6: the outline must be SIMPLE. A self-intersecting polygon does
+  // not fail loudly — earcut silently drops the unreachable ears, the
+  // caps ship with holes, and every parity-raycast instrument downstream
+  // reads the open mesh as colliding with parts it is nowhere near.
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 2; j < pts.length; j++) {
+      if (i === 0 && j === pts.length - 1) continue;             // shared pivot corner
+      const a = pts[i], b = pts[(i + 1) % pts.length], c = pts[j], d = pts[(j + 1) % pts.length];
+      const s1 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      const s2 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
+      const s3 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x);
+      const s4 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x);
+      if (s1 * s2 < 0 && s3 * s4 < 0)
+        console.warn(`alarm click outline self-intersects: edge ${i}→${i + 1} crosses ${j}→${(j + 1) % pts.length} — earcut will drop ears and the mesh will ship open`);
+    }
   }
   clickShape.moveTo(pts[0].x - P.x, pts[0].y - P.y);            // pivot-local, so rotation.z rides about the stud
   for (let i = 1; i < pts.length; i++) clickShape.lineTo(pts[i].x - P.x, pts[i].y - P.y);
   clickShape.closePath();
   const click = new THREE.Mesh(
     new THREE.ExtrudeGeometry(clickShape, { depth: CLICK_T, bevelEnabled: false }), MATS.blueSteel);
+  // Rule 6, the same defect from the mesh side: a bevel-free n-gon extrude
+  // is exactly 4n − 4 triangles (two caps at n − 2, sides at 2n). Fewer
+  // means earcut dropped ears and the caps have holes — the mesh reads as
+  // OPEN to every parity raycast even though nothing looks wrong.
+  {
+    const tris = click.geometry.attributes.position.count / 3;
+    if (tris !== 4 * pts.length - 4)
+      console.warn(`alarm click pawl extruded to ${tris} triangles where a simple ${pts.length}-gon gives ${4 * pts.length - 4} — earcut dropped ears; the outline self-intersects`);
+  }
   click.name = 'alarmClickPawl';
   click.position.set(pivotR, 0, clickBot);
   az.add(click);
@@ -10267,9 +10342,37 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // edge at the elbow is the honest flank — a kiss by construction (elbow
   // outer edge + tube radius).
   const B = { x: (armR + wa + 0.1) * dirN.x, y: (armR + wa + 0.1) * dirN.y }; // elbow outer edge + tube r
-  const A = { x: 7.8 * Math.cos(0.38), y: 7.8 * Math.sin(0.38) }; // its post: between the stud (az 0) and the nose lane (az 0.63), |A−B| inside the 2·springR chord
-  const springR = 1.3;
+  // The anchor post's STATION is derived from the arm's SWEPT LANE, not
+  // placed: at azimuth 0.38 (between the stud's az 0 and the nose lane
+  // 0.63), its radius must keep the post's HEAD clear of the arm's flank
+  // at the ride's CAP lift — the §101 lesson, found by the intraUnit gate
+  // at a pose net's leftover state after a vertex-sampled sweep had called
+  // the same lane clear (vertices under-sample a long flank; the head's
+  // z-band overlaps the pawl's by 0.15, so the graze was face-to-face).
+  // The perpendicular from A to the arm's centreline swings closed as the
+  // click lifts: d(λ) = d0·cos λ − (A−P)∥·sin λ, so the radius is chosen
+  // so d(cap) still holds headR + arm half-width + CLEAR_MARGIN, and the
+  // achieved number is asserted below (rule 6), not hoped for.
+  const A = { x: 8.55 * Math.cos(0.38), y: 8.55 * Math.sin(0.38) };
+  {
+    const liftCap = ((ALARM_RATCHET_R - rootR) / (Math.hypot(Tn.x - P.x, Tn.y - P.y))) * 1.15 + 0.05; // rotation that fully escapes the annulus (the ride's own cap) + the preload's order
+    const rel = { x: A.x - P.x, y: A.y - P.y };
+    const uArm = { x: (E.x - P.x) / la, y: (E.y - P.y) / la };
+    const d0 = Math.abs(uArm.x * rel.y - uArm.y * rel.x);
+    const par = uArm.x * rel.x + uArm.y * rel.y;
+    const dCap = Math.abs(d0 * Math.cos(liftCap)) - Math.abs(par * Math.sin(liftCap));
+    const need = 0.55 + wa + CLEAR_MARGIN; // spring-head radius + arm half-width + the margin
+    if (dCap < need)
+      console.warn(`alarm click spring post: arm flank clears its head by ${dCap.toFixed(2)} at cap lift — needs ${need.toFixed(2)}; move the anchor's station`);
+  }
   const dxs = B.x - A.x, dys = B.y - A.y, ds = Math.hypot(dxs, dys);
+  // The spring's radius is DERIVED from its own chord (rule 1): the arc
+  // must genuinely span anchor to flank, so r = max(the family's 1.3, half
+  // the chord + a bulge that keeps the circumcentre solve real). The
+  // outboard anchor station stretched the chord past the family radius's
+  // diameter, and a clamped-h arc would have quietly shipped an arc that
+  // reaches neither end.
+  const springR = Math.max(1.3, ds / 2 + 0.08);
   const hs = Math.sqrt(Math.max(springR * springR - (ds / 2) ** 2, 0.01));
   // Two circumcentres solve the chord; the arc must bulge AWAY from the
   // ratchet (the first cut picked the wheel-ward side and the torus lay on
@@ -10336,20 +10439,30 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // 0.33 u against the 0.2·R = 1.20 u radial drop, atan(0.33/1.20) =
   // 15.4° off radial — the reaction points INTO the pivot side the beak
   // approaches from, the same closing geometry the set-up and maintaining
-  // clicks ship (theirs is 20.6° at 24 teeth). The spring only re-seats
-  // the beak after cam-out; it is sized by the torus stock, not the hold.
+  // clicks ship (theirs is 20.6° at 24 teeth). §101 made both halves TRUE
+  // AS BUILT: the reverse cut puts the face on the hold's side of the
+  // travel (the first cut ran the saw backward — winding climbed this
+  // face), and the beak's leading edge is cut PARALLEL to it, so the
+  // give-back seats metal on metal along the flank the arithmetic prices.
+  // The spring only re-seats the beak after cam-out; it is sized by the
+  // torus stock, not the hold.
   alarmClickUnit.userData.ride = {
     click, base: 0, sign,                                        // base 0: the hook is built seated (nose at the root circle)
     px: P.x, lx: Tn.x - P.x, ly: Tn.y - P.y,                     // the tip's kinematics: pivot station + pivot-local nose (P.y = 0 in the az frame)
     gain: dRdTheta,                                              // signed dr/dθ at the tip
     tipRest: tipR,                                               // the tip's rest radius (= the root circle) — the lift cap derives from it
-    // The whole V UNDERSIDE, pivot-local — the ride must clear the EDGES,
-    // not just the point: with the tip just past a tooth's corner the V's
-    // side is what would cross it (a hair, but the instruments read it).
+    // The whole BEAK UNDERSIDE, pivot-local — the ride must clear the
+    // EDGES, not just the point (§99's lesson kept): the pocket profile's
+    // own vertices ARE the underside now — face edge, point, ramp relief,
+    // and the trailing rise — densified so no chord between samples spans
+    // more than ~0.1 of a pitch.
     underside: (() => {
+      const prof = [...faceEdge, { x: Tn.x, y: Tn.y }, ...rampEdge, RT];
       const out = [];
-      for (let k = 0; k <= 6; k++) out.push({ x: Sp.x + ((Tn.x - Sp.x) * k) / 6 - P.x, y: Sp.y + ((Tn.y - Sp.y) * k) / 6 - P.y });
-      for (let k = 1; k <= 6; k++) out.push({ x: Tn.x + ((Sm.x - Tn.x) * k) / 6 - P.x, y: Tn.y + ((Sm.y - Tn.y) * k) / 6 - P.y });
+      for (let i = 0; i < prof.length; i++) {
+        out.push({ x: prof[i].x - P.x, y: prof[i].y - P.y });
+        if (i + 1 < prof.length) out.push({ x: (prof[i].x + prof[i + 1].x) / 2 - P.x, y: (prof[i].y + prof[i + 1].y) / 2 - P.y });
+      }
       return out;
     })(),
     azGroupRot: bestAz,                                          // the az group's rotation: ratchet angle in this frame = wA − azGroupRot
@@ -11874,6 +11987,35 @@ let mmPerPxCal = null;
   alarmCrownOut = !!savedState.alarmCrownOut;
   restoredQualityMode = savedState.quality ?? 'Auto'; // ?? — states saved before §14 have no such field
 }
+
+// §101 — the click's GIVE-BACK, the physical law §99 reported but did not
+// enact: a loaded arbor left mid-ramp recoils until the tooth FACE meets the
+// beak's own face-parallel edge — the parked fraction of ONE pitch, at most
+// 2π/32 of arbor (the equalisation record's hold quantum), taken OUT of the
+// stored wind so the recoil travels the gears. u is the nose's tooth
+// coordinate under the reverse-cut mapping (tick's clearAt is the twin);
+// u = 0 is the seat. Runs on the interactive wind's falling edge (tick) and
+// once at boot for a restored wound state — never on posed transients.
+let alarmWindWasActive = false;
+let alarmWindIdleT = 0;
+// The release debounce: longer than any input-sampling gap (pointer events
+// arrive at 20 Hz or better, so gaps are ≤ 0.05 s), shorter than the pause a
+// hand makes when it actually lets go — the same order as the crown's other
+// eased inputs. Not a physics constant: it distinguishes "the event stream
+// is between samples" from "the hand left the crown".
+const ALARM_SETTLE_IDLE_S = 0.25;
+function settleAlarmClick() {
+  const rd = alarmClickUnit.userData.ride;
+  if (!rd || alarmBarrelWind <= 0) return;
+  const bodyA = alarmStrikePhase * Math.PI * 2 / ALARM_STRIKES_PER_BARREL_TURN;
+  const wA = bodyA + (alarmBarrelWind - ALARM_BARREL_TURNS) * Math.PI * 2;
+  const azNose = rd.azGroupRot + Math.atan2(rd.ly, rd.px + rd.lx); // the beak's built (seated) azimuth
+  let u = (((wA - azNose) * ALARM_RATCHET_N) / (Math.PI * 2)) % 1;
+  if (u < 0) u += 1;
+  if (u < 1e-9 || u > 1 - 1e-9) return;                           // already seated
+  alarmBarrelWind = Math.max(0, alarmBarrelWind - u / ALARM_RATCHET_N);
+}
+settleAlarmClick(); // boot: a restored wound state settles to its seat
 
 // ---------------------------------------------------------------------------
 // Seconds reset — the SAME crown-pull also closes the reset hammer onto the
@@ -19649,6 +19791,29 @@ function tick(t) {
       // its steep bank holds the return; a backward crown free-slips at the
       // stem⇄contrate bevel without unbanking.
       alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
+      alarmWindWasActive = true;
+      alarmWindIdleT = 0;
+    } else if (alarmWindWasActive) {
+      // §101 — THE GIVE-BACK, enacted (§99 deferred it with its own record):
+      // the hand leaves the crown and the loaded arbor recoils until the
+      // tooth FACE meets the beak — the parked fraction of one pitch, at
+      // most 1/32 turn, the equalisation record's own hold quantum. It is
+      // a STATE change, so the recoil travels the gears: wA drops, the
+      // winding train and the crown visibly snap back a hair, which is
+      // what a released crown does on a real barrel.
+      // DEBOUNCED past input sampling, and that is measured necessity: a
+      // crown drag delivers rotation on pointer events that do not align
+      // with the frame loop, so a one-tick gap is not a release. Settling
+      // there ate every sub-pitch advance — slow winding (3-on/2-off
+      // bursts at 0.08 rad/tick) accumulated 0.0 of an ideal 0.5 turn,
+      // the reported "hit or miss". A release is ALARM_SETTLE_IDLE_S of
+      // accumulated REAL time; the pose paths tick dt = 0 and so can
+      // never accumulate one — the axis sweeps stay exactly as posed.
+      alarmWindIdleT += rawDt;
+      if (alarmWindIdleT >= ALARM_SETTLE_IDLE_S) {
+        alarmWindWasActive = false;
+        settleAlarmClick();
+      }
     }
   }
   const alarmAngle = alarmDiscAngle();
@@ -19963,7 +20128,9 @@ function tick(t) {
           const ty = p.x * s + p.y * c;
           const r = Math.hypot(tx, ty);
           if (r >= ALARM_RATCHET_R) continue;                    // above every tooth — cannot bind
-          let u = (((Math.atan2(ty, tx) - rel) * ALARM_RATCHET_N) / (Math.PI * 2)) % 1;
+          // §101: the saw is a REVERSE cut, so the mapping's sign flips —
+          // u = (rel − az)·N/2π, and winding (wA rising) climbs the ramp.
+          let u = (((rel - Math.atan2(ty, tx)) * ALARM_RATCHET_N) / (Math.PI * 2)) % 1;
           if (u < 0) u += 1;
           const d = r - sawRadiusAt(u, ALARM_RATCHET_R);
           if (d < min) min = d;

@@ -1619,18 +1619,28 @@ export function makeClick({ radius, thickness }) {
   return click;
 }
 
-export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null }) {
+// `reverse` mirrors the saw (teeth lean the other way): a ratchet's
+// orientation is not a style — the RAMP must be the flank the working
+// direction climbs and the steep FACE the flank that catches the reverse,
+// and which way round that is depends on the consumer's own drive sign.
+// §101 added it when the alarm arbor's ratchet measured BACKWARD: winding
+// climbed the face and slid down the ramp, and no instrument gates
+// one-way-ness, so every check stayed green while the saw ran inverted.
+// The mirror maps (x, y) → (x, −y) with the point order reversed, so the
+// outline still winds the same way and the extrude's normals are untouched.
+export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false }) {
   const g = new THREE.Group();
   const rShape = new THREE.Shape();
+  const outline = [];
   for (let i = 0; i < teeth; i++) {
     const a0 = (i / teeth) * Math.PI * 2;
     const a1 = ((i + 0.72) / teeth) * Math.PI * 2;
-    const p0 = [Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8];
-    const p1 = [Math.cos(a1) * radius, Math.sin(a1) * radius];
-    if (i === 0) rShape.moveTo(p0[0], p0[1]);
-    else rShape.lineTo(p0[0], p0[1]);
-    rShape.lineTo(p1[0], p1[1]);
+    outline.push([Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8]);
+    outline.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
   }
+  if (reverse) { for (const p of outline) p[1] = -p[1]; outline.reverse(); }
+  rShape.moveTo(outline[0][0], outline[0][1]);
+  for (let i = 1; i < outline.length; i++) rShape.lineTo(outline[i][0], outline[i][1]);
   rShape.closePath();
   const ratHole = new THREE.Path();
   if (squareBore != null) {
@@ -1660,14 +1670,9 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
     // at the azimuth it was measured at), and a caller that wants the
     // schematic to draw the CUT rather than a pitch-circle claim builds its
     // userData.profile from this. Root→tip chord over 0.72 of the pitch,
-    // face over the last 0.28 — main.js's sawRadiusAt is the analytic twin.
-    const poly = [];
-    for (let i = 0; i < teeth; i++) {
-      const a0 = (i / teeth) * Math.PI * 2, a1 = ((i + 0.72) / teeth) * Math.PI * 2;
-      poly.push([Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8]);
-      poly.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
-    }
-    g.userData.ratchetPoly = poly;
+    // face over the last 0.28 — main.js's sawRadiusAt is the analytic twin
+    // (a `reverse` cut mirrors the mapping's sign, not the shape function).
+    g.userData.ratchetPoly = outline.map((p) => [p[0], p[1]]);
     g.userData.r = radius;
     g.userData.teeth = teeth;
     return g;

@@ -2312,7 +2312,9 @@ const PENETRATION_BUDGETS = [
         if (v.z < zLo || v.z > zHi) continue;      // outside the saw's own band
         const r = Math.hypot(v.x, v.y);
         if (r >= R) continue;
-        let u = ((Math.atan2(v.y, v.x) / pitch) % 1 + 1) % 1;
+        // §101: the arbor ratchet is a REVERSE cut, so the mesh-frame
+        // mapping is u = (−az)/pitch — mirror the sign, keep the shape.
+        let u = ((-Math.atan2(v.y, v.x) / pitch) % 1 + 1) % 1;
         const saw = u <= 0.72 ? rootR + ((R - rootR) * u) / 0.72 : R - ((R - rootR) * (u - 0.72)) / 0.28;
         if (saw - r > worst) worst = saw - r;
       }
@@ -4756,7 +4758,17 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§100 — the going drum's fixed arbor; 50 units, 11 poses):
+// Baseline (§101 — the click faces the right way; 50 units, 11 poses):
+// 949908343
+// — moved from 3121848351 deliberately: §101 re-cut the click's outline
+// (the valley-filling beak replaced the V-nose, arm slimmed) and mirrored
+// the arbor ratchet's saw; the spring anchor's outboard re-station rode
+// along inside the unit's existing AABB envelope, which is why the hash
+// held constant across §101's own fix rounds — axis-aligned unit boxes
+// are coarse, and a member can move inside one without the hash seeing
+// it. Verified by the battery's double-boot gate.
+// Previous baseline (§100 — the going drum's fixed arbor; 50 units, 11
+// poses):
 // 3121848351
 // — moved from 3724996819 deliberately: §100 re-homes the drum arbor and
 // its lower staff to the static Set-up work (two rotor meshes became

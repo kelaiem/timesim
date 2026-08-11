@@ -146,6 +146,45 @@ builder cut this surface — not as an instance test.
 clearance, by up to the tolerance, and under-reporting is the one error
 direction no instrument downstream catches. Exact bit equality or no merge.
 
+### 8. A line given volume is a new part, and its walk order is topology
+
+A lever designed as a centreline (pivot → elbow → nose) becomes a mesh by
+offsetting each segment by a half-width and walking the boundary. Which
+offset side connects to which neighbour is a fact about the GEOMETRY at
+each junction — where the arm runs nearly tangentially about its wheel,
+its ±perp sides are nearly RADIAL, so "left of the walk" and "radially
+inner" part company — and pairing them by construction order instead cut
+the §101 click as a bowtie. The failure is SILENT and lands far from the
+scene of the crime: earcut drops the unreachable ears without a word, the
+caps ship with holes, and every parity-raycast instrument downstream reads
+the open mesh as colliding with parts it is nowhere near (the handoff row
+at −0.35, `intraUnit` reporting the pawl inside a post 0.71 clear — the
+rule-1 trap of TODO 27, re-armed by a walk order). Two asserts now hold
+the class at the click and belong beside every hand-walked outline: the
+outline is SIMPLE (segment-pair crossing test at build), and the extrude
+is COMPLETE (a bevel-free n-gon is exactly 4n − 4 triangles; the bowtie
+measured 52 of 56, which is how it was found).
+
+### 9. Cut engagement profiles FROM the mating surface, through the contact law's own mapping
+
+A part that works INSIDE another's tooth space — a click's beak, a jumper
+against its star — is not a generic glyph, and §101 retired two of them:
+a straight blade fouls the adjacent tooth, and a narrow V measures green
+everywhere while READING disengaged, because a point contact is invisible
+at movement scale. Sample the engaging profile from the same analytic
+curve the mating teeth were cut from (working edge parallel to the flank
+it bears on, back relieved along the flank it rides), and route every
+offset and relief THROUGH the mapping the contact law uses: the beak's
+hairline face relief rotated +az, which read as "off the face" in the
+unmirrored frame and INTO it under the reverse-cut mapping — 0.01 of
+relief became 0.036 of interference at a pose only the settled state
+reaches. Two acceptance measurements: the part parks at ZERO lift in its
+settled pose, and — because nothing in the battery gates a ratchet's
+DIRECTION — the tooth coordinate under the nose is traced across the
+working motion (the §101 saw shipped mounted backward, winding up the
+steep face, green under every gate; the flank assignment is derived from
+the drive sign, du/d input, written at the cut).
+
 ## Derive, don't nudge
 
 Clearance-bearing constants must be *derived* from the geometry with an explicit
@@ -219,6 +258,14 @@ by vertex sampling, and always across the pose sweeps:
 4. **Configs fail loudly**: values feeding three.js must be validated at load.
    `THREE.Color` accepts `"#rrggbb"` but silently warns-and-defaults on
    `"0x..."` strings — an entire lighting rig degraded without an error.
+5. **A vertex-min sweep is not a clearance measurement on long-flanked
+   parts.** An extruded lever's flank carries vertices only at its ends, so
+   sampling one mesh's vertices against the other's surface is blind to a
+   face-to-face graze mid-flank — a 480-pose vertex sweep called the §101
+   click's spring-post lane clear at 0.71 while the arm's flank grazed the
+   post's head, and the `intraUnit` gate (surface-to-surface) caught what
+   the probe missed. Measure clearance with `meshClearance`-class
+   surface-to-surface queries, or trust the gate over the probe.
 
 ## Open follow-up
 

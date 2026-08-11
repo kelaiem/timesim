@@ -9761,3 +9761,88 @@ inside an EXPECTED pair with no floors row — TODO 6's catalogued residue.
 The new meshes are kinded (`mainspringDrumArbor`, `mainspringDrumStaff` —
 shaft stock over the pivot floor by an order of magnitude) rather than
 left to swell the unit's default-kind waiver.
+
+## §101 — the click faces the right way: reverse-cut saw, a beak cut to the tooth space, and the give-back enacted (TODO 37 follow-up)
+
+A user report — "the click doesn't interlock with the star wheel, most
+obvious when winding" — and the measurements behind it found three
+defects, each of a class the instruments structurally cannot see.
+
+### The saw ran backward, and nothing gates direction
+
+Traced over one winding tooth-cycle: the nose's tooth coordinate climbed
+the STEEP FACE (radius rising 5.56 → 5.97 over 0.28 of the pitch) and
+slid slowly down the shallow ramp — the exact mirror of a ratchet's
+one-way. Every gate stayed green because contact, penetration, and
+clearance are all direction-blind; the interactive `aDelta > 0` guard
+meant reverse was never driven, so the inversion had no behavioural
+symptom at all — only a visual one (the beak spends most of each cycle
+lifted high on the face). `makeRatchetAndClick` gains a `reverse` cut
+((x, y) → (x, −y) with point order re-reversed, so the winding and the
+extrude normals are untouched), the arbor ratchet takes it, and the
+mapping's sign is mirrored at every consumer (tick's `clearAt`, the
+bespoke penetration measure, the settle law) — the DIRECTION is now
+derived in the build comment from the interactive law's own sign:
+winding increases wA, u = (rel − az)·N/2π, du/dwA > 0, so winding
+climbs the ramp. Measured after: root→tip ramp ride, snap off the face.
+
+### The beak fills the valley it parks in
+
+The first hooked cut dipped a narrow V (a third of a pitch, shoulders
+grazing the crest circle) — measured green everywhere and still LOOKING
+disengaged, because a point contact is invisible at movement scale. The
+beak is now cut TO the tooth space, both profiles sampled from the same
+`sawRadiusAt` the teeth were cut from: leading edge parallel to the
+FACE it holds against (offset one hairline, 0.01 at the crest, touching
+at the point — coincident surfaces flicker instruments); trailing
+underside along the RAMP + 0.02 over 0.6 of the pitch; only the POINT
+touches at seat, so the contact stays a solved kiss and the ride law is
+unchanged — the underside sample points are now the pocket profile's
+own vertices, densified. The arm slimmed 0.25 → 0.18 (its load is
+compression against the face), and the outside-the-tips assert upgraded
+from per-vertex to per-EDGE (a chord between two legal vertices can
+still dip inside the tip circle — segment minimum, not endpoint
+minimum).
+
+### The give-back is a state law now
+
+§99 reported the hold quantum (2π/32) and deferred enacting it, and the
+deferral was most of the visual complaint: with no recoil, winding
+leaves the beak parked mid-ramp at whatever angle the crown stopped.
+`settleAlarmClick` enacts it: on the interactive wind's falling edge
+(and once at boot for a restored wound state), the arbor gives back the
+parked fraction of ONE pitch — at most 1/32 turn — until the face meets
+the beak, taken OUT of `alarmBarrelWind` so the recoil travels the
+gears and the winding train and crown visibly snap back a hair.
+EDGE-triggered only: setPose'd transients (the axis sweeps) must render
+exactly as posed, and an every-tick snap would quantise them into a
+staircase. Measured: settle 0.0254 turns < the 0.03125 quantum, seat at
+u = 0 exactly, park kiss 0.0164 against `HANDOFF_TRACK_TOL` 0.03,
+pawl⇄saw penetration 0 over the fine ride.
+
+### The post collision was real, and the instrument beat the probe
+
+The user's "collides with the post next to it" was first dismissed as
+projection on the strength of a 480-pose vertex-sampled sweep
+(pawl-vertex to post-surface minimum 0.71). The `intraUnit` gate then
+failed the pair at a pose-net leftover state, and dissection proved the
+gate RIGHT: the graze is face-to-face — the spring HEAD's z-band
+overlaps the pawl's by 0.15, and the arm's long flank has vertices only
+at its ends, so vertex sampling is structurally blind to exactly this
+contact. The fix is position-space: the anchor post's station is now
+DERIVED from the arm's swept lane (its radius holds head + arm
+half-width + `CLEAR_MARGIN` at the ride's cap lift, asserted at boot),
+and the spring's radius is derived from its own chord rather than
+clamped (the outboard station stretched the chord past the family
+radius, and a clamped arc would have quietly reached neither end).
+Method note for the next probe: a vertex-min sweep is not a clearance
+measurement on long-flanked parts — use surface-to-surface
+(`meshClearance`) or trust the gate.
+
+### The class, named for next time
+
+Nothing in the battery gates one-way-ness: a mirrored saw passes every
+contact, penetration, and clearance check. The going set-up click and
+the maintaining ratchet have never had their directions exercised
+either — both are static or bench-only today; the TODO 37 block carries
+the note.
