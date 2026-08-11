@@ -1565,17 +1565,14 @@ export const INTRA_UNIT_WAIVERS = [
   // measured unable to coexist with the blade stub's swept corridor —
   // was removed (the plunger eye + the run's cheek mid-guide are the
   // two guidance stations).
-  // TODO 42 — the lifter's blade stub stands 0.167 into its own guide eye
-  // at the REST pose (crown pushed in, the as-booted state): stub top
-  // −5.14 vs the eye's band −5.31..−4.99, radial metal overlap 0.17..0.30.
-  // Unmasked by TODO 38's axis, which is the first to NAME
-  // alarmCrownPullT: 0 — every earlier measurement pass inherited
-  // alarmCrownPullT = 1 residue from the `alarm` axis, so the pair was
-  // only ever tested with the L depressed (stub at −5.52, clear). The fix
-  // is the eye's station, not this waiver: re-derive its z from the
-  // stub's rest top plus clearance (TODO 23's own arithmetic, one guide
-  // up).
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'LatheGeometry#10', debt: 'TODO 42' },
+  // TODO 42's row is CLOSED (§103): the item's prescription — re-derive the
+  // eye's z from the stub's rest top — had no solution with the stub held
+  // at its first-cut station (the collar's pulled underside caps the
+  // corridor at 0.255 against the 0.62 an eye needs; TODO 23's arithmetic,
+  // one guide up, same verdict), so the whole stack derived downward
+  // instead: eye top pinned to the plunger's full-depression top, stub top
+  // one CLEAR_MARGIN under the eye's bottom at rest, blade root riding the
+  // stub. The instrument measures the repair (0 rows).
 ];
 export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });

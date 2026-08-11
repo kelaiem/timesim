@@ -8705,26 +8705,48 @@ const alarmLifter = new THREE.Group(); // the moving L — tick slides it in wor
 const alarmLifterBladeGroup = new THREE.Group(); // return blade root (tick flexes it)
 const ALARM_LIFT_BLADE_LEN = Math.hypot(0.7, 1.3);
 const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); // run centreline = the tab's rest plane, world
+// TODO 42 (closed): the guide stack — eye, blade stub, blade root — is ONE
+// derived chain, pinned from the TOP. The item's own prescription
+// (ez ≥ stub z + STOCK_MIN_U + CLEAR_MARGIN) has no solution with the stub
+// held at its first-cut station: from the stub's rest top to the collar's
+// pulled underside (fat radius under the corner) the corridor is 0.255, and
+// an eye needs STOCK_MIN_U + 2·CLEAR_MARGIN = 0.62 — TODO 23's arithmetic,
+// one guide up, same verdict. So the chain solves DOWNWARD instead. The
+// eye's top face sits exactly where the plunger's top arrives at full
+// depression: the HIGHEST station at which the bore still holds plunger at
+// every pose (any higher and the head, not the plunger, is what the bore
+// reads at full travel — the eye is the plunger's guide, and this bound also
+// keeps the head clear of the bore, which makes the stub comment's "riding
+// clear" claim true at last). The stub then drops to hold the item's
+// inequality at equality below the eye's bottom face, and the blade root
+// keeps its as-built bearing relation to the stub — bottom faces flush, the
+// tip riding the stub's underside — made exact instead of rounded.
+const ALARM_LIFT_HEAD_TOP = Z_ALARM_CORNER - ALARM_COLLAR_THIN_R - 0.01; // top 0.01 under the collar's thin section at rest (the fork clearance figure)
+const ALARM_LIFT_HEAD_H = 0.24;
+const ALARM_LIFT_EYE_Z = (ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H - ALARM_SLEEVE_TRAVEL) - STOCK_MIN_U / 2; // eye top = plunger top at full depression
+const ALARM_LIFT_STUB_Z = ALARM_LIFT_EYE_Z - STOCK_MIN_U - CLEAR_MARGIN; // stub top = eye bottom − CLEAR_MARGIN, at the REST pose — the closest approach; travel only opens it
+const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2; // blade bottom face flush with the stub's
 {
   const hx = ALARM_LIFT_HEAD_R;
   // domed head, top 0.01 under the collar's thin section at rest (the fork
   // clearance figure — the hand-off row reads the running fit as contact)
-  const headTop = Z_ALARM_CORNER - ALARM_COLLAR_THIN_R - 0.01;
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.24, 10), MATS.steel);
+  const headTop = ALARM_LIFT_HEAD_TOP;
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, ALARM_LIFT_HEAD_H, 10), MATS.steel);
   head.name = 'alarmLifterHead';
   head.rotation.x = Math.PI / 2;
-  head.position.set(hx, 0, headTop - 0.12);
+  head.position.set(hx, 0, headTop - ALARM_LIFT_HEAD_H / 2);
   alarmLifter.add(head);
-  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, (headTop - 0.24) - ALARM_LIFT_RUN_Z, 10), MATS.steel);
+  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, (headTop - ALARM_LIFT_HEAD_H) - ALARM_LIFT_RUN_Z, 10), MATS.steel);
   plunger.name = 'alarmLifterPlunger'; // pin-class stock, declared (kind table)
   plunger.rotation.x = Math.PI / 2;
-  plunger.position.set(hx, 0, ((headTop - 0.24) + ALARM_LIFT_RUN_Z) / 2);
+  plunger.position.set(hx, 0, ((headTop - ALARM_LIFT_HEAD_H) + ALARM_LIFT_RUN_Z) / 2);
   alarmLifter.add(plunger);
-  // blade stub — the return blade bears up under this (under the guide
-  // eye, riding clear of it across the full travel)
+  // blade stub — the return blade bears up under this, one CLEAR_MARGIN
+  // under the guide eye at rest (the derived stack above; rest is the
+  // closest approach, since the L's whole travel is downward from it)
   const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, STOCK_MIN_U, 10), MATS.steel);
   stub.rotation.x = Math.PI / 2;
-  stub.position.set(hx, 0, -5.3);
+  stub.position.set(hx, 0, ALARM_LIFT_STUB_Z);
   alarmLifter.add(stub);
   // tangential chord az 0 → run az, then the radial run inboard to the fork
   const az = ALARM_LIFT_RUN_AZ;
@@ -8757,19 +8779,21 @@ const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); //
   // static guides: bracket post + ONE eye at the plunger (from the base
   // plate's dial-side face, the alarm arbor's bearing-cock pattern), a
   // slotted mid-guide under the run, and the return blade.
-  // TODO 23 removed the first cut's second, lower eye: measured, the
-  // corridor between the blade stub's swept bottom (−5.68) and the run's
-  // swept top (−6.09) is 0.413 — the eye's 0.32 stock plus two
-  // CLEAR_MARGINs (0.62) cannot fit, so a guide there stood in its own
-  // unit's travel (0.04 into the stub at rest). Guidance keeps two
-  // stations without it: this eye at the plunger, the cheek mid-guide at
-  // the run.
+  // TODO 23 removed the first cut's second, lower eye: measured at the
+  // first-cut stations, the corridor between the blade stub's swept
+  // bottom (then −5.68) and the run's swept top (−6.09) was 0.413 — the
+  // eye's 0.32 stock plus two CLEAR_MARGINs (0.62) cannot fit, so a
+  // guide there stood in its own unit's travel (0.04 into the stub at
+  // rest). §103's derived stub sits deeper still and its swept bottom
+  // now passes the run's swept top — that corridor no longer exists at
+  // all. Guidance keeps two stations without it: this eye at the
+  // plunger, the cheek mid-guide at the run.
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
   post.position.set(hx + 0.7, 1.3, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
   post.rotation.x = Math.PI / 2;
   alarmLifterUnit.add(post);
   {
-    const ez = -5.15;
+    const ez = ALARM_LIFT_EYE_Z;
     const eyeROut = 0.17 + STOCK_MIN_U;  // the RING carries the bore (0.02 running fit over the 0.15 plunger)
     const span = Math.hypot(0.7, 1.3);   // post centre → plunger axis
     // TODO 23: the arm ends at the eye ring's OUTER wall — an arm run to
@@ -8788,7 +8812,7 @@ const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); //
   // return blade: root at the bracket post, tip bearing UP under the
   // plunger's stub (thin in z — the flex direction; slaved in tick via the
   // root group so the tip follows the stub's real travel, §48's convention)
-  alarmLifterBladeGroup.position.set(hx + 0.7, 1.3, -5.39);
+  alarmLifterBladeGroup.position.set(hx + 0.7, 1.3, ALARM_LIFT_BLADE_Z);
   alarmLifterBladeGroup.rotation.order = 'ZYX';
   alarmLifterBladeGroup.rotation.z = Math.atan2(-1.3, -0.7);
   const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
@@ -8834,6 +8858,17 @@ const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); //
   say('collar inboard tip clear of the cluster at rest', (ALARM_CD + ALARM_COLLAR_S0) - ALARM_LIFT_CLUSTER_OUT, CLEAR_MARGIN - 1e-6);
   // the ramp's rise IS the sleeve travel — the tick law reads this same fn
   say('collar rise = sleeve travel', 1e-9 + (alarmCollarRAt(ALARM_COLLAR_S0) - alarmCollarRAt(ALARM_COLLAR_S1)) - ALARM_SLEEVE_TRAVEL, 0);
+  // TODO 42 — the guide stack's two open ends, with the achieved numbers.
+  // Above: the collar's deepest underside (fat radius, crown pulled) over the
+  // eye's top face — the bound that made the item's own window EMPTY until
+  // the stub dropped. Below: the blade's bottom face over the chord's top —
+  // pose-invariant, because the tip and the chord co-travel, so the rest
+  // figure is the figure at every depression.
+  say('collar (pulled, fat) clears the eye top', (Z_ALARM_CORNER - (ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL)) - (ALARM_LIFT_EYE_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
+  say('blade bottom clears the chord top', (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
+  // and the derivation's pin: the bore holds PLUNGER at full depression —
+  // equality by construction today; a warn here means someone moved one side
+  say('eye bore holds plunger at full depression', (ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H - ALARM_SLEEVE_TRAVEL) - (ALARM_LIFT_EYE_Z + STOCK_MIN_U / 2), 0);
 }
 // §45 — the BICONDITIONAL, asserted (the entry's acceptance): Hidden ⟺
 // ¬Armed ∧ ¬Setting, at all four corners, evaluated on the mechanism's own
