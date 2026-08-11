@@ -9939,3 +9939,63 @@ fingerprint did NOT move (284533079): all three stations travelled
 inside the unit's existing AABB envelope, which is §101's coarse-box
 lesson again — the hash guards the layout, and `intraUnit` is the
 instrument that actually saw this repair.
+
+## §105 — the reversal detector stops lying: five artifacts fixed, a confirm tier, ten units measured out (TODO 43 closed)
+
+TODO 43 filed three measured mechanisms by which the §36 registry's
+`reversed` flag — the §48 audit's whole population — was a function of
+walk composition rather than of motion: the witness-circle fit weighted
+per-pose repeats, seam-duplicated vertices biased track centroids
+off-axis, and long-span axes aliased chord directions. Fixing them
+exposed two more of the same class; all five are closed here, and the
+landing was accepted against the item's own arbiter, not the PASS
+column.
+
+The five, each with its constraint written at the site:
+
+- **The fit runs over DISTINCT states.** `series` shares frames per
+  pose, so a part resting through nine axes had its fitted centre
+  dragged toward ~100 copies of the rest frame — the registry's own
+  "repeats add nothing" convention, applied to its last holdout.
+- **The fit's degeneracy test is scale-relative.** The absolute
+  `|det| < 1e-12` was calibrated to with-repeats moment sums; distinct
+  states shrank the sums and healthy fits null-rejected.
+  `det/(suu+svv)²` is a pure collinearity measure, immune to scale.
+- **Track centroids average DISTINCT positions, by quantized key.** The
+  builder's seam copy is computed at θ = 2π, one ulp of sin from the
+  θ = 0 original, so exact keys miss exactly the copies that matter
+  (measured: the collar's centroid sat 0.031 off-axis, the item's own
+  2r/(segs·2+2), and orbited with the mesh). The quantum's window is
+  wide open — float duplicates coincide to ~1e-11, real vertices sit
+  ≥ the §50 stock floors apart.
+- **Angular steps come from the witness vertex's own angle, chained
+  across dwells.** The extent's `lo` is not a phase: about the true
+  centre a wheel disc's extent covers the full circle and `lo` jumps by
+  whole vertex gaps at the ±π wrap, promoting monotone train wheels to
+  'oscillates' — the biased fit had been hiding this by reading annular
+  bodies as partial lobes. And adjacent-step sign products LAUNDER a
+  reciprocation through dwell zeros (the fork parks on its bankings
+  between strokes) — the finer the sampling, the blinder that test got.
+  The witness angle advances by exactly the rotation; dwell steps
+  neither vote nor reset.
+- **A flip is a candidate until it reproduces (§36 job B's shape).**
+  Deferred mini-walks re-sample each flip's own axis at 4×: a true
+  reciprocation flips at every sampling rate, an aliased orbit — the
+  crown's knurl teeth under `alarmWind`'s 210°/step — evaporates when
+  the rate resolves the path. The mini-walks run AFTER both standing
+  walks (neither's cumulative pose history moves) and patch only the
+  flag: hulls stay exactly what the containment walk validated.
+
+Measured outcome: ten units left the population — Alarm crown, Alarm
+setting arbor, Escape wheel, Fusee & great wheel, Heart cam, Power
+reserve, Reset hammer, Setting lever, Third wheel, Yoke — every one
+verified MONOTONE in every axis from its own matrices at 4× the
+registry's rate, the star's ground-truth method applied wholesale. Zero
+units entered; the pallet fork control held; the registry is bit-stable
+across repeated builds. The ten stale declarations retired with their
+mechanism truth kept as comments ('Motion works' precedent) — most were
+true of the WATCH and never of the pose net, and they return the day an
+axis performs the cycle they describe. No mesh moved: the fingerprint
+is unchanged, and `intraUnit`'s sibling instruments are untouched.
+TODO 7's caveat stands, narrowed — the confirm tier removes a class of
+false positives; false negatives remain sampling's residue.
