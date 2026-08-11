@@ -18891,6 +18891,14 @@ function applyDeepLink() {
 // both sequence FIFO on the same ensureExploreDrive promise).
 if (restoredSchematic) setSchematic(true);
 if (restoredFocus) setFocus(restoredFocus);
+// The control HUD is ON by default: §57 built it (and the ?hud link) for the
+// arrival that wants the watch driveable immediately; the default extends
+// that to every arrival. Same contract as the schematic default above — the
+// deep link runs after and wins where it disagrees (?hud=0 closes it), and
+// the button toggle stays session-tier (nothing persists it, as before).
+// §90 already made this call boot-safe: ?hud=1 reached setHud() from
+// applyDeepLink() at this same point in the sequence.
+setHud(true);
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
