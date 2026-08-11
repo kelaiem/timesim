@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-10 — items with work left first, with what remains:
+refreshed 2026-08-11 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -26,10 +26,9 @@ refreshed 2026-08-10 — items with work left first, with what remains:
 | 15 | PART CLOSED | Winding + setting chains closed; two sites remain |
 | 16 | PART CLOSED | One item deliberately left, recorded in place |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
-| 28 | MOSTLY CLOSED | The lock's RETURN — filed as item 31 |
-| 29 | MOSTLY CLOSED | The Dial row |
+| 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
+| 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
 | 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
-| 31 | OPEN | The alarm lock has no return; what `RESTORING_WAIVERS` points at |
 | 32 | PART CLOSED | The going half is closed; the alarm's cadence stays authored until a governor model exists |
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
@@ -41,9 +40,11 @@ refreshed 2026-08-10 — items with work left first, with what remains:
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
 named residue — the instrument gap is roadmap §77's subject, not this
-item's), 33, 35, 37 (§99 — the wound arbor and its click), 39 (§100 —
-the going drum's fixed arbor), 41 — plus the *Recently closed* bucket at
-the end (former items 2 and 8 live there).
+item's), 31 (§102 — the lock's return blade), 33, 35, 37 (§99 — the
+wound arbor and its click, re-measured against the eye by §101: reverse
+saw, valley-filling beak, the give-back enacted), 39 (§100 — the going
+drum's fixed arbor), 41 — plus the *Recently closed* bucket at the end
+(former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
@@ -3501,7 +3502,38 @@ under a patched balance radius, and the handler's four report shapes
 logic on its own. A wedged page is the one shape with no live test; it is
 why that read is raced against 10 s rather than awaited.
 
-## 31. The alarm lock has no return — the column can push it, nothing pulls it back
+## 31. CLOSED (§102) — the lock has its return: a blade the column works against
+
+**Closed as prescribed, part for part.** The flat return blade exists as
+metal (`alarmLockSpring`, `SPRING_FLAT_U` stock on its own plate-top
+stud — `switchClickSpring`'s construction one unit over), bears on the
+arm's wheel-side flank with a 0.05 preload at the lifted pose, and is
+declared with `declareRestoring('Alarm lock', 'spring', …)`. The
+`RESTORING_WAIVERS` row is DELETED — the waiver was the finding, and
+deleting it meant adding the spring. The spring-only rest state is LOCK
+LIFTED (beak seated in a gap, pad off the collar); a column overcomes
+the blade to hold the brake on, which is what a column wheel is for.
+
+**And `ALARM_LOCK_LIFT` became derivable, as promised**: 0.085 ("~0.4 of
+the radial air", the one number item 28 could not fix) is now
+`(CLEAR_MARGIN + 0.01) / ALARM_LOCK_L` = 0.032 rad — the pad's required
+clearance at the collar over the lever's length, the float-bind
+centi-unit included. The beak's width bound only loosened (its
+tangential swing fell 0.20 → 0.07).
+
+**The bear station is derived in position space**: the blade shares the
+collar's z band, so the wheel-ward lane is scarce — the bear point goes
+at the smallest arm fraction that clears the pivot's own hardware
+(anchor fully off the post + margin), which is also the station farthest
+from the collar; both lanes asserted at boot. P1 filed in the build
+comment (TODO 16's format): tip-force order single mN with no
+counterforce at the gap, three orders under the column's pusher-driven
+press — the blade is sized by its stock convention, the HOLD is the
+column's.
+
+The original filing, kept as the record:
+
+### The alarm lock has no return — the column can push it, nothing pulls it back (original)
 
 The direct remainder of [item 28](#28-mostly-closed--pillars-a-derived-profile-and-a-lock-the-column-actually-lifts), and what `Alarm lock`'s waiver in
 `RESTORING_WAIVERS` points at. Item 28 made the lever move BECAUSE the wheel
