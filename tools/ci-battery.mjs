@@ -111,21 +111,28 @@ const YIELD_EVERY = 64;
 // so the guard follows the workload by arithmetic, which is a re-derivation,
 // not an accommodation: leaving 45 would have thinned the headroom to
 // 45 / (36.4 x measured growth) ≈ 1.03x, the exact fires-on-a-healthy-run
-// failure the 40-minute mistake above documents. Measured on one machine,
-// same conditions, base tree vs axis tree: 1854.2 s → 2219.7 s and 2400.7 s
-// (two runs of the new workload; an 8% local spread, inside CI's own 1.66x).
-// Worst measured growth 2400.7 / 1854.2 = 1.295. Projected CI worst =
-// 2184.6 s x 1.295 = 2829 s (47.1 min); guard = 1.24 x 47.1 = 58.5 →
-// 59 min — the same headroom factor over the same anchor, workload-scaled.
-// battery.yml's job cap moves with it (guard + the ~15 min the 45/60 pair
-// kept above it). §82's caveat stands: when the confirm tier shrinks,
-// re-derive BOTH from several CI runs.
+// failure the 40-minute mistake above documents. That took the guard to 59.
+//
+// §82 THEN LANDED AND THE CAVEAT CAME DUE. The confirm tier went from
+// fifteen sequential uncapped sweeps to one batched capped sweep, and its
+// arbiter's two vendored defects were patched (vendor/README.md):
+// `sweptOverlap` measured 1870 s → 352 s on the same machine, and the
+// slowest single check is now `inspection` (688–719 s across this landing's
+// local runs). Same arithmetic, new binding check: projected CI worst =
+// 12.0 min local x 1.66 (CI's own measured spread over local, above)
+// = 19.9 min; guard = 1.24 x 19.9 = 24.7 → 25 min. §82's filing wrote 20,
+// derived when `inspection` measured 567 s — the number moved because the
+// check grew (TODO 27's chain, TODO 38's axis, three landings of report
+// growth since), and following the stale target instead of the arithmetic
+// is exactly the 40-minute mistake again. ONE MORE PASS IS OWED: a local
+// run is not a CI tail — re-derive from several CI runs of this harness
+// once they exist, per the standing rule above.
 //
 // Note also what sharding can and cannot buy: the wall is now max(shard), but
 // this guard and battery.yml's job cap are both set by the slowest single
 // CHECK, which no partition subdivides. Sharding moved the wall 2.2x and moved
 // neither timeout.
-const CHECK_TIMEOUT_MS = 59 * 60 * 1000;
+const CHECK_TIMEOUT_MS = 25 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
 // The battery, in the order the gates are REPORTED: cheap and synchronous
@@ -148,7 +155,7 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // are stable, and the slow CI run split 2184.6 s against 1898.2 s on exactly
 // this column.
 const BATTERY = [
-  { name: 'support', opts: {}, cost: 22,
+  { name: 'support', opts: {}, cost: 26,
     gate: '0 failures',
     fails: (r) => r.failures },
   { name: 'graph', opts: {}, cost: 1,
@@ -156,7 +163,7 @@ const BATTERY = [
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  { name: 'penetration', opts: {}, cost: 17,
+  { name: 'penetration', opts: {}, cost: 22,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
     fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
     note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
@@ -164,7 +171,7 @@ const BATTERY = [
     gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'stockFloor', opts: {}, cost: 4,
+  { name: 'stockFloor', opts: {}, cost: 7,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
@@ -189,7 +196,7 @@ const BATTERY = [
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 360,
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 287,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -213,7 +220,7 @@ const BATTERY = [
   // reversing part either has a restoring element, is driven both ways, or is
   // waived against a filed TODO. The control is gated too: a positive control
   // that quietly stops passing is how this class of check dies.
-  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 2,
+  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 5,
     gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
     fails: (r) => [
       ...r.unwaived,
@@ -223,15 +230,15 @@ const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 567,
+  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 719,
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 475,
+  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 534,
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 2401,
+  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 352,
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
     note: (r) => {

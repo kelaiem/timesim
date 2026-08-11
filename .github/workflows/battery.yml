@@ -164,7 +164,7 @@ concurrency:
 jobs:
   battery:
     runs-on: ubuntu-latest
-    timeout-minutes: 75   # must stay ABOVE ci-battery.mjs's per-check guard (59; TODO 38 re-derived both — guard + the ~15 min this pair has always kept above it)
+    timeout-minutes: 40   # must stay ABOVE ci-battery.mjs's per-check guard (25; §82 re-derived both — guard + the ~15 min this pair has always kept above it)
     steps:
       - uses: actions/checkout@v4
 
