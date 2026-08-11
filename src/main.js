@@ -5772,7 +5772,15 @@ const ALARM_MARK_PITCH = (Math.PI * 2) / ALARM_MARK_STEPS;   // radians per mark
 // (ALARM_BARREL_TURNS) and the ring's length (ALARM_RING_SECONDS) are now
 // derived from that train's tooth counts and pin count — see the "Alarm
 // striking works" block down at the geometry.
-const ALARM_STRIKE_GAP = 0.42;   // s between strikes (the bell cadence)
+// §104 — ALARM_STRIKE_GAP is the DESIGNED cadence, no longer the enacted one.
+// The governor block beside the striking works (search ALARM_GOV_I) SOLVES the
+// anchor's poising-ring inertia so the rate law lands exactly this gap at the
+// design wind point (mid strike travel), and tick() spends the barrel at the
+// law's instantaneous rate — so the ring now audibly slows as the spring runs
+// down (≈ 0.374 s full → 0.488 s empty). This constant is the design TARGET
+// the solve is held to (the oscillator's F_BALANCE convention: solve the
+// part, never re-target the beat), not a rate anything plays back verbatim.
+const ALARM_STRIKE_GAP = 0.42;   // s between strikes at the design wind point (the bell cadence)
 const ALARM_STRIKE_AMP = 0.09;   // rad — swings the head from its 0.4 rest gap onto the wire (a hair of overlap = a tap)
 // --- Alarm sub-dial placement (BUILT §24) ----------------------------------
 // The alarm disc joins the sub-dial family. 12 o'clock is the reserve and
@@ -9226,7 +9234,10 @@ const ALARM_STRIKE_RATIO = ALARM_BARREL_TEETH / ALARM_STRIKE_PINION_TEETH;      
 const ALARM_STRIKES_PER_BARREL_TURN = ALARM_CAM_LOBES * ALARM_STRIKE_RATIO;       // 16 strikes / barrel turn
 const ALARM_BARREL_TURNS = 1.75;               // full-wind travel of the barrel (the > 1 turn constraint above)
 const ALARM_STRIKES_PER_WIND = ALARM_BARREL_TURNS * ALARM_STRIKES_PER_BARREL_TURN; // 28 strikes
-const ALARM_RING_SECONDS = ALARM_STRIKES_PER_WIND * ALARM_STRIKE_GAP;             // ≈ 11.8 s — DERIVED
+// ALARM_RING_SECONDS moved to the §104 governor block: with the cadence a
+// function of wind, the ring's length is the INTEGRAL of gap(θ) over the 28
+// strikes, not a product — it needs the governor's rate law, which needs the
+// alarm spring's k, which needs the barrel built. ≈ 11.9 s as evaluated there.
 const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 
 // --- Siting. Both arbors stand on studs planted in the plate's top face, the
@@ -9436,7 +9447,17 @@ const ALARM_FREE_S = ALARM_FREE_FRAC * ALARM_STRIKE_GAP;
 const ALARM_FALL_S = ALARM_FREE_S / 3;
 const ALARM_HAMMER_W = Math.acos(-ALARM_STRIKE_AMP / ALARM_DRAW_RAD) / ALARM_FALL_S; // reaches the wire exactly at ALARM_FALL_S
 const ALARM_HAMMER_DECAY = Math.log(20) / (ALARM_FREE_S - ALARM_FALL_S);             // rebound down to 5% by the next pickup
-const ALARM_STRIKE_U = ALARM_FALL_S / ALARM_STRIKE_GAP;  // phase fraction at which the head meets the wire
+// §104 — the fall is TIME (a spring law, TODO 14's record), the cycle is
+// PHASE, and the governed cadence made their exchange rate a function of the
+// wind: the phase fraction the fall occupies is fall / gap(θ), no longer a
+// constant. Still a pure function of the pose — setPose derives
+// alarmBarrelWind from alarmStrikePhase (lockstep), so consulting the wind
+// here adds no second state. The equalisation gate's hammer-window row holds
+// ALARM_FALL_S inside the free fraction at the FASTEST governed gap, which is
+// what keeps this mapping well-formed over the whole wind.
+// (alarmStrikeGapAt is the §104 governor's rate law, defined with the
+// governor beside the striking works — hoisted, called only after boot.)
+const alarmStrikeUNow = () => ALARM_FALL_S / alarmStrikeGapAt(alarmBarrelWind); // phase fraction at which the head meets the wire
 const ALARM_PHASE_REST = -ALARM_CAM_RISE_FRAC;           // frac = 1 − rise ⇒ the instant a rise begins ⇒ lift 0
 function alarmHammerAngle() {
   const u = alarmStrikePhase - Math.floor(alarmStrikePhase);
@@ -9446,7 +9467,7 @@ function alarmHammerAngle() {
   // pretend to be one: the hammer falls under its own spring, the wire stops
   // it dead at the strike angle (that impact IS the ding — the energy goes
   // into the gong), and it rebounds to its check.
-  const t = u * ALARM_STRIKE_GAP;
+  const t = u * alarmStrikeGapAt(alarmBarrelWind); // §104: phase→time through the governed gap
   if (t < ALARM_FALL_S) return ALARM_DRAW_RAD * Math.cos(ALARM_HAMMER_W * t);
   const r = t - ALARM_FALL_S;
   return -ALARM_STRIKE_AMP * Math.cos(ALARM_HAMMER_W * r) * Math.exp(-ALARM_HAMMER_DECAY * r);
@@ -9808,6 +9829,26 @@ const ALARM_WIND_W = ALARM_BARREL_TEETH;
 const ALARM_WIND_TIP_R = ALARM_TRAIN_MODULE * (ALARM_WIND_W + 2) / 2; // the arbor wheel's addendum circle
 const ALARM_RATCHET_R = Math.ceil(10 * (Math.max(ALARM_BARREL_TIP_R, ALARM_WIND_TIP_R + ALARM_GEAR_BEVEL) + 0.5 + CLEAR_MARGIN) / 1.28) / 10;
 const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
+// §104 — THE SET-UP, the going side's arrangement one barrel over. M(0) = 0
+// on a bare barrel, and the governor's cadence law runs ∝ 1/√M — an anchor on
+// an un-set-up spring CRAWLS toward stall as the barrel drains instead of
+// stopping. The set-up keeps the empty-barrel moment off the floor, and its
+// size is derived at both ends:
+//   · the CEILING is the ribbon's own: re-running mainspringFrames on this
+//     ribbon at rising sweeps, the k-solve reaches the developed length at
+//     4.3 turns (lenErr 5e-13) and fails at 4.4 (4.3e-3 — "this spring is
+//     too short for this wind"); the annulus never binds (S still 2.99 at
+//     4.3). Measured at 0.1-turn granularity, so a solve that lands within
+//     half a step of 4.3 is spending the measurement's own noise: usable
+//     total ≤ 4.25 turns, set-up ≤ 4.25 − 1.75 = 2.5 turns.
+//   · the HOLD is the §99 arbor ratchet's, so the set-up must land on an
+//     integer click of its 32-tooth saw (the going SETUP_CLICKS convention —
+//     an angle that stops landing on the ratchet is authored, not held).
+// 2.5 turns IS exactly 80 clicks, so both constraints land on the same
+// number and the builder's own lenErr/capacity asserts stand behind the
+// ceiling. The equalisation gate holds the quantisation and the ceiling.
+const ALARM_SETUP_CLICKS = 80;   // integer detents of pre-tension on the §99 arbor ratchet
+const ALARM_SETUP_SWEEP = (ALARM_SETUP_CLICKS * Math.PI * 2) / ALARM_RATCHET_N; // 2.5 turns, 15.70796 rad
 let alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
 {
   // A going barrel: the toothed wall IS the wheel that drives the pinion and
@@ -9832,6 +9873,12 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
     // run-down to full, so the reserve and the sweep are the same quantity
     // written twice, which is why this is not a literal.
     springWindSweep: ALARM_BARREL_TURNS * Math.PI * 2,
+    // §104 — the set-up rides UNDER the service band: the frames span
+    // [free + setup, free + setup + sweep], so the run-down ribbon still
+    // holds 2.5 turns and the two rotors' relative travel stays the same
+    // 1.75 turns the state law winds between them (the going drum's
+    // arrangement exactly — sweepDown is the click-held floor, not free).
+    springSetupSweep: ALARM_SETUP_SWEEP,
   });
   alarmBarrelRotor.add(alarmBarrel);
   alarmBarrelGear = alarmBarrel;   // TODO 15: the winding chain's last link
@@ -9937,7 +9984,489 @@ declareRestoring('Alarm barrel', 'spring',
   'the ribbon IS the restoring element — its inner end is hooked to the wound arbor and its outer end to the body, so their relative travel winds it; the winding train carries the arbor back through its wheel, and the §99 click holds what the hand banked',
   'mainspringRibbon');
 
-// --- TODO 32: THE EQUALISATION, NOW A RECORD -------------------------------
+// ---------------------------------------------------------------------------
+// 'Alarm governor' (BUILT §104) — the striking work's speed limiter, and the
+// close of TODO 32's remainder: the alarm spring's derived torque finally
+// PRODUCES the cadence instead of posing beside it. An unsprung recoil
+// anchor flutters on a saw wheel at a ×8 stage off the strike arbor (×32
+// from the barrel): driven BOTH ways by the tooth faces, a runaway by
+// design — §48's two-way class with nothing to declare but the drive. The
+// fly was refuted at watch scale by arithmetic and the centrifugal governor
+// costed and declined; both surveys live in the §104 record (docs/BUILT.md),
+// not here — do not re-propose them.
+//
+// THE RATE LAW. Per tooth the anchor is driven through its swing φ both
+// ways from rest under the governed torque: t_tooth = 2·√(2φ·I_a/Γ_g),
+// Γ_g = M(θ)·η/32. Per strike the cam turns one lobe pitch, the governor
+// wheel RATIO/LOBES = 2 revolutions — 80 saw teeth — so
+//   gap(θ) = 80 · t_tooth ∝ 1/√M(θ).
+// The ring's inertia I_a is SOLVED so the designed ALARM_STRIKE_GAP lands at
+// the design wind point (the oscillator gate's convention: solve the part,
+// never re-target the beat). tick() spends the barrel at this law's
+// instantaneous rate, and the equalisation gate holds the solve, the
+// measured endpoints, the ring's stock and the hammer's window.
+// ---------------------------------------------------------------------------
+const ALARM_GOV_WHEEL_TEETH = 64;  // on the strike arbor — the train's own module keeps the mesh family
+const ALARM_GOV_PINION_TEETH = 8;  // on the governor arbor
+const ALARM_GOV_RATIO = ALARM_GOV_WHEEL_TEETH / ALARM_GOV_PINION_TEETH;      // ×8
+const ALARM_GOV_STEPUP = ALARM_STRIKE_RATIO * ALARM_GOV_RATIO;               // ×32 from the barrel
+const ALARM_GOV_SAW_TEETH = 40;
+// Governor-wheel revolutions per strike = RATIO / LOBES (one lobe pitch of
+// cam per strike), so the teeth the anchor counts per strike is DERIVED:
+const ALARM_GOV_TEETH_PER_STRIKE = ALARM_GOV_SAW_TEETH * ALARM_GOV_RATIO / ALARM_CAM_LOBES; // 80
+// Two cut wheel-pinion meshes between barrel and governor; watch train
+// meshes with cut pinions run 0.90–0.95 and a small 8-leaf pinion sits at
+// the bottom of that band — 0.90 per mesh.
+const ALARM_GOV_MESH_EFF = 0.9 * 0.9;
+// The anchor's swing per tooth — the pallet-geometry spec row (≈ 17°, the
+// alarm-clock anchor class runs 15–20°). The pallet engagement radius is
+// derived FROM it below: R_p·φ = one tooth pitch of arc, so the swing and
+// the pitch are one quantity written twice. The entry's first-order 0.35
+// re-derived DOWN at the line: R_p = arc/φ also fixes the anchor's centre
+// distance, and at 0.35 the anchor's own arbor stands 0.07 outside the
+// saw's tip circle — under the one margin. 0.30 is the swing at which the
+// arbor clears its wheel by a whole CLEAR_MARGIN with room for its own
+// radius (the geometry block asserts the achieved figure) — an internal
+// P2 constraint of the anchor, not a packaging spend.
+const ALARM_GOV_PHI = 0.30;        // rad
+// The design wind point: MID strike travel, so the designed gap sits at the
+// centre of the service band and the audible slowdown spreads symmetrically
+// about it (the fusee levels its band; this barrel deliberately does not —
+// the slowing ring is the honest voice of a spring-driven bell).
+const ALARM_GOV_DESIGN_WIND = ALARM_BARREL_TURNS / 2;
+// The spring's stiffness, from the ribbon AS CUT — the same k = E·I/L the
+// EQUALISATION record publishes (the record quotes THIS constant, so the
+// solve and the report cannot drift apart).
+const ALARM_GOV_K = OSC_STEEL_E * (alarmSpring.section.I_u4 * OSC_U ** 4) / (alarmSpring.devLen * OSC_U); // N·m/rad
+const alarmMomentAt = (windTurns) => ALARM_GOV_K * (ALARM_SETUP_SWEEP + windTurns * Math.PI * 2); // N·m — the set-up floor is in the law
+const alarmGovTorqueAt = (windTurns) => alarmMomentAt(windTurns) * ALARM_GOV_MESH_EFF / ALARM_GOV_STEPUP; // N·m at the governor arbor
+// THE SOLVE. gap(design) = ALARM_STRIKE_GAP inverted for I_a:
+//   I_a = (gap / (2·teethPerStrike))² · Γ_g(design) / (2φ)
+const ALARM_GOV_I = (ALARM_STRIKE_GAP / (2 * ALARM_GOV_TEETH_PER_STRIKE)) ** 2
+  * alarmGovTorqueAt(ALARM_GOV_DESIGN_WIND) / (2 * ALARM_GOV_PHI);   // kg·m² ≈ 7.8e-11
+const alarmStrikeGapAt = (windTurns) => 2 * ALARM_GOV_TEETH_PER_STRIKE
+  * Math.sqrt(2 * ALARM_GOV_PHI * ALARM_GOV_I / alarmGovTorqueAt(Math.max(windTurns, 0)));
+// gap(design) === ALARM_STRIKE_GAP by construction — held as arithmetic:
+if (Math.abs(alarmStrikeGapAt(ALARM_GOV_DESIGN_WIND) / ALARM_STRIKE_GAP - 1) > 1e-9)
+  console.warn(`§104: the I_a solve does not land the designed gap — ${alarmStrikeGapAt(ALARM_GOV_DESIGN_WIND).toFixed(6)} s against ${ALARM_STRIKE_GAP} s`);
+// The ring's LENGTH is now the integral of the law over the 28 strikes
+// (∫ gap dN, N in strikes — midpoint rule over the wind, dN = 16·dw):
+// ≈ 11.9 s against the constant-cadence era's 11.76.
+const ALARM_RING_SECONDS = (() => {
+  const N = 256; let s = 0;
+  for (let i = 0; i < N; i++) s += alarmStrikeGapAt(ALARM_BARREL_TURNS * (i + 0.5) / N);
+  return (s / N) * ALARM_STRIKES_PER_WIND;
+})();
+// The hammer's WINDOW at the fastest governed cadence: the fall is time
+// (TODO 14's spring law, cross-referenced not absorbed — ALARM_HAMMER_W
+// still comes from the strike timing, that item's open note), the free
+// fraction is phase, and the shortest free time is at full wind. The gate
+// holds this row; the warn is the boot-silent tripwire behind it.
+if (ALARM_FALL_S > ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS))
+  console.warn(`§104: the hammer's ${ALARM_FALL_S.toFixed(4)} s fall does not fit the ${(ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS)).toFixed(4)} s free window at full wind`);
+
+// --- §104 THE FOLD. One station off the strike arbor, on the corner's own
+// tier above everything the §99 stack built — the arbor tier's move,
+// repeated one level up. Measured before siting (tools/probe-104.mjs):
+// within the wheel's reach every foreign mesh tops out at the §99 barrel
+// arbor's shoulder, so the governor tier derives its floor from that one
+// number and the corner above ~13.5 is empty to the rim. The bearing points
+// the stage outboard-southwest, module-relative like the barrel's own
+// bearing: the barrel/click quarter (SE of the striking wheel), the column
+// wheel and pusher (NE), the hammer and gong (N) all stay outside the
+// stage's footprint, and the rim assert below holds the outboard edge.
+const ALARM_GOV_BEARING = 225 * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative
+const ALARM_GOV_CD = ALARM_TRAIN_MODULE * (ALARM_GOV_WHEEL_TEETH + ALARM_GOV_PINION_TEETH) / 2; // 10.8 — the mesh dictates
+const alarmGovPos = {
+  x: alarmSwPos.x + Math.cos(ALARM_GOV_BEARING) * ALARM_GOV_CD,
+  y: alarmSwPos.y + Math.sin(ALARM_GOV_BEARING) * ALARM_GOV_CD,
+};
+// z-stack, derived up from the tallest metal the 64T wheel overflies — the
+// §99 arbor's shoulder (ratchet top + 0.2). Margins carry the centi-unit
+// (JMP_BIND_EPS's lesson, the §99 tier's own convention), and gear bands
+// clear between BEVEL surfaces, not band surfaces (the two-bevel lesson).
+const ALARM_GOV_WHEEL_T = ALARM_WIND_WHEEL_T;              // the tier stock, one band
+const ALARM_GOV_BEVEL = Math.min(ALARM_GOV_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_GOV_OVERFLOWN_TOP = ALARM_RATCHET_TOP_Z + 0.2; // the §99 arbor's shoulder — see the siting note
+const ALARM_GOV_TIER_BOT = ALARM_GOV_OVERFLOWN_TOP + CLEAR_MARGIN + 0.01;
+const ALARM_GOV_WHEEL_Z = ALARM_GOV_TIER_BOT + ALARM_GOV_BEVEL + ALARM_GOV_WHEEL_T / 2;
+const ALARM_GOV_PINION_T = ALARM_GOV_WHEEL_T + 0.4;        // embraces the wheel band (the strike pinion's idiom)
+// The saw and the ANCHOR share ONE band — a real recoil anchor is a flat
+// piece in its wheel's own plane, hub and arms outside the tip circle in
+// plan, only the pallets reaching in — and the POISING RING drops to the
+// bottom of the anchor's column, riding the same arbor just above the
+// plate. Both moves are §39's depth envelope enforcing itself: a stacked
+// ring+anchor tower over the wheel tier put the assembly at 12.71 mm
+// against the 2.5–12 mm real-movement window, and the anchor corner's own
+// column (measured, tools/probe-104.mjs) is EMPTY from the plate to the
+// tier — position space had the room, so the fold takes it (P3 resolved in
+// position space, nothing mechanical spent). Saw stock is the striking
+// side's own ratchet stock (§99's RATCHET_T/2 = 0.4).
+const ALARM_GOV_SAW_T = 0.4;
+const ALARM_GOV_SAW_BOT = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T / 2 + ALARM_GOV_BEVEL + CLEAR_MARGIN + 0.01;
+const ALARM_GOV_SAW_TOP = ALARM_GOV_SAW_BOT + ALARM_GOV_SAW_T; // makeRatchetAndClick extrudes bevel-free — exact band
+const ALARM_GOV_ANCHOR_T = ALARM_GOV_SAW_T;                // one band, one plane
+const ALARM_GOV_ANCHOR_BOT = ALARM_GOV_SAW_BOT;
+const ALARM_GOV_ANCHOR_TOP = ALARM_GOV_SAW_TOP;
+const ALARM_GOV_RING_BOT = TQ_TOP_Z + CLEAR_MARGIN + 0.01; // the ring band starts one margin above the plate top
+// --- The anchor's plan, all derived from φ and the saw (rule 1):
+//   R_p = toothArc/φ            the pallet radius — one tooth of rim per swing
+//   span = 5.5 teeth            integer + half, so when pallet A releases a
+//                               tooth is arriving at B — the anchor rule
+//   D    = r·cosε + √(R_p²−(r·sinε)²)   the stud distance that puts both
+//                               engagement crossings ON the tip circle
+const ALARM_GOV_SAW_R = ALARM_TRAIN_MODULE * ALARM_GOV_SAW_TEETH / 2; // 6.0 — tip radius, the train's own module
+const ALARM_GOV_TOOTH_PITCH = Math.PI * 2 / ALARM_GOV_SAW_TEETH;      // rad of saw per tooth
+const ALARM_GOV_TOOTH_ARC = ALARM_GOV_TOOTH_PITCH * ALARM_GOV_SAW_R;  // 0.9425 u of rim per tooth
+const ALARM_GOV_PALLET_R = ALARM_GOV_TOOTH_ARC / ALARM_GOV_PHI;       // 3.1416
+const ALARM_GOV_SPAN_TEETH = 5.5;
+const ALARM_GOV_HALF_SPAN = Math.PI * ALARM_GOV_SPAN_TEETH / ALARM_GOV_SAW_TEETH; // ε = 0.4320 rad at the wheel centre
+const _govUnderRoot = ALARM_GOV_PALLET_R ** 2 - (ALARM_GOV_SAW_R * Math.sin(ALARM_GOV_HALF_SPAN)) ** 2;
+if (_govUnderRoot <= 0)
+  console.warn(`§104: pallet circle (R_p ${ALARM_GOV_PALLET_R.toFixed(3)}) cannot reach the tip circle at half-span ${ALARM_GOV_HALF_SPAN.toFixed(3)} — no engagement crossing exists`);
+const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R * Math.cos(ALARM_GOV_HALF_SPAN) + Math.sqrt(Math.max(_govUnderRoot, 1e-12)); // 7.335
+// The swing spec's own room check (why φ is 0.30): everything on the anchor
+// axis that crosses the SAW's band — the stud and the arbor around it —
+// must stand clear of the tip circle.
+const ALARM_GOV_STUD_R = 0.35, ALARM_GOV_ARBOR_R = 0.45;
+{
+  const room = ALARM_GOV_ANCHOR_D - ALARM_GOV_SAW_R - ALARM_GOV_ARBOR_R;
+  if (room < CLEAR_MARGIN)
+    console.warn(`§104: the anchor arbor stands ${room.toFixed(3)} off the saw's tip circle — need ${CLEAR_MARGIN} (φ too large for this wheel)`);
+}
+const ALARM_GOV_ANCHOR_BEARING = -90 * DEG2RAD + ALARM_MOD_ROT; // stud due module-south of the station — the empty quadrant (see the siting note)
+const alarmGovAnchorPos = {
+  x: alarmGovPos.x + Math.cos(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
+  y: alarmGovPos.y + Math.sin(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
+};
+// --- The pose laws, both pure functions of alarmStrikePhase (setPose's
+// zero-dt trap: nothing here integrates). The wheel is a gear; the anchor
+// is the tooth-face coupling written as geometry: over each tooth period
+// one pallet is driven through φ and the other drives back — a triangle in
+// the wheel's own angle, since face contact IS a geometric link.
+const alarmGovWheelAngle = () => -alarmStrikeWheelAngle() * ALARM_GOV_RATIO; // external mesh reverses sense
+function alarmGovAnchorAngle() {
+  const u = ((alarmGovWheelAngle() / ALARM_GOV_TOOTH_PITCH) % 1 + 1) % 1;    // fraction of a tooth period
+  return u < 0.5 ? -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * u
+                 :  ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * (u - 0.5);
+}
+// --- The pallet faces, GENERATED from the law (the alarm cam's own trick,
+// §25: profile from lift law). During its half period the engaged tooth's
+// TIP traces a curve in the anchor's frame; that trajectory IS the face
+// that keeps contact closed at every instant, so the face is recorded
+// rather than styled. Material sits radially OUTWARD of the trajectory
+// (the tooth's body is inward of its tip), so the blade and the wheel can
+// only meet tip-on-face.
+const _govAzOf = (p, o) => Math.atan2(p.y - o.y, p.x - o.x);
+const _govCrossAt = (sgn) => ({
+  x: alarmGovPos.x + ALARM_GOV_SAW_R * Math.cos(ALARM_GOV_ANCHOR_BEARING + sgn * ALARM_GOV_HALF_SPAN),
+  y: alarmGovPos.y + ALARM_GOV_SAW_R * Math.sin(ALARM_GOV_ANCHOR_BEARING + sgn * ALARM_GOV_HALF_SPAN),
+});
+const _govCrossA = _govCrossAt(+1), _govCrossB = _govCrossAt(-1);
+// Tooth 0's tip parks ON crossing A at phase 0 (anchor at −φ/2, A's drive
+// about to begin) — the saw's clocking is derived, not placed:
+const ALARM_GOV_SAW_PHASE = _govAzOf(_govCrossA, alarmGovPos) - (0.72 / ALARM_GOV_SAW_TEETH) * Math.PI * 2;
+// The half-integer span puts a tip on B's crossing exactly half a period
+// later — held as arithmetic (this is what SPAN_TEETH = n + ½ buys):
+{
+  const k = (_govAzOf(_govCrossB, alarmGovPos) - _govAzOf(_govCrossA, alarmGovPos) - 0.5 * ALARM_GOV_TOOTH_PITCH) / ALARM_GOV_TOOTH_PITCH;
+  const frac = Math.abs(k - Math.round(k));
+  if (frac > 1e-9)
+    console.warn(`§104: pallet span misses the half-integer rule by ${frac.toFixed(6)} of a tooth — pallet B's engagement would not meet a tip`);
+}
+const _govPalletPts = (cross, aOf) => {
+  const NP = 25, face = [], out = [];
+  for (let i = 0; i <= NP; i++) {
+    const du = 0.5 * i / NP;                       // progress through the half period
+    const a = aOf(du);                             // the anchor's law over this drive
+    const tAz = _govAzOf(cross, alarmGovPos) + du * ALARM_GOV_TOOTH_PITCH; // the engaged tip advances with the wheel
+    const tip = { x: alarmGovPos.x + ALARM_GOV_SAW_R * Math.cos(tAz), y: alarmGovPos.y + ALARM_GOV_SAW_R * Math.sin(tAz) };
+    const ca = Math.cos(-a), sa = Math.sin(-a);
+    const rx = tip.x - alarmGovAnchorPos.x, ry = tip.y - alarmGovAnchorPos.y;
+    const p = { x: rx * ca - ry * sa, y: rx * sa + ry * ca };            // tip in the anchor's REST frame
+    const wx = alarmGovPos.x - alarmGovAnchorPos.x, wy = alarmGovPos.y - alarmGovAnchorPos.y;
+    const w = { x: wx * ca - wy * sa, y: wx * sa + wy * ca };            // wheel centre, same frame
+    const nl = Math.hypot(p.x - w.x, p.y - w.y);
+    face.push(p);
+    out.push({ x: p.x + (p.x - w.x) / nl * 0.45, y: p.y + (p.y - w.y) / nl * 0.45 }); // blade stock, radially outward
+  }
+  return { face, out };
+};
+const _govPalletA = _govPalletPts(_govCrossA, (du) => -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * du);
+const _govPalletB = _govPalletPts(_govCrossB, (du) => ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * du);
+const _govPalletPoly = (P) => [...P.face, ...[...P.out].reverse()];
+// --- THE RING SOLVE. I_a is the target; the steel the anchor must carry
+// anyway (pallets, hub, arms) is COUNTED from its own polygons (∫r²dA by
+// Green's theorem — the balance's OSC_I discipline at anchor scale), and
+// the brass ring's square section is solved by bisection to make up the
+// remainder. Neglected: the anchor's arbor sleeve (r 0.45 — its ∫r²dA is
+// < 0.1% of I_a) and the stud (static). The section must land in real
+// drawn-brass ring stock; the equalisation gate holds the window.
+const _govPolyJ = (pts) => { // area and ∫(x²+y²)dA about the anchor axis
+  let A = 0, J = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    const c = p.x * q.y - q.x * p.y;
+    A += c / 2;
+    J += c * (p.x * p.x + p.x * q.x + q.x * q.x + p.y * p.y + p.y * q.y + q.y * q.y) / 12;
+  }
+  return { A: Math.abs(A), J: Math.abs(J) };
+};
+const ALARM_GOV_HUB_R = 0.9;
+const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
+                                        // holds inside the rim (assert below), which is the cheap
+                                        // direction — I = m·r², so radius bought is section saved
+const ALARM_GOV_RING_STOCK_MM = [0.2, 0.8]; // drawn-brass ring stock a bench would loop and poise:
+                                        // below 0.2 mm a 4 mm ring loses its roundness to handling,
+                                        // above 0.8 it is clock-plate bar, not a poising ring
+const ALARM_GOV_RING_S = (() => {
+  const u5 = OSC_U ** 5;
+  const palletT = ALARM_GOV_ANCHOR_TOP - ALARM_GOV_SAW_BOT;  // the tabs span saw band + plate
+  const steel = OSC_STEEL_RHO * u5 * (
+    (_govPolyJ(_govPalletPoly(_govPalletA)).J + _govPolyJ(_govPalletPoly(_govPalletB)).J) * palletT
+    + (Math.PI / 2) * (ALARM_GOV_HUB_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * ALARM_GOV_ANCHOR_T // hub annulus: ρ·h·π/2·(b⁴−a⁴)
+    + 2 * _armJ(ALARM_GOV_HUB_R - 0.1, ALARM_GOV_PALLET_R - 0.3, 0.5) * ALARM_GOV_ANCHOR_T // two plate arms
+  );
+  const target = ALARM_GOV_I - steel;
+  if (target <= 0) {
+    console.warn(`§104: the anchor's own steel (${steel.toExponential(3)} kg·m²) already exceeds the solved I_a ${ALARM_GOV_I.toExponential(3)} — no ring can poise this`);
+    return 0.5;
+  }
+  // ring I(s): brass annulus of square section s at RING_R, plus its two
+  // carrier arms and collar (they ride the solve so the count stays whole)
+  const iOf = (s) => OSC_BRASS_RHO * (OSC_U ** 5) * (
+    (Math.PI / 2) * ((ALARM_GOV_RING_R + s / 2) ** 4 - (ALARM_GOV_RING_R - s / 2) ** 4) * s
+    + 2 * _armJ(0.75, ALARM_GOV_RING_R - s / 2, 0.5) * 0.35
+    + (Math.PI / 2) * (0.75 ** 4 - ALARM_GOV_ARBOR_R ** 4) * 0.35
+  );
+  let lo = 0.02, hi = 4;
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (iOf(m) < target) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+})();
+function _armJ(r0, r1, w) { return w * (r1 ** 3 - r0 ** 3) / 3; } // radial bar: ∫r²dA = w·(r1³−r0³)/3
+const ALARM_GOV_RING_S_MM = MM(ALARM_GOV_RING_S);
+if (ALARM_GOV_RING_S_MM < ALARM_GOV_RING_STOCK_MM[0] - 1e-9 || ALARM_GOV_RING_S_MM > ALARM_GOV_RING_STOCK_MM[1] + 1e-9)
+  console.warn(`§104: poising the anchor to I_a ${ALARM_GOV_I.toExponential(3)} needs ring section ${ALARM_GOV_RING_S_MM.toFixed(4)} mm — outside real ring stock (${ALARM_GOV_RING_STOCK_MM[0]}–${ALARM_GOV_RING_STOCK_MM[1]} mm)`);
+const ALARM_GOV_RING_TOP = ALARM_GOV_RING_BOT + ALARM_GOV_RING_S;
+// Rim asserts — the fold's outboard edge, held with numbers (rule 6):
+{
+  const sawReach = Math.hypot(alarmGovPos.x, alarmGovPos.y) + ALARM_GOV_SAW_R;
+  if (sawReach > plateR - CLEAR_MARGIN)
+    console.warn(`§104: the saw wheel reaches ${sawReach.toFixed(2)} — plate ${plateR.toFixed(2)} leaves less than the margin`);
+  const ringReach = Math.hypot(alarmGovAnchorPos.x, alarmGovAnchorPos.y) + ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2;
+  if (ringReach > plateR - CLEAR_MARGIN)
+    console.warn(`§104: the poising ring reaches ${ringReach.toFixed(2)} — plate ${plateR.toFixed(2)} leaves less than the margin`);
+  const ringToGovStud = ALARM_GOV_ANCHOR_D - (ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2) - ALARM_GOV_STUD_R;
+  if (ringToGovStud < CLEAR_MARGIN)
+    console.warn(`§104: the ring passes ${ringToGovStud.toFixed(3)} from the governor stud — need ${CLEAR_MARGIN}`);
+}
+// --- The build. Two axes on their own studs (the gong post's planted-0.5
+// idiom), plus the 64T wheel the strike arbor gains — that wheel and its
+// sleeve join the striking rotor, and the striking stud follows the shaft
+// up as a second turned length (one shaft, two meshes — declared joints).
+const alarmGovUnit = new THREE.Group();
+movement.add(alarmGovUnit);
+registerLabel('Alarm governor', alarmGovUnit);
+registerExplode(alarmGovUnit, 0, 9); // baseZ 0: children carry world z, the striking unit's convention
+const alarmGovRotor = new THREE.Group();       // pinion + saw + their arbor
+alarmGovRotor.position.set(alarmGovPos.x, alarmGovPos.y, 0);
+alarmGovUnit.add(alarmGovRotor);
+const alarmGovAnchorPivot = new THREE.Group(); // anchor + pallets + poising ring
+alarmGovAnchorPivot.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, 0);
+alarmGovUnit.add(alarmGovAnchorPivot);
+{
+  const studBase = TQ_TOP_Z - 0.5;
+  const govStudTop = ALARM_GOV_SAW_TOP + 0.2;
+  const govStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, govStudTop - studBase, 12), MATS.steel);
+  govStud.name = 'alarmGovStud';
+  govStud.rotation.x = Math.PI / 2;
+  govStud.position.set(alarmGovPos.x, alarmGovPos.y, (govStudTop + studBase) / 2);
+  alarmGovUnit.add(govStud);
+  const anchStudTop = ALARM_GOV_ANCHOR_TOP + 0.2; // the anchor is this axis's topmost rider — the ring is DOWN by the plate
+  const anchStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, anchStudTop - studBase, 12), MATS.steel);
+  anchStud.name = 'alarmGovAnchorStud';
+  anchStud.rotation.x = Math.PI / 2;
+  anchStud.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, (anchStudTop + studBase) / 2);
+  alarmGovUnit.add(anchStud);
+
+  // The governor rotor: pinion in the wheel's band, saw above, one arbor.
+  const pinion = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_GOV_PINION_TEETH, thickness: ALARM_GOV_PINION_T });
+  pinion.traverse((o) => { if (o.isMesh) o.name = 'alarmGovPinion'; });
+  pinion.rotation.z = Math.PI / ALARM_GOV_PINION_TEETH; // half a leaf — interleaves the wheel's teeth at the mesh line
+  pinion.position.z = ALARM_GOV_WHEEL_Z;
+  alarmGovRotor.add(pinion);
+  const saw = G.makeRatchetAndClick({
+    radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false });
+  saw.traverse((o) => { if (o.isMesh) o.name = 'alarmGovSaw'; });
+  saw.rotation.z = ALARM_GOV_SAW_PHASE;
+  saw.position.z = ALARM_GOV_SAW_BOT; // the builder extrudes bottom→up
+  // §83's word for "a wheel whose content is its cut outline" — a saw drawn
+  // as a smooth pitch circle is a false glyph (the §99 ratchet's own rule):
+  saw.userData.profile = {
+    poly: saw.userData.ratchetPoly,
+    hubR: ALARM_GOV_SAW_R * 0.8,
+    boreR: ALARM_GOV_SAW_R * 0.28,
+  };
+  alarmGovRotor.add(saw);
+  const govArbBot = ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2;
+  const govArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot, 16), MATS.steel);
+  govArb.name = 'alarmGovArbor';
+  govArb.rotation.x = Math.PI / 2;
+  govArb.position.z = (ALARM_GOV_SAW_TOP + govArbBot) / 2;
+  alarmGovRotor.add(govArb);
+
+  // The anchor: pallet blades span the saw's band and rise into the plate
+  // band; the hub and arms stay ABOVE the wheel's plane (a real anchor's
+  // body overflies its wheel — only the pallets dip), and the poising ring
+  // rides the arbor above everything.
+  const palletT = ALARM_GOV_ANCHOR_TOP - ALARM_GOV_SAW_BOT;
+  for (const P of [_govPalletA, _govPalletB]) {
+    const poly = _govPalletPoly(P);
+    const shape = new THREE.Shape();
+    shape.moveTo(poly[0].x, poly[0].y);
+    for (const p of poly.slice(1)) shape.lineTo(p.x, p.y);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: palletT, bevelEnabled: false, curveSegments: 2 });
+    geo.translate(0, 0, ALARM_GOV_SAW_BOT);
+    const m = new THREE.Mesh(geo, MATS.steel);
+    m.name = 'alarmGovPallet';
+    alarmGovAnchorPivot.add(m);
+  }
+  const hubShape = new THREE.Shape();
+  hubShape.absarc(0, 0, ALARM_GOV_HUB_R, 0, Math.PI * 2, false);
+  const hubHole = new THREE.Path();
+  hubHole.absarc(0, 0, ALARM_GOV_ARBOR_R, 0, Math.PI * 2, true);
+  hubShape.holes.push(hubHole);
+  const hubGeo = new THREE.ExtrudeGeometry(hubShape, { depth: ALARM_GOV_ANCHOR_T, bevelEnabled: false, curveSegments: 4 });
+  hubGeo.translate(0, 0, ALARM_GOV_ANCHOR_BOT);
+  const hub = new THREE.Mesh(hubGeo, MATS.steel);
+  hub.name = 'alarmGovAnchor';
+  alarmGovAnchorPivot.add(hub);
+  for (const P of [_govPalletA, _govPalletB]) {
+    const mid = P.face[Math.floor(P.face.length / 2)];
+    const az = Math.atan2(mid.y, mid.x);
+    const r0 = ALARM_GOV_HUB_R - 0.1, r1 = ALARM_GOV_PALLET_R - 0.3;
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, ALARM_GOV_ANCHOR_T), MATS.steel);
+    arm.name = 'alarmGovAnchorArm';
+    arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_ANCHOR_BOT + ALARM_GOV_ANCHOR_T / 2);
+    arm.rotation.z = az;
+    alarmGovAnchorPivot.add(arm);
+  }
+  const anchArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT, 16), MATS.steel);
+  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane)
+  anchArb.rotation.x = Math.PI / 2;
+  anchArb.position.z = (ALARM_GOV_ANCHOR_TOP + ALARM_GOV_RING_BOT) / 2;
+  alarmGovAnchorPivot.add(anchArb);
+  // The solved ring, its collar and two carrier arms — every term the
+  // bisection counted, cut at the counted dimensions.
+  const ringShape = new THREE.Shape();
+  ringShape.absarc(0, 0, ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2, 0, Math.PI * 2, false);
+  const ringHole = new THREE.Path();
+  ringHole.absarc(0, 0, ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2, 0, Math.PI * 2, true);
+  ringShape.holes.push(ringHole);
+  const ringGeo = new THREE.ExtrudeGeometry(ringShape, { depth: ALARM_GOV_RING_S, bevelEnabled: false, curveSegments: 12 });
+  ringGeo.translate(0, 0, ALARM_GOV_RING_BOT);
+  const ring = new THREE.Mesh(ringGeo, MATS.brass);
+  ring.name = 'alarmGovRing';
+  alarmGovAnchorPivot.add(ring);
+  const collarShape = new THREE.Shape();
+  collarShape.absarc(0, 0, 0.75, 0, Math.PI * 2, false);
+  const collarHole = new THREE.Path();
+  collarHole.absarc(0, 0, ALARM_GOV_ARBOR_R, 0, Math.PI * 2, true);
+  collarShape.holes.push(collarHole);
+  const collarGeo = new THREE.ExtrudeGeometry(collarShape, { depth: 0.35, bevelEnabled: false, curveSegments: 4 });
+  collarGeo.translate(0, 0, ALARM_GOV_RING_BOT + ALARM_GOV_RING_S / 2 - 0.175);
+  const collar = new THREE.Mesh(collarGeo, MATS.brass);
+  collar.name = 'alarmGovRingCollar';
+  alarmGovAnchorPivot.add(collar);
+  for (const sgn of [1, -1]) {
+    const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2; // perpendicular pair — poised by symmetry
+    const r0 = 0.75, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, 0.35), MATS.brass);
+    arm.name = 'alarmGovRingArm';
+    arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_RING_BOT + ALARM_GOV_RING_S / 2);
+    arm.rotation.z = az;
+    alarmGovAnchorPivot.add(arm);
+  }
+
+  // The strike arbor's new top: the 64T wheel, the sleeve that carries it,
+  // and the stud's second length behind both.
+  const wheel = G.makeGear({
+    module: ALARM_TRAIN_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_GOV_WHEEL_T,
+    boreR: 0.75, spokes: 6, material: MATS.brass });
+  wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmGovWheel'; });
+  wheel.position.z = ALARM_GOV_WHEEL_Z;
+  alarmStrikeRotor.add(wheel);
+  const sZ0 = ALARM_BARREL_Z + ALARM_PINION_T / 2;          // the strike pinion's top face
+  const sZ1 = ALARM_GOV_WHEEL_Z - ALARM_GOV_WHEEL_T * 0.75; // into the wheel's own hub ring
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sZ1 - sZ0, 16), MATS.steel);
+  sleeve.name = 'alarmGovSleeve';
+  sleeve.rotation.x = Math.PI / 2;
+  sleeve.position.z = (sZ0 + sZ1) / 2;
+  alarmStrikeRotor.add(sleeve);
+  const stud0Top = ALARM_BARREL_Z + ALARM_PINION_T / 2 + 0.3;      // the original stud's own top derivation
+  const studTop = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T / 2 + 0.3;
+  const studUp = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studTop - (stud0Top - 0.2), 12), MATS.steel);
+  studUp.name = 'alarmGovStudUpper';
+  studUp.rotation.x = Math.PI / 2;
+  studUp.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + stud0Top - 0.2) / 2);
+  alarmStrikeUnit.add(studUp);
+}
+// P2, sampled — the group agrees with itself. The pair sweep cannot see
+// mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet
+// cycle is held here: over a sampled tooth period, no saw TIP may stand
+// buried inside a pallet blade beyond the working tolerance (contact rides
+// each face by construction; this holds the construction true after any
+// later edit to φ, the span, or the saw).
+{
+  const polys = [_govPalletPoly(_govPalletA), _govPalletPoly(_govPalletB)];
+  const inside = (pt, poly) => {
+    let w = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i], b = poly[j];
+      if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) w = !w;
+    }
+    return w;
+  };
+  const edgeDist = (pt, poly) => {
+    let d = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i], b = poly[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / (dx * dx + dy * dy)));
+      d = Math.min(d, Math.hypot(pt.x - (a.x + t * dx), pt.y - (a.y + t * dy)));
+    }
+    return d;
+  };
+  let worst = 0;
+  for (let k = 0; k < 96; k++) {
+    const u = k / 96;
+    const a = u < 0.5 ? -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * u : ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * (u - 0.5);
+    const ca = Math.cos(-a), sa = Math.sin(-a);
+    for (let i = 0; i < ALARM_GOV_SAW_TEETH; i++) {
+      const az = ALARM_GOV_SAW_PHASE + (i + 0.72) * ALARM_GOV_TOOTH_PITCH + u * ALARM_GOV_TOOTH_PITCH;
+      const wx = alarmGovPos.x + ALARM_GOV_SAW_R * Math.cos(az) - alarmGovAnchorPos.x;
+      const wy = alarmGovPos.y + ALARM_GOV_SAW_R * Math.sin(az) - alarmGovAnchorPos.y;
+      const pt = { x: wx * ca - wy * sa, y: wx * sa + wy * ca };
+      if (Math.hypot(pt.x, pt.y) > ALARM_GOV_PALLET_R + 1.0) continue;
+      for (const poly of polys) if (inside(pt, poly)) worst = Math.max(worst, edgeDist(pt, poly));
+    }
+  }
+  if (worst > 0.02)
+    console.warn(`§104: a saw tip stands ${worst.toFixed(4)} inside a pallet blade over the sampled cycle — the generated faces no longer match the swing law (budget 0.02)`);
+}
+// §36A: the anchor's travel is ±φ/2, declared beside its derivation; its
+// reciprocation rides the existing alarmStrike axis (80 swings per strike)
+// and must survive §105's confirm tier — if `restoring` does not list this
+// unit two-way, that is a finding, not a formality.
+declareTravel('Alarm governor', ALARM_GOV_PHI, 'the anchor swings ±φ/2 every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
+// §48 — the pallet-fork control case's class, one train over: the saw's
+// tooth faces drive the anchor BOTH ways (that is what "unsprung recoil
+// anchor" means — a runaway by design), so there is nothing to declare but
+// the drive. The poising ring is inertia, not a spring.
+declareRestoring('Alarm governor', 'two-way',
+  'the saw\'s tooth faces drive the anchor both ways, alternately by each pallet — the pallet fork\'s class; the poising ring is solved inertia, not a restoring element');
+// --- TODO 32: THE EQUALISATION, NOW A RECORD — AND SINCE §104, HELD WHOLE --
 // The OSCILLATOR block's twin, sited here because it needs BOTH ribbons
 // built (the going drum's and this alarm barrel's). The torque law up top is
 // deliberately normalized — k cancels from every geometric consequence — so
@@ -9952,12 +10481,13 @@ declareRestoring('Alarm barrel', 'spring',
 //    the gate holds it to float noise so the identity can never silently
 //    stop being one (the pre-TODO-40 cone was exactly that: a flank cut
 //    to a law the torque display no longer obeyed).
-//  · ALARM half, a REPORT (TODO 25 tier-one style): its ribbon's k and
-//    moment range from the same arithmetic — but the cadence stays
-//    AUTHORED (ALARM_STRIKE_GAP), because torque→cadence needs a governor
-//    model (escape-wheel brake power vs drive) that does not exist. That
-//    remainder is item 32's open half; `cadence` says so in the record
-//    rather than letting the derived k imply more than it delivers.
+//  · ALARM half, HELD since §104 (it was a report while "torque→cadence
+//    needs a governor model" was true — the governor above IS that model,
+//    so the record stopped saying 'authored' and the gate grew the rows):
+//    the 80-click set-up on its integer detent, the total wind under the
+//    ribbon's measured ceiling, the I_a solve landing the designed gap at
+//    the design point, the measured cadence endpoints, the ring's section
+//    inside real stock, and the hammer's window at the fastest gap.
 //
 // Sanity anchor for the going k: ~9.2e-5 N·m/rad ⇒ full-wind arbor moment
 // ~1.2 N·mm — inside the real small-movement barrel range (roughly
@@ -9975,8 +10505,14 @@ const EQUALISATION = (() => {
     const d = Math.abs(springTorqueAt(t) * fuseeEnvR(t * FUSEE_F_ACTIVE) / FUSEE_TORQUE_K - 1);
     if (d > levelMaxDev) levelMaxDev = d;
   }
-  const kAlarm = kOf(alarmSpring);
-  const alarmSweep = alarmSpring.sweepFull - alarmSpring.sweepFree; // rad — no set-up on this barrel
+  // §104 — the alarm's k is the GOVERNOR's constant, quoted rather than
+  // re-derived: the I_a solve consumed ALARM_GOV_K, and a record that ran
+  // kOf() again would be two chances for the same law to drift apart.
+  // (kOf(alarmSpring) is the identical expression — the going half above
+  // still uses kOf, which is that one derivation for the drum's ribbon.)
+  const kAlarm = ALARM_GOV_K;
+  const alarmTravel = alarmSpring.sweepFull - alarmSpring.sweepDown; // rad — the 1.75-turn strike travel
+  const alarmSetup = alarmSpring.sweepDown - alarmSpring.sweepFree;  // rad — §104's 80-click set-up, as BUILT into the frames
   return Object.freeze({
     going: {
       k_Nm_per_rad: k,
@@ -9994,16 +10530,63 @@ const EQUALISATION = (() => {
     alarm: {
       k_Nm_per_rad: kAlarm,
       section: { ...alarmSpring.section }, devLen_u: alarmSpring.devLen,
-      windRangeRad: [0, alarmSweep],
-      momentRange_Nmm: [0, kAlarm * alarmSweep * 1000],
-      cadence: 'authored — ALARM_STRIKE_GAP; torque→cadence needs a governor model (TODO 32 remainder)',
+      // §104 — the set-up rides under the whole service band: the spring
+      // never operates below 80 clicks of tension, and the gate holds the
+      // quantisation the same way it holds the going side's 17.
+      setup: {
+        clicks: ALARM_SETUP_CLICKS, teeth: ALARM_RATCHET_N, sweepRad: ALARM_SETUP_SWEEP,
+        builtRad: alarmSetup, // as built into the ribbon's frames — must equal sweepRad
+        quantised: Number.isInteger(ALARM_SETUP_CLICKS)
+          && Math.abs(ALARM_SETUP_SWEEP - ALARM_SETUP_CLICKS * 2 * Math.PI / ALARM_RATCHET_N) < 1e-12
+          && Math.abs(alarmSetup - ALARM_SETUP_SWEEP) < 1e-9,
+      },
+      windRangeRad: [alarmSetup, alarmSetup + alarmTravel],
+      momentRange_Nmm: [kAlarm * alarmSetup * 1000, kAlarm * (alarmSetup + alarmTravel) * 1000],
+      // The ribbon's measured ceiling, and where the total sits under it.
+      // Measured by the §47 method (the builder's own frame solver at
+      // rising sweeps): the k-solve reaches the developed length at 4.3
+      // turns (lenErr 5e-13) and fails at 4.4 (4.3e-3); 0.1-turn
+      // granularity, so the usable total is 4.25. The builder's lenErr/
+      // capacity asserts stand behind this at every boot; capacityLeft is
+      // its leftover annulus room at the NEW full wind (2.996 turns).
+      totalWindTurns: (alarmSetup + alarmTravel) / (Math.PI * 2),
+      usableCeilingTurns: 4.25,
+      capacityLeft: alarmSpring.capacity,
+      // §104 — THE CADENCE IS A LAW, not a literal: the governor block
+      // derives gap(θ) from this spring's k through the anchor's solved
+      // inertia, tick() spends the barrel at it, and the gate holds the
+      // solve at the design point plus the measured endpoints.
+      cadence: {
+        law: 'gap(w) = 2·ALARM_GOV_TEETH_PER_STRIKE·√(2·ALARM_GOV_PHI·ALARM_GOV_I / (M(w)·ALARM_GOV_MESH_EFF/ALARM_GOV_STEPUP))',
+        designGap_s: ALARM_STRIKE_GAP,
+        designWindTurns: ALARM_GOV_DESIGN_WIND,
+        gapAtDesign_s: alarmStrikeGapAt(ALARM_GOV_DESIGN_WIND),
+        gapFull_s: alarmStrikeGapAt(ALARM_BARREL_TURNS),
+        gapEmpty_s: alarmStrikeGapAt(0),
+        I_kgm2: ALARM_GOV_I, phiRad: ALARM_GOV_PHI,
+        meshEff: ALARM_GOV_MESH_EFF, stepUp: ALARM_GOV_STEPUP,
+        teethPerStrike: ALARM_GOV_TEETH_PER_STRIKE,
+        ringSeconds: ALARM_RING_SECONDS,
+        ring: {
+          r_mm: MM(ALARM_GOV_RING_R), section_mm: ALARM_GOV_RING_S_MM,
+          stockWindowMm: [...ALARM_GOV_RING_STOCK_MM],
+          inStock: ALARM_GOV_RING_S_MM >= ALARM_GOV_RING_STOCK_MM[0] && ALARM_GOV_RING_S_MM <= ALARM_GOV_RING_STOCK_MM[1],
+        },
+        // The hammer's window at the FASTEST governed cadence — TODO 14's
+        // fall (a time law) must fit the cam's free fraction (a phase law)
+        // where the exchange rate is least generous: full wind.
+        hammerWindow: {
+          freeAtFastest_s: ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS),
+          fall_s: ALARM_FALL_S,
+          ok: ALARM_FALL_S <= ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS),
+        },
+      },
       // §99 — the arbor click quantises the HOLD: a released crown gives
       // back at most one saw pitch of arbor angle before the face catches.
       // §101 ENACTED it (settleAlarmClick — the recoil is a state change
       // through the gears on the wind's falling edge). Still reported, not
-      // gated — unlike the going set-up there is no integer-click
-      // constraint to land (the wind is the user's, not a set-up); the
-      // quantum is the record, in both natural units.
+      // gated — the WIND is the user's, not a set-up; the §104 set-up is
+      // the separate, gated quantity above.
       holdQuantumRad: (Math.PI * 2) / ALARM_RATCHET_N,
       holdQuantumStrikes: ALARM_STRIKES_PER_BARREL_TURN / ALARM_RATCHET_N,
     },
@@ -12065,7 +12648,7 @@ alarmEmitter = alarmStrikePt;     // the strike-point empty built with the gong 
 // The alarm's own power loop (mirrors the going-train barrel — see tick()):
 let alarmBarrelWind = 0;          // alarm-spring energy, in turns — §25 C: ships EMPTY; the alarm must be WOUND to ring (drains while ringing)
 let alarmStrikePhase = ALARM_PHASE_REST; // striking-train phase, in strikes (each whole strike = one pin releasing the hammer)
-let alarmStrikeIdx = Math.floor(ALARM_PHASE_REST - ALARM_STRIKE_U); // last strike SOUNDED — the ding's edge source
+let alarmStrikeIdx = Math.floor(ALARM_PHASE_REST - alarmStrikeUNow()); // last strike SOUNDED — the ding's edge source (§104: the wire-meeting fraction rides the governed gap; wind is 0 here)
 let alarmReleased = false;        // the lock is lifted: the striking train is free to run (set at the trip)
 let restoredAlarmOn = false;      // persisted toggle, applied once the UI exists
 let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier plumbing exists
@@ -17639,6 +18222,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm release disc', 2], ['Alarm release feeler', 3],
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
+    ['Alarm governor', 8], // §104: one step past the striking wheel it hangs off, before the hammer it paces
     ['Alarm hammer', 9], ['Alarm gong', 11],
     ['Alarm click', 4], // §99: rides between the winding train and the barrel it holds
     // §34/§35 additions — the release path and the long link to it. Uncho-
@@ -19768,13 +20352,13 @@ function tick(t) {
       // §25 C: the phase CONTINUES from wherever winding parked it (lockstep
       // with the barrel — resetting it here would slip the mesh by however
       // much the last wind was short of full).
-      alarmStrikeIdx = Math.floor(alarmStrikePhase - ALARM_STRIKE_U);
+      alarmStrikeIdx = Math.floor(alarmStrikePhase - alarmStrikeUNow());
     }
     // Ring: while released, armed and wound, the striking train runs at the
     // cadence the gong wants and the barrel gives up EXACTLY the turning the
     // train takes — one spend, two variables, so §25's geometry cannot drift
     // apart (barrel angle and pin angle are one mesh). One ding per strike,
-    // fired when the head actually reaches the wire (ALARM_STRIKE_U into the
+    // fired when the head actually reaches the wire (alarmStrikeUNow() into the
     // cycle), not at some abstract whole number. When the barrel empties the
     // train stops and the lock re-seats — the ring ends because it RAN DOWN —
     // and it is re-armed for the next crossing. Turning the alarm OFF re-seats
@@ -19800,10 +20384,16 @@ function tick(t) {
       // out at a speed it can be watched and heard at.
       alarmRingHoldTick = false;
     } else if (alarmReleased && alarmOn && alarmBarrelWind > 0) {
-      const spend = Math.min(rawDt / ALARM_STRIKE_GAP / ALARM_STRIKES_PER_BARREL_TURN, alarmBarrelWind);
+      // §104 — TORQUE ENTERS: the barrel spends at the governor's rate,
+      // spend = ω(θ)·dt with ω = 1/(gap(θ)·strikesPerTurn), so the ring
+      // audibly slows as M(θ) falls and stops at the SET-UP floor (0.488 s
+      // gap), never at a crawl. The one line that used to divide real time
+      // by an authored constant is now the only consumer the derived alarm
+      // k ever needed — TODO 32's remainder, closed where it lived.
+      const spend = Math.min(rawDt / alarmStrikeGapAt(alarmBarrelWind) / ALARM_STRIKES_PER_BARREL_TURN, alarmBarrelWind);
       alarmBarrelWind -= spend;
       alarmStrikePhase += spend * ALARM_STRIKES_PER_BARREL_TURN;
-      const idx = Math.floor(alarmStrikePhase - ALARM_STRIKE_U);
+      const idx = Math.floor(alarmStrikePhase - alarmStrikeUNow());
       if (idx > alarmStrikeIdx) { alarmStrikeIdx = idx; SND.alarmStrike(); } // one strike edge = one ding (self-gates on soundOn)
       if (alarmBarrelWind <= 0) alarmReleased = false; // §25 C: no phase reset — run-down is 28 strikes = 7 whole cam revs, already ≡ REST
     } else if (!alarmOn) {
@@ -20385,6 +20975,11 @@ function tick(t) {
   // other does not.
   alarmSpring.setWind(alarmSpring.sweepFull - (alarmBarrelRotor.rotation.z - alarmArborRotor.rotation.z));
   alarmStrikeRotor.rotation.z = alarmStrikeWheelAngle();
+  // §104 — the governor rides the same phase: the rotor through its gear
+  // ratio, the anchor through the tooth-face law. Both pure functions of
+  // alarmStrikePhase, so the alarmStrike axis poses the whole stage.
+  alarmGovRotor.rotation.z = alarmGovWheelAngle();
+  alarmGovAnchorPivot.rotation.z = alarmGovAnchorAngle();
   alarmHammerPivot.rotation.z = alarmHammerAngle();
   // §48 / TODO 14 — the spring bears on the tail wherever the tail now is.
   // Anchored end fixed at the stud; free end follows the bearing point, so
