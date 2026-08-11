@@ -722,6 +722,41 @@ export const AXES = [
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f, windAccumTurns: 0 }),
   },
   {
+    // TODO 38 W4 — the GOING WIND, closing the item's last tranche: before
+    // this axis `windAccumTurns` was pinned 0 everywhere, so the whole
+    // winding chain — crown wheel, ratchet, click, the fusee turning
+    // BACKWARD, the chain re-wrapping upward, the maintaining detent riding
+    // its saw — was swept in exactly one direction, the one it travels while
+    // running down. The pose law is a CYCLE, not a line: a full wind from
+    // empty and the run back down (w = 1−|2f−1|), because the registry's
+    // reversal test is within-axis by design (an axis boundary is not motion
+    // the part made) — a monotone wind axis would cover the states and still
+    // leave the fusee's genuine two-way drive unobserved, exactly the
+    // §48-population gap whose retired declarations name this axis as their
+    // way back in. tension and windAccumTurns move as the COUPLED pair they
+    // are (rule 2): winding IS what re-tensions the spring, and the span is
+    // read live (`fuseeWrapTurns` = reserveHours/8, 3.75 at the default
+    // spec) so a `?reserveh=` boot sweeps the wind that spec performs.
+    // n: the train axis's own standard is 96 samples per fusee revolution
+    // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
+    // 3.75 rev each way at that density is 360 + 360 = 720. The finer
+    // features on this path (the §99-class ratchet tooth pitch, 24/rev) are
+    // budget-tier work with their own nSamples override, not this axis's to
+    // carry. The measured cost of this n, and what it did to the guard
+    // arithmetic, is quoted in TODO 38's closing record — sized by
+    // derivation, priced by measurement, per the item's own rule.
+    name: 'wind',
+    n: 720,
+    pose: (f, clock) => {
+      const w = 1 - Math.abs(2 * f - 1);
+      return {
+        tau: 0.13, crownPullT: 0, leverEngage: 0,
+        tension: w,
+        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 3.75),
+      };
+    },
+  },
+  {
     // One full revolution of the FUSEE arbor (8 h of movement time) — catches
     // slow-orbit collisions (e.g. arbor-mounted parts sweeping past static
     // keyless parts) that the short beat axis never rotates far enough to
@@ -1490,6 +1525,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
+  // TODO 38 W4's wind axis lifted the fixture-vs-fixture blindness on the
+  // fusee stack: the ratchet and the great wheel became MOVERS the moment an
+  // axis wound them, and two standing contacts that were always there became
+  // visible at the rest pose. Both measured (d = 0.0000, seated not buried)
+  // and both are the assembly, not a foul:
+  { unit: 'Fusee & great wheel', a: 'ExtrudeGeometry#2', b: 'ExtrudeGeometry#1', why: 'the great wheel plate and its own hub ring — one part, two meshes (makeGear builds the hub as a separate solid riveted through the plate)' },
+  { unit: 'Fusee & great wheel', a: 'ratchet', b: 'maintPawl', why: 'the maintaining pawl SEATED in its saw — the working joint the maintaining-power block exists for. (Two meshes in this unit share each name — the base ratchet and the maintaining ratchet, the pawl and its mate — so this row excuses the label pair; the far combination measures 0.1955 clear and never needs the excuse.)' },
   { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
   { unit: 'Mainspring drum', a: 'mainspringHook', b: 'ExtrudeGeometry#0', why: 'the hook is riveted INTO the drum wall — the anchor TODO 1 closed. Since the wind morph the hook is a FIXTURE (it rides the drum and nothing else), so this row is no longer reachable by a mover-vs-fixture check; the geometry is unchanged and the declaration is kept as the record of it' },
