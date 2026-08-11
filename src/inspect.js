@@ -4761,7 +4761,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§101 — the click faces the right way; 50 units, 11 poses):
+// Baseline (§102 — the lock's return blade; 50 units, 11 poses):
+// 284533079
+// — moved from 949908343 deliberately: §102 adds the return blade and
+// its anchor stud to the Alarm lock (two meshes, the unit's box grows on
+// the pivot side) and derives ALARM_LOCK_LIFT down from the authored
+// 0.085 to the pad clearance over the lever length (0.032) — the
+// released lever parks 0.05 rad lower, which moves every lifted-pose
+// box the lock appears in. Verified by the battery's double-boot gate.
+// Previous baseline (§101 — the click faces the right way; 50 units,
+// 11 poses):
 // 949908343
 // — moved from 3121848351 deliberately: §101 re-cut the click's outline
 // (the valley-filling beak replaced the V-nose, arm slimmed) and mirrored
