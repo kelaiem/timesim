@@ -201,6 +201,7 @@ export const MECH_GRAPH = {
     // hammer posts use — the only clear band on it.
     ['Alarm barrel', 'Three-quarter plate'],        // barrel arbor's boss stands on the back plate
     ['Alarm striking wheel', 'Three-quarter plate'], // pin wheel's bearing stud, likewise
+    ['Alarm governor', 'Three-quarter plate'],      // §104: both governor studs planted in the same face
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -286,6 +287,9 @@ export const MECH_GRAPH = {
     ['alarm mainspring', 'Alarm barrel'],
     ['Alarm barrel', 'Alarm striking wheel'], // barrel's toothed wall → strike pinion
     ['Alarm striking wheel', 'Alarm hammer'], // pins lift the tail and let it go
+    ['Alarm striking wheel', 'Alarm governor'], // §104: the strike arbor's 64T wheel → the governor pinion.
+                                              // A LEAF of the drive graph on purpose — a brake consumes,
+                                              // it drives nothing downstream.
   ],
   // Declared-but-unmodelled links: reported as TODO warnings.
   todo: [
@@ -627,6 +631,8 @@ const EXPECTED_PAIRS = [
   ['Alarm striking wheel', 'Three-quarter plate'],// bearing stud, likewise
   ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
   ['Alarm striking wheel', 'Alarm hammer'],       // a pin on the hammer's tail — the lift
+  ['Alarm governor', 'Three-quarter plate'],      // §104: both studs planted in the plate top
+  ['Alarm governor', 'Alarm striking wheel'],     // §104: the ×8 mesh (64T wheel ⇄ governor pinion)
 ];
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
@@ -1436,6 +1442,16 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmClickPawl', 'alarmArborRatchet'], // the parked kiss + the ratcheting ride
     ],
   },
+  // §104 — the governor's EXPECTED pair gets its floors row on arrival (no
+  // blanket excuse): the ONE contact is the ×8 mesh; the saw clears the 64T
+  // wheel's band by the derived margin, the studs and arbors stand clear,
+  // and every one of them owes the floor everywhere in the cycle.
+  {
+    a: 'Alarm striking wheel', b: 'Alarm governor', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmGovWheel', 'alarmGovPinion'], // the ×8 stage — a working gear mesh
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -1613,6 +1629,17 @@ export const INTRA_UNIT_CONTACTS = [
   // BETWEEN are exactly the parts a spiral has to be pinned between.
   { unit: 'Hairspring', a: 'TubeGeometry#0', b: 'CylinderGeometry#1', why: 'the spiral\'s inner coil is pinned to the COLLET it turns with — makeHairspring starts the curve at the collet radius, so the two share that surface by construction' },
   { unit: 'Hairspring', a: 'TubeGeometry#0', b: 'TubeGeometry#2', why: 'the raised terminal curve continues from the spiral\'s outer end — one ribbon, two meshes, joined end to end at the fixed outer angle' },
+  // §104 — the governor's declared joints. Two axes, each the striking
+  // side's own idiom: rotating members drawn coincident over their static
+  // studs (the strike sleeve's "one shaft, two meshes"), and the strike
+  // arbor's stud grown by a second turned length behind its new wheel.
+  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104: the governor-wheel sleeve is the strike arbor\'s next turned step over its stud — one shaft, two meshes' },
+  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'alarmGovStudUpper', why: '§104: the same sleeve over the stud\'s upper length' },
+  { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'alarmGovStudUpper', why: '§104: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
+  { unit: 'Alarm striking wheel', a: 'alarmGovStudUpper', b: 'CylinderGeometry#0', why: '§104: the stud\'s two turned lengths, butted — one post, two meshes (both fixtures; kept as the joint\'s record)' },
+  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§104: the governor arbor turns on its stud — coincident solids are the bearing (the strike sleeve\'s idiom)' },
+  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§104: the pinion\'s bore over the same stud — the running fit at the leaf root' },
+  { unit: 'Alarm governor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§104: the anchor\'s arbor turns on its own stud, ring below and anchor above — same bearing idiom' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
@@ -4489,6 +4516,13 @@ export const STOCK_FLOORS = {
   spring:  { mm: 0.03,  basis: 'real hairsprings run 0.02-0.04 mm; flat springs thicker' },
   marking: { mm: 0.005, basis: 'printed/inlaid dial indices are a 5-10 micron film — relief, not stock' },
   hand:    { mm: 0.10,  basis: 'real blued-steel hands run 0.10-0.20 mm blade stock' },
+  // §104 — the governor's poising ring gets its own kind rather than
+  // borrowing the wheel's: a drawn-brass ring is wire stock, not sheet.
+  // The window is 0.2–0.8 mm section: below 0.2 a ring at these diameters
+  // loses its roundness to handling, above 0.8 it is plate bar. The floor
+  // gates here; the UPPER bound is the equalisation gate's (the section is
+  // SOLVED from I_a, so only that gate knows what the solve produced).
+  ring:    { mm: 0.20,  basis: 'drawn-brass poising-ring stock runs 0.2-0.8 mm section; the solve must land inside it' },
 };
 // DEGENERATE floor — the unarguable tier, gating from day one: below this a
 // solid is not thin metal but broken geometry (invisible, z-fighting, a
@@ -4582,6 +4616,20 @@ export const STOCK_KIND_BY_MESH = {
   // and answers to the wheel floor with no entry, on purpose.
   alarmTailPin: 'pivot',
   alarmSleevePost: 'pivot',
+  // §104 — the governor's kinds, declared on arrival (no defaults left to
+  // the report): shafts and studs are shaft/pin stock; the solved ring is
+  // its own kind above; the collar is a turned bush (pin-class wall, the
+  // alarmClickStud convention). Wheel, pinion, saw, anchor plate, arms and
+  // pallets are sheet/wheel stock and answer to the wheel floor with no
+  // entry, on purpose.
+  alarmGovStud: 'pivot',
+  alarmGovAnchorStud: 'pivot',
+  alarmGovStudUpper: 'pivot',
+  alarmGovSleeve: 'pivot',
+  alarmGovArbor: 'pivot',
+  alarmGovAnchorArbor: 'pivot',
+  alarmGovRing: 'ring',
+  alarmGovRingCollar: 'pivot',
   alarmLifterPlunger: 'pivot',
   alarmLifterHead: 'pivot',
   alarmLifterBlade: 'spring',
@@ -4836,9 +4884,26 @@ export function checkOscillator(clock) {
 //     is the same: someone re-cutting a ribbon without re-deriving the
 //     record that quotes it.
 //
-// The alarm's cadence is NOT gated: the record says 'authored' because a
-// torque→cadence model needs a governor that does not exist (item 32's open
-// remainder), and gating a number at its authored value would hold nothing.
+// §104 — the ALARM half is HELD too, since the governor exists (TODO 32
+// closed). Its rows are the striking side's mirror of 1–3 plus the rows
+// only a governed cadence has:
+//
+//  4. ALARM SET-UP QUANTISATION — 80 clicks on the §99 arbor ratchet's
+//     32-tooth saw, the going side's rule on the second barrel, and the
+//     built ribbon's frames must carry exactly that sweep.
+//  5. THE CEILING — total wind ≤ the ribbon's measured 4.25-turn usable
+//     total (the k-solve reaches devLen at 4.3 and fails at 4.4, measured
+//     at 0.1-turn granularity), with the builder's own capacity positive.
+//  6. THE SOLVE — gap(designWind) lands the designed ALARM_STRIKE_GAP
+//     within the oscillator's 0.5% (solve the part, never re-target the
+//     beat), and the ring's solved section sits in real ring stock.
+//  7. MEASURED ENDPOINTS — the gate steps the SHIPPED tick law at full and
+//     near-empty wind and compares the strike rate it actually produces
+//     against the record's law at the measured window's mid-wind. This is
+//     the row that catches a record drifting from the tick, which the
+//     solve alone cannot see.
+//  8. THE HAMMER'S WINDOW — the fall (a time law, TODO 14) fits the cam's
+//     free fraction at the FASTEST governed gap.
 export function checkEqualisation(clock) {
   const E = clock.equalisation;
   if (!E) return { ok: true, error: 'no equalisation payload on __clock (main.js TODO 32 block missing)' };
@@ -4872,6 +4937,53 @@ export function checkEqualisation(clock) {
   crossCheck('Mainspring drum', E.going);
   crossCheck('Alarm barrel', E.alarm);
   const g = E.going, a = E.alarm;
+  // §104 rows 4–6, 8 — held from the record:
+  if (!a.setup || !a.setup.quantised)
+    failures.push({ what: 'alarm set-up quantisation', setup: a.setup });
+  if (!(a.totalWindTurns <= a.usableCeilingTurns + 1e-9))
+    failures.push({ what: 'alarm total wind vs ribbon ceiling', totalTurns: a.totalWindTurns, usable: a.usableCeilingTurns });
+  if (!(a.capacityLeft > 0))
+    failures.push({ what: 'alarm ribbon capacity', capacityLeft: a.capacityLeft });
+  const c = a.cadence;
+  const measured = { gapFull: null, gapEmpty: null, lawFullAtMid: null, lawEmptyAtMid: null };
+  if (!c || typeof c !== 'object' || !c.law) {
+    failures.push({ what: 'alarm cadence law', cadence: c, note: 'the record no longer states a law — §104 regressed to an authored value' });
+  } else {
+    if (!(Math.abs(c.gapAtDesign_s / c.designGap_s - 1) * 100 <= 0.5))
+      failures.push({ what: 'I_a solve vs designed gap', gapAtDesign_s: c.gapAtDesign_s, designGap_s: c.designGap_s, tolPct: 0.5 });
+    if (!c.ring.inStock)
+      failures.push({ what: 'poising-ring stock', section_mm: c.ring.section_mm, window: c.ring.stockWindowMm });
+    if (!c.hammerWindow.ok)
+      failures.push({ what: 'hammer window at fastest gap', ...c.hammerWindow });
+    // §104 row 7 — ENDPOINTS MEASURED ON THE POSED METAL. Step the shipped
+    // tick law and read the strike rate it actually produces: rate =
+    // Δphase/Δt (phase is in strikes, so 1/rate IS the gap). The wind
+    // drains honestly while we measure, so the law is evaluated at the
+    // measured window's MID-wind rather than at the endpoint — that keeps
+    // the tolerance a statement about dt granularity (0.5%), not about
+    // drain drift.
+    const gapBy = (phase) => {
+      clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+        alarmStrikePhase: phase, alarmOn: 1, alarmReleased: 1 });
+      const p0 = clock.alarmStrikePhase, w0 = clock.alarmBarrelWind;
+      let t = 0;
+      for (let i = 0; i < 60; i++) { clock.step(0.005); t += 0.005; }
+      const dp = clock.alarmStrikePhase - p0;
+      return { gap: dp > 0 ? t / dp : Infinity, midWind: (w0 + clock.alarmBarrelWind) / 2 };
+    };
+    const lawAt = (w) => 2 * c.teethPerStrike
+      * Math.sqrt(2 * c.phiRad * c.I_kgm2 / (a.k_Nm_per_rad * (a.setup.sweepRad + w * 2 * Math.PI) * c.meshEff / c.stepUp));
+    const full = gapBy(0);
+    const empty = gapBy(clock.alarmStrikesPerWind - 2); // two strikes of travel left — still off the stall
+    measured.gapFull = +full.gap.toFixed(5);
+    measured.gapEmpty = +empty.gap.toFixed(5);
+    measured.lawFullAtMid = +lawAt(full.midWind).toFixed(5);
+    measured.lawEmptyAtMid = +lawAt(empty.midWind).toFixed(5);
+    if (!(Math.abs(full.gap / lawAt(full.midWind) - 1) * 100 <= 0.5))
+      failures.push({ what: 'measured gap (full) vs law', measured: full.gap, law: lawAt(full.midWind), tolPct: 0.5 });
+    if (!(Math.abs(empty.gap / lawAt(empty.midWind) - 1) * 100 <= 0.5))
+      failures.push({ what: 'measured gap (near empty) vs law', measured: empty.gap, law: lawAt(empty.midWind), tolPct: 0.5 });
+  }
   return {
     ok: failures.length === 0,
     going: {
@@ -4885,14 +4997,26 @@ export function checkEqualisation(clock) {
     },
     alarm: {
       k_Nm_per_rad: a.k_Nm_per_rad,
+      setupClicks: a.setup && a.setup.clicks, setupTeeth: a.setup && a.setup.teeth,
+      setupTurns: a.setup && +(a.setup.sweepRad / (2 * Math.PI)).toFixed(5),
+      totalWindTurns: a.totalWindTurns, usableCeilingTurns: a.usableCeilingTurns,
+      capacityLeft: a.capacityLeft && +a.capacityLeft.toFixed(4),
       windRangeTurns: a.windRangeRad.map((x) => +(x / (2 * Math.PI)).toFixed(4)),
       momentRange_Nmm: a.momentRange_Nmm.map((x) => +x.toFixed(4)),
-      cadence: a.cadence,
+      cadence: c && typeof c === 'object' ? {
+        law: c.law, designGap_s: c.designGap_s, gapAtDesign_s: c.gapAtDesign_s,
+        gapFull_s: c.gapFull_s, gapEmpty_s: c.gapEmpty_s, ringSeconds: +c.ringSeconds.toFixed(4),
+        I_kgm2: c.I_kgm2, ring: c.ring, hammerWindow: c.hammerWindow,
+        measured,
+      } : c,
     },
     failures,
     summary: `going k ${g.k_Nm_per_rad.toExponential(3)} N·m/rad, set-up ${g.setup.clicks}/${g.setup.teeth} clicks, `
       + `M ${g.momentRange_Nmm[0].toFixed(2)}–${g.momentRange_Nmm[1].toFixed(2)} N·mm, level |dev| ${g.levelMaxDev.toExponential(1)}; `
-      + `alarm k ${a.k_Nm_per_rad.toExponential(3)} N·m/rad (cadence authored — TODO 32 remainder)`,
+      + `alarm k ${a.k_Nm_per_rad.toExponential(3)} N·m/rad, set-up ${a.setup ? a.setup.clicks + '/' + a.setup.teeth : '—'} clicks, `
+      + (c && typeof c === 'object'
+        ? `gap ${c.gapFull_s.toFixed(3)}–${c.gapEmpty_s.toFixed(3)} s over the wind (design ${c.designGap_s} s held; measured ${measured.gapFull}/${measured.gapEmpty}), ring ${c.ring.section_mm.toFixed(3)} mm in stock — TODO 32 closed`
+        : 'cadence NOT a law'),
   };
 }
 
@@ -4958,7 +5082,7 @@ const CHECKS = {
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
-  equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 — the going spring's derived law holds; the alarm's arithmetic reported
+  equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law
   // §48's no-spring audit. Named `restoring` rather than `oscillators`: one
   // character from `oscillator` above would be a trap, and the two answer
   // different questions — that one asks whether the hairspring is cut to the
