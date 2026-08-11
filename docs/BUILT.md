@@ -9999,3 +9999,66 @@ axis performs the cycle they describe. No mesh moved: the fingerprint
 is unchanged, and `intraUnit`'s sibling instruments are untouched.
 TODO 7's caveat stands, narrowed — the confirm tier removes a class of
 false positives; false negatives remain sampling's residue.
+
+## §82 — the confirm tier stops paying for numbers nobody gates, and its arbiter stops lying (two vendor defects found and patched)
+
+The roadmap filing measured `sweptOverlap` as fifteen BVH sweeps in a
+trench coat: the confirm tier — sequential uncapped `measureClearance`
+calls — was 96% of the check, computing exact distances of 15.69 and
+12.88 to answer a question whose thresholds are 0 and `CLEAR_MARGIN`.
+Levers 1 and 2 landed as filed; lever 3 (welding) had already shipped
+as §81. What the filing could not know: the acceptance diff then moved
+two rows in a direction batching cannot produce, and the chase found
+the tier's ARBITER lying underneath everything.
+
+**Levers 1+2, as filed.** One batched sweep (the pose walk paid once —
+`sweepClearances` exported as the batching entry point beside
+`measureClearance`), each pair capped at `refineFloor + band`
+(`CLEAR_MARGIN + 0.4`): numbers below the cap stay exact, confirmed and
+tight rows untouched by construction; a pair pruned everywhere reports
+`gap ≥ cap` (`gapIsAtLeast`) — the filed price, paid only on rows whose
+number nobody gates. The batch resets to canonical state first: the
+sequential tier's fifteen walks each started from the residue the
+previous pair's walk left, so residue-sensitive minima were measured
+under an accident of pair order.
+
+**The arbiter, not as filed.** Two defects in the vendored
+three-mesh-bvh (0.7.8), both returning NON-MINIMAL distances from
+`closestPointToGeometry` — over-estimates, the unsafe direction for a
+clearance instrument, sailing over the 0.05 near-zero guard that
+catches the library's known boolean lies:
+
+1. **Queries inherited the PREVIOUS query's pruning box.** `shapecast`
+   never consults `intersectsBounds` for the ROOT node, and the
+   dual-tree path only seeds its inner-scorer OBB inside
+   `intersectsBounds(isLeaf)` — so any query whose outer tree is a
+   single leaf (the rocker's 12-triangle box) ran its whole inner
+   traversal pruning against whatever OBB the previous query left in
+   the shared module temp. Measured: the same pair at the same pose
+   read 0.1066 cold, 0.1404 after the transposed query, 0.4110 after
+   an unrelated one — history-dependent and cumulative. Patched by
+   seeding the OBB from the bvh geometry's own bounding box at entry
+   (a superset of every leaf: scores stay valid lower bounds).
+2. **`OrientedBox.distanceToBox` built its box edge segments with
+   `max[f2]` where `max[f3]` belongs**, so its edge-edge pass could
+   miss the true minimum — an unsound pruning bound, independently
+   measured.
+
+Neither is fixed upstream as of master 2026-08. `vendor/README.md`
+documents both diffs (the vendor is no longer verbatim, deliberately),
+and `tools/check-bvh-patches.mjs` holds the three properties the
+defects violated — history independence, direction symmetry, never
+exceeding a vertex-sampled bound — so a future vendor bump re-verifies
+them by running a command rather than by re-living this investigation.
+
+**Accepted against the diff, per the filing's own trap.** Verdict
+classes preserved exactly — 0 confirmed, 4 tight, 18 refuted — and
+every moved number carries one of the named mechanisms: the
+feeler ⇄ sleeve tight row reads 0.0381 where the poisoned arbiter said
+0.1251 (the truth was TIGHTER — the lie had been under-reporting a
+real proximity), chain ⇄ maintaining detent reads 0.222 as the
+canonical solo measurement predicted, fourteen far rows wear the
+documented `≥ 0.55`. The check's wall fell from ~31 min to ~6 min on
+the same machine; `CHECK_TIMEOUT_MS` and the battery job cap are
+re-derived from the new measurements at the constant, per the §81-era
+comment's own standing caveat.
