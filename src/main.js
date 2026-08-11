@@ -618,12 +618,16 @@ const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI *
 // §48 — the winding path reverses because it is driven from BOTH ends: the
 // mainspring unwinds it one way, the keyless works winds it the other. That
 // is a two-way drive, not a missing spring.
-declareRestoring('Fusee & great wheel', 'two-way',
-  'mainspring drives it while running; the keyless works drives it the other way while winding');
+// RETIRED (TODO 43): 'Fusee & great wheel' and 'Power reserve' left the §36
+// population when the detector's three artifacts were fixed — measured by
+// the item's own arbiter (matrix angle steps at 4× the registry's rate),
+// both are MONOTONE in every axis: no axis winds while another runs, so the
+// two-way drive above is mechanism truth the pose net never performs.
+// §48's stale rule did its job; the declarations return the day an axis
+// actually reverses them (TODO 38's parked going-wind tranche is exactly
+// that axis for both).
 declareRestoring('Chain', 'two-way',
   'the barrel hauls it one way and the fusee the other; winding swaps which end is pulling');
-declareRestoring('Power reserve', 'two-way',
-  'the slip-coupled arbor is driven up by winding and down by running — both directions are driven');
 declareTravel('Balance', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'balanceTheta swings +/-AMPLITUDE_VISUAL_DEG');
 declareTravel('Hairspring', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'rides the balance arbor');
 const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
@@ -638,13 +642,17 @@ const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 r
 // restored-by-nothing, the audit is wrong, not the fork.
 declareRestoring('Pallet fork', 'two-way',
   'escape-wheel teeth impulse the entry and exit pallets alternately; draw holds it banked between');
-// The wheel the fork acts back on. Its reversal is RECOIL — the fork's draw
-// pushes the wheel backwards against the train before each unlocking — so it
-// too is driven both ways, by the train forward and by the fork back.
-declareRestoring('Escape wheel', 'two-way',
-  'train drives it forward; the fork\'s draw recoils it backward before unlocking');
-declareRestoring('Third wheel', 'two-way',
-  'centre wheel drives it forward; escape-wheel recoil back-drives it through the fourth-wheel mesh');
+// RETIRED (TODO 43): 'Escape wheel' and 'Third wheel' left the §36
+// population with the detector fixes — measured monotone in every axis at
+// 4× the registry's rate. Their old declarations claimed RECOIL (the
+// fork's draw pushing the wheel backward before unlocking), and that was
+// the model's prose running ahead of its metal: the wheel's pose law
+// advances and dwells, it never backs up — the FORK recoils past its
+// bank, the wheel it holds does not. What set `reversed` was the
+// witness-fit artifact, not recoil. If draw recoil is ever modelled on
+// the wheel (TODO.md's class — a real escapement's wheel does kick back),
+// the population readmits it and a two-way declaration becomes true of
+// the model rather than of the watch it describes.
 // The balance IS a spring oscillator, and the hairspring is what makes it
 // one. SCOPE, stated: §48 asks whether a restoring element is DECLARED, not
 // whether its rate is modelled from stiffness — rate and force modelling are
@@ -1659,17 +1667,16 @@ const HAMMER_SWING_RAD = (() => {
   }
   return hi;
 })();
-declareRestoring('Setting lever', 'two-way',
-  'crownPullT drives it both ways — pulling the crown swings it out, pushing swings it back');
-declareRestoring('Yoke', 'two-way',
-  'rides the setting lever, which crownPullT drives in both directions');
-// The reset hammer is worked by a POSITIVE LINKAGE, not a spring: the
-// setting lever's tail post is in its slot, so the post carries it out and
-// back. solveHammerRotation() takes the post's position as its input.
-declareRestoring('Reset hammer', 'two-way',
-  'the setting lever\'s tail post sits in its slot and drives it both ways (solveHammerRotation)');
-declareRestoring('Heart cam (seconds reset)', 'two-way',
-  'the fourth wheel friction-drives it forward; the reset hammer snaps it back against that friction');
+// RETIRED (TODO 43): 'Setting lever', 'Yoke', 'Reset hammer' and 'Heart cam
+// (seconds reset)' left the §36 population with the detector fixes —
+// measured monotone in every axis at 4× the registry's rate. All four ARE
+// positively linked both ways (crownPullT out and back, the tail post in
+// the hammer's slot, the hammer against the heart's friction drive), but
+// no AXIS runs that cycle out-and-back: `crown` sweeps the pull 0→1
+// monotone, so in pose space each makes one stroke and rests. Their old
+// `reversed` flags were the witness-fit artifact voting, and §48's stale
+// rule retires declarations whose reason the pose net does not perform —
+// they return with any axis that cycles the pull (or the reset) both ways.
 declareTravel('Reset hammer', HAMMER_SWING_RAD,
   'retracted at hammerBaseAngle + HAMMER_SWING_RAD, seated at hammerBaseAngle');
 
@@ -9339,18 +9346,19 @@ declareRestoring('Minute jumper', 'spring',
 declareRestoring('Maintaining detent', 'spring',
   'the detent spring seats the beak one CLEAR_MARGIN past the ring root; the saw teeth obstruct',
   'maintSpring');
-declareRestoring('Alarm setting arbor', 'two-way',
-  'the alarm crown turns it in either direction; there is no return to provide');
-// TODO 38: the wind axis put 'Alarm crown' in the §48 population (the only
-// axis that spins it far enough to register). The mechanism's answer is the
-// setting arbor's, one member up the chain: the hand turns the crown both
-// ways — winding banks only forward because the CLIMB PAWL's saw is the
-// one-way element, not any return on the crown — so two-way driven is the
-// honest kind. (What the registry actually detected is an artifact — the
-// seam-vertex-biased centroid aliasing at 210° per registry step, TODO 43 —
-// but the declaration stands on the hand, not on the detector.)
-declareRestoring('Alarm crown', 'two-way',
-  'the hand turns it in either direction — the winding bank\'s one-way click is the climb pawl\'s saw, not a return on the crown; pulled, the set path is bidirectional by design');
+// RETIRED (TODO 43): 'Alarm setting arbor' and 'Alarm crown' left the §36
+// population when the detector stopped lying about them. TODO 38's landing
+// had already recorded that the crown's `reversed` was an artifact — the
+// seam-vertex-biased centroid orbit, aliased at alarmWind's 210° per
+// registry step — and kept the declaration anyway "on the hand, not on the
+// detector". Item 43 closes that split: the detector now dedups the seam
+// (quantized keys — the θ=2π copy differs from θ=0 by one ulp of sin, so
+// exact keys missed exactly the copies that mattered) and CONFIRMS every
+// flip at 4× sampling before it votes, the crown's aliased orbit
+// evaporates, and the measured population is what §48 consumes. The hand
+// still turns both of them either way — mechanism truth the pose net never
+// performs (both spin monotone under every axis) — so the stale rule
+// retires the declarations until an axis turns them out-and-back.
 declareRestoring('Alarm disc', 'two-way',
   'geared to the alarm setting arbor, so the crown drives it both ways');
 // §48 — THE CASE THAT PROMPTED THE ENTRY, and it does not resolve the way
