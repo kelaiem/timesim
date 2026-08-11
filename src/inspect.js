@@ -3329,15 +3329,21 @@ export async function buildSweptRegistry(clock, {
   const _wv = new THREE.Vector3();
   let vertexTransforms = 0, vertexTransformsNaive = 0;
 
-  // THE POSE WALK, shared by both sweeps. Exactly TWO of these run per build,
-  // in the order they always have, and that is not a stylistic choice: some of
-  // what setPose writes is CUMULATIVE (TODO 20's alarm column advances a step
-  // each time a pose flips the parity, so its angle depends on how many flips
-  // came before), so the pose a walk lands on is a function of the walk history
-  // as well as of the axis fraction. Inserting a third walk — or reordering
-  // these two — silently re-poses those parts and moves the registry's numbers.
-  // Any new quantity a sweep needs has to be accumulated inside the walk that
-  // is already running, not bought with another lap.
+  // THE POSE WALK, shared by both sweeps. Exactly TWO of these run per build
+  // BEFORE anything else poses the clock, in the order they always have, and
+  // that is not a stylistic choice: some of what setPose writes is CUMULATIVE
+  // (TODO 20's alarm column advances a step each time a pose flips the
+  // parity, so its angle depends on how many flips came before), so the pose
+  // a walk lands on is a function of the walk history as well as of the axis
+  // fraction. Inserting a walk between them — or reordering them — silently
+  // re-poses those parts and moves the registry's numbers. Any new quantity a
+  // sweep needs has to be accumulated inside the walk that is already
+  // running, not bought with another lap. The ONE exception is APPENDED:
+  // TODO 43's reversal-confirm mini-walks run after both standing walks
+  // complete, so neither walk's history moves — they sample whatever
+  // cumulative state the standing walks left, which is the right frame for
+  // the yes/no they ask (a reciprocation reproduces at any parity; the
+  // absolute pose does not matter to a sign).
   const walkPoses = async (n, visit) => {
     let k = 0;
     for (const axis of axes) {
@@ -3395,6 +3401,11 @@ export async function buildSweptRegistry(clock, {
 
   let coarse = await sampleCoarse(perAxis);
 
+  // TODO 43 (2)/(3): one quantum for centroid dedup keys, in the coarse walk
+  // and the confirm pass alike — the two must agree about what "the same
+  // vertex" means. Constraint at its derivation site (the cen block below).
+  const CEN_KEY_Q = 1e6;
+
   // Kåsa algebraic circle fit — centre of the arc a point travels on.
   const fitCircle = (xs, ys) => {
     const n = xs.length;
@@ -3407,8 +3418,15 @@ export async function buildSweptRegistry(clock, {
       suu += u * u; svv += v * v; suv += u * v;
       suuu += u * u * u; svvv += v * v * v; suvv += u * v * v; svuu += v * u * u;
     }
+    // TODO 43 (1): the degeneracy test is RELATIVE to the point spread, not
+    // absolute. det and (suu+svv)² share the scale n²·L⁴, so their ratio is a
+    // pure collinearity measure; the old absolute 1e-12 was calibrated to the
+    // with-repeats moment sums, and removing ~10× repeat points shrank
+    // healthy fits under it (points on a genuine short arc sit orders above
+    // 1e-9 of their own spread; collinear sets sit at float noise, orders
+    // below).
     const det = 2 * (suu * svv - suv * suv);
-    if (Math.abs(det) < 1e-12) return null;
+    if (Math.abs(det) < 1e-9 * Math.max(1e-24, (suu + svv) ** 2)) return null;
     const uc = (svv * (suuu + suvv) - suv * (svvv + svuu)) / det;
     const vc = (suu * (svvv + svuu) - suv * (suuu + suvv)) / det;
     const cx = mx + uc, cy = my + vc;
@@ -3460,11 +3478,20 @@ export async function buildSweptRegistry(clock, {
       // reason as `moves` above.
       let planar = true;
       for (const st of states) { const pts = st.pts; for (let i = 2; i < pts.length && planar; i += 3) if (Math.abs(pts[i] - series[0][i]) > 1e-4) planar = false; if (!planar) break; }
-      // Track one witness vertex's path and fit a circle to it.
+      // Track one witness vertex's path and fit a circle to it — over the
+      // DISTINCT states, not the per-pose series. TODO 43 (1): `series`
+      // shares frames per pose, so a part that rests through nine axes and
+      // moves in one had its fitted centre dragged toward ~100 copies of the
+      // rest frame, and the angle track about that biased parametrization
+      // flipped sign-change verdicts with the pose POPULATION — the 'Motion
+      // works' star's reversal appeared and evaporated on inert pose
+      // insertions while its matrices were bit-identical at every shared
+      // pose. The registry's own convention ("repeats add nothing either
+      // way") now covers its last holdout: repeats do not vote in the fit.
       let fit = null;
       if (planar) {
         const wi = 0;
-        const xs = series.map((p) => p[wi * 3]), ys = series.map((p) => p[wi * 3 + 1]);
+        const xs = states.map((st) => st.pts[wi * 3]), ys = states.map((st) => st.pts[wi * 3 + 1]);
         fit = fitCircle(xs, ys);
         if (fit && (fit.resid > Math.max(1e-3, fit.r * 1e-3) || fit.r < 1e-4)) fit = null;
       }
@@ -3483,12 +3510,40 @@ export async function buildSweptRegistry(clock, {
         // skip, since a pose jump between sweeps is not motion the part made.
         // Summed per DISTINCT frame and shared: two poses holding the same
         // vertices have the same centroid, down to the summation order.
+        // TODO 43 (2): average over DISTINCT positions, not vertices. Builders
+        // duplicate positions — three.js cylinders close their θ seam with a
+        // repeated ring, flat-shaded boxes split every corner — and a
+        // vertex-averaged centroid counts each copy, which put the 'track'
+        // centroid ~2r/(segs·2+2) OFF the rotation axis (measured 0.031 on
+        // the r 0.55 stem collar). That bias ROTATES with the mesh, so a pure
+        // rotation read as a small circular translation, and at long-span
+        // axes its aliased chords passed the deadband ('Alarm crown', TODO 43
+        // (3) — a monotone spin read as out-and-back). Duplicates are EXACT
+        // copies (same local floats through the same matrix), so exact keys
+        // need no tolerance; paid once per distinct frame, like everything
+        // else here.
         const cen = Array.from(stateAt, (s) => {
           const st = states[s];
           if (!st.cen) {
             const pts = st.pts;
+            // The key is QUANTIZED, not exact: a builder's seam duplicate is
+            // computed at θ = 2π rather than 0, so its sin component lands a
+            // few ulps off zero (measured: the collar's seam pair differs by
+            // ~1e-16·r) and exact keys miss exactly the copies this exists
+            // to drop. The two populations are orders apart — float
+            // duplicates coincide to ≤ ~1e-11 absolute at this scene's
+            // coordinate scale, and genuinely distinct vertices sit ≥ the
+            // §50 stock floors (~0.02 u) — so any quantum between splits
+            // them; 1e-6 is the middle of that window.
+            const seen = new Set();
+            const q = CEN_KEY_Q;
             let sx = 0, sy = 0, sz = 0, n = 0;
-            for (let i = 0; i < pts.length; i += 3) { sx += pts[i]; sy += pts[i+1]; sz += pts[i+2]; n++; }
+            for (let i = 0; i < pts.length; i += 3) {
+              const key = Math.round(pts[i] * q) + ',' + Math.round(pts[i+1] * q) + ',' + Math.round(pts[i+2] * q);
+              if (seen.has(key)) continue;
+              seen.add(key);
+              sx += pts[i]; sy += pts[i+1]; sz += pts[i+2]; n++;
+            }
             st.cen = n ? [sx/n, sy/n, sz/n] : [0, 0, 0];
           }
           return st.cen;
@@ -3519,21 +3574,32 @@ export async function buildSweptRegistry(clock, {
         }
         const trackExtent = Math.hypot(tHi[0]-tLo[0], tHi[1]-tLo[1], tHi[2]-tLo[2]);
         const partSize = Math.hypot(xHi-xLo, yHi-yLo, zHi-zLo);
-        let pathReversed = false;
+        // TODO 43 (3): a flip is a CANDIDATE, not a verdict — collect the
+        // axis each one fires in, for the confirm pass below. At 12 samples
+        // a long-span axis aliases a genuine circular ORBIT (the crown's
+        // knurl teeth under alarmWind: 210° per step, consecutive chords
+        // pointing against each other while the spin is monotone), and no
+        // local test can tell an aliased orbit from a true reversal — but a
+        // finer look at the SAME axis can: the aliased flip evaporates when
+        // the step rate resolves the path, the true reversal reproduces at
+        // any rate.
+        const flipAxes = new Set();
         if (trackExtent > Math.max(1e-4, partSize * 1e-3)) {
           const floor = trackExtent * 1e-3;
           let prev = null;
-          for (const b of dv) {
+          for (let j = 0; j < dv.length; j++) {
+            const b = dv[j];
             if (!b) { prev = null; continue; }             // axis boundary
             const lb = Math.hypot(b[0], b[1], b[2]);
             if (lb < floor) continue;                      // noise: no vote
             if (prev) {
               const la = Math.hypot(prev[0], prev[1], prev[2]);
-              if ((prev[0]*b[0] + prev[1]*b[1] + prev[2]*b[2]) / (la*lb) < -1e-6) { pathReversed = true; break; }
+              if ((prev[0]*b[0] + prev[1]*b[1] + prev[2]*b[2]) / (la*lb) < -1e-6) flipAxes.add(Math.floor((j + 1) / perAxis));
             }
             prev = b;
           }
         }
+        const pathReversed = flipAxes.size > 0;
         // §36B: a path hull instead of the single AABB this used to be. The
         // AABB is kept alongside as `box` so anything still reading it works,
         // but `kind` is now 'path' and the check CLAIMS it.
@@ -3543,6 +3609,7 @@ export async function buildSweptRegistry(clock, {
           boxes: buildPathHull(poseBoxes, perAxis),
           zBand: [zLo, zHi], reversed: pathReversed,
           reversedVia: pathReversed ? 'track' : undefined,   // centroid translated out and back
+          _confirm: pathReversed ? { type: 'track', axes: [...flipAxes], partSize } : undefined,
         });
         continue;
       }
@@ -3593,10 +3660,26 @@ export async function buildSweptRegistry(clock, {
       // a full revolve as 'spoke' before the oscillation test ran.
       const declared = clock.declaredTravels && clock.declaredTravels.get(u.name);
       const bounded = declared && declared.rad > 0 && declared.rad < Math.PI * 2 ? declared.rad : 0;
+      // TODO 43: steps are the WITNESS VERTEX's angle about the fitted
+      // centre, not the extent's `lo`. Under rigid rotation the witness
+      // angle advances by exactly the rotation δ; `lo` only mostly does —
+      // it is `base + aLo`, and for a body whose extent nears the full
+      // circle, WHICH vertex sits just past the ±π wrap flips as the body
+      // turns, so aLo occasionally jumps by one whole vertex gap. For the
+      // train's slow wheels δ is far smaller than a 16-segment gap, so
+      // every wrap crossing flipped a step's sign and promoted a monotone
+      // rotor to 'oscillates'. The biased fit of the previous cut HID this:
+      // an off-axis centre reads an annular body as a partial lobe with a
+      // stable lo. The extent stays what it was for — coverage bins.
+      const witA = Array.from(stateAt, (s) => {
+        const st = states[s];
+        if (st.witA === undefined) st.witA = Math.atan2(st.pts[1] - cy, st.pts[0] - cx);
+        return st.witA;
+      });
       const steps = [];
-      for (let i = 1; i < arcs.length; i++) {
+      for (let i = 1; i < witA.length; i++) {
         if (i % perAxis === 0) { steps.push(null); continue; }   // axis boundary: not a movement
-        let step = arcs[i].lo - arcs[i - 1].lo;
+        let step = witA[i] - witA[i - 1];
         while (step > Math.PI) step -= Math.PI * 2;
         while (step < -Math.PI) step += Math.PI * 2;
         steps.push(step);
@@ -3635,11 +3718,30 @@ export async function buildSweptRegistry(clock, {
       // hunting. Consuming that set would have quietly excluded them: a check
       // that searches for less than the thing it verifies. Same loop, same
       // epsilon, same axis-boundary skip; only the guard moved.
-      let reversed = false;
-      for (let i = 1; i < steps.length; i++) {
-        if (steps[i] === null || steps[i - 1] === null) continue;  // spans an axis boundary
-        if (steps[i] * steps[i - 1] < -1e-12) { reversed = true; break; }
+      // TODO 43 (3): as with the track test, a sign flip is a CANDIDATE tied
+      // to its axis — the confirm pass re-samples that axis finer and only a
+      // reproduced flip keeps the flag. Witness-angle steps alias exactly
+      // like chords once an axis turns a part more than π per sample.
+      // The sign chains across DWELLS rather than adjacent steps: a part
+      // that parks between its two strokes (the fork on its bankings, most
+      // of every beat) puts zero steps between the + and the −, and an
+      // adjacent-step product never sees the flip — the finer the sampling,
+      // the blinder that test gets, which is exactly backwards. A dwell
+      // step neither votes nor resets; only an axis boundary resets. The
+      // per-step floor is 1e-6 rad — the same bar the old product test set
+      // (two steps at 1e-6 were its −1e-12), applied per step.
+      const arcFlipAxes = new Set();
+      {
+        let prev = null;
+        for (let i = 0; i < steps.length; i++) {
+          const s = steps[i];
+          if (s === null) { prev = null; continue; }         // axis boundary
+          if (Math.abs(s) < 1e-6) continue;                  // dwell: no vote, no reset
+          if (prev !== null && s * prev < 0) arcFlipAxes.add(Math.floor((i + 1) / perAxis));
+          prev = s;
+        }
       }
+      let reversed = arcFlipAxes.size > 0;
       let dilate = 0;
       if (!full && reversed && !bounded) { full = true; reason = 'oscillates'; }
       // A declared part is dilated whether it tripped the spoke test, the
@@ -3683,6 +3785,7 @@ export async function buildSweptRegistry(clock, {
           box: null, boxes: buildPathHull(poseBoxes, perAxis), zBand: [zLo, zHi],
           from: 'oscillates', reversed,
           reversedVia: reversed ? 'arc' : undefined,         // turned one way then the other
+          _confirm: reversed ? { type: 'arc', axes: [...arcFlipAxes], cx, cy } : undefined,
         });
         continue;
       }
@@ -3693,6 +3796,7 @@ export async function buildSweptRegistry(clock, {
         reversedVia: reversed ? 'arc' : undefined,
         declaredRad: dilate || undefined,
         coverage: full ? 1 : +(bins.reduce((a, b) => a + b, 0) / THETA_BINS).toFixed(4),
+        _confirm: reversed ? { type: 'arc', axes: [...arcFlipAxes], cx, cy } : undefined,
       });
     }
   }
@@ -3934,6 +4038,114 @@ export async function buildSweptRegistry(clock, {
     }
   }
   for (const vol of volumes) delete vol._fine;
+
+  // TODO 43 (3) — THE REVERSAL CONFIRM PASS, §36 job B's shape applied to
+  // the `reversed` flag: a coarse-walk sign flip is a report, and only a
+  // flip that REPRODUCES at a 4× finer look at its own axis becomes the
+  // verdict §48 consumes. What this separates: a true reciprocation flips
+  // at every sampling rate, while an ALIASED flip — a genuine circular
+  // orbit stepped past its Nyquist rate, the crown's knurl teeth under
+  // alarmWind's 6.42 turns at 210°/step — evaporates the moment the rate
+  // resolves the path. Only the FLAG is patched: the hulls above were
+  // validated as built, and a path hull is sound for a mover whether or
+  // not it reciprocates, so kind and boxes stay exactly what the
+  // containment walk approved. These mini-walks run AFTER both standing
+  // walks so neither's pose history moves (the two-walk rule above); their
+  // own poses land on whatever cumulative state the standing walks left,
+  // which is the right frame for the question asked — reciprocation
+  // reproduces at any parity, absolute pose does not matter to a sign.
+  // TODO 7's caveat stands one level up: sampling still cannot BOUND
+  // motion; this pass removes a class of false positives, not the class
+  // of false negatives.
+  {
+    const pending = volumes.filter((v) => v._confirm);
+    if (pending.length) {
+      const nFine = perAxis * 4;
+      const byAxis = new Map();
+      for (const v of pending) {
+        v._confirmedIn = new Set();
+        for (const ai of v._confirm.axes) {
+          if (!byAxis.has(ai)) byAxis.set(ai, []);
+          byAxis.get(ai).push(v);
+        }
+      }
+      for (const [ai, list] of byAxis) {
+        const axis = axes[ai];
+        const tracks = new Map(list.map((v) => [v, []]));
+        let k = 0;
+        for (let s = 0; s < nFine; s++) {
+          clock.setPose(axis.pose(s / (nFine - 1), clock));
+          for (const v of list) {
+            const m = v.mesh;
+            if (v._confirm.type === 'arc') {
+              const pos = m.geometry.getAttribute('position');
+              _wv.fromBufferAttribute(pos, 0).applyMatrix4(m.matrixWorld);
+              tracks.get(v).push(Math.atan2(_wv.y - v._confirm.cy, _wv.x - v._confirm.cx));
+            } else {
+              const pos = m.geometry.getAttribute('position');
+              const seen = new Set();
+              let sx = 0, sy = 0, sz = 0, n = 0;
+              for (let i = 0; i < pos.count; i++) {
+                _wv.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+                const key = Math.round(_wv.x * CEN_KEY_Q) + ',' + Math.round(_wv.y * CEN_KEY_Q) + ',' + Math.round(_wv.z * CEN_KEY_Q);
+                if (seen.has(key)) continue;
+                seen.add(key);
+                sx += _wv.x; sy += _wv.y; sz += _wv.z; n++;
+              }
+              tracks.get(v).push(n ? [sx / n, sy / n, sz / n] : [0, 0, 0]);
+            }
+          }
+          if (++k % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+        }
+        for (const v of list) {
+          const t = tracks.get(v);
+          let flips = false;
+          if (v._confirm.type === 'arc') {
+            // same dwell-chaining as the coarse test — a fork parked on its
+            // banking between strokes must not launder the sign
+            let prev = null;
+            for (let i = 1; i < t.length && !flips; i++) {
+              let step = t[i] - t[i - 1];
+              while (step > Math.PI) step -= Math.PI * 2;
+              while (step < -Math.PI) step += Math.PI * 2;
+              if (Math.abs(step) < 1e-6) continue;           // dwell: no vote, no reset
+              if (prev !== null && step * prev < 0) flips = true;
+              prev = step;
+            }
+          } else {
+            // the track test's own deadband, on this axis's fine track alone
+            const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+            for (const c of t) for (let j = 0; j < 3; j++) { if (c[j] < lo[j]) lo[j] = c[j]; if (c[j] > hi[j]) hi[j] = c[j]; }
+            const ext = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
+            if (ext > Math.max(1e-4, v._confirm.partSize * 1e-3)) {
+              const floor = ext * 1e-3;
+              let prev = null;
+              for (let i = 1; i < t.length && !flips; i++) {
+                const b = [t[i][0] - t[i-1][0], t[i][1] - t[i-1][1], t[i][2] - t[i-1][2]];
+                const lb = Math.hypot(b[0], b[1], b[2]);
+                if (lb < floor) continue;
+                if (prev) {
+                  const la = Math.hypot(prev[0], prev[1], prev[2]);
+                  if ((prev[0]*b[0] + prev[1]*b[1] + prev[2]*b[2]) / (la * lb) < -1e-6) flips = true;
+                }
+                prev = b;
+              }
+            }
+          }
+          if (flips) v._confirmedIn.add(ai);
+        }
+      }
+      for (const v of pending) {
+        if (!v._confirmedIn.size) {
+          v.reversed = false;
+          delete v.reversedVia;
+          if (v.from === 'oscillates') v.from = 'oscillates-unconfirmed';
+        }
+        delete v._confirmedIn;
+      }
+    }
+    for (const vol of volumes) delete vol._confirm;
+  }
 
   clock.resetInputs();
   const byKind = volumes.reduce((a, v) => (a[v.kind] = (a[v.kind] || 0) + 1, a), {});
