@@ -722,6 +722,41 @@ export const AXES = [
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f, windAccumTurns: 0 }),
   },
   {
+    // TODO 38 W4 — the GOING WIND, closing the item's last tranche: before
+    // this axis `windAccumTurns` was pinned 0 everywhere, so the whole
+    // winding chain — crown wheel, ratchet, click, the fusee turning
+    // BACKWARD, the chain re-wrapping upward, the maintaining detent riding
+    // its saw — was swept in exactly one direction, the one it travels while
+    // running down. The pose law is a CYCLE, not a line: a full wind from
+    // empty and the run back down (w = 1−|2f−1|), because the registry's
+    // reversal test is within-axis by design (an axis boundary is not motion
+    // the part made) — a monotone wind axis would cover the states and still
+    // leave the fusee's genuine two-way drive unobserved, exactly the
+    // §48-population gap whose retired declarations name this axis as their
+    // way back in. tension and windAccumTurns move as the COUPLED pair they
+    // are (rule 2): winding IS what re-tensions the spring, and the span is
+    // read live (`fuseeWrapTurns` = reserveHours/8, 3.75 at the default
+    // spec) so a `?reserveh=` boot sweeps the wind that spec performs.
+    // n: the train axis's own standard is 96 samples per fusee revolution
+    // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
+    // 3.75 rev each way at that density is 360 + 360 = 720. The finer
+    // features on this path (the §99-class ratchet tooth pitch, 24/rev) are
+    // budget-tier work with their own nSamples override, not this axis's to
+    // carry. The measured cost of this n, and what it did to the guard
+    // arithmetic, is quoted in TODO 38's closing record — sized by
+    // derivation, priced by measurement, per the item's own rule.
+    name: 'wind',
+    n: 720,
+    pose: (f, clock) => {
+      const w = 1 - Math.abs(2 * f - 1);
+      return {
+        tau: 0.13, crownPullT: 0, leverEngage: 0,
+        tension: w,
+        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 3.75),
+      };
+    },
+  },
+  {
     // One full revolution of the FUSEE arbor (8 h of movement time) — catches
     // slow-orbit collisions (e.g. arbor-mounted parts sweeping past static
     // keyless parts) that the short beat axis never rotates far enough to

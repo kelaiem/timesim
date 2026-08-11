@@ -618,14 +618,30 @@ const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI *
 // §48 — the winding path reverses because it is driven from BOTH ends: the
 // mainspring unwinds it one way, the keyless works winds it the other. That
 // is a two-way drive, not a missing spring.
-// RETIRED (TODO 43): 'Fusee & great wheel' and 'Power reserve' left the §36
-// population when the detector's three artifacts were fixed — measured by
-// the item's own arbiter (matrix angle steps at 4× the registry's rate),
-// both are MONOTONE in every axis: no axis winds while another runs, so the
-// two-way drive above is mechanism truth the pose net never performs.
-// §48's stale rule did its job; the declarations return the day an axis
-// actually reverses them (TODO 38's parked going-wind tranche is exactly
-// that axis for both).
+// RETIRED by TODO 43, RESTORED by TODO 38 W4 — the round trip is the §48
+// population rule working both directions. The §105 detector fixes measured
+// 'Fusee & great wheel' and 'Power reserve' MONOTONE in every axis (no axis
+// wound while another ran — the two-way drive was mechanism truth the pose
+// net never performed) and the stale rule retired both declarations, each
+// naming the going-wind axis as its way back in. The `wind` axis now
+// performs the cycle — a full wind from empty and the run back down, within
+// ONE axis so the reversal is the part's own motion, not a boundary jump —
+// and both parts reciprocate under the §105 confirm tier's 4× re-sampling.
+declareRestoring('Fusee & great wheel', 'two-way',
+  'mainspring drives it while running; the keyless works drives it the other way while winding — the wind axis performs both strokes');
+declareRestoring('Power reserve', 'two-way',
+  'the slip-coupled arbor is driven up by winding and down by running — both directions are driven, and both are now swept');
+// The wind axis's first FIND, minutes after it existed: the reserve TRAIN —
+// the gearing between the slip-coupled arbor and the hand — entered the §48
+// population restored-by-nothing the moment an axis performed the cycle it
+// lives in. It reverses on the same grounds as its two neighbours (the whole
+// path from arbor to hand is driven up by winding, down by running; nothing
+// in it needs a return), so the declaration is the honest kind, not a
+// waiver. TODO 29's alarm-lock story, re-run in miniature: a part no axis
+// MOVES is a part the audit cannot judge — and the day the axis shipped,
+// the audit judged.
+declareRestoring('Power-reserve train', 'two-way',
+  'geared between the slip-coupled arbor and the reserve hand — winding drives the whole path up, running drives it down');
 declareRestoring('Chain', 'two-way',
   'the barrel hauls it one way and the fusee the other; winding swaps which end is pulling');
 declareTravel('Balance', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'balanceTheta swings +/-AMPLITUDE_VISUAL_DEG');
@@ -20718,6 +20734,11 @@ window.__clock = {
   // §35: setPathRot for ONE minute-wheel revolution — the handSet axis's span
   // (minuteArborSpin = setPathRot·windPinion/minuteWheel, so one rev needs the inverse ratio)
   get setPathPerMinuteWheelRev() { return 2 * Math.PI * (minuteWheelTeeth / windPinionTeeth); },
+  // TODO 38 W4 — the wind axis reads the LIVE span the same way handSet
+  // reads the setting ratio: a `?reserveh=` spec moves the fusee's wrap
+  // count, and an axis that hard-coded 3.75 would sweep a different wind
+  // than the movement performs at that spec.
+  get fuseeWrapTurns() { return FUSEE_WRAP_TURNS; },
   setCrownRotation(v) { crownRotation = v; },
   // §25 C: the alarm crown's RAW drag input — parity with setCrownRotation.
   // Unlike setPose({alarmCrownRotation}) (which poses the SET path directly),
