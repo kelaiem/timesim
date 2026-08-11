@@ -972,10 +972,34 @@ function sampledVerdict(a, b, upperBound = Infinity) {
 }
 
 export function meshClearance(a, b, upperBound = Infinity) {
-  const bvh = bvhFor(a);
-  bvhFor(b);
-  _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  const hit = bvh.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, upperBound);
+  // §106 — NEVER the dual-tree path. closestPointToGeometry takes a faster
+  // dual traversal when the OTHER geometry also carries a boundsTree, and in
+  // this vendored build (three-mesh-bvh 0.7.8) that path returns NON-MINIMAL
+  // distances in one direction: measured at one pose, sleeve lathe ⇄ rocker
+  // box read 0.1404 tree-on-rocker while a vertex of one mesh sat 0.1066
+  // from the other — a correct closest-point search can never exceed a
+  // sampled point pair. Hiding either tree healed both directions to
+  // 0.1066. The lie is an OVER-estimate, which for a clearance instrument
+  // is the unsafe direction (reports clear what is tight), and at 0.03–0.10
+  // it sails over the 0.05 near-zero guard below. So: the tree goes on the
+  // LARGER mesh, the smaller side is iterated against it (the cost split
+  // that favors the pruning), and the iterated side's tree is hidden for
+  // the query so the single-tree path always runs. Distance is symmetric;
+  // only the traversal was not.
+  const swap = (b.geometry.index ? b.geometry.index.count : b.geometry.attributes.position.count) >
+               (a.geometry.index ? a.geometry.index.count : a.geometry.attributes.position.count);
+  const ta = swap ? b : a, tb = swap ? a : b;
+  const bvh = bvhFor(ta);
+  bvhFor(tb);   // §81 disarmed the non-indexed crash, but the side effect is kept — see the trap note in CLAUDE.md
+  _mat.copy(ta.matrixWorld).invert().multiply(tb.matrixWorld);
+  const hiddenTree = tb.geometry.boundsTree;
+  tb.geometry.boundsTree = undefined;
+  let hit;
+  try {
+    hit = bvh.closestPointToGeometry(tb.geometry, _mat, {}, {}, 0, upperBound);
+  } finally {
+    tb.geometry.boundsTree = hiddenTree;
+  }
   let d = hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
   // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
   // short-circuits to 0 through its own triangle-intersection test, and
@@ -1046,7 +1070,7 @@ export function clearanceAt(clock, nameA, nameB) {
 // per pose. Per-pair running minima feed the BVH query's upper bound
 // (best + refineBand during the coarse pass, so band-relevant values stay
 // exact; anything farther clamps to Infinity and is skipped).
-async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
   // pairs: [{ A, B, axes?: [names] }] — resolved units, optional axis filter.
   const state = pairs.map(() => ({ min: Infinity, at: null }));
   let poseCount = 0;
@@ -5762,12 +5786,46 @@ export async function checkSweptOverlap(clock, opts = {}) {
   // any refined pose", and both statements stand.
   let confirmed = violations, tightRows = [], refuted = [];
   if (confirm && violations.length) {
-    confirmed = []; 
-    for (const v of violations) {
-      const m = await measureClearance(clock, v.fixed, v.mover, { yieldEvery });
-      const row = { ...v, refinedMinGap: m.min, refinedAt: m.at };
-      if (m.min <= 0) confirmed.push(row);
-      else if (m.min < CLEAR_MARGIN) tightRows.push(row);
+    confirmed = [];
+    // §82 levers 1 and 2 — the tier used to be fifteen sequential UNCAPPED
+    // measureClearance calls, and that was 96% of the whole check: exact
+    // distances of 15.69 and 12.88 computed at full BVH cost to answer a
+    // question whose thresholds are 0 and CLEAR_MARGIN (chain ⇄ plate alone,
+    // the scene's two largest meshes, was 87% of the tier). Now ONE batched
+    // sweep (the pose walk paid once, not per pair) with each pair capped at
+    // refineFloor + band: the classification needs exact numbers only below
+    // the cap, and there they stay exact — confirmed (≤ 0) and tight
+    // (< CLEAR_MARGIN) rows are untouched by construction, and a refuted row
+    // below the cap keeps its true gap and pose. A pair the cap prunes
+    // EVERYWHERE comes back at exactly the cap (unitClearance returns its
+    // upper bound): that row's gap is "≥ cap", reported as such — the
+    // documented price of lever 1, paid only on rows whose number nobody
+    // gates. Two report consequences, both §82's own predictions: capped
+    // rows lose their pose (the "minimum" is wherever the sweep looked
+    // first), and batching unions the refinement index set across pairs, so
+    // a sub-cap minimum can only tighten against the sequential measurement.
+    const CONFIRM_BAND = 0.4;                       // sweepClearances' default refineBand, named so the cap arithmetic is visible
+    const cap = CLEAR_MARGIN + CONFIRM_BAND;
+    const pairs = violations.map((v) => ({
+      A: unitByName(clock, v.fixed), B: unitByName(clock, v.mover),
+      refineFloor: CLEAR_MARGIN,
+    }));
+    // CANONICAL STATE FIRST (the registry's own rule, §40's precedent): the
+    // sequential tier's fifteen walks each started from the residue the
+    // PREVIOUS pair's walk left, so a residue-sensitive minimum (the alarm
+    // sleeve rows TODO 38's landing filed as exactly this) was measured
+    // under an accident of pair order. One walk, from the reset state — the
+    // number a fresh session would measure.
+    clock.resetInputs();
+    const { state } = await sweepClearances(clock, pairs, { refineBand: CONFIRM_BAND, yieldEvery });
+    for (let i = 0; i < violations.length; i++) {
+      const v = violations[i], st = state[i];
+      const capped = st.min >= cap - 1e-9;
+      const row = capped
+        ? { ...v, refinedMinGap: +cap.toFixed(4), gapIsAtLeast: true }
+        : { ...v, refinedMinGap: +st.min.toFixed(4), refinedAt: st.at };
+      if (!capped && st.min <= 0) confirmed.push(row);
+      else if (!capped && st.min < CLEAR_MARGIN) tightRows.push(row);
       else refuted.push(row);
     }
   }
