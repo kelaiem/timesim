@@ -34,7 +34,6 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 38 | NARROWED | Alarm wind swept (the `alarmWind` axis); the GOING tranche remains — its honest n (~360) projects sweptOverlap's CI worst past an hour, parked on roadmap §82's confirm-tier shrink or an explicit acceptance |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
-| 43 | OPEN | Three measured detector artifacts in the §36 registry's `reversed` flag |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -44,8 +43,9 @@ wound arbor and its click, re-measured against the eye by §101: reverse
 saw, valley-filling beak, the give-back enacted), 39 (§100 — the going
 drum's fixed arbor), 41, 42 (§103 — the guide stack derived downward;
 the item's own window was measured empty, TODO 23's verdict one guide
-up) — plus the *Recently closed* bucket at the end
-(former items 2 and 8 live there).
+up), 43 (§105 — five detector artifacts fixed, ten units measured out
+of the §48 population by the item's own arbiter) — plus the *Recently
+closed* bucket at the end (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
@@ -4685,7 +4685,67 @@ raised station, but the head's rest bottom and the collar above bound how
 far up it may go — check both when moving it). Until then the row is
 waived in `INTRA_UNIT_WAIVERS` citing this item.
 
-## 43. The §36 registry's `reversed` flag is a function of walk composition, not just of motion — three measured artifacts
+## 43. CLOSED (§105) — the detector stopped lying: five artifact mechanisms fixed, ten units measured out of the population
+
+**Closed with two more mechanisms than it filed.** The three filed fixes
+landed as prescribed — the witness-circle fit runs over DISTINCT states
+(repeats no longer vote, the registry's own convention covering its last
+holdout), the track centroid dedups positions by QUANTIZED key (the
+builder's seam copy is computed at θ = 2π, one ulp of sin away from the
+θ = 0 original, so the exact-match dedupe this item imagined would have
+missed exactly the copies that matter), and long-span aliasing died with
+the CONFIRM PASS below. Fixing them exposed two more of the same class,
+both now also fixed and worth the record:
+
+- **The fit's degeneracy test was calibrated to the artifact.** Kåsa's
+  `|det| < 1e-12` was ABSOLUTE, sized against with-repeats moment sums;
+  fitting distinct states shrank the sums ~10× and healthy fits started
+  null-rejecting into the path branch. The test is now RELATIVE
+  (`det/(suu+svv)²`, a pure collinearity measure) — scale cannot move it.
+- **The extent's `lo` is not a phase, and the biased centre was hiding
+  that.** Steps were `arcs[i].lo` differences; about the TRUE centre a
+  wheel disc's extent covers the full circle and WHICH vertex sits past
+  the ±π wrap flips as it turns, so `lo` jumps by whole vertex gaps —
+  promoting monotone train wheels to 'oscillates'. Steps now come from
+  the WITNESS VERTEX's own angle, which advances by exactly the rotation.
+  And the sign chains across DWELLS: the fork parks on its bankings
+  between strokes, so adjacent-step products laundered its ± through the
+  zeros — the finer the sampling, the blinder that test got. A dwell step
+  neither votes nor resets.
+
+**Aliasing closed by confirmation, not by hope (§36 job B's shape).** A
+coarse-walk sign flip is now a CANDIDATE tied to its axis; a deferred
+mini-walk re-samples that axis at 4× and only a reproduced flip becomes
+the verdict. A true reciprocation flips at every sampling rate; an
+aliased orbit — the crown's knurl teeth under `alarmWind`'s 210°/step,
+this item's case 3 — evaporates the moment the rate resolves the path.
+The mini-walks run AFTER both standing walks so neither's cumulative
+pose history moves, and they patch only the `reversed` flag: hulls stay
+exactly what the containment walk validated.
+
+**Measured outcome, by the item's own arbiter.** TEN units left the
+population (mesh-level 27 → 17; audit population 26 → 16): Alarm crown,
+Alarm setting arbor, Escape wheel, Fusee & great wheel, Heart cam,
+Power reserve, Reset hammer, Setting lever, Third wheel, Yoke — every
+one verified MONOTONE in every axis from its own matrices at 4× the
+registry's rate (the star's ground-truth method, applied wholesale).
+Zero units entered. The pallet fork — §48's asserted control — stays
+two-way, and the registry is bit-stable across repeated builds. The ten
+stale declarations are retired with their mechanism truth kept in place
+as comments (the 'Motion works' precedent): most were true of the WATCH
+(the hand does turn the crown both ways; a real escape wheel does
+recoil) and never of the pose net, which is §48's population rule doing
+its job — they return the day an axis performs the cycle they describe
+(TODO 38's parked going-wind tranche is exactly that axis for the fusee
+and the reserve).
+
+TODO 7's caveat stands, narrowed: sampling still cannot BOUND motion —
+the confirm pass removes a class of false positives; false negatives
+remain the sampling tier's residue.
+
+The original filing, kept as the record:
+
+### The §36 registry's `reversed` flag is a function of walk composition, not just of motion — three measured artifacts (original)
 
 TODO 38's axis changed `restoring` verdicts for two units whose geometry
 tracks were BIT-IDENTICAL at every shared pose (measured: 0 differing
