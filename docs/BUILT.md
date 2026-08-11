@@ -9933,5 +9933,9 @@ co-travel, so the rest figure is the figure at every depression. A
 third assert pins the derivation's equality (bore holds plunger at full
 depression, 0 by construction) so a warn names whichever side someone
 moves. The `INTRA_UNIT_WAIVERS` row is deleted; the instrument measures
-the repair. No mesh was added or removed — the fingerprint moves
-because three stations do.
+the repair — the landing's whole report diff against the §102 baseline
+is that one waived row leaving. No mesh was added or removed, and the
+fingerprint did NOT move (284533079): all three stations travelled
+inside the unit's existing AABB envelope, which is §101's coarse-box
+lesson again — the hash guards the layout, and `intraUnit` is the
+instrument that actually saw this repair.
