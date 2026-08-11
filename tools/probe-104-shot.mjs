@@ -12,20 +12,20 @@ await page.evaluate(() => {
   clock.resetInputs();
   clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
     alarmStrikePhase: 14.2, alarmOn: 1, alarmReleased: 1 });
-  clock.camera.position.set(-33, -1, 42);
+  clock.camera.position.set(-46, -18, 33);
   clock.camera.up.set(0, 1, 0);
-  clock.camera.lookAt(-31, 0, 12);
+  clock.camera.lookAt(-33, -1, 12);
   clock.render();
 });
 await new Promise((r) => setTimeout(r, 400));
 await page.evaluate(() => window.__clock.render());
-await page.screenshot({ path: '/tmp/claude-0/-home-user/135fcf6e-0ec5-50b1-958a-bf0b1f66644d/scratchpad/gov3.png' });
+await page.screenshot({ path: '/tmp/claude-0/-home-user/135fcf6e-0ec5-50b1-958a-bf0b1f66644d/scratchpad/gov5.png' });
 await page.evaluate(() => {
   const clock = window.__clock;
-  clock.camera.position.set(-45, -25, 30);
-  clock.camera.lookAt(-32, 0, 13);
+  clock.camera.position.set(-34, -4, 40);
+  clock.camera.lookAt(-33, -2, 12);
   clock.render();
 });
-await page.screenshot({ path: '/tmp/claude-0/-home-user/135fcf6e-0ec5-50b1-958a-bf0b1f66644d/scratchpad/gov4.png' });
+await page.screenshot({ path: '/tmp/claude-0/-home-user/135fcf6e-0ec5-50b1-958a-bf0b1f66644d/scratchpad/gov6.png' });
 await browser.close(); srv.kill();
 console.log('shots written');

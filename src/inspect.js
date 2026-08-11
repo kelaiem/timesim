@@ -5154,7 +5154,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§102 — the lock's return blade; 50 units, 11 poses):
+// Baseline (§104 — the alarm governor; 51 units, 11 poses):
+// 827809538
+// — moved from 284533079 deliberately: §104 adds the 'Alarm governor'
+// unit (sixteen meshes across two axes — pinion, saw, generated pallets,
+// anchor, poising ring, their arbors and studs) plus three meshes to the
+// Alarm striking wheel (the 64T wheel, its sleeve, the stud's upper
+// length), and the striking unit's box grows upward to the new tier.
+// Verified by the battery's double-boot gate; the whole 19-gate run is
+// green on the same boot.
+// Previous baseline (§102 — the lock's return blade; 50 units, 11 poses):
 // 284533079
 // — moved from 949908343 deliberately: §102 adds the return blade and
 // its anchor stud to the Alarm lock (two meshes, the unit's box grows on

@@ -218,7 +218,10 @@ const BATTERY = [
   // the derivation: set-up quantised to the ratchet, the fusee's level
   // product an identity at float noise, and both ribbons' published sections
   // still describing the metal the records' k was computed from.
-  { name: 'equalisation', opts: {}, cost: 1,
+  // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
+  // shipped tick law (120 ticks at two winds), which is the row's whole
+  // point; a stale 1 here costs wall clock, never a verdict.
+  { name: 'equalisation', opts: {}, cost: 14,
     gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
     fails: (r) => r.failures,
     note: (r) => r.summary },
