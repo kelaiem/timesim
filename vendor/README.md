@@ -1,8 +1,32 @@
 # Vendored third-party code
 
 These files are **not** covered by the project's Apache 2.0 license (see
-`../LICENSE`). They are redistributed verbatim under their own MIT terms, whose
-full text is included here as required by those licenses.
+`../LICENSE`). They are redistributed under their own MIT terms, whose
+full text is included here as required by those licenses. Two files are
+verbatim; `three-mesh-bvh.module.js` carries **two local patches** (below),
+both marked `PATCHED (timesim)` in place. Neither is fixed upstream as of
+master 2026-08 (checked against `src/math/OrientedBox.js` and the
+changelog through 0.9.14), so a future version bump must re-verify both
+sites — and both are worth reporting upstream:
+
+1. **`closestPointToGeometry` (both generated copies): seed the inner-scorer
+   OBB at entry.** `shapecast` never consults `intersectsBounds` for the
+   ROOT node, and the dual-tree path only wrote the inner-scorer's bounds
+   inside `intersectsBounds( isLeaf )` — so a query whose outer tree is a
+   single leaf ran its whole inner traversal pruning against whatever OBB
+   the PREVIOUS query left in the shared module temp. Measured here: the
+   same mesh pair at the same pose read 0.1066 cold, 0.1404 after the
+   transposed query, 0.4110 after an unrelated one. The seed is the bvh
+   geometry's own bounding box — a superset of every leaf, so scores stay
+   valid lower bounds and per-leaf tightening on descent is unchanged.
+2. **`OrientedBox.distanceToBox`: box edge segments built with `max[ f2 ]`
+   where `max[ f3 ]` belongs** (two lines), so the edge-edge pass could
+   miss the true minimum and the returned distance over-estimated —
+   unsound as a traversal pruning bound.
+
+Both defects return non-minimal distances from `closestPointToGeometry` —
+over-estimates, the unsafe direction for the clearance instruments built on
+it (`src/inspect.js`, `meshClearance`).
 
 The app vendors its dependencies so it runs from any static file server with no
 build step and no network access — see the importmap in `../index.html`.

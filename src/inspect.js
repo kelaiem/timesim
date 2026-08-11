@@ -972,34 +972,28 @@ function sampledVerdict(a, b, upperBound = Infinity) {
 }
 
 export function meshClearance(a, b, upperBound = Infinity) {
-  // §106 — NEVER the dual-tree path. closestPointToGeometry takes a faster
-  // dual traversal when the OTHER geometry also carries a boundsTree, and in
-  // this vendored build (three-mesh-bvh 0.7.8) that path returns NON-MINIMAL
-  // distances in one direction: measured at one pose, sleeve lathe ⇄ rocker
-  // box read 0.1404 tree-on-rocker while a vertex of one mesh sat 0.1066
-  // from the other — a correct closest-point search can never exceed a
-  // sampled point pair. Hiding either tree healed both directions to
-  // 0.1066. The lie is an OVER-estimate, which for a clearance instrument
-  // is the unsafe direction (reports clear what is tight), and at 0.03–0.10
-  // it sails over the 0.05 near-zero guard below. So: the tree goes on the
-  // LARGER mesh, the smaller side is iterated against it (the cost split
-  // that favors the pruning), and the iterated side's tree is hidden for
-  // the query so the single-tree path always runs. Distance is symmetric;
-  // only the traversal was not.
-  const swap = (b.geometry.index ? b.geometry.index.count : b.geometry.attributes.position.count) >
-               (a.geometry.index ? a.geometry.index.count : a.geometry.attributes.position.count);
-  const ta = swap ? b : a, tb = swap ? a : b;
-  const bvh = bvhFor(ta);
-  bvhFor(tb);   // §81 disarmed the non-indexed crash, but the side effect is kept — see the trap note in CLAUDE.md
-  _mat.copy(ta.matrixWorld).invert().multiply(tb.matrixWorld);
-  const hiddenTree = tb.geometry.boundsTree;
-  tb.geometry.boundsTree = undefined;
-  let hit;
-  try {
-    hit = bvh.closestPointToGeometry(tb.geometry, _mat, {}, {}, 0, upperBound);
-  } finally {
-    tb.geometry.boundsTree = hiddenTree;
-  }
+  // §106 — closestPointToGeometry returned NON-MINIMAL distances that
+  // depended on WHICH QUERIES RAN BEFORE: measured at one pose, sleeve
+  // lathe ⇄ rocker box read 0.1066 cold, 0.1404 after the transposed query,
+  // 0.4110 after an unrelated one — while a vertex of one mesh sat 0.1066
+  // from the other, and a correct closest-point search can never exceed a
+  // sampled point pair. The lie is an OVER-estimate, the unsafe direction
+  // for a clearance instrument, and it sails over the 0.05 near-zero guard
+  // below. Root cause, found and PATCHED in the vendored library
+  // (vendor/README.md documents both diffs): shapecast never consults
+  // intersectsBounds for the ROOT node, and the dual-tree path only seeds
+  // its inner-scorer OBB inside intersectsBounds(isLeaf) — so any query
+  // whose outer tree is a single leaf (the rocker's 12-triangle box) ran
+  // its whole inner traversal pruning against WHATEVER OBB THE PREVIOUS
+  // QUERY LEFT in the shared module temp. A second, independent defect in
+  // OrientedBox.distanceToBox (box edge segments built with max[f2] where
+  // max[f3] belongs, missing edge-edge minima) is patched alongside. This
+  // comment is the record of why the vendor is no longer verbatim; every
+  // meshClearance consumer inherits the corrections.
+  const bvh = bvhFor(a);
+  bvhFor(b);
+  _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
+  const hit = bvh.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, upperBound);
   let d = hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
   // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
   // short-circuits to 0 through its own triangle-intersection test, and

@@ -2388,11 +2388,21 @@ OrientedBox.prototype.distanceToBox = ( function () {
 
 					start[ f1 ] = min[ f1 ];
 					start[ f2 ] = i1 ? min[ f2 ] : max[ f2 ];
-					start[ f3 ] = i2 ? min[ f3 ] : max[ f2 ];
+					// PATCHED (timesim, see vendor/README.md): upstream reads
+					// max[ f2 ] here and in `end` below — a typo that builds
+					// the box's edge segments with the wrong third coordinate,
+					// so the edge-edge pass can miss the true minimum and
+					// distanceToBox OVER-estimates. An over-estimated bound
+					// prunes BVH nodes that contain the actual closest pair,
+					// which made closestPointToGeometry return non-minimal
+					// distances (direction-dependently — the OBB/AABB roles
+					// swap with query direction). Present in upstream master
+					// as of 2026-08 (src/math/OrientedBox.js).
+					start[ f3 ] = i2 ? min[ f3 ] : max[ f3 ];
 
 					end[ f1 ] = max[ f1 ];
 					end[ f2 ] = i1 ? min[ f2 ] : max[ f2 ];
-					end[ f3 ] = i2 ? min[ f3 ] : max[ f2 ];
+					end[ f3 ] = i2 ? min[ f3 ] : max[ f3 ];
 
 					count ++;
 
@@ -3848,6 +3858,19 @@ function closestPointToGeometry(
 	let closestDistanceOtherTriIndex = null;
 	tempMatrix$1.copy( geometryToBvh ).invert();
 	obb2$2.matrix.copy( tempMatrix$1 );
+	// PATCHED (timesim, see vendor/README.md): seed obb2 from this bvh's own
+	// geometry bounds. shapecast never consults intersectsBounds for the ROOT
+	// node, and obb2's min/max are otherwise only written inside
+	// intersectsBounds( isLeaf ) — so a single-leaf tree ran its whole inner
+	// traversal with whatever the PREVIOUS query left in this shared temp,
+	// pruning against a stale box (measured: 0.1404 and 0.4110 reported for a
+	// true 0.1066, depending on which query ran before). The geometry's whole
+	// bounding box is a superset of every leaf, so the seeded score stays a
+	// valid lower bound; per-leaf tightening still happens on descent.
+	if ( ! geometry.boundingBox ) geometry.computeBoundingBox();
+	obb2$2.min.copy( geometry.boundingBox.min );
+	obb2$2.max.copy( geometry.boundingBox.max );
+	obb2$2.needsUpdate = true;
 	bvh.shapecast(
 		{
 
@@ -4570,6 +4593,13 @@ function closestPointToGeometry_indirect(
 	let closestDistanceOtherTriIndex = null;
 	tempMatrix.copy( geometryToBvh ).invert();
 	obb2.matrix.copy( tempMatrix );
+	// PATCHED (timesim, see vendor/README.md): same obb2 seeding as the
+	// direct copy above — shapecast skips intersectsBounds for the root, so
+	// a single-leaf tree otherwise inherits the previous query's obb2.
+	if ( ! geometry.boundingBox ) geometry.computeBoundingBox();
+	obb2.min.copy( geometry.boundingBox.min );
+	obb2.max.copy( geometry.boundingBox.max );
+	obb2.needsUpdate = true;
 	bvh.shapecast(
 		{
 
