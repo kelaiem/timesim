@@ -34,7 +34,6 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 38 | NARROWED | Alarm wind swept (the `alarmWind` axis); the GOING tranche remains — its honest n (~360) projects sweptOverlap's CI worst past an hour, parked on roadmap §82's confirm-tier shrink or an explicit acceptance |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
-| 42 | OPEN, waived | The lifter's blade stub stands 0.167 into its own guide eye at rest — the `intraUnit` waiver cites this item |
 | 43 | OPEN | Three measured detector artifacts in the §36 registry's `reversed` flag |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
@@ -43,7 +42,9 @@ named residue — the instrument gap is roadmap §77's subject, not this
 item's), 31 (§102 — the lock's return blade), 33, 35, 37 (§99 — the
 wound arbor and its click, re-measured against the eye by §101: reverse
 saw, valley-filling beak, the give-back enacted), 39 (§100 — the going
-drum's fixed arbor), 41 — plus the *Recently closed* bucket at the end
+drum's fixed arbor), 41, 42 (§103 — the guide stack derived downward;
+the item's own window was measured empty, TODO 23's verdict one guide
+up) — plus the *Recently closed* bucket at the end
 (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
@@ -4617,7 +4618,36 @@ and the hour/alarm planes are z-stack quantities datumed against
 class; their pairs have no wells to scrape and their crossing envelope is
 bounded where the rod widths are set (`makeHand`'s crossing note).
 
-## 42. The lifter's blade stub stands 0.167 into its own guide eye at rest — and the instrument only just gained the pose that shows it
+## 42. CLOSED (§103) — the guide stack derives downward: the item's own window was empty
+
+**The prescription had no solution, and proving that was the work.** This
+item asked for `ez ≥ (stub z) + STOCK_MIN_U + CLEAR_MARGIN` with the stub
+held at its first-cut station — but the bound it told the mover to check
+("the collar above") caps that corridor: from the stub's rest top (−5.14)
+to the collar's pulled underside (−4.87, the fat radius under the corner)
+there is 0.25 of air, and an eye needs `STOCK_MIN_U + 2·CLEAR_MARGIN` =
+0.62. That is TODO 23's arithmetic, one guide up, with the same verdict —
+no station exists for the eye between the stub and the collar.
+
+**So the stack derives DOWNWARD from the corridor's top instead**
+(`ALARM_LIFT_EYE_Z` / `ALARM_LIFT_STUB_Z` / `ALARM_LIFT_BLADE_Z`, each
+constraint in its comment). The eye's top face sits exactly where the
+plunger's top arrives at full depression — the highest station at which
+the bore holds plunger at EVERY pose, which also keeps the head out of the
+bore (measured: flush at exactly full travel, 0.00) and finally makes the
+build comment's "riding clear of it across the full travel" claim true.
+The stub drops to hold this item's inequality at equality below the eye
+(measured 0.150 at rest, the closest approach — the L's whole travel is
+downward, so travel only opens it, to 0.375 pulled), and the blade root
+keeps its as-built bearing relation to the stub, bottom faces flush, made
+exact instead of rounded. Boot asserts hold the stack's two open ends with
+the achieved numbers: collar-over-eye 0.250 at both parities,
+blade-over-chord 0.184 (pose-invariant — tip and chord co-travel). The
+`INTRA_UNIT_WAIVERS` row is DELETED; the instrument measures the repair.
+
+The original filing, kept as the record:
+
+### The lifter's blade stub stands 0.167 into its own guide eye at rest — and the instrument only just gained the pose that shows it (original)
 
 Found by TODO 38's `alarmWind` axis, which is the first pose anywhere to
 NAME `alarmCrownPullT: 0`. That matters because the pose net carries

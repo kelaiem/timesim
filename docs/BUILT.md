@@ -9887,3 +9887,51 @@ carries is the lever's own lift (no counterforce meets it at the gap),
 tip-force order single mN against the pusher-driven column arriving
 through a 2.3 lever — three orders of headroom. The blade is sized by
 its stock convention; the HOLD when braked is the column's.
+
+## §103 — the lifter's guide stack derives downward (TODO 42 closed)
+
+TODO 42 measured the release lifter's blade stub 0.167 inside its own
+guide eye at the rest pose — invisible until TODO 38's `alarmWind` axis
+became the first pose anywhere to NAME `alarmCrownPullT: 0`, so every
+earlier `intraUnit` pass had inherited a pulled crown and only ever
+measured the L depressed. The item prescribed re-deriving the eye's z
+from the stub's rest top plus clearance, and named two bounds to check
+when moving it: the head's rest bottom and the collar above.
+
+Checking those bounds was the design. The prescription has NO solution
+with the stub held at its first-cut station: the collar's pulled
+underside (the fat radius under the corner, z −4.87) caps the corridor
+above the stub's rest top (−5.14) at 0.25, and an eye needs
+`STOCK_MIN_U + 2·CLEAR_MARGIN` = 0.62 — TODO 23's arithmetic (which
+removed the lifter's LOWER guide on the same verdict), one guide up.
+No station exists for the eye between the stub and the collar.
+
+So the stack solves from the corridor's TOP down, three derived
+constants with their constraints in place (`ALARM_LIFT_EYE_Z`,
+`ALARM_LIFT_STUB_Z`, `ALARM_LIFT_BLADE_Z`):
+
+- **The eye's top face sits exactly where the plunger's top arrives at
+  full depression** (`headTop − headH − ALARM_SLEEVE_TRAVEL`) — the
+  highest station at which the bore holds plunger at EVERY pose. Any
+  higher and the bore reads the head, not the plunger, at full travel;
+  the bound also keeps the head clear of the bore (measured flush at
+  exactly full depression, 0.00), which makes the stub comment's old
+  "riding clear of it across the full travel" claim true at last.
+- **The stub drops to hold the item's inequality at equality** below
+  the eye: stub top = eye bottom − `CLEAR_MARGIN`, at rest — the
+  closest approach, since the L's whole travel is downward from it
+  (measured 0.150 rest, 0.375 pulled).
+- **The blade root keeps its as-built bearing relation to the stub** —
+  bottom faces flush, the tip riding the stub's underside — made exact
+  (`(STOCK_MIN_U − SPRING_FLAT_U)/2`) instead of the rounded −5.39.
+
+The stack's two open ends are boot-asserted with the achieved numbers
+(rule 6): the collar's deepest underside over the eye's top measures
+0.250 at both crown parities, and the blade's bottom over the chord's
+top measures 0.184 — pose-invariant, because the tip and the chord
+co-travel, so the rest figure is the figure at every depression. A
+third assert pins the derivation's equality (bore holds plunger at full
+depression, 0 by construction) so a warn names whichever side someone
+moves. The `INTRA_UNIT_WAIVERS` row is deleted; the instrument measures
+the repair. No mesh was added or removed — the fingerprint moves
+because three stations do.
