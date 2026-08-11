@@ -13083,6 +13083,7 @@ function askTour(onProceed) {
       s.dispatchEvent(new Event('input', { bubbles: true }));
       announce(t(+s.value > 0 ? 'Exploded' : 'Reassembled'));
     }],
+    ['D', 'Control HUD', click('btn-hud', 'Control HUD')], // the label reuses the panel's own i18n key
     ['1–5', 'Camera presets', null], // expanded below; one help row for five keys
     ['←/→', 'Orbit camera', null],
     ['↑/↓', 'Tilt camera', null],
@@ -13094,18 +13095,18 @@ function askTour(onProceed) {
     [' ', SHORTCUTS[0][2]], ['w', SHORTCUTS[1][2]], ['c', SHORTCUTS[2][2]],
     ['a', SHORTCUTS[3][2]], ['s', SHORTCUTS[4][2]], ['x', SHORTCUTS[5][2]],
     ['l', SHORTCUTS[6][2]], ['f', SHORTCUTS[7][2]], ['m', SHORTCUTS[8][2]],
-    ['e', SHORTCUTS[9][2]],
+    ['e', SHORTCUTS[9][2]], ['d', SHORTCUTS[10][2]],
     ['1', preset('Escapement')], ['2', preset('Train')], ['3', preset('Dial')],
     ['4', preset('Setting')], ['5', preset('Free')],
     ['ArrowLeft', orbit(STEP, 0)], ['ArrowRight', orbit(-STEP, 0)],
     ['ArrowUp', orbit(0, -STEP)], ['ArrowDown', orbit(0, STEP)],
     ['+', zoom(0.92)], ['=', zoom(0.92)], ['-', zoom(1.08)],
-    ['h', SHORTCUTS[14][2]],
+    ['h', SHORTCUTS[15][2]], // 'Hide / show panel' — one row later since the D row above
   ]);
   // shortcut hints on the buttons they drive (title = discoverability)
   for (const [id, key] of [['btn-pause', 'Space'], ['btn-wind', 'W'], ['btn-crown', 'C'],
     ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-xray', 'X'], ['btn-labels', 'L'],
-    ['btn-focus', 'F'], ['btn-sound', 'M']]) {
+    ['btn-focus', 'F'], ['btn-sound', 'M'], ['btn-hud', 'D']]) {
     const b = document.getElementById(id);
     if (b) b.title = (b.title ? b.title + ' ' : '') + `(${key})`;
   }
@@ -18890,6 +18891,14 @@ function applyDeepLink() {
 // both sequence FIFO on the same ensureExploreDrive promise).
 if (restoredSchematic) setSchematic(true);
 if (restoredFocus) setFocus(restoredFocus);
+// The control HUD is ON by default: §57 built it (and the ?hud link) for the
+// arrival that wants the watch driveable immediately; the default extends
+// that to every arrival. Same contract as the schematic default above — the
+// deep link runs after and wins where it disagrees (?hud=0 closes it), and
+// the button toggle stays session-tier (nothing persists it, as before).
+// §90 already made this call boot-safe: ?hud=1 reached setHud() from
+// applyDeepLink() at this same point in the sequence.
+setHud(true);
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
