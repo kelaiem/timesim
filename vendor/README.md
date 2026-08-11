@@ -7,7 +7,8 @@ verbatim; `three-mesh-bvh.module.js` carries **two local patches** (below),
 both marked `PATCHED (timesim)` in place. Neither is fixed upstream as of
 master 2026-08 (checked against `src/math/OrientedBox.js` and the
 changelog through 0.9.14), so a future version bump must re-verify both
-sites — and both are worth reporting upstream:
+sites — `node tools/check-bvh-patches.mjs` is that verification, runnable —
+and both are worth reporting upstream:
 
 1. **`closestPointToGeometry` (both generated copies): seed the inner-scorer
    OBB at entry.** `shapecast` never consults `intersectsBounds` for the
