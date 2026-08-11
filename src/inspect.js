@@ -972,7 +972,7 @@ function sampledVerdict(a, b, upperBound = Infinity) {
 }
 
 export function meshClearance(a, b, upperBound = Infinity) {
-  // §106 — closestPointToGeometry returned NON-MINIMAL distances that
+  // BUILT §82 — closestPointToGeometry returned NON-MINIMAL distances that
   // depended on WHICH QUERIES RAN BEFORE: measured at one pose, sleeve
   // lathe ⇄ rocker box read 0.1066 cold, 0.1404 after the transposed query,
   // 0.4110 after an unrelated one — while a vertex of one mesh sat 0.1066
@@ -5781,7 +5781,7 @@ export async function checkSweptOverlap(clock, opts = {}) {
   let confirmed = violations, tightRows = [], refuted = [];
   if (confirm && violations.length) {
     confirmed = [];
-    // §82 levers 1 and 2 — the tier used to be fifteen sequential UNCAPPED
+    // BUILT §82 levers 1 and 2 — the tier used to be fifteen sequential UNCAPPED
     // measureClearance calls, and that was 96% of the whole check: exact
     // distances of 15.69 and 12.88 computed at full BVH cost to answer a
     // question whose thresholds are 0 and CLEAR_MARGIN (chain ⇄ plate alone,
