@@ -158,8 +158,9 @@ const DE = {
   // carrying it — and the new English is the plainer word, so the German is
   // re-picked plain too instead of keeping the horological register here.
   'Appearance': 'Erscheinungsbild',
-  'Controls': 'Steuerung', 'Dial': 'Zifferblatt',
-  'Controls (H)': 'Steuerung (H)', 'View (V)': 'Ansicht (V)', 'Control HUD (D)': 'Bedien-HUD (D)',
+  // 'Controls' names §57's PAD (the watch's crowns and pusher); the left
+  // panel is the 'Menu'. Neither is 'Dial' — the camera preset owns that key.
+  'Menu': 'Menü', 'Controls': 'Steuerung',
   'Hide view panel (V)': 'Ansichtspanel ausblenden (V)',
   'Hide / show view panel': 'Ansichtspanel aus- / einblenden',
   'Zoom in': 'Heranzoomen', 'Zoom out': 'Herauszoomen',
@@ -395,8 +396,7 @@ const ZH = {
   // replaces the 'Finish' key; the rename invalidated '打磨' by design, and
   // the plainer English is re-picked plain here too.
   'Appearance': '外观',
-  'Controls': '控制', 'Dial': '表盘',
-  'Controls (H)': '控制 (H)', 'View (V)': '显示 (V)', 'Control HUD (D)': '操控界面 (D)',
+  'Menu': '菜单', 'Controls': '控制',
   'Hide view panel (V)': '隐藏显示面板 (V)',
   'Hide / show view panel': '隐藏 / 显示 显示面板',
   'Zoom in': '放大', 'Zoom out': '缩小',

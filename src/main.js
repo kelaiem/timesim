@@ -13140,8 +13140,20 @@ style.textContent = `
 #ctl-hud {
   position: fixed; right: 16px; bottom: 16px; z-index: 7; display: none;
   width: 150px; padding: 6px; touch-action: none;
-  background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  /* §110 — MORE TRANSPARENT THAN THE PANELS, and it is the one piece of
+     chrome that should be. The panels sit BESIDE the movement; this pad sits
+     OVER it, in the corner a viewer orbits the watch through, so every
+     percent of opacity here is watch it hides.
+     0.72 → 0.46 is paid for with BLUR, not left as a straight trade: the
+     blur rises 6 → 12px so the backdrop stays a distinct surface at half the
+     fill. That pairing is not decoration — #scale-ref learned the hard way
+     that the plate is near-white under the studio environment and
+     light-on-light made its readout unreadable exactly when it sat over the
+     thing it described. The figures above the ring are the same hazard, so
+     the separation has to come from somewhere, and blur costs no legibility
+     of what is behind it the way opacity does. */
+  background: rgba(15,17,20,0.46); backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
 }
 /* The ring keeps its 1:1 aspect from the viewBox rather than from a fixed
@@ -13182,7 +13194,14 @@ style.textContent = `
    Time and Alarm sections carry, said where the crowns are. The alarm value
    wears the alarm hand's red so the number and the hand above it are
    visibly the same quantity. */
-#ctl-hud .hud-readout { padding: 5px 3px 1px; }
+/* §110 moved this ABOVE the ring, so its padding flips — the breathing room
+   goes under the figures, between them and the dial they describe, and the
+   rule sits below rather than above for the same reason. */
+#ctl-hud .hud-readout {
+  padding: 1px 3px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  margin-bottom: 4px;
+}
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
@@ -13232,8 +13251,12 @@ style.textContent = `
 }
 #ctl-hud .hud-rock-end:hover { background: rgba(255,255,255,0.12); color: #f2efe6; }
 #ctl-hud .hud-rocker input[type=range] {
-  flex: 1; min-width: 0; margin: 0; height: 14px;
-  accent-color: #3a6bd8; background: transparent; cursor: ew-resize;
+  /* 22px of height is the GRAB BAND, not decoration: the track itself is 2px
+     and nobody can hit 2px with a thumb. The bubble below is the target; this
+     is the slack around it. */
+  flex: 1; min-width: 0; margin: 0; height: 22px;
+  -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: ew-resize;
 }
 /* The centre detent — the seesaw's fulcrum, drawn on the groove itself so
    the control reads as pivoting rather than sliding. */
@@ -13246,6 +13269,24 @@ style.textContent = `
 #ctl-hud .hud-rocker input[type=range]::-moz-range-track {
   height: 2px; background: rgba(255,255,255,0.18);
 }
+/* THE BUBBLE — the thumb, and the only thing on this control a finger can
+   actually aim at. Styling ::-webkit-slider-runnable-track opts the whole
+   input out of the platform's own layout, so the thumb stops being centred on
+   the track and rides low unless it is placed by hand. Its offset is
+   arithmetic, not taste: (track − thumb) / 2 = (2 − 14) / 2 = −6px. Change
+   either height and re-derive this. */
+#ctl-hud .hud-rocker input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #3a6bd8; border: 1px solid rgba(255,255,255,0.55);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  margin-top: -6px; cursor: grab;
+}
+#ctl-hud .hud-rocker input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.55);
+  background: #3a6bd8; box-shadow: 0 1px 3px rgba(0,0,0,0.45); cursor: grab;
+}
+#ctl-hud .hud-rocker input[type=range]:active::-webkit-slider-thumb { cursor: grabbing; }
 #ctl-hud #hud-face-mode {
   flex: none; min-width: 44px; padding: 4px 7px;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
@@ -13649,9 +13690,19 @@ document.body.appendChild(viewHud);
 const chromeBar = document.createElement('div');
 chromeBar.id = 'chrome-bar';
 chromeBar.innerHTML =
-  '<button id="chrome-t-ui" data-state="on" title="Controls (H)">Controls</button>' +
-  '<button id="chrome-t-view" data-state="on" title="View (V)">View</button>' +
-  '<button id="chrome-t-hud" data-state="off" title="Control HUD (D)">Dial</button>';
+  // Titles carry NO shortcut letter: §72's hint loop appends "(H)"/"(V)"/"(D)"
+  // to every button it drives, and spelling it here too produced
+  // "Controls (H) (H)". One source for the hint, and it is the shortcut table
+  // — which is also the thing that stays true when a key is rebound.
+  // The names say what each panel IS, which sorts them the right way round:
+  // the left panel is a MENU of everything the app can do, while §57's pad is
+  // the watch's own CONTROLS — its crowns and pusher, the parts a wearer
+  // actually touches. Calling the menu "Controls" had the two backwards.
+  // Neither is "Dial": that key already belongs to the CAMERA PRESET of that
+  // name, and one key cannot mean two things in three languages.
+  '<button id="chrome-t-ui" data-state="on" title="Menu">Menu</button>' +
+  '<button id="chrome-t-view" data-state="on" title="View">View</button>' +
+  '<button id="chrome-t-hud" data-state="off" title="Controls">Controls</button>';
 document.body.appendChild(chromeBar);
 
 // §110 step 0 — THE ROOTS LIST. Every chrome-wide pass reads this instead of
@@ -13750,6 +13801,32 @@ function layoutChrome() {
   panel.style.top = f.panelClearsBar ? '' : `${PANEL_INSET + f.barBottom + PANEL_GAP}px`;
   panel.style.maxHeight = f.panelClearsBar ? ''
     : `calc(100vh - ${2 * PANEL_INSET + f.barBottom + PANEL_GAP}px)`;
+  // THE RIGHT COLUMN IS SHARED, and §57's pad has the bottom of it. The view
+  // panel hangs from the bar and grows DOWN; the pad sits on the bottom inset
+  // and grows UP. On a short viewport they meet, and the pad loses — it is
+  // `position: fixed` and lower in the stack, so the panel simply covers it.
+  //
+  // §110 made that worse rather than causing it: moving the §90 readouts to
+  // the TOP of the pad put the two times — the thing the corner is consulted
+  // FOR — exactly where the overlap lands. Measured at 760x620 the Time row
+  // was behind the panel while "Rings at" showed, which is the worst possible
+  // half to lose.
+  //
+  // So the panel's ceiling is whatever the pad leaves it. Measured, not
+  // typed: the pad's height is content-driven (§90's strip, §110's camera
+  // strip) and would go stale as a literal the first time either changed.
+  // Looked up rather than closed over: §57's `hudEl` is a `const` declared
+  // thousands of lines below this, and layoutChrome() runs during boot —
+  // touching the binding would hit its temporal dead zone and throw, which
+  // `typeof` cannot guard either. getElementById is simply null until it
+  // exists, which is the answer this wants anyway.
+  const hudNow = document.getElementById('ctl-hud');
+  const hudBox = hudNow && getComputedStyle(hudNow).display !== 'none'
+    ? hudNow.getBoundingClientRect() : null;
+  const viewTop = PANEL_INSET + f.barBottom + PANEL_GAP;
+  viewHud.style.maxHeight = hudBox && hudBox.height > 0
+    ? `${Math.max(0, Math.round(hudBox.top - PANEL_GAP - viewTop))}px`
+    : '';
 }
 function setPanelHidden(hidden) {
   panel.style.display = hidden ? 'none' : '';
@@ -16714,7 +16791,25 @@ function hudCtlMarkup(c) {
 
 const hudEl = document.createElement('div');
 hudEl.id = 'ctl-hud';
-hudEl.innerHTML = `<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} ${HUD_VIEW}">
+hudEl.innerHTML = `<!-- §90 — the two times the corner has to answer for, in figures, whenever
+     the HUD is up. §110 moved them ABOVE the ring: a readout is what the
+     corner is CONSULTED for and the ring is what it is used WITH, so the
+     answer should not sit under the hand reaching for a crown. Reading
+     order now runs answer → instrument → viewpoint (times, ring, camera
+     strip), which is also top-to-bottom on the screen.
+     §63's hands appear only while a setting path is engaged,
+     which is one step too late for the question that sends a hand to the
+     alarm crown in the first place: what is it set to now, and how far is
+     that from the time on the dial? Figures, not a second pair of hands,
+     because that comparison is arithmetic — "≈7:15 against 10:24" is a
+     glance; two more needles on a 41 u ring is a squint. Labels go through
+     t() at the display site (§73) and reuse the panel's own two keys; the
+     values are written per frame in hudUpdate. -->
+<div class="hud-readout">
+  <div class="hud-ro-row"><span class="hud-ro-label">${t('Time')}</span><span class="hud-ro-val" id="hud-ro-time">00:00:00</span></div>
+  <div class="hud-ro-row"><span class="hud-ro-label">${t('Rings at')}</span><span class="hud-ro-val alarm" id="hud-ro-alarm">≈12:00</span></div>
+</div>
+<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} ${HUD_VIEW}">
   <g>
     <circle class="hud-rim" cx="0" cy="0" r="${HUD_RIM}"/>
     <circle class="hud-dial" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
@@ -16750,19 +16845,6 @@ hudEl.innerHTML = `<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} $
     <circle class="hud-hit" data-ctl="spin" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
   </g>
 </svg>
-<!-- §90 — the two times the corner has to answer for, in figures, whenever
-     the HUD is up. §63's hands appear only while a setting path is engaged,
-     which is one step too late for the question that sends a hand to the
-     alarm crown in the first place: what is it set to now, and how far is
-     that from the time on the dial? Figures, not a second pair of hands,
-     because that comparison is arithmetic — "≈7:15 against 10:24" is a
-     glance; two more needles on a 41 u ring is a squint. Labels go through
-     t() at the display site (§73) and reuse the panel's own two keys; the
-     values are written per frame in hudUpdate. -->
-<div class="hud-readout">
-  <div class="hud-ro-row"><span class="hud-ro-label">${t('Time')}</span><span class="hud-ro-val" id="hud-ro-time">00:00:00</span></div>
-  <div class="hud-ro-row"><span class="hud-ro-label">${t('Rings at')}</span><span class="hud-ro-val alarm" id="hud-ro-alarm">≈12:00</span></div>
-</div>
 <!-- §110 item 2 — THE ZOOM ROCKER, and the face's gesture mode beside it.
      Both belong here for the reason §57 gave the face to the camera: the
      RING is the watch's controls, the FACE is the viewer's position, and
@@ -16984,6 +17066,10 @@ function setHud(on) {
   // one state, never a second copy of it: every path into the pad (this row,
   // the bar, the D key, ?hud=1) lands here, so the two faces cannot disagree.
   setBarState('chrome-t-hud', on);
+  // The pad's presence sets the view panel's ceiling (see layoutChrome), so
+  // showing or hiding it has to re-derive that — otherwise closing the pad
+  // leaves the panel short for no reason, and opening it re-covers the times.
+  layoutChrome();
   hudUpdate();
 }
 document.getElementById('btn-hud').addEventListener('click', () => setHud(!hudOn));
