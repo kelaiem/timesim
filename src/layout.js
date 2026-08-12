@@ -95,7 +95,8 @@ export const SPEC = (() => {
   // §33 (pusher handle) — the ALARM MODULE's azimuth (world degrees): the
   // striking wheel's station, from which the whole alarm work — gong,
   // hammer, striker, barrel, lock, column, pawl, pusher — is seeded. null =
-  // as designed (160°). This RETIRED ?pushaz=: an independent press axis
+  // as designed (40° since §112's tier-split; 160° before it). This
+  // RETIRED ?pushaz=: an independent press axis
   // could park the pusher's chain inside the movement while the toggle it
   // drives stayed at the corner; the pusher is the module's grip, not its
   // own part, so the handle moves the module.

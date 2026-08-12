@@ -1336,7 +1336,7 @@ const BACK_PLATE_HOLES = [
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
   { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
   { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-  { x: -9.80, y: 26.97, r: 0.45 },               // §35/§68: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
+  { x: 28.26, y: -5.00, r: 0.45 },               // §35/§68 (§112: re-synced to the rotated module) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
 // the track is an ARC, not the chord, so the bow joins the stud's own radius
@@ -4501,7 +4501,7 @@ checkCutVsPivots();
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
-tqHoles.push({ x: -9.80, y: 26.97, r: 0.45 }); // §35/§68: the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
+tqHoles.push({ x: 28.26, y: -5.00, r: 0.45 }); // §35/§68 (§112: re-synced to the rotated module) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -4513,7 +4513,7 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: -15.94, ay: 25.89, bx: -17.66, by: 27.96, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build)
+tqSlots.push({ ax: 30.40, ay: 0.86, bx: 33.04, by: 1.32, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -9082,21 +9082,35 @@ const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), i
 // The striking wheel's cam lifts the hammer tail, the hammer strikes the
 // gong, the lock lever banks on the wheel, the column stands off the lock,
 // and the pawl/pusher stand off the column: one action group, positionally.
-// So the spec is ONE azimuth — the striking wheel's station, identity 160° —
+// So the spec is ONE azimuth — the striking wheel's station, identity 40° —
 // and the whole complex is seeded from four angle literals below, each
 // carrying this delta. Identity keeps every literal bit-exact: the delta is
 // exactly 0.0 and IEEE addition of 0.0 is the identity, so no branch is
 // needed (the crownaz skip-entirely pattern exists for rotations through
 // cos/sin, which this is not — these are pure angle sums).
-// What does NOT rotate: the selector link rod (az 210° is a §35 corridor
-// solution against world-frame obstacles — the beak's tail re-derives to
-// reach it), the alarm crown corner (?alarmaz=, its winding run re-solves
-// to the barrel by construction), and the centre setting work. Costs of a
-// rotated module — fusee-square clearance, plate rim, corridor reach — are
-// the boot asserts' court, per the mode's layering.
+// §112 — the identity MOVED, 160° → 40°: the tier-split drops the power
+// tiers under the plate, and the placement gate (probe-alarm-tier-split)
+// solved the module's rotation and the three bearings TOGETHER against
+// the under-plate band — with the drum, chain and set-up work exactly
+// where they are. 40° is the argmax of the gate's spare-beyond-margins
+// over every rotation × bearing triple (0.90 at 40°, falling to 0.03 by
+// 65° and to NOTHING at the first solve's contaminated 70° — that run
+// missed the anchor's arbor column, the gate's one recorded wrong
+// answer). The four seed literals below each carry the −120° in their
+// authored value (GONG_A1 135→15, ALARM_SW_AZ 160→40, ALARM_LOCK_PIV_AZ
+// 24→−96), which is what keeps the new default build bit-exact instead
+// of churning every float through a spec rotation.
+// What does NOT rotate: the alarm crown corner (?alarmaz=, its winding
+// run re-solves to the barrel by construction) and the centre setting
+// work. The selector link's ROD left this list at §68: it derives
+// diametrically opposite the lock beak now, so it RIDES the module, and
+// the frozen plate bores/slot carry tripwires that fire when they lag it
+// (they did their job at §112's identity move). Costs of a rotated
+// module — fusee-square clearance, plate rim, corridor reach — are the
+// boot asserts' court, per the mode's layering.
 const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
-  ? SPEC.alarmModAzDeg * DEG2RAD - 160 * DEG2RAD : 0;
-const GONG_A1 = 135 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the hammer strikes here
+  ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
+const GONG_A1 = 15 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the hammer strikes here (§112: 135 − the identity move's 120)
 // §56 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
 // direction is the whole trick: the struck end, the hammer, its pivot azimuth
 // (GONG_A1 + 11°), the head's rest radius and the strike emitter are all sited
@@ -9246,10 +9260,15 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // then follows at whatever centre distance the MESH dictates, on a bearing
 // picked to keep it off the fusee's let-down square (the one other thing
 // standing proud of this face).
-const ALARM_SW_AZ = 160 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29; // §33: the module seed — ?alarmmod= names THIS station
+const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29; // §33: the module seed — ?alarmmod= names THIS station (§112: identity 160 → 40, the tier-split's pocket)
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
 const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_PINION_TEETH) / 2;
-const ALARM_BARREL_BEARING = -60 * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
+// §112 — the barrel's bearing is the placement gate's output, not the old
+// −60 rotated: under the plate the barrel disc must dodge the rods, the
+// centre wheel and the rim, and probe-alarm-tier-split solved the triple
+// (θ_b 202°, θ_g 92°, θ_a 148°, world at identity) with 0.90 beyond every
+// margin — the argmax over the whole rotation × bearing space, drum home.
+const ALARM_BARREL_BEARING = 202 * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
 const alarmBarrelPos = {
   x: alarmSwPos.x + Math.cos(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
   y: alarmSwPos.y + Math.sin(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
@@ -10070,12 +10089,15 @@ if (ALARM_FALL_S > ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS))
 // repeated one level up. Measured before siting (tools/probe-104.mjs):
 // within the wheel's reach every foreign mesh tops out at the §99 barrel
 // arbor's shoulder, so the governor tier derives its floor from that one
-// number and the corner above ~13.5 is empty to the rim. The bearing points
-// the stage outboard-southwest, module-relative like the barrel's own
-// bearing: the barrel/click quarter (SE of the striking wheel), the column
-// wheel and pusher (NE), the hammer and gong (N) all stay outside the
-// stage's footprint, and the rim assert below holds the outboard edge.
-const ALARM_GOV_BEARING = 225 * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative
+// number and the corner above ~13.5 is empty to the rim. §112 moved the
+// bearing with the tier-split: under the plate the governor's saw and
+// pinion must dodge the centre wheel's plane and the rods, and the
+// placement gate solved it (θ_g 92° world at identity 40) as one leg of
+// the (θ_b, θ_g, θ_a) triple that carries 0.90 beyond every margin. The
+// old 225 pointed the stage outboard-southwest for the plate-TOP corner
+// this stage no longer lives in; the rim assert below still holds the
+// outboard edge wherever it aims.
+const ALARM_GOV_BEARING = 92 * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative (§112: the gate's θ_g)
 const ALARM_GOV_CD = ALARM_TRAIN_MODULE * (ALARM_GOV_WHEEL_TEETH + ALARM_GOV_PINION_TEETH) / 2; // 10.8 — the mesh dictates
 const alarmGovPos = {
   x: alarmSwPos.x + Math.cos(ALARM_GOV_BEARING) * ALARM_GOV_CD,
@@ -10151,7 +10173,7 @@ const ALARM_GOV_ARBOR_R = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U;       // 0.585 —
   if (room < CLEAR_MARGIN)
     console.warn(`§104: the anchor arbor stands ${room.toFixed(3)} off the saw's tip circle — need ${CLEAR_MARGIN} (φ too large for this wheel)`);
 }
-const ALARM_GOV_ANCHOR_BEARING = -90 * DEG2RAD + ALARM_MOD_ROT; // stud due module-south of the station — the empty quadrant (see the siting note)
+const ALARM_GOV_ANCHOR_BEARING = 148 * DEG2RAD + ALARM_MOD_ROT; // §112: the gate's θ_a — the leg of the solved triple that keeps the anchor's arbor column outside the 64T wheel's swept disc AND the ring off the rods
 const alarmGovAnchorPos = {
   x: alarmGovPos.x + Math.cos(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
   y: alarmGovPos.y + Math.sin(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
@@ -11495,7 +11517,11 @@ const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (
 // puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
 // runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
 // pad, collar, and the engaged-angle triangle are untouched derivations.
-const ALARM_LOCK_PIV_AZ = 24 * DEG2RAD;
+// §112 — the identity move (160→40) folds its −120 into this literal too:
+// the §68 sweep's clearances were module-internal (the gong bound it), so
+// they ride the rigid rotation; 24 − 120 = −96, the same bearing in the
+// module's own frame.
+const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
 const alarmLockPivot = (() => {
   const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
   return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
@@ -12534,7 +12560,7 @@ const alarmLinkParts = {};
   // constant, so this is the tripwire between them. It has already earned its
   // keep once: moving the rod to az 210 left both bores behind at az 212 and
   // this is what said so.
-  const _boreXY = { x: -9.80, y: 26.97 };     // MUST equal both tqHoles entries for this rod (§68 re-site)
+  const _boreXY = { x: 28.26, y: -5.00 };     // MUST equal both tqHoles entries for this rod (§68 re-site; §112 rotated it with the module)
   if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
     console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
   // the shaft's bottom vs the keyless piece under the run. §35 measured that
