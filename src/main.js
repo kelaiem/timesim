@@ -10175,38 +10175,43 @@ const ALARM_GOV_SAW_PHASE = _govAzOf(_govCrossA, alarmGovPos) - (0.72 / ALARM_GO
     console.warn(`§104: pallet span misses the half-integer rule by ${frac.toFixed(6)} of a tooth — pallet B's engagement would not meet a tip`);
 }
 // The blade's SECTION, and it is measured where a section is measured —
-// PERPENDICULAR to the face it carries. 0.45 u = 0.171 mm, clear of the
-// 0.12 mm wheel floor, asserted below against the cut polygon rather than
-// trusted.
-//   §104 offset this stock along the WHEEL's radial instead. That direction
-// is right for keeping metal off the wheel, and wrong for measuring metal:
-// the tooth-tip trajectory's own tangent runs only ~26° off that radial, so
-// the offset lands almost EDGEWISE and 0.45 u of intended stock became
-// 0.046–0.099 mm of real blade — pallet B thinner than the floor by 2.6×.
-// Nothing caught it, and `stockFloor` structurally could not: its thinness is
-// the geometry-local AABB minimum, which for an extruded blade reads the
-// 0.40 extrude DEPTH and passes. Offsetting along the face's own normal makes
-// the number mean what it says, and leaves the working face untouched — the
-// trajectory IS the face; the offset only decides where the body sits behind
-// it (MODELING rule 9: route the offset through the contact law's own frame).
-// The blade's stock, offset RADIALLY OUTWARD FROM THE WHEEL — and that
-// direction is not a style choice, it is the only safe one. Every face point
-// sits at exactly ALARM_GOV_SAW_R from the wheel centre (the face IS a tooth
-// tip's path), so pushing along that radius puts the whole body outside the
-// tip circle, where no other tooth can reach it. §107 tried the face's own
-// normal instead, to make the section mean what it says, and MEASURED the
+// PERPENDICULAR to the face it carries. §111 makes it DERIVED: the offset is
+// bisected until the thinnest perpendicular crossing of the CUT polygon lands
+// on STOCK_MIN_U — the same 0.12 mm wheel floor `stockFloor` gates, imported
+// from layout.js precisely so geometry can be BUILT to the number the check
+// enforces rather than measured against it afterwards.
+//
+// The direction stays the WHEEL's own radial, and that is not a style choice.
+// Every face point sits at exactly ALARM_GOV_SAW_R from the wheel centre (the
+// face IS a tooth tip's path), so pushing along that radius is the one
+// direction guaranteed to move metal AWAY from the tip circle. §107 tried the
+// face's own normal, to make the number mean what it says, and MEASURED the
 // consequence: a saw tip standing 0.1995 inside the blade against a 0.02
 // budget — the P2 assert below catching it on the first boot.
 //
-// The cost of keeping the safe direction is filed, not hidden: the trajectory's
-// tangent runs only ~26° off this radial, so 0.45 u of offset is 0.046-0.099 mm
-// of TRUE section across the face — under the 0.12 mm floor, and invisible to
-// stockFloor (whose thinness is a geometry-local AABB minimum, and reads this
-// blade's 0.40 extrude depth). TODO 45 owns it, with the geometry that makes it
-// hard: the room behind the face is bounded by the union of the wheel's discs
-// over the swing, so a thicker blade is a shape problem, not a bigger number.
-const ALARM_GOV_PALLET_S = 0.45;
-const _govPalletPts = (cross, aOf) => {
+// §104 paid for that direction with a LITERAL 0.45, and the cost was the
+// defect TODO 45 was opened for: the trajectory's tangent runs only ~26° off
+// the radial, so the offset lands almost edgewise and 0.45 u of intended
+// stock was 0.046–0.099 mm of real blade — pallet B under the floor by 2.6×,
+// and invisible to `stockFloor`, whose thinness is a geometry-local AABB
+// minimum and so reads this blade's 0.40 extrude DEPTH.
+//   TODO 45 also recorded why it could not simply be a bigger number: that
+// 1/cos θ ≈ 1.58 u of offset "swallows the anchor's own pivot". §111 measured
+// that claim and it is FALSE. The offset runs nearly TANGENTIAL to the pallet
+// circle, so the blade's back barely moves in the anchor's own frame — 3.08 to
+// 3.12 from the anchor axis as the offset goes 0.45 to 1.2 — and never
+// approaches ALARM_GOV_HUB_R at all. The solve below lands at 0.776: pallet B
+// exactly on the floor, pallet A at 0.134 mm, and the §107 arch's attach
+// clearance on the blade's back rises with it (0.45 → 0.78 against the 0.40
+// the arm needs) as a free consequence.
+//
+// What the offset does NOT fix is the INTERFERENCE. The P2 sweep at the end of
+// this block — widened by §111 from tooth tips to tooth bodies — measures
+// 0.245 u of saw standing inside pallet B throughout the cycle. That is the
+// depth of engagement, not the section: the face is the WHOLE tip trajectory
+// over a half period, so this escapement has no drop, and the pallets shadow
+// every azimuth of a tooth pitch. TODO 45 owns it with the measurements.
+const _govPalletPts = (cross, aOf, S) => {
   const NP = 25, face = [], cen = [];
   for (let i = 0; i <= NP; i++) {
     const du = 0.5 * i / NP;                       // progress through the half period
@@ -10223,12 +10228,56 @@ const _govPalletPts = (cross, aOf) => {
   const out = face.map((p, i) => {
     const rx = p.x - cen[i].x, ry = p.y - cen[i].y;
     const rl = Math.hypot(rx, ry) || 1;
-    return { x: p.x + rx / rl * ALARM_GOV_PALLET_S, y: p.y + ry / rl * ALARM_GOV_PALLET_S };
+    return { x: p.x + rx / rl * S, y: p.y + ry / rl * S };
   });
   return { face, out };
 };
-const _govPalletA = _govPalletPts(_govCrossA, (du) => -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * du);
-const _govPalletB = _govPalletPts(_govCrossB, (du) => ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * du);
+// Both blades AT a trial offset, so the solve can cut them and measure what
+// it actually cut rather than predicting it (§107's lesson about hand-walked
+// outlines: measure the polygon, do not trust the intent behind it).
+const _govPalletAt = (S) => [
+  _govPalletPts(_govCrossA, (du) => -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * du, S),
+  _govPalletPts(_govCrossB, (du) => ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * du, S),
+];
+// A blade's TRUE section: the thinnest perpendicular crossing from the face
+// to the back, measured against the back's SEGMENTS (not its vertices — the
+// thinnest crossing generally lands mid-segment, and a vertex-only measure
+// reports whatever the sampling happened to hit).
+const _govSectionOf = (P) => {
+  let m = Infinity;
+  for (const p of P.face) {
+    for (let j = 0; j < P.out.length - 1; j++) {
+      const a = P.out[j], b = P.out[j + 1];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy)));
+      m = Math.min(m, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+    }
+  }
+  return m;
+};
+// THE SOLVE: the smallest offset whose thinner blade still crosses the floor.
+// Monotone in S — the face is fixed and the back only moves outward — so
+// bisection converges on the exact boundary, and taking `hi` guarantees the
+// achieved section is at or above the floor rather than a hair under it.
+const ALARM_GOV_PALLET_S = (() => {
+  const sectionAt = (S) => Math.min(..._govPalletAt(S).map(_govSectionOf));
+  let lo = 0.05, hi = 4;
+  if (sectionAt(hi) < STOCK_MIN_U) {
+    console.warn(`§111: no radial blade offset up to ${hi} reaches the ${MM(STOCK_MIN_U).toFixed(3)} mm wheel floor — best ${MM(sectionAt(hi)).toFixed(4)} mm`);
+    return hi;
+  }
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (sectionAt(m) < STOCK_MIN_U) lo = m; else hi = m; }
+  return hi;
+})();
+const [_govPalletA, _govPalletB] = _govPalletAt(ALARM_GOV_PALLET_S);
+// …and the achieved section, asserted on the polygon that is actually cut.
+// The solve above is the constraint; this is the measurement of it, which is
+// the pair rule 1 asks for — a derived number nobody checks is still a hope.
+for (const [nm, P] of [['A', _govPalletA], ['B', _govPalletB]]) {
+  const mm = MM(_govSectionOf(P));
+  if (mm < MM(STOCK_MIN_U) - 1e-9)
+    console.warn(`§111: pallet ${nm} cuts ${mm.toFixed(4)} mm of true section against the ${MM(STOCK_MIN_U).toFixed(3)} mm wheel floor`);
+}
 const _govPalletPoly = (P) => [...P.face, ...[...P.out].reverse()];
 // How far out the arm that CARRIES a blade must run. A blade is not a
 // separate body bolted near the anchor — it is the arm's own end, so the arm
