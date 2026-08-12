@@ -15992,17 +15992,21 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         }
       }
       ring(pivot, ALARM_GOV_HUB_R, zA);
+      // §111 — BOTH rims of the arbor, for the reason the poising ring gets
+      // both: the arbor stopped being a solid and became a bearing, and one
+      // circle would draw it as the solid it no longer is.
       ring(pivot, ALARM_GOV_ARBOR_R, zA);
+      ring(pivot, ALARM_GOV_ARBOR_BORE, zA);
       // the poising ring, one band down the same arbor: both rims (the ring's
       // section is the solve's answer, so a single circle would hide it), its
       // collar, and the two carrier arms at their perpendicular bearings
       ring(pivot, ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2, zR, SCHEMATIC.matWheel);
       ring(pivot, ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2, zR, SCHEMATIC.matWheel);
-      ring(pivot, 0.75, zR, SCHEMATIC.matWheel);
+      ring(pivot, ALARM_GOV_COLLAR_R, zR, SCHEMATIC.matWheel);
       const ringInner = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
       for (const sgn of [1, -1]) {
         const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2;
-        addLine(pivot, [V(Math.cos(az) * 0.75, Math.sin(az) * 0.75, zR),
+        addLine(pivot, [V(Math.cos(az) * ALARM_GOV_COLLAR_R, Math.sin(az) * ALARM_GOV_COLLAR_R, zR),
           V(Math.cos(az) * ringInner, Math.sin(az) * ringInner, zR)], SCHEMATIC.matWheel);
       }
       addLine(pivot, [V(0, 0, ALARM_GOV_RING_BOT), V(0, 0, ALARM_GOV_ANCHOR_TOP)]); // the arbor both bands ride
