@@ -633,7 +633,7 @@ const EXPECTED_PAIRS = [
   ['Alarm striking wheel', 'Three-quarter plate'],// bearing stud, likewise
   ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
   ['Alarm striking wheel', 'Alarm hammer'],       // a pin on the hammer's tail — the lift
-  ['Alarm governor', 'Three-quarter plate'],      // §104: both studs planted in the plate top
+  ['Alarm governor', 'Three-quarter plate'],      // §104: the governor stud planted in the plate top (§107 took the anchor's stud into the anchor's own unit)
   ['Alarm governor', 'Alarm striking wheel'],     // §104: the ×8 mesh (64T wheel ⇄ governor pinion)
   ['Alarm governor anchor', 'Three-quarter plate'],// §107: the anchor stud planted in the plate top
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself

@@ -35,7 +35,10 @@ const res = await page.evaluate(async () => {
   };
   void gapBy;
   // the unit's meshes and their AABBs at rest
-  const gov = clock.labelEntries.find((e) => e.name === 'Alarm governor');
+  // §107 split the anchor into its own unit, so a lookup of one name no longer
+  // reaches the whole mechanism — this spans both halves.
+  const govUnits = clock.labelEntries.filter((e) => e.name === 'Alarm governor' || e.name === 'Alarm governor anchor');
+  const gov = govUnits[0] && { name: 'Alarm governor (+ anchor)', obj: { traverse: (f) => govUnits.forEach((u) => u.obj.traverse(f)), updateWorldMatrix: (a, b) => govUnits.forEach((u) => u.obj.updateWorldMatrix(a, b)) } };
   if (!gov) { out.push('NO Alarm governor unit'); return out; }
   clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 });
   gov.obj.updateWorldMatrix(true, true);

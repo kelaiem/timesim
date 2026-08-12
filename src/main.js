@@ -10560,12 +10560,17 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 // reciprocation rides the existing alarmStrike axis (80 swings per strike)
 // and must survive §105's confirm tier — if `restoring` does not list this
 // unit two-way, that is a finding, not a formality.
-declareTravel('Alarm governor', ALARM_GOV_PHI, 'the anchor swings ±φ/2 every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
+// §107 — both declarations follow the anchor into its own unit. The part that
+// RECIPROCATES is the anchor, not the governor rotor beside it: the §48 audit's
+// population comes from which unit an axis MOVES, so leaving these on the old
+// name would have declared the wrong unit two-way and left the reciprocating
+// one undeclared — the exact silence TODO 29 was opened for.
+declareTravel('Alarm governor anchor', ALARM_GOV_PHI, 'the anchor swings ±φ/2 every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
 // §48 — the pallet-fork control case's class, one train over: the saw's
 // tooth faces drive the anchor BOTH ways (that is what "unsprung recoil
 // anchor" means — a runaway by design), so there is nothing to declare but
 // the drive. The poising ring is inertia, not a spring.
-declareRestoring('Alarm governor', 'two-way',
+declareRestoring('Alarm governor anchor', 'two-way',
   'the saw\'s tooth faces drive the anchor both ways, alternately by each pallet — the pallet fork\'s class; the poising ring is solved inertia, not a restoring element');
 // --- TODO 32: THE EQUALISATION, NOW A RECORD — AND SINCE §104, HELD WHOLE --
 // The OSCILLATOR block's twin, sited here because it needs BOTH ribbons

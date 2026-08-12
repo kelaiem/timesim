@@ -39,7 +39,10 @@ const res = await page.evaluate(async () => {
     out.push(`hook ${label}: rect x ${(cx + p[0] * S - 1.6).toFixed(1)} y ${(120 - p[1] * S - 1.6).toFixed(1)} (end at ${(cx + p[0] * S).toFixed(1)}, ${(120 - p[1] * S).toFixed(1)})`);
   }
   // Governor plate: saw outline + pallet polygons + ring, in a shared frame.
-  const gov = clock.labelEntries.find((e) => e.name === 'Alarm governor');
+  // §107 split the anchor into its own unit, so a lookup of one name no longer
+  // reaches the whole mechanism — this spans both halves.
+  const govUnits = clock.labelEntries.filter((e) => e.name === 'Alarm governor' || e.name === 'Alarm governor anchor');
+  const gov = govUnits[0] && { name: 'Alarm governor (+ anchor)', obj: { traverse: (f) => govUnits.forEach((u) => u.obj.traverse(f)), updateWorldMatrix: (a, b) => govUnits.forEach((u) => u.obj.updateWorldMatrix(a, b)) } };
   let saw = null;
   gov.obj.traverse((o) => { if (!saw && o.userData && o.userData.profile) saw = o; });
   const prof = saw.userData.profile;
