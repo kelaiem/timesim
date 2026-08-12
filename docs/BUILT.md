@@ -10228,7 +10228,14 @@ control-case class, nothing to declare but the drive. The anchor's
 reciprocation rides the existing `alarmStrike` axis (80 swings per
 strike) and survives §105's 4× confirm tier; the saw's cut outline is
 its own schematic glyph (`userData.profile`, the §99 ratchet's rule —
-a saw drawn as a pitch circle is a false claim). The fingerprint moved,
+a saw drawn as a pitch circle is a false claim). **[Corrected by §107:
+that last sentence was half true when it was written. Setting
+`userData.profile` performed the OPT-OUT — the rotor pass asks
+`SCHEMATIC.ownGlyph`, which tests the key — but the DRAWING half of §83's
+word lived at two hand-written sites, neither of them the saw's. So the
+saw opted out of its pitch circle and was drawn by nothing at all; the
+`hubR` and `boreR` above were dead data. §107 made the pass generic, and
+all three carriers now draw.]** The fingerprint moved,
 deliberately: a new unit, two new strike-rotor meshes and a stud
 length. The stated approximation, item 43's class: the saw wheel
 advances uniformly with the train — the anchor's recoil is not kicked
@@ -10243,3 +10250,147 @@ what such an arrest would protect). The explainer and primer promised
 this debt in three languages; the same landing rewrote the alarm
 ledger, both cross-references and the primer's governor prose in
 EN/DE/ZH (§95's precedent).
+
+## §107 — the anchor becomes one body, the tier learns its words, and the movement gets a check for parts held together by parentage
+
+Filed by the owner as three asks in one sentence — label the alarm
+striking wheel and governor parts, draw them in the schematic view, and
+"correct the mesh for the governor fork and pallet forks, they seem
+fractured". The third one was a real defect, and finding out *why nothing
+had caught it* produced most of this section.
+
+### The fracture was a joint that was never made
+
+§104's anchor arms were built with one literal outer end,
+`ALARM_GOV_PALLET_R − 0.3` = 2.842, for both arms. But the two blades do
+not span the same radii: each face is its own tooth-tip trajectory, so A
+runs outward from its crossing and B runs inward. Measured on the cut
+polygons, in the anchor's frame:
+
+| blade | radial span | arm end | verdict |
+|---|---|---|---|
+| pallet A | 3.078 – 3.607 | 2.842 | **0.236 of clear air** |
+| pallet B | 2.576 – 3.142 | 2.842 | lands inside — by luck |
+
+So the anchor shipped as three bodies: a hub with two arms, and one blade
+floating beside them. On screen that is exactly a snapped-off arm with a
+flake of metal near its end, which is what the owner saw.
+
+The end is now **derived from the blade it carries**. The arm's own ray is
+crossed against the cut outline and stops at the middle of the first
+chord, so it finishes inside the metal and the lap is half that chord. A
+radius alone will not do it, and the failed first attempt is worth keeping:
+"end at the blade's mid radius" put arm B *beside* its blade, because the
+blade is a thin curved ribbon and most of its radial span is the ribbon
+travelling, not the ribbon being thick. The ring bisection consumes the
+same `_govArmSpec`, so the steel counted is the steel cut — `I_a` is
+unchanged, the poising ring re-solves to 0.4549 mm inside its 0.2–0.8 mm
+stock, and the design gap still lands on 0.420000 s. The part was
+re-solved; the beat was not re-targeted.
+
+### The second defect, filed rather than fixed (TODO 45)
+
+The blades are also **slivers**: 0.45 u of stock offset along the *wheel's*
+radial, against a trajectory whose tangent runs only ~26° off that radial,
+gives a true section across the face of 0.046–0.099 mm — under the 0.12 mm
+floor, pallet B by 2.6×. Two fixes were tried and measured out rather than
+argued about:
+
+- **Offset along the face's own normal.** The P2 assert failed on the first
+  boot: a saw tip stood **0.1995 inside the blade** against its 0.02
+  budget. Every face point sits exactly `ALARM_GOV_SAW_R` from the wheel
+  centre, so the radial is the one direction guaranteed to leave the body
+  outside the tip circle. The direction is load-bearing.
+- **Keep the direction, scale by 1/cos θ.** θ ≈ 73°, so the offset would
+  need ≈ 1.58 u — and the face sits ≈ 6.0 from the wheel centre while the
+  anchor's own axis is at 7.335, so the blade would swallow its own pivot.
+
+The fix is a shape, not a scalar, so it is filed with that geometry rather
+than absorbed here. `stockFloor` cannot see any of it: its thinness is a
+mesh's geometry-local AABB minimum, which for an extruded blade reads the
+0.40 extrude depth and passes.
+
+### `assembly` — TODO 5's other half
+
+Nothing caught the fracture, and nothing could have. `intraUnit` compares a
+unit's MOVERS against that unit's FIXTURES; hub, arms and blades all ride
+one pivot group, so no pair any instrument built ever contained two of
+them. The new check's predicate is derived, not authored: **meshes whose
+world MOTION agrees at every sampled pose ride one frame, so they are one
+part, and a part is connected metal.**
+
+Three things about it that were arrived at by being wrong first:
+
+1. **Motion, not pose.** Under one rigid motion every member satisfies
+   `M_p = T·M_0`, so the delta `M_p·M_0⁻¹` is the same matrix however far
+   apart two members sit. Signing the member's own matrix splits a body
+   into as many groups as it has members; signing `geometry.id` splits it
+   into one group per mesh — the first cut did that and reported **zero
+   rows on a movement it had never measured**, which looks exactly like a
+   clean bill.
+2. **Cluster by tolerance, not string equality.** The cancellation is
+   computed, so a member sitting further out with its own rotation carries
+   more float error. Keyed on rounded strings, that dropped both anchor
+   arms and the governor-wheel sleeve out of their own groups — a broken
+   assembly reading as a smaller one.
+3. **Only a MOVING frame is evidence, and the gate is SCOPED.** Every
+   fixture in the movement shares the identity frame, so run against it
+   the check reports everything and means nothing. And moving frames still
+   carry rows this landing has not investigated — the centre wheel reads 3
+   bodies at 0.058, the pallet fork 3 at 0.05 — so §48's rule holds: `ok`
+   is always true, the rows are the product, and the gate covers the units
+   the landing owns. 23 rows: 0 violations in scope, 22 reported, 1 waived
+   citing **TODO 44** (the §25 B lock collar, which turns with the strike
+   rotor while touching no rotating member — held by parentage, not metal).
+
+Connectivity is triangle-to-triangle rather than `meshClearance`, because
+every joint is a near-zero by definition and that is the branch which hands
+the pair to `sampledVerdict`'s parity raycast — the expensive path, and the
+one that throws on a geometry with no normals. Pairs whose test throws are
+reported in `unmeasurable` and assumed JOINED: the gate never invents a
+fracture out of a measurement that failed.
+
+### What the tier was allowed to say, and what it was not saying
+
+§83 made `userData.profile` an `OWN_GLYPH` opt-out and drew it at two
+hand-written sites. The opt-out half was generic from the start — the rotor
+pass asks `SCHEMATIC.ownGlyph`, which tests the KEY — but the drawing half
+never was. §104 then set the key on the saw, so **the movement's newest
+wheel opted out of its pitch circle and gained nothing**, while §104's own
+record said its outline was its glyph. That is §78's SKIP rule arriving
+from the other side: not a wrong word drawn over, but a right word never
+drawn. One pass now covers every carrier (escape wheel, §99 arbor ratchet,
+§104 saw), with the hub and bore rims all three already declared and
+§78's floor-warn tripwire. §104's sentence in this file is corrected in
+place rather than quietly left standing.
+
+The anchor gets **its own word**, because the generic vocabulary would lie
+about it: `discOrAxis` says "disc" or "bar" of a generated tooth-tip
+trajectory (and at ~1 unit the blades sit under its 2.5 floor anyway), and
+the §48 blade pass says "leaf spring" of the one part in the movement
+*defined* by having no spring. Its glyph is drawn from `_govPalletPoly` —
+the same array `ExtrudeGeometry` is handed — so mesh, law and glyph cannot
+drift. The poising ring draws both rims, because its section is the solve's
+answer and a single circle would hide it.
+
+### Naming, at two grains
+
+- **The anchor is promoted to its own unit.** It earns it the way every
+  other unit does: its own stud on the plate, its own drive edge in from
+  the saw, its own frame, its own reciprocation. Registered as a `movement`
+  SIBLING, not nested — `collectUnits` does no nested-label exclusion, so a
+  nested label puts every mesh in both units and buys an `EXPECTED_PAIRS`
+  row for the artifact instead of for a contact (the Dial ⇄ Hour wheel
+  precedent). Its stud travels with it, so the new unit is supported by the
+  plate directly rather than by the unit it was cut out of.
+- **The members are named on the drawing.** A callout tier keyed by mesh
+  name, shown only in schematic mode — that is the view whose business is
+  saying what a thing IS. Nothing is authored at the display site: names
+  come from a declared table and a mesh with no entry draws no callout,
+  §59's standard held exactly. Anchored at each mesh's geometry centre, not
+  its origin: a pallet blade is an extrude whose origin sits on the pivot,
+  so an origin-anchored callout would name the pivot and point at nothing.
+- §104 had shipped `'Alarm governor'` **with no German or Chinese entry**
+  at all. Both locales now carry it, the anchor, and all eighteen member
+  names; and the lazy-label path — which rendered raw English for anything
+  registered after UI build — now translates like the path beside it.
