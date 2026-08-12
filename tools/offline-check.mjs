@@ -86,6 +86,29 @@ symlinkSync(relA, site);
 
 const results = [];
 const check = (name, ok, note = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? `  (${note})` : ''}`); };
+
+// A HEARTBEAT, because this job's worst failure mode prints nothing at all.
+// Twice on CI (two different runners, §107's PR) the run went silent right
+// after the update toast and was killed by the 20-minute job cap, having
+// emitted 12 of its 22 lines — no assertion failed, no error was thrown, and
+// there was nothing in the log to say where it stopped. Every await in that
+// region is bounded (4 s announcement, 2 s fallback, Playwright's 30 s/60 s),
+// so a genuine fault there should have thrown inside a minute; silence for
+// nineteen means either one unbounded wait or a blocked event loop, and the
+// log could not tell those apart.
+//
+// This does: `mark()` names the phase, and a 10 s timer prints how long that
+// phase has been running. If the ticks keep coming, the loop is alive and one
+// await is stuck — and the tick names it. If the ticks stop, the event loop
+// itself is blocked, which is a different bug entirely. Either way the next
+// run says which, instead of costing 20 minutes to say nothing.
+let phase = 'startup', phaseAt = Date.now();
+const mark = (name) => { phase = name; phaseAt = Date.now(); };
+const beat = setInterval(() => {
+  const s = ((Date.now() - phaseAt) / 1000).toFixed(0);
+  if (s >= 10) console.log(`  … still in "${phase}" after ${s}s`);
+}, 10000);
+beat.unref?.();
 const IGNORE = /net::ERR|Failed to load resource|WebGL|GroupMarkerNotSet|GPU stall|swiftshader/; // infra noise + the tolerated /__state class, same as ci-battery
 const wireNoise = (page, sink) => {
   page.on('pageerror', (e) => sink.push(`pageerror: ${e}`));
@@ -164,13 +187,19 @@ try {
   // ---- a release lands: repoint the "QA symlink", expect the ONE toast ----
   unlinkSync(site); symlinkSync(relB, site);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  mark('waiting for the update toast');
   await page.waitForSelector('#clock-update.show', { timeout: 30000 });
   check('update: toast appears after deploy (focus poll)', true);
-  await page.click('#clock-update button:not(.dismiss)');
+  mark('clicking Reload on the toast');
+  await page.click('#clock-update button:not(.dismiss)', { timeout: 30000 });
+  mark('waiting for the new version meta after reload');
   await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VB, { timeout: 30000 });
+  mark('waiting for __clock on the new release');
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   check('update: Reload crosses the worker boundary to the NEW release', true);
+  mark('waiting for the old cache to be dropped');
   await page.waitForFunction(async (k) => (await caches.keys()).join() === k, cacheB, { timeout: 30000 });
+  mark('release tree done');
   check('update: old release cache dropped on activation', true);
 
   let bad = noise.filter((n) => !IGNORE.test(n));
