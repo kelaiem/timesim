@@ -2274,7 +2274,17 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       console.warn(`TODO 1: mainspring wind frames differ in developed length by ${(wind.lenErr * 100).toFixed(4)}% — the k-solve is not reaching ${wind.devLen.toFixed(3)}, so the ribbon is being stretched rather than wound`);
     if (wind.cutSpread > wind.pBind)
       console.warn(`TODO 1: the CUT mainspring varies ${wind.cutSpread.toFixed(3)} in length across the wind range against a ${wind.pBind.toFixed(4)} ribbon — ${wind.segs} segments is too coarse a tessellation to hold the length constraint`);
-    if (wind.minPitch < wind.pBind)
+    // §104 — held at float noise, not at strict <: the affine term IS the
+    // bind, so analytically pitch = pBind + S·[((a+2π)/A)^k − (a/A)^k] ≥
+    // pBind always (S > 0, the bracket is monotone). At deep winds the
+    // k-solve runs the distribution term to underflow on the inner coils
+    // ("the coils come down to bind and simply stay there"), and the
+    // measured difference is pure cancellation noise — the alarm barrel's
+    // 4.25-turn set-up total measures minPitch − pBind = −1.9e-16 against a
+    // 0.19 ribbon. 1e-9 is the equalisation level product's own float-noise
+    // convention; a REAL pass-through (a law change, not an underflow) is
+    // orders of magnitude past it.
+    if (wind.minPitch < wind.pBind - 1e-9)
       console.warn(`TODO 1: mainspring coils close to ${wind.minPitch.toFixed(4)} against a ${wind.pBind.toFixed(4)} ribbon — the turns pass through each other`);
     if (wind.maxStep > wind.pBind)
       console.warn(`TODO 1: mainspring wind steps ${wind.maxStep.toFixed(4)} between frames against a ${wind.pBind.toFixed(4)} ribbon — ${windGeos.length} frames is too few for the measured ${wind.dPdA.toFixed(3)} u/rad`);

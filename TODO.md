@@ -29,7 +29,6 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
 | 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
-| 32 | PART CLOSED | The going half is closed; the alarm's cadence stays authored until a governor model exists |
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
@@ -45,8 +44,10 @@ the item's own window was measured empty, TODO 23's verdict one guide
 up), 43 (§105 — five detector artifacts fixed, ten units measured out
 of the §48 population by the item's own arbiter), 38 (both winds swept;
 the going axis is a cycle, and it found an undeclared reciprocator and
-two blind-spot joints in its first hour) — plus the *Recently closed*
-bucket at the end (former items 2 and 8 live there).
+two blind-spot joints in its first hour), 32 (§104 — the striking
+governor: the alarm's derived k finally produces the cadence, with an
+80-click set-up so the ring stops instead of crawling) — plus the
+*Recently closed* bucket at the end (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
 
@@ -235,12 +236,12 @@ the morph rather than quoting a plan the metal has left behind — §78's
 declared residue for this ribbon, closed in passing.
 
 **What was NOT closed here — the spring's TORQUE — became
-[item 32](#32-part-closed--the-going-springs-torque-is-derived-from-its-ribbon-the-alarms-cadence-is-the-remainder),
-and is now closed there for the going train:** `springTorqueAt` is derived
+[item 32](#32-closed-104--both-springs-torque-laws-are-derived-from-their-ribbons-and-the-alarms-cadence-is-the-governors-arithmetic),
+and is now closed there whole:** `springTorqueAt` is derived
 from this ribbon's section and wind (with the 0.35 revealed as a 17-click
 set-up on the ratchet this movement already builds), the fusee is cut
 against the derived law, and the `equalisation` gate holds the solve. The
-alarm's cadence is item 32's open remainder.
+alarm's cadence — the item's last remainder — closed with §104's governor.
 
 ## 3. CLOSED — `handSetOffset` derived through the setting path
 
@@ -3578,7 +3579,7 @@ pillar seats both live up there), so it wants its own battery run and its own
 record. Item 28 is finished as a profile-and-drive rebuild; this is a part that
 does not exist yet.
 
-## 32. PART CLOSED — the going spring's torque is derived from its ribbon; the alarm's cadence is the remainder
+## 32. CLOSED (§104) — both springs' torque laws are derived from their ribbons, and the alarm's cadence is the governor's arithmetic
 
 **The going train's half is CLOSED (2026-08-09).** `springTq = 0.35 +
 0.65·t` — the last authored number in the fusee mechanism, and since item
@@ -3648,31 +3649,41 @@ no longer obeyed, is exactly what this catches), and both ribbons'
 published sections must still describe the cut metal, with the frozen
 record cross-checked against the live build.
 
-### OPEN — the ALARM barrel's cadence is still authored (§89)
+### CLOSED (§104, 2026-08-11) — the ALARM barrel's cadence is the governor's
 
-The alarm ribbon's ARITHMETIC is now computed and published on the same
-terms as the going spring's — the `EQUALISATION` record's report half
-carries k = 1.472e-5 N·m/rad from its as-cut section (a = 0.09512,
-c = 0.455, L = 96.511) and the moment range 0 → 0.162 N·mm over its
-0 → 10.9956 rad wind. What it is NOT is read by anything. The cadence is
-still one literal,
+The paragraph below is the remainder as it stood; §104 built exactly the
+governor it names, and the closure is one line of `tick()` changing owners.
+The alarm ribbon's arithmetic had been computed and published on the same
+terms as the going spring's — the `EQUALISATION` record carried
+k = 1.472e-5 N·m/rad from its as-cut section (a = 0.09512, c = 0.455,
+L = 96.511) — and READ BY NOTHING: the cadence was one literal,
+`ALARM_STRIKE_GAP = 0.42`, and `ALARM_RING_SECONDS` a product of it, so
+the ring's time base rested on a number no spring produced.
 
-```js
-const ALARM_STRIKE_GAP = 0.42;   // s between strikes (the bell cadence)
-```
-
-and `ALARM_RING_SECONDS` is derived from it, so the ring's time base rests
-on a number no spring produced. Deriving cadence from torque needs what a
-real alarm has and this model does not: a GOVERNOR — the recoil anchor /
-fan brake whose drag balances the barrel's drive at a terminal rate. With
-no governor model, `M(θ)` alone cannot produce a strike interval; the
-gate therefore reports the alarm's k and says `cadence: 'authored'` rather
-than pretending the derived stiffness implies a rate. The remainder of
-this item is that governor model (the §25 A striking work is where its
-output would land), and it should note in passing that the alarm spring
-also has no set-up — its M(0) = 0, so its last strikes are driven by
-almost nothing, which a set-up or a stop-work would fix the same way the
-going side's is.
+Since §104 the k has its consumer. An unsprung recoil anchor at a ×8
+stage off the strike arbor (×32 from the barrel) flutters on a 40-tooth
+saw wheel — 80 teeth per strike — and the rate law
+`gap(θ) = 160·√(2φ·I_a/(M(θ)·η/32))` runs ∝ 1/√M. The anchor's
+poising-ring inertia is SOLVED so the designed 0.42 s lands at mid
+strike travel (the oscillator's solve-never-retarget convention);
+`tick()` spends the barrel at the law's instantaneous rate (0.374 s full
+→ 0.488 s empty — the ring audibly slows); `ALARM_RING_SECONDS` is the
+law's integral over the 28 strikes (11.86 s against the literal era's
+11.76). The "in passing" note closed with it: the spring gained the
+SET-UP the item asked for — 80 integer clicks (2.5 turns) on the §99
+arbor ratchet, held under the ribbon's measured 4.3-turn ceiling — so
+M(0) is 0.231 N·mm, not zero, and the last strikes stop at the set-up
+floor instead of crawling toward stall. The `equalisation` gate's alarm
+half grew from a report to HELD rows: set-up quantisation, ceiling,
+the I_a solve at the design point, the ring's section inside real ring
+stock, the hammer's fall window at the fastest gap, and the cadence
+endpoints MEASURED by stepping the shipped tick law against the record.
+The full record is `docs/BUILT.md` §104. Not absorbed: item 14's note
+that `ALARM_HAMMER_W` comes from the strike timing rather than the
+hammer spring's stiffness — cross-referenced there, still that item's
+open scope. The saw wheel itself advances uniformly with the train; the
+anchor's recoil is not kicked back through the wheel, the same accepted
+class as the escape wheel's absent draw recoil (item 43's closing note).
 
 ## 33. CLOSED — the wells are bounded inboard again, by the bore instead of a wheel they no longer reach
 

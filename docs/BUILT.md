@@ -10062,3 +10062,184 @@ documented `≥ 0.55`. The check's wall fell from ~31 min to ~6 min on
 the same machine; `CHECK_TIMEOUT_MS` and the battery job cap are
 re-derived from the new measurements at the constant, per the §81-era
 comment's own standing caveat.
+
+## §104 — the striking work gets its governor: the anchor is arithmetic, the fly did not survive it, and the cadence stops being a literal (TODO 32 closed)
+
+TODO 32's recorded remainder was one line of `tick()`: the alarm spring's
+stiffness was derived and published (k = 1.472e-5 N·m/rad) and READ BY
+NOTHING — `spend = rawDt / ALARM_STRIKE_GAP / 16`, real time divided by
+an authored 0.42, torque never entering. A real striking train cannot
+hold 2.4 strikes/s by wishing: ungoverned, it accelerates until
+something velocity-dependent eats the surplus. §104 built that
+something, chose it by arithmetic, and closed the item where it lived:
+the one line now reads `spend = rawDt / gap(θ) / 16` with gap(θ) a law
+the gate measures.
+
+### The survey — three candidates, two eliminated by their own numbers
+
+Part of the deliverable, kept so nobody re-proposes them (the §25 A
+pin-wheel rejection's precedent). At the governed arbor the working
+torque is order 1e-5 N·m and the cadence implies tens of rad/s; every
+candidate meets those two numbers:
+
+- **Fly (air vane) — REFUTED at watch scale, twice over.** Balancing
+  ~8e-6 N·m at ~30 rad/s needs a drag coefficient C = Γ/ω² ≈ 9e-9
+  N·m·s²; flat-plate vane arithmetic (C = ρ·C_d·w·(r₂⁴−r₁⁴)/4) then
+  demands vane radii of 40–50 mm at any watch-plausible width — clock
+  metal, an order past the whole movement. And at watch speeds the vane
+  Reynolds number is ~10, where the v² plate law itself expires. The
+  fan brake TODO 32 named in passing is a CLOCK part; it does not scale
+  down.
+- **Centrifugal friction (the repeater's governor) — possible, and the
+  heaviest build here.** Bob weights pressing a fixed brake ring govern
+  hard (cadence nearly flat over the wind — the closest behavioral
+  match to the old constant 0.42). But the normal-force budget
+  (N = Γ/µR ≈ 5 mN at R 3 mm) against watch-mass bobs forces
+  ω² ≈ 6e5 — the governor at ~125 rev/s, an ~800:1 train, TWO new
+  wheel/pinion stages. Real (repeaters whir for exactly this reason),
+  noted as the flat-cadence alternative, not chosen.
+- **Unsprung recoil anchor — CHOSEN.** The alarm-clock strike-side
+  answer: a two-pallet anchor fluttering on a saw wheel, no hairspring —
+  driven BOTH ways by the tooth faces, a runaway by design, §48's
+  two-way class with nothing to declare but the drive. It meets the
+  numbers at a modest ×8 stage with a poising ring a balance-wheel
+  workshop would recognise.
+
+### The build, and where it reconciles the filing
+
+One new unit ('Alarm governor'), one station off the strike arbor at
+module-relative bearing 225°, CD 10.8 (the ×8 mesh dictates): the strike
+arbor gained a 64T wheel (module 0.3, the train's own) on a new tier
+above the whole §99 stack — the arbor tier's move repeated one level up,
+its floor derived from the §99 arbor's shoulder (the tallest metal the
+wheel overflies, measured before siting) — and the governor arbor
+carries the 8T pinion and a 40-tooth saw wheel (§99's ratchet stock,
+0.4). The anchor rides its own stud at D = 7.335 with two GENERATED
+pallets and the solved poising ring. Four reconciliations against the
+filing, each a re-derivation the entry's own "first-order, re-derive"
+note called for:
+
+- **φ = 0.30 rad, not ≈ 0.35.** R_p = toothArc/φ also fixes the
+  anchor's centre distance D = r·cosε + √(R_p²−(r·sinε)²), and at 0.35
+  the anchor's own arbor stands 0.07 outside the saw's tip circle —
+  under the one margin. 0.30 is the swing at which the arbor clears its
+  wheel by a full CLEAR_MARGIN with room for its radius (achieved
+  0.885, boot-asserted). An internal P2 constraint of the anchor — any
+  real anchor's arbor must clear its wheel — so the line spec moved,
+  not the fold.
+- **The pallet span is 5.5 teeth, stated.** Integer + half, so a tooth
+  arrives at pallet B exactly when A releases — held as boot arithmetic
+  (the half-integer rule), and the engagement crossings are derived
+  onto the tip circle from (φ, span, r) rather than placed. The pallet
+  FACES are generated from the swing law exactly as the §25 cam's flank
+  was generated from the lift law: over each half period the engaged
+  tooth's tip traces a curve in the anchor's frame, that trajectory IS
+  the face, and contact is closed at every instant by construction. A
+  sampled boot tripwire holds the construction true (no tip buried
+  > 0.02 anywhere in the cycle).
+- **I_a = 9.07e-11 kg·m², ring section 0.455 mm.** The φ re-derivation
+  moved the solve from the filing's 7.7e-11 (I_a ∝ 1/φ at fixed gap);
+  the ring stayed r = 2.0 mm brass and the solved square section landed
+  at 0.455 mm, inside the 0.2–0.8 mm drawn-ring stock window the gate
+  holds. The solve COUNTS the steel the anchor must carry anyway —
+  pallets and plate arms by ∫r²dA over their own polygons (Green's
+  theorem, the balance's OSC_I discipline at anchor scale), hub as an
+  annulus — and bisects the ring to make up the remainder.
+- **One band, ring by the plate — §39's depth envelope enforcing
+  itself.** The filing imagined a stacked tower (saw, then anchor, then
+  ring); built that way the assembly measured 12.71 mm against the
+  2.5–12 mm real-movement window. The fold: the anchor is a flat piece
+  IN the saw's plane (hub and arms outside the tip circle in plan, only
+  the pallets reaching in — how a real anchor sits its wheel), and the
+  poising ring dropped to the anchor corner's own column just above the
+  plate (measured empty from plate to tier), riding the same arbor.
+  Assembly depth as built: 11.95 mm. Position space paid for all of it;
+  no mechanism quantity moved.
+
+### The set-up companion — exactly 80 clicks
+
+M(0) = 0 on the bare barrel and the cadence runs ∝ 1/√M, so an anchor
+on an un-set-up spring crawls toward stall as it drains. The fix is the
+going side's, one barrel over: a set-up of 2.5 turns held by the §99
+arbor ratchet — exactly 80 integer clicks on its 32-tooth saw (the
+SETUP_CLICKS convention; the equalisation gate holds the quantisation
+and that the built ribbon frames carry the same sweep). The ceiling it
+sits under is the ribbon's own, and since the §47 roadmap survey that
+measured it is private, the measurement is re-recorded here as the
+public source: re-running `mainspringFrames` on the shipped alarm
+ribbon at rising sweeps, the k-solve reaches the developed length at
+4.3 turns (lenErr 5e-13) and fails at 4.4 (4.3e-3 — the family's way of
+saying *this spring is too short for this wind*); the annulus never
+binds (capacity S = 2.99 at 4.3). Measured at 0.1-turn granularity, so
+the usable total is 4.25 — and 2.5 + 1.75 IS 4.25, landing the set-up
+on a round 80 clicks with the builder's own asserts standing behind the
+ceiling at every boot (capacity 2.996 as built). One tripwire learned
+to count: at these winds the inner coils run to bind asymptotically and
+the measured minPitch − pBind is one ULP of cancellation noise
+(−1.9e-16 against a 0.19 ribbon), so the coil-bind warn now tolerates
+float noise (1e-9, the level product's own convention) instead of
+firing on an underflow.
+
+### The law, the tick, and what the gate holds
+
+Per tooth the anchor is driven through φ both ways from rest under the
+governed torque: t_tooth = 2·√(2φ·I_a/Γ_g), Γ_g = M(θ)·η/32 with
+η = 0.9² (two cut wheel-pinion meshes at 0.90 each). Per strike the cam
+turns one lobe pitch, the governor wheel RATIO/LOBES = 2 revolutions —
+80 teeth — so gap(θ) = 160·t_tooth ∝ 1/√M(θ). I_a is SOLVED so the
+designed 0.42 s lands at the design wind point (mid strike travel — the
+slowdown spreads symmetrically about the design gap), the oscillator
+gate's convention: solve the part, never re-target the beat. As built:
+M runs 0.231 → 0.393 N·mm over the strike travel; the cadence runs
+0.374 s (full) → 0.488 s (empty) — an audibly slowing ring, the honest
+voice of a spring-driven bell — and `ALARM_RING_SECONDS` became the
+law's integral over the 28 strikes: 11.86 s against the literal era's
+11.76. The hammer's fall (a TIME law — TODO 14's spring, whose
+`ALARM_HAMMER_W` still comes from the strike timing, that item's open
+note, cross-referenced not absorbed) now exchanges into phase through
+the current gap, and the gate holds the fall inside the cam's free
+fraction at the FASTEST gap (0.142 s against 0.053).
+
+The `equalisation` gate's alarm half grew from a report to HELD rows:
+set-up quantisation (80/32, and the frames carry it), total wind ≤ the
+4.25-turn usable ceiling with builder capacity positive, gap(design)
+within the oscillator's 0.5% of the designed 0.42, the ring's section
+in stock, the hammer window — and the row only a governed cadence can
+have: the gate STEPS the shipped tick law at full and near-empty wind
+and compares the strike rate it actually produces against the record's
+law at the measured window's mid-wind (0.375/0.478 measured on the
+posed metal). `cadence:` stopped saying 'authored' and states the law
+with its endpoints.
+
+### The instruments, and one stated approximation
+
+MECH_GRAPH support ('Alarm governor' on the three-quarter plate) and
+drive rows ('Alarm striking wheel' → 'Alarm governor' — a LEAF: a brake
+consumes, it drives nothing downstream, and the graph gate accepts a
+driven part with no output edge); EXPECTED pair with its floors row ON
+ARRIVAL (no blanket excuse — the one named contact is the ×8 mesh);
+seven declared intra-unit joints (sleeves and arbors coincident over
+their studs, the strike sleeve's "one shaft, two meshes" idiom); stock
+kinds declared for every shaft, stud and the collar, with the ring as
+its OWN kind (drawn-brass ring stock, 0.2–0.8 mm — floor in the census,
+ceiling in the gate); `declareTravel` ±φ/2 beside the derivation; and
+`declareRestoring('Alarm governor', 'two-way')` — the pallet fork's
+control-case class, nothing to declare but the drive. The anchor's
+reciprocation rides the existing `alarmStrike` axis (80 swings per
+strike) and survives §105's 4× confirm tier; the saw's cut outline is
+its own schematic glyph (`userData.profile`, the §99 ratchet's rule —
+a saw drawn as a pitch circle is a false claim). The fingerprint moved,
+deliberately: a new unit, two new strike-rotor meshes and a stud
+length. The stated approximation, item 43's class: the saw wheel
+advances uniformly with the train — the anchor's recoil is not kicked
+back through the wheel, exactly as the escape wheel carries no draw
+recoil; if wheel recoil is ever modelled, both parts readmit together.
+
+Scope untouched, per the filing's guard: the going side's cadence
+machinery, the alarm reserve indication (§44 owns that story — its
+honesty limit lifts with this landing), and a stop-work arrest on the
+alarm barrel (§47/TODO 37's scoped pair — note the set-up here changes
+what such an arrest would protect). The explainer and primer promised
+this debt in three languages; the same landing rewrote the alarm
+ledger, both cross-references and the primer's governor prose in
+EN/DE/ZH (§95's precedent).

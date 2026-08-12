@@ -218,7 +218,10 @@ const BATTERY = [
   // the derivation: set-up quantised to the ratchet, the fusee's level
   // product an identity at float noise, and both ribbons' published sections
   // still describing the metal the records' k was computed from.
-  { name: 'equalisation', opts: {}, cost: 1,
+  // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
+  // shipped tick law (120 ticks at two winds), which is the row's whole
+  // point; a stale 1 here costs wall clock, never a verdict.
+  { name: 'equalisation', opts: {}, cost: 14,
     gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
     fails: (r) => r.failures,
     note: (r) => r.summary },
@@ -707,10 +710,34 @@ try {
   // only a point that fails to produce a __clock is a failure.
   console.log(`spec boots (${SPEC_POINTS.length} declared points)…`);
   const specT0 = Date.now();
-  const specRows = await Promise.all(SPEC_POINTS.map(async (pt) => {
-    const r = await specBoot(browser, base, pt.q);
-    return { ...pt, ...r };
-  }));
+  // A BOUNDED POOL, not Promise.all — §104's landing measured why. The old
+  // "concurrent, ~15 s each" note assumed boots stayed cheap; unbounded, all
+  // 26 points boot at once on the runner's 4 vCPUs and each boot's wall
+  // stretches ~6×. That margin was real until boots grew: §104's alarm
+  // set-up doubled the ribbon's wind frames (61 → 124 k-solves at boot),
+  // and the two heaviest points — reserveh=48, the deepest fusee groove
+  // stack — crossed BOOT_TIMEOUT_MS on CI (run #335: both DEAD, no page
+  // errors, alive solo and alive locally). The pool pins per-boot
+  // contention to the SHARDS rationale above (4 vCPU, single-threaded
+  // pages): 4 concurrent boots keep each boot's wall within ~2× of solo,
+  // so the 120 s timeout keeps its honest meaning — "one roughly
+  // uncontended boot must build" — instead of being widened to cover a
+  // pile-up the harness itself created. Wall for the tier stays in the
+  // same band (26 boots / 4 lanes vs 26-way thrash).
+  const SPEC_BOOT_POOL = 4;
+  const specRows = new Array(SPEC_POINTS.length);
+  {
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(SPEC_BOOT_POOL, SPEC_POINTS.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= SPEC_POINTS.length) return;
+        const pt = SPEC_POINTS[i];
+        const r = await specBoot(browser, base, pt.q);
+        specRows[i] = { ...pt, ...r };
+      }
+    }));
+  }
   for (const r of specRows) {
     const how = r.alive ? (r.warns.length ? `builds, ${r.warns.length} warn(s)` : 'builds, silent')
       : r.wedged ? 'WEDGED' : 'DEAD';
