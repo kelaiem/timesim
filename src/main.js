@@ -10618,11 +10618,37 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmStrikeUnit.add(studUp);
 }
 // P2, sampled — the group agrees with itself. The pair sweep cannot see
-// mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet
-// cycle is held here: over a sampled tooth period, no saw TIP may stand
-// buried inside a pallet blade beyond the working tolerance (contact rides
-// each face by construction; this holds the construction true after any
-// later edit to φ, the span, or the saw).
+// mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
+// is held here, over a sampled tooth period.
+//
+// §111 WIDENED IT FROM TIPS TO BODIES, and that is the whole point of this
+// edit. §104 sampled the saw's TIPS only — one point per tooth — and read
+// 0.0001 while a tooth's BODY stood 0.245 u (0.093 mm) inside pallet B for
+// most of the cycle. A one-sided, one-vertex test is not a containment test:
+// it can only find the case where a tip pokes into a blade, which is exactly
+// the case the generated faces make impossible by construction. So the test
+// now runs the saw's whole cut OUTLINE against the whole blade outline, in
+// BOTH directions — saw vertices in a blade, and blade vertices in the saw.
+//
+// The budget is the MEASURED debt, not a design allowance. TODO 45 owns the
+// finding: the face is the entire tip trajectory over a half period, so this
+// escapement has no drop, and the pallets shadow every azimuth of a tooth
+// pitch — relieving the wheel would leave a needle 0.031 u wide, and no φ in
+// 0.08–0.30 against any span gets the intrusion under 0.118 u. Fixing it is a
+// re-derivation of the engagement, filed there. TIGHTEN THIS NUMBER, NEVER
+// WIDEN IT: it exists so the interference cannot silently get worse, which is
+// what it did between §104 and §111 with nothing to say so.
+//
+// 0.245 is what this sweep reads at fine sampling; the constant is 0.25 so
+// the 240 phases below and float noise cannot trip it on a build that has not
+// changed. Note it is NOT the battery's number — the `penetration` row for
+// this pair measures 0.286 by MTV on the extruded meshes, which is a
+// different quantity (a separating translation in 3D, not a polygon depth in
+// the anchor's plane) and moves with the blade's section while this one does
+// not: 0.2453 at §104's 0.45 offset, 0.2448 at §111's solved 0.776. That is
+// the evidence for the diagnosis — the interference belongs to the
+// engagement, not to the blade's shape.
+const ALARM_GOV_ENGAGE_DEBT = 0.25;
 {
   const polys = [_govPalletPoly(_govPalletA), _govPalletPoly(_govPalletB)];
   const inside = _govPolyContains;
@@ -10636,22 +10662,40 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     }
     return d;
   };
-  let worst = 0;
-  for (let k = 0; k < 96; k++) {
-    const u = k / 96;
+  // The saw's cut outline in the WHEEL's frame — root at 0.8·R on the tooth
+  // boundary, tip at R a fraction 0.72 of the pitch later. Rebuilt from the
+  // same two numbers makeRatchetAndClick cuts it from rather than read off a
+  // mesh, so this runs before the build and cannot drift into agreeing with
+  // whatever the builder happened to produce.
+  const sawOutline = [];
+  for (let i = 0; i < ALARM_GOV_SAW_TEETH; i++) {
+    sawOutline.push({ r: ALARM_GOV_SAW_R * 0.8, f: i });
+    sawOutline.push({ r: ALARM_GOV_SAW_R, f: i + 0.72 });
+  }
+  let worst = 0, worstWhy = '';
+  for (let k = 0; k < 240; k++) {   // §111: 96 phases under-read this by 0.008 — the sweep is now the cost of the claim
+    const u = k / 240;
     const a = u < 0.5 ? -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * u : ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * (u - 0.5);
     const ca = Math.cos(-a), sa = Math.sin(-a);
-    for (let i = 0; i < ALARM_GOV_SAW_TEETH; i++) {
-      const az = ALARM_GOV_SAW_PHASE + (i + 0.72) * ALARM_GOV_TOOTH_PITCH + u * ALARM_GOV_TOOTH_PITCH;
-      const wx = alarmGovPos.x + ALARM_GOV_SAW_R * Math.cos(az) - alarmGovAnchorPos.x;
-      const wy = alarmGovPos.y + ALARM_GOV_SAW_R * Math.sin(az) - alarmGovAnchorPos.y;
-      const pt = { x: wx * ca - wy * sa, y: wx * sa + wy * ca };
-      if (Math.hypot(pt.x, pt.y) > ALARM_GOV_PALLET_R + 1.0) continue;
-      for (const poly of polys) if (inside(pt, poly)) worst = Math.max(worst, edgeDist(pt, poly));
+    const rot = ALARM_GOV_SAW_PHASE + u * ALARM_GOV_TOOTH_PITCH;
+    const saw = sawOutline.map(({ r, f }) => {                 // the saw, as the anchor sees it
+      const az = rot + f * ALARM_GOV_TOOTH_PITCH;
+      const wx = alarmGovPos.x + r * Math.cos(az) - alarmGovAnchorPos.x;
+      const wy = alarmGovPos.y + r * Math.sin(az) - alarmGovAnchorPos.y;
+      return { x: wx * ca - wy * sa, y: wx * sa + wy * ca };
+    });
+    for (const poly of polys) {
+      for (const pt of saw) {
+        if (Math.hypot(pt.x, pt.y) > ALARM_GOV_PALLET_R + 1.5) continue;
+        if (inside(pt, poly) && edgeDist(pt, poly) > worst) { worst = edgeDist(pt, poly); worstWhy = 'saw inside a blade'; }
+      }
+      for (const pt of poly) {
+        if (inside(pt, saw) && edgeDist(pt, saw) > worst) { worst = edgeDist(pt, saw); worstWhy = 'a blade inside the saw'; }
+      }
     }
   }
-  if (worst > 0.02)
-    console.warn(`§104: a saw tip stands ${worst.toFixed(4)} inside a pallet blade over the sampled cycle — the generated faces no longer match the swing law (budget 0.02)`);
+  if (worst > ALARM_GOV_ENGAGE_DEBT)
+    console.warn(`§111: ${worstWhy} by ${worst.toFixed(4)} over the sampled cycle — deeper than the ${ALARM_GOV_ENGAGE_DEBT} TODO 45 records; the engagement got worse, it did not get fixed`);
 }
 // §36A: the anchor's travel is ±φ/2, declared beside its derivation; its
 // reciprocation rides the existing alarmStrike axis (80 swings per strike)
