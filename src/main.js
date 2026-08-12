@@ -10128,7 +10128,24 @@ const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R * Math.cos(ALARM_GOV_HALF_SPAN) + Mat
 // The swing spec's own room check (why φ is 0.30): everything on the anchor
 // axis that crosses the SAW's band — the stud and the arbor around it —
 // must stand clear of the tip circle.
-const ALARM_GOV_STUD_R = 0.35, ALARM_GOV_ARBOR_R = 0.45;
+//
+// §111 — THE ARBOR IS A BEARING, so it is derived like one. §104 shipped it
+// as a literal 0.45 solid running on a 0.35 solid stud: the arbor was LARGER
+// than the post it turned on, two coincident bodies held together by an
+// INTRA_UNIT_CONTACTS row, with no bore, no side-shake and no hole for the
+// stud to occupy. The going train has answered this since the first upper
+// pivot — a bore cut PIVOT_BORE_CLEAR wider than the staff, so the staff sits
+// in a hole instead of interpenetrating what carries it (see addUpperPivot)
+// — and the governor, the fastest arbor in the movement at 4.76 rev/s, was
+// the one place not doing it. The outer radius is therefore the bore plus a
+// wall at the pivot floor, both quantities the movement already names:
+const ALARM_GOV_STUD_R = 0.35;
+const ALARM_GOV_ARBOR_BORE = ALARM_GOV_STUD_R + PIVOT_BORE_CLEAR;   // the running fit, the train's own side-shake
+const ALARM_GOV_ARBOR_R = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U;       // 0.585 — wall at the 0.07 mm pivot floor
+// §111 — this assert stopped being a formality when the radii became derived:
+// the arbor is now the bore plus a floor, and the hub is the arbor plus a
+// floor, so a change to PIVOT_BORE_CLEAR or either floor walks BOTH of them
+// toward the wheel. The hub is the wider of the two, so it is checked too.
 {
   const room = ALARM_GOV_ANCHOR_D - ALARM_GOV_SAW_R - ALARM_GOV_ARBOR_R;
   if (room < CLEAR_MARGIN)
@@ -10175,38 +10192,43 @@ const ALARM_GOV_SAW_PHASE = _govAzOf(_govCrossA, alarmGovPos) - (0.72 / ALARM_GO
     console.warn(`§104: pallet span misses the half-integer rule by ${frac.toFixed(6)} of a tooth — pallet B's engagement would not meet a tip`);
 }
 // The blade's SECTION, and it is measured where a section is measured —
-// PERPENDICULAR to the face it carries. 0.45 u = 0.171 mm, clear of the
-// 0.12 mm wheel floor, asserted below against the cut polygon rather than
-// trusted.
-//   §104 offset this stock along the WHEEL's radial instead. That direction
-// is right for keeping metal off the wheel, and wrong for measuring metal:
-// the tooth-tip trajectory's own tangent runs only ~26° off that radial, so
-// the offset lands almost EDGEWISE and 0.45 u of intended stock became
-// 0.046–0.099 mm of real blade — pallet B thinner than the floor by 2.6×.
-// Nothing caught it, and `stockFloor` structurally could not: its thinness is
-// the geometry-local AABB minimum, which for an extruded blade reads the
-// 0.40 extrude DEPTH and passes. Offsetting along the face's own normal makes
-// the number mean what it says, and leaves the working face untouched — the
-// trajectory IS the face; the offset only decides where the body sits behind
-// it (MODELING rule 9: route the offset through the contact law's own frame).
-// The blade's stock, offset RADIALLY OUTWARD FROM THE WHEEL — and that
-// direction is not a style choice, it is the only safe one. Every face point
-// sits at exactly ALARM_GOV_SAW_R from the wheel centre (the face IS a tooth
-// tip's path), so pushing along that radius puts the whole body outside the
-// tip circle, where no other tooth can reach it. §107 tried the face's own
-// normal instead, to make the section mean what it says, and MEASURED the
+// PERPENDICULAR to the face it carries. §111 makes it DERIVED: the offset is
+// bisected until the thinnest perpendicular crossing of the CUT polygon lands
+// on STOCK_MIN_U — the same 0.12 mm wheel floor `stockFloor` gates, imported
+// from layout.js precisely so geometry can be BUILT to the number the check
+// enforces rather than measured against it afterwards.
+//
+// The direction stays the WHEEL's own radial, and that is not a style choice.
+// Every face point sits at exactly ALARM_GOV_SAW_R from the wheel centre (the
+// face IS a tooth tip's path), so pushing along that radius is the one
+// direction guaranteed to move metal AWAY from the tip circle. §107 tried the
+// face's own normal, to make the number mean what it says, and MEASURED the
 // consequence: a saw tip standing 0.1995 inside the blade against a 0.02
 // budget — the P2 assert below catching it on the first boot.
 //
-// The cost of keeping the safe direction is filed, not hidden: the trajectory's
-// tangent runs only ~26° off this radial, so 0.45 u of offset is 0.046-0.099 mm
-// of TRUE section across the face — under the 0.12 mm floor, and invisible to
-// stockFloor (whose thinness is a geometry-local AABB minimum, and reads this
-// blade's 0.40 extrude depth). TODO 45 owns it, with the geometry that makes it
-// hard: the room behind the face is bounded by the union of the wheel's discs
-// over the swing, so a thicker blade is a shape problem, not a bigger number.
-const ALARM_GOV_PALLET_S = 0.45;
-const _govPalletPts = (cross, aOf) => {
+// §104 paid for that direction with a LITERAL 0.45, and the cost was the
+// defect TODO 45 was opened for: the trajectory's tangent runs only ~26° off
+// the radial, so the offset lands almost edgewise and 0.45 u of intended
+// stock was 0.046–0.099 mm of real blade — pallet B under the floor by 2.6×,
+// and invisible to `stockFloor`, whose thinness is a geometry-local AABB
+// minimum and so reads this blade's 0.40 extrude DEPTH.
+//   TODO 45 also recorded why it could not simply be a bigger number: that
+// 1/cos θ ≈ 1.58 u of offset "swallows the anchor's own pivot". §111 measured
+// that claim and it is FALSE. The offset runs nearly TANGENTIAL to the pallet
+// circle, so the blade's back barely moves in the anchor's own frame — 3.08 to
+// 3.12 from the anchor axis as the offset goes 0.45 to 1.2 — and never
+// approaches ALARM_GOV_HUB_R at all. The solve below lands at 0.776: pallet B
+// exactly on the floor, pallet A at 0.134 mm, and the §107 arch's attach
+// clearance on the blade's back rises with it (0.45 → 0.78 against the 0.40
+// the arm needs) as a free consequence.
+//
+// What the offset does NOT fix is the INTERFERENCE. The P2 sweep at the end of
+// this block — widened by §111 from tooth tips to tooth bodies — measures
+// 0.245 u of saw standing inside pallet B throughout the cycle. That is the
+// depth of engagement, not the section: the face is the WHOLE tip trajectory
+// over a half period, so this escapement has no drop, and the pallets shadow
+// every azimuth of a tooth pitch. TODO 45 owns it with the measurements.
+const _govPalletPts = (cross, aOf, S) => {
   const NP = 25, face = [], cen = [];
   for (let i = 0; i <= NP; i++) {
     const du = 0.5 * i / NP;                       // progress through the half period
@@ -10223,12 +10245,56 @@ const _govPalletPts = (cross, aOf) => {
   const out = face.map((p, i) => {
     const rx = p.x - cen[i].x, ry = p.y - cen[i].y;
     const rl = Math.hypot(rx, ry) || 1;
-    return { x: p.x + rx / rl * ALARM_GOV_PALLET_S, y: p.y + ry / rl * ALARM_GOV_PALLET_S };
+    return { x: p.x + rx / rl * S, y: p.y + ry / rl * S };
   });
   return { face, out };
 };
-const _govPalletA = _govPalletPts(_govCrossA, (du) => -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * du);
-const _govPalletB = _govPalletPts(_govCrossB, (du) => ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * du);
+// Both blades AT a trial offset, so the solve can cut them and measure what
+// it actually cut rather than predicting it (§107's lesson about hand-walked
+// outlines: measure the polygon, do not trust the intent behind it).
+const _govPalletAt = (S) => [
+  _govPalletPts(_govCrossA, (du) => -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * du, S),
+  _govPalletPts(_govCrossB, (du) => ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * du, S),
+];
+// A blade's TRUE section: the thinnest perpendicular crossing from the face
+// to the back, measured against the back's SEGMENTS (not its vertices — the
+// thinnest crossing generally lands mid-segment, and a vertex-only measure
+// reports whatever the sampling happened to hit).
+const _govSectionOf = (P) => {
+  let m = Infinity;
+  for (const p of P.face) {
+    for (let j = 0; j < P.out.length - 1; j++) {
+      const a = P.out[j], b = P.out[j + 1];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy)));
+      m = Math.min(m, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+    }
+  }
+  return m;
+};
+// THE SOLVE: the smallest offset whose thinner blade still crosses the floor.
+// Monotone in S — the face is fixed and the back only moves outward — so
+// bisection converges on the exact boundary, and taking `hi` guarantees the
+// achieved section is at or above the floor rather than a hair under it.
+const ALARM_GOV_PALLET_S = (() => {
+  const sectionAt = (S) => Math.min(..._govPalletAt(S).map(_govSectionOf));
+  let lo = 0.05, hi = 4;
+  if (sectionAt(hi) < STOCK_MIN_U) {
+    console.warn(`§111: no radial blade offset up to ${hi} reaches the ${MM(STOCK_MIN_U).toFixed(3)} mm wheel floor — best ${MM(sectionAt(hi)).toFixed(4)} mm`);
+    return hi;
+  }
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (sectionAt(m) < STOCK_MIN_U) lo = m; else hi = m; }
+  return hi;
+})();
+const [_govPalletA, _govPalletB] = _govPalletAt(ALARM_GOV_PALLET_S);
+// …and the achieved section, asserted on the polygon that is actually cut.
+// The solve above is the constraint; this is the measurement of it, which is
+// the pair rule 1 asks for — a derived number nobody checks is still a hope.
+for (const [nm, P] of [['A', _govPalletA], ['B', _govPalletB]]) {
+  const mm = MM(_govSectionOf(P));
+  if (mm < MM(STOCK_MIN_U) - 1e-9)
+    console.warn(`§111: pallet ${nm} cuts ${mm.toFixed(4)} mm of true section against the ${MM(STOCK_MIN_U).toFixed(3)} mm wheel floor`);
+}
 const _govPalletPoly = (P) => [...P.face, ...[...P.out].reverse()];
 // How far out the arm that CARRIES a blade must run. A blade is not a
 // separate body bolted near the anchor — it is the arm's own end, so the arm
@@ -10349,9 +10415,13 @@ const ALARM_GOV_ARM_LAP = 0.1; // how far a member enters the body it joins — 
 // anyway (pallets, hub, arms) is COUNTED from its own polygons (∫r²dA by
 // Green's theorem — the balance's OSC_I discipline at anchor scale), and
 // the brass ring's square section is solved by bisection to make up the
-// remainder. Neglected: the anchor's arbor sleeve (r 0.45 — its ∫r²dA is
-// < 0.1% of I_a) and the stud (static). The section must land in real
-// drawn-brass ring stock; the equalisation gate holds the window.
+// remainder. Neglected: the anchor's arbor sleeve (an ALARM_GOV_ARBOR_R tube
+// on an ALARM_GOV_ARBOR_BORE hole — its ∫r²dA is < 0.1% of I_a, and §111's
+// boring made it smaller still) and the stud (static). The section must land
+// in real drawn-brass ring stock; the equalisation gate holds the window.
+// Scale, so the next edit knows what it is spending: the whole steel term is
+// ~0.5% of I_a, so the RING carries the solve — §111's fatter blades move
+// its section by about a tenth of a percent.
 const _govPolyJ = (pts) => { // area and ∫(x²+y²)dA about the anchor axis
   let A = 0, J = 0;
   for (let i = 0; i < pts.length; i++) {
@@ -10362,7 +10432,14 @@ const _govPolyJ = (pts) => { // area and ∫(x²+y²)dA about the anchor axis
   }
   return { A: Math.abs(A), J: Math.abs(J) };
 };
-const ALARM_GOV_HUB_R = 0.9;
+// §111 — the two members BORED to the arbor follow it, each from its own
+// floor rather than from a literal that happened to clear the old 0.45. The
+// hub is wheel stock (its ring is a member, so its WALL answers to the wheel
+// floor, `makeGear`'s own rule); the ring's collar is declared pivot stock in
+// STOCK_KIND_BY_MESH, so its wall answers to the pivot floor. Both stay well
+// inside the 0.436 the hub has to the saw's tip circle.
+const ALARM_GOV_HUB_R = ALARM_GOV_ARBOR_R + STOCK_MIN_U;      // 0.901
+const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769
 const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
                                         // holds inside the rim (assert below), which is the cheap
                                         // direction — I = m·r², so radius bought is section saved
@@ -10389,8 +10466,8 @@ const ALARM_GOV_RING_S = (() => {
   // carrier arms and collar (they ride the solve so the count stays whole)
   const iOf = (s) => OSC_BRASS_RHO * (OSC_U ** 5) * (
     (Math.PI / 2) * ((ALARM_GOV_RING_R + s / 2) ** 4 - (ALARM_GOV_RING_R - s / 2) ** 4) * s
-    + 2 * _armJ(0.75, ALARM_GOV_RING_R - s / 2, 0.5) * 0.35
-    + (Math.PI / 2) * (0.75 ** 4 - ALARM_GOV_ARBOR_R ** 4) * 0.35
+    + 2 * _armJ(ALARM_GOV_COLLAR_R, ALARM_GOV_RING_R - s / 2, 0.5) * 0.35
+    + (Math.PI / 2) * (ALARM_GOV_COLLAR_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * 0.35
   );
   let lo = 0.02, hi = 4;
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (iOf(m) < target) lo = m; else hi = m; }
@@ -10412,6 +10489,13 @@ const ALARM_GOV_RING_TOP = ALARM_GOV_RING_BOT + ALARM_GOV_RING_S;
   const ringToGovStud = ALARM_GOV_ANCHOR_D - (ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2) - ALARM_GOV_STUD_R;
   if (ringToGovStud < CLEAR_MARGIN)
     console.warn(`§104: the ring passes ${ringToGovStud.toFixed(3)} from the governor stud — need ${CLEAR_MARGIN}`);
+  // §111 — the HUB is the widest thing on the anchor axis inside the saw's
+  // band, and it is now derived (arbor + wheel floor), so its room to the tip
+  // circle is a consequence rather than a choice. This is where a change to
+  // PIVOT_BORE_CLEAR or either stock floor would surface.
+  const hubRoom = ALARM_GOV_ANCHOR_D - ALARM_GOV_SAW_R - ALARM_GOV_HUB_R;
+  if (hubRoom < CLEAR_MARGIN)
+    console.warn(`§111: the anchor hub stands ${hubRoom.toFixed(3)} off the saw's tip circle — need ${CLEAR_MARGIN}`);
 }
 // --- The build. Two axes on their own studs (the gong post's planted-0.5
 // idiom), plus the 64T wheel the strike arbor gains — that wheel and its
@@ -10476,10 +10560,15 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     boreR: ALARM_GOV_SAW_R * 0.28,
   };
   alarmGovRotor.add(saw);
+  // §111 — a BORED arbor, not a solid one: ringGeo is the closed lathe tube
+  // the plate's own bearing collars are cut from, so the stud occupies a hole
+  // rather than sharing space with the metal that turns on it. (Closed on
+  // every face, including the two annuli nobody sees — an open body reads as
+  // a colliding one to the sampled verdict, TODO 27's lesson.)
   const govArbBot = ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2;
-  const govArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot, 16), MATS.steel);
+  const govArb = new THREE.Mesh(
+    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot), MATS.steel);
   govArb.name = 'alarmGovArbor';
-  govArb.rotation.x = Math.PI / 2;
   govArb.position.z = (ALARM_GOV_SAW_TOP + govArbBot) / 2;
   alarmGovRotor.add(govArb);
 
@@ -10557,9 +10646,9 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
         && !poly.some((q) => _govPolyContains(q, _govPalletPoly(P))))
       console.warn('§107: the anchor arm and the blade it carries share no metal — the anchor is two bodies again');
   }
-  const anchArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT, 16), MATS.steel);
-  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane)
-  anchArb.rotation.x = Math.PI / 2;
+  const anchArb = new THREE.Mesh(
+    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT), MATS.steel);
+  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane) — bored, §111
   anchArb.position.z = (ALARM_GOV_ANCHOR_TOP + ALARM_GOV_RING_BOT) / 2;
   alarmGovAnchorPivot.add(anchArb);
   // The solved ring, its collar and two carrier arms — every term the
@@ -10569,13 +10658,13 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   const ringHole = new THREE.Path();
   ringHole.absarc(0, 0, ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2, 0, Math.PI * 2, true);
   ringShape.holes.push(ringHole);
-  const ringGeo = new THREE.ExtrudeGeometry(ringShape, { depth: ALARM_GOV_RING_S, bevelEnabled: false, curveSegments: 12 });
-  ringGeo.translate(0, 0, ALARM_GOV_RING_BOT);
-  const ring = new THREE.Mesh(ringGeo, MATS.brass);
+  const poiseRingGeo = new THREE.ExtrudeGeometry(ringShape, { depth: ALARM_GOV_RING_S, bevelEnabled: false, curveSegments: 12 });
+  poiseRingGeo.translate(0, 0, ALARM_GOV_RING_BOT);
+  const ring = new THREE.Mesh(poiseRingGeo, MATS.brass);
   ring.name = 'alarmGovRing';
   alarmGovAnchorPivot.add(ring);
   const collarShape = new THREE.Shape();
-  collarShape.absarc(0, 0, 0.75, 0, Math.PI * 2, false);
+  collarShape.absarc(0, 0, ALARM_GOV_COLLAR_R, 0, Math.PI * 2, false);
   const collarHole = new THREE.Path();
   collarHole.absarc(0, 0, ALARM_GOV_ARBOR_R, 0, Math.PI * 2, true);
   collarShape.holes.push(collarHole);
@@ -10586,7 +10675,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmGovAnchorPivot.add(collar);
   for (const sgn of [1, -1]) {
     const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2; // perpendicular pair — poised by symmetry
-    const r0 = 0.75, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
+    const r0 = ALARM_GOV_COLLAR_R, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
     const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, 0.35), MATS.brass);
     arm.name = 'alarmGovRingArm';
     arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_RING_BOT + ALARM_GOV_RING_S / 2);
@@ -10618,11 +10707,37 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmStrikeUnit.add(studUp);
 }
 // P2, sampled — the group agrees with itself. The pair sweep cannot see
-// mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet
-// cycle is held here: over a sampled tooth period, no saw TIP may stand
-// buried inside a pallet blade beyond the working tolerance (contact rides
-// each face by construction; this holds the construction true after any
-// later edit to φ, the span, or the saw).
+// mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
+// is held here, over a sampled tooth period.
+//
+// §111 WIDENED IT FROM TIPS TO BODIES, and that is the whole point of this
+// edit. §104 sampled the saw's TIPS only — one point per tooth — and read
+// 0.0001 while a tooth's BODY stood 0.245 u (0.093 mm) inside pallet B for
+// most of the cycle. A one-sided, one-vertex test is not a containment test:
+// it can only find the case where a tip pokes into a blade, which is exactly
+// the case the generated faces make impossible by construction. So the test
+// now runs the saw's whole cut OUTLINE against the whole blade outline, in
+// BOTH directions — saw vertices in a blade, and blade vertices in the saw.
+//
+// The budget is the MEASURED debt, not a design allowance. TODO 45 owns the
+// finding: the face is the entire tip trajectory over a half period, so this
+// escapement has no drop, and the pallets shadow every azimuth of a tooth
+// pitch — relieving the wheel would leave a needle 0.031 u wide, and no φ in
+// 0.08–0.30 against any span gets the intrusion under 0.118 u. Fixing it is a
+// re-derivation of the engagement, filed there. TIGHTEN THIS NUMBER, NEVER
+// WIDEN IT: it exists so the interference cannot silently get worse, which is
+// what it did between §104 and §111 with nothing to say so.
+//
+// 0.245 is what this sweep reads at fine sampling; the constant is 0.25 so
+// the 240 phases below and float noise cannot trip it on a build that has not
+// changed. Note it is NOT the battery's number — the `penetration` row for
+// this pair measures 0.286 by MTV on the extruded meshes, which is a
+// different quantity (a separating translation in 3D, not a polygon depth in
+// the anchor's plane) and moves with the blade's section while this one does
+// not: 0.2453 at §104's 0.45 offset, 0.2448 at §111's solved 0.776. That is
+// the evidence for the diagnosis — the interference belongs to the
+// engagement, not to the blade's shape.
+const ALARM_GOV_ENGAGE_DEBT = 0.25;
 {
   const polys = [_govPalletPoly(_govPalletA), _govPalletPoly(_govPalletB)];
   const inside = _govPolyContains;
@@ -10636,22 +10751,40 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     }
     return d;
   };
-  let worst = 0;
-  for (let k = 0; k < 96; k++) {
-    const u = k / 96;
+  // The saw's cut outline in the WHEEL's frame — root at 0.8·R on the tooth
+  // boundary, tip at R a fraction 0.72 of the pitch later. Rebuilt from the
+  // same two numbers makeRatchetAndClick cuts it from rather than read off a
+  // mesh, so this runs before the build and cannot drift into agreeing with
+  // whatever the builder happened to produce.
+  const sawOutline = [];
+  for (let i = 0; i < ALARM_GOV_SAW_TEETH; i++) {
+    sawOutline.push({ r: ALARM_GOV_SAW_R * 0.8, f: i });
+    sawOutline.push({ r: ALARM_GOV_SAW_R, f: i + 0.72 });
+  }
+  let worst = 0, worstWhy = '';
+  for (let k = 0; k < 240; k++) {   // §111: 96 phases under-read this by 0.008 — the sweep is now the cost of the claim
+    const u = k / 240;
     const a = u < 0.5 ? -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * u : ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * (u - 0.5);
     const ca = Math.cos(-a), sa = Math.sin(-a);
-    for (let i = 0; i < ALARM_GOV_SAW_TEETH; i++) {
-      const az = ALARM_GOV_SAW_PHASE + (i + 0.72) * ALARM_GOV_TOOTH_PITCH + u * ALARM_GOV_TOOTH_PITCH;
-      const wx = alarmGovPos.x + ALARM_GOV_SAW_R * Math.cos(az) - alarmGovAnchorPos.x;
-      const wy = alarmGovPos.y + ALARM_GOV_SAW_R * Math.sin(az) - alarmGovAnchorPos.y;
-      const pt = { x: wx * ca - wy * sa, y: wx * sa + wy * ca };
-      if (Math.hypot(pt.x, pt.y) > ALARM_GOV_PALLET_R + 1.0) continue;
-      for (const poly of polys) if (inside(pt, poly)) worst = Math.max(worst, edgeDist(pt, poly));
+    const rot = ALARM_GOV_SAW_PHASE + u * ALARM_GOV_TOOTH_PITCH;
+    const saw = sawOutline.map(({ r, f }) => {                 // the saw, as the anchor sees it
+      const az = rot + f * ALARM_GOV_TOOTH_PITCH;
+      const wx = alarmGovPos.x + r * Math.cos(az) - alarmGovAnchorPos.x;
+      const wy = alarmGovPos.y + r * Math.sin(az) - alarmGovAnchorPos.y;
+      return { x: wx * ca - wy * sa, y: wx * sa + wy * ca };
+    });
+    for (const poly of polys) {
+      for (const pt of saw) {
+        if (Math.hypot(pt.x, pt.y) > ALARM_GOV_PALLET_R + 1.5) continue;
+        if (inside(pt, poly) && edgeDist(pt, poly) > worst) { worst = edgeDist(pt, poly); worstWhy = 'saw inside a blade'; }
+      }
+      for (const pt of poly) {
+        if (inside(pt, saw) && edgeDist(pt, saw) > worst) { worst = edgeDist(pt, saw); worstWhy = 'a blade inside the saw'; }
+      }
     }
   }
-  if (worst > 0.02)
-    console.warn(`§104: a saw tip stands ${worst.toFixed(4)} inside a pallet blade over the sampled cycle — the generated faces no longer match the swing law (budget 0.02)`);
+  if (worst > ALARM_GOV_ENGAGE_DEBT)
+    console.warn(`§111: ${worstWhy} by ${worst.toFixed(4)} over the sampled cycle — deeper than the ${ALARM_GOV_ENGAGE_DEBT} TODO 45 records; the engagement got worse, it did not get fixed`);
 }
 // §36A: the anchor's travel is ±φ/2, declared beside its derivation; its
 // reciprocation rides the existing alarmStrike axis (80 swings per strike)
@@ -15859,17 +15992,21 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         }
       }
       ring(pivot, ALARM_GOV_HUB_R, zA);
+      // §111 — BOTH rims of the arbor, for the reason the poising ring gets
+      // both: the arbor stopped being a solid and became a bearing, and one
+      // circle would draw it as the solid it no longer is.
       ring(pivot, ALARM_GOV_ARBOR_R, zA);
+      ring(pivot, ALARM_GOV_ARBOR_BORE, zA);
       // the poising ring, one band down the same arbor: both rims (the ring's
       // section is the solve's answer, so a single circle would hide it), its
       // collar, and the two carrier arms at their perpendicular bearings
       ring(pivot, ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2, zR, SCHEMATIC.matWheel);
       ring(pivot, ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2, zR, SCHEMATIC.matWheel);
-      ring(pivot, 0.75, zR, SCHEMATIC.matWheel);
+      ring(pivot, ALARM_GOV_COLLAR_R, zR, SCHEMATIC.matWheel);
       const ringInner = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
       for (const sgn of [1, -1]) {
         const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2;
-        addLine(pivot, [V(Math.cos(az) * 0.75, Math.sin(az) * 0.75, zR),
+        addLine(pivot, [V(Math.cos(az) * ALARM_GOV_COLLAR_R, Math.sin(az) * ALARM_GOV_COLLAR_R, zR),
           V(Math.cos(az) * ringInner, Math.sin(az) * ringInner, zR)], SCHEMATIC.matWheel);
       }
       addLine(pivot, [V(0, 0, ALARM_GOV_RING_BOT), V(0, 0, ALARM_GOV_ANCHOR_TOP)]); // the arbor both bands ride

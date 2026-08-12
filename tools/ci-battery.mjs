@@ -173,7 +173,10 @@ const BATTERY = [
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  { name: 'penetration', opts: {}, cost: 17,
+  // §111 raised this from 17: the governor escapement's new budget row sweeps
+  // 449 phases (the count is coprime to the axis's 2240 tooth periods, so it
+  // cannot alias onto a handful of them) and that is most of the difference.
+  { name: 'penetration', opts: {}, cost: 45,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
     fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
     note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },

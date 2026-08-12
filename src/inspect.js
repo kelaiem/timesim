@@ -1650,9 +1650,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'alarmGovStudUpper', why: '§104: the same sleeve over the stud\'s upper length' },
   { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'alarmGovStudUpper', why: '§104: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
   { unit: 'Alarm striking wheel', a: 'alarmGovStudUpper', b: 'CylinderGeometry#0', why: '§104: the stud\'s two turned lengths, butted — one post, two meshes (both fixtures; kept as the joint\'s record)' },
-  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§104: the governor arbor turns on its stud — coincident solids are the bearing (the strike sleeve\'s idiom)' },
-  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§104: the pinion\'s bore over the same stud — the running fit at the leaf root' },
-  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§104: the anchor\'s arbor turns on its own stud, ring below and anchor above — same bearing idiom (§107 moved the row with the unit: stud and arbor are both the anchor\'s now)' },
+  // §111 — these three rows used to say "coincident solids are the bearing".
+  // They no longer have to: both governor arbors are BORED, the way every
+  // upper pivot in the going train is, so each stud occupies a real hole and
+  // what these rows declare is the side-shake of a running fit rather than
+  // two bodies sharing space. The gap is PIVOT_BORE_CLEAR, under CLEAR_MARGIN
+  // by design, which is why the declaration is still owed.
+  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§111: the governor arbor turns on its stud in a bore cut PIVOT_BORE_CLEAR wider than it — addUpperPivot\'s fit, on the movement\'s fastest arbor' },
+  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§111: the pinion is driven on that arbor and shares its bore, so it clears the stud by the same PIVOT_BORE_CLEAR — the running fit at the leaf root' },
+  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§111: the anchor\'s arbor turns on its own stud in the same bore, ring below and anchor above (§107 moved the row with the unit: stud and arbor are both the anchor\'s now)' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
@@ -2411,6 +2417,53 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmTail') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §111 — THE GOVERNOR ESCAPEMENT'S MISSING BUDGET. The going escapement
+    // has had one since the first of these rows; §104 shipped its twin one
+    // train over with nothing measuring the depth of its contact at all, and
+    // every cover that looks like it should have caught that has a hole in
+    // exactly this shape: EXPECTED_PAIRS grants the pair a blanket excuse to
+    // the overlap sweep, EXPECTED_CONTACT_FLOORS names alarmGovSaw⇄
+    // alarmGovPallet as the working contact and therefore EXCLUDES it from
+    // the floor, and §104's own boot assert samples the saw's TIPS — one
+    // point per tooth — so it read 0.0001 while a tooth BODY stood 0.245
+    // inside pallet B for most of the cycle.
+    //
+    // maxDepth is INHERITED from the going escapement's row above, not
+    // chosen here: a budget envelope is never forkable (CLAUDE.md's fold
+    // rule), so this row is WAIVED at the measured depth rather than opened
+    // to fit it. The waiver is the finding, visible in the report.
+    //
+    // nSamples is 449 because of an aliasing trap this axis makes easy: one
+    // wind is 28 strikes × ALARM_GOV_TEETH_PER_STRIKE (80) = 2240 tooth
+    // periods, and the interference lives INSIDE one period. A sample count
+    // sharing a factor with 2240 revisits the same handful of phases forever
+    // — 240, the hammer row's count above, sees 15 of them. 449 is prime and
+    // coprime to 2240, so the samples visit 449 distinct phases spread across
+    // the period.
+    pair: ['Alarm governor', 'Alarm governor anchor'],
+    maxDepth: 0.1,
+    axis: 'alarmStrike',
+    nSamples: 449,
+    waived: 'TODO 45 finding one — the engagement is too deep to be cut as metal: '
+      + 'the pallet face is the WHOLE tip trajectory over a half period, so the escapement has no drop. '
+      + 'Measured 0.245 u; relieving the wheel leaves a 0.031 u needle and no φ in 0.08–0.30 clears it. '
+      + 'The fix is a re-derivation of the engagement, not a reshaped blade.',
+    // A = the saw wheel (the BVH side, as the escape wheel is above).
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmGovSaw') out.push(o); });
+      return out;
+    },
+    // B = the two pallet blades, and only those: the anchor's hub, arches,
+    // arbor and poising ring have no business near the wheel at all, and are
+    // held to CLEAR_MARGIN by the expectedContacts row instead.
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmGovPallet') out.push(o); });
       return out;
     },
   },
