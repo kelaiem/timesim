@@ -10692,3 +10692,165 @@ new toggle, slider and keyboard and wheel agreeing on one distance, pan
 preserving distance exactly while moving the target, `H` and `V` toggling
 their panels. One clipped label — "Pearl shingle direction" — reproduces
 on `origin/main` and is §53's known remainder, not this change's.
+
+## §111 — TODO 45: the governor anchor gets a bearing and a derived section, and the escapement's interference gets an instrument
+
+The owner asked for TODO 45 — the structural review of §104's governor
+anchor. The item named three strands: the blades are slivers, the pallet
+faces should stay steel, the pivots run bare. Measuring before building
+changed two of them, and the measurement is the entry.
+
+### What was found before anything was changed
+
+A standalone model of the shipped geometry, built from the source
+constants and validated by reproducing §104's own boot assert (worst
+tip-in-blade `0.0001`, consistent with a silent boot), was asked a
+question nothing in the battery asks: **how deep does a saw tooth stand
+inside a pallet blade?**
+
+**0.245 u — 0.093 mm — throughout the cycle.** Not at handover only:
+excluding each pallet's own drive window leaves the number unchanged.
+Pallet B's entire face is inside a tooth for most of the period, tapering
+from 0.245 at its entry corner to 0 at its exit; pallet A is intruded
+0.062. The going escapement's budget for the same class of contact is
+`maxDepth: 0.1`.
+
+Four separate covers all missed it, and each hole is a general shape
+worth naming:
+
+1. `EXPECTED_PAIRS` grants `Alarm governor ⇄ Alarm governor anchor` a
+   blanket excuse to the overlap sweep. The pair is *expected* to touch.
+2. `EXPECTED_CONTACT_FLOORS` names `['alarmGovSaw','alarmGovPallet']` as
+   the working contact, so TODO 6's `expectedContacts` deliberately
+   EXCLUDES exactly the two meshes in question.
+3. **There was no `PENETRATION_BUDGETS` row at all.** The going
+   escapement has had one since the first of those rows; §104 shipped
+   its twin one train over without one, so the depth of the governor's
+   only working contact was measured by nothing.
+4. §104's boot assert sampled the saw's **tips** — one point per tooth,
+   one direction — and read 0.0001. A one-vertex containment test can
+   only find a tip poking into a blade, which is the case the generated
+   faces make impossible by construction. **It could not have failed.**
+
+### Why it is not a blade-shape problem, measured twice
+
+The obvious repairs were tried in the model and both are ruled out:
+
+- **Relieve the wheel** — cut the tooth back to the pallets' swept
+  envelope, the conjugate trick §104 used for the face, applied to the
+  wheel instead. The pallets shadow **all 720 of 720** sampled azimuth
+  bins of one tooth pitch, reaching down to radius 5.15–5.95 against a
+  6.0 tip circle. The only tooth that clears them is a needle ≈0.031 u
+  (0.012 mm) wide, under the degenerate floor. There is no tooth to cut.
+- **Re-pick the swing** — sweeping φ over 0.08–0.30 against spans of
+  4.5, 5.5, 7.5 and 9.5 teeth never gets the intrusion below 0.118 u,
+  and the pallet's dip inside the tip circle stays 0.48–0.94 u against a
+  0.94 u tooth pitch. A real anchor keeps that dip to a few percent.
+
+The diagnosis points at §104's proudest claim. The pallet face is the
+ENTIRE tip trajectory over a half period, generated so that *contact is
+closed at every instant* — which is what makes the pallet a long body
+reaching half a tooth pitch into a wheel whose teeth are one pitch
+apart. A real escapement has **drop**: contact closed during impulse,
+open during drop, the pallet short, entering the wheel only by the lock.
+Closing it is a re-derivation of the engagement, not a reshaped blade,
+and it is filed in TODO 45 with these numbers rather than absorbed here.
+
+### What shipped: two instruments, a solve, and a bearing
+
+**The missing budget row.** `Alarm governor ⇄ Alarm governor anchor`,
+axis `alarmStrike`, `maxDepth: 0.1` **inherited** from the going
+escapement rather than chosen — a budget envelope is never forkable — and
+therefore **WAIVED** at the measured depth citing TODO 45. The waiver is
+the finding, visible in the report.
+
+Its `nSamples: 449` is load-bearing, and the trap it avoids is easy to
+walk into. One wind is 28 strikes × `ALARM_GOV_TEETH_PER_STRIKE` (80) =
+**2240 tooth periods**, and the interference lives *inside* one period. A
+sample count sharing a factor with 2240 revisits the same handful of
+phases forever — 240, the count the hammer row next door uses, sees 15 of
+them. 449 is prime and coprime to 2240, so the samples visit 449 distinct
+phases spread across the period.
+
+**The boot assert, widened from tips to bodies.** §104's sweep now runs
+the saw's whole cut outline against the whole blade outline, in BOTH
+directions, over 240 phases of one tooth period (96 under-read it by
+0.008). Its budget `ALARM_GOV_ENGAGE_DEBT = 0.25` is the *measured*
+debt, not a design allowance, and the comment says so: tighten it, never
+widen it. It exists so the interference cannot deepen unnoticed — which
+is what it did between §104 and §111 with nothing to say so.
+
+**The section, derived.** §104 offset the blade's stock along the wheel's
+radial by a literal `0.45`. The direction is right and is not a style
+choice — every face point sits at exactly `ALARM_GOV_SAW_R` from the
+wheel centre, so that radius is the one direction guaranteed to move
+metal away from the tip circle, and §107 measured what the face's own
+normal costs (a tip 0.1995 inside the blade). But the trajectory's
+tangent runs only ~26° off that radial, so 0.45 landed nearly edgewise:
+0.046–0.099 mm of real blade, pallet B under the 0.12 mm floor by 2.6×.
+
+The literal is now a solve — bisect the offset until the thinnest
+perpendicular crossing of the CUT polygon lands on `STOCK_MIN_U`, the
+same 0.12 mm `stockFloor` gates, imported from `layout.js` precisely so
+geometry can be built to the number the check enforces. It lands at
+**0.776**: pallet A **0.134 mm**, pallet B **0.120 mm**, both asserted at
+boot against the polygon actually cut. The §107 arch's attach clearance
+on the blade's back rises with it, 0.45 → 0.78 against the 0.40 it needs.
+
+**And TODO 45's reason this was impossible was a geometry error.** The
+item said scaling by 1/cos θ needs ≈1.58 u and "swallows the anchor's own
+pivot", reasoning from the face at 6.0 from the wheel centre against an
+anchor axis at 7.335. It does not: the offset runs nearly TANGENTIAL to
+the pallet circle, so the blade's back moves from 3.08 to only 3.12 from
+the anchor axis as the offset goes 0.45 → 1.2. It never heads for the
+pivot. The claim is corrected in TODO 45 with the numbers that refute it.
+
+Note what the fatter blade did NOT change: the polygon-depth
+interference reads **0.2453** at §104's 0.45 and **0.2448** at §111's
+0.776. The section and the interference are independent, which is the
+evidence for the diagnosis above.
+
+**The bearing.** `ALARM_GOV_ARBOR_R` was a literal 0.45 solid running on
+a 0.35 solid stud — the arbor **larger than the post it turned on**, two
+coincident bodies held together by an `INTRA_UNIT_CONTACTS` row, on the
+fastest arbor in the movement (4.76 rev/s, reversing at 190 Hz). The
+going train has answered this since its first upper pivot. So:
+
+```
+ALARM_GOV_ARBOR_BORE = ALARM_GOV_STUD_R + PIVOT_BORE_CLEAR = 0.400
+ALARM_GOV_ARBOR_R    = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U  = 0.585
+ALARM_GOV_HUB_R      = ALARM_GOV_ARBOR_R + STOCK_MIN_U     = 0.901
+ALARM_GOV_COLLAR_R   = ALARM_GOV_ARBOR_R + PIVOT_MIN_U     = 0.769
+```
+
+Both arbors are cut with `ringGeo`, the closed lathe tube the plate's own
+bearing collars use, so each stud occupies a real hole. The hub and the
+ring's collar followed from their own stock floors rather than from
+literals that happened to clear the old 0.45 — the hub is wheel stock,
+the collar is declared pivot stock in `STOCK_KIND_BY_MESH`. The hub is
+the widest thing on that axis inside the saw's band and now stands 0.434
+off the tip circle, asserted at boot beside the arbor's own room check,
+because both radii are now consequences: a change to `PIVOT_BORE_CLEAR`
+or either floor walks them toward the wheel.
+
+The three `INTRA_UNIT_CONTACTS` rows say "a bore cut `PIVOT_BORE_CLEAR`
+wider" where they used to say "coincident solids are the bearing".
+
+### One trap this landing walked into
+
+`ringGeo` is a top-level function, and the governor's build block
+declares a local `const ringGeo` for the poising ring's extrude. Calling
+the module-level helper from inside that block is a **TDZ error, not a
+shadowing win**: `Cannot access 'ringGeo' before initialization`, thrown
+at module evaluation, and the page never boots. The local is renamed
+`poiseRingGeo`. Worth knowing because the failure looks nothing like its
+cause — the reference is 90 lines *above* the declaration that breaks it.
+
+### What did not move, and why that was expected
+
+The anchor's whole steel term is **~0.5% of `I_a`** (Σ∫r²dA 6.21 → 7.88
+u⁵ against a target of 9.07e-11 kg·m²), so the poising ring carries the
+solve and the fatter blades moved its section by about a tenth of a
+percent — 0.455 mm, inside the 0.2–0.8 mm drawn-brass window
+`equalisation` gates. The cadence is untouched: `gapAtDesign` still lands
+on 0.42 s, the measured endpoints still reproduce the law.
