@@ -12962,59 +12962,98 @@ const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
 // ---------------------------------------------------------------------------
 const style = document.createElement('style');
 style.textContent = `
-#clock-ui {
-  position: fixed; top: 14px; left: 14px; z-index: 10;
+/* §110 step 0 — A PANEL IS A CLASS, NOT AN ID.
+   Every rule below used to read #clock-ui …, and so did §72's a11y passes
+   and §73's localizeTree call. That made the id load-bearing for three
+   unrelated mechanisms at once: move a row into a second root and it renders
+   unstyled, unnamed to a screen reader, and untranslated — with no throw, no
+   boot warning and nothing for the battery to see. Chrome that can be wrong
+   in silence is exactly what this repo writes instruments against, so the
+   shared identity is a CLASS every panel carries, and the id keeps only what
+   is genuinely singular about #clock-ui: where it sits.
+   Add a panel → give it .hud-panel and push its root onto HUD_ROOTS. */
+.hud-panel {
+  position: fixed; z-index: 10;
   background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
   padding: 14px 16px; width: 240px; box-sizing: border-box;
   /* Phone fit (BUILT §15): 14px inset top and bottom → 28px total; border-box
      makes calc() size the whole visual box, so the panel stays within a short
      (phone) viewport and scrolls internally rather than running its lower
-     controls off-screen. */
+     controls off-screen. §110 inherits this per panel rather than per id —
+     a second panel on a phone has the same viewport to fit inside. */
   max-height: calc(100vh - 28px); overflow-y: auto;
   font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #d8dee6; user-select: none;
 }
-#clock-ui h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
+/* Position is the only thing an individual panel owns. */
+#clock-ui { top: 14px; left: 14px; }
+#view-hud { right: 14px; }   /* its top is derived from the chrome bar, below */
+.hud-panel h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
 /* Collapsible section (BUILT §15) — a native <details> disclosure so there is
    no JS state to track. Reused wherever the panel needs a labelled, foldable
    group; the disclosure mechanism §23 will reuse lives here. */
-#clock-ui .ui-section { border-top: 1px solid rgba(255,255,255,0.08); }
-#clock-ui .ui-section:first-of-type { border-top: none; }
-#clock-ui .ui-section > summary {
+.hud-panel .ui-section { border-top: 1px solid rgba(255,255,255,0.08); }
+.hud-panel .ui-section:first-of-type { border-top: none; }
+.hud-panel .ui-section > summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
   padding: 9px 0; margin: 0;
   font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
   color: #8fa6bf; font-weight: 600;
 }
-#clock-ui .ui-section > summary::-webkit-details-marker { display: none; }
-#clock-ui .ui-section > summary::before {
+.hud-panel .ui-section > summary::-webkit-details-marker { display: none; }
+.hud-panel .ui-section > summary::before {
   content: '▸'; font-size: 9px; color: #6b7683; transition: transform 0.15s;
 }
-#clock-ui .ui-section[open] > summary::before { transform: rotate(90deg); }
-#clock-ui .ui-section > summary:hover { color: #b9cbe0; }
-#clock-ui .ui-section-body { padding-bottom: 4px; }
-#clock-ui .ui-section-body > .row:first-child { margin-top: 0; }
-#btn-hide-ui { position: absolute; top: 10px; right: 12px; padding: 2px 7px !important; font-size: 10px !important; color: #8b95a1 !important; }
-#clock-ui-show {
-  position: fixed; top: 14px; left: 14px; z-index: 10; display: none;
-  background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.14); color: #d8dee6;
-  border-radius: 8px; padding: 6px 11px; font: 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  cursor: pointer; transition: background 0.15s;
+.hud-panel .ui-section[open] > summary::before { transform: rotate(90deg); }
+.hud-panel .ui-section > summary:hover { color: #b9cbe0; }
+.hud-panel .ui-section-body { padding-bottom: 4px; }
+.hud-panel .ui-section-body > .row:first-child { margin-top: 0; }
+#btn-hide-ui, #btn-hide-view { position: absolute; top: 10px; right: 12px; padding: 2px 7px !important; font-size: 10px !important; color: #8b95a1 !important; }
+/* §110 item 1 — the chrome bar. Above every panel it toggles (z 12, over
+   #clock-update's 11) because it must stay reachable whatever else is up:
+   a control that opens the chrome cannot be underneath the chrome.
+   Its own box is deliberately NOT a .hud-panel — it has no padding of its
+   own and no width; it is three buttons and the gap between them. */
+#chrome-bar {
+  position: fixed; top: 14px; right: 14px; z-index: 12;
+  display: flex; gap: 6px;
 }
-#clock-ui-show:hover { background: rgba(255,255,255,0.14); }
-#clock-ui .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; flex-wrap: wrap; }
-#clock-ui button {
+#chrome-bar button {
+  /* 44 px is the touch floor, and min- rather than a fixed size so a
+     translated face is free to make the button wider — German's "Steuerung"
+     is 1.7x "Controls" and must not be clipped to keep a square. */
+  min-width: 44px; min-height: 44px; padding: 6px 10px;
+  background: rgba(15,17,20,0.72); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.14); color: #d8dee6;
+  border-radius: 8px; font: 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+#chrome-bar button:hover { background: rgba(255,255,255,0.14); }
+/* An OPEN panel's button reads as pressed. Quieter than the panel's own
+   .active blue: this is a statement about what is on screen, not a mode the
+   watch is in, and the two must not look like the same claim. */
+#chrome-bar button.active { background: rgba(58,107,216,0.28); border-color: rgba(58,107,216,0.55); color: #eaf0f7; }
+/* The bar owns the top-right, so the view panel it opens sits BELOW it —
+   14px inset + the bar's 44px floor + 8px gap. Derived from the bar's own
+   size rather than typed: change the touch floor and this follows, including
+   the scroll floor, which must lose exactly the height the bar took. */
+#view-hud {
+  top: calc(14px + 44px + 8px);
+  max-height: calc(100vh - 28px - 44px - 8px);
+}
+.hud-panel .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; flex-wrap: wrap; }
+.hud-panel button {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
   border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; transition: background 0.15s;
 }
-#clock-ui button:hover { background: rgba(255,255,255,0.14); }
-#clock-ui button.active { background: #3a6bd8; border-color: #3a6bd8; }
-#clock-ui button:disabled { opacity: 0.35; cursor: not-allowed; }
-#clock-ui button#btn-crown.active { background: #c85a3a; border-color: #c85a3a; }
-#clock-ui .readout.hacking { color: #ffb454; }
-#clock-ui .presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.hud-panel button:hover { background: rgba(255,255,255,0.14); }
+.hud-panel button.active { background: #3a6bd8; border-color: #3a6bd8; }
+.hud-panel button:disabled { opacity: 0.35; cursor: not-allowed; }
+.hud-panel button#btn-crown.active { background: #c85a3a; border-color: #c85a3a; }
+.hud-panel .readout.hacking { color: #ffb454; }
+.hud-panel .presets { display: flex; flex-wrap: wrap; gap: 5px; }
 /* §53: Advanced rows stack — label ABOVE its control, free to wrap. The .row
    class is a flex row shared with the rest of the panel, so this overrides
    only inside Advanced rather than restyling every row in the app. No
@@ -13022,28 +13061,28 @@ style.textContent = `
    (No backticks in here: this stylesheet is a template literal, and a stray
    one silently ends the string — node --check stays happy because what is
    left is still valid JS, just not this CSS.) */
-#clock-ui .adv-row { display: block; }
-#clock-ui .adv-row .adv-label {
+.hud-panel .adv-row { display: block; }
+.hud-panel .adv-row .adv-label {
   display: block; white-space: normal; overflow-wrap: anywhere;
   margin-bottom: 2px; line-height: 1.25; opacity: 0.85;
 }
 /* the scalar readout rides the label line, right-aligned - the number a
    slider is AT, not just where it sits in its groove (owner call) */
-#clock-ui .adv-row .adv-val {
+.hud-panel .adv-row .adv-val {
   float: right; opacity: 0.95; color: #e0a355;
   font: 11px ui-monospace, monospace; margin-left: 8px;
 }
-#clock-ui .adv-row input, #clock-ui .adv-row select { width: 100%; }
-#clock-ui input[type=range] { width: 128px; accent-color: #3a6bd8; }
-#clock-ui select {
+.hud-panel .adv-row input, .hud-panel .adv-row select { width: 100%; }
+.hud-panel input[type=range] { width: 128px; accent-color: #3a6bd8; }
+.hud-panel select {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
   border-radius: 6px; padding: 4px 6px; font-size: 11px; cursor: pointer; max-width: 150px;
 }
-#clock-ui .tq { flex: 1; max-width: 128px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
-#clock-ui .tq i { display: block; height: 100%; background: #3a6bd8; width: 100%; transition: none; }
-#clock-ui .tq i.flat { background: #58b368; }
-#clock-ui .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
-#clock-ui .label-small { color: #8b95a1; font-size: 10.5px; }
+.hud-panel .tq { flex: 1; max-width: 128px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+.hud-panel .tq i { display: block; height: 100%; background: #3a6bd8; width: 100%; transition: none; }
+.hud-panel .tq i.flat { background: #58b368; }
+.hud-panel .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
+.hud-panel .label-small { color: #8b95a1; font-size: 10.5px; }
 #clock-labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
 .clock-label {
   position: absolute; transform: translate(-50%, -140%); font: 11px/1 -apple-system, sans-serif;
@@ -13070,25 +13109,25 @@ style.textContent = `
   background: rgba(10,12,15,0.72); padding: 3px 7px; border-radius: 4px;
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.14);
 }
-#clock-ui .guided-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.hud-panel .guided-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 /* §65 — the explainer link, dressed as a button so the row reads like its
    neighbours (an <a> because it navigates; a button that navigates lies). */
-#clock-ui a.ui-link {
+.hud-panel a.ui-link {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
   border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; transition: background 0.15s;
   text-decoration: none;
 }
-#clock-ui a.ui-link:hover { background: rgba(255,255,255,0.14); }
-#clock-ui button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
+.hud-panel a.ui-link:hover { background: rgba(255,255,255,0.14); }
+.hud-panel button.script-ctrl.active { background: #7a3ad8; border-color: #7a3ad8; }
 /* §33 — reconfigure mode's chrome is DELIBERATELY its own colour (teal):
    §32 and §33 look alike on screen — parts away from their places — and
    mean opposite things ("this IS the watch, pulled apart" vs "this is a
    PROPOSED watch"). The mode must be unmistakable. */
-#clock-ui button#btn-reconf.active { background: #1f8a70; border-color: #1f8a70; }
+.hud-panel button#btn-reconf.active { background: #1f8a70; border-color: #1f8a70; }
 #reconf-row span.refused, #route-row span.refused { color: #e05555; }
 #reconf-row span.proposed, #route-row span.proposed { color: #4fd6b8; }
 #reconf-row span.warned, #route-row span.warned { color: #e0a355; }
-#clock-ui button#btn-route.active { background: #1f8a70; border-color: #1f8a70; }
+.hud-panel button#btn-route.active { background: #1f8a70; border-color: #1f8a70; }
 #reconf-variants-row input, #reconf-variants-row select {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
   color: #e8edf2; border-radius: 6px; padding: 3px 5px; font-size: 10.5px; max-width: 88px;
@@ -13159,6 +13198,65 @@ style.textContent = `
   font-variant-numeric: tabular-nums; letter-spacing: 0.02em; flex: none;
 }
 #ctl-hud .hud-ro-val.alarm { color: #e07a55; }
+/* §110 item 2 — the camera strip: zoom rocker + the face's gesture mode.
+   Separated from the readout above by a rule, because the two halves of this
+   box answer different questions — the readout is about the WATCH, this is
+   about where you are standing. */
+#ctl-hud .hud-cam {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 3px 1px; margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+}
+/* A ROCKER, not a groove with a knob: a seesaw with a raised centre, so the
+   shape says "press an end and hold" the way a camera's zoom lever does. The
+   range input between the ends is the same control's travel — it carries the
+   position, the ends carry the gesture. */
+#ctl-hud .hud-rocker {
+  /* min-width:0 is load-bearing, not tidiness: a flex item will not shrink
+     below its CONTENT width without it, and a range input's intrinsic width
+     is ~129px. Rocker (129 + two 22px ends) + the mode button overflowed the
+     150px pad and pushed the button off the right of the screen — visible in
+     the DOM, unclickable in the viewport. */
+  flex: 1; min-width: 0; display: flex; align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+  padding: 1px;
+}
+#ctl-hud .hud-rock-end {
+  flex: none; width: 22px; height: 22px; padding: 0;
+  background: none; border: none; color: #cfd6dd;
+  font: 14px/1 ui-monospace, monospace; cursor: pointer; border-radius: 999px;
+  /* The ends are the touch targets of a 150 px pad, so they get the whole
+     height of the strip rather than the glyph's own box. */
+  display: flex; align-items: center; justify-content: center;
+}
+#ctl-hud .hud-rock-end:hover { background: rgba(255,255,255,0.12); color: #f2efe6; }
+#ctl-hud .hud-rocker input[type=range] {
+  flex: 1; min-width: 0; margin: 0; height: 14px;
+  accent-color: #3a6bd8; background: transparent; cursor: ew-resize;
+}
+/* The centre detent — the seesaw's fulcrum, drawn on the groove itself so
+   the control reads as pivoting rather than sliding. */
+#ctl-hud .hud-rocker input[type=range]::-webkit-slider-runnable-track {
+  height: 2px; background: linear-gradient(to right,
+    rgba(255,255,255,0.18) 0 calc(50% - 1px),
+    rgba(255,255,255,0.42) calc(50% - 1px) calc(50% + 1px),
+    rgba(255,255,255,0.18) calc(50% + 1px) 100%);
+}
+#ctl-hud .hud-rocker input[type=range]::-moz-range-track {
+  height: 2px; background: rgba(255,255,255,0.18);
+}
+#ctl-hud #hud-face-mode {
+  flex: none; min-width: 44px; padding: 4px 7px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+  color: #d8dee6; border-radius: 6px; cursor: pointer;
+  font: 10px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+#ctl-hud #hud-face-mode:hover { background: rgba(255,255,255,0.14); }
+/* Pan wears the teal §33 reserved for "this is a different mode", not the
+   panel's action blue: the face still moves the camera either way, so this
+   is a change of verb, not a change of subject. */
+#ctl-hud #hud-face-mode[data-mode="pan"] { background: #1f8a70; border-color: #1f8a70; color: #eaf0f7; }
 /* State, shown in the palette the rest of the UI already uses for it: the
    pulled crown wears #btn-crown's red, an armed alarm wears the torque bars'
    green. */
@@ -13235,10 +13333,14 @@ document.head.appendChild(style);
 
 const panel = document.createElement('div');
 panel.id = 'clock-ui';
+panel.className = 'hud-panel';   // §110 step 0 — the shared identity
 // Rows are grouped into collapsible <details> sections (BUILT §15): Time,
-// Camera, View, Finish; State is appended later, so the panel fits a short
+// Camera, Alarm, Appearance; State is appended later, so the panel fits a short
 // viewport. Only Time is open by default. Every original id/class is preserved
-// verbatim so the existing querySelector / getElementById wiring is untouched.
+// verbatim so the existing querySelector / getElementById wiring is untouched —
+// §110 item 4 MOVES the View and Performance sections to their own panel, and
+// that wiring survives the move for exactly this reason: it binds by id, not
+// by ancestor.
 panel.innerHTML = `
   <h1>Watch Sim</h1>
   <button id="btn-hide-ui" title="Hide panel (H)">Hide</button>
@@ -13283,16 +13385,144 @@ panel.innerHTML = `
     </div>
   </details>
   <details class="ui-section">
-    <summary>View</summary>
+    <summary>Alarm</summary>
+    <div class="ui-section-body">
+      <div class="row">
+        <span class="label-small">Alarm</span>
+        <button id="btn-alarm">Off</button><button id="btn-alarm-cycle" title="Toggle the alarm on and off repeatedly, without moving the camera">Cycle</button>
+      </div>
+      <!-- ONE readout, and it is the time the alarm ACTUALLY rings.
+           The trip is geometric: the pin bottoms when the disc's notch
+           floor arrives under it, and the disc angle carries the
+           CONTINUOUS set position. alarmTargetSeconds() — the nearest
+           quarter mark — has no behavioural role at all; it feeds this
+           readout and an inspection getter, nothing else. Showing it
+           here said "Rings at 3:00" while the movement rang at 2:52.
+           The ≈ is the notch floor: the pin bottoms across ~2.76 min of
+           disc travel, so the ring lands within about ±1.4 min of the
+           hand, and claiming to the minute would be its own small lie. -->
+      <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">≈12:00</span></div>
+      <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
+      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling" class="script-ctrl">Show</button></div>
+      <div class="row"><span class="label-small">The link</span><button id="btn-link" class="script-ctrl">Trace</button></div>
+      <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
+      <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
+    </div>
+  </details>
+  <details class="ui-section">
+    <summary>Appearance</summary>
+    <div class="ui-section-body">
+      <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
+      <div class="row">
+        <span class="label-small">Hand flute</span>
+        <input type="range" id="flute-slider" min="-60" max="30" step="1" />
+      </div>
+      <!-- §23, owner's ask: rib COUNT on the 3/4 plate + escape bridge.
+           The stripes are world-space bands at decoration.ribbing.widthUnits
+           pitch shared by both parts, so count = span / pitch and ONE slider
+           thins them everywhere at once. Logged as pitch because that is the
+           schema's own word for it. -->
+      <div class="row">
+        <span class="label-small">Rib pitch</span>
+        <input type="range" id="rib-pitch" min="4" max="22" step="0.1" />
+      </div>
+      <!-- §23: ADVANCED — every control below is GENERATED from
+           aesthetics.json, so a future finish parameter gets a knob for free
+           and the file stays the single source. Collapsed by default on §15's
+           own mechanism: the panel a first-time viewer sees is unchanged. -->
+      <details id="advanced-section" style="margin-top:6px;">
+        <summary class="label-small" style="cursor:pointer; opacity:0.8;">Advanced</summary>
+        <div id="advanced-body"></div>
+        <div class="row label-small" style="opacity:0.75;">
+          <span>Tuned values persist in this browser</span>
+          <button id="btn-copy-aesthetics">Copy JSON</button>
+          <button id="btn-reset-aesthetics">Reset</button>
+        </div>
+      </details>
+    </div>
+  </details>
+`;
+document.body.appendChild(panel);
+
+// --- §110 item 4 — the VIEW HUD ------------------------------------------
+// View and Performance moved OUT of #clock-ui, whole, into their own panel in
+// the top-right corner. The reason is reach, not tidiness: x-ray, schematic,
+// labels, tap focus, sound and language are the controls a viewer touches
+// most, and they were the deepest rows in a scrolling 240 px column behind a
+// closed <details>.
+//
+// WHY TOP-RIGHT. Every other corner is spoken for and each has a recorded
+// reason — bottom-left is §28's update toast, bottom-centre the §5/§17
+// caption, bottom-right §57's control pad, top-left this panel. Top-right was
+// the one free corner, and §110 item 1's floating toggle shares it
+// deliberately: the toggle and the panel it opens are one cluster.
+//
+// THE SIX ARE FLAT; EVERYTHING ELSE FOLDS. The named six sit unfolded at the
+// top. The rest of View — Measure and its rows, explode, explore, reconfigure,
+// route — and all of Performance sit under closed <details>, on §15's
+// disclosure mechanism (the one §23 was told to reuse; there is no second).
+// 'Advanced' and 'Performance' are already in both locale tables, so the fold
+// costs no new strings.
+//
+// Every id and class is carried over VERBATIM. That is what makes the move
+// safe: the ~30 getElementById wirings and the setXray/setLabels/setHud
+// handlers bind by id, not by ancestor, so none of them knows this happened.
+const viewHud = document.createElement('div');
+viewHud.id = 'view-hud';
+viewHud.className = 'hud-panel';
+viewHud.innerHTML = `
+  <h1>View</h1>
+  <button id="btn-hide-view" title="Hide view panel (V)">Hide</button>
+  <!-- §66 part one: the schematic tier — draw the model, not the metal -->
+  <div class="row">
+    <span class="label-small">Plate X-ray</span>
+    <button id="btn-xray">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Schematic</span>
+    <button id="btn-schematic">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Labels</span>
+    <button id="btn-labels">Off</button>
+  </div>
+  <!-- §69: tap-focus readout + clear. The SETTER is the scene itself (tap
+       a part); the panel only names the focused unit and offers the way
+       out, so the row never competes with the gesture it reports on. -->
+  <div class="row">
+    <span class="label-small">Tap focus</span>
+    <button id="btn-focus" title="Tap a part to keep its mechanism solid and ghost everything unrelated. Tap empty space, the same part, or this button to clear.">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Sound</span>
+    <button id="btn-sound">Off</button>
+  </div>
+  <!-- §73: the locale row. Changing it RELOADS (the §22 reload-tier
+       precedent) — the panel is built from UI_LANG, and a second live
+       re-render path would be a copy to rot. Option faces are written in
+       their OWN language: a viewer looking for their language should not
+       have to read the current one to find it. -->
+  <div class="row">
+    <span class="label-small">Language</span>
+    <select id="lang-select">
+      <option value="en">English</option>
+      <option value="de">Deutsch</option>
+      <option value="zh">中文</option>
+    </select>
+  </div>
+  <details class="ui-section">
+    <summary>Advanced</summary>
     <div class="ui-section-body">
       <!-- An orientation legend. The movement's axis is world Z (dial at
            Z_DIAL = −7, plate at 0), so on a side-on view Z reads horizontally
            and "up" on screen is world Y — which is exactly the ambiguity that
            makes it easy to describe a part's move in the wrong axis. -->
-      <!-- §49: ONE overlay. Axes, graduations, the in-scene scale, the size
-           comparison and the stats line all ride one toggle and one derived
-           dimension set (scaleReadout) — two displays of one measurement
-           cannot drift when there is only one display. -->
+      <!-- §49: ONE overlay. Axes, graduations, the in-scene scale and the
+           stats line all ride one toggle and one derived dimension set
+           (scaleReadout) — two displays of one measurement cannot drift when
+           there is only one display. (§110 item 5 removed the fifth display,
+           §21's coin diagram; the rule is unchanged and now has one fewer
+           consumer to hold to it.) -->
       <div class="row">
         <span class="label-small">Measure</span>
         <button id="btn-axes">Off</button>
@@ -13311,10 +13541,6 @@ panel.innerHTML = `
       <div class="row label-small" id="axes-scale" style="display:none; opacity:0.75;">
         <span></span>
       </div>
-      <!-- §21: the scale REFERENCE. The legend above states millimetres;
-           this makes them intuitive by drawing objects of known size at the
-           same on-screen scale as the movement. -->
-
       <div class="row label-small" id="scale-stats" style="display:none; opacity:0.75;">
         <span></span>
       </div>
@@ -13327,16 +13553,16 @@ panel.innerHTML = `
         <select id="explode-unit"><option>All</option></select>
       </div>
       <div class="row">
-        <span class="label-small">Labels</span>
-        <button id="btn-labels">Off</button>
-      </div>
-      <div class="row">
         <span class="label-small">Control HUD</span>
         <button id="btn-hud">Off</button>
       </div>
       <div class="row">
         <span class="label-small">Explore</span>
         <button id="btn-explore">Off</button>
+      </div>
+      <div class="row label-small" id="explore-reset-row" style="display:none;">
+        <span>Drag parts · ⇧ drags group</span>
+        <button id="btn-explore-reset">Reassemble</button>
       </div>
       <!-- §65: the mechanism explainer — a maintained companion page in the
            HUD's own visual language; a plain link, not a mode, so it costs
@@ -13349,14 +13575,9 @@ panel.innerHTML = `
         <span class="label-small">Mechanisms</span>
         <a class="ui-link" href="./primer.html">How they work</a>
       </div>
-      <!-- §66 part one: the schematic tier — draw the model, not the metal -->
       <div class="row">
-        <span class="label-small">Schematic</span>
-        <button id="btn-schematic">Off</button>
-      </div>
-      <div class="row label-small" id="explore-reset-row" style="display:none;">
-        <span>Drag parts · ⇧ drags group</span>
-        <button id="btn-explore-reset">Reassemble</button>
+        <span class="label-small">Power flow</span>
+        <button id="btn-powerflow">Off</button>
       </div>
       <div class="row">
         <span class="label-small">Reconfigure</span>
@@ -13400,95 +13621,6 @@ panel.innerHTML = `
         <button id="btn-var-load">Load</button>
         <button id="btn-var-del">✕</button>
       </div>
-      <div class="row">
-        <span class="label-small">Plate X-ray</span>
-        <button id="btn-xray">Off</button>
-      </div>
-      <!-- §69: tap-focus readout + clear. The SETTER is the scene itself (tap
-           a part); the panel only names the focused unit and offers the way
-           out, so the row never competes with the gesture it reports on. -->
-      <div class="row">
-        <span class="label-small">Tap focus</span>
-        <button id="btn-focus" title="Tap a part to keep its mechanism solid and ghost everything unrelated. Tap empty space, the same part, or this button to clear.">Off</button>
-      </div>
-      <div class="row">
-        <span class="label-small">Power flow</span>
-        <button id="btn-powerflow">Off</button>
-      </div>
-      <div class="row">
-        <span class="label-small">Sound</span>
-        <button id="btn-sound">Off</button>
-      </div>
-      <!-- §73: the locale row. Changing it RELOADS (the §22 reload-tier
-           precedent) — the panel is built from UI_LANG, and a second live
-           re-render path would be a copy to rot. Option faces are written in
-           their OWN language: a viewer looking for their language should not
-           have to read the current one to find it. -->
-      <div class="row">
-        <span class="label-small">Language</span>
-        <select id="lang-select">
-          <option value="en">English</option>
-          <option value="de">Deutsch</option>
-          <option value="zh">中文</option>
-        </select>
-      </div>
-    </div>
-  </details>
-  <details class="ui-section">
-    <summary>Alarm</summary>
-    <div class="ui-section-body">
-      <div class="row">
-        <span class="label-small">Alarm</span>
-        <button id="btn-alarm">Off</button><button id="btn-alarm-cycle" title="Toggle the alarm on and off repeatedly, without moving the camera">Cycle</button>
-      </div>
-      <!-- ONE readout, and it is the time the alarm ACTUALLY rings.
-           The trip is geometric: the pin bottoms when the disc's notch
-           floor arrives under it, and the disc angle carries the
-           CONTINUOUS set position. alarmTargetSeconds() — the nearest
-           quarter mark — has no behavioural role at all; it feeds this
-           readout and an inspection getter, nothing else. Showing it
-           here said "Rings at 3:00" while the movement rang at 2:52.
-           The ≈ is the notch floor: the pin bottoms across ~2.76 min of
-           disc travel, so the ring lands within about ±1.4 min of the
-           hand, and claiming to the minute would be its own small lie. -->
-      <div class="row label-small"><span>Rings at</span><span class="readout" id="readout-alarm" style="font-size:13px;">≈12:00</span></div>
-      <div class="row"><span class="label-small">Crown</span><button id="btn-alarm-crown">Pull to set</button></div>
-      <div class="row"><span class="label-small">Coupling</span><button id="btn-coupling" class="script-ctrl">Show</button></div>
-      <div class="row"><span class="label-small">The link</span><button id="btn-link" class="script-ctrl">Trace</button></div>
-      <div class="row label-small"><span>Alarm wind</span><span class="readout" id="readout-alarm-wind">0%</span></div>
-      <div class="row label-small"><span>Turn to wind · pull out + turn to set</span></div>
-    </div>
-  </details>
-  <details class="ui-section">
-    <summary>Finish</summary>
-    <div class="ui-section-body">
-      <div class="row label-small"><span>Light</span><button id="btn-light-mode">Studio</button></div>
-      <div class="row">
-        <span class="label-small">Hand flute</span>
-        <input type="range" id="flute-slider" min="-60" max="30" step="1" />
-      </div>
-      <!-- §23, owner's ask: rib COUNT on the 3/4 plate + escape bridge.
-           The stripes are world-space bands at decoration.ribbing.widthUnits
-           pitch shared by both parts, so count = span / pitch and ONE slider
-           thins them everywhere at once. Logged as pitch because that is the
-           schema's own word for it. -->
-      <div class="row">
-        <span class="label-small">Rib pitch</span>
-        <input type="range" id="rib-pitch" min="4" max="22" step="0.1" />
-      </div>
-      <!-- §23: ADVANCED — every control below is GENERATED from
-           aesthetics.json, so a future finish parameter gets a knob for free
-           and the file stays the single source. Collapsed by default on §15's
-           own mechanism: the panel a first-time viewer sees is unchanged. -->
-      <details id="advanced-section" style="margin-top:6px;">
-        <summary class="label-small" style="cursor:pointer; opacity:0.8;">Advanced</summary>
-        <div id="advanced-body"></div>
-        <div class="row label-small" style="opacity:0.75;">
-          <span>Tuned values persist in this browser</span>
-          <button id="btn-copy-aesthetics">Copy JSON</button>
-          <button id="btn-reset-aesthetics">Reset</button>
-        </div>
-      </details>
     </div>
   </details>
   <details class="ui-section">
@@ -13507,7 +13639,27 @@ panel.innerHTML = `
     </div>
   </details>
 `;
-document.body.appendChild(panel);
+document.body.appendChild(viewHud);
+
+// §110 item 1 — the chrome bar's DOM. Its BEHAVIOUR is wired further down,
+// with the hide/show functions; it is built here so it can join HUD_ROOTS
+// with the panels, which is the whole point of that list. Its buttons carry
+// `data-state` like any other toggle, so §72's observer must reach them —
+// and it only reaches what the list names.
+const chromeBar = document.createElement('div');
+chromeBar.id = 'chrome-bar';
+chromeBar.innerHTML =
+  '<button id="chrome-t-ui" data-state="on" title="Controls (H)">Controls</button>' +
+  '<button id="chrome-t-view" data-state="on" title="View (V)">View</button>' +
+  '<button id="chrome-t-hud" data-state="off" title="Control HUD (D)">Dial</button>';
+document.body.appendChild(chromeBar);
+
+// §110 step 0 — THE ROOTS LIST. Every chrome-wide pass reads this instead of
+// naming one element. All three passes below had `panel` hard-coded and would
+// have skipped #view-hud and #chrome-bar in silence: a control with no
+// accessible name and no aria-pressed still LOOKS right, and an untranslated
+// row looks like a missing table entry rather than a missing call.
+const HUD_ROOTS = [panel, viewHud, chromeBar];
 
 // §73 A — STATE IS AN ATTRIBUTE; TEXT IS DISPLAY ONLY.
 //
@@ -13525,28 +13677,110 @@ function setBtnState(b, on) {
 }
 // The template ships its toggles reading "Off" — seed the attribute from that
 // one authored source before anything localizes the text away.
-for (const b of panel.querySelectorAll('button')) {
-  const s = b.textContent.trim();
-  if (s === 'On' || s === 'Off') b.dataset.state = s.toLowerCase();
+for (const root of HUD_ROOTS) {
+  for (const b of root.querySelectorAll('button')) {
+    const s = b.textContent.trim();
+    if (s === 'On' || s === 'Off') b.dataset.state = s.toLowerCase();
+  }
 }
-// …then the whole panel goes through the table, once, at build (locale is a
+// …then every panel goes through the table, once, at build (locale is a
 // reload-tier choice — §22's precedent — so nothing re-renders per frame).
-localizeTree(panel);
+for (const root of HUD_ROOTS) localizeTree(root);
 
-// --- panel hide/show -------------------------------------------------------
-// "Hide" collapses the whole panel to a small ☰ chip; the chip (or the H key)
-// brings it back. Pure display toggling — no state inside the panel is lost.
-const showPanelBtn = document.createElement('button');
-showPanelBtn.id = 'clock-ui-show';
-showPanelBtn.textContent = '☰';
-showPanelBtn.title = t('Show control panel (H)');
-document.body.appendChild(showPanelBtn);
+// --- §110 item 1 — the chrome bar: one affordance, always in view ----------
+// Hide and Show used to be two controls in one corner: a "Hide" button inside
+// the panel and a ☰ chip that took its place. That works for one panel and
+// does not generalise — the control HUD had no chip at all (View → Control
+// HUD, or ?hud=1), and a third panel would have wanted a third mechanism.
+//
+// This is one persistent bar in the top-right, one button per panel, each
+// naming the panel it toggles and carrying that panel's state in `data-state`
+// so §72's observer reports it like any other toggle. It never hides: chrome
+// you cannot find is chrome you cannot turn back on, which is the failure the
+// ☰ chip was already a patch for.
+//
+// TOUCH SIZE IS A DERIVED FLOOR, NOT A LOOK. 44 px is the smallest reliable
+// touch target (the same figure §15's phone work was measured against), and
+// the old chip missed it in both axes — 14 px of glyph inside 6/11 px of
+// padding is ~26 × 32. Each button here is min 44 × 44.
+//
+// WHY TOP-RIGHT, AND WHY IT SHARES WITH #view-hud. Every other corner has a
+// recorded owner (§28's toast bottom-left, the §5/§17 caption bottom-centre,
+// §57's pad bottom-right, the panel top-left). The bar sits ABOVE the view
+// panel it opens, so the toggle and its subject read as one cluster rather
+// than two claims on one corner.
+// TWO PANELS DO NOT FIT A PHONE, and the breakpoint is arithmetic rather than
+// a guess: two 240 px panels need their own widths plus three 14 px insets
+// (left, centre, right). Below that they must overlap, so the view panel
+// starts hidden there and the bar is how it is opened — the same bargain §15
+// struck when it made the panel collapsible rather than making it smaller.
+// Computed in JS, not a media query: a query setting `display` would fight
+// the inline `display` these toggles write, and the winner would depend on
+// whether the viewer had touched the button yet.
+const PANEL_W = 240, PANEL_INSET = 14, PANEL_GAP = 8;
+const TWO_PANEL_MIN_W = 2 * PANEL_W + 3 * PANEL_INSET;   // 522 px
+
+function setBarState(id, on) {
+  const b = document.getElementById(id);
+  if (b) { b.dataset.state = on ? 'on' : 'off'; b.classList.toggle('active', on); }
+}
+// THE BAR'S WIDTH IS A LOCALE FACT, SO IT IS MEASURED, NOT ASSUMED. German's
+// "Steuerung / Ansicht / Zifferblatt" is 211 px against English's 161, and a
+// typed breakpoint would be right in one language and wrong in another —
+// exactly the failure §73 says the German column exists to catch. So the two
+// rules below read the bar's OWN rect:
+//   · if the bar would sit over the panel's header (its Hide button and
+//     title live in that corner), the panel drops below the bar;
+//   · if both panels cannot fit side by side, they become mutually
+//     exclusive — opening one closes the other.
+// Recomputed on resize, because a phone rotating is the case that produces
+// both at once.
+function chromeFits() {
+  const bar = chromeBar.getBoundingClientRect();
+  return {
+    panelClearsBar: PANEL_INSET + PANEL_W + PANEL_GAP <= bar.left,
+    twoPanels: window.innerWidth >= TWO_PANEL_MIN_W,
+    barBottom: bar.height,
+  };
+}
+function layoutChrome() {
+  const f = chromeFits();
+  // A panel the bar overlaps loses its own corner and takes the one below it,
+  // derived from the bar's measured height rather than a repeated literal.
+  panel.style.top = f.panelClearsBar ? '' : `${PANEL_INSET + f.barBottom + PANEL_GAP}px`;
+  panel.style.maxHeight = f.panelClearsBar ? ''
+    : `calc(100vh - ${2 * PANEL_INSET + f.barBottom + PANEL_GAP}px)`;
+}
 function setPanelHidden(hidden) {
   panel.style.display = hidden ? 'none' : '';
-  showPanelBtn.style.display = hidden ? 'block' : 'none';
+  setBarState('chrome-t-ui', !hidden);
+  // Mutually exclusive below the two-panel width: two 240 px boxes cannot
+  // share a 375 px screen, and stacking them would bury one under the other
+  // with no way to tell which was on top.
+  if (!hidden && !chromeFits().twoPanels && viewHud.style.display !== 'none') setViewHudHidden(true);
+  layoutChrome();
+}
+function setViewHudHidden(hidden) {
+  viewHud.style.display = hidden ? 'none' : '';
+  setBarState('chrome-t-view', !hidden);
+  if (!hidden && !chromeFits().twoPanels && panel.style.display !== 'none') setPanelHidden(true);
+  layoutChrome();
 }
 document.getElementById('btn-hide-ui').addEventListener('click', () => setPanelHidden(true));
-showPanelBtn.addEventListener('click', () => setPanelHidden(false));
+document.getElementById('btn-hide-view').addEventListener('click', () => setViewHudHidden(true));
+document.getElementById('chrome-t-ui').addEventListener('click',
+  () => setPanelHidden(panel.style.display !== 'none'));
+document.getElementById('chrome-t-view').addEventListener('click',
+  () => setViewHudHidden(viewHud.style.display !== 'none'));
+// The Dial button is wired after setHud() exists (§57 defines it far below);
+// the bar's own state for it is seeded there too, so `?hud=1` and the panel
+// row cannot disagree with this button about whether the pad is up.
+setViewHudHidden(window.innerWidth < TWO_PANEL_MIN_W);
+layoutChrome();
+// Rotating a phone changes both answers at once, so both are re-derived. Not
+// throttled: this reads two rects and writes two properties, and resize is
+// already the cheapest thing this app does per event.
+window.addEventListener('resize', layoutChrome);
 
 // While a guided script (Demo/Tour/Coupling) runs, collapse the fixed control
 // panel to the ☰ chip and restore it after. This used to gate on a narrow
@@ -13803,9 +14037,9 @@ function askTour(onProceed) {
   a11yStyle.textContent = `
   /* §72: focus is VISIBLE — the HUD's own blued-hand accent, only on
      keyboard focus (focus-visible), so pointer users see no change */
-  #clock-ui button:focus-visible, #clock-ui input:focus-visible,
-  #clock-ui select:focus-visible, #clock-ui a:focus-visible,
-  #clock-ui summary:focus-visible, #kbd-help:focus-visible {
+  .hud-panel button:focus-visible, .hud-panel input:focus-visible,
+  .hud-panel select:focus-visible, .hud-panel a:focus-visible,
+  .hud-panel summary:focus-visible, #kbd-help:focus-visible {
     outline: 2px solid #7b96e8; outline-offset: 1px; border-radius: 3px;
   }
   #a11y-live { position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -13823,17 +14057,23 @@ function askTour(onProceed) {
     font: 11px ui-monospace, monospace; }
   #kbd-help .kbd-note { color: #6c7683; margin-top: 8px; }`;
   document.head.appendChild(a11yStyle);
-  // -- programmatic names: each .row's label span names its controls
+  // -- programmatic names: each .row's label span names its controls.
+  // §110 step 0: over HUD_ROOTS, not over `panel`. This walk is the only
+  // thing that gives most controls an accessible name at all, and a panel it
+  // does not visit produces buttons a screen reader reads as "button" —
+  // silently, since nothing throws and the control still works by mouse.
   let aid = 0;
-  for (const row of panel.querySelectorAll('.row')) {
-    const spans = row.querySelectorAll('span');
-    const lbl = [...spans].find((s) => !s.classList.contains('readout') && s.textContent.trim());
-    if (!lbl) continue;
-    if (!lbl.id) lbl.id = `a11y-l${aid++}`;
-    for (const c of row.querySelectorAll('button, input, select')) {
-      if (c.getAttribute('aria-label') || c.getAttribute('aria-labelledby')) continue;
-      if (!c.id) c.id = `a11y-c${aid++}`;
-      c.setAttribute('aria-labelledby', c.tagName === 'BUTTON' ? `${lbl.id} ${c.id}` : lbl.id);
+  for (const root of HUD_ROOTS) {
+    for (const row of root.querySelectorAll('.row')) {
+      const spans = row.querySelectorAll('span');
+      const lbl = [...spans].find((s) => !s.classList.contains('readout') && s.textContent.trim());
+      if (!lbl) continue;
+      if (!lbl.id) lbl.id = `a11y-l${aid++}`;
+      for (const c of row.querySelectorAll('button, input, select')) {
+        if (c.getAttribute('aria-label') || c.getAttribute('aria-labelledby')) continue;
+        if (!c.id) c.id = `a11y-c${aid++}`;
+        c.setAttribute('aria-labelledby', c.tagName === 'BUTTON' ? `${lbl.id} ${c.id}` : lbl.id);
+      }
     }
   }
   // -- aria-pressed on state buttons, synced from `data-state` — the §73 A
@@ -13847,13 +14087,19 @@ function askTour(onProceed) {
         b.setAttribute('aria-pressed', b.dataset.state === 'on' ? 'true' : 'false');
     }
   });
-  pressedObs.observe(panel, { subtree: true, attributes: true, attributeFilter: ['data-state'] });
-  for (const b of panel.querySelectorAll('button')) {
-    if (b.dataset.state) b.setAttribute('aria-pressed', b.dataset.state === 'on' ? 'true' : 'false');
+  // §110 step 0: one observer per root, and the seeding loop over all of them.
+  // An unobserved panel is the worst of the three silent failures — its
+  // toggles would announce a state that never changes, which reads as correct
+  // until you try to use it.
+  for (const root of HUD_ROOTS) {
+    pressedObs.observe(root, { subtree: true, attributes: true, attributeFilter: ['data-state'] });
+    for (const b of root.querySelectorAll('button')) {
+      if (b.dataset.state) b.setAttribute('aria-pressed', b.dataset.state === 'on' ? 'true' : 'false');
+    }
   }
   // -- the canvas names itself; the HUD is the operable surface
   renderer.domElement.setAttribute('role', 'img');
-  renderer.domElement.setAttribute('aria-label', t('3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.'));
+  renderer.domElement.setAttribute('aria-label', t('3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.'));
   // -- one polite live region for shortcut feedback
   const live = document.createElement('div');
   live.id = 'a11y-live';
@@ -13909,24 +14155,39 @@ function askTour(onProceed) {
     ['↑/↓', 'Tilt camera', null],
     ['+/−', 'Zoom', null],
     ['H', 'Hide / show panel', () => setPanelHidden(panel.style.display !== 'none')],
+    ['V', 'Hide / show view panel', () => setViewHudHidden(viewHud.style.display !== 'none')],
     ['?', 'This help', null],
   ];
+  // §110 — KEYED BY ITS OWN LETTER, not by position in the table above.
+  // This map used to read `SHORTCUTS[15][2]`, and carried the scar of the
+  // last person to add a row: "one row later since the D row above". Every
+  // insertion silently rebound whatever fell into the old index — a defect
+  // with no symptom until someone pressed the key. The letter is the row's
+  // identity, so look the row up BY it: adding a row can no longer move
+  // another row's binding, and a typo'd key throws at boot instead of
+  // quietly running the wrong handler.
+  const byKey = (k) => {
+    const row = SHORTCUTS.find((r) => r[0] === k);
+    if (!row || !row[2]) throw new Error(`shortcut ${k} has no handler`);
+    return row[2];
+  };
   const KEYMAP = new Map([
-    [' ', SHORTCUTS[0][2]], ['w', SHORTCUTS[1][2]], ['c', SHORTCUTS[2][2]],
-    ['a', SHORTCUTS[3][2]], ['s', SHORTCUTS[4][2]], ['x', SHORTCUTS[5][2]],
-    ['l', SHORTCUTS[6][2]], ['f', SHORTCUTS[7][2]], ['m', SHORTCUTS[8][2]],
-    ['e', SHORTCUTS[9][2]], ['d', SHORTCUTS[10][2]],
+    [' ', byKey('Space')], ['w', byKey('W')], ['c', byKey('C')],
+    ['a', byKey('A')], ['s', byKey('S')], ['x', byKey('X')],
+    ['l', byKey('L')], ['f', byKey('F')], ['m', byKey('M')],
+    ['e', byKey('E')], ['d', byKey('D')],
     ['1', preset('Escapement')], ['2', preset('Train')], ['3', preset('Dial')],
     ['4', preset('Setting')], ['5', preset('Free')],
     ['ArrowLeft', orbit(STEP, 0)], ['ArrowRight', orbit(-STEP, 0)],
     ['ArrowUp', orbit(0, -STEP)], ['ArrowDown', orbit(0, STEP)],
     ['+', zoom(0.92)], ['=', zoom(0.92)], ['-', zoom(1.08)],
-    ['h', SHORTCUTS[15][2]], // 'Hide / show panel' — one row later since the D row above
+    ['h', byKey('H')], ['v', byKey('V')],
   ]);
   // shortcut hints on the buttons they drive (title = discoverability)
   for (const [id, key] of [['btn-pause', 'Space'], ['btn-wind', 'W'], ['btn-crown', 'C'],
     ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-xray', 'X'], ['btn-labels', 'L'],
-    ['btn-focus', 'F'], ['btn-sound', 'M'], ['btn-hud', 'D']]) {
+    ['btn-focus', 'F'], ['btn-sound', 'M'], ['btn-hud', 'D'],
+    ['chrome-t-ui', 'H'], ['chrome-t-view', 'V'], ['chrome-t-hud', 'D']]) {
     const b = document.getElementById(id);
     if (b) b.title = (b.title ? b.title + ' ' : '') + `(${key})`;
   }
@@ -15649,7 +15910,7 @@ function setAxes(on) {
   if (measureGroup) measureGroup.visible = on;
   rebuildMeasureLeaders();
   document.getElementById('measure-slide-row').style.display = on ? '' : 'none';
-  setScaleRef(on);   // §49 merge: the comparison diagram and stats are the same overlay
+  setMeasureStats(on);   // §49 merge: the stats line rides the same toggle
   const b = document.getElementById('btn-axes');
   setBtnState(b, on);
   b.classList.toggle('active', on);
@@ -15673,52 +15934,25 @@ document.getElementById('measure-slide').addEventListener('input', (e) => {
   rebuildMeasureLeaders();
 });
 
-// --- §21 scale reference ---------------------------------------------------
-// §39 gave the movement a real size; this makes that size READABLE. Numbers in
-// millimetres tell you nothing unless you already think in millimetres, so the
-// comparison is drawn: objects of known diameter, at the same pixels-per-mm as
-// the movement itself, updating live as the camera moves.
+// --- §21's scale reference: REMOVED by §110 item 5 -------------------------
+// The coin diagram — the movement's diameter drawn against a US quarter, a
+// 1 euro and an AA cell, in a flat bottom-left panel — is gone. §49 had kept
+// it deliberately ("a comparison, not a ruler") when it retired the 2D corner
+// BAR, and that distinction was right; what changed is the corner, not the
+// argument. §110 puts a persistent toggle and a second HUD into the chrome,
+// and the diagram's own dodge was already pushing it along the bottom band
+// into `#ctl-hud` — the one element it never tested against. A comparison
+// that must be routed around three boxes to stay visible costs more corner
+// than it returns.
 //
-// WHY A CORNER PANEL AND NOT AN OVERLAY ON THE MOVEMENT. Registering a coin
-// outline on top of the plate would be the more direct comparison, but it is
-// only honest face-on: the plate projects to a circle at one camera angle and
-// to an ellipse at every other, so the two shapes would stop being comparable
-// exactly when the view got interesting. A fixed panel sidesteps that — it is
-// a scale BAR, which is how a micrograph does it, and it stays true at any
-// orientation.
+// §21's ARGUMENT IS NOT REFUTED and stays open: 32 mm means nothing until it
+// is beside something known. If the comparison returns it returns IN THE
+// SCENE, the way §49 moved the ruler — honest at every camera angle by
+// construction, rather than a panel that has to be true face-on.
 //
-// The reference sizes are STANDARDS, not impressions, for the same reason §39
-// pinned the scale to chain pitch rather than to a guess. A "fingertip" (the
-// backlog's suggestion) has no defined size and would have quietly reintroduced
-// the decoration this pair of entries exists to avoid.
-const SCALE_REFS = [
-  { name: 'US quarter', mm: 24.26 },   // US Mint spec, exact
-  { name: '1 euro',     mm: 23.25 },   // ECB spec, exact
-  { name: 'AA cell',    mm: 14.50 },   // IEC R6 standard
-];
-
-const scaleRefEl = document.createElement('div');
-scaleRefEl.id = 'scale-ref';
-// A backdrop, not decoration: the movement's plate is near-white under the
-// studio environment, and light-on-light made the readout unreadable exactly
-// when it was over the thing it describes.
-scaleRefEl.style.cssText =
-  'position:fixed; left:16px; bottom:16px; display:none; pointer-events:none;' +
-  'font:11px/1.35 ui-monospace,monospace; color:#cfd6dd;' +
-  'background:rgba(14,18,22,0.72); border-radius:6px; padding:9px 11px;' +
-  'backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);';
-document.body.appendChild(scaleRefEl);
-
-// The BAR gets the opposite corner. It is the live half — it re-lengths and
-// re-labels on every camera move — while the diagram beside it never changes.
-// Sharing one box made the whole panel look like it was twitching, and put the
-// only moving readout on the same side as the control panel. Split apart, each
-// corner has one job: left is the fixed comparison, right is the live rule.
-// §49 retired the 2D corner bar: the in-scene scale IS the live ruler now,
-// and it is honest at every camera angle by construction where the corner bar
-// had to re-derive itself per frame. The coin diagram stays — it is a
-// comparison, not a ruler.
-let scaleRefOn = false;
+// What survives is the whole measurement: `scaleReadout` (the one derived
+// set), the stats line, the axes, and §49's in-scene L-square. The diagram
+// was a consumer of that set, never its owner.
 
 
 // §49 — THE MEASUREMENT SCALE, IN THE SCENE. The obvious build is a 2D ruler
@@ -15874,77 +16108,14 @@ function updateMeasureLeaders() {
 }
 function rebuildMeasureLeaders() { ensureMeasureLeaders(); updateMeasureLeaders(); }
 
-function setScaleRef(on) {
-  scaleRefOn = on;
-  scaleRefEl.style.display = on ? '' : 'none';
-  const stats = document.getElementById('scale-stats');
-  stats.style.display = on ? '' : 'none';
-  if (on && scaleReadout) {
-    // Every figure DERIVED, none typed: diameter and depth are §39's asserted
-    // predictions, the beat comes from F_BALANCE (A/h = Hz x 7200, two beats
-    // per cycle), the reserve from RELAX_SECONDS.
-    updateMeasureStats();
-  }
-  if (on) updateScaleRef();
-}
-
-
-function updateScaleRef() {
-  if (!scaleRefOn || !scaleReadout) return;
-  // THE DIAGRAM — its own scale, and SAYS so. Drawing the references at true
-  // on-screen scale was the first attempt and it does not work: a 24 mm coin
-  // against a 32 mm movement is the same order of size, so once the movement
-  // fills the view the coin does too and there is nothing left to compare it
-  // against. Clamping the circles to fit was worse — it drew a wrong-size
-  // circle under a real diameter, which is precisely the decoration this
-  // entry was written to avoid. So the comparison is an explicit diagram:
-  // everything in it is to scale WITH EACH OTHER, at a scale of its own.
-  const items = [{ name: 'movement', mm: scaleReadout ? scaleReadout.plateMM : 0, self: true }, ...SCALE_REFS];
-  const maxMM = Math.max(...items.map(i => i.mm));
-  const D = 116;                       // px across for the largest circle
-  const k = D / maxMM;                 // diagram px per mm
-  const circles = items.map(i => {
-    const r = (i.mm * k) / 2;
-    return `<circle cx="${(D / 2 + 1).toFixed(1)}" cy="${(D / 2 + 1).toFixed(1)}" r="${r.toFixed(1)}"
-      fill="none" stroke="${i.self ? '#e8b44a' : '#8fb8d8'}" stroke-width="${i.self ? 1.6 : 1}"
-      ${i.self ? '' : 'stroke-dasharray="3 3"'} opacity="${i.self ? 1 : 0.85}"/>`;
-  }).join('');
-  const key = items.map(i =>
-    `<div style="white-space:nowrap; color:${i.self ? '#e8b44a' : '#cfd6dd'};">
-       ${i.self ? '●' : '○'} ${i.name} ⌀${i.mm.toFixed(i.self ? 1 : 2)} mm
-     </div>`).join('');
-
-  // DODGE THE CONTROL PANEL. #clock-ui owns the left edge and grows downward
-  // as its sections open, so the bottom-left corner is only sometimes free —
-  // with VIEW expanded it swallowed this diagram entirely. A fixed offset
-  // would waste the space whenever the panel is collapsed or hidden, so the
-  // dodge is conditional on an ACTUAL overlap, recomputed each frame.
-  // Visibility by RECT, not offsetParent: #clock-ui is position:fixed, and a
-  // fixed element's offsetParent is always null whether or not it is on
-  // screen. Testing it that way made uiR permanently null, so the dodge below
-  // never fired once — the feature was absent while every overlap check
-  // happily reported no overlap. A zero-size rect is the honest test, since
-  // display:none collapses to 0x0 and a visible panel cannot.
-  const ui = document.getElementById('clock-ui');
-  const uiRaw = ui ? ui.getBoundingClientRect() : null;
-  const uiR = uiRaw && uiRaw.width > 0 && uiRaw.height > 0 ? uiRaw : null;
-  const selfR = scaleRefEl.getBoundingClientRect();
-  const wouldOverlap = uiR && uiR.bottom > window.innerHeight - selfR.height - 16 && uiR.right > 16;
-  scaleRefEl.style.left = wouldOverlap ? `${Math.round(uiR.right) + 12}px` : '16px';
-  // Dodging sideways can push the diagram into the bar's corner, so the second
-  // move is vertical: sit above the bar rather than across it. Both moves are
-  // conditional and recomputed, so the common case (panel collapsed) keeps the
-  // plain bottom-left corner and neither element drifts for no reason.
-  // (The vertical bar-dodge went with the bar §49 retired; the sideways panel
-  // dodge above is the one that still earns its keep.)
-
-  scaleRefEl.innerHTML =
-    `<div style="display:flex; align-items:center; gap:10px;">
-       <svg width="${D + 2}" height="${D + 2}" style="flex:none;">${circles}</svg>
-       <div style="display:flex; flex-direction:column; gap:3px;">${key}
-         <div style="opacity:0.55; margin-top:3px;">to scale with each other,<br/>not with the view</div>
-       </div>
-     </div>`;
+// §49's merge, minus the diagram §110 removed: Measure is still ONE toggle
+// over ONE derived set. What it lights is the axes, the in-scene L-square and
+// this stats line — every figure DERIVED, none typed: diameter and depth are
+// §39's asserted predictions, the beat comes from F_BALANCE (A/h = Hz x 7200,
+// two beats per cycle), the reserve from RELAX_SECONDS.
+function setMeasureStats(on) {
+  document.getElementById('scale-stats').style.display = on ? '' : 'none';
+  if (on && scaleReadout) updateMeasureStats();
 }
 
 // --- three-quarter plate X-ray --------------------------------------------
@@ -16591,6 +16762,22 @@ hudEl.innerHTML = `<svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} $
 <div class="hud-readout">
   <div class="hud-ro-row"><span class="hud-ro-label">${t('Time')}</span><span class="hud-ro-val" id="hud-ro-time">00:00:00</span></div>
   <div class="hud-ro-row"><span class="hud-ro-label">${t('Rings at')}</span><span class="hud-ro-val alarm" id="hud-ro-alarm">≈12:00</span></div>
+</div>
+<!-- §110 item 2 — THE ZOOM ROCKER, and the face's gesture mode beside it.
+     Both belong here for the reason §57 gave the face to the camera: the
+     RING is the watch's controls, the FACE is the viewer's position, and
+     these two are viewer-position controls. Drawn as a rocker — a two-ended
+     seesaw with a centre detent — not a groove with a knob, because that is
+     the shape a zoom control has on a camera and it says "hold one end"
+     rather than "drag to a value". -->
+<div class="hud-cam">
+  <div class="hud-rocker" id="hud-zoom">
+    <button class="hud-rock-end" id="hud-zoom-out" aria-label="${t('Zoom out')}" title="${t('Zoom out')} (−)">−</button>
+    <input type="range" id="hud-zoom-range" min="0" max="1000" step="1" value="500"
+           aria-label="${t('Zoom')}" />
+    <button class="hud-rock-end" id="hud-zoom-in" aria-label="${t('Zoom in')}" title="${t('Zoom in')} (+)">+</button>
+  </div>
+  <button id="hud-face-mode" data-mode="spin" title="${t('What a drag on the face does')}">${t('Spin')}</button>
 </div>`;
 document.body.appendChild(hudEl);
 const hudSvg = hudEl.querySelector('svg');
@@ -16650,10 +16837,92 @@ function hudTrackball(from, to) {
   camera.up.applyQuaternion(_hudQ).normalize();
   camera.lookAt(controls.target);
 }
+// --- §110 item 2 — the zoom rocker, and the face's spin/pan mode ----------
+//
+// THE AXIS IS DISTANCE, NOT FIELD OF VIEW, and the quantity already exists:
+// `controls.minDistance` / `maxDistance` are derived from plateR (0.35 and
+// 12), and §60's life-size mode RAISES the ceiling at runtime. So the rocker
+// reads both ends live rather than caching them — a cached ceiling would
+// refuse the one pose life-size mode exists to reach.
+//
+// Field of view was the alternative and it is rejected: it would fork one
+// zoom into two that can disagree (the wheel and +/− would still dolly), and
+// §60's life-size calibration computes its distance FROM `camera.fov`, so a
+// moving fov makes "32 mm renders as 32 mm" false while the mode still
+// claims it.
+//
+// THE MAPPING IS LOGARITHMIC, and that is derived, not a feel setting. The
+// wheel and the +/− keys both dolly MULTIPLICATIVELY — `position.sub(target)
+// .multiplyScalar(f)` — so a slider that agrees with them must be linear in
+// log(distance): equal travel, equal zoom ratio. A linear-in-units slider
+// would crawl near the plate and leap near the far limit, and would disagree
+// with every other zoom input in the app.
+//
+// IT IS A DISPLAY OF CAMERA STATE, never a store of it. Presets, the ~0.9 s
+// preset tweens, the wheel, the arcball and §37's Copy view all move the
+// distance; the rocker re-reads it every frame. §57's ring is the precedent —
+// every marker derives from the part's own world position, so a control that
+// moves in the movement moves here too. A rocker holding its own value would
+// be the same lie one control lower.
+const ZOOM_STEPS = 1000;                 // slider resolution; the value is a position on the log ramp, not a distance
+function zoomLimits() { return { lo: controls.minDistance, hi: controls.maxDistance }; }
+function camDistance() { return camera.position.distanceTo(controls.target); }
+function zoomToSlider(d) {
+  const { lo, hi } = zoomLimits();
+  const f = Math.log(Math.max(d, lo) / lo) / Math.log(hi / lo);
+  // Inverted so RIGHT (+) is nearer: on a camera rocker, T is zoom IN.
+  return Math.round((1 - Math.min(1, Math.max(0, f))) * ZOOM_STEPS);
+}
+function sliderToZoom(v) {
+  const { lo, hi } = zoomLimits();
+  return lo * Math.pow(hi / lo, 1 - v / ZOOM_STEPS);
+}
+function applyZoomDistance(d) {
+  const { lo, hi } = zoomLimits();
+  camTween = null;   // a scripted tween would overwrite this every frame until it converged (§37)
+  const want = Math.min(hi, Math.max(lo, d));
+  camera.position.sub(controls.target).setLength(want).add(controls.target);
+  controls.update();
+}
+
+// The face's gesture mode. `spin` is §57's arcball, unchanged. `pan` slides
+// the camera and its target TOGETHER along the screen's own axes, so the
+// distance the rocker reads is untouched by a pan and the two controls stay
+// independent by construction.
+//
+// It is `data-mode`, not `data-state`: both values are affirmative, and there
+// is no "off" for a gesture that always does something. §72's observer reads
+// data-state only, so this button is deliberately outside it and carries its
+// own aria-label instead — do not reach for setBtnState here.
+let hudFaceMode = 'spin';
+const _panX = new THREE.Vector3(), _panY = new THREE.Vector3(), _panD = new THREE.Vector3();
+function hudPan(from, to) {
+  camTween = null;
+  // Screen-space basis from the camera's own matrix, so a pan is "slide what
+  // you see", not a world-axis move that would tilt out of the picture.
+  _panX.setFromMatrixColumn(camera.matrix, 0);
+  _panY.setFromMatrixColumn(camera.matrix, 1);
+  // Scale the HUD's viewBox travel to WORLD units at the target's depth: the
+  // same drag must move the picture by the same fraction of the frame at
+  // every distance, which is what makes a pan feel like dragging the scene
+  // rather than a fixed-speed nudge.
+  const k = 2 * camDistance() * Math.tan(camera.fov * DEG2RAD / 2) / HUD_VIEW;
+  _panD.set(0, 0, 0)
+    .addScaledVector(_panX, -(to.x - from.x) * k)
+    .addScaledVector(_panY, (to.y - from.y) * k);
+  camera.position.add(_panD);
+  controls.target.add(_panD);
+  controls.update();
+}
+
 let hudOn = false;
 
 function hudUpdate() {
   if (!hudOn) return;
+  // The rocker re-reads the camera every frame — see the header above: it
+  // displays the distance, it does not own it.
+  const zr = document.getElementById('hud-zoom-range');
+  if (zr && document.activeElement !== zr) zr.value = String(zoomToSlider(camDistance()));
   // The heads ride the ACTUAL animated positions (crownPullT / alarmCrownPullT
   // / alarmPusherT), not the raw targets — the same distinction tick() draws
   // for the parts themselves, so the HUD eases with the watch instead of
@@ -16711,9 +16980,50 @@ function setHud(on) {
   const b = document.getElementById('btn-hud');
   setBtnState(b, on);
   b.classList.toggle('active', on);
+  // §110 item 1 — the chrome bar's Dial button is a SECOND display of this
+  // one state, never a second copy of it: every path into the pad (this row,
+  // the bar, the D key, ?hud=1) lands here, so the two faces cannot disagree.
+  setBarState('chrome-t-hud', on);
   hudUpdate();
 }
 document.getElementById('btn-hud').addEventListener('click', () => setHud(!hudOn));
+document.getElementById('chrome-t-hud').addEventListener('click', () => setHud(!hudOn));
+
+// --- §110 item 2 wiring ---------------------------------------------------
+{
+  const range = document.getElementById('hud-zoom-range');
+  range.addEventListener('input', () => applyZoomDistance(sliderToZoom(Number(range.value))));
+  // The ends are the rocker's real gesture: press and HOLD. One step is the
+  // same 0.92/1.08 ratio the +/− keys use, so every zoom input in the app
+  // moves by the same factor per step and they cannot drift apart.
+  const ZOOM_KEY_IN = 0.92, ZOOM_KEY_OUT = 1.08;
+  let holdTimer = null;
+  const stepBy = (f) => applyZoomDistance(camDistance() * f);
+  const startHold = (f) => (e) => {
+    e.preventDefault();
+    stepBy(f);
+    // 300 ms before repeat, then ~20/s: a tap must be one step, not two.
+    holdTimer = setTimeout(function rep() { stepBy(f); holdTimer = setTimeout(rep, 50); }, 300);
+  };
+  const endHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+  const zi = document.getElementById('hud-zoom-in'), zo = document.getElementById('hud-zoom-out');
+  zi.addEventListener('pointerdown', startHold(ZOOM_KEY_IN));
+  zo.addEventListener('pointerdown', startHold(ZOOM_KEY_OUT));
+  for (const el of [zi, zo]) {
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, endHold);
+  }
+
+  // Spin ⇄ Pan. The value is canonical English and never translated (§73);
+  // only the face goes through t().
+  const modeBtn = document.getElementById('hud-face-mode');
+  modeBtn.addEventListener('click', () => {
+    hudFaceMode = hudFaceMode === 'spin' ? 'pan' : 'spin';
+    modeBtn.dataset.mode = hudFaceMode;
+    modeBtn.textContent = t(hudFaceMode === 'spin' ? 'Spin' : 'Pan');
+    modeBtn.setAttribute('aria-label',
+      `${t('What a drag on the face does')}: ${t(hudFaceMode === 'spin' ? 'Spin' : 'Pan')}`);
+  });
+}
 
 // --- the gestures ---------------------------------------------------------
 // A drag is classified once, on the first HUD_CLASSIFY units of travel, into
@@ -16753,7 +17063,11 @@ hudSvg.addEventListener('pointermove', (e) => {
   if (!hudGrab) return;
   const p = hudLocal(e);
   if (hudGrab.id === 'spin') {
-    hudTrackball(hudGrab.p, p);    // incremental: each move rotates from the LAST sample, so the ball has no home
+    // §110 item 2 — the face does one of two things, and the mode says which.
+    // Both are incremental from the LAST sample, so neither has a home
+    // position to snap back to.
+    if (hudFaceMode === 'pan') hudPan(hudGrab.p, p);
+    else hudTrackball(hudGrab.p, p);
     hudGrab.p = p;
     return;
   }
@@ -18988,7 +19302,7 @@ function goToPose(pos, target, { snap = false } = {}) {
   }
   // A literal pose is not a preset: clear the row so the panel never claims
   // the viewer is on a named framing they have left.
-  document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.remove('active'));
+  document.querySelectorAll('.hud-panel .presets button').forEach((b) => b.classList.remove('active'));
 }
 function goToPreset(name) {
   const preset = camTargets[name];
@@ -18999,9 +19313,9 @@ function goToPreset(name) {
   // turns it ON — a camera move should not silently switch a viewer's x-ray
   // back off.
   if (preset.reveal === 'xray' && !xrayOn) setXray(true);
-  document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.toggle('active', b.dataset.cam === name));
+  document.querySelectorAll('.hud-panel .presets button').forEach((b) => b.classList.toggle('active', b.dataset.cam === name));
 }
-document.querySelectorAll('#clock-ui .presets button').forEach((b) => {
+document.querySelectorAll('.hud-panel .presets button').forEach((b) => {
   b.addEventListener('click', () => goToPreset(b.dataset.cam));
 });
 
@@ -19248,7 +19562,7 @@ if (restoredCamera) {
   controls.target.set(restoredCamera.tx, restoredCamera.ty, restoredCamera.tz);
   controls.update();
   camTween = null;
-  document.querySelectorAll('#clock-ui .presets button').forEach((b) => b.classList.remove('active'));
+  document.querySelectorAll('.hud-panel .presets button').forEach((b) => b.classList.remove('active'));
 } else {
   goToPreset('Free');
 }
@@ -21628,7 +21942,11 @@ function advanceFrame(realDt) {
   updateExploreTethers(); // §58: tether endpoints ride live boxes — drag, explode and the mechanism all move them
   resolveExploreHover();  // §59: one pick per frame at most — pointermove only records the position
   updateReconfHandles();  // §93: the handle rings billboard, and the hover pick obeys the same one-per-frame rule
-  updateScaleRef();   // §21: px/mm changes with every camera move
+  // (§21's per-frame updateScaleRef went with the diagram in §110 item 5: it
+  // existed because the coin panel's px/mm changed with every camera move.
+  // Nothing else in Measure is camera-dependent — the stats line is a §49
+  // SNAPSHOT, refreshed on the toggle and on a selection change, which is why
+  // it says ≈; the L-square is real geometry the projection handles.)
   updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
   renderer.render(scene, camera);

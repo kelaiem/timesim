@@ -77,7 +77,7 @@ const DE = {
   'On': 'Ein', 'Off': 'Aus',
   // -- panel: sections
   'Time': 'Zeit', 'Camera': 'Kamera', 'View': 'Ansicht', 'Alarm': 'Wecker',
-  'Finish': 'Finissage', 'Performance': 'Leistung', 'State': 'Zustand', 'Advanced': 'Erweitert',
+  'Performance': 'Leistung', 'State': 'Zustand', 'Advanced': 'Erweitert',
   // -- Time section
   'Pause': 'Pause', 'Beats': 'Halbschwingungen', 'Time-scale': 'Zeitraffer',
   'Wind': 'Aufziehen', 'Crown': 'Krone', 'Sync': 'Synchronisieren', 'Now': 'Jetzt',
@@ -151,7 +151,20 @@ const DE = {
   // -- State section
   'Saved!': 'Gespeichert!', 'Cleared': 'Gelöscht', 'Clear saved state?': 'Gespeicherten Zustand löschen?',
   // -- panel chrome
-  'Hide': 'Ausblenden', 'Hide panel (H)': 'Panel ausblenden (H)', 'Show control panel (H)': 'Bedienpanel einblenden (H)',
+  'Hide': 'Ausblenden', 'Hide panel (H)': 'Panel ausblenden (H)',
+  // -- §110: the chrome bar, the view panel, the zoom rocker
+  // 'Appearance' REPLACES the 'Finish' key. The table is keyed by the English
+  // source, so the rename invalidated 'Finissage' by design rather than
+  // carrying it — and the new English is the plainer word, so the German is
+  // re-picked plain too instead of keeping the horological register here.
+  'Appearance': 'Erscheinungsbild',
+  'Controls': 'Steuerung', 'Dial': 'Zifferblatt',
+  'Controls (H)': 'Steuerung (H)', 'View (V)': 'Ansicht (V)', 'Control HUD (D)': 'Bedien-HUD (D)',
+  'Hide view panel (V)': 'Ansichtspanel ausblenden (V)',
+  'Hide / show view panel': 'Ansichtspanel aus- / einblenden',
+  'Zoom in': 'Heranzoomen', 'Zoom out': 'Herauszoomen',
+  'What a drag on the face does': 'Was ein Ziehen auf dem Blatt bewirkt',
+  'Spin': 'Drehen', 'Pan': 'Verschieben',
   // -- tour gate
   'Take a guided tour of the movement?': 'Eine geführte Tour durch das Werk?',
   'Skip': 'Überspringen', 'Start Tour': 'Tour starten',
@@ -312,7 +325,7 @@ Object.assign(DE, {
 const ZH = {
   'On': '开', 'Off': '关',
   'Time': '时间', 'Camera': '视角', 'View': '显示', 'Alarm': '闹铃',
-  'Finish': '打磨', 'Performance': '性能', 'State': '存档', 'Advanced': '高级',
+  'Performance': '性能', 'State': '存档', 'Advanced': '高级',
   'Pause': '暂停', 'Beats': '摆动次数', 'Time-scale': '时间倍率',
   'Wind': '上链', 'Crown': '表冠', 'Sync': '对时', 'Now': '现在',
   'Power reserve': '动力储存', 'Fast-forward': '快进',
@@ -377,7 +390,18 @@ const ZH = {
   'Frame': '帧耗时', 'Ticks/frame': '每帧步数', 'Quality': '画质', 'Tier': '档位',
   'Auto': '自动', 'High': '高', 'Balanced': '均衡', 'Low': '低',
   'Saved!': '已保存！', 'Cleared': '已清除', 'Clear saved state?': '清除已保存的状态？',
-  'Hide': '隐藏', 'Hide panel (H)': '隐藏面板 (H)', 'Show control panel (H)': '显示控制面板 (H)',
+  'Hide': '隐藏', 'Hide panel (H)': '隐藏面板 (H)',
+  // -- §110: the chrome bar, the view panel, the zoom rocker. 'Appearance'
+  // replaces the 'Finish' key; the rename invalidated '打磨' by design, and
+  // the plainer English is re-picked plain here too.
+  'Appearance': '外观',
+  'Controls': '控制', 'Dial': '表盘',
+  'Controls (H)': '控制 (H)', 'View (V)': '显示 (V)', 'Control HUD (D)': '操控界面 (D)',
+  'Hide view panel (V)': '隐藏显示面板 (V)',
+  'Hide / show view panel': '隐藏 / 显示 显示面板',
+  'Zoom in': '放大', 'Zoom out': '缩小',
+  'What a drag on the face does': '在表盘上拖动的作用',
+  'Spin': '旋转', 'Pan': '平移',
   'Take a guided tour of the movement?': '要开始机芯导览吗？',
   'Skip': '跳过', 'Start Tour': '开始巡览',
   'Keyboard shortcuts': '键盘快捷键',

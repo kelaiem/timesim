@@ -4267,6 +4267,24 @@ Off by default, toggled in **View → Control HUD**, or opened on arrival
 with `?hud=1` — for a link that wants the watch driveable the moment it
 loads, which on a phone is the difference between a demo and an
 instrument.
+
+**Both halves of that sentence went stale, and this is the correction.**
+The DEFAULT flipped on 2026-08-11 ("The control HUD is on by default —
+the watch arrives driveable"): `?hud=1`'s argument won for every arrival,
+not just for a link that asked, so the pad is UP on arrival and `?hud=0`
+is now the interesting parameter. The ROUTE changed at §110: the panel
+row moved with View into `#view-hud`'s Advanced fold, and the pad's
+primary control is now the chrome bar's **Dial** button, which sits in
+view at all times — the panel row and the `D` key still work and land in
+the same `setHud()`, so no path can disagree with another about whether
+the pad is up.
+
+Left in place above rather than rewritten, because §57's REASONING is
+still the record of why the pad exists and what its default cost; only
+its last four lines stopped being true. The lesson is the cheaper half:
+a shipped section states behaviour as well as design, and behaviour
+moves — this pair was caught by §110 reading §57 while wiring a second
+control onto the same state, which is the only reason anyone looked.
 ## §54. Slenderness — a minimum thickness is not a minimum stiffness
 
 §50 gave every part a floor on its thinnest dimension, closing a real
@@ -10394,3 +10412,215 @@ answer and a single circle would hide it.
   at all. Both locales now carry it, the anchor, and all eighteen member
   names; and the lazy-label path — which rendered raw English for anything
   registered after UI build — now translates like the path beside it.
+
+## §110 — the chrome gets a spine: one toggle bar, a view panel, a zoom rocker, and a class where an id used to be
+
+Six owner asks against one surface, arriving over a single sitting: an
+always-visible show/hide toggle reachable by touch; a zoom slider styled
+as a camera rocker in the control HUD; the measure display flowing with
+that HUD instead of fighting the panel; View and Performance moved into
+their own hideable panel in the top-right, with the rarely-used rows
+folded away and Finish renamed Appearance; §21's flat coin diagram
+deleted; and a mode toggle switching the control HUD's face between spin
+and pan.
+
+They shipped as one entry because scoping them found a shared
+prerequisite and a shared hazard. Done separately, each would have paid
+the prerequisite again and each would have tripped the hazard alone.
+
+### The prerequisite: three mechanisms were keyed to one id
+
+`#clock-ui` was not just a panel's name. Three chrome-wide mechanisms
+named that element directly:
+
+- §72's accessibility layer — the `aria-labelledby` walk over
+  `panel.querySelectorAll('.row')`, the `data-state` mutation observer,
+  and the loop that seeds `aria-pressed` from it;
+- §73's `localizeTree(panel)`, the one call that translates the UI;
+- **48 CSS rules**, written `#clock-ui .row`, `#clock-ui button`,
+  `#clock-ui select`, §53's `#clock-ui .adv-row`, and so on.
+
+Move a row into a second root and it renders unstyled, unnamed to a
+screen reader, and untranslated — **with no throw, no boot warning, and
+nothing for the battery to see**. That is the failure class this repo
+builds instruments against, arriving in the one layer that has none: a
+control with no accessible name still looks right, and an untranslated
+row looks like a missing table entry rather than a missing call.
+
+So the shared identity became a CLASS, `.hud-panel`, and the passes now
+walk a `HUD_ROOTS` list. The id keeps only what is genuinely singular
+about that element — where it sits. Adding a panel is now two steps that
+cannot be half-done: give it `.hud-panel`, push it onto `HUD_ROOTS`.
+
+### The hazard: a shortcut table that rebound itself
+
+`KEYMAP` indexed `SHORTCUTS` by POSITION, and the source already carried
+the previous author's scar:
+
+```js
+['h', SHORTCUTS[15][2]], // 'Hide / show panel' — one row later since the D row above
+```
+
+Two new keys would have silently rebound `h` again. The map now looks
+each row up **by its own letter**, and a missing handler throws at boot
+rather than quietly running the wrong one. Adding a row can no longer
+move another row's binding.
+
+### The rocker drives distance, and the mapping is derived
+
+Field of view was the alternative and it was rejected on two grounds: it
+forks one zoom into two that can disagree (the wheel and `+`/`−` would
+still dolly), and §60's life-size calibration computes its distance FROM
+`camera.fov` — a moving fov makes "32 mm renders as 32 mm" false while
+the mode still claims it.
+
+So the rocker drives **distance**, and its mapping follows from what the
+other inputs already do. The wheel and the keys dolly MULTIPLICATIVELY
+(`position.sub(target).multiplyScalar(f)`), so a control that agrees with
+them must be **linear in log(distance)**: equal travel, equal ratio. A
+linear-in-units slider would crawl near the plate and leap near the far
+limit while disagreeing with every other zoom in the app.
+
+Two consequences, both load-bearing rather than decorative:
+
+- **Both limits are read live.** `controls.minDistance` /`maxDistance`
+  are derived from `plateR` (0.35 and 12) and §60's life-size mode raises
+  the ceiling at runtime, so a cached ceiling would refuse the one pose
+  that mode exists to reach.
+- **It displays the camera; it does not own it.** Presets, the ~0.9 s
+  preset tweens, the wheel, the arcball and §37's Copy view all move the
+  distance, so the rocker re-reads it every frame. §57's ring is the
+  precedent — a control that moves in the movement moves here too — and a
+  rocker holding its own value would have been the same lie one control
+  lower.
+
+### Pan, and the decision it did not reopen
+
+The face's second verb translates `camera.position` and `controls.target`
+TOGETHER. That keeps it camera-side, which matters: §57 tried rotating
+the movement group and reverted it, because §49's ruler stands in world
+space and reads the plate's extents off built constants, so a tilted
+watch makes the overlay state a measurement that is no longer true.
+Moving both endpoints also leaves the distance the rocker reads
+untouched, so the two controls in that strip are independent by
+construction rather than by care.
+
+It carries `data-mode`, not `data-state`: both values are affirmative and
+there is no "off" for a gesture that always does something, so §72's
+observer deliberately does not reach it and the button carries its own
+`aria-label`.
+
+**On the word — asked and SETTLED, so it is not an open question.**
+*Strafing* is the more precise term: a cinematographer's pan is a
+rotation about the head, which is the opposite of what this does. The
+owner raised exactly that and, told the trade, **kept "Pan"** — because
+it is what every 3D viewer's UI calls the operation, it is
+OrbitControls' own name for the code path, and §95's audience arrives
+with that vocabulary. Recorded here so the imprecision reads as a
+decision someone made rather than one nobody noticed; a later reader who
+spots it should not re-litigate it.
+
+### §21's coin diagram, deleted — and the citation that went with it
+
+The flat bottom-left panel drawing the movement against a US quarter, a
+1 euro and an AA cell is gone. §49 had kept it deliberately when it
+retired the 2D corner bar — *"a comparison, not a ruler"* — and that
+distinction was right. What changed is the corner, not the argument:
+§110 puts a persistent toggle and a second panel into the chrome, and the
+diagram's own dodge was already pushing it along the bottom band into
+`#ctl-hud`, the one element it never tested against. A comparison that
+must be routed around three boxes to stay visible costs more corner than
+it returns.
+
+**§21's argument is not refuted and stays open**: 32 mm means nothing
+until it is beside something known. If the comparison returns, it returns
+IN THE SCENE, the way §49 moved the ruler.
+
+The deletion had one consequence outside the chrome, and it is the kind
+no check can see. `src/geometry.js` derived the sub-dial well captions'
+TYPEFACE by citing this element:
+
+> Type is the MEASUREMENT overlay's (§49's size-comparison readout,
+> `font:11px/1.35 ui-monospace,monospace` on `#scale-ref`)…
+
+Delete the element and the constant's stated reason points at nothing —
+correct number, evaporated derivation. The citation is re-anchored to the
+chrome's surviving instrument voice (`.readout`, `.hud-ro-val`), which is
+what it always was; the coin panel was one place that voice appeared, not
+its source.
+
+Also erased rather than fixed, and recorded so a moving count is not read
+as a regression: `'US quarter'`, `'1 euro'`, `'AA cell'` and the panel's
+caption were never in `src/i18n.js` and rendered English in all three
+locales.
+
+### What the layout arithmetic is derived from
+
+Two rules, both computed from measurements rather than typed, because a
+typed breakpoint would be right in one language and wrong in another —
+the failure §73's German column exists to catch. German's
+"Steuerung / Ansicht / Zifferblatt" bar is 211 px against English's 161.
+
+- **The panel drops below the bar** when the bar's measured rect would
+  cover its header (its title and Hide button live in that corner).
+- **The two panels become mutually exclusive** below
+  `2·240 + 3·14 = 522 px` — two 240 px boxes and three 14 px insets. Below
+  that they must overlap, and stacking them would bury one with no way to
+  tell which was on top. §15 struck the same bargain when it made the
+  panel collapsible rather than smaller.
+
+Both are recomputed on resize, because a phone rotating produces both at
+once. They are JS, not a media query, deliberately: a query setting
+`display` would fight the inline `display` the toggles write, and the
+winner would depend on whether the viewer had touched the button yet.
+
+### 44 px, and why the old chip failed it
+
+The retired ☰ chip was 14 px of glyph inside 6/11 px of padding — about
+26 × 32, under the touch floor in both axes. Every bar button is `min`
+44 × 44, `min-` rather than fixed so a translated face may widen rather
+than clip.
+
+### Two defects the verification caught
+
+Neither was visible by reading, and both are the reason the acceptance
+was scripted rather than eyeballed:
+
+- **Backticks inside the stylesheet's template literal.** The CSS
+  comments quoted identifiers in backticks, which ended the string.
+  `node --check` PASSED — exactly as that stylesheet's own §53-era
+  comment predicts, because what remains is still valid JS — and the
+  browser died with `Unexpected identifier '#clock'`. The comment was
+  right and was ignored; it is worth reading before editing that block.
+- **The camera strip overflowed the 150 px pad.** A range input's
+  intrinsic width is ~129 px, so rocker plus mode button came to 177 px
+  and pushed the Spin/Pan button off the right of the screen — present in
+  the DOM, reported visible, unclickable in the viewport. `min-width: 0`
+  on the flex child; a flex item will not shrink below its content width
+  without it.
+
+### Battery
+
+**20/20 gates pass**, local (headless Chromium, 1246.2 s wall, checks
+2171.5 s across 2 shards), boot silent.
+
+The gate column is not the acceptance a chrome-only change owes, because
+a report can move while every failure list stays empty. What this change
+owed was proof the built scene did not move at all, so the geometry
+fingerprint was taken on both trees from virgin boots:
+
+| tree | fingerprint |
+|---|---|
+| `origin/main` | `2163870811` (52 units, 11 poses) |
+| this branch | `2163870811` (52 units, 11 poses) |
+
+Equal, as a change that touches no geometry must be. No waiver count
+moved: `stockFloor`'s 48 and `assembly`'s 1 are the pre-existing accepted
+debt, unchanged.
+
+Verified by hand beyond the battery: silent boot in all three locales, no
+chrome overlap at 1280×900 or 375×667, `aria-pressed` present on every
+new toggle, slider and keyboard and wheel agreeing on one distance, pan
+preserving distance exactly while moving the target, `H` and `V` toggling
+their panels. One clipped label — "Pearl shingle direction" — reproduces
+on `origin/main` and is §53's known remainder, not this change's.
