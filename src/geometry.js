@@ -3437,11 +3437,16 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
   };
   // The well's NAME, set STRAIGHT below the pivot — a caption, not another
   // graduation, so it does not fan along an arc the way the scale's own
-  // lettering does. Type is the MEASUREMENT overlay's (§49's size-comparison
-  // readout, `font:11px/1.35 ui-monospace,monospace` on #scale-ref): these
-  // captions name an instrument, the way that panel names a dimension, so
-  // they carry its voice rather than the dial's Helvetica. Lightly tracked —
-  // monospace already sets its own advance, so this only opens the word.
+  // lettering does. Type is the INSTRUMENT voice the chrome uses wherever it
+  // states a measured quantity — `ui-monospace, monospace`, tabular figures:
+  // `#clock-ui .readout` in the panel, `#ctl-hud .hud-ro-val` in the corner.
+  // These captions name an instrument, the way those readouts name a
+  // dimension, so they carry its voice rather than the dial's Helvetica.
+  // (This cited `#scale-ref`'s own font until §110 item 5 deleted that panel.
+  // The typeface is unchanged — it was always the chrome's readout voice, and
+  // the coin diagram was one place it appeared, not its source.)
+  // Lightly tracked — monospace already sets its own advance, so this only
+  // opens the word.
   // Both wells caption at the same depth, dy = 0.40·sr:
   // clear of the busiest hand tail below the pivot (the small-seconds
   // hand's counterweight reaches 0.26·0.8·sr + its own radius ≈ 0.24·sr)
