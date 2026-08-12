@@ -195,6 +195,55 @@ calibration with fold-margin scoring), `HAMMER_SWING_RAD` (minimal retraction
 clearing the swept cam). A hard-coded number that encodes a clearance is a latent
 collision waiting for someone to resize a wheel.
 
+### 10. A member that reaches toward a rotor must derive its reach FROM that rotor's swept disc
+
+Rule 2 says seat surface-to-surface; this is the same discipline where the
+"surface" is a region a wheel sweeps rather than a face you can point at, and
+it is written separately because §104 and §107 BOTH got it wrong in the same
+member, in opposite directions.
+
+The governor anchor's arms were `BoxGeometry` bars ending at
+`ALARM_GOV_PALLET_R − 0.3`. That single literal was carrying two unstated
+relationships at once — *reach the blade you carry* and *stay out of the wheel
+your blade works on* — and it satisfied neither: measured over the swing, the
+arms ran **0.507 and 0.588 INSIDE the saw's tip circle** while one blade stood
+**0.236 clear** of the arm meant to hold it. §107 then repaired the joint by
+lengthening the arms, which pushed them to **0.665** inside the wheel — a
+repair that made the unmeasured half worse, because nothing in the build stated
+the second relationship at all.
+
+The rule, then:
+
+- **Name the swept region and clear it explicitly.** A rotor's tip circle is a
+  surface. Any member entering its neighbourhood carries a term of the form
+  `≥ R_tip + CLEAR_MARGIN` (plus half its own width, if the constraint is
+  written on a centreline), evaluated **across the driven pose range** — the
+  wheel centre MOVES in a swinging member's own frame, so a rest-pose check is
+  not the check.
+- **Where a straight member cannot satisfy it, the member is the wrong shape.**
+  Between two pallets the tip circle bulges toward the anchor arbor by
+  `R(1 − cos ε)` — 0.551 here — so a straight bar from hub to blade must cut
+  through the teeth. A real anchor ARCHES around that bulge, and its classic
+  silhouette *is* this constraint in metal. Reach for a walked outline
+  (rule 8) before reaching for a bigger clearance.
+- **Attach where there is room, and measure where that is.** Most of a pallet's
+  back is itself inside the tip circle at some point in the swing — that is the
+  blade's whole job. The carrier lands on the most-clear point, found by
+  measurement, not at the geometric middle.
+
+The general form: *if a constant encodes a relationship to a part that moves,
+the pose range belongs inside its derivation.* "Derive, don't nudge" below is
+the same lesson for static clearances; this is its moving-part case.
+
+**And note what did NOT catch any of it.** Rule 8's asserts hold one part's own
+topology — a simple outline, a complete extrude — and both would have passed a
+bar sitting squarely inside a wheel. Prose in this file is not enforcement:
+§107 read these notes, fixed the joint, and still deepened the collision,
+because the build stated no clearance term for the wheel and no instrument
+compared the pair (both were movers in one unit — TODO 5). What closed it was a
+build-time assert that restates the constraint as a measurement, beside the cut.
+Write that assert with the member.
+
 ## Intended contact is not a collision
 
 Some contacts ARE the mechanism — never "fix" these to a gap:

@@ -206,6 +206,18 @@ const BATTERY = [
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
+  // §107 — TODO 5's other half. `intraUnit` above compares movers against
+  // their own unit's FIXTURES, so two meshes that always move together were
+  // never measured by anything: §104's governor anchor shipped with one pallet
+  // blade 0.236 clear of the arm carrying it, through a fully green battery,
+  // and the owner found it by looking at the screen. §48's rule holds — `ok`
+  // is always true and the rows are the product — so what is gated is what the
+  // population supports: the units in ASSEMBLY_SCOPE. Everything else reports.
+  { name: 'assembly', opts: {}, cost: 5,
+    gate: '0 undeclared, unwaived splits among the scoped units',
+    fails: (r) => r.violations,
+    note: (r) => `${r.rowsChecked} split rigid groups over ${r.poses} poses, `
+      + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt)` },
   { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 410,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],

@@ -201,6 +201,20 @@ Object.assign(DE, {
   'Alarm gong': 'Tonfeder', 'Alarm hammer': 'Weckerhammer', 'Alarm winding train': 'Weckeraufzug-Getriebe',
   'Alarm lock': 'Weckersperre', 'Alarm switch': 'Schaltrad', 'Alarm link': 'Weckergestänge',
   'Alarm barrel': 'Weckerfederhaus', 'Alarm striking wheel': 'Schlagrad',
+  // §104 shipped the governor's label without its translations, so German and
+  // Chinese read it in English until §107. Windfang is the striking-train
+  // governor; the anchor takes Anker, the same word the pallet fork has above.
+  'Alarm governor': 'Weckerwindfang', 'Alarm governor anchor': 'Windfanganker',
+  // §107 — the schematic tier's member callouts. Same rule as the unit names:
+  // the English string is the key, only the display is translated.
+  'Governor wheel': 'Windfangrad', 'Governor wheel sleeve': 'Windfangrad-Hülse',
+  'Strike arbor sleeve': 'Schlagwellen-Hülse', 'Lifting cam': 'Hebenocken',
+  'Lock collar': 'Sperrring', 'Strike stud, upper length': 'Schlagzapfen, oberes Stück',
+  'Governor pinion': 'Windfangtrieb', 'Saw wheel': 'Sägerad',
+  'Governor arbor': 'Windfangwelle', 'Governor stud': 'Windfangzapfen',
+  'Anchor hub': 'Ankerkern', 'Anchor arm': 'Ankerarm', 'Pallet': 'Palette',
+  'Anchor arbor': 'Ankerwelle', 'Anchor stud': 'Ankerzapfen',
+  'Poising ring': 'Auswuchtring', 'Ring collar': 'Ringkragen', 'Ring arm': 'Ringarm',
   'Hands': 'Zeiger', 'Structure': 'Werkgestell',
   'Going train': 'Gehendes Räderwerk', 'Fusee & chain': 'Schnecke & Kette',
   'Keyless & winding': 'Aufzug & Stellung', 'Zero-reset & hacking': 'Nullstellung & Sekundenstopp',
@@ -407,6 +421,15 @@ Object.assign(ZH, {
   'Alarm gong': '音簧', 'Alarm hammer': '闹铃锤', 'Alarm winding train': '闹铃上链轮系',
   'Alarm lock': '闹铃锁定杆', 'Alarm switch': '柱状轮开关', 'Alarm link': '闹铃联动杆',
   'Alarm barrel': '闹铃发条盒', 'Alarm striking wheel': '打铃轮',
+  'Alarm governor': '闹铃调速器', 'Alarm governor anchor': '调速器擒纵叉',
+  'Governor wheel': '调速轮', 'Governor wheel sleeve': '调速轮轴套',
+  'Strike arbor sleeve': '打铃轴套', 'Lifting cam': '提升凸轮',
+  'Lock collar': '锁止环', 'Strike stud, upper length': '打铃轴柱（上段）',
+  'Governor pinion': '调速齿轴', 'Saw wheel': '锯齿轮',
+  'Governor arbor': '调速器轴', 'Governor stud': '调速器轴柱',
+  'Anchor hub': '叉体', 'Anchor arm': '叉臂', 'Pallet': '瓦',
+  'Anchor arbor': '叉轴', 'Anchor stud': '叉轴柱',
+  'Poising ring': '配衡环', 'Ring collar': '环座', 'Ring arm': '环臂',
   'Hands': '指针', 'Structure': '基板结构',
   'Going train': '传动轮系', 'Fusee & chain': '塔轮与链条',
   'Keyless & winding': '上链与拨针', 'Zero-reset & hacking': '归零与止摆',

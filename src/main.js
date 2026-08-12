@@ -10174,8 +10174,40 @@ const ALARM_GOV_SAW_PHASE = _govAzOf(_govCrossA, alarmGovPos) - (0.72 / ALARM_GO
   if (frac > 1e-9)
     console.warn(`§104: pallet span misses the half-integer rule by ${frac.toFixed(6)} of a tooth — pallet B's engagement would not meet a tip`);
 }
+// The blade's SECTION, and it is measured where a section is measured —
+// PERPENDICULAR to the face it carries. 0.45 u = 0.171 mm, clear of the
+// 0.12 mm wheel floor, asserted below against the cut polygon rather than
+// trusted.
+//   §104 offset this stock along the WHEEL's radial instead. That direction
+// is right for keeping metal off the wheel, and wrong for measuring metal:
+// the tooth-tip trajectory's own tangent runs only ~26° off that radial, so
+// the offset lands almost EDGEWISE and 0.45 u of intended stock became
+// 0.046–0.099 mm of real blade — pallet B thinner than the floor by 2.6×.
+// Nothing caught it, and `stockFloor` structurally could not: its thinness is
+// the geometry-local AABB minimum, which for an extruded blade reads the
+// 0.40 extrude DEPTH and passes. Offsetting along the face's own normal makes
+// the number mean what it says, and leaves the working face untouched — the
+// trajectory IS the face; the offset only decides where the body sits behind
+// it (MODELING rule 9: route the offset through the contact law's own frame).
+// The blade's stock, offset RADIALLY OUTWARD FROM THE WHEEL — and that
+// direction is not a style choice, it is the only safe one. Every face point
+// sits at exactly ALARM_GOV_SAW_R from the wheel centre (the face IS a tooth
+// tip's path), so pushing along that radius puts the whole body outside the
+// tip circle, where no other tooth can reach it. §107 tried the face's own
+// normal instead, to make the section mean what it says, and MEASURED the
+// consequence: a saw tip standing 0.1995 inside the blade against a 0.02
+// budget — the P2 assert below catching it on the first boot.
+//
+// The cost of keeping the safe direction is filed, not hidden: the trajectory's
+// tangent runs only ~26° off this radial, so 0.45 u of offset is 0.046-0.099 mm
+// of TRUE section across the face — under the 0.12 mm floor, and invisible to
+// stockFloor (whose thinness is a geometry-local AABB minimum, and reads this
+// blade's 0.40 extrude depth). TODO 45 owns it, with the geometry that makes it
+// hard: the room behind the face is bounded by the union of the wheel's discs
+// over the swing, so a thicker blade is a shape problem, not a bigger number.
+const ALARM_GOV_PALLET_S = 0.45;
 const _govPalletPts = (cross, aOf) => {
-  const NP = 25, face = [], out = [];
+  const NP = 25, face = [], cen = [];
   for (let i = 0; i <= NP; i++) {
     const du = 0.5 * i / NP;                       // progress through the half period
     const a = aOf(du);                             // the anchor's law over this drive
@@ -10186,15 +10218,133 @@ const _govPalletPts = (cross, aOf) => {
     const p = { x: rx * ca - ry * sa, y: rx * sa + ry * ca };            // tip in the anchor's REST frame
     const wx = alarmGovPos.x - alarmGovAnchorPos.x, wy = alarmGovPos.y - alarmGovAnchorPos.y;
     const w = { x: wx * ca - wy * sa, y: wx * sa + wy * ca };            // wheel centre, same frame
-    const nl = Math.hypot(p.x - w.x, p.y - w.y);
-    face.push(p);
-    out.push({ x: p.x + (p.x - w.x) / nl * 0.45, y: p.y + (p.y - w.y) / nl * 0.45 }); // blade stock, radially outward
+    face.push(p); cen.push(w);
   }
+  const out = face.map((p, i) => {
+    const rx = p.x - cen[i].x, ry = p.y - cen[i].y;
+    const rl = Math.hypot(rx, ry) || 1;
+    return { x: p.x + rx / rl * ALARM_GOV_PALLET_S, y: p.y + ry / rl * ALARM_GOV_PALLET_S };
+  });
   return { face, out };
 };
 const _govPalletA = _govPalletPts(_govCrossA, (du) => -ALARM_GOV_PHI / 2 + 2 * ALARM_GOV_PHI * du);
 const _govPalletB = _govPalletPts(_govCrossB, (du) => ALARM_GOV_PHI / 2 - 2 * ALARM_GOV_PHI * du);
 const _govPalletPoly = (P) => [...P.face, ...[...P.out].reverse()];
+// How far out the arm that CARRIES a blade must run. A blade is not a
+// separate body bolted near the anchor — it is the arm's own end, so the arm
+// must finish INSIDE the blade's radial span: the outer end sits at the
+// blade's mid radius, a lap joint of half the blade's radial depth. Derived
+// per pallet because the two blades do not span the same radii — each face is
+// its own tooth-tip trajectory, so A runs outward from the crossing and B
+// runs inward (§107 measured [3.08, 3.61] and [2.58, 3.14]).
+//   §104 shipped a single literal outer end, PALLET_R − 0.3 = 2.84. That
+// lands inside blade B and 0.236 SHORT of blade A: the anchor was hub, arms
+// and one floating blade — three bodies where the mechanism has one. Nothing
+// could see it (all three are movers on one pivot, TODO 5's own residue),
+// which is why §107 ships the assembly check beside this line.
+// THE ARM IS AN ARCH, AND THAT IS WHY AN ANCHOR IS ANCHOR-SHAPED.
+//
+// Both pallets sit ON the wheel's tip circle, and between them that circle
+// BULGES toward the anchor's arbor. Over this mechanism's 5.5-tooth span the
+// bulge's sagitta is R·(1 − cos ε) = 6·(1 − cos 24.75°) = 0.551 — so a
+// STRAIGHT bar from the hub to a blade cuts straight through the teeth. It
+// did: §104's radial arms ran 0.507 and 0.588 inside the tip circle, measured
+// over the swing, and §107's first repair (which lengthened them to reach
+// their blades) took that to 0.665 and 0.655. Nothing reported it, because
+// arm and saw were both MOVERS inside one unit — TODO 5's blind spot exactly,
+// and the reason the owner has prioritised closing it.
+//
+// A real recoil anchor arches AROUND that bulge, concave toward the wheel,
+// and its classic silhouette is this clearance constraint made into metal.
+// So the arm is walked rather than boxed: a centreline from the hub to the
+// blade's back, every point of it held at least CLEAR_MARGIN + half its width
+// off the tip circle AT BOTH SWING EXTREMES (the wheel centre moves in the
+// anchor's frame, so the constraint is evaluated across the swing, not at
+// rest). The Swiss lever's answer — body in its own plane, stones projecting
+// axially — was rejected on the movement's own numbers: it costs 0.21 mm on a
+// stack already at 11.95 against §39's 12 mm ceiling, and §104 chose "one
+// band, one plane" to meet that ceiling after a tower measured 12.71.
+const ALARM_GOV_ARM_W = 0.5;                          // arm width, as §104 cut it
+// The wheel centre AS THE ANCHOR SEES IT, at swing angle a. The anchor's own
+// frame is the one the blades are cut in, so this is where the wheel goes.
+const _govW0 = { x: alarmGovPos.x - alarmGovAnchorPos.x, y: alarmGovPos.y - alarmGovAnchorPos.y };
+const _govWAt = (a) => {
+  const c = Math.cos(-a), s = Math.sin(-a);
+  return { x: _govW0.x * c - _govW0.y * s, y: _govW0.x * s + _govW0.y * c };
+};
+// The arch's centreline. Start at the hub, end at the middle of the blade's
+// BACK — the blade spans 6.0 to 6.45 from the wheel centre, so its back is
+// the part standing outside the tip circle, and an arm half-width wide laps
+// into it there. Then push every point out until it clears.
+const _govArmPath = (P) => {
+  // WHERE the arch may land on its blade is a measurement, not a choice. Most
+  // of the blade's back is itself inside the tip circle at some point in the
+  // swing (it dips to −0.44), because the blade's whole job is to be there.
+  // The arm's centreline needs CLEAR_MARGIN + half its width of room, so the
+  // attach point is the back's most-clear point — measured at 0.45 against
+  // the 0.40 required, at the blade's TRAILING end, which is where a bench
+  // would join an arm to a pallet anyway. The 0.05 of slack is spent as lap,
+  // so arm and blade share metal instead of meeting at a line.
+  const floorClear = CLEAR_MARGIN + ALARM_GOV_ARM_W / 2;
+  const clearOf = (q) => {
+    let m = Infinity;
+    for (let k = 0; k <= 16; k++) {
+      const w = _govWAt(-ALARM_GOV_PHI / 2 + ALARM_GOV_PHI * k / 16);
+      m = Math.min(m, Math.hypot(q.x - w.x, q.y - w.y) - ALARM_GOV_SAW_R);
+    }
+    return m;
+  };
+  let bi = 0, bc = -Infinity;
+  P.out.forEach((q, i) => { const c = clearOf(q); if (c > bc) { bc = c; bi = i; } });
+  if (bc < floorClear)
+    console.warn(`§107: no point on the blade's back clears the tip circle by ${floorClear.toFixed(2)} over the swing (best ${bc.toFixed(4)}) — the arch has nowhere to land`);
+  const back = P.out[bi], face = P.face[bi];
+  const lx = face.x - back.x, ly = face.y - back.y, ll = Math.hypot(lx, ly) || 1;
+  const lap = Math.max(0, Math.min(ALARM_GOV_ARM_LAP, bc - floorClear));
+  const end = { x: back.x + lx / ll * lap, y: back.y + ly / ll * lap };
+  const azEnd = Math.atan2(end.y, end.x);
+  const r0 = ALARM_GOV_HUB_R - ALARM_GOV_ARM_LAP;
+  const start = { x: Math.cos(azEnd) * r0, y: Math.sin(azEnd) * r0 };
+  const floor = ALARM_GOV_SAW_R + CLEAR_MARGIN + ALARM_GOV_ARM_W / 2; // centreline floor: the EDGE clears by the margin
+  const N = 16, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    let p = { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
+    for (let k = 0; k <= 8; k++) {
+      const w = _govWAt(-ALARM_GOV_PHI / 2 + ALARM_GOV_PHI * k / 8);
+      const dx = p.x - w.x, dy = p.y - w.y, d = Math.hypot(dx, dy);
+      if (d < floor) p = { x: w.x + dx / d * floor, y: w.y + dy / d * floor };
+    }
+    pts.push(p);
+  }
+  return pts;
+};
+// …and its outline: the centreline offset both ways by half the width. A
+// hand-walked outline, so MODELING rule 8's two asserts ride with it below.
+const _govArmPoly = (P) => {
+  const c = _govArmPath(P), h = ALARM_GOV_ARM_W / 2;
+  const nrm = (i) => {
+    const a = c[Math.max(0, i - 1)], b = c[Math.min(c.length - 1, i + 1)];
+    const nx = -(b.y - a.y), ny = b.x - a.x, l = Math.hypot(nx, ny) || 1;
+    return { x: nx / l, y: ny / l };
+  };
+  const left = c.map((p, i) => { const n = nrm(i); return { x: p.x + n.x * h, y: p.y + n.y * h }; });
+  const right = c.map((p, i) => { const n = nrm(i); return { x: p.x - n.x * h, y: p.y - n.y * h }; });
+  return [...left, ...right.reverse()];
+};
+// Crossing-count containment in the anchor's own frame — one copy, shared by
+// the arm-joint tripwire and the P2 saw⇄pallet sweep below.
+const _govPolyContains = (pt, poly) => {
+  let w = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) w = !w;
+  }
+  return w;
+};
+const ALARM_GOV_ARM_LAP = 0.1; // how far a member enters the body it joins — the
+                               // arm's inner end runs under the hub by this much,
+                               // so hub and arm share a surface, not an edge
 // --- THE RING SOLVE. I_a is the target; the steel the anchor must carry
 // anyway (pallets, hub, arms) is COUNTED from its own polygons (∫r²dA by
 // Green's theorem — the balance's OSC_I discipline at anchor scale), and
@@ -10225,7 +10375,10 @@ const ALARM_GOV_RING_S = (() => {
   const steel = OSC_STEEL_RHO * u5 * (
     (_govPolyJ(_govPalletPoly(_govPalletA)).J + _govPolyJ(_govPalletPoly(_govPalletB)).J) * palletT
     + (Math.PI / 2) * (ALARM_GOV_HUB_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * ALARM_GOV_ANCHOR_T // hub annulus: ρ·h·π/2·(b⁴−a⁴)
-    + 2 * _armJ(ALARM_GOV_HUB_R - 0.1, ALARM_GOV_PALLET_R - 0.3, 0.5) * ALARM_GOV_ANCHOR_T // two plate arms
+    // the two arches, counted from their OWN outlines by the same Green's
+    // theorem the blades use — a radial-bar formula cannot describe a curve,
+    // and the count has to be of the metal that is actually cut (§107)
+    + (_govPolyJ(_govArmPoly(_govPalletA)).J + _govPolyJ(_govArmPoly(_govPalletB)).J) * ALARM_GOV_ANCHOR_T
   );
   const target = ALARM_GOV_I - steel;
   if (target <= 0) {
@@ -10271,9 +10424,24 @@ registerExplode(alarmGovUnit, 0, 9); // baseZ 0: children carry world z, the str
 const alarmGovRotor = new THREE.Group();       // pinion + saw + their arbor
 alarmGovRotor.position.set(alarmGovPos.x, alarmGovPos.y, 0);
 alarmGovUnit.add(alarmGovRotor);
+// §107 — the ANCHOR is its own unit, not a sub-assembly of the governor.
+// It earns that the way every other unit here does: its own station and stud
+// standing on the plate (support), its own drive edge in from the saw it
+// rides, its own frame, and its own reciprocation — §104 already declared it
+// two-way to the no-spring audit. Registered as a SIBLING under `movement`
+// rather than nested inside 'Alarm governor': collectUnits does no
+// nested-label exclusion, so a label inside another unit puts every one of
+// its meshes in BOTH units and buys an EXPECTED_PAIRS row for the artifact
+// instead of for a contact (the Dial ⇄ Hour wheel precedent, and the reason
+// 'Hour wheel' is a sibling too). The stud comes with it, so the new unit
+// is supported by the plate directly and not by the unit it was cut out of.
+const alarmGovAnchorUnit = new THREE.Group();
+movement.add(alarmGovAnchorUnit);
+registerLabel('Alarm governor anchor', alarmGovAnchorUnit);
+registerExplode(alarmGovAnchorUnit, 0, 9); // baseZ 0, the striking unit's convention
 const alarmGovAnchorPivot = new THREE.Group(); // anchor + pallets + poising ring
 alarmGovAnchorPivot.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, 0);
-alarmGovUnit.add(alarmGovAnchorPivot);
+alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 {
   const studBase = TQ_TOP_Z - 0.5;
   const govStudTop = ALARM_GOV_SAW_TOP + 0.2;
@@ -10287,7 +10455,7 @@ alarmGovUnit.add(alarmGovAnchorPivot);
   anchStud.name = 'alarmGovAnchorStud';
   anchStud.rotation.x = Math.PI / 2;
   anchStud.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, (anchStudTop + studBase) / 2);
-  alarmGovUnit.add(anchStud);
+  alarmGovAnchorUnit.add(anchStud);   // §107: the anchor's own station travels with the anchor's unit
 
   // The governor rotor: pinion in the wheel's band, saw above, one arbor.
   const pinion = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_GOV_PINION_TEETH, thickness: ALARM_GOV_PINION_T });
@@ -10343,14 +10511,51 @@ alarmGovUnit.add(alarmGovAnchorPivot);
   hub.name = 'alarmGovAnchor';
   alarmGovAnchorPivot.add(hub);
   for (const P of [_govPalletA, _govPalletB]) {
-    const mid = P.face[Math.floor(P.face.length / 2)];
-    const az = Math.atan2(mid.y, mid.x);
-    const r0 = ALARM_GOV_HUB_R - 0.1, r1 = ALARM_GOV_PALLET_R - 0.3;
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, ALARM_GOV_ANCHOR_T), MATS.steel);
+    const poly = _govArmPoly(P);            // the same outline the ring solve counts
+    const shape = new THREE.Shape();
+    shape.moveTo(poly[0].x, poly[0].y);
+    for (const q of poly.slice(1)) shape.lineTo(q.x, q.y);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_GOV_ANCHOR_T, bevelEnabled: false, curveSegments: 2 });
+    geo.translate(0, 0, ALARM_GOV_ANCHOR_BOT);
+    const arm = new THREE.Mesh(geo, MATS.steel);
     arm.name = 'alarmGovAnchorArm';
-    arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_ANCHOR_BOT + ALARM_GOV_ANCHOR_T / 2);
-    arm.rotation.z = az;
     alarmGovAnchorPivot.add(arm);
+    // MODELING rule 8, both asserts, because this is a hand-walked outline:
+    // the boundary must be SIMPLE (earcut drops unreachable ears in silence)
+    // and the bevel-free extrude must be COMPLETE at 4n − 4 triangles.
+    for (let i = 0; i < poly.length; i++) {
+      const a1 = poly[i], a2 = poly[(i + 1) % poly.length];
+      for (let j = i + 2; j < poly.length; j++) {
+        if (i === 0 && j === poly.length - 1) continue;      // adjacent at the wrap
+        const b1 = poly[j], b2 = poly[(j + 1) % poly.length];
+        const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+        if (Math.abs(d) < 1e-12) continue;
+        const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+        const u = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
+        if (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9)
+          console.warn('§107: the anchor arm\'s outline crosses itself — earcut will drop the unreachable part in silence');
+      }
+    }
+    const tris = geo.attributes.position.count / 3;
+    if (tris !== 4 * poly.length - 4)
+      console.warn(`§107: the anchor arm extrudes ${tris} triangles, not the ${4 * poly.length - 4} a closed ${poly.length}-gon owes — the walk left a hole`);
+    // …and the constraint the arch exists FOR, restated as a measurement:
+    // every point of the cut outline stands clear of the tip circle, at both
+    // ends of the swing, by the one clearance margin.
+    let worst = Infinity;
+    for (const q of poly) {
+      for (let k = 0; k <= 8; k++) {
+        const w = _govWAt(-ALARM_GOV_PHI / 2 + ALARM_GOV_PHI * k / 8);
+        worst = Math.min(worst, Math.hypot(q.x - w.x, q.y - w.y) - ALARM_GOV_SAW_R);
+      }
+    }
+    if (worst < CLEAR_MARGIN - 1e-9)
+      console.warn(`§107: the anchor arm passes ${worst.toFixed(4)} from the saw's tip circle over the swing — needs ${CLEAR_MARGIN}`);
+    // and the joint at the far end: the arch must share metal with its blade
+    if (!_govPalletPoly(P).some((q) => _govPolyContains(q, poly))
+        && !poly.some((q) => _govPolyContains(q, _govPalletPoly(P))))
+      console.warn('§107: the anchor arm and the blade it carries share no metal — the anchor is two bodies again');
   }
   const anchArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT, 16), MATS.steel);
   anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane)
@@ -10420,14 +10625,7 @@ alarmGovUnit.add(alarmGovAnchorPivot);
 // later edit to φ, the span, or the saw).
 {
   const polys = [_govPalletPoly(_govPalletA), _govPalletPoly(_govPalletB)];
-  const inside = (pt, poly) => {
-    let w = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const a = poly[i], b = poly[j];
-      if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) w = !w;
-    }
-    return w;
-  };
+  const inside = _govPolyContains;
   const edgeDist = (pt, poly) => {
     let d = Infinity;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -10459,12 +10657,17 @@ alarmGovUnit.add(alarmGovAnchorPivot);
 // reciprocation rides the existing alarmStrike axis (80 swings per strike)
 // and must survive §105's confirm tier — if `restoring` does not list this
 // unit two-way, that is a finding, not a formality.
-declareTravel('Alarm governor', ALARM_GOV_PHI, 'the anchor swings ±φ/2 every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
+// §107 — both declarations follow the anchor into its own unit. The part that
+// RECIPROCATES is the anchor, not the governor rotor beside it: the §48 audit's
+// population comes from which unit an axis MOVES, so leaving these on the old
+// name would have declared the wrong unit two-way and left the reciprocating
+// one undeclared — the exact silence TODO 29 was opened for.
+declareTravel('Alarm governor anchor', ALARM_GOV_PHI, 'the anchor swings ±φ/2 every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
 // §48 — the pallet-fork control case's class, one train over: the saw's
 // tooth faces drive the anchor BOTH ways (that is what "unsprung recoil
 // anchor" means — a runaway by design), so there is nothing to declare but
 // the drive. The poising ring is inertia, not a spring.
-declareRestoring('Alarm governor', 'two-way',
+declareRestoring('Alarm governor anchor', 'two-way',
   'the saw\'s tooth faces drive the anchor both ways, alternately by each pallet — the pallet fork\'s class; the poising ring is solved inertia, not a restoring element');
 // --- TODO 32: THE EQUALISATION, NOW A RECORD — AND SINCE §104, HELD WHOLE --
 // The OSCILLATOR block's twin, sited here because it needs BOTH ribbons
@@ -12847,6 +13050,16 @@ style.textContent = `
   color: #cfe3ff; background: rgba(10,12,15,0.55); padding: 2px 6px; border-radius: 4px;
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
 }
+/* §107 — a member CALLOUT is a unit label's quieter sibling: same language,
+   one grain finer, so a viewer can tell "this is the assembly" from "this is
+   a part of it" without reading either twice. Smaller, dimmer, no fill —
+   drawn ON the line tier, where a filled pill would blot out the drawing it
+   is naming — and centred on its part rather than lifted above it. */
+.clock-label.clock-callout {
+  transform: translate(-50%, -50%); font-size: 9.5px; color: #9fb4cf;
+  background: rgba(10,12,15,0.42); border-color: rgba(255,255,255,0.06);
+  padding: 1px 4px; letter-spacing: 0.02em;
+}
 /* §59 — the hover readout. Cursor-adjacent, and deliberately the same visual
    language as .clock-label without BEING one: §7's layer is a persistent mode
    and this is a transient answer to "what am I about to grab?". Above the
@@ -14014,6 +14227,66 @@ const labelEls = labelEntries.map(({ name }) => {
   return el;
 });
 
+// §107 — THE CALLOUT TIER: the members of an assembly, named on the drawing.
+//
+// A unit label answers "which assembly is this"; on the line tier that is the
+// wrong grain — the governor draws as five glyphs and said one word. This is
+// the engineering-drawing answer: each member named where it sits, and ONLY
+// in schematic mode, because that is the view whose whole business is naming
+// what a thing is rather than showing what it looks like.
+//
+// NOTHING IS AUTHORED AT THE DISPLAY SITE. The names come from this table,
+// keyed by the mesh name the builder already set, and a mesh with no entry
+// draws no callout — §59's standard held exactly ("a sub-part with no true
+// name resolves to nothing and shows nothing"), and the reason this is a
+// table rather than a prettifier over `mesh.name`. The values are English
+// source strings like every other display string: t() resolves them at the
+// display site, and a missing translation falls back visibly (§73).
+const SCHEMATIC_CALLOUTS = {
+  // the striking arbor's own column, top down
+  alarmGovWheel: 'Governor wheel', alarmGovSleeve: 'Governor wheel sleeve',
+  alarmStrikeSleeve: 'Strike arbor sleeve', alarmCam: 'Lifting cam',
+  alarmLockCollar: 'Lock collar', alarmGovStudUpper: 'Strike stud, upper length',
+  // the governor arbor
+  alarmGovPinion: 'Governor pinion', alarmGovSaw: 'Saw wheel',
+  alarmGovArbor: 'Governor arbor', alarmGovStud: 'Governor stud',
+  // the anchor, and the ring that poises it
+  alarmGovAnchor: 'Anchor hub', alarmGovAnchorArm: 'Anchor arm',
+  alarmGovPallet: 'Pallet', alarmGovAnchorArbor: 'Anchor arbor',
+  alarmGovAnchorStud: 'Anchor stud', alarmGovRing: 'Poising ring',
+  alarmGovRingCollar: 'Ring collar', alarmGovRingArm: 'Ring arm',
+};
+// Resolved once, against the built scene: { mesh, unit, el }. A callout is
+// anchored at its mesh's own GEOMETRY centre, not the object origin — a
+// pallet blade is an extrude whose origin sits on the anchor's pivot, so an
+// origin-anchored callout would name the pivot and point at nothing.
+const calloutEntries = [];
+{
+  const unitOf = (o) => {
+    for (let p = o; p; p = p.parent) {
+      const e = labelEntries.find((x) => x.obj === p);
+      if (e) return e.name;
+    }
+    return null;
+  };
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic) return;
+    const name = SCHEMATIC_CALLOUTS[o.name];
+    if (!name) return;
+    const el = document.createElement('div');
+    el.className = 'clock-label clock-callout';
+    el.textContent = t(name);
+    labelsContainer.appendChild(el);
+    calloutEntries.push({ mesh: o, unit: unitOf(o), el });
+  });
+  const named = new Set(calloutEntries.map((c) => SCHEMATIC_CALLOUTS[c.mesh.name]));
+  for (const k of Object.keys(SCHEMATIC_CALLOUTS)) {
+    if (!calloutEntries.some((c) => c.mesh.name === k))
+      console.warn(`§107: callout table names "${k}", which no mesh in the scene carries — the drawing would be missing a word it thinks it says`);
+  }
+  void named;
+}
+
 // --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
 const SCALE_MIN = 0.02, SCALE_MAX = 1;
 let timeScale = 1;
@@ -14671,14 +14944,6 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
     const rd = alarmClickUnit.userData.ride;
     addLine(rd.click, [V(0, 0, 0), V(rd.elbowLocal.x, rd.elbowLocal.y, 0), V(rd.noseLocal.x, rd.noseLocal.y, 0)]); // pivot → elbow → nose, the hook's own span
   }
-  {
-    const rat = alarmArborRotor.getObjectByName('alarmArborRatchet')?.parent ?? null;
-    const prof = rat && rat.userData.profile;
-    if (!prof) console.warn('§99: the arbor ratchet exports no cut profile — the tier would claim a smooth wheel');
-    else {
-      addLine(rat, prof.poly.map(([x, y]) => V(x, y, 0)).concat([V(prof.poly[0][0], prof.poly[0][1], 0)]), SCHEMATIC.matWheel);
-    }
-  }
   // springs: every §48-named blade/spring mesh gets a zigzag along its own
   // longest local axis — derived from the mesh, not authored per part
   {
@@ -15103,14 +15368,38 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         // outline is the only train part in steel. Hub and bore rims come with
         // it — a rim of teeth with nothing inside reads as an annulus, and the
         // bore is where the arbor it is riding actually is.
+        // §107 — ONE pass for this word, wherever it is spoken. §83 made
+        // `profile` an OWN_GLYPH opt-out and drew it at two HAND-WRITTEN
+        // sites; the opt-out half was generic from the start (the rotor pass
+        // asks SCHEMATIC.ownGlyph, which tests the KEY), the drawing half
+        // never was. §104 then set the key on the governor's saw — so the
+        // saw opted out of its pitch circle and gained nothing, and the
+        // movement's newest wheel drew as a blank while docs/BUILT.md said
+        // its outline was its glyph. That is the exact failure mode §78
+        // wrote the SKIP rule to prevent, arriving from the other side: not
+        // a wrong word drawn over, but a right word never drawn. A
+        // vocabulary word has to draw itself everywhere, so the escape
+        // wheel, the §99 arbor ratchet and the §104 saw are now one loop.
         {
-          const p = escapeWheel.userData.profile;
-          if (!p) console.warn('§83: the escape wheel exports no cut profile — the tier has fallen back to a pitch circle through its tooth tips');
-          else {
-            const W = SCHEMATIC.matWheel;
-            addLine(escapeWheel, p.poly.map(([x, y]) => V(x, y, 0)), W); // closePath() already carries the loop home
-            addRing(escapeWheel, p.hubR, 0, 0, 0, W);
-            addRing(escapeWheel, p.boreR, 0, 0, 0, W);
+          const carriers = [];
+          movement.traverse((o) => { if (o.userData && o.userData.profile) carriers.push(o); });
+          // §78's tripwire shape — a FLOOR, never an equality: a part that
+          // stops exporting its plan must warn, not fall back to silence.
+          if (carriers.length < 3)
+            console.warn(`§107: only ${carriers.length} parts export a cut profile — a wheel that stopped exporting its plan is now drawn by nothing`);
+          for (const o of carriers) {
+            const p = o.userData.profile, W = SCHEMATIC.matWheel;
+            const pts = p.poly.map(([x, y]) => V(x, y, 0));
+            const a = p.poly[0], b = p.poly[p.poly.length - 1];
+            if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 1e-9) pts.push(V(a[0], a[1], 0)); // close it if the builder did not
+            addLine(o, pts, W);
+            // Hub and bore rims come with the outline: a rim of teeth with
+            // nothing inside reads as an annulus, and the bore is where the
+            // arbor actually is (§83's own note). Both radii were already
+            // declared by all three carriers — on the two ratchets they were
+            // dead data until this loop read them.
+            if (p.hubR) addRing(o, p.hubR, 0, 0, 0, W);
+            if (p.boreR) addRing(o, p.boreR, 0, 0, 0, W);
           }
         }
 
@@ -15180,6 +15469,85 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
           if (!hs.spiralFrames || !hs.spiralLine)
             console.warn('§83: the hairspring has no drawn wind frames — the schematic is showing the oscillator\'s spring at rest while the balance swings');
         }
+      }
+    }
+  }
+
+  // §107 — THE GOVERNOR'S OWN WORDS. §104 landed the mechanism and drew two
+  // pitch circles of it: the 64T wheel and the 8T pinion earned theirs from
+  // makeGear/makePinion's userData.r, the saw opted out and (until the pass
+  // above) drew nothing, and the ANCHOR — the part that does the governing —
+  // was blank. No existing pass could have covered it, and that is the point
+  // §84 makes: the generic vocabulary would have LIED here. discOrAxis says
+  // "disc" or "bar", and the pallet blades are neither (their whole content is
+  // a generated tooth-tip trajectory, and at ~1 unit they sit under that pass's
+  // 2.5 floor anyway); the §48 blade pass says "leaf spring", and an unsprung
+  // recoil anchor is precisely the part that has no spring. So the anchor gets
+  // its own word, drawn from the SAME constants and the SAME polygon the solid
+  // is cut from — mesh, law and glyph cannot drift because there is one source.
+  {
+    // Both units of the group — §107 promoted the anchor out of 'Alarm
+    // governor', so the parts this block draws now live either side of that
+    // boundary and the lookup spans it.
+    const govUnits = labelEntries.filter((e) => e.name === 'Alarm governor' || e.name === 'Alarm governor anchor');
+    const byName = (n) => {
+      let m = null;
+      for (const e of govUnits) e.obj.traverse((o) => { if (!m && o.isMesh && o.name === n) m = o; });
+      return m;
+    };
+    const anchorMesh = byName('alarmGovAnchor');
+    if (!anchorMesh) console.warn('§107: the governor anchor has no mesh — its glyph is drawn from the part, and the part is missing');
+    else {
+      const pivot = anchorMesh.parent;           // the group the tick swings
+      const zA = (ALARM_GOV_ANCHOR_BOT + ALARM_GOV_ANCHOR_TOP) / 2;
+      const zR = ALARM_GOV_RING_BOT + ALARM_GOV_RING_S / 2;
+      // a circle in this closure's own terms — addRing lives one scope in
+      const ring = (parent, r, z, mat) => {
+        const pts = [];
+        for (let i = 0; i <= 48; i++) {
+          const a = (i / 48) * Math.PI * 2;
+          pts.push(V(Math.cos(a) * r, Math.sin(a) * r, z));
+        }
+        addLine(parent, pts, mat);
+      };
+      // the anchor proper: hub rim, its bore, the two arms, and each blade's
+      // cut outline — _govPalletPoly, the very array ExtrudeGeometry was given
+      for (const P of [_govPalletA, _govPalletB]) {
+        for (const poly of [_govPalletPoly(P), _govArmPoly(P)]) {
+          // the blade and the arch that carries it, each as its own cut
+          // outline — the arch is a CURVE now, so a straight line would be a
+          // second, wrong description of a part this tier already has one of
+          addLine(pivot, poly.map((p) => V(p.x, p.y, zA)).concat([V(poly[0].x, poly[0].y, zA)]));
+        }
+      }
+      ring(pivot, ALARM_GOV_HUB_R, zA);
+      ring(pivot, ALARM_GOV_ARBOR_R, zA);
+      // the poising ring, one band down the same arbor: both rims (the ring's
+      // section is the solve's answer, so a single circle would hide it), its
+      // collar, and the two carrier arms at their perpendicular bearings
+      ring(pivot, ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2, zR, SCHEMATIC.matWheel);
+      ring(pivot, ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2, zR, SCHEMATIC.matWheel);
+      ring(pivot, 0.75, zR, SCHEMATIC.matWheel);
+      const ringInner = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
+      for (const sgn of [1, -1]) {
+        const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2;
+        addLine(pivot, [V(Math.cos(az) * 0.75, Math.sin(az) * 0.75, zR),
+          V(Math.cos(az) * ringInner, Math.sin(az) * ringInner, zR)], SCHEMATIC.matWheel);
+      }
+      addLine(pivot, [V(0, 0, ALARM_GOV_RING_BOT), V(0, 0, ALARM_GOV_ANCHOR_TOP)]); // the arbor both bands ride
+      // the two STATIONS themselves — each stud as the axis it really is. The
+      // span comes from the geometry's own LONGEST dimension, not from z: a
+      // stud is a cylinder built along its geometry's y and laid down by the
+      // mesh's rotation, so reading z here would draw its diameter.
+      for (const n of ['alarmGovStud', 'alarmGovAnchorStud']) {
+        const m = byName(n);
+        if (!m) { console.warn(`§107: the governor is missing ${n} — its station is drawn by nothing`); continue; }
+        m.geometry.computeBoundingBox();
+        const bb = m.geometry.boundingBox, sz = bb.getSize(new THREE.Vector3());
+        const ax = sz.x >= sz.y && sz.x >= sz.z ? 'x' : sz.y >= sz.z ? 'y' : 'z';
+        const lo = bb.getCenter(new THREE.Vector3()), hi = lo.clone();
+        lo[ax] = bb.min[ax]; hi[ax] = bb.max[ax];
+        addLine(m, [lo, hi]);
       }
     }
   }
@@ -18223,6 +18591,7 @@ const UNIT_GROUPS = new Map([
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm governor', 8], // §104: one step past the striking wheel it hangs off, before the hammer it paces
+    ['Alarm governor anchor', 8], // §107: the same stratum — it rides the saw in that unit's own plane
     ['Alarm hammer', 9], ['Alarm gong', 11],
     ['Alarm click', 4], // §99: rides between the winding train and the barrel it holds
     // §34/§35 additions — the release path and the long link to it. Uncho-
@@ -19814,7 +20183,11 @@ function updateLabels() {
   while (labelEls.length < labelEntries.length) {
     const el = document.createElement('div');
     el.className = 'clock-label';
-    el.textContent = labelEntries[labelEls.length].name;
+    // t(), exactly like the setup-time path above: a label registered after
+    // the UI was built is still a label, and rendering it raw made the one
+    // part that takes this path (the Chain) the only untranslated unit in
+    // the movement — invisible in English, which is why it survived §73.
+    el.textContent = t(labelEntries[labelEls.length].name);
     labelsContainer.appendChild(el);
     labelEls.push(el);
   }
@@ -19831,6 +20204,21 @@ function updateLabels() {
     el.style.display = 'block';
     el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
     el.style.top = `${(-projected.y * 0.5 + 0.5) * h}px`;
+  }
+  // §107 — the member callouts, schematic mode only. Same projection, same
+  // unit filter; the anchor is the mesh's geometry centre in world space, so
+  // each name sits on the metal it names and rides whatever poses it.
+  for (const c of calloutEntries) {
+    if (!SCHEMATIC.on) { c.el.style.display = 'none'; continue; }
+    const labelGroup = UNIT_GROUPS.get(selectedUnit);
+    if (selectedUnit !== 'All' && c.unit !== selectedUnit && !(labelGroup && labelGroup.has(c.unit))) { c.el.style.display = 'none'; continue; }
+    c.mesh.geometry.computeBoundingBox();
+    c.mesh.geometry.boundingBox.getCenter(projected).applyMatrix4(c.mesh.matrixWorld);
+    projected.project(camera);
+    if (projected.z > 1) { c.el.style.display = 'none'; continue; }
+    c.el.style.display = 'block';
+    c.el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
+    c.el.style.top = `${(-projected.y * 0.5 + 0.5) * h}px`;
   }
 }
 

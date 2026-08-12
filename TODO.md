@@ -337,6 +337,21 @@ that's its entry, not this one.)
 
 ## 5. The inspector cannot see INSIDE a unit
 
+> **PRIORITISED by the owner (2026-08-12), on the evidence below.** §107 spent
+> a whole landing inside this blind spot and hit it three separate times in one
+> mechanism: a pallet blade floating 0.236 from the arm that carries it; both
+> arms running 0.51–0.59 INSIDE the saw's tip circle, which is a collision, not
+> a gap; and — after §107 lengthened the arms to fix the first — 0.665, i.e.
+> the repair made the invisible defect worse and nothing said a word. Every one
+> of those was a mover-vs-mover pair inside one unit. The arm-through-wheel foul
+> was found by the OWNER LOOKING AT A SCREENSHOT, after 19 green gates; it only
+> became gateable because §107 promoted the anchor to its own unit, at which
+> point `expectedContacts` failed on it immediately and correctly. The interim
+> instruments (`intraUnit`, and §107's `assembly`) each cover one slice; the
+> item itself — all pairs inside a unit, over the pose net — is what would have
+> caught all three at the build that introduced them.
+
+
 Every check in `src/inspect.js` is a relation between two DIFFERENT
 units. The sweep enumerates `for (let bi = ai + 1; …)` over the ~31
 `registerLabel` names (~1229), and `CLEARANCE_BUDGETS`,
@@ -4862,3 +4877,95 @@ population whose membership can flip on inert pose insertions will keep
 spending diagnosis time exactly like TODO 38's landing did. Fix order:
 (1) is the load-bearing one, (2) and (3) mostly matter because they feed
 it and the track test.
+
+## 44. The lock collar is held to the striking arbor by parentage, not by metal
+
+Found by §107's `assembly` check on the run that landed it — the first
+thing that instrument reported which was not the defect it was written
+for, which is the argument for having written it.
+
+**Measured.** Every mesh on `alarmStrikeRotor` rides one moving frame, so
+they are one part: cam, both sleeves, the pinion and §104's 64T governor
+wheel are connected metal. `alarmLockCollar` is not. Its nearest approach
+to any other rotating member is **0.2117** — the axial gap between its top
+face (8.98) and the cam's underside (9.20). The collar turns because it is
+a child of the rotor group, and for no other reason; nothing that turns
+touches it.
+
+**Why nothing caught it before.** `intraUnit` compares a unit's MOVERS
+against that unit's FIXTURES (TODO 5's interim). The collar and the cam are
+both movers, so no pair the battery measured ever contained them. The one
+declared contact the collar has is with `CylinderGeometry#0` — the STATIC
+stud it surrounds — which is the bearing idiom, not a drive joint. A part
+whose only declared metal is the fixture it rotates around is exactly the
+shape of this defect.
+
+**Fix, with its arithmetic.** The same turned step this shaft already uses
+one level up: `alarmStrikeSleeve` exists precisely to be the 0.3 u step
+between the cam's top and the pinion's underside, and its comment says so.
+The collar wants its twin — a step at the shaft's own ⌀ (r 0.75, well
+inside both the collar's 3.2 and the cam's radius, so neither of §25 B's
+derived clearances is touched: 0.17 over the plate top and 0.22 under the
+cam are DISC-face clearances at large radius). It needs an
+`INTRA_UNIT_CONTACTS` row against the stud on the coincident-solids idiom,
+a shaft stock kind, and it moves the fingerprint.
+
+**Why it was not fixed in §107.** It belongs to §25 B's mechanism, not to
+the governor §107 was landing, and the repo's own order says a finding
+outside the group is filed with its arithmetic rather than absorbed into
+an unrelated landing. The row is waived in `ASSEMBLY_WAIVERS` citing this
+item, so it stays red in the report until someone spends it.
+
+## 45. The governor's pallet blades are slivers, and the section census cannot see them
+
+Found by §107's fracture investigation, alongside the detached blade §107
+repaired. This is the OTHER half of what the anchor looks wrong for, and it
+is not a joint — it is the blade's own section.
+
+**Measured**, perpendicular to the working face (which is where a section is
+measured), on the polygon `_govPalletPts` cuts:
+
+| blade | true section | in mm |
+|---|---|---|
+| pallet A | 0.216–0.262 u | 0.082–0.099 mm |
+| pallet B | 0.121–0.131 u | **0.046–0.050 mm** |
+
+Against `STOCK_FLOORS.wheel` = 0.12 mm, pallet B is under the floor by 2.6×.
+On screen a 0.05 mm blade crossing its arm at ~64° reads as a splinter with a
+notch bitten out of it.
+
+**Why the number lies.** `ALARM_GOV_PALLET_S` = 0.45 u is offset RADIALLY FROM
+THE WHEEL, and the tooth-tip trajectory's own tangent runs only ~26° off that
+radial — so the offset lands nearly edgewise and 0.45 u of intended stock
+becomes a tenth of that in real metal.
+
+**Why no gate caught it.** `stockFloor`'s thinness is a mesh's geometry-local
+AABB minimum. An extruded blade's local box is (1.17, 1.02, 0.40), so the
+census reports **0.40 u = 0.152 mm and PASSES** while the metal is 0.046 mm.
+The check's own comment predicts exactly this class ("geometry with rotation
+BAKED INTO ITS VERTICES … still mixes axes in its local box, so its row
+UNDER-reports thinness"). Three of the anchor's meshes also declared no stock
+kind and silently defaulted to `wheel`; §107 declared them, which makes the
+row visible but does not make it correct.
+
+**Why it is not simply a bigger number.** §107 tried the obvious two fixes and
+measured both:
+
+1. *Offset along the face's own normal* (so the section means what it says).
+   The P2 assert failed on the first boot: a saw tip stood **0.1995 inside the
+   blade** against its 0.02 budget. The radial direction is load-bearing —
+   every face point is exactly `ALARM_GOV_SAW_R` from the wheel centre, so a
+   radial push is the one direction guaranteed to leave the body outside the
+   tip circle where no other tooth can reach it.
+2. *Keep the direction, scale the magnitude* by 1/cos θ to land the section on
+   the floor. θ ≈ 73°, so the offset would need ≈ 1.58 u — and the face sits
+   ≈ 6.0 from the wheel centre while the anchor's own axis is at 7.335, so a
+   blade that thick swallows its own pivot.
+
+**So the fix is a SHAPE, not a scalar.** The room behind the face is the
+complement of the union of the wheel's tip discs over the swing; the blade
+should fill that region back to the floor where it exists, and the arm should
+carry it where it does not — which is how a real recoil anchor's pallets are
+stubby blocks rather than offset ribbons. Whoever takes this should also give
+`stockFloor` a way to see a section that its AABB cannot, or the next blade
+will pass the same way.
