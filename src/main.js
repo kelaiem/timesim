@@ -10242,33 +10242,96 @@ const _govPalletPoly = (P) => [...P.face, ...[...P.out].reverse()];
 // and one floating blade — three bodies where the mechanism has one. Nothing
 // could see it (all three are movers on one pivot, TODO 5's own residue),
 // which is why §107 ships the assembly check beside this line.
-// The arm points at the middle of the face it carries, and ENDS inside it:
-// its own ray is crossed against the blade outline, and the end lands at the
-// middle of the first chord — an entry and an exit, so the midpoint is inside
-// the blade by construction and the lap is half that chord. A radius alone
-// will not do it: the blade is a thin curved ribbon (0.45 of stock measured
-// from the WHEEL centre), so most of its span in anchor radius is the ribbon
-// travelling, not the ribbon being thick — a mid-radius point on the arm's
-// azimuth can miss the metal entirely, which is what measurement showed for
-// blade B before this was written as a chord.
-const _govArmSpec = (P) => {
-  const mid = P.face[Math.floor(P.face.length / 2)];
-  const az = Math.atan2(mid.y, mid.x);
-  const poly = _govPalletPoly(P), c = Math.cos(az), s = Math.sin(az);
-  const hits = [];
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i], b = poly[j];
-    const oa = a.x * s - a.y * c, ob = b.x * s - b.y * c; // signed offset from the ray's line
-    if ((oa > 0) === (ob > 0)) continue;
-    const t = oa / (oa - ob);
-    const r = (a.x + (b.x - a.x) * t) * c + (a.y + (b.y - a.y) * t) * s;
-    if (r > 0) hits.push(r);                              // forward along the arm only
-  }
-  hits.sort((p, q) => p - q);
-  const rs = poly.map((p) => Math.hypot(p.x, p.y));
-  return { az, r1: hits.length >= 2 ? (hits[0] + hits[1]) / 2 : Math.min(...rs) };
+// THE ARM IS AN ARCH, AND THAT IS WHY AN ANCHOR IS ANCHOR-SHAPED.
+//
+// Both pallets sit ON the wheel's tip circle, and between them that circle
+// BULGES toward the anchor's arbor. Over this mechanism's 5.5-tooth span the
+// bulge's sagitta is R·(1 − cos ε) = 6·(1 − cos 24.75°) = 0.551 — so a
+// STRAIGHT bar from the hub to a blade cuts straight through the teeth. It
+// did: §104's radial arms ran 0.507 and 0.588 inside the tip circle, measured
+// over the swing, and §107's first repair (which lengthened them to reach
+// their blades) took that to 0.665 and 0.655. Nothing reported it, because
+// arm and saw were both MOVERS inside one unit — TODO 5's blind spot exactly,
+// and the reason the owner has prioritised closing it.
+//
+// A real recoil anchor arches AROUND that bulge, concave toward the wheel,
+// and its classic silhouette is this clearance constraint made into metal.
+// So the arm is walked rather than boxed: a centreline from the hub to the
+// blade's back, every point of it held at least CLEAR_MARGIN + half its width
+// off the tip circle AT BOTH SWING EXTREMES (the wheel centre moves in the
+// anchor's frame, so the constraint is evaluated across the swing, not at
+// rest). The Swiss lever's answer — body in its own plane, stones projecting
+// axially — was rejected on the movement's own numbers: it costs 0.21 mm on a
+// stack already at 11.95 against §39's 12 mm ceiling, and §104 chose "one
+// band, one plane" to meet that ceiling after a tower measured 12.71.
+const ALARM_GOV_ARM_W = 0.5;                          // arm width, as §104 cut it
+// The wheel centre AS THE ANCHOR SEES IT, at swing angle a. The anchor's own
+// frame is the one the blades are cut in, so this is where the wheel goes.
+const _govW0 = { x: alarmGovPos.x - alarmGovAnchorPos.x, y: alarmGovPos.y - alarmGovAnchorPos.y };
+const _govWAt = (a) => {
+  const c = Math.cos(-a), s = Math.sin(-a);
+  return { x: _govW0.x * c - _govW0.y * s, y: _govW0.x * s + _govW0.y * c };
 };
-const _govArmReach = (P) => _govArmSpec(P).r1;
+// The arch's centreline. Start at the hub, end at the middle of the blade's
+// BACK — the blade spans 6.0 to 6.45 from the wheel centre, so its back is
+// the part standing outside the tip circle, and an arm half-width wide laps
+// into it there. Then push every point out until it clears.
+const _govArmPath = (P) => {
+  // WHERE the arch may land on its blade is a measurement, not a choice. Most
+  // of the blade's back is itself inside the tip circle at some point in the
+  // swing (it dips to −0.44), because the blade's whole job is to be there.
+  // The arm's centreline needs CLEAR_MARGIN + half its width of room, so the
+  // attach point is the back's most-clear point — measured at 0.45 against
+  // the 0.40 required, at the blade's TRAILING end, which is where a bench
+  // would join an arm to a pallet anyway. The 0.05 of slack is spent as lap,
+  // so arm and blade share metal instead of meeting at a line.
+  const floorClear = CLEAR_MARGIN + ALARM_GOV_ARM_W / 2;
+  const clearOf = (q) => {
+    let m = Infinity;
+    for (let k = 0; k <= 16; k++) {
+      const w = _govWAt(-ALARM_GOV_PHI / 2 + ALARM_GOV_PHI * k / 16);
+      m = Math.min(m, Math.hypot(q.x - w.x, q.y - w.y) - ALARM_GOV_SAW_R);
+    }
+    return m;
+  };
+  let bi = 0, bc = -Infinity;
+  P.out.forEach((q, i) => { const c = clearOf(q); if (c > bc) { bc = c; bi = i; } });
+  if (bc < floorClear)
+    console.warn(`§107: no point on the blade's back clears the tip circle by ${floorClear.toFixed(2)} over the swing (best ${bc.toFixed(4)}) — the arch has nowhere to land`);
+  const back = P.out[bi], face = P.face[bi];
+  const lx = face.x - back.x, ly = face.y - back.y, ll = Math.hypot(lx, ly) || 1;
+  const lap = Math.max(0, Math.min(ALARM_GOV_ARM_LAP, bc - floorClear));
+  const end = { x: back.x + lx / ll * lap, y: back.y + ly / ll * lap };
+  const azEnd = Math.atan2(end.y, end.x);
+  const r0 = ALARM_GOV_HUB_R - ALARM_GOV_ARM_LAP;
+  const start = { x: Math.cos(azEnd) * r0, y: Math.sin(azEnd) * r0 };
+  const floor = ALARM_GOV_SAW_R + CLEAR_MARGIN + ALARM_GOV_ARM_W / 2; // centreline floor: the EDGE clears by the margin
+  const N = 16, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    let p = { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
+    for (let k = 0; k <= 8; k++) {
+      const w = _govWAt(-ALARM_GOV_PHI / 2 + ALARM_GOV_PHI * k / 8);
+      const dx = p.x - w.x, dy = p.y - w.y, d = Math.hypot(dx, dy);
+      if (d < floor) p = { x: w.x + dx / d * floor, y: w.y + dy / d * floor };
+    }
+    pts.push(p);
+  }
+  return pts;
+};
+// …and its outline: the centreline offset both ways by half the width. A
+// hand-walked outline, so MODELING rule 8's two asserts ride with it below.
+const _govArmPoly = (P) => {
+  const c = _govArmPath(P), h = ALARM_GOV_ARM_W / 2;
+  const nrm = (i) => {
+    const a = c[Math.max(0, i - 1)], b = c[Math.min(c.length - 1, i + 1)];
+    const nx = -(b.y - a.y), ny = b.x - a.x, l = Math.hypot(nx, ny) || 1;
+    return { x: nx / l, y: ny / l };
+  };
+  const left = c.map((p, i) => { const n = nrm(i); return { x: p.x + n.x * h, y: p.y + n.y * h }; });
+  const right = c.map((p, i) => { const n = nrm(i); return { x: p.x - n.x * h, y: p.y - n.y * h }; });
+  return [...left, ...right.reverse()];
+};
 // Crossing-count containment in the anchor's own frame — one copy, shared by
 // the arm-joint tripwire and the P2 saw⇄pallet sweep below.
 const _govPolyContains = (pt, poly) => {
@@ -10312,10 +10375,10 @@ const ALARM_GOV_RING_S = (() => {
   const steel = OSC_STEEL_RHO * u5 * (
     (_govPolyJ(_govPalletPoly(_govPalletA)).J + _govPolyJ(_govPalletPoly(_govPalletB)).J) * palletT
     + (Math.PI / 2) * (ALARM_GOV_HUB_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * ALARM_GOV_ANCHOR_T // hub annulus: ρ·h·π/2·(b⁴−a⁴)
-    // the two plate arms, each counted to the blade it actually reaches (§107 —
-    // the count consumes _govArmReach, so the steel counted is the steel cut)
-    + (_armJ(ALARM_GOV_HUB_R - ALARM_GOV_ARM_LAP, _govArmReach(_govPalletA), 0.5)
-     + _armJ(ALARM_GOV_HUB_R - ALARM_GOV_ARM_LAP, _govArmReach(_govPalletB), 0.5)) * ALARM_GOV_ANCHOR_T
+    // the two arches, counted from their OWN outlines by the same Green's
+    // theorem the blades use — a radial-bar formula cannot describe a curve,
+    // and the count has to be of the metal that is actually cut (§107)
+    + (_govPolyJ(_govArmPoly(_govPalletA)).J + _govPolyJ(_govArmPoly(_govPalletB)).J) * ALARM_GOV_ANCHOR_T
   );
   const target = ALARM_GOV_I - steel;
   if (target <= 0) {
@@ -10448,17 +10511,51 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   hub.name = 'alarmGovAnchor';
   alarmGovAnchorPivot.add(hub);
   for (const P of [_govPalletA, _govPalletB]) {
-    const { az, r1 } = _govArmSpec(P);      // the same spec the ring solve counts
-    const r0 = ALARM_GOV_HUB_R - ALARM_GOV_ARM_LAP;
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, ALARM_GOV_ANCHOR_T), MATS.steel);
+    const poly = _govArmPoly(P);            // the same outline the ring solve counts
+    const shape = new THREE.Shape();
+    shape.moveTo(poly[0].x, poly[0].y);
+    for (const q of poly.slice(1)) shape.lineTo(q.x, q.y);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_GOV_ANCHOR_T, bevelEnabled: false, curveSegments: 2 });
+    geo.translate(0, 0, ALARM_GOV_ANCHOR_BOT);
+    const arm = new THREE.Mesh(geo, MATS.steel);
     arm.name = 'alarmGovAnchorArm';
-    arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_ANCHOR_BOT + ALARM_GOV_ANCHOR_T / 2);
-    arm.rotation.z = az;
     alarmGovAnchorPivot.add(arm);
-    // The joint itself, held as a number: the arm's outer end must land inside
-    // the blade's own outline, or the anchor is two bodies again.
-    if (!_govPolyContains({ x: Math.cos(az) * r1, y: Math.sin(az) * r1 }, _govPalletPoly(P)))
-      console.warn(`§107: the anchor arm ends at r ${r1.toFixed(3)}, which is not inside the blade it carries — the anchor is not one body`);
+    // MODELING rule 8, both asserts, because this is a hand-walked outline:
+    // the boundary must be SIMPLE (earcut drops unreachable ears in silence)
+    // and the bevel-free extrude must be COMPLETE at 4n − 4 triangles.
+    for (let i = 0; i < poly.length; i++) {
+      const a1 = poly[i], a2 = poly[(i + 1) % poly.length];
+      for (let j = i + 2; j < poly.length; j++) {
+        if (i === 0 && j === poly.length - 1) continue;      // adjacent at the wrap
+        const b1 = poly[j], b2 = poly[(j + 1) % poly.length];
+        const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+        if (Math.abs(d) < 1e-12) continue;
+        const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+        const u = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
+        if (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9)
+          console.warn('§107: the anchor arm\'s outline crosses itself — earcut will drop the unreachable part in silence');
+      }
+    }
+    const tris = geo.attributes.position.count / 3;
+    if (tris !== 4 * poly.length - 4)
+      console.warn(`§107: the anchor arm extrudes ${tris} triangles, not the ${4 * poly.length - 4} a closed ${poly.length}-gon owes — the walk left a hole`);
+    // …and the constraint the arch exists FOR, restated as a measurement:
+    // every point of the cut outline stands clear of the tip circle, at both
+    // ends of the swing, by the one clearance margin.
+    let worst = Infinity;
+    for (const q of poly) {
+      for (let k = 0; k <= 8; k++) {
+        const w = _govWAt(-ALARM_GOV_PHI / 2 + ALARM_GOV_PHI * k / 8);
+        worst = Math.min(worst, Math.hypot(q.x - w.x, q.y - w.y) - ALARM_GOV_SAW_R);
+      }
+    }
+    if (worst < CLEAR_MARGIN - 1e-9)
+      console.warn(`§107: the anchor arm passes ${worst.toFixed(4)} from the saw's tip circle over the swing — needs ${CLEAR_MARGIN}`);
+    // and the joint at the far end: the arch must share metal with its blade
+    if (!_govPalletPoly(P).some((q) => _govPolyContains(q, poly))
+        && !poly.some((q) => _govPolyContains(q, _govPalletPoly(P))))
+      console.warn('§107: the anchor arm and the blade it carries share no metal — the anchor is two bodies again');
   }
   const anchArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT, 16), MATS.steel);
   anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane)
@@ -15416,11 +15513,12 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
       // the anchor proper: hub rim, its bore, the two arms, and each blade's
       // cut outline — _govPalletPoly, the very array ExtrudeGeometry was given
       for (const P of [_govPalletA, _govPalletB]) {
-        const poly = _govPalletPoly(P);
-        addLine(pivot, poly.map((p) => V(p.x, p.y, zA)).concat([V(poly[0].x, poly[0].y, zA)]));
-        const { az, r1 } = _govArmSpec(P);
-        const r0 = ALARM_GOV_HUB_R - ALARM_GOV_ARM_LAP;
-        addLine(pivot, [V(Math.cos(az) * r0, Math.sin(az) * r0, zA), V(Math.cos(az) * r1, Math.sin(az) * r1, zA)]);
+        for (const poly of [_govPalletPoly(P), _govArmPoly(P)]) {
+          // the blade and the arch that carries it, each as its own cut
+          // outline — the arch is a CURVE now, so a straight line would be a
+          // second, wrong description of a part this tier already has one of
+          addLine(pivot, poly.map((p) => V(p.x, p.y, zA)).concat([V(poly[0].x, poly[0].y, zA)]));
+        }
       }
       ring(pivot, ALARM_GOV_HUB_R, zA);
       ring(pivot, ALARM_GOV_ARBOR_R, zA);

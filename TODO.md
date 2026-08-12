@@ -337,6 +337,21 @@ that's its entry, not this one.)
 
 ## 5. The inspector cannot see INSIDE a unit
 
+> **PRIORITISED by the owner (2026-08-12), on the evidence below.** §107 spent
+> a whole landing inside this blind spot and hit it three separate times in one
+> mechanism: a pallet blade floating 0.236 from the arm that carries it; both
+> arms running 0.51–0.59 INSIDE the saw's tip circle, which is a collision, not
+> a gap; and — after §107 lengthened the arms to fix the first — 0.665, i.e.
+> the repair made the invisible defect worse and nothing said a word. Every one
+> of those was a mover-vs-mover pair inside one unit. The arm-through-wheel foul
+> was found by the OWNER LOOKING AT A SCREENSHOT, after 19 green gates; it only
+> became gateable because §107 promoted the anchor to its own unit, at which
+> point `expectedContacts` failed on it immediately and correctly. The interim
+> instruments (`intraUnit`, and §107's `assembly`) each cover one slice; the
+> item itself — all pairs inside a unit, over the pose net — is what would have
+> caught all three at the build that introduced them.
+
+
 Every check in `src/inspect.js` is a relation between two DIFFERENT
 units. The sweep enumerates `for (let bi = ai + 1; …)` over the ~31
 `registerLabel` names (~1229), and `CLEARANCE_BUDGETS`,
