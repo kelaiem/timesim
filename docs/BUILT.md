@@ -10854,3 +10854,59 @@ solve and the fatter blades moved its section by about a tenth of a
 percent — 0.455 mm, inside the 0.2–0.8 mm drawn-brass window
 `equalisation` gates. The cadence is untouched: `gapAtDesign` still lands
 on 0.42 s, the measured endpoints still reproduce the law.
+
+### The battery, and what the report diff says
+
+Both runs local (4-vCPU dev container, `--shards 2`), the baseline taken
+from a pristine copy of `main` at `39f8a1a` so the chrome landing's own
+changes could not be attributed here:
+
+| | gates | wall | checks |
+|---|---|---|---|
+| base (`main` 39f8a1a) | 20/20 | 1736.1 s | 2969.1 s across 2 shards |
+| this branch | 20/20 | 1821.4 s | 3102.5 s across 2 shards |
+
+The PASS column is not the acceptance — a report can move while every
+failure list stays empty. Diffed by ROW NAME (never by array index: one
+added row shifts every index after it and an index diff then reports the
+whole tail as changed), the two `--report` payloads differ in exactly three
+places, plus the fingerprint:
+
+- **`penetration`** — 14 → 15 rows. The one addition is this landing's:
+  `Alarm governor ⇄ Alarm governor anchor`, **WAIVED**, `worstDepth 0.286`
+  against the inherited `maxDepth 0.1`. All fourteen pre-existing rows are
+  byte-identical, which is the claim that matters — the new row measures
+  something nothing else was measuring, and disturbs nothing.
+- **`expectedContacts`** — 13 rows, one changed, and it changed for the
+  better: the same pair's floor headroom goes **0.1599 → 0.4269** against
+  `CLEAR_MARGIN` 0.15, still on `alarmGovSaw ⇄ alarmGovAnchorArm`. That row
+  was the tightest in the check; §107 landed it at 0.0099 of margin and
+  §111's solved blade — which moves the arch's attach point outward with it
+  — buys 0.28 more.
+- **`equalisation`** — the poising ring's solved section moves
+  `0.4548849 → 0.4547141` mm, −0.038%. Predicted at ~0.1% from the steel
+  term being 0.5% of `I_a`; measured smaller. Still inside the 0.2–0.8 mm
+  drawn-brass window, and every cadence figure identical.
+- **fingerprint** `2163870811 → 1639816688` — geometry moved, so it must.
+
+Eleven checks are byte-identical: `support`, `graph`, `alarmHandoffs`,
+`stockFloor`, `intraUnit`, `assembly`, `oscillator`, `restoring`,
+`inspection`, `clearances`, `sweptOverlap`.
+
+**`stockFloor` being identical is this entry's own point, not an oversight.**
+The blades got 2.4× thicker in true section and the census did not notice,
+because its thinness is a geometry-local AABB minimum and an extruded blade
+still reports its 0.40 u depth. That is exactly the blindness TODO 45
+records, and it is why the achieved section is asserted at boot against the
+cut polygon instead of left to the check.
+
+`penetration`'s measured cost went 16.8 s → 44.5 s, which is what the
+column's 17 → 45 was set from. Nothing else in the column was touched:
+`expectedContacts` already read 410 against a measured 532 on the base, and
+correcting other people's stale costs inside this diff would put machine
+variance in the same commit as a mechanism change.
+
+Also verified: boot silent (`bootWarns: []`), `explain-i18n --check` 530/530
+in both locales with 0 markup/code/number drift, `explain-quotes` PASS, and
+the governor corner shot in both tiers — the blades read as pallets rather
+than splinters, and the line tier draws the arbor's two rims.
