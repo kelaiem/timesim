@@ -1650,9 +1650,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'alarmGovStudUpper', why: '§104: the same sleeve over the stud\'s upper length' },
   { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'alarmGovStudUpper', why: '§104: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
   { unit: 'Alarm striking wheel', a: 'alarmGovStudUpper', b: 'CylinderGeometry#0', why: '§104: the stud\'s two turned lengths, butted — one post, two meshes (both fixtures; kept as the joint\'s record)' },
-  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§104: the governor arbor turns on its stud — coincident solids are the bearing (the strike sleeve\'s idiom)' },
-  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§104: the pinion\'s bore over the same stud — the running fit at the leaf root' },
-  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§104: the anchor\'s arbor turns on its own stud, ring below and anchor above — same bearing idiom (§107 moved the row with the unit: stud and arbor are both the anchor\'s now)' },
+  // §111 — these three rows used to say "coincident solids are the bearing".
+  // They no longer have to: both governor arbors are BORED, the way every
+  // upper pivot in the going train is, so each stud occupies a real hole and
+  // what these rows declare is the side-shake of a running fit rather than
+  // two bodies sharing space. The gap is PIVOT_BORE_CLEAR, under CLEAR_MARGIN
+  // by design, which is why the declaration is still owed.
+  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§111: the governor arbor turns on its stud in a bore cut PIVOT_BORE_CLEAR wider than it — addUpperPivot\'s fit, on the movement\'s fastest arbor' },
+  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§111: the pinion is driven on that arbor and shares its bore, so it clears the stud by the same PIVOT_BORE_CLEAR — the running fit at the leaf root' },
+  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§111: the anchor\'s arbor turns on its own stud in the same bore, ring below and anchor above (§107 moved the row with the unit: stud and arbor are both the anchor\'s now)' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [

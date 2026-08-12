@@ -10128,7 +10128,24 @@ const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R * Math.cos(ALARM_GOV_HALF_SPAN) + Mat
 // The swing spec's own room check (why φ is 0.30): everything on the anchor
 // axis that crosses the SAW's band — the stud and the arbor around it —
 // must stand clear of the tip circle.
-const ALARM_GOV_STUD_R = 0.35, ALARM_GOV_ARBOR_R = 0.45;
+//
+// §111 — THE ARBOR IS A BEARING, so it is derived like one. §104 shipped it
+// as a literal 0.45 solid running on a 0.35 solid stud: the arbor was LARGER
+// than the post it turned on, two coincident bodies held together by an
+// INTRA_UNIT_CONTACTS row, with no bore, no side-shake and no hole for the
+// stud to occupy. The going train has answered this since the first upper
+// pivot — a bore cut PIVOT_BORE_CLEAR wider than the staff, so the staff sits
+// in a hole instead of interpenetrating what carries it (see addUpperPivot)
+// — and the governor, the fastest arbor in the movement at 4.76 rev/s, was
+// the one place not doing it. The outer radius is therefore the bore plus a
+// wall at the pivot floor, both quantities the movement already names:
+const ALARM_GOV_STUD_R = 0.35;
+const ALARM_GOV_ARBOR_BORE = ALARM_GOV_STUD_R + PIVOT_BORE_CLEAR;   // the running fit, the train's own side-shake
+const ALARM_GOV_ARBOR_R = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U;       // 0.585 — wall at the 0.07 mm pivot floor
+// §111 — this assert stopped being a formality when the radii became derived:
+// the arbor is now the bore plus a floor, and the hub is the arbor plus a
+// floor, so a change to PIVOT_BORE_CLEAR or either floor walks BOTH of them
+// toward the wheel. The hub is the wider of the two, so it is checked too.
 {
   const room = ALARM_GOV_ANCHOR_D - ALARM_GOV_SAW_R - ALARM_GOV_ARBOR_R;
   if (room < CLEAR_MARGIN)
@@ -10398,9 +10415,13 @@ const ALARM_GOV_ARM_LAP = 0.1; // how far a member enters the body it joins — 
 // anyway (pallets, hub, arms) is COUNTED from its own polygons (∫r²dA by
 // Green's theorem — the balance's OSC_I discipline at anchor scale), and
 // the brass ring's square section is solved by bisection to make up the
-// remainder. Neglected: the anchor's arbor sleeve (r 0.45 — its ∫r²dA is
-// < 0.1% of I_a) and the stud (static). The section must land in real
-// drawn-brass ring stock; the equalisation gate holds the window.
+// remainder. Neglected: the anchor's arbor sleeve (an ALARM_GOV_ARBOR_R tube
+// on an ALARM_GOV_ARBOR_BORE hole — its ∫r²dA is < 0.1% of I_a, and §111's
+// boring made it smaller still) and the stud (static). The section must land
+// in real drawn-brass ring stock; the equalisation gate holds the window.
+// Scale, so the next edit knows what it is spending: the whole steel term is
+// ~0.5% of I_a, so the RING carries the solve — §111's fatter blades move
+// its section by about a tenth of a percent.
 const _govPolyJ = (pts) => { // area and ∫(x²+y²)dA about the anchor axis
   let A = 0, J = 0;
   for (let i = 0; i < pts.length; i++) {
@@ -10411,7 +10432,14 @@ const _govPolyJ = (pts) => { // area and ∫(x²+y²)dA about the anchor axis
   }
   return { A: Math.abs(A), J: Math.abs(J) };
 };
-const ALARM_GOV_HUB_R = 0.9;
+// §111 — the two members BORED to the arbor follow it, each from its own
+// floor rather than from a literal that happened to clear the old 0.45. The
+// hub is wheel stock (its ring is a member, so its WALL answers to the wheel
+// floor, `makeGear`'s own rule); the ring's collar is declared pivot stock in
+// STOCK_KIND_BY_MESH, so its wall answers to the pivot floor. Both stay well
+// inside the 0.436 the hub has to the saw's tip circle.
+const ALARM_GOV_HUB_R = ALARM_GOV_ARBOR_R + STOCK_MIN_U;      // 0.901
+const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769
 const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
                                         // holds inside the rim (assert below), which is the cheap
                                         // direction — I = m·r², so radius bought is section saved
@@ -10438,8 +10466,8 @@ const ALARM_GOV_RING_S = (() => {
   // carrier arms and collar (they ride the solve so the count stays whole)
   const iOf = (s) => OSC_BRASS_RHO * (OSC_U ** 5) * (
     (Math.PI / 2) * ((ALARM_GOV_RING_R + s / 2) ** 4 - (ALARM_GOV_RING_R - s / 2) ** 4) * s
-    + 2 * _armJ(0.75, ALARM_GOV_RING_R - s / 2, 0.5) * 0.35
-    + (Math.PI / 2) * (0.75 ** 4 - ALARM_GOV_ARBOR_R ** 4) * 0.35
+    + 2 * _armJ(ALARM_GOV_COLLAR_R, ALARM_GOV_RING_R - s / 2, 0.5) * 0.35
+    + (Math.PI / 2) * (ALARM_GOV_COLLAR_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * 0.35
   );
   let lo = 0.02, hi = 4;
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (iOf(m) < target) lo = m; else hi = m; }
@@ -10461,6 +10489,13 @@ const ALARM_GOV_RING_TOP = ALARM_GOV_RING_BOT + ALARM_GOV_RING_S;
   const ringToGovStud = ALARM_GOV_ANCHOR_D - (ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2) - ALARM_GOV_STUD_R;
   if (ringToGovStud < CLEAR_MARGIN)
     console.warn(`§104: the ring passes ${ringToGovStud.toFixed(3)} from the governor stud — need ${CLEAR_MARGIN}`);
+  // §111 — the HUB is the widest thing on the anchor axis inside the saw's
+  // band, and it is now derived (arbor + wheel floor), so its room to the tip
+  // circle is a consequence rather than a choice. This is where a change to
+  // PIVOT_BORE_CLEAR or either stock floor would surface.
+  const hubRoom = ALARM_GOV_ANCHOR_D - ALARM_GOV_SAW_R - ALARM_GOV_HUB_R;
+  if (hubRoom < CLEAR_MARGIN)
+    console.warn(`§111: the anchor hub stands ${hubRoom.toFixed(3)} off the saw's tip circle — need ${CLEAR_MARGIN}`);
 }
 // --- The build. Two axes on their own studs (the gong post's planted-0.5
 // idiom), plus the 64T wheel the strike arbor gains — that wheel and its
@@ -10525,10 +10560,15 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     boreR: ALARM_GOV_SAW_R * 0.28,
   };
   alarmGovRotor.add(saw);
+  // §111 — a BORED arbor, not a solid one: ringGeo is the closed lathe tube
+  // the plate's own bearing collars are cut from, so the stud occupies a hole
+  // rather than sharing space with the metal that turns on it. (Closed on
+  // every face, including the two annuli nobody sees — an open body reads as
+  // a colliding one to the sampled verdict, TODO 27's lesson.)
   const govArbBot = ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2;
-  const govArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot, 16), MATS.steel);
+  const govArb = new THREE.Mesh(
+    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot), MATS.steel);
   govArb.name = 'alarmGovArbor';
-  govArb.rotation.x = Math.PI / 2;
   govArb.position.z = (ALARM_GOV_SAW_TOP + govArbBot) / 2;
   alarmGovRotor.add(govArb);
 
@@ -10606,9 +10646,9 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
         && !poly.some((q) => _govPolyContains(q, _govPalletPoly(P))))
       console.warn('§107: the anchor arm and the blade it carries share no metal — the anchor is two bodies again');
   }
-  const anchArb = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_ARBOR_R, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT, 16), MATS.steel);
-  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane)
-  anchArb.rotation.x = Math.PI / 2;
+  const anchArb = new THREE.Mesh(
+    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT), MATS.steel);
+  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane) — bored, §111
   anchArb.position.z = (ALARM_GOV_ANCHOR_TOP + ALARM_GOV_RING_BOT) / 2;
   alarmGovAnchorPivot.add(anchArb);
   // The solved ring, its collar and two carrier arms — every term the
@@ -10618,13 +10658,13 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   const ringHole = new THREE.Path();
   ringHole.absarc(0, 0, ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2, 0, Math.PI * 2, true);
   ringShape.holes.push(ringHole);
-  const ringGeo = new THREE.ExtrudeGeometry(ringShape, { depth: ALARM_GOV_RING_S, bevelEnabled: false, curveSegments: 12 });
-  ringGeo.translate(0, 0, ALARM_GOV_RING_BOT);
-  const ring = new THREE.Mesh(ringGeo, MATS.brass);
+  const poiseRingGeo = new THREE.ExtrudeGeometry(ringShape, { depth: ALARM_GOV_RING_S, bevelEnabled: false, curveSegments: 12 });
+  poiseRingGeo.translate(0, 0, ALARM_GOV_RING_BOT);
+  const ring = new THREE.Mesh(poiseRingGeo, MATS.brass);
   ring.name = 'alarmGovRing';
   alarmGovAnchorPivot.add(ring);
   const collarShape = new THREE.Shape();
-  collarShape.absarc(0, 0, 0.75, 0, Math.PI * 2, false);
+  collarShape.absarc(0, 0, ALARM_GOV_COLLAR_R, 0, Math.PI * 2, false);
   const collarHole = new THREE.Path();
   collarHole.absarc(0, 0, ALARM_GOV_ARBOR_R, 0, Math.PI * 2, true);
   collarShape.holes.push(collarHole);
@@ -10635,7 +10675,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmGovAnchorPivot.add(collar);
   for (const sgn of [1, -1]) {
     const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2; // perpendicular pair — poised by symmetry
-    const r0 = 0.75, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
+    const r0 = ALARM_GOV_COLLAR_R, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
     const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, 0.35), MATS.brass);
     arm.name = 'alarmGovRingArm';
     arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_RING_BOT + ALARM_GOV_RING_S / 2);
