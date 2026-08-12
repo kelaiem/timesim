@@ -164,6 +164,11 @@ const res = await page.evaluate(async () => {
     { name: 'governor pinion+arbor', about: 'g', r: 1.8, z: [13.19 + govDZ, 15.02 + govDZ] },
     { name: 'anchor pallets', about: 'a', r: reachOf(ancRows, anc, (r) => r.mesh !== 'alarmGovAnchorStud' && !/Ring/.test(r.mesh)), z: [14.62 + govDZ, 15.02 + govDZ] },
     { name: 'anchor ring', about: 'a', r: reachOf(ancRows, anc, (r) => /Ring/.test(r.mesh)), z: Z_RING },
+    // The arbor BETWEEN the ring and the pallets — a column crossing the 64T
+    // wheel's band. Its omission was this gate's one wrong answer: the first
+    // solved θ_a stood the arbor 8.5 from the strike station, inside the
+    // wheel's 9.6, and only the §104 rim warn at boot said anything.
+    { name: 'anchor arbor col', about: 'a', r: 0.7, z: [Z_RING[1], 14.62 + govDZ] },
   ];
   const swDiscs = [
     { name: 'sw:strike pinion', r: 1.97, z: [Z_WALL[0] + 0.1, Z_WALL[1] - 0.1] },
@@ -427,7 +432,12 @@ const res = await page.evaluate(async () => {
   for (const drumAz of [null, 45, 51, 56]) {
     const field = buildField(drumAz);
     const results = [];
-    for (let mdeg = 0; mdeg < 360; mdeg += 5) {
+    // 1° near the identity (the build prefers the smallest module move —
+    // the §35 link and the §68 lock sweep both rode the rigid rotation),
+    // 5° elsewhere.
+    const MDEGS = [...new Set([...Array.from({ length: 51 }, (_, i) => (335 + i) % 360),
+      ...Array.from({ length: 72 }, (_, i) => i * 5)])].sort((a, b) => a - b);
+    for (const mdeg of MDEGS) {
       const mc = Math.cos(mdeg * Math.PI / 180), ms = Math.sin(mdeg * Math.PI / 180);
       const swR = { x: sw.x * mc - sw.y * ms, y: sw.x * ms + sw.y * mc };
       // the staying strike group on the plate top
@@ -444,6 +454,8 @@ const res = await page.evaluate(async () => {
     }
     const open = results.filter((r) => r.verdict === 'OPEN');
     out.push(`=== drum at ${drumAz}: ${open.length}/72 module rotations pass the fixed-station and plate-top gates ===`);
+    // rot 0 is the BUILT configuration — its verdict is always the headline
+    out.push(`  rot 0 (as built): ${results.find((r) => r.mdeg === 0).verdict}`);
     if (!open.length) {
       const hist = new Map();
       for (const r of results) { const k = r.verdict.replace(/ at \(.*/, ''); hist.set(k, (hist.get(k) || 0) + 1); }
@@ -487,7 +499,10 @@ const res = await page.evaluate(async () => {
         const ax = g.gx + Math.cos(aa) * D_A, ay = g.gy + Math.sin(aa) * D_A;
         if (discOk(field, ax, ay, D('anchor pallets').r, ...D('anchor pallets').z)
           || discOk(field, ax, ay, D('anchor ring').r, ...D('anchor ring').z)
+          || discOk(field, ax, ay, D('anchor arbor col').r, ...D('anchor arbor col').z)
           || discOk(field, ax, ay, STUD_R, 0, D('anchor pallets').z[1])) continue;
+        // the arbor column against the fixed wheel's swept disc
+        if (sep(ax, ay, D('anchor arbor col').r, D('anchor arbor col').z, swR.x, swR.y, govWheel.r, govWheel.z) < 0) continue;
         // the ring at the floor vs the winding/ratchet floor discs is a pair
         // check below; vs the fixed gov wheel: bands differ, plan free
         for (const b of okB) {
@@ -501,6 +516,9 @@ const res = await page.evaluate(async () => {
             ['barrel ratchet', b.bx, b.by, 'anchor ring', ax, ay],
             ['click', b.cx, b.cy, 'anchor ring', ax, ay],
             ['click', b.cx, b.cy, 'governor pinion+arbor', g.gx, g.gy],
+            ['barrel wall', b.bx, b.by, 'anchor arbor col', ax, ay],
+            ['barrel body', b.bx, b.by, 'anchor arbor col', ax, ay],
+            ['click', b.cx, b.cy, 'anchor arbor col', ax, ay],
           ];
           for (const [n1, x1, y1, n2, x2, y2] of pairs)
             worst = Math.min(worst, sep(x1, y1, D(n1).r, D(n1).z, x2, y2, D(n2).r, D(n2).z));
@@ -519,10 +537,15 @@ const res = await page.evaluate(async () => {
       return { okB: okB.length, okG: okG.length, count, best };
     };
     open.sort((a, b) => Math.min(a.mdeg, 360 - a.mdeg) - Math.min(b.mdeg, 360 - b.mdeg));
-    let found = null;
+    let found = null, feasibles = 0;
     for (const r of open) {
       const s = searchAt(r.swR);
-      if (s.count) { found = { ...r, ...s }; break; }
+      if (s.count) {
+        out.push(`  module rot ${r.mdeg}°: ${s.count} triples, best (θ_b ${s.best.thB}°, θ_g ${s.best.thG}°, θ_a ${s.best.thA}°) spare ${f(s.best.worst)}`);
+        if (!found || s.best.worst > found.best.worst) found = { ...r, ...s };
+        if (++feasibles >= 24) break;
+        continue;
+      }
       out.push(`  module rot ${r.mdeg}°: station clear but no bearing triple (barrel ${s.okB}/180, governor ${s.okG}/180 clear singly)`);
       if (!s.okB) {
         // why the barrel never lands: first blocker every 30°

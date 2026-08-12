@@ -1321,6 +1321,16 @@ const ALARM_CORNER_W_AZ = SPEC.alarmAzDeg !== null
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
 const ALARM_WIND_X = Math.cos(ALARM_CORNER_W_AZ) * ALARM_CD, ALARM_WIND_Y = Math.sin(ALARM_CORNER_W_AZ) * ALARM_CD;
+// §112 — the STRIKE ARBOR'S STATION, hoisted (the climb-arbor pattern one
+// block up): the tier-split passes the strike arbor through a plate BORE,
+// and the plate is cut long before the alarm block runs, so the station —
+// the §33 module seed and its rotation — must exist here. The §33/§112
+// design notes stay with the alarm block below; these are the same
+// constants, defined once.
+const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
+  ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
+const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
+const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
 // The base plate's PLANE is declared here, where the layout needs it; the
 // plate itself is CUT further down, once the keyless linkage has solved
 // (search BASE PLATE — CUT). §87 is why: the setting lever carries a second
@@ -1450,10 +1460,14 @@ function jewelFaceGeo(boreR, outerR, h) {
   return g;
 }
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
-// §25 C: the winding climb arbor's UPPER bearing — a jeweled pivot in the
-// three-quarter plate like any train arbor (raycast-verified: the plate IS
-// present at this XY; an earlier sparse vertex probe wrongly said otherwise).
-tqPivots.push({ x: ALARM_WIND_X, y: ALARM_WIND_Y, staffR: 0.45, jewelR: 1.0, boreR: 0.55 });
+// (§112: the climb arbor's jeweled upper pivot RETIRED — with the winding
+// tier under the plate the climb tops out ~1.5 and never reaches this
+// plate; its lower bearing, the base plate's bore above, is the bearing.)
+// §112 — the STRIKE ARBOR'S BORE: the tier-split's defining cut. The
+// rotor's sleeve (r 0.75) passes the plate here and the bore is its upper
+// bearing — staff = the sleeve, bore = staff + the train's own side-shake,
+// jewel sized a step over the climb's 1.0 for the larger staff.
+tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR });
 function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
@@ -9109,8 +9123,8 @@ const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), i
 // (they did their job at §112's identity move). Costs of a rotated
 // module — fusee-square clearance, plate rim, corridor reach — are the
 // boot asserts' court, per the mode's layering.
-const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
-  ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
+// (ALARM_MOD_ROT itself is HOISTED to the climb-arbor block — the strike
+// arbor's plate bore needs the station before the plate is cut.)
 const GONG_A1 = 15 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the hammer strikes here (§112: 135 − the identity move's 120)
 // §56 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
 // direction is the whole trick: the struck end, the hammer, its pivot azimuth
@@ -9261,8 +9275,8 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // then follows at whatever centre distance the MESH dictates, on a bearing
 // picked to keep it off the fusee's let-down square (the one other thing
 // standing proud of this face).
-const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29; // §33: the module seed — ?alarmmod= names THIS station (§112: identity 160 → 40, the tier-split's pocket)
-const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
+// (ALARM_SW_AZ / alarmSwPos — §33's module seed, §112's identity 40 — are
+// HOISTED to the climb-arbor block with ALARM_MOD_ROT, for the plate bore.)
 const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_PINION_TEETH) / 2;
 // §112 — the barrel's bearing is the placement gate's output, not the old
 // −60 rotated: under the plate the barrel disc must dodge the rods, the
@@ -9299,11 +9313,64 @@ const ALARM_CAM_T = 0.8;                               // cam thickness — stra
 const ALARM_CAM_Z0 = Z_GONG - ALARM_CAM_T / 2;
 const ALARM_CAM_Z1 = Z_GONG + ALARM_CAM_T / 2;
 const ALARM_BARREL_H = 1.3;
-const ALARM_BARREL_Z0 = ALARM_CAM_Z1 + CLEAR_MARGIN;   // barrel clears the cam's top face
-const ALARM_BARREL_Z = ALARM_BARREL_Z0 + ALARM_BARREL_H / 2;
 const ALARM_PINION_T = 1.0;                            // meshes inside the barrel's toothed wall band
 if (ALARM_CAM_Z0 < TQ_TOP_Z + CLEAR_MARGIN)
   console.warn(`alarm cam underside ${ALARM_CAM_Z0.toFixed(2)} fouls the plate top ${TQ_TOP_Z.toFixed(2)} — the plate is not a swept unit, so nothing else will catch this`);
+
+// ---------------------------------------------------------------------------
+// §112 — THE UNDER-PLATE STACK. The power tiers live below the three-quarter
+// plate now (the tier-split): only the strike group — cam, lock collar,
+// hammer, gong, lock, switch — stays on the top face, and the strike arbor
+// passes through a plate bore to reach it. The stack is anchored at the
+// BASE PLATE'S TOP FACE and derived UP, floor to ceiling, with the §99/§104
+// formula idioms intact but re-aimed:
+//   floor → winding tier → arbor ratchet → 64T governor wheel → barrel body.
+// The ORDER is the placement gate's (probe-alarm-tier-split): the wide
+// discs must clear the low-linkage rods' tops (1.87 measured + the margin),
+// so only the two small arbor members — winding wheel and ratchet — sit in
+// the floor band, in cells the gate proved rod-free; the 64T wheel takes
+// the first wide band above them, which keeps §104's overfly rule alive in
+// its new orientation (the wheel still clears the ratchet + the arbor's 0.2
+// shoulder by one margin and the centi-unit); and the barrel body rides
+// high the way the mainspring drum already lives under this plate. The
+// ceiling is asserted at the end of the chain.
+const ALARM_U_FLOOR = 0;                    // the base plate's top face — studs plant 0.5 into it
+const ALARM_WIND_WHEEL_T = 0.8;   // the winding tier's mesh stock — the idlers' own 0.8, one band
+const ALARM_RATCHET_T = RATCHET_T / 2; // the going ratchet's stock at the alarm's half scale (TODO 11's standing note)
+// makeGear's edge bevel EXTRUDES BEYOND the stock on both faces
+// (min(t·0.18, m·0.22) per side — the module term binds at these stocks),
+// so every tier's clearance is between BEVEL surfaces, not band surfaces —
+// the two-bevel lesson, paid once in the old stack and kept here.
+const ALARM_GEAR_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_BODY_BEVEL = Math.min(ALARM_BARREL_H * 0.18, ALARM_TRAIN_MODULE * 0.22);
+// The winding tier seats just over the barrel's floor boss: one margin over
+// the face plus the 0.2 shoulder land the §99 arbor convention already uses.
+const ALARM_WIND_TIER_BOT = ALARM_U_FLOOR + CLEAR_MARGIN + 0.2; // the tier's lowest METAL
+const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_GEAR_BEVEL + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
+const ALARM_RATCHET_BOT_Z = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL + CLEAR_MARGIN + 0.01;
+const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatchetAndClick extrudes bevel-free — exact band
+// §104's overfly, re-aimed: the 64T wheel's tier derives its FLOOR from the
+// tallest metal it overflies — the §99 arbor's shoulder (ratchet top + 0.2)
+// — margins carrying the centi-unit (JMP_BIND_EPS's lesson, as ever).
+const ALARM_GOV_WHEEL_T = ALARM_WIND_WHEEL_T;              // the tier stock, one band
+const ALARM_GOV_BEVEL = Math.min(ALARM_GOV_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_GOV_OVERFLOWN_TOP = ALARM_RATCHET_TOP_Z + 0.2; // the §99 arbor's shoulder
+const ALARM_GOV_TIER_BOT = ALARM_GOV_OVERFLOWN_TOP + CLEAR_MARGIN + 0.01;
+const ALARM_GOV_WHEEL_Z = ALARM_GOV_TIER_BOT + ALARM_GOV_BEVEL + ALARM_GOV_WHEEL_T / 2;
+const ALARM_GOV_PINION_T = ALARM_GOV_WHEEL_T + 0.4;        // embraces the wheel band (the strike pinion's idiom)
+// ...and the barrel BODY (with its toothed wall — the wheel that drives the
+// strike pinion) above the 64T wheel's band, one margin + the centi-unit
+// clear of it, bevels counted:
+const ALARM_BARREL_Z0 = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T / 2 + ALARM_GOV_BEVEL + CLEAR_MARGIN + 0.01;
+const ALARM_BARREL_Z = ALARM_BARREL_Z0 + ALARM_BODY_BEVEL + ALARM_BARREL_H / 2;
+// The ceiling: the stack's top face (the body's lid plus its bevel) must
+// stay one margin under the plate's underside — the whole tier-split's
+// budget, held where the chain ends.
+{
+  const stackTop = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + ALARM_BODY_BEVEL;
+  if (stackTop > TQ_BOT_Z - CLEAR_MARGIN)
+    console.warn(`§112: the under-plate stack tops at ${stackTop.toFixed(2)} — the plate's underside ${TQ_BOT_Z.toFixed(2)} leaves less than the margin`);
+}
 
 // --- Cam ⇄ tail linkage -----------------------------------------------------
 // The hammer grows a TAIL on the far side of its pivot, ending in a nose that
@@ -9642,10 +9709,12 @@ movement.add(alarmStrikeUnit);
 registerLabel('Alarm striking wheel', alarmStrikeUnit);
 registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like the gong and hammer
 {
-  // Static bearing stud, planted 0.5 into the plate top (the gong post's idiom)
-  // and carrying the rotor's bore all the way up to the pinion.
-  const studTop = ALARM_BARREL_Z + ALARM_PINION_T / 2 + 0.3;
-  const studBase = TQ_TOP_Z - 0.5;
+  // §112: the static stud plants 0.5 into the BASE plate now and runs the
+  // whole column — through the plate's bore — to carry the cam on top: one
+  // fixed axle for both zones, the §99/TODO 39 fixed-arbor idiom stretched
+  // through the bore the tier-split cut for it (tqPivots, at the plate).
+  const studTop = ALARM_CAM_Z1 + 0.3;
+  const studBase = ALARM_U_FLOOR - 0.5;
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studTop - studBase, 12), MATS.steel);
   stud.rotation.x = Math.PI / 2;
   stud.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + studBase) / 2);
@@ -9711,8 +9780,10 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   cam.name = 'alarmCam'; // selected by name for the nose⇄cam penetration budget
   cam.position.z = Z_GONG;
   alarmStrikeRotor.add(cam);
-  // Sleeve up to the pinion, and the pinion itself in the barrel's tooth band.
-  const sleeveZ0 = ALARM_CAM_Z1, sleeveZ1 = ALARM_BARREL_Z - ALARM_PINION_T / 2;
+  // Sleeve DOWN to the pinion (§112 — the barrel's tooth band lives under
+  // the plate now): from the pinion's top face up to the cam's underside,
+  // through the plate bore, which is this rotor's upper bearing.
+  const sleeveZ0 = ALARM_BARREL_Z + ALARM_PINION_T / 2, sleeveZ1 = ALARM_CAM_Z0;
   const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sleeveZ1 - sleeveZ0, 16), MATS.steel);
   // TODO 11 tranche five: a turned STEP on the striking arbor, not a piece of
   // sheet. The census is per mesh and does not subdivide an arbor (its own
@@ -9758,8 +9829,11 @@ registerExplode(alarmBarrelUnit, 0, 9);
   // a turning arbor is exactly the standing foul TODO 42's eye documents,
   // pre-empted here; §27's rule that every opening is cut). Lathe profile
   // keeps the original 0.9→1.1 taper; bore is the pivot fit over the arbor.
-  const bossTop = ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2;
-  const bossBase = TQ_TOP_Z - 0.5;
+  // §112: the boss is the FLOOR bearing now — planted in the base plate,
+  // stopping under the winding tier so the arbor's keyed members (wind
+  // wheel, ratchet) ride free above it.
+  const bossTop = ALARM_WIND_TIER_BOT - 0.05;
+  const bossBase = ALARM_U_FLOOR - 0.5;
   const boreR = G.barrelArborR(ALARM_BARREL_PITCH_R) + PIVOT_BORE_CLEAR;
   const h = bossTop - bossBase;
   const bossGeo = new THREE.LatheGeometry([
@@ -9809,20 +9883,10 @@ const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R);
 //   0.1500 against required 0.15 and a float hair failed the sweep);
 //   ratchet bottom = wheel top + the same margin, so the click's plane
 //   clears i2's disc at every azimuth.
-const ALARM_WIND_WHEEL_T = 0.8;   // the winding tier's mesh stock — the idlers' own 0.8, one band
-const ALARM_RATCHET_T = RATCHET_T / 2; // the going ratchet's stock at the alarm's half scale (TODO 11's standing note)
-// makeGear's edge bevel EXTRUDES BEYOND the stock on both faces
-// (min(t·0.18, m·0.22) per side — the module term binds at these stocks),
-// so the tier's clearance is between BEVEL surfaces, not band surfaces:
-// the body's bevel rises above its band and the wheels' bevels drop below
-// theirs, and the first cut of this stack lost 2 bevels of its margin to
-// exactly that (measured 0.034 where 0.15 was owed).
-const ALARM_GEAR_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
-const ALARM_BODY_BEVEL = Math.min(ALARM_BARREL_H * 0.18, ALARM_TRAIN_MODULE * 0.22);
-const ALARM_WIND_TIER_BOT = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + ALARM_BODY_BEVEL + CLEAR_MARGIN + 0.01; // the tier's lowest METAL
-const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_GEAR_BEVEL + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
-const ALARM_RATCHET_BOT_Z = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL + CLEAR_MARGIN + 0.01;
-const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatchetAndClick extrudes bevel-free — exact band
+// (§112: the tier's z-constants — ALARM_WIND_WHEEL_T, ALARM_RATCHET_T, the
+// bevels and the tier/ratchet bands — are HOISTED to the under-plate stack
+// block beside the cam, where the whole floor-up chain now derives; the
+// two-bevel lesson and its measurement travel with them.)
 // §99 — the WINDING WHEEL takes the rim's own tooth count, deliberately:
 // the arbor is coaxial with the rim the mesh is leaving, so W = the rim's
 // 44 keeps the idler reach solve, the i1/i2 two-circle closure, and the
@@ -9911,16 +9975,20 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   // ratchet on the tier above (ALARM_WIND_TIER_Z's derivation at the
   // winding train): bottom pinned where §89 had it — the boss engagement
   // assert below is unchanged — top = ratchet top + a 0.2 shoulder.
-  const arborBotZ = ALARM_BARREL_Z - arborH / 2;              // §89's foot, kept
-  const arborTopZ = ALARM_RATCHET_TOP_Z + 0.2;
+  // §112 — both ends re-derived for the under-plate order (wind wheel and
+  // ratchet BELOW the body now): the foot reaches down into the bored floor
+  // boss for its pivot engagement; the top keeps §89's span through the
+  // body's cavity (arborH = 2·H about the body's mid).
+  const arborBotZ = (ALARM_U_FLOOR - 0.5) + 0.3;              // 0.3 into the boss's bore — the engagement
+  const arborTopZ = ALARM_BARREL_Z + arborH / 2;
   const arbor = new THREE.Mesh(
     new THREE.CylinderGeometry(ALARM_BARREL_ARBOR_R, ALARM_BARREL_ARBOR_R, arborTopZ - arborBotZ, 16), MATS.steel);
   arbor.name = 'alarmBarrelArbor';
   arbor.rotation.x = Math.PI / 2;
   arbor.position.set(0, 0, (arborTopZ + arborBotZ) / 2 - ALARM_BARREL_Z); // arbor-rotor-local
   alarmArborRotor.add(arbor);
-  if (arborBotZ > ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2)
-    console.warn(`alarm barrel arbor stops at ${arborBotZ.toFixed(2)}, short of its boss top ${(ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2).toFixed(2)} — no pivot engagement`);
+  if (arborBotZ > ALARM_WIND_TIER_BOT - 0.05 - 0.2)
+    console.warn(`alarm barrel arbor stops at ${arborBotZ.toFixed(2)}, short of its floor boss top ${(ALARM_WIND_TIER_BOT - 0.05).toFixed(2)} − 0.2 — no pivot engagement`);
 
   // The INNER-END HOOK — §99: on the arbor's ROTOR, in the arbor's frame.
   // The §89 claim ("drum-local sweep plus body rotation is invariant")
@@ -10108,12 +10176,9 @@ const alarmGovPos = {
 // §99 arbor's shoulder (ratchet top + 0.2). Margins carry the centi-unit
 // (JMP_BIND_EPS's lesson, the §99 tier's own convention), and gear bands
 // clear between BEVEL surfaces, not band surfaces (the two-bevel lesson).
-const ALARM_GOV_WHEEL_T = ALARM_WIND_WHEEL_T;              // the tier stock, one band
-const ALARM_GOV_BEVEL = Math.min(ALARM_GOV_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
-const ALARM_GOV_OVERFLOWN_TOP = ALARM_RATCHET_TOP_Z + 0.2; // the §99 arbor's shoulder — see the siting note
-const ALARM_GOV_TIER_BOT = ALARM_GOV_OVERFLOWN_TOP + CLEAR_MARGIN + 0.01;
-const ALARM_GOV_WHEEL_Z = ALARM_GOV_TIER_BOT + ALARM_GOV_BEVEL + ALARM_GOV_WHEEL_T / 2;
-const ALARM_GOV_PINION_T = ALARM_GOV_WHEEL_T + 0.4;        // embraces the wheel band (the strike pinion's idiom)
+// (§112: the wheel tier's z-constants are HOISTED to the under-plate stack
+// block — the overfly rule survives verbatim there, re-aimed at the new
+// ratchet height; only the plan-space solve below stays at this site.)
 // The saw and the ANCHOR share ONE band — a real recoil anchor is a flat
 // piece in its wheel's own plane, hub and arms outside the tip circle in
 // plan, only the pallets reaching in — and the POISING RING drops to the
@@ -10131,7 +10196,7 @@ const ALARM_GOV_SAW_TOP = ALARM_GOV_SAW_BOT + ALARM_GOV_SAW_T; // makeRatchetAnd
 const ALARM_GOV_ANCHOR_T = ALARM_GOV_SAW_T;                // one band, one plane
 const ALARM_GOV_ANCHOR_BOT = ALARM_GOV_SAW_BOT;
 const ALARM_GOV_ANCHOR_TOP = ALARM_GOV_SAW_TOP;
-const ALARM_GOV_RING_BOT = TQ_TOP_Z + CLEAR_MARGIN + 0.01; // the ring band starts one margin above the plate top
+const ALARM_GOV_RING_BOT = ALARM_U_FLOOR + CLEAR_MARGIN + 0.01; // §112: the ring band starts one margin above the BASE plate's face — §104's derivation, one plate down
 // --- The anchor's plan, all derived from φ and the saw (rule 1):
 //   R_p = toothArc/φ            the pallet radius — one tooth of rim per swing
 //   span = 5.5 teeth            integer + half, so when pallet A releases a
@@ -10550,7 +10615,7 @@ const alarmGovAnchorPivot = new THREE.Group(); // anchor + pallets + poising rin
 alarmGovAnchorPivot.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, 0);
 alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 {
-  const studBase = TQ_TOP_Z - 0.5;
+  const studBase = ALARM_U_FLOOR - 0.5;   // §112: planted in the BASE plate — the same idiom, one plate down
   const govStudTop = ALARM_GOV_SAW_TOP + 0.2;
   const govStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, govStudTop - studBase, 12), MATS.steel);
   govStud.name = 'alarmGovStud';
@@ -10714,20 +10779,16 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmGovWheel'; });
   wheel.position.z = ALARM_GOV_WHEEL_Z;
   alarmStrikeRotor.add(wheel);
-  const sZ0 = ALARM_BARREL_Z + ALARM_PINION_T / 2;          // the strike pinion's top face
-  const sZ1 = ALARM_GOV_WHEEL_Z - ALARM_GOV_WHEEL_T * 0.75; // into the wheel's own hub ring
+  const sZ1 = ALARM_BARREL_Z - ALARM_PINION_T / 2;          // the strike pinion's underside (§112: the wheel rides BELOW it now)
+  const sZ0 = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T * 0.75; // into the wheel's own hub ring, from above
   const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sZ1 - sZ0, 16), MATS.steel);
   sleeve.name = 'alarmGovSleeve';
   sleeve.rotation.x = Math.PI / 2;
   sleeve.position.z = (sZ0 + sZ1) / 2;
   alarmStrikeRotor.add(sleeve);
-  const stud0Top = ALARM_BARREL_Z + ALARM_PINION_T / 2 + 0.3;      // the original stud's own top derivation
-  const studTop = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T / 2 + 0.3;
-  const studUp = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studTop - (stud0Top - 0.2), 12), MATS.steel);
-  studUp.name = 'alarmGovStudUpper';
-  studUp.rotation.x = Math.PI / 2;
-  studUp.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + stud0Top - 0.2) / 2);
-  alarmStrikeUnit.add(studUp);
+  // (§112: the stud's second length — alarmGovStudUpper — retired. The base
+  // stud runs the whole column now, floor boss to cam top, so there is no
+  // gap for a second piece to bridge.)
 }
 // P2, sampled — the group agrees with itself. The pair sweep cannot see
 // mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
@@ -11131,9 +11192,9 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     spin.add(w);
     spin.userData.gear = w;
     alarmWindUnit.add(spin);
-    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_WIND_TIER_Z + 0.3 - (TQ_TOP_Z - 0.5), 10), MATS.steel);
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_WIND_TIER_Z + 0.3 - (ALARM_U_FLOOR - 0.5), 10), MATS.steel);
     stud.rotation.x = Math.PI / 2;
-    stud.position.set(pos.x, pos.y, (ALARM_WIND_TIER_Z + 0.3 + TQ_TOP_Z - 0.5) / 2);
+    stud.position.set(pos.x, pos.y, (ALARM_WIND_TIER_Z + 0.3 + ALARM_U_FLOOR - 0.5) / 2);
     alarmWindUnit.add(stud);
     return spin;
   };
@@ -11336,10 +11397,9 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   click.name = 'alarmClickPawl';
   click.position.set(pivotR, 0, clickBot);
   az.add(click);
-  // Shoulder screw: post from the plate top through the tier, head above.
-  // Nothing stands over the arbor tier on this corner (the lane claim at
-  // the §99 tier constants), so the head takes floor stock, free upward.
-  const postBase = TQ_TOP_Z - 0.5;
+  // Shoulder screw: post from the BASE plate through the tier, head above
+  // (§112 — the click dropped with its ratchet; same idiom, one plate down).
+  const postBase = ALARM_U_FLOOR - 0.5;
   const postTop = clickBot + CLICK_T;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, postTop - postBase, 10), MATS.steel);
   post.name = 'alarmClickStud';
@@ -14759,7 +14819,7 @@ const SCHEMATIC_CALLOUTS = {
   // the striking arbor's own column, top down
   alarmGovWheel: 'Governor wheel', alarmGovSleeve: 'Governor wheel sleeve',
   alarmStrikeSleeve: 'Strike arbor sleeve', alarmCam: 'Lifting cam',
-  alarmLockCollar: 'Lock collar', alarmGovStudUpper: 'Strike stud, upper length',
+  alarmLockCollar: 'Lock collar',
   // the governor arbor
   alarmGovPinion: 'Governor pinion', alarmGovSaw: 'Saw wheel',
   alarmGovArbor: 'Governor arbor', alarmGovStud: 'Governor stud',
