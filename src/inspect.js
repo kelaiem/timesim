@@ -5383,7 +5383,19 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§104 — the alarm governor; 51 units, 11 poses):
+// Baseline (§107 — the anchor's own unit and its arched arms; 52 units, 11 poses):
+// 2163870811
+// — moved from 827809538 deliberately, and for two reasons at once. The unit
+// count goes 51 → 52: §107 promotes the anchor out of 'Alarm governor' into
+// 'Alarm governor anchor', a movement SIBLING with its own stud, so the same
+// meshes are now boxed as two units instead of one. And the anchor's own
+// geometry moved: each arm stopped being a radial BoxGeometry ending at a
+// literal and became a walked arch, derived to clear the saw's tip circle by
+// CLEAR_MARGIN across the swing while lapping the blade it carries — which
+// also re-solves the poising ring's section (0.45507 → 0.4549 mm) through the
+// count that reads the arm's own outline. Verified by the battery's
+// double-boot gate.
+// Previous baseline (§104 — the alarm governor; 51 units, 11 poses):
 // 827809538
 // — moved from 284533079 deliberately: §104 adds the 'Alarm governor'
 // unit (sixteen meshes across two axes — pinion, saw, generated pallets,
