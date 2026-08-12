@@ -5064,6 +5064,55 @@ so with the measurement rather than dropping the strand quietly.
   share metal with it or the anchor is two bodies again.
 - `intraUnit` — a stone seated in an arm is a declared joint, not an
   intersection to be discovered.
-- The schematic tier needs nothing: `jewelLines` (`src/main.js:15146`) selects
-  by `material === MATS.ruby`, so a new stone joins the drawing automatically.
+- **`stockFloor` has no `jewel` kind at all**, and this is the sharpest trap in
+  the item: every unnamed ruby in the movement is judged as `'(unnamed)'`
+  against the 0.12 mm `wheel` floor — *the same floor finding one is about*. A
+  set stone dropped in here would be measured by the very number this item
+  exists to correct. `ring` (`src/inspect.js:4740`) is the precedent for adding
+  a kind, and §104 added it on exactly this kind of argument.
+- **The schematic tier does NOT pick a new stone up for free.** `jewelLines`
+  (`src/main.js:15146`) does select by `material === MATS.ruby`, but it is
+  invoked for two units only — `jewelLines('Pallet fork')` and
+  `jewelLines('Balance')` (`:15156-15157`). A governor stone needs an explicit
+  third call or it draws no glyph. (An earlier draft of this item said it joined
+  automatically; it does not.) Note also `:15163` assumes the FIRST ruby found
+  in `'Balance'` is the impulse pin — an order-dependent assumption not worth
+  copying.
+- **`penetration` finds rubies by COLOUR, not by name** — `selectB` matches
+  `0xb01326` (`src/inspect.js:2295-2307`) with the guard that the fork's steel
+  "must NEVER meet the wheel: only the stones are contact surfaces". That is the
+  pattern a governor set-stone wants; the hazard is that the selector is
+  unit-scoped to `['Escape wheel','Pallet fork']`, so it will not extend itself.
 - §39's depth envelope bounds the whole strand — 11.95 mm against 12 mm.
+
+### Vocabulary that already exists, so none of this needs inventing
+
+- **Set stone in a broached slot**, seat gap DERIVED rather than guessed:
+  `gGap = armBevel + SEAT_SHOW` — bevel first, then the seat line that survives
+  it — with `wallW = 0.55` of steel each side and `m = 0.4·stoneL` of ruby proud
+  of the nose (`src/geometry.js:725-770`). The slot is a notch walked into the
+  outline, not a boolean. `SEAT_FIT` (`src/geometry.js:2844`) is the one named
+  fit for a set part.
+- **The ARM BAR right beside it** (`src/geometry.js:772-784`) is almost a direct
+  answer to finding one's closing line: *"the head must be CARRIED by the fork,
+  not hang off its ruby — a bar from the pivot boss out to the slotted head, the
+  way a real anchor's arms run."*
+- **Rubbed-in hole jewel in a real counterbore** over a bearing collar:
+  `PIVOT_BORE_CLEAR = 0.05`, `CHATON_DEPTH`, `chatonOuterFor`, `jewelFaceGeo`'s
+  dished face and oil sink (`src/main.js:1405-1438`, `:5619-5637`).
+- **`makeChaton`** (`src/geometry.js:2952`) — a screwed gold chaton with pressed
+  ruby and oil sink — is complete, documented, and called by nothing. The plate
+  went back to a flush rubbed-in stone because it was too thin for a proud
+  chaton (`src/main.js:5626-5633`); the governor sits above that plate, so the
+  constraint that retired it may not apply here.
+
+### One more measurement the review should not skip
+
+The bearing as built is not merely unjewelled — it is barely a bearing.
+`ALARM_GOV_STUD_R = 0.35` and `ALARM_GOV_ARBOR_R = 0.45` (`src/main.js:10131`),
+so the *arbor is larger than the stud it turns on*: two coincident steel solids
+with no bore, no `PIVOT_BORE_CLEAR` side-shake, no endshake and no oil sink,
+held together by an `INTRA_UNIT_CONTACTS` row. Compare the going train, where
+`addUpperPivot` cuts a bore genuinely wider than the staff so the staff occupies
+a hole rather than interpenetrating the plate. Whatever the review decides about
+stones, that gap is the honest first thing to fix.
