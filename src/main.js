@@ -42,6 +42,7 @@ import {
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
+  KW_WIND_IDLER_TEETH,
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -11016,10 +11017,25 @@ const ALARM_WIND_IDLER_MIN = Math.ceil(
 // bound only binds where the run is SHORT, which is the regime the shipped
 // layout never visits and the §33 handles do.
 //
-// So the count is the larger of the two floors: enough teeth to reach, and
+// So the count is the larger of the floors: enough teeth to reach, and
 // enough to be a wheel at all (root circle clear of its own bore — the same
 // expression makeGear checks, imported rather than restated).
-const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5));
+//
+// §112 ADDED A THIRD FLOOR, and it is the INSTRUMENT'S, not the wheel's.
+// The identity move collapsed the winding span 38.6 → 15.6, the reach
+// floor collapsed with it (51 → 12), and TODO 15's phase gauge cannot
+// read a 12-tooth makeGear wheel: the root-land arc between teeth is
+// emitted at the gauge's own outline-filter limit (edges spanning more
+// than π/N azimuth are face chords to it), so some gaps lose their
+// outline, the silhouette floor falls to the HUB, and the tooth/gap
+// threshold lands 0.04 over the root circle — measured, 20 gaps found
+// for 12 teeth at confidence 0.63, and the chain aligned from that
+// reading sat 6.1% of a pitch off anti-phase. 16 was worse (a CONFIDENT
+// half-pitch misread). 18 — the keyless winding idler's own count, the
+// movement's proven idler stock — reads clean, as do 20 and 24. Until
+// the gauge itself learns small wheels, no chain-solved wheel goes
+// below the size the movement already proves readable.
+const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5), KW_WIND_IDLER_TEETH);
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_WIND_W; // §99: ARBOR turns per crown turn — idlers drop out; value unchanged from the rim era (W = the rim's count)
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);

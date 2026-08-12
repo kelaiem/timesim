@@ -694,6 +694,12 @@ export function solveLayout({
 // ---------------------------------------------------------------------------
 export const CROWN_PULL_DIST = 5; // stem/crown outward slide when pulled to set
 export const SL_C = 10;        // setting-lever pivot's lateral offset from the stem axis
+// The keyless winding idler's tooth count — hoisted to a NAMED export at
+// §112: it is the movement's proven idler stock, and the alarm winding
+// idlers' floor now cites it (TODO 15's gauge cannot read the 12-tooth
+// wheel the collapsed span's reach floor alone would cut). The derivation
+// note lives at its consumption in solveKeyless below.
+export const KW_WIND_IDLER_TEETH = 18;
 export const SL_TAIL = 6;      // lever tail arm length (pivot → post)
 export const GROOVE_LOCAL = 4; // stem groove collars sit this far outboard of the sliding pinion
 export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of the stem
@@ -772,7 +778,6 @@ export function solveKeyless({
   // + 2·idlerR + windSpurR + 0.2 ≈ 13.9 covers Δaz ≤ asin(13.9/21.3) ≈
   // 40°. Beyond THAT the solve refuses with the numbers — a warn here,
   // the amber verdict at boot, the battery as always.
-  const KW_WIND_IDLER_TEETH = 18;
   const windIdlerR = (KW_MODULE * KW_WIND_IDLER_TEETH) / 2;
   let cwDist, windIdler = null;
   if (stemAzRad === null) {
