@@ -10599,6 +10599,74 @@ was scripted rather than eyeballed:
   on the flex child; a flex item will not shrink below its content width
   without it.
 
+### The refinements pass, and the two more defects it turned up
+
+Four owner asks against the same surface, immediately after the landing
+above. Each is small; each exposed something the first pass had left.
+
+**The bar had the two panels backwards.** It shipped as
+`Controls / View / Dial` and is now `Menu / View / Controls`: the left
+panel is a MENU of everything the app can do, while §57's pad is the
+watch's own CONTROLS — the crowns and pusher a wearer actually touches.
+
+Dropping "Dial" was not only taste. `'Dial'` is already the i18n key for
+the CAMERA PRESET of that name, so the shipped label had put two
+unrelated meanings on one key in three languages — the kind of collision
+that reads fine until one of the two needs a different word. **A JS
+object literal overwrites a repeated key in silence**, so nothing
+reported it; it was found by scanning both locale tables for duplicates,
+which is worth doing after any batch of new strings (170 DE / 184 ZH
+keys, no duplicates now).
+
+**The §90 readouts moved above the ring.** A readout is what the corner
+is consulted FOR and the ring is what it is used WITH, so the answer
+should not sit under the hand reaching for a crown. Reading order runs
+answer → instrument → viewpoint, top to bottom.
+
+**The pad went to `rgba(15,17,20,0.46)`, from 0.72** — and it is the one
+piece of chrome that should. The panels sit BESIDE the movement; the pad
+sits OVER it, in the corner a viewer orbits through, so every percent of
+opacity there is watch it hides. **The opacity is paid for with blur**
+(6 → 12 px) rather than spent outright, and that pairing is the point:
+`#scale-ref` had already learned that the plate is near-white under the
+studio environment and light-on-light made its readout unreadable
+exactly where it mattered. The figures now sit at the top of that same
+pad, so the separation had to come from somewhere that does not cost
+legibility of what is behind it.
+
+**The slider had no grabbable thumb.** Styling
+`::-webkit-slider-runnable-track` opts the whole input out of the
+platform's own layout, so the thumb stopped being centred on the track
+and rode low against a 2 px groove. It is now a 14 px bubble inside a
+22 px grab band, offset by `(2 − 14) / 2 = −6px` — arithmetic, so change
+either height and re-derive it.
+
+The two defects:
+
+- **Every bar title read its shortcut twice** — `"Controls (H) (H)"`.
+  §72's hint loop appends the letter to every button it drives, and the
+  markup spelled it out as well. The loop is the single source now, and
+  it is also the half that stays true when a key is rebound.
+- **The view panel covered the pad on a short viewport.** The overlap
+  predates the refinements — both live in the right column, the panel
+  hangs from the bar and grows down while the pad sits on the bottom
+  inset and grows up — but moving the readouts up made it bury the
+  TIMES rather than the camera strip. Measured at 760 × 620, "Rings at"
+  showed while "Time" sat behind the panel, which is the worst possible
+  half to lose. The panel's ceiling is now whatever the pad leaves it,
+  read from the pad's own rect because its height is content-driven and
+  a literal would go stale the first time §90's or §110's strip changed.
+  Verified 0 overlaps and nothing offscreen at 1280 × 900, 760 × 620,
+  900 × 560, 600 × 700 and 375 × 667.
+
+**And the backtick trap fired a second time, in the same block, four
+hours later.** Same shape exactly: CSS comments quoting identifiers,
+`node --check` green, `Unexpected identifier '#clock'` in the browser.
+Reading the warning was not enough — the rule that actually holds is
+mechanical: **no backtick may appear anywhere inside
+`style.textContent`'s template literal**, in a comment or otherwise. If
+that block is edited, grep it for one before booting.
+
 ### Battery
 
 **20/20 gates pass**, local (headless Chromium, 1246.2 s wall, checks
