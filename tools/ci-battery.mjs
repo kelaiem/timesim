@@ -213,7 +213,7 @@ const BATTERY = [
   // and the owner found it by looking at the screen. §48's rule holds — `ok`
   // is always true and the rows are the product — so what is gated is what the
   // population supports: the units in ASSEMBLY_SCOPE. Everything else reports.
-  { name: 'assembly', opts: {}, cost: 24,
+  { name: 'assembly', opts: {}, cost: 5,
     gate: '0 undeclared, unwaived splits among the scoped units',
     fails: (r) => r.violations,
     note: (r) => `${r.rowsChecked} split rigid groups over ${r.poses} poses, `
