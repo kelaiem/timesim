@@ -201,7 +201,8 @@ export const MECH_GRAPH = {
     // hammer posts use — the only clear band on it.
     ['Alarm barrel', 'Three-quarter plate'],        // barrel arbor's boss stands on the back plate
     ['Alarm striking wheel', 'Three-quarter plate'], // pin wheel's bearing stud, likewise
-    ['Alarm governor', 'Three-quarter plate'],      // §104: both governor studs planted in the same face
+    ['Alarm governor', 'Three-quarter plate'],
+  ['Alarm governor anchor', 'Three-quarter plate'],   // §107: the anchor's own stud, planted beside the governor's      // §104: both governor studs planted in the same face
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -287,7 +288,8 @@ export const MECH_GRAPH = {
     ['alarm mainspring', 'Alarm barrel'],
     ['Alarm barrel', 'Alarm striking wheel'], // barrel's toothed wall → strike pinion
     ['Alarm striking wheel', 'Alarm hammer'], // pins lift the tail and let it go
-    ['Alarm striking wheel', 'Alarm governor'], // §104: the strike arbor's 64T wheel → the governor pinion.
+    ['Alarm striking wheel', 'Alarm governor'],
+  ['Alarm governor', 'Alarm governor anchor'], // §107: the saw drives the anchor, tooth face on pallet face — the escapement's own edge, one level down // §104: the strike arbor's 64T wheel → the governor pinion.
                                               // A LEAF of the drive graph on purpose — a brake consumes,
                                               // it drives nothing downstream.
   ],
@@ -633,6 +635,8 @@ const EXPECTED_PAIRS = [
   ['Alarm striking wheel', 'Alarm hammer'],       // a pin on the hammer's tail — the lift
   ['Alarm governor', 'Three-quarter plate'],      // §104: both studs planted in the plate top
   ['Alarm governor', 'Alarm striking wheel'],     // §104: the ×8 mesh (64T wheel ⇄ governor pinion)
+  ['Alarm governor anchor', 'Three-quarter plate'],// §107: the anchor stud planted in the plate top
+  ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
@@ -1452,6 +1456,15 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmGovWheel', 'alarmGovPinion'], // the ×8 stage — a working gear mesh
     ],
   },
+  // §107 — the pair the anchor's promotion created. Its declared contact is
+  // the governing one (a tooth tip riding a generated pallet face); every
+  // other approach between the two units is held to the one margin.
+  {
+    a: 'Alarm governor', b: 'Alarm governor anchor', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmGovSaw', 'alarmGovPallet'],
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -1639,7 +1652,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm striking wheel', a: 'alarmGovStudUpper', b: 'CylinderGeometry#0', why: '§104: the stud\'s two turned lengths, butted — one post, two meshes (both fixtures; kept as the joint\'s record)' },
   { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§104: the governor arbor turns on its stud — coincident solids are the bearing (the strike sleeve\'s idiom)' },
   { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§104: the pinion\'s bore over the same stud — the running fit at the leaf root' },
-  { unit: 'Alarm governor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§104: the anchor\'s arbor turns on its own stud, ring below and anchor above — same bearing idiom' },
+  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§104: the anchor\'s arbor turns on its own stud, ring below and anchor above — same bearing idiom (§107 moved the row with the unit: stud and arbor are both the anchor\'s now)' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
@@ -1738,6 +1751,214 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   }
   console.table(all);
   return { violations: all.filter((v) => !v.waived), waived: all.filter((v) => v.waived), movers: movers.size, poses: poses.length };
+}
+
+// ---------------------------------------------------------------------------
+// §107 — the ASSEMBLY check: a RIGID GROUP must be one body.
+//
+// This is TODO 5's other half, and until now nothing measured it. `intraUnit`
+// above compares a unit's MOVERS against that unit's FIXTURES; two meshes that
+// always move together are neither of those to each other, so no instrument in
+// the battery ever looked at them. §104's governor anchor shipped through that
+// gap: its hub, two arms and two pallet blades all ride one pivot group, and
+// blade A stood 0.236 CLEAR of the arm that carries it — an anchor in three
+// pieces, rendered as a fracture, past a fully green battery. The owner saw it
+// on screen, which is the failure mode this check exists to retire.
+//
+// The predicate is derived, not authored: meshes whose unit-relative signature
+// agrees at EVERY sampled pose ride one frame, so they are one PART — and a
+// part is connected metal. Because the group shares a frame, connectivity is
+// pose-independent, so it is measured once and the sweep stays cheap.
+//
+// Two bounds on that, both deliberate, both measured rather than assumed:
+//
+//   · Only a MOVING frame is evidence. Every fixture in the movement shares
+//     the identity frame, so "these never move relative to each other" says
+//     nothing about two studs, two jewels or four pillars — run against the
+//     identity frame this check reports the whole movement and means none of
+//     it. A group built onto a frame that genuinely turns IS evidence: those
+//     meshes were parented together on purpose, so they are one part.
+//   · The gate is SCOPED. Measured over the tree, moving frames still carry
+//     rows this landing has not investigated (the centre wheel's group reads
+//     3 bodies at 0.058, the fork's 3 at 0.05) — real questions, none of them
+//     this change's mechanism. §48's rule therefore holds: `ok` is always
+//     true and the ROWS are the product, and what is gated is what the
+//     population supports — the units this landing owns. Widening the scope
+//     is the follow-up, filed rather than bought by declaring rows silent.
+//
+// A body that rides a moving frame and is separate on purpose is DECLARED in
+// ASSEMBLY_SPLITS with its reason — the stockFloor convention.
+// ---------------------------------------------------------------------------
+// A joint is metal meeting metal: the parts are built flush or lapped, so this
+// only has to absorb the BVH measure's float noise. Any real crack is orders
+// above it (the §104 fracture measured 0.236, and CLEAR_MARGIN itself is 0.15).
+export const ASSEMBLY_JOIN_TOL = 1e-3;
+export const ASSEMBLY_SPLITS = [
+  // Seeded from a measured run — each row is a group that rides one MOVING
+  // frame and is separate metal on purpose. `group` is the alphabetically
+  // first member label, the same string convention INTRA_UNIT_CONTACTS uses.
+];
+// The units held to "a rigid group is one body". §107 seeds it with the two
+// the landing owns; every other unit's rows are reported, not gated.
+export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel'];
+// Accepted debt, §50's convention — red in the report, cited, never silenced.
+export const ASSEMBLY_WAIVERS = [
+  { unit: 'Alarm striking wheel', group: 'ExtrudeGeometry#4',
+    debt: 'TODO 44 — §25 B\'s lock collar rides the strike rotor but touches no rotating member (0.2117 to the nearest): it is held by parentage, not by metal. The fix is the turned step this shaft already uses one level up (alarmStrikeSleeve), between the collar\'s top and the cam\'s underside; it belongs to §25 B\'s mechanism, not to §107\'s governor, so it is filed with its arithmetic rather than absorbed here.' },
+];
+
+export async function checkAssembly(clock, {
+  axes = AXES, samplesPerAxis = 3, joinTol = ASSEMBLY_JOIN_TOL, splits = ASSEMBLY_SPLITS,
+  scope = ASSEMBLY_SCOPE, waivers = ASSEMBLY_WAIVERS,
+} = {}) {
+  const units = collectUnits(clock, { includeExcluded: true });
+  const _m = new THREE.Matrix4();
+  const poses = [];
+  for (const axis of axes) for (let i = 0; i < samplesPerAxis; i++) poses.push([axis, i / (samplesPerAxis - 1)]);
+
+  // 1. group by FRAME, via each mesh's own world MOTION rather than its pose.
+  //    Under one rigid motion T every mesh of the body satisfies
+  //    M_p = T · M_0, so the delta M_p · M_0⁻¹ is the SAME matrix for every
+  //    member however far apart they sit — which is exactly the equivalence
+  //    "these meshes are one part". (Signing the mesh's own matrix instead
+  //    would split a body into as many groups as it has members, and signing
+  //    geometry.id would split it into one group per mesh: both make the
+  //    check structurally incapable of reporting anything, which is how the
+  //    first cut of this function passed a movement it had never measured.)
+  const base = new Map(); // mesh → M_0⁻¹
+  clock.setPose(poses[0][0].pose(0, clock));
+  for (const u of units) for (const m of u.meshes) base.set(m, m.matrixWorld.clone().invert());
+  const trace = new Map();  // mesh → concatenated delta elements, pose by pose
+  const moves = new Set();  // meshes whose frame is not the identity somewhere
+  const _id = new THREE.Matrix4();
+  let n = 0;
+  for (const [axis, f] of poses) {
+    clock.setPose(axis.pose(f, clock));
+    for (const u of units) for (const m of u.meshes) {
+      _m.copy(m.matrixWorld).multiply(base.get(m));
+      const acc = trace.get(m) ?? [];
+      for (let i = 0; i < 16; i++) acc.push(_m.elements[i]);
+      trace.set(m, acc);
+      if (!moves.has(m)) {
+        for (let i = 0; i < 16; i++) {
+          if (Math.abs(_m.elements[i] - _id.elements[i]) > 1e-6) { moves.add(m); break; }
+        }
+      }
+    }
+    if (++n % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  // Cluster the traces with a TOLERANCE rather than by string equality. The
+  // delta is algebraically identical across one body (M_p·M_0⁻¹ = Pivot_p·
+  // Pivot_0⁻¹, the member's own local transform cancelling), but only
+  // algebraically: the cancellation is computed, so a member sitting further
+  // out with its own rotation carries more float error than one at the hub.
+  // Keyed on rounded strings, that error splits a body across keys — measured,
+  // it dropped both anchor arms and the governor-wheel sleeve out of their own
+  // groups, which reads as a smaller assembly rather than a broken one. The
+  // predicate is "same rigid motion", so the comparison is a tolerance.
+  const FRAME_TOL = 1e-4;
+  const sameFrame = (p, q) => {
+    for (let i = 0; i < p.length; i++) if (Math.abs(p[i] - q[i]) > FRAME_TOL) return false;
+    return true;
+  };
+
+  // 2. connectivity, once, at the net's first pose
+  clock.setPose(poses[0][0].pose(0, clock));
+  const rows = [], unmeasurable = [];
+  for (const u of units) {
+    const groups = [];        // [{ rep, meshes }] — one entry per rigid frame
+    for (const m of u.meshes) {
+      const t = trace.get(m);
+      const g = groups.find((x) => sameFrame(x.rep, t));
+      if (g) g.meshes.push(m); else groups.push({ rep: t, meshes: [m] });
+    }
+    for (const { meshes: members } of groups) {
+      if (members.length < 2) continue;
+      if (!members.some((m) => moves.has(m))) continue;   // identity frame — no evidence, see the header
+      const parent = members.map((_, i) => i);
+      const find = (i) => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
+      // Joined = the solids actually share metal, measured triangle to
+      // triangle. Deliberately NOT meshClearance: every joint is a near-zero
+      // by definition, and that is exactly the branch which hands the pair to
+      // sampledVerdict's parity raycast — the expensive path, and the one
+      // that throws on a geometry carrying no normals. meshesIntersect is the
+      // same primitive intraUnit's declared joints are measured with, so a
+      // lap and a butted flush face both read as one body here too.
+      for (let i = 0; i < members.length; i++) {
+        _cbA.setFromObject(members[i]);
+        for (let j = i + 1; j < members.length; j++) {
+          if (find(i) === find(j)) continue;
+          _cbB.setFromObject(members[j]);
+          if (boxDistance(_cbA, _cbB) > joinTol) continue;   // cannot touch
+          let joined = false;
+          try {
+            // Two ways to be one body, because the triangle test declines
+            // some genuinely flush faces: metal shared (intersection), or
+            // metal touching within the joint tolerance (distance).
+            joined = meshesIntersect(members[i], members[j])
+              || meshClearance(members[i], members[j], joinTol * 10) <= joinTol;
+          } catch (e) {
+            unmeasurable.push({ unit: u.name, a: meshLabel(u, members[i]), b: meshLabel(u, members[j]), why: String(e).slice(0, 120) });
+            joined = true; // never invent a fracture out of a measurement that failed
+          }
+          if (joined) parent[find(i)] = find(j);
+        }
+      }
+      const comps = new Map();
+      members.forEach((m, i) => {
+        const r = find(i);
+        comps.set(r, [...(comps.get(r) ?? []), m]);
+      });
+      if (comps.size < 2) continue;
+      // the number that makes the row actionable: how far the nearest two
+      // bodies of this one part actually stand apart
+      // Only split groups pay for a distance, and the measure is guarded: a
+      // fractured body is precisely where a mesh may be odd enough to break
+      // the parity raycast, and losing the number must not lose the ROW.
+      const parts = [...comps.values()];
+      let sep = Infinity;
+      for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+        for (const a of parts[i]) for (const b of parts[j]) {
+          try { sep = Math.min(sep, meshClearance(a, b, sep)); }
+          catch { _cbA.setFromObject(a); _cbB.setFromObject(b); sep = Math.min(sep, boxDistance(_cbA, _cbB)); }
+        }
+      }
+      const labels = parts.map((p) => p.map((m) => meshLabel(u, m)).sort());
+      rows.push({
+        unit: u.name,
+        group: labels.flat().sort()[0],
+        bodies: comps.size,
+        members: labels.map((l) => l.join(' + ')),
+        separation: sep === Infinity ? null : +sep.toFixed(4),
+      });
+    }
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  for (const r of rows) {
+    const d = splits.find((s) => s.unit === r.unit && s.group === r.group && r.bodies <= s.bodies);
+    if (d) r.declared = d.why;
+  }
+  console.table(rows);
+  for (const r of rows) {
+    const w = waivers.find((x) => x.unit === r.unit && x.group === r.group);
+    if (w) r.waived = w.debt;
+  }
+  const undeclared = rows.filter((r) => !r.declared && !r.waived);
+  const violations = undeclared.filter((r) => scope.includes(r.unit));
+  return {
+    ok: true,   // §48's rule — a report, and the rows are the product
+    violations,
+    outOfScope: undeclared.filter((r) => !scope.includes(r.unit)),
+    scope,
+    gate: 'GATING (scoped) — 0 undeclared splits among ASSEMBLY_SCOPE units: meshes riding one MOVING frame are one part, and a part is connected metal. Out-of-scope rows are reported, not gated (§48).',
+    joinTol, poses: poses.length,
+    undeclared, declared: rows.filter((r) => r.declared),
+    waived: rows.filter((r) => r.waived), rowsChecked: rows.length,
+    // Pairs whose intersection test THREW. Reported, never silent: an
+    // unmeasured pair is assumed joined above, so this list is the honest
+    // bound on what the gate above actually saw.
+    unmeasurable,
+  };
 }
 
 
@@ -4628,6 +4849,13 @@ export const STOCK_KIND_BY_MESH = {
   alarmGovSleeve: 'pivot',
   alarmGovArbor: 'pivot',
   alarmGovAnchorArbor: 'pivot',
+  // §107 — three anchor meshes that declared nothing and took the 'wheel'
+  // default in silence. The floor they land on is the same 0.12 mm; what
+  // changes is that it is now a DECLARATION rather than a gap, so the census
+  // stops listing them as parts nobody classified. TODO 45 owns the harder
+  // half: the blades' true section is measured across the face and is thinner
+  // than the AABB this census can see, so passing here is not a clean bill.
+  alarmGovAnchor: 'wheel', alarmGovAnchorArm: 'wheel', alarmGovPallet: 'wheel',
   alarmGovRing: 'ring',
   alarmGovRingCollar: 'pivot',
   alarmLifterPlunger: 'pivot',
@@ -5079,6 +5307,7 @@ const CHECKS = {
   alarmHandoffs: (clock, opts) => checkAlarmHandoffs(clock, opts),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 interim — movers vs their own fixtures
+  assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
