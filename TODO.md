@@ -5138,6 +5138,10 @@ so with the measurement rather than dropping the strand quietly.
 
 ### What the review owes the instruments
 
+- `expectedContacts` — the same pair's floors row is the one instrument the
+  section fix visibly helped: its headroom went **0.1599 → 0.4269** against
+  `CLEAR_MARGIN`, on `alarmGovSaw ⇄ alarmGovAnchorArm`. It was the tightest
+  row in that check.
 - `penetration` — the row `Alarm governor ⇄ Alarm governor anchor` (§111) is
   where finding one lives now, WAIVED at 0.286 against the going escapement's
   inherited 0.1. Its `nSamples: 449` is load-bearing: one wind is 28 strikes ×
