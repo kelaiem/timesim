@@ -2415,6 +2415,53 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
+    // §111 — THE GOVERNOR ESCAPEMENT'S MISSING BUDGET. The going escapement
+    // has had one since the first of these rows; §104 shipped its twin one
+    // train over with nothing measuring the depth of its contact at all, and
+    // every cover that looks like it should have caught that has a hole in
+    // exactly this shape: EXPECTED_PAIRS grants the pair a blanket excuse to
+    // the overlap sweep, EXPECTED_CONTACT_FLOORS names alarmGovSaw⇄
+    // alarmGovPallet as the working contact and therefore EXCLUDES it from
+    // the floor, and §104's own boot assert samples the saw's TIPS — one
+    // point per tooth — so it read 0.0001 while a tooth BODY stood 0.245
+    // inside pallet B for most of the cycle.
+    //
+    // maxDepth is INHERITED from the going escapement's row above, not
+    // chosen here: a budget envelope is never forkable (CLAUDE.md's fold
+    // rule), so this row is WAIVED at the measured depth rather than opened
+    // to fit it. The waiver is the finding, visible in the report.
+    //
+    // nSamples is 449 because of an aliasing trap this axis makes easy: one
+    // wind is 28 strikes × ALARM_GOV_TEETH_PER_STRIKE (80) = 2240 tooth
+    // periods, and the interference lives INSIDE one period. A sample count
+    // sharing a factor with 2240 revisits the same handful of phases forever
+    // — 240, the hammer row's count above, sees 15 of them. 449 is prime and
+    // coprime to 2240, so the samples visit 449 distinct phases spread across
+    // the period.
+    pair: ['Alarm governor', 'Alarm governor anchor'],
+    maxDepth: 0.1,
+    axis: 'alarmStrike',
+    nSamples: 449,
+    waived: 'TODO 45 finding one — the engagement is too deep to be cut as metal: '
+      + 'the pallet face is the WHOLE tip trajectory over a half period, so the escapement has no drop. '
+      + 'Measured 0.245 u; relieving the wheel leaves a 0.031 u needle and no φ in 0.08–0.30 clears it. '
+      + 'The fix is a re-derivation of the engagement, not a reshaped blade.',
+    // A = the saw wheel (the BVH side, as the escape wheel is above).
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmGovSaw') out.push(o); });
+      return out;
+    },
+    // B = the two pallet blades, and only those: the anchor's hub, arches,
+    // arbor and poising ring have no business near the wheel at all, and are
+    // held to CLEAR_MARGIN by the expectedContacts row instead.
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmGovPallet') out.push(o); });
+      return out;
+    },
+  },
+  {
     // §25 C stage 2: the rattrapante follower's nose on the heart cam — a cam
     // contact between two units that are already EXPECTED (the tube rides the
     // hour tube), so the overlap sweep is structurally blind here, exactly the
