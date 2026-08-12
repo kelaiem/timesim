@@ -4267,6 +4267,24 @@ Off by default, toggled in **View → Control HUD**, or opened on arrival
 with `?hud=1` — for a link that wants the watch driveable the moment it
 loads, which on a phone is the difference between a demo and an
 instrument.
+
+**Both halves of that sentence went stale, and this is the correction.**
+The DEFAULT flipped on 2026-08-11 ("The control HUD is on by default —
+the watch arrives driveable"): `?hud=1`'s argument won for every arrival,
+not just for a link that asked, so the pad is UP on arrival and `?hud=0`
+is now the interesting parameter. The ROUTE changed at §110: the panel
+row moved with View into `#view-hud`'s Advanced fold, and the pad's
+primary control is now the chrome bar's **Dial** button, which sits in
+view at all times — the panel row and the `D` key still work and land in
+the same `setHud()`, so no path can disagree with another about whether
+the pad is up.
+
+Left in place above rather than rewritten, because §57's REASONING is
+still the record of why the pad exists and what its default cost; only
+its last four lines stopped being true. The lesson is the cheaper half:
+a shipped section states behaviour as well as design, and behaviour
+moves — this pair was caught by §110 reading §57 while wiring a second
+control onto the same state, which is the only reason anyone looked.
 ## §54. Slenderness — a minimum thickness is not a minimum stiffness
 
 §50 gave every part a floor on its thinnest dimension, closing a real
@@ -10492,12 +10510,15 @@ there is no "off" for a gesture that always does something, so §72's
 observer deliberately does not reach it and the button carries its own
 `aria-label`.
 
-**On the word.** *Strafing* is the more precise term — a
-cinematographer's pan is a rotation about the head, which is the opposite
-of this. "Pan" ships because it is what every 3D viewer's UI calls the
-operation, it is OrbitControls' own name for the code path, and §95's
-audience arrives with that vocabulary. The precision is recorded rather
-than spent; the face is one i18n key in three locales.
+**On the word — asked and SETTLED, so it is not an open question.**
+*Strafing* is the more precise term: a cinematographer's pan is a
+rotation about the head, which is the opposite of what this does. The
+owner raised exactly that and, told the trade, **kept "Pan"** — because
+it is what every 3D viewer's UI calls the operation, it is
+OrbitControls' own name for the code path, and §95's audience arrives
+with that vocabulary. Recorded here so the imprecision reads as a
+decision someone made rather than one nobody noticed; a later reader who
+spots it should not re-litigate it.
 
 ### §21's coin diagram, deleted — and the citation that went with it
 
