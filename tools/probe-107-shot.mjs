@@ -59,11 +59,15 @@ const shoot = async (name, sch, from) => {
   console.log('wrote', name);
 };
 
+// §113 — the governor lives UNDER the three-quarter plate since the
+// tier-split: plates block both verticals, so both views shoot nearly
+// HORIZONTALLY through the tier gap from outside the rim, one from each
+// side of the module.
 for (const [name, sch, from] of [
-  ['107-solid-plan', 0, [0, 0, 22]],
-  ['107-line-plan', 1, [0, 0, 22]],
-  ['107-solid-rake', 0, [-8, -12, 15]],
-  ['107-line-rake', 1, [-8, -12, 15]],
+  ['107-solid-plan', 0, [11, 16, 4]],
+  ['107-line-plan', 1, [11, 16, 4]],
+  ['107-solid-rake', 0, [17, -3, 6]],
+  ['107-line-rake', 1, [17, -3, 6]],
 ]) await shoot(name, sch, from);
 
 const counts = await page.evaluate(() => {
