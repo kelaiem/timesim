@@ -24,15 +24,51 @@
 const _param = new URLSearchParams(location.search).get('lang');
 let _stored = null;
 try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be blocked */ }
+// §113 — THE LOCALE REGISTRY. One declaration: the pickers render its faces,
+// _norm resolves through its matchers, LANG_TAG reads its tag, TABLES is keyed
+// by its codes. It replaced four hand-kept copies of the list (this file, the
+// panel's markup and the two static pages) with one, on the ordinary grounds
+// that a list copied four times is a list that disagrees with itself.
+//
+// ARRAY ORDER IS THE RESOLUTION LADDER — first match wins — and that is
+// LOAD-BEARING, not incidental: the matchers overlap on purpose (a script
+// subtag has to be tested before the bare language it refines), so reordering
+// this array silently changes which table a reader gets. The assert below is
+// what makes such a reorder loud, because the failure has no other symptom:
+// nothing throws, nothing renders blank, the prose is simply in the wrong
+// language for that reader.
+//
+// `face` is DISPLAY and is written in its own language — the one string on the
+// page a reader who cannot yet read the UI must still recognize. `code` is a
+// VALUE (§73): it travels in ?lang=, in localStorage and in documentElement.lang,
+// and is never translated.
+export const LOCALES = [
+  { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
+  { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
+  { code: 'zh', face: '中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
+];
 const _norm = (v) => {
   if (!v) return null;
-  v = String(v).toLowerCase();
-  return v.startsWith('de') ? 'de' : v.startsWith('zh') ? 'zh' : v.startsWith('en') ? 'en' : null;
+  // Underscores because a stored or hand-typed tag may arrive POSIX-style
+  // (zh_TW); lowercase because a matcher should not also be a case table.
+  v = String(v).toLowerCase().replace(/_/g, '-');
+  return LOCALES.find((L) => L.match(v))?.code || null;
 };
 export const UI_LANG = _norm(_param) || _norm(_stored) || _norm(navigator.language) || 'en';
 // BCP 47 tag for number formatting only — never for content negotiation.
-const LANG_TAG = { en: 'en-US', de: 'de-DE', zh: 'zh-CN' }[UI_LANG];
+const LANG_TAG = LOCALES.find((L) => L.code === UI_LANG).tag;
 document.documentElement.lang = UI_LANG; // screen readers pick pronunciation from this
+
+// Standing rule 6, applied to the one property of the array above that a
+// reader cannot see by looking at it. Region and script subtags must land on
+// their base language, and each locale must resolve to ITSELF — the cheapest
+// statement of "the ladder is still in an order that works".
+for (const [input, want] of [
+  ['en', 'en'], ['en-GB', 'en'],
+  ['de', 'de'], ['de-AT', 'de'], ['de_CH', 'de'],
+  ['zh', 'zh'], ['zh-CN', 'zh'], ['zh-Hans', 'zh'],
+  ['xx', null], ['', null],
+]) if (_norm(input) !== want) console.warn(`i18n: locale ladder broken — _norm('${input}') = ${_norm(input)}, expected ${want}`);
 
 export function setUiLang(v) {
   try { localStorage.setItem('uiLang', v); } catch { /* then the choice lasts this load */ }
@@ -540,7 +576,14 @@ Object.assign(ZH, {
 });
 
 // ---------------------------------------------------------------------------
-const TABLE = UI_LANG === 'de' ? DE : UI_LANG === 'zh' ? ZH : null;
+// §113 — keyed by LOCALES' codes. English is absent BY CONSTRUCTION: it is the
+// key space, so `null` here is what makes t() return its input unchanged.
+// Exported so the tables can be diffed against each other for key parity from
+// the console (nothing in the app reads it) — with five tables the interesting
+// question stopped being "does this string translate" and became "which table
+// is missing which key".
+export const TABLES = { de: DE, zh: ZH };
+const TABLE = TABLES[UI_LANG] || null;
 
 // Translate one English source string. English (or a missing entry) returns
 // the input — visible fallback, never a blank.

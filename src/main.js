@@ -8,7 +8,7 @@ import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
-import { UI_LANG, setUiLang, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
+import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
 // consumed unchanged below; the geometry fingerprint proves the move changed
@@ -14522,14 +14522,12 @@ viewHud.innerHTML = `
        precedent) — the panel is built from UI_LANG, and a second live
        re-render path would be a copy to rot. Option faces are written in
        their OWN language: a viewer looking for their language should not
-       have to read the current one to find it. -->
+       have to read the current one to find it. §113 moved the options out
+       of this markup — they are built from i18n.js's LOCALES below, so the
+       roster is declared once instead of copied into every picker. -->
   <div class="row">
     <span class="label-small">Language</span>
-    <select id="lang-select">
-      <option value="en">English</option>
-      <option value="de">Deutsch</option>
-      <option value="zh">中文</option>
-    </select>
+    <select id="lang-select"></select>
   </div>
   <details class="ui-section">
     <summary>Advanced</summary>
@@ -17578,8 +17576,17 @@ document.getElementById('btn-sound').addEventListener('click', () => setSound(!s
 // §73 — the Language row. UI_LANG is resolved at import; this only records the
 // CHOICE and reloads, so there is exactly one path that builds a localized
 // panel (boot) rather than two.
+// §113 — the options come from LOCALES, not from the panel's markup. Safe to
+// build them here: localizeTree ran once at panel build, long before this, so
+// the faces are never walked and a face that happens to collide with a table
+// key cannot be translated out of its own language.
 {
   const sel = document.getElementById('lang-select');
+  for (const { code, face } of LOCALES) {   // face is DISPLAY; value is canonical (§73)
+    const o = document.createElement('option');
+    o.value = code; o.textContent = face;
+    sel.appendChild(o);
+  }
   sel.value = UI_LANG;
   sel.addEventListener('change', () => setUiLang(sel.value));
 }

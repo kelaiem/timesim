@@ -29,13 +29,19 @@ export { collectTranslatable, RICH_SELECTORS, LABEL_SELECTOR };
 // 'quantity' = same value after locale parsing, punctuation free to localize.
 export const NUMBERS = 'quantity';
 
-const TABLE = UI_LANG === 'de' ? (await import('./primer-i18n.de.js')).default
-  : UI_LANG === 'zh' ? (await import('./primer-i18n.zh.js')).default
-  : null;
+// §113 — one map per page, literal specifiers, for the reasons written out in
+// src/explain-i18n.js: the stamper's module walk only sees quoted strings, and
+// a template literal would fail silently in both the stamp and the precache.
+const LOADERS = {
+  de: () => import('./primer-i18n.de.js'),
+  zh: () => import('./primer-i18n.zh.js'),
+};
+const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 
 export async function allTables() {
-  const [de, zh] = await Promise.all([import('./primer-i18n.de.js'), import('./primer-i18n.zh.js')]);
-  return { de: de.default, zh: zh.default };
+  const codes = Object.keys(LOADERS);
+  const mods = await Promise.all(codes.map((c) => LOADERS[c]()));
+  return Object.fromEntries(codes.map((c, i) => [c, mods[i].default]));
 }
 
 export const t = translator(TABLE);

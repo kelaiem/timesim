@@ -533,15 +533,17 @@
   // a detached copy. The primer has no interactive plates, so unlike the
   // explainer there is nothing here to order against — the rule is kept
   // anyway, because the next plate added to this page should inherit it.
-  import { UI_LANG, setUiLang } from './src/i18n.js';
+  import { UI_LANG, setUiLang, LOCALES } from './src/i18n.js';
   import { localizePrimer } from './src/primer-i18n.js';
   localizePrimer();
   {
     const sel = document.getElementById('lang-select');
     // Values are canonical codes, never display text — tier one's rule.
-    for (const [code, label] of [['en', 'English'], ['de', 'Deutsch'], ['zh', '中文']]) {
+    // §113: the roster is i18n.js's LOCALES, so this page cannot drift out of
+    // step with the app's picker or the other page's.
+    for (const { code, face } of LOCALES) {
       const o = document.createElement('option');
-      o.value = code; o.textContent = label; o.selected = code === UI_LANG;
+      o.value = code; o.textContent = face; o.selected = code === UI_LANG;
       sel.appendChild(o);
     }
     sel.addEventListener('change', () => setUiLang(sel.value));

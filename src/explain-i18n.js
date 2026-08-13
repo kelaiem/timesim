@@ -37,18 +37,34 @@ export { collectTranslatable, RICH_SELECTORS, LABEL_SELECTOR };
 export const NUMBERS = 'source';
 
 // One file per locale, loaded on demand: a reader of the English page pays
-// nothing for the German or Chinese prose, and each table stays a file a
+// nothing for the other locales' prose, and each table stays a file a
 // translator can open on its own. Top-level await is what lets the page
 // localize BEFORE its interactive plates wire themselves up (see explain.html).
-const TABLE = UI_LANG === 'de' ? (await import('./explain-i18n.de.js')).default
-  : UI_LANG === 'zh' ? (await import('./explain-i18n.zh.js')).default
-  : null;
+//
+// §113 — THE SPECIFIERS ARE LITERAL STRINGS, and that is a build constraint
+// rather than a style. tools/stamp-release.mjs rewrites `import('./…')` by
+// regex over a quote class, and its leftover scan uses the SAME class, so an
+// `import(`./explain-i18n.${UI_LANG}.js`)` would be neither stamped nor added
+// to the service worker's precache AND would not be reported as missed: a
+// reader offline in that locale would get a 404 with every gate green. One map
+// per page, listed by hand, is the price of being visible to that walk.
+//
+// The map is also the page's ANSWER to "which languages do you have" — it
+// feeds both the load below and allTables(), so the roster is stated once.
+const LOADERS = {
+  de: () => import('./explain-i18n.de.js'),
+  zh: () => import('./explain-i18n.zh.js'),
+};
+const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 
-// Both tables, for tools/explain-i18n.mjs --check (which must see every
-// language at once). Loaded only when asked for, so the page never pays.
+// Every table at once, for tools/explain-i18n.mjs --check (which must see all
+// languages together). Loaded only when asked for, so the page never pays.
+// The tool takes its locale list from the KEYS of what this returns — there is
+// no second roster in the harness to keep in step with this one.
 export async function allTables() {
-  const [de, zh] = await Promise.all([import('./explain-i18n.de.js'), import('./explain-i18n.zh.js')]);
-  return { de: de.default, zh: zh.default };
+  const codes = Object.keys(LOADERS);
+  const mods = await Promise.all(codes.map((c) => LOADERS[c]()));
+  return Object.fromEntries(codes.map((c, i) => [c, mods[i].default]));
 }
 
 export const t = translator(TABLE);
