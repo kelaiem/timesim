@@ -10910,3 +10910,211 @@ Also verified: boot silent (`bootWarns: []`), `explain-i18n --check` 530/530
 in both locales with 0 markup/code/number drift, `explain-quotes` PASS, and
 the governor corner shot in both tiers — the blades read as pallets rather
 than splinters, and the line tier draws the arbor's two rims.
+
+## §112 — TODO 45 finding one: the escapement gets drop — a flat-faced recoil anchor, every number a solve
+
+§111 ended with a diagnosis it deliberately did not act on: the governor's
+0.245 u interference could not be cut away because it WAS the design —
+§104 generated each pallet face as the engaged tip's entire trajectory
+("contact is closed at every instant"), which forces the pallet half a
+tooth pitch into a wheel whose teeth are one pitch apart. The cure named
+there is the real escapement's shape: **drop** — contact closed during
+impulse, OPEN while the wheel free-runs to the other pallet. This entry
+is that re-derivation. The `penetration` waiver §111 filed is retired;
+the row reads OK.
+
+### Phase 1 — three designs refuted by measurement before one was built
+
+A standalone model (validated by reproducing §111's 0.245 figure against
+the shipped constants) ran the candidate families:
+
+1. **Conjugate faces, shortened, with a dwell** — keep §104's generated
+   face but only a fraction of it, parking the anchor between impulses.
+   Refuted: the parked anchor's own WORKING face is swept by the passing
+   teeth, 0.05–0.22 u deep across the entire (φ, span, drop-fraction)
+   envelope. A trajectory-shaped face is exactly the shape that cannot
+   be parked near the wheel.
+2. **The ψ 8–14°, dir = −1 family** — the first optimizer "winners", with
+   drops of 30–43%. Refuted the moment the contact was made honestly
+   unilateral: their drive phase requires the face to PULL the tooth
+   (contact-normal force with the wrong sign). A press check at the
+   contact point — steel can only push — killed every one.
+3. **Landing corners at multiples of pitch/2** — the natural first grid.
+   Refuted by phase: 2ε ≡ 0 (mod pitch) parks the two pallets exactly
+   ANTI-phase, the second pallet never receives a tooth, and the wheel
+   free-runs forever. No cycle exists at any ψ.
+
+What survives is the closure form, and it is forced rather than chosen:
+mirror symmetry plus steady alternation require pallet A to land at pose
++h and release at −h with B mirrored, so the swing is **φ = 2h**, each
+half cycle is drive + drop = half a pitch, and the landing corners obey
+the half-integer rule **2ε ≡ pitch/2 (mod pitch)** — §104's crossing rule,
+re-derived for landings from closure alone. ε = pitch/4 is the smallest
+azimuth satisfying it.
+
+### The design point — four numbers, zero of them authored
+
+| quantity | value | derivation |
+|---|---|---|
+| anchor distance `ALARM_GOV_ANCHOR_D` | 7.051 | = `SAW_R + HUB_R + CLEAR_MARGIN`, the §111 bearing stack's room floor. Measured, the cycle interference is monotone WORSE with distance — the floor is also the optimum. |
+| landing `ALARM_GOV_LAND_EPS` | pitch/4 | the half-integer landing rule, smallest solution |
+| face length `ALARM_GOV_FACE_LEN` | `STOCK_MIN_U` (0.317 u = 0.12 mm) | the §50 wheel floor itself. A rotated rectangle's AABB never reads below its smaller side, so every paddle dimension clears the census floor BY CONSTRUCTION — the inverse of §111's edgewise trap. |
+| face incline `ALARM_GOV_FACE_PSI` | ≈ 11.6°, **solved at boot** | bisected until the poising ring's I_a-solved section lands a centi-mm inside the TOP of its 0.2–0.8 mm stock window. Shallower ψ → smaller swing → more inertia → thicker ring, so the ring ceiling binds ψ from below; the interference grows with ψ and wants it small — the optimum is the ceiling itself. |
+
+Downstream of those four, everything is an output of the boot-time
+closure solve (`_govClosure`): march the glued contact from the landing
+corner with a unilateral press check every step (steel pushes, never
+pulls — the check that killed family 2), bisect h until release lands
+exactly on −h. Solved: **φ = 0.0806 rad = 4.62°**, drive **42.2%** /
+drop **7.8%** of the pitch, residual at float noise, asserted at boot.
+§104 authored φ = 0.30 from an alarm-clock spec note; that note described
+the conjugate design, whose face had to track a tip for half a period —
+a flat-face runaway solves 3.7× smaller and the poising ring absorbs the
+difference.
+
+### The tick law gains its lever ratio
+
+§104's inertia solve `I_a = t²·Γ/(2φ)` implicitly applied the wheel's
+torque to the anchor unreferred — a ρ = 1 lumping that was harmless while
+the face WAS the trajectory. With a short flat face the contact's lever
+ratio is real: **ρ = driveArc/φ = 0.822** (`ALARM_GOV_RHO`), and the law
+becomes `I_a = (gap/(2·TPS))²·Γ(design)·ρ/(2φ)`. Because gap ∝
+√(2φ·I_a/(Γ·ρ)) keeps its 1/√M shape and the solve re-pins it at the
+designed 0.42 s, the CADENCE is invariant under the whole re-derivation —
+an acceptance criterion checked below, not a hope. What moves is the
+part: I_a 9.07e-11 → **2.78e-10 kg·m²** (×3.06), the ring's section
+0.455 → **0.790 mm**, still inside — by construction at the top of — its
+drawn-brass window. The equalisation record now publishes `rho`,
+`driveArcRad` and `dropArcRad`, its law string names ρ, and the gate's
+own reconstruction multiplies by `c.rho` with NO `?? 1` default: a
+record without ρ IS the regression that line exists to catch.
+
+### What the instruments say
+
+- **`penetration`, the headline**: `Alarm governor ⇄ Alarm governor
+  anchor` reads **OK, worst 0.032 against the inherited 0.1 — the §111
+  waiver is retired**, on the same coprime 449 samples.
+- **The boot cycle sweep**: `ALARM_GOV_ENGAGE_DEBT` tightened **0.25 →
+  0.033** (measured 0.0314 at the solved point over 240 phases,
+  grid-stable against 960; §111's tighten-never-widen instruction,
+  honoured 7.6×). The 0.033 is not zero and the comment says why: the
+  passing teeth run 0.031 from the parked paddles at the cycle's closest
+  approach — the price of a face long enough for §50 and a swing small
+  enough to poise.
+- **`equalisation`**: endpoints re-MEASURED by stepping the shipped tick
+  law — 0.375/0.478 s, unchanged from §104's record, which is the
+  referred-torque claim landing. The ring at 0.790 mm sits a designed
+  centi-mm under its ceiling, so anything that raises I_a (lower η,
+  softer spring) pushes it out of stock and the gate fires — an
+  early-warning, not fragility.
+- **`stockFloor`**: clean with no new waivers — and the arm's row is why
+  the arm is shaped the way it is (below).
+
+### Two census traps, one walked into, one dodged by construction
+
+The §50 census CLASSIFIES before it measures, and both of this landing's
+shapes met its classifier:
+
+- **A swinging radial bar is a revolve to the census**, and a revolve's
+  thinness is its radial WALL — which for a bar is its LENGTH. The first
+  arm (anchor hub to paddle, 0.223 u of bar) measured 0.0846 mm "wall"
+  and failed the floor its every true section clears. The fix is honest
+  rather than clever: root the arm at the ARBOR radius so the bar runs
+  0.46 u like a spoke, and the number the census reads is a number that
+  is true of the metal.
+- **The paddles cannot be under-read the same way**: a flat quad's AABB
+  minimum is at worst its smaller side, and both sides are at the floor
+  exactly. §111's blades needed a boot assert against the cut polygon
+  because the census could not see their edgewise section; §112's
+  paddles made the census's own reading sufficient — the better fix
+  where the shape allows it.
+
+One more trap for the file: `ALARM_GOV_ENGAGE_DEBT` was first declared
+beside the sweep that consumes it, 300 lines below the build asserts that
+ALSO consume it — a TDZ crash at module evaluation, §111's `ringGeo`
+lesson wearing a new name. Constants consumed by asserts live in the
+design block, above every consumer.
+
+### The battery caught the arm, and the fix is a shank
+
+The first full acceptance run failed one gate, and the failure is worth
+its own record because the landing's own boot asserts had PASSED it.
+`expectedContacts` (TODO 6) measured `alarmGovSaw ⇄ alarmGovAnchorArm`
+at **0.011** against the pair's 0.15 floor, at strike phase 0.2661. The
+first cut of the arm aimed at the pallet strip's mid-point — a point
+0.16 behind a face whose corner rides the tip circle, which put the
+bar's wheel-side end corner all but ON the passing teeth. The build
+assert didn't object because it held the arm to the 0.033
+working-contact grade, on the reasoning that the bar's far end "sits at
+the pallet, whose face half is legitimately inside the band" — exactly
+the blanket excuse TODO 6 exists to refuse: **the pallet is the pair's
+declared contact mesh; the arm is not, and a non-contact mesh owes
+`CLEAR_MARGIN` everywhere.**
+
+The fix is the bench's, not a tolerance's: the pallet strip is cut one
+arm-lap DEEPER than its working section (`ALARM_GOV_PALLET_BACK =
+STOCK_MIN_U + ALARM_GOV_ARM_LAP`) — a SHANK, the way a real pallet's
+stone is carried by a setting the arm grips — and the arm's far corners
+are now the strip's back corners pulled one lap into that shank. Both
+joint corners sit a full lap inside the pallet's cut (shared metal by
+construction, the §107 tripwire still asserts it) and the whole bar
+stays ~0.24 clear of the tip circle over the swing. The build assert
+flipped with it: the arm is held to `CLEAR_MARGIN` at boot, so the gate
+never has to find this again.
+
+### The battery, and what the report diff says
+
+Both runs local (4-vCPU dev container, `--shards 2`), the baseline from a
+pristine copy of `main` at `04eb435`:
+
+| | gates | wall | checks |
+|---|---|---|---|
+| base (`main` 04eb435) | 20/20 | 1847.9 s | 2962.3 s across 2 shards |
+| this branch | 20/20 | 1650.0 s | 2817.2 s across 2 shards |
+
+(The first acceptance run went 19/20 — the arm catch above — and its
+report is what pointed at the fix; the numbers below are the re-run on
+the shank geometry.) Diffed by ROW NAME, the two `--report` payloads
+differ in exactly five checks, plus the fingerprint:
+
+- **`penetration`** — the headline. The governor row goes
+  `WAIVED, worstDepth 0.286` → **`OK, worstDepth 0.032`** against the
+  same inherited 0.1, and the waiver text citing TODO 45 is GONE from
+  the report. All fourteen other rows byte-identical.
+- **`expectedContacts`** — the governor pair's floors row moves
+  `0.4269 → 0.1502` against the 0.15 floor, and the nearest non-contact
+  mesh changes from the arm to the HUB — which is the design reading
+  itself back: `ALARM_GOV_ANCHOR_D = SAW_R + HUB_R + CLEAR_MARGIN`, so
+  the hub stands exactly one margin off the tip circle BY CONSTRUCTION,
+  and the row now measures that constraint (0.0002 of polygonization
+  headroom on top; the boot room assert pins the identity).
+- **`equalisation`** — the law string gains `·ALARM_GOV_RHO`, `I_kgm2`
+  goes 9.073e-11 → 2.776e-10 (×3.06), the ring's solved section
+  0.455 → 0.790 mm, and the summary line follows. The cadence figures —
+  design 0.42 s held, measured endpoints 0.37536/0.478 — are
+  **byte-identical**, which is the referred-torque claim landing as
+  measurement.
+- **`restoring`** — the anchor's two-way row changes only its `why`
+  prose: the §112 text names the dwell through each drop arc.
+- **`inspection`** — the governor pair's EXPECTED row updates its pose
+  detail; the class and the verdict do not move.
+- **fingerprint** `1639816688 → 1692592172` — geometry moved, so it
+  must. (The shank fix alone did NOT move it — the fingerprint samples
+  unit matrices, not mesh vertices, and the shank is a vertex-only
+  change. The §112 landing moved it through the anchor's new station.)
+
+Nine checks are byte-identical: `support`, `graph`, `alarmHandoffs`,
+`stockFloor`, `intraUnit`, `assembly`, `oscillator`, `clearances`,
+`sweptOverlap`. **`stockFloor` identical is §111's lesson repeating on
+purpose**: the pallets got 31% deeper and the census read the same
+numbers, because its minimum lives on an axis the change didn't touch.
+The section that matters is asserted at boot against the cut polygon —
+and for the paddles it is the AABB's own smaller side by construction.
+
+`penetration`'s measured cost went 44.5 s → 21.3 s (§112's stubby
+pallets halve the row's mesh work); the cost column follows, 45 → 21.
+
+Also verified: boot silent, both tiers shot at the governor corner — the
+realistic tier shows short flat paddles clear of the tooth band, the line
+tier draws the same quads — and the pages checkers green after the
+explainer rewrite (`explain-i18n --check`, `explain-quotes`).
