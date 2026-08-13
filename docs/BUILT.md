@@ -11472,3 +11472,64 @@ written against "§107 sited it ABOVE that plate, on studs planted in the plate
 top" and "the governor sits above that plate" — both true before §112 and
 false since, and both now corrected, because a cock over the governor is
 argued from where the governor is.
+
+### The battery, and the three things that moved
+
+**20/20 gates pass**, boot silent, run locally against `origin/main` and this
+tree in turn on an idle machine so the cost timings mean something:
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 537 rows, 0 degenerate, 0 unwaived
+intraUnit 264 movers over 55 poses, 0 unwaived · assembly 0 undeclared unwaived splits
+expectedContacts 13 pairs, 0 unwaived, 0 unmatched selectors
+oscillator 2.5 Hz on a 0.0244 mm ribbon · equalisation TODO 32 held, ring 0.790 mm in stock
+restoring 20 reversing units, 0 unwaived, control PASS
+inspection 0 FORBIDDEN over 53 units and 74 contacting pairs · clearances 0 violations over 30 budgets
+sweptOverlap 0 CONFIRMED over 67943 pairs (tight 4, refuted 20)
+spec boots 26/26 build, identity control silent
+```
+
+Every gate's summary line is byte-identical to base except the fingerprint.
+`--report` diffed check by check: **twelve of fourteen payloads are
+byte-identical** — `alarmHandoffs`, `assembly`, `clearances`, `equalisation`,
+`expectedContacts`, `graph`, `inspection`, `intraUnit`, `oscillator`,
+`penetration`, `restoring`, `stockFloor`. Three things moved, and all three
+are the plate's new geometry showing up where it should:
+
+1. **fingerprint `3519083211 → 761710512`.** Not the window — a window is
+   strictly interior and the plate's AABB is set by its rim, so §62's
+   postscript reasoning holds and the plate's own box does not shift. It is
+   the PILLAR. `seatClearance` re-optimises against a new opening it must keep
+   a land from, and the 45° seat travels 2° round its own radius; `pillars` is
+   a labelled unit, so its box moves and the hash with it. Measured
+   separately, the footprint fix alone leaves all four seats exactly where
+   they were — the corrected ring disc changes no seat because the scan's
+   optimum was already outside it.
+2. **`support`, two gaps of 67, both against this plate, both far inside
+   `SUPPORT_TOL` 0.5.** The row order moves with them because the check sorts
+   by gap; no row is added, removed, or newly failing.
+   - `Center wheel → Three-quarter plate` **0 → 0.048**, and the new number is
+     the better one. The nearest mesh pair changed: base measured the wheel's
+     body against the plate body and read 0 (contact, which for a bearing is
+     what it is), head measures the upper-pivot staff against its bearing
+     collar — and 0.048 is `PIVOT_BORE_CLEAR` (0.05) less the collar's
+     tessellation chord. The row now reports the running fit the bore is
+     actually cut to.
+   - `Alarm link → Three-quarter plate` **0.147 → 0.139**, same mesh pair
+     (`alarmLinkRod` ⇄ `threeQuarterPlate`) at both ends.
+3. **`sweptOverlap`, one number in one `tight` row**: `refinedMinGap`
+   0.1472 → 0.139 — the same alarm-link pair as above, reported twice by two
+   instruments. Counts do not move (0 CONFIRMED, tight 4, refuted 20), and
+   `tight` rows are reports.
+
+The common cause of 2 and 3 is worth stating because it will happen to the
+next window too: **cutting a hole in a `THREE.Shape` re-triangulates the whole
+face, not just the hole.** The plate goes from 50,170 to 58,978 triangles and
+126,900 to 149,144 vertices, so any measurement whose answer lands on a face
+triangle can move by a triangle's worth anywhere on the plate — including
+across the movement from the window. Neither number crosses anything.
+
+Cost: `sweptOverlap` 1877 → 1913 s (+1.9%, the larger plate mesh) and the rest
+inside run-to-run noise; total check time 4888 → 4823 s. The shard partition
+is unchanged in shape and the cost column is left alone.
