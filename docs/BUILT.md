@@ -11653,6 +11653,24 @@ gate's convention: only what a translation makes worse is interesting.
 | `.hud-ro-label` | widest 49.5 (German) against a 150 px box; all six on one line, so the "a locale that does not fit gets two lines" allowance is still unspent. |
 | §53's 240 px column | no content wider than its box, in any locale. French — the German-shaped risk — took it without a layout change. |
 
+**No geometry moved, and that is measured.** Virgin boots of `origin/main`
+(781838c) and this branch fingerprint identically —
+`{"hash":3519083211,"poseCount":11,"units":52}` — which is §73's own form of
+evidence for a translation landing, and the whole battery reads **20/20**.
+
+Getting that number honestly cost an hour and is worth recording, because the
+failure mode impersonates the exact thing this evidence exists to rule out. An
+earlier run reported `fingerprint deterministic across virgin boots` FAILED,
+hashes 3519083211 and 1166767543 — which reads precisely like geometry moving
+under a determinism check. It was not. `dev_server.py` keeps ONE `/__state`
+file per temp dir, and `ci-battery.mjs` serialises its virgin boots for that
+reason; this section's own new probe stood its server up on the DEFAULT temp
+dir, so running it beside a battery made two "virgin" boots share state. The
+probe now isolates `TMPDIR` as `explain-i18n.mjs` already did. **An instrument
+that can break the gate it is run beside is a defect in the instrument**, and
+the comment now carries the measurement so the next tool that stands up a
+server inherits the reason rather than the omission.
+
 Gates, at the landing: `explain-quotes` PASS (0 disagreements, primer still
 quotes 0 identifiers); `explain-i18n --check` PASS across both pages × five
 tables — 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new
