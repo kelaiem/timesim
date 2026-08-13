@@ -521,6 +521,17 @@ contact), and the standing star/wheel ⇄ tube collision above (item 21).
 Remaining scope: rows accrete like budgets — new EXPECTED pairs should
 land with a floors row; gate once item 21 clears the last red.
 
+**Second confirmed catch, 2026-08-13 (§112's band swap).** The
+`Alarm barrel ⇄ Alarm striking wheel` blanket (granted for the barrel
+wall ⇄ strike pinion mesh) hid the barrel ARBOR standing straight
+through the 64T governor wheel's web — a full column at CD 8.25 inside
+a wheel reaching 9.97, every band, every pose, found only by measuring
+the wheel's radial occupancy by hand. Fixed at the root (the governor
+mesh wears its own derived 0.22 module and the wheel underreaches the
+arbor, asserted at its build), but the pair still has NO floors row —
+the excuse that hid it is intact for whatever moves next between these
+two units.
+
 ---
 
 ## 7. The battery samples poses — it cannot bound them

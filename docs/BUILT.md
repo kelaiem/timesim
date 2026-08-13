@@ -10968,7 +10968,13 @@ the winding tier ABOVE the corridor's declared ceiling
 there, wheels overflying the band, each idler stud standing clear of
 the sweep in plan (i1's azimuth about the climb became a scored
 variable to get its stud out of the pulled rod's path) — and the
-barrel wall + body on top, 0.65 under the ceiling assert.
+barrel wall + body on top, 0.65 under the ceiling assert. The gate,
+re-read against the swapped build (its third form — bands and reaches
+now measured from the metal by mesh name, after its plan table went
+stale twice), reports rot 0 as built OPEN with 36k feasible bearing
+triples; every triple's spare caps at 0.35, which is the fixed
+wind-wheel ⇄ strike-arbor-column margin no bearing can move, so the
+solved triple (202°, 92°, 148°) stands unchanged through the swap.
 
 **The floor placement exposed a defect the battery could not see.** The
 barrel arbor is a full column standing CD_train = 8.25 from the strike
