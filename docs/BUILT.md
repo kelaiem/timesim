@@ -11641,7 +11641,7 @@ inside, and the fit gate reads 0 new overflow in every locale.
 
 ### Measured
 
-`tools/probe-113-locale-fit.mjs` is new, and exists because four fits are
+`tools/probe-116-locale-fit.mjs` is new, and exists because four fits are
 load-bearing and none of them is gated — each depends on rendered text width
 in a real browser at a real width. English is the baseline, the Explainer
 gate's convention: only what a translation makes worse is interesting.
