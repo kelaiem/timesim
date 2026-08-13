@@ -1550,22 +1550,47 @@ const alarmGovAnchorPos = {
 const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
                                         // holds inside the rim (assert at the §104 block), the cheap
                                         // direction — I = m·r², so radius bought is section saved
+// §115 — the ring's STOCK WINDOW, hoisted from the §104 governor block (the
+// closure solve there still consumes it): the footprint below bounds the
+// ring's disc with the ceiling, and a bound must be derived from the same
+// constant the solve is held to, not from a second copy of the number.
+const ALARM_GOV_RING_STOCK_MM = [0.2, 0.8]; // drawn-brass ring stock a bench would loop and poise:
+                                        // below 0.2 mm a 4 mm ring loses its roundness to handling,
+                                        // above 0.8 it is clock-plate bar, not a poising ring
 // THE FOOTPRINT the pillar solve consumes — the corner's five under-plate
-// discs, each the member's own working radius. The ring's SECTION solves
-// late (from stock), so its disc takes the stock ceiling's bound: ring
-// stock tops at 0.8 ("above that it is clock-plate bar"), so outer ≤
-// R + 0.4. The battery's sweptOverlap wrote this list: the pillar solve
-// placed full-height columns through the striking wheel's and governor's
-// discs because the alarm's metal builds after the plate is cut — a
-// declared footprint is how the low corridor solved the same ordering
-// problem (LOW_LINKAGE_OBSTACLES).
+// discs, each the member's own working radius, NAMED so a consumer selects
+// a member rather than an index (§115: the window solver reads the two
+// governor rows). The ring's SECTION solves late (from stock), so its disc
+// takes the stock ceiling's bound. The battery's sweptOverlap wrote this
+// list: the pillar solve placed full-height columns through the striking
+// wheel's and governor's discs because the alarm's metal builds after the
+// plate is cut — a declared footprint is how the low corridor solved the
+// same ordering problem (LOW_LINKAGE_OBSTACLES).
+//
+// §115 — THE RING'S BOUND WAS THE STOCK CEILING IN THE WRONG UNITS. It read
+// `R + 0.4`, from "stock tops at 0.8, so outer ≤ R + half of that" — but
+// ALARM_GOV_RING_STOCK_MM is in MILLIMETRES and this disc is in UNITS, and
+// UNIT_MM is 0.379. The ceiling is 2.111 u, so the half-section bound is
+// 1.055 and the declared disc was 5.678 against a built ring of 6.320: the
+// pillar solve was avoiding a circle 0.64 SMALLER than the metal. The
+// reasoning was always right and only its arithmetic was done in mm, which
+// is exactly why nothing downstream ever looked wrong — so the conversion
+// is written into the expression now, and the declared-vs-cut assert at the
+// governor build is what stops the next one being silent.
 const ALARM_UNDER_FOOTPRINT = [
-  { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH + 2) / 2 + ALARM_GOV_BEVEL }, // the 64T wheel's addendum + bevel, at the mesh's OWN module
-  { x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_BARREL_TIP_R },
-  { x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_RATCHET_R * 1.28 + 1.2 }, // the click: pivot registration + pawl/spring reach
-  { x: alarmGovPos.x, y: alarmGovPos.y, r: ALARM_GOV_SAW_R + ALARM_GEAR_BEVEL },
-  { x: alarmGovAnchorPos.x, y: alarmGovAnchorPos.y, r: ALARM_GOV_RING_R + 0.4 },
+  // The 64T wheel, at the mesh's OWN module — through the builder's own reach
+  // rather than a second expression for it. §115: this row said
+  // `module·(N/2+1) + bevel` = 7.308 and the cut wheel reaches 7.361, because
+  // makeGear's addendum is 0.95·module and its tooth tip is RELIEVED past the
+  // tip circle; gearOuterR is that builder's own bound, so the declaration
+  // and the metal cannot drift again (the derivation is at its definition).
+  { name: 'striking wheel', x: alarmSwPos.x, y: alarmSwPos.y, r: G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_WIND_WHEEL_T }) },
+  { name: 'barrel', x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_BARREL_TIP_R },
+  { name: 'click', x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_RATCHET_R * 1.28 + 1.2 }, // the click: pivot registration + pawl/spring reach
+  { name: 'governor saw', x: alarmGovPos.x, y: alarmGovPos.y, r: ALARM_GOV_SAW_R + ALARM_GEAR_BEVEL },
+  { name: 'governor ring', x: alarmGovAnchorPos.x, y: alarmGovAnchorPos.y, r: ALARM_GOV_RING_R + (ALARM_GOV_RING_STOCK_MM[1] / UNIT_MM) / 2 },
 ];
+const alarmUnderDisc = (name) => ALARM_UNDER_FOOTPRINT.find((o) => o.name === name);
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
 // (§112: the climb arbor's jeweled upper pivot RETIRED — with the winding
 // tier under the plate the climb tops out ~3 and never reaches this
@@ -5218,6 +5243,16 @@ const tqOpeningClearance = (x, y) => {
 // silhouette is EXACTLY a circle about its own axis, so no sampling is
 // involved and no spoke can slip between samples (TODO 7's class, answered by
 // construction rather than by a finer net).
+//
+// §115 — AND AN ACTION IS NOT ALWAYS ONE AXIS. An escapement is two members
+// turning about two centres, and the thing worth seeing is what happens
+// BETWEEN them; framing either alone frames half a mechanism. So an intent
+// may declare several discs (`discs()`) instead of one radius (`reveal()`),
+// and the window is their UNION — still exact circles, still no sample net,
+// because each member's silhouette about its own axis is still exactly a
+// circle. What the union costs is that the solve's polar centre is no longer
+// any member's axis: it is a declared point, and the property it must have
+// is written where it is asserted below.
 const TQ_WINDOW_INTENTS = [
   {
     name: 'fusee',
@@ -5269,17 +5304,108 @@ const TQ_WINDOW_INTENTS = [
       return r + CLEAR_MARGIN;
     },
   },
+  {
+    name: 'governor',
+    // §115. §112 put the alarm's power tiers under this plate, and the
+    // governor went with them — the movement's fastest-turning part, the only
+    // thing setting the strike's cadence, and since the tier-split nothing
+    // sees it from either side. This frames the ESCAPEMENT: the 40T saw wheel
+    // and the anchor carrying its poising ring, the two members whose
+    // relative motion IS the governing action. Not the 64T wheel driving it —
+    // that one pivots in this plate, so framing it would island its boss and
+    // owe three webs to show a gear mesh; and the 64T⇄pinion mesh point
+    // stands 0.88 from the saw's axis, well inside this window's own edge, so
+    // the drive INTO the governor reads at the frame anyway.
+    //
+    // Both discs come from ALARM_UNDER_FOOTPRINT, which is the point: that
+    // list is what the movement DECLARES this metal occupies, the pillar
+    // solve already avoids exactly these circles, and the governor's own
+    // meshes do not exist yet (this solver first runs five thousand lines
+    // before the alarm block). Sizing the reveal from a second description of
+    // the same parts would be two numbers to keep in step; sizing it in the
+    // RE-CUT pass instead is barred outright, because that pass may only ever
+    // shrink what the pillar seats were solved against. What keeps the
+    // declaration honest is the §115 assert at the governor build, which
+    // measures the cut metal against the disc it was promised to fit inside.
+    at: () => ({
+      // THE POLAR CENTRE, and the property it exists to have: the solve
+      // bisects a radius per bearing, which describes the union only if every
+      // ray from this point leaves it exactly once. A union of convex sets
+      // all containing the point is star-shaped about it, so the requirement
+      // is interiority to BOTH discs — asserted, not assumed, in solveTqWindows.
+      // The midpoint of ALARM_GOV_ANCHOR_D is the escapement's own centre
+      // distance halved, not a drawn point: it sits 3.526 from each axis
+      // against reveal discs of 6.216 and 6.483, so it is interior by 2.690
+      // and 2.957 — and it stays interior under any change that does not
+      // shrink a member below half the distance to its neighbour.
+      x: (alarmGovPos.x + alarmGovAnchorPos.x) / 2,
+      y: (alarmGovPos.y + alarmGovAnchorPos.y) / 2,
+    }),
+    discs: () => [alarmUnderDisc('governor saw'), alarmUnderDisc('governor ring')]
+      .map((d) => ({ x: d.x, y: d.y, r: d.r + CLEAR_MARGIN })),   // one margin of visual reveal, as both windows above
+  },
 ];
 
 function solveTqWindows() {
   const polys = [], report = [];
   for (const intent of TQ_WINDOW_INTENTS) {
     const c = intent.at();
-    const wanted = intent.reveal();
-    // The boss this window islands, if any: an upper pivot standing at the
-    // window's own axis. Its plate has to be kept, so the window is an
-    // ANNULUS about it and the webs below re-attach it.
-    const boss = tqPivots.find((p) => Math.hypot(p.x - c.x, p.y - c.y) < wanted);
+    // The framed circles. A coaxial intent declares one radius about its own
+    // axis; a multi-axis one declares the discs and the window is their union.
+    const discs = intent.discs
+      ? intent.discs()
+      : [{ x: c.x, y: c.y, r: intent.reveal() }];
+    // THE POLAR SOLVE ASSUMES EVERY RAY FROM c LEAVES THE UNION ONCE, which
+    // holds exactly when c is interior to every disc (a union of convex sets
+    // sharing a point is star-shaped about it). For a coaxial intent that is
+    // free — c IS the axis. For a declared centre it is a real condition, and
+    // a member that shrinks or a station that moves could quietly break it:
+    // the solve would then bisect across a gap and report an outline that
+    // never existed. So it is a gate, not a comment.
+    for (const d of discs) {
+      const inset = d.r - Math.hypot(d.x - c.x, d.y - c.y);
+      if (inset <= CLEAR_MARGIN)
+        console.warn(`§115 window '${intent.name}': its polar centre stands ${inset.toFixed(3)} inside a framed disc `
+          + `(r ${d.r.toFixed(3)} at ${d.x.toFixed(2)}, ${d.y.toFixed(2)}) — need more than ${CLEAR_MARGIN}, or the union `
+          + 'stops being star-shaped about it and the per-bearing bisection does not describe it');
+    }
+    // The reveal along one bearing: the ray's exit from the union, which is
+    // the farthest of the per-disc exits. Concentric discs return their own
+    // radius by name rather than through the quadratic, so a coaxial intent's
+    // table is bit-identical to what it solved before the union existed.
+    const wantedAt = (a) => {
+      const cs = Math.cos(a), sn = Math.sin(a);
+      let r = 0;
+      for (const d of discs) {
+        const px = d.x - c.x, py = d.y - c.y;
+        if (px === 0 && py === 0) { r = Math.max(r, d.r); continue; }
+        const t = px * cs + py * sn;
+        const h2 = d.r * d.r - (px * px + py * py) + t * t;
+        if (h2 <= 0) continue;                 // this ray misses this disc entirely
+        r = Math.max(r, t + Math.sqrt(h2));
+      }
+      return r;
+    };
+    // The union's greatest reach, for the quantities that are scalar because
+    // they only exist on a bossed window: the web span, and the radius a run's
+    // arc is measured at.
+    const wanted = discs.reduce((m, d) => Math.max(m, Math.hypot(d.x - c.x, d.y - c.y) + d.r), 0);
+    // The boss this window islands, if any: an upper pivot the window's own
+    // axis stands IN. Its plate has to be kept, so the window is an ANNULUS
+    // about it and the webs below re-attach it.
+    //
+    // §115 — THE TEST NOW SAYS WHAT THE SENTENCE ABOVE ALWAYS CLAIMED. It
+    // used to be "any pivot inside the reveal", which was the same thing only
+    // because every reveal was one circle about its own axis and the only
+    // pivot inside was that axis's own. It stops being the same thing the
+    // moment a window frames a GROUP of axes: this reveal reaches 10.0 about
+    // its centre, and the strike arbor's bore stands 10.3 away — the old test
+    // was 0.3 from islanding a boss the window is not at, drawing three webs
+    // about the wrong centre and emitting a polygon that means nothing. A
+    // pivot merely inside the reveal is a KEEP, and tqKeepClearance already
+    // subtracts its pivotBossR at every bearing, so the window shrinks
+    // correctly around it without pretending to hang off it.
+    const boss = tqPivots.find((p) => Math.hypot(p.x - c.x, p.y - c.y) < pivotBossR(p));
     // The window stands one LAND outside the boss, not one clearance. The
     // boss is the annulus of plate the staff actually runs in — a member,
     // carrying the whole bearing reaction into the webs — and a clearance is
@@ -5296,11 +5422,12 @@ function solveTqWindows() {
     // there for why the outline may not simply interpolate this table.
     const solveR = (a) => {
       const cs = Math.cos(a), sn = Math.sin(a);
+      const want = wantedAt(a);                // per bearing now — the union's own edge
       const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN
         && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN;
-      if (ok(wanted)) return wanted;
+      if (ok(want)) return want;
       if (!ok(r0)) return 0;                   // pinched shut at this bearing
-      let lo = r0, hi = wanted;
+      let lo = r0, hi = want;
       for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
       return lo;
     };
@@ -5325,6 +5452,36 @@ function solveTqWindows() {
         else runs.push({ a: i, b: 1 });
       }
       for (const r of runs) r.b = r.a + r.b;   // → [a, b) in absolute degrees
+    }
+    // §115 — A BOSSLESS WINDOW IS ALL OR NOTHING, and until this section every
+    // window islanded a pivot so nothing exercised the other case. With no
+    // boss r0 is 0 and step 4 pushes no inner return, so a sector's apex IS
+    // the polar centre. One full run is fine — its outer sweep closes into a
+    // simple polygon on its own, which is the whole outline. Two runs are
+    // not: each is a pie slice pointing at the same centre, so what stands
+    // between them is a knife-edged spur of plate tapering to zero width at
+    // the apex — under TQ_LAND_MIN along its length and under STOCK_MIN_U at
+    // its tip. §50 and §54 both refuse that, no cutter leaves it, and there
+    // is no boss here for it to be an ARM of. So the window is not cut, and
+    // this entry's own priority is what settles it: the plate is a bearing
+    // first and the WINDOW is what gives (§62 measured the centre and third
+    // wheels and declined to cut them for the same reason).
+    //
+    // The row is still REPORTED, with its rOut, so the numbers survive for
+    // the record and the re-cut's shrink-only comparison still has both
+    // sides to compare.
+    if (!boss && !(runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)) {
+      const shut = [];
+      for (let i = 0; i < 360; i++) if (!open[i]) shut.push(i);
+      const i0 = shut.length ? shut[0] : 0;
+      const px = c.x + Math.cos(i0 * DEG2RAD) * TQ_LAND_MIN, py = c.y + Math.sin(i0 * DEG2RAD) * TQ_LAND_MIN;
+      const byKeep = tqKeepClearance(px, py) < CLEAR_MARGIN;
+      console.warn(`§115 window '${intent.name}': NOT CUT — it carries no boss, so it must solve open all the way `
+        + `round, and it pinches at ${shut.length} of 360 bearings (first ${i0}°, closed by `
+        + `${byKeep ? 'material the plate must carry' : 'another opening'}) — a bossless window has no webs, `
+        + 'so the plate between two of its runs would be a knife-edged spur, not an arm');
+      report.push({ name: intent.name, c, discs, wanted, r0, boss: false, cut: false, webW: 0, webSpan: 0, sectors: [], rOut });
+      continue;
     }
     // Step 3 — the webs. Every gap the shrink left between runs is ALREADY a
     // web of solid plate; a boss needs TQ_WEBS_MIN of them, so runs are split
@@ -5455,7 +5612,7 @@ function solveTqWindows() {
       kept.push({ pts: [...outer, ...inner.reverse()], a: aRaw, b: bRaw });
     }
     polys.push(...kept.map((s) => ({ pts: s.pts, name: intent.name })));
-    report.push({ name: intent.name, c, wanted, r0, boss: !!boss, webW, webSpan, sectors: kept, rOut });
+    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, cut: true, webW, webSpan, sectors: kept, rOut });
   }
   return { polys, report };
 }
@@ -5560,10 +5717,17 @@ function checkPlateWindows(stage) {
       // in the measurement.
       if (d === Infinity) continue;
       const row = TQ_WINDOWS.report.find((r) => r.name === wins[i].name);
-      const req = row?.webW ?? TQ_LAND_MIN;
+      // §115 — a BOSSLESS window has no webs, so webW is 0 and there is no
+      // arm width to hold two of its sectors to. Two sectors of one such
+      // window are two openings in the same plate and owe each other a LAND
+      // like any other pair; without this they would be measured against zero
+      // and pass at any width, including the apex case that is exactly zero.
+      const req = (row && row.boss) ? row.webW : TQ_LAND_MIN;
       if (wins[i].name === wins[j].name && d < req - 1e-6)
         console.warn(`§62 web (${stage}): '${wins[i].name}' sectors ${i}/${j} leave ${d.toFixed(3)} of plate — `
-          + `need ${req.toFixed(3)} (§50 floor / §54 ceiling over a ${row?.webSpan.toFixed(2)} span)`);
+          + `need ${req.toFixed(3)} `
+          + (row && row.boss ? `(§50 floor / §54 ceiling over a ${row.webSpan.toFixed(2)} span)`
+            : '(the land between two openings — this window carries no boss, so it has no webs)'));
       // The width above is the web's BODY, at the plate's mid-thickness. Its
       // top and bottom edges are chamfered by the plate's anglage, so the face
       // width is 2·PLATE_BEVEL less — and THAT is the number §50's floor is
@@ -5583,7 +5747,16 @@ function checkPlateWindows(stage) {
   //    side in bending, which is the failure TQ_WEBS_MIN exists to prevent and
   //    which a count alone cannot see.
   for (const r of TQ_WINDOWS.report) {
-    if (!r.boss) continue;
+    if (!r.cut) continue;                  // §115: measured and recorded, not cut
+    // §115 — the all-round rule, re-asserted against the sectors that were
+    // BUILT and at every stage, because the re-solve sees keeps the first
+    // solve could not and may pinch a window that was open when it was cut.
+    if (!r.boss) {
+      if (r.sectors.length !== 1)
+        console.warn(`§62 window '${r.name}' (${stage}): cut as ${r.sectors.length} sectors with no boss to carry `
+          + '— a bossless window is one opening or none');
+      continue;
+    }
     if (r.sectors.length < TQ_WEBS_MIN) {
       console.warn(`§62 window '${r.name}' (${stage}): ${r.sectors.length} webs carry its pivot boss — need ${TQ_WEBS_MIN}`);
       continue;
@@ -10357,10 +10530,8 @@ const ALARM_GOV_PALLET_BACK = STOCK_MIN_U + ALARM_GOV_ARM_LAP;
 // The ring's plan and stock window, hoisted above the closure solve because
 // ψ's own solve below consumes them; the final ring-section solve further
 // down uses the SAME formula (one copy, _govRingIOf).
-// (ALARM_GOV_RING_R — in the alarm-plan block: the footprint consumes it.)
-const ALARM_GOV_RING_STOCK_MM = [0.2, 0.8]; // drawn-brass ring stock a bench would loop and poise:
-                                        // below 0.2 mm a 4 mm ring loses its roundness to handling,
-                                        // above 0.8 it is clock-plate bar, not a poising ring
+// (ALARM_GOV_RING_R, ALARM_GOV_RING_STOCK_MM — in the alarm-plan block: the
+// footprint consumes both, and §115 bounds the ring's disc with the ceiling.)
 function _armJ(r0, r1, w) { return w * (r1 ** 3 - r0 ** 3) / 3; } // radial bar: ∫r²dA = w·(r1³−r0³)/3
 const _govRingIOf = (su) => OSC_BRASS_RHO * (OSC_U ** 5) * (
   (Math.PI / 2) * ((ALARM_GOV_RING_R + su / 2) ** 4 - (ALARM_GOV_RING_R - su / 2) ** 4) * su
@@ -10967,7 +11138,13 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // arbor (the plan block's module derivation) — assert the metal, not the
   // intention. tip+bevel vs the arbor's near edge, one margin between.
   {
-    const tip = ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH / 2 + 1) + ALARM_GOV_BEVEL;
+    // §115 — through the builder's own reach. This read
+    // `module·(N/2+1) + bevel`, which is 0.053 short of the metal makeGear
+    // actually cuts (its addendum is 0.95·module and its tip is relieved
+    // past the tip circle) — so the assert guarding this wheel against the
+    // barrel arbor was measuring a wheel slightly smaller than the one that
+    // ships. Same expression as the footprint row above, one source.
+    const tip = G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_GOV_WHEEL_T });
     const nearEdge = ALARM_TRAIN_CD - ALARM_BARREL_ARBOR_R;
     if (tip > nearEdge - CLEAR_MARGIN)
       console.warn(`§112: the 64T wheel reaches ${tip.toFixed(2)} — the barrel arbor's near edge ${nearEdge.toFixed(2)} leaves less than the margin`);
@@ -10982,6 +11159,57 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // (§112: the stud's second length — alarmGovStudUpper — retired. The base
   // stud runs the whole column now, floor boss to cam top, so there is no
   // gap for a second piece to bridge.)
+}
+// §115 — DECLARED VERSUS CUT. ALARM_UNDER_FOOTPRINT is a promise made at the
+// plan hoist about metal that does not exist for another nine thousand
+// lines, and two consumers now believe it: the pillar solve seats columns
+// outside these discs, and the §62 window solver sizes the governor's reveal
+// from them. Nothing measured whether the promise was KEPT — which is how
+// the ring's disc carried the stock ceiling converted in the wrong units for
+// three sections, understating the built ring by 0.64 with every gate green
+// (the pillars happened to seat elsewhere, so no sweep ever argued).
+//
+// So each disc is measured against the metal that ended up inside it: the
+// greatest distance from the declared axis to any vertex of the meshes that
+// stand on it, across the units the row describes. A row that is too SMALL
+// is the defect — a consumer that trusted it kept less room than the part
+// takes. A row larger than its metal is conservative and passes: these are
+// bounds, and the ring's is deliberately the stock ceiling rather than the
+// solved section, because the section solves after the pillars are seated.
+{
+  const rowMembers = {
+    'striking wheel': ['alarmGovWheel', 'alarmGovSleeve'],
+    'governor saw': ['alarmGovSaw', 'alarmGovPinion', 'alarmGovArbor', 'alarmGovStud'],
+    'governor ring': ['alarmGovRing', 'alarmGovRingArm', 'alarmGovRingCollar',
+      'alarmGovAnchor', 'alarmGovAnchorArm', 'alarmGovPallet', 'alarmGovAnchorArbor', 'alarmGovAnchorStud'],
+  };
+  const v = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  for (const row of ALARM_UNDER_FOOTPRINT) {
+    const names = rowMembers[row.name];
+    if (!names) continue;          // the barrel and click rows are the barrel block's to own
+    let reach = 0, at = null;
+    movement.traverse((o) => {
+      if (!o.isMesh || !names.includes(o.name) || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        const d = Math.hypot(v.x - row.x, v.y - row.y);
+        if (d > reach) { reach = d; at = o.name; }
+      }
+    });
+    // A row whose members all vanished measures NOTHING and would report
+    // clean forever — the failure mode this file keeps cataloguing. The mesh
+    // names above are strings, so a rename is exactly how it would happen.
+    if (!at) {
+      console.warn(`§115: the '${row.name}' under-plate disc matched none of its declared meshes `
+        + `(${names.join(', ')}) — the check is measuring nothing, so a rename has broken it`);
+      continue;
+    }
+    if (reach > row.r + 1e-6)
+      console.warn(`§115: the '${row.name}' under-plate disc is declared ${row.r.toFixed(3)} but its metal `
+        + `reaches ${reach.toFixed(3)} (${at}) — the pillar solve and the §62 window reveal both believe this number`);
+  }
 }
 // P2, sampled — the group agrees with itself. The pair sweep cannot see
 // mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
