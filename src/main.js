@@ -14187,10 +14187,10 @@ style.textContent = `
    costs anything: a hidden overflow is a label that silently stops saying
    what it says, and the box already grows to fit its contents. All SIX
    locales measure inside 150 px on one line today — German's "Klingelt um"
-   is still the long one at 49.5 px (§113 measured the other five against
+   is still the long one at 49.5 px (§116 measured the other five against
    it: en 36.7, fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0) — so the allowance
    that a locale which does not fit simply gets two lines is still unspent.
-   tools/probe-113-locale-fit.mjs is where those numbers come from. */
+   tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
   color: #8b95a1; font: 10px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   overflow-wrap: anywhere;
@@ -14525,7 +14525,7 @@ viewHud.innerHTML = `
        precedent) — the panel is built from UI_LANG, and a second live
        re-render path would be a copy to rot. Option faces are written in
        their OWN language: a viewer looking for their language should not
-       have to read the current one to find it. §113 moved the options out
+       have to read the current one to find it. §116 moved the options out
        of this markup — they are built from i18n.js's LOCALES below, so the
        roster is declared once instead of copied into every picker. -->
   <div class="row">
@@ -14759,7 +14759,7 @@ function setBarState(id, on) {
 // THE BAR'S WIDTH IS A LOCALE FACT, SO IT IS MEASURED, NOT ASSUMED. German's
 // "Steuerung / Ansicht / Zifferblatt" is 211 px against English's 161, and a
 // typed breakpoint would be right in one language and wrong in another —
-// exactly the failure §73 says the German column exists to catch. §113 added
+// exactly the failure §73 says the German column exists to catch. §116 added
 // three more locales and German is STILL the widest (measured together on one
 // machine: en 170.2, de 192.4, fr 189.9, ja 166.0, zh 144.0, zh-Hant 144.0 —
 // absolute numbers move with the font stack, the ordering is the point), so
@@ -17604,7 +17604,7 @@ document.getElementById('btn-sound').addEventListener('click', () => setSound(!s
 // §73 — the Language row. UI_LANG is resolved at import; this only records the
 // CHOICE and reloads, so there is exactly one path that builds a localized
 // panel (boot) rather than two.
-// §113 — the options come from LOCALES, not from the panel's markup. Safe to
+// §116 — the options come from LOCALES, not from the panel's markup. Safe to
 // build them here: localizeTree ran once at panel build, long before this, so
 // the faces are never walked and a face that happens to collide with a table
 // key cannot be translated out of its own language.

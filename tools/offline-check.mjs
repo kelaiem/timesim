@@ -14,10 +14,12 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (22): worker controls on first load · one cache, named for
+// What it asserts (27): worker controls on first load · one cache, named for
 // the scope AND the version · version.json and /__state NOT cached · precache
 // complete · OFFLINE: index boots, deep link boots, explain.html renders,
-// primer.html renders (§95 — this boot is also the assert that catches a
+// primer.html renders · the localized primer boots from cache in EACH of the
+// five non-English locales and the ?lang=zh-Hant deep link stays Traditional
+// (§116) · primer.html renders (§95 — this boot is also the assert that catches a
 // mis-listed primer seed: the stamper tolerates an absent primer because
 // archived pre-§95 trees legitimately lack one, so only HERE, where the tree
 // is built from the source checkout, can absence-by-typo be told apart) ·
@@ -121,7 +123,7 @@ const childPids = () => {
       .filter(Boolean).map(Number);
   } catch { return []; }
 };
-const TOTAL_ROWS = 22;   // the header's list; a short run must say so rather than report a tidy N/N
+const TOTAL_ROWS = 27;   // the header's list; a short run must say so rather than report a tidy N/N
 const summarize = (code) => {
   const failed = results.filter((r) => !r.ok), skipped = results.filter((r) => r.skipped);
   if (code === 2) console.log(`INCOMPLETE: ${results.length} of ${TOTAL_ROWS} rows were measured before the run was ended`);
@@ -269,12 +271,12 @@ try {
   // this manifest through the stamper's module walk, not through the
   // document's).
   //
-  // 33 since §113: six more locale tables, three locales across two pages,
+  // 33 since §116: six more locale tables, three locales across two pages,
   // arriving by that same walk. The count is worth asserting exactly because
   // it is the cheap half of the guarantee — a table MISSING from the manifest
   // shows up here, while a table listed but absent from the tree does not
   // (addAll is all-or-nothing, so the worker simply never activates and this
-  // line is never reached). §113 hit that second failure and it presents as a
+  // line is never reached). §116 hit that second failure and it presents as a
   // hang, not a number: the per-locale offline boots below are what actually
   // prove each table arrived.
   check('release: precache complete', counts === 33, `${counts}/33`);
@@ -290,7 +292,7 @@ try {
   await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=de`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   check('OFFLINE: deep link (?lang=de) boots', true);
-  // §113 — zh-Hant is the one code carrying a SCRIPT subtag, so it is the one
+  // §116 — zh-Hant is the one code carrying a SCRIPT subtag, so it is the one
   // that travels through the URL, the resolution ladder and documentElement.lang
   // as something other than a two-letter word. Asserting the resolved lang and
   // not merely that the page booted is the point: falling back to Simplified
@@ -311,7 +313,7 @@ try {
   // German reader offline is exactly who would find that gap, and English
   // prose under a German header is what they would see instead of a failure.
   //
-  // §113 — EVERY locale, not just German. The count above cannot tell one
+  // §116 — EVERY locale, not just German. The count above cannot tell one
   // missing table from another, and a per-locale dynamic import is exactly the
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.

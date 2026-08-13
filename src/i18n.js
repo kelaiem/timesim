@@ -1,5 +1,5 @@
 // §73 — INTERNATIONALIZATION, tier one: the chrome. English, German, French,
-// Japanese, and Chinese in both scripts (§113).
+// Japanese, and Chinese in both scripts (§116).
 //
 // THE TABLE IS KEYED BY THE ENGLISH SOURCE STRING. The app keeps authoring
 // its UI in English exactly as before; t() (and localizeTree(), which walks
@@ -7,7 +7,7 @@
 // back to English VISIBLY rather than to a blank — the honest failure. The
 // German column doubles as the layout stress test (strings run ~30% longer;
 // the §53 240 px column is the constraint) and Chinese as the typography one
-// (CJK fallback in the system-ui stack, no-space breaking). §113's three add
+// (CJK fallback in the system-ui stack, no-space breaking). §116's three add
 // a third and a fourth: French is the first locale whose NUMBERS are not
 // ASCII-punctuated (fr-FR groups with U+202F), and Traditional Chinese is the
 // first code carrying a SCRIPT subtag — which is why the ladder below is
@@ -29,7 +29,7 @@
 const _param = new URLSearchParams(location.search).get('lang');
 let _stored = null;
 try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be blocked */ }
-// §113 — THE LOCALE REGISTRY. One declaration: the pickers render its faces,
+// §116 — THE LOCALE REGISTRY. One declaration: the pickers render its faces,
 // _norm resolves through its matchers, LANG_TAG reads its tag, TABLES is keyed
 // by its codes. It replaced four hand-kept copies of the list (this file, the
 // panel's markup and the two static pages) with one, on the ordinary grounds
@@ -595,7 +595,7 @@ Object.assign(ZH, {
 });
 
 // ---------------------------------------------------------------------------
-// §113 — French. Horological vocabulary is the Vallée de Joux register (ancre,
+// §116 — French. Horological vocabulary is the Vallée de Joux register (ancre,
 // balancier, spiral, barillet, fusée-chaîne) — the working French of Swiss
 // watchmaking, which is what this movement is. The second layout stress test
 // after German, and the first locale whose NUMBERS are not ASCII-punctuated:
@@ -980,7 +980,7 @@ const FR = {
 };
 
 // ---------------------------------------------------------------------------
-// §113 — Japanese. The standard 時計 trade register (脱進機, テンプ, ひげぜんまい,
+// §116 — Japanese. The standard 時計 trade register (脱進機, テンプ, ひげぜんまい,
 // 香箱), katakana where the trade uses katakana. The first locale sharing no
 // script with English at all, so it is the honest test of whether anything
 // still leaks an untranslated word into the panel. The going train is NUMBERED
@@ -1366,7 +1366,7 @@ const JA = {
 };
 
 // ---------------------------------------------------------------------------
-// §113 — Chinese (traditional). NOT a glyph conversion of ZH: Taiwan/HK usage
+// §116 — Chinese (traditional). NOT a glyph conversion of ZH: Taiwan/HK usage
 // differs in words as well as characters (錶 not 表, 模擬 not 仿真, 檢視 not
 // 视图), and a converted table would pass every gate in this repo while reading
 // wrong to the reader it exists for. Its code is the SCRIPT subtag, so zh-TW,
@@ -1751,7 +1751,7 @@ const ZH_HANT = {
 };
 
 // ---------------------------------------------------------------------------
-// §113 — keyed by LOCALES' codes. English is absent BY CONSTRUCTION: it is the
+// §116 — keyed by LOCALES' codes. English is absent BY CONSTRUCTION: it is the
 // key space, so `null` here is what makes t() return its input unchanged.
 // Exported so the tables can be diffed against each other for key parity from
 // the console (nothing in the app reads it) — with five tables the interesting

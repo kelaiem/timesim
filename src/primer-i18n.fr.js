@@ -1,4 +1,4 @@
-// §113 tier two — FRENCH. primer.html's prose, keyed by the English source;
+// §116 tier two — FRENCH. primer.html's prose, keyed by the English source;
 // see src/page-i18n.js for the mechanism and src/primer-i18n.js for this
 // page's number rule.
 //

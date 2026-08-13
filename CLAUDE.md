@@ -62,7 +62,7 @@ three-quarter plate and the dial). The base plate's fills live in
 line drawing's only partition between the dial-side works and the
 train. Both halves are boot-asserted.
 
-The chrome is LOCALIZED (§73 tier one, §113 — English, German, French,
+The chrome is LOCALIZED (§73 tier one, §116 — English, German, French,
 Japanese, and Chinese in both scripts):
 `src/i18n.js` holds one table keyed by the English source string, so the
 app keeps authoring its UI in English and `t()` / `localizeTree()`
@@ -103,8 +103,8 @@ overrunning its plate against the English baseline). **A translated header must
 not wrap**: both bars are `position: fixed` above a constant body padding, so a
 second line covers the first paragraph — every item is `nowrap` and the stamp
 is the one that yields (ellipsis, then hidden under 820 px). German found it;
-§113 re-measured all six locales × both pages × eight widths straddling that
-breakpoint and added `tools/probe-113-locale-fit.mjs`, which is also where the
+§116 re-measured all six locales × both pages × eight widths straddling that
+breakpoint and added `tools/probe-116-locale-fit.mjs`, which is also where the
 chrome-bar and 150 px HUD-label numbers now come from — none of that is gated,
 so it is measured on purpose rather than assumed.
 

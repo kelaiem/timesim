@@ -1,6 +1,6 @@
 // §95 tier two — THE PRIMER, LOCALIZED. German and Chinese prose for
 // primer.html's entries, plates and captions; French, Japanese and
-// Traditional Chinese since §113, all five at 100%.
+// Traditional Chinese since §116, all five at 100%.
 //
 // Same engine as the explainer (src/page-i18n.js holds the walk and the swap),
 // same contract as tier one: authored in English, keyed by the English source,
@@ -30,7 +30,7 @@ export { collectTranslatable, RICH_SELECTORS, LABEL_SELECTOR };
 // 'quantity' = same value after locale parsing, punctuation free to localize.
 export const NUMBERS = 'quantity';
 
-// §113 — one map per page, literal specifiers, for the reasons written out in
+// §116 — one map per page, literal specifiers, for the reasons written out in
 // src/explain-i18n.js: the stamper's module walk only sees quoted strings, and
 // a template literal would fail silently in both the stamp and the precache.
 const LOADERS = {

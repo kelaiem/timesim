@@ -1,6 +1,6 @@
 // §73 tier two — THE EXPLAINER, LOCALIZED. German and Chinese prose for
-// explain.html's entries, plates and captions. §113 wired fr, ja and zh-Hant
-// here too; their tables are empty and filed as their own tier (§114), so
+// explain.html's entries, plates and captions. §116 wired fr, ja and zh-Hant
+// here too; their tables are empty and filed as their own tier (§117), so
 // those locales render this page in English and --check says so every run.
 //
 // The walk and the swap live in src/page-i18n.js (§95 moved them there when
@@ -43,7 +43,7 @@ export const NUMBERS = 'source';
 // translator can open on its own. Top-level await is what lets the page
 // localize BEFORE its interactive plates wire themselves up (see explain.html).
 //
-// §113 — THE SPECIFIERS ARE LITERAL STRINGS, and that is a build constraint
+// §116 — THE SPECIFIERS ARE LITERAL STRINGS, and that is a build constraint
 // rather than a style. tools/stamp-release.mjs finds dynamic imports by regex
 // over a QUOTED relative specifier, and its leftover scan uses the same
 // pattern — so a specifier built by template interpolation from UI_LANG would
@@ -52,7 +52,7 @@ export const NUMBERS = 'source';
 // every gate green. One map per page, listed by hand, is the price of being
 // visible to that walk.
 //
-// That regex reads THIS FILE too, comments included, and §113 proved it the
+// That regex reads THIS FILE too, comments included, and §116 proved it the
 // expensive way: a comment here spelling out the call form it matches put a
 // phantom `src/…` into PRECACHE, addAll is all-or-nothing, and the worker
 // never activated. Describe the pattern; do not write a specimen of it.

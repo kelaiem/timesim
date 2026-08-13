@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// §113 — WHAT NO GATE MEASURES: does each locale still FIT?
+// §116 — WHAT NO GATE MEASURES: does each locale still FIT?
 //
 // The Explainer gate holds the two static pages' prose (keys, markup, <code>,
 // numbers) and holds SVG plate labels inside their viewBox. Four other fits
@@ -9,7 +9,7 @@
 //   (a) THE FIXED PAGE HEADERS STAY ONE LINE. Both bars are position: fixed
 //       above a constant body padding, so a header that grows to two lines
 //       does not merely look wrong — it covers the first paragraph. §95 tier
-//       two measured this by hand for three locales; §113 made it six, and
+//       two measured this by hand for three locales; §116 made it six, and
 //       added a fourth cross-link-sized item to the bar (a six-option locale
 //       select sized to its widest face). Widths straddle the 820 px
 //       breakpoint where the stamp leaves, deliberately on both sides.
@@ -27,7 +27,7 @@
 // translation makes WORSE is interesting, which keeps this about the
 // translation rather than about pre-existing layout choices.
 //
-//   node tools/probe-113-locale-fit.mjs [--locales en,de,fr,ja,zh-Hant,zh]
+//   node tools/probe-116-locale-fit.mjs [--locales en,de,fr,ja,zh-Hant,zh]
 //
 // Needs python3 (dev_server.py) and a Playwright Chromium, like ci-battery.
 import { spawn } from 'node:child_process';

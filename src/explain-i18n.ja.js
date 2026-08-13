@@ -1,4 +1,4 @@
-// §113 tier two — JAPANESE. Keyed by the English source (normalized
+// §116 tier two — JAPANESE. Keyed by the English source (normalized
 // innerHTML for rich blocks, text for plate labels); see src/explain-i18n.js
 // for why.
 //
@@ -15,8 +15,8 @@
 // page exists to quote (ja-JP punctuates them as English does in any case).
 //
 // NOT YET TRANSLATED — and that is a declared state, not an oversight.
-// §113 shipped tier one (the chrome) and primer.html in this locale; this
-// page is filed as its own tier in the roadmap (§114), on the §73 precedent
+// §116 shipped tier one (the chrome) and primer.html in this locale; this
+// page is filed as its own tier in the roadmap (§117), on the §73 precedent
 // that shipped the chrome first and the explainer after it. The table is
 // WIRED and empty: the module loads, the page renders English, and
 // `node tools/explain-i18n.mjs --check` reports the coverage as 0% out loud

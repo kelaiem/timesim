@@ -11534,14 +11534,14 @@ Cost: `sweptOverlap` 1877 → 1913 s (+1.9%, the larger plate mesh) and the rest
 inside run-to-run noise; total check time 4888 → 4823 s. The shard partition
 is unchanged in shape and the cost column is left alone.
 
-## §113 — Three more locales, and the locale list becomes a declaration
+## §116 — Three more locales, and the locale list becomes a declaration
 
 **Shipped in part, and the part is named.** Tier one (the chrome,
 `src/i18n.js`) and `primer.html` now speak **French, Japanese and
 Traditional Chinese** alongside English, German and Simplified Chinese —
 366/366 and 91/91 in each, six locales at full parity on both. `explain.html`
 is NOT translated in the three new locales: it is 530 keys of the densest
-prose in the project, it is filed as its own tier (§114 in the roadmap), and
+prose in the project, it is filed as its own tier (§117 in the roadmap), and
 in the meantime it renders English and `--check` reports 0.0% for those
 locales out loud on every run. That is the §73 shape exactly — that entry
 shipped the chrome first and the explainer as a later tier — and it is
@@ -11685,7 +11685,7 @@ introduce a quantity English does not state → the value check reports it.
 ### Residue, recorded
 
 - **`explain.html` in fr/ja/zh-Hant is not translated** — 0/530 each, filed as
-  §114. Named here because a coverage column read in isolation looks like
+  §117. Named here because a coverage column read in isolation looks like
   neglect, and this is a scope decision.
 - **No native review pass** happened for any of the three new locales. §73
   carried the same IOU for Chinese and it is still open; three more locales

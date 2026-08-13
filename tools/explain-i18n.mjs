@@ -156,7 +156,7 @@ const numGlyphs = (s) => (s.replace(/<[^>]+>/g, ' ').match(/\d+(?:\.\d+)?/g) || 
 // row is therefore a hard failure below, never a silent skip; a locale whose
 // numbers this tool cannot parse is a locale whose numbers are ungated.
 //
-// §113 — `group` is a LIST because French made it one. Chromium and Node emit
+// §116 — `group` is a LIST because French made it one. Chromium and Node emit
 // U+202F NARROW NO-BREAK SPACE for fr-FR, older ICU emitted U+00A0, fr-CA still
 // does, and a translator's keyboard may produce U+2009 THIN SPACE. All three
 // are accepted: flanked by digits they are unambiguous. A PLAIN ASCII SPACE IS
@@ -194,7 +194,7 @@ const numValues = (s, lang) => {
 let failed = 0;
 if (MODE === 'extract') {
   const { items, tables } = await readPage(TARGETS[0]);
-  // §113 — the bootstrap state, stated rather than inferred. A locale with no
+  // §116 — the bootstrap state, stated rather than inferred. A locale with no
   // table yet extracts fine (every value blank), and that is the ONLY order
   // that works: listing the locale in the page module's LOADERS makes
   // allTables() import a file that does not exist yet, which takes down
@@ -237,7 +237,7 @@ if (MODE === 'extract') {
   // and this page's contract is that identifiers are never translated.
   // The class is applied to KEYS, which readPage guarantees are English (it
   // walks the page at ?lang=en). So it never has to recognize a translation's
-  // script: §113 checked whether Japanese kana needed adding here and the
+  // script: §116 checked whether Japanese kana needed adding here and the
   // answer is no — recorded because the question looks like it should be yes.
   const isInvariant = (k) => !/[a-zA-ZÀ-ɏ一-鿿]/.test(
     k.replace(/<code>.*?<\/code>/g, ' ').replace(/<[^>]+>/g, ' '));
@@ -246,7 +246,7 @@ if (MODE === 'extract') {
     const { doc, items, tables, numbers, errors } = await readPage(target);
     console.log(`\n══ ${doc} — numbers: ${numbers === 'source' ? 'SOURCE form (identifiers quoted)' : 'QUANTITIES (localized, checked by value)'}`);
     const keySet = new Set(items.map((i) => i.key));
-    // §113 — the roster is the PAGE's, read from its own allTables() keys.
+    // §116 — the roster is the PAGE's, read from its own allTables() keys.
     // Adding a locale is one entry in that module's LOADERS map; this tool
     // needs no edit and cannot fall behind it.
     for (const lang of Object.keys(tables || {})) {
@@ -361,7 +361,7 @@ if (MODE === 'extract') {
       return r;
     };
     const baseFit = new Set((await fitOf('en')).map((x) => x.id));
-    for (const lang of Object.keys(tables || {})) {   // §113 — the page's roster, as above
+    for (const lang of Object.keys(tables || {})) {   // §116 — the page's roster, as above
       const bad = (await fitOf(lang)).filter((x) => !baseFit.has(x.id));
       console.log(`\n[${lang}] plate fit: ${bad.length} new overflow/collision vs English${bad.length ? '  <-- FAIL' : ''}`);
       for (const x of bad) console.log(`      ${x.what}`);
