@@ -167,6 +167,8 @@ const MARKS = {
   en: { group: [','], dec: '.' },
   de: { group: ['.'], dec: ',' },
   zh: { group: [','], dec: '.' },        // zh-CN groups with ',' and points with '.', as en does
+  'zh-Hant': { group: [','], dec: '.' }, // and so do zh-Hant …
+  ja: { group: [','], dec: '.' },        // … and ja-JP: number-transparent, unlike fr
   // Escaped, not typed: three characters that render identically, so a typed
   // one could not be told from another by reading this file.
   fr: { group: ['\u202f', '\u00a0', '\u2009'], dec: ',' },

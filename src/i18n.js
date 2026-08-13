@@ -42,10 +42,18 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // page a reader who cannot yet read the UI must still recognize. `code` is a
 // VALUE (§73): it travels in ?lang=, in localStorage and in documentElement.lang,
 // and is never translated.
+// zh-Hant BEFORE zh is the ordering this array exists to make visible: every
+// Traditional tag begins 'zh', so the bare-language row would swallow all of
+// them. 简体中文 is the face the Simplified row now carries — 中文 alone stopped
+// being a distinguishing name the moment a second Chinese appeared, and the
+// VALUE stayed 'zh' so every ?lang=zh link ever shared still resolves.
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
-  { code: 'zh', face: '中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
+  { code: 'fr', face: 'Français', tag: 'fr-FR', match: (v) => v.startsWith('fr') },
+  { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
+  { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
+  { code: 'zh', face: '简体中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
 ];
 const _norm = (v) => {
   if (!v) return null;
@@ -66,7 +74,13 @@ document.documentElement.lang = UI_LANG; // screen readers pick pronunciation fr
 for (const [input, want] of [
   ['en', 'en'], ['en-GB', 'en'],
   ['de', 'de'], ['de-AT', 'de'], ['de_CH', 'de'],
-  ['zh', 'zh'], ['zh-CN', 'zh'], ['zh-Hans', 'zh'],
+  ['fr', 'fr'], ['fr-CA', 'fr'],
+  ['ja', 'ja'], ['ja-JP', 'ja'],
+  // The rows this assert is really for. Every one of these begins 'zh', and
+  // the wrong answer is a legible page in the wrong script — no error anywhere.
+  ['zh-Hant', 'zh-Hant'], ['zh-TW', 'zh-Hant'], ['zh-HK', 'zh-Hant'],
+  ['zh-MO', 'zh-Hant'], ['zh-Hant-TW', 'zh-Hant'], ['zh_TW', 'zh-Hant'],
+  ['zh', 'zh'], ['zh-CN', 'zh'], ['zh-Hans', 'zh'], ['zh-SG', 'zh'],
   ['xx', null], ['', null],
 ]) if (_norm(input) !== want) console.warn(`i18n: locale ladder broken — _norm('${input}') = ${_norm(input)}, expected ${want}`);
 
@@ -576,13 +590,44 @@ Object.assign(ZH, {
 });
 
 // ---------------------------------------------------------------------------
+// §113 — French. Horological vocabulary is the Vallée de Joux register (ancre,
+// balancier, spiral, barillet, fusée-chaîne) — the working French of Swiss
+// watchmaking, which is what this movement is. The second layout stress test
+// after German, and the first locale whose NUMBERS are not ASCII-punctuated:
+// fr-FR points with ',' and groups with U+202F, both of which arrive through
+// fmtNum/fmtInt above and neither of which may reach a stored value.
+const FR = {
+};
+
+// ---------------------------------------------------------------------------
+// §113 — Japanese. The standard 時計 trade register (脱進機, テンプ, ひげぜんまい,
+// 香箱), katakana where the trade uses katakana. The first locale sharing no
+// script with English at all, so it is the honest test of whether anything
+// still leaks an untranslated word into the panel. The going train is NUMBERED
+// from the barrel here — 二番車, 三番車, 四番車 — where English names it centre,
+// third and fourth; the mapping is made once in the MECH_GRAPH block below and
+// both static pages inherit it.
+const JA = {
+};
+
+// ---------------------------------------------------------------------------
+// §113 — Chinese (traditional). NOT a glyph conversion of ZH: Taiwan/HK usage
+// differs in words as well as characters (錶 not 表, 模擬 not 仿真, 檢視 not
+// 视图), and a converted table would pass every gate in this repo while reading
+// wrong to the reader it exists for. Its code is the SCRIPT subtag, so zh-TW,
+// zh-HK and zh-MO all resolve here — which is the case that was silently
+// landing in ZH before this section.
+const ZH_HANT = {
+};
+
+// ---------------------------------------------------------------------------
 // §113 — keyed by LOCALES' codes. English is absent BY CONSTRUCTION: it is the
 // key space, so `null` here is what makes t() return its input unchanged.
 // Exported so the tables can be diffed against each other for key parity from
 // the console (nothing in the app reads it) — with five tables the interesting
 // question stopped being "does this string translate" and became "which table
 // is missing which key".
-export const TABLES = { de: DE, zh: ZH };
+export const TABLES = { de: DE, fr: FR, ja: JA, zh: ZH, 'zh-Hant': ZH_HANT };
 const TABLE = TABLES[UI_LANG] || null;
 
 // Translate one English source string. English (or a missing entry) returns

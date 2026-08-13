@@ -42,18 +42,27 @@ export const NUMBERS = 'source';
 // localize BEFORE its interactive plates wire themselves up (see explain.html).
 //
 // §113 — THE SPECIFIERS ARE LITERAL STRINGS, and that is a build constraint
-// rather than a style. tools/stamp-release.mjs rewrites `import('./…')` by
-// regex over a quote class, and its leftover scan uses the SAME class, so an
-// `import(`./explain-i18n.${UI_LANG}.js`)` would be neither stamped nor added
-// to the service worker's precache AND would not be reported as missed: a
-// reader offline in that locale would get a 404 with every gate green. One map
-// per page, listed by hand, is the price of being visible to that walk.
+// rather than a style. tools/stamp-release.mjs finds dynamic imports by regex
+// over a QUOTED relative specifier, and its leftover scan uses the same
+// pattern — so a specifier built by template interpolation from UI_LANG would
+// be neither stamped nor added to the service worker's precache AND would not
+// be reported as missed: a reader offline in that locale would get a 404 with
+// every gate green. One map per page, listed by hand, is the price of being
+// visible to that walk.
+//
+// That regex reads THIS FILE too, comments included, and §113 proved it the
+// expensive way: a comment here spelling out the call form it matches put a
+// phantom `src/…` into PRECACHE, addAll is all-or-nothing, and the worker
+// never activated. Describe the pattern; do not write a specimen of it.
 //
 // The map is also the page's ANSWER to "which languages do you have" — it
 // feeds both the load below and allTables(), so the roster is stated once.
 const LOADERS = {
   de: () => import('./explain-i18n.de.js'),
+  fr: () => import('./explain-i18n.fr.js'),
+  ja: () => import('./explain-i18n.ja.js'),
   zh: () => import('./explain-i18n.zh.js'),
+  'zh-Hant': () => import('./explain-i18n.zh-Hant.js'),
 };
 const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 

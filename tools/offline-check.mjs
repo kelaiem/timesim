@@ -261,14 +261,23 @@ try {
   const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), cacheA);
   check('release: /__state NOT in the cache', !stateCached);
   const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, cacheA);
-  // 27 since §95 tier two: 20 + favicon.png (Safari SVG fallback) +
+  // Was 27 at §95 tier two: 20 + favicon.png (Safari SVG fallback) +
   // apple-touch-icon.png (iOS home screen) + primer.html (the novice
   // explainer, an unstamped seed like the other documents) + the four modules
   // its localization pulls in (the shared page-i18n engine, the primer's own
   // i18n module and its two locale tables — dynamic imports, so they reach
   // this manifest through the stamper's module walk, not through the
   // document's).
-  check('release: precache complete', counts === 27, `${counts}/27`);
+  //
+  // 33 since §113: six more locale tables, three locales across two pages,
+  // arriving by that same walk. The count is worth asserting exactly because
+  // it is the cheap half of the guarantee — a table MISSING from the manifest
+  // shows up here, while a table listed but absent from the tree does not
+  // (addAll is all-or-nothing, so the worker simply never activates and this
+  // line is never reached). §113 hit that second failure and it presents as a
+  // hang, not a number: the per-locale offline boots below are what actually
+  // prove each table arrived.
+  check('release: precache complete', counts === 33, `${counts}/33`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -281,6 +290,15 @@ try {
   await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=de`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   check('OFFLINE: deep link (?lang=de) boots', true);
+  // §113 — zh-Hant is the one code carrying a SCRIPT subtag, so it is the one
+  // that travels through the URL, the resolution ladder and documentElement.lang
+  // as something other than a two-letter word. Asserting the resolved lang and
+  // not merely that the page booted is the point: falling back to Simplified
+  // would boot perfectly.
+  await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=zh-Hant`, { waitUntil: 'load' });
+  await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+  const hantLang = await page.evaluate(() => document.documentElement.lang);
+  check('OFFLINE: deep link (?lang=zh-Hant) boots and stays Traditional', hantLang === 'zh-Hant', hantLang);
   await page.goto(`http://127.0.0.1:${relPort}/explain.html`, { waitUntil: 'load' });
   const explainOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
   check('OFFLINE: explain.html loads with content', explainOk);
@@ -292,10 +310,18 @@ try {
   // through the module walk rather than through a document's own markup; a
   // German reader offline is exactly who would find that gap, and English
   // prose under a German header is what they would see instead of a failure.
-  await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=de`, { waitUntil: 'load' });
-  const primerDe = await page.evaluate(() =>
-    document.documentElement.lang === 'de' && !/^What you are looking at/.test(document.querySelector('p.intro')?.textContent || ''));
-  check('OFFLINE: primer.html localizes (de table came from the cache)', primerDe);
+  //
+  // §113 — EVERY locale, not just German. The count above cannot tell one
+  // missing table from another, and a per-locale dynamic import is exactly the
+  // kind of thing that gets added to a LOADERS map and forgotten in a file
+  // name; this loop is what makes each one prove itself from cache.
+  for (const code of ['de', 'fr', 'ja', 'zh', 'zh-Hant']) {
+    await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, { waitUntil: 'load' });
+    const ok = await page.evaluate((c) =>
+      document.documentElement.lang === c
+      && !/^What you are looking at/.test(document.querySelector('p.intro')?.textContent || ''), code);
+    check(`OFFLINE: primer.html localizes (${code} table came from the cache)`, ok);
+  }
   await page.goto(`http://127.0.0.1:${relPort}/index.html`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   await ctx.setOffline(false);

@@ -34,7 +34,10 @@ export const NUMBERS = 'quantity';
 // a template literal would fail silently in both the stamp and the precache.
 const LOADERS = {
   de: () => import('./primer-i18n.de.js'),
+  fr: () => import('./primer-i18n.fr.js'),
+  ja: () => import('./primer-i18n.ja.js'),
   zh: () => import('./primer-i18n.zh.js'),
+  'zh-Hant': () => import('./primer-i18n.zh-Hant.js'),
 };
 const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 
