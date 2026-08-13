@@ -14638,14 +14638,42 @@ async function swReload() {
       let done = false;
       const go = () => { if (!done) { done = true; location.reload(); } };
       navigator.serviceWorker.addEventListener('controllerchange', go, { once: true });
+      const before = navigator.serviceWorker.controller;
       w.postMessage('skip-waiting');
-      // Fallback: skipWaiting can be refused or raced (another tab already
-      // promoted it, controllerchange already fired before the listener).
-      // 2 s is a UX bound, not a protocol one — long enough for the
-      // promote+claim round trip anywhere, short enough to still feel like
-      // the reload that was clicked; a fallback reload is always safe, at
-      // worst it re-shows the toast.
-      setTimeout(go, 2000);
+      // The fallback exists for skipWaiting being REFUSED, or for a
+      // controllerchange that fired before the listener armed (another tab
+      // promoted the same worker). It used to be a flat 2 s reload, on the
+      // theory that "a fallback reload is always safe; at worst it re-shows
+      // the toast" — and one CI log falsified both halves of that sentence
+      // (offline job, run 31706881138, reproduced locally by delaying
+      // skipWaiting 3 s): on a SwiftShader runner the promotion took 2.3 s,
+      // the 2 s timer reloaded while the OLD worker still controlled the
+      // page, and its cache-first served the OLD release — then the new
+      // worker activated behind the stale page and DELETED its cache, so
+      // "at worst" was a page whose own assets were evicted, broken the
+      // moment it went offline. The reload that was clicked must never land
+      // on the release the toast is warning about, so the fallback reloads
+      // only when that cannot happen, or when there is provably nothing
+      // left to wait for:
+      //   · the controller already changed (the raced case the 2 s timer
+      //     was really for — the event beat the listener);
+      //   · the worker went REDUNDANT (skipWaiting refused, or the worker
+      //     replaced by a newer one): controllerchange from THIS worker
+      //     will never come, and a plain reload is the honest degradation;
+      //   · the 10 s cap: ~4× the slowest promotion measured anywhere
+      //     (2.3 s, the run above) — the same generosity the announcement
+      //     bound earned when its 1500 ms flaked under a concurrent
+      //     battery. Waiting is otherwise CORRECT: the worker is installed
+      //     or activating, and the armed listener fires the moment the
+      //     controller flips (measured: at the 'activating' transition,
+      //     not at clients.claim()).
+      const t0 = Date.now();
+      const poll = setInterval(() => {
+        if (done) return clearInterval(poll);
+        if (navigator.serviceWorker.controller !== before
+            || w.state === 'redundant'
+            || Date.now() - t0 > 10000) { clearInterval(poll); go(); }
+      }, 500);
       return;
     }
   }
