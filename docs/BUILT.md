@@ -11017,7 +11017,17 @@ claimed lowest metal), and the poising ring's arms met the collar's
 nominal circle where its tessellated metal wasn't. The fixes are the
 doctrine's kind: the link's rod site AND tab azimuth are now solved
 jointly at build (castellation-preserving family × distance × the §34
-guard, scored against built metal with the placement gate's shapes), the
+guard, scored against built metal with the placement gate's shapes —
+and, since the band swap, the solve MODELS THE FORK BLOCK IT PLACES:
+the block's plan seat collapses to tab + seat·chord − armR·perp because
+the pin rests horizontal on §51's groove stratum, verified against both
+built cranks to 0.005, so the stage scores the block against the
+setting wheel's rim and the setting idler where the crank actually
+parks it, with the fork build's corner assert as the gate behind the
+model; the chord's member radius went piecewise in the same landing —
+the working-end trim leaves only the lay shaft in its bushes, and a
+blanket crank-sized radius had priced the honest approach corridor out
+of the solve), the
 pillar solve consumes a DECLARED under-plate footprint
 (`ALARM_UNDER_FOOTPRINT`, one source at the plan hoist), the dogleg's
 branch is scored against the low corridor's own list, and the two
