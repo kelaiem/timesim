@@ -14948,7 +14948,8 @@ async function swReload() {
       const go = () => { if (!done) { done = true; location.reload(); } };
       navigator.serviceWorker.addEventListener('controllerchange', go, { once: true });
       const before = navigator.serviceWorker.controller;
-      w.postMessage('skip-waiting');
+      let target = w;
+      target.postMessage('skip-waiting');
       // The fallback exists for skipWaiting being REFUSED, or for a
       // controllerchange that fired before the listener armed (another tab
       // promoted the same worker). It used to be a flat 2 s reload, on the
@@ -14960,28 +14961,48 @@ async function swReload() {
       // page, and its cache-first served the OLD release — then the new
       // worker activated behind the stale page and DELETED its cache, so
       // "at worst" was a page whose own assets were evicted, broken the
-      // moment it went offline. The reload that was clicked must never land
-      // on the release the toast is warning about, so the fallback reloads
-      // only when that cannot happen, or when there is provably nothing
-      // left to wait for:
-      //   · the controller already changed (the raced case the 2 s timer
-      //     was really for — the event beat the listener);
-      //   · the worker went REDUNDANT (skipWaiting refused, or the worker
-      //     replaced by a newer one): controllerchange from THIS worker
-      //     will never come, and a plain reload is the honest degradation;
-      //   · the 10 s cap: ~4× the slowest promotion measured anywhere
-      //     (2.3 s, the run above) — the same generosity the announcement
-      //     bound earned when its 1500 ms flaked under a concurrent
-      //     battery. Waiting is otherwise CORRECT: the worker is installed
-      //     or activating, and the armed listener fires the moment the
-      //     controller flips (measured: at the 'activating' transition,
-      //     not at clients.claim()).
-      const t0 = Date.now();
+      // moment it went offline. That fix raised the timer to a 10 s cap —
+      // and run 31727668975 falsified the CAP the same way (reproduced by
+      // delaying skipWaiting 12 s, the same probe): a promotion slower than
+      // any cap still exists, the cap still reloaded under the old worker,
+      // and the new worker still evicted the page behind it. The lesson,
+      // finally learned whole: once a worker is installed there is NO
+      // timeout at which a plain reload becomes safe — its later activation
+      // evicts whatever the reload landed on. So time is no longer a reason
+      // to reload. The poll now reloads only in the two states where it
+      // cannot land on the release the toast warned about:
+      //   · the controller already changed (the raced case the timer was
+      //     really for — the event beat the listener);
+      //   · the worker went REDUNDANT with nothing replacing it: no
+      //     activation is coming from anywhere, so a plain reload is the
+      //     honest degradation and re-shows the toast.
+      // Two stalls it actively repairs instead of conceding to:
+      //   · a redundant worker WITH a replacement (the focus-poll update()
+      //     and this one can overlap; the loser's install is discarded) —
+      //     follow the replacement and promote it;
+      //   · a promotion stalled past 10 s (the skip-waiting message can be
+      //     lost to a worker being stopped as it is posted) — re-post it,
+      //     which is idempotent, and a lost message becomes a late success.
+      // Waiting is otherwise CORRECT: the worker is installed or
+      // activating, the page is intact until the moment of activation, and
+      // the armed listener fires the reload at exactly that moment
+      // (measured: at the 'activating' transition, not at clients.claim()).
+      let lastNudge = Date.now();
       const poll = setInterval(() => {
         if (done) return clearInterval(poll);
-        if (navigator.serviceWorker.controller !== before
-            || w.state === 'redundant'
-            || Date.now() - t0 > 10000) { clearInterval(poll); go(); }
+        if (navigator.serviceWorker.controller !== before) { clearInterval(poll); go(); return; }
+        if (target.state === 'redundant') {
+          const next = swReg.waiting || swReg.installing;
+          if (!next) { clearInterval(poll); go(); return; }
+          target = next;
+          target.postMessage('skip-waiting');
+          lastNudge = Date.now();
+          return;
+        }
+        if (Date.now() - lastNudge > 10000) {
+          target.postMessage('skip-waiting');
+          lastNudge = Date.now();
+        }
       }, 500);
       return;
     }
