@@ -11187,13 +11187,16 @@ never has to find this again.
 
 ### The battery, and what the report diff says
 
-Both runs local (4-vCPU dev container, `--shards 2`), the baseline from a
-pristine copy of `main` at `04eb435`:
+Both runs local (4-vCPU dev container, `--shards 2`, run concurrently so
+the walls are contention-inflated; the verdicts and payloads are what the
+diff reads). The baseline is a pristine worktree of `main` at `90439cd` —
+re-taken after the §112 tier-split merged, because the first acceptance
+pair (vs `04eb435`) predated it:
 
 | | gates | wall | checks |
 |---|---|---|---|
-| base (`main` 04eb435) | 20/20 | 1847.9 s | 2962.3 s across 2 shards |
-| this branch | 20/20 | 1650.0 s | 2817.2 s across 2 shards |
+| base (`main` 90439cd) | 20/20 | 3583.1 s | 5489.3 s across 2 shards |
+| this branch | 20/20 | 3722.5 s | 5658.1 s across 2 shards |
 
 (The first acceptance run went 19/20 — the arm catch above — and its
 report is what pointed at the fix; the numbers below are the re-run on
@@ -11201,16 +11204,19 @@ the shank geometry.) Diffed by ROW NAME, the two `--report` payloads
 differ in exactly five checks, plus the fingerprint:
 
 - **`penetration`** — the headline. The governor row goes
-  `WAIVED, worstDepth 0.286` → **`OK, worstDepth 0.032`** against the
+  `WAIVED, worstDepth 0.298` → **`OK, worstDepth 0.031`** against the
   same inherited 0.1, and the waiver text citing TODO 45 is GONE from
-  the report. All fourteen other rows byte-identical.
-- **`expectedContacts`** — the governor pair's floors row moves
-  `0.4269 → 0.1502` against the 0.15 floor, and the nearest non-contact
-  mesh changes from the arm to the HUB — which is the design reading
-  itself back: `ALARM_GOV_ANCHOR_D = SAW_R + HUB_R + CLEAR_MARGIN`, so
-  the hub stands exactly one margin off the tip circle BY CONSTRUCTION,
-  and the row now measures that constraint (0.0002 of polygonization
-  headroom on top; the boot room assert pins the identity).
+  the report. (The baseline's depth reads 0.298 on the tier-split's
+  siting where §111 measured 0.286 — the interference IS the §104
+  design, so it travels with the module.) All fourteen other rows
+  byte-identical.
+- **`expectedContacts`** — the governor pair's row is almost a fixed
+  point: min `0.16` against the 0.15 floor on BOTH sides, nearest
+  non-contact mesh the RING on both sides (the tier-split's band swap put
+  it just over the saw), with only the worst-pose label moving. The
+  hub-margin identity — `D = SAW_R + HUB_R + CLEAR_MARGIN`, the hub one
+  margin off the tip circle by construction — is held by the boot room
+  assert rather than surfacing as this row's minimum here.
 - **`equalisation`** — the law string gains `·ALARM_GOV_RHO`, `I_kgm2`
   goes 9.073e-11 → 2.776e-10 (×3.06), the ring's solved section
   0.455 → 0.790 mm, and the summary line follows. The cadence figures —
@@ -11221,7 +11227,7 @@ differ in exactly five checks, plus the fingerprint:
   prose: the §113 text names the dwell through each drop arc.
 - **`inspection`** — the governor pair's EXPECTED row updates its pose
   detail; the class and the verdict do not move.
-- **fingerprint** `1639816688 → 1692592172` — geometry moved, so it
+- **fingerprint** `1166767543 → 3519083211` — geometry moved, so it
   must. (The shank fix alone did NOT move it — the fingerprint samples
   unit matrices, not mesh vertices, and the shank is a vertex-only
   change. The §113 landing moved it through the anchor's new station.)
