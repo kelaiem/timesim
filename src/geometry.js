@@ -236,6 +236,10 @@ function ringExtrude(outerR, innerR, thickness, seg = 32) {
 // Build the outer contour of a spur-gear wheel: repeated trapezoid-with-rounded
 // -tip teeth approximating a clock (cycloidal) tooth — angled flanks, relieved
 // & rounded tips, root lands. Returns a THREE.Shape (caller adds crossings/bore).
+// How far the relieved tip's control point stands past the tip circle. It is
+// the one number gearOuterR's bound turns on, so the outline and the bound
+// read it from here rather than from two copies of "1.02".
+const TIP_RELIEF = 1.02;
 function gearOutlineShape(teeth, rootR, pitchR, tipR, opts = {}) {
   const tipFrac = opts.tipFrac ?? 0.18; // half-width of tip land (fraction of pitch)
   const flankFrac = opts.flankFrac ?? 0.34; // where flank meets the root land
@@ -247,7 +251,7 @@ function gearOutlineShape(teeth, rootR, pitchR, tipR, opts = {}) {
     const V = P(rootR, c - 0.5 * pitch); // valley (shared with previous tooth)
     const FL = P(rootR, c - flankFrac * pitch); // left root land / flank base
     const TL = P(tipR, c - tipFrac * pitch); // tip left corner
-    const TC = P(tipR * 1.02, c); // tip round control (relieved)
+    const TC = P(tipR * TIP_RELIEF, c); // tip round control (relieved)
     const TR = P(tipR, c + tipFrac * pitch); // tip right corner
     const FR = P(rootR, c + flankFrac * pitch); // right flank base
     if (i === 0) shape.moveTo(V[0], V[1]);
@@ -326,6 +330,36 @@ class ArchimedeanSpiral extends THREE.Curve {
 export function minGearTeeth(module, boreR = 1) {
   return Math.max(3, Math.ceil(2 * (boreR / module + 1.15)));
 }
+// §115 — THE RADIUS A makeGear BODY ACTUALLY REACHES, for the plan-time
+// declarations that have to bound it before the mesh exists. It is NOT
+// `module·(N/2 + 1) + bevel`, which is what two of them said, and the two
+// errors in that expression pull opposite ways so the sum looked right:
+//
+//  - the addendum here is 0.95·module, not one module (tipR below), which
+//    makes the true tip circle SMALLER than the nominal one;
+//  - but the tooth tip is RELIEVED — gearOutlineShape draws it as a
+//    quadratic through a control point at tipR·1.02 — and that curve stands
+//    PROUD of the tip circle between the two tip corners, by more than the
+//    addendum difference gives back.
+//
+// The bound is the Bézier's own control hull: a quadratic lies inside the
+// convex hull of its three control points, so no part of the tip can pass
+// tipR·1.02, whatever `curveSegments` samples. Then the extrude's bevel
+// grows the outline, and the greatest-radius point sits on the CURVED tip
+// where that growth is exactly bevelSize rather than a corner's miter.
+//
+// Conservative by construction and measured against the metal by §115's
+// declared-versus-cut assert, which is what caught this: the 64T governor
+// wheel was declared at 7.308 and reaches 7.361.
+// ONE expression each, and makeGear below consumes these rather than repeating
+// them — a bound that re-derives its subject from a copy goes stale the moment
+// the subject moves, which is the drift this whole function exists to catch.
+const gearTipR = (module, teeth) => pitchRadius(module, teeth) + module * 0.95;
+const gearBevel = (module, thickness, on) => (on ? Math.min(thickness * 0.18, module * 0.22) : 0);
+export function gearOuterR({ module, teeth, thickness, bevel: bevelOn = true }) {
+  return gearTipR(module, teeth) * TIP_RELIEF + gearBevel(module, thickness, bevelOn);
+}
+
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
                            material, hub = true, bevel: bevelOn = true }) {
   const mat = material || MATS.brass;
@@ -343,7 +377,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
     teeth = floor;
   }
   const pitchR = pitchRadius(module, teeth);
-  const tipR = pitchR + module * 0.95;
+  const tipR = gearTipR(module, teeth);
   const rootR = pitchR - module * 1.15;
   const shape = gearOutlineShape(teeth, rootR, pitchR, tipR);
 
@@ -368,7 +402,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
   const useSpokes = outerR > innerR + module ? spokes : 0;
   addCrossingHoles(shape, useSpokes, innerR, outerR, boreR);
 
-  const bevel = bevelOn ? Math.min(thickness * 0.18, module * 0.22) : 0;
+  const bevel = gearBevel(module, thickness, bevelOn);
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: bevelOn,

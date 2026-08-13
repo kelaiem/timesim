@@ -21,6 +21,19 @@ math share one source of truth, so upstream dimension changes re-solve
 automatically. Extend this pattern to any builder whose part participates in a
 clearance.
 
+**A builder that cannot export through `userData` exports a FUNCTION** — the
+same rule where the consumer runs before the mesh exists. `gearOuterR` (§115) is
+that case: plan-time declarations bound `makeGear` bodies thousands of lines
+before they are built, and two of them wrote `module·(N/2 + 1) + bevel`, which
+is not the radius `makeGear` reaches. Its addendum is 0.95·module, and its tooth
+tip is RELIEVED through a control point at `TIP_RELIEF` past the tip circle, so
+the metal stands outside the nominal addendum circle — measured, the 64T
+governor wheel reaches 7.361 against a declared 7.308. The builder and the bound
+now share `gearTipR`, `gearBevel` and `TIP_RELIEF`, so a change to any of the
+three moves both. **Bevel is not the only thing that puts metal outside an
+authored circle**; a tip relief, a tessellation chord or a mitered corner each
+do it, and none of them appears in the dimension the part was designed to.
+
 ### 2. Seat surface-to-surface, never center-to-surface
 
 When part A rests on part B, the formula must sum **both** parts' surface offsets
