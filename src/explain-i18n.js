@@ -1,7 +1,7 @@
 // §73 tier two — THE EXPLAINER, LOCALIZED. German and Chinese prose for
-// explain.html's entries, plates and captions. §116 wired fr, ja and zh-Hant
-// here too; their tables are empty and filed as their own tier (§117), so
-// those locales render this page in English and --check says so every run.
+// explain.html's entries, plates and captions; French, Japanese and
+// Traditional Chinese since §117 (§116 wired the tables in empty), all
+// five at 100%.
 //
 // The walk and the swap live in src/page-i18n.js (§95 moved them there when
 // the primer became a second tier-two page); this file is the EXPLAINER's

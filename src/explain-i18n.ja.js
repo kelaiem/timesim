@@ -1,4 +1,4 @@
-// §116 tier two — JAPANESE. Keyed by the English source (normalized
+// §117 tier two — JAPANESE (§116 wired this table in empty). Keyed by the English source (normalized
 // innerHTML for rich blocks, text for plate labels); see src/explain-i18n.js
 // for why.
 //

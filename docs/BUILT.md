@@ -11700,3 +11700,77 @@ introduce a quantity English does not state → the value check reports it.
   the two HTML files from disk, so a translated primer could reintroduce a
   source identifier and no gate would notice. Pre-existing for de and zh;
   three more primer tables triple the exposure.
+
+## §117 — The explainer in French, Japanese and Traditional Chinese
+
+**Shipped whole — the tier §116 named and declined.** `explain.html`'s full
+key set now reads 533/533 in French, Japanese and Traditional Chinese, which
+closes the last coverage gap in the project: both static pages and the chrome
+at 100% in all six locales. The entry was filed against a 530-key page; the
+page grew to 533 while the entry waited (§113's detail view landed on it), so
+the skeletons were re-extracted fresh from the DOM rather than reused —
+the entry's own "never retype a key" rule applied to itself.
+
+**Each table went 0 → 100 in a single commit, on purpose.** The tables are
+live from the moment they have entries, so a partial table renders
+mixed-language prose — worse than the honest English fallback an empty one
+gives, which is exactly why §116 shipped them empty rather than partial. The
+per-locale commit is the unit that keeps every branch state shippable.
+
+**What the gates caught, and it is why they exist.** All three constraints
+the entry predicted drew blood, and one theme ran through every locale:
+**English carries emphasis as CAPITALS, and a locale with no capitals tempts
+the translator into an `<em>` that does not exist in the source.** The tag
+sequence is the contract — the markup gate compares it per key — so the
+emphasis rides the prose instead, three times over (Japanese once, AGAINST;
+Traditional Chinese twice, AGAINST and MEANS). Per locale:
+
+- **French** — the predicted red, and it was: **28 labels** overran or
+  collided where the English baseline fit (German-class expansion, no CJK
+  compression), plus one dropped `<b>` in the lay-shaft paragraph. Every fix
+  was in the LABEL — terse by nature, meaning kept, digits untouched — never
+  in the tolerance; measured to 0 new vs English over two passes. Numbers
+  stayed in source form throughout, the loud constraint for fr-FR, which
+  would ordinarily write `0,15` and group with U+202F — and on the primer
+  correctly does.
+- **Japanese** — fit-safe (CJK compresses; 0 label work) but five per-key
+  defects: two split SVG labels with their digits redistributed across the
+  split differently from English, "once/hour" rendered as digits where the
+  source spells a word, the CAPS `<em>`, and one `<code>CLEAR_MARGIN</code>`
+  flattened to plain text.
+- **Traditional Chinese** — five again, the Japanese classes replayed: the
+  two CAPS `<em>`s, the saw-wheel plate's digits (40, 2) split across its
+  two lines where English keeps both on the first, and one `<em>` restored
+  in the wrong POSITION — English puts `<code>floorAt</code>` before
+  `<em>down</em>`, so the Chinese clause was reordered to match rather than
+  the checker taught to accept a permutation. Translated fresh from
+  English, never converted from the Simplified table; the register tells
+  hold (錶 not 表, 模擬 with 仿真 absent), checked by scan, not assumed.
+
+**The stray-script scan ran again, by hand, and this time found nothing.**
+§116's slip class — Cyrillic fragments and untranslated English inside
+otherwise-correct CJK sentences, invisible to every gate — was checked over
+all three tables: clean. Still not an instrument, for §116's stated reason
+(a Latin-in-CJK check false-positives on every legitimate `Watch Sim` and
+`JSON`), but the class is now two landings old and worth the two minutes.
+
+Gates, at the landing: `explain-i18n --check` PASS across both pages × five
+tables — 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0
+new plate overflow/collision vs English; `explain-quotes` PASS;
+`offline-check` 27/27 with precache unchanged at 33 — no new files, because
+§116 already shipped and precached the three tables empty. The battery is
+correctly out of scope: the diff is three translation tables plus records,
+none of it on `index.html`'s module graph — the invariant the harness itself
+asserts against the `paths-ignore` list.
+
+### Residue, recorded
+
+- **No native review pass**, for any of the three — the entry's definition
+  of done asked that this be said either way. §73's Chinese IOU and §116's
+  three now cover this page too: six locale-tables of dense horological
+  prose reviewed only by their author and their gates.
+- **`explain-quotes.mjs` still never reads the translation tables** (§116's
+  residue, unchanged). It holds the two HTML files; a table could
+  reintroduce a source identifier into the primer's prose and no gate would
+  see it. The exposure is now at its full size — every locale, both pages.
+- **The stray-script scan is still manual**, two landings running.

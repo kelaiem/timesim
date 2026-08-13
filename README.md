@@ -194,9 +194,8 @@ exposes the finish parameters from `src/aesthetics.json`.
 The chrome is localised — English, German, French, Japanese and Chinese in
 both scripts — selectable in the panel or by `?lang=fr` / `?lang=zh-Hant`
 (a script subtag, so `zh-TW`, `zh-HK` and `zh-MO` all resolve to Traditional).
-`primer.html` is translated in all six; `explain.html`, the mechanism
-explainer linked from the HUD, is translated in German and Chinese, and
-renders English in the three newest locales until their tables are filled. A released build also **loads with
+`primer.html` and `explain.html`, the mechanism explainer linked from
+the HUD, are translated in all six. A released build also **loads with
 the network gone**: a service worker precaches the release, so a page that
 has been visited online once boots offline, deep links included. Neither
 applies to a source tree, which registers no worker at all so that an edit is
