@@ -1347,7 +1347,7 @@ const BACK_PLATE_HOLES = [
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
   { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
   { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-  { x: 31.25, y: 12.95, r: 0.45 },               // §35/§68 (§112: re-synced to the SOLVED rod site) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
+  { x: 34.32, y: 16.89, r: 0.45 },               // §35/§68 (§112: re-synced to the SOLVED rod site; band swap: the tab-zone score re-ranked the solve) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
 // the track is an ARC, not the chord, so the bow joins the stud's own radius
@@ -4617,7 +4617,7 @@ checkCutVsPivots();
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
-tqHoles.push({ x: 31.25, y: 12.95, r: 0.45 }); // §35/§68 (§112: re-synced to the SOLVED rod site) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
+tqHoles.push({ x: 34.32, y: 16.89, r: 0.45 }); // §35/§68 (§112: re-synced to the SOLVED rod site) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -10303,7 +10303,12 @@ const ALARM_GOV_SAW_TOP = ALARM_GOV_SAW_BOT + ALARM_GOV_SAW_T; // makeRatchetAnd
 const ALARM_GOV_ANCHOR_T = ALARM_GOV_SAW_T;                // one band, one plane
 const ALARM_GOV_ANCHOR_BOT = ALARM_GOV_SAW_BOT;
 const ALARM_GOV_ANCHOR_TOP = ALARM_GOV_SAW_TOP;
-const ALARM_GOV_RING_BOT = ALARM_U_FLOOR + CLEAR_MARGIN + 0.01; // §112: the ring band starts one margin above the BASE plate's face — §104's derivation, one plate down
+// §112 band swap: the saw dropped to the band the floor-seated ring's top
+// was 0.047 under (measured, the battery's governor ⇄ anchor row), so the
+// ring returns to §104's own arrangement — riding the arbor ABOVE the
+// anchor's plane, one margin over the saw. It is the anchor staff's
+// topmost rider again, and the stud's length below derives from that.
+const ALARM_GOV_RING_BOT = ALARM_GOV_SAW_TOP + CLEAR_MARGIN + 0.01;
 // (the anchor's plan — R_p, span, D — §112: in the alarm-plan block, with
 // its rule-1 derivation comment.)
 // The swing spec's own room check (why φ is 0.30): everything on the anchor
@@ -10710,7 +10715,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   govStud.rotation.x = Math.PI / 2;
   govStud.position.set(alarmGovPos.x, alarmGovPos.y, (govStudTop + studBase) / 2);
   alarmGovUnit.add(govStud);
-  const anchStudTop = ALARM_GOV_ANCHOR_TOP + 0.2; // the anchor is this axis's topmost rider — the ring is DOWN by the plate
+  const anchStudTop = ALARM_GOV_RING_TOP + 0.2; // §112 band swap: the ring is the axis's topmost rider again (§104's arrangement)
   const anchStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, anchStudTop - studBase, 12), MATS.steel);
   anchStud.name = 'alarmGovAnchorStud';
   anchStud.rotation.x = Math.PI / 2;
@@ -10723,8 +10728,16 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   pinion.rotation.z = Math.PI / ALARM_GOV_PINION_TEETH; // half a leaf — interleaves the wheel's teeth at the mesh line
   pinion.position.z = ALARM_GOV_WHEEL_Z;
   alarmGovRotor.add(pinion);
+  // §112 band swap — the saw KEYS to the arbor on a filed square
+  // (across-corners = the arbor's diameter, §99's arbor-ratchet
+  // convention). Its old decorative round bore rode nothing: the joint
+  // that held the staff together was an accident of the pre-swap z-stack
+  // (pinion bevel against saw underside), and the module change opened it
+  // 0.078 — the assembly check's governor split. A drive joint must be
+  // metal on metal by construction, not by adjacency.
   const saw = G.makeRatchetAndClick({
-    radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false });
+    radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false,
+    squareBore: (2 * ALARM_GOV_ARBOR_R) / Math.SQRT2 }); // side of the filed square, across-corners = arbor ⌀ (§99's arborSq)
   saw.traverse((o) => { if (o.isMesh) o.name = 'alarmGovSaw'; });
   saw.rotation.z = ALARM_GOV_SAW_PHASE;
   saw.position.z = ALARM_GOV_SAW_BOT; // the builder extrudes bottom→up
@@ -10733,7 +10746,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   saw.userData.profile = {
     poly: saw.userData.ratchetPoly,
     hubR: ALARM_GOV_SAW_R * 0.8,
-    boreR: ALARM_GOV_SAW_R * 0.28,
+    boreR: ((2 * ALARM_GOV_ARBOR_R) / Math.SQRT2 + 0.03) / 2, // the keyed square's across-flats half (§99's convention)
   };
   alarmGovRotor.add(saw);
   // §111 — a BORED arbor, not a solid one: ringGeo is the closed lathe tube
@@ -10826,9 +10839,9 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
       console.warn('§107: the anchor arm and the blade it carries share no metal — the anchor is two bodies again');
   }
   const anchArb = new THREE.Mesh(
-    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT), MATS.steel);
-  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane) — bored, §111
-  anchArb.position.z = (ALARM_GOV_ANCHOR_TOP + ALARM_GOV_RING_BOT) / 2;
+    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_RING_TOP - ALARM_GOV_ANCHOR_BOT), MATS.steel);
+  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries anchor (at the saw's plane) and ring above it — bored, §111; §112 band swap put the ring back on top
+  anchArb.position.z = (ALARM_GOV_RING_TOP + ALARM_GOV_ANCHOR_BOT) / 2;
   alarmGovAnchorPivot.add(anchArb);
   // The solved ring, its collar and two carrier arms — every term the
   // bisection counted, cut at the counted dimensions.
@@ -12319,13 +12332,23 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // neighbourhood is judged as its own disc — the fork's working reach
   // about the tab station, against the same shaft-band obstacles.
   const TAB_R = 1.3; // fork jaw + crank end about the tab's mid-reach
+  // The tab's own z-band, NOT the shaft's: the fork block spans the groove
+  // plus a plate each side about the ring's datum, 0.47 half-height against
+  // the shaft band's 0.41 — and the setting idler's wheel plane sat in
+  // exactly that 0.06 of difference, in-band to the tab and border-line to
+  // the shaft filter that first stood in for it (the battery's standing
+  // FORBIDDEN row at every pose).
+  const tabBand = [
+    ALARM_LINK_SHAFT_Z - (ALARM_FORK_GROOVE_H / 2 + ALARM_SEL_T + CLEAR_MARGIN),
+    ALARM_LINK_SHAFT_Z + (ALARM_FORK_GROOVE_H / 2 + ALARM_SEL_T + CLEAR_MARGIN)];
   // Concentric centre machinery (the face cam, the disc train) rings the
   // tab's radius at EVERY azimuth — it cannot discriminate between tab
   // seats, and the ring's own build asserts already hold it. What the tab
   // azimuth genuinely chooses between is the OFF-CENTRE machinery — the
   // setting idler's span to the corner is the row that wrote this — so
   // only obstacles standing clear of the ring's own annulus are scored:
-  const tabObs = chordObs.filter((b) => {
+  const tabObs = obs.filter((b) => {
+    if (!inBand(b, tabBand)) return false;
     const cx0 = b.disc ? b.disc.x : (b.min.x + b.max.x) / 2;
     const cy0 = b.disc ? b.disc.y : (b.min.y + b.max.y) / 2;
     return Math.hypot(cx0, cy0) > 7;
@@ -12972,7 +12995,7 @@ const alarmLinkParts = {};
   // constant, so this is the tripwire between them. It has already earned its
   // keep once: moving the rod to az 210 left both bores behind at az 212 and
   // this is what said so.
-  const _boreXY = { x: 31.25, y: 12.95 };     // MUST equal both tqHoles entries for this rod (§68 re-site; §112 froze it at the solved site)
+  const _boreXY = { x: 34.32, y: 16.89 };     // MUST equal both tqHoles entries for this rod (§68 re-site; §112 froze it at the solved site)
   if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
     console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
   // the shaft's bottom vs the keyless piece under the run. §35 measured that

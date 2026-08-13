@@ -46,7 +46,10 @@ of the §48 population by the item's own arbiter), 38 (both winds swept;
 the going axis is a cycle, and it found an undeclared reciprocator and
 two blind-spot joints in its first hour), 32 (§104 — the striking
 governor: the alarm's derived k finally produces the cadence, with an
-80-click set-up so the ring stops instead of crawling) — plus the
+80-click set-up so the ring stops instead of crawling), 44 (§112 — the
+tier-split's re-derived sleeve span IS the turned step the item
+prescribed; the striking rotor measures one body and the waiver is
+gone) — plus the
 *Recently closed* bucket at the end (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
@@ -4889,7 +4892,7 @@ spending diagnosis time exactly like TODO 38's landing did. Fix order:
 (1) is the load-bearing one, (2) and (3) mostly matter because they feed
 it and the track test.
 
-## 44. The lock collar is held to the striking arbor by parentage, not by metal
+## 44. CLOSED (§112) — the lock collar is held to the striking arbor by parentage, not by metal
 
 Found by §107's `assembly` check on the run that landed it — the first
 thing that instrument reported which was not the defect it was written
@@ -4926,6 +4929,16 @@ the governor §107 was landing, and the repo's own order says a finding
 outside the group is filed with its arithmetic rather than absorbed into
 an unrelated landing. The row is waived in `ASSEMBLY_WAIVERS` citing this
 item, so it stays red in the report until someone spends it.
+
+**CLOSED by §112 (2026-08-13), and almost by accident.** The tier-split
+re-derived the strike sleeve's span — hub of the 64T wheel up to the
+cam's underside — which is the turned step this item prescribed, running
+straight through the collar's band: the assembly check now measures the
+striking-wheel rotor as ONE body over the pose net (no split to waive),
+and the stale `ASSEMBLY_WAIVERS` row is removed. "Almost by accident"
+because the sleeve moved for the band swap's stacking arithmetic, not
+for this item — the closure was noticed when the waiver's group label
+stopped matching and no violation surfaced behind it.
 
 ## 45. The governor anchor's structural review — the escapement's engagement is too deep to be cut as metal, and nothing was measuring it
 

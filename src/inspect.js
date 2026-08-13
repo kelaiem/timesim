@@ -1456,6 +1456,13 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Alarm striking wheel', b: 'Alarm governor', min: CLEAR_MARGIN,
     contacts: [
       ['alarmGovWheel', 'alarmGovPinion'], // the ×8 stage — a working gear mesh
+      // §112 band swap: an 8-leaf pinion's root stands 0.02 over its own
+      // arbor, so the wheel's working tip rides ~0.03 from the arbor by
+      // the mesh's tip-root arithmetic (0.25·m of clearance to the root,
+      // and the arbor IS nearly the root). The region is the mesh's own —
+      // the gear gauges and the mesh's tip assert own it, exactly like the
+      // pinion row above; real 8-leaf trains run this close by design.
+      ['alarmGovWheel', 'alarmGovArbor'],
     ],
   },
   // §107 — the pair the anchor's promotion created. Its declared contact is
@@ -1574,7 +1581,7 @@ export const INTRA_UNIT_CONTACTS = [
   // check is what caught it. Naming also let the row say what the joint is:
   // it was recorded as the collar, and the collar is the separate row below.
   { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
+  { unit: 'Alarm striking wheel', a: 'alarmStrikePinion', b: 'CylinderGeometry#0', why: 'strike pinion pressed on the same arbor (named by §112\'s placement gate — the row followed the name)' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
   // arbor row is kept as the record of a joint that is still there and no
@@ -1809,10 +1816,12 @@ export const ASSEMBLY_SPLITS = [
 // the landing owns; every other unit's rows are reported, not gated.
 export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel'];
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
-export const ASSEMBLY_WAIVERS = [
-  { unit: 'Alarm striking wheel', group: 'ExtrudeGeometry#4',
-    debt: 'TODO 44 — §25 B\'s lock collar rides the strike rotor but touches no rotating member (0.2117 to the nearest): it is held by parentage, not by metal. The fix is the turned step this shaft already uses one level up (alarmStrikeSleeve), between the collar\'s top and the cam\'s underside; it belongs to §25 B\'s mechanism, not to §107\'s governor, so it is filed with its arithmetic rather than absorbed here.' },
-];
+// (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
+// the strike sleeve to span from the wheel's hub to the cam's underside —
+// the exact turned step the item prescribed — and it now passes through
+// the collar's band, so the rotor is one body and the battery measures no
+// striking-wheel split to waive.)
+export const ASSEMBLY_WAIVERS = [];
 
 export async function checkAssembly(clock, {
   axes = AXES, samplesPerAxis = 3, joinTol = ASSEMBLY_JOIN_TOL, splits = ASSEMBLY_SPLITS,
