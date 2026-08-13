@@ -5117,13 +5117,21 @@ in `INTRA_UNIT_CONTACTS` (`src/inspect.js`) as the strike sleeve's
 
 **The complication to solve, not to skip.** `addUpperPivot` grows a staff UP to
 `TQ_MID_Z` — it assumes the arbor ends in the three-quarter plate. The governor
-does not: §107 sited it ABOVE that plate, on studs planted in the plate top, to
-meet §39's depth envelope. So a jewelled upper pivot here needs a COCK over the
-governor, which the movement also has vocabulary for (the balance cock and fork
-cock), or the stones go in the plate top as lower bearings. That choice is the
-first thing this strand has to decide, and it interacts with the 11.95 mm stack
-against §39's 12 mm ceiling — there may be no room for a cock, in which case say
-so with the measurement rather than dropping the strand quietly.
+does not, and **§112 moved which side of that plate it is on**: the tier-split
+took the alarm's power tiers UNDER the three-quarter plate, so both governor
+studs are planted in the BASE plate now (`studBase = ALARM_U_FLOOR − 0.5`) and
+the unit occupies z 0.35 … 4.05 against the plate's underside at 7.71. (This
+paragraph said "§107 sited it ABOVE that plate, on studs planted in the plate
+top" until §115 corrected it; a strand that argues from the wrong side of a
+plate reaches the wrong answer about what carries a stone.) So a jewelled upper
+pivot here needs a COCK over the governor — standing in the under-plate band,
+not on the plate top — which the movement has vocabulary for (the balance cock
+and fork cock), or the stones go in the base plate as lower bearings. That
+choice is the first thing this strand has to decide, and the room it has is now
+the under-plate band's own: the governor's tallest rider tops at 4.05 with the
+plate's underside at 7.71, so there is **3.66** of air over it, and §115's
+window means a cock in that band is also the thing a viewer would see through
+the plate. Measure it rather than dropping the strand quietly.
 
 ### What the review owes the instruments
 
@@ -5206,8 +5214,11 @@ so with the measurement rather than dropping the strand quietly.
 - **`makeChaton`** (`src/geometry.js:2952`) — a screwed gold chaton with pressed
   ruby and oil sink — is complete, documented, and called by nothing. The plate
   went back to a flush rubbed-in stone because it was too thin for a proud
-  chaton (`src/main.js:5626-5633`); the governor sits above that plate, so the
-  constraint that retired it may not apply here.
+  chaton (`src/main.js:5626-5633`); the governor is UNDER that plate since
+  §112's tier-split (this line said "above" until §115 corrected it), so the
+  constraint that retired it — nothing may stand proud of the plate's top face,
+  where the reset and hack rods run — does not reach the governor's own band at
+  all. Whatever carries a stone there answers to the under-plate band instead.
 
 ### The measurement the review should not have skipped — now taken
 

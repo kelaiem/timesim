@@ -11247,3 +11247,289 @@ Also verified: boot silent, both tiers shot at the governor corner — the
 realistic tier shows short flat paddles clear of the tooth band, the line
 tier draws the same quads — and the pages checkers green after the
 explainer rewrite (`explain-i18n --check`, `explain-quotes`).
+
+## §115 — a window onto the alarm governor: one frame, two axes, and two declarations that were not true of the metal
+
+**§112 hid the thing it made honest.** The tier-split put the alarm's power
+tiers under the three-quarter plate, and the governor went with them — the
+movement's fastest-turning part and the only thing setting the strike's
+cadence, sitting at z 0.35 … 4.05 in the 0 … 7.71 band with the plate closed
+over it. Measured before anything was cut, by raycasting every vertex of both
+governor units straight out through +z against the finished plate:
+
+| unit | vertices with a clear path out, before |
+|---|---|
+| Alarm governor | **0 of 2007 (0.0%)** |
+| Alarm governor anchor | **0 of 989 (0.0%)** |
+
+Not "mostly covered" — covered. `tools/probe-107-shot.mjs` had already
+recorded the consequence in its own way: since the tier-split both of its
+vertical shots stare at plate metal, and they were re-aimed to near-horizontal
+rakes through the tier gap. The only escape was the x-ray toggle, which
+glasses the whole plate at 0.28 rather than framing anything.
+
+§62 built the machinery for exactly this, so this entry is mostly about what
+the governor is that the two shipped windows were not.
+
+### An action is not always one axis
+
+§62's doctrine — a window onto a coaxial stack is sized to the circle its
+widest turning member sweeps, exactly a circle, no sample net — assumes one
+centre. A governor escapement is **two**: the 40T saw wheel on `alarmGovPos`
+and the anchor carrying its poising ring on `alarmGovAnchorPos`,
+`ALARM_GOV_ANCHOR_D` = 7.051 apart, with discs of 6.216 and 6.483 after their
+margin of reveal. The thing worth seeing is what happens BETWEEN them, and
+framing either alone frames half a mechanism.
+
+Two windows is not the answer. The discs overlap deeply (6.2 + 6.5 against
+7.05 between the centres), so two sector polygons would overlap — §62's defect
+4, where `ExtrudeGeometry` triangulates overlapping holes into PHANTOM PLATE
+rather than failing — and the land between them would be negative against
+`TQ_LAND_MIN`. **One window is forced, not chosen.**
+
+So an intent may now declare several discs (`discs()`) instead of one radius
+(`reveal()`), and the reveal at a bearing is the ray's exit from their UNION.
+Each member's silhouette about its own axis is still exactly a circle, so
+nothing is sampled and TODO 7's first blindness class stays answered by
+construction at two axes as it was at one.
+
+What the union costs is that the solve's polar centre is no longer any
+member's axis, and the polar bisection only describes the union if every ray
+from that centre leaves it exactly ONCE. That holds when the centre is
+interior to every disc — a union of convex sets sharing an interior point is
+star-shaped about it. The centre is the **midpoint of `ALARM_GOV_ANCHOR_D`**,
+the escapement's own centre distance halved rather than a drawn point; it
+stands 3.526 from each axis and so 2.69 and 2.96 inside the two discs. That is
+a premise, so it is a gate: the solve warns if the centre comes within
+`CLEAR_MARGIN` of leaving any disc.
+
+**The two shipped windows are bit-identical after the change**, and by
+construction rather than by luck — a single disc concentric with its centre
+short-circuits to `d.r` by name before any float arithmetic, instead of being
+routed through `Math.sqrt(d.r * d.r)`. Verified at full precision anyway, both
+`rOut` tables and both `r0`: 0 of 360 bearings differ on either.
+
+### The first bossless window, and the rule it needed
+
+Both shipped windows island a pivot boss and hang off three webs. Neither
+governor unit pivots in this plate — both stand on studs planted in the BASE
+plate — so this window islands nothing, `r0` is 0, and there are no webs.
+Nothing had ever exercised that path, and it had a hole in it: with no boss,
+step 4 pushes no inner return, so a PARTIAL run emits its outer arc closed by
+its own chord. Not a crash — a silent mis-cut, and two such runs can overlap
+into phantom plate with §62 defect 4's only detector switched off beside them
+(see below).
+
+The rule is that **a bossless window is all or nothing**. What stands between
+two runs of one is not an arm — there is no boss for it to be an arm OF — it
+is a knife-edged spur of plate tapering to zero width at the apex where the
+runs meet: under `TQ_LAND_MIN` along its length and under `STOCK_MIN_U` at its
+tip, refused by §50 and §54 both, and left by no cutter. So it is cut only if
+it solves open at every bearing; otherwise the row is REPORTED with its `rOut`
+and not cut, and the boot says which bearing closed and whether a keep or
+another opening did it. That is this entry's own priority — the plate is a
+bearing first and the WINDOW is what gives — and §62's own precedent, which
+measured the centre and third wheels and declined to cut them.
+
+`checkPlateWindows` re-asserts the same rule against the sectors that were
+BUILT, at every stage, because the re-solve sees keeps the first solve could
+not and may pinch a window that was open when it was cut.
+
+### Two defects in §62's own machinery, found by generalising it
+
+Both were invisible to every instrument, and both are in shipped code rather
+than in the new path.
+
+1. **The `boss` test did not say what its comment said.** The comment claims
+   "an upper pivot standing at the window's own axis"; the test was "any pivot
+   inside the reveal." Those are the same thing only while every reveal is one
+   circle about its own axis and the only pivot inside is that axis's own.
+   This window's reveal reaches 10.009 about its centre and the strike arbor's
+   bore stands **10.30** away — 0.29 from being islanded as a boss the window
+   is not at, which would have drawn three webs about the wrong centre and
+   emitted a polygon that means nothing. The test is now `< pivotBossR(p)`,
+   which is the sentence. A pivot merely inside the reveal is a KEEP, and
+   `tqKeepClearance` already subtracts its `pivotBossR` at every bearing, so
+   the window shrinks around it correctly without pretending to hang off it.
+   `fusee` and `escapement` sit at distance 0 from their own pivots against
+   boss radii of 0.66 and 2.21, so neither moves.
+2. **The overlap guard was off for exactly the new window class.** Check 3
+   read `row?.webW ?? TQ_LAND_MIN`, and `webW` is `0` — not `undefined` — for a
+   bossless row, so `??` never fired and a same-name pair was compared against
+   zero. §62 defect 4's only detector was disabled precisely where step 4 is
+   least able to emit a sane polygon. It is `row?.boss ? row.webW : TQ_LAND_MIN`
+   now: an arm width where there is an arm, a land where there is not.
+
+### The reveal is DECLARED, and the declarations were not true
+
+This solver first runs five thousand lines before the alarm block, so the
+governor's metal does not exist when its window is sized. Sizing it on the
+re-cut pass instead is barred outright: that pass may only ever SHRINK,
+because the pillar seats and their plate screws were solved against the first
+outline. So the intent reads `ALARM_UNDER_FOOTPRINT`'s two governor rows BY
+NAME — the very discs §112's pillar solve was already told to keep its columns
+out of — and the window frames exactly the land the frame has been cleared of.
+Two solves, one description.
+
+That put weight on a list nothing had ever checked, so a **declared-versus-cut
+assert** now measures each row against the metal that ended up inside it: the
+greatest distance from the declared axis to any vertex of the meshes standing
+on it. Both units are revolvers about those axes, so the reach is
+pose-independent by construction — the same argument §62's escapement intent
+uses, no pose net. It found two rows wrong on its first boot.
+
+**The poising ring's disc, by 0.642.** The row read `ALARM_GOV_RING_R + 0.4`,
+from "ring stock tops at 0.8, so outer ≤ R + half of that." But
+`ALARM_GOV_RING_STOCK_MM` is in MILLIMETRES and the disc is in model units,
+and `UNIT_MM` is 0.379. In units the ceiling is 2.111 and its half is
+**1.055**, not 0.4. §113's re-solve had since taken the section to 0.790 mm =
+2.085 u, so the built ring's outer edge stands at **6.320** against a declared
+**5.678** — the pillar solve and now the window reveal were both told to
+respect a circle **0.642 (4.3 clearance margins) smaller than the metal**. The
+reasoning in that comment was always right; only its arithmetic was done in
+the wrong units, which is exactly why nothing downstream ever looked wrong.
+The conversion is in the expression now, `ALARM_GOV_RING_STOCK_MM` is hoisted
+to the plan block so the bound and the solve it gates read one constant, and
+the corrected 6.333 contains the built 6.320 with 0.013 to spare — which is
+not luck either, since the section is solved to land a designed centi-mm under
+its ceiling.
+
+**The 64T wheel's disc, by 0.053** — a smaller number and a more general
+finding. The row read `module·(N/2 + 1) + bevel` = 7.308 and the wheel reaches
+**7.361**. Two errors in that expression pull opposite ways, so the sum looked
+plausible: `makeGear`'s addendum is 0.95·module, not one module, which makes
+the true tip circle smaller; but `gearOutlineShape` RELIEVES the tooth tip,
+drawing it as a quadratic through a control point at `tipR × 1.02`, and that
+curve stands proud of the tip circle by more than the addendum gives back.
+`geometry.js` exports `gearOuterR` now, bounded by the Bézier's own control
+hull — a quadratic lies inside the hull of its three control points, so no
+part of the tip can pass `tipR × 1.02` whatever `curveSegments` samples — and
+both the footprint row and §112's own barrel-arbor assert read it. That assert
+had been guarding this wheel with a radius 0.053 smaller than the wheel that
+ships; it still passes, at 7.442 against the arbor's near edge less a margin.
+
+**Residue, stated because the check is only as wide as its list.** Three of
+`ALARM_UNDER_FOOTPRINT`'s five rows are held — the striking wheel, the
+governor saw and the governor ring. The barrel and click rows are not: their
+members build in the barrel block and belong to it, and enumerating them here
+would put a second list of mesh names somewhere they are not made. The rows
+are named, so extending the check is a line each. The one failure mode that
+would have made this worse is closed: a row whose declared meshes all vanish
+under a rename measures nothing and would report clean forever, so an empty
+match is itself a warning.
+
+### What the plate actually left
+
+| | value |
+|---|---|
+| bearings open | **360 of 360** |
+| bearings at the union's full reach | **339 of 360** |
+| bearings the keep field bit | **21**, worst **0.900** at 293° |
+| sectors cut | **1** (bossless, as the rule requires) |
+| radius from the centre | 5.307 … 10.009 |
+
+The bite is one obstacle and it is the right one: 285–297° off the window's
+centre is the bearing of the strike arbor's bore, whose boss is plate this
+window may not take. Nothing else in the §112 strike work reaches it — the
+gong, hammer, lifting cam, lock and switch are stationed at other azimuths —
+and the rim stands 2.36 clear of the union's far edge.
+
+The acceptance, in §62's currency, re-taken on the finished plate:
+
+| unit | before | after |
+|---|---|---|
+| Alarm governor | 0 of 2007 (0.0%) | **1989 of 2007 (99.1%)** |
+| Alarm governor anchor | 0 of 989 (0.0%) | **989 of 989 (100%)** |
+
+**And the 18 vertices still covered are the strike arbor's bearing and nothing
+else** — every one of them is `alarmGovSaw`, at bearings 285–297°, which is
+the bite above. The window shows the saw, the pallets, the anchor and the
+poising ring at every pose, and what it does not show is the corner of the saw
+that runs under the plate's own bearing for the arbor driving it. That is the
+frame doing its job rather than becoming a hole.
+
+**One pillar moved**, and it was the window that moved it, not the footprint
+fix: measured separately, the corrected ring disc alone leaves all four seats
+where they were, because the seat scan's optimum was already outside it. The
+45° seat travels 2° round its own radius, 29.376, 25.536 → 30.249, 24.495, as
+`seatClearance` re-optimises against a new opening it must keep a land from.
+The other three do not move.
+
+### What the record does not owe
+
+`explain.html` gains nothing, and §62's argument holds verbatim: its entries
+are MECHANISMS, and a window in a plate is structure and finish. This one
+frames a mechanism the page already explains — §113's flat-faced anchor — and
+moves not one of its quoted numbers, so `explain-quotes` is untouched and the
+German and Chinese stay valid rather than being invalidated by design (§73)
+for a subject the page does not have. `MECH_GRAPH` gains nothing either: a
+window is an absence, not a part. §71's occluder re-uses the plate's own
+geometry, so the schematic tier follows the new opening for free, and
+`TODO.md` gains nothing because nothing here is waived.
+
+`TODO.md` LOSES two sentences, though. Item 45's open stone question was
+written against "§107 sited it ABOVE that plate, on studs planted in the plate
+top" and "the governor sits above that plate" — both true before §112 and
+false since, and both now corrected, because a cock over the governor is
+argued from where the governor is.
+
+### The battery, and the three things that moved
+
+**20/20 gates pass**, boot silent, run locally against `origin/main` and this
+tree in turn on an idle machine so the cost timings mean something:
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 537 rows, 0 degenerate, 0 unwaived
+intraUnit 264 movers over 55 poses, 0 unwaived · assembly 0 undeclared unwaived splits
+expectedContacts 13 pairs, 0 unwaived, 0 unmatched selectors
+oscillator 2.5 Hz on a 0.0244 mm ribbon · equalisation TODO 32 held, ring 0.790 mm in stock
+restoring 20 reversing units, 0 unwaived, control PASS
+inspection 0 FORBIDDEN over 53 units and 74 contacting pairs · clearances 0 violations over 30 budgets
+sweptOverlap 0 CONFIRMED over 67943 pairs (tight 4, refuted 20)
+spec boots 26/26 build, identity control silent
+```
+
+Every gate's summary line is byte-identical to base except the fingerprint.
+`--report` diffed check by check: **twelve of fourteen payloads are
+byte-identical** — `alarmHandoffs`, `assembly`, `clearances`, `equalisation`,
+`expectedContacts`, `graph`, `inspection`, `intraUnit`, `oscillator`,
+`penetration`, `restoring`, `stockFloor`. Three things moved, and all three
+are the plate's new geometry showing up where it should:
+
+1. **fingerprint `3519083211 → 761710512`.** Not the window — a window is
+   strictly interior and the plate's AABB is set by its rim, so §62's
+   postscript reasoning holds and the plate's own box does not shift. It is
+   the PILLAR. `seatClearance` re-optimises against a new opening it must keep
+   a land from, and the 45° seat travels 2° round its own radius; `pillars` is
+   a labelled unit, so its box moves and the hash with it. Measured
+   separately, the footprint fix alone leaves all four seats exactly where
+   they were — the corrected ring disc changes no seat because the scan's
+   optimum was already outside it.
+2. **`support`, two gaps of 67, both against this plate, both far inside
+   `SUPPORT_TOL` 0.5.** The row order moves with them because the check sorts
+   by gap; no row is added, removed, or newly failing.
+   - `Center wheel → Three-quarter plate` **0 → 0.048**, and the new number is
+     the better one. The nearest mesh pair changed: base measured the wheel's
+     body against the plate body and read 0 (contact, which for a bearing is
+     what it is), head measures the upper-pivot staff against its bearing
+     collar — and 0.048 is `PIVOT_BORE_CLEAR` (0.05) less the collar's
+     tessellation chord. The row now reports the running fit the bore is
+     actually cut to.
+   - `Alarm link → Three-quarter plate` **0.147 → 0.139**, same mesh pair
+     (`alarmLinkRod` ⇄ `threeQuarterPlate`) at both ends.
+3. **`sweptOverlap`, one number in one `tight` row**: `refinedMinGap`
+   0.1472 → 0.139 — the same alarm-link pair as above, reported twice by two
+   instruments. Counts do not move (0 CONFIRMED, tight 4, refuted 20), and
+   `tight` rows are reports.
+
+The common cause of 2 and 3 is worth stating because it will happen to the
+next window too: **cutting a hole in a `THREE.Shape` re-triangulates the whole
+face, not just the hole.** The plate goes from 50,170 to 58,978 triangles and
+126,900 to 149,144 vertices, so any measurement whose answer lands on a face
+triangle can move by a triangle's worth anywhere on the plate — including
+across the movement from the window. Neither number crosses anything.
+
+Cost: `sweptOverlap` 1877 → 1913 s (+1.9%, the larger plate mesh) and the rest
+inside run-to-run noise; total check time 4888 → 4823 s. The shard partition
+is unchanged in shape and the cost column is left alone.
