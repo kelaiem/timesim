@@ -10911,7 +10911,7 @@ in both locales with 0 markup/code/number drift, `explain-quotes` PASS, and
 the governor corner shot in both tiers — the blades read as pallets rather
 than splinters, and the line tier draws the arbor's two rims.
 
-## §112 — TODO 45 finding one: the escapement gets drop — a flat-faced recoil anchor, every number a solve
+## §113 — TODO 45 finding one: the escapement gets drop — a flat-faced recoil anchor, every number a solve
 
 §111 ended with a diagnosis it deliberately did not act on: the governor's
 0.245 u interference could not be cut away because it WAS the design —
@@ -11025,7 +11025,7 @@ shapes met its classifier:
 - **The paddles cannot be under-read the same way**: a flat quad's AABB
   minimum is at worst its smaller side, and both sides are at the floor
   exactly. §111's blades needed a boot assert against the cut polygon
-  because the census could not see their edgewise section; §112's
+  because the census could not see their edgewise section; §113's
   paddles made the census's own reading sufficient — the better fix
   where the shape allows it.
 
@@ -11095,13 +11095,13 @@ differ in exactly five checks, plus the fingerprint:
   **byte-identical**, which is the referred-torque claim landing as
   measurement.
 - **`restoring`** — the anchor's two-way row changes only its `why`
-  prose: the §112 text names the dwell through each drop arc.
+  prose: the §113 text names the dwell through each drop arc.
 - **`inspection`** — the governor pair's EXPECTED row updates its pose
   detail; the class and the verdict do not move.
 - **fingerprint** `1639816688 → 1692592172` — geometry moved, so it
   must. (The shank fix alone did NOT move it — the fingerprint samples
   unit matrices, not mesh vertices, and the shank is a vertex-only
-  change. The §112 landing moved it through the anchor's new station.)
+  change. The §113 landing moved it through the anchor's new station.)
 
 Nine checks are byte-identical: `support`, `graph`, `alarmHandoffs`,
 `stockFloor`, `intraUnit`, `assembly`, `oscillator`, `clearances`,
@@ -11111,7 +11111,7 @@ numbers, because its minimum lives on an axis the change didn't touch.
 The section that matters is asserted at boot against the cut polygon —
 and for the paddles it is the AABB's own smaller side by construction.
 
-`penetration`'s measured cost went 44.5 s → 21.3 s (§112's stubby
+`penetration`'s measured cost went 44.5 s → 21.3 s (§113's stubby
 pallets halve the row's mesh work); the cost column follows, 45 → 21.
 
 Also verified: boot silent, both tiers shot at the governor corner — the

@@ -10092,13 +10092,13 @@ const ALARM_GOV_ARBOR_BORE = ALARM_GOV_STUD_R + PIVOT_BORE_CLEAR;   // the runni
 const ALARM_GOV_ARBOR_R = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U;       // 0.585 — wall at the 0.07 mm pivot floor
 const ALARM_GOV_HUB_R = ALARM_GOV_ARBOR_R + STOCK_MIN_U;      // 0.901
 const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769
-// --- §112 THE ESCAPEMENT'S PLAN — a flat-faced recoil anchor with DROP.
+// --- §113 THE ESCAPEMENT'S PLAN — a flat-faced recoil anchor with DROP.
 // §104 generated each pallet face as the engaged tooth tip's ENTIRE
 // trajectory over a half period, so that contact stayed closed at every
 // instant. §111 measured what that claim costs as metal: a pallet long
 // enough to track a tip for half a period reaches half a tooth pitch into a
 // wheel whose teeth are one pitch apart, and the teeth stood 0.245 u inside
-// the blades with every cover blind to it. §112's phase-1 model then closed
+// the blades with every cover blind to it. §113's phase-1 model then closed
 // the other exits by measurement — relieving the wheel leaves a 0.031 u
 // needle, no swing in 0.08–0.30 at any span clears it, a shortened
 // conjugate face is swept THROUGH ITS WORKING FACE the moment the anchor
@@ -10129,7 +10129,7 @@ const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769
 //     is a thicker ring — so the ring ceiling binds ψ from below, while
 //     the cycle interference grows with ψ and wants it small: the optimum
 //     is the ceiling itself. Phase-1/2 model sweeps are the citation
-//     (docs/BUILT.md §112); the equalisation gate and the cycle sweep
+//     (docs/BUILT.md §113); the equalisation gate and the cycle sweep
 //     below are what hold the solve honest.
 //   section = STOCK_MIN_U of working depth behind the face — a FLAT face's
 //     section IS its normal offset, so §104's edgewise trap (0.45 u of
@@ -10177,7 +10177,7 @@ const _govRingIOf = (su) => OSC_BRASS_RHO * (OSC_U ** 5) * (
 // shorter face clears the teeth by more but cuts sub-floor metal (§50) or
 // demands a ring outside stock — honest stock and honest inertia are bought
 // with 0.01 u of clearance grade. §111 set this constant AT its measured
-// debt, 0.25, with the instruction to tighten and never widen; §112's drop
+// debt, 0.25, with the instruction to tighten and never widen; §113's drop
 // is the tightening, 7.6×.
 const ALARM_GOV_ENGAGE_DEBT = 0.033;
 // The anchor stands at the HUB-ROOM FLOOR — the closest station the §111
@@ -10193,7 +10193,7 @@ const alarmGovAnchorPos = {
 // --- THE CLOSURE SOLVE, run at boot in the canonical frame (wheel at the
 // origin, anchor due south at D — the movement placement is a rotation by
 // ALARM_GOV_ANCHOR_BEARING + 90°, applied to the RESULTS). The march keeps
-// the §112 model's one physical law the conjugate design never had: the
+// the §113 model's one physical law the conjugate design never had: the
 // contact is UNILATERAL. Every step checks the tip presses INTO the
 // paddle's steel side; a drive that would need the face to pull the tooth
 // is not a drive, and the solve says so instead of gluing them.
@@ -10299,21 +10299,21 @@ const ALARM_GOV_FACE_PSI = (() => {
   let lo = 8 * DEG2RAD, hi = 20 * DEG2RAD;
   const rLo = ringMMAt(lo), rHi = ringMMAt(hi);
   if (rLo === null || rHi === null || !(rLo > target && rHi < target)) {
-    console.warn(`§112: the ψ solve cannot bracket the ring target (${rLo === null ? 'no closure at 8°' : rLo.toFixed(3)} … ${rHi === null ? 'no closure at 20°' : rHi.toFixed(3)} mm vs ${target})`);
+    console.warn(`§113: the ψ solve cannot bracket the ring target (${rLo === null ? 'no closure at 8°' : rLo.toFixed(3)} … ${rHi === null ? 'no closure at 20°' : rHi.toFixed(3)} mm vs ${target})`);
     return 12 * DEG2RAD;
   }
   for (let i = 0; i < 24; i++) {
     const m = (lo + hi) / 2, r = ringMMAt(m);
-    if (r === null) { console.warn(`§112: ψ bisection lost closure at ${(m / DEG2RAD).toFixed(2)}°`); break; }
+    if (r === null) { console.warn(`§113: ψ bisection lost closure at ${(m / DEG2RAD).toFixed(2)}°`); break; }
     if (r > target) lo = m; else hi = m;
   }
   return (lo + hi) / 2;
 })();
 const _govSolve = _govClosure(ALARM_GOV_FACE_PSI);
 if (!_govSolve)
-  console.warn('§112: the closure solve failed at the solved ψ — the paddle geometry no longer alternates; every figure downstream of φ is untrustworthy');
+  console.warn('§113: the closure solve failed at the solved ψ — the paddle geometry no longer alternates; every figure downstream of φ is untrustworthy');
 else if (Math.abs(_govSolve.residual) > 1e-6)
-  console.warn(`§112: closure residual ${_govSolve.residual.toExponential(2)} — release does not land on −h`);
+  console.warn(`§113: closure residual ${_govSolve.residual.toExponential(2)} — release does not land on −h`);
 // φ is an OUTPUT now. §104 authored it (0.30, "the alarm-clock anchor class
 // runs 15–20°"); that spec note described the conjugate design, whose face
 // had to track a tip for half a period. A flat-face runaway solves to a far
@@ -10328,14 +10328,14 @@ const ALARM_GOV_DROP_ARC = ALARM_GOV_TOOTH_PITCH / 2 - ALARM_GOV_DRIVE_ARC; // t
 // belongs in the law.
 const ALARM_GOV_RHO = ALARM_GOV_DRIVE_ARC / ALARM_GOV_PHI;
 if (ALARM_GOV_DROP_ARC <= 0)
-  console.warn(`§112: the drive arc ${ALARM_GOV_DRIVE_ARC.toFixed(4)} exceeds half a pitch — there is no drop left`);
+  console.warn(`§113: the drive arc ${ALARM_GOV_DRIVE_ARC.toFixed(4)} exceeds half a pitch — there is no drop left`);
 // The landing rule, held as arithmetic against future ε edits (ε = pitch/4
 // satisfies it exactly; any ε with 2ε ≢ pitch/2 mod pitch parks the second
 // pallet out of phase and it never lands):
 {
   const k = (2 * ALARM_GOV_LAND_EPS - 0.5 * ALARM_GOV_TOOTH_PITCH) / ALARM_GOV_TOOTH_PITCH;
   if (Math.abs(k - Math.round(k)) > 1e-9)
-    console.warn(`§112: the landing corners miss the half-integer rule by ${Math.abs(k - Math.round(k)).toFixed(6)} of a pitch`);
+    console.warn(`§113: the landing corners miss the half-integer rule by ${Math.abs(k - Math.round(k)).toFixed(6)} of a pitch`);
 }
 // The movement placement of the solve's canonical frame: one rotation.
 const _govDelta = ALARM_GOV_ANCHOR_BEARING + Math.PI / 2;
@@ -10363,7 +10363,7 @@ const _govPalletPoly = (pad) => {
 // …and the ARM that carries it: a straight bar from the hub to the pallet.
 // §107 built these as arches walked off the tip circle, because §104's
 // pallets sat 5.5 teeth apart with the tip circle BULGING between them.
-// §112's landing corners sit ε = 2.25° off the centre-line, the pallets are
+// §113's landing corners sit ε = 2.25° off the centre-line, the pallets are
 // at the wheel's bottom, and the whole reach — hub edge to corner — stays
 // outside the tip circle at every pose, so the arch dissolves into the bar
 // a bench would actually cut. The build loop measures that claim (worst
@@ -10386,7 +10386,7 @@ const _govArmPoly = (pad) => {
   const lap = ALARM_GOV_ARM_LAP;
   const farA = { x: poly[3].x - sg * lap * n.x, y: poly[3].y - sg * lap * n.y };
   const farB = { x: poly[2].x - sg * lap * n.x, y: poly[2].y - sg * lap * n.y };
-  // rooted at the ARBOR WALL, not the hub edge: with §112's pallets sitting
+  // rooted at the ARBOR WALL, not the hub edge: with §113's pallets sitting
   // just off the hub, a hub-edge bar is only ~0.22 u of metal — under the
   // §50 wheel floor as the census reads it. The bar is really milled from
   // the same plate as the hub, so it runs from the arbor out to the pallet
@@ -10442,7 +10442,7 @@ const ALARM_GOV_SAW_PHASE = (ALARM_GOV_ANCHOR_BEARING + ALARM_GOV_LAND_EPS) - (0
 //   I_a = (gap / (2·teethPerStrike))² · Γ_g(design)·ρ / (2φ)
 // §104 wrote this with ρ = 1 — torque applied to the anchor unreferred — a
 // lumping that was tolerable while the face tracked the tip for the whole
-// half period (driveArc ≈ φ·R_p/…). With §112's short face the ratio is a
+// half period (driveArc ≈ φ·R_p/…). With §113's short face the ratio is a
 // real quantity (≈ 0.53) and belongs in the law. The gap-vs-wind curve is
 // ∝ 1/√M pinned at the design point either way, so the measured cadence
 // endpoints (0.374/0.488 s) do not move; only I_a and the ring's solved
@@ -10488,7 +10488,7 @@ if (ALARM_FALL_S > ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS))
 // Green's theorem — the balance's OSC_I discipline at anchor scale), and
 // the brass ring's square section is solved by bisection to make up the
 // remainder. Neglected: the anchor's arbor sleeve (a tube on a bore — its
-// ∂r²dA is < 0.1% of I_a) and the stud (static). §112's I_a is ~2.8×
+// ∂r²dA is < 0.1% of I_a) and the stud (static). §113's I_a is ~2.8×
 // §104's (the referred torque raised the target), so the ring section
 // rises toward the top of its stock window; the window still gates.
 const _govPolyJ = (pts) => { // area and ∂(x²+y²)dA about the anchor axis
@@ -10681,7 +10681,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     const tris = geo.attributes.position.count / 3;
     if (tris !== 4 * poly.length - 4)
       console.warn(`§107: the anchor arm extrudes ${tris} triangles, not the ${4 * poly.length - 4} a closed ${poly.length}-gon owes — the walk left a hole`);
-    // …and the claim the straight bar makes (§112 — the arch dissolved),
+    // …and the claim the straight bar makes (§113 — the arch dissolved),
     // restated as a measurement: every point of the ARM stays outside the
     // saw's tip circle at every pose of the swing. The wheel centre in the
     // anchor's frame at pose a is rotate(anchor→gov, −a); the pallets are
@@ -10703,7 +10703,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     // (it did once — the first cut of this bar measured 0.011 from a
     // passing tooth, and the full battery, not the boot, caught it):
     if (worst < CLEAR_MARGIN - 1e-9)
-      console.warn(`§112: the anchor arm comes ${worst.toFixed(4)} from the saw's tip circle over the swing — under the ${CLEAR_MARGIN} margin TODO 6's floor holds it to`);
+      console.warn(`§113: the anchor arm comes ${worst.toFixed(4)} from the saw's tip circle over the swing — under the ${CLEAR_MARGIN} margin TODO 6's floor holds it to`);
     // and the joint at the far end: the bar must share metal with its pallet
     if (!_govPalletPoly(P).some((q) => _govPolyContains(q, poly))
         && !poly.some((q) => _govPolyContains(q, _govPalletPoly(P))))
@@ -10773,12 +10773,12 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 // mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
 // is held here, over a sampled tooth period: the saw's whole cut OUTLINE
 // against both pallet outlines, in BOTH directions, under the solved pose
-// law — §111's instrument, unchanged in method, pointed at §112's geometry.
+// law — §111's instrument, unchanged in method, pointed at §113's geometry.
 //
 // The budget's history IS the mechanism's history. §104 shipped with a
 // tips-only test that could not fail and 0.245 u of tooth standing inside a
 // blade. §111 widened the test to bodies and set the budget AT the measured
-// debt (0.25), with the instruction to tighten it and never widen it. §112
+// debt (0.25), with the instruction to tighten it and never widen it. §113
 // gave the escapement drop, and this is the tightening: measured 0.0185
 // over the cycle at fine sampling, held at 0.02 — the same working-contact
 // grade §104's tip assert used, now true of the whole outline. The riding
@@ -10845,7 +10845,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     }
   }
   if (worst > ALARM_GOV_ENGAGE_DEBT)
-    console.warn(`§112: ${worstWhy} by ${worst.toFixed(4)} over the sampled cycle — over the ${ALARM_GOV_ENGAGE_DEBT} working-contact grade; the drop no longer clears the teeth`);
+    console.warn(`§113: ${worstWhy} by ${worst.toFixed(4)} over the sampled cycle — over the ${ALARM_GOV_ENGAGE_DEBT} working-contact grade; the drop no longer clears the teeth`);
 }
 // §36A: the anchor's travel is ±φ/2, declared beside its derivation; its
 // reciprocation rides the existing alarmStrike axis (80 swings per strike)
@@ -10856,13 +10856,13 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 // population comes from which unit an axis MOVES, so leaving these on the old
 // name would have declared the wrong unit two-way and left the reciprocating
 // one undeclared — the exact silence TODO 29 was opened for.
-declareTravel('Alarm governor anchor', ALARM_GOV_PHI, 'the anchor swings ±h (the SOLVED closure half-swing, §112) every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
+declareTravel('Alarm governor anchor', ALARM_GOV_PHI, 'the anchor swings ±h (the SOLVED closure half-swing, §113) every saw tooth — 80 reciprocations per strike on the alarmStrike axis');
 // §48 — the pallet-fork control case's class, one train over: the saw's
 // tooth faces drive the anchor BOTH ways (that is what "unsprung recoil
 // anchor" means — a runaway by design), so there is nothing to declare but
 // the drive. The poising ring is inertia, not a spring.
 declareRestoring('Alarm governor anchor', 'two-way',
-  'the saw\'s tooth tips drive the anchor both ways at the contacts, alternately by each pallet, and it DWELLS through each drop arc (§112 — nothing touches it there, and nothing needs to: the next landing reverses it) — the pallet fork\'s class; the poising ring is solved inertia, not a restoring element');
+  'the saw\'s tooth tips drive the anchor both ways at the contacts, alternately by each pallet, and it DWELLS through each drop arc (§113 — nothing touches it there, and nothing needs to: the next landing reverses it) — the pallet fork\'s class; the poising ring is solved inertia, not a restoring element');
 // --- TODO 32: THE EQUALISATION, NOW A RECORD — AND SINCE §104, HELD WHOLE --
 // The OSCILLATOR block's twin, sited here because it needs BOTH ribbons
 // built (the going drum's and this alarm barrel's). The torque law up top is
@@ -10954,7 +10954,7 @@ const EQUALISATION = (() => {
       // inertia, tick() spends the barrel at it, and the gate holds the
       // solve at the design point plus the measured endpoints.
       cadence: {
-        // §112: the torque is REFERRED through the contact's lever ratio
+        // §113: the torque is REFERRED through the contact's lever ratio
         // ρ = driveArc/φ (§104 wrote this law with ρ = 1). The curve is
         // ∝ 1/√M pinned at the design point either way, so the endpoints
         // survive the re-derivation untouched; I_a and the ring do not.
@@ -16049,7 +16049,7 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
       };
       // the anchor proper: hub rim, its bore, the two arms, and each pallet's
       // cut outline — _govPalletPoly, the very array ExtrudeGeometry was given
-      // (§112: flat paddles and straight bars now, and still drawn from the
+      // (§113: flat paddles and straight bars now, and still drawn from the
       // build's own polygons so mesh, law and glyph cannot drift)
       for (const P of [_govPalletA, _govPalletB]) {
         for (const poly of [_govPalletPoly(P), _govArmPoly(P)]) {

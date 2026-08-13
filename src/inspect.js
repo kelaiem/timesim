@@ -2432,8 +2432,8 @@ const PENETRATION_BUDGETS = [
     // point per tooth — so it read 0.0001 while a tooth BODY stood 0.245
     // inside pallet B for most of the cycle.
     //
-    // §112 RETIRED THE WAIVER this row shipped with. §111 measured 0.286
-    // against the inherited 0.1 and waived it citing TODO 45; §112 gave the
+    // §113 RETIRED THE WAIVER this row shipped with. §111 measured 0.286
+    // against the inherited 0.1 and waived it citing TODO 45; §113 gave the
     // escapement drop (flat faces, solved swing, real free-run clearance)
     // and the row must now hold on its own: maxDepth stays the going
     // escapement's 0.1, inherited not chosen — a budget envelope is never
@@ -5250,7 +5250,7 @@ export function checkEqualisation(clock) {
       const dp = clock.alarmStrikePhase - p0;
       return { gap: dp > 0 ? t / dp : Infinity, midWind: (w0 + clock.alarmBarrelWind) / 2 };
     };
-    // §112 — the record publishes ρ (the contact's lever ratio, driveArc/φ)
+    // §113 — the record publishes ρ (the contact's lever ratio, driveArc/φ)
     // and the gate's own reconstruction must carry it, or the gate is
     // holding the sim to §104's ρ = 1 lumping the record no longer states.
     // `?? 1` is deliberately absent: a record without ρ IS the regression

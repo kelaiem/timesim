@@ -173,7 +173,7 @@ const BATTERY = [
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  // §111 raised this from 17 (the governor row's 449 phases); §112's stubby
+  // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
   // pallets halved the row's mesh work — measured 21 s.
   { name: 'penetration', opts: {}, cost: 21,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
