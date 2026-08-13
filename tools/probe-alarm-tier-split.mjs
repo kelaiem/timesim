@@ -77,11 +77,18 @@ const res = await page.evaluate(async () => {
   // measured, and it alone pushed the fixed disc off the plate rim); centre
   // + half-extent reads a centred disc as exactly its radius and stays
   // conservative for offset parts.
-  const reachOf = (rows, st, filter) => Math.max(...rows.filter(filter || (() => true)).map((r) => {
-    const cx = (r.bb.min.x + r.bb.max.x) / 2, cy = (r.bb.min.y + r.bb.max.y) / 2;
-    return Math.hypot(cx - st.x, cy - st.y)
-      + Math.max((r.bb.max.x - r.bb.min.x) / 2, (r.bb.max.y - r.bb.min.y) / 2);
-  }));
+  const reachOf = (rows, st, filter) => {
+    const set = rows.filter(filter || (() => true));
+    // an empty set is a SELECTOR gone stale against the built scene, and
+    // Math.max() of nothing is -Infinity — a disc that passes every check
+    // silently. The first as-built run had three of these; crash instead.
+    if (!set.length) throw new Error('reachOf: selector matched no meshes');
+    return Math.max(...set.map((r) => {
+      const cx = (r.bb.min.x + r.bb.max.x) / 2, cy = (r.bb.min.y + r.bb.max.y) / 2;
+      return Math.hypot(cx - st.x, cy - st.y)
+        + Math.max((r.bb.max.x - r.bb.min.x) / 2, (r.bb.max.y - r.bb.min.y) / 2);
+    }));
+  };
 
   // --- Stations and dimensions, all read from the built scene --------------
   const swRows = meshesOf('Alarm striking wheel');
@@ -99,102 +106,82 @@ const res = await page.evaluate(async () => {
   const D_A = Math.hypot(anc.x - gov.x, anc.y - gov.y);
   const clkOff = { x: clk.x - bar.x, y: clk.y - bar.y };         // click rides the barrel
 
-  // The translation: below-plate members keep today's offsets, stack top
-  // lands one margin under the plate. The top is measured over the ROTOR
-  // members only — the plate-planted studs invert under the split (they
-  // plant in the base plate and their length re-derives), and the strike
-  // arbor's upper stud ends in the plate bore, so none of them drives the
-  // ceiling. Counting them cost 0.20 of drop in this gate's first run.
-  const STUDS = ['alarmGovStud', 'alarmGovAnchorStud', 'alarmClickStud', 'alarmGovStudUpper'];
+  // The gate now runs against the BUILT split (§112 landed it), so the
+  // scene it measures IS the plan: selectors read the as-built z map, not
+  // the pre-split tower this file's first form measured. The studs are
+  // still excluded from reach reads — they are thin columns at the
+  // station, never the widest metal.
+  const STUDS = ['alarmGovStud', 'alarmGovAnchorStud', 'alarmClickStud'];
   const isStudRow = (r) => STUDS.includes(r.mesh) || (r.mesh === 'CylinderGeometry' && (r.bb.max.x - r.bb.min.x) < 1.5);
-  const oldTop = Math.max(...[...swRows, ...barRows, ...govRows, ...ancRows, ...clkRows]
-    .filter((r) => !isStudRow(r)).map((r) => r.bb.max.z));
-  const DZ = (TQ_BOT - MARGIN) - oldTop;
-  // Which striking-wheel meshes DROP: everything above the cam/lock band —
-  // the sleeve step, gov sleeve, wind wheel, ratchet, gov wheel, upper stud.
-  // The cam (and the stud's plate-top run, and the lock collar) stay.
-  const dropSW = swRows.filter((r) => r.bb.min.z > 10.0);
-  // Discs: per moving unit, split the barrel by band (wide body+wall low,
-  // narrow arbor column high), one disc each for click/gov/anchor, one for
-  // the dropped strike-arbor members about the FIXED station.
-  const band = (rows, filter) => {
-    const set = rows.filter(filter);
-    return [Math.min(...set.map((r) => r.bb.min.z)) + DZ, Math.max(...set.map((r) => r.bb.max.z)) + DZ];
-  };
   // ------------------------------------------------------------------------
-  // THE DECLARED UNDER-PLATE STACK. A rigid drop of today's stack was this
-  // gate's first form and it is arithmetically impossible: the barrel
-  // column carries 5.4 of stacked metal, the low-linkage rods claim the
-  // first 2.02 of the band (1.87 measured tops + the margin), and 2.02 +
-  // 5.4 + the 64T wheel's own tier does not fit under 7.56. The fit that
-  // remains INTERLEAVES, and every band below derives from a named
-  // constraint (rule 1):
-  //  · LOW_TOP = rod tops + margin — the floor for every WIDE disc; only
-  //    the two small barrel-arbor members (winding wheel, ratchet+click)
-  //    go below it, into cells the field proves rod-free per placement;
-  //  · the 64T governor wheel drops to the FIRST wide band over the rods —
-  //    which also RETIRES §104's overfly (nothing on the barrel arbor
-  //    shares its band any more: the ratchet now lives at the floor);
-  //  · the barrel rides HIGH exactly the way the mainspring drum already
-  //    lives under this plate — wall (with the strike pinion's mesh)
-  //    above the wheel band, body above the wall;
-  //  · the governor cluster translates as one so its pinion embraces the
-  //    wheel band (its internal §104 arithmetic untouched); the poising
-  //    ring joins the floor discs (it was dropped low by §104's own fold
-  //    and stays a fold-tunable).
-  const rodTop = 1.87;                        // measured: the hack rod's top
-  const LOW_TOP = rodTop + MARGIN;            // 2.02 — the wide-disc floor
-  const CEIL = TQ_BOT - MARGIN;               // 7.56
-  const T = { wheel: 0.93, wall: 1.42, body: 1.94, wind: 1.20, rat: 0.40, pinion: 1.32, saw: 0.40, ring: 1.20 };
-  const G0 = MARGIN;                          // one margin between tiers
-  const Z_WHEEL = [LOW_TOP + 0.13, LOW_TOP + 0.13 + T.wheel];          // 2.15..3.08 (0.13: the great wheel read's granularity)
-  const Z_WALL = [Z_WHEEL[1] + G0, Z_WHEEL[1] + G0 + T.wall];          // 3.23..4.65 — the strike pinion meshes in here
-  const Z_BODY = [Z_WALL[1] + G0, Z_WALL[1] + G0 + T.body];            // 4.80..6.74 ≤ CEIL ✓ (boot-assert of the build)
-  const Z_WIND = [0.35, 0.35 + T.wind];                                // floor discs: rod-free cells only,
-  const Z_RAT = [Z_WIND[1] + 0.05, Z_WIND[1] + 0.05 + T.rat];          //   proven by the field per placement
-  const Z_RING = [0.35, 0.35 + T.ring];
-  const govDZ = Z_WHEEL[0] - 13.39;           // governor cluster translation: pinion onto the wheel band
+  // THE STACK IS READ, NOT DECLARED (band swap, this gate's third form).
+  // The gate runs against the BUILT split, so every disc takes its band and
+  // reach from the metal by mesh name — a plan table went stale twice here
+  // (a 1.9 standing in for the 44T winding wheel's 6.97, a 2.4 for the
+  // ratchet's 6.0), and a stale disc passes everything silently. The built
+  // order under the plate is now: 64T governor wheel at the floor (its own
+  // 0.22 module keeps its web off the barrel arbor — the build's assert),
+  // ratchet + click above it, winding tier ABOVE the low corridor's
+  // ceiling (the leg crosses the rods' lane there; studs stand clear in
+  // plan), barrel wall + body on top.
+  const zc = (r) => (r.bb.min.z + r.bb.max.z) / 2;
+  const bandOf = (rows, filter) => {
+    const set = rows.filter(filter || (() => true));
+    if (!set.length) throw new Error('bandOf: selector matched no meshes');
+    return [Math.min(...set.map((r) => r.bb.min.z)), Math.max(...set.map((r) => r.bb.max.z))];
+  };
+  const CEIL = TQ_BOT - MARGIN;
+  const ratBand = bandOf(barRows, (r) => r.mesh === 'alarmArborRatchet');
+  const isHighBarrel = (r) => !isStudRow(r)
+    && !['alarmArborWheel', 'alarmArborRatchet', 'alarmBarrelArbor'].includes(r.mesh)
+    && zc(r) > ratBand[1];
+  const dOf = (name, about, rows, st, filter) =>
+    ({ name, about, r: reachOf(rows, st, filter), z: bandOf(rows, filter) });
   const discs = [
-    { name: 'barrel wall', about: 'b', r: reachOf(barRows, bar, (r) => r.bb.min.z >= 10.0 && r.bb.min.z < 11.5), z: Z_WALL },
-    { name: 'barrel body', about: 'b', r: reachOf(barRows, bar, (r) => r.bb.min.z < 10.0 && !isStudRow(r)), z: Z_BODY },
-    { name: 'barrel wind wheel', about: 'b', r: 1.9, z: Z_WIND },
-    { name: 'barrel ratchet', about: 'b', r: 2.4, z: Z_RAT },
-    { name: 'click', about: 'c', r: reachOf(clkRows, clk), z: [Z_WIND[0], Z_RAT[1] + 0.1] },
-    { name: 'governor saw', about: 'g', r: reachOf(govRows, gov, (r) => r.mesh === 'alarmGovSaw'), z: [14.62 + govDZ, 15.02 + govDZ] },
-    { name: 'governor pinion+arbor', about: 'g', r: 1.8, z: [13.19 + govDZ, 15.02 + govDZ] },
-    { name: 'anchor pallets', about: 'a', r: reachOf(ancRows, anc, (r) => r.mesh !== 'alarmGovAnchorStud' && !/Ring/.test(r.mesh)), z: [14.62 + govDZ, 15.02 + govDZ] },
-    { name: 'anchor ring', about: 'a', r: reachOf(ancRows, anc, (r) => /Ring/.test(r.mesh)), z: Z_RING },
-    // The arbor BETWEEN the ring and the pallets — a column crossing the 64T
-    // wheel's band. Its omission was this gate's one wrong answer: the first
-    // solved θ_a stood the arbor 8.5 from the strike station, inside the
-    // wheel's 9.6, and only the §104 rim warn at boot said anything.
-    { name: 'anchor arbor col', about: 'a', r: 0.7, z: [Z_RING[1], 14.62 + govDZ] },
+    dOf('barrel high', 'b', barRows, bar, isHighBarrel),               // wall + body + hook, one disc — radii agree within 0.7
+    dOf('barrel wind wheel', 'b', barRows, bar, (r) => r.mesh === 'alarmArborWheel'),
+    dOf('barrel ratchet', 'b', barRows, bar, (r) => r.mesh === 'alarmArborRatchet'),
+    dOf('click', 'c', clkRows, clk, (r) => !isStudRow(r)),             // pawl + spring; the stud is the column below
+    dOf('governor saw', 'g', govRows, gov, (r) => r.mesh === 'alarmGovSaw'),
+    dOf('governor pinion+arbor', 'g', govRows, gov, (r) => r.mesh === 'alarmGovPinion' || r.mesh === 'alarmGovArbor'),
+    dOf('anchor pallets', 'a', ancRows, anc, (r) => r.mesh !== 'alarmGovAnchorStud' && !/Ring/.test(r.mesh)),
+    dOf('anchor ring', 'a', ancRows, anc, (r) => /Ring/.test(r.mesh)),
+    // The anchor's whole staff as a thin column — the omission that was
+    // this gate's one wrong answer in its first form.
+    { name: 'anchor arbor col', about: 'a', r: 0.7, z: bandOf(ancRows) },
   ];
   const swDiscs = [
-    { name: 'sw:strike pinion', r: 1.97, z: [Z_WALL[0] + 0.1, Z_WALL[1] - 0.1] },
-    { name: 'sw:gov wheel', r: reachOf(dropSW, sw, (r) => r.mesh === 'alarmGovWheel'), z: Z_WHEEL },
-    { name: 'sw:arbor column', r: 0.75, z: [Z_WHEEL[0], TQ_BOT] },
+    dOf('sw:strike pinion', 's', swRows, sw, (r) => r.mesh === 'alarmStrikePinion'),
+    dOf('sw:gov wheel', 's', swRows, sw, (r) => r.mesh === 'alarmGovWheel'),
+    { name: 'sw:arbor column', r: 0.75, z: [bandOf(swRows, (r) => r.mesh === 'alarmGovWheel')[0], TQ_BOT] },
   ];
+  // Meshing pairs are EXPECTED contact — sep() must not judge them:
+  const MESHED = new Set(['barrel high|sw:strike pinion', 'governor pinion+arbor|sw:gov wheel']);
   // Grounding: barrel, click, governor and anchor stand on the BASE plate
   // (planted-0.5 idiom), so each carries a thin stud column floor-to-top at
   // its own station — the stud, not the whole disc. The strike arbor's
   // members carry none: the arbor hangs in the plate BORE, which is the
   // tier-split's defining move.
   const STUD_R = 0.6;
-  for (const d of discs) if (d.about !== 's') d.stud = [0, d.z[1]];
-  out.push(`strike arbor FIXED at (${f(sw.x)}, ${f(sw.y)}); CD_b ${f(CD_B)}, CD_g ${f(CD_G)}, D_a ${f(D_A)}; drop DZ ${f(DZ)}`);
+  const HIGH_TOP = discs[0].z[1];
+  out.push(`strike arbor FIXED at (${f(sw.x)}, ${f(sw.y)}); CD_b ${f(CD_B)}, CD_g ${f(CD_G)}, D_a ${f(D_A)}; stack top ${f(HIGH_TOP)} vs ceiling ${f(CEIL)}`);
   for (const d of [...discs, ...swDiscs]) out.push(`  disc ${d.name.padEnd(24)} r ${f(d.r)}  z ${f(d.z[0])}..${f(d.z[1])}`);
 
   // The winding leg: corridor from the climb arbor's station to the barrel,
-  // at idler half-width, in the translated wind tier's band.
+  // at idler half-width, in the tier's own measured band (above the low
+  // corridor's ceiling since the band swap — discOk's swept check skips it
+  // by z, which is the point).
   const windRows = meshesOf('Alarm winding train');
   const climbSt = (() => {
-    // the climb ROD is the one wind-train mesh spanning from the alarm
-    // corner's plane up through both plates — select it by that span
-    const rod = windRows.find((r) => r.bb.min.z < -3 && r.bb.max.z > 10);
+    // the climb ROD is the wind-train mesh reaching DEEPEST — down through
+    // the base plate to the alarm corner's plane. (Its old selector also
+    // required max.z > 10; §112 retired the upper run, so the deep end is
+    // now the whole signature.)
+    const rod = windRows.reduce((a, b) => (b.bb.min.z < a.bb.min.z ? b : a));
+    if (rod.bb.min.z > -3) throw new Error('climb rod selector: nothing reaches the corner plane');
     return { x: (rod.bb.min.x + rod.bb.max.x) / 2, y: (rod.bb.min.y + rod.bb.max.y) / 2 };
   })();
-  const WIND_BAND = [Z_WIND[0], Z_WIND[1]]; // the idlers ride the winding wheel's tier
+  const WIND_BAND = bandOf(barRows, (r) => r.mesh === 'alarmArborWheel'); // the idlers ride the winding wheel's tier
   const IDLER_HALF = 2.7 + MARGIN;
   out.push(`climb arbor at (${f(climbSt.x)}, ${f(climbSt.y)}); wind corridor half-width ${f(IDLER_HALF)} band ${f(WIND_BAND[0])}..${f(WIND_BAND[1])}`);
 
@@ -326,6 +313,24 @@ const res = await page.evaluate(async () => {
     }
     return field;
   };
+  // THE LOW CORRIDOR IS SWEPT, NOT PARKED (rule 5): the hack and reset rods
+  // move with the crown, and the battery confirmed the floor discs against
+  // the rod's TRAVEL after this gate had passed them against its rest boxes.
+  // Every disc whose band reaches below the corridor's ceiling scores
+  // against the movement's own declared swept footprint too.
+  const LOWS = clock.lowLinkageObstacles || [];
+  const LOW_TOP_Z = 1.9; // the corridor's band ceiling (rods 0.15..1.87)
+  const lowClear = (cx, cy, r, z0) => {
+    if (z0 > LOW_TOP_Z) return Infinity;
+    let c = Infinity;
+    for (const o of LOWS) {
+      if (o.ax === undefined) { c = Math.min(c, Math.hypot(cx - o.x, cy - o.y) - o.r - r); continue; }
+      const vx = o.bx - o.ax, vy = o.by - o.ay, L2 = vx * vx + vy * vy || 1e-9;
+      const t = Math.max(0, Math.min(1, ((cx - o.ax) * vx + (cy - o.ay) * vy) / L2));
+      c = Math.min(c, Math.hypot(cx - o.ax - t * vx, cy - o.ay - t * vy) - o.r - r);
+    }
+    return c;
+  };
   const overlaps = (ints, z0, z1) => {
     if (!ints) return null;
     for (const [a, b, tag] of ints) if (a < z1 + MARGIN && b > z0 - MARGIN) return tag;
@@ -334,6 +339,7 @@ const res = await page.evaluate(async () => {
   // a disc (centre, r, band) against the field; returns first blocking tag
   const discOk = (field, cx, cy, r, z0, z1) => {
     if (Math.hypot(cx, cy) + r > plateR - MARGIN) return 'the plate rim';
+    if (lowClear(cx, cy, r, z0) < MARGIN) return 'the low corridor (swept)';
     const i0 = Math.max(0, Math.floor((cx - r + plateR) / step)), i1 = Math.min(N - 1, Math.floor((cx + r + plateR) / step));
     const j0 = Math.max(0, Math.floor((cy - r + plateR) / step)), j1 = Math.min(N - 1, Math.floor((cy + r + plateR) / step));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -431,6 +437,30 @@ const res = await page.evaluate(async () => {
   const govWheel = swDiscs.reduce((a, b) => (b.r > a.r ? b : a));
   for (const drumAz of [null, 45, 51, 56]) {
     const field = buildField(drumAz);
+    // The BUILT configuration, scored at its measured stations — the first
+    // question every re-run answers, because the battery judges the built
+    // scene, not the argmax. Reports every disc's verdict plus its swept-
+    // corridor clearance, so a foul names its own repair direction.
+    if (drumAz === null) {
+      out.push('=== as built (measured stations) ===');
+      const builtRows = [
+        ...['barrel high', 'barrel wind wheel', 'barrel ratchet'].map((n) => [n, bar]),
+        ['click', clk], ['governor saw', gov], ['governor pinion+arbor', gov],
+        ['anchor pallets', anc], ['anchor ring', anc], ['anchor arbor col', anc],
+      ];
+      for (const [n, st] of builtRows) {
+        const d = D(n);
+        const tag = discOk(field, st.x, st.y, d.r, ...d.z);
+        const lc = lowClear(st.x, st.y, d.r, d.z[0]);
+        out.push(`  ${n.padEnd(22)} ${tag ? 'FOUL: ' + tag : 'clear'}${Number.isFinite(lc) ? `  (swept corridor ${f(lc)})` : ''}`);
+      }
+      for (const d of swDiscs) {
+        const tag = discOk(field, sw.x, sw.y, d.r, ...d.z);
+        out.push(`  ${d.name.padEnd(22)} ${tag ? 'FOUL: ' + tag : 'clear'}`);
+      }
+      const corr = corridorOk(field, climbSt.x, climbSt.y, bar.x, bar.y);
+      out.push(`  wind corridor          ${corr ? 'FOUL: ' + corr : 'clear'}`);
+    }
     const results = [];
     // 1° near the identity (the build prefers the smallest module move —
     // the §35 link and the §68 lock sweep both rode the rigid rotation),
@@ -476,13 +506,12 @@ const res = await page.evaluate(async () => {
         {
           const bx = swR.x + Math.cos(a) * CD_B, by = swR.y + Math.sin(a) * CD_B;
           const cx = bx + clkOff.x, cy = by + clkOff.y;
-          const t1 = discOk(field, bx, by, D('barrel wall').r, ...D('barrel wall').z)
-            || discOk(field, bx, by, D('barrel body').r, ...D('barrel body').z)
+          const t1 = discOk(field, bx, by, D('barrel high').r, ...D('barrel high').z)
             || discOk(field, bx, by, D('barrel wind wheel').r, ...D('barrel wind wheel').z)
             || discOk(field, bx, by, D('barrel ratchet').r, ...D('barrel ratchet').z)
-            || discOk(field, bx, by, STUD_R, 0, Z_BODY[1])
+            || discOk(field, bx, by, STUD_R, 0, HIGH_TOP)
             || discOk(field, cx, cy, D('click').r, ...D('click').z)
-            || discOk(field, cx, cy, STUD_R, 0, Z_RAT[1])
+            || discOk(field, cx, cy, STUD_R, 0, D('click').z[1])
             || corridorOk(field, climbSt.x, climbSt.y, bx, by);
           if (!t1) okB.push({ deg, bx, by, cx, cy });
         }
@@ -501,34 +530,27 @@ const res = await page.evaluate(async () => {
           || discOk(field, ax, ay, D('anchor ring').r, ...D('anchor ring').z)
           || discOk(field, ax, ay, D('anchor arbor col').r, ...D('anchor arbor col').z)
           || discOk(field, ax, ay, STUD_R, 0, D('anchor pallets').z[1])) continue;
-        // the arbor column against the fixed wheel's swept disc
-        if (sep(ax, ay, D('anchor arbor col').r, D('anchor arbor col').z, swR.x, swR.y, govWheel.r, govWheel.z) < 0) continue;
-        // the ring at the floor vs the winding/ratchet floor discs is a pair
-        // check below; vs the fixed gov wheel: bands differ, plan free
+        // Pair checks are GENERATED, not curated (this file's stale pair
+        // list is how the barrel-side/governor-side crossings were missed):
+        // every barrel-side disc against every governor-side disc, and every
+        // moved disc against every fixed strike-arbor disc, sep() z-gating
+        // each pair, the MESHED set exempting the two drive meshes.
         for (const b of okB) {
           let worst = Infinity;
-          const pairs = [
-            ['barrel wall', b.bx, b.by, 'governor saw', g.gx, g.gy],
-            ['barrel body', b.bx, b.by, 'governor saw', g.gx, g.gy],
-            ['barrel wall', b.bx, b.by, 'anchor pallets', ax, ay],
-            ['barrel body', b.bx, b.by, 'anchor pallets', ax, ay],
-            ['barrel wind wheel', b.bx, b.by, 'anchor ring', ax, ay],
-            ['barrel ratchet', b.bx, b.by, 'anchor ring', ax, ay],
-            ['click', b.cx, b.cy, 'anchor ring', ax, ay],
-            ['click', b.cx, b.cy, 'governor pinion+arbor', g.gx, g.gy],
-            ['barrel wall', b.bx, b.by, 'anchor arbor col', ax, ay],
-            ['barrel body', b.bx, b.by, 'anchor arbor col', ax, ay],
-            ['click', b.cx, b.cy, 'anchor arbor col', ax, ay],
+          const bSide = [
+            ['barrel high', b.bx, b.by], ['barrel wind wheel', b.bx, b.by],
+            ['barrel ratchet', b.bx, b.by], ['click', b.cx, b.cy],
           ];
-          for (const [n1, x1, y1, n2, x2, y2] of pairs)
+          const gSide = [
+            ['governor saw', g.gx, g.gy], ['governor pinion+arbor', g.gx, g.gy],
+            ['anchor pallets', ax, ay], ['anchor ring', ax, ay], ['anchor arbor col', ax, ay],
+          ];
+          for (const [n1, x1, y1] of bSide) for (const [n2, x2, y2] of gSide)
             worst = Math.min(worst, sep(x1, y1, D(n1).r, D(n1).z, x2, y2, D(n2).r, D(n2).z));
-          // the moved discs against the FIXED station's wheel: the wall and
-          // body bands sit above the wheel's, so only same-band floor/wheel
-          // members are judged — the wheel vs the ratchet+wind floor discs
-          worst = Math.min(worst, sep(b.bx, b.by, D('barrel wind wheel').r, D('barrel wind wheel').z, swR.x, swR.y, govWheel.r, govWheel.z));
-          worst = Math.min(worst, sep(b.bx, b.by, D('barrel ratchet').r, D('barrel ratchet').z, swR.x, swR.y, govWheel.r, govWheel.z));
-          worst = Math.min(worst, sep(b.cx, b.cy, D('click').r, D('click').z, swR.x, swR.y, govWheel.r, govWheel.z));
-          worst = Math.min(worst, sep(ax, ay, D('anchor ring').r, D('anchor ring').z, swR.x, swR.y, govWheel.r, govWheel.z));
+          for (const [n1, x1, y1] of [...bSide, ...gSide]) for (const sd of swDiscs) {
+            if (MESHED.has(`${n1}|${sd.name}`)) continue;
+            worst = Math.min(worst, sep(x1, y1, D(n1).r, D(n1).z, swR.x, swR.y, sd.r, sd.z));
+          }
           if (worst < 0) continue;
           count++;
           if (!best || worst > best.worst) best = { thB: b.deg, thG: g.deg, thA: adeg, worst };
@@ -552,8 +574,7 @@ const res = await page.evaluate(async () => {
         for (let deg = 0; deg < 360; deg += 30) {
           const a = deg * Math.PI / 180;
           const bx = r.swR.x + Math.cos(a) * CD_B, by = r.swR.y + Math.sin(a) * CD_B;
-          const t = discOk(field, bx, by, D('barrel wall').r, ...D('barrel wall').z)
-            || discOk(field, bx, by, D('barrel body').r, ...D('barrel body').z)
+          const t = discOk(field, bx, by, D('barrel high').r, ...D('barrel high').z)
             || discOk(field, bx, by, D('barrel wind wheel').r, ...D('barrel wind wheel').z)
             || discOk(field, bx, by, D('barrel ratchet').r, ...D('barrel ratchet').z)
             || discOk(field, bx + clkOff.x, by + clkOff.y, D('click').r, ...D('click').z)
