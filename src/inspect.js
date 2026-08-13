@@ -2438,14 +2438,16 @@ const PENETRATION_BUDGETS = [
     // exactly this shape: EXPECTED_PAIRS grants the pair a blanket excuse to
     // the overlap sweep, EXPECTED_CONTACT_FLOORS names alarmGovSaw⇄
     // alarmGovPallet as the working contact and therefore EXCLUDES it from
-    // the floor, and §104's own boot assert samples the saw's TIPS — one
+    // the floor, and §104's own boot assert sampled the saw's TIPS — one
     // point per tooth — so it read 0.0001 while a tooth BODY stood 0.245
     // inside pallet B for most of the cycle.
     //
-    // maxDepth is INHERITED from the going escapement's row above, not
-    // chosen here: a budget envelope is never forkable (CLAUDE.md's fold
-    // rule), so this row is WAIVED at the measured depth rather than opened
-    // to fit it. The waiver is the finding, visible in the report.
+    // §113 RETIRED THE WAIVER this row shipped with. §111 measured 0.286
+    // against the inherited 0.1 and waived it citing TODO 45; §113 gave the
+    // escapement drop (flat faces, solved swing, real free-run clearance)
+    // and the row must now hold on its own: maxDepth stays the going
+    // escapement's 0.1, inherited not chosen — a budget envelope is never
+    // forkable (CLAUDE.md's fold rule).
     //
     // nSamples is 449 because of an aliasing trap this axis makes easy: one
     // wind is 28 strikes × ALARM_GOV_TEETH_PER_STRIKE (80) = 2240 tooth
@@ -2458,10 +2460,6 @@ const PENETRATION_BUDGETS = [
     maxDepth: 0.1,
     axis: 'alarmStrike',
     nSamples: 449,
-    waived: 'TODO 45 finding one — the engagement is too deep to be cut as metal: '
-      + 'the pallet face is the WHOLE tip trajectory over a half period, so the escapement has no drop. '
-      + 'Measured 0.245 u; relieving the wheel leaves a 0.031 u needle and no φ in 0.08–0.30 clears it. '
-      + 'The fix is a re-derivation of the engagement, not a reshaped blade.',
     // A = the saw wheel (the BVH side, as the escape wheel is above).
     selectA(unit) {
       const out = [];
@@ -5261,8 +5259,13 @@ export function checkEqualisation(clock) {
       const dp = clock.alarmStrikePhase - p0;
       return { gap: dp > 0 ? t / dp : Infinity, midWind: (w0 + clock.alarmBarrelWind) / 2 };
     };
+    // §113 — the record publishes ρ (the contact's lever ratio, driveArc/φ)
+    // and the gate's own reconstruction must carry it, or the gate is
+    // holding the sim to §104's ρ = 1 lumping the record no longer states.
+    // `?? 1` is deliberately absent: a record without ρ IS the regression
+    // this line exists to catch, and NaN here fails the row loudly.
     const lawAt = (w) => 2 * c.teethPerStrike
-      * Math.sqrt(2 * c.phiRad * c.I_kgm2 / (a.k_Nm_per_rad * (a.setup.sweepRad + w * 2 * Math.PI) * c.meshEff / c.stepUp));
+      * Math.sqrt(2 * c.phiRad * c.I_kgm2 / (a.k_Nm_per_rad * (a.setup.sweepRad + w * 2 * Math.PI) * c.meshEff / c.stepUp * c.rho));
     const full = gapBy(0);
     const empty = gapBy(clock.alarmStrikesPerWind - 2); // two strikes of travel left — still off the stall
     measured.gapFull = +full.gap.toFixed(5);

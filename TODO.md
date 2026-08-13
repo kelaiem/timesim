@@ -4940,99 +4940,64 @@ because the sleeve moved for the band swap's stacking arithmetic, not
 for this item — the closure was noticed when the waiver's group label
 stopped matching and no violation surfaced behind it.
 
-## 45. The governor anchor's structural review — the escapement's engagement is too deep to be cut as metal, and nothing was measuring it
+## 45. The governor anchor's structural review — the escapement now has drop; what remains open is the stone question
 
 Opened by §107's fracture investigation as "the blades are too thin", widened
-by the owner (2026-08-12) after asking whether the anchor should carry rubies,
-and re-founded by §111, which measured the anchor before working on it and
-found a bigger defect underneath the one the item was named for. Read it as a
-STRUCTURAL REVIEW of the whole anchor. Where each strand now stands:
+by the owner (2026-08-12), re-founded by §111 (which measured the real defect
+underneath: the engagement itself), and largely CLOSED by §113, which
+re-derived the escapement as a flat-faced recoil anchor with real drop. Where
+each strand stands:
 
 | strand | state |
 |---|---|
-| **One** — saw teeth and pallet blades occupy the same space | **OPEN. The item's real debt.** |
+| **One** — saw teeth and pallet blades occupy the same space | **CLOSED by §113** — the escapement has drop; the `penetration` waiver is retired. Residue below. |
 | **Two** — the pallet FACES: should they be ruby? | Answered: no. Leave them steel; the number is below. |
-| **Three** — the PIVOTS | Bore CLOSED by §111. Stones and a cock stay open. |
-| The blade SECTION (§107's original finding) | CLOSED by §111 — and the reason it was thought unfixable was measurably wrong. |
+| **Three** — the PIVOTS | Bore CLOSED by §111. **Stones and a cock remain the item's open business.** |
+| The blade SECTION (§107's original finding) | CLOSED by §111; §113's flat face then made the section structural (= the offset) so the trap cannot recur. |
 
-**Read the debt/upgrade split before spending any of it.** Finding one is a
-DEFECT — two solids sharing space, which is this file's business. Findings two
-and three are not lies about how a watch works; they are choices this movement
-has already made elsewhere. They live in this item because they share its
-geometry, not because the anchor is dishonest about them.
+### Finding one — CLOSED by §113: the escapement has drop
 
-### Finding one — the saw's teeth pass THROUGH the pallet blades (DEBT, OPEN)
+§111's diagnosis was that the interference could not be cut away because it
+WAS the design: §104 generated each face as the engaged tip's entire
+trajectory ("contact closed at every instant"), which forces the pallet half
+a tooth pitch into a wheel whose teeth are one pitch apart. Measured then:
+0.286 u by MTV, 0.245 u by polygon depth, all cycle long, with the cheap
+cures ruled out by number.
 
-**Measured** (§111), two ways, on the shipped geometry:
+§113 rebuilt the engagement as the real thing — a short FLAT face at a
+solved incline, contact closed during impulse and OPEN during drop — and
+every quantity in the design is derived (src/main.js, the §113 block):
 
-| instrument | what it measures | reading |
+| quantity | value | derivation |
 |---|---|---|
-| `penetration`, row `Alarm governor ⇄ Alarm governor anchor` | MTV depth, `alarmGovSaw` against `alarmGovPallet`, 449 phases of `alarmStrike` | **0.286 u = 0.108 mm** |
-| the §111 boot sweep (`src/main.js`, `ALARM_GOV_ENGAGE_DEBT`) | polygon depth in the anchor's own plane, 240 phases of one tooth period | **0.245 u = 0.093 mm** |
+| anchor distance D | 7.051 | = tip circle + hub + `CLEAR_MARGIN` — the §111 bearing stack's room floor; measured, interference worsens with distance, so the floor is the optimum |
+| landing ε | pitch/4 | the half-integer landing rule, re-derived from cycle closure (multiples of pitch/2 are anti-phase: the second pallet never lands) |
+| face length L | `STOCK_MIN_U` | every paddle dimension clears §50's wheel floor BY CONSTRUCTION |
+| strip back | `STOCK_MIN_U + ARM_LAP` | one floor of WORKING section plus the SHANK the arm grips — the joint lives outside the pair's stay-out band (see the expectedContacts bullet: the first cut did not, and measured 0.011) |
+| face incline ψ | ≈ 11.6°, SOLVED at boot | the incline that lands the poising ring a centi-mm inside the top of its stock window — interference is monotone in ψ, the ring window binds from below |
+| half-swing h | SOLVED at boot (φ = 2h ≈ 0.0806 rad = 4.62°) | closure bisection: land at +h, release at −h, unilateral contact verified every step |
+| drive / drop | 42.2% / **7.8%** of the pitch | outputs of the closure march |
+| lever ratio ρ | 0.822 | driveArc/φ — now IN the tick law (`I_a = t²·Γ·ρ/(2φ)`); §104 lumped ρ = 1 |
 
-It is not a handover artifact and not a corner: excluding each pallet's own
-drive window from the sweep leaves the numbers unchanged, and pallet B's whole
-face is inside a tooth for most of the cycle, tapering from 0.245 at its entry
-to 0 at its exit. Pallet A is intruded 0.062 u. Against the going escapement's
-own budget for the same class of contact — `Escape wheel ⇄ Pallet fork`,
-`maxDepth: 0.1` — the governor is **2.9× over**.
+The two §111 instruments this was built to satisfy, both now green:
+`penetration`'s governor row reads **OK, 0.032 against the inherited 0.1 —
+waiver retired**, and the boot cycle sweep's budget tightened **0.25 →
+0.033** (measured 0.0314 at the solved point; §111's tighten-never-widen
+rule, 7.6×). The cadence record survived exactly as the referred-torque
+derivation predicted: measured endpoints 0.375/0.478 s unchanged, only
+`I_a` (×3.06) and the ring's section (0.455 → 0.790 mm, still in stock)
+moved.
 
-**Why four separate covers all missed it**, which is the part worth carrying
-forward, because each hole is a general shape:
+**Residue, filed not hidden:** drop is GEOMETRIC here, not temporal — the
+model's wheel is quasi-static (no wheel-side inertia), so the wheel crosses
+the drop arc in ~zero time and the anchor DWELLS rather than overswinging.
+Same accepted class as the ledger's "wheel recoil not modelled"; the
+roadmap files drop-time-with-wheel-inertia as the follow-on. And the
+working-contact grade is 0.033 u, not zero: the passing teeth run 0.031
+from the parked paddles at the closest approach of the cycle, which is the
+price of a face long enough to satisfy §50 and a swing small enough to
+poise (the trade is written at `ALARM_GOV_ENGAGE_DEBT`).
 
-1. `EXPECTED_PAIRS` grants `Alarm governor ⇄ Alarm governor anchor` a blanket
-   excuse to the overlap sweep — the pair is *expected* to touch.
-2. `EXPECTED_CONTACT_FLOORS` names `['alarmGovSaw','alarmGovPallet']` as the
-   working contact, so TODO 6's `expectedContacts` deliberately EXCLUDES the
-   one pair of meshes in question.
-3. There was **no `PENETRATION_BUDGETS` row at all**. The going escapement has
-   had one since the first of those rows; §104 shipped its twin one train over
-   without one, so the depth of the governor's only working contact was
-   measured by nothing.
-4. §104's own boot assert sampled the saw's **tips** — one point per tooth —
-   and read 0.0001. A one-vertex, one-direction test can only find a tip
-   poking into a blade, which is exactly the case the generated faces make
-   impossible by construction. It could not have failed.
-
-§111 closed 3 and 4: the budget row exists (WAIVED at the measured depth,
-citing this item) and the boot sweep now runs the saw's whole cut outline
-against the whole blade outline in both directions. **The number is now
-visible and cannot silently get worse.** It is not fixed.
-
-**The cure is not a reshaped blade — that was measured too.** Two results rule
-out the obvious repairs:
-
-- *Relieve the wheel* (cut the tooth back to the pallets' swept envelope, the
-  conjugate trick §104 used for the face, applied to the wheel). The pallets
-  shadow **all 720 of 720** sampled azimuth bins of one tooth pitch, reaching
-  down to radius 5.15–5.95 against a 6.0 tip circle. The only tooth that
-  clears them is a needle ≈0.031 u (0.012 mm) wide — under the degenerate
-  floor. There is no tooth to cut.
-- *Re-pick the swing.* Sweeping φ over 0.08–0.30 against spans of 4.5, 5.5,
-  7.5 and 9.5 teeth never gets the intrusion below **0.118 u**, and the
-  pallet's dip inside the tip circle stays 0.48–0.94 u throughout — against a
-  tooth pitch of 0.94 u. A real anchor keeps that dip to a few percent of the
-  pitch; this one is at 50–100%.
-
-**So here is the diagnosis, and it points at §104's proudest claim.** The
-pallet face is the ENTIRE tip trajectory over a half period, generated so that
-"contact is closed at every instant". That is what makes the pallet a long
-body reaching half a tooth pitch into a wheel whose teeth are one pitch apart
-— and it is precisely what a real escapement does not do. A real escapement
-has **drop**: contact is closed during impulse and OPEN during drop, the
-pallet is short, and it enters the wheel only by the lock. Closing this item
-means giving the governor drop, which means the face stops being the whole
-trajectory and the anchor's angle law stops being a pure function of the wheel
-angle over the entire period.
-
-**What that costs, so the next person can size it before starting.** φ, the
-span and R_p are upstream of `ALARM_GOV_I` and therefore of the gap law, the
-cadence endpoints and the poising ring's section — every one of them held by
-`equalisation`, which is the gate that makes the re-derivation checkable
-rather than dangerous. The anchor's whole steel term is only ~0.5% of `I_a`,
-so re-cutting the blades is nearly free to the ring; changing φ is not.
-Whatever is built, `ALARM_GOV_ENGAGE_DEBT` and the `penetration` row are the
-two numbers that have to come down. **Tighten them; never widen them.**
 
 ### The blade SECTION — CLOSED by §111, and its "unfixable" was wrong
 
@@ -5097,7 +5062,7 @@ Two consequences worth carrying forward:
   wear argument. The seat would follow the pallet fork's own precedent
   (`src/geometry.js:719`, where `MATS.ruby` is noted as load-bearing).
 - **Stones are not free to the cadence.** The gap law is inertial —
-  `gap ∝ √(2φ·I_a/(M·η/32))` (`src/main.js:10047`) — with mesh efficiency
+  `gap ∝ √(2φ·I_a/(M·η/32·ρ))` (`src/main.js:10428`, ρ since §113) — with mesh efficiency
   `η = 0.9²` inside it. Lower friction raises η and SHORTENS the gap, so any
   jewelling forces `I_a` to be re-solved to hold the designed 0.42 s at the
   design wind. `equalisation` is the gate that holds that. Solve the part; never
@@ -5162,30 +5127,41 @@ so with the measurement rather than dropping the strand quietly.
 
 ### What the review owes the instruments
 
-- `expectedContacts` — the same pair's floors row is the one instrument the
-  section fix visibly helped: its headroom went **0.1599 → 0.4269** against
-  `CLEAR_MARGIN`, on `alarmGovSaw ⇄ alarmGovAnchorArm`. It was the tightest
-  row in that check.
-- `penetration` — the row `Alarm governor ⇄ Alarm governor anchor` (§111) is
-  where finding one lives now, WAIVED at 0.286 against the going escapement's
-  inherited 0.1. Its `nSamples: 449` is load-bearing: one wind is 28 strikes ×
-  80 tooth periods = 2240, and a count sharing a factor with 2240 revisits the
-  same handful of phases forever. Keep it coprime.
-- the §111 boot sweep — `ALARM_GOV_ENGAGE_DEBT = 0.25` in `src/main.js` is the
-  polygon-depth twin of that row, measured over one tooth period rather than
-  one wind. It exists so the interference cannot deepen unnoticed, which is
-  what it did between §104 and §111.
-- `stockFloor` — the SECTION was invisible to it by construction (AABB
-  minimum vs an extruded blade), and §111's solve did not change that: the
-  next blade offset edgewise will pass identically. A way to see a true
-  section is still owed.
-- `equalisation` — if `I_a` moves for any reason (stones, a re-cut blade, a
+- `penetration` — the governor row (§111) now reads **OK, 0.032 / 0.1,
+  unwaived** (§113). Its `nSamples: 449` is load-bearing: one wind is 28
+  strikes × 80 tooth periods = 2240, and a count sharing a factor with 2240
+  revisits the same handful of phases forever. Keep it coprime.
+- the boot cycle sweep — `ALARM_GOV_ENGAGE_DEBT` in `src/main.js`, the
+  polygon-depth twin of that row over one tooth period. §111 set it AT the
+  measured debt (0.25) with the tighten-never-widen instruction; §113
+  tightened it to 0.033 (measured 0.0314 at the solved design point). It
+  remains the number that must not rise.
+- `expectedContacts` — the governor pair's floors row was the tightest in
+  the check at §107 (0.0099 of headroom), went to 0.4269 at §111, and is
+  re-measured by every landing that touches the anchor. **It earned that
+  keep at §113**: the first cut of the flat-face arm aimed at the pallet
+  strip's mid-point and measured 0.011 from a passing tooth — through a
+  silent boot, because the build assert held the arm to the working grade
+  instead of the margin. The pallet now carries a SHANK
+  (`ALARM_GOV_PALLET_BACK`) the arm grips outside the stay-out band, and
+  the boot assert holds the arm to `CLEAR_MARGIN` so the gate never has
+  to find it twice.
+- `stockFloor` — the edgewise SECTION was invisible to it by construction
+  (AABB minimum vs an extruded blade). §113 removed this anchor's exposure
+  (flat faces: section = offset; L = the floor itself), but the census
+  blindness is general and a way to see a true section is still owed.
+  §113 also hit the census's OTHER reading: a swinging radial bar is
+  classified as a revolve and its LENGTH read as a ring's wall — the arm is
+  rooted at the arbor so the honest number passes, but the classification
+  is worth knowing.
+- `equalisation` — if `I_a` moves for any reason (stones, a re-cut face, a
   jewelled pivot changing the counted steel), the cadence endpoints must be
   re-measured, and the check's own `clock.step(0.005)` step size is itself
-  underived (see §109 in the roadmap). Scale, from §111: the anchor's whole
-  steel term is ~0.5% of `I_a`, so re-cutting blades barely moves the ring
-  (its section stayed 0.455 mm, inside the 0.2–0.8 stock window) — but φ is
-  upstream of `I_a` itself and moving it moves everything.
+  underived (see §109 in the roadmap). Scale, from §113: the ring now sits
+  at 0.790 mm — a centi-mm under its 0.8 stock ceiling BY CONSTRUCTION (ψ
+  solves to put it there), so anything that RAISES `I_a` (lower η, softer
+  spring) pushes the ring out of stock and the gate fires. That is the
+  designed early-warning, not fragility.
 - `assembly` (§107) — any new seat is a new joint; a stone set in an arm must
   share metal with it or the anchor is two bodies again.
 - `intraUnit` — a stone seated in an arm is a declared joint, not an

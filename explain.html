@@ -1848,7 +1848,7 @@
 
   <!-- ===================== ALARM GOVERNOR ===================== -->
   <details class="mech" id="alarm-governor">
-    <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104</span></summary>
+    <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104 &sect;113</span></summary>
     <div class="mech-body">
       <p>A wound spring does not know how fast to ring: ungoverned, a striking train
       accelerates until something velocity-dependent eats the surplus, so every real striking
@@ -1862,17 +1862,27 @@
       two-pallet anchor with no hairspring flutters on the teeth &mdash; driven BOTH ways by
       the tooth faces, a runaway by design.</p>
       <p>Per tooth the anchor is driven through its swing both ways from rest, so each tooth
-      costs <code>2&middot;&radic;(2&phi;&middot;I&#8336;/&Gamma;)</code> of time; per strike the
-      governor wheel turns two revolutions &mdash; 80 teeth &mdash; and the gap between
-      strikes comes out proportional to 1/&radic;M. The one solved part is the brass POISING
-      RING on the anchor's arbor: its inertia is chosen so the designed
+      costs <code>2&middot;&radic;(2&phi;&middot;I&#8336;/(&Gamma;&middot;&rho;))</code> of
+      time &mdash; since &sect;113 the torque is REFERRED through the contact's lever ratio
+      <code>ALARM_GOV_RHO</code> = driveArc/&phi; &asymp; 0.82; per strike the governor wheel
+      turns two revolutions &mdash; 80 teeth &mdash; and the gap between strikes comes out
+      proportional to 1/&radic;M. The pallet faces are short FLAT strips, and neither of
+      their numbers is authored: the face is exactly one stock floor long
+      (<code>ALARM_GOV_FACE_LEN</code>, the &sect;50 wheel floor's 0.12 mm), and its incline
+      is SOLVED at boot &mdash; bisected until the poising ring's section lands a centi-mm
+      inside the top of real ring stock. The swing itself is an output, not a spec row:
+      <code>ALARM_GOV_PHI</code> = 2h &asymp; 4.6&deg; comes from a closure bisection &mdash;
+      pallet A must land exactly as the march from pallet B's landing releases &mdash; with a
+      unilateral press check at every step (steel pushes, it never pulls). So contact is
+      closed during IMPULSE, 42% of each tooth pitch, and OPEN during DROP, the 8% the wheel
+      free-runs before landing on the other pallet &mdash; the clearance a real escapement
+      keeps, and the movement's newest. The one solved part is still the brass POISING RING
+      on the anchor's arbor: its inertia is chosen so the designed
       <code>ALARM_STRIKE_GAP</code> 0.42 s lands exactly at mid strike travel (solve the
       part, never re-target the beat &mdash; the hairspring's own convention), and the solved
-      section, 0.455 mm on a 2 mm ring, sits inside real drawn-ring stock. The pallet faces
-      are not styled: they are GENERATED from the swing law exactly as the striking cam's
-      flank was generated from the lift law &mdash; the engaged tooth's tip traces a curve in
-      the anchor's frame, and that trajectory <em>is</em> the face, so contact is closed at
-      every instant by construction.</p>
+      section, 0.790 mm on a 2 mm ring, sits inside drawn-ring stock at a designed centi-mm
+      under its ceiling &mdash; anything that inflates the inertia demand pushes it out of
+      stock and the gate fires.</p>
       <p>The spring this governs gained a SET-UP to govern against: 80 integer clicks on the
       &sect;99 arbor ratchet &mdash; 2.5 turns wound in at the bench, held under the ribbon's
       tested 4.3-turn ceiling with the builder's own solver standing behind it &mdash; so the
@@ -1880,25 +1890,42 @@
       instead of never. The ring audibly slows, 0.374 s to 0.488 s over the wind, and the
       whole ring lasts the law's integral: 11.86 s.</p>
       <figure>
-        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The saw, the anchor, and the cadence the pair produces</span></div>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The landing, the drop, and the cadence the pair produces</span></div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 300" width="780" height="300" role="img" aria-label="Left: the 40-tooth saw wheel with the two-pallet anchor below it, pallet circle and poising ring dashed. Right: the strike gap rising from 0.374 s at full wind to 0.488 s at the set-up floor, with the designed 0.42 s at mid travel">
-            <!-- Saw outline from the builder's own tooth law (root 0.8R, tip at
-                 +0.72 pitch); anchor geometry from the source derivation:
-                 R_p = toothArc/phi, span 5.5 teeth, D = 7.336. -->
-            <path d="M 222.8 128.0 L 235.6 120.6 L 222.1 119.7 L 233.6 110.4 L 220.2 111.7 L 230.1 100.7 L 217.0 104.0 L 225.0 91.6 L 212.7 97.0 L 218.7 83.4 L 207.3 90.7 L 211.1 76.4 L 201.0 85.3 L 202.5 70.6 L 194.0 81.0 L 193.1 66.2 L 186.3 77.8 L 183.2 63.3 L 178.3 75.9 L 172.9 62.1 L 170.0 75.2 L 162.6 62.4 L 161.7 75.9 L 152.4 64.4 L 153.7 77.8 L 142.7 67.9 L 146.0 81.0 L 133.6 73.0 L 139.0 85.3 L 125.4 79.3 L 132.7 90.7 L 118.4 86.9 L 127.3 97.0 L 112.6 95.5 L 123.0 104.0 L 108.2 104.9 L 119.8 111.7 L 105.3 114.8 L 117.9 119.7 L 104.1 125.1 L 117.2 128.0 L 104.4 135.4 L 117.9 136.3 L 106.4 145.6 L 119.8 144.3 L 109.9 155.3 L 123.0 152.0 L 115.0 164.4 L 127.3 159.0 L 121.3 172.6 L 132.7 165.3 L 128.9 179.6 L 139.0 170.7 L 137.5 185.4 L 146.0 175.0 L 146.9 189.8 L 153.7 178.2 L 156.8 192.7 L 161.7 180.1 L 167.1 193.9 L 170.0 180.8 L 177.4 193.6 L 178.3 180.1 L 187.6 191.6 L 186.3 178.2 L 197.3 188.1 L 194.0 175.0 L 206.4 183.0 L 201.0 170.7 L 214.6 176.7 L 207.3 165.3 L 221.6 169.1 L 212.7 159.0 L 227.4 160.5 L 217.0 152.0 L 231.8 151.1 L 220.2 144.3 L 234.7 141.2 L 222.1 136.3 L 235.9 130.9 Z" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
-            <circle cx="170" cy="128" r="18" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
-            <circle cx="170" cy="208.7" r="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <circle cx="170" cy="208.7" r="34.6" fill="none" stroke="var(--steel)" stroke-width="1" stroke-dasharray="4 3"/>
-            <circle cx="170" cy="208.7" r="58" fill="none" stroke="var(--ruby)" stroke-width="1.2" stroke-dasharray="6 4"/>
-            <path d="M 146.0 183.8 L 139.4 192.6" stroke="var(--steel)" stroke-width="5" fill="none"/>
-            <path d="M 194.0 183.8 L 200.6 192.6" stroke="var(--steel)" stroke-width="5" fill="none"/>
+          <svg viewBox="0 0 780 300" width="780" height="300" role="img" aria-label="Left: detail of the saw wheel's lower arc with the two flat pallets at the landing instant, anchor and arms below, and an inset magnifying the parked pallet standing clear of the tip circle. Right: the strike gap rising from 0.374 s at full wind to 0.488 s at the set-up floor, with the designed 0.42 s at mid travel">
+            <!-- §113 detail view, canonical frame at 36 px/u (wheel centre
+                 230,30): teeth from the builder's tooth law (root 0.8R, tip at
+                 +0.72 pitch, a tip AT the landing corner), pallet quads and the
+                 anchor from the shipped closure solve (psi 11.67°, phi 4.62°,
+                 D = 7.051). -->
+            <path d="M 99.1 142.8 L 83.4 188.6 L 118.4 161.9 L 110 209.6 L 140.4 177.8 L 139.6 226.2 L 164.6 190 L 171.4 237.9 L 190.5 198.2 L 204.6 244.5 L 217.3 202.3 L 238.5 245.8 L 244.4 202.2 L 272.1 241.8 L 271.1 197.8 L 304.8 232.6 L 296.9 189.3 L 335.5 218.5 L 321 176.9 L 363.7 199.6 L 342.8 160.9 L 388.6 176.6 L 361.9 141.6" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
+            <circle cx="230" cy="30" r="216" fill="none" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="4 4"/>
+            <path d="M 238.5 245.8 L 249.5 243.1 L 253.2 257.6 L 242.1 260.4 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+            <path d="M 218.5 246.6 L 207.2 244.8 L 204.8 259.6 L 216.1 261.4 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+            <line x1="230" y1="283.8" x2="246.8" y2="255.5" stroke="var(--steel)" stroke-width="4" stroke-linecap="round"/>
+            <line x1="230" y1="283.8" x2="211" y2="257" stroke="var(--steel)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="230" cy="283.8" r="5" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <circle cx="238.5" cy="245.8" r="4.5" fill="none" stroke="var(--ruby)" stroke-width="1.4"/>
+            <line x1="238.5" y1="245.8" x2="300" y2="272" stroke="var(--ruby)" stroke-width="0.8"/>
+            <!-- inset: the parked pallet vs the tip circle, 220 px/u -->
+            <clipPath id="g112inset"><circle cx="85" cy="68" r="64"/></clipPath>
+            <circle cx="85" cy="68" r="64" fill="none" stroke="var(--line)" stroke-width="1"/>
+            <line x1="128" y1="115" x2="213" y2="243" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="3 3"/>
+            <g clip-path="url(#g112inset)">
+              <path d="M -161.1 20.6 L -145.1 25 L -129.1 29.2 L -113 33.2 L -96.8 37 L -80.6 40.6 L -64.4 44 L -48.1 47.2 L -31.8 50.2 L -15.4 53 L 1 55.5 L 17.4 57.9 L 33.8 60 L 50.3 62 L 66.8 63.7 L 83.3 65.3 L 99.8 66.6 L 116.4 67.7 L 132.9 68.6 L 149.5 69.3" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+              <path d="M -44.5 -221.8 L 42.1 61.1 L 119.3 -196.7" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+              <path d="M 126.8 74.1 L 58.1 62.9 L 43.3 153.3 L 112 164.6 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+              <line x1="126.8" y1="74.1" x2="127.1" y2="68.3" stroke="var(--ruby)" stroke-width="1.4"/>
+            </g>
             <path d="M 480 250 L 740 250 M 480 250 L 480 60" stroke="var(--line)" stroke-width="1" fill="none"/>
             <path d="M 740.0 76.3 L 733.5 82.0 L 727.0 87.6 L 720.5 93.0 L 714.0 98.3 L 707.5 103.5 L 701.0 108.6 L 694.5 113.5 L 688.0 118.3 L 681.5 123.0 L 675.0 127.6 L 668.5 132.1 L 662.0 136.5 L 655.5 140.8 L 649.0 145.0 L 642.5 149.2 L 636.0 153.2 L 629.5 157.2 L 623.0 161.0 L 616.5 164.8 L 610.0 168.6 L 603.5 172.2 L 597.0 175.8 L 590.5 179.4 L 584.0 182.8 L 577.5 186.2 L 571.0 189.5 L 564.5 192.8 L 558.0 196.0 L 551.5 199.2 L 545.0 202.3 L 538.5 205.3 L 532.0 208.3 L 525.5 211.3 L 519.0 214.2 L 512.5 217.0 L 506.0 219.8 L 499.5 222.6 L 493.0 225.3 L 486.5 228.0 L 480.0 230.6" fill="none" stroke="var(--ruby)" stroke-width="1.6"/>
             <circle cx="610" cy="168.6" r="3.4" fill="var(--steel)"/>
-            <text class="val val-brass" x="96" y="40">40-tooth saw wheel &mdash; 2 revolutions per strike</text>
-            <text class="val val-steel" x="14" y="228">pallets &mdash; faces generated from the swing law</text>
-            <text class="val val-ruby" x="96" y="284">poising ring &mdash; the solved part, on the anchor arbor</text>
+            <text class="val val-brass" x="228" y="86">40-tooth saw wheel &mdash; 2 revolutions</text>
+            <text class="val val-brass" x="228" y="100">per strike, a tip AT the landing corner</text>
+            <text class="val val-steel" x="158" y="30">the drop, magnified: the parked pallet</text>
+            <text class="val val-steel" x="158" y="44">stands 0.026 u outside the tip circle</text>
+            <text class="val val-ruby" x="304" y="276">landing &mdash; impulse 42% of the pitch</text>
+            <text class="val val-steel" x="30" y="290">anchor &mdash; swing &phi; 4.62&deg;, an OUTPUT of the closure solve</text>
             <text class="lbl" x="480" y="42">STRIKE GAP OVER THE RING, s</text>
             <text class="val val-ruby" x="676" y="66">0.488 at the set-up floor</text>
             <text class="val val-ruby" x="484" y="244">0.374 at full wind</text>
@@ -1907,16 +1934,21 @@
             <text class="lbl" x="688" y="264">RUN DOWN</text>
           </svg>
         </div>
-        <figcaption>The anchor's plan is three derivations deep and no deeper: the swing
-        <code>ALARM_GOV_PHI</code> 0.30 rad fixes the pallet radius (one tooth of rim per
-        swing), the 5.5-tooth span &mdash; integer plus half, so a tooth arrives at one
-        pallet exactly as the other releases &mdash; fixes the anchor's centre distance at
-        7.336, and the crossing points land on the tip circle by construction. The filing
-        sketched &phi; &asymp; 0.35; re-derived, that swing parks the anchor's own arbor
-        0.07 outside the saw's tips &mdash; under the movement's one clearance margin &mdash;
-        and 0.30 is the swing at which the arbor clears its wheel properly. The right-hand
-        curve is the shipped law: gap &prop; 1/&radic;M, drawn from the same constants the
-        battery gate measures the tick against.</figcaption>
+        <figcaption>The left panel is the landing instant, drawn from the shipped solve:
+        pallet A's corner meets the arriving tip ON the tip circle (which is what landing
+        MEANS &mdash; the solve places the corner there), pallet B has just released, and the
+        anchor stands at the hub-room floor <code>ALARM_GOV_ANCHOR_D</code> 7.051 &mdash;
+        tip circle + hub + the one clearance margin, measured to be the interference optimum
+        as well as the closest station. The landing corners sit &plusmn;pitch/4 off the
+        anchor's bearing &mdash; the smallest azimuths satisfying the half-integer landing
+        rule 2&epsilon; &equiv; pitch/2 (mod pitch); at multiples of pitch/2 the pallets park
+        anti-phase and the second one never lands. The inset magnifies the parked pallet:
+        its corner stands 0.026 u OUTSIDE the circle every tip rides &mdash; the drop, 8% of
+        the pitch, small and real. The right-hand curve is the shipped law, and &sect;113
+        left it alone by construction: referring the torque through &rho; re-solved the
+        inertia (&times;3.06) and the ring (0.455 &rarr; 0.790 mm) while the gap curve stays
+        pinned at the design point &mdash; the battery's measured endpoints did not
+        move.</figcaption>
       </figure>
       <p class="note">Honesty ledger, opened on day one: the saw wheel advances uniformly
       with the train &mdash; the anchor's recoil is not kicked back through the wheel, the
@@ -1938,20 +1970,27 @@
       would swallow the anchor's own pivot, was measured and is false: the offset runs nearly
       tangential to the pallet circle, so the blade's back moves from 3.08 to 3.12 from the
       anchor axis while the offset goes 0.45 to 1.2. What the same measurement found
-      underneath is the real debt. <b>The saw's teeth stand inside the pallet blades, 0.245
-      deep, through the cycle</b> &mdash; because the face is the WHOLE tip trajectory over a
-      half period, so "contact closed at every instant" above is exactly what makes the
-      pallet reach half a tooth pitch into a wheel whose teeth are one pitch apart. A real
-      escapement has DROP: closed during impulse, open during drop, the pallet short. Nothing
-      measured it, for four reasons worth knowing &mdash; the two units are an EXPECTED pair,
-      their contact meshes are named and so excluded from the clearance floor, the kind of
-      penetration budget the going escapement has had for years was never given a twin here,
-      and the boot assert sampled tooth TIPS only, one point per tooth, so it could not have
-      failed. &sect;111 shipped the missing budget row, waived at the measured depth, and
-      widened the assert to whole outlines in both directions. The cure is a re-derivation of
-      the engagement, and it is filed rather than absorbed. <b>&sect;111 also gave both
-      governor arbors a bore</b>: they had been solid, and wider than the studs they turned
-      on.</p>
+      underneath was the real debt: <b>the saw's teeth stood inside the pallet blades, 0.245
+      deep, through the cycle</b> &mdash; &sect;104 generated each face as the engaged tip's
+      WHOLE trajectory over a half period ("contact closed at every instant"), which is
+      exactly what made the pallet reach half a tooth pitch into a wheel whose teeth are one
+      pitch apart. Nothing measured it, for four reasons worth knowing &mdash; the two units
+      are an EXPECTED pair, their contact meshes are named and so excluded from the clearance
+      floor, the kind of penetration budget the going escapement has had for years was never
+      given a twin here, and the boot assert sampled tooth TIPS only, one point per tooth, so
+      it could not have failed. &sect;111 shipped the missing budget row, waived at the
+      measured depth, widened the assert to whole outlines in both directions, and <b>gave
+      both governor arbors a bore</b>: they had been solid, and wider than the studs they
+      turned on. <b>&sect;113 retired the waiver.</b> The engagement above &mdash; flat
+      faces, solved swing, real drop &mdash; is that re-derivation, and the row now measures
+      0.032 against the 0.1 budget, unwaived. Two entries stay open in its place: the drop is
+      GEOMETRIC, not temporal &mdash; the wheel is quasi-static, so it crosses the drop arc
+      in zero time and the anchor dwells rather than overswings (the roadmap files
+      drop-time-with-wheel-inertia, the same accepted class as the absent wheel recoil above)
+      &mdash; and the parked pallets grade 0.033 u against the passing teeth
+      (<code>ALARM_GOV_ENGAGE_DEBT</code>), the price of a face long enough for the stock
+      floor and a swing small enough to poise, held by the boot sweep and never to
+      rise.</p>
     </div>
   </details>
 
