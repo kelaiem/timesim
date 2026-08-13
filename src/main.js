@@ -42,6 +42,7 @@ import {
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
+  KW_WIND_IDLER_TEETH,
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -1320,6 +1321,16 @@ const ALARM_CORNER_W_AZ = SPEC.alarmAzDeg !== null
 // pushed-in rest meshes it — winding is the resting action, the convention),
 // and the setting corner sits one throw outboard (see ALARM_ARBOR_R).
 const ALARM_WIND_X = Math.cos(ALARM_CORNER_W_AZ) * ALARM_CD, ALARM_WIND_Y = Math.sin(ALARM_CORNER_W_AZ) * ALARM_CD;
+// §112 — the STRIKE ARBOR'S STATION, hoisted (the climb-arbor pattern one
+// block up): the tier-split passes the strike arbor through a plate BORE,
+// and the plate is cut long before the alarm block runs, so the station —
+// the §33 module seed and its rotation — must exist here. The §33/§112
+// design notes stay with the alarm block below; these are the same
+// constants, defined once.
+const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
+  ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
+const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
+const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
 // The base plate's PLANE is declared here, where the layout needs it; the
 // plate itself is CUT further down, once the keyless linkage has solved
 // (search BASE PLATE — CUT). §87 is why: the setting lever carries a second
@@ -1336,7 +1347,7 @@ const BACK_PLATE_HOLES = [
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
   { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
   { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-  { x: -9.80, y: 26.97, r: 0.45 },               // §35/§68: the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
+  { x: 34.32, y: 16.89, r: 0.45 },               // §35/§68 (§112: re-synced to the SOLVED rod site; band swap: the tab-zone score re-ranked the solve) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
 // the track is an ARC, not the chord, so the bow joins the stud's own radius
@@ -1448,11 +1459,116 @@ function jewelFaceGeo(boreR, outerR, h) {
   g.rotateX(Math.PI / 2);
   return g;
 }
+// ---------------------------------------------------------------------------
+// §112 — THE ALARM CORNER'S PLAN, hoisted. The tier-split put the alarm's
+// power tiers UNDER the three-quarter plate, which made the corner's plan
+// load-bearing for the movement's FRAME: the pillar solve must keep its
+// full-height columns out of the corner's discs, and pillars are placed
+// (and the plate cut around them) thousands of lines before the alarm
+// block builds its metal. So the corner's plan-space spec — module, tooth
+// counts, centre distances, the gate-solved bearings, the stations and the
+// working radii — is defined HERE, one source, and both consumers read it:
+// the pillar solve through ALARM_UNDER_FOOTPRINT below, the alarm builders
+// through the same names they always used. Each constant keeps its
+// constraint; the §25A/§99/§104 blocks keep their narrative with pointers.
+const ALARM_TRAIN_MODULE = 0.3;
+const ALARM_BARREL_TEETH = 44;
+const ALARM_STRIKE_PINION_TEETH = 11;
+const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_PINION_TEETH) / 2;
+// §112 — the barrel's bearing is the placement gate's output, not the old
+// −60 rotated: under the plate the barrel disc must dodge the rods, the
+// centre wheel and the rim, and probe-alarm-tier-split solved the triple
+// (θ_b 202°, θ_g 92°, θ_a 148°, world at identity) with 0.90 beyond every
+// margin — the argmax over the whole rotation × bearing space, drum home.
+const ALARM_BARREL_BEARING = 202 * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
+const alarmBarrelPos = {
+  x: alarmSwPos.x + Math.cos(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
+  y: alarmSwPos.y + Math.sin(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
+};
+const ALARM_BARREL_PITCH_R = ALARM_TRAIN_MODULE * ALARM_BARREL_TEETH / 2;
+const ALARM_BARREL_TIP_R = ALARM_BARREL_PITCH_R + ALARM_TRAIN_MODULE * 0.95;   // makeBarrel's toothed wall
+const ALARM_WIND_W = ALARM_BARREL_TEETH; // §99's coaxial identity — see the winding block's note
+const ALARM_WIND_WHEEL_T = 0.8;   // the winding tier's mesh stock — the idlers' own 0.8, one band
+const ALARM_GEAR_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
+const ALARM_WIND_TIP_R = ALARM_TRAIN_MODULE * (ALARM_WIND_W + 2) / 2; // the arbor wheel's addendum circle
+const ALARM_RATCHET_R = Math.ceil(10 * (Math.max(ALARM_BARREL_TIP_R, ALARM_WIND_TIP_R + ALARM_GEAR_BEVEL) + 0.5 + CLEAR_MARGIN) / 1.28) / 10;
+const ALARM_GOV_WHEEL_TEETH = 64;  // on the strike arbor
+const ALARM_GOV_PINION_TEETH = 8;  // on the governor arbor
+const ALARM_GOV_SAW_TEETH = 40;
+const ALARM_GOV_PHI = 0.30;        // rad — the swing's derivation note lives at the §104 block
+// §112 band swap — THE GOVERNOR MESH WEARS ITS OWN MODULE, derived (rule 1).
+// The barrel arbor stands CD_train from the strike arbor and is a FULL
+// column (boss engagement to body lid), so every band the 64T wheel could
+// occupy, that arbor crosses. At the train's 0.3 the wheel's web reaches
+// m·(64/2+1)+bevel = 9.97 over an arbor whose near edge is only
+// CD − arborR = 7.66 out — the descent ran the column straight through the
+// web, and the battery never said so because barrel ⇄ striking wheel is an
+// EXPECTED pair with no floors row (TODO 6's residue; found by measuring
+// the wheel's radial occupancy this landing). The wheel must UNDERREACH
+// the arbor instead:
+//   m·(N/2 + 1 + 0.22) ≤ CD_train − arborR − CLEAR_MARGIN = 7.506
+//   →  m ≤ 0.2259, cut 0.22 (tip+bevel 7.31, spare 0.20)
+// — which is also the horological direction: the fastest mesh of a train
+// wears the finest module. Ratio (64/8) and the §104 cadence law are
+// tooth-count arithmetic and do not move. Asserted where the wheel builds.
+const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R); // 0.594 — §99's arbor stock (was declared at the barrel build)
+const ALARM_GOV_MODULE = 0.22;
+const ALARM_GOV_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_GOV_MODULE * 0.22); // the wheel's stock is the tier's 0.8
+const ALARM_GOV_CD = ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH + ALARM_GOV_PINION_TEETH) / 2; // 7.92 — the mesh dictates
+const ALARM_GOV_BEARING = 92 * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative (§112: the gate's θ_g)
+const alarmGovPos = {
+  x: alarmSwPos.x + Math.cos(ALARM_GOV_BEARING) * ALARM_GOV_CD,
+  y: alarmSwPos.y + Math.sin(ALARM_GOV_BEARING) * ALARM_GOV_CD,
+};
+// --- The anchor's plan, all derived from φ and the saw (rule 1):
+//   R_p = toothArc/φ            the pallet radius — one tooth of rim per swing
+//   span = 5.5 teeth            integer + half, so when pallet A releases a
+//                               tooth is arriving at B — the anchor rule
+//   D    = r·cosε + √(R_p²−(r·sinε)²)   the stud distance that puts both
+//                               engagement crossings ON the tip circle
+const ALARM_GOV_SAW_R = ALARM_TRAIN_MODULE * ALARM_GOV_SAW_TEETH / 2; // 6.0 — tip radius, the train's own module
+const ALARM_GOV_TOOTH_PITCH = Math.PI * 2 / ALARM_GOV_SAW_TEETH;      // rad of saw per tooth
+const ALARM_GOV_TOOTH_ARC = ALARM_GOV_TOOTH_PITCH * ALARM_GOV_SAW_R;  // 0.9425 u of rim per tooth
+const ALARM_GOV_PALLET_R = ALARM_GOV_TOOTH_ARC / ALARM_GOV_PHI;       // 3.1416
+const ALARM_GOV_SPAN_TEETH = 5.5;
+const ALARM_GOV_HALF_SPAN = Math.PI * ALARM_GOV_SPAN_TEETH / ALARM_GOV_SAW_TEETH; // ε = 0.4320 rad at the wheel centre
+const _govUnderRoot = ALARM_GOV_PALLET_R ** 2 - (ALARM_GOV_SAW_R * Math.sin(ALARM_GOV_HALF_SPAN)) ** 2;
+if (_govUnderRoot <= 0)
+  console.warn(`§104: pallet circle (R_p ${ALARM_GOV_PALLET_R.toFixed(3)}) cannot reach the tip circle at half-span ${ALARM_GOV_HALF_SPAN.toFixed(3)} — no engagement crossing exists`);
+const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R * Math.cos(ALARM_GOV_HALF_SPAN) + Math.sqrt(Math.max(_govUnderRoot, 1e-12)); // 7.335
+const ALARM_GOV_ANCHOR_BEARING = 148 * DEG2RAD + ALARM_MOD_ROT; // §112: the gate's θ_a — the leg of the solved triple that keeps the anchor's arbor column outside the 64T wheel's swept disc AND the ring off the rods
+const alarmGovAnchorPos = {
+  x: alarmGovPos.x + Math.cos(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
+  y: alarmGovPos.y + Math.sin(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
+};
+const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
+                                        // holds inside the rim (assert at the §104 block), the cheap
+                                        // direction — I = m·r², so radius bought is section saved
+// THE FOOTPRINT the pillar solve consumes — the corner's five under-plate
+// discs, each the member's own working radius. The ring's SECTION solves
+// late (from stock), so its disc takes the stock ceiling's bound: ring
+// stock tops at 0.8 ("above that it is clock-plate bar"), so outer ≤
+// R + 0.4. The battery's sweptOverlap wrote this list: the pillar solve
+// placed full-height columns through the striking wheel's and governor's
+// discs because the alarm's metal builds after the plate is cut — a
+// declared footprint is how the low corridor solved the same ordering
+// problem (LOW_LINKAGE_OBSTACLES).
+const ALARM_UNDER_FOOTPRINT = [
+  { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH + 2) / 2 + ALARM_GOV_BEVEL }, // the 64T wheel's addendum + bevel, at the mesh's OWN module
+  { x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_BARREL_TIP_R },
+  { x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_RATCHET_R * 1.28 + 1.2 }, // the click: pivot registration + pawl/spring reach
+  { x: alarmGovPos.x, y: alarmGovPos.y, r: ALARM_GOV_SAW_R + ALARM_GEAR_BEVEL },
+  { x: alarmGovAnchorPos.x, y: alarmGovAnchorPos.y, r: ALARM_GOV_RING_R + 0.4 },
+];
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
-// §25 C: the winding climb arbor's UPPER bearing — a jeweled pivot in the
-// three-quarter plate like any train arbor (raycast-verified: the plate IS
-// present at this XY; an earlier sparse vertex probe wrongly said otherwise).
-tqPivots.push({ x: ALARM_WIND_X, y: ALARM_WIND_Y, staffR: 0.45, jewelR: 1.0, boreR: 0.55 });
+// (§112: the climb arbor's jeweled upper pivot RETIRED — with the winding
+// tier under the plate the climb tops out ~3 and never reaches this
+// plate; its lower bearing, the base plate's bore above, is the bearing.)
+// §112 — the STRIKE ARBOR'S BORE: the tier-split's defining cut. The
+// rotor's sleeve (r 0.75) passes the plate here and the bore is its upper
+// bearing — staff = the sleeve, bore = staff + the train's own side-shake,
+// jewel sized a step over the climb's 1.0 for the larger staff.
+tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR });
 function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
@@ -4501,7 +4617,7 @@ checkCutVsPivots();
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
 }));
-tqHoles.push({ x: -9.80, y: 26.97, r: 0.45 }); // §35/§68: the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
+tqHoles.push({ x: 34.32, y: 16.89, r: 0.45 }); // §35/§68 (§112: re-synced to the SOLVED rod site) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -4513,7 +4629,7 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: -15.94, ay: 25.89, bx: -17.66, by: 27.96, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build)
+tqSlots.push({ ax: 30.40, ay: 0.86, bx: 33.04, by: 1.32, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -5537,6 +5653,14 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
+    // §112 — the alarm corner's DECLARED under-plate footprint: its metal
+    // builds after this plate is cut, so the pillar solve cannot read it as
+    // boxes the way it reads the train below; the battery's sweptOverlap
+    // proved the blindness (two pillars through the striking wheel's and
+    // governor's discs). Same ordering fix as the low corridor: a declared
+    // list, one source, at the plan hoist.
+    for (const o of ALARM_UNDER_FOOTPRINT)
+      c = Math.min(c, Math.hypot(x - o.x, y - o.y) - o.r);
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
     for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj, maintDetent, setupWork]) {
@@ -7084,7 +7208,12 @@ const alarmPinArmB = new THREE.Group();
 // blade-A off, ring UP (disarmed) flexes blade-B off. The tube's law reads
 // the SELECTOR's state — alarmOn only turns the column wheel, and the
 // column→ring run is §35's filed debt (MECH_GRAPH.todo carries it).
-const ALARM_LINK_AZ_DEG = 146; // §35: the link run's INNER-end azimuth — the ring's drive tab sits on it (dial-local mirror, az 34° — ≥26° from every §34 guide post), so it is hoisted here with the selector
+// (ALARM_LINK_AZ_DEG — the ring's drive-tab azimuth — is SOLVED at the link
+// build since §112, jointly with the rod site: §35's 146° was itself a
+// corridor answer for the old module corner, and the identity move made
+// every chord from the parity-legal rod family cross the centre stack to
+// reach it. The §34 guide-post guard (≥26° dial-local from 60/220/300)
+// travelled into the solve.)
 const ALARM_SEL_R_IN = 4.45, ALARM_SEL_R_OUT = 4.75;
 // §51 final spend, retried with the band derived — the earlier "two-sided
 // slot" reading was wrong (§34 left ONE rocker finger), and the anchoring
@@ -9082,21 +9211,35 @@ const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), i
 // The striking wheel's cam lifts the hammer tail, the hammer strikes the
 // gong, the lock lever banks on the wheel, the column stands off the lock,
 // and the pawl/pusher stand off the column: one action group, positionally.
-// So the spec is ONE azimuth — the striking wheel's station, identity 160° —
+// So the spec is ONE azimuth — the striking wheel's station, identity 40° —
 // and the whole complex is seeded from four angle literals below, each
 // carrying this delta. Identity keeps every literal bit-exact: the delta is
 // exactly 0.0 and IEEE addition of 0.0 is the identity, so no branch is
 // needed (the crownaz skip-entirely pattern exists for rotations through
 // cos/sin, which this is not — these are pure angle sums).
-// What does NOT rotate: the selector link rod (az 210° is a §35 corridor
-// solution against world-frame obstacles — the beak's tail re-derives to
-// reach it), the alarm crown corner (?alarmaz=, its winding run re-solves
-// to the barrel by construction), and the centre setting work. Costs of a
-// rotated module — fusee-square clearance, plate rim, corridor reach — are
-// the boot asserts' court, per the mode's layering.
-const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
-  ? SPEC.alarmModAzDeg * DEG2RAD - 160 * DEG2RAD : 0;
-const GONG_A1 = 135 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the hammer strikes here
+// §112 — the identity MOVED, 160° → 40°: the tier-split drops the power
+// tiers under the plate, and the placement gate (probe-alarm-tier-split)
+// solved the module's rotation and the three bearings TOGETHER against
+// the under-plate band — with the drum, chain and set-up work exactly
+// where they are. 40° is the argmax of the gate's spare-beyond-margins
+// over every rotation × bearing triple (0.90 at 40°, falling to 0.03 by
+// 65° and to NOTHING at the first solve's contaminated 70° — that run
+// missed the anchor's arbor column, the gate's one recorded wrong
+// answer). The four seed literals below each carry the −120° in their
+// authored value (GONG_A1 135→15, ALARM_SW_AZ 160→40, ALARM_LOCK_PIV_AZ
+// 24→−96), which is what keeps the new default build bit-exact instead
+// of churning every float through a spec rotation.
+// What does NOT rotate: the alarm crown corner (?alarmaz=, its winding
+// run re-solves to the barrel by construction) and the centre setting
+// work. The selector link's ROD left this list at §68: it derives
+// diametrically opposite the lock beak now, so it RIDES the module, and
+// the frozen plate bores/slot carry tripwires that fire when they lag it
+// (they did their job at §112's identity move). Costs of a rotated
+// module — fusee-square clearance, plate rim, corridor reach — are the
+// boot asserts' court, per the mode's layering.
+// (ALARM_MOD_ROT itself is HOISTED to the climb-arbor block — the strike
+// arbor's plate bore needs the station before the plate is cut.)
+const GONG_A1 = 15 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the hammer strikes here (§112: 135 − the identity move's 120)
 // §56 — the arc is a LIVE parameter, measured BACK FROM THE FREE END. That
 // direction is the whole trick: the struck end, the hammer, its pivot azimuth
 // (GONG_A1 + 11°), the head's rest radius and the strike emitter are all sited
@@ -9227,9 +9370,8 @@ const ALARM_ARM_LEN = Math.hypot(headRest.x - hammerPiv.x, headRest.y - hammerPi
 // could deliver at this cadence without the barrel creeping through a third
 // of a turn.
 const ALARM_CAM_LOBES = 4;                     // lifting lobes on the striking wheel — one strike each
-const ALARM_TRAIN_MODULE = 0.3;
-const ALARM_BARREL_TEETH = 44;
-const ALARM_STRIKE_PINION_TEETH = 11;
+// (module + tooth counts: §112 hoisted them to the alarm-plan block by the
+// plate constants — the pillar solve consumes the corner's footprint now.)
 const ALARM_STRIKE_RATIO = ALARM_BARREL_TEETH / ALARM_STRIKE_PINION_TEETH;        // 4:1 step-up
 const ALARM_STRIKES_PER_BARREL_TURN = ALARM_CAM_LOBES * ALARM_STRIKE_RATIO;       // 16 strikes / barrel turn
 const ALARM_BARREL_TURNS = 1.75;               // full-wind travel of the barrel (the > 1 turn constraint above)
@@ -9246,16 +9388,10 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // then follows at whatever centre distance the MESH dictates, on a bearing
 // picked to keep it off the fusee's let-down square (the one other thing
 // standing proud of this face).
-const ALARM_SW_AZ = 160 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29; // §33: the module seed — ?alarmmod= names THIS station
-const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
-const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_PINION_TEETH) / 2;
-const ALARM_BARREL_BEARING = -60 * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
-const alarmBarrelPos = {
-  x: alarmSwPos.x + Math.cos(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
-  y: alarmSwPos.y + Math.sin(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
-};
-const ALARM_BARREL_PITCH_R = ALARM_TRAIN_MODULE * ALARM_BARREL_TEETH / 2;
-const ALARM_BARREL_TIP_R = ALARM_BARREL_PITCH_R + ALARM_TRAIN_MODULE * 0.95;   // makeBarrel's toothed wall
+// (ALARM_SW_AZ / alarmSwPos — §33's module seed, §112's identity 40 — are
+// HOISTED to the climb-arbor block with ALARM_MOD_ROT, for the plate bore.)
+// (§112: the barrel's centre distance, bearing, station and radii are in
+// the alarm-plan block — the constraints travelled with them.)
 // The let-down square is the only other thing standing on this face away from
 // the gong sector (barrelArbor's plate-top end, half-diagonal FUSEE_SQ_S/√2).
 {
@@ -9279,11 +9415,74 @@ const ALARM_CAM_T = 0.8;                               // cam thickness — stra
 const ALARM_CAM_Z0 = Z_GONG - ALARM_CAM_T / 2;
 const ALARM_CAM_Z1 = Z_GONG + ALARM_CAM_T / 2;
 const ALARM_BARREL_H = 1.3;
-const ALARM_BARREL_Z0 = ALARM_CAM_Z1 + CLEAR_MARGIN;   // barrel clears the cam's top face
-const ALARM_BARREL_Z = ALARM_BARREL_Z0 + ALARM_BARREL_H / 2;
 const ALARM_PINION_T = 1.0;                            // meshes inside the barrel's toothed wall band
 if (ALARM_CAM_Z0 < TQ_TOP_Z + CLEAR_MARGIN)
   console.warn(`alarm cam underside ${ALARM_CAM_Z0.toFixed(2)} fouls the plate top ${TQ_TOP_Z.toFixed(2)} — the plate is not a swept unit, so nothing else will catch this`);
+
+// ---------------------------------------------------------------------------
+// §112 — THE UNDER-PLATE STACK. The power tiers live below the three-quarter
+// plate now (the tier-split): only the strike group — cam, lock collar,
+// hammer, gong, lock, switch — stays on the top face, and the strike arbor
+// passes through a plate bore to reach it. The stack is anchored at the
+// BASE PLATE'S TOP FACE and derived UP, floor to ceiling.
+//
+// THE BAND ORDER IS THE SWEPT CORRIDOR'S (second derivation this landing).
+// The first order put the winding tier at the floor "in cells the gate
+// proved rod-free" — true at the rest pose, false over the rods' TRAVEL:
+// LOW_LINKAGE_OBSTACLES (rule 5) claims a full diagonal of the floor band,
+// the 44T winding wheel measured 0.33 inside it, and the winding leg from
+// the climb arbor (south of that diagonal) to the barrel (north of it) has
+// no floor route at any bearing — the battery's three Hack-rod rows, all
+// one lesson. The order that survives the sweep inverts the middle:
+//   floor → 64T governor wheel (fan-clear at its own station by 6.6, and
+//   the mesh's 0.22 module — derived at the plan block — keeps its web off
+//   the barrel arbor) → arbor ratchet + click (small, fan-clear discs) →
+//   winding tier ABOVE the corridor's own ceiling, where the leg CROSSES
+//   the rods' lane: wheels overfly the band, studs stand clear of the
+//   sweep in plan → barrel body, high, the way the mainspring drum already
+//   lives under this plate. The ceiling is asserted at the end of the chain.
+const ALARM_U_FLOOR = 0;                    // the base plate's top face — studs plant 0.5 into it
+const ALARM_RATCHET_T = RATCHET_T / 2; // the going ratchet's stock at the alarm's half scale (TODO 11's standing note)
+// (ALARM_WIND_WHEEL_T, ALARM_GEAR_BEVEL, ALARM_GOV_MODULE and
+// ALARM_GOV_BEVEL — §112: hoisted to the alarm-plan block; this stack still
+// derives every band from them.)
+// makeGear's edge bevel EXTRUDES BEYOND the stock on both faces
+// (min(t·0.18, m·0.22) per side — the module term binds at these stocks),
+// so every tier's clearance is between BEVEL surfaces, not band surfaces —
+// the two-bevel lesson, paid once in the old stack and kept here.
+const ALARM_BODY_BEVEL = Math.min(ALARM_BARREL_H * 0.18, ALARM_TRAIN_MODULE * 0.22);
+// The 64T wheel takes the floor: one margin over the base plate's face plus
+// the 0.2 boss land (the floor idiom the winding tier used to spend here).
+const ALARM_GOV_WHEEL_T = ALARM_WIND_WHEEL_T;              // the tier stock, one band
+const ALARM_GOV_TIER_BOT = ALARM_U_FLOOR + CLEAR_MARGIN + 0.2; // the wheel's lowest METAL
+const ALARM_GOV_WHEEL_Z = ALARM_GOV_TIER_BOT + ALARM_GOV_BEVEL + ALARM_GOV_WHEEL_T / 2;
+const ALARM_GOV_PINION_T = ALARM_GOV_WHEEL_T + 0.4;        // embraces the wheel band (the strike pinion's idiom)
+// The arbor ratchet rides the band above the wheel (its click's pawl and
+// spring are fan-checked at the click's own azimuth solve):
+const ALARM_RATCHET_BOT_Z = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T / 2 + ALARM_GOV_BEVEL + CLEAR_MARGIN + 0.01;
+const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatchetAndClick extrudes bevel-free — exact band
+// THE WINDING TIER CLEARS THE SWEPT CORRIDOR: its floor is the larger of
+// the corridor's own declared ceiling (LOW_CORRIDOR_Z_BAND[1] + the margin
+// — this is where the leg crosses the rods' lane) and the §99 arbor's
+// shoulder over the ratchet (top + 0.2 land + the margin):
+const ALARM_WIND_TIER_BOT = Math.max(
+  LOW_CORRIDOR_Z_BAND[1] + CLEAR_MARGIN,
+  ALARM_RATCHET_TOP_Z + 0.2 + CLEAR_MARGIN); // the tier's lowest WIDE metal (the hub dips 0.25·t at the arbor, fan-clear there)
+const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_GEAR_BEVEL + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
+// ...and the barrel BODY (with its toothed wall — the wheel that drives the
+// strike pinion) above the winding tier's true top — the HUB, 1.5·t centred
+// (the §112 hub lesson, now on the tier's ceiling side) — one margin + the
+// centi-unit clear:
+const ALARM_BARREL_Z0 = ALARM_WIND_TIER_Z + 0.75 * ALARM_WIND_WHEEL_T + CLEAR_MARGIN + 0.01;
+const ALARM_BARREL_Z = ALARM_BARREL_Z0 + ALARM_BODY_BEVEL + ALARM_BARREL_H / 2;
+// The ceiling: the stack's top face (the body's lid plus its bevel) must
+// stay one margin under the plate's underside — the whole tier-split's
+// budget, held where the chain ends.
+{
+  const stackTop = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + ALARM_BODY_BEVEL;
+  if (stackTop > TQ_BOT_Z - CLEAR_MARGIN)
+    console.warn(`§112: the under-plate stack tops at ${stackTop.toFixed(2)} — the plate's underside ${TQ_BOT_Z.toFixed(2)} leaves less than the margin`);
+}
 
 // --- Cam ⇄ tail linkage -----------------------------------------------------
 // The hammer grows a TAIL on the far side of its pivot, ending in a nose that
@@ -9622,10 +9821,12 @@ movement.add(alarmStrikeUnit);
 registerLabel('Alarm striking wheel', alarmStrikeUnit);
 registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like the gong and hammer
 {
-  // Static bearing stud, planted 0.5 into the plate top (the gong post's idiom)
-  // and carrying the rotor's bore all the way up to the pinion.
-  const studTop = ALARM_BARREL_Z + ALARM_PINION_T / 2 + 0.3;
-  const studBase = TQ_TOP_Z - 0.5;
+  // §112: the static stud plants 0.5 into the BASE plate now and runs the
+  // whole column — through the plate's bore — to carry the cam on top: one
+  // fixed axle for both zones, the §99/TODO 39 fixed-arbor idiom stretched
+  // through the bore the tier-split cut for it (tqPivots, at the plate).
+  const studTop = ALARM_CAM_Z1 + 0.3;
+  const studBase = ALARM_U_FLOOR - 0.5;
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studTop - studBase, 12), MATS.steel);
   stud.rotation.x = Math.PI / 2;
   stud.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + studBase) / 2);
@@ -9691,8 +9892,10 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   cam.name = 'alarmCam'; // selected by name for the nose⇄cam penetration budget
   cam.position.z = Z_GONG;
   alarmStrikeRotor.add(cam);
-  // Sleeve up to the pinion, and the pinion itself in the barrel's tooth band.
-  const sleeveZ0 = ALARM_CAM_Z1, sleeveZ1 = ALARM_BARREL_Z - ALARM_PINION_T / 2;
+  // Sleeve DOWN to the pinion (§112 — the barrel's tooth band lives under
+  // the plate now): from the pinion's top face up to the cam's underside,
+  // through the plate bore, which is this rotor's upper bearing.
+  const sleeveZ0 = ALARM_BARREL_Z + ALARM_PINION_T / 2, sleeveZ1 = ALARM_CAM_Z0;
   const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sleeveZ1 - sleeveZ0, 16), MATS.steel);
   // TODO 11 tranche five: a turned STEP on the striking arbor, not a piece of
   // sheet. The census is per mesh and does not subdivide an arbor (its own
@@ -9719,6 +9922,7 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   alarmStrikeRotor.add(sleeve);
   const pinion = G.makePinion({
     module: ALARM_TRAIN_MODULE, teeth: ALARM_STRIKE_PINION_TEETH, thickness: ALARM_PINION_T });
+  pinion.traverse((o) => { if (o.isMesh) o.name = 'alarmStrikePinion'; }); // §112: the placement gate selects it by name
   pinion.position.z = ALARM_BARREL_Z;
   alarmStrikeRotor.add(pinion);
   alarmStrikePinion = pinion;      // TODO 15: the barrel's OTHER mesh
@@ -9738,8 +9942,14 @@ registerExplode(alarmBarrelUnit, 0, 9);
   // a turning arbor is exactly the standing foul TODO 42's eye documents,
   // pre-empted here; §27's rule that every opening is cut). Lathe profile
   // keeps the original 0.9→1.1 taper; bore is the pivot fit over the arbor.
-  const bossTop = ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2;
-  const bossBase = TQ_TOP_Z - 0.5;
+  // §112: the boss is the FLOOR bearing now — planted in the base plate.
+  // Band swap: the 64T wheel's floor band SWEEPS the barrel station at this
+  // boss's radius (tip 7.31 over a station 8.25 out — the mesh module keeps
+  // the wheel off the 0.594 ARBOR, not off a 1.1 boss), so the boss stops
+  // one margin under the wheel band and the arbor runs bare through it;
+  // the arbor's own clearance is the plan block's module derivation.
+  const bossTop = ALARM_GOV_TIER_BOT - CLEAR_MARGIN;
+  const bossBase = ALARM_U_FLOOR - 0.5;
   const boreR = G.barrelArborR(ALARM_BARREL_PITCH_R) + PIVOT_BORE_CLEAR;
   const h = bossTop - bossBase;
   const bossGeo = new THREE.LatheGeometry([
@@ -9775,7 +9985,8 @@ alarmBarrelUnit.add(alarmArborRotor);
 // A ribbon with both ends on the same part cannot wind; winding is the
 // relative angle between two, and now each end's member has its own job:
 // arbor = input (click-held), body = output (lock-held while parked).
-const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R);
+// (ALARM_BARREL_ARBOR_R — §112 band swap: hoisted to the alarm-plan block,
+// where the governor module's derivation consumes it.)
 // §99 — the ARBOR TIER's z-stack, derived up from the body. With the winding
 // wheel coaxial to the barrel, i2's tip circle overflies the body's rim in
 // XY, so the whole last-mesh plane stands ABOVE the body's lid. THE LANE,
@@ -9789,20 +10000,10 @@ const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R);
 //   0.1500 against required 0.15 and a float hair failed the sweep);
 //   ratchet bottom = wheel top + the same margin, so the click's plane
 //   clears i2's disc at every azimuth.
-const ALARM_WIND_WHEEL_T = 0.8;   // the winding tier's mesh stock — the idlers' own 0.8, one band
-const ALARM_RATCHET_T = RATCHET_T / 2; // the going ratchet's stock at the alarm's half scale (TODO 11's standing note)
-// makeGear's edge bevel EXTRUDES BEYOND the stock on both faces
-// (min(t·0.18, m·0.22) per side — the module term binds at these stocks),
-// so the tier's clearance is between BEVEL surfaces, not band surfaces:
-// the body's bevel rises above its band and the wheels' bevels drop below
-// theirs, and the first cut of this stack lost 2 bevels of its margin to
-// exactly that (measured 0.034 where 0.15 was owed).
-const ALARM_GEAR_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
-const ALARM_BODY_BEVEL = Math.min(ALARM_BARREL_H * 0.18, ALARM_TRAIN_MODULE * 0.22);
-const ALARM_WIND_TIER_BOT = ALARM_BARREL_Z + ALARM_BARREL_H / 2 + ALARM_BODY_BEVEL + CLEAR_MARGIN + 0.01; // the tier's lowest METAL
-const ALARM_WIND_TIER_Z = ALARM_WIND_TIER_BOT + ALARM_GEAR_BEVEL + ALARM_WIND_WHEEL_T / 2;   // wheel/idler/pinion mesh plane
-const ALARM_RATCHET_BOT_Z = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL + CLEAR_MARGIN + 0.01;
-const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatchetAndClick extrudes bevel-free — exact band
+// (§112: the tier's z-constants — ALARM_WIND_WHEEL_T, ALARM_RATCHET_T, the
+// bevels and the tier/ratchet bands — are HOISTED to the under-plate stack
+// block beside the cam, where the whole floor-up chain now derives; the
+// two-bevel lesson and its measurement travel with them.)
 // §99 — the WINDING WHEEL takes the rim's own tooth count, deliberately:
 // the arbor is coaxial with the rim the mesh is leaving, so W = the rim's
 // 44 keeps the idler reach solve, the i1/i2 two-circle closure, and the
@@ -9810,7 +10011,7 @@ const ALARM_RATCHET_TOP_Z = ALARM_RATCHET_BOT_Z + ALARM_RATCHET_T; // makeRatche
 // XY, and the whole layout change is the tier's z above. (TODO 37 predicted
 // "a different centre distance"; the coaxial identity is why that
 // prediction did not survive contact with the layout.)
-const ALARM_WIND_W = ALARM_BARREL_TEETH;
+// (ALARM_WIND_W — §112: in the alarm-plan block; the coaxial-identity note above still governs it.)
 // The RATCHET the click holds. R from the click's grounding lane — the
 // click's pivot stud (r 0.5, the set-up screw's stock) rises from the plate
 // past EVERY toothed band on this axis: the body's tip circle below AND the
@@ -9826,8 +10027,8 @@ const ALARM_WIND_W = ALARM_BARREL_TEETH;
 // most 1/32 turn of arbor — half a strike's stored travel (the set-up
 // ratchet's 24 is the family precedent; the finer count is this barrel's
 // own hold quantum, not taste).
-const ALARM_WIND_TIP_R = ALARM_TRAIN_MODULE * (ALARM_WIND_W + 2) / 2; // the arbor wheel's addendum circle
-const ALARM_RATCHET_R = Math.ceil(10 * (Math.max(ALARM_BARREL_TIP_R, ALARM_WIND_TIP_R + ALARM_GEAR_BEVEL) + 0.5 + CLEAR_MARGIN) / 1.28) / 10;
+// (ALARM_WIND_TIP_R and ALARM_RATCHET_R — §112: in the alarm-plan block;
+// the grounding-lane derivation above still owns their arithmetic.)
 const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
 // §104 — THE SET-UP, the going side's arrangement one barrel over. M(0) = 0
 // on a bare barrel, and the governor's cadence law runs ∝ 1/√M — an anchor on
@@ -9891,16 +10092,21 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   // ratchet on the tier above (ALARM_WIND_TIER_Z's derivation at the
   // winding train): bottom pinned where §89 had it — the boss engagement
   // assert below is unchanged — top = ratchet top + a 0.2 shoulder.
-  const arborBotZ = ALARM_BARREL_Z - arborH / 2;              // §89's foot, kept
-  const arborTopZ = ALARM_RATCHET_TOP_Z + 0.2;
+  // §112 — both ends re-derived for the under-plate order (wind wheel and
+  // ratchet BELOW the body now): the foot reaches down into the bored floor
+  // boss for its pivot engagement; the top keeps §89's span through the
+  // body's cavity (arborH = 2·H about the body's mid).
+  const arborBotZ = (ALARM_U_FLOOR - 0.5) + 0.3;              // 0.3 into the boss's bore — the engagement
+  const arborTopZ = ALARM_BARREL_Z + arborH / 2;
   const arbor = new THREE.Mesh(
     new THREE.CylinderGeometry(ALARM_BARREL_ARBOR_R, ALARM_BARREL_ARBOR_R, arborTopZ - arborBotZ, 16), MATS.steel);
   arbor.name = 'alarmBarrelArbor';
   arbor.rotation.x = Math.PI / 2;
   arbor.position.set(0, 0, (arborTopZ + arborBotZ) / 2 - ALARM_BARREL_Z); // arbor-rotor-local
   alarmArborRotor.add(arbor);
-  if (arborBotZ > ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2)
-    console.warn(`alarm barrel arbor stops at ${arborBotZ.toFixed(2)}, short of its boss top ${(ALARM_BARREL_Z - ALARM_BARREL_H / 2 - 0.2).toFixed(2)} — no pivot engagement`);
+  const _bossTop = ALARM_GOV_TIER_BOT - CLEAR_MARGIN; // §112 band swap: the boss stops under the 64T's floor band (its build states why)
+  if (arborBotZ > _bossTop - 0.2)
+    console.warn(`alarm barrel arbor stops at ${arborBotZ.toFixed(2)}, short of its floor boss top ${_bossTop.toFixed(2)} − 0.2 — no pivot engagement`);
 
   // The INNER-END HOOK — §99: on the arbor's ROTOR, in the arbor's frame.
   // The §89 claim ("drum-local sweep plus body rotation is invariant")
@@ -10006,11 +10212,10 @@ declareRestoring('Alarm barrel', 'spring',
 // instantaneous rate, and the equalisation gate holds the solve, the
 // measured endpoints, the ring's stock and the hammer's window.
 // ---------------------------------------------------------------------------
-const ALARM_GOV_WHEEL_TEETH = 64;  // on the strike arbor — the train's own module keeps the mesh family
-const ALARM_GOV_PINION_TEETH = 8;  // on the governor arbor
+// (the governor's tooth counts — §112: in the alarm-plan block.)
 const ALARM_GOV_RATIO = ALARM_GOV_WHEEL_TEETH / ALARM_GOV_PINION_TEETH;      // ×8
 const ALARM_GOV_STEPUP = ALARM_STRIKE_RATIO * ALARM_GOV_RATIO;               // ×32 from the barrel
-const ALARM_GOV_SAW_TEETH = 40;
+// (ALARM_GOV_SAW_TEETH — §112: in the alarm-plan block.)
 // Governor-wheel revolutions per strike = RATIO / LOBES (one lobe pitch of
 // cam per strike), so the teeth the anchor counts per strike is DERIVED:
 const ALARM_GOV_TEETH_PER_STRIKE = ALARM_GOV_SAW_TEETH * ALARM_GOV_RATIO / ALARM_CAM_LOBES; // 80
@@ -10028,7 +10233,8 @@ const ALARM_GOV_MESH_EFF = 0.9 * 0.9;
 // arbor clears its wheel by a whole CLEAR_MARGIN with room for its own
 // radius (the geometry block asserts the achieved figure) — an internal
 // P2 constraint of the anchor, not a packaging spend.
-const ALARM_GOV_PHI = 0.30;        // rad
+// (ALARM_GOV_PHI — §112: in the alarm-plan block; the swing's derivation
+// note above still owns the 0.30.)
 // The design wind point: MID strike travel, so the designed gap sits at the
 // centre of the service band and the audible slowdown spreads symmetrically
 // about it (the fusee levels its band; this barrel deliberately does not —
@@ -10070,27 +10276,16 @@ if (ALARM_FALL_S > ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS))
 // repeated one level up. Measured before siting (tools/probe-104.mjs):
 // within the wheel's reach every foreign mesh tops out at the §99 barrel
 // arbor's shoulder, so the governor tier derives its floor from that one
-// number and the corner above ~13.5 is empty to the rim. The bearing points
-// the stage outboard-southwest, module-relative like the barrel's own
-// bearing: the barrel/click quarter (SE of the striking wheel), the column
-// wheel and pusher (NE), the hammer and gong (N) all stay outside the
-// stage's footprint, and the rim assert below holds the outboard edge.
-const ALARM_GOV_BEARING = 225 * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative
-const ALARM_GOV_CD = ALARM_TRAIN_MODULE * (ALARM_GOV_WHEEL_TEETH + ALARM_GOV_PINION_TEETH) / 2; // 10.8 — the mesh dictates
-const alarmGovPos = {
-  x: alarmSwPos.x + Math.cos(ALARM_GOV_BEARING) * ALARM_GOV_CD,
-  y: alarmSwPos.y + Math.sin(ALARM_GOV_BEARING) * ALARM_GOV_CD,
-};
+// number and the corner above ~13.5 is empty to the rim.
+// (§112: the governor's CD, bearing and station are in the alarm-plan block
+// — the gate's θ_g note travelled with them.)
 // z-stack, derived up from the tallest metal the 64T wheel overflies — the
 // §99 arbor's shoulder (ratchet top + 0.2). Margins carry the centi-unit
 // (JMP_BIND_EPS's lesson, the §99 tier's own convention), and gear bands
 // clear between BEVEL surfaces, not band surfaces (the two-bevel lesson).
-const ALARM_GOV_WHEEL_T = ALARM_WIND_WHEEL_T;              // the tier stock, one band
-const ALARM_GOV_BEVEL = Math.min(ALARM_GOV_WHEEL_T * 0.18, ALARM_TRAIN_MODULE * 0.22);
-const ALARM_GOV_OVERFLOWN_TOP = ALARM_RATCHET_TOP_Z + 0.2; // the §99 arbor's shoulder — see the siting note
-const ALARM_GOV_TIER_BOT = ALARM_GOV_OVERFLOWN_TOP + CLEAR_MARGIN + 0.01;
-const ALARM_GOV_WHEEL_Z = ALARM_GOV_TIER_BOT + ALARM_GOV_BEVEL + ALARM_GOV_WHEEL_T / 2;
-const ALARM_GOV_PINION_T = ALARM_GOV_WHEEL_T + 0.4;        // embraces the wheel band (the strike pinion's idiom)
+// (§112: the wheel tier's z-constants are HOISTED to the under-plate stack
+// block — the overfly rule survives verbatim there, re-aimed at the new
+// ratchet height; only the plan-space solve below stays at this site.)
 // The saw and the ANCHOR share ONE band — a real recoil anchor is a flat
 // piece in its wheel's own plane, hub and arms outside the tip circle in
 // plan, only the pallets reaching in — and the POISING RING drops to the
@@ -10108,23 +10303,14 @@ const ALARM_GOV_SAW_TOP = ALARM_GOV_SAW_BOT + ALARM_GOV_SAW_T; // makeRatchetAnd
 const ALARM_GOV_ANCHOR_T = ALARM_GOV_SAW_T;                // one band, one plane
 const ALARM_GOV_ANCHOR_BOT = ALARM_GOV_SAW_BOT;
 const ALARM_GOV_ANCHOR_TOP = ALARM_GOV_SAW_TOP;
-const ALARM_GOV_RING_BOT = TQ_TOP_Z + CLEAR_MARGIN + 0.01; // the ring band starts one margin above the plate top
-// --- The anchor's plan, all derived from φ and the saw (rule 1):
-//   R_p = toothArc/φ            the pallet radius — one tooth of rim per swing
-//   span = 5.5 teeth            integer + half, so when pallet A releases a
-//                               tooth is arriving at B — the anchor rule
-//   D    = r·cosε + √(R_p²−(r·sinε)²)   the stud distance that puts both
-//                               engagement crossings ON the tip circle
-const ALARM_GOV_SAW_R = ALARM_TRAIN_MODULE * ALARM_GOV_SAW_TEETH / 2; // 6.0 — tip radius, the train's own module
-const ALARM_GOV_TOOTH_PITCH = Math.PI * 2 / ALARM_GOV_SAW_TEETH;      // rad of saw per tooth
-const ALARM_GOV_TOOTH_ARC = ALARM_GOV_TOOTH_PITCH * ALARM_GOV_SAW_R;  // 0.9425 u of rim per tooth
-const ALARM_GOV_PALLET_R = ALARM_GOV_TOOTH_ARC / ALARM_GOV_PHI;       // 3.1416
-const ALARM_GOV_SPAN_TEETH = 5.5;
-const ALARM_GOV_HALF_SPAN = Math.PI * ALARM_GOV_SPAN_TEETH / ALARM_GOV_SAW_TEETH; // ε = 0.4320 rad at the wheel centre
-const _govUnderRoot = ALARM_GOV_PALLET_R ** 2 - (ALARM_GOV_SAW_R * Math.sin(ALARM_GOV_HALF_SPAN)) ** 2;
-if (_govUnderRoot <= 0)
-  console.warn(`§104: pallet circle (R_p ${ALARM_GOV_PALLET_R.toFixed(3)}) cannot reach the tip circle at half-span ${ALARM_GOV_HALF_SPAN.toFixed(3)} — no engagement crossing exists`);
-const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R * Math.cos(ALARM_GOV_HALF_SPAN) + Math.sqrt(Math.max(_govUnderRoot, 1e-12)); // 7.335
+// §112 band swap: the saw dropped to the band the floor-seated ring's top
+// was 0.047 under (measured, the battery's governor ⇄ anchor row), so the
+// ring returns to §104's own arrangement — riding the arbor ABOVE the
+// anchor's plane, one margin over the saw. It is the anchor staff's
+// topmost rider again, and the stud's length below derives from that.
+const ALARM_GOV_RING_BOT = ALARM_GOV_SAW_TOP + CLEAR_MARGIN + 0.01;
+// (the anchor's plan — R_p, span, D — §112: in the alarm-plan block, with
+// its rule-1 derivation comment.)
 // The swing spec's own room check (why φ is 0.30): everything on the anchor
 // axis that crosses the SAW's band — the stud and the arbor around it —
 // must stand clear of the tip circle.
@@ -10151,11 +10337,7 @@ const ALARM_GOV_ARBOR_R = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U;       // 0.585 —
   if (room < CLEAR_MARGIN)
     console.warn(`§104: the anchor arbor stands ${room.toFixed(3)} off the saw's tip circle — need ${CLEAR_MARGIN} (φ too large for this wheel)`);
 }
-const ALARM_GOV_ANCHOR_BEARING = -90 * DEG2RAD + ALARM_MOD_ROT; // stud due module-south of the station — the empty quadrant (see the siting note)
-const alarmGovAnchorPos = {
-  x: alarmGovPos.x + Math.cos(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
-  y: alarmGovPos.y + Math.sin(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
-};
+// (§112: the anchor's bearing and station are in the alarm-plan block.)
 // --- The pose laws, both pure functions of alarmStrikePhase (setPose's
 // zero-dt trap: nothing here integrates). The wheel is a gear; the anchor
 // is the tooth-face coupling written as geometry: over each tooth period
@@ -10440,9 +10622,8 @@ const _govPolyJ = (pts) => { // area and ∫(x²+y²)dA about the anchor axis
 // inside the 0.436 the hub has to the saw's tip circle.
 const ALARM_GOV_HUB_R = ALARM_GOV_ARBOR_R + STOCK_MIN_U;      // 0.901
 const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769
-const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
-                                        // holds inside the rim (assert below), which is the cheap
-                                        // direction — I = m·r², so radius bought is section saved
+// (ALARM_GOV_RING_R — §112: in the alarm-plan block; the round-mm choice's
+// note travelled with it.)
 const ALARM_GOV_RING_STOCK_MM = [0.2, 0.8]; // drawn-brass ring stock a bench would loop and poise:
                                         // below 0.2 mm a 4 mm ring loses its roundness to handling,
                                         // above 0.8 it is clock-plate bar, not a poising ring
@@ -10527,14 +10708,14 @@ const alarmGovAnchorPivot = new THREE.Group(); // anchor + pallets + poising rin
 alarmGovAnchorPivot.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, 0);
 alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 {
-  const studBase = TQ_TOP_Z - 0.5;
+  const studBase = ALARM_U_FLOOR - 0.5;   // §112: planted in the BASE plate — the same idiom, one plate down
   const govStudTop = ALARM_GOV_SAW_TOP + 0.2;
   const govStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, govStudTop - studBase, 12), MATS.steel);
   govStud.name = 'alarmGovStud';
   govStud.rotation.x = Math.PI / 2;
   govStud.position.set(alarmGovPos.x, alarmGovPos.y, (govStudTop + studBase) / 2);
   alarmGovUnit.add(govStud);
-  const anchStudTop = ALARM_GOV_ANCHOR_TOP + 0.2; // the anchor is this axis's topmost rider — the ring is DOWN by the plate
+  const anchStudTop = ALARM_GOV_RING_TOP + 0.2; // §112 band swap: the ring is the axis's topmost rider again (§104's arrangement)
   const anchStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, anchStudTop - studBase, 12), MATS.steel);
   anchStud.name = 'alarmGovAnchorStud';
   anchStud.rotation.x = Math.PI / 2;
@@ -10542,13 +10723,21 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmGovAnchorUnit.add(anchStud);   // §107: the anchor's own station travels with the anchor's unit
 
   // The governor rotor: pinion in the wheel's band, saw above, one arbor.
-  const pinion = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_GOV_PINION_TEETH, thickness: ALARM_GOV_PINION_T });
+  const pinion = G.makePinion({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_PINION_TEETH, thickness: ALARM_GOV_PINION_T });
   pinion.traverse((o) => { if (o.isMesh) o.name = 'alarmGovPinion'; });
   pinion.rotation.z = Math.PI / ALARM_GOV_PINION_TEETH; // half a leaf — interleaves the wheel's teeth at the mesh line
   pinion.position.z = ALARM_GOV_WHEEL_Z;
   alarmGovRotor.add(pinion);
+  // §112 band swap — the saw KEYS to the arbor on a filed square
+  // (across-corners = the arbor's diameter, §99's arbor-ratchet
+  // convention). Its old decorative round bore rode nothing: the joint
+  // that held the staff together was an accident of the pre-swap z-stack
+  // (pinion bevel against saw underside), and the module change opened it
+  // 0.078 — the assembly check's governor split. A drive joint must be
+  // metal on metal by construction, not by adjacency.
   const saw = G.makeRatchetAndClick({
-    radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false });
+    radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false,
+    squareBore: (2 * ALARM_GOV_ARBOR_R) / Math.SQRT2 }); // side of the filed square, across-corners = arbor ⌀ (§99's arborSq)
   saw.traverse((o) => { if (o.isMesh) o.name = 'alarmGovSaw'; });
   saw.rotation.z = ALARM_GOV_SAW_PHASE;
   saw.position.z = ALARM_GOV_SAW_BOT; // the builder extrudes bottom→up
@@ -10557,7 +10746,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   saw.userData.profile = {
     poly: saw.userData.ratchetPoly,
     hubR: ALARM_GOV_SAW_R * 0.8,
-    boreR: ALARM_GOV_SAW_R * 0.28,
+    boreR: ((2 * ALARM_GOV_ARBOR_R) / Math.SQRT2 + 0.03) / 2, // the keyed square's across-flats half (§99's convention)
   };
   alarmGovRotor.add(saw);
   // §111 — a BORED arbor, not a solid one: ringGeo is the closed lathe tube
@@ -10565,7 +10754,10 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // rather than sharing space with the metal that turns on it. (Closed on
   // every face, including the two annuli nobody sees — an open body reads as
   // a colliding one to the sampled verdict, TODO 27's lesson.)
-  const govArbBot = ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2;
+  // §112 band swap: the pinion rides the floor band now, so the shoulder
+  // formula would land the arbor's foot ON the base plate's face — the
+  // floor guard keeps one margin of air; the stud inside carries the staff.
+  const govArbBot = Math.max(ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2, ALARM_U_FLOOR + CLEAR_MARGIN);
   const govArb = new THREE.Mesh(
     ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot), MATS.steel);
   govArb.name = 'alarmGovArbor';
@@ -10647,9 +10839,9 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
       console.warn('§107: the anchor arm and the blade it carries share no metal — the anchor is two bodies again');
   }
   const anchArb = new THREE.Mesh(
-    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_ANCHOR_TOP - ALARM_GOV_RING_BOT), MATS.steel);
-  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries ring (low) and anchor (at the saw's plane) — bored, §111
-  anchArb.position.z = (ALARM_GOV_ANCHOR_TOP + ALARM_GOV_RING_BOT) / 2;
+    ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_RING_TOP - ALARM_GOV_ANCHOR_BOT), MATS.steel);
+  anchArb.name = 'alarmGovAnchorArbor'; // one arbor carries anchor (at the saw's plane) and ring above it — bored, §111; §112 band swap put the ring back on top
+  anchArb.position.z = (ALARM_GOV_RING_TOP + ALARM_GOV_ANCHOR_BOT) / 2;
   alarmGovAnchorPivot.add(anchArb);
   // The solved ring, its collar and two carrier arms — every term the
   // bisection counted, cut at the counted dimensions.
@@ -10675,7 +10867,14 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmGovAnchorPivot.add(collar);
   for (const sgn of [1, -1]) {
     const az = ALARM_GOV_ANCHOR_BEARING + sgn * Math.PI / 2; // perpendicular pair — poised by symmetry
-    const r0 = ALARM_GOV_COLLAR_R, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
+    // The arm EMBEDS in the collar's annulus (mid-wall) instead of meeting
+    // its surface: the collar is a tessellated arc, so "at the collar's
+    // radius" only touches where a polygon vertex happens to face the arm —
+    // §112's bearing move swung the arms onto a mid-flat and the assembly
+    // check measured the two bodies 0.0197 apart. The mesh is what the
+    // instruments read (the flatsR rule); a joint must overlap the METAL,
+    // not the nominal circle.
+    const r0 = (ALARM_GOV_ARBOR_R + ALARM_GOV_COLLAR_R) / 2, r1 = ALARM_GOV_RING_R - ALARM_GOV_RING_S / 2;
     const arm = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.5, 0.35), MATS.brass);
     arm.name = 'alarmGovRingArm';
     arm.position.set(Math.cos(az) * (r0 + r1) / 2, Math.sin(az) * (r0 + r1) / 2, ALARM_GOV_RING_BOT + ALARM_GOV_RING_S / 2);
@@ -10686,25 +10885,30 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // The strike arbor's new top: the 64T wheel, the sleeve that carries it,
   // and the stud's second length behind both.
   const wheel = G.makeGear({
-    module: ALARM_TRAIN_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_GOV_WHEEL_T,
+    module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_GOV_WHEEL_T,
     boreR: 0.75, spokes: 6, material: MATS.brass });
   wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmGovWheel'; });
   wheel.position.z = ALARM_GOV_WHEEL_Z;
   alarmStrikeRotor.add(wheel);
-  const sZ0 = ALARM_BARREL_Z + ALARM_PINION_T / 2;          // the strike pinion's top face
-  const sZ1 = ALARM_GOV_WHEEL_Z - ALARM_GOV_WHEEL_T * 0.75; // into the wheel's own hub ring
+  // §112 band swap, rule 6: the wheel's web must UNDERREACH the barrel
+  // arbor (the plan block's module derivation) — assert the metal, not the
+  // intention. tip+bevel vs the arbor's near edge, one margin between.
+  {
+    const tip = ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH / 2 + 1) + ALARM_GOV_BEVEL;
+    const nearEdge = ALARM_TRAIN_CD - ALARM_BARREL_ARBOR_R;
+    if (tip > nearEdge - CLEAR_MARGIN)
+      console.warn(`§112: the 64T wheel reaches ${tip.toFixed(2)} — the barrel arbor's near edge ${nearEdge.toFixed(2)} leaves less than the margin`);
+  }
+  const sZ1 = ALARM_BARREL_Z - ALARM_PINION_T / 2;          // the strike pinion's underside (§112: the wheel rides BELOW it now)
+  const sZ0 = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T * 0.75; // into the wheel's own hub ring, from above
   const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sZ1 - sZ0, 16), MATS.steel);
   sleeve.name = 'alarmGovSleeve';
   sleeve.rotation.x = Math.PI / 2;
   sleeve.position.z = (sZ0 + sZ1) / 2;
   alarmStrikeRotor.add(sleeve);
-  const stud0Top = ALARM_BARREL_Z + ALARM_PINION_T / 2 + 0.3;      // the original stud's own top derivation
-  const studTop = ALARM_GOV_WHEEL_Z + ALARM_GOV_WHEEL_T / 2 + 0.3;
-  const studUp = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studTop - (stud0Top - 0.2), 12), MATS.steel);
-  studUp.name = 'alarmGovStudUpper';
-  studUp.rotation.x = Math.PI / 2;
-  studUp.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + stud0Top - 0.2) / 2);
-  alarmStrikeUnit.add(studUp);
+  // (§112: the stud's second length — alarmGovStudUpper — retired. The base
+  // stud runs the whole column now, floor boss to cam top, so there is no
+  // gap for a second piece to bridge.)
 }
 // P2, sampled — the group agrees with itself. The pair sweep cannot see
 // mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
@@ -10994,10 +11198,25 @@ const ALARM_WIND_IDLER_MIN = Math.ceil(
 // bound only binds where the run is SHORT, which is the regime the shipped
 // layout never visits and the §33 handles do.
 //
-// So the count is the larger of the two floors: enough teeth to reach, and
+// So the count is the larger of the floors: enough teeth to reach, and
 // enough to be a wheel at all (root circle clear of its own bore — the same
 // expression makeGear checks, imported rather than restated).
-const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5));
+//
+// §112 ADDED A THIRD FLOOR, and it is the INSTRUMENT'S, not the wheel's.
+// The identity move collapsed the winding span 38.6 → 15.6, the reach
+// floor collapsed with it (51 → 12), and TODO 15's phase gauge cannot
+// read a 12-tooth makeGear wheel: the root-land arc between teeth is
+// emitted at the gauge's own outline-filter limit (edges spanning more
+// than π/N azimuth are face chords to it), so some gaps lose their
+// outline, the silhouette floor falls to the HUB, and the tooth/gap
+// threshold lands 0.04 over the root circle — measured, 20 gaps found
+// for 12 teeth at confidence 0.63, and the chain aligned from that
+// reading sat 6.1% of a pitch off anti-phase. 16 was worse (a CONFIDENT
+// half-pitch misread). 18 — the keyless winding idler's own count, the
+// movement's proven idler stock — reads clean, as do 20 and 24. Until
+// the gauge itself learns small wheels, no chain-solved wheel goes
+// below the size the movement already proves readable.
+const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5), KW_WIND_IDLER_TEETH);
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_WIND_W; // §99: ARBOR turns per crown turn — idlers drop out; value unchanged from the rim era (W = the rim's count)
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
@@ -11011,15 +11230,52 @@ const _wu = { x: (alarmBarrelPos.x - _wc.x) / _wSpan, y: (alarmBarrelPos.y - _wc
 const _wd1 = ALARM_TRAIN_MODULE * (ALARM_WIND_PINION_TEETH + ALARM_WIND_IDLER_TEETH) / 2;  // climb ⇄ i1
 const _wd2 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_IDLER_TEETH) / 2;   // i1 ⇄ i2
 const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_W) / 2;             // i2 ⇄ arbor wheel (§99; same value as the rim it replaced — W is the rim's count)
-const alarmWindI1 = { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 };
-const alarmWindI2 = (() => {
-  // circles: centre alarmWindI1 radius _wd2; centre alarmBarrelPos radius _wd3
-  const dx = alarmBarrelPos.x - alarmWindI1.x, dy = alarmBarrelPos.y - alarmWindI1.y;
-  const d = Math.hypot(dx, dy);
-  const a = (_wd2 * _wd2 - _wd3 * _wd3 + d * d) / (2 * d);
-  const h = Math.sqrt(Math.max(0, _wd2 * _wd2 - a * a));
-  const mx = alarmWindI1.x + (a * dx) / d, my = alarmWindI1.y + (a * dy) / d;
-  return { x: mx - (h * dy) / d, y: my + (h * dx) / d }; // +y-side solution — the lane probe covered this side
+// §112 — THE DOGLEG IS SCORED, not authored, and since the band swap the
+// score is about the STUDS: the winding tier rides ABOVE the low corridor's
+// declared ceiling, so the WHEELS overfly the rods' lane legally and the
+// corridor constraint falls on what still crosses their band — the idler
+// studs, full columns from the base plate. i1's only true constraint is its
+// mesh distance from the climb — its azimuth on that circle is position
+// space (the straight-line seat measured 0.29 INSIDE the hack rod's pulled
+// sweep, this order's first boot) — so both idlers solve jointly: sweep
+// i1's azimuth, close i2 by two-circle on each branch, score the worse
+// stud against the corridor's footprint (rule 5), take the argmax; ties
+// within 0.05 keep the smallest swing off the straight line.
+const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
+  const studR = 0.45;                       // the idler stud stock (the build below)
+  const lowC = (p, r) => {
+    let c = Infinity;
+    for (const o of LOW_LINKAGE_OBSTACLES) {
+      if (o.ax === undefined) { c = Math.min(c, Math.hypot(p.x - o.x, p.y - o.y) - o.r - r); continue; }
+      const vx = o.bx - o.ax, vy = o.by - o.ay, L2 = vx * vx + vy * vy || 1e-9;
+      const t = Math.max(0, Math.min(1, ((p.x - o.ax) * vx + (p.y - o.ay) * vy) / L2));
+      c = Math.min(c, Math.hypot(p.x - o.ax - t * vx, p.y - o.ay - t * vy) - o.r - r);
+    }
+    return c;
+  };
+  const az0 = Math.atan2(_wu.y, _wu.x);
+  const cands = [];
+  for (let deg = -80; deg <= 80; deg += 2) {
+    const a = az0 + deg * DEG2RAD;
+    const i1 = { x: _wc.x + Math.cos(a) * _wd1, y: _wc.y + Math.sin(a) * _wd1 };
+    const dx = alarmBarrelPos.x - i1.x, dy = alarmBarrelPos.y - i1.y;
+    const d = Math.hypot(dx, dy);
+    if (d > _wd2 + _wd3 || d < Math.abs(_wd2 - _wd3)) continue; // no i2 closes here
+    const aa = (_wd2 * _wd2 - _wd3 * _wd3 + d * d) / (2 * d);
+    const h = Math.sqrt(Math.max(0, _wd2 * _wd2 - aa * aa));
+    const mx = i1.x + (aa * dx) / d, my = i1.y + (aa * dy) / d;
+    const c1 = lowC(i1, studR);
+    for (const i2 of [
+      { x: mx - (h * dy) / d, y: my + (h * dx) / d },
+      { x: mx + (h * dy) / d, y: my - (h * dx) / d },
+    ]) cands.push({ i1, i2, deg, c: Math.min(c1, lowC(i2, studR)) });
+  }
+  cands.sort((p, q) => q.c - p.c);
+  const best = cands.filter((p) => p.c > cands[0].c - 0.05)
+    .sort((p, q) => Math.abs(p.deg) - Math.abs(q.deg))[0];
+  if (!best || best.c < CLEAR_MARGIN)
+    console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best ? best.c.toFixed(3) : 'none'} < ${CLEAR_MARGIN}`);
+  return best || { i1: { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } };
 })();
 if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
@@ -11093,9 +11349,9 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     spin.add(w);
     spin.userData.gear = w;
     alarmWindUnit.add(spin);
-    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_WIND_TIER_Z + 0.3 - (TQ_TOP_Z - 0.5), 10), MATS.steel);
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, ALARM_WIND_TIER_Z + 0.3 - (ALARM_U_FLOOR - 0.5), 10), MATS.steel);
     stud.rotation.x = Math.PI / 2;
-    stud.position.set(pos.x, pos.y, (ALARM_WIND_TIER_Z + 0.3 + TQ_TOP_Z - 0.5) / 2);
+    stud.position.set(pos.x, pos.y, (ALARM_WIND_TIER_Z + 0.3 + ALARM_U_FLOOR - 0.5) / 2);
     alarmWindUnit.add(stud);
     return spin;
   };
@@ -11146,24 +11402,60 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // asserted, not hoped for (rule 6).
   const pivotR = ALARM_RATCHET_R * 1.28; // makeClick's beak-at-valley registration (geometry.js)
   const studR = 0.5;                     // the set-up click screw's stock
-  const idlerTipR = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + 2) / 2;
-  const obst = [
-    { x: alarmWindI1.x, y: alarmWindI1.y, r: idlerTipR, what: 'idler 1' },
-    { x: alarmWindI2.x, y: alarmWindI2.y, r: idlerTipR, what: 'idler 2' },
+  // §112 band swap — the solve scores the click's PIECES, each against the
+  // bands it actually crosses. The click rides the ratchet band (1.4..1.8,
+  // inside the low corridor's z-band), its two columns run from the base
+  // plate through the 64T wheel's floor band, and the battery's confirmed
+  // 0.18 was the SPRING POST standing in the hack rod's sweep — a member
+  // the old stud-only score never saw. Pieces, in the az frame:
+  //   · stud column (pivotR, 0) — corridor sweep, 64T disc, neighbour studs
+  //   · spring post column (8.55, +0.38 rad — the A station below) — same
+  //   · the lobe (arm + nose + spring, one covering disc) — corridor sweep
+  //     and neighbour studs only: its band tops under the plate members and
+  //     rides 0.2 ABOVE the 64T, so the wheel is not its problem.
+  // The strike cam and gong post left this list with the descent — they
+  // live on the plate TOP, and no click piece reaches that face any more.
+  const idlerStudR = 0.45;               // the winding studs' stock (columns through the click's bands)
+  const govTipR = ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH / 2 + 1) + ALARM_GOV_BEVEL;
+  const colObst = [
+    { x: alarmWindI1.x, y: alarmWindI1.y, r: idlerStudR, what: 'idler 1 stud' },
+    { x: alarmWindI2.x, y: alarmWindI2.y, r: idlerStudR, what: 'idler 2 stud' },
     { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, what: 'climb rod' },
-    { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_CAM_TIP_R, what: 'strike cam' },
-    { x: gongFoot.x, y: gongFoot.y, r: 0.7, what: 'gong post' },
+  ];
+  const _lowStad = (x, y, r) => {
+    let c = Infinity;
+    for (const o of LOW_LINKAGE_OBSTACLES) {
+      if (o.ax === undefined) { c = Math.min(c, Math.hypot(x - o.x, y - o.y) - o.r - r); continue; }
+      const vx = o.bx - o.ax, vy = o.by - o.ay, L2 = vx * vx + vy * vy || 1e-9;
+      const t = Math.max(0, Math.min(1, ((x - o.ax) * vx + (y - o.ay) * vy) / L2));
+      c = Math.min(c, Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r - r);
+    }
+    return c;
+  };
+  const PIECES = [
+    { lx: pivotR, ly: 0, r: 0.55, col: true },                        // stud + screw head
+    { lx: 8.55 * Math.cos(0.38), ly: 8.55 * Math.sin(0.38), r: 0.55, col: true }, // spring post + head (the A station)
+    { lx: 6.2, ly: 2.1, r: 2.9, col: false },                         // the lobe's covering disc (arm span P→Tn + spring arc)
   ];
   let bestAz = 0, bestClear = -Infinity;
   for (let k = 0; k < 180; k++) {
     const cand = (k / 180) * Math.PI * 2;
-    const px = alarmBarrelPos.x + Math.cos(cand) * pivotR, py = alarmBarrelPos.y + Math.sin(cand) * pivotR;
+    const cs = Math.cos(cand), sn = Math.sin(cand);
     let c = Infinity;
-    for (const o of obst) c = Math.min(c, Math.hypot(px - o.x, py - o.y) - o.r - studR);
+    for (const p of PIECES) {
+      const px = alarmBarrelPos.x + cs * p.lx - sn * p.ly, py = alarmBarrelPos.y + sn * p.lx + cs * p.ly;
+      c = Math.min(c, _lowStad(px, py, p.r));
+      for (const o of colObst) c = Math.min(c, Math.hypot(px - o.x, py - o.y) - o.r - p.r);
+      // columns cross the 64T's floor band; the lobe rides above it but
+      // shares its band with the strike arbor's SLEEVE (r 0.75) — each
+      // piece is judged against the strike station at the radius of what
+      // actually stands there in its band.
+      c = Math.min(c, Math.hypot(px - alarmSwPos.x, py - alarmSwPos.y) - (p.col ? govTipR : 0.75) - p.r);
+    }
     if (c > bestClear) { bestClear = c; bestAz = cand; }
   }
   if (bestClear < CLEAR_MARGIN)
-    console.warn(`alarm click stud: best azimuth clears its neighbours by ${bestClear.toFixed(2)} < ${CLEAR_MARGIN} — the corner has no lane for the stud`);
+    console.warn(`alarm click stud: best azimuth clears its neighbours and the corridor by ${bestClear.toFixed(2)} < ${CLEAR_MARGIN} — the corner has no lane for the click`);
   const az = new THREE.Group();
   az.position.set(alarmBarrelPos.x, alarmBarrelPos.y, 0);
   az.rotation.z = bestAz;
@@ -11298,10 +11590,9 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   click.name = 'alarmClickPawl';
   click.position.set(pivotR, 0, clickBot);
   az.add(click);
-  // Shoulder screw: post from the plate top through the tier, head above.
-  // Nothing stands over the arbor tier on this corner (the lane claim at
-  // the §99 tier constants), so the head takes floor stock, free upward.
-  const postBase = TQ_TOP_Z - 0.5;
+  // Shoulder screw: post from the BASE plate through the tier, head above
+  // (§112 — the click dropped with its ratchet; same idiom, one plate down).
+  const postBase = ALARM_U_FLOOR - 0.5;
   const postTop = clickBot + CLICK_T;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, postTop - postBase, 10), MATS.steel);
   post.name = 'alarmClickStud';
@@ -11495,7 +11786,11 @@ const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (
 // puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
 // runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
 // pad, collar, and the engaged-angle triangle are untouched derivations.
-const ALARM_LOCK_PIV_AZ = 24 * DEG2RAD;
+// §112 — the identity move (160→40) folds its −120 into this literal too:
+// the §68 sweep's clearances were module-internal (the gong bound it), so
+// they ride the rigid rotation; 24 − 120 = −96, the same bearing in the
+// module's own frame.
+const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
 const alarmLockPivot = (() => {
   const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
   return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
@@ -11840,7 +12135,6 @@ const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSea
 // probe put the free sector NNE of the wheel, which is where az 155°'s
 // rim intersection lands (the lock lever's furniture is east, the
 // striking wheel farther east, the pusher on the wheel's own azimuth).
-const _linkAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 // §35 corridor — RAY-PROBED across the POSE SWEEPS, not at rest. Five
 // routes were built or scouted before this one, each killed by a probe
 // blindness the next probe closed:
@@ -11907,20 +12201,250 @@ const ALARM_LINK_SHAFT_Z = Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2);
 //   STATIC matter, and ≥ the 0.30 the shipping az-210 chord scores under
 //   identical scoring. The beak tail collapses ~28 → 4.0: a ~3:1 lever
 //   someone would design, retiring the §35 tail's 36.5× as measured debt.
-const ALARM_LINK_ROD_DIST = 10; // from the wheel's axis, along the beak line
-const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPivot.x - ALARM_COL_POS.x);
-const ALARM_LINK_ROD_XY = {
-  x: ALARM_COL_POS.x + Math.cos(_linkBeakAz0 + Math.PI) * ALARM_LINK_ROD_DIST,
-  y: ALARM_COL_POS.y + Math.sin(_linkBeakAz0 + Math.PI) * ALARM_LINK_ROD_DIST,
-};
-const ALARM_LINK_ROD_R = Math.hypot(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y);
-const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY.x) / DEG2RAD + 360) % 360;
+// §112 — THE ROD SITE IS SOLVED AT BUILD, not frozen. §68's distance 10 was
+// "chosen from two pose-swept probes" — a measurement of the OLD movement,
+// and the identity move proved what a frozen corridor answer is worth: the
+// beak-opposite ray at 10 landed the rod on the stop lever (sweptOverlap
+// 0.600) and swung the lay shaft's chord across the centre stack (motion
+// works, hour wheel, both alarm discs — four more confirmed rows). The
+// §68/click-stud idiom instead: candidates over the castellation-preserving
+// azimuth family (whole 60° column pitches about beak-opposite — the read
+// geometry repeats exactly, and the read assert below stays the court) ×
+// the ray distance, each scored at rest against every BUILT mesh box in the
+// rod's two bands — the rod's own column from the lay shaft up to the
+// strike band, and the lay shaft's chord to the ring tab. Rest pose + the
+// margin is the SOLVE; the §35 pose sweeps and the battery remain the
+// court, as they were for every corridor before this one.
 // The bore both plates carry for this rod. Was written as a bare 0.45 at each
 // of the two hole sites and again implied at the rod; one name so the rod's
 // own section can be derived from it instead of racing it.
 const ALARM_LINK_ROD_BORE_R = 0.45;
+const _tmpV3a = new THREE.Vector3();
+const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPivot.x - ALARM_COL_POS.x);
+// §112 — the crank pin's arm radius, hoisted: the link solve's rim guard
+// models the fork block's plan seat from it (derivation note at the fork
+// build, which consumes the same constant).
+const ALARM_FORK_PIN_ARM_R = 0.56;
+// §112 — the fork block's seat along the pin line (the [0.35, 0.95]
+// coverage band's midpoint) — one source for the fork build AND the rim
+// guard's model of it.
+const ALARM_FORK_SEAT = 0.65;
+const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG } = (() => {
+  // The low rods enter through LOW_LINKAGE_OBSTACLES (rule 5), not their
+  // mesh boxes: a diagonal rod segment's box is a rectangle the rod never
+  // fills, and scored raw it reads the whole quadrant as occupied — the
+  // tier-split gate paid for that lesson three times before slicing.
+  const EXCLUDE = new Set(['Alarm link', 'Alarm switch', 'Alarm lock',
+    'Three-quarter plate', 'plate', 'Dial', 'Hack rod', 'Reset rod',
+    'Alarm selector']); // the selector is the link's OUTPUT — the chord ends on its ring tab
+  // The chord's z-envelope is the lay shaft's own metal — shaft r 0.14
+  // inside bushes r 0.26 — plus the one margin. 0.45 was a guess and it
+  // swallowed the setting-plane wheels the real shaft clears by z.
+  const shaftBand = [ALARM_LINK_SHAFT_Z - (0.26 + CLEAR_MARGIN), ALARM_LINK_SHAFT_Z + (0.26 + CLEAR_MARGIN)];
+  const colBand = [ALARM_LINK_SHAFT_Z, TQ_TOP_Z + 2.5]; // up through both plates to the strike band
+  // Rotor meshes enter as DISCS about their axis (the tier-split gate's
+  // shape rule): a round wheel's square box owns corners the metal never
+  // visits, and the chord's own destination sits in the setting wheel's
+  // box corner at every azimuth. Everything else keeps its box.
+  const obs = [];
+  for (const e of labelEntries) {
+    if (EXCLUDE.has(e.name)) continue;
+    e.obj.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const b = boxOf(o);
+      if (b.isEmpty()) return;
+      let axis = null;
+      for (let par = o; par; par = par.parent) if (par.userData && Number.isFinite(par.userData.r)) { axis = par.getWorldPosition(_tmpV3a); break; }
+      const _cx = (b.min.x + b.max.x) / 2, _cy = (b.min.y + b.max.y) / 2;
+      const _half = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) / 2;
+      // the disc claim holds only for a mesh CENTRED on its rotor's axis —
+      // an off-axis member (an idler on a spanning rotor group) drawn as a
+      // disc about the axis claims its whole orbit
+      if (axis && Math.hypot(_cx - axis.x, _cy - axis.y) < _half * 0.5) {
+        const r = Math.hypot(_cx - axis.x, _cy - axis.y) + _half;
+        obs.push({ disc: { x: axis.x, y: axis.y, r }, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(disc r ${r.toFixed(1)} at ${axis.x.toFixed(1)},${axis.y.toFixed(1)} z ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})` });
+      } else {
+        b._who = `${e.name}/${o.name || o.geometry.type}`;
+        obs.push(b);
+      }
+    });
+  }
+  const inBand = (b, band) => b.min.z < band[1] && b.max.z > band[0];
+  const dToBox = (x, y, b) => b.disc
+    ? Math.max(0, Math.hypot(x - b.disc.x, y - b.disc.y) - b.disc.r)
+    : Math.hypot(Math.max(b.min.x - x, x - b.max.x, 0), Math.max(b.min.y - y, y - b.max.y, 0));
+  const colObs = obs.filter((b) => inBand(b, colBand));
+  const chordObs = obs.filter((b) => inBand(b, shaftBand));
+  const scoreCol = (x, y) => {
+    let c = Infinity, who = '';
+    for (const b of colObs) { const d = dToBox(x, y, b) - ALARM_LINK_ROD_BORE_R; if (d < c) { c = d; who = 'col:' + b._who; if (c <= -1) break; } }
+    return { c, who };
+  };
+  const scoreChord = (x, y, tx, ty) => {
+    let c = Infinity, who = '';
+    // the last 1.8 of the chord is the crank's WORKING zone over the ring —
+    // its clearances are the fork/crank contacts' own asserts, not corridor
+    // matter (§35 scored the chord as "STATIC matter" the same way).
+    // §112 band swap — the member radius is PIECEWISE, not a blanket: the
+    // rim crank's arm (ALARM_FORK_PIN_ARM_R-class reach) rides the first
+    // ~2.5 by the rod, but everything the working-end trim leaves after
+    // that is the lay shaft in its bushes — r 0.26 — and a flat 0.45
+    // taxed every candidate 0.19 it never spends, which priced the whole
+    // face-cam approach corridor out of the solve (best 0.04 measured
+    // where the honest bush radius clears 0.23).
+    const len = Math.hypot(tx - x, ty - y);
+    const tEnd = Math.max(0.5, 1 - 1.8 / len);
+    for (const b of chordObs) {
+      for (let t = 0; t <= tEnd; t += 1 / 32) {
+        const px = x + (tx - x) * t, py = y + (ty - y) * t;
+        const d = dToBox(px, py, b) - (t * len <= 2.5 ? 0.6 : 0.26);
+        if (d < c) { c = d; who = 'chord:' + b._who; if (c <= -1) return { c, who }; }
+      }
+    }
+    return { c, who };
+  };
+  const _stad = (x, y, o) => {
+    if (o.ax === undefined) return Math.hypot(x - o.x, y - o.y) - o.r;
+    const vx = o.bx - o.ax, vy = o.by - o.ay, L2 = vx * vx + vy * vy || 1e-9;
+    const t = Math.max(0, Math.min(1, ((x - o.ax) * vx + (y - o.ay) * vy) / L2));
+    return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
+  };
+  const scoreLow = (x, y) => {
+    let c = Infinity;
+    for (const o of LOW_LINKAGE_OBSTACLES) c = Math.min(c, _stad(x, y, o) - ALARM_LINK_ROD_BORE_R);
+    return c;
+  };
+  // Stage 1 — the rod's COLUMN, over the parity family × distance.
+  const rodCands = [];
+  for (let k = -2; k <= 2; k++) {
+    const a = _linkBeakAz0 + Math.PI + k * (Math.PI * 2 / ALARM_COL_COLUMNS);
+    for (let d = 8; d <= 16 + 1e-9; d += 0.5) {
+      const x = ALARM_COL_POS.x + Math.cos(a) * d, y = ALARM_COL_POS.y + Math.sin(a) * d;
+      if (Math.hypot(x, y) > plateR - ALARM_LINK_ROD_BORE_R - CLEAR_MARGIN) continue; // both plates must carry the bore
+      let { c, who } = scoreCol(x, y);
+      const lc = scoreLow(x, y);
+      if (lc < c) { c = lc; who = 'low-corridor'; }
+      rodCands.push({ c, x, y, d, k, who });
+    }
+  }
+  rodCands.sort((p, q) => q.c - p.c);
+  if (!rodCands.length || rodCands[0].c < CLEAR_MARGIN)
+    console.warn(`§112: link rod stage 1 — best COLUMN clears ${rodCands.length ? rodCands[0].c.toFixed(3) : 'none'} (k ${rodCands.length ? rodCands[0].k : '-'}, d ${rodCands.length ? rodCands[0].d : '-'}, bound by ${rodCands.length ? rodCands[0].who : '-'})`);
+  // Stage 2 — the drive tab's azimuth on the ring, jointly with the chord.
+  // The §34 guard rides along: dial-local (180° − world) at least 26° from
+  // every guide post (dial-local 60/220/300).
+  const _postOk = (azw) => {
+    const azd = ((180 - azw) % 360 + 360) % 360;
+    return [60, 220, 300].every((p) => {
+      let dd = Math.abs(azd - p) % 360;
+      return Math.min(dd, 360 - dd) >= 26;
+    });
+  };
+  // THE TAB ZONE IS SCORED TOO: scoreChord deliberately trims its last 1.8
+  // (the crank's working zone over the ring, whose clearances are the
+  // contacts' own asserts) — but that trim also blinded the solve to what
+  // STANDS at the tab's azimuth, and the battery found the fork parked in
+  // the alarm setting idler's plan (FORBIDDEN, inspection). The tab's
+  // neighbourhood is judged as its own disc — the fork's working reach
+  // about the tab station, against the same shaft-band obstacles.
+  const TAB_R = 1.3; // fork jaw + crank end about the tab's mid-reach
+  // The tab's own z-band, NOT the shaft's: the fork block spans the groove
+  // plus a plate each side about the ring's datum, 0.47 half-height against
+  // the shaft band's 0.41 — and the setting idler's wheel plane sat in
+  // exactly that 0.06 of difference, in-band to the tab and border-line to
+  // the shaft filter that first stood in for it (the battery's standing
+  // FORBIDDEN row at every pose).
+  const tabBand = [
+    ALARM_LINK_SHAFT_Z - (ALARM_FORK_GROOVE_H / 2 + ALARM_SEL_T + CLEAR_MARGIN),
+    ALARM_LINK_SHAFT_Z + (ALARM_FORK_GROOVE_H / 2 + ALARM_SEL_T + CLEAR_MARGIN)];
+  // Concentric centre machinery (the face cam, the disc train) rings the
+  // tab's radius at EVERY azimuth — it cannot discriminate between tab
+  // seats, and the ring's own build asserts already hold it. What the tab
+  // azimuth genuinely chooses between is the OFF-CENTRE machinery — the
+  // setting idler's span to the corner is the row that wrote this — so
+  // only obstacles standing clear of the ring's own annulus are scored:
+  const tabObs = obs.filter((b) => {
+    if (!inBand(b, tabBand)) return false;
+    const cx0 = b.disc ? b.disc.x : (b.min.x + b.max.x) / 2;
+    const cy0 = b.disc ? b.disc.y : (b.min.y + b.max.y) / 2;
+    return Math.hypot(cx0, cy0) > 7;
+  });
+  // Two pieces per candidate: the crank/fork core about the tab itself
+  // (TAB_R), and the FORK BLOCK at its modelled plan seat (the rim guard's
+  // model below — seat along the chord, arm to the rest side), which is
+  // the member the battery actually found parked on the setting idler.
+  const scoreTab = (tx, ty, bx, by) => {
+    let c = Infinity, who = '';
+    for (const b of tabObs) {
+      let d = dToBox(tx, ty, b) - TAB_R;
+      if (bx !== undefined) d = Math.min(d, dToBox(bx, by, b) - 0.42); // the block's half-diagonal
+      if (d < c) { c = d; who = 'tab:' + b._who; if (c <= -1) break; }
+    }
+    return { c, who };
+  };
+  // THE RIM GUARD — the fork block on the ring's tab straddles the crank
+  // pin's line, and its lower plate exists only OUTBOARD of the alarm
+  // setting wheel's rim (the fork build's own note: the wheel's top plane
+  // leaves 0.03 of z under the groove's lower face inside its radius).
+  // The block's PLAN SEAT is computable right here, because the fork
+  // build's chain collapses in plan: the pin's tip lands at the tab, the
+  // block sits ALARM_FORK_SEAT along the pin's line (which runs with the
+  // chord), and the arm — resting HORIZONTAL per §51's groove stratum —
+  // projects one full ALARM_FORK_PIN_ARM_R to the rest-roll side of the
+  // chord (the same side in every solved crank: rollZenith + 1.05 is a
+  // fixed offset). Verified against both built cranks to ±0.005 (the
+  // refused one's inner corner: modelled 4.738, measured 4.734). A
+  // candidate whose modelled corners dip inside the wheel's rim + margin
+  // is refused; the fork build's corner assert against the true crank
+  // geometry stays the gate behind the model (rule 6).
+  const _rimGuardR = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH / 2 + 1)
+    + Math.min(ALARM_SEL_T * 0.18, ALARM_SET_MODULE * 0.22) + CLEAR_MARGIN;
+  const _blockSeat = (tx, ty, rx, ry) => {
+    const L = Math.hypot(rx - tx, ry - ty) || 1;
+    const ux = (rx - tx) / L, uy = (ry - ty) / L;   // the chord's plan direction — the pin line runs with it
+    const vx = -uy, vy = ux;
+    return {
+      ux, uy, vx, vy,
+      bx: tx + ALARM_FORK_SEAT * ux - ALARM_FORK_PIN_ARM_R * vx,
+      by: ty + ALARM_FORK_SEAT * uy - ALARM_FORK_PIN_ARM_R * vy,
+    };
+  };
+  const _blockOk = (s) => {
+    for (const [a, b] of [[0.3, 0.3], [0.3, -0.3], [-0.3, 0.3], [-0.3, -0.3]])
+      if (Math.hypot(s.bx + a * s.ux + b * s.vx, s.by + a * s.uy + b * s.vy) < _rimGuardR) return false;
+    return true;
+  };
+  let best = null;
+  // Every stage-1 candidate is searched, not a top-N: the rim guard
+  // confines each rod to the tab sectors whose block seats outboard, and
+  // those sectors can belong to parity rays whose COLUMNS do not top the
+  // stage-1 ranking — a top-40 shortlist starved the joint solve to −1.3
+  // (measured, this landing).
+  for (const rc of rodCands) {
+    for (let azw = 0; azw < 360; azw += 3) {
+      if (!_postOk(azw)) continue;
+      const tx = Math.cos(azw * DEG2RAD) * 5.4, ty = Math.sin(azw * DEG2RAD) * 5.4; // tab mid-reach, the ring's own radius
+      const seat = _blockSeat(tx, ty, rc.x, rc.y);
+      if (!_blockOk(seat)) continue;
+      const { c: cc, who } = scoreChord(rc.x, rc.y, tx, ty);
+      const tb = scoreTab(tx, ty, seat.bx, seat.by);
+      const c = Math.min(rc.c, cc, tb.c);
+      const boundBy = c === rc.c ? rc.who : (c === cc ? who : tb.who);
+      if (!best || c > best.c) best = { ...rc, c, who: boundBy, tabAzDeg: azw };
+    }
+  }
+  if (!best || best.c < CLEAR_MARGIN)
+    console.warn(`§112: the link's best solve clears ${best ? best.c.toFixed(3) : 'nothing'} < ${CLEAR_MARGIN} — (pitch step ${best ? best.k : '-'}, d ${best ? best.d : '-'}, tab ${best ? best.tabAzDeg : '-'}°, bound by ${best ? best.who : '-'})`);
+  if (!best) { // survive to report: beak-opposite at §68's 10, tab at §35's 146
+    const a0 = _linkBeakAz0 + Math.PI;
+    return { xy: { x: ALARM_COL_POS.x + Math.cos(a0) * 10, y: ALARM_COL_POS.y + Math.sin(a0) * 10 }, dist: 10, tabAzDeg: 146 };
+  }
+  return { xy: { x: best.x, y: best.y }, dist: best.d, tabAzDeg: best.tabAzDeg };
+})();
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
+const ALARM_LINK_ROD_R = Math.hypot(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y);
+const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY.x) / DEG2RAD + 360) % 360;
 
 // (§35's ALARM_LINK_CRANK_PHASE — the quarter-turn rest phase that kept the
 // cranks off top dead centre — is RETIRED by TODO 20: the rest roll is now
@@ -12214,7 +12738,8 @@ const alarmLinkParts = {};
   // r 0.35 the span was 0.575 rad and the rim tip swept 0.60 — 2.2× the
   // 0.2685 budget. Span ≤ 0.35 rad keeps the rim sweep ≈ 0.10 (measured
   // by the corridor assert below), which needs r ≥ 0.19/sin(0.35) = 0.554.
-  const ALARM_FORK_PIN_ARM_R = 0.56;
+  // (The CONSTANT is hoisted above the link solve, whose rim guard models
+  // the fork block's plan seat from it — §112 band swap.)
   {
     const key = new THREE.Group();
     key.position.x = -chordLen / 2;
@@ -12416,7 +12941,25 @@ const alarmLinkParts = {};
       // plate can only exist beyond the rim. A position-space resolution,
       // per the design-priority order: the band slides along the pin; the
       // pin, groove and clearances are untouched.
-      const midL = tipL.clone().addScaledVector(dirL, 0.65);
+      // §112 band swap — the build note above IS a constraint the link
+      // solve now carries (its stage-2 rim-guard filter models this block
+      // from the tab and chord it already knows): the lower plate exists
+      // only beyond the setting wheel's rim, so the block's plan corners
+      // are ASSERTED outside the tip circle + margin here, with the true
+      // crank geometry the solve could only approximate. The seat itself
+      // stays the band's midpoint — [0.35, 0.95] of the pin's span is the
+      // fork's COVERAGE spec, not a free variable to slide.
+      const midL = tipL.clone().addScaledVector(dirL, ALARM_FORK_SEAT);
+      {
+        const _rimR = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH / 2 + 1)
+          + Math.min(ALARM_SEL_T * 0.18, ALARM_SET_MODULE * 0.22) + CLEAR_MARGIN;
+        const ux = dirL.x, uy = dirL.y;
+        let _cMin = Infinity;
+        for (const [a, b] of [[0.3, 0.3], [0.3, -0.3], [-0.3, 0.3], [-0.3, -0.3]])
+          _cMin = Math.min(_cMin, Math.hypot(midL.x + a * ux - b * uy, midL.y + a * uy + b * ux));
+        if (_cMin < _rimR)
+          console.warn(`§112: the fork block's inner corner reaches r ${_cMin.toFixed(3)} — the setting wheel's rim + margin wants ${_rimR.toFixed(3)} (the link solve's rim guard let a bad chord angle through)`);
+      }
       const grp = new THREE.Group();
       grp.position.set(midL.x, midL.y, 0);
       grp.rotation.z = Math.atan2(dirL.y, dirL.x);
@@ -12534,7 +13077,7 @@ const alarmLinkParts = {};
   // constant, so this is the tripwire between them. It has already earned its
   // keep once: moving the rod to az 210 left both bores behind at az 212 and
   // this is what said so.
-  const _boreXY = { x: -9.80, y: 26.97 };     // MUST equal both tqHoles entries for this rod (§68 re-site)
+  const _boreXY = { x: 34.32, y: 16.89 };     // MUST equal both tqHoles entries for this rod (§68 re-site; §112 froze it at the solved site)
   if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
     console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
   // the shaft's bottom vs the keyless piece under the run. §35 measured that
@@ -14717,7 +15260,7 @@ const SCHEMATIC_CALLOUTS = {
   // the striking arbor's own column, top down
   alarmGovWheel: 'Governor wheel', alarmGovSleeve: 'Governor wheel sleeve',
   alarmStrikeSleeve: 'Strike arbor sleeve', alarmCam: 'Lifting cam',
-  alarmLockCollar: 'Lock collar', alarmGovStudUpper: 'Strike stud, upper length',
+  alarmLockCollar: 'Lock collar',
   // the governor arbor
   alarmGovPinion: 'Governor pinion', alarmGovSaw: 'Saw wheel',
   alarmGovArbor: 'Governor arbor', alarmGovStud: 'Governor stud',
