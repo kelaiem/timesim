@@ -10911,6 +10911,129 @@ in both locales with 0 markup/code/number drift, `explain-quotes` PASS, and
 the governor corner shot in both tiers — the blades read as pallets rather
 than splinters, and the line tier draws the arbor's two rims.
 
+## §112 — the alarm's power tiers go under the plate: the tier-split, its gates, and the two instruments that earned it
+
+**The ask** was "lower the alarm module under the three-quarter plate."
+The answer that shipped is the TIER-SPLIT: the strike group — gong,
+hammer, lifting cam, lock, switch, everything within ~2.3 of the top
+face — stays on the plate, and the power tiers — barrel (body, arbor,
+winding wheel, ratchet), click, governor with its anchor and poising
+ring, the 64T wheel and strike pinion — live under it, the strike arbor
+passing through a plate bore like every train arbor. The plate top went
+from a 6.71 tower to a 2.29 strike work; every drive edge kept its
+centre distance; `alarmHandoffs` measured 0 unwaived through the bore
+on the first run after the descent.
+
+**Why not the whole module.** Measured first, built second — four
+instruments in `tools/` (probe-alarm-under-plate, probe-alarm-relayout,
+probe-drum-azimuth, probe-alarm-placement) established that the module
+AS BUILT fits nowhere below: the stack was 6.71 solid with zero air
+against a 7.71 band (depth was never the refusal), but the gong band
+lands in the low-linkage corridor (rod tops 1.87 vs a max-lift gong
+floor of 1.44), full-height columns ring the movement at the gong's
+radius, and the ceiling slack (0.85) covers neither. Zero placements
+over 360 rotations × the full lift range × three drum stations, and a
+fold-budget sweep with unbounded lift still found none — the refusal
+was in plan, not height.
+
+**The gate that said yes** (`probe-alarm-tier-split.mjs`) solved the
+module's §33 rotation and the three §104 fold bearings TOGETHER against
+a per-cell z-interval field of the under-plate band: identity 40° with
+(θ_b 202°, θ_g 92°, θ_a 148°) carries 0.90 beyond every margin — with
+the drum, chain and set-up work exactly where they are (the §75
+re-station, first assumed a prerequisite, is not one). The gate's own
+recorded wrong answer is part of the record: its first solve missed the
+anchor's arbor column crossing the 64T wheel's band and reported 19,088
+triples at azimuth 70 — zero survive the fix. Its field carries the
+hard-won shapes: rotor meshes as discs about their `userData.r` axis,
+tall rotors z-sliced (the fusee cone), long meshes sliced along their
+box's longer axis (a diagonal rod's box is not thin).
+
+**The under-plate stack derived twice, and the second order is the one
+that shipped.** A rigid drop of the old stack is arithmetically
+impossible (5.4 of barrel column + the rods' 2.02 floor + the wheel's
+tier > 7.71), so the first order interleaved: winding tier and ratchet
+in the floor band "in cells the gate proved rod-free," 64T wheel over
+the rods, body high. That was true at the REST pose and false over the
+rods' travel — the full battery confirmed the 44T winding wheel 0.33
+inside the hack rod's swept lane, the click's spring post standing in
+it, and the winding leg (climb arbor south of the sweep's diagonal,
+barrel north of it) crossing it with no floor route at any bearing:
+three FORBIDDEN/CONFIRMED rows, all one lesson, rule 5's swept
+footprint versus a rest-pose field. The order that survives the sweep
+inverts the middle of the stack: the 64T governor wheel takes the
+floor (fan-clear at its own station by 6.6), ratchet + click above it,
+the winding tier ABOVE the corridor's declared ceiling
+(`LOW_CORRIDOR_Z_BAND[1]` + margin) — the leg crosses the rods' lane
+there, wheels overflying the band, each idler stud standing clear of
+the sweep in plan (i1's azimuth about the climb became a scored
+variable to get its stud out of the pulled rod's path) — and the
+barrel wall + body on top, 0.65 under the ceiling assert. The gate,
+re-read against the swapped build (its third form — bands and reaches
+now measured from the metal by mesh name, after its plan table went
+stale twice), reports rot 0 as built OPEN with 36k feasible bearing
+triples; every triple's spare caps at 0.35, which is the fixed
+wind-wheel ⇄ strike-arbor-column margin no bearing can move, so the
+solved triple (202°, 92°, 148°) stands unchanged through the swap.
+
+**The floor placement exposed a defect the battery could not see.** The
+barrel arbor is a full column standing CD_train = 8.25 from the strike
+arbor, so every band the 64T wheel could occupy, that column crosses —
+and at the train's 0.3 module the wheel's web reaches 9.97. The descent
+had run the column straight through the wheel's metal, and no gate said
+so because barrel ⇄ striking wheel is an EXPECTED pair with no floors
+row (TODO 6's residue, found by measuring the wheel's radial occupancy
+against the arbor's edge). The governor mesh now wears its OWN module,
+derived: m ≤ (CD − arborR − margin)/(N/2 + 1 + 0.22) = 0.2259, cut
+0.22 — tip + bevel 7.31 against the arbor's near edge 7.66, asserted
+at the wheel's build. It is also the horological direction: the
+fastest mesh of a train wears the finest module. The ratio (64/8) and
+§104's cadence law are tooth-count arithmetic and did not move.
+
+**The identity moved in the literals** (160° → 40°, each seed carrying
+its −120°), keeping the default build bit-exact instead of churning
+floats through a spec rotation; the §68 frozen plate openings re-synced
+to their derived sites, and their tripwires fired at both wrong
+azimuths this landing tried — exactly the job they were built for. The
+climb arbor's jeweled upper pivot retired (the winding tier is under
+the plate; the climb tops out ~3 and never reaches it), and the winding idlers took
+a third floor: `KW_WIND_IDLER_TEETH`, the movement's proven idler
+stock, because TODO 15's phase gauge cannot read the 12-tooth wheel the
+collapsed span's reach floor alone would cut (measured: 20 gaps at
+confidence 0.63, and re-aligning made it worse). The floor is the
+instrument's, not the wheel's, and retires when the gauge learns small
+wheels.
+
+**The landing's own findings** are part of the record, because every one is
+the same lesson: a FROZEN corridor answer is a measurement of the movement
+that existed when it was taken. The first full battery on the descent
+confirmed nine overlaps — §68's rod distance 10 landed on the stop lever,
+§35's tab azimuth 146° made every parity-legal chord cross the centre
+stack, the pillar solve planted two columns through discs whose metal
+builds after the plate is cut, the winding dogleg's authored `+y` branch
+swung into the hack rod at the floor tier, the barrel boss met the winding
+wheel's hub (makeGear's hub is 1.5·t centred — 0.134 below the tier's
+claimed lowest metal), and the poising ring's arms met the collar's
+nominal circle where its tessellated metal wasn't. The fixes are the
+doctrine's kind: the link's rod site AND tab azimuth are now solved
+jointly at build (castellation-preserving family × distance × the §34
+guard, scored against built metal with the placement gate's shapes —
+and, since the band swap, the solve MODELS THE FORK BLOCK IT PLACES:
+the block's plan seat collapses to tab + seat·chord − armR·perp because
+the pin rests horizontal on §51's groove stratum, verified against both
+built cranks to 0.005, so the stage scores the block against the
+setting wheel's rim and the setting idler where the crank actually
+parks it, with the fork build's corner assert as the gate behind the
+model; the chord's member radius went piecewise in the same landing —
+the working-end trim leaves only the lay shaft in its bushes, and a
+blanket crank-sized radius had priced the honest approach corridor out
+of the solve), the
+pillar solve consumes a DECLARED under-plate footprint
+(`ALARM_UNDER_FOOTPRINT`, one source at the plan hoist), the dogleg's
+branch is scored against the low corridor's own list, and the two
+structural rows re-derive from the metal's true extents. The §35 pose
+sweeps and the battery remain the court over every one of these solves.
+
 ## §113 — TODO 45 finding one: the escapement gets drop — a flat-faced recoil anchor, every number a solve
 
 §111 ended with a diagnosis it deliberately did not act on: the governor's

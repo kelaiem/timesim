@@ -185,9 +185,8 @@ export const MECH_GRAPH = {
     ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
     ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes
 
-    ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore
-    ['Alarm winding train', 'Three-quarter plate'], // …and its jeweled upper pivot + the idler studs
-    ['Alarm click', 'Three-quarter plate'],  // §99: the click's shoulder screw and the spring's post stand on the plate top (the idler-stud convention)
+    ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
+    ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
     ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
@@ -196,13 +195,16 @@ export const MECH_GRAPH = {
     // the 'alarmStrike' axis sweeps it like any other train.
     ['Alarm gong', 'Three-quarter plate'],   // the gong's single foot stands on the back plate
     ['Alarm hammer', 'Three-quarter plate'], // the hammer's pivot post stands on the back plate
-    // Alarm striking works (§25 A): the power chain behind the hammer. Both
-    // arbors stand on studs planted in the same plate-top face the gong and
-    // hammer posts use — the only clear band on it.
-    ['Alarm barrel', 'Three-quarter plate'],        // barrel arbor's boss stands on the back plate
-    ['Alarm striking wheel', 'Three-quarter plate'], // pin wheel's bearing stud, likewise
-    ['Alarm governor', 'Three-quarter plate'],
-  ['Alarm governor anchor', 'Three-quarter plate'],   // §107: the anchor's own stud, planted beside the governor's      // §104: both governor studs planted in the same face
+    // Alarm striking works (§25 A, re-grounded by §112's tier-split): the
+    // power tiers live UNDER the three-quarter plate now, their studs and
+    // bosses planted in the BASE plate; the strike arbor alone reaches the
+    // top face, through the plate's bore — which is a bearing, so the
+    // striking wheel is carried by BOTH plates.
+    ['Alarm barrel', 'plate'],        // §112: barrel arbor's floor boss stands in the base plate
+    ['Alarm striking wheel', 'plate'], // §112: the stud plants in the base plate...
+    ['Alarm striking wheel', 'Three-quarter plate'], // ...and the rotor's sleeve runs in the plate's bore (§112 — the tier-split's cut)
+    ['Alarm governor', 'plate'],       // §112: stud in the base plate
+  ['Alarm governor anchor', 'plate'],   // §107's own stud, §112's face — planted beside the governor's
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
@@ -617,8 +619,7 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
   ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
-  ['Alarm click', 'Three-quarter plate'],   // §99: the click stud and spring post stand on the plate top
-  ['Alarm winding train', 'Three-quarter plate'], // jeweled pivot + studs
+  ['Alarm click', 'plate'],   // §99/§112: the click stud and spring post stand on the base plate
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
   ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
@@ -629,13 +630,14 @@ const EXPECTED_PAIRS = [
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
   // Alarm striking works (§25 A) — the declared contacts of the power chain:
-  ['Alarm barrel', 'Three-quarter plate'],        // arbor boss planted in the back plate top
-  ['Alarm striking wheel', 'Three-quarter plate'],// bearing stud, likewise
+  ['Alarm barrel', 'plate'],        // §112: arbor boss planted in the base plate
+  ['Alarm striking wheel', 'plate'],// §112: the stud's base, likewise
+  ['Alarm striking wheel', 'Three-quarter plate'],// §112: the rotor's sleeve in the plate's bore
   ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
   ['Alarm striking wheel', 'Alarm hammer'],       // a pin on the hammer's tail — the lift
-  ['Alarm governor', 'Three-quarter plate'],      // §104: the governor stud planted in the plate top (§107 took the anchor's stud into the anchor's own unit)
+  ['Alarm governor', 'plate'],      // §104's stud, §112's face (§107 took the anchor's stud into the anchor's own unit)
   ['Alarm governor', 'Alarm striking wheel'],     // §104: the ×8 mesh (64T wheel ⇄ governor pinion)
-  ['Alarm governor anchor', 'Three-quarter plate'],// §107: the anchor stud planted in the plate top
+  ['Alarm governor anchor', 'plate'],// §107's stud, §112's face
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
 // Same rigid assembly / coaxial stacks — not meaningful to test.
@@ -1454,6 +1456,13 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Alarm striking wheel', b: 'Alarm governor', min: CLEAR_MARGIN,
     contacts: [
       ['alarmGovWheel', 'alarmGovPinion'], // the ×8 stage — a working gear mesh
+      // §112 band swap: an 8-leaf pinion's root stands 0.02 over its own
+      // arbor, so the wheel's working tip rides ~0.03 from the arbor by
+      // the mesh's tip-root arithmetic (0.25·m of clearance to the root,
+      // and the arbor IS nearly the root). The region is the mesh's own —
+      // the gear gauges and the mesh's tip assert own it, exactly like the
+      // pinion row above; real 8-leaf trains run this close by design.
+      ['alarmGovWheel', 'alarmGovArbor'],
     ],
   },
   // §107 — the pair the anchor's promotion created. Its declared contact is
@@ -1572,7 +1581,7 @@ export const INTRA_UNIT_CONTACTS = [
   // check is what caught it. Naming also let the row say what the joint is:
   // it was recorded as the collar, and the collar is the separate row below.
   { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'ExtrudeGeometry#4', b: 'CylinderGeometry#0', why: 'strike wheel pressed on the same arbor' },
+  { unit: 'Alarm striking wheel', a: 'alarmStrikePinion', b: 'CylinderGeometry#0', why: 'strike pinion pressed on the same arbor (named by §112\'s placement gate — the row followed the name)' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
   // arbor row is kept as the record of a joint that is still there and no
@@ -1647,9 +1656,8 @@ export const INTRA_UNIT_CONTACTS = [
   // studs (the strike sleeve's "one shaft, two meshes"), and the strike
   // arbor's stud grown by a second turned length behind its new wheel.
   { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104: the governor-wheel sleeve is the strike arbor\'s next turned step over its stud — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'alarmGovStudUpper', why: '§104: the same sleeve over the stud\'s upper length' },
-  { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'alarmGovStudUpper', why: '§104: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
-  { unit: 'Alarm striking wheel', a: 'alarmGovStudUpper', b: 'CylinderGeometry#0', why: '§104: the stud\'s two turned lengths, butted — one post, two meshes (both fixtures; kept as the joint\'s record)' },
+  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104/§112: the sleeve over the stud (one full-column post since the tier-split retired the upper length)' },
+  { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'CylinderGeometry#0', why: '§104/§112: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
   // §111 — these three rows used to say "coincident solids are the bearing".
   // They no longer have to: both governor arbors are BORED, the way every
   // upper pivot in the going train is, so each stud occupies a real hole and
@@ -1808,10 +1816,12 @@ export const ASSEMBLY_SPLITS = [
 // the landing owns; every other unit's rows are reported, not gated.
 export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel'];
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
-export const ASSEMBLY_WAIVERS = [
-  { unit: 'Alarm striking wheel', group: 'ExtrudeGeometry#4',
-    debt: 'TODO 44 — §25 B\'s lock collar rides the strike rotor but touches no rotating member (0.2117 to the nearest): it is held by parentage, not by metal. The fix is the turned step this shaft already uses one level up (alarmStrikeSleeve), between the collar\'s top and the cam\'s underside; it belongs to §25 B\'s mechanism, not to §107\'s governor, so it is filed with its arithmetic rather than absorbed here.' },
-];
+// (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
+// the strike sleeve to span from the wheel's hub to the cam's underside —
+// the exact turned step the item prescribed — and it now passes through
+// the collar's band, so the rotor is one body and the battery measures no
+// striking-wheel split to waive.)
+export const ASSEMBLY_WAIVERS = [];
 
 export async function checkAssembly(clock, {
   axes = AXES, samplesPerAxis = 3, joinTol = ASSEMBLY_JOIN_TOL, splits = ASSEMBLY_SPLITS,
@@ -4896,7 +4906,6 @@ export const STOCK_KIND_BY_MESH = {
   // entry, on purpose.
   alarmGovStud: 'pivot',
   alarmGovAnchorStud: 'pivot',
-  alarmGovStudUpper: 'pivot',
   alarmGovSleeve: 'pivot',
   alarmGovArbor: 'pivot',
   alarmGovAnchorArbor: 'pivot',

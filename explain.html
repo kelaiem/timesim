@@ -1164,7 +1164,8 @@
         it at Ø 4.32 mm (<code>ALARM_COL_BASE_R</code> 5.7) with real feature depths (base
         0.27 mm, tier 0.53 mm). The two walls TODO 11 measured are both down: the lock
         pivot's azimuth re-derived 160° → 24° (a scored sweep — the old tail line pointed
-        AWAY from centre and no length could fit), and the wheel raised onto its lengthened
+        AWAY from centre and no length could fit; §112's identity move carries the same
+        module-internal bearing to −96° with everything else), and the wheel raised onto its lengthened
         stud above the three-quarter plate (<code>ALARM_COL_RAISE</code>, skirt ≥ plate top
         + <code>CLEAR_MARGIN</code>, asserted at boot) with every rider's z-station riding
         the same constant up. TODO 22 (the pusher's bar in the disc band) is CLOSED — the
@@ -1749,7 +1750,11 @@
       it sits in and its shape never changed between a full wind and a dead barrel. A ribbon
       with both ends on the same part cannot store anything: winding is the relative angle
       between two members, and there was only one.</p>
-      <p>Since &sect;99 it is the textbook alarm barrel: a true going barrel that winds its
+      <p>Since &sect;112 the whole power side of this mechanism — barrel, winding tier,
+      ratchet and click, governor and its anchor — lives UNDER the three-quarter plate,
+      grounded in the base plate, with only the strike group (cam, hammer, gong, lock,
+      switch) left on the top face and the strike arbor passing through a plate bore.
+      Since &sect;99 it is the textbook alarm barrel: a true going barrel that winds its
       <em>arbor</em>. The winding train &mdash; 12 into 44 through two idlers, the same ratio the
       rim-wound era had, because the arbor's winding wheel deliberately takes the rim's own
       tooth count &mdash; lands on a wheel keyed to the arbor; a saw-toothed ratchet beside it is
@@ -2054,7 +2059,7 @@
             <circle cx="266" cy="131" r="7" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
             <line x1="249" y1="112" x2="262" y2="126" stroke="var(--text)" stroke-width="1.5" marker-end="url(#arrGA)"/>
             <text class="lbl lbl-strong" x="150" y="104">hammer — fixed at the free end</text>
-            <text class="val" x="150" y="118">GONG_A1 135° · pivot at +11°</text>
+            <text class="val" x="150" y="118">GONG_A1 15° · pivot at +11°</text>
             <text class="val val-brass" x="24" y="180" id="gongF1">f₁ 617 Hz</text>
             <text class="val val-ruby" x="24" y="198" id="gongF2">f₂ 3 868 Hz · 6.27×</text>
             <text class="val" x="24" y="216" id="gongF3">(f₃ 10 832 Hz — computed, not struck)</text>
@@ -3147,9 +3152,10 @@
       var footLbl = document.getElementById('gongFootLbl');
       var fEls = [document.getElementById('gongF1'), document.getElementById('gongF2'), document.getElementById('gongF3')];
 
-      // Plan view: world az CCW from +x, y up; free end fixed at GONG_A1 = 135°,
-      // the foot at GONG_A1 − arc (measured back from the free end, §56's trick).
-      var CX = 390, CY = 255, RPX = 175, A1 = 135;
+      // Plan view: world az CCW from +x, y up; free end fixed at GONG_A1 = 15°
+      // (§112's identity move carried the module to azimuth 40), the foot at
+      // GONG_A1 − arc (measured back from the free end, §56's trick).
+      var CX = 390, CY = 255, RPX = 175, A1 = 15;
       function pt(azDeg, r) {
         var a = azDeg * Math.PI / 180;
         return [CX + (r || RPX) * Math.cos(a), CY - (r || RPX) * Math.sin(a)];
