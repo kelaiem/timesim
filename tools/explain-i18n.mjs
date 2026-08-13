@@ -287,14 +287,18 @@ if (MODE === 'extract') {
           const a = numGlyphs(it.key), b = numGlyphs(v);
           if (a.join(',') !== b.join(',')) numBad.push(`${it.key} :: [${a}] vs [${b}]`);
         } else {
+          // The ASCII-space test comes FIRST, and that ordering is the whole
+          // value of it. In a space-grouping locale an ASCII space is not a
+          // near miss — it splits "18 000" into two quantities, so the value
+          // comparison below is then GUARANTEED to fail and would report the
+          // defect as [18000] vs [0,18]: arithmetic nonsense that reads like a
+          // mistranslation. Tested first, it reads as the typing error it is.
+          if (MARKS[lang].group.includes('\u202f') && /\d \d{3}(?!\d)/.test(v)) {
+            numBad.push(`ASCII space used as a group separator (this locale wants U+202F): ${it.key.slice(0, 50)}`);
+            continue;
+          }
           const a = numValues(it.key, 'en'), b = numValues(v, lang);
           if (a.join(',') !== b.join(',')) numBad.push(`${it.key.slice(0, 60)} :: [${a}] vs [${b}]`);
-          // The likeliest way to fail the line above in a space-grouping
-          // locale, named outright: an ASCII space where the locale's own
-          // separator belongs. Without this the symptom is "18 000" reading as
-          // two quantities, which looks like a translation error and is not.
-          else if (MARKS[lang].group.includes(' ') && /\d \d{3}(?!\d)/.test(v))
-            numBad.push(`ASCII space used as a group separator — this locale wants U+202F: ${it.key.slice(0, 50)}`);
         }
       }
       const pct = live.length ? ((translated.length / live.length) * 100).toFixed(1) : '100.0';
