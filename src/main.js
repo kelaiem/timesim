@@ -12221,6 +12221,14 @@ const ALARM_LINK_SHAFT_Z = Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2);
 const ALARM_LINK_ROD_BORE_R = 0.45;
 const _tmpV3a = new THREE.Vector3();
 const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPivot.x - ALARM_COL_POS.x);
+// §112 — the crank pin's arm radius, hoisted: the link solve's rim guard
+// models the fork block's plan seat from it (derivation note at the fork
+// build, which consumes the same constant).
+const ALARM_FORK_PIN_ARM_R = 0.56;
+// §112 — the fork block's seat along the pin line (the [0.35, 0.95]
+// coverage band's midpoint) — one source for the fork build AND the rim
+// guard's model of it.
+const ALARM_FORK_SEAT = 0.65;
 const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG } = (() => {
   // The low rods enter through LOW_LINKAGE_OBSTACLES (rule 5), not their
   // mesh boxes: a diagonal rod segment's box is a rectangle the rod never
@@ -12276,12 +12284,20 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     let c = Infinity, who = '';
     // the last 1.8 of the chord is the crank's WORKING zone over the ring —
     // its clearances are the fork/crank contacts' own asserts, not corridor
-    // matter (§35 scored the chord as "STATIC matter" the same way)
-    const tEnd = Math.max(0.5, 1 - 1.8 / Math.hypot(tx - x, ty - y));
+    // matter (§35 scored the chord as "STATIC matter" the same way).
+    // §112 band swap — the member radius is PIECEWISE, not a blanket: the
+    // rim crank's arm (ALARM_FORK_PIN_ARM_R-class reach) rides the first
+    // ~2.5 by the rod, but everything the working-end trim leaves after
+    // that is the lay shaft in its bushes — r 0.26 — and a flat 0.45
+    // taxed every candidate 0.19 it never spends, which priced the whole
+    // face-cam approach corridor out of the solve (best 0.04 measured
+    // where the honest bush radius clears 0.23).
+    const len = Math.hypot(tx - x, ty - y);
+    const tEnd = Math.max(0.5, 1 - 1.8 / len);
     for (const b of chordObs) {
       for (let t = 0; t <= tEnd; t += 1 / 32) {
         const px = x + (tx - x) * t, py = y + (ty - y) * t;
-        const d = dToBox(px, py, b) - 0.45;
+        const d = dToBox(px, py, b) - (t * len <= 2.5 ? 0.6 : 0.26);
         if (d < c) { c = d; who = 'chord:' + b._who; if (c <= -1) return { c, who }; }
       }
     }
@@ -12353,18 +12369,65 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     const cy0 = b.disc ? b.disc.y : (b.min.y + b.max.y) / 2;
     return Math.hypot(cx0, cy0) > 7;
   });
-  const scoreTab = (tx, ty) => {
+  // Two pieces per candidate: the crank/fork core about the tab itself
+  // (TAB_R), and the FORK BLOCK at its modelled plan seat (the rim guard's
+  // model below — seat along the chord, arm to the rest side), which is
+  // the member the battery actually found parked on the setting idler.
+  const scoreTab = (tx, ty, bx, by) => {
     let c = Infinity, who = '';
-    for (const b of tabObs) { const d = dToBox(tx, ty, b) - TAB_R; if (d < c) { c = d; who = 'tab:' + b._who; if (c <= -1) break; } }
+    for (const b of tabObs) {
+      let d = dToBox(tx, ty, b) - TAB_R;
+      if (bx !== undefined) d = Math.min(d, dToBox(bx, by, b) - 0.42); // the block's half-diagonal
+      if (d < c) { c = d; who = 'tab:' + b._who; if (c <= -1) break; }
+    }
     return { c, who };
   };
+  // THE RIM GUARD — the fork block on the ring's tab straddles the crank
+  // pin's line, and its lower plate exists only OUTBOARD of the alarm
+  // setting wheel's rim (the fork build's own note: the wheel's top plane
+  // leaves 0.03 of z under the groove's lower face inside its radius).
+  // The block's PLAN SEAT is computable right here, because the fork
+  // build's chain collapses in plan: the pin's tip lands at the tab, the
+  // block sits ALARM_FORK_SEAT along the pin's line (which runs with the
+  // chord), and the arm — resting HORIZONTAL per §51's groove stratum —
+  // projects one full ALARM_FORK_PIN_ARM_R to the rest-roll side of the
+  // chord (the same side in every solved crank: rollZenith + 1.05 is a
+  // fixed offset). Verified against both built cranks to ±0.005 (the
+  // refused one's inner corner: modelled 4.738, measured 4.734). A
+  // candidate whose modelled corners dip inside the wheel's rim + margin
+  // is refused; the fork build's corner assert against the true crank
+  // geometry stays the gate behind the model (rule 6).
+  const _rimGuardR = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH / 2 + 1)
+    + Math.min(ALARM_SEL_T * 0.18, ALARM_SET_MODULE * 0.22) + CLEAR_MARGIN;
+  const _blockSeat = (tx, ty, rx, ry) => {
+    const L = Math.hypot(rx - tx, ry - ty) || 1;
+    const ux = (rx - tx) / L, uy = (ry - ty) / L;   // the chord's plan direction — the pin line runs with it
+    const vx = -uy, vy = ux;
+    return {
+      ux, uy, vx, vy,
+      bx: tx + ALARM_FORK_SEAT * ux - ALARM_FORK_PIN_ARM_R * vx,
+      by: ty + ALARM_FORK_SEAT * uy - ALARM_FORK_PIN_ARM_R * vy,
+    };
+  };
+  const _blockOk = (s) => {
+    for (const [a, b] of [[0.3, 0.3], [0.3, -0.3], [-0.3, 0.3], [-0.3, -0.3]])
+      if (Math.hypot(s.bx + a * s.ux + b * s.vx, s.by + a * s.uy + b * s.vy) < _rimGuardR) return false;
+    return true;
+  };
   let best = null;
-  for (const rc of rodCands.slice(0, 40)) {
+  // Every stage-1 candidate is searched, not a top-N: the rim guard
+  // confines each rod to the tab sectors whose block seats outboard, and
+  // those sectors can belong to parity rays whose COLUMNS do not top the
+  // stage-1 ranking — a top-40 shortlist starved the joint solve to −1.3
+  // (measured, this landing).
+  for (const rc of rodCands) {
     for (let azw = 0; azw < 360; azw += 3) {
       if (!_postOk(azw)) continue;
       const tx = Math.cos(azw * DEG2RAD) * 5.4, ty = Math.sin(azw * DEG2RAD) * 5.4; // tab mid-reach, the ring's own radius
+      const seat = _blockSeat(tx, ty, rc.x, rc.y);
+      if (!_blockOk(seat)) continue;
       const { c: cc, who } = scoreChord(rc.x, rc.y, tx, ty);
-      const tb = scoreTab(tx, ty);
+      const tb = scoreTab(tx, ty, seat.bx, seat.by);
       const c = Math.min(rc.c, cc, tb.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : tb.who);
       if (!best || c > best.c) best = { ...rc, c, who: boundBy, tabAzDeg: azw };
@@ -12675,7 +12738,8 @@ const alarmLinkParts = {};
   // r 0.35 the span was 0.575 rad and the rim tip swept 0.60 — 2.2× the
   // 0.2685 budget. Span ≤ 0.35 rad keeps the rim sweep ≈ 0.10 (measured
   // by the corridor assert below), which needs r ≥ 0.19/sin(0.35) = 0.554.
-  const ALARM_FORK_PIN_ARM_R = 0.56;
+  // (The CONSTANT is hoisted above the link solve, whose rim guard models
+  // the fork block's plan seat from it — §112 band swap.)
   {
     const key = new THREE.Group();
     key.position.x = -chordLen / 2;
@@ -12877,7 +12941,25 @@ const alarmLinkParts = {};
       // plate can only exist beyond the rim. A position-space resolution,
       // per the design-priority order: the band slides along the pin; the
       // pin, groove and clearances are untouched.
-      const midL = tipL.clone().addScaledVector(dirL, 0.65);
+      // §112 band swap — the build note above IS a constraint the link
+      // solve now carries (its stage-2 rim-guard filter models this block
+      // from the tab and chord it already knows): the lower plate exists
+      // only beyond the setting wheel's rim, so the block's plan corners
+      // are ASSERTED outside the tip circle + margin here, with the true
+      // crank geometry the solve could only approximate. The seat itself
+      // stays the band's midpoint — [0.35, 0.95] of the pin's span is the
+      // fork's COVERAGE spec, not a free variable to slide.
+      const midL = tipL.clone().addScaledVector(dirL, ALARM_FORK_SEAT);
+      {
+        const _rimR = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH / 2 + 1)
+          + Math.min(ALARM_SEL_T * 0.18, ALARM_SET_MODULE * 0.22) + CLEAR_MARGIN;
+        const ux = dirL.x, uy = dirL.y;
+        let _cMin = Infinity;
+        for (const [a, b] of [[0.3, 0.3], [0.3, -0.3], [-0.3, 0.3], [-0.3, -0.3]])
+          _cMin = Math.min(_cMin, Math.hypot(midL.x + a * ux - b * uy, midL.y + a * uy + b * ux));
+        if (_cMin < _rimR)
+          console.warn(`§112: the fork block's inner corner reaches r ${_cMin.toFixed(3)} — the setting wheel's rim + margin wants ${_rimR.toFixed(3)} (the link solve's rim guard let a bad chord angle through)`);
+      }
       const grp = new THREE.Group();
       grp.position.set(midL.x, midL.y, 0);
       grp.rotation.z = Math.atan2(dirL.y, dirL.x);

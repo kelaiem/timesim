@@ -23,7 +23,7 @@ const res = await page.evaluate(async () => {
     });
     return rows;
   };
-  const A = rowsOf('Alarm selector'), B = rowsOf('Alarm setting idler');
+  const A = rowsOf('Alarm selector'), B = rowsOf('Alarm setting wheel');
   const gap = (a, b) => {
     const dx = Math.max(a.bb.min.x - b.bb.max.x, b.bb.min.x - a.bb.max.x, 0);
     const dy = Math.max(a.bb.min.y - b.bb.max.y, b.bb.min.y - a.bb.max.y, 0);
