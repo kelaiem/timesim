@@ -44,7 +44,10 @@ page.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
 await page.goto('http://127.0.0.1:8443/index.html', { waitUntil: 'load', timeout: 60000 });
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 
-const res = await page.evaluate(async () => {
+// --null-only: judge only the as-built scenario (drum home) — the landing's
+// question — and skip the exploratory drum-departure scenarios.
+const NULL_ONLY = process.argv.includes('--null-only');
+const res = await page.evaluate(async (nullOnly) => {
   const THREE = await import('three');
   const clock = window.__clock;
   clock.resetInputs();
@@ -150,9 +153,18 @@ const res = await page.evaluate(async () => {
     // this gate's one wrong answer in its first form.
     { name: 'anchor arbor col', about: 'a', r: 0.7, z: bandOf(ancRows) },
   ];
+  // The 64T wheel's HUB rides 0.25·t above the tooth plate (makeGear, 1.5·t
+  // centred) — one box over both claims the plate's 7.4 at the hub's own
+  // height and false-fails the ratchet one margin above. Split by each
+  // row's own reach: wide rows are the plate, narrow rows the hub.
+  const govReach = (r) => {
+    const cx = (r.bb.min.x + r.bb.max.x) / 2, cy = (r.bb.min.y + r.bb.max.y) / 2;
+    return Math.hypot(cx - sw.x, cy - sw.y) + Math.max((r.bb.max.x - r.bb.min.x) / 2, (r.bb.max.y - r.bb.min.y) / 2);
+  };
   const swDiscs = [
     dOf('sw:strike pinion', 's', swRows, sw, (r) => r.mesh === 'alarmStrikePinion'),
-    dOf('sw:gov wheel', 's', swRows, sw, (r) => r.mesh === 'alarmGovWheel'),
+    dOf('sw:gov wheel', 's', swRows, sw, (r) => r.mesh === 'alarmGovWheel' && govReach(r) > 3),
+    dOf('sw:gov wheel hub', 's', swRows, sw, (r) => r.mesh === 'alarmGovWheel' && govReach(r) <= 3),
     { name: 'sw:arbor column', r: 0.75, z: [bandOf(swRows, (r) => r.mesh === 'alarmGovWheel')[0], TQ_BOT] },
   ];
   // Meshing pairs are EXPECTED contact — sep() must not judge them:
@@ -435,7 +447,7 @@ const res = await page.evaluate(async () => {
   // for the pair checks: the widest dropped strike member in the band it
   // actually occupies (the 64T wheel)
   const govWheel = swDiscs.reduce((a, b) => (b.r > a.r ? b : a));
-  for (const drumAz of [null, 45, 51, 56]) {
+  for (const drumAz of (nullOnly ? [null] : [null, 45, 51, 56])) {
     const field = buildField(drumAz);
     // The BUILT configuration, scored at its measured stations — the first
     // question every re-run answers, because the battery judges the built
@@ -588,7 +600,7 @@ const res = await page.evaluate(async () => {
       : `  REFUSED: ${open.length} rotations pass the fixed gates but no bearing triple clears anywhere`);
   }
   return out;
-});
+}, NULL_ONLY);
 console.log(res.join('\n'));
 await browser.close();
 srv.kill();

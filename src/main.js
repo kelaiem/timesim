@@ -1562,7 +1562,7 @@ const ALARM_UNDER_FOOTPRINT = [
 ];
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
 // (§112: the climb arbor's jeweled upper pivot RETIRED — with the winding
-// tier under the plate the climb tops out ~1.5 and never reaches this
+// tier under the plate the climb tops out ~3 and never reaches this
 // plate; its lower bearing, the base plate's bore above, is the bearing.)
 // §112 — the STRIKE ARBOR'S BORE: the tier-split's defining cut. The
 // rotor's sleeve (r 0.75) passes the plate here and the bore is its upper

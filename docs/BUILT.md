@@ -10949,24 +10949,48 @@ hard-won shapes: rotor meshes as discs about their `userData.r` axis,
 tall rotors z-sliced (the fusee cone), long meshes sliced along their
 box's longer axis (a diagonal rod's box is not thin).
 
-**The under-plate stack is the gate's interleaved order,** derived
-floor-up with the §99/§104 formula idioms re-aimed: floor → winding
-tier → arbor ratchet → 64T wheel → barrel body. A rigid drop of the old
-stack is arithmetically impossible (5.4 of barrel column + the rods'
-2.02 floor + the wheel's tier > 7.71), so only the two small arbor
-members sit in the floor band, in cells the gate proved rod-free; the
-64T wheel takes the first wide band over the rods — §104's overfly rule
-verbatim, re-aimed at the new ratchet height; and the body rides high
-the way the mainspring drum already lives under this plate. The ceiling
-is asserted where the chain ends.
+**The under-plate stack derived twice, and the second order is the one
+that shipped.** A rigid drop of the old stack is arithmetically
+impossible (5.4 of barrel column + the rods' 2.02 floor + the wheel's
+tier > 7.71), so the first order interleaved: winding tier and ratchet
+in the floor band "in cells the gate proved rod-free," 64T wheel over
+the rods, body high. That was true at the REST pose and false over the
+rods' travel — the full battery confirmed the 44T winding wheel 0.33
+inside the hack rod's swept lane, the click's spring post standing in
+it, and the winding leg (climb arbor south of the sweep's diagonal,
+barrel north of it) crossing it with no floor route at any bearing:
+three FORBIDDEN/CONFIRMED rows, all one lesson, rule 5's swept
+footprint versus a rest-pose field. The order that survives the sweep
+inverts the middle of the stack: the 64T governor wheel takes the
+floor (fan-clear at its own station by 6.6), ratchet + click above it,
+the winding tier ABOVE the corridor's declared ceiling
+(`LOW_CORRIDOR_Z_BAND[1]` + margin) — the leg crosses the rods' lane
+there, wheels overflying the band, each idler stud standing clear of
+the sweep in plan (i1's azimuth about the climb became a scored
+variable to get its stud out of the pulled rod's path) — and the
+barrel wall + body on top, 0.65 under the ceiling assert.
+
+**The floor placement exposed a defect the battery could not see.** The
+barrel arbor is a full column standing CD_train = 8.25 from the strike
+arbor, so every band the 64T wheel could occupy, that column crosses —
+and at the train's 0.3 module the wheel's web reaches 9.97. The descent
+had run the column straight through the wheel's metal, and no gate said
+so because barrel ⇄ striking wheel is an EXPECTED pair with no floors
+row (TODO 6's residue, found by measuring the wheel's radial occupancy
+against the arbor's edge). The governor mesh now wears its OWN module,
+derived: m ≤ (CD − arborR − margin)/(N/2 + 1 + 0.22) = 0.2259, cut
+0.22 — tip + bevel 7.31 against the arbor's near edge 7.66, asserted
+at the wheel's build. It is also the horological direction: the
+fastest mesh of a train wears the finest module. The ratio (64/8) and
+§104's cadence law are tooth-count arithmetic and did not move.
 
 **The identity moved in the literals** (160° → 40°, each seed carrying
 its −120°), keeping the default build bit-exact instead of churning
 floats through a spec rotation; the §68 frozen plate openings re-synced
 to their derived sites, and their tripwires fired at both wrong
 azimuths this landing tried — exactly the job they were built for. The
-climb arbor's jeweled upper pivot retired (the winding tier is at the
-floor; the climb never reaches the plate), and the winding idlers took
+climb arbor's jeweled upper pivot retired (the winding tier is under
+the plate; the climb tops out ~3 and never reaches it), and the winding idlers took
 a third floor: `KW_WIND_IDLER_TEETH`, the movement's proven idler
 stock, because TODO 15's phase gauge cannot read the 12-tooth wheel the
 collapsed span's reach floor alone would cut (measured: 20 gaps at
