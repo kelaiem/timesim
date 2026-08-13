@@ -31,7 +31,9 @@
 //
 // Needs python3 (dev_server.py) and a Playwright Chromium, like ci-battery.
 import { spawn } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -53,7 +55,18 @@ const freePort = () => new Promise((res, rej) => {
 });
 const port = await freePort();
 const base = `http://127.0.0.1:${port}`;
-const server = spawn('python3', [join(ROOT, 'dev_server.py'), String(port)], { cwd: ROOT, stdio: 'ignore' });
+// TMPDIR is isolated, and that is not tidiness. dev_server.py keeps ONE
+// /__state file per temp dir, and ci-battery.mjs SERIALISES its virgin boots
+// precisely because two of them touching that file at once stop being virgin.
+// A probe sharing the default temp dir can therefore break a battery running
+// beside it — measured: a run of this file alongside one made the two virgin
+// boots hash 3519083211 and 1166767543 and fail the determinism gate, which
+// reads exactly like a geometry regression and is not. explain-i18n.mjs
+// already isolates for the same reason; anything here that stands up a server
+// must do the same.
+const stateDir = mkdtempSync(join(tmpdir(), 'timesim-probe115-'));
+const server = spawn('python3', [join(ROOT, 'dev_server.py'), String(port)],
+  { cwd: ROOT, env: { ...process.env, TMPDIR: stateDir }, stdio: 'ignore' });
 for (;;) { try { await fetch(`${base}/index.html`); break; } catch { await new Promise((r) => setTimeout(r, 200)); } }
 const browser = await chromium.launch();
 let failed = 0;
