@@ -1,5 +1,6 @@
 // §95 tier two — THE PRIMER, LOCALIZED. German and Chinese prose for
-// primer.html's entries, plates and captions.
+// primer.html's entries, plates and captions; French, Japanese and
+// Traditional Chinese since §113, all five at 100%.
 //
 // Same engine as the explainer (src/page-i18n.js holds the walk and the swap),
 // same contract as tier one: authored in English, keyed by the English source,

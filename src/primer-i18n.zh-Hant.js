@@ -9,9 +9,6 @@
 // NUMBERS: zh-Hant groups with ',' and points with '.', exactly as English
 // does, so the digits here READ the same — but they are checked by VALUE, not
 // by glyph (see src/primer-i18n.js).
-//
-// Landed empty and filled per locale; an untranslated key renders English,
-// visibly, which is the honest failure this tier is built around.
 export default {
   ['Watch Sim — A Primer']: 'Watch Sim — 入門',
   ['← the movement']: '← 回到機芯',

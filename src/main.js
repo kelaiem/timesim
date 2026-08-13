@@ -14185,9 +14185,12 @@ style.textContent = `
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All three
-   locales measure inside 150 px on one line today (German's "Klingelt um"
-   is the long one); a fourth that does not simply gets two lines. */
+   what it says, and the box already grows to fit its contents. All SIX
+   locales measure inside 150 px on one line today — German's "Klingelt um"
+   is still the long one at 49.5 px (§113 measured the other five against
+   it: en 36.7, fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0) — so the allowance
+   that a locale which does not fit simply gets two lines is still unspent.
+   tools/probe-113-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
   color: #8b95a1; font: 10px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   overflow-wrap: anywhere;
@@ -14756,8 +14759,12 @@ function setBarState(id, on) {
 // THE BAR'S WIDTH IS A LOCALE FACT, SO IT IS MEASURED, NOT ASSUMED. German's
 // "Steuerung / Ansicht / Zifferblatt" is 211 px against English's 161, and a
 // typed breakpoint would be right in one language and wrong in another —
-// exactly the failure §73 says the German column exists to catch. So the two
-// rules below read the bar's OWN rect:
+// exactly the failure §73 says the German column exists to catch. §113 added
+// three more locales and German is STILL the widest (measured together on one
+// machine: en 170.2, de 192.4, fr 189.9, ja 166.0, zh 144.0, zh-Hant 144.0 —
+// absolute numbers move with the font stack, the ordering is the point), so
+// nothing below needed re-deriving. So the two rules below read the bar's OWN
+// rect:
 //   · if the bar would sit over the panel's header (its Hide button and
 //     title live in that corner), the panel drops below the bar;
 //   · if both panels cannot fit side by side, they become mutually

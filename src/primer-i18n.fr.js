@@ -13,9 +13,6 @@
 // an ASCII space outright, because "5 100" in prose is two quantities more
 // often than one. explain.html is the opposite page and does NOT localize its
 // numbers; see src/explain-i18n.fr.js.
-//
-// Landed empty and filled per locale; an untranslated key renders English,
-// visibly, which is the honest failure this tier is built around.
 export default {
   ['Watch Sim — A Primer']: 'Watch Sim — Introduction',
   ['← the movement']: '← le mouvement',

@@ -10,9 +10,6 @@
 // so the digits here READ the same — but they are checked by VALUE, not by
 // glyph (see src/primer-i18n.js). The rule is the page's, not the locale's:
 // this page quotes no identifiers, so its numbers are quantities.
-//
-// Landed empty and filled per locale; an untranslated key renders English,
-// visibly, which is the honest failure this tier is built around.
 export default {
   ['Watch Sim — A Primer']: 'Watch Sim — 入門',
   ['← the movement']: '← ムーブメントへ',

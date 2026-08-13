@@ -1,4 +1,5 @@
-// §73 — INTERNATIONALIZATION, tier one: the chrome. English, German, Chinese.
+// §73 — INTERNATIONALIZATION, tier one: the chrome. English, German, French,
+// Japanese, and Chinese in both scripts (§113).
 //
 // THE TABLE IS KEYED BY THE ENGLISH SOURCE STRING. The app keeps authoring
 // its UI in English exactly as before; t() (and localizeTree(), which walks
@@ -6,7 +7,11 @@
 // back to English VISIBLY rather than to a blank — the honest failure. The
 // German column doubles as the layout stress test (strings run ~30% longer;
 // the §53 240 px column is the constraint) and Chinese as the typography one
-// (CJK fallback in the system-ui stack, no-space breaking).
+// (CJK fallback in the system-ui stack, no-space breaking). §113's three add
+// a third and a fourth: French is the first locale whose NUMBERS are not
+// ASCII-punctuated (fr-FR groups with U+202F), and Traditional Chinese is the
+// first code carrying a SCRIPT subtag — which is why the ladder below is
+// ordered and asserted rather than merely written down.
 //
 // Locale resolution, in priority order (§73): ?lang= param (per-load, not
 // persisted — a shared link states what the sharer saw without re-deciding
