@@ -26,10 +26,19 @@
 // offline (§88) · the source tree registers NO worker · a hand-registered stub
 // dismantles itself having cached nothing · console silent (rule 6) in all
 // three trees.
+//
+// HOW IT FAILS is part of what it asserts. A check that cannot report its own
+// failure is not a gate, and this one spent three CI runs proving it: silence,
+// then the 20-minute job cap, which GitHub reports as `cancelled` — a word
+// that reads like somebody's force-push, not like a red test. So: every phase
+// is named (`mark`) and budgeted (PHASE_BUDGET_MS), a failed row prints the
+// page state that explains it instead of throwing the run away, cleanup is
+// raced rather than trusted, and the process kills its own children on the way
+// out. Exit 0 all pass · 1 a check failed · 2 the run was ended by a budget.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { cpSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, utimesSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, utimesSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,6 +95,65 @@ symlinkSync(relA, site);
 
 const results = [];
 const check = (name, ok, note = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? `  (${note})` : ''}`); };
+// A row whose PREMISE failed is not a pass and not an independent failure —
+// say so rather than letting one fault print twice or, worse, letting the
+// cascade abort the sections that would still have been measurable.
+const skip = (name, why) => { results.push({ name, ok: false, skipped: true }); console.log(`SKIP  ${name}  (${why})`); };
+
+// The exit path, in one place, because there are now three ways to reach it:
+// the end of the run, the watchdog, and a fault. Children are killed
+// explicitly — CI's cap had to terminate headless_shell and three python3
+// servers as orphans, and a process that leaks its children on the way out
+// is a second way to look hung.
+let procs = [];
+// Playwright's Browser exposes NO process handle — `process()` lives on
+// BrowserServer and ElectronApplication only, and `browser.process?.()`
+// silently does nothing, which is a comment that lies rather than a fallback
+// that works. The PID comes from the OS instead: on Linux, this process's
+// direct children are chromium and the three python3 servers. Best-effort and
+// guarded — where /proc is absent the raced close is still what bounds the
+// run; this only stops a wedged browser being left behind, which is the
+// difference between a rerun and a puzzled `ps`.
+const childPids = () => {
+  try {
+    return readdirSync('/proc/self/task')
+      .flatMap((t) => readFileSync(`/proc/self/task/${t}/children`, 'utf8').trim().split(/\s+/))
+      .filter(Boolean).map(Number);
+  } catch { return []; }
+};
+const TOTAL_ROWS = 22;   // the header's list; a short run must say so rather than report a tidy N/N
+const summarize = (code) => {
+  const failed = results.filter((r) => !r.ok), skipped = results.filter((r) => r.skipped);
+  if (code === 2) console.log(`INCOMPLETE: ${results.length} of ${TOTAL_ROWS} rows were measured before the run was ended`);
+  console.log(`\n${results.length - failed.length}/${results.length} checks pass${skipped.length ? ` (${skipped.length} skipped)` : ''}`);
+  for (const s of procs) { try { s.kill('SIGKILL'); } catch { /* already gone */ } }
+  for (const pid of childPids()) { try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ } }
+  process.exit(code ?? (failed.length ? 1 : 0));
+};
+
+// The state a failed update row owes the next reader, and the reason it is
+// bounded: the page that fails this check is exactly the page that may not
+// answer, so an unbounded evaluate() here would re-create the hang this file
+// exists to remove.
+const dumpState = async (page, err) => {
+  const head = String(err).split('\n')[0];
+  const state = await Promise.race([
+    page.evaluate(async () => {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      return {
+        url: location.href,
+        meta: document.querySelector('meta[name="app-version"]')?.content,
+        controller: navigator.serviceWorker.controller?.scriptURL,
+        clockUp: !!window.__clock,
+        toastShown: document.getElementById('clock-update')?.classList.contains('show'),
+        regs: regs.map((r) => ({ scope: r.scope, installing: r.installing?.state, waiting: r.waiting?.state, active: r.active?.state })),
+        caches: await caches.keys(),
+      };
+    }).catch((e) => ({ evaluateFailed: String(e).split('\n')[0] })),
+    new Promise((r) => setTimeout(() => r({ evaluateTimedOut: '5s — the page is not answering' }), 5000)),
+  ]);
+  return `${head} · ${JSON.stringify(state)}`;
+};
 
 // A HEARTBEAT, because this job's worst failure mode prints nothing at all.
 // Twice on CI (two different runners, §107's PR) the run went silent right
@@ -102,13 +170,58 @@ const check = (name, ok, note = '') => { results.push({ name, ok }); console.log
 // await is stuck — and the tick names it. If the ticks stop, the event loop
 // itself is blocked, which is a different bug entirely. Either way the next
 // run says which, instead of costing 20 minutes to say nothing.
+//
+// IT HAPPENED A THIRD TIME, and the tick above named the wrong await — so
+// here is the half the paragraph was missing. The run wedged at "waiting for
+// the new version meta after reload" for 1168 s on `main` itself (dispatch
+// 31665517744), and that wait is genuinely bounded: sabotage the symlink so
+// the new version can never appear and it throws TimeoutError at 30 s and
+// the process exits at 50 s. What was stuck is the phase `mark()` never
+// named — CLEANUP. The wait threw at 30 s, `finally` called
+// `browser.close()` on a renderer that no longer answers, the close never
+// returned, and because a `finally` that never completes never lets its
+// exception out, the error was never printed and the heartbeat went on
+// reciting the LAST phase for the rest of the cap. CI corroborates it: the
+// killed job terminates headless_shell as an ORPHAN, so the browser was
+// still alive. Hence, below: every phase is marked including cleanup, the
+// cleanup is bounded, and a failed check reports rather than throws.
+//
+// AND THE TICK NOW ACTS ON WHAT IT SEES, because the second half of the
+// measurement was the surprise: a Playwright bound is not always honoured.
+// The sabotage case (page healthy, version simply never arrives) throws at
+// its 30 s as documented — but with the renderer wedged, the same
+// `waitForFunction(..., { timeout: 30000 })` was measured sitting for 455 s,
+// still not rejected. Cancelling that wait needs an answer from the very
+// renderer that has stopped answering. So the bound that can actually be
+// enforced is the one OUT HERE, in a process that is still running: if any
+// phase outlives PHASE_BUDGET_MS, the tick stops narrating and ends the run
+// with the phase named. 180 s is 3x the longest await this file declares
+// (the 60 s __clock waits) — every phase below is marked precisely so no
+// legitimate one comes near it.
+const PHASE_BUDGET_MS = 180_000;
 let phase = 'startup', phaseAt = Date.now();
 const mark = (name) => { phase = name; phaseAt = Date.now(); };
 const beat = setInterval(() => {
-  const s = ((Date.now() - phaseAt) / 1000).toFixed(0);
+  const ms = Date.now() - phaseAt, s = (ms / 1000).toFixed(0);
+  if (ms > PHASE_BUDGET_MS) {
+    console.log(`\nSTUCK: "${phase}" has run ${s}s, past the ${PHASE_BUDGET_MS / 1000}s phase budget — its own await did not honour its timeout`);
+    summarize(2);
+  }
   if (s >= 10) console.log(`  … still in "${phase}" after ${s}s`);
 }, 10000);
 beat.unref?.();
+// The backstop for anything the bounds above still miss. 12 min is ~5x the
+// measured 2 min 29 s job and ~half offline.yml's 20-minute cap: the point is
+// to die INSIDE the cap, because a job-timeout kill is reported as
+// `cancelled` with no output, which is the failure mode this whole file is
+// arguing with. Exiting on our own terms prints the phase and the results so
+// far. Do not raise it to "be safe" — that hands the run back to the cap.
+const RUN_BUDGET_MS = 12 * 60 * 1000;
+const watchdog = setTimeout(() => {
+  console.log(`\nWATCHDOG: ${(RUN_BUDGET_MS / 60000).toFixed(0)} min budget spent, stuck in "${phase}" for ${((Date.now() - phaseAt) / 1000).toFixed(0)}s`);
+  summarize(2);
+}, RUN_BUDGET_MS);
+watchdog.unref?.();
 const IGNORE = /net::ERR|Failed to load resource|WebGL|GroupMarkerNotSet|GPU stall|swiftshader/; // infra noise + the tolerated /__state class, same as ci-battery
 const wireNoise = (page, sink) => {
   page.on('pageerror', (e) => sink.push(`pageerror: ${e}`));
@@ -125,7 +238,9 @@ const servers = [
   spawn('python3', ['-m', 'http.server', String(multiPort), '--bind', '127.0.0.1', '--directory', work], { stdio: 'ignore' }),
 ];
 const browser = await chromium.launch();
+procs = servers;
 try {
+  mark('release: first load, worker install');
   await waitFor(`http://127.0.0.1:${relPort}/index.html`, 15000);
 
   // ---- release tree ----
@@ -156,6 +271,7 @@ try {
   check('release: precache complete', counts === 27, `${counts}/27`);
 
   // ---- offline: the whole point ----
+  mark('offline: booting the documents');
   await ctx.setOffline(true);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
@@ -185,28 +301,75 @@ try {
   await ctx.setOffline(false);
 
   // ---- a release lands: repoint the "QA symlink", expect the ONE toast ----
+  mark('deploying release B');
   unlinkSync(site); symlinkSync(relB, site);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   mark('waiting for the update toast');
   await page.waitForSelector('#clock-update.show', { timeout: 30000 });
   check('update: toast appears after deploy (focus poll)', true);
+  // The dance, narrated. swReload's own comment calls the announcement
+  // LOAD-SENSITIVE and its degradation benign, so when this row fails the
+  // first question is always "which stage was late?" — and the answer used
+  // to require reproducing it locally. These listeners cost nothing and put
+  // the stages in the CI log: healthy is updatefound ~1.1 s and
+  // controllerchange ~1.3 s against swReload's 4 s bound. They are page
+  // console.log (not error/warning), so the rule-6 silence check below is
+  // untouched, and they die with the document at reload — which is the
+  // point, since every stage worth timing happens before it.
+  mark('instrumenting the update dance');
+  page.on('console', (m) => { if (m.text().startsWith('DANCE')) console.log(`  [sw] ${m.text()}`); });
+  await page.evaluate(() => {
+    const t0 = Date.now(), log = (m) => console.log(`DANCE +${Date.now() - t0}ms ${m}`);
+    navigator.serviceWorker.getRegistration().then((r) => {
+      log(`registration installing=${r?.installing?.state} waiting=${r?.waiting?.state} active=${r?.active?.state}`);
+      r?.addEventListener('updatefound', () => {
+        const i = r.installing;
+        log(`updatefound installing=${i?.state}`);
+        i?.addEventListener('statechange', () => log(`installing -> ${i.state}`));
+      });
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => log('controllerchange'));
+    // NO `beforeunload` listener here, and the omission is load-bearing: an
+    // earlier draft logged one and the very run that carried it wedged at the
+    // reload for 455 s while the stock file passed the same tree minutes
+    // later. A page carrying a beforeunload handler can put a dialog in front
+    // of its own navigation, which is a fine way to make an instrument
+    // manufacture the hang it was written to observe. The three listeners
+    // above are the informative ones; the unload is already visible as the
+    // navigation itself.
+  });
   mark('clicking Reload on the toast');
   await page.click('#clock-update button:not(.dismiss)', { timeout: 30000 });
   mark('waiting for the new version meta after reload');
-  await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VB, { timeout: 30000 });
-  mark('waiting for __clock on the new release');
-  await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
-  check('update: Reload crosses the worker boundary to the NEW release', true);
-  mark('waiting for the old cache to be dropped');
-  await page.waitForFunction(async (k) => (await caches.keys()).join() === k, cacheB, { timeout: 30000 });
+  let crossed = false;
+  try {
+    await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VB, { timeout: 30000 });
+    mark('waiting for __clock on the new release');
+    await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+    crossed = true;
+    check('update: Reload crosses the worker boundary to the NEW release', true);
+  } catch (e) {
+    check('update: Reload crosses the worker boundary to the NEW release', false, await dumpState(page, e));
+  }
+  if (crossed) {
+    mark('waiting for the old cache to be dropped');
+    try {
+      await page.waitForFunction(async (k) => (await caches.keys()).join() === k, cacheB, { timeout: 30000 });
+      check('update: old release cache dropped on activation', true);
+    } catch (e) {
+      check('update: old release cache dropped on activation', false, await dumpState(page, e));
+    }
+  } else {
+    skip('update: old release cache dropped on activation', 'the reload never crossed, so there is no activation to measure');
+  }
   mark('release tree done');
-  check('update: old release cache dropped on activation', true);
 
   let bad = noise.filter((n) => !IGNORE.test(n));
   check('release: console silent throughout (rule 6)', bad.length === 0, bad.slice(0, 3).join(' | '));
   await ctx.close();
 
   // ---- source tree: no worker, and a hand-registered one dismantles ----
+  mark('dev tree: no worker, stub dismantles');
   const dctx = await browser.newContext();
   const dpage = await dctx.newPage();
   const dnoise = [];
@@ -257,6 +420,7 @@ try {
   // boot is kept as a statement of the GUARANTEE, end to end, and is not
   // evidence about the service worker's cache on its own. Do not "strengthen"
   // it by clearing the HTTP cache — that was tried and changed nothing.
+  mark('two environments under one origin');
   const mctx = await browser.newContext();
   const mnoise = [];
   const bootAt = async (path) => {
@@ -291,10 +455,23 @@ try {
   check('two environments: console silent (rule 6)', bad.length === 0, bad.slice(0, 3).join(' | '));
   await mctx.close();
 } finally {
-  await browser.close();
+  // THE PHASE THAT COST NINETEEN MINUTES. It was unmarked, so the heartbeat
+  // kept reciting the previous one, and it was unbounded, so the exception on
+  // its way out never got out: a `finally` that never completes never
+  // rethrows. Both halves are fixed here — named, so a tick can accuse it,
+  // and raced, so a renderer that stopped answering cannot hold the process.
+  // 10 s because a healthy close is milliseconds; the loser is killed rather
+  // than awaited, which is also what stops the orphaned headless_shell CI had
+  // to reap.
+  mark('cleanup: closing the browser');
+  await Promise.race([
+    browser.close().catch(() => { /* a wedged renderer: the kill below is the answer */ }),
+    new Promise((r) => setTimeout(r, 10000)),
+  ]);
+  try { browser.process()?.kill('SIGKILL'); } catch { /* already exited */ }
+  mark('cleanup: stopping the servers');
   for (const s of servers) s.kill();
   rmSync(work, { recursive: true, force: true });
+  mark('cleanup: done');
 }
-const failed = results.filter((r) => !r.ok);
-console.log(`\n${results.length - failed.length}/${results.length} checks pass`);
-process.exit(failed.length ? 1 : 0);
+summarize();
