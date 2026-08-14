@@ -11774,3 +11774,202 @@ asserts against the `paths-ignore` list.
   reintroduce a source identifier into the primer's prose and no gate would
   see it. The exposure is now at its full size — every locale, both pages.
 - **The stray-script scan is still manual**, two landings running.
+
+## §118 — Camera moves to the View panel
+
+**One question, one panel.** §110 item 4 moved View and Performance out of
+`#clock-ui` into their own top-right panel, on the argument that the controls
+a viewer touches most should not be the deepest rows of a scrolling 240 px
+column. Camera was left behind and should not have been: a preset is not a
+property of the watch, it is where the viewer is standing, which is the
+question the view panel exists to answer. What remains in `#clock-ui` is now
+the watch itself — its time, its alarm, its finish, its state.
+
+The section moved WHOLE, markup unchanged: the five `data-cam` presets,
+Guided (Tour / Demo / Inspect), Life size and its Calibrate, and Copy view.
+It folds rather than joining the flat six, because §110's rule for that panel
+is that the named six sit unfolded and everything else discloses — four more
+flat rows would push Advanced and Performance off a short viewport, the exact
+failure the rule exists to prevent. No new strings: `Camera` was already in
+all six locale tables.
+
+**§110's "every binding is by id" claim had exactly one exception, and this
+is the change that found it.** The keyboard shortcut table's `preset()`
+resolved its button with `panel.querySelector('[data-cam=…]')` — the one
+selector in the app that named an ancestor. Moving the section would have
+broken keys 1–5 in silence: no error, no missing element, just five keys that
+stopped doing anything. It is now `document.querySelector`, which is not a
+loosening — `data-cam` is unique in the document (`#state-buttons` reuses the
+`.presets` class but carries no `data-cam`), so the scope was never what made
+the lookup correct. The four `.hud-panel .presets button` sweeps that paint
+the active preset already matched both panels and needed nothing.
+
+**A side effect worth recording, because it is an improvement nobody asked
+for.** `hidePanelForScript()` collapses `#clock-ui` while a guided script
+runs, so the run is not viewed through the panel. The Tour/Demo/Inspect
+buttons used to go with it — a running script's own Stop control, hidden by
+the script starting. They now live in the panel that stays up.
+
+## §119 — The pad's targets, and the crowns' gestures
+
+Four complaints from one session, all of them about controls a finger
+actually meets: three land on §57's control pad, the fourth on the crown in
+the 3D view. (The fifth from that session was §118's, one entry up.)
+
+**The alarm crown could not be tapped at all.** §57 spreads any control pair
+too close to separate with a thumb — and named the pair: `crown` ⇄ `pusher`,
+which was the colliding pair when it was written. §112 then rotated the alarm
+module. Measured on the pad before this change: `crown` −35.00°, `alarm`
+180.00°, `pusher` −175.53°. The spread ran, found its named pair 140° apart,
+did nothing, and reported nothing — while the pair it was not looking at sat
+**4.47° apart, a centre gap of 6.51 viewBox units against two 18-unit hit
+circles**. The pusher is drawn last, so it is on top, so it took every tap
+meant for the alarm crown. Every gate in the battery was green throughout,
+because no gate has ever looked at the pad.
+
+Naming the pair was the defect. The spread now sorts by azimuth and clears
+every ADJACENT gap, relaxing until all of them hold (3 × 46° is 138° of 360°,
+so a solution always exists and it settles in a pass or two), and then
+**boot-asserts the achieved minimum** — standing rule 6, aimed squarely at
+the next `?alarmmod=`. Order around the ring is preserved, which is the
+property §57 said the spread must keep. Result: `alarm` 180.00° → 159.24°,
+`pusher` 184.47° → 205.24°, crown untouched, and the two now measure exactly
+46.00° apart.
+
+**The targets are wedges of the ring band now, not discs on the heads.** §57's
+18-unit circle was not a chosen size, it was a ceiling: the trackball's hit
+circle starts at `HUD_RIM·0.72` = 41.8 and the innermost head sits at 60, so a
+larger disc would have begun stealing taps from the face. That ceiling is what
+kept the targets at ~27 px across on a 150 px pad, against the 44 px floor
+§110 derived. A wedge escapes it rather than arguing with it — each control
+owns the slice of band on its own azimuth, and all three dimensions derive:
+inner radius = the trackball's own edge (so the face keeps its WHOLE circle
+and the target grows outward, into a band where nothing lives); outer radius =
+the viewBox rim; half-angle = `HUD_MIN_SEP/2`, so neighbouring wedges **tile**
+and cannot overlap however the layout moves. The two constants are one number
+apart on purpose: the spread's minimum and the target's width are the same
+fact said twice.
+
+Measured at 1440×900 with the controls at rest, by
+`tools/probe-119-pad-targets.mjs`: **43.7 px along the band × 35.2 (crown) /
+36.7 (pusher) / 39.1 (alarm crown) px across it**, 0 overlapping pairs, four
+abutting ones — the tiling working, with no pixel wasted between two targets.
+The across-band figure is **short of the 44 px floor and is reported rather
+than rounded away**: closing it needs ~54° between neighbours, and 8° more lie
+about where the alarm crown sits is a worse trade than 5 px of thumb.
+
+**A crown splits by duration now, not by direction: tap to pull or push, drag
+to turn.** §57 gave both jobs to the drag — radial swipe = slide, tangential =
+turn — and left the tap to the pusher alone, reasoning that a stray tap that
+hacked the watch would be a state change nobody asked for. Two things were
+wrong with that. The radial swipe must travel `HUD_ACT` (11 units, ~8 px) in
+the one direction the finger is least free, which is genuinely hard to land;
+and a tap is not stray if it is MEASURED at release — the mechanism the pusher
+had all along and the crowns were never given. A gesture that never passed
+`HUD_CLASSIFY` moved no crown and can only have been a poke. So every drag on
+a crown is now a turn, by the component ACROSS the knurling, re-based at the
+classification crossing so the deadband is a deadband and not a 5-unit jump;
+release with no classified drag calls the same `toggleCrown()` /
+`toggleAlarmCrown()` the panel button and the 3D knob call. The pusher keeps
+both of its gestures — it has no turn, so its radial push cannot be mistaken
+for one.
+
+**And that turned up a defect nobody had reported.** §57's turn branch ended
+`if (id === 'crown') crownRotation = turned; else alarmCrownRotation = turned`
+— an else that swept up the PUSHER, whose grab seeded `rot0` from
+`alarmCrownRotation` for the same reason. So a tangential drag on the pusher
+classified as a turn and set the ALARM CROWN's angle: the wrong control,
+silently, from a gesture the pusher does not have. Restricting the turn to the
+two crowns closes it.
+
+**And in 3D, a crown turns with the knurling under the finger.** §24 and §27
+both read the drag's screen X: `rotation = start + dx·k`. That is right for
+the view a photograph of a watch is taken from — crown edge-on at 3 o'clock,
+knurling running up the screen, a horizontal swipe crossing it square. It is
+wrong for the view this app opens in. Turn the watch dial-first and the same
+crown still answers only to horizontal, while the knurling a finger is plainly
+over now runs horizontally too: the gesture that should turn it does nothing,
+and the one that does nothing on a real crown turns it. No screen direction
+can be right for both crowns in every view, because the stem's azimuth is a
+layout choice (`?crownaz=`, `?alarmaz=`) and the camera is free.
+
+The knurling can be, because it is a real surface. The frame is built from the
+CONTACT — where the ray actually met the knob — and frozen at grab: **â** the
+stem axis (the builder's +Z, which `makeCrown` revolves the barrel about),
+**r̂** the contact's radial direction taken out to `rimR` (the finger grips the
+knurling, which is at the barrel's own radius — and that also removes the pole
+singularity of a contact on the face's exact centre), **t̂ = â × r̂** the way
+that surface travels for one radian. Projected to the screen, t̂ gives both the
+direction a drag must run and the pixels one radian is worth, so §24's typed
+sensitivity is now read off the picture: turn the crown through its own
+circumference and the finger travels that circumference on screen.
+`CROWN_DRAG_SENSITIVITY` survives as the **ceiling** it always implicitly was
+— however far away the camera, a full turn never costs less than the 350 px it
+did before, which is what keeps a crown drawn 6 px wide from spinning wildly.
+At ordinary framings the crown is small enough that the ceiling is what binds,
+so **what changed in practice is the direction, not the rate**: measured at 350
+px per full turn in every pose below, exactly as before. The 1:1 roll takes
+over only when the crown is drawn larger than ~56 px of radius, which is
+someone who has zoomed in on it. `â` is read from the knob's matrix, so it is
+boot-asserted against the axis the knob's spinner actually turns about — flip
+`rotation.x` at either call site and â reverses while every position stays put,
+so the crown would turn the wrong way with nothing to say so.
+
+The witness deliberately is NOT the knob's position. The obvious check — "the
+knob sits out along its stem from the spinner" — is a claim about where the
+knob is, which the roll never uses, and it cried wolf immediately: at
+`?alarmr=46` the corner is past the case rim, the stem length goes negative,
+and the knob lands on the far side of its own spinner with a perfectly correct
+axis. That spec already warns five times that its alarm layout does not close;
+a sixth warning about the one thing that was right would be noise on a real
+signal. Caught by diffing the battery's spec-boot warning counts against the
+base — the only place it showed.
+
+Measured by `tools/probe-119-crown-roll.mjs`, which tests it as a law rather
+than as a view — both crowns, three camera azimuths 72° apart, and in all six
+cases the knurling's own screen direction is different: **a 60 px drag ALONG
+the knurling turns 0.001–0.056 rad, ACROSS it 1.076–1.077 rad.** The old code
+would have read a fixed 1.077 for screen-horizontal in every one of them.
+
+Both handlers now measure the drag threshold on `hypot(dx, dy)` rather than
+`|dx|`. That is not tidiness — with vertical drags turning the crown, an x-only
+threshold would let a completed turn arrive at `pointerup` still looking like a
+click, and pull the crown the viewer had just wound.
+
+**The hands are always up; setting highlights them.** §63 faded the preview
+hands in only while a setting path was engaged, which kept §57's controls-only
+plan but made the corner two different things — a face while you set it, a
+bare ring the rest of the time. All three now rest at `HUD_HAND_REST`, derived
+from the ring's own furniture rather than picked: a hand stroke is
+`rgba(255,255,255,0.85)` and the rim it sits inside is `0.26`, so 0.26/0.85 ≈
+0.3 puts a resting hand at exactly the presence of the drawing it belongs to,
+leaving the full 1.0 for the hand a setting path raises — a 3.3× step nobody
+has to look twice at. The mapping is unchanged (`crownPullT` → the time pair,
+`alarmCrownPullT` → the alarm hand); appear/disappear simply became
+dim/highlight, and the angle writes lost their `pvT > 0 || pvA > 0` gate,
+because a hand always shown at a stale angle is worse than no hand.
+
+§90's figures stay, and are not now a second copy of the hands: the ring says
+WHERE, the figures say HOW FAR APART. "≈7:15 against 10:24" is arithmetic a
+glance can do and two angles on a 41 u ring is a squint, which was §90's
+argument for figures and is still true with the hands up.
+
+### Residue, recorded
+
+- **No gate watches the pad.** `probe-119-pad-targets.mjs` is a probe, not a
+  battery check — deliberately, on `probe-116-locale-fit.mjs`'s precedent
+  (these are rendered-browser facts, measured on purpose rather than
+  assumed). The boot assert covers the angle, which is the half that can go
+  wrong from a layout change; the rendered geometry is checked when someone
+  runs the probe.
+- **Neither probe is a gate**, so both are only true when someone runs them.
+  The boot asserts cover the two halves that a layout change can silently
+  break — the pad's minimum separation and the roll's axis — and that is the
+  part which holds itself.
+- **The 1:1 roll regime is untested**, because the sensitivity ceiling binds
+  at every framing the probe measured. What is measured is the direction law
+  and the ceiling; the rate above it is derived, not observed.
+- **The pad's wedges reach the viewBox rim**, so the corners of the pad
+  within ±23° of a control are live target area for it. That is the point — it is
+  most of the 43.7 px — but it does mean a tap well away from a marker still
+  works it.
