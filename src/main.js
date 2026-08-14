@@ -5323,10 +5323,12 @@ const TQ_WINDOW_INTENTS = [
     // circle passes 1.05 from the anchor's axis, so ~118° of the saw's rim —
     // the arc the pallets work on, engagement at its middle — stands inside
     // this window and the far side of the wheel goes back under the plate.
-    // What that buys is the plate: the union reached 10.0 from a point
-    // between the axes and this reaches 6.5 about one of them, which is 58%
-    // of the opening returned to a plate that is a bearing first (§115's own
-    // priority, applied to §115's own window).
+    // What that buys is the plate, measured as AREA rather than as reach —
+    // a radius cannot answer this, since two windows of equal reach can take
+    // very different amounts of metal. ½∮r²dθ over the solved reveal:
+    // 209.6 cut before, 132.1 now, so 37% of the opening goes back to a
+    // plate that is a bearing first (§115's own priority, applied to §115's
+    // own window). The probe reports it.
     //
     // The disc comes from ALARM_UNDER_FOOTPRINT, which is the point: that
     // list is what the movement DECLARES this metal occupies, the pillar

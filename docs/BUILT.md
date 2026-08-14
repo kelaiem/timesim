@@ -12136,6 +12136,7 @@ is the anchor's own declared disc:
 | polar centre | midpoint of `ALARM_GOV_ANCHOR_D` | the anchor's axis |
 | discs | governor saw + governor ring | governor ring |
 | reach from the centre | 5.307 … 10.009 | **6.483, exactly, at every bearing** |
+| area cut (½∮r²dθ) | 209.6 of 211.5 wanted | **132.1 of 132.1** |
 | bearings at full reach | 339 of 360 | **360 of 360** |
 | keeps bite | 21 bearings, worst 0.900 at 293° | **none** |
 | sectors cut | 1 (bossless) | 1 (bossless) |
@@ -12163,10 +12164,12 @@ argue away: what went back under the plate is the saw's far rim, its pinion,
 its arbor and its post — the drive INTO the escapement, not the escapement.
 (The vertex counts rise because the posts are lathes now, not cylinders.)
 
-What it buys is plate. The union reached 10.009 from a point between the axes;
-this reaches 6.483 about one of them, which is **58% of the opening returned**
-to a plate that is a bearing first — §115's own stated priority, applied to
-§115's own window. One consequence lands where §115 predicted it would:
+What it buys is plate, and the honest measure of that is AREA rather than
+reach — two windows with the same reach can take very different amounts of
+metal, which is why `probe-115-window.mjs` now reports ½∮r²dθ over the solved
+reveal. The opening falls from **209.6 to 132.1**: **37% of it returns** to a
+plate that is a bearing first, §115's own stated priority applied to §115's own
+window. One consequence lands where §115 predicted it would:
 `seatClearance` re-optimises against the smaller opening and the 45° pillar
 seat travels back to 29.376, 25.536 — the station it held before §115 moved it.
 The other three do not move.
@@ -12176,3 +12179,44 @@ mechanism, unlike a window — §115's own line), translated into all five
 locales in this landing rather than left to fall back. `MECH_GRAPH` gains
 nothing: no part was added, and the posts are the same two meshes under the
 same two names.
+
+### The battery, and the one row that moved
+
+**20/20 gates pass**, boot silent, run locally against `origin/main` and this
+tree in turn on the same idle 4-vCPU box so the two `--report` payloads are
+comparable:
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 537 rows, 0 degenerate, 0 unwaived
+intraUnit 264 movers over 55 poses, 0 unwaived · assembly 0 undeclared unwaived splits
+expectedContacts 13 pairs, 0 unwaived, 0 unmatched selectors
+oscillator 2.5 Hz on a 0.0244 mm ribbon · equalisation TODO 32 held, ring 0.790 mm in stock
+restoring 20 reversing units, 0 unwaived, control PASS
+inspection 0 FORBIDDEN over 53 units and 74 contacting pairs · clearances 0 violations over 30 budgets
+sweptOverlap 0 CONFIRMED over 67943 pairs (tight 4, refuted 20)
+spec boots 26/26 build, identity control silent
+```
+
+`--report` diffed check by check: **thirteen of fourteen payloads are
+byte-identical** — `alarmHandoffs`, `assembly`, `clearances`, `equalisation`,
+`graph`, `inspection`, `intraUnit`, `oscillator`, `penetration`, `restoring`,
+`stockFloor`, `support`, `sweptOverlap`. Two things moved:
+
+1. **`expectedContacts`, one row, and it OPENED.**
+   `Alarm governor ⇄ Alarm governor anchor` goes **0.160 → 0.168**, and the
+   binding mesh pair changes with it: `alarmGovSaw ⇄ alarmGovRing` at
+   `beat f=0` becomes `alarmGovSaw ⇄ alarmGovAnchor` at `alarmStrike f=0.5321`.
+   That is the ring's floor rising out of the saw's neighbourhood and the
+   anchor's own hub becoming the tightest approach in the pair. Nothing about
+   the new metal binds anywhere: the ring passes the post's head at 0.210 and
+   the 64T wheel passes its foot collar at 0.264, both above the row's own
+   0.168.
+2. **fingerprint `761710512 → 1709442067`.** Two contributions, both expected:
+   the governor units' own boxes grow (the posts are taller and wider), and
+   `pillars` moves — `seatClearance` re-optimises against the smaller window
+   and the 45° seat travels back to the station it held before §115 moved it.
+
+Cost: total check time 2816.0 → 2768.3 s, every check inside run-to-run noise
+(`sweptOverlap` 1129 → 1113 s). The shard partition is unchanged in shape and
+the `cost` column is left alone.
