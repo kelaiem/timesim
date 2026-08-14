@@ -14156,12 +14156,15 @@ style.textContent = `
 #ctl-hud .hud-hint.dim { opacity: 0.16; }
 #ctl-hud .hud-hit { fill: transparent; cursor: grab; }
 #ctl-hud .hud-hit:active { cursor: grabbing; }
-/* §63 — the setting preview. Hands appear ONLY while a setting path is
-   engaged (their opacity is driven per-frame from the same eased pulls
-   the crown heads ride), so at rest the HUD remains §57's controls-only
-   plan. A hand with no reference is a needle, so a 12-tick ring fades in
-   with whichever hand is up. The alarm hand is dashed and wears the
-   pulled-crown red — the colour of the state that summons it. */
+/* §63 — the preview hands, and §119's revision of when they show. §63 faded
+   them in ONLY while a setting path was engaged, keeping §57's controls-only
+   plan at rest; §119 leaves all three up at HUD_HAND_REST and has the setting
+   path RAISE the hand it moves (opacity still driven per-frame from the same
+   eased pulls the crown heads ride, so the highlight arrives with the stem,
+   not ahead of it). The corner is a plan of the dial side either way — it may
+   as well carry the dial. A hand with no reference is a needle, so the
+   12-tick ring rides the brighter of the two. The alarm hand is dashed and
+   wears the pulled-crown red — the colour of the state that highlights it. */
 #ctl-hud .hud-preview { pointer-events: none; }
 #ctl-hud .hud-tick { stroke: rgba(255,255,255,0.22); stroke-width: 1; }
 #ctl-hud .hud-hand { stroke-linecap: round; }
@@ -14360,12 +14363,18 @@ const panel = document.createElement('div');
 panel.id = 'clock-ui';
 panel.className = 'hud-panel';   // §110 step 0 — the shared identity
 // Rows are grouped into collapsible <details> sections (BUILT §15): Time,
-// Camera, Alarm, Appearance; State is appended later, so the panel fits a short
+// Alarm, Appearance; State is appended later, so the panel fits a short
 // viewport. Only Time is open by default. Every original id/class is preserved
 // verbatim so the existing querySelector / getElementById wiring is untouched —
 // §110 item 4 MOVES the View and Performance sections to their own panel, and
-// that wiring survives the move for exactly this reason: it binds by id, not
-// by ancestor.
+// §118 moves CAMERA after them, and that wiring survives both moves for exactly
+// this reason: it binds by id, not by ancestor.
+//
+// §118 — WHY CAMERA LEFT. What remains here is the WATCH: its time, its alarm,
+// its finish. A camera preset is not a property of the watch, it is where the
+// viewer is standing, and §110 had already moved the rest of that question
+// (x-ray, schematic, labels, the zoom rocker's neighbours) into the view panel.
+// Splitting one question across two panels is the cost this pays off.
 panel.innerHTML = `
   <h1>Watch Sim</h1>
   <button id="btn-hide-ui" title="Hide panel (H)">Hide</button>
@@ -14392,21 +14401,6 @@ panel.innerHTML = `
       <div class="row label-small" id="spec-verdict" style="display:none; color:#e0a355;"><span></span></div>
       <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
       <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
-    </div>
-  </details>
-  <details class="ui-section">
-    <summary>Camera</summary>
-    <div class="ui-section-body">
-      <div class="row presets">
-        <button data-cam="Escapement">Escapement</button>
-        <button data-cam="Train">Train</button>
-        <button data-cam="Dial">Dial</button>
-        <button data-cam="Setting">Setting</button>
-        <button data-cam="Free">Free</button><!-- data-cam is the canonical key; the FACE localizes (§73) -->
-      </div>
-      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
-      <div class="row label-small"><span>Life size</span><span class="guided-btns"><button id="btn-lifesize">Life size</button><button id="btn-lifesize-cal">Calibrate</button></span></div>
-      <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
     </div>
   </details>
   <details class="ui-section">
@@ -14484,14 +14478,17 @@ document.body.appendChild(panel);
 //
 // THE SIX ARE FLAT; EVERYTHING ELSE FOLDS. The named six sit unfolded at the
 // top. The rest of View — Measure and its rows, explode, explore, reconfigure,
-// route — and all of Performance sit under closed <details>, on §15's
-// disclosure mechanism (the one §23 was told to reuse; there is no second).
-// 'Advanced' and 'Performance' are already in both locale tables, so the fold
-// costs no new strings.
+// route — plus §118's Camera and all of Performance sit under closed
+// <details>, on §15's disclosure mechanism (the one §23 was told to reuse;
+// there is no second). 'Camera', 'Advanced' and 'Performance' are already in
+// every locale table, so the folds cost no new strings.
 //
 // Every id and class is carried over VERBATIM. That is what makes the move
 // safe: the ~30 getElementById wirings and the setXray/setLabels/setHud
 // handlers bind by id, not by ancestor, so none of them knows this happened.
+// §118 moved Camera in on the same terms and found the one exception the
+// claim always had — the 1–5 shortcut's `panel.querySelector` — which is
+// fixed at its site rather than by keeping the section where it was.
 const viewHud = document.createElement('div');
 viewHud.id = 'view-hud';
 viewHud.className = 'hud-panel';
@@ -14533,6 +14530,31 @@ viewHud.innerHTML = `
     <span class="label-small">Language</span>
     <select id="lang-select"></select>
   </div>
+  <!-- §118 — Camera, moved WHOLE out of #clock-ui on §110 item 4's precedent
+       and for its reason: this panel is where the viewer's own question is
+       answered, and a preset is a viewpoint, not a property of the watch.
+       It FOLDS rather than joining the flat six, because §110's rule for this
+       panel is that the named six sit unfolded and everything else sits under
+       a closed <details> — a fourth flat row group would push Advanced and
+       Performance off a short viewport, which is the failure that rule
+       exists to prevent. Every id, class and data-cam value is carried over
+       verbatim; the one binding that read the OLD ancestor is the 1–5
+       shortcut, fixed at its own site. -->
+  <details class="ui-section">
+    <summary>Camera</summary>
+    <div class="ui-section-body">
+      <div class="row presets">
+        <button data-cam="Escapement">Escapement</button>
+        <button data-cam="Train">Train</button>
+        <button data-cam="Dial">Dial</button>
+        <button data-cam="Setting">Setting</button>
+        <button data-cam="Free">Free</button><!-- data-cam is the canonical key; the FACE localizes (§73) -->
+      </div>
+      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
+      <div class="row label-small"><span>Life size</span><span class="guided-btns"><button id="btn-lifesize">Life size</button><button id="btn-lifesize-cal">Calibrate</button></span></div>
+      <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
+    </div>
+  </details>
   <details class="ui-section">
     <summary>Advanced</summary>
     <div class="ui-section-body">
@@ -15321,7 +15343,13 @@ function askTour(onProceed) {
     controls.update();
   };
   const preset = (name) => () => {
-    const b = panel.querySelector(`[data-cam="${name}"]`);
+    // §118 — DOCUMENT-SCOPED, and that is the whole cost of moving Camera.
+    // This read `panel.querySelector` while the presets lived in #clock-ui:
+    // the ONE binding in the app that named an ancestor instead of an id, so
+    // the move that §110 documented as safe would have broken keys 1–5 in
+    // silence. `data-cam` is unique in the document (#state-buttons reuses
+    // .presets but carries no data-cam), so scope is not what made this work.
+    const b = document.querySelector(`[data-cam="${name}"]`);
     if (b) { b.click(); announce(`${t('Camera:')} ${t(name)}`); }
   };
   const STEP = 6 * DEG2RAD;
@@ -16032,35 +16060,158 @@ function setCrownPointerFromEvent(e) {
   crownPointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   crownPointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 }
-function crownHitTest(e) {
+function crownHit(e, targets) {
   setCrownPointerFromEvent(e);
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
-  return crownRaycaster.intersectObjects(crownHitMeshes, true).length > 0;
+  return crownRaycaster.intersectObjects(targets, true)[0] || null;
 }
+function crownHitTest(e) { return !!crownHit(e, crownHitMeshes); }
 
-const CROWN_DRAG_SENSITIVITY = (2 * Math.PI) / 350; // ~350px of drag per full turn
+// §119 — A CROWN TURNS WITH THE KNURLING UNDER THE FINGER.
+//
+// §24 and §27 both read the drag's SCREEN X: `rotation = start + dx·k`. That
+// is right for the view a photograph of a watch is taken from — the crown
+// edge-on at 3 o'clock, its knurling running up the screen, a horizontal
+// swipe crossing it square. It is wrong for the view this app opens in.
+// Turn the watch dial-first and the same crown still answers only to
+// horizontal, while the knurling a finger is plainly over now runs
+// horizontally too: the gesture that should turn it (up the screen, across
+// the ridges) does nothing, and the one that does nothing on a real crown
+// (along the ridges) turns it. The stem's azimuth is a layout choice
+// (?crownaz=, ?alarmaz=) and the camera is free, so no screen direction can
+// be the right one for both crowns in every view.
+//
+// The knurling can, because it is a real surface: ridges cut ALONG the barrel,
+// so rolling it means dragging ACROSS them, and that direction is wherever
+// they happen to be pointing on screen right now. So the frame is built from
+// the CONTACT — where the ray actually met the knob — and frozen at grab (the
+// camera is pinned for the drag, and a frame that drifted mid-drag would be
+// the per-frame re-decision §57 already learned not to make on the pad):
+//
+//   â  the stem axis — the builder's +Z, which makeCrown revolves the barrel
+//      about and which both call sites turn to the parent's +Y;
+//   r̂  the contact's radial direction, taken out to rimR — the finger grips
+//      the KNURLING, which is at the barrel's own radius, and that also
+//      removes the pole singularity of a contact on the face's centre;
+//   t̂ = â × r̂, the way that surface travels for +1 radian.
+//
+// Projected to the screen, t̂ gives both the direction a drag must run and the
+// pixels one radian is worth, so the number that used to be a typed
+// sensitivity is now read off the picture: turn the crown through its own
+// circumference and the finger travels the crown's circumference on screen.
+const CROWN_DRAG_SENSITIVITY = (2 * Math.PI) / 350; // §57's ~350px of drag per full turn — now the sensitivity CEILING, below
+// A crown drawn small enough would have every pixel worth radians. The floor
+// is §24's own sensitivity: however far away the camera is, a full turn never
+// costs less than the 350 px it always did. Above that — any framing where
+// the crown is bigger on screen than ~56 px of radius — the roll is 1:1 and
+// this never binds.
+const CROWN_PX_PER_RAD_MIN = 1 / CROWN_DRAG_SENSITIVITY;
 const CROWN_DRAG_THRESHOLD_PX = 3; // below this, treat pointerup as a click (pull/push)
+const _rollAx = new THREE.Vector3(), _rollRad = new THREE.Vector3(), _rollTan = new THREE.Vector3();
+const _rollO = new THREE.Vector3(), _rollC = new THREE.Vector3(), _rollPt = new THREE.Vector3();
+const _rollNdc = new THREE.Vector3(), _rollPxA = { x: 0, y: 0 }, _rollPxB = { x: 0, y: 0 };
+function worldToCanvasPx(v, out) {
+  const r = renderer.domElement.getBoundingClientRect();
+  _rollNdc.copy(v).project(camera);
+  out.x = (_rollNdc.x * 0.5 + 0.5) * r.width;
+  out.y = (-_rollNdc.y * 0.5 + 0.5) * r.height;
+  return out;
+}
+// stateSign converts rotation ABOUT â into the sign of the state variable the
+// drag writes, and the two crowns genuinely differ: `windSpinner.rotation.y =
+// -crownRotation` while `alarmSpinner.rotation.y = alarmCrownRotation + …`.
+// Passed in rather than inferred, so the two assignments stay the single
+// source of that fact.
+function crownRollFrame(knob, hitPoint, stateSign) {
+  knob.updateMatrixWorld(true);
+  _rollAx.set(0, 0, 1).transformDirection(knob.matrixWorld).normalize();
+  knob.getWorldPosition(_rollO);
+  _rollRad.copy(hitPoint).sub(_rollO);
+  const ax = _rollRad.dot(_rollAx);
+  _rollRad.addScaledVector(_rollAx, -ax);
+  if (_rollRad.lengthSq() < 1e-6) {
+    // Dead on the axis — the face's exact centre, where no roll is defined.
+    // Take the contact to be the barrel's nearest point to the viewer, which
+    // is the part of the knurling the finger is over in any case.
+    camera.getWorldDirection(_rollC);
+    _rollRad.copy(_rollC).addScaledVector(_rollAx, -_rollC.dot(_rollAx)).negate();
+  }
+  _rollRad.normalize();
+  _rollTan.crossVectors(_rollAx, _rollRad);
+  const rimR = knob.userData.crown ? knob.userData.crown.rimR : 1;
+  // The effective contact: the knurling, at the barrel's radius, in the
+  // contact's own plane along the stem.
+  _rollPt.copy(_rollO).addScaledVector(_rollAx, ax).addScaledVector(_rollRad, rimR);
+  worldToCanvasPx(_rollPt, _rollPxA);
+  const EPS = 1e-3;                      // small enough that the chord is the tangent
+  worldToCanvasPx(_rollPt.addScaledVector(_rollTan, rimR * EPS), _rollPxB);
+  const tx = (_rollPxB.x - _rollPxA.x) / EPS, ty = (_rollPxB.y - _rollPxA.y) / EPS;
+  const px = Math.hypot(tx, ty);
+  // Edge on to the camera the tangent projects to nothing; the floor is what
+  // keeps that from dividing by zero as well as what caps sensitivity.
+  const pxPerRad = Math.max(px, CROWN_PX_PER_RAD_MIN);
+  return px > 1e-6
+    ? { tx: tx / px, ty: ty / px, radPerPx: stateSign / pxPerRad }
+    : { tx: 0, ty: 0, radPerPx: 0 };
+}
+// Standing rule 6 — â is READ from the knob's matrix, so a build that mounts a
+// crown differently must not silently roll it about the wrong line, or about
+// the right line in the wrong direction.
+//
+// THE WITNESS IS THE SPINNER'S OWN AXIS, not the stem's length. The coupling
+// the roll depends on is exactly this: the barrel revolves about the builder's
+// +Z, both call sites turn that to the parent's +Y with `rotation.x = -π/2`,
+// and +Y is the axis `rotation.y` — the thing stateSign is written against —
+// actually turns. Flip that line and â reverses while every position stays
+// put, so the crown would turn the wrong way with nothing to say so.
+//
+// It deliberately does NOT witness the knob's POSITION. The obvious check —
+// "the knob sits out along the stem from its spinner" — is a claim about where
+// the knob is, which the roll does not use, and it cries wolf: at ?alarmr=46
+// the corner is past the case rim, the stem length goes negative, and the knob
+// lands on the far side of its own spinner. That spec already warns five times
+// over that its alarm layout does not close; a sixth warning about an axis
+// which is in fact correct would be noise on top of a real signal.
+for (const [name, knob, spinner] of [['crown', crown, windSpinner], ['alarm crown', alarmCrownKnob, alarmSpinner]]) {
+  knob.updateMatrixWorld(true);
+  spinner.updateMatrixWorld(true);
+  const a = new THREE.Vector3(0, 0, 1).transformDirection(knob.matrixWorld).normalize();
+  const spinAxis = new THREE.Vector3(0, 1, 0).transformDirection(spinner.matrixWorld).normalize();
+  const along = a.dot(spinAxis);
+  if (along < 0.999)
+    console.warn(`§119: the ${name}'s builder axis and the axis its spinner turns about disagree (â·spin = ${along.toFixed(4)}, need > 0.999) — a drag would roll it about the wrong line, or the right one backwards`);
+  if (!knob.userData.crown)
+    console.warn(`§119: the ${name} carries no userData.crown, so the roll has no knurling radius to work at`);
+}
 let crownDragging = false;
 let crownDragMoved = false;
-let crownDragStartX = 0;
+let crownDragStartX = 0, crownDragStartY = 0;
 let crownDragStartRotation = 0;
+let crownDragRoll = null;      // §119's frozen contact frame
 
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (crownDragging) {
-    const dx = e.clientX - crownDragStartX;
-    if (Math.abs(dx) > CROWN_DRAG_THRESHOLD_PX) crownDragMoved = true;
-    crownRotation = crownDragStartRotation + dx * CROWN_DRAG_SENSITIVITY;
+    const dx = e.clientX - crownDragStartX, dy = e.clientY - crownDragStartY;
+    // BOTH axes count toward "this was a drag" now that both can turn it —
+    // measuring only x would let a vertical turn arrive at pointerup still
+    // looking like a click, and pull the crown the viewer had just wound.
+    if (Math.hypot(dx, dy) > CROWN_DRAG_THRESHOLD_PX) crownDragMoved = true;
+    crownRotation = crownDragStartRotation
+      + (dx * crownDragRoll.tx + dy * crownDragRoll.ty) * crownDragRoll.radPerPx;
     return;
   }
   renderer.domElement.style.cursor = crownHitTest(e) ? 'pointer' : '';
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (!crownHitTest(e)) return;
+  const hit = crownHit(e, crownHitMeshes);
+  if (!hit) return;
   if (reconfOn) { reconfBeginDrag(e, 'crown'); return; } // §33: in reconfigure mode the crown is a HANDLE for its own azimuth, not a winding input
   syncCancel(); // ditto: a hand on the crown outranks the script
   crownDragging = true;
   crownDragMoved = false;
   crownDragStartX = e.clientX;
+  crownDragStartY = e.clientY;
+  crownDragRoll = crownRollFrame(crown, hit.point, -1); // windSpinner.rotation.y = −crownRotation
   crownDragStartRotation = crownRotation;
   controls.enabled = false; // don't fight OrbitControls' own drag-to-orbit
   renderer.domElement.setPointerCapture(e.pointerId);
@@ -16092,22 +16243,28 @@ function alarmCrownHitTest(e) {
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
   return crownRaycaster.intersectObjects(alarmCrownHitMeshes, true).length > 0;
 }
-let alarmDragging = false, alarmDragStartX = 0, alarmDragStartRotation = 0, alarmDragMoved = false;
+let alarmDragging = false, alarmDragStartX = 0, alarmDragStartY = 0, alarmDragStartRotation = 0, alarmDragMoved = false;
+let alarmDragRoll = null;
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (alarmDragging) {
-    const dx = e.clientX - alarmDragStartX;
-    if (Math.abs(dx) > CROWN_DRAG_THRESHOLD_PX) alarmDragMoved = true;
-    alarmCrownRotation = alarmDragStartRotation + dx * CROWN_DRAG_SENSITIVITY;
+    const dx = e.clientX - alarmDragStartX, dy = e.clientY - alarmDragStartY;
+    if (Math.hypot(dx, dy) > CROWN_DRAG_THRESHOLD_PX) alarmDragMoved = true;   // §119, as above: any direction turns, so any direction is a drag
+    alarmCrownRotation = alarmDragStartRotation
+      + (dx * alarmDragRoll.tx + dy * alarmDragRoll.ty) * alarmDragRoll.radPerPx;
     return;
   }
   if (!crownDragging && alarmCrownHitTest(e)) renderer.domElement.style.cursor = 'pointer';
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (crownDragging || !alarmCrownHitTest(e)) return; // winding crown gets first refusal
+  if (crownDragging) return;                                   // winding crown gets first refusal
+  const hit = crownHit(e, alarmCrownHitMeshes);
+  if (!hit) return;
   if (reconfOn) { reconfBeginDrag(e, 'alarmcrown'); return; } // §33: in reconfigure mode the alarm crown is a HANDLE for its corner's azimuth
   alarmDragging = true;
   alarmDragMoved = false;
   alarmDragStartX = e.clientX;
+  alarmDragStartY = e.clientY;
+  alarmDragRoll = crownRollFrame(alarmCrownKnob, hit.point, 1); // alarmSpinner.rotation.y = +alarmCrownRotation
   alarmDragStartRotation = alarmCrownRotation;
   controls.enabled = false; // don't fight OrbitControls' drag-to-orbit
   renderer.domElement.setPointerCapture(e.pointerId);
@@ -17829,12 +17986,23 @@ if (restoredAlarmOn) setAlarm(true);
 // second, worse view of the thing already filling the screen.
 const HUD_VIEW = 200;                       // viewBox span (−100…100)
 const HUD_RIM = 58;                         // the plate rim, in viewBox units
+// The trackball's face — DRAWN and GRABBED at one radius, declared once here
+// because §119's wedge targets butt against it and a second copy of 0.72
+// would let the two drift apart into either a gap or an overlap.
+const HUD_FACE_R = HUD_RIM * 0.72;
 const HUD_U = HUD_RIM / plateR;             // model units → viewBox units, for everything below
 const HUD_PULL = CROWN_PULL_DIST * HUD_U;   // a crown's stem slide, to scale
 const HUD_PRESS = ALARM_PUSH_TRAVEL * HUD_U;
 const HUD_CLASSIFY = 5;   // viewBox units of travel before a drag is called a slide or a turn
 const HUD_ACT = 11;       // …and of RADIAL travel that counts as a pull, a push or a press
 const HUD_TURNS_PER_LAP = 2; // dragging a crown's head once around the ring turns it twice
+// §119 — what the hands weigh when nothing is being set. Derived from the
+// ring's own furniture rather than picked: a hand stroke is rgba(255,255,255,
+// 0.85) and the rim it sits inside is 0.26, so 0.26/0.85 ≈ 0.3 puts a resting
+// hand at exactly the presence of the drawing it belongs to. The setting path
+// then takes its hand to 1.0 — a 3.3× step, which is a highlight nobody has
+// to look twice at.
+const HUD_HAND_REST = 0.3;
 
 // Angle and radius from the PART, at build (the movement is unspun here, so
 // what comes back is movement-local — which is the frame the HUD's own
@@ -17851,25 +18019,97 @@ const HUD_CTLS = [
   { id: 'pusher', kind: 'pusher', ...hudPlace(alarmPusherGroup.getObjectByName('alarmPusherCap')) },
 ];
 // ERGONOMIC SPREAD — the one place this map is deliberately not to scale.
-// The pusher sits 16° from the winding crown on the real movement, which is
-// fine for a fingertip on a 32 mm case and impossible at 150 px: their heads
-// are ~7° wide each at this radius and their hint marks reach ±18°, so drawn
-// true they overlap and every gesture becomes a coin toss between hacking the
-// watch and firing the alarm. The pair is pushed apart, symmetrically about
-// its own midpoint, to the angle a thumb can separate. Only this pair moves,
-// only in angle, and the ORDER around the ring is preserved — the map still
-// answers "which side, and which of the two is nearer 12" correctly, which is
-// what a control pad is read for.
+// Two controls on a 32 mm case can sit 16° apart and still take a fingertip
+// each; at 150 px they cannot. Their heads are ~7° wide at this radius and
+// their hint marks reach ±18°, so drawn true a close pair overlaps and every
+// gesture becomes a coin toss between hacking the watch and firing the alarm.
+// Any pair closer than HUD_MIN_SEP is pushed apart, symmetrically about its
+// own midpoint, to the angle a thumb can separate. Only angle moves, and the
+// ORDER around the ring is preserved — the map still answers "which side, and
+// which of the two is nearer 12" correctly, which is what a control pad is
+// read for.
+//
+// §119 — IT IS A RULE OVER NEIGHBOURS NOW, NOT A FIX FOR ONE NAMED PAIR.
+// §57 wrote this as `crown` ⇄ `pusher` because that was the pair that
+// collided when it was written. §112 then rotated the alarm module, and the
+// pair that collides today is `alarm` ⇄ `pusher` — measured 4.47° apart, a
+// centre gap of 6.51 units against two 18-unit hit circles, so the pusher
+// (drawn last, and therefore on top) took every tap meant for the alarm
+// crown. Naming the pair was the defect: the spread ran, reported nothing,
+// and separated two controls that were already 140° apart. Sorting by
+// azimuth and clearing every adjacent gap cannot be wrong-footed by a
+// re-layout, and the assert below says so out loud if it ever is.
 const HUD_MIN_SEP = 46 * DEG2RAD;
 {
-  const a = HUD_CTLS.find((c) => c.id === 'crown'), b = HUD_CTLS.find((c) => c.id === 'pusher');
-  let d = b.az - a.az;
-  while (d > Math.PI) d -= 2 * Math.PI;
-  while (d < -Math.PI) d += 2 * Math.PI;
-  const grow = (HUD_MIN_SEP - Math.abs(d)) / 2;
-  if (grow > 0) { const s = Math.sign(d) || 1; a.az -= s * grow; b.az += s * grow; }
+  const wrapPi = (d) => { while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+  // Relaxation, not a single pass: pushing one pair apart can close the gap
+  // to the NEXT control round the ring. n·HUD_MIN_SEP is 138° of the circle's
+  // 360°, so a solution always exists and the loop settles in a pass or two;
+  // the cap is a backstop against a future roster that does not fit, which
+  // the assert below would then report rather than hang on.
+  for (let pass = 0; pass < 8; pass++) {
+    const order = [...HUD_CTLS].sort((a, b) => a.az - b.az);
+    let moved = false;
+    for (let i = 0; i < order.length; i++) {
+      const a = order[i], b = order[(i + 1) % order.length];
+      const d = wrapPi(b.az - a.az);
+      const grow = (HUD_MIN_SEP - Math.abs(d)) / 2;
+      if (grow > 1e-6) { const s = Math.sign(d) || 1; a.az -= s * grow; b.az += s * grow; moved = true; }
+    }
+    if (!moved) break;
+  }
+  // Standing rule 6. The failure this catches has happened once already and
+  // was invisible for four sections: a layout change moves a control, the
+  // spread's assumption stops holding, and the pad still LOOKS right while
+  // one control cannot be touched at all.
+  const order = [...HUD_CTLS].sort((a, b) => a.az - b.az);
+  for (let i = 0; i < order.length; i++) {
+    const a = order[i], b = order[(i + 1) % order.length];
+    const d = Math.abs(wrapPi(b.az - a.az));
+    if (d < HUD_MIN_SEP - 1e-6)
+      console.warn(`§119: the pad's ${a.id} and ${b.id} markers end ${(d / DEG2RAD).toFixed(1)}° apart, under the ${(HUD_MIN_SEP / DEG2RAD).toFixed(0)}° a thumb can separate — their targets overlap and one of them cannot be tapped`);
+  }
 }
 const HUD_BY_ID = new Map(HUD_CTLS.map((c) => [c.id, c]));
+
+// §119 — THE TOUCH TARGET IS A WEDGE OF THE RING BAND, not a disc on the head.
+//
+// §57 gave each control an 18-unit circle centred on its head, and 18 was the
+// most a centred circle could be: the trackball's own hit circle starts at
+// HUD_RIM·0.72 = 41.8 and the innermost head sits at 60, so a bigger disc
+// would have started stealing taps from the face. That ceiling is what kept
+// the targets at ~27 px across on a 150 px pad — well under the 44 px floor
+// §110 derived as the smallest reliable touch target.
+//
+// A wedge escapes the ceiling instead of arguing with it. Each control owns
+// the slice of ring band on its own azimuth, and all three dimensions derive:
+//
+//   · inner radius = HUD_FACE_R, the trackball's own edge, so the face keeps
+//     its WHOLE circle — the target grows outward, into the band where
+//     nothing else lives, rather than inward into another control;
+//   · outer radius = the viewBox rim, the last unit that can be touched;
+//   · half-angle  = HUD_MIN_SEP/2, so neighbouring wedges TILE. Two wedges
+//     can never overlap however the layout moves, which is the same
+//     guarantee the assert above makes and is why the two constants are one
+//     number apart.
+//
+// Measured on the shipped pad at 1440×900, controls at rest
+// (tools/probe-119-pad-targets.mjs): 43.7 px along the band against 35.2 px
+// (crown), 36.7 (pusher) and 39.1 (alarm crown) across it at each head — up
+// from a 27 px disc, and the alarm crown's 39.1 is the widest of the three
+// because it sits furthest out, where its own wedge is broadest.
+// The across-band figure is SHORT of the 44 px floor and is reported rather
+// than rounded away — closing it needs ~54° between neighbours, and a further
+// 8° of lie about where the alarm crown sits is not worth 5 px of thumb.
+const HUD_HIT_R1 = HUD_VIEW / 2;
+const HUD_HIT_HALF = HUD_MIN_SEP / 2;
+function hudWedgePath() {
+  const [c, s] = [Math.cos(HUD_HIT_HALF), Math.sin(HUD_HIT_HALF)];
+  const f = (n) => n.toFixed(2);
+  return `M ${f(HUD_FACE_R * c)} ${f(-HUD_FACE_R * s)} A ${f(HUD_FACE_R)} ${f(HUD_FACE_R)} 0 0 1 ${f(HUD_FACE_R * c)} ${f(HUD_FACE_R * s)}`
+    + ` L ${f(HUD_HIT_R1 * c)} ${f(HUD_HIT_R1 * s)}`
+    + ` A ${f(HUD_HIT_R1)} ${f(HUD_HIT_R1)} 0 0 0 ${f(HUD_HIT_R1 * c)} ${f(-HUD_HIT_R1 * s)} Z`;
+}
 
 // Each control is authored along +x — head at (r, 0), outward = +x — and then
 // swung to its own azimuth, so "radial" and "tangential" mean the same thing
@@ -17912,7 +18152,7 @@ function hudCtlMarkup(c) {
     ${c.kind === 'crown' ? `<path class="hud-hint hud-out" d="${hudChev(c.r + 14, 1)}"/>` : ''}
     <path class="hud-hint hud-in" d="${hudChev(c.r - 14, -1)}"/>
     ${turn}
-    <circle class="hud-hit" data-ctl="${c.id}" cx="${c.r.toFixed(1)}" cy="0" r="18"/>
+    <path class="hud-hit" data-ctl="${c.id}" d="${hudWedgePath()}"/>
   </g>`;
 }
 
@@ -17924,12 +18164,13 @@ hudEl.innerHTML = `<!-- §90 — the two times the corner has to answer for, in 
      answer should not sit under the hand reaching for a crown. Reading
      order now runs answer → instrument → viewpoint (times, ring, camera
      strip), which is also top-to-bottom on the screen.
-     §63's hands appear only while a setting path is engaged,
-     which is one step too late for the question that sends a hand to the
-     alarm crown in the first place: what is it set to now, and how far is
-     that from the time on the dial? Figures, not a second pair of hands,
-     because that comparison is arithmetic — "≈7:15 against 10:24" is a
-     glance; two more needles on a 41 u ring is a squint. Labels go through
+     The hands cannot answer the question that sends a hand to the alarm
+     crown in the first place: what is it set to now, and how far is that
+     from the time on the dial? Figures, because that comparison is
+     arithmetic — "≈7:15 against 10:24" is a glance; two angles on a 41 u
+     ring is a squint. That is why §119 could put the hands up permanently
+     without making this row redundant: the ring says WHERE, the figures say
+     HOW FAR APART, and neither is the other said twice. Labels go through
      t() at the display site (§73) and reuse the panel's own two keys; the
      values are written per frame in hudUpdate. -->
 <div class="hud-readout">
@@ -17939,7 +18180,7 @@ hudEl.innerHTML = `<!-- §90 — the two times the corner has to answer for, in 
 <svg viewBox="${-HUD_VIEW / 2} ${-HUD_VIEW / 2} ${HUD_VIEW} ${HUD_VIEW}">
   <g>
     <circle class="hud-rim" cx="0" cy="0" r="${HUD_RIM}"/>
-    <circle class="hud-dial" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
+    <circle class="hud-dial" cx="0" cy="0" r="${HUD_FACE_R}"/>
     <!-- The trackball, said as a trackball: a SPHERE carrying a cross of two
          double-ended arrows ON ITS SURFACE. Both strokes are drawn as arcs
          bowing off the centre line, which is what a great circle does when
@@ -17969,7 +18210,7 @@ hudEl.innerHTML = `<!-- §90 — the two times the corner has to answer for, in 
       </g>
     </g>
     ${HUD_CTLS.map(hudCtlMarkup).join('')}
-    <circle class="hud-hit" data-ctl="spin" cx="0" cy="0" r="${HUD_RIM * 0.72}"/>
+    <circle class="hud-hit" data-ctl="spin" cx="0" cy="0" r="${HUD_FACE_R}"/>
   </g>
 </svg>
 <!-- §110 item 2 — THE ZOOM ROCKER, and the face's gesture mode beside it.
@@ -18147,7 +18388,7 @@ function hudUpdate() {
   hudEl.classList.toggle('crown-out', crownOut);
   hudEl.classList.toggle('alarm-crown-out', alarmCrownOut);
   hudEl.classList.toggle('alarm-on', alarmOn);
-  // §63 — the setting preview. Angles are READOUTS of what the dial shows,
+  // §63 — the preview hands. Angles are READOUTS of what the dial shows,
   // through the two accessors the project already trusts for exactly that:
   // displayedSeconds() is defined as "what the HANDS read" (it carries the
   // same handSetOffset tick gives the hands, jumper snap included), and
@@ -18156,11 +18397,24 @@ function hudUpdate() {
   // Drawn as the front-view clock the HUD's dial-side plan already is:
   // 12 up, clockwise positive (SVG's y-down makes rotate() clockwise on
   // screen), so the Y-flip trap never enters — no mesh rotation is mapped.
-  const pvT = crownPullT, pvA = alarmCrownPullT;
+  //
+  // §119 — THE HANDS ARE ALWAYS UP; SETTING HIGHLIGHTS THEM. §63 faded them
+  // in only while a setting path was engaged, which kept §57's controls-only
+  // plan but made the corner two different things: a face while you set it, a
+  // bare ring the rest of the time. Now the ring always carries the dial it
+  // is a plan of, and the setting path RAISES the hand it moves — the same
+  // eased pulls, the same mapping (crownPullT → the time pair,
+  // alarmCrownPullT → the alarm hand), turned from appear/disappear into
+  // dim/highlight. §90's figures stay for what a hand cannot do: read "≈7:15
+  // against 10:24" as arithmetic rather than as an angle to squint at.
+  const pvT = HUD_HAND_REST + (1 - HUD_HAND_REST) * crownPullT;
+  const pvA = HUD_HAND_REST + (1 - HUD_HAND_REST) * alarmCrownPullT;
   hudPvTime.setAttribute('opacity', pvT.toFixed(3));
   hudPvAlarm.setAttribute('opacity', pvA.toFixed(3));
   hudPvTicks.setAttribute('opacity', Math.max(pvT, pvA).toFixed(3));
-  if (pvT > 0 || pvA > 0) {
+  // UNGATED, because they are always visible: a hand shown at a stale angle
+  // is worse than no hand. §63 could skip this while both opacities were 0.
+  {
     const wrap = (x, m) => ((x % m) + m) % m;
     const s = displayedSeconds();
     hudPvMin.setAttribute('transform', `rotate(${(wrap(s, 3600) / 3600 * 360).toFixed(2)})`);
@@ -18239,11 +18493,28 @@ document.getElementById('chrome-t-hud').addEventListener('click', () => setHud(!
 }
 
 // --- the gestures ---------------------------------------------------------
-// A drag is classified once, on the first HUD_CLASSIFY units of travel, into
-// the two things a crown does: SLIDE (radially — pull out, push in) or TURN
-// (tangentially — wind or set). Classifying once and holding it is what makes
-// a turn survive the wobble of a real finger; re-deciding per frame had a
-// long turn flip into a pull halfway through.
+// A drag is classified once, on the first HUD_CLASSIFY units of travel, and
+// held: re-deciding per frame had a long turn flip into a pull halfway
+// through. What it is classified INTO changed in §119.
+//
+// §119 — A CROWN SPLITS BY DURATION, NOT BY DIRECTION: tap to pull or push,
+// drag to turn. §57 gave both to the drag (radial = slide, tangential = turn)
+// and left the tap to the pusher alone, reasoning that "a stray tap that
+// hacked the watch would be a state change nobody asked for". Two things were
+// wrong with that. The radial swipe has to travel HUD_ACT — 11 units, ~8 px
+// on a 150 px pad — in the one direction the finger is least free, and it is
+// genuinely hard to land; and a tap is not stray if it is MEASURED at
+// release, which is the mechanism the pusher had all along and the crowns
+// were never given. A gesture that never passed HUD_CLASSIFY moved no crown
+// and can only have been a poke.
+//
+// So a drag on a crown is now always a TURN, and the amount is the component
+// ACROSS the knurling. That is the same law the 3D crown got in §119 — the
+// knurling travels with the finger — said in the pad's own frame: the knurl
+// lines run along the stem, so a drag along the stem crosses none of them and
+// turns nothing, and no direction is privileged for a control whose azimuth
+// the movement chooses. The pusher keeps both of its gestures: it has no
+// turn, so a radial push cannot be mistaken for one.
 let hudGrab = null;
 function hudLocal(e) {
   const r = hudSvg.getBoundingClientRect();
@@ -18287,23 +18558,39 @@ hudSvg.addEventListener('pointermove', (e) => {
   const dx = p.x - hudGrab.x0, dy = p.y - hudGrab.y0;
   const radial = dx * hudGrab.ux + dy * hudGrab.uy;      // + = outward, away from the movement
   const tang = -dx * hudGrab.uy + dy * hudGrab.ux;       // + = clockwise on screen
-  if (!hudGrab.mode && Math.hypot(dx, dy) > HUD_CLASSIFY)
-    hudGrab.mode = Math.abs(radial) > Math.abs(tang) ? 'slide' : 'turn';
+  if (!hudGrab.mode && Math.hypot(dx, dy) > HUD_CLASSIFY) {
+    // The pusher is the only control with two gestures left to tell apart.
+    hudGrab.mode = hudGrab.id !== 'pusher' ? 'turn'
+      : (Math.abs(radial) > Math.abs(tang) ? 'slide' : 'turn');
+    // RE-BASE at the crossing, so the deadband is a deadband and not a jump:
+    // measuring the turn from the pointerdown point would hand the crown the
+    // whole HUD_CLASSIFY of travel the instant the drag is recognised.
+    hudGrab.tang0 = tang;
+  }
   if (hudGrab.mode === 'slide') {
     if (!hudGrab.fired && Math.abs(radial) > HUD_ACT) { hudSlide(hudGrab.id, radial > 0); hudGrab.fired = true; }
-  } else if (hudGrab.mode === 'turn') {
-    const turned = hudGrab.rot0 + (tang / hudGrab.c.r) * HUD_TURNS_PER_LAP;
+  } else if (hudGrab.mode === 'turn' && hudGrab.id !== 'pusher') {
+    const turned = hudGrab.rot0 + ((tang - hudGrab.tang0) / hudGrab.c.r) * HUD_TURNS_PER_LAP;
     if (hudGrab.id === 'crown') crownRotation = turned; else alarmCrownRotation = turned;
   }
 });
 for (const ev of ['pointerup', 'pointercancel']) {
   hudSvg.addEventListener(ev, (e) => {
     if (!hudGrab) return;
-    // A tap on the PUSHER presses it — a button that only answers to a swipe
-    // would be a worse control than the real one, which answers to a poke.
-    // The crowns stay swipe-only: a stray tap that hacked the watch would be
-    // a state change nobody asked for.
-    if (hudGrab.id === 'pusher' && !hudGrab.mode && !hudGrab.fired) hudSlide('pusher', false);
+    // RELEASE IS WHERE TAP AND DRAG ARE TOLD APART, and it is the only place
+    // they can be: "this gesture never became a drag" is not knowable until
+    // the finger lifts. `!mode` says it never passed HUD_CLASSIFY, `!fired`
+    // that it never actuated on the way — together, a poke.
+    //
+    // A tap on the PUSHER presses it (§57): a button that only answered to a
+    // swipe would be a worse control than the real one, which answers to a
+    // poke. §119 gives the crowns the same reading, pulling one that is in
+    // and pushing home one that is out — the same toggle the panel button and
+    // the 3D knob call, so this is a fourth caller, not a fourth mechanism.
+    if (!hudGrab.mode && !hudGrab.fired && hudGrab.id !== 'spin') {
+      if (hudGrab.id === 'pusher') hudSlide('pusher', false);
+      else hudSlide(hudGrab.id, !(hudGrab.id === 'crown' ? crownOut : alarmCrownOut));
+    }
     alarmPusherHeld = false;
     hudGrab = null;
     if (hudSvg.hasPointerCapture(e.pointerId)) hudSvg.releasePointerCapture(e.pointerId);
