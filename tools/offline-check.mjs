@@ -14,7 +14,7 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (27): worker controls on first load · one cache, named for
+// What it asserts (28): worker controls on first load · one cache, named for
 // the scope AND the version · version.json and /__state NOT cached · precache
 // complete · OFFLINE: index boots, deep link boots, explain.html renders,
 // primer.html renders · the localized primer boots from cache in EACH of the
@@ -23,7 +23,9 @@
 // mis-listed primer seed: the stamper tolerates an absent primer because
 // archived pre-§95 trees legitimately lack one, so only HERE, where the tree
 // is built from the source checkout, can absence-by-typo be told apart) ·
-// deploy → toast → Reload lands on the NEW version and drops the old cache ·
+// deploy → toast → clicking Reload shows progress at once (buttons disabled,
+// message staged — the dance is allowed to be slow, not to be silent) →
+// Reload lands on the NEW version and drops the old cache ·
 // TWO ENVIRONMENTS UNDER ONE ORIGIN keep one cache each and both still boot
 // offline (§88) · the source tree registers NO worker · a hand-registered stub
 // dismantles itself having cached nothing · console silent (rule 6) in all
@@ -123,7 +125,7 @@ const childPids = () => {
       .filter(Boolean).map(Number);
   } catch { return []; }
 };
-const TOTAL_ROWS = 27;   // the header's list; a short run must say so rather than report a tidy N/N
+const TOTAL_ROWS = 28;   // the header's list; a short run must say so rather than report a tidy N/N
 const summarize = (code) => {
   const failed = results.filter((r) => !r.ok), skipped = results.filter((r) => r.skipped);
   if (code === 2) console.log(`INCOMPLETE: ${results.length} of ${TOTAL_ROWS} rows were measured before the run was ended`);
@@ -368,10 +370,32 @@ try {
   });
   mark('clicking Reload on the toast');
   await page.click('#clock-update button:not(.dismiss)', { timeout: 30000 });
+  // The dance's first act is now SYNCHRONOUS feedback — buttons disabled,
+  // message staged — because a dance that is allowed to be slow (the
+  // no-timeout rule) must not be silent: a mid-install click with a mute
+  // toast was reported as a dead button. Read the toast right after the
+  // click; if the reload crosses before the probe can ask, the destroyed
+  // context IS the dance working, not a missed observation.
+  try {
+    const fb = await page.evaluate(() => ({
+      disabled: !!document.querySelector('#clock-update button:not(.dismiss)')?.disabled,
+      msg: document.querySelector('#clock-update span')?.textContent || '',
+    }));
+    check('update: clicking Reload shows progress (buttons disabled, message staged)',
+      fb.disabled && fb.msg !== 'A new version is available', JSON.stringify(fb));
+  } catch {
+    check('update: clicking Reload shows progress (buttons disabled, message staged)', true,
+      'the reload crossed before the probe read the toast');
+  }
   mark('waiting for the new version meta after reload');
   let crossed = false;
   try {
-    await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VB, { timeout: 30000 });
+    // 60 s, up from 30: CI run 31753984029 (attempt 1) watched a healthy
+    // ~2.6 s promotion stall past 30 s under runner load and pass untouched
+    // on re-run — the bound was the flaky assumption, not the dance. The
+    // dance itself has no timeout by design; this is only how long the
+    // HARNESS is willing to watch it.
+    await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VB, { timeout: 60000 });
     mark('waiting for __clock on the new release');
     await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
     crossed = true;
