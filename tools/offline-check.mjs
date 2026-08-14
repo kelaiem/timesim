@@ -14,7 +14,7 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (28): worker controls on first load · one cache, named for
+// What it asserts (30): worker controls on first load · one cache, named for
 // the scope AND the version · version.json and /__state NOT cached · precache
 // complete · OFFLINE: index boots, deep link boots, explain.html renders,
 // primer.html renders · the localized primer boots from cache in EACH of the
@@ -25,7 +25,10 @@
 // is built from the source checkout, can absence-by-typo be told apart) ·
 // deploy → toast → clicking Reload shows progress at once (buttons disabled,
 // message staged — the dance is allowed to be slow, not to be silent) →
-// Reload lands on the NEW version and drops the old cache ·
+// Reload lands on the NEW version and drops the old cache · a deploy whose
+// worker IGNORES skip-waiting (the stall probe, release C) is escaped at
+// 30 s — unregister, uncontrolled reload, fresh registration controlling
+// with the old cache dropped ·
 // TWO ENVIRONMENTS UNDER ONE ORIGIN keep one cache each and both still boot
 // offline (§88) · the source tree registers NO worker · a hand-registered stub
 // dismantles itself having cached nothing · console silent (rule 6) in all
@@ -42,14 +45,14 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { cpSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, utimesSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, utimesSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const VA = '0.0.0-offline-check-a', VB = '0.0.0-offline-check-b';
+const VA = '0.0.0-offline-check-a', VB = '0.0.0-offline-check-b', VC = '0.0.0-offline-check-c';
 
 // §88 — the cache name is the worker's SCOPE PATH and its version, so a name
 // cannot be written here without saying where the release is served from. That
@@ -90,10 +93,29 @@ const build = (name, version) => {
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
 };
-console.log('building two stamped trees…');
+console.log('building three stamped trees…');
 const relA = build('a', VA);
 const relB = build('b', VB);
+// Release C is the STALL PROBE: its worker ignores skip-waiting, which is —
+// from the page's side — indistinguishable from the failure both a CI run
+// and a local run have now produced for real (an installed worker whose
+// promotion the browser blocks for 60 s+ across repeated posts). Deploying
+// C and clicking Reload therefore exercises swReload's 30 s escape
+// deterministically: verify online, unregister the doomed registration,
+// reload uncontrolled, register afresh. The patch is one line and it is
+// asserted to be exactly one line, so a drifted sw.js fails loudly here
+// rather than quietly testing nothing.
+const relC = build('c', VC);
+{
+  const swPath = join(relC, 'sw.js');
+  const sw = readFileSync(swPath, 'utf8');
+  const handler = "self.addEventListener('message', (e) => { if (e.data === 'skip-waiting') self.skipWaiting(); });";
+  if (sw.split(handler).length !== 2) throw new Error('stall probe: sw.js message handler not found verbatim — re-align the probe');
+  writeFileSync(swPath, sw.replace(handler,
+    "self.addEventListener('message', () => { /* offline-check stall probe: skip-waiting deliberately ignored */ });"));
+}
 touchTree(relA, new Date(Date.now() - 10_000)); // see header: defeat 1 s Last-Modified granularity
+touchTree(relB, new Date(Date.now() - 5_000));  // same trap, B→C edition: C must look newer than B
 const site = join(work, 'site');
 symlinkSync(relA, site);
 
@@ -125,7 +147,7 @@ const childPids = () => {
       .filter(Boolean).map(Number);
   } catch { return []; }
 };
-const TOTAL_ROWS = 28;   // the header's list; a short run must say so rather than report a tidy N/N
+const TOTAL_ROWS = 30;   // the header's list; a short run must say so rather than report a tidy N/N
 const summarize = (code) => {
   const failed = results.filter((r) => !r.ok), skipped = results.filter((r) => r.skipped);
   if (code === 2) console.log(`INCOMPLETE: ${results.length} of ${TOTAL_ROWS} rows were measured before the run was ended`);
@@ -257,7 +279,7 @@ try {
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 });
   check('release: worker active and controlling on first load', true);
 
-  const cacheA = cacheName('/', VA), cacheB = cacheName('/', VB); // served at the server root
+  const cacheA = cacheName('/', VA), cacheB = cacheName('/', VB), cacheC = cacheName('/', VC); // served at the server root
   const keys = await page.evaluate(() => caches.keys());
   check('release: one cache, named for the scope and the version', keys.length === 1 && keys[0] === cacheA, keys.join());
   const vjson = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('version.json')), cacheA);
@@ -413,6 +435,47 @@ try {
     }
   } else {
     skip('update: old release cache dropped on activation', 'the reload never crossed, so there is no activation to measure');
+  }
+
+  // ---- release C: the stall probe — a promotion that will NEVER come ----
+  // C's worker ignores skip-waiting (patched at build, above), so this
+  // deploy reproduces on demand what CI run 31753984029 and a local run
+  // produced for real: an installed worker the page cannot promote. The
+  // dance must first show it is trying, then — at the 30 s mark, online
+  // verified — take the escape: unregister, reload uncontrolled from the
+  // network, land on C, and let C's fresh registration restore offline
+  // protection (which also drops B's cache, the same eviction row as
+  // above, one registration later).
+  if (crossed) {
+    mark('deploying release C (stall probe)');
+    unlinkSync(site); symlinkSync(relC, site);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    mark('waiting for the stall-probe toast');
+    await page.waitForSelector('#clock-update.show', { timeout: 30000 });
+    mark('clicking Reload against a promotion that cannot happen');
+    await page.click('#clock-update button:not(.dismiss)', { timeout: 30000 });
+    mark('waiting for the 30 s escape to cross to release C');
+    try {
+      // 60 s: the escape arms at 30 s (three ignored 10 s nudges — see
+      // swReload), then reload + fresh boot; double the arm time so only
+      // a missing escape fails this row, not a slow boot after it.
+      await page.waitForFunction((v) => document.querySelector('meta[name="app-version"]')?.content === v, VC, { timeout: 60000 });
+      await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+      check('stalled promotion: the escape crosses to the new release', true);
+    } catch (e) {
+      check('stalled promotion: the escape crosses to the new release', false, await dumpState(page, e));
+    }
+    mark('waiting for the fresh registration to own the page and drop the old cache');
+    try {
+      await page.waitForFunction(async (k) =>
+        (await caches.keys()).join() === k && !!navigator.serviceWorker.controller, cacheC, { timeout: 30000 });
+      check('stalled promotion: fresh registration controls, old cache dropped', true);
+    } catch (e) {
+      check('stalled promotion: fresh registration controls, old cache dropped', false, await dumpState(page, e));
+    }
+  } else {
+    skip('stalled promotion: the escape crosses to the new release', 'the B crossing never happened, so the probe has no page to run on');
+    skip('stalled promotion: fresh registration controls, old cache dropped', 'same');
   }
   mark('release tree done');
 

@@ -15013,18 +15013,46 @@ async function swReload() {
       //   · the worker went REDUNDANT with nothing replacing it: no
       //     activation is coming from anywhere, so a plain reload is the
       //     honest degradation and re-shows the toast.
-      // Two stalls it actively repairs instead of conceding to:
+      // Three stalls it actively repairs instead of conceding to:
       //   · a redundant worker WITH a replacement (the focus-poll update()
       //     and this one can overlap; the loser's install is discarded) —
       //     follow the replacement and promote it;
       //   · a promotion stalled past 10 s (the skip-waiting message can be
       //     lost to a worker being stopped as it is posted) — re-post it,
-      //     which is idempotent, and a lost message becomes a late success.
+      //     which is idempotent, and a lost message becomes a late success;
+      //   · a promotion stalled past 30 s — the ESCAPE below.
       // Waiting is otherwise CORRECT: the worker is installed or
       // activating, the page is intact until the moment of activation, and
       // the armed listener fires the reload at exactly that moment
       // (measured: at the 'activating' transition, not at clients.claim()).
+      //
+      // THE ESCAPE, and why it does not break the no-timeout rule. Both an
+      // offline-check run and a CI run have now watched an installed worker
+      // ignore skip-waiting for 60 s+ across repeated posts — with a
+      // message handler that is one line and an install that had already
+      // settled, so the block is browser-internal (activation waits on the
+      // OLD worker's in-flight event accounting; a leaked count blocks it
+      // until the browser's own multi-minute rescue). Healthy promotion
+      // measures 0.35 s locally and 2.6 s in CI, so 30 s — three ignored
+      // 10 s nudges, ~10× the slowest measured promotion — separates slow
+      // from stuck with margin on both sides. The rule stands: a plain
+      // reload under a live old worker is still never safe at any timeout,
+      // because the waiting worker's LATER activation evicts the cache
+      // behind whatever the reload landed on. The escape therefore removes
+      // that future first: verify the network is actually there (fetch
+      // version.json no-store — the one URL the worker never answers), then
+      // UNREGISTER the whole registration and reload. The doomed
+      // registration takes its waiting worker's pending activation with it,
+      // the reloaded document loads uncontrolled from the network (the
+      // devtools-unregister workflow, not a novel path), and the fresh boot
+      // registers anew — install, precache, activate, claim — restoring
+      // offline protection within seconds. Offline, the fetch fails and the
+      // escape refuses to run: staying under the old worker, whose cache is
+      // intact, is the only state that keeps an offline viewer working.
       let lastNudge = Date.now();
+      const armed = Date.now();
+      let escapeAt = armed + 30000;
+      let escaping = false;
       const poll = setInterval(() => {
         if (done) return clearInterval(poll);
         if (navigator.serviceWorker.controller !== before) { clearInterval(poll); go(); return; }
@@ -15039,6 +15067,22 @@ async function swReload() {
         if (Date.now() - lastNudge > 10000) {
           target.postMessage('skip-waiting');
           lastNudge = Date.now();
+        }
+        if (Date.now() > escapeAt && !escaping) {
+          escaping = true;
+          fetchVersion().then(async (v) => {
+            if (done) return;
+            if (v) {
+              try { await reg.unregister(); } catch { /* already gone: go() is still right */ }
+              clearInterval(poll);
+              go();
+            } else {
+              // offline (or the server blinked): not the stall this path is
+              // for — keep nudging, ask again in another cycle
+              escapeAt = Date.now() + 10000;
+              escaping = false;
+            }
+          });
         }
       }, 500);
       return;
