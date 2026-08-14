@@ -49,7 +49,9 @@ governor: the alarm's derived k finally produces the cadence, with an
 80-click set-up so the ring stops instead of crawling), 44 (§112 — the
 tier-split's re-derived sleeve span IS the turned step the item
 prescribed; the striking rotor measures one body and the waiver is
-gone) — plus the
+gone), 45 (§111/§113/§120 — the governor anchor's review: the escapement
+re-derived with real drop, both bearings bored and then LOCATED, and the
+stone refused on the duty integral and on the pinion's root circle) — plus the
 *Recently closed* bucket at the end (former items 2 and 8 live there).
 
 **Verify any fix with the inspector** (`src/inspect.js`), not by eye:
@@ -4940,19 +4942,20 @@ because the sleeve moved for the band swap's stacking arithmetic, not
 for this item — the closure was noticed when the waiver's group label
 stopped matching and no violation surfaced behind it.
 
-## 45. The governor anchor's structural review — the escapement now has drop; what remains open is the stone question
+## 45. CLOSED (§120) — the escapement has drop, the bearings are located, and the stone question is answered twice over
 
 Opened by §107's fracture investigation as "the blades are too thin", widened
 by the owner (2026-08-12), re-founded by §111 (which measured the real defect
-underneath: the engagement itself), and largely CLOSED by §113, which
-re-derived the escapement as a flat-faced recoil anchor with real drop. Where
-each strand stands:
+underneath: the engagement itself), largely closed by §113, which re-derived
+the escapement as a flat-faced recoil anchor with real drop, and CLOSED WHOLE
+by §120, which located both bearings axially and answered the stone. Where
+each strand ended:
 
 | strand | state |
 |---|---|
 | **One** — saw teeth and pallet blades occupy the same space | **CLOSED by §113** — the escapement has drop; the `penetration` waiver is retired. Residue below. |
 | **Two** — the pallet FACES: should they be ruby? | Answered: no. Leave them steel; the number is below. |
-| **Three** — the PIVOTS | Bore CLOSED by §111. **Stones and a cock remain the item's open business.** |
+| **Three** — the PIVOTS | Bore CLOSED by §111. **Endshake, retention and the oil sink CLOSED by §120; the stone answered NO, on two independent measurements.** |
 | The blade SECTION (§107's original finding) | CLOSED by §111; §113's flat face then made the section structural (= the offset) so the trap cannot recur. |
 
 ### Finding one — CLOSED by §113: the escapement has drop
@@ -5090,8 +5093,10 @@ widest thing on that axis inside the saw's band and now stands 0.434 off the
 tip circle, asserted at boot; the `INTRA_UNIT_CONTACTS` rows say "a bore" where
 they used to say "coincident solids are the bearing".
 
-**What is still open is the STONE**, and everything below about the cock and
-the depth envelope still applies to it unchanged.
+**What was still open was the STONE** — answered NO by §120, on two
+independent measurements, and the working-out is the subsection after next.
+The cock and depth-envelope paragraphs below are what that answer had to get
+past, so they are kept as the argument rather than deleted as spent.
 
 **The movement already jewels bearings, and it already has the vocabulary.**
 `addUpperPivot(arbor, { staffR, jewelR, boreR })` (`src/main.js:1456`) grows a
@@ -5133,7 +5138,97 @@ plate's underside at 7.71, so there is **3.66** of air over it, and §115's
 window means a cock in that band is also the thing a viewer would see through
 the plate. Measure it rather than dropping the strand quietly.
 
+### CLOSED (§120) — the stone is refused twice, and the bearing gets what it was actually missing
+
+Measured, not preferred. The strand argued from RATE — "the saw wheel turns
+4.76 rev/s against the escape wheel's 0.167, roughly 28× faster, and the
+anchor reverses at 190 Hz" — and concluded the governor is the most jewellable
+thing in the watch. **Wear is not a rate, it is a rate times a time**, and this
+governor's time is 11.8 seconds a day (28 strikes × the 0.42 s designed gap).
+Integrate and the conclusion inverts:
+
+| bearing | its own work | the jewelled arbor it is compared to | ratio |
+|---|---|---|---|
+| governor saw arbor | **56 rev per ring**, once a day | escape wheel, **14,400 rev/day** | **×257 less** |
+| governor anchor pivot | **2,240 reversals per ring** | balance staff, **432,000 reversals/day** | **×193 less** |
+
+That ×193 is not a coincidence and it is worth naming: it is the SAME number
+finding two got for the pallet FACES, because the count of tooth contacts and
+the count of anchor reversals are the same count. **The pivot question and the
+face question had one answer all along**, and this item measured it twice
+without noticing until the two arithmetics were written down side by side.
+Real striking-train governors are plain steel at both places for exactly this
+reason, and the movement's own convention — `jewelR: 0` on the barrel arbor
+and the set-up work — is that judgement already made about a different axis.
+
+**And on the governor arbor a stone is not merely unwarranted, it does not
+fit.** That arbor turns inside its own 8-leaf pinion, and a hole jewel's own
+wall is what decides the question. Measured on the built pinion, the ROOT
+CIRCLE stands at **0.671** against an arbor of 0.585 — **0.086 of pinion body
+outside the bearing**. Real hole jewels carry 0.25–0.45 mm of ruby around the
+hole; the thinnest of those is 0.660 u, which puts the arbor at **1.245**,
+past the pinion's root circle by 0.574. There is no pinion left. Jewelling
+this axis is not a bearing change, it is a re-cut of the ×8 mesh, its centre
+distance and the tier that carries it — for a bearing that turns 56 times a
+day. (The ANCHOR arbor could take one geometrically, at the price of +0.66 on
+the hub and so on `ALARM_GOV_ANCHOR_D` and the whole §113 closure behind it —
+but jewelling the slower of the two axes while the faster one runs bare
+inverts the very convention the strand argued from, so the geometry settles
+both.)
+
+**What the bearing was actually missing was axial.** §111 cut the bore and set
+the side-shake and left the other direction undefined: each arbor was a tube
+standing on a plain post with nothing above it and nothing under it, so
+dial-down the wheel simply leaves the movement, and "where in z the arbor
+sits" was the builder's choice rather than the bearing's. §120 turns each post
+instead of cutting it from bar:
+
+- **A foot collar and a formed head, both at `ALARM_GOV_ARBOR_R`** — one
+  derivation, used twice: a collar has to overhang the bore by metal that can
+  bear, which is the arbor's own wall (`PIVOT_MIN_U`), and bore + wall IS the
+  arbor's radius. §77's rivet rule one level up — the formed head and the land
+  it bears on are the same stock. One lathe, one body, so nothing here is a
+  joint anything has to declare.
+- **`ALARM_GOV_END_SHAKE = 2 · PIVOT_BORE_CLEAR`** = 0.1 u = **0.038 mm**, the
+  arbor floating half of it off each collar. Derived, not chosen: a bench sets
+  a wheel's endshake at about its side-shake, and side-shake is measured across
+  the bore — the diametral play, twice the radial fit the bore is cut to. One
+  fit, read the two ways a bench reads it, landing inside the real 0.02–0.04 mm
+  band.
+- **The oil sink in the COLLAR faces, not the bore mouths**, and the reason is
+  §111's own derivation: `ALARM_GOV_ARBOR_R = bore + PIVOT_MIN_U` puts that
+  wall exactly ON §50's pivot floor, so countersinking the bore takes it under
+  and growing the arbor re-opens the hub, D and §113's closure behind them. The
+  other end of the same oil film is the collar face, which is FIXED metal with
+  stock to spare: an annulus from the post out to the bore's own radius, one
+  `PIVOT_BORE_CLEAR` wide by construction and one deep, so the drop it holds
+  stands in the running clearance itself and none of the land the arbor bears
+  on is lost.
+
+**What it cost, in position space and nowhere else.** Retaining the governor
+rotor puts a collar on top of the governor post, and the poising ring sweeps
+past that post at 0.133 of its stock ceiling — 0.017 under the margin. Both
+members are in ONE action group, so P2 forbids paying for it out of either,
+and it did not have to be paid there: the ring's radius and section are the two
+quantities the I_a solve owns and both are RADIAL, so the ring's FLOOR rises
+0.225 to clear the head it passes (1.967 → 2.192) and the cadence solve does
+not move at all. Two boot asserts hold that answer, because a z-stack answer to
+a radial near-miss is only honest while the z gap is asserted.
+
+**What §120 did NOT close, filed rather than hidden:** `stockFloor` still has
+no `jewel` kind, because nothing jewelled landed to need one — the trap named
+below is unchanged, and the next set stone anywhere in the movement will still
+be judged against the 0.12 mm `wheel` floor. And the movement still carries no
+ruby outside the going escapement and the balance, which is the right answer
+twice over but is worth knowing before someone reads it as an omission.
+
+
 ### What the review owes the instruments
+
+(§120 added one row to this list and paid it: `intraUnit` — the two governor
+rows now describe a THREE-way running fit, bore plus two collars, instead of
+a bore, and the posts stayed one lathe each so no new joint was declared
+anywhere. Nothing else on the list moved, because nothing jewelled landed.)
 
 - `penetration` — the governor row (§111) now reads **OK, 0.032 / 0.1,
   unwaived** (§113). Its `nSamples: 449` is load-bearing: one wind is 28
@@ -5227,6 +5322,17 @@ is barely a bearing* — `ALARM_GOV_STUD_R = 0.35` against
 `ALARM_GOV_ARBOR_R = 0.45`, the arbor LARGER than the stud it turns on, two
 coincident steel solids with no bore, no side-shake, no endshake, no oil sink,
 held together by an `INTRA_UNIT_CONTACTS` row. §111 cut the bore (finding three
-above). What is still missing from that bearing, and worth naming so the next
-pass does not think it is done: **endshake** (nothing sets the arbor's axial
-play against a shoulder), an **oil sink**, and the stone itself.
+above), and it then named the three things still missing so the next pass could
+not think it was done: **endshake** (nothing set the arbor's axial play against
+a shoulder), an **oil sink**, and the stone itself. §120 answered all three —
+the first two built, the third refused with the duty integral and the pinion's
+root circle — and this item closes on that list being empty.
+
+**The lesson worth keeping, above any of the three.** This strand reached the
+wrong conclusion for six sections because it compared RATES between bearings
+whose DUTIES differ by four orders of magnitude, and nothing in the battery
+compares duties — no instrument in this project measures how long a part
+actually runs. Both governor bearings are on the movement's steepest rate curve
+and its shallowest work curve at the same time, and only one of those was ever
+written down. When the next review argues "this is the fastest X in the
+movement", the follow-up question is *for how many seconds a day*.

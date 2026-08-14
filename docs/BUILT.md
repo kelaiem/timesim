@@ -11973,3 +11973,250 @@ argument for figures and is still true with the hands up.
   within ±23° of a control are live target area for it. That is the point — it is
   most of the 43.7 px — but it does mean a tap well away from a marker still
   works it.
+
+
+## §120 — TODO 45 closed: the governor's posts are turned, the stone is refused twice, and the window frames the anchor
+
+**Item 45 was a review, and reviews close by answering.** §111 bored both
+governor arbors, §113 re-derived the escapement as a flat-faced recoil anchor
+with real drop, and what the item still carried was one strand — the PIVOTS —
+with three named gaps: **endshake**, an **oil sink**, and the **stone**. Two
+are built here and the third is refused, on measurements the item did not
+have. The plate window §115 cut over the governor is re-framed in the same
+landing, at the owner's direction, onto the anchor alone.
+
+### The bearing had a bore and no other limit at all
+
+§111's own sentence — "the arbor was LARGER than its own post" — was about the
+radial direction, and it fixed that direction: a real bore, `PIVOT_BORE_CLEAR`
+of side-shake, the stud genuinely occupying a hole. Nothing was ever said
+about the other direction, and nothing held it. Each arbor was a tube standing
+on a plain cylindrical post with **no metal above it and none below it**: dial
+down, the wheel leaves the movement; dial up, it slides to the plate. Where in
+z the arbor actually sat was the builder's `position.z`, not the bearing's.
+
+No instrument could have found that. `intraUnit` looks for INTERSECTION and
+there was none; `support` measures the post against the plate it stands in;
+`assembly` reads meshes that ride a MOVING frame, and a post is a fixture. A
+bearing with a missing degree of freedom is not a foul, it is an absence, and
+absences are what this item exists to catch.
+
+### The post, turned: three diameters and one derivation
+
+Each post is now a lathe rather than a length of bar. Read from the plate up:
+
+| feature | radius | z | derivation |
+|---|---|---|---|
+| foot collar | `ALARM_GOV_ARBOR_R` 0.585 | plate seat → arbor foot − ½ endshake | the planted length, ending in the thrust face |
+| oil cup | post → bore, `PIVOT_BORE_CLEAR` wide, one deep | cut into that face | the running clearance itself, opened downward |
+| bearing length | `ALARM_GOV_STUD_R` 0.35 | between the two collars | §111's bore runs on this |
+| head cup | the same annulus | cut into the head's underside | the film's other end |
+| formed head | `ALARM_GOV_ARBOR_R` 0.585 | arbor top + ½ endshake, `PIVOT_MIN_U` thick | it stops the arbor lifting off |
+
+**Both collars fall out of one sentence.** A collar has to overhang the bore by
+metal that can BEAR, and the width of metal that can bear is the arbor's own
+wall — which §111 derived as `PIVOT_MIN_U`. So collar radius = bore + wall =
+`ALARM_GOV_ARBOR_R`, exactly, and the land a collar presents is the same
+annulus of arbor that lands on it. That is §77's rivet rule one level up (the
+formed head and the land it bears on are the same stock), and it is why the
+head's thickness is `PIVOT_MIN_U` too.
+
+**`ALARM_GOV_END_SHAKE = 2 · PIVOT_BORE_CLEAR`** — 0.1 u, **0.038 mm**, the
+arbor floating half of it off each collar. Derived, not chosen: a bench sets a
+wheel's endshake at about its side-shake, and side-shake is the play measured
+ACROSS the bore — the diametral figure, twice the radial fit the bore is cut
+to. One fit, read the two ways a bench reads it, landing inside the real
+0.02–0.04 mm band. Floating the arbor rather than seating it on the lower
+collar is the same choice every other running fit in this movement already
+makes: a clearance is drawn as the clearance it is cut to, never as coincident
+metal (§111's whole argument, applied to the axis it did not reach).
+
+**One lathe, one body.** The collars are not parts fitted to a pin — they are
+what is left when the bar is turned down between them — so nothing here is a
+joint, `INTRA_UNIT_CONTACTS` gains no row, and `assembly` has nothing new to
+judge. The two existing governor rows keep their names and gain a sentence:
+they describe a running fit in three directions now instead of two. The
+profile touches the axis at top and bottom, so both end caps are real faces
+(TODO 27: an open body reads as a COLLIDING one to the sampled verdict,
+including the faces nobody can see).
+
+### The oil sink is in the collar, and §111 is the reason it is not in the bore
+
+A hole's oil sink is normally a countersink at the bore's mouth. Here it
+cannot be, and the reason is a derivation working exactly as intended:
+`ALARM_GOV_ARBOR_R = ALARM_GOV_ARBOR_BORE + PIVOT_MIN_U` puts that wall
+*exactly on* §50's pivot floor, so a chamfer at the mouth takes it under, and
+widening the arbor to make room re-opens `ALARM_GOV_HUB_R`, then
+`ALARM_GOV_ANCHOR_D`, then §113's entire closure. A constant that cannot be
+nudged is a constraint doing its job.
+
+The other end of the same oil film is the COLLAR FACE, which is fixed metal
+with stock to spare. So the sink goes there: an annulus from the post out to
+the bore's own radius — `PIVOT_BORE_CLEAR` wide by construction, cut one deep
+— in both the foot collar's face and the head's underside. The drop it holds
+stands in the running clearance itself, and because the cup's outer wall IS the
+bore, **none of the land the arbor bears on is lost**. Asserted, not asserted
+by hand-waving: a boot check refuses a cup wider than the clearance.
+
+### The stone: refused twice, and the second refusal is geometry
+
+The item argued the governor is "the most jewellable thing in the watch",
+from RATE: the saw turns 4.76 rev/s against the escape wheel's 0.167, and the
+anchor reverses at 190 Hz. **Wear is not a rate. It is a rate times a time**,
+and this governor's time is **11.8 seconds a day** — 28 strikes at the 0.42 s
+designed gap. Integrated, the ranking inverts:
+
+| bearing | its own work | the jewelled arbor it is measured against | ratio |
+|---|---|---|---|
+| governor saw arbor | **56 rev per ring**, once a day | escape wheel, **14400 rev/day** | **×257 less** |
+| governor anchor pivot | **2240 reversals per ring** | balance staff, **432000 reversals/day** | **×193 less** |
+
+That ×193 is the SAME number item 45's finding two computed for the pallet
+FACES, and not by coincidence: the count of tooth contacts and the count of
+anchor reversals are one count. **The pivot question and the face question had
+a single answer all along**, measured twice in the same item without the two
+arithmetics ever being written side by side. Real striking-train governors run
+in plain steel at both places for exactly this reason, and the movement's own
+`jewelR: 0` on the barrel arbor and the set-up work is that judgement already
+made about a different axis.
+
+**And on the governor arbor a stone does not fit at all.** That arbor turns
+inside its OWN 8-leaf pinion, so the pinion decides. Measured on the built
+gear, its root circle stands at **0.671** against an arbor of 0.585 — 0.086 of
+pinion body outside the bearing. Real hole jewels carry 0.25–0.45 mm of ruby
+around the hole; the thinnest is 0.660 u, which puts the arbor at **1.245**,
+past the root circle by 0.574. There is no pinion left. Jewelling this axis is
+not a bearing change, it is a re-cut of the ×8 mesh, its centre distance and
+the tier that carries it — for a bearing that turns 56 times a day. The ANCHOR
+arbor could take one geometrically, at +0.66 on the hub and therefore on
+`ALARM_GOV_ANCHOR_D` and §113's closure; jewelling the slower of two axes
+while the faster runs bare inverts the convention the strand argued from, so
+the geometry settles both ends.
+
+**What that leaves open, stated because a closed item hides things:**
+`stockFloor` still has no `jewel` kind — nothing jewelled landed to need one —
+so the trap item 45 named is intact, and the next set stone anywhere in the
+movement is still judged against the 0.12 mm `wheel` floor. The movement now
+carries no ruby outside the going escapement and the balance, which is the
+right answer twice over and is worth knowing before someone reads it as an
+omission.
+
+### What it cost: the ring's floor, and nothing else
+
+Retaining the governor rotor puts a collar on top of the governor post, and
+the poising ring sweeps past that post's axis at **0.133** measured against the
+ring's stock CEILING (the bound `ALARM_UNDER_FOOTPRINT` declares, so this
+stack does not move when the section solve does) — 0.017 under the one margin.
+
+Both members are in ONE action group, so P2 forbids paying for it out of
+either, and it did not have to be paid there: the ring's radius and its section
+are the two quantities the I_a solve owns, and **both are radial**. So the
+answer is a z-stack answer. `ALARM_GOV_RING_BOT` rises 0.225 (1.967 → 2.192) to
+clear the head it passes, the true 3D approach becomes **0.210** on the
+diagonal, and the cadence solve does not move by a float. Two boot asserts hold
+it — a z answer to a radial near-miss is only honest while the z gap is
+asserted, and the foot collar (which the ring also fails to clear radially, in
+a band 2 units below it) gets the same treatment.
+
+The governor units' z reach grows from 4.05 to **4.511** against a
+three-quarter plate underside at 7.71: 3.20 of air where §115 measured 3.66.
+
+### The window frames the ANCHOR
+
+§115 cut this window as the UNION of the saw's disc and the ring's, on the
+argument that framing either alone frames half a mechanism. **That argument
+was about the action, and the action is not divided evenly between the two
+members.** The saw's rim is a circle of teeth; everything the escapement DOES
+— §113's flat faces, the drop, the poising ring the cadence is an arithmetic
+of, and now the located bearing under it — happens on the anchor. So the frame
+is the anchor's own declared disc:
+
+| | §115 | §120 |
+|---|---|---|
+| polar centre | midpoint of `ALARM_GOV_ANCHOR_D` | the anchor's axis |
+| discs | governor saw + governor ring | governor ring |
+| reach from the centre | 5.307 … 10.009 | **6.483, exactly, at every bearing** |
+| area cut (½∮r²dθ) | 209.6 of 211.5 wanted | **132.1 of 132.1** |
+| bearings at full reach | 339 of 360 | **360 of 360** |
+| keeps bite | 21 bearings, worst 0.900 at 293° | **none** |
+| sectors cut | 1 (bossless) | 1 (bossless) |
+
+The keep field stops biting because the obstacle §115 named — the strike
+arbor's bore, 10.30 from the old centre — stands 13.22 from this one, 6.74
+beyond the window's edge. And the framed circle is exact rather than
+bisected: a single disc concentric with its own centre short-circuits to `d.r`
+by name in `solveTqWindows`, which is the same path §115 built so the two
+older windows would stay bit-identical when the union arrived.
+
+**The saw is still IN the frame, as the action holds it.** The tooth circle
+passes 1.05 from the anchor's axis, so **117.8° of the saw's rim** — the arc
+the pallets work on, with the engagement at its middle — stands inside this
+window; the far side of the wheel goes back under the plate. Measured on the
+finished plate, by the same +z raycast §115 used:
+
+| unit | before §115 | §115 | §120 |
+|---|---|---|---|
+| Alarm governor | 0 of 2007 (0.0%) | 1989 of 2007 (99.1%) | **447 of 2087 (21.4%)** |
+| Alarm governor anchor | 0 of 989 (0.0%) | 989 of 989 (100%) | **1069 of 1069 (100%)** |
+
+The governor unit's fall is the point of the change and not a regression to
+argue away: what went back under the plate is the saw's far rim, its pinion,
+its arbor and its post — the drive INTO the escapement, not the escapement.
+(The vertex counts rise because the posts are lathes now, not cylinders.)
+
+What it buys is plate, and the honest measure of that is AREA rather than
+reach — two windows with the same reach can take very different amounts of
+metal, which is why `probe-115-window.mjs` now reports ½∮r²dθ over the solved
+reveal. The opening falls from **209.6 to 132.1**: **37% of it returns** to a
+plate that is a bearing first, §115's own stated priority applied to §115's own
+window. One consequence lands where §115 predicted it would:
+`seatClearance` re-optimises against the smaller opening and the 45° pillar
+seat travels back to 29.376, 25.536 — the station it held before §115 moved it.
+The other three do not move.
+
+`explain.html` gains a paragraph on the governor entry (the bearing is a
+mechanism, unlike a window — §115's own line), translated into all five
+locales in this landing rather than left to fall back. `MECH_GRAPH` gains
+nothing: no part was added, and the posts are the same two meshes under the
+same two names.
+
+### The battery, and the one row that moved
+
+**20/20 gates pass**, boot silent, run locally against `origin/main` and this
+tree in turn on the same idle 4-vCPU box so the two `--report` payloads are
+comparable:
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 537 rows, 0 degenerate, 0 unwaived
+intraUnit 264 movers over 55 poses, 0 unwaived · assembly 0 undeclared unwaived splits
+expectedContacts 13 pairs, 0 unwaived, 0 unmatched selectors
+oscillator 2.5 Hz on a 0.0244 mm ribbon · equalisation TODO 32 held, ring 0.790 mm in stock
+restoring 20 reversing units, 0 unwaived, control PASS
+inspection 0 FORBIDDEN over 53 units and 74 contacting pairs · clearances 0 violations over 30 budgets
+sweptOverlap 0 CONFIRMED over 67943 pairs (tight 4, refuted 20)
+spec boots 26/26 build, identity control silent
+```
+
+`--report` diffed check by check: **thirteen of fourteen payloads are
+byte-identical** — `alarmHandoffs`, `assembly`, `clearances`, `equalisation`,
+`graph`, `inspection`, `intraUnit`, `oscillator`, `penetration`, `restoring`,
+`stockFloor`, `support`, `sweptOverlap`. Two things moved:
+
+1. **`expectedContacts`, one row, and it OPENED.**
+   `Alarm governor ⇄ Alarm governor anchor` goes **0.160 → 0.168**, and the
+   binding mesh pair changes with it: `alarmGovSaw ⇄ alarmGovRing` at
+   `beat f=0` becomes `alarmGovSaw ⇄ alarmGovAnchor` at `alarmStrike f=0.5321`.
+   That is the ring's floor rising out of the saw's neighbourhood and the
+   anchor's own hub becoming the tightest approach in the pair. Nothing about
+   the new metal binds anywhere: the ring passes the post's head at 0.210 and
+   the 64T wheel passes its foot collar at 0.264, both above the row's own
+   0.168.
+2. **fingerprint `761710512 → 1709442067`.** Two contributions, both expected:
+   the governor units' own boxes grow (the posts are taller and wider), and
+   `pillars` moves — `seatClearance` re-optimises against the smaller window
+   and the 45° seat travels back to the station it held before §115 moved it.
+
+Cost: total check time 2816.0 → 2768.3 s, every check inside run-to-run noise
+(`sweptOverlap` 1129 → 1113 s). The shard partition is unchanged in shape and
+the `cost` column is left alone.

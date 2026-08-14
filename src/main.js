@@ -5309,39 +5309,47 @@ const TQ_WINDOW_INTENTS = [
     // §115. §112 put the alarm's power tiers under this plate, and the
     // governor went with them — the movement's fastest-turning part, the only
     // thing setting the strike's cadence, and since the tier-split nothing
-    // sees it from either side. This frames the ESCAPEMENT: the 40T saw wheel
-    // and the anchor carrying its poising ring, the two members whose
-    // relative motion IS the governing action. Not the 64T wheel driving it —
-    // that one pivots in this plate, so framing it would island its boss and
-    // owe three webs to show a gear mesh; and the 64T⇄pinion mesh point
-    // stands 0.88 from the saw's axis, well inside this window's own edge, so
-    // the drive INTO the governor reads at the frame anyway.
+    // sees it from either side.
     //
-    // Both discs come from ALARM_UNDER_FOOTPRINT, which is the point: that
+    // §120 — AND IT FRAMES THE ANCHOR, not both wheels. §115 declared the
+    // UNION of the saw's disc and the ring's, on the argument that framing
+    // either alone frames half a mechanism. That argument was about the
+    // ACTION, and the action is not divided evenly between the two members:
+    // the saw's rim is a circle of teeth, and everything the escapement
+    // DOES — the flat faces §113 solved, the drop, the poising ring the
+    // cadence is an arithmetic of, and since §120 the located bearing under
+    // it — happens on the anchor. So the frame is the anchor's own disc, and
+    // the saw appears in it the way it appears in the action: the tooth
+    // circle passes 1.05 from the anchor's axis, so ~118° of the saw's rim —
+    // the arc the pallets work on, engagement at its middle — stands inside
+    // this window and the far side of the wheel goes back under the plate.
+    // What that buys is the plate, measured as AREA rather than as reach —
+    // a radius cannot answer this, since two windows of equal reach can take
+    // very different amounts of metal. ½∮r²dθ over the solved reveal:
+    // 209.6 cut before, 132.1 now, so 37% of the opening goes back to a
+    // plate that is a bearing first (§115's own priority, applied to §115's
+    // own window). The probe reports it.
+    //
+    // The disc comes from ALARM_UNDER_FOOTPRINT, which is the point: that
     // list is what the movement DECLARES this metal occupies, the pillar
-    // solve already avoids exactly these circles, and the governor's own
+    // solve already avoids exactly this circle, and the governor's own
     // meshes do not exist yet (this solver first runs five thousand lines
     // before the alarm block). Sizing the reveal from a second description of
-    // the same parts would be two numbers to keep in step; sizing it in the
+    // the same part would be two numbers to keep in step; sizing it in the
     // RE-CUT pass instead is barred outright, because that pass may only ever
     // shrink what the pillar seats were solved against. What keeps the
     // declaration honest is the §115 assert at the governor build, which
     // measures the cut metal against the disc it was promised to fit inside.
-    at: () => ({
-      // THE POLAR CENTRE, and the property it exists to have: the solve
-      // bisects a radius per bearing, which describes the union only if every
-      // ray from this point leaves it exactly once. A union of convex sets
-      // all containing the point is star-shaped about it, so the requirement
-      // is interiority to BOTH discs — asserted, not assumed, in solveTqWindows.
-      // The midpoint of ALARM_GOV_ANCHOR_D is the escapement's own centre
-      // distance halved, not a drawn point: it sits 3.526 from each axis
-      // against reveal discs of 6.216 and 6.483, so it is interior by 2.690
-      // and 2.957 — and it stays interior under any change that does not
-      // shrink a member below half the distance to its neighbour.
-      x: (alarmGovPos.x + alarmGovAnchorPos.x) / 2,
-      y: (alarmGovPos.y + alarmGovAnchorPos.y) / 2,
-    }),
-    discs: () => [alarmUnderDisc('governor saw'), alarmUnderDisc('governor ring')]
+    //
+    // Neither governor unit pivots in this plate — both stand on posts
+    // planted in the BASE plate — so this is still the bossless window §115's
+    // all-or-nothing rule was written for, and it is still declared through
+    // `discs()` rather than `reveal()`: the framed circle is a member of the
+    // footprint, named, and one member is the honest way to say so. A single
+    // disc concentric with its own centre short-circuits to `d.r` by name in
+    // the solve, so the reveal is exact rather than routed through arithmetic.
+    at: () => alarmGovAnchorPos,
+    discs: () => [alarmUnderDisc('governor ring')]
       .map((d) => ({ x: d.x, y: d.y, r: d.r + CLEAR_MARGIN })),   // one margin of visual reveal, as both windows above
   },
 ];
@@ -10445,12 +10453,68 @@ const ALARM_GOV_SAW_TOP = ALARM_GOV_SAW_BOT + ALARM_GOV_SAW_T; // makeRatchetAnd
 const ALARM_GOV_ANCHOR_T = ALARM_GOV_SAW_T;                // one band, one plane
 const ALARM_GOV_ANCHOR_BOT = ALARM_GOV_SAW_BOT;
 const ALARM_GOV_ANCHOR_TOP = ALARM_GOV_SAW_TOP;
+// §120 — THE ENDSHAKE, the axial half of a bearing §111 only cut radially.
+// §111 gave both governor arbors a real bore and a real side-shake and left
+// their AXIAL play undefined: each arbor was a tube standing on a plain post
+// with nothing above it and nothing under it, so the only thing locating it
+// in z was the pose the builder happened to place it at, and dial-down the
+// wheel would simply leave the movement. So each post is TURNED instead of
+// cut from bar — a collar at the foot, the bearing length, and a formed head
+// — and the arbor runs between the two collars with this much play.
+//
+// DERIVED, not chosen: the bench sets a wheel's endshake at about its
+// SIDE-SHAKE, and side-shake is measured across the bore — the diametral
+// play, twice the radial fit the bore is cut to. So the endshake IS
+// 2·PIVOT_BORE_CLEAR, 0.1 u = 0.038 mm, which lands inside the 0.02–0.04 mm
+// band a train wheel is set to. One fit, read the two ways a bench reads it.
+const ALARM_GOV_END_SHAKE = 2 * PIVOT_BORE_CLEAR;   // 0.1 u = 0.038 mm
+// Both collars overhang the arbor's BORE by the arbor's own wall — the same
+// PIVOT_MIN_U §111 derived the wall from — so a collar's bearing land and
+// the annulus of arbor that lands on it are the same width, and the collar
+// radius falls out as ALARM_GOV_ARBOR_R exactly. (§77's rivet rule, one
+// level up: the formed head and the land it bears on are the same stock.)
+const ALARM_GOV_COLLAR_HEAD_T = PIVOT_MIN_U;        // the formed head, at §50's pin floor
+// The governor arbor's FOOT, hoisted out of the build so the asserts below
+// can read the same number the post is turned to. §112's band swap put the
+// pinion on the floor band, so the shoulder formula would land the arbor on
+// the base plate's face; the floor guard keeps one margin of air, and §120's
+// foot collar now stands in the lower half of it.
+const ALARM_GOV_ARB_BOT = Math.max(
+  ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2, ALARM_U_FLOOR + CLEAR_MARGIN);
+// The OIL CUP, and why it is in the collar rather than in the bore's mouth.
+// A hole's oil sink is normally countersunk at the bore, but §111 derived
+// this arbor's wall AT the pivot floor — ALARM_GOV_ARBOR_R = bore + floor
+// exactly — so a chamfer there takes the wall under §50 and growing the
+// arbor re-opens the hub, D and the whole §113 closure behind it. The
+// bearing's other end of the same oil film is the collar face, which is
+// FIXED metal with stock to spare, so the sink goes there: an annulus from
+// the post to the bore's own radius, one PIVOT_BORE_CLEAR wide by
+// construction and cut one deep. The drop it holds stands in the running
+// clearance itself, and none of the land the arbor bears on is lost.
+const ALARM_GOV_OIL_CUP = PIVOT_BORE_CLEAR;
 // §112 band swap: the saw dropped to the band the floor-seated ring's top
 // was 0.047 under (measured, the battery's governor ⇄ anchor row), so the
 // ring returns to §104's own arrangement — riding the arbor ABOVE the
 // anchor's plane, one margin over the saw. It is the anchor staff's
 // topmost rider again, and the stud's length below derives from that.
-const ALARM_GOV_RING_BOT = ALARM_GOV_SAW_TOP + CLEAR_MARGIN + 0.01;
+//
+// §120 — AND IT NOW CLEARS THE GOVERNOR POST'S HEAD. Retaining the governor
+// rotor puts a collar of ALARM_GOV_ARBOR_R on top of the governor post, and
+// the ring sweeps past that post's axis at D − its own outer edge: against
+// the ring's STOCK CEILING (the bound ALARM_UNDER_FOOTPRINT declares, so
+// this stack does not move when the section solve does) that leaves 0.133,
+// which is 0.017 under the one margin. The conflict is between two members
+// of ONE action group, so P2 forbids paying for it out of either — and it
+// does not have to be: the ring's radius and section are the two quantities
+// the I_a solve owns and both are RADIAL, so a z-stack answer costs the
+// solve nothing. The ring's floor rises to clear the head it passes.
+const ALARM_GOV_STUD_HEAD_TOP = ALARM_GOV_SAW_TOP + ALARM_GOV_END_SHAKE / 2 + ALARM_GOV_COLLAR_HEAD_T;
+const _ringToGovHead = ALARM_GOV_ANCHOR_D
+  - (ALARM_GOV_RING_R + (ALARM_GOV_RING_STOCK_MM[1] / UNIT_MM) / 2)   // the ring at its stock ceiling
+  - ALARM_GOV_ARBOR_R;                                                // the head it passes
+const ALARM_GOV_RING_BOT = Math.max(
+  ALARM_GOV_SAW_TOP + CLEAR_MARGIN + 0.01,                                       // the saw under it
+  _ringToGovHead < CLEAR_MARGIN ? ALARM_GOV_STUD_HEAD_TOP + CLEAR_MARGIN : 0);   // the post's head beside it
 // §111 — THE ARBOR IS A BEARING, so it is derived like one. §104 shipped it
 // as a literal 0.45 solid running on a 0.35 solid stud: the arbor was LARGER
 // than the post it turned on, two coincident bodies held together by an
@@ -10903,6 +10967,32 @@ const ALARM_GOV_RING_TOP = ALARM_GOV_RING_BOT + ALARM_GOV_RING_S;
   const ringToGovStud = ALARM_GOV_ANCHOR_D - (ALARM_GOV_RING_R + ALARM_GOV_RING_S / 2) - ALARM_GOV_STUD_R;
   if (ringToGovStud < CLEAR_MARGIN)
     console.warn(`§104: the ring passes ${ringToGovStud.toFixed(3)} from the governor stud — need ${CLEAR_MARGIN}`);
+  // §120 — and the post is no longer ONE radius, so that row is no longer
+  // the whole question. The two COLLARS stand at ALARM_GOV_ARBOR_R, which
+  // the ring does not clear radially (0.133 at the ring's stock ceiling),
+  // so each collar is cleared in Z instead and both halves are held here:
+  // the FOOT collar passes under the ring's floor, and the HEAD is what
+  // ALARM_GOV_RING_BOT was raised to clear. A z-stack answer to a radial
+  // near-miss is only honest while the z gap is asserted.
+  const ringFloorOverFoot = ALARM_GOV_RING_BOT - (ALARM_GOV_ARB_BOT - ALARM_GOV_END_SHAKE / 2);
+  if (_ringToGovHead < CLEAR_MARGIN && ringFloorOverFoot < CLEAR_MARGIN)
+    console.warn(`§120: the ring's floor stands ${ringFloorOverFoot.toFixed(3)} over the governor post's foot collar, which it passes `
+      + `${_ringToGovHead.toFixed(3)} from — need ${CLEAR_MARGIN} in one of the two`);
+  const ringFloorOverHead = ALARM_GOV_RING_BOT - ALARM_GOV_STUD_HEAD_TOP;
+  if (_ringToGovHead < CLEAR_MARGIN && ringFloorOverHead < CLEAR_MARGIN - 1e-9)
+    console.warn(`§120: the ring's floor stands ${ringFloorOverHead.toFixed(3)} over the governor post's head, which it passes `
+      + `${_ringToGovHead.toFixed(3)} from — need ${CLEAR_MARGIN} in one of the two`);
+  // The head RETAINS: it has to overhang the bore by metal that can bear,
+  // which is the arbor's own wall — and both collars fall out at ARBOR_R
+  // from that one sentence, so this catches an edit to either link.
+  if (ALARM_GOV_ARBOR_R - ALARM_GOV_ARBOR_BORE < PIVOT_MIN_U - 1e-9)
+    console.warn(`§120: the post's collars overhang the arbor's bore by ${(ALARM_GOV_ARBOR_R - ALARM_GOV_ARBOR_BORE).toFixed(3)} `
+      + `— under the ${PIVOT_MIN_U.toFixed(3)} pivot floor, so the arbor is not retained by metal that can bear`);
+  // The oil cup takes NONE of the land the arbor bears on: its wall stands
+  // at the bore, so the whole bore→collar annulus is still flat metal.
+  if (ALARM_GOV_OIL_CUP > ALARM_GOV_ARBOR_BORE - ALARM_GOV_STUD_R + 1e-9)
+    console.warn(`§120: the oil cup is ${ALARM_GOV_OIL_CUP.toFixed(3)} wide against a ${(ALARM_GOV_ARBOR_BORE - ALARM_GOV_STUD_R).toFixed(3)} `
+      + 'running clearance — it would undercut the collar\'s bearing land');
   // §111 — the HUB is the widest thing on the anchor axis inside the saw's
   // band, and it is now derived (arbor + wheel floor), so its room to the tip
   // circle is a consequence rather than a choice. This is where a change to
@@ -10942,17 +11032,51 @@ alarmGovAnchorPivot.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, 0);
 alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 {
   const studBase = ALARM_U_FLOOR - 0.5;   // §112: planted in the BASE plate — the same idiom, one plate down
-  const govStudTop = ALARM_GOV_SAW_TOP + 0.2;
-  const govStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, govStudTop - studBase, 12), MATS.steel);
+  // §120 — A TURNED POST, not a length of bar. Three diameters, read from
+  // the plate up: the FOOT collar (the planted length, and the thrust face
+  // the arbor lands on), the BEARING length the arbor's bore runs on, and
+  // the formed HEAD that stops it lifting off. §111 cut this bearing's bore
+  // and gave it a real side-shake; what it left undefined was the axial
+  // half — nothing above the arbor and nothing under it, so dial-down the
+  // wheel leaves the movement, and "where in z the arbor sits" was the
+  // builder's choice rather than the bearing's. It is the bearing's now:
+  // the arbor floats half the endshake off each collar, which is both where
+  // a wheel actually sits at an arbitrary attitude and how every other
+  // running fit in this movement is drawn — as the clearance it is cut to,
+  // never as coincident metal.
+  //
+  // ONE LATHE, ONE BODY: the collars are not parts fitted to a pin, they are
+  // what is left when the bar is turned down between them — so nothing here
+  // is a joint anything has to declare. The profile touches the axis at both
+  // ends, so both caps are real faces (TODO 27: an open body reads as a
+  // colliding one to the sampled verdict, including faces nobody can see).
+  const govPost = (arborBot, arborTop) => {
+    const S = ALARM_GOV_STUD_R, B = ALARM_GOV_ARBOR_BORE, C = ALARM_GOV_ARBOR_R;
+    const shoulder = arborBot - ALARM_GOV_END_SHAKE / 2;    // the thrust face
+    const headBot = arborTop + ALARM_GOV_END_SHAKE / 2;     // and the limit opposite it
+    const headTop = headBot + ALARM_GOV_COLLAR_HEAD_T;
+    const cup = ALARM_GOV_OIL_CUP;
+    const V = (r, z) => new THREE.Vector2(r, z);
+    const g = new THREE.LatheGeometry([
+      V(0, studBase), V(C, studBase),                 // the planted foot, capped on the axis
+      V(C, shoulder), V(B, shoulder),                 // the foot collar, and the land the arbor bears on
+      V(B, shoulder - cup), V(S, shoulder - cup),     // its oil cup — one running clearance, square
+      V(S, headBot + cup),                            // THE BEARING LENGTH
+      V(B, headBot + cup), V(B, headBot),             // the head's own cup, the film's other end
+      V(C, headBot), V(C, headTop), V(0, headTop),    // the formed head, capped on the axis
+    ], 12);   // the 12 segments this post was drawn with before it was turned
+    g.rotateX(Math.PI / 2);   // LatheGeometry revolves about +Y — stand it along Z (ringGeo's idiom)
+    return g;
+  };
+  const govStud = new THREE.Mesh(govPost(ALARM_GOV_ARB_BOT, ALARM_GOV_SAW_TOP), MATS.steel);
   govStud.name = 'alarmGovStud';
-  govStud.rotation.x = Math.PI / 2;
-  govStud.position.set(alarmGovPos.x, alarmGovPos.y, (govStudTop + studBase) / 2);
+  govStud.position.set(alarmGovPos.x, alarmGovPos.y, 0);   // the profile carries world z
   alarmGovUnit.add(govStud);
-  const anchStudTop = ALARM_GOV_RING_TOP + 0.2; // §112 band swap: the ring is the axis's topmost rider again (§104's arrangement)
-  const anchStud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_GOV_STUD_R, ALARM_GOV_STUD_R, anchStudTop - studBase, 12), MATS.steel);
+  // §112 band swap: the ring is the anchor axis's topmost rider again
+  // (§104's arrangement), so it is the ring's top this post's head answers to.
+  const anchStud = new THREE.Mesh(govPost(ALARM_GOV_ANCHOR_BOT, ALARM_GOV_RING_TOP), MATS.steel);
   anchStud.name = 'alarmGovAnchorStud';
-  anchStud.rotation.x = Math.PI / 2;
-  anchStud.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, (anchStudTop + studBase) / 2);
+  anchStud.position.set(alarmGovAnchorPos.x, alarmGovAnchorPos.y, 0);
   alarmGovAnchorUnit.add(anchStud);   // §107: the anchor's own station travels with the anchor's unit
 
   // The governor rotor: pinion in the wheel's band, saw above, one arbor.
@@ -10989,8 +11113,10 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // a colliding one to the sampled verdict, TODO 27's lesson.)
   // §112 band swap: the pinion rides the floor band now, so the shoulder
   // formula would land the arbor's foot ON the base plate's face — the
-  // floor guard keeps one margin of air; the stud inside carries the staff.
-  const govArbBot = Math.max(ALARM_GOV_WHEEL_Z - ALARM_GOV_PINION_T / 2 - 0.2, ALARM_U_FLOOR + CLEAR_MARGIN);
+  // floor guard keeps one margin of air (ALARM_GOV_ARB_BOT, hoisted at the
+  // §120 block); the post inside carries the staff, and since §120 the
+  // lower half of that margin is the post's foot collar.
+  const govArbBot = ALARM_GOV_ARB_BOT;
   const govArb = new THREE.Mesh(
     ringGeo(ALARM_GOV_ARBOR_BORE, ALARM_GOV_ARBOR_R, ALARM_GOV_SAW_TOP - govArbBot), MATS.steel);
   govArb.name = 'alarmGovArbor';
@@ -17148,10 +17274,13 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
           V(Math.cos(az) * ringInner, Math.sin(az) * ringInner, zR)], SCHEMATIC.matWheel);
       }
       addLine(pivot, [V(0, 0, ALARM_GOV_RING_BOT), V(0, 0, ALARM_GOV_ANCHOR_TOP)]); // the arbor both bands ride
-      // the two STATIONS themselves — each stud as the axis it really is. The
-      // span comes from the geometry's own LONGEST dimension, not from z: a
-      // stud is a cylinder built along its geometry's y and laid down by the
-      // mesh's rotation, so reading z here would draw its diameter.
+      // the two STATIONS themselves — each post as the axis it really is. The
+      // span comes from the geometry's own LONGEST dimension rather than from
+      // a named axis, which is why §120 could re-cut these posts underneath
+      // it: they were cylinders built along their geometry's y and laid down
+      // by the mesh's rotation (reading z would have drawn a diameter), and
+      // they are turned lathes standing along z now. The longest dimension is
+      // the axis either way — the reason this reads a size instead of a name.
       for (const n of ['alarmGovStud', 'alarmGovAnchorStud']) {
         const m = byName(n);
         if (!m) { console.warn(`§107: the governor is missing ${n} — its station is drawn by nothing`); continue; }

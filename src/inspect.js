@@ -1664,9 +1664,9 @@ export const INTRA_UNIT_CONTACTS = [
   // what these rows declare is the side-shake of a running fit rather than
   // two bodies sharing space. The gap is PIVOT_BORE_CLEAR, under CLEAR_MARGIN
   // by design, which is why the declaration is still owed.
-  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§111: the governor arbor turns on its stud in a bore cut PIVOT_BORE_CLEAR wider than it — addUpperPivot\'s fit, on the movement\'s fastest arbor' },
-  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§111: the pinion is driven on that arbor and shares its bore, so it clears the stud by the same PIVOT_BORE_CLEAR — the running fit at the leaf root' },
-  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§111: the anchor\'s arbor turns on its own stud in the same bore, ring below and anchor above (§107 moved the row with the unit: stud and arbor are both the anchor\'s now)' },
+  { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§111: the governor arbor turns on its stud in a bore cut PIVOT_BORE_CLEAR wider than it — addUpperPivot\'s fit, on the movement\'s fastest arbor. §120 turned the stud into a POST: the arbor now runs between a foot collar and a formed head, floating half of ALARM_GOV_END_SHAKE off each, so this row is a running fit in three directions rather than two' },
+  { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§111: the pinion is driven on that arbor and shares its bore, so it clears the stud by the same PIVOT_BORE_CLEAR — the running fit at the leaf root; §120: and it stands clear over the post\'s foot collar, which is what the arbor beneath it lands on' },
+  { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§111: the anchor\'s arbor turns on its own stud in the same bore, ring below and anchor above (§107 moved the row with the unit: stud and arbor are both the anchor\'s now). §120: the same turned post — collar, bearing length, head — so the anchor is located axially too' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
