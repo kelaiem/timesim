@@ -55,6 +55,7 @@ const out = await page.evaluate(async () => {
   // three-quarter plate is on) from every vertex of the governor's own
   // meshes and count how many reach the outside without meeting the plate.
   const plate = clock.labelEntries.find((e) => e.name === 'Three-quarter plate');
+  const govC = clock.tqWindows.find((r) => r.name === 'governor')?.c ?? { x: 0, y: 0 };
   const reveal = {};
   if (plate) {
     const targets = [];
@@ -81,7 +82,12 @@ const out = await page.evaluate(async () => {
           else {
             const c = covered[o.name] ??= { n: 0, minAz: 999, maxAz: -999 };
             c.n++;
-            const az = Math.atan2(v.y - 28.424, v.x - 18.949) * 180 / Math.PI;
+            // …off the governor window's OWN centre, read from the solve
+            // rather than typed: §120 moved that centre from the midpoint
+            // between the two axes onto the anchor's, and a literal here
+            // would have kept reporting bearings about a point the window is
+            // no longer at.
+            const az = Math.atan2(v.y - govC.y, v.x - govC.x) * 180 / Math.PI;
             c.minAz = Math.min(c.minAz, (az + 360) % 360);
             c.maxAz = Math.max(c.maxAz, (az + 360) % 360);
           }
@@ -120,7 +126,14 @@ for (const r of out.rows) {
     const d = r.want[i] - r.rOut[i];
     if (d > 1e-9) { bite++; if (d > worstBite) { worstBite = d; worstAt = i; } }
   }
+  // The opening's AREA, ½∮r²dθ over the solved reveal — what the plate
+  // actually gives up, as opposed to how far the window reaches. §120 wanted
+  // this and a radius could not answer it: two windows with the same reach
+  // take very different amounts of plate.
+  const area = r.rOut.reduce((s, x) => s + 0.5 * x * x * (Math.PI / 180), 0);
+  const wantArea = r.want.reduce((s, x) => s + 0.5 * x * x * (Math.PI / 180), 0);
   console.log(`  bearings: ${open}/360 open, ${atWant} at full reach, min open ${min.toFixed(3)}`);
+  console.log(`  area: ${area.toFixed(1)} cut, ${wantArea.toFixed(1)} wanted (the keeps take ${(wantArea - area).toFixed(1)})`);
   console.log(`  keeps bite ${bite} bearings, worst ${worstBite.toFixed(3)} at ${worstAt}°`);
   // the pinched bearings, run-length encoded
   const closed = [];
