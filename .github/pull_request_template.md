@@ -107,8 +107,9 @@ visible in the report — never a pass, and never bought by widening a tolerance
 or a budget to green a row.
 -->
 
-- New waivers (`stockFloor`, `penetration`, `intraUnit`, `expectedContacts`,
-  `alarmHandoffs`, `restoring`), each with the item it cites:
+- New waivers (`stockFloor`, `penetration`, `intraUnit`, `assembly`,
+  `expectedContacts`, `alarmHandoffs`, `restoring`), each with the item it
+  cites:
 - Filed rather than fixed, and why the fix was not in scope:
 
 ## Record

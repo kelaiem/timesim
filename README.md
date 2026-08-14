@@ -269,7 +269,8 @@ with out-of-band rows carried as waived debt citing their TODO items),
 `checkSlenderness` (a part can be thick enough and still be a noodle),
 `checkLowCorridor`, `auditOscillators`, `stockCensus` and `fingerprint` for
 determinism, plus the three that answer the blind spots below —
-`intraUnit` (a unit's movers against its own fixtures), `expectedContacts`
+`intraUnit` (all three pair classes inside a unit — movers vs fixtures,
+fixture pairs, movers across rigid frames), `expectedContacts`
 (per-contact clearance floors across declared pairs) and `restoring` (§48's
 no-spring audit: anything that reciprocates has a restoring element, is
 driven both ways, or is waived citing its TODO). `focusedCheck(clock, names)`
@@ -287,10 +288,12 @@ unit, and any second overlap between a pair that already has one declared
 contact. `checkAlarmHandoffs` closed both for the one run that was hiding in
 them — its rod⇄tail and rod⇄crank rows are intra-unit contacts the pair sweep
 can never enumerate — and each now has a general instrument as well
-(`intraUnit`, `expectedContacts`), each with known residue: fixture-vs-fixture
-and mover-vs-mover inside one unit are still invisible, and an EXPECTED pair
-with no declared floors row still gets the blanket excuse. If you are checking
-one of those cases, measure it yourself.
+(`intraUnit`, `expectedContacts`), each with known residue: `intraUnit`'s
+fixture-pair and cross-frame mover tiers gate only `INTRA_TIER_SCOPE` (the
+alarm complex) and REPORT everywhere else, same-frame mover splits gate only
+`ASSEMBLY_SCOPE`, and an EXPECTED pair with no declared floors row still gets
+the blanket excuse. If you are checking one of those cases, read the
+reported rows — or measure it yourself.
 
 ## A note on the styling
 

@@ -168,9 +168,15 @@ it into prose either.
    pose-confirmed before they count; `tight` and `refuted` rows are
    reports, not failures), and `stockFloor` **0 degenerate and 0
    unwaived** (§50 — a waived row is accepted debt citing its TODO
-   item, visible in the report), and `intraUnit` **0 unwaived**
-   (TODO 5's interim — movers vs their own unit's fixtures; declared
-   joints live in `INTRA_UNIT_CONTACTS`, waived rows cite their TODO),
+   item, visible in the report), and `intraUnit` **0 unwaived and 0
+   unmatched selectors** (TODO 5/§121 — three tiers inside each unit:
+   movers vs fixtures over EVERY unit, fixture pairs and cross-frame
+   mover pairs inside `INTRA_TIER_SCOPE`, out-of-scope FF/MM rows
+   reported; declared joints live in `INTRA_UNIT_CONTACTS`, a stale
+   selector in that table is itself a failure, waived rows cite their
+   TODO), and `assembly` **0 undeclared unwaived splits among
+   `ASSEMBLY_SCOPE`** (§107 — a rigid group is one connected body;
+   out-of-scope rows reported),
    and `expectedContacts` **0 unwaived and 0 unmatched selectors**
    (TODO 6 — per-contact clearance floors across EXPECTED pairs, the
    declared meshes excluded; same waiver convention), and `oscillator`
@@ -233,7 +239,11 @@ routing is a defect even while every sweep is green.
 
 **P2 — The group agrees with itself.** Members of one group must not foul
 each other anywhere in the action cycle — the pair sweep structurally
-cannot see this (TODO 5), so it is asserted per group — and
+cannot see this, so `intraUnit`'s three tiers (§121) hold it at the pose
+net inside `INTRA_TIER_SCOPE`, and each group's own build asserts hold it
+FINER than the net (the §120 saw⇄pallet cycle sweep, the stop-lever
+lattice: the tier covers the class, the asserts keep the tight per-cycle
+instances) — and
 working-contact budgets are sized SMALLER than the strokes they police
 (0.12 against a 0.19 travel graded touching, apart, and buried as one
 measurement). A geometric impossibility inside the group — §34's radial
@@ -447,14 +457,21 @@ Both are written up in `TODO.md` (items 5 and 6), and both produced
 real defects that every clean run missed. Each now has an instrument in
 the battery — with known residue:
 
-- **Inside a unit.** The pair sweep cannot see it; `intraUnit` (TODO 5's
-  interim) now checks each unit's movers against its own fixtures over
-  the pose net. A MORPH COUNTS AS MOTION — the signature carries
-  `geometry.id` as well as the unit-relative matrix, so a part that swaps
-  a wind frame without moving (the mainspring, the hairspring) stays a
-  mover; see MODELING.md rule 6 before shipping another one. Still
-  invisible: fixture-vs-fixture (the pallet's ruby-in-slot instance) and
-  mover-vs-mover within one unit.
+- **Inside a unit.** The pair sweep cannot see it; `intraUnit` (TODO 5,
+  §121) checks all three derived pair classes over the pose net: each
+  unit's movers against its own fixtures, fixture pairs (once — fixtures
+  cannot move relative to their unit), and mover pairs ACROSS rigid
+  frames (same-frame movers are one part, `assembly`'s connectivity
+  domain). A MORPH COUNTS AS MOTION twice over — the mover signature
+  carries `geometry.id`, and a morph is always its OWN frame in the MM
+  clustering, or two matrix-still morphs would merge and drop out of
+  comparison; see MODELING.md rule 6 before shipping another one.
+  Residue, named: the FF/MM tiers GATE only `INTRA_TIER_SCOPE` (the
+  alarm complex — 42 rows triaged against measured depths); everywhere
+  else their rows are REPORTED (202 at §121, visible in the payload,
+  untriaged), and same-frame mover splits outside `ASSEMBLY_SCOPE` are
+  §107's own reported residue. Transients between pose samples stay
+  item 7's.
 - **Anywhere between an EXPECTED pair.** `EXPECTED` is granted per unit
   *pair*; `expectedContacts` (TODO 6) holds the pairs declared in
   `EXPECTED_CONTACT_FLOORS` to `CLEAR_MARGIN` everywhere EXCEPT their

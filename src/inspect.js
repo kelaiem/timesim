@@ -1535,19 +1535,41 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 }
 
 // ---------------------------------------------------------------------------
-// TODO 5 (interim) — the sweep cannot see INSIDE a unit, and units bundle a
-// FIXED mount with the thing that MOVES on it: exactly the pair most likely
-// to foul, hidden twice (the pair loop skips same-unit; the unit's own AABB
+// TODO 5 — the sweep cannot see INSIDE a unit, and units bundle a FIXED
+// mount with the thing that MOVES on it: exactly the pair most likely to
+// foul, hidden twice (the pair loop skips same-unit; the unit's own AABB
 // contains both). The stop-lever bracket carried 0.685 of penetration at
 // every pose through every battery run in the project's history this way.
-// The interim DERIVES the split instead of naming parts: pose the sweep
+// The check DERIVES its populations instead of naming parts: pose the sweep
 // axes, diff each mesh's matrix RELATIVE TO ITS UNIT ROOT — meshes that
 // never move relative to their unit are its fixtures, the rest its movers —
-// then test movers against fixtures for genuine intersection (the honest
-// meshesIntersect: parity-raycast arbitrated). Designed running fits have
-// CLEARANCE and read as apart; only real interpenetration flags. Intended
-// mover-on-fixture contacts are declared in INTRA_UNIT_CONTACTS with the
-// instrument or derivation that owns them.
+// then test for genuine intersection (the honest meshesIntersect:
+// parity-raycast arbitrated). Designed running fits have CLEARANCE and read
+// as apart; only real interpenetration flags. Intended contacts are declared
+// in INTRA_UNIT_CONTACTS with the instrument or derivation that owns them.
+//
+// §121 — THREE TIERS, because the mover/fixture split alone leaves two of
+// the four pair classes unwatched, and both bit before they were built:
+//   MF  movers vs their unit's fixtures, at every pose (the 2026-08-01
+//       interim — the stop-lever class).
+//   FF  fixtures vs fixtures, ONCE: fixtures never move relative to their
+//       unit by the classification's own definition, so one pose is the
+//       whole answer. The pallet fork's ruby-in-slot bevel defect (0.046 of
+//       steel inside the stone it holds, geometry.js's stoneAndArm) lived
+//       here — both meshes static, so the split never looked at the pair.
+//   MM  movers vs movers ACROSS RIGID FRAMES, at every pose. Movers on ONE
+//       frame are one part — checkAssembly's connectivity domain, and their
+//       mutual overlap is a joint by definition — so the tier compares only
+//       across frames: §107's anchor arm through the saw (0.51–0.67, three
+//       times in one landing, found by the owner in a screenshot) was
+//       exactly a cross-frame pair inside the pre-promotion governor unit.
+//       Frames come from the same world-motion-delta signature checkAssembly
+//       clusters by (see sameFrame below); a MORPHING mesh is always its own
+//       frame, because two matrix-still morphs would otherwise merge and
+//       drop out of comparison — MODELING.md rule 6's silent-exclusion class
+//       in a new coat.
+// The fourth class — same-frame mover pairs — is checkAssembly's, gated
+// inside ASSEMBLY_SCOPE and reported outside it (§107's filed widening).
 // ---------------------------------------------------------------------------
 export const INTRA_UNIT_CONTACTS = [
   // { unit, a, b, why } — labels are meshLabel outputs (name, or Type#index
@@ -1655,8 +1677,7 @@ export const INTRA_UNIT_CONTACTS = [
   // side's own idiom: rotating members drawn coincident over their static
   // studs (the strike sleeve's "one shaft, two meshes"), and the strike
   // arbor's stud grown by a second turned length behind its new wheel.
-  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104: the governor-wheel sleeve is the strike arbor\'s next turned step over its stud — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104/§112: the sleeve over the stud (one full-column post since the tier-split retired the upper length)' },
+  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104: the governor-wheel sleeve is the strike arbor\'s next turned step over its stud — one shaft, two meshes; §112: the sleeve over the stud, one full-column post since the tier-split retired the upper length (§121 collapsed the two duplicate rows into this one, both citations kept)' },
   { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'CylinderGeometry#0', why: '§104/§112: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
   // §111 — these three rows used to say "coincident solids are the bearing".
   // They no longer have to: both governor arbors are BORED, the way every
@@ -1667,6 +1688,73 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm governor', a: 'alarmGovArbor', b: 'alarmGovStud', why: '§111: the governor arbor turns on its stud in a bore cut PIVOT_BORE_CLEAR wider than it — addUpperPivot\'s fit, on the movement\'s fastest arbor. §120 turned the stud into a POST: the arbor now runs between a foot collar and a formed head, floating half of ALARM_GOV_END_SHAKE off each, so this row is a running fit in three directions rather than two' },
   { unit: 'Alarm governor', a: 'alarmGovPinion', b: 'alarmGovStud', why: '§111: the pinion is driven on that arbor and shares its bore, so it clears the stud by the same PIVOT_BORE_CLEAR — the running fit at the leaf root; §120: and it stands clear over the post\'s foot collar, which is what the arbor beneath it lands on' },
   { unit: 'Alarm governor anchor', a: 'alarmGovAnchorArbor', b: 'alarmGovAnchorStud', why: '§111: the anchor\'s arbor turns on its own stud in the same bore, ring below and anchor above (§107 moved the row with the unit: stud and arbor are both the anchor\'s now). §120: the same turned post — collar, bearing length, head — so the anchor is located axially too' },
+
+  // §121 — the FF and MM tiers' first triage, the alarm complex (the gated
+  // INTRA_TIER_SCOPE). Every row below was measured before it was declared:
+  // tools/probe-121-depth.mjs re-took each flagged pair with the check's own
+  // parity and reports the contained fraction and depth its why cites, so
+  // "lapped"/"seated"/"kiss" are readings, not impressions. Zero rows in
+  // this population are defects — the alarm complex has been through the
+  // §29→§120 instrument passes, and what those left are joints and working
+  // contacts nobody had to declare while no instrument could see them.
+  //
+  // Alarm setting arbor — the §22/§23 setting-cock furniture:
+  { unit: 'Alarm setting arbor', a: 'CylinderGeometry#3', b: 'alarmArborCockArm', why: '§121: the setting cock\'s arm pressed on its pillar (0.13 of the pillar 0.15 deep in the arm — a seated post, TODO 12\'s cock idiom)' },
+  { unit: 'Alarm setting arbor', a: 'alarmArborCockArm', b: 'alarmArborCockBush', why: '§121: the bush pressed into the cock arm\'s eye — §23\'s bearing-cock convention, arm ends at its ring' },
+  // Alarm release lifter — §103's derived guide stack:
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#8', b: 'BoxGeometry#9', why: '§121: guide pin seated in its bracket arm (kiss at d<1e-4 — a designed seat, not a foul)' },
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#12', b: 'BoxGeometry#14', why: '§121: the mid-guide post in its upper cheek block (§103\'s stack — the cheek is one of the two guidance stations)' },
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#12', b: 'BoxGeometry#15', why: '§121: the same post socketed in the lower cheek block (0.44 of the post in the block — the socket)' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'alarmLifterBlade', why: '§121: the blade rooted in the plunger — §103: the stack derives downward, blade root rides the stub' },
+  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'alarmLifterBlade', why: '§121: the plunger EYE the blade runs through — §103\'s first guidance station; a working slide, not a joint' },
+  // Alarm gong — §56:
+  { unit: 'Alarm gong', a: 'alarmGongArc', b: 'alarmGongPost', why: '§121: the wire\'s foot brazed to its post — the gong\'s ONLY fixing (§56: the far end rings free, and the clamped-free bar is the voice)' },
+  // Alarm click — §99's click on its post:
+  { unit: 'Alarm click', a: 'alarmClickSpring', b: 'CylinderGeometry#4', why: '§121: the click spring\'s coiled anchor around its post (§99\'s click — the spring is the pawl\'s return)' },
+  { unit: 'Alarm click', a: 'alarmClickSpring', b: 'CylinderGeometry#5', why: '§121: the same coiled anchor against the post\'s cap collar above it' },
+  { unit: 'Alarm click', a: 'CylinderGeometry#4', b: 'CylinderGeometry#5', why: '§121: post and cap collar — one turned piece modeled as two, stacked flush (deep 0 both ways)' },
+  // Alarm lock — §102's return:
+  { unit: 'Alarm lock', a: 'alarmLockSpringStud', b: 'alarmLockSpring', why: '§121: §102\'s return blade riding its stud (kiss) — the blade the column works against; restoring\'s sprung row for this unit' },
+  // Alarm switch — §28/§33's column work and pusher:
+  { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'CylinderGeometry#7', why: '§121: the detent post and its second turned step — one post, two diameters' },
+  { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'switchClickSpring', why: '§121: the switch click spring anchored on the detent post (kiss)' },
+  { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'alarmPusherRiser', why: '§121: the riser lapped onto the pusher stem (0.5 of the riser 0.21 into the stem — the joint that carries the push)' },
+  { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'TorusGeometry#14', why: '§121: the return coil seated round the pusher stem (§33\'s handle return)' },
+  { unit: 'Alarm switch', a: 'alarmPusherPawl', b: 'alarmPusherReach', why: '§121: the pawl lapped on the reach bar (flush faces, deep 0)' },
+  { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser lapped on the reach bar — the pusher\'s own three-piece assembly' },
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'BoxGeometry#4', why: '§121: the detent arm riding the column wheel (kiss) — §28\'s column work; a working contact, its budget the switch\'s own asserts' },
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'SphereGeometry#5', why: '§121: the detent BALL on the column wheel\'s ramps (kiss) — the star detent that indexes the column' },
+  // Alarm link — §45's corner stations and the crank:
+  { unit: 'Alarm link', a: 'LatheGeometry#9', b: 'BoxGeometry#10', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
+  { unit: 'Alarm link', a: 'LatheGeometry#11', b: 'BoxGeometry#12', why: '§121: the second corner, same construction' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail formed on the rod (kiss under the alarm pose) — one member, two meshes' },
+  { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rod\'s end in the crank rim\'s eye — the crank joint the arming run turns' },
+  // Alarm disc — the §34/§48 follower assembly on the flange:
+  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#5', why: '§121: the follower bar lapped on its pivot rivet' },
+  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#7', why: '§121: the follower\'s nose bar lapped on the same rivet — the bar\'s two pieces share it' },
+  { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'BoxGeometry#10', why: '§121: the follower-spring stud block seated on the flange ring' },
+  { unit: 'Alarm disc', a: 'alarmPivotPost', b: 'alarmFollowerBar', why: '§121: the follower bar turning ON its post — the §48 follower\'s bearing (0.16 of the post in the bar\'s eye)' },
+  { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'alarmFollowerSpringStud', why: '§121: the stud flush on the flange ring (deep 0 — a planted foot)' },
+  // Alarm selector — §34's fork on its post:
+  { unit: 'Alarm selector', a: 'alarmSelTab', b: 'alarmSelPost', why: '§121: the tab lapped on the selector post' },
+  { unit: 'Alarm selector', a: 'alarmSelForkBracket', b: 'alarmSelPost', why: '§121: the fork bracket lapped on the same post — the selector\'s two riders share their pivot' },
+  // Alarm setting idler — §15's chain:
+  { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
+  // Alarm silence rocker — §94's rocker:
+  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'BoxGeometry#5', why: '§121: a fork prong rooted in the rocker bar' },
+  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'BoxGeometry#6', why: '§121: the second prong, same root' },
+  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'alarmSilPivot', why: '§121: the rocker bar on its pivot (kiss — the running fit)' },
+  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'alarmSilBlade', why: '§121: the blade rooted in the rocker bar' },
+  // Alarm hammer — §48's return:
+  { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerSpring', why: '§121: the return spring pressing the tail (0.5 of the spring\'s tip 0.05 into the tail\'s face band) — §48\'s sprung row; the spring law is TODO 14\'s open note' },
+  // Alarm barrel — TODO 1's morphing ribbon, the tier\'s singleton-frame rule at work:
+  { unit: 'Alarm barrel', a: 'ExtrudeGeometry#1', b: 'mainspringRibbon', why: '§121: the wound coil bearing on the drum wall — where a mainspring\'s outer coil rests by design; the ribbon is a MORPH, always its own frame, which is exactly how this pair reached the MM tier' },
+  { unit: 'Alarm barrel', a: 'mainspringHook', b: 'mainspringRibbon', why: '§121: the hook formed on the ribbon\'s outer end — the drum\'s mirror row (mainspringHook ⇄ ExtrudeGeometry#0 above) made the same argument' },
+  // Alarm winding train — TODO 15's solved chain:
+  { unit: 'Alarm winding train', a: 'alarmClimbPinion', b: 'alarmWindIdler', why: '§121: the climb pinion\'s working mesh into i1 — TODO 15\'s phase solve owns it (gap against tooth, measured)' },
+  { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'alarmWindIdler', why: '§121: the i1⇄i2 working mesh, same solve — both idlers carry §99\'s one name, so the row names it twice' },
+  // Alarm release feeler — §29's tail run:
+  { unit: 'Alarm release feeler', a: 'BoxGeometry#8', b: 'BoxGeometry#9', why: '§121: the §29 tail RUN sliding through its cheek mid-guide (kiss at cam poses) — §103\'s second guidance station' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
@@ -1688,6 +1776,55 @@ export const INTRA_UNIT_WAIVERS = [
   // one CLEAR_MARGIN under the eye's bottom at rest, blade root riding the
   // stub. The instrument measures the repair (0 rows).
 ];
+
+// §121 — the units whose FF and MM tiers are GATED: the population this
+// landing's triage actually inspected, row by row (ASSEMBLY_SCOPE's shape and
+// §107's argument — what is gated is what the triage supports; everything
+// else's FF/MM rows are REPORTED as `outOfScope`, §48's rows-are-the-product,
+// and the widening is TODO 5's filed remainder). The MF tier stays gated over
+// EVERY unit — its population was triaged when the tier landed (2026-08-01)
+// and nothing that was gated may become ungated. The first §121 sweep found
+// 259 rows across 46 unit×tier buckets, quadruple the 2026-08-01 session;
+// the scope is the alarm complex — the §107 home turf where the class bit
+// three times — plus the governor pair the item was prioritised over.
+export const INTRA_TIER_SCOPE = [
+  'Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel',
+  'Alarm barrel', 'Alarm click', 'Alarm winding train',
+  'Alarm link', 'Alarm lock', 'Alarm hammer', 'Alarm gong',
+  'Alarm switch', 'Alarm selector', 'Alarm disc',
+  'Alarm release lifter', 'Alarm release feeler', 'Alarm silence rocker',
+  'Alarm setting arbor', 'Alarm setting idler',
+];
+// The rigid-frame signature, shared by checkIntraUnit's MM tier and
+// checkAssembly (hoisted from the latter, §121 — one predicate, two
+// consumers). Under one rigid motion T every mesh of the body satisfies
+// M_p = T · M_0, so the delta M_p · M_0⁻¹ is the SAME matrix for every
+// member however far apart it sits. The comparison is a TOLERANCE, not
+// string equality: the delta is only algebraically identical across a body —
+// the cancellation is computed, so a member sitting further out carries more
+// float error than one at the hub, and rounded-string keys measurably split
+// real bodies (both anchor arms, the governor-wheel sleeve).
+export const FRAME_TOL = 1e-4;
+export const sameFrame = (p, q) => {
+  for (let i = 0; i < p.length; i++) if (Math.abs(p[i] - q[i]) > FRAME_TOL) return false;
+  return true;
+};
+// Cluster meshes into frames by their accumulated traces. `singletons` names
+// meshes that must be their own frame regardless of matrix (§121: morphs —
+// a mesh that swaps geometry moves its SURFACES without moving its matrix,
+// so the matrix trace would merge two still morphs into one "frame" and the
+// MM tier would never compare them).
+export function clusterByFrame(meshes, trace, singletons = new Set()) {
+  const groups = [];        // [{ rep, meshes }] — one entry per rigid frame
+  for (const m of meshes) {
+    if (singletons.has(m)) { groups.push({ rep: null, meshes: [m] }); continue; }
+    const t = trace.get(m);
+    const g = groups.find((x) => x.rep && sameFrame(x.rep, t));
+    if (g) g.meshes.push(m); else groups.push({ rep: t, meshes: [m] });
+  }
+  return groups;
+}
+
 export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   const _m = new THREE.Matrix4();
@@ -1714,57 +1851,204 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   for (const axis of axes) {
     for (let i = 0; i < samplesPerAxis; i++) poses.push([axis, i / (samplesPerAxis - 1)]);
   }
-  // 1. classify: movers change their unit-relative matrix at ANY pose
+  // 1. classify: movers change their unit-relative matrix at ANY pose — and
+  //    the same lap accumulates each mesh's WORLD-motion trace (M_p · M_0⁻¹,
+  //    checkAssembly's signature) so the MM tier can cluster movers into
+  //    rigid frames without a second walk, plus a `morphed` set (geometry.id
+  //    changed vs base) for clusterByFrame's singleton rule.
   const base = new Map();
+  const worldBase = new Map();  // mesh → M_0⁻¹, for the frame trace
+  const baseGeoId = new Map();  // mesh → geometry.id at the base pose
   clock.setPose(poses[0][0].pose(0, clock));
-  for (const u of units) for (const m of u.meshes) base.set(m, relSig(u, m));
+  for (const u of units) for (const m of u.meshes) {
+    base.set(m, relSig(u, m));
+    worldBase.set(m, m.matrixWorld.clone().invert());
+    baseGeoId.set(m, m.geometry.id);
+  }
   const movers = new Set();
+  const morphed = new Set();
+  const trace = new Map();      // mesh → concatenated delta elements, pose by pose
   let n = 0;
   for (const [axis, f] of poses) {
     clock.setPose(axis.pose(f, clock));
     for (const u of units) {
       for (const m of u.meshes) {
+        _m.copy(m.matrixWorld).multiply(worldBase.get(m));
+        const acc = trace.get(m) ?? [];
+        for (let i = 0; i < 16; i++) acc.push(_m.elements[i]);
+        trace.set(m, acc);
+        if (m.geometry.id !== baseGeoId.get(m)) morphed.add(m);
         if (movers.has(m)) continue;
         if (Math.abs(relSig(u, m) - base.get(m)) > 1e-6) movers.add(m);
       }
     }
     if (++n % 4 === 0) await new Promise((r) => setTimeout(r, 0));
   }
-  // 2. measure movers against their own unit's fixtures at every sampled pose
   const allowed = (u, la, lb) => contacts.some((c) => c.unit === u
     && ((c.a === la && c.b === lb) || (c.a === lb && c.b === la)));
-  const seen = new Map(); // key → row (worst pose kept)
+  // NEAREST-UNIT DEDUPE (§121). collectUnits does no nested-label exclusion —
+  // a label inside another unit puts its meshes in BOTH (the Dial holds the
+  // whole alarm-disc stack this way) — so without this, every pair inside a
+  // nested unit is reported twice under two unit names and would need two
+  // declared rows saying one thing. A pair belongs to the SMALLEST unit that
+  // contains both meshes: that is where its parts live, where its declared
+  // row is actionable, and the same argument RESTORING_WAIVERS records for
+  // the parity axis ("22 are ALSO claimed by a nearer unit and are correctly
+  // deduped away"). Strictly smaller, so a tie keeps both rather than
+  // silently dropping one.
+  const unitsOf = new Map();  // mesh → [units containing it]
+  for (const u of units) for (const m of u.meshes) (unitsOf.get(m) ?? unitsOf.set(m, []).get(m)).push(u);
+  const nearestElsewhere = (u, a, b) => unitsOf.get(a).some((v) => v !== u
+    && v.meshes.length < u.meshes.length && unitsOf.get(b).includes(v));
+  // The one arbitration guard all three tiers share. pointInsideTree throws
+  // on geometry carrying no normals; a throw here must assume NOTHING —
+  // checkAssembly's "assume joined" default exists because inventing a
+  // fracture is ITS unsafe direction, and inventing a collision is this
+  // check's, so an unmeasurable pair becomes a REPORTED row and never a
+  // verdict in either direction.
+  const unmeasurable = [];
+  const verdict = (a, b, u, tier, la, lb) => {
+    try { return meshesIntersect(a, b); }
+    catch (e) {
+      unmeasurable.push({ unit: u.name, tier, a: la, b: lb, err: String(e).slice(0, 80) });
+      return false;
+    }
+  };
+  // FF/MM pairs carry no mover-first asymmetry, so their keys sort the labels;
+  // the MF key keeps its historical mover-first order (same rows as ever).
+  const seen = new Map(); // key → row (first flagging pose kept)
+  const tiers = { MF: 0, FF: 0, MM: 0 };  // candidate pairs per tier, the coverage figure
+
+  // 2. tier MM prep: cluster each unit's movers into rigid frames (morphs
+  //    always singleton), enumerate the CROSS-frame pairs once. Same-frame
+  //    pairs are one part — checkAssembly's business, not this tier's.
+  const mmPairs = new Map();   // unit → [ [meshA, meshB], … ]
+  let frames = 0;
+  for (const u of units) {
+    const mov = u.meshes.filter((m) => movers.has(m));
+    if (mov.length < 2) continue;
+    const groups = clusterByFrame(mov, trace, morphed);
+    frames += groups.length;
+    if (groups.length < 2) continue;
+    const pairs = [];
+    for (let gi = 0; gi < groups.length; gi++) {
+      for (let gj = gi + 1; gj < groups.length; gj++) {
+        for (const a of groups[gi].meshes) for (const b of groups[gj].meshes) pairs.push([a, b]);
+      }
+    }
+    tiers.MM += pairs.length;
+    mmPairs.set(u, pairs);
+  }
+
+  // 3. tier FF, ONCE, at the net's base pose: fixtures never move relative
+  //    to their unit (that is what being a fixture MEANS here), so one pose
+  //    is the whole answer — which is also what keeps the Dial's C(147,2)
+  //    pairs affordable. Boxes are precomputed per unit, so this loop never
+  //    touches the shared _cbA/_cbB scratch pair from inside another loop.
+  clock.setPose(poses[0][0].pose(0, clock));
+  let sinceYield = 0;
+  for (const u of units) {
+    const fix = u.meshes.filter((m) => !movers.has(m));
+    if (fix.length < 2) continue;
+    tiers.FF += fix.length * (fix.length - 1) / 2;
+    const boxes = fix.map((m) => new THREE.Box3().setFromObject(m));
+    for (let i = 0; i < fix.length; i++) {
+      for (let j = i + 1; j < fix.length; j++) {
+        if (boxDistance(boxes[i], boxes[j]) > 0) continue;
+        if (nearestElsewhere(u, fix[i], fix[j])) continue;
+        const la = meshLabel(u, fix[i]), lb = meshLabel(u, fix[j]);
+        const key = `${u.name} / ${[la, lb].sort().join(' ⇄ ')}`;
+        if (seen.has(key) || allowed(u.name, la, lb)) continue;
+        if (verdict(fix[i], fix[j], u, 'FF', la, lb)) {
+          seen.set(key, { unit: u.name, tier: 'FF', a: la, b: lb, at: 'base' });
+        }
+        if (++sinceYield >= yieldEvery) { sinceYield = 0; await new Promise((r) => setTimeout(r, 0)); }
+      }
+    }
+  }
+
+  // 4. tiers MF and MM at every sampled pose
   n = 0;
   for (const [axis, f] of poses) {
     clock.setPose(axis.pose(f, clock));
     for (const u of units) {
       const fix = u.meshes.filter((m) => !movers.has(m));
       const mov = u.meshes.filter((m) => movers.has(m));
-      if (!fix.length || !mov.length) continue;
-      for (const a of mov) {
-        _cbA.setFromObject(a);
-        for (const b of fix) {
-          _cbB.setFromObject(b);
-          if (boxDistance(_cbA, _cbB) > 0) continue;
-          const la = meshLabel(u, a), lb = meshLabel(u, b);
-          const key = `${u.name} / ${la} ⇄ ${lb}`;
-          if (seen.has(key) || allowed(u.name, la, lb)) continue;
-          if (meshesIntersect(a, b)) {
-            seen.set(key, { unit: u.name, mover: la, fixture: lb, at: `${axis.name} f=${+f.toFixed(2)}` });
+      if (fix.length && mov.length) {
+        for (const a of mov) {
+          _cbA.setFromObject(a);
+          for (const b of fix) {
+            _cbB.setFromObject(b);
+            if (boxDistance(_cbA, _cbB) > 0) continue;
+            if (nearestElsewhere(u, a, b)) continue;
+            const la = meshLabel(u, a), lb = meshLabel(u, b);
+            const key = `${u.name} / ${la} ⇄ ${lb}`;
+            if (seen.has(key) || allowed(u.name, la, lb)) continue;
+            if (verdict(a, b, u, 'MF', la, lb)) {
+              seen.set(key, { unit: u.name, tier: 'MF', mover: la, fixture: lb, at: `${axis.name} f=${+f.toFixed(2)}` });
+            }
           }
+        }
+      }
+      for (const [a, b] of mmPairs.get(u) ?? []) {
+        if (nearestElsewhere(u, a, b)) continue;
+        _cbA.setFromObject(a);
+        _cbB.setFromObject(b);
+        if (boxDistance(_cbA, _cbB) > 0) continue;
+        const la = meshLabel(u, a), lb = meshLabel(u, b);
+        const key = `${u.name} / ${[la, lb].sort().join(' ⇄ ')}`;
+        if (seen.has(key) || allowed(u.name, la, lb)) continue;
+        if (verdict(a, b, u, 'MM', la, lb)) {
+          seen.set(key, { unit: u.name, tier: 'MM', a: la, b: lb, at: `${axis.name} f=${+f.toFixed(2)}` });
         }
       }
     }
     if (++n % 2 === 0) await new Promise((r) => setTimeout(r, 0));
   }
+  // MF pair coverage, for the same population figure the other tiers report
+  for (const u of units) {
+    const f = u.meshes.filter((m) => !movers.has(m)).length;
+    const mv = u.meshes.filter((m) => movers.has(m)).length;
+    tiers.MF += f * mv;
+  }
+
+  // 5. the couple-by-string guard (§121, expectedContacts' convention): a
+  //    declared row whose unit or labels match NOTHING is a stale selector —
+  //    the exact failure MODELING.md rule 7 records (a welded geometry
+  //    changing type un-declared 14 joints with not one distance moved).
+  //    Gated at 0. A row that matches but never fires stays: several rows
+  //    are deliberate records of joints that measure clear.
+  const labelSets = new Map(units.map((u) => [u.name, new Set(u.meshes.map((m) => meshLabel(u, m)))]));
+  const unmatchedSelectors = [];
+  for (const [table, row] of [...contacts.map((c) => ['INTRA_UNIT_CONTACTS', c]),
+    ...INTRA_UNIT_WAIVERS.map((w) => ['INTRA_UNIT_WAIVERS', w])]) {
+    const ls = labelSets.get(row.unit);
+    if (!ls) { unmatchedSelectors.push({ table, ...row, miss: 'unit' }); continue; }
+    for (const k of ['a', 'b']) {
+      if (!ls.has(row[k])) unmatchedSelectors.push({ table, ...row, miss: row[k] });
+    }
+  }
+
   const all = [...seen.values()];
   for (const v of all) {
+    const va = v.a ?? v.mover, vb = v.b ?? v.fixture;
     const w = INTRA_UNIT_WAIVERS.find((x) => x.unit === v.unit
-      && ((x.a === v.mover && x.b === v.fixture) || (x.a === v.fixture && x.b === v.mover)));
+      && ((x.a === va && x.b === vb) || (x.a === vb && x.b === va)));
     if (w) v.waived = w.debt;
   }
   console.table(all);
-  return { violations: all.filter((v) => !v.waived), waived: all.filter((v) => v.waived), movers: movers.size, poses: poses.length };
+  // The gate/report split (§121): MF everywhere (its 2026-08-01 triage holds
+  // and nothing gated may become ungated); FF/MM inside INTRA_TIER_SCOPE.
+  const inGate = (v) => v.tier === 'MF' || INTRA_TIER_SCOPE.includes(v.unit);
+  const live = all.filter((v) => !v.waived);
+  return {
+    violations: live.filter(inGate),
+    outOfScope: live.filter((v) => !inGate(v)),
+    waived: all.filter((v) => v.waived),
+    movers: movers.size, poses: poses.length,
+    tiers, frames, unmeasurable, unmatchedSelectors,
+    gate: 'GATING — 0 unwaived intersections (tier MF over every unit; FF/MM inside INTRA_TIER_SCOPE) AND 0 unmatched selectors; out-of-scope FF/MM rows and unmeasurable pairs are reported (§48), and the scope widening is TODO 5\'s filed remainder',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1863,7 +2147,9 @@ export async function checkAssembly(clock, {
     }
     if (++n % 4 === 0) await new Promise((r) => setTimeout(r, 0));
   }
-  // Cluster the traces with a TOLERANCE rather than by string equality. The
+  // Cluster the traces with a TOLERANCE rather than by string equality —
+  // sameFrame/clusterByFrame, hoisted to module scope by §121 so the MM tier
+  // clusters by the SAME predicate (their rationale travels with them). The
   // delta is algebraically identical across one body (M_p·M_0⁻¹ = Pivot_p·
   // Pivot_0⁻¹, the member's own local transform cancelling), but only
   // algebraically: the cancellation is computed, so a member sitting further
@@ -1872,22 +2158,14 @@ export async function checkAssembly(clock, {
   // it dropped both anchor arms and the governor-wheel sleeve out of their own
   // groups, which reads as a smaller assembly rather than a broken one. The
   // predicate is "same rigid motion", so the comparison is a tolerance.
-  const FRAME_TOL = 1e-4;
-  const sameFrame = (p, q) => {
-    for (let i = 0; i < p.length; i++) if (Math.abs(p[i] - q[i]) > FRAME_TOL) return false;
-    return true;
-  };
+  // (No singleton set here: assembly's question is "who rides one frame",
+  // and a matrix-still morph genuinely does ride its frame.)
 
   // 2. connectivity, once, at the net's first pose
   clock.setPose(poses[0][0].pose(0, clock));
   const rows = [], unmeasurable = [];
   for (const u of units) {
-    const groups = [];        // [{ rep, meshes }] — one entry per rigid frame
-    for (const m of u.meshes) {
-      const t = trace.get(m);
-      const g = groups.find((x) => sameFrame(x.rep, t));
-      if (g) g.meshes.push(m); else groups.push({ rep: t, meshes: [m] });
-    }
+    const groups = clusterByFrame(u.meshes, trace);
     for (const { meshes: members } of groups) {
       if (members.length < 2) continue;
       if (!members.some((m) => moves.has(m))) continue;   // identity frame — no evidence, see the header
@@ -5371,7 +5649,7 @@ const CHECKS = {
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
   alarmHandoffs: (clock, opts) => checkAlarmHandoffs(clock, opts),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
-  intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 interim — movers vs their own fixtures
+  intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
