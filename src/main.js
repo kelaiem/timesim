@@ -14325,6 +14325,7 @@ style.textContent = `
 }
 #clock-update button:hover { background: rgba(255,255,255,0.16); }
 #clock-update .dismiss { background: none; border: none; opacity: 0.6; padding: 4px 6px; }
+#clock-update button[disabled] { opacity: 0.5; cursor: default; }
 /* Tour deep-link confirmation (BUILT §17) — a real click is the ONLY way to
    arrive at the tour when it's auto-triggered by ?tour=1 on load: unlike the
    button, a deep link isn't itself a user gesture, and it shouldn't run the
@@ -14896,7 +14897,9 @@ const UPDATE_POLL_MS = 15 * 60 * 1000; // a quarter hour; focus is the fast path
 let bootVersion = null, updateChecking = false, updateShown = false, lastUpdateCheck = 0;
 const updateEl = document.createElement('div');
 updateEl.id = 'clock-update';
-updateEl.innerHTML = '<span>A new version is available</span>';
+const updateMsg = document.createElement('span');
+updateMsg.textContent = t('A new version is available');
+updateEl.appendChild(updateMsg);
 document.body.appendChild(updateEl);
 // §79 — the registration, if one exists (set below, only in a stamped tree).
 // The toast's Reload must cross the WORKER boundary when there is one: the
@@ -14908,9 +14911,39 @@ document.body.appendChild(updateEl);
 // controllerchange — when the NEW worker, and its new precache, owns the
 // page. Without a worker this degrades to exactly the old behavior.
 let swReg = null;
+// One dance at a time. Every path out of swReload ends in a reload, so the
+// flag is never cleared — a second click has nothing to add (the 10 s
+// re-post in the poll already covers a lost promotion message), and each
+// extra call would arm its own controllerchange listener and its own poll.
+let swReloading = false;
+// Display-only progress on the toast (§73's rules: t() reaches textContent,
+// and state is never read back from text). The dance is ALLOWED to take as
+// long as a precache install takes — the no-timeout rule below — and a
+// button that waits silently is indistinguishable from a dead one, which is
+// exactly how a click that caught the install mid-precache was reported.
+// The message names the long stage; the disabled buttons say the click was
+// taken.
+function updateBusy(msg) {
+  updateMsg.textContent = msg;
+  for (const b of updateEl.querySelectorAll('button')) b.disabled = true;
+}
 async function swReload() {
-  if (swReg) {
-    try { await swReg.update(); } catch { /* offline or dev: plain reload below */ }
+  if (swReloading) return;
+  swReloading = true;
+  updateBusy(t('Updating…'));
+  // swReg if register()'s .then has run — but the toast is armed by
+  // checkForUpdate(true) BEFORE register() resolves, and registration can
+  // have been refused this boot while an older worker still controls the
+  // page. In both cases the registration from a previous visit is still
+  // there to be fetched, and fetching it is the difference between
+  // crossing the worker boundary and the plain reload below landing on
+  // the very cache-first bytes the toast warned about.
+  const reg = swReg
+    || ('serviceWorker' in navigator
+      ? await navigator.serviceWorker.getRegistration().catch(() => null)
+      : null);
+  if (reg) {
+    try { await reg.update(); } catch { /* offline or dev: plain reload below */ }
     // update() resolving does NOT mean the new worker is visible yet —
     // measured in §79's acceptance run: reg.installing and reg.waiting were
     // both still null on the microtask after update() settled, and the new
@@ -14930,20 +14963,24 @@ async function swReload() {
     // stale cache. Degradation stays benign: a plain reload re-shows the
     // toast rather than losing the update.
     const w = await new Promise((res) => {
-      if (swReg.waiting) return res(swReg.waiting);
+      if (reg.waiting) return res(reg.waiting);
       const follow = (i) => {
         if (!i) return res(null);
+        // The install is the stage that fetches the whole precache, so it
+        // is the one a viewer can sit in for real seconds — name it.
+        updateBusy(t('Downloading the update…'));
         i.addEventListener('statechange', () => {
           if (i.state === 'installed') res(i);
           else if (i.state === 'redundant') res(null);
         });
       };
-      if (swReg.installing) return follow(swReg.installing);
+      if (reg.installing) return follow(reg.installing);
       let announced = false;
-      swReg.addEventListener('updatefound', () => { announced = true; follow(swReg.installing); }, { once: true });
-      setTimeout(() => { if (!announced) res(swReg.waiting || null); }, 4000);
+      reg.addEventListener('updatefound', () => { announced = true; follow(reg.installing); }, { once: true });
+      setTimeout(() => { if (!announced) res(reg.waiting || null); }, 4000);
     });
     if (w) {
+      updateBusy(t('Updating…'));   // installed — promotion is what remains
       let done = false;
       const go = () => { if (!done) { done = true; location.reload(); } };
       navigator.serviceWorker.addEventListener('controllerchange', go, { once: true });
@@ -14992,7 +15029,7 @@ async function swReload() {
         if (done) return clearInterval(poll);
         if (navigator.serviceWorker.controller !== before) { clearInterval(poll); go(); return; }
         if (target.state === 'redundant') {
-          const next = swReg.waiting || swReg.installing;
+          const next = reg.waiting || reg.installing;
           if (!next) { clearInterval(poll); go(); return; }
           target = next;
           target.postMessage('skip-waiting');
@@ -15011,12 +15048,12 @@ async function swReload() {
 }
 {
   const reload = document.createElement('button');
-  reload.textContent = 'Reload';
+  reload.textContent = t('Reload');
   reload.addEventListener('click', () => { swReload(); });
   const dismiss = document.createElement('button');
   dismiss.className = 'dismiss';
   dismiss.textContent = '✕';
-  dismiss.title = 'Dismiss';
+  dismiss.title = t('Dismiss');
   // Dismiss hides it for THIS version only: updateShown stays true so the
   // same version cannot nag, but a later deploy re-arms it below.
   dismiss.addEventListener('click', () => updateEl.classList.remove('show'));
