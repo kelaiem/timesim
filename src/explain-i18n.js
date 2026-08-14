@@ -1,5 +1,7 @@
 // §73 tier two — THE EXPLAINER, LOCALIZED. German and Chinese prose for
-// explain.html's entries, plates and captions.
+// explain.html's entries, plates and captions. §116 wired fr, ja and zh-Hant
+// here too; their tables are empty and filed as their own tier (§117), so
+// those locales render this page in English and --check says so every run.
 //
 // The walk and the swap live in src/page-i18n.js (§95 moved them there when
 // the primer became a second tier-two page); this file is the EXPLAINER's
@@ -37,18 +39,43 @@ export { collectTranslatable, RICH_SELECTORS, LABEL_SELECTOR };
 export const NUMBERS = 'source';
 
 // One file per locale, loaded on demand: a reader of the English page pays
-// nothing for the German or Chinese prose, and each table stays a file a
+// nothing for the other locales' prose, and each table stays a file a
 // translator can open on its own. Top-level await is what lets the page
 // localize BEFORE its interactive plates wire themselves up (see explain.html).
-const TABLE = UI_LANG === 'de' ? (await import('./explain-i18n.de.js')).default
-  : UI_LANG === 'zh' ? (await import('./explain-i18n.zh.js')).default
-  : null;
+//
+// §116 — THE SPECIFIERS ARE LITERAL STRINGS, and that is a build constraint
+// rather than a style. tools/stamp-release.mjs finds dynamic imports by regex
+// over a QUOTED relative specifier, and its leftover scan uses the same
+// pattern — so a specifier built by template interpolation from UI_LANG would
+// be neither stamped nor added to the service worker's precache AND would not
+// be reported as missed: a reader offline in that locale would get a 404 with
+// every gate green. One map per page, listed by hand, is the price of being
+// visible to that walk.
+//
+// That regex reads THIS FILE too, comments included, and §116 proved it the
+// expensive way: a comment here spelling out the call form it matches put a
+// phantom `src/…` into PRECACHE, addAll is all-or-nothing, and the worker
+// never activated. Describe the pattern; do not write a specimen of it.
+//
+// The map is also the page's ANSWER to "which languages do you have" — it
+// feeds both the load below and allTables(), so the roster is stated once.
+const LOADERS = {
+  de: () => import('./explain-i18n.de.js'),
+  fr: () => import('./explain-i18n.fr.js'),
+  ja: () => import('./explain-i18n.ja.js'),
+  zh: () => import('./explain-i18n.zh.js'),
+  'zh-Hant': () => import('./explain-i18n.zh-Hant.js'),
+};
+const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 
-// Both tables, for tools/explain-i18n.mjs --check (which must see every
-// language at once). Loaded only when asked for, so the page never pays.
+// Every table at once, for tools/explain-i18n.mjs --check (which must see all
+// languages together). Loaded only when asked for, so the page never pays.
+// The tool takes its locale list from the KEYS of what this returns — there is
+// no second roster in the harness to keep in step with this one.
 export async function allTables() {
-  const [de, zh] = await Promise.all([import('./explain-i18n.de.js'), import('./explain-i18n.zh.js')]);
-  return { de: de.default, zh: zh.default };
+  const codes = Object.keys(LOADERS);
+  const mods = await Promise.all(codes.map((c) => LOADERS[c]()));
+  return Object.fromEntries(codes.map((c, i) => [c, mods[i].default]));
 }
 
 export const t = translator(TABLE);

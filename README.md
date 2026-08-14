@@ -191,9 +191,12 @@ readouts. The alarm has its own crown and pusher. `?inspect=1` and `?cycle=1`
 deep-link into the inspection and alarm-cycler routes; an Advanced panel
 exposes the finish parameters from `src/aesthetics.json`.
 
-The chrome is localised — English, German and Chinese — selectable in the
-panel or by `?lang=de` / `?lang=zh`; `explain.html`, the mechanism explainer
-linked from the HUD, is translated too. A released build also **loads with
+The chrome is localised — English, German, French, Japanese and Chinese in
+both scripts — selectable in the panel or by `?lang=fr` / `?lang=zh-Hant`
+(a script subtag, so `zh-TW`, `zh-HK` and `zh-MO` all resolve to Traditional).
+`primer.html` is translated in all six; `explain.html`, the mechanism
+explainer linked from the HUD, is translated in German and Chinese, and
+renders English in the three newest locales until their tables are filled. A released build also **loads with
 the network gone**: a service worker precaches the release, so a page that
 has been visited online once boots offline, deep links included. Neither
 applies to a source tree, which registers no worker at all so that an edit is
@@ -215,8 +218,9 @@ never shadowed by a cache.
   back to `localStorage`.
 - `src/aesthetics.js`, `src/aesthetics.json` — finish parameters; see
   `AESTHETICS.md` for the reasoning.
-- `src/i18n.js`, `src/explain-i18n*.js` — the UI and explainer localisations
-  (English, German, Chinese), keyed by the English source string.
+- `src/i18n.js` — the UI localisation, keyed by the English source string.
+  `src/page-i18n.js` is the shared engine for the two static pages, and
+  `src/explain-i18n*.js` / `src/primer-i18n*.js` are their per-locale tables.
 - `explain.html` — the mechanism explainer: a plate per mechanism, quoting the
   real source constants, linked from the HUD and styled as it.
 - `sw.js`, `manifest.webmanifest`, `favicon.svg` — the offline worker (inert in

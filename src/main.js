@@ -8,7 +8,7 @@ import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
-import { UI_LANG, setUiLang, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
+import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
 // consumed unchanged below; the geometry fingerprint proves the move changed
@@ -14185,9 +14185,12 @@ style.textContent = `
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All three
-   locales measure inside 150 px on one line today (German's "Klingelt um"
-   is the long one); a fourth that does not simply gets two lines. */
+   what it says, and the box already grows to fit its contents. All SIX
+   locales measure inside 150 px on one line today — German's "Klingelt um"
+   is still the long one at 49.5 px (§116 measured the other five against
+   it: en 36.7, fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0) — so the allowance
+   that a locale which does not fit simply gets two lines is still unspent.
+   tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
   color: #8b95a1; font: 10px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   overflow-wrap: anywhere;
@@ -14522,14 +14525,12 @@ viewHud.innerHTML = `
        precedent) — the panel is built from UI_LANG, and a second live
        re-render path would be a copy to rot. Option faces are written in
        their OWN language: a viewer looking for their language should not
-       have to read the current one to find it. -->
+       have to read the current one to find it. §116 moved the options out
+       of this markup — they are built from i18n.js's LOCALES below, so the
+       roster is declared once instead of copied into every picker. -->
   <div class="row">
     <span class="label-small">Language</span>
-    <select id="lang-select">
-      <option value="en">English</option>
-      <option value="de">Deutsch</option>
-      <option value="zh">中文</option>
-    </select>
+    <select id="lang-select"></select>
   </div>
   <details class="ui-section">
     <summary>Advanced</summary>
@@ -14758,8 +14759,12 @@ function setBarState(id, on) {
 // THE BAR'S WIDTH IS A LOCALE FACT, SO IT IS MEASURED, NOT ASSUMED. German's
 // "Steuerung / Ansicht / Zifferblatt" is 211 px against English's 161, and a
 // typed breakpoint would be right in one language and wrong in another —
-// exactly the failure §73 says the German column exists to catch. So the two
-// rules below read the bar's OWN rect:
+// exactly the failure §73 says the German column exists to catch. §116 added
+// three more locales and German is STILL the widest (measured together on one
+// machine: en 170.2, de 192.4, fr 189.9, ja 166.0, zh 144.0, zh-Hant 144.0 —
+// absolute numbers move with the font stack, the ordering is the point), so
+// nothing below needed re-deriving. So the two rules below read the bar's OWN
+// rect:
 //   · if the bar would sit over the panel's header (its Hide button and
 //     title live in that corner), the panel drops below the bar;
 //   · if both panels cannot fit side by side, they become mutually
@@ -14943,7 +14948,8 @@ async function swReload() {
       const go = () => { if (!done) { done = true; location.reload(); } };
       navigator.serviceWorker.addEventListener('controllerchange', go, { once: true });
       const before = navigator.serviceWorker.controller;
-      w.postMessage('skip-waiting');
+      let target = w;
+      target.postMessage('skip-waiting');
       // The fallback exists for skipWaiting being REFUSED, or for a
       // controllerchange that fired before the listener armed (another tab
       // promoted the same worker). It used to be a flat 2 s reload, on the
@@ -14955,28 +14961,48 @@ async function swReload() {
       // page, and its cache-first served the OLD release — then the new
       // worker activated behind the stale page and DELETED its cache, so
       // "at worst" was a page whose own assets were evicted, broken the
-      // moment it went offline. The reload that was clicked must never land
-      // on the release the toast is warning about, so the fallback reloads
-      // only when that cannot happen, or when there is provably nothing
-      // left to wait for:
-      //   · the controller already changed (the raced case the 2 s timer
-      //     was really for — the event beat the listener);
-      //   · the worker went REDUNDANT (skipWaiting refused, or the worker
-      //     replaced by a newer one): controllerchange from THIS worker
-      //     will never come, and a plain reload is the honest degradation;
-      //   · the 10 s cap: ~4× the slowest promotion measured anywhere
-      //     (2.3 s, the run above) — the same generosity the announcement
-      //     bound earned when its 1500 ms flaked under a concurrent
-      //     battery. Waiting is otherwise CORRECT: the worker is installed
-      //     or activating, and the armed listener fires the moment the
-      //     controller flips (measured: at the 'activating' transition,
-      //     not at clients.claim()).
-      const t0 = Date.now();
+      // moment it went offline. That fix raised the timer to a 10 s cap —
+      // and run 31727668975 falsified the CAP the same way (reproduced by
+      // delaying skipWaiting 12 s, the same probe): a promotion slower than
+      // any cap still exists, the cap still reloaded under the old worker,
+      // and the new worker still evicted the page behind it. The lesson,
+      // finally learned whole: once a worker is installed there is NO
+      // timeout at which a plain reload becomes safe — its later activation
+      // evicts whatever the reload landed on. So time is no longer a reason
+      // to reload. The poll now reloads only in the two states where it
+      // cannot land on the release the toast warned about:
+      //   · the controller already changed (the raced case the timer was
+      //     really for — the event beat the listener);
+      //   · the worker went REDUNDANT with nothing replacing it: no
+      //     activation is coming from anywhere, so a plain reload is the
+      //     honest degradation and re-shows the toast.
+      // Two stalls it actively repairs instead of conceding to:
+      //   · a redundant worker WITH a replacement (the focus-poll update()
+      //     and this one can overlap; the loser's install is discarded) —
+      //     follow the replacement and promote it;
+      //   · a promotion stalled past 10 s (the skip-waiting message can be
+      //     lost to a worker being stopped as it is posted) — re-post it,
+      //     which is idempotent, and a lost message becomes a late success.
+      // Waiting is otherwise CORRECT: the worker is installed or
+      // activating, the page is intact until the moment of activation, and
+      // the armed listener fires the reload at exactly that moment
+      // (measured: at the 'activating' transition, not at clients.claim()).
+      let lastNudge = Date.now();
       const poll = setInterval(() => {
         if (done) return clearInterval(poll);
-        if (navigator.serviceWorker.controller !== before
-            || w.state === 'redundant'
-            || Date.now() - t0 > 10000) { clearInterval(poll); go(); }
+        if (navigator.serviceWorker.controller !== before) { clearInterval(poll); go(); return; }
+        if (target.state === 'redundant') {
+          const next = swReg.waiting || swReg.installing;
+          if (!next) { clearInterval(poll); go(); return; }
+          target = next;
+          target.postMessage('skip-waiting');
+          lastNudge = Date.now();
+          return;
+        }
+        if (Date.now() - lastNudge > 10000) {
+          target.postMessage('skip-waiting');
+          lastNudge = Date.now();
+        }
       }, 500);
       return;
     }
@@ -17578,8 +17604,17 @@ document.getElementById('btn-sound').addEventListener('click', () => setSound(!s
 // §73 — the Language row. UI_LANG is resolved at import; this only records the
 // CHOICE and reloads, so there is exactly one path that builds a localized
 // panel (boot) rather than two.
+// §116 — the options come from LOCALES, not from the panel's markup. Safe to
+// build them here: localizeTree ran once at panel build, long before this, so
+// the faces are never walked and a face that happens to collide with a table
+// key cannot be translated out of its own language.
 {
   const sel = document.getElementById('lang-select');
+  for (const { code, face } of LOCALES) {   // face is DISPLAY; value is canonical (§73)
+    const o = document.createElement('option');
+    o.value = code; o.textContent = face;
+    sel.appendChild(o);
+  }
   sel.value = UI_LANG;
   sel.addEventListener('change', () => setUiLang(sel.value));
 }

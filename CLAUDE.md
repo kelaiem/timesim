@@ -62,11 +62,17 @@ three-quarter plate and the dial). The base plate's fills live in
 line drawing's only partition between the dial-side works and the
 train. Both halves are boot-asserted.
 
-The chrome is LOCALIZED (§73 tier one — English, German, Chinese):
+The chrome is LOCALIZED (§73 tier one, §116 — English, German, French,
+Japanese, and Chinese in both scripts):
 `src/i18n.js` holds one table keyed by the English source string, so the
 app keeps authoring its UI in English and `t()` / `localizeTree()`
 resolve at the display site; a missing entry falls back to English
-VISIBLY. Two rules when touching UI text. **State is an attribute, never
+VISIBLY. The roster is ONE declaration — `LOCALES` in `src/i18n.js`, which the
+three pickers render, `_norm` resolves through and `LANG_TAG` reads. **Its array
+order is the resolution ladder and it is boot-asserted**, because a script
+subtag has to be tested before the bare language it refines: get `zh-Hant`
+below `zh` and a Taiwanese reader silently gets Simplified, with nothing
+thrown and nothing blank. Two rules when touching UI text. **State is an attribute, never
 the text**: toggles carry `data-state="on|off"` (`setBtnState`), §72's
 `aria-pressed` observer watches that attribute, and no code may compare
 button text to `'On'`. **Display translates, values do not**: option
@@ -74,7 +80,8 @@ button text to `'On'`. **Display translates, values do not**: option
 state and deep-link params stay canonical English — `t()` only ever
 reaches `textContent`, `title`, `placeholder` and `aria-label`. Numbers
 go through `fmtNum`/`fmtInt` at the display layer only (German reads
-`30,0 h` and `18.000 A/h`; the stored value keeps its `.`). Locale is
+`30,0 h` and `18.000 A/h`, French `18 000 A/h` with a NARROW NO-BREAK SPACE;
+the stored value keeps its `.`). Locale is
 reload-tier (§22's precedent), so there is exactly one path that builds
 a localized panel. **The static pages are localized too** (§73 tier two,
 §95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
@@ -86,12 +93,20 @@ TRANSLATION BY DESIGN: the key stops matching and that block renders English
 until re-translated, which beats a stale paragraph confidently describing
 changed prose. Never retype a key —
 `node tools/explain-i18n.mjs --extract --page <name>` regenerates them from the
-DOM; `--check` is the gate and with no `--page` it checks EVERY page (0
+DOM. **The tool takes its locale roster from the page module's own
+`allTables()` keys**, so adding a locale is one entry in that module's
+`LOADERS` map and the harness cannot fall behind it; `MARKS` beside it is a
+per-locale FACT (which characters that locale groups and points with), and a
+missing row is a hard failure rather than a skipped check. `--check` is the gate and with no `--page` it checks EVERY page (0
 unmatched keys, 0 markup/`<code>`/id drift, 0 number drift, and no label
 overrunning its plate against the English baseline). **A translated header must
 not wrap**: both bars are `position: fixed` above a constant body padding, so a
 second line covers the first paragraph — every item is `nowrap` and the stamp
-is the one that yields (ellipsis, then hidden under 820 px). German found that.
+is the one that yields (ellipsis, then hidden under 820 px). German found it;
+§116 re-measured all six locales × both pages × eight widths straddling that
+breakpoint and added `tools/probe-116-locale-fit.mjs`, which is also where the
+chrome-bar and 150 px HUD-label numbers now come from — none of that is gated,
+so it is measured on purpose rather than assumed.
 
 A second instrument, `node tools/explain-quotes.mjs`, answers the
 older question `explain.html`'s header promises — do its numbers still match

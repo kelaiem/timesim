@@ -11533,3 +11533,170 @@ across the movement from the window. Neither number crosses anything.
 Cost: `sweptOverlap` 1877 → 1913 s (+1.9%, the larger plate mesh) and the rest
 inside run-to-run noise; total check time 4888 → 4823 s. The shard partition
 is unchanged in shape and the cost column is left alone.
+
+## §116 — Three more locales, and the locale list becomes a declaration
+
+**Shipped in part, and the part is named.** Tier one (the chrome,
+`src/i18n.js`) and `primer.html` now speak **French, Japanese and
+Traditional Chinese** alongside English, German and Simplified Chinese —
+366/366 and 91/91 in each, six locales at full parity on both. `explain.html`
+is NOT translated in the three new locales: it is 530 keys of the densest
+prose in the project, it is filed as its own tier (§117 in the roadmap), and
+in the meantime it renders English and `--check` reports 0.0% for those
+locales out loud on every run. That is the §73 shape exactly — that entry
+shipped the chrome first and the explainer as a later tier — and it is
+written down here rather than left to be discovered from a coverage column.
+
+**Why these three.** Each was chosen for what it would break, in the §73
+idiom where German is the layout stress test and Chinese the typography one.
+**French** is the first locale whose NUMBERS are not ASCII-punctuated: fr-FR
+points with `,` and groups with U+202F NARROW NO-BREAK SPACE, which no
+instrument here had ever had to parse. **Japanese** is the first locale
+sharing no script with English at all, so anything still leaking an
+untranslated word into the panel has nowhere to hide. **Traditional Chinese**
+is the one that was already wrong: `zh` was never Traditional, every Taiwanese
+and Hong Kong browser resolved to Simplified, and nothing anywhere reported
+it.
+
+**The roster becomes one declaration.** It had lived in four places that
+agreed by hand — the `_norm` prefix ladder and `LANG_TAG` map in
+`src/i18n.js`, the `<option>` markup in the panel, and the same array typed
+again into `explain.html` and `primer.html`. `LOCALES` replaces all four:
+the three pickers render its faces, `_norm` resolves through its matchers,
+`LANG_TAG` reads its tag, `TABLES` is keyed by its codes. The two page
+modules got the same treatment one level down, where a `LOADERS` map replaced
+both a ternary chain and a separately hand-kept `allTables()` list.
+
+**Its array ORDER is the resolution ladder, and that is boot-asserted.**
+Every Traditional tag begins `zh`, so the bare-language row swallows all of
+them unless the script subtag is tested first — and the failure has no other
+symptom. Nothing throws, nothing renders blank; a Taiwanese reader simply
+gets Simplified. So nine input→output pairs are checked at boot with the
+achieved and required values in the warning (standing rule 6), and the
+negative was produced on purpose: swapping the two rows prints
+`_norm('zh-TW') = zh, expected zh-Hant` four times over, and restoring them
+returns boot to silence. Measured after the fix: `zh-Hant`, `zh-TW`, `zh-HK`,
+`zh-MO`, `zh-Hant-TW` and `zh_TW` all resolve Traditional; `zh`, `zh-CN`,
+`zh-Hans` and `zh-SG` still resolve Simplified.
+
+**The Simplified entry kept its value and lost its name.** Its face is now
+`简体中文`, because `中文` stopped being a distinguishing name the moment a
+second Chinese existed. The VALUE stayed `zh` — tier one's display-translates,
+values-do-not rule — so every `?lang=zh` link ever shared still resolves, and
+no stored `uiLang` had to be migrated.
+
+**The dynamic-import specifiers stay literal, and a comment proved why.**
+`tools/stamp-release.mjs` finds dynamic imports by regex over a quoted
+relative specifier, and its leftover scan uses the same pattern, so a
+specifier interpolated from `UI_LANG` would be neither stamped nor precached
+*and would not be reported as missed* — a 404 for an offline reader with
+every gate green. That much was designed for. What was not: **that regex
+reads the source file's comments too.** The comment in `src/explain-i18n.js`
+explaining the hazard spelled out the call form it matches, the stamper
+matched it, and `src/…` — an ellipsis — went into `PRECACHE`. `addAll` is
+all-or-nothing, so the worker never activated, and `offline-check` did not
+report a bad URL: it hung in `release: first load, worker install` and timed
+out. The comment now describes the pattern instead of exhibiting one, and
+says so. Precache went 27 → **33** (three locales × two pages), asserted.
+
+**French made the number gate learn a character.** `primer.html` declares
+`NUMBERS: 'quantity'`, so its numbers are compared by parsed VALUE — and the
+tokenizer was `/\d+(?:[.,]\d+)*/`, which splits `18 000` into `18` and `000`.
+Every grouped French number on that page would have reported drift while the
+translation was correct. `MARKS.group` became a list and the token class is
+now built from each locale's own marks, so widening French cannot widen
+anybody else — and that is not asserted, it is shown: `--check` output is
+**byte-identical** across the change for `de` and `zh`. U+00A0 and U+2009 are
+accepted alongside U+202F because they render identically and a translator's
+keyboard produces them; a plain ASCII space is deliberately REJECTED, because
+`5 100` in prose is two quantities more often than one and merging them would
+be the checker inventing a number rather than reading one.
+
+**That diagnostic was in the wrong branch, and the French table found it.**
+It had been written as the `else` of the value comparison, so it could only
+fire when the values already matched — which, with an ASCII space, they never
+can. Tested FIRST, an injected ASCII space now reports `ASCII space used as a
+group separator (this locale wants U+202F)` and names the key, instead of the
+arithmetic nonsense `[18000] vs [0,18]`.
+
+**`MARKS` is a per-locale fact, not a roster, and the difference is now
+enforced.** The roster comes from the page module's own `allTables()` keys —
+the tool has no second list to fall behind. `MARKS` carries something the
+roster cannot: which characters that locale groups and points with. A missing
+row is therefore a hard failure, not a skipped check, because a locale whose
+numbers cannot be parsed is a locale whose numbers are UNGATED. It fired the
+first time it ran, on `ja` and `zh-Hant` — both number-transparent, both now
+declared as such.
+
+**The value check caught a claim, not a typo.** The Japanese primer rendered
+English's "a millimetre" as `1 ミリメートル`, introducing a quantity the source
+does not state. A word where English used a word (`一`) restores it. No reader
+would have noticed; the gate is the only thing that could.
+
+**Two French plate labels overran, and the labels moved.** Measured: 164.4 px
+and 202.3 px against the plate's ~161.5. Fixed in the LABELS — terse by
+nature, and French had been the wordiest of the three lines — not by widening
+a tolerance and not by moving a drawing that is correct. Both now sit 4 px
+inside, and the fit gate reads 0 new overflow in every locale.
+
+### Measured
+
+`tools/probe-116-locale-fit.mjs` is new, and exists because four fits are
+load-bearing and none of them is gated — each depends on rendered text width
+in a real browser at a real width. English is the baseline, the Explainer
+gate's convention: only what a translation makes worse is interesting.
+
+| | measured |
+|---|---|
+| page headers | **56 px in all six locales**, both pages, at 1440/1100/900/830/821/820/700/480 — one line everywhere, nothing covering the intro, no sideways scroll. 821/820 straddle the rule that hides the stamp; both sides checked. |
+| `#chrome-bar` | en 170.2 · de 192.4 · fr 189.9 · ja 166.0 · zh 144.0 · zh-Hant 144.0. **German is still the widest**, so the measured-not-assumed rules at that site needed no re-derivation. |
+| `.hud-ro-label` | widest 49.5 (German) against a 150 px box; all six on one line, so the "a locale that does not fit gets two lines" allowance is still unspent. |
+| §53's 240 px column | no content wider than its box, in any locale. French — the German-shaped risk — took it without a layout change. |
+
+**No geometry moved, and that is measured.** Virgin boots of `origin/main`
+(781838c) and this branch fingerprint identically —
+`{"hash":3519083211,"poseCount":11,"units":52}` — which is §73's own form of
+evidence for a translation landing, and the whole battery reads **20/20**.
+
+Getting that number honestly cost an hour and is worth recording, because the
+failure mode impersonates the exact thing this evidence exists to rule out. An
+earlier run reported `fingerprint deterministic across virgin boots` FAILED,
+hashes 3519083211 and 1166767543 — which reads precisely like geometry moving
+under a determinism check. It was not. `dev_server.py` keeps ONE `/__state`
+file per temp dir, and `ci-battery.mjs` serialises its virgin boots for that
+reason; this section's own new probe stood its server up on the DEFAULT temp
+dir, so running it beside a battery made two "virgin" boots share state. The
+probe now isolates `TMPDIR` as `explain-i18n.mjs` already did. **An instrument
+that can break the gate it is run beside is a defect in the instrument**, and
+the comment now carries the measurement so the next tool that stands up a
+server inherits the reason rather than the omission.
+
+Gates, at the landing: `explain-quotes` PASS (0 disagreements, primer still
+quotes 0 identifiers); `explain-i18n --check` PASS across both pages × five
+tables — 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new
+plate overflow; `offline-check` **27/27**, up from 22, the five new rows being
+the per-locale offline primer boots and the `?lang=zh-Hant` deep link.
+
+**Every gate was also made to fail on purpose**, since a gate only observed
+passing has not been observed: mis-order the ladder → boot warns four times;
+ASCII-space a grouped French number → `--check` names U+202F and the key;
+introduce a quantity English does not state → the value check reports it.
+
+### Residue, recorded
+
+- **`explain.html` in fr/ja/zh-Hant is not translated** — 0/530 each, filed as
+  §117. Named here because a coverage column read in isolation looks like
+  neglect, and this is a scope decision.
+- **No native review pass** happened for any of the three new locales. §73
+  carried the same IOU for Chinese and it is still open; three more locales
+  is three more of it. Stated rather than implied by green gates.
+- **A stray-script scan, run once by hand, caught three authoring slips** no
+  gate here looks for: two Cyrillic fragments and one untranslated English
+  word, each inside an otherwise correct sentence, in tables whose gates were
+  green. Fixed. Not turned into an instrument — a general "Latin word in CJK
+  prose" check false-positives on every legitimate `Watch Sim`, `Claude` and
+  `JSON` — but the class is real and worth knowing about.
+- **`explain-quotes.mjs` still never reads the translation tables.** It reads
+  the two HTML files from disk, so a translated primer could reintroduce a
+  source identifier and no gate would notice. Pre-existing for de and zh;
+  three more primer tables triple the exposure.

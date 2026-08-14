@@ -1,5 +1,6 @@
 // §95 tier two — THE PRIMER, LOCALIZED. German and Chinese prose for
-// primer.html's entries, plates and captions.
+// primer.html's entries, plates and captions; French, Japanese and
+// Traditional Chinese since §116, all five at 100%.
 //
 // Same engine as the explainer (src/page-i18n.js holds the walk and the swap),
 // same contract as tier one: authored in English, keyed by the English source,
@@ -29,13 +30,22 @@ export { collectTranslatable, RICH_SELECTORS, LABEL_SELECTOR };
 // 'quantity' = same value after locale parsing, punctuation free to localize.
 export const NUMBERS = 'quantity';
 
-const TABLE = UI_LANG === 'de' ? (await import('./primer-i18n.de.js')).default
-  : UI_LANG === 'zh' ? (await import('./primer-i18n.zh.js')).default
-  : null;
+// §116 — one map per page, literal specifiers, for the reasons written out in
+// src/explain-i18n.js: the stamper's module walk only sees quoted strings, and
+// a template literal would fail silently in both the stamp and the precache.
+const LOADERS = {
+  de: () => import('./primer-i18n.de.js'),
+  fr: () => import('./primer-i18n.fr.js'),
+  ja: () => import('./primer-i18n.ja.js'),
+  zh: () => import('./primer-i18n.zh.js'),
+  'zh-Hant': () => import('./primer-i18n.zh-Hant.js'),
+};
+const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 
 export async function allTables() {
-  const [de, zh] = await Promise.all([import('./primer-i18n.de.js'), import('./primer-i18n.zh.js')]);
-  return { de: de.default, zh: zh.default };
+  const codes = Object.keys(LOADERS);
+  const mods = await Promise.all(codes.map((c) => LOADERS[c]()));
+  return Object.fromEntries(codes.map((c, i) => [c, mods[i].default]));
 }
 
 export const t = translator(TABLE);

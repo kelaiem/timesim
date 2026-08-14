@@ -2113,7 +2113,7 @@
   // grabbed a node inside one would be holding a detached copy. Ordering it
   // first is what makes the swap safe; every dynamic string below then goes
   // through t() rather than being written in English.
-  import { UI_LANG, setUiLang } from './src/i18n.js';
+  import { UI_LANG, setUiLang, LOCALES } from './src/i18n.js';
   // `tr`, not `t`: the plates below already use `t` as a local (a text
   // element in the truth table, elapsed seconds in the beat loop), and
   // shadowing it made every localized write throw. The page-error check
@@ -2123,9 +2123,11 @@
   {
     const sel = document.getElementById('lang-select');
     // Values are canonical codes, never display text — tier one's rule.
-    for (const [code, label] of [['en', 'English'], ['de', 'Deutsch'], ['zh', '中文']]) {
+    // §116: the roster is i18n.js's LOCALES, so this page cannot drift out of
+    // step with the app's picker or the other page's.
+    for (const { code, face } of LOCALES) {
       const o = document.createElement('option');
-      o.value = code; o.textContent = label; o.selected = code === UI_LANG;
+      o.value = code; o.textContent = face; o.selected = code === UI_LANG;
       sel.appendChild(o);
     }
     sel.addEventListener('change', () => setUiLang(sel.value));

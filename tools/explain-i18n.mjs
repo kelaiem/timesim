@@ -150,16 +150,41 @@ const numGlyphs = (s) => (s.replace(/<[^>]+>/g, ' ').match(/\d+(?:\.\d+)?/g) || 
 // Values, for a page whose numbers are quantities being read aloud. Each
 // locale's own grouping and decimal marks are parsed away, so a translation is
 // free to write 18.000 and 0,024 — and still cannot move a decimal point.
+// MARKS is NOT the locale roster — that comes from the page module's own
+// allTables() keys, so it cannot drift. This is a per-locale FACT the roster
+// cannot carry: which characters that locale groups and points with. A missing
+// row is therefore a hard failure below, never a silent skip; a locale whose
+// numbers this tool cannot parse is a locale whose numbers are ungated.
+//
+// §116 — `group` is a LIST because French made it one. Chromium and Node emit
+// U+202F NARROW NO-BREAK SPACE for fr-FR, older ICU emitted U+00A0, fr-CA still
+// does, and a translator's keyboard may produce U+2009 THIN SPACE. All three
+// are accepted: flanked by digits they are unambiguous. A PLAIN ASCII SPACE IS
+// DELIBERATELY NOT ACCEPTED — "5 100" in prose is two quantities far more often
+// than one, and merging them would be the checker inventing a number rather
+// than reading one.
 const MARKS = {
-  en: { group: ',', dec: '.' },
-  zh: { group: ',', dec: '.' },   // zh-CN groups with ',' and points with '.', as en does
-  de: { group: '.', dec: ',' },
+  en: { group: [','], dec: '.' },
+  de: { group: ['.'], dec: ',' },
+  zh: { group: [','], dec: '.' },        // zh-CN groups with ',' and points with '.', as en does
+  'zh-Hant': { group: [','], dec: '.' }, // and so do zh-Hant …
+  ja: { group: [','], dec: '.' },        // … and ja-JP: number-transparent, unlike fr
+  // Escaped, not typed: three characters that render identically, so a typed
+  // one could not be told from another by reading this file.
+  fr: { group: ['\u202f', '\u00a0', '\u2009'], dec: ',' },
 };
+const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {
   const marks = MARKS[lang];
+  // The token class is BUILT from this locale's own marks, so widening French
+  // cannot widen anybody else: for en/de/zh it reproduces the previous
+  // /\d+(?:[.,]\d+)*/ exactly, which is why their reports do not move.
+  const re = new RegExp(`\\d+(?:[${[...marks.group, marks.dec].map(reEsc).join('')}]\\d+)*`, 'g');
   const out = [];
-  for (const m of s.replace(/<[^>]+>/g, ' ').matchAll(/\d+(?:[.,]\d+)*/g)) {
-    const v = parseFloat(m[0].split(marks.group).join('').replace(marks.dec, '.'));
+  for (const m of s.replace(/<[^>]+>/g, ' ').matchAll(re)) {
+    let tok = m[0];
+    for (const g of marks.group) tok = tok.split(g).join('');
+    const v = parseFloat(tok.split(marks.dec).join('.'));
     if (Number.isFinite(v)) out.push(v);
   }
   return out.sort((a, b) => a - b);
@@ -169,6 +194,12 @@ const numValues = (s, lang) => {
 let failed = 0;
 if (MODE === 'extract') {
   const { items, tables } = await readPage(TARGETS[0]);
+  // §116 — the bootstrap state, stated rather than inferred. A locale with no
+  // table yet extracts fine (every value blank), and that is the ONLY order
+  // that works: listing the locale in the page module's LOADERS makes
+  // allTables() import a file that does not exist yet, which takes down
+  // --extract along with --check. Extract first, create the file, then wire it.
+  if (!tables?.[LANG_ARG]) console.log(`// no '${LANG_ARG}' table in this tree yet — every value blank (bootstrap)`);
   const bySect = new Map();
   for (const it of items) {
     if (!bySect.has(it.sect)) bySect.set(it.sect, []);
@@ -204,6 +235,10 @@ if (MODE === 'extract') {
   // <code> is stripped too: a key whose only letters live inside a code span
   // ("<code>ALARM_PIN_R</code>", a whole table cell) is a quoted identifier,
   // and this page's contract is that identifiers are never translated.
+  // The class is applied to KEYS, which readPage guarantees are English (it
+  // walks the page at ?lang=en). So it never has to recognize a translation's
+  // script: §116 checked whether Japanese kana needed adding here and the
+  // answer is no — recorded because the question looks like it should be yes.
   const isInvariant = (k) => !/[a-zA-ZÀ-ɏ一-鿿]/.test(
     k.replace(/<code>.*?<\/code>/g, ' ').replace(/<[^>]+>/g, ' '));
 
@@ -211,8 +246,20 @@ if (MODE === 'extract') {
     const { doc, items, tables, numbers, errors } = await readPage(target);
     console.log(`\n══ ${doc} — numbers: ${numbers === 'source' ? 'SOURCE form (identifiers quoted)' : 'QUANTITIES (localized, checked by value)'}`);
     const keySet = new Set(items.map((i) => i.key));
-    for (const lang of ['de', 'zh']) {
+    // §116 — the roster is the PAGE's, read from its own allTables() keys.
+    // Adding a locale is one entry in that module's LOADERS map; this tool
+    // needs no edit and cannot fall behind it.
+    for (const lang of Object.keys(tables || {})) {
       const table = tables?.[lang] || {};
+      if (numbers === 'quantity' && !MARKS[lang]) {
+        // Not a skip. A locale whose grouping and decimal marks this tool does
+        // not know is a locale whose numbers it cannot parse — and an unparsed
+        // number is an UNGATED number, which is the one outcome a gate must
+        // never reach quietly.
+        console.log(`\n[${lang}] no MARKS row — this tool cannot parse the locale's numbers  <-- FAIL`);
+        failed++;
+        continue;
+      }
       const unmatched = Object.keys(table).filter((k) => !keySet.has(k));
       const live = items.filter((i) => !isInvariant(i.key));
       const invariant = items.length - live.length;
@@ -240,6 +287,16 @@ if (MODE === 'extract') {
           const a = numGlyphs(it.key), b = numGlyphs(v);
           if (a.join(',') !== b.join(',')) numBad.push(`${it.key} :: [${a}] vs [${b}]`);
         } else {
+          // The ASCII-space test comes FIRST, and that ordering is the whole
+          // value of it. In a space-grouping locale an ASCII space is not a
+          // near miss — it splits "18 000" into two quantities, so the value
+          // comparison below is then GUARANTEED to fail and would report the
+          // defect as [18000] vs [0,18]: arithmetic nonsense that reads like a
+          // mistranslation. Tested first, it reads as the typing error it is.
+          if (MARKS[lang].group.includes('\u202f') && /\d \d{3}(?!\d)/.test(v)) {
+            numBad.push(`ASCII space used as a group separator (this locale wants U+202F): ${it.key.slice(0, 50)}`);
+            continue;
+          }
           const a = numValues(it.key, 'en'), b = numValues(v, lang);
           if (a.join(',') !== b.join(',')) numBad.push(`${it.key.slice(0, 60)} :: [${a}] vs [${b}]`);
         }
@@ -304,7 +361,7 @@ if (MODE === 'extract') {
       return r;
     };
     const baseFit = new Set((await fitOf('en')).map((x) => x.id));
-    for (const lang of ['de', 'zh']) {
+    for (const lang of Object.keys(tables || {})) {   // §116 — the page's roster, as above
       const bad = (await fitOf(lang)).filter((x) => !baseFit.has(x.id));
       console.log(`\n[${lang}] plate fit: ${bad.length} new overflow/collision vs English${bad.length ? '  <-- FAIL' : ''}`);
       for (const x of bad) console.log(`      ${x.what}`);
