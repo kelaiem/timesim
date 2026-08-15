@@ -32,6 +32,7 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
+| 46 | OPEN | The chain rides the fusee base on one CORNER: the equalising flank (5.28 r/z) is steeper than a radial groove can carry (2.42), so the bottom wrap rings the cone with 1.9–2.5 u of measured daylight at every reserve state — and the §61 seating row is burial-only, so a float reads as a perfect seat. Fix paths in the entry; the float half of the seating row is owed under all of them |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -5384,3 +5385,100 @@ actually runs. Both governor bearings are on the movement's steepest rate curve
 and its shallowest work curve at the same time, and only one of those was ever
 written down. When the next review argues "this is the fastest X in the
 movement", the follow-up question is *for how many seconds a day*.
+
+## 46. The chain rides the fusee base on one corner — the equalising flank is steeper than any groove can carry
+
+Filed 2026-08-15 from the owner's observation ("the chain seems to float at
+the largest radius — the fusee has a big gap from the chain, possibly
+insufficient thickness at the base"), confirmed by measurement before filing.
+The float is real, it is at the bottom (largest-radius) wrap turn, and it is
+there at EVERY reserve state, not only run down.
+
+### What was measured
+
+Three instruments, in order of what they can see
+(`tools/probe-chain-daylight.mjs` is the committed one):
+
+- **3D closest approach** (BVH, chain wrap vertices → fusee meshes): the
+  bottom turn reads 0.001–0.05 across the wind — the chain's inner-BOTTOM
+  CORNER genuinely kisses the relieved groove floor, which is why the §61
+  seating row and every sweep are green.
+- **Radial daylight** (a ray from each bottom-turn chain vertex, horizontally
+  inward to the first fusee surface): **mean 1.90 u at full wind, 1.90 at
+  half, 2.45 near run-down; worst 6.1 u; only 0.2% of rays land within
+  0.05.** The body of the chain rings the cone in open air; only the corner
+  under it touches.
+- **The eye** (screenshots, low side rake through the plate gap): the bottom
+  wrap visibly encircles the cone with daylight all round — the owner's
+  report, reproduced.
+
+### Why — the cut's own arithmetic, already written at the builder
+
+This is not a bug in the chain path; it is the collision of two §-numbered
+truths, and the numbers are in the source comment at the `makeFusee` call:
+
+- TODO 40 row 1 handed the cut the equalising hyperbola. Its flank at the
+  base falls at **|dr/dz| = 5.28** (79.3° from the axis).
+- A radial-depth groove can carry a chain of finite height only while
+  **|dr/dz| ≤ grooveD / half-stack = 0.66 / 0.33 = 2.42**. Past that, either
+  the metal under the groove stands INTO the chain's lower half (the §61
+  seating row's old red 1.989) — or, after TODO 40's half-stack relief
+  fixed exactly that, the flank falls away INBOARD of the chain's upper
+  half. The relief traded a burial for a float: the chain's centreline
+  stays on the envelope (the torque law the equalisation gate holds), the
+  corner seats, and everything above the corner hangs in air that deepens
+  at 5.28 per unit of chain height.
+
+The owner's "insufficient thickness at the base" is the right instinct one
+level down: the base is not too thin as stock — the LAW makes it too steep
+to also be a bearing surface for the chain that rides it.
+
+### Why every instrument missed it
+
+`sampleRadialDepth` (the §61 chain-on-cone seating row) returns
+`max(floorAt(z) − r)` — **burial only**. A vertex standing OFF the floor is
+negative and never registers; a chain floating in mid-air reads as a clean
+0, indistinguishable from a perfect seat. The same asymmetry runs through
+the battery: penetration budgets bound depth, clearance budgets bound
+minima, and contact-closure rows (`alarmHandoffs`' touching/apart/buried
+grade) exist only for the §35 arming run. Nothing anywhere asserts the
+chain TOUCHES the cone it hauls on — a force-transmitting contact with no
+closure instrument, the exact gap rule 4's hand-off grading was built to
+close on the alarm side.
+
+### What closing this looks like
+
+Three paths, not exclusive; (c) is owed under any of them:
+
+- **(a) Tilt the chain to the flank** — the honest mechanical fix. A real
+  fusee chain lies against the cone surface, its link plane tilting with
+  the local flank; this build lays every link with a vertical stack axis,
+  which is what leaves only a corner touching a 79° flank. Give the wrap
+  section per-point frames tilted to the local envelope slope
+  (`buildChainLinkGeometry` takes the curve; the tilt is
+  `atan(dr/dz)` from `fuseeEnvR`, known at every wrap point). The chain
+  then bears on its face, the daylight collapses to the seating clearance,
+  and the groove's carrying limit stops binding. Costs: the chain builder
+  learns a frame field; the §61 rows re-measure; sweptOverlap's chain hull
+  re-takes (the chain is already fingerprint-excluded, so no hash churn).
+- **(b) Bound the flank at what a groove can carry** — cap |dr/dz| at 2.42
+  and let the torque law deviate at the run-down tail. This spends P0
+  truth (the equalisation gate holds springTq·r/K level over the reserve
+  and would fire), so it is only honest as a DECLARED deviation: real
+  fusees do not equalise to the last turn either, and roadmap §47's
+  stop-work vocabulary (bound the usable band instead of cutting an
+  uncarryable flank) is the movement-honest shape of it. Do not take this
+  path by quietly widening the equalisation tolerance.
+- **(c) The instrument, under any path** — the §61 cone row grows a FLOAT
+  half: alongside `max(floorAt − r)` (burial), grade the wrap's worst
+  standoff `max(r − floorAt)` over vertices that should seat, the
+  touching/apart/buried convention the hand-off rows already own. Land it
+  first as a report with the measured 1.9–2.5, then gate at the value the
+  chosen fix achieves — tighten-never-widen, §111's rule. Until the row
+  exists, this float class is invisible by construction to every battery
+  run, which is how it shipped.
+
+The §61 convention itself — "inner edge on the floor, centreline on the
+envelope" — stays: it is the torque law's honest anchor, and (a) preserves
+it exactly (a tilted stack's centreline still rides the envelope; only the
+stack's ATTITUDE changes).
