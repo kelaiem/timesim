@@ -109,7 +109,8 @@ pitch circles, ratios and laws the solids embody.
   club-tooth wheel) per beat with an eased impulse ramp.
 - **Train**: all wheel angles are closed-form functions of the escape-wheel angle —
   barrel 80T→10 center pinion, center 75T→10, third 80T→10, fourth 80T→8 escape
-  pinion; fourth wheel = 1 rev/min, center = 1 rev/h, barrel = 1 rev/8 h. No drift.
+  pinion; fourth wheel = 1 rev/min, center = 1 rev/h, barrel = 1 rev per
+  120/7 h (§123). No drift.
 - **Mainspring**: visible coil in the barrel cutaway relaxes over ~30 simulated
   hours. Winding goes through the keyless chain, whether you drag the crown or
   press Wind (which turns it for you); a one-way click means only forward turns
@@ -162,12 +163,13 @@ pitch circles, ratios and laws the solids embody.
   on the balance rim — and drives the reset-hammer rod; a separate yoke
   tracks the sliding pinion's hub between the winding and setting meshes.
 - **Power-reserve gear train**: a visible two-mesh reduction across three
-  arbors (8T/36T × 10T/20T = 1/9) whose first pinion sits slip-coupled on the
-  barrel arbor and whose last wheel shares the indicator hand's arbor. The
-  ratio is derived, not chosen: the arbor makes 3.75 turns over the 30 h
-  reserve and the hand sweeps 150°, so R = 1350/150 = 9 — and a build-time
-  assert holds the graduation, the hand's travel and the tooth counts to each
-  other, because for a while they disagreed (TODO 18).
+  arbors (8T/28T × 10T/12T = 1/4.2) whose first pinion sits slip-coupled on
+  the barrel arbor and whose last wheel shares the indicator hand's arbor.
+  The ratio is derived, not chosen: the arbor makes 1.75 turns over the 30 h
+  reserve (§123's first-stage re-gear) and the hand sweeps 150°, so
+  R = 630/150 = 4.2 — and a build-time assert holds the graduation, the
+  hand's travel and the tooth counts to each other, because for a while
+  they disagreed (TODO 18).
 
 ## Controls
 

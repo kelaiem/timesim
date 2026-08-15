@@ -12484,3 +12484,97 @@ line stale until reload. That is the tier's existing declared class —
 the gong's own boot arc and the contact dots' re-measure-on-entry — and
 nothing in `aesthetics.json` reaches the cam today, so it is the class
 this belongs to rather than a new instance of it.
+## §124 — TODO 46 closed: the first stage re-gears so the ideal cut carries its chain, and the chain leans into the flank
+
+The owner saw it before any instrument did: *"the chain seems to float at
+the largest radius."* The bottom wrap ringed the cone in 1.9–2.5 u of open
+daylight at every reserve state, touching only its inner-bottom corner —
+and every battery run was green, because the §61 seating row measures
+BURIAL only. TODO 46 filed the confirmation (three measurements,
+`tools/probe-chain-daylight.mjs` committed) and the §61 **float row**
+landed report-first, born WAIVED at its measured 3.191.
+
+### The impossibility that shaped the fix
+
+The ideal equalising flank falls at |dr/dz| = 10.44 at the base — no
+groove carries a chain against that, and the failure is not local to the
+base. The decisive arithmetic: the groove pitch (0.694) was barely above
+the chain's own stack (0.66), where a real fusee runs pitch ≥ 2× stack. In
+the slope window m ∈ [0.4, 1.7] NO chain pose exists — an upright link
+gaps 2h·m off the floor while a link leaned far enough to seat sweeps a
+footprint that fouls the adjacent turn (the turn-to-turn offset runs along
+the plate's diagonal there; a finer chain does not escape it). Every lever
+inside the old gearing was priced and failed:
+
+- **Exit (b), the declared torque deviation, was BUILT and measured**
+  before being rejected: capping the flank at what a vertical-headroom
+  tilt affords sagged the delivered torque 32% over the bottom 14% of
+  reserve, moved the level product +25%, lengthened the chain 27%, and
+  produced a physically impossible 45°→81° tilt cliff at the regime
+  boundary. The working tree was discarded; the numbers are why.
+- The z-budget cannot buy a taller band (0.0044 of land slack, zero
+  chain-to-centre-wheel slack — measured in the filing).
+- An everywhere-gentle cone needs a 51-click set-up (empty fraction 0.74).
+- A 12:1 first stage (the cheap pinion recut) still needs 43 clicks,
+  because pitch 0.926 sits just under the m ≈ 1 window's 0.95 threshold.
+
+### What shipped
+
+**The law** — the one lever that closes it is the first mesh itself,
+because hours-per-fusee-turn IS that ratio (and `reserve/8` had it
+hard-coded twice): `TRAIN.barrel` 0.36/80/10 → module 2·16.2/127 = 0.25512
+(centre distance HELD, the center arbor does not move; wheel r 14.40 →
+15.31), 120 teeth, 7-leaf pinion. The fusee turns once per 120/7 h; the
+30 h reserve is **1.75 wraps over TWO grooves at pitch 1.389**. SETUP_CLICKS
+17 → 23 — the minimum integer whose full-band best-pose seat residual
+clears the float budget with 10% standoff (22 → 0.200 ✗ vs 0.198; 23 →
+0.146 ✓, the worst station moving to the tip where it is pure chording).
+The level product P = r₀·θ_s = 32.9344 is held as `FUSEE_LEVEL_P`, so the
+train's drive torque k·P/R_wrap is bit-identical and r₀ = P/θ_s = 5.46955
+stops being the bare literal 7.4. The torque law returns to the ideal
+closed form, exact — level dev 2.2e-16, no declared deviation anywhere.
+The reserve indicator re-geared with the arbor it reads (R = 1.75·360/150
+= 4.2 = 28/8 × 12/10; TODO 18's assert is why it could not be missed), and
+`FUSEE_TILT_Z = √(h²+w²) − h = 0.40790` funds the leaning chain's extra
+down-reach once, in position space: the groove floor (FUSEE_Z0_MIN) and
+the upper stratum (L_THIRD/L_FOURTH/L_ESCAPE) rise by the same named
+constant, so FUSEE_BAND and the centre-wheel margin are spent nowhere.
+
+**The geometry** — wrap links LEAN to `fuseeBetaAt(f)` = min(atan m,
+63.43°), the lie-flat ceiling; the cut's floor generalises to the
+corner-locus law at the link's own tilt (station z_c = z + w·sinβ + h·cosβ,
+floor = env(f(z_c)) − (w·cosβ − h·sinβ)), which at β = 0 is exactly TODO
+40's half-stack shear — a generalisation, not a fork, published through
+`userData.groove.floorAt` so cut and check hold one law. Rivets ride the
+mean of their neighbours' frames; the declared articulation fiction peaks
+at 36.3° of per-joint twist at the wrap departure. Two boot asserts hold
+the construction: tilt down-reach affordable at every station (zero slack
+at f = 0 BY construction), adjacent-turn stack separation ≥ 0.02 at each
+station's own tilt — the chain is one mesh, and sweptOverlap is
+structurally blind exactly there.
+
+### Measured at closure
+
+```
+§61 float row   3.191 WAIVED  →  0.202 unwaived (budget 0.25, worst at the bottom turn)
+§61 burial row  0.137         →  0.217 (the honest 2.41 effective chord — stadium apexes past the rivets)
+drum seating    0.062         →  0.061
+probe-chain-daylight means (t = 1 / 0.5 / 0.15): 1.90 / 1.90 / 2.45  →  0.91 / 0.91 / 1.16
+boot: silent, both §123 asserts quiet; equalisation green, 23/24 quantised,
+windFull 10.2078 rad, K 3.2264, moments 0.60–1.02 N·mm
+```
+
+The float row's residual is chording at the honest effective chord (2.41 —
+the outer plates' stadium arc apexes reach 0.253 past each rivet, a §123
+correction the design sweep's pitch²/(8r) understated) plus the base's
+0.024 lie-flat corner residual (the flank there is 2.109, past the cap's
+tan = 2; the envelope's curvature relieves the linearized 0.032).
+
+### What this is not
+
+A 2-groove fusee on a 17:1 first mesh is geometrically honest and
+historically alien — real fusee watches ran MORE turns of FINER chain on
+TALLER cones, and this movement's height budget cannot buy that. The owner
+chose full closure with that trade named. The battery diff is the
+acceptance; the fingerprint legitimately moves once (cone, chain, great
+wheel, drum station, lifted stratum).

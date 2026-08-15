@@ -365,10 +365,11 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // stood into the chain's lower half.
 // §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
 // The reserve entry's one catch, closed: the wrap count, the groove turns
-// and the height are all functions of hours/8, so changing the reserve
-// re-derives the cone instead of just the readout. One spare groove turn
-// above the wrap (ceil(+0.25)) keeps the chain's anchor turn off the working
-// grooves — at the 30 h default that is ceil(4.0) = 4 turns.
+// and the height are all functions of the reserve over the first mesh's
+// ratio (§123 — HOURS_PER_FUSEE_TURN, one source in TRAIN), so changing
+// the reserve re-derives the cone instead of just the readout. One spare
+// groove turn above the wrap (ceil(+0.25)) keeps the chain's anchor turn
+// off the working grooves — at the 30 h default that is ceil(2.0) = 2 turns.
 // §61 closes the pitch's false arithmetic: the shipped build promised a
 // 0.7-per-turn groove but DELIVERED 0.88·H·0.94/3.75 ≈ 0.65 — less than
 // the chain's own 0.66 stack, successive wraps interpenetrating. The
@@ -23765,16 +23766,17 @@ function advanceFrame(realDt) {
   // Fast-forward button state + fusee torque readouts: the spring's torque
   // sags as the reserve drains, while the fusee's growing radius keeps the
   // torque delivered to the train level — the whole point of the mechanism.
-  // The sag bottoms at SPRING_TQ_EMPTY (0.346, the set-up ratchet's held
-  // pre-tension — TODO 32), so the spring bar never empties; the concave
-  // 1/√ droop against the reserve is the law's own shape, not an ease.
+  // The sag bottoms at SPRING_TQ_EMPTY (0.590, the set-up ratchet's held
+  // pre-tension — TODO 32; §123's 23-click set-up), so the spring bar never
+  // empties; the concave 1/√ droop against the reserve is the law's own
+  // shape, not an ease.
   const ffBtn = document.getElementById('btn-ff');
   setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
   const springTq = springTorqueAt(reserveShown);
   // TODO 40 row 2 — read the radius the chain is ACTUALLY on, from the same
   // function the chain path is cut from. The wrap occupies FUSEE_F_ACTIVE
-  // (0.9375) of the groove band, so the cut tip carries only the runout and
+  // (0.875) of the groove band, so the cut tip carries only the runout and
   // never a working turn. This used to lerp the whole band against the
   // reserve, quoting a radius no wrap ever reaches; two expressions for one
   // quantity is how they drift apart.
