@@ -12352,3 +12352,48 @@ instances FINER than it (MODELING.md rule 10's closing instruction; P2's
 text now says so). The §120 pairs are inter-unit since §107 promoted the
 anchor anyway, which is worth stating because that assert's header still
 called itself TODO 5 residue.
+
+### The battery, and the two payloads that moved
+
+**20/20 gates pass**, boot silent, run locally on the same idle 4-vCPU box as
+the base (which is §120's accepted tree — `git diff` between the two refs is
+empty, so §120's head report IS this landing's base report):
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 537 rows, 0 degenerate, 0 unwaived
+intraUnit 264 movers in 77 frames over 55 poses; pairs MF 5400/FF 2092/MM 5331,
+  0 unwaived, 0 unmatched selectors, 201 out of scope (reported), 0 unmeasurable
+assembly 0 undeclared unwaived splits · expectedContacts 13 pairs, 0 unwaived
+oscillator 2.5 Hz on a 0.0244 mm ribbon · equalisation TODO 32 held, ring 0.790 mm in stock
+restoring 20 reversing units, 0 unwaived, control PASS
+inspection 0 FORBIDDEN over 53 units and 74 contacting pairs · clearances 0 violations over 30 budgets
+sweptOverlap 0 CONFIRMED over 67943 pairs (tight 4, refuted 20)
+spec boots 26/26 build, identity control silent · fingerprint 1709442067 — UNCHANGED
+```
+
+`--report` diffed check by check: **twelve of fourteen payloads are
+byte-identical**, and the fingerprint does not move at all — the landing
+adds measurement and names, no geometry. The two that moved:
+
+1. **`intraUnit`** — the change itself: the payload gains `tiers`, `frames`,
+   `outOfScope`, `unmeasurable`, `unmatchedSelectors` and the per-row `tier`
+   tag, cost 2.0 → 6.4 s (the FF tier's one lap over ~2k pairs; the `cost`
+   column is re-measured to 6).
+2. **`assembly`** — **byte-identical modulo the three renamed labels**
+   (`alarmGongArc`, `alarmGongPost`, `alarmClimbPinion` appear in its member
+   lists where `TorusGeometry#0`, `CylinderGeometry#1`, `ExtrudeGeometry#2`
+   did; reverse the renames and the JSON strings are equal). That is the
+   sameFrame/clusterByFrame extraction's acceptance: the predicate moved
+   house and not one verdict, count, or separation moved with it.
+
+**One out-of-scope row flickers run-to-run**, named so the next `--report`
+diff is not a surprise: `Dial / BoxGeometry#129 ⇄ alarmSleeveWeb` sits at
+the arbiter's d≈1e-4 boundary (202 rows in the seeding probe, 201 in the
+battery run — the same class as the three declared Keyless boundary rows).
+It is a REPORT row in an untriaged population; its triage, like the rest of
+the 201, is the item's filed remainder.
+
+Cost: total check time 2768 → 2785 s — inside run-to-run noise beside the
++4.4 s the new tiers actually cost. The shard partition is unchanged in
+shape.
