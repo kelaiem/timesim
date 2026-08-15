@@ -3076,15 +3076,20 @@ const PENETRATION_BUDGETS = [
     // rigid vertical stack's lower corner sitting slope·stack/2 =
     // (4.8/2.78)·0.33 = 0.57 below a floor that follows the flank — is
     // gone BY THE RELIEF'S DEFINITION: the floor is now cut to clear
-    // exactly that corner (floorAt = envelope sheared down a half-stack,
-    // minus grooveD), so the ideal wrap box touches it and owes it
-    // nothing. What remains: (1) link chording, pitch²/(8·r_min) =
-    // 1.9²/(8·2.5608) = 0.176 at the smallest wrap radius (2.5608 =
+    // exactly that corner (since §123, the corner-locus floor at the
+    // link's own TILT — at β = 0 it is TODO 40's shear verbatim), so the
+    // ideal wrap box touches it and owes it nothing. What remains:
+    // (1) link chording — and §123 measured the honest chord: the outer
+    // plates' stadium arc apexes reach 0.253 past each rivet, so the
+    // rigid facet spans 2.41, not the 1.9 pitch. chord²/(8·r_min) =
+    // 2.41²/(8·3.2263) = 0.225 at the smallest wrap radius (3.2263 =
     // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law —
     // the wrap's top, not the runout tip); (2) HANDOFF_TRACK_TOL
-    // tessellation slack, 0.03. Sum 0.206, held at 0.25 so the row
-    // polices the relationship, not float luck — the same round-up that
-    // held 0.76 at 0.8, at a third of the size.
+    // tessellation slack, 0.03. The tilted wrap measures 0.217 at
+    // reserve 0.883 — the chording bound minus what the tilt's deeper
+    // curvature relief gives back — held at 0.25 so the row polices the
+    // relationship, not float luck — the same round-up that held 0.76
+    // at 0.8, at a third of the size.
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
     axis: 'reserve',
@@ -3126,12 +3131,17 @@ const PENETRATION_BUDGETS = [
     // shipped tree, vs 3.49 = w·m the crowns actually stand off at the base).
     // And not a max over any WIDER vertex set: the outer half legitimately
     // stands grooveD + relief·m proud by §61's convention.
-    // Budget: what a BEDDED chain owes — link chording pitch²/(8·r_min) =
-    // 0.176 at the wrap top + HANDOFF_TRACK_TOL tessellation slack 0.03 →
-    // 0.206, held at 0.25, the burial row's own round-up.
+    // Budget: what a BEDDED chain owes — link chording at the honest
+    // 2.41 effective chord (stadium apexes past the rivets, the burial
+    // row's own §123 correction) + the base's lie-flat corner residual
+    // 0.024 (the flank there is 2.109, past the 63.43° cap's tan = 2;
+    // the envelope's curvature relieves the linearized 0.032) +
+    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.202 at the
+    // bottom turn, held at 0.25 — the burial row's own round-up. §123
+    // closed TODO 46 here: the leaning chain SEATS, and this row is
+    // what holds it seated (it read 3.191 waived on the 8:1 cut).
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
-    waived: 'TODO 46',   // accepted debt until the flank fix lands: measures the filed daylight (~3.5 at the base crowns)
     axis: 'reserve',
     nSamples: 60,
     measure(clock, unitA, unitB) {
