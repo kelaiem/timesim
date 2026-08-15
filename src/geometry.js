@@ -1778,7 +1778,7 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // floor along its bottom-inner corner and clears it everywhere else, which
 // is what the §61 seating row now measures (userData.groove.floorAt below).
 //
-// tiltAt (§123, TODO 46): the chain's tilt law β(f) — the caller's
+// tiltAt (§124, TODO 46): the chain's tilt law β(f) — the caller's
 // fuseeBetaAt — and with it the cut stops assuming a vertical stack. A
 // β-tilted stack (half-stack h = reliefHalf along the pin, half-width
 // w = grooveD across the plates, top tipping INBOARD so the plates lie on
@@ -1864,7 +1864,7 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // inside that box's span and owes it the same relief as the band.
   const seatR = floorAt(0) - 0.02;
   pts.push(new THREE.Vector2(seatR, 0));
-  // §123: under the tilt law the floor is CURVED below bandZ0 too (the low
+  // §124: under the tilt law the floor is CURVED below bandZ0 too (the low
   // boxes' faces govern the collar), so the tilted profile is lathed from
   // z = 0; the vertical law is flat there and keeps its band-only stations.
   const zProfile0 = tiltAt ? 0 : bandZ0;
@@ -1888,14 +1888,14 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // grooveD tall. Built as an indexed quad strip: inner/outer rails at the
   // two axial faces, outer face closing the crest.
   const pitch = bandSpan / grooveTurns;
-  // §123 (TODO 46): the channel each wrap claims is its tilted stack's
+  // §124 (TODO 46): the channel each wrap claims is its tilted stack's
   // z-footprint, ±drop(β) = ±(w·sinβ + h·cosβ) about the groove point (at
   // β = 0 this is ±reliefHalf, i.e. the passed grooveW = stack + clearance),
   // plus the same seating clearance grooveW carries over the vertical stack.
   // The land is what the pitch leaves between the wrap below and the wrap
   // above — an ASYMMETRIC window, since β falls with height — and near the
   // base the tilted footprint (~1.48 at the cap) exceeds the 1.389 pitch:
-  // the channels MERGE and there is honestly no land to cut there. The §123
+  // the channels MERGE and there is honestly no land to cut there. The §124
   // adjacent-turn boot assert (main.js) is what holds the CHAINS apart on
   // that stretch, exactly as the header note below says the base of a real
   // steep-flanked fusee works.
@@ -1970,7 +1970,7 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // (The first hyperbolic cut proved the distinction: the check went on
   // reconstructing a straight chord from rLarge/rSmall and measured against
   // a floor ~1.3 outside the metal at mid-band.)
-  // §123: envAt (the land-crest envelope closure) and tiltAt ride along so
+  // §124: envAt (the land-crest envelope closure) and tiltAt ride along so
   // probes can re-derive the wrap's radial window from the live cut instead
   // of quoting stale literals (tools/probe-chain-daylight.mjs).
   g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, floorAt, envAt: env, tiltAt };

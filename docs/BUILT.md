@@ -12560,12 +12560,12 @@ structurally blind exactly there.
 §61 burial row  0.137         →  0.217 (the honest 2.41 effective chord — stadium apexes past the rivets)
 drum seating    0.062         →  0.061
 probe-chain-daylight means (t = 1 / 0.5 / 0.15): 1.90 / 1.90 / 2.45  →  0.91 / 0.91 / 1.16
-boot: silent, both §123 asserts quiet; equalisation green, 23/24 quantised,
+boot: silent, both §124 asserts quiet; equalisation green, 23/24 quantised,
 windFull 10.2078 rad, K 3.2264, moments 0.60–1.02 N·mm
 ```
 
 The float row's residual is chording at the honest effective chord (2.41 —
-the outer plates' stadium arc apexes reach 0.253 past each rivet, a §123
+the outer plates' stadium arc apexes reach 0.253 past each rivet, a §124
 correction the design sweep's pitch²/(8r) understated) plus the base's
 0.024 lie-flat corner residual (the flank there is 2.109, past the cap's
 tan = 2; the envelope's curvature relieves the linearized 0.032).

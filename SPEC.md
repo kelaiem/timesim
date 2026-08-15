@@ -105,7 +105,7 @@ ratios are exact and everything meshes with `module` consistent per mesh pair:
 
 | Stage | Wheel (teeth) | drives Pinion (teeth) | Ratio | Result |
 |---|---|---|---|---|
-| Barrel (great wheel) 120 | → center pinion 7 | 120/7 ≈ 17.1:1 | barrel 1 rev / 17 1/7 h (§123 — so the 30 h reserve is 1.75 fusee wraps, 2 grooves the chain can seat in) |
+| Barrel (great wheel) 120 | → center pinion 7 | 120/7 ≈ 17.1:1 | barrel 1 rev / 17 1/7 h (§124 — so the 30 h reserve is 1.75 fusee wraps, 2 grooves the chain can seat in) |
 | Center wheel 75 | → third pinion 10 | 7.5:1 | center = 1 rev/h (minute hand) |
 | Third wheel 80 | → fourth pinion 10 | 8:1 | fourth = 1 rev/min (second hand) |
 | Fourth wheel 80 | → escape pinion 8 | 10:1 | escape wheel = 6 s/rev |

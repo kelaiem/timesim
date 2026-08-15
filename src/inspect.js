@@ -763,11 +763,11 @@ export const AXES = [
     // way back in. tension and windAccumTurns move as the COUPLED pair they
     // are (rule 2): winding IS what re-tensions the spring, and the span is
     // read live (`fuseeWrapTurns` = reserveHours over the first mesh's
-    // ratio — 1.75 at the default spec since §123) so a `?reserveh=` boot
+    // ratio — 1.75 at the default spec since §124) so a `?reserveh=` boot
     // sweeps the wind that spec performs.
     // n: the train axis's own standard is 96 samples per fusee revolution
     // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
-    // the pre-§123 3.75 rev each way at that density was 360 + 360 = 720,
+    // the pre-§124 3.75 rev each way at that density was 360 + 360 = 720,
     // kept — at 1.75 rev it is denser, never sparser. The finer
     // features on this path (the §99-class ratchet tooth pitch, 24/rev) are
     // budget-tier work with their own nSamples override, not this axis's to
@@ -790,9 +790,9 @@ export const AXES = [
     // (e.g. arbor-mounted parts sweeping past static keyless parts) that the
     // short beat axis never rotates far enough to reach. Fast wheels are
     // effectively phase-randomised across samples, which is fine: any
-    // sampled pose is a reachable pose. §123: the revolution's LENGTH is the
+    // sampled pose is a reachable pose. §124: the revolution's LENGTH is the
     // first mesh's ratio, read live off the clock (120/7 h at the default
-    // spec) — the old literal 8 h was that ratio hard-coded, and when §123
+    // spec) — the old literal 8 h was that ratio hard-coded, and when §124
     // re-geared the mesh this axis silently shrank to 0.47 of an orbit: the
     // maintaining detent's beak (which ticks over the ring once per tooth of
     // ABSOLUTE arbor rotation) fell out of the reversal population, and the
@@ -3084,10 +3084,10 @@ const PENETRATION_BUDGETS = [
     // rigid vertical stack's lower corner sitting slope·stack/2 =
     // (4.8/2.78)·0.33 = 0.57 below a floor that follows the flank — is
     // gone BY THE RELIEF'S DEFINITION: the floor is now cut to clear
-    // exactly that corner (since §123, the corner-locus floor at the
+    // exactly that corner (since §124, the corner-locus floor at the
     // link's own TILT — at β = 0 it is TODO 40's shear verbatim), so the
     // ideal wrap box touches it and owes it nothing. What remains:
-    // (1) link chording — and §123 measured the honest chord: the outer
+    // (1) link chording — and §124 measured the honest chord: the outer
     // plates' stadium arc apexes reach 0.253 past each rivet, so the
     // rigid facet spans 2.41, not the 1.9 pitch. chord²/(8·r_min) =
     // 2.41²/(8·3.2263) = 0.225 at the smallest wrap radius (3.2263 =
@@ -3120,7 +3120,7 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
-    // §123 (TODO 46) — the FLOAT half of the cone seating. The row above is
+    // §124 (TODO 46) — the FLOAT half of the cone seating. The row above is
     // max(floorAt − r): BURIAL only — a chain floating in open air reads as
     // a perfect seat, which is exactly how the base wrap shipped ringing the
     // cone with 1.9–2.5 u of daylight through every green battery run.
@@ -3141,11 +3141,11 @@ const PENETRATION_BUDGETS = [
     // stands grooveD + relief·m proud by §61's convention.
     // Budget: what a BEDDED chain owes — link chording at the honest
     // 2.41 effective chord (stadium apexes past the rivets, the burial
-    // row's own §123 correction) + the base's lie-flat corner residual
+    // row's own §124 correction) + the base's lie-flat corner residual
     // 0.024 (the flank there is 2.109, past the 63.43° cap's tan = 2;
     // the envelope's curvature relieves the linearized 0.032) +
     // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.202 at the
-    // bottom turn, held at 0.25 — the burial row's own round-up. §123
+    // bottom turn, held at 0.25 — the burial row's own round-up. §124
     // closed TODO 46 here: the leaning chain SEATS, and this row is
     // what holds it seated (it read 3.191 waived on the 8:1 cut).
     pair: ['Fusee & great wheel', 'Chain'],

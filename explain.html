@@ -250,7 +250,7 @@
         full wind is the spring's capacity; the tightest gap between turns there is 0.28814
         against the 0.2698 bind, so the wound spring sits 6.8% off coil-bound. TODO 40's
         re-cut had left it 12.6% clear and the 17-click set-up wound that slack back in to
-        0.8%; §123's re-gear (TODO 46) reaches full wind in 0.67 drum turns where the 8:1
+        0.8%; §124's re-gear (TODO 46) reaches full wind in 0.67 drum turns where the 8:1
         stage took 1.34, on the same unchanged ribbon, so part of that slack is open again —
         stated here rather than resized away.</figcaption>
       </figure>
@@ -264,7 +264,7 @@
       <b>TODO 32 is closed for this spring</b>: its torque law is derived from this ribbon —
       <code>M = k·θ</code> with <code>k = E·I/L</code> from the as-cut section and developed
       length, the once-authored 0.35 floor revealed as a SET-UP on the ratchet the movement
-      already builds — 17 clicks then, deepened to 23 by §123's chain-carryable cut
+      already builds — 17 clicks then, deepened to 23 by §124's chain-carryable cut
       (<code>SPRING_TQ_EMPTY</code> = 0.58986, derived) — and the
       fusee's taper solved from the derived law. The <code>equalisation</code> battery gate
       holds the solve; the record puts k at 9.16e-5 N·m/rad, an arbor moment of 0.55–0.94
@@ -425,7 +425,7 @@
         <code>u(t) = √(θ_s² + β·t)</code> — an <em>inverse-square-root</em> flank, not the
         hyperbola the old authored line implied. The one pinned number is θ_s: an integer
         <b>23 clicks</b> of the 24-tooth set-up ratchet (the bench hardware on the base
-        plate), <code>SETUP_SWEEP</code> 6.02139 rad — deepened from 17 by §123, because
+        plate), <code>SETUP_SWEEP</code> 6.02139 rad — deepened from 17 by §124, because
         θ_s is also the lever that flattens the base slope (it goes as 1/θ_s³), so the
         set-up is what makes the cut chain-carryable; derived, the empty-end fraction reads
         0.58986. That is the envelope <code>makeFusee</code> cuts its
@@ -503,12 +503,12 @@
         maintaining wheel is a child of the train's rotation only, so winding cannot drag it
         backwards. The rates are the movement's own: one pawl snap per flange tooth, 24 to the
         fusee turn and 42 over a full 1.75-turn wind; one detent tick per rim tooth, which at
-        one barrel revolution per 120/7 h (≈ 17.14 h, §123's first stage) is a tick every
+        one barrel revolution per 120/7 h (≈ 17.14 h, §124's first stage) is a tick every
         42.9 minutes.</figcaption>
       </figure>
 
       <p class="note">Honesty ledger: <b>TODO 40 rows 1 and 2 are closed, TODO 32 has
-      landed on top of them, and TODO 46 is closed by §123.</b> The flank is the equalising
+      landed on top of them, and TODO 46 is closed by §124.</b> The flank is the equalising
       curve — since TODO 32 the
       inverse square root <code>r = r₀·θ_s / u(t)</code> that the DERIVED spring law asks
       for, the cut the law itself predicted — and the readout
@@ -517,7 +517,7 @@
       0.694 groove pitch sat barely above the chain's 0.66 stack, and the bottom wrap
       corner-seated, ringing the cone on ~2 units of daylight through every green battery
       run — the burial-only seating row could not see a chain floating in open air (TODO
-      46). §123 closed it in the layout, not in the law: the first stage re-geared 8:1 →
+      46). §124 closed it in the layout, not in the law: the first stage re-geared 8:1 →
       120/7 = 17.143:1 (<code>TRAIN.barrel</code> 120 teeth on a 7-leaf pinion at module
       2·16.2/127 = 0.25512, the centre distance held so the center arbor does not move), so
       the fusee turns once per 120/7 h and the 30 h reserve fits in 1.75 wraps over TWO
@@ -547,7 +547,7 @@
       it stays filed with that reason written down. <b>TODO 32 is closed for this train</b>:
       the spring's torque is derived from the ribbon's as-cut section and developed length,
       the 0.35 floor is a set-up on the ratchet this movement already builds — 23 clicks
-      since §123 — and
+      since §124 — and
       the <code>equalisation</code> battery gate holds the level product at float noise —
       and since &sect;104 the item is closed whole, the alarm barrel's cadence having become
       the striking governor's arithmetic, on its own plate. The drum
@@ -2450,10 +2450,10 @@
 
       // ---- the constants, named as src/main.js names them ----------------
       var HOURS = 30;                                     // SPEC.reserveHours — the §22 knob
-      var WRAP_TURNS = HOURS / (120 / 7);                 // FUSEE_WRAP_TURNS = 1.75 — §123: hours per fusee turn IS the first mesh, 120/7
+      var WRAP_TURNS = HOURS / (120 / 7);                 // FUSEE_WRAP_TURNS = 1.75 — §124: hours per fusee turn IS the first mesh, 120/7
       var GROOVE_TURNS = Math.ceil(WRAP_TURNS + 0.25);    // FUSEE_GROOVE_TURNS = 2
       var F_ACTIVE = WRAP_TURNS / GROOVE_TURNS;           // FUSEE_F_ACTIVE = 0.875
-      var BAND = 2.7775, Z0 = 5.1479;                     // FUSEE_BAND, FUSEE_Z0 (= FUSEE_Z0_MIN — §123 raised it by FUSEE_TILT_Z)
+      var BAND = 2.7775, Z0 = 5.1479;                     // FUSEE_BAND, FUSEE_Z0 (= FUSEE_Z0_MIN — §124 raised it by FUSEE_TILT_Z)
       var BASE_Z = 4.59, TIP_Z = 7.9454;                  // cone base and tip in world z
       var CW_TOP = 4.26, SPRING_TOP = 7.9654;             // the two planes the band is solved between
       var DRUM_R = 10, WRAP_R = 10.66;                    // DRUM_R_ACTUAL, + CHAIN_END_R_OUT = DRUM_WRAP_R
@@ -2466,11 +2466,11 @@
       // form for form. The one pinned number is an integer count of set-up
       // ratchet clicks; u(t) = √(θ_s² + β·t) is the spring's wind angle off
       // its free coil, and torque, flank and chain are all functions of it.
-      // §123 (TODO 46) deepened the set-up 17 → 23 clicks and HELD the level
+      // §124 (TODO 46) deepened the set-up 17 → 23 clicks and HELD the level
       // product P = r₀·θ_s, so r₀ derives instead of being the bare 7.4.
       var SETUP_CLICKS = 23, RATCHET_TEETH = 24;          // SETUP_CLICKS / SETUP_RATCHET_TEETH
       var SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / RATCHET_TEETH;   // θ_s = 6.02139 rad
-      var LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24);      // FUSEE_LEVEL_P = 32.9344 — the pre-§123 shipped product, held
+      var LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24);      // FUSEE_LEVEL_P = 32.9344 — the pre-§124 shipped product, held
       var R_LARGE = LEVEL_P / SETUP_SWEEP;                // FUSEE_R_LARGE = 5.46955 — was the bare literal 7.4
       var D = R_LARGE + DRUM_R + 2.5;                     // drumPos: the cone, the drum, and a 2.5 gap
       var BETA = (4 * Math.PI * WRAP_TURNS * R_LARGE * SETUP_SWEEP) / WRAP_R; // SPRING_WIND_BETA
@@ -2742,7 +2742,7 @@
       // ================= PLATE 3 — maintaining power ======================
       (function () {
         // Radii, derived the way the source derives them. barrelDist is the
-        // great wheel's own mesh distance (15.307 + 0.893, §123's re-geared
+        // great wheel's own mesh distance (15.307 + 0.893, §124's re-geared
         // first stage at the held 16.2), the center wheel is
         // 11.25, and 0.36 is its addendum: the sandwich lives inside the
         // closest approach of a wheel that sweeps under the cone.

@@ -316,7 +316,7 @@ export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the pla
 // L_BALANCE ≈ 6.35 → spring top ≈ 7.97 → cock underside = plate floor
 // ≈ 8.12 (wheels that XY-overlap must never share z; each step is
 // half-thickness sums + the one margin; the whole stratum rides
-// FUSEE_TILT_Z above its pre-§123 planes — see that constant).
+// FUSEE_TILT_Z above its pre-§124 planes — see that constant).
 export const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
 // Center wheel dropped onto its own bind: one margin over the great wheel's
 // top face, at the wheel's deepest feature (its hub ring, thickness·1.5/2 =
@@ -325,7 +325,7 @@ export const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — f
 // chain's lowest span must clear THIS wheel's top face, and every 0.1 here
 // is 0.1 the cone (and with it the whole plate stack) cannot drop.
 export const L_CENTER = (L_BARREL + 0.7 + 0.08) + CLEAR_MARGIN + 0.75;
-// §123 (TODO 46) — THE FUSEE'S BASE TILT, FUNDED IN z. The ideal equalising
+// §124 (TODO 46) — THE FUSEE'S BASE TILT, FUNDED IN z. The ideal equalising
 // cut's base flank is steeper than a vertical chain stack can seat on, so
 // the chain LIES DOWN against the flank — up to the full lie-flat ceiling
 // atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN/2)) = 63.43° at the base. A tilted
@@ -457,7 +457,7 @@ export const Z_KEYLESS = -4.1;
 // and tick()'s ratio chain; now builders and kinematics read this one table,
 // so a ratio literally cannot disagree with the geometry that carries it.
 export const TRAIN = {
-  // §123 (TODO 46) — the first stage re-geared 8:1 → 120/7 = 17.143:1 so the
+  // §124 (TODO 46) — the first stage re-geared 8:1 → 120/7 = 17.143:1 so the
   // fusee turns once per 17 1/7 h and the 30 h reserve fits in 1.75 wraps —
   // TWO groove turns at pitch 1.389, ≥ 2× the chain stack, which is what
   // finally lets every link either sit upright or lean flush without
