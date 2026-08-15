@@ -10383,18 +10383,9 @@ drawn. One pass now covers every carrier (escape wheel, §99 arbor ratchet,
 §78's floor-warn tripwire. §104's sentence in this file is corrected in
 place rather than quietly left standing.
 
-**[A fourth carrier since: the §25 striking cam.]** It was the same
-silence one layer out — the cam had no `profile` to opt out WITH, so the
-generic vocabulary was free to speak and had nothing true to say (a
-lifting cam's whole content is its generated flanks, and no circle at any
-radius is that), while `SCHEMATIC_CALLOUTS` already named it "Lifting cam"
-and pointed the label at a blank. It now exports the point list its own
-`Shape` was cut from, so this pass draws it and the count the tripwire
-floors reads four. The lock collar beside it takes the GENERIC circle in
-the same landing, which is the vocabulary being right rather than being
-overridden: that collar is deliberately smooth — a partial wind parks the
-train at any phase, so a friction brake is the only honest hold — and a
-spin-invariant rim is exactly what a circle claims.
+**[A fourth carrier since: §123's striking cam.]** Its entry below records
+why the cam was silent and why the lock collar beside it correctly takes
+the generic circle this pass exists to override.
 
 The anchor gets **its own word**, because the generic vocabulary would lie
 about it: `discOrAxis` says "disc" or "bar" of a generated tooth-tip
@@ -12411,3 +12402,85 @@ the 201, is the item's filed remainder.
 Cost: total check time 2768 → 2785 s — inside run-to-run noise beside the
 +4.4 s the new tiers actually cost. The shard partition is unchanged in
 shape.
+
+## §123 — the striking wheel says what it does: a cam drawn from its lift law, and a collar that earns the generic circle
+
+Filed by the owner in one line — "add geometry to schematic mode for the
+alarm gong wheel". The wheel that rings the gong was very nearly absent
+from the line tier: of the whole `Alarm striking wheel` unit only the
+pinion drew, and only because `makePinion` records `userData.r` and the
+§66 rotor pass enrols anything that does. The lifting cam, the lock
+collar and the hammer's cam-following tail drew nothing at all.
+
+**The tell was that two of them were already NAMED.** §107's
+`SCHEMATIC_CALLOUTS` table carries "Lifting cam" and "Lock collar", and
+its own tripwire asserts that every name in the table finds a mesh — so
+the check passed, the labels rendered, and they pointed at blank space.
+That is §107's finding one turn further out: not a wrong word drawn over
+(§78's SKIP rule), and not a right word never drawn (§107's own case,
+where setting `profile` opted the saw out and drew nothing) — but a word
+spoken by the LABEL layer while the glyph layer said nothing underneath
+it. A callout is a claim that there is something there to name.
+
+### The cam takes §83's existing word
+
+`userData.profile` — "a wheel whose content is its cut outline" — is
+already the vocabulary for this, and the cam is its clearest case in the
+movement. `ALARM_CAM_RISE_PTS` is *generated from the lift law* (§25's
+own record: "the profile is GENERATED from the lift law, not the other
+way round"), so the flanks are the entire content of the part and a
+smooth circle at any radius would be a false claim on exactly the
+grounds the escape wheel and the two ratchets decline theirs. The glyph
+is the very point list the `Shape` was handed, so mesh, law and glyph
+cannot drift; the bore radius was hoisted to `CAM_BORE_R` so the cut and
+the drawing read ONE source instead of two copies of `0.8` that a later
+edit could separate. Nothing new was drawn for it — §107 made that pass
+generic precisely so a carrier draws everywhere the word is spoken, and
+the floor it warns beneath moves 3 → 4. It remains a FLOOR, never an
+equality (§78's tripwire shape): a cam that stops exporting its plan
+warns rather than falling back to silence.
+
+### The lock collar takes the GENERIC circle, and that is the point
+
+The pattern since §78 is that the generic vocabulary lies and a part
+opts out. This is the counter-case, and it is worth the record because
+the reflex by now is to give every new part its own word. §25 B's collar
+is a FRICTION BRAKE — a partial wind can park the train at any phase, so
+the hold cannot be a notch and the surface is deliberately smooth. A
+circle claims "this rim is invariant under the spin", which is not an
+approximation here but the collar's whole design intent. So the generic
+glyph is drawn, from the built mesh's own radius and station rather than
+from restated numbers. **A part earns its own word by being misdescribed
+by the generic one, not by being new.**
+
+The hammer's tail is the third addition and it is there for a different
+reason: without it the cam's lobes sweep past nothing and the hammer
+reads as lifted by magic. It draws at `ALARM_TAIL_REST_AZ` /
+`ALARM_TAIL_LEN` inside the pivot group the strike law already swings —
+the glyph and the follower it drives are one contact, so they draw
+together or neither is legible.
+
+### Why the reports could not move, and the check that it didn't
+
+Everything added is a `THREE.Line` flagged `userData.schematic` on
+camera layer 1. `collectUnits` prunes those from every sweep wherever
+they are parented, and `fingerprintBoxes` returns early on them — the
+fingerprint guards the METAL, and §66's own note records the tier's
+circles inflating unit boxes and moving the hash before that skip
+existed. So this landing's acceptance is not "the gates are green"
+(a gate reports only that its failure list is empty, and an empty list
+that MOVED still passes): the `--report` payload was diffed against base
+`b419e72` and is **identical on every substantive row** — pair counts,
+budgets, measured gaps, waiver counts, and the fingerprint hash
+`1709442067` on both sides. The only fields that differed were
+wall-clock timers. 20/20 gates locally and in CI, no new waivers, and
+`TODO.md` is untouched because nothing about the metal or its laws
+changed — this landing changes what the drawing SAYS, not what the
+movement CLAIMS.
+
+**Residue, stated rather than filed:** the cam's outline is written at
+BOOT, so a live `aesthetics` edit that re-cut the wheel would leave the
+line stale until reload. That is the tier's existing declared class —
+the gong's own boot arc and the contact dots' re-measure-on-entry — and
+nothing in `aesthetics.json` reaches the cam today, so it is the class
+this belongs to rather than a new instance of it.
