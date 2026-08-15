@@ -32,7 +32,7 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
-| 46 | OPEN | The chain rides the fusee base on one CORNER: the equalising flank (5.28 r/z) is steeper than a radial groove can carry (2.42), so the bottom wrap rings the cone with 1.9–2.5 u of measured daylight at every reserve state — and the §61 seating row is burial-only, so a float reads as a perfect seat. Fix paths in the entry; the float half of the seating row is owed under all of them |
+| 46 | CLOSED (§124) | The chain rode the fusee base on one CORNER (1.9–2.5 u of daylight, invisible to the burial-only row). Closed by the layout: first stage re-geared 8:1 → 120/7 so the fusee runs 1.75 wraps over 2 grooves at pitch 1.389, set-up 17 → 23 clicks, level product held; links LEAN to the flank on the funded FUSEE_TILT_Z raise. Ideal torque law exact again; the new float row gates the seat at 0.202 unwaived (was 3.191 waived) |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -5386,7 +5386,59 @@ and its shallowest work curve at the same time, and only one of those was ever
 written down. When the next review argues "this is the fastest X in the
 movement", the follow-up question is *for how many seconds a day*.
 
-## 46. The chain rides the fusee base on one corner — the equalising flank is steeper than any groove can carry
+## 46. CLOSED (§124) — the first stage re-geared so the ideal cut carries its chain; the float row gates it seated
+
+**Status 2026-08-15 — CLOSED, by the layout.** The owner rejected path (b)
+after it was implemented and measured (a 32% torque sag over the bottom 14%
+of reserve, the level product up 25%, and a physically impossible 45°→81°
+tilt cliff at the regime boundary — the working tree of that attempt was
+discarded; its arithmetic is § history now), and chose the layout exit. The
+decisive discovery en route: path (a) alone cannot close either, because
+the groove pitch (0.694) was barely above the chain's stack (0.66) — in the
+slope window m ∈ [0.4, 1.7] NO chain pose exists: an upright link gaps
+2h·m off the floor, and a link leaned far enough to seat sweeps a footprint
+that fouls the adjacent turn (the turn-to-turn offset runs along the plate
+diagonal there, so even a finer chain does not escape). Every lever inside
+the old gearing was priced and failed: a 12:1 first stage still needs a
+43-click set-up (empty fraction 0.75), the band cannot grow (0.0044 of
+land slack, zero chain-to-centre-wheel slack), and an everywhere-gentle
+cone needs 51 clicks. The one lever that closes it is the first mesh
+itself — hours-per-fusee-turn IS that ratio, and it was hard-coded as
+`/ 8` in two places.
+
+**What shipped (§124).** `TRAIN.barrel` 0.36/80/10 → module 2·16.2/127
+(centre distance HELD — the center arbor does not move), 120 teeth, 7-leaf
+pinion: the fusee turns once per 120/7 h, so the 30 h reserve is **1.75
+wraps over TWO grooves at pitch 1.389** — twice the stack, and the
+seat/separation window closes. SETUP_CLICKS 17 → 23 (minimum integer whose
+full-band best-pose seat residual clears the float budget with 10%
+standoff: 22 → 0.200 ✗ vs 0.198, 23 → 0.146 ✓); the level product
+P = r₀·θ_s = 32.9344 is HELD as `FUSEE_LEVEL_P` so the train's drive
+torque is bit-identical and r₀ = P/θ_s = 5.46955 stops being the bare 7.4.
+Path (a) then lands on top: links LEAN to `fuseeBetaAt(f)` (≤ 63.43° at
+the base), the cut's floor is the corner-locus law at the link's own tilt
+(TODO 40's shear is its β = 0 case), the tilt's extra down-reach
+√(h²+w²) − h = 0.40790 is funded once in position space
+(`FUSEE_TILT_Z`: groove floor and upper stratum rise together, FUSEE_BAND
+and the centre-wheel margin spent nowhere), and the reserve indicator
+re-geared with its arbor (R = 4.2 = 28/8 × 12/10 — TODO 18's assert is
+why it could not be missed). The torque law is the ideal closed form
+again, exact (level dev 2.2e-16); the declared fiction is articulation —
+per-joint twist up to 36.3° at the wrap departure, recorded at the ramp.
+
+**Measured at closure**: §61 float row **3.191 waived → 0.202 unwaived**
+(budget 0.25, worst at the bottom turn — chording at the honest 2.41
+effective chord plus the base's 0.024 lie-flat corner residual); burial
+0.217, drum 0.061, both in budget; `probe-chain-daylight` means
+1.90/1.90/2.45 → **0.91/0.91/1.16** (the residual is the probe's
+horizontal-ray artifact under the cone plus chording — the float row is
+the gate); boot silent including the two new §124 asserts (tilt
+affordability ∀f, adjacent-turn stack separation ≥ 0.02 at each station's
+own tilt).
+
+The original filing follows, unchanged.
+
+---
 
 Filed 2026-08-15 from the owner's observation ("the chain seems to float at
 the largest radius — the fusee has a big gap from the chain, possibly

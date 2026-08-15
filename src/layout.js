@@ -312,10 +312,11 @@ export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the pla
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
 // oscillator hangs under the open plate cutaway, and the plate's own floor
 // binds on the hairspring stack (the fusee was dropped to make that true —
-// see FUSEE_BASE_Z). Chain, with the slim balance: L_FORK/L_ESCAPE 4.5 →
-// L_BALANCE ≈ 5.94 → spring top ≈ 7.56 → cock underside = plate floor
-// ≈ 7.71 (wheels that XY-overlap must never share z; each step is
-// half-thickness sums + the one margin).
+// see FUSEE_BASE_Z). Chain, with the slim balance: L_FORK/L_ESCAPE ≈ 4.91 →
+// L_BALANCE ≈ 6.35 → spring top ≈ 7.97 → cock underside = plate floor
+// ≈ 8.12 (wheels that XY-overlap must never share z; each step is
+// half-thickness sums + the one margin; the whole stratum rides
+// FUSEE_TILT_Z above its pre-§124 planes — see that constant).
 export const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
 // Center wheel dropped onto its own bind: one margin over the great wheel's
 // top face, at the wheel's deepest feature (its hub ring, thickness·1.5/2 =
@@ -324,8 +325,21 @@ export const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — f
 // chain's lowest span must clear THIS wheel's top face, and every 0.1 here
 // is 0.1 the cone (and with it the whole plate stack) cannot drop.
 export const L_CENTER = (L_BARREL + 0.7 + 0.08) + CLEAR_MARGIN + 0.75;
-export const L_THIRD = 5.95;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
-export const L_FOURTH = 6.95;
+// §124 (TODO 46) — THE FUSEE'S BASE TILT, FUNDED IN z. The ideal equalising
+// cut's base flank is steeper than a vertical chain stack can seat on, so
+// the chain LIES DOWN against the flank — up to the full lie-flat ceiling
+// atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN/2)) = 63.43° at the base. A tilted
+// link reaches √(h² + w²) below its centreline where the vertical stack
+// reached h, and that extra down-reach is paid for HERE, once, position-
+// space only (CLAUDE.md P3): the groove-start floor rises by this constant
+// (FUSEE_Z0_MIN consumes it) and the upper stratum rises by the same
+// constant (the three literals below), so FUSEE_BAND — the equalisation's
+// z-span — is preserved to the digit and the centre-wheel margin and
+// MAINT_CHAIN_LOW are spent nowhere. One name on both sides, so the two
+// raises cannot drift apart.
+export const FUSEE_TILT_Z = Math.hypot(CHAIN_PIN_LEN / 2, CHAIN_END_R_OUT) - CHAIN_PIN_LEN / 2; // 0.40790
+export const L_THIRD = 5.95 + FUSEE_TILT_Z;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
+export const L_FOURTH = 6.95 + FUSEE_TILT_Z;
 // ESCAPE WHEEL BELOW THE FOURTH WHEEL — the low-escapement layout: the
 // wheel drops under the whole train while its pinion stays up in the
 // fourth wheel's plane (the arbor spans the gap). The ceiling is the
@@ -334,7 +348,7 @@ export const L_FOURTH = 6.95;
 // Below, its own neighbourhood is clear: the nearest train discs
 // (center, third) are 19+ away in XY, and the fourth arbor is bare
 // staff at this depth.
-export const L_ESCAPE = 4.5;
+export const L_ESCAPE = 4.5 + FUSEE_TILT_Z;
 export const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thickness`)
 // FORK INLINE WITH THE WHEEL: one shared plane, the way a real lever
 // escapement is built — the stones engage in the fork's own z-band
@@ -443,7 +457,17 @@ export const Z_KEYLESS = -4.1;
 // and tick()'s ratio chain; now builders and kinematics read this one table,
 // so a ratio literally cannot disagree with the geometry that carries it.
 export const TRAIN = {
-  barrel: { module: 0.36, teeth: 80, pinion: 10 }, // great wheel → center pinion
+  // §124 (TODO 46) — the first stage re-geared 8:1 → 120/7 = 17.143:1 so the
+  // fusee turns once per 17 1/7 h and the 30 h reserve fits in 1.75 wraps —
+  // TWO groove turns at pitch 1.389, ≥ 2× the chain stack, which is what
+  // finally lets every link either sit upright or lean flush without
+  // fouling the next turn (the packed 4-groove cut had a mid-band where no
+  // chain pose existed). The centre distance is HELD — module derives from
+  // it, 2·16.2/(120+7) = 0.25512 — so the center arbor does not move; the
+  // wheel's pitch radius grows 14.40 → 15.307 and the 7-leaf pinion runs a
+  // module inside the movement's existing practice (the escape mesh is cut
+  // at 0.21).
+  barrel: { module: (2 * 16.2) / (120 + 7), teeth: 120, pinion: 7 }, // great wheel → center pinion
   center: { module: 0.30, teeth: 75, pinion: 10 }, // center wheel → third pinion
   third:  { module: 0.24, teeth: 80, pinion: 10 }, // third wheel → fourth pinion
   // fourth wheel → escape pinion: the ONE mesh the beat-rate spec re-gears

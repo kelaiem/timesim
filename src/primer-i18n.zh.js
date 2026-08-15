@@ -31,8 +31,7 @@ export default {
   // ---- energy ----
   ['Wind a watch and you are bending steel. The mainspring is a long, thin ribbon coiled inside a drum: its outer end is riveted to the drum wall, its inner end is hooked to a shaft that stands still. Winding does not <em>rotate</em> the spring so much as change its <em>shape</em> — the same length of ribbon crowds into tight turns near the centre, and the energy of a wind is stored the way a drawn bow stores it, in elastic bending all along the ribbon\'s length.']:
     '给表上弦，就是在弯曲钢材。发条是一条盘在条盒里的细长钢带：外端铆在条盒壁上，内端挂在一根静止不动的条轴上。因此上弦与其说是让发条<em>转动</em>，不如说是改变它的<em>形状</em>——同一段钢带被挤进靠近中心的密集圈层，一次上弦的能量便像拉满的弓那样，以弹性弯曲的形式分布在整条钢带上。',
-  ['As the watch runs, the ribbon relaxes turn by turn and its stored energy flows out through the drum. One full wind here holds about <b>30 hours</b> of running, and the machinery spends it very slowly: the first wheel of the gear train makes one revolution every 8 hours — a little under four turns over the whole reserve. Everything faster than that is gearing, which has its own entry below.']:
-    '走时过程中，钢带一圈一圈松开，储存的能量经条盒流出。此处满弦约可维持 <b>30 小时</b>；机构花得极慢：轮系的第一只轮每 8 小时才转一圈——整段储备下来不到四圈。比它更快的一切都来自齿轮传动，那是下面自己的条目。',
+  ['As the watch runs, the ribbon relaxes turn by turn and its stored energy flows out through the drum. One full wind here holds about <b>30 hours</b> of running, and the machinery spends it very slowly: the first wheel of the gear train makes one revolution every 17 1/7 hours — one and three-quarter turns over the whole reserve. Everything faster than that is gearing, which has its own entry below.']: '走时过程中，钢带一圈一圈松开，储存的能量经条盒流出。此处满弦约可维持 <b>30 小时</b>；机构花得极慢：轮系的第一只轮每 17 1/7 小时才转一圈——整段储备下来是一又四分之三圈。比它更快的一切都来自齿轮传动，那是下面自己的条目。',
   ['Honesty note: the ribbon in the simulation is not a decoration. Its shape is recomputed as the wind changes, under two constraints a real spring obeys — neighbouring turns may touch but never merge, and every shape must be the same length of steel, because steel does not stretch. The picture of a wound spring bunched at the centre and a spent one spread against the wall is the geometry those two rules force.']:
     '诚实说明：仿真中的这条钢带不是装饰。它的形状随上弦状态重新计算，并服从真实发条的两条约束——相邻圈层可以相贴但绝不相融，而每一种形状都必须是同样长度的钢材，因为钢不会变长。满弦时钢带挤在中心、放完时铺向外壁，这幅图景正是这两条规则逼出来的几何。',
   ['Where the energy comes from<span class="where">power</span>']: '能量从哪里来<span class="where">动力</span>',
@@ -58,18 +57,17 @@ export default {
   ['≈ the same torque']: '≈ 同样的力矩',
 
   // ---- gears ----
-  ['Everything between the drum and the ticking is multiplication. When a wheel with many teeth drives a small pinion, the pinion turns faster in exact proportion to the tooth counts — a wheel of 80 teeth driving a pinion of 10 turns it exactly 8 times per revolution, and there is nothing more to know. Speed is bought at the price of force, the same trade as a bicycle\'s gears.']:
-    '从条盒到滴答之间的一切都是乘法。当一只多齿的轮驱动一只小齿轮时，小齿轮转快的倍数恰好等于齿数之比——一只 80 齿的轮带动 10 齿的小齿轮，每转一圈就把它带转整整 8 圈，除此之外没有别的门道。速度是用力换来的，和自行车换挡是同一笔买卖。',
-  ['Four such steps stand between the power and the escapement, and you can check each on your fingers: 8 × 7½ × 8 × 10 = 4,800. The first wheel — the "great wheel", riding on the fusee cone itself — turns once in 8 hours; at the far end of the chain of meshes a wheel spins once every 6 seconds.']:
-    '动力与擒纵之间隔着四级这样的传动，每一级您都能掰着手指核对：8 × 7½ × 8 × 10 = 4,800。第一只轮——骑在塔轮锥体上的“头轮”——每 8 小时转一圈；到了这串啮合的另一端，一只轮每 6 秒就转完一圈。',
+  ['Everything between the drum and the ticking is multiplication. When a wheel with many teeth drives a small pinion, the pinion turns faster in exact proportion to the tooth counts — a wheel of 120 teeth driving a pinion of 7 turns it exactly 17 1/7 times per revolution, and there is nothing more to know. Speed is bought at the price of force, the same trade as a bicycle\'s gears.']: '从条盒到滴答之间的一切都是乘法。当一只多齿的轮驱动一只小齿轮时，小齿轮转快的倍数恰好等于齿数之比——一只 120 齿的轮带动 7 齿的小齿轮，每转一圈就把它带转整整 17 1/7 圈，除此之外没有别的门道。速度是用力换来的，和自行车换挡是同一笔买卖。',
+  ['Four such steps stand between the power and the escapement. The last three you can check on your fingers: 7½ × 8 × 10 = 600, which is exactly one turn per hour becoming one turn every 6 seconds. The first step is the odd fraction, × 17 1/7: the "great wheel", riding on the fusee cone itself, turns once in 17 1/7 hours, and its 120 teeth driving a 7-leaf pinion hand the centre wheel its once-per-hour turn. That gearing was chosen for the chain\'s sake — spreading the 30-hour reserve over fewer, wider-spaced turns of groove is what gives every link room to sit flat against the cone instead of perching on a corner.']: '动力与擒纵之间隔着四级这样的传动。后三级您能掰着手指核对：7½ × 8 × 10 = 600，恰好是每小时一圈变成每 6 秒一圈的倍数。第一级是那个不整的分数，× 17 1/7：骑在塔轮锥体上的“头轮”每 17 1/7 小时转一圈，它的 120 齿带动 7 叶小齿轮，把每小时一圈交给中心轮。这个配齿是为链条选的——把 30 小时的储备摊在更少、间距更宽的沟槽圈上，正是让每一节链都能平贴在锥面上、而不是踮在棱角上的原因。',
   ['The hour hand is one more piece of the same arithmetic. A small gear turning with the minute hand drives a wheel three times its size, and a pinion on that wheel drives the hour wheel at 4:1 more — 3 × 4 = <b>12:1</b>, which is why the hour hand makes one circuit while the minute hand makes twelve. In this simulation that ratio is never written down anywhere: it emerges because those four tooth counts multiply to it, exactly as in the metal.']:
     '时针不过是同一套算术再走一步。与分针同轴的一只小轮带动一只三倍大的轮，而那只轮上的小齿轮又以 4:1 带动时轮——3 × 4 = <b>12:1</b>，这就是时针走一圈、分针走十二圈的原因。在这套仿真里，这个比值哪里都没有写下来：它是那四个齿数相乘的结果，与金属里一模一样。',
   ['Two of the train\'s wheels double as the display: the centre wheel turns once an hour and carries the minute hand; the fourth wheel turns once a minute and carries the seconds hand. No hand is ever <em>told</em> where to point — its angle arrives through the teeth.']:
     '轮系中有两只轮同时兼作显示：中心轮每小时转一圈，带着分针；秒轮每分钟转一圈，带着秒针。任何一根指针都从未被<em>告知</em>该指向哪里——它的角度是穿过轮齿传来的。',
   ['Gears are arithmetic<span class="where">power → display</span>']: '齿轮就是算术<span class="where">动力 → 显示</span>',
-  ['One turn in 8 hours becomes one turn in 6 seconds']: '8 小时一圈，变成 6 秒一圈',
-  ['great wheel · 80 teeth']: '头轮 · 80 齿',
-  ['1 turn / 8 h']: '1 圈 / 8 小时',
+  ['One turn in 17 1/7 hours becomes one turn in 6 seconds']: '17 1/7 小时一圈，变成 6 秒一圈',
+  ['great wheel · 120 teeth']: '头轮 · 120 齿',
+  ['1 turn / 17 1/7 h']: '1 圈 / 17 1/7 小时',
+  ['× 17 1/7']: '× 17 1/7',
   ['× 8']: '× 8',
   ['centre wheel']: '中心轮',
   ['1 turn / hour']: '1 圈 / 小时',

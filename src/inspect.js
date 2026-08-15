@@ -762,11 +762,13 @@ export const AXES = [
     // §48-population gap whose retired declarations name this axis as their
     // way back in. tension and windAccumTurns move as the COUPLED pair they
     // are (rule 2): winding IS what re-tensions the spring, and the span is
-    // read live (`fuseeWrapTurns` = reserveHours/8, 3.75 at the default
-    // spec) so a `?reserveh=` boot sweeps the wind that spec performs.
+    // read live (`fuseeWrapTurns` = reserveHours over the first mesh's
+    // ratio — 1.75 at the default spec since §124) so a `?reserveh=` boot
+    // sweeps the wind that spec performs.
     // n: the train axis's own standard is 96 samples per fusee revolution
     // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
-    // 3.75 rev each way at that density is 360 + 360 = 720. The finer
+    // the pre-§124 3.75 rev each way at that density was 360 + 360 = 720,
+    // kept — at 1.75 rev it is denser, never sparser. The finer
     // features on this path (the §99-class ratchet tooth pitch, 24/rev) are
     // budget-tier work with their own nSamples override, not this axis's to
     // carry. The measured cost of this n, and what it did to the guard
@@ -779,19 +781,25 @@ export const AXES = [
       return {
         tau: 0.13, crownPullT: 0, leverEngage: 0,
         tension: w,
-        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 3.75),
+        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 1.75),
       };
     },
   },
   {
-    // One full revolution of the FUSEE arbor (8 h of movement time) — catches
-    // slow-orbit collisions (e.g. arbor-mounted parts sweeping past static
-    // keyless parts) that the short beat axis never rotates far enough to
-    // reach. Fast wheels are effectively phase-randomised across samples,
-    // which is fine: any sampled pose is a reachable pose.
+    // One full revolution of the FUSEE arbor — catches slow-orbit collisions
+    // (e.g. arbor-mounted parts sweeping past static keyless parts) that the
+    // short beat axis never rotates far enough to reach. Fast wheels are
+    // effectively phase-randomised across samples, which is fine: any
+    // sampled pose is a reachable pose. §124: the revolution's LENGTH is the
+    // first mesh's ratio, read live off the clock (120/7 h at the default
+    // spec) — the old literal 8 h was that ratio hard-coded, and when §124
+    // re-geared the mesh this axis silently shrank to 0.47 of an orbit: the
+    // maintaining detent's beak (which ticks over the ring once per tooth of
+    // ABSOLUTE arbor rotation) fell out of the reversal population, and the
+    // §48 restoring audit's stale rule caught the declaration it orphaned.
     name: 'train',
     n: 96,
-    pose: (f) => ({ tau: f * 8 * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f, clock) => ({ tau: f * (clock?.hoursPerFuseeTurn ?? 120 / 7) * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
   },
   {
     // One full star pitch (60 s of movement time — the star turns 2° per
@@ -3076,15 +3084,20 @@ const PENETRATION_BUDGETS = [
     // rigid vertical stack's lower corner sitting slope·stack/2 =
     // (4.8/2.78)·0.33 = 0.57 below a floor that follows the flank — is
     // gone BY THE RELIEF'S DEFINITION: the floor is now cut to clear
-    // exactly that corner (floorAt = envelope sheared down a half-stack,
-    // minus grooveD), so the ideal wrap box touches it and owes it
-    // nothing. What remains: (1) link chording, pitch²/(8·r_min) =
-    // 1.9²/(8·2.5608) = 0.176 at the smallest wrap radius (2.5608 =
+    // exactly that corner (since §124, the corner-locus floor at the
+    // link's own TILT — at β = 0 it is TODO 40's shear verbatim), so the
+    // ideal wrap box touches it and owes it nothing. What remains:
+    // (1) link chording — and §124 measured the honest chord: the outer
+    // plates' stadium arc apexes reach 0.253 past each rivet, so the
+    // rigid facet spans 2.41, not the 1.9 pitch. chord²/(8·r_min) =
+    // 2.41²/(8·3.2263) = 0.225 at the smallest wrap radius (3.2263 =
     // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law —
     // the wrap's top, not the runout tip); (2) HANDOFF_TRACK_TOL
-    // tessellation slack, 0.03. Sum 0.206, held at 0.25 so the row
-    // polices the relationship, not float luck — the same round-up that
-    // held 0.76 at 0.8, at a third of the size.
+    // tessellation slack, 0.03. The tilted wrap measures 0.217 at
+    // reserve 0.883 — the chording bound minus what the tilt's deeper
+    // curvature relief gives back — held at 0.25 so the row polices the
+    // relationship, not float luck — the same round-up that held 0.76
+    // at 0.8, at a third of the size.
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
     axis: 'reserve',
@@ -3104,6 +3117,67 @@ const PENETRATION_BUDGETS = [
       if (typeof floorAt !== 'function') throw new Error('chain-on-cone seating: userData.groove.floorAt missing — the cut and the check must hold one law');
       const toLocal = fus.matrixWorld.clone().invert().multiply(chain.matrixWorld);
       return sampleRadialDepth(chain.geometry, toLocal, floorAt, -Infinity, Infinity);
+    },
+  },
+  {
+    // §124 (TODO 46) — the FLOAT half of the cone seating. The row above is
+    // max(floorAt − r): BURIAL only — a chain floating in open air reads as
+    // a perfect seat, which is exactly how the base wrap shipped ringing the
+    // cone with 1.9–2.5 u of daylight through every green battery run.
+    // Nothing else in the battery asserts a force-transmitting contact
+    // CLOSES outside the §35 arming run; this row is that assertion for the
+    // chain on the cone. The metric is builder-declared: the chain's
+    // geometry carries `userData.seat` (the welded outer template's
+    // inner-edge CROWN indices + each judged wrap link's buffer base — the
+    // metal §61's "inner edge on the floor" means, and nothing else). Per
+    // link: MAX over its crowns of (r − floorAt) — how far the FARTHEST seat
+    // point stands off, because "seated" for a face means every crown
+    // touches. Not a MIN: the TODO 40 relief's shear cancels exactly at the
+    // stack's bottom edge (floorAt(z − h + h) = env(z)), so the bottom-corner
+    // crown reads ~0 BY THE RELIEF'S OWN DESIGN — a min measures that corner
+    // kiss forever and the float stays invisible (measured: 0.065 on the
+    // shipped tree, vs 3.49 = w·m the crowns actually stand off at the base).
+    // And not a max over any WIDER vertex set: the outer half legitimately
+    // stands grooveD + relief·m proud by §61's convention.
+    // Budget: what a BEDDED chain owes — link chording at the honest
+    // 2.41 effective chord (stadium apexes past the rivets, the burial
+    // row's own §124 correction) + the base's lie-flat corner residual
+    // 0.024 (the flank there is 2.109, past the 63.43° cap's tan = 2;
+    // the envelope's curvature relieves the linearized 0.032) +
+    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.202 at the
+    // bottom turn, held at 0.25 — the burial row's own round-up. §124
+    // closed TODO 46 here: the leaning chain SEATS, and this row is
+    // what holds it seated (it read 3.191 waived on the 8:1 cut).
+    pair: ['Fusee & great wheel', 'Chain'],
+    maxDepth: 0.25,
+    axis: 'reserve',
+    nSamples: 60,
+    measure(clock, unitA, unitB) {
+      let fus = null;
+      unitA.obj.traverse((o) => { if (!fus && o.userData && o.userData.groove) fus = o; });
+      let chain = null;
+      unitB.obj.traverse((o) => { if (!chain && o.isMesh) chain = o; });
+      if (!fus || !chain) throw new Error('chain-on-cone float: groove userData or chain mesh not found');
+      const { floorAt } = fus.userData.groove;
+      if (typeof floorAt !== 'function') throw new Error('chain-on-cone float: userData.groove.floorAt missing — the cut and the check must hold one law');
+      const seat = chain.geometry.userData && chain.geometry.userData.seat;
+      // Loud, not lenient: a rebuild that stops declaring its seat would
+      // otherwise read as a perfectly bedded chain — the exact silence this
+      // row exists to end.
+      if (!seat || !seat.crownIdx || !seat.bases) throw new Error('chain-on-cone float: geometry.userData.seat missing — the builder and the check must hold one declaration');
+      if (!seat.bases.length) return 0;   // no judged wrap links at this pose (near run-out) — nothing to hold
+      const toLocal = fus.matrixWorld.clone().invert().multiply(chain.matrixWorld);
+      const pos = chain.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      let worst = 0;
+      for (const base of seat.bases) {
+        for (const ci of seat.crownIdx) {
+          v.fromBufferAttribute(pos, base + ci).applyMatrix4(toLocal);
+          const d = Math.hypot(v.x, v.y) - floorAt(v.z);
+          if (d > worst) worst = d;
+        }
+      }
+      return worst;
     },
   },
   {

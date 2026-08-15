@@ -20,7 +20,21 @@ const out = await page.evaluate(async () => {
   const fusMeshes = [];
   unit('Fusee & great wheel').obj.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position) fusMeshes.push(o); });
   const chain = (() => { let m = null; unit('Chain').obj.traverse((o) => { if (!m && o.isMesh) m = o; }); return m; })();
+  // Wrap-annulus window from the LIVE cut (§123): the groove userData carries
+  // the envelope closure, so the window follows the cone instead of quoting
+  // the radii of a cone that has since been re-cut. A wrap vertex lies within
+  // plate half-width of the envelope; ±0.3 covers tilt and chording slack.
+  const groove = (() => { let g = null; unit('Fusee & great wheel').obj.traverse((o) => { if (!g && o.userData && o.userData.groove) g = o.userData.groove; }); return g; })();
+  const rHi = groove.envAt(0) + groove.grooveD + 0.3;
+  const rLo = groove.envAt(1) - groove.grooveD - 0.3;
   const fx = clock.P.barrel.x, fy = clock.P.barrel.y;
+  // ...and the drum coil masked out by position, not by luck: its near side
+  // sits at a fusee-frame radius that lands INSIDE the wrap annulus, so
+  // without this the means average drum-coil rays into a wrap report.
+  const drumC = new THREE.Vector3();
+  unit('Mainspring drum').obj.getWorldPosition(drumC);
+  const drumSeat = (() => { let s = null; unit('Mainspring drum').obj.traverse((o) => { if (!s && o.userData && o.userData.chainSeat) s = o.userData.chainSeat; }); return s; })();
+  const rDrumExcl = drumSeat.wallR + 2 * groove.grooveD + 0.3;
   const ray = new THREE.Raycaster();
   const v = new THREE.Vector3();
   const res = [];
@@ -36,7 +50,8 @@ const out = await page.evaluate(async () => {
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(chain.matrixWorld);
       const r = Math.hypot(v.x - fx, v.y - fy);
-      if (r > 8.3 || r < 4) continue;
+      if (r > rHi || r < rLo) continue;
+      if (Math.hypot(v.x - drumC.x, v.y - drumC.y) < rDrumExcl) continue;
       zMin = Math.min(zMin, v.z);
       pts.push([v.x, v.y, v.z, r]);
     }

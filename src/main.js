@@ -39,6 +39,7 @@ import {
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
+  FUSEE_TILT_Z,                               // §124 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
@@ -364,10 +365,11 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // stood into the chain's lower half.
 // §22 — the cone RE-SOLVES from the reserve rather than reading a literal.
 // The reserve entry's one catch, closed: the wrap count, the groove turns
-// and the height are all functions of hours/8, so changing the reserve
-// re-derives the cone instead of just the readout. One spare groove turn
-// above the wrap (ceil(+0.25)) keeps the chain's anchor turn off the working
-// grooves — at the 30 h default that is ceil(4.0) = 4 turns.
+// and the height are all functions of the reserve over the first mesh's
+// ratio (§124 — HOURS_PER_FUSEE_TURN, one source in TRAIN), so changing
+// the reserve re-derives the cone instead of just the readout. One spare
+// groove turn above the wrap (ceil(+0.25)) keeps the chain's anchor turn
+// off the working grooves — at the 30 h default that is ceil(2.0) = 2 turns.
 // §61 closes the pitch's false arithmetic: the shipped build promised a
 // 0.7-per-turn groove but DELIVERED 0.88·H·0.94/3.75 ≈ 0.65 — less than
 // the chain's own 0.66 stack, successive wraps interpenetrating. The
@@ -381,21 +383,31 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // uncut crest between wraps. The land is therefore the movement's slack
 // made visible: grow the reserve (§22) and the land thins toward the
 // floor below, with the warn as the honest cost report.
-const FUSEE_WRAP_TURNS = SPEC.reserveHours / 8; // = RESERVE_BARREL_TURNS (energy side, declared with the spring)
+// §124: hours-per-fusee-turn IS the first mesh's ratio — the old `/ 8` was
+// that ratio hard-coded, and it silently disagreed the moment the mesh
+// changed. One source now: the TRAIN table.
+const HOURS_PER_FUSEE_TURN = TRAIN.barrel.teeth / TRAIN.barrel.pinion; // 120/7 = 17.143 h
+const FUSEE_WRAP_TURNS = SPEC.reserveHours / HOURS_PER_FUSEE_TURN; // 1.75 — = RESERVE_BARREL_TURNS (energy side, declared with the spring)
 const FUSEE_GROOVE_TURNS = Math.ceil(FUSEE_WRAP_TURNS + 0.25);
-const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.9375 — the wrap's share of the groove band (was a hand-rounded 0.94)
+const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the wrap's share of the groove band (was a hand-rounded 0.94)
 const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
 const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 0.01;  // 0.67 — the stack drops in with a seating clearance
 const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
-const FUSEE_BASE_INSET = CLEAR_MARGIN; // seat collar under the bottom groove (the cut opens out the base)
+// §124 (TODO 46) — the collar grows by the tilt's funded down-reach, so the
+// cone's BASE FACE stays exactly where it was while the groove start rises
+// FUSEE_TILT_Z with the raised floor below.
+const FUSEE_BASE_INSET = CLEAR_MARGIN + FUSEE_TILT_Z; // seat collar under the bottom groove (the cut opens out the base)
 // Lowest legal bottom-groove centreline: the center wheel's top face plus
-// the margin plus the chain's half-stack below its centreline.
-const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + CHAIN_PIN_LEN / 2;
+// the margin plus the chain's deepest reach below its centreline — which
+// since §124 is the LIE-FLAT TILTED corner, √(h²+w²) = h + FUSEE_TILT_Z,
+// not the vertical stack's h: the base flank is steeper than a vertical
+// stack can seat on, and the chain lies down against it (TODO 46).
+const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z);
 // Highest legal tip: the spring stack top, less a 0.02 float guard so the
 // plate-floor comparator binds on the SPRING, not on rounding at the tip.
 const FUSEE_BAND = SPRING_TOP_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN;
-const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 0.695 at the 30 h default
-const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.025 — the z budget's slack, made visible
+const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§124: two grooves — was 0.695 across four)
+const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
 if (FUSEE_LAND_W < 0.02)
   console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
 // THE SPRING'S TORQUE LAW — derived from the ribbon, and the cone solved
@@ -414,15 +426,23 @@ if (FUSEE_LAND_W < 0.02)
 // pulls at run-down is pre-tensioned, and this movement builds the ratchet
 // that holds it (Set-up work: 24 teeth, 15° a click, bench-only). The old
 // authored floor `springTq = 0.35 + 0.65·t` was that set-up wearing a
-// costume: solve θ_s/(θ_s + wind range) = 0.35 through the self-consistent
-// system below and the answer lands within HALF A CLICK of a ratchet
-// detent. So the one pinned number here is an INTEGER click count — the
-// quantisation is the ratchet's, not ours — chosen as the click whose
-// solved empty-end torque fraction lands nearest the authored 0.35 it
-// replaces (17 → 0.34606; 18 → 0.35484; the entry's own criterion, re-run
-// against the post-TODO-40 wind range its sketch predates).
+// costume, and 17 clicks was the detent landing nearest it. §124 (TODO 46)
+// SUPERSEDED that criterion with a harder constraint: with the level
+// product P = r₀·θ_s held (r₀ = P/θ_s below), the base slope
+// mLevel(0) = 2π·GROOVE_TURNS·r₀²/(R_wrap·θ_s·BAND) goes as 1/θ_s³, so
+// the set-up is the lever that makes the cut CHAIN-CARRYABLE. The click
+// count is the MINIMUM integer whose FULL-BAND seat residual — per
+// station, the best chain pose (upright through lie-flat, every pose that
+// clears the adjacent turn by 0.02) of corner daylight plus link chording
+// — lands under the §61 float budget with its tessellation term and a 10%
+// standoff, 0.9·(0.25 − 0.03) = 0.198: 22 clicks → 0.200 ✗; 23 → 0.146 ✓
+// (the worst station moves to the TIP, where it is pure chording — the
+// base's lie-flat residual is 0.032). The empty-end torque fraction
+// becomes a CONSEQUENCE — 0.58986, a ~1.7:1 working band, tighter than
+// the old 2.9:1 and near real fusee set-up practice (~2:1); the
+// quantisation is still the ratchet's, not ours.
 const SETUP_RATCHET_TEETH = 24;   // the set-up ratchet's cut — its build below consumes THIS
-const SETUP_CLICKS = 17;          // integer detents of pre-tension — 0.70833 turns, 4.45059 rad
+const SETUP_CLICKS = 23;          // integer detents of pre-tension — 0.95833 turns, 6.02139 rad
 const SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
 //
 // The self-consistent solve (fusee design as the trade actually did it).
@@ -436,35 +456,89 @@ const SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
 //                                 hyperbola the linear-in-t law wanted
 //   C(t) = R_wrap·(u(t) − θ_s)   the chain, closed form, from the same u
 //
-//  · FUSEE_R_LARGE (r₀) is a LAYOUT number, held: the drum's station is
-//    derived from it and the base seat, the maintaining sandwich and the
-//    chain's swept fan all hang off that station (CLAUDE.md's P3 rule).
+//  · The LEVEL PRODUCT P = r₀·θ_s is the held quantity (§124, TODO 46).
+//    The train's drive torque at every reserve is k·P/R_wrap on the level
+//    law, and β = 4π·W·P/R_wrap with it — so holding P while the set-up
+//    deepened (17 → 23 clicks, see above) kept the movement's PROVEN
+//    operating point exactly: drum, ribbon and k untouched, train torque
+//    factor 1.0000 by identity. The value is the shipped one — r₀ = 7.4 at
+//    17 clicks — written as that product rather than re-authored; r₀
+//    itself stops being the free literal it was (a standing rule-1
+//    violation) and becomes P/θ_s. The drum's station, the maintaining
+//    sandwich and the chain's swept fan all still hang off r₀'s value
+//    (CLAUDE.md's P3 rule) — they ride the derivation.
 //  · R_wrap is the chain's CENTRELINE feed radius on the drum (§61) —
 //    declared here now, because the LAW consumes it before the drum builds;
 //    the drum block below reads this constant rather than re-deriving it.
 const DRUM_WRAP_R = DRUM_R_ACTUAL + CHAIN_END_R_OUT;
-const FUSEE_R_LARGE = 7.4;
+const FUSEE_LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24); // 32.9344 rad·u — the pre-§124 shipped product, held
+const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;     // 5.46955 — was the bare literal 7.4
 const SPRING_WIND_BETA = (4 * Math.PI * FUSEE_WRAP_TURNS * FUSEE_R_LARGE * SETUP_SWEEP) / DRUM_WRAP_R;
 // u(t): the spring's wind angle off its free coil at reserve t — set-up
 // plus everything the drum has taken up. THE one state variable: the tick's
 // setWind lands the ribbon at exactly A_free + u(t), and M(t) = k·u(t).
 const springWindAt = (t) => Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA * t);
-const SPRING_WIND_FULL = springWindAt(1);              // 12.8609 rad at the 30 h spec
+const SPRING_WIND_FULL = springWindAt(1);              // 10.2081 rad at the 30 h spec (§124: was 12.8609 at 17 clicks / 8:1)
 // Normalized torque for display: M(t)/M(1) = u(t)/u(1). Concave in t — a
 // real spring spends its top turns faster than its bottom ones.
 const springTorqueAt = (t) => springWindAt(t) / SPRING_WIND_FULL;
-const SPRING_TQ_EMPTY = SETUP_SWEEP / SPRING_WIND_FULL; // 0.34606 — DERIVED, where 0.35 was authored
-const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_EMPTY; // 2.5608 — the level product, as a radius
+const SPRING_TQ_EMPTY = SETUP_SWEEP / SPRING_WIND_FULL; // 0.58986 — DERIVED (§124: the deep set-up's consequence; was 0.34606)
+const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_EMPTY; // 3.2263 — the level product, as a radius (= FUSEE_LEVEL_P/SPRING_WIND_FULL)
 // The envelope at band fraction f. The wrap occupies f ∈ [0, FUSEE_F_ACTIVE]
 // and maps to reserve t = f / FUSEE_F_ACTIVE; past it the cut runs on to the
 // tip carrying the runout, so the law is simply evaluated at t > 1 there.
 const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(f / FUSEE_F_ACTIVE);
-// ...which keeps the small radius a CONSEQUENCE: 2.4889 at the band's top,
-// 2.5608 at the top of the WRAP, where the chain actually stops — and that
+// ...which keeps the small radius a CONSEQUENCE: 3.0858 at the band's top,
+// 3.2263 at the top of the WRAP, where the chain actually stops — and that
 // second number is FUSEE_TORQUE_K by identity (r·M/M₁ constant with M₁ at
 // the wrap's top), the same identity the §61 seating budget's r_min leans on.
 const FUSEE_R_SMALL = fuseeEnvR(1);
-const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 2.95 — the band plus its insets, nothing else
+const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
+// §124 (TODO 46) — the chain's TILT LAW. The cut's slope at band fraction f
+// (numeric off the one envelope law, dz = BAND·df):
+const fuseeSlopeAt = (f) => {
+  const d = 1 / 2048;
+  const a = Math.max(0, f - d), b = Math.min(1, f + d);
+  return (fuseeEnvR(a) - fuseeEnvR(b)) / ((b - a) * FUSEE_BAND);
+};
+// The chain lies flat on the flank — β = atan(slope) — capped at the
+// lie-flat ceiling atan(w/h) = 63.43°, beyond which more tilt stops
+// closing daylight (the plate width is spent). Below the cap the seat is
+// EXACT (daylight w·(m·cosβ − sinβ) = 0 at β = atan m); at the cap —
+// the first ~3% of the band, where the slope peaks at 2.109 — the
+// residual is 0.032, inside the one margin. The chain builder and the
+// relieved cut both read THIS, so pose and metal cannot disagree.
+const fuseeBetaAt = (f) =>
+  Math.min(Math.atan(fuseeSlopeAt(f)), Math.atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN / 2)));
+// Boot asserts (rule 6) — the two §124 guarantees, checked on the built law
+// rather than trusted from the derivation:
+// 1. TILT AFFORDABILITY. A link tilted β reaches drop(β) = h·cosβ + w·sinβ
+//    below its centreline; the headroom at f is the vertical stack's h plus
+//    the funded raise plus the band climbed. Zero slack at f = 0 BY
+//    CONSTRUCTION (FUSEE_TILT_Z is exactly the deficit), positive after.
+// 2. TURN SEPARATION. Adjacent turns' tilted stacks, as parallel rectangles
+//    in the meridian offset (pitch, −m·pitch): separating-axis gap must
+//    keep the pre-§124 axial stack gap's order (0.0354 = pitch − stack).
+//    The chain is ONE mesh — sweptOverlap is structurally blind here, so
+//    this assert is the coverage until the §61 rows re-measure.
+(() => {
+  const h = CHAIN_PIN_LEN / 2, w = CHAIN_END_R_OUT;
+  let worstAfford = Infinity, worstSep = Infinity, atA = 0, atS = 0;
+  for (let i = 0; i <= 512; i++) {
+    const f = i / 512;
+    const m = fuseeSlopeAt(f), b = fuseeBetaAt(f);
+    const afford = (h + FUSEE_TILT_Z + FUSEE_BAND * f) - (h * Math.cos(b) + w * Math.sin(b));
+    if (afford < worstAfford) { worstAfford = afford; atA = f; }
+    const oz = FUSEE_GROOVE_PITCH, or = -m * FUSEE_GROOVE_PITCH;
+    const oA = oz * Math.cos(b) + or * Math.sin(b), oB = -oz * Math.sin(b) + or * Math.cos(b);
+    const sep = Math.max(Math.abs(oA) - 2 * h, Math.abs(oB) - 2 * w);
+    if (sep < worstSep) { worstSep = sep; atS = f; }
+  }
+  if (worstAfford < -1e-9)
+    console.warn(`fusee §124: tilt down-reach exceeds headroom by ${(-worstAfford).toFixed(4)} at f=${atA.toFixed(3)} (need ≥ 0)`);
+  if (worstSep < 0.02)
+    console.warn(`fusee §124: adjacent-turn stack gap ${worstSep.toFixed(4)} at f=${atS.toFixed(3)} under the 0.02 floor`);
+})();
 // Base DERIVED from the plate's design goal. The old bind (the chain's
 // lowest span clearing the movement-side crown wheel) vanished when the
 // keyless works moved to the dial side — after that, the only thing the
@@ -501,15 +575,21 @@ const fusee = G.makeFusee({
   // radii (the builder still seats the base and closes the tip on them);
   // what envR changes is everything between.
   envR: fuseeEnvR,
-  // ...and the curve forces the RELIEVED cut. A radial-depth groove fits a
-  // flank only while |dr/dz| ≤ grooveD / (chain half-stack) = 0.66 / 0.33 =
-  // 2.42; the hyperbola runs 5.28 at its base (79.3° from the axis, against
-  // the straight cone's 59.9°), so there the metal half a stack below the
-  // groove stood up to 1.22 proud of the chain's inner-bottom corner — the
-  // §61 seating row's red 1.989. The builder relieves the floor by exactly
-  // this half-stack; the chain's CENTRELINE stays on the envelope, so the
-  // torque radii and the wrap integral above are untouched.
+  // ...and the curve forces the RELIEVED cut. A radial-depth groove only
+  // fits a vertical stack on a gentle flank; where the flank steepens the
+  // metal half a stack below the groove stands proud of the chain's
+  // inner-bottom corner (TODO 40's finding — the pre-§124 hyperbola hit
+  // |dr/dz| ≈ 10 at its base and the §61 seating row read red 1.989).
+  // §124 brought the base slope down to a chain-carryable 2.109 (the
+  // 23-click set-up and the two-groove pitch, see the law above) and
+  // TILTS the chain to seat (fuseeBetaAt) — handed to the builder as
+  // tiltAt, so the cut relieves for the TILTED stack (the corner-locus
+  // law, derived in makeFusee's header) rather than the vertical one,
+  // and the chain builder and the lathe read the SAME β(f). The chain's
+  // CENTRELINE stays on the envelope, so the torque radii and the wrap
+  // integral above are untouched.
   reliefHalf: CHAIN_PIN_LEN / 2,
+  tiltAt: fuseeBetaAt,
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -3618,7 +3698,7 @@ const barrel = G.makeBarrel({
   // set-up work's static collar, its outer on the drum wall, and the drum's
   // full travel is the relative angle between them.
   // TODO 32 — the SET-UP rides beneath that travel: the service band runs
-  // from A_free + SETUP_SWEEP (run down, ratchet still holding 17 clicks)
+  // from A_free + SETUP_SWEEP (run down, ratchet still holding 23 clicks)
   // to A_free + SETUP_SWEEP + DRUM_ROT_FULL (full wind). The free coil
   // itself is a bench state, reachable only by letting the set-up down.
   springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
@@ -3800,7 +3880,29 @@ const CHAIN_TMPL = (() => {
   // to walk. What it does not do is merge across the seam between two links;
   // that leaves a few duplicate vertices where a leaf meets its neighbour,
   // which is a SUPERSET of the fully welded mesh and therefore still exact.
-  return { inner: weldTmpl(inner), outer: weldTmpl(outer), pin: weldTmpl(pin) };
+  const innerW = weldTmpl(inner), outerW = weldTmpl(outer), pinW = weldTmpl(pin);
+  // §124 (TODO 46) — the SEAT CROWNS, declared where the template is cut and
+  // indexed on the WELDED buffer the builder actually stamps. In the fusee
+  // wrap the link frame's +y points INBOARD (ŷ = k̂×t̂ with k̂ vertical and t̂
+  // the CCW wrap tangent gives ŷ = −r̂), so the outer plates' +y stadium
+  // crowns are the metal §61's convention says bears on the groove floor
+  // ("inner edge on the floor" — FUSEE_GROOVE_D = CHAIN_END_R_OUT is that
+  // sentence as a constant). The float row measures THESE vertices and
+  // nothing else: a z/r gate cannot find them in the merged one-mesh buffer,
+  // and any wider set reads the outer half's DESIGNED proudness as a defect.
+  // The ε band is one tessellation chord of the stadium arc (curveSegments 4
+  // → half-circle in 8 steps → sagitta (1 − cos π/8)·R ≈ 0.076·R): it takes
+  // the crown vertex and its immediate neighbours, and the row MINs per
+  // link, so a neighbour can only confirm the crown, never inflate it.
+  outerW.seatCrownIdx = (() => {
+    const eps = (1 - Math.cos(Math.PI / 8)) * CHAIN_END_R_OUT + 1e-4;
+    const out = [];
+    for (let i = 0; i < outerW.pos.length; i += 3) {
+      if (outerW.pos[i + 1] > CHAIN_END_R_OUT - eps) out.push(i / 3);
+    }
+    return Uint32Array.from(out);
+  })();
+  return { inner: innerW, outer: outerW, pin: pinW };
 })();
 // ...and the bore is ASSERTED, not assumed. Nothing in the battery can look
 // inside a merged buffer — the chain is ONE mesh, so its pin and the leaf it
@@ -3855,12 +3957,28 @@ const CHAIN_TMPL = (() => {
       + `the leaf is not bored for it (bore apothem ${chainBoreR.toFixed(3)}, head recess ${CHAIN_RIVET_HEAD_R.toFixed(3)})`);
 }
 let chainBuf = null;   // reused position/normal buffers — see buildChainLinkGeometry
-function buildChainLinkGeometry(curve) {
+let chainFrames = null; // reused per-link frame slots (rivets read their neighbours' frames)
+// §124 (TODO 46) — betaAtArc: the wrap's tilt law as a function of arc
+// position along the curve (rebuildChain builds it from its own chord-summed
+// wrap points, so the builder and the path hold ONE mapping). Wrap links get
+// their frame rotated about the local tangent by their own β so the plates
+// lie on the flank the cut was relieved for; the span and drum coil stay
+// world-vertical (the drum's §61 wallR floor assumes flat plates).
+function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
   const len = curve.getLength();
   const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
   const joints = curve.getSpacedPoints(N); // N+1 rivet positions, arc-length uniform
   const { inner, outer, pin } = CHAIN_TMPL;
+  // §124 (TODO 46) — which links the float row may judge: OUTER links wholly
+  // on the fusee wrap. `wrapArc` is the wrap's chord-summed arc from
+  // rebuildChain; the guard of one full pitch below the departure keeps the
+  // span-straddling link out (its crowns legitimately leave the floor as the
+  // chain flies to the drum, and one link of under-coverage at the wrap's
+  // TOP is the cheap side to err on — the defect lives at the BOTTOM).
+  // Inner links are excluded by CONSTRUCTION, not oversight: their plates
+  // are CHAIN_END_R_IN and ride (OUT − IN) = 0.085 off the floor by design.
+  const isWrapLink = (i) => wrapArc > 0 && (i + 1) * (len / N) <= wrapArc - CHAIN_PITCH;
   // Parity is anchored at the CLAW end so the link that drops over the
   // hook's pin is always an outer pair, whatever N rounds to this rebuild.
   const isOuter = (i) => (N - 1 - i) % 2 === 0;
@@ -3910,7 +4028,10 @@ function buildChainLinkGeometry(curve) {
   };
   const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
   const mid = new THREE.Vector3();
-  const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+  const seatBases = [];   // §124: assembled vertex base of each judged link's outer template
+  const L = len / N;
+  if (!chainFrames || chainFrames.length < N)
+    chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
     t.subVectors(b, a).normalize();
@@ -3918,14 +4039,57 @@ function buildChainLinkGeometry(curve) {
     // plates stay flat while the span carries its slight z slope.
     k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
     y.crossVectors(k, t);
+    // §124 (TODO 46) — the wrap links LEAN into the flank: rotate (ŷ, k̂)
+    // about t̂ by the link's own β, top of the stack tipping inboard (+ŷ),
+    // exactly the tilt the corner-locus cut accepts. The RAMP sheds β at the
+    // departure: judged links (the isWrapLink guard, one full pitch below
+    // the departure) carry FULL β — anything less re-opens the daylight the
+    // float row gates — the one unjudged link ending inside the last pitch
+    // takes β/2, and the straddler + span are vertical. That grades the
+    // shed into two adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap
+    // tensions — the same order as the ~20–34° of azimuth articulation the
+    // wrap already carries between stations, and the declared articulation
+    // fiction of this chain (a real chain sheds its lean over the free span
+    // by joint play; measured worst per-joint twist over the reserve sweep:
+    // 36.3°, at tension ≈ 0.07 where the departure is still near the base).
+    if (betaAtArc && wrapArc > 0) {
+      const sEnd = (i + 1) * L;
+      const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
+      if (ramp > 0) {
+        const beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
+        if (beta > 1e-9) {
+          const cb = Math.cos(beta), sb = Math.sin(beta);
+          const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
+          k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
+          y.set(y2x, y2y, y2z);
+        }
+      }
+    }
+    chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
     mid.addVectors(a, b).multiplyScalar(0.5);
+    if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
     write(isOuter(i) ? outer : inner, t, y, k, mid);
   }
-  for (let i = 0; i <= N; i++) write(pin, X, Y, Z, joints[i]); // rivets, world-vertical
+  // Rivets: the MEAN frame of the two links they join (orthonormalized), so
+  // a pin between two leaning links leans with them instead of standing
+  // world-vertical through tilted plates — the declared articulation fiction
+  // above, at the joint itself. End rivets take their single neighbour.
+  for (let i = 0; i <= N; i++) {
+    const fa = chainFrames[Math.max(i - 1, 0)], fb = chainFrames[Math.min(i, N - 1)];
+    t.addVectors(fa.t, fb.t).normalize();
+    k.addVectors(fa.k, fb.k);
+    k.addScaledVector(t, -k.dot(t)).normalize();
+    y.crossVectors(k, t);
+    write(pin, t, y, k, joints[i]);
+  }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  // §124 (TODO 46) — the seat declaration rides the GEOMETRY (swapped whole
+  // each rebuild, so the float row can never read a stale layout): the
+  // welded outer template's crown indices plus each judged link's base.
+  geo.userData.seat = { crownIdx: outer.seatCrownIdx, bases: seatBases };
   return geo;
 }
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
@@ -4077,7 +4241,26 @@ function rebuildChain(tension) {
     COIL_TOP
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
-  const geo = buildChainLinkGeometry(curve);
+  // §124 (TODO 46) — the wrap's arc, chord-summed over the wrap control
+  // points (the spline adds ~1% of slack; the builder guards a full pitch at
+  // the departure, far coarser than that error): tells the builder which
+  // links the float row may judge — and, kept per control point, gives the
+  // builder the arc→f mapping its TILT law reads (control point i sits at
+  // band fraction (i/nF)·fActive by the wrap loop above), so the leaning
+  // links and the corner-locus cut consume the same β(f) at the same
+  // stations.
+  const wrapCum = new Float64Array(nF + 1);
+  for (let i = 0; i < nF; i++) wrapCum[i + 1] = wrapCum[i] + pts[i].distanceTo(pts[i + 1]);
+  const wrapArc = wrapCum[nF];
+  const betaAtArc = (s) => {
+    if (s <= 0) return fuseeBetaAt(0);
+    if (s >= wrapArc) return fuseeBetaAt(fActive);
+    let lo = 0, hi = nF;
+    while (hi - lo > 1) { const mid2 = (lo + hi) >> 1; if (wrapCum[mid2] <= s) lo = mid2; else hi = mid2; }
+    const fLink = ((lo + (s - wrapCum[lo]) / (wrapCum[hi] - wrapCum[lo] || 1)) / nF) * fActive;
+    return fuseeBetaAt(fLink);
+  };
+  const geo = buildChainLinkGeometry(curve, wrapArc, betaAtArc);
   // §71: hand the run to the schematic's chain line — same curve, same frame
   schemChainCurve = curve;
   if (schemChainLine) schemChainLine.geometry.setFromPoints(curve.getPoints(160));
@@ -4168,7 +4351,13 @@ const MAINT_FLANGE_R = MAINT_PAWL_PIV / 1.28;
 // z BOUNDS: ring above the great wheel HUB (its tallest central feature),
 // flange below the chain's lowest links on the cone's bottom groove.
 const GW_HUB_TOP = L_BARREL + (1.4 * 1.5) / 2; // makeGear hub ring: thickness·1.5, centred on the wheel
-const MAINT_CHAIN_LOW = FUSEE_Z0 - CHAIN_PIN_LEN / 2; // underside of the lowest chain wrap
+// §124 (TODO 46): the lowest wrap LIES DOWN on the base flank, so its
+// underside is the tilted corner's drop — h·cosβ* + w·sinβ* = √(h²+w²) =
+// CHAIN_PIN_LEN/2 + FUSEE_TILT_Z below the groove centreline (the same
+// quantity FUSEE_Z0_MIN funds against the center wheel), not the vertical
+// stack's half. The flange band consumes the honest number or the sandwich
+// stands inside the leaning chain.
+const MAINT_CHAIN_LOW = FUSEE_Z0 - (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z); // underside of the lowest chain wrap
 // Ring and flange stock: DERIVED from the band the sandwich actually gets —
 // hub + margin below, chain + margin above, one CLEAR_MARGIN of daylight
 // between the two moving halves. The old 0.5 literals collapsed the band
@@ -6493,6 +6682,12 @@ const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and 
 // margin. Derivation at the feeler build; the two numbers live here
 // because the whole chain hangs off them.
 const ALARM_TRACK_H = 0.17;
+const ALARM_PIN_R = 0.14;    // pin radius — its diameter equals the arm's width, so the arm fits the
+                             // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
+                             // 0.092 rad pin arc at the track radius; the edge ramp at the feeler
+                             // build keeps the arm above the ridge until the pin is truly in the
+                             // gap). Hoisted here from the feeler build: the sleeve web's relief
+                             // sector consumes it (the relief spans the ARM, whose width is 2·this).
 const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin bounds it at 0.108
                              // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
                              // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
@@ -6968,10 +7163,10 @@ reserveGroup.add(reserveHand);
 // under-dial space (via a friction slip coupling, the standard simple-watch
 // solution: a rigid tap of the great wheel alone can't give a bounded gauge
 // that resets on winding, and a true differential is a lot of machinery).
-// From there a two-mesh reduction across three arbors (8/36 × 10/20 = 1/9)
+// From there a two-mesh reduction across three arbors (8/28 × 10/12 = 1/4.2)
 // walks across the gap between plate and dial and ends on an arbor COAXIAL
 // with the sub-dial pivot — the same axis the hand rides, its post passing
-// through the dial exactly like the time hands do. 150° of hand = 3.75
+// through the dial exactly like the time hands do. 150° of hand = 1.75
 // barrel turns; the ratio is derived from that pair, not chosen (see the
 // tooth counts below, and the assert beside RESERVE_BARREL_TURNS).
 // ---------------------------------------------------------------------------
@@ -6990,36 +7185,35 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 
 // TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
 // slip-coupled to the barrel arbor, so it must turn what that arbor turns
-// over one wind-to-empty cycle — RESERVE_BARREL_TURNS = 3.75 (30 h at
-// 1 rev/8 h). The hand on the far end sweeps RESERVE_SWEEP_DEG. So the
-// reduction is fixed by the two of them:
+// over one wind-to-empty cycle — RESERVE_BARREL_TURNS = 1.75 since §124
+// (30 h at 1 rev per 120/7 h — the first stage's re-gear reached here
+// too, exactly the coupling TODO 18's assert exists to catch). The hand
+// on the far end sweeps RESERVE_SWEEP_DEG. So the reduction is fixed by
+// the two of them:
 //
-//   R = 3.75 rev × 360° ÷ 150° = 1350/150 = 9
+//   R = 1.75 rev × 360° ÷ 150° = 630/150 = 4.2
 //
-// and R is the product of the meshes, (W1/P0) × (W2/P1) = (36/8) × (20/10)
-// = 4.5 × 2 = 9. p1 carries 10 leaves for that second 2:1 — NOT the 8 it
-// had while this sub-dial was a 120° arc, where 11.25 was the right answer
-// (3.75 ÷ 11.25 = ⅓ rev = 120° exactly). The arc was later widened to 150°
-// for readability and this ratio was not re-derived with it, so p0 spun
-// 4.6875 turns against its arbor's 3.75 — TODO 18, closed here. The assert
-// below now binds the three quantities together so the next regraduation
-// cannot land silently.
+// and R is the product of the meshes, (W1/P0) × (W2/P1) = (28/8) × (12/10)
+// = 3.5 × 1.2 = 4.2. (The pre-§124 pair was (36/8) × (20/10) = 9 for the
+// 3.75-turn arbor; TODO 18's history — the 120°-arc ratio that was never
+// re-derived at 150° — is in git, and the assert below is why THIS
+// regraduation could not land silently either.)
 //
-// Only the tooth COUNT moved: rsvModule1 is solved from the span (below),
+// Only the tooth COUNTS moved: rsvModule1 is solved from the span (below),
 // so w2 keeps the sub-dial pivot and the centre distance is untouched.
-// p1's pitch radius grows 2.037 → 2.376 and w2's shrinks 5.092 → 4.753;
-// the two waived §50 stock rows on this unit are 0.3-unit radial bands
-// that the module does not reach (measured before and after — unchanged
-// at 0.1125 mm), so this is a clearance question, not a stock one.
-// §22: the second-stage wheel is DERIVED from the reserve, closing TODO 18
-// for every spec rather than only the default. The chain of constraint:
-// p0 turns RESERVE_BARREL_TURNS (= h/8) lock-to-lock, the hand sweeps
-// RESERVE_SWEEP_DEG (150°), so R = (h/8)·360/150 = 0.3·h; stage one is
-// 36/8 = 4.5, so stage two must be R/4.5 = h/15, and with p1 = 10 that is
-// w2 = 2h/3 — an integer because the spec snaps hours to multiples of 3.
-// At the 30 h default: w2 = 20, the shipped count, bit-identical.
-const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 10;
-const rsvTeethW2 = (2 * SPEC.reserveHours) / 3;
+// The two waived §50 stock rows on this unit are 0.3-unit radial bands
+// that the module does not reach, so this is a clearance question, not a
+// stock one — the battery's rows re-measure it.
+// §22: the second-stage wheel is DERIVED from the reserve, for every spec
+// rather than only the default. The chain of constraint: p0 turns
+// RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
+// RESERVE_SWEEP_DEG (150°), so R = (7h/120)·360/150 = 0.14·h; stage one
+// is 28/8 = 3.5, so stage two must be R/3.5 = 0.04·h = h/25, and with
+// p1 = 10 that is w2 = 2h/5 — integer while the spec keeps h a multiple
+// of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
+// does not). At the 30 h default: w2 = 12.
+const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
+const rsvTeethW2 = (2 * SPEC.reserveHours) / 5;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
@@ -7734,7 +7928,17 @@ alarmFollowerSpring.rotation.z = 1.9;
 // nose clears the heart, the tube is free to be turned by the §25 C friction
 // coupling: the hand sweeps while being set. Radii are DERIVED from the pin
 // orbits the chain block computed; the band and travel were priced there.
+// Hoisted above the sleeve build (from the release-complex block below):
+// the web's relief sector needs the feeler's line before the feeler exists.
+const ALARM_FEELER_AZ_OFF = 0.44;
+const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
 const ALARM_SLEEVE_THROAT_R = alarmTailRAt(ALARM_A_RELEASE_PHI) + ALARM_A_PIN_R - 0.03; // full-press flank − face cover
+// §124 — the web's relief sector (one source for the cut and its asserts):
+// centred on the feeler's line in the sleeve's dial-mirrored frame, opened
+// so the ring's outer rim clears the ARM's width by the one margin each side.
+const ALARM_WEB_RELIEF_AZ = Math.PI - ALARM_RELEASE_AZ;
+const ALARM_WEB_RELIEF_HALF = Math.asin(
+  (ALARM_PIN_R + CLEAR_MARGIN) / (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H));
 const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
 const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
@@ -7789,8 +7993,36 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   skirt.name = 'alarmSleeveSkirt';
   alarmSleeve.add(skirt);
   // web under the flat's rim, joining the skirt's top band to the bore (the
-  // two derive 2·0.03 apart in radius: face-cover slack + working clearance)
-  const web = new THREE.Mesh(ringGeo(rTopS, ALARM_SLEEVE_R_IN + 0.05, STOCK_MIN_U), MATS.nickel);
+  // two derive 2·0.03 apart in radius: face-cover slack + working clearance).
+  //
+  // §124 (TODO 46's last catch) — the web is an ARC ring now, with a RELIEF
+  // SECTOR at the feeler's line. The release trip ROCKS the feeler arm
+  // toward the sleeve (rotation −drop/armLen — the §29 sign the beak-edge
+  // choice is built on), transiently spending rise(r) = ALARM_PIN_DROP·
+  // (PIVOT_R − r)/ARM_LEN of the one margin §45 priced for a STATIC feeler;
+  // and this web stands STOCK_MIN_U − ALARM_SLEEVE_SKIRT_H = 0.111 proud of
+  // the skirt's declared envelope. Where the arm's corner crossed the ring's
+  // bore corner, the two met by 0.0074 at the drop's bottom — a pose only
+  // §124's full-orbit train axis ever visited (the old 8 h sweep covered
+  // 47% of the orbit and never the release alignment; the alignment's tau
+  // also drifts with the dial epoch, which is why no fixed-pose probe could
+  // hold it). The relief is the disc track's own precedent — the notch is
+  // the absence of track: centred on the feeler's line (π − ALARM_RELEASE_AZ
+  // in this dial-mirrored frame), half-angle derived so the opening spans
+  // the arm's width plus the one margin each side at the ring's outer rim.
+  // The tail pin's guide bore is ~0.9 u away tangentially and keeps its full
+  // arc (asserted below, with the follower's stroke spent).
+  const WEB_R_IN = ALARM_SLEEVE_R_IN + 0.05, WEB_R_OUT = rTopS;
+  const webShape = new THREE.Shape();
+  const a0 = ALARM_WEB_RELIEF_AZ + ALARM_WEB_RELIEF_HALF, a1 = ALARM_WEB_RELIEF_AZ - ALARM_WEB_RELIEF_HALF + Math.PI * 2;
+  webShape.moveTo(Math.cos(a0) * WEB_R_OUT, Math.sin(a0) * WEB_R_OUT);
+  webShape.absarc(0, 0, WEB_R_OUT, a0, a1, false);
+  webShape.lineTo(Math.cos(a1) * WEB_R_IN, Math.sin(a1) * WEB_R_IN);
+  webShape.absarc(0, 0, WEB_R_IN, a1, a0, true);
+  webShape.closePath();
+  const webGeo = new THREE.ExtrudeGeometry(webShape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 40 });
+  webGeo.translate(0, 0, -STOCK_MIN_U / 2);
+  const web = new THREE.Mesh(webGeo, MATS.nickel);
   web.name = 'alarmSleeveWeb'; // TODO 6 contact-floor selector
   web.position.z = -ALARM_SLEEVE_T - STOCK_MIN_U / 2;
   alarmSleeve.add(web);
@@ -7840,6 +8072,45 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   say('envelope floor above the feeler', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_FEELER_TOP, CLEAR_MARGIN);
   say('flat bore clears the resting pin', ALARM_SLEEVE_R_IN - (alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R), 0.03 - 1e-6);
   say('sleeve outer inside the feeler lugs', 5.32 - CLEAR_MARGIN - ALARM_SLEEVE_R_OUT, 0);
+}
+// §124 (TODO 46's last catch) — the web's relief sector, held to the
+// constraints it was derived from (rule 6: achieved and required numbers).
+// The release trip rocks the feeler arm toward the sleeve, and the arm's
+// corner met the web's bore corner by 0.0074 at the drop bottom — a pose
+// only the full-orbit train axis ever visits, at a tau that drifts with
+// the dial epoch. Four holds:
+{
+  const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`§124 web relief ${nm}: ${v.toFixed(4)}, need ${need.toFixed ? need.toFixed(4) : need}`); };
+  const webROut = ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H;
+  // 1. The relief's opening spans the arm plus the one margin at the rim —
+  //    exact by the half-angle's own derivation; the assert keeps it true
+  //    if someone re-derives either side.
+  say('opening spans the arm by the margin',
+    webROut * Math.sin(ALARM_WEB_RELIEF_HALF) - ALARM_PIN_R, CLEAR_MARGIN);
+  // 2. The relief's edges keep clear of the tail pin's guide arc: the pin
+  //    rides at (−PIVOT_R − Rt·cosφ, −Rt·sinφ) over the follower stroke
+  //    (both frames share the tube's axes); tangential clearance at the
+  //    pin's radius, minus the pin itself, at both stroke ends × both edges.
+  {
+    const wrap = (x) => Math.atan2(Math.sin(x), Math.cos(x));
+    let worst = Infinity;
+    for (const phi of [ALARM_FOLLOWER_A0, ALARM_A_RELEASE_PHI]) {
+      const px = -ALARM_PIVOT_R - ALARM_A_TAIL_LEN * Math.cos(phi);
+      const py = -ALARM_A_TAIL_LEN * Math.sin(phi);
+      const pr = Math.hypot(px, py), pa = Math.atan2(py, px);
+      for (const edge of [ALARM_WEB_RELIEF_AZ - ALARM_WEB_RELIEF_HALF, ALARM_WEB_RELIEF_AZ + ALARM_WEB_RELIEF_HALF]) {
+        const t = pr * Math.abs(wrap(pa - edge)) - ALARM_A_PIN_R;
+        if (t < worst) worst = t;
+      }
+    }
+    say('edges clear the tail pin guide', worst, CLEAR_MARGIN);
+  }
+  // 3. The web's protrusion past the skirt's declared envelope stays inside
+  //    the static margin — the containment this pair actually lived on,
+  //    asserted now instead of assumed (strict containment would need the
+  //    web thinner than §50's floor; the residual is the declared debt).
+  say('protrusion inside the static margin',
+    CLEAR_MARGIN - (STOCK_MIN_U - ALARM_SLEEVE_SKIRT_H), 0.001);
 }
 
 // --- 'Alarm setting wheel' — the FRICTION-coupled crown of the centre stack.
@@ -7940,8 +8211,8 @@ const ALARM_DISC_TEETH = 30; // rim — with i1b (28) the branch nets −(28/30)
 // The branch MODULE is closure-derived: i1 stands ALARM_SET_DW1 from the
 // centre, and the i1b⇄rim mesh must span exactly that — m = 2·DW1/(28+30).
 const ALARM_BRANCH_MODULE = 2 * ALARM_SET_DW1 / (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH);
-const ALARM_FEELER_AZ_OFF = 0.44;
-const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
+// (ALARM_FEELER_AZ_OFF / ALARM_RELEASE_AZ are declared above the sleeve
+// build — its web's relief sector consumes them before this block runs.)
 const ALARM_BAND_Z = Z_DIAL - ALARM_DISC_TOP + ALARM_DISC_BODY_T / 2; // WORLD plane of the band gears (= the disc body's mid-plane mirrored)
 const ALARM_FEELER_PIVOT_R = 5.5; // bracket lugs' inboard faces clear the rim's tips by one margin (asserted)
 const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
@@ -8567,10 +8838,8 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 // is BANKED at ALARM_PIN_DROP by a stop on the bracket — NOT by bottoming
 // in the notch — because the dropped arm still owes the rim its margin
 // (asserted below with the lever fraction written out).
-const ALARM_PIN_R = 0.14;         // pin radius — its diameter equals the arm's width, so the arm fits the
-                                  // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
-                                  // 0.092 rad pin arc at the track radius; the edge ramp below is what
-                                  // keeps the arm above the ridge until the pin is truly in the gap)
+// (ALARM_PIN_R is declared with ALARM_PIN_DROP in the §29 chain-constants
+// block — the sleeve web's relief consumes it before this build runs.)
 const alarmFeelerUnit = new THREE.Group();
 dialFace.add(alarmFeelerUnit);
 registerLabel('Alarm release feeler', alarmFeelerUnit);
@@ -8579,6 +8848,18 @@ registerExplode(alarmFeelerUnit, 0, 2, 1); // dialFace child: children carry loc
 // at the release azimuth, phiF = the inboard direction's dial-local angle.
 const _phiF = Math.atan2(-_uF.y, -_uF.x);
 const ALARM_FEELER_ARM_LEN = ALARM_FEELER_PIVOT_R - ALARM_TRACK_RMID; // pivot → pin
+// §124 — the trip's rock SPENDS clearance under the arm: the drop rotates
+// the lever, so a station at radius r dips rise(r) = ALARM_PIN_DROP·
+// (PIVOT_R − r)/ARM_LEN below its static plane. §45 priced the sleeve
+// envelope's floor one CLEAR_MARGIN under the STATIC arm; the rock's worst
+// spend inside the sleeve's footprint (at the web's outer rim, the closest
+// metal that remains after the relief) must leave that margin standing.
+{
+  const rimR = ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H;
+  const rise = ALARM_PIN_DROP * (ALARM_FEELER_PIVOT_R - rimR) / ALARM_FEELER_ARM_LEN;
+  if (CLEAR_MARGIN - rise < 0.001)
+    console.warn(`§124 feeler rock: spends ${rise.toFixed(4)} of the ${CLEAR_MARGIN} static margin at the web rim — residual ${(CLEAR_MARGIN - rise).toFixed(4)}`);
+}
 const ALARM_FEELER_TAIL = 0.9;   // outboard stub — step 4 extends it to the climb pawl
 // §48/TODO 13 — where the return blade would drive the pin if nothing stopped
 // it. The travel is BANKED at ALARM_PIN_DROP by the stop over the tail, so the
@@ -9393,7 +9674,19 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
 // piece of a real alarm this model leaves for later; the hammer is shown, its
 // power is not). Placed in the clear UPPER sector of the back (az 45–135°,
 // away from the balance/escapement in the lower-right), above the 3/4 plate.
-const Z_GONG = 9.6;              // above the 3/4 plate top (8.5), about the balance-cock height (9.4)
+// §124 seam (TODO 46): the strike tier STANDS ON the three-quarter plate, so
+// its planes are DERIVED from TQ_TOP_Z rather than restated. (§124 lifted the
+// plate by FUSEE_TILT_Z and the old literals — Z_GONG 9.6, ALARM_LOCK_Z 8.83 —
+// kept describing the pre-lift plate at 8.51: the §102 spring stud collapsed
+// to a 0.015 sliver and the collar's band sank inside the plate.) The stack,
+// floor to ceiling: plate top → ALARM_LOCK_GAP → lock collar (STOCK_MIN_U
+// floor stock, the §25 B brake band, shared with the lock lever) →
+// ALARM_LOCK_GAP again → cam underside; the gong/hammer/tail plane is the
+// cam's mid-thickness above that.
+const ALARM_CAM_T = 0.8;         // cam thickness — straddles the tail (hoisted from the §25 A z-stack: Z_GONG derives through it now)
+const ALARM_LOCK_GAP = CLEAR_MARGIN + 0.01; // the margin plus the float-bind centi-unit — §102's convention, on both faces of the collar
+const ALARM_LOCK_Z = TQ_TOP_Z + ALARM_LOCK_GAP + STOCK_MIN_U / 2; // lock lever / brake collar band centre (§25 B, §102)
+const Z_GONG = ALARM_LOCK_Z + STOCK_MIN_U / 2 + ALARM_LOCK_GAP + ALARM_CAM_T / 2; // ≈ 1.04 over the plate top — the gong rings just above the balance cock, as before
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
 // §33 (pusher handle) — THE ALARM WORK ROTATES AS ONE MODULE (?alarmmod=).
 // The striking wheel's cam lifts the hammer tail, the hammer strikes the
@@ -9601,7 +9894,8 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // the hammer tail's plane so the tail's nose can ride its rim, and the barrel
 // rides above it on the same arbor line.
 const ALARM_TAIL_T = 0.5;                              // tail bar thickness, centred on the gong plane
-const ALARM_CAM_T = 0.8;                               // cam thickness — straddles the tail
+// (ALARM_CAM_T is hoisted to the §124 seam block beside Z_GONG — the gong
+// plane derives through the cam's half-thickness now.)
 const ALARM_CAM_Z0 = Z_GONG - ALARM_CAM_T / 2;
 const ALARM_CAM_Z1 = Z_GONG + ALARM_CAM_T / 2;
 const ALARM_BARREL_H = 1.3;
@@ -10111,13 +10405,13 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // lock lever's pad bears on when the train is held. Smooth, not notched: a
   // partial wind can park the train at ANY phase (the winding lockstep), so
   // the hold is a friction brake — the stop-lever-on-balance-rim precedent.
-  // TODO 11 tail: the sandwich takes floor stock after all — centred growth
-  // +0.02 leaves 0.16 over the plate and 0.21 under the cam, both ≥ the one
-  // margin the note below demands.
+  // TODO 11 tail: the sandwich takes floor stock after all. §124's seam fix
+  // re-derived the band from the plate top, so both faces clear by exactly
+  // ALARM_LOCK_GAP — plate top below, cam underside above — by construction.
   const lockCollar = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, STOCK_MIN_U, 32), MATS.steel);
   lockCollar.name = 'alarmLockCollar';
   lockCollar.rotation.x = Math.PI / 2;
-  lockCollar.position.z = 8.83; // world (the rotor sits at z 0): band 8.68..8.98 — 0.17 over the plate top, 0.22 under the cam
+  lockCollar.position.z = ALARM_LOCK_Z; // world (the rotor sits at z 0): the shared §25 B lock band, derived at the §124 seam block
   alarmStrikeRotor.add(lockCollar);
   sleeve.rotation.x = Math.PI / 2;
   sleeve.position.z = (sleeveZ0 + sleeveZ1) / 2;
@@ -12228,7 +12522,9 @@ const ALARM_LOCK_PAD_R = 0.3;
 // radial air" — a chosen fraction of the space available, the one number
 // item 28 could not fix.)
 const ALARM_LOCK_LIFT = (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L;   // = 0.032 rad
-const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (8.68..8.98)
+// (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
+// at the §124 seam block beside Z_GONG, up by the gong build: the whole
+// strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
 // §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
 // tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
 // bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
@@ -12462,7 +12758,7 @@ alarmColSpin.add(alarmColumnWheel);
 alarmSwitchUnit.add(alarmColSpin);
 {
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
-  // (9.15, under the base's top face) — a pivot, not a pole through the crown.
+  // (under the base's top face) — a pivot, not a pole through the crown.
   const studR = ALARM_COL_BORE_R - 0.06; // the §43 running clearance, kept through the resize
   // §68: the stud IS the bridge — seated 0.3 into the plate, tip ending
   // inside the raised bore under the base's top face; both ends derived.
@@ -13837,11 +14133,13 @@ alarmSwitchUnit.add(alarmPusherGroup);
 // ---------------------------------------------------------------------------
 const RELAX_SECONDS = SPEC.reserveHours * 3600; // §22: the reserve is a spec knob (default 30 h)
 // Power reserve is MECHANICALLY geared off the barrel: the barrel turns once
-// per 8 h, so the reserve is exactly hours/8 barrel revolutions lock-to-lock.
-// Same derivation as FUSEE_WRAP_TURNS up at the cone build — one spec value,
+// per HOURS_PER_FUSEE_TURN (§124: 120/7 h — the first mesh's ratio, one
+// source in the TRAIN table), so the reserve is exactly
+// hours/HOURS_PER_FUSEE_TURN barrel revolutions lock-to-lock. Same
+// derivation as FUSEE_WRAP_TURNS up at the cone build — one spec value,
 // two names for the two sides (energy accounting here, geometry there) of
 // the same mechanical quantity.
-const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75 at the 30 h default
+const RESERVE_BARREL_TURNS = RELAX_SECONDS / (HOURS_PER_FUSEE_TURN * 3600); // = 1.75 at the 30 h default
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 
 // TODO 18's gate. The reserve indicator is three quantities that must agree —
@@ -13853,7 +14151,7 @@ let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 // because the comments were the thing that agreed with each other while the
 // teeth did not.
 {
-  const R = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);   // = 9
+  const R = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);   // = 4.2 (§124)
   const p0Turns = (RESERVE_SWEEP_DEG / 360) * R;                     // hand travel → p0 revolutions
   if (Math.abs(p0Turns - RESERVE_BARREL_TURNS) > 1e-9)
     console.warn(`§39/TODO 18: reserve reduction ${R} puts ${p0Turns} turns on p0 over a ${RESERVE_SWEEP_DEG}° sweep, but the barrel arbor it is slip-coupled to turns ${RESERVE_BARREL_TURNS}. R must be ${(RESERVE_BARREL_TURNS * 360) / RESERVE_SWEEP_DEG}.`);
@@ -23576,16 +23874,17 @@ function advanceFrame(realDt) {
   // Fast-forward button state + fusee torque readouts: the spring's torque
   // sags as the reserve drains, while the fusee's growing radius keeps the
   // torque delivered to the train level — the whole point of the mechanism.
-  // The sag bottoms at SPRING_TQ_EMPTY (0.346, the set-up ratchet's held
-  // pre-tension — TODO 32), so the spring bar never empties; the concave
-  // 1/√ droop against the reserve is the law's own shape, not an ease.
+  // The sag bottoms at SPRING_TQ_EMPTY (0.590, the set-up ratchet's held
+  // pre-tension — TODO 32; §124's 23-click set-up), so the spring bar never
+  // empties; the concave 1/√ droop against the reserve is the law's own
+  // shape, not an ease.
   const ffBtn = document.getElementById('btn-ff');
   setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
   const springTq = springTorqueAt(reserveShown);
   // TODO 40 row 2 — read the radius the chain is ACTUALLY on, from the same
   // function the chain path is cut from. The wrap occupies FUSEE_F_ACTIVE
-  // (0.9375) of the groove band, so the cut tip carries only the runout and
+  // (0.875) of the groove band, so the cut tip carries only the runout and
   // never a working turn. This used to lerp the whole band against the
   // reserve, quoting a radius no wrap ever reaches; two expressions for one
   // quantity is how they drift apart.
@@ -23715,6 +24014,7 @@ window.__clock = {
   // count, and an axis that hard-coded 3.75 would sweep a different wind
   // than the movement performs at that spec.
   get fuseeWrapTurns() { return FUSEE_WRAP_TURNS; },
+  get hoursPerFuseeTurn() { return HOURS_PER_FUSEE_TURN; }, // §124: the train axis's orbit length — the first mesh's ratio, one source
   setCrownRotation(v) { crownRotation = v; },
   // §25 C: the alarm crown's RAW drag input — parity with setCrownRotation.
   // Unlike setPose({alarmCrownRotation}) (which poses the SET path directly),
