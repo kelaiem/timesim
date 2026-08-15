@@ -762,11 +762,13 @@ export const AXES = [
     // §48-population gap whose retired declarations name this axis as their
     // way back in. tension and windAccumTurns move as the COUPLED pair they
     // are (rule 2): winding IS what re-tensions the spring, and the span is
-    // read live (`fuseeWrapTurns` = reserveHours/8, 3.75 at the default
-    // spec) so a `?reserveh=` boot sweeps the wind that spec performs.
+    // read live (`fuseeWrapTurns` = reserveHours over the first mesh's
+    // ratio — 1.75 at the default spec since §123) so a `?reserveh=` boot
+    // sweeps the wind that spec performs.
     // n: the train axis's own standard is 96 samples per fusee revolution
     // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
-    // 3.75 rev each way at that density is 360 + 360 = 720. The finer
+    // the pre-§123 3.75 rev each way at that density was 360 + 360 = 720,
+    // kept — at 1.75 rev it is denser, never sparser. The finer
     // features on this path (the §99-class ratchet tooth pitch, 24/rev) are
     // budget-tier work with their own nSamples override, not this axis's to
     // carry. The measured cost of this n, and what it did to the guard
@@ -779,19 +781,25 @@ export const AXES = [
       return {
         tau: 0.13, crownPullT: 0, leverEngage: 0,
         tension: w,
-        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 3.75),
+        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 1.75),
       };
     },
   },
   {
-    // One full revolution of the FUSEE arbor (8 h of movement time) — catches
-    // slow-orbit collisions (e.g. arbor-mounted parts sweeping past static
-    // keyless parts) that the short beat axis never rotates far enough to
-    // reach. Fast wheels are effectively phase-randomised across samples,
-    // which is fine: any sampled pose is a reachable pose.
+    // One full revolution of the FUSEE arbor — catches slow-orbit collisions
+    // (e.g. arbor-mounted parts sweeping past static keyless parts) that the
+    // short beat axis never rotates far enough to reach. Fast wheels are
+    // effectively phase-randomised across samples, which is fine: any
+    // sampled pose is a reachable pose. §123: the revolution's LENGTH is the
+    // first mesh's ratio, read live off the clock (120/7 h at the default
+    // spec) — the old literal 8 h was that ratio hard-coded, and when §123
+    // re-geared the mesh this axis silently shrank to 0.47 of an orbit: the
+    // maintaining detent's beak (which ticks over the ring once per tooth of
+    // ABSOLUTE arbor rotation) fell out of the reversal population, and the
+    // §48 restoring audit's stale rule caught the declaration it orphaned.
     name: 'train',
     n: 96,
-    pose: (f) => ({ tau: f * 8 * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f, clock) => ({ tau: f * (clock?.hoursPerFuseeTurn ?? 120 / 7) * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
   },
   {
     // One full star pitch (60 s of movement time — the star turns 2° per
