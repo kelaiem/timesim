@@ -176,7 +176,7 @@
       <p>As the watch runs, the ribbon relaxes turn by turn and its stored energy flows
       out through the drum. One full wind here holds about <b>30 hours</b> of running,
       and the machinery spends it very slowly: the first wheel of the gear train makes
-      one revolution every 8 hours — a little under four turns over the whole
+      one revolution every 17 1/7 hours — one and three-quarter turns over the whole
       reserve. Everything faster than that is gearing, which has its own entry below.</p>
       <p class="note">Honesty note: the ribbon in the simulation is not a decoration. Its
       shape is recomputed as the wind changes, under two constraints a real spring obeys —
@@ -246,23 +246,27 @@
     <div class="mech-body">
       <p>Everything between the drum and the ticking is multiplication. When a wheel with
       many teeth drives a small pinion, the pinion turns faster in exact proportion to
-      the tooth counts — a wheel of 80 teeth driving a pinion of 10 turns it exactly
-      8 times per revolution, and there is nothing more to know. Speed is bought at the
-      price of force, the same trade as a bicycle's gears.</p>
-      <p>Four such steps stand between the power and the escapement, and you can check
-      each on your fingers: 8 × 7½ × 8 × 10 = 4,800. The first wheel — the "great
-      wheel", riding on the fusee cone itself — turns once in 8 hours; at the far end
-      of the chain of meshes a wheel spins once every 6 seconds.</p>
+      the tooth counts — a wheel of 120 teeth driving a pinion of 7 turns it exactly
+      17 1/7 times per revolution, and there is nothing more to know. Speed is bought at
+      the price of force, the same trade as a bicycle's gears.</p>
+      <p>Four such steps stand between the power and the escapement. The last three you
+      can check on your fingers: 7½ × 8 × 10 = 600, which is exactly one turn per hour
+      becoming one turn every 6 seconds. The first step is the odd fraction, × 17 1/7:
+      the "great wheel", riding on the fusee cone itself, turns once in 17 1/7 hours,
+      and its 120 teeth driving a 7-leaf pinion hand the centre wheel its once-per-hour
+      turn. That gearing was chosen for the chain's sake — spreading the 30-hour
+      reserve over fewer, wider-spaced turns of groove is what gives every link room to
+      sit flat against the cone instead of perching on a corner.</p>
       <figure>
-        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One turn in 8 hours becomes one turn in 6 seconds</span></div>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One turn in 17 1/7 hours becomes one turn in 6 seconds</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 780 190" width="780" height="190" role="img"
-               aria-label="The gear train as a chain of multiplications: the great wheel on the fusee turns once per 8 hours; times 8 gives the centre wheel at once per hour, which carries the minute hand; times seven and a half then times 8 gives the fourth wheel at once per minute, which carries the seconds hand; times 10 gives the escape wheel at once per 6 seconds.">
+               aria-label="The gear train as a chain of multiplications: the great wheel on the fusee turns once per 17 1/7 hours; times 17 1/7 gives the centre wheel at once per hour, which carries the minute hand; times seven and a half then times 8 gives the fourth wheel at once per minute, which carries the seconds hand; times 10 gives the escape wheel at once per 6 seconds.">
             <circle cx="90" cy="80" r="44" fill="none" stroke="var(--brass)" stroke-width="1.8"/>
-            <text class="lbl lbl-strong" x="46" y="150">great wheel · 80 teeth</text>
-            <text class="val" x="46" y="166">1 turn / 8 h</text>
+            <text class="lbl lbl-strong" x="46" y="150">great wheel · 120 teeth</text>
+            <text class="val" x="46" y="166">1 turn / 17 1/7 h</text>
             <line x1="134" y1="80" x2="196" y2="80" stroke="var(--muted)" stroke-width="1" marker-end="url(#arrT)"/>
-            <text class="val val-brass" x="148" y="68">× 8</text>
+            <text class="val val-brass" x="142" y="68">× 17 1/7</text>
             <circle cx="250" cy="80" r="40" fill="none" stroke="var(--steel)" stroke-width="1.6"/>
             <text class="lbl lbl-strong" x="212" y="150">centre wheel</text>
             <text class="val" x="212" y="166">1 turn / hour</text>
