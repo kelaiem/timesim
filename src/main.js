@@ -10074,12 +10074,24 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   for (const [x, y] of pts.slice(1)) shape.lineTo(x, y);
   shape.closePath();
   const bore = new THREE.Path();
-  bore.absarc(0, 0, 0.8, 0, Math.PI * 2, true);
+  const CAM_BORE_R = 0.8;
+  bore.absarc(0, 0, CAM_BORE_R, 0, Math.PI * 2, true);
   shape.holes.push(bore);
   const geo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_CAM_T, bevelEnabled: false, curveSegments: 2 });
   geo.translate(0, 0, -ALARM_CAM_T / 2);
   const cam = new THREE.Mesh(geo, MATS.brass);
   cam.name = 'alarmCam'; // selected by name for the nose⇄cam penetration budget
+  // §83's word for "a wheel whose content is its cut outline" — the flanks
+  // ARE this wheel's whole claim (the lift law generated them), so a smooth
+  // circle at any radius would be a false glyph, and until now the schematic
+  // drew the striking train's output as NOTHING: the callout table names
+  // this mesh ('Lifting cam') and pointed at a blank. poly is the very
+  // point list the Shape was cut from, so mesh, law and glyph share one
+  // source; §107's one carrier loop draws it, attached here so the rotor's
+  // pose carries the lobes past the nose. The extrude is centred on local
+  // z 0 (the translate above), so the loop's z-0 polyline lands on the gong
+  // plane, exactly where the tail nose rides the flank.
+  cam.userData.profile = { poly: pts, boreR: CAM_BORE_R };
   cam.position.z = Z_GONG;
   alarmStrikeRotor.add(cam);
   // Sleeve DOWN to the pinion (§112 — the barrel's tooth band lives under
@@ -16770,11 +16782,34 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         V(Math.cos(GONG_A0) * GONG_R, Math.sin(GONG_A0) * GONG_R, TQ_TOP_Z - 0.5)]);
     }
     // the striker — pivot → head inside alarmHammerPivot (the group the
-    // strike law swings), head drawn at its own ALARM_HEAD_R
+    // strike law swings), head drawn at its own ALARM_HEAD_R — and the TAIL
+    // on the far side of the pivot, the follower the cam actually lifts:
+    // rest azimuth and reach are the constants the solid was cut at
+    // (ALARM_TAIL_REST_AZ, ALARM_TAIL_LEN), and the group's rotation
+    // carries the line exactly as it carries the head. Without it the cam's
+    // lobes (drawn from their §83 profile) sweep past nothing and the
+    // hammer reads as lifted by magic — the glyph and its follower are one
+    // contact, so they draw together.
     {
       const hx = headRest.x - hammerPiv.x, hy = headRest.y - hammerPiv.y;
       addLine(alarmHammerPivot, [V(0, 0, 0), V(hx, hy, 0)]);
       addRing(alarmHammerPivot, ALARM_HEAD_R, hx, hy, 0);
+      addLine(alarmHammerPivot, [V(0, 0, 0),
+        V(Math.cos(ALARM_TAIL_REST_AZ) * ALARM_TAIL_LEN, Math.sin(ALARM_TAIL_REST_AZ) * ALARM_TAIL_LEN, 0)]);
+    }
+    // the striking wheel's LOCK COLLAR — the smooth braking surface the lock
+    // lever's pad bears on when the train is held (§25 B). Its glyph was
+    // absent while both the lock lever's line and the callout table
+    // ('Lock collar') pointed at it. A plain circle is honest HERE and only
+    // here: the collar is deliberately smooth — a partial wind can park the
+    // train at any phase, so the surface really is invariant under the spin
+    // — which is exactly why the generic vocabulary's circle, a false claim
+    // on the cam beside it, states this part truly. Radius and height read
+    // off the built mesh, nothing restated; attached to the rotor the tick
+    // poses, like the cam's own outline.
+    {
+      const c = alarmStrikeRotor.children.find((o) => o.name === 'alarmLockCollar');
+      addRing(alarmStrikeRotor, c.geometry.parameters.radiusTop, 0, 0, c.position.z);
     }
     // the pusher — stem, cap, and the riser-to-pawl run, all group-local
     // from the spans the build recorded (userData.stem), so the whole
@@ -17123,13 +17158,16 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         // wrote the SKIP rule to prevent, arriving from the other side: not
         // a wrong word drawn over, but a right word never drawn. A
         // vocabulary word has to draw itself everywhere, so the escape
-        // wheel, the §99 arbor ratchet and the §104 saw are now one loop.
+        // wheel, the §99 arbor ratchet and the §104 saw are now one loop —
+        // and the striking cam speaks the same word (its flanks are its
+        // whole content, cut from the lift law), so the floor below counts
+        // it too.
         {
           const carriers = [];
           movement.traverse((o) => { if (o.userData && o.userData.profile) carriers.push(o); });
           // §78's tripwire shape — a FLOOR, never an equality: a part that
           // stops exporting its plan must warn, not fall back to silence.
-          if (carriers.length < 3)
+          if (carriers.length < 4)
             console.warn(`§107: only ${carriers.length} parts export a cut profile — a wheel that stopped exporting its plan is now drawn by nothing`);
           for (const o of carriers) {
             const p = o.userData.profile, W = SCHEMATIC.matWheel;
