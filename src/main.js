@@ -39,6 +39,7 @@ import {
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
+  FUSEE_TILT_Z,                               // §123 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
@@ -381,21 +382,31 @@ const barrelR_actual = greatWheel.userData.r || barrelR;
 // uncut crest between wraps. The land is therefore the movement's slack
 // made visible: grow the reserve (§22) and the land thins toward the
 // floor below, with the warn as the honest cost report.
-const FUSEE_WRAP_TURNS = SPEC.reserveHours / 8; // = RESERVE_BARREL_TURNS (energy side, declared with the spring)
+// §123: hours-per-fusee-turn IS the first mesh's ratio — the old `/ 8` was
+// that ratio hard-coded, and it silently disagreed the moment the mesh
+// changed. One source now: the TRAIN table.
+const HOURS_PER_FUSEE_TURN = TRAIN.barrel.teeth / TRAIN.barrel.pinion; // 120/7 = 17.143 h
+const FUSEE_WRAP_TURNS = SPEC.reserveHours / HOURS_PER_FUSEE_TURN; // 1.75 — = RESERVE_BARREL_TURNS (energy side, declared with the spring)
 const FUSEE_GROOVE_TURNS = Math.ceil(FUSEE_WRAP_TURNS + 0.25);
-const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.9375 — the wrap's share of the groove band (was a hand-rounded 0.94)
+const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the wrap's share of the groove band (was a hand-rounded 0.94)
 const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
 const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 0.01;  // 0.67 — the stack drops in with a seating clearance
 const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
-const FUSEE_BASE_INSET = CLEAR_MARGIN; // seat collar under the bottom groove (the cut opens out the base)
+// §123 (TODO 46) — the collar grows by the tilt's funded down-reach, so the
+// cone's BASE FACE stays exactly where it was while the groove start rises
+// FUSEE_TILT_Z with the raised floor below.
+const FUSEE_BASE_INSET = CLEAR_MARGIN + FUSEE_TILT_Z; // seat collar under the bottom groove (the cut opens out the base)
 // Lowest legal bottom-groove centreline: the center wheel's top face plus
-// the margin plus the chain's half-stack below its centreline.
-const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + CHAIN_PIN_LEN / 2;
+// the margin plus the chain's deepest reach below its centreline — which
+// since §123 is the LIE-FLAT TILTED corner, √(h²+w²) = h + FUSEE_TILT_Z,
+// not the vertical stack's h: the base flank is steeper than a vertical
+// stack can seat on, and the chain lies down against it (TODO 46).
+const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z);
 // Highest legal tip: the spring stack top, less a 0.02 float guard so the
 // plate-floor comparator binds on the SPRING, not on rounding at the tip.
 const FUSEE_BAND = SPRING_TOP_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN;
-const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 0.695 at the 30 h default
-const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.025 — the z budget's slack, made visible
+const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§123: two grooves — was 0.695 across four)
+const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
 if (FUSEE_LAND_W < 0.02)
   console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
 // THE SPRING'S TORQUE LAW — derived from the ribbon, and the cone solved
@@ -414,15 +425,23 @@ if (FUSEE_LAND_W < 0.02)
 // pulls at run-down is pre-tensioned, and this movement builds the ratchet
 // that holds it (Set-up work: 24 teeth, 15° a click, bench-only). The old
 // authored floor `springTq = 0.35 + 0.65·t` was that set-up wearing a
-// costume: solve θ_s/(θ_s + wind range) = 0.35 through the self-consistent
-// system below and the answer lands within HALF A CLICK of a ratchet
-// detent. So the one pinned number here is an INTEGER click count — the
-// quantisation is the ratchet's, not ours — chosen as the click whose
-// solved empty-end torque fraction lands nearest the authored 0.35 it
-// replaces (17 → 0.34606; 18 → 0.35484; the entry's own criterion, re-run
-// against the post-TODO-40 wind range its sketch predates).
+// costume, and 17 clicks was the detent landing nearest it. §123 (TODO 46)
+// SUPERSEDED that criterion with a harder constraint: with the level
+// product P = r₀·θ_s held (r₀ = P/θ_s below), the base slope
+// mLevel(0) = 2π·GROOVE_TURNS·r₀²/(R_wrap·θ_s·BAND) goes as 1/θ_s³, so
+// the set-up is the lever that makes the cut CHAIN-CARRYABLE. The click
+// count is the MINIMUM integer whose FULL-BAND seat residual — per
+// station, the best chain pose (upright through lie-flat, every pose that
+// clears the adjacent turn by 0.02) of corner daylight plus link chording
+// — lands under the §61 float budget with its tessellation term and a 10%
+// standoff, 0.9·(0.25 − 0.03) = 0.198: 22 clicks → 0.200 ✗; 23 → 0.146 ✓
+// (the worst station moves to the TIP, where it is pure chording — the
+// base's lie-flat residual is 0.032). The empty-end torque fraction
+// becomes a CONSEQUENCE — 0.58986, a ~1.7:1 working band, tighter than
+// the old 2.9:1 and near real fusee set-up practice (~2:1); the
+// quantisation is still the ratchet's, not ours.
 const SETUP_RATCHET_TEETH = 24;   // the set-up ratchet's cut — its build below consumes THIS
-const SETUP_CLICKS = 17;          // integer detents of pre-tension — 0.70833 turns, 4.45059 rad
+const SETUP_CLICKS = 23;          // integer detents of pre-tension — 0.95833 turns, 6.02139 rad
 const SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
 //
 // The self-consistent solve (fusee design as the trade actually did it).
@@ -436,35 +455,89 @@ const SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
 //                                 hyperbola the linear-in-t law wanted
 //   C(t) = R_wrap·(u(t) − θ_s)   the chain, closed form, from the same u
 //
-//  · FUSEE_R_LARGE (r₀) is a LAYOUT number, held: the drum's station is
-//    derived from it and the base seat, the maintaining sandwich and the
-//    chain's swept fan all hang off that station (CLAUDE.md's P3 rule).
+//  · The LEVEL PRODUCT P = r₀·θ_s is the held quantity (§123, TODO 46).
+//    The train's drive torque at every reserve is k·P/R_wrap on the level
+//    law, and β = 4π·W·P/R_wrap with it — so holding P while the set-up
+//    deepened (17 → 23 clicks, see above) kept the movement's PROVEN
+//    operating point exactly: drum, ribbon and k untouched, train torque
+//    factor 1.0000 by identity. The value is the shipped one — r₀ = 7.4 at
+//    17 clicks — written as that product rather than re-authored; r₀
+//    itself stops being the free literal it was (a standing rule-1
+//    violation) and becomes P/θ_s. The drum's station, the maintaining
+//    sandwich and the chain's swept fan all still hang off r₀'s value
+//    (CLAUDE.md's P3 rule) — they ride the derivation.
 //  · R_wrap is the chain's CENTRELINE feed radius on the drum (§61) —
 //    declared here now, because the LAW consumes it before the drum builds;
 //    the drum block below reads this constant rather than re-deriving it.
 const DRUM_WRAP_R = DRUM_R_ACTUAL + CHAIN_END_R_OUT;
-const FUSEE_R_LARGE = 7.4;
+const FUSEE_LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24); // 32.9344 rad·u — the pre-§123 shipped product, held
+const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;     // 5.46955 — was the bare literal 7.4
 const SPRING_WIND_BETA = (4 * Math.PI * FUSEE_WRAP_TURNS * FUSEE_R_LARGE * SETUP_SWEEP) / DRUM_WRAP_R;
 // u(t): the spring's wind angle off its free coil at reserve t — set-up
 // plus everything the drum has taken up. THE one state variable: the tick's
 // setWind lands the ribbon at exactly A_free + u(t), and M(t) = k·u(t).
 const springWindAt = (t) => Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA * t);
-const SPRING_WIND_FULL = springWindAt(1);              // 12.8609 rad at the 30 h spec
+const SPRING_WIND_FULL = springWindAt(1);              // 10.2081 rad at the 30 h spec (§123: was 12.8609 at 17 clicks / 8:1)
 // Normalized torque for display: M(t)/M(1) = u(t)/u(1). Concave in t — a
 // real spring spends its top turns faster than its bottom ones.
 const springTorqueAt = (t) => springWindAt(t) / SPRING_WIND_FULL;
-const SPRING_TQ_EMPTY = SETUP_SWEEP / SPRING_WIND_FULL; // 0.34606 — DERIVED, where 0.35 was authored
-const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_EMPTY; // 2.5608 — the level product, as a radius
+const SPRING_TQ_EMPTY = SETUP_SWEEP / SPRING_WIND_FULL; // 0.58986 — DERIVED (§123: the deep set-up's consequence; was 0.34606)
+const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_EMPTY; // 3.2263 — the level product, as a radius (= FUSEE_LEVEL_P/SPRING_WIND_FULL)
 // The envelope at band fraction f. The wrap occupies f ∈ [0, FUSEE_F_ACTIVE]
 // and maps to reserve t = f / FUSEE_F_ACTIVE; past it the cut runs on to the
 // tip carrying the runout, so the law is simply evaluated at t > 1 there.
 const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(f / FUSEE_F_ACTIVE);
-// ...which keeps the small radius a CONSEQUENCE: 2.4889 at the band's top,
-// 2.5608 at the top of the WRAP, where the chain actually stops — and that
+// ...which keeps the small radius a CONSEQUENCE: 3.0858 at the band's top,
+// 3.2263 at the top of the WRAP, where the chain actually stops — and that
 // second number is FUSEE_TORQUE_K by identity (r·M/M₁ constant with M₁ at
 // the wrap's top), the same identity the §61 seating budget's r_min leans on.
 const FUSEE_R_SMALL = fuseeEnvR(1);
-const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 2.95 — the band plus its insets, nothing else
+const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§123 grew the collar)
+// §123 (TODO 46) — the chain's TILT LAW. The cut's slope at band fraction f
+// (numeric off the one envelope law, dz = BAND·df):
+const fuseeSlopeAt = (f) => {
+  const d = 1 / 2048;
+  const a = Math.max(0, f - d), b = Math.min(1, f + d);
+  return (fuseeEnvR(a) - fuseeEnvR(b)) / ((b - a) * FUSEE_BAND);
+};
+// The chain lies flat on the flank — β = atan(slope) — capped at the
+// lie-flat ceiling atan(w/h) = 63.43°, beyond which more tilt stops
+// closing daylight (the plate width is spent). Below the cap the seat is
+// EXACT (daylight w·(m·cosβ − sinβ) = 0 at β = atan m); at the cap —
+// the first ~3% of the band, where the slope peaks at 2.109 — the
+// residual is 0.032, inside the one margin. The chain builder and the
+// relieved cut both read THIS, so pose and metal cannot disagree.
+const fuseeBetaAt = (f) =>
+  Math.min(Math.atan(fuseeSlopeAt(f)), Math.atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN / 2)));
+// Boot asserts (rule 6) — the two §123 guarantees, checked on the built law
+// rather than trusted from the derivation:
+// 1. TILT AFFORDABILITY. A link tilted β reaches drop(β) = h·cosβ + w·sinβ
+//    below its centreline; the headroom at f is the vertical stack's h plus
+//    the funded raise plus the band climbed. Zero slack at f = 0 BY
+//    CONSTRUCTION (FUSEE_TILT_Z is exactly the deficit), positive after.
+// 2. TURN SEPARATION. Adjacent turns' tilted stacks, as parallel rectangles
+//    in the meridian offset (pitch, −m·pitch): separating-axis gap must
+//    keep the pre-§123 axial stack gap's order (0.0354 = pitch − stack).
+//    The chain is ONE mesh — sweptOverlap is structurally blind here, so
+//    this assert is the coverage until the §61 rows re-measure.
+(() => {
+  const h = CHAIN_PIN_LEN / 2, w = CHAIN_END_R_OUT;
+  let worstAfford = Infinity, worstSep = Infinity, atA = 0, atS = 0;
+  for (let i = 0; i <= 512; i++) {
+    const f = i / 512;
+    const m = fuseeSlopeAt(f), b = fuseeBetaAt(f);
+    const afford = (h + FUSEE_TILT_Z + FUSEE_BAND * f) - (h * Math.cos(b) + w * Math.sin(b));
+    if (afford < worstAfford) { worstAfford = afford; atA = f; }
+    const oz = FUSEE_GROOVE_PITCH, or = -m * FUSEE_GROOVE_PITCH;
+    const oA = oz * Math.cos(b) + or * Math.sin(b), oB = -oz * Math.sin(b) + or * Math.cos(b);
+    const sep = Math.max(Math.abs(oA) - 2 * h, Math.abs(oB) - 2 * w);
+    if (sep < worstSep) { worstSep = sep; atS = f; }
+  }
+  if (worstAfford < -1e-9)
+    console.warn(`fusee §123: tilt down-reach exceeds headroom by ${(-worstAfford).toFixed(4)} at f=${atA.toFixed(3)} (need ≥ 0)`);
+  if (worstSep < 0.02)
+    console.warn(`fusee §123: adjacent-turn stack gap ${worstSep.toFixed(4)} at f=${atS.toFixed(3)} under the 0.02 floor`);
+})();
 // Base DERIVED from the plate's design goal. The old bind (the chain's
 // lowest span clearing the movement-side crown wheel) vanished when the
 // keyless works moved to the dial side — after that, the only thing the
@@ -501,14 +574,17 @@ const fusee = G.makeFusee({
   // radii (the builder still seats the base and closes the tip on them);
   // what envR changes is everything between.
   envR: fuseeEnvR,
-  // ...and the curve forces the RELIEVED cut. A radial-depth groove fits a
-  // flank only while |dr/dz| ≤ grooveD / (chain half-stack) = 0.66 / 0.33 =
-  // 2.42; the hyperbola runs 5.28 at its base (79.3° from the axis, against
-  // the straight cone's 59.9°), so there the metal half a stack below the
-  // groove stood up to 1.22 proud of the chain's inner-bottom corner — the
-  // §61 seating row's red 1.989. The builder relieves the floor by exactly
-  // this half-stack; the chain's CENTRELINE stays on the envelope, so the
-  // torque radii and the wrap integral above are untouched.
+  // ...and the curve forces the RELIEVED cut. A radial-depth groove only
+  // fits a vertical stack on a gentle flank; where the flank steepens the
+  // metal half a stack below the groove stands proud of the chain's
+  // inner-bottom corner (TODO 40's finding — the pre-§123 hyperbola hit
+  // |dr/dz| ≈ 10 at its base and the §61 seating row read red 1.989).
+  // §123 brought the base slope down to a chain-carryable 2.109 (the
+  // 23-click set-up and the two-groove pitch, see the law above) and
+  // TILTS the chain to seat (fuseeBetaAt); the builder still relieves
+  // the floor by the half-stack for the vertical component. The chain's
+  // CENTRELINE stays on the envelope, so the torque radii and the wrap
+  // integral above are untouched.
   reliefHalf: CHAIN_PIN_LEN / 2,
 });
 
@@ -3618,7 +3694,7 @@ const barrel = G.makeBarrel({
   // set-up work's static collar, its outer on the drum wall, and the drum's
   // full travel is the relative angle between them.
   // TODO 32 — the SET-UP rides beneath that travel: the service band runs
-  // from A_free + SETUP_SWEEP (run down, ratchet still holding 17 clicks)
+  // from A_free + SETUP_SWEEP (run down, ratchet still holding 23 clicks)
   // to A_free + SETUP_SWEEP + DRUM_ROT_FULL (full wind). The free coil
   // itself is a bench state, reachable only by letting the set-up down.
   springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
@@ -7011,10 +7087,10 @@ reserveGroup.add(reserveHand);
 // under-dial space (via a friction slip coupling, the standard simple-watch
 // solution: a rigid tap of the great wheel alone can't give a bounded gauge
 // that resets on winding, and a true differential is a lot of machinery).
-// From there a two-mesh reduction across three arbors (8/36 × 10/20 = 1/9)
+// From there a two-mesh reduction across three arbors (8/28 × 10/12 = 1/4.2)
 // walks across the gap between plate and dial and ends on an arbor COAXIAL
 // with the sub-dial pivot — the same axis the hand rides, its post passing
-// through the dial exactly like the time hands do. 150° of hand = 3.75
+// through the dial exactly like the time hands do. 150° of hand = 1.75
 // barrel turns; the ratio is derived from that pair, not chosen (see the
 // tooth counts below, and the assert beside RESERVE_BARREL_TURNS).
 // ---------------------------------------------------------------------------
@@ -7033,36 +7109,35 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 
 // TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
 // slip-coupled to the barrel arbor, so it must turn what that arbor turns
-// over one wind-to-empty cycle — RESERVE_BARREL_TURNS = 3.75 (30 h at
-// 1 rev/8 h). The hand on the far end sweeps RESERVE_SWEEP_DEG. So the
-// reduction is fixed by the two of them:
+// over one wind-to-empty cycle — RESERVE_BARREL_TURNS = 1.75 since §123
+// (30 h at 1 rev per 120/7 h — the first stage's re-gear reached here
+// too, exactly the coupling TODO 18's assert exists to catch). The hand
+// on the far end sweeps RESERVE_SWEEP_DEG. So the reduction is fixed by
+// the two of them:
 //
-//   R = 3.75 rev × 360° ÷ 150° = 1350/150 = 9
+//   R = 1.75 rev × 360° ÷ 150° = 630/150 = 4.2
 //
-// and R is the product of the meshes, (W1/P0) × (W2/P1) = (36/8) × (20/10)
-// = 4.5 × 2 = 9. p1 carries 10 leaves for that second 2:1 — NOT the 8 it
-// had while this sub-dial was a 120° arc, where 11.25 was the right answer
-// (3.75 ÷ 11.25 = ⅓ rev = 120° exactly). The arc was later widened to 150°
-// for readability and this ratio was not re-derived with it, so p0 spun
-// 4.6875 turns against its arbor's 3.75 — TODO 18, closed here. The assert
-// below now binds the three quantities together so the next regraduation
-// cannot land silently.
+// and R is the product of the meshes, (W1/P0) × (W2/P1) = (28/8) × (12/10)
+// = 3.5 × 1.2 = 4.2. (The pre-§123 pair was (36/8) × (20/10) = 9 for the
+// 3.75-turn arbor; TODO 18's history — the 120°-arc ratio that was never
+// re-derived at 150° — is in git, and the assert below is why THIS
+// regraduation could not land silently either.)
 //
-// Only the tooth COUNT moved: rsvModule1 is solved from the span (below),
+// Only the tooth COUNTS moved: rsvModule1 is solved from the span (below),
 // so w2 keeps the sub-dial pivot and the centre distance is untouched.
-// p1's pitch radius grows 2.037 → 2.376 and w2's shrinks 5.092 → 4.753;
-// the two waived §50 stock rows on this unit are 0.3-unit radial bands
-// that the module does not reach (measured before and after — unchanged
-// at 0.1125 mm), so this is a clearance question, not a stock one.
-// §22: the second-stage wheel is DERIVED from the reserve, closing TODO 18
-// for every spec rather than only the default. The chain of constraint:
-// p0 turns RESERVE_BARREL_TURNS (= h/8) lock-to-lock, the hand sweeps
-// RESERVE_SWEEP_DEG (150°), so R = (h/8)·360/150 = 0.3·h; stage one is
-// 36/8 = 4.5, so stage two must be R/4.5 = h/15, and with p1 = 10 that is
-// w2 = 2h/3 — an integer because the spec snaps hours to multiples of 3.
-// At the 30 h default: w2 = 20, the shipped count, bit-identical.
-const rsvTeethP0 = 8, rsvTeethW1 = 36, rsvTeethP1 = 10;
-const rsvTeethW2 = (2 * SPEC.reserveHours) / 3;
+// The two waived §50 stock rows on this unit are 0.3-unit radial bands
+// that the module does not reach, so this is a clearance question, not a
+// stock one — the battery's rows re-measure it.
+// §22: the second-stage wheel is DERIVED from the reserve, for every spec
+// rather than only the default. The chain of constraint: p0 turns
+// RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
+// RESERVE_SWEEP_DEG (150°), so R = (7h/120)·360/150 = 0.14·h; stage one
+// is 28/8 = 3.5, so stage two must be R/3.5 = 0.04·h = h/25, and with
+// p1 = 10 that is w2 = 2h/5 — integer while the spec keeps h a multiple
+// of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
+// does not). At the 30 h default: w2 = 12.
+const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
+const rsvTeethW2 = (2 * SPEC.reserveHours) / 5;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
@@ -13880,11 +13955,13 @@ alarmSwitchUnit.add(alarmPusherGroup);
 // ---------------------------------------------------------------------------
 const RELAX_SECONDS = SPEC.reserveHours * 3600; // §22: the reserve is a spec knob (default 30 h)
 // Power reserve is MECHANICALLY geared off the barrel: the barrel turns once
-// per 8 h, so the reserve is exactly hours/8 barrel revolutions lock-to-lock.
-// Same derivation as FUSEE_WRAP_TURNS up at the cone build — one spec value,
+// per HOURS_PER_FUSEE_TURN (§123: 120/7 h — the first mesh's ratio, one
+// source in the TRAIN table), so the reserve is exactly
+// hours/HOURS_PER_FUSEE_TURN barrel revolutions lock-to-lock. Same
+// derivation as FUSEE_WRAP_TURNS up at the cone build — one spec value,
 // two names for the two sides (energy accounting here, geometry there) of
 // the same mechanical quantity.
-const RESERVE_BARREL_TURNS = RELAX_SECONDS / (8 * 3600); // = 3.75 at the 30 h default
+const RESERVE_BARREL_TURNS = RELAX_SECONDS / (HOURS_PER_FUSEE_TURN * 3600); // = 1.75 at the 30 h default
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 
 // TODO 18's gate. The reserve indicator is three quantities that must agree —
@@ -13896,7 +13973,7 @@ let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 // because the comments were the thing that agreed with each other while the
 // teeth did not.
 {
-  const R = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);   // = 9
+  const R = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);   // = 4.2 (§123)
   const p0Turns = (RESERVE_SWEEP_DEG / 360) * R;                     // hand travel → p0 revolutions
   if (Math.abs(p0Turns - RESERVE_BARREL_TURNS) > 1e-9)
     console.warn(`§39/TODO 18: reserve reduction ${R} puts ${p0Turns} turns on p0 over a ${RESERVE_SWEEP_DEG}° sweep, but the barrel arbor it is slip-coupled to turns ${RESERVE_BARREL_TURNS}. R must be ${(RESERVE_BARREL_TURNS * 360) / RESERVE_SWEEP_DEG}.`);
