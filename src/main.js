@@ -23906,6 +23906,7 @@ window.__clock = {
   // count, and an axis that hard-coded 3.75 would sweep a different wind
   // than the movement performs at that spec.
   get fuseeWrapTurns() { return FUSEE_WRAP_TURNS; },
+  get hoursPerFuseeTurn() { return HOURS_PER_FUSEE_TURN; }, // §123: the train axis's orbit length — the first mesh's ratio, one source
   setCrownRotation(v) { crownRotation = v; },
   // §25 C: the alarm crown's RAW drag input — parity with setCrownRotation.
   // Unlike setPose({alarmCrownRotation}) (which poses the SET path directly),
