@@ -3800,7 +3800,29 @@ const CHAIN_TMPL = (() => {
   // to walk. What it does not do is merge across the seam between two links;
   // that leaves a few duplicate vertices where a leaf meets its neighbour,
   // which is a SUPERSET of the fully welded mesh and therefore still exact.
-  return { inner: weldTmpl(inner), outer: weldTmpl(outer), pin: weldTmpl(pin) };
+  const innerW = weldTmpl(inner), outerW = weldTmpl(outer), pinW = weldTmpl(pin);
+  // §123 (TODO 46) — the SEAT CROWNS, declared where the template is cut and
+  // indexed on the WELDED buffer the builder actually stamps. In the fusee
+  // wrap the link frame's +y points INBOARD (ŷ = k̂×t̂ with k̂ vertical and t̂
+  // the CCW wrap tangent gives ŷ = −r̂), so the outer plates' +y stadium
+  // crowns are the metal §61's convention says bears on the groove floor
+  // ("inner edge on the floor" — FUSEE_GROOVE_D = CHAIN_END_R_OUT is that
+  // sentence as a constant). The float row measures THESE vertices and
+  // nothing else: a z/r gate cannot find them in the merged one-mesh buffer,
+  // and any wider set reads the outer half's DESIGNED proudness as a defect.
+  // The ε band is one tessellation chord of the stadium arc (curveSegments 4
+  // → half-circle in 8 steps → sagitta (1 − cos π/8)·R ≈ 0.076·R): it takes
+  // the crown vertex and its immediate neighbours, and the row MINs per
+  // link, so a neighbour can only confirm the crown, never inflate it.
+  outerW.seatCrownIdx = (() => {
+    const eps = (1 - Math.cos(Math.PI / 8)) * CHAIN_END_R_OUT + 1e-4;
+    const out = [];
+    for (let i = 0; i < outerW.pos.length; i += 3) {
+      if (outerW.pos[i + 1] > CHAIN_END_R_OUT - eps) out.push(i / 3);
+    }
+    return Uint32Array.from(out);
+  })();
+  return { inner: innerW, outer: outerW, pin: pinW };
 })();
 // ...and the bore is ASSERTED, not assumed. Nothing in the battery can look
 // inside a merged buffer — the chain is ONE mesh, so its pin and the leaf it
@@ -3855,12 +3877,21 @@ const CHAIN_TMPL = (() => {
       + `the leaf is not bored for it (bore apothem ${chainBoreR.toFixed(3)}, head recess ${CHAIN_RIVET_HEAD_R.toFixed(3)})`);
 }
 let chainBuf = null;   // reused position/normal buffers — see buildChainLinkGeometry
-function buildChainLinkGeometry(curve) {
+function buildChainLinkGeometry(curve, wrapArc = 0) {
   curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
   const len = curve.getLength();
   const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
   const joints = curve.getSpacedPoints(N); // N+1 rivet positions, arc-length uniform
   const { inner, outer, pin } = CHAIN_TMPL;
+  // §123 (TODO 46) — which links the float row may judge: OUTER links wholly
+  // on the fusee wrap. `wrapArc` is the wrap's chord-summed arc from
+  // rebuildChain; the guard of one full pitch below the departure keeps the
+  // span-straddling link out (its crowns legitimately leave the floor as the
+  // chain flies to the drum, and one link of under-coverage at the wrap's
+  // TOP is the cheap side to err on — the defect lives at the BOTTOM).
+  // Inner links are excluded by CONSTRUCTION, not oversight: their plates
+  // are CHAIN_END_R_IN and ride (OUT − IN) = 0.085 off the floor by design.
+  const isWrapLink = (i) => wrapArc > 0 && (i + 1) * (len / N) <= wrapArc - CHAIN_PITCH;
   // Parity is anchored at the CLAW end so the link that drops over the
   // hook's pin is always an outer pair, whatever N rounds to this rebuild.
   const isOuter = (i) => (N - 1 - i) % 2 === 0;
@@ -3911,6 +3942,7 @@ function buildChainLinkGeometry(curve) {
   const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
   const mid = new THREE.Vector3();
   const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+  const seatBases = [];   // §123: assembled vertex base of each judged link's outer template
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
     t.subVectors(b, a).normalize();
@@ -3919,6 +3951,7 @@ function buildChainLinkGeometry(curve) {
     k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
     y.crossVectors(k, t);
     mid.addVectors(a, b).multiplyScalar(0.5);
+    if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
     write(isOuter(i) ? outer : inner, t, y, k, mid);
   }
   for (let i = 0; i <= N; i++) write(pin, X, Y, Z, joints[i]); // rivets, world-vertical
@@ -3926,6 +3959,10 @@ function buildChainLinkGeometry(curve) {
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  // §123 (TODO 46) — the seat declaration rides the GEOMETRY (swapped whole
+  // each rebuild, so the float row can never read a stale layout): the
+  // welded outer template's crown indices plus each judged link's base.
+  geo.userData.seat = { crownIdx: outer.seatCrownIdx, bases: seatBases };
   return geo;
 }
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
@@ -4077,7 +4114,13 @@ function rebuildChain(tension) {
     COIL_TOP
   ));
   const curve = new THREE.CatmullRomCurve3(pts);
-  const geo = buildChainLinkGeometry(curve);
+  // §123 (TODO 46) — the wrap's arc, chord-summed over the wrap control
+  // points (the spline adds ~1% of slack; the builder guards a full pitch at
+  // the departure, far coarser than that error): tells the builder which
+  // links the float row may judge.
+  let wrapArc = 0;
+  for (let i = 0; i < nF; i++) wrapArc += pts[i].distanceTo(pts[i + 1]);
+  const geo = buildChainLinkGeometry(curve, wrapArc);
   // §71: hand the run to the schematic's chain line — same curve, same frame
   schemChainCurve = curve;
   if (schemChainLine) schemChainLine.geometry.setFromPoints(curve.getPoints(160));

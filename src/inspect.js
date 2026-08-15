@@ -3107,6 +3107,62 @@ const PENETRATION_BUDGETS = [
     },
   },
   {
+    // §123 (TODO 46) — the FLOAT half of the cone seating. The row above is
+    // max(floorAt − r): BURIAL only — a chain floating in open air reads as
+    // a perfect seat, which is exactly how the base wrap shipped ringing the
+    // cone with 1.9–2.5 u of daylight through every green battery run.
+    // Nothing else in the battery asserts a force-transmitting contact
+    // CLOSES outside the §35 arming run; this row is that assertion for the
+    // chain on the cone. The metric is builder-declared: the chain's
+    // geometry carries `userData.seat` (the welded outer template's
+    // inner-edge CROWN indices + each judged wrap link's buffer base — the
+    // metal §61's "inner edge on the floor" means, and nothing else). Per
+    // link: MAX over its crowns of (r − floorAt) — how far the FARTHEST seat
+    // point stands off, because "seated" for a face means every crown
+    // touches. Not a MIN: the TODO 40 relief's shear cancels exactly at the
+    // stack's bottom edge (floorAt(z − h + h) = env(z)), so the bottom-corner
+    // crown reads ~0 BY THE RELIEF'S OWN DESIGN — a min measures that corner
+    // kiss forever and the float stays invisible (measured: 0.065 on the
+    // shipped tree, vs 3.49 = w·m the crowns actually stand off at the base).
+    // And not a max over any WIDER vertex set: the outer half legitimately
+    // stands grooveD + relief·m proud by §61's convention.
+    // Budget: what a BEDDED chain owes — link chording pitch²/(8·r_min) =
+    // 0.176 at the wrap top + HANDOFF_TRACK_TOL tessellation slack 0.03 →
+    // 0.206, held at 0.25, the burial row's own round-up.
+    pair: ['Fusee & great wheel', 'Chain'],
+    maxDepth: 0.25,
+    waived: 'TODO 46',   // accepted debt until the flank fix lands: measures the filed daylight (~3.5 at the base crowns)
+    axis: 'reserve',
+    nSamples: 60,
+    measure(clock, unitA, unitB) {
+      let fus = null;
+      unitA.obj.traverse((o) => { if (!fus && o.userData && o.userData.groove) fus = o; });
+      let chain = null;
+      unitB.obj.traverse((o) => { if (!chain && o.isMesh) chain = o; });
+      if (!fus || !chain) throw new Error('chain-on-cone float: groove userData or chain mesh not found');
+      const { floorAt } = fus.userData.groove;
+      if (typeof floorAt !== 'function') throw new Error('chain-on-cone float: userData.groove.floorAt missing — the cut and the check must hold one law');
+      const seat = chain.geometry.userData && chain.geometry.userData.seat;
+      // Loud, not lenient: a rebuild that stops declaring its seat would
+      // otherwise read as a perfectly bedded chain — the exact silence this
+      // row exists to end.
+      if (!seat || !seat.crownIdx || !seat.bases) throw new Error('chain-on-cone float: geometry.userData.seat missing — the builder and the check must hold one declaration');
+      if (!seat.bases.length) return 0;   // no judged wrap links at this pose (near run-out) — nothing to hold
+      const toLocal = fus.matrixWorld.clone().invert().multiply(chain.matrixWorld);
+      const pos = chain.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      let worst = 0;
+      for (const base of seat.bases) {
+        for (const ci of seat.crownIdx) {
+          v.fromBufferAttribute(pos, base + ci).applyMatrix4(toLocal);
+          const d = Math.hypot(v.x, v.y) - floorAt(v.z);
+          if (d > worst) worst = d;
+        }
+      }
+      return worst;
+    },
+  },
+  {
     // §61 — chain-on-drum: the coil's seating on the drum wall, same
     // blindness argument and the same encircling-MTV disqualification as
     // the cone row. The wrap rides at DRUM_WRAP_R (wall + plate
