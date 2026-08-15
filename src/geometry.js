@@ -1777,9 +1777,36 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // legacy/test path needs no second branch. The ideal wrap box touches this
 // floor along its bottom-inner corner and clears it everywhere else, which
 // is what the §61 seating row now measures (userData.groove.floorAt below).
+//
+// tiltAt (§123, TODO 46): the chain's tilt law β(f) — the caller's
+// fuseeBetaAt — and with it the cut stops assuming a vertical stack. A
+// β-tilted stack (half-stack h = reliefHalf along the pin, half-width
+// w = grooveD across the plates, top tipping INBOARD so the plates lie on
+// the flank) has its meridian rectangle rotated by β, and the single-valued
+// lathe law that accepts every such box is the INNER-BOTTOM-CORNER LOCUS:
+//
+//   station z_c solves  z_c = z + w·sinβ(z_c) + h·cosβ(z_c)
+//   floorAt(z) = env(f(z_c)) − (w·cosβ(z_c) − h·sinβ(z_c))
+//
+// At β = 0 this is EXACTLY the vertical law above (z_c = z + h, depth w), so
+// it is a generalization, not a second branch. Why the corner locus is the
+// whole law (verified against a brute-force min-over-boxes envelope, worst
+// deviation < 1e-3 everywhere the chain rides): at lie-flat (β = atan m) the
+// stack's inner face is PARALLEL to the locus and contains the corner, so
+// cutting the locus seats the face — both crown edges touch; where the cap
+// β* = atan(w/h) binds (m > w/h, the first ~2% of the band) the corner is
+// the deepest feature and the inner-top crown stands off w·cosβ*·(m − w/h)
+// ≈ 0.024 measured (0.032 linearized), inside the §61 float budget. The
+// envelope's own convexity keeps every face chord OUTSIDE the locus between
+// its corners. The station domain deliberately runs PAST f = 1 into the tip
+// runout (env is evaluated there; β clamps to the band edge) so the top
+// wrap's box is accepted by real stations rather than a flat clamp; the
+// runout's own fictional boxes over-tilt slightly (β held while the flank
+// flattens) but no chain ever rides above f = F_ACTIVE, so that residue is
+// cosmetic by construction.
 export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
                             grooveW, grooveD, bandZ0, bandSpan, envR = null,
-                            reliefHalf = 0 }) {
+                            reliefHalf = 0, tiltAt = null }) {
   const g = new THREE.Group();
   // Legacy proportions when the caller doesn't specify the cut (test pages).
   if (grooveD === undefined) grooveD = Math.min((rLarge - rSmall) * 0.1, 0.5);
@@ -1788,11 +1815,22 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   if (bandSpan === undefined) bandSpan = height * 0.88;
   const env = envR || ((f) => rLarge + (rSmall - rLarge) * f); // land-crest envelope
   // The relieved groove floor — ONE law for the seat, the band and the tip
-  // runout (the clamp handles all three), shared with the §61 seating
-  // instrument via userData.groove so the cut and the check cannot drift
-  // apart: they hold the same closure.
-  const floorAt = (z) =>
-    env(Math.min(Math.max((z - bandZ0 + reliefHalf) / bandSpan, 0), 1)) - grooveD;
+  // runout, shared with the §61 seating/float instruments via userData.groove
+  // so the cut and the check cannot drift apart: they hold the same closure.
+  // With tiltAt it is the corner-locus law derived in the header; without it,
+  // the vertical-stack shear (the corner-locus law at β ≡ 0, kept as its own
+  // closed form so the legacy/test path stays bit-identical).
+  const floorAt = tiltAt
+    ? (z) => {
+        const h = reliefHalf, w = grooveD;
+        let zc = z + Math.hypot(h, w), b = 0;
+        for (let i = 0; i < 4; i++) {   // fixed point: drop(β) varies slowly, 4 iterations land < 1e-9
+          b = tiltAt(Math.min(Math.max((zc - bandZ0) / bandSpan, 0), 1));
+          zc = z + w * Math.sin(b) + h * Math.cos(b);
+        }
+        return env(Math.max((zc - bandZ0) / bandSpan, 0)) - (w * Math.cos(b) - h * Math.sin(b));
+      }
+    : (z) => env(Math.min(Math.max((z - bandZ0 + reliefHalf) / bandSpan, 0), 1)) - grooveD;
   // The core is lathed at NCORE stations; a straight generator is exact at
   // any count, a curved one is not, so the count is what decides how much of
   // the curve survives. Measured on the shipped 1/√ flank (TODO 32), worst
@@ -1805,7 +1843,7 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // of magnitude inside the 0.08 the §61 chain-seating budget works to, so
   // the facets cannot be what a seating row is measuring. The straight case
   // keeps 12: exact is exact.
-  const NCORE = envR ? 48 : 12;
+  const NCORE = tiltAt ? 96 : envR ? 48 : 12;
   // GROOVED core (§61). The old build ran a smooth core at the envelope with
   // a proud wire ridge whose "channel between adjacent flange turns,
   // comfortably wider than the chain's diameter" was false arithmetic —
@@ -1826,8 +1864,12 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // inside that box's span and owes it the same relief as the band.
   const seatR = floorAt(0) - 0.02;
   pts.push(new THREE.Vector2(seatR, 0));
+  // §123: under the tilt law the floor is CURVED below bandZ0 too (the low
+  // boxes' faces govern the collar), so the tilted profile is lathed from
+  // z = 0; the vertical law is flat there and keeps its band-only stations.
+  const zProfile0 = tiltAt ? 0 : bandZ0;
   for (let i = 0; i <= NCORE; i++) {
-    const z = bandZ0 + bandSpan * (i / NCORE);
+    const z = zProfile0 + (bandZ0 + bandSpan - zProfile0) * (i / NCORE);
     pts.push(new THREE.Vector2(floorAt(z), z));
   }
   pts.push(new THREE.Vector2(floorAt(height - 0.02), height - 0.02));
@@ -1846,42 +1888,70 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // grooveD tall. Built as an indexed quad strip: inner/outer rails at the
   // two axial faces, outer face closing the crest.
   const pitch = bandSpan / grooveTurns;
-  const landW = Math.max(pitch - grooveW, 0.02);
+  // §123 (TODO 46): the channel each wrap claims is its tilted stack's
+  // z-footprint, ±drop(β) = ±(w·sinβ + h·cosβ) about the groove point (at
+  // β = 0 this is ±reliefHalf, i.e. the passed grooveW = stack + clearance),
+  // plus the same seating clearance grooveW carries over the vertical stack.
+  // The land is what the pitch leaves between the wrap below and the wrap
+  // above — an ASYMMETRIC window, since β falls with height — and near the
+  // base the tilted footprint (~1.48 at the cap) exceeds the 1.389 pitch:
+  // the channels MERGE and there is honestly no land to cut there. The §123
+  // adjacent-turn boot assert (main.js) is what holds the CHAINS apart on
+  // that stretch, exactly as the header note below says the base of a real
+  // steep-flanked fusee works.
+  const h = reliefHalf, w = grooveD;
+  const seatClear = (grooveW - 2 * reliefHalf) / 2;   // = 0.005 on the shipped stock
+  const dropAt = (f) => {
+    if (!tiltAt) return reliefHalf;
+    const b = tiltAt(Math.min(Math.max(f, 0), 1));
+    return w * Math.sin(b) + h * Math.cos(b);
+  };
   // The crest exists BETWEEN wraps: grooveTurns grooves have grooveTurns−1
   // lands, so the helix stops half a pitch short of the band's top — a
   // full-length run poked 0.2 past the cone's tip and it was the plate
   // floor's boot assert that caught it.
   const SEG = (grooveTurns - 1) * 48;
   const pos = [], idx = [];
-  // 4 rails per station: (floor,lo) (env,lo) (env,hi) (floor,hi)
+  // 4 rails per station: (floor,lo) (env,lo) (env,hi) (floor,hi).
+  // `open` tracks strip continuity: a merged-channel station emits nothing
+  // and breaks the quad strip, so no degenerate slivers bridge the gap.
+  let open = false;
   for (let i = 0; i <= SEG; i++) {
     const t = i / (grooveTurns * 48);
     const a = t * grooveTurns * Math.PI * 2;
-    const zc = bandZ0 + bandSpan * t + pitch / 2;         // land centreline
+    const zg = bandZ0 + bandSpan * t;                     // groove point of the wrap below
+    const zLo = zg + dropAt(t) + seatClear;               // top of the lower wrap's channel
+    const zHi = zg + pitch - dropAt(t + 1 / grooveTurns) - seatClear; // bottom of the upper wrap's
+    if (zHi - zLo < 0.02) { open = false; continue; }     // channels merged — no land here
+    const zc = (zLo + zHi) / 2;
     // Envelope evaluated at the land's OWN z, not the groove's t below it —
     // half a pitch up a cone this steep is ~0.6 of radius, and sampling the
     // lower station left the crest that far proud on the uphill side.
-    const fLand = t + (pitch / 2) / bandSpan;
-    // Inner rail on the RELIEVED floor; outer rail at the envelope, capped by
-    // §54's build-to proportion (SLENDER_TARGET · width — layout.js, the same
-    // number the slenderness check enforces). Un-relieved, full height is
-    // grooveD and the cap never binds (0.66 < 27·0.025). Relieved, the crest
-    // at the steep base would be grooveD + relief ≈ 1.6 over a 0.024 width —
-    // λ ≈ 65 against §54's 30 (TODO 32's flank bends harder at the base than
-    // the hyperbola this first shipped against) — so it honestly stops short of the envelope
+    const fLand = (zc - bandZ0) / bandSpan;
+    // Inner rail on the RELIEVED floor (at zHi, the shallower end, so the
+    // rail meets the floor there and embeds at zLo — a crest never floats);
+    // outer rail at the envelope, capped by §54's build-to proportion
+    // (SLENDER_TARGET · width — layout.js, the same number the slenderness
+    // check enforces). Un-relieved, full height is grooveD and the cap never
+    // binds (0.66 < 27·0.025). Relieved, the crest at the steep base would
+    // be grooveD + relief over a hairline width — λ far past §54's 30
+    // (TODO 32's flank bends harder at the base than the hyperbola this
+    // first shipped against) — so it honestly stops short of the envelope
     // there: on that stretch the chain is retained by the step of the turn
     // below (the un-relieved metal between wraps) and by its own departing
     // tangent, which is what the base of a real steep-flanked fusee looks
     // like. A fin nobody could cut is not a land.
-    const rIn = floorAt(zc);
-    const rOut = Math.min(env(fLand), rIn + SLENDER_TARGET * landW);
+    const rIn = floorAt(zHi);
+    const rOut = Math.min(env(fLand), rIn + SLENDER_TARGET * (zHi - zLo));
     const ca = Math.cos(a), sa = Math.sin(a);
-    for (const [r, dz] of [[rIn, -landW / 2], [rOut, -landW / 2], [rOut, landW / 2], [rIn, landW / 2]])
-      pos.push(ca * r, sa * r, zc + dz);
-  }
-  for (let i = 0; i < SEG; i++) {
-    const b = i * 4, c = b + 4;
-    for (const k of [0, 1, 2]) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+    const base = pos.length / 3;
+    for (const [r, z] of [[rIn, zLo], [rOut, zLo], [rOut, zHi], [rIn, zHi]])
+      pos.push(ca * r, sa * r, z);
+    if (open) {
+      const b = base - 4, c = base;
+      for (const k of [0, 1, 2]) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+    }
+    open = true;
   }
   const landGeo = new THREE.BufferGeometry();
   landGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -1900,7 +1970,10 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // (The first hyperbolic cut proved the distinction: the check went on
   // reconstructing a straight chord from rLarge/rSmall and measured against
   // a floor ~1.3 outside the metal at mid-band.)
-  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, floorAt };
+  // §123: envAt (the land-crest envelope closure) and tiltAt ride along so
+  // probes can re-derive the wrap's radial window from the live cut instead
+  // of quoting stale literals (tools/probe-chain-daylight.mjs).
+  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, floorAt, envAt: env, tiltAt };
   return g;
 }
 

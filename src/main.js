@@ -581,11 +581,14 @@ const fusee = G.makeFusee({
   // |dr/dz| ≈ 10 at its base and the §61 seating row read red 1.989).
   // §123 brought the base slope down to a chain-carryable 2.109 (the
   // 23-click set-up and the two-groove pitch, see the law above) and
-  // TILTS the chain to seat (fuseeBetaAt); the builder still relieves
-  // the floor by the half-stack for the vertical component. The chain's
+  // TILTS the chain to seat (fuseeBetaAt) — handed to the builder as
+  // tiltAt, so the cut relieves for the TILTED stack (the corner-locus
+  // law, derived in makeFusee's header) rather than the vertical one,
+  // and the chain builder and the lathe read the SAME β(f). The chain's
   // CENTRELINE stays on the envelope, so the torque radii and the wrap
   // integral above are untouched.
   reliefHalf: CHAIN_PIN_LEN / 2,
+  tiltAt: fuseeBetaAt,
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -3953,7 +3956,14 @@ const CHAIN_TMPL = (() => {
       + `the leaf is not bored for it (bore apothem ${chainBoreR.toFixed(3)}, head recess ${CHAIN_RIVET_HEAD_R.toFixed(3)})`);
 }
 let chainBuf = null;   // reused position/normal buffers — see buildChainLinkGeometry
-function buildChainLinkGeometry(curve, wrapArc = 0) {
+let chainFrames = null; // reused per-link frame slots (rivets read their neighbours' frames)
+// §123 (TODO 46) — betaAtArc: the wrap's tilt law as a function of arc
+// position along the curve (rebuildChain builds it from its own chord-summed
+// wrap points, so the builder and the path hold ONE mapping). Wrap links get
+// their frame rotated about the local tangent by their own β so the plates
+// lie on the flank the cut was relieved for; the span and drum coil stay
+// world-vertical (the drum's §61 wallR floor assumes flat plates).
+function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
   const len = curve.getLength();
   const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
@@ -4017,8 +4027,10 @@ function buildChainLinkGeometry(curve, wrapArc = 0) {
   };
   const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
   const mid = new THREE.Vector3();
-  const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
   const seatBases = [];   // §123: assembled vertex base of each judged link's outer template
+  const L = len / N;
+  if (!chainFrames || chainFrames.length < N)
+    chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
     t.subVectors(b, a).normalize();
@@ -4026,11 +4038,49 @@ function buildChainLinkGeometry(curve, wrapArc = 0) {
     // plates stay flat while the span carries its slight z slope.
     k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
     y.crossVectors(k, t);
+    // §123 (TODO 46) — the wrap links LEAN into the flank: rotate (ŷ, k̂)
+    // about t̂ by the link's own β, top of the stack tipping inboard (+ŷ),
+    // exactly the tilt the corner-locus cut accepts. The RAMP sheds β at the
+    // departure: judged links (the isWrapLink guard, one full pitch below
+    // the departure) carry FULL β — anything less re-opens the daylight the
+    // float row gates — the one unjudged link ending inside the last pitch
+    // takes β/2, and the straddler + span are vertical. That grades the
+    // shed into two adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap
+    // tensions — the same order as the ~20–34° of azimuth articulation the
+    // wrap already carries between stations, and the declared articulation
+    // fiction of this chain (a real chain sheds its lean over the free span
+    // by joint play; measured worst per-joint twist over the reserve sweep:
+    // 36.3°, at tension ≈ 0.07 where the departure is still near the base).
+    if (betaAtArc && wrapArc > 0) {
+      const sEnd = (i + 1) * L;
+      const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
+      if (ramp > 0) {
+        const beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
+        if (beta > 1e-9) {
+          const cb = Math.cos(beta), sb = Math.sin(beta);
+          const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
+          k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
+          y.set(y2x, y2y, y2z);
+        }
+      }
+    }
+    chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
     mid.addVectors(a, b).multiplyScalar(0.5);
     if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
     write(isOuter(i) ? outer : inner, t, y, k, mid);
   }
-  for (let i = 0; i <= N; i++) write(pin, X, Y, Z, joints[i]); // rivets, world-vertical
+  // Rivets: the MEAN frame of the two links they join (orthonormalized), so
+  // a pin between two leaning links leans with them instead of standing
+  // world-vertical through tilted plates — the declared articulation fiction
+  // above, at the joint itself. End rivets take their single neighbour.
+  for (let i = 0; i <= N; i++) {
+    const fa = chainFrames[Math.max(i - 1, 0)], fb = chainFrames[Math.min(i, N - 1)];
+    t.addVectors(fa.t, fb.t).normalize();
+    k.addVectors(fa.k, fb.k);
+    k.addScaledVector(t, -k.dot(t)).normalize();
+    y.crossVectors(k, t);
+    write(pin, t, y, k, joints[i]);
+  }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
@@ -4193,10 +4243,23 @@ function rebuildChain(tension) {
   // §123 (TODO 46) — the wrap's arc, chord-summed over the wrap control
   // points (the spline adds ~1% of slack; the builder guards a full pitch at
   // the departure, far coarser than that error): tells the builder which
-  // links the float row may judge.
-  let wrapArc = 0;
-  for (let i = 0; i < nF; i++) wrapArc += pts[i].distanceTo(pts[i + 1]);
-  const geo = buildChainLinkGeometry(curve, wrapArc);
+  // links the float row may judge — and, kept per control point, gives the
+  // builder the arc→f mapping its TILT law reads (control point i sits at
+  // band fraction (i/nF)·fActive by the wrap loop above), so the leaning
+  // links and the corner-locus cut consume the same β(f) at the same
+  // stations.
+  const wrapCum = new Float64Array(nF + 1);
+  for (let i = 0; i < nF; i++) wrapCum[i + 1] = wrapCum[i] + pts[i].distanceTo(pts[i + 1]);
+  const wrapArc = wrapCum[nF];
+  const betaAtArc = (s) => {
+    if (s <= 0) return fuseeBetaAt(0);
+    if (s >= wrapArc) return fuseeBetaAt(fActive);
+    let lo = 0, hi = nF;
+    while (hi - lo > 1) { const mid2 = (lo + hi) >> 1; if (wrapCum[mid2] <= s) lo = mid2; else hi = mid2; }
+    const fLink = ((lo + (s - wrapCum[lo]) / (wrapCum[hi] - wrapCum[lo] || 1)) / nF) * fActive;
+    return fuseeBetaAt(fLink);
+  };
+  const geo = buildChainLinkGeometry(curve, wrapArc, betaAtArc);
   // §71: hand the run to the schematic's chain line — same curve, same frame
   schemChainCurve = curve;
   if (schemChainLine) schemChainLine.geometry.setFromPoints(curve.getPoints(160));
@@ -4287,7 +4350,13 @@ const MAINT_FLANGE_R = MAINT_PAWL_PIV / 1.28;
 // z BOUNDS: ring above the great wheel HUB (its tallest central feature),
 // flange below the chain's lowest links on the cone's bottom groove.
 const GW_HUB_TOP = L_BARREL + (1.4 * 1.5) / 2; // makeGear hub ring: thickness·1.5, centred on the wheel
-const MAINT_CHAIN_LOW = FUSEE_Z0 - CHAIN_PIN_LEN / 2; // underside of the lowest chain wrap
+// §123 (TODO 46): the lowest wrap LIES DOWN on the base flank, so its
+// underside is the tilted corner's drop — h·cosβ* + w·sinβ* = √(h²+w²) =
+// CHAIN_PIN_LEN/2 + FUSEE_TILT_Z below the groove centreline (the same
+// quantity FUSEE_Z0_MIN funds against the center wheel), not the vertical
+// stack's half. The flange band consumes the honest number or the sandwich
+// stands inside the leaning chain.
+const MAINT_CHAIN_LOW = FUSEE_Z0 - (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z); // underside of the lowest chain wrap
 // Ring and flange stock: DERIVED from the band the sandwich actually gets —
 // hub + margin below, chain + margin above, one CLEAR_MARGIN of daylight
 // between the two moving halves. The old 0.5 literals collapsed the band
