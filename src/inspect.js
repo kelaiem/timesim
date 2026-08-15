@@ -686,6 +686,18 @@ function bvhFor(mesh) {
 const _mat = new THREE.Matrix4();
 const _matRev = new THREE.Matrix4();
 function meshesIntersect(a, b) {
+  if (SWEEP_CENSUS.on) {
+    const c = SWEEP_CENSUS.c;
+    c.exactCalls++;
+    const t0 = performance.now();
+    const r = _meshesIntersectInner(a, b);
+    c.exactMs += performance.now() - t0;
+    if (r) c.boolTrue++; else c.boolFalse++;
+    return r;
+  }
+  return _meshesIntersectInner(a, b);
+}
+function _meshesIntersectInner(a, b) {
   const bvhA = bvhFor(a);
   bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
@@ -705,10 +717,13 @@ function meshesIntersect(a, b) {
 }
 
 function unitsIntersect(A, B) {
+  const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     for (const b of B.meshes) {
       // Cheap per-mesh AABB gate before the triangle test.
+      if (cen) cen.aabbTests++;
       if (!new THREE.Box3().setFromObject(a).intersectsBox(new THREE.Box3().setFromObject(b))) continue;
+      if (cen) cen.aabbPass++;
       if (meshesIntersect(a, b)) return true;
     }
   }
@@ -990,6 +1005,17 @@ function pointInsideTree(tree, pLocal) {
   return (n % 2) === 1;
 }
 function sampledVerdict(a, b, upperBound = Infinity) {
+  if (SWEEP_CENSUS.on) {
+    const c = SWEEP_CENSUS.c;
+    c.verdictCalls++;
+    const t0 = performance.now();
+    const r = _sampledVerdictInner(a, b, upperBound);
+    c.verdictMs += performance.now() - t0;
+    return r;
+  }
+  return _sampledVerdictInner(a, b, upperBound);
+}
+function _sampledVerdictInner(a, b, upperBound = Infinity) {
   let best = upperBound, inside = false;
   const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
   for (const [src, dst] of [[b, a], [a, b]]) {
@@ -1018,7 +1044,56 @@ function sampledVerdict(a, b, upperBound = Infinity) {
   return { inside, d: inside ? 0 : best };
 }
 
+// ---------------------------------------------------------------------------
+// §108's EXPERIMENT — the sweep census. The roadmap entry proposes a
+// render-based pre-filter for the four pair sweeps and mandates one
+// measurement before any renderer exists: per check, how many pairs are
+// considered, how many survive the AABB gate, how many reach an exact
+// query, where the time inside those queries goes, and what the queries
+// come back with — because a pre-filter only pays if it beats boxDistance
+// at skipping pairs the exact tier would call clearly apart. REPORT-ONLY:
+// the four checks attach the snapshot to their payloads as `census`; no
+// gate reads it. Off outside those checks, so intraUnit/assembly (which
+// share the primitives) never contaminate the attribution — checks run
+// sequentially per browser context.
+export const SWEEP_CENSUS = { on: false, c: null };
+export function censusStart() {
+  SWEEP_CENSUS.on = true;
+  SWEEP_CENSUS.c = {
+    aabbTests: 0, aabbPass: 0,           // mesh-pair AABB gate: evaluations, survivors (events, pose-summed)
+    exactCalls: 0, exactMs: 0,           // meshClearance + meshesIntersect: the exact tier
+    verdictCalls: 0, verdictMs: 0,       // sampledVerdict: the arbitration tier (inside the exact tier's time)
+    out: { pruned: 0, far: 0, mid: 0, near: 0, contact: 0 },  // meshClearance outcomes:
+    // pruned = nothing within the caller's bound (the BVH proved "apart" cheaply)
+    // far ≥ 0.4 · mid ≥ 0.05 · near < 0.05 (arbitrated) · contact ≤ 0
+    boolTrue: 0, boolFalse: 0,           // meshesIntersect outcomes
+  };
+}
+export function censusStop() {
+  SWEEP_CENSUS.on = false;
+  const c = SWEEP_CENSUS.c;
+  SWEEP_CENSUS.c = null;
+  if (c) { c.exactMs = +c.exactMs.toFixed(1); c.verdictMs = +c.verdictMs.toFixed(1); }
+  return c;
+}
+
 export function meshClearance(a, b, upperBound = Infinity) {
+  if (SWEEP_CENSUS.on) {
+    const c = SWEEP_CENSUS.c;
+    c.exactCalls++;
+    const t0 = performance.now();
+    const d = _meshClearanceInner(a, b, upperBound);
+    c.exactMs += performance.now() - t0;
+    if (d === Infinity || d >= upperBound) c.out.pruned++;
+    else if (d <= 0) c.out.contact++;
+    else if (d < 0.05) c.out.near++;
+    else if (d < 0.4) c.out.mid++;
+    else c.out.far++;
+    return d;
+  }
+  return _meshClearanceInner(a, b, upperBound);
+}
+function _meshClearanceInner(a, b, upperBound = Infinity) {
   // BUILT §82 — closestPointToGeometry returned NON-MINIMAL distances that
   // depended on WHICH QUERIES RAN BEFORE: measured at one pose, sleeve
   // lathe ⇄ rocker box read 0.1066 cold, 0.1404 after the transposed query,
@@ -1068,12 +1143,15 @@ function meshLabel(unit, mesh) {
 
 function unitClearance(A, B, upperBound = Infinity, exclude = null) {
   let best = upperBound, pair = null;
+  const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     _cbA.setFromObject(a);
     for (const b of B.meshes) {
       if (exclude && exclude(a, b)) continue; // TODO 6 — a declared contact is not this measurement's business
       _cbB.setFromObject(b);
+      if (cen) cen.aabbTests++;
       if (boxDistance(_cbA, _cbB) >= best) continue;
+      if (cen) cen.aabbPass++;
       const d = meshClearance(a, b, best);
       if (d < best) { best = d; pair = [a, b]; }
     }
@@ -1511,7 +1589,9 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     const names = new Set([...pairs[i].A.meshes, ...pairs[i].B.meshes].map((m) => m.name).filter(Boolean));
     for (const c of row.contacts) for (const n of c) if (!names.has(n)) unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
   });
+  censusStart();   // §108's experiment — report-only, see the census block
   const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
+  const census = censusStop();
   const results = rows.map((row, i) => {
     const capped = !isFinite(state[i].min);
     const meets = capped || state[i].min >= row.min;
@@ -1530,7 +1610,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   return {
     violations: results.filter((r) => !r.ok && !r.waived),
     waivedCount: results.filter((r) => !r.ok && r.waived).length,
-    unmatched, results,
+    unmatched, results, census,
   };
 }
 
@@ -2338,7 +2418,9 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     axes: bud.axes,
     refineFloor: bud.min, // exact minima only needed near the budget line
   }));
+  censusStart();   // §108's experiment — report-only, see the census block
   const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
+  const census = censusStop();
   const results = budgets.map((bud, i) => {
     // min === Infinity ⇒ every query pruned at the cap: the pair never came
     // within refineFloor + band of its floor anywhere in pose space. That
@@ -2355,7 +2437,7 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     };
   });
   console.table(results);
-  return { violations: results.filter((r) => !r.ok), results };
+  return { violations: results.filter((r) => !r.ok), results, census };
 }
 
 // ---------------------------------------------------------------------------
@@ -3444,6 +3526,8 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
 export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includeExcluded = false } = {}) {
   const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
+  censusStart();   // §108's experiment — report-only, see the census block
+  let unitPairTests = 0, unitPairPass = 0;   // the unit-level broad phase, this check's own outer gate
 
   for (const axis of axes) {
     for (let i = 0; i <= axis.n; i++) {
@@ -3456,7 +3540,9 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
         for (let bi = ai + 1; bi < units.length; bi++) {
           const A = units[ai], B = units[bi];
           if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
+          unitPairTests++;
           if (!boxes[ai].intersectsBox(boxes[bi])) continue;
+          unitPairPass++;
           if (!unitsIntersect(A, B)) continue;
           const key = pairKey(A.name, B.name);
           let rec = findings.get(key);
@@ -3488,7 +3574,9 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
       .join('; ');
   }
 
-  window.__inspectReport = { units: units.map((u) => u.name), report, axes: axes.map((a) => a.name) };
+  const census = censusStop();
+  if (census) Object.assign(census, { unitPairTests, unitPairPass });
+  window.__inspectReport = { units: units.map((u) => u.name), report, axes: axes.map((a) => a.name), census };
   console.table(report.map(({ pair, class: cls, summary }) => ({ pair, class: cls, summary })));
 
   // Helper for the human/agent: jump to a hit pose and frame the pair.
@@ -6352,7 +6440,10 @@ export async function checkSweptOverlap(clock, opts = {}) {
   // and confirm the geometry test fires on pairs that are known to touch.
   const { includeDeclared = false, confirm = !includeDeclared, yieldEvery = 16 } = opts;
   const declared = (a, b) => !includeDeclared && (inList(EXPECTED_PAIRS, a, b) || inList(IGNORED_PAIRS, a, b));
+  censusStart();   // §108's experiment — report-only; phase timers below split registry/hull/confirm
+  const _t0 = performance.now();
   const reg = await buildSweptRegistry(clock, opts);
+  const _tReg = performance.now();
   const vols = reg._volumes;
 
   // 2D distance from a point to a triangle: 0 inside, else the nearest edge.
@@ -6563,6 +6654,8 @@ export async function checkSweptOverlap(clock, opts = {}) {
       A: unitByName(clock, v.fixed), B: unitByName(clock, v.mover),
       refineFloor: CLEAR_MARGIN,
     }));
+    // (§108 census: the hull tier ends here — everything after is confirm)
+    SWEEP_CENSUS.c && (SWEEP_CENSUS.c.hullMs = +(performance.now() - _tReg).toFixed(1));
     // CANONICAL STATE FIRST (the registry's own rule, §40's precedent): the
     // sequential tier's fifteen walks each started from the residue the
     // PREVIOUS pair's walk left, so a residue-sensitive minimum (the alarm
@@ -6584,7 +6677,15 @@ export async function checkSweptOverlap(clock, opts = {}) {
   }
 
   clock.resetInputs();
+  const census = censusStop();
+  if (census) {
+    census.registryMs = +(_tReg - _t0).toFixed(1);
+    census.totalMs = +(performance.now() - _t0).toFixed(1);
+    if (census.hullMs === undefined) census.hullMs = +(performance.now() - _tReg).toFixed(1);
+    census.confirmMs = +(census.totalMs - census.registryMs - census.hullMs).toFixed(1);
+  }
   return {
+    census,
     sound: { staticVsSwept: {
       pairsTested: tested,
       violations: confirmed,
