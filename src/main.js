@@ -9581,7 +9581,19 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
 // piece of a real alarm this model leaves for later; the hammer is shown, its
 // power is not). Placed in the clear UPPER sector of the back (az 45–135°,
 // away from the balance/escapement in the lower-right), above the 3/4 plate.
-const Z_GONG = 9.6;              // above the 3/4 plate top (8.5), about the balance-cock height (9.4)
+// §123 seam (TODO 46): the strike tier STANDS ON the three-quarter plate, so
+// its planes are DERIVED from TQ_TOP_Z rather than restated. (§123 lifted the
+// plate by FUSEE_TILT_Z and the old literals — Z_GONG 9.6, ALARM_LOCK_Z 8.83 —
+// kept describing the pre-lift plate at 8.51: the §102 spring stud collapsed
+// to a 0.015 sliver and the collar's band sank inside the plate.) The stack,
+// floor to ceiling: plate top → ALARM_LOCK_GAP → lock collar (STOCK_MIN_U
+// floor stock, the §25 B brake band, shared with the lock lever) →
+// ALARM_LOCK_GAP again → cam underside; the gong/hammer/tail plane is the
+// cam's mid-thickness above that.
+const ALARM_CAM_T = 0.8;         // cam thickness — straddles the tail (hoisted from the §25 A z-stack: Z_GONG derives through it now)
+const ALARM_LOCK_GAP = CLEAR_MARGIN + 0.01; // the margin plus the float-bind centi-unit — §102's convention, on both faces of the collar
+const ALARM_LOCK_Z = TQ_TOP_Z + ALARM_LOCK_GAP + STOCK_MIN_U / 2; // lock lever / brake collar band centre (§25 B, §102)
+const Z_GONG = ALARM_LOCK_Z + STOCK_MIN_U / 2 + ALARM_LOCK_GAP + ALARM_CAM_T / 2; // ≈ 1.04 over the plate top — the gong rings just above the balance cock, as before
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
 // §33 (pusher handle) — THE ALARM WORK ROTATES AS ONE MODULE (?alarmmod=).
 // The striking wheel's cam lifts the hammer tail, the hammer strikes the
@@ -9789,7 +9801,8 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // the hammer tail's plane so the tail's nose can ride its rim, and the barrel
 // rides above it on the same arbor line.
 const ALARM_TAIL_T = 0.5;                              // tail bar thickness, centred on the gong plane
-const ALARM_CAM_T = 0.8;                               // cam thickness — straddles the tail
+// (ALARM_CAM_T is hoisted to the §123 seam block beside Z_GONG — the gong
+// plane derives through the cam's half-thickness now.)
 const ALARM_CAM_Z0 = Z_GONG - ALARM_CAM_T / 2;
 const ALARM_CAM_Z1 = Z_GONG + ALARM_CAM_T / 2;
 const ALARM_BARREL_H = 1.3;
@@ -10299,13 +10312,13 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // lock lever's pad bears on when the train is held. Smooth, not notched: a
   // partial wind can park the train at ANY phase (the winding lockstep), so
   // the hold is a friction brake — the stop-lever-on-balance-rim precedent.
-  // TODO 11 tail: the sandwich takes floor stock after all — centred growth
-  // +0.02 leaves 0.16 over the plate and 0.21 under the cam, both ≥ the one
-  // margin the note below demands.
+  // TODO 11 tail: the sandwich takes floor stock after all. §123's seam fix
+  // re-derived the band from the plate top, so both faces clear by exactly
+  // ALARM_LOCK_GAP — plate top below, cam underside above — by construction.
   const lockCollar = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, STOCK_MIN_U, 32), MATS.steel);
   lockCollar.name = 'alarmLockCollar';
   lockCollar.rotation.x = Math.PI / 2;
-  lockCollar.position.z = 8.83; // world (the rotor sits at z 0): band 8.68..8.98 — 0.17 over the plate top, 0.22 under the cam
+  lockCollar.position.z = ALARM_LOCK_Z; // world (the rotor sits at z 0): the shared §25 B lock band, derived at the §123 seam block
   alarmStrikeRotor.add(lockCollar);
   sleeve.rotation.x = Math.PI / 2;
   sleeve.position.z = (sleeveZ0 + sleeveZ1) / 2;
@@ -12416,7 +12429,9 @@ const ALARM_LOCK_PAD_R = 0.3;
 // radial air" — a chosen fraction of the space available, the one number
 // item 28 could not fix.)
 const ALARM_LOCK_LIFT = (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L;   // = 0.032 rad
-const ALARM_LOCK_Z = 8.83;                      // shared band with the collar (8.68..8.98)
+// (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
+// at the §123 seam block beside Z_GONG, up by the gong build: the whole
+// strike tier rides TQ_TOP_Z now instead of restating the pre-§123 plate.)
 // §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
 // tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
 // bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
@@ -12650,7 +12665,7 @@ alarmColSpin.add(alarmColumnWheel);
 alarmSwitchUnit.add(alarmColSpin);
 {
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
-  // (9.15, under the base's top face) — a pivot, not a pole through the crown.
+  // (under the base's top face) — a pivot, not a pole through the crown.
   const studR = ALARM_COL_BORE_R - 0.06; // the §43 running clearance, kept through the resize
   // §68: the stud IS the bridge — seated 0.3 into the plate, tip ending
   // inside the raised bore under the base's top face; both ends derived.
