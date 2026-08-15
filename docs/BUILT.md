@@ -10253,7 +10253,8 @@ that last sentence was half true when it was written. Setting
 word lived at two hand-written sites, neither of them the saw's. So the
 saw opted out of its pitch circle and was drawn by nothing at all; the
 `hubR` and `boreR` above were dead data. §107 made the pass generic, and
-all three carriers now draw.]** The fingerprint moved,
+every carrier now draws — three of them at that landing, four since the
+striking cam joined them.]** The fingerprint moved,
 deliberately: a new unit, two new strike-rotor meshes and a stud
 length. The stated approximation, item 43's class: the saw wheel
 advances uniformly with the train — the anchor's recoil is not kicked
@@ -10381,6 +10382,19 @@ drawn. One pass now covers every carrier (escape wheel, §99 arbor ratchet,
 §104 saw), with the hub and bore rims all three already declared and
 §78's floor-warn tripwire. §104's sentence in this file is corrected in
 place rather than quietly left standing.
+
+**[A fourth carrier since: the §25 striking cam.]** It was the same
+silence one layer out — the cam had no `profile` to opt out WITH, so the
+generic vocabulary was free to speak and had nothing true to say (a
+lifting cam's whole content is its generated flanks, and no circle at any
+radius is that), while `SCHEMATIC_CALLOUTS` already named it "Lifting cam"
+and pointed the label at a blank. It now exports the point list its own
+`Shape` was cut from, so this pass draws it and the count the tripwire
+floors reads four. The lock collar beside it takes the GENERIC circle in
+the same landing, which is the vocabulary being right rather than being
+overridden: that collar is deliberately smooth — a partial wind parks the
+train at any phase, so a friction brake is the only honest hold — and a
+spin-invariant rim is exactly what a circle claims.
 
 The anchor gets **its own word**, because the generic vocabulary would lie
 about it: `discOrAxis` says "disc" or "bar" of a generated tooth-tip
