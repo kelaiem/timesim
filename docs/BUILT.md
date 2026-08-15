@@ -12220,3 +12220,180 @@ byte-identical** — `alarmHandoffs`, `assembly`, `clearances`, `equalisation`,
 Cost: total check time 2816.0 → 2768.3 s, every check inside run-to-run noise
 (`sweptOverlap` 1129 → 1113 s). The shard partition is unchanged in shape and
 the `cost` column is left alone.
+
+## §121 — TODO 5's missing tiers: the inspector sees fixture pairs and cross-frame movers inside a unit, and the declared table grows a spine
+
+**The owner prioritised this item (2026-08-12) on §107's evidence**: three
+mover-vs-mover defects in one mechanism, every one invisible to a battery
+whose every check is a relation between two DIFFERENT units, the worst found
+by the owner looking at a screenshot past 19 green gates. The 2026-08-01
+interim (`intraUnit`) had built one of the three pair classes inside a unit —
+movers against fixtures. This entry builds the other two, wires the class
+that guards the declarations themselves, and gates what its triage measured.
+
+### Three tiers, one lap, one declared table
+
+`checkIntraUnit` still derives everything and names nothing. One
+classification lap over the 55-pose net now feeds three consumers:
+
+- **MF** — movers vs their unit's fixtures, at every pose. The 2026-08-01
+  tier, unchanged, still gated over EVERY unit.
+- **FF** — fixture pairs, ONCE. A fixture is a mesh whose unit-relative
+  signature never changed over the net, so fixture-vs-fixture geometry is
+  pose-independent *by the classification's own definition* — one pose is
+  the whole answer, and the Dial's C(147,2) ≈ 10.7k pairs cost one lap
+  instead of 55. This is the ruby-in-slot tier: both meshes static, exactly
+  the pair the mover/fixture split never compared, and the class MODELING.md
+  rule 1 now carries in words (a bevel grows INWARD inside a notch).
+- **MM** — mover pairs ACROSS RIGID FRAMES, at every pose. Movers on one
+  frame are one part — that is `checkAssembly`'s connectivity domain (§107),
+  and their mutual overlap is a joint by definition — so the tier clusters
+  each unit's movers by the SAME world-motion-delta signature the assembly
+  check uses. `sameFrame`/`clusterByFrame` are HOISTED to module scope: one
+  predicate, two consumers, and the assembly payload is byte-identical
+  across the refactor by construction and by measurement. §107's
+  arm-through-saw was exactly a cross-frame pair inside the pre-promotion
+  governor unit.
+
+Two rules the tiers needed that the interim did not:
+
+1. **A morph is always its own frame.** The mover CLASSIFICATION has carried
+   `geometry.id` since MODELING.md rule 6 (a part that swaps geometry moves
+   its surfaces without moving its matrix). The frame CLUSTERING needed the
+   same care in a new place: two matrix-still morphs cluster as one "frame"
+   on the matrix trace alone and drop out of comparison — rule 6's
+   silent-exclusion class, pre-empted rather than hit. The alarm barrel's
+   ribbon⇄wall and ribbon⇄hook rows reached the MM tier through exactly this
+   rule.
+2. **A throw arbitrates nothing.** `pointInsideTree` throws on geometry with
+   no normals. `checkAssembly` assumes "joined" on a throw because inventing
+   a FRACTURE is its unsafe direction; this check's unsafe direction is
+   inventing a COLLISION, so all three tiers share one guard that files the
+   pair under `unmeasurable` — reported, never a verdict either way.
+
+### The declarations grew a spine, and the duplicates lost their excuse
+
+Two structural fixes landed with the tiers because the first sweep demanded
+them:
+
+- **A stale selector is now a FAILURE.** `INTRA_UNIT_CONTACTS` and
+  `INTRA_UNIT_WAIVERS` rows whose unit or labels match nothing are gated at
+  0 (`unmatchedSelectors` — `expectedContacts`' convention, TODO 6). The
+  class is MODELING.md rule 7's: a welded geometry changing type once
+  un-declared 14 joints with not one distance moved, in silence. Silence is
+  now a red gate — which also changes the naming calculus below.
+- **A pair belongs to the smallest unit containing both meshes.**
+  `collectUnits` does no nested-label exclusion, so the Dial holds the whole
+  alarm-disc stack and every pair inside a nested unit reported twice under
+  two names, wanting two declared rows for one fact. The NEAREST-UNIT dedupe
+  (strictly smaller wins; a tie keeps both) is `RESTORING_WAIVERS`' own
+  dedupe argument applied at the source. The Dial's 35 phantom MM rows fell
+  to the real units that own them.
+
+While in the table: the duplicated `alarmGovSleeve ⇄ CylinderGeometry#0`
+rows (a §112 revision left standing beside its §104 original) collapsed into
+one row keeping both citations.
+
+### The sweep, the scope, and the triage that earned the gate
+
+The first full sweep found **259 rows across 46 unit×tier buckets** — stable
+across three runs, no arbiter flicker — against the 54 rows the 2026-08-01
+session triaged. That is not one landing's triage, so the gate is SCOPED,
+§107's own precedent and its own words: what is gated is what the triage
+supports. `INTRA_TIER_SCOPE` is the alarm complex — eighteen units, the
+ground where this class bit three times — and its **42 rows were each
+measured before being declared**: `tools/probe-121-depth.mjs` re-takes every
+flagged pair with the check's own parity (the BVH raycast, DoubleSide, the
+fixed oblique direction — a scene-level `Raycaster` culls backfaces and its
+parity is garbage on closed solids, which the probe's first cut proved by
+producing impossible depths) and reports contained fraction and depth, so
+every declared why cites a reading.
+
+**Zero of the 42 were defects.** The alarm complex has been through the
+§29→§120 instrument passes; what those left behind are joints and working
+contacts nobody had to declare while no instrument could see them: cock arms
+pressed on pillars, guide posts socketed in cheek blocks, the gong wire's
+braze onto its one post, coiled spring anchors, the pusher's three-piece
+lap, §45's corner posts in their turned feet, the §48 follower's bearing,
+two phase-solved gear meshes (TODO 15's chain), §102's return blade riding
+its stud, §28's detent ball on the column wheel, and the barrel ribbon
+bearing on its drum wall — the morph rule's first customers. The 42 rows
+carry those whys, each with its §.
+
+Everything outside the scope — **202 rows** — is REPORTED in the payload
+(§48's rows-are-the-product): the Balance's 23 timing-screw seats, the
+plates' furniture, the Keyless works' sliding gang, the going wheels'
+collets. That triage is TODO 5's filed remainder, and the item is MOSTLY
+CLOSED on exactly that line: nothing previously gated became ungated, the MF
+tier still covers every unit, and the reported rows are visible in every
+battery run rather than invisible in principle — which is the difference
+this entry exists to make.
+
+### Naming, honestly
+
+Four meshes were named where one edit reached them (`alarmGongArc`,
+`alarmGongPost`, `alarmClimbPinion`, `alarmSetIdler` — the §121 rows they
+appear in read as parts, not indexes); the remaining declarations cite
+`Type#index` labels with whys that identify the part in words. The naming
+sub-idea (TODO 5's) advanced but did not finish, and the selector gate
+changes what the residue costs: a label that drifts now FAILS the battery
+instead of silently orphaning its row, so an index label is fragile but no
+longer treacherous. The 0-unmatched result on the first gated run is also
+the proof that the four renames staled nothing anywhere in the tables.
+
+### What the record does not owe
+
+`explain.html` and `primer.html` gain nothing — an instrument is not a
+mechanism, §115's argument one door down. `MECH_GRAPH` gains nothing: no
+part was added. The bespoke per-group asserts STAY — the stop-lever lattice
+sweep, §113's arm-vs-tip-circle, §120's 240-phase saw⇄pallet cycle — because
+the general tier holds the class at the pose net and the asserts hold their
+instances FINER than it (MODELING.md rule 10's closing instruction; P2's
+text now says so). The §120 pairs are inter-unit since §107 promoted the
+anchor anyway, which is worth stating because that assert's header still
+called itself TODO 5 residue.
+
+### The battery, and the two payloads that moved
+
+**20/20 gates pass**, boot silent, run locally on the same idle 4-vCPU box as
+the base (which is §120's accepted tree — `git diff` between the two refs is
+empty, so §120's head report IS this landing's base report):
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 537 rows, 0 degenerate, 0 unwaived
+intraUnit 264 movers in 77 frames over 55 poses; pairs MF 5400/FF 2092/MM 5331,
+  0 unwaived, 0 unmatched selectors, 201 out of scope (reported), 0 unmeasurable
+assembly 0 undeclared unwaived splits · expectedContacts 13 pairs, 0 unwaived
+oscillator 2.5 Hz on a 0.0244 mm ribbon · equalisation TODO 32 held, ring 0.790 mm in stock
+restoring 20 reversing units, 0 unwaived, control PASS
+inspection 0 FORBIDDEN over 53 units and 74 contacting pairs · clearances 0 violations over 30 budgets
+sweptOverlap 0 CONFIRMED over 67943 pairs (tight 4, refuted 20)
+spec boots 26/26 build, identity control silent · fingerprint 1709442067 — UNCHANGED
+```
+
+`--report` diffed check by check: **twelve of fourteen payloads are
+byte-identical**, and the fingerprint does not move at all — the landing
+adds measurement and names, no geometry. The two that moved:
+
+1. **`intraUnit`** — the change itself: the payload gains `tiers`, `frames`,
+   `outOfScope`, `unmeasurable`, `unmatchedSelectors` and the per-row `tier`
+   tag, cost 2.0 → 6.4 s (the FF tier's one lap over ~2k pairs; the `cost`
+   column is re-measured to 6).
+2. **`assembly`** — **byte-identical modulo the three renamed labels**
+   (`alarmGongArc`, `alarmGongPost`, `alarmClimbPinion` appear in its member
+   lists where `TorusGeometry#0`, `CylinderGeometry#1`, `ExtrudeGeometry#2`
+   did; reverse the renames and the JSON strings are equal). That is the
+   sameFrame/clusterByFrame extraction's acceptance: the predicate moved
+   house and not one verdict, count, or separation moved with it.
+
+**One out-of-scope row flickers run-to-run**, named so the next `--report`
+diff is not a surprise: `Dial / BoxGeometry#129 ⇄ alarmSleeveWeb` sits at
+the arbiter's d≈1e-4 boundary (202 rows in the seeding probe, 201 in the
+battery run — the same class as the three declared Keyless boundary rows).
+It is a REPORT row in an untriaged population; its triage, like the rest of
+the 201, is the item's filed remainder.
+
+Cost: total check time 2768 → 2785 s — inside run-to-run noise beside the
++4.4 s the new tiers actually cost. The shard partition is unchanged in
+shape.

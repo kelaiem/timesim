@@ -8385,6 +8385,7 @@ const alarmSetI2Spin = new THREE.Group();
   const mk = (spin, pos, teeth, phase) => {
     spin.position.set(pos.x, pos.y, ALARM_SET_Z);
     const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth, thickness: ALARM_SET_T, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
+    idler.traverse((o) => { if (o.isMesh) o.name = 'alarmSetIdler'; }); // §121: the i1⇄i2 mesh is a declared intraUnit working contact
     idler.rotation.z = phase;
     spin.add(idler);
     alarmIdlerGroup.add(spin);
@@ -9445,6 +9446,7 @@ registerExplode(alarmGongUnit, 0, 9); // baseZ 0: children carry world z; rises 
 // The gong wire: a partial torus (an arc of round steel wire), coaxial with
 // the movement, opening across the top sector.
 const gongArc = new THREE.Mesh(new THREE.TorusGeometry(GONG_R, GONG_WIRE_R, 8, 64, GONG_A1 - GONG_A0), MATS.steel);
+gongArc.name = 'alarmGongArc';   // §121: the wire⇄post braze is a declared intraUnit joint — named so the row reads as the parts
 gongArc.rotation.z = GONG_A0; // a torus arc starts at +x; rotate its start to the foot azimuth
 gongArc.position.z = Z_GONG;
 alarmGongUnit.add(gongArc);
@@ -9452,6 +9454,7 @@ alarmGongUnit.add(gongArc);
 // gong's ONLY fixing (the far end rings free); its route to the plate.
 let gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
 const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
+gongPost.name = 'alarmGongPost';
 gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
 alarmGongUnit.add(gongPost);
 
@@ -11337,11 +11340,15 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
         + `reaches ${reach.toFixed(3)} (${at}) — the pillar solve and the §62 window reveal both believe this number`);
   }
 }
-// P2, sampled — the group agrees with itself. The pair sweep cannot see
-// mover-vs-mover inside one unit (TODO 5's residue), so the saw⇄pallet cycle
-// is held here, over a sampled tooth period: the saw's whole cut OUTLINE
-// against both pallet outlines, in BOTH directions, under the solved pose
-// law — §111's instrument, unchanged in method, pointed at §113's geometry.
+// P2, sampled — the group agrees with itself. (§121 corrected this header's
+// claim: the pair is INTER-unit since §107 promoted the anchor, its runtime
+// cover is the §111 penetration budget, and mover-vs-mover inside one unit
+// has its general tier in `intraUnit` now — this assert stays because it is
+// FINER than both: build-time, analytic, and tooth-period-resolved.) The
+// saw⇄pallet cycle is held here over a sampled tooth period: the saw's
+// whole cut OUTLINE against both pallet outlines, in BOTH directions, under
+// the solved pose law — §111's instrument, unchanged in method, pointed at
+// §113's geometry.
 //
 // The budget's history IS the mechanism's history. §104 shipped with a
 // tips-only test that could not fail and 0.245 u of tooth standing inside a
@@ -11761,6 +11768,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   cMount.add(contrate);
   climb.add(cMount);
   const pin = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_PINION_TEETH, thickness: 0.8, material: MATS.steel });
+  pin.traverse((o) => { if (o.isMesh) o.name = 'alarmClimbPinion'; }); // §121: its mesh into i1 is a declared intraUnit working contact
   pin.position.z = ALARM_WIND_TIER_Z;
   climb.add(pin);
   alarmWindUnit.userData.climb = climb;

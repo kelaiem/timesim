@@ -34,6 +34,19 @@ three moves both. **Bevel is not the only thing that puts metal outside an
 authored circle**; a tip relief, a tessellation chord or a mitered corner each
 do it, and none of them appears in the dimension the part was designed to.
 
+**And the same growth runs INWARD wherever the outline turns concave.** A
+bevel expands the outline along its outward normal, and inside a NOTCH that
+direction points INTO the slot: each wall creeps `bevelSize` back toward
+whatever the notch holds. The pallet fork's set stone stood 0.046 inside its
+own slot walls this way (a hand-set 0.05 gap against a 0.096 bevel), and §34's
+alarm setting wheel hit the identical arithmetic (0.05 vs 0.045). The repair
+is the rule: DERIVE the seat gap from the bevel — `gGap = armBevel +
+SEAT_SHOW` (`src/geometry.js`, the fork's `stoneAndArm`) — so the two cannot
+be edited apart. Since §121 the fixture-pair tier of `intraUnit` measures the
+class (both members static, exactly what the mover/fixture split never
+compared); the derivation remains the stronger guard, because an instrument
+finds the defect after it is built and a derivation makes it uncuttable.
+
 ### 2. Seat surface-to-surface, never center-to-surface
 
 When part A rests on part B, the formula must sum **both** parts' surface offsets

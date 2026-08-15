@@ -18,7 +18,7 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
-| 5 | OPEN, interim instrument | `intraUnit` covers movers-vs-fixtures; fixture-vs-fixture and mover-vs-mover inside one unit are still invisible |
+| 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
 | 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded) |
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
@@ -340,7 +340,7 @@ that's its entry, not this one.)
   budget; a continuity check for linkage branch flips; a known-good
   baseline so re-runs only flag regressions.
 
-## 5. The inspector cannot see INSIDE a unit
+## 5. MOSTLY CLOSED (§121) — all three pair classes are instrumented; what remains is the triage the scoped gate reports
 
 > **PRIORITISED by the owner (2026-08-12), on the evidence below.** §107 spent
 > a whole landing inside this blind spot and hit it three separate times in one
@@ -463,6 +463,54 @@ exactly what this entry predicted: fixture-vs-fixture pairs (the
 ruby-in-slot instance above), and mover-vs-mover within one unit. The
 naming infrastructure and the bevel-vs-neighbour check remain open;
 this entry stays open at reduced scope until they exist.
+
+**Status 2026-08-14 (§121) — the two missing tiers are BUILT, and the item is
+MOSTLY CLOSED.** `checkIntraUnit` now measures all three derived pair classes:
+
+- **FF (fixture × fixture), once** — fixtures cannot move relative to their
+  unit by the classification's own definition, so one pose is the whole
+  answer, which is what keeps the Dial's C(147,2) pairs affordable. This is
+  the tier the ruby-in-slot instance above needed: both meshes static, so the
+  mover/fixture split never compared them.
+- **MM (mover × mover), across rigid frames only** — same-frame movers are
+  one part (`assembly`'s connectivity domain, §107), so the tier clusters
+  each unit's movers by the SAME world-motion-delta signature `assembly`
+  uses (`sameFrame`, hoisted to module scope — one predicate, two consumers)
+  and compares only across frames. A MORPH is always its own frame: two
+  matrix-still morphs would otherwise merge and drop out of comparison —
+  MODELING.md rule 6's silent-exclusion class, pre-empted rather than hit.
+  §107's arm-through-saw was exactly a cross-frame pair.
+- **And the declared table grew a spine**: a `INTRA_UNIT_CONTACTS` or
+  `INTRA_UNIT_WAIVERS` row whose unit or labels match NOTHING is now a gated
+  failure (`unmatchedSelectors`, `expectedContacts`' convention) — the
+  MODELING.md rule 7 class (a welded geometry changing type un-declared 14
+  joints in silence) fails loudly instead of vanishing. A NEAREST-UNIT
+  dedupe routes each pair to the smallest unit containing both meshes, so
+  nested labels (the Dial holds the whole alarm-disc stack) stop demanding
+  two declarations for one fact.
+
+The first sweep found **259 rows across 46 unit×tier buckets** — quadruple
+the 2026-08-01 session, far past what one landing can triage row by row — so
+the gate is SCOPED, §107's own precedent: `INTRA_TIER_SCOPE` (the alarm
+complex, where this class bit three times) had its **42 rows triaged against
+measured containment depths** (`tools/probe-121-depth.mjs`, the check's own
+parity — every declared why cites a reading, not an impression; **zero were
+defects**, all joints or working contacts), and the **202 rows elsewhere are
+REPORTED in the payload, untriaged**. MF still gates every unit — nothing
+that was gated became ungated.
+
+**What keeps this MOSTLY closed, named:** (1) the out-of-scope triage — 202
+reported rows (Balance's 23 screw seats, the plates' furniture, Keyless'
+sliding gang…) each wanting a declared why or a repair, widening
+`INTRA_TIER_SCOPE` as they land; (2) the naming sub-idea advanced but did not
+finish — §121 named the meshes it could reach in one edit (`alarmGongArc`,
+`alarmGongPost`, `alarmClimbPinion`, `alarmSetIdler`) and declared the rest by
+`Type#index`, which the new selector gate at least converts from silent
+fragility to a red gate; (3) transients between pose samples, item 7 as
+always; (4) same-frame mover splits outside `ASSEMBLY_SCOPE`, §107's own
+filed widening. The bevel-vs-notch sub-idea CLOSES: the FF tier measures the
+class, and MODELING.md rule 1 now carries the inward sentence with the
+derivation (`gGap = armBevel + SEAT_SHOW`) as the stronger guard.
 
 ## 6. MOSTLY CLOSED — `EXPECTED_CONTACT_FLOORS` names the contact; the instance became item 21
 
