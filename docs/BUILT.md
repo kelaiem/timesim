@@ -12579,7 +12579,7 @@ chose full closure with that trade named. The battery diff is the
 acceptance; the fingerprint legitimately moves once (cone, chain, great
 wheel, drum station, lifted stratum).
 
-## §125 — the winding arrest: overwinding stopped by a part, and the whole winding path put on one source
+## §126 — the winding arrest: overwinding stopped by a part, and the whole winding path put on one source
 
 Roadmap §47. Winding the going mainspring past full is prevented by metal
 now: the chain's last coil lifts a sprung finger, its beak drops in front
