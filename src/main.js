@@ -390,6 +390,15 @@ const HOURS_PER_FUSEE_TURN = TRAIN.barrel.teeth / TRAIN.barrel.pinion; // 120/7 
 const FUSEE_WRAP_TURNS = SPEC.reserveHours / HOURS_PER_FUSEE_TURN; // 1.75 — = RESERVE_BARREL_TURNS (energy side, declared with the spring)
 const FUSEE_GROOVE_TURNS = Math.ceil(FUSEE_WRAP_TURNS + 0.25);
 const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the wrap's share of the groove band (was a hand-rounded 0.94)
+// §47 — the winding arrest, as a quantity: winding stops when the reserve
+// reaches the turn count at which the arrest finger's beak meets the stop lug
+// on the cone. That count IS FUSEE_WRAP_TURNS — the chain's engagement is
+// f = tension·FUSEE_F_ACTIVE, so the last link arrives (and throws the
+// finger) exactly at full wrap — and the arrest build below extends this
+// object with the cut geometry and ASSERTS the identity rather than storing a
+// second number: tick() banks against engageTurns, so a lug whose clocking
+// drifted from the wrap would be caught at boot, not discovered as overwind.
+const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
 const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
 const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 0.01;  // 0.67 — the stack drops in with a seating clearance
 const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
@@ -1184,6 +1193,31 @@ if (DIAL_EPOCH_S % 60 !== 0)
 const ratioBarrel = TRAIN.barrel.pinion / TRAIN.barrel.teeth; // center pinion teeth / barrel teeth
 const offBarrel = meshOffset(P.center, P.barrel, TRAIN.barrel.teeth, ratioBarrel, centerAt0);
 function barrelMeshAngle(t) { return offBarrel - ratioBarrel * centerAngle(t); }
+// §47 — the fusee cone's LOCAL rotation on its arbor (what windBack used to
+// accumulate), now DERIVED from the banked reserve: the chain cannot slip, so
+// the cone's WORLD angle is a pure function of what is banked,
+//   world = barrelMeshAngle(0) + 2π·RESERVE_BARREL_TURNS − 2π·barrelWindTurns,
+// and the local angle is that minus the arbor's own train rotation. Two
+// consequences carry the whole arrest: at FULL WIND the cone's world azimuth
+// is the same fixed angle forever (chain home is a geometric fact, not a
+// history), which is what lets the stop lug's clocking be a construction; and
+// during run-down the local angle is CONSTANT — drain-turns ≡ cone advance,
+// pathwise, because the drain in tick() and barrelMeshAngle both integrate
+// the same balanceRate·rawDt at the same 1-turn-per-HOURS_PER_FUSEE_TURN
+// ratio — so the cone rides its great wheel with no phantom maintaining
+// clicks. (RESERVE_BARREL_TURNS is declared with the spring, ~13k lines down;
+// this function is only ever CALLED from tick() and the arrest build, both
+// after module init, so the const is live by then.)
+function windLocalAt(turns, t) {
+  return 2 * Math.PI * (RESERVE_BARREL_TURNS - turns) - (barrelMeshAngle(t) - barrelMeshAngle(0));
+}
+// The law above needs the train to ADVANCE the barrel arbor as tau grows —
+// pay-out is the positive sense (the sign-chain anchor at the keyless pose
+// block: gathering chain is −z, so paying it out is +z). If a re-gear ever
+// flips barrelMeshAngle's direction the arrest law silently mirrors, so hold
+// the sense here rather than assuming it.
+if (!(barrelMeshAngle(1) > barrelMeshAngle(0)))
+  console.warn(`§47: barrelMeshAngle runs BACKWARD (${barrelMeshAngle(1) - barrelMeshAngle(0)} over 1 s) — the wind-local law assumes the train advances the barrel arbor in +z, the chain's pay-out sense`);
 
 // Amplitude sags with the state of wind (real movements drop from ~300° to
 // ~200° as the mainspring drains) and the oscillation runs on movement time τ.
@@ -14158,7 +14192,10 @@ let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
   if (Math.abs(RESERVE_SCALE_HOURS - RELAX_SECONDS / 3600) > 1e-9)
     console.warn(`§39/TODO 18: the reserve well is graduated to ${RESERVE_SCALE_HOURS} h but the movement runs ${RELAX_SECONDS / 3600} h per wind.`);
 }
-let windAccumTurns = 0; // ratchet/fusee turns actually BANKED by winding (not raw crown input)
+// (§47 removed windAccumTurns: the fusee's local rotation is DERIVED from
+// barrelWindTurns by windLocalAt — the chain cannot slip, so a separate
+// banked-turns accumulator was a state the mechanism does not have, and the
+// one that de-phased the cone on every reload because it was never saved.)
 // Jumping-minute setting state: the eased displayed offset while the
 // jumper is engaged (null when lifted), and the folded-in snap correction
 // that keeps the hand from springing back to the raw phase on push-in.
@@ -14240,17 +14277,22 @@ function setCrownOut(out) {
 }
 
 // ---------------------------------------------------------------------------
-// Crown rotation — the actual user-driven input. windSpinner always spins
-// with it (the stem turns regardless of clutch position); which REAL gear
-// path receives that rotation depends on the sliding pinion's physical
-// position (crownPullT, not the raw crownOut target — see tick()). Each
-// path accumulates its OWN share of the rotation (windPathRot / setPathRot)
-// only while engaged, so a disengaged path's gears simply hold still
-// rather than trying to track rotation they're not mechanically coupled to.
+// Crown rotation — the actual user-driven input. Which REAL gear path
+// receives that rotation depends on the sliding pinion's physical position
+// (crownPullT, not the raw crownOut target — see tick()). The setting path
+// accumulates its own share (setPathRot) only while engaged, so its gears
+// hold still disengaged. §47 removed the winding path's accumulator
+// (windPathRot): every wheel of the winding train now poses from the BANKED
+// reserve (barrelWindTurns) through the tooth counts, so at the arrest the
+// whole path — knob included — stops together instead of one accumulator
+// tearing the transfer⇄spur mesh against the other. The knob's displayed
+// angle is likewise derived from the bank, plus windStemSlip: the rotation
+// the stem really made that the wheel never saw — the backward free-wheel at
+// the plate-top click, and spins while the clutch is out of the winding mesh.
 // ---------------------------------------------------------------------------
 let crownRotation = 0;     // radians, user input, unbounded, either direction
 let lastCrownRotation = 0; // for computing crownRotDelta each tick
-let windPathRot = 0;       // accumulated rotation actually delivered to the winding path
+let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (see above)
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
@@ -14293,7 +14335,12 @@ let mmPerPxCal = null;
   const savedState = await loadState();
   mmPerPxCal = typeof savedState.mmPerPx === 'number' && isFinite(savedState.mmPerPx)
     ? savedState.mmPerPx : null;   // absent, null or NaN all mean "not calibrated"
-  barrelWindTurns = savedState.barrelWindTurns;
+  // §47: clamp, mirroring the alarm barrel's restore three lines down — a
+  // hand-edited save (or the pre-§124 3.75-turn default a stale store still
+  // holds) would otherwise boot an over-wound barrel the arrest metal makes
+  // impossible, with the reserve hand past full and tension > 1. The barrel
+  // can hold what the cone wraps; nothing a file says changes that.
+  barrelWindTurns = clamp(savedState.barrelWindTurns ?? RESERVE_BARREL_TURNS, 0, RESERVE_BARREL_TURNS);
   tauIntegrated = savedState.tauIntegrated;
   crownRotation = savedState.crownRotation;
   // Seed the delta baseline to the restored angle. crownRotDelta in tick() is
@@ -14301,10 +14348,16 @@ let mmPerPxCal = null;
   // ALREADY delivered to the gears last session (and already reflected in the
   // restored barrelWindTurns / hand offset), not new turning. Left at 0, the
   // first tick replays the entire crown history as one positive delta and the
-  // winding path (tick(): barrelWindTurns += …) clamps the barrel to full on
-  // frame one — which silently re-winds a drained reserve on every reload, and
-  // stomps any starting reserve set below full (e.g. the ?reserve= deep link).
+  // winding path (tick(): barrelWindTurns += …) banks the barrel to the arrest
+  // on frame one — which silently re-winds a drained reserve on every reload,
+  // and stomps any starting reserve set below full (e.g. the ?reserve= link).
   lastCrownRotation = crownRotation;
+  // §47: the knob's displayed angle is now derived from the bank plus slip
+  // (see the windStemSlip declaration). Seed the slip so the restored knob
+  // shows exactly the angle the saved session left it at — the knob's datum
+  // is arbitrary, but a jump on reload would read as motion nobody made.
+  windStemSlip = crownRotation
+    - (RATCHET_TEETH / windPinionTeeth) * 2 * Math.PI * (barrelWindTurns - RESERVE_BARREL_TURNS);
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
@@ -16384,11 +16437,15 @@ function syncUpdate(realDt) {
 // Not a shortcut that pokes tension directly — it queues up real rotation
 // for the SAME crownRotation input a manual drag would produce (see
 // autoWindRemaining in tick()), so it drives the actual winding gear path.
-// Comfortably more than a full wind's worth (11.25 turns); barrelWindTurns
-// clamps at full regardless, so overshoot is harmless.
+// Queue = one full wind from empty (RESERVE_BARREL_TURNS barrel turns
+// through the 24:8 ratchet:pinion ratio — 5.25 crown turns at the default
+// spec) plus ONE turn cranked against the arrest, so a press from any
+// reserve reaches the stop and the viewer hears the bank (§47). The old
+// literal 16 was ~3× a full wind — before the arrest existed, all of it
+// past full drove the transfer⇄spur mesh teeth-through-teeth.
 document.getElementById('btn-wind').addEventListener('click', () => {
   if (crownOut) return; // crown must be pushed in (winding position) to wind
-  autoWindRemaining += 16 * 2 * Math.PI;
+  autoWindRemaining += (RESERVE_BARREL_TURNS * (RATCHET_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
 });
 
 // --- crown: click to pull/push, drag to turn -------------------------------
@@ -20681,15 +20738,20 @@ function pfRestore() {
     }
   pfGroups = null;
 }
-let pfLastWind = 0, pfWindHotUntil = 0;
-function pfUpdate() {
+let pfLastWind = null, pfWindHotUntil = 0;
+function pfUpdate(windBack) {
   if (!powerFlowOn) return;
   if (!pfGroups) pfGroups = pfBuildGroups();
   const now = performance.now();
-  if (windAccumTurns !== pfLastWind) {
-    pfLastWind = windAccumTurns;
+  // §47: the winding-activity edge rides the fusee's LOCAL angle — the one
+  // quantity that moves while winding and holds constant during run-down
+  // (windLocalAt), exactly what the deleted windAccumTurns used to signal.
+  // Null-seeded so a restored drained session's nonzero first value doesn't
+  // flash a wind nobody performed.
+  if (pfLastWind !== null && windBack !== pfLastWind) {
     pfWindHotUntil = now + 600; // winding activity lingers visibly
   }
+  pfLastWind = windBack;
   const winding = now < pfWindHotUntil;
   const running = balanceRate > 0.05 && reserveShown > 0.001;
   const pulse = 0.75 + 0.25 * Math.sin(now / 180);
@@ -22541,32 +22603,46 @@ function tick(t) {
   const crownRotDelta = crownRotation - lastCrownRotation;
   lastCrownRotation = crownRotation;
   if (windEngaged) {
-    windPathRot += crownRotDelta;
-    // One-way click: only forward turns bank reserve (a real ratchet pawl
-    // free-wheels backward without unwinding the spring) — but the visible
-    // gears below still turn both ways, since they're rigidly meshed to
-    // the crown regardless of which way it's driven.
     if (crownRotDelta > 0) {
       // Ratio chain gives the ratchet's rotation in RADIANS; barrelWindTurns
       // is in TURNS, hence the /2π.
       const turnsDelta = crownRotDelta * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / RATCHET_TEETH) / (2 * Math.PI);
-      const beforeTurns = barrelWindTurns;
-      barrelWindTurns = clamp(barrelWindTurns + turnsDelta, 0, RESERVE_BARREL_TURNS);
-      // Only what actually banked moves the ratchet/fusee: at full reserve
-      // the chain is fully home and the cone stops, however hard you crank.
-      windAccumTurns += barrelWindTurns - beforeTurns;
+      // §47 — the cap is the ARREST, not a number: the bank saturates because
+      // the finger's beak is on the stop lug and the whole path from the lug
+      // back to the crown is rigid, so input past it banks nothing and MOVES
+      // nothing — knob included; the only slip is the hand on a stopped
+      // crown. engageTurns is FUSEE_WRAP_TURNS by construction (asserted at
+      // the arrest build); RESERVE_BARREL_TURNS no longer appears here at
+      // all — the numeric clamp this line used to carry is a consequence of
+      // beak-on-block now, which is most of what §47 is.
+      barrelWindTurns += Math.min(turnsDelta, Math.max(0, WIND_ARREST.engageTurns - barrelWindTurns));
+    } else {
+      // One-way click: backward turns free-wheel at the plate-top ratchet
+      // without unwinding the spring — the knob really turns, the wheel
+      // really holds, so the difference accumulates as stem slip.
+      windStemSlip += crownRotDelta;
     }
+  } else {
+    // Clutch out of the winding mesh (pulled to SET, or in transit): the
+    // stem spins with the hand, delivered to the winding wheel not at all.
+    windStemSlip += crownRotDelta;
   }
   if (setEngaged) {
     setPathRot += crownRotDelta; // bidirectional — no ratchet on the setting path
   }
-  // Drain: the barrel does 1 turn per 8h of movement time actually elapsed
-  // (same relationship RESERVE_BARREL_TURNS is built from), so it only
-  // drains while the balance is actually turning — uses balanceRate as it
-  // stood at the END of the last tick, a one-frame lag that's imperceptible
-  // but avoids a circular dependency (this frame's rate depends on tension,
-  // which depends on this drain).
-  barrelWindTurns = clamp(barrelWindTurns - (balanceRate * rawDt) / (8 * 3600), 0, RESERVE_BARREL_TURNS);
+  // Drain: the barrel does 1 turn per HOURS_PER_FUSEE_TURN of movement time
+  // actually elapsed — the SAME mesh ratio RESERVE_BARREL_TURNS is built from
+  // (§124: 120/7 h; this line had that ratio's pre-§124 value hard-coded as
+  // 8 h, draining 2.14× faster than the train turns the cone, so the chain
+  // display slipped on the cone all the way down and the 30 h the readout
+  // promises ran ~14). §47 leans on the sync: drain-turns ≡ cone advance,
+  // pathwise, because this line and barrelMeshAngle integrate the same
+  // balanceRate·rawDt — that identity is what pins the arrest's world azimuth
+  // (see windLocalAt). Only the 0 floor remains; the ceiling is the arrest's.
+  // Uses balanceRate as it stood at the END of the last tick, a one-frame lag
+  // that's imperceptible but avoids a circular dependency (this frame's rate
+  // depends on tension, which depends on this drain).
+  barrelWindTurns = Math.max(0, barrelWindTurns - (balanceRate * rawDt) / (HOURS_PER_FUSEE_TURN * 3600));
   const tension = clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
 
   // Contact damping: the balance's own angular rate relaxes toward 0 when
@@ -22780,11 +22856,19 @@ function tick(t) {
     if (rodOff) resetRod.position.add(rodOff);
   }
 
-  // Keyless works — the stem always spins with the crown; the two
-  // downstream paths below only reflect rotation actually delivered to
-  // THEM (windPathRot / setPathRot), so whichever one is disengaged simply
-  // holds still — a genuine consequence of the clutch routing above, not a
-  // separate "which am I animating" branch here.
+  // Keyless works — §47: every wheel of the WINDING path poses from the
+  // BANKED state (barrelWindTurns), the alarm side's "only what actually
+  // banked moves the wheel" applied to the going crown. The old law split
+  // the path across two accumulators — the spur froze on banked turns while
+  // the crown wheel rode raw input — so past full wind the transfer⇄spur
+  // mesh slid teeth through teeth (~12 turns per Wind press), and during
+  // run-down the same mesh tore slowly the other way round (the spur rides
+  // the advancing arbor; the crown wheel stood still). One source closes
+  // both: the spur's WORLD angle is a pure function of the reserve (see
+  // windLocalAt — chain home is geometry, not history), so the crown wheel,
+  // transfer and idler derive from IT through the real tooth counts
+  // (rule 2), the knob derives from the same bank plus its slip, and the
+  // setting path below keeps its own accumulator exactly as before.
   //
   // SIGN CHAIN, derived from the one physically-forced sense and counted
   // back through the meshes (it used to be assembled by convention, which
@@ -22793,9 +22877,10 @@ function tick(t) {
   //    (the wrap math in rebuildChain) → windBack < 0 while winding.
   //  · The winding SPUR is keyed to that arbor: also −.
   //  · The TRANSFER wheel meshes the spur EXTERNALLY: must counter-rotate
-  //    → +, and the crown wheel is keyed to it → +. Hence the POSITIVE
-  //    sign below (the old −windPathRot slid the transfer⇄spur teeth
-  //    through each other — masked only by how slowly they turn).
+  //    → +, and the crown wheel is keyed to it → +. Hence the NEGATED spur
+  //    delta below (the old −windPathRot slid the transfer⇄spur teeth
+  //    through each other — masked only by how slowly they turn; §47
+  //    closed that class at the source).
   //  · The winding PINION engages the crown wheel's rim on the side
   //    facing the movement centre; for the wheel to turn + (CCW from the
   //    back) the pinion's contact-point velocity there fixes the stem's
@@ -22803,25 +22888,36 @@ function tick(t) {
   //    outer end — the horological convention. Positive crownRotation
   //    (drag right / Wind button) IS the banking direction, so the visual
   //    spin about the outward stem axis is its negation.
-  windSpinner.rotation.y = -crownRotation;
+  // Below full wind the knob tracks the hand EXACTLY (the derived term's
+  // rate through the 24:8 ratio is 1:1 with banked crown input); at the
+  // arrest it stops with the wheel, which is §47's acceptance — a real
+  // fusee stop stalls the crown dead, the hand slips on the knob.
+  const windStemRot = (RATCHET_TEETH / windPinionTeeth) * 2 * Math.PI
+    * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
+  windSpinner.rotation.y = -windStemRot;
 
-  const crownWheelSpin = windPathRot * (windPinionTeeth / crownWheelTeeth);
+  // The spur's world-angle DELTA from the built (full-wind) pose is
+  // −2π·(RESERVE − bank) — its local windLocalAt term plus the arbor's train
+  // rotation, the tau parts cancelling by the drain sync. The transfer
+  // counter-rotates through 24:20, the crown wheel is keyed to it, and the
+  // idler hangs off the wheel as before.
+  const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * 2 * Math.PI
+    * (RESERVE_BARREL_TURNS - barrelWindTurns);
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
   if (windIdlerWheel) windIdlerWheel.rotation.z = -crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream
   {
-    // Winding spur, let-down square and fusee cone are keyed together,
-    // and their rotation is a pure function of chain hauled: −2π per
-    // BANKED winding turn (backwards against the train direction, exactly
-    // one cone turn per turn of chain pulled home), riding on the arbor's
-    // own train rotation. Raw crown input past full reserve moves none of
-    // them — the chain is home.
-    const windBack = -windAccumTurns * Math.PI * 2;
+    // Winding spur, let-down square and fusee cone are keyed together;
+    // their LOCAL rotation is derived from the bank (−2π per turn still to
+    // bank; see windLocalAt for why the tau term makes run-down a constant
+    // here), riding on the arbor's own train rotation. Raw crown input past
+    // the arrest moves none of them — the beak is on the block.
+    const windBack = windLocalAt(barrelWindTurns, tau);
     windSpur.rotation.z = windSpurBase + windBack;
     windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
     updateMaintaining(windBack);
-    pfUpdate();
+    pfUpdate(windBack);
 
     // --- SOUND edge detection (BUILT §8). Discrete events off the
     // continuous phases this tick just computed. All suppressed in
@@ -24004,7 +24100,6 @@ window.__clock = {
   get barrelWindTurns() { return barrelWindTurns; },
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },
   get crownRotation() { return crownRotation; },
-  get windPathRot() { return windPathRot; },
   get setPathRot() { return setPathRot; },
   // §35: setPathRot for ONE minute-wheel revolution — the handSet axis's span
   // (minuteArborSpin = setPathRot·windPinion/minuteWheel, so one rev needs the inverse ratio)
@@ -24055,7 +24150,7 @@ window.__clock = {
   setFocusUnit(name) { if (name) setFocus(name); else clearFocus(); },
   resetInputs() {
     crownRotation = 0; lastCrownRotation = 0;
-    windPathRot = 0; setPathRot = 0; windAccumTurns = 0;
+    windStemSlip = 0; setPathRot = 0;
     autoWindRemaining = 0;
     jumpCorr = 0; jumpDisp = null;
     alarmCrownRotation = 0;
@@ -24093,8 +24188,11 @@ window.__clock = {
     if (p.tau !== undefined) tauIntegrated = p.tau;
     if (p.crownPullT !== undefined) { crownPullT = p.crownPullT; crownOut = p.crownPullT > 0.5; }
     if (p.leverEngage !== undefined) leverEngage = p.leverEngage;
+    // §47: tension is the ONE winding knob — the fusee/spur/square/knob all
+    // derive from the bank it sets (windAccumTurns, which this branch used to
+    // pose separately, no longer exists; a stale key in an old probe is
+    // simply ignored). Clamped 0..1: the arrest's own bound, restated.
     if (p.tension !== undefined) barrelWindTurns = clamp(p.tension, 0, 1) * RESERVE_BARREL_TURNS;
-    if (p.windAccumTurns !== undefined) windAccumTurns = p.windAccumTurns;
     if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
     if (p.alarmCrownRotation !== undefined) { // §24 alarm axis — poses "crown wound to here in SET mode"
       alarmCrownRotation = p.alarmCrownRotation;

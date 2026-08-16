@@ -736,21 +736,21 @@ export const AXES = [
   {
     name: 'beat',
     n: 96,
-    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
     name: 'crown',
     n: 48,
-    pose: (f) => ({ tau: 0.05, crownPullT: f, leverEngage: f, tension: 1, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: 0.05, crownPullT: f, leverEngage: f, tension: 1 }),
   },
   {
     name: 'reserve',
     n: 60,
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f }),
   },
   {
     // TODO 38 W4 — the GOING WIND, closing the item's last tranche: before
-    // this axis `windAccumTurns` was pinned 0 everywhere, so the whole
+    // this axis the winding pose was pinned at full everywhere, so the whole
     // winding chain — crown wheel, ratchet, click, the fusee turning
     // BACKWARD, the chain re-wrapping upward, the maintaining detent riding
     // its saw — was swept in exactly one direction, the one it travels while
@@ -760,11 +760,12 @@ export const AXES = [
     // the part made) — a monotone wind axis would cover the states and still
     // leave the fusee's genuine two-way drive unobserved, exactly the
     // §48-population gap whose retired declarations name this axis as their
-    // way back in. tension and windAccumTurns move as the COUPLED pair they
-    // are (rule 2): winding IS what re-tensions the spring, and the span is
-    // read live (`fuseeWrapTurns` = reserveHours over the first mesh's
-    // ratio — 1.75 at the default spec since §124) so a `?reserveh=` boot
-    // sweeps the wind that spec performs.
+    // way back in. §47 collapsed the pair this axis used to move by hand
+    // (tension + windAccumTurns): the fusee's angle is DERIVED from the bank
+    // now, so one knob sweeps the coupled motion by law, the span still
+    // reading live off the spec (`fuseeWrapTurns` inside the clock's own
+    // pose law) — a `?reserveh=` boot sweeps the wind that spec performs,
+    // and no caller can de-couple the pair again.
     // n: the train axis's own standard is 96 samples per fusee revolution
     // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
     // the pre-§124 3.75 rev each way at that density was 360 + 360 = 720,
@@ -776,14 +777,7 @@ export const AXES = [
     // derivation, priced by measurement, per the item's own rule.
     name: 'wind',
     n: 720,
-    pose: (f, clock) => {
-      const w = 1 - Math.abs(2 * f - 1);
-      return {
-        tau: 0.13, crownPullT: 0, leverEngage: 0,
-        tension: w,
-        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 1.75),
-      };
-    },
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
   },
   {
     // One full revolution of the FUSEE arbor — catches slow-orbit collisions
@@ -799,7 +793,7 @@ export const AXES = [
     // §48 restoring audit's stale rule caught the declaration it orphaned.
     name: 'train',
     n: 96,
-    pose: (f, clock) => ({ tau: f * (clock?.hoursPerFuseeTurn ?? 120 / 7) * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f, clock) => ({ tau: f * (clock?.hoursPerFuseeTurn ?? 120 / 7) * 3600, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
     // One full star pitch (60 s of movement time — the star turns 2° per
@@ -810,7 +804,7 @@ export const AXES = [
     // this pair through a real point→valley→point cycle.
     name: 'jumperEngage',
     n: 120,
-    pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1 }),
   },
   {
     // §35 postmortem: HAND-SETTING is the only input that spins the keyless
@@ -822,7 +816,7 @@ export const AXES = [
     name: 'handSet',
     n: 120,
     pose: (f, clock) => ({
-      tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1,
       setPathRot: f * (clock ? clock.setPathPerMinuteWheelRev : 0),
     }),
   },
@@ -841,7 +835,7 @@ export const AXES = [
     // alarmCrownPullT: 1 — crown-sense swap: SET is the pulled-out path now.
     // (setPose(alarmCrownRotation) writes the set path directly, so the sweep
     // itself is clutch-independent; the pose records the honest state.)
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }),
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }),
   },
   {
     // A whole wind of the alarm barrel (§25): the barrel unwinds its full
@@ -861,7 +855,7 @@ export const AXES = [
     // the sweep runs with the brake lever LIFTED, exactly as the real ring
     // does (an engaged pad under a spinning collar would be a false dig).
     pose: (f, clock) => ({
-      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       alarmStrikePhase: f * (clock ? clock.alarmStrikesPerWind : 28),
       alarmOn: 1, alarmReleased: 1,
     }),
@@ -903,7 +897,7 @@ export const AXES = [
     name: 'alarmWind',
     n: 109,
     pose: (f, clock) => ({
-      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       alarmWindRotation: f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
       alarmOn: 0, alarmReleased: 0, alarmCrownPullT: 0,
     }),
@@ -936,7 +930,7 @@ export const AXES = [
     name: 'alarmToggle',
     n: 48,
     pose: (f) => ({
-      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       alarmOn: f > 0.25 && f < 0.75 ? 1 : 0,
     }),
   },
@@ -2393,7 +2387,7 @@ function resolveNode(clock, allUnits, name) {
 }
 
 export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GRAPH.support } = {}) {
-  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 });
+  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   clock.scene.updateMatrixWorld(true);
   const allUnits = collectUnits(clock, { includeExcluded: true });
   const rows = [];
@@ -2544,7 +2538,7 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   // EXCLUDED_UNITS (e.g. 'Dial', 'Power reserve' — left out of the overlap
   // sweep for milestone 1) that are still perfectly valid anchor targets, so
   // this looks them up from the unfiltered set rather than `units`.
-  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 });
+  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   const allUnits = collectUnits(clock, { includeExcluded: true });
   const anchorFailures = [];
   for (const spec of MECH_GRAPH.anchors) {
@@ -3314,13 +3308,13 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
 // Both parities of the toggle, posed exactly. tau/crown/tension pins match
 // the fingerprint's rest pose so the run is measured on canonical geometry.
 const ALARM_HANDOFF_POSES = [
-  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0, alarmCrownPullT: 0 }],
-  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmCrownPullT: 0 }],
+  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 0 }],
+  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmCrownPullT: 0 }],
   // §45 — the SETTING parity: alarm crown pulled, disarmed. The release run
   // (collar → lifter → sleeve → tail pin) must measure closed here, and the
   // sleeve must measure FREE of the pin at both crown-in parities — riding
   // must not feel the sleeve.
-  ['setting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0, alarmCrownPullT: 1 }],
+  ['setting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 1 }],
 ];
 // The run as §35 states it, one row per claimed hand-off, in drive order.
 // A `missing` row is a member the claim requires that has no geometry at all
@@ -5691,7 +5685,7 @@ export function checkEqualisation(clock) {
     // the tolerance a statement about dt granularity (0.5%), not about
     // drain drift.
     const gapBy = (phase) => {
-      clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmStrikePhase: phase, alarmOn: 1, alarmReleased: 1 });
       const p0 = clock.alarmStrikePhase, w0 = clock.alarmBarrelWind;
       let t = 0;
@@ -5989,31 +5983,31 @@ export function startAll(clock, opts = {}) {
 // re-stratified centre, crisp heart, physical trip) moved the geometry to
 // this value deliberately, step by verified step.
 const FINGERPRINT_POSES = [
-  { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
-  { tau: 8 * 3600 * 0.37, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
-  { tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1, windAccumTurns: 0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4, windAccumTurns: 0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmStrikePhase: 7.3 },
+  { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 },
+  { tau: 8 * 3600 * 0.37, crownPullT: 0, leverEngage: 0, tension: 1 },
+  { tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownRotation: 2.0 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmStrikePhase: 7.3 },
   // §25 C: ARMED with the tube split from the hour wheel — poses the follower
   // mid-ride on the heart, the one configuration the other poses never reach.
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0, alarmOn: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownRotation: 2.0, alarmOn: 1 },
   // §25 C/D inputs added after the original list (the rule above demands a
   // pose per force input, or its path's refactors go unguarded):
   // — the alarm crown pulled to the SET position (the stem slid one throw,
   //   the sliding bevel at the setting corner);
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownPullT: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownPullT: 1 },
   // — mid-RING: armed, released, part-wound — the brake lever lifted off the
   //   collar, the column wheel in a gap, the striker mid-cycle.
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 5.2 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 5.2 },
   // — §99: WOUND AT REST — the state class the wound-arbor split created
   //   (wind and phase independent: a full ribbon over a parked striker).
   //   The arbor stands a full 1.75 turns from its run-down angle, the click
   //   parked on a different tooth, the ribbon at coil bind — none of which
   //   any pose above reaches, and the wind path's refactors go unguarded
   //   without it (the list's own rule).
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmBarrelWind: 1.75 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmBarrelWind: 1.75 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,

@@ -33,7 +33,13 @@ let serverAvailable = LOOPBACK.includes(location.hostname);
 let known = false;          // does a saved state currently exist (either store)?
 
 const defaultState = {
-  barrelWindTurns: 3.75,
+  // Full wind at the DEFAULT spec: 30 h reserve / (120/7 h per barrel turn)
+  // = 1.75 turns (§124 re-geared the mesh; the 3.75 that sat here was the
+  // pre-§124 full wind, so every fresh visitor booted 2.14× over-wound).
+  // This module can't import the spec, so the restore in main.js clamps to
+  // the live RESERVE_BARREL_TURNS — under a ?reserveh= boot that clamp, not
+  // this literal, is the real guard (§47).
+  barrelWindTurns: 1.75,
   tauIntegrated: 0,
   crownRotation: 0,
   // The jumper's folded snap correction. crownRotation alone restores the
