@@ -5621,3 +5621,39 @@ the §51 pattern:** either the plate rises (its underside is set by
 `TQ_MEASURED_MAX` against the hairspring stack — the binding part is
 named, so the cost is priced) or the cone's band drops. Re-measure with
 the same law after either move.
+
+## 51. The winding arrest's finger fouls two neighbours it should clear
+
+`expectedContacts` (the per-contact floors over EXPECTED pairs, TODO 6's
+instrument) measures the §126 arrest against two of its own declared pairs
+at **min 0** — genuine contact where the row asks for `CLEAR_MARGIN`, with
+the declared working contacts excluded. Both are POSITION-space defects in
+the finger's own members, not in the arrest's mechanics: the beak⇄lug
+hand-off, the pad⇄coil hand-off, the penetration budgets, the stock floors
+and the intra-unit joints are all green, so the mechanism holds and its
+accommodation does not.
+
+**Row one — `windArrestBeakArm ⇄ chainRun`, at beat f=0 (full wind).** The
+arm's ends both stand outside the wrap's reach; the SEGMENT between them
+does not. A straight bar between two clear points dips closer to the axis
+than either end, and `ARM_STOP_R` is derived from the wrap's reach at the
+arm's band and then applied only to the riser's station — so the chord
+crosses the coil the endpoints avoid.
+
+**Row two — `windArrestPad ⇄ windArrestLug`, at reserve f=0.6333.** The
+finger's band is set under the BRACKET (`HUB_Z2 = BRK_BOT − PIN_GAP`), but
+the pad rides at that band and the lug sweeps past it once per cone turn,
+so the lug's orbit is the second ceiling and it is the lower one: measured,
+0.035 separates them where the pair's row asks 0.15.
+
+**The fix, both in position space (P3 — never out of the mechanism).**
+Row one: solve the riser's station against the arm's CHORD-minimum radius
+rather than its endpoints, flanks included. Row two: take the finger's band
+as `min(BRK_BOT − PIN_GAP, LUG_Z1 − CLEAR_MARGIN)` so whichever ceiling is
+lower wins. Both were attempted together in one pass and REVERTED unbuilt:
+each moves `padZMid`, which moves the wall lean, the rest radius and the
+stud — and the beak-azimuth scan then found no candidate at all. That is
+the honest shape of the work: the two ceilings must be folded into the
+azimuth solve as constraints it searches under, the way the webs, the
+window rim and the drum's reach already are, rather than applied to a
+geometry the solve has already fixed.
