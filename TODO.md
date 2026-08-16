@@ -5655,6 +5655,16 @@ silent: three build asserts hold the table's two ends to the stroke's two
 ends (free at the retracted stand-off, shut at the seat) and hold it
 monotone.
 
+`node tools/ci-battery.mjs` locally: **20/20 gates pass**, 1973.1 s over
+2 shards — including `sweptOverlap` 0 CONFIRMED (67911 pairs, tight 3,
+refuted 21), `clearances` 0 violations, `inspection` 0 FORBIDDEN,
+`restoring` 0 unwaived, the identity spec point silent, and the
+fingerprint deterministic across virgin boots at 1450081387. The pose net
+now exercises this law rather than sleeping through it: the `crown` axis
+poses `crownPullT` directly, and because the new law needs no dt, the cam
+actually reaches its reset positions under `setPose` — poses the old ease
+could not produce at all.
+
 ### What this does NOT close
 
 - The seat's own **penetration budget** is untouched: `Heart cam ⇄ Reset
