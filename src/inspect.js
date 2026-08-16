@@ -6064,8 +6064,22 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§126 — the winding arrest's own unit and its lug on the cone;
+// Baseline (§126 + TODO 51 — the winding arrest and its accommodation;
 // 53 units, 11 poses):
+// 3145260817
+//   moved from 2414545422 deliberately: TODO 51 re-solves where the arrest's
+//   members STAND, without adding or removing one. The finger's plate drops
+//   to hang under the lug's orbit rather than the bracket's arm alone; both
+//   arms stop at a reach measured on the DISCRETE links and swept along their
+//   whole chord over the law's real travel, so their stations move outboard;
+//   the pad and beak tabs bridge back in, so PAD_T and BEAK_RAD are now the
+//   gaps they span; the pad's lean became a shear rather than a rotation; and
+//   `LUG_OUTER` is derived from the pivot ceiling √(Rb² + L_max²) instead of
+//   borrowing the chain's proudness, which moves the lug on the cone. The
+//   unit count is unchanged at 53 — nothing was added, everything was
+//   re-sited. Measured by the battery's own double-boot gate.
+// Previous baseline (§126 — the winding arrest's own unit and its lug on the
+// cone; 53 units, 11 poses):
 // 2414545422
 //   moved from 2163870811 deliberately: §126 adds the 'Winding arrest' unit
 //   (bracket, stud, finger, pad, beak, riser, blade and its post) and a lug
