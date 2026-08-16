@@ -3292,14 +3292,29 @@ const PENETRATION_BUDGETS = [
       unitB.obj.traverse((o) => { if (!chain && o.isMesh && o.name === 'chainRun') chain = o; });
       if (!pad || !chain) return 0;
       pad.updateWorldMatrix(true, false); chain.updateWorldMatrix(true, false);
+      // TODO 51 — the tab's SHEAR, undone. Its lean is baked into the
+      // geometry (a shear cannot ride a parent group without every BVH
+      // distance query measuring in a sheared frame), so `geometry.boundingBox`
+      // is a box the solid only half fills, and its empty corners would read
+      // as metal — the same over-read the parent-group note above records,
+      // arriving by the other route. The builder therefore publishes the
+      // PRE-shear extents and the shear it applied; un-shearing the point
+      // makes the box exact about the real solid again. Parts without the
+      // declaration are unsheared and keep the geometry's own box.
+      const fit = pad.userData.fitBox;
       if (!pad.geometry.boundingBox) pad.geometry.computeBoundingBox();
-      const bb = pad.geometry.boundingBox;
+      const bb = fit
+        ? { min: { x: fit.min[0], y: fit.min[1], z: fit.min[2] },
+          max: { x: fit.max[0], y: fit.max[1], z: fit.max[2] } }
+        : pad.geometry.boundingBox;
+      const shear = pad.userData.fitShearYZ || 0;
       const inv = _mat.copy(pad.matrixWorld).invert().multiply(chain.matrixWorld);
       const pos = chain.geometry.attributes.position;
       const v = new THREE.Vector3();
       let worst = 0;
       for (let i = 0; i < pos.count; i++) {
         v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(inv);
+        v.y -= v.z * shear;
         if (v.x < bb.min.x || v.x > bb.max.x || v.y < bb.min.y || v.y > bb.max.y
           || v.z < bb.min.z || v.z > bb.max.z) continue;
         const d = Math.min(v.x - bb.min.x, bb.max.x - v.x, v.y - bb.min.y, bb.max.y - v.y,
