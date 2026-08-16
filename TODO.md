@@ -23,7 +23,7 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
-| 15 | PART CLOSED | Winding + setting chains closed; two sites remain |
+| 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, is measured and carried by item 48 |
 | 16 | PART CLOSED | One item deliberately left, recorded in place |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
@@ -33,6 +33,13 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
 | 46 | CLOSED (§124) | The chain rode the fusee base on one CORNER (1.9–2.5 u of daylight, invisible to the burial-only row). Closed by the layout: first stage re-geared 8:1 → 120/7 so the fusee runs 1.75 wraps over 2 grooves at pitch 1.389, set-up 17 → 23 clicks, level product held; links LEAN to the flank on the funded FUSEE_TILT_Z raise. Ideal torque law exact again; the new float row gates the seat at 0.202 unwaived (was 3.191 waived) |
+| 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
+| 48 | OPEN | Both power-reserve meshes measured 47–49% of a pitch off anti-phase — tooth on tooth. TODO 15's last `Math.PI / teeth` site but its own item now, because two more findings ride with it: the gap gauge's threshold misreads an 8-leaf pinion, and the train is posed backwards from its hand |
+| 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
+| 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
+| 51 | OPEN | The §126 arrest's finger fouls two neighbours in POSITION space (`expectedContacts`, 2 rows). The mechanism is green through both hand-offs; a first fix attempt is measured in the item, including why it was reverted |
+| 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
+| 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -1740,7 +1747,12 @@ declared teeth, or weak resultant), loudly — a skipped chain is a boot
 warning, not a silent fallback.
 
 **Remaining sites, still `Math.PI / teeth`:** the power-reserve pair
-(4870–4871) and the alarm branch idler i1b (5696). Same fix shape: name
+and the alarm branch idler i1b (the line numbers this once quoted have long
+moved; grep the idiom). The power-reserve half is now MEASURED — 47–49% of
+a pitch off anti-phase at three winds — and has its own item, **48**, which
+also carries two findings this item's machinery could not have surfaced: the
+gap gauge's min-to-max threshold misreads an 8-leaf pinion, and that train's
+angles are solved backwards from its hand. Same fix shape: name
 the chain, pick the datum, call `solveGearChain`. Also note i1b shares an
 arbor with setting i1, whose phase the solve now moves — if the two are
 meant to be one rigid part, their relative phase is a constraint nobody
@@ -5535,7 +5547,273 @@ envelope" — stays: it is the torque law's honest anchor, and (a) preserves
 it exactly (a tilted stack's centreline still rides the envelope; only the
 stack's ATTITUDE changes).
 
-## 47. The fusee end of the chain is hooked to nothing
+---
+
+## 47. CLOSED — the heart cam turned before the roller reached it
+
+Reported by eye from the running sim: pull the crown and **the heart cam
+starts moving while the reset hammer is still travelling toward it**. The
+seconds hand is already a third of the way home before anything touches
+the cam.
+
+The cause was in the tick law, not in the geometry. The cam's angle is
+carried by `secondsZeroRef` (the display arbor is friction-slipped, so
+"camming to zero" re-references the small-seconds hand rather than
+back-driving a locked train — that part is sound and unchanged). But
+where that reference LANDED was:
+
+```js
+if (leverEngage > 0.001) {
+  secondsZeroRef += Math.round(...) * 2 * Math.PI;               // whole turns out
+  secondsZeroRef += (fourthA - secondsZeroRef) * leverEngage
+                    * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));     // ease the rest
+}
+```
+
+Both halves are the same mistake in the same direction. The **gate** opens
+on the first frame of the crown's travel — `leverEngage` is an eased
+0→1 ramp on the crown, not a contact — and the **rate** is scaled by
+`leverEngage` rather than by any distance, so the cam is driven hardest
+exactly while the hammer is still in the air. Measured on the shipped
+easing (60 fps, crown pulled at t = 0):
+
+| t (s) | hammer through its stroke | cam through its reset |
+|---|---|---|
+| 0.017 | 11.5% | **3.1%** |
+| 0.083 | 49.2% | **33.4%** |
+| 0.150 | 72.5% | 66.1% |
+
+Nothing was touching the cam for the first third of that. This is a
+simulation fiction of the exact kind the README's vocabulary exists to
+name: the reset was *modelled* (there is a hammer, a roller, a cut heart)
+and animated on a time constant, not *simulated* — no force path, and the
+one number that decided the motion was a UI ramp.
+
+### CLOSED — the law is the contact
+
+`heartFreeAngleAt(d)` (in `main.js`, beside the hammer's build) answers
+the only question the tick law needs: with the roller's CENTRE standing
+`d` from the cam axis, how far may the heart's notch stand off the
+roller's azimuth before the two are in each other? Then each tick:
+
+- solve the hammer's rotation from the setting-lever post through the rod
+  (unchanged — it was already a real four-bar), and take the roller's
+  centre from it;
+- if the heart stands further off its notch than the profile allows at
+  that distance, put it back on the profile, moving |θ| DOWN — the
+  shortest path, which is why a heart cam can never be driven more than
+  half a turn however long the watch has run. (The old `2πk`
+  renormalisation existed to impose that bound on a residual that had no
+  such bound; the new law is modulo by construction.)
+- otherwise leave it alone. The cam holds perfectly still under a parked
+  hammer, and holds where the hammer left it when the crown goes back in.
+
+Nothing is eased: the snap's speed is the hammer's own travel. That also
+makes it exact under `setPose`'s zero-dt path, where the old ease could
+not move at all — posing `crownPullT: 1` used to seat the hammer through
+a cam that had not been reset, i.e. straight into the lobe.
+
+**Three things were derived on the way, each of which changed a number:**
+
+1. **Tangency, not a radial reading.** Solving the profile RADIUS along
+   the roller's centre ray is one line and is wrong by the angle between
+   that ray and the surface normal: measured, it buries the roller 0.08
+   into the flank mid-ride — 11% of the roller. The shipped solve is the
+   real one (largest offset angle at which the roller's circle still
+   clears every point of the outline), run once at BUILD time into a
+   256-step table over the stroke and read back by interpolation, so no
+   per-frame minimisation happens.
+2. **The inside/outside sign is the whole check.** Distance to the
+   outline alone reports a roller centre buried in the lobe as 1.6 clear
+   of the far edge — the first pass declared the heart free to turn at
+   the seat and the cam never moved at all. The heart is star-shaped
+   about its axis, so the test is one radius comparison at the roller's
+   own azimuth.
+3. **The bevel is a distance, not a radius.** Extrude dilates the outline
+   along its own NORMAL. Adding `bevel` to r(θ) agrees with the mesh only
+   where that normal is radial — the notch and the lobe tip, which are
+   exactly the two places the mesh was measured, so the radial model
+   looked verified. On the flanks the normal leans up to 27° off radial,
+   and the residue was 0.001 of roller-in-flank that no table resolution
+   moved. The beveled body is the Minkowski sum of the cut outline with a
+   disc of radius `bevel`, so the solve measures against the UNBEVELED
+   curve and subtracts `bevel` with the roller's radius.
+
+### Verified — `tools/probe-reset-contact.mjs`
+
+An INDEPENDENT gap: the roller's centre from the hammer's own world
+matrix, the heart's outline from its mesh VERTICES, so nothing in the
+check goes through `heartFreeAngleAt`. Six cam phases round the turn,
+each pulled and pushed through the shipped easing:
+
+```
+reference moved while the roller was clear: 0/6
+reference drifted after the hammer lifted:  0/6
+roller buried past the faceting band:       0/6
+seat did not zero the hand (±0.02 s):       0/6
+```
+
+Closest approach through the whole ride reads |gap| ≤ 1e-4 against a
+faceting band of ±0.018 (the roller is a 14-gon inscribed in its radius),
+i.e. the two ride tangent from first touch to the seat. Boot stays
+silent: three build asserts hold the table's two ends to the stroke's two
+ends (free at the retracted stand-off, shut at the seat) and hold it
+monotone.
+
+`node tools/ci-battery.mjs` locally: **20/20 gates pass**, 1973.1 s over
+2 shards — including `sweptOverlap` 0 CONFIRMED (67911 pairs, tight 3,
+refuted 21), `clearances` 0 violations, `inspection` 0 FORBIDDEN,
+`restoring` 0 unwaived, the identity spec point silent, and the
+fingerprint deterministic across virgin boots at 1450081387. The pose net
+now exercises this law rather than sleeping through it: the `crown` axis
+poses `crownPullT` directly, and because the new law needs no dt, the cam
+actually reaches its reset positions under `setPose` — poses the old ease
+could not produce at all.
+
+### What this does NOT close
+
+- The seat's own **penetration budget** is untouched: `Heart cam ⇄ Reset
+  hammer` is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, so
+  it still takes item 6's blanket excuse. The measurement above is what a
+  floors row for it would gate; seeding one is item 6's work.
+- The hammer is still driven **only** by the crown. Real chronograph
+  reset is a spring-driven fall released by a lever; here the rod pushes
+  it both ways, which §48's audit accepts as "driven both ways" (see
+  TODO 43 on why the four reset-linkage units left the reciprocator
+  population). That is a different claim from this item's.
+
+---
+
+---
+
+## 48. The power-reserve train's two meshes sit tooth ON tooth — measured, 47–49% of a pitch off
+
+Reported by eye from the running sim: **the power-reserve train's gear
+meshes don't engage each other.** They do not interleave — a tooth of one
+wheel meets a tooth of the next on the line of centres, where a gap
+should be.
+
+This is the last un-fixed instance of TODO 15's idiom (that item named it
+as one of two remaining sites, from code reading and screenshots). It is
+now MEASURED, by an instrument written not to share TODO 15's machinery:
+`tools/probe-reserve-mesh.mjs` re-implements the gap gauge and reads the
+built scene.
+
+```
+pose           mesh      credible  gaps      confidence      off anti-phase   centre dist
+full wind      p0 ⇄ w1   true      [8,28]    [1,0.9999]         47.18%          6.12
+full wind      p1 ⇄ w2   true      [10,12]   [1,1]              48.94%          8.4888
+tension 0.55   p0 ⇄ w1   true      [8,28]    [1,0.9999]         47.09%          6.12
+tension 0.55   p1 ⇄ w2   true      [10,12]   [1,1]              48.94%          8.4888
+tension 0.17   p0 ⇄ w1   true      [8,28]    [1,0.9999]         47.18%          6.12
+tension 0.17   p1 ⇄ w2   true      [10,12]   [1,1]              48.89%          8.4888
+```
+
+0% is a tooth into a gap; **50% is tooth onto tooth**. Both meshes sit
+within 3% of the worst value it is possible to have, and the reading is
+stable across three winds — the SUM invariant `frac(uP + uQ) = 0.5` is a
+property of the mesh, so a static build-phase error reads the same at
+every pose (which is also what makes these three rows evidence rather
+than one lucky sample).
+
+**The centre distances are exactly right** — 6.12 against the stage-one
+pitch-circle sum 0.34·(8+28)/2, and 8.4888 against stage two's, both by
+construction from `rsvModule0`/`rsvModule1`. The wheels reach each other
+perfectly. Only the phase is wrong, which is why every clearance sweep
+has always been green here: two gears meshing out of phase sweep exactly
+the same volumes as two meshing correctly.
+
+**The site is two lines** (`src/main.js`, at the reserve train's build):
+
+```js
+// Half-tooth mesh phasing so teeth interleave rather than clash at rest.
+rsvWheel1.rotation.z = Math.PI / rsvTeethW1;
+rsvWheel2.rotation.z = Math.PI / rsvTeethW2;
+```
+
+Half of the wheel's OWN angular pitch, with no reference to the line of
+centres to its neighbour — and the comment states the intent the code
+cannot express. The train's line of centres runs barrel → w1 station →
+sub-dial pivot at arbitrary azimuths, so a phase measured from local +x
+is right only by coincidence.
+
+### What closing this looks like
+
+`solveGearChain(label, chain, module)` is already in `main.js` and is
+written to be reusable — it measures each wheel's world tooth direction
+from its VERTICES and the sign of its response to `rotation.z` by
+bumping it, so frames, mirroring and the `dialFace` Y-flip need no hand
+reasoning, and it refuses to solve on a reading whose gap count
+disagrees with the declared tooth count. Point it at this train:
+
+- the chain is **p0 → w1 → p1 → w2**, four wheels and *three* links, not
+  two independent pairs. w1 and p1 are one rigid arbor, so solving w1
+  against p0 fixes p1's phase too — their relative phase is a
+  CONSTRAINT (they are turned from one blank), and the solve must move
+  the pair together rather than phasing p1 freely. TODO 15 flagged the
+  same question for the alarm's i1/i1b and never answered it; this train
+  is where it has to be answered, because here the two wheels are
+  unambiguously one part.
+- the datum is **p0**: it is slip-coupled to the barrel arbor and has no
+  upstream mesh of its own.
+- `solveGearChain` takes ONE module for its centre-distance tripwire, and
+  this train has two (`rsvModule0` for stage one, the solved
+  `rsvModule1` for stage two). Either pass the module per link or run it
+  twice with the arbor pair held; do not paper over it by passing one
+  module and accepting a false tripwire.
+
+**Two instrument findings came out of measuring this, both worth keeping:**
+
+1. **The gap gauge's threshold does not survive a small pinion.**
+   `measuredToothPhase` thresholds the silhouette midway between its
+   smallest and largest populated bin. On the 8-leaf `reservePinion0` a
+   handful of bins see only bore geometry, the floor collapses from the
+   root radius 1.04 to 0.51, the threshold lands INSIDE the root land and
+   the gauge returns **56 gaps for 8 teeth at 0.94 confidence** — a bad
+   reading wearing a credible confidence, which is the one failure mode
+   the four-gauge history was supposed to have retired. The probe uses
+   the 10th/90th percentiles of the populated bins instead, which reads
+   every wheel in this train correctly. **`measuredToothPhase` in
+   `main.js` still has the min-to-max threshold.** `solveGearChain`'s
+   credibility test does catch it — 56 ≠ 8 refuses the reading and skips
+   the chain loudly, which is the right failure — but that refusal is
+   exactly what will block this fix on its first run, so the threshold has
+   to move in the same landing. Note which half of the test did the work:
+   the confidence was **0.94**, so the `conf > 0.9` half would have passed
+   this garbage on its own, and only the gap count caught it. A gauge whose
+   two credibility signals disagree that far is one to distrust until it is
+   fixed.
+2. **The train is posed from its OUTPUT, not driven from its input** —
+   standing rule 2, in `tick()`:
+
+   ```js
+   reserveShown = tension;
+   reserveHand.rotation.z = (90 - reserveShown * RESERVE_SWEEP_DEG) * DEG2RAD;
+   const rsvOut = -reserveHand.rotation.z;
+   rsvArbor2.rotation.z = rsvOut;
+   rsvArbor1.rotation.z = -rsvOut * (rsvTeethW2 / rsvTeethP1);
+   rsvArbor0.rotation.z = -rsvArbor1.rotation.z * (rsvTeethW1 / rsvTeethP0);
+   ```
+
+   The HAND is written first, from `tension`, and the three arbors are
+   solved backwards through the ratios to agree with it. The ratios are
+   the real ones and the resulting angles are numerically the same as
+   driving forward would give, so this is not a wrong picture — it is a
+   wrong DIRECTION, the same shape as TODO 20's arming run being posed
+   from its output. Forward is available and cheap: p0 is slip-coupled to
+   the barrel arbor, so `rsvArbor0` should take the barrel's own angle
+   and the hand should ARRIVE at the far end. Doing that first also makes
+   the phase solve honest — it is hard to argue a mesh interleaves
+   correctly when the wheels' angles are computed from the wrong end of
+   it.
+
+Both halves belong in one landing: fixing the phase without fixing the
+direction leaves a correctly-cut mesh whose two wheels are still told
+where to be by the pointer they are supposed to drive.
+
+---
+
+## 49. The fusee end of the chain is hooked to nothing
 
 **What the model claims.** `MECH_GRAPH.support` carries
 `['Chain', 'Fusee & great wheel']`, and the comment beside it says the
@@ -5566,7 +5844,9 @@ re-measure at the bottom station.
 
 **Filed by §47's scope guard**, which named it rather than absorbing it.
 
-## 48. The going stem's one-way has no metal
+---
+
+## 50. The going stem's one-way has no metal
 
 §47 collapsed the winding path onto the banked reserve, so every wheel
 from the crown wheel inward now poses from `barrelWindTurns` and the
@@ -5587,40 +5867,7 @@ scan, and the bank taken out of stored state the way `settleAlarmClick`
 takes the alarm's give-back — after which `windStemSlip` is a consequence
 of a modelled contact rather than a bookkeeping term.
 
-## 49. `setPathRot` is not persisted, so the setting train re-phases on reload
-
-The sibling of the defect §47 closed. `barrelWindTurns` is saved and the
-winding train's angles are derived from it, so a reload lands the fusee,
-spur and let-down square exactly where they were. The SETTING path still
-accumulates `setPathRot`, which `captureState()` does not emit and
-`sanitize()` does not whitelist — so the keyless minute wheel and
-everything it drives snap back to base phase on every reload, while
-`crownRotation` restores. The hands do not jump (the jumper's `jumpCorr`
-covers the display), which is exactly why it has stayed invisible.
-
-**The fix, in §47's own shape:** prefer DERIVING over persisting. If the
-setting train's angle is a function of a quantity already saved, derive it
-and delete the state; if it genuinely is not, persist `setPathRot`
-alongside `crownRotation` and clamp it on restore.
-
-## 50. Chain ⇄ three-quarter plate is 0.117, under the shared margin
-
-§47 owed this measurement and took it: nothing in the battery had ever
-measured the gap between the top coil at full wind and the plate's
-underside, and the arrest needed the number to know whether anything could
-pass over the coil. Measured over the discrete link layout the mesh
-actually lays: **0.117**, against `CLEAR_MARGIN` 0.15. The build asserts
-the SIGN (contact is the regression) and publishes the number as
-`WIND_ARREST.chainTqGap`; the margin itself is not met.
-
-It is not a collision and nothing rides there — the arrest's own members
-keep clear of it by construction. But it is a declared clearance the
-movement does not honour at its tightest station, and it bounds anything a
-future entry might want to run over the cone. **The fix is z, and it is
-the §51 pattern:** either the plate rises (its underside is set by
-`TQ_MEASURED_MAX` against the hairspring stack — the binding part is
-named, so the cost is priced) or the cone's band drops. Re-measure with
-the same law after either move.
+---
 
 ## 51. The winding arrest's finger fouls two neighbours it should clear
 
@@ -5691,3 +5938,42 @@ should fold the chain-reach constraint into the AZIMUTH SOLVE** — beside
 the webs, the window rim and the drum's reach, which it already searches
 under — so the stud, the arms and the tabs are chosen together rather than
 in sequence.
+
+---
+
+## 52. `setPathRot` is not persisted, so the setting train re-phases on reload
+
+The sibling of the defect §47 closed. `barrelWindTurns` is saved and the
+winding train's angles are derived from it, so a reload lands the fusee,
+spur and let-down square exactly where they were. The SETTING path still
+accumulates `setPathRot`, which `captureState()` does not emit and
+`sanitize()` does not whitelist — so the keyless minute wheel and
+everything it drives snap back to base phase on every reload, while
+`crownRotation` restores. The hands do not jump (the jumper's `jumpCorr`
+covers the display), which is exactly why it has stayed invisible.
+
+**The fix, in §47's own shape:** prefer DERIVING over persisting. If the
+setting train's angle is a function of a quantity already saved, derive it
+and delete the state; if it genuinely is not, persist `setPathRot`
+alongside `crownRotation` and clamp it on restore.
+
+---
+
+## 53. Chain ⇄ three-quarter plate is 0.117, under the shared margin
+
+§47 owed this measurement and took it: nothing in the battery had ever
+measured the gap between the top coil at full wind and the plate's
+underside, and the arrest needed the number to know whether anything could
+pass over the coil. Measured over the discrete link layout the mesh
+actually lays: **0.117**, against `CLEAR_MARGIN` 0.15. The build asserts
+the SIGN (contact is the regression) and publishes the number as
+`WIND_ARREST.chainTqGap`; the margin itself is not met.
+
+It is not a collision and nothing rides there — the arrest's own members
+keep clear of it by construction. But it is a declared clearance the
+movement does not honour at its tightest station, and it bounds anything a
+future entry might want to run over the cone. **The fix is z, and it is
+the §51 pattern:** either the plate rises (its underside is set by
+`TQ_MEASURED_MAX` against the hairspring stack — the binding part is
+named, so the cost is priced) or the cone's band drops. Re-measure with
+the same law after either move.

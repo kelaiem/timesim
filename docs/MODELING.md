@@ -47,6 +47,21 @@ class (both members static, exactly what the mover/fixture split never
 compared); the derivation remains the stronger guard, because an instrument
 finds the defect after it is built and a derivation makes it uncuttable.
 
+**A bevel is a DISTANCE, and it only reads as a radius where the normal is
+radial.** `r(θ) + bevelSize` is the dilated outline exactly at a stationary
+point of `r` — a notch floor, a lobe tip — and short everywhere the profile
+slopes, by the cosine of the angle between the normal and the radial. The
+seconds-reset heart's flanks lean 27° off radial at their steepest, and a
+contact solved on `r(θ) + bevel` left a residual 0.001 of roller inside the
+flank that no amount of solver resolution moved (TODO 47). The trap is that
+the two models AGREE at the notch and the tip, which is where anyone
+verifying against the mesh naturally measures. The repair is to stop treating
+the bevel as part of the shape: the beveled body is the Minkowski sum of the
+cut outline with a disc of radius `bevelSize`, so its distance field is the
+outline's minus `bevelSize` — measure against the UNBEVELED curve and
+subtract. That form is also the one that composes, because the other body's
+own radius subtracts the same way.
+
 ### 2. Seat surface-to-surface, never center-to-surface
 
 When part A rests on part B, the formula must sum **both** parts' surface offsets

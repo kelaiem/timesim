@@ -1986,6 +1986,153 @@ movement.add(hammerGroup);
 registerExplode(hammerGroup, Z_SECONDS_ARBOR, 4);
 registerLabel('Reset hammer', hammerGroup);
 
+// --- What the roller may do to the heart, as geometry ----------------------
+// The reset is a POSITIVE action: the cam cannot move until the roller
+// reaches the metal, and after that it stands exactly where the roller has
+// pushed it. Both halves come out of one pair of expressions, shared by the
+// tick law and by the boot asserts below, so the ridden profile and the cut
+// one cannot drift apart (the §25 A cam convention).
+//
+// The roller centre rides at (0, hammerArmLen) in the lever's own frame —
+// the same point HAMMER_SWING_RAD's clearance solve and the low-corridor
+// footprint use.
+const hammerRollerAt = (rot) => ({
+  x: hammerPivotPos.x - Math.sin(rot) * hammerArmLen,
+  y: hammerPivotPos.y + Math.cos(rot) * hammerArmLen,
+});
+// The heart is cut to r(θ) = rMin + (R − rMin)·(1 − cos θ)/2 about its notch
+// (θ = 0), expanded by the extrude bevel in XY (MODELING.md rule 1 — measured
+// on this mesh: its widest ring reads R + bevel). heartFreeAngleAt answers the
+// only question the tick law needs of it: with the roller's CENTRE standing d
+// from the cam axis, how far may the heart's notch swing off the roller's
+// azimuth before the two are in each other?
+//
+// TANGENCY, not a radial reading. The cheap version — solve the profile
+// RADIUS along the roller's centre ray for d − rollerR — is one line and is
+// wrong by the angle between that ray and the surface normal: measured on
+// this pair, it buries the roller 0.08 into the flank mid-ride (11% of the
+// roller). So the answer is the real one: the largest offset angle at which
+// the roller's circle still clears every point of the cut outline. It is a
+// pure function of d (rotating both about the cam axis changes nothing), so
+// it is solved ONCE at build time into a table and read back by interpolation
+// — the precomputed-keyframe idiom the hairspring and the chain already use,
+// and the reason a per-frame minimisation never has to run.
+//
+// The BEVEL enters as a distance, not as a radius. Extrude dilates the
+// outline along its own normal, so adding `bevel` to r(θ) is only right where
+// that normal is radial — the notch and the lobe tip, which is exactly where
+// the mesh was measured and the two models agreed. On the flanks the normal
+// leans up to 27° off radial and the radial model reads short, which showed
+// up as a residual 0.001 of roller-in-flank that no table resolution moved.
+// Since the beveled body is the Minkowski sum of the cut outline with a disc
+// of radius `bevel`, its distance field is just the outline's, shifted: the
+// solve below measures against the UNBEVELED curve and subtracts bevel with
+// the roller's own radius.
+//
+// The table's two ends are the stroke's two ends, not two independent
+// numbers: at the retracted distance the answer must be π (the heart turns
+// freely under a parked hammer — HAMMER_SWING_RAD's own margin is what
+// guarantees it), and at hammerPivotDist − hammerArmLen it must be 0 (only
+// the notch fits, which IS the reset). Both are asserted below.
+const HEART_R = heartCam.userData.r, HEART_R_MIN = heartCam.userData.rMin;
+const HEART_BEVEL = heartCam.userData.bevel;
+const HAMMER_ROLLER_R = hammerLever.userData.rollerR;
+// The CUT outline, before the extrude's dilation (see above).
+const heartRadiusAt = (th) =>
+  HEART_R_MIN + (HEART_R - HEART_R_MIN) * (1 - Math.cos(th)) / 2;
+const [HEART_FREE_D0, HEART_FREE_D1, HEART_FREE_TABLE] = (() => {
+  const rollerDist = (rot) => Math.hypot(
+    hammerRollerAt(rot).x - P.fourth.x, hammerRollerAt(rot).y - P.fourth.y);
+  const d0 = rollerDist(hammerBaseAngle);                          // seated
+  const d1 = rollerDist(hammerBaseAngle + HAMMER_SWING_RAD);       // retracted
+  // Square distance from the roller's centre to the outline point at θ, with
+  // the notch standing `a` off the roller's azimuth. 360 samples of a curve
+  // whose radius varies by (R − rMin) over π is finer than the 96-segment
+  // polygon the mesh is actually built from, so the table cannot come out
+  // tighter than the metal.
+  const N_SCAN = 360;
+  const distSq = (d, a, th) => {
+    const r = heartRadiusAt(th);
+    const dx = r * Math.cos(th + a) - d, dy = r * Math.sin(th + a);
+    return dx * dx + dy * dy;
+  };
+  // SIGNED, and that sign is the whole check: distance to the outline alone
+  // reports a roller centre buried in the lobe as 1.6 clear of the far edge,
+  // which is how a first pass declared the heart free to turn at the seat and
+  // never moved it at all. The heart is star-shaped about its axis (r is
+  // single-valued in θ), so inside/outside is one radius comparison at the
+  // roller's own azimuth — with the roller at angle 0 and the notch at `a`,
+  // that radius is r(a), the profile being even in θ.
+  const clearance = (d, a) => {
+    let m = Infinity, best = 0;
+    for (let i = 0; i < N_SCAN; i++) {
+      const th = (i / N_SCAN) * Math.PI * 2;
+      const q = distSq(d, a, th);
+      if (q < m) { m = q; best = th; }
+    }
+    // REFINE, or the seat comes out slack. A scan alone overestimates the
+    // closest approach by the sag between samples, and at the notch — where
+    // the outline's curvature radius is 16.4 against a 0.7 roller — that sag
+    // reads as half a degree of play in a joint the pivot distance was
+    // solved to close exactly. Ternary search on the bracketing samples.
+    const step = (Math.PI * 2) / N_SCAN;
+    let lo = best - step, hi = best + step;
+    for (let it = 0; it < 40; it++) {
+      const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+      if (distSq(d, a, m1) < distSq(d, a, m2)) hi = m2; else lo = m1;
+    }
+    const sign = d > heartRadiusAt(a) ? 1 : -1;
+    return sign * Math.sqrt(distSq(d, a, (lo + hi) / 2)) - HEART_BEVEL - HAMMER_ROLLER_R;
+  };
+  // 256 steps: linear interpolation of a convex free(d) reads slightly LONG
+  // between samples, and that slack lands as roller-into-flank overlap. At 64
+  // it measured 0.0008 past the meshes' own faceting band; the error falls as
+  // 1/N², so this is the sample count that puts it under the polygons.
+  const N = 256;
+  const table = new Float64Array(N + 1);
+  for (let k = 0; k <= N; k++) {
+    const d = d0 + ((d1 - d0) * k) / N;
+    if (clearance(d, Math.PI) >= 0) { table[k] = Math.PI; continue; } // nothing touches anywhere
+    // Clearance falls monotonically as the notch swings off the roller, so
+    // the free angle is a plain bisection between "shut" and "clear".
+    let lo = 0, hi = Math.PI;
+    for (let it = 0; it < 24; it++) {
+      const m = (lo + hi) / 2;
+      if (clearance(d, m) >= 0) lo = m; else hi = m;
+    }
+    table[k] = lo;
+  }
+  return [d0, d1, table];
+})();
+const heartFreeAngleAt = (d) => {
+  const u = ((d - HEART_FREE_D0) / (HEART_FREE_D1 - HEART_FREE_D0)) * (HEART_FREE_TABLE.length - 1);
+  if (u <= 0) return 0;                                   // shut, and no closer than the seat
+  if (u >= HEART_FREE_TABLE.length - 1) return Math.PI;   // beyond the retracted stand-off
+  const i = Math.floor(u), f = u - i;
+  return HEART_FREE_TABLE[i] + (HEART_FREE_TABLE[i + 1] - HEART_FREE_TABLE[i]) * f;
+};
+{
+  // The two ends, read off the SOLVE rather than off the lookup (the lookup
+  // clamps at both, so asserting through it would agree with itself).
+  const T = HEART_FREE_TABLE, last = T.length - 1;
+  if (T[last] < Math.PI - 1e-9)
+    console.warn(`reset hammer: retracted, the roller still caps the heart at `
+      + `${(T[last] / DEG2RAD).toFixed(1)}° — the cam is not free while the watch runs `
+      + `(roller centre ${HEART_FREE_D1.toFixed(3)} from the cam axis, lobe reaches `
+      + `${(HEART_R + HEART_BEVEL).toFixed(3)})`);
+  if (T[0] > 1e-3)
+    console.warn(`reset hammer: seated, the heart may still stand ${(T[0] / DEG2RAD).toFixed(2)}° `
+      + `off its notch — the seat is not a zero (roller ${HAMMER_ROLLER_R.toFixed(3)} at `
+      + `${HEART_FREE_D0.toFixed(3)} from the cam axis)`);
+  for (let k = 1; k <= last; k++)
+    if (T[k] < T[k - 1] - 1e-6) {
+      console.warn(`reset hammer: the free-angle table falls back at sample ${k} `
+        + `(${(T[k - 1] / DEG2RAD).toFixed(2)}° → ${(T[k] / DEG2RAD).toFixed(2)}°) — the roller `
+        + `would have to let the heart out as it closes`);
+      break;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // FORK COCK — a small standalone cap over the pallet fork's upper pivot,
 // standing on ONE solved leg down to the BASE plate. The combined
@@ -15539,18 +15686,24 @@ settleAlarmClick(); // boot: a restored wound state settles to its seat
 
 // ---------------------------------------------------------------------------
 // Seconds reset — the SAME crown-pull also closes the reset hammer onto the
-// heart cam (see secondsCamArbor/hammerGroup above), driven by the same
-// leverEngage as the hacking lever (one setting-lever yoke, two functions,
-// exactly as real keyless works commonly gang several actions off one
-// motion). Because that cam sits on a friction-slip display arbor rather
-// than the real fourth wheel (see the comment above its construction),
-// "camming it to zero" is modelled as re-referencing the second hand's zero
-// point to the fourth wheel's CURRENT angle, eased in while the hammer is
-// closing — visually indistinguishable from a hammer riding the cam down
-// to its notch, but it never fights the real (locked) going train. The
-// reference stops updating the instant the hammer lifts, so the hand
-// resumes counting up from 12 rather than jumping to catch up.
+// heart cam (see secondsCamArbor/hammerGroup above): one setting-lever yoke,
+// two functions, exactly as real keyless works commonly gang several actions
+// off one motion. Because that cam sits on a friction-slip display arbor
+// rather than the real fourth wheel (see the comment above its
+// construction), "camming it to zero" is carried by re-referencing the
+// second hand's zero point rather than by back-driving the locked train.
+// WHERE that reference lands is not eased and not a function of the crown's
+// progress: tick() solves it from the roller's measured stand-off against
+// the cut profile (heartFreeAngleAt), so the heart holds perfectly still
+// until the roller reaches metal and then rides the flank down. The
+// reference stops moving the instant the hammer lifts, so the hand resumes
+// counting up from 12 rather than jumping to catch up.
 let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
+// The reset contact as tick() last solved it — the roller's stand-off, the
+// angle the heart is free to stand off its notch there, and whether the
+// roller actually moved it this frame. An inspection surface, not state:
+// nothing reads it back (see __clock.resetContact / probe-reset-contact.mjs).
+let resetContactNow = { d: 0, free: Math.PI, pushed: false, off: 0 };
 let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 let alarmPinDropPhys = 0; // §45 stage 2: the drop the HELD tail permits — min(disc's law, rocker cap); negative = lifted out
@@ -15558,8 +15711,12 @@ let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column 
 let alarmSleeveLiftNow = 0; // §45: the sleeve's current drop from rest (0..TRAVEL) — a pure readout of the collar under the head
 let alarmPhiCapNow = 0;     // §45: the cone's floor under the follower arm's angle (0 = cone clear)
 const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
-                            // heart cam is a positive mechanical action, not
-                            // a soft friction stop, so the reset reads snappier.
+                            // sprung nose falling into a heart's notch is a
+                            // positive action, not a soft friction stop, so it
+                            // reads snappier. Used by the minute jumper's snap
+                            // and the alarm follower's; the SECONDS reset does
+                            // not ease at all any more (TODO 47 — its speed is
+                            // the hammer's own travel against the profile).
 
 // ---------------------------------------------------------------------------
 // UI panel (plain injected HTML/CSS)
@@ -23820,26 +23977,55 @@ function tick(t) {
   const tau = tauIntegrated;
   const fourthA = fourthAngle(tau); // the REAL fourth wheel's angle — never adjusted below
 
-  // Reset hammer: while the roller is seated on the cam (leverEngage > 0),
-  // ease the seconds-display reference toward the real fourth wheel's
-  // current angle — this is what actually "cams the wheel to zero" for
-  // display purposes, without touching fourthA/fourthArbor itself. The
-  // pull rate is scaled by leverEngage so it's a soft touch on first
-  // contact and a firm hold once fully closed; once leverEngage decays to
-  // 0 the reference is simply left where it last settled.
-  if (leverEngage > 0.001) {
-    // Heart-cam physics: the hammer drives the cam to its notch by the
-    // SHORTEST path — that is the entire point of the heart shape; under
-    // the hammer it can never turn more than half a revolution. But
-    // fourthA is a continuous angle (never wrapped), so the display
-    // residual (fourthA − secondsZeroRef) accumulates a whole turn per
-    // minute since the last reset, and easing the raw residual spun the
-    // cam (and seconds hand) through every one of those turns. First
-    // re-normalize the reference by whole turns — a change of exactly
-    // 2πk, invisible to every rotation.z consumer — then ease only the
-    // ≤ half-turn remainder, exactly what the real cam would do.
-    secondsZeroRef += Math.round((fourthA - secondsZeroRef) / (2 * Math.PI)) * 2 * Math.PI;
-    secondsZeroRef += (fourthA - secondsZeroRef) * leverEngage * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
+  // The reset LINKAGE is posed here, before anything reads the seconds
+  // display, because the heart cam's angle is a consequence of where the
+  // roller is. solveHammerRotation tracks its intersection branch across
+  // ticks, so it is called ONCE per tick and the result carried down to
+  // hammerGroup below (postNow is also what the hack ramp collar reads).
+  const postNow = tailPostWorldAt(crownPullT);
+  const hammerRot = solveHammerRotation(postNow);
+
+  // Reset hammer → heart cam. What moves the cam is the ROLLER, so the law
+  // is the contact and nothing else. The previous law re-referenced the
+  // seconds display on a time constant gated by `leverEngage > 0.001`, and
+  // both halves of that were wrong in the same direction: the gate opens on
+  // the first frame of the crown's travel, and the ease is scaled by
+  // leverEngage rather than by any distance, so the cam was already a third
+  // of the way home while the roller was still half a stroke clear of the
+  // metal — a cam turning with nothing touching it.
+  //
+  // Instead: heartFreeAngleAt gives the angle the heart may stand off its
+  // notch at the roller's CURRENT distance (π while the roller is clear of
+  // the lobe, 0 at the seat). If the cam stands further off than that, the
+  // roller is inside metal that a real one would have pushed, so the cam is
+  // put back on the profile — moving |θ| DOWN, which is the shortest path
+  // and is why a heart cam can never be driven more than half a turn
+  // however long the watch has run (the old 2πk renormalisation existed to
+  // impose that on a residual that had no such bound; this law is modulo by
+  // construction). Nothing is eased: the snap's speed is the hammer's own
+  // travel, so it is also exact under setPose's zero-dt path.
+  {
+    const roller = hammerRollerAt(hammerRot);
+    const dx = roller.x - P.fourth.x, dy = roller.y - P.fourth.y;
+    const d = Math.hypot(dx, dy);
+    const free = heartFreeAngleAt(d);
+    resetContactNow = { d, free, pushed: false, off: 0 };
+    if (free < Math.PI) {
+      const psi = Math.atan2(dy, dx);                             // roller, seen from the cam axis
+      const camA = -(fourthA - secondsZeroRef) + camPhaseOffset;  // the angle the cam would carry
+      const off = wrapPi(psi - camA);                             // …in the heart's own frame: θ
+      resetContactNow.off = off;
+      if (Math.abs(off) > free) {
+        resetContactNow.pushed = true;
+        // atan2 hands back a principal-branch ψ, so the reference has to be
+        // put back on the branch it was already on: a 2πk step is invisible
+        // to every rotation.z consumer but would read as the cam jumping a
+        // whole turn to anything differencing it — which is how
+        // probe-reset-contact.mjs first read this law.
+        const want = fourthA + (psi - Math.sign(off) * free) - camPhaseOffset;
+        secondsZeroRef = want + Math.round((secondsZeroRef - want) / (2 * Math.PI)) * 2 * Math.PI;
+      }
+    }
   }
 
   // Gear train + escapement.
@@ -23937,7 +24123,7 @@ function tick(t) {
     // Lifter link (lost-motion bar): follower drawn from the setting
     // lever's tail post — at this plane's movement-frame z — to the
     // jumper's tail pin, both transformed into the dialFace frame.
-    const jmpPost = tailPostWorldAt(crownPullT); // (postNow is computed later in tick — same expression)
+    const jmpPost = tailPostWorldAt(crownPullT); // (postNow is the same expression, computed up at the reset block)
     _jmpPostW.set(jmpPost.x, jmpPost.y, JMP_WORLD_Z);
     jumperUnit.worldToLocal(_jmpPostW);
     jumperTailPin.getWorldPosition(_jmpPinW);
@@ -23980,7 +24166,6 @@ function tick(t) {
   // each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
   yokeGroup.rotation.z = yokeAngleAt(crownPullT);
-  const postNow = tailPostWorldAt(crownPullT);   // the reset rod's end, below
   updateStopWork(hackPinWorldAt(crownPullT));
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
@@ -23993,9 +24178,10 @@ function tick(t) {
   // physical rotation seen from opposite sides — the same slip-coupling
   // sign convention the reserve train uses. At reset both go to 0 and the
   // cam sits at camPhaseOffset, so the hammer-seat calibration is
-  // unaffected by the sign. (postNow is computed up at the setting-lever
-  // block — the same post drives the hack ramp collar.)
-  hammerGroup.rotation.z = solveHammerRotation(postNow);
+  // unaffected by the sign. (postNow and the rod solve both ran up at the
+  // reset-contact block, which needs the roller's position before anything
+  // reads the seconds display — the same post drives the hack ramp collar.)
+  hammerGroup.rotation.z = hammerRot;
   secondsCamArbor.rotation.z = -(fourthA - secondsZeroRef) + camPhaseOffset;
 
   // Reset-hammer rod: rigid — constant length by construction; just placed
@@ -25257,6 +25443,10 @@ window.__clock = {
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
+  // The seconds-reset contact, as the tick law last solved it: the roller's
+  // stand-off from the cam axis, the free angle the cut profile allows there,
+  // where the notch actually stands, and whether the roller moved it.
+  get resetContact() { return { ...resetContactNow, seatD: HEART_FREE_D0, retractD: HEART_FREE_D1 }; },
   get bootWarns() { return __bootWarns; },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
