@@ -5895,7 +5895,7 @@ symptom and wrong about the number. `ARM_STOP_R` was derived from the station
 CONTINUUM, and the mesh lays straight links between rivets, so a polygon's
 corners stand proud of the circle through its facet mids. Measured on the same
 discrete layout `rebuildChain` lays and the pad's law already reads, the wrap's
-reach at the plate's band is **4.37** where the stations said ~4.28.
+demand at the plate's band is **4.45** where the stations said ~4.28.
 
 Two corrections travel with that, and both were mistakes the first pass made
 in the safe-looking direction:
@@ -5912,7 +5912,7 @@ in the safe-looking direction:
   shoved outboard to clear a corridor that was never in its way.
   `linkOuterPtsNear` gained `wrapOnly` for exactly that link; the pad's law
   still needs it (it is the top of the wrap, and the pad rides it), so the flag
-  is opt-in.
+  is opt-in. Fed the straddling link, the same law read **4.79**.
 
 ### The chord is the member, not its two ends
 
@@ -5972,9 +5972,11 @@ Two requirements meet at the finger's pivot:
   for **`Rs ≤ √(Rb² + L_max²)`**.
 
 At the lug's §126 proudness that ceiling was **4.79** against a floor of
-**4.88** — an EMPTY window, at every one of the 90 legal pad azimuths. That is
-why honestly clearing the pivot kept costing the beak scan its candidate, and
-it is why the first attempt's four red gates were not bad luck.
+**4.98** — an EMPTY window. And empty at EVERY legal pad azimuth, which the
+ranked walk proves rather than assumes: both bounds are radii at the same
+point, so no amount of turning the mechanism about the cone opens them. That
+is why honestly clearing the pivot kept costing the beak scan its candidate,
+and why the first attempt's four red gates were not bad luck.
 
 `LUG_OUTER` was the one dimension in the mechanism derived from nothing that
 binds: §126 gave the lug the CHAIN's proudness, a tidy tie. It is now sized by

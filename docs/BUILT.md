@@ -12701,8 +12701,10 @@ the mechanism was still reading the continuum.**
   (`studR ≥ ARM_BAND_REACH + HUB_R`) while the beak's lever keeps its ratio
   band and an engaging reaction, and those two are compatible only for
   `Rs ≤ √(Rb² + L_max²)`. At the chain's proudness that ceiling was 4.79
-  against a floor of 4.88 — empty at every legal pad azimuth, which is why
-  clearing the pivot honestly kept costing the beak scan its candidate. The
+  against a floor of 4.98 — empty at every legal pad azimuth (both bounds are
+  radii at the same point, so turning the mechanism about the cone cannot open
+  them), which is why clearing the pivot honestly kept costing the beak scan
+  its candidate. The
   lug is sized by inverting it, and built to the greater of that and the
   chain's.
 

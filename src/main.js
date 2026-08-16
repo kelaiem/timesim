@@ -6605,14 +6605,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // the orbit by construction — it has to be, it reads the coil the lug
   // turns with — so no shove outboard can separate them.
   //
-  // The drop is not just affordable, it is FAVOURABLE, and that is worth
-  // saying because it reads like a cost. This cone is wide at the top: the
-  // wrap reaches 4.22 at the bracket's own gap and 3.94 a stratum below it,
-  // so the band that clears the lug is also the band where the chain leaves
-  // the arms the most room. ARM_STOP_R falls with the plate, the stud's
-  // shove falls with ARM_STOP_R, and the beak's lever — which only survives
-  // while the stud stays inside √(BEAK_PARKED_R² + (2.2·R_PAD_ARM)²) — keeps
-  // its designed ratio instead of being shoved out of it.
+  // The drop is not free, and it is worth saying which way it costs. Lower is
+  // FATTER here: the wrap demands 4.37 of the band the bracket's gap alone
+  // would have given and 4.45 of the band the lug allows, so ARM_STOP_R
+  // rises with the drop and the pivot's own floor rises with it. That is
+  // paid for once, in the lug's proudness (see LUG_OUTER), rather than by
+  // shoving the finger outboard until its beak lever leaves the ratio band.
   // One gap under each ceiling, and the plate takes the lower answer: PIN_GAP
   // under the bracket, because a pin stands in that gap, and the structural
   // margin under the lug, because nothing stands there — the lug simply
@@ -6658,7 +6656,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // member for which the difference matters: a link's outer plate CHORDS
   // between its rivets, so the polygon's corners stand proud of the circle
   // through its facet mids by r(1 − cos(θ_link/2)) ≈ 0.11 at these radii.
-  // Measured discretely the reach at this band is ~4.5 where the stations'
+  // Measured discretely the demand at this band is 4.45 where the stations'
   // own r said ~4.28 (TODO 51's first finding), and a stop derived from the
   // smaller number puts the arm inside the chain while every station-based
   // assert reads clear. So it is measured on the SAME discrete layout
@@ -6699,11 +6697,13 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   //     Rs² + Rb² − 2·Rs·Rb·cos δ ≤ L_max². Eliminate δ and the two are
   //     compatible only for Rs ≤ √(Rb² + L_max²).
   //
-  // Measured, that ceiling was 4.79 against a floor of 4.88 — an EMPTY
+  // Measured, that ceiling was 4.79 against a floor of 4.98 — an EMPTY
   // window, which is why the beak scan lost its candidate the moment the
-  // pivot was honestly cleared of the chain, at every one of the 91 legal
-  // pad azimuths. Nothing in position space closes it: the two bounds are
-  // both radii at the same point.
+  // pivot was honestly cleared of the chain. And it was empty at EVERY legal
+  // pad azimuth, which the ranked walk below proves rather than assumes:
+  // both bounds are radii at the same point, so no amount of turning the
+  // mechanism about the cone can open them. Nothing in position space
+  // closes this one.
   //
   // So the lug is sized from the constraint instead of from the coincidence.
   // Inverting the ceiling gives the proudness the stop needs, and the lug is
