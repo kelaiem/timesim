@@ -196,6 +196,131 @@
   no number exists because it looked right). Compact entries are seeds; they grow plates as
   the mechanisms they describe get worked on.</p>
 
+  <!-- ===================== VOCABULARY =====================
+       A NEW details block, deliberately: §73 tier two keys a rich block by
+       its whole innerHTML, so a glossary folded into p.intro would have
+       invalidated that paragraph's five translations to say nothing new
+       about the movement. Its own block is its own keys, and the th/td
+       selectors make every cell a key of its own — so one term can be
+       translated, or corrected, without touching its neighbours. -->
+  <details class="mech" id="vocabulary">
+    <summary>Vocabulary &mdash; the words the rest of this page uses without stopping<span class="where">how to read the entries</span></summary>
+    <div class="mech-body">
+      <p>Three families of word do most of the work below, and the entries lean on all three
+      without pausing. None of it is watchmaking's vocabulary &mdash; it is this project's, and
+      it exists because the movement is checked by instruments rather than by eye. The same
+      words carry the same meanings in the repository's own documents.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">Where a part sits</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Word</th><th>What it means here</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>station</td>
+                  <td>A part's chosen position ALONG something &mdash; a groove, an arm, the
+                  compass. Saying a station was <em>solved</em> rather than picked means a
+                  search found the one position that satisfies the constraints, and moving it
+                  is the cheapest kind of change this project makes.</td></tr>
+              <tr><td>band</td>
+                  <td>The interval of height a part occupies. Every member in a crowded stack
+                  is built to a band, and the bands are derived downward from the plate above
+                  rather than stacked upward from a guess.</td></tr>
+              <tr><td>stratum / lane</td>
+                  <td>A layer of height, and a run of it measured EMPTY. A lane is where a new
+                  part may go; finding one is usually the hard part of adding a mechanism, and
+                  it is answered by probing for emptiness before anything is cut.</td></tr>
+              <tr><td>corridor</td>
+                  <td>The swept footprint something moving needs kept clear &mdash; a chain's
+                  run, a lever's arc. Unlike a lane it is not empty space, it is space already
+                  spoken for.</td></tr>
+              <tr><td>margin</td>
+                  <td>The ONE structural clearance, <code>CLEAR_MARGIN</code> 0.15. There is
+                  deliberately no second one: a part is a margin clear of its neighbours or it
+                  is a defect, and a mechanism that needs its own looser number is a mechanism
+                  that has not been solved.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+      <figure>
+        <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">What the instruments claim</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Word</th><th>What it means here</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>unit</td>
+                  <td>A labelled assembly the instruments treat as one part. The movement is
+                  partitioned into them, and most checks ask questions about PAIRS of units
+                  &mdash; which is why what happens INSIDE one needed instruments of its own.</td></tr>
+              <tr><td>axis</td>
+                  <td>One input swept end to end &mdash; the going train, the crown's pull and
+                  turn, the reserve, each alarm input. A part no axis moves is a part the
+                  instruments cannot judge, so shipping a mechanism means shipping the axis
+                  that exercises it.</td></tr>
+              <tr><td>pose</td>
+                  <td>The movement forced to one exact state, so a measurement is repeatable.
+                  A sweep is a run of poses along an axis; every number on this page that says
+                  "measured" was taken at poses, which is also why sampling cannot BOUND
+                  anything between them.</td></tr>
+              <tr><td>row</td>
+                  <td>One declared claim in an instrument's table &mdash; this pair clears that
+                  distance, this contact closes at that pose, this section meets that floor.
+                  Rows are the unit of accounting: a check reports how many it has and how many
+                  are failing, and a claim nobody wrote as a row is a claim nothing measures.</td></tr>
+              <tr><td>gate</td>
+                  <td>A check whose failure list must be EMPTY before work lands. The
+                  distinction from a report matters: a report's rows are the product and are
+                  read, a gate's rows stop the work.</td></tr>
+              <tr><td>floor / budget</td>
+                  <td>A minimum and a maximum. Floors say metal may not be thinner than real
+                  stock; budgets say a working contact may not bite deeper than its own stroke.
+                  A budget is always sized SMALLER than the travel it polices, so touching and
+                  buried read as different states.</td></tr>
+              <tr><td>hand-off</td>
+                  <td>A claimed contact, measured shut at both ends of its motion. Force
+                  transmission is exactly where a picture can lie most convincingly &mdash;
+                  parts can appear to drive each other with a visible gap &mdash; so every
+                  claimed contact is measured rather than drawn.</td></tr>
+              <tr><td>waiver</td>
+                  <td>A failing row that is ACCEPTED, in writing, citing the debt item that
+                  will fix it. It is not a pass and it never buys itself by widening a
+                  tolerance: the row keeps failing and stays visible in the report. This page
+                  states the open debt of each mechanism for the same reason.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+      <figure>
+        <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">Two words this project uses strictly</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Word</th><th>What it means here</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>derived</td>
+                  <td>The number came from a constraint, and the constraint is written beside
+                  it. The opposite is a number that exists because it looked right, which this
+                  project treats as a bug in waiting &mdash; so "derived" is a claim about
+                  where a number CAME FROM, not about how good it is.</td></tr>
+              <tr><td>modelled / simulated</td>
+                  <td>Two different claims, kept apart on purpose. MODELLED means a thing is
+                  described &mdash; geometry, constants, declared structure. SIMULATED means
+                  its behaviour is DRIVEN by causality through real contacts. Most of the
+                  honesty debt this project tracks lives in the gap, where something animates
+                  convincingly with no force path behind it, and calling that "simulated" is
+                  the lie the debt list exists to catch.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+    </div>
+  </details>
+
   <!-- ===================== MAINSPRING ===================== -->
   <details class="mech" id="mainspring">
     <summary>Mainspring — one length of steel, redistributed<span class="where">power · src/geometry.js, src/main.js</span></summary>
