@@ -5646,14 +5646,48 @@ the pad rides at that band and the lug sweeps past it once per cone turn,
 so the lug's orbit is the second ceiling and it is the lower one: measured,
 0.035 separates them where the pair's row asks 0.15.
 
-**The fix, both in position space (P3 — never out of the mechanism).**
-Row one: solve the riser's station against the arm's CHORD-minimum radius
-rather than its endpoints, flanks included. Row two: take the finger's band
-as `min(BRK_BOT − PIN_GAP, LUG_Z1 − CLEAR_MARGIN)` so whichever ceiling is
-lower wins. Both were attempted together in one pass and REVERTED unbuilt:
-each moves `padZMid`, which moves the wall lean, the rest radius and the
-stud — and the beak-azimuth scan then found no candidate at all. That is
-the honest shape of the work: the two ceilings must be folded into the
-azimuth solve as constraints it searches under, the way the webs, the
-window rim and the drum's reach already are, rather than applied to a
-geometry the solve has already fixed.
+**The fix is position space (P3 — never out of the mechanism), and a
+second attempt measured what it actually costs.** Both rows CAN be driven
+green, and were: `expectedContacts` passed all three arrest pairs
+(beak arm ⇄ chain 0.182, riser ⇄ plate 0.170, pad ⇄ lug 0.150). That
+attempt was still REVERTED, because closing these two opened four others —
+`windArrestHandoff` (the coil buried 0.114 in the pad), `penetration`
+(0.081), `intraUnit` (blade ⇄ bank pin) and boot silence (the beak scan
+lost its candidate, and with it the engaging-moment and bank-pin asserts).
+A tree with two red rows and a silent boot is better than one with four
+red gates and four warns, so the branch keeps the former. What the attempt
+established, and what the next pass should start from:
+
+- **`ARM_STOP_R` must be measured from the DISCRETE links, not the station
+  continuum.** The mesh lays straight links between rivets and a polygon's
+  corners stand proud of the circle through its facet mids by
+  r(1 − cos(θ_link/2)) ≈ 0.11 at these radii. Measured discretely the
+  chain's reach at the arm's band is **4.535**; the continuum says ~4.28.
+- **The stud at r 4.400 is INSIDE that reach**, which is why no riser
+  station could rescue row one: the arm's inboard end is already in the
+  wrap. The stud's own solve has to carry `ARM_STOP_R + HUB_R` as a third
+  constraint beside its two existing ones.
+- **ARMS STAY OUT, TABS REACH IN.** An arm spans thirty-odd degrees, and
+  over that span the wrap climbs to a fatter station than the one under
+  its own tab; a tab spans a few degrees, where the wrap's radius barely
+  moves. Both arms must stop at `ARM_STOP_R` and both tabs bridge inward.
+- **Clearances must hold across the finger's TRAVEL, not at the seat.**
+  The throw carries the arm's inner edge inward by about half a unit, so
+  a seat-frame solve proves a clearance the part does not have.
+- **A long tab leans by SHEAR, not rotation.** Rotating a radial bridge
+  swings its outer end up through the very margin the stratum plan buys
+  from the lug; `v ↦ v + (z − mid)·PAD_LEAN` leans the working face and
+  leaves every z where the plan put it.
+- **`windArrestPad ⇄ fuseeLand` is a real declared contact**, not a
+  defect: the chain sits in a groove whose lands stand to nearly the
+  coil's own radius, so a pad touching the chain necessarily runs within a
+  hair of the crest beside it (0.055 measured). Declaring it needs the
+  land mesh NAMED in `makeFusee` — index labels move.
+
+The reason this cascades is one coupling: the stud's radius sets the pad
+arm, whose length sets `padGain` and `PSI_FULL`, which set the throw the
+lug is clocked to and the window the pad's law reads. **The next pass
+should fold the chain-reach constraint into the AZIMUTH SOLVE** — beside
+the webs, the window rim and the drum's reach, which it already searches
+under — so the stud, the arms and the tabs are chosen together rather than
+in sequence.

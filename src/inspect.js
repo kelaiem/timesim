@@ -6049,7 +6049,15 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§107 — the anchor's own unit and its arched arms; 52 units, 11 poses):
+// Baseline (§126 — the winding arrest's own unit and its lug on the cone;
+// 53 units, 11 poses):
+// 2414545422
+//   moved from 2163870811 deliberately: §126 adds the 'Winding arrest' unit
+//   (bracket, stud, finger, pad, beak, riser, blade and its post) and a lug
+//   turning with the fusee. Measured by the battery's own double-boot gate
+//   on CI, which is where this number came from.
+// Previous baseline (§107 — the anchor's own unit and its arched arms;
+// 52 units, 11 poses):
 // 2163870811
 // — moved from 827809538 deliberately, and for two reasons at once. The unit
 // count goes 51 → 52: §107 promotes the anchor out of 'Alarm governor' into
