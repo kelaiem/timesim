@@ -276,6 +276,7 @@ Object.assign(DE, {
   // Chinese read it in English until §107. Windfang is the striking-train
   // governor; the anchor takes Anker, the same word the pallet fork has above.
   'Alarm governor': 'Weckerwindfang', 'Alarm governor anchor': 'Windfanganker',
+  'Winding arrest': 'Aufzugssperre', // §47 — the chain-thrown stop finger on the fusee
   // §107 — the schematic tier's member callouts. Same rule as the unit names:
   // the English string is the key, only the display is translated.
   'Governor wheel': 'Windfangrad', 'Governor wheel sleeve': 'Windfangrad-Hülse',
@@ -340,6 +341,7 @@ Object.assign(DE, {
   'A fusee-and-chain watch movement — every part built from geometry, no models': 'Ein Uhrwerk mit Kette und Schnecke — jedes Teil aus Geometrie gebaut, keine Modelle',
   'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat': 'Die Schweizer Ankerhemmung, stark verlangsamt — die Unruh gibt je Halbschwingung einen Zahn frei',
   'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady': 'Das Aufziehen zieht die Kette den Schneckenkonus hinauf; der wachsende Radius hält das Antriebsmoment konstant',
+  'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still': 'Der Vollaufzug endet an Metall: die letzte Windung hebt einen Finger, sein Schnabel fällt vor einen Anschlag auf dem Konus, und die Krone steht still',
   'That torque runs the going train — barrel to centre, third, fourth, escape': 'Dieses Moment treibt das Räderwerk — Federhaus, Zentrum, Kleinboden, Sekunde, Anker',
   'X-ray the plates and explode the stack to see how the layers fit': 'Platinen röntgen und den Stapel explodieren, um die Lagen zu sehen',
   'On the dial side, pull the crown and the jumping-minute works engage': 'Auf der Zifferblattseite: Krone ziehen, das springende Minutenwerk greift ein',
@@ -505,6 +507,7 @@ Object.assign(ZH, {
   'Alarm lock': '闹铃锁定杆', 'Alarm switch': '柱状轮开关', 'Alarm link': '闹铃联动杆',
   'Alarm barrel': '闹铃发条盒', 'Alarm striking wheel': '打铃轮',
   'Alarm governor': '闹铃调速器', 'Alarm governor anchor': '调速器擒纵叉',
+  'Winding arrest': '上链止动', // §47
   'Governor wheel': '调速轮', 'Governor wheel sleeve': '调速轮轴套',
   'Strike arbor sleeve': '打铃轴套', 'Lifting cam': '提升凸轮',
   'Lock collar': '锁止环', 'Strike stud, upper length': '打铃轴柱（上段）',
@@ -563,6 +566,7 @@ Object.assign(ZH, {
   'A fusee-and-chain watch movement — every part built from geometry, no models': '一枚芝麻链机芯 — 每个零件都由几何生成，没有模型素材',
   'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat': '瑞士杠杆式擒纵，大幅放慢 — 摆轮每次摆动释放一个齿',
   'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady': '上链把链条沿塔轮锥面卷起；渐增的半径使驱动扭矩保持恒定',
+  'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still': '满链止于金属：最后一圈链条抬起止动指，指喙落到塔轮上的止块之前，表冠随之静止',
   'That torque runs the going train — barrel to centre, third, fourth, escape': '该扭矩驱动传动轮系 — 从发条盒到中心轮、三轮、秒轮、擒纵轮',
   'X-ray the plates and explode the stack to see how the layers fit': '透视夹板并展开层叠，观察各层如何装配',
   'On the dial side, pull the crown and the jumping-minute works engage': '在表盘侧拔出表冠，跳分机构随即啮合',
@@ -850,6 +854,7 @@ const FR = {
   ['Alarm link']: 'Biellette du réveil',
   ['Alarm barrel']: 'Barillet du réveil',
   ['Alarm striking wheel']: 'Roue de frappe du réveil',
+  ['Winding arrest']: 'Arrêtage de remontage', // §47
   ['Alarm governor']: 'Régulateur du réveil',
   ['Alarm governor anchor']: 'Ancre du régulateur du réveil',
   ['Governor wheel']: 'Roue du régulateur',
@@ -953,6 +958,7 @@ const FR = {
   ['A fusee-and-chain watch movement — every part built from geometry, no models']: 'Un mouvement de montre à fusée-chaîne — chaque pièce construite à partir de sa géométrie, sans modèles',
   ['The Swiss lever escapement, slowed right down — the balance frees one tooth per beat']: 'L’échappement à ancre suisse, très ralenti — le balancier libère une dent par alternance',
   ['Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady']: 'Le remontage hisse la chaîne le long du cône de fusée ; son rayon croissant maintient le couple moteur constant',
+  ['Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still']: 'Le remontage complet finit sur du métal : la dernière spire soulève un doigt, son bec tombe devant une butée du cône, et la couronne s\'immobilise',
   ['That torque runs the going train — barrel to centre, third, fourth, escape']: 'Ce couple entraîne le rouage de finissage — barillet, centre, champ, seconde, échappement',
   ['X-ray the plates and explode the stack to see how the layers fit']: 'Radiographiez les platines et éclatez l’empilage pour voir comment les couches s’emboîtent',
   ['On the dial side, pull the crown and the jumping-minute works engage']: 'Côté cadran, tirez la couronne et la minuterie à minute sautante s’engage',
@@ -1241,6 +1247,7 @@ const JA = {
   ['Alarm link']: 'アラームリンク',
   ['Alarm barrel']: 'アラーム香箱',
   ['Alarm striking wheel']: 'アラーム打撃車',
+  ['Winding arrest']: '巻止め', // §47
   ['Alarm governor']: 'アラーム調速機',
   ['Alarm governor anchor']: 'アラーム調速アンクル',
   ['Governor wheel']: '調速車',
@@ -1344,6 +1351,7 @@ const JA = {
   ['A fusee-and-chain watch movement — every part built from geometry, no models']: 'フュジー・チェーン式の時計ムーブメント — すべての部品が幾何から作られ、モデルデータはありません',
   ['The Swiss lever escapement, slowed right down — the balance frees one tooth per beat']: 'スイスレバー脱進機を大きく減速して — テンプが 1 振動につき歯を 1 枚解放します',
   ['Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady']: '巻上げはチェーンをフュジーの円錐へ引き上げます。増えていく半径が駆動トルクを一定に保ちます',
+  ['Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still']: '全巻きは金属で終わります。最後のひと巻きが止め指を持ち上げ、その先端が円錐上のストッパーの前に落ち、リュウズは止まります',
   ['That torque runs the going train — barrel to centre, third, fourth, escape']: 'そのトルクが輪列を回します — 香箱から二番、三番、四番、がんぎへ',
   ['X-ray the plates and explode the stack to see how the layers fit']: '受けを透視し、積層を分解して層の収まりを見てください',
   ['On the dial side, pull the crown and the jumping-minute works engage']: '文字板側では、りゅうずを引くと分ジャンプ機構が噛み合います',
@@ -1631,6 +1639,7 @@ const ZH_HANT = {
   ['Alarm link']: '鬧鈴連桿',
   ['Alarm barrel']: '鬧鈴發條盒',
   ['Alarm striking wheel']: '鬧鈴打擊輪',
+  ['Winding arrest']: '上鏈止動', // §47
   ['Alarm governor']: '鬧鈴調速器',
   ['Alarm governor anchor']: '鬧鈴調速錨',
   ['Governor wheel']: '調速輪',
@@ -1734,6 +1743,7 @@ const ZH_HANT = {
   ['A fusee-and-chain watch movement — every part built from geometry, no models']: '一具寶塔輪芝麻鏈式手錶機芯 — 每個零件都由幾何生成，沒有任何模型檔',
   ['The Swiss lever escapement, slowed right down — the balance frees one tooth per beat']: '大幅放慢的瑞士槓桿式擒縱 — 擺輪每一振釋放一枚輪齒',
   ['Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady']: '上鏈把鏈條拉上寶塔輪的錐體；漸增的半徑讓驅動扭矩保持穩定',
+  ['Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still']: '滿鏈止於金屬：最後一圈鏈條抬起止動指，指喙落到寶塔輪上的止塊之前，錶冠隨之靜止',
   ['That torque runs the going train — barrel to centre, third, fourth, escape']: '這股扭矩驅動走時輪系 — 發條盒到中心、三輪、秒輪、擒縱',
   ['X-ray the plates and explode the stack to see how the layers fit']: '把夾板透視、把堆疊分解，看看各層如何相合',
   ['On the dial side, pull the crown and the jumping-minute works engage']: '在錶盤側，拉出錶冠，跳分機構隨即嚙合',
