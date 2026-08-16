@@ -186,6 +186,12 @@ const BATTERY = [
     gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+  // §47 — the going side's two arrest contacts, the same instrument as the
+  // alarm rows through its own pose table (full wind = shut, slack = free).
+  { name: 'windArrestHandoff', opts: {}, cost: 1,
+    gate: 'the arrest shut at full wind and free at slack, both contacts',
+    fails: (r) => r.unwaived,
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'stockFloor', opts: {}, cost: 10,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],

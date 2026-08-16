@@ -187,6 +187,7 @@ export const MECH_GRAPH = {
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
     ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
+    ['Winding arrest', 'Three-quarter plate'], // §47: the bracket hangs the whole group from the plate's UNDERSIDE, top face flush (§29's lug idiom inverted)
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
     ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
@@ -251,6 +252,7 @@ export const MECH_GRAPH = {
     ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
     ['Alarm winding train', 'Alarm barrel'], // §99: climb pinion → idlers → the ARBOR's winding wheel (12/44 — W takes the rim's count, so the ratio survived the re-route)
     ['Alarm barrel', 'Alarm click'],         // §99: the arbor ratchet's saw drives the click's rock (winding cams it out; the face holds the return — the maintaining detent's row, alarm-side)
+    ['Chain', 'Winding arrest'],             // §47: the arriving coil cams the finger's pad — a LEAF of the drive graph on purpose, the §104 precedent: an arrest consumes, it drives nothing downstream
     ['Alarm switch', 'Alarm lock'],          // §25 D: the column wheel blocks the lever's tail beak (column = OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
     ['Alarm setting idler', 'Alarm setting wheel'], // idler (31) → setting wheel (30) on the tube
@@ -620,6 +622,9 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
   ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
   ['Alarm click', 'plate'],   // §99/§112: the click stud and spring post stand on the base plate
+  ['Winding arrest', 'Three-quarter plate'],  // §47: the bracket's top face flush on the plate's underside — the support joint
+  ['Winding arrest', 'Chain'],                // §47: the arriving coil ON the pad near full wind — the throw itself
+  ['Winding arrest', 'Fusee & great wheel'],  // §47: beak on stop lug at full wind — the arrest itself
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
   ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
@@ -736,21 +741,21 @@ export const AXES = [
   {
     name: 'beat',
     n: 96,
-    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
     name: 'crown',
     n: 48,
-    pose: (f) => ({ tau: 0.05, crownPullT: f, leverEngage: f, tension: 1, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: 0.05, crownPullT: f, leverEngage: f, tension: 1 }),
   },
   {
     name: 'reserve',
     n: 60,
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f }),
   },
   {
     // TODO 38 W4 — the GOING WIND, closing the item's last tranche: before
-    // this axis `windAccumTurns` was pinned 0 everywhere, so the whole
+    // this axis the winding pose was pinned at full everywhere, so the whole
     // winding chain — crown wheel, ratchet, click, the fusee turning
     // BACKWARD, the chain re-wrapping upward, the maintaining detent riding
     // its saw — was swept in exactly one direction, the one it travels while
@@ -760,11 +765,12 @@ export const AXES = [
     // the part made) — a monotone wind axis would cover the states and still
     // leave the fusee's genuine two-way drive unobserved, exactly the
     // §48-population gap whose retired declarations name this axis as their
-    // way back in. tension and windAccumTurns move as the COUPLED pair they
-    // are (rule 2): winding IS what re-tensions the spring, and the span is
-    // read live (`fuseeWrapTurns` = reserveHours over the first mesh's
-    // ratio — 1.75 at the default spec since §124) so a `?reserveh=` boot
-    // sweeps the wind that spec performs.
+    // way back in. §47 collapsed the pair this axis used to move by hand
+    // (tension + windAccumTurns): the fusee's angle is DERIVED from the bank
+    // now, so one knob sweeps the coupled motion by law, the span still
+    // reading live off the spec (`fuseeWrapTurns` inside the clock's own
+    // pose law) — a `?reserveh=` boot sweeps the wind that spec performs,
+    // and no caller can de-couple the pair again.
     // n: the train axis's own standard is 96 samples per fusee revolution
     // (its stated purpose — slow-orbit arbor parts — is exactly this arbor);
     // the pre-§124 3.75 rev each way at that density was 360 + 360 = 720,
@@ -776,14 +782,7 @@ export const AXES = [
     // derivation, priced by measurement, per the item's own rule.
     name: 'wind',
     n: 720,
-    pose: (f, clock) => {
-      const w = 1 - Math.abs(2 * f - 1);
-      return {
-        tau: 0.13, crownPullT: 0, leverEngage: 0,
-        tension: w,
-        windAccumTurns: w * (clock ? clock.fuseeWrapTurns : 1.75),
-      };
-    },
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
   },
   {
     // One full revolution of the FUSEE arbor — catches slow-orbit collisions
@@ -799,7 +798,7 @@ export const AXES = [
     // §48 restoring audit's stale rule caught the declaration it orphaned.
     name: 'train',
     n: 96,
-    pose: (f, clock) => ({ tau: f * (clock?.hoursPerFuseeTurn ?? 120 / 7) * 3600, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f, clock) => ({ tau: f * (clock?.hoursPerFuseeTurn ?? 120 / 7) * 3600, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
     // One full star pitch (60 s of movement time — the star turns 2° per
@@ -810,7 +809,7 @@ export const AXES = [
     // this pair through a real point→valley→point cycle.
     name: 'jumperEngage',
     n: 120,
-    pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0 }),
+    pose: (f) => ({ tau: f * 60, crownPullT: 1, leverEngage: 0, tension: 1 }),
   },
   {
     // §35 postmortem: HAND-SETTING is the only input that spins the keyless
@@ -822,7 +821,7 @@ export const AXES = [
     name: 'handSet',
     n: 120,
     pose: (f, clock) => ({
-      tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1,
       setPathRot: f * (clock ? clock.setPathPerMinuteWheelRev : 0),
     }),
   },
@@ -841,7 +840,7 @@ export const AXES = [
     // alarmCrownPullT: 1 — crown-sense swap: SET is the pulled-out path now.
     // (setPose(alarmCrownRotation) writes the set path directly, so the sweep
     // itself is clutch-independent; the pose records the honest state.)
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }),
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }),
   },
   {
     // A whole wind of the alarm barrel (§25): the barrel unwinds its full
@@ -861,7 +860,7 @@ export const AXES = [
     // the sweep runs with the brake lever LIFTED, exactly as the real ring
     // does (an engaged pad under a spinning collar would be a false dig).
     pose: (f, clock) => ({
-      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       alarmStrikePhase: f * (clock ? clock.alarmStrikesPerWind : 28),
       alarmOn: 1, alarmReleased: 1,
     }),
@@ -903,7 +902,7 @@ export const AXES = [
     name: 'alarmWind',
     n: 109,
     pose: (f, clock) => ({
-      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       alarmWindRotation: f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
       alarmOn: 0, alarmReleased: 0, alarmCrownPullT: 0,
     }),
@@ -936,7 +935,7 @@ export const AXES = [
     name: 'alarmToggle',
     n: 48,
     pose: (f) => ({
-      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       alarmOn: f > 0.25 && f < 0.75 ? 1 : 0,
     }),
   },
@@ -1560,6 +1559,28 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmGovSaw', 'alarmGovPallet'],
     ],
   },
+  // §47 — the winding arrest's three pairs, each with exactly the contact
+  // its design claims; everything else between them owes the one margin.
+  {
+    a: 'Winding arrest', b: 'Three-quarter plate', min: CLEAR_MARGIN,
+    contacts: [
+      ['windArrestBracket', 'threeQuarterPlate'], // the flush hang — the support joint
+    ],
+  },
+  {
+    a: 'Winding arrest', b: 'Chain', min: CLEAR_MARGIN,
+    axes: ['beat', 'reserve', 'train', 'crown'], // the wind axis legitimately closes the pad's gap through its whole ramp; these axes pin tension where the pair owes clearance everywhere
+    contacts: [
+      ['windArrestPad', 'chainRun'],              // the coil under the pad
+    ],
+  },
+  {
+    a: 'Winding arrest', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    axes: ['beat', 'reserve', 'train', 'crown'],
+    contacts: [
+      ['windArrestBeak', 'windArrestLug'],        // beak on the stop lug
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -1705,6 +1726,28 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm barrel', a: 'alarmArborRatchet', b: 'alarmBarrelArbor', why: '§99: the ratchet keyed on the arbor\'s filed square (across-corners = the arbor\'s diameter — the set-up ratchet\'s convention)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#5', why: 'idler 1 on its stud (§99 named the idler meshes for the winding pair\'s floors row; the stud keeps its index label)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
+  // §47 — JOINTS THE COLLAPSE MADE VISIBLE, and that is the point rather
+  // than the cost. Before it, the crown wheel, its companion and the
+  // transfer wheel moved on NO axis (the winding path's raw accumulator
+  // was pinned 0 everywhere), and the maintaining pawls' frame moved with
+  // their own pins — so `intraUnit` could not judge any of them: §121's
+  // "a part no axis MOVES is a part it cannot judge", met here by parts
+  // becoming visible rather than by a waiver. Every row below is a rigid
+  // joint by construction, measured at the pose the check reports.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#3', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives (index labels: the wheels and the arbor are coaxial at the winding station)' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#4', why: '§47: the same wheel seated on the arbor\'s collar below it — the axial seat that seats the wheel on its shoulder' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: '§47: the crown wheel\'s companion body on the same arbor, one keyed stack' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#4', why: '§47: that body on the same collar — the stack is seated as one' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#3', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#14', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports)' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#16', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station' },
+  // §47 — the arrest's own declared joints: the finger on its stud (a bored
+  // hub, running clearance), under its retaining head, seated on its bank
+  // by the blade whose fixed end bears its post.
+  { unit: 'Winding arrest', a: 'windArrestPawl', b: 'windArrestStud', why: '§47: the finger\'s bored hub on the hanging stud — the running joint' },
+  { unit: 'Winding arrest', a: 'windArrestPawl', b: 'windArrestStudHead', why: '§47: the hub over its retaining head — axial retention, faces sharing the plane' },
+  { unit: 'Winding arrest', a: 'windArrestBeakArm', b: 'windArrestBank', why: '§47: the arm seated on the bank pin — the blade\'s rest, kiss at the seat pose' },
+  { unit: 'Winding arrest', a: 'windArrestSpring', b: 'windArrestSpringPost', why: '§47: the blade\'s fixed end on its post — the torsion arc\'s reaction point' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickStud', why: '§99: the click on its shoulder screw (the hook carries no bore — the blade seats on the stud, the set-up click\'s own construction)' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickScrewHead', why: '§99: the click under its screw head — the head retains it axially, faces sharing the plane' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
@@ -2393,7 +2436,7 @@ function resolveNode(clock, allUnits, name) {
 }
 
 export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GRAPH.support } = {}) {
-  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 });
+  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   clock.scene.updateMatrixWorld(true);
   const allUnits = collectUnits(clock, { includeExcluded: true });
   const rows = [];
@@ -2544,7 +2587,7 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   // EXCLUDED_UNITS (e.g. 'Dial', 'Power reserve' — left out of the overlap
   // sweep for milestone 1) that are still perfectly valid anchor targets, so
   // this looks them up from the unfiltered set rather than `units`.
-  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 });
+  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   const allUnits = collectUnits(clock, { includeExcluded: true });
   const anchorFailures = [];
   for (const spec of MECH_GRAPH.anchors) {
@@ -3206,6 +3249,102 @@ const PENETRATION_BUDGETS = [
       return sampleRadialDepth(chain.geometry, toLocal, () => wallR, -halfH, halfH);
     },
   },
+  // §47 — the winding arrest's two working contacts on the `wind` axis,
+  // budget-tier per the axis's own note (tooth-pitch-scale features are not
+  // the axis's n to carry). maxDepth is HANDOFF_TRACK_TOL: the pad's full
+  // ramp is 0.36 and the beak's throw 0.7, so a budget at the measurement
+  // floor grades touching and buried as different states (the P2 rule —
+  // working budgets sized SMALLER than the strokes they police).
+  {
+    // The pad against the whole chain. nSamples: the catch is per-LINK —
+    // one plate pitch is ~29° of the top turn, and the active approach
+    // (touch ≈ 0.81 → 1, both directions of the cycle) spans ~0.4 of the
+    // axis; 480 samples puts ~13 samples on each link passage there, the
+    // per-cycle net the §99 row's calibration used. gcd(480, links/turn)
+    // does not bind: the sampling is in TENSION, not tooth phase.
+    pair: ['Winding arrest', 'Chain'],
+    maxDepth: HANDOFF_TRACK_TOL,
+    axis: 'wind',
+    nSamples: 480,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windArrestPad') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'chainRun') out.push(o); });
+      return out;
+    },
+    // BESPOKE, for §99's reason in a new place: MTV is the wrong instrument
+    // for a flat face resting ON a chain. The pad's face beds against a run
+    // of links that wraps it in two directions, so the minimum translation
+    // that separates the meshes is a pop-out along the escape direction —
+    // a number about the search space, not the fit — and it reported 0.094
+    // at tension 0.98 for a pose with NOT ONE chain vertex inside the pad's
+    // stock. The fit is what this measures: chain vertices carried into the
+    // pad's OWN frame, and the deepest one's distance to the nearest face of
+    // the pad's local box. A face-resting contact reads 0; metal actually
+    // inside the member reads how far in.
+    measure(clock, unitA, unitB) {
+      let pad = null, chain = null;
+      unitA.obj.traverse((o) => { if (!pad && o.isMesh && o.name === 'windArrestPad') pad = o; });
+      unitB.obj.traverse((o) => { if (!chain && o.isMesh && o.name === 'chainRun') chain = o; });
+      if (!pad || !chain) return 0;
+      pad.updateWorldMatrix(true, false); chain.updateWorldMatrix(true, false);
+      // TODO 51 — the tab's SHEAR, undone. Its lean is baked into the
+      // geometry (a shear cannot ride a parent group without every BVH
+      // distance query measuring in a sheared frame), so `geometry.boundingBox`
+      // is a box the solid only half fills, and its empty corners would read
+      // as metal — the same over-read the parent-group note above records,
+      // arriving by the other route. The builder therefore publishes the
+      // PRE-shear extents and the shear it applied; un-shearing the point
+      // makes the box exact about the real solid again. Parts without the
+      // declaration are unsheared and keep the geometry's own box.
+      const fit = pad.userData.fitBox;
+      if (!pad.geometry.boundingBox) pad.geometry.computeBoundingBox();
+      const bb = fit
+        ? { min: { x: fit.min[0], y: fit.min[1], z: fit.min[2] },
+          max: { x: fit.max[0], y: fit.max[1], z: fit.max[2] } }
+        : pad.geometry.boundingBox;
+      const shear = pad.userData.fitShearYZ || 0;
+      const inv = _mat.copy(pad.matrixWorld).invert().multiply(chain.matrixWorld);
+      const pos = chain.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      let worst = 0;
+      for (let i = 0; i < pos.count; i++) {
+        v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(inv);
+        v.y -= v.z * shear;
+        if (v.x < bb.min.x || v.x > bb.max.x || v.y < bb.min.y || v.y > bb.max.y
+          || v.z < bb.min.z || v.z > bb.max.z) continue;
+        const d = Math.min(v.x - bb.min.x, bb.max.x - v.x, v.y - bb.min.y, bb.max.y - v.y,
+          v.z - bb.min.z, bb.max.z - v.z);
+        if (d > worst) worst = d;
+      }
+      return worst;
+    },
+  },
+  {
+    // Beak against the lug: contact exists only in the closing arc at the
+    // very top of the axis (t ≥ ~0.989 of the wind), a once-per-cycle
+    // event ~0.006 of the axis wide each way; 480 samples lands ~3 inside
+    // it plus the exact endpoint (the axis's triangle law hits t = 1 at
+    // f = 0.5 exactly), and the handoff row holds the kiss itself.
+    pair: ['Winding arrest', 'Fusee & great wheel'],
+    maxDepth: HANDOFF_TRACK_TOL,
+    axis: 'wind',
+    nSamples: 480,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windArrestBeak') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windArrestLug') out.push(o); });
+      return out;
+    },
+  },
 ];
 
 // §61 helper — worst radial burial of a mesh below an axisymmetric surface
@@ -3314,13 +3453,13 @@ export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, 
 // Both parities of the toggle, posed exactly. tau/crown/tension pins match
 // the fingerprint's rest pose so the run is measured on canonical geometry.
 const ALARM_HANDOFF_POSES = [
-  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0, alarmCrownPullT: 0 }],
-  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmCrownPullT: 0 }],
+  ['disarmed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 0 }],
+  ['armed', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmCrownPullT: 0 }],
   // §45 — the SETTING parity: alarm crown pulled, disarmed. The release run
   // (collar → lifter → sleeve → tail pin) must measure closed here, and the
   // sleeve must measure FREE of the pin at both crown-in parities — riding
   // must not feel the sleeve.
-  ['setting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 0, alarmCrownPullT: 1 }],
+  ['setting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 1 }],
 ];
 // The run as §35 states it, one row per claimed hand-off, in drive order.
 // A `missing` row is a member the claim requires that has no geometry at all
@@ -3462,6 +3601,32 @@ const ALARM_HANDOFFS = [
 // live display, not a battery gate). Returns gap + the closest sample pair's
 // midpoint so the dot sits where the measurement was taken. Sampling is the
 // same vertex-against-tree primitive the arbiters trust; strided to cap cost.
+// §47 — the going side's own hand-off rows: same schema, same checker
+// (checkAlarmHandoffs takes poses and handoffs as options by design), its
+// OWN pose table because the arrest's parities are wind states, not alarm
+// states. `slack` is any tension below the touch solve's grid floor (0.80)
+// — the pad must measure free there AND the lug is away from the beak (its
+// only pass of the parked beak is at 1 − 1/FUSEE_WRAP_TURNS ≈ 0.43, clear
+// by the build's own free-pass assert).
+export const WIND_ARREST_POSES = [
+  ['full', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['slack', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.5 }],
+];
+export const WIND_ARREST_HANDOFFS = [
+  {
+    label: 'coil ⇄ finger pad',
+    unitA: 'Chain', meshA: 'chainRun',
+    unitB: 'Winding arrest', meshB: 'windArrestPad',
+    expect: { full: 'contact', slack: 'free' },
+  },
+  {
+    label: 'beak ⇄ stop lug',
+    unitA: 'Winding arrest', meshA: 'windArrestBeak',
+    unitB: 'Fusee & great wheel', meshB: 'windArrestLug',
+    expect: { full: 'contact', slack: 'free' },
+  },
+];
+
 export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = ALARM_HANDOFFS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   clock.scene.updateMatrixWorld(true);
@@ -5300,6 +5465,12 @@ export const STOCK_KIND_BY_MESH = {
   // quarter-to-half scale (TODO 11) leaves nothing spare here.
   alarmSpringArborHook: 'pivot',
   barrelClickPawl: 'spring',   // integral click: spring-tempered pawl stock
+  // §47 — the winding arrest:
+  windArrestSpring: 'spring',     // the torsion blade (tube ⌀ 0.09 u) — spring stock
+  windArrestStud: 'pivot',        // the hanging stud — pin-class
+  windArrestStudHead: 'pivot',    // its retaining head
+  windArrestBank: 'pivot',        // the seat pin
+  windArrestSpringPost: 'pivot',  // the blade's anchor pin
   // §99 — the alarm barrel's own click:
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
@@ -5691,7 +5862,7 @@ export function checkEqualisation(clock) {
     // the tolerance a statement about dt granularity (0.5%), not about
     // drain drift.
     const gapBy = (phase) => {
-      clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+      clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmStrikePhase: phase, alarmOn: 1, alarmReleased: 1 });
       const p0 = clock.alarmStrikePhase, w0 = clock.alarmBarrelWind;
       let t = 0;
@@ -5810,6 +5981,11 @@ const CHECKS = {
   graph: (clock, opts) => checkMechanicalGraph(clock, opts),
   penetration: (clock, opts) => checkPenetrationBudgets(clock, opts),
   alarmHandoffs: (clock, opts) => checkAlarmHandoffs(clock, opts),
+  // §47 — the same instrument pointed at the going side's two contacts; a
+  // sibling registration rather than a widened alarm table, so the alarm's
+  // rows stay bit-identical under the report diff.
+  windArrestHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: WIND_ARREST_POSES, handoffs: WIND_ARREST_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body
@@ -5888,7 +6064,29 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§107 — the anchor's own unit and its arched arms; 52 units, 11 poses):
+// Baseline (§126 + TODO 51 — the winding arrest and its accommodation;
+// 53 units, 11 poses):
+// 3145260817
+//   moved from 2414545422 deliberately: TODO 51 re-solves where the arrest's
+//   members STAND, without adding or removing one. The finger's plate drops
+//   to hang under the lug's orbit rather than the bracket's arm alone; both
+//   arms stop at a reach measured on the DISCRETE links and swept along their
+//   whole chord over the law's real travel, so their stations move outboard;
+//   the pad and beak tabs bridge back in, so PAD_T and BEAK_RAD are now the
+//   gaps they span; the pad's lean became a shear rather than a rotation; and
+//   `LUG_OUTER` is derived from the pivot ceiling √(Rb² + L_max²) instead of
+//   borrowing the chain's proudness, which moves the lug on the cone. The
+//   unit count is unchanged at 53 — nothing was added, everything was
+//   re-sited. Measured by the battery's own double-boot gate.
+// Previous baseline (§126 — the winding arrest's own unit and its lug on the
+// cone; 53 units, 11 poses):
+// 2414545422
+//   moved from 2163870811 deliberately: §126 adds the 'Winding arrest' unit
+//   (bracket, stud, finger, pad, beak, riser, blade and its post) and a lug
+//   turning with the fusee. Measured by the battery's own double-boot gate
+//   on CI, which is where this number came from.
+// Previous baseline (§107 — the anchor's own unit and its arched arms;
+// 52 units, 11 poses):
 // 2163870811
 // — moved from 827809538 deliberately, and for two reasons at once. The unit
 // count goes 51 → 52: §107 promotes the anchor out of 'Alarm governor' into
@@ -5989,31 +6187,31 @@ export function startAll(clock, opts = {}) {
 // re-stratified centre, crisp heart, physical trip) moved the geometry to
 // this value deliberately, step by verified step.
 const FINGERPRINT_POSES = [
-  { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
-  { tau: 8 * 3600 * 0.37, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0 },
-  { tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1, windAccumTurns: 0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4, windAccumTurns: 0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0 },
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmStrikePhase: 7.3 },
+  { tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 },
+  { tau: 8 * 3600 * 0.37, crownPullT: 0, leverEngage: 0, tension: 1 },
+  { tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.4 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownRotation: 2.0 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmStrikePhase: 7.3 },
   // §25 C: ARMED with the tube split from the hour wheel — poses the follower
   // mid-ride on the heart, the one configuration the other poses never reach.
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownRotation: 2.0, alarmOn: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownRotation: 2.0, alarmOn: 1 },
   // §25 C/D inputs added after the original list (the rule above demands a
   // pose per force input, or its path's refactors go unguarded):
   // — the alarm crown pulled to the SET position (the stem slid one throw,
   //   the sliding bevel at the setting corner);
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmCrownPullT: 1 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmCrownPullT: 1 },
   // — mid-RING: armed, released, part-wound — the brake lever lifted off the
   //   collar, the column wheel in a gap, the striker mid-cycle.
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 5.2 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 5.2 },
   // — §99: WOUND AT REST — the state class the wound-arbor split created
   //   (wind and phase independent: a full ribbon over a parked striker).
   //   The arbor stands a full 1.75 turns from its run-down angle, the click
   //   parked on a different tooth, the ribbon at coil bind — none of which
   //   any pose above reaches, and the wind path's refactors go unguarded
   //   without it (the list's own rule).
-  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0, alarmBarrelWind: 1.75 },
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmBarrelWind: 1.75 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,
