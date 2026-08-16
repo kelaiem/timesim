@@ -12578,3 +12578,94 @@ TALLER cones, and this movement's height budget cannot buy that. The owner
 chose full closure with that trade named. The battery diff is the
 acceptance; the fingerprint legitimately moves once (cone, chain, great
 wheel, drum station, lifted stratum).
+
+## §125 — the winding arrest: overwinding stopped by a part, and the whole winding path put on one source
+
+Roadmap §47. Winding the going mainspring past full is prevented by metal
+now: the chain's last coil lifts a sprung finger, its beak drops in front
+of a lug turning with the fusee, and the bank in `tick()` saturates
+because of that contact. The numeric clamp is gone from the wind branch —
+`RESERVE_BARREL_TURNS` does not appear in it — and the cap is a
+consequence.
+
+**What the survey found, and why it reshaped the entry.** The filing
+predicted a clamp; the tree had a clamp AND a torn mesh. The winding path
+was split across two accumulators — `windPathRot` raw, `windAccumTurns`
+banked — so past full wind the crown wheel and transfer wheel kept turning
+against a frozen spur, sliding teeth through teeth (~12 turns per press of
+a Wind button that queued 16 turns against a 5.25-turn wind). The same
+mesh tore the other way round during run-down, slowly, with no winding at
+all: the spur rides the arbor, and the crown wheel stood still. Both close
+the same way — the §104 alarm convention applied to the going crown, every
+wheel posed from `barrelWindTurns` through the real tooth counts, with only
+the free stem carrying raw input (plus `windStemSlip`, the rotation the
+wheel never sees).
+
+**The drain sync was a prerequisite, not adjacent debt.** The drain
+removed one barrel turn per 8 h — the pre-§124 mesh ratio hard-coded —
+while the train turned the cone once per `HOURS_PER_FUSEE_TURN` (120/7 h).
+The reserve readout promised 30.0 h and the movement ran ~14, and the
+chain slipped ~1.14 turns per cone turn on the way down. With the two rates
+identical the cone's WORLD angle is a pure function of the bank
+(`windLocalAt`), so full wind is ONE fixed azimuth forever — which is what
+lets the lug's clocking be a construction rather than a calibration.
+`windAccumTurns` then stopped being state at all: the chain cannot slip, so
+the cone's angle derives, and the reload phase-snap the entry filed died by
+construction rather than by a new save field.
+
+**The arrest, as built.** A finger on a stud hung from the three-quarter
+plate's underside (§29's lug idiom inverted). Its pad is the arm's own end,
+at the arm's band — the wrap climbs 1.389 in z per turn, so a pad a stratum
+lower sits BETWEEN turns and catches the last coil's fringe, loses it, and
+re-catches; measured, that law dipped 0.44 → 0.04 → 0.40 with the beak
+flapping. The pad's face leans with the wall it rides (§124's tilt) and its
+contact law reads the DISCRETE layout `chainLayoutAt` bakes, because a
+plate's outer edge chords between its pins and a kiss measured at
+±`HANDOFF_TRACK_TOL` cannot ride a continuum that ignores it. The beak's
+face is a RADIAL PLANE with a tangential normal: winding turns the cone in
+−z, so the lug arrives from +θ, and a tangential reaction is the only kind
+that can stop a rotating cone at all — cut perpendicular to the stud line
+instead (as this first was) and the contact slides past exerting no torque,
+with every collision gate green. The arm runs tangentially so the push is
+compression into the pivot, and the scan holds the residual moment in the
+engaging sense.
+
+**Everything is derived, so the spec variants move it.** The engagement
+turn count IS `FUSEE_WRAP_TURNS` (asserted against `RESERVE_BARREL_TURNS`
+at the energy side, 1e-9); the lug rides the runout's own station; the pad
+azimuth, its touch tension, the stud's outboard shove, the beak's azimuth
+and the bank pin's station are all SOLVED against the chain's occupancy,
+the plate's solved webs, the window's rim and the drum's coil reach — the
+P3 fold spent in position space only, inside the group's own solve.
+
+### The instruments
+
+New unit `'Winding arrest'` with support on the three-quarter plate and a
+`Chain → Winding arrest` drive LEAF (§104's precedent: an arrest consumes,
+it drives nothing downstream). Three EXPECTED pairs with floors rows naming
+exactly the designed contacts, the two working pairs axes-narrowed.
+Wind-axis penetration budgets at `HANDOFF_TRACK_TOL`, the pad's with a
+BESPOKE measure for §99's reason in a new place: MTV returns a pop-out for a
+flat face bedded in a chain, and it called 0.094 of "intrusion" on a pose
+with nothing inside the member. A sibling check `windArrestHandoff` — the
+same instrument as the alarm rows through its own pose table (full wind =
+both contacts shut, slack = both free), registered separately so the alarm
+rows stay bit-identical under the report diff. Intra-unit joint rows, stock
+kinds, `declareTravel`/`declareRestoring`, the §8 bank sound, a tour stop, a
+schematic lever line, and five locale entries.
+
+**And the collapse made other parts judgeable.** The crown wheel, its
+companion and the transfer wheel moved on NO axis before this — the raw
+accumulator was pinned 0 everywhere — so `intraUnit` could not judge them
+and `restoring` could not classify them: §121's "a part no axis MOVES is a
+part it cannot judge", met by parts becoming visible rather than by a
+waiver. Their rigid joints on the shared arbor are declared now, and the
+keyless train is declared TWO-WAY DRIVEN — the crown drives it forward, the
+mainspring back-drives the same teeth through the fusee arbor as the watch
+runs down.
+
+**Debt filed, not absorbed:** the fusee-end chain hook (the support edge
+claims a joint with no metal behind it), the going stem's one-way, the
+setting path's un-persisted `setPathRot`, and `Chain ⇄ three-quarter plate`
+at 0.117 against a 0.15 margin — the measurement §47 owed, taken, published
+and under the floor.

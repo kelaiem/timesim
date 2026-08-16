@@ -5534,3 +5534,90 @@ The §61 convention itself — "inner edge on the floor, centreline on the
 envelope" — stays: it is the torque law's honest anchor, and (a) preserves
 it exactly (a tilted stack's centreline still rides the envelope; only the
 stack's ATTITUDE changes).
+
+## 47. The fusee end of the chain is hooked to nothing
+
+**What the model claims.** `MECH_GRAPH.support` carries
+`['Chain', 'Fusee & great wheel']`, and the comment beside it says the
+chain is hooked to the cone. The DRUM end has real metal for that claim —
+`drumHookClaw`, a pin the end link drops over, built with the drum and
+solved to the wrap's own departure. The cone end has none: `makeFusee`
+builds no hook, no claw, no anchoring slot, and `rebuildChain` simply
+starts the wrap at whatever azimuth `thetaT` puts it at for the current
+tension. The wrap's bottom end therefore DRIFTS around the cone as the
+reserve changes, attached to nothing, while the support edge asserts a
+joint.
+
+**Why it matters now.** §47's arrest reads the chain's arrival as a pure
+function of tension, which is legitimate *because* the wrap's law is one
+law shared by the display and the mechanism. That law is honest about
+where the chain IS and silent about what holds its end. The arrest does
+not depend on the hook — but the support edge does, and the edge is what
+a reader is entitled to believe.
+
+**The fix.** Cut the hook: a claw on the cone's base collar, at the
+station the wrap starts from (`fuseeGrooveAt(0)`), with the wrap's first
+control point pinned to it the way the drum end's `HOOK_A` pins the last
+one — the fractional-turn congruence `rebuildChain` already solves at the
+drum, run at the other end. Then the wrap's bottom stops drifting and the
+support edge names metal. Costs: a small body on the cone (the fingerprint
+moves), one solve in `rebuildChain`, and the §61/§124 seating rows
+re-measure at the bottom station.
+
+**Filed by §47's scope guard**, which named it rather than absorbing it.
+
+## 48. The going stem's one-way has no metal
+
+§47 collapsed the winding path onto the banked reserve, so every wheel
+from the crown wheel inward now poses from `barrelWindTurns` and the
+whole train stops together at the arrest. What the stem does when the
+wheel cannot move is carried by `windStemSlip`: a scalar that absorbs the
+backward free-wheel at the plate-top click and the spins the clutch takes
+out of mesh. The knob therefore turns while the train holds — correct
+behaviour — but the JOINT that permits it is not modelled. The alarm side
+states the same debt in the same words ("a backward crown free-slips at
+the stem⇄contrate bevel without unbanking"), so this is one class with two
+instances.
+
+**The fix.** The going side's one-way lives at the plate-top ratchet the
+winding spur's own comment already describes (`RATCHET_TEETH` is that
+wheel's count). Give it the §99 treatment: a click with a generated
+working face on the ratchet's cut law, its stud solved by the obstacle
+scan, and the bank taken out of stored state the way `settleAlarmClick`
+takes the alarm's give-back — after which `windStemSlip` is a consequence
+of a modelled contact rather than a bookkeeping term.
+
+## 49. `setPathRot` is not persisted, so the setting train re-phases on reload
+
+The sibling of the defect §47 closed. `barrelWindTurns` is saved and the
+winding train's angles are derived from it, so a reload lands the fusee,
+spur and let-down square exactly where they were. The SETTING path still
+accumulates `setPathRot`, which `captureState()` does not emit and
+`sanitize()` does not whitelist — so the keyless minute wheel and
+everything it drives snap back to base phase on every reload, while
+`crownRotation` restores. The hands do not jump (the jumper's `jumpCorr`
+covers the display), which is exactly why it has stayed invisible.
+
+**The fix, in §47's own shape:** prefer DERIVING over persisting. If the
+setting train's angle is a function of a quantity already saved, derive it
+and delete the state; if it genuinely is not, persist `setPathRot`
+alongside `crownRotation` and clamp it on restore.
+
+## 50. Chain ⇄ three-quarter plate is 0.117, under the shared margin
+
+§47 owed this measurement and took it: nothing in the battery had ever
+measured the gap between the top coil at full wind and the plate's
+underside, and the arrest needed the number to know whether anything could
+pass over the coil. Measured over the discrete link layout the mesh
+actually lays: **0.117**, against `CLEAR_MARGIN` 0.15. The build asserts
+the SIGN (contact is the regression) and publishes the number as
+`WIND_ARREST.chainTqGap`; the margin itself is not met.
+
+It is not a collision and nothing rides there — the arrest's own members
+keep clear of it by construction. But it is a declared clearance the
+movement does not honour at its tightest station, and it bounds anything a
+future entry might want to run over the cone. **The fix is z, and it is
+the §51 pattern:** either the plate rises (its underside is set by
+`TQ_MEASURED_MAX` against the hairspring stack — the binding part is
+named, so the cost is priced) or the cone's band drops. Re-measure with
+the same law after either move.
