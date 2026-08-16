@@ -1726,7 +1726,22 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm barrel', a: 'alarmArborRatchet', b: 'alarmBarrelArbor', why: '§99: the ratchet keyed on the arbor\'s filed square (across-corners = the arbor\'s diameter — the set-up ratchet\'s convention)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#5', why: 'idler 1 on its stud (§99 named the idler meshes for the winding pair\'s floors row; the stud keeps its index label)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#8', why: 'idler 2 on its stud' },
-  // §47 — the arrest's declared joints: the finger on its stud (a bored
+  // §47 — JOINTS THE COLLAPSE MADE VISIBLE, and that is the point rather
+  // than the cost. Before it, the crown wheel, its companion and the
+  // transfer wheel moved on NO axis (the winding path's raw accumulator
+  // was pinned 0 everywhere), and the maintaining pawls' frame moved with
+  // their own pins — so `intraUnit` could not judge any of them: §121's
+  // "a part no axis MOVES is a part it cannot judge", met here by parts
+  // becoming visible rather than by a waiver. Every row below is a rigid
+  // joint by construction, measured at the pose the check reports.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#3', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives (index labels: the wheels and the arbor are coaxial at the winding station)' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#4', why: '§47: the same wheel seated on the arbor\'s collar below it — the axial seat that seats the wheel on its shoulder' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: '§47: the crown wheel\'s companion body on the same arbor, one keyed stack' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#4', why: '§47: that body on the same collar — the stack is seated as one' },
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#3', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#14', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports)' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#16', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station' },
+  // §47 — the arrest's own declared joints: the finger on its stud (a bored
   // hub, running clearance), under its retaining head, seated on its bank
   // by the blade whose fixed end bears its post.
   { unit: 'Winding arrest', a: 'windArrestPawl', b: 'windArrestStud', why: '§47: the finger\'s bored hub on the hanging stud — the running joint' },
@@ -3260,6 +3275,38 @@ const PENETRATION_BUDGETS = [
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'chainRun') out.push(o); });
       return out;
+    },
+    // BESPOKE, for §99's reason in a new place: MTV is the wrong instrument
+    // for a flat face resting ON a chain. The pad's face beds against a run
+    // of links that wraps it in two directions, so the minimum translation
+    // that separates the meshes is a pop-out along the escape direction —
+    // a number about the search space, not the fit — and it reported 0.094
+    // at tension 0.98 for a pose with NOT ONE chain vertex inside the pad's
+    // stock. The fit is what this measures: chain vertices carried into the
+    // pad's OWN frame, and the deepest one's distance to the nearest face of
+    // the pad's local box. A face-resting contact reads 0; metal actually
+    // inside the member reads how far in.
+    measure(clock, unitA, unitB) {
+      let pad = null, chain = null;
+      unitA.obj.traverse((o) => { if (!pad && o.isMesh && o.name === 'windArrestPad') pad = o; });
+      unitB.obj.traverse((o) => { if (!chain && o.isMesh && o.name === 'chainRun') chain = o; });
+      if (!pad || !chain) return 0;
+      pad.updateWorldMatrix(true, false); chain.updateWorldMatrix(true, false);
+      if (!pad.geometry.boundingBox) pad.geometry.computeBoundingBox();
+      const bb = pad.geometry.boundingBox;
+      const inv = _mat.copy(pad.matrixWorld).invert().multiply(chain.matrixWorld);
+      const pos = chain.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      let worst = 0;
+      for (let i = 0; i < pos.count; i++) {
+        v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(inv);
+        if (v.x < bb.min.x || v.x > bb.max.x || v.y < bb.min.y || v.y > bb.max.y
+          || v.z < bb.min.z || v.z > bb.max.z) continue;
+        const d = Math.min(v.x - bb.min.x, bb.max.x - v.x, v.y - bb.min.y, bb.max.y - v.y,
+          v.z - bb.min.z, bb.max.z - v.z);
+        if (d > worst) worst = d;
+      }
+      return worst;
     },
   },
   {
@@ -5409,7 +5456,6 @@ export const STOCK_KIND_BY_MESH = {
   windArrestStudHead: 'pivot',    // its retaining head
   windArrestBank: 'pivot',        // the seat pin
   windArrestSpringPost: 'pivot',  // the blade's anchor pin
-  windArrestPadPost: 'pivot',     // the pad tab's drop post
   // §99 — the alarm barrel's own click:
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
