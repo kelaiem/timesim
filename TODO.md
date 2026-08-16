@@ -37,7 +37,7 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 48 | OPEN | Both power-reserve meshes measured 47–49% of a pitch off anti-phase — tooth on tooth. TODO 15's last `Math.PI / teeth` site but its own item now, because two more findings ride with it: the gap gauge's threshold misreads an 8-leaf pinion, and the train is posed backwards from its hand |
 | 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
 | 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
-| 51 | OPEN | The §126 arrest's finger fouls two neighbours in POSITION space (`expectedContacts`, 2 rows). The mechanism is green through both hand-offs; a first fix attempt is measured in the item, including why it was reverted |
+| 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
 
@@ -5869,75 +5869,158 @@ of a modelled contact rather than a bookkeeping term.
 
 ---
 
-## 51. The winding arrest's finger fouls two neighbours it should clear
+## 51. CLOSED — the finger's accommodation is solved with the finger, not after it
 
-`expectedContacts` (the per-contact floors over EXPECTED pairs, TODO 6's
-instrument) measures the §126 arrest against two of its own declared pairs
-at **min 0** — genuine contact where the row asks for `CLEAR_MARGIN`, with
-the declared working contacts excluded. Both are POSITION-space defects in
-the finger's own members, not in the arrest's mechanics: the beak⇄lug
-hand-off, the pad⇄coil hand-off, the penetration budgets, the stock floors
-and the intra-unit joints are all green, so the mechanism holds and its
-accommodation does not.
+`expectedContacts` measured the §126 arrest against two of its own declared
+pairs at **min 0** — genuine contact where the row asks `CLEAR_MARGIN`, with
+the declared working contacts excluded. Both were POSITION-space defects in
+the finger's own members while the mechanism held: the beak⇄lug hand-off, the
+pad⇄coil hand-off, the penetration budgets, the stock floors and the
+intra-unit joints were all green.
 
-**Row one — `windArrestBeakArm ⇄ chainRun`, at beat f=0 (full wind).** The
-arm's ends both stand outside the wrap's reach; the SEGMENT between them
-does not. A straight bar between two clear points dips closer to the axis
-than either end, and `ARM_STOP_R` is derived from the wrap's reach at the
-arm's band and then applied only to the riser's station — so the chord
-crosses the coil the endpoints avoid.
+Both rows are closed, and every arrest row now measures clear with a silent
+boot:
 
-**Row two — `windArrestPad ⇄ windArrestLug`, at reserve f=0.6333.** The
-finger's band is set under the BRACKET (`HUB_Z2 = BRK_BOT − PIN_GAP`), but
-the pad rides at that band and the lug sweeps past it once per cone turn,
-so the lug's orbit is the second ceiling and it is the lower one: measured,
-0.035 separates them where the pair's row asks 0.15.
+| row | was | now | floor |
+|---|---|---|---|
+| `Winding arrest ⇄ Chain` | 0 (`windArrestBeakArm`) | **0.2256** (`windArrestPadArm`) | 0.15 |
+| `Winding arrest ⇄ Fusee & great wheel` | 0 (`windArrestPad ⇄ windArrestLug`) | **0.1500** | 0.15 |
+| `Winding arrest ⇄ Three-quarter plate` | 0.3596 | **0.1700** | 0.15 |
 
-**The fix is position space (P3 — never out of the mechanism), and a
-second attempt measured what it actually costs.** Both rows CAN be driven
-green, and were: `expectedContacts` passed all three arrest pairs
-(beak arm ⇄ chain 0.182, riser ⇄ plate 0.170, pad ⇄ lug 0.150). That
-attempt was still REVERTED, because closing these two opened four others —
-`windArrestHandoff` (the coil buried 0.114 in the pad), `penetration`
-(0.081), `intraUnit` (blade ⇄ bank pin) and boot silence (the beak scan
-lost its candidate, and with it the engaging-moment and bank-pin asserts).
-A tree with two red rows and a silent boot is better than one with four
-red gates and four warns, so the branch keeps the former. What the attempt
-established, and what the next pass should start from:
+### What the first attempt got wrong, and what the reach really is
 
-- **`ARM_STOP_R` must be measured from the DISCRETE links, not the station
-  continuum.** The mesh lays straight links between rivets and a polygon's
-  corners stand proud of the circle through its facet mids by
-  r(1 − cos(θ_link/2)) ≈ 0.11 at these radii. Measured discretely the
-  chain's reach at the arm's band is **4.535**; the continuum says ~4.28.
-- **The stud at r 4.400 is INSIDE that reach**, which is why no riser
-  station could rescue row one: the arm's inboard end is already in the
-  wrap. The stud's own solve has to carry `ARM_STOP_R + HUB_R` as a third
-  constraint beside its two existing ones.
-- **ARMS STAY OUT, TABS REACH IN.** An arm spans thirty-odd degrees, and
-  over that span the wrap climbs to a fatter station than the one under
-  its own tab; a tab spans a few degrees, where the wrap's radius barely
-  moves. Both arms must stop at `ARM_STOP_R` and both tabs bridge inward.
-- **Clearances must hold across the finger's TRAVEL, not at the seat.**
-  The throw carries the arm's inner edge inward by about half a unit, so
-  a seat-frame solve proves a clearance the part does not have.
-- **A long tab leans by SHEAR, not rotation.** Rotating a radial bridge
-  swings its outer end up through the very margin the stratum plan buys
-  from the lug; `v ↦ v + (z − mid)·PAD_LEAN` leans the working face and
-  leaves every z where the plan put it.
-- **`windArrestPad ⇄ fuseeLand` is a real declared contact**, not a
-  defect: the chain sits in a groove whose lands stand to nearly the
-  coil's own radius, so a pad touching the chain necessarily runs within a
-  hair of the crest beside it (0.055 measured). Declaring it needs the
-  land mesh NAMED in `makeFusee` — index labels move.
+The item's earlier draft recorded a fix that drove both rows green and was
+reverted because it opened four other gates. That attempt was right about the
+symptom and wrong about the number. `ARM_STOP_R` was derived from the station
+CONTINUUM, and the mesh lays straight links between rivets, so a polygon's
+corners stand proud of the circle through its facet mids. Measured on the same
+discrete layout `rebuildChain` lays and the pad's law already reads, the wrap's
+reach at the plate's band is **4.37** where the stations said ~4.28.
 
-The reason this cascades is one coupling: the stud's radius sets the pad
-arm, whose length sets `padGain` and `PSI_FULL`, which set the throw the
-lug is clocked to and the window the pad's law reads. **The next pass
-should fold the chain-reach constraint into the AZIMUTH SOLVE** — beside
-the webs, the window rim and the drum's reach, which it already searches
-under — so the stud, the arms and the tabs are chosen together rather than
-in sequence.
+Two corrections travel with that, and both were mistakes the first pass made
+in the safe-looking direction:
+
+- **A chain point demands a SPHERE of `CLEAR_MARGIN`, not a margin in r plus a
+  margin in z.** A link a margin below the band is already clear; asking it for
+  the full radial margin as well prices the same clearance twice. A point `dz`
+  outside the band demands `√(margin² − dz²)` in radius.
+- **A REACH is a shell radius, and that is a sound statement only about metal
+  that WRAPS the cone.** The one link straddling the departure is half-way to
+  the drum, and the free span crosses the plate's band at radii from 4.6 out to
+  29 — a member is perfectly entitled to sit inboard of it. Fed to a reach law
+  that link read **4.79** against the wrap's own 4.37, and the whole finger got
+  shoved outboard to clear a corridor that was never in its way.
+  `linkOuterPtsNear` gained `wrapOnly` for exactly that link; the pad's law
+  still needs it (it is the top of the wrap, and the pad rides it), so the flag
+  is opt-in.
+
+### The chord is the member, not its two ends
+
+A straight bar between two points that both clear the wrap dips inside it: its
+centreline's closest approach is `R·cos(Δaz/2)` and its own half-width takes
+`ARM_W/2` more. Holding the arms' ENDS to `ARM_STOP_R` proved a clearance the
+metal did not have — the beak arm's inner edge stood at **3.86**. Both arms now
+solve their outboard station against the whole chord.
+
+And the sweep runs over the finger's TRAVEL, which is **not** the designed
+throw. `PAD_LIFT` is what the pad rises between rest and full wind, but the lift
+law is a per-interval SUP, so a link phase reaching further than the one under
+the face at exactly t = 1 lifts the pad past `PAD_LIFT` and swings the plate
+past `PSI_FULL`. Measured, that over-swing carried the beak arm's outer corner
+0.11 inside a stop that a seat-to-`PSI_FULL` sweep had just proved clear, and
+the gate found it at t = 0.985. The travel is `LIFT_MAX/padGain` now, and
+`declareTravel` quotes the measured ride instead of allowing 1.35 for it.
+
+### Arms stay out, tabs reach in
+
+An arm spans thirty-odd degrees, over which the wrap climbs to a fatter station;
+a tab spans a few, where its radius barely moves. Both arms stop at
+`ARM_STOP_R`; `PAD_T` and `BEAK_RAD` are the gaps their tabs bridge rather than
+literals, so each member is one connected body and the only metal standing
+inside the wrap at plate z is the pad's working face.
+
+The pad's lean rides a **shear baked into the geometry**, not a rotation on a
+parent group. At the stock a bridging tab needs, a rotation swings its corners
+`PAD_T·sinθ − (h/2)(1 − cosθ)` ≈ 0.29 out of the band — spent out of exactly
+the margin the stratum plan buys from the lug. The shear puts the working face
+on the same plane (`r = const − z·lean`, which is what the law reads back) and
+moves no vertex in z. It cannot ride a parent group: every BVH distance query
+would then be measured in a sheared frame and return something that is not a
+length. Baked in, the geometry's AABB is no longer tight — the very over-read
+the §126 note warned about, arriving by the other route — so the tab publishes
+its pre-shear box and its shear in `userData`, and the bespoke fit measure
+un-shears the point before testing.
+
+### The two ceilings, and the one dimension that was never derived
+
+The bracket is the obvious ceiling over the finger's plate. The lug's underside
+stands 0.035 lower and sweeps every azimuth once per cone turn, and the pad's
+face is radially INSIDE that orbit by construction — it has to be, it reads the
+coil the lug turns with — so nothing but z can separate them. The plate now
+hangs under the lower ceiling.
+
+Doing that honestly exposed the real blocker, which was not a clearance at all.
+Two requirements meet at the finger's pivot:
+
+- it must stand outside the wrap, hub rim and retaining head both —
+  `studR ≥ ARM_BAND_REACH + HUB_R`;
+- and the beak's lever must keep its designed ratio band AND an engaging
+  reaction. With the beak at radius `Rb`, the stud at `Rs` and δ of azimuth
+  between them, the reaction is engaging only while `Rs·cos δ ≤ Rb`, and the arm
+  is inside its `2.2·R_PAD_ARM` ceiling only while
+  `Rs² + Rb² − 2·Rs·Rb·cos δ ≤ L_max²`. Eliminate δ and they are compatible only
+  for **`Rs ≤ √(Rb² + L_max²)`**.
+
+At the lug's §126 proudness that ceiling was **4.79** against a floor of
+**4.88** — an EMPTY window, at every one of the 90 legal pad azimuths. That is
+why honestly clearing the pivot kept costing the beak scan its candidate, and
+it is why the first attempt's four red gates were not bad luck.
+
+`LUG_OUTER` was the one dimension in the mechanism derived from nothing that
+binds: §126 gave the lug the CHAIN's proudness, a tidy tie. It is now sized by
+inverting that ceiling — the proudness the stop needs so a pivot cleared of the
+wrap can reach it on a lever of the designed ratio — and built to the greater of
+that and the chain's, so it never stands less proud than the coil whose place it
+takes. Growing it spends no P0/P1 quantity: the throw, the bite
+(`ENGAGE = BEAK_THROW − (CLEAR_MARGIN + 0.02)`) and the ratio band are
+untouched, and the lug's channel is runout, with nothing out there to foul.
+
+### The solve chooses them together
+
+The azimuth solve RANKS its candidates now instead of reducing to one, and each
+is carried through the whole finger solve — window fixed point, three-way stud
+shove, beak scan — until one comes out with a legal beak. Stud, arms, tabs and
+beak are chosen together rather than in sequence, which is what the item's
+earlier draft asked the next pass to do. Ordinary cost is one trial; the
+best-scoring azimuth usually solves.
+
+### Residue, named
+
+- **The surviving beak window is TWO scan steps wide.** The scan publishes a
+  per-step trace of why it rejected each azimuth (`WIND_ARREST.beakScanTrace`,
+  one character per step: `s`/`l` arm too short/long, `r` not radial, `n` wrong
+  sense, `c` chain in the tab's window, `m` disengaging moment, `.` legal), and
+  the shipped solve reads
+  `ssssssssssssssssssssccccccccmmmmmmm..llll…` — seven moment rejects and eight
+  chain rejects on either side of two legal steps. That is a fact about this
+  fold, not a detail: several changes during this landing moved the window a
+  step or two and emptied it, each time silently reverting the beak to its
+  unchecked fallback. Anything that moves `ARM_BAND_REACH`, `HUB_R`,
+  `R_PAD_ARM` or the lug's station should expect to re-open it, and the trace is
+  the first thing to read when the boot warns.
+- **`Winding arrest ⇄ Fusee & great wheel` measures exactly 0.1500** against the
+  0.15 floor, because `HUB_Z2 = LUG_Z1 − CLEAR_MARGIN` makes the gap the margin
+  by construction. It passes deterministically (the build has no randomness),
+  but it passes with nothing to spare. Relieving the pad's top face by a §50
+  pivot floor would buy the slack; it also moves the pad's band, which moves
+  `F_PAD_WALL`, which moves the candidate set — and on this fold that is enough
+  to empty the beak window. Left as it is, deliberately, with the coupling
+  written down.
+- **`ARM_STOP_R` is azimuth-blind**, a max over the whole compass. The wrap's
+  demand actually varies 4.19–4.37 across azimuths with the link phase, so the
+  arms stop further out than any one of them needs. That is conservative in the
+  safe direction and it costs only stock; folding the per-sector reach into the
+  ranked walk is the next refinement if the window ever needs the room.
 
 ---
 

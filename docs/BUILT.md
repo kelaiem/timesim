@@ -12669,3 +12669,48 @@ claims a joint with no metal behind it), the going stem's one-way, the
 setting path's un-persisted `setPathRot`, and `Chain ⇄ three-quarter plate`
 at 0.117 against a 0.15 margin — the measurement §47 owed, taken, published
 and under the floor.
+
+### The accommodation, closed after the fact (TODO 51)
+
+The entry above shipped with two `expectedContacts` rows at min 0 — the
+finger's own members fouling the chain and the lug while every mechanism
+gate stayed green. Closing them changed four things in this landing, and
+the reason all four were needed is one finding: **the paragraph above is
+right that the pad's law reads the discrete layout, and every OTHER law in
+the mechanism was still reading the continuum.**
+
+- **`ARM_STOP_R` reads the discrete links too**, and errs on a SPHERE: a
+  chain point `dz` outside the arm's band demands `√(margin² − dz²)` in
+  radius rather than the full margin on top of the full `dz`. It also stops
+  reading the link that straddles the departure — a reach is a shell radius,
+  which says nothing true about a free span crossing the same band at radii
+  out to 29 (`linkOuterPtsNear` gained `wrapOnly`; the pad's law still needs
+  that link and keeps it).
+- **The arms are held along their whole CHORD, over their MEASURED travel.**
+  A bar between two clear points dips inside the wrap by `R(1 − cos(Δaz/2))`
+  plus its half-width; and the travel exceeds the designed throw, because
+  the lift law is a per-interval sup and a link phase prouder than the one
+  under the face at t = 1 swings the plate past `PSI_FULL`.
+- **Arms stop out, tabs bridge in.** `PAD_T` and `BEAK_RAD` are the gaps
+  their tabs span. The pad's lean became a SHEAR baked into the geometry —
+  a rotation swings a bridging tab's corners 0.29 out of its band — with the
+  pre-shear box published in `userData` so the bespoke fit measure stays
+  exact about the real solid.
+- **`LUG_OUTER` is derived now.** Giving the lug the chain's proudness was a
+  tie to nothing that binds. What binds is the pivot: it must clear the wrap
+  (`studR ≥ ARM_BAND_REACH + HUB_R`) while the beak's lever keeps its ratio
+  band and an engaging reaction, and those two are compatible only for
+  `Rs ≤ √(Rb² + L_max²)`. At the chain's proudness that ceiling was 4.79
+  against a floor of 4.88 — empty at every legal pad azimuth, which is why
+  clearing the pivot honestly kept costing the beak scan its candidate. The
+  lug is sized by inverting it, and built to the greater of that and the
+  chain's.
+
+The azimuth solve RANKS its candidates now and carries each through the
+whole finger solve until one yields a legal beak, so the stud, the arms, the
+tabs and the beak are chosen together instead of in sequence — which is the
+shape the debt entry asked for. What that bought is recorded honestly in
+TODO 51: the surviving beak window is two scan steps wide, and the scan
+publishes a per-step trace of why it rejected each azimuth so the next
+person to move `ARM_BAND_REACH`, `HUB_R` or the lug's station can see it
+close.
