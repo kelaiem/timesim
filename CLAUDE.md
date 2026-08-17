@@ -157,7 +157,12 @@ it into prose either.
 3. **Every new part is declared in `MECH_GRAPH`** (`src/inspect.js`) — what
    supports it, what drives it.
 4. **The inspector battery is clean before anything lands**: support 0
-   failures, graph clean, penetration within budgets (waived rows are
+   failures, graph clean, `axisEntry` **0 violations** (TODO 54/§127 — every
+   ordered pair of pose axes reproduces the entered axis exactly, which is
+   what makes a sweep's findings a function of the geometry rather than of
+   `AXES`' declaration order, and what lets §127 sweep one axis per browser
+   context; the leak tier beside it is a REPORT, not a gate),
+   penetration within budgets (waived rows are
    accepted debt citing their TODO item, same convention as stockFloor),
    `alarmHandoffs` **0 unwaived** (every claimed contact of the §35
    arming run within ±tol of touch at both parities, or waived citing a

@@ -11,6 +11,8 @@
 //   boot         __clock.bootWarns empty (standing rule 6 — boot is silent)
 //   support      0 failures
 //   graph        every violation list empty (declared `todo` edges allowed)
+//   axisEntry    every ordered pair of pose axes reproduces the entered axis
+//                exactly (TODO 54); the leak tier beside it is a report
 //   penetration  every budget row OK or waived (waived rows reported as debt)
 //   alarmHandoffs every declared hand-off of the §35 arming run within ±tol
 //                of touch at both parities, or waived citing its TODO item
