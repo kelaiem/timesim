@@ -180,10 +180,25 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // `inspection`+`expectedContacts` on one shard for a 1150.7 s wall where the
 // refreshed one splits at 1021.9 s, and at K=3 lands on `inspection` alone.
 // They are dev-container numbers, and CI's absolute times swing widely around
-// them (two runs of one tree: 4082.8 s and 2459.1 s of check time). That does
-// not matter here — the partition is decided by RATIOS between checks, which
-// are stable, and the slow CI run split 2184.6 s against 1898.2 s on exactly
-// this column.
+// them (two runs of one tree: 4082.8 s and 2459.1 s of check time). §81 wrote
+// that this "does not matter here — the partition is decided by RATIOS between
+// checks, which are stable".
+//
+// §127 MEASURED THAT CLAIM AND IT IS FALSE. The first CI run of the split
+// harness put every task's CI time against this column: the ratio spreads
+// 1.14x (`inspection:alarmWind`) to 2.69x (`inspection:beat`) — a 2.4x spread
+// in the RATIO, not in the absolute times. `expectedContacts` runs 2.14x and
+// `sweptOverlap` 1.31x, so their relative order is not the same on the two
+// machines. The cause is not mysterious: these checks are not one workload,
+// they are BVH tri-tri work, raycast arbitration and matrix walks in different
+// mixtures, and a runner's cache and clock do not scale those alike.
+//
+// The consequence is bounded and worth stating rather than fixing blind: that
+// CI run's partition landed 1329.4 s against an ideal 3-way split of 1209.3 s,
+// 9.9% over. That is wall clock, never a verdict (the rule below), and it is
+// an argument for MORE, SMALLER tasks rather than for a CI-derived column —
+// a column measured on one runner is just as wrong on the next one, and finer
+// tasks make any single mis-estimate cost less.
 const BATTERY = [
   { name: 'support', opts: {}, cost: 15,
     gate: '0 failures',

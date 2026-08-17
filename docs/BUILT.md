@@ -12884,3 +12884,36 @@ nothing: the largest single task is **`clearances` at 552.6 s**, then
 where roadmap §127's remainder now points, and it names why those three are not
 a copy of this work: their rows are extrema, so a merge is a per-row minimum
 that must carry which slice won.
+
+### What CI said, and the §81 claim it falsified
+
+The first CI run of the split harness passed 24/24 on ubuntu-latest with three
+virgin boots silent and the fingerprint deterministic — including both new
+slice gates and `axisEntry`, whose leak report reproduced the dev container's
+numbers exactly (106 of 220 pairs, `Alarm disc` 17.7). Three browser contexts
+on a 7 GB runner with SwiftShader neither OOM'd nor dropped a shard.
+
+**It did not establish the wall improvement, and one run cannot.** Against
+`main`'s own run of the previous commit: 21/21 gates, 1276.0 s wall, 2066.2 s
+of check time on two shards; the split run was 24/24, 1474.8 s wall, **3627.9 s
+of check time** on three. Check time rose 75.6% while the same tree's local runs
+held flat at +2.7%, and the two jobs ran on different runners — which is the
+1.66x same-tree spread this harness's header already documents, arriving again.
+The honest reading is that CI proves the split WORKS there and says nothing yet
+about what it saves there.
+
+**And it falsified a claim §81 left behind.** That entry wrote that CI's
+absolute times do not matter because "the partition is decided by RATIOS
+between checks, which are stable." Measured per task, CI against the landing
+container, the ratio spreads **1.14x to 2.69x** — a 2.4x spread in the ratio
+itself, with `expectedContacts` at 2.14x and `sweptOverlap` at 1.31x, so even
+their relative ORDER differs between the machines. These checks are not one
+workload: BVH tri-tri work, raycast arbitration and matrix walks in different
+mixtures do not scale alike across a runner's cache and clock.
+
+The cost is bounded — that run's partition landed 1329.4 s against an ideal
+three-way split of 1209.3 s, 9.9% over — and it is wall clock, never a verdict.
+The conclusion is recorded in the column's own comment: the answer is not a
+CI-derived column, which would be equally wrong on the next runner, but MORE
+AND SMALLER TASKS, so that any single mis-estimate costs less. Which is another
+argument for the remainder in roadmap §127.
