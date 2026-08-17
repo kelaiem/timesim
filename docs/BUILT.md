@@ -12805,3 +12805,47 @@ The merge lives in `tools/battery-split.mjs` rather than inside the harness so
 it can be exercised without a full battery: `tools/probe-127-split.mjs` proves
 the identity on a two-axis sweep in about a minute, which is the loop to use
 while iterating on any of this.
+
+### What moved, derived row by row
+
+Tier 0 changes which poses the sweeps visit, so it was landed as a report move
+and accepted the way the repo accepts one: a `--report` diff against a green
+baseline on the same container, with every moved row explained. **Six of
+fifteen checks moved. Every GATE INPUT is byte-identical** — 0 rows before and
+after in all six — so the movement is entirely in reported detail.
+
+**`inspection` — the movement is a coverage GAIN, and it is the point.** No
+pair was lost, no pair changed class, 74 of 78 shared pairs kept identical
+per-axis hit lists. What changed:
+
+- **`Alarm disc ⇄ Hour wheel` appears** (EXPECTED; `alarmStrike` 110/110 poses,
+  `alarmToggle` 23/49). The disc follows the hour wheel when DISARMED — §25 C's
+  own behaviour. `alarmStrike` had been inheriting a turned `alarmCrownRotation`
+  from the `alarm` axis, so the disc sat somewhere else for that whole axis and
+  the sweep never saw the two touch.
+- **`Alarm crown ⇄ Alarm winding train` on `alarmStrike`: 0 → 110 poses.** The
+  same inheritance carried `alarmCrownPullT: 1` — the crown PULLED OUT to the
+  setting position, where it is disengaged from the winding train by design. The
+  strike axis had been swept with the alarm crown pulled, which nothing declared
+  and which hid a declared mesh across the entire axis.
+- Two rows gain a single pose on `alarmWind` (`Alarm release feeler` and `Dial`,
+  both against `Alarm winding train`), and `Alarm barrel ⇄ Alarm click` keeps
+  its 82 poses at different fractions.
+
+**The other five are reported detail, itemised.** `assembly`: one of 23
+out-of-scope rows, `Dial` 45 → 44 rigid bodies with its separation 0.0029 →
+0.005 — the clustering finds one less fragment, and the row does not gate.
+`intraUnit`: a single `at` label, `train f=0.5` → `train f=0.25` — same row,
+same verdict, extremum at a different pose. `expectedContacts`: two `at`
+labels. `clearances`: `verdictCalls` 0 → 1, with all 30 budget values
+unchanged. `sweptOverlap`: counters by 0.03% and one `f` label — it moves at
+all because its CONFIRM tier re-measures through `measureClearance`, which is
+`sweepClearances`, so it inherits canonical entry even though the registry and
+hull phase are untouched. Five checks are entered; six can move.
+
+**And the work did not grow.** `inspection`'s census moved −0.3% on exact
+calls, −0.2% on AABB tests, 0.0% on unit-pair tests, for 762.2 s → 767.0 s
+(+0.6%). That matters for reading the other checks' times in the same pair of
+runs, which moved +8.8% to +15.5% while their own work counters moved under
+0.5% — that spread is the container, not this change, and it is exactly why
+the `cost` column is only ever used to balance shards and never to judge one.
