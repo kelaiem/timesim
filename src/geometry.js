@@ -1611,6 +1611,14 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
 // are the count and the section floors the movement already owns.
 export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
   const beta = Math.PI / N;
+  // THE FINGER TURNS ON ITS ARBOR, so its bore is not the arbor's radius, and
+  // what the cross's horn passes is this BORE LIP — not the bare arbor. Sizing
+  // the horn floor against the arbor put the lip 0.14 from the horn against a
+  // 0.15 margin, and left the disc's own bore 0.0098 off the arbor, which
+  // `intraUnit` reads as the intersection it is. 0.05 is the running fit this
+  // movement already uses for a wheel on a stud (the winding idlers' 0.5 bore
+  // on a 0.45 stud).
+  const fingerBoreR = arborR + 0.05;
   const slotW = 2 * pivotMin + 0.06;          // the pin's ⌀ at the pivot floor, plus running clearance
   const hubR = studR + stockMin;              // the cross's hub: a floor wall over its own stud
   // THREE FLOORS SET d, and neither of the obvious two binds.
@@ -1637,11 +1645,12 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
     const bb = dd * Math.cos(beta), al = Math.asin(Math.min(1, (slotW / 2) / bb));
     return Math.hypot(dd - bb * Math.cos(al), bb * Math.sin(al));
   };
+  const hornFloor = fingerBoreR + margin;
   let lo = Math.max(dFromPitch, dFromWeb), hi = lo;
-  while (hornAt(hi) < arborR + margin && hi < 200) hi *= 1.5;
+  while (hornAt(hi) < hornFloor && hi < 200) hi *= 1.5;
   for (let i = 0; i < 160; i++) {
     const mid = (lo + hi) / 2;
-    if (hornAt(mid) >= arborR + margin) hi = mid; else lo = mid;
+    if (hornAt(mid) >= hornFloor) hi = mid; else lo = mid;
   }
   const dFromHorn = hi;
   const d = Math.max(dFromPitch, dFromWeb, dFromHorn);
@@ -1652,7 +1661,7 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
   // standing proud of the rim it has to present itself from.
   const lockR = a - pivotMin;
   return {
-    N, beta, d, a, b, slotW, hubR, studR, lockR, arborR,
+    N, beta, d, a, b, slotW, hubR, studR, lockR, arborR, fingerBoreR, hornFloor,
     // A WHEEL TURNS ON ITS STUD, so its bore is not its stud's radius. Boring
     // the cross to studR exactly makes the two solids coincident, which the
     // instruments read as what it is — an intersection — and no declaration
@@ -1800,8 +1809,19 @@ export function makeGenevaFinger({ spec, thickness, boreR, material }) {
   const s = new THREE.Shape();
   pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
   s.closePath();
+  // The bore is written as an EXPLICIT POLYGON, not an absarc. This extrude
+  // runs at curveSegments: 1 (the outline is already a fine polygon and does
+  // not want re-tessellating), and at that setting an absarc is divided into a
+  // single segment — the hole collapses and the disc's metal closes over the
+  // arbor it is bored for. Measured: intraUnit reported genevaFingerDisc ⇄
+  // alarmArrestArbor intersecting, with a bore nominally 0.01 CLEAR of it.
   const hole = new THREE.Path();
-  hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+  for (let i = 0; i < 64; i++) {
+    const t = -(i / 64) * Math.PI * 2;              // reversed, so the hole winds against the outline
+    const x = Math.cos(t) * boreR, y = Math.sin(t) * boreR;
+    if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y);
+  }
+  hole.closePath();
   s.holes.push(hole);
   const g = new THREE.Group();
   const disc = new THREE.Mesh(

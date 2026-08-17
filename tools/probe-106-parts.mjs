@@ -55,10 +55,18 @@ const out = await page.evaluate(async () => {
     +((2 * Math.PI * spec.b) / 8).toFixed(4), +(spec.slotW + 2 * STOCK).toFixed(4));
   push('the pin banks on the blank arm', spec.banks, `d−a ${+spec.slotInner.toFixed(3)}`, `< b ${+spec.b.toFixed(3)}`);
   push('locking disc clears its arbor', spec.lockR > spec.arborR, +spec.lockR.toFixed(4), `> arbor ${+spec.arborR.toFixed(4)}`);
-  push('cross horn clears the driver arbor', spec.horn >= spec.arborR + MARGIN - 1e-9,
-    +spec.horn.toFixed(4), `≥ arbor+margin ${+(spec.arborR + MARGIN).toFixed(4)}`);
-  push('assembly fits the sited free disc', spec.d + spec.b + MARGIN <= 8.067,
-    +(spec.d + spec.b + MARGIN).toFixed(4), '≤ 8.067 at az 12°');
+
+  // NOT a free-disc test against a headline number any more. That check quoted
+  // "8.067 at az 12°", which is the §106 scan's best over ALL centre distances
+  // — the misread that put the pinion on another arbor. Whether the assembly
+  // FITS is `probe-106-resite`'s question, asked per member over three
+  // freedoms; what belongs here is that the horn floor governs, since it is the
+  // floor that sets d and the one a change to the spec would silently move.
+  push('the horn floor is what sets d', Math.abs(spec.d - spec.floors.horn) < 1e-9,
+    +spec.floors.horn.toFixed(4), 'd ' + +spec.d.toFixed(4));
+  push('the horn clears the finger BORE, not the bare arbor',
+    spec.horn >= spec.fingerBoreR + MARGIN - 1e-9,
+    +spec.horn.toFixed(4), `≥ bore+margin ${+(spec.fingerBoreR + MARGIN).toFixed(4)}`);
 
   const cross = G.makeGenevaCross({ spec, thickness: 0.5, blankAt: 0 });
   const fing = G.makeGenevaFinger({ spec, thickness: 0.5, boreR: spec.arborR });

@@ -14427,9 +14427,9 @@ let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, ar
   fSpin.position.set(arrestPos.x, arrestPos.y, ARREST_Z);
   const finger = G.makeGenevaFinger({
     spec: ARREST_SPEC, thickness: ARREST_PLATE_T,
-    // running clearance over the arbor, for the same reason the cross carries
-    // one over its stud — the finger turns, the column does not
-    boreR: ARREST_SPEC.arborR + 0.01, material: MATS.blueSteel,
+    // the running fit the spec derives, and the same surface its horn floor
+    // was sized against — the finger turns, the column does not
+    boreR: ARREST_SPEC.fingerBoreR, material: MATS.blueSteel,
   });
   finger.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmArrestFinger'; });
   fSpin.add(finger);
