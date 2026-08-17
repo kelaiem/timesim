@@ -50,6 +50,15 @@
 # re-derive this cap AND ci-battery.mjs's per-check guard together, from
 # SEVERAL CI runs rather than one.
 #
+# §82 LANDED, AND §127 THEN BROKE THE "no partition subdivides a check" HALF —
+# `inspection` is scheduled as one task per axis now, so the floor is the
+# largest TASK rather than the largest check. THE NUMBER STILL DOES NOT MOVE,
+# and that is a decision, not an oversight: this cap and the per-check guard
+# are sized by the SLOW TAIL of this runner, the paragraphs above exist because
+# both were once derived from a single green run, and §127 was measured on a
+# 4-vCPU dev container. Re-derive both together once several CI runs of the
+# split harness exist — the cap has never been the thing to move first.
+#
 # Playwright is pinned in tools/package.json so the browser build is stable;
 # the browser download is cached keyed on that pin. python3 for dev_server.py
 # is preinstalled on ubuntu-latest.

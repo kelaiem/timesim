@@ -49,10 +49,14 @@
 //         and a Playwright Chromium (npx playwright install chromium).
 //         --shards N        run the battery across N browser contexts,
 //                           partitioned by the measured `cost` column
-//                           (default 2; 1 is the pre-§81 single-file run).
+//                           (default 3; 1 is the pre-§81 single-file run).
 //         --report FILE     write every check's FULL payload as JSON — the
 //                           "same rows, same numbers" instrument §80 and §81
 //                           are both accepted against.
+//         --no-split        run each divisible check whole instead of as
+//                           per-axis tasks (§127). The reference the split
+//                           has to agree with, kept for the same reason
+//                           `--shards 1` is.
 // Exits 0 only when every gate passes; failing gates dump their payloads.
 
 import { spawn } from 'node:child_process';
@@ -62,6 +66,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { INSPECTION_SLICES, mergeInspection, buildTasks } from './battery-split.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const YIELD_EVERY = 64;
@@ -158,17 +163,27 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // greedy, below), so the wall is max(shard) instead of sum(checks). A
 // partition written as code would have to be re-argued every time a check
 // gets faster; a partition computed from a measured column is re-derived by
-// editing the column. These numbers are one full run of this harness on a
-// 4-vCPU dev container after §80 landed — `--report` writes the same column
-// back out as `ms`, which is how they get refreshed. They are used ONLY to
-// balance the shards: a stale number costs wall clock, never a wrong verdict.
+// editing the column. `--report` writes the same column back out as `ms`,
+// which is how they get refreshed. They are used ONLY to balance the shards:
+// a stale number costs wall clock, never a wrong verdict.
+//
+// §127 REFRESHED THEM, and the drift is the argument for doing it: against the
+// post-§80 numbers this column used to carry, the measured ratios were 0.77
+// (`inspection`), 0.73 (`clearances`), 0.95 (`expectedContacts`) and 0.61
+// (`sweptOverlap`). A uniform factor would have been a faster machine and
+// harmless; a spread that wide is the checks moving relative to each other —
+// §82 took `sweptOverlap` down, `expectedContacts` grew — and THAT is what
+// mis-partitions. These are one full green run of this harness on a 4-vCPU
+// container (2026-08-17, 2029.1 s of check time): the stale column put
+// `inspection`+`expectedContacts` on one shard for a 1150.7 s wall where the
+// refreshed one splits at 1021.9 s, and at K=3 lands on `inspection` alone.
 // They are dev-container numbers, and CI's absolute times swing widely around
 // them (two runs of one tree: 4082.8 s and 2459.1 s of check time). That does
 // not matter here — the partition is decided by RATIOS between checks, which
 // are stable, and the slow CI run split 2184.6 s against 1898.2 s on exactly
 // this column.
 const BATTERY = [
-  { name: 'support', opts: {}, cost: 20,
+  { name: 'support', opts: {}, cost: 15,
     gate: '0 failures',
     fails: (r) => r.failures },
   { name: 'graph', opts: {}, cost: 1,
@@ -176,9 +191,18 @@ const BATTERY = [
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
+  // TODO 54 — the pose contract every sweep below rests on, so it reads early:
+  // if canonical axis entry does not hold, the sweeps' findings are a function
+  // of AXES' declaration order and §127's partition is measuring a different
+  // movement in each shard. Its leak tier is a report (see checkAxisEntry).
+  { name: 'axisEntry', opts: {}, cost: 2,
+    gate: 'every ordered axis pair reproduces the entered axis exactly',
+    fails: (r) => r.violations,
+    note: (r) => `${r.pairsTested} ordered pairs; without the entry ${r.leak.pairsLeaking} leak, `
+      + `${r.leak.units.length} units move (worst ${r.leak.units[0]?.unit ?? '—'} ${r.leak.units[0]?.worst ?? 0})` },
   // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
   // pallets halved the row's mesh work — measured 21 s.
-  { name: 'penetration', opts: {}, cost: 21,
+  { name: 'penetration', opts: {}, cost: 18,
     gate: 'every budget row OK or waived (waived rows reported as debt)',
     fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
     note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
@@ -192,7 +216,7 @@ const BATTERY = [
     gate: 'the arrest shut at full wind and free at slack, both contacts',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'stockFloor', opts: {}, cost: 10,
+  { name: 'stockFloor', opts: {}, cost: 6,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
@@ -225,12 +249,12 @@ const BATTERY = [
   // and the owner found it by looking at the screen. §48's rule holds — `ok`
   // is always true and the rows are the product — so what is gated is what the
   // population supports: the units in ASSEMBLY_SCOPE. Everything else reports.
-  { name: 'assembly', opts: {}, cost: 5,
+  { name: 'assembly', opts: {}, cost: 4,
     gate: '0 undeclared, unwaived splits among the scoped units',
     fails: (r) => r.violations,
     note: (r) => `${r.rowsChecked} split rigid groups over ${r.poses} poses, `
       + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt)` },
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 410,
+  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 389,
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -245,7 +269,7 @@ const BATTERY = [
   // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
   // shipped tick law (120 ticks at two winds), which is the row's whole
   // point; a stale 1 here costs wall clock, never a verdict.
-  { name: 'equalisation', opts: {}, cost: 14,
+  { name: 'equalisation', opts: {}, cost: 16,
     gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
     fails: (r) => r.failures,
     note: (r) => r.summary },
@@ -257,7 +281,7 @@ const BATTERY = [
   // reversing part either has a restoring element, is driven both ways, or is
   // waived against a filed TODO. The control is gated too: a positive control
   // that quietly stops passing is how this class of check dies.
-  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 6,
+  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 3,
     gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
     fails: (r) => [
       ...r.unwaived,
@@ -267,15 +291,16 @@ const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 991,
+  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 762,
+    slices: INSPECTION_SLICES, merge: mergeInspection,   // §127 — divisible along its axis loop
     gate: '0 FORBIDDEN pairs',
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 744,
+  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 545,
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 428,
+  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 260,
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
     note: (r) => {
@@ -287,17 +312,24 @@ const BATTERY = [
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 
 // §81 tranche B — the partition, longest-processing-time greedy: sort the
-// checks by measured cost descending and drop each onto the shard that is
+// TASKS by measured cost descending and drop each onto the shard that is
 // currently lightest. LPT is the classic 4/3-competitive heuristic for
-// makespan, which is more than enough here because ONE check dominates the
-// column — `sweptOverlap` at ~33 min against ~29 min for the other eleven put
-// together, so every sensible partition converges on {sweptOverlap} against
-// {the rest} and the wall is that check's own cost plus a boot. That also
-// says what more shards can and cannot buy: K > 2 cannot go below the
-// slowest single check, because no check is subdivided. When §82 takes
-// `sweptOverlap` out of the dominant slot the column moves and this
-// re-partitions on its own — which is the whole reason it reads a column
-// instead of naming the checks.
+// makespan.
+//
+// §81 wrote here that "K > 2 cannot go below the slowest single check, because
+// no check is subdivided," and that sentence was true of every partition this
+// function could be handed — the atom was a whole check, so one dominant check
+// WAS the floor (§82 took `sweptOverlap` out of that slot and `inspection`
+// walked straight into it, which is §108's finding 2). §127 subdivides, so the
+// floor is now the largest TASK. What has not changed is why the column is
+// data: a partition written as code would be re-argued every time a check got
+// faster, and this one re-partitions by editing a number.
+//
+// It still cannot go below the largest single task, and slices are not free of
+// that either — `wind` is 44% of `inspection`'s poses, so an axis split has its
+// own floor. Going below THAT means slicing inside an axis, which §127 declines
+// to do (`alarmToggle`'s column advances cumulatively within its own sweep, so
+// an index range in it is not reproducible).
 function partition(entries, k) {
   const shards = Array.from({ length: k }, () => ({ entries: [], cost: 0 }));
   for (const e of [...entries].sort((a, b) => b.cost - a.cost)) {
@@ -330,18 +362,29 @@ const argOf = (flag) => {
   const i = argv.indexOf(flag);
   return i === -1 ? null : argv[i + 1];
 };
-// Default 2, not cpus().length: the runner this gate lives on (ubuntu-latest)
-// has 4 vCPU, the checks are single-threaded JS holding their page's main
-// thread, and the partition above cannot use a third shard anyway while one
-// check owns the critical path. `--shards 1` is the pre-§81 single-file run,
-// kept because it is the reference the sharded run has to agree with.
+// Default 3 since §127, and the reason the old 2 was right is the reason it
+// stopped being: "the partition cannot use a third shard anyway while one
+// check owns the critical path" was true while the atom was a whole check —
+// `inspection` was the critical path and a third shard sat idle beside it.
+// Subdivided, it is not: measured on the landing container, K=2 walls at
+// 1021.9 s and K=3 at 676.7 s. Still not cpus().length — ubuntu-latest has 4
+// vCPU, the checks are single-threaded JS holding their page's main thread,
+// and the fourth core has the harness and dev_server.py on it. K=4's 545.1 s
+// is real on paper and unmeasured under contention; take it when someone has
+// measured it rather than because the arithmetic allows it.
+//
+// A shard count is not a guard: like the cost column, a wrong one costs wall
+// clock and never a verdict, which is why one measured run is enough to move
+// it and is deliberately NOT enough to move CHECK_TIMEOUT_MS above.
+// `--shards 1` is the pre-§81 single-file run, kept because it is the
+// reference the sharded run has to agree with.
 const SHARDS = (() => {
-  const raw = argOf('--shards') ?? process.env.BATTERY_SHARDS ?? '2';
+  const raw = argOf('--shards') ?? process.env.BATTERY_SHARDS ?? '3';
   const k = Number(raw);
   // Refuse a garbage count rather than silently falling back: `--shards tow`
   // quietly running 2 is how a run gets misreported as a sharded one.
   if (!Number.isInteger(k) || k < 1) throw new Error(`--shards wants a positive integer, got "${raw}"`);
-  return Math.min(k, BATTERY.length);   // more shards than checks is just idle boots
+  return k;   // capped against the TASK count at the call site (§127 — tasks, not checks, are what a shard holds)
 })();
 // Every check's FULL payload, written as JSON. This is §81's (and §80's)
 // acceptance instrument: "same rows, same numbers" is a diff of two of these
@@ -355,6 +398,13 @@ const REPORT_PATH = argOf('--report');
 // It is a focused-check flag in CLAUDE.md's sense, not a second gate: the
 // full run always includes these points.
 const SPEC_ONLY = argv.includes('--spec-only');
+// §127 — split the divisible checks into per-axis tasks. ON by default, since
+// the point is to shorten the wall CI actually runs; `--no-split` is the
+// reference the split has to agree with, kept for exactly the reason
+// `--shards 1` is kept. The two flags answer different questions: --no-split
+// changes what the TASKS are, --shards changes how they are grouped, and a
+// report that moves under either is a bug in the check that moved.
+const SPLIT = !argv.includes('--no-split');
 
 async function freePort() {
   return new Promise((resolve, reject) => {
@@ -623,12 +673,13 @@ try {
   ] });
 
   const t0 = Date.now();
-  const shards = SPEC_ONLY ? [] : partition(BATTERY, SHARDS);
+  const tasks = buildTasks(BATTERY, SPLIT);
+  const shards = SPEC_ONLY ? [] : partition(tasks, Math.min(SHARDS, tasks.length));
   if (SPEC_ONLY) console.log('--spec-only: skipping the sweeps and the fingerprint anchor.');
   const bootInTurn = serialiser();
-  console.log(`${shards.length} shard(s), partitioned by measured cost:`);
+  console.log(`${tasks.length} task(s)${SPLIT ? '' : ' (--no-split)'} across ${shards.length} shard(s), partitioned by cost:`);
   shards.forEach((s, i) => console.log(
-    `  shard ${i}  ~${Math.round(s.cost / 60)} min  ${s.entries.map((e) => e.name).join(' ')}`));
+    `  shard ${i}  ~${Math.round(s.cost / 60)} min  ${s.entries.map((e) => e.key).join(' ')}`));
 
   // Every shard is a VIRGIN boot running a subset of the battery, and that is
   // sound for exactly one reason, which is worth stating because the whole
@@ -639,7 +690,8 @@ try {
   // GROUPING of checks and nothing a check can observe. If a report ever
   // moves between `--shards 1` and `--shards 2`, that invariant has broken
   // and the check that moved is the bug, not the harness.
-  const results = new Map();  // name → { result, ms }
+  const results = new Map();  // task key → { result, ms } — merged to check name below
+  const axisMeta = [];        // §127 — window.__I.AXES as the page reports it, read once
   // Each shard catches its own failure instead of rejecting: one shard dying
   // must not throw away what the others measured, because the surviving
   // reports are how you tell a broken harness from a broken build.
@@ -659,6 +711,12 @@ try {
         window.__clock.beginSweepHold(); // frozen for the whole battery — see header
         return window.__clock.bootWarns.slice();
       });
+      // §127 — the axis roster, from the page rather than from this file's
+      // declaration of it. Read on shard 0 for the same reason the fingerprint
+      // is: it is a property of the tree, not of the shard.
+      if (i === 0) {
+        axisMeta.push(...await page.evaluate(() => window.__I.AXES.map((a) => ({ name: a.name, n: a.n }))));
+      }
       // The fingerprint is read on shard 0 only. It is not a per-shard property
       // — it is the identity build's hash, and shard 0's boot is as virgin as
       // any other. Reading it here rather than on its own boot keeps the boot
@@ -666,11 +724,11 @@ try {
       const fp = i === 0
         ? await page.evaluate(() => window.__I.fingerprint(window.__clock))
         : null;
-      for (const { name, opts } of shard.entries) {
+      for (const { key, name, opts } of shard.entries) {
         const t = Date.now();
         const { result, ms } = await runCheck(page, name, opts);
-        results.set(name, { result, ms });
-        console.log(`${tag}${name}… ${secs(ms)} (at ${secs(t - t0 + ms)})`);
+        results.set(key, { result, ms });
+        console.log(`${tag}${key}… ${secs(ms)} (at ${secs(t - t0 + ms)})`);
       }
       return { warns, fp };
     } catch (err) {
@@ -689,12 +747,70 @@ try {
   // exactly the use it exists for. null under --spec-only, which has no
   // fingerprint to report.
   let fpA = null;
+  let checkMs = 0;   // §127 — task time, summed before slices are merged (see below)
+  // Declared out here for the reason the comment above gives about fpA: the
+  // --report block below reads it, and CI never passes --report, so a `const`
+  // inside the !SPEC_ONLY block would break the instrument for exactly the use
+  // it exists for and nothing in CI would notice.
+  const sliceMs = new Map();   // check name → { axis: ms }, for the cost column
   // Boot silence is gated on EVERY shard, not just the first: each is a real
   // virgin boot of the same tree, so a warning that only some boots produce is
   // a nondeterminism this gate should not be able to miss.
   if (!SPEC_ONLY) {
   gate('boot silent (rule 6)', shardOut.flatMap((s, i) => s.warns.map((w) => ({ shard: i, warn: w }))));
   gate('every shard completed', shardOut.flatMap((s, i) => (s.error ? [{ shard: i, error: s.error }] : [])));
+
+  // Summed BEFORE the merge writes a whole-check entry beside its slices —
+  // afterwards every split check would be counted twice.
+  checkMs = [...results.values()].reduce((a, r) => a + r.ms, 0);
+
+  // §127 — ASSEMBLE, then gate. Two things are checked before a merge is
+  // trusted, because both failures look like a healthy smaller run:
+  //
+  //   · the declared slice list must BE the page's axis roster. An axis added
+  //     to inspect.js and not sliced here would simply never be swept, and the
+  //     report would be a clean partition of less work.
+  //   · every slice must have produced a payload. A shard that died takes its
+  //     slices with it, and a union of the survivors is a report that gates
+  //     green on a sweep that did not happen.
+  if (SPLIT) {
+    const roster = axisMeta.map((a) => a.name);
+    for (const e of BATTERY) {
+      if (!e.slices) continue;
+      const declared = e.slices.map((s) => s.axis);
+      const missing = roster.filter((n) => !declared.includes(n));
+      const extra = declared.filter((n) => !roster.includes(n));
+      const posesWrong = e.slices.filter((s) => {
+        const a = axisMeta.find((m) => m.name === s.axis);
+        return a && a.n + 1 !== s.poses;
+      }).map((s) => ({ axis: s.axis, declared: s.poses, actual: axisMeta.find((m) => m.name === s.axis).n + 1 }));
+      gate(`${e.name}: the declared slices are the page's axes`, [
+        ...(roster.length ? [] : [{ error: 'shard 0 never reported window.__I.AXES' }]),
+        ...missing.map((n) => ({ axisNotSliced: n })),
+        ...extra.map((n) => ({ slicedAxisNotInAXES: n })),
+        ...posesWrong.map((p) => ({ slicePoseCountStale: p })),
+      ]);
+
+      const parts = e.slices.map((s) => ({ slice: s.axis, got: results.get(`${e.name}:${s.axis}`) }));
+      const absent = parts.filter((p) => !p.got).map((p) => ({ sliceNeverRan: p.slice }));
+      gate(`${e.name}: every slice produced a payload`, absent);
+      if (absent.length || !roster.length) continue;
+      sliceMs.set(e.name, Object.fromEntries(parts.map((p) => [p.slice, p.got.ms])));
+      // The merge's own consistency checks THROW (two slices claiming an axis,
+      // disagreeing unit lists). Caught into a gate rather than left to reject:
+      // this runs after every check has been measured, and a harness that dies
+      // with a stack trace here would throw away the whole run's payloads —
+      // the same argument the missing-payload path above already makes.
+      try {
+        results.set(e.name, {
+          result: e.merge(parts.map((p) => ({ slice: p.slice, result: p.got.result })), axisMeta),
+          ms: parts.reduce((a, p) => a + p.got.ms, 0),
+        });
+      } catch (err) {
+        gate(`${e.name}: the slices merge`, [{ mergeFailed: String(err.message) }]);
+      }
+    }
+  }
 
   fpA = shardOut[0].fp;
   if (fpA) console.log(`  fingerprint A: ${fpA.hash} (${fpA.units} units, ${fpA.poseCount} poses)`);
@@ -868,7 +984,7 @@ try {
   const failed = gates.filter((g) => !g.pass);
   const totalMs = Date.now() - t0;
   console.log(`\n${gates.length - failed.length}/${gates.length} gates pass · total ${secs(totalMs)}`
-    + ` (checks ${secs([...results.values()].reduce((a, r) => a + r.ms, 0))} across ${shards.length} shard(s))`);
+    + ` (checks ${secs(checkMs)} across ${shards.length} shard(s))`);
 
   if (REPORT_PATH) {
     // Sorted keys and 2-space JSON so two runs diff line-for-line. `ms` is
@@ -878,7 +994,12 @@ try {
       fingerprint: fpA,
       checks: Object.fromEntries(BATTERY.map(({ name }) =>
         [name, results.has(name)
-          ? { ms: results.get(name).ms, result: results.get(name).result }
+          // §127 — `sliceMs` appears only on a SPLIT run of a split check, and
+          // it is what refreshes INSPECTION_SLICES' seed projections. Keeping
+          // it off an unsliced run's report means `--no-split` still diffs
+          // clean against a pre-§127 baseline, which is how the split was
+          // accepted in the first place.
+          ? { ms: results.get(name).ms, ...(sliceMs.has(name) ? { sliceMs: sliceMs.get(name) } : {}), result: results.get(name).result }
           : { neverRan: true }])),
     };
     writeFileSync(resolve(REPORT_PATH), `${JSON.stringify(report, null, 2)}\n`);

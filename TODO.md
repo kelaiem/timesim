@@ -6064,7 +6064,7 @@ the §51 pattern:** either the plate rises (its underside is set by
 named, so the cost is priced) or the cone's band drops. Re-measure with
 the same law after either move.
 
-## 54. The pose axes do not pin each other — eight of twelve `setPose` keys ride through, and the report depends on declaration order
+## 54. CLOSED — the sweeps enter every axis canonical, and the leak they used to carry is measured
 
 `AXES`' own header states the invariant: *"Each pose object feeds
 `__clock.setPose()`; unspecified state keeps its prior value, so every axis
@@ -6138,3 +6138,65 @@ an inherited pose. That is the opposite of a no-change landing: diff the
 Gate the property afterwards — sweeping `AXES` in reverse order must produce
 the identical report — because "we checked the order didn't matter" is not a
 thing a later session can verify.
+
+---
+
+### CLOSED (2026-08-17, with roadmap §127). What was built, and where it
+### diverged from the fix prescribed above
+
+**The guarantee is a canonical ENTRY, not a total pose** — `enterAxis(clock)`
+in `src/inspect.js`, called at the top of every axis by all five sweeps that
+walk `AXES` (`runInspection`, `sweepClearances` — which is `clearances` and
+`expectedContacts` both — `checkMechanicalGraph`, `checkIntraUnit`,
+`checkAssembly`). **The base-pose fix this item prescribed does not hold, and
+the reasons are in `setPose`'s own comments**, so they are recorded here rather
+than discovered again:
+
+- **The writers OVERLAP.** `alarmWindRotation` assigns `alarmCrownRotation` as
+  well as the barrel wind, and it is applied AFTER it — so a base naming the
+  latter and an axis naming the former do not merge, they fight, and the base
+  wins. The `alarm` axis would have swept an unturned crown.
+- **A base `alarmBarrelWind` silently RE-MEANS the strike axis.** setPose
+  derives the wind from `alarmStrikePhase` only when the pose does not state
+  it (§99's honest ring trajectory); a base that states it binds instead.
+- **No pose object can reach the accumulator that matters.** `alarmOn` NUDGES
+  `alarmColSteps` one step toward the requested parity (TODO 20 — the wheel is
+  the state), so the column's ANGLE is a function of how many flips came
+  before, not of the parity asked for. Only a reset zeroes it.
+
+`resetInputs` is the exact statement of canonical, and it is the same call the
+FINGERPRINT already made before every pose it hashes — the sweeps were the half
+of the codebase that had never learned it.
+
+**The leak was real and it was large.** The item said plainly that whether any
+current finding depended on an inherited pose was unmeasured; `checkAxisEntry`
+measures it over all 220 ordered (prev → axis) hand-offs at two fractions, and
+**106 of them moved geometry**: `Alarm disc` by 17.7 (in 54 pairs), `Hour
+wheel` 7.917, `Alarm crown` 5.0, `Alarm striking wheel` 2.865, and nine more
+alarm-side units below that. Those displacements are the poses the sweeps were
+running on — reachable poses, but ones nobody declared, and an `Alarm disc`
+17.7 out of place is not a rounding difference in what a sweep covers.
+
+**The gate is that check's other tier**: with the entry, every one of the 220
+pairs reproduces the entered axis exactly (0 violations). It is not a tautology
+about `resetInputs` — that list is hand-maintained and has been incomplete
+twice (§34's explode, §58's drags, both added after a sweep ran on displaced
+geometry), so a new banked input nobody adds to it fails here, on the pair that
+banks it.
+
+**Residue, named.** Cumulative state WITHIN an axis is untouched:
+`alarmToggle`'s own parity flips still accumulate across its samples, so an
+axis is reproducible from its start and an index range inside one is not —
+which is why §127 slices between axes and not inside them.
+**`buildSweptRegistry` is deliberately NOT entered per axis.** Its own comment
+argues that its walks want whatever cumulative state the standing walks left,
+because a reciprocation reproduces at any parity and the absolute pose does not
+matter to a sign. That reasoning is sound, and leaving it alone is what keeps
+§48's `restoring` population still across this change.
+
+**It does not keep `sweptOverlap` still, and that is worth stating precisely
+because it is easy to get wrong from the file structure.** The registry and the
+hull phase are untouched, but the CONFIRM tier re-measures each candidate
+through `measureClearance`, which is `sweepClearances` — so it inherits
+canonical entry exactly as `clearances` does, and its numbers move with them.
+Five checks are entered; six can move.

@@ -12716,3 +12716,92 @@ TODO 51: the surviving beak window is two scan steps wide, and the scan
 publishes a per-step trace of why it rejected each azimuth so the next
 person to move `ARM_BAND_REACH`, `HUB_R` or the lug's station can see it
 close.
+
+## §127 — the battery's partition atom becomes a TASK: `inspection` splits along its axis loop, and the sweeps stop inheriting each other's poses
+
+**Roadmap §127, tiers 0 and 1, plus the free win it insisted came first.**
+§81 sharded the battery across browser contexts by a measured cost column, and
+wrote down what that could not buy: "K > 2 cannot go below the slowest single
+check, because no check is subdivided." §82 took `sweptOverlap` out of the
+dominant slot and `inspection` walked straight into it — §108 measured it at
+36% of all check time and named it the shard floor. This entry subdivides it.
+
+### What the floor actually was, measured on the landing container
+
+A full green baseline on a 4-vCPU container (the same shape as
+`ubuntu-latest`), before any of this landed — 21/21 gates, 2029.1 s of check
+time, 1258.0 s wall across 2 shards:
+
+| check | wall | note |
+|---|---|---|
+| `inspection` | 762.2 s | the floor |
+| `clearances` | 545.1 s | |
+| `expectedContacts` | 388.5 s | |
+| `sweptOverlap` | 259.8 s | post-§82 |
+| the eleven others together | 73.5 s | |
+
+Two things fall straight out of that table, and the entry's own order of work
+came from them. **The shipped cost column was stale** — it read 991/744/428/410
+against these — and a stale column costs wall clock (§81's rule). Re-running
+the same LPT partition on the measured numbers gives 1021.9 s at K=2 and
+**762.2 s at K=3, which is `inspection` alone**: the floor, reached with no
+code at all. Only then is subdivision worth anything, and what it is worth is
+**676.7 s at K=3 and 545.1 s at K=4** — where the floor becomes `clearances`,
+exactly as the entry predicted. That is the honest size of this change on one
+runner, and it is written here because the roadmap entry led with it rather
+than discovering it at the end.
+
+### TODO 54 first, because the split is illegal without it
+
+A slice runs in its own browser context and starts from `resetInputs()`, so it
+can only reproduce a whole run if entering an axis lands that axis's poses
+whatever ran before. It did not. `setPose` assigns ONLY the keys a pose object
+NAMES; six of the eleven axes name four of the twelve it accepts; and no sweep
+reset between axes. Every sweep's coverage was a function of `AXES`'
+declaration order — `handSet`'s `setPathRot` rode into all four alarm axes, and
+`alarmToggle` swept the parity with the alarm barrel at full inherited wind.
+
+`enterAxis(clock)` is the guarantee, called at the top of every axis by all
+five sweeps that walk `AXES`. **It is a canonical entry and not the "total pose"
+TODO 54 prescribed**, and the three reasons that fix does not hold are recorded
+in that item and beside `enterAxis` — the alarm writers overlap and would fight
+a base pose, a base `alarmBarrelWind` silently re-means the strike axis, and no
+pose object can zero `alarmColSteps`, whose count decides the column wheel's
+angle. `resetInputs` is the exact statement of canonical, and it is the same
+call `fingerprintBoxes` already made before every pose it hashes.
+
+`checkAxisEntry` (battery check `axisEntry`, 2.2 s) holds both halves over all
+220 ordered axis pairs: **gated**, entry reproduces the entered axis exactly;
+**reported**, what rides through without it. That report is the measurement
+TODO 54 filed as missing — **106 of the 220 hand-offs moved geometry**, worst
+`Alarm disc` by 17.7, `Hour wheel` 7.917, `Alarm crown` 5.0. Reachable poses,
+but undeclared ones, and not small.
+
+### The split, and the three gates that hold it up
+
+`BATTERY`'s rows may declare `slices`; `buildTasks` turns a sliced row into one
+task per axis and the LPT partition balances TASKS. The gates, the canonical
+report order and the report's keys are untouched: `checks.inspection` still
+holds one payload, so a `--report` diff against a base stays a value diff.
+`--no-split` runs the checks whole and is the reference the split must agree
+with, for the same reason `--shards 1` is kept.
+
+Three failures of a partition look exactly like a healthy smaller run, so each
+is a gate rather than a convention:
+
+- **the declared slice list must BE the page's axis roster** (read from
+  `window.__I.AXES`, with each slice's pose count checked against `n + 1`) — an
+  axis added to `inspect.js` and not sliced here would silently never be swept;
+- **every slice must produce a payload** before the merge runs — a dead shard
+  would otherwise union into a clean report of work that did not happen;
+- **the merged payload is byte-identical to a whole run's.** `mergeInspection`
+  rebuilds rather than concatenates: union by pair, key ORDER restored to
+  `AXES` order (it is part of the payload), `summary` re-derived because a
+  slice's own summary quotes only its axis, census counters summed, and the
+  `units` list asserted equal across slices — the one disagreement a union
+  would happily paper over.
+
+The merge lives in `tools/battery-split.mjs` rather than inside the harness so
+it can be exercised without a full battery: `tools/probe-127-split.mjs` proves
+the identity on a two-axis sweep in about a minute, which is the loop to use
+while iterating on any of this.
