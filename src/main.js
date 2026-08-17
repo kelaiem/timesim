@@ -14211,8 +14211,39 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
   // the obstacle solids, from the tree as built so far: per MESH, with its
   // z-range, because a solid is present in every band it OVERLAPS and an
   // ExtrudeGeometry carries vertices only on its two faces
+  // A ROTOR'S FOOTPRINT IS ITS ANNULUS, not its rest silhouette. Everything on
+  // an arbor sweeps a full turn, so scoring the shape a build-time traverse
+  // happens to find is scoring one frame of a movie. That is the third thing
+  // this solve could not see: it sited the arrest at az 178° clear of the alarm
+  // striking wheel AT REST, and the battery returned the pair on the
+  // `alarmStrike` axis — the wheel had simply turned into it.
+  //
+  // Every rotor in this corner spins about a station the layout already names,
+  // which makes the fix exact rather than conservative: a mesh on one of these
+  // becomes the annulus [minR, maxR] about its own station, and a candidate is
+  // blocked when its distance from that station falls inside the ring.
+  // The rotors are named by their SPIN GROUPS, not guessed from geometry. A
+  // first cut inferred them — "a mesh whose span covers a station belongs to
+  // that rotor" — and swept the BASE PLATE into a disc that blocked the whole
+  // corner, so the solve reported no lane at all and fell back. Which groups
+  // the tick law turns is a fact the build already holds; a mesh is swept iff
+  // one of these is its ancestor, and it sweeps about that group's own axis.
+  const ROTOR_GROUPS = [
+    { g: alarmStrikeRotor, of: 'Alarm striking wheel' },
+    { g: alarmBarrelRotor, of: 'Alarm barrel' },
+    { g: alarmArborRotor, of: 'the alarm arbor' },
+    { g: alarmGovRotor, of: 'Alarm governor' },
+    { g: alarmWindUnit.userData.i1, of: 'winding idler 1' },
+    { g: alarmWindUnit.userData.i2, of: 'winding idler 2' },
+    { g: alarmWindUnit.userData.climb, of: 'the climb arbor' },
+  ].filter((r) => r.g);
+  const rotorOf = (o) => {
+    for (let n = o; n; n = n.parent)
+      for (const r of ROTOR_GROUPS) if (r.g === n) return r;
+    return null;
+  };
   movement.updateMatrixWorld(true);
-  const solids = [];
+  const solids = [], rings = [];
   const v = new THREE.Vector3();
   movement.traverse((o) => {
     if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
@@ -14220,19 +14251,49 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
     const p = o.geometry.attributes.position;
     let zLo = Infinity, zHi = -Infinity;
     const xy = [], seen = new Set();
+    // swept iff it rides a DECLARED spin group, about that group's own axis
+    const rot = rotorOf(o);
+    let ring = null;
+    if (rot) {
+      rot.g.updateMatrixWorld(true);
+      const sx = rot.g.matrixWorld.elements[12], sy = rot.g.matrixWorld.elements[13];
+      let lo = Infinity, hi = -Infinity;
+      for (let k = 0; k < p.count; k += 3) {
+        v.set(p.getX(k), p.getY(k), p.getZ(k));
+        const w = o.localToWorld(v.clone());
+        const d = Math.hypot(w.x - sx, w.y - sy);
+        lo = Math.min(lo, d); hi = Math.max(hi, d);
+      }
+      ring = { st: { p: { x: sx, y: sy }, of: rot.of }, minR: lo, maxR: hi };
+    }
     for (let k = 0; k < p.count; k++) {
       v.set(p.getX(k), p.getY(k), p.getZ(k));
       const w = o.localToWorld(v.clone());
       zLo = Math.min(zLo, w.z); zHi = Math.max(zHi, w.z);
+      if (ring) continue;                       // rings carry their own reach
       if (Math.hypot(w.x - alarmBarrelPos.x, w.y - alarmBarrelPos.y) > ARREST_CD + 12) continue;
       const kk = `${Math.round(w.x / 0.1)},${Math.round(w.y / 0.1)}`;
       if (seen.has(kk)) continue;
       seen.add(kk);
       xy.push([w.x, w.y]);
     }
-    if (xy.length) solids.push({ zLo, zHi, xy, name: o.name || o.geometry.type,
-      meshPartner: o.name === 'alarmArborWheel' });
+    const nm = o.name || o.geometry.type;
+    if (ring) rings.push({ zLo, zHi, x: ring.st.p.x, y: ring.st.p.y, minR: ring.minR, maxR: ring.maxR,
+      name: `${nm} swept about ${ring.st.of}`, meshPartner: nm === 'alarmArborWheel' });
+    else if (xy.length) solids.push({ zLo, zHi, xy, name: nm, meshPartner: nm === 'alarmArborWheel' });
   });
+  // clearance of a point from every swept ring crossing a band
+  const ringC = (lo, hi, x, y, reach, dropPartner) => {
+    let c = Infinity, who = null;
+    for (const r of rings) {
+      if (r.zHi < lo || r.zLo > hi) continue;
+      if (dropPartner && r.meshPartner) continue;
+      const d = Math.hypot(x - r.x, y - r.y);
+      const gap = d > r.maxR ? d - r.maxR : (d < r.minR ? r.minR - d : -(reach + 1));
+      if (gap - reach < c) { c = gap - reach; who = r.name; }
+    }
+    return { c, who };
+  };
   // a uniform grid, because the sweep is stations × planes × azimuths and the
   // naive form is a boot-time eternity
   const CELL = 1.0;
@@ -14307,6 +14368,8 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
     const py = alarmBarrelPos.y + Math.sin(a) * ARREST_CD;
     const pin = nearest(gPin, px, py);
     if (pin.d - M < NEED.pinion) continue;
+    const pinRing = ringC(PIN_BAND[0] - M, PIN_BAND[1] + M, px, py, NEED.pinion, true);
+    if (pinRing.c < 0) continue;
     if (crossesCorridor(PIN_BAND[0], PIN_BAND[1]) && lowC(px, py, NEED.pinion) < 0) continue;
     // both columns run from the plate, so they always cross the corridor
     if (lowC(px, py, NEED.arbor) < 0) continue;
@@ -14315,12 +14378,16 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
       const f = nearest(g, px, py);
       if (f.d - M < NEED.finger) continue;
       if (crossesCorridor(z, z + ARREST_PLATE_T) && lowC(px, py, NEED.finger) < 0) continue;
+      const fRing = ringC(z - M, z + ARREST_PLATE_T + M, px, py, NEED.finger, false);
+      if (fRing.c < 0) continue;
       // the arbor carries BOTH the finger and the pinion, so its column always
       // runs to whichever is higher — a finger below the pinion does not buy a
       // short arbor
       const gc = colIdx(Math.max(z + ARREST_PLATE_T, PIN_BAND[1]));
       const arb = nearest(gc, px, py);
       if (arb.d - M < NEED.arbor) continue;
+      const arbRing = ringC(PLATE_Z, Math.max(z + ARREST_PLATE_T, PIN_BAND[1]), px, py, NEED.arbor, false);
+      if (arbRing.c < 0) continue;
       const gs = colIdx(z + ARREST_PLATE_T);
       for (let cdeg = 0; cdeg < 360; cdeg += 6) {
         const ca = cdeg * DEG2RAD;
@@ -14328,6 +14395,10 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
         const q = nearest(g, cx, cy);
         if (q.d - M < NEED.cross) continue;
         if (crossesCorridor(z, z + ARREST_PLATE_T) && lowC(cx, cy, NEED.cross) < 0) continue;
+        const cRing = ringC(z - M, z + ARREST_PLATE_T + M, cx, cy, NEED.cross, false);
+        if (cRing.c < 0) continue;
+        const sRing = ringC(PLATE_Z, z + ARREST_PLATE_T, cx, cy, NEED.stud, false);
+        if (sRing.c < 0) continue;
         const st = nearest(gs, cx, cy);
         if (st.d - M < NEED.stud) continue;
         if (lowC(cx, cy, NEED.stud) < 0) continue;
@@ -14339,6 +14410,9 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
           [st.d - M - NEED.stud, `stud vs ${st.who}`],
           [lowC(px, py, NEED.arbor), 'arbor vs the low corridor'],
           [lowC(cx, cy, NEED.stud), 'stud vs the low corridor'],
+          [pinRing.c, `pinion vs ${pinRing.who}`], [fRing.c, `finger vs ${fRing.who}`],
+          [cRing.c, `cross vs ${cRing.who}`], [arbRing.c, `arbor vs ${arbRing.who}`],
+          [sRing.c, `stud vs ${sRing.who}`],
         ].sort((p1, p2) => p1[0] - p2[0]);
         const slack = parts[0][0];
         if (!best || z < best.z - 1e-9 || (Math.abs(z - best.z) < 1e-9 && slack > best.slack))
