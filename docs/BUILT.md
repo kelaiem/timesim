@@ -12849,3 +12849,38 @@ calls, −0.2% on AABB tests, 0.0% on unit-pair tests, for 762.2 s → 767.0 s
 runs, which moved +8.8% to +15.5% while their own work counters moved under
 0.5% — that spread is the container, not this change, and it is exactly why
 the `cost` column is only ever used to balance shards and never to judge one.
+
+### What it bought, and the identity that made it acceptable
+
+**The split is report-neutral, measured at full scale.** `--no-split --shards 2`
+against the default split run at `--shards 3`: **every check identical except
+wall-clock fields** — `inspection`'s merged payload byte-for-byte, and the only
+lines that differ anywhere are `sweptOverlap`'s six timing fields (`exactMs`,
+`hullMs`, `confirmMs` and friends), which live outside `census` and are wall
+clock by nature. Nothing else — no row, no value, no counter — moved. That one
+diff proves both invariants at once: the partition's finer atom does not change
+a report (§127), and neither does the shard count at a K nothing had run before
+(§81's rule).
+
+**The wall, on the landing container:** 1258.0 s → **846.9 s**, a 32.7% cut,
+with check time essentially flat (2029.1 s → 2083.1 s, container noise). 24/24
+gates, fingerprint unchanged, three shards at ~11 min each against the old
+19/13 split.
+
+**And the seeds were replaced by measurement, which is the part worth keeping.**
+The pose-count projection erred **−25% to +44%** and mis-ranked the column:
+`wind` projected 349.1 s and measured 261.7 s, `train` projected 47.0 s and
+measured 66.6 s. Per-pose cost is dominated by how many pair candidates survive
+the broad phase at that pose, and that is not a function of pose count. Both
+numbers are kept in `INSPECTION_SLICES` so a later axis gets the same rough seed
+and the same correction — what the pair does not allow is keeping a projection
+while believing it was measured.
+
+**Where the floor is now, measured rather than projected.** With real slice
+costs the partition walls at 694.6 s (K=3) and 552.6 s (K=4), and K=5 buys
+nothing: the largest single task is **`clearances` at 552.6 s**, then
+`expectedContacts` 379.0, `sweptOverlap` 279.0, and only then `inspection`'s
+`wind` slice at 261.7. `inspection` is out of the floor entirely — which is
+where roadmap §127's remainder now points, and it names why those three are not
+a copy of this work: their rows are extrema, so a merge is a per-row minimum
+that must carry which slice won.

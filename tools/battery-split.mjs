@@ -28,24 +28,32 @@
 // is the same declare-then-assert shape the paths-ignore check uses, and for
 // the same reason — this file's couplings to inspect.js are all by string.
 //
-// `poses` is n + 1 for that axis, a FACT the assert also checks. It is here
-// because the seed cost of a slice is derived from it (share of the check's
-// measured cost) rather than invented: no per-axis wall had ever been measured
-// when this landed, and a made-up number would have been a magic constant
-// balancing a partition. `ms` is filled in from `--report` once a sliced run
-// exists, exactly as the check costs are, and takes precedence when present.
+// `poses` is n + 1 for that axis, a FACT the assert also checks. It seeded the
+// first partition — a slice's cost as its share of the check's measured cost —
+// because no per-axis wall had ever been measured and a made-up number would
+// have been a magic constant balancing a partition. `ms` is the MEASURED wall,
+// written back from `--report` exactly as the check costs are, and it wins.
+//
+// KEEP BOTH, because the first sliced run showed how rough the proxy is: the
+// projection erred -25% (`wind`) to +44% (`alarmWind`), and it mis-ranked the
+// column — `wind` projected at 349.1 s and measured 261.7 s, `train` projected
+// 47.0 s and measured 66.6 s. Per-pose cost is dominated by how many pair
+// candidates survive the broad phase at that pose, which varies by axis and is
+// not a function of pose count. An axis added later gets the same rough seed
+// and the same correction on the next `--report`; what the pair does NOT let
+// anyone do is quietly keep a projection while believing it was measured.
 export const INSPECTION_SLICES = [
-  { axis: 'beat', poses: 97 },
-  { axis: 'crown', poses: 49 },
-  { axis: 'reserve', poses: 61 },
-  { axis: 'wind', poses: 721 },
-  { axis: 'train', poses: 97 },
-  { axis: 'jumperEngage', poses: 121 },
-  { axis: 'handSet', poses: 121 },
-  { axis: 'alarm', poses: 97 },
-  { axis: 'alarmStrike', poses: 110 },
-  { axis: 'alarmWind', poses: 110 },
-  { axis: 'alarmToggle', poses: 49 },
+  { axis: 'beat', poses: 97, ms: 54109 },
+  { axis: 'crown', poses: 49, ms: 24335 },
+  { axis: 'reserve', poses: 61, ms: 22954 },
+  { axis: 'wind', poses: 721, ms: 261735 },
+  { axis: 'train', poses: 97, ms: 66580 },
+  { axis: 'jumperEngage', poses: 121, ms: 70719 },
+  { axis: 'handSet', poses: 121, ms: 65625 },
+  { axis: 'alarm', poses: 97, ms: 55597 },
+  { axis: 'alarmStrike', poses: 110, ms: 59415 },
+  { axis: 'alarmWind', poses: 110, ms: 76736 },
+  { axis: 'alarmToggle', poses: 49, ms: 32844 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
