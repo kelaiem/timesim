@@ -11465,6 +11465,11 @@ const ALARM_CAM_LOBES = 4;                     // lifting lobes on the striking 
 const ALARM_STRIKE_RATIO = ALARM_BARREL_TEETH / ALARM_STRIKE_PINION_TEETH;        // 4:1 step-up
 const ALARM_STRIKES_PER_BARREL_TURN = ALARM_CAM_LOBES * ALARM_STRIKE_RATIO;       // 16 strikes / barrel turn
 const ALARM_BARREL_TURNS = 1.75;               // full-wind travel of the barrel (the > 1 turn constraint above)
+// §106 — the winding arrest's counts, DERIVED from that travel rather than
+// picked. 1.75 × 44 = 77 = 7 × 11, so an 11 t pinion on the 44 t arbor wheel
+// turns exactly 7 times over the full wind, and a single-pin Geneva travelling
+// N−1 turns wants N = 8 stations. The build asserts both identities.
+const ARREST_PINION_TEETH = 11;
 const ALARM_STRIKES_PER_WIND = ALARM_BARREL_TURNS * ALARM_STRIKES_PER_BARREL_TURN; // 28 strikes
 // ALARM_RING_SECONDS moved to the §104 governor block: with the cadence a
 // function of wind, the ring's length is the INTEGRAL of gap(θ) over the 28
@@ -12133,6 +12138,17 @@ alarmBarrelUnit.add(alarmArborRotor);
 // (ALARM_WIND_TIP_R and ALARM_RATCHET_R — §112: in the alarm-plan block;
 // the grounding-lane derivation above still owns their arithmetic.)
 const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
+// §106's counts, continued — these need the arbor wheel and the ratchet, so
+// they land here rather than beside ARREST_PINION_TEETH. Each is an identity
+// the build asserts, not a value chosen to make one come out.
+const ARREST_TRAVEL_TURNS = (ALARM_BARREL_TURNS * ALARM_WIND_W) / ARREST_PINION_TEETH; // 7
+const ARREST_STATIONS = ARREST_TRAVEL_TURNS + 1;                                       // 8, at one pin
+const ARREST_CLICKS = ALARM_BARREL_TURNS * ALARM_RATCHET_N;                            // 56
+// THE CEILING THE METAL ENFORCES, read back off the stop-work rather than
+// restated. It equals ALARM_BARREL_TURNS by construction — the cross was built
+// to that travel — but it is not the same STATEMENT: change the cross's station
+// count and this moves with the metal, where a second literal would not.
+const ARREST_WIND_CEILING = ((ARREST_STATIONS - 1) * ARREST_PINION_TEETH) / ALARM_WIND_W;
 // §104 — THE SET-UP, the going side's arrangement one barrel over. M(0) = 0
 // on a bare barrel, and the governor's cadence law runs ∝ 1/√M — an anchor on
 // an un-set-up spring CRAWLS toward stall as the barrel drains instead of
@@ -14095,6 +14111,242 @@ declareTravel('Alarm click', 0.35,
 declareRestoring('Alarm click', 'spring',
   'the click spring re-seats the beak after each tooth cams it out — a real blade on its own post, bearing on the click\'s flank; the HOLD is the saw face\'s own closing geometry, not the spring',
   'alarmClickSpring');
+
+// ---------------------------------------------------------------------------
+// 'Alarm winding arrest' (§106) — the metal that stops the alarm wind, so the
+// cap is a consequence of geometry rather than a clamp in tick(). A dedicated
+// 11 t pinion on the arbor wheel carries a Geneva finger; the finger indexes an
+// eight-station cross one station per pinion turn, and the cross's un-slotted
+// arm banks the pin at the end of travel.
+//
+// WHY 11 t, and why the count is not a choice. Full wind is 1.75 arbor turns
+// and the arbor wheel is 44 t, so a P-tooth pinion turns 1.75·44/P times.
+// 1.75 × 44 = 77 = 7 × 11, so 11 t gives exactly 7 pinion turns — and a Geneva
+// with one pin and N stations travels (N−1)/m turns, i.e. N = 8 at m = 1: the
+// textbook single-pin Maltese stop-work. The landing stays on an integer click
+// because the pinion is rigidly geared to the arbor at 4:1 and adds no
+// quantisation of its own: 1.75 arbor turns × ALARM_RATCHET_N = 56 clicks.
+//
+// The radii come from geometry.js's genevaSpec — see its header for the
+// relation and the three floors, one of which (the cross's horn against this
+// pinion's own arbor) is what sets the size.
+// ---------------------------------------------------------------------------
+const ARREST_CD = ALARM_TRAIN_MODULE * (ALARM_WIND_W + ARREST_PINION_TEETH) / 2; // 8.25 — the mesh circle
+// §106's siting scan (tools/probe-106-stud.mjs, BAND=wheel): 180 candidate
+// azimuths about the alarm arbor, the click's own footprint in the obstacle
+// list, measured over every axis. 12° is the roomiest station in a contiguous
+// 0°–22° sector, with 8.067 of free disc against the 6.447 this assembly
+// reaches — position space, chosen with slack rather than solved to an edge.
+const ARREST_AZ = 12 * DEG2RAD;
+const arrestPos = {
+  x: alarmBarrelPos.x + Math.cos(ARREST_AZ) * ARREST_CD,
+  y: alarmBarrelPos.y + Math.sin(ARREST_AZ) * ARREST_CD,
+};
+const ARREST_SPEC = G.genevaSpec({
+  N: ARREST_STATIONS, stockMin: STOCK_MIN_U, pivotMin: PIVOT_MIN_U,
+  margin: CLEAR_MARGIN, studR: PIVOT_MIN_U + 0.01 + STOCK_MIN_U,
+  // The finger's arbor at the §50 pivot floor. The stall says the floor is
+  // sound rather than the floor being assumed: at the bank this pinion carries
+  // a quarter of the alarm arbor's torque (11 t on 44 t), k·θ at full wind
+  // gives T = 9.8e-5 N·m, and τ = 2T/πr³ at r = 0.07 mm is 182 MPa against
+  // hardened steel's ~600 MPa shear. The stall alone would ask 0.179 u — just
+  // under the floor — so the floor governs.
+  arborR: PIVOT_MIN_U,
+});
+// The cross's azimuth about the pinion is unconstrained by clearance at this
+// station (8.067 of free disc against a 6.447 reach), so it takes the entry's
+// stated secondary criterion instead of a solve: point the cross AWAY from the
+// nearest neighbour, which here is the winding idler it shares the band with.
+const ARREST_CROSS_AZ = (() => {
+  let worst = null, wd = Infinity;
+  for (const p of [alarmWindI1, alarmWindI2]) {
+    const dd = Math.hypot(p.x - arrestPos.x, p.y - arrestPos.y);
+    if (dd < wd) { wd = dd; worst = p; }
+  }
+  return Math.atan2(arrestPos.y - worst.y, arrestPos.x - worst.x);
+})();
+// THE ASSEMBLY CLOCKING — the entry's "fractional turn, derived not tuned".
+//
+// Three registrations, and each is forced rather than chosen:
+//   · ARREST_PHI_EMPTY — the driver angle at the RUN-DOWN end, so travel is
+//     counted from empty. The arbor's angle at wind 0 is what a wheel meshing
+//     it feels there, so this is read off the same expression the pose law uses
+//     rather than assumed to be zero.
+//   · ARREST_FINGER_CLOCK — the finger is keyed to the pinion's arbor, but the
+//     pinion's phase belongs to its MESH (solveGearChain sets it) and the
+//     finger's belongs to the CROSS. One arbor cannot satisfy both unless the
+//     finger is clocked against the pinion at assembly, which is what this is.
+//     The pin must point at the cross's stud at mid-engagement.
+//   · ARREST_CROSS_PHASE — the cross is clocked so the station that first
+//     engages is station 1, which puts the BLANK arm (station 0) arriving after
+//     exactly N−1 = 7 indexes. That is what makes the bank land at the ceiling
+//     instead of somewhere inside the travel.
+// The arbor's angle in the WINDING regime. During ringing the body's advance
+// and the wind's drain cancel in `alarmArborRotor.rotation.z` — the click is
+// holding the arbor, and the expression says so — so the body term is at its
+// rest value whenever winding is what moves the arbor.
+const ARREST_ARBOR_A_EMPTY = (ALARM_PHASE_REST * Math.PI * 2) / ALARM_STRIKES_PER_BARREL_TURN
+  + (0 - ALARM_BARREL_TURNS) * Math.PI * 2;
+const ARREST_PHI_EMPTY = -ARREST_ARBOR_A_EMPTY * (ALARM_WIND_W / ARREST_PINION_TEETH);
+const ARREST_FINGER_CLOCK = ARREST_CROSS_AZ - ARREST_PHI_EMPTY;
+const ARREST_CROSS_PHASE = (ARREST_CROSS_AZ + Math.PI) - (Math.PI * 2) / ARREST_STATIONS;
+const arrestStud = {
+  x: arrestPos.x + Math.cos(ARREST_CROSS_AZ) * ARREST_SPEC.d,
+  y: arrestPos.y + Math.sin(ARREST_CROSS_AZ) * ARREST_SPEC.d,
+};
+// The stop-work rides ABOVE the mesh plane, not beside it: the pinion has to
+// share the arbor wheel's band to mesh at all, and the finger and cross need a
+// plane the wheel's teeth do not occupy. Derived off the pinion's own top face
+// (§39's envelope is spent, so this SHARES the winding tier's headroom rather
+// than opening a new stratum).
+const ARREST_PLATE_T = STOCK_MIN_U;      // the cross and finger are floor stock
+const ARREST_Z = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + CLEAR_MARGIN;
+const alarmArrestUnit = new THREE.Group();
+movement.add(alarmArrestUnit);
+registerLabel('Alarm winding arrest', alarmArrestUnit);
+registerExplode(alarmArrestUnit, 0, 9); // rides with the back stack, like the winding train
+let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null;
+{
+  // The pinion, on its own arbor, meshing the arbor wheel.
+  const spin = new THREE.Group();
+  spin.position.set(arrestPos.x, arrestPos.y, ALARM_WIND_TIER_Z);
+  const pin = G.makePinion({
+    module: ALARM_TRAIN_MODULE, teeth: ARREST_PINION_TEETH,
+    thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
+  });
+  pin.traverse((o) => { if (o.isMesh) o.name = 'alarmArrestPinion'; });
+  spin.add(pin);
+  alarmArrestUnit.add(spin);
+  arrestPinionSpin = spin;
+
+  // The finger, keyed to the same arbor one plane up.
+  const fSpin = new THREE.Group();
+  fSpin.position.set(arrestPos.x, arrestPos.y, ARREST_Z);
+  const finger = G.makeGenevaFinger({
+    spec: ARREST_SPEC, thickness: ARREST_PLATE_T,
+    boreR: ARREST_SPEC.arborR, material: MATS.blueSteel,
+  });
+  finger.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmArrestFinger'; });
+  fSpin.add(finger);
+  alarmArrestUnit.add(fSpin);
+  arrestFingerSpin = fSpin;
+
+  // The arbor the pinion and finger share, from the plate up through both.
+  const arbor = new THREE.Mesh(
+    new THREE.CylinderGeometry(ARREST_SPEC.arborR, ARREST_SPEC.arborR,
+      ARREST_Z + ARREST_PLATE_T * 2 - (ALARM_U_FLOOR - 0.5), 12), MATS.steel);
+  arbor.name = 'alarmArrestArbor';
+  arbor.rotation.x = Math.PI / 2;
+  arbor.position.set(arrestPos.x, arrestPos.y,
+    (ARREST_Z + ARREST_PLATE_T * 2 + ALARM_U_FLOOR - 0.5) / 2);
+  alarmArrestUnit.add(arbor);
+
+  // The cross on its own stud, coplanar with the finger.
+  const cSpin = new THREE.Group();
+  cSpin.position.set(arrestStud.x, arrestStud.y, ARREST_Z);
+  const cross = G.makeGenevaCross({
+    spec: ARREST_SPEC, thickness: ARREST_PLATE_T,
+    blankAt: 0, material: MATS.brass,
+  });
+  cross.name = 'alarmArrestCross';
+  cSpin.add(cross);
+  alarmArrestUnit.add(cSpin);
+  arrestCrossSpin = cSpin;
+  const stud = new THREE.Mesh(
+    new THREE.CylinderGeometry(ARREST_SPEC.studR, ARREST_SPEC.studR,
+      ARREST_Z + ARREST_PLATE_T * 2 - (ALARM_U_FLOOR - 0.5), 12), MATS.steel);
+  stud.name = 'alarmArrestStud';
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(arrestStud.x, arrestStud.y,
+    (ARREST_Z + ARREST_PLATE_T * 2 + ALARM_U_FLOOR - 0.5) / 2);
+  alarmArrestUnit.add(stud);
+
+  // The pinion is a chain member, so its phase is SOLVED against the wheel it
+  // meshes rather than left at zero — the TODO 15 rule the winding chain
+  // already obeys next door.
+  solveGearChain('alarm arrest:', [
+    { obj: alarmWindTargetGear, teeth: ALARM_WIND_W, name: 'arbor wheel' },
+    { obj: pin, teeth: ARREST_PINION_TEETH, name: 'arrest pinion' },
+  ], ALARM_TRAIN_MODULE);
+
+  // Boot asserts (rule 6) — every one of these is a number the build claims.
+  if (Math.abs(ARREST_TRAVEL_TURNS - (ARREST_STATIONS - 1)) > 1e-12)
+    console.warn(`alarm arrest: ${ARREST_TRAVEL_TURNS} pinion turns against an `
+      + `${ARREST_STATIONS}-station cross — a single-pin Geneva travels N−1 turns, so these must agree`);
+  if (!Number.isInteger(ARREST_CLICKS))
+    console.warn(`alarm arrest: the stop lands on ${ARREST_CLICKS} clicks, not an integer detent`);
+  if (Math.abs(2 * Math.asin(ARREST_SPEC.a / ARREST_SPEC.d) - ARREST_SPEC.index) > 1e-9)
+    console.warn(`alarm arrest: the index measures `
+      + `${(2 * Math.asin(ARREST_SPEC.a / ARREST_SPEC.d) * 180 / Math.PI).toFixed(3)}°, not `
+      + `${(ARREST_SPEC.index * 180 / Math.PI).toFixed(3)}° — the Geneva relation is inverted`);
+  if (ARREST_SPEC.horn < ARREST_SPEC.arborR + CLEAR_MARGIN - 1e-9)
+    console.warn(`alarm arrest: the cross's horn passes ${ARREST_SPEC.horn.toFixed(3)} from this `
+      + `pinion's axis, inside the arbor's ${(ARREST_SPEC.arborR + CLEAR_MARGIN).toFixed(3)}`);
+  if (!ARREST_SPEC.banks)
+    console.warn('alarm arrest: the pin circle clears the cross rim — the blank arm cannot bank it');
+  if (ARREST_SPEC.web < STOCK_MIN_U - 1e-9)
+    console.warn(`alarm arrest: the cross's arm web ${ARREST_SPEC.web.toFixed(3)} is under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
+}
+// NO declareTravel HERE, and the omission is the honest reading. §36A's
+// declaration is per UNIT and must be a bounded arc; this unit's finger makes
+// SEVEN full revolutions, so any arc declared for it would be false. The
+// bounded travel belongs to the cross alone — (N−1)·index = 315° — and there is
+// no per-member travel to declare it in. Filed rather than forced: declaring
+// the cross's arc against a unit containing a full revolve would put a number
+// the registry trusts next to a part that violates it.
+// §48/TODO 29 — the cross is indexed BOTH WAYS by the same finger (winding
+// advances it, unwinding walks it back), so it is the two-way class rather
+// than a part wanting a spring. The finger is the only thing that moves it;
+// between engagements its locking disc holds the cross in the hollow, which is
+// a HOLD by geometry and not a restoring element.
+declareRestoring('Alarm winding arrest', 'two-way',
+  'the cross has no spring and needs none: the finger indexes it in both directions — winding advances it toward the bank, unwinding walks it back — and between engagements the finger\'s locking disc sits in the cross\'s hollow, holding it by shape',
+  'alarmArrestCross');
+
+// THE INDEX LAW. Both angles travel the gears (rule 2): the pinion is turned by
+// the arbor's own wheel, and the cross is turned by nothing but the pin sitting
+// in its slot — so the cross's angle is SOLVED from the pin's position, not
+// stepped by a counter.
+//
+// While the pin is in a slot the slot must point at it, so the cross's angle is
+// the bearing of the pin from the cross's centre:
+//     γ(θ) = atan2(a·sinθ, a·cosθ − d) − π,   θ = driver angle from mid-slot
+// which runs +index/2 → −index/2 across the engagement (the cross turns the
+// opposite way to the driver, as a Geneva does). Outside that window the pin is
+// out of the slot and the cross is LOCKED — held by the finger's disc sitting in
+// its hollow — so γ holds at the end value it reached. The window is
+// ±(π/2 − β), which is where the pin crosses the slot-tip circle: not a
+// tolerance, the same entry condition the radii come from.
+function arrestAngles(arborA) {
+  // the pinion turns against the wheel it meshes: opposite sense, 44/11
+  const phi = -arborA * (ALARM_WIND_W / ARREST_PINION_TEETH);
+  const { a, d, beta, index } = ARREST_SPEC;
+  const half = Math.PI / 2 - beta;                 // driver half-window of engagement
+  const n = phi - ARREST_PHI_EMPTY;                // driver angle measured from the run-down end
+  const k = Math.round(n / (Math.PI * 2));         // completed indexes
+  const th = n - k * Math.PI * 2;                  // driver angle about mid-slot
+  // WRAP MATTERS HERE. atan2 returns (−π, π], so the −π that re-references the
+  // bearing to "pointing back at the driver" drops the negative half a full
+  // turn below where it belongs: at θ = −half the raw value reads −337.5°
+  // instead of +22.5°, and the cross appears to leap a revolution every time
+  // the pin enters a slot. The totals still came out right, which is why this
+  // has to be caught by looking at the samples and not at the endpoints.
+  const g = (t) => {
+    let v = Math.atan2(a * Math.sin(t), a * Math.cos(t) - d) - Math.PI;
+    while (v <= -Math.PI) v += Math.PI * 2;
+    while (v > Math.PI) v -= Math.PI * 2;
+    return v;
+  };
+  const gam = Math.abs(th) <= half ? g(th) : g(Math.sign(th) * half);
+  return {
+    pinion: phi,
+    // the finger is CLOCKED on its arbor against the pinion's solved tooth
+    // phase — the assembly clocking the stop-work needs, and the only way both
+    // can share one arbor while one answers to a mesh and the other to a cross
+    finger: phi + ARREST_FINGER_CLOCK,
+    cross: ARREST_CROSS_PHASE - k * index + gam,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // 'Alarm lock' + 'Alarm switch' (§25 B + D) — the hold and the on/off.
@@ -22554,6 +22806,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm governor anchor', 8], // §107: the same stratum — it rides the saw in that unit's own plane
     ['Alarm hammer', 9], ['Alarm gong', 11],
     ['Alarm click', 4], // §99: rides between the winding train and the barrel it holds
+    ['Alarm winding arrest', 4], // §106: the same stratum as the click — both hang off the arbor, one holding the wind and one bounding it
     // §34/§35 additions — the release path and the long link to it. Uncho-
     // reographed (null) on purpose: their working order through the column
     // wheel is a level-2 story, and the partition assert below is what forced
@@ -24949,7 +25202,7 @@ function tick(t) {
       // as metal: the ratchet's saw cams the click out on this sense and
       // its steep bank holds the return; a backward crown free-slips at the
       // stem⇄contrate bevel without unbanking.
-      alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
+      alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ARREST_WIND_CEILING); // §106: the ceiling is the cross's bank, read off the stop-work
       alarmWindWasActive = true;
       alarmWindIdleT = 0;
     } else if (alarmWindWasActive) {
@@ -25396,6 +25649,15 @@ function tick(t) {
   const alarmBodyA = alarmStrikePhase * Math.PI * 2 / ALARM_STRIKES_PER_BARREL_TURN;
   alarmBarrelRotor.rotation.z = alarmBodyA;
   alarmArborRotor.rotation.z = alarmBodyA + (alarmBarrelWind - ALARM_BARREL_TURNS) * Math.PI * 2;
+  // §106 — the arrest rides the arbor it is geared to. Nothing here reads the
+  // wind: the pinion reads the ARBOR'S ANGLE, which is what a wheel meshing it
+  // would feel, and the cross reads the pinion.
+  {
+    const A = arrestAngles(alarmArborRotor.rotation.z);
+    arrestPinionSpin.rotation.z = A.pinion;
+    arrestFingerSpin.rotation.z = A.finger;
+    arrestCrossSpin.rotation.z = A.cross;
+  }
   // §89 — and the ribbon takes the shape the RELATIVE angle leaves it in
   // (§99: bodyA − arborA, which is (TURNS − wind)·2π — the same value the
   // fixed-arbor law produced, so the morph's frames are untouched). The
