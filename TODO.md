@@ -40,6 +40,7 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
+| 54 | OPEN | `AXES`' header claims the axes pin each other; `setPose` assigns only the keys a pose NAMES, six of eleven axes name four of twelve, and nothing resets between axes — so every sweep's poses depend on declaration order and `alarmToggle` runs at an undeclared full alarm wind. Fix: total poses (a declared base plus each axis's delta). It will MOVE reports — the §36 registry's `reversed` flag feeds §48's population — so accept per row. Prerequisite for roadmap §127's battery partition |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -6062,3 +6063,78 @@ the §51 pattern:** either the plate rises (its underside is set by
 `TQ_MEASURED_MAX` against the hairspring stack — the binding part is
 named, so the cost is priced) or the cone's band drops. Re-measure with
 the same law after either move.
+
+## 54. The pose axes do not pin each other — eight of twelve `setPose` keys ride through, and the report depends on declaration order
+
+`AXES`' own header states the invariant: *"Each pose object feeds
+`__clock.setPose()`; unspecified state keeps its prior value, so every axis
+pins the others to a fixed default."* The first clause is true and the
+second is false, which is the worst possible pairing — a comment that names
+the hazard and then claims it is handled.
+
+**The mechanism.** `setPose` assigns only the keys its argument NAMES; every
+other state variable rides through untouched. It accepts twelve — `tau`,
+`crownPullT`, `leverEngage`, `tension`, `setPathRot`, `alarmCrownRotation`,
+`alarmCrownPullT`, `alarmReleased`, `alarmOn`, `alarmBarrelWind`,
+`alarmWindRotation`, `alarmStrikePhase` — and six of the eleven axes name
+four of them. `start()` calls `clock.resetInputs()` once per CHECK, and
+`runInspection` (like every other sweep) never resets between axes. So each
+axis inherits the last pose of the axis DECLARED ABOVE IT:
+
+| axis | names beyond the four | inherits |
+|---|---|---|
+| `beat`, `crown`, `reserve`, `wind`, `train`, `jumperEngage` | — | nothing (they precede every axis that writes anything else) |
+| `handSet` | `setPathRot` | — |
+| `alarm` | `alarmCrownRotation`, `alarmOn`, `alarmCrownPullT` | `setPathRot` at a full minute-wheel revolution |
+| `alarmStrike` | `alarmStrikePhase`, `alarmOn`, `alarmReleased` | that, plus `alarmCrownRotation` at 2π |
+| `alarmWind` | `alarmWindRotation`, `alarmOn`, `alarmReleased`, `alarmCrownPullT` | those, plus `alarmStrikePhase` at the end of a ring |
+| `alarmToggle` | `alarmOn` | all of the above, **plus the alarm barrel at FULL WIND** |
+
+**Why this is debt and not a curiosity.** Three reasons, none of them
+hypothetical:
+
+1. **The instrument's coverage claim is not what its comments say.**
+   `alarmToggle`'s block is careful about what it uniquely sweeps (the
+   parity, and therefore the column wheel and everything the wheel drives)
+   and says nothing about running that sweep with a fully wound alarm
+   barrel, a fully turned setting path, and a strike phase parked wherever
+   the previous axis left it. An inherited pose is still a REACHABLE pose,
+   so this is not a false green — it is a sweep whose state nobody
+   declared, described by prose that implies somebody did.
+2. **Every sweep-based report is a function of `AXES`' declaration order.**
+   Reorder the array — or run a subset, which is what focused work and
+   `probe-*` scripts routinely do — and the poses change. The §36 registry
+   documents exactly this mechanism where it forced its own pose walk to run
+   "in the order they always have," because "some of what setPose writes is
+   CUMULATIVE (TODO 20's alarm column advances a step each time a pose flips
+   the parity, so its angle depends on how many flips came before)" and
+   "setPose() cannot save this on its own, because it assigns only the
+   fields a pose names and everything else rides through." The fragility is
+   written down in one place and contradicted in the other.
+3. **It blocks the roadmap's battery-partition entry (§127).** A partition
+   that runs axes in separate contexts starts each from `resetInputs()`, so
+   the split cannot be report-identical until a pose is a function of its
+   pose object. That entry's tier 0 is this item.
+
+**The fix.** Make the poses TOTAL: a declared base pose merged with each
+axis's delta, so every axis pins all twelve keys and no axis can observe
+which one ran before it. Where an inherited state was worth having, keep it
+by NAMING it — an axis that wants the alarm barrel wound says so in its
+pose, which is this same fix from the other side and turns an accident into
+a decision. Two things it does not fix on its own, to be recorded with it:
+`alarmColSteps` is cumulative within an axis (a total base pose makes axis
+order irrelevant, not an index range inside `alarmToggle` reproducible), and
+the chain mesh is a baked path rebuilt only past a 0.0015 tension delta —
+benign as measured (the two tension axes step 0.00278 and 0.0167, so every
+pose re-bakes), and the class of state to re-check if either n or the
+threshold moves.
+
+**Expect the reports to MOVE, and accept them per row.** Pinning what the
+axes leak changes the poses the §36 registry samples, and the registry's
+`reversed` flag is the population of §48's restoring audit — so
+`restoring`'s rows can move, and so can any sweep row whose finding lived on
+an inherited pose. That is the opposite of a no-change landing: diff the
+`--report`, and derive each moved row rather than re-basing the file.
+Gate the property afterwards — sweeping `AXES` in reverse order must produce
+the identical report — because "we checked the order didn't matter" is not a
+thing a later session can verify.
