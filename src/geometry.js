@@ -1653,6 +1653,12 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
   const lockR = a - pivotMin;
   return {
     N, beta, d, a, b, slotW, hubR, studR, lockR, arborR,
+    // A WHEEL TURNS ON ITS STUD, so its bore is not its stud's radius. Boring
+    // the cross to studR exactly makes the two solids coincident, which the
+    // instruments read as what it is — an intersection — and no declaration
+    // should paper over it: the running clearance is the honest dimension, and
+    // it is the one the movement's other studded wheels already carry.
+    boreR: studR + 0.01,
     floors: { pitch: dFromPitch, web: dFromWeb, horn: dFromHorn },
     horn: hornAt(d),                  // the cross's nearest metal to the driver's axis
     pinR: pivotMin,
@@ -1689,8 +1695,7 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
 // crosses metal, then the slot, then metal again out to the rim. Sampling
 // r(θ) would fill that outer sliver in and quietly fatten every arm.
 export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
-  const { N, d, b, slotW, slotInner, hubR, hollowR, studR } = spec;
-  const boreR = studR;
+  const { N, d, b, slotW, slotInner, hubR, hollowR, studR, boreR } = spec;
   const H = [];                                  // hollow centres, in cross-local coords
   for (let j = 0; j < N; j++) {
     const phi = ((j + 0.5) / N) * Math.PI * 2;

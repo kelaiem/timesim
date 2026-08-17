@@ -14249,7 +14249,9 @@ let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, ar
   fSpin.position.set(arrestPos.x, arrestPos.y, ARREST_Z);
   const finger = G.makeGenevaFinger({
     spec: ARREST_SPEC, thickness: ARREST_PLATE_T,
-    boreR: ARREST_SPEC.arborR, material: MATS.blueSteel,
+    // running clearance over the arbor, for the same reason the cross carries
+    // one over its stud — the finger turns, the column does not
+    boreR: ARREST_SPEC.arborR + 0.01, material: MATS.blueSteel,
   });
   finger.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmArrestFinger'; });
   fSpin.add(finger);
@@ -14320,14 +14322,16 @@ let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, ar
 // no per-member travel to declare it in. Filed rather than forced: declaring
 // the cross's arc against a unit containing a full revolve would put a number
 // the registry trusts next to a part that violates it.
-// §48/TODO 29 — the cross is indexed BOTH WAYS by the same finger (winding
-// advances it, unwinding walks it back), so it is the two-way class rather
-// than a part wanting a spring. The finger is the only thing that moves it;
-// between engagements its locking disc holds the cross in the hollow, which is
-// a HOLD by geometry and not a restoring element.
-declareRestoring('Alarm winding arrest', 'two-way',
-  'the cross has no spring and needs none: the finger indexes it in both directions — winding advances it toward the bank, unwinding walks it back — and between engagements the finger\'s locking disc sits in the cross\'s hollow, holding it by shape',
-  'alarmArrestCross');
+// §48/TODO 29 — NO declareRestoring here, and the audit is right to have
+// called the first one STALE. The declaration only means anything for a part
+// the §36 registry flags as RECIPROCATING, and this unit is not one: over
+// every shipped axis the wind is swept monotonically, so the cross indexes one
+// way and never reverses within a sweep. It is genuinely two-way driven across
+// a wind-and-run-down CYCLE — the same finger walks it back — but no axis
+// exercises that, and declaring a restoring element for a part the audit
+// cannot judge is exactly the stale row the gate exists to catch. Ship the
+// axis first, then the declaration: rule 4's own warning, taken rather than
+// argued with.
 
 // THE INDEX LAW. Both angles travel the gears (rule 2): the pinion is turned by
 // the arbor's own wheel, and the cross is turned by nothing but the pin sitting
