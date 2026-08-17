@@ -14248,6 +14248,27 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
     }
     return g;
   };
+  // STANDING RULE 5 — the low corridor is not in the scene scan and cannot be.
+  // LOW_LINKAGE_OBSTACLES is the declared SWEPT footprint of the setting
+  // linkage over the whole crown stroke; a build-time traverse sees those rods
+  // at ONE pose and would call the lane empty. The first solve here did exactly
+  // that, sited the finger and cross at z 0.1 — inside LOW_CORRIDOR_Z_BAND —
+  // and the battery came back with `Alarm winding arrest ⇄ Hack rod` on the
+  // crown axes. Rows are at the obstacles' OWN radii; this consumer adds its
+  // piece's reach and the margin, per that table's convention.
+  const lowC = (x, y, r) => {
+    let c = Infinity;
+    for (const o of LOW_LINKAGE_OBSTACLES) {
+      if (o.ax === undefined) { c = Math.min(c, Math.hypot(x - o.x, y - o.y) - o.r - r); continue; }
+      const vx = o.bx - o.ax, vy = o.by - o.ay, L2 = vx * vx + vy * vy || 1e-9;
+      const t = Math.max(0, Math.min(1, ((x - o.ax) * vx + (y - o.ay) * vy) / L2));
+      c = Math.min(c, Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r - r);
+    }
+    return c;
+  };
+  // a piece is judged against the corridor iff its own z-range crosses it —
+  // the winding tier's wheels overfly that lane legally, its studs do not
+  const crossesCorridor = (lo, hi) => hi >= LOW_CORRIDOR_Z_BAND[0] && lo <= LOW_CORRIDOR_Z_BAND[1];
   const nearest = (g, x, y) => {
     const ci = Math.floor(x / CELL), cj = Math.floor(y / CELL);
     let best = Infinity, who = null;
@@ -14286,10 +14307,14 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
     const py = alarmBarrelPos.y + Math.sin(a) * ARREST_CD;
     const pin = nearest(gPin, px, py);
     if (pin.d - M < NEED.pinion) continue;
+    if (crossesCorridor(PIN_BAND[0], PIN_BAND[1]) && lowC(px, py, NEED.pinion) < 0) continue;
+    // both columns run from the plate, so they always cross the corridor
+    if (lowC(px, py, NEED.arbor) < 0) continue;
     for (const z of planes) {
       const g = planeIdx(z);
       const f = nearest(g, px, py);
       if (f.d - M < NEED.finger) continue;
+      if (crossesCorridor(z, z + ARREST_PLATE_T) && lowC(px, py, NEED.finger) < 0) continue;
       // the arbor carries BOTH the finger and the pinion, so its column always
       // runs to whichever is higher — a finger below the pinion does not buy a
       // short arbor
@@ -14302,14 +14327,18 @@ const { az: ARREST_AZ, z: ARREST_Z, crossAz: ARREST_CROSS_AZ, slack: ARREST_SLAC
         const cx = px + Math.cos(ca) * ARREST_SPEC.d, cy = py + Math.sin(ca) * ARREST_SPEC.d;
         const q = nearest(g, cx, cy);
         if (q.d - M < NEED.cross) continue;
+        if (crossesCorridor(z, z + ARREST_PLATE_T) && lowC(cx, cy, NEED.cross) < 0) continue;
         const st = nearest(gs, cx, cy);
         if (st.d - M < NEED.stud) continue;
+        if (lowC(cx, cy, NEED.stud) < 0) continue;
         const parts = [
           [pin.d - M - NEED.pinion, `pinion vs ${pin.who}`],
           [f.d - M - NEED.finger, `finger vs ${f.who}`],
           [q.d - M - NEED.cross, `cross vs ${q.who}`],
           [arb.d - M - NEED.arbor, `arbor vs ${arb.who}`],
           [st.d - M - NEED.stud, `stud vs ${st.who}`],
+          [lowC(px, py, NEED.arbor), 'arbor vs the low corridor'],
+          [lowC(cx, cy, NEED.stud), 'stud vs the low corridor'],
         ].sort((p1, p2) => p1[0] - p2[0]);
         const slack = parts[0][0];
         if (!best || z < best.z - 1e-9 || (Math.abs(z - best.z) < 1e-9 && slack > best.slack))
