@@ -14187,9 +14187,34 @@ const ARREST_CROSS_AZ = (() => {
 // rest value whenever winding is what moves the arbor.
 const ARREST_ARBOR_A_EMPTY = (ALARM_PHASE_REST * Math.PI * 2) / ALARM_STRIKES_PER_BARREL_TURN
   + (0 - ALARM_BARREL_TURNS) * Math.PI * 2;
-const ARREST_PHI_EMPTY = -ARREST_ARBOR_A_EMPTY * (ALARM_WIND_W / ARREST_PINION_TEETH);
+// TRAVEL IS REGISTERED BANK-TO-BANK, not mid-slot to mid-slot, and that is what
+// lets the stop land on an integer click. Register the empty end at the angle
+// where the pin would CONTACT an un-slotted arm (spec.bankTh) and the ceiling
+// falls exactly N−1 pinion turns later at the blank's own contact angle: 7
+// turns, 1.75 barrel turns, 56 clicks. Registering mid-slot instead puts the
+// bank 0.1875 of a turn past the ceiling — 54.5 clicks — which no detent holds.
+const ARREST_ENTRY_TH = ARREST_SPEC.bankTh;
+const ARREST_PHI_EMPTY = -ARREST_ARBOR_A_EMPTY * (ALARM_WIND_W / ARREST_PINION_TEETH)
+  - ARREST_ENTRY_TH;
 const ARREST_FINGER_CLOCK = ARREST_CROSS_AZ - ARREST_PHI_EMPTY;
 const ARREST_CROSS_PHASE = (ARREST_CROSS_AZ + Math.PI) - (Math.PI * 2) / ARREST_STATIONS;
+// WHICH ARM IS BLANK is derived, not declared — the assembly clocking a
+// watchmaker performs: fit the cross with its un-slotted arm where the pin
+// arrives at full wind. Assuming station 0 was wrong twice over: the cross
+// turns −index per engagement while station numbers increase with local
+// azimuth, so the stations engage in DECREASING order and the blank is not
+// where counting forward puts it. Reading it off the shipped law instead means
+// the sign convention cannot desynchronise the metal from the motion.
+const ARREST_BLANK_AT = (() => {
+  const arborAtCeiling = (ALARM_PHASE_REST * Math.PI * 2) / ALARM_STRIKES_PER_BARREL_TURN
+    + (ARREST_WIND_CEILING - ALARM_BARREL_TURNS) * Math.PI * 2;
+  const crossRot = arrestAngles(arborAtCeiling).cross;
+  // the station facing the pinion is the one whose local azimuth closes the
+  // angle between the cross's rotation and the line back to the pinion
+  const psi = (ARREST_CROSS_AZ + Math.PI) - crossRot;
+  const n = Math.round(psi / ARREST_SPEC.index);
+  return ((n % ARREST_STATIONS) + ARREST_STATIONS) % ARREST_STATIONS;
+})();
 const arrestStud = {
   x: arrestPos.x + Math.cos(ARREST_CROSS_AZ) * ARREST_SPEC.d,
   y: arrestPos.y + Math.sin(ARREST_CROSS_AZ) * ARREST_SPEC.d,
@@ -14205,7 +14230,7 @@ const alarmArrestUnit = new THREE.Group();
 movement.add(alarmArrestUnit);
 registerLabel('Alarm winding arrest', alarmArrestUnit);
 registerExplode(alarmArrestUnit, 0, 9); // rides with the back stack, like the winding train
-let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null;
+let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, arrestCrossMesh = null;
 {
   // The pinion, on its own arbor, meshing the arbor wheel.
   const spin = new THREE.Group();
@@ -14246,9 +14271,10 @@ let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null;
   cSpin.position.set(arrestStud.x, arrestStud.y, ARREST_Z);
   const cross = G.makeGenevaCross({
     spec: ARREST_SPEC, thickness: ARREST_PLATE_T,
-    blankAt: 0, material: MATS.brass,
+    blankAt: ARREST_BLANK_AT, material: MATS.brass,
   });
   cross.name = 'alarmArrestCross';
+  arrestCrossMesh = cross;
   cSpin.add(cross);
   alarmArrestUnit.add(cSpin);
   arrestCrossSpin = cSpin;
@@ -26019,6 +26045,40 @@ window.__clock = {
   // where the notch actually stands, and whether the roller moved it.
   get resetContact() { return { ...resetContactNow, seatD: HEART_FREE_D0, retractD: HEART_FREE_D1 }; },
   get bootWarns() { return __bootWarns; },
+  // §106 — the arrest's verification surface. The BANK is the entry's whole
+  // acceptance and it cannot be posed: both the tick law and setPose clamp to
+  // the ceiling, so the only way to ask "is the stop metal or is it the clamp"
+  // is to re-evaluate the shipped angle law PAST its own ceiling and put the
+  // pin where it would go. That is what `pinInCrossFrame` is for — it returns
+  // the pin's centre in the CROSS's local frame, which the consumer tests
+  // against the cross's own traced outline.
+  get arrestDebug() {
+    const S = ARREST_SPEC;
+    const pinInCrossFrame = (wind) => {
+      const arborA = (ALARM_PHASE_REST * Math.PI * 2) / ALARM_STRIKES_PER_BARREL_TURN
+        + (wind - ALARM_BARREL_TURNS) * Math.PI * 2;
+      const A = arrestAngles(arborA);
+      // the pin in world-ish plan coords, then into the cross's rotating frame
+      const px = arrestPos.x + Math.cos(A.finger) * S.a;
+      const py = arrestPos.y + Math.sin(A.finger) * S.a;
+      const dx = px - arrestStud.x, dy = py - arrestStud.y;
+      const ca = Math.cos(-A.cross), sa = Math.sin(-A.cross);
+      return { x: dx * ca - dy * sa, y: dx * sa + dy * ca, cross: A.cross, finger: A.finger };
+    };
+    return {
+      spec: {
+        N: S.N, a: S.a, b: S.b, d: S.d, index: S.index,
+        slotW: S.slotW, slotInner: S.slotInner, pinR: S.pinR,
+      },
+      ceiling: ARREST_WIND_CEILING,
+      clicks: ARREST_CLICKS,
+      blankAt: ARREST_BLANK_AT,
+      pinionTurnsPerWind: ALARM_WIND_W / ARREST_PINION_TEETH,
+      crossOutline: arrestCrossMesh.userData.outline,
+      pinInCrossFrame,
+      anglesAtWind: (w) => pinInCrossFrame(w),
+    };
+  },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
   get fourthAngle() { return fourthAngle(tauIntegrated); },
@@ -26160,7 +26220,15 @@ window.__clock = {
       alarmColShownA = alarmColHeldA;
       alarmPusherStroke = false; alarmColLatched = false; alarmPusherT = 0;
     }
-    if (p.alarmBarrelWind !== undefined) alarmBarrelWind = p.alarmBarrelWind; // §24 alarm-spring energy
+    // §106 — THE HOLE THE ARREST EXISTS TO CLOSE. This branch was the one path
+    // that could pose a wind the metal forbids: tick() clamped, the restore
+    // clamped, and setPose wrote through. An instrument could therefore stand
+    // the movement in a state no hand could wind it into, and every gate would
+    // measure that state as if it were reachable. Clamped to the same ceiling
+    // the stop-work enforces, so posing and winding agree about where the metal
+    // is.
+    if (p.alarmBarrelWind !== undefined)
+      alarmBarrelWind = clamp(p.alarmBarrelWind, 0, ARREST_WIND_CEILING); // §24 alarm-spring energy
     // TODO 38 — the wind axis poses the winding INPUT: the crown's pushed-in
     // rotation, banked from EMPTY (resetInputs' state). This is the closed
     // form of the interactive wind path in tick() — the same ALARM_WIND_RATIO

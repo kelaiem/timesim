@@ -1656,6 +1656,17 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
     floors: { pitch: dFromPitch, web: dFromWeb, horn: dFromHorn },
     horn: hornAt(d),                  // the cross's nearest metal to the driver's axis
     pinR: pivotMin,
+    // THE BANK ANGLE, and it is NOT the slot-entry angle. The pin ENTERS a
+    // slot when its CENTRE reaches b — the slot is a gap sized to swallow it —
+    // but it BANKS on the blank arm with its SURFACE, so contact happens a
+    // little earlier, when the centre is still pinR outside the rim:
+    //     a² + d² − 2ad·cos θ = (b + pinR)²
+    // Carrying that difference in the REGISTRATION rather than in the metal is
+    // what keeps the arm at plain rim radius. Making the arm proud by pinR
+    // instead — the fat arm a continuously-running Geneva carries — buries the
+    // pin at the ceiling rather than stopping it there, because the pin
+    // arrives from OUTSIDE: measured, −0.2945 into metal at the stop.
+    bankTh: Math.acos((a * a + d * d - (b + pivotMin) ** 2) / (2 * a * d)),
     slotInner: d - a,                 // where the pin bottoms
     hollowR: lockR + margin * 0.5,    // the hollow is cut over the disc, with running room
     web: d - a - hubR,
@@ -1725,6 +1736,7 @@ export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
   mesh.userData.outline = loops[0];   // MODELING rule 1: solvers read the RENDERED outline
   mesh.userData.spec = spec;
   mesh.userData.hubR = hubR;
+  mesh.userData.blankAt = blankAt;
   return mesh;
 }
 
