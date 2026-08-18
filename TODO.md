@@ -6200,3 +6200,128 @@ hull phase are untouched, but the CONFIRM tier re-measures each candidate
 through `measureClearance`, which is `sweepClearances` — so it inherits
 canonical entry exactly as `clearances` does, and its numbers move with them.
 Five checks are entered; six can move.
+## 55. The alarm's stop-work counts the wrong quantity — it never resets, and the second wind drives the pin through the blank arm
+
+§106 shipped a Maltese stop-work for the alarm barrel: an 11 t pinion on a
+plate stud meshing the arbor's 44 t wind wheel, a single-pin finger, an
+8-station cross, banking after 7 pinion turns = 1.75 arbor turns = 56
+clicks. The mechanism is real, its bank is metal, and its station was
+solved. **What it is geared to is wrong.**
+
+A stop-work limits the WIND — the angle held in the ribbon between the
+arbor and the barrel body. §106's train reads the ARBOR'S ABSOLUTE ANGLE.
+Through a wind those two are the same number, because the click parks the
+body; the moment the alarm rings they part company, because the click parks
+the *arbor* while the body runs. `alarmArborRotor.rotation.z` is
+`alarmBodyA + (alarmBarrelWind − ALARM_BARREL_TURNS)·2π`, and during a ring
+`alarmBodyA` rises by exactly what the wind term loses. The arbor is
+stationary, so the cross is stationary.
+
+**Measured** (`tools/probe-106-reset.mjs`, which poses the states directly
+and reads the three rotors off the scene):
+
+```
+  state                       wind   phase    arbor    body   cross°  station   pin⇄cross
+  A  wound to the ceiling    1.75   -0.62  -0.0387 -0.0387    151.5       2          0
+     ringing, 50% left      0.875   13.38  -0.0387  0.8363    151.5       2          0
+  B  run right down             0   27.38  -0.0387  1.7112    151.5       2          0
+  C  re-wound to 100%        1.75   27.38   1.7112  1.7112    106.5       3     0.5914
+
+  the second wind, swept: deepest pin⇄cross -0.7369 at wind 0.0525
+```
+
+Row B is the reported symptom: the spring is empty and the stop-work still
+sits at its full-wind bank, pin against the blank arm, gap 0. It cannot
+reset, because nothing it is geared to ever comes back.
+
+The row under the table is worse. The second wind *starts* at the bank, and
+the angle law keeps indexing straight through it: the pin goes **0.7369
+into the cross's metal** — four pin radii (`pinR` 0.1847) — and comes out
+the far side at another station. So the part is not a stop-work at all. It
+is a ONE-SHOT: it permits 1.75 arbor turns from assembly and every wind
+after that is a collision. The only thing keeping the simulation out of
+that collision is `clamp(alarmBarrelWind, 0, ARREST_WIND_CEILING)` in
+`tick()` and `setPose` — **a number standing exactly where §106 claimed to
+have put metal**, which is the substitution that entry exists to have
+removed.
+
+### Why nothing caught it
+
+Both causes are named residue, and both are worth fixing whatever route the
+mechanism takes:
+
+- **`intraUnit` reported it, untriaged.** Measured before §127 landed:
+  `unit "Alarm winding arrest", tier MM, a genevaFingerPin, b
+  alarmArrestCross, at alarmStrike f=0`. The MM and FF tiers GATE only
+  `INTRA_TIER_SCOPE`, and `'Alarm winding arrest'` was never added to it, so
+  the pair was reported rather than held. CLAUDE.md names this residue in as
+  many words; this is the first defect it has cost. Note what the row's pose
+  depended on — see item 3 below: it was visible through TODO 54's pose leak,
+  which §127 has since closed. The defect is unchanged; the accident that
+  surfaced it is gone.
+- **`probe-106-bank.mjs` reconstructs instead of reading.**
+  `arrestDebug.pinInCrossFrame(wind)` builds the arbor angle from
+  `ALARM_PHASE_REST` — true for every wind-only pose and false the instant
+  the alarm has rung. The probe's 4/4 is honest about the pose it takes and
+  silent about the one it cannot. `arrestDebug.now()` (added with this item)
+  reads the three rotors themselves; the bank probe should use it.
+
+### The routes, with the arithmetic that closes three of them
+
+The Geneva's own numbers: `a` 1.5743, `b` 3.8008, `d` 4.1140. The alarm
+barrel: `ALARM_BARREL_TIP_R` 6.885, wind wheel 44 t at module 0.3, mesh
+centre distance `ARREST_CD` 8.25.
+
+- **A — differential: the pinion's stud moves into the barrel BODY.** Sun on
+  the arbor, planet carried by the body: in the carrier's frame the train
+  sees `arborA − bodyA` and nothing else, which is the wind exactly, with the
+  4:1 step-up and every derived quantity in §106 untouched. The cost is
+  position-space and probably fatal: the mesh sits at CD 8.25 against a tip
+  radius of 6.885, so the carrier is a bridge projecting past the barrel's
+  own rim, and the whole stop-work then ORBITS the barrel axis through 1.75
+  turns — a swept annulus reaching about 8.25 + `d` + `b` = 16.2. That is a
+  measurement to take before the route is judged, not a guess to accept.
+- **B — the textbook site: stop-work on the barrel cover, 1:1.** Closed by
+  arithmetic, sign-definite. The cross must clear whatever sits on the arbor
+  (centre ≥ `b` + sun radius from the axis) and lie inside the cover
+  (centre + `b` ≤ 6.885), so it needs `2b` + sunR ≤ 6.885 while `2b` alone is
+  **7.602** — impossible before the sun is given any radius at all. This
+  movement's alarm barrel is too small to carry its own stop-work at the §50
+  floors that size the Geneva.
+- **C — a plate-mounted subtractor.** Bring both coaxial angles — the arbor's
+  44 t wind wheel and the barrel's 44 t rim — into one counter with OPPOSITE
+  senses (a bevel/spider differential, or a reversing idler on one leg), and
+  feed its output to the Geneva. The Geneva's proven spec and its solved
+  station both survive; the cost is the subtractor's own parts, each with its
+  own P1 duties. This is the route that keeps the most of §106.
+- **D — no stop-work.** Hold over-winding with a slipping bridle, or with the
+  click and the set-up alone, which is what most going barrels this size
+  actually do. Cheapest and entirely honest; it costs §106's mechanism.
+- **Closed: make the wind integral.** A 1:1 Geneva travels N−1 turns, so it
+  would need `ALARM_BARREL_TURNS` to be an integer. Extra pins do not rescue
+  1.75: the driving arc is π − 2π/N = 135° at N = 8, so two pins is the most
+  that can be spaced without overlapping engagement, and (N−1)/2 = 1.75 gives
+  N = 4.5. Moving `ALARM_BARREL_TURNS` itself is a change to §104's group —
+  the ring integral, the governor's I_a solve, the cadence endpoints — and is
+  not this item's to spend.
+
+### What is owed whichever route is taken
+
+1. Add `'Alarm winding arrest'` to `INTRA_TIER_SCOPE` so finger⇄cross is
+   GATED. Do it with the fix, not before: the tier goes red on the row above
+   the moment it is in scope, which is the correct behaviour and would block
+   everything until the mechanism is right.
+2. Point `probe-106-bank.mjs` at `arrestDebug.now()`, so it asks its question
+   at the live pose rather than at a reconstructed one.
+3. Ship the axis this needed: one that WINDS, RINGS, and WINDS AGAIN. No axis
+   composes those three, and since §127 none can do it by accident either.
+   `alarmWind` used to inherit a rung-out `alarmStrikePhase` from
+   `alarmStrike` and so reached the broken state through TODO 54's leak —
+   which is how the `intraUnit` row above came to be measured at all.
+   `enterAxis` closed that leak, so the state is now reachable only if an
+   axis NAMES it. The defect did not move; the one instrument that happened
+   to see it did. Re-measure the row after this rebase and expect it to have
+   gone quiet.
+4. Reconcile §106 in `docs/BUILT.md` and its `explain.html` entry: both
+   currently say the ceiling is a consequence of metal. It is a consequence
+   of a clamp until this is closed.

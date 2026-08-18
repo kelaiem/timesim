@@ -10279,6 +10279,22 @@ and after seven of them the cross presents its un-slotted arm and the pin
 banks on it. `setPose`'s `alarmBarrelWind` branch — the one path that could
 still pose a wind the metal forbids — is clamped to the same ceiling.
 
+> **Corrected afterwards — read TODO 55 before trusting the paragraph above.**
+> That sentence is true of the FIRST wind and of no other. The train is
+> geared to the arbor's ABSOLUTE angle, and a stop-work has to count the
+> WIND — the angle the ribbon holds between arbor and body. The two agree
+> through a wind (the click parks the body) and part company through a ring
+> (the click parks the arbor while the body runs), so the cross measures
+> stationary across a whole run-down and the spring empties with the
+> stop-work still at its full-wind bank. Measured on the second wind, the
+> pin does not bank at all: the angle law indexes straight through the blank
+> arm, 0.7369 deep — four pin radii. What actually holds the ceiling today is
+> the `clamp` in `tick()` and `setPose`, which is the number this entry
+> claimed to have replaced with metal. The mechanism, its spec, its bank and
+> its solved station are all sound; what it is geared to is not, and TODO 55
+> carries the four candidate re-geares with the arithmetic that closes three
+> of them.
+
 **The count is an identity, not a choice.** Full wind is
 `ALARM_BARREL_TURNS` turns of a 44-tooth arbor wheel, and 1.75 × 44 = 77 =
 7 × 11, so an 11-tooth pinion turns exactly seven times. A single-pin Geneva

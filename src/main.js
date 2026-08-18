@@ -26358,11 +26358,30 @@ window.__clock = {
       },
       ceiling: ARREST_WIND_CEILING,
       clicks: ARREST_CLICKS,
+      phaseRest: ALARM_PHASE_REST,
+      strikesPerTurn: ALARM_STRIKES_PER_BARREL_TURN,
       blankAt: ARREST_BLANK_AT,
       pinionTurnsPerWind: ALARM_WIND_W / ARREST_PINION_TEETH,
       crossOutline: arrestCrossMesh.userData.outline,
       pinInCrossFrame,
       anglesAtWind: (w) => pinInCrossFrame(w),
+      // The LIVE pose of the three rotors, read off the scene rather than
+      // reconstructed from a wind. pinInCrossFrame assumes the body sits at
+      // ALARM_PHASE_REST, which is true for every wind-only pose and false the
+      // moment the alarm has rung — so a probe asking what the arrest counts
+      // has to read the rotors themselves.
+      now: () => {
+        const px = arrestPos.x + Math.cos(arrestFingerSpin.rotation.z) * S.a;
+        const py = arrestPos.y + Math.sin(arrestFingerSpin.rotation.z) * S.a;
+        const dx = px - arrestStud.x, dy = py - arrestStud.y;
+        const ca = Math.cos(-arrestCrossSpin.rotation.z), sa = Math.sin(-arrestCrossSpin.rotation.z);
+        return {
+          arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z,
+          pinion: arrestPinionSpin.rotation.z, finger: arrestFingerSpin.rotation.z,
+          cross: arrestCrossSpin.rotation.z,
+          pin: { x: dx * ca - dy * sa, y: dx * sa + dy * ca },   // in the cross's frame
+        };
+      },
     };
   },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
