@@ -187,7 +187,7 @@ export const MECH_GRAPH = {
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
     ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
-    ['Alarm winding arrest', 'plate'],  // §106: the pinion's arbor and the cross's stud are both plate-top columns, the idler-stud convention
+    ['Alarm winding arrest', 'plate'],  // §106/§129: FOUR plate-top columns now — the subtractor's arbor, the compound idler's, the Geneva's own arbor and the cross's stud, all the idler-stud convention
     ['Winding arrest', 'Three-quarter plate'], // §47: the bracket hangs the whole group from the plate's UNDERSIDE, top face flush (§29's lug idiom inverted)
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
     ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
@@ -253,7 +253,14 @@ export const MECH_GRAPH = {
     ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
     ['Alarm winding train', 'Alarm barrel'], // §99: climb pinion → idlers → the ARBOR's winding wheel (12/44 — W takes the rim's count, so the ratio survived the re-route)
     ['Alarm barrel', 'Alarm click'],         // §99: the arbor ratchet's saw drives the click's rock (winding cams it out; the face holds the return — the maintaining detent's row, alarm-side)
-    ['Alarm barrel', 'Alarm winding arrest'],  // §106: the arbor's own 44 t wheel drives the arrest's 11 t pinion — a LEAF, the §104 precedent; the cross is turned by the finger's pin and nothing else
+    // §129 — TWO drive edges from one unit, which is the point of the whole
+    // re-gearing. The arbor's 44 t wind wheel drives leg A direct; the BODY's
+    // 44 t rim drives leg B through a compound idler, arriving reversed. The
+    // spider subtracts them, so what leaves the differential is the WIND and
+    // not either member — §106 read the arbor alone and the cross never reset
+    // (TODO 55). The cage's 16 t wheel then drives the Geneva's 8 t pinion, and
+    // the cross is turned by the finger's pin and nothing else.
+    ['Alarm barrel', 'Alarm winding arrest'],
     ['Chain', 'Winding arrest'],             // §47: the arriving coil cams the finger's pad — a LEAF of the drive graph on purpose, the §104 precedent: an arrest consumes, it drives nothing downstream
     ['Alarm switch', 'Alarm lock'],          // §25 D: the column wheel blocks the lever's tail beak (column = OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
@@ -624,8 +631,8 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
   ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
   ['Alarm click', 'plate'],   // §99/§112: the click stud and spring post stand on the base plate
-  ['Alarm winding arrest', 'Alarm barrel'],  // §106: the arrest pinion in mesh with the arbor's winding wheel
-  ['Alarm winding arrest', 'plate'],         // §106: the arbor and the cross's stud stand on the base plate
+  ['Alarm winding arrest', 'Alarm barrel'],  // §106/§129: leg A in mesh with the arbor's winding wheel, and the compound idler's wheel in mesh with the BODY's rim — two meshes onto one unit, which is how the difference gets read
+  ['Alarm winding arrest', 'plate'],         // §106/§129: all four columns stand on the base plate
   ['Winding arrest', 'Three-quarter plate'],  // §47: the bracket's top face flush on the plate's underside — the support joint
   ['Winding arrest', 'Chain'],                // §47: the arriving coil ON the pad near full wind — the throw itself
   ['Winding arrest', 'Fusee & great wheel'],  // §47: beak on stop lug at full wind — the arrest itself
@@ -2051,6 +2058,24 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm barrel', a: 'ExtrudeGeometry#1', b: 'mainspringRibbon', why: '§121: the wound coil bearing on the drum wall — where a mainspring\'s outer coil rests by design; the ribbon is a MORPH, always its own frame, which is exactly how this pair reached the MM tier' },
   { unit: 'Alarm barrel', a: 'mainspringHook', b: 'mainspringRibbon', why: '§121: the hook formed on the ribbon\'s outer end — the drum\'s mirror row (mainspringHook ⇄ ExtrudeGeometry#0 above) made the same argument' },
   // Alarm winding train — TODO 15's solved chain:
+  // §129 — the subtractor's own working contacts. Each is a mesh or a bearing
+  // this unit is BUILT around, so each is a declared joint rather than a foul:
+  // the two legs into the spider, the spider's planets on both sides, the cage
+  // out to the Geneva, and the pin in the cross's slot — which is the one the
+  // whole mechanism exists to make.
+  { unit: 'Alarm winding arrest', a: 'genevaFingerPin', b: 'alarmArrestCross', why: '§129: the Geneva pin in its slot — the working contact the stop-work IS, measured shut at the bank (pin⇄cross 0 at the ceiling) and clear of the metal everywhere else in the travel' },
+  { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestCross', why: '§129: the LOCKING half of the same mechanism — between indexings the finger\'s disc rides in the cross\'s hollow and holds it still, which is what stops a Geneva drifting off station. makeGenevaFinger cuts that disc TO the cross\'s swept envelope, so the pair touches at zero by construction: measured 0 containment and 0 depth both ways at alarmStrike f=0.75 (§121\'s kiss, a designed seat)' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderPlanet0', why: '§129: side A on a planet — the differential mesh; α = ½ is this contact and its mirror' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderPlanet1', why: '§129: side A on the second planet, same mesh at the other end of the cross' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideB', b: 'spiderPlanet0', why: '§129: side B on a planet — the other half of the subtraction' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideB', b: 'spiderPlanet1', why: '§129: side B on the second planet' },
+  { unit: 'Alarm winding arrest', a: 'spiderPlanet0', b: 'spiderStub0', why: '§129: a planet running on its stub pin in the cage — a bearing, not a foul' },
+  { unit: 'Alarm winding arrest', a: 'spiderPlanet1', b: 'spiderStub1', why: '§129: the second planet on its stub' },
+  { unit: 'Alarm winding arrest', a: 'spiderCageWheel', b: 'subFingerPinion', why: '§129: the cage\'s wheel driving the Geneva\'s pinion — the ×2 output stage, TODO 15\'s phase solve owns it. The cage IS that wheel: the output cannot leave up the axis, because leg B\'s pinion is concentric with any such tube' },
+  { unit: 'Alarm winding arrest', a: 'spiderCageWheel', b: 'alarmArrestArbor', why: '§129: the cage running on the tower\'s arbor — the bearing the whole differential turns on' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderCageWheel', why: '§129: side A seated in the cage — a side gear runs inside its own cage, which is what a cage is for' },
+  { unit: 'Alarm winding arrest', a: 'spiderCageWheel', b: 'spiderSideB', why: '§129: side B seated in the cage, the mirror of side A' },
+  { unit: 'Alarm winding arrest', a: 'subIdlerPinion', b: 'subLegBPinion', why: '§129: the compound idler driving leg B — the mesh that carries the reversed sign into the spider' },
   { unit: 'Alarm winding train', a: 'alarmClimbPinion', b: 'alarmWindIdler', why: '§121: the climb pinion\'s working mesh into i1 — TODO 15\'s phase solve owns it (gap against tooth, measured)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'alarmWindIdler', why: '§121: the i1⇄i2 working mesh, same solve — both idlers carry §99\'s one name, so the row names it twice' },
   // Alarm release feeler — §29's tail run:
@@ -2094,6 +2119,12 @@ export const INTRA_TIER_SCOPE = [
   'Alarm switch', 'Alarm selector', 'Alarm disc',
   'Alarm release lifter', 'Alarm release feeler', 'Alarm silence rocker',
   'Alarm setting arbor', 'Alarm setting idler',
+  // §129 — the subtractor put four rotating bodies on one arbor and three
+  // stations in one unit, which is exactly the population this tier exists for
+  // and exactly what the pair sweep cannot see. TODO 55 named adding it as
+  // owed; it goes in WITH the re-gearing rather than before it, because the
+  // tier goes red on the shipped fault the moment it is in scope.
+  'Alarm winding arrest',
 ];
 // The rigid-frame signature, shared by checkIntraUnit's MM tier and
 // checkAssembly (hoisted from the latter, §121 — one predicate, two

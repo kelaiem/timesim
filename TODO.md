@@ -6200,3 +6200,236 @@ hull phase are untouched, but the CONFIRM tier re-measures each candidate
 through `measureClearance`, which is `sweepClearances` — so it inherits
 canonical entry exactly as `clearances` does, and its numbers move with them.
 Five checks are entered; six can move.
+## 55. CLOSED (§129) — the stop-work counts the WIND now, through a spider differential
+
+§106 shipped a Maltese stop-work for the alarm barrel: an 11 t pinion on a
+plate stud meshing the arbor's 44 t wind wheel, a single-pin finger, an
+8-station cross, banking after 7 pinion turns = 1.75 arbor turns = 56
+clicks. The mechanism is real, its bank is metal, and its station was
+solved. **What it is geared to is wrong.**
+
+A stop-work limits the WIND — the angle held in the ribbon between the
+arbor and the barrel body. §106's train reads the ARBOR'S ABSOLUTE ANGLE.
+Through a wind those two are the same number, because the click parks the
+body; the moment the alarm rings they part company, because the click parks
+the *arbor* while the body runs. `alarmArborRotor.rotation.z` is
+`alarmBodyA + (alarmBarrelWind − ALARM_BARREL_TURNS)·2π`, and during a ring
+`alarmBodyA` rises by exactly what the wind term loses. The arbor is
+stationary, so the cross is stationary.
+
+**Measured** (`tools/probe-106-reset.mjs`, which poses the states directly
+and reads the three rotors off the scene):
+
+```
+  state                       wind   phase    arbor    body   cross°  station   pin⇄cross
+  A  wound to the ceiling    1.75   -0.62  -0.0387 -0.0387    151.5       2          0
+     ringing, 50% left      0.875   13.38  -0.0387  0.8363    151.5       2          0
+  B  run right down             0   27.38  -0.0387  1.7112    151.5       2          0
+  C  re-wound to 100%        1.75   27.38   1.7112  1.7112    106.5       3     0.5914
+
+  the second wind, swept: deepest pin⇄cross -0.7369 at wind 0.0525
+```
+
+Row B is the reported symptom: the spring is empty and the stop-work still
+sits at its full-wind bank, pin against the blank arm, gap 0. It cannot
+reset, because nothing it is geared to ever comes back.
+
+The row under the table is worse. The second wind *starts* at the bank, and
+the angle law keeps indexing straight through it: the pin goes **0.7369
+into the cross's metal** — four pin radii (`pinR` 0.1847) — and comes out
+the far side at another station. So the part is not a stop-work at all. It
+is a ONE-SHOT: it permits 1.75 arbor turns from assembly and every wind
+after that is a collision. The only thing keeping the simulation out of
+that collision is `clamp(alarmBarrelWind, 0, ARREST_WIND_CEILING)` in
+`tick()` and `setPose` — **a number standing exactly where §106 claimed to
+have put metal**, which is the substitution that entry exists to have
+removed.
+
+### Why nothing caught it
+
+Both causes are named residue, and both are worth fixing whatever route the
+mechanism takes:
+
+- **`intraUnit` reports it, untriaged, and it is not an accident of pose
+  order.** The row is in the payload of a clean 24/24 run on top of §127:
+  `unit "Alarm winding arrest", tier MM, a genevaFingerPin, b
+  alarmArrestCross, at alarmStrike f=0`. The MM and FF tiers GATE only
+  `INTRA_TIER_SCOPE`, and `'Alarm winding arrest'` was never added to it, so
+  the pair is reported rather than held. CLAUDE.md names this residue in as
+  many words; this is the first defect it has cost. It survives canonical
+  entry because `alarmStrike` reaches the state through its OWN declared pose:
+  it names `alarmStrikePhase` and lets `setPose` derive the wind, which puts
+  the body and the arbor at angles no wind-only pose produces — exactly the
+  disagreement the arrest cannot see.
+- **`axisEntry`'s leak tier fingerprints it from the other side.** In the same
+  run, the worst-moved unit under the old order-dependent entry is `Alarm
+  winding arrest`, 24 pairs, worst delta 0.732 — the largest in the movement.
+  That is what a unit looks like when its pose is a function of two members no
+  single axis pins together. The tier is a REPORT, so it named this and gated
+  nothing; worth re-reading after the re-gearing, because a stop-work that
+  reads one quantity should stop being the movement's most pose-sensitive
+  unit.
+- **`probe-106-bank.mjs` reconstructs instead of reading.**
+  `arrestDebug.pinInCrossFrame(wind)` builds the arbor angle from
+  `ALARM_PHASE_REST` — true for every wind-only pose and false the instant
+  the alarm has rung. The probe's 4/4 is honest about the pose it takes and
+  silent about the one it cannot. `arrestDebug.now()` (added with this item)
+  reads the three rotors themselves; the bank probe should use it.
+
+### The routes, with the arithmetic that closes three of them
+
+The Geneva's own numbers: `a` 1.5743, `b` 3.8008, `d` 4.1140. The alarm
+barrel: `ALARM_BARREL_TIP_R` 6.885, wind wheel 44 t at module 0.3, mesh
+centre distance `ARREST_CD` 8.25.
+
+- **A — differential: the pinion's stud moves into the barrel BODY.** Sun on
+  the arbor, planet carried by the body: in the carrier's frame the train
+  sees `arborA − bodyA` and nothing else, which is the wind exactly, with the
+  4:1 step-up and every derived quantity in §106 untouched. The cost is
+  position-space and probably fatal: the mesh sits at CD 8.25 against a tip
+  radius of 6.885, so the carrier is a bridge projecting past the barrel's
+  own rim, and the whole stop-work then ORBITS the barrel axis through 1.75
+  turns — a swept annulus reaching about 8.25 + `d` + `b` = 16.2. That is a
+  measurement to take before the route is judged, not a guess to accept.
+- **B — the textbook site: stop-work on the barrel cover, 1:1.** Closed by
+  arithmetic, sign-definite. The cross must clear whatever sits on the arbor
+  (centre ≥ `b` + sun radius from the axis) and lie inside the cover
+  (centre + `b` ≤ 6.885), so it needs `2b` + sunR ≤ 6.885 while `2b` alone is
+  **7.602** — impossible before the sun is given any radius at all. This
+  movement's alarm barrel is too small to carry its own stop-work at the §50
+  floors that size the Geneva.
+- **C — a plate-mounted subtractor.** Bring both coaxial angles — the arbor's
+  44 t wind wheel and the barrel's 44 t rim — into one counter with OPPOSITE
+  senses (a bevel/spider differential, or a reversing idler on one leg), and
+  feed its output to the Geneva. The Geneva's proven spec and its solved
+  station both survive; the cost is the subtractor's own parts, each with its
+  own P1 duties. This is the route that keeps the most of §106.
+- **D — no stop-work.** Hold over-winding with a slipping bridle, or with the
+  click and the set-up alone, which is what most going barrels this size
+  actually do. Cheapest and entirely honest; it costs §106's mechanism.
+- **Closed: make the wind integral.** A 1:1 Geneva travels N−1 turns, so it
+  would need `ALARM_BARREL_TURNS` to be an integer. Extra pins do not rescue
+  1.75: the driving arc is π − 2π/N = 135° at N = 8, so two pins is the most
+  that can be spaced without overlapping engagement, and (N−1)/2 = 1.75 gives
+  N = 4.5. Moving `ALARM_BARREL_TURNS` itself is a change to §104's group —
+  the ring integral, the governor's I_a solve, the cadence endpoints — and is
+  not this item's to spend.
+
+### What is owed whichever route is taken
+
+1. Add `'Alarm winding arrest'` to `INTRA_TIER_SCOPE` so finger⇄cross is
+   GATED. Do it with the fix, not before: the tier goes red on the row above
+   the moment it is in scope, which is the correct behaviour and would block
+   everything until the mechanism is right.
+2. Point `probe-106-bank.mjs` at `arrestDebug.now()`, so it asks its question
+   at the live pose rather than at a reconstructed one.
+3. Ship the axis this needed: one that WINDS, RINGS, and WINDS AGAIN. No axis
+   composes those three deliberately. `alarmStrike` stumbles into a state that
+   exposes the fault — it names the phase and lets `setPose` derive the wind —
+   which is why the `intraUnit` row exists at all, and it survives §127 for
+   that reason. But an axis that reaches a defect as a side effect of posing
+   something else cannot be relied on to keep reaching it: the sequence the
+   mechanism is FOR (wind, ring, wind again) should be a declared axis, so the
+   reset is swept rather than stumbled upon.
+4. Reconcile §106 in `docs/BUILT.md` and its `explain.html` entry: both
+   currently say the ceiling is a consequence of metal. It is a consequence
+   of a clamp until this is closed.
+
+---
+
+### CLOSED (§129). What was built, and where it diverged from the fix above
+
+**Route C was taken and it worked**: a plate-mounted subtractor. Leg A off the
+arbor's wind wheel, leg B off the body's rim through a compound idler that
+arrives reversed, a SPIDER differential taking their mean, and an output stage
+doubling it back onto the Geneva's own arbor. Gain 4, so travel is still
+4 × 1.75 = 7 = N−1 and §106's cross, clocking and 56-click bank were inherited
+whole rather than re-derived. `docs/BUILT.md` §129 has the full record.
+
+**The measurement that closes this item.** Run right down, the cross returns to
+its booted-empty pose to the digit, and swept over the whole travel the pin's
+deepest approach to the cross is 0 — it touches metal exactly at the ceiling and
+enters it nowhere else. Driven PAST the ceiling it still buries in the blank arm
+(bank 4/4), so the stop is metal and no longer a clamp standing where metal was
+claimed.
+
+**Three of the four routes above are closed by arithmetic, not by preference,
+and the entry above priced them correctly.** Route B stays closed (2b = 7.602
+against a barrel tip of 6.885). Route A's carrier-on-the-barrel is closed for
+the reason given. The "make the wind integral" route stays closed. What the
+entry did NOT anticipate is that route C's cost is not the subtractor's parts
+but its SITING: the tower needed a fourth freedom in §106's solve, the group
+needed checking against itself (P2, which the pair sweep structurally cannot
+see), and the solve needed a ceiling, the click pawl's declared swing, and the
+going train's rotors.
+
+**Item 1 is done**: `'Alarm winding arrest'` is in `INTRA_TIER_SCOPE`, so the
+FF/MM tiers GATE this unit instead of reporting it, with eleven working contacts
+declared — each measured before it was declared, per §121.
+
+**Item 2 turned out to be closed by the fix itself.** `pinInCrossFrame` no
+longer reconstructs anything: the chain reads `arborA − bodyA`, so a wind names
+the pose completely and the striker's phase cannot reach it. `arrestDebug.now()`
+was added anyway and is what `probe-106-reset` reads.
+
+**Item 3 is STILL OPEN and is now TODO 56**, which is where it lives rather
+than inside a closed item. No pose axis reverses the wind within a sweep, so
+§48's no-spring audit still cannot judge the cross. §106 claimed a two-way drive
+it did not have; §129 has one, measured, which makes the axis MORE owed than
+before rather than less.
+
+## 56. §129's stop-work reverses, and no axis sweeps the reversal — so §48 still cannot judge it
+
+Opened by §129's landing, and stated there rather than hidden. It is the
+residue of TODO 55 and it gets its own number because a closed item is a bad
+place to keep live debt.
+
+**What changed under the instrument.** §106 claimed the arrest's cross was
+"two-way driven across a wind-and-run-down cycle by the same finger". It was
+not: that train read the arbor's absolute angle, and the arbor stands still
+through a whole run-down. §129 re-geared it through a spider differential, so
+the claim is TRUE now — measured, running right down returns the cross to its
+booted-empty pose to the digit, and the same finger walks it back through
+exactly the states a wind walked it forward through.
+
+**Why the audit still cannot see it.** §48's no-spring audit takes its
+population from the §36 registry's `reversed` flag, and that flag is measured
+per AXIS: a part counts as reciprocating when successive steps of one sweep
+change sign. No axis reverses the wind within a sweep. `alarmWind` runs it up
+and `alarmStrike` runs it down; neither turns round. So the cross is invisible
+to the audit, no restoring element is declared for it, and the gate passes it
+in silence — which is precisely the failure mode rule 4 warns about in as many
+words: *ship the mechanism and you must ship the axis that exercises it, or
+this passes it in silence.*
+
+This is the same shape as the hole TODO 29 closed for the alarm lock, where no
+axis anywhere varied `alarmOn` and the movement's clearest no-spring case was
+invisible for exactly that reason.
+
+**The fix.** An axis that WINDS, RINGS and WINDS AGAIN — the sequence the
+mechanism exists for. `setPose` already accepts both `alarmBarrelWind` and
+`alarmStrikePhase`, and `tools/probe-129-reset` (via `probe-106-reset`) already
+drives that sequence, so the poses are known-good and the work is declaring
+them as an axis in `AXES` rather than discovering how.
+
+Three things to get right when it lands:
+
+1. **The three legs are not interchangeable.** Winding advances the arbor with
+   the body parked; ringing advances the body with the arbor parked; the second
+   wind starts from a body that a ring has already moved. An axis that only
+   ramps the wind up and down with the phase derived sweeps two of the three.
+2. **Expect the reports to MOVE**, and accept them per row. A new axis changes
+   what the §36 registry samples, so `restoring`'s population can change and so
+   can any sweep row whose finding lived on a pose no axis previously visited.
+   Diff the `--report` and derive each moved row rather than re-basing it.
+3. **Then, and only then, the declaration.** With the reversal swept, the cross
+   becomes a part §48 can judge, and it is driven both ways by the same finger —
+   `declareRestoring` with kind `'two-way'`, which was rejected as STALE twice
+   before because the mechanism did not deserve it. It does now.
+
+**Also owed, and smaller.** `axisEntry`'s leak tier named `Alarm winding
+arrest` the movement's worst-moved unit under the old order-dependent entry (24
+pairs, worst delta 0.732) — the fingerprint of a unit whose pose depended on two
+members no single axis pinned together. Re-read that row after this axis lands:
+a stop-work that reads one quantity should stop being the most pose-sensitive
+unit in the movement, and if it has not, the reason is worth knowing.
