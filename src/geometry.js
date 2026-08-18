@@ -1912,6 +1912,150 @@ function polyArea(p) {
 
 const CLEAR_MARGIN_G = 0.15;   // the ONE margin (rule 1); geometry.js's local copy of main's
 
+// ---------------------------------------------------------------------------
+// SPIDER DIFFERENTIAL (BUILT §129) — the one member that can SUBTRACT two
+// angles, which is what a stop-work on a going barrel has to do.
+//
+// The alarm's wind is `arborA − bodyA`, and both members are real coaxial
+// wheels of the same tooth count. No rigid plate-mounted train reads that: a
+// wheel's angle is a fixed multiple of its one driving chain, and a single
+// body meshing both coaxial wheels is over-constrained — it would LOCK the
+// barrel, not measure it. Subtraction needs two degrees of freedom.
+//
+// WHY THIS SHAPE AND NOT AN EPICYCLIC, which is arithmetic rather than taste.
+// Every three-port epicyclic obeys `out = alpha·in1 + (1 − alpha)·in2` — the
+// coefficients SUM TO ONE whatever the tooth counts. Two legs of equal
+// magnitude therefore subtract only at alpha = 1/2 exactly, and alpha = 1/2 is
+// this: two equal side gears facing each other with planets between, carrier =
+// (thetaA + thetaB)/2. A sun-planet-annulus cannot reach it (it would need
+// annulus teeth equal to sun teeth), which is why the reserve-de-marche
+// differential is a spider in real movements too.
+//
+// GEOMETRY. Four bevels sharing ONE pitch apex on the carrier's axis: the two
+// side gears open away from that apex along ±Z, the planets along ±X on the
+// cage's cross pin. Equal side and planet counts put every cone at 45°, which
+// is makeBevelGear's own default and its documented mounting convention —
+// origin AT the shaft intersection, local +Z back into the gear's own shaft.
+//
+// The planets are DRIVEN, not decorative: in the cage's frame the two sides
+// counter-rotate, so a planet turns −(sideTeeth/planetTeeth)·(thetaA −
+// thetaB)/2 about its own axis. `spinPlanets` is that law, exported with the
+// part so no caller has to restate it (rule 2 — the angle travels the gears).
+// ---------------------------------------------------------------------------
+export function spiderSpec({ module, sideTeeth, planetTeeth = sideTeeth,
+                            boreR, stockMin, margin = CLEAR_MARGIN_G }) {
+  // The pitch apex is the origin; at 45° the pitch circle of either gear sits
+  // one pitch radius out AND one pitch radius along its own axis, so R is the
+  // whole assembly's half-size in every direction at once.
+  const R = pitchRadius(module, sideTeeth);
+  const planetR = pitchRadius(module, planetTeeth);
+  // Face width is the §50 floor, not a taste: the cut section of a bevel is
+  // its face, and nothing in this movement is cut thinner than stockMin.
+  const faceWidth = Math.max(stockMin, module * 2);
+  // What the cage must clear inside its own rim: a planet reaches planetR out
+  // along the pin and the same again in z, and the pin's boss sits under it.
+  const inner = Math.hypot(planetR + faceWidth, planetR) + margin;
+  const teethOk = sideTeeth >= minGearTeeth(module, boreR)
+    && planetTeeth >= minGearTeeth(module, boreR * 0.6);
+  return {
+    module, sideTeeth, planetTeeth, boreR, faceWidth, margin,
+    R, planetR,
+    // half the axial extent: the far rim of a side gear plus its face, which
+    // is what the z-stack above and below has to be given
+    halfHeight: R + faceWidth * Math.SQRT1_2 + margin,
+    inner,
+    teethOk,
+    // the differential relation itself, as a function rather than a comment
+    carrierOf: (thetaA, thetaB) => (thetaA + thetaB) / 2,
+    planetOf: (thetaA, thetaB) => -(sideTeeth / planetTeeth) * (thetaA - thetaB) / 2,
+  };
+}
+
+export function makeSpiderDifferential({ spec, planets = 2, material }) {
+  const mat = material || MATS.steel;
+  const { module, sideTeeth, planetTeeth, boreR, faceWidth } = spec;
+  if (!spec.teethOk)
+    console.warn(`spider differential: ${sideTeeth}/${planetTeeth} teeth at module `
+      + `${module} on a ${boreR} bore is under minGearTeeth `
+      + `${minGearTeeth(module, boreR)} — the wheel would have no rim`);
+
+  const g = new THREE.Group();
+  // One mount per gear: a group whose local +Z is that gear's own shaft
+  // direction (makeBevelGear's convention), holding a SPIN group inside it so
+  // the gear's rotation is always about its own axis whatever the mount did.
+  const mount = (axis, teeth, bore, phase) => {
+    const m = new THREE.Group();
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
+    const spin = new THREE.Group();
+    const gear = makeBevelGear({ teeth, module, faceWidth, boreR: bore, material: mat });
+    gear.rotation.z = phase;
+    spin.add(gear);
+    m.add(spin);
+    return { m, spin, gear };
+  };
+
+  // The two sides, on the carrier's axis, opening away from the shared apex.
+  const A = mount(new THREE.Vector3(0, 0, -1), sideTeeth, boreR, 0);
+  const B = mount(new THREE.Vector3(0, 0, 1), sideTeeth, boreR, 0);
+  A.gear.children[0].name = 'spiderSideA';
+  B.gear.children[0].name = 'spiderSideB';
+  // Each side turns as ONE body with its leg pinion, so the caller parents the
+  // pinion into the same spin group — one body, one rotation (§107).
+  const sideA = A.spin, sideB = B.spin;
+  sideA.name = 'spiderSideASpin'; sideB.name = 'spiderSideBSpin';
+
+  // The cage: the cross pin through the apex, and the planets on its ends.
+  const cage = new THREE.Group(); cage.name = 'spiderCageSpin';
+  cage.add(A.m, B.m);
+  const pinR = Math.max(boreR * 0.45, module * 0.6);
+  const pinLen = (spec.planetR + faceWidth) * 2;
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, pinLen, 12), mat);
+  pin.name = 'spiderCrossPin';
+  pin.rotation.z = Math.PI / 2;   // the cylinder's own +Y laid onto +X
+  cage.add(pin);
+  const planetSpins = [];
+  for (let i = 0; i < planets; i++) {
+    const a = (i / planets) * Math.PI * 2;
+    const P = mount(new THREE.Vector3(Math.cos(a), Math.sin(a), 0),
+      planetTeeth, boreR * 0.6, Math.PI / planetTeeth);
+    P.gear.children[0].name = `spiderPlanet${i}`;
+    cage.add(P.m);
+    // EVERY planet takes the SAME spin about its OWN outward axis, which is
+    // opposite senses in world for a pair on one pin. That is not a fudge: a
+    // 180° rotation about the cage axis maps planet i to planet i+1 and leaves
+    // both side gears alone, so it is a symmetry of the whole assembly, and
+    // under it an angular velocity about +X maps to one about −X of the same
+    // magnitude. Signing them per index instead is the plausible-looking error.
+    planetSpins.push(P.spin);
+  }
+
+  g.add(cage);
+  g.userData.sideA = sideA;
+  g.userData.sideB = sideB;
+  g.userData.cage = cage;
+  g.userData.spec = spec;
+  // Rule 2, made impossible to get wrong at the call site: one function poses
+  // every member of the differential from its two inputs.
+  g.userData.pose = (thetaA, thetaB) => {
+    const c = spec.carrierOf(thetaA, thetaB);
+    cage.rotation.z = c;
+    // The sides hang INSIDE the cage (their mounts are cage children, which is
+    // what makes the apex one point however the cage turns), so each carries
+    // the RELATIVE angle and the cage supplies the rest — the same
+    // parent-frame arithmetic the motion works uses. Absolute side angle is
+    // still thetaA / thetaB, which is the contract the caller poses against.
+    // Side A's mount lays local +Z onto world −Z (it opens downward from the
+    // apex), so a rotation about its own axis reads NEGATED in world; side B's
+    // mount is the identity and does not. Get this pair the wrong way round
+    // and the differential still turns — it just stops subtracting.
+    sideA.rotation.z = -(thetaA - c);
+    sideB.rotation.z = thetaB - c;
+    const p = spec.planetOf(thetaA, thetaB);
+    for (const s of planetSpins) s.rotation.z = p;
+  };
+  return g;
+}
+
 // STAR WHEEL — symmetric V-points (a detent star, not a saw ratchet:
 // the jumper must ride identically in both directions). Points at
 // u = 0 of each pitch, valleys at u = 0.5. Extruded 0-based.

@@ -6250,15 +6250,25 @@ removed.
 Both causes are named residue, and both are worth fixing whatever route the
 mechanism takes:
 
-- **`intraUnit` reported it, untriaged.** Measured before §127 landed:
+- **`intraUnit` reports it, untriaged, and it is not an accident of pose
+  order.** The row is in the payload of a clean 24/24 run on top of §127:
   `unit "Alarm winding arrest", tier MM, a genevaFingerPin, b
   alarmArrestCross, at alarmStrike f=0`. The MM and FF tiers GATE only
   `INTRA_TIER_SCOPE`, and `'Alarm winding arrest'` was never added to it, so
-  the pair was reported rather than held. CLAUDE.md names this residue in as
-  many words; this is the first defect it has cost. Note what the row's pose
-  depended on — see item 3 below: it was visible through TODO 54's pose leak,
-  which §127 has since closed. The defect is unchanged; the accident that
-  surfaced it is gone.
+  the pair is reported rather than held. CLAUDE.md names this residue in as
+  many words; this is the first defect it has cost. It survives canonical
+  entry because `alarmStrike` reaches the state through its OWN declared pose:
+  it names `alarmStrikePhase` and lets `setPose` derive the wind, which puts
+  the body and the arbor at angles no wind-only pose produces — exactly the
+  disagreement the arrest cannot see.
+- **`axisEntry`'s leak tier fingerprints it from the other side.** In the same
+  run, the worst-moved unit under the old order-dependent entry is `Alarm
+  winding arrest`, 24 pairs, worst delta 0.732 — the largest in the movement.
+  That is what a unit looks like when its pose is a function of two members no
+  single axis pins together. The tier is a REPORT, so it named this and gated
+  nothing; worth re-reading after the re-gearing, because a stop-work that
+  reads one quantity should stop being the movement's most pose-sensitive
+  unit.
 - **`probe-106-bank.mjs` reconstructs instead of reading.**
   `arrestDebug.pinInCrossFrame(wind)` builds the arbor angle from
   `ALARM_PHASE_REST` — true for every wind-only pose and false the instant
@@ -6314,14 +6324,13 @@ centre distance `ARREST_CD` 8.25.
 2. Point `probe-106-bank.mjs` at `arrestDebug.now()`, so it asks its question
    at the live pose rather than at a reconstructed one.
 3. Ship the axis this needed: one that WINDS, RINGS, and WINDS AGAIN. No axis
-   composes those three, and since §127 none can do it by accident either.
-   `alarmWind` used to inherit a rung-out `alarmStrikePhase` from
-   `alarmStrike` and so reached the broken state through TODO 54's leak —
-   which is how the `intraUnit` row above came to be measured at all.
-   `enterAxis` closed that leak, so the state is now reachable only if an
-   axis NAMES it. The defect did not move; the one instrument that happened
-   to see it did. Re-measure the row after this rebase and expect it to have
-   gone quiet.
+   composes those three deliberately. `alarmStrike` stumbles into a state that
+   exposes the fault — it names the phase and lets `setPose` derive the wind —
+   which is why the `intraUnit` row exists at all, and it survives §127 for
+   that reason. But an axis that reaches a defect as a side effect of posing
+   something else cannot be relied on to keep reaching it: the sequence the
+   mechanism is FOR (wind, ring, wind again) should be a declared axis, so the
+   reset is swept rather than stumbled upon.
 4. Reconcile §106 in `docs/BUILT.md` and its `explain.html` entry: both
    currently say the ceiling is a consequence of metal. It is a consequence
    of a clamp until this is closed.
