@@ -12162,9 +12162,25 @@ const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
 // the coefficients summing to one, so two legs of equal magnitude subtract
 // only at α = ½ exactly. α = ½ is the SPIDER. tools/probe-129-subtractor-line
 // carries that derivation and prices the one alternative the arithmetic allows.
-const SUB_LEG_TEETH = ARREST_PINION_TEETH;    // 11 on BOTH legs, so both mesh at ARREST_CD
-const SUB_OUT_TEETH = 16;                     // the cage's own wheel
-const SUB_FINGER_TEETH = SUB_OUT_TEETH / 2;   // 8 — the ×2 that turns the spider's half back into the line's 4
+// THE LEG COUNT IS THE TOWER'S RADIUS, and that makes it fold currency rather
+// than spec. Both legs must share it (equal legs are what the spider's α = ½
+// subtracts), and it sets the mesh circle at module·(44 + LEG)/2 — so choosing
+// it chooses how far from the barrel the whole subtractor stands. What the
+// line spec fixes is the GAIN, not the counts: raise the leg count and the
+// output stage takes up the slack.
+//
+// 22 rather than 11, measured. At 11 the tower stands 8.25 from the barrel
+// axis, which leaves 1.011 of radius beside wheels that reach 7.09 — the
+// spider only just fits, and the forced idler station left the low corridor
+// short by 0.001 at every azimuth, tooth count and side the solve could try.
+// At 22 the circle is 9.90 and the same budget is 2.66.
+const SUB_LEG_TEETH = 2 * ARREST_PINION_TEETH;
+const SUB_FINGER_TEETH = 8;                   // the §50 floor's smallest real pinion
+// and the output stage carries whatever ratio the legs did not
+const SUB_OUT_TEETH = SUB_FINGER_TEETH * ((ALARM_WIND_W / SUB_LEG_TEETH) === 2 ? 4 : 2);
+// its own module is internal to the group, so it is free to be finer than the
+// train's — which is what keeps the cage's wheel from being enormous
+const SUB_OUT_MODULE = 0.2;
 // The idler exists for the SIGN and for nothing else: leg A reaches its pinion
 // in one mesh and leg B must arrive reversed, so leg B gets one more mesh. Its
 // two counts are equal, which is what makes it cancel out of the ratio — a
@@ -13994,6 +14010,13 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   }
   click.name = 'alarmClickPawl';
   click.position.set(pivotR, 0, clickBot);
+  // §129 — DECLARE THE SWING. A build-time siting solve scans the scene at one
+  // pose, so a lever reads as its resting silhouette; §106 learned the same
+  // lesson for rotors and named them rather than inferring them. This pawl
+  // swings about its own stud on every wind, and the alarm arrest's tower had
+  // to be sited past it — so the sweep it makes is declared here, at the part,
+  // in the same shape the rotor groups use.
+  click.userData.swingAbout = { of: az, lx: pivotR, ly: 0, name: 'the alarm click pawl' };
   az.add(click);
   // Shoulder screw: post from the BASE plate through the tier, head above
   // (§112 — the click dropped with its ratchet; same idiom, one plate down).
@@ -14169,7 +14192,10 @@ declareRestoring('Alarm click', 'spring',
 // relation and the three floors, one of which (the cross's horn against this
 // pinion's own arbor) is what sets the size.
 // ---------------------------------------------------------------------------
-const ARREST_CD = ALARM_TRAIN_MODULE * (ALARM_WIND_W + ARREST_PINION_TEETH) / 2; // 8.25 — the mesh circle
+// The mesh circle, which is a function of the LEG count and therefore of the
+// fold: module·(44 + LEG)/2. §106 had 11 t and stood at 8.25; §129 has 22 t and
+// stands at 9.90, which is what buys the tower room beside the barrel.
+const ARREST_CD = ALARM_TRAIN_MODULE * (ALARM_WIND_W + SUB_LEG_TEETH) / 2;
 const ARREST_SPEC = G.genevaSpec({
   N: ARREST_STATIONS, stockMin: STOCK_MIN_U, pivotMin: PIVOT_MIN_U,
   margin: CLEAR_MARGIN, studR: PIVOT_MIN_U + 0.01 + STOCK_MIN_U,
@@ -14204,18 +14230,34 @@ const SUB_BESIDE_R = ARREST_CD - Math.max(
   G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_BARREL_TEETH, thickness: ALARM_BARREL_H }),
   G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, thickness: ALARM_WIND_WHEEL_T }),
 ) - CLEAR_MARGIN;
-const SUB_BEVEL_TEETH = 10;   // the movement's bevel count — BEVEL_TEETH and ALARM_BEVEL_TEETH both
-// So the bevels' module is what the barrel LEAVES, not a number picked to look
-// right: the lower side gear's cone hangs below the cage and therefore stands
-// in the barrel's own band, and makeBevelGear's tip circle is
-// pitchR + 0.85·module.
-const SUB_BEVEL_MODULE = SUB_BESIDE_R / (SUB_BEVEL_TEETH / 2 + 0.85);
+// THE SIDE GEAR IS SQUEEZED FROM BOTH SIDES, so neither its module nor its
+// count is free and both are solved rather than picked.
+//
+// From INSIDE: it runs on a sleeve, and the sleeve runs on the arrest arbor —
+// three concentric bodies, so its bore is the arbor plus a running fit plus
+// the sleeve's own §50 wall. Its rim, pitch radius less that bore, is stock
+// too, which fixes the pitch radius outright.
+// From OUTSIDE: its cone hangs below the cage and stands in the band of the
+// wheels on the barrel's axis, so its TIP — pitch radius plus 0.85 module —
+// must stay inside what they leave.
+// What is left over for the addendum is therefore the module, and the count
+// follows from the pitch radius. Taking the count first (10, the movement's
+// other bevels) and the module from the tip alone left the rim 0.003 under
+// the floor: the two constraints have to be solved together or one of them
+// silently loses.
+const SUB_SIDE_BORE_R = PIVOT_MIN_U + 0.05 + STOCK_MIN_U;
+const SUB_SIDE_PITCH_R = SUB_SIDE_BORE_R + STOCK_MIN_U;
+// With the tower on the wider circle the outside constraint stops binding, so
+// the module comes from the movement's own bevel family and the count from the
+// rim floor — the inside constraint, which never stops binding. The tip is
+// asserted against the budget at boot rather than assumed.
+const SUB_BEVEL_MODULE = ALARM_GOV_MODULE;
+const SUB_BEVEL_TEETH = Math.max(
+  G.minGearTeeth(SUB_BEVEL_MODULE, SUB_SIDE_BORE_R),
+  Math.ceil((2 * SUB_SIDE_PITCH_R) / SUB_BEVEL_MODULE));
 const SUB_SPEC = G.spiderSpec({
   module: SUB_BEVEL_MODULE, sideTeeth: SUB_BEVEL_TEETH,
-  // the side gears run FREE on the arrest arbor, so the bore is the running
-  // fit the winding idlers already use (0.5 on a 0.45 stud)
-  boreR: PIVOT_MIN_U + 0.05,
-  stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
+  boreR: SUB_SIDE_BORE_R, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
 });
 // The apex sits as low as the WIND WHEEL allows, not as low as the leg pinion
 // does. Side A's cone hangs below the apex, and the obstacle down there is not
@@ -14234,14 +14276,28 @@ const SUB_PIN_B_Z = SUB_CAGE_Z + SUB_SPEC.halfHeight + ALARM_WIND_WHEEL_T / 2;
 const SUB_OUT_Z = Math.max(
   ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2,
   SUB_PIN_B_Z + ALARM_WIND_WHEEL_T + CLEAR_MARGIN);
-const SUB_OUT_CD = ALARM_TRAIN_MODULE * (SUB_OUT_TEETH + SUB_FINGER_TEETH) / 2;
-// THE IDLER'S STATION IS NOT A FREEDOM. Its wheel meshes the barrel's rim, so
-// its centre is on the mesh circle; its pinion meshes leg B's, so it stands a
-// fixed chord from the arrest station. Two constraints, one circle — the
-// azimuth offset is forced, and only its SIGN is a choice (which side of the
-// station the idler falls on), which the solve takes with everything else.
-const SUB_IDLER_CD = ALARM_TRAIN_MODULE * (SUB_IDLER_TEETH + SUB_LEG_TEETH) / 2;
-const SUB_IDLER_DAZ = 2 * Math.asin(SUB_IDLER_CD / (2 * ARREST_CD));
+const SUB_OUT_CD = SUB_OUT_MODULE * (SUB_OUT_TEETH + SUB_FINGER_TEETH) / 2;
+// THE IDLER'S STATION IS A FREEDOM AFTER ALL, and its currency is the idler's
+// own tooth count. The line spec proves that count cancels out of the ratio —
+// the idler buys a sign and nothing else — so it is not a spec quantity, it is
+// position-space, which is exactly the "corners and idlers" currency a fold is
+// allowed to spend. Two constraints fix its centre for a GIVEN count: its wheel
+// meshes the barrel's rim (so it stands module·(44+z)/2 from the barrel axis)
+// and its pinion meshes leg B (so it stands module·(z+11)/2 from the tower).
+// Those two circles meet in two points, which is the ± side; changing z slides
+// the whole station around the barrel.
+//
+// Treating the count as fixed at 11 left exactly one station, and the low
+// corridor missed it by 0.011 — a tenth of a tooth of freedom nobody had
+// noticed was there.
+const subIdlerGeom = (teeth, side) => {
+  const rimCD = (ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + teeth)) / 2;
+  const legCD = (ALARM_TRAIN_MODULE * (teeth + SUB_LEG_TEETH)) / 2;
+  const cosD = (ARREST_CD * ARREST_CD + rimCD * rimCD - legCD * legCD)
+    / (2 * ARREST_CD * rimCD);
+  if (!(cosD >= -1 && cosD <= 1)) return null;   // no triangle: this count cannot reach
+  return { rimCD, legCD, daz: side * Math.acos(cosD) };
+};
 // Its wheel rides the barrel's band and its pinion leg B's, which is the whole
 // point of compounding it: the tower's z stops being hostage to the barrel's.
 const SUB_IDLER_W_Z = ALARM_BARREL_Z;
@@ -14296,7 +14352,8 @@ const SUB_IDLER_P_Z = SUB_PIN_B_Z;
 // error in milliseconds instead of half an hour.
 // ---------------------------------------------------------------------------
 const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
-  crossAz: ARREST_CROSS_AZ, idlerSide: SUB_IDLER_SIDE, slack: ARREST_SLACK,
+  crossAz: ARREST_CROSS_AZ, idlerSide: SUB_IDLER_SIDE, idlerTeeth: SUB_IDLER_SOLVED,
+  slack: ARREST_SLACK,
   boundBy: ARREST_BOUND_BY } = (() => {
   const M = CLEAR_MARGIN;
   const PLATE_Z = ALARM_U_FLOOR - 0.5;              // where the studs plant
@@ -14312,10 +14369,10 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     legA: tip(SUB_LEG_TEETH) + M,
     legB: tip(SUB_LEG_TEETH) + M,
     spider: SIDE_TIP + M,
-    out: tip(SUB_OUT_TEETH) + M,
+    out: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }) + M,
     idlerW: tip(SUB_IDLER_TEETH) + M,
     idlerP: tip(SUB_IDLER_TEETH) + M,
-    fPin: tip(SUB_FINGER_TEETH) + M,
+    fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }) + M,
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR + M,   // the pin sweeps a FULL circle
     cross: ARREST_SPEC.b + M,
     arbor: ARREST_SPEC.arborR + M,
@@ -14364,12 +14421,22 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     const p = o.geometry.attributes.position;
     let zLo = Infinity, zHi = -Infinity;
     const xy = [], seen = new Set();
-    // swept iff it rides a DECLARED spin group, about that group's own axis
-    const rot = rotorOf(o);
+    // swept iff it rides a DECLARED spin group, about that group's own axis —
+    // or carries its own declared swing, which is how a LEVER gets counted (a
+    // rotor group is a full turn; a pawl is a lever, and both sweep)
+    const rot = rotorOf(o) || (o.userData.swingAbout && (() => {
+      const d = o.userData.swingAbout;
+      d.of.updateMatrixWorld(true);
+      const v = new THREE.Vector3(d.lx, d.ly, 0).applyMatrix4(d.of.matrixWorld);
+      return { at: { x: v.x, y: v.y }, of: d.name };
+    })());
     let ring = null;
     if (rot) {
-      rot.g.updateMatrixWorld(true);
-      const sx = rot.g.matrixWorld.elements[12], sy = rot.g.matrixWorld.elements[13];
+      let sx, sy;
+      if (rot.at) { sx = rot.at.x; sy = rot.at.y; } else {
+        rot.g.updateMatrixWorld(true);
+        sx = rot.g.matrixWorld.elements[12]; sy = rot.g.matrixWorld.elements[13];
+      }
       let lo = Infinity, hi = -Infinity;
       for (let k = 0; k < p.count; k += 3) {
         v.set(p.getX(k), p.getY(k), p.getZ(k));
@@ -14499,13 +14566,66 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   const IDL_W = [SUB_IDLER_W_Z - T / 2, SUB_IDLER_W_Z + T / 2];
   const IDL_P = [SUB_IDLER_P_Z - T / 2, SUB_IDLER_P_Z + T / 2];
   const IDL_TOP = SUB_IDLER_P_Z + T / 2 + 0.2;
-  // The Geneva's plane sits ABOVE the output stage — below it is the barrel,
-  // and the tower put the output above the barrel's lid precisely because
-  // nothing that wide fits beside it. So this range starts where the output
-  // pinion ends rather than at the plate, which is also why it is short.
+  // THE CEILING, which the first cut of this did not have and which the battery
+  // found for it: the three-quarter plate's underside. §106's solve scored the
+  // scene "only against the parts built before it" and said so; that plate is
+  // built after, so it was invisible, and the tower's arbor went 0.17 through
+  // it. TQ_BOT_Z is a declared constant a long way up this file, so the fix is
+  // to consult it rather than to move the solve.
+  const CEIL_Z = TQ_BOT_Z - M;
+  // The Geneva's plane runs the whole column, minus the band its own output
+  // pinion occupies — the finger shares that arbor, so it may sit above or
+  // below the pinion but not through it. Asking only for planes ABOVE, which
+  // is what the tower's shape suggests, left no plane at all once the ceiling
+  // was known: the pinion's band ends at 7.62 and the ceiling starts at 7.97.
   const planes = [];
-  for (let z = SUB_OUT_Z + T / 2 + M; z <= SUB_OUT_Z + T / 2 + M + 2.0001; z += 0.25)
+  for (let z = PLATE_Z + 0.6; z <= CEIL_Z - ARREST_PLATE_T * 2; z += 0.25) {
+    if (z + ARREST_PLATE_T > SUB_OUT_Z - T / 2 - M && z < SUB_OUT_Z + T / 2 + M) continue;
     planes.push(+z.toFixed(3));
+  }
+
+  // THE GROUP AGAINST ITSELF (P2), which the pair sweep structurally cannot see
+  // and which this solve did not either. Every piece here is on one of four
+  // vertical axes, so "do they foul" is a distance against two reaches wherever
+  // their bands overlap. The battery found the omission the direct way: the
+  // solve put the Geneva's arbor 0.806 from the idler's, and eleven rows came
+  // back with one of our own parts standing inside another.
+  //
+  // MESHES ARE EXEMPT, per PAIR and not per station — the same rule the scene
+  // scan obeys one level up. Exactly two pairs in this group are meant to
+  // overlap: the idler's pinion with leg B, and the cage's wheel with the
+  // finger's pinion.
+  const reach = {
+    legA: tip(SUB_LEG_TEETH), legB: tip(SUB_LEG_TEETH), spider: SUB_SPEC.tipR,
+    cageTube: SUB_SPEC.hubR, col: ARREST_SPEC.arborR,
+    outW: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }),
+    idlerW: tip(SUB_IDLER_TEETH), idlerP: tip(SUB_IDLER_TEETH),
+    idlerBody: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
+    fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }),
+    finger: ARREST_SPEC.a + ARREST_SPEC.pinR,
+    cross: ARREST_SPEC.b, stud: ARREST_SPEC.studR,
+  };
+  const MESH_PAIRS = new Set(['idlerP|legB', 'legB|idlerP', 'outW|fPin', 'fPin|outW']);
+  // two piece lists foul when any band-overlapping pair is closer than the sum
+  // of its reaches plus the margin
+  const selfClear = (A, B, dist) => {
+    let worst = Infinity, who = null;
+    for (const a of A) for (const b of B) {
+      if (MESH_PAIRS.has(`${a.k}|${b.k}`)) continue;
+      if (a.hi + M < b.lo || b.hi + M < a.lo) continue;      // bands miss in z
+      const g = dist - a.r - b.r - M;
+      if (g < worst) { worst = g; who = `${a.k} vs ${b.k}`; }
+    }
+    return { c: worst, who: who ? `the group's own ${who}` : 'nothing overlapping' };
+  };
+
+  // The counts worth trying: from the smallest that is a gear on this stud up
+  // to where the idler's wheel outgrows the room it has to fit into. Sweeping
+  // this is what a fold is ALLOWED to spend — corners and idlers are
+  // position-space, and the line spec is what proves this one carries no ratio.
+  const IDLER_COUNTS = [];
+  for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_SPEC.arborR + 0.05));
+    z <= ALARM_BARREL_TEETH; z++) IDLER_COUNTS.push(z);
 
   let best = null;
   // WHEN A SOLVE FAILS IT MUST SAY WHY. §106's fell back on a fixed triple and
@@ -14513,14 +14633,23 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // fitting and by how much, since that names the layout move to make. Every
   // prune point records its own worst piece, and the best of those is the
   // report — rule 6's achieved-and-required, for a search rather than a value.
+  // Only REJECTIONS are recorded. A first cut noted every prune point's worst
+  // piece whether or not it rejected, so the "nearest miss" it reported was
+  // often a candidate that had passed there and died later — a number with the
+  // wrong name on it, which is worse than no number.
   let nearMiss = null;
-  const note = (r) => { if (!nearMiss || r.c > nearMiss.c) nearMiss = r; };
+  const note = (r) => { if (r.c < 0 && (!nearMiss || r.c > nearMiss.c)) nearMiss = r; };
   // FOUR freedoms now, and they nest by what they can move. The tower's own
   // pieces depend on the station azimuth alone, the idler's on that plus which
   // side it falls, the finger arbor's on those plus its azimuth about the
   // tower, and only the cross needs all four. Each level prunes before the next
   // one runs, which is what keeps a four-deep sweep inside a boot.
-  for (let deg = 0; deg < 360; deg += 3) {
+  // ONE degree, not three. At three the search reported its nearest miss as the
+  // idler's arbor 0.011 inside the low corridor — a gap narrower than the step
+  // was walking over. The cost is paid back by the pruning: the tower's own
+  // pieces are scored once per azimuth and reject most of the circle before
+  // anything below runs.
+  for (let deg = 0; deg < 360; deg += 1) {
     const a = deg * DEG2RAD;
     const px = alarmBarrelPos.x + Math.cos(a) * ARREST_CD;
     const py = alarmBarrelPos.y + Math.sin(a) * ARREST_CD;
@@ -14532,54 +14661,90 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       clear('the tower arbor', PLATE_Z, TOWER_TOP, px, py, NEED.arbor, null),
     ];
     const towerWorst = tower.reduce((w, r) => (r.c < w.c ? r : w));
-    note(towerWorst);
-    if (towerWorst.c < 0) continue;
+    if (towerWorst.c < 0) { note(towerWorst); continue; }
+    const towerPieces = [
+      { k: 'legA', lo: PIN_A[0], hi: PIN_A[1], r: reach.legA },
+      { k: 'spider', lo: SPIDER[0], hi: SPIDER[1], r: reach.spider },
+      { k: 'legB', lo: PIN_B[0], hi: PIN_B[1], r: reach.legB },
+      { k: 'cageTube', lo: SUB_CAGE_Z, hi: SUB_OUT_Z, r: reach.cageTube },
+      { k: 'outW', lo: OUT[0], hi: OUT[1], r: reach.outW },
+      { k: 'towerArbor', lo: PLATE_Z, hi: TOWER_TOP, r: reach.col },
+    ];
 
-    for (const side of [1, -1]) {
-      const ia = a + side * SUB_IDLER_DAZ;
-      const ix = alarmBarrelPos.x + Math.cos(ia) * ARREST_CD;
-      const iy = alarmBarrelPos.y + Math.sin(ia) * ARREST_CD;
+    for (const idlerTeeth of IDLER_COUNTS) for (const side of [1, -1]) {
+      const geo = subIdlerGeom(idlerTeeth, side);
+      if (!geo) continue;
+      const ia = a + geo.daz;
+      const ix = alarmBarrelPos.x + Math.cos(ia) * geo.rimCD;
+      const iy = alarmBarrelPos.y + Math.sin(ia) * geo.rimCD;
+      const idlerReach = tip(idlerTeeth);
       const idler = [
-        clear("the idler's wheel", IDL_W[0], IDL_W[1], ix, iy, NEED.idlerW, 'rim'),
-        clear("the idler's pinion", IDL_P[0], IDL_P[1], ix, iy, NEED.idlerP, null),
+        clear("the idler's wheel", IDL_W[0], IDL_W[1], ix, iy, idlerReach + M, 'rim'),
+        clear("the idler's pinion", IDL_P[0], IDL_P[1], ix, iy, idlerReach + M, null),
         clear('the idler arbor', PLATE_Z, IDL_TOP, ix, iy, NEED.arbor, null),
       ];
       const idlerWorst = idler.reduce((w, r) => (r.c < w.c ? r : w));
-      note(idlerWorst);
-      if (idlerWorst.c < 0) continue;
+      if (idlerWorst.c < 0) { note(idlerWorst); continue; }
+      const idlerPieces = [
+        { k: 'idlerW', lo: IDL_W[0], hi: IDL_W[1], r: idlerReach },
+        { k: 'idlerBody', lo: IDL_W[0], hi: IDL_P[1], r: reach.idlerBody },
+        { k: 'idlerP', lo: IDL_P[0], hi: IDL_P[1], r: idlerReach },
+        { k: 'idlerArbor', lo: PLATE_Z, hi: IDL_TOP, r: reach.col },
+      ];
+      const towerVsIdler = selfClear(towerPieces, idlerPieces, geo.legCD);
+      if (towerVsIdler.c < 0) { note(towerVsIdler); continue; }
 
       for (let fdeg = 0; fdeg < 360; fdeg += 9) {
         const fa = fdeg * DEG2RAD;
         const fx = px + Math.cos(fa) * SUB_OUT_CD, fy = py + Math.sin(fa) * SUB_OUT_CD;
         const fPin = clear("the finger's pinion", OUT[0], OUT[1], fx, fy, NEED.fPin, null);
-        note(fPin);
-        if (fPin.c < 0) continue;
+        if (fPin.c < 0) { note(fPin); continue; }
+        const dIdlerFinger = Math.hypot(fx - ix, fy - iy);
 
         for (const z of planes) {
           const fCol = clear('the finger arbor', PLATE_Z, z + ARREST_PLATE_T * 2, fx, fy, NEED.arbor, null);
-          note(fCol);
-          if (fCol.c < 0) continue;
+          if (fCol.c < 0) { note(fCol); continue; }
           const fin = clear('the finger', z, z + ARREST_PLATE_T, fx, fy, NEED.finger, null);
-          note(fin);
-          if (fin.c < 0) continue;
+          if (fin.c < 0) { note(fin); continue; }
+          const fingerPieces = [
+            { k: 'fPin', lo: OUT[0], hi: OUT[1], r: reach.fPin },
+            { k: 'finger', lo: z, hi: z + ARREST_PLATE_T, r: reach.finger },
+            { k: 'fingerArbor', lo: PLATE_Z, hi: z + ARREST_PLATE_T * 2, r: reach.col },
+          ];
+          const fVsTower = selfClear(fingerPieces, towerPieces, SUB_OUT_CD);
+          if (fVsTower.c < 0) { note(fVsTower); continue; }
+          const fVsIdler = selfClear(fingerPieces, idlerPieces, dIdlerFinger);
+          if (fVsIdler.c < 0) { note(fVsIdler); continue; }
 
           for (let cdeg = 0; cdeg < 360; cdeg += 9) {
             const ca = cdeg * DEG2RAD;
             const cx = fx + Math.cos(ca) * ARREST_SPEC.d, cy = fy + Math.sin(ca) * ARREST_SPEC.d;
             const cr = clear('the cross', z, z + ARREST_PLATE_T, cx, cy, NEED.cross, null);
-            note(cr);
-            if (cr.c < 0) continue;
+            if (cr.c < 0) { note(cr); continue; }
             const st = clear('the cross stud', PLATE_Z, z + ARREST_PLATE_T * 2, cx, cy, NEED.stud, null);
-            note(st);
-            if (st.c < 0) continue;
-            const parts = [...tower, ...idler, fPin, fCol, fin, cr, st]
+            if (st.c < 0) { note(st); continue; }
+            // the cross against the rest of its own group. Its finger is the one
+            // thing it is MEANT to touch, so that pair is exempt by omission —
+            // the cross is checked against the tower and the idler only.
+            const crossPieces = [
+              { k: 'cross', lo: z, hi: z + ARREST_PLATE_T, r: reach.cross },
+              { k: 'crossStud', lo: PLATE_Z, hi: z + ARREST_PLATE_T * 2, r: reach.stud },
+            ];
+            const cVsTower = selfClear(crossPieces, towerPieces,
+              Math.hypot(cx - px, cy - py));
+            if (cVsTower.c < 0) { note(cVsTower); continue; }
+            const cVsIdler = selfClear(crossPieces, idlerPieces, Math.hypot(cx - ix, cy - iy));
+            if (cVsIdler.c < 0) { note(cVsIdler); continue; }
+            const parts = [...tower, ...idler, fPin, fCol, fin, cr, st,
+              towerVsIdler, fVsTower, fVsIdler, cVsTower, cVsIdler]
+              .filter((r) => Number.isFinite(r.c))
               .sort((p1, p2) => p1.c - p2.c);
             const slack = parts[0].c;
             // LOWEST plane first, then maximin — the same pick §106 made, so a
             // re-gearing does not quietly become a re-strataing as well
             if (!best || z < best.z - 1e-9 || (Math.abs(z - best.z) < 1e-9 && slack > best.slack))
               best = { az: a, fingerAz: fa, z, crossAz: ca, idlerSide: side,
-                slack, boundBy: parts[0].who };
+                idlerTeeth, slack, boundBy: parts[0].who };
           }
         }
       }
@@ -14590,7 +14755,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       + `stop-work. The nearest miss was ${nearMiss ? nearMiss.who : 'nothing evaluated'}, short by `
       + `${nearMiss ? (-nearMiss.c).toFixed(3) : '?'} — a LAYOUT finding, not a number to widen`);
     return { az: 180 * DEG2RAD, fingerAz: 0, z: SUB_OUT_Z + 1.1, crossAz: 0,
-      idlerSide: 1, slack: -1, boundBy: 'no solve' };
+      idlerSide: 1, idlerTeeth: SUB_IDLER_TEETH, slack: -1, boundBy: 'no solve' };
   }
   return best;
 })();
@@ -14602,9 +14767,10 @@ const arrestPos = {        // the subtractor's own arbor, on the mesh circle
 // The compound idler is on the SAME circle — its wheel meshes the barrel's rim
 // — a forced chord from the tower, so only which side it falls on was ever a
 // choice, and the solve took it.
+const SUB_IDLER_GEOM = subIdlerGeom(SUB_IDLER_SOLVED, SUB_IDLER_SIDE);
 const subIdlerPos = {
-  x: alarmBarrelPos.x + Math.cos(ARREST_AZ + SUB_IDLER_SIDE * SUB_IDLER_DAZ) * ARREST_CD,
-  y: alarmBarrelPos.y + Math.sin(ARREST_AZ + SUB_IDLER_SIDE * SUB_IDLER_DAZ) * ARREST_CD,
+  x: alarmBarrelPos.x + Math.cos(ARREST_AZ + SUB_IDLER_GEOM.daz) * SUB_IDLER_GEOM.rimCD,
+  y: alarmBarrelPos.y + Math.sin(ARREST_AZ + SUB_IDLER_GEOM.daz) * SUB_IDLER_GEOM.rimCD,
 };
 // §129 — the Geneva is no longer on the mesh circle at all. It hangs off the
 // cage's output stage, so its arbor's azimuth about the tower is a genuinely
@@ -14714,20 +14880,36 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
     alarmArrestUnit.add(m);
     return m;
   };
-  // A SLEEVE is what makes a leg pinion and its side gear one body. The side
-  // gear's cone touches nothing near the axis — its lowest metal is out at the
-  // rim — so without this the two would move identically and be two bodies,
-  // which is exactly the split §107's assembly check exists to catch. Bored to
-  // the spider's own running fit, so it fills the side gear's bore.
-  const sleeve = (spin, zFrom, zTo, name) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(
-      SUB_SPEC.boreR, SUB_SPEC.boreR, Math.abs(zTo - zFrom), 12), MATS.steel);
+  // TUBES, not rods. Everything on this arbor turns ON it, so every rotating
+  // body between the arbor and the outside is BORED — a rod would occupy the
+  // arbor's own metal, which is what the first cut did and what the check that
+  // reads a unit's movers against its fixtures immediately found (six rows, all
+  // "inside alarmArrestArbor"). ExtrudeGeometry of a ring closes both caps, so
+  // the body stays closed — TODO 27's trap is not worth re-arming to save a
+  // face nobody sees.
+  const tube = (spin, innerR, outerR, zFrom, zTo, name) => {
+    const ring = new THREE.Shape();
+    ring.absarc(0, 0, outerR, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, innerR, 0, Math.PI * 2, true);
+    ring.holes.push(hole);
+    const h = Math.abs(zTo - zFrom);
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(ring, {
+      depth: h, bevelEnabled: false, curveSegments: 24,
+    }), MATS.steel);
     m.name = name;
-    m.rotation.x = Math.PI / 2;
-    m.position.set(0, 0, (zFrom + zTo) / 2 - spin.position.z);
+    m.position.set(0, 0, Math.min(zFrom, zTo) - spin.position.z);
     spin.add(m);
     return m;
   };
+  // A SLEEVE is what makes a leg pinion and its side gear ONE body. The side
+  // gear's cone touches nothing near the axis — its lowest metal is out at the
+  // rim — so without this the two would move identically and be two bodies,
+  // which is exactly the split §107's assembly check exists to catch. Its
+  // outside IS the side gear's bore, and its wall is the §50 floor: that pair
+  // is where SUB_SIDE_BORE_R comes from.
+  const sleeve = (spin, zFrom, zTo, name) =>
+    tube(spin, ARREST_SPEC.arborR + 0.05, SUB_SPEC.boreR, zFrom, zTo, name);
 
   // --- LEG A: the arbor's wind wheel, one mesh, on the lower side gear -------
   const spin = new THREE.Group();
@@ -14769,20 +14951,12 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   const outSpin = new THREE.Group();
   outSpin.position.set(arrestPos.x, arrestPos.y, SUB_OUT_Z);
   const outW = G.makeGear({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_OUT_TEETH, thickness: ALARM_WIND_WHEEL_T,
-    boreR: SUB_SPEC.boreR + STOCK_MIN_U, spokes: 4, material: MATS.brass,
+    module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: ALARM_WIND_WHEEL_T,
+    boreR: SUB_SPEC.hubR, spokes: 4, material: MATS.brass,
   });
   outW.traverse((o) => { if (o.isMesh && !o.name) o.name = 'subOutWheel'; });
   outSpin.add(outW);
-  {
-    const tubeR = SUB_SPEC.boreR + STOCK_MIN_U;
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(
-      tubeR, tubeR, SUB_OUT_Z - SUB_CAGE_Z, 12), MATS.steel);
-    m.name = 'subCageTube';
-    m.rotation.x = Math.PI / 2;
-    m.position.set(0, 0, (SUB_CAGE_Z + SUB_OUT_Z) / 2 - SUB_OUT_Z);
-    outSpin.add(m);
-  }
+  tube(outSpin, SUB_SPEC.cageBoreR, SUB_SPEC.hubR, SUB_CAGE_Z, SUB_OUT_Z, 'subCageTube');
   alarmArrestUnit.add(outSpin);
   subOutSpin = outSpin;
 
@@ -14795,28 +14969,22 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   idlerSpin.position.set(subIdlerPos.x, subIdlerPos.y, 0);
   const idlerW = G.makeGear({
     module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_TEETH, thickness: ALARM_WIND_WHEEL_T,
-    boreR: ARREST_SPEC.arborR + 0.05, spokes: 0, hub: false, material: MATS.brass,
+    boreR: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U, spokes: 0, hub: false, material: MATS.brass,
   });
   idlerW.traverse((o) => { if (o.isMesh && !o.name) o.name = 'subIdlerWheel'; });
   idlerW.position.z = SUB_IDLER_W_Z;
   idlerSpin.add(idlerW);
   const idlerP = G.makePinion({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_TEETH,
+    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED,
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
   idlerP.traverse((o) => { if (o.isMesh) o.name = 'subIdlerPinion'; });
   idlerP.position.z = SUB_IDLER_P_Z;
   idlerSpin.add(idlerP);
-  {
-    // the arbor between them turns WITH them — one body, so it rides the spin
-    const r = ARREST_SPEC.arborR;
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(
-      r, r, SUB_IDLER_P_Z - SUB_IDLER_W_Z, 12), MATS.steel);
-    m.name = 'subIdlerBody';
-    m.rotation.x = Math.PI / 2;
-    m.position.set(0, 0, (SUB_IDLER_W_Z + SUB_IDLER_P_Z) / 2);
-    idlerSpin.add(m);
-  }
+  // the body between the idler's two wheels turns WITH them — one connected
+  // body (§107) — and is bored over the stud it runs on, same rule as the tower
+  tube(idlerSpin, ARREST_SPEC.arborR + 0.05, ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
+    SUB_IDLER_W_Z, SUB_IDLER_P_Z, 'subIdlerBody');
   alarmArrestUnit.add(idlerSpin);
   subIdlerSpin = idlerSpin;
   column(subIdlerPos.x, subIdlerPos.y, ARREST_SPEC.arborR,
@@ -14826,7 +14994,7 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   const fpSpin = new THREE.Group();
   fpSpin.position.set(arrestFingerPos.x, arrestFingerPos.y, SUB_OUT_Z);
   const fPin = G.makePinion({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_FINGER_TEETH,
+    module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH,
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
   fPin.traverse((o) => { if (o.isMesh) o.name = 'subFingerPinion'; });
@@ -14870,12 +15038,12 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   ], ALARM_TRAIN_MODULE);
   solveGearChain('alarm arrest leg B:', [
     { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel rim' },
-    { obj: idlerW, teeth: SUB_IDLER_TEETH, name: 'idler wheel' },
+    { obj: idlerW, teeth: SUB_IDLER_SOLVED, name: 'idler wheel' },
   ], ALARM_TRAIN_MODULE);
   solveGearChain('alarm arrest output:', [
     { obj: outW, teeth: SUB_OUT_TEETH, name: 'cage wheel' },
     { obj: fPin, teeth: SUB_FINGER_TEETH, name: 'finger pinion' },
-  ], ALARM_TRAIN_MODULE);
+  ], SUB_OUT_MODULE);
 
   // Boot asserts (rule 6) — every one of these is a number the build claims.
   if (Math.abs(ARREST_TRAVEL_TURNS - (ARREST_STATIONS - 1)) > 1e-12)
@@ -14914,10 +15082,15 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
       console.warn(`alarm arrest: the spider's ${SUB_BEVEL_TEETH} teeth at module `
         + `${SUB_BEVEL_MODULE.toFixed(3)} do not clear its own bore`);
     // the radius budget the barrel sets, checked against what was actually cut
-    const sideTip = SUB_BEVEL_MODULE * (SUB_BEVEL_TEETH / 2 + 0.85);
-    if (sideTip > SUB_BESIDE_R + 1e-9)
-      console.warn(`alarm arrest: the spider reaches ${sideTip.toFixed(3)} beside a barrel that `
-        + `leaves ${SUB_BESIDE_R.toFixed(3)}`);
+    if (SUB_SPEC.tipR > SUB_BESIDE_R + 1e-9)
+      console.warn(`alarm arrest: the spider reaches ${SUB_SPEC.tipR.toFixed(3)} where the wheels `
+        + `on the barrel's axis leave ${SUB_BESIDE_R.toFixed(3)}`);
+    if (SUB_SIDE_PITCH_R - SUB_SIDE_BORE_R < STOCK_MIN_U - 1e-9)
+      console.warn(`alarm arrest: the side gear's rim is `
+        + `${(SUB_SIDE_PITCH_R - SUB_SIDE_BORE_R).toFixed(4)}, under the §50 floor ${STOCK_MIN_U.toFixed(4)}`);
+    if (SUB_SPEC.hubR > SUB_BESIDE_R + 1e-9)
+      console.warn(`alarm arrest: the cage's hub reaches ${SUB_SPEC.hubR.toFixed(3)} where the `
+        + `barrel leaves ${SUB_BESIDE_R.toFixed(3)}`);
     const outTip = G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: SUB_OUT_TEETH,
       thickness: ALARM_WIND_WHEEL_T });
     if (SUB_OUT_Z - ALARM_WIND_WHEEL_T / 2 < ALARM_BARREL_TOP + CLEAR_MARGIN

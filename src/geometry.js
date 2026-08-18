@@ -1957,12 +1957,22 @@ export function spiderSpec({ module, sideTeeth, planetTeeth = sideTeeth,
   const inner = Math.hypot(planetR + faceWidth, planetR) + margin;
   const teethOk = sideTeeth >= minGearTeeth(module, boreR)
     && planetTeeth >= minGearTeeth(module, boreR * 0.6);
+  // The cage runs OUTBOARD of the side gears' own shafts, so its bore is their
+  // outside plus a running fit, and its hub carries the stub pins. The pin is
+  // sized from the §50 section floor rather than from a fraction of anything:
+  // a section is metal or it is not.
+  const cageBoreR = boreR + 0.05;
+  const pinR = stockMin / 2;
+  const hubR = cageBoreR + stockMin;
   return {
-    module, sideTeeth, planetTeeth, boreR, faceWidth, margin,
+    module, sideTeeth, planetTeeth, boreR, faceWidth, margin, stockMin,
+    cageBoreR, pinR, hubR,
     R, planetR,
     // half the axial extent: the far rim of a side gear plus its face, which
     // is what the z-stack above and below has to be given
     halfHeight: R + faceWidth * Math.SQRT1_2 + margin,
+    // the widest ring anything in the assembly cuts, for the fold's radius budget
+    tipR: R + module * 0.85,
     inner,
     teethOk,
     // the differential relation itself, as a function rather than a comment
@@ -2004,20 +2014,48 @@ export function makeSpiderDifferential({ spec, planets = 2, material }) {
   const sideA = A.spin, sideB = B.spin;
   sideA.name = 'spiderSideASpin'; sideB.name = 'spiderSideBSpin';
 
-  // The cage: the cross pin through the apex, and the planets on its ends.
+  // THE CAGE, and the two things a first cut got wrong about it.
+  //
+  // It is a HUB, bored over whatever shaft the sides run on — not a bare
+  // group. Without the hub the cage's members had no body of their own and the
+  // check that reads a unit's movers against its fixtures found the sleeves
+  // and the pin standing inside the arbor.
+  //
+  // And the planets ride STUB pins, not one pin through the middle. A pin
+  // through the apex is where the arbor is, so the two cannot both exist; real
+  // differentials mount the planets on stubs in the cage for exactly that
+  // reason. The stub also has to be METAL — a pin sized as a fraction of the
+  // bore came out under the §50 section floor, so it is sized from the floor.
   const cage = new THREE.Group(); cage.name = 'spiderCageSpin';
   cage.add(A.m, B.m);
-  const pinR = Math.max(boreR * 0.45, module * 0.6);
-  const pinLen = (spec.planetR + faceWidth) * 2;
-  const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, pinLen, 12), mat);
-  pin.name = 'spiderCrossPin';
-  pin.rotation.z = Math.PI / 2;   // the cylinder's own +Y laid onto +X
-  cage.add(pin);
+  const hubR = spec.hubR;
+  {
+    const ring = new THREE.Shape();
+    ring.absarc(0, 0, hubR, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, spec.cageBoreR, 0, Math.PI * 2, true);
+    ring.holes.push(hole);
+    const h = spec.pinR * 2 + spec.stockMin;
+    const hub = new THREE.Mesh(new THREE.ExtrudeGeometry(ring, {
+      depth: h, bevelEnabled: false, curveSegments: 24,
+    }), mat);
+    hub.name = 'spiderCageHub';
+    hub.geometry.translate(0, 0, -h / 2);
+    cage.add(hub);
+  }
+  const pinR = spec.pinR;
   const planetSpins = [];
   for (let i = 0; i < planets; i++) {
     const a = (i / planets) * Math.PI * 2;
+    const stubLen = spec.planetR + faceWidth - hubR;
+    const stub = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, stubLen, 12), mat);
+    stub.name = `spiderStub${i}`;
+    stub.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(Math.cos(a), Math.sin(a), 0));
+    stub.position.set(Math.cos(a) * (hubR + stubLen / 2), Math.sin(a) * (hubR + stubLen / 2), 0);
+    cage.add(stub);
     const P = mount(new THREE.Vector3(Math.cos(a), Math.sin(a), 0),
-      planetTeeth, boreR * 0.6, Math.PI / planetTeeth);
+      planetTeeth, pinR + 0.05, Math.PI / planetTeeth);
     P.gear.children[0].name = `spiderPlanet${i}`;
     cage.add(P.m);
     // EVERY planet takes the SAME spin about its OWN outward axis, which is
