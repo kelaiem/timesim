@@ -6200,7 +6200,7 @@ hull phase are untouched, but the CONFIRM tier re-measures each candidate
 through `measureClearance`, which is `sweepClearances` — so it inherits
 canonical entry exactly as `clearances` does, and its numbers move with them.
 Five checks are entered; six can move.
-## 55. The alarm's stop-work counts the wrong quantity — it never resets, and the second wind drives the pin through the blank arm
+## 55. CLOSED (§129) — the stop-work counts the WIND now, through a spider differential
 
 §106 shipped a Maltese stop-work for the alarm barrel: an 11 t pinion on a
 plate stud meshing the arbor's 44 t wind wheel, a single-pin finger, an
@@ -6334,3 +6334,47 @@ centre distance `ARREST_CD` 8.25.
 4. Reconcile §106 in `docs/BUILT.md` and its `explain.html` entry: both
    currently say the ceiling is a consequence of metal. It is a consequence
    of a clamp until this is closed.
+
+---
+
+### CLOSED (§129). What was built, and where it diverged from the fix above
+
+**Route C was taken and it worked**: a plate-mounted subtractor. Leg A off the
+arbor's wind wheel, leg B off the body's rim through a compound idler that
+arrives reversed, a SPIDER differential taking their mean, and an output stage
+doubling it back onto the Geneva's own arbor. Gain 4, so travel is still
+4 × 1.75 = 7 = N−1 and §106's cross, clocking and 56-click bank were inherited
+whole rather than re-derived. `docs/BUILT.md` §129 has the full record.
+
+**The measurement that closes this item.** Run right down, the cross returns to
+its booted-empty pose to the digit, and swept over the whole travel the pin's
+deepest approach to the cross is 0 — it touches metal exactly at the ceiling and
+enters it nowhere else. Driven PAST the ceiling it still buries in the blank arm
+(bank 4/4), so the stop is metal and no longer a clamp standing where metal was
+claimed.
+
+**Three of the four routes above are closed by arithmetic, not by preference,
+and the entry above priced them correctly.** Route B stays closed (2b = 7.602
+against a barrel tip of 6.885). Route A's carrier-on-the-barrel is closed for
+the reason given. The "make the wind integral" route stays closed. What the
+entry did NOT anticipate is that route C's cost is not the subtractor's parts
+but its SITING: the tower needed a fourth freedom in §106's solve, the group
+needed checking against itself (P2, which the pair sweep structurally cannot
+see), and the solve needed a ceiling, the click pawl's declared swing, and the
+going train's rotors.
+
+**Item 1 is done**: `'Alarm winding arrest'` is in `INTRA_TIER_SCOPE`, so the
+FF/MM tiers GATE this unit instead of reporting it, with eleven working contacts
+declared — each measured before it was declared, per §121.
+
+**Item 2 turned out to be closed by the fix itself.** `pinInCrossFrame` no
+longer reconstructs anything: the chain reads `arborA − bodyA`, so a wind names
+the pose completely and the striker's phase cannot reach it. `arrestDebug.now()`
+was added anyway and is what `probe-106-reset` reads.
+
+**Item 3 is STILL OPEN and is the residue of this closure.** No pose axis
+reverses the wind within a sweep — `alarmWind` runs it up, `alarmStrike` runs it
+down, neither turns round — so §48's no-spring audit still cannot judge the
+cross. §106 claimed a two-way drive it did not have; §129 has one, measured,
+which makes the axis MORE owed than before rather than less. Ship the axis that
+winds, rings and winds again, then the declaration.

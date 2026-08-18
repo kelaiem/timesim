@@ -2060,24 +2060,46 @@
 
   <!-- ===================== ALARM WINDING ARREST ===================== -->
   <details class="mech" id="alarm-winding-arrest">
-    <summary>Alarm stop-work &mdash; a Maltese cross counts the turns<span class="where">alarm &middot; src/main.js &sect;106</span></summary>
+    <summary>Alarm stop-work &mdash; a differential counts the wind<span class="where">alarm &middot; src/main.js &sect;106 &sect;129</span></summary>
     <div class="mech-body">
       <p>The alarm barrel is a plain barrel, not a fusee, and a plain multi-turn barrel is
       the classical home of Maltese stop-work. The going side's arrest stops the hand when
       the chain runs out of chain; this side has no chain to run out, so something has to
-      COUNT. A pinion on the arbor's own wheel carries a finger with one pin; the pin indexes
-      a crossed wheel one station per turn; and after seven of them the cross presents an arm
-      with no slot in it, the pin butts against that arm, and the whole winding path stops
-      together. Until this existed the cap was a number in the tick law, and the crown kept
-      turning against a frozen train.</p>
+      COUNT. A finger with one pin indexes a crossed wheel one station per turn; after seven
+      of them the cross presents an arm with no slot in it, the pin butts against that arm,
+      and the whole winding path stops together. Until this existed the cap was a number in
+      the tick law, and the crown kept turning against a frozen train.</p>
+      <p><b>But what has to be counted is the WIND, and that is harder than it sounds.</b>
+      The wind is the angle the ribbon holds BETWEEN the barrel's arbor and its body, and
+      neither member alone carries it. While the alarm is wound the click parks the body, so
+      the arbor's angle is the wind; while it rings the click parks the ARBOR and lets the
+      body run, so the same angle says nothing at all. A stop-work geared to either member
+      is a stop-work that works once: the first build here was geared to the arbor, and
+      measured, its cross stood still through an entire run-down and the second wind drove
+      the pin straight through the blank arm.</p>
+      <p>Reading a difference needs a part with two degrees of freedom, and WHICH part is
+      arithmetic rather than taste. Every three-port epicyclic obeys
+      out&nbsp;=&nbsp;&alpha;&middot;in1&nbsp;+&nbsp;(1&minus;&alpha;)&middot;in2 &mdash; the
+      coefficients sum to one whatever the tooth counts &mdash; so two inputs of equal size
+      subtract only at &alpha;&nbsp;=&nbsp;&frac12; exactly. That is a SPIDER: two equal
+      bevels facing each other from a shared apex with planets between them, its cage
+      turning at the plain mean of the pair. A sun-planet-annulus cannot reach it, because
+      it would need annulus teeth equal to sun teeth. This is also why the differential in a
+      real power-reserve indicator is a spider.</p>
+      <p>So one leg takes the arbor's own wheel direct and the other takes the body's rim
+      through an idler, which reverses it &mdash; the idler's two counts are equal, so they
+      cancel out of the ratio entirely and its whole duty is that sign. The spider halves
+      their sum, an output stage doubles it back, and what leaves the cage is the wind and
+      neither member: turn both together and the finger does not move at all. Wind the alarm
+      and the cross walks forward; let it ring and the same finger walks it back, so the
+      stop-work resets as the spring empties.</p>
       <p>Nothing about the count is chosen. Full wind is <code>ALARM_BARREL_TURNS</code>
-      turns of an arbor carrying <code>ALARM_WIND_W</code> teeth, and 1.75 &times; 44 = 77 =
-      7 &times; 11 &mdash; so an <code>ARREST_PINION_TEETH</code>-tooth pinion turns exactly
-      seven times over the wind. A single-pin Geneva travels N&minus;1 turns, which fixes
-      <code>ARREST_STATIONS</code> at eight: the textbook cross, one finger, one pin, seven
-      slots and the blank arm. The stop lands on <code>ARREST_CLICKS</code> clicks of the
-      arbor ratchet because the pinion is rigidly geared at 4:1 and adds no quantisation of
-      its own.</p>
+      turns against a barrel of <code>ALARM_WIND_W</code> teeth, and the chain is geared so
+      the finger turns four times per turn of wind: 4 &times; 1.75 = 7. A single-pin Geneva
+      travels N&minus;1 turns, which fixes <code>ARREST_STATIONS</code> at eight: the
+      textbook cross, one finger, one pin, seven slots and the blank arm. The stop lands on
+      <code>ARREST_CLICKS</code> clicks of the arbor ratchet because the train adds no
+      quantisation of its own.</p>
       <p><b>The relation that sizes it is easy to get backwards.</b> At entry the pin's
       velocity is perpendicular to the crank and must lie along the slot, which is radial on
       the cross &mdash; so the right angle is AT THE PIN, and the crank radius is the side
@@ -2104,21 +2126,23 @@
       an obstacle to the wheel that meshes it, that the columns are pieces, that the low
       corridor's swept footprint is declared rather than visible, and that a rotor's
       footprint is its annulus and not its resting silhouette.</p>
-      <p><b>Open debt, stated rather than hidden &mdash; and one of these is a defect.</b>
-      This train is geared to the ARBOR'S angle, and a stop-work has to count the WIND: the
-      angle the ribbon holds between the arbor and the barrel body. Those two agree while
-      the alarm is being wound, because the click parks the body; they part company while it
-      rings, because the click parks the arbor and lets the body run. So the cross stands
-      still through an entire run-down and the spring empties with the stop-work still at
-      its full-wind bank, and on the second wind the angle law indexes straight through the
-      blank arm instead of banking on it. The mechanism, its sizing and its solved station
-      are sound; what it is geared to is not. The measurement, and the four candidate
-      re-gearings with the arithmetic that closes three of them, are the open item. The
-      build-time solve is a cheap gate rather than the acceptance for the same reason it
-      always was &mdash; it scores the scene at rest and only against the parts built before
-      it. And the demonstration half &mdash; a script verb that winds the alarm, and a
-      readout that can say &ldquo;arrested&rdquo; rather than a percentage &mdash; is filed,
-      not built.</p>
+      <p><b>Two things size the differential, and both were got wrong first.</b> A cone's
+      rim stands one tip radius OFF the cage's axis as well as one out along its own, so
+      what a planet SWEEPS is &radic;2 times its tip &mdash; size it to the tip and the
+      planets reach half again as far as anything was told. And a TOOTH is a section like
+      any other, so the movement's own metal floor reaches it: a standard tooth is
+      &pi;&middot;module/2 thick at the pitch line. Without that floor, a part asked to fit
+      a space nothing fits will shrink its teeth until it does, and report success.</p>
+      <p><b>Open debt, stated rather than hidden.</b> No pose axis reverses the wind within
+      a single sweep &mdash; one runs it up, another runs it down, neither turns round
+      &mdash; so the no-spring audit still cannot judge the cross, and no restoring element
+      is declared for it. The reversal is real now, which makes that axis more owed than it
+      was when the mechanism did not have one. The build-time siting solve remains a cheap
+      gate rather than the acceptance: it scores the scene at rest and only against the
+      parts built before it, and three of its obstacle classes were added only after the
+      battery found what it had missed. And the demonstration half &mdash; a script verb
+      that winds the alarm, and a readout that can say &ldquo;arrested&rdquo; rather than a
+      percentage &mdash; is filed, not built.</p>
     </div>
   </details>
 

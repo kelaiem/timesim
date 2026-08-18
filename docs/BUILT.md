@@ -13080,3 +13080,140 @@ Two CI runs at K=3 bracket the local numbers and agree with each other far more
 closely than this harness's documented 1.66x same-tree spread would predict —
 1474.8 s and 1483.7 s wall, 3627.9 s and 3695.6 s of check time. That is two
 points, not a tail, and the guards still wait for more.
+
+## §129 — the alarm's stop-work counts the WIND: a spider differential subtracts the two barrel members
+
+TODO 55 closed. §106 built a Maltese stop-work for the alarm barrel and geared
+it to the wrong quantity: the arbor's ABSOLUTE angle. A stop-work has to count
+the WIND — the angle the ribbon holds between the barrel arbor and the barrel
+body — and those two agree only while the alarm is being wound. The click parks
+the body then; while it RINGS the click parks the arbor and lets the body run,
+so `alarmArborRotor.rotation.z` is stationary across a whole run-down and the
+cross never moved. Measured, the spring emptied with the stop-work still at its
+full-wind bank, and the second wind indexed straight through the blank arm
+0.7369 deep — four pin radii. It was a one-shot, not a stop-work, and the
+ceiling was held by the `clamp` §106 claimed to have replaced with metal.
+
+**Only a differential can read it, and WHICH differential is arithmetic.** Both
+members are real wheels, they are coaxial, and `ALARM_WIND_W ===
+ALARM_BARREL_TEETH` — so no rigid plate-mounted train reads their difference: a
+wheel's angle is a fixed multiple of its one driving chain, and a single body
+meshing both would LOCK the barrel rather than measure it. Subtracting needs two
+degrees of freedom. Every three-port epicyclic obeys `out = α·in1 + (1−α)·in2`
+with the coefficients summing to one, so two legs of equal magnitude subtract
+only at α = ½ exactly — and α = ½ is the SPIDER: equal side gears facing each
+other from a shared pitch apex, carrier = (θA + θB)/2. A sun-planet-annulus
+cannot reach it (it would need annulus teeth equal to sun teeth), which is why
+real power-reserve differentials are spiders too.
+
+**The line, designed straight before it was folded.** Leg A takes the arbor's
+44 t wind wheel direct (gain −W/LEG); leg B takes the body's 44 t rim through a
+compound idler, arriving reversed — two meshes, and the idler's two counts are
+equal so they cancel out of the ratio entirely. Its only duty is the SIGN, and
+`tools/probe-129-subtractor-line` holds that by re-deriving the ratio for seven
+idler counts. The spider halves their sum; the output stage doubles it back.
+The check that matters is not the gain but the one under it: **move both inputs
+together and the finger does not move at all**, 0.0e+0. It reads the difference
+and neither input. The gain lands on 4, so travel = 4 × 1.75 = 7 = N−1, and
+§106's Geneva spec, its cross, its clocking and its 56-click bank are all
+inherited rather than re-derived.
+
+**The fold's numbers are derived, and the leg count is the one that took
+longest.** It was hand-set three times — 11, 22, 12 — and each was found wanting
+by a different measurement, because it does two opposed jobs at once. It sets
+where the tower STANDS (the pinion meshes a 44 t wheel, so its centre is at
+`module·(44 + LEG)/2` from the barrel axis, and that distance less the barrel's
+own reach is the radius budget everything on the tower lives inside) and it sets
+how big the LEGS themselves are, which crowds the stations around them. More
+teeth buys room beside the barrel and spends it on crowding. So the build takes
+the smallest count whose budget admits the spider, and the spider sizes itself
+from its bore outward — cage bore on the arbor, hub a §50 wall out from that,
+the planets' bore clearing the hub by the margin, their rim stock again, and
+only THEN a tooth count, from what is left over outside. It lands on 16 t legs
+on a 9.00 mesh circle with 1.761 of budget, a 10-tooth spider at module 0.2036,
+and a 32:11 output stage.
+
+**The cage IS the output wheel**, and that is not a shortcut. The output cannot
+leave along the axis: leg B's pinion is concentric with any such tube and must
+cross its radius, so the two are the same metal at every height. A real
+differential takes its drive off a rim at the gear set's own plane, on arms
+passing BETWEEN the planets — so the cage is a two-spoke wheel whose crossings
+are where the planets sit, and the side gears' hubs extend AWAY from the planets
+as they do in real work.
+
+### The three measurements that shaped it
+
+**A cone's rim sweeps √2 × its tip.** A 45° cone's rim stands one tip radius OFF
+the cage's axis as well as one out along its own, so a planet's farthest point
+from that axis is `√2·tipR`. Sizing to the tip put the planets 1.63 into a corner
+leaving 1.16 and told the siting solve 1.15. This is §106's own lesson one
+dimension down — a rotor's footprint is its annulus, not the silhouette a
+build-time traverse happens to find — and `spiderSpec` now answers for `sweptR`.
+
+**A TOOTH is a section, so the §50 floor reaches it.** A standard tooth is
+`π·module/2` at the pitch line. Without that floor, a spec asked to fit a budget
+nothing can fit will shrink the module until it does: this returned a 114-tooth
+wheel at module 0.018 — teeth 0.007 mm thick — and called it a solution.
+`probe-129-spider` holds the refusal in both directions, because "it fits" is
+only worth something if the impossible cases fail.
+
+**A build-time solve whose cost is a function of the LAYOUT is a boot hazard.**
+Four freedoms nested is a product whose size depends on how much survives
+pruning at each level, so identity cost 9.3 s while four spec points never
+finished at all — the battery reported them WEDGED (no `__clock`, and a main
+thread that would not answer in ten seconds) and scored a fifth as a healthy
+build with warnings, which is the same defect wearing a passing grade. The
+search is now a coarse pass over the whole space and a refinement in a window
+around its winner: both grids fixed, so the work is bounded by the grid rather
+than by how permissive the geometry happens to be.
+`tools/probe-129-bootcost` gates it — every moved station within 3× identity,
+measured at 1.0–1.1×, and identity itself down to 5.6 s.
+
+### What the failures taught the instruments
+
+Three defects here were invisible to every gate and were caught by other means,
+which is worth recording as a pattern rather than as three anecdotes.
+
+**A search that fails must explain its SHAPE, not just its nearest miss.** A
+nearest miss names the last thing tried; it is not the wall. The solve reported
+a saturated corner — no station at any azimuth, idler count or side — and the
+wall turned out to be its own band-overlap test using a strict `<` where two
+pieces separated by exactly `CLEAR_MARGIN` are clear. A rejection HISTOGRAM plus
+a count of how far the search reached (`{"az":360,"tower":23,"idler":55,
+"fAz":0}` — 55 candidates cleared the idler and none reached the next stage)
+named it in one run. Both are permanent.
+
+**`best = {...}` under a braceless `if` ran unconditionally**, so the "solved"
+station was the LAST candidate evaluated rather than the maximin. That is where
+0.026 of slack came from; with the braces back it is 0.071 with the going side's
+rotors declared. §106's lowest-plane-first tie-break went with it — it existed
+because the pinion and finger shared one short arbor, and here the arbor runs to
+the output pinion whatever the finger's plane.
+
+**The finger's arbor was built only to the finger**, leaving the output pinion
+standing at 7.27 on nothing at all. No gate can see that — a wheel with no arbor
+under it collides with precisely nothing — and it was visible the moment the
+unit was RENDERED. It runs to whichever member is higher now, in the build and
+in the solve's own band.
+
+### The record
+
+Battery 24/24 local, fingerprint 4089477992, deterministic across virgin boots.
+`intraUnit` went 12 violations → 0 with `'Alarm winding arrest'` added to
+`INTRA_TIER_SCOPE` (TODO 55 named that as owed) and eleven working contacts
+declared: the pin in its slot, the disc in the cross's hollow — the LOCKING half
+of a Geneva, measured at 0 containment and 0 depth both ways before it was
+declared — both sides onto both planets, the planets on their stubs, the cage on
+its arbor, the sides in the cage, the output stage, and the idler into leg B.
+The going train's rotors joined the siting solve's declared list (fusee and
+great wheel, drum, centre, third, fourth, escape, balance, heart cam), because
+this arrest reaches the going side and an undeclared rotor is scored at one
+frame of a movie: the battery found the fusee that way, overlap 0.264.
+
+Owed and named rather than hidden: no pose axis reverses the wind WITHIN a
+sweep, so §48's no-spring audit still cannot judge the cross — and the
+reversal is real now, which makes the axis more owed than before, not less.
+`?alarmbarrelaz=` (the barrel's bearing off the striking wheel, §112's solved
+202°) exists as a spec knob with `tools/probe-129-bearing` to sweep it; the
+subtractor sites at the bearing §112 already chose, so nothing moved, but the
+instrument is there for the next consumer of that corner.
