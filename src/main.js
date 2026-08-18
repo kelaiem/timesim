@@ -12170,15 +12170,22 @@ const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
 // line spec fixes is the GAIN, not the counts: raise the leg count and the
 // output stage takes up the slack.
 //
-// 22 rather than 11, measured. At 11 the tower stands 8.25 from the barrel
-// axis, which leaves 1.011 of radius beside wheels that reach 7.09 — the
-// spider only just fits, and the forced idler station left the low corridor
-// short by 0.001 at every azimuth, tooth count and side the solve could try.
-// At 22 the circle is 9.90 and the same budget is 2.66.
-const SUB_LEG_TEETH = 2 * ARREST_PINION_TEETH;
-const SUB_FINGER_TEETH = 8;                   // the §50 floor's smallest real pinion
-// and the output stage carries whatever ratio the legs did not
-const SUB_OUT_TEETH = SUB_FINGER_TEETH * ((ALARM_WIND_W / SUB_LEG_TEETH) === 2 ? 4 : 2);
+// 12, and the two numbers it is caught between are both measured. At 11 the
+// tower stands 8.25 from the barrel axis, leaving 1.011 of radius beside
+// wheels that reach 7.09 — under the 1.05 the spider's own bore stack needs,
+// so the differential does not fit at all. At 22 the circle is 9.90 and that
+// budget is a comfortable 2.66, but every wheel in the group grows with the
+// count: 22 t legs reach 3.44 and a 44 t cage wheel reaches 4.6, and the
+// finger's arbor could no longer find a lane between them. 12 gives 1.16 of
+// radius — 0.11 clear of what the spider needs — with legs reaching only 2.19.
+const SUB_LEG_TEETH = 12;
+// THE OUTPUT STAGE IS DERIVED FROM THE LEGS, not chosen beside them. The gain
+// must come out 4, and gain = (W/LEG)·(OUT/FINGER)/2, so OUT/FINGER = 8·LEG/W
+// = 2·LEG/11 exactly. Fix the finger's pinion at 11 and the cage's wheel is
+// 2·LEG whatever the fold picks — one expression instead of a pair of literals
+// that have to be kept in step, and the line-spec check holds it.
+const SUB_FINGER_TEETH = ARREST_PINION_TEETH;
+const SUB_OUT_TEETH = 2 * SUB_LEG_TEETH;
 // its own module is internal to the group, so it is free to be finer than the
 // train's — which is what keeps the cage's wheel from being enormous
 const SUB_OUT_MODULE = 0.2;
@@ -14639,9 +14646,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   const stage = { az: 0, tower: 0, idler: 0, fAz: 0, plane: 0, cross: 0, hit: 0 };
   // WHEN A SOLVE FAILS IT MUST SAY WHY. §106's fell back on a fixed triple and
   // reported only that it had; the useful thing is WHICH piece was nearest to
-  // fitting and by how much, since that names the layout move to make. Every
-  // prune point records its own worst piece, and the best of those is the
-  // report — rule 6's achieved-and-required, for a search rather than a value.
+  // fitting and by how much, since that names the layout move to make.
   // Only REJECTIONS are recorded. A first cut noted every prune point's worst
   // piece whether or not it rejected, so the "nearest miss" it reported was
   // often a candidate that had passed there and died later — a number with the
@@ -14650,7 +14655,9 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // and a HISTOGRAM beside it, because "the nearest miss was X" does not say
   // whether X is the wall or merely the last thing tried. A search that
   // rejects a million candidates has a shape, and the shape is what says
-  // whether the region is saturated or one obstacle is in the way.
+  // whether the region is saturated or one obstacle is in the way. That
+  // distinction is not decorative: it is what caught the epsilon that had this
+  // solve reporting a saturated corner when the wall was its own band test.
   const rejects = new Map();
   const note = (r) => {
     if (r.c >= 0) return;
@@ -14660,74 +14667,107 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     e.n++; if (r.c > e.best) e.best = r.c;
     rejects.set(k, e);
   };
-  // FOUR freedoms now, and they nest by what they can move. The tower's own
-  // pieces depend on the station azimuth alone, the idler's on that plus which
-  // side it falls, the finger arbor's on those plus its azimuth about the
-  // tower, and only the cross needs all four. Each level prunes before the next
-  // one runs, which is what keeps a four-deep sweep inside a boot.
-  // ONE degree, not three. At three the search reported its nearest miss as the
-  // idler's arbor 0.011 inside the low corridor — a gap narrower than the step
-  // was walking over. The cost is paid back by the pruning: the tower's own
-  // pieces are scored once per azimuth and reject most of the circle before
-  // anything below runs.
-  for (let deg = 0; deg < 360; deg += 1) {
-    const a = deg * DEG2RAD;
-    const px = alarmBarrelPos.x + Math.cos(a) * ARREST_CD;
-    const py = alarmBarrelPos.y + Math.sin(a) * ARREST_CD;
-    const tower = [
-      clear('leg A', PIN_A[0], PIN_A[1], px, py, NEED.legA, 'wheel'),
-      clear('the spider', SPIDER[0], SPIDER[1], px, py, NEED.spider, null),
-      clear('leg B', PIN_B[0], PIN_B[1], px, py, NEED.legB, null),
-      clear("the cage's wheel", OUT[0], OUT[1], px, py, NEED.out, null),
-      clear('the tower arbor', PLATE_Z, TOWER_TOP, px, py, NEED.arbor, null),
-    ];
-    stage.az++;
-    const towerWorst = tower.reduce((w, r) => (r.c < w.c ? r : w));
-    if (towerWorst.c < 0) { note(towerWorst); continue; }
-    stage.tower++;
-    const towerPieces = [
-      { k: 'legA', lo: PIN_A[0], hi: PIN_A[1], r: reach.legA },
-      { k: 'spider', lo: SPIDER[0], hi: SPIDER[1], r: reach.spider },
-      { k: 'legB', lo: PIN_B[0], hi: PIN_B[1], r: reach.legB },
-      { k: 'cageTube', lo: SUB_CAGE_Z, hi: SUB_OUT_Z, r: reach.cageTube },
-      { k: 'outW', lo: OUT[0], hi: OUT[1], r: reach.outW },
-      { k: 'towerArbor', lo: PLATE_Z, hi: TOWER_TOP, r: reach.col },
-    ];
 
-    for (const idlerTeeth of IDLER_COUNTS) for (const side of [1, -1]) {
-      const geo = subIdlerGeom(idlerTeeth, side);
-      if (!geo) continue;
-      const ia = a + geo.daz;
-      const ix = alarmBarrelPos.x + Math.cos(ia) * geo.rimCD;
-      const iy = alarmBarrelPos.y + Math.sin(ia) * geo.rimCD;
-      const idlerReach = tip(idlerTeeth);
-      const idler = [
-        clear("the idler's wheel", IDL_W[0], IDL_W[1], ix, iy, idlerReach + M, 'rim'),
-        clear("the idler's pinion", IDL_P[0], IDL_P[1], ix, iy, idlerReach + M, null),
-        clear('the idler arbor', PLATE_Z, IDL_TOP, ix, iy, NEED.arbor, null),
-      ];
-      const idlerWorst = idler.reduce((w, r) => (r.c < w.c ? r : w));
-      if (idlerWorst.c < 0) { note(idlerWorst); continue; }
-      const idlerPieces = [
-        { k: 'idlerW', lo: IDL_W[0], hi: IDL_W[1], r: idlerReach },
-        { k: 'idlerBody', lo: IDL_W[0], hi: IDL_P[1], r: reach.idlerBody },
-        { k: 'idlerP', lo: IDL_P[0], hi: IDL_P[1], r: idlerReach },
-        { k: 'idlerArbor', lo: PLATE_Z, hi: IDL_TOP, r: reach.col },
-      ];
-      stage.idler++;
-      const towerVsIdler = selfClear(towerPieces, idlerPieces, geo.legCD);
-      if (towerVsIdler.c < 0) { note(towerVsIdler); continue; }
+  // ---- THE COST OF THIS SEARCH IS ITS OWN CONSTRAINT ------------------------
+  //
+  // A build-time solve whose running time is a function of the LAYOUT is a
+  // boot-time hazard. Four freedoms nested is a PRODUCT, and a product's size
+  // depends on how much survives pruning at each level — so at the design
+  // arrangement the tower's own pieces rejected most of the circle early and
+  // this cost 9.3 s, while ?alarmaz=90, ?alarmaz=175, ?alarmaz=180,
+  // ?crownaz=90 and ?alarmmod=200 kept far more candidates alive and never
+  // finished at all. The battery reported four of them WEDGED — no __clock, and
+  // a main thread that would not answer in ten seconds — and scored the fifth
+  // as a healthy build with warnings, which is the same defect wearing a
+  // passing grade. Identity being fast was luck, not evidence.
+  //
+  // So the cost is made STRUCTURAL: a coarse pass over the whole space, then a
+  // refinement in a window around its winner. Both grids are fixed, so the work
+  // is bounded by the grid rather than by how permissive the geometry happens
+  // to be, and the fine answer is as fine as the old one was. tools/
+  // probe-129-bootcost holds it — every moved station within a small multiple
+  // of identity, which is the claim that actually matters.
+  //
+  // The idler is the one freedom that cannot be nested cheaply: it multiplies
+  // the whole search and yet only reaches it through two cross-terms. So its
+  // options are scored per azimuth, kept BEST-FIRST, and only the top few are
+  // carried inward — the roomiest idler alone is not necessarily the one that
+  // leaves room for the finger and the cross, so keeping one would be wrong and
+  // keeping all of them would be the product again.
+  const IDLER_KEEP = 4;
 
-      for (let fdeg = 0; fdeg < 360; fdeg += 9) {
+  const sweep = (grid) => {
+    let local = null;
+    for (const deg of grid.az) {
+      const a = deg * DEG2RAD;
+      const px = alarmBarrelPos.x + Math.cos(a) * ARREST_CD;
+      const py = alarmBarrelPos.y + Math.sin(a) * ARREST_CD;
+      const tower = [
+        clear('leg A', PIN_A[0], PIN_A[1], px, py, NEED.legA, 'wheel'),
+        clear('the spider', SPIDER[0], SPIDER[1], px, py, NEED.spider, null),
+        clear('leg B', PIN_B[0], PIN_B[1], px, py, NEED.legB, null),
+        clear("the cage's wheel", OUT[0], OUT[1], px, py, NEED.out, null),
+        clear('the tower arbor', PLATE_Z, TOWER_TOP, px, py, NEED.arbor, null),
+      ];
+      stage.az++;
+      const towerWorst = tower.reduce((w, r) => (r.c < w.c ? r : w));
+      if (towerWorst.c < 0) { note(towerWorst); continue; }
+      stage.tower++;
+      const towerPieces = [
+        { k: 'legA', lo: PIN_A[0], hi: PIN_A[1], r: reach.legA },
+        { k: 'spider', lo: SPIDER[0], hi: SPIDER[1], r: reach.spider },
+        { k: 'legB', lo: PIN_B[0], hi: PIN_B[1], r: reach.legB },
+        { k: 'cageTube', lo: SUB_CAGE_Z, hi: SUB_OUT_Z, r: reach.cageTube },
+        { k: 'outW', lo: OUT[0], hi: OUT[1], r: reach.outW },
+        { k: 'towerArbor', lo: PLATE_Z, hi: TOWER_TOP, r: reach.col },
+      ];
+
+      const opts = [];
+      for (const idlerTeeth of grid.counts) for (const side of [1, -1]) {
+        const geo = subIdlerGeom(idlerTeeth, side);
+        if (!geo) continue;
+        const ia = a + geo.daz;
+        const ix = alarmBarrelPos.x + Math.cos(ia) * geo.rimCD;
+        const iy = alarmBarrelPos.y + Math.sin(ia) * geo.rimCD;
+        const idlerReach = tip(idlerTeeth);
+        const idler = [
+          clear("the idler's wheel", IDL_W[0], IDL_W[1], ix, iy, idlerReach + M, 'rim'),
+          clear("the idler's pinion", IDL_P[0], IDL_P[1], ix, iy, idlerReach + M, null),
+          clear('the idler arbor', PLATE_Z, IDL_TOP, ix, iy, NEED.arbor, null),
+        ];
+        const idlerWorst = idler.reduce((w, r) => (r.c < w.c ? r : w));
+        if (idlerWorst.c < 0) { note(idlerWorst); continue; }
+        const pieces = [
+          { k: 'idlerW', lo: IDL_W[0], hi: IDL_W[1], r: idlerReach },
+          { k: 'idlerBody', lo: IDL_W[0], hi: IDL_P[1], r: reach.idlerBody },
+          { k: 'idlerP', lo: IDL_P[0], hi: IDL_P[1], r: idlerReach },
+          { k: 'idlerArbor', lo: PLATE_Z, hi: IDL_TOP, r: reach.col },
+        ];
+        const tvi = selfClear(towerPieces, pieces, geo.legCD);
+        if (tvi.c < 0) { note(tvi); continue; }
+        opts.push({ idlerTeeth, side, ix, iy, rows: idler, pieces, tvi,
+          worst: Math.min(idlerWorst.c, tvi.c) });
+      }
+      if (!opts.length) continue;
+      opts.sort((p, q) => q.worst - p.worst);
+      const keep = opts.slice(0, IDLER_KEEP);
+      stage.idler += keep.length;
+
+      for (const fdeg of grid.f) {
         const fa = fdeg * DEG2RAD;
         const fx = px + Math.cos(fa) * SUB_OUT_CD, fy = py + Math.sin(fa) * SUB_OUT_CD;
         const fPin = clear("the finger's pinion", OUT[0], OUT[1], fx, fy, NEED.fPin, null);
         if (fPin.c < 0) { note(fPin); continue; }
         stage.fAz++;
-        const dIdlerFinger = Math.hypot(fx - ix, fy - iy);
 
-        for (const z of planes) {
-          const fCol = clear('the finger arbor', PLATE_Z, z + ARREST_PLATE_T * 2, fx, fy, NEED.arbor, null);
+        for (const z of grid.planes) {
+          // The finger's arbor runs from the plate to whichever of its two
+          // members is HIGHER — the finger, or the output pinion it is driven
+          // by. A first cut ran it only to the finger, which left the pinion
+          // standing at 7.27 on nothing at all: the render showed it and no
+          // gate could, because a floating wheel collides with nothing.
+          const fTop = Math.max(z + ARREST_PLATE_T * 2, OUT[1] + 0.2);
+          const fCol = clear('the finger arbor', PLATE_Z, fTop, fx, fy, NEED.arbor, null);
           if (fCol.c < 0) { note(fCol); continue; }
           const fin = clear('the finger', z, z + ARREST_PLATE_T, fx, fy, NEED.finger, null);
           if (fin.c < 0) { note(fin); continue; }
@@ -14735,48 +14775,99 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
           const fingerPieces = [
             { k: 'fPin', lo: OUT[0], hi: OUT[1], r: reach.fPin },
             { k: 'finger', lo: z, hi: z + ARREST_PLATE_T, r: reach.finger },
-            { k: 'fingerArbor', lo: PLATE_Z, hi: z + ARREST_PLATE_T * 2, r: reach.col },
+            { k: 'fingerArbor', lo: PLATE_Z, hi: fTop, r: reach.col },
           ];
           const fVsTower = selfClear(fingerPieces, towerPieces, SUB_OUT_CD);
           if (fVsTower.c < 0) { note(fVsTower); continue; }
-          const fVsIdler = selfClear(fingerPieces, idlerPieces, dIdlerFinger);
-          if (fVsIdler.c < 0) { note(fVsIdler); continue; }
+          const live = [];
+          for (const o of keep) {
+            const r = selfClear(fingerPieces, o.pieces, Math.hypot(fx - o.ix, fy - o.iy));
+            if (r.c < 0) { note(r); continue; }
+            live.push({ o, fVsIdler: r });
+          }
+          if (!live.length) continue;
 
-          for (let cdeg = 0; cdeg < 360; cdeg += 9) {
+          for (const cdeg of grid.c) {
             const ca = cdeg * DEG2RAD;
             const cx = fx + Math.cos(ca) * ARREST_SPEC.d, cy = fy + Math.sin(ca) * ARREST_SPEC.d;
             const cr = clear('the cross', z, z + ARREST_PLATE_T, cx, cy, NEED.cross, null);
             if (cr.c < 0) { note(cr); continue; }
             const st = clear('the cross stud', PLATE_Z, z + ARREST_PLATE_T * 2, cx, cy, NEED.stud, null);
             if (st.c < 0) { note(st); continue; }
+            stage.cross++;
             // the cross against the rest of its own group. Its finger is the one
             // thing it is MEANT to touch, so that pair is exempt by omission —
             // the cross is checked against the tower and the idler only.
-            stage.cross++;
             const crossPieces = [
               { k: 'cross', lo: z, hi: z + ARREST_PLATE_T, r: reach.cross },
               { k: 'crossStud', lo: PLATE_Z, hi: z + ARREST_PLATE_T * 2, r: reach.stud },
             ];
-            const cVsTower = selfClear(crossPieces, towerPieces,
-              Math.hypot(cx - px, cy - py));
+            const cVsTower = selfClear(crossPieces, towerPieces, Math.hypot(cx - px, cy - py));
             if (cVsTower.c < 0) { note(cVsTower); continue; }
-            const cVsIdler = selfClear(crossPieces, idlerPieces, Math.hypot(cx - ix, cy - iy));
-            if (cVsIdler.c < 0) { note(cVsIdler); continue; }
-            const parts = [...tower, ...idler, fPin, fCol, fin, cr, st,
-              towerVsIdler, fVsTower, fVsIdler, cVsTower, cVsIdler]
-              .filter((r) => Number.isFinite(r.c))
-              .sort((p1, p2) => p1.c - p2.c);
-            const slack = parts[0].c;
-            // LOWEST plane first, then maximin — the same pick §106 made, so a
-            // re-gearing does not quietly become a re-strataing as well
-            if (!best || z < best.z - 1e-9 || (Math.abs(z - best.z) < 1e-9 && slack > best.slack))
-              stage.hit++;
-              best = { az: a, fingerAz: fa, z, crossAz: ca, idlerSide: side,
-                idlerTeeth, slack, boundBy: parts[0].who };
+            for (const { o, fVsIdler } of live) {
+              const cVsIdler = selfClear(crossPieces, o.pieces, Math.hypot(cx - o.ix, cy - o.iy));
+              if (cVsIdler.c < 0) { note(cVsIdler); continue; }
+              const parts = [...tower, ...o.rows, fPin, fCol, fin, cr, st,
+                o.tvi, fVsTower, fVsIdler, cVsTower, cVsIdler]
+                .filter((r) => Number.isFinite(r.c))
+                .sort((p1, p2) => p1.c - p2.c);
+              const slack = parts[0].c;
+              // MAXIMIN, and nothing else. §106 picked the lowest plane first
+              // because its pinion and finger shared one short arbor and a
+              // higher plane meant a longer one; here the arbor runs to the
+              // output pinion whatever the finger's plane, so that tie-break
+              // bought nothing and spent the thing worth having. The braces
+              // matter too — without them this assignment ran unconditionally
+              // and the "best" station was simply the LAST one evaluated, which
+              // is how the shipped fold came to sit on 0.026 of slack.
+              if (!best || slack > best.slack) {
+                stage.hit++;
+                best = { az: a, fingerAz: fa, z, crossAz: ca, idlerSide: o.side,
+                  idlerTeeth: o.idlerTeeth, slack, boundBy: parts[0].who };
+              }
+              if (!local || slack > local.slack) local = best;
+            }
           }
         }
       }
     }
+    return local;
+  };
+
+  const degs = (from, to, step) => {
+    const out = [];
+    for (let d = from; d < to - 1e-9; d += step) out.push(d);
+    return out;
+  };
+  const nums = (from, to, step) => {
+    const out = [];
+    for (let v = from; v <= to + 1e-9; v += step) out.push(+v.toFixed(3));
+    return out;
+  };
+  const planeLo = planes.length ? planes[0] : PLATE_Z + 0.6;
+  const planeHi = planes.length ? planes[planes.length - 1] : PLATE_Z + 0.6;
+  const usable = (list) => list.filter((z) =>
+    !(z + ARREST_PLATE_T > SUB_OUT_Z - T / 2 - M && z < SUB_OUT_Z + T / 2 + M));
+
+  // PASS 1 — the whole space, coarsely. Wide enough that no region can hide.
+  const coarse = sweep({
+    az: degs(0, 360, 6), f: degs(0, 360, 18), c: degs(0, 360, 18),
+    planes: usable(nums(planeLo, planeHi, 0.75)), counts: IDLER_COUNTS,
+  });
+  // PASS 2 — a window around its winner, at the resolution the answer is
+  // quoted to. Skipped entirely when the coarse pass found nothing, because
+  // there is no window to open.
+  if (coarse) {
+    const aDeg = coarse.az / DEG2RAD, fDeg = coarse.fingerAz / DEG2RAD,
+      cDeg = coarse.crossAz / DEG2RAD;
+    sweep({
+      az: degs(aDeg - 6, aDeg + 6.001, 1),
+      f: degs(fDeg - 18, fDeg + 18.001, 3),
+      c: degs(cDeg - 18, cDeg + 18.001, 3),
+      planes: usable(nums(Math.max(planeLo, coarse.z - 0.75),
+        Math.min(planeHi, coarse.z + 0.75), 0.25)),
+      counts: IDLER_COUNTS.filter((t) => Math.abs(t - coarse.idlerTeeth) <= 3),
+    });
   }
   if (!best) {
     const shape = [...rejects.entries()].sort((a, b) => b[1].best - a[1].best).slice(0, 6)
@@ -15041,8 +15132,15 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   fpSpin.add(finger);
   alarmArrestUnit.add(fpSpin);
   arrestFingerSpin = fpSpin;
+  // …on an arbor that reaches BOTH its members. It carries the finger at
+  // ARREST_Z and the output pinion at SUB_OUT_Z, and those are now separate
+  // stations at separate heights — so the column runs to whichever is higher.
+  // Built to the finger alone, it left the pinion standing at 7.27 on nothing:
+  // visible the moment the unit was rendered, and invisible to every gate,
+  // because a wheel with no arbor under it collides with precisely nothing.
   column(arrestFingerPos.x, arrestFingerPos.y, ARREST_SPEC.arborR,
-    ARREST_Z + ARREST_PLATE_T * 2, 'alarmArrestFingerArbor');
+    Math.max(ARREST_Z + ARREST_PLATE_T * 2, SUB_OUT_Z + ALARM_WIND_WHEEL_T / 2 + 0.2),
+    'alarmArrestFingerArbor');
 
   // The cross on its own stud, coplanar with the finger.
   const cSpin = new THREE.Group();
