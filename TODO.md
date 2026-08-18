@@ -6372,9 +6372,64 @@ longer reconstructs anything: the chain reads `arborA − bodyA`, so a wind name
 the pose completely and the striker's phase cannot reach it. `arrestDebug.now()`
 was added anyway and is what `probe-106-reset` reads.
 
-**Item 3 is STILL OPEN and is the residue of this closure.** No pose axis
-reverses the wind within a sweep — `alarmWind` runs it up, `alarmStrike` runs it
-down, neither turns round — so §48's no-spring audit still cannot judge the
-cross. §106 claimed a two-way drive it did not have; §129 has one, measured,
-which makes the axis MORE owed than before rather than less. Ship the axis that
-winds, rings and winds again, then the declaration.
+**Item 3 is STILL OPEN and is now TODO 56**, which is where it lives rather
+than inside a closed item. No pose axis reverses the wind within a sweep, so
+§48's no-spring audit still cannot judge the cross. §106 claimed a two-way drive
+it did not have; §129 has one, measured, which makes the axis MORE owed than
+before rather than less.
+
+## 56. §129's stop-work reverses, and no axis sweeps the reversal — so §48 still cannot judge it
+
+Opened by §129's landing, and stated there rather than hidden. It is the
+residue of TODO 55 and it gets its own number because a closed item is a bad
+place to keep live debt.
+
+**What changed under the instrument.** §106 claimed the arrest's cross was
+"two-way driven across a wind-and-run-down cycle by the same finger". It was
+not: that train read the arbor's absolute angle, and the arbor stands still
+through a whole run-down. §129 re-geared it through a spider differential, so
+the claim is TRUE now — measured, running right down returns the cross to its
+booted-empty pose to the digit, and the same finger walks it back through
+exactly the states a wind walked it forward through.
+
+**Why the audit still cannot see it.** §48's no-spring audit takes its
+population from the §36 registry's `reversed` flag, and that flag is measured
+per AXIS: a part counts as reciprocating when successive steps of one sweep
+change sign. No axis reverses the wind within a sweep. `alarmWind` runs it up
+and `alarmStrike` runs it down; neither turns round. So the cross is invisible
+to the audit, no restoring element is declared for it, and the gate passes it
+in silence — which is precisely the failure mode rule 4 warns about in as many
+words: *ship the mechanism and you must ship the axis that exercises it, or
+this passes it in silence.*
+
+This is the same shape as the hole TODO 29 closed for the alarm lock, where no
+axis anywhere varied `alarmOn` and the movement's clearest no-spring case was
+invisible for exactly that reason.
+
+**The fix.** An axis that WINDS, RINGS and WINDS AGAIN — the sequence the
+mechanism exists for. `setPose` already accepts both `alarmBarrelWind` and
+`alarmStrikePhase`, and `tools/probe-129-reset` (via `probe-106-reset`) already
+drives that sequence, so the poses are known-good and the work is declaring
+them as an axis in `AXES` rather than discovering how.
+
+Three things to get right when it lands:
+
+1. **The three legs are not interchangeable.** Winding advances the arbor with
+   the body parked; ringing advances the body with the arbor parked; the second
+   wind starts from a body that a ring has already moved. An axis that only
+   ramps the wind up and down with the phase derived sweeps two of the three.
+2. **Expect the reports to MOVE**, and accept them per row. A new axis changes
+   what the §36 registry samples, so `restoring`'s population can change and so
+   can any sweep row whose finding lived on a pose no axis previously visited.
+   Diff the `--report` and derive each moved row rather than re-basing it.
+3. **Then, and only then, the declaration.** With the reversal swept, the cross
+   becomes a part §48 can judge, and it is driven both ways by the same finger —
+   `declareRestoring` with kind `'two-way'`, which was rejected as STALE twice
+   before because the mechanism did not deserve it. It does now.
+
+**Also owed, and smaller.** `axisEntry`'s leak tier named `Alarm winding
+arrest` the movement's worst-moved unit under the old order-dependent entry (24
+pairs, worst delta 0.732) — the fingerprint of a unit whose pose depended on two
+members no single axis pinned together. Re-read that row after this axis lands:
+a stop-work that reads one quantity should stop being the most pose-sensitive
+unit in the movement, and if it has not, the reason is worth knowing.

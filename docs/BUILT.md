@@ -13210,9 +13210,10 @@ great wheel, drum, centre, third, fourth, escape, balance, heart cam), because
 this arrest reaches the going side and an undeclared rotor is scored at one
 frame of a movie: the battery found the fusee that way, overlap 0.264.
 
-Owed and named rather than hidden: no pose axis reverses the wind WITHIN a
-sweep, so §48's no-spring audit still cannot judge the cross — and the
-reversal is real now, which makes the axis more owed than before, not less.
+Owed and named rather than hidden, and filed as TODO 56 rather than left inside
+a closed item: no pose axis reverses the wind WITHIN a sweep, so §48's no-spring
+audit still cannot judge the cross — and the reversal is real now, which makes
+the axis more owed than before, not less.
 `?alarmbarrelaz=` (the barrel's bearing off the striking wheel, §112's solved
 202°) exists as a spec knob with `tools/probe-129-bearing` to sweep it; the
 subtractor sites at the bearing §112 already chose, so nothing moved, but the
