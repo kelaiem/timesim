@@ -157,7 +157,12 @@ it into prose either.
 3. **Every new part is declared in `MECH_GRAPH`** (`src/inspect.js`) — what
    supports it, what drives it.
 4. **The inspector battery is clean before anything lands**: support 0
-   failures, graph clean, penetration within budgets (waived rows are
+   failures, graph clean, `axisEntry` **0 violations** (TODO 54/§127 — every
+   ordered pair of pose axes reproduces the entered axis exactly, which is
+   what makes a sweep's findings a function of the geometry rather than of
+   `AXES`' declaration order, and what lets §127 sweep one axis per browser
+   context; the leak tier beside it is a REPORT, not a gate),
+   penetration within budgets (waived rows are
    accepted debt citing their TODO item, same convention as stockFloor),
    `alarmHandoffs` **0 unwaived** (every claimed contact of the §35
    arming run within ±tol of touch at both parities, or waived citing a
@@ -425,7 +430,7 @@ imports. The check lives in the harness because editing the list touches
 `.github/workflows/**`, which the list does not ignore — so the change that
 could break it always runs the job that judges it.
 
-Since §81 the harness SHARDS: it partitions the checks across K browser
+Since §81 the harness SHARDS: it partitions the work across K browser
 contexts by the measured `cost` column in `BATTERY` (`--shards`, default 2)
 so the wall is max(shard) rather than sum(checks). That is sound because
 `start()` calls `clock.resetInputs()` before every check, so no check can
@@ -435,8 +440,29 @@ invariant and is the bug.** Two rules follow. Keep the cost column
 roughly true (`--report` writes the times back out as `ms`); a stale
 number costs wall clock, never a verdict. And when a check gets much
 faster or slower, re-read the partition before concluding anything about
-the battery's wall — no number of shards can go below the slowest single
-check, because no check is subdivided.
+the battery's wall.
+
+**Since §127 the atom is a TASK, not a check** — a check whose outer loop is
+`for (const axis of AXES)` declares `slices` and is scheduled as one task per
+axis, so the wall is no longer floored by the slowest single check.
+`inspection` is split today; `--no-split` runs it whole and is the reference
+the split must agree with, exactly as `--shards 1` is for the grouping. Three
+things hold it up, and all three are gates rather than conventions: the
+declared slice list is asserted to BE the page's `AXES` (an axis nobody sliced
+would silently never be swept), every slice must produce a payload before the
+merge runs (a dead shard would otherwise union into a clean report of work
+that did not happen), and the merged payload is byte-identical to a whole
+run's — `tools/probe-127-split.mjs` proves that on two axes in about a minute,
+which is the loop to use while iterating.
+
+**What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
+runs in its own browser context and starts from `resetInputs()`, so it can only
+match a whole run if entering an axis reproduces that axis's poses whatever ran
+before it. `setPose` assigns ONLY the keys a pose names, so before TODO 54 each
+axis inherited the tail of the axis declared above it and every sweep's
+coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
+before each axis; the `axisEntry` check gates that over all 110 ordered pairs
+and REPORTS, beside it, what used to ride through.
 
 `--report FILE` writes every check's FULL payload as JSON. **That, not the
 PASS/FAIL column, is what a performance change is accepted against**: a

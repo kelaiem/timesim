@@ -739,8 +739,25 @@ function unitsIntersect(A, B) {
   return false;
 }
 
-// Phase axes. Each pose object feeds __clock.setPose(); unspecified state
-// keeps its prior value, so every axis pins the others to a fixed default.
+// Phase axes. Each pose object feeds __clock.setPose(), which assigns ONLY
+// the keys the object NAMES — so a pose is a DELTA from the state the clock
+// is already in, never a description of the scene.
+//
+// TODO 54: that second clause used to read "unspecified state keeps its prior
+// value, so every axis pins the others to a fixed default." The first half was
+// true and the second was false, which is the worst pairing — a comment that
+// names the hazard and then claims it is handled. setPose accepts twelve keys;
+// six of the eleven axes below name four of them; and no sweep reset between
+// axes (start() resets once per CHECK). So each axis inherited the tail pose of
+// the axis DECLARED ABOVE IT: handSet's setPathRot rode into all four alarm
+// axes, and alarmToggle — whose whole subject is the parity — swept it with the
+// alarm barrel at full wind and a strike phase parked wherever alarmStrike
+// stopped. Every sweep's coverage was a function of this array's ORDER.
+//
+// THE CONTRACT NOW: a pose is a delta, and every sweep ENTERS each axis from
+// canonical state (enterAxis, below the array). An axis that wants a state must
+// NAME it — which is what turns an inherited accident into a decision, and what
+// lets §127 sweep two axes in two browser contexts and merge the results.
 export const AXES = [
   {
     name: 'beat',
@@ -944,6 +961,153 @@ export const AXES = [
     }),
   },
 ];
+
+// ---------------------------------------------------------------------------
+// CANONICAL AXIS ENTRY (TODO 54). Call this at the top of every axis, before
+// the axis's first pose. It is what makes an axis's sweep a function of
+// (geometry, axis) instead of a function of AXES' declaration order.
+//
+// WHY A RESET AND NOT A "TOTAL POSE". TODO 54 prescribed a declared base pose
+// merged into each axis's delta, so that every pose object names all twelve
+// keys. Reading setPose closely, that fix does not hold, and the reasons are
+// in setPose's own comments:
+//
+//   · The writers OVERLAP. `alarmWindRotation` assigns alarmCrownRotation as
+//     well as the barrel wind, and it is applied AFTER `alarmCrownRotation` —
+//     so a base naming the latter and an axis naming the former do not merge,
+//     they fight, and the base wins. The alarm axis would silently sweep an
+//     unturned crown.
+//   · A base `alarmBarrelWind` SILENTLY RE-MEANS the strike axis. setPose
+//     derives the wind from `alarmStrikePhase` only when the pose does not
+//     state it (the honest ring trajectory, §99); a base that states it binds
+//     instead, and alarmStrike would ring a barrel pinned at the base value.
+//   · And no pose object can reach the accumulator that matters. `alarmOn`
+//     NUDGES alarmColSteps one step toward the requested parity (TODO 20 —
+//     the wheel is the state), so the column's ANGLE is a function of how many
+//     flips came before, not of the parity asked for. Only a reset zeroes it.
+//
+// resetInputs is the exact statement of "canonical", it is the same one the
+// FINGERPRINT already makes before every pose it hashes (fingerprintBoxes:
+// "the fingerprint must not depend on session history"), and the sweeps are
+// the half of the codebase that never learned it. The residue this leaves is
+// WITHIN an axis: alarmToggle's own parity flips still accumulate across its
+// samples, so an axis is reproducible from its start but an index range inside
+// one is not — which is why §127 slices between axes and not inside them.
+//
+// checkAxisEntry gates that this guarantee holds over every ordered pair of
+// axes, and REPORTS what rides through without it.
+// ---------------------------------------------------------------------------
+export function enterAxis(clock) { clock.resetInputs(); }
+
+// Axes may be named rather than passed (§127): an axis carries a `pose`
+// FUNCTION, which cannot cross page.evaluate, so a harness driving a sliced
+// sweep from Node can only send strings. Names are resolved against AXES in
+// ITS order, never the caller's, so a slice's rows sort where a whole run's
+// would. An unknown name throws rather than silently narrowing the sweep —
+// the string-coupling trap this file is already full of, and a mistyped slice
+// that quietly swept nothing would report a clean partition of no work.
+export function resolveAxes(arg = AXES) {
+  const names = arg.map((a) => (typeof a === 'string' ? a : a.name));
+  const missing = names.filter((n) => !AXES.some((a) => a.name === n));
+  if (missing.length) throw new Error(`unknown axis name(s): ${missing.join(', ')}`);
+  return AXES.filter((a) => names.includes(a.name));
+}
+
+// ---------------------------------------------------------------------------
+// checkAxisEntry (TODO 54) — two tiers over every ORDERED PAIR of axes.
+//
+// GATED: entering an axis the way a sweep now enters it reproduces that axis's
+// pose EXACTLY, whatever ran before it. That is the property §127's partition
+// stands on — a slice in a fresh browser context starts from canonical, so it
+// must land the poses the whole-run sweep lands — and it is not a tautology
+// about resetInputs: resetInputs is a hand-maintained list that has been
+// INCOMPLETE twice already (§34's explode and §58's drags were both added
+// after a sweep ran on displaced geometry). A new banked input that nobody
+// adds to it fails here, on the pair that banks it.
+//
+// REPORTED: the same hand-off WITHOUT the entry — the state the sweeps
+// actually carried before TODO 54, measured per unit. The item filed the leak
+// from a source read and said plainly that whether any CURRENT finding
+// depended on it was unmeasured; these rows are that measurement, and they are
+// a report because a leak is not a defect, it is a pose nobody declared.
+// ---------------------------------------------------------------------------
+export function checkAxisEntry(clock, { axes = AXES, fractions = [0, 1] } = {}) {
+  const key = (axis, f) => `${axis.name}@${f}`;
+  const poseAt = (axis, f) => clock.setPose(axis.pose(f, clock));  // setPose ends in updateMatrixWorld
+
+  // What each (axis, f) looks like entered from canonical — the reference.
+  const canon = new Map();
+  for (const axis of axes) for (const f of fractions) {
+    enterAxis(clock); poseAt(axis, f);
+    canon.set(key(axis, f), unitBoxRows(clock));
+  }
+
+  // Per-unit worst corner displacement, worst first. Quantised at 1e-3 by
+  // unitBoxRows, so a row here is real geometry, not float noise.
+  const diffRows = (a, b) => {
+    const out = [];
+    for (const n of Object.keys(a)) {
+      let d = 0;
+      for (let i = 0; i < 6; i++) d = Math.max(d, Math.abs(a[n][i] - b[n][i]));
+      if (d > 0) out.push({ unit: n, delta: +d.toFixed(4) });
+    }
+    return out.sort((x, y) => y.delta - x.delta);
+  };
+
+  const violations = [], leaks = [];
+  let pairsTested = 0;
+  for (const prev of axes) for (const axis of axes) {
+    if (prev === axis) continue;
+    for (const f of fractions) {
+      // (a) the guarantee: prev to its tail, then ENTER axis as a sweep does.
+      enterAxis(clock); poseAt(prev, 1);
+      enterAxis(clock); poseAt(axis, f);
+      pairsTested++;
+      const held = diffRows(canon.get(key(axis, f)), unitBoxRows(clock));
+      if (held.length) violations.push({
+        prev: prev.name, axis: axis.name, f, unitsMoved: held.length, worst: held[0],
+      });
+
+      // (b) the leak: the same hand-off with no entry, which is what ran here
+      //     for every sweep before TODO 54.
+      enterAxis(clock); poseAt(prev, 1);
+      poseAt(axis, f);
+      const leaked = diffRows(canon.get(key(axis, f)), unitBoxRows(clock));
+      if (leaked.length) leaks.push({
+        prev: prev.name, axis: axis.name, f, unitsMoved: leaked.length,
+        worst: leaked[0], moved: leaked.slice(0, 5),
+      });
+    }
+  }
+
+  // Which units the leak actually moved, and how far at worst — the compact
+  // form of "what was the movement worth", so the report answers the question
+  // without anyone re-deriving it from 220 rows.
+  //
+  // The CAP is named rather than hidden: this ranks over each row's five
+  // worst-displaced units (`moved`), so a unit that is never in a hand-off's
+  // top five does not appear here. Every row still carries its own untruncated
+  // `unitsMoved` count, so the rows are the authority and this is the summary.
+  const byUnit = new Map();
+  for (const r of leaks) for (const m of r.moved) {
+    const cur = byUnit.get(m.unit);
+    if (!cur || m.delta > cur.worst) byUnit.set(m.unit, { worst: m.delta, pairs: (cur?.pairs ?? 0) + 1 });
+    else byUnit.set(m.unit, { worst: cur.worst, pairs: cur.pairs + 1 });
+  }
+  const leakUnits = [...byUnit.entries()]
+    .map(([unit, v]) => ({ unit, worst: v.worst, pairs: v.pairs }))
+    .sort((a, b) => b.worst - a.worst);
+
+  enterAxis(clock);
+  return {
+    ok: violations.length === 0,
+    gate: 'GATING: with canonical entry, every axis reproduces its own pose whatever ran before it. '
+      + 'The leak tier is a REPORT — the undeclared state the sweeps carried before TODO 54.',
+    axes: axes.map((a) => a.name), fractions, pairsTested,
+    violations,
+    leak: { pairsLeaking: leaks.length, units: leakUnits, rows: leaks },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Clearance measurement — the TODO item "clearance monitoring (gaps that
@@ -1235,6 +1399,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
   for (const axis of axes) {
     const live = pairs.some((pr) => !pr.axes || pr.axes.includes(axis.name));
     if (!live) continue;
+    enterAxis(clock);   // TODO 54 — canonical entry; this sweep is clearances + expectedContacts
     for (const pr of pairs) pr._samples = {};
     // Coarse pass (always includes both endpoints).
     const coarseIdx = [];
@@ -1994,6 +2159,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   const base = new Map();
   const worldBase = new Map();  // mesh → M_0⁻¹, for the frame trace
   const baseGeoId = new Map();  // mesh → geometry.id at the base pose
+  enterAxis(clock);             // TODO 54 — the base pose is canonical too, or every delta is measured from session history
   clock.setPose(poses[0][0].pose(0, clock));
   for (const u of units) for (const m of u.meshes) {
     base.set(m, relSig(u, m));
@@ -2004,7 +2170,9 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   const morphed = new Set();
   const trace = new Map();      // mesh → concatenated delta elements, pose by pose
   let n = 0;
+  let axisNow = null;
   for (const [axis, f] of poses) {
+    if (axis !== axisNow) { enterAxis(clock); axisNow = axis; }   // TODO 54 — canonical entry per axis
     clock.setPose(axis.pose(f, clock));
     for (const u of units) {
       for (const m of u.meshes) {
@@ -2261,13 +2429,16 @@ export async function checkAssembly(clock, {
   //    check structurally incapable of reporting anything, which is how the
   //    first cut of this function passed a movement it had never measured.)
   const base = new Map(); // mesh → M_0⁻¹
+  enterAxis(clock);       // TODO 54 — canonical base, same reason as checkIntraUnit's
   clock.setPose(poses[0][0].pose(0, clock));
   for (const u of units) for (const m of u.meshes) base.set(m, m.matrixWorld.clone().invert());
   const trace = new Map();  // mesh → concatenated delta elements, pose by pose
   const moves = new Set();  // meshes whose frame is not the identity somewhere
   const _id = new THREE.Matrix4();
   let n = 0;
+  let axisNow = null;
   for (const [axis, f] of poses) {
+    if (axis !== axisNow) { enterAxis(clock); axisNow = axis; }   // TODO 54 — canonical entry per axis
     clock.setPose(axis.pose(f, clock));
     for (const u of units) for (const m of u.meshes) {
       _m.copy(m.matrixWorld).multiply(base.get(m));
@@ -2573,6 +2744,7 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
     : 'mainspring');
   for (const axis of axes) {
     const source = sourceFor(axis.name);
+    enterAxis(clock);   // TODO 54 — canonical entry
     clock.setPose(axis.pose(0, clock));
     const sig0 = units.map(unitSignature);
     clock.setPose(axis.pose(0.63, clock));
@@ -3766,13 +3938,15 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
   };
 }
 
-export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includeExcluded = false } = {}) {
+export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 8, includeExcluded = false } = {}) {
+  const axes = resolveAxes(axisArg);   // §127 — a slice arrives as names; see resolveAxes
   const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
   censusStart();   // §108's experiment — report-only, see the census block
   let unitPairTests = 0, unitPairPass = 0;   // the unit-level broad phase, this check's own outer gate
 
   for (const axis of axes) {
+    enterAxis(clock);   // TODO 54 — canonical entry, so this axis's findings do not depend on which axes ran before it (and §127 can run it in its own context)
     for (let i = 0; i <= axis.n; i++) {
       const f = i / axis.n;
       clock.setPose(axis.pose(f, clock));
@@ -3874,8 +4048,7 @@ export async function runInspection(clock, { axes = AXES, yieldEvery = 8, includ
 // ---------------------------------------------------------------------------
 export async function focusedCheck(clock, unitNames, { axes: axisArg } = {}) {
   const names = new Set(Array.isArray(unitNames) ? unitNames : [unitNames]);
-  const axisNames = axisArg && axisArg.map((a) => (typeof a === 'string' ? a : a.name));
-  const axes = axisNames ? AXES.filter((a) => axisNames.includes(a.name)) : AXES;
+  const axes = resolveAxes(axisArg || AXES);
   const axisSet = new Set(axes.map((a) => a.name));
   const touches = (a, b) => names.has(a) || names.has(b);
 
@@ -5994,6 +6167,7 @@ const CHECKS = {
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
+  axisEntry: (clock, opts) => checkAxisEntry(clock, opts),               // TODO 54 — canonical axis entry holds over every ordered pair; the leak the sweeps used to carry is measured beside it
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law
@@ -6242,37 +6416,55 @@ function strHash(s) {
 const FINGERPRINT_EXCLUDE = new Set(['Chain']);
 
 const _fpb = new THREE.Box3(); // fingerprint scratch
-function fingerprintBoxes(clock, poses = FINGERPRINT_POSES) {
+const _fpBox = new THREE.Box3();
+
+// The labelled units the box measurement reads, in the order it reads them.
+const boxEntries = (clock) => clock.labelEntries.filter((e) => !FINGERPRINT_EXCLUDE.has(e.name));
+
+// Every labelled unit's world AABB AT THE CURRENT POSE, quantised — no reset
+// and no setPose, because two callers want it at two different kinds of pose:
+// the fingerprint (which poses canonically, below) and checkAxisEntry (whose
+// whole subject is what the clock carries INTO a pose). Shared rather than
+// copied so the §66 schematic skip and the 1e-3 quantum have one definition;
+// they are the two rules that decide whether a hash means anything.
+function unitBoxRows(clock, entries = boxEntries(clock)) {
   const q = (n) => Math.round(n * 1000) / 1000 + 0; // +0 folds -0 → 0
-  const box = new THREE.Box3();
   const rows = {};
-  const entries = clock.labelEntries.filter((e) => !FINGERPRINT_EXCLUDE.has(e.name));
+  for (const e of entries) {
+    // setFromObject minus the §66 schematic tier: the line proxies DISPLAY
+    // the model; the fingerprint guards the METAL. Without the skip the
+    // tier's circles inflated unit boxes and moved the hash — the same
+    // geometry the instruments (isMesh collections) never see.
+    _fpBox.makeEmpty();
+    (function walk(o) {
+      if (o.userData && o.userData.schematic) return;
+      if (o.geometry) {
+        if (o.geometry.boundingBox === null) o.geometry.computeBoundingBox();
+        _fpb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+        _fpBox.union(_fpb);
+      }
+      for (const c of o.children) walk(c);
+    })(e.obj);
+    rows[e.name] =
+      [_fpBox.min.x, _fpBox.min.y, _fpBox.min.z, _fpBox.max.x, _fpBox.max.y, _fpBox.max.z].map(q);
+  }
+  return rows;
+}
+
+function fingerprintBoxes(clock, poses = FINGERPRINT_POSES) {
+  const rows = {};
+  const entries = boxEntries(clock);
   const units = entries.map((e) => e.name).sort();
   poses.forEach((pose, pi) => {
     // Canonical inputs first, so a part the pose does not drive sits where a
     // fresh boot would put it rather than where the last save left it — the
-    // fingerprint must not depend on session history (see resetInputs).
+    // fingerprint must not depend on session history (see resetInputs). The
+    // sweeps did not make this call until TODO 54; see enterAxis.
     clock.resetInputs();
     clock.setPose(pose);
     clock.scene.updateMatrixWorld(true);
-    for (const e of entries) {
-      // setFromObject minus the §66 schematic tier: the line proxies DISPLAY
-      // the model; the fingerprint guards the METAL. Without the skip the
-      // tier's circles inflated unit boxes and moved the hash — the same
-      // geometry the instruments (isMesh collections) never see.
-      box.makeEmpty();
-      (function walk(o) {
-        if (o.userData && o.userData.schematic) return;
-        if (o.geometry) {
-          if (o.geometry.boundingBox === null) o.geometry.computeBoundingBox();
-          _fpb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
-          box.union(_fpb);
-        }
-        for (const c of o.children) walk(c);
-      })(e.obj);
-      rows[`${e.name}#${pi}`] =
-        [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].map(q);
-    }
+    const at = unitBoxRows(clock, entries);
+    for (const e of entries) rows[`${e.name}#${pi}`] = at[e.name];
   });
   clock.setPose(poses[0]); // leave it at rest
   return { rows, units, poseCount: poses.length };

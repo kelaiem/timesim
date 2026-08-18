@@ -12805,3 +12805,262 @@ TODO 51: the surviving beak window is two scan steps wide, and the scan
 publishes a per-step trace of why it rejected each azimuth so the next
 person to move `ARM_BAND_REACH`, `HUB_R` or the lug's station can see it
 close.
+
+## §127 — the battery's partition atom becomes a TASK: `inspection` splits along its axis loop, and the sweeps stop inheriting each other's poses
+
+**Roadmap §127, tiers 0 and 1, plus the free win it insisted came first.**
+§81 sharded the battery across browser contexts by a measured cost column, and
+wrote down what that could not buy: "K > 2 cannot go below the slowest single
+check, because no check is subdivided." §82 took `sweptOverlap` out of the
+dominant slot and `inspection` walked straight into it — §108 measured it at
+36% of all check time and named it the shard floor. This entry subdivides it.
+
+### What the floor actually was, measured on the landing container
+
+A full green baseline on a 4-vCPU container (the same shape as
+`ubuntu-latest`), before any of this landed — 21/21 gates, 2029.1 s of check
+time, 1258.0 s wall across 2 shards:
+
+| check | wall | note |
+|---|---|---|
+| `inspection` | 762.2 s | the floor |
+| `clearances` | 545.1 s | |
+| `expectedContacts` | 388.5 s | |
+| `sweptOverlap` | 259.8 s | post-§82 |
+| the eleven others together | 73.5 s | |
+
+Two things fall straight out of that table, and the entry's own order of work
+came from them. **The shipped cost column was stale** — it read 991/744/428/410
+against these — and a stale column costs wall clock (§81's rule). Re-running
+the same LPT partition on the measured numbers gives 1021.9 s at K=2 and
+**762.2 s at K=3, which is `inspection` alone**: the floor, reached with no
+code at all. Only then is subdivision worth anything, and what it is worth is
+**676.7 s at K=3 and 545.1 s at K=4** — where the floor becomes `clearances`,
+exactly as the entry predicted. That is the honest size of this change on one
+runner, and it is written here because the roadmap entry led with it rather
+than discovering it at the end.
+
+### TODO 54 first, because the split is illegal without it
+
+A slice runs in its own browser context and starts from `resetInputs()`, so it
+can only reproduce a whole run if entering an axis lands that axis's poses
+whatever ran before. It did not. `setPose` assigns ONLY the keys a pose object
+NAMES; six of the eleven axes name four of the twelve it accepts; and no sweep
+reset between axes. Every sweep's coverage was a function of `AXES`'
+declaration order — `handSet`'s `setPathRot` rode into all four alarm axes, and
+`alarmToggle` swept the parity with the alarm barrel at full inherited wind.
+
+`enterAxis(clock)` is the guarantee, called at the top of every axis by all
+five sweeps that walk `AXES`. **It is a canonical entry and not the "total pose"
+TODO 54 prescribed**, and the three reasons that fix does not hold are recorded
+in that item and beside `enterAxis` — the alarm writers overlap and would fight
+a base pose, a base `alarmBarrelWind` silently re-means the strike axis, and no
+pose object can zero `alarmColSteps`, whose count decides the column wheel's
+angle. `resetInputs` is the exact statement of canonical, and it is the same
+call `fingerprintBoxes` already made before every pose it hashes.
+
+`checkAxisEntry` (battery check `axisEntry`, 2.2 s) holds both halves over all
+220 ordered axis pairs: **gated**, entry reproduces the entered axis exactly;
+**reported**, what rides through without it. That report is the measurement
+TODO 54 filed as missing — **106 of the 220 hand-offs moved geometry**, worst
+`Alarm disc` by 17.7, `Hour wheel` 7.917, `Alarm crown` 5.0. Reachable poses,
+but undeclared ones, and not small.
+
+### The split, and the three gates that hold it up
+
+`BATTERY`'s rows may declare `slices`; `buildTasks` turns a sliced row into one
+task per axis and the LPT partition balances TASKS. The gates, the canonical
+report order and the report's keys are untouched: `checks.inspection` still
+holds one payload, so a `--report` diff against a base stays a value diff.
+`--no-split` runs the checks whole and is the reference the split must agree
+with, for the same reason `--shards 1` is kept.
+
+Three failures of a partition look exactly like a healthy smaller run, so each
+is a gate rather than a convention:
+
+- **the declared slice list must BE the page's axis roster** (read from
+  `window.__I.AXES`, with each slice's pose count checked against `n + 1`) — an
+  axis added to `inspect.js` and not sliced here would silently never be swept;
+- **every slice must produce a payload** before the merge runs — a dead shard
+  would otherwise union into a clean report of work that did not happen;
+- **the merged payload is byte-identical to a whole run's.** `mergeInspection`
+  rebuilds rather than concatenates: union by pair, key ORDER restored to
+  `AXES` order (it is part of the payload), `summary` re-derived because a
+  slice's own summary quotes only its axis, census counters summed, and the
+  `units` list asserted equal across slices — the one disagreement a union
+  would happily paper over.
+
+The merge lives in `tools/battery-split.mjs` rather than inside the harness so
+it can be exercised without a full battery: `tools/probe-127-split.mjs` proves
+the identity on a two-axis sweep in about a minute, which is the loop to use
+while iterating on any of this.
+
+### What moved, derived row by row
+
+Tier 0 changes which poses the sweeps visit, so it was landed as a report move
+and accepted the way the repo accepts one: a `--report` diff against a green
+baseline on the same container, with every moved row explained. **Six of
+fifteen checks moved. Every GATE INPUT is byte-identical** — 0 rows before and
+after in all six — so the movement is entirely in reported detail.
+
+**`inspection` — the movement is a coverage GAIN, and it is the point.** No
+pair was lost, no pair changed class, 74 of 78 shared pairs kept identical
+per-axis hit lists. What changed:
+
+- **`Alarm disc ⇄ Hour wheel` appears** (EXPECTED; `alarmStrike` 110/110 poses,
+  `alarmToggle` 23/49). The disc follows the hour wheel when DISARMED — §25 C's
+  own behaviour. `alarmStrike` had been inheriting a turned `alarmCrownRotation`
+  from the `alarm` axis, so the disc sat somewhere else for that whole axis and
+  the sweep never saw the two touch.
+- **`Alarm crown ⇄ Alarm winding train` on `alarmStrike`: 0 → 110 poses.** The
+  same inheritance carried `alarmCrownPullT: 1` — the crown PULLED OUT to the
+  setting position, where it is disengaged from the winding train by design. The
+  strike axis had been swept with the alarm crown pulled, which nothing declared
+  and which hid a declared mesh across the entire axis.
+- Two rows gain a single pose on `alarmWind` (`Alarm release feeler` and `Dial`,
+  both against `Alarm winding train`), and `Alarm barrel ⇄ Alarm click` keeps
+  its 82 poses at different fractions.
+
+**The other five are reported detail, itemised.** `assembly`: one of 23
+out-of-scope rows, `Dial` 45 → 44 rigid bodies with its separation 0.0029 →
+0.005 — the clustering finds one less fragment, and the row does not gate.
+`intraUnit`: a single `at` label, `train f=0.5` → `train f=0.25` — same row,
+same verdict, extremum at a different pose. `expectedContacts`: two `at`
+labels. `clearances`: `verdictCalls` 0 → 1, with all 30 budget values
+unchanged. `sweptOverlap`: counters by 0.03% and one `f` label — it moves at
+all because its CONFIRM tier re-measures through `measureClearance`, which is
+`sweepClearances`, so it inherits canonical entry even though the registry and
+hull phase are untouched. Five checks are entered; six can move.
+
+**And the work did not grow.** `inspection`'s census moved −0.3% on exact
+calls, −0.2% on AABB tests, 0.0% on unit-pair tests, for 762.2 s → 767.0 s
+(+0.6%). That matters for reading the other checks' times in the same pair of
+runs, which moved +8.8% to +15.5% while their own work counters moved under
+0.5% — that spread is the container, not this change, and it is exactly why
+the `cost` column is only ever used to balance shards and never to judge one.
+
+### What it bought, and the identity that made it acceptable
+
+**The split is report-neutral, measured at full scale.** `--no-split --shards 2`
+against the default split run at `--shards 3`: **every check identical except
+wall-clock fields** — `inspection`'s merged payload byte-for-byte, and the only
+lines that differ anywhere are `sweptOverlap`'s six timing fields (`exactMs`,
+`hullMs`, `confirmMs` and friends), which live outside `census` and are wall
+clock by nature. Nothing else — no row, no value, no counter — moved. That one
+diff proves both invariants at once: the partition's finer atom does not change
+a report (§127), and neither does the shard count at a K nothing had run before
+(§81's rule).
+
+**The wall, on the landing container:** 1258.0 s → **846.9 s**, a 32.7% cut,
+with check time essentially flat (2029.1 s → 2083.1 s, container noise). 24/24
+gates, fingerprint unchanged, three shards at ~11 min each against the old
+19/13 split.
+
+**And the seeds were replaced by measurement, which is the part worth keeping.**
+The pose-count projection erred **−25% to +44%** and mis-ranked the column:
+`wind` projected 349.1 s and measured 261.7 s, `train` projected 47.0 s and
+measured 66.6 s. Per-pose cost is dominated by how many pair candidates survive
+the broad phase at that pose, and that is not a function of pose count. Both
+numbers are kept in `INSPECTION_SLICES` so a later axis gets the same rough seed
+and the same correction — what the pair does not allow is keeping a projection
+while believing it was measured.
+
+**Where the floor is now, measured rather than projected.** With real slice
+costs the partition walls at 694.6 s (K=3) and 552.6 s (K=4), and K=5 buys
+nothing: the largest single task is **`clearances` at 552.6 s**, then
+`expectedContacts` 379.0, `sweptOverlap` 279.0, and only then `inspection`'s
+`wind` slice at 261.7. `inspection` is out of the floor entirely — which is
+where roadmap §127's remainder now points, and it names why those three are not
+a copy of this work: their rows are extrema, so a merge is a per-row minimum
+that must carry which slice won.
+
+### What CI said, and the §81 claim it falsified
+
+The first CI run of the split harness passed 24/24 on ubuntu-latest with three
+virgin boots silent and the fingerprint deterministic — including both new
+slice gates and `axisEntry`, whose leak report reproduced the dev container's
+numbers exactly (106 of 220 pairs, `Alarm disc` 17.7). Three browser contexts
+on a 7 GB runner with SwiftShader neither OOM'd nor dropped a shard.
+
+**It did not establish the wall improvement, and one run cannot.** Against
+`main`'s own run of the previous commit: 21/21 gates, 1276.0 s wall, 2066.2 s
+of check time on two shards; the split run was 24/24, 1474.8 s wall, **3627.9 s
+of check time** on three. Check time rose 75.6% while the same tree's local runs
+held flat at +2.7%, and the two jobs ran on different runners — which is the
+1.66x same-tree spread this harness's header already documents, arriving again.
+The honest reading is that CI proves the split WORKS there and says nothing yet
+about what it saves there.
+
+**And it falsified a claim §81 left behind.** That entry wrote that CI's
+absolute times do not matter because "the partition is decided by RATIOS
+between checks, which are stable." Measured per task, CI against the landing
+container, the ratio spreads **1.14x to 2.69x** — a 2.4x spread in the ratio
+itself, with `expectedContacts` at 2.14x and `sweptOverlap` at 1.31x, so even
+their relative ORDER differs between the machines. These checks are not one
+workload: BVH tri-tri work, raycast arbitration and matrix walks in different
+mixtures do not scale alike across a runner's cache and clock.
+
+The cost is bounded — that run's partition landed 1329.4 s against an ideal
+three-way split of 1209.3 s, 9.9% over — and it is wall clock, never a verdict.
+The conclusion is recorded in the column's own comment: the answer is not a
+CI-derived column, which would be equally wrong on the next runner, but MORE
+AND SMALLER TASKS, so that any single mis-estimate costs less. Which is another
+argument for the remainder in roadmap §127.
+
+### K=4, measured as a controlled A/B rather than argued
+
+The shard default landed at 3 on arithmetic and moved to 4 on measurement. The
+open question was contention — four single-threaded pages plus the harness and
+`dev_server.py` on four vCPU — and CI cannot answer it, because there runner
+speed and contention are confounded in one number. So it was run as an A/B on
+one container, K=3 then K=4, same tree:
+
+| | K=3 | K=4 | |
+|---|---|---|---|
+| wall | 846.9 s | **740.5 s** | −12.6% |
+| check time | 2083.1 s | 2338.6 s | **+12.3%** |
+
+**The fourth shard buys 106 s of wall by burning 255 s of extra CPU**, and that
+trade is taken on purpose: CI bills wall clock and the job cap is a wall-clock
+cap. The contention is real but not uniform — `equalisation` inflates 40%,
+`clearances` 16%, `inspection` 14%, `sweptOverlap` only 3% — which is the
+signature of oversubscription rather than one saturated resource.
+
+**And then CI refused it.** The default went to 4 on that A/B and came back to
+3 on the runner's own measurement, which is the more useful of the two results:
+
+| | wall | check time |
+|---|---|---|
+| K=3, CI run 1 | 1474.8 s | 3627.9 s |
+| K=3, CI run 2 | 1483.7 s | 3695.6 s |
+| **K=4, CI** | **1515.2 s** | **4713.1 s** |
+
+Contention on ubuntu-latest is **+28.7%** against the K=3 mean — more than
+double the +12.3% the dev container showed — and it eats the whole gain: the
+wall comes out **2.4% WORSE** while burning ~1000 s more CPU. Four
+single-threaded pages plus the harness, `dev_server.py` and SwiftShader's
+software rasteriser do not fit on that runner's four vCPU the way they fit on a
+dev container's.
+
+**That is the cost column's lesson again, in a second currency.** The per-check
+RATIOS differ 1.14×–2.69× between these two machines; the CONTENTION
+COEFFICIENT differs by 2.3×. A local A/B can establish that a partition change
+is SOUND — the report is identical, nothing broke — but it cannot establish
+what the change is WORTH on the runner, and here it predicted the wrong sign.
+Both findings are kept in the source rather than silently corrected, because
+the next person tuning this will have exactly one machine in front of them.
+
+**K=5 was refused by arithmetic before CI ever ran, and would be regardless.**
+The largest single task (`clearances`, 552.6 s) sits just under an ideal 4-way
+split of 584.7 s, so another shard cannot go below the task it cannot
+subdivide. The way past K=3 is not more shards — it is slicing `clearances`,
+which is exactly the remainder in roadmap §127.
+
+The K=4 run also re-proved the invariant a third time: its report is identical
+to the K=3 run's except the same six `sweptOverlap` timing fields. The battery's
+payload is now known unchanged at one, two, three and four shards.
+
+Two CI runs at K=3 bracket the local numbers and agree with each other far more
+closely than this harness's documented 1.66x same-tree spread would predict —
+1474.8 s and 1483.7 s wall, 3627.9 s and 3695.6 s of check time. That is two
+points, not a tail, and the guards still wait for more.
