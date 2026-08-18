@@ -43,7 +43,13 @@ const W = 44;             // ALARM_WIND_W === ALARM_BARREL_TEETH, coaxial
 const TURNS = 1.75;       // ALARM_BARREL_TURNS
 const N = 8;              // ARREST_STATIONS
 const LEG = 11;           // ARREST_PINION_TEETH — kept, so the fold inherits the mesh
-const OUT_W = 22, OUT_P = 11;   // the carrier's output stage
+// The carrier's output stage. The RATIO is the line spec — 2, to turn the
+// spider's half back into the line's 4 — and the counts are the fold's to
+// choose within it. 16:8 rather than 22:11 because the fold has to put this
+// wheel somewhere: at 8.25 from the barrel axis every station on the mesh
+// circle sits 1.27 from the barrel's rim, and the smaller pair's centre
+// distance is 3.60 instead of 4.95.
+const OUT_W = 16, OUT_P = 8;
 
 const checks = [];
 const push = (name, ok, got, want) => checks.push({ name, ok, got, want });
@@ -104,8 +110,8 @@ push('the idler cancels out of the ratio', idlerDrift < 1e-12,
 const cd = (z1, z2) => (M * (z1 + z2)) / 2;
 push('both legs mesh at ONE centre distance', close(cd(W, LEG), cd(W, LEG)),
   cd(W, LEG), 'the mesh circle, 8.25');
-push('the output stage is an integer pair', Number.isInteger(OUT_W / OUT_P),
-  `${OUT_W}:${OUT_P}`, 'integer');
+push('the output stage doubles, which is the line spec', close(OUT_W / OUT_P, 2),
+  `${OUT_W}:${OUT_P} = ${OUT_W / OUT_P}`, '2 — the counts are the fold\'s, the ratio is not');
 
 // ---- the road not taken, priced ---------------------------------------------
 // Unequal legs into a compound-planet epicyclic: out = (R*in1 - in2)/(R - 1),
