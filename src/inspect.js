@@ -2064,6 +2064,7 @@ export const INTRA_UNIT_CONTACTS = [
   // out to the Geneva, and the pin in the cross's slot — which is the one the
   // whole mechanism exists to make.
   { unit: 'Alarm winding arrest', a: 'genevaFingerPin', b: 'alarmArrestCross', why: '§129: the Geneva pin in its slot — the working contact the stop-work IS, measured shut at the bank (pin⇄cross 0 at the ceiling) and clear of the metal everywhere else in the travel' },
+  { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestCross', why: '§129: the LOCKING half of the same mechanism — between indexings the finger\'s disc rides in the cross\'s hollow and holds it still, which is what stops a Geneva drifting off station. makeGenevaFinger cuts that disc TO the cross\'s swept envelope, so the pair touches at zero by construction: measured 0 containment and 0 depth both ways at alarmStrike f=0.75 (§121\'s kiss, a designed seat)' },
   { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderPlanet0', why: '§129: side A on a planet — the differential mesh; α = ½ is this contact and its mirror' },
   { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderPlanet1', why: '§129: side A on the second planet, same mesh at the other end of the cross' },
   { unit: 'Alarm winding arrest', a: 'spiderSideB', b: 'spiderPlanet0', why: '§129: side B on a planet — the other half of the subtraction' },
