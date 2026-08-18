@@ -187,6 +187,7 @@ export const MECH_GRAPH = {
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
     ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
+    ['Alarm winding arrest', 'plate'],  // §106: the pinion's arbor and the cross's stud are both plate-top columns, the idler-stud convention
     ['Winding arrest', 'Three-quarter plate'], // §47: the bracket hangs the whole group from the plate's UNDERSIDE, top face flush (§29's lug idiom inverted)
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
     ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
@@ -252,6 +253,7 @@ export const MECH_GRAPH = {
     ['Alarm crown', 'Alarm winding train'],  // §25 C: crown PUSHED IN (rest) — the bevel sits on the inner climb contrate
     ['Alarm winding train', 'Alarm barrel'], // §99: climb pinion → idlers → the ARBOR's winding wheel (12/44 — W takes the rim's count, so the ratio survived the re-route)
     ['Alarm barrel', 'Alarm click'],         // §99: the arbor ratchet's saw drives the click's rock (winding cams it out; the face holds the return — the maintaining detent's row, alarm-side)
+    ['Alarm barrel', 'Alarm winding arrest'],  // §106: the arbor's own 44 t wheel drives the arrest's 11 t pinion — a LEAF, the §104 precedent; the cross is turned by the finger's pin and nothing else
     ['Chain', 'Winding arrest'],             // §47: the arriving coil cams the finger's pad — a LEAF of the drive graph on purpose, the §104 precedent: an arrest consumes, it drives nothing downstream
     ['Alarm switch', 'Alarm lock'],          // §25 D: the column wheel blocks the lever's tail beak (column = OFF holds the brake)
     ['Alarm setting arbor', 'Alarm setting idler'], // §25 C stage 3: arbor pinion (10) → idler (31)
@@ -622,6 +624,8 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
   ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
   ['Alarm click', 'plate'],   // §99/§112: the click stud and spring post stand on the base plate
+  ['Alarm winding arrest', 'Alarm barrel'],  // §106: the arrest pinion in mesh with the arbor's winding wheel
+  ['Alarm winding arrest', 'plate'],         // §106: the arbor and the cross's stud stand on the base plate
   ['Winding arrest', 'Three-quarter plate'],  // §47: the bracket's top face flush on the plate's underside — the support joint
   ['Winding arrest', 'Chain'],                // §47: the arriving coil ON the pad near full wind — the throw itself
   ['Winding arrest', 'Fusee & great wheel'],  // §47: beak on stop lug at full wind — the arrest itself

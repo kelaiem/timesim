@@ -2058,6 +2058,65 @@
     </div>
   </details>
 
+  <!-- ===================== ALARM WINDING ARREST ===================== -->
+  <details class="mech" id="alarm-winding-arrest">
+    <summary>Alarm stop-work &mdash; a Maltese cross counts the turns<span class="where">alarm &middot; src/main.js &sect;106</span></summary>
+    <div class="mech-body">
+      <p>The alarm barrel is a plain barrel, not a fusee, and a plain multi-turn barrel is
+      the classical home of Maltese stop-work. The going side's arrest stops the hand when
+      the chain runs out of chain; this side has no chain to run out, so something has to
+      COUNT. A pinion on the arbor's own wheel carries a finger with one pin; the pin indexes
+      a crossed wheel one station per turn; and after seven of them the cross presents an arm
+      with no slot in it, the pin butts against that arm, and the whole winding path stops
+      together. Until this existed the cap was a number in the tick law, and the crown kept
+      turning against a frozen train.</p>
+      <p>Nothing about the count is chosen. Full wind is <code>ALARM_BARREL_TURNS</code>
+      turns of an arbor carrying <code>ALARM_WIND_W</code> teeth, and 1.75 &times; 44 = 77 =
+      7 &times; 11 &mdash; so an <code>ARREST_PINION_TEETH</code>-tooth pinion turns exactly
+      seven times over the wind. A single-pin Geneva travels N&minus;1 turns, which fixes
+      <code>ARREST_STATIONS</code> at eight: the textbook cross, one finger, one pin, seven
+      slots and the blank arm. The stop lands on <code>ARREST_CLICKS</code> clicks of the
+      arbor ratchet because the pinion is rigidly geared at 4:1 and adds no quantisation of
+      its own.</p>
+      <p><b>The relation that sizes it is easy to get backwards.</b> At entry the pin's
+      velocity is perpendicular to the crank and must lie along the slot, which is radial on
+      the cross &mdash; so the right angle is AT THE PIN, and the crank radius is the side
+      opposite the half-index. The driver's pin circle is the SMALL radius and the cross the
+      large one. Swapping them still satisfies a&sup2; + b&sup2; = d&sup2;, which is why an
+      inverted pair survives an eyeball check; what catches it is the ANGLE, and this build
+      asserts that the index measures 2&pi;/N rather than trusting it. Built inverted, the
+      index comes out 135&deg; &mdash; 2.667 stations, not an integer at all.</p>
+      <p>Three floors set the cross's size, and the obvious two are not the binding one.
+      The rim pitch must carry a slot and two walls; the web between the hub and the slot
+      bottoms must hold the arms on; and mid-engagement the cross's rim runs right past the
+      driver's centre, so the arbor the finger is keyed to has to fit through the gap. The
+      nearest metal there is not the slot's centreline &mdash; that is the gap the pin rides
+      in &mdash; but the HORN beside it, and what it must clear is the finger's bore lip, not
+      the bare arbor. That third floor is what governs, and <code>genevaSpec</code> solves
+      it by bisection because the horn's angle depends on the radius it is setting.</p>
+      <p><b>The station is solved, not placed.</b> The pinion's centre is not free &mdash; it
+      must sit on the mesh circle or it does not mesh &mdash; so the freedoms are its azimuth
+      on that circle, the finger and cross's plane, and the cross's azimuth about its arbor.
+      The build sweeps all three and scores the assembly as PIECES, each at its own radius:
+      the pinion, the finger's full pin sweep, the cross's rim, and the two COLUMNS that run
+      from the plate up to their part and so are judged over every band they cross. Four
+      things it learned the hard way are written into it &mdash; that a mesh partner is not
+      an obstacle to the wheel that meshes it, that the columns are pieces, that the low
+      corridor's swept footprint is declared rather than visible, and that a rotor's
+      footprint is its annulus and not its resting silhouette.</p>
+      <p><b>Open debt, stated rather than hidden.</b> The build-time solve scores the scene
+      at REST and only against the parts built before it, so it is the cheap gate and not the
+      acceptance &mdash; the swept confirmation belongs to the inspector, and three of its
+      four obstacle classes were added only after the battery found what the solve had
+      missed. The cross is indexed both ways by the same finger across a wind-and-run-down
+      cycle, but no pose axis reverses the wind, so the no-spring audit cannot judge it and
+      no restoring element is declared: the axis that would exercise it is owed. And the
+      demonstration half of this mechanism &mdash; a script verb that winds the alarm, and a
+      readout that can say &ldquo;arrested&rdquo; rather than a percentage &mdash; is filed,
+      not built.</p>
+    </div>
+  </details>
+
   <!-- ===================== ALARM GOVERNOR ===================== -->
   <details class="mech" id="alarm-governor">
     <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104 &sect;113</span></summary>
