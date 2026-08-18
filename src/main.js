@@ -14436,6 +14436,21 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     { g: alarmWindUnit.userData.i1, of: 'winding idler 1' },
     { g: alarmWindUnit.userData.i2, of: 'winding idler 2' },
     { g: alarmWindUnit.userData.climb, of: 'the climb arbor' },
+    // §129 — THE GOING SIDE'S ROTORS TOO. §106's list stopped at the alarm
+    // corner because that was as far as its arrest could reach; this one's
+    // tower stands on a wider mesh circle and its Geneva hangs off a third
+    // station, and the battery found the consequence exactly where the omission
+    // was: `Alarm winding arrest ⇄ Fusee & great wheel`, overlap 0.264, refined
+    // to touching. The solve had scored that wheel at its BUILD-TIME POSE —
+    // one frame of a movie — because an undeclared rotor is just a solid.
+    { g: barrelArbor, of: 'Fusee & great wheel' },
+    { g: drumGroup, of: 'Mainspring drum' },
+    { g: centerArbor, of: 'Center wheel' },
+    { g: thirdArbor, of: 'Third wheel' },
+    { g: fourthArbor, of: 'Fourth wheel' },
+    { g: escapeArbor, of: 'Escape wheel' },
+    { g: balanceGroup, of: 'Balance' },
+    { g: secondsCamArbor, of: 'Heart cam' },
   ].filter((r) => r.g);
   const rotorOf = (o) => {
     for (let n = o; n; n = n.parent)
