@@ -46,17 +46,22 @@ const NOISE = /WebGL|GroupMarker|Automatic fallback|GL Driver/;
 const rows = [];
 for (let deg = FROM; deg < TO; deg += STEP) {
   warns = [];
-  await page.goto(`http://127.0.0.1:${port}/index.html?alarmbarrelaz=${deg}`,
-    { waitUntil: 'load', timeout: 90000 });
   let sub = null;
+  // ONE BEARING MUST NOT TAKE THE RUN WITH IT. A rebuild per bearing is 36
+  // navigations, and a single slow one killed this probe twice — losing 35
+  // good rows to report a timeout. A bearing that will not load is a DATUM
+  // ("dead build"), which is exactly what this sweep is here to find, so it is
+  // caught and recorded rather than thrown.
   try {
-    await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+    await page.goto(`http://127.0.0.1:${port}/index.html?alarmbarrelaz=${deg}`,
+      { waitUntil: 'load', timeout: 120000 });
+    await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
     sub = await page.evaluate(() => {
       const S = window.__clock.arrestDebug.sub;
       return { slack: S.slack, boundBy: S.boundBy, az: S.stationAz * 180 / Math.PI,
         idlerTeeth: S.idlerTeeth, idlerSide: S.idlerSide, z: S.z };
     });
-  } catch (e) { /* no clock: recorded as a dead build below */ }
+  } catch (e) { warns.push(`did not load: ${String(e).slice(0, 60)}`); }
   const real = warns.filter((w) => !NOISE.test(w));
   const noStation = real.some((w) => /no station on the mesh circle/.test(w));
   const other = real.filter((w) => !/no station on the mesh circle|solved station clears by/.test(w));
