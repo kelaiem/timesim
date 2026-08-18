@@ -12917,3 +12917,37 @@ The conclusion is recorded in the column's own comment: the answer is not a
 CI-derived column, which would be equally wrong on the next runner, but MORE
 AND SMALLER TASKS, so that any single mis-estimate costs less. Which is another
 argument for the remainder in roadmap §127.
+
+### K=4, measured as a controlled A/B rather than argued
+
+The shard default landed at 3 on arithmetic and moved to 4 on measurement. The
+open question was contention — four single-threaded pages plus the harness and
+`dev_server.py` on four vCPU — and CI cannot answer it, because there runner
+speed and contention are confounded in one number. So it was run as an A/B on
+one container, K=3 then K=4, same tree:
+
+| | K=3 | K=4 | |
+|---|---|---|---|
+| wall | 846.9 s | **740.5 s** | −12.6% |
+| check time | 2083.1 s | 2338.6 s | **+12.3%** |
+
+**The fourth shard buys 106 s of wall by burning 255 s of extra CPU**, and that
+trade is taken on purpose: CI bills wall clock and the job cap is a wall-clock
+cap. The contention is real but not uniform — `equalisation` inflates 40%,
+`clearances` 16%, `inspection` 14%, `sweptOverlap` only 3% — which is the
+signature of oversubscription rather than one saturated resource.
+
+**K=5 is refused by arithmetic, not by caution.** The largest single task
+(`clearances`, 552.6 s) already exceeds an ideal 4-way split of 584.7 s only
+narrowly, so a fifth shard cannot go below the task it cannot subdivide and
+would add a boot and more contention for nothing. Going further means slicing
+`clearances`, which is exactly the remainder in roadmap §127.
+
+The K=4 run also re-proved the invariant a third time: its report is identical
+to the K=3 run's except the same six `sweptOverlap` timing fields. The battery's
+payload is now known unchanged at one, two, three and four shards.
+
+Two CI runs at K=3 bracket the local numbers and agree with each other far more
+closely than this harness's documented 1.66x same-tree spread would predict —
+1474.8 s and 1483.7 s wall, 3627.9 s and 3695.6 s of check time. That is two
+points, not a tail, and the guards still wait for more.
