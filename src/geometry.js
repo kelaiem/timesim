@@ -1942,52 +1942,93 @@ const CLEAR_MARGIN_G = 0.15;   // the ONE margin (rule 1); geometry.js's local c
 // thetaB)/2 about its own axis. `spinPlanets` is that law, exported with the
 // part so no caller has to restate it (rule 2 — the angle travels the gears).
 // ---------------------------------------------------------------------------
-export function spiderSpec({ module, sideTeeth, planetTeeth = sideTeeth,
-                            boreR, stockMin, margin = CLEAR_MARGIN_G }) {
-  // The pitch apex is the origin; at 45° the pitch circle of either gear sits
-  // one pitch radius out AND one pitch radius along its own axis, so R is the
-  // whole assembly's half-size in every direction at once.
-  const R = pitchRadius(module, sideTeeth);
-  const planetR = pitchRadius(module, planetTeeth);
-  // Face width is the §50 floor, not a taste: the cut section of a bevel is
-  // its face, and nothing in this movement is cut thinner than stockMin.
-  const faceWidth = Math.max(stockMin, module * 2);
-  // What the cage must clear inside its own rim: a planet reaches planetR out
-  // along the pin and the same again in z, and the pin's boss sits under it.
-  const inner = Math.hypot(planetR + faceWidth, planetR) + margin;
-  const teethOk = sideTeeth >= minGearTeeth(module, boreR)
-    && planetTeeth >= minGearTeeth(module, boreR * 0.6);
-  // The cage runs OUTBOARD of the side gears' own shafts, so its bore is their
-  // outside plus a running fit, and its hub carries the stub pins. The pin is
-  // sized from the §50 section floor rather than from a fraction of anything:
-  // a section is metal or it is not.
-  const cageBoreR = boreR + 0.05;
-  const pinR = stockMin / 2;
+export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
+                             tipBudget, preferTeeth = 10, fit = 0.05,
+                             thickness = 0 }) {
+  // EVERYTHING HERE IS FORCED FROM THE INSIDE OUT, and the order is the point.
+  //
+  // The cage runs on the arbor, so its bore is the arbor plus a running fit and
+  // its hub is that plus a §50 wall. The planets ride stubs in that hub, so
+  // their bore has to clear the hub by the margin. Their rim is stock again, so
+  // the PITCH RADIUS is settled before any tooth count is chosen — and the side
+  // gears share it, because equal side and planet counts are what put every
+  // cone at 45° and what makes the carrier the plain mean of its two inputs.
+  //
+  // Only then does the count get picked, from what is left over OUTSIDE: the
+  // tip must fit the budget the surrounding metal leaves, and tip = pitch +
+  // 0.85·module, so the budget buys the module and the module buys the count.
+  // Choosing the count first is what put the rim 0.003 under the floor the
+  // first time this was written.
+  const cageBoreR = arborR + fit;
   const hubR = cageBoreR + stockMin;
+  const planetBoreR = hubR + margin;
+  const R = planetBoreR + stockMin;
+  // THE BUDGET IS SPENT ON THE SWEPT RADIUS, NOT THE TIP. A 45° cone's rim is a
+  // circle standing one tip radius OFF the cage's axis as well as one tip
+  // radius out along its own, so a planet's farthest point from that axis is
+  // √2·tip — the same lesson as a rotor's footprint being its annulus rather
+  // than its resting silhouette, one dimension down. Sizing to the tip put the
+  // planets 1.63 into a corner that leaves 1.16 and told the siting solve 1.15.
+  const budgetR = tipBudget !== undefined ? tipBudget / Math.SQRT2 : undefined;
+  const moduleMax = budgetR !== undefined ? (budgetR - R) / 0.85 : Infinity;
+  // A TOOTH IS A SECTION TOO, so the §50 floor reaches it. A standard tooth is
+  // π·module/2 thick at the pitch line, and nothing in this movement is cut
+  // thinner than stockMin — which puts a hard floor under the module and
+  // therefore a ceiling on the count. Without it, a spec asked to fit a budget
+  // it cannot fit will happily shrink the module until it does: this returned a
+  // 114-tooth wheel at module 0.018 (0.007 mm teeth) and called it a solution.
+  const moduleMin = stockMin / (Math.PI / 2);
+  const teeth = Math.max(preferTeeth, Math.ceil((2 * R) / moduleMax));
+  const module = (2 * R) / teeth;
+  const faceWidth = Math.max(stockMin, module * 2);
+  // The side gears run OUTSIDE the cage's own wheel, not on the same shoulder:
+  // their cones start at |z| equal to their bore, so a bore inside the wheel's
+  // half-thickness puts the cone's inner edge inside the wheel's metal.
+  const sideBoreR = Math.max(cageBoreR, thickness / 2 + margin);
   return {
-    module, sideTeeth, planetTeeth, boreR, faceWidth, margin, stockMin,
-    cageBoreR, pinR, hubR,
-    R, planetR,
-    // half the axial extent: the far rim of a side gear plus its face, which
-    // is what the z-stack above and below has to be given
-    halfHeight: R + faceWidth * Math.SQRT1_2 + margin,
-    // the widest ring anything in the assembly cuts, for the fold's radius budget
+    module, sideTeeth: teeth, planetTeeth: teeth, faceWidth, margin, stockMin,
+    cageBoreR, hubR, planetBoreR, sideBoreR, arborR, fit,
+    R, planetR: R,
+    pinR: stockMin / 2,                 // the stub is a section, not a fraction
     tipR: R + module * 0.85,
-    inner,
-    teethOk,
+    // what the assembly actually SWEEPS about the cage's axis — the number the
+    // siting solve and the budget must both be given
+    sweptR: (R + module * 0.85) * Math.SQRT2,
+    // half the axial extent of the CONES — what the z-stack above and below has
+    // to be given. The sleeves start here, not at the apex: a side gear's hub
+    // extends AWAY from the planets in a real differential, and running it
+    // inward instead is what had the two sleeves meeting in the middle of the
+    // gear set with the planets driven straight through them.
+    halfHeight: R + module * 0.85 + faceWidth * Math.SQRT1_2 + margin,
+    teethOk: teeth >= minGearTeeth(module, planetBoreR),
+    moduleMin,
+    cuttable: module >= moduleMin - 1e-12,
+    fitsBudget: module >= moduleMin - 1e-12
+      && (tipBudget === undefined || (R + module * 0.85) * Math.SQRT2 <= tipBudget),
     // the differential relation itself, as a function rather than a comment
     carrierOf: (thetaA, thetaB) => (thetaA + thetaB) / 2,
-    planetOf: (thetaA, thetaB) => -(sideTeeth / planetTeeth) * (thetaA - thetaB) / 2,
+    planetOf: (thetaA, thetaB) => -(thetaA - thetaB) / 2,
   };
 }
 
-export function makeSpiderDifferential({ spec, planets = 2, material }) {
+// The cage IS the output wheel, and that is not a shortcut — it is the only
+// place the output can leave from. A tube up the axis cannot work: the leg
+// pinion above is concentric with it and must cross its radius, so the two
+// occupy the same metal at every height. A real differential takes its drive
+// off a rim at the gear set's own plane, carried on arms that pass BETWEEN the
+// planets, and that is what this builds — a two-spoke wheel whose crossings
+// are where the planets sit.
+export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
+                                         thickness, material }) {
   const mat = material || MATS.steel;
-  const { module, sideTeeth, planetTeeth, boreR, faceWidth } = spec;
+  const { module, sideTeeth, planetTeeth, faceWidth } = spec;
   if (!spec.teethOk)
-    console.warn(`spider differential: ${sideTeeth}/${planetTeeth} teeth at module `
-      + `${module} on a ${boreR} bore is under minGearTeeth `
-      + `${minGearTeeth(module, boreR)} — the wheel would have no rim`);
+    console.warn(`spider differential: ${sideTeeth} teeth at module ${module.toFixed(3)} on a `
+      + `${spec.planetBoreR.toFixed(3)} planet bore is under minGearTeeth `
+      + `${minGearTeeth(module, spec.planetBoreR)} — the wheel would have no rim`);
+  if (!spec.fitsBudget)
+    console.warn(`spider differential: the cones reach ${spec.tipR.toFixed(3)}, outside the `
+      + 'budget the surrounding metal leaves');
 
   const g = new THREE.Group();
   // One mount per gear: a group whose local +Z is that gear's own shaft
@@ -2004,62 +2045,46 @@ export function makeSpiderDifferential({ spec, planets = 2, material }) {
     return { m, spin, gear };
   };
 
-  // The two sides, on the carrier's axis, opening away from the shared apex.
-  const A = mount(new THREE.Vector3(0, 0, -1), sideTeeth, boreR, 0);
-  const B = mount(new THREE.Vector3(0, 0, 1), sideTeeth, boreR, 0);
+  // The cage: a two-spoke wheel at the gear set's plane. Its ARMS lie on ±X
+  // (makeGear puts them on the crossing boundaries) and its two crossings are
+  // the open ground on ±Y where the planets live.
+  const cage = new THREE.Group(); cage.name = 'spiderCageSpin';
+  const wheel = makeGear({
+    module: outModule, teeth: outTeeth, thickness,
+    boreR: spec.cageBoreR, spokes: 2, material: MATS.brass,
+  });
+  wheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'spiderCageWheel'; });
+  cage.add(wheel);
+
+  // The two sides, on the cage's own axis, opening away from the shared apex.
+  // They are INSIDE the cage group so the apex stays one point however the cage
+  // turns; each carries only its angle relative to the cage, and pose() adds
+  // the rest back.
+  const A = mount(new THREE.Vector3(0, 0, -1), sideTeeth, spec.sideBoreR, 0);
+  const B = mount(new THREE.Vector3(0, 0, 1), sideTeeth, spec.sideBoreR, 0);
   A.gear.children[0].name = 'spiderSideA';
   B.gear.children[0].name = 'spiderSideB';
-  // Each side turns as ONE body with its leg pinion, so the caller parents the
-  // pinion into the same spin group — one body, one rotation (§107).
   const sideA = A.spin, sideB = B.spin;
   sideA.name = 'spiderSideASpin'; sideB.name = 'spiderSideBSpin';
-
-  // THE CAGE, and the two things a first cut got wrong about it.
-  //
-  // It is a HUB, bored over whatever shaft the sides run on — not a bare
-  // group. Without the hub the cage's members had no body of their own and the
-  // check that reads a unit's movers against its fixtures found the sleeves
-  // and the pin standing inside the arbor.
-  //
-  // And the planets ride STUB pins, not one pin through the middle. A pin
-  // through the apex is where the arbor is, so the two cannot both exist; real
-  // differentials mount the planets on stubs in the cage for exactly that
-  // reason. The stub also has to be METAL — a pin sized as a fraction of the
-  // bore came out under the §50 section floor, so it is sized from the floor.
-  const cage = new THREE.Group(); cage.name = 'spiderCageSpin';
   cage.add(A.m, B.m);
-  const hubR = spec.hubR;
-  {
-    const ring = new THREE.Shape();
-    ring.absarc(0, 0, hubR, 0, Math.PI * 2, false);
-    const hole = new THREE.Path();
-    hole.absarc(0, 0, spec.cageBoreR, 0, Math.PI * 2, true);
-    ring.holes.push(hole);
-    const h = spec.pinR * 2 + spec.stockMin;
-    const hub = new THREE.Mesh(new THREE.ExtrudeGeometry(ring, {
-      depth: h, bevelEnabled: false, curveSegments: 24,
-    }), mat);
-    hub.name = 'spiderCageHub';
-    hub.geometry.translate(0, 0, -h / 2);
-    cage.add(hub);
-  }
-  const pinR = spec.pinR;
+
   const planetSpins = [];
   for (let i = 0; i < planets; i++) {
-    const a = (i / planets) * Math.PI * 2;
-    const stubLen = spec.planetR + faceWidth - hubR;
-    const stub = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, stubLen, 12), mat);
+    // …in the CROSSINGS, a quarter turn off the arms.
+    const a = Math.PI / 2 + (i / planets) * Math.PI * 2;
+    const dir = new THREE.Vector3(Math.cos(a), Math.sin(a), 0);
+    const stubLen = spec.planetBoreR + faceWidth - spec.hubR;
+    const stub = new THREE.Mesh(
+      new THREE.CylinderGeometry(spec.pinR, spec.pinR, stubLen, 12), mat);
     stub.name = `spiderStub${i}`;
-    stub.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0),
-      new THREE.Vector3(Math.cos(a), Math.sin(a), 0));
-    stub.position.set(Math.cos(a) * (hubR + stubLen / 2), Math.sin(a) * (hubR + stubLen / 2), 0);
+    stub.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    stub.position.copy(dir).multiplyScalar(spec.hubR + stubLen / 2);
     cage.add(stub);
-    const P = mount(new THREE.Vector3(Math.cos(a), Math.sin(a), 0),
-      planetTeeth, pinR + 0.05, Math.PI / planetTeeth);
+    const P = mount(dir, planetTeeth, spec.planetBoreR, Math.PI / planetTeeth);
     P.gear.children[0].name = `spiderPlanet${i}`;
     cage.add(P.m);
     // EVERY planet takes the SAME spin about its OWN outward axis, which is
-    // opposite senses in world for a pair on one pin. That is not a fudge: a
+    // opposite senses in world for a pair on one line. That is not a fudge: a
     // 180° rotation about the cage axis maps planet i to planet i+1 and leaves
     // both side gears alone, so it is a symmetry of the whole assembly, and
     // under it an angular velocity about +X maps to one about −X of the same
@@ -2071,17 +2096,13 @@ export function makeSpiderDifferential({ spec, planets = 2, material }) {
   g.userData.sideA = sideA;
   g.userData.sideB = sideB;
   g.userData.cage = cage;
+  g.userData.wheel = wheel;
   g.userData.spec = spec;
   // Rule 2, made impossible to get wrong at the call site: one function poses
   // every member of the differential from its two inputs.
   g.userData.pose = (thetaA, thetaB) => {
     const c = spec.carrierOf(thetaA, thetaB);
     cage.rotation.z = c;
-    // The sides hang INSIDE the cage (their mounts are cage children, which is
-    // what makes the apex one point however the cage turns), so each carries
-    // the RELATIVE angle and the cage supplies the rest — the same
-    // parent-frame arithmetic the motion works uses. Absolute side angle is
-    // still thetaA / thetaB, which is the contract the caller poses against.
     // Side A's mount lays local +Z onto world −Z (it opens downward from the
     // apex), so a rotation about its own axis reads NEGATED in world; side B's
     // mount is the identity and does not. Get this pair the wrong way round
@@ -2094,9 +2115,6 @@ export function makeSpiderDifferential({ spec, planets = 2, material }) {
   return g;
 }
 
-// STAR WHEEL — symmetric V-points (a detent star, not a saw ratchet:
-// the jumper must ride identically in both directions). Points at
-// u = 0 of each pitch, valleys at u = 0.5. Extruded 0-based.
 export function makeStarWheel({ radius, points, thickness, depth, boreR = 0.5 }) {
   const s = new THREE.Shape();
   const rootR = radius - depth;

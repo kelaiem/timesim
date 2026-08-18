@@ -12178,7 +12178,47 @@ const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
 // count: 22 t legs reach 3.44 and a 44 t cage wheel reaches 4.6, and the
 // finger's arbor could no longer find a lane between them. 12 gives 1.16 of
 // radius — 0.11 clear of what the spider needs — with legs reaching only 2.19.
-const SUB_LEG_TEETH = 12;
+// THE LEG COUNT IS DERIVED, and this is the only honest way to pick it: it was
+// hand-set three times (11, 22, 12) and each value was found wanting by a
+// different measurement, because the count is doing two opposed jobs at once.
+// It sets where the tower STANDS — the pinion meshes a 44 t wheel, so its
+// centre is at module·(44 + LEG)/2 from the barrel axis, and that distance less
+// the barrel's own reach is the radius budget everything on the tower lives
+// inside. And it sets how big the LEGS themselves are, which is what crowds the
+// stations around them. More teeth buys room beside the barrel and spends it on
+// crowding everywhere else.
+//
+// So take the smallest count whose budget admits the spider. The spider's size
+// is forced from its bore outward (spiderSpec's header has that order), and
+// what it needs is its SWEPT radius, not its tip — the number sizing it to the
+// tip missed by √2 and is what this loop exists to stop anyone missing again.
+const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
+  meshCD: ARREST_CD } = (() => {
+  // TWO wheels stand on the barrel's axis, not one, and the bound is the
+  // LARGER: its toothed wall and the arbor's own wind wheel. Both from
+  // gearOuterR rather than the nominal tip circle, because §115's relieved
+  // tooth stands proud of it.
+  const onAxis = Math.max(
+    G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_BARREL_TEETH, thickness: ALARM_BARREL_H }),
+    G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, thickness: ALARM_WIND_WHEEL_T }));
+  for (let leg = ARREST_PINION_TEETH; leg <= ALARM_WIND_W; leg++) {
+    const meshCD = (ALARM_TRAIN_MODULE * (ALARM_WIND_W + leg)) / 2;
+    const besideR = meshCD - onAxis - CLEAR_MARGIN;
+    const spec = G.spiderSpec({
+      arborR: PIVOT_MIN_U, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
+      thickness: ALARM_WIND_WHEEL_T, tipBudget: besideR,
+    });
+    if (spec.fitsBudget && spec.teethOk) return { legTeeth: leg, spec, besideR, meshCD };
+  }
+  console.warn('alarm arrest: no leg count between '
+    + `${ARREST_PINION_TEETH} and ${ALARM_WIND_W} leaves room beside the barrel for a `
+    + 'differential with cuttable teeth — a LAYOUT finding, not a number to widen');
+  const meshCD = (ALARM_TRAIN_MODULE * (ALARM_WIND_W + ARREST_PINION_TEETH)) / 2;
+  const besideR = meshCD - onAxis - CLEAR_MARGIN;
+  return { legTeeth: ARREST_PINION_TEETH, besideR, meshCD,
+    spec: G.spiderSpec({ arborR: PIVOT_MIN_U, stockMin: STOCK_MIN_U,
+      margin: CLEAR_MARGIN, thickness: ALARM_WIND_WHEEL_T }) };
+})();
 // THE OUTPUT STAGE IS DERIVED FROM THE LEGS, not chosen beside them. The gain
 // must come out 4, and gain = (W/LEG)·(OUT/FINGER)/2, so OUT/FINGER = 8·LEG/W
 // = 2·LEG/11 exactly. Fix the finger's pinion at 11 and the cage's wheel is
@@ -14204,10 +14244,6 @@ declareRestoring('Alarm click', 'spring',
 // relation and the three floors, one of which (the cross's horn against this
 // pinion's own arbor) is what sets the size.
 // ---------------------------------------------------------------------------
-// The mesh circle, which is a function of the LEG count and therefore of the
-// fold: module·(44 + LEG)/2. §106 had 11 t and stood at 8.25; §129 has 22 t and
-// stands at 9.90, which is what buys the tower room beside the barrel.
-const ARREST_CD = ALARM_TRAIN_MODULE * (ALARM_WIND_W + SUB_LEG_TEETH) / 2;
 const ARREST_SPEC = G.genevaSpec({
   N: ARREST_STATIONS, stockMin: STOCK_MIN_U, pivotMin: PIVOT_MIN_U,
   margin: CLEAR_MARGIN, studR: PIVOT_MIN_U + 0.01 + STOCK_MIN_U,
@@ -14232,16 +14268,6 @@ const ARREST_PIN_Z = ALARM_WIND_TIER_Z;  // leg A shares the arbor wheel's mesh 
 // is the radius anything on this arbor may reach while it shares the barrel's
 // band, with one exception: the leg pinion MESHES that wall and is supposed to
 // overlap its tip circle (the §106 mesh-partner rule, per piece).
-// TWO wheels stand on that axis, not one, and the bound is the LARGER: the
-// barrel's toothed wall and the arbor's own wind wheel. The first cut of this
-// took the barrel and the solve came back with no station at all, blocked by
-// the wind wheel it had not counted — which is the right failure to have, since
-// the search says which piece and by how much. Both radii are gearOuterR rather
-// than the nominal tip circle, because §115's relieved tooth stands proud of it.
-const SUB_BESIDE_R = ARREST_CD - Math.max(
-  G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_BARREL_TEETH, thickness: ALARM_BARREL_H }),
-  G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, thickness: ALARM_WIND_WHEEL_T }),
-) - CLEAR_MARGIN;
 // THE SIDE GEAR IS SQUEEZED FROM BOTH SIDES, so neither its module nor its
 // count is free and both are solved rather than picked.
 //
@@ -14257,37 +14283,32 @@ const SUB_BESIDE_R = ARREST_CD - Math.max(
 // other bevels) and the module from the tip alone left the rim 0.003 under
 // the floor: the two constraints have to be solved together or one of them
 // silently loses.
-const SUB_SIDE_BORE_R = PIVOT_MIN_U + 0.05 + STOCK_MIN_U;
-const SUB_SIDE_PITCH_R = SUB_SIDE_BORE_R + STOCK_MIN_U;
-// With the tower on the wider circle the outside constraint stops binding, so
-// the module comes from the movement's own bevel family and the count from the
-// rim floor — the inside constraint, which never stops binding. The tip is
-// asserted against the budget at boot rather than assumed.
-const SUB_BEVEL_MODULE = ALARM_GOV_MODULE;
-const SUB_BEVEL_TEETH = Math.max(
-  G.minGearTeeth(SUB_BEVEL_MODULE, SUB_SIDE_BORE_R),
-  Math.ceil((2 * SUB_SIDE_PITCH_R) / SUB_BEVEL_MODULE));
-const SUB_SPEC = G.spiderSpec({
-  module: SUB_BEVEL_MODULE, sideTeeth: SUB_BEVEL_TEETH,
-  boreR: SUB_SIDE_BORE_R, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
-});
+// (SUB_SPEC, SUB_BESIDE_R and ARREST_CD are solved together with the leg count
+// far above — the three are one derivation and cannot be written apart.)
+const SUB_BEVEL_TEETH = SUB_SPEC.sideTeeth;
+const SUB_BEVEL_MODULE = SUB_SPEC.module;
 // The apex sits as low as the WIND WHEEL allows, not as low as the leg pinion
 // does. Side A's cone hangs below the apex, and the obstacle down there is not
 // the pinion it is rigid with — it is that pinion's mesh partner, whose band is
 // taller than the pinion's own.
 const SUB_WIND_TOP = ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL;
-const SUB_CAGE_Z = SUB_WIND_TOP + CLEAR_MARGIN + SUB_SPEC.halfHeight;
+// …and it must ALSO clear the barrel's lid, because the cage's RIM is wide
+// where its cones are not: the cones fit beside the barrel inside
+// SUB_BESIDE_R, and the wheel they hang on does not. So the apex is whichever
+// of the two obstacles under it binds.
+const SUB_CAGE_Z = Math.max(
+  SUB_WIND_TOP + CLEAR_MARGIN + SUB_SPEC.halfHeight,
+  ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2);
 // Leg B's pinion is the same distance above the apex, by symmetry.
 const SUB_PIN_B_Z = SUB_CAGE_Z + SUB_SPEC.halfHeight + ALARM_WIND_WHEEL_T / 2;
-// THE CAGE'S OWN WHEEL CANNOT SHARE THE CAGE'S PLANE, which is the fold's one
-// real cost. Its tip is far outside SUB_BESIDE_R, so it has to clear
-// the barrel in z instead — and it has to clear leg B's pinion too, which is
-// higher still. It therefore rides a tube outboard of side B's shaft, above
-// the whole differential: three concentric bodies on one arbor, which is how a
-// differential is built anyway.
-const SUB_OUT_Z = Math.max(
-  ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2,
-  SUB_PIN_B_Z + ALARM_WIND_WHEEL_T + CLEAR_MARGIN);
+// THE CAGE'S WHEEL IS AT THE CAGE'S OWN PLANE, because that is the only place
+// it can be. A first cut ran it up a tube above the differential, and that
+// cannot work at all: leg B's pinion is concentric with such a tube and must
+// cross its radius, so the two are the same metal at every height — five of
+// the twelve intersections the intra-unit tier returned were that one mistake.
+// A real differential takes its drive off a rim at the gear set's own plane,
+// on arms passing BETWEEN the planets. So the cage IS the output wheel.
+const SUB_OUT_Z = SUB_CAGE_Z;
 const SUB_OUT_CD = SUB_OUT_MODULE * (SUB_OUT_TEETH + SUB_FINGER_TEETH) / 2;
 // THE IDLER'S STATION IS A FREEDOM AFTER ALL, and its currency is the idler's
 // own tooth count. The line spec proves that count cancels out of the ratio —
@@ -14373,14 +14394,13 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // each piece at its OWN radius; the consumer adds the margin, never the table
   const T = ALARM_WIND_WHEEL_T;
   const tip = (teeth) => G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth, thickness: T });
-  // makeBevelGear's own tip circle — the cone's widest ring, which is what
-  // stands beside the barrel
-  const SIDE_TIP = SUB_BEVEL_MODULE * (SUB_BEVEL_TEETH / 2 + 0.85);
+  // (the spider's reach is its SWEPT radius, off the spec — a cone's rim stands
+  // one tip radius off the cage's axis as well as one out along its own)
   // each piece at its OWN radius; the consumer adds the margin, never the table
   const NEED = {
     legA: tip(SUB_LEG_TEETH) + M,
     legB: tip(SUB_LEG_TEETH) + M,
-    spider: SIDE_TIP + M,
+    spider: SUB_SPEC.sweptR + M,
     out: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }) + M,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }) + M,
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR + M,   // the pin sweeps a FULL circle
@@ -14607,7 +14627,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // finger's pinion.
   const reach = {
     legA: tip(SUB_LEG_TEETH), legB: tip(SUB_LEG_TEETH), spider: SUB_SPEC.tipR,
-    cageTube: SUB_SPEC.hubR, col: ARREST_SPEC.arborR,
+    spiderSwept: SUB_SPEC.sweptR, col: ARREST_SPEC.arborR,
     outW: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }),
     idlerBody: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }),
@@ -14715,10 +14735,9 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       stage.tower++;
       const towerPieces = [
         { k: 'legA', lo: PIN_A[0], hi: PIN_A[1], r: reach.legA },
-        { k: 'spider', lo: SPIDER[0], hi: SPIDER[1], r: reach.spider },
+        { k: 'spider', lo: SPIDER[0], hi: SPIDER[1], r: reach.spiderSwept },
         { k: 'legB', lo: PIN_B[0], hi: PIN_B[1], r: reach.legB },
-        { k: 'cageTube', lo: SUB_CAGE_Z, hi: SUB_OUT_Z, r: reach.cageTube },
-        { k: 'outW', lo: OUT[0], hi: OUT[1], r: reach.outW },
+          { k: 'outW', lo: OUT[0], hi: OUT[1], r: reach.outW },
         { k: 'towerArbor', lo: PLATE_Z, hi: TOWER_TOP, r: reach.col },
       ];
 
@@ -14990,7 +15009,7 @@ movement.add(alarmArrestUnit);
 registerLabel('Alarm winding arrest', alarmArrestUnit);
 registerExplode(alarmArrestUnit, 0, 9); // rides with the back stack, like the winding train
 let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, arrestCrossMesh = null;
-let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
+let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
 {
   const PLATE_Z = ALARM_U_FLOOR - 0.5;
   const column = (x, y, r, top, name) => {
@@ -15029,9 +15048,14 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   // rim — so without this the two would move identically and be two bodies,
   // which is exactly the split §107's assembly check exists to catch. Its
   // outside IS the side gear's bore, and its wall is the §50 floor: that pair
-  // is where SUB_SIDE_BORE_R comes from.
+  // is where the spider's own bore stack starts.
+  // …and it runs from the side gear's OUTER face to the pinion, never inward.
+  // A side gear's hub extends AWAY from the planets in a real differential;
+  // running it toward them instead had the two sleeves meeting in the middle of
+  // the gear set with the planets driven straight through both — four more of
+  // the twelve rows the intra-unit tier returned.
   const sleeve = (spin, zFrom, zTo, name) =>
-    tube(spin, ARREST_SPEC.arborR + 0.05, SUB_SPEC.boreR, zFrom, zTo, name);
+    tube(spin, ARREST_SPEC.arborR + 0.05, SUB_SPEC.hubR, zFrom, zTo, name);
 
   // --- LEG A: the arbor's wind wheel, one mesh, on the lower side gear -------
   const spin = new THREE.Group();
@@ -15042,12 +15066,15 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   });
   pinA.traverse((o) => { if (o.isMesh) o.name = 'alarmArrestPinion'; });
   spin.add(pinA);
-  sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z, 'subSleeveA');
+  sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z - SUB_SPEC.halfHeight, 'subSleeveA');
   alarmArrestUnit.add(spin);
   arrestPinionSpin = spin;
 
   // --- THE SPIDER, on the same arbor, apex on top of leg A ------------------
-  subDiff = G.makeSpiderDifferential({ spec: SUB_SPEC, material: MATS.steel });
+  subDiff = G.makeSpiderDifferential({
+    spec: SUB_SPEC, material: MATS.steel,
+    outModule: SUB_OUT_MODULE, outTeeth: SUB_OUT_TEETH, thickness: ALARM_WIND_WHEEL_T,
+  });
   subDiff.position.set(arrestPos.x, arrestPos.y, SUB_CAGE_Z);
   alarmArrestUnit.add(subDiff);
 
@@ -15060,27 +15087,9 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   });
   pinB.traverse((o) => { if (o.isMesh) o.name = 'subLegBPinion'; });
   pinBSpin.add(pinB);
-  sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z, 'subSleeveB');
+  sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z + SUB_SPEC.halfHeight, 'subSleeveB');
   alarmArrestUnit.add(pinBSpin);
   subPinBSpin = pinBSpin;
-
-  // --- THE CAGE'S OWN WHEEL, on a tube outboard of side B's sleeve ----------
-  // It cannot sit at the cage's plane: its tip is far outside
-  // SUB_BESIDE_R, so it clears the barrel in z instead. That puts it
-  // above leg B as well, and the tube is what carries the cage's rotation up
-  // to it — three concentric bodies on one arbor, which is what a differential
-  // is.
-  const outSpin = new THREE.Group();
-  outSpin.position.set(arrestPos.x, arrestPos.y, SUB_OUT_Z);
-  const outW = G.makeGear({
-    module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: ALARM_WIND_WHEEL_T,
-    boreR: SUB_SPEC.hubR, spokes: 4, material: MATS.brass,
-  });
-  outW.traverse((o) => { if (o.isMesh && !o.name) o.name = 'subOutWheel'; });
-  outSpin.add(outW);
-  tube(outSpin, SUB_SPEC.cageBoreR, SUB_SPEC.hubR, SUB_CAGE_Z, SUB_OUT_Z, 'subCageTube');
-  alarmArrestUnit.add(outSpin);
-  subOutSpin = outSpin;
 
   // the arbor the whole tower runs on
   column(arrestPos.x, arrestPos.y, ARREST_SPEC.arborR,
@@ -15170,7 +15179,7 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
     { obj: idlerW, teeth: SUB_IDLER_SOLVED, name: 'idler wheel' },
   ], ALARM_TRAIN_MODULE);
   solveGearChain('alarm arrest output:', [
-    { obj: outW, teeth: SUB_OUT_TEETH, name: 'cage wheel' },
+    { obj: subDiff.userData.wheel, teeth: SUB_OUT_TEETH, name: 'cage wheel' },
     { obj: fPin, teeth: SUB_FINGER_TEETH, name: 'finger pinion' },
   ], SUB_OUT_MODULE);
 
@@ -15211,12 +15220,15 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
       console.warn(`alarm arrest: the spider's ${SUB_BEVEL_TEETH} teeth at module `
         + `${SUB_BEVEL_MODULE.toFixed(3)} do not clear its own bore`);
     // the radius budget the barrel sets, checked against what was actually cut
-    if (SUB_SPEC.tipR > SUB_BESIDE_R + 1e-9)
-      console.warn(`alarm arrest: the spider reaches ${SUB_SPEC.tipR.toFixed(3)} where the wheels `
+    if (SUB_SPEC.sweptR > SUB_BESIDE_R + 1e-9)
+      console.warn(`alarm arrest: the spider SWEEPS ${SUB_SPEC.sweptR.toFixed(3)} where the wheels `
         + `on the barrel's axis leave ${SUB_BESIDE_R.toFixed(3)}`);
-    if (SUB_SIDE_PITCH_R - SUB_SIDE_BORE_R < STOCK_MIN_U - 1e-9)
-      console.warn(`alarm arrest: the side gear's rim is `
-        + `${(SUB_SIDE_PITCH_R - SUB_SIDE_BORE_R).toFixed(4)}, under the §50 floor ${STOCK_MIN_U.toFixed(4)}`);
+    if (SUB_SPEC.R - SUB_SPEC.planetBoreR < STOCK_MIN_U - 1e-9)
+      console.warn(`alarm arrest: the spider's rim is `
+        + `${(SUB_SPEC.R - SUB_SPEC.planetBoreR).toFixed(4)}, under the §50 floor ${STOCK_MIN_U.toFixed(4)}`);
+    if (!SUB_SPEC.cuttable)
+      console.warn(`alarm arrest: the spider's module ${SUB_SPEC.module.toFixed(4)} cuts a tooth `
+        + `thinner than the §50 floor allows (needs ${SUB_SPEC.moduleMin.toFixed(4)})`);
     if (SUB_SPEC.hubR > SUB_BESIDE_R + 1e-9)
       console.warn(`alarm arrest: the cage's hub reaches ${SUB_SPEC.hubR.toFixed(3)} where the `
         + `barrel leaves ${SUB_BESIDE_R.toFixed(3)}`);
@@ -26628,8 +26640,9 @@ function tick(t) {
     arrestPinionSpin.rotation.z = A.legA;
     subIdlerSpin.rotation.z = A.idler;
     subPinBSpin.rotation.z = A.legB;
+    // pose() turns the cage, and the cage IS the output wheel — one body, one
+    // rotation, so there is nothing left to write here.
     subDiff.userData.pose(A.legA, A.legB);
-    subOutSpin.rotation.z = A.cage;
     arrestFingerSpin.rotation.z = A.finger;
     arrestCrossSpin.rotation.z = A.cross;
   }

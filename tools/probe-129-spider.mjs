@@ -32,10 +32,14 @@ const out = await page.evaluate(async () => {
   const G = await import('./src/geometry.js');
   const THREE = await import('./vendor/three.module.js');
   const UNIT_MM = 0.379, STOCK = 0.12 / UNIT_MM, PIVOT = 0.07 / UNIT_MM;
-  const spec = G.spiderSpec({
-    module: 0.18, sideTeeth: 10, boreR: PIVOT + 0.05, stockMin: STOCK,
+  // the budget the movement actually leaves beside the barrel at the solved leg
+  // count — see main.js's leg-count derivation
+  const BUDGET = 1.7613;
+  const spec = G.spiderSpec({ arborR: PIVOT, stockMin: STOCK, tipBudget: BUDGET,
+    thickness: 0.8 });
+  const diff = G.makeSpiderDifferential({
+    spec, outModule: 0.2, outTeeth: 24, thickness: 0.8,
   });
-  const diff = G.makeSpiderDifferential({ spec });
   const root = new THREE.Group();
   root.add(diff);
 
@@ -64,9 +68,13 @@ const out = await page.evaluate(async () => {
     const e2 = u.clone().cross(e1).normalize();
     return Math.atan2(p.dot(e2), p.dot(e1));
   };
+  // The planets sit in the cage wheel's CROSSINGS — a quarter turn off its arms
+  // — so their axes are ±Y, not ±X. Measuring them about the old axes read a
+  // constant pi and called a correct roll a failure: the frame a rotation is
+  // measured in is part of the measurement.
   const AX = {
     sideA: 'z', sideB: 'z', cage: 'z',
-    planet0: new THREE.Vector3(1, 0, 0), planet1: new THREE.Vector3(-1, 0, 0),
+    planet0: new THREE.Vector3(0, 1, 0), planet1: new THREE.Vector3(0, -1, 0),
   };
   const unwrap = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d <= -Math.PI) d += Math.PI * 2; return d; };
 
@@ -80,7 +88,7 @@ const out = await page.evaluate(async () => {
   };
 
   const r = { spec: {}, checks: [], rows: [] };
-  for (const k of ['module', 'sideTeeth', 'planetTeeth', 'R', 'planetR', 'faceWidth', 'halfHeight', 'teethOk'])
+  for (const k of ['module', 'sideTeeth', 'R', 'faceWidth', 'halfHeight', 'tipR', 'cageBoreR', 'hubR', 'planetBoreR', 'teethOk', 'fitsBudget'])
     r.spec[k] = typeof spec[k] === 'number' ? +spec[k].toFixed(4) : spec[k];
   const push = (n, ok, got, want) => r.checks.push({ n, ok, got, want });
   const near = (a, b, tol = 2e-3) => Math.abs(a - b) < tol;
@@ -120,7 +128,39 @@ const out = await page.evaluate(async () => {
   push('face width at or above the §50 floor', spec.faceWidth >= STOCK - 1e-9,
     +spec.faceWidth.toFixed(4), `≥ ${+STOCK.toFixed(4)}`);
   push('tooth counts clear minGearTeeth', spec.teethOk, `${spec.sideTeeth}/${spec.planetTeeth}`,
-    `≥ ${G.minGearTeeth(spec.module, spec.boreR)}`);
+    `≥ ${G.minGearTeeth(spec.module, spec.planetBoreR)}`);
+  push('the planets clear the cage hub', spec.planetBoreR >= spec.hubR + spec.margin - 1e-9,
+    +spec.planetBoreR.toFixed(4), `≥ hub ${+spec.hubR.toFixed(4)} + margin`);
+  push('the SWEPT radius fits the budget the metal leaves', spec.fitsBudget,
+    +spec.sweptR.toFixed(4), `≤ ${BUDGET}`);
+  // A cone's rim stands one tip radius OFF the cage's axis as well as one out
+  // along its own, so what it sweeps is √2·tip. Sizing to the tip is the same
+  // error as scoring a rotor by its resting silhouette, one dimension down.
+  push('the swept radius is √2 × the tip, not the tip',
+    Math.abs(spec.sweptR - spec.tipR * Math.SQRT2) < 1e-12,
+    `${+spec.tipR.toFixed(4)} → ${+spec.sweptR.toFixed(4)}`, '√2 ×');
+  // AND AN IMPOSSIBLE BUDGET MUST BE REFUSED, not met by shrinking the teeth
+  // until they fit. Asked for a budget nothing can satisfy, the spec used to
+  // return a 114-tooth wheel at module 0.018 — 0.007 mm teeth — and call it a
+  // solution. A tooth is a section, so the §50 floor reaches it.
+  // Two ways to be impossible, and both must be REFUSED rather than met.
+  // A budget under even the smallest wheel the bore stack allows: nothing to
+  // shrink, so it fails on the swept radius.
+  const tooSmall = G.spiderSpec({ arborR: PIVOT, stockMin: STOCK, tipBudget: 1.16,
+    thickness: 0.8 });
+  push('a budget under the bore stack is refused', !tooSmall.fitsBudget,
+    `swept ${+tooSmall.sweptR.toFixed(4)} vs budget 1.16`, 'refused');
+  // And the one the floor exists for: a budget just tight enough that the only
+  // way in is finer teeth. This returned a 64-tooth wheel at module 0.032 —
+  // 0.012 mm teeth — and called it a solution.
+  const squeezed = G.spiderSpec({ arborR: PIVOT, stockMin: STOCK, tipBudget: 1.48,
+    thickness: 0.8 });
+  push('a budget reachable only by finer teeth is refused too',
+    !squeezed.cuttable && !squeezed.fitsBudget,
+    `${squeezed.sideTeeth} t at module ${+squeezed.module.toFixed(4)} vs floor ${+squeezed.moduleMin.toFixed(4)}`,
+    'refused — a tooth is a section');
+  push('the rim is §50 stock', spec.R - spec.planetBoreR >= STOCK - 1e-9,
+    +(spec.R - spec.planetBoreR).toFixed(4), `≥ ${+STOCK.toFixed(4)}`);
   let meshes = 0, degenerate = 0;
   diff.traverse((m) => {
     if (!m.isMesh) return;
