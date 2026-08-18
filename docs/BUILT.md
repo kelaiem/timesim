@@ -10270,6 +10270,95 @@ this debt in three languages; the same landing rewrote the alarm
 ledger, both cross-references and the primer's governor prose in
 EN/DE/ZH (§95's precedent).
 
+## §106 — the alarm's stop-work: a Maltese cross counts the turns, and the station stops being a literal
+
+Roadmap §106, shipped in part. Winding the alarm past full is prevented by
+metal: an 11-tooth pinion on the arbor's own wheel carries a Geneva finger,
+its single pin indexes an eight-station cross one station per pinion turn,
+and after seven of them the cross presents its un-slotted arm and the pin
+banks on it. `setPose`'s `alarmBarrelWind` branch — the one path that could
+still pose a wind the metal forbids — is clamped to the same ceiling.
+
+**The count is an identity, not a choice.** Full wind is
+`ALARM_BARREL_TURNS` turns of a 44-tooth arbor wheel, and 1.75 × 44 = 77 =
+7 × 11, so an 11-tooth pinion turns exactly seven times. A single-pin Geneva
+travels N−1 turns, fixing N at eight. The stop lands on 56 clicks because
+the pinion is rigidly geared at 4:1 and adds no quantisation of its own.
+All three identities are boot-asserted.
+
+**The Geneva relation was inverted in the plan, and a²+b²=d² cannot see
+it.** The filing had `a = d·cos(π/N)` for the pin circle and
+`b = d·sin(π/N)` for the cross. Those satisfy the Pythagorean identity —
+which is why the pair survived review — but that is only the right-angle
+half of the condition. At entry the pin's velocity is perpendicular to the
+crank and must lie along the radial slot, so the right angle is AT THE PIN
+and the crank radius is the side opposite β = π/N: `a = d·sin β` is the
+SMALL radius. Built as filed the index measures 135°, i.e. 2.667 stations —
+not an integer, so the 56-click landing could not survive its own geometry.
+The build now asserts `2·asin(a/d) = 2π/N` rather than trusting it, and
+`tools/probe-106-geneva.mjs` carries the derivation with the textbook 4- and
+6-slot pairs as its controls.
+
+**Three floors size the cross and the obvious two do not bind.** The rim
+pitch must carry a slot and two walls; the web between hub and slot bottoms
+must hold the arms on (0.076 at the pitch floor, against a 0.317 section
+floor — arms severed at the root); and mid-engagement the cross's rim runs
+past the driver's centre, so what stands there must fit the gap. The
+nearest metal there is not the slot's centreline but the HORN beside it,
+and what it must clear is the finger's BORE LIP, not the bare arbor —
+the finger turns on that arbor and is bored a running fit larger than it.
+`genevaSpec` solves that floor by bisection, since the horn's angle depends
+on the radius it is setting.
+
+**The bank is registered bank-to-bank, and the blank arm is derived.**
+Travel is counted from the angle where the pin would CONTACT an un-slotted
+arm, not from mid-slot: registering mid-slot puts the stop 0.1875 of a
+pinion turn late, at 54.5 clicks, which no detent holds. And the bank angle
+is not the slot-entry angle — the pin enters a slot when its centre reaches
+`b`, but banks on its surface, so contact comes earlier. Which arm is blank
+is read off the shipped law as the pin's own position in the cross's frame,
+because the stations engage in DECREASING order and counting forward lands
+two stations off.
+
+**The station is solved, not placed — and that is the durable half.** It
+was placed once, from a free-disc map indexed by *(azimuth, centre
+distance)* whose headline number is the best over ALL distances; the
+azimuth was taken without the radius that gives it meaning, and the pinion
+landed 0.055 from the alarm striking wheel's axis. The build now sweeps the
+three freedoms P3 grants — station azimuth on the mesh circle, the
+finger/cross plane, the cross's azimuth about its arbor — scoring the
+assembly as PIECES at their own radii, and asserts the winner. Four
+obstacle classes are written into it, three of which the battery found
+first:
+
+- a MESH PARTNER is not an obstacle to the wheel that meshes it, and the
+  exemption is per piece — scored as one, every station on the mesh circle
+  caps at the distance to that wheel and the map reads "nowhere fits";
+- the two COLUMNS are pieces, judged over every band they cross, or the
+  sweep buys clearance with a 0.14 mm arbor standing 2.3 mm tall;
+- `LOW_LINKAGE_OBSTACLES` is the declared SWEPT footprint of the setting
+  linkage and cannot be seen by any scan of the built scene (standing rule
+  5), which a rest-pose traverse learned by putting the cross in the hack
+  rod's lane;
+- a ROTOR's footprint is its ANNULUS about its axis, not its resting
+  silhouette, and which groups rotate is read from the declared spin groups
+  rather than inferred — an earlier geometric guess swept the base plate
+  into a disc the size of the movement and reported that the corner has no
+  lane at all.
+
+**What is not shipped**, and stays filed: the demonstration half — a script
+verb that winds the alarm, and a readout that can say "arrested" rather
+than a percentage. And the cross is two-way driven across a wind-and-
+run-down cycle by the same finger, but no pose axis reverses the wind, so
+§48's audit cannot judge it and no restoring element is declared; the axis
+that would exercise it is owed.
+
+Instruments: `tools/probe-106-geneva.mjs` (the line spec),
+`probe-106-parts.mjs` (the two bodies and their engagement),
+`probe-106-bank.mjs` (the bank, driven past its own ceiling because both
+write paths clamp), `probe-106-resite.mjs` (the axis-swept siting sweep).
+Battery 21/21 local, fingerprint 2673107592.
+
 ## §107 — the anchor becomes one body, the tier learns its words, and the movement gets a check for parts held together by parentage
 
 Filed by the owner as three asks in one sentence — label the alarm
