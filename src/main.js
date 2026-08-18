@@ -14933,16 +14933,22 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
 // no per-member travel to declare it in. Filed rather than forced: declaring
 // the cross's arc against a unit containing a full revolve would put a number
 // the registry trusts next to a part that violates it.
-// §48/TODO 29 — NO declareRestoring here, and the audit is right to have
-// called the first one STALE. The declaration only means anything for a part
-// the §36 registry flags as RECIPROCATING, and this unit is not one: over
-// every shipped axis the wind is swept monotonically, so the cross indexes one
-// way and never reverses within a sweep. It is genuinely two-way driven across
-// a wind-and-run-down CYCLE — the same finger walks it back — but no axis
-// exercises that, and declaring a restoring element for a part the audit
-// cannot judge is exactly the stale row the gate exists to catch. Ship the
-// axis first, then the declaration: rule 4's own warning, taken rather than
-// argued with.
+// §48/TODO 29 — STILL NO declareRestoring here, and §129 changed the reason
+// from a hope to a fact. §106 claimed the cross was "two-way driven across a
+// wind-and-run-down cycle"; it was not, because the train read the arbor and
+// the arbor stands still through a run-down (TODO 55). It is now: the finger
+// is driven by arborA − bodyA, so a ring turns it backwards through exactly
+// the states a wind turned it forwards through — measured, run-right-down
+// returns the cross to its booted-empty pose to the digit.
+//
+// The declaration still does not belong here, for the unchanged reason: it
+// only means anything for a part the §36 registry flags as RECIPROCATING, and
+// no axis reverses the wind WITHIN a sweep — `alarmWind` runs it up,
+// `alarmStrike` runs it down, neither turns round. Declaring a restoring
+// element for a part the audit cannot judge is the stale row the gate exists
+// to catch. What is owed is the axis, and it is owed more sharply now that
+// there is a real reversal for it to sweep: rule 4's own warning, taken rather
+// than argued with.
 
 // THE INDEX LAW. Both angles travel the gears (rule 2): the pinion is turned by
 // the arbor's own wheel, and the cross is turned by nothing but the pin sitting
@@ -26717,6 +26723,20 @@ window.__clock = {
       clicks: ARREST_CLICKS,
       phaseRest: ALARM_PHASE_REST,
       strikesPerTurn: ALARM_STRIKES_PER_BARREL_TURN,
+      // §129 — the subtractor's own numbers, so a probe can ask what the chain
+      // does rather than restate it
+      sub: {
+        legTeeth: SUB_LEG_TEETH, idlerTeeth: SUB_IDLER_TEETH,
+        outTeeth: SUB_OUT_TEETH, fingerTeeth: SUB_FINGER_TEETH,
+        gain: SUB_GAIN, bevelTeeth: SUB_BEVEL_TEETH, bevelModule: SUB_BEVEL_MODULE,
+        besideR: SUB_BESIDE_R, cageZ: SUB_CAGE_Z, outZ: SUB_OUT_Z,
+        idlerDaz: SUB_IDLER_DAZ, idlerSide: SUB_IDLER_SIDE,
+        stationAz: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, crossAz: ARREST_CROSS_AZ,
+        z: ARREST_Z, slack: ARREST_SLACK, boundBy: ARREST_BOUND_BY,
+      },
+      // the chain end to end, for a probe that wants to check the LAW rather
+      // than the pose: what the finger does for a given (arbor, body) pair
+      anglesAt: (arborA, bodyA) => arrestAngles(arborA, bodyA),
       blankAt: ARREST_BLANK_AT,
       pinionTurnsPerWind: ALARM_WIND_W / ARREST_PINION_TEETH,
       crossOutline: arrestCrossMesh.userData.outline,
