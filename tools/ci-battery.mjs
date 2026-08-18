@@ -51,7 +51,7 @@
 //         and a Playwright Chromium (npx playwright install chromium).
 //         --shards N        run the battery across N browser contexts,
 //                           partitioned by the measured `cost` column
-//                           (default 4; 1 is the pre-§81 single-file run).
+//                           (default 3; 1 is the pre-§81 single-file run).
 //         --report FILE     write every check's FULL payload as JSON — the
 //                           "same rows, same numbers" instrument §80 and §81
 //                           are both accepted against.
@@ -379,34 +379,47 @@ const argOf = (flag) => {
   const i = argv.indexOf(flag);
   return i === -1 ? null : argv[i + 1];
 };
-// Default 4 since §127, and the two numbers that decide it were MEASURED as a
-// controlled A/B on one container rather than argued from core count: K=3 and
-// K=4 back to back, same tree, same machine.
+// Default 3 since §127 — and it was briefly 4, which is worth keeping because
+// the revert is the more useful measurement.
 //
-//   wall        846.9 s → 740.5 s   (−12.6%)
-//   check time 2083.1 s → 2338.6 s  (+12.3%)
+// The fourth shard was taken on a controlled A/B on one dev container, K=3 then
+// K=4, same tree: wall 846.9 s → 740.5 s (−12.6%) for check time 2083.1 s →
+// 2338.6 s (+12.3%). A real trade — buy wall with CPU — and CI bills wall.
 //
-// So the fourth shard buys 106 s of WALL by burning 255 s more CPU. That is a
-// real trade and it is taken deliberately: CI bills wall clock, and the job cap
-// this harness lives under is a wall-clock cap. The contention is not uniform —
-// `equalisation` inflates 40% and `sweptOverlap` only 3% — so it is oversubscription
-// of four single-threaded pages plus this harness and dev_server.py onto four
-// vCPU, not one saturated resource.
+// ON UBUNTU-LATEST THE SAME TRADE LOSES, MEASURED:
 //
-// K=5 is NOT taken and the reason is arithmetic rather than caution: the
-// largest single task (`clearances`) is 552.6 s against an ideal 4-way split of
-// 584.7 s, so a fifth shard cannot go below the task it cannot subdivide, and
-// it would add another boot and more contention for nothing. The way past that
-// is roadmap §127's remainder — slice `clearances` too.
+//   K=3, run 1   1474.8 s wall   3627.9 s checks
+//   K=3, run 2   1483.7 s wall   3695.6 s checks
+//   K=4          1515.2 s wall   4713.1 s checks
+//
+// Contention there is +28.7% against the K=3 mean, more than DOUBLE the
+// +12.3% the dev container showed, and it consumes the whole gain: the wall
+// comes out +2.4% WORSE while burning ~1000 s more CPU. Four single-threaded
+// pages plus this harness, dev_server.py and SwiftShader's software rasteriser
+// do not fit on that runner's four vCPU the way they fit on a dev container's.
+//
+// THE LESSON IS THE SAME ONE THE COST COLUMN LEARNED, and it is why both are
+// written down instead of quietly corrected: a coefficient measured on one
+// machine does not transfer to another. The column's per-check RATIOS spread
+// 1.14x–2.69x between these two machines; the contention coefficient differs
+// by 2.3x between them. A local A/B can say a partition change is SOUND. It
+// cannot say what it is WORTH on the runner, and this one predicted the wrong
+// sign.
+//
+// K=5 is refused by arithmetic and would be regardless: the largest single
+// task (`clearances`) is 552.6 s against an ideal 4-way split of 584.7 s, so
+// another shard cannot go below the task it cannot subdivide. The way past K=3
+// is not more shards — it is slicing `clearances`, which is roadmap §127's
+// remainder.
 //
 // A shard count is not a guard: like the cost column, a wrong one costs wall
-// clock and never a verdict, which is why a measured A/B is enough to move it
-// and is deliberately NOT enough to move CHECK_TIMEOUT_MS above.
+// clock and never a verdict, which is why measurement may move it freely and
+// is deliberately NOT enough to move CHECK_TIMEOUT_MS above.
 // `--shards 1` is the pre-§81 single-file run, kept because it is the
 // reference the sharded run has to agree with — and the report is now known
 // identical at 1, 2, 3 and 4.
 const SHARDS = (() => {
-  const raw = argOf('--shards') ?? process.env.BATTERY_SHARDS ?? '4';
+  const raw = argOf('--shards') ?? process.env.BATTERY_SHARDS ?? '3';
   const k = Number(raw);
   // Refuse a garbage count rather than silently falling back: `--shards tow`
   // quietly running 2 is how a run gets misreported as a sharded one.

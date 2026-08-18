@@ -12937,11 +12937,35 @@ cap. The contention is real but not uniform — `equalisation` inflates 40%,
 `clearances` 16%, `inspection` 14%, `sweptOverlap` only 3% — which is the
 signature of oversubscription rather than one saturated resource.
 
-**K=5 is refused by arithmetic, not by caution.** The largest single task
-(`clearances`, 552.6 s) already exceeds an ideal 4-way split of 584.7 s only
-narrowly, so a fifth shard cannot go below the task it cannot subdivide and
-would add a boot and more contention for nothing. Going further means slicing
-`clearances`, which is exactly the remainder in roadmap §127.
+**And then CI refused it.** The default went to 4 on that A/B and came back to
+3 on the runner's own measurement, which is the more useful of the two results:
+
+| | wall | check time |
+|---|---|---|
+| K=3, CI run 1 | 1474.8 s | 3627.9 s |
+| K=3, CI run 2 | 1483.7 s | 3695.6 s |
+| **K=4, CI** | **1515.2 s** | **4713.1 s** |
+
+Contention on ubuntu-latest is **+28.7%** against the K=3 mean — more than
+double the +12.3% the dev container showed — and it eats the whole gain: the
+wall comes out **2.4% WORSE** while burning ~1000 s more CPU. Four
+single-threaded pages plus the harness, `dev_server.py` and SwiftShader's
+software rasteriser do not fit on that runner's four vCPU the way they fit on a
+dev container's.
+
+**That is the cost column's lesson again, in a second currency.** The per-check
+RATIOS differ 1.14×–2.69× between these two machines; the CONTENTION
+COEFFICIENT differs by 2.3×. A local A/B can establish that a partition change
+is SOUND — the report is identical, nothing broke — but it cannot establish
+what the change is WORTH on the runner, and here it predicted the wrong sign.
+Both findings are kept in the source rather than silently corrected, because
+the next person tuning this will have exactly one machine in front of them.
+
+**K=5 was refused by arithmetic before CI ever ran, and would be regardless.**
+The largest single task (`clearances`, 552.6 s) sits just under an ideal 4-way
+split of 584.7 s, so another shard cannot go below the task it cannot
+subdivide. The way past K=3 is not more shards — it is slicing `clearances`,
+which is exactly the remainder in roadmap §127.
 
 The K=4 run also re-proved the invariant a third time: its report is identical
 to the K=3 run's except the same six `sweptOverlap` timing fields. The battery's
