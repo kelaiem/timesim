@@ -1594,7 +1594,8 @@ const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_P
 // centre wheel and the rim, and probe-alarm-tier-split solved the triple
 // (θ_b 202°, θ_g 92°, θ_a 148°, world at identity) with 0.90 beyond every
 // margin — the argmax over the whole rotation × bearing space, drum home.
-const ALARM_BARREL_BEARING = 202 * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
+const ALARM_BARREL_BEARING_DEG = SPEC.alarmBarrelAzDeg !== null ? SPEC.alarmBarrelAzDeg : 202;
+const ALARM_BARREL_BEARING = ALARM_BARREL_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
 const alarmBarrelPos = {
   x: alarmSwPos.x + Math.cos(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
   y: alarmSwPos.y + Math.sin(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
@@ -12186,6 +12187,10 @@ const SUB_OUT_MODULE = 0.2;
 // two counts are equal, which is what makes it cancel out of the ratio — a
 // compound idler whose wheel rides the barrel's band and whose pinion rides
 // leg B's, so the tower's z is not hostage to the barrel's.
+// A SEED, not the built count. §129's solve chooses this — the line spec proves
+// the idler carries no ratio, so its count is position-space and the fold
+// spends it. This value is only what the fallback reports when no station
+// exists at all.
 const SUB_IDLER_TEETH = SUB_LEG_TEETH;
 // THE GAIN, derived along the chain rather than stated: leg A gives −W/LEG,
 // leg B gives +W/LEG, the spider halves their sum, and the output stage
@@ -14370,8 +14375,6 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     legB: tip(SUB_LEG_TEETH) + M,
     spider: SIDE_TIP + M,
     out: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }) + M,
-    idlerW: tip(SUB_IDLER_TEETH) + M,
-    idlerP: tip(SUB_IDLER_TEETH) + M,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }) + M,
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR + M,   // the pin sweeps a FULL circle
     cross: ARREST_SPEC.b + M,
@@ -14599,7 +14602,6 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     legA: tip(SUB_LEG_TEETH), legB: tip(SUB_LEG_TEETH), spider: SUB_SPEC.tipR,
     cageTube: SUB_SPEC.hubR, col: ARREST_SPEC.arborR,
     outW: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }),
-    idlerW: tip(SUB_IDLER_TEETH), idlerP: tip(SUB_IDLER_TEETH),
     idlerBody: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }),
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR,
@@ -14612,7 +14614,13 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     let worst = Infinity, who = null;
     for (const a of A) for (const b of B) {
       if (MESH_PAIRS.has(`${a.k}|${b.k}`)) continue;
-      if (a.hi + M < b.lo || b.hi + M < a.lo) continue;      // bands miss in z
+      // Bands that clear by EXACTLY the margin are clear. A strict < here made
+      // the tower's output wheel foul the idler's pinion at every station and
+      // every idler count, because SUB_OUT_Z is derived as leg B's band plus
+      // the margin — so the two are separated by precisely M and the test
+      // called them overlapping. It read as a saturated corner and it was an
+      // epsilon.
+      if (a.hi + M <= b.lo + 1e-9 || b.hi + M <= a.lo + 1e-9) continue;
       const g = dist - a.r - b.r - M;
       if (g < worst) { worst = g; who = `${a.k} vs ${b.k}`; }
     }
@@ -14628,6 +14636,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     z <= ALARM_BARREL_TEETH; z++) IDLER_COUNTS.push(z);
 
   let best = null;
+  const stage = { az: 0, tower: 0, idler: 0, fAz: 0, plane: 0, cross: 0, hit: 0 };
   // WHEN A SOLVE FAILS IT MUST SAY WHY. §106's fell back on a fixed triple and
   // reported only that it had; the useful thing is WHICH piece was nearest to
   // fitting and by how much, since that names the layout move to make. Every
@@ -14638,7 +14647,19 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // often a candidate that had passed there and died later — a number with the
   // wrong name on it, which is worse than no number.
   let nearMiss = null;
-  const note = (r) => { if (r.c < 0 && (!nearMiss || r.c > nearMiss.c)) nearMiss = r; };
+  // and a HISTOGRAM beside it, because "the nearest miss was X" does not say
+  // whether X is the wall or merely the last thing tried. A search that
+  // rejects a million candidates has a shape, and the shape is what says
+  // whether the region is saturated or one obstacle is in the way.
+  const rejects = new Map();
+  const note = (r) => {
+    if (r.c >= 0) return;
+    if (!nearMiss || r.c > nearMiss.c) nearMiss = r;
+    const k = r.who.replace(/ vs .*/, ' vs …').replace(/^the group's own /, 'self: ');
+    const e = rejects.get(k) || { n: 0, best: -Infinity };
+    e.n++; if (r.c > e.best) e.best = r.c;
+    rejects.set(k, e);
+  };
   // FOUR freedoms now, and they nest by what they can move. The tower's own
   // pieces depend on the station azimuth alone, the idler's on that plus which
   // side it falls, the finger arbor's on those plus its azimuth about the
@@ -14660,8 +14681,10 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       clear("the cage's wheel", OUT[0], OUT[1], px, py, NEED.out, null),
       clear('the tower arbor', PLATE_Z, TOWER_TOP, px, py, NEED.arbor, null),
     ];
+    stage.az++;
     const towerWorst = tower.reduce((w, r) => (r.c < w.c ? r : w));
     if (towerWorst.c < 0) { note(towerWorst); continue; }
+    stage.tower++;
     const towerPieces = [
       { k: 'legA', lo: PIN_A[0], hi: PIN_A[1], r: reach.legA },
       { k: 'spider', lo: SPIDER[0], hi: SPIDER[1], r: reach.spider },
@@ -14691,6 +14714,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         { k: 'idlerP', lo: IDL_P[0], hi: IDL_P[1], r: idlerReach },
         { k: 'idlerArbor', lo: PLATE_Z, hi: IDL_TOP, r: reach.col },
       ];
+      stage.idler++;
       const towerVsIdler = selfClear(towerPieces, idlerPieces, geo.legCD);
       if (towerVsIdler.c < 0) { note(towerVsIdler); continue; }
 
@@ -14699,6 +14723,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         const fx = px + Math.cos(fa) * SUB_OUT_CD, fy = py + Math.sin(fa) * SUB_OUT_CD;
         const fPin = clear("the finger's pinion", OUT[0], OUT[1], fx, fy, NEED.fPin, null);
         if (fPin.c < 0) { note(fPin); continue; }
+        stage.fAz++;
         const dIdlerFinger = Math.hypot(fx - ix, fy - iy);
 
         for (const z of planes) {
@@ -14706,6 +14731,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
           if (fCol.c < 0) { note(fCol); continue; }
           const fin = clear('the finger', z, z + ARREST_PLATE_T, fx, fy, NEED.finger, null);
           if (fin.c < 0) { note(fin); continue; }
+          stage.plane++;
           const fingerPieces = [
             { k: 'fPin', lo: OUT[0], hi: OUT[1], r: reach.fPin },
             { k: 'finger', lo: z, hi: z + ARREST_PLATE_T, r: reach.finger },
@@ -14726,6 +14752,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
             // the cross against the rest of its own group. Its finger is the one
             // thing it is MEANT to touch, so that pair is exempt by omission —
             // the cross is checked against the tower and the idler only.
+            stage.cross++;
             const crossPieces = [
               { k: 'cross', lo: z, hi: z + ARREST_PLATE_T, r: reach.cross },
               { k: 'crossStud', lo: PLATE_Z, hi: z + ARREST_PLATE_T * 2, r: reach.stud },
@@ -14743,6 +14770,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
             // LOWEST plane first, then maximin — the same pick §106 made, so a
             // re-gearing does not quietly become a re-strataing as well
             if (!best || z < best.z - 1e-9 || (Math.abs(z - best.z) < 1e-9 && slack > best.slack))
+              stage.hit++;
               best = { az: a, fingerAz: fa, z, crossAz: ca, idlerSide: side,
                 idlerTeeth, slack, boundBy: parts[0].who };
           }
@@ -14751,9 +14779,12 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     }
   }
   if (!best) {
+    const shape = [...rejects.entries()].sort((a, b) => b[1].best - a[1].best).slice(0, 6)
+      .map(([k, e]) => `${k} ×${e.n} best ${e.best.toFixed(3)}`).join('; ');
     console.warn('alarm arrest: no station on the mesh circle holds the subtractor and its '
-      + `stop-work. The nearest miss was ${nearMiss ? nearMiss.who : 'nothing evaluated'}, short by `
-      + `${nearMiss ? (-nearMiss.c).toFixed(3) : '?'} — a LAYOUT finding, not a number to widen`);
+      + `stop-work. Nearest miss ${nearMiss ? nearMiss.who : 'nothing evaluated'} short by `
+      + `${nearMiss ? (-nearMiss.c).toFixed(3) : '?'}. Reached: ${JSON.stringify(stage)}. Rejections: ${shape} — a LAYOUT finding, `
+      + 'not a number to widen');
     return { az: 180 * DEG2RAD, fingerAz: 0, z: SUB_OUT_Z + 1.1, crossAz: 0,
       idlerSide: 1, idlerTeeth: SUB_IDLER_TEETH, slack: -1, boundBy: 'no solve' };
   }
@@ -14968,8 +14999,8 @@ let subIdlerSpin = null, subPinBSpin = null, subOutSpin = null, subDiff = null;
   const idlerSpin = new THREE.Group();
   idlerSpin.position.set(subIdlerPos.x, subIdlerPos.y, 0);
   const idlerW = G.makeGear({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_TEETH, thickness: ALARM_WIND_WHEEL_T,
-    boreR: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U, spokes: 0, hub: false, material: MATS.brass,
+    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED, thickness: ALARM_WIND_WHEEL_T,
+    boreR: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U, spokes: 4, material: MATS.brass,
   });
   idlerW.traverse((o) => { if (o.isMesh && !o.name) o.name = 'subIdlerWheel'; });
   idlerW.position.z = SUB_IDLER_W_Z;
@@ -15147,8 +15178,8 @@ function arrestAngles(arborA, bodyA) {
   // exists. Its two counts are equal, so they cancel and the ratio is the same
   // W/LEG: written as the two meshes rather than as the product, because the
   // cancellation is the claim.
-  const idler = -bodyA * (ALARM_BARREL_TEETH / SUB_IDLER_TEETH);
-  const legB = -idler * (SUB_IDLER_TEETH / SUB_LEG_TEETH);
+  const idler = -bodyA * (ALARM_BARREL_TEETH / SUB_IDLER_SOLVED);
+  const legB = -idler * (SUB_IDLER_SOLVED / SUB_LEG_TEETH);
   // The spider takes their mean — the differential relation, from the part's
   // own spec so the law and the metal cannot drift apart — and the output stage
   // doubles it back. What comes out is a function of arborA − bodyA and of
@@ -26899,11 +26930,14 @@ window.__clock = {
       // §129 — the subtractor's own numbers, so a probe can ask what the chain
       // does rather than restate it
       sub: {
-        legTeeth: SUB_LEG_TEETH, idlerTeeth: SUB_IDLER_TEETH,
+        legTeeth: SUB_LEG_TEETH,
         outTeeth: SUB_OUT_TEETH, fingerTeeth: SUB_FINGER_TEETH,
         gain: SUB_GAIN, bevelTeeth: SUB_BEVEL_TEETH, bevelModule: SUB_BEVEL_MODULE,
+        outModule: SUB_OUT_MODULE, outCD: SUB_OUT_CD,
         besideR: SUB_BESIDE_R, cageZ: SUB_CAGE_Z, outZ: SUB_OUT_Z,
-        idlerDaz: SUB_IDLER_DAZ, idlerSide: SUB_IDLER_SIDE,
+        idlerTeeth: SUB_IDLER_SOLVED, idlerDaz: SUB_IDLER_GEOM.daz,
+        idlerSide: SUB_IDLER_SIDE, meshCD: ARREST_CD, legTeeth: SUB_LEG_TEETH,
+        barrelBearingDeg: ALARM_BARREL_BEARING_DEG,
         stationAz: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, crossAz: ARREST_CROSS_AZ,
         z: ARREST_Z, slack: ARREST_SLACK, boundBy: ARREST_BOUND_BY,
       },

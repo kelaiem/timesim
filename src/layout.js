@@ -102,6 +102,16 @@ export const SPEC = (() => {
   // own part, so the handle moves the module.
   const alarmModAzDeg = Number.isFinite(Number(raw.alarmModAzDeg))
     ? ((Number(raw.alarmModAzDeg) % 360) + 360) % 360 : null;
+  // §129 — THE ALARM BARREL'S OWN BEARING off the striking wheel, which
+  // ?alarmmod= cannot reach: that key turns the whole module, so the barrel
+  // keeps its bearing and the arrangement is unchanged. This one moves the
+  // barrel AROUND the striking wheel at the mesh's fixed centre distance,
+  // which is the freedom §112 solved to 202° and the only one that can open
+  // room for a consumer of the barrel that did not exist then. Module-relative
+  // like the literal it overrides, so it composes with ?alarmmod= rather than
+  // fighting it. null = as designed: the solved literal stands, bit-exact.
+  const alarmBarrelAzDeg = Number.isFinite(Number(raw.alarmBarrelAzDeg))
+    ? ((Number(raw.alarmBarrelAzDeg) % 360) + 360) % 360 : null;
   // §94 tier A — THE SMALL-SECONDS STATION. d4 is the centre→fourth
   // distance, already solveLayout's own argument (D4 below): the two-bar
   // solves the third wheel's wedge so the fourth lands exactly d4 below the
@@ -152,7 +162,7 @@ export const SPEC = (() => {
   // degeneracy TODO 33 closed. null = as designed: the solve runs on the
   // ceiling, which is today's value exactly.
   const subdialr = Number.isFinite(Number(raw.subdialr)) ? Number(raw.subdialr) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
