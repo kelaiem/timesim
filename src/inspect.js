@@ -2058,6 +2058,20 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm barrel', a: 'ExtrudeGeometry#1', b: 'mainspringRibbon', why: '§121: the wound coil bearing on the drum wall — where a mainspring\'s outer coil rests by design; the ribbon is a MORPH, always its own frame, which is exactly how this pair reached the MM tier' },
   { unit: 'Alarm barrel', a: 'mainspringHook', b: 'mainspringRibbon', why: '§121: the hook formed on the ribbon\'s outer end — the drum\'s mirror row (mainspringHook ⇄ ExtrudeGeometry#0 above) made the same argument' },
   // Alarm winding train — TODO 15's solved chain:
+  // §129 — the subtractor's own working contacts. Each is a mesh or a bearing
+  // this unit is BUILT around, so each is a declared joint rather than a foul:
+  // the two legs into the spider, the spider's planets on both sides, the cage
+  // out to the Geneva, and the pin in the cross's slot — which is the one the
+  // whole mechanism exists to make.
+  { unit: 'Alarm winding arrest', a: 'genevaFingerPin', b: 'alarmArrestCross', why: '§129: the Geneva pin in its slot — the working contact the stop-work IS, measured shut at the bank (pin⇄cross 0 at the ceiling) and clear of the metal everywhere else in the travel' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderPlanet0', why: '§129: side A on a planet — the differential mesh; α = ½ is this contact and its mirror' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderPlanet1', why: '§129: side A on the second planet, same mesh at the other end of the cross' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideB', b: 'spiderPlanet0', why: '§129: side B on a planet — the other half of the subtraction' },
+  { unit: 'Alarm winding arrest', a: 'spiderSideB', b: 'spiderPlanet1', why: '§129: side B on the second planet' },
+  { unit: 'Alarm winding arrest', a: 'spiderPlanet0', b: 'spiderStub0', why: '§129: a planet running on its stub pin in the cage — a bearing, not a foul' },
+  { unit: 'Alarm winding arrest', a: 'spiderPlanet1', b: 'spiderStub1', why: '§129: the second planet on its stub' },
+  { unit: 'Alarm winding arrest', a: 'subOutWheel', b: 'subFingerPinion', why: '§129: the cage\'s wheel driving the Geneva\'s pinion — the ×2 output stage, TODO 15\'s phase solve owns it' },
+  { unit: 'Alarm winding arrest', a: 'subIdlerPinion', b: 'subLegBPinion', why: '§129: the compound idler driving leg B — the mesh that carries the reversed sign into the spider' },
   { unit: 'Alarm winding train', a: 'alarmClimbPinion', b: 'alarmWindIdler', why: '§121: the climb pinion\'s working mesh into i1 — TODO 15\'s phase solve owns it (gap against tooth, measured)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'alarmWindIdler', why: '§121: the i1⇄i2 working mesh, same solve — both idlers carry §99\'s one name, so the row names it twice' },
   // Alarm release feeler — §29's tail run:
@@ -2101,6 +2115,12 @@ export const INTRA_TIER_SCOPE = [
   'Alarm switch', 'Alarm selector', 'Alarm disc',
   'Alarm release lifter', 'Alarm release feeler', 'Alarm silence rocker',
   'Alarm setting arbor', 'Alarm setting idler',
+  // §129 — the subtractor put four rotating bodies on one arbor and three
+  // stations in one unit, which is exactly the population this tier exists for
+  // and exactly what the pair sweep cannot see. TODO 55 named adding it as
+  // owed; it goes in WITH the re-gearing rather than before it, because the
+  // tier goes red on the shipped fault the moment it is in scope.
+  'Alarm winding arrest',
 ];
 // The rigid-frame signature, shared by checkIntraUnit's MM tier and
 // checkAssembly (hoisted from the latter, §121 — one predicate, two
