@@ -19,7 +19,9 @@ lever escapement. Everything is procedural — there are no model assets.
 inspector.
 
 `explain.html` is the mechanism explainer (§65, plates for every
-mechanism as of §67) — linked from the HUD, styled as the HUD. When a
+mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
+front door, so the explainer is one click further — from the primer's
+header, not from the panel. When a
 significant mechanism ships or changes, add or refresh its entry there
 in the same landing; plate numbers quote the real source constants, and
 entries state their mechanism's open TODO debt rather than hiding it.

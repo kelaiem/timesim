@@ -45,6 +45,8 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
 | 57 | OPEN | `README.md:305` claims screwed gold chatons over the upper pivot jewels and `:314` asserts the whole list is still true; `makeChaton` is called by NOTHING and every jewel is a plain stone. The upper pivots got flush rubbed-in rubies deliberately (`main.js:6319–6326`) — the README names the bearing the movement refused. Two fixes, both to be filed: correct the prose, and roadmap §132 to make the claim true |
 | 58 | OPEN | Two defects stacked. Outer: `explain.html:1196`, `main.js:8440` and `BUILT.md:23` say "jumping minute" while `BUILT.md:29` already qualifies it "setting-time jumping only". Inner: the snap is `Math.round(… / MIN_PITCH)` plus an ease (`main.js:25623–25626`) — the star and jumper are POSED alongside a rounded display value, so it is modelled, not simulated. Fix costs five explain-page translations by design and ten `src/i18n.js` rows for two tour captions |
+| 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
+| 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -6942,3 +6944,89 @@ population from 18 to 23 — a new axis changes what the registry samples, so
 any sweep row whose finding lived on a pose no axis previously visited can
 change with it. Diff the `--report` and derive each moved row rather than
 re-basing it.
+
+## 65. CLOSED — the schematic tier and the focused unit are saved now, not just emitted
+
+`captureState()` emitted both (`src/main.js:23687–23688`). `saveState()` writes
+`sanitize(state)`, and `sanitize()` (`src/state.js`) is an **allow-list** that
+named neither — nor did `defaultState`. So `savedState.schematic` was always
+`undefined`, `main.js:17199`'s `?? true` always yielded `true`, and §69's own
+comment beside it — *"only an explicit saved false turns it off"* — described
+something that could not happen through the UI. `restoredFocus`
+(`main.js:17200`, applied `:25086`) was dead for the same reason.
+
+The neighbouring field carries the warning that was missed, and it is why the
+fix is a two-line one rather than an investigation: `state.js`'s `soundOn` reads
+`// sound toggle — captureState() emits it, so it must round-trip`. **Emitting
+without allow-listing is silent by construction** — no error, no warning, just a
+setting that never comes back. Worth a glance at any future `captureState`
+addition: the two lists are the contract, and only one of them is enforced by
+anything.
+
+Fixed by adding both keys to `defaultState` and to `sanitize()`, with the
+reason written at each. The read path in `main.js` was already correct and is
+untouched.
+
+**What this deliberately does NOT do.** It does not change the boot default.
+Schematic-on remains §69's decision, and the request that surfaced this bug —
+"default to realistic, fall back on performance" — is a separate question that
+now at least has a working preference to honour. The §93 subtlety in
+`captureState` (`main.js:23683–23687`) is preserved untouched: while reconfigure
+mode forces the solid tier, the value persisted is the tier it interrupted, so
+an autosave mid-drag does not become the viewer's saved choice.
+
+## 66. Four small things the code and the documents say that are not true
+
+Filed together because each is a one-line correction whose consequence is real,
+and none is big enough to carry its own item.
+
+**1. `flute-slider` does not persist while its neighbour does.** Its handler
+(`src/main.js:18817–18820`) writes `aesthetics.dial.hands.fluteFactor` and
+re-cuts the hands, but never writes `localStorage['aestheticsOverrides']`.
+`rib-pitch` twelve lines below (`:18832–18836`) does. The generated Advanced row
+for the *same leaf* also does — so whether the value survives a reload depends
+on which of two controls the viewer happened to touch. Add the write.
+
+**2. Six appearance leaves render as live and are not.** Liveness is judged per
+TOP-LEVEL DOMAIN (`src/main.js:18888–18890`: `const live = !!applier && …`), not
+per leaf, so anything under `lighting` renders without the ⟳ marker. But
+`APPLIERS.lighting` (`:18850–18858`) never touches `lighting.scene.fogColor`,
+`lighting.backdrop.color/roughness/metalness`, `lighting.keyLight.shadowBias`
+or `lighting.rimSpot.shadowBias` — all six are consumed once at boot
+(`main.js:121`, `:178–185`). The panel's own comment states the standard it is
+failing: *"a knob that does nothing until reload and does not say so would be
+the panel lying about its own reach."* Either extend the applier or make
+liveness a per-leaf fact; the second is the honest one, since the first hides
+the question again the next time a leaf is added.
+
+**3. FIXED — `vendor/README.md` contradicted its own header, and its hash
+table made the contradiction unfalsifiable.** The header says
+`three-mesh-bvh.module.js` *"carries two local patches (below), both marked
+`PATCHED (timesim)` in place"*, verified by `node tools/check-bvh-patches.mjs`.
+The Provenance paragraph said *"Every file is byte-identical to its published
+upstream build — no local patches."*
+
+The second half is the part worth recording, because it made the first half
+impossible to catch by following the file's own instructions: the recorded
+SHA-256 for that file was the **upstream** hash, not the shipped one.
+Measured — shipped `089b8a82…`, recorded `434340fe…`. The document then told
+you to `cmp` each file against upstream, so the bvh file always mismatched, and
+a reader had no way to tell an expected patch from a corrupted download. A
+verification procedure that always fails is not a weaker check than none; it
+trains people to ignore the result.
+
+Fixed by recording **both** hashes under their own headings — as-shipped and
+as-upstream — correcting the Provenance sentence, and saying in the `cmp` step
+that the bvh file MUST differ, at exactly two sites, with
+`check-bvh-patches.mjs` as the thing that judges it. A credits section would
+have quoted the false half (roadmap §143), which is how it surfaced.
+
+**4. This file describes a panel that no longer exists.** TODO 8's text
+(`TODO.md:1158–1162`) names a two-row alarm readout — "Hand at" and "Rings at" —
+and argues that the gap between them *is* the mechanism's setting resolution,
+which §38 exists to improve. The shipped panel has **one** readout
+(`readout-alarm`, `main.js:17760`), and `docs/BUILT.md` §38 records the opposite
+conclusion: the setting is **continuous**, the READOUT was what rounded, and the
+ring was recommended against. A live item describing a removed control and a
+retired premise is worse than a closed one — rewrite it to what remains, or
+close it citing §38.

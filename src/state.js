@@ -64,6 +64,14 @@ const defaultState = {
   quality: 'Auto',    // §14 quality select — the panel's choice (Auto or a pinned tier), so an
                       // override survives reload; Auto's own tier verdict is re-earned each boot
   showBeat: 0,
+  // §69: the schematic tier is the boot DEFAULT, so a save can only turn it
+  // OFF. captureState() emits it, so — like soundOn above — it must round-trip
+  // through sanitize() or main.js's `savedState.schematic ?? true` can never
+  // see a false and the default is unturnoffable (TODO 65).
+  schematic: true,
+  // §69 tap-focus selection; null means "no unit focused", the same
+  // absent-means-none convention as camera below.
+  focusUnit: null,
   // Camera pose: position + orbit target, both in world coordinates. null
   // means "no saved camera" — the caller keeps its default framing.
   camera: null,
@@ -88,6 +96,8 @@ function sanitize(state) {
     alarmBarrelWind: state.alarmBarrelWind,
     quality: state.quality,
     showBeat: state.showBeat,
+    schematic: state.schematic,   // §69/TODO 65: emitted by captureState, so it must survive here
+    focusUnit: state.focusUnit,   // §69/TODO 65: likewise — dropping it made restoredFocus dead
     camera: state.camera,
     mmPerPx: state.mmPerPx,   // §60: the display's measured pixel pitch, asked once
   };
