@@ -7273,8 +7273,11 @@ importing clean. The identifier sweep was re-run locally against
 `<code>`**, so the delta contributes zero identifier claims.
 
 **Still owed: the translations.** Two blocks in five languages. They are
-`missing`, not `unmatched`, so nothing is red — but the page is at 87/92 rather
-than 100% until someone who reads those languages writes them. Regenerate keys
+`missing`, not `unmatched`, so nothing is red — but the page is at **90/92
+(97.8%)** rather than 100% until someone who reads those languages writes them.
+(Not 87/92: 87 is the TABLE's entry count after the drop, and coverage is not
+the same number — several live keys share one entry, so 87 entries cover 90 of
+the 92 keys. CI's own line is the one to quote.) Regenerate keys
 with `node tools/explain-i18n.mjs --extract --page primer`. This machine had no
 `node`, so `--check` and `explain-quotes.mjs` were reproduced by hand as above
 and have not run in CI yet.
