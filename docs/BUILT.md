@@ -20,15 +20,39 @@ that band's swept footprint.
 
 ---
 
-## 1. Jumping-minute setting (BUILT — PRs #28/#29)
+## 1. Minute quick-set, with a detented display (BUILT — PRs #28/#29)
 
 **Goal.** Pair the existing seconds zero-reset with minute-perfect
 setting: pull the crown → balance hacks and the seconds hand flies to
-zero (already built); turn the crown → the minute hand advances in
-whole-minute DETENTED jumps; push at the reference tick → the watch
-restarts exactly synchronized. This is *setting-time* jumping only —
+zero (already built); turn the crown → the minute display advances in
+whole-minute DETENTED steps; push at the reference tick → the watch
+restarts exactly synchronized. This engages at SETTING time only —
 the running display stays continuous, so the jumper must engage only
 while the crown is out.
+
+**Renamed after the fact, and the old name is on the record here on
+purpose** (TODO 58, closed by the rename). This section's title, the source
+header and `explain.html` all said *jumping minute*, while the Goal above
+had always qualified it as setting-time only — the file disagreed with
+its own title. The term overclaims twice:
+
+- **About WHEN.** A jumping minute jumps once per minute *while the
+  watch runs*. This one moves only while the crown is out, which is what
+  a quick-set is. Roadmap §4 ("Full jumping-minute DISPLAY") is the
+  entry for the real thing and is still unscoped.
+- **About WHAT DRIVES IT.** The detent is arithmetic. The displayed
+  offset is `Math.round(… / MIN_PITCH) * MIN_PITCH` plus a `CAM_SNAP_TAU`
+  ease (`src/main.js`, the quick-set block in `tick`), and the star turns
+  with `mwMinuteA`, computed FROM that quantized value — so the beak
+  rides a profile the display has already chosen. In the README's
+  vocabulary the star and jumper are MODELLED, and follow; they do not
+  deliver the step.
+
+What survives the correction is the honest half, and it is most of the
+section: the setting PATH is simulated end to end (below), the beak's
+ride is solved against the star's real cut V, its release gap is one
+`CLEAR_MARGIN`, and `setPose` cannot fake the ease through. The word
+"jumping" was the defect, not the works.
 
 **Why it also pays debt.** Building it properly closes `TODO.md` item 3:
 the star's input angle is computed FORWARD from the crown's rotation
@@ -223,7 +247,7 @@ phases, one module-level "last index" per source:
   1 rev/8 h, so 24 teeth → one soft tick per 20 minutes of movement
   time. Nearly an easter egg; costs three lines, keep it.
 - *Minute jumper (setting)* — while `jmpEngaged` (`crownPullT >
-  0.5`), the quantized `target` in the jumping-minute block steps by
+  0.5`), the quantized `target` in the quick-set block steps by
   `MIN_PITCH = 2π/60`; each index change is one snap (the eased
   `jumpDisp` follow-through on `CAM_SNAP_TAU` is the visual half of
   the same event).
@@ -600,7 +624,7 @@ that made it. Sound Off and fast-forward remain exactly as silent as
 
 ## 5. "See the minute jumper in action" — Setting preset + guided demo (BUILT)
 
-**Goal.** One click frames the §1 jumping-minute works and walks the
+**Goal.** One click frames the §1 minute quick-set works and walks the
 pull → snap → set → push cycle, so the mechanism sells itself instead of
 hiding on the dial side. Two independently shippable halves — a camera
 preset and a scripted demo — that share nothing new mechanically: the demo

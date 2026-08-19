@@ -118,7 +118,7 @@ export const MECH_GRAPH = {
                                              // the whole keyless works lives on the DIAL side now
     ['Setting lever', 'plate'],              // stud planted in the plate's back face (dial side)
     ['Minute jumper', 'plate'],              // its pivot stud rivets into the same dial-side face,
-                                             // beside the motion works (jumping-minute setting)
+                                             // beside the motion works (minute quick-set)
     ['Yoke', 'plate'],                       // same dial-side stud mounting
     ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
                                              // square just above the BASE plate (chronometer
@@ -1544,7 +1544,7 @@ const CLEARANCE_BUDGETS = [
   { a: 'Maintaining detent', b: 'Mainspring drum', min: 0.15 },
   { a: 'Maintaining detent', b: 'Chain', min: 0.15 },
   { a: 'Maintaining detent', b: 'Center wheel', min: 0.15 },
-  // Jumping-minute setting: the jumper lives in the thin slice between
+  // Minute quick-set: the jumper lives in the thin slice between
   // the minute wheel and the hour wheel on the dial face — these rows
   // hold that slice and its neighbours. The Dial row excludes the crown
   // axis: crown out SEATS the beak in the minute star (a Dial-unit mesh
