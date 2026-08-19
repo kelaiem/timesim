@@ -13396,6 +13396,52 @@ Full battery, locally, 3 shards:
   fingerprint      4089477992 — UNCHANGED
 ```
 
+**Against the base, `--report` diffed** (the PASS/FAIL column is not the
+acceptance for a change that moves reports). Six substantive fields moved,
+every one of them the arithmetic of eighteen new meshes; nothing else changed
+but timings and workload counters:
+
+```
+stockFloor.rowsChecked                    574 -> 592   (+18)
+sweptOverlap.registrySummary.static       232 -> 250   (+18)
+sweptOverlap.sound.pairsTested          77314 -> 84028
+sweptOverlap.census.out.pruned         116229 -> 116401
+intraUnit.tiers.FF                       2067 -> 2544
+intraUnit.outOfScope                  len 190 -> len 192
+```
+
+**+18 is exactly right, and worth checking rather than waving through:** three
+bezels, three stones, three merged screw-head meshes, three merged slot
+meshes, nine crescent lands — 21 — **less** the three flush stones the chaton
+sites no longer carry. No violation or waiver list moved anywhere: `violations`
+0 → 0, `waived` 0 → 0, `unmeasurable` 0 → 0.
+
+**`intraUnit`'s fifteen new out-of-scope rows are this landing's named
+residue, and they were measured rather than left in the report.** The FF tier
+GATES only `INTRA_TIER_SCOPE`, and `Three-quarter plate` is outside it, so
+those rows are reported and ungated — the case `CLAUDE.md` says to measure
+yourself. They are the joints: collar⇄land, collar⇄bezel, bezel⇄stone,
+bezel⇄heads, and the three plate laps. Thirteen equivalent rows were already
+there for the plate's own collars and stones, so the class is not new.
+
+`meshClearance` cannot settle them: a BVH distance is non-negative, so
+touching and overlapping both read `+0`, which is what all seven pairs
+report. `tools/probe-132-joints.mjs` therefore measures each joint on the
+surfaces that DEFINE it:
+
+```
+site  0.00, 0.00     collar OD 1.65 vs land ID 1.65 -> radial +0
+                     collar top 8.4556 vs bezel base 8.4556 -> seat +0
+site -8.79,-9.23     …the same
+site  0.00,-15.50    …the same
+```
+
+Abutment, not interpenetration: the land begins exactly where the collar
+ends, and the chaton bottoms exactly on the collar's face. The two plate laps
+(collar and land into the surrounding stock, 0.09) ARE deliberate overlaps —
+the convention that keeps no two walls coincident, in place since the collars
+were written — and are named here rather than implied away.
+
 **The unchanged fingerprint is a result, not a null.** It hashes per-unit
 bounding boxes, so an unchanged hash says that nothing the chatons added
 extends the three-quarter plate's box in any direction. The flush claim —
