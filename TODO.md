@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-11 — items with work left first, with what remains:
+refreshed 2026-08-19 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -40,7 +40,13 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
-| 54 | OPEN | `AXES`' header claims the axes pin each other; `setPose` assigns only the keys a pose NAMES, six of eleven axes name four of twelve, and nothing resets between axes — so every sweep's poses depend on declaration order and `alarmToggle` runs at an undeclared full alarm wind. Fix: total poses (a declared base plus each axis's delta). It will MOVE reports — the §36 registry's `reversed` flag feeds §48's population — so accept per row. Prerequisite for roadmap §127's battery partition |
+| 54 | CLOSED (§127) | Every sweep calls `enterAxis` before each axis, and `axisEntry` gates all 110 ordered pairs at 0 violations. The leak the old order-dependent entry used to carry is measured and REPORTED beside the gate rather than dropped — that report is the record, not a remainder |
+| 55 | CLOSED (§129) | The alarm stop-work counts the WIND now, not the arbor's absolute angle: a plate-mounted spider differential subtracts the barrel's two members, so the cross walks back as the spring empties. Residue is item 56 — a closed item is a bad place to keep live debt |
+| 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
+| 57 | OPEN | `README.md:305` claims screwed gold chatons over the upper pivot jewels and `:314` asserts the whole list is still true; `makeChaton` is called by NOTHING and every jewel is a plain stone. The upper pivots got flush rubbed-in rubies deliberately (`main.js:6319–6326`) — the README names the bearing the movement refused. Two fixes, both to be filed: correct the prose, and roadmap §132 to make the claim true |
+| 58 | OPEN | Two defects stacked. Outer: `explain.html:1196`, `main.js:8440` and `BUILT.md:23` say "jumping minute" while `BUILT.md:29` already qualifies it "setting-time jumping only". Inner: the snap is `Math.round(… / MIN_PITCH)` plus an ease (`main.js:25623–25626`) — the star and jumper are POSED alongside a rounded display value, so it is modelled, not simulated. Fix costs five explain-page translations by design and ten `src/i18n.js` rows for two tour captions |
+| 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
+| 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -5689,6 +5695,12 @@ could not produce at all.
 
 ## 48. The power-reserve train's two meshes sit tooth ON tooth — measured, 47–49% of a pitch off
 
+> **Re-confirmed by triage 2026-08-19**, when "fix the gear meshing on the
+> power reserve indicator" came in as a fresh request. It is this item,
+> already measured and already sited, so no second item was opened — a
+> duplicate would split the measurement from the fix path. Nothing below
+> changed; this note exists so the request is not filed a third time.
+
 Reported by eye from the running sim: **the power-reserve train's gear
 meshes don't engage each other.** They do not interleave — a tooth of one
 wheel meets a tooth of the next on the line of centres, where a gap
@@ -6433,3 +6445,588 @@ pairs, worst delta 0.732) — the fingerprint of a unit whose pose depended on t
 members no single axis pinned together. Re-read that row after this axis lands:
 a stop-work that reads one quantity should stop being the most pose-sensitive
 unit in the movement, and if it has not, the reason is worth knowing.
+
+## 57. The README claims screwed gold chatons the movement does not have
+
+`README.md:305` lists **"screwed gold chatons over the upper pivot jewels"**
+among the Glashütte-school features the finishing follows, and `:314`
+compounds it: *"every item in the list above is still there"* — a sentence
+whose whole job is to assert that the list is still true after the dial's
+German markings came off. `makeChaton` (`src/geometry.js:3590`) is a
+complete, documented builder — gold bezel, oil sink, pressed ruby, blued
+screws straddling the rim — and it is **called by nothing**. Every jewel in
+the built movement is a plain stone.
+
+**The movement did not merely skip them; it REFUSED them, on record.**
+`src/main.js:6319–6326` argues the reversal in place: the three-quarter
+plate is 0.8 thick, the hack and reset rods pass just above it, and nothing
+may stand proud — so what was built is a gold RIM rising around a flush
+stone (`ringGeo` at `TQ_T − CHATON_DEPTH`, then `jewelFaceGeo`), which is a
+**rubbed-in** jewel setting. That is a different and older bearing than a
+chaton, and it is the one this movement chose. The README names the one it
+rejected.
+
+`MATS.gold` is the tell that this is drift rather than a decision nobody
+wrote down: its own docstring names the chatons as its reason to exist, and
+its only live use is the balance's shock lyre spring.
+
+**The fix has two shapes, and this item must not pick one silently, because
+they are not alternatives in the long run:**
+
+1. **Correct the prose** to what is built — rubbed-in jewels, flush, with
+   the plate's own reason beside them. Cheap, immediately true, and it makes
+   the `:314` sentence honest again. This is the fix that stands whether or
+   not anything else ever lands.
+2. **Make the claim true** — roadmap §132 sites the existing builder on the
+   fork cock and the balance cock, the two places the plate's objection does
+   not reach. That closes this item's chaton half by construction.
+
+File both, in that order. Doing (1) first is not wasted work if (2) lands
+later: the prose has to change again, but the README is never wrong in the
+interval, and that interval is open-ended because §132 is filed, not
+scheduled.
+
+**A scope note, since "where could chatons go" was part of the question.**
+Three candidate sites exist and only two survive:
+
+- **Fork cock** — `FORK_COCK_T` = 1.0 (`src/main.js:2151`), bore
+  `0.35 + PIVOT_BORE_CLEAR` = 0.40 (`:2181`), counterbore `forkBore + 0.55`
+  = 0.95 radius (`:2263`) at `FORK_COCK_T * 0.65` = 0.65 deep (`:2264`),
+  boss `chatonOuterFor(forkBore) + 0.15` = 1.50 (`:2186`). The movement's
+  only real counterbored jewel seat, it is 1.0 thick where the plate is 0.8,
+  and it carries the highest-load bearing in the watch. Viable.
+- **Balance cock** — built at `src/main.js:5215` from `COCK_T` = 0.8
+  (`src/layout.js:392`), `COCK_W` 6 and `COCK_JEWEL_AT` 0.5. Viable, with
+  one constraint that must be measured before it is assumed: the shock
+  setting's boss already occupies the face out to **r 1.35**
+  (`ringMesh(0.85, 1.35, 0.55)`, `src/main.js:5347`), so a chaton rim must
+  live outside that or the two parts are one part.
+- **Three-quarter plate** — **not viable**, for the reason the source
+  already gives above. Anyone proposing it is re-opening a settled
+  argument and should read `src/main.js:6319–6326` first.
+
+## 58. The documents call a quick-set a jumping minute — and the mechanism is weaker than even that
+
+Two separate defects stacked on one mechanism, and the outer one hides the
+inner one.
+
+**The outer defect: the documents disagree with each other.** A jumping
+minute jumps once per minute *while the watch runs*. This one jumps only
+while the crown is pulled out. `docs/BUILT.md:29` already knows that and
+says so — *"This is setting-time jumping only"* — but the same file's §1
+title (`:23`) is "Jumping-minute setting", `src/main.js:8440`'s section
+header reads `JUMPING-MINUTE SETTING (BUILT §1)`, and `explain.html:1196`
+states it flatly to a reader with no qualifier at all: *"The minute display
+is a jumping minute."* The project's own vocabulary is already split against
+itself — the roadmap calls the same mechanism "minute quick-set" in §19's
+title while the source header calls it a jumping minute.
+
+**The inner defect, which is the one that matters: the snap is posed, not
+driven.** The crown does drive `setPathRot` continuously through the real
+keyless tooth counts to `rawSetOffset` — that part is honest and is rule 2
+working. But the jumper's contribution to the displayed angle is
+`Math.round(… / MIN_PITCH) * MIN_PITCH` plus an exponential ease
+(`src/main.js:25623–25626`). The star and the jumper are **posed alongside a
+rounded display value**; they do not deliver the snap. In the README's own
+vocabulary (`README.md:79–102`) that is *modelled*, not *simulated* — the
+beak is described, and the detent it appears to enforce is arithmetic
+running beside it. So the word "jumping" overclaims twice: once about WHEN
+(running vs. setting) and once about WHAT DRIVES IT (a beak vs. a rounding).
+
+**The fix.** Say **quick-set with a detented display** wherever the claim
+appears, and point at roadmap §4 — "Full jumping-minute display", already
+filed as the real thing — as what would earn the stronger word. Correcting
+the words is cheap and does not wait on §4; conflating the two is what has
+kept this unfiled.
+
+**Where it appears, with the cost of each — this is not a three-line fix
+and the item should not pretend otherwise:**
+
+- `docs/BUILT.md:23` (§1's title) and `src/main.js:8440` — free, they are
+  ours to rename. `src/main.js:2845` and `:17027` name the same works and
+  should follow so the file reads consistently. The two `console.warn`
+  strings at `:8455`/`:8468` are boot-assert text, not claims, and can be
+  left or renamed with the rest.
+- `explain.html:1196` — **costs five translations by design.** The block is
+  keyed by its normalized `innerHTML` in all five `src/explain-i18n.*.js`
+  tables, so editing the English invalidates every one of them and the
+  paragraph renders English until re-translated. That is §73 tier two
+  working as intended, not a problem to route around. Never retype a key:
+  `node tools/explain-i18n.mjs --extract --page explain` regenerates them,
+  and `--check` is the gate.
+- **Two user-visible tour captions**, in `src/i18n.js` × five locales:
+  *"The jumping-minute setting works, behind the dial"* (`:337, :562, :954,
+  :1347, :1739`) and *"On the dial side, pull the crown and the
+  jumping-minute works engage"* (`:347, :572, :964, :1357, :1749`). These
+  are tier-one strings keyed by the English source, so changing the English
+  means changing all ten rows in the same landing or the captions fall back
+  to English visibly.
+
+**One thing to keep while renaming.** The mechanism's honest half is worth
+saying out loud rather than losing in a correction: the setting path IS
+geared, the beak's clearance over the star is a solved release gap
+(0.1500 — exactly one `CLEAR_MARGIN`), and `setPose` deliberately cannot
+fake the ease through. The correction is to the word "jumping", not to the
+claim that the works exist.
+
+## 59. The column wheel's click reads a HEIGHT ramp as if it were a RADIAL one
+
+`profileAt` (`src/geometry.js:1216–1222`) returns a normalized 0→1 that is the
+column top's **height** fraction across the chamfer. Two riders consume it and
+only one of them is right.
+
+The link beak consumes it as a height, correctly — `noseDrop = colH * (1 - profile)`
+(`src/main.js:26296`). The click consumes the same number as a **radius**:
+
+```js
+alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;   // :26602
+const ALARM_CLICK_SWING = (ALARM_CLICK_OUT - ALARM_CLICK_SEAT) / ALARM_CLICK_L;  // :15647
+```
+
+`ALARM_CLICK_SEAT` = 4.94 and `ALARM_CLICK_OUT` = `ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R`
+= 5.98 are both **radii** (`:15645–15646`), so `ALARM_CLICK_SWING` is a radial
+chord over an arm length. The pillar's outer wall, meanwhile, stands at a
+**constant** `ALARM_COL_BASE_R` = 5.7 across the pillar's whole arc — the
+chamfer is cut in **z** only (`src/geometry.js:1101–1142`, `top = colH * prof(a)`).
+
+**So mid-flank the click's nose is driven radially inward into a wall that has
+not moved.** With the shipped constants, the nose centre sits at
+`4.94 + 1.04·c`, radius 0.28, at the band mid-plane 0.7 above the base disc:
+
+- z overlap once the pillar is taller than the nose's underside: `1.4·c > 0.42`, i.e. **c > 0.30**
+- radial burial: `1.04·(1 − c)` — **0.52 at c = 0.5**, **0.73 at c = 0.30**
+
+against `CLEAR_MARGIN` = 0.15. Only the two settled ends are clean: at c = 1
+`ALARM_CLICK_OUT` is tangent to the wall **by construction**, and at c = 0 the
+nose is dropped in a 30°-wide gap. Everything between is inside the metal —
+and **71% of each column's half-arc is flank** (`flatHalf` 4.32° against
+`flank` 10.68°, from `geometry.js:1057` at `ALARM_CLICK_NOSE_R` = 0.28).
+
+**Derived from the constants, not measured on the built mesh** — say so when
+fixing, and confirm with `meshesIntersect` at a live mid-flank pose. Which is
+the next problem.
+
+**Why nothing catches it — four independent reasons, each sufficient.**
+
+1. **The declared contacts are blanket exemptions.** `INTRA_UNIT_CONTACTS`
+   rows `src/inspect.js:2032` (detent arm) and `:2033` (detent ball) are
+   matched by `allowed()`, which short-circuits **before** `verdict()` ever
+   runs. Those pairs are exempt at any depth at every pose — not waived,
+   *unmeasured*. `INTRA_UNIT_WAIVERS` is empty, so nothing shows in a report.
+2. **Row `:2032` cites a budget that does not exist.** It says the pair's
+   budget is *"the switch's own asserts"*. There is no such assert: every
+   `console.warn` in the switch build (`main.js:15486–16959`) is a plate-edge,
+   spring-lane, phase, saw-direction, ergonomic-floor or slot-drift check, and
+   **none measures the click's nose or arm against the pillars through the
+   flank.** A declaration table pointing at a check that was never written is
+   worse than no declaration, because it reads as triaged.
+3. **No pose can reach a mid-flank angle.** `setPose` jumps `alarmColSteps` by
+   one and immediately sets `alarmColShownA = alarmColSteps * ALARM_COL_STEP`
+   (`main.js:27228–27235`), so under every inspector pose `colBlock` is exactly
+   1 or exactly 0. The transient exists only under the live `tick()` with
+   `rawDt > 0`. This is TODO 7's territory, stated concretely.
+4. **The one penetration budget on this wheel is the wrong pair on the wrong
+   axis** — `PENETRATION_BUDGETS` has exactly one row touching `alarmColWheel`
+   (`inspect.js:3119–3143`), for `['Alarm switch','Alarm link']` on axis
+   `alarmStrike`, and its own comment concedes it sweeps one parity only. No
+   budget row anywhere uses `axis: 'alarmToggle'`. And all three
+   `EXPECTED_PAIRS` involving the switch have no `EXPECTED_CONTACT_FLOORS`
+   row, so TODO 6's blanket excuse covers them too.
+
+**This is a P2 finding — the group disagrees with itself — so the fix is in
+mechanism space, not a waiver.** The precedent is TODO 22, which was the same
+class (the pusher's press bar stopping 0.9 from the wheel's axis), was filed
+in exactly those words, and was fixed rather than waived.
+
+**The fix, in outline.** The click's radial position is not a linear function
+of the chamfer's height; it is a function of whether pillar metal stands at
+the nose's own height band at that azimuth. Derive the nose's path from the
+pillar's *outer wall and top edge* — the surface it actually rides — the way
+MODELING rule 9 requires (`docs/MODELING.md:209–227`, the §101 click's rule:
+cut engagement profiles FROM the mating surface, through the contact law's own
+mapping). Then give the pair a real budget instead of an exemption, sized
+smaller than the stroke it polices, and add the missing footprint assert —
+`alarmLinkReadClean()` (`main.js:16127–16142`) is the template and the link
+beak already has one; the click and the lock beak do not.
+
+## 60. The arrest tower's leg B pinion stands on nothing, and its sleeve is zero units tall
+
+§129 fixed exactly this defect one member over — the finger's arbor stopped
+short of its own output pinion, *"visible the moment the unit was rendered, and
+invisible to every gate, because a wheel with no arbor under it collides with
+precisely nothing"* (`src/main.js:15159–15164`). The instance was fixed. **The
+sibling was not.**
+
+**The sleeve is degenerate, and it is symbolic, not marginal.**
+
+```js
+const SUB_PIN_B_Z = SUB_CAGE_Z + SUB_SPEC.halfHeight + ALARM_WIND_WHEEL_T / 2;  // :14303
+sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z + SUB_SPEC.halfHeight, 'subSleeveB');  // :15105
+```
+
+Substitute the first line into the second and both arguments are
+`SUB_CAGE_Z + SUB_SPEC.halfHeight` — the same expression. `tube()` then takes
+`const h = Math.abs(zTo - zFrom)` = **0** (`main.js:15052`) and extrudes a ring
+at `depth: 0`. Its sibling `subSleeveA` (`:15104`) takes two genuinely
+different values; the asymmetry is the tell.
+
+**And nothing else reaches the pinion.** The tower's arbor tops out at
+`SUB_OUT_Z + ALARM_WIND_WHEEL_T / 2 + 0.2` = `SUB_CAGE_Z + 0.6`
+(`main.js:15110–15111`), while leg B's pinion's lowest metal is at
+`SUB_CAGE_Z + halfHeight`. At the shipped spider — 10 teeth, module 0.2036
+(`docs/BUILT.md:13133`) — `halfHeight` = `R + module·0.85 + faceWidth·√½ + margin`
+= 1.018 + 0.173 + 0.288 + 0.150 = **1.629**. So the pinion floats **1.03 above
+the top of the only arbor that could pass through its bore**, with a
+zero-height sleeve where the bridge should be. The conclusion does not depend
+on the exact figure: `halfHeight ≥ R + margin` and `R ≥ hubR + margin + stockMin`,
+so it exceeds 0.6 for any spec `spiderSpec` can return.
+
+Compare `subIdlerArbor` one station over (`:15136–15137`), which runs past its
+top wheel. **The tower arbor is the only column in the unit that stops below
+its topmost member.**
+
+**Derived from source, not from a boot.** The zero-height sleeve is exact
+algebra and needs no measurement; the 1.03 should be confirmed against a live
+build before it is published anywhere else.
+
+**Why every gate passes it — and this is the reusable part.**
+
+- A wheel with an empty bore collides with nothing, so no clearance sweep,
+  hull overlap or penetration budget has anything to report.
+- `assembly` (§107) asks whether a rigid frame is one connected body. The
+  degenerate ring's two caps sit exactly on the pinion's bottom face and
+  overlap it radially, so the pair measures at distance 0 and counts as
+  connected. **A zero-height sleeve is the perfect connector**: it satisfies
+  connectivity while occupying no space.
+- `checkSupportGeometry` (`inspect.js:2644–2666`) is **unit-granular**. It
+  takes the minimum distance between *any* mesh of unit A and *any* mesh of
+  fixture B, at one pose, against `SUPPORT_TOL` = 0.5. The row
+  `['Alarm winding arrest', 'plate']` passes the moment any ONE of the unit's
+  four columns reaches the plate — its own comment says *"FOUR plate-top
+  columns now"*. **Every wheel, sleeve, cross, finger and pin in that unit
+  could be floating and the row would still read `gap 0.000, ok`.**
+- The stricter tier, `MECH_GRAPH.anchors`, has six entries and none of them
+  touches this unit.
+
+**So there are two fixes, and the second is the one that matters.**
+
+1. **The instance.** Give `subSleeveB` its real span, or run the tower's arbor
+   past leg B's pinion the way `subIdlerArbor` runs past its wheel. Cheap.
+2. **The class.** Nothing in the battery asks *"does every rotor have an arbor
+   in its bore?"* — a per-MEMBER reach check, as opposed to `support`'s
+   per-unit proximity check. The §129 siting solve already scores the two
+   columns as pieces in their own right (`main.js:14360–14362`) and knows
+   `TOWER_TOP` and `PIN_B` are different pieces at different heights
+   (`:14608–14610`). **It scores them for clearance. Nothing scores them for
+   reach.** Two instances of one defect in one mechanism in one session is the
+   argument that this needs an instrument, not a third careful reading.
+
+**The finger, separately, is a P1 question rather than a defect.** It does
+have metal to the plate. What it has is a `ARREST_SPEC.arborR` = `PIVOT_MIN_U`
+= 0.185 u (0.07 mm radius — a 0.14 mm wire) running roughly 8 units from a
+plate-buried foot to a free top: a **~43:1 cantilever with no upper bearing**,
+no cock and no bridge, and a `fingerBoreR = arborR + 0.05` running clearance so
+the disc deliberately does not touch it. The section is derived and defended
+(`main.js:14250–14255`: 182 MPa against hardened steel's ~600 MPa in shear),
+but that derivation is a **torsion** check on the pinion's stall. Nothing
+checks the column in **bending or buckling** over that slenderness, and no
+watchmaker would leave a wheel arbor of that ratio unsupported at the top. That
+is what "appears unsupported" is reading, and it is worth answering with
+arithmetic rather than with a thicker column chosen by eye.
+
+## 61. `SPEC.md` and the gear builder name a tooth form the code does not cut
+
+Three files name one shape and two of them name a family the builder does not
+produce.
+
+- **`SPEC.md:47`** — the architecture contract — `// Involute-ish spur gear.`
+- **`src/geometry.js:313`** — the live header on `makeGear` —
+  `// Involute/cycloidal-ish spur gear.`
+- **`src/geometry.js:236–238`** — the profile function itself —
+  `repeated trapezoid-with-rounded-tip teeth approximating a clock (cycloidal) tooth`
+
+**What is actually cut.** `gearOutlineShape` (`src/geometry.js:243–267`) is the
+only tooth generator in the codebase, and `makeGear`, `makePinion` and
+`makeBevelGear` all call it. Each flank is a **straight chord** — one
+`lineTo` from a root-land point at `flankFrac·pitch` to a tip corner at
+`tipFrac·pitch`. The only curve in the tooth is a single `quadraticCurveTo`
+through a control point at `tipR · TIP_RELIEF` (1.02), which is a **tip
+relief, not a working surface**, and it is tessellated at `curveSegments: 3`
+(`geometry.js:412`). A whole tooth is about six straight segments. There is no
+pressure angle anywhere in the file, and the proportions — addendum
+0.95·module (`:357`), dedendum 1.15·module (`:381`) — are neither cycloidal
+nor involute. **Two of these rolling together have no conjugate action at
+all.**
+
+The one genuine exception is `makeEscapeWheel` (`geometry.js:502–562`), which
+really is club-toothed: a slanted impulse face, an undercut locking hook, and
+a quadratic scallop between. The pinion is *not* a lantern or radial-flank
+pinion — it is the same trapezoid at `{ tipFrac: 0.26, flankFrac: 0.42 }`.
+
+**Why this is filed here rather than as a feature.** The defect is not that
+the teeth are simplified — a simplified profile is a defensible modelling
+choice and `SPEC.md:44`'s *"real tooth profiles, not cylinders with bumps"*
+is fair as far as it goes. The defect is that **the two documents a reader
+reaches first name the wrong family**, and one of them is the file CLAUDE.md
+calls "the architecture contract. Read before changing structure." Someone
+auditing tooth form against `SPEC.md` would be auditing against a promise
+nothing keeps.
+
+**The fix is cheap and should not wait on anything.** Say what is cut: a
+trapezoidal approximation with a relieved tip, standing in for a clock
+(cycloidal) tooth, with the escape wheel's club teeth as the one profile
+designed as a working surface. Note in the same edit that no conjugate action
+is modelled, because that is the honest half a reader needs and neither
+document says it today. Cutting real cycloidal teeth is a separate,
+much larger question and is filed as roadmap §136.
+
+## 62. Mesh phase: nine undocumented `Math.PI / teeth` sites, and a going train with no phase at all
+
+TODO 15 closed the winding and setting chains and named **two** remaining
+sites; TODO 48 carries one of them. The census is much larger than either item
+implies, and the largest part of it is not the idiom at all.
+
+**The good machinery, and its actual reach.** `solveGearChain`
+(`src/main.js:10285–10346`) is right: it reads each wheel's tooth phase from
+its **vertices** via a 2048-bin silhouette and turns each wheel until
+`frac(uP + uQ) = 0.5` — the SUM invariant, with the code recording why the
+difference form was wrong (*"true at exactly one rotational instant and false
+everywhere else, which is precisely the reported symptom"*). It fires two
+tripwires per mesh. It is called **six times, covering nine meshes, all on the
+alarm side** (`main.js:10349`, `:13845`, `:13851`, `:15188`, `:15192`, `:15196`).
+
+**Everything else is the idiom or nothing.** Nine `Math.PI / teeth` sites that
+neither TODO 15 nor TODO 48 names:
+
+| `main.js` | constant | mesh |
+|---|---|---|
+| 1259 | `windSpurBase` | transfer wheel ⇄ winding spur |
+| 2506 | `crownWheelBase` | sliding pinion ⇄ crown wheel |
+| 2614 | `settingWheelBase` | sliding pinion ⇄ setting wheel |
+| 2619 | `minuteWheelBase` | setting wheel ⇄ minute wheel |
+| 2674 | `BEVEL_PHASE` | both motion-works bevel corners |
+| 8984 | `ALARM_BEVEL_PHASE` | alarm crown bevel pair |
+| 13123 | governor pinion | striking wheel 64 t ⇄ governor pinion |
+
+plus `geometry.js:2083` — the spider differential's planets against both side
+gears, four bevel meshes, shipped in §129.
+
+**And the going train has no phase at all.** `centerPinion`, `thirdPinion`,
+`fourthPinion`, `escapePinion`, `centerWheel`, `thirdWheel` and `fourthWheel`
+are built at `main.js:605–641` and parented at `:1274–1285`, and **not one
+`rotation.z` is ever assigned to any of them**. So the four going-train meshes
+are phased by wherever `gearOutlineShape` happens to put a tooth — at two
+*different* `tipFrac` conventions between `makeGear` (0.18) and `makePinion`
+(0.26). That is exactly the condition `main.js:10130–10134` warns about:
+*"Reading `local +x` and trusting gearOutlineShape's convention is not good
+enough here … nothing guarantees the two put a tooth at the same local
+angle."* The warning was written, and the going train was never brought under
+it.
+
+Two more meshes inside §129's own tower are built but never chained: the
+compound idler's **pinion** ⇄ leg B's pinion (declared a working contact at
+`inspect.js:2078`), and the side gears onto the planets. `'alarm arrest leg B:'`
+phases the idler's *wheel* against the barrel rim; nothing phases its *pinion*.
+
+**Why every run has always been green** — `main.js:10124–10125`, and it is the
+sentence this item exists to act on:
+
+> *"The battery cannot see any of this and never could: two gears meshing out
+> of phase sweep exactly the same volumes as two meshing correctly. This is the
+> fourth kinematic lie caught by eye, which is the argument for the asserts
+> below rather than for trusting a clean run."*
+
+**The fix, and the order.** Extend `solveGearChain` over the going train
+first — it is the largest block, it is the movement's primary train, and it
+currently has no phase of any kind. Then retire the idiom site by site.
+**Do not do this before TODO 48's second finding is fixed**: `measuredToothPhase`
+thresholds midway between the smallest and largest populated bin
+(`main.js:10205–10208`), which returns 56 gaps for an 8-leaf pinion at 0.94
+confidence — so `solveGearChain`'s credibility test will refuse small pinions
+and skip loudly on the first run. The probe's 10th/90th-percentile threshold is
+the known-good replacement.
+
+An instrument that would catch a wrong count or a wrong phase is filed as
+roadmap §135; **no such instrument exists today**, and `inspect.js` has no
+concept of a gear mesh as a pair at all.
+
+## 63. The elbow rods bend for routing only, and TODO 16's stall number is stale
+
+Two findings from a dogleg audit, both about force paths that were never
+computed.
+
+**The elbows are cosmetic.** `resetRod` and `hackRod` are each a rigid
+two-segment link with a fixed bend, and the build says so plainly
+(`main.js:3042–3052`): *"each rod is a RIGID two-segment link with a fixed
+bend … The link stays rigid — its pin-to-pin chord is the calibrated length —
+so the two-circle pose solves are untouched; **only the mesh is bent.**"* The
+lateral offset `e` is solved by scan up to `ELBOW_E_MAX = 16`
+(`src/layout.js:1241`).
+
+A real bent connecting rod carries a **bending moment proportional to that
+offset**, and nothing anywhere computes it. A straight two-force link and a
+link with 16 units of offset are the same object to every instrument in this
+repo. That is the honest counter-example to the motion-works bevel corners,
+which CLAUDE.md holds up as the template precisely because *"a plain rod
+meeting another rod at an angle has nothing at the joint that could transmit
+rotation around the corner"* (`main.js:2651–2656`) — the same argument, not
+yet applied to displacement through a bend.
+
+**TODO 16's headline is stale, in the favourable direction, and nobody
+re-took it.** That item measured a **1.5 mN** stall against a 5–50 mN detent
+budget, on a beak lever with a **36.5×** displacement gain. §68 then collapsed
+that tail from ~28 to 4.0 — *"a ~3:1 lever someone would design, retiring the
+§35 tail's 36.5× as measured debt"* (`main.js:15802–15803`). Meanwhile the
+**shaft half was reverted**: two attempts to thicken `alarmLinkShaft` were
+rejected by CI on `Alarm link ⇄ Minute jumper` (overlap 0.312 and 0.310), so
+`ALARM_LINK_SHAFT_R` stands at 0.12 (`main.js:16085`) and
+`SLENDER_WAIVERS = { 'Alarm link': 'TODO 16' }` (`inspect.js:5810`) is still
+the table's only entry.
+
+So the chain today has a **much better lever** and the **same thin shaft**, and
+the 1.5 mN figure describes neither configuration. **Re-take the measurement
+before anyone sizes anything against it.** TODO 16 already prescribes the
+prerequisite: measure the minute jumper's swept envelope along the shaft's
+stations from a virgin boot with the crown pulled, *"only then is there a
+number to size against. Guessing costs a 15-minute CI run per iteration, and
+has now cost two."*
+
+**What has no force arithmetic at all**, and should have, in TODO 16's format:
+the finger→pusher input force; the pawl's tangential force at the saw root;
+**the click's detent torque** — the load that actually holds the column
+indexed, and the thing a stall must overcome; the elbow rods' bending under
+their offset; and the §45 silence chain, which has `ALARM_SIL_RATIO` (a
+*displacement* ratio, `main.js:11173`) and nothing else.
+
+**One terminology correction worth keeping.** The rod the column wheel drives
+is `alarmLinkRod`, and it **disarms** — it prevents the alarm ringing. The rod
+that **silences a ringing alarm** is the §45 chain (crown collar → release
+lifter → silence rocker → release feeler, `main.js:11136–11266`), which the
+column wheel does not drive. They are different mechanisms and conflating them
+will send a fix to the wrong one.
+
+**Also stale, one line:** `main.js:9198–9199` still reads *"alarmOn only turns
+the column wheel, and the column→ring run is §35's filed debt (MECH_GRAPH.todo
+carries it)"*. §35 retired that row — `main.js:26240` says so — and the only
+remaining `MECH_GRAPH.todo` entry is the keyless-works one.
+
+## 64. Three linkages sit outside §48's population because no axis sweeps `alarmCrownPullT`
+
+The same shape as TODO 29's original finding and TODO 56's live one, on a third
+mechanism — and rule 4 warns about exactly this in as many words: *ship the
+mechanism and you must ship the axis that exercises it, or this passes it in
+silence.*
+
+`alarmCrownPullT` appears in `AXES` **only pinned**: `1` on the `alarm` axis
+(`inspect.js:871`) and `0` on `alarmWind` (`:935`). It is varied only inside
+`ALARM_HANDOFF_POSES`' `'setting'` row (`:3669`), which is a pose list, not an
+axis. Since §48's population comes from the §36 registry's `reversed` flag —
+measured per axis, as successive steps of one sweep changing sign — three
+parts never reciprocate under any sweep and so cannot be judged:
+
+- `Alarm release lifter`
+- `Alarm release sleeve`
+- `Alarm silence rocker`
+
+None has a `declareRestoring` entry and none has a waiver, so the audit passes
+them in silence rather than reporting them.
+
+**The silence rocker is the sharp case, because its spring EXISTS.**
+`alarmSilBlade` (`main.js:11251–11256`) is a real return blade on the bracket,
+biasing the paddle side down onto the run — modelled, in metal, and simply
+never declared. The audit would pass it today for the wrong reason (invisible)
+rather than the right one (declared and true).
+
+**The fix.** An axis that pulls and releases the alarm crown, then the three
+`declareRestoring` rows the sweep makes judgeable. Expect reports to MOVE and
+accept them per row, exactly as TODO 29's landing did when it took the
+population from 18 to 23 — a new axis changes what the registry samples, so
+any sweep row whose finding lived on a pose no axis previously visited can
+change with it. Diff the `--report` and derive each moved row rather than
+re-basing it.
+
+## 65. CLOSED — the schematic tier and the focused unit are saved now, not just emitted
+
+`captureState()` emitted both (`src/main.js:23687–23688`). `saveState()` writes
+`sanitize(state)`, and `sanitize()` (`src/state.js`) is an **allow-list** that
+named neither — nor did `defaultState`. So `savedState.schematic` was always
+`undefined`, `main.js:17199`'s `?? true` always yielded `true`, and §69's own
+comment beside it — *"only an explicit saved false turns it off"* — described
+something that could not happen through the UI. `restoredFocus`
+(`main.js:17200`, applied `:25086`) was dead for the same reason.
+
+The neighbouring field carries the warning that was missed, and it is why the
+fix is a two-line one rather than an investigation: `state.js`'s `soundOn` reads
+`// sound toggle — captureState() emits it, so it must round-trip`. **Emitting
+without allow-listing is silent by construction** — no error, no warning, just a
+setting that never comes back. Worth a glance at any future `captureState`
+addition: the two lists are the contract, and only one of them is enforced by
+anything.
+
+Fixed by adding both keys to `defaultState` and to `sanitize()`, with the
+reason written at each. The read path in `main.js` was already correct and is
+untouched.
+
+**What this deliberately does NOT do.** It does not change the boot default.
+Schematic-on remains §69's decision, and the request that surfaced this bug —
+"default to realistic, fall back on performance" — is a separate question that
+now at least has a working preference to honour. The §93 subtlety in
+`captureState` (`main.js:23683–23687`) is preserved untouched: while reconfigure
+mode forces the solid tier, the value persisted is the tier it interrupted, so
+an autosave mid-drag does not become the viewer's saved choice.
+
+## 66. Four small things the code and the documents say that are not true
+
+Filed together because each is a one-line correction whose consequence is real,
+and none is big enough to carry its own item.
+
+**1. `flute-slider` does not persist while its neighbour does.** Its handler
+(`src/main.js:18817–18820`) writes `aesthetics.dial.hands.fluteFactor` and
+re-cuts the hands, but never writes `localStorage['aestheticsOverrides']`.
+`rib-pitch` twelve lines below (`:18832–18836`) does. The generated Advanced row
+for the *same leaf* also does — so whether the value survives a reload depends
+on which of two controls the viewer happened to touch. Add the write.
+
+**2. Six appearance leaves render as live and are not.** Liveness is judged per
+TOP-LEVEL DOMAIN (`src/main.js:18888–18890`: `const live = !!applier && …`), not
+per leaf, so anything under `lighting` renders without the ⟳ marker. But
+`APPLIERS.lighting` (`:18850–18858`) never touches `lighting.scene.fogColor`,
+`lighting.backdrop.color/roughness/metalness`, `lighting.keyLight.shadowBias`
+or `lighting.rimSpot.shadowBias` — all six are consumed once at boot
+(`main.js:121`, `:178–185`). The panel's own comment states the standard it is
+failing: *"a knob that does nothing until reload and does not say so would be
+the panel lying about its own reach."* Either extend the applier or make
+liveness a per-leaf fact; the second is the honest one, since the first hides
+the question again the next time a leaf is added.
+
+**3. FIXED — `vendor/README.md` contradicted its own header, and its hash
+table made the contradiction unfalsifiable.** The header says
+`three-mesh-bvh.module.js` *"carries two local patches (below), both marked
+`PATCHED (timesim)` in place"*, verified by `node tools/check-bvh-patches.mjs`.
+The Provenance paragraph said *"Every file is byte-identical to its published
+upstream build — no local patches."*
+
+The second half is the part worth recording, because it made the first half
+impossible to catch by following the file's own instructions: the recorded
+SHA-256 for that file was the **upstream** hash, not the shipped one.
+Measured — shipped `089b8a82…`, recorded `434340fe…`. The document then told
+you to `cmp` each file against upstream, so the bvh file always mismatched, and
+a reader had no way to tell an expected patch from a corrupted download. A
+verification procedure that always fails is not a weaker check than none; it
+trains people to ignore the result.
+
+Fixed by recording **both** hashes under their own headings — as-shipped and
+as-upstream — correcting the Provenance sentence, and saying in the `cmp` step
+that the bvh file MUST differ, at exactly two sites, with
+`check-bvh-patches.mjs` as the thing that judges it. A credits section would
+have quoted the false half (roadmap §143), which is how it surfaced.
+
+**4. This file describes a panel that no longer exists.** TODO 8's text
+(`TODO.md:1158–1162`) names a two-row alarm readout — "Hand at" and "Rings at" —
+and argues that the gap between them *is* the mechanism's setting resolution,
+which §38 exists to improve. The shipped panel has **one** readout
+(`readout-alarm`, `main.js:17760`), and `docs/BUILT.md` §38 records the opposite
+conclusion: the setting is **continuous**, the READOUT was what rounded, and the
+ring was recommended against. A live item describing a removed control and a
+retired premise is worse than a closed one — rewrite it to what remains, or
+close it citing §38.

@@ -44,13 +44,27 @@ camera controls.
 
 ## Provenance
 
-Every file is byte-identical to its published upstream build — no local patches.
-SHA-256:
+`three.module.js` and `OrbitControls.js` are byte-identical to their
+published upstream builds. **`three-mesh-bvh.module.js` is NOT** — it carries
+the two patches documented at the top of this file, so it has two hashes and
+both are recorded here. This paragraph used to claim all three were verbatim,
+which contradicted the header six lines up and made the `cmp` step below
+unreadable: a mismatch on the bvh file looked identical whether it came from
+the expected patch or from a corrupted download.
+
+SHA-256 of the files AS SHIPPED here:
 
 ```
 5916c8dfb5f4e3eede312de305345868d4a0a8105383b080c6985565d6e79b46  three.module.js
 f260591ef315aa04888152e7f121865214e33fb54727145cf4e4445058db1297  OrbitControls.js
-434340fe39bb9cac3d2777ca2e479f5ac6c5a0fff8c4f62b2507511363632233  three-mesh-bvh.module.js
+089b8a8267b7f22ab439e190580b6cfe9ae72a22b13e17db8c7849c7d8a75371  three-mesh-bvh.module.js
+```
+
+SHA-256 of the upstream build the patched file was made FROM, so a version
+bump can tell "the vendor changed" from "our patch changed":
+
+```
+434340fe39bb9cac3d2777ca2e479f5ac6c5a0fff8c4f62b2507511363632233  three-mesh-bvh.module.js (upstream 0.7.8, unpatched)
 ```
 
 To re-verify, or to refresh a dependency:
@@ -61,6 +75,9 @@ curl -sO https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js
 curl -s -o three-mesh-bvh.module.js https://unpkg.com/three-mesh-bvh@0.7.8/build/index.module.js
 ```
 
-Then `cmp` each against the file here. If you bump a version, re-fetch that
-package's `LICENSE` too — the copyright years change — and update the table
-above and the one in `../README.md`.
+Then `cmp` each against the file here. **The first two must match exactly; the
+bvh file must NOT** — it should differ at precisely the two patch sites, and
+`node tools/check-bvh-patches.mjs` is what verifies that rather than your eye.
+If you bump a version, re-fetch that package's `LICENSE` too — the copyright
+years change — re-apply and re-verify both patches, and update BOTH hash
+blocks above as well as the table in `../README.md`.
