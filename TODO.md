@@ -7197,3 +7197,93 @@ with any spec point that moves the barrel.
 faceWidth + margin` — and then re-run §129's plane and station solve, because
 raising `halfHeight` by 0.119 moves the band the solve searches. That is why
 this is its own item: the arithmetic is one line, the acceptance is a re-solve.
+
+## 68. CLOSED — the primer told the reader the seconds hand freezes; it flies to zero
+
+`primer.html`'s keyless-works entry ends:
+
+> Pulling the crown also brakes the balance ("hacking"): a sprung pad rises
+> against the balance rim and holds it still, **so the seconds hand freezes**
+> and the watch can be synchronised to a signal.
+
+**Measured, not read.** Booted clean (dev state and `localStorage` cleared),
+crown driven through the real linkage with the `btn-crown` control and
+`step()` — never `setPose`, which cannot fake the pull. Drive the normalising
+step off `leverEngage` rather than the button: at boot the button's
+`data-state` can disagree with the mechanism, which reads the run backwards.
+
+| | `leverEngage` | hammer seated | small-seconds angle |
+|---|---|---|---|
+| crown in, after running | 0 | no | **wherever it had got to** — 55.2°, and 43.2° re-measured after the rebase |
+| crown out, settled | 1 | **yes** | **0.00°**, both runs |
+
+The point is the second column, not the first: the free-running angle is
+whatever the run length made it, and the hacked one is zero to the digit.
+
+The hand does not freeze where it stands. The reset hammer falls onto the
+heart cam and drives the display to zero, exactly as
+`explain.html`'s *Zero reset — the heart cam's one low point* describes and
+as `main.js`'s reset block computes (`secondsZeroRef` is re-banked whenever
+`|off| > free`). So the sentence describes a plain hacking watch, and the
+movement is a hacking watch **with zero-reset seconds** — a strictly more
+capable and much rarer arrangement.
+
+**The omission is the bigger half.** `primer.html` contains the strings
+`zero`, `reset` and `heart` **zero times**. The one mechanism on the dial
+side a first-time reader is most likely to *notice* — pull the crown and the
+seconds hand jumps — is absent from the page whose whole job is to prepare
+that reader, while the explainer gives it an entry and an animated plate.
+The primer is the HUD's front door since §95, so this is the first
+description most readers get.
+
+**Adjacent, weaker, same sentence.** "a sprung pad rises against the balance
+**rim**" is loose where the build is precise: the pad takes the rim's
+*underside*, and `explain.html`'s *Hacking seconds* entry spends a whole
+plate on why it cannot be the edge (the timing screws stand proud of it all
+the way round). Not false — the underside is part of the rim — but it throws
+away the one detail that makes the brake interesting, in the sentence that
+already needs rewriting.
+
+**Fixed, and what the fix actually cost.** The sentence now says the pad takes
+the rim's *underside* — "not its edge, where the timing screws of the previous
+entry stand proud all the way round" — and holds the wheel; the false "the
+seconds hand freezes" clause is gone. A second paragraph beside it gives the
+zero reset in the primer's own register: the companion shaft gripped by
+friction, the heart-shaped cam whose radius falls all the way round to one low
+point, the spring-loaded hammer, and the reason the shape does the thinking
+(pressing anywhere on a falling spiral makes torque toward the low point, so
+the cam seats wherever it started from). The primer's contract holds: no
+identifiers, and the block adds no numbers at all.
+
+**The localisation, measured rather than assumed.** Editing English orphans
+its key in every locale table, and `unmatched` is the GATED count — so the
+five stale rows were dropped from `src/primer-i18n.{de,fr,ja,zh,zh-Hant}.js`,
+one entry each, 88 → 87. Verified in the browser against the English DOM with
+the checker's own `collectTranslatable`, reproducing both of its counts:
+
+| locale | `unmatched` (gated) | `missing` (reported) |
+|---|---|---|
+| de / fr / ja / zh / zh-Hant | **0** | 2 |
+
+The 2 are the corrected paragraph and the new one. Loaded at `?lang=de` the
+surrounding prose is German and those two blocks render English — the visible
+fallback `explain-i18n.yml` calls "the honest failure" — with all five modules
+importing clean. The identifier sweep was re-run locally against
+`explain-quotes.mjs`'s own regexes: **no new ALL-CAPS token and no new
+`<code>`**, so the delta contributes zero identifier claims.
+
+**Still owed: the translations.** Two blocks in five languages. They are
+`missing`, not `unmatched`, so nothing is red — but the page is at 87/92 rather
+than 100% until someone who reads those languages writes them. Regenerate keys
+with `node tools/explain-i18n.mjs --extract --page primer`. This machine had no
+`node`, so `--check` and `explain-quotes.mjs` were reproduced by hand as above
+and have not run in CI yet.
+
+**Why this file has nothing else about the primer.** It doesn't — `primer.md`
+/ `primer.html` appears in no other item. The explainer is held to source by
+`tools/explain-quotes.mjs`, and the primer is held to the *opposite* contract
+(zero identifiers) by the same tool; neither instrument can see whether the
+primer's plain-English claims are TRUE of the movement, because it quotes no
+constants by design. That gap is structural, and this item is its first
+instance rather than a one-off typo.
+
