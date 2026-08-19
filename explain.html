@@ -1186,18 +1186,29 @@
 
   <!-- ===================== MOTION WORKS ===================== -->
   <details class="mech" id="motion-works">
-    <summary>Motion works &amp; minute jumper — 12:1 by tooth counts, minutes that snap<span class="where">display · src/main.js</span></summary>
+    <summary>Motion works &amp; minute quick-set — 12:1 by tooth counts, minutes that step<span class="where">display · src/main.js</span></summary>
     <div class="mech-body">
       <p>The hands never receive a computed angle. The cannon pinion turns with the train;
       the minute wheel and its pinion gear it down to the hour wheel, and the 12:1 arrives
       because the tooth counts multiply to it — the repo's rule 2. Hand-setting drives the
       same wheels forward from the crown through the keyless chain, so a set hand and a
       driven hand are the same hand.</p>
-      <p>The minute display is a jumping minute: a star wheel, a sprung beak (the jumper),
-      and a click spring hold the minute hand parked between graduations, then snap it one
-      step at the minute — the beak's clearance over the star (0.1500, exactly one
-      <code>CLEAR_MARGIN</code>) is the solved release gap, and the snap is an ease the sim's
-      <code>setPose</code> deliberately cannot fake through.</p>
+      <p>Minute setting here is a quick-set with a detented display — deliberately not the
+      words "jumping minute", which would claim more than this is. A star wheel, a sprung beak
+      (the jumper) and a click spring engage only while the crown is OUT, so a running watch's
+      minute hand creeps as it always did; pull the crown and the hand parks between
+      graduations and steps one whole minute at a time. The beak's clearance over the star
+      (0.1500, exactly one <code>CLEAR_MARGIN</code>) is the solved release gap, and the step
+      is an ease the sim's <code>setPose</code> deliberately cannot fake through.</p>
+      <p class="note">Honesty ledger: the INPUT is driven and the DETENT is arithmetic, and
+      TODO 58 exists because this page used to blur the two. The crown's turn reaches the raw
+      setting angle through the real keyless and motion-works tooth counts — that half is
+      simulated, and it is what closed TODO 3. The displayed offset is then rounded to the
+      nearest minute index, and the star turns with the ROUNDED value, so the beak rides a
+      profile the display has already chosen: the star and jumper are modelled, and they
+      follow. They do not deliver the step. A jumping minute would also have to jump while
+      the watch RUNS, which needs a once-per-minute release off the train and an energy story
+      to pay for it — filed, unscoped, and not built.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">12:1 by tooth counts alone</span></div>
         <div class="fig-body">

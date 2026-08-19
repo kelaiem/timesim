@@ -44,7 +44,7 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 55 | CLOSED (§129) | The alarm stop-work counts the WIND now, not the arbor's absolute angle: a plate-mounted spider differential subtracts the barrel's two members, so the cross walks back as the spring empties. Residue is item 56 — a closed item is a bad place to keep live debt |
 | 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
 | 57 | OPEN | `README.md:305` claims screwed gold chatons over the upper pivot jewels and `:314` asserts the whole list is still true; `makeChaton` is called by NOTHING and every jewel is a plain stone. The upper pivots got flush rubbed-in rubies deliberately (`main.js:6319–6326`) — the README names the bearing the movement refused. Two fixes, both to be filed: correct the prose, and roadmap §132 to make the claim true |
-| 58 | OPEN | Two defects stacked. Outer: `explain.html:1196`, `main.js:8440` and `BUILT.md:23` say "jumping minute" while `BUILT.md:29` already qualifies it "setting-time jumping only". Inner: the snap is `Math.round(… / MIN_PITCH)` plus an ease (`main.js:25623–25626`) — the star and jumper are POSED alongside a rounded display value, so it is modelled, not simulated. Fix costs five explain-page translations by design and ten `src/i18n.js` rows for two tour captions |
+| 58 | CLOSED | The word is gone from every claim site: the mechanism is a **minute quick-set with a detented display**, in `BUILT.md` §1's title, `main.js`' two section headers and `explain.html`. The inner defect is not fixed — it is now SAID, in the source beside the rounding and in the explainer's own ledger: the input is driven through the real tooth counts, the detent is `Math.round(…/MIN_PITCH)`, and the star turns with the ROUNDED value, so the beak follows a profile the display already chose. Roadmap §4 is where the stronger word would be earned. Paid as filed: three explain-page blocks × five locales re-translated (`--check` PASS, 596/596), and fifteen `src/i18n.js` rows for three tour captions — one more caption than filed, because *"the beak snaps the hand"* was the same overclaim in miniature |
 | 59 | CLOSED | The nose's radius is solved against the surface it rides — the wall, and the top CORNER, whose roll-off branch (`baseR + √(noseR² − dz²)`) nobody had modelled; the transition is set by the nose radius and `dz/da`, not by the flank's whole 10.68°. Arm angle by law of cosines, not the old first-order chord. Measured over a pitch: old 30/121 samples buried worst 0.699, new **0/121**, worst clearance 0.0052. The row citing "the switch's own asserts" pointed at a check nobody wrote — one exists now, independent of the law |
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
 | 61 | OPEN | `SPEC.md:47` (the architecture contract) says "Involute-ish" and `geometry.js:313` says "Involute/cycloidal-ish", while the profile function cuts a TRAPEZOID with a relieved tip — straight-chord flanks, one quadratic, `curveSegments: 3`, no pressure angle, no conjugate action. Only `makeEscapeWheel` is a designed profile. Cheap to correct and should not wait on §136 |
@@ -272,11 +272,13 @@ alarm's cadence — the item's last remainder — closed with §104's governor.
 
 ## 3. CLOSED — `handSetOffset` derived through the setting path
 
-Closed by the jumping-minute setting (BUILT §1): the hand-set value is
+Closed by the minute quick-set (BUILT §1): the hand-set value is
 now `rawSetOffset`, computed forward from the crown's rotation through
 the real tooth counts (windPinion → settingWheel → minuteArbor compound →
-cannon), then quantized to whole minutes by the star + jumper while the
-crown is out (the snap folding into a persistent correction on push-in).
+cannon), then quantized to whole minutes while the crown is out (the step
+folding into a persistent correction on push-in). Item 58 is where that
+quantization's own honesty is accounted for: the DETENT is arithmetic and
+the star + jumper follow it — what this item closed is the INPUT path.
 Nothing about hand-setting is assigned any more — the number travels the
 gears. (The reserve train keeps its own representational convention;
 that's its entry, not this one.)
@@ -6574,7 +6576,7 @@ Three candidate sites exist and only two survive:
   already gives above. Anyone proposing it is re-opening a settled
   argument and should read `src/main.js:6319–6326` first.
 
-## 58. The documents call a quick-set a jumping minute — and the mechanism is weaker than even that
+## 58. CLOSED — the documents call it a quick-set, and say what the detent actually is
 
 Two separate defects stacked on one mechanism, and the outer one hides the
 inner one.
@@ -6637,6 +6639,52 @@ geared, the beak's clearance over the star is a solved release gap
 (0.1500 — exactly one `CLEAR_MARGIN`), and `setPose` deliberately cannot
 fake the ease through. The correction is to the word "jumping", not to the
 claim that the works exist.
+
+**CLOSED — and closed as a WORDS fix, which is what the item asked for.**
+No mechanism changed, so no report can move; what changed is what the
+project claims. The name everywhere is now *minute quick-set*, with
+*detented display* where the quantization is the point.
+
+**The outer defect is gone.** `docs/BUILT.md` §1 is retitled "Minute
+quick-set, with a detented display" and carries the old name on the record
+with both overclaims spelled out — the file no longer disagrees with its own
+Goal paragraph. `src/main.js`' build header (`JUMPING-MINUTE SETTING`) and
+its tick header (`JUMPING-MINUTE SETTING:`) are retitled the same way, as
+are the lifter-plane comment, the quick-set state block, the `Setting`
+preset's comment, `resetInputs`' note, both boot-assert strings, and
+`inspect.js`' two comments. `explain.html`'s claim sentence is rewritten and
+its summary line with it.
+
+**The inner defect is NOT fixed, and is now stated where someone would be
+misled instead.** It is a roadmap item, not a rename: the fix is a
+once-per-minute release taken off the train with an energy story to pay for
+it, which is roadmap §4 ("Full jumping-minute DISPLAY", still unscoped). So
+three places now say what actually happens rather than implying otherwise —
+the tick block's own comment beside the `Math.round`, §1's new note, and
+`explain.html`'s honesty ledger: the INPUT is simulated (the crown's turn
+carried through the real keyless and motion-works tooth counts, which is
+what closed item 3), the DETENT is arithmetic, and because the star turns
+with `mwMinuteA` — computed FROM the quantized value — the beak rides a
+profile the display has already chosen. The star and jumper are MODELLED and
+they follow; they do not deliver the step. Both words used in the README's
+strict sense, which is the whole point of the item.
+
+**What it cost, against the estimate.** The five explain-page translations
+were paid as filed — but for THREE blocks each, not one: the claim
+paragraph, the new honesty-ledger note, and the section's summary line, all
+regenerated with `--extract` and never retyped. `--check --page explain` is
+PASS at 596/596 per locale, 0 unmatched, 0 markup drift, 0 `<code>` drift,
+0 plate-number drift, 0 new plate overflow. The tier-one bill came to
+fifteen rows, not the ten filed: *"Turn to set — the beak snaps the hand one
+exact minute per detent"* is the same overclaim in one caption's width, and
+renaming the works around it while leaving the beak snapping the hand would
+have kept the lie in the place most people actually read it. It now reads
+*"the hand steps one exact minute per detent"*.
+
+**Deliberately not renamed:** the unit `'Minute jumper'` and every
+`jumperLever` / `jmp*` / `jumpDisp` identifier. The PART is a jumper — a
+sprung detent lever — and that name was never the overclaim; `inspect.js`
+couples by string, so a display-word correction must not reach values.
 
 ## 59. CLOSED — the click's nose is solved against the wall and the corner it rides
 

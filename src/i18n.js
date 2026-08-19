@@ -334,9 +334,9 @@ Object.assign(DE, {
 // Guided-script captions (German) — keyed by the English caption verbatim,
 // so the step tables never change; the display site resolves through t().
 Object.assign(DE, {
-  'The jumping-minute setting works, behind the dial': 'Das springende Minuten-Stellwerk, hinter dem Zifferblatt',
+  'The minute quick-set works, behind the dial': 'Das Minuten-Schnellstellwerk, hinter dem Zifferblatt',
   'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star': 'Krone ziehen — die Sekunde stoppt und fliegt auf null, die Raste fällt in den Stern',
-  'Turn to set — the beak snaps the hand one exact minute per detent': 'Drehen zum Stellen — der Schnabel schnappt den Zeiger je Raste exakt eine Minute weiter',
+  'Turn to set — the hand steps one exact minute per detent': 'Drehen zum Stellen — der Zeiger rückt je Raste exakt eine Minute weiter',
   'Push home — the jumper lifts and the watch runs on, synchronised': 'Hineindrücken — die Raste hebt ab und die Uhr läuft synchronisiert weiter',
   'A fusee-and-chain watch movement — every part built from geometry, no models': 'Ein Uhrwerk mit Kette und Schnecke — jedes Teil aus Geometrie gebaut, keine Modelle',
   'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat': 'Die Schweizer Ankerhemmung, stark verlangsamt — die Unruh gibt je Halbschwingung einen Zahn frei',
@@ -344,7 +344,7 @@ Object.assign(DE, {
   'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still': 'Der Vollaufzug endet an Metall: die letzte Windung hebt einen Finger, sein Schnabel fällt vor einen Anschlag auf dem Konus, und die Krone steht still',
   'That torque runs the going train — barrel to centre, third, fourth, escape': 'Dieses Moment treibt das Räderwerk — Federhaus, Zentrum, Kleinboden, Sekunde, Anker',
   'X-ray the plates and explode the stack to see how the layers fit': 'Platinen röntgen und den Stapel explodieren, um die Lagen zu sehen',
-  'On the dial side, pull the crown and the jumping-minute works engage': 'Auf der Zifferblattseite: Krone ziehen, das springende Minutenwerk greift ein',
+  'On the dial side, pull the crown and the quick-set works engage': 'Auf der Zifferblattseite: Krone ziehen, das Schnellstellwerk greift ein',
   'Each detent sets the minute hand one exact minute': 'Jede Raste stellt den Minutenzeiger exakt eine Minute weiter',
   'Push home and it runs on': 'Hineindrücken, und sie läuft weiter',
   'Sync sets the hands to your wall clock through the real keyless works, then catches up': 'Sync stellt die Zeiger über das echte Stellwerk auf Ihre Wanduhr und holt dann auf',
@@ -559,9 +559,9 @@ Object.assign(ZH, {
 });
 
 Object.assign(ZH, {
-  'The jumping-minute setting works, behind the dial': '表盘背后的跳分拨针机构',
+  'The minute quick-set works, behind the dial': '表盘背后的分针快调机构',
   'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star': '拔出表冠 — 秒针止停并飞回零位，跳档落入星轮',
-  'Turn to set — the beak snaps the hand one exact minute per detent': '旋转拨针 — 卡口每一档让指针精确跳动一分钟',
+  'Turn to set — the hand steps one exact minute per detent': '旋转拨针 — 每一档指针精确前进一分钟',
   'Push home — the jumper lifts and the watch runs on, synchronised': '推回表冠 — 跳档抬起，手表同步继续走时',
   'A fusee-and-chain watch movement — every part built from geometry, no models': '一枚芝麻链机芯 — 每个零件都由几何生成，没有模型素材',
   'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat': '瑞士杠杆式擒纵，大幅放慢 — 摆轮每次摆动释放一个齿',
@@ -569,7 +569,7 @@ Object.assign(ZH, {
   'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still': '满链止于金属：最后一圈链条抬起止动指，指喙落到塔轮上的止块之前，表冠随之静止',
   'That torque runs the going train — barrel to centre, third, fourth, escape': '该扭矩驱动传动轮系 — 从发条盒到中心轮、三轮、秒轮、擒纵轮',
   'X-ray the plates and explode the stack to see how the layers fit': '透视夹板并展开层叠，观察各层如何装配',
-  'On the dial side, pull the crown and the jumping-minute works engage': '在表盘侧拔出表冠，跳分机构随即啮合',
+  'On the dial side, pull the crown and the quick-set works engage': '在表盘侧拔出表冠，快调机构随即啮合',
   'Each detent sets the minute hand one exact minute': '每一档让分针精确前进一分钟',
   'Push home and it runs on': '推回表冠，继续走时',
   'Sync sets the hands to your wall clock through the real keyless works, then catches up': '对时通过真实的拨针机构把指针拨到墙上时钟，然后追赶补齐',
@@ -951,9 +951,9 @@ const FR = {
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
-  ['The jumping-minute setting works, behind the dial']: 'La minuterie à minute sautante, derrière le cadran',
+  ['The minute quick-set works, behind the dial']: 'Le réglage rapide des minutes, derrière le cadran',
   ['Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star']: 'Tirez la couronne — les secondes s’arrêtent et reviennent à zéro, et le sautoir tombe dans l’étoile',
-  ['Turn to set — the beak snaps the hand one exact minute per detent']: 'Tournez pour régler — le bec fait sauter l’aiguille d’exactement une minute par cran',
+  ['Turn to set — the hand steps one exact minute per detent']: 'Tournez pour régler — l’aiguille avance d’exactement une minute par cran',
   ['Push home — the jumper lifts and the watch runs on, synchronised']: 'Repoussez — le sautoir se lève et la montre repart, synchronisée',
   ['A fusee-and-chain watch movement — every part built from geometry, no models']: 'Un mouvement de montre à fusée-chaîne — chaque pièce construite à partir de sa géométrie, sans modèles',
   ['The Swiss lever escapement, slowed right down — the balance frees one tooth per beat']: 'L’échappement à ancre suisse, très ralenti — le balancier libère une dent par alternance',
@@ -961,7 +961,7 @@ const FR = {
   ['Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still']: 'Le remontage complet finit sur du métal : la dernière spire soulève un doigt, son bec tombe devant une butée du cône, et la couronne s\'immobilise',
   ['That torque runs the going train — barrel to centre, third, fourth, escape']: 'Ce couple entraîne le rouage de finissage — barillet, centre, champ, seconde, échappement',
   ['X-ray the plates and explode the stack to see how the layers fit']: 'Radiographiez les platines et éclatez l’empilage pour voir comment les couches s’emboîtent',
-  ['On the dial side, pull the crown and the jumping-minute works engage']: 'Côté cadran, tirez la couronne et la minuterie à minute sautante s’engage',
+  ['On the dial side, pull the crown and the quick-set works engage']: 'Côté cadran, tirez la couronne et le réglage rapide s’engage',
   ['Each detent sets the minute hand one exact minute']: 'Chaque cran avance l’aiguille des minutes d’exactement une minute',
   ['Push home and it runs on']: 'Repoussez et la marche reprend',
   ['Sync sets the hands to your wall clock through the real keyless works, then catches up']: 'Synchro met les aiguilles à l’heure de votre horloge murale en passant par le vrai remontoir, puis rattrape',
@@ -1344,9 +1344,9 @@ const JA = {
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
-  ['The jumping-minute setting works, behind the dial']: '文字板の裏にある、分ジャンプ式の時刻合わせ機構',
+  ['The minute quick-set works, behind the dial']: '文字板の裏にある、分クイックセット機構',
   ['Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star']: 'りゅうずを引く — 秒針が止まってゼロに飛び、ジャンパーが星車に落ちます',
-  ['Turn to set — the beak snaps the hand one exact minute per detent']: '回して合わせる — くちばしが 1 目盛りごとに針をきっかり 1 分ずつ送ります',
+  ['Turn to set — the hand steps one exact minute per detent']: '回して合わせる — 1 目盛りごとに針がきっかり 1 分進みます',
   ['Push home — the jumper lifts and the watch runs on, synchronised']: '押し戻す — ジャンパーが持ち上がり、同期したまま時計は動き続けます',
   ['A fusee-and-chain watch movement — every part built from geometry, no models']: 'フュジー・チェーン式の時計ムーブメント — すべての部品が幾何から作られ、モデルデータはありません',
   ['The Swiss lever escapement, slowed right down — the balance frees one tooth per beat']: 'スイスレバー脱進機を大きく減速して — テンプが 1 振動につき歯を 1 枚解放します',
@@ -1354,7 +1354,7 @@ const JA = {
   ['Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still']: '全巻きは金属で終わります。最後のひと巻きが止め指を持ち上げ、その先端が円錐上のストッパーの前に落ち、リュウズは止まります',
   ['That torque runs the going train — barrel to centre, third, fourth, escape']: 'そのトルクが輪列を回します — 香箱から二番、三番、四番、がんぎへ',
   ['X-ray the plates and explode the stack to see how the layers fit']: '受けを透視し、積層を分解して層の収まりを見てください',
-  ['On the dial side, pull the crown and the jumping-minute works engage']: '文字板側では、りゅうずを引くと分ジャンプ機構が噛み合います',
+  ['On the dial side, pull the crown and the quick-set works engage']: '文字板側では、りゅうずを引くとクイックセット機構が噛み合います',
   ['Each detent sets the minute hand one exact minute']: '1 目盛りごとに分針がきっかり 1 分進みます',
   ['Push home and it runs on']: '押し戻せばそのまま動き続けます',
   ['Sync sets the hands to your wall clock through the real keyless works, then catches up']: '「対時」は本物の巻真まわりを通して壁時計に針を合わせ、それから追いつきます',
@@ -1736,9 +1736,9 @@ const ZH_HANT = {
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
-  ['The jumping-minute setting works, behind the dial']: '錶盤背後的跳分撥針機構',
+  ['The minute quick-set works, behind the dial']: '錶盤背後的分針快調機構',
   ['Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star']: '拉出錶冠 — 秒針停住並飛回零位，跳簧落入星輪',
-  ['Turn to set — the beak snaps the hand one exact minute per detent']: '轉動撥針 — 鳥嘴每一格讓指針精確跳一分鐘',
+  ['Turn to set — the hand steps one exact minute per detent']: '轉動撥針 — 每一格指針精確前進一分鐘',
   ['Push home — the jumper lifts and the watch runs on, synchronised']: '推回 — 跳簧抬起，手錶繼續走，且已同步',
   ['A fusee-and-chain watch movement — every part built from geometry, no models']: '一具寶塔輪芝麻鏈式手錶機芯 — 每個零件都由幾何生成，沒有任何模型檔',
   ['The Swiss lever escapement, slowed right down — the balance frees one tooth per beat']: '大幅放慢的瑞士槓桿式擒縱 — 擺輪每一振釋放一枚輪齒',
@@ -1746,7 +1746,7 @@ const ZH_HANT = {
   ['Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still']: '滿鏈止於金屬：最後一圈鏈條抬起止動指，指喙落到寶塔輪上的止塊之前，錶冠隨之靜止',
   ['That torque runs the going train — barrel to centre, third, fourth, escape']: '這股扭矩驅動走時輪系 — 發條盒到中心、三輪、秒輪、擒縱',
   ['X-ray the plates and explode the stack to see how the layers fit']: '把夾板透視、把堆疊分解，看看各層如何相合',
-  ['On the dial side, pull the crown and the jumping-minute works engage']: '在錶盤側，拉出錶冠，跳分機構隨即嚙合',
+  ['On the dial side, pull the crown and the quick-set works engage']: '在錶盤側，拉出錶冠，快調機構隨即嚙合',
   ['Each detent sets the minute hand one exact minute']: '每一格讓分針精確前進一分鐘',
   ['Push home and it runs on']: '推回去，它就繼續走',
   ['Sync sets the hands to your wall clock through the real keyless works, then catches up']: '「對時」透過真實的上鏈撥針機構把指針對到你的牆上時鐘，然後再追上來',

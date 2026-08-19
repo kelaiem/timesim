@@ -2842,7 +2842,7 @@ const settingLever = G.makeSettingLever({
   // it no longer reaches the three-quarter plate at all.
   postH: POST_TOP_Z - (Z_SETTING_LEVER + 0.5),
 });
-// --- Jumping-minute LIFTER PLANE (shared by the post drop below and the
+// --- Minute quick-set LIFTER PLANE (shared by the post drop below and the
 // jumper's lost-motion bar, built with the dial side). The bar spans the
 // whole plate→dial gap from this post to the jumper's tail pin, and the
 // keyless/motion/reserve stacks leave NO clear plane along that span in
@@ -8437,13 +8437,20 @@ hourWheelGroup.add(mwHourWheel);
 }
 
 // ---------------------------------------------------------------------------
-// JUMPING-MINUTE SETTING (BUILT §1) — a star on the minute wheel and a
-// sprung jumper on the dial face, engaged ONLY while the crown is out:
-// pull → seconds fly to zero and hack (existing), and the jumper drops
-// into the star, snapping the minute hand onto an exact minute index;
-// turn → the hand advances in whole-minute detented jumps; push at the
-// reference tick → restart, synchronized. The running display stays
-// continuous because the jumper lifts when the crown goes home.
+// MINUTE QUICK-SET, DETENTED DISPLAY (BUILT §1) — a star on the minute
+// wheel and a sprung jumper on the dial face, engaged ONLY while the crown
+// is out: pull → seconds fly to zero and hack (existing), and the jumper
+// drops into the star; turn → the display advances in whole-minute detented
+// steps; push at the reference tick → restart, synchronized. The running
+// display stays continuous because the jumper lifts when the crown goes home.
+//
+// NOT a jumping minute, in either of that term's two senses, and TODO 58
+// exists because this header used to say it was. A jumping minute jumps
+// once per minute WHILE THE WATCH RUNS; this one is quick-set only. And the
+// detent is ARITHMETIC — see the tick block's own note: the display is
+// quantized and the star/beak follow it, rather than the beak's release
+// delivering the step. Roadmap §4 ("Full jumping-minute DISPLAY") is what
+// would earn the stronger word.
 //
 // The star's point count is DERIVED from the motion works, not assumed:
 // one point per MINUTE-HAND minute seen at the minute wheel through the
@@ -8452,7 +8459,7 @@ hourWheelGroup.add(mwHourWheel);
 // ---------------------------------------------------------------------------
 const STAR_POINTS = Math.round(60 / Math.abs(MW_RATIO_1));
 if (Math.abs(60 / Math.abs(MW_RATIO_1) - STAR_POINTS) > 1e-9)
-  console.warn('jumping minutes: motion-works ratio gives a NON-INTEGER star count', 60 / Math.abs(MW_RATIO_1));
+  console.warn('minute quick-set: motion-works ratio gives a NON-INTEGER star count', 60 / Math.abs(MW_RATIO_1));
 const STAR_PITCH = (Math.PI * 2) / STAR_POINTS;
 // z slice DERIVED between the two motion-works planes, one margin each way.
 // TODO 21: the slice is the same 1.5 gap it always was, but it changed
@@ -8465,7 +8472,7 @@ const _mwSliceBot = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22); 
 const _mwSliceTop = MW_Z2 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);   // hour wheel's underside
 const STAR_T = (_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN;
 if (STAR_T < 0.2)
-  console.warn(`jumping minutes: star slice collapsed to ${STAR_T.toFixed(2)} between the motion-works planes`);
+  console.warn(`minute quick-set: star slice collapsed to ${STAR_T.toFixed(2)} between the motion-works planes`);
 const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
 const STAR_MID = STAR_BOT + STAR_T / 2;
 // Radius inside the minute wheel's root circle (the star must never be
@@ -17204,7 +17211,7 @@ let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 // barrelWindTurns by windLocalAt — the chain cannot slip, so a separate
 // banked-turns accumulator was a state the mechanism does not have, and the
 // one that de-phased the cone on every reload because it was never saved.)
-// Jumping-minute setting state: the eased displayed offset while the
+// Minute quick-set state: the eased displayed offset while the
 // jumper is engaged (null when lifted), and the folded-in snap correction
 // that keeps the hand from springing back to the raw phase on push-in.
 let jumpDisp = null;
@@ -24421,7 +24428,7 @@ const camTargets = {
     target: new THREE.Vector3(P.dial.x, P.dial.y, Z_DIAL),
   },
   Setting: {
-    // The §1 jumping-minute works, framed on their own (BUILT §5). The whole
+    // The §1 minute quick-set works, framed on their own (BUILT §5). The whole
     // cluster — star, beak, spring, lifter — lives within JMP_PIV_R of the
     // minute-wheel stud, so the stud IS the frame's centre. Its world position
     // comes through the dialFace Y-flip (dial-local (x,y,z) ↔ world
@@ -24963,9 +24970,9 @@ function scriptStart(steps, btn) {
 // §5 — "See the minute jumper in action": frame the jumper, then pull → snap →
 // set → push, unattended, ending with the watch running on an index.
 const DEMO_STEPS = [
-  { preset: 'Setting', scale: 0.3, schematic: false, caption: 'The jumping-minute setting works, behind the dial', dwell: 1.4 },
+  { preset: 'Setting', scale: 0.3, schematic: false, caption: 'The minute quick-set works, behind the dial', dwell: 1.4 },
   { crown: 'out', caption: 'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star', dwell: 0.7 },
-  { turnMinutes: 4, caption: 'Turn to set — the beak snaps the hand one exact minute per detent', dwell: 0.9 },
+  { turnMinutes: 4, caption: 'Turn to set — the hand steps one exact minute per detent', dwell: 0.9 },
   { crown: 'in', scale: 1, caption: 'Push home — the jumper lifts and the watch runs on, synchronised', dwell: 1.6 },
 ];
 
@@ -25112,7 +25119,7 @@ const TOUR_STEPS = [
   { preset: 'Free', powerflow: false, xray: true, explode: 0.6, labels: true,
     caption: 'X-ray the plates and explode the stack to see how the layers fit', dwell: 6.0 },
   { preset: 'Setting', explode: 0, labels: false, scale: 0.3, crown: 'out',
-    caption: 'On the dial side, pull the crown and the jumping-minute works engage', dwell: 1.2 },
+    caption: 'On the dial side, pull the crown and the quick-set works engage', dwell: 1.2 },
   { turnMinutes: 3, caption: 'Each detent sets the minute hand one exact minute', dwell: 1.2 },
   { crown: 'in', scale: 1, caption: 'Push home and it runs on', dwell: 1.8 },
   { preset: 'Dial', xray: false, sync: true,
@@ -25898,13 +25905,22 @@ function tick(t) {
   const settingWheelSpin = -setPathRot * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
   const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
-  // JUMPING-MINUTE SETTING: while the crown is out, the jumper is in the
-  // star and the DISPLAYED offset is quantized so the minute hand sits on
-  // exact minute indices — the raw input winds against the jumper spring
-  // and the hand SNAPS one detent at a time (eased on the CAM_SNAP_TAU
-  // convention). On push-in the achieved snap is folded into a persistent
-  // correction so the hand never springs back to the raw phase; running
-  // then resumes continuously with the jumper lifted clear.
+  // MINUTE QUICK-SET, DETENTED DISPLAY: while the crown is out, the jumper
+  // is in the star and the DISPLAYED offset is quantized so the minute hand
+  // sits on exact minute indices — the hand steps one detent at a time
+  // (eased on the CAM_SNAP_TAU convention). On push-in the achieved step is
+  // folded into a persistent correction so the hand never springs back to
+  // the raw phase; running then resumes continuously with the jumper lifted.
+  //
+  // TODO 58 — say what this is, since it is easy to read the beak into it.
+  // The INPUT is simulated: rawSetOffset above is the crown's turn carried
+  // forward through the real keyless and motion-works tooth counts. The
+  // DETENT is not: `target` is Math.round(…/MIN_PITCH)*MIN_PITCH, and the
+  // star turns with mwMinuteA — which is computed FROM that quantized value
+  // — so the beak below rides a profile the display has already decided.
+  // The star and the beak are MODELLED (real cut V, an exact ride solve, a
+  // one-sided seat), and they follow; they do not deliver the step. Roadmap
+  // §4 is the entry that would make the detent the cause instead.
   const jmpEngaged = crownPullT > 0.5;
   {
     const minuteBase = centerAngle(tau) - centerAt0; // frozen while hacked (pull also hacks)
@@ -27469,7 +27485,7 @@ window.__clock = {
   // Zero every PERSISTENT user input, returning the mechanism to its as-booted
   // reference. setPose forces the pose *variables* but deliberately leaves the
   // accumulators a real session builds up — the raw crown angle, the rotation
-  // each clutch path has banked, and the jumping-minute snap correction —
+  // each clutch path has banked, and the quick-set snap correction —
   // exactly the inputs that decide where the HANDS sit. That is fine for the
   // battery (its axes never touch the hands) but makes a geometry fingerprint
   // depend on session history: two loads with different saved crown state hash
