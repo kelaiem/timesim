@@ -27417,6 +27417,25 @@ window.__clock = {
   // reads the setting ratio: a `?reserveh=` spec moves the fusee's wrap
   // count, and an axis that hard-coded 3.75 would sweep a different wind
   // than the movement performs at that spec.
+  // TODO 40 row 3's missing instrument, its measuring surface. A chain is a
+  // fixed length of steel and nothing in the battery has ever said so: the
+  // sweeps see a rebuilt mesh as a mover and never compare its length across
+  // poses. This hands the check the SHIPPED layout — chainLayoutAt is the one
+  // the display bakes and the arrest's contact law reads — rather than a
+  // second copy of the arithmetic that could agree with nothing.
+  //
+  // arcLengthDivisions is pinned rather than left at Curve's default 200,
+  // and that is the whole measurement: the control-point COUNT varies with
+  // tension (nF with the wrap, nD with the coil), so a sampling density tied
+  // to the curve's own parameterisation would read its own control density as
+  // length drift. A fixed division count makes the sampling error a constant
+  // offset, which a spread measurement then cancels.
+  chainRunLength(tension, divisions = 4000) {
+    const { curve } = chainLayoutAt(clamp(tension, 0, 1));
+    curve.arcLengthDivisions = divisions;
+    curve.updateArcLengths();
+    return curve.getLength();
+  },
   get fuseeWrapTurns() { return FUSEE_WRAP_TURNS; },
   get hoursPerFuseeTurn() { return HOURS_PER_FUSEE_TURN; }, // §124: the train axis's orbit length — the first mesh's ratio, one source
   // §47 — the arrest's solved numbers, read-only: the instruments quote

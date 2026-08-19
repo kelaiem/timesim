@@ -4709,13 +4709,43 @@ the cone. That is buildable but is its own step with its own instrument
 (`D` also drags the drum's STATION into the wind accounting), so it stays
 filed. `DRUM_ROT_FULL` is 1.3386 turns under the derived law.
 
-**And nothing asserts any of this.** The chain is display-only, the sweeps
-see a rebuilt mesh as a mover and never compare its length across poses,
-and no check states that a chain is a fixed length of steel — the hole
-`devLen` closed for the mainspring in item 1. The instrument is the real
-remainder of this row: assert the run's length is constant across the
-reserve axis to a stated tolerance, and the 1.1% above is what it would
-report on day one.
+**The instrument now exists, and it reports WORSE than this row estimated.**
+`chainLength` (`checkChainLength`, registered in `CHECKS` and in the battery
+at cost 1 — 38 ms) sweeps the reserve at 41 poses and measures the shipped
+layout curve through `__clock.chainRunLength`, so it compares the model
+against itself rather than against a second copy of the arithmetic.
+
+| | measured |
+|---|---|
+| run length, min → max | 81.1598 → 82.7791 u |
+| spread | **1.6193 u = 1.984%** |
+| tolerance (half a link pitch) | 0.95 u = 1.164% |
+| link count over the reserve | **43 and 44** — not constant |
+| worst at | max at reserve 0 (run flat), min at 0.1 |
+
+**1.984%, not the 1.1% this row predicted.** The old figure came from vertex
+count, which is quantised to whole links and therefore under-reports; the
+curve's own length is nearly double it. The link census beside it is the same
+fact read from the mesh side — the run lays 43 links at some states of wind
+and 44 at others, so it is demonstrably a different chain.
+
+**The tolerance is derived, and is not free to move.**
+`buildChainLinkGeometry` lays `N = max(round(len / CHAIN_PITCH), 2)`, so a
+length change under half a pitch cannot change `N` and the model genuinely
+cannot see it; at half a pitch the run gains or loses a link. `CHAIN_PITCH`
+is itself pinned to a manufactured 0.72 mm, so the number belongs to the
+chain rather than to this check. Sampling is pinned at 4000 divisions for a
+reason written at the exposure: the control-point count varies with tension,
+so a density tied to the curve's own parameterisation would read its control
+density as length drift. Convergence measured — 0.0025% between 500 and 8000
+divisions, stable to 1.5e-6 relative from 2000 up, four orders under the
+tolerance.
+
+**The row is WAIVED, not green**, citing this item: the fix is still the ODE
+this row deferred, and the waiver says so in the report where it is visible.
+What has changed is that the error is now a number the battery states every
+run instead of an argument in a markdown file — and TODO 49 is blocked on it
+(pinning the chain's fusee end needs this closure to be exact first).
 
 ## 41. CLOSED — both well hands ride a plane derived from their own section; the reserve hand was 0.0014 off its floor
 
@@ -5861,6 +5891,38 @@ drum, run at the other end. Then the wrap's bottom stops drifting and the
 support edge names metal. Costs: a small body on the cone (the fingerprint
 moves), one solve in `rebuildChain`, and the §61/§124 seating rows
 re-measure at the bottom station.
+
+**BLOCKED on TODO 40 row 3, and the fix above is not the one to run.** Scoped
+2026-08-19. Two of the end's three coordinates are ALREADY pinned — the wrap
+starts at `fuseeGrooveAt(0)`, which is `rLarge` 5.4696 at the band's bottom,
+at every state of wind (measured: z 4.41 across the reserve). Only the
+AZIMUTH floats, and it sweeps the full 1.75 turns: 70.7° → −56.5° → 144.1°
+→ −14.8° → −173.3° at reserve 0.05 / 0.25 / 0.5 / 0.75 / 1.
+
+The proposed fix — run the drum's fractional-turn congruence at the other end
+— rests on a symmetry that is not there. At the drum, the residual is absorbed
+by `drumTurns = round(baseTurns − frac) + frac`: up to half a turn of COIL, a
+display quantity nothing depends on. The cone has no such absorber. Its wrap
+count is `wraps = tension · FUSEE_WRAP_TURNS`, and that is load-bearing —
+`windArrest.engageTurns` = 1.75 is asserted at boot against
+`RESERVE_BARREL_TURNS`, and §126's argument that the lug can be CUT to its
+angle rather than calibrated rests on it. Rounding at the cone would put up to
+half a turn at `rLarge` — about 17 u, an eighth of the whole run — into the
+first link.
+
+So the only remaining absorber is the chain's LENGTH, which is exactly what
+TODO 40 row 3 defers. `chainLength` now measures it: the run spreads 1.984%
+across the reserve against a 1.164% tolerance, and lays 43 links at some
+states and 44 at others. Pin both ends and that closure becomes load-bearing,
+so this item cannot land before it.
+
+**What to write instead of the current fix.** Either (a) do 40 row 3 first and
+then pin both ends, deriving `wraps` from the closure and making `tension` a
+readout of the wrap rather than its input — which is how a real fusee actually
+closes — or (b) cut the hook as honest metal and CORRECT the support edge to
+stop claiming a joint. Do not do (b) in the belief that it closes this item:
+it converts an invisible false claim into a visible one, metal the chain
+demonstrably misses.
 
 **Filed by §47's scope guard**, which named it rather than absorbing it.
 
