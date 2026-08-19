@@ -45,8 +45,15 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
 | 57 | OPEN | `README.md:305` claims screwed gold chatons over the upper pivot jewels and `:314` asserts the whole list is still true; `makeChaton` is called by NOTHING and every jewel is a plain stone. The upper pivots got flush rubbed-in rubies deliberately (`main.js:6319–6326`) — the README names the bearing the movement refused. Two fixes, both to be filed: correct the prose, and roadmap §132 to make the claim true |
 | 58 | OPEN | Two defects stacked. Outer: `explain.html:1196`, `main.js:8440` and `BUILT.md:23` say "jumping minute" while `BUILT.md:29` already qualifies it "setting-time jumping only". Inner: the snap is `Math.round(… / MIN_PITCH)` plus an ease (`main.js:25623–25626`) — the star and jumper are POSED alongside a rounded display value, so it is modelled, not simulated. Fix costs five explain-page translations by design and ten `src/i18n.js` rows for two tour captions |
+| 59 | OPEN | `profileAt` returns a normalized HEIGHT; the link beak consumes it as one and the CLICK consumes it as a RADIUS, while the pillar's outer wall is constant-radius with a z-only chamfer. Mid-flank the nose is driven into a wall that has not moved — 0.52 of burial at c = 0.5 against a 0.15 margin, over the 71% of each half-arc that is flank. P2, with TODO 22 as precedent. Worse than blindness: `INTRA_UNIT_CONTACTS` row 2032 cites "the switch's own asserts" and no such assert was ever written |
+| 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
+| 61 | OPEN | `SPEC.md:47` (the architecture contract) says "Involute-ish" and `geometry.js:313` says "Involute/cycloidal-ish", while the profile function cuts a TRAPEZOID with a relieved tip — straight-chord flanks, one quadratic, `curveSegments: 3`, no pressure angle, no conjugate action. Only `makeEscapeWheel` is a designed profile. Cheap to correct and should not wait on §136 |
+| 62 | OPEN | Nine `Math.PI / teeth` sites neither TODO 15 nor 48 names, and the GOING TRAIN has no phase at all — not one `rotation.z` is assigned, so its four meshes sit wherever `gearOutlineShape` puts a tooth at two different `tipFrac` conventions. `main.js:10130` warned about exactly that and the train was never brought under it. Fix TODO 48's threshold bug first or `solveGearChain` refuses every small pinion |
+| 63 | OPEN | The elbow rods bend for ROUTING only — a rigid two-segment link, offset to `ELBOW_E_MAX` 16, with no bending moment computed anywhere. And TODO 16's 1.5 mN stall is stale in the favourable direction: §68 collapsed the beak lever 36.5× → ~3:1 while the shaft thickening was reverted twice by CI, so it describes neither configuration. Re-take before sizing anything against it |
+| 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
+| 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -6649,7 +6656,7 @@ smaller than the stroke it polices, and add the missing footprint assert —
 `alarmLinkReadClean()` (`main.js:16127–16142`) is the template and the link
 beak already has one; the click and the lock beak do not.
 
-## 60. The arrest tower's leg B pinion stands on nothing, and its sleeve is zero units tall
+## 60. CLOSED — the tower's arbor reaches its topmost member, and both sleeves end on metal
 
 §129 fixed exactly this defect one member over — the finger's arbor stopped
 short of its own output pinion, *"visible the moment the unit was rendered, and
@@ -6733,6 +6740,66 @@ checks the column in **bending or buckling** over that slenderness, and no
 watchmaker would leave a wheel arbor of that ratio unsupported at the top. That
 is what "appears unsupported" is reading, and it is worth answering with
 arithmetic rather than with a thicker column chosen by eye.
+
+**CLOSED.** Three things were wrong, and only the first was filed.
+
+**1. The arbor stopped at the tower's MIDDLE member.** It was sized to
+`SUB_OUT_Z` — the cage — so it topped out at 5.9648 while the tower carries on
+to 7.85. Both leg B's side gear AND its pinion turned with no arbor in their
+bores: 1.9 units of tower on nothing, not the one wheel this item was filed
+about. Now sized to the topmost member, `SUB_PIN_B_Z + T/2 + 0.2`, which is the
+idler's own idiom — and because leg B's pinion shares the idler pinion's plane
+BY MESHING, it lands at the same 7.9939 `subIdlerArbor` already occupies under
+a green battery, rather than at a height nothing had tested.
+
+**2. The zero-height sleeve was a symptom of a wrong constant, not a stray
+line — and the first fix for it was WRONG.** The initial attempt deleted the
+ring, on the reasoning that `SUB_PIN_B_Z` seats the pinion directly on the
+spider's envelope so there was no span to bridge. That premise is false, and
+the geometry says why: `makeBevelGear` extrudes the flat outline along z and
+then SHEARS it (`v.z += hypot(v.x, v.y) * taper`, taper = 1 at 45°), so a
+vertex at radius r lands at `z ∈ [r, r + faceWidth]`. The cone's back surface
+is therefore `z = r + faceWidth`, and at the bore — the flat annulus a hub
+actually butts against — that is `sideBoreR + faceWidth`. `halfHeight` is the
+swept ENVELOPE and stands outboard of every point of metal.
+
+Measured on the built scene: side gear B spans local 0.550 … 1.602, its hub
+face is at 0.957, and leg B's pinion sits at 1.629. **The span is 0.672, and
+leg A had the identical hole** — `subSleeveA` ended on `halfHeight` too and
+stopped 0.672 short in mid-air, which nothing had noticed because a sleeve that
+ends in air still has non-zero height. Both now end on `SUB_SPEC.hubFaceZ`, a
+new derived field on `spiderSpec` carrying that derivation in its comment.
+Measured after: sleeve A 3.0228 … 4.4076, sleeve B 6.3220 … 6.9939.
+
+**3. The instrument, because this class shipped TWICE in one session.** §129's
+first instance — the finger's arbor stopping below its own output pinion — was
+caught by rendering the unit and looking; the second was not caught at all. A
+build-time assert now asks the per-MEMBER question at the end of the tower's
+build: for each rotor, does any other mesh of the unit contain its axis at its
+own height? A rotor is coaxial with its arbor, so that is exactly "is there an
+arbor in this bore", and a cylinder's box contains its own axis — the test is
+exact for the case it exists for and conservative elsewhere, and it is the
+false NEGATIVE direction that would matter. **It is proven to fire**: reverting
+the arbor to its old height warns twice, naming `spiderSideB` and
+`subLegBPinion`. `tools/probe-60-reach.mjs` is the same measurement over any
+unit, and `tools/probe-60-checks.mjs` runs the six instruments this class of
+change can move.
+
+**Why the whole bar missed it, kept because it generalises.** A wheel with an
+empty bore collides with NOTHING, so no clearance sweep, hull overlap or
+penetration budget has anything to report. `assembly` asks whether a rigid
+group is one connected body, and a zero-height ring satisfies that while
+occupying no space — the perfect connector. And `checkSupportGeometry` is
+UNIT-granular: `Alarm winding arrest → plate` passes the moment any ONE of four
+columns reaches the plate, so every wheel in the unit could be floating and
+that row would still read `gap 0.000, ok`. Three gates, three different reasons,
+none of them a bug in the gate that missed it.
+
+**Scope of the assert, stated rather than assumed.** It is scoped to this unit,
+following §121's precedent of gating a named scope: elsewhere in the movement
+wheels seat on shoulders and bridges this test does not model, and warning
+across all of them would break rule 6 rather than find anything. Widening it is
+worth doing behind a declared scope list, not by default.
 
 ## 61. `SPEC.md` and the gear builder name a tooth form the code does not cut
 
@@ -7030,3 +7097,35 @@ conclusion: the setting is **continuous**, the READOUT was what rounded, and the
 ring was recommended against. A live item describing a removed control and a
 retired premise is worse than a closed one — rewrite it to what remains, or
 close it citing §38.
+
+## 67. `spiderSpec.halfHeight` claims a margin it has almost entirely spent
+
+Found while closing TODO 60, and filed rather than fixed because the fix
+re-opens §129's siting solve.
+
+`halfHeight = R + module*0.85 + faceWidth*√½ + margin` is the spider's declared
+half-extent, and the `margin` term reads as `CLEAR_MARGIN` = 0.150 of air
+around the cones. It is not. The `√½` treats `faceWidth` as measured
+PERPENDICULAR to the pitch cone, but `makeBevelGear` extrudes along **z** and
+shears, so the cone's axial extent is `faceWidth`, not `faceWidth·√½`. The
+difference — `faceWidth·(1 − √½)` = 0.119 at the shipped spec — comes straight
+out of the margin.
+
+Measured on the built scene: side gear B's metal reaches local **1.602**
+against a declared `halfHeight` of **1.629**. Real slack **0.027**, against the
+0.150 the expression appears to promise — 82% of the margin is already spent,
+silently.
+
+**Why it matters beyond tidiness.** `halfHeight` is not only a label: the §129
+siting solve spends it as a clearance band (`SPIDER = [SUB_CAGE_Z −
+halfHeight, SUB_CAGE_Z + halfHeight]`), and `SUB_CAGE_Z`'s own first branch is
+`SUB_WIND_TOP + CLEAR_MARGIN + halfHeight`. So a band that believes it carries
+a full margin is being used to keep the differential clear of its neighbours.
+Today the second branch binds (the barrel lid sets the apex), so nothing is
+riding on the shortfall — but that is luck, not design, and it would change
+with any spec point that moves the barrel.
+
+**The fix** is to carry the axial extent honestly — `R + module*0.85 +
+faceWidth + margin` — and then re-run §129's plane and station solve, because
+raising `halfHeight` by 0.119 moves the band the solve searches. That is why
+this is its own item: the arithmetic is one line, the acceptance is a re-solve.

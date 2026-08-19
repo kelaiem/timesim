@@ -2000,6 +2000,16 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
     // inward instead is what had the two sleeves meeting in the middle of the
     // gear set with the planets driven straight through them.
     halfHeight: R + module * 0.85 + faceWidth * Math.SQRT1_2 + margin,
+    // WHERE A HUB ACTUALLY SEATS, which is NOT halfHeight (TODO 60).
+    // makeBevelGear extrudes the flat outline along z and then shears it
+    // (`v.z += hypot(v.x, v.y) * taper`, taper = 1 at 45°), so a vertex at
+    // radius r lands at z in [r, r + faceWidth]. The cone's back surface is
+    // therefore z = r + faceWidth, sloping from the bore outward — and at the
+    // BORE it is the flat annulus a sleeve butts against. halfHeight is the
+    // swept ENVELOPE and stands outboard of every point of metal, so a sleeve
+    // ended there stops in mid-air: measured, 0.672 short on both legs, which
+    // is exactly the hole TODO 60 found under leg B's deleted ring.
+    hubFaceZ: sideBoreR + faceWidth,
     teethOk: teeth >= minGearTeeth(module, planetBoreR),
     moduleMin,
     cuttable: module >= moduleMin - 1e-12,

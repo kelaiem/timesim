@@ -15081,7 +15081,11 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   });
   pinA.traverse((o) => { if (o.isMesh) o.name = 'alarmArrestPinion'; });
   spin.add(pinA);
-  sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z - SUB_SPEC.halfHeight, 'subSleeveA');
+  // TODO 60 — the sleeve ends on the side gear's HUB FACE, not on the swept
+  // envelope. `halfHeight` stands outboard of every point of metal (the cone's
+  // back surface is z = r + faceWidth, so at the bore it is `hubFaceZ`), and a
+  // sleeve ended there stops 0.672 short in mid-air. Both legs had it.
+  sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z - SUB_SPEC.hubFaceZ, 'subSleeveA');
   alarmArrestUnit.add(spin);
   arrestPinionSpin = spin;
 
@@ -15102,13 +15106,40 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   });
   pinB.traverse((o) => { if (o.isMesh) o.name = 'subLegBPinion'; });
   pinBSpin.add(pinB);
-  sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z + SUB_SPEC.halfHeight, 'subSleeveB');
+  // TODO 60 — THE SLEEVE THAT WAS A POINT. Both its arguments used to reduce to
+  // `SUB_CAGE_Z + halfHeight` — the first through SUB_PIN_B_Z's own definition
+  // three thousand lines up — so `tube` extruded it at depth 0. A zero-height
+  // ring is not a small part but a MALFORMED one, and it is worse than absent:
+  // it satisfied §107's connectivity while occupying no space, so the hole it
+  // was supposed to fill read as bridged.
+  //
+  // The end is `hubFaceZ` for the reason spelled out at leg A: `halfHeight` is
+  // the swept envelope, and the cone's metal at the bore stops 0.672 inboard
+  // of it. Measured on the built scene, side gear B spans local 0.550 … 1.602
+  // against an envelope of 1.629 — so the envelope also over-states the cone
+  // by only 0.027 where it claims a margin of 0.150, which is a separate
+  // finding and is filed as TODO 67 rather than fixed here.
+  sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z + SUB_SPEC.hubFaceZ, 'subSleeveB');
   alarmArrestUnit.add(pinBSpin);
   subPinBSpin = pinBSpin;
 
-  // the arbor the whole tower runs on
+  // THE ARBOR THE WHOLE TOWER RUNS ON, and it must reach the tower's TOPMOST
+  // member — not its middle one. Sized to SUB_OUT_Z (the cage) it stopped at
+  // 5.9648 while the tower carries on to 7.85, so leg B's side gear AND its
+  // pinion both turned with no arbor in their bores: 1.9 units of tower on
+  // nothing. That is §129's own defect a second time — the finger's arbor was
+  // built to the finger and left its output pinion standing at 7.27 — and it
+  // survived because a wheel with an empty bore collides with precisely
+  // nothing, so no clearance sweep, hull overlap or penetration budget has
+  // anything to report.
+  //
+  // The height is the idler's own idiom, and the idler is why it is known to
+  // fit: `subIdlerArbor` runs to `SUB_IDLER_P_Z + T/2 + 0.2`, and leg B's
+  // pinion shares the idler pinion's plane BECAUSE THEY MESH — so this lands
+  // at the same 7.9939 the sibling column already occupies under a green
+  // battery, rather than at a height nothing has tested.
   column(arrestPos.x, arrestPos.y, ARREST_SPEC.arborR,
-    SUB_OUT_Z + ALARM_WIND_WHEEL_T / 2 + 0.2, 'alarmArrestArbor');
+    SUB_PIN_B_Z + ALARM_WIND_WHEEL_T / 2 + 0.2, 'alarmArrestArbor');
 
   // --- THE COMPOUND IDLER: the SIGN, and the tower's z freedom ---------------
   const idlerSpin = new THREE.Group();
@@ -15253,6 +15284,64 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
         && outTip > SUB_BESIDE_R)
       console.warn(`alarm arrest: the cage's wheel reaches ${outTip.toFixed(3)} inside the barrel's `
         + `band — it must clear the lid at ${ALARM_BARREL_TOP.toFixed(3)} instead`);
+  }
+  // TODO 60 — DOES EVERY ROTOR HERE HAVE AN ARBOR IN ITS BORE? This unit shipped
+  // that defect TWICE in one session: the finger's arbor stopped below its own
+  // output pinion (caught by rendering the unit and looking), and the tower's
+  // arbor stopped below leg B's side gear and pinion (not caught at all, for
+  // eight months of green batteries).
+  //
+  // It is invisible to the whole bar, and none of the three reasons is a bug in
+  // the gate that misses it: a wheel with an EMPTY BORE collides with nothing,
+  // so no clearance sweep, hull overlap or penetration budget has anything to
+  // report; `assembly` asks whether a rigid group is one connected body, and a
+  // zero-height sleeve satisfies that while occupying no space; and
+  // `checkSupportGeometry` is UNIT-granular, so `Alarm winding arrest → plate`
+  // passes the moment any ONE of four columns reaches the plate — every wheel
+  // in here could be floating and that row would still read `gap 0.000, ok`.
+  //
+  // So the question is asked per MEMBER, and it is cheap: a rotor is coaxial
+  // with its arbor, so "is there an arbor in this bore" is "does some other
+  // mesh of this unit contain the rotor's axis at the rotor's own height".
+  // A cylinder's box contains its own axis, so the test is exact for the case
+  // it exists for and merely conservative elsewhere — it can call a near miss
+  // a hit, never a real hit a miss, and it is the false NEGATIVE that would
+  // matter. Scoped to this unit deliberately (§121's precedent: gate a named
+  // scope rather than warn across a movement whose other units seat wheels on
+  // shoulders and bridges this test does not model); `tools/probe-60-reach.mjs`
+  // is the same measurement over any unit, for exploring the rest.
+  {
+    alarmArrestUnit.updateMatrixWorld(true);
+    const solids = [];
+    alarmArrestUnit.traverse((o) => {
+      if (o.userData && o.userData.schematic) return;   // §71: display, never metal
+      if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+      o.geometry.computeBoundingBox();
+      solids.push({ o, b: o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld) });
+    });
+    const axis = new THREE.Vector3();
+    for (const { o, b } of solids) {
+      // A ROTOR is what the BUILDER says is one — makeGear/makePinion record
+      // userData.r — so a renamed part cannot drop out of the population.
+      let spins = false;
+      for (let n = o; n; n = n.parent) {
+        if (n.userData && typeof n.userData.r === 'number') { spins = true; break; }
+        if (n === alarmArrestUnit) break;
+      }
+      if (!spins) continue;
+      o.getWorldPosition(axis);
+      const zMid = (b.min.z + b.max.z) / 2;
+      const held = solids.some(({ o: p, b: q }) => p !== o
+        && axis.x >= q.min.x && axis.x <= q.max.x
+        && axis.y >= q.min.y && axis.y <= q.max.y
+        && zMid >= q.min.z && zMid <= q.max.z);
+      if (!held)
+        console.warn(`alarm arrest: ${o.name || 'a rotor'} turns at z ${zMid.toFixed(3)} with nothing `
+          + `spanning its axis — no arbor in its bore (TODO 60)`);
+      if (b.max.z - b.min.z < 1e-9)
+        console.warn(`alarm arrest: ${o.name || 'a solid'} extrudes at depth 0 — a zero-height ring `
+          + `is a malformed solid that still satisfies §107 connectivity (TODO 60)`);
+    }
   }
 }
 // NO declareTravel HERE, and the omission is the honest reading. §36A's
