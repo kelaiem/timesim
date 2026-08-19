@@ -339,6 +339,16 @@ This project is not affiliated with, endorsed by, or a product of any watch
 manufacturer. If the result puts you in mind of a particular Glashütte house,
 that is the shared vocabulary of the school, borrowed admiringly.
 
+**An acknowledged influence.** Bartosz Ciechanowski's *Mechanical Watch*
+(<https://ciechanow.ski/mechanical-watch/>) is an inspiration for this
+project's explanatory side — the conviction that a mechanism is best
+explained by letting someone move it, and that the explanation deserves the
+same care as the thing explained. `explain.html`, `primer.html` and the
+schematic view all exist because of that conviction. Nothing here is copied
+from it: no geometry, no code, no text, and the movement is a different one
+(a fusee-and-chain caliber with an alarm). The debt is one of ambition, and
+it is gladly acknowledged.
+
 ## Made with Claude
 
 This project was made possible by **Claude**, Anthropic's AI model. The

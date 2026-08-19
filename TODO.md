@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-11 — items with work left first, with what remains:
+refreshed 2026-08-19 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -40,7 +40,11 @@ refreshed 2026-08-11 — items with work left first, with what remains:
 | 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
-| 54 | OPEN | `AXES`' header claims the axes pin each other; `setPose` assigns only the keys a pose NAMES, six of eleven axes name four of twelve, and nothing resets between axes — so every sweep's poses depend on declaration order and `alarmToggle` runs at an undeclared full alarm wind. Fix: total poses (a declared base plus each axis's delta). It will MOVE reports — the §36 registry's `reversed` flag feeds §48's population — so accept per row. Prerequisite for roadmap §127's battery partition |
+| 54 | CLOSED (§127) | Every sweep calls `enterAxis` before each axis, and `axisEntry` gates all 110 ordered pairs at 0 violations. The leak the old order-dependent entry used to carry is measured and REPORTED beside the gate rather than dropped — that report is the record, not a remainder |
+| 55 | CLOSED (§129) | The alarm stop-work counts the WIND now, not the arbor's absolute angle: a plate-mounted spider differential subtracts the barrel's two members, so the cross walks back as the spring empties. Residue is item 56 — a closed item is a bad place to keep live debt |
+| 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
+| 57 | OPEN | `README.md:305` claims screwed gold chatons over the upper pivot jewels and `:314` asserts the whole list is still true; `makeChaton` is called by NOTHING and every jewel is a plain stone. The upper pivots got flush rubbed-in rubies deliberately (`main.js:6319–6326`) — the README names the bearing the movement refused. Two fixes, both to be filed: correct the prose, and roadmap §132 to make the claim true |
+| 58 | OPEN | Two defects stacked. Outer: `explain.html:1196`, `main.js:8440` and `BUILT.md:23` say "jumping minute" while `BUILT.md:29` already qualifies it "setting-time jumping only". Inner: the snap is `Math.round(… / MIN_PITCH)` plus an ease (`main.js:25623–25626`) — the star and jumper are POSED alongside a rounded display value, so it is modelled, not simulated. Fix costs five explain-page translations by design and ten `src/i18n.js` rows for two tour captions |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -5689,6 +5693,12 @@ could not produce at all.
 
 ## 48. The power-reserve train's two meshes sit tooth ON tooth — measured, 47–49% of a pitch off
 
+> **Re-confirmed by triage 2026-08-19**, when "fix the gear meshing on the
+> power reserve indicator" came in as a fresh request. It is this item,
+> already measured and already sited, so no second item was opened — a
+> duplicate would split the measurement from the fix path. Nothing below
+> changed; this note exists so the request is not filed a third time.
+
 Reported by eye from the running sim: **the power-reserve train's gear
 meshes don't engage each other.** They do not interleave — a tooth of one
 wheel meets a tooth of the next on the line of centres, where a gap
@@ -6433,3 +6443,126 @@ pairs, worst delta 0.732) — the fingerprint of a unit whose pose depended on t
 members no single axis pinned together. Re-read that row after this axis lands:
 a stop-work that reads one quantity should stop being the most pose-sensitive
 unit in the movement, and if it has not, the reason is worth knowing.
+
+## 57. The README claims screwed gold chatons the movement does not have
+
+`README.md:305` lists **"screwed gold chatons over the upper pivot jewels"**
+among the Glashütte-school features the finishing follows, and `:314`
+compounds it: *"every item in the list above is still there"* — a sentence
+whose whole job is to assert that the list is still true after the dial's
+German markings came off. `makeChaton` (`src/geometry.js:3590`) is a
+complete, documented builder — gold bezel, oil sink, pressed ruby, blued
+screws straddling the rim — and it is **called by nothing**. Every jewel in
+the built movement is a plain stone.
+
+**The movement did not merely skip them; it REFUSED them, on record.**
+`src/main.js:6319–6326` argues the reversal in place: the three-quarter
+plate is 0.8 thick, the hack and reset rods pass just above it, and nothing
+may stand proud — so what was built is a gold RIM rising around a flush
+stone (`ringGeo` at `TQ_T − CHATON_DEPTH`, then `jewelFaceGeo`), which is a
+**rubbed-in** jewel setting. That is a different and older bearing than a
+chaton, and it is the one this movement chose. The README names the one it
+rejected.
+
+`MATS.gold` is the tell that this is drift rather than a decision nobody
+wrote down: its own docstring names the chatons as its reason to exist, and
+its only live use is the balance's shock lyre spring.
+
+**The fix has two shapes, and this item must not pick one silently, because
+they are not alternatives in the long run:**
+
+1. **Correct the prose** to what is built — rubbed-in jewels, flush, with
+   the plate's own reason beside them. Cheap, immediately true, and it makes
+   the `:314` sentence honest again. This is the fix that stands whether or
+   not anything else ever lands.
+2. **Make the claim true** — roadmap §132 sites the existing builder on the
+   fork cock and the balance cock, the two places the plate's objection does
+   not reach. That closes this item's chaton half by construction.
+
+File both, in that order. Doing (1) first is not wasted work if (2) lands
+later: the prose has to change again, but the README is never wrong in the
+interval, and that interval is open-ended because §132 is filed, not
+scheduled.
+
+**A scope note, since "where could chatons go" was part of the question.**
+Three candidate sites exist and only two survive:
+
+- **Fork cock** — `FORK_COCK_T` = 1.0 (`src/main.js:2151`), bore
+  `0.35 + PIVOT_BORE_CLEAR` = 0.40 (`:2181`), counterbore `forkBore + 0.55`
+  = 0.95 radius (`:2263`) at `FORK_COCK_T * 0.65` = 0.65 deep (`:2264`),
+  boss `chatonOuterFor(forkBore) + 0.15` = 1.50 (`:2186`). The movement's
+  only real counterbored jewel seat, it is 1.0 thick where the plate is 0.8,
+  and it carries the highest-load bearing in the watch. Viable.
+- **Balance cock** — built at `src/main.js:5215` from `COCK_T` = 0.8
+  (`src/layout.js:392`), `COCK_W` 6 and `COCK_JEWEL_AT` 0.5. Viable, with
+  one constraint that must be measured before it is assumed: the shock
+  setting's boss already occupies the face out to **r 1.35**
+  (`ringMesh(0.85, 1.35, 0.55)`, `src/main.js:5347`), so a chaton rim must
+  live outside that or the two parts are one part.
+- **Three-quarter plate** — **not viable**, for the reason the source
+  already gives above. Anyone proposing it is re-opening a settled
+  argument and should read `src/main.js:6319–6326` first.
+
+## 58. The documents call a quick-set a jumping minute — and the mechanism is weaker than even that
+
+Two separate defects stacked on one mechanism, and the outer one hides the
+inner one.
+
+**The outer defect: the documents disagree with each other.** A jumping
+minute jumps once per minute *while the watch runs*. This one jumps only
+while the crown is pulled out. `docs/BUILT.md:29` already knows that and
+says so — *"This is setting-time jumping only"* — but the same file's §1
+title (`:23`) is "Jumping-minute setting", `src/main.js:8440`'s section
+header reads `JUMPING-MINUTE SETTING (BUILT §1)`, and `explain.html:1196`
+states it flatly to a reader with no qualifier at all: *"The minute display
+is a jumping minute."* The project's own vocabulary is already split against
+itself — the roadmap calls the same mechanism "minute quick-set" in §19's
+title while the source header calls it a jumping minute.
+
+**The inner defect, which is the one that matters: the snap is posed, not
+driven.** The crown does drive `setPathRot` continuously through the real
+keyless tooth counts to `rawSetOffset` — that part is honest and is rule 2
+working. But the jumper's contribution to the displayed angle is
+`Math.round(… / MIN_PITCH) * MIN_PITCH` plus an exponential ease
+(`src/main.js:25623–25626`). The star and the jumper are **posed alongside a
+rounded display value**; they do not deliver the snap. In the README's own
+vocabulary (`README.md:79–102`) that is *modelled*, not *simulated* — the
+beak is described, and the detent it appears to enforce is arithmetic
+running beside it. So the word "jumping" overclaims twice: once about WHEN
+(running vs. setting) and once about WHAT DRIVES IT (a beak vs. a rounding).
+
+**The fix.** Say **quick-set with a detented display** wherever the claim
+appears, and point at roadmap §4 — "Full jumping-minute display", already
+filed as the real thing — as what would earn the stronger word. Correcting
+the words is cheap and does not wait on §4; conflating the two is what has
+kept this unfiled.
+
+**Where it appears, with the cost of each — this is not a three-line fix
+and the item should not pretend otherwise:**
+
+- `docs/BUILT.md:23` (§1's title) and `src/main.js:8440` — free, they are
+  ours to rename. `src/main.js:2845` and `:17027` name the same works and
+  should follow so the file reads consistently. The two `console.warn`
+  strings at `:8455`/`:8468` are boot-assert text, not claims, and can be
+  left or renamed with the rest.
+- `explain.html:1196` — **costs five translations by design.** The block is
+  keyed by its normalized `innerHTML` in all five `src/explain-i18n.*.js`
+  tables, so editing the English invalidates every one of them and the
+  paragraph renders English until re-translated. That is §73 tier two
+  working as intended, not a problem to route around. Never retype a key:
+  `node tools/explain-i18n.mjs --extract --page explain` regenerates them,
+  and `--check` is the gate.
+- **Two user-visible tour captions**, in `src/i18n.js` × five locales:
+  *"The jumping-minute setting works, behind the dial"* (`:337, :562, :954,
+  :1347, :1739`) and *"On the dial side, pull the crown and the
+  jumping-minute works engage"* (`:347, :572, :964, :1357, :1749`). These
+  are tier-one strings keyed by the English source, so changing the English
+  means changing all ten rows in the same landing or the captions fall back
+  to English visibly.
+
+**One thing to keep while renaming.** The mechanism's honest half is worth
+saying out loud rather than losing in a correction: the setting path IS
+geared, the beak's clearance over the star is a solved release gap
+(0.1500 — exactly one `CLEAR_MARGIN`), and `setPose` deliberately cannot
+fake the ease through. The correction is to the word "jumping", not to the
+claim that the works exist.
