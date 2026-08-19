@@ -15733,7 +15733,6 @@ const ALARM_CLICK_L = Math.max(2.0, Math.sqrt(
   (1.12 * ALARM_COL_BASE_R + 0.28 + CLEAR_MARGIN) ** 2 - (ALARM_COL_BASE_R * (1.30 / 1.5)) ** 2));
 const ALARM_CLICK_SEAT = ALARM_COL_BASE_R * (1.30 / 1.5); // nose centre, dropped in a gap (proportion kept through the §35 resize)
 const ALARM_CLICK_OUT = ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R; // nose centre riding a column
-const ALARM_CLICK_SWING = (ALARM_CLICK_OUT - ALARM_CLICK_SEAT) / ALARM_CLICK_L;
 const _clickDir = { x: Math.cos(ALARM_CLICK_AZ), y: Math.sin(ALARM_CLICK_AZ) };      // wheel centre → contact
 const _clickTan = { x: -_clickDir.y, y: _clickDir.x };
 const _clickSeatP = { x: ALARM_COL_POS.x + _clickDir.x * ALARM_CLICK_SEAT, y: ALARM_COL_POS.y + _clickDir.y * ALARM_CLICK_SEAT };
@@ -15796,9 +15795,101 @@ alarmSwitchUnit.add(alarmClickArm);
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
   alarmSwitchUnit.add(blade);
 }
-// Base angle: arm pointing from the pivot at the SEATED nose position; the
-// rock (+SWING·colBlock) rotates the nose outward onto the column face.
+// Base angle: arm pointing from the pivot at the SEATED nose position.
 const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSeatP.x - alarmClickPivot.x) + Math.PI;
+
+// TODO 59 — THE NOSE'S RADIUS, READ OFF THE SURFACE IT ACTUALLY RIDES.
+//
+// The first law was `BASE + SWING·profileAt(a)`, and it is a category error:
+// `profileAt` returns a normalized HEIGHT (`top / colH` — it is literally the
+// function that cut `top`), while `SWING` is a RADIAL chord over the arm's
+// length. The link beak consumes the same number correctly, as a height. But
+// the pillar's outer wall stands at a CONSTANT `ALARM_COL_BASE_R` across its
+// whole arc — the chamfer is cut in z only, there is no radial relief anywhere
+// in `makeColumnWheel` — so a nose driven inward in proportion to the chamfer's
+// height is driven into a wall that has not moved. Measured on the old law:
+// 0.52 of burial at mid-flank against a 0.15 margin, over the 71% of each
+// half-arc that is flank. Only the two settled ends were ever clean.
+//
+// What the nose really rides, in the (r, z) half-plane at one azimuth: the
+// pillar is the rectangle [ALARM_COL_INNER, ALARM_COL_BASE_R] × [0, zTop(a)].
+// The nose is a sphere approaching from OUTSIDE, so the least radius its
+// centre may take is the distance-to-rectangle condition, which has exactly
+// three branches — and the middle one is the roll-off nobody had modelled:
+//
+//   dz ≤ 0          the nose is beside the WALL          → baseR + noseR
+//   0 < dz < noseR  it is rolling over the top CORNER    → baseR + √(noseR² − dz²)
+//   dz ≥ noseR      the pillar is clear beneath it       → free to the seat
+//
+// where dz = zNose − zTop(a). So the transition's width is set by the nose's
+// radius and the flank's dz/da — NOT by the flank's whole 10.68°, which is
+// what the old law spread it over.
+//
+// Sampled across the nose's angular FOOTPRINT and taken at the maximum, which
+// is `alarmLinkReadClean`'s shape (§33/§35) and §101's `clearAt` shape one
+// plane over: a rider clears a cut profile at its EDGES, not at a point.
+// MODELING rule 9, applied to the surface rather than to a scalar.
+const ALARM_CLICK_NOSE_HALF = Math.asin(ALARM_CLICK_NOSE_R / ALARM_COL_BASE_R); // the nose's own arc on the wall
+const ALARM_CLICK_Z_NOSE = ALARM_COL_H / 2;   // nose centre above the pillar floor — ALARM_COL_BAND_MID's own definition
+function alarmClickNoseR(colA) {
+  const p = alarmColumnWheel.userData.profileAt;
+  let rc = ALARM_CLICK_SEAT;
+  for (let k = -4; k <= 4; k++) {
+    const dz = ALARM_CLICK_Z_NOSE - ALARM_COL_H * p(colA + (k / 4) * ALARM_CLICK_NOSE_HALF);
+    const need = dz <= 0 ? ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R
+      : dz < ALARM_CLICK_NOSE_R
+        ? ALARM_COL_BASE_R + Math.sqrt(ALARM_CLICK_NOSE_R * ALARM_CLICK_NOSE_R - dz * dz)
+        : -Infinity;
+    if (need > rc) rc = need;
+  }
+  return rc;
+}
+// …and the arm angle that PUTS the nose at that radius, solved rather than
+// linearised. The nose swings on an arc of radius ALARM_CLICK_L about the
+// pivot, so its distance from the wheel's axis is a law of cosines — the old
+// `(OUT − SEAT)/L` was its first-order approximation, and over a 12.7° swing
+// that is not a rounding difference.
+const _clickD = Math.hypot(alarmClickPivot.x - ALARM_COL_POS.x, alarmClickPivot.y - ALARM_COL_POS.y);
+const _clickPsiOf = (rc) => Math.acos(Math.min(1, Math.max(-1,
+  (_clickD * _clickD + ALARM_CLICK_L * ALARM_CLICK_L - rc * rc) / (2 * _clickD * ALARM_CLICK_L))));
+const _clickPsi0 = _clickPsiOf(ALARM_CLICK_SEAT);
+// Which way the arm must turn to carry the nose OUTWARD is MEASURED off the
+// built frame, not assumed from the sign of anything.
+const _clickSign = (() => {
+  const rAt = (th) => {
+    const f = ALARM_CLICK_BASE + th + Math.PI;   // the arm reaches BACK: its nose is at local −L
+    return Math.hypot(alarmClickPivot.x + Math.cos(f) * ALARM_CLICK_L - ALARM_COL_POS.x,
+      alarmClickPivot.y + Math.sin(f) * ALARM_CLICK_L - ALARM_COL_POS.y);
+  };
+  return rAt(1e-4) > rAt(-1e-4) ? 1 : -1;
+})();
+const alarmClickArmAngle = (rc) => ALARM_CLICK_BASE + _clickSign * (_clickPsiOf(rc) - _clickPsi0);
+// TODO 59 — CAN THE CLICK ACTUALLY READ THE WHEEL? The check row that claimed
+// "its budget the switch's own asserts" pointed at a check nobody had written,
+// which reads as triaged and is worse than an admitted gap. This is that check,
+// in `alarmLinkReadClean`'s shape (§33/§35) and deliberately INDEPENDENT of the
+// law above: asserting that `alarmClickNoseR` satisfies its own three branches
+// would be checking a formula against its own terms, which is what TODO 15
+// warns about. So it asserts the two things the MECHANISM claims instead —
+// over a column the nose stands fully out on the wall, and over a gap it
+// drops fully home — plus the seat clearing the inner wall it drops toward.
+{
+  const pitch = (Math.PI * 2) / ALARM_COL_COLUMNS;
+  const onTop = alarmClickNoseR(0);                 // a column's centre
+  const inGap = alarmClickNoseR(pitch / 2);         // the gap between two
+  if (Math.abs(onTop - ALARM_CLICK_OUT) > 1e-9)
+    console.warn(`alarm click: over a column top the nose sits at ${onTop.toFixed(4)}, not on the `
+      + `wall at ${ALARM_CLICK_OUT.toFixed(4)} — nose z ${ALARM_CLICK_Z_NOSE.toFixed(3)} (r `
+      + `${ALARM_CLICK_NOSE_R}) against a ${ALARM_COL_H.toFixed(3)} column, footprint `
+      + `±${(ALARM_CLICK_NOSE_HALF * 180 / Math.PI).toFixed(2)}° against a `
+      + `±${(alarmColumnWheel.userData.colFlatHalf * 180 / Math.PI).toFixed(2)}° flat`);
+  if (Math.abs(inGap - ALARM_CLICK_SEAT) > 1e-9)
+    console.warn(`alarm click: in the gap the nose only reaches ${inGap.toFixed(4)}, not its seat at `
+      + `${ALARM_CLICK_SEAT.toFixed(4)} — the detent never drops, so the wheel is not indexed`);
+  if (ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R < ALARM_COL_INNER + CLEAR_MARGIN - 1e-9)
+    console.warn(`alarm click: the seated nose reaches ${(ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R).toFixed(3)}, `
+      + `inside the castellation floor's inner wall at ${(ALARM_COL_INNER + CLEAR_MARGIN).toFixed(3)}`);
+}
 // THE PUSHER (owner's catch: a cased movement cannot reach a plate-top
 // column wheel — chronographs pierce the case here). A capped stem at the
 // rim on the wheel's azimuth, OFFSET half a wheel-radius sideways so its
@@ -26688,7 +26779,12 @@ function tick(t) {
     // The click rocks with the SAME ridden profile (its contact sits whole
     // pitches from the beak's): out on a column, dropped into a gap — the
     // visible flip on every actuation, mid-flank included.
-    alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;
+    // TODO 59: the nose's radius comes from the wall and the top corner it
+    // rides, not from the chamfer's height fraction. profileAt is
+    // pitch-periodic and the click's contact sits a whole number of pitches
+    // from the lock beak's (asserted below), so colShownA is the right
+    // azimuth for it unshifted.
+    alarmClickArm.rotation.z = alarmClickArmAngle(alarmClickNoseR(alarmColShownA));
     // The pusher: presses IN with the actuation pulse and springs back — its
     // pawl rides the ratchet skirt through the same eased step.
     // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
@@ -27185,6 +27281,22 @@ window.__clock = {
   },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
+  // TODO 59: the click's own law, exposed so a probe measures the SHIPPED
+  // function rather than a re-implementation of it. `poseClick` drives the arm
+  // to an arbitrary wheel angle, which no pose object can reach — setPose
+  // banks alarmColSteps to an integer multiple of ALARM_COL_STEP, so mid-flank
+  // exists only under the live tick (TODO 7's territory) or through here.
+  clickLaw: {
+    noseR: (colA) => alarmClickNoseR(colA),
+    armAngle: (rc) => alarmClickArmAngle(rc),
+    seat: ALARM_CLICK_SEAT, out: ALARM_CLICK_OUT, noseRadius: ALARM_CLICK_NOSE_R,
+    wallR: ALARM_COL_BASE_R, noseHalf: ALARM_CLICK_NOSE_HALF, zNose: ALARM_CLICK_Z_NOSE,
+    colH: ALARM_COL_H, pitch: (Math.PI * 2) / ALARM_COL_COLUMNS,
+    poseClick: (colA) => {
+      alarmColumnWheel.rotation.z = -colA;
+      alarmClickArm.rotation.z = alarmClickArmAngle(alarmClickNoseR(colA));
+    },
+  },
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },

@@ -2029,8 +2029,17 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'TorusGeometry#14', why: '§121: the return coil seated round the pusher stem (§33\'s handle return)' },
   { unit: 'Alarm switch', a: 'alarmPusherPawl', b: 'alarmPusherReach', why: '§121: the pawl lapped on the reach bar (flush faces, deep 0)' },
   { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser lapped on the reach bar — the pusher\'s own three-piece assembly' },
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'BoxGeometry#4', why: '§121: the detent arm riding the column wheel (kiss) — §28\'s column work; a working contact, its budget the switch\'s own asserts' },
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'SphereGeometry#5', why: '§121: the detent BALL on the column wheel\'s ramps (kiss) — the star detent that indexes the column' },
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'BoxGeometry#4', why: '§121: the detent arm riding the column wheel (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
+  // TODO 59: this row USED to say "its budget the switch's own asserts", and no
+  // such assert had ever been written — a declaration pointing at a check that
+  // does not exist reads as triaged, which is worse than an admitted gap. The
+  // assert exists now (it holds the two things the mechanism CLAIMS: fully out
+  // over a column, fully home in a gap), and the depth through the flank — the
+  // part no pose can reach, since setPose banks the wheel to integer steps — is
+  // measured by probe-59-click: 0 buried samples of 121 across a full pitch,
+  // worst clearance 0.0052, against 30 of 121 and a worst burial of 0.699 under
+  // the height-as-radius law this replaced.
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'SphereGeometry#5', why: '§121: the detent BALL on the column wheel\'s ramps (kiss) — the star detent that indexes the column; TODO 59 re-derived its radius from the wall and the top corner it rides, and probe-59-click sweeps the pitch' },
   // Alarm link — §45's corner stations and the crank:
   { unit: 'Alarm link', a: 'LatheGeometry#9', b: 'BoxGeometry#10', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'LatheGeometry#11', b: 'BoxGeometry#12', why: '§121: the second corner, same construction' },
