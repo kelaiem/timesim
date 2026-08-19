@@ -349,6 +349,62 @@ from it: no geometry, no code, no text, and the movement is a different one
 (a fusee-and-chain caliber with an alarm). The debt is one of ambition, and
 it is gladly acknowledged.
 
+## Sources
+
+The influence above is one of *ambition*. This section is the other kind of
+debt — the descriptions of how these mechanisms actually work, which the
+movement was built from. Nothing here was traced, measured or copied: these
+are the accounts that were read, and the ones to check this movement against.
+
+**Fusee & chain.** SJX Watches is the reference for the mechanism and for what
+it is *for* — that a mainspring's torque is usable only across its flat middle,
+and that the cone trades radius against that decay so the train sees a level
+input. Which is exactly the claim `equalisation` gates and *Fusee & chain*
+plate 2 draws.
+
+- SJX, [*Insight: The Chain and Fusée*](https://watchesbysjx.com/2026/06/fusee-chain-in-depth.html)
+- SJX, [*Explaining the Ups and Downs of Constant Force Mechanisms*](https://watchesbysjx.com/2015/08/monday-lessons-explaining-the-ups-and-downs-of-constant-force-mechanisms-in-mechanical-movements.html)
+- SJX, [*Explaining the Microscopic Chain Inside the A. Lange & Söhne Pour le Mérite*](https://watchesbysjx.com/2018/02/explaining-the-microscopic-chain-inside-the-a-lange-sohne-pour-le-merite.html)
+  — the reason the chain is built here as riveted inner/outer plate pairs
+  rather than a cord, and the reason `CHAIN_PITCH_MM = 0.72` is pinned to a
+  manufactured standard instead of chosen (it is what sets `UNIT_MM`, so the
+  whole movement is dimensioned off a real chain).
+- A. Lange & Söhne, [*The fusée-and-chain transmission*](https://www.alange-soehne.com/gb-en/timepieces/selections/the-fusee-and-chain-transmission)
+
+**Maintaining power.** A fusee loses its drive while being wound — the arbor
+turns the wrong way — so the great wheel runs loose and is fed by a spring held
+against a detent for the duration. That is John Harrison's arrangement (1730s),
+standard on fusee marine chronometers; Lange solves the same problem with
+planetary gearing under the ratchet wheel instead. It is why this movement has
+a maintaining detent at all, and why the escapement cannot run backwards during
+a wind.
+
+**The lever escapement.** George Daniels, *Watchmaking* (rev. ed., Philip
+Wilson) is the standard treatment of the phases *Swiss lever escapement* names
+— lock, draw, impulse and drop — and of why the locking face's lean is what
+holds the fork on its banking. The build asserts the sign of that draw torque
+at boot; Daniels is where the requirement comes from. Donald de Carle,
+*Practical Watch Repairing*, is the everyday reference for the keyless works
+and the motion works.
+
+**Tooth form.** Watch and clock wheels are cut cycloidal, not involute —
+Ciechanowski's gear-train section is the accessible statement of why, and
+Daniels the practical one. This movement does **not** cut either: see
+`TODO.md` item 61, which says so at length rather than letting the citation
+imply otherwise.
+
+**The gong.** The partial ratios in *The gong's voice* are the Euler–Bernoulli
+clamped-free beam's, not a horological source: the mode constants
+`(βₙL)² = 3.516, 22.03` are standard, and the ~6.3× second partial they give is
+why a struck bar clangs where a string sings.
+
+A note on what these citations do and do not license. They describe
+mechanisms; they are not evidence that this movement reproduces them. What
+holds the movement to its own claims is the instrument battery and `TODO.md`,
+not this list — and where a source describes something the build does not do,
+the honest place to find that out is the debt item, which is why two entries
+above point at one.
+
 ## Made with Claude
 
 This project was made possible by **Claude**, Anthropic's AI model. The

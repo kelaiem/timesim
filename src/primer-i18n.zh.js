@@ -124,8 +124,6 @@ export default {
   // ---- keyless ----
   ['The crown at the movement\'s edge does two unrelated things — winds the spring, sets the hands — and the mechanism that decides which is a small axial clutch on the crown\'s stem. Pushed home, the stem\'s gear engages the winding path: each turn of the crown spools chain back onto the fusee cone, storing energy. Pulled out one stop, a pivoting lever slides that gear a couple of millimetres along the stem into the setting path, where it reaches the hand wheels instead.']:
     '机芯边缘的表冠要做两件毫不相干的事——上弦与拨针——而决定此刻做哪一件的，是柄轴上一只小小的轴向离合。表冠推到底时，柄轴上的齿轮接入上弦一路：每转一下表冠，就把链条卷回塔轮锥体，把能量存起来。向外拉出一档，一只摆动的拨杆便把同一只齿轮沿柄轴推移几毫米，接入拨针一路，改而够到指针轮系。',
-  ['Setting the hands turns the <em>same</em> wheels the train drives — the 12:1 arithmetic of the gears entry is driven backwards from the crown, so a set hand and a running hand are the same hand at the same angle. Pulling the crown also brakes the balance ("hacking"): a sprung pad rises against the balance rim and holds it still, so the seconds hand freezes and the watch can be synchronised to a signal. Push the crown home and the balance is released to swing again.']:
-    '拨针拨动的正是轮系所驱动的<em>同一批</em>轮子——齿轮那一条目里 12:1 的算术，此刻由表冠反向驱动，于是被拨过的指针与自己走着的指针，是同一根指针、同一个角度。拉出表冠还会刹住摆轮（即“停秒”）：一枚弹性挡片抬起抵住摆轮轮缘并把它按住，秒针随之停下，表便可以对着时号校准。把表冠推回，摆轮又被释放，重新摆动。',
   ['One crown, two jobs<span class="where">interface</span>']: '一只表冠，两项差事<span class="where">操作</span>',
 
   // ---- alarm ----
