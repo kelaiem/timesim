@@ -20727,6 +20727,114 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
     }
   }
 
+  // §134 — THE MALTESE CROSSES. Until now this mechanism drew NOTHING: neither
+  // Geneva builder records `userData.r`, so the rotor pass skipped both; the
+  // §48 blade pass skips them on the name test; and `discOrAxis`'s unit list is
+  // hard-coded without the arrest. That makes it the §107 BLANK rather than the
+  // §78 wrong-word — there is no false claim to retire and no OWN_GLYPH entry
+  // to add, only a pass that was missing.
+  //
+  // The sharpest statement of the gap is that the tier already lit a CONTACT
+  // DOT here: ALARM_HANDOFFS names the pin in its slot and the disc in its
+  // hollow, so the drawing marked a contact between two parts it did not draw.
+  //
+  // Keyed on the builders' own word (§107's lesson: the drawing half must be as
+  // generic as the opt-out half), so a second Geneva — the fusee stop-work is
+  // filed as roadmap §130 — draws for free rather than needing this edited.
+  {
+    const crosses = [], fingers = [];
+    movement.traverse((o) => {
+      if (o.userData && o.userData.schematic) return;
+      if (o.userData && o.userData.geneva) crosses.push(o);
+      if (o.userData && o.userData.genevaFinger) fingers.push(o);
+    });
+    // The unit a part belongs to, for the art that must NOT turn with a rotor.
+    const unitOf = (o) => {
+      for (let n = o; n; n = n.parent) {
+        const e = labelEntries.find((x) => x.obj === n);
+        if (e) return e.obj;
+      }
+      return null;
+    };
+    const ringPts = (r, cx, cy, z, n = 64) => {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pts.push(V(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z));
+      }
+      return pts;
+    };
+    // THE CUT OUTLINE IS THE DRAWING. A Geneva's content is its slots and its
+    // blank arm — the one thing a pitch circle could never say — so the cross
+    // draws what was actually cut, the §83 `profile` convention. Decimated:
+    // the traced boundary runs to four figures of points and the tier is a
+    // line drawing, not a mesh.
+    const trace = (poly, z, step) => {
+      const pts = [];
+      for (let i = 0; i < poly.length; i += step) pts.push(V(poly[i][0], poly[i][1], z));
+      if (poly.length) pts.push(V(poly[0][0], poly[0][1], z));   // close it
+      return pts;
+    };
+    for (const m of crosses) {
+      const g = m.userData.geneva, sp = g.spec;
+      // The builders extrude UNCENTRED (local z 0 is the bottom face), so the
+      // mid-plane is half a thickness up — a naive z 0 would draw the glyph on
+      // the underside of its own part.
+      const z = g.thickness / 2;
+      if (m.userData.outline && m.userData.outline.length)
+        addLine(m, trace(m.userData.outline, z, Math.max(1, Math.ceil(m.userData.outline.length / 240))), SCHEMATIC.matWheel);
+      addLine(m, ringPts(m.userData.hubR, 0, 0, z), MAT_LEVER);
+      addLine(m, ringPts(sp.boreR, 0, 0, z), MAT_LEVER);
+    }
+    for (const f of fingers) {
+      const gf = f.userData.genevaFinger, sp = gf.spec;
+      const z = gf.thickness / 2;
+      if (f.userData.outline && f.userData.outline.length)
+        addLine(f, trace(f.userData.outline, z, Math.max(1, Math.ceil(f.userData.outline.length / 240))), SCHEMATIC.matWheel);
+      addLine(f, ringPts(sp.lockR, 0, 0, z), MAT_LEVER);          // the locking disc
+      addLine(f, ringPts(sp.pinR, sp.a, 0, z + gf.thickness), SCHEMATIC.matWheel); // the pin, on its own plane
+      addLine(f, [V(0, 0, z), V(sp.a, 0, z)], MAT_LEVER);         // the crank: axis → pin
+      // The pin's ORBIT is centred on the finger's own axis, so it reads the
+      // same at every rotation — safe to hang on the turning group.
+      addLine(f, ringPts(sp.a, 0, 0, z), MAT_LEVER);
+    }
+    // THE BANK, which is what the mechanism exists to do and what nothing else
+    // in the drawing would show. bankTh is the angle off the line of centres at
+    // which the pin butts the blank arm, so it is drawn in the UNIT's frame —
+    // it marks a fixed place, not a place on a rotor.
+    let banked = 0;
+    for (const f of fingers) {
+      const unit = unitOf(f);
+      if (!unit) continue;
+      const sp = f.userData.genevaFinger.spec;
+      const fw = f.getWorldPosition(new THREE.Vector3());
+      let best = null, bestD = Infinity;
+      for (const m of crosses) {
+        const d = Math.abs(m.getWorldPosition(new THREE.Vector3()).distanceTo(fw) - sp.d);
+        if (d < bestD) { bestD = d; best = m; }
+      }
+      if (!best || bestD > sp.d * 0.05) continue;   // not this finger's cross
+      const cw = best.getWorldPosition(new THREE.Vector3());
+      const fl = unit.worldToLocal(fw.clone()), cl = unit.worldToLocal(cw.clone());
+      const az = Math.atan2(cl.y - fl.y, cl.x - fl.x);
+      const zc = (fl.z + cl.z) / 2;
+      addLine(unit, [V(fl.x, fl.y, zc), V(cl.x, cl.y, zc)], MAT_LEVER);  // the centre distance
+      for (const sgn of [-1, 1]) {
+        const th = az + sgn * sp.bankTh;
+        addLine(unit, [
+          V(fl.x + Math.cos(th) * (sp.a - sp.pinR * 1.6), fl.y + Math.sin(th) * (sp.a - sp.pinR * 1.6), zc),
+          V(fl.x + Math.cos(th) * (sp.a + sp.pinR * 1.6), fl.y + Math.sin(th) * (sp.a + sp.pinR * 1.6), zc),
+        ], MAT_SPRING);
+      }
+      banked++;
+    }
+    // The tripwire is a FLOOR, never an equality — the same idiom as the rotor,
+    // spiral, profile and crown words beside it.
+    if (crosses.length < 1 || fingers.length < 1 || banked < 1)
+      console.warn(`§134: the Geneva pass drew ${crosses.length} cross(es), ${fingers.length} finger(s) `
+        + `and ${banked} bank(s) — the movement carries a stop-work this tier is not saying`);
+  }
+
   // contact dots — instrument-measured, lazily
   const DOTS = { group: null };
   SCHEMATIC.refreshContacts = async () => {

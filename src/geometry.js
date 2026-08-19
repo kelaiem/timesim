@@ -1751,6 +1751,14 @@ export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
   mesh.userData.spec = spec;
   mesh.userData.hubR = hubR;
   mesh.userData.blankAt = blankAt;
+  // §134 — the schematic tier's own word for "I am a Geneva cross". Neither
+  // this nor makeGenevaFinger records `userData.r`, so no generic pass ever
+  // claimed either of them and there is no wrong glyph to retire: this is the
+  // §107 BLANK, not the §78 wrong-word. Declaring the word here rather than
+  // hand-writing the drawing in main.js is §107's own lesson — the opt-out
+  // half being generic while the drawing half is not is how a part loses its
+  // glyph and gains nothing.
+  mesh.userData.geneva = { spec, blankAt, thickness };
   return mesh;
 }
 
@@ -1841,6 +1849,7 @@ export function makeGenevaFinger({ spec, thickness, boreR, material }) {
   g.userData.spec = spec;
   g.userData.outline = pts;
   g.userData.slotInner = slotInner;
+  g.userData.genevaFinger = { spec, thickness };   // §134, see makeGenevaCross
   return g;
 }
 
