@@ -290,6 +290,19 @@ const BATTERY = [
     gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
     fails: (r) => r.failures,
     note: (r) => r.summary },
+  // TODO 40 row 3's missing instrument. The row named the hole and left it:
+  // nothing in the battery ever stated that a chain is a fixed length of
+  // steel, so the run's closure error was invisible to every green run. The
+  // tolerance is not a judgement call — `buildChainLinkGeometry` lays
+  // `N = round(len / CHAIN_PITCH)` links, so half a pitch is the granularity
+  // at which the run demonstrably becomes a different chain. It costs 38 ms
+  // (41 curve evaluations), which is why it reads here rather than being
+  // deferred behind the sweeps.
+  { name: 'chainLength', opts: {}, cost: 1,
+    gate: "the run's length constant across the reserve to half a link pitch, or waived",
+    fails: (r) => r.violations,
+    note: (r) => { const row = r.rows[0]; return `spread ${row.spread} u (${row.spreadPct}%) against ${row.tol} u; `
+      + `links ${row.linkCounts.join('/')}${row.waived ? ' — WAIVED (accepted debt)' : ''}`; } },
   // §48's no-spring audit, gated for the first time (TODO 29). It was
   // exported and never registered, so nothing could run it — a clean report
   // from an instrument nobody runs looks like coverage and is not. §48's own

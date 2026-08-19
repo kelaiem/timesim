@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH } from './layout.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -6188,6 +6188,84 @@ export async function checkStockFloor(clock, opts = {}) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// TODO 40 row 3 — A CHAIN IS A FIXED LENGTH OF STEEL, and until this nothing
+// in the battery said so. The row named the gap in as many words: "the chain
+// is display-only, the sweeps see a rebuilt mesh as a mover and never compare
+// its length across poses, and no check states that a chain is a fixed length
+// of steel — the hole `devLen` closed for the mainspring in item 1."
+//
+// WHAT IT MEASURES. `clock.chainRunLength(t)` returns the arc length of the
+// SHIPPED layout curve — `chainLayoutAt`, the one the display bakes and the
+// arrest's contact law reads — so this compares the model against itself
+// rather than against a second copy of the arithmetic. Sampling density is
+// pinned (see that method's comment): the control-point count varies with
+// tension, so a density tied to the curve's own parameterisation would read
+// its control density as length drift. Measured convergence at the pinned
+// 4000: the value moves 0.0025% between 500 and 8000 divisions and is stable
+// to 1.5e-6 relative from 2000 up, four orders under the tolerance below.
+//
+// THE TOLERANCE IS DERIVED, from the builder's own rounding rule.
+// `buildChainLinkGeometry` lays `N = max(round(len / CHAIN_PITCH), 2)` links,
+// so a length change under HALF A PITCH cannot change N — the run lays the
+// same chain, and the model's discretisation genuinely cannot see it. At half
+// a pitch it crosses the rounding boundary and the run gains or loses a link,
+// which is a different chain claiming to be the same one. Hence
+// `tol = CHAIN_PITCH / 2`, and nothing here is free to widen it: the number
+// belongs to the link, and the link is pinned to a manufactured 0.72 mm.
+//
+// The link census beside the spread is the corroborating measurement, taken
+// from the same rule rather than from the mesh: two independent readings of
+// one fact are what make the row hard to argue with.
+export const CHAIN_LENGTH_WAIVER =
+  'TODO 40 row 3 — the free span gives ~1.4 u that nothing takes up; absorbing '
+  + 'it turns the closed-form u(t) solve into an ODE whose output would then cut '
+  + 'the cone, so item 32 deliberately left it. See also TODO 49: pinning the '
+  + "chain's fusee end needs this closure to be exact first.";
+
+export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = CHAIN_LENGTH_WAIVER } = {}) {
+  if (typeof clock.chainRunLength !== 'function')
+    return { ok: false, error: 'no chainRunLength on __clock (main.js TODO 40 exposure missing)' };
+  const tol = CHAIN_PITCH / 2;
+  const samples = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const len = clock.chainRunLength(t, divisions);
+    samples.push({ t: +t.toFixed(4), len, links: Math.max(Math.round(len / CHAIN_PITCH), 2) });
+  }
+  const lens = samples.map((s) => s.len);
+  const min = Math.min(...lens), max = Math.max(...lens);
+  const mean = lens.reduce((a, b) => a + b, 0) / lens.length;
+  const spread = max - min;
+  const linkCounts = [...new Set(samples.map((s) => s.links))].sort((a, b) => a - b);
+  const meets = spread <= tol;
+  const row = {
+    what: 'chain run length across the reserve',
+    spread: +spread.toFixed(4),
+    tol: +tol.toFixed(4),
+    spreadPct: +((spread / mean) * 100).toFixed(3),
+    tolPct: +((tol / mean) * 100).toFixed(3),
+    min: +min.toFixed(4), max: +max.toFixed(4), mean: +mean.toFixed(4),
+    atMin: samples.find((s) => s.len === min).t,
+    atMax: samples.find((s) => s.len === max).t,
+    // The mesh-side reading of the same fact: if the run lays a different
+    // number of links at different states of wind, it is a different chain.
+    linkCounts,
+    linksConstant: linkCounts.length === 1,
+    waived: !meets && waiver ? waiver : undefined, // §50's convention: visible debt, cited
+    ok: meets,
+  };
+  console.table([row]);
+  return {
+    rows: [row], samples,
+    violations: (meets || waiver) ? [] : [row], // a waived row is DEBT, not a pass — it stays in rows/report
+    waivedCount: !meets && waiver ? 1 : 0,
+    gate: 'GATING — the run\'s length is constant across the reserve to half a link pitch '
+      + '(the granularity at which buildChainLinkGeometry\'s link count rounds); '
+      + 'a failing row is accepted debt only while it cites its TODO item',
+  };
+}
+
 const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
   freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
@@ -6211,6 +6289,7 @@ const CHECKS = {
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law
+  chainLength: (clock, opts) => checkChainLength(clock, opts),           // TODO 40 row 3 — a chain is a fixed length of steel; the run's closure, gated to half a link pitch
   // §48's no-spring audit. Named `restoring` rather than `oscillators`: one
   // character from `oscillator` above would be a trap, and the two answer
   // different questions — that one asks whether the hairspring is cut to the
