@@ -3155,7 +3155,7 @@ export function offsetPolygon(pts, d) {
 // detail of this builder.
 export const PLATE_BEVEL = 0.06;
 
-export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [], windows = [] }) {
+export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [], windows = [], polyHoles = [] }) {
   // A bevelled extrusion grows its material OUTWARD from the drawn profile by
   // bevelSize — into every hole and into the balance cut. The caller solved
   // its clearances against the finished EDGES, so shrink the drawn outline
@@ -3167,6 +3167,16 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   holes = holes.map((h) => ({ ...h, r: h.r + bevelSize }));
   slots = slots.map((s) => ({ ...s, r: s.r + bevelSize }));
   windows = windows.map((w) => ({ ...w, pts: offsetPolygon(w.pts, bevelSize) }));
+  // polyHoles are openings whose outline is not a circle, a stadium or a
+  // §62 window: today, the chaton counterbores, each drawn as ONE closed
+  // curve merging the chaton's bore with its screw seats (§132). They are
+  // deliberately NOT `windows` — `checkPlateWindows` gates that list for
+  // reveal edges and TQ_LAND_MIN webs, and a counterbore is neither — and
+  // deliberately not three overlapping circular `holes`, because
+  // ExtrudeGeometry triangulates overlapping holes into phantom plate rather
+  // than failing, which is the failure mode the web check below exists to
+  // catch. Same bevel treatment as a window: the opening grows outward.
+  polyHoles = polyHoles.map((w) => ({ ...w, pts: offsetPolygon(w.pts, bevelSize) }));
   // Where the wedge's two edges leave the rim: |C + t·d| = radius, t > 0.
   const rimHit = (ang) => {
     const dx = Math.cos(ang), dy = Math.sin(ang);
@@ -3282,7 +3292,7 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   // ExtrudeGeometry reads a hole's winding, and a window emitted the other way
   // round triangulates into a patch of solid plate rather than an opening
   // (the same failure the slots' arc directions are commented for).
-  for (const w of windows) {
+  for (const w of [...windows, ...polyHoles]) {
     let area2 = 0;
     for (let i = 0; i < w.pts.length; i++) {
       const a = w.pts[i], b = w.pts[(i + 1) % w.pts.length];
@@ -3606,10 +3616,30 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
   return g;
 }
 
+// Chaton PROPORTIONS, exported because the plate has to cut the counterbore
+// before any chaton exists to measure: `main.js`'s `chatonOuterFor` was
+// `boreR + 0.95` with a comment naming this builder, i.e. a hand-copy of two
+// numbers that live here — standing rule 1's own failure mode, harmless only
+// while the builder was called by nothing (§132). One definition, and every
+// consumer reads it.
+export const CHATON_RUBY_INSET = 0.40;   // stone's rim outside the pivot bore
+export const CHATON_RIM_W = 0.55;        // gold rim outside the stone
+// TODO 12's stone thickness, as a fraction of the chaton's own. It is a
+// CONSTRAINT INPUT, not decoration: the host's counterbore depth is solved
+// against it (see CHATON_DEPTH at the three-quarter plate), so a change here
+// moves that solve.
+export const CHATON_RUBY_FRAC = 0.74;
+export const chatonOuterR = (boreR) => boreR + CHATON_RUBY_INSET + CHATON_RIM_W;
+// The screw head's radius, exported for the same reason: the host has to cut
+// the seats the heads bite into, and it cannot measure a chaton it has not
+// built yet. The 0.22 floor is a minimum drawable head; 0.19·outerR is the
+// proportion at anything larger.
+export const chatonHeadR = (boreR) => Math.max(0.22, chatonOuterR(boreR) * 0.19);
+
 export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase = 0 }) {
   const g = new THREE.Group();
-  const rubyR = boreR + 0.4;
-  const outerR = rubyR + 0.55;
+  const rubyR = boreR + CHATON_RUBY_INSET;
+  const outerR = chatonOuterR(boreR);
 
   // Gold ring. Lathe profile, outer wall → rim → the OIL SINK: the underside
   // is dished out around the bore so oil is held at the pivot by surface
@@ -3629,33 +3659,60 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
   // lathe part here (makePillar does the same).
   const ringG = new THREE.LatheGeometry(pts, 40);
   ringG.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(ringG, MATS.gold));
+  // NAMED, with the stone below and the plate's own lands beside them: an
+  // unnamed mesh cannot be reached by `STOCK_KIND_BY_MESH` at all, so it
+  // takes the wheel default in silence — §107's lesson, paid here in advance.
+  const bezel = new THREE.Mesh(ringG, MATS.gold);
+  bezel.name = 'chatonBezel';
+  g.add(bezel);
 
-  // Ruby, pressed in: an annulus with the pivot's bore through it, its top
-  // face slightly below the gold rim (as a set stone sits).
-  // TODO 12: ruby at 0.74·t (was 0.62) — at the cock chaton's t = 0.434 that
-  // is 0.321 u, clearing the 0.12 mm stock floor, and the underside lands
-  // exactly where the oil sink begins, so the deepening costs no new mate.
-  // Real pressed jewels are 0.3–0.6 mm; even the plate chatons' default
-  // t = 0.35 improves from 0.217 to 0.259 u toward that.
-  const rubyGeo = ringExtrude(rubyR, boreR, t * 0.74, 32);
-  const jewel = new THREE.Mesh(rubyGeo, MATS.ruby);
-  jewel.position.z = -t * 0.08 - (t * 0.74) / 2;
+  // Ruby, pressed in: its top face slightly below the gold rim (as a set
+  // stone sits), the pivot's bore through it, and the OIL SINK dished into
+  // its underside — ONE closed lathe solid, which is the §132 fix.
+  //
+  // It was an extruded annulus plus a separate `openEnded` cone standing in
+  // for the dish, and that cone was two defects at once. It was an OPEN
+  // surface, which `meshClearance` reads as a colliding one — its parity
+  // raycast counts crossings and so assumes a closed solid (TODO 27 measured
+  // an open body CONFIRM an overlap against a part 3.7 units away). And its
+  // AABB thin axis was 0.22·t, a third of the wheel floor, on a mesh nothing
+  // had kinded. Revolving the dish into the stone's own profile removes the
+  // mesh rather than declaring it: a jewel with a sink cut in it is what the
+  // part IS.
+  //
+  // TODO 12: stone at CHATON_RUBY_FRAC·t (was 0.62). Its AABB section is
+  // that full height; at the bore the sink leaves 0.52·t, which is the sink
+  // doing its job and is why real pressed jewels are dimensioned on their rim.
+  const zT = -t * 0.08, zB = zT - t * CHATON_RUBY_FRAC, zS = zB + t * 0.22;
+  const rubyPts = [
+    new THREE.Vector2(boreR, zT),
+    new THREE.Vector2(rubyR, zT),
+    new THREE.Vector2(rubyR, zB),
+    new THREE.Vector2(rubyR * 0.98, zB),
+    new THREE.Vector2(boreR * 1.05, zS),   // the dish, rising to the bore
+    new THREE.Vector2(boreR, zS),
+    new THREE.Vector2(boreR, zT),
+  ];
+  const rubyG = new THREE.LatheGeometry(rubyPts, 32);
+  rubyG.rotateX(Math.PI / 2);
+  const jewel = new THREE.Mesh(rubyG, MATS.ruby);
+  jewel.name = 'chatonJewel';
   g.add(jewel);
-  // Oil sink cone on the ruby's pivot side — the classic dished seat, ridden
-  // down with the thicker stone so the cone still starts at its underside.
-  const sink = new THREE.Mesh(
-    new THREE.CylinderGeometry(rubyR * 0.98, boreR * 1.05, t * 0.22, 32, 1, true), MATS.ruby);
-  sink.geometry.rotateX(Math.PI / 2);
-  sink.position.z = -t * 0.94;
-  g.add(sink);
 
   // Blued screws, heads FLUSH with the top face and straddling the rim: half
   // over the chaton, half biting the plate outside the counterbore. Sunk,
   // not proud: nothing on this face may stand above the plate — the hack
   // blade passes 0.18 over it. (§20: the shared merged builder — this loop
   // was its template, and each chaton's screws dropped from 6 meshes to 2.)
-  const headR = Math.max(0.22, outerR * 0.19), headT = t * 0.5;
+  // headT is DECOUPLED from t, and it has to be. A screw head is real stock
+  // and carries no kind entry on purpose (`STOCK_KIND_BY_MESH`: "they are
+  // real stock at STOCK_MIN_U and must keep answering to the wheel floor"),
+  // so at t·0.5 the four members splitting a 0.8 plate cannot all clear the
+  // floor: the head would want t ≥ 0.633 while the bearing collar under the
+  // chaton caps t at 0.483. §20 hit exactly this on the plate screws and
+  // decoupled the same way. Proportional where the host is thick enough to
+  // afford it, floored where it is not.
+  const headR = chatonHeadR(boreR), headT = Math.max(STOCK_MIN_U, t * 0.5);
   g.add(makeScrews({
     at: Array.from({ length: screwCount }, (_, i) => {
       const a = screwPhase + (i / screwCount) * Math.PI * 2;
@@ -3668,6 +3725,9 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
   g.userData.rubyR = rubyR;
   g.userData.boreR = boreR;
   g.userData.screwOuterR = outerR + headR;
+  g.userData.headR = headR;
+  g.userData.headT = headT;
+  g.userData.thickness = t;
   return g;
 }
 

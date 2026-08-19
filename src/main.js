@@ -1538,10 +1538,44 @@ const PIVOT_BORE_CLEAR = 0.05;
 // Chaton seating: the jewels are SCREWED GOLD CHATONS dropped into real
 // counterbores (see makeChaton), so each upper pivot costs the plate a
 // stepped hole — counterbore diameter for the top CHATON_DEPTH, then the
-// staff's own bore for the rest. CHATON_DEPTH is a little under half the
-// plate so a full-thickness collar of material still carries the bearing.
-const CHATON_DEPTH = 0.35;
-const chatonOuterFor = (boreR) => boreR + 0.95; // = makeChaton's rubyR + 0.55
+// staff's own bore for the rest.
+//
+// §132 — CHATON_DEPTH IS SOLVED, and its old value could not be built. It
+// was 0.35 "a little under half the plate", which is a preference; §50's
+// floor is a gate, and the gate decides. Two members split TQ_T at a chaton
+// site and both answer to the 0.12 mm wheel floor:
+//
+//   the pressed stone       CHATON_RUBY_FRAC · t   ≥ STOCK_MIN_U  → t ≥ 0.428
+//   the bearing collar      TQ_T − t               ≥ STOCK_MIN_U  → t ≤ 0.483
+//
+// so the window is 0.055 u wide — 0.021 mm — and 0.35 is not in it: the old
+// depth left the stone at 0.098 mm, a fifth under the floor, invisible only
+// because no chaton was ever instantiated. Inside that window the two
+// members are the whole of the plate, so the depth that maximises the
+// smaller margin is the one that EQUALISES them:
+//
+//   CHATON_RUBY_FRAC · t = TQ_T − t   →   t = TQ_T / (1 + CHATON_RUBY_FRAC)
+//
+// = 0.4598, stone and collar both 0.1289 mm, 7.4% over the floor. Change
+// the stone's fraction in makeChaton and this re-solves with it rather than
+// drifting from it. (The screw heads are the third member and would want
+// t ≥ 0.633, which no depth here can give — see makeChaton, where headT is
+// decoupled for that reason.)
+const CHATON_DEPTH = TQ_T / (1 + G.CHATON_RUBY_FRAC);
+// The counterbore's radius, and the screw-head radius that sizes its seats.
+// Both are the BUILDER's numbers, imported rather than re-typed: this was
+// `boreR + 0.95` with a comment reading "= makeChaton's rubyR + 0.55", which
+// is standing rule 1's own failure mode — a hand-copy that nothing could
+// catch drifting while the builder was called by nothing.
+const chatonOuterFor = G.chatonOuterR;
+// The screw circle's seat: the head's own radius plus the fit every seat in
+// the movement uses. Three screws, the builder's own default.
+const CHATON_SCREWS = 3;
+const chatonSeatR = (boreR) => G.chatonHeadR(boreR) + G.SEAT_FIT;
+// A land put back under an opening laps this far into the stock around it,
+// so no two walls end up coincident — the bearing collar's convention since
+// it was written, named here because the screw seats' lands now share it.
+const SEAT_LAND_LAP = 0.15;
 // Flat annulus, axis along +Z, centred on its own origin — the counterbore's
 // floor collar (see the plate build).
 function ringGeo(innerR, outerR, h) {
@@ -1552,6 +1586,44 @@ function ringGeo(innerR, outerR, h) {
   ], 40);
   g.rotateX(Math.PI / 2); // LatheGeometry revolves about +Y — stand it along Z
   return g;
+}
+// §132 — the CRESCENT a screw seat leaves. The seat is a disc centred ON the
+// counterbore's rim, so the plate it consumes is only the part of that disc
+// lying OUTSIDE the bearing collar's footprint: a lune, not a ring, which is
+// why §20's pillar-seat land does not transfer here unaltered. Built from the
+// two circles' real intersection rather than approximated by a wedge, because
+// an approximation that overshoots would put the land back inside the
+// counterbore and one that undershoots would leave the head unsupported.
+//   p  — the pivot (the counterbore's centre), plate-local
+//   st — the seat: { x, y, r }, its centre on the counterbore rim
+//   Ri — where the collar ends and this land may begin
+//   lap — how far the land reaches into the stock around the seat
+function crescentLand(p, st, Ri, lap, height, seg = 28) {
+  const a = st.r + lap;
+  const d = Math.hypot(st.x - p.x, st.y - p.y);
+  const psi = Math.atan2(st.y - p.y, st.x - p.x);
+  // |X − p| = Ri with X = st + a·u(φ): cos(φ − ψ) = (Ri² − d² − a²)/(2ad),
+  // and the same point seen from p is at ψ ± acos((Ri² + d² − a²)/(2·Ri·d)).
+  const cD = (Ri * Ri - d * d - a * a) / (2 * a * d);
+  const cA = (Ri * Ri + d * d - a * a) / (2 * Ri * d);
+  if (!(cD > -1 && cD < 1 && cA > -1 && cA < 1)) {
+    console.warn(`§132: screw seat at (${st.x.toFixed(2)}, ${st.y.toFixed(2)}) does not cross the collar's `
+      + `rim — no land can be put back (Ri ${Ri.toFixed(3)}, seat+lap ${a.toFixed(3)}, reach ${(d + a).toFixed(3)})`);
+    return null;
+  }
+  const D = Math.acos(cD), A = Math.acos(cA);
+  const sh = new THREE.Shape();
+  for (let i = 0; i <= seg; i++) {                    // out along the seat's own rim
+    const phi = psi - D + (2 * D * i) / seg;
+    const x = st.x + Math.cos(phi) * a, y = st.y + Math.sin(phi) * a;
+    if (i === 0) sh.moveTo(x, y); else sh.lineTo(x, y);
+  }
+  for (let i = 0; i <= seg; i++) {                    // …and back along the collar's
+    const th = psi + A - (2 * A * i) / seg;
+    sh.lineTo(p.x + Math.cos(th) * Ri, p.y + Math.sin(th) * Ri);
+  }
+  sh.closePath();
+  return new THREE.ExtrudeGeometry(sh, { depth: height, bevelEnabled: false });
 }
 // JEWEL face: like ringGeo but the top face is DISHED — a flat seating ring
 // at the rim, then a smooth concave fall to the bore: the oil sink every
@@ -1715,7 +1787,7 @@ const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate build
 // bearing — staff = the sleeve, bore = staff + the train's own side-shake,
 // jewel sized a step over the climb's 1.0 for the larger staff.
 tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR });
-function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {}) {
+function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton = false } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
   if (len > 0.05) {
@@ -1725,16 +1797,29 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {})
     arbor.add(shaft);
   }
   tqPivots.push({
-    x: arbor.position.x, y: arbor.position.y, staffR, jewelR,
+    x: arbor.position.x, y: arbor.position.y, staffR, jewelR, chaton,
     boreR: boreR ?? staffR + PIVOT_BORE_CLEAR,
   });
 }
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
 // heart cam's 0.6 bore, which is what the friction coupling grips.)
-for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
-  addUpperPivot(arbor);
+//
+// §132 — three of them are SCREWED GOLD CHATONS and the rest are flush
+// rubbed-in stones, which is a scope decision and is recorded as one. The
+// going train's three (centre, third, fourth) take the chaton; the ESCAPE
+// WHEEL does not, and neither does the alarm strike arbor above. Nothing
+// geometric forces either exclusion — the escape site is dimensionally the
+// same site as these three, same bore, same counterbore, same screw circle
+// (the build asserts that below, so the record says the exclusion was
+// CHOSEN rather than forced). What the narrowing buys is that all three
+// chatons are ONE part: same 0.55 bore, one spec, three placements. The
+// strike arbor's bore is a step wider at 0.80 for the rotor's sleeve, so
+// including it would have forked the spec into two sizes.
+for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
+  addUpperPivot(arbor, { chaton: true });
 }
+addUpperPivot(escapeArbor);
 // The FUSEE arbor is the exception: it does not END in the plate — it
 // passes THROUGH it and finishes in a short LET-DOWN square standing
 // proud of the top face. There is deliberately NO ratchet or click on
@@ -5029,7 +5114,75 @@ checkCutVsPivots();
 // (the barrel arbor) keep a plain bore.
 const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
+  poly: !!p.chaton,   // §132: drawn as part of a merged outline, not as this circle
 }));
+// §132 — THE CHATON SEATS. A chaton's screw heads straddle its rim: half
+// over the gold, half biting the plate outside the counterbore. The plate
+// was cut through at exactly chatonOuterFor, so the outer half of every head
+// had solid plate where it needs a recess. Each screw therefore costs the
+// plate a seat, and the seats are declared here as CIRCLES so every solver
+// that reads tqHoles — the window solve, tqOpeningClearance, the rib and
+// engraving keep-outs — sees the metal that is actually gone.
+//
+// The MESH cannot take them this way: three seat circles centred ON the
+// counterbore's own rim overlap it, and ExtrudeGeometry triangulates
+// overlapping holes into phantom plate rather than failing. So the mesh gets
+// ONE closed outline per site (tqPolyHoles below) that is exactly the union
+// of these circles, and the two representations are asserted to agree.
+for (const p of tqPivots) {
+  if (!p.chaton) continue;
+  const R = chatonOuterFor(p.boreR), seatR = chatonSeatR(p.boreR);
+  // One screw points away from the plate's centre — the only bearing the
+  // site itself offers. (At the centre wheel, which IS that centre, the
+  // phase falls out as zero.)
+  p.screwPhase = Math.atan2(p.y, p.x);
+  p.seats = Array.from({ length: CHATON_SCREWS }, (_, i) => {
+    const a = p.screwPhase + (i / CHATON_SCREWS) * Math.PI * 2;
+    return { x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * R, r: seatR, a };
+  });
+  for (const st of p.seats) tqHoles.push({ x: st.x, y: st.y, r: st.r, poly: true });
+}
+// The merged outline: for each azimuth about the pivot, the union's edge is
+// the farthest of the counterbore's own radius and the exit radius of any
+// seat circle the ray crosses. The pivot is OUTSIDE every seat circle (their
+// centres sit on the counterbore rim), so a crossed seat gives one entry and
+// one exit and the exit is the one that matters.
+const chatonOutline = (p, N = 240) => {
+  const R = chatonOuterFor(p.boreR);
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const th = (i / N) * Math.PI * 2, ux = Math.cos(th), uy = Math.sin(th);
+    let r = R;
+    for (const st of p.seats) {
+      const sx = st.x - p.x, sy = st.y - p.y;
+      const b = ux * sx + uy * sy, c = sx * sx + sy * sy - st.r * st.r;
+      const disc = b * b - c;
+      if (disc > 0) r = Math.max(r, b + Math.sqrt(disc));
+    }
+    pts.push([p.x + ux * r, p.y + uy * r]);
+  }
+  return pts;
+};
+const tqPolyHoles = tqPivots.filter((p) => p.chaton)
+  .map((p) => ({ name: `chaton seat @ ${p.x.toFixed(1)},${p.y.toFixed(1)}`, pts: chatonOutline(p) }));
+// The two representations agree: every outline vertex sits ON the boundary
+// of the union it was built from — inside no circle, and on at least one.
+{
+  let worstIn = 0, worstOn = 0;
+  for (const p of tqPivots) {
+    if (!p.chaton) continue;
+    const R = chatonOuterFor(p.boreR);
+    for (const [x, y] of chatonOutline(p)) {
+      const ds = [Math.hypot(x - p.x, y - p.y) - R,
+        ...p.seats.map((st) => Math.hypot(x - st.x, y - st.y) - st.r)];
+      worstIn = Math.max(worstIn, -Math.min(...ds));                  // depth inside any circle
+      worstOn = Math.max(worstOn, Math.min(...ds.map(Math.abs)));      // …and off the nearest boundary
+    }
+  }
+  if (worstIn > 1e-9 || worstOn > 1e-9)
+    console.warn(`§132: chaton outline disagrees with its circles — ${worstIn.toExponential(1)} inside, `
+      + `${worstOn.toExponential(1)} off the boundary`);
+}
 tqHoles.push({ x: 34.32, y: 16.89, r: 0.45 }); // §35/§68 (§112: re-synced to the SOLVED rod site) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
@@ -6288,8 +6441,11 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
 const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
-  radius: plateR, thickness: TQ_T, cut: TQ_CUT, holes: tqHoles, slots: tqSlots,
-  windows: TQ_WINDOWS.polys,
+  radius: plateR, thickness: TQ_T, cut: TQ_CUT, slots: tqSlots,
+  // The chaton sites' circles are drawn by their merged outline instead —
+  // see tqHoles, where both representations are built and asserted equal.
+  holes: tqHoles.filter((h) => !h.poly),
+  windows: TQ_WINDOWS.polys, polyHoles: tqPolyHoles,
 });
 let tqPlateMesh = null;
 {
@@ -6299,31 +6455,79 @@ let tqPlateMesh = null;
   mesh.receiveShadow = true;
   tqPlateMesh = mesh;
   threeQuarterPlate.add(mesh);
-  // Screwed gold chatons, set into real counterbores. tqHoles opened each
-  // pivot right through at the counterbore diameter, so the BEARING COLLAR —
-  // the full-thickness ring of plate the staff actually runs in — is put
-  // back here, under the counterbore's floor. That collar is what makes the
-  // step visible: plate face, chaton dropped into its recess, then the plate
-  // stepping in to the bore below.
+  // The upper pivots' bearings. tqHoles opened each one right through at the
+  // counterbore diameter, so the BEARING COLLAR — the full-thickness ring of
+  // plate the staff actually runs in — is put back here, under the
+  // counterbore's floor. That collar is what makes the step visible: plate
+  // face, stone or chaton dropped into its recess, then the plate stepping
+  // in to the bore below.
+  //
+  // Two bearings, not one, and §132 chose which goes where: the going
+  // train's three take a SCREWED GOLD CHATON, everything else keeps the
+  // flush RUBBED-IN stone it has always had. Both are real constructions and
+  // both are period-correct; the chaton is the one README.md:305 claims.
   //
   // Nothing here may stand proud of the plate's top face: the reset and
   // hack rods run just above it, and a chaton perched on the surface would
-  // be straight through them.
+  // be straight through them. That is not a bar to a chaton — makeChaton is
+  // a flush design, its rim level with the face and its screw heads SUNK
+  // into it — and reading it as one is what kept the builder unused.
   for (const p of tqPivots) {
     if (!p.jewelR) continue; // plain bushing (the barrel arbor)
     const collar = new THREE.Mesh(
-      ringGeo(p.boreR, chatonOuterFor(p.boreR) + 0.15, TQ_T - CHATON_DEPTH),
+      ringGeo(p.boreR, chatonOuterFor(p.boreR) + SEAT_LAND_LAP, TQ_T - CHATON_DEPTH),
       MATS.nickel);
+    collar.name = 'pivotCollar';
     collar.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - CHATON_DEPTH) / 2);
     threeQuarterPlate.add(collar);
+    // §132 — A SCREWED GOLD CHATON, on the going train's three upper pivots.
+    // The builder has existed and complete since the movement had a plate
+    // and was called by NOTHING; MATS.gold's docstring names these as its
+    // reason to be. What it needed was not writing but a host that could
+    // take it, and that is the work here: a depth solved against the stock
+    // floors (CHATON_DEPTH), a seat cut for every screw head, and the land
+    // put back under each seat.
+    if (p.chaton) {
+      const chaton = G.makeChaton({ boreR: p.boreR, thickness: CHATON_DEPTH,
+        screwCount: CHATON_SCREWS, screwPhase: p.screwPhase });
+      // The builder draws its top face at local z 0 — the flush-mount
+      // convention — so the chaton drops in with its rim level with the
+      // plate's top face and its underside on the collar, exactly where the
+      // rubbed-in stone's underside sat. Nothing here stands proud: the hack
+      // blade passes 0.18 over this face and the heads are SUNK into it.
+      chaton.position.set(p.x, p.y, TQ_T / 2);
+      threeQuarterPlate.add(chaton);
+      // The land under each screw head. §20's pillar seats are the pattern —
+      // cut the seat through, put the bearing land back beneath it — but its
+      // RING does not transfer: half of every seat here lies inside the
+      // counterbore, where there is no plate to restore. So the land is the
+      // seat's disc MINUS the collar's own footprint, a crescent, and it
+      // stands TQ_T − headT tall so the head bears on metal rather than
+      // floating in its recess.
+      const headT = chaton.userData.headT;
+      const Ri = chatonOuterFor(p.boreR) + SEAT_LAND_LAP;   // the collar ends here
+      for (const st of p.seats) {
+        const geo = crescentLand(p, st, Ri, SEAT_LAND_LAP, TQ_T - headT);
+        if (!geo) continue;
+        const land = new THREE.Mesh(geo, MATS.nickel);
+        land.name = 'chatonSeatLand';
+        land.position.z = -TQ_T / 2;
+        threeQuarterPlate.add(land);
+      }
+      continue;   // its stone is the chaton's own; no flush jewel here
+    }
     // Rubbed-in jewel: the ruby FILLS its counterbore, top face flush with
-    // the plate. The screwed-gold-chaton version read as a stone sunk at the
-    // bottom of a gold well — unavoidably, because the plate is thin and
-    // nothing here may stand proud of it (the rods run just above this
-    // face), so the gold rim had to rise around the stone rather than the
-    // stone sitting up in the rim. Filling the recess reads as pressed-in,
-    // and a jewel set directly into the plate is the older, simpler bearing
-    // anyway — what this movement used before chatons were introduced.
+    // the plate — the older, simpler bearing, and what this movement used
+    // everywhere before §132.
+    //
+    // It was once written here that a chaton on this plate was unavoidable
+    // to read as "a stone sunk at the bottom of a gold well" because the
+    // plate is thin. Measured, the depth was the reason and the depth was
+    // not derived: at CHATON_DEPTH 0.35 the stone stood 0.098 mm in a 0.303
+    // mm plate. Solved against the stock floors it is 0.4598 — 31% more
+    // chaton in the same plate — and the well closes. The refusal is
+    // withdrawn where it was wrong; what stays true is that nothing may
+    // stand proud, and neither bearing does.
     const jewel = new THREE.Mesh(
       jewelFaceGeo(p.boreR, chatonOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
     jewel.position.set(p.x, p.y, TQ_T / 2 - CHATON_DEPTH / 2);
