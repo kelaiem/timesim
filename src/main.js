@@ -15081,7 +15081,11 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   });
   pinA.traverse((o) => { if (o.isMesh) o.name = 'alarmArrestPinion'; });
   spin.add(pinA);
-  sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z - SUB_SPEC.halfHeight, 'subSleeveA');
+  // TODO 60 — the sleeve ends on the side gear's HUB FACE, not on the swept
+  // envelope. `halfHeight` stands outboard of every point of metal (the cone's
+  // back surface is z = r + faceWidth, so at the bore it is `hubFaceZ`), and a
+  // sleeve ended there stops 0.672 short in mid-air. Both legs had it.
+  sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z - SUB_SPEC.hubFaceZ, 'subSleeveA');
   alarmArrestUnit.add(spin);
   arrestPinionSpin = spin;
 
@@ -15102,13 +15106,40 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   });
   pinB.traverse((o) => { if (o.isMesh) o.name = 'subLegBPinion'; });
   pinBSpin.add(pinB);
-  sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z + SUB_SPEC.halfHeight, 'subSleeveB');
+  // TODO 60 — THE SLEEVE THAT WAS A POINT. Both its arguments used to reduce to
+  // `SUB_CAGE_Z + halfHeight` — the first through SUB_PIN_B_Z's own definition
+  // three thousand lines up — so `tube` extruded it at depth 0. A zero-height
+  // ring is not a small part but a MALFORMED one, and it is worse than absent:
+  // it satisfied §107's connectivity while occupying no space, so the hole it
+  // was supposed to fill read as bridged.
+  //
+  // The end is `hubFaceZ` for the reason spelled out at leg A: `halfHeight` is
+  // the swept envelope, and the cone's metal at the bore stops 0.672 inboard
+  // of it. Measured on the built scene, side gear B spans local 0.550 … 1.602
+  // against an envelope of 1.629 — so the envelope also over-states the cone
+  // by only 0.027 where it claims a margin of 0.150, which is a separate
+  // finding and is filed as TODO 67 rather than fixed here.
+  sleeve(pinBSpin, SUB_PIN_B_Z - ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z + SUB_SPEC.hubFaceZ, 'subSleeveB');
   alarmArrestUnit.add(pinBSpin);
   subPinBSpin = pinBSpin;
 
-  // the arbor the whole tower runs on
+  // THE ARBOR THE WHOLE TOWER RUNS ON, and it must reach the tower's TOPMOST
+  // member — not its middle one. Sized to SUB_OUT_Z (the cage) it stopped at
+  // 5.9648 while the tower carries on to 7.85, so leg B's side gear AND its
+  // pinion both turned with no arbor in their bores: 1.9 units of tower on
+  // nothing. That is §129's own defect a second time — the finger's arbor was
+  // built to the finger and left its output pinion standing at 7.27 — and it
+  // survived because a wheel with an empty bore collides with precisely
+  // nothing, so no clearance sweep, hull overlap or penetration budget has
+  // anything to report.
+  //
+  // The height is the idler's own idiom, and the idler is why it is known to
+  // fit: `subIdlerArbor` runs to `SUB_IDLER_P_Z + T/2 + 0.2`, and leg B's
+  // pinion shares the idler pinion's plane BECAUSE THEY MESH — so this lands
+  // at the same 7.9939 the sibling column already occupies under a green
+  // battery, rather than at a height nothing has tested.
   column(arrestPos.x, arrestPos.y, ARREST_SPEC.arborR,
-    SUB_OUT_Z + ALARM_WIND_WHEEL_T / 2 + 0.2, 'alarmArrestArbor');
+    SUB_PIN_B_Z + ALARM_WIND_WHEEL_T / 2 + 0.2, 'alarmArrestArbor');
 
   // --- THE COMPOUND IDLER: the SIGN, and the tower's z freedom ---------------
   const idlerSpin = new THREE.Group();
@@ -15253,6 +15284,64 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
         && outTip > SUB_BESIDE_R)
       console.warn(`alarm arrest: the cage's wheel reaches ${outTip.toFixed(3)} inside the barrel's `
         + `band — it must clear the lid at ${ALARM_BARREL_TOP.toFixed(3)} instead`);
+  }
+  // TODO 60 — DOES EVERY ROTOR HERE HAVE AN ARBOR IN ITS BORE? This unit shipped
+  // that defect TWICE in one session: the finger's arbor stopped below its own
+  // output pinion (caught by rendering the unit and looking), and the tower's
+  // arbor stopped below leg B's side gear and pinion (not caught at all, for
+  // eight months of green batteries).
+  //
+  // It is invisible to the whole bar, and none of the three reasons is a bug in
+  // the gate that misses it: a wheel with an EMPTY BORE collides with nothing,
+  // so no clearance sweep, hull overlap or penetration budget has anything to
+  // report; `assembly` asks whether a rigid group is one connected body, and a
+  // zero-height sleeve satisfies that while occupying no space; and
+  // `checkSupportGeometry` is UNIT-granular, so `Alarm winding arrest → plate`
+  // passes the moment any ONE of four columns reaches the plate — every wheel
+  // in here could be floating and that row would still read `gap 0.000, ok`.
+  //
+  // So the question is asked per MEMBER, and it is cheap: a rotor is coaxial
+  // with its arbor, so "is there an arbor in this bore" is "does some other
+  // mesh of this unit contain the rotor's axis at the rotor's own height".
+  // A cylinder's box contains its own axis, so the test is exact for the case
+  // it exists for and merely conservative elsewhere — it can call a near miss
+  // a hit, never a real hit a miss, and it is the false NEGATIVE that would
+  // matter. Scoped to this unit deliberately (§121's precedent: gate a named
+  // scope rather than warn across a movement whose other units seat wheels on
+  // shoulders and bridges this test does not model); `tools/probe-60-reach.mjs`
+  // is the same measurement over any unit, for exploring the rest.
+  {
+    alarmArrestUnit.updateMatrixWorld(true);
+    const solids = [];
+    alarmArrestUnit.traverse((o) => {
+      if (o.userData && o.userData.schematic) return;   // §71: display, never metal
+      if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+      o.geometry.computeBoundingBox();
+      solids.push({ o, b: o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld) });
+    });
+    const axis = new THREE.Vector3();
+    for (const { o, b } of solids) {
+      // A ROTOR is what the BUILDER says is one — makeGear/makePinion record
+      // userData.r — so a renamed part cannot drop out of the population.
+      let spins = false;
+      for (let n = o; n; n = n.parent) {
+        if (n.userData && typeof n.userData.r === 'number') { spins = true; break; }
+        if (n === alarmArrestUnit) break;
+      }
+      if (!spins) continue;
+      o.getWorldPosition(axis);
+      const zMid = (b.min.z + b.max.z) / 2;
+      const held = solids.some(({ o: p, b: q }) => p !== o
+        && axis.x >= q.min.x && axis.x <= q.max.x
+        && axis.y >= q.min.y && axis.y <= q.max.y
+        && zMid >= q.min.z && zMid <= q.max.z);
+      if (!held)
+        console.warn(`alarm arrest: ${o.name || 'a rotor'} turns at z ${zMid.toFixed(3)} with nothing `
+          + `spanning its axis — no arbor in its bore (TODO 60)`);
+      if (b.max.z - b.min.z < 1e-9)
+        console.warn(`alarm arrest: ${o.name || 'a solid'} extrudes at depth 0 — a zero-height ring `
+          + `is a malformed solid that still satisfies §107 connectivity (TODO 60)`);
+    }
   }
 }
 // NO declareTravel HERE, and the omission is the honest reading. §36A's
@@ -15644,7 +15733,6 @@ const ALARM_CLICK_L = Math.max(2.0, Math.sqrt(
   (1.12 * ALARM_COL_BASE_R + 0.28 + CLEAR_MARGIN) ** 2 - (ALARM_COL_BASE_R * (1.30 / 1.5)) ** 2));
 const ALARM_CLICK_SEAT = ALARM_COL_BASE_R * (1.30 / 1.5); // nose centre, dropped in a gap (proportion kept through the §35 resize)
 const ALARM_CLICK_OUT = ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R; // nose centre riding a column
-const ALARM_CLICK_SWING = (ALARM_CLICK_OUT - ALARM_CLICK_SEAT) / ALARM_CLICK_L;
 const _clickDir = { x: Math.cos(ALARM_CLICK_AZ), y: Math.sin(ALARM_CLICK_AZ) };      // wheel centre → contact
 const _clickTan = { x: -_clickDir.y, y: _clickDir.x };
 const _clickSeatP = { x: ALARM_COL_POS.x + _clickDir.x * ALARM_CLICK_SEAT, y: ALARM_COL_POS.y + _clickDir.y * ALARM_CLICK_SEAT };
@@ -15707,9 +15795,101 @@ alarmSwitchUnit.add(alarmClickArm);
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
   alarmSwitchUnit.add(blade);
 }
-// Base angle: arm pointing from the pivot at the SEATED nose position; the
-// rock (+SWING·colBlock) rotates the nose outward onto the column face.
+// Base angle: arm pointing from the pivot at the SEATED nose position.
 const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSeatP.x - alarmClickPivot.x) + Math.PI;
+
+// TODO 59 — THE NOSE'S RADIUS, READ OFF THE SURFACE IT ACTUALLY RIDES.
+//
+// The first law was `BASE + SWING·profileAt(a)`, and it is a category error:
+// `profileAt` returns a normalized HEIGHT (`top / colH` — it is literally the
+// function that cut `top`), while `SWING` is a RADIAL chord over the arm's
+// length. The link beak consumes the same number correctly, as a height. But
+// the pillar's outer wall stands at a CONSTANT `ALARM_COL_BASE_R` across its
+// whole arc — the chamfer is cut in z only, there is no radial relief anywhere
+// in `makeColumnWheel` — so a nose driven inward in proportion to the chamfer's
+// height is driven into a wall that has not moved. Measured on the old law:
+// 0.52 of burial at mid-flank against a 0.15 margin, over the 71% of each
+// half-arc that is flank. Only the two settled ends were ever clean.
+//
+// What the nose really rides, in the (r, z) half-plane at one azimuth: the
+// pillar is the rectangle [ALARM_COL_INNER, ALARM_COL_BASE_R] × [0, zTop(a)].
+// The nose is a sphere approaching from OUTSIDE, so the least radius its
+// centre may take is the distance-to-rectangle condition, which has exactly
+// three branches — and the middle one is the roll-off nobody had modelled:
+//
+//   dz ≤ 0          the nose is beside the WALL          → baseR + noseR
+//   0 < dz < noseR  it is rolling over the top CORNER    → baseR + √(noseR² − dz²)
+//   dz ≥ noseR      the pillar is clear beneath it       → free to the seat
+//
+// where dz = zNose − zTop(a). So the transition's width is set by the nose's
+// radius and the flank's dz/da — NOT by the flank's whole 10.68°, which is
+// what the old law spread it over.
+//
+// Sampled across the nose's angular FOOTPRINT and taken at the maximum, which
+// is `alarmLinkReadClean`'s shape (§33/§35) and §101's `clearAt` shape one
+// plane over: a rider clears a cut profile at its EDGES, not at a point.
+// MODELING rule 9, applied to the surface rather than to a scalar.
+const ALARM_CLICK_NOSE_HALF = Math.asin(ALARM_CLICK_NOSE_R / ALARM_COL_BASE_R); // the nose's own arc on the wall
+const ALARM_CLICK_Z_NOSE = ALARM_COL_H / 2;   // nose centre above the pillar floor — ALARM_COL_BAND_MID's own definition
+function alarmClickNoseR(colA) {
+  const p = alarmColumnWheel.userData.profileAt;
+  let rc = ALARM_CLICK_SEAT;
+  for (let k = -4; k <= 4; k++) {
+    const dz = ALARM_CLICK_Z_NOSE - ALARM_COL_H * p(colA + (k / 4) * ALARM_CLICK_NOSE_HALF);
+    const need = dz <= 0 ? ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R
+      : dz < ALARM_CLICK_NOSE_R
+        ? ALARM_COL_BASE_R + Math.sqrt(ALARM_CLICK_NOSE_R * ALARM_CLICK_NOSE_R - dz * dz)
+        : -Infinity;
+    if (need > rc) rc = need;
+  }
+  return rc;
+}
+// …and the arm angle that PUTS the nose at that radius, solved rather than
+// linearised. The nose swings on an arc of radius ALARM_CLICK_L about the
+// pivot, so its distance from the wheel's axis is a law of cosines — the old
+// `(OUT − SEAT)/L` was its first-order approximation, and over a 12.7° swing
+// that is not a rounding difference.
+const _clickD = Math.hypot(alarmClickPivot.x - ALARM_COL_POS.x, alarmClickPivot.y - ALARM_COL_POS.y);
+const _clickPsiOf = (rc) => Math.acos(Math.min(1, Math.max(-1,
+  (_clickD * _clickD + ALARM_CLICK_L * ALARM_CLICK_L - rc * rc) / (2 * _clickD * ALARM_CLICK_L))));
+const _clickPsi0 = _clickPsiOf(ALARM_CLICK_SEAT);
+// Which way the arm must turn to carry the nose OUTWARD is MEASURED off the
+// built frame, not assumed from the sign of anything.
+const _clickSign = (() => {
+  const rAt = (th) => {
+    const f = ALARM_CLICK_BASE + th + Math.PI;   // the arm reaches BACK: its nose is at local −L
+    return Math.hypot(alarmClickPivot.x + Math.cos(f) * ALARM_CLICK_L - ALARM_COL_POS.x,
+      alarmClickPivot.y + Math.sin(f) * ALARM_CLICK_L - ALARM_COL_POS.y);
+  };
+  return rAt(1e-4) > rAt(-1e-4) ? 1 : -1;
+})();
+const alarmClickArmAngle = (rc) => ALARM_CLICK_BASE + _clickSign * (_clickPsiOf(rc) - _clickPsi0);
+// TODO 59 — CAN THE CLICK ACTUALLY READ THE WHEEL? The check row that claimed
+// "its budget the switch's own asserts" pointed at a check nobody had written,
+// which reads as triaged and is worse than an admitted gap. This is that check,
+// in `alarmLinkReadClean`'s shape (§33/§35) and deliberately INDEPENDENT of the
+// law above: asserting that `alarmClickNoseR` satisfies its own three branches
+// would be checking a formula against its own terms, which is what TODO 15
+// warns about. So it asserts the two things the MECHANISM claims instead —
+// over a column the nose stands fully out on the wall, and over a gap it
+// drops fully home — plus the seat clearing the inner wall it drops toward.
+{
+  const pitch = (Math.PI * 2) / ALARM_COL_COLUMNS;
+  const onTop = alarmClickNoseR(0);                 // a column's centre
+  const inGap = alarmClickNoseR(pitch / 2);         // the gap between two
+  if (Math.abs(onTop - ALARM_CLICK_OUT) > 1e-9)
+    console.warn(`alarm click: over a column top the nose sits at ${onTop.toFixed(4)}, not on the `
+      + `wall at ${ALARM_CLICK_OUT.toFixed(4)} — nose z ${ALARM_CLICK_Z_NOSE.toFixed(3)} (r `
+      + `${ALARM_CLICK_NOSE_R}) against a ${ALARM_COL_H.toFixed(3)} column, footprint `
+      + `±${(ALARM_CLICK_NOSE_HALF * 180 / Math.PI).toFixed(2)}° against a `
+      + `±${(alarmColumnWheel.userData.colFlatHalf * 180 / Math.PI).toFixed(2)}° flat`);
+  if (Math.abs(inGap - ALARM_CLICK_SEAT) > 1e-9)
+    console.warn(`alarm click: in the gap the nose only reaches ${inGap.toFixed(4)}, not its seat at `
+      + `${ALARM_CLICK_SEAT.toFixed(4)} — the detent never drops, so the wheel is not indexed`);
+  if (ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R < ALARM_COL_INNER + CLEAR_MARGIN - 1e-9)
+    console.warn(`alarm click: the seated nose reaches ${(ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R).toFixed(3)}, `
+      + `inside the castellation floor's inner wall at ${(ALARM_COL_INNER + CLEAR_MARGIN).toFixed(3)}`);
+}
 // THE PUSHER (owner's catch: a cased movement cannot reach a plate-top
 // column wheel — chronographs pierce the case here). A capped stem at the
 // rim on the wheel's azimuth, OFFSET half a wheel-radius sideways so its
@@ -20545,6 +20725,114 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         addLine(m, [lo, hi]);
       }
     }
+  }
+
+  // §134 — THE MALTESE CROSSES. Until now this mechanism drew NOTHING: neither
+  // Geneva builder records `userData.r`, so the rotor pass skipped both; the
+  // §48 blade pass skips them on the name test; and `discOrAxis`'s unit list is
+  // hard-coded without the arrest. That makes it the §107 BLANK rather than the
+  // §78 wrong-word — there is no false claim to retire and no OWN_GLYPH entry
+  // to add, only a pass that was missing.
+  //
+  // The sharpest statement of the gap is that the tier already lit a CONTACT
+  // DOT here: ALARM_HANDOFFS names the pin in its slot and the disc in its
+  // hollow, so the drawing marked a contact between two parts it did not draw.
+  //
+  // Keyed on the builders' own word (§107's lesson: the drawing half must be as
+  // generic as the opt-out half), so a second Geneva — the fusee stop-work is
+  // filed as roadmap §130 — draws for free rather than needing this edited.
+  {
+    const crosses = [], fingers = [];
+    movement.traverse((o) => {
+      if (o.userData && o.userData.schematic) return;
+      if (o.userData && o.userData.geneva) crosses.push(o);
+      if (o.userData && o.userData.genevaFinger) fingers.push(o);
+    });
+    // The unit a part belongs to, for the art that must NOT turn with a rotor.
+    const unitOf = (o) => {
+      for (let n = o; n; n = n.parent) {
+        const e = labelEntries.find((x) => x.obj === n);
+        if (e) return e.obj;
+      }
+      return null;
+    };
+    const ringPts = (r, cx, cy, z, n = 64) => {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pts.push(V(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z));
+      }
+      return pts;
+    };
+    // THE CUT OUTLINE IS THE DRAWING. A Geneva's content is its slots and its
+    // blank arm — the one thing a pitch circle could never say — so the cross
+    // draws what was actually cut, the §83 `profile` convention. Decimated:
+    // the traced boundary runs to four figures of points and the tier is a
+    // line drawing, not a mesh.
+    const trace = (poly, z, step) => {
+      const pts = [];
+      for (let i = 0; i < poly.length; i += step) pts.push(V(poly[i][0], poly[i][1], z));
+      if (poly.length) pts.push(V(poly[0][0], poly[0][1], z));   // close it
+      return pts;
+    };
+    for (const m of crosses) {
+      const g = m.userData.geneva, sp = g.spec;
+      // The builders extrude UNCENTRED (local z 0 is the bottom face), so the
+      // mid-plane is half a thickness up — a naive z 0 would draw the glyph on
+      // the underside of its own part.
+      const z = g.thickness / 2;
+      if (m.userData.outline && m.userData.outline.length)
+        addLine(m, trace(m.userData.outline, z, Math.max(1, Math.ceil(m.userData.outline.length / 240))), SCHEMATIC.matWheel);
+      addLine(m, ringPts(m.userData.hubR, 0, 0, z), MAT_LEVER);
+      addLine(m, ringPts(sp.boreR, 0, 0, z), MAT_LEVER);
+    }
+    for (const f of fingers) {
+      const gf = f.userData.genevaFinger, sp = gf.spec;
+      const z = gf.thickness / 2;
+      if (f.userData.outline && f.userData.outline.length)
+        addLine(f, trace(f.userData.outline, z, Math.max(1, Math.ceil(f.userData.outline.length / 240))), SCHEMATIC.matWheel);
+      addLine(f, ringPts(sp.lockR, 0, 0, z), MAT_LEVER);          // the locking disc
+      addLine(f, ringPts(sp.pinR, sp.a, 0, z + gf.thickness), SCHEMATIC.matWheel); // the pin, on its own plane
+      addLine(f, [V(0, 0, z), V(sp.a, 0, z)], MAT_LEVER);         // the crank: axis → pin
+      // The pin's ORBIT is centred on the finger's own axis, so it reads the
+      // same at every rotation — safe to hang on the turning group.
+      addLine(f, ringPts(sp.a, 0, 0, z), MAT_LEVER);
+    }
+    // THE BANK, which is what the mechanism exists to do and what nothing else
+    // in the drawing would show. bankTh is the angle off the line of centres at
+    // which the pin butts the blank arm, so it is drawn in the UNIT's frame —
+    // it marks a fixed place, not a place on a rotor.
+    let banked = 0;
+    for (const f of fingers) {
+      const unit = unitOf(f);
+      if (!unit) continue;
+      const sp = f.userData.genevaFinger.spec;
+      const fw = f.getWorldPosition(new THREE.Vector3());
+      let best = null, bestD = Infinity;
+      for (const m of crosses) {
+        const d = Math.abs(m.getWorldPosition(new THREE.Vector3()).distanceTo(fw) - sp.d);
+        if (d < bestD) { bestD = d; best = m; }
+      }
+      if (!best || bestD > sp.d * 0.05) continue;   // not this finger's cross
+      const cw = best.getWorldPosition(new THREE.Vector3());
+      const fl = unit.worldToLocal(fw.clone()), cl = unit.worldToLocal(cw.clone());
+      const az = Math.atan2(cl.y - fl.y, cl.x - fl.x);
+      const zc = (fl.z + cl.z) / 2;
+      addLine(unit, [V(fl.x, fl.y, zc), V(cl.x, cl.y, zc)], MAT_LEVER);  // the centre distance
+      for (const sgn of [-1, 1]) {
+        const th = az + sgn * sp.bankTh;
+        addLine(unit, [
+          V(fl.x + Math.cos(th) * (sp.a - sp.pinR * 1.6), fl.y + Math.sin(th) * (sp.a - sp.pinR * 1.6), zc),
+          V(fl.x + Math.cos(th) * (sp.a + sp.pinR * 1.6), fl.y + Math.sin(th) * (sp.a + sp.pinR * 1.6), zc),
+        ], MAT_SPRING);
+      }
+      banked++;
+    }
+    // The tripwire is a FLOOR, never an equality — the same idiom as the rotor,
+    // spiral, profile and crown words beside it.
+    if (crosses.length < 1 || fingers.length < 1 || banked < 1)
+      console.warn(`§134: the Geneva pass drew ${crosses.length} cross(es), ${fingers.length} finger(s) `
+        + `and ${banked} bank(s) — the movement carries a stop-work this tier is not saying`);
   }
 
   // contact dots — instrument-measured, lazily
@@ -26599,7 +26887,12 @@ function tick(t) {
     // The click rocks with the SAME ridden profile (its contact sits whole
     // pitches from the beak's): out on a column, dropped into a gap — the
     // visible flip on every actuation, mid-flank included.
-    alarmClickArm.rotation.z = ALARM_CLICK_BASE + ALARM_CLICK_SWING * colBlock;
+    // TODO 59: the nose's radius comes from the wall and the top corner it
+    // rides, not from the chamfer's height fraction. profileAt is
+    // pitch-periodic and the click's contact sits a whole number of pitches
+    // from the lock beak's (asserted below), so colShownA is the right
+    // azimuth for it unshifted.
+    alarmClickArm.rotation.z = alarmClickArmAngle(alarmClickNoseR(alarmColShownA));
     // The pusher: presses IN with the actuation pulse and springs back — its
     // pawl rides the ratchet skirt through the same eased step.
     // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
@@ -27096,6 +27389,22 @@ window.__clock = {
   },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
+  // TODO 59: the click's own law, exposed so a probe measures the SHIPPED
+  // function rather than a re-implementation of it. `poseClick` drives the arm
+  // to an arbitrary wheel angle, which no pose object can reach — setPose
+  // banks alarmColSteps to an integer multiple of ALARM_COL_STEP, so mid-flank
+  // exists only under the live tick (TODO 7's territory) or through here.
+  clickLaw: {
+    noseR: (colA) => alarmClickNoseR(colA),
+    armAngle: (rc) => alarmClickArmAngle(rc),
+    seat: ALARM_CLICK_SEAT, out: ALARM_CLICK_OUT, noseRadius: ALARM_CLICK_NOSE_R,
+    wallR: ALARM_COL_BASE_R, noseHalf: ALARM_CLICK_NOSE_HALF, zNose: ALARM_CLICK_Z_NOSE,
+    colH: ALARM_COL_H, pitch: (Math.PI * 2) / ALARM_COL_COLUMNS,
+    poseClick: (colA) => {
+      alarmColumnWheel.rotation.z = -colA;
+      alarmClickArm.rotation.z = alarmClickArmAngle(alarmClickNoseR(colA));
+    },
+  },
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },

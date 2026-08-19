@@ -13218,3 +13218,100 @@ the axis more owed than before, not less.
 202°) exists as a spec knob with `tools/probe-129-bearing` to sweep it; the
 subtractor sites at the bearing §112 already chose, so nothing moved, but the
 instrument is there for the next consumer of that corner.
+
+## §134 — the Maltese crosses draw: the schematic tier stops marking a contact between two parts it cannot show
+
+**The finding, and it is sharper than the request.** "Draw the crosses in
+schematic mode" sounds like fixing a wrong glyph. It was not: the stop-work
+drew **nothing at all**. Neither `makeGenevaCross` nor `makeGenevaFinger`
+records `userData.r`, so the generic rotor pass skipped both; the §48 blade
+pass skips them on its name test; and `discOrAxis`'s unit list is hard-coded
+and does not include the arrest. In the alarm winding arrest the only parts
+with glyphs were the gear-train members that earned pitch circles from
+`makeGear`/`makePinion` — **the two parts the mechanism IS were blank.**
+
+That makes this the **§107 blank, not the §78 wrong-word**, and the difference
+decided the work: there was no false claim to retire and no `OWN_GLYPH` entry
+to add, because nothing had ever claimed these parts. Only a pass was missing.
+
+**The sharpest statement of the gap.** `ALARM_HANDOFFS` already names both of
+this mechanism's working contacts — the pin in its slot, the locking disc in
+its hollow — and the contact-dot pass lights them at the live pose. So the tier
+was drawing **a dot at a contact between two parts it did not draw.**
+
+### The word, and why it is declared in the builder
+
+The pass is keyed on `userData.geneva` / `userData.genevaFinger`, recorded by
+the two builders, rather than hand-written against the arrest's own variables.
+That is §107's own lesson, which the tier learned the expensive way: the
+opt-out half being generic while the drawing half is hand-written is how a part
+sets a key, loses its pitch circle, and draws nothing — *"not a wrong word
+drawn over, but a right word never drawn."* The consequence to keep: **roadmap
+§130's fusee stop-work will draw without this pass being edited.**
+
+### What it draws, and why each line is a claim worth making
+
+| line | from | says |
+|---|---|---|
+| the cross's cut outline | `userData.outline`, the traced boundary | the slots and the BLANK ARM — the one thing a pitch circle could never say |
+| hub and bore rings | `hubR`, `spec.boreR` | where it is carried |
+| the finger's outline | `userData.outline` | its shape, not a disc |
+| the locking disc | `spec.lockR` | what holds the cross between indexings |
+| the pin and its ORBIT | `spec.pinR` at `(a, 0)`, radius `a` | the driver |
+| the crank | axis → pin | that `a` is a radius, not a distance |
+| the centre distance | finger axis → cross axis | `d`, in the unit's frame |
+| **the bank, at ±`bankTh`** | `acos((a² + d² − (b + pinR)²) / 2ad)` | **the thing the mechanism exists to do** |
+
+The outline is decimated to ~240 points: the traced boundary runs to four
+figures and this is a line drawing, not a mesh.
+
+**The bank is drawn in the UNIT's frame, deliberately.** It marks a fixed
+place — the angle off the line of centres at which the pin butts the blank arm
+— so hanging it on a rotor would make it turn with the part it describes. The
+pin's ORBIT, by contrast, is centred on the finger's own axis and reads the
+same at every rotation, so it is safe on the turning group. That distinction is
+the one piece of frame reasoning this pass needs.
+
+### Three things that bit, kept for the next pass
+
+1. **`MAT_WHEEL` and `MAT_SPOKE` are not in scope.** They live in the FIRST
+   schematic closure; the second block sees `SCHEMATIC.matWheel` (§83 put it
+   there for exactly this) and its own `MAT_LEVER`/`MAT_SPRING`. The pass
+   failed to boot on this before it failed on anything geometric.
+2. **The Geneva builders extrude UNCENTRED** — local z 0 is the bottom face —
+   so a glyph drawn at z 0 sits on the underside of its own part. Half a
+   thickness up is the mid-plane.
+3. **A missed flag is a fingerprint break, not a cosmetic one.** The
+   fingerprint's walk tests `o.geometry`, not `o.isMesh`, so an unflagged
+   `THREE.Line` inflates its unit's box and moves the hash — and this pass
+   lands inside a labelled unit. `addLine` sets the flag; a hand-rolled Line
+   would not.
+
+### Measured
+
+`tools/probe-134-tier.mjs` holds the tier's two invariants and the thing they
+can both pass for the wrong reason:
+
+```
+lines 31 · meshy 0 · offLayer 0 · strayGeom 0
+per-part glyphs: cross 3, finger 5      (both were 0)
+fingerprint 4089477992 — unchanged
+```
+
+The §66 assert that proxies are never Meshes covers only the first schematic
+block, so every pass added after it — this one included — gets no coverage from
+it and must simply not push Meshes. That is why the probe checks it directly.
+
+**Boot carries a tripwire, as a FLOOR and never an equality**, the same idiom
+as the rotor, spiral, profile and crown words beside it: if the pass draws no
+cross, no finger, or no bank, it warns that the movement carries a stop-work
+the tier is not saying.
+
+### What this does not close
+
+Roadmap §84 — the schematic coverage census — is what would have FOUND this.
+No instrument reports glyph coverage today, and `docs/BUILT.md` §83 already
+records that four labelled units draw nothing without naming them. This entry
+fixes one unit by hand and strengthens §84's case rather than answering it: the
+gap was found by a person looking at the screen, which is exactly the census's
+argument.

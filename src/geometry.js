@@ -1751,6 +1751,14 @@ export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
   mesh.userData.spec = spec;
   mesh.userData.hubR = hubR;
   mesh.userData.blankAt = blankAt;
+  // §134 — the schematic tier's own word for "I am a Geneva cross". Neither
+  // this nor makeGenevaFinger records `userData.r`, so no generic pass ever
+  // claimed either of them and there is no wrong glyph to retire: this is the
+  // §107 BLANK, not the §78 wrong-word. Declaring the word here rather than
+  // hand-writing the drawing in main.js is §107's own lesson — the opt-out
+  // half being generic while the drawing half is not is how a part loses its
+  // glyph and gains nothing.
+  mesh.userData.geneva = { spec, blankAt, thickness };
   return mesh;
 }
 
@@ -1841,6 +1849,7 @@ export function makeGenevaFinger({ spec, thickness, boreR, material }) {
   g.userData.spec = spec;
   g.userData.outline = pts;
   g.userData.slotInner = slotInner;
+  g.userData.genevaFinger = { spec, thickness };   // §134, see makeGenevaCross
   return g;
 }
 
@@ -2000,6 +2009,16 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
     // inward instead is what had the two sleeves meeting in the middle of the
     // gear set with the planets driven straight through them.
     halfHeight: R + module * 0.85 + faceWidth * Math.SQRT1_2 + margin,
+    // WHERE A HUB ACTUALLY SEATS, which is NOT halfHeight (TODO 60).
+    // makeBevelGear extrudes the flat outline along z and then shears it
+    // (`v.z += hypot(v.x, v.y) * taper`, taper = 1 at 45°), so a vertex at
+    // radius r lands at z in [r, r + faceWidth]. The cone's back surface is
+    // therefore z = r + faceWidth, sloping from the bore outward — and at the
+    // BORE it is the flat annulus a sleeve butts against. halfHeight is the
+    // swept ENVELOPE and stands outboard of every point of metal, so a sleeve
+    // ended there stops in mid-air: measured, 0.672 short on both legs, which
+    // is exactly the hole TODO 60 found under leg B's deleted ring.
+    hubFaceZ: sideBoreR + faceWidth,
     teethOk: teeth >= minGearTeeth(module, planetBoreR),
     moduleMin,
     cuttable: module >= moduleMin - 1e-12,
