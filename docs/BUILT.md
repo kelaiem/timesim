@@ -13243,6 +13243,184 @@ the axis more owed than before, not less.
 subtractor sites at the bearing §112 already chose, so nothing moved, but the
 instrument is there for the next consumer of that corner.
 
+## §132 — three screwed gold chatons on the going train's upper pivots: a builder nothing called, and the depth that made it uncallable
+
+**What this was.** `makeChaton` had been a complete, documented builder since
+the movement had a plate — gold bezel, oil sink, pressed ruby, blued screws
+straddling the rim — and it was **called by nothing**. `MATS.gold` existed
+with a docstring naming the chatons as its reason to be, and its only live
+use was the balance's shock lyre spring. `README.md` claimed "screwed gold
+chatons over the upper pivot jewels" among the Glashütte-school features, and
+public TODO 57 was filed against exactly that gap.
+
+So this was never a build-from-nothing. It was a siting job — and the reason
+the siting had never happened turned out to be a number nobody had derived.
+
+**The plate had REFUSED chatons, on record, and the refusal was half right.**
+The plate build argued it in place: the three-quarter plate is 0.8 thick, the
+hack and reset rods pass just above it, nothing may stand proud, so what was
+built was a gold rim rising around a flush stone — a rubbed-in jewel. TODO 57
+repeated that as a scope note calling this plate **"not viable"** and warning
+that anyone proposing it was re-opening a settled argument. Roadmap §132 was
+filed against the two COCKS for that reason.
+
+Measured, the objection was not the one recorded:
+
+- **Not clearance.** `makeChaton` is a flush design by construction — rim
+  level with the host's face, screw heads SUNK into it, slot below them,
+  stone `0.08·t` under the rim. Its own screw comment cites *this plate's*
+  hack blade, at 0.18 over the face. The builder was written for this face
+  and then fitted nowhere.
+- **A reading objection**, and a real one: the stone looked sunk at the bottom
+  of a gold well. But that followed from `CHATON_DEPTH` = 0.35, which the
+  source justified as "a little under half the plate" — a preference, not a
+  derivation.
+
+**The depth is now SOLVED, and 0.35 could never have been built.** Two members
+split `TQ_T` at a chaton site, and both default to the `wheel` kind and its
+0.12 mm floor:
+
+| member | section | floor demands |
+|---|---|---|
+| pressed stone | `CHATON_RUBY_FRAC · t` | `t` ≥ **0.4279** |
+| bearing collar under it | `TQ_T − t` | `t` ≤ **0.4834** |
+
+The window is 0.055 u — **0.021 mm** — and 0.35 is not in it: the old depth
+put the stone at **0.098 mm**, a fifth under the floor. Nothing had ever
+caught it because no chaton was ever instantiated; §50 can only measure a mesh
+that exists. Inside the window the two members are the whole of the plate, so
+the depth that maximises the smaller margin is the one that EQUALISES them:
+
+```
+CHATON_RUBY_FRAC · t = TQ_T − t   →   t = TQ_T / (1 + CHATON_RUBY_FRAC)
+                                    = 0.4598
+stone  0.1289 mm      collar  0.1289 mm      floor  0.12 mm
+```
+
+`CHATON_RUBY_FRAC` is exported from the builder and read here, so changing the
+stone's proportion re-solves the depth rather than drifting from it. And the
+deeper stone is what answers the reading objection: 0.4598 against 0.35 is
+**31% more chaton in the same plate**, and the well closes.
+
+**Two defects were latent in the builder, both invisible while nothing called
+it.** This is the entry's own argument for why an uncalled builder is not
+"already built":
+
+- **The screw heads were `t · 0.5`.** Heads carry no stock kind ON PURPOSE —
+  `STOCK_KIND_BY_MESH` says so in as many words: *"they are real stock at
+  STOCK_MIN_U and must keep answering to the wheel floor"* — so at that
+  proportion they demand `t ≥ 0.6333`, while the collar caps `t` at 0.4834.
+  **No depth in a 0.8 plate satisfies both**, and the builder was therefore
+  unsitable here as written. §20 hit precisely this on the plate screws and
+  decoupled; `headT` is now `max(STOCK_MIN_U, t · 0.5)`, proportional where
+  the host can afford it and floored where it cannot.
+- **The oil sink was an `openEnded` cone.** An OPEN mesh in the scene, which
+  is the class TODO 27 measured making `sweptOverlap` CONFIRM an overlap
+  against a part 3.7 units away — `meshClearance`'s parity raycast counts
+  crossings and so assumes a closed solid. It was also 0.0383 mm on its thin
+  axis with nothing kinding it. Rather than declare it, the dish is now
+  revolved into the stone's own closed lathe profile: a jewel with a sink cut
+  in it is what the part IS, and the mesh simply stops existing.
+
+**The screws bite the plate, so the plate is cut for them.** `tqHoles` opened
+each pivot at exactly `chatonOuterFor`, which left the outer half of every
+head in solid metal. Each screw now costs a seat, and the seats are declared
+two ways on purpose:
+
+- as **circles** in `tqHoles`, so every solver that reads it — the window
+  solve, `tqOpeningClearance`, the rib and engraving keep-outs — sees the
+  metal that is actually gone;
+- as **one merged outline** per site (a new `polyHoles` input to
+  `makeThreeQuarterPlate`), because three seat circles centred ON the
+  counterbore's own rim overlap it, and `ExtrudeGeometry` triangulates
+  overlapping holes into phantom plate rather than failing — the same failure
+  mode §62's web check exists to catch.
+
+Boot asserts the two agree: every outline vertex is inside no circle and on
+the boundary of at least one.
+
+**§20's ring land does not transfer, and that is the one genuinely new piece
+of modelling here.** Half of each seat lies inside the counterbore, where
+there is no plate to restore. So the land is the seat's disc MINUS the
+collar's footprint — a crescent, built from the two circles' real
+intersection rather than approximated by a wedge, since an approximation that
+overshoots puts metal back inside the counterbore and one that undershoots
+leaves the head unsupported. It stands `TQ_T − headT` = 0.4833 u (0.183 mm)
+so the head bears on metal instead of floating in its recess. Nine of them —
+one shape at one radius, because all three sites share a bore.
+
+**The land the screws bite was already reserved.** Every plate opening, rib
+and engraving keeps clear of `pivotBossR` = `max(jewelR · 1.7, boreR)` =
+**2.21** at these pivots, and `checkCutVsPivots` holds the balance cut a
+further `CLEAR_MARGIN` outside that. The screw circle reaches 1.785 and the
+cut 1.925. Nothing had to move for any of the three.
+
+**Scope: three, and both exclusions are DECISIONS, not measurements.**
+
+| upper pivot | x, y | `boreR` | counterbore | chaton |
+|---|---|---|---|---|
+| centre wheel | 0, 0 | 0.55 | 1.50 | **yes** |
+| third wheel | −8.795, −9.231 | 0.55 | 1.50 | **yes** |
+| fourth wheel | 0, −15.500 | 0.55 | 1.50 | **yes** |
+| escape wheel | 4.910, −23.327 | 0.55 | 1.50 | no |
+| alarm strike arbor | 22.215, 18.641 | 0.80 | 1.75 | no |
+| fusee arbor | −13.270, 9.292 | — | — | no jewel: a plain bushing |
+
+Nothing geometric forces either exclusion — the escape site is dimensionally
+the SAME site as the three, same bore, same counterbore, same screw circle,
+and the source says so where it makes the choice. What excluding the strike
+arbor buys is that the chatons are ONE part: its bore is a step wider at 0.80
+for the rotor's sleeve, which would have forked the spec into two sizes, two
+screw radii and two rows in every table above.
+
+**Standing rule 1's own case, closed on the way.** `chatonOuterFor` was
+`boreR + 0.95` with a comment reading `= makeChaton's rubyR + 0.55` — a
+hand-copy of two numbers living in the builder, uncatchable while the builder
+was called by nothing. `CHATON_RUBY_INSET`, `CHATON_RIM_W`, `CHATON_RUBY_FRAC`,
+`chatonOuterR` and `chatonHeadR` are now exported and read; the plate types
+none of them.
+
+### Measured
+
+Full battery, locally, 3 shards:
+
+```
+25/25 gates pass · total 1210.3s (checks 2990.3s across 3 shards)
+  stockFloor       0 degenerate and 0 unwaived (592 rows, 47 waived — none new)
+  sweptOverlap     0 CONFIRMED (84028 pairs, tight 3, refuted 23)
+  clearances       0 violations (30 budgets)
+  intraUnit        0 unwaived, 0 unmatched selectors
+  expectedContacts 0 unwaived, 0 unmatched selectors
+  inspection       0 FORBIDDEN (55 units, 80 contacting pairs)
+  boot silent (rule 6)
+  fingerprint      4089477992 — UNCHANGED
+```
+
+**The unchanged fingerprint is a result, not a null.** It hashes per-unit
+bounding boxes, so an unchanged hash says that nothing the chatons added
+extends the three-quarter plate's box in any direction. The flush claim —
+nothing proud of a face the hack blade passes 0.18 over — is measured by it
+rather than asserted.
+
+`stockFloor` is the gate that matters here, because it is the one the old
+depth failed: 47 waived rows, all pre-existing, and the `Three-quarter plate`
+unit carries no `STOCK_WAIVERS` entry at all, so every new member — bezel,
+stone, collar, nine crescent lands, and the screw heads at `STOCK_MIN_U` —
+had to clear 0.12 mm on its own.
+
+### What this does not close
+
+The **fork cock** and the **balance cock** are still unchatoned. They were
+roadmap §132's original sites and remain viable candidates for an entry of
+their own; the balance cock's constraint is unchanged and still unmeasured —
+the shock setting's boss occupies the face out to r 1.35, so a chaton rim must
+live outside that or the two parts are one part.
+
+The escape wheel's exclusion is recorded as a choice rather than a
+measurement. If it is ever revisited, the number to publish is that site's
+land radius against the 1.785 screw circle, which would say whether the
+exclusion could have been forced as well as chosen.
+
 ## §134 — the Maltese crosses draw: the schematic tier stops marking a contact between two parts it cannot show
 
 **The finding, and it is sharper than the request.** "Draw the crosses in
