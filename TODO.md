@@ -7077,7 +7077,38 @@ is modelled, because that is the honest half a reader needs and neither
 document says it today. Cutting real cycloidal teeth is a separate,
 much larger question and is filed as roadmap §136.
 
-## 62. Mesh phase: nine undocumented `Math.PI / teeth` sites, and a going train with no phase at all
+## 62. Mesh phase: the going train is SOLVED; the keyless idiom sites and the bevels remain
+
+**Progress 2026-08-20 (after TODO 48 landed its threshold fix, the stated
+prerequisite).** The largest block is done: the GOING TRAIN's four meshes
+are chain-solved, backward from the escapement because that is where the
+freedoms are — the escape wheel's phase belongs to the pallets (its own
+convention, untouched), so the escape PINION is the datum; each arbor's
+pinion+wheel rides a rigid pair group (TODO 48's structure, one knob per
+blank), and the great wheel is its own knob on the fusee arbor. Four runs,
+one per module, every tripwire live. The striking wheel 64T ⇄ governor
+pinion mesh is solved in the same landing: the 64T rides a SLEEVE (a real
+assembly freedom) so it is the knob, the governor pinion the datum, and
+that idiom line's interleaving CLAIM is retired (the rotation stays as the
+pinion's assembly position).
+
+**What remains, re-scoped:**
+
+- The four keyless bases (`windSpurBase`, `crownWheelBase`,
+  `settingWheelBase`, `minuteWheelBase`) are RUNTIME phase offsets
+  (`rotation.z = base + spin(t)` in tick), woven through two tick-driven
+  chains — retiring each means solving the chain at build and reading the
+  solved rotation back into the base, a TODO-48-sized job per chain
+  (winding: sliding pinion → crown → transfer → spur; setting: pinion →
+  setting wheel → minute wheel).
+- The BEVEL sites (`BEVEL_PHASE` ×2 corners, `ALARM_BEVEL_PHASE`, the
+  §129 spider's four planet meshes) are beyond the planar gauge:
+  `measuredToothPhase` silhouettes about z, and a bevel pair's horizontal
+  member has no z-silhouette to read. Retiring them needs the instrument
+  question roadmap §135 files, not another call site.
+- §129's tower: the compound idler's PINION ⇄ leg B's pinion is still
+  unchained ('alarm arrest leg B:' phases the idler's wheel only).
+
 
 TODO 15 closed the winding and setting chains and named **two** remaining
 sites; TODO 48 carries one of them. The census is much larger than either item

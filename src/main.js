@@ -1284,7 +1284,12 @@ const centerArbor = new THREE.Group();
 centerArbor.position.set(P.center.x, P.center.y, L_BARREL);
 centerPinion.position.z = 0;
 centerWheel.position.z = L_CENTER - L_BARREL;
-centerArbor.add(centerPinion, centerWheel);
+// TODO 62 — pinion and wheel are one blank: the pair group is the rigid
+// constraint's structural form (TODO 48's rsvPair1 precedent), and the
+// going-train phase solve below turns the PAIR.
+const centerPair = new THREE.Group();
+centerPair.add(centerPinion, centerWheel);
+centerArbor.add(centerPair);
 movement.add(centerArbor);
 registerExplode(centerArbor, L_BARREL, 2);
 registerLabel('Center wheel', centerArbor);
@@ -1293,7 +1298,9 @@ const thirdArbor = new THREE.Group();
 thirdArbor.position.set(P.third.x, P.third.y, L_CENTER);
 thirdPinion.position.z = 0;
 thirdWheel.position.z = L_THIRD - L_CENTER;
-thirdArbor.add(thirdPinion, thirdWheel);
+const thirdPair = new THREE.Group(); // TODO 62 — one blank, one knob
+thirdPair.add(thirdPinion, thirdWheel);
+thirdArbor.add(thirdPair);
 movement.add(thirdArbor);
 registerExplode(thirdArbor, L_CENTER, 3);
 registerLabel('Third wheel', thirdArbor);
@@ -1302,7 +1309,9 @@ const fourthArbor = new THREE.Group();
 fourthArbor.position.set(P.fourth.x, P.fourth.y, L_THIRD);
 fourthPinion.position.z = 0;
 fourthWheel.position.z = L_FOURTH - L_THIRD;
-fourthArbor.add(fourthPinion, fourthWheel);
+const fourthPair = new THREE.Group(); // TODO 62 — one blank, one knob
+fourthPair.add(fourthPinion, fourthWheel);
+fourthArbor.add(fourthPair);
 movement.add(fourthArbor);
 registerExplode(fourthArbor, L_THIRD, 4);
 registerLabel('Fourth wheel', fourthArbor);
@@ -11143,6 +11152,36 @@ const solveGearChain = (label, chain, module) => {
     { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
     { obj: rsvWheel2, teeth: rsvTeethW2, name: 'w2' },
   ], rsvModule1);
+  // TODO 62 — THE GOING TRAIN, which had no phase of any kind: not one
+  // rotation.z was ever assigned to its seven gears, so all four meshes
+  // were phased by wherever gearOutlineShape happened to put a tooth — at
+  // two DIFFERENT tipFrac conventions between makeGear and makePinion,
+  // exactly the condition the gauge's own header warns about. Solved
+  // BACKWARD from the escapement, because that is where the freedoms are:
+  // the escape wheel's phase belongs to the pallets (its own convention,
+  // never touched), so the escape PINION is the datum; each arbor's
+  // pinion+wheel is one blank (a pair group, TODO 48's structure), giving
+  // exactly one knob per mesh — fourth pair to the escape pinion, third
+  // pair to the fourth pinion, center pair to the third pinion, and the
+  // great wheel (its own knob on the fusee arbor) to the center pinion.
+  // Four runs because the train has four modules; one run per mesh keeps
+  // every centre-distance tripwire honest.
+  solveGearChain('going fourth ⇄ escape:', [
+    { obj: escapePinion, teeth: TRAIN.fourth.pinion, name: 'escape pinion' },
+    { obj: fourthPair, teeth: TRAIN.fourth.teeth, name: 'fourth wheel (+pinion held)' },
+  ], TRAIN.fourth.module);
+  solveGearChain('going third ⇄ fourth:', [
+    { obj: fourthPinion, teeth: TRAIN.third.pinion, name: 'fourth pinion' },
+    { obj: thirdPair, teeth: TRAIN.third.teeth, name: 'third wheel (+pinion held)' },
+  ], TRAIN.third.module);
+  solveGearChain('going center ⇄ third:', [
+    { obj: thirdPinion, teeth: TRAIN.center.pinion, name: 'third pinion' },
+    { obj: centerPair, teeth: TRAIN.center.teeth, name: 'center wheel (+pinion held)' },
+  ], TRAIN.center.module);
+  solveGearChain('going great ⇄ center:', [
+    { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
+    { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
+  ], TRAIN.barrel.module);
 })();
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
@@ -14012,7 +14051,15 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // The governor rotor: pinion in the wheel's band, saw above, one arbor.
   const pinion = G.makePinion({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_PINION_TEETH, thickness: ALARM_GOV_PINION_T });
   pinion.traverse((o) => { if (o.isMesh) o.name = 'alarmGovPinion'; });
-  pinion.rotation.z = Math.PI / ALARM_GOV_PINION_TEETH; // half a leaf — interleaves the wheel's teeth at the mesh line
+  // TODO 62 — this was the `Math.PI / teeth` idiom claiming to interleave
+  // the 64T wheel's teeth; half of the pinion's OWN pitch says nothing
+  // about the line of centres, and the claim is retired: the pinion's
+  // phase is now just its assembly position on the rotor (kept where it
+  // was), and the MESH is solved from the other side — the 64T rides a
+  // SLEEVE on the strike arbor, a real assembly freedom, so it is the
+  // wheel that aligns (solveGearChain at its build below).
+  pinion.rotation.z = Math.PI / ALARM_GOV_PINION_TEETH;
+  alarmGovRotor.userData.pinion = pinion; // the governor-mesh solve reads this datum
   pinion.position.z = ALARM_GOV_WHEEL_Z;
   alarmGovRotor.add(pinion);
   // §112 band swap — the saw KEYS to the arbor on a filed square
@@ -14190,6 +14237,15 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmGovWheel'; });
   wheel.position.z = ALARM_GOV_WHEEL_Z;
   alarmStrikeRotor.add(wheel);
+  // TODO 62 — the striking wheel ⇄ governor pinion mesh, the census's last
+  // planar unlisted site: the wheel rides its SLEEVE (rotational assembly
+  // freedom on the strike arbor — the striking PINION's phase was already
+  // spent on the barrel mesh by 'alarm striking:'), so the wheel is the
+  // knob and the governor pinion the datum.
+  solveGearChain('alarm governor:', [
+    { obj: alarmGovRotor.userData.pinion, teeth: ALARM_GOV_PINION_TEETH, name: 'governor pinion' },
+    { obj: wheel, teeth: ALARM_GOV_WHEEL_TEETH, name: 'striking 64T' },
+  ], ALARM_GOV_MODULE);
   // §112 band swap, rule 6: the wheel's web must UNDERREACH the barrel
   // arbor (the plan block's module derivation) — assert the metal, not the
   // intention. tip+bevel vs the arbor's near edge, one margin between.
