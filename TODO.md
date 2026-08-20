@@ -7223,8 +7223,10 @@ two-segment link with a fixed bend, and the build says so plainly
 (`main.js:3042–3052`): *"each rod is a RIGID two-segment link with a fixed
 bend … The link stays rigid — its pin-to-pin chord is the calibrated length —
 so the two-circle pose solves are untouched; **only the mesh is bent.**"* The
-lateral offset `e` is solved by scan up to `ELBOW_E_MAX = 16`
-(`src/layout.js:1241`).
+lateral offset `e` is solved by scan up to `ELBOW_E_MAX` — 16 when this
+was filed, **28 since §125 Tier B** (the mirrored hack rod's southern
+dogleg runs ~22 of lateral), which only sharpens the finding: the deeper
+the routing bend, the larger the moment nothing computes.
 
 A real bent connecting rod carries a **bending moment proportional to that
 offset**, and nothing anywhere computes it. A straight two-force link and a
