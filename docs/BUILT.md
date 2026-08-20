@@ -12708,6 +12708,131 @@ chose full closure with that trade named. The battery diff is the
 acceptance; the fingerprint legitimately moves once (cone, chain, great
 wheel, drum station, lifted stratum).
 
+## §125 — the dial is made to the movement's diameter: Tier A, the radius becomes a derived, spec'd dimension
+
+**Filed as** *"increase the dial size to make more room for the sub-dials
+while keeping the movement the same size"* — and the entry's own measurement
+showed the two halves of that ask are worth nothing apart: the face is the
+sub-dials' OUTBOARD bound only (the wells are sized inboard, so a dial grown
+alone moves a well radius by 0.00), yet it was also the wall that refused the
+one move that works, lockstep stations at 21.52, while the movement was
+otherwise silent. This section is Tier A — the permission half: the dial
+grows to the movement's diameter and every constant that was calibrated
+against the old face is re-derived against its source. Tier B — the station
+move that spends the permission — remains in the roadmap, its walls the going
+train's own.
+
+### What shipped
+
+- **`dialRadius = plateR`** (was `plateR · 0.92` — the one line in the
+  dial-side block with no constraint beside it, leaving 1.301 mm of bare
+  plate all round that nothing claimed). The derivation is the horological
+  convention: a dial is made to the movement's diameter and seats on its
+  full plate face; the CASE, not the plate's rim, covers the join — and the
+  radius deliberately never goes proud of the plate, so this entry does not
+  wait on §3. The measured ceilings (42.25 the ask's own; 43.55 the
+  two-bar's, unreachable while the movement keeps its size; 44.273 the
+  metal) are recorded at the constant. 39.4891 → 42.9229: +8.7% on every
+  printed radius, +18% face area, `subDialR` 11.85 → 11.95.
+- **`ALARM_CORNER_R = 15.400741713809364`** (layout.js) — step 1, and the
+  reason it is step ONE: the corner's default read `dialRadius · 0.39`, so
+  growing the dial 1% walked the whole setting corner into a −0.57 foul
+  with the winding climb (need 0.15) with the movement untouched. §74
+  tier B proved the corner cannot move — clean travel under 0.37 — so the
+  default is now the proven station itself, printed at full precision,
+  bit-equal to the old expression at the shipped plate. It no longer reads
+  the face OR the plate: a movement grown by `?d4=`/`?vph=` now keeps its
+  corner too, which is §98's intent arriving whole (`?alarmr=` still
+  overrides).
+- **The reserve station mirrors the seconds station** (finding 2). Its own
+  comment always said "symmetric with the small-seconds sub-dial"; the code
+  said `dialRadius · 0.39`, which agreed to within 0.0993 on the day it was
+  written and would have drifted to 1.24 apart at f = 1.0 — wells visibly
+  off-centre on a face grown to be read. The default now reads
+  `-SECONDS_LOCAL.y`: symmetry by construction, and it survives `?d4=`,
+  where the fourth wheel genuinely moves. Filed as "re-anchor to `D4`";
+  built against the station instead, because the arbor is the quantity —
+  the station lands on the two-bar's 15.500000000000002, not the constant's
+  15.5, and the well follows the pivot it is cut around.
+- **`?dialr=`** — step 3, §94/§97/§98's pattern (null = the derivation,
+  bit-exact). Its argument is the entry's own history: every number about a
+  grown face had to come off a patched tree, because the one dimension the
+  ask was about was the one no URL could carry. Warned against
+  [wells' outer edge 27.45, measured metal 44.27]; three spec-boot rows in
+  the harness (30 silent, 20 warns-and-boots, 47.22 both instruments).
+- **The rim assert** — step 4, finding 4's closure: before it, a rim spec'd
+  2.8 units past the alarm crown booted SILENT, §94 tier A's shape exactly
+  ("nothing checked while the value sat comfortably inside"). At boot the
+  rim is held against the nearest foreign vertex in the dial's own z-slab,
+  outboard of the wells' edge (inboard foreign metal is arbors in bores,
+  policed by TODO 33 and the pair sweeps). Identity: alarm crown at 44.42
+  against a 42.92 + 0.15 requirement.
+- **`MINUTE_HAND_LEN`** — step 5a. Was `dialRadius · 0.83`, calibrated
+  against "world r ≈ 31.5 / 34.2", absolute measurements of the face on the
+  day it was sampled — §16's rot, named by the entry and due here the
+  moment the face moved. Now derived from the print's own frame: the canvas
+  maps to the dial's diameter, its printed disc fills `DIAL_CANVAS_FILL_F`
+  = 0.46 of the canvas size, and the rails sit at 0.87/0.94 of that disc
+  (all three now exported from geometry.js and consumed by the print
+  itself), so the tip lands mid-rung at 2·0.46·0.905 = 0.8326·R = 35.74.
+  The hour hand needed nothing: its `DIAL_MARKER_INNER_F` derivation
+  (§38-era) scales with the face by construction — which is the state this
+  step brings the minute hand to.
+- **`footR = min(dialRadius, plateR) − FOOT_R − CLEAR_MARGIN`** — step 5b.
+  Was `plateR · 0.88`: a factor of the PLATE carrying a part of the DIAL,
+  and at f = 1.0 it would have left the rim overhanging its feet by 5.15 —
+  12% of the radius of unsupported 0.4 mm brass, the entry's P1 finding.
+  The feet now stand as far out as they can while wholly under the face
+  they carry and wholly on the plate they land on: 37.77 → 42.17. Measured
+  before moving them: the annulus they cross is empty at all three
+  stations — the nearest metal in the plate→dial gap is the two stems'
+  azimuth sectors (~0° and 142–162°), ≥8° of arc ≈ 5.5 units from the
+  closest foot, so the move re-derives the radius without renegotiating a
+  station.
+
+### What Tier A buys, said plainly
+
+Legibility now; permission later. On its own it moves no station — the wells
+gain 0.10 of radius (the reserve re-anchor's flip, §74's), the print gains
+8.7% on every radius, the hands reach the grown track, and the movement's
+bare rim is covered. What it delivers structurally is the ladder's
+right-hand column: at 42.92 the face stops being the bound at every station
+Tier B can reach (21.52 → 23.24, past the 22.90 where the plate itself
+starts growing). Tier B's own refusal on the shipped tree WAS the face; that
+wall is gone, and the walls that remain are the going train's.
+
+### What the acceptance diff caught: the hands' SECTIONS grow too
+
+The filed entry priced re-deriving the hands' LENGTHS and missed that
+`makeHand` derives the section from the length (`rBase = length ·
+widthFactor · 0.35`) and the hub from the section (`bossH = 2.6·rBase`) — so
+growing the hands 8.7% dropped the hour hand's hub 0.137 deeper into the
+lane over the alarm blade, whose own corner plane rose 0.026. The
+`expectedContacts` floor row read Alarm disc ⇄ Hour wheel at 0.1449 against
+the 0.15 floor (in the blade's 0.5×-scaled frame; the world lane was 0.072
+against the §25 C design's 0.24) — caught ONLY by the `--report` diff
+discipline, since every focused boot stayed silent. Fix on §25 C's own
+precedent, one tier up: `handsGroupZOffset` 3.2 → 3.4 (minimum 3.278 by the
+stack arithmetic; 3.4 restores the design's growth headroom), and the lane
+is now ASSERTED at the alarm hand's build from the two hands' own `userData`
+sections, so the next hand growth warns at boot instead of deep in a sweep.
+The hour/minute crossing envelope note in `makeHand` was corrected in the
+same landing — its cylinder-era bound (`rHour + rMinute`) went stale at the
+new widths while the true corner-plane/keel envelope stayed 0.5 clear.
+
+### The record's deviations from the filed entry
+
+Three, each an improvement the build surfaced: the corner is pinned as a
+printed constant rather than re-anchored to another live expression (the
+filed step said only "not `dialRadius`"; the build found no honest live
+input — the clutch geometry that constrains it is not a solver quantity, so
+the proven station itself is the derivation, §112's solved-literal
+precedent); the reserve mirrors the measured station rather than the `D4`
+constant (symmetry that survives the spec key); and the minute hand's
+mid-rung factor came out 0.8326 rather than the entry's predicted 0.83
+rescaled — the prediction had quietly reused the stale factor it was
+replacing.
+
 ## §126 — the winding arrest: overwinding stopped by a part, and the whole winding path put on one source
 
 Roadmap §47. Winding the going mainspring past full is prevented by metal

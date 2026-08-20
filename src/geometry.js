@@ -5203,9 +5203,12 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   // point: the tip fan's apex sits at the DISH FLOOR's height, so the
   // hollow narrows and dives into the point instead of filling flat.
   // Concavity only removes material below the corner plane, so the
-  // crossing envelope still matches the old cylinders — the 2.3
-  // hour/minute plane gap in main.js still bounds rHour + rMinute
-  // (≈ 2.10 at current widths).
+  // crossing envelope is the hour blade's corner plane (rBase/2 up) against
+  // the minute blade's keel (rBase down) — 0.66 + 1.13 ≈ 1.79 at §125's
+  // lengths, inside the 2.3 hour/minute plane gap in main.js. (The old
+  // note bounded rHour + rMinute ≈ 2.10 as if both were cylinders; the
+  // §125 hands grew that sum past 2.3 while the true envelope stayed
+  // clear, which is why the honest expression is written out now.)
   const facetFlat = (geo) => {
     // Extrude output is already non-indexed; toNonIndexed() would warn and
     // return the same geometry (which the dispose below would then free).

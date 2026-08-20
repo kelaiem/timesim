@@ -9432,17 +9432,25 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // so it TRACKS the hour hand when disarmed. dialFace frame, like the hour
 // wheel it wraps.
 // Hand plane — bounded by the hand HUBS, not the numerals (the alarm blade's
-// tip, 20.9, never radially reaches the numerals' inner edge at 23.1). The
-// binding stack, measured: dial-furniture relief ≤ 0.16 proud of the face;
-// the hour hand's solid boss reaches 1.51 below its mount plane. At the old
-// hands plane (2.5) the free lane was 0.99 − 0.5 ≈ 0.5 — thinner than any
-// hand section — which is WHY handsGroupZOffset rose 2.5 → 3.2 (hour + minute
-// move together, so their own crossing envelope is untouched): the hour hub
-// bottom moves to 1.69 and the lane opens to ~1.2. The alarm hand then seats
-// at 1.1 with its blade z-thinned 0.5× (a rattrapante leaf): keel at 0.55
-// (0.39 over the furniture), blade top at 1.35 (0.34 under the hour hub), and
-// its bored collet (0.9..1.3 after the same 0.5× z-scale, straddling the
-// tube's front face at 1.1) clears the hour blade's keel (2.04) by 0.74.
+// tip never radially reaches the numerals' inner edge; both scale with the
+// dial). The binding stack: dial-furniture relief ≤ 0.16 proud of the face;
+// the hour hand's solid boss reaches bossH/2 = 1.3·rBase below its mount
+// plane, AND THAT DEPTH GROWS WITH THE HAND — rBase is length·widthFactor·
+// 0.35 (makeHand), so a longer hand carries a deeper hub. At the old hands
+// plane (2.5) the free lane was ≈ 0.5, thinner than any hand section — WHY
+// handsGroupZOffset rose 2.5 → 3.2 (§25 C; hour + minute move together, so
+// their own crossing envelope is untouched). §125 grew the hands with the
+// face and the hub swallowed the lane again: at 3.2 the hub bottom sat 0.072
+// over the alarm blade's corner plane (the expectedContacts floor row read
+// it at 0.1449 in the blade's 0.5×-scaled frame). So 3.2 → 3.4: the minimum
+// is 3.278 by the stack arithmetic (ALARM_HAND_Z + the blade's z-scaled
+// corner rise + CLEAR_MARGIN + bossH/2), and 3.4 restores the growth
+// headroom the §25 C stack shipped with (lane 0.27 vs its 0.24). The lane is
+// ASSERTED at the alarm hand's build from the two hands' own userData, so
+// the next length change warns instead of shipping thin. The alarm hand
+// seats at 1.1 with its blade z-thinned 0.5× (a rattrapante leaf); its bored
+// collet straddles the tube's front face at 1.1 and clears the hour blade's
+// keel by ~0.7.
 // TODO 26 — the alarm tube is ONE part that SPANS the dial, exactly as a real
 // one does: its flange, heart and sensing pin work behind the plate (they read
 // the selector ring and must not move), while its hand is read on the front.
@@ -11146,6 +11154,22 @@ alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
 alarmTubeGroup.add(alarmHand);
+// §125 — the FREE LANE between this blade and the hour hand's hub, asserted
+// from the two hands' own sections (TODO 41's userData exports) because both
+// GROW with their lengths: the hub reaches bossH/2 below the hour plane and
+// the blade's corner plane rises topRise·scale.z above its seat. §125 grew
+// both hands with the face and the lane silently fell from 0.24 to 0.072 —
+// the expectedContacts floor row caught it after the fact; this catches it
+// at boot, where the number that moved it is still on the screen.
+{
+  const hubBottom = (aesthetics.dial.hands.handsGroupZOffset + DIAL_T) - hourHand.userData.bossH / 2;
+  const bladeTop = ALARM_HAND_Z + alarmHand.userData.topRise * alarmHand.scale.z;
+  const lane = hubBottom - bladeTop;
+  if (lane < CLEAR_MARGIN)
+    console.warn(`§125 hand stack: the hour hub's underside leaves ${lane.toFixed(3)} over the alarm blade `
+      + `(hub bottom ${hubBottom.toFixed(3)}, blade top ${bladeTop.toFixed(3)}) — need ${CLEAR_MARGIN}; `
+      + `raise handsGroupZOffset or shorten the hands`);
+}
 // §38 — the alarm hand and the RAISED hour markers overlap in z (hand
 // −8.39..−7.53, marker relief −7.62..−7.12), so the only thing holding them
 // apart is RADIUS — and no battery pair covers it: 'Alarm disc' ⇄ 'Dial' is
