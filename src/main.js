@@ -1943,6 +1943,26 @@ barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', whi
 // over-reports by 24% (12.73 for a wheel that actually reaches 10.27) and
 // swings with the pose. Radii about the staff axis are rotation-invariant, so
 // this is the real swept radius.
+// §125 Tier B — the top face of a part's OUTER ANNULUS: max z among vertices
+// beyond rMin of the axis. Exists for the fork cock's z-derivation, which
+// must clear the third/fourth WHEEL DISCS but not the upper-pivot staffs
+// that rise from their centres to the plate — the staffs (r ≤ 0.5, chatons
+// r ≤ 2 and plate-owned) live at the axis, far from the cap's plan
+// footprint, so the annulus floor excludes exactly them.
+function zTopOfAnnulus(obj, c, rMin) {
+  obj.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  let top = -Infinity;
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (Math.hypot(v.x - c.x, v.y - c.y) > rMin) top = Math.max(top, v.z);
+    }
+  });
+  return top;
+}
 function xyRadiusAbout(obj, c, zMax = Infinity, zMin = -Infinity) {
   obj.updateMatrixWorld(true);
   const v = new THREE.Vector3();
@@ -2307,9 +2327,63 @@ const heartFreeAngleAt = (d) => {
 // up in the plate band: a low cap means a short honest staff and the least
 // possible metal in the view. The balance rim shares this z-band, so the
 // leg solve keeps the connecting bar clear of the rim's swept disc in XY.
+const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor reads it):
+                           // a RUNNING clearance as well as a service one: with the
+                           // balance lowered into the plate band, the wheel + its timing
+                           // screws (tips at BAL_OUTER_R) sweep INSIDE the plate's z-band,
+                           // so the cut's base edge (BAL_OUTER_R + this) is what physically
+                           // clears them at every azimuth — the escapement stretch of the
+                           // window is still sized for the eye and the bridge screws.
+// BALANCE COCK section constants, hoisted (§125 Tier B) from the cock's own
+// build below so the fork cock's leg scan can size the corridor it must
+// yield. The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction
+// 0.5 of the length from the slab centre): the head ends exactly one
+// half-width past the staff — no dead nickel overhanging the bearing (the
+// old 0.12 left 0.38·L of slab reaching past the jewel for no structural
+// reason).
+const COCK_W = 6;
+const COCK_FOOT_R = COCK_W / 2;
+const COCK_JEWEL_AT = 0.5;
+const COCK_LEG_R = 1.3;
 const FORK_COCK_T = 1.0;                       // slab thickness
-const FORK_COCK_BOT = L_FORK + FORK_T / 2 + CLEAR_MARGIN;
+// §125 Tier B — the cap can no longer hug the fork alone. At D4 22.9 the
+// third and fourth wheels' RIMS run through the fork-top z-band in plan
+// (measured: fourth rim 8.72 about its axis with the fork axis 10.15 away —
+// the old slab's boss overlapped the rim 0.47, and sweptOverlap CONFIRMED
+// 0.572/1.195 against the two wheels). The slab bottom therefore derives
+// from BOTH things it must clear: the fork it caps, and the top face of the
+// tallest train wheel disc whose plan its metal crosses. The leg solve
+// below needs no matching change — its floor discs measure everything below
+// the slab, so the raised bottom pulls the full wheel rims into the scan by
+// construction, and the leg re-seats itself outboard of them.
+const FORK_COCK_BOT = Math.max(
+  L_FORK + FORK_T / 2,
+  zTopOfAnnulus(thirdArbor, P.third, 3),
+  zTopOfAnnulus(fourthArbor, P.fourth, 3),
+) + CLEAR_MARGIN;
 const FORK_COCK_JEWEL_Z = FORK_COCK_BOT + FORK_COCK_T; // slab top — the jewel sits here
+// §125 Tier B — THE BALANCE COCK'S SPINE CORRIDOR, which the fork leg must
+// YIELD. The cock is the more constrained part: its slab must span the cut
+// from the staff outward along the cut's AIM (the centre→balance azimuth),
+// its feet flanking that spine by at most the hspan its own scan solves —
+// so wherever its scan finally seats it, everything it can reach lies in
+// one corridor about the aim ray. The fork leg is the less constrained
+// part (any azimuth that clears the discs will carry a bridge), so per the
+// design-priority note the conflict is resolved in POSITION space by the
+// freer part moving: the leg's seat and bar keep out of the corridor.
+// Measured before this wall existed: the leg took the nearest feasible
+// seat at (19.6, −32.4), squarely on the cock's only viable bearing band
+// (φ −40°..−31°), and the cock's scan came up empty by −0.298.
+const COCK_SPINE = (() => {
+  const aim = Math.atan2(P.balance.y, P.balance.x);
+  const dir = { x: Math.cos(aim), y: Math.sin(aim) };
+  const len = plateR - Math.hypot(P.balance.x, P.balance.y); // the foot cannot leave the plate
+  const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;  // the cock scan's own leg bound
+  const dyLegMin = BAL_OUTER_R + TQ_CUT_MARGIN - 1.3;        // its shortest leg station (base cut edge − 1.2 − 0.1)
+  const half = Math.sqrt(Math.max(legBound * legBound - dyLegMin * dyLegMin, 0))
+    + COCK_LEG_R * 1.5 + CLEAR_MARGIN;                       // widest flank + pad + the one margin
+  return { dir, len, half };
+})();
 const forkCock = (() => {
   // Everything the legs have to miss on the way down to the base plate.
   // Wheels and levers are given as their SWEPT DISCS about their own axes
@@ -2379,10 +2453,20 @@ const forkCock = (() => {
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
           const mBar = dBar - (BAL_OUTER_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance
-          const short = Math.min(mPlate, mFloor, mBar);
-          if (!near || short > near.short) near = { x, y, reach, a, short, mPlate, mFloor, mBar };
+          // §125 Tier B — the spine corridor (COCK_SPINE above): the seat
+          // node and the whole bar stay out of the balance cock's reach.
+          const latRay = (px, py, rad) => {
+            const rx = px - P.balance.x, ry = py - P.balance.y;
+            const tt = clamp(rx * COCK_SPINE.dir.x + ry * COCK_SPINE.dir.y, 0, COCK_SPINE.len);
+            return Math.hypot(rx - tt * COCK_SPINE.dir.x, ry - tt * COCK_SPINE.dir.y) - COCK_SPINE.half - rad;
+          };
+          let mSpine = latRay(x, y, nodeR);
+          for (let k = 1; k < 8; k++)
+            mSpine = Math.min(mSpine, latRay(host.x + (vx * k) / 8, host.y + (vy * k) / 8, barHW));
+          const short = Math.min(mPlate, mFloor, mBar, mSpine);
+          if (!near || short > near.short) near = { x, y, reach, a, short, mPlate, mFloor, mBar, mSpine };
           if (short < 0) continue;
-          if (!best || reach < best.reach) best = { x, y, reach, a, short, mPlate, mFloor, mBar };
+          if (!best || reach < best.reach) best = { x, y, reach, a, short, mPlate, mFloor, mBar, mSpine };
         }
       }
       if (best) break; // nearest feasible bearing to the ideal wins — unchanged
@@ -2401,16 +2485,18 @@ const forkCock = (() => {
     // failure, which is the honest verdict for a balance the layout cannot
     // carry — and the rest of the boot still runs, so §76 can name the wall
     // that stops it with numbers instead of inferring it from a crash.
-    const wall = legB.mPlate <= legB.mFloor && legB.mPlate <= legB.mBar
-      ? `the plate runs out (radius ${plateR.toFixed(2)})`
-      : legB.mFloor <= legB.mBar
-        ? "a swept disc below the seat (train wheel, fork, hammer or the balance's own footprint)"
-        : `the bar's edge against the balance's swept disc (BAL_OUTER_R ${BAL_OUTER_R.toFixed(2)})`;
+    const walls = [
+      [legB.mPlate, `the plate runs out (radius ${plateR.toFixed(2)})`],
+      [legB.mFloor, "a swept disc below the seat (train wheel, fork, hammer or the balance's own footprint)"],
+      [legB.mBar, `the bar's edge against the balance's swept disc (BAL_OUTER_R ${BAL_OUTER_R.toFixed(2)})`],
+      [legB.mSpine, `the balance cock's spine corridor (half-width ${COCK_SPINE.half.toFixed(2)} about the cut aim)`],
+    ].sort((a, b) => a[0] - b[0]);
+    const wall = walls[0][1];
     console.warn(
       `fork cock: no clear footing for its leg — best near-miss is short by ${(-legB.short).toFixed(3)} `
       + `at (${legB.x.toFixed(2)}, ${legB.y.toFixed(2)}), reach ${legB.reach.toFixed(2)}, `
       + `bearing ${(((legB.a / DEG2RAD) % 360 + 360) % 360).toFixed(1)}°; bound by ${wall} `
-      + `[margins: plate ${legB.mPlate.toFixed(3)}, floor ${legB.mFloor.toFixed(3)}, bar ${legB.mBar.toFixed(3)}; each needs ≥ 0]. `
+      + `[margins: plate ${legB.mPlate.toFixed(3)}, floor ${legB.mFloor.toFixed(3)}, bar ${legB.mBar.toFixed(3)}, spine ${legB.mSpine.toFixed(3)}; each needs ≥ 0]. `
       + 'Seated there anyway so the rest of the boot reports — the cock is KNOWN BAD at this balance size.',
     );
   }
@@ -2475,12 +2561,8 @@ const forkCock = (() => {
 // keeps every scrap of material that nothing needs — which is what stops this
 // from becoming a skeleton frame. Sampled across the beat because the fork
 // banks and the escape wheel turns.
-const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: with the
-                           // balance lowered into the plate band, the wheel + its timing
-                           // screws (tips at BAL_OUTER_R) sweep INSIDE the plate's z-band,
-                           // so the cut's base edge (BAL_OUTER_R + this) is what physically
-                           // clears them at every azimuth — the escapement stretch of the
-                           // window is still sized for the eye and the bridge screws.
+// (TQ_CUT_MARGIN is hoisted above the fork cock's build — the leg scan's
+// spine-corridor derivation reads it; the running-clearance note travels.)
 // Table finishing, shared by the initial solve and the post-cock second
 // pass (see the balance-cock reveal further down): a per-degree max is a
 // saw edge, and a plate edge is milled by a cutter of finite radius —
@@ -3436,7 +3518,35 @@ const STOPWORK_AT_POST = {
   P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
   plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
   bearingObstaclesAt: stopBearingObstaclesAt,
-  lowRodObstacles: LOW_ROD_OBSTACLES,
+  // §125 Tier B — the HACK rod's corridor gains the reset hammer's swept
+  // disc. The shared LOW_ROD_OBSTACLES list never carried it because no
+  // route went near it: the balance sat on the stem line's other side, so
+  // the rod left the lever AWAY from the hammer. At D4 22.9 the balance
+  // crossed the line, the lever/hack side mirrored to follow it (sideSign —
+  // the derivation working, not failing), and the mirrored rod runs through
+  // the hammer's swing; inspection read the pair FORBIDDEN across six axes.
+  // The row extends ONLY this solve's list — the reset rod's own elbow
+  // TERMINATES on the hammer's tail, so the shared list must stay blind to
+  // it or that solve refuses its own destination.
+  lowRodObstacles: [...LOW_ROD_OBSTACLES,
+    // The hammer's true swept region is the ARC its lever covers between
+    // parked and struck — NOT a full disc about its pivot (a first cut used
+    // xyRadiusAbout's whole-rotation disc, which walled off the entire
+    // southern corridor and left the bearing scan with no station at all).
+    // Covering discs along the lever at both stroke ends and mid-swing,
+    // each the lever's half-width plus the roller and the rod's own
+    // radius+margin, state the same claim at the metal's actual size.
+    ...(() => {
+      const rollR = hammerLever.userData.rollerR || 1.0;
+      const rDisc = HAMMER_W / 2 + rollR + ROD_KNUCKLE_R + CLEAR_MARGIN;
+      const out = [];
+      for (const a of [hammerBaseAngle, hammerBaseAngle + HAMMER_SWING_RAD / 2, hammerBaseAngle + HAMMER_SWING_RAD])
+        for (const f of [0.4, 0.75, 1.05])
+          out.push({ x: hammerPivotPos.x + Math.cos(a) * hammerArmLen * f,
+                     y: hammerPivotPos.y + Math.sin(a) * hammerArmLen * f,
+                     r: rDisc, what: 'the reset hammer’s swing', of: () => hammerGroup });
+      return out;
+    })()],
   rubyFlare: G.HACK_RUBY_FLARE,
 };
 // The same inputs with the rod moved onto its own pin, plus the fraction that
@@ -5427,14 +5537,9 @@ tqSlots.push({ ax: 30.40, ay: 0.86, bx: 33.04, by: 1.32, r: 0.31 }); // pressed 
 // landed within a unit of the escape wheel's upper jewel. So the bearing is
 // scanned for the seat with the most clearance, over the obstacles that
 // actually share the pedestal's z band.
-const COCK_W = 6;
-const COCK_FOOT_R = COCK_W / 2;
-// The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction 0.5 of
-// the length from the slab centre): the head ends exactly one half-width
-// past the staff — no dead nickel overhanging the bearing (the old 0.12
-// left 0.38·L of slab reaching past the jewel for no structural reason).
-const COCK_JEWEL_AT = 0.5;
-const COCK_LEG_R = 1.3;
+// (COCK_W / COCK_FOOT_R / COCK_JEWEL_AT / COCK_LEG_R are hoisted above the
+// fork cock's build — its leg scan yields the balance cock's spine corridor,
+// which is sized from them. The head-arc note travels with them.)
 const BALANCE_COCK = (() => {
   const obstacles = [];
   for (const p of tqPivots) obstacles.push({ x: p.x, y: p.y, r: p.jewelR * 1.7 });
@@ -5503,7 +5608,8 @@ const BALANCE_COCK = (() => {
     const t = clamp(((x - o.ax) * vx + (y - o.ay) * vy) / L2, 0, 1);
     return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
   };
-  let best = null;
+  let best = null, near = null;
+  const scanRows = [];
   for (let d = -180; d < 180; d += 1) {
     const phi = d * DEG2RAD;
     const cs = Math.cos(TQ_CUT.aim + phi), sn = Math.sin(TQ_CUT.aim + phi);
@@ -5516,8 +5622,14 @@ const BALANCE_COCK = (() => {
     // seats whose phantom foot grazed something that isn't there.
     const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
     const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1; // built slab-tail reach
+    // TODO 30's graded-margin pattern (the fork cock's precedent): every
+    // bound below tags the clearance it sets, so a scan that finds nothing
+    // can say WHICH wall stopped it and by how much — §125 Tier B hit the
+    // bare 'no clear seat' warn and had to instrument before it could fix.
+    let clrTag = 'slab on plate';
     let clr = plateR - CLEAR_MARGIN
       - (Math.hypot(P.balance.x + cs * dTail, P.balance.y + sn * dTail) + COCK_W / 2); // slab stays on the plate
+    const cut = (v, tag) => { if (v < clr) { clr = v; clrTag = tag; } };
     // The T-foot's two LEG PADS must clear the obstacle set. Their
     // half-span is φ-dependent (it is solved from the balance's swept
     // radius at the bar's distance — see the build below): test both pads
@@ -5529,8 +5641,13 @@ const BALANCE_COCK = (() => {
     for (const s of [-1, 1]) {
       const lx = P.balance.x + cs * dyLeg - sn * s * hspan;
       const ly = P.balance.y + sn * dyLeg + cs * s * hspan;
-      clr = Math.min(clr, plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR));
-      for (const o of obstacles) clr = Math.min(clr, distTo(o, lx, ly) - padR);
+      cut(plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR), 'leg pad on plate');
+      for (let oi = 0; oi < obstacles.length; oi++) {
+        const o = obstacles[oi];
+        cut(distTo(o, lx, ly) - padR, o.ax === undefined
+          ? `leg pad vs obstacle #${oi} (disc r ${o.r.toFixed(1)} at ${o.x.toFixed(1)}, ${o.y.toFixed(1)})`
+          : `leg pad vs obstacle #${oi} (segment r ${o.r.toFixed(1)} from ${o.ax.toFixed(1)}, ${o.ay.toFixed(1)})`);
+      }
     }
     // The SLAB and T-BAR ride in the plate band (z ≈ COCK_MID_Z ± T/2),
     // above the pedestal obstacles — but the stop work's MAST + hanging
@@ -5559,14 +5676,18 @@ const BALANCE_COCK = (() => {
         bx: P.balance.x + cs * tailD, by: P.balance.y + sn * tailD, r: 0 };
       const bar = { ax: P.balance.x + cs * dyLeg - sn * hspan, ay: P.balance.y + sn * dyLeg + cs * hspan,
         bx: P.balance.x + cs * dyLeg + sn * hspan, by: P.balance.y + sn * dyLeg - cs * hspan, r: 0 };
-      clr = Math.min(clr, segSeg(slab) - COCK_W / 2 - mastR);
-      clr = Math.min(clr, segSeg(bar) - 1.2 - COCK_LEG_R - mastR);
+      cut(segSeg(slab) - COCK_W / 2 - mastR, 'slab vs stop-work mast');
+      cut(segSeg(bar) - 1.2 - COCK_LEG_R - mastR, 'T-bar vs stop-work mast');
     }
+    if (!near || clr > near.clr) near = { phi, dFoot, clr, tag: clrTag };
+    scanRows.push({ deg: d, clr: +clr.toFixed(3), tag: clrTag });
     if (clr < CLEAR_MARGIN) continue;
     if (!best || clr > best.clr) best = { phi, dFoot, clr };
   }
+  if (typeof window !== 'undefined') window.__cockScan = scanRows;
   if (!best) {
-    console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing');
+    console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing'
+      + (near ? ` — best near-miss ${near.clr.toFixed(3)} vs ${CLEAR_MARGIN} at φ ${(near.phi / DEG2RAD).toFixed(1)}°, bound by ${near.tag}` : ''));
     const phi = Math.atan2(P.fork.y - P.balance.y, P.fork.x - P.balance.x) - TQ_CUT.aim;
     const dFoot = BAL_OUTER_R + COCK_FOOT_R + CLEAR_MARGIN;
     best = { phi, dFoot, clr: 0 };
@@ -6571,6 +6692,32 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
         const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / L2, 0, 1);
         c = Math.min(c, Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy) - TQ_LAND_MIN);
       }
+    }
+    // §125 Tier B — the BALANCE COCK's built footprint. The cock seats
+    // before the pillars are solved, and at the moved balance its bearing
+    // can leave the cut wedge (which used to cover it here implicitly via
+    // inCutClearance) — measured before this cover existed: the seat scan
+    // stood a pillar whose plate screw ended 0.011 from the cock's flank.
+    // The pillar is the freest part on this plate, so it yields: the
+    // cock's spine slab and its T-bar (both re-stated from the cock
+    // build's own formulas at its chosen bearing) join the obstacle set.
+    {
+      const ca = TQ_CUT.aim + BALANCE_COCK.phi;
+      const dirX = Math.cos(ca), dirY = Math.sin(ca);
+      const tail = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi) - 0.1;
+      const dyLeg = tail - 1.2;
+      const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;
+      const hspan = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLeg * dyLeg, 0)));
+      c = Math.min(c, stadium({ ax: P.balance.x, ay: P.balance.y,
+        bx: P.balance.x + dirX * tail, by: P.balance.y + dirY * tail,
+        r: COCK_W / 2 + CLEAR_MARGIN }));
+      const pad = COCK_LEG_R * 1.5;
+      c = Math.min(c, stadium({
+        ax: P.balance.x + dirX * dyLeg - dirY * (hspan + pad),
+        ay: P.balance.y + dirY * dyLeg + dirX * (hspan + pad),
+        bx: P.balance.x + dirX * dyLeg + dirY * (hspan + pad),
+        by: P.balance.y + dirY * dyLeg - dirX * (hspan + pad),
+        r: pad + CLEAR_MARGIN }));
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));

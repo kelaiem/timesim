@@ -12833,6 +12833,56 @@ mid-rung factor came out 0.8326 rather than the entry's predicted 0.83
 rescaled — the prediction had quietly reused the stale factor it was
 replacing.
 
+### Tier B — the station move, and the wells part company
+
+Shipped the same week, on the owner's call: *seconds at the ceiling, the
+power reserve smaller as long as it's readable.*
+
+**The station.** `D4` 15.5 → **22.9**, the ask's own ceiling measured to the
+step: `plateR` is 42.9229 at every lockstep station through 22.90 and moves
+at 22.95 (42.9315) — the escapement train hanging off the fourth wheel
+reaches the plate bound there, 0.65 short of the two-bar's own 23.55. The
+walls the roadmap priced as "mechanism work in three action groups" turned
+out to have a clean band at the top: re-measured on the Tier A tree, the
+side-sign window warns at 16–17, the balance cock seat at 17.6–19, stop
+work's |K| at 20–21 — and everything from 21.5 through the 22.9 ceiling
+boots silent, so the ceiling was reachable without touching a mechanism.
+The band is still non-monotonic; the declared spec points document it.
+
+**The wells split.** §97's one shared radius was the right law while the two
+stations were one number; at asymmetric stations it forces the min on both
+and the big well cannot exist. Each well now takes the law both already
+obeyed — it GROWS FROM THE CENTRE: `wellR = station − SUBDIAL_INBOARD_CLEAR`
+per well, TODO 33's ceiling as the value. The seconds well takes everything
+its station buys (11.95 → **19.35**, +62% radius, +162% area; VI/V/VII
+swallowed by the recess, IIII/VIII kept — the regulator-style face). The
+reserve keeps the §74-proven readable well, which under the same law pins
+its STATION: `RESERVE_STATION_R = 15.500000000000002`, the Tier A mirror's
+landing printed at full precision — the whole reserve side (well, scale,
+needle, reduction train, the alarm corner's neighbour clearances) is
+bit-identical to the Tier A tree. Tier A's mirror law lived exactly one
+tier: right while the wells shared a radius, dead the day they split, and
+the record of both is at the constant.
+
+**What the menu trades.** At 21,600/28,800 the re-geared 96-tooth fourth
+wheel outruns the keyless floor from station ≈17.7, so the fast rates GROW
+the plate at the new default (28,800: 46.46, measured) where they used to
+keep it — the menu now trades size for rate. Recorded at `D4` and at the
+spec rows rather than hidden: the alternative (a menu-flat default ≈17.6)
+lands on the balance-cock-seat wall and buys +18% where the ceiling buys
++62%, and the identity movement — the thing the battery gates — keeps its
+42.9229 plate exactly.
+
+**Consequences carried through**: `?subdialr=` pins the seconds well only
+(the reserve's radius IS its station's derivation, riding `?rsvr=`); the
+reserve window collapses to one closed form, station ≤ (dialRadius +
+keep-out)/2 = 23.24; the reconfigure well-ghost draws the one ring the drag
+changes; `?dialr=`'s legal window narrows to [42.25, 44.27] between the big
+well's edge and the alarm crown's metal; and the §94 spec points were
+re-measured against the new default (d4 20 is an INWARD point now and warns
+on stop work's |K|; subdialr's over-ceiling point moved 13 → 21 with the
+ceiling; dialr's interior moved 30 → 43).
+
 ## §126 — the winding arrest: overwinding stopped by a part, and the whole winding path put on one source
 
 Roadmap §47. Winding the going mainspring past full is prevented by metal
