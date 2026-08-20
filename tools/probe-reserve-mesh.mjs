@@ -110,7 +110,22 @@ const out = await page.evaluate(async () => {
   // (makeGear/makePinion both return one). p1 is the arbor-1 child stepped
   // toward the dial, w1 the one in the arbor's own plane.
   const arbors = train.children.filter((c) => c.isGroup);
-  const gearsOf = (g) => g.children.filter((c) => c.isGroup || (c.isMesh && c.geometry.type === 'ExtrudeGeometry'));
+  // TODO 48's fix wrapped w1+p1 in a rigid PAIR group under the arbor (the
+  // one-blank constraint made structural), so the two gears sit one level
+  // deeper: look through a lone child group when the arbor itself carries
+  // only one.
+  const gearsOfLevel = (g) => g.children.filter((c) => c.isGroup || (c.isMesh && c.geometry.type === 'ExtrudeGeometry'));
+  const gearsOf = (g) => {
+    const own = gearsOfLevel(g);
+    // The pair wrapper is a bare Group holding two GEAR GROUPS; a lone gear
+    // group holds meshes. Recurse only into the former, or a single pinion's
+    // own tooth/hub meshes read as a phantom compound arbor.
+    if (own.length === 1 && own[0].isGroup) {
+      const inner = own[0].children.filter((c) => c.isGroup);
+      if (inner.length === 2) return inner;
+    }
+    return own;
+  };
   const arb1 = arbors.find((a) => gearsOf(a).length === 2);
   if (!arb1) return { error: 'could not find the compound arbor', arbors: arbors.map((a) => a.children.length) };
   const others = arbors.filter((a) => a !== arb1 && gearsOf(a).length === 1);

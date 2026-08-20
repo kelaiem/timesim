@@ -1935,6 +1935,21 @@ waived rows **57 → 53**.
 (tail-limited), which is in the plausible band for a detented ring rather
 than one to two orders below it.
 
+> **CORRECTION (TODO 63's re-take, 2026-08-20): the shaft half of this fix
+> was REVERTED and the paragraph above no longer describes the shipped
+> tree.** Two attempts to keep the thickened shaft were rejected by CI on
+> `Alarm link ⇄ Minute jumper` (overlaps 0.312 and 0.310 — the jumper's
+> swept envelope, which a virgin boot's pulled crown puts in the shaft's
+> path); `ALARM_LINK_SHAFT_R` ships at the original 0.12 u (0.091 mm
+> diameter — the hair), the declaration's own comment records why, and the
+> `SLENDER_WAIVERS` entry stands. The TAIL's blade half SURVIVED — 305 N/m
+> against the built metal, tail-stall ≈ 48 mN. Re-measured whole:
+> the chain is **SHAFT-limited at ≈ 1.6 mN** (crank overhang 22 N/m ×
+> 0.071 mm selector stroke) — the original headline number, restored
+> through the OTHER member. The prerequisite for any next attempt is
+> unchanged: measure the jumper's swept envelope along the shaft's
+> stations first.
+
 **Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
 means re-siting the rod, whose plate bores are literals carrying drift
 asserts (`ALARM_LINK_ROD_XY`), so it is a §35-corridor change, not a
@@ -5738,7 +5753,32 @@ could not produce at all.
 
 ---
 
-## 48. The power-reserve train's two meshes sit tooth ON tooth — measured, 47–49% of a pitch off
+## 48. CLOSED — the power-reserve train's two meshes sat tooth ON tooth; solved, driven forward, and re-measured at 0.03–0.07%
+
+**Closed 2026-08-20, both halves in one landing as the item required.**
+`tools/probe-reserve-mesh.mjs` (taught the new pair-group structure) reads
+the same three winds it filed the defect at: **worst credible reading
+0.07% of a pitch off anti-phase** (was 47–49%), both meshes, gauges
+credible at [8,28]/[10,12] gaps. What landed:
+
+- `measuredToothPhase`'s min-to-max threshold replaced with the probe's
+  10th/90th-percentile threshold (finding 1 — the 56-gaps-at-0.94 failure
+  is closed at the gauge, not worked around);
+- w1+p1 wrapped in a rigid PAIR group (`rsvPair1`) — the one-blank
+  constraint made structural, answering the question TODO 15 left open
+  for the alarm's i1/i1b — and the chain solved as two `solveGearChain`
+  runs with the pair held, one per module, p0 the datum;
+- the half-pitch idiom lines deleted;
+- the train DRIVEN FORWARD (finding 2): p0 takes the barrel arbor's wind
+  angle through its slip coupling (the constant term is the coupling's
+  SET — assembly zeroing the indicator by slipping the friction), each
+  mesh counter-rotates by its real ratio, and the hand ARRIVES.
+  RESERVE_SWEEP_DEG·ratio = FUSEE_WRAP_TURNS·360 by TODO 18's shared
+  derivation, so the hand sweeps the same graduated arc — the same
+  angles, arrived at forwards.
+
+The body below is kept as the record of the measurement that filed it.
+
 
 > **Re-confirmed by triage 2026-08-19**, when "fix the gear meshing on the
 > power reserve indicator" came in as a fresh request. It is this item,
@@ -7052,7 +7092,38 @@ is modelled, because that is the honest half a reader needs and neither
 document says it today. Cutting real cycloidal teeth is a separate,
 much larger question and is filed as roadmap §136.
 
-## 62. Mesh phase: nine undocumented `Math.PI / teeth` sites, and a going train with no phase at all
+## 62. Mesh phase: the going train is SOLVED; the keyless idiom sites and the bevels remain
+
+**Progress 2026-08-20 (after TODO 48 landed its threshold fix, the stated
+prerequisite).** The largest block is done: the GOING TRAIN's four meshes
+are chain-solved, backward from the escapement because that is where the
+freedoms are — the escape wheel's phase belongs to the pallets (its own
+convention, untouched), so the escape PINION is the datum; each arbor's
+pinion+wheel rides a rigid pair group (TODO 48's structure, one knob per
+blank), and the great wheel is its own knob on the fusee arbor. Four runs,
+one per module, every tripwire live. The striking wheel 64T ⇄ governor
+pinion mesh is solved in the same landing: the 64T rides a SLEEVE (a real
+assembly freedom) so it is the knob, the governor pinion the datum, and
+that idiom line's interleaving CLAIM is retired (the rotation stays as the
+pinion's assembly position).
+
+**What remains, re-scoped:**
+
+- The four keyless bases (`windSpurBase`, `crownWheelBase`,
+  `settingWheelBase`, `minuteWheelBase`) are RUNTIME phase offsets
+  (`rotation.z = base + spin(t)` in tick), woven through two tick-driven
+  chains — retiring each means solving the chain at build and reading the
+  solved rotation back into the base, a TODO-48-sized job per chain
+  (winding: sliding pinion → crown → transfer → spur; setting: pinion →
+  setting wheel → minute wheel).
+- The BEVEL sites (`BEVEL_PHASE` ×2 corners, `ALARM_BEVEL_PHASE`, the
+  §129 spider's four planet meshes) are beyond the planar gauge:
+  `measuredToothPhase` silhouettes about z, and a bevel pair's horizontal
+  member has no z-silhouette to read. Retiring them needs the instrument
+  question roadmap §135 files, not another call site.
+- §129's tower: the compound idler's PINION ⇄ leg B's pinion is still
+  unchained ('alarm arrest leg B:' phases the idler's wheel only).
+
 
 TODO 15 closed the winding and setting chains and named **two** remaining
 sites; TODO 48 carries one of them. The census is much larger than either item
@@ -7122,7 +7193,27 @@ An instrument that would catch a wrong count or a wrong phase is filed as
 roadmap §135; **no such instrument exists today**, and `inspect.js` has no
 concept of a gear mesh as a pair at all.
 
-## 63. The elbow rods bend for routing only, and TODO 16's stall number is stale
+## 63. PART DONE — the stall number is re-taken (≈1.6 mN, shaft-limited); the elbows' bending and the missing force arithmetic remain
+
+**Re-taken 2026-08-20, from the built metal, in TODO 16's own first-order
+format.** The current chain: beak lever nose 1.395 u / tail 9.95 u —
+displacement gain **7.1×** (not the 36.5× the old number assumed, and not
+the ~3:1 this item's own text guessed from §68's prose; the built arms are
+the record). Tail blade 0.12 × 0.14 mm over 3.77 mm: **305 N/m**,
+tail-stall ≈ 48 mN — the blade half of TODO 16's fix survived. Shaft:
+reverted to the 0.091 mm hair (see TODO 16's correction note), crank
+overhang **22 N/m**, and 22 N/m × 0.071 mm of selector stroke =
+**≈ 1.6 mN stall, SHAFT-limited** — the same one-to-two-orders shortfall
+against the 5–50 mN detent band as the original finding, arrived at
+through the other member. Anyone sizing against "48 mN restored" is
+sizing against a reverted fix. The stale `alarmOn only turns the column
+wheel` line at the tube law is also corrected (TODO 20 closed that debt).
+
+**What remains below, unchanged:** the elbows' un-computed bending moment,
+the five force paths with no arithmetic (finger→pusher, pawl at the saw
+root, the click's detent torque, the elbows, the §45 silence chain), and
+the disarm-vs-silence terminology note.
+
 
 Two findings from a dogleg audit, both about force paths that were never
 computed.
