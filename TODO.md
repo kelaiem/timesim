@@ -6995,7 +6995,18 @@ wheels seat on shoulders and bridges this test does not model, and warning
 across all of them would break rule 6 rather than find anything. Widening it is
 worth doing behind a declared scope list, not by default.
 
-## 61. `SPEC.md` and the gear builder name a tooth form the code does not cut
+## 61. CLOSED — `SPEC.md` and the gear builder name a tooth form the code does not cut
+
+**Closed 2026-08-20, as filed: the documents now say what is cut.** All
+three sites reworded in one landing — `SPEC.md`'s `makeGear` signature
+block (the architecture contract), `makeGear`'s live header, and
+`gearOutlineShape`'s own comment — each naming the trapezoidal
+approximation, pointing at the escape wheel's club teeth as the one
+designed working surface, and stating plainly that NO CONJUGATE ACTION is
+modelled (the honest half neither document said). Real cycloidal teeth
+remain roadmap §136, exactly as this item scoped. Nothing geometric moved;
+the body below is kept as the record of what the docs used to claim.
+
 
 Three files name one shape and two of them name a family the builder does not
 produce.
