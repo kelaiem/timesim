@@ -76,10 +76,15 @@ export function makeHairspring({ innerR, outerR, coils = 12, height })
 export function makeBarrel({ radius, height, teeth, module })
 
 // Plates & structure: shaped back plate, smaller top plate/cocks (balance cock with
-// regulator), pillars. Jewel = red donut in gold chaton (name bearing positions later).
+// regulator), pillars. Two bearings, and they are different parts (§148): a FLUSH
+// rubbed-in stone sunk in a nickel collar, and a SCREWED GOLD CHATON — a ruby
+// pressed into a gold ring, dropped into a counterbore and held by blued screws
+// lapping its rim. The three-quarter plate's upper pivots take the chaton; the
+// cocks and the lower pivots take the flush setting.
 export function makeBackPlate({ radius, thickness })
 export function makeCock({ length, width })         // generic bridge/cock
-export function makeJewelSetting({ r })             // chaton + ruby
+export function makeJewelSetting({ r })             // flush rubbed-in stone + its collar
+export function makeChaton({ boreR, thickness, screwCount, screwPhase, screwShank })
 export function makePillar({ height })
 
 // Dial side: dial with printed-look minute track + numerals (CanvasTexture),

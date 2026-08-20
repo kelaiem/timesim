@@ -13243,6 +13243,230 @@ the axis more owed than before, not less.
 subtractor sites at the bearing §112 already chose, so nothing moved, but the
 instrument is there for the next consumer of that corner.
 
+## §132 — three screwed gold chatons on the going train's upper pivots: a builder nothing called, and the depth that made it uncallable
+
+**What this was.** `makeChaton` had been a complete, documented builder since
+the movement had a plate — gold bezel, oil sink, pressed ruby, blued screws
+straddling the rim — and it was **called by nothing**. `MATS.gold` existed
+with a docstring naming the chatons as its reason to be, and its only live
+use was the balance's shock lyre spring. `README.md` claimed "screwed gold
+chatons over the upper pivot jewels" among the Glashütte-school features, and
+public TODO 57 was filed against exactly that gap.
+
+So this was never a build-from-nothing. It was a siting job — and the reason
+the siting had never happened turned out to be a number nobody had derived.
+
+**The plate had REFUSED chatons, on record, and the refusal was half right.**
+The plate build argued it in place: the three-quarter plate is 0.8 thick, the
+hack and reset rods pass just above it, nothing may stand proud, so what was
+built was a gold rim rising around a flush stone — a rubbed-in jewel. TODO 57
+repeated that as a scope note calling this plate **"not viable"** and warning
+that anyone proposing it was re-opening a settled argument. Roadmap §132 was
+filed against the two COCKS for that reason.
+
+Measured, the objection was not the one recorded:
+
+- **Not clearance.** `makeChaton` is a flush design by construction — rim
+  level with the host's face, screw heads SUNK into it, slot below them,
+  stone `0.08·t` under the rim. Its own screw comment cites *this plate's*
+  hack blade, at 0.18 over the face. The builder was written for this face
+  and then fitted nowhere.
+- **A reading objection**, and a real one: the stone looked sunk at the bottom
+  of a gold well. But that followed from `CHATON_DEPTH` = 0.35, which the
+  source justified as "a little under half the plate" — a preference, not a
+  derivation.
+
+**The depth is now SOLVED, and 0.35 could never have been built.** Two members
+split `TQ_T` at a chaton site, and both default to the `wheel` kind and its
+0.12 mm floor:
+
+| member | section | floor demands |
+|---|---|---|
+| pressed stone | `CHATON_RUBY_FRAC · t` | `t` ≥ **0.4279** |
+| bearing collar under it | `TQ_T − t` | `t` ≤ **0.4834** |
+
+The window is 0.055 u — **0.021 mm** — and 0.35 is not in it: the old depth
+put the stone at **0.098 mm**, a fifth under the floor. Nothing had ever
+caught it because no chaton was ever instantiated; §50 can only measure a mesh
+that exists. Inside the window the two members are the whole of the plate, so
+the depth that maximises the smaller margin is the one that EQUALISES them:
+
+```
+CHATON_RUBY_FRAC · t = TQ_T − t   →   t = TQ_T / (1 + CHATON_RUBY_FRAC)
+                                    = 0.4598
+stone  0.1289 mm      collar  0.1289 mm      floor  0.12 mm
+```
+
+`CHATON_RUBY_FRAC` is exported from the builder and read here, so changing the
+stone's proportion re-solves the depth rather than drifting from it. And the
+deeper stone is what answers the reading objection: 0.4598 against 0.35 is
+**31% more chaton in the same plate**, and the well closes.
+
+**Two defects were latent in the builder, both invisible while nothing called
+it.** This is the entry's own argument for why an uncalled builder is not
+"already built":
+
+- **The screw heads were `t · 0.5`.** Heads carry no stock kind ON PURPOSE —
+  `STOCK_KIND_BY_MESH` says so in as many words: *"they are real stock at
+  STOCK_MIN_U and must keep answering to the wheel floor"* — so at that
+  proportion they demand `t ≥ 0.6333`, while the collar caps `t` at 0.4834.
+  **No depth in a 0.8 plate satisfies both**, and the builder was therefore
+  unsitable here as written. §20 hit precisely this on the plate screws and
+  decoupled; `headT` is now `max(STOCK_MIN_U, t · 0.5)`, proportional where
+  the host can afford it and floored where it cannot.
+- **The oil sink was an `openEnded` cone.** An OPEN mesh in the scene, which
+  is the class TODO 27 measured making `sweptOverlap` CONFIRM an overlap
+  against a part 3.7 units away — `meshClearance`'s parity raycast counts
+  crossings and so assumes a closed solid. It was also 0.0383 mm on its thin
+  axis with nothing kinding it. Rather than declare it, the dish is now
+  revolved into the stone's own closed lathe profile: a jewel with a sink cut
+  in it is what the part IS, and the mesh simply stops existing.
+
+**The screws bite the plate, so the plate is cut for them.** `tqHoles` opened
+each pivot at exactly `chatonOuterFor`, which left the outer half of every
+head in solid metal. Each screw now costs a seat, and the seats are declared
+two ways on purpose:
+
+- as **circles** in `tqHoles`, so every solver that reads it — the window
+  solve, `tqOpeningClearance`, the rib and engraving keep-outs — sees the
+  metal that is actually gone;
+- as **one merged outline** per site (a new `polyHoles` input to
+  `makeThreeQuarterPlate`), because three seat circles centred ON the
+  counterbore's own rim overlap it, and `ExtrudeGeometry` triangulates
+  overlapping holes into phantom plate rather than failing — the same failure
+  mode §62's web check exists to catch.
+
+Boot asserts the two agree: every outline vertex is inside no circle and on
+the boundary of at least one.
+
+**§20's ring land does not transfer, and that is the one genuinely new piece
+of modelling here.** Half of each seat lies inside the counterbore, where
+there is no plate to restore. So the land is the seat's disc MINUS the
+collar's footprint — a crescent, built from the two circles' real
+intersection rather than approximated by a wedge, since an approximation that
+overshoots puts metal back inside the counterbore and one that undershoots
+leaves the head unsupported. It stands `TQ_T − headT` = 0.4833 u (0.183 mm)
+so the head bears on metal instead of floating in its recess. Nine of them —
+one shape at one radius, because all three sites share a bore.
+
+**The land the screws bite was already reserved.** Every plate opening, rib
+and engraving keeps clear of `pivotBossR` = `max(jewelR · 1.7, boreR)` =
+**2.21** at these pivots, and `checkCutVsPivots` holds the balance cut a
+further `CLEAR_MARGIN` outside that. The screw circle reaches 1.785 and the
+cut 1.925. Nothing had to move for any of the three.
+
+**Scope: three, and both exclusions are DECISIONS, not measurements.**
+
+| upper pivot | x, y | `boreR` | counterbore | chaton |
+|---|---|---|---|---|
+| centre wheel | 0, 0 | 0.55 | 1.50 | **yes** |
+| third wheel | −8.795, −9.231 | 0.55 | 1.50 | **yes** |
+| fourth wheel | 0, −15.500 | 0.55 | 1.50 | **yes** |
+| escape wheel | 4.910, −23.327 | 0.55 | 1.50 | no |
+| alarm strike arbor | 22.215, 18.641 | 0.80 | 1.75 | no |
+| fusee arbor | −13.270, 9.292 | — | — | no jewel: a plain bushing |
+
+Nothing geometric forces either exclusion — the escape site is dimensionally
+the SAME site as the three, same bore, same counterbore, same screw circle,
+and the source says so where it makes the choice. What excluding the strike
+arbor buys is that the chatons are ONE part: its bore is a step wider at 0.80
+for the rotor's sleeve, which would have forked the spec into two sizes, two
+screw radii and two rows in every table above.
+
+**Standing rule 1's own case, closed on the way.** `chatonOuterFor` was
+`boreR + 0.95` with a comment reading `= makeChaton's rubyR + 0.55` — a
+hand-copy of two numbers living in the builder, uncatchable while the builder
+was called by nothing. `CHATON_RUBY_INSET`, `CHATON_RIM_W`, `CHATON_RUBY_FRAC`,
+`chatonOuterR` and `chatonHeadR` are now exported and read; the plate types
+none of them.
+
+### Measured
+
+Full battery, locally, 3 shards:
+
+```
+25/25 gates pass · total 1210.3s (checks 2990.3s across 3 shards)
+  stockFloor       0 degenerate and 0 unwaived (592 rows, 47 waived — none new)
+  sweptOverlap     0 CONFIRMED (84028 pairs, tight 3, refuted 23)
+  clearances       0 violations (30 budgets)
+  intraUnit        0 unwaived, 0 unmatched selectors
+  expectedContacts 0 unwaived, 0 unmatched selectors
+  inspection       0 FORBIDDEN (55 units, 80 contacting pairs)
+  boot silent (rule 6)
+  fingerprint      4089477992 — UNCHANGED
+```
+
+**Against the base, `--report` diffed** (the PASS/FAIL column is not the
+acceptance for a change that moves reports). Six substantive fields moved,
+every one of them the arithmetic of eighteen new meshes; nothing else changed
+but timings and workload counters:
+
+```
+stockFloor.rowsChecked                    574 -> 592   (+18)
+sweptOverlap.registrySummary.static       232 -> 250   (+18)
+sweptOverlap.sound.pairsTested          77314 -> 84028
+sweptOverlap.census.out.pruned         116229 -> 116401
+intraUnit.tiers.FF                       2067 -> 2544
+intraUnit.outOfScope                  len 190 -> len 192
+```
+
+**+18 is exactly right, and worth checking rather than waving through:** three
+bezels, three stones, three merged screw-head meshes, three merged slot
+meshes, nine crescent lands — 21 — **less** the three flush stones the chaton
+sites no longer carry. No violation or waiver list moved anywhere: `violations`
+0 → 0, `waived` 0 → 0, `unmeasurable` 0 → 0.
+
+**`intraUnit`'s fifteen new out-of-scope rows are this landing's named
+residue, and they were measured rather than left in the report.** The FF tier
+GATES only `INTRA_TIER_SCOPE`, and `Three-quarter plate` is outside it, so
+those rows are reported and ungated — the case `CLAUDE.md` says to measure
+yourself. They are the joints: collar⇄land, collar⇄bezel, bezel⇄stone,
+bezel⇄heads, and the three plate laps. Thirteen equivalent rows were already
+there for the plate's own collars and stones, so the class is not new.
+
+`meshClearance` cannot settle them: a BVH distance is non-negative, so
+touching and overlapping both read `+0`, which is what all seven pairs
+report. `tools/probe-132-joints.mjs` therefore measures each joint on the
+surfaces that DEFINE it:
+
+```
+site  0.00, 0.00     collar OD 1.65 vs land ID 1.65 -> radial +0
+                     collar top 8.4556 vs bezel base 8.4556 -> seat +0
+site -8.79,-9.23     …the same
+site  0.00,-15.50    …the same
+```
+
+Abutment, not interpenetration: the land begins exactly where the collar
+ends, and the chaton bottoms exactly on the collar's face. The two plate laps
+(collar and land into the surrounding stock, 0.09) ARE deliberate overlaps —
+the convention that keeps no two walls coincident, in place since the collars
+were written — and are named here rather than implied away.
+
+**The unchanged fingerprint is a result, not a null.** It hashes per-unit
+bounding boxes, so an unchanged hash says that nothing the chatons added
+extends the three-quarter plate's box in any direction. The flush claim —
+nothing proud of a face the hack blade passes 0.18 over — is measured by it
+rather than asserted.
+
+`stockFloor` is the gate that matters here, because it is the one the old
+depth failed: 47 waived rows, all pre-existing, and the `Three-quarter plate`
+unit carries no `STOCK_WAIVERS` entry at all, so every new member — bezel,
+stone, collar, nine crescent lands, and the screw heads at `STOCK_MIN_U` —
+had to clear 0.12 mm on its own.
+
+### What this does not close
+
+The **fork cock** and the **balance cock** are still unchatoned. They were
+roadmap §132's original sites and remain viable candidates for an entry of
+their own; the balance cock's constraint is unchanged and still unmeasured —
+the shock setting's boss occupies the face out to r 1.35, so a chaton rim must
+live outside that or the two parts are one part.
+
+The escape wheel's exclusion is recorded as a choice rather than a
+measurement. If it is ever revisited, the number to publish is that site's
+land radius against the 1.785 screw circle, which would say whether the
+exclusion could have been forced as well as chosen.
+
 ## §134 — the Maltese crosses draw: the schematic tier stops marking a contact between two parts it cannot show
 
 **The finding, and it is sharper than the request.** "Draw the crosses in
@@ -13339,3 +13563,360 @@ records that four labelled units draw nothing without naming them. This entry
 fixes one unit by hand and strengthens §84's case rather than answering it: the
 gap was found by a person looking at the screen, which is exactly the census's
 argument.
+
+## §148 — the chatons are chatons: one stone in two mountings, screws with bodies, and the plate gives way to a bearing
+
+**Five things were asked for and they turned out to be one thing.** Make the
+chaton's ruby the size it was; sink the chaton in a recess you can see; put the
+screws in screw holes; chaton the escape wheel and the alarm's striking arbor
+too; and take out the openworked window around the escape stone. Every one of
+them is the same defect from a different side: §132's chaton was dimensioned
+against ITSELF. Its stone was its own number, its rim was its own number, its
+screws were a proportion of its own radius, and its counterbore was its own
+outline. Nothing about it was measured against the movement it was set into,
+which is how a part can be internally consistent and wrong in five ways at
+once.
+
+### 1. The stone is one stone
+
+A chaton and a rubbed-in setting are two ways of holding the SAME pressed
+jewel. The ruby is bought to a size; screwing it into gold rather than rubbing
+it into nickel does not make it a smaller ruby.
+
+It was two independent numbers. The flush settings cut their counterbore at
+`boreR + 0.95`; `makeChaton` pressed a `boreR + CHATON_RUBY_INSET` = `boreR +
+0.40` stone. So §132's three chatons **shrank their stones by a third at the
+moment they landed** — 0.720 mm across where the escape wheel beside them kept
+1.137 mm — and that is exactly what they looked like.
+
+One definition now, `JEWEL_RIM_W = 0.95`, and its value is the flush setting's,
+so the stone does not move. The sharpest way to put the correction: **the whole
+of §132's chaton, gold and all, is the new one's STONE** — old outer radius 1.50,
+new stone radius 1.50.
+
+| | §132 | §148 |
+|---|---|---|
+| stone ⌀ (0.55 bore) | 0.7201 mm | **1.1370 mm** |
+| chaton ⌀ | 1.1370 mm | **1.4376 mm** |
+| counterbore radius | 1.500 | **1.9766** |
+
+### 2. The gold ring is sized by the PRESS FIT, not by its floors
+
+Two floors bear on the ring and neither one sizes it, and that distinction is
+the whole of this section. The ring must carry at least `STOCK_MIN_U` of
+**hoop** — a friction fit is a hoop in tension, and a hoop thinner than the
+floor is not metal you could turn — plus at least `CHATON_SCREW_LAP` of
+**ledge** for the heads to lap. Their sum is 0.39662 u, and built to it the
+chaton is a **gold outline**: 0.150 mm of metal around a 1.137 mm stone,
+invisible from overhead. Floors say what a part may not go below; they are not
+an answer to how big it is, and taking them as one is its own species of the
+same mistake §132 made.
+
+What answers it is the fit the ring exists to make. A pressed stone loads its
+ring in HOOP TENSION and Lamé prices the wall directly — peak hoop stress at
+the bore is `p·(b² + a²)/(b² − a²)`:
+
+| `b/a` | 1.125 | 1.25 | **1.5** | 2 |
+|---|---|---|---|---|
+| σ_θ / p | 8.5 | 4.6 | **2.6** | 1.7 |
+
+1.5 is the knee, it is the standard interference-fit rule for a ring's outside
+diameter against its bore, and it is where real chatons sit (1.5–1.8 × the
+stone) — the same number arriving from the stress and from the practice. Taken
+at the knee, which is the thin end of the real band. `CHATON_RING_RATIO = 1.5`,
+so the wall is 0.750 at the 0.55 bore (0.284 mm) and 0.875 at the 0.80 — and
+the two floors are asserted to still fit inside it, because the number that
+sizes a part must be the one that binds.
+
+| | §132 | §148 first pass | §148 |
+|---|---|---|---|
+| gold ring width | 0.209 mm | 0.150 mm | **0.284 mm** |
+| chaton ⌀ (0.55 bore) | 1.137 mm | 1.438 mm | **1.706 mm** |
+
+### 3. The counterbore is not the chaton — TODO 27's own rule, unapplied
+
+A chaton is the definitive case of the fit TODO 27 named: *"ONE fit for
+everything that has to DROP INTO a recess someone cut for it."* §132 cut the
+plate at the chaton's own radius. That is a press fit for a part whose whole
+reason to exist is that it lifts out — and two coincident walls for the
+renderer, so there was nothing to SEE: a gold disc ending where the nickel
+began, with no well around it. `chatonBoreR = chatonOuterR + SEAT_FIT`, and the
+recess reads as a recess.
+
+### 4. The screw is solved, and it has a body
+
+§132's screws stood ON the counterbore's rim. That is why they had no shanks:
+any hole there would have been half void, so they were heads with nothing under
+them — a decoration in the shape of a fastener. A chaton screw has to do two
+things that pull opposite ways, and together they fix the head:
+
+    the tapped hole clears the COUNTERBORE by a wall of STOCK
+        R_s = chatonBoreR + STOCK_MIN_U + screwTapR(headR)
+    the head laps the CHATON's rim by a RETENTION overlap
+        headR − (R_s − chatonOuterR) ≥ SEAT_FIT
+
+measured to different circles on purpose — the wall is plate between two cuts,
+so it is measured to the cut; the lap is metal the head must reach, so it is
+measured to the metal. With `screwTapR = headR/2` those collapse to
+`headR ≥ 2·STOCK_MIN_U + 4·SEAT_FIT`, taken at equality because the smallest
+screw that does the job is the one to fit: **0.9532 u — a 0.723 mm head on a
+0.361 mm thread**, against §132's 0.30 mm head.
+
+**And there are two holes, because there are two joints.** A screw that PASSES
+THROUGH a member wants a CLEARANCE hole — the member is not what holds it, and
+`screwBoreR` is that hole, which is what §20's pillar screws take through this
+plate on their way into a pillar. A screw that THREADS INTO a member wants a
+TAPPED hole, and a tapped hole is not a clearance hole: the flanks are what
+grips, so the hole is the thread's own radius and the parts are assembled
+touching, like every other seat in the movement. §148's first pass bored the
+second joint as the first — a screw standing in a hole one seat fit too wide to
+grip, which is exactly what *"no thread to tighten into"* looks like once it is
+cut. `screwTapR` is that hole, and dropping the clearance from the solve is
+also what took the head from 0.844 mm to 0.723.
+
+It is no longer a proportion of the chaton at all, and that is what let the
+family grow: the going train's 0.55 bore and the strike arbor's 0.80 take the
+**same screw**, so §132's reason for excluding the strike arbor — *"including
+it would have forked the spec into two sizes"* — is gone. One screw, one ring
+turned to two bores.
+
+The plate is cut and bored for all of it: the seat joins `tqHoles` as before,
+and the lune put back under it (`crescentLand`) is now BORED for the shank,
+which is §20's pillar-screw construction exactly.
+
+### 5. The head is COUNTERSUNK, and that is not a look
+
+This is where the plate's own thinness surfaces, and it is filed as **TODO 69**.
+A cheese head sinks its whole `headT` into whatever it laps. `headT` is floored
+at `STOCK_MIN_U` (a screw head is real stock and carries no kind entry, on
+purpose), so a cheese head would leave the gold under the lap at **0.054 mm** —
+less than half the floor. Written as a window beside §132's two, the ledge wants
+`t ≥ 2·STOCK_MIN_U` = 0.633 while the bearing collar still caps `t` at 0.483:
+**empty**. No depth in a 0.8 u plate carries collar, stone and a full-thickness
+ledge, and `TQ_T` would have to reach 0.95 u before one exists.
+
+A cone reaches full depth only on its own axis. `CHATON_SCREW_TAPER` is
+`screwShankR(headR)/headR` = 1/2 — a countersunk head IS the cone the shank
+opens into — so across the lap it takes `headT·lap/(headR − shankR)` = 0.0531
+instead of 0.3166. The chaton's rim carries the matching turned CHAMFER, solved
+rather than styled: along the line of centres, chaton-radius `r` is `screwR − r`
+from the screw's axis, so the head's underside traces a cone about the chaton's
+own axis, from nothing at `outerR − lap` to `chamferD` at the rim. Off that line
+the head's cone is shallower and the chamfer, turned to the deepest case, clears
+it.
+
+**And the chamfer is sunk one SEAT_FIT deeper than that**, which is not a
+detail. Cut to the head's own cone the two do not merely touch at a point: they
+COINCIDE along the whole line of centres and lie within microns either side of
+it — a grazing pair over an area, which the renderer shows as the chaton being
+shattered by a surface passing through it. Real countersunk heads do bear on
+their seats, so the coincidence is honest and the artefact is the modelling
+problem; `SEAT_FIT` is this movement's standing answer to exactly that
+(*"every face held off its host by seat margins — coincident planes z-fight;
+see the bridge jewels"*), and it is the fit these two parts already assemble on.
+
+The gold under the head therefore survives at **0.1238 mm**, over the 0.12
+floor by 0.0038 — the thinnest margin anywhere in this entry, and `makeChaton`
+asserts it rather than trusting it. That number is TODO 69 speaking again.
+
+### 6. Where the screws stand is SOLVED, and at the escape wheel the plate gives way
+
+This is the §148 finding that cost the most, and it is a P3 conflict resolved
+entirely in position space.
+
+The escape pivot stands **3.14 from the balance cut's edge** on the pallet-fork
+side, and the site's outermost seat reaches **4.157** — so every screw wants
+4.31 with the margin, and there is 3.14. Swept over all 360 phases, the worst
+seat of a three-screw set is **−0.897** at its best; of a two-screw set,
+**−0.129**. Both are negative: a tapped hole cut through an edge either way,
+and the difference between them is a whole screw's worth of plate. Three things
+happen, in this order, and the order is the design:
+
+1. **Turn the chaton.** One screw points away from the plate's centre wherever
+   the metal allows it, and where it does not the phase is searched over the
+   `360/n` the screws repeat on.
+2. **Drop a screw.** Three is the default for the reason §62 gives for three
+   webs — three points locate a disc against a load from any bearing. But a
+   chaton is not an islanded boss: it is a disc already trapped in a
+   counterbore, so two OPPOSED screws capture its rim either side of a diameter
+   and the seat takes the rest. That is why two-screw chatons are a real
+   construction, and where they are used is exactly where this movement needs
+   one. The count is solved per site, not chosen once.
+3. **Then the plate gives way** — here, for the 0.279 the two-screw seating
+   was still short of the margin. The cut's escapement stretch is sized to the
+   pallet fork's swept footprint, and it is a VIEW there and nothing else — the
+   fork tops out at 6.66 and its cock at 6.97, both clear under this plate's
+   8.12 underside, so unlike the balance quarter no part of it is a running
+   clearance. §62 already decides this case: *"where a wanted window and a
+   required web cannot coexist, the WINDOW is what gives."* Each degree of the
+   cut's polar table is pushed back along its own ray until it stands clear of
+   every disc a chaton site needs.
+
+The ORDER is the whole point. Clamping first would hand every site room for
+three screws and buy it silently out of the escapement view; solving first
+means the plate pays only for what turning the chaton and dropping a screw
+could not find. The floor on the clamp is the balance's own running clearance,
+`BAL_OUTER_R + TQ_CUT_MARGIN`, and it is never crossed.
+
+The clamp is **converged, not applied once**, because the clamp and the check
+do not measure the same thing: the clamp pushes an edge SAMPLE out of a disc (a
+true distance), while `inCutClearance` reads the edge RADIALLY from the cut's
+own centre, which under-reports wherever the edge is not square to the ray. One
+pass landed 0.143 against a 0.15 margin for exactly that reason. Each pass grows
+the keeps still short by what they are short; it settles in two or three, and
+boot warns if it cannot.
+
+Result, per site:
+
+| pivot | bore | screws | phase |
+|---|---|---|---|
+| centre, third, fourth | 0.55 | 3 | outward |
+| alarm striking arbor | 0.80 | 3 | outward |
+| escape wheel | 0.55 | **2** | 179° off outward — a two-screw set repeats every 180°, so this is the outward screw turned back one degree |
+
+### 7. The §62 escapement window is withdrawn
+
+`TQ_WINDOW_INTENTS` framed the escape wheel by cutting an annulus around its
+pivot and re-attaching the boss on three webs. It was already the weakest of
+the three windows on its own entry's measurements — 96% of the fork's footprint
+and 45% of the wheel's already stand in the kidney cut, so the window bought
+the remaining sliver — and §148 makes it untenable: the escape pivot now carries
+a chaton whose boss is the whole assembly out to its seats, on a tongue the
+window had reduced to three webs. Same rule as §6 above, applied the other way
+round: the metal goes back, and the escapement is read through the kidney cut,
+which is where the action is anyway.
+
+### 8. A hammer, not a mallet
+
+The striker was a 0.6 sphere on a rod. A ball on a rod is a mallet: no face, no
+peen, no eye, and nothing about it says which way it hits. It is now a BAR lying
+along the blow — flat FACE, tapered PEEN, the arm let through an EYE between
+them — and the shape is most of the difference, the size being the rest.
+
+**What does not move is the anchor.** The face stands exactly where the ball's
+surface stood, `ALARM_HEAD_R` inboard of the point the arm already ran to, and
+the head is built AROUND that point rather than replacing it. So the rest gap
+onto the wire, `ALARM_ARM_LEN`, the tail's lever ratio, the cam lift and every
+§35 hand-off the alarm is gated on come through untouched — which is why the eye
+is the anchor and not the head's centre.
+
+- **Section**: a hammer wants mass, and what limits it is the plane it swings
+  in. The plate's top face stands `Z_GONG − TQ_TOP_Z` under the gong's centre
+  line, so the largest section centred on that line is twice that less the
+  margin — taken with §102's float-bind centi-unit, the same allowance the lock
+  collar's own gaps carry, because this lands on the margin exactly. SQUARE,
+  because nothing distinguishes the two axes across a round wire: the face meets
+  the crown with the same margin either side however the wire is approached, and
+  its corners stand FURTHER off the wire than its centre, so the rest gap stays
+  the face's.
+- **Length**: twice the section, and the factor is the definition rather than a
+  taste — a bar is what puts a face and a peen either side of an eye, and at 1:1
+  the head is a block on a stick again. Least is what it is taken at: every unit
+  of head is inertia the alarm's spring has to lift.
+
+**The ledger entry that goes with it.** TODO 17 already records that the
+strike's ENERGY is not derived. This head's mass therefore rests on a shape
+argument and not a dynamic one, and the entry says so rather than implying the
+hammer was sized by the blow.
+
+The schematic tier follows: a ring was honest of a ball and would be a false
+claim of a hammer (§78's rule, the same one that has the cam drawn from its
+profile), so the head draws its PLAN outline off the same three constants the
+solid was cut from.
+
+### 9. Three defects the chaton was hiding, all older than it
+
+None of these were §148's to fix and all three were §148's to find: widening a
+part until you can see it is its own kind of instrument.
+
+**The bezel and the stone were wound INSIDE OUT, and had been since §132.** A
+`LatheGeometry` takes its profile's direction of travel as the surface's
+orientation. Written from the top face outward — which both of `makeChaton`'s
+profiles were — every normal comes out pointing INTO the solid, back-face
+culling hides the faces you are looking at and shows the ones behind them, and
+the part renders as its own underside. In this movement the chaton's underside
+is coplanar with the bearing collar it bottoms on, so the two z-fought and the
+gold came out **shattered**. At §132's 0.209 mm ring nobody could see it; at
+0.284 mm it is the first thing you see. Both profiles now travel `ringGeo`'s
+way — bore bottom, out, up, back in — and `assertLatheOutward` holds it at
+build time, because this is precisely the class of defect that is invisible
+until it is not.
+
+Swept over the whole scene rather than over the chaton, that assert finds
+**three more inverted meshes**, all `makeJewelSetting` collars. They are filed
+as TODO 70 rather than fixed here: that profile is also OPEN, which is TODO
+27's measured hazard, so closing it is the fix and the winding falls out of
+doing it properly.
+
+**Every screw in the movement has rendered as a featureless disc since §20.**
+The slot is drawn — `makeScrews` has always emitted it — and it was centred
+`0.28·headT` below the head's top face, so its own top came out **0.033 UNDER**
+the surface it is a slot in: a dark inlay buried inside an opaque solid, drawn
+for every screw and visible on none. That is most of why the chaton screws read
+as bored holes rather than as fasteners. A slot is a RECESS shown as a dark
+film (`STOCK_KIND_BY_MESH`: marking, not stock), so what it wants is to break
+the face it is cut into — flush, and a hair proud rather than coplanar, because
+coplanar faces z-fight. The hair is §102's float-bind centi-unit, two orders
+under the 0.18 the hack blade passes over this face. **Every screw in the
+movement gains a visible slot from this one line.**
+
+**And the gold is mirror polished**, which is not a preference about gold. A
+screwed chaton has been mechanically obsolete since pressed jewels arrived —
+`makeChaton`'s own docstring says so — and it survives purely as a mark of
+traditional finishing, so the FINISH is the part's whole remaining job and a
+satin ring is the one way to model it that misses the point. Real chatons are
+black-polished: roughness 0.14 -> **0.03**, clearcoat to 1.0 with none of its
+own haze, reflectivity 1. `MATS.gold` has exactly two consumers — the chatons
+and the balance's anti-shock lyre — and a gold lyre spring is polished wire, so
+it wants the same.
+
+
+### What the instruments say
+
+Named on the way: `alarmHammerArm`, `alarmHammerPost` and `alarmHammerHead`
+were reaching `INTRA_UNIT_CONTACTS` as `CylinderGeometry#n` — an index into a
+traversal, which is a name that moves when anything upstream of it in the unit
+does, and it did. The two declared rows now name the parts.
+
+The battery, run in the browser against this branch (this machine has no
+`node`, so `tools/ci-battery.mjs` was not the driver; CI's job is):
+
+```
+support        0 failures (69 rows)          graph          clean
+axisEntry      0 violations (220 pairs)      penetration    18 rows, all OK
+alarmHandoffs  0 unwaived, 0 waived          windArrest…    0 unwaived
+clearances     0 violations (30 results)     lowCorridor    0 escapes
+inspection {includeExcluded: true}           0 FORBIDDEN (80 rows, 55 units)
+sweptOverlap   0 CONFIRMED (near 0, contact 0, boolTrue 0)
+stockFloor     0 degenerate, 0 unwaived (47 waived, 608 rows)
+intraUnit      0 violations, 0 unmatched selectors (192 out-of-scope reported)
+assembly       0 undeclared unwaived in scope (24 out-of-scope reported)
+expectedContacts 0 violations, 0 unmatched   chainLength    0 violations
+oscillator     PASS (2.5 Hz implied = spec)  equalisation   PASS
+restoring      0 unwaived / 0 malformed / 0 stale, control PASS
+```
+
+Diffed against the branch's own base (6a660b8, §132's tip) for the reports
+that move rather than pass/fail:
+
+| report | base | §148 | why |
+|---|---|---|---|
+| `stockFloor` rows | 592 | **608** | two more chatons; the hammer's head, arm and post now named |
+| `stockFloor` waived / violations | 47 / 0 | 47 / 0 | unchanged |
+| `intraUnit` out-of-scope rows | 192 | 192 | unchanged |
+| `assembly` undeclared / out-of-scope | 24 / 24 | 24 / 24 | unchanged |
+| `penetration` | 18 rows, all OK | 18 rows, all OK | unchanged |
+
+One thing the branch does NOT own: the three
+`THREE.Texture: Unable to serialize Texture` warnings that appear in
+`__bootWarns` under some saved states. They reproduce identically on the base
+tree (6a660b8) and belong to whatever serialises a `CanvasTexture`, not to
+anything here.
+
+The **fingerprint moves, deliberately**: five chaton sites where there were
+three, a wider counterbore at every one of them, a plate cut clamped back at
+the escapement, and a hammer head that is a different solid. What is asserted
+NOT to move is the strike: the head's nearest approach to the gong over the
+`alarmStrike` axis measures 35.7014 on the base and **35.6872** here — the
+0.014 being the flat face standing marginally nearer than the sphere's crown
+at the swung pose — against a wire surface at 35.5 and a rest face at 35.9.

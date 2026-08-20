@@ -1538,10 +1538,89 @@ const PIVOT_BORE_CLEAR = 0.05;
 // Chaton seating: the jewels are SCREWED GOLD CHATONS dropped into real
 // counterbores (see makeChaton), so each upper pivot costs the plate a
 // stepped hole — counterbore diameter for the top CHATON_DEPTH, then the
-// staff's own bore for the rest. CHATON_DEPTH is a little under half the
-// plate so a full-thickness collar of material still carries the bearing.
-const CHATON_DEPTH = 0.35;
-const chatonOuterFor = (boreR) => boreR + 0.95; // = makeChaton's rubyR + 0.55
+// staff's own bore for the rest.
+//
+// §132 — CHATON_DEPTH IS SOLVED, and its old value could not be built. It
+// was 0.35 "a little under half the plate", which is a preference; §50's
+// floor is a gate, and the gate decides. Two members split TQ_T at a chaton
+// site and both answer to the 0.12 mm wheel floor:
+//
+//   the pressed stone       CHATON_RUBY_FRAC · t   ≥ STOCK_MIN_U  → t ≥ 0.428
+//   the bearing collar      TQ_T − t               ≥ STOCK_MIN_U  → t ≤ 0.483
+//
+// so the window is 0.055 u wide — 0.021 mm — and 0.35 is not in it: the old
+// depth left the stone at 0.098 mm, a fifth under the floor, invisible only
+// because no chaton was ever instantiated. Inside that window the two
+// members are the whole of the plate, so the depth that maximises the
+// smaller margin is the one that EQUALISES them:
+//
+//   CHATON_RUBY_FRAC · t = TQ_T − t   →   t = TQ_T / (1 + CHATON_RUBY_FRAC)
+//
+// = 0.4598, stone and collar both 0.1289 mm, 7.4% over the floor. Change
+// the stone's fraction in makeChaton and this re-solves with it rather than
+// drifting from it. (The screw heads are the third member and would want
+// t ≥ 0.633, which no depth here can give — see makeChaton, where headT is
+// decoupled for that reason.)
+const CHATON_DEPTH = TQ_T / (1 + G.CHATON_RUBY_FRAC);
+// §148 — WHAT THAT SOLVE CANNOT REACH, recorded where it binds. A chaton
+// whose screw heads are flush needs a FOURTH member in this stack: the gold
+// ledge the heads clamp, at least STOCK_MIN_U of it under a head that is
+// itself at least STOCK_MIN_U thick. Written as a window the way the two
+// above are, the ledge wants t ≥ 2·STOCK_MIN_U = 0.633 while the collar still
+// caps t at 0.483, and the window is EMPTY: no depth in a 0.8 u plate carries
+// collar, stone and a full-thickness ledge at once. TQ_T would have to reach
+// 0.95 u (0.36 mm) — which is under where a real three-quarter plate already
+// is, 0.303 mm being thinner than any plate a watchmaker would cut. That is a
+// LAYOUT change (TQ_TOP_Z and everything stacked above it derive from TQ_T),
+// so it is filed rather than taken here: TODO 69.
+//
+// What closes the gap in the meantime is the SCREW rather than the plate. A
+// cheese head sinks its whole thickness into whatever it laps and would leave
+// 0.054 mm of gold; a COUNTERSUNK head is a cone and only reaches full depth
+// on its own axis, so across a lap of CHATON_SCREW_LAP it takes 0.0455 and
+// leaves 0.157 mm — over the 0.12 floor by 0.037. See CHATON_SCREW_TAPER.
+//
+// The counterbore's radius, and the screw geometry that sizes its seats.
+// All of it is the BUILDER's numbers, imported rather than re-typed: this was
+// `boreR + 0.95` with a comment reading "= makeChaton's rubyR + 0.55", which
+// is standing rule 1's own failure mode — a hand-copy that nothing could
+// catch drifting while the builder was called by nothing.
+//
+// TWO radii now, and they are different radii (§148). A FLUSH stone fills its
+// counterbore, so the plate is opened to the STONE. A chaton is a stone in a
+// gold ring, so the plate is opened to the RING and the stone inside it is
+// the same size as before — which is the whole of §148's first fix: §132 cut
+// both at the chaton's own radius and so shrank the stone wherever it
+// chatoned a pivot.
+const jewelOuterFor = G.jewelOuterR;
+// The opening a pivot costs the plate, whichever bearing it carries. A flush
+// stone FILLS its counterbore, so that opening IS the stone; a chaton DROPS
+// INTO its counterbore, so that opening is the chaton plus TODO 27's seat fit
+// — which is the well you can see it sitting in (§148).
+const tqOpeningR = (p) => (p.chaton ? G.chatonBoreR(p.boreR) : jewelOuterFor(p.boreR));
+// The screw circle's seat: the head's own radius plus the fit every seat in
+// the movement uses. ONE head at every site — §148 solved it out of the stock
+// floors rather than scaling it with the chaton, so the seat is one radius
+// too.
+const CHATON_SEAT_R = G.CHATON_HEAD_R + G.SEAT_FIT;
+// §148 — HOW MANY SCREWS IS SOLVED PER SITE, not chosen once. Three is the
+// default and the reason is the same one §62 gives for three webs: three
+// points locate a disc against a load from any bearing, and two leave the
+// axis through them carried in bending alone. But a chaton is not an
+// islanded boss — it is a disc already trapped in a counterbore, so two
+// OPPOSED screws capture its rim either side of a diameter and the seat
+// takes the rest. That is why two-screw chatons are a real construction, and
+// where they are used is exactly where this movement needs them: a plate too
+// tight to seat three. The escape pivot is that plate — it stands 3.1 from
+// the balance cut's edge on the pallet-fork side, and three screws 120° apart
+// cannot all find metal in the 150° of plate that leaves. So the count falls
+// out of the seating solve below: three where three seat, two where they do
+// not, and a warning if neither does.
+const CHATON_SCREW_COUNTS = [3, 2];
+// A land put back under an opening laps this far into the stock around it,
+// so no two walls end up coincident — the bearing collar's convention since
+// it was written, named here because the screw seats' lands now share it.
+const SEAT_LAND_LAP = 0.15;
 // Flat annulus, axis along +Z, centred on its own origin — the counterbore's
 // floor collar (see the plate build).
 function ringGeo(innerR, outerR, h) {
@@ -1552,6 +1631,65 @@ function ringGeo(innerR, outerR, h) {
   ], 40);
   g.rotateX(Math.PI / 2); // LatheGeometry revolves about +Y — stand it along Z
   return g;
+}
+// §132 — the CRESCENT a screw seat leaves. The seat is a disc overlapping the
+// counterbore — it has to, because the head laps the chaton's rim — so the
+// plate it consumes is only the part of that disc lying OUTSIDE the bearing
+// collar's footprint: a lune, not a ring, which is why §20's pillar-seat land
+// does not transfer here unaltered. Built from the
+// two circles' real intersection rather than approximated by a wedge, because
+// an approximation that overshoots would put the land back inside the
+// counterbore and one that undershoots would leave the head unsupported.
+//   p  — the pivot (the counterbore's centre), plate-local
+//   st — the seat: { x, y, r }, its centre outside the counterbore (§148 —
+//        far enough out that the screw's own hole is in metal, which is why
+//        the lune is thinner than §132's and the bore below fits inside it)
+//   Ri — where the collar ends and this land may begin
+//   lap — how far the land reaches into the stock around the seat
+//   bore — §148: the TAPPED hole the screw's own body runs down, cut out of
+//          the land it passes through. §20's pillar-seat land is bored the
+//          same way, but at the CLEARANCE radius, because that screw passes
+//          through the plate on its way into a pillar and the plate is not
+//          what holds it. This one threads into the plate, so the hole is the
+//          thread's own radius and the joint is assembled touching.
+function crescentLand(p, st, Ri, lap, height, bore = 0, seg = 28) {
+  const a = st.r + lap;
+  const d = Math.hypot(st.x - p.x, st.y - p.y);
+  const psi = Math.atan2(st.y - p.y, st.x - p.x);
+  // |X − p| = Ri with X = st + a·u(φ): cos(φ − ψ) = (Ri² − d² − a²)/(2ad),
+  // and the same point seen from p is at ψ ± acos((Ri² + d² − a²)/(2·Ri·d)).
+  const cD = (Ri * Ri - d * d - a * a) / (2 * a * d);
+  const cA = (Ri * Ri + d * d - a * a) / (2 * Ri * d);
+  if (!(cD > -1 && cD < 1 && cA > -1 && cA < 1)) {
+    console.warn(`§132: screw seat at (${st.x.toFixed(2)}, ${st.y.toFixed(2)}) does not cross the collar's `
+      + `rim — no land can be put back (Ri ${Ri.toFixed(3)}, seat+lap ${a.toFixed(3)}, reach ${(d + a).toFixed(3)})`);
+    return null;
+  }
+  const D = Math.acos(cD), A = Math.acos(cA);
+  const sh = new THREE.Shape();
+  for (let i = 0; i <= seg; i++) {                    // out along the seat's own rim
+    const phi = psi - D + (2 * D * i) / seg;
+    const x = st.x + Math.cos(phi) * a, y = st.y + Math.sin(phi) * a;
+    if (i === 0) sh.moveTo(x, y); else sh.lineTo(x, y);
+  }
+  for (let i = 0; i <= seg; i++) {                    // …and back along the collar's
+    const th = psi + A - (2 * A * i) / seg;
+    sh.lineTo(p.x + Math.cos(th) * Ri, p.y + Math.sin(th) * Ri);
+  }
+  sh.closePath();
+  // The shank's hole. It has to fall wholly INSIDE the lune or the land would
+  // be cut open on one side: its nearest approach to the collar is
+  // (d − bore) against Ri, which is the wall the screw circle was solved for
+  // minus the collar's own lap.
+  if (bore > 0) {
+    if (d - bore < Ri)
+      console.warn(`§148: chaton screw bore at (${st.x.toFixed(2)}, ${st.y.toFixed(2)}) breaks the bearing `
+        + `collar — ${(d - bore).toFixed(3)} against ${Ri.toFixed(3)}`);
+    const hole = new THREE.Path();
+    hole.absarc(st.x, st.y, bore, 0, Math.PI * 2, true);
+    sh.holes.push(hole);
+  }
+  return new THREE.ExtrudeGeometry(sh, { depth: height, bevelEnabled: false });
 }
 // JEWEL face: like ringGeo but the top face is DISHED — a flat seating ring
 // at the rim, then a smooth concave fall to the bore: the oil sink every
@@ -1714,8 +1852,16 @@ const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate build
 // rotor's sleeve (r 0.75) passes the plate here and the bore is its upper
 // bearing — staff = the sleeve, bore = staff + the train's own side-shake,
 // jewel sized a step over the climb's 1.0 for the larger staff.
-tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR });
-function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {}) {
+// §148 — AND IT IS A CHATON. §132 excluded it because its 0.80 bore would
+// have "forked the spec into two sizes", which was true of §132's chaton:
+// every dimension of it, screws included, was a proportion of the bore. It is
+// not true of §148's, where the screw is solved out of the stock floors and
+// is the SAME screw at every site — so the family is one screw and one
+// parametric ring, and this bore joins it for free. It is also the pivot most
+// worth jewelling: the strike arbor carries the striking wheel, the fastest
+// intermittent load on this plate.
+tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR, chaton: true });
+function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton = false } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
   if (len > 0.05) {
@@ -1725,16 +1871,27 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null } = {})
     arbor.add(shaft);
   }
   tqPivots.push({
-    x: arbor.position.x, y: arbor.position.y, staffR, jewelR,
+    x: arbor.position.x, y: arbor.position.y, staffR, jewelR, chaton,
     boreR: boreR ?? staffR + PIVOT_BORE_CLEAR,
   });
 }
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
 // heart cam's 0.6 bore, which is what the friction coupling grips.)
-for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
-  addUpperPivot(arbor);
+//
+// §132/§148 — EVERY UPPER PIVOT IN THIS PLATE IS A SCREWED GOLD CHATON.
+// §132 landed three (centre, third, fourth) and recorded the narrowing as a
+// choice rather than a constraint: the escape site was "dimensionally the
+// same site as these three", and the strike arbor was left out only because
+// its 0.80 bore would have forked a spec every dimension of which was a
+// proportion of the bore. §148 removes that reason — the screw is solved out
+// of the stock floors and does not scale with the chaton — so the exclusions
+// have nothing left holding them up and the plate's five jewelled pivots
+// carry one family: one screw, one ring turned to two bores.
+for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
+  addUpperPivot(arbor, { chaton: true });
 }
+addUpperPivot(escapeArbor, { chaton: true });
 // The FUSEE arbor is the exception: it does not END in the plate — it
 // passes THROUGH it and finishes in a short LET-DOWN square standing
 // proud of the top face. There is deliberately NO ratchet or click on
@@ -2183,7 +2340,7 @@ const forkCock = (() => {
   // z-band, and the boss is the cap's closest feature to the balance axis.
   // The jewel's counterbore is fork-sized (forkCbR below, bore + 0.55),
   // so the boss keeps a full 0.55 ring of nickel around the stone.
-  const bossFork = chatonOuterFor(forkBore) + 0.15;
+  const bossFork = jewelOuterFor(forkBore) + 0.15;
   // One leg outboard of each axis. Scan the bearing away from the other axis
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
   // bridge compact. hostBossR is the host end's boss radius — it sizes the
@@ -2256,7 +2413,7 @@ const forkCock = (() => {
     );
   }
   // The jewel is seated FULLY: a fork-sized counterbore (bore + 0.55, not
-  // the chaton family's bore + 0.95) sunk 0.65·T deep, so the ruby sits
+  // the jewel family's bore + 0.95) sunk 0.65·T deep, so the ruby sits
   // its whole height in the bore with a 0.35·T bearing collar beneath and
   // a full 0.55 ring of nickel around it — the old shallow CHATON_DEPTH
   // seat left the stone standing more than half proud of a thin wall.
@@ -2388,6 +2545,56 @@ const TQ_CUT = (() => {
   // feature by another cutter radius.
   return { x: P.balance.x, y: P.balance.y, aim, phiOpen, rawRadii: radii, radii: finishCutRadii(radii) };
 })();
+// How much plate stands at (x, y) before the balance cut takes it: positive
+// outside the opening, negative inside. Hoisted out of the pillar seat scan
+// so §62's windows shrink against the SAME description of the cut that the
+// pillars seat against — and, since §148, so the chaton screw circles are
+// phased against it too, which is upstream of both.
+const inCutClearance = (x, y) => {
+  const d = Math.hypot(x - TQ_CUT.x, y - TQ_CUT.y);
+  let phi = Math.atan2(y - TQ_CUT.y, x - TQ_CUT.x) - TQ_CUT.aim;
+  phi = Math.atan2(Math.sin(phi), Math.cos(phi));
+  const radial = d - G.cutEdgeRadius(TQ_CUT, phi);
+  if (Math.abs(phi) <= TQ_CUT.phiOpen) return -Math.abs(radial) - 1; // inside the open wedge
+  return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
+};
+
+// §148 — AND THE CUT GIVES WAY TO A BEARING. The opening's escapement stretch
+// is sized to the pallet fork's swept footprint, and it is a VIEW there and
+// nothing else: the fork tops out at 6.66 and its cock at 6.97, both clear
+// under this plate's 8.12 underside, so no part of that stretch is a running
+// clearance the way the balance quarter is. §62 already decides this case —
+// "where a wanted window and a required web cannot coexist, the WINDOW is
+// what gives" — and a chaton's screw seats are the required web: the escape
+// pivot stands 3.14 from the edge on the fork side and its outermost seat
+// wants 4.27, so without this the plate would be cut through a tapped hole.
+//
+// Each degree of the cut's own polar table is pushed back along its own ray
+// until it stands clear of every disc a chaton site needs. Pushing IN is the
+// only direction taken — the table is otherwise only ever grown, and a clamp
+// that could grow it would let a bearing open the very wedge the balance runs
+// in. The balance's running clearance is the floor and is never crossed.
+const cutFloorR = () => BAL_OUTER_R + TQ_CUT_MARGIN;
+function clampCutToKeeps(keeps) {
+  let worst = 0;
+  for (const table of [TQ_CUT.rawRadii, TQ_CUT.radii]) {
+    for (let i = 0; i < 360; i++) {
+      const a = TQ_CUT.aim + i * DEG2RAD, ux = Math.cos(a), uy = Math.sin(a);
+      for (const k of keeps) {
+        const cx = k.x - TQ_CUT.x, cy = k.y - TQ_CUT.y;
+        const b = ux * cx + uy * cy;                       // where the ray passes the keep
+        const disc = b * b - (cx * cx + cy * cy) + k.r * k.r;
+        if (disc <= 0) continue;                           // the ray misses it entirely
+        const rIn = b - Math.sqrt(disc);                   // ...enters the keep here
+        if (table[i] <= rIn) continue;
+        worst = Math.max(worst, table[i] - Math.max(rIn, cutFloorR()));
+        table[i] = Math.max(rIn, cutFloorR());
+      }
+    }
+  }
+  return worst;
+}
+
 // (The pillars are built with the three-quarter plate they carry, at the end
 // of the assembly — their seating angles are solved against the plate's cut
 // and openings, which don't exist yet.)
@@ -5003,7 +5210,14 @@ const setupWork = new THREE.Group();
 // consumed by the cut check below and by §62's window solver — two openings
 // judging the same boss by two expressions is how PR #140's `MW_TOP` defect
 // survived long enough to matter.
-const pivotBossR = (p) => Math.max(p.jewelR * 1.7, p.boreR);
+//
+// §148 — a CHATON's screws are NOT folded into this radius. Their seats stand
+// off the counterbore in lobes, not a disc, and a disc would condemn sites
+// that fit: they are judged as themselves (`seatCut` below, which also pays
+// for them out of the cut) and they enter every other solve as their own
+// entries in `tqHoles`. What IS folded in is the counterbore, because a
+// chaton's is wider than the flush stone this expression was written for.
+const pivotBossR = (p) => Math.max(p.jewelR * 1.7, p.boreR, p.jewelR ? tqOpeningR(p) : 0);
 
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
@@ -5028,8 +5242,167 @@ checkCutVsPivots();
 // put back underneath it (see the plate build below). Unjewelled bushings
 // (the barrel arbor) keep a plain bore.
 const tqHoles = tqPivots.map((p) => ({
-  x: p.x, y: p.y, r: p.jewelR ? chatonOuterFor(p.boreR) : p.boreR,
+  x: p.x, y: p.y, r: p.jewelR ? tqOpeningR(p) : p.boreR,
+  poly: !!p.chaton,   // §132: drawn as part of a merged outline, not as this circle
 }));
+// §132 — THE CHATON SEATS. A chaton's screw head laps its rim: the inboard
+// edge over the gold, the rest of it biting the plate outside the
+// counterbore. The plate was cut through at exactly the chaton's radius, so the
+// outer part of every head had solid plate where it needs a recess. Each
+// screw therefore costs the plate a seat, and the seats are declared here as
+// CIRCLES so every solver that reads tqHoles — the window solve,
+// tqOpeningClearance, the rib and engraving keep-outs — sees the metal that
+// is actually gone.
+//
+// The MESH cannot take them this way: the seat circles overlap the
+// counterbore, and ExtrudeGeometry triangulates overlapping holes into
+// phantom plate rather than failing. So the mesh gets ONE closed outline per
+// site (tqPolyHoles below) that is exactly the union of these circles, and
+// the two representations are asserted to agree.
+//
+// §148 — AND THE SCREWS BITE. §132's screw circle stood ON the counterbore's
+// rim, which is why its screws had no bodies: any hole there would have been
+// half void. The circle is solved out to `chatonScrewR`, where the tapped
+// hole clears the counterbore by a wall of stock — so each screw's SHANK is
+// drawn and the plate is bored for it, in the land that goes back under the
+// seat. The hole is concentric inside the seat and smaller, so it costs the
+// plate's own cut nothing; it is the land that has to know about it.
+for (const p of tqPivots) {
+  if (!p.chaton) continue;
+  const R = G.chatonScrewR(p.boreR);
+  const seatsAt = (n, phase) => Array.from({ length: n }, (_, i) => {
+    const a = phase + (i / n) * Math.PI * 2;
+    return { x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * R, r: CHATON_SEAT_R, a };
+  });
+  // What a phase LEAVES under its worst screw: a tapped hole wants plate all
+  // round it, so the seat is measured against the balance cut and the plate's
+  // own rim, both as a standoff from the seat's edge.
+  const phaseClear = (n, phase) => Math.min(...seatsAt(n, phase).map((st) =>
+    Math.min(inCutClearance(st.x, st.y), plateR - Math.hypot(st.x, st.y)) - st.r));
+  // One screw points away from the plate's centre — the only bearing the site
+  // itself offers, and the convention wherever the metal allows it. (At the
+  // centre wheel, which IS that centre, the phase falls out as zero.)
+  //
+  // §148 — WHERE IT DOES NOT ALLOW IT, THE SEATING IS SOLVED, and this is a
+  // P3 conflict paid entirely in position space: turn the chaton, and drop a
+  // screw before opening the cut or shrinking a screw solved out of the stock
+  // floors. Screws repeat every 360/n, so that arc is the whole search.
+  const base = Math.atan2(p.y, p.x);
+  let solved = null;
+  for (const n of CHATON_SCREW_COUNTS) {
+    let best = base, bestC = phaseClear(n, base);
+    const STEP = 180;
+    for (let i = 1; i < STEP && bestC < CLEAR_MARGIN; i++) {
+      const ph = base + (i / STEP) * (Math.PI * 2 / n);
+      const c = phaseClear(n, ph);
+      if (c > bestC) { bestC = c; best = ph; }
+    }
+    // Strictly better wins, so a tie keeps the FIRST count tried — three.
+    if (!solved || bestC > solved.clear) solved = { n, phase: best, clear: bestC };
+    if (solved.clear >= CLEAR_MARGIN) break;
+  }
+  // No warning here even when nothing clears: the seating solve spends what
+  // it can in position space, and what is left over the plate pays for by
+  // giving the metal back (clampCutToKeeps below) — the order matters,
+  // because clamping first would hand every site enough room for three screws
+  // and quietly buy it with the escapement view.
+  p.screws = solved.n;
+  p.screwPhase = solved.phase;
+  p.screwClear = solved.clear;
+  p.seats = seatsAt(p.screws, p.screwPhase);
+  for (const st of p.seats) tqHoles.push({ x: st.x, y: st.y, r: st.r, poly: true });
+  // The wall the screw circle was solved for, held here rather than assumed:
+  // the tapped hole must stand clear of the counterbore by STOCK_MIN_U, and
+  // clear of the bearing collar's lapped rim by what is left of it.
+  const wall = R - G.screwTapR(G.CHATON_HEAD_R) - tqOpeningR(p);
+  if (wall < STOCK_MIN_U - 1e-9 || wall < SEAT_LAND_LAP)
+    console.warn(`§148: chaton screw hole at bore ${p.boreR.toFixed(2)} leaves ${wall.toFixed(3)} of plate `
+      + `to the counterbore — floor ${STOCK_MIN_U.toFixed(3)}, collar lap ${SEAT_LAND_LAP}`);
+}
+// The merged outline: for each azimuth about the pivot, the union's edge is
+// the farthest of the counterbore's own radius and the exit radius of any
+// seat circle the ray crosses. The pivot is OUTSIDE every seat circle (a seat
+// stands `chatonScrewR` off it and is `CHATON_SEAT_R` across, and the solve
+// keeps the first larger), so a crossed seat gives one entry and one exit and
+// the exit is the one that matters.
+const chatonOutline = (p, N = 240) => {
+  const R = tqOpeningR(p);
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const th = (i / N) * Math.PI * 2, ux = Math.cos(th), uy = Math.sin(th);
+    let r = R;
+    for (const st of p.seats) {
+      const sx = st.x - p.x, sy = st.y - p.y;
+      const b = ux * sx + uy * sy, c = sx * sx + sy * sy - st.r * st.r;
+      const disc = b * b - c;
+      if (disc > 0) r = Math.max(r, b + Math.sqrt(disc));
+    }
+    pts.push([p.x + ux * r, p.y + uy * r]);
+  }
+  return pts;
+};
+// The discs a chaton site needs the plate to keep: its counterbore, and every
+// screw seat. Declared here — AFTER the seating is solved, which is the order
+// that matters: clamping first would hand every site enough room for three
+// screws and quietly buy it out of the escapement view, where solving first
+// means the plate pays only for what turning the chaton and dropping a screw
+// could not find.
+const CHATON_CUT_KEEPS = [];
+for (const p of tqPivots) {
+  if (!p.chaton) continue;
+  CHATON_CUT_KEEPS.push({ x: p.x, y: p.y, need: tqOpeningR(p), r: 0, p });
+  for (const st of p.seats) CHATON_CUT_KEEPS.push({ x: st.x, y: st.y, need: st.r, r: 0, p, st });
+}
+// Each keep is held to the same margin `checkCutVsPivots` holds a pivot boss
+// to, and it is CONVERGED rather than clamped once, because the clamp and the
+// check do not measure the same thing: the clamp pushes an edge SAMPLE out of
+// a disc (a true distance), while `inCutClearance` reads the edge RADIALLY
+// from the cut's own centre, which under-reports wherever the edge is not
+// square to the ray. One pass landed 0.143 against a 0.15 margin for exactly
+// that reason. So each pass grows the keeps that are still short by what they
+// are short, and it settles in two or three.
+function seatCut() {
+  for (const k of CHATON_CUT_KEEPS) k.r = k.need + CLEAR_MARGIN;
+  for (let pass = 0; pass < 8; pass++) {
+    clampCutToKeeps(CHATON_CUT_KEEPS);
+    let short = 0;
+    for (const k of CHATON_CUT_KEEPS) {
+      const c = Math.min(inCutClearance(k.x, k.y), plateR - Math.hypot(k.x, k.y)) - k.need;
+      if (c < CLEAR_MARGIN) { k.r += CLEAR_MARGIN - c; short = Math.max(short, CLEAR_MARGIN - c); }
+    }
+    if (short < 1e-6) return;
+  }
+  for (const k of CHATON_CUT_KEEPS) {
+    const c = Math.min(inCutClearance(k.x, k.y), plateR - Math.hypot(k.x, k.y)) - k.need;
+    if (c < CLEAR_MARGIN)
+      console.warn(`§148: the plate cannot carry a chaton ${k.st ? 'screw seat' : 'counterbore'} — pivot `
+        + `(${k.p.x.toFixed(2)}, ${k.p.y.toFixed(2)}), ${k.p.screws} screws, at (${k.x.toFixed(2)}, `
+        + `${k.y.toFixed(2)}) leaves ${c.toFixed(3)}, needs ${CLEAR_MARGIN} — the clamp is against the `
+        + 'balance\'s own running clearance and cannot give more');
+  }
+}
+seatCut();
+
+const tqPolyHoles = tqPivots.filter((p) => p.chaton)
+  .map((p) => ({ name: `chaton seat @ ${p.x.toFixed(1)},${p.y.toFixed(1)}`, pts: chatonOutline(p) }));
+// The two representations agree: every outline vertex sits ON the boundary
+// of the union it was built from — inside no circle, and on at least one.
+{
+  let worstIn = 0, worstOn = 0;
+  for (const p of tqPivots) {
+    if (!p.chaton) continue;
+    const R = tqOpeningR(p);
+    for (const [x, y] of chatonOutline(p)) {
+      const ds = [Math.hypot(x - p.x, y - p.y) - R,
+        ...p.seats.map((st) => Math.hypot(x - st.x, y - st.y) - st.r)];
+      worstIn = Math.max(worstIn, -Math.min(...ds));                  // depth inside any circle
+      worstOn = Math.max(worstOn, Math.min(...ds.map(Math.abs)));      // …and off the nearest boundary
+    }
+  }
+  if (worstIn > 1e-9 || worstOn > 1e-9)
+    console.warn(`§132: chaton outline disagrees with its circles — ${worstIn.toExponential(1)} inside, `
+      + `${worstOn.toExponential(1)} off the boundary`);
+}
 tqHoles.push({ x: 34.32, y: 16.89, r: 0.45 }); // §35/§68 (§112: re-synced to the SOLVED rod site) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
@@ -5468,22 +5841,13 @@ registerLabel('Balance cock', balanceCock);
       console.warn('balance-cock reveal: cut edge clamped at the plate rim, bearing', i);
     }
   }
-  // The grown opening must still carry every upper pivot.
+  // The grown opening must still carry every upper pivot — the chaton seats
+  // included, which is why the clamp runs again: `finishCutRadii` rebuilds the
+  // finished table from the raw one and would otherwise hand back the metal
+  // §148 took, at exactly the bearings that need it.
+  seatCut();
   checkCutVsPivots();
 }
-
-// How much plate stands at (x, y) before the balance cut takes it: positive
-// outside the opening, negative inside. Hoisted out of the pillar seat scan
-// (its only consumer until now) so §62's windows shrink against the SAME
-// description of the cut that the pillars seat against.
-const inCutClearance = (x, y) => {
-  const d = Math.hypot(x - TQ_CUT.x, y - TQ_CUT.y);
-  let phi = Math.atan2(y - TQ_CUT.y, x - TQ_CUT.x) - TQ_CUT.aim;
-  phi = Math.atan2(Math.sin(phi), Math.cos(phi));
-  const radial = d - G.cutEdgeRadius(TQ_CUT, phi);
-  if (Math.abs(phi) <= TQ_CUT.phiOpen) return -Math.abs(radial) - 1; // inside the open wedge
-  return Math.min(radial, d * Math.sin(Math.abs(phi) - TQ_CUT.phiOpen));
-};
 
 // ---------------------------------------------------------------------------
 // §62 — OPENWORKED WINDOWS. The three-quarter plate is the largest opaque
@@ -5655,37 +6019,23 @@ const TQ_WINDOW_INTENTS = [
       return r + CHAIN_END_R_OUT + CLEAR_MARGIN;
     },
   },
-  {
-    name: 'escapement',
-    // The entry names the escape wheel and pallet fork as a framed view, and
-    // most of it already IS one: measured against the shipped plate, 96% of
-    // the fork's under-plate footprint and 45% of the escape wheel's stand in
-    // TQ_CUT's open wedge. The fork wants nothing. The escape wheel is the
-    // half-covered one — it pivots IN this plate (which is why it stopped
-    // voting on the cut when the cut was solved), so the rest of it is a
-    // window with its own islanded boss rather than more cutaway.
-    at: () => P.escape,
-    reveal: () => {
-      let r = 0;
-      const v = new THREE.Vector3();
-      escapeArbor.updateMatrixWorld(true);
-      escapeArbor.traverse((o) => {
-        if (!o.isMesh || !o.geometry?.attributes?.position) return;
-        o.geometry.computeBoundingBox();
-        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
-        if (b.max.z > TQ_BOT_Z) return;      // the staff crossing the plate is the boss, not the view
-        const pos = o.geometry.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-          r = Math.max(r, Math.hypot(v.x - P.escape.x, v.y - P.escape.y));
-        }
-      });
-      // A revolver's swept silhouette IS this circle — exactly, at every pose.
-      // No sample net is involved, so no spoke or tooth can fall between two
-      // of them (TODO 7's first blindness class, answered by construction).
-      return r + CLEAR_MARGIN;
-    },
-  },
+  // §148 — THE ESCAPEMENT WINDOW IS WITHDRAWN, and the reason is the thing it
+  // was islanding. §115's entry framed the escape wheel by cutting an annulus
+  // around the pivot and re-attaching the boss on three webs, because the
+  // wheel pivots IN this plate and so could not vote for the kidney cut. That
+  // was already the weakest of the three windows — 96% of the fork's
+  // footprint and 45% of the wheel's stand in TQ_CUT's open wedge, so the
+  // window bought the remaining sliver — and §148 makes it untenable: the
+  // escape pivot now carries a screwed chaton, and its boss is the whole
+  // assembly out to the outer edge of its seats, not the counterbore. A window
+  // is DERIVED from what it frames and SHRINKS against what the plate must
+  // still do; here what the plate must still do is carry a bearing collar and
+  // the site's tapped holes on a boss the window had reduced to a tongue on
+  // three webs — and it is already tight enough there that the seating solve
+  // drops the site to two screws. §62's own rule decides it — "where a wanted
+  // window and a required web cannot coexist, the WINDOW is what gives" — so
+  // the metal goes back and the escapement is read through the kidney cut,
+  // which is where the action is anyway.
   {
     name: 'governor',
     // §115. §112 put the alarm's power tiers under this plate, and the
@@ -6288,8 +6638,11 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
 const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
-  radius: plateR, thickness: TQ_T, cut: TQ_CUT, holes: tqHoles, slots: tqSlots,
-  windows: TQ_WINDOWS.polys,
+  radius: plateR, thickness: TQ_T, cut: TQ_CUT, slots: tqSlots,
+  // The chaton sites' circles are drawn by their merged outline instead —
+  // see tqHoles, where both representations are built and asserted equal.
+  holes: tqHoles.filter((h) => !h.poly),
+  windows: TQ_WINDOWS.polys, polyHoles: tqPolyHoles,
 });
 let tqPlateMesh = null;
 {
@@ -6299,33 +6652,90 @@ let tqPlateMesh = null;
   mesh.receiveShadow = true;
   tqPlateMesh = mesh;
   threeQuarterPlate.add(mesh);
-  // Screwed gold chatons, set into real counterbores. tqHoles opened each
-  // pivot right through at the counterbore diameter, so the BEARING COLLAR —
-  // the full-thickness ring of plate the staff actually runs in — is put
-  // back here, under the counterbore's floor. That collar is what makes the
-  // step visible: plate face, chaton dropped into its recess, then the plate
-  // stepping in to the bore below.
+  // The upper pivots' bearings. tqHoles opened each one right through at the
+  // counterbore diameter, so the BEARING COLLAR — the full-thickness ring of
+  // plate the staff actually runs in — is put back here, under the
+  // counterbore's floor. That collar is what makes the step visible: plate
+  // face, stone or chaton dropped into its recess, then the plate stepping
+  // in to the bore below.
+  //
+  // Two bearings, not one. §132 chose which goes where and §148 finished the
+  // choice: every JEWELLED upper pivot in this plate takes a SCREWED GOLD
+  // CHATON, and the flush RUBBED-IN stone survives only where the plate
+  // carries a plain bushing or where a jewel is set in something that is not
+  // this plate (the fork cock, the balance cock, the lower pivots). Both are
+  // real constructions and both are period-correct; the chaton is the one
+  // README.md claims.
   //
   // Nothing here may stand proud of the plate's top face: the reset and
   // hack rods run just above it, and a chaton perched on the surface would
-  // be straight through them.
+  // be straight through them. That is not a bar to a chaton — makeChaton is
+  // a flush design, its rim level with the face and its screw heads SUNK
+  // into it — and reading it as one is what kept the builder unused.
   for (const p of tqPivots) {
     if (!p.jewelR) continue; // plain bushing (the barrel arbor)
     const collar = new THREE.Mesh(
-      ringGeo(p.boreR, chatonOuterFor(p.boreR) + 0.15, TQ_T - CHATON_DEPTH),
+      ringGeo(p.boreR, tqOpeningR(p) + SEAT_LAND_LAP, TQ_T - CHATON_DEPTH),
       MATS.nickel);
+    collar.name = 'pivotCollar';
     collar.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - CHATON_DEPTH) / 2);
     threeQuarterPlate.add(collar);
+    // §132 — A SCREWED GOLD CHATON, on the going train's three upper pivots.
+    // The builder has existed and complete since the movement had a plate
+    // and was called by NOTHING; MATS.gold's docstring names these as its
+    // reason to be. What it needed was not writing but a host that could
+    // take it, and that is the work here: a depth solved against the stock
+    // floors (CHATON_DEPTH), a seat cut for every screw head, and the land
+    // put back under each seat.
+    if (p.chaton) {
+      const chaton = G.makeChaton({ boreR: p.boreR, thickness: CHATON_DEPTH,
+        screwCount: p.screws, screwPhase: p.screwPhase,
+        // Through the plate and no further — the pillar screws' rule, and for
+        // the same reason: below the underside the thread takes its tapping,
+        // and a tapped hole under a seated screw is invisible in the real
+        // movement too. The head is sunk `headT`, so this is what is left.
+        screwShank: TQ_T - Math.max(STOCK_MIN_U, CHATON_DEPTH * 0.5) });
+      // The builder draws its top face at local z 0 — the flush-mount
+      // convention — so the chaton drops in with its rim level with the
+      // plate's top face and its underside on the collar, exactly where the
+      // rubbed-in stone's underside sat. Nothing here stands proud: the hack
+      // blade passes 0.18 over this face and the heads are SUNK into it.
+      chaton.position.set(p.x, p.y, TQ_T / 2);
+      threeQuarterPlate.add(chaton);
+      // The land under each screw head. §20's pillar seats are the pattern —
+      // cut the seat through, put the bearing land back beneath it, and BORE
+      // it for the shank that passes through — but its RING does not
+      // transfer: part of every seat here lies inside the counterbore, where
+      // there is no plate to restore. So the land is the seat's disc MINUS
+      // the collar's own footprint, a lune, and it stands TQ_T − headT tall
+      // so the head bears on metal rather than floating in its recess.
+      const headT = chaton.userData.headT;
+      const Ri = tqOpeningR(p) + SEAT_LAND_LAP;   // the collar ends here
+      for (const st of p.seats) {
+        const geo = crescentLand(p, st, Ri, SEAT_LAND_LAP, TQ_T - headT,
+          G.screwTapR(G.CHATON_HEAD_R));
+        if (!geo) continue;
+        const land = new THREE.Mesh(geo, MATS.nickel);
+        land.name = 'chatonSeatLand';
+        land.position.z = -TQ_T / 2;
+        threeQuarterPlate.add(land);
+      }
+      continue;   // its stone is the chaton's own; no flush jewel here
+    }
     // Rubbed-in jewel: the ruby FILLS its counterbore, top face flush with
-    // the plate. The screwed-gold-chaton version read as a stone sunk at the
-    // bottom of a gold well — unavoidably, because the plate is thin and
-    // nothing here may stand proud of it (the rods run just above this
-    // face), so the gold rim had to rise around the stone rather than the
-    // stone sitting up in the rim. Filling the recess reads as pressed-in,
-    // and a jewel set directly into the plate is the older, simpler bearing
-    // anyway — what this movement used before chatons were introduced.
+    // the plate — the older, simpler bearing, and what this movement used
+    // everywhere before §132.
+    //
+    // It was once written here that a chaton on this plate was unavoidable
+    // to read as "a stone sunk at the bottom of a gold well" because the
+    // plate is thin. Measured, the depth was the reason and the depth was
+    // not derived: at CHATON_DEPTH 0.35 the stone stood 0.098 mm in a 0.303
+    // mm plate. Solved against the stock floors it is 0.4598 — 31% more
+    // chaton in the same plate — and the well closes. The refusal is
+    // withdrawn where it was wrong; what stays true is that nothing may
+    // stand proud, and neither bearing does.
     const jewel = new THREE.Mesh(
-      jewelFaceGeo(p.boreR, chatonOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
+      jewelFaceGeo(p.boreR, jewelOuterFor(p.boreR), CHATON_DEPTH), MATS.ruby);
     jewel.position.set(p.x, p.y, TQ_T / 2 - CHATON_DEPTH / 2);
     threeQuarterPlate.add(jewel);
   }
@@ -11403,6 +11813,10 @@ registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
 // Pivot post down to the plate (static — carries the pivot bearing).
 const hammerPost = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
+// NAMED, with the arm beside it (§148): both were reaching `INTRA_UNIT_CONTACTS`
+// as `CylinderGeometry#n`, an index into a traversal — a name that moves when
+// anything upstream of it in the unit does.
+hammerPost.name = 'alarmHammerPost';
 hammerPost.position.set(hammerPiv.x, hammerPiv.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
 alarmHammerUnit.add(hammerPost);
 // Pivot group (this is what tick/frame rotates to strike).
@@ -11413,21 +11827,76 @@ alarmHammerUnit.add(alarmHammerPivot);
 // free end. Built in world coords then reparented, so the head lands exactly
 // on the ringing end regardless of the pivot azimuth.
 const ALARM_HEAD_R = 0.6;
-const HAMMER_HEAD_GAP = 0.4; // radial rest gap, head SURFACE → wire outer surface
-// Head centre sits gap + head-radius outside the wire, so its surface rests
-// HAMMER_HEAD_GAP clear of the wire (a strike closes that gap onto the wire).
+const HAMMER_HEAD_GAP = 0.4; // radial rest gap, striking FACE → wire outer surface
+// The EYE — where the arm ends and the head is hung on it — sits gap +
+// ALARM_HEAD_R outside the wire, so the striking face rests HAMMER_HEAD_GAP
+// clear of it (a strike closes that gap onto the wire).
 const headRestR = GONG_R + GONG_WIRE_R + ALARM_HEAD_R + HAMMER_HEAD_GAP;
 const headRest = { x: Math.cos(GONG_A1) * headRestR, y: Math.sin(GONG_A1) * headRestR };
+// §148 — A HAMMER, NOT A MALLET. The striker was a 0.6 ball on a rod, and a
+// ball on a rod is a mallet: it has no face, no peen and no eye, and nothing
+// about it says which way it hits. A hammer's head is a BAR lying along the
+// blow — flat FACE at one end, tapered PEEN at the other, the arm let through
+// an EYE between them — and that shape is most of the difference, the size
+// being the rest of it.
+//
+// Three dimensions, and the first one is the one that must not move:
+//
+//  · WHERE THE FACE STANDS is exactly where the ball's surface stood,
+//    ALARM_HEAD_R inboard of the point the arm already ran to. The head is
+//    built AROUND that point rather than replacing it, so the rest gap, the
+//    arm length, the tail's lever ratio, the cam lift and every §35 hand-off
+//    the alarm is gated on come through this untouched — which is the whole
+//    reason the eye is the anchor and not the head's centre.
+//  · SECTION. A hammer wants mass, and what limits it here is the plane it
+//    swings in: the plate's top face stands (Z_GONG − TQ_TOP_Z) under the
+//    gong's centre line, so the largest section centred on that line is twice
+//    that, less the margin — taken with §102's float-bind centi-unit, the
+//    same allowance the lock collar's own gaps carry, because this lands on
+//    the margin exactly. SQUARE, because nothing distinguishes the two axes
+//    across a round wire: a square face meets the crown with the same margin
+//    either side however the wire is approached, and its corners stand
+//    FURTHER off the wire than its centre, so the rest gap is the face's.
+//  · LENGTH. Twice the section, and the factor is the definition rather than
+//    a taste: a bar is what puts a face and a peen either side of an eye, and
+//    at 1:1 the head is a block on a stick again. Least is what it is taken
+//    at — every unit of head is inertia the alarm's spring has to lift, and
+//    TODO 17's ledger records that the strike's ENERGY is still not derived,
+//    so this head's mass rests on a shape argument and not a dynamic one.
+const ALARM_HEAD_H = 2 * (Z_GONG - TQ_TOP_Z - (CLEAR_MARGIN + 0.01));
+const ALARM_HEAD_L = 2 * ALARM_HEAD_H;
+const ALARM_HEAD_FACE_R = headRestR - ALARM_HEAD_R;   // where the ball's surface was
 {
   const a = new THREE.Vector3(hammerPiv.x, hammerPiv.y, Z_GONG);
   const b = new THREE.Vector3(headRest.x, headRest.y, Z_GONG);
   const len = a.distanceTo(b);
   const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, len, 10), MATS.steel);
+  arm.name = 'alarmHammerArm';
   arm.position.copy(a).add(b).multiplyScalar(0.5).sub(alarmHammerPivot.position);
   arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
   alarmHammerPivot.add(arm);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(ALARM_HEAD_R, 16, 12), MATS.steel);
-  head.position.set(headRest.x - alarmHammerPivot.position.x, headRest.y - alarmHammerPivot.position.y, 0);
+  // The head's SILHOUETTE, drawn in the plane of the blow (u outward from the
+  // face, v the gong's own z) and extruded across it: face, straight cheeks
+  // over the eye, then the peen drawn in. The eye is not cut — the arm ends
+  // inside the head, which is what a hammer hung on its handle looks like and
+  // leaves both bodies closed (TODO 27: an open mesh reads as a colliding one).
+  const H = ALARM_HEAD_H, L = ALARM_HEAD_L;
+  const sh = new THREE.Shape();
+  sh.moveTo(0, -H / 2);
+  sh.lineTo(0, H / 2);
+  sh.lineTo(L * 0.55, H / 2);
+  sh.lineTo(L, H * 0.30);
+  sh.lineTo(L, -H * 0.30);
+  sh.lineTo(L * 0.55, -H / 2);
+  sh.closePath();
+  const hg = new THREE.ExtrudeGeometry(sh, { depth: H, bevelEnabled: false });
+  hg.translate(0, 0, -H / 2);   // centre the width on the gong's plane of swing
+  hg.rotateX(Math.PI / 2);      // the profile's v becomes world z, its depth the tangent
+  hg.rotateZ(GONG_A1);          // ...and its u the radial line the blow runs along
+  hg.translate(Math.cos(GONG_A1) * ALARM_HEAD_FACE_R - alarmHammerPivot.position.x,
+    Math.sin(GONG_A1) * ALARM_HEAD_FACE_R - alarmHammerPivot.position.y, 0);
+  const head = new THREE.Mesh(hg, MATS.steel);
+  head.name = 'alarmHammerHead';
   alarmHammerPivot.add(head);
 }
 // Hammer arm length — the lever the strike amplitude acts on, and the radius
@@ -20176,7 +20645,9 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         V(Math.cos(GONG_A0) * GONG_R, Math.sin(GONG_A0) * GONG_R, TQ_TOP_Z - 0.5)]);
     }
     // the striker — pivot → head inside alarmHammerPivot (the group the
-    // strike law swings), head drawn at its own ALARM_HEAD_R — and the TAIL
+    // strike law swings), the head drawn as the BAR it is (§148; a ring here
+    // was honest of a ball and would be a false claim of a hammer — §78's
+    // rule, and the same reason the cam is drawn from its profile) — and the TAIL
     // on the far side of the pivot, the follower the cam actually lifts:
     // rest azimuth and reach are the constants the solid was cut at
     // (ALARM_TAIL_REST_AZ, ALARM_TAIL_LEN), and the group's rotation
@@ -20187,7 +20658,17 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
     {
       const hx = headRest.x - hammerPiv.x, hy = headRest.y - hammerPiv.y;
       addLine(alarmHammerPivot, [V(0, 0, 0), V(hx, hy, 0)]);
-      addRing(alarmHammerPivot, ALARM_HEAD_R, hx, hy, 0);
+      {
+        // The head's PLAN outline, off the same three constants the solid was
+        // cut from: face at ALARM_HEAD_FACE_R, ALARM_HEAD_L along the blow,
+        // ALARM_HEAD_H across it.
+        const ur = { x: Math.cos(GONG_A1), y: Math.sin(GONG_A1) };
+        const tg = { x: -ur.y, y: ur.x }, w = ALARM_HEAD_H / 2;
+        const at = (u, t) => V(ur.x * (ALARM_HEAD_FACE_R + u) + tg.x * t - hammerPiv.x,
+          ur.y * (ALARM_HEAD_FACE_R + u) + tg.y * t - hammerPiv.y, 0);
+        addLine(alarmHammerPivot, [at(0, -w), at(0, w), at(ALARM_HEAD_L, w),
+          at(ALARM_HEAD_L, -w), at(0, -w)]);
+      }
       addLine(alarmHammerPivot, [V(0, 0, 0),
         V(Math.cos(ALARM_TAIL_REST_AZ) * ALARM_TAIL_LEN, Math.sin(ALARM_TAIL_REST_AZ) * ALARM_TAIL_LEN, 0)]);
     }
