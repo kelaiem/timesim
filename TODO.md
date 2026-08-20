@@ -7511,3 +7511,32 @@ from `makeChaton` today, because pointing it at these would make boot noisy
 before anyone had fixed them — which is rule 6 turned into a nag rather than a
 gate. Fix the setting, then call it there too, and the class is closed for
 every lathe in the movement that has a horizontal top face.
+
+## 71. The arrest pad's seat is solved against the analytic chain, and the built links' phase can scallop 0.05 through it
+
+**Found by §125 Tier B, and it is a waived `windArrestHandoff` row** — the
+first waiver that check has carried. Moving the small-seconds station to
+22.9 re-solved the ¾ plate's webs, the §47 finger scan re-sited the pad's
+azimuth, and at the new azimuth the full-wind row measures the coil
+**0.0498 INTO the pad** against the ±0.03 touch band (the old azimuth
+measured −0.0074 on the same chain).
+
+**The defect is a phase, not a radius.** `solveFinger` seats the pad off
+`linkOuterPtsNear(1)` — a densely sampled model of the full-wind wrap whose
+links are spaced by `curve.getSpacedPoints` from the arc division. The BUILT
+chain's links are anchored from the fusee hook, so their phase along the
+wrap differs from the model's by up to half a pitch — and the top coil's
+local outer surface scallops between a plate's chord and an end cap's bulge
+by ~0.05 across that phase. Whether the pad's azimuth lands on a cap or a
+chord is therefore luck of the station, which is exactly what changed: the
+old azimuth met plate, the new one meets a cap.
+
+**Fix path.** Anchor `linkOuterPtsNear`'s link phase to the same origin the
+chain build uses (the fusee hook's arc position at the given tension) rather
+than letting `getSpacedPoints` choose it — one offset added to the joint
+sampling, after which the model's caps land where the built caps land and
+`restR` comes out of the surface the checker actually reads. The §47
+arrival-profile assert (`proudOf` across the t grid) inherits the same
+correction for free. Until then the row is waived citing this item:
+the arrest still arrests — 0.05 early, pressed into the coil rather than
+kissing it.

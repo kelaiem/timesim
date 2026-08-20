@@ -31,7 +31,7 @@ import {
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
-  BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
@@ -1026,7 +1026,7 @@ const {
   cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR, rsvrWindow,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, alarmCornerR, rsvrWindow,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
@@ -1943,6 +1943,26 @@ barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', whi
 // over-reports by 24% (12.73 for a wheel that actually reaches 10.27) and
 // swings with the pose. Radii about the staff axis are rotation-invariant, so
 // this is the real swept radius.
+// §125 Tier B — the top face of a part's OUTER ANNULUS: max z among vertices
+// beyond rMin of the axis. Exists for the fork cock's z-derivation, which
+// must clear the third/fourth WHEEL DISCS but not the upper-pivot staffs
+// that rise from their centres to the plate — the staffs (r ≤ 0.5, chatons
+// r ≤ 2 and plate-owned) live at the axis, far from the cap's plan
+// footprint, so the annulus floor excludes exactly them.
+function zTopOfAnnulus(obj, c, rMin) {
+  obj.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  let top = -Infinity;
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (Math.hypot(v.x - c.x, v.y - c.y) > rMin) top = Math.max(top, v.z);
+    }
+  });
+  return top;
+}
 function xyRadiusAbout(obj, c, zMax = Infinity, zMin = -Infinity) {
   obj.updateMatrixWorld(true);
   const v = new THREE.Vector3();
@@ -2307,9 +2327,63 @@ const heartFreeAngleAt = (d) => {
 // up in the plate band: a low cap means a short honest staff and the least
 // possible metal in the view. The balance rim shares this z-band, so the
 // leg solve keeps the connecting bar clear of the rim's swept disc in XY.
+const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor reads it):
+                           // a RUNNING clearance as well as a service one: with the
+                           // balance lowered into the plate band, the wheel + its timing
+                           // screws (tips at BAL_OUTER_R) sweep INSIDE the plate's z-band,
+                           // so the cut's base edge (BAL_OUTER_R + this) is what physically
+                           // clears them at every azimuth — the escapement stretch of the
+                           // window is still sized for the eye and the bridge screws.
+// BALANCE COCK section constants, hoisted (§125 Tier B) from the cock's own
+// build below so the fork cock's leg scan can size the corridor it must
+// yield. The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction
+// 0.5 of the length from the slab centre): the head ends exactly one
+// half-width past the staff — no dead nickel overhanging the bearing (the
+// old 0.12 left 0.38·L of slab reaching past the jewel for no structural
+// reason).
+const COCK_W = 6;
+const COCK_FOOT_R = COCK_W / 2;
+const COCK_JEWEL_AT = 0.5;
+const COCK_LEG_R = 1.3;
 const FORK_COCK_T = 1.0;                       // slab thickness
-const FORK_COCK_BOT = L_FORK + FORK_T / 2 + CLEAR_MARGIN;
+// §125 Tier B — the cap can no longer hug the fork alone. At D4 22.9 the
+// third and fourth wheels' RIMS run through the fork-top z-band in plan
+// (measured: fourth rim 8.72 about its axis with the fork axis 10.15 away —
+// the old slab's boss overlapped the rim 0.47, and sweptOverlap CONFIRMED
+// 0.572/1.195 against the two wheels). The slab bottom therefore derives
+// from BOTH things it must clear: the fork it caps, and the top face of the
+// tallest train wheel disc whose plan its metal crosses. The leg solve
+// below needs no matching change — its floor discs measure everything below
+// the slab, so the raised bottom pulls the full wheel rims into the scan by
+// construction, and the leg re-seats itself outboard of them.
+const FORK_COCK_BOT = Math.max(
+  L_FORK + FORK_T / 2,
+  zTopOfAnnulus(thirdArbor, P.third, 3),
+  zTopOfAnnulus(fourthArbor, P.fourth, 3),
+) + CLEAR_MARGIN;
 const FORK_COCK_JEWEL_Z = FORK_COCK_BOT + FORK_COCK_T; // slab top — the jewel sits here
+// §125 Tier B — THE BALANCE COCK'S SPINE CORRIDOR, which the fork leg must
+// YIELD. The cock is the more constrained part: its slab must span the cut
+// from the staff outward along the cut's AIM (the centre→balance azimuth),
+// its feet flanking that spine by at most the hspan its own scan solves —
+// so wherever its scan finally seats it, everything it can reach lies in
+// one corridor about the aim ray. The fork leg is the less constrained
+// part (any azimuth that clears the discs will carry a bridge), so per the
+// design-priority note the conflict is resolved in POSITION space by the
+// freer part moving: the leg's seat and bar keep out of the corridor.
+// Measured before this wall existed: the leg took the nearest feasible
+// seat at (19.6, −32.4), squarely on the cock's only viable bearing band
+// (φ −40°..−31°), and the cock's scan came up empty by −0.298.
+const COCK_SPINE = (() => {
+  const aim = Math.atan2(P.balance.y, P.balance.x);
+  const dir = { x: Math.cos(aim), y: Math.sin(aim) };
+  const len = plateR - Math.hypot(P.balance.x, P.balance.y); // the foot cannot leave the plate
+  const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;  // the cock scan's own leg bound
+  const dyLegMin = BAL_OUTER_R + TQ_CUT_MARGIN - 1.3;        // its shortest leg station (base cut edge − 1.2 − 0.1)
+  const half = Math.sqrt(Math.max(legBound * legBound - dyLegMin * dyLegMin, 0))
+    + COCK_LEG_R * 1.5 + CLEAR_MARGIN;                       // widest flank + pad + the one margin
+  return { dir, len, half };
+})();
 const forkCock = (() => {
   // Everything the legs have to miss on the way down to the base plate.
   // Wheels and levers are given as their SWEPT DISCS about their own axes
@@ -2379,10 +2453,20 @@ const forkCock = (() => {
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
           const mBar = dBar - (BAL_OUTER_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance
-          const short = Math.min(mPlate, mFloor, mBar);
-          if (!near || short > near.short) near = { x, y, reach, a, short, mPlate, mFloor, mBar };
+          // §125 Tier B — the spine corridor (COCK_SPINE above): the seat
+          // node and the whole bar stay out of the balance cock's reach.
+          const latRay = (px, py, rad) => {
+            const rx = px - P.balance.x, ry = py - P.balance.y;
+            const tt = clamp(rx * COCK_SPINE.dir.x + ry * COCK_SPINE.dir.y, 0, COCK_SPINE.len);
+            return Math.hypot(rx - tt * COCK_SPINE.dir.x, ry - tt * COCK_SPINE.dir.y) - COCK_SPINE.half - rad;
+          };
+          let mSpine = latRay(x, y, nodeR);
+          for (let k = 1; k < 8; k++)
+            mSpine = Math.min(mSpine, latRay(host.x + (vx * k) / 8, host.y + (vy * k) / 8, barHW));
+          const short = Math.min(mPlate, mFloor, mBar, mSpine);
+          if (!near || short > near.short) near = { x, y, reach, a, short, mPlate, mFloor, mBar, mSpine };
           if (short < 0) continue;
-          if (!best || reach < best.reach) best = { x, y, reach, a, short, mPlate, mFloor, mBar };
+          if (!best || reach < best.reach) best = { x, y, reach, a, short, mPlate, mFloor, mBar, mSpine };
         }
       }
       if (best) break; // nearest feasible bearing to the ideal wins — unchanged
@@ -2401,16 +2485,18 @@ const forkCock = (() => {
     // failure, which is the honest verdict for a balance the layout cannot
     // carry — and the rest of the boot still runs, so §76 can name the wall
     // that stops it with numbers instead of inferring it from a crash.
-    const wall = legB.mPlate <= legB.mFloor && legB.mPlate <= legB.mBar
-      ? `the plate runs out (radius ${plateR.toFixed(2)})`
-      : legB.mFloor <= legB.mBar
-        ? "a swept disc below the seat (train wheel, fork, hammer or the balance's own footprint)"
-        : `the bar's edge against the balance's swept disc (BAL_OUTER_R ${BAL_OUTER_R.toFixed(2)})`;
+    const walls = [
+      [legB.mPlate, `the plate runs out (radius ${plateR.toFixed(2)})`],
+      [legB.mFloor, "a swept disc below the seat (train wheel, fork, hammer or the balance's own footprint)"],
+      [legB.mBar, `the bar's edge against the balance's swept disc (BAL_OUTER_R ${BAL_OUTER_R.toFixed(2)})`],
+      [legB.mSpine, `the balance cock's spine corridor (half-width ${COCK_SPINE.half.toFixed(2)} about the cut aim)`],
+    ].sort((a, b) => a[0] - b[0]);
+    const wall = walls[0][1];
     console.warn(
       `fork cock: no clear footing for its leg — best near-miss is short by ${(-legB.short).toFixed(3)} `
       + `at (${legB.x.toFixed(2)}, ${legB.y.toFixed(2)}), reach ${legB.reach.toFixed(2)}, `
       + `bearing ${(((legB.a / DEG2RAD) % 360 + 360) % 360).toFixed(1)}°; bound by ${wall} `
-      + `[margins: plate ${legB.mPlate.toFixed(3)}, floor ${legB.mFloor.toFixed(3)}, bar ${legB.mBar.toFixed(3)}; each needs ≥ 0]. `
+      + `[margins: plate ${legB.mPlate.toFixed(3)}, floor ${legB.mFloor.toFixed(3)}, bar ${legB.mBar.toFixed(3)}, spine ${legB.mSpine.toFixed(3)}; each needs ≥ 0]. `
       + 'Seated there anyway so the rest of the boot reports — the cock is KNOWN BAD at this balance size.',
     );
   }
@@ -2475,12 +2561,8 @@ const forkCock = (() => {
 // keeps every scrap of material that nothing needs — which is what stops this
 // from becoming a skeleton frame. Sampled across the beat because the fork
 // banks and the escape wheel turns.
-const TQ_CUT_MARGIN = 0.5; // now a RUNNING clearance as well as a service one: with the
-                           // balance lowered into the plate band, the wheel + its timing
-                           // screws (tips at BAL_OUTER_R) sweep INSIDE the plate's z-band,
-                           // so the cut's base edge (BAL_OUTER_R + this) is what physically
-                           // clears them at every azimuth — the escapement stretch of the
-                           // window is still sized for the eye and the bridge screws.
+// (TQ_CUT_MARGIN is hoisted above the fork cock's build — the leg scan's
+// spine-corridor derivation reads it; the running-clearance note travels.)
 // Table finishing, shared by the initial solve and the post-cock second
 // pass (see the balance-cock reveal further down): a per-degree max is a
 // saw edge, and a plate edge is milled by a cutter of finite radius —
@@ -3280,6 +3362,11 @@ const lowRodObstaclesFor = (p, kw) => [
   { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
   { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
   { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
+  // §125 Tier B — the escape arbor joins the corridor's walls: no route ever
+  // passed it until the mirrored hack rod's southern dogleg did (inspection
+  // read Escape wheel ⇄ Hack rod FORBIDDEN on the first route the widened
+  // elbow found). Same collar model as the fourth, one arbor on.
+  { x: p.escape.x, y: p.escape.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the escape arbor’s lower collar', of: () => escapeArbor },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
@@ -3436,7 +3523,68 @@ const STOPWORK_AT_POST = {
   P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
   plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
   bearingObstaclesAt: stopBearingObstaclesAt,
-  lowRodObstacles: LOW_ROD_OBSTACLES,
+  // §125 Tier B — the HACK rod's corridor gains the reset hammer's swept
+  // disc. The shared LOW_ROD_OBSTACLES list never carried it because no
+  // route went near it: the balance sat on the stem line's other side, so
+  // the rod left the lever AWAY from the hammer. At D4 22.9 the balance
+  // crossed the line, the lever/hack side mirrored to follow it (sideSign —
+  // the derivation working, not failing), and the mirrored rod runs through
+  // the hammer's swing; inspection read the pair FORBIDDEN across six axes.
+  // The row extends ONLY this solve's list — the reset rod's own elbow
+  // TERMINATES on the hammer's tail, so the shared list must stay blind to
+  // it or that solve refuses its own destination.
+  lowRodObstacles: [...LOW_ROD_OBSTACLES,
+    // The hammer's true swept region is the ARC its lever covers between
+    // parked and struck — NOT a full disc about its pivot (a first cut used
+    // xyRadiusAbout's whole-rotation disc, which walled off the entire
+    // southern corridor and left the bearing scan with no station at all).
+    // Covering discs along the lever at both stroke ends and mid-swing,
+    // each the lever's half-width plus the roller and the rod's own
+    // radius+margin, state the same claim at the metal's actual size.
+    ...(() => {
+      // MEASURED from the built hammer, not re-derived: a first cut placed
+      // these discs from hammerBaseAngle and missed the metal entirely (the
+      // lever's local frame composes with the solved retract, and the rod's
+      // knuckle ended 1.15 INSIDE the hammer's box while the elbow solve
+      // read clear). The parked mesh's own vertex band about the pivot is
+      // the truth; the seated pose is rotation.z → 0, so the swept band is
+      // the parked band widened by the parked rotation.
+      const piv = hammerPivotPos;
+      let azLo = Infinity, azHi = -Infinity, rMax = 0;
+      hammerGroup.updateMatrixWorld(true);
+      const _hv = new THREE.Vector3();
+      hammerGroup.traverse((o) => {
+        if (!o.isMesh || !o.geometry?.attributes?.position) return;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          _hv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          const dx = _hv.x - piv.x, dy = _hv.y - piv.y;
+          const r = Math.hypot(dx, dy);
+          // Near-pivot metal SURROUNDS the pivot (hub, clevis), so it has
+          // no meaningful azimuth — a first band included it and wrapped
+          // to a ~270° phantom sector that walled off every route. The
+          // hub gets its own single disc below; the BAND is the arm's,
+          // measured only from the metal that actually reaches out.
+          if (r < 2.5) continue;
+          rMax = Math.max(rMax, r);
+          const az = Math.atan2(dy, dx);
+          azLo = Math.min(azLo, az); azHi = Math.max(azHi, az);
+        }
+      });
+      const dSeat = -hammerGroup.rotation.z; // parked → seated sweep
+      const lo = azLo + Math.min(0, dSeat), hi = azHi + Math.max(0, dSeat);
+      const rollR = hammerLever.userData.rollerR || 1.0;
+      const rDisc = HAMMER_W / 2 + rollR + ROD_KNUCKLE_R + CLEAR_MARGIN;
+      const out = [{ x: piv.x, y: piv.y, r: 2.5 + ROD_KNUCKLE_R + CLEAR_MARGIN,
+                     what: 'the reset hammer’s hub', of: () => hammerGroup }];
+      for (let k = 0; k < 5; k++) {
+        const a = lo + ((hi - lo) * k) / 4;
+        for (const f of [0.4, 0.75, 1.02])
+          out.push({ x: piv.x + Math.cos(a) * rMax * f, y: piv.y + Math.sin(a) * rMax * f,
+                     r: rDisc, what: 'the reset hammer’s swing', of: () => hammerGroup });
+      }
+      return out;
+    })()],
   rubyFlare: G.HACK_RUBY_FLARE,
 };
 // The same inputs with the rod moved onto its own pin, plus the fraction that
@@ -5427,14 +5575,9 @@ tqSlots.push({ ax: 30.40, ay: 0.86, bx: 33.04, by: 1.32, r: 0.31 }); // pressed 
 // landed within a unit of the escape wheel's upper jewel. So the bearing is
 // scanned for the seat with the most clearance, over the obstacles that
 // actually share the pedestal's z band.
-const COCK_W = 6;
-const COCK_FOOT_R = COCK_W / 2;
-// The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction 0.5 of
-// the length from the slab centre): the head ends exactly one half-width
-// past the staff — no dead nickel overhanging the bearing (the old 0.12
-// left 0.38·L of slab reaching past the jewel for no structural reason).
-const COCK_JEWEL_AT = 0.5;
-const COCK_LEG_R = 1.3;
+// (COCK_W / COCK_FOOT_R / COCK_JEWEL_AT / COCK_LEG_R are hoisted above the
+// fork cock's build — its leg scan yields the balance cock's spine corridor,
+// which is sized from them. The head-arc note travels with them.)
 const BALANCE_COCK = (() => {
   const obstacles = [];
   for (const p of tqPivots) obstacles.push({ x: p.x, y: p.y, r: p.jewelR * 1.7 });
@@ -5503,7 +5646,8 @@ const BALANCE_COCK = (() => {
     const t = clamp(((x - o.ax) * vx + (y - o.ay) * vy) / L2, 0, 1);
     return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
   };
-  let best = null;
+  let best = null, near = null;
+  const scanRows = [];
   for (let d = -180; d < 180; d += 1) {
     const phi = d * DEG2RAD;
     const cs = Math.cos(TQ_CUT.aim + phi), sn = Math.sin(TQ_CUT.aim + phi);
@@ -5516,8 +5660,14 @@ const BALANCE_COCK = (() => {
     // seats whose phantom foot grazed something that isn't there.
     const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
     const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1; // built slab-tail reach
+    // TODO 30's graded-margin pattern (the fork cock's precedent): every
+    // bound below tags the clearance it sets, so a scan that finds nothing
+    // can say WHICH wall stopped it and by how much — §125 Tier B hit the
+    // bare 'no clear seat' warn and had to instrument before it could fix.
+    let clrTag = 'slab on plate';
     let clr = plateR - CLEAR_MARGIN
       - (Math.hypot(P.balance.x + cs * dTail, P.balance.y + sn * dTail) + COCK_W / 2); // slab stays on the plate
+    const cut = (v, tag) => { if (v < clr) { clr = v; clrTag = tag; } };
     // The T-foot's two LEG PADS must clear the obstacle set. Their
     // half-span is φ-dependent (it is solved from the balance's swept
     // radius at the bar's distance — see the build below): test both pads
@@ -5529,8 +5679,13 @@ const BALANCE_COCK = (() => {
     for (const s of [-1, 1]) {
       const lx = P.balance.x + cs * dyLeg - sn * s * hspan;
       const ly = P.balance.y + sn * dyLeg + cs * s * hspan;
-      clr = Math.min(clr, plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR));
-      for (const o of obstacles) clr = Math.min(clr, distTo(o, lx, ly) - padR);
+      cut(plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR), 'leg pad on plate');
+      for (let oi = 0; oi < obstacles.length; oi++) {
+        const o = obstacles[oi];
+        cut(distTo(o, lx, ly) - padR, o.ax === undefined
+          ? `leg pad vs obstacle #${oi} (disc r ${o.r.toFixed(1)} at ${o.x.toFixed(1)}, ${o.y.toFixed(1)})`
+          : `leg pad vs obstacle #${oi} (segment r ${o.r.toFixed(1)} from ${o.ax.toFixed(1)}, ${o.ay.toFixed(1)})`);
+      }
     }
     // The SLAB and T-BAR ride in the plate band (z ≈ COCK_MID_Z ± T/2),
     // above the pedestal obstacles — but the stop work's MAST + hanging
@@ -5559,14 +5714,34 @@ const BALANCE_COCK = (() => {
         bx: P.balance.x + cs * tailD, by: P.balance.y + sn * tailD, r: 0 };
       const bar = { ax: P.balance.x + cs * dyLeg - sn * hspan, ay: P.balance.y + sn * dyLeg + cs * hspan,
         bx: P.balance.x + cs * dyLeg + sn * hspan, by: P.balance.y + sn * dyLeg - cs * hspan, r: 0 };
-      clr = Math.min(clr, segSeg(slab) - COCK_W / 2 - mastR);
-      clr = Math.min(clr, segSeg(bar) - 1.2 - COCK_LEG_R - mastR);
+      cut(segSeg(slab) - COCK_W / 2 - mastR, 'slab vs stop-work mast');
+      cut(segSeg(bar) - 1.2 - COCK_LEG_R - mastR, 'T-bar vs stop-work mast');
     }
+    // §125 Tier B — THE WHOLE FOOT STAYS IN THE CUT WEDGE. The legs drop
+    // from the slab tail to the base plate through the plate's z-band,
+    // which only the cutaway leaves open — outside it they stand through
+    // solid plate (measured: at the moved balance the scan seated the cock
+    // at φ 72° with its pads past the wedge edge, and clearances read the
+    // pair at 0). Each pad's azimuth, widened by its own angular radius at
+    // its distance, must stay inside ±phiOpen; graded like every other
+    // wall, in arc length at the pad's radius.
+    for (const sgn of [-1, 1]) {
+      const px = cs * dyLeg - sn * sgn * hspan, py = sn * dyLeg + cs * sgn * hspan;
+      const padDist = Math.hypot(px, py);
+      const _da = Math.atan2(py, px) - TQ_CUT.aim;
+      const padAz = Math.abs(Math.atan2(Math.sin(_da), Math.cos(_da)));
+      const padHalf = Math.atan2(padR + CLEAR_MARGIN, padDist);
+      cut((TQ_CUT.phiOpen - padAz - padHalf) * padDist, 'foot pad outside the cut wedge');
+    }
+    if (!near || clr > near.clr) near = { phi, dFoot, clr, tag: clrTag };
+    scanRows.push({ deg: d, clr: +clr.toFixed(3), tag: clrTag });
     if (clr < CLEAR_MARGIN) continue;
     if (!best || clr > best.clr) best = { phi, dFoot, clr };
   }
+  if (typeof window !== 'undefined') window.__cockScan = scanRows;
   if (!best) {
-    console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing');
+    console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing'
+      + (near ? ` — best near-miss ${near.clr.toFixed(3)} vs ${CLEAR_MARGIN} at φ ${(near.phi / DEG2RAD).toFixed(1)}°, bound by ${near.tag}` : ''));
     const phi = Math.atan2(P.fork.y - P.balance.y, P.fork.x - P.balance.x) - TQ_CUT.aim;
     const dFoot = BAL_OUTER_R + COCK_FOOT_R + CLEAR_MARGIN;
     best = { phi, dFoot, clr: 0 };
@@ -6571,6 +6746,32 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
         const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / L2, 0, 1);
         c = Math.min(c, Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy) - TQ_LAND_MIN);
       }
+    }
+    // §125 Tier B — the BALANCE COCK's built footprint. The cock seats
+    // before the pillars are solved, and at the moved balance its bearing
+    // can leave the cut wedge (which used to cover it here implicitly via
+    // inCutClearance) — measured before this cover existed: the seat scan
+    // stood a pillar whose plate screw ended 0.011 from the cock's flank.
+    // The pillar is the freest part on this plate, so it yields: the
+    // cock's spine slab and its T-bar (both re-stated from the cock
+    // build's own formulas at its chosen bearing) join the obstacle set.
+    {
+      const ca = TQ_CUT.aim + BALANCE_COCK.phi;
+      const dirX = Math.cos(ca), dirY = Math.sin(ca);
+      const tail = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi) - 0.1;
+      const dyLeg = tail - 1.2;
+      const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;
+      const hspan = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLeg * dyLeg, 0)));
+      c = Math.min(c, stadium({ ax: P.balance.x, ay: P.balance.y,
+        bx: P.balance.x + dirX * tail, by: P.balance.y + dirY * tail,
+        r: COCK_W / 2 + CLEAR_MARGIN }));
+      const pad = COCK_LEG_R * 1.5;
+      c = Math.min(c, stadium({
+        ax: P.balance.x + dirX * dyLeg - dirY * (hspan + pad),
+        ay: P.balance.y + dirY * dyLeg + dirX * (hspan + pad),
+        bx: P.balance.x + dirX * dyLeg + dirY * (hspan + pad),
+        by: P.balance.y + dirY * dyLeg - dirX * (hspan + pad),
+        r: pad + CLEAR_MARGIN }));
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
@@ -8264,13 +8465,14 @@ const dialFace = new THREE.Group();
 dialFace.rotation.y = Math.PI;
 dialGroup.add(dialFace);
 
-// dialRadius / RESERVE_LOCAL / SECONDS_LOCAL / subDialR — solved in
-// solveKeyless (layout.js, §13 step 3b) with the plate radius they hang
-// off; destructured at the frame solve up top. The constraint comments
-// (sub-dial symmetry, the §25 C well-radius cap) moved with the
-// expressions. Consumed here by the dial build:
-const reserveR = subDialR;
-const secondsSubR = subDialR;
+// dialRadius / RESERVE_LOCAL / SECONDS_LOCAL / reserveWellR / secondsWellR —
+// solved in solveKeyless (layout.js, §13 step 3b) with the plate radius they
+// hang off; destructured at the frame solve up top. §125 Tier B split the
+// wells (the seconds took the plate-flat ceiling, the reserve kept its
+// readable size), so the two radii arrive separately now. Consumed here by
+// the dial build:
+const reserveR = reserveWellR;
+const secondsSubR = secondsWellR;
 // --- The reserve scale, owned in ONE place (TODO 18) -----------------------
 // Three things must agree: the graduation painted on the well, the travel of
 // the hand over it, and the reduction train's ratio. They used to be three
@@ -8377,22 +8579,22 @@ const SUBDIAL_RECESS = 0.5;
 // TODO 26 lifted them out of it. So this asserts the ceiling that binds now,
 // in the same form — bore + wall + the one margin — and reports the achieved
 // and required numbers per rule 6.
-for (const [nm, cy] of [['reserve', RESERVE_LOCAL.y], ['seconds', -SECONDS_LOCAL.y]]) {
-  const innerEdge = cy - subDialR;                     // the ring's closest approach to the dial centre
+for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['seconds', -SECONDS_LOCAL.y, secondsWellR]]) {
+  const innerEdge = cy - wr;                           // the ring's closest approach to the dial centre
   const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
   // §94 tier A — the epsilon is a FLOAT-EQUALITY guard, not a widened budget.
-  // subDialR solves to `min(station) − (need + CLEAR_MARGIN)` when derived,
-  // so for whichever station is the inner one this web is CLEAR_MARGIN by
-  // algebra; while both stations were literals that arithmetic happened to
-  // land on the right side of the last bit, and a spec'd d4 re-does it at
-  // an arbitrary value — every inward station reported a 1e-16 breach of
-  // its own definition. Measured at d4 6: web 0.14999999999999991 vs 0.15.
-  // §97 retired the finish factor and CLAMPS a spec'd radius to the same
-  // ceiling in the solver, so this assert should now be unreachable except
-  // through a defect in that clamp — which is exactly why it stays.
+  // §125 Tier B made every well solve to `its station − (need + CLEAR_MARGIN)`
+  // when derived, so this web is CLEAR_MARGIN by algebra PER WELL now (it
+  // used to hold only for whichever station was the min); a spec'd d4 or
+  // rsvr re-does the arithmetic at an arbitrary value — every inward station
+  // reported a 1e-16 breach of its own definition before the epsilon.
+  // Measured at d4 6: web 0.14999999999999991 vs 0.15. §97 retired the
+  // finish factor and CLAMPS a spec'd radius to the ceiling in the solver,
+  // so this assert should now be unreachable except through a defect in
+  // that clamp — which is exactly why it stays.
   if (innerEdge - need < CLEAR_MARGIN - 1e-9)
     console.warn(`${nm} sub-dial pocket vs the dial's centre bore: web ${(innerEdge - need).toFixed(2)}, need ${CLEAR_MARGIN} `
-      + `(well r ${subDialR.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
+      + `(well r ${wr.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
       + `— the well radius outran the ceiling the solver holds it under`);
 }
 
@@ -8981,8 +9183,8 @@ const JMP_AZ = (() => {
   const obstacles = [
     { x: capLocal.x - MW_STUD.x, y: capLocal.y - MW_STUD.y, r: 1.8 }, // setting cap + arbor head (stud-relative)
     { x: -MW_STUD.x, y: -MW_STUD.y, r: ALARM_TUBE_OUTER + 0.6 },      // dial-centre tube stack (outermost: the §25 C alarm tube)
-    { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
-    { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
+    { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: reserveWellR + 0.5 },
+    { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: secondsWellR + 0.5 },
   ];
   let best = null;
   for (let d = 0; d < 360; d += 2) {
@@ -9266,7 +9468,66 @@ const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.b
 // the second stage's module: d0 = m0·(P0+W1)/2, d1 = span − d0 = m1·(P1+W2)/2.
 const rsvModule0 = 0.34;
 const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
-const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+// §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied.
+// The mirrored setting traverse's cap corner stands where the collinear w1
+// rim ran (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN;
+// the face gap measured ~0.07). A mesh's centre distance is fixed but its
+// BEARING is free — the fold currency — so w1 takes the smallest swing
+// about the barrel that clears the BUILT traverse (both bevel-corner cones
+// and the connecting rod, which exist by this line) by the one margin, and
+// stage two's module then derives from the TRUE w1→station distance.
+// swing = 0 keeps every original expression verbatim (the a+(b−a)≠b rule).
+const rsvW1TipR = (rsvModule0 * (rsvTeethW1 + 2)) / 2;
+const rsvSwing = (() => {
+  // The wall is MEASURED, not modelled: a cone-radius model of the corner
+  // gears under-read the metal (the bevel bodies trail off the corner
+  // points along their shafts), so the scan reads the BUILT keyless
+  // traverse's vertices inside w1's own z-band and holds the wheel's tip
+  // circle off every one of them.
+  const zLo = Z_RSV - 0.5 - CLEAR_MARGIN, zHi = Z_RSV + 0.5 + CLEAR_MARGIN;
+  const pts = [];
+  keyless.updateMatrixWorld(true);
+  const _kv = new THREE.Vector3();
+  // Vertices AND triangle-edge midpoints: the traverse gears are coarse
+  // extrudes, and a facet's midpoint sags inside its endpoints — measured,
+  // the vertex-only wall under-read the nearest bevel flank by ~0.06 and
+  // accepted a swing the face metric refuses.
+  const _kv2 = new THREE.Vector3();
+  keyless.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      _kv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (_kv.z >= zLo && _kv.z <= zHi) pts.push([_kv.x, _kv.y]);
+      if (i + 1 < pos.count) {
+        _kv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
+        const mz = (_kv.z + _kv2.z) / 2;
+        if (mz >= zLo && mz <= zHi) pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2]);
+      }
+    }
+  });
+  const clearAt = (dl) => {
+    const cs = Math.cos(dl), sn = Math.sin(dl);
+    const wx = P.barrel.x + (rsvU.x * cs - rsvU.y * sn) * rsvD0;
+    const wy = P.barrel.y + (rsvU.x * sn + rsvU.y * cs) * rsvD0;
+    let c = Infinity;
+    for (const q of pts) c = Math.min(c, Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR);
+    return c;
+  };
+  if (clearAt(0) >= CLEAR_MARGIN) return 0;
+  for (let d = 1; d <= 30; d++)
+    for (const sgn of [1, -1])
+      if (clearAt(sgn * d * DEG2RAD) >= CLEAR_MARGIN) return sgn * d * DEG2RAD;
+  console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse — keeping the line; the battery judges it');
+  return 0;
+})();
+const rsvW1U = rsvSwing === 0 ? rsvU
+  : { x: rsvU.x * Math.cos(rsvSwing) - rsvU.y * Math.sin(rsvSwing),
+      y: rsvU.x * Math.sin(rsvSwing) + rsvU.y * Math.cos(rsvSwing) };
+const rsvW1PosSolved = { x: P.barrel.x + rsvW1U.x * rsvD0, y: P.barrel.y + rsvW1U.y * rsvD0 };
+const rsvModule1 = rsvSwing === 0
+  ? (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2)
+  : (2 * Math.hypot(rsvPivotXY.x - rsvW1PosSolved.x, rsvPivotXY.y - rsvW1PosSolved.y)) / (rsvTeethP1 + rsvTeethW2);
 // §94 tier C — THE MODULE'S OWN BOUNDS, jointly in (rsvr, reserveh): the
 // span solves the module, the hours solve w2's tooth count, and neither
 // spec key can see the other's consequence — a moved station silently
@@ -9284,18 +9545,26 @@ const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
 //    stays the instrument for the marginal one.
 //  · CEILINGS — TODO 33's form (bore + wall + the one margin), radial:
 //    w2's tip circle against the dial centre's tube stack, and against
-//    its own well's ring wall (subDialR shrinks as the station walks in,
+//    its own well's ring wall (the reserve well shrinks as the station walks in,
 //    while a longer reserveh GROWS the tip — the joint worst case).
 const RSV_TOOTH_FLOOR_MM = 0.12;
-const rsvTrainWarnsAt = (station, sdR = subDialR) => {
-  // §97 — sdR: the well radius the candidate carries. The boot call passes
-  // nothing and reads the built value; the subdial handle's shadow passes
-  // its candidate so the tip-vs-well ceiling is judged against the well
-  // being PROPOSED, not the one built.
+const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
+  // §125 Tier B — m1Override: the BOOT call passes the built rsvModule1,
+  // which can differ from the collinear ideal below when w1's bearing has
+  // swung off the line (rsvSwing). Candidate stations keep the ideal — a
+  // candidate's own swing would re-solve at build, and the ideal is its
+  // lower bound on the module.
+  // §97/§125 Tier B — sdR: the RESERVE well radius the candidate carries.
+  // The boot call passes nothing and reads the built value; the reserve
+  // handle's shadow passes the candidate station's own well (station −
+  // SUBDIAL_INBOARD_CLEAR, the grows-from-the-centre law) so the
+  // tip-vs-well ceiling is judged against the well being PROPOSED, not the
+  // one built. §97's key no longer enters here at all — it pins the
+  // SECONDS well, which this train never meets.
   const out = [];
   const pivot = { x: P.dial.x - station.x, y: P.dial.y + station.y };
   const span = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
-  const m1 = (2 * (span - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+  const m1 = m1Override !== null ? m1Override : (2 * (span - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
   if (m1 <= 0) {
     out.push(`reserve train: the station sits inside stage one's centre distance `
       + `(barrel→pivot ${span.toFixed(2)} vs d0 ${rsvD0.toFixed(2)}) — the second mesh has no metal `
@@ -9317,10 +9586,10 @@ const rsvTrainWarnsAt = (station, sdR = subDialR) => {
   if (w2Tip > sdR - DIAL_WALL_HALF - CLEAR_MARGIN)
     out.push(`reserve train: w2's tip circle ${w2Tip.toFixed(2)} reaches its own well's ring wall — `
       + `the well allows ${(sdR - DIAL_WALL_HALF - CLEAR_MARGIN).toFixed(2)} `
-      + `(subDialR ${sdR.toFixed(2)} − wall − margin)`);
+      + `(reserve well ${sdR.toFixed(2)} − wall − margin)`);
   return out;
 };
-for (const m of rsvTrainWarnsAt(RESERVE_LOCAL)) console.warn(m);
+for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) console.warn(m);
 
 const reservePinion0 = G.makePinion({ module: rsvModule0, teeth: rsvTeethP0, thickness: 1.2, material: MATS.steel });
 const rsvWheel1 = G.makeGear({ module: rsvModule0, teeth: rsvTeethW1, thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
@@ -9330,7 +9599,7 @@ const rsvWheel2 = G.makeGear({ module: rsvModule1, teeth: rsvTeethW2, thickness:
 rsvWheel1.rotation.z = Math.PI / rsvTeethW1;
 rsvWheel2.rotation.z = Math.PI / rsvTeethW2;
 
-const rsvW1Pos = { x: P.barrel.x + rsvU.x * rsvD0, y: P.barrel.y + rsvU.y * rsvD0 };
+const rsvW1Pos = rsvW1PosSolved; // §125 Tier B — the solved bearing (identical to the line at swing 0)
 
 const rsvArbor0 = new THREE.Group(); // p0 — slip-coupled on the barrel arbor axis
 rsvArbor0.position.set(P.barrel.x, P.barrel.y, Z_RSV);
@@ -9492,7 +9761,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // carrier flange: retention + t
 const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_I1_TEETH = 28, ALARM_SET_I2_TEETH = 37, ALARM_SET_PINION_TEETH = 10;
 // TWO ASYMMETRIC idlers (28 t, 37 t) on a DOGLEG. The corridor is walled on
 // every side, each bound measured: the two sub-dial WELL RINGS (radius and
-// centres read from the solve — `subDialR` about RESERVE_LOCAL/SECONDS_LOCAL,
+// centres read from the solve — per-well radii about RESERVE_LOCAL/SECONDS_LOCAL,
 // r 10.2 about (0, ±15.4) when this route was cut, r 11.85 since TODO 33
 // re-derived the wells' inboard ceiling — whose walls descended through this
 // exact z-band when the dial was a sheet; the owner SAW the first 40 t idler
@@ -9759,8 +10028,8 @@ const alarmSelRing = new THREE.Group();
     // (it is at −15.5, on the fourth wheel's axis, not −15.4). Same
     // dial-local → world flip the ALARM_SET_WALLS rings use: (−Lx, +Ly).
     for (const [nm, c, rr] of [
-      ['12-well ring', { x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y }, subDialR],
-      ['seconds-well ring', { x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y }, subDialR],
+      ['12-well ring', { x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y }, reserveWellR],
+      ['seconds-well ring', { x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y }, secondsWellR],
     ]) {
       const d = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - rr) - DIAL_WALL_HALF - 0.14;
       say(`post az${Math.round(az / DEG2RAD)} vs ${nm}`, d);
@@ -10386,9 +10655,9 @@ const ALARM_SET_WALLS = [
   { name: 'winding climb', x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, lo: -Infinity, hi: Infinity },
   { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
-  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: subDialR, halfW: DIAL_WALL_HALF,
+  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: reserveWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
-  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: subDialR, halfW: DIAL_WALL_HALF,
+  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
   ...alarmSetWallsOf(reserveTrain, 'reserve train'),
@@ -11798,6 +12067,31 @@ const GONG_A1 = 15 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the ha
 // every one of them untouched. Anchoring at the foot instead would drag the
 // hammer around the rim on every edit and re-open §25's strike geometry.
 let GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+// §125 Tier B — THE FOOT LANDS ON PLATE, held by derivation: the balance's
+// cut wedge rotated with the moved balance and swallowed the foot's station
+// (support read the gong FLOATING, gap 0.537 — no plate under the post).
+// The wedge's CW edge ray (aim − phiOpen out of the balance) crosses the
+// gong circle at a closed-form azimuth; the foot stays clockwise of it by
+// its own post radius plus the cut margin, in arc at GONG_R. §56's
+// free-end anchoring makes this exactly the free handle — the foot slides,
+// the ringing length absorbs it, and the strike end, hammer and emitter
+// never feel it. The arc knob therefore reads as the arc's MINIMUM: the
+// clamp only ever lengthens it (identity engages it by 3.3°).
+const GONG_FOOT_BOUND = (() => {
+  const ed = TQ_CUT.aim - TQ_CUT.phiOpen;
+  const dx = Math.cos(ed), dy = Math.sin(ed);
+  const bx = P.balance.x, by = P.balance.y;
+  const bDot = bx * dx + by * dy;
+  const disc = bDot * bDot - (bx * bx + by * by - GONG_R * GONG_R);
+  if (disc <= 0) return Infinity;               // the edge ray misses the gong circle: no bound
+  const t = -bDot + Math.sqrt(disc);            // outward crossing
+  let azEdge = Math.atan2(by + dy * t, bx + dx * t);
+  // normalize into (GONG_A1 − 2π, GONG_A1] so the comparison is wrap-safe
+  while (azEdge > GONG_A1) azEdge -= Math.PI * 2;
+  while (azEdge <= GONG_A1 - Math.PI * 2) azEdge += Math.PI * 2;
+  return azEdge - (0.7 + TQ_CUT_MARGIN) / GONG_R;
+})();
+GONG_A0 = Math.min(GONG_A0, GONG_FOOT_BOUND);
 let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
 // (TQ_TOP_Z — the three-quarter plate's top face — is derived up at the plate
 // build; the gong foot and hammer post plant into it.)
@@ -19563,7 +19857,7 @@ function askTour(onProceed) {
     materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
     dial: (path) => { if (path[1] === 'hands') recutHands(); else return false; },
     gong: () => {
-      GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;
+      GONG_A0 = Math.min(GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD, GONG_FOOT_BOUND); // §125: the foot never leaves the plate, live edits included
       GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
       gongArc.geometry.dispose();
       gongArc.geometry = new THREE.TorusGeometry(GONG_R, GONG_WIRE_R, 8, 64, GONG_A1 - GONG_A0);
@@ -23199,31 +23493,28 @@ const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // does not: its setting bevel stands in the sub-dial wells' radial band, so
 // an azimuth inside a well's angular radius parks the corner cluster INSIDE
 // the recess. §94 tier B split the two radii the one formula used to fuse:
-// each well DISC (radius subDialR) subtends its asin at ITS OWN station's
-// centre distance, while the corner CLUSTER's width subtends at the
-// corner's own sweep radius (ALARM_CD) — the fused form was valid only
-// while every radius was the same number. §125 finished the split: the
-// corner reads its own design radius (ALARM_CORNER_R) and the reserve
-// station mirrors the seconds station, so no two of the three radii share
-// an expression any more (the windows are not fingerprinted; each row reads
-// its true quantity); the seconds row reads its true station (D4 = 15.5,
-// which tier A's spec key already moves — the fused form kept reading the
-// corner's 15.40 for a disc that was never there).
-// Measured at identity: the seconds half narrows 0.0079 rad (0.45°), the
-// fused form's own error surfacing, not new behaviour.
+// each well DISC subtends its asin at ITS OWN station's centre distance,
+// while the corner CLUSTER's width subtends at the corner's own sweep
+// radius (ALARM_CD) — the fused form was valid only while every radius was
+// the same number. §125 finished the split twice over: the corner reads its
+// own design radius (ALARM_CORNER_R), and Tier B parted the WELLS as well —
+// each row now carries its own station AND its own radius (reserveWellR /
+// secondsWellR), which is the fully unfused form the §94 comment was
+// working toward. (The windows are not fingerprinted; each row reads its
+// true quantity.)
 const reconfAlarmWindows = () => {
   const alarmCrownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);
   const clusterHalf = Math.atan2(1.5, ALARM_CD);
-  const wellHalfAt = (stationR) =>
-    Math.asin(Math.min(0.99, (subDialR + CLEAR_MARGIN) / stationR)) + clusterHalf;
+  const wellHalfAt = (stationR, wellR) =>
+    Math.asin(Math.min(0.99, (wellR + CLEAR_MARGIN) / stationR)) + clusterHalf;
   return [
     { az: Math.atan2(uWind.y, uWind.x), half: alarmCrownHalf + Math.atan2(5.425, plateR), what: 'the winding crown' },
     { az: ALARM_PUSH_AZ, half: alarmCrownHalf + Math.atan2(2.667, plateR), what: 'the alarm pusher' },
     // §94 tier C — the azimuth READS the station (dial-local → world mirrors
     // x), so a later azimuth key finds no literal; with x = 0 this is
     // exactly π/2, bit-for-bit.
-    { az: Math.atan2(RESERVE_LOCAL.y, -RESERVE_LOCAL.x), half: wellHalfAt(Math.hypot(RESERVE_LOCAL.x, RESERVE_LOCAL.y)), what: 'the reserve sub-dial’s well' },
-    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalfAt(Math.hypot(P.fourth.x, P.fourth.y)), what: 'the seconds sub-dial’s well' },
+    { az: Math.atan2(RESERVE_LOCAL.y, -RESERVE_LOCAL.x), half: wellHalfAt(Math.hypot(RESERVE_LOCAL.x, RESERVE_LOCAL.y), reserveWellR), what: 'the reserve sub-dial’s well' },
+    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalfAt(Math.hypot(P.fourth.x, P.fourth.y), secondsWellR), what: 'the seconds sub-dial’s well' },
   ];
 };
 // The PUSHER's windows: its head against the two crowns (both azimuths
@@ -23311,7 +23602,7 @@ const RECONF_HANDLES = [
   // bounds beside rsvModule1). The layout shadow would come back the
   // identity build — the ghost-that-is-not-the-proposal trap, one solver
   // down. No constellation paints because the train honestly does not move.
-  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: -SECONDS_LOCAL.y, radial: true, // §125 — the default mirrors the seconds station now, not the face
+  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: RESERVE_STATION_R, radial: true, // §125 Tier B — the reserve's own design station (the Tier A mirror died when the wells split)
     anchor: () => P.dial, grabAt: () => rsvPivotXY, grabR: () => (rsvModule1 * (rsvTeethW2 + 2)) / 2 + 2,
     toSpec: (dist) => dist,
     refuseAt: (v) => (v > rsvrWindow.min && v <= rsvrWindow.max) ? null
@@ -23321,63 +23612,66 @@ const RECONF_HANDLES = [
     shadow: (v) => {
       const warns = [];
       solveKeyless({ ...KEYLESS_INPUTS, rsvR: v, warn: (m) => warns.push(m) });
-      warns.push(...rsvTrainWarnsAt({ x: 0, y: v }));
+      // §125 Tier B — the candidate station carries its OWN well (the
+      // grows-from-the-centre law), so the train's tip-vs-well bound is
+      // judged against the well the drag would actually cut.
+      warns.push(...rsvTrainWarnsAt({ x: 0, y: v }, v - SUBDIAL_INBOARD_CLEAR));
       return { warns, refuse: null };
     },
   },
-  // §97 — the shared WELL RADIUS, the third radial row, and its one honest
-  // concession stated: a radius has no arbor. The ring sits on the SECONDS
-  // well (whose centre IS the fourth wheel's real arbor) at the well's own
-  // radius, so what is circled is the ring being dragged and the reading is
-  // its distance from that station. One radius serves BOTH wells, so the
-  // proposal ghosts both (wellGhost) — highlighting only the ring under the
-  // pointer would state something false about what the drag does. Keyless-
-  // tier like the reserve row: the radius never enters solveLayout, so the
-  // row carries its own shadow, plus the reserve train's tip-vs-well bound
-  // judged against the well being PROPOSED.
+  // §97 — the WELL RADIUS row, and its one honest concession stated: a
+  // radius has no arbor. The ring sits on the SECONDS well (whose centre IS
+  // the fourth wheel's real arbor) at the well's own radius, so what is
+  // circled is the ring being dragged and the reading is its distance from
+  // that station. §125 Tier B split the wells, so this key pins the SECONDS
+  // well ONLY now — the reserve's radius is its station's own derivation
+  // and rides the reserve row above, not this one. The proposal ghosts the
+  // one well the drag changes (wellGhost — the both-wells ghost retired
+  // with the shared radius, for §97's own reason run the other way:
+  // ghosting a well the drag no longer touches would state something false).
+  // Keyless-tier like the reserve row: the radius never enters solveLayout,
+  // so the row carries its own shadow. The reserve train's tip-vs-well
+  // bound left this shadow with the sharing — §97's key cannot reach that
+  // train any more.
   { kind: 'subdial', specKeyName: 'subdialr', urlKey: 'subdialr',
-    def: Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR, radial: true,
-    anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => subDialR + 2,
+    def: -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR, radial: true,
+    anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => secondsWellR + 2,
     toSpec: (dist) => dist,
-    label: (v, def) => `proposed: well radius ${v.toFixed(2)} for both sub-dials (was ${def.toFixed(2)})`,
+    label: (v, def) => `proposed: seconds well radius ${v.toFixed(2)} (was ${def.toFixed(2)})`,
     refuseAt: (v) => {
-      const ceil = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR;
+      const ceil = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
       return (v >= SUBDIAL_FLOOR && v <= ceil) ? null
-        : `the wells cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
+        : `the seconds well cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
           + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the dial's centre bore `
-          + `(inner station − keep-out)`;
+          + `(its station − keep-out)`;
     },
     shadow: (v) => {
       const warns = [];
       solveKeyless({ ...KEYLESS_INPUTS, subDialRadius: v, warn: (m) => warns.push(m) });
-      warns.push(...rsvTrainWarnsAt(RESERVE_LOCAL, v));
       return { warns, refuse: null };
     },
     wellGhost: true,
   },
 ];
-// §97 — the both-wells ghost. Two rings, one per well, at the candidate
-// radius: the proposal shows everything the drag changes. Furniture like
-// reconfGhost — parented to the scene, never a unit, so no sweep reads it.
+// §97/§125 Tier B — the well ghost: ONE ring now, on the seconds well, at
+// the candidate radius — the proposal shows exactly what the drag changes.
+// Furniture like reconfGhost — parented to the scene, never a unit, so no
+// sweep reads it.
 let reconfWellGhost = null;
 function reconfShowWellGhost(v) {
   if (!reconfWellGhost) {
     reconfWellGhost = new THREE.Group();
     const mat = new THREE.LineBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false });
-    for (let i = 0; i < 2; i++) {
-      const pts = [];
-      for (let s = 0; s <= 64; s++) { const a = (s / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0)); }
-      const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
-      ring.renderOrder = 998;
-      reconfWellGhost.add(ring);
-    }
+    const pts = [];
+    for (let s = 0; s <= 64; s++) { const a = (s / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0)); }
+    const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    ring.renderOrder = 998;
+    reconfWellGhost.add(ring);
     scene.add(reconfWellGhost);
   }
-  const wells = [{ x: P.fourth.x, y: P.fourth.y }, rsvPivotXY];
-  reconfWellGhost.children.forEach((ring, i) => {
-    ring.position.set(wells[i].x, wells[i].y, 0);
-    ring.scale.setScalar(Math.max(v, 0.01));
-  });
+  const ring = reconfWellGhost.children[0];
+  ring.position.set(P.fourth.x, P.fourth.y, 0);
+  ring.scale.setScalar(Math.max(v, 0.01));
   reconfWellGhost.visible = true;
 }
 // Shadow solve (step 4): the same pure solver, same measured inputs, a
@@ -27569,7 +27863,7 @@ function tick(t) {
 {
   scene.updateMatrixWorld(true);
   const slab = new THREE.Box3().setFromObject(dial);
-  const wellsEdge = Math.max(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) + subDialR + CLEAR_MARGIN;
+  const wellsEdge = Math.max(RESERVE_LOCAL.y + reserveWellR, -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
   const _rv = new THREE.Vector3();
   let nearest = Infinity, nearestUnit = 'nothing';
   for (const entry of labelEntries) {
