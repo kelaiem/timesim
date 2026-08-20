@@ -162,7 +162,16 @@ export const SPEC = (() => {
   // degeneracy TODO 33 closed. null = as designed: the solve runs on the
   // ceiling, which is today's value exactly.
   const subdialr = Number.isFinite(Number(raw.subdialr)) ? Number(raw.subdialr) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr });
+  // §125 — THE DIAL'S OWN RADIUS. The one dimension the ask "grow the dial"
+  // is about was the one dimension no URL could carry: every number §125
+  // measured on a grown face had to come off a patched tree. Like d4/rsvr/
+  // alarmr, NOT clamped here — solveKeyless warns against the bounds it can
+  // state (inboard the wells' outer edge, outboard the measured alarm-crown
+  // ceiling) and the boot assert in main.js measures the rim against the
+  // actual metal in the dial's slab. null = as designed: solveKeyless runs
+  // its own arithmetic (dialRadius = plateR) and identity stays bit-exact.
+  const dialr = Number.isFinite(Number(raw.dialr)) ? Number(raw.dialr) : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr });
 })();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
@@ -545,7 +554,22 @@ export const SUBDIAL_FLOOR = SUBDIAL_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN;
 // of these is how "move the crown to 3 o'clock" will eventually be a one-line
 // change — once the solve reads a spec instead of module scope.
 export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel → barrel/crown exit viewed ~1:50
-export const D4 = 15.5;                     // centre → fourth distance (small-seconds pivot radius, ≈0.39·dialRadius)
+export const D4 = 15.5;                     // centre → fourth distance (small-seconds pivot radius; the reserve station mirrors it at 12 — solveKeyless)
+// §125 step 1 — THE ALARM CORNER'S DESIGN RADIUS. Until §125 the corner's
+// default read dialRadius·0.39 — a FACE proportion carrying a dimension whose
+// real constraint is the winding CLUTCH: §74 tier B proved the corner cannot
+// move outward (the chains size themselves, the bearing sweep refuses, the
+// two-circle root is symmetric, the climb is the clutch and cannot be
+// unpinned), and §125 measured the clean travel at under 0.37 — at +0.37 the
+// i2 ⇄ winding-climb clearance is spent (need 0.15; +0.09 short at 15.77,
+// −0.06 at 16.00). So the default could not survive its own input changing:
+// grow the dial 1% and the corner walked into a −0.57 foul with the movement
+// untouched (§98's finding, arriving from the dial's side). The value is the
+// §74-proven station itself — bit-equal to the old default at the shipped
+// plate (plateR·0.92·0.39, printed at full precision), so pinning it moves
+// nothing; it just stops moving when its neighbours do. ?alarmr= (§98) still
+// overrides for exploration.
+export const ALARM_CORNER_R = 15.400741713809364;
 export const ESCAPE_STEP_DEG = -57.9;      // escape at viewed ~6:25
 export const BALANCE_STEP_TARGET_DEG = 44.6; // balance at viewed ~8:00 — a TARGET; the feasible angle is solved in main.js
 
@@ -756,9 +780,10 @@ export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
   stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
-  rsvR = null,      // §94 tier C — the reserve station's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
-  alarmR = null,    // §98 — the alarm corner's radius; null = derive from the dial (dialRadius·0.39, bit-exact)
+  rsvR = null,      // §94 tier C — the reserve station's radius; null = mirror the seconds station (§125 — symmetric by construction)
+  alarmR = null,    // §98 — the alarm corner's radius; null = ALARM_CORNER_R (§125 step 1 — the §74-proven station, pinned)
   subDialRadius = null, // §97 — the shared well radius; null = the derived ceiling (today's value exactly, bit-exact)
+  dialR = null,     // §125 step 3 — the dial's radius; null = the movement's own diameter (dialRadius = plateR)
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -925,7 +950,34 @@ export function solveKeyless({
 
   // --- Dial-side locals the plate radius fixes (moved from the dial build,
   // §13 step 3b — one source; ALARM_CD's plate-bore hoist reads these too) ---
-  const dialRadius = plateR * 0.92;
+  //
+  // §125 step 2 — THE DIAL IS MADE TO THE MOVEMENT'S DIAMETER. The 0.92 that
+  // sat here was the one line in this block with no constraint beside it
+  // (§86's class — 1.301 mm of bare plate all round that nothing claimed).
+  // The derivation is the horological convention itself: a dial is made to
+  // the movement's diameter and seats on its full plate face; the CASE, not
+  // the plate's rim, covers the join (§3 owns the case, and this radius
+  // deliberately never goes proud of the plate so it does not wait on one).
+  // The ceilings §125 measured, recorded here so nobody re-sweeps for them:
+  //   42.25   the ask's own — 2·subDialR + SUBDIAL_INBOARD_CLEAR at the
+  //           largest station the movement holds still for (22.90; the
+  //           plate is flat through it and grows at 22.95)
+  //   42.9229 THIS — plateR; covers stations to 23.24, past anything the
+  //           train will hold still for, so the face stops being the bound
+  //   43.55   2·d4max − SUBDIAL_INBOARD_CLEAR, the two-bar closure — needs
+  //           the plate to grow first, and stands 0.24 mm proud: a case
+  //           question, refused here by construction
+  //   44.273  the metal — the alarm crown at 44.423, at CLEAR_MARGIN
+  //           (measured; the §125 boot assert in main.js keeps it honest)
+  // §125 step 3 — and the radius is a SPEC DIMENSION (?dialr=): every number
+  // §125 measured on a grown face had to come off a patched tree, because
+  // the one dimension the ask was about was the one no URL could carry.
+  // Bounds warned below, after the wells exist; null = plateR, bit-exact.
+  const dialRadius = dialR !== null ? dialR : plateR;
+  // Small seconds live ON the fourth wheel's axis — dial-local coordinates
+  // mirror world x through the dialFace Y-flip. (Declared before the reserve
+  // station since §125, which anchors the reserve TO it.)
+  const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
   // Sub-dial positions in dial-local coordinates (+y = 12 o'clock; the
   // dialFace Y-flip makes these read correctly from the front).
   // 12 o'clock — symmetric with the small-seconds sub-dial at 6 (the fourth
@@ -935,7 +987,14 @@ export function solveKeyless({
   // §94 tier C — the station is a SPEC DIMENSION now: a spec'd radius
   // replaces the derived default outright, and identity stays bit-exact
   // because identity passes nothing (d4's null rule, one solver down).
-  const RESERVE_LOCAL = { x: 0, y: rsvR !== null ? rsvR : dialRadius * 0.39 };
+  // §125 finding 2 — the default MIRRORS the seconds station, which is what
+  // this comment always claimed ("symmetric with the small-seconds sub-dial")
+  // and what dialRadius·0.39 only approximated (0.0993 apart at the shipped
+  // face; 1.24 apart the moment the dial grew, because the seconds station
+  // sits on its ARBOR and a face proportion does not). Reading the station
+  // itself makes the symmetry true by construction — and keeps it true under
+  // ?d4=, where the fourth wheel actually moves.
+  const RESERVE_LOCAL = { x: 0, y: rsvR !== null ? rsvR : -SECONDS_LOCAL.y };
   // §94 tier B — THE ALARM CORNER'S OWN RADIUS. Until this tier it did not
   // exist: main.js defined ALARM_CD as a read of RESERVE_LOCAL.y, which made
   // "the reserve indicator happens to sit there" the radius of the entire
@@ -950,15 +1009,16 @@ export function solveKeyless({
   //     silently did not mesh), and its plate ceiling is asserted;
   //   · the stem must reach the case rim with positive length
   //     (alarmStemLen = plateR + 2.2 − corner).
-  // Default: dialRadius · 0.39 — deliberately the SAME expression on the
-  // same input as the reserve station above, so identity geometry is
-  // bit-exact; the two quantities stop sharing a NAME, not a home (§13
-  // step 3b's one-solver property survives intact).
-  // §98 — and since the default TRACKS the plate, a grown movement drags
-  // the whole setting cluster outward into fixed-radius neighbours (§76
-  // measured every remaining balance wall down to that). A spec'd radius
-  // pins the corner; identity passes null and keeps the arithmetic.
-  const alarmCornerR = alarmR !== null ? alarmR : dialRadius * 0.39;
+  // Default: ALARM_CORNER_R (§125 step 1) — the §74-proven station as its
+  // own design dimension, bit-equal to the dialRadius·0.39 the default used
+  // to read at the shipped face. The old expression was §98's finding made
+  // live twice over: a grown MOVEMENT dragged the setting cluster outward
+  // into fixed-radius neighbours (§76 measured every remaining balance wall
+  // down to that), and a grown DIAL did the same with the movement untouched
+  // (§125 measured −0.57 at f = 1.0, i2 vs the winding climb, against a
+  // clean travel of under 0.37). The corner's constraint is the clutch, so
+  // its default no longer reads the face; ?alarmr= (§98) still overrides.
+  const alarmCornerR = alarmR !== null ? alarmR : ALARM_CORNER_R;
   // The one bound THIS solver owns for a spec'd corner: the stem must
   // reach the case rim with positive length (alarmStemLen = plateR + 2.2
   // − corner in main.js). The interior bounds live with their own
@@ -970,9 +1030,6 @@ export function solveKeyless({
     warn(`alarm corner radius ${alarmR.toFixed(2)} is outside (0, ${(plateR + 2.2).toFixed(2)}) — `
       + `past the ceiling the stem has no length inside the case rim; the build proceeds and its own `
       + `asserts judge the interior`);
-  // Small seconds live ON the fourth wheel's axis — dial-local coordinates
-  // mirror world x through the dialFace Y-flip.
-  const SECONDS_LOCAL = { x: -(P.fourth.x - P.dial.x), y: P.fourth.y - P.dial.y };
   // Sub-dial radius — as large as the face allows while staying balanced:
   // one shared radius for both wells (their pivots are fixed on their
   // arbors, so only the radius can grow), capped by the clearance the
@@ -1044,6 +1101,23 @@ export function solveKeyless({
     warn(`sub-dial wells have no radius: ${subDialR.toFixed(2)} — the inner station sits `
       + `${Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y).toFixed(2)} from the dial centre, inside the `
       + `${SUBDIAL_INBOARD_CLEAR.toFixed(2)} the centre bore, its wall and the margin need`);
+
+  // §125 step 3 — the spec'd dial's own bounds, findings 3 and 4. INBOARD:
+  // the wells' outer edge — shrink the face inside it and a well's ring runs
+  // off the dial it is cut into. OUTBOARD: the measured metal — the alarm
+  // crown's nearest vertex at 44.423 (§125, shipped tree), at CLEAR_MARGIN;
+  // a parse-time bracket only, since the crown is not this solver's to
+  // measure — the §125 boot assert in main.js reads the actual rim against
+  // the actual metal and is the live guard. Warn, never clamp (d4's rule):
+  // the build proceeds and the battery judges it.
+  if (dialR !== null) {
+    const wellsEdge = Math.max(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) + subDialR;
+    const metalCeiling = 44.423 - CLEAR_MARGIN;
+    if (!(dialR >= wellsEdge && dialR <= metalCeiling))
+      warn(`dial radius ${dialR.toFixed(2)} is outside [${wellsEdge.toFixed(2)}, ${metalCeiling.toFixed(2)}] — `
+        + `inside the wells' outer edge their rings run off the face; past the ceiling the rim reaches `
+        + `the alarm crown's measured metal. The build proceeds; the boot assert and battery judge it`);
+  }
 
   // §94 tier C — THE RESERVE STATION'S WINDOW, derived where the radii are
   // (d4Window's precedent). INBOARD: the well must have a radius at all —

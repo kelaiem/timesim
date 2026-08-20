@@ -1017,6 +1017,8 @@ const KEYLESS_INPUTS = {
   ...(SPEC.alarmr !== null ? { alarmR: SPEC.alarmr } : {}),
   // §97 — the shared well radius, same null rule.
   ...(SPEC.subdialr !== null ? { subDialRadius: SPEC.subdialr } : {}),
+  // §125 step 3 — the dial's radius, same null rule.
+  ...(SPEC.dialr !== null ? { dialR: SPEC.dialr } : {}),
 };
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -8223,7 +8225,20 @@ registerLabel('Dial', dialGroup);
 // placed but has nothing actually anchoring it there is exactly the failure
 // mode this whole inspection system exists to catch.
 {
-  const footR = plateR * 0.88;
+  // §125 step 5 — the feet go where the RIM is. The old plateR·0.88 was a
+  // factor of the PLATE carrying a part of the DIAL: it left the rim
+  // overhanging its feet by an underived 1.72, and with the dial grown to
+  // the movement's diameter it would have left 5.15 — 12% of the radius of
+  // unsupported 0.4 mm brass, §125's P1 finding. The derivation: a foot
+  // stands as far out as it can while staying wholly under the face it
+  // carries and wholly on the plate it lands on — its outer surface one
+  // CLEAR_MARGIN inside the tighter of the two edges. Measured (§125): the
+  // annulus the feet move through is empty at all three stations; the
+  // nearest foreign metal in the plate→dial gap is the two stems' azimuth
+  // sectors (~0° and 142–162°), ≥8° of arc ≈ 5.5 units from the closest
+  // foot, so the move re-derives the radius without renegotiating a station.
+  const FOOT_R = 0.6;
+  const footR = Math.min(dialRadius, plateR) - FOOT_R - CLEAR_MARGIN;
   const footLen = backPlate.position.z - Z_DIAL; // reach from the dial's plane to the back plate
   // 130° moved to 108°: the keyless works lives in this same plate→dial gap
   // now, and the old 130° foot landed ~2.5 from the folded minute wheel's
@@ -8232,7 +8247,7 @@ registerLabel('Dial', dialGroup);
   // train while staying near the rim.
   for (const deg of [10, 108, 250]) {
     const a = deg * DEG2RAD;
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, footLen, 10), MATS.steel);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(FOOT_R, FOOT_R, footLen, 10), MATS.steel);
     foot.rotation.x = Math.PI / 2;
     foot.position.set(Math.cos(a) * footR, Math.sin(a) * footR, footLen / 2);
     dialGroup.add(foot);
@@ -8459,11 +8474,17 @@ registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 // radius (§38's floor: pin ÷ radius), and no hand length touches it.
 const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F;
 const hourHand = G.makeHand({ length: HOUR_HAND_LEN, kind: 'hour' });
-// Minute hand length: tip ON the railroad's rungs. The chemin de fer's two
-// rails RENDER at world r ≈ 31.5 / 34.2 (measured from the dial texture — the
-// canvas silver fill reaches only ~0.92R, so the printed 0.87/0.94R land
-// further in); 0.83·dialRadius puts the tip at ≈ 32.8, mid-rung between them.
-const MINUTE_HAND_LEN = dialRadius * 0.83;
+// Minute hand length: tip ON the railroad's rungs — DERIVED from the print's
+// own frame (§125 step 5), mid-rung between the two rails. A printed fraction
+// f lands at world f · 2·DIAL_CANVAS_FILL_F · dialRadius (the canvas square
+// maps to the dial's diameter and its printed disc fills 0.46 of the canvas
+// size — see the exports by makeDial), so the tip sits at the rail
+// fractions' mean. The 0.83 this replaces was calibrated against absolute
+// measurements of the face ("world r ≈ 31.5 / 34.2") — correct on the day it
+// was sampled, stale the day §125 re-proportioned the dial, the same rot the
+// hour hand's derivation closed one constant up.
+const MINUTE_HAND_LEN = dialRadius * (2 * G.DIAL_CANVAS_FILL_F)
+  * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
 const minuteHand = G.makeHand({ length: MINUTE_HAND_LEN, kind: 'minute' });
 minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
@@ -23157,12 +23178,13 @@ const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // each well DISC (radius subDialR) subtends its asin at ITS OWN station's
 // centre distance, while the corner CLUSTER's width subtends at the
 // corner's own sweep radius (ALARM_CD) — the fused form was valid only
-// while every radius was the same number. At identity the reserve station
-// and the corner still share one expression (dialRadius · 0.39), so that
-// row is bit-identical to the fused form (verified by direct comparison —
-// the windows are not fingerprinted); the seconds row now reads its true
-// station (D4 = 15.5, which tier A's spec key already moves — the fused
-// form kept reading the corner's 15.40 for a disc that was never there).
+// while every radius was the same number. §125 finished the split: the
+// corner reads its own design radius (ALARM_CORNER_R) and the reserve
+// station mirrors the seconds station, so no two of the three radii share
+// an expression any more (the windows are not fingerprinted; each row reads
+// its true quantity); the seconds row reads its true station (D4 = 15.5,
+// which tier A's spec key already moves — the fused form kept reading the
+// corner's 15.40 for a disc that was never there).
 // Measured at identity: the seconds half narrows 0.0079 rad (0.45°), the
 // fused form's own error surfacing, not new behaviour.
 const reconfAlarmWindows = () => {
@@ -23265,7 +23287,7 @@ const RECONF_HANDLES = [
   // bounds beside rsvModule1). The layout shadow would come back the
   // identity build — the ghost-that-is-not-the-proposal trap, one solver
   // down. No constellation paints because the train honestly does not move.
-  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: dialRadius * 0.39, radial: true,
+  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: -SECONDS_LOCAL.y, radial: true, // §125 — the default mirrors the seconds station now, not the face
     anchor: () => P.dial, grabAt: () => rsvPivotXY, grabR: () => (rsvModule1 * (rsvTeethW2 + 2)) / 2 + 2,
     toSpec: (dist) => dist,
     refuseAt: (v) => (v > rsvrWindow.min && v <= rsvrWindow.max) ? null
@@ -27506,6 +27528,43 @@ function tick(t) {
   });
   if (markerInnerR - reach < CLEAR_MARGIN)
     console.warn(`§38 alarm hand: reach ${reach.toFixed(2)} leaves only ${(markerInnerR - reach).toFixed(2)} to the hour markers' inner edge ${markerInnerR.toFixed(2)} — need ${CLEAR_MARGIN}`);
+}
+
+// §125 step 4 — NOTHING GUARDED THE DIAL'S OUTWARD EDGE: before this assert
+// a rim spec'd 2.8 units past the alarm crown booted silent, because the
+// ceiling was simply never approached while the radius sat at 0.92·plateR
+// (§94 tier A's shape — "nothing checked while the value sat comfortably
+// inside"). The rim is held against the nearest FOREIGN vertex in the dial's
+// own z-slab, OUTBOARD of the wells' outer edge — foreign metal inboard of
+// that edge is arbors standing in their bores, policed by TODO 33's
+// per-station asserts and the pair sweeps, and the sub-dial hands sweeping
+// their recessed wells, which never leave them. Runs here, not at the dial
+// build, for §38's reason one block up: the metal it measures (the alarm
+// crown) is built long after the dial is. Identity: nearest 44.42 (alarm
+// crown) against dialRadius 42.92 + CLEAR_MARGIN.
+{
+  scene.updateMatrixWorld(true);
+  const slab = new THREE.Box3().setFromObject(dial);
+  const wellsEdge = Math.max(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) + subDialR + CLEAR_MARGIN;
+  const _rv = new THREE.Vector3();
+  let nearest = Infinity, nearestUnit = 'nothing';
+  for (const entry of labelEntries) {
+    if (entry.name === 'Dial') continue;
+    entry.obj.traverse((o) => {
+      if (!o.isMesh || !o.geometry.getAttribute) return;
+      const pos = o.geometry.getAttribute('position');
+      if (!pos) return;
+      for (let i = 0; i < pos.count; i++) {
+        _rv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        if (_rv.z < slab.min.z || _rv.z > slab.max.z) continue;
+        const r = Math.hypot(_rv.x - P.dial.x, _rv.y - P.dial.y);
+        if (r > wellsEdge && r < nearest) { nearest = r; nearestUnit = entry.name; }
+      }
+    });
+  }
+  if (nearest < dialRadius + CLEAR_MARGIN)
+    console.warn(`§125 dial rim: ${nearestUnit} at radius ${nearest.toFixed(2)} in the dial's slab — the `
+      + `${dialRadius.toFixed(2)} rim needs ${(dialRadius + CLEAR_MARGIN).toFixed(2)} clear`);
 }
 
 // §62, second pass: the same window check against the FINISHED movement. The

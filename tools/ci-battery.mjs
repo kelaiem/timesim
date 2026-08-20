@@ -638,6 +638,19 @@ const SPEC_POINTS = [
   { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', why: '§97 — the wells resized inward; measured silent on this tree' },
   { name: 'subdialr=13', q: 'subdialr=13', expect: 'any', why: '§97 — over the ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
   { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns; the train\'s tip check reports the rest' },
+  // §125 — the dial's own radius. Three points, measured before written:
+  //   · 30 is the interior inward value and boots silent — the face shrinks
+  //     under the plate and every consumer (print, hands, feet) follows the
+  //     solve; silent means BOOT-silent, the battery judges the fit;
+  //   · 20 is inside the wells' outer edge (27.45): the solver warns with
+  //     the window and BUILDS — rings off the face are nonsense, not NaN;
+  //   · 47.22 is past the measured metal (44.27): the solver's parse-time
+  //     bracket warns AND the §125 rim assert reports the actual vertex it
+  //     found in the dial's slab — two instruments, one from the spec and
+  //     one from the built scene, composing on one oversized face.
+  { name: 'dialr=30', q: 'dialr=30', expect: 'any', why: '§125 — the face shrunk inside the plate; measured silent on this tree' },
+  { name: 'dialr=20', q: 'dialr=20', expect: 'any', why: '§125 — inside the wells\' outer edge: must warn and BOOT (rings off the face are nonsense, not NaN)' },
+  { name: 'dialr=47.22', q: 'dialr=47.22', expect: 'any', why: '§125 — past the alarm crown\'s metal: the spec bracket and the rim assert both report' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because
