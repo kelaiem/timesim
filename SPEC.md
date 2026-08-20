@@ -44,7 +44,12 @@ radius where meaningful. Use `BufferGeometry` via `ExtrudeGeometry`/`LatheGeomet
 `Shape` — real tooth profiles, not cylinders with bumps.
 
 ```js
-// Involute-ish spur gear. pitchRadius = module*teeth/2 (store in userData.r).
+// Trapezoidal-approximation spur gear — straight chord flanks, a relieved &
+// rounded tip, root lands — standing in for a clock (cycloidal) tooth. NO
+// CONJUGATE ACTION IS MODELLED: two of these rolling together have no
+// rolling-contact geometry (real cycloidal teeth are roadmap §136; the
+// escape wheel's club teeth in makeEscapeWheel are the one profile designed
+// as a working surface). pitchRadius = module*teeth/2 (store in userData.r).
 // spokes: number of crescent cutouts (0 = solid). Crossings like real clock wheels.
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
                            material, hub = true })

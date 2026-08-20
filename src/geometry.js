@@ -236,6 +236,13 @@ function ringExtrude(outerR, innerR, thickness, seg = 32) {
 // Build the outer contour of a spur-gear wheel: repeated trapezoid-with-rounded
 // -tip teeth approximating a clock (cycloidal) tooth — angled flanks, relieved
 // & rounded tips, root lands. Returns a THREE.Shape (caller adds crossings/bore).
+// HONESTY (TODO 61): each flank is one straight chord and the only curve is
+// the tip relief, so NO CONJUGATE ACTION exists between two of these — there
+// is no pressure angle anywhere in this file, and the 0.95/1.15 addendum/
+// dedendum proportions are neither cycloidal nor involute. This is the one
+// tooth generator in the codebase (makeGear, makePinion and makeBevelGear
+// all call it); the single profile designed as a working surface is
+// makeEscapeWheel's club tooth. Cutting real cycloidal teeth is roadmap §136.
 // How far the relieved tip's control point stands past the tip circle. It is
 // the one number gearOuterR's bound turns on, so the outline and the bound
 // read it from here rather than from two copies of "1.02".
@@ -310,7 +317,11 @@ class ArchimedeanSpiral extends THREE.Curve {
 // Spur gear
 // ---------------------------------------------------------------------------
 
-// Involute/cycloidal-ish spur gear. pitchRadius = module*teeth/2 (userData.r).
+// Trapezoidal-approximation spur gear (see gearOutlineShape — straight chord
+// flanks, relieved tip; NOT involute, NOT cycloidal, and no conjugate action
+// is modelled — TODO 61 caught both this header and SPEC.md naming a family
+// the code does not cut; real cycloidal teeth are roadmap §136).
+// pitchRadius = module*teeth/2 (userData.r).
 // bevel: false (§25 C) — a gear whose z-budget to its neighbour is smaller
 // than the extrude bevel's expansion (bevelThickness ≈ 0.18·t) must be cut
 // CRISP: the rendered outline is what collides, not the authored one
