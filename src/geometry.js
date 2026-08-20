@@ -4553,6 +4553,21 @@ export const DIAL_MARKER_OUTER_F = 0.795; // markers hug the railroad track
 export const DIAL_MARKER_H_F = 0.21;      // cap height (tall proportion)
 export const DIAL_MARKER_INNER_F = DIAL_MARKER_OUTER_F - DIAL_MARKER_H_F; // = 0.585
 
+// §125 step 5 — the PRINTED face's own frame, exported for the same reason
+// as the marker band above: the MINUTE HAND's length is derived from the
+// railroad it points at, so the two cannot drift apart. The print lives on a
+// square canvas mapped to the dial's diameter; its silvered disc fills
+// DIAL_CANVAS_FILL_F of the canvas size (radius = S·0.46, so a printed
+// fraction f of that disc lands at world f · 2·0.46 · dialRadius), and the
+// chemin de fer's two rails sit at these fractions of the printed disc. The
+// hand length in main.js was 0.83·dialRadius with a comment quoting "world
+// r ≈ 31.5 / 34.2" — absolute measurements of the face on the day it was
+// sampled, the arrangement that goes stale the first time the dial is
+// re-proportioned (and §125 re-proportioned it).
+export const DIAL_CANVAS_FILL_F = 0.46;   // printed disc radius / canvas size
+export const DIAL_RAIL_OUT_F = 0.94;      // railroad outer rail / printed disc
+export const DIAL_RAIL_IN_F = 0.87;       // railroad inner rail / printed disc
+
 // --- The dial plate's own geometry kit (TODO 26) ---------------------------
 // A plate with BLIND POCKETS cannot be extruded: ExtrudeGeometry cuts one
 // outline clean through, which is exactly the defect TODO 26 shipped with —
@@ -4661,7 +4676,7 @@ export function makeDial({
     if (ctx) {
       const S = 1024;
       const C = S / 2;
-      const R = S * 0.46;
+      const R = S * DIAL_CANVAS_FILL_F; // = S·0.46 — see the export above; main.js derives the minute hand from this frame
       // Silvered base with a soft radial vignette.
       const grad = ctx.createRadialGradient(C, C, R * 0.1, C, C, R);
       grad.addColorStop(0, '#f4f2ec');
@@ -4675,8 +4690,8 @@ export function makeDial({
       ctx.translate(C, C);
       // Railroad ("chemin de fer") minute track: two concentric rails with a
       // crossing tick every minute, heavier sleepers on the five-minute marks.
-      const rOut = R * 0.94;
-      const rIn = R * 0.87;
+      const rOut = R * DIAL_RAIL_OUT_F;
+      const rIn = R * DIAL_RAIL_IN_F;
       ctx.strokeStyle = '#1a1a1a';
       ctx.fillStyle = '#1a1a1a';
       ctx.lineWidth = 3;
@@ -5188,9 +5203,12 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   // point: the tip fan's apex sits at the DISH FLOOR's height, so the
   // hollow narrows and dives into the point instead of filling flat.
   // Concavity only removes material below the corner plane, so the
-  // crossing envelope still matches the old cylinders — the 2.3
-  // hour/minute plane gap in main.js still bounds rHour + rMinute
-  // (≈ 2.10 at current widths).
+  // crossing envelope is the hour blade's corner plane (rBase/2 up) against
+  // the minute blade's keel (rBase down) — 0.66 + 1.13 ≈ 1.79 at §125's
+  // lengths, inside the 2.3 hour/minute plane gap in main.js. (The old
+  // note bounded rHour + rMinute ≈ 2.10 as if both were cylinders; the
+  // §125 hands grew that sum past 2.3 while the true envelope stayed
+  // clear, which is why the honest expression is written out now.)
   const facetFlat = (geo) => {
     // Extrude output is already non-indexed; toNonIndexed() would warn and
     // return the same geometry (which the dispose below would then free).

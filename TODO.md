@@ -3563,8 +3563,12 @@ before deriving it would be swapping one magic number for a larger one.
   grows with `plateR`. The setting train has the same shape: the comment
   states `m·(30 + 2·31 + 10)/2 = ALARM_CD → m ≈ 0.302` and the code ships
   `ALARM_SET_MODULE = 0.30`. So wall two is not "stations placed at radii"
-  as filed above — the climb station *does* follow the plate through
-  `ALARM_CD ← RESERVE_LOCAL.y ← dialRadius ← plateR`. It is two constants
+  as filed above — when this was written the climb station followed the
+  plate through `ALARM_CD ← RESERVE_LOCAL.y ← dialRadius ← plateR` (§94
+  tier B then split the corner from the reserve station, and §125 pinned
+  its default to `ALARM_CORNER_R` outright, so the corner no longer follows
+  the plate at all — the spans these constants cover are now fixed unless
+  `?alarmr=` moves them). It is two constants
   whose derivations live in prose instead of in code. Fix them where they
   are declared, and note the tooth counts are integers, so the module
   absorbs the residue against TODO 15's asserts.

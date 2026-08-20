@@ -49,6 +49,7 @@
     if (p.has('rsvr')) s.rsvr = Number(p.get('rsvr'));                        // §94 tier C — the power-reserve station's radius, dial-local, in movement units
     if (p.has('alarmr')) s.alarmr = Number(p.get('alarmr'));                  // §98 — the alarm corner's radius, in movement units (§76's pin)
     if (p.has('subdialr')) s.subdialr = Number(p.get('subdialr'));            // §97 — the shared sub-dial well radius, in movement units
+    if (p.has('dialr')) s.dialr = Number(p.get('dialr'));                     // §125 — the dial's radius, in movement units (null = the movement's own diameter)
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();
 </script>
