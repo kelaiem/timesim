@@ -1935,6 +1935,21 @@ waived rows **57 → 53**.
 (tail-limited), which is in the plausible band for a detented ring rather
 than one to two orders below it.
 
+> **CORRECTION (TODO 63's re-take, 2026-08-20): the shaft half of this fix
+> was REVERTED and the paragraph above no longer describes the shipped
+> tree.** Two attempts to keep the thickened shaft were rejected by CI on
+> `Alarm link ⇄ Minute jumper` (overlaps 0.312 and 0.310 — the jumper's
+> swept envelope, which a virgin boot's pulled crown puts in the shaft's
+> path); `ALARM_LINK_SHAFT_R` ships at the original 0.12 u (0.091 mm
+> diameter — the hair), the declaration's own comment records why, and the
+> `SLENDER_WAIVERS` entry stands. The TAIL's blade half SURVIVED — 305 N/m
+> against the built metal, tail-stall ≈ 48 mN. Re-measured whole:
+> the chain is **SHAFT-limited at ≈ 1.6 mN** (crank overhang 22 N/m ×
+> 0.071 mm selector stroke) — the original headline number, restored
+> through the OTHER member. The prerequisite for any next attempt is
+> unchanged: measure the jumper's swept envelope along the shaft's
+> stations first.
+
 **Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
 means re-siting the rod, whose plate bores are literals carrying drift
 asserts (`ALARM_LINK_ROD_XY`), so it is a §35-corridor change, not a
@@ -7178,7 +7193,27 @@ An instrument that would catch a wrong count or a wrong phase is filed as
 roadmap §135; **no such instrument exists today**, and `inspect.js` has no
 concept of a gear mesh as a pair at all.
 
-## 63. The elbow rods bend for routing only, and TODO 16's stall number is stale
+## 63. PART DONE — the stall number is re-taken (≈1.6 mN, shaft-limited); the elbows' bending and the missing force arithmetic remain
+
+**Re-taken 2026-08-20, from the built metal, in TODO 16's own first-order
+format.** The current chain: beak lever nose 1.395 u / tail 9.95 u —
+displacement gain **7.1×** (not the 36.5× the old number assumed, and not
+the ~3:1 this item's own text guessed from §68's prose; the built arms are
+the record). Tail blade 0.12 × 0.14 mm over 3.77 mm: **305 N/m**,
+tail-stall ≈ 48 mN — the blade half of TODO 16's fix survived. Shaft:
+reverted to the 0.091 mm hair (see TODO 16's correction note), crank
+overhang **22 N/m**, and 22 N/m × 0.071 mm of selector stroke =
+**≈ 1.6 mN stall, SHAFT-limited** — the same one-to-two-orders shortfall
+against the 5–50 mN detent band as the original finding, arrived at
+through the other member. Anyone sizing against "48 mN restored" is
+sizing against a reverted fix. The stale `alarmOn only turns the column
+wheel` line at the tube law is also corrected (TODO 20 closed that debt).
+
+**What remains below, unchanged:** the elbows' un-computed bending moment,
+the five force paths with no arithmetic (finger→pusher, pawl at the saw
+root, the click's detent torque, the elbows, the §45 silence chain), and
+the disarm-vs-silence terminology note.
+
 
 Two findings from a dogleg audit, both about force paths that were never
 computed.

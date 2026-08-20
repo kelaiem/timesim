@@ -9958,8 +9958,10 @@ const alarmPinArmB = new THREE.Group();
 // fingers in the co-rotating free lane (r 3.9..4.15, between the hearts'
 // rims and the ring) that re-bias the two blades: ring DOWN (armed) flexes
 // blade-A off, ring UP (disarmed) flexes blade-B off. The tube's law reads
-// the SELECTOR's state — alarmOn only turns the column wheel, and the
-// column→ring run is §35's filed debt (MECH_GRAPH.todo carries it).
+// the SELECTOR's state — alarmOn turns the column wheel, and the
+// column→ring run is DRIVEN, pawl to ring (TODO 20 closed §35's filed
+// debt; TODO 63 caught this line still describing it — the only
+// remaining MECH_GRAPH.todo entry is the keyless-works one).
 // (ALARM_LINK_AZ_DEG — the ring's drive-tab azimuth — is SOLVED at the link
 // build since §112, jointly with the rod site: §35's 146° was itself a
 // corridor answer for the old module corner, and the identity move made
