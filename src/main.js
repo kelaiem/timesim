@@ -1019,6 +1019,15 @@ const KEYLESS_INPUTS = {
   ...(SPEC.subdialr !== null ? { subDialRadius: SPEC.subdialr } : {}),
   // §125 step 3 — the dial's radius, same null rule.
   ...(SPEC.dialr !== null ? { dialR: SPEC.dialr } : {}),
+  // §125 margins tweak — the printed furniture's world fractions, measured
+  // from the print's own exported frame (geometry.js): the marker band's
+  // inner edge, and the railroad's inner rail composed through the canvas
+  // fill (a printed fraction f lands at world f·2·DIAL_CANVAS_FILL_F·R —
+  // the same composition MINUTE_HAND_LEN documents).
+  printFrame: {
+    markerInnerF: G.DIAL_MARKER_INNER_F,
+    railInnerF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F,
+  },
 };
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -1026,7 +1035,7 @@ const {
   cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, alarmCornerR, rsvrWindow,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
@@ -8596,6 +8605,23 @@ for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['second
     console.warn(`${nm} sub-dial pocket vs the dial's centre bore: web ${(innerEdge - need).toFixed(2)}, need ${CLEAR_MARGIN} `
       + `(well r ${wr.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
       + `— the well radius outran the ceiling the solver holds it under`);
+}
+
+// §125 — THE MAXIMIZATION HOLDS, asserted: D4 is a printed constant whose
+// derivation is "the station where the seconds well's two bounds meet"
+// (centre keep-out inboard, railroad − wall − margin outboard). dialRadius
+// is flat over the range today, which is what lets the closed form be a
+// constant — but a moved face, rail fraction or keep-out would silently
+// strand D4 at a no-longer-maximal station. This is the §39 shape: the
+// falsifiable half of a pinned number, with the re-derivation in D4's own
+// comment.
+{
+  const inboard = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
+  const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
+    - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
+  if (SPEC.d4 === null && Math.abs(inboard - outboard) > 0.02)
+    console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
+      + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
 
 const dial = G.makeDial({
@@ -23634,16 +23660,16 @@ const RECONF_HANDLES = [
   // bound left this shadow with the sharing — §97's key cannot reach that
   // train any more.
   { kind: 'subdial', specKeyName: 'subdialr', urlKey: 'subdialr',
-    def: -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR, radial: true,
+    def: secondsWellCeil, radial: true, // §125 margins tweak — the solver's own derived ceiling (centre bore ∧ railroad), never a restated formula
     anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => secondsWellR + 2,
     toSpec: (dist) => dist,
     label: (v, def) => `proposed: seconds well radius ${v.toFixed(2)} (was ${def.toFixed(2)})`,
     refuseAt: (v) => {
-      const ceil = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
+      const ceil = secondsWellCeil; // the solver's derived ceiling: centre bore ∧ the railroad's inner rail (§125 margins tweak)
       return (v >= SUBDIAL_FLOOR && v <= ceil) ? null
         : `the seconds well cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
-          + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the dial's centre bore `
-          + `(its station − keep-out)`;
+          + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the centre bore or `
+          + `buries the railroad's inner rail`;
     },
     shadow: (v) => {
       const warns = [];
