@@ -12959,6 +12959,47 @@ re-measured against the new default (d4 20 is an INWARD point now and warns
 on stop work's |K|; subdialr's over-ceiling point moved 13 → 21 with the
 ceiling; dialr's interior moved 30 → 43).
 
+### The margins tweak — a well yields the printed furniture, and the station maximizes what is left
+
+Two owner asks on the shipped Tier B face, landed together the same day.
+First (*the reserve should not clip the hour markers; the seconds should
+stand off the centre and the railroad*): one law serves both wells, and
+neither station had to move —
+
+    wellR = min(station − SUBDIAL_INBOARD_CLEAR,
+                furnitureR − DIAL_WALL_HALF − CLEAR_MARGIN − station)
+
+with each well DECLARING its furniture, because that is a design decision,
+not geometry: the RESERVE yields the hour-marker band (well 11.95 → 9.26;
+XI, XII and I return), the SECONDS keeps the markers' sacrifice the
+regulator look chose and yields the RAILROAD's inner rail. The furniture
+radii reach the solver as measured arguments (`printFrame` — the marker
+band's exported fraction, the rail's composed through the canvas fill),
+and the derived ceiling is exported (`secondsWellCeil`) so the reconfigure
+handle reads the solver's number instead of restating the formula.
+
+Second (*move the seconds station up to maximize the sub-dial, within the
+centre pinion and the railroad*): bounded on both sides, the well is
+largest where the bounds MEET, so the station IS the closed form —
+
+    D4 = (railInnerR − DIAL_WALL_HALF − CLEAR_MARGIN + SUBDIAL_INBOARD_CLEAR)/2
+       = 18.777750373095056         (well 15.2278; V and VII return, VI stays under)
+
+printed at full precision because `dialRadius` (the keyless-floored plate)
+is flat over every station in play, and held falsifiable by a §39-shape
+boot assert at the dial build: if the face, the rail fraction or the
+keep-out ever moves, the two bounds part and the assert names the drift
+with both numbers. The station sits mid-band where the pre-program
+measurements warned (cock seat 17.6–19) and boots SILENT — the Tier B
+frame program's negotiations are derivations, so the fork cap, leg, stop
+work, gong, pillars, hack rod and w1 all re-solved at the new stations
+without a line changing. The old ceiling 22.9 stays in the harness as a
+measured-silent spec point: the whole band is walkable now. Acceptance
+diff vs the Tier B tree: `chainLength`, `equalisation`, `graph`,
+`oscillator` and `windArrestHandoff` identical (TODO 71's waiver rides
+unchanged), `alarmHandoffs` one row moved within tolerance at zero
+waivers, everything else the re-measured train with clean verdicts.
+
 ## §126 — the winding arrest: overwinding stopped by a part, and the whole winding path put on one source
 
 Roadmap §47. Winding the going mainspring past full is prevented by metal
