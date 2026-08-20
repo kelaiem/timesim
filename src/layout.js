@@ -812,6 +812,7 @@ export function solveKeyless({
   alarmR = null,    // §98 — the alarm corner's radius; null = ALARM_CORNER_R (§125 step 1 — the §74-proven station, pinned)
   subDialRadius = null, // §97/§125 Tier B — the SECONDS well's radius (the wells split; the reserve's is its station's derivation); null = the derived ceiling, bit-exact
   dialR = null,     // §125 step 3 — the dial's radius; null = the movement's own diameter (dialRadius = plateR)
+  printFrame = null, // §125 margins tweak — the printed furniture's world fractions { markerInnerF, railInnerF }, measured by the caller from geometry.js's print constants; null = no furniture bound (the wells run to their centre-bore ceilings)
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -1115,12 +1116,28 @@ export function solveKeyless({
   // NOT a knob: its size IS the reserve station's derivation (the readable
   // well pins the station — see RESERVE_STATION_R), so it follows ?rsvr=
   // and nothing else.
-  const secondsWellCeil = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
+  // §125 margins tweak (owner, 2026-08-20) — A WELL YIELDS THE PRINTED
+  // FURNITURE ITS FACE RUNS UNDER: its recess edge (the ring wall) stops
+  // one CLEAR_MARGIN short of the furniture's inner radius. Each well
+  // declares WHICH furniture binds it, because that is a design decision,
+  // not geometry: the RESERVE yields the hour-marker band (the owner's
+  // ask — at the ceiling law its ring clipped XI/XII/I), while the SECONDS
+  // deliberately keeps the markers' sacrifice (the regulator look Tier B
+  // chose) and yields only the RAILROAD — which also opens the visible
+  // gap between its ring and the dial centre the owner asked for (inner
+  // edge 3.55 → ~11.8, since the well no longer grows from the keep-out).
+  // The centre-bore ceiling (TODO 33) remains the hard cap on both.
+  const markerInnerR = printFrame ? dialRadius * printFrame.markerInnerF : Infinity;
+  const railInnerR = printFrame ? dialRadius * printFrame.railInnerF : Infinity;
+  const secondsWellCeil = Math.min(
+    -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR,
+    railInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y,
+  );
   let secondsWellR = subDialRadius !== null ? subDialRadius : secondsWellCeil;
   if (subDialRadius !== null && subDialRadius > secondsWellCeil) {
     warn(`seconds well radius ${subDialRadius.toFixed(2)} is over the derived ceiling ${secondsWellCeil.toFixed(2)} `
-      + `(its station − centre-bore keep-out) — keeping the ceiling; a larger well breaches the `
-      + `centre bore, the degeneracy TODO 33 closed`);
+      + `(the tighter of the centre-bore keep-out and the railroad's inner rail less the ring wall and margin) — `
+      + `keeping the ceiling; a larger well breaches a bore or buries the track`);
     secondsWellR = secondsWellCeil;
   }
   if (subDialRadius !== null && subDialRadius < SUBDIAL_FLOOR) {
@@ -1129,7 +1146,10 @@ export function solveKeyless({
       + `its centre bore's wall`);
     secondsWellR = SUBDIAL_FLOOR;
   }
-  const reserveWellR = RESERVE_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
+  const reserveWellR = Math.min(
+    RESERVE_LOCAL.y - SUBDIAL_INBOARD_CLEAR,
+    markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - RESERVE_LOCAL.y,
+  );
   // §94 tier A — THE WELLS MUST HAVE A RADIUS AT ALL, which nothing checked
   // while both stations were literals comfortably outside the ceiling. Make
   // a station a spec key and the inboard end of its range walks it straight
@@ -1184,9 +1204,13 @@ export function solveKeyless({
   // adds its own inward floor — the span-solved module goes below tooth
   // stock long before the well degenerates — asserted beside rsvModule1
   // in main.js; the reconfigure handle composes both.
+  // §125 margins tweak — the outer bound tightens with the furniture: past
+  // (markerInner − wall − margin − FLOOR) the marker-bounded well is under
+  // its own floor; the face bound stays for the no-furniture callers.
   const rsvrWindow = {
     min: SUBDIAL_INBOARD_CLEAR,
-    max: (dialRadius + SUBDIAL_INBOARD_CLEAR) / 2,
+    max: Math.min((dialRadius + SUBDIAL_INBOARD_CLEAR) / 2,
+      markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - SUBDIAL_FLOOR),
   };
   if (rsvR !== null && !(rsvR > rsvrWindow.min && rsvR <= rsvrWindow.max))
     warn(`reserve station ${rsvR.toFixed(2)} is outside its window (${rsvrWindow.min.toFixed(2)}, `
@@ -1199,7 +1223,7 @@ export function solveKeyless({
     cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt,
-    plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, alarmCornerR, rsvrWindow,
+    plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
   };
 }
 

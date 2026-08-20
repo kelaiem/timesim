@@ -1019,6 +1019,15 @@ const KEYLESS_INPUTS = {
   ...(SPEC.subdialr !== null ? { subDialRadius: SPEC.subdialr } : {}),
   // §125 step 3 — the dial's radius, same null rule.
   ...(SPEC.dialr !== null ? { dialR: SPEC.dialr } : {}),
+  // §125 margins tweak — the printed furniture's world fractions, measured
+  // from the print's own exported frame (geometry.js): the marker band's
+  // inner edge, and the railroad's inner rail composed through the canvas
+  // fill (a printed fraction f lands at world f·2·DIAL_CANVAS_FILL_F·R —
+  // the same composition MINUTE_HAND_LEN documents).
+  printFrame: {
+    markerInnerF: G.DIAL_MARKER_INNER_F,
+    railInnerF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F,
+  },
 };
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -1026,7 +1035,7 @@ const {
   cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, alarmCornerR, rsvrWindow,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
@@ -23634,16 +23643,16 @@ const RECONF_HANDLES = [
   // bound left this shadow with the sharing — §97's key cannot reach that
   // train any more.
   { kind: 'subdial', specKeyName: 'subdialr', urlKey: 'subdialr',
-    def: -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR, radial: true,
+    def: secondsWellCeil, radial: true, // §125 margins tweak — the solver's own derived ceiling (centre bore ∧ railroad), never a restated formula
     anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => secondsWellR + 2,
     toSpec: (dist) => dist,
     label: (v, def) => `proposed: seconds well radius ${v.toFixed(2)} (was ${def.toFixed(2)})`,
     refuseAt: (v) => {
-      const ceil = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
+      const ceil = secondsWellCeil; // the solver's derived ceiling: centre bore ∧ the railroad's inner rail (§125 margins tweak)
       return (v >= SUBDIAL_FLOOR && v <= ceil) ? null
         : `the seconds well cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
-          + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the dial's centre bore `
-          + `(its station − keep-out)`;
+          + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the centre bore or `
+          + `buries the railroad's inner rail`;
     },
     shadow: (v) => {
       const warns = [];
