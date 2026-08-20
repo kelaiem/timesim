@@ -12841,13 +12841,89 @@ power reserve smaller as long as it's readable.*
 **The station.** `D4` 15.5 → **22.9**, the ask's own ceiling measured to the
 step: `plateR` is 42.9229 at every lockstep station through 22.90 and moves
 at 22.95 (42.9315) — the escapement train hanging off the fourth wheel
-reaches the plate bound there, 0.65 short of the two-bar's own 23.55. The
-walls the roadmap priced as "mechanism work in three action groups" turned
-out to have a clean band at the top: re-measured on the Tier A tree, the
-side-sign window warns at 16–17, the balance cock seat at 17.6–19, stop
-work's |K| at 20–21 — and everything from 21.5 through the 22.9 ceiling
-boots silent, so the ceiling was reachable without touching a mechanism.
-The band is still non-monotonic; the declared spec points document it.
+reaches the plate bound there, 0.65 short of the two-bar's own 23.55. Boot
+was silent from 21.5 through the ceiling, and the roadmap's own warning —
+*boot-silent is not battery-clean* — then came true in full: the first
+battery run went red in FIVE sweeps at once, and the frame program the
+entry priced as "mechanism work in three action groups" arrived as
+promised, one negotiation at a time (below). The mid-band asserts stay
+non-monotonic (side-sign 16–17, cock seat 17.6–19, stop work's |K| 20–21);
+the declared spec points document them.
+
+**The mirror, first, because everything else followed it.** The balance's
+side projection on the stem line flipped −0.85 → +5.17 (the flip lands at
+d4 ≈ 16.5, so it is intrinsic to the whole clean band — no azimuth on the
+22.9 escapement circle un-mirrors, minimum projection +4.8). The
+lever/yoke/hack/fold side correctly followed the balance — the derivation
+working, not failing — and the mirrored routes landed in neighbourhoods
+that had never been walls: the SE corner filled with everything that
+follows the balance, and the battery named each collision.
+
+**The corner program**, each conflict resolved in position space with the
+FREER part yielding, per the design-priority note:
+
+- **Fork cock ⇄ third/fourth wheels** (hulls confirmed 1.195/0.572): the
+  cap hugged the fork below the wheels' rim plane, and at 22.9 the rims run
+  through its slab band in plan (fourth rim 8.72 about its axis, the fork
+  axis 10.15 away). The slab bottom now derives from BOTH hosts —
+  `max(fork top, zTopOfAnnulus(third), zTopOfAnnulus(fourth)) +
+  CLEAR_MARGIN` — and the leg scan needed no change: the raised bottom
+  pulls the full rims into its floor discs by construction.
+- **Fork leg ⇄ balance cock** (the cock's only viable bearing band, blocked
+  by the leg's nearest-feasible seat, best-miss −0.298): the leg yields the
+  cock's SPINE CORRIDOR (`COCK_SPINE` — the cock must span the cut from the
+  staff along its aim; the leg can carry a bridge from any clear azimuth).
+  The cock's seat scan gained TODO 30's graded-margin reporting in the same
+  landing — it failed bare, and the fix had to instrument before it could
+  see — plus a wedge bound on its own FEET: the legs drop to the base plate
+  through the cutaway, which only exists inside ±phiOpen, and the scan had
+  seated the cock at φ 72° with its pads past the edge, standing its legs
+  through solid plate (clearances read the pair at 0).
+- **Hack rod ⇄ reset hammer, then ⇄ escape**: the mirrored rod runs the
+  hammer's side. Its corridor obstacle is MEASURED from the built lever
+  (hub disc + the arm's own vertex band swept parked → seated) — a
+  full-rotation disc walled off the whole southern corridor, and a
+  re-derived angular model missed the metal entirely (the knuckle ended
+  1.15 inside the hammer's box while the solve read clear). The only
+  honest route is a southern dogleg ~22 of lateral deep, so `ELBOW_E_MAX`
+  16 → 28 — C3's least-bend objective makes the range free anywhere a
+  smaller bend threads — and the escape arbor's collar joined the
+  corridor's walls when the first dogleg found it (no route had ever
+  passed it).
+- **Pillar ⇄ balance cock** (a plate screw 0.011 from the cock's flank):
+  the pillar seats yield the built cock's footprint — its moved bearing
+  can leave the cut wedge that used to cover it implicitly.
+- **Gong foot** (support FLOATING, gap 0.537 — the rotated wedge swallowed
+  its plate station): the foot stays clockwise of the wedge's edge ray by
+  post radius + cut margin, in closed form — §56's free-end anchoring makes
+  the foot exactly the handle that can move, the ringing length absorbs it,
+  and the arc knob becomes the arc's minimum (identity engages the clamp
+  by 3.3°; the live knob takes the same bound).
+- **Keyless traverse ⇄ reserve first wheel** (the mirrored fold parked the
+  cap corner where the collinear w1 rim ran): w1 takes the smallest bearing
+  swing about the barrel that clears the BUILT traverse — a mesh's centre
+  distance is fixed, its bearing free, the fold currency — and stage two's
+  module derives from the true w1→station distance (swing 0 keeps every
+  original expression verbatim). The wall is measured from vertices AND
+  facet midpoints; a cone model under-read the trailing bevel bodies, and
+  a vertex-only wall under-read a facet's sag by ~0.06.
+- **Wind arrest** −0.0498 at full wind: FILED as TODO 71 and waived — the
+  pad's seat is solved against the analytic link spacing while the built
+  links anchor phase at the fusee hook, and the top coil scallops
+  cap-vs-chord ~0.05 across that phase; the moved pad azimuth landed on a
+  cap where the old landed on a chord (−0.0074, same chain). The
+  `windArrestHandoff` check's first waiver, visible in every report, fix
+  path written at the item.
+
+**The acceptance diff** (Tier A tree → this): `chainLength`,
+`equalisation`, `graph` and `oscillator` byte-identical — the chain, both
+springs' laws and the oscillator solve never moved, which is the
+load-bearing claim for a change this wide. `alarmHandoffs` moved one row
+inside tolerance and keeps zero waivers. Every other check's movement is
+the relocated train's rows re-measured, with zero unwaived, zero
+FORBIDDEN, zero CONFIRMED and zero violations across the bar; the one
+verdict-class change anywhere is TODO 71's waiver. The fingerprint moves
+once, across the going train.
 
 **The wells split.** §97's one shared radius was the right law while the two
 stations were one number; at asymmetric stations it forces the min on both
