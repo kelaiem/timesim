@@ -3537,14 +3537,47 @@ const STOPWORK_AT_POST = {
     // each the lever's half-width plus the roller and the rod's own
     // radius+margin, state the same claim at the metal's actual size.
     ...(() => {
+      // MEASURED from the built hammer, not re-derived: a first cut placed
+      // these discs from hammerBaseAngle and missed the metal entirely (the
+      // lever's local frame composes with the solved retract, and the rod's
+      // knuckle ended 1.15 INSIDE the hammer's box while the elbow solve
+      // read clear). The parked mesh's own vertex band about the pivot is
+      // the truth; the seated pose is rotation.z → 0, so the swept band is
+      // the parked band widened by the parked rotation.
+      const piv = hammerPivotPos;
+      let azLo = Infinity, azHi = -Infinity, rMax = 0;
+      hammerGroup.updateMatrixWorld(true);
+      const _hv = new THREE.Vector3();
+      hammerGroup.traverse((o) => {
+        if (!o.isMesh || !o.geometry?.attributes?.position) return;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          _hv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          const dx = _hv.x - piv.x, dy = _hv.y - piv.y;
+          const r = Math.hypot(dx, dy);
+          // Near-pivot metal SURROUNDS the pivot (hub, clevis), so it has
+          // no meaningful azimuth — a first band included it and wrapped
+          // to a ~270° phantom sector that walled off every route. The
+          // hub gets its own single disc below; the BAND is the arm's,
+          // measured only from the metal that actually reaches out.
+          if (r < 2.5) continue;
+          rMax = Math.max(rMax, r);
+          const az = Math.atan2(dy, dx);
+          azLo = Math.min(azLo, az); azHi = Math.max(azHi, az);
+        }
+      });
+      const dSeat = -hammerGroup.rotation.z; // parked → seated sweep
+      const lo = azLo + Math.min(0, dSeat), hi = azHi + Math.max(0, dSeat);
       const rollR = hammerLever.userData.rollerR || 1.0;
       const rDisc = HAMMER_W / 2 + rollR + ROD_KNUCKLE_R + CLEAR_MARGIN;
-      const out = [];
-      for (const a of [hammerBaseAngle, hammerBaseAngle + HAMMER_SWING_RAD / 2, hammerBaseAngle + HAMMER_SWING_RAD])
-        for (const f of [0.4, 0.75, 1.05])
-          out.push({ x: hammerPivotPos.x + Math.cos(a) * hammerArmLen * f,
-                     y: hammerPivotPos.y + Math.sin(a) * hammerArmLen * f,
+      const out = [{ x: piv.x, y: piv.y, r: 2.5 + ROD_KNUCKLE_R + CLEAR_MARGIN,
+                     what: 'the reset hammer’s hub', of: () => hammerGroup }];
+      for (let k = 0; k < 5; k++) {
+        const a = lo + ((hi - lo) * k) / 4;
+        for (const f of [0.4, 0.75, 1.02])
+          out.push({ x: piv.x + Math.cos(a) * rMax * f, y: piv.y + Math.sin(a) * rMax * f,
                      r: rDisc, what: 'the reset hammer’s swing', of: () => hammerGroup });
+      }
       return out;
     })()],
   rubyFlare: G.HACK_RUBY_FLARE,
@@ -5678,6 +5711,22 @@ const BALANCE_COCK = (() => {
         bx: P.balance.x + cs * dyLeg + sn * hspan, by: P.balance.y + sn * dyLeg - cs * hspan, r: 0 };
       cut(segSeg(slab) - COCK_W / 2 - mastR, 'slab vs stop-work mast');
       cut(segSeg(bar) - 1.2 - COCK_LEG_R - mastR, 'T-bar vs stop-work mast');
+    }
+    // §125 Tier B — THE WHOLE FOOT STAYS IN THE CUT WEDGE. The legs drop
+    // from the slab tail to the base plate through the plate's z-band,
+    // which only the cutaway leaves open — outside it they stand through
+    // solid plate (measured: at the moved balance the scan seated the cock
+    // at φ 72° with its pads past the wedge edge, and clearances read the
+    // pair at 0). Each pad's azimuth, widened by its own angular radius at
+    // its distance, must stay inside ±phiOpen; graded like every other
+    // wall, in arc length at the pad's radius.
+    for (const sgn of [-1, 1]) {
+      const px = cs * dyLeg - sn * sgn * hspan, py = sn * dyLeg + cs * sgn * hspan;
+      const padDist = Math.hypot(px, py);
+      const _da = Math.atan2(py, px) - TQ_CUT.aim;
+      const padAz = Math.abs(Math.atan2(Math.sin(_da), Math.cos(_da)));
+      const padHalf = Math.atan2(padR + CLEAR_MARGIN, padDist);
+      cut((TQ_CUT.phiOpen - padAz - padHalf) * padDist, 'foot pad outside the cut wedge');
     }
     if (!near || clr > near.clr) near = { phi, dFoot, clr, tag: clrTag };
     scanRows.push({ deg: d, clr: +clr.toFixed(3), tag: clrTag });
@@ -11949,6 +11998,31 @@ const GONG_A1 = 15 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the ha
 // every one of them untouched. Anchoring at the foot instead would drag the
 // hammer around the rim on every edit and re-open §25's strike geometry.
 let GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+// §125 Tier B — THE FOOT LANDS ON PLATE, held by derivation: the balance's
+// cut wedge rotated with the moved balance and swallowed the foot's station
+// (support read the gong FLOATING, gap 0.537 — no plate under the post).
+// The wedge's CW edge ray (aim − phiOpen out of the balance) crosses the
+// gong circle at a closed-form azimuth; the foot stays clockwise of it by
+// its own post radius plus the cut margin, in arc at GONG_R. §56's
+// free-end anchoring makes this exactly the free handle — the foot slides,
+// the ringing length absorbs it, and the strike end, hammer and emitter
+// never feel it. The arc knob therefore reads as the arc's MINIMUM: the
+// clamp only ever lengthens it (identity engages it by 3.3°).
+const GONG_FOOT_BOUND = (() => {
+  const ed = TQ_CUT.aim - TQ_CUT.phiOpen;
+  const dx = Math.cos(ed), dy = Math.sin(ed);
+  const bx = P.balance.x, by = P.balance.y;
+  const bDot = bx * dx + by * dy;
+  const disc = bDot * bDot - (bx * bx + by * by - GONG_R * GONG_R);
+  if (disc <= 0) return Infinity;               // the edge ray misses the gong circle: no bound
+  const t = -bDot + Math.sqrt(disc);            // outward crossing
+  let azEdge = Math.atan2(by + dy * t, bx + dx * t);
+  // normalize into (GONG_A1 − 2π, GONG_A1] so the comparison is wrap-safe
+  while (azEdge > GONG_A1) azEdge -= Math.PI * 2;
+  while (azEdge <= GONG_A1 - Math.PI * 2) azEdge += Math.PI * 2;
+  return azEdge - (0.7 + TQ_CUT_MARGIN) / GONG_R;
+})();
+GONG_A0 = Math.min(GONG_A0, GONG_FOOT_BOUND);
 let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
 // (TQ_TOP_Z — the three-quarter plate's top face — is derived up at the plate
 // build; the gong foot and hammer post plant into it.)
@@ -19714,7 +19788,7 @@ function askTour(onProceed) {
     materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
     dial: (path) => { if (path[1] === 'hands') recutHands(); else return false; },
     gong: () => {
-      GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;
+      GONG_A0 = Math.min(GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD, GONG_FOOT_BOUND); // §125: the foot never leaves the plate, live edits included
       GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
       gongArc.geometry.dispose();
       gongArc.geometry = new THREE.TorusGeometry(GONG_R, GONG_WIRE_R, 8, 64, GONG_A1 - GONG_A0);

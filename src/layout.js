@@ -1346,9 +1346,14 @@ export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eS
 
 // How far the search may LOOK, not how far the rod may bend — C3's objective
 // decides that, and the plate decides what is reachable. Generous enough that
-// a corridor needing a real detour can be threaded; the identity build spends
-// 0.8 of it.
-export const ELBOW_E_MAX = 16;
+// a corridor needing a real detour can be threaded. §125 Tier B raised it
+// 16 → 28: the mirrored hack rod's only honest route past the reset hammer's
+// measured swing and the fourth arbor's collar is a southern dogleg ~22 of
+// lateral deep (measured — at 16 the scan reported "no station about the
+// balance can route", best −0.34 at the collar), and C3's least-bend
+// objective means the extra range costs nothing anywhere a smaller bend
+// threads: the pre-Tier-B build spends 0.8 of it.
+export const ELBOW_E_MAX = 28;
 
 export function solveStopWork({
   P,                  // solved layout stations (balance, fork, escape, fourth)
