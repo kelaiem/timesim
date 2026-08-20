@@ -1968,8 +1968,8 @@ export const INTRA_UNIT_CONTACTS = [
   // fired exactly as designed).
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#6', b: 'rsvHandArbor', why: 'differential wheel on its stud' },
   { unit: 'Alarm setting idler', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: 'idler wheel on its stud' },
-  { unit: 'Alarm hammer', a: 'CylinderGeometry#1', b: 'CylinderGeometry#0', why: 'hammer arm riveted to the arbor boss' },
-  { unit: 'Alarm hammer', a: 'alarmTail', b: 'CylinderGeometry#0', why: 'hammer tail on the same boss' },
+  { unit: 'Alarm hammer', a: 'alarmHammerArm', b: 'alarmHammerPost', why: 'hammer arm riveted to the arbor boss' },
+  { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerPost', why: 'hammer tail on the same boss' },
   { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
   { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },

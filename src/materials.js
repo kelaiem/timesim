@@ -52,18 +52,29 @@ const ruby = phys({
   clearcoatRoughness: 0.05,
 });
 
-// Yellow GOLD — for the screwed chatons the upper pivot jewels sit in. A
-// distinct material rather than a reuse of `brass`: the chatons are set into
-// a nickel plate a few units from brass wheels, and if gold and brass read
-// the same the detail that makes them worth modelling disappears. Richer,
-// redder and smoother than brass, with no clearcoat haze.
+// Yellow GOLD — for the screwed chatons the upper pivot jewels sit in, and
+// for the balance's anti-shock lyre. A distinct material rather than a reuse
+// of `brass`: the chatons are set into a nickel plate a few units from brass
+// wheels, and if gold and brass read the same the detail that makes them
+// worth modelling disappears. Richer and redder than brass.
+//
+// §148 — AND MIRROR POLISHED, which is not a preference about gold: it is
+// what a chaton IS. A screwed chaton has been mechanically obsolete since
+// pressed jewels arrived (see makeChaton), and it survives purely as a mark
+// of traditional finishing — so the FINISH is the part's whole remaining
+// job, and a satin ring is the one way to model it that misses the point.
+// Real chatons are black-polished: roughness at the floor rather than 0.14,
+// a full clearcoat with none of its own haze, and reflectivity at 1 so the
+// specular is a mirror image of the studio rather than a bloom. The lyre
+// spring shares it and wants the same — a gold anti-shock spring is polished
+// wire, not a casting.
 const gold = phys({
   color: 0xe8b53c,
   metalness: 1.0,
-  roughness: 0.14,
-  clearcoat: 0.5,
-  clearcoatRoughness: 0.08,
-  reflectivity: 0.85,
+  roughness: 0.03,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.0,
+  reflectivity: 1.0,
 });
 
 // Blued steel for the HANDS: cleanly POLISHED, deliberately a step

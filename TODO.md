@@ -43,7 +43,7 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 54 | CLOSED (§127) | Every sweep calls `enterAxis` before each axis, and `axisEntry` gates all 110 ordered pairs at 0 violations. The leak the old order-dependent entry used to carry is measured and REPORTED beside the gate rather than dropped — that report is the record, not a remainder |
 | 55 | CLOSED (§129) | The alarm stop-work counts the WIND now, not the arbor's absolute angle: a plate-mounted spider differential subtracts the barrel's two members, so the cross walks back as the spring empties. Residue is item 56 — a closed item is a bad place to keep live debt |
 | 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
-| 57 | CLOSED (§132) | Both fixes landed, in the order the item asked for: the prose was corrected first, and BUILT §132 then made the claim true — `makeChaton` is instantiated on the going train's three upper pivots and the README says which three. The plate's own "not viable" scope note is withdrawn in place: it was a reading objection, and the depth behind it was never derived |
+| 57 | CLOSED (§132, widened by §148) | Both fixes landed, in the order the item asked for: the prose was corrected first, and BUILT §132 then made the claim true — `makeChaton` is instantiated on the going train's three upper pivots and the README says which three. The plate's own "not viable" scope note is withdrawn in place: it was a reading objection, and the depth behind it was never derived. §148 then took the scope note's OTHER half — the escape wheel and the alarm striking arbor are chatoned too, because the screw stopped scaling with the chaton — and re-derived the stone, the rim, the counterbore fit and the screw against the movement instead of against the chaton itself |
 | 58 | CLOSED | The word is gone from every claim site: the mechanism is a **minute quick-set with a detented display**, in `BUILT.md` §1's title, `main.js`' two section headers and `explain.html`. The inner defect is not fixed — it is now SAID, in the source beside the rounding and in the explainer's own ledger: the input is driven through the real tooth counts, the detent is `Math.round(…/MIN_PITCH)`, and the star turns with the ROUNDED value, so the beak follows a profile the display already chose. Roadmap §4 is where the stronger word would be earned. Paid as filed: three explain-page blocks × five locales re-translated (`--check` PASS, 596/596), and fifteen `src/i18n.js` rows for three tour captions — one more caption than filed, because *"the beak snaps the hand"* was the same overclaim in miniature |
 | 59 | CLOSED | The nose's radius is solved against the surface it rides — the wall, and the top CORNER, whose roll-off branch (`baseR + √(noseR² − dz²)`) nobody had modelled; the transition is set by the nose radius and `dz/da`, not by the flank's whole 10.68°. Arm angle by law of cosines, not the old first-order chord. Measured over a pitch: old 30/121 samples buried worst 0.699, new **0/121**, worst clearance 0.0052. The row citing "the switch's own asserts" pointed at a check nobody wrote — one exists now, independent of the law |
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
@@ -53,6 +53,8 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
+| 70 | OPEN | `makeJewelSetting`'s collar is wound inside out AND is an open shell — three in the scene, found by §148's own winding assert swept scene-wide. The winding is a two-line fix; the open profile is TODO 27's measured hazard and is the real work |
+| 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
@@ -7410,3 +7412,98 @@ primer's plain-English claims are TRUE of the movement, because it quotes no
 constants by design. That gap is structural, and this item is its first
 instance rather than a one-off typo.
 
+
+## 69. The three-quarter plate is 0.303 mm thick, and §148 made that load-bearing
+
+`TQ_T = 0.8` (`main.js`) is one of the few dimensions in this movement that
+carries no derivation at all — no comment, no constraint, no citation. Through
+`UNIT_MM` it is **0.303 mm**. Real three-quarter plates run 0.9–1.4 mm; a
+0.3 mm plate is thinner than the *bridges* of a small calibre, let alone the
+member the whole train pivots in.
+
+Until §148 that was a quiet inaccuracy. It is now a hard infeasibility, and it
+shows up as an empty window in a solve that has three other members in it.
+
+**The arithmetic, at a chaton site.** §132 solved `CHATON_DEPTH` against two
+members splitting the plate, both answering to `STOCK_MIN_U` (0.31662 u,
+0.12 mm):
+
+| member | thickness | bound |
+|---|---|---|
+| bearing collar | `TQ_T − t` | `t` ≤ **0.4834** |
+| pressed stone | `CHATON_RUBY_FRAC · t` | `t` ≥ **0.4279** |
+
+§148 adds the third: a screwed chaton is held DOWN, and what holds it is the
+gold under the screw heads. A cheese head sinks its whole `headT` into the lap
+it covers, and `headT` is itself floored at `STOCK_MIN_U` (it is real stock and
+carries no kind entry, deliberately), so the ledge wants
+
+    t − headT ≥ STOCK_MIN_U   →   t ≥ 2·STOCK_MIN_U = 0.6332
+
+against a collar that caps `t` at 0.4834. **The window is empty.** No depth in
+this plate carries collar, stone and a full-thickness ledge at once, and the
+plate would have to reach `TQ_T ≥ 0.9498` (0.360 mm) before one exists — still
+under any real plate, and only just enough.
+
+**What §148 did instead, and why it is a workaround.** It made the chaton
+screws COUNTERSUNK. A cone reaches full depth only on its own axis, so across
+a lap of `CHATON_SCREW_LAP` it removes `headT·lap/(headR − shankR)` = 0.0455
+rather than 0.3166, and the gold under the head survives at 0.4143 u =
+**0.157 mm**, over the floor by 0.037. That is a real fastener and a real
+construction — it is not a fudge — but it is the SCREW paying for the plate,
+and it is the only reason the ledge exists at all. Anything else this plate is
+later asked to carry through its thickness gets no such escape.
+
+**What closing it means.** `TQ_T` is not a local number: `TQ_TOP_Z = TQ_BOT_Z
++ TQ_T`, and everything above the plate derives from `TQ_TOP_Z` — the lock
+collar's z-stack, `Z_GONG` and with it the gong, the hammer (whose §148 head
+section is `2·(Z_GONG − TQ_TOP_Z − margin)` and would GROW), the balance cock,
+the hack and reset rods, the alarm complex's whole plane. Raising it should
+move all of them together, which is the good case; what has to be measured is
+the case, the overall height, and every gate that reads an absolute z. So this
+is a LAYOUT change with a real acceptance bill, not a one-line edit, and it is
+filed rather than taken.
+
+**Do not close it by thinning something else.** The reason this item exists is
+that the plate is thin, not that the chaton is fat: every member above is
+already at its floor, and `CHATON_DEPTH` is the depth that EQUALISES the two
+that were there first.
+
+## 70. `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well
+
+Found by the instrument §148 added for its own defect (`assertLatheOutward`,
+`src/geometry.js`), swept over the whole scene rather than over the chaton:
+**three meshes besides the chaton's two have top faces whose normals point
+DOWN**, and all three are `makeJewelSetting` collars — the fork cock's stone at
+(9.58, −19.02), the setting at (19.62, −25.13), and the barrel arbor's lower
+pivot at (−13.27, 9.29).
+
+**Why it matters.** A LatheGeometry takes its profile's direction of travel as
+the surface's orientation. Wound backwards, every normal points into the solid;
+back-face culling then hides the faces you are looking at and shows whatever is
+behind them, so the part renders as its own interior. On the chaton that showed
+up as a gold ring shattered by the bearing collar it sits on — the two surfaces
+were coplanar — and it went unnoticed from §132 until the ring was widened
+enough to see through. These three have the same defect and the same
+invisibility: nothing under them happens to be coplanar, so they merely look
+subtly wrong.
+
+The convention is `ringGeo`'s and it is one sentence: **start at the bore's
+bottom and travel out, up, and back in.** `makeJewelSetting` travels
+`(wallR, −d) → (wallR, rimTop) → (outerR, rimTop) → (outerR, −d − 0.1)`, which
+is the other way round.
+
+**The second half is worse and is why this is not a two-line fix.** That profile
+is not closed — four points, and the fourth does not return to the first — so
+the collar is a SHELL, not a solid. Reversing the winding only changes which
+side of a surface you see. And an open mesh is TODO 27's measured hazard:
+`meshClearance` guards its BVH near-zeros with a parity raycast, which counts
+crossings and therefore assumes a closed solid. TODO 27 measured an open body
+making `sweptOverlap` CONFIRM an overlap against a part **3.7 units away**. So
+closing the profile is the fix, and the winding falls out of doing it properly.
+
+**Do it with the assert on.** `assertLatheOutward` is deliberately called only
+from `makeChaton` today, because pointing it at these would make boot noisy
+before anyone had fixed them — which is rule 6 turned into a nag rather than a
+gate. Fix the setting, then call it there too, and the class is closed for
+every lathe in the movement that has a horizontal top face.

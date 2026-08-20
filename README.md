@@ -302,10 +302,13 @@ reported rows — or measure it yourself.
 The finishing and layout follow the **Glashütte school** of watchmaking: a
 three-quarter plate, a separate balance cock screwed to it, Glashütte
 striping across that plate and the escape bridge, perlage on the base plate,
-screwed gold chatons over the going train's upper pivot jewels — three of
-them, on the centre, third and fourth wheels; the escape wheel's stone and
-the alarm train's are flush rubbed-in jewels, which is the older bearing and
-also a Glashütte one — and blued steel screws and hands.
+screwed gold chatons over every upper pivot jewel this plate carries — five
+of them, on the centre, third, fourth and escape wheels and on the alarm's
+striking arbor, each dropped into its own counterbore and held by blued
+screws whose heads lap its rim (two at the escape wheel, where the plate's
+escapement opening leaves room for no more) — and blued steel screws and
+hands. The flush rubbed-in stone, which is the older bearing and also a
+Glashütte one, survives on the cocks and on every lower pivot.
 
 **The dial no longer speaks German.** It used to: the power reserve was
 graduated **AUF/AB** — "up/down", the conventional marking for a German
