@@ -3362,6 +3362,11 @@ const lowRodObstaclesFor = (p, kw) => [
   { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
   { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
   { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
+  // §125 Tier B — the escape arbor joins the corridor's walls: no route ever
+  // passed it until the mirrored hack rod's southern dogleg did (inspection
+  // read Escape wheel ⇄ Hack rod FORBIDDEN on the first route the widened
+  // elbow found). Same collar model as the fourth, one arbor on.
+  { x: p.escape.x, y: p.escape.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the escape arbor’s lower collar', of: () => escapeArbor },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
@@ -9463,7 +9468,66 @@ const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.b
 // the second stage's module: d0 = m0·(P0+W1)/2, d1 = span − d0 = m1·(P1+W2)/2.
 const rsvModule0 = 0.34;
 const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
-const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+// §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied.
+// The mirrored setting traverse's cap corner stands where the collinear w1
+// rim ran (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN;
+// the face gap measured ~0.07). A mesh's centre distance is fixed but its
+// BEARING is free — the fold currency — so w1 takes the smallest swing
+// about the barrel that clears the BUILT traverse (both bevel-corner cones
+// and the connecting rod, which exist by this line) by the one margin, and
+// stage two's module then derives from the TRUE w1→station distance.
+// swing = 0 keeps every original expression verbatim (the a+(b−a)≠b rule).
+const rsvW1TipR = (rsvModule0 * (rsvTeethW1 + 2)) / 2;
+const rsvSwing = (() => {
+  // The wall is MEASURED, not modelled: a cone-radius model of the corner
+  // gears under-read the metal (the bevel bodies trail off the corner
+  // points along their shafts), so the scan reads the BUILT keyless
+  // traverse's vertices inside w1's own z-band and holds the wheel's tip
+  // circle off every one of them.
+  const zLo = Z_RSV - 0.5 - CLEAR_MARGIN, zHi = Z_RSV + 0.5 + CLEAR_MARGIN;
+  const pts = [];
+  keyless.updateMatrixWorld(true);
+  const _kv = new THREE.Vector3();
+  // Vertices AND triangle-edge midpoints: the traverse gears are coarse
+  // extrudes, and a facet's midpoint sags inside its endpoints — measured,
+  // the vertex-only wall under-read the nearest bevel flank by ~0.06 and
+  // accepted a swing the face metric refuses.
+  const _kv2 = new THREE.Vector3();
+  keyless.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      _kv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (_kv.z >= zLo && _kv.z <= zHi) pts.push([_kv.x, _kv.y]);
+      if (i + 1 < pos.count) {
+        _kv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
+        const mz = (_kv.z + _kv2.z) / 2;
+        if (mz >= zLo && mz <= zHi) pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2]);
+      }
+    }
+  });
+  const clearAt = (dl) => {
+    const cs = Math.cos(dl), sn = Math.sin(dl);
+    const wx = P.barrel.x + (rsvU.x * cs - rsvU.y * sn) * rsvD0;
+    const wy = P.barrel.y + (rsvU.x * sn + rsvU.y * cs) * rsvD0;
+    let c = Infinity;
+    for (const q of pts) c = Math.min(c, Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR);
+    return c;
+  };
+  if (clearAt(0) >= CLEAR_MARGIN) return 0;
+  for (let d = 1; d <= 30; d++)
+    for (const sgn of [1, -1])
+      if (clearAt(sgn * d * DEG2RAD) >= CLEAR_MARGIN) return sgn * d * DEG2RAD;
+  console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse — keeping the line; the battery judges it');
+  return 0;
+})();
+const rsvW1U = rsvSwing === 0 ? rsvU
+  : { x: rsvU.x * Math.cos(rsvSwing) - rsvU.y * Math.sin(rsvSwing),
+      y: rsvU.x * Math.sin(rsvSwing) + rsvU.y * Math.cos(rsvSwing) };
+const rsvW1PosSolved = { x: P.barrel.x + rsvW1U.x * rsvD0, y: P.barrel.y + rsvW1U.y * rsvD0 };
+const rsvModule1 = rsvSwing === 0
+  ? (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2)
+  : (2 * Math.hypot(rsvPivotXY.x - rsvW1PosSolved.x, rsvPivotXY.y - rsvW1PosSolved.y)) / (rsvTeethP1 + rsvTeethW2);
 // §94 tier C — THE MODULE'S OWN BOUNDS, jointly in (rsvr, reserveh): the
 // span solves the module, the hours solve w2's tooth count, and neither
 // spec key can see the other's consequence — a moved station silently
@@ -9484,7 +9548,12 @@ const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
 //    its own well's ring wall (the reserve well shrinks as the station walks in,
 //    while a longer reserveh GROWS the tip — the joint worst case).
 const RSV_TOOTH_FLOOR_MM = 0.12;
-const rsvTrainWarnsAt = (station, sdR = reserveWellR) => {
+const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
+  // §125 Tier B — m1Override: the BOOT call passes the built rsvModule1,
+  // which can differ from the collinear ideal below when w1's bearing has
+  // swung off the line (rsvSwing). Candidate stations keep the ideal — a
+  // candidate's own swing would re-solve at build, and the ideal is its
+  // lower bound on the module.
   // §97/§125 Tier B — sdR: the RESERVE well radius the candidate carries.
   // The boot call passes nothing and reads the built value; the reserve
   // handle's shadow passes the candidate station's own well (station −
@@ -9495,7 +9564,7 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR) => {
   const out = [];
   const pivot = { x: P.dial.x - station.x, y: P.dial.y + station.y };
   const span = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
-  const m1 = (2 * (span - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+  const m1 = m1Override !== null ? m1Override : (2 * (span - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
   if (m1 <= 0) {
     out.push(`reserve train: the station sits inside stage one's centre distance `
       + `(barrel→pivot ${span.toFixed(2)} vs d0 ${rsvD0.toFixed(2)}) — the second mesh has no metal `
@@ -9520,7 +9589,7 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR) => {
       + `(reserve well ${sdR.toFixed(2)} − wall − margin)`);
   return out;
 };
-for (const m of rsvTrainWarnsAt(RESERVE_LOCAL)) console.warn(m);
+for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) console.warn(m);
 
 const reservePinion0 = G.makePinion({ module: rsvModule0, teeth: rsvTeethP0, thickness: 1.2, material: MATS.steel });
 const rsvWheel1 = G.makeGear({ module: rsvModule0, teeth: rsvTeethW1, thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
@@ -9530,7 +9599,7 @@ const rsvWheel2 = G.makeGear({ module: rsvModule1, teeth: rsvTeethW2, thickness:
 rsvWheel1.rotation.z = Math.PI / rsvTeethW1;
 rsvWheel2.rotation.z = Math.PI / rsvTeethW2;
 
-const rsvW1Pos = { x: P.barrel.x + rsvU.x * rsvD0, y: P.barrel.y + rsvU.y * rsvD0 };
+const rsvW1Pos = rsvW1PosSolved; // §125 Tier B — the solved bearing (identical to the line at swing 0)
 
 const rsvArbor0 = new THREE.Group(); // p0 — slip-coupled on the barrel arbor axis
 rsvArbor0.position.set(P.barrel.x, P.barrel.y, Z_RSV);

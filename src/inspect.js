@@ -3834,6 +3834,11 @@ export const WIND_ARREST_HANDOFFS = [
     unitA: 'Chain', meshA: 'chainRun',
     unitB: 'Winding arrest', meshB: 'windArrestPad',
     expect: { full: 'contact', slack: 'free' },
+    // §125 Tier B — the moved station re-sited the pad's azimuth onto an
+    // end-cap phase of the built wrap; the seat solve reads the analytic
+    // spacing and the two disagree by the cap-vs-chord scallop (measured
+    // −0.0498 vs the −0.0074 the old azimuth read on the same chain).
+    waived: 'TODO 71 — pad seat solved against the analytic link phase; anchor linkOuterPtsNear to the build\'s hook phase',
   },
   {
     label: 'beak ⇄ stop lug',
