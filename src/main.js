@@ -8607,6 +8607,23 @@ for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['second
       + `— the well radius outran the ceiling the solver holds it under`);
 }
 
+// §125 — THE MAXIMIZATION HOLDS, asserted: D4 is a printed constant whose
+// derivation is "the station where the seconds well's two bounds meet"
+// (centre keep-out inboard, railroad − wall − margin outboard). dialRadius
+// is flat over the range today, which is what lets the closed form be a
+// constant — but a moved face, rail fraction or keep-out would silently
+// strand D4 at a no-longer-maximal station. This is the §39 shape: the
+// falsifiable half of a pinned number, with the re-derivation in D4's own
+// comment.
+{
+  const inboard = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
+  const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
+    - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
+  if (SPEC.d4 === null && Math.abs(inboard - outboard) > 0.02)
+    console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
+      + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
+}
+
 const dial = G.makeDial({
   radius: dialRadius,
   subdialRecess: SUBDIAL_RECESS,

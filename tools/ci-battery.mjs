@@ -572,22 +572,24 @@ const SPEC_POINTS = [
   { name: 'alarmaz=175', q: 'alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
   { name: 'alarmaz=180', q: 'alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
   { name: 'alarmmod=200', q: 'alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
-  // §94 tier A — the small-seconds station, re-measured for §125 Tier B
-  // (the DEFAULT is 22.9 now — the plate-flat ceiling — so 20 is an INWARD
-  // point where it used to be the outward one):
-  //   · 20 warns once — stop work's |K| (0.794 vs 0.796), the mid-band wall
-  //     §125 measured at 21 too; the band's damage is non-monotonic (16 and
-  //     20 warn, 21.5–22.9 are silent), so these are declared points, never
-  //     a range to interpolate;
-  //   · 16 is inside the [16, 17] window where solveKeyless reports the side
-  //     sign nearly degenerate (balance −0.48 off the stem line). It is here
-  //     BECAUSE it warns. (The §34 selector-post second warn the old row
-  //     carried is GONE: Tier B split the wells, so an inward d4 no longer
-  //     drags the reserve well smaller — one warn now, measured);
+  // §94 tier A — the small-seconds station, re-measured for the §125
+  // margins tweak (the DEFAULT is 18.7778 now — the well-maximizing
+  // station under the furniture law):
+  //   · 20 is an OUTWARD point in the |K| band and warns once — stop
+  //     work's mast against the cock height, the wall §125 measured at
+  //     20–21 both before and after the frame program (non-monotonic:
+  //     20 warns, 22.9 is silent — declared points, never a range);
+  //   · 22.9 is the Tier B ceiling default, kept as a measured-silent
+  //     point: the frame program's negotiations re-solve there and the
+  //     plate stays flat, which is what lets ?d4= walk the whole band;
+  //   · 16 is inside the [16, 17] window where solveKeyless reports the
+  //     side sign nearly degenerate (balance −0.48 off the stem line),
+  //     one warn, measured;
   //   · 24 is past the two-bar's closure window (1.95 ≤ d4 ≤ 23.55). It
   //     must BOOT — the solve reports the refusal and keeps D4 rather than
   //     handing the build a NaN layout — the guard on that fallback.
-  { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§125 Tier B — an inward station in the dirty band: stop work |K| warns, measured' },
+  { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§125 — an outward station in the |K| band: stop work warns once, measured' },
+  { name: 'd4=22.9', q: 'd4=22.9', expect: 'any', why: '§125 — the Tier B ceiling, measured silent: the frame program re-solves across the band' },
   { name: 'd4=16', q: 'd4=16', expect: 'any', why: '§94 tier A — inside the keyless side-sign window: this point is EXPECTED to warn' },
   { name: 'd4=24', q: 'd4=24', expect: 'any', why: '§94 tier A — past the two-bar closure: must fall back to D4 and warn, never NaN' },
   // §94 tier C — the reserve station. Four points, each measured on this
