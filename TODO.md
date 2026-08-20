@@ -5738,7 +5738,32 @@ could not produce at all.
 
 ---
 
-## 48. The power-reserve train's two meshes sit tooth ON tooth — measured, 47–49% of a pitch off
+## 48. CLOSED — the power-reserve train's two meshes sat tooth ON tooth; solved, driven forward, and re-measured at 0.03–0.07%
+
+**Closed 2026-08-20, both halves in one landing as the item required.**
+`tools/probe-reserve-mesh.mjs` (taught the new pair-group structure) reads
+the same three winds it filed the defect at: **worst credible reading
+0.07% of a pitch off anti-phase** (was 47–49%), both meshes, gauges
+credible at [8,28]/[10,12] gaps. What landed:
+
+- `measuredToothPhase`'s min-to-max threshold replaced with the probe's
+  10th/90th-percentile threshold (finding 1 — the 56-gaps-at-0.94 failure
+  is closed at the gauge, not worked around);
+- w1+p1 wrapped in a rigid PAIR group (`rsvPair1`) — the one-blank
+  constraint made structural, answering the question TODO 15 left open
+  for the alarm's i1/i1b — and the chain solved as two `solveGearChain`
+  runs with the pair held, one per module, p0 the datum;
+- the half-pitch idiom lines deleted;
+- the train DRIVEN FORWARD (finding 2): p0 takes the barrel arbor's wind
+  angle through its slip coupling (the constant term is the coupling's
+  SET — assembly zeroing the indicator by slipping the friction), each
+  mesh counter-rotates by its real ratio, and the hand ARRIVES.
+  RESERVE_SWEEP_DEG·ratio = FUSEE_WRAP_TURNS·360 by TODO 18's shared
+  derivation, so the hand sweeps the same graduated arc — the same
+  angles, arrived at forwards.
+
+The body below is kept as the record of the measurement that filed it.
+
 
 > **Re-confirmed by triage 2026-08-19**, when "fix the gear meshing on the
 > power reserve indicator" came in as a fresh request. It is this item,
