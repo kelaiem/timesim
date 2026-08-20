@@ -31,7 +31,7 @@ import {
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
-  BARREL_STEP_DEG, D4, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
@@ -1026,7 +1026,7 @@ const {
   cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, subDialR, alarmCornerR, rsvrWindow,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, alarmCornerR, rsvrWindow,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
@@ -8264,13 +8264,14 @@ const dialFace = new THREE.Group();
 dialFace.rotation.y = Math.PI;
 dialGroup.add(dialFace);
 
-// dialRadius / RESERVE_LOCAL / SECONDS_LOCAL / subDialR — solved in
-// solveKeyless (layout.js, §13 step 3b) with the plate radius they hang
-// off; destructured at the frame solve up top. The constraint comments
-// (sub-dial symmetry, the §25 C well-radius cap) moved with the
-// expressions. Consumed here by the dial build:
-const reserveR = subDialR;
-const secondsSubR = subDialR;
+// dialRadius / RESERVE_LOCAL / SECONDS_LOCAL / reserveWellR / secondsWellR —
+// solved in solveKeyless (layout.js, §13 step 3b) with the plate radius they
+// hang off; destructured at the frame solve up top. §125 Tier B split the
+// wells (the seconds took the plate-flat ceiling, the reserve kept its
+// readable size), so the two radii arrive separately now. Consumed here by
+// the dial build:
+const reserveR = reserveWellR;
+const secondsSubR = secondsWellR;
 // --- The reserve scale, owned in ONE place (TODO 18) -----------------------
 // Three things must agree: the graduation painted on the well, the travel of
 // the hand over it, and the reduction train's ratio. They used to be three
@@ -8377,22 +8378,22 @@ const SUBDIAL_RECESS = 0.5;
 // TODO 26 lifted them out of it. So this asserts the ceiling that binds now,
 // in the same form — bore + wall + the one margin — and reports the achieved
 // and required numbers per rule 6.
-for (const [nm, cy] of [['reserve', RESERVE_LOCAL.y], ['seconds', -SECONDS_LOCAL.y]]) {
-  const innerEdge = cy - subDialR;                     // the ring's closest approach to the dial centre
+for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['seconds', -SECONDS_LOCAL.y, secondsWellR]]) {
+  const innerEdge = cy - wr;                           // the ring's closest approach to the dial centre
   const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
   // §94 tier A — the epsilon is a FLOAT-EQUALITY guard, not a widened budget.
-  // subDialR solves to `min(station) − (need + CLEAR_MARGIN)` when derived,
-  // so for whichever station is the inner one this web is CLEAR_MARGIN by
-  // algebra; while both stations were literals that arithmetic happened to
-  // land on the right side of the last bit, and a spec'd d4 re-does it at
-  // an arbitrary value — every inward station reported a 1e-16 breach of
-  // its own definition. Measured at d4 6: web 0.14999999999999991 vs 0.15.
-  // §97 retired the finish factor and CLAMPS a spec'd radius to the same
-  // ceiling in the solver, so this assert should now be unreachable except
-  // through a defect in that clamp — which is exactly why it stays.
+  // §125 Tier B made every well solve to `its station − (need + CLEAR_MARGIN)`
+  // when derived, so this web is CLEAR_MARGIN by algebra PER WELL now (it
+  // used to hold only for whichever station was the min); a spec'd d4 or
+  // rsvr re-does the arithmetic at an arbitrary value — every inward station
+  // reported a 1e-16 breach of its own definition before the epsilon.
+  // Measured at d4 6: web 0.14999999999999991 vs 0.15. §97 retired the
+  // finish factor and CLAMPS a spec'd radius to the ceiling in the solver,
+  // so this assert should now be unreachable except through a defect in
+  // that clamp — which is exactly why it stays.
   if (innerEdge - need < CLEAR_MARGIN - 1e-9)
     console.warn(`${nm} sub-dial pocket vs the dial's centre bore: web ${(innerEdge - need).toFixed(2)}, need ${CLEAR_MARGIN} `
-      + `(well r ${subDialR.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
+      + `(well r ${wr.toFixed(2)} at centre distance ${cy.toFixed(2)}; bore ${DIAL_CENTER_BORE_R.toFixed(2)} + wall ${DIAL_WALL_HALF}) `
       + `— the well radius outran the ceiling the solver holds it under`);
 }
 
@@ -8981,8 +8982,8 @@ const JMP_AZ = (() => {
   const obstacles = [
     { x: capLocal.x - MW_STUD.x, y: capLocal.y - MW_STUD.y, r: 1.8 }, // setting cap + arbor head (stud-relative)
     { x: -MW_STUD.x, y: -MW_STUD.y, r: ALARM_TUBE_OUTER + 0.6 },      // dial-centre tube stack (outermost: the §25 C alarm tube)
-    { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
-    { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: subDialR + 0.5 },
+    { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: reserveWellR + 0.5 },
+    { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: secondsWellR + 0.5 },
   ];
   let best = null;
   for (let d = 0; d < 360; d += 2) {
@@ -9284,14 +9285,17 @@ const rsvModule1 = (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
 //    stays the instrument for the marginal one.
 //  · CEILINGS — TODO 33's form (bore + wall + the one margin), radial:
 //    w2's tip circle against the dial centre's tube stack, and against
-//    its own well's ring wall (subDialR shrinks as the station walks in,
+//    its own well's ring wall (the reserve well shrinks as the station walks in,
 //    while a longer reserveh GROWS the tip — the joint worst case).
 const RSV_TOOTH_FLOOR_MM = 0.12;
-const rsvTrainWarnsAt = (station, sdR = subDialR) => {
-  // §97 — sdR: the well radius the candidate carries. The boot call passes
-  // nothing and reads the built value; the subdial handle's shadow passes
-  // its candidate so the tip-vs-well ceiling is judged against the well
-  // being PROPOSED, not the one built.
+const rsvTrainWarnsAt = (station, sdR = reserveWellR) => {
+  // §97/§125 Tier B — sdR: the RESERVE well radius the candidate carries.
+  // The boot call passes nothing and reads the built value; the reserve
+  // handle's shadow passes the candidate station's own well (station −
+  // SUBDIAL_INBOARD_CLEAR, the grows-from-the-centre law) so the
+  // tip-vs-well ceiling is judged against the well being PROPOSED, not the
+  // one built. §97's key no longer enters here at all — it pins the
+  // SECONDS well, which this train never meets.
   const out = [];
   const pivot = { x: P.dial.x - station.x, y: P.dial.y + station.y };
   const span = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
@@ -9317,7 +9321,7 @@ const rsvTrainWarnsAt = (station, sdR = subDialR) => {
   if (w2Tip > sdR - DIAL_WALL_HALF - CLEAR_MARGIN)
     out.push(`reserve train: w2's tip circle ${w2Tip.toFixed(2)} reaches its own well's ring wall — `
       + `the well allows ${(sdR - DIAL_WALL_HALF - CLEAR_MARGIN).toFixed(2)} `
-      + `(subDialR ${sdR.toFixed(2)} − wall − margin)`);
+      + `(reserve well ${sdR.toFixed(2)} − wall − margin)`);
   return out;
 };
 for (const m of rsvTrainWarnsAt(RESERVE_LOCAL)) console.warn(m);
@@ -9492,7 +9496,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // carrier flange: retention + t
 const ALARM_SET_WHEEL_TEETH = 30, ALARM_SET_I1_TEETH = 28, ALARM_SET_I2_TEETH = 37, ALARM_SET_PINION_TEETH = 10;
 // TWO ASYMMETRIC idlers (28 t, 37 t) on a DOGLEG. The corridor is walled on
 // every side, each bound measured: the two sub-dial WELL RINGS (radius and
-// centres read from the solve — `subDialR` about RESERVE_LOCAL/SECONDS_LOCAL,
+// centres read from the solve — per-well radii about RESERVE_LOCAL/SECONDS_LOCAL,
 // r 10.2 about (0, ±15.4) when this route was cut, r 11.85 since TODO 33
 // re-derived the wells' inboard ceiling — whose walls descended through this
 // exact z-band when the dial was a sheet; the owner SAW the first 40 t idler
@@ -9759,8 +9763,8 @@ const alarmSelRing = new THREE.Group();
     // (it is at −15.5, on the fourth wheel's axis, not −15.4). Same
     // dial-local → world flip the ALARM_SET_WALLS rings use: (−Lx, +Ly).
     for (const [nm, c, rr] of [
-      ['12-well ring', { x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y }, subDialR],
-      ['seconds-well ring', { x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y }, subDialR],
+      ['12-well ring', { x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y }, reserveWellR],
+      ['seconds-well ring', { x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y }, secondsWellR],
     ]) {
       const d = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - rr) - DIAL_WALL_HALF - 0.14;
       say(`post az${Math.round(az / DEG2RAD)} vs ${nm}`, d);
@@ -10386,9 +10390,9 @@ const ALARM_SET_WALLS = [
   { name: 'winding climb', x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, lo: -Infinity, hi: Infinity },
   { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
-  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: subDialR, halfW: DIAL_WALL_HALF,
+  { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: reserveWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
-  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: subDialR, halfW: DIAL_WALL_HALF,
+  { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
   ...alarmSetWallsOf(reserveTrain, 'reserve train'),
@@ -23199,31 +23203,28 @@ const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // does not: its setting bevel stands in the sub-dial wells' radial band, so
 // an azimuth inside a well's angular radius parks the corner cluster INSIDE
 // the recess. §94 tier B split the two radii the one formula used to fuse:
-// each well DISC (radius subDialR) subtends its asin at ITS OWN station's
-// centre distance, while the corner CLUSTER's width subtends at the
-// corner's own sweep radius (ALARM_CD) — the fused form was valid only
-// while every radius was the same number. §125 finished the split: the
-// corner reads its own design radius (ALARM_CORNER_R) and the reserve
-// station mirrors the seconds station, so no two of the three radii share
-// an expression any more (the windows are not fingerprinted; each row reads
-// its true quantity); the seconds row reads its true station (D4 = 15.5,
-// which tier A's spec key already moves — the fused form kept reading the
-// corner's 15.40 for a disc that was never there).
-// Measured at identity: the seconds half narrows 0.0079 rad (0.45°), the
-// fused form's own error surfacing, not new behaviour.
+// each well DISC subtends its asin at ITS OWN station's centre distance,
+// while the corner CLUSTER's width subtends at the corner's own sweep
+// radius (ALARM_CD) — the fused form was valid only while every radius was
+// the same number. §125 finished the split twice over: the corner reads its
+// own design radius (ALARM_CORNER_R), and Tier B parted the WELLS as well —
+// each row now carries its own station AND its own radius (reserveWellR /
+// secondsWellR), which is the fully unfused form the §94 comment was
+// working toward. (The windows are not fingerprinted; each row reads its
+// true quantity.)
 const reconfAlarmWindows = () => {
   const alarmCrownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);
   const clusterHalf = Math.atan2(1.5, ALARM_CD);
-  const wellHalfAt = (stationR) =>
-    Math.asin(Math.min(0.99, (subDialR + CLEAR_MARGIN) / stationR)) + clusterHalf;
+  const wellHalfAt = (stationR, wellR) =>
+    Math.asin(Math.min(0.99, (wellR + CLEAR_MARGIN) / stationR)) + clusterHalf;
   return [
     { az: Math.atan2(uWind.y, uWind.x), half: alarmCrownHalf + Math.atan2(5.425, plateR), what: 'the winding crown' },
     { az: ALARM_PUSH_AZ, half: alarmCrownHalf + Math.atan2(2.667, plateR), what: 'the alarm pusher' },
     // §94 tier C — the azimuth READS the station (dial-local → world mirrors
     // x), so a later azimuth key finds no literal; with x = 0 this is
     // exactly π/2, bit-for-bit.
-    { az: Math.atan2(RESERVE_LOCAL.y, -RESERVE_LOCAL.x), half: wellHalfAt(Math.hypot(RESERVE_LOCAL.x, RESERVE_LOCAL.y)), what: 'the reserve sub-dial’s well' },
-    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalfAt(Math.hypot(P.fourth.x, P.fourth.y)), what: 'the seconds sub-dial’s well' },
+    { az: Math.atan2(RESERVE_LOCAL.y, -RESERVE_LOCAL.x), half: wellHalfAt(Math.hypot(RESERVE_LOCAL.x, RESERVE_LOCAL.y), reserveWellR), what: 'the reserve sub-dial’s well' },
+    { az: Math.atan2(P.fourth.y, P.fourth.x), half: wellHalfAt(Math.hypot(P.fourth.x, P.fourth.y), secondsWellR), what: 'the seconds sub-dial’s well' },
   ];
 };
 // The PUSHER's windows: its head against the two crowns (both azimuths
@@ -23311,7 +23312,7 @@ const RECONF_HANDLES = [
   // bounds beside rsvModule1). The layout shadow would come back the
   // identity build — the ghost-that-is-not-the-proposal trap, one solver
   // down. No constellation paints because the train honestly does not move.
-  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: -SECONDS_LOCAL.y, radial: true, // §125 — the default mirrors the seconds station now, not the face
+  { kind: 'reserve', specKeyName: 'rsvr', urlKey: 'rsvr', def: RESERVE_STATION_R, radial: true, // §125 Tier B — the reserve's own design station (the Tier A mirror died when the wells split)
     anchor: () => P.dial, grabAt: () => rsvPivotXY, grabR: () => (rsvModule1 * (rsvTeethW2 + 2)) / 2 + 2,
     toSpec: (dist) => dist,
     refuseAt: (v) => (v > rsvrWindow.min && v <= rsvrWindow.max) ? null
@@ -23321,63 +23322,66 @@ const RECONF_HANDLES = [
     shadow: (v) => {
       const warns = [];
       solveKeyless({ ...KEYLESS_INPUTS, rsvR: v, warn: (m) => warns.push(m) });
-      warns.push(...rsvTrainWarnsAt({ x: 0, y: v }));
+      // §125 Tier B — the candidate station carries its OWN well (the
+      // grows-from-the-centre law), so the train's tip-vs-well bound is
+      // judged against the well the drag would actually cut.
+      warns.push(...rsvTrainWarnsAt({ x: 0, y: v }, v - SUBDIAL_INBOARD_CLEAR));
       return { warns, refuse: null };
     },
   },
-  // §97 — the shared WELL RADIUS, the third radial row, and its one honest
-  // concession stated: a radius has no arbor. The ring sits on the SECONDS
-  // well (whose centre IS the fourth wheel's real arbor) at the well's own
-  // radius, so what is circled is the ring being dragged and the reading is
-  // its distance from that station. One radius serves BOTH wells, so the
-  // proposal ghosts both (wellGhost) — highlighting only the ring under the
-  // pointer would state something false about what the drag does. Keyless-
-  // tier like the reserve row: the radius never enters solveLayout, so the
-  // row carries its own shadow, plus the reserve train's tip-vs-well bound
-  // judged against the well being PROPOSED.
+  // §97 — the WELL RADIUS row, and its one honest concession stated: a
+  // radius has no arbor. The ring sits on the SECONDS well (whose centre IS
+  // the fourth wheel's real arbor) at the well's own radius, so what is
+  // circled is the ring being dragged and the reading is its distance from
+  // that station. §125 Tier B split the wells, so this key pins the SECONDS
+  // well ONLY now — the reserve's radius is its station's own derivation
+  // and rides the reserve row above, not this one. The proposal ghosts the
+  // one well the drag changes (wellGhost — the both-wells ghost retired
+  // with the shared radius, for §97's own reason run the other way:
+  // ghosting a well the drag no longer touches would state something false).
+  // Keyless-tier like the reserve row: the radius never enters solveLayout,
+  // so the row carries its own shadow. The reserve train's tip-vs-well
+  // bound left this shadow with the sharing — §97's key cannot reach that
+  // train any more.
   { kind: 'subdial', specKeyName: 'subdialr', urlKey: 'subdialr',
-    def: Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR, radial: true,
-    anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => subDialR + 2,
+    def: -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR, radial: true,
+    anchor: () => P.fourth, grabAt: () => P.fourth, grabR: () => secondsWellR + 2,
     toSpec: (dist) => dist,
-    label: (v, def) => `proposed: well radius ${v.toFixed(2)} for both sub-dials (was ${def.toFixed(2)})`,
+    label: (v, def) => `proposed: seconds well radius ${v.toFixed(2)} (was ${def.toFixed(2)})`,
     refuseAt: (v) => {
-      const ceil = Math.min(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) - SUBDIAL_INBOARD_CLEAR;
+      const ceil = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
       return (v >= SUBDIAL_FLOOR && v <= ceil) ? null
-        : `the wells cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
+        : `the seconds well cannot be cut at ${v.toFixed(2)} — below ${SUBDIAL_FLOOR.toFixed(2)} a pocket cannot `
           + `carry its own centre bore's wall; above ${ceil.toFixed(2)} it breaches the dial's centre bore `
-          + `(inner station − keep-out)`;
+          + `(its station − keep-out)`;
     },
     shadow: (v) => {
       const warns = [];
       solveKeyless({ ...KEYLESS_INPUTS, subDialRadius: v, warn: (m) => warns.push(m) });
-      warns.push(...rsvTrainWarnsAt(RESERVE_LOCAL, v));
       return { warns, refuse: null };
     },
     wellGhost: true,
   },
 ];
-// §97 — the both-wells ghost. Two rings, one per well, at the candidate
-// radius: the proposal shows everything the drag changes. Furniture like
-// reconfGhost — parented to the scene, never a unit, so no sweep reads it.
+// §97/§125 Tier B — the well ghost: ONE ring now, on the seconds well, at
+// the candidate radius — the proposal shows exactly what the drag changes.
+// Furniture like reconfGhost — parented to the scene, never a unit, so no
+// sweep reads it.
 let reconfWellGhost = null;
 function reconfShowWellGhost(v) {
   if (!reconfWellGhost) {
     reconfWellGhost = new THREE.Group();
     const mat = new THREE.LineBasicMaterial({ color: 0xbfeee2, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false });
-    for (let i = 0; i < 2; i++) {
-      const pts = [];
-      for (let s = 0; s <= 64; s++) { const a = (s / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0)); }
-      const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
-      ring.renderOrder = 998;
-      reconfWellGhost.add(ring);
-    }
+    const pts = [];
+    for (let s = 0; s <= 64; s++) { const a = (s / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0)); }
+    const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    ring.renderOrder = 998;
+    reconfWellGhost.add(ring);
     scene.add(reconfWellGhost);
   }
-  const wells = [{ x: P.fourth.x, y: P.fourth.y }, rsvPivotXY];
-  reconfWellGhost.children.forEach((ring, i) => {
-    ring.position.set(wells[i].x, wells[i].y, 0);
-    ring.scale.setScalar(Math.max(v, 0.01));
-  });
+  const ring = reconfWellGhost.children[0];
+  ring.position.set(P.fourth.x, P.fourth.y, 0);
+  ring.scale.setScalar(Math.max(v, 0.01));
   reconfWellGhost.visible = true;
 }
 // Shadow solve (step 4): the same pure solver, same measured inputs, a
@@ -27569,7 +27573,7 @@ function tick(t) {
 {
   scene.updateMatrixWorld(true);
   const slab = new THREE.Box3().setFromObject(dial);
-  const wellsEdge = Math.max(RESERVE_LOCAL.y, -SECONDS_LOCAL.y) + subDialR + CLEAR_MARGIN;
+  const wellsEdge = Math.max(RESERVE_LOCAL.y + reserveWellR, -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
   const _rv = new THREE.Vector3();
   let nearest = Infinity, nearestUnit = 'nothing';
   for (const entry of labelEntries) {

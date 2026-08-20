@@ -572,46 +572,47 @@ const SPEC_POINTS = [
   { name: 'alarmaz=175', q: 'alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
   { name: 'alarmaz=180', q: 'alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
   { name: 'alarmmod=200', q: 'alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
-  // §94 tier A — the small-seconds station. Three points, each measured on
-  // this tree before it was written down (roadmap §74 kept the arithmetic;
-  // every number below was re-measured, and one of its figures moved):
-  //   · 20 is the OUTWARD point, and it boots SILENT here — §74 measured 1
-  //     warning at this value, so the tree has improved under it since;
+  // §94 tier A — the small-seconds station, re-measured for §125 Tier B
+  // (the DEFAULT is 22.9 now — the plate-flat ceiling — so 20 is an INWARD
+  // point where it used to be the outward one):
+  //   · 20 warns once — stop work's |K| (0.794 vs 0.796), the mid-band wall
+  //     §125 measured at 21 too; the band's damage is non-monotonic (16 and
+  //     20 warn, 21.5–22.9 are silent), so these are declared points, never
+  //     a range to interpolate;
   //   · 16 is inside the [16, 17] window where solveKeyless reports the side
   //     sign nearly degenerate (balance −0.48 off the stem line). It is here
-  //     BECAUSE it warns: the window is documented by a row that expects it,
-  //     not suppressed. It also fouls the §34 selector post against the
-  //     moved well, which is the second warning and the honest one;
-  //   · 24 is past the two-bar's closure window (1.95 ≤ d4 ≤ 23.55, the
-  //     first NaN §74 measured). It must BOOT — the solve reports the
-  //     refusal and keeps D4 rather than handing the build a NaN layout —
-  //     so this row is the guard on that fallback, not on the bound.
-  // The warning count is non-monotonic in d4 (17 → 1, 17.5 → 5, 20 → 0), so
-  // read these as three declared points, never as a range to interpolate.
-  { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§94 tier A — the small-seconds station moved out; measured silent on this tree' },
+  //     BECAUSE it warns. (The §34 selector-post second warn the old row
+  //     carried is GONE: Tier B split the wells, so an inward d4 no longer
+  //     drags the reserve well smaller — one warn now, measured);
+  //   · 24 is past the two-bar's closure window (1.95 ≤ d4 ≤ 23.55). It
+  //     must BOOT — the solve reports the refusal and keeps D4 rather than
+  //     handing the build a NaN layout — the guard on that fallback.
+  { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§125 Tier B — an inward station in the dirty band: stop work |K| warns, measured' },
   { name: 'd4=16', q: 'd4=16', expect: 'any', why: '§94 tier A — inside the keyless side-sign window: this point is EXPECTED to warn' },
   { name: 'd4=24', q: 'd4=24', expect: 'any', why: '§94 tier A — past the two-bar closure: must fall back to D4 and warn, never NaN' },
   // §94 tier C — the reserve station. Four points, each measured on this
   // tree before it was written down:
   //   · 20 is the OUTWARD point, and it boots silent;
-  //   · 8 is inside the window and EXPECTED to warn twice — w2's tip
-  //     against its own shrunken well ring (4.29 vs 4.10) and §34's
-  //     selector post fouling the moved 12-well ring (−0.27 vs 0.15), the
-  //     same instrument that polices d4 16's move, one station over;
-  //   · 30 is past the well window (3.55, 27.54]. It must BOOT — there is
-  //     no fallback to hide behind, because an off-face well is nonsense,
-  //     not NaN: solveKeyless warns with the window, builds, and the
-  //     battery judges the result;
-  //   · reserveh=48&rsvr=27 is the JOINT row C3's bound exists for: at
-  //     48 h w2 carries 32 teeth, so the tip-vs-well threshold the default
-  //     hours keep OUTSIDE the window (rsvr 28.44) moves inside it
-  //     (26.60) — the worst case neither key shows alone (tip 11.86
-  //     against the well's 11.60; reserveh=48's own fusee warn rides
-  //     along, same as its solo row).
+  //   · 8 is inside the window and EXPECTED to warn — four now, measured
+  //     for §125 Tier B (the well follows its own station, so a shrunken
+  //     station means a shrunken well twice over): w2's tip against the
+  //     centre keep-out AND against its own well wall, §34's selector post
+  //     fouling the moved 12-well ring (−0.27 vs 0.15), and the alarm
+  //     setting bearing re-sweeping off its incumbent;
+  //   · 30 is past the well window (3.55, 23.24] — §125 Tier B's one
+  //     closed form, station ≤ (dialRadius + keep-out)/2, since the well
+  //     rides its own station. It must BOOT — an off-face well is
+  //     nonsense, not NaN: solveKeyless warns with the window, builds,
+  //     and the battery judges the result;
+  //   · reserveh=48&rsvr=27 was the JOINT tip-vs-well case; Tier B's
+  //     per-station well swallowed that threshold (at 27 the well is
+  //     23.45 and the 32 t tip fits it easily), and 27 now sits past the
+  //     23.24 window instead — the row stays as the measured record of
+  //     the two keys composing (the 48 h fusee warn + the window warn).
   { name: 'rsvr=20', q: 'rsvr=20', expect: 'any', why: '§94 tier C — the reserve station moved out; measured silent on this tree' },
-  { name: 'rsvr=8', q: 'rsvr=8', expect: 'any', why: '§94 tier C — inside the window, EXPECTED to warn: w2 tip vs its shrunken well, §34 post vs the moved ring' },
+  { name: 'rsvr=8', q: 'rsvr=8', expect: 'any', why: '§94 tier C — inside the window, EXPECTED to warn: w2 tip twice, §34 post, alarm bearing re-sweep (4, measured)' },
   { name: 'rsvr=30', q: 'rsvr=30', expect: 'any', why: '§94 tier C — past the well window: must warn and BOOT (an off-face well is nonsense, not NaN)' },
-  { name: 'reserveh=48&rsvr=27', q: 'reserveh=48&rsvr=27', expect: 'any', why: '§94 tier C — the joint case: 48 h teeth meet a well the station outran; neither key alone shows it' },
+  { name: 'reserveh=48&rsvr=27', q: 'reserveh=48&rsvr=27', expect: 'any', why: '§94 tier C/§125 Tier B — two keys composing: the 48 h fusee warn rides the station\'s window refusal (2, measured)' },
   // §98 — the alarm corner's radius, §76's pin. Three points, measured on
   // this tree before written down (all at the default balance):
   //   · 14 is the INWARD pin and boots silent;
@@ -625,32 +626,35 @@ const SPEC_POINTS = [
   { name: 'alarmr=14', q: 'alarmr=14', expect: 'any', why: '§98 — the corner pinned inward; measured silent on this tree' },
   { name: 'alarmr=20', q: 'alarmr=20', expect: 'any', why: '§98 — past the dogleg reach: the chain\'s own assert reports, boot proceeds' },
   { name: 'alarmr=46', q: 'alarmr=46', expect: 'any', why: '§98 — past the stem window: the solver warns with both bounds, boot proceeds' },
-  // §97 — the shared well radius. Three points, measured before written:
-  //   · 8 is the interior value and boots silent (wells and both hands
-  //     shrink together, every consumer reading the solve);
-  //   · 13 is over the derived ceiling (11.85): the solver warns and KEEPS
-  //     the ceiling — a larger well breaches the centre bore, TODO 33's
-  //     degeneracy, so this key clamps where rsvr builds-and-judges;
+  // §97/§125 Tier B — the SECONDS well's radius (the wells split; this key
+  // stopped reaching the reserve). Three points, re-measured for Tier B:
+  //   · 8 is the interior value and boots silent (the seconds well and its
+  //     hand shrink together; the reserve side no longer moves at all);
+  //   · 21 is over the derived ceiling (19.35, its station − keep-out): the
+  //     solver warns and KEEPS the ceiling — a larger well breaches the
+  //     centre bore, TODO 33's degeneracy, so this key clamps where rsvr
+  //     builds-and-judges. (13, the old over-ceiling point, is INTERIOR
+  //     now and boots silent — the ceiling moved with the station);
   //   · 1 is under the derived floor (1.40): the solver clamps to the
-  //     floor and warns, and the reserve train's tip check then reports
-  //     w2 reaching through even the clamped well (5.23 vs 1.05) — two
-  //     instruments composing on one nonsense spec.
-  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', why: '§97 — the wells resized inward; measured silent on this tree' },
-  { name: 'subdialr=13', q: 'subdialr=13', expect: 'any', why: '§97 — over the ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
-  { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns; the train\'s tip check reports the rest' },
-  // §125 — the dial's own radius. Three points, measured before written:
-  //   · 30 is the interior inward value and boots silent — the face shrinks
-  //     under the plate and every consumer (print, hands, feet) follows the
-  //     solve; silent means BOOT-silent, the battery judges the fit;
-  //   · 20 is inside the wells' outer edge (27.45): the solver warns with
-  //     the window and BUILDS — rings off the face are nonsense, not NaN;
-  //   · 47.22 is past the measured metal (44.27): the solver's parse-time
-  //     bracket warns AND the §125 rim assert reports the actual vertex it
-  //     found in the dial's slab — two instruments, one from the spec and
-  //     one from the built scene, composing on one oversized face.
-  { name: 'dialr=30', q: 'dialr=30', expect: 'any', why: '§125 — the face shrunk inside the plate; measured silent on this tree' },
+  //     floor and warns — one warn now, measured: the reserve train's tip
+  //     check left this row when the key stopped reaching its well.
+  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', why: '§97 — the seconds well resized inward; measured silent on this tree' },
+  { name: 'subdialr=21', q: 'subdialr=21', expect: 'any', why: '§97/§125 Tier B — over the per-station ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
+  { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns (1, measured — the train\'s tip check left with the shared radius)' },
+  // §125 — the dial's own radius, re-measured for Tier B: the wells' outer
+  // edge moved to 42.25, so the spec's legal window is the narrow
+  // [42.25, 44.27] between the big well and the alarm crown's metal.
+  //   · 43 is the interior value now, and boots silent;
+  //   · 20 is far inside the wells' outer edge: the solver warns with the
+  //     window and BUILDS — rings off the face are nonsense, not NaN
+  //     (30, the old silent point, warns the same way now — measured);
+  //   · 47.22 is past the measured metal: the parse-time bracket, the
+  //     §125 hand-stack assert (the bigger face's longer hands eat the
+  //     alarm lane: 0.068 vs 0.15) and the rim assert all report — three
+  //     instruments on one oversized face, measured.
+  { name: 'dialr=43', q: 'dialr=43', expect: 'any', why: '§125 Tier B — the interior of the narrowed window; measured silent on this tree' },
   { name: 'dialr=20', q: 'dialr=20', expect: 'any', why: '§125 — inside the wells\' outer edge: must warn and BOOT (rings off the face are nonsense, not NaN)' },
-  { name: 'dialr=47.22', q: 'dialr=47.22', expect: 'any', why: '§125 — past the alarm crown\'s metal: the spec bracket and the rim assert both report' },
+  { name: 'dialr=47.22', q: 'dialr=47.22', expect: 'any', why: '§125 — past the metal: the spec bracket, the hand-stack assert and the rim assert all report (3, measured)' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because
