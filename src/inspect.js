@@ -34,7 +34,8 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
+  STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N } from './layout.js'; // §137: the one steel + the declared envelopes
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -5829,7 +5830,7 @@ export const SLENDER_WAIVERS = {
 // stiffness column is INFORMATIONAL: a first-order cantilever estimate, good
 // to a factor of two, included because "λ = 84" means less to a reader than
 // "10 N/m — it bends a tenth of a millimetre under a milligram-ish load".
-const SLENDER_E_PA = 200e9;
+const SLENDER_E_PA = STEEL_E_PA; // §137: re-sourced from layout's one copy — value unmoved
 
 export function checkSlenderness(clock, opts = {}) {
   const max = opts.max || SLENDER_MAX;
@@ -6146,6 +6147,110 @@ export function checkEqualisation(clock) {
   };
 }
 
+// §137 — THE TRANSFER AUDIT. Every declared corner (main.js declareTransfer)
+// is one of the five named idioms carrying its own force arithmetic; this
+// check holds the DECLARATIONS honest, never the mechanism — the
+// checkEqualisation pattern: consume the frozen payload, re-verify the rows'
+// own relations, and refuse to re-derive anything (a second derivation is a
+// second chance for one law to drift into two).
+//
+// Four tiers, the `restoring` shape (ok is always true; the rows are the
+// product; the battery gates the subsets that CAN be gated):
+//   malformed — idiom outside the named set, or a row missing its unit, its
+//               load {value, unit, source} or its why: an arithmetic claim
+//               with no arithmetic is decoration.
+//   stale     — a unit or mesh name no longer verbatim in the scene
+//               (inspect.js couples by string; a renamed part must fail
+//               here, not silently stop being audited).
+//   mismatched— a row whose own relations no longer hold when recomputed
+//               from its frozen inputs: ratio ≡ armOut/armIn, and a bent
+//               link's moment ≡ load · offset · UNIT_MM. The declared
+//               DERIVED numbers must be consequences, not free text.
+//   unwaived  — a row whose envelope test fails with no waiver citing its
+//               TODO. Envelopes resolve by NAME to layout.js's declared
+//               windows, so a row cannot quietly carry a private budget.
+export const TRANSFER_ENVELOPES = {
+  SELECTOR_DETENT_WINDOW_MN,   // mN at the detent — TODO 16's band, declared
+  CASE_PUSHER_INPUT_N,         // N at the cap — what a finger delivers
+};
+// Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
+export const TRANSFER_WAIVERS = {
+};
+export function checkTransfers(clock) {
+  const payload = clock.transfers;
+  if (!payload) return { ok: true, error: 'no transfers payload on __clock (main.js §137 block missing)' };
+  const unitNames = new Set(clock.labelEntries.map((e) => e.name));
+  const meshNamesOf = (unitName) => {
+    const entry = clock.labelEntries.find((e) => e.name === unitName);
+    const names = new Set();
+    if (entry) entry.obj.traverse((o) => { if (o.name) names.add(o.name); });
+    return names;
+  };
+  const REL_TOL = 1e-6;
+  const TRANSFER_IDIOM_SET = new Set(payload.idioms || []);
+  // One classifier, used for the real rows and the positive control alike.
+  const judge = (row) => {
+    const problems = { malformed: [], stale: [], mismatched: [], envelope: null };
+    if (!TRANSFER_IDIOM_SET.has(row.idiom)) problems.malformed.push(`idiom '${row.idiom}' not in the named set`);
+    if (!row.unit) problems.malformed.push('no unit');
+    if (!row.load || !(typeof row.load.value === 'number') || !row.load.unit || !row.load.source)
+      problems.malformed.push('load must carry {value, unit, source}');
+    if (!row.why) problems.malformed.push('no why');
+    if (row.envelope && !(row.envelope.name in TRANSFER_ENVELOPES))
+      problems.malformed.push(`envelope '${row.envelope?.name}' is not a declared window`);
+    if (row.unit && !unitNames.has(row.unit)) problems.stale.push(`unit '${row.unit}' not in the scene`);
+    else if (row.unit && Array.isArray(row.meshes) && row.meshes.length) {
+      const have = meshNamesOf(row.unit);
+      for (const m of row.meshes) if (!have.has(m)) problems.stale.push(`mesh '${m}' not under '${row.unit}'`);
+    }
+    const q = row.quantities || {};
+    if (typeof q.armIn_u === 'number' && typeof q.armOut_u === 'number' && typeof q.ratio === 'number') {
+      const want = q.armOut_u / q.armIn_u;
+      if (Math.abs(q.ratio - want) > REL_TOL * Math.max(1, Math.abs(want)))
+        problems.mismatched.push({ what: 'ratio ≠ armOut/armIn', declared: q.ratio, recomputed: want });
+    }
+    if (row.idiom === 'rigidBentLink'
+        && typeof q.offset_e_u === 'number' && typeof q.moment_mNmm === 'number'
+        && row.load && row.load.unit === 'mN') {
+      const want = row.load.value * q.offset_e_u * UNIT_MM;
+      if (Math.abs(q.moment_mNmm - want) > REL_TOL * Math.max(1, Math.abs(want)))
+        problems.mismatched.push({ what: 'moment ≠ load·e·UNIT_MM', declared: q.moment_mNmm, recomputed: want });
+    }
+    if (row.envelope && row.envelope.name in TRANSFER_ENVELOPES) {
+      const [lo, hi] = TRANSFER_ENVELOPES[row.envelope.name];
+      if (!(row.envelope.value >= lo && row.envelope.value <= hi))
+        problems.envelope = { window: row.envelope.name, lo, hi, value: row.envelope.value };
+    }
+    return problems;
+  };
+  const malformed = [], stale = [], mismatched = [], unwaived = [], waived = [];
+  const rows = payload.rows.map((row) => {
+    const p = judge(row);
+    const waiver = TRANSFER_WAIVERS[row.site] || null;
+    for (const m of p.malformed) malformed.push({ site: row.site, problem: m });
+    for (const s of p.stale) stale.push({ site: row.site, problem: s });
+    for (const m of p.mismatched) mismatched.push({ site: row.site, ...m });
+    if (p.envelope) (waiver ? waived : unwaived).push({ site: row.site, ...p.envelope, ...(waiver ? { debt: waiver } : {}) });
+    return { ...row, waived: waiver, problems: p };
+  });
+  // Positive control — a synthetic bad row must be caught by the same
+  // classifier the real rows go through, or this check has died quietly.
+  const ctrl = judge({ site: '__control', idiom: 'wishfulThinking', unit: '__no_such_unit',
+    load: { value: 1 }, envelope: { name: 'NO_SUCH_WINDOW', value: 0 } });
+  const control = (ctrl.malformed.length >= 3 && ctrl.stale.length >= 1)
+    ? 'PASS — synthetic malformed row detected on every tier it violates'
+    : 'FAIL — the classifier no longer catches a malformed row';
+  const byIdiom = {};
+  for (const r of payload.rows) byIdiom[r.idiom] = (byIdiom[r.idiom] || 0) + 1;
+  return {
+    ok: true,   // the §40/§48 rule: a report, gated only on its gateable tiers
+    population: payload.rows.length, byIdiom, rows,
+    malformed, stale, mismatched, unwaived, waived, control,
+    note: 'rows are declared beside the metal (main.js declareTransfer); '
+      + 'a failing row is accepted debt only while it cites its TODO item',
+  };
+}
+
 export const STOCK_WAIVERS = {
   'Alarm release feeler': 'TODO 11', 'Alarm disc': 'TODO 11', 'Alarm switch': 'TODO 11',
   'Alarm selector': 'TODO 11', 'Alarm setting wheel': 'TODO 11', 'Alarm link': 'TODO 11',
@@ -6303,6 +6408,7 @@ const CHECKS = {
   // `start(clock, …)` answered "unknown check" and the only way to run §48's
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
+  transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
