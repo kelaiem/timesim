@@ -1622,6 +1622,16 @@ export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eS
 // balance can route", best −0.34 at the collar), and C3's least-bend
 // objective means the extra range costs nothing anywhere a smaller bend
 // threads: the pre-Tier-B build spends 0.8 of it.
+//
+// §137 Gate A priced what the bound COSTS STRUCTURALLY, so raising it is
+// no longer a free geometric move — the arithmetic is at the elbow-rod
+// block in main.js (grep `§137 GATE A`). At the loads derived there
+// (0.83 mN reset, 0.18 mN hack) a route sitting on this bound bends to
+// ≤ 0.6% of its stroke and shortens its calibrated chord by ~2e-5 u, four
+// orders inside HAMMER_TAIL_DELTA's tolerances — so the bend is
+// defensible at THIS load, not at any load. Re-take that arithmetic
+// before raising the bound again, or before either rod is asked to drive
+// a detented member.
 export const ELBOW_E_MAX = 28;
 
 export function solveStopWork({

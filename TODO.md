@@ -24,7 +24,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
-| 16 | PART CLOSED | The beak lever question, and the SHAFT: item 63's re-take found the thickening REVERTED (CI overlaps) — the chain stalls ≈1.6 mN, shaft-limited, and the item carries a dated correction saying its "restored to 48 mN" described a fix that no longer ships |
+| 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%) and the chain is TAIL-limited at ≈48 mN. `SLENDER_WAIVERS['Alarm link']` cannot be retired by ANY legal section — §54's ceiling wants r 0.326 — so what remains is a third bush station, in position space |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
@@ -50,7 +50,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
 | 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
 | 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
-| 63 | PART DONE | The stall is RE-TAKEN from the built metal: lever gain 7.1× (measured arms 1.395/9.95 u), tail blade healthy at 305 N/m, shaft reverted to the hair — chain stalls ≈1.6 mN, SHAFT-limited, and both items' records now say so. Remains: the elbows' un-computed bending moment (`ELBOW_E_MAX` is 28 since §125 Tier B, which sharpens it) and the five force paths with no arithmetic |
+| 63 | PART DONE | Stall re-taken from the built metal and then CORRECTED (§137): lever gain 7.1×, tail blade 305 N/m, and the 1.6 mN "shaft-limited" headline was a stiffness for a span §68 retired — at the measured 0.9286 mm overhang the shaft is 2518 N/m and the chain is TAIL-limited at ≈48 mN, inside the 5–50 mN band. The elbows' bending is COMPUTED (Gate A: rigid bend defensible at the derived sub-mN loads, δ ≤ 0.6% of stroke even at `ELBOW_E_MAX`) and all five force paths are priced in place. Remains: the click's return blade is over-strained (≈2.2 GPa at full ride — position-space fix), TODO 16's third bush station, and §137's own idiom record |
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
@@ -1976,6 +1976,56 @@ than one to two orders below it.
 > unchanged: measure the jumper's swept envelope along the shaft's
 > stations first.
 
+### MEASURED (§137 Landing 1, 2026-08-22) — the prescribed probe is taken, and it refutes the diagnosis both reverts were made under
+
+`tools/probe-137-jumper-envelope.mjs` is the measurement this item has been
+prescribing since the first revert. It boots virgin against `http.server`,
+**asserts the crown reads PULLED** off the setting lever's own angle (the
+hole the second revert fell into — a local run with a saved pose measured
+this pair clean while CI measured it CONFIRMED), and walks the shaft's
+chord station by station against `buildSweptRegistry`'s hulls — the same
+hulls `sweptOverlap` judges, so a radius sized against these numbers
+predicts CI by construction rather than by resemblance. Five things came
+back, and four of them were not what the two reverts assumed:
+
+1. **The minute jumper is not near this shaft.** Nearest alarm-link member
+   to the jumper's swept hull is `alarmLinkCentrePin` at **13.32 u**
+   (`clearanceAt` reads 13.49 at the pulled pose); `alarmLinkShaft`'s own
+   hull stands 14.56 off. **§112 re-solved the rod site and the drive tab's
+   azimuth ONE DAY after the revert post-mortem was written** (commit
+   802a1df, 2026-08-13, against 718ffa9) — the post-mortem's premise died
+   the next morning and nobody re-read it.
+2. **The wall that actually binds is the `Alarm setting idler`**, over 89
+   of the chord's stations, at a max legal radius of **0.2850** — a
+   constant 0.435 gap. No shaft-radius table would ever have shown it: it
+   is not the pair anybody was looking at, which is exactly why 0.447 →
+   0.373 moved the overlap by 0.002.
+3. **No station forbids the as-built 0.12.** The one row tighter than the
+   idler, `Dial/alarmSelTab` at 0.1457 over 10 stations, is the DECLARED
+   working contact (MECH_GRAPH's `Alarm link ⇄ Alarm selector` edge), and
+   it reproduces the section block's own hand-probed 0.297 at 0.2957.
+4. **The 4.5 mm cantilever this item's "FIXED" section derives from is
+   gone.** "The pillar move was investigated and REJECTED on evidence"
+   below describes the pre-§68 chord; §68's re-scan found the inboard
+   pocket and the bushes now stand at chord stations 2.45 and 22, so the
+   drive-end overhang is **0.9286 mm**. The pillar move happened — it just
+   happened in a different entry.
+5. **The force budget is therefore nearly met as built.** At 0.9286 mm,
+   `3EI/L³` gives **2518 N/m** — 90% of the 2800 N/m target — and
+   **r 0.1232 (+2.7%) meets it outright**, against a corridor that permits
+   0.285. Re-derived at the real span, the chain is **TAIL-limited at
+   ≈ 48 mN** (see TODO 63's correction), inside the 5–50 mN band.
+
+**What this leaves, and it is why the waiver stays.** §54's ceiling wants
+λ ≤ 30 over the 19.55 u bush-to-bush span, i.e. **r 0.3258**, and the
+corridor's binding wall tops out at **0.2850** — 0.041 short. **No section
+legal in this chord meets the ceiling**, so `SLENDER_WAIVERS['Alarm link']`
+cannot be retired by a section change at all: it needs a **THIRD BUSH
+STATION**, which is position space, probed the same way the existing two
+were. That is a layout change to file, not a section to re-argue — and it
+is now a measured impossibility rather than a re-argued one, which is the
+whole point of having taken the measurement.
+
 **Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
 means re-siting the rod, whose plate bores are literals carrying drift
 asserts (`ALARM_LINK_ROD_XY`), so it is a §35-corridor change, not a
@@ -1983,6 +2033,16 @@ section change. The tail is also the chain's remaining weakest member —
 it still bends 42% of its stroke at 20 mN, against the shaft's 7% — so if
 anything here gets more work, it is that lever, and the two are the same
 problem: the tail is long *because* the rod is far away.
+
+> **Two numbers in that paragraph have since moved, and the conclusion
+> survives both.** The lever is no longer 36:1 — §68 re-sited the rod and
+> TODO 63 measured the built arms at nose 1.395 u / tail 9.95 u, a **7.1×**
+> displacement gain. And the shaft's 7% was the retired 4.5 mm span; at the
+> measured 0.9286 mm overhang it is **11%** (20 mN ÷ 2518 N/m = 0.0079 mm
+> against the 0.071 mm selector stroke). The tail is still the weakest
+> member at 42%, so "if anything here gets more work, it is that lever"
+> stands — it is now a 7.1× lever rather than a 36× one, which is a smaller
+> problem than this paragraph describes, not a different one.
 
 ### Postscript — the lever was also inverted (§54 postscript 2)
 
@@ -7483,34 +7543,95 @@ An instrument that would catch a wrong count or a wrong phase is filed as
 roadmap §135; **no such instrument exists today**, and `inspect.js` has no
 concept of a gear mesh as a pair at all.
 
-## 63. PART DONE — the stall number is re-taken (≈1.6 mN, shaft-limited); the elbows' bending and the missing force arithmetic remain
+## 63. PART DONE — the stall is re-taken (≈48 mN, TAIL-limited), the elbows' bending is computed and the five force paths are priced; an over-strained blade and the §137 record remain
 
 **Re-taken 2026-08-20, from the built metal, in TODO 16's own first-order
 format.** The current chain: beak lever nose 1.395 u / tail 9.95 u —
 displacement gain **7.1×** (not the 36.5× the old number assumed, and not
 the ~3:1 this item's own text guessed from §68's prose; the built arms are
 the record). Tail blade 0.12 × 0.14 mm over 3.77 mm: **305 N/m**,
-tail-stall ≈ 48 mN — the blade half of TODO 16's fix survived. Shaft:
-reverted to the 0.091 mm hair (see TODO 16's correction note), crank
-overhang **22 N/m**, and 22 N/m × 0.071 mm of selector stroke =
-**≈ 1.6 mN stall, SHAFT-limited** — the same one-to-two-orders shortfall
-against the 5–50 mN detent band as the original finding, arrived at
-through the other member. Anyone sizing against "48 mN restored" is
-sizing against a reverted fix. The stale `alarmOn only turns the column
-wheel` line at the tube law is also corrected (TODO 20 closed that debt).
+tail-stall ≈ 48 mN — the blade half of TODO 16's fix survived. The stale
+`alarmOn only turns the column wheel` line at the tube law is also
+corrected (TODO 20 closed that debt).
 
-**What remains below, unchanged:** the elbows' un-computed bending moment,
-the five force paths with no arithmetic (finger→pusher, pawl at the saw
-root, the click's detent torque, the elbows, the §45 silence chain), and
-the disarm-vs-silence terminology note.
+> **CORRECTION (§137 Landing 1, 2026-08-22): the SHAFT half of that
+> re-take was itself computed on a span the movement no longer has, and
+> the chain is TAIL-limited, not shaft-limited.** The 22 N/m figure — and
+> the ≈ 1.6 mN stall this item used to headline — is a cantilever
+> stiffness for the **4.5 mm** drive-end overhang of the *pre-§68* chord.
+> §68's re-scan found the inboard pocket and the bushes now stand at chord
+> stations **2.45 and 22**, so the real drive-end overhang is **2.45 u =
+> 0.9286 mm** (measured off the built unit by
+> `tools/probe-137-jumper-envelope.mjs`, which reads the bush stations
+> rather than assuming them). At that span the same `3EI/L³` gives
+> **2518 N/m**, and 2518 N/m × 0.071 mm of selector stroke is a **179 mN**
+> stall. The weakest member sets the stall, so it is the **beak tail's
+> 305 N/m × 0.158 mm = ≈ 48 mN**, and the transfer is **TAIL-LIMITED at
+> ≈ 48 mN — inside the movement's 5–50 mN detent band, at the top of it**,
+> not one-to-two orders under it. Both halves are now written at the
+> section block in `src/main.js` (grep `2800`). Anyone sizing against
+> "≈ 1.6 mN, shaft-limited" is sizing against a retired span.
 
+**The elbows' bending is COMPUTED** (§137 Gate A, at the elbow-rod block —
+grep `§137 GATE A`). Loads derived from the driven members by virtual work
+rather than assumed: reset **0.83 mN** (the display arbor's friction
+coupling, bounded by the going train's torque at the fourth arbor, which
+`EQUALISATION.going` publishes), hack **0.18 mN** (the hairspring's peak
+torque at the measured 3.067 mm pad radius, through the pad's measured
+0.145 travel ratio). At `ELBOW_E_MAX` = 28 — the bound, so the finding
+holds for any route the solver can pick — σ is 4.8 and 1.1 MPa, δ is 0.58%
+and 0.25% of the measured strokes against the lay shaft's δ ≤ 0.1 × stroke
+standard, and the chord shortening is ~2e-5 u against
+`HAMMER_TAIL_DELTA`'s 0.08 u endpoint tolerance. **The rigid bend is
+defensible at these loads** — and only at these loads: the δ standard
+breaks at 7.2 mN on the hack rod, which is inside the detent band, so a
+rod that ever drives a detented member re-opens this. Measured beside it:
+the **reset rod's least-bend solve clears at e = 0.000000** — it is the
+straight tube today, and the block's "a straight tube cannot clear them"
+is corrected in place.
+
+**The five force paths are priced**, each at its site and each copying a
+named in-source template: finger→pusher (beside `PUSHER_HEAD_MM`), the
+pawl at the saw root (beside `ALARM_PAWL_KISS_S`), the click's detent
+(beside `switchClickSpring`), the §45 silence chain (beside
+`ALARM_SIL_RATIO`) and the elbows (above).
+
+**What remains.**
+
+- **A NEW finding the click's arithmetic produced, and it is real debt:**
+  the click's detent is the right SIZE — ≈ 15 mN at the nose, inside the
+  5–50 mN band — but the blade that makes it is **over-strained**. The
+  nose's 1.04 u ride deflects the blade 0.047 mm, 8.3% of its 1.5 u free
+  length, for a root fibre of **≈ 2.2 GPa**, past even hardened blue
+  steel's ~1.5 GPa elastic limit. The cause is the bear station: `bearFrac`
+  hits its 0.12 floor because `_bearTan ≈ L` (the saw's tip circle plus the
+  blade's depth reaches nearly the whole arm), so the spring works at the
+  pivot end where the throw per unit of nose travel is worst. **The fix is
+  position space** — a longer free length, or a bear station the tip circle
+  does not crowd — not a fatter blade, which would only raise the detent it
+  cannot hold.
+- **The shaft's slenderness**, which is TODO 16's and is now measured
+  rather than argued: the envelope permits r 0.285, §54's ceiling wants
+  0.326, and closing that needs a third bush station. See TODO 16.
+- **The disarm-vs-silence terminology note** below, which is a standing
+  correction rather than a task.
+- **The vocabulary and the idiom table** — every transfer around a bend
+  named, with the choice justified against the load it carries. That is
+  §137's own record and lands with it.
+
+### (original filing, 2026-08-19 — citations re-pinned to SYMBOLS)
+
+Kept whole, with one bullet struck at the end and every `file.js:NNN`
+replaced by something a reader can grep: §149/§150 moved `main.js` by up to
+650 lines in a single day, so a line number here is an approximate landmark
+and never an address.
 
 Two findings from a dogleg audit, both about force paths that were never
 computed.
 
 **The elbows are cosmetic.** `resetRod` and `hackRod` are each a rigid
 two-segment link with a fixed bend, and the build says so plainly
-(`main.js:3042–3052`): *"each rod is a RIGID two-segment link with a fixed
+(grep `--- ELBOW RODS`): *"each rod is a RIGID two-segment link with a fixed
 bend … The link stays rigid — its pin-to-pin chord is the calibrated length —
 so the two-circle pose solves are untouched; **only the mesh is bent.**"* The
 lateral offset `e` is solved by scan up to `ELBOW_E_MAX` — 16 when this
@@ -7524,19 +7645,20 @@ link with 16 units of offset are the same object to every instrument in this
 repo. That is the honest counter-example to the motion-works bevel corners,
 which CLAUDE.md holds up as the template precisely because *"a plain rod
 meeting another rod at an angle has nothing at the joint that could transmit
-rotation around the corner"* (`main.js:2651–2656`) — the same argument, not
+rotation around the corner"* (grep `a plain rod meeting another rod`) — the same argument, not
 yet applied to displacement through a bend.
 
 **TODO 16's headline is stale, in the favourable direction, and nobody
 re-took it.** That item measured a **1.5 mN** stall against a 5–50 mN detent
 budget, on a beak lever with a **36.5×** displacement gain. §68 then collapsed
 that tail from ~28 to 4.0 — *"a ~3:1 lever someone would design, retiring the
-§35 tail's 36.5× as measured debt"* (`main.js:15802–15803`). Meanwhile the
+§35 tail's 36.5× as measured debt"* (grep `a ~3:1 lever`). Meanwhile the
 **shaft half was reverted**: two attempts to thicken `alarmLinkShaft` were
 rejected by CI on `Alarm link ⇄ Minute jumper` (overlap 0.312 and 0.310), so
-`ALARM_LINK_SHAFT_R` stands at 0.12 (`main.js:16085`) and
-`SLENDER_WAIVERS = { 'Alarm link': 'TODO 16' }` (`inspect.js:5810`) is still
-the table's only entry.
+`ALARM_LINK_SHAFT_R` stands at 0.12 (grep it) and
+`SLENDER_WAIVERS = { 'Alarm link': 'TODO 16' }` (grep `SLENDER_WAIVERS` in
+`inspect.js` — NOT `STOCK_WAIVERS`, which is a different debt) is still the
+table's only entry.
 
 So the chain today has a **much better lever** and the **same thin shaft**, and
 the 1.5 mN figure describes neither configuration. **Re-take the measurement
@@ -7551,19 +7673,22 @@ the finger→pusher input force; the pawl's tangential force at the saw root;
 **the click's detent torque** — the load that actually holds the column
 indexed, and the thing a stall must overcome; the elbow rods' bending under
 their offset; and the §45 silence chain, which has `ALARM_SIL_RATIO` (a
-*displacement* ratio, `main.js:11173`) and nothing else.
+*displacement* ratio, grep `ALARM_SIL_RATIO`) and nothing else.
 
 **One terminology correction worth keeping.** The rod the column wheel drives
 is `alarmLinkRod`, and it **disarms** — it prevents the alarm ringing. The rod
 that **silences a ringing alarm** is the §45 chain (crown collar → release
-lifter → silence rocker → release feeler, `main.js:11136–11266`), which the
+lifter → silence rocker → release feeler, grep `ALARM_SIL_RATIO` and walk
+up), which the
 column wheel does not drive. They are different mechanisms and conflating them
 will send a fix to the wrong one.
 
-**Also stale, one line:** `main.js:9198–9199` still reads *"alarmOn only turns
-the column wheel, and the column→ring run is §35's filed debt (MECH_GRAPH.todo
-carries it)"*. §35 retired that row — `main.js:26240` says so — and the only
-remaining `MECH_GRAPH.todo` entry is the keyless-works one.
+~~**Also stale, one line:** the tube law still reads *"alarmOn only turns the
+column wheel, and the column→ring run is §35's filed debt (MECH_GRAPH.todo
+carries it)"*.~~ **DONE** — fixed in place before this item was re-read; the
+line now says the column→ring run is DRIVEN, pawl to ring, and cites TODO 20
+(grep `alarmOn turns the column wheel`). The only remaining `MECH_GRAPH.todo`
+entry is still the keyless-works one.
 
 ## 64. Three linkages sit outside §48's population because no axis sweeps `alarmCrownPullT`
 
