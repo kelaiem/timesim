@@ -14583,3 +14583,65 @@ cycles the band — from the lift-shape assert's own seated margin below
 the solved touch, read live off the clock — and the audit's stale flag
 on the arrest's declared blade spring is gone for the honest reason:
 the population now contains the motion.
+
+## §152 — the reserve reads as a sector: a symmetric inverted-U arc, a barely-recessed well, and a hand that rides proud
+
+Owner's redesign of the power-reserve indicator's face. Two claims, both
+of them position-space and neither touching the drive path (the TODO 48
+forward chain, the TODO 18 ratio derivation and the §104 equalisation
+gates all measure exactly as before): the graduated arc is left-right
+SYMMETRIC about the well's vertical — an inverted U over the pivot —
+and the well is BARELY recessed instead of a deep pocket.
+
+**The symmetric anchor is one rule stated in two places.** The old arc
+hung its empty end at math angle 180° (9 o'clock) and swept 150° to
+30° — the comb sat visibly lopsided. TODO 18's discipline already
+keeps the three coupled quantities (graduation, hand travel, gear
+ratio) reading one source, `RESERVE_SWEEP_DEG` and the reserve hours;
+this change moves only the ANCHOR, and the anchor is now the symmetry
+rule itself: empty at 90° + sweep/2, full at 90° − sweep/2. The two
+sites that need it — `paintSubdialFace`'s `angAt` and the friction
+coupling's SET in tick() (the assembly slip that zeroes a real reserve
+indicator) — each derive it from that rule, neither from the other, and
+both say so in place. Measured off the built scene at tension
+0 / 0.5 / 1 the hand reads 165° / 90° / 15°: symmetric at both ends,
+vertical at half charge.
+
+**The recess depth is a reused constant, not a minted one.** The
+sector's depth is `DIAL_EDGE_BREAK` — the 0.05 mm light break the
+plate's rim already carries (0.132 u). A step shallower than the
+plate's own arris break would not read as machined; anything deeper
+re-opens the deep well the redesign retires; and rule 1 says the dial
+does not get a second smallest-step. `makeDial` grew a per-well
+`recess` override to carry it (the seconds well keeps
+`SUBDIAL_RECESS` 0.5 and its whole TODO 41 derivation, untouched):
+the pocket cut, its floor print, its wall silvering and the
+punch-through boot assert all resolve one per-well depth, so the cut
+and the finish cannot disagree.
+
+**The hand's plane followed the depth, as arithmetic.** TODO 41's
+`wellHandZ` band — keel + margin off the pocket floor below, section
+sunk under the dial surface above — needs `floorDrop + CLEAR_MARGIN +
+topRise` = 0.42 of depth for this hand, and 0.132 cannot hold it: the
+band does not exist, so the sunk-hand design claim is retired rather
+than waived. The reserve hand now rides PROUD of the dial face — keel
+one margin (0.15) over the face plane, the way a real power-reserve
+hand stands over its sector — and the floor consequence is derived,
+not asserted: the sector floor sits `RESERVE_RECESS` further down, so
+the `Dial ⇄ Power reserve` floors row measures `CLEAR_MARGIN +
+RESERVE_RECESS` = 0.282 by construction, clear of the strict float32
+gate with no epsilon. The boss dips to 0.096 over the face plane with
+its nearest Dial metal 0.228 below it, which retires TODO 41's
+ride-the-bore excuse along with the depth that needed it. The
+indicator arbor lengthened to meet the raised hand — through the
+sector floor's bore, out of the plate, stopping 0.2 short of the
+hand's plane so the collet's 0.234 dip swallows its last 0.034: the
+same declared friction joint (`reserveBoss ⇄ rsvHandArbor`), one
+plane further forward. Nearest foreign sweep above the raised hand is
+the §25 C alarm hand's plane, ~0.4 clear of the collet's top.
+
+`tools/probe-152-boot.mjs` measures all of it off a boot (anchor
+angles at three tensions, hand/floor/arbor world planes, boot
+silence); `tools/probe-152-shot.mjs` renders the face and the oblique
+profile. The schematic tier's sub-dial bezel ring quotes
+`reserveHand.position.z` live, so it moved with the hand for free.

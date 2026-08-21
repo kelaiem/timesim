@@ -1720,6 +1720,9 @@ export const EXPECTED_CONTACT_FLOORS = [
     // because an EXPECTED pair without a floors row still gets TODO 6's
     // blanket. Same claim as the seconds row: no contact exists between
     // these two units, so what the pair owes is clearance everywhere.
+    // §152 — the hand rides PROUD of the barely-recessed sector now, keel
+    // one margin over the dial's face plane, so this row measures
+    // CLEAR_MARGIN + RESERVE_RECESS over the floor by construction.
     a: 'Dial', b: 'Power reserve', min: CLEAR_MARGIN,
     contacts: [],
   },
@@ -1750,7 +1753,7 @@ export const EXPECTED_CONTACT_FLOORS = [
     contacts: [
       ['reserveBoss', 'rsvHandArbor'],   // the two rows above, re-attributed
       ['reserveShaft', 'rsvHandArbor'],
-      ['rsvHandArbor', 'dialPlate'],         // the arbor passes the well floor's bore (SUBDIAL_BORE_R is derived from its radius)
+      ['rsvHandArbor', 'dialPlate'],         // the arbor passes the sector floor's bore (SUBDIAL_BORE_R is derived from its radius) and stands out of the plate to the proud hand (§152)
       ['rsvHandArbor', 'reserveSubdialFace'], // …and crosses the printed floor's plane inside that bore (the face is a zero-volume decal)
     ],
   },

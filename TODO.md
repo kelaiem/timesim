@@ -4886,6 +4886,15 @@ and the hour/alarm planes are z-stack quantities datumed against
 class; their pairs have no wells to scrape and their crossing envelope is
 bounded where the rod widths are set (`makeHand`'s crossing note).
 
+*(§152 postscript: the RESERVE half of this item's fix moved on. The
+reserve sector went barely-recessed — `RESERVE_RECESS` = 0.132, under
+this item's own 0.42 section bound — so its hand left `wellHandZ`'s
+band and rides proud of the dial face, keel one margin over the face
+plane, with the floors row measuring `CLEAR_MARGIN + RESERVE_RECESS`
+by construction. The SECONDS hand keeps this item's derivation
+verbatim, and `makeHand`'s `subdial` section law — the substantive
+half of the fix — carries both hands unchanged.)*
+
 ## 42. CLOSED (§103) — the guide stack derives downward: the item's own window was empty
 
 **The prescription had no solution, and proving that was the work.** This

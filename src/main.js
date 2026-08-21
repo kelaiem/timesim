@@ -9431,7 +9431,9 @@ const secondsSubR = secondsWellR;
 // The arc is a READABILITY choice (more angular travel per hour = finer
 // reading); the hours are the movement's actual reserve; the gearing is
 // DERIVED from both. Everything downstream reads these two.
-const RESERVE_SWEEP_DEG = 150;      // graduated arc, math angle 180° (empty) → 30° (full)
+const RESERVE_SWEEP_DEG = 150;      // graduated arc, symmetric about the well's vertical (§152):
+                                    // empty at math 90° + 75° (upper left), full at 90° − 75°
+                                    // (upper right) — an inverted U over the pivot
 const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated to the SPEC —
                                     // = RELAX_SECONDS / 3600 by shared derivation, and
                                     // asserted against it with the ratio below
@@ -9492,12 +9494,26 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // ALARM_LOCAL survive: they still place the crown, its stem and the setting
 // arbor, which the future az-0 train taps.)
 // Sub-dials are recessed WELLS: blind pockets machined into the dial plate's
-// front (makeDial cuts them), the hands riding inside below the dial surface.
-// In dial-local coordinates the pocket floor is at −SUBDIAL_RECESS and the
-// hands on a plane DERIVED from their own section (TODO 41 — see wellHandZ
-// beside the small-seconds hand). The pocket leaves DIAL_T − SUBDIAL_RECESS
-// = 0.556 of brass behind it, which is the floor rule DIAL_T is minted under.
+// front (makeDial cuts them). The SECONDS well keeps the deep pocket: its
+// hand rides inside, below the dial surface, on a plane DERIVED from its own
+// section (TODO 41 — see wellHandZ beside the small-seconds hand). The
+// pocket floor sits at dial-local −SUBDIAL_RECESS and leaves DIAL_T −
+// SUBDIAL_RECESS = 0.556 of brass behind it, which is the floor rule DIAL_T
+// is minted under.
 const SUBDIAL_RECESS = 0.5;
+// §152 — the RESERVE sector is BARELY recessed, and its depth is the dial's
+// own smallest cut: DIAL_EDGE_BREAK, the 0.05 mm light break the plate's rim
+// already carries (0.132 u). A step shallower than the plate's own arris
+// break would not read as machined at all, and anything deeper re-opens the
+// deep well this redesign retires — so the constant is REUSED, not minted
+// (rule 1: the dial does not get a second smallest-step). What the depth
+// buys is a consequence, not a target: the section bound that sized the deep
+// well (floorDrop + CLEAR_MARGIN + topRise = 0.42 for this hand, TODO 41)
+// cannot fit inside 0.132, so the reserve hand no longer lives IN its
+// pocket — it rides PROUD of the dial face like the central hands (see its
+// placement at the hand build), which is how a real power-reserve sector is
+// laid out anyway.
+const RESERVE_RECESS = DIAL_EDGE_BREAK;
 // What passes through a pocket floor — SECONDS_HUB_R / RSV_HAND_ARBOR_R /
 // SUBDIAL_BORE_R — moved to layout.js (§97), the TODO 33 hoist one bore
 // over: the wells' radius is a spec dimension whose FLOOR is this bore
@@ -9577,6 +9593,7 @@ const dial = G.makeDial({
     // separate darker instruments — the two sit symmetric about the centre,
     // so they share the same gradient tone.
     { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5',
+      recess: RESERVE_RECESS, // §152 — the barely-recessed sector, against the plate default below
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS } },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
   ],
@@ -9694,6 +9711,9 @@ smallSecondsHand.name = 'smallSecondsHand';
 // bossH/2 ≈ 0.57, a dial z-stack renegotiation this fix does not own, and
 // a hub dome over a sub-dial face is how real small hands mount anyway.
 // Both asserts warn per rule 6.
+// (§152 — the SECONDS hand is this derivation's one rider now: the reserve
+// sector went barely-recessed, far under any section's band, so that hand
+// derives from the face instead — see its own build.)
 const wellHandZ = (hand) => {
   const { floorDrop, topRise, bossR } = hand.userData;
   const lo = floorDrop + CLEAR_MARGIN;
@@ -9907,7 +9927,8 @@ const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       //
 const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.51
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
 // plane to mesh it; the minute pinion and hour wheel share a second plane.
-// Both stay clear of the sub-dial well floors at −SUBDIAL_RECESS.
+// Both stay clear of the sub-dial well floors (each well's own recess since
+// §152; the seconds' −SUBDIAL_RECESS is the deep one).
 //
 // TODO 21 — THE HOUR WHEEL IS DIAL-MOST, WHICH IS THE ONLY ARRANGEMENT THAT
 // EXISTS. These two planes used to be the other way up: the chain landed on
@@ -10362,13 +10383,28 @@ dialPlateFace.add(reserveGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Power reserve', reserveGroup);
 // TODO 41 — `subdial` takes the hand off the central minute width law and
 // onto §50's floor section: at this length the central law made the blade
-// 1.5·0.299 = 0.45 thick, which the 0.5 pocket cannot hold at the one
+// 1.5·0.299 = 0.45 thick, which the deep pocket could not hold at the one
 // margin — measured before the fix, the keel rode 0.0014 over the well
 // floor, with no instrument on the pair (it is EXPECTED, and had no floors
-// row). The plane is derived by the same wellHandZ as the small seconds.
-// namePrefix names the meshes so floors rows can select them (§94's rule).
+// row). namePrefix names the meshes so floors rows can select them (§94's
+// rule).
+// §152 — the hand is a PROUD rider now, not a well dweller: its sector is
+// RESERVE_RECESS (0.132) deep, far under the section bound wellHandZ holds
+// a deep well to (floorDrop + CLEAR_MARGIN + topRise = 0.42 here), so that
+// band does not exist and the plane derives from the FACE instead — keel
+// one margin over the dial's face plane (local 0), the way a real reserve
+// hand stands over its sector. The floor consequence is arithmetic, not a
+// second constraint: the sector floor sits RESERVE_RECESS further down, so
+// the Dial ⇄ Power reserve floors row measures CLEAR_MARGIN +
+// RESERVE_RECESS = 0.282 over the print by construction — clear of the
+// strict float32 gate with no epsilon. The boss dips bossH/2 = 0.234 below
+// the plane, to 0.096 over the face plane — and its nearest Dial metal is
+// the sector floor, 0.228 below it (the face sheet is a hole out to the
+// pocket radius here), so the collet clears the unit by more than the
+// margin and TODO 41's ride-the-bore excuse is retired along with the
+// depth that needed it.
 const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' });
-reserveHand.position.z = wellHandZ(reserveHand);
+reserveHand.position.z = reserveHand.userData.floorDrop + CLEAR_MARGIN;
 reserveGroup.add(reserveHand);
 
 // ---------------------------------------------------------------------------
@@ -10395,7 +10431,7 @@ registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 // sub-dial moves the whole reduction train's target with it.
 const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
 const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
-const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.25 clears the recessed well floor at −6.5)
+const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §152's sector floor is inside the plate beyond it)
 
 // TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
 // slip-coupled to the barrel arbor, so it must turn what that arbor turns
@@ -10599,9 +10635,11 @@ rsvPair1.add(rsvWheel1, reservePinion1);
 rsvArbor1.add(rsvPair1);
 reserveTrain.add(rsvArbor1);
 // Post spans from 1 above w1's plane to 0.6 past p1's — NOT the symmetric
-// +2 it used to be: w1 sits inside the recessed reserve well's footprint,
-// and the longer post's dial-ward end poked through the well floor
-// (Z_DIAL + SUBDIAL_RECESS) as a visible stub on the sub-dial face.
+// +2 it used to be: w1 sits inside the reserve well's footprint, and the
+// longer post's dial-ward end poked through the (then-protruding) well
+// floor as a visible stub on the sub-dial face. The floor lives inside the
+// plate now (TODO 26; RESERVE_RECESS deep since §152), but the short post
+// is still the honest span — nothing above w1's mesh needs metal.
 const rsvPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, RSV_Z_STEP + 1.6, 10), MATS.steel);
 rsvPost1.rotation.x = Math.PI / 2;
 rsvPost1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV + 1 - (RSV_Z_STEP + 1.6) / 2);
@@ -10611,8 +10649,15 @@ const rsvArbor2 = new THREE.Group(); // w2 — the output, coaxial with the sub-
 rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
-// Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
-const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2 - DIAL_T; // through the well floor's bore, just behind the hand — TODO 26: the bore moved forward with the plate, so this arbor lengthens
+// Indicator arbor: from w2 through the dial to the hand's pivot boss in
+// front. §152 — the hand rides proud of the dial face, so the arbor runs
+// through the sector floor's bore, out of the plate, and stops 0.2 short of
+// the hand's plane: the boss's bossH/2 = 0.234 dip swallows the last 0.034
+// of it, the friction joint the floors rows declare (reserveBoss ⇄
+// rsvHandArbor). World z off the hand's own derived plane — the dialFace
+// Y-flip negates a local z on the way to world, so the plane sits the
+// hand's lift beyond the visible face at Z_DIAL − DIAL_T.
+const rsvHandZ = (Z_DIAL - DIAL_T - reserveHand.position.z) + 0.2;
 const rsvHandArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(RSV_HAND_ARBOR_R, RSV_HAND_ARBOR_R, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
 rsvHandArbor.name = 'rsvHandArbor'; // §94 tier C — the floors rows select it by name
@@ -11637,7 +11682,7 @@ const ALARM_SET_WALLS = [
   { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
   { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: reserveWellR, halfW: DIAL_WALL_HALF,
-    lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
+    lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + RESERVE_RECESS }, // §152 — this well's own shallow depth
   { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
@@ -28417,26 +28462,30 @@ function tick(t) {
   // shape). Forward: p0 is slip-coupled to the barrel arbor, whose wind
   // state is tension·FUSEE_WRAP_TURNS turns; the constant term is the
   // friction coupling's SET — where assembly slipped the pinion on its
-  // arbor so the hand reads the empty end at 9 o'clock (mathematically
-  // −90°·ratio, the same 90° the well's graduation starts at; setting an
-  // indicator by slipping its friction is exactly how a real reserve is
-  // zeroed). Each mesh then counter-rotates by its real tooth ratio and
+  // arbor so the hand reads the empty end of §152's symmetric arc, half
+  // the sweep left of the well's vertical (mathematically
+  // −(RESERVE_SWEEP_DEG/2)·ratio — the same half-sweep the graduation
+  // hangs off 90° in paintSubdialFace, both sites deriving the anchor
+  // from the one symmetry rule; setting an indicator by slipping its
+  // friction is exactly how a real reserve is zeroed). Each mesh then
+  // counter-rotates by its real tooth ratio and
   // the hand ARRIVES at the far end — the dialFace Y-flip mirrors rotation
   // sense, so the hand takes the NEGATED w2 angle to co-rotate with it as
   // seen from the front. (RESERVE_SWEEP_DEG·ratio = FUSEE_WRAP_TURNS·360
   // by TODO 18's shared derivation, so the hand still sweeps exactly the
-  // graduated arc; the angles are the old ones, arrived at forwards.)
+  // graduated arc, whichever anchor the arc hangs from.)
   reserveShown = tension;
   const rsvRatio = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);
-  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 - 90 * rsvRatio) * DEG2RAD;
+  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 - (RESERVE_SWEEP_DEG / 2) * rsvRatio) * DEG2RAD;
   rsvArbor1.rotation.z = -rsvArbor0.rotation.z * (rsvTeethP0 / rsvTeethW1);
   rsvArbor2.rotation.z = -rsvArbor1.rotation.z * (rsvTeethP1 / rsvTeethW2);
   reserveHand.rotation.z = -rsvArbor2.rotation.z;
 
   // Alarm setting (BUILT §24): the pointer reads the continuous disc angle on
   // the 12 h ring. It rides the Y-flipped dialFace, so rotation.z = −(disc
-  // angle) lands it on the ring's hour (the same +90°-zero convention as the
-  // reserve hand — see makeDial's alarm face). The movement-side rotor takes
+  // angle) lands it on the ring's hour (rotation 0 points the well's
+  // vertical — the frame the reserve hand shares, its §152 set measured off
+  // the same vertical; see makeDial's alarm face). The movement-side rotor takes
   // the NEGATED angle to co-rotate as seen from the front (same flip as the
   // reserve arbor), carrying the mating bevel; the crown/stem turn with it 1:1.
   // Friction-set — everything moves together, continuously, in lockstep.
