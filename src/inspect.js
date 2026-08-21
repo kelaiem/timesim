@@ -5818,10 +5818,20 @@ export const SLENDER_MAX_BY_KIND = {
 const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
 // A waived row is still reported; the waiver records that someone has looked.
-// The alarm link's SHAFT is accepted debt: two attempts to thicken it were
-// rejected by CI (Alarm link ⇄ Minute jumper, overlap 0.312 then 0.310 — the
-// radius barely moved it, so section is not the lever). Its beak tail WAS
-// fixed and is off this report on merit. TODO 16 carries the rest.
+//
+// The alarm link's SHAFT is accepted debt, RE-FOUNDED by measurement (§137,
+// probe-137-jumper-envelope): the old rationale — two thickenings CI-rejected
+// on Alarm link ⇄ Minute jumper — is HISTORICAL, because the jumper no longer
+// enters the shaft's neighbourhood at all (§68 flipped the chord, §112 moved
+// the alarm module; the probe's sweep found zero contact). What binds NOW is
+// the corridor itself: measured allowance 0.434 u along most of the chord
+// (the setting idler's swept annulus), 0.801 u in the dial-plate zone, and no
+// §54-legal section plus §50-legal bush walls fits any station layout on the
+// current chord — every combination re-enters the 0.434 wall through the
+// bush rebores. That is a LAYOUT bind, and the design-priority rule sends it
+// to position space (re-site the idler or re-route the chord — §22/§33
+// machinery), never into the mechanism. The beak tail is off this report on
+// merit; TODO 16 carries the corridor numbers and the fix path.
 export const SLENDER_WAIVERS = {
   'Alarm link': 'TODO 16',
 };

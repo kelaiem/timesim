@@ -1950,6 +1950,37 @@ than one to two orders below it.
 > unchanged: measure the jumper's swept envelope along the shaft's
 > stations first.
 
+> **THE MEASUREMENT WAS TAKEN (§137, 2026-08-21) — and it retired the
+> jumper story without retiring the debt.** `probe-137-jumper-envelope`
+> (virgin boot, crown pulled through `step(dt)`, 250 settled setting
+> samples spanning the star pitch densely): the minute jumper **never
+> enters the shaft's neighbourhood** — the two units' swept clouds no
+> longer share any space at all (bounding boxes 7 u apart; §68 flipped
+> the chord to the far side of the movement and §112 moved the alarm
+> module 160°→40° after the rejections above, and nothing re-asked the
+> question — the radius-insensitivity of the two overlaps, 0.312 vs
+> 0.310, was the tell). The live binder is the **corridor**, measured by
+> the same probe against the §36 registry's pose-net hulls with the link
+> excluded: allowance **0.434 u** along most of the chord (the Alarm
+> setting idler's swept annulus), **0.801 u** in the dial-plate zone
+> (t ≤ 12), minimum **0.428 u** at the selector tab. Against those walls
+> no legal re-section closes: a §54-target section wants r ≥ ~0.4 for
+> the spans any bush layout leaves; the corridor caps r at 0.284
+> mid-chord; a §50-legal bush wall (0.317 u) around any useful shaft
+> needs ≥ 0.77 u of allowance, which only the dial-plate zone offers —
+> and bushes confined there leave a 21-unit far span at λ ≈ 38. Partial
+> thickening fails the same way through the bush rebores (bore 0.304 >
+> the 0.26 the t 22 station's 0.434 admits). **The bind is LAYOUT**: the
+> fix is position space — re-site the setting idler or re-route the
+> chord (§22/§33 machinery) — and per the design-priority rule it is
+> never paid for out of the mechanism. Until that layout work is filed
+> and landed, the `SLENDER_WAIVERS` entry stands, re-founded on these
+> numbers (its old CI-story rationale is retired in place), and the
+> battery's `slenderness` gate will trip if the fix ever lands without
+> deleting it. Note the interlock with TODO 11: the shipped bush walls
+> (0.053 mm) are themselves under-stock, and legal walls make the
+> corridor arithmetic *harder* — the two debts are one geometry problem.
+
 **Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
 means re-siting the rod, whose plate bores are literals carrying drift
 asserts (`ALARM_LINK_ROD_XY`), so it is a §35-corridor change, not a

@@ -17495,6 +17495,22 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // So: original section, and §54 goes on reporting λ 100.5. TODO 16 carries
 // what a real fix needs — the jumper's swept envelope measured first, so the
 // next attempt is sized against the thing that actually blocks it.
+//
+// §137 (2026-08-21) — THE MEASUREMENT WAS TAKEN, and it retired the story
+// above without retiring the debt. probe-137-jumper-envelope, virgin boot,
+// crown pulled, 250 settled setting samples: the minute jumper NEVER enters
+// the shaft's neighbourhood — the two units' swept clouds no longer share
+// any space (§68 flipped this chord to the far side; §112 moved the alarm
+// module 160°→40°; the rejections predate both). The live binder is the
+// CORRIDOR: allowance 0.434 u along most of the chord (the setting idler's
+// swept annulus), 0.801 u under the dial plate (t ≤ 12), min 0.428 at the
+// selector tab. Against those walls no legal re-section closes: a §54-target
+// section needs r ≥ ~0.4 for the spans any bush layout leaves; the corridor
+// caps r at 0.284 mid-chord; and a §50-legal bush wall (0.317 u) around any
+// useful shaft needs ≥ 0.77 of allowance, which only the dial-plate zone
+// offers — leaving a 21-unit unsupported far span at λ ≈ 38. The bind is
+// LAYOUT, so the fix is position space (§22/§33: re-site the idler or
+// re-route the chord), filed in TODO 16 — not a section change absorbed here.
 const ALARM_LINK_SHAFT_R = 0.12;
 const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
