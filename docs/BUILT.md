@@ -14887,9 +14887,12 @@ floor-scaled figure stated beside it.
 Measured, the two rods split exactly as the vocabulary predicts. The reset
 rod's solved offset is **zero** — the least-bend objective found a straight
 line legal, so its row prices a bend that does not exist. The hack rod
-carries §125 Tier B's southern dogleg at **e = 11.4**: σ 118 MPa at the
-ceiling, Euler fraction 6.5%, axial give **30% of its stroke at the ceiling
-and 3% at the window floor** — the honest working regime. The bend is the
+carries §125 Tier B's southern dogleg at **e ≈ 11.6**: σ ≈ 120 MPa at the
+ceiling, Euler fraction ≈ 6.5%, axial give **≈ 32% of its stroke at the
+ceiling and ≈ 3% at the window floor** — the honest working regime. (The
+row computes these from the live solve every boot; the merge that landed
+§151 moved the corridor and the solve re-landed at 11.6 from 11.4, which
+is the point of deriving rather than quoting.) The bend is the
 low linkage's compliance concentrator, and its row says so. The knuckle
 sphere is a formed boss over the bend; it makes no pivot claim and needed
 no geometry change.

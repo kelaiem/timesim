@@ -50,7 +50,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
 | 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
 | 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
-| 63 | CLOSED (§137) | The stall re-taken (≈1.6 mN, shaft-limited), the bends PRICED (M = F·e, σ, Euler fraction, axial give — the reset rod's solved offset is zero, the hack rod's dogleg gives 3–30% of its stroke across the load band), and all five force paths carry arithmetic beside their metal, held by the new `transfers` gate: click detent 14.7 mN inside the declared 5–50 mN window, pawl 13.8 mN vs the 1–5 N finger band, silence finger ≈51 mN, lay shaft 1.58 mN waived citing TODO 16. One published number corrected: the tail stall is ≈11.5 mN against the live rodTravel, not 48 |
+| 63 | CLOSED (§137) | The stall re-taken (≈1.6 mN, shaft-limited), the bends PRICED (M = F·e, σ, Euler fraction, axial give — the reset rod's solved offset is zero, the hack rod's dogleg gives ≈3–32% of its stroke across the load band, recomputed from the live solve), and all five force paths carry arithmetic beside their metal, held by the new `transfers` gate: click detent 14.7 mN inside the declared 5–50 mN window, pawl 13.8 mN vs the 1–5 N finger band, silence finger ≈51 mN, lay shaft 1.58 mN waived citing TODO 16. One published number corrected: the tail stall is ≈11.5 mN against the live rodTravel, not 48 |
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
@@ -62,7 +62,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
 | 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
-| 77 | OPEN (filed §137) | The §54 report's seven unwaived over-ceiling members, catalogued now that the instrument is reachable: the lifter run (λ 71), both elbow rods' segments (67.7/46.6/32.5), two unnamed stems and the feeler tail. Rows are reported, never gated (§54's covenant); the battery gates only waiver staleness. Closing a row means deriving its section from its span — two close halfway just by being NAMED |
+| 77 | OPEN (filed §137) | The §54 report's seven unwaived over-ceiling members, catalogued now that the instrument is reachable: the lifter run (λ 71), both elbow rods' segments (65/48.8/37.7 on the post-§151 corridor), two unnamed stems and the feeler tail. Rows are reported, never gated (§54's covenant); the battery gates only waiver staleness. Closing a row means deriving its section from its span — two close halfway just by being NAMED |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -7545,9 +7545,10 @@ battery run):
   Measured on the shipped tree the two rods split exactly as this item's
   finding predicts: the reset rod's solved offset is ZERO (the least-bend
   scan found a straight line legal — its bend literally does not exist),
-  while the hack rod carries §125 Tier B's dogleg at e = 11.4 — σ 118 MPa
-  at the ceiling, axial give 30% of its stroke there and 3% at the window
-  floor. The bend is the low linkage's compliance concentrator, and its
+  while the hack rod carries §125 Tier B's dogleg (e ≈ 11.6 on the
+  post-§151 corridor) — σ ≈ 120 MPa at the ceiling, axial give ≈ 32% of
+  its stroke there and ≈ 3% at the window floor, all recomputed from the
+  live solve every boot. The bend is the low linkage's compliance concentrator, and its
   row now says so.
 - **The five force paths have their numbers**: click detent **14.7 mN**
   peak at the nose flank (inside the declared 5–50 mN window — the
@@ -8245,12 +8246,12 @@ measured on the shipped tree at registration:
 | unit / mesh | λ | against | note |
 |---|---|---|---|
 | Alarm release lifter / `alarmLifterRun` | 71.3 | 30 | the radial run — long by design (it spans head to fork); a §54 answer is a taller section or a mid-guide that SUPPORTS (the cheek guide locates, it does not carry) |
-| Hack rod / `rodSeg` (long leg) | 67.7 | 30 | the dogleg's long segment; §137 priced its compliance (give 3–30% of stroke across the load band) — a section fix must clear the same 0.434 corridor that binds the alarm-link shaft |
-| Reset rod / `rodSeg` (long leg) | 46.6 | 30 | the straight rod (solved e = 0); ROD_R 0.35 derives from §85 C3's corridor, so thickening is a corridor negotiation |
+| Hack rod / `rodSeg` (long leg) | 65 | 30 | the dogleg's long segment; §137 priced its compliance (give 3–30% of stroke across the load band) — a section fix must clear the same 0.434 corridor that binds the alarm-link shaft |
+| Reset rod / `rodSeg` (long leg) | 48.8 | 30 | the rod (near-straight solve); ROD_R 0.35 derives from §85 C3's corridor, so thickening is a corridor negotiation |
 | Keyless works / unnamed | 40.4 | 30 | first name it (§54's own rule: a row that cannot name its member is not actionable), then derive |
 | Alarm crown / unnamed | 35.4 | 30 | the stem — same: name, then derive |
 | Alarm release feeler / unnamed | 35.1 | 30 | the tail band; its stock is TODO 11's territory |
-| Hack rod / `rodSeg` (short leg) | 32.5 | 30 | marginal — 8.6 mm at 0.265; the §54 target (27) wants 0.32 |
+| Hack rod / `rodSeg` (short leg) | 37.7 | 30 | the dogleg's short leg; the §54 target (27) sizes from its own span |
 
 (The two waived rows beside these — `alarmLinkShaft` λ 139 and
 `alarmLinkRod` λ 31.3 — are TODO 16's, re-founded by §137's measurement on
