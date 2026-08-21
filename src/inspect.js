@@ -1812,8 +1812,10 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Winding clutch', b: 'Keyless works', min: CLEAR_MARGIN,
     contacts: [
       ['clutchSaw', 'windPinionSaw'],   // the coupling: faces bear seated, ramps ride camming
-      ['clutchRim', 'stemSquare'],      // the keyed joint, square through the rim's bore
-      ['clutchSleeve', 'stemSquare'],   // …and through the sleeve that makes the clutch one body
+      ['clutchSleeve', 'stemSquare'],   // the keyed joint: the square in the sleeve's square bore
+      // (no clutchSleeve ⇄ windStem row: the stem is a TURNED part — its
+      // round journal starts outboard of the square section, past the
+      // sleeve's whole ride band, so the pipe never reaches it)
       ['clutchRim', 'settingWheel'],    // pulled out: the setting mesh the old pinion carried
     ],
   },
@@ -1937,16 +1939,29 @@ export const INTRA_UNIT_CONTACTS = [
   // — under the name of the square joint, which lives on the CLUTCH pair's
   // floors row now.
   { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'winding pinion teeth overlap the crown wheel rim — the working mesh, bevel-style' },
-  { unit: 'Keyless works', a: 'CylinderGeometry#7', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
-  { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
+  // 'CylinderGeometry#7' until TODO 50 named the stem's round journal (the
+  // turned-part split — see the strike sleeve above for why that stales a row).
+  { unit: 'Keyless works', a: 'windStem', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  // (A pre-split row 'CylinderGeometry#28 ⇄ ExtrudeGeometry#0' — "arbor
+  // through the winding pinion" — is retired: TODO 50's roster changes
+  // re-numbered the unit and its selectors landed on a detent collar and
+  // the crown wheel's teeth, two parts that never touch. An
+  // accidentally-matched selector is worse than an unmatched one: it
+  // excuses a pair silently. The joint it once named is same-frame metal
+  // the MM clustering already merges.)
   // TODO 53's landing: the fusee arbor's windTop continuation welds into the
   // upper-pivot staff at the plate's mid-plane. The two caps used to
   // COINCIDE exactly (a knife-edge no instrument can arbitrate); the plate
   // rise moved the abutment's phase into this check's sight, and the joint
   // is now an overlap with its name — one arbor, two meshes.
   { unit: 'Fusee & great wheel', a: 'fuseeTopShaft', b: 'fuseeUpperStaff', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'TorusGeometry#30', why: 'crown collar on its bushing torus' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
+  // Both were 'ExtrudeGeometry#32' until TODO 50 named the setting wheel
+  // (the clutch pair's floors row needed the name): the wheel — the
+  // crown-class collar the old why meant — laps the stem bushing at the
+  // plate rim, and a numeric selector over a roster the split re-numbered
+  // is exactly the stale-row trap.
+  { unit: 'Keyless works', a: 'settingWheel', b: 'TorusGeometry#30', why: 'setting wheel at its bushing torus' },
+  { unit: 'Keyless works', a: 'settingWheel', b: 'BoxGeometry#31', why: 'setting wheel at the bushing block face' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
   // TODO 38 W4's wind axis lifted the fixture-vs-fixture blindness on the

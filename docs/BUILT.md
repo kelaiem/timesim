@@ -14298,6 +14298,49 @@ the escapement and the arrest, not by this coupling, which is why there is
 deliberately no `settleAlarmClick`-style bank give-back; legacy saves snap
 the re-derived datum to the pitch).
 
+**The packaging round — the full battery's findings, each a class.** The
+first clutch body was a straight tube of fictions, and the sweeps read
+every one:
+
+- *A square-bored part riding a round cylinder is a 0.11 burial* (the
+  bore's flats against the shaft), and the first stem was two
+  superimposed full-length solids. The stem is a TURNED part now: the
+  square section spans the sleeve's whole ride envelope (each end
+  derived, the shoulder's weld and the seat relief budgeted — omit them
+  and the instrument reads back exactly their sum), the round journal
+  only outboard of it, where the bushing and crown live.
+- *The rim leads, the fork trails.* The setting wheel is a disc centred
+  on the stem line, so at full pull — the rim within a fraction of a
+  unit of its tooth circle to mesh — ANY clutch metal trailing the rim
+  stands inside the wheel's slab (an outboard fork band collided from
+  ~0.37 pull; the spine's outboard end now derives from the wheel's
+  outer radius by the triangle inequality, no slab arithmetic to get
+  wrong). The clutch is arranged the way a real sliding pinion is
+  turned: gear outboard, fork's neck behind it, coupling inboard.
+- *The fork is a pin in a groove, and its arm is SHORTER than the
+  pivot's offset to the stem line.* The prong is a vertical post
+  crossing the stem's plane — `hypot(YK_C, stroke/2)` parks it ON the
+  line at both stroke ends, a full burial into the spine — so
+  `YOKE_ARM` derives from the spine margin at mid-stroke and the angle
+  law tracks the groove's mid (`YOKE_TRACK_OFF`, behind the rim)
+  exactly. A straddle fork cannot exist here: the saw ring owns the
+  inboard side at the fork's working height, measured.
+- *The pulled coupling lifts nothing.* The tick's first cut added the
+  full ride lift at every pull and the pulled clutch overshot the
+  setting station into the wheel by a parked mid-ramp slip; the law is
+  the RESIDUAL lift now — `max(0, lift − pull·CLUTCH_TRAVEL)` — the
+  ramps only demand what their actual separation leaves.
+- *Every reach derivation budgets what the metal actually presents*: the
+  rim's extrude bevel and the tick's `SEAT_RELIEF` (the stem's
+  setting-lever groove, `GROOVE_LOCAL`, moved outboard of the clutch's
+  full reach and the bushing's station re-derived from the groove's
+  full-pull sweep — with the foot aligned to the stem, since a
+  world-aligned box presents its half-diagonal); the rim's bore carries
+  the square's half-diagonal past both bevel bites; and a boundary the
+  arithmetic lands EXACTLY on the margin takes one `SAW_FIT` of spare,
+  because float summation over an irrational tooth height must not be
+  what arbitrates it.
+
 **The battery sees it.** The `stemSlip` axis — a cycle over exactly one
 coupling pitch, entering through `setPose`'s new `windStemSlip` key — is
 what lets the sweeps and §48's audit judge the clutch and the yoke (both

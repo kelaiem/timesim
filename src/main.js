@@ -45,6 +45,8 @@ import {
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
   STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
+  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
+  YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
 } from './layout.js';
 
@@ -2941,10 +2943,12 @@ windPinionGroup.rotation.order = 'ZYX';
 windPinionGroup.rotation.z = stemAngle - Math.PI / 2;
 keyless.add(windPinionGroup);
 // Bored past the stem square's half-diagonal (STEM_R·0.98, see the square's
-// build below) plus a running fit: the square slides THROUGH this fixed
-// pinion, which rides the round stem the way a real winding pinion does.
+// build below) plus a running fit: the stem's SQUARE section slides THROUGH
+// this fixed pinion loose (the square spans the pinion's station at every
+// pull — the stem is a turned part and its round journal starts outboard),
+// the way a real winding pinion rides its stem without being keyed to it.
 const windPinion = G.makePinion({ module: KW_MODULE, teeth: windPinionTeeth, thickness: WIND_PINION_T,
-  material: MATS.steel, boreR: STEM_R * 0.98 + 0.05 });
+  material: MATS.steel, boreR: 0.6 }); // past the square's half-diagonal AND the extrude bevel's inward bite — loose over the square, never keyed
 windPinion.name = 'windingPinion';
 windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the stem
 windPinionGroup.add(windPinion);
@@ -2961,7 +2965,7 @@ windPinionGroup.add(windPinion);
   // tier is what holds this convention in metal.
   const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'windPinionSaw' });
   ring.rotation.x = -Math.PI / 2;    // ring local +Z (teeth) → +Y (outboard)
-  ring.position.y = WIND_PINION_T / 2;
+  ring.position.y = WIND_PINION_T / 2 - SAW_FIT; // base sunk a SAW_FIT weld into the pinion's face — no knife-edge abutment; STEM_CLUTCH_OFF subtracts this sink
   windPinionGroup.add(ring);
 }
 
@@ -2974,9 +2978,52 @@ windSpinner.rotation.order = 'ZYX';
 windSpinner.rotation.z = stemAngle - Math.PI / 2;
 keyless.add(windSpinner);
 
+// THE STEM IS A TURNED PART (TODO 50): a SQUARE section under the clutch's
+// whole ride band, the round shaft only OUTBOARD of it — never two
+// superimposed full-length solids, because the clutch sleeve's square bore
+// (flats at 0.337) buries 0.11 into a 0.45 round shaft anywhere the two
+// coexist. The four spans are one derivation chain, clutch-local about
+// the RIM's centre (see layout.js's fork-band block for the body's
+// arrangement): the SLEEVE reaches [SLEEVE_BOT, SLEEVE_TOP], the clutch's
+// relative offset walks rel ∈ [0, STEM_CLUTCH_OFF + toothH] (pull closes
+// the offset, the saw lift adds to it), and the square spans that
+// envelope plus CLEAR_MARGIN each end.
+// SLEEVE_BOT: the spine stops CLEAR_MARGIN short of the male root plane —
+// the plane the FEMALE ring's tips sweep to at full seat, and the female
+// annulus starts at 0.635, UNDER the 0.75 spine (the tick's SEAT_RELIEF
+// keeps the measured floor a hair above the margin).
+const SLEEVE_BOT = SAW_RING_ROOT + CLEAR_MARGIN;
+// SLEEVE_TOP: the spine's outboard end, capped TWICE — under the rim's
+// outboard face by a SAW_FIT weld margin (nothing may trail the rim), and
+// harder by the SETTING WHEEL: at full pull the rim meshes the wheel
+// (centre distance = the swDist tail, 0.55·pinR + swR), and every point
+// of the spine sits at least that distance minus SLEEVE_TOP from the
+// wheel's centre — so holding THAT to the wheel's outer radius plus
+// CLEAR_MARGIN clears every wheel point at every z, by the triangle
+// inequality, with no slab arithmetic to get wrong (a first cut credited
+// the wheel's 1.1 thickness and its own bevel ate the credit).
+const SLEEVE_TOP = Math.min(
+  CLUTCH_RIM_T / 2 - SAW_FIT,
+  (windPinionR * 0.55 + settingWheelR)
+    - G.gearOuterR({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1 })  // 1.1 = the setting wheel's thickness (its build)
+    - CLEAR_MARGIN - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
+const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
+// The square's top carries the sleeve's whole reach (home + cam-over lift
+// + the seat relief) plus the margin, PLUS the round shoulder's SAW_FIT
+// weld — the shoulder sits a weld inside the square, so without that term
+// the weld eats the margin (measured: the sleeve rode to 0.095 of the
+// round shaft at cam-over, 0.15 − SAW_FIT − SEAT_RELIEF exactly).
+const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
+  + CLEAR_MARGIN + SAW_FIT;
 const stemLen = plateR + 2.2 - pinDist;
-const stem = new THREE.Mesh(new THREE.CylinderGeometry(STEM_R, STEM_R, stemLen, 12), MATS.steel);
-stem.position.y = stemLen / 2;
+// Round shaft from the square's shoulder (a SAW_FIT weld into the square,
+// one turned piece modeled as two meshes) out to the crown; the bushing
+// sits ≈8+ units outboard of SQ_TOP at every pull, so the declared
+// stem-in-bushing joint always sees the ROUND section.
+const stem = new THREE.Mesh(
+  new THREE.CylinderGeometry(STEM_R, STEM_R, stemLen - (SQ_TOP - SAW_FIT), 12), MATS.steel);
+stem.name = 'windStem'; // the round journal — bushing and crown live here
+stem.position.y = (SQ_TOP - SAW_FIT + stemLen) / 2;
 windSpinner.add(stem);
 
 // Stem bushing — the stem's actual support: a bored boss at the plate rim
@@ -2985,7 +3032,14 @@ windSpinner.add(stem);
 // end embedded 0.6 into the plate, like the old foot's seat into the top
 // face) down to the bush.
 {
-  const bushDist = plateR - 2;
+  // The bushing's station: its old plateR − 2 seat is kept as the floor,
+  // but TODO 50's split moved the stem's setting-lever groove outboard
+  // (GROOVE_LOCAL derives from the clutch spine's reach), so at FULL PULL
+  // the groove's outer collar sweeps to pinDist + pull + grooveOuter — and
+  // the FOOT's near face (half its 2.2 box) must clear that by the margin.
+  const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
+  const bushDist = Math.max(plateR - 2,
+    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + 1.1);
   const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
@@ -2995,8 +3049,17 @@ windSpinner.add(stem);
   keyless.add(bush);
   const footTop = -1.4; // 0.6 into the plate's back face (−2)
   const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, footTop - Z_KEYLESS), MATS.nickel);
+  // Aligned to the STEM, not the world axes: bushDist's derivation above
+  // budgets the foot's stem-direction half-extent as 1.1, and a world-
+  // aligned box would present its half-DIAGONAL (1.56) to the groove
+  // collars instead — measured, the outer collar clipped it at full pull.
+  foot.rotation.z = stemAngle;
   foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (footTop + Z_KEYLESS) / 2);
   keyless.add(foot);
+  // Rule 6 — the boss's other wall: pushed outboard by the groove, the
+  // whole foot must still stand ON the plate.
+  if (!(bushDist + 1.1 <= plateR))
+    console.warn(`TODO 50: stem bushing foot reaches ${(bushDist + 1.1).toFixed(2)} — off the plate's ${plateR.toFixed(2)} rim`);
 }
 
 // (CROWN_PULL_DIST — the stem's outward slide when hacking — is declared up
@@ -3033,6 +3096,10 @@ windSpinner.add(crown);
 // used for the power-reserve arbor, not a literal continuous mesh into the
 // dial's flipped coordinate frame.
 const settingWheel = G.makeGear({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+// TODO 50 — named so the clutch pair's floors row can EXCLUDE the pulled
+// setting mesh by contact selector (makeGear returns a group; the selector
+// matches mesh names).
+settingWheel.traverse((o) => { if (o.isMesh) o.name = 'settingWheel'; });
 const settingWheelBase = Math.PI / settingWheelTeeth;
 settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
 keyless.add(settingWheel);
@@ -3184,13 +3251,16 @@ keyless.add(settingCap);
 // to spare.
 const HUB_COLLAR_R = 1.2;
 {
-  const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.5, 12);
-  for (const dy of [-0.95, 0.95]) {
+  const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, GROOVE_COLLAR_T, 12);
+  for (const dy of [-GROOVE_HALF, GROOVE_HALF]) {
     const collar = new THREE.Mesh(collarGeo, MATS.steel);
     collar.position.y = GROOVE_LOCAL + dy;
     windSpinner.add(collar);
   }
 }
+// (The groove's outboard budget is settled at the bushing's own build:
+// bushDist derives from the groove's full-pull sweep, and the foot's
+// on-plate assert there is the wall that remains.)
 
 // Setting lever: pivoted beside the stem on the balance side; the beak's pin
 // tracks the groove, whose along-stem position is pinDist+pull·slide+local.
@@ -3311,12 +3381,31 @@ addDialSidePivot(settingLeverGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_SETTIN
 // underside is what sets the keyless plane's floor against the dial.
 const Z_YOKE = Z_KEYLESS - (HUB_COLLAR_R + CLEAR_MARGIN + 0.5 + 0.06);
 const yoke = G.makeYoke({
-  armLen: Math.hypot(YK_C, CROWN_PULL_DIST / 2),
+  // TODO 50: the arm's reach is DERIVED in layout.js (YOKE_ARM) — the
+  // prongs are posts crossing the stem's plane, so the arm falls short of
+  // the stem line by spine + prong + CLEAR_MARGIN and the angle law
+  // tracks the clutch's along-station exactly. (Two refused reaches, both
+  // measured: hypot(YK_C, stroke/2) parks a prong ON the stem line at the
+  // stroke ends — a full burial into the clutch spine — and the old
+  // CROWN_PULL_DIST/2 form overreached further still.)
+  armLen: YOKE_ARM,
   width: 2.6,
   thickness: 1,
-  prongGap: 3.4,
+  // A single pin in the clutch's fork groove (YOKE_FORK_IN/OUT band —
+  // layout.js derives why a straddle fork cannot exist here).
+  prongGap: 0,
   prongH: Z_KEYLESS - Z_YOKE + 0.4,
+  prongR: YOKE_PRONG_R,
 });
+// Rule 6 — the fork's window has two walls and YOKE_ARM only derives one
+// (the spine margin at mid-stroke). The other: at the stroke ENDS the
+// prong stands farthest from the stem line, and its inner edge must still
+// land inside the collar's face band or the fork tracks nothing there.
+{
+  const perpEnd = YK_C - Math.sqrt(YOKE_ARM ** 2 - (CLUTCH_TRAVEL / 2) ** 2);
+  if (!(perpEnd - YOKE_PRONG_R < HUB_COLLAR_R))
+    console.warn(`TODO 50: fork prong inner edge ${(perpEnd - YOKE_PRONG_R).toFixed(3)} at the stroke ends — outside the collar's ${HUB_COLLAR_R} face band, the fork tracks nothing there`);
+}
 const yokeGroup = new THREE.Group();
 yokeGroup.position.set(yokePivot.x, yokePivot.y, Z_YOKE);
 yokeGroup.add(yoke);
@@ -3346,53 +3435,111 @@ windClutch.rotation.order = 'ZYX';
 windClutch.rotation.z = stemAngle - Math.PI / 2;
 windClutchMount.add(windClutch);
 {
+  // THE SLEEVE IS THE KEYED MEMBER AND THE BODY'S SPINE — a pipe with a
+  // SQUARE bore (the stem square's outline plus the running fit), so the
+  // declared 'clutchSleeve ⇄ stemSquare' joint is metal on metal; a round
+  // bore over a square whose half-diagonal is under the bore's radius
+  // would never touch, and the first cut had exactly that fiction, plus
+  // every other body part SOLID — the full battery read the truth (the
+  // round stem threaded the sleeve and both collars, min 0 against the
+  // 0.15 floor). Everything else — the setting rim, the saw ring, both
+  // collars — bores over the sleeve's outside and WELDS onto it (real
+  // radial overlap, no knife-edge abutments: coincident caps are the
+  // coplanar case the instruments cannot arbitrate).
+  const SLEEVE_R = CLUTCH_SLEEVE_R;      // layout.js owns it (the yoke arm's reach derives from it); over the saw ring's 0.685 bore and every other bore — the spine everything welds to
+  // (The spine's [SLEEVE_BOT, SLEEVE_TOP] span is derived at the stem's
+  // own build, one chain with the square section that fills its bore.)
+  const sqHole = STEM_R * Math.SQRT2 * 0.98 + 0.05; // the square's side plus the 0.05 running fit (the movement's, see SAW_FIT)
+  // Contours are EXPLICIT point loops, never absarc: an arc contour
+  // duplicates its seam point and the extrude walls that point with a
+  // zero-area quad — the degenerate-triangle class that flips
+  // sampledVerdict's parity raycast (the saw rings hit it first; the
+  // first cut of this pipe read "inside" a detent collar 3 units away).
+  const loopPts = (r, n) => Array.from({ length: n },
+    (_, i) => new THREE.Vector2(r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n)));
+  {
+    const sleeveLen = SLEEVE_TOP - SLEEVE_BOT;
+    const shape = new THREE.Shape(loopPts(SLEEVE_R, 24));
+    const hole = new THREE.Path();
+    const h = sqHole / 2;
+    hole.moveTo(-h, -h); hole.lineTo(-h, h); hole.lineTo(h, h); hole.lineTo(h, -h); hole.closePath();
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: sleeveLen, bevelEnabled: false });
+    geo.translate(0, 0, -sleeveLen / 2);
+    geo.rotateX(Math.PI / 2);            // pipe axis → local Y (the stem)
+    const sleeve = new THREE.Mesh(geo, MATS.steel);
+    sleeve.name = 'clutchSleeve';
+    sleeve.position.y = (SLEEVE_TOP + SLEEVE_BOT) / 2;
+    windClutch.add(sleeve);
+  }
   // Setting rim — the crown wheel's own gear class (§13's mesh honesty),
-  // bored over the stem square's diagonal so the square, not the bore,
-  // carries the key. makeGear rather than makePinion for exactly that bore.
+  // bored to weld onto the sleeve. The bore's floor: outboard of the
+  // spine's top the bore stands DIRECTLY over the stem square, and the
+  // extrude bevel bites the bore's lip inward — so the nominal bore must
+  // carry the square's half-diagonal (STEM_R·0.98), the margin, both
+  // bevel bites, and the movement's SAW_FIT spare (measured: nominal
+  // 0.72 put the lip 0.122 off the square's corners). The spine's 0.75
+  // still overlaps the bitten lip — the weld the body needs.
   const rim = G.makeGear({ module: KW_MODULE, teeth: windPinionTeeth, thickness: CLUTCH_RIM_T,
-    boreR: STEM_R + 0.05, spokes: 0, material: MATS.steel, hub: false });
+    boreR: STEM_R * 0.98 + CLEAR_MARGIN + 2 * KW_GEAR_BEVEL + SAW_FIT, spokes: 0, material: MATS.steel, hub: false });
+  // makeGear returns a GROUP — the floors row's contact selector matches
+  // MESH names, so the name goes on the meshes, not (only) the wrapper.
   rim.name = 'clutchRim';
+  rim.traverse((o) => { if (o.isMesh) o.name = 'clutchRim'; });
   rim.rotation.x = Math.PI / 2;
   windClutch.add(rim);
   // The mating saw ring, teeth INBOARD toward the pinion — sense +1 with
   // the +π/2 mirror mount (see the pinion ring's comment: the pair lands
   // on sawCouplingLiftAt's index, δ = −windStemSlip, faces bearing at 0).
+  // It sits at the clutch's INBOARD end, past the fork band (layout.js's
+  // rim-leads arrangement): its base sinks a SAW_FIT weld into the
+  // inboard collar's face, and SAW_RING_ROOT is its root plane — the
+  // stack STEM_CLUTCH_OFF closes the seat against.
   const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'clutchSaw',
     rIn: STEM_SAW_SPEC.rIn + SAW_FIT, rOut: STEM_SAW_SPEC.rOut - SAW_FIT }); // the male/female fit — see SAW_FIT
   saw.rotation.x = Math.PI / 2;      // ring local +Z (teeth) → −Y (inboard)
-  saw.position.y = -CLUTCH_RIM_T / 2;
+  saw.position.y = SAW_RING_ROOT + SAW_BASE_T; // = the base's outboard face, sunk SAW_FIT into collar In
   windClutch.add(saw);
-  // Hub collars for the yoke's fork (moved here from the stem group).
-  const hubGeo = new THREE.CylinderGeometry(HUB_COLLAR_R, HUB_COLLAR_R, 0.4, 14);
-  for (const dy of [-1.7, 1.7]) {
-    const hub = new THREE.Mesh(hubGeo, MATS.steel);
-    hub.name = dy < 0 ? 'clutchHubCollarIn' : 'clutchHubCollarOut';
-    hub.position.y = dy;
-    windClutch.add(hub);
+  // Hub collars for the yoke's fork (moved here from the stem group) —
+  // bored discs riding the sleeve (0.62 bore into the 0.75 spine), 0.17
+  // clear of the stem inside.
+  {
+    const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, 20));
+    const hole = new THREE.Path(loopPts(0.62, 20).reverse()); // hole winds opposite the outer loop
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: HUB_COLLAR_T, bevelEnabled: false });
+    geo.translate(0, 0, -HUB_COLLAR_T / 2);
+    geo.rotateX(Math.PI / 2);
+    for (const dy of [YOKE_FORK_IN, YOKE_FORK_OUT]) {
+      const hub = new THREE.Mesh(geo, MATS.steel);
+      hub.name = dy === YOKE_FORK_IN ? 'clutchHubCollarIn' : 'clutchHubCollarOut';
+      hub.position.y = dy;
+      windClutch.add(hub);
+    }
   }
-  // The sleeve that makes the clutch ONE body: saw ring to outboard collar.
-  const sleeveLen = 1.7 + 0.2 - (-CLUTCH_RIM_T / 2 - SAW_BASE_T);
-  const sleeve = new THREE.Mesh(
-    new THREE.CylinderGeometry(STEM_R + PIVOT_MIN_U, STEM_R + PIVOT_MIN_U, sleeveLen, 12), MATS.steel);
-  sleeve.name = 'clutchSleeve';
-  sleeve.position.y = (-CLUTCH_RIM_T / 2 - SAW_BASE_T + 1.7 + 0.2) / 2;
-  windClutch.add(sleeve);
 }
 // The stem's SQUARE — the keyed joint's metal, on the spinner where the
 // clutch rides. Side from the stem's own circle (inscribed square,
-// half-diagonal = STEM_R); its length spans the clutch rim's bore over the
-// whole RELATIVE travel — the stem slides CROWN_PULL_DIST while the clutch
-// slides CLUTCH_TRAVEL, so their offset walks STEM_CLUTCH_OFF·(1 − pull)
-// plus the saw lift. The square runs through the FIXED pinion's bore with
-// clearance (the pinion is bored past the square's half-diagonal for
-// exactly this — see its build), and the rim's bore is the keyed joint the
-// instruments declare.
+// half-diagonal = STEM_R), so the square's silhouette is strictly inside
+// the round shaft's — anywhere the shaft fits, the square fits. Its span
+// must fill the SLEEVE's square bore over the whole RELATIVE travel: the
+// stem slides CROWN_PULL_DIST while the clutch slides CLUTCH_TRAVEL, so
+// their offset walks STEM_CLUTCH_OFF·(1 − pull) plus the saw lift —
+// rel ∈ [0, OFF + toothH] — and the sleeve reaches [SLEEVE_BOT,
+// SLEEVE_TOP] around it, a margin each end. A square-bored part riding a
+// ROUND cylinder is a 0.11 burial (the bore's flats sit at 0.337 against
+// the 0.45 shaft), so the round stem section starts OUTBOARD of this
+// square (see windStem below) — the stem is a turned part, not two
+// superimposed full-length solids. The square runs through the FIXED
+// pinion's bore with clearance (the pinion is bored past the square's
+// half-diagonal for exactly this — see its build). SQ_BOT/SQ_TOP are
+// derived beside the stem's own build, one chain with the round shaft's
+// shoulder.
 {
   const sq = STEM_R * Math.SQRT2 * 0.98; // a hair under inscribed so the corners stay inside the stem's own silhouette
-  const len = STEM_CLUTCH_OFF + CLUTCH_RIM_T + 2 * (STEM_SAW_SPEC.toothH + CLEAR_MARGIN);
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(sq, len, sq), MATS.steel);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(sq, SQ_TOP - SQ_BOT, sq), MATS.steel);
   bar.name = 'stemSquare';
-  bar.position.y = STEM_CLUTCH_OFF / 2 + CLUTCH_RIM_T / 4; // spans rel-y [lift−rim/2 … OFF+rim/2+lift]
+  bar.position.y = (SQ_TOP + SQ_BOT) / 2;
   windSpinner.add(bar);
 }
 // Boot assert (rule 6), the coupling's structural claim: pulled to SET the
@@ -27344,16 +27491,23 @@ function tick(t) {
   // and their difference is by definition the slip — see the split's build
   // comments for the index convention). One law, read from the same spec
   // the rings were cut from.
-  const sawLift = sawCouplingLiftAt(STEM_SAW_SPEC, -windStemSlip);
+  // The ride law, at the coupling's ACTUAL separation: the pull already
+  // holds the faces pull·CLUTCH_TRAVEL apart, so only the lift the ramps
+  // still demand ABOVE that separation moves the clutch — pulled to SET,
+  // the coupling is clear of itself and a parked mid-ramp slip lifts
+  // nothing (the first cut added the full lift at every pull, and the
+  // pulled clutch overshot the setting station into the wheel by it).
+  const sawLift = Math.max(0,
+    sawCouplingLiftAt(STEM_SAW_SPEC, -windStemSlip) - crownPullT * CLUTCH_TRAVEL);
   // §99's face-relief convention, at the coupling: the analytic seat would
   // park the pair plane-on-plane twice over (tip flats on valley flats in
   // z, drive faces in θ), and exactly-coincident planes are the one case
   // the BVH instruments cannot arbitrate (the coplanar-triangle noise §61
   // documents). The DISPLAYED metal therefore parks a hairline off the
-  // seat — SEAT_RELIEF axially and the same in clocking, an order under
+  // seat — SEAT_RELIEF (layout.js — the clutch's reach derivations budget
+  // it) axially and the same in clocking, an order under
   // HANDOFF_TRACK_TOL (0.03) so every declared contact still measures
   // shut — while the tick's laws read the exact slip.
-  const SEAT_RELIEF = 0.005;
   const clutchDist = clutchHomeDist + crownPullT * CLUTCH_TRAVEL + sawLift + SEAT_RELIEF;
   windClutch.position.set(uWind.x * clutchDist, uWind.y * clutchDist, Z_KEYLESS);
 

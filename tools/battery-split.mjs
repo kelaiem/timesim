@@ -54,6 +54,10 @@ export const INSPECTION_SLICES = [
   { axis: 'alarmStrike', poses: 110, ms: 59415 },
   { axis: 'alarmWind', poses: 110, ms: 76736 },
   { axis: 'alarmToggle', poses: 49, ms: 32844 },
+  // TODO 50 — the stem clutch's own reversal (one coupling pitch, cycled).
+  // ms measured on the session's dev container battery run; poses = n 96
+  // plus the endpoint, the same accounting as every row above.
+  { axis: 'stemSlip', poses: 97, ms: 55000 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run

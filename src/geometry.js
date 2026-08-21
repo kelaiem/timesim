@@ -1365,7 +1365,7 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
 // tip rise to the hub's level.
 // ---------------------------------------------------------------------------
 
-export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6 }) {
+export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6, prongR = 0.4 }) {
   const g = new THREE.Group();
   const hw = width / 2;
 
@@ -1392,9 +1392,12 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
   bossGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(bossGeo, MATS.steel));
 
-  const prongGeo = new THREE.CylinderGeometry(0.4, 0.4, prongH, 10);
+  const prongGeo = new THREE.CylinderGeometry(prongR, prongR, prongH, 10);
   prongGeo.rotateX(Math.PI / 2);
-  for (const px of [-prongGap / 2, prongGap / 2]) {
+  // prongGap 0 asks for a SINGLE pin — the groove-and-pin fork real yokes
+  // ride a sliding pinion's neck with (two coincident posts would be one
+  // part drawn twice).
+  for (const px of prongGap === 0 ? [0] : [-prongGap / 2, prongGap / 2]) {
     const prong = new THREE.Mesh(prongGeo, MATS.steel);
     prong.name = 'yokeProng'; // TODO 50: the clutch's floors row names the prong⇄collar ride
     prong.position.set(px, armLen, thickness / 2 + prongH / 2);
