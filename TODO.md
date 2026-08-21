@@ -58,7 +58,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
-| 73 | OPEN | The alarm column wheel's mesh carries 14 zero-area triangles, and the vendored parity raycast throws (`null.dot`) when a ray lands on one — found by §150's report diff as an `assembly` unmeasurable row (reported, assumed joined: the safe direction). Two independent fixes owed: cap the builder's degenerate faces, and guard the vendored `getInterpolation` null |
+| 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; roadmap §77's instrument is what will hold the count at zero |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -7976,7 +7976,7 @@ mechanism over), and the declaration set. The going landing's records
 
 ---
 
-## 73. The alarm column wheel's mesh carries fourteen zero-area triangles, and the parity raycast throws when a ray lands on one
+## 73. PART DONE — the raycast is guarded (half 2, the vendor patch); the fourteen zero-area triangles remain (half 1)
 
 **Found by §150's report diff** — an `assembly` connectivity pair inside
 `Alarm switch` went `unmeasurable` ("Cannot read properties of null
@@ -8003,13 +8003,24 @@ unsafe direction), so the gate stayed honest. The mechanism, measured:
   onto the knife edge that was always there.
 
 **The fix is at the source, in two independent halves.** (1) The column
-wheel's builder should not emit zero-area triangles — find the lathe or
-extrude step that collapses them (likely coincident profile points at the
-castellation corners) and cap it, which moves the fingerprint and re-runs
-the alarm sweeps, its own landing. (2) The vendored raycast should guard
-the null the way three.js's own Mesh.raycast does — a one-line vendor
-patch, documented in vendor/README.md beside the two existing diffs, so
-a degenerate triangle reads as "no countable crossing" instead of a
-throw. Either half alone un-throws this row; both are owed, because a
-mesh with zero-area faces is lying to every instrument that samples it,
-not just to this one.
+wheel's builder should not emit zero-area triangles — and the cause is now
+measured (roadmap §77's planning): they are NOT castellation corners but
+two shared-builder seams — `absarc`'s duplicate endpoint (the two seam
+points differ by ~1e-15, so the exact-bit weld rightly keeps them) and
+earcut's hole-bridge slivers — so the fix lives in `ringExtrude` and the
+skirt's extrude, clears ~9 consumers at once, moves the fingerprint, and
+is its own landing. (2) **DONE** — the vendored raycast guards the null:
+a zero-area face reads as "no countable crossing" instead of a throw.
+The third `PATCHED (timesim)` diff, documented in vendor/README.md with
+the as-shipped hash updated; `tools/check-bvh-patches.mjs` carries a
+synthetic sliver witness (a triangle whose `getBarycoord` denominator
+cancels to exactly 0 in float64 while `Ray.intersectTriangle` still hits
+it — the wild fourteen's own float discrepancy, made deterministic) that
+THROWS on the unpatched file with this item's exact error string and
+counts correctly on the patched one. One correction to this item's
+original text: three.js r165's own `Mesh.js` carries the SAME unguarded
+dereference, so there was no upstream idiom to copy — the guard is this
+repo's parity semantics. Half 1 is still owed, because a mesh with
+zero-area faces is lying to every instrument that samples it, not just
+to this one — and roadmap §77's `meshIntegrity` is the instrument that
+will hold the count at zero once the builders are fixed.
