@@ -13,11 +13,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECKS = process.argv.slice(2).length ? process.argv.slice(2)
   : ['stockFloor', 'expectedContacts', 'inspection'];
 const OPTS = {
+  meshIntegrity: { yieldEvery: 64 },
   stockFloor: {},
   expectedContacts: { yieldEvery: 64 },
   inspection: { includeExcluded: true, yieldEvery: 64 },
 };
 const FAILS = {
+  meshIntegrity: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]), ...r.subBodies.malformed, ...r.subBodies.pairs.rows],
   stockFloor: (r) => [...r.degenerate, ...r.violations],
   expectedContacts: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
   inspection: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),

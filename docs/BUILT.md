@@ -14584,6 +14584,231 @@ the solved touch, read live off the clock — and the audit's stale flag
 on the arrest's declared blade spring is gone for the honest reason:
 the population now contains the motion.
 
+## §77 — the instrument for the third blindness class: `meshIntegrity` counts a mesh's own triangles, and three of its first four findings were new
+
+**Roadmap §77, tiers 0, 1 and 3. Tier 2 (coincident-surface regions) remains
+in the roadmap, deliberately — see "What did not ship" below.** Every
+collision instrument in the battery judges a mesh WHOLE: `inspection`,
+`clearances` and `sweptOverlap` compare one mesh against another,
+`intraUnit` a unit's movers against its fixtures, `stockFloor` a mesh's
+extents. Nothing examined what a single mesh does to ITSELF. TODO 27 named
+that third blindness class; this entry builds the instrument for it.
+
+The entry arrived with its own seed instances mostly fixed (TODO 27's rivets
+drilled, TODO 28's gap strips rebuilt), so its controls had to be synthetic
+from the start — and while it was being planned the class produced a live
+CRASH, which is what set the landing order.
+
+### TODO 73 half 2 first, because the instrument would have thrown on its own subject
+
+`Triangle.getInterpolation` returns **null** on a degenerate triangle — a
+zero-area face has no barycentric basis — and the vendored
+`checkBufferGeometryIntersection` dereferenced it. A parity ray landing on
+one of the alarm column wheel's fourteen zero-area faces threw, and
+`assembly` reported the pair `unmeasurable` (assumed joined: that check's
+safe direction, so the gate stayed honest). The parity raycast is
+`pointInsideTree`/`sampledVerdict` — the arbiter EVERY exact verdict in
+`inspect.js` routes through — so a self-intersection tier built on it would
+have thrown on exactly the triangles it exists to find.
+
+The guard is parity semantics, not a tolerance: **a face with no area is no
+countable crossing**, so the function reports no hit and crossing counts stay
+even/odd as a closed solid demands. Third `PATCHED (timesim)` diff, with
+`vendor/README.md`'s as-shipped hash updated (the dual-hash regime exists to
+tell "the vendor changed" from "our patch changed"). One correction to
+TODO 73's own text, recorded there: three.js r165's `Mesh.js` carries the
+SAME unguarded dereference, so there was no upstream idiom to copy.
+
+The witness in `tools/check-bvh-patches.mjs` is **synthetic and exact**, so no
+future builder fix can delete it — TODO 27's lesson, which removed this
+entry's original positive control by fixing the geometry it was borrowed
+from. A sliver whose `getBarycoord` denominator cancels to 0 in float64
+(verts `(0,0,0)/(1,0,0)/(0.5,1e-9,0)`: `0.25 + 1e-18` rounds to `0.25`, so
+`denom = 0.25·1 − 0.5² === 0`) while `Ray.intersectTriangle` still HITS it —
+its normal `(0,0,1e-9)` is nonzero. That is the wild fourteen's float
+discrepancy made deterministic. It instruments `getInterpolation` to prove
+the degenerate path RAN: zero null-returns means the witness vanished under a
+vendor bump, which fails rather than passing in silence. Measured both ways —
+unpatched it fails with TODO 73's exact error string, patched it counts 2
+crossings.
+
+### The two constants, derived
+
+**`ZERO_AREA_MAX = 1e-12`.** `tools/probe-77-threshold.mjs` histograms every
+inspected triangle's geometry-local area by decade. The defective population
+tops out in the **1e-15** decade and the smallest INTENDED triangles start at
+**1e-10** — a four-decade empty band, and the constant sits two decades from
+each bound. The probe prints the widest empty band and says so explicitly if
+none exists ("a single threshold cannot classify this distribution; re-design
+the tier"), so the derivation is re-runnable rather than a remembered number.
+
+**A repeated-index test would have found NOTHING, and that is measured.** The
+`absarc` seam twins differ by ~1e-15, not 0 (raw float32 bits `0x00000000` vs
+`0xa6c932e7`), so the exact-bit weld rightly refuses to merge them and all
+eight survive with three distinct indices. The tier computes cross-product
+area and classifies by cause — `collapsed` (an edge of zero length),
+`collinear` (distinct points, exactly zero area), `sliver` (nonzero, under
+threshold) — because the causes have different builders behind them.
+
+**`INVERTED_VOL_FRAC = 1e-3` of the bbox volume** (tier 0, which TODO 4
+nominated in as many words). A genuinely inverted closed body measures minus
+its own volume, order bboxVol/10; an open shell's signed sum is float noise
+around zero. Three decades between them.
+
+**The word is `zeroArea`, not "degenerate"** — §77's acceptance asked for the
+collision with `stockFloor` to be resolved "one way or the other", and this is
+the other way. `checkStockFloor` owns "degenerate" for a different
+measurement (a unit whose EXTENT collapses) across its gate string, its return
+field, `ci-battery.mjs`'s `fails` closure and four probes; TODO 4 and TODO 73
+already said "zero-area" for the triangle sense. Adopting their word costs
+zero renames and moves no report.
+
+### The declared route, and why the ranges are TRIANGLES
+
+`geometry.userData.subBodies = [{ name, triStart, triCount }]` — **triangle
+ranges into the index, never vertex ranges.** `weldGeometry` preserves the
+triangle list exactly (count, order, winding) but compacts vertices by first
+occurrence, so a later body's duplicate vertex remaps backwards into an
+earlier body's slot: a vertex range is not weld-invariant and a triangle range
+is. The chain's existing `userData.links.base` survives as vertex indices only
+because the chain sets its own index.
+
+`mergeGeos` (the in-house merge, `src/geometry.js`) grew an optional names
+argument and emits the table itself — consecutive equal names coalesce, which
+is how a tapped screw's core-plus-crests stay ONE body. Its three callers
+declare: `makeScrews` per screw, the ∞ brand mark per stroke, and
+`makeDial`'s `dialPlate` per surface (a caller `mergeGeos`' own header comment
+had omitted for a year — the audit found the comment stale, which is its own
+small argument for a table the instruments VALIDATE). The chain writes its
+table in the same guard as the index it describes (both are functions of the
+template sequence alone, shared until N changes) and re-attaches it to every
+geometry a rebuild emits — the `seat`/`links` discipline, so a rebuild can
+never serve a stale layout.
+
+**The table is validated and GATED on arrival** — bounds, overlap, name reuse —
+because a malformed declaration is a stale selector, the `INTRA_UNIT_CONTACTS`
+precedent, and tier 3 must be able to trust every range it is handed.
+
+### Tier 3 measures INTERIOR MATERIAL, not triangle crossings
+
+TODO 27's own formulation, generalized one dimension up: per candidate pair
+(AABB-prefiltered), sample one body's vertices **and edge midpoints** against
+the other body's triangle range by parity along +z, and report points
+strictly interior beyond the assert's own 1e-6 floor. Edge midpoints are not
+optional — vertices alone miss a through-piercing, since a pin crossing a thin
+plate leaves no vertex inside the slab, and its side edges' midpoints are
+exactly what TODO 27's line-sampling assert walked.
+
+Robust where tri-tri is not, in two ways that matter here: a rivet head
+sitting FLUSH in its counterbore shares surfaces without sharing interior, and
+a pin through a BORED plate threads void rather than material — the bore is
+what makes the joint legal, which is the whole point of drilling it. Legal at
+all because TODO 27 capped every buried face (`weldGeometry` property 2: no
+mesh opens). Zero-area triangles are skipped by the crossing counter — the
+same rule as the vendor patch, one layer up.
+
+### What it found on arrival — three of the four were new
+
+The first triangle census in the repo's history (`stockCensus` measures
+extents, not triangles), over **568 geometries / 283,571 triangles in 1.6 s**:
+
+| finding | filed |
+|---|---|
+| **3,233 zero-area triangles across 125 geometries** — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs | TODO 74 |
+| **Four bodies wound INSIDE-OUT** — two Fork-cock lathes at −56% and −73% of their own bounding boxes, a Balance-cock lathe, `alarmFaceCam` | TODO 75 |
+| **The chain's declared articulation fiction, measured**: 91 adjacent link/rivet pairs interpenetrate, median 0.05 u, max **0.24 u** | TODO 76 |
+| the column wheel's own 8 + 6, reproduced | TODO 73 half 1 (already open) |
+
+TODO 4 predicted the first: "the fix belongs in the shared builders, so it
+would clear every consumer at once." The census sizes that — one
+`ringExtrude` fix clears ~380 triangles across the fleet — which is why the
+report aggregates by (cause signature, builder) rather than listing 125 rows
+as 125 problems.
+
+**The inverted four are NOT TODO 70's collars, and that was measured rather
+than assumed**: the negative-volume lathes sit at world (9.54, −22.25),
+(18.95, −29.28) and (17.69, −14.58) against item 70's (9.58, −19.02),
+(19.62, −25.13) and (−13.27, 9.29) — no coordinate matches, and item 70's
+barrel-arbor site has no negative-volume mesh at all. Consistent rather than
+contradictory: those collars are OPEN shells, whose signed sum is
+path-dependent, so inverted winding need not read negative. Item 70 carries
+that note, so nobody re-attributes them later.
+
+**The chain's 91 rows are the fiction, not a defect, and the instrument now
+says which.** The build DECLARES its articulation a fiction in as many words —
+wrap links carry up to ~36.3° of per-joint twist a real chain would shed by
+joint play, because each link is a rigid stamp posed by its curve frame. Tier
+3 is the first instrument that could see the consequence, and it measured it:
+every adjacent link⇄link and link⇄rivet pair buries, **zero non-adjacent pairs
+fire** (which is what says the stamps themselves are sound), cross-confirmed
+by BVH tri-tri over the same index ranges. So the declaration now lives where
+the fiction does: `buildChainLinkGeometry` marks ADJACENT pairs
+`userData.subBodyOverlapOk` citing TODO 76, the check skips them and reports
+the count, and every non-adjacent pair stays live — a corrupted stamp or
+collapsed curve still rows. The ∞ monogram declares its stroke crossings the
+same way (an ∞ IS its crossings).
+
+### It lands as a REPORT, and the gate says exactly what it can hold
+
+§40's rule, and this entry is not exempt: `ok` is always true, the rows are
+the product, triage into `TODO.md` tranches, gate later. It arrives with
+3,233 zero-area triangles and 4 inverted bodies live, so gating them on day
+one would have meant waivers they have not earned. The battery row gates what
+CAN be held: **controls PASS and 0 malformed sub-body declarations**.
+
+**No waiver table ships at all** — a deviation from the plan, recorded here
+because a section answered is worth more than one quietly dropped. Nothing
+gates the rows, so there is nothing for a waiver to excuse; and the defects
+are builder-class, which a unit-keyed table (the `STOCK_WAIVERS` convention)
+would misfit — nine consumers of one bad builder are one debt, not nine
+waivers. Findings became TODO items instead, which is where a fix path
+belongs.
+
+The controls are synthetic and live INSIDE the check, so no geometry fix can
+delete them: a sliver and a collapsed edge fire, a healthy triangle is silent,
+a box measures +8 upright and −8 inverted (TODO 4's own control values), and
+tier 3's half — a check-local replica of the un-bored chain leaf — fires at
+the plate's half-thickness while the same plate BORED stays silent. That last
+pair is the engine's whole claim in two assertions: it can tell a burial from
+a bore.
+
+**The replica is a deviation worth naming**: §77 asked for "an un-bored copy
+of the chain's leaf template", and `main.js` imports `inspect.js`
+(`measureHandoffsNow`), so importing the template builder back would be a
+module cycle. The replica is built in the check from the leaf's measured
+0.145 thickness. The durable half of the rule — the control cannot be removed
+by someone fixing the geometry it came from — is kept exactly.
+
+### What did not ship, and why it waits
+
+**Tier 2, coincident-surface regions** (where a solid's top and bottom
+surfaces meet over an AREA rather than along an edge — TODO 28's old gap
+strips). Both its seed instances are FIXED, so it would arrive with only a
+synthetic control and blocks nothing; it is the one tier needing a shapecast
+over ~500k triangles, and `sweptOverlap`'s confirm tier already runs ~1750 s,
+so there is no room for a second quadratic pass taken on faith. It stays in
+the roadmap, and **this landing's census is its sizing data** — which is the
+honest order: measure the population, then price the pass that would judge it.
+
+The entry's second half — the incremental-run lever, "run a check only when
+it can change its answer" — was **promoted to roadmap §152** per §77's own
+suggestion. It shares nothing with this instrument but motivation, and it
+gained a proof case here: the fingerprint hashes per-unit AABBs at 11 poses,
+and TODO 4 measured the inside-out castellations moving no AABB and no
+clearance verdict, so the fingerprint cannot key an incremental scheme. A
+`meshIntegrity` fix moves triangles and no bounding box at all.
+
+### Instruments
+
+Battery green on the landing head, `meshIntegrity` included (`cost: 10`;
+controls PASS, 0 malformed). `probe-77-threshold.mjs` re-derives the
+threshold; `probe-77-census.mjs` prints the census, aggregates and pair
+summary (175 candidates / 136 declared / 39 tested / 0 interior rows, 10.0 s);
+`probe-77-chain.mjs` holds the chain's 87-body table tiling 23,464 triangles
+at three tensions across two rebuilds, and fails if a rebuild ever serves a
+stale declaration. Fingerprint bit-identical across the whole landing
+(`3757164117`) — the declarations move no geometry bytes — and boot silent.
+
 ## §152 — the reserve reads as a sector: a symmetric inverted-U arc, a barely-recessed well, and a hand that rides proud
 
 Owner's redesign of the power-reserve indicator's face. Two claims, both

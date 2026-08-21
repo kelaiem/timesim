@@ -3728,10 +3728,17 @@ const THREAD_PITCH_PER_DIA = 0.25;
 const THREAD_DEPTH_PER_PITCH = 0.61;
 export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
   const heads = [], slots = [], shanks = [];
-  for (const p of at) {
+  // §77 — sub-body names for mergeGeos' declaration: each merged mesh's
+  // bodies are per SCREW, so the name is the screw's index in `at`. A
+  // tapped shank pushes core + crests under one name and mergeGeos
+  // coalesces the consecutive run into one range — one screw, one body.
+  const headNames = [], slotNames = [], shankNames = [];
+  for (let si = 0; si < at.length; si++) {
+    const p = at[si];
     const r = p.headR ?? headR;
     heads.push(new THREE.CylinderGeometry(r, r * taper, headT, seg)
       .rotateX(Math.PI / 2).translate(p.x, p.y, p.z - headT / 2));
+    headNames.push(`screw#${si}`);
     // Slot proportions are the chaton's: 1.7r long (inside the 2r head),
     // 0.28r wide, 0.35·headT deep.
     //
@@ -3750,11 +3757,13 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
     const slotD = headT * 0.35;
     slots.push(new THREE.BoxGeometry(r * 1.7, r * 0.28, slotD)
       .rotateZ(p.a || 0).translate(p.x, p.y, p.z - slotD / 2 + 0.01));
+    slotNames.push(`screw#${si}`);
     if (p.shank) {
       const sr = screwShankR(r);
       if (!p.tapped) {
         shanks.push(new THREE.CylinderGeometry(sr, sr, p.shank, Math.max(8, seg / 2))
           .rotateX(Math.PI / 2).translate(p.x, p.y, p.z - headT - p.shank / 2));
+        shankNames.push(`screw#${si}`);
       } else {
         // Core at the thread's ROOT, crests as rings on it: closed solids
         // both, so the shank stays one welded body and no lathe runs to its
@@ -3765,6 +3774,7 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
         const core = sr - depth;
         shanks.push(new THREE.CylinderGeometry(core, core, p.shank, Math.max(8, seg / 2))
           .rotateX(Math.PI / 2).translate(p.x, p.y, p.z - headT - p.shank / 2));
+        shankNames.push(`screw#${si}`);
         // Each crest OVERLAPS the core rather than sitting tangent on it: a
         // ring whose inner extent lands exactly on the core's surface is two
         // coincident cylinders, which is the artefact this whole entry has
@@ -3773,21 +3783,22 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
         for (let z = pitch / 2; z < p.shank; z += pitch) {
           shanks.push(new THREE.TorusGeometry(core + depth / 4, depth * 0.75, 6, Math.max(8, seg / 2))
             .translate(p.x, p.y, p.z - headT - z));
+          shankNames.push(`screw#${si}`);
         }
       }
     }
   }
   const g = new THREE.Group();
-  const headsMesh = new THREE.Mesh(mergeGeos(heads), MATS.blueSteel);
+  const headsMesh = new THREE.Mesh(mergeGeos(heads, headNames), MATS.blueSteel);
   headsMesh.name = 'screwHeads';
   g.add(headsMesh);
   // Named for §50's kind table: a slot is a RECESS rendered as a dark
   // inlay — void, not stock — the same class as the disc's printed track.
-  const slotsMesh = new THREE.Mesh(mergeGeos(slots), MATS.dark);
+  const slotsMesh = new THREE.Mesh(mergeGeos(slots, slotNames), MATS.dark);
   slotsMesh.name = 'screwSlots';
   g.add(slotsMesh);
   if (shanks.length) {
-    const shanksMesh = new THREE.Mesh(mergeGeos(shanks), MATS.blueSteel);
+    const shanksMesh = new THREE.Mesh(mergeGeos(shanks, shankNames), MATS.blueSteel);
     shanksMesh.name = 'screwShanks';
     g.add(shanksMesh);
   }
@@ -4337,7 +4348,13 @@ export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments =
     g.translate(0, -m.H / 2, -m.depth / 2); // centre the monogram on the face, half-embedded
     return g;
   });
-  const merged = mergeGeos(geos);
+  const merged = mergeGeos(geos, m.shapes.map((_, i) => `stroke#${i}`));
+  // The monogram's strokes CROSS by design — an ∞ is its crossings — so
+  // every stroke pair is declared expected-overlap (meshIntegrity skips
+  // declared pairs and reports the skip; an undeclared overlap would be a
+  // real finding, but here there is no such thing as an illegal crossing).
+  merged.userData.subBodyOverlapOk = m.shapes.flatMap((_, i) =>
+    m.shapes.slice(i + 1).map((_, j) => [`stroke#${i}`, `stroke#${i + 1 + j}`]));
   const mesh = new THREE.Mesh(merged, material);
   mesh.userData = { r: m.r, tubeR: m.tubeR, height: m.H, strokeWidth: m.sw, proud: m.tubeR };
   return mesh;
@@ -4345,23 +4362,46 @@ export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments =
 
 // Minimal geometry merge — the three examples' BufferGeometryUtils is not
 // vendored. Position+normal only, which is all ExtrudeGeometry produces here.
-// Callers: the ∞ monogram and makeScrews' three batched bodies.
+// Callers: makeScrews' three batched bodies, the ∞ monogram, and makeDial's
+// dialPlate (a caller this comment omitted for a year — §77's audit found
+// the list stale, which is its own small argument for the declaration
+// below: a table the instruments VALIDATE cannot rot the way a comment can).
 //
 // §81: it concatenates as triangle soup (that is the cheap way to merge
 // unlike geometries) and then WELDS, so it emits indexed output. It is the
 // in-house builder of exactly the mesh class tranche A exists for, and it
 // merges REPEATED bodies — every screw head is the same lathe — so the weld
 // has more to find here than anywhere else.
-function mergeGeos(geos) {
+//
+// §77 — the DECLARED route's source of truth. When `names` is given (one
+// per input geometry; consecutive equal names coalesce, which is how a
+// tapped shank's core-plus-crests stay ONE body), the output carries
+// `userData.subBodies = [{ name, triStart, triCount }]` — TRIANGLE ranges
+// into the index, never vertex ranges, because the weld preserves the
+// triangle list exactly (count, order, winding) while it compacts vertices
+// by first occurrence: a later body's duplicate vertex remaps into an
+// earlier body's slot range, so a vertex range is not weld-invariant and a
+// triangle range is. `meshIntegrity` validates every table it finds
+// (bounds, overlap, name reuse) and GATES a malformed one — declare
+// beside the cut or not at all.
+function mergeGeos(geos, names) {
   const parts = geos.map((g) => (g.index ? g.toNonIndexed() : g));
   let n = 0;
   for (const g of parts) n += g.getAttribute('position').count;
   const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3);
   let o = 0;
-  for (const g of parts) {
+  const subBodies = names ? [] : null;
+  for (let i = 0; i < parts.length; i++) {
+    const g = parts[i];
     const p = g.getAttribute('position'), q = g.getAttribute('normal');
     pos.set(p.array.subarray(0, p.count * 3), o * 3);
     if (q) nrm.set(q.array.subarray(0, q.count * 3), o * 3);
+    if (subBodies) {
+      const triStart = o / 3, triCount = p.count / 3;
+      const last = subBodies[subBodies.length - 1];
+      if (last && last.name === names[i]) last.triCount += triCount;
+      else subBodies.push({ name: names[i], triStart, triCount });
+    }
     o += p.count;
   }
   const soup = new THREE.BufferGeometry();
@@ -4370,6 +4410,7 @@ function mergeGeos(geos) {
   for (const g of parts) g.dispose();
   const out = weldGeometry(soup);
   if (out !== soup) soup.dispose();
+  if (subBodies) out.userData.subBodies = subBodies;
   return out;
 }
 
@@ -5008,24 +5049,27 @@ export function makeDial({
     // A sub-dial with no recess is a plain aperture, not a well — the pocket
     // walls below would be zero deep and its floor would land on the face.
     // Decided per well (§152), like the depth it is the zero case of.
-    const parts = [
-      plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => w.pocket)], zF, +1),
-      plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => (w.recess > 0 ? w.bore : w.pocket))], zB, -1),
-      plateWall(0, 0, face, zF, rim, zF - b, true),        // front edge break
-      plateWall(0, 0, rim, zF - b, rim, zB + b, true),     // the rim's land
-      plateWall(0, 0, rim, zB + b, face, zB, true),        // back edge break
-    ];
-    if (bore) parts.push(plateWall(0, 0, bore, zF, bore, zB, false));
+    // §77 — every surface named for mergeGeos' sub-body declaration: the
+    // dial plate is the richest merged body outside the chain, and a name
+    // per member is what lets the declared tier later ask "does the pocket
+    // floor cross the back cap" instead of sweeping a 5k-triangle blob
+    // against itself.
+    const parts = [], partNames = [];
+    const part = (name, g) => { parts.push(g); partNames.push(name); };
+    part('front-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => w.pocket)], zF, +1));
+    part('back-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => (w.recess > 0 ? w.bore : w.pocket))], zB, -1));
+    part('front-break', plateWall(0, 0, face, zF, rim, zF - b, true));
+    part('rim-land', plateWall(0, 0, rim, zF - b, rim, zB + b, true));
+    part('back-break', plateWall(0, 0, rim, zB + b, face, zB, true));
+    if (bore) part('centre-bore', plateWall(0, 0, bore, zF, bore, zB, false));
     subdials.forEach((sd, i) => {
       const { pocket, bore: hole, recess } = wells[i];
-      if (!(recess > 0)) { parts.push(plateWall(sd.x, sd.y, pocket, zF, pocket, zB, false)); return; }
-      parts.push(
-        plateWall(sd.x, sd.y, pocket, zF, pocket, -recess, false),   // pocket wall
-        plateCap(pocket, [hole], -recess, +1),                       // pocket floor
-        plateWall(sd.x, sd.y, hole, -recess, hole, zB, false),       // arbor bore
-      );
+      if (!(recess > 0)) { part(`aperture#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, zB, false)); return; }
+      part(`pocket-wall#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, -recess, false));
+      part(`pocket-floor#${i}`, plateCap(pocket, [hole], -recess, +1));
+      part(`arbor-bore#${i}`, plateWall(sd.x, sd.y, hole, -recess, hole, zB, false));
     });
-    const body = new THREE.Mesh(mergeGeos(parts), MATS.brass);
+    const body = new THREE.Mesh(mergeGeos(parts, partNames), MATS.brass);
     body.name = 'dialPlate';
     g.add(body);
   }

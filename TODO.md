@@ -58,7 +58,10 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
-| 73 | OPEN | The alarm column wheel's mesh carries 14 zero-area triangles, and the vendored parity raycast throws (`null.dot`) when a ray lands on one — found by §150's report diff as an `assembly` unmeasurable row (reported, assumed joined: the safe direction). Two independent fixes owed: cap the builder's degenerate faces, and guard the vendored `getInterpolation` null |
+| 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
+| 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
+| 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
+| 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -318,6 +321,15 @@ that's its entry, not this one.)
   `stockFloor`'s "0 degenerate" gate does not see them (it measures a mesh's
   extents, not its triangles: [item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s third blindness class again). The fix
   belongs in the shared builders, so it would clear every consumer at once.
+  **MEASURED SCENE-WIDE (§77's `meshIntegrity`, 2026-08-21): the two
+  builders' 8+6 are a corner of the population.** The first triangle census
+  reads **3,233 zero-area triangles across 125 of 568 geometries** — the
+  `ringExtrude` pattern (4 or 8 slivers) across 85+ consumers exactly as
+  predicted, and beside it whole populations nobody had seen: item 74 has
+  the catalogue. The threshold is derived, not chosen: the defective
+  decades top out at 1e-15 and the smallest intended triangles start at
+  1e-10, so `ZERO_AREA_MAX = 1e-12` sits two decades from each bound
+  (`tools/probe-77-threshold.mjs` re-derives it).
 - **FIXED — the column wheel's pillars were wound INSIDE-OUT.** Reported as
   "missing surfaces on the columns", which is exactly what it looked like. NOT the
   degenerate triangles above, and not the sliver guard that skips them: a
@@ -7857,6 +7869,20 @@ that were there first.
 
 ## 70. `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well
 
+> **Instrument note (2026-08-21).** §77's `meshIntegrity` tier 0 now
+> measures signed volume per mesh scene-wide, and its four `inverted` rows
+> (item 75) do NOT line up with this item's three collars: the negative-
+> volume lathes sit at world (9.54, −22.25), (18.95, −29.28) and
+> (17.69, −14.58) against this item's (9.58, −19.02), (19.62, −25.13) and
+> (−13.27, 9.29) — no coordinate matches, and the barrel-arbor site has no
+> negative-volume mesh at all. That is consistent rather than
+> contradictory: these collars are OPEN shells, and an open surface's
+> signed sum is path-dependent — inverted winding need not read negative.
+> So the divergence tier cannot be this item's regression guard; the
+> winding fix stays validated by `assertLatheOutward`, and closing the
+> profile (this item's real work) is what will bring the collars into
+> tier 0's domain.
+
 Found by the instrument §148 added for its own defect (`assertLatheOutward`,
 `src/geometry.js`), swept over the whole scene rather than over the chaton:
 **three meshes besides the chaton's two have top faces whose normals point
@@ -7987,7 +8013,7 @@ mechanism over), and the declaration set. The going landing's records
 
 ---
 
-## 73. The alarm column wheel's mesh carries fourteen zero-area triangles, and the parity raycast throws when a ray lands on one
+## 73. PART DONE — the raycast is guarded (half 2, the vendor patch); the fourteen zero-area triangles remain (half 1)
 
 **Found by §150's report diff** — an `assembly` connectivity pair inside
 `Alarm switch` went `unmeasurable` ("Cannot read properties of null
@@ -8014,13 +8040,129 @@ unsafe direction), so the gate stayed honest. The mechanism, measured:
   onto the knife edge that was always there.
 
 **The fix is at the source, in two independent halves.** (1) The column
-wheel's builder should not emit zero-area triangles — find the lathe or
-extrude step that collapses them (likely coincident profile points at the
-castellation corners) and cap it, which moves the fingerprint and re-runs
-the alarm sweeps, its own landing. (2) The vendored raycast should guard
-the null the way three.js's own Mesh.raycast does — a one-line vendor
-patch, documented in vendor/README.md beside the two existing diffs, so
-a degenerate triangle reads as "no countable crossing" instead of a
-throw. Either half alone un-throws this row; both are owed, because a
-mesh with zero-area faces is lying to every instrument that samples it,
-not just to this one.
+wheel's builder should not emit zero-area triangles — and the cause is now
+measured (roadmap §77's planning): they are NOT castellation corners but
+two shared-builder seams — `absarc`'s duplicate endpoint (the two seam
+points differ by ~1e-15, so the exact-bit weld rightly keeps them) and
+earcut's hole-bridge slivers — so the fix lives in `ringExtrude` and the
+skirt's extrude, clears ~9 consumers at once, moves the fingerprint, and
+is its own landing. (2) **DONE** — the vendored raycast guards the null:
+a zero-area face reads as "no countable crossing" instead of a throw.
+The third `PATCHED (timesim)` diff, documented in vendor/README.md with
+the as-shipped hash updated; `tools/check-bvh-patches.mjs` carries a
+synthetic sliver witness (a triangle whose `getBarycoord` denominator
+cancels to exactly 0 in float64 while `Ray.intersectTriangle` still hits
+it — the wild fourteen's own float discrepancy, made deterministic) that
+THROWS on the unpatched file with this item's exact error string and
+counts correctly on the patched one. One correction to this item's
+original text: three.js r165's own `Mesh.js` carries the SAME unguarded
+dereference, so there was no upstream idiom to copy — the guard is this
+repo's parity semantics. Half 1 is still owed, because a mesh with
+zero-area faces is lying to every instrument that samples it, not just
+to this one — and §77's `meshIntegrity` now MEASURES it every run: the
+column wheel's two rows read `0/1/7` and `0/0/6` (collapsed/collinear/
+sliver — the base disc's 8 and the skirt's 6, reproduced by the shipped
+instrument), so half 1's fix will be visible as those two rows emptying
+in the report diff, and any regression as their return.
+
+## 74. The first triangle census: 3,233 zero-area triangles across 125 geometries, catalogued by cause
+
+Filed from `meshIntegrity`'s arrival run (§77 tiers 0+1, 2026-08-21) — the
+first time anything counted a mesh's own triangles. Item 4's two shared
+builders (8 + 6) turn out to be a corner of the population; the fix for the
+big rows is per BUILDER, exactly as item 4 argued, and every count below is
+reproducible with `node tools/probe-77-census.mjs`.
+
+The catalogue, by pattern (collapsed edge / collinear / sliver per geometry):
+
+- **`alarmArrestCross` carries 1,160 COLLINEAR triangles** (of its 18,976) —
+  the single largest population in the scene, in one `ExtrudeGeometry`. An
+  exactly-zero-area triangle with three DISTINCT vertices is a triangulation
+  artefact, not a float seam; the §129 cross's extrude is the place to look.
+- **`chainRun` carries 1,040 COLLAPSED triangles** (of 23,464 at the boot
+  tension) — repeated vertex positions inside the stamped buffer. The chain
+  is TODO 27's own rebuilt body, so this is either the templates carrying
+  collapsed faces (×N stamps) or the stamp duplicating a seam; at today's
+  43-link chain that is ~24 per JOINT (1,040 over 44 rivets), which smells
+  like cap fans on the pin template's three cylinders.
+- **The `ringExtrude` family, 85+ geometries**: the `0/0/4` × 51 and
+  `0/0/8` × 34 patterns — every gear hub, jewel ring, barrel wall/floor and
+  the column-wheel base disc, all carrying the absarc-seam and earcut
+  hole-bridge slivers item 4 measured on one consumer. One builder fix
+  clears ~380 triangles across the whole fleet.
+- **Lathes with collapsed cap fans**: the fusee body (96), four `pillar`
+  lathes (48 each), the two governor studs (24 each) — `LatheGeometry`
+  profiles that touch their own axis collapse the fan ring to zero-length
+  edges. (`makeScrews`' tapped shanks avoided exactly this by construction —
+  its comment says so — which is the fix pattern.)
+- **Assorted extrudes**: the escape wheel (32 collapsed + 8 slivers),
+  `genevaFingerDisc` (12), `chatonSeatLand` instances (8 or 4 each),
+  `alarmCam` (4 + 4), `alarmIndexWedge` (3).
+
+None of this is visible to any other instrument — `stockFloor` measures
+extents, the fingerprint hashes AABBs (item 4 measured both blind) — so the
+census IS the regression guard: these numbers may only go DOWN, and any row
+that grows names the builder that regressed. The rows are a §40 report, not
+gated and not waived; each builder fix moves the fingerprint (vertices move)
+and is its own landing, item 73 half 1 being the first.
+
+## 75. Four bodies measure INSIDE-OUT — over half the fork cock's volume is negative
+
+Filed from `meshIntegrity` tier 0's arrival run (§77, 2026-08-21): the
+divergence-theorem signed volume, measured per mesh with a floor of
+`INVERTED_VOL_FRAC` (1e-3) of the bbox volume so open-shell float noise
+cannot classify, names four bodies wound inside-out:
+
+| unit / mesh | type | tris | signed vol | bbox vol |
+|---|---|---|---|---|
+| Fork cock / (unnamed) | Lathe | 480 | **−5.03** | 9.00 |
+| Fork cock / (unnamed) | Lathe | 224 | **−7.09** | 9.64 |
+| Balance cock / (unnamed) | Lathe | 192 | **−1.64** | 5.06 |
+| Alarm setting wheel / `alarmFaceCam` | Buffer | 576 | **−0.27** | 6.08 |
+
+The first two are 56% and 73% of their own bounding boxes — these are not
+slivers of noise, they are whole solids presenting their interiors, the
+same defect class as item 4's fixed column-wheel pillars ("missing surfaces"
+that were really culled outward faces) and item 70's three collars. They
+are NOT item 70's collars: the coordinates do not match (measured — see
+item 70's instrument note), so these are four previously unreported bodies.
+The two cocks render acceptably today only because nothing coplanar sits
+behind them — item 70 records how that same invisibility hid the chaton's
+collar for eleven sections.
+
+Fix is per builder: find the lathe profiles wound backwards (the two cocks
+and the balance cock's member are `LatheGeometry` — `assertLatheOutward`
+exists and can be pointed at them) and `alarmFaceCam`'s hand-built winding.
+Each fix moves the fingerprint and re-runs the sweeps; `meshIntegrity`'s
+`inverted` rows emptying is the acceptance, and the check's synthetic
+inverted-box control (+8 upright, −8 flipped) keeps the tier honest while
+the rows drain.
+
+## 76. The chain's declared articulation fiction, measured: adjacent bodies interpenetrate up to 0.24 u
+
+The chain's build DECLARES its articulation a fiction — the frame loop in
+`buildChainLinkGeometry` says so in as many words: wrap links carry up to
+~36.3° of per-joint twist (measured over the reserve sweep) that a real
+chain would shed by joint play, because each link is a rigid stamp posed by
+its own curve frame rather than a body articulating about its pin. §77's
+declared tier is the first instrument that could SEE the consequence, and
+on arrival it measured it: **91 adjacent-body pairs interpenetrate at the
+boot pose** — every link⇄link and link⇄rivet neighbour pair on the wound
+chain — spans median 0.05 u, max **0.24 u** (a rivet head through its
+leaf), cross-confirmed by BVH tri-tri on the same index ranges. Zero
+NON-adjacent pairs fire, which is what says the stamps themselves are
+sound: the burial lives exactly at the joints the fiction bends.
+
+The declaration now lives where the fiction does: `buildChainLinkGeometry`
+marks ADJACENT pairs `subBodyOverlapOk` citing this item, so
+`meshIntegrity` skips them (reported as a count) and keeps every
+non-adjacent pair live — a corrupted stamp or collapsed curve still rows.
+`tools/probe-77-chain.mjs` holds the declaration honest at three tensions.
+
+**The fix is the fiction's, not the instrument's**: real articulation —
+links rotating only about their pins, lean shed over the free span by
+distributed joint play — is chain-model work (the §124/§151 lineage), and
+whether 0.24 u of joint burial is acceptable display fiction or debt worth
+that work is an owner's call. Until then this item is the number: re-run
+the probe after any chain-frame change, and if the max span GROWS, the
+fiction deepened and this item's figures are stale.
