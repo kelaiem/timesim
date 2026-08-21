@@ -2194,6 +2194,138 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
 // The click body alone (beak along +x, pivot hole at the origin end),
 // extruded 0-based — callers place and aim it. Shared by the composite
 // builder below and the plate-top click unit in main.js.
+// ---------------------------------------------------------------------------
+// Saw coupling — a Breguet-style one-way FACE coupling: two rings on one
+// axis, each carrying N axial saw teeth, drive faces bearing in one relative
+// sense and ramps camming the pair apart in the other. This is the stem's
+// one-way in a real keyless works (winding pinion ⇄ sliding pinion), filed
+// by timesim's TODO 50; the builder is deliberately MOVEMENT-INDEPENDENT so
+// the alarm stem's instance of the same debt can consume it later.
+//
+// The spec is solved here (genevaSpec's pattern) and every quantity carries
+// its constraint:
+//   · toothH is DERIVED from the ramp angle, never chosen: the ramp must cam
+//     decisively rather than marginally, so tan α = rampOverFriction · μ
+//     (twice the friction cone by default — at the cone's edge camming and
+//     jamming are the same event), and the rise across the ramp's own arc at
+//     the mean radius is toothH = tan α · (2π·rMean/N) · rampFrac.
+//   · valleyFrac > tipFrac ON PURPOSE: the tooth is narrower than its socket
+//     by (valleyFrac − tipFrac) of a pitch, which is the coupling's BACKLASH
+//     — under drive the faces bear and the ramps hold daylight, so the only
+//     coplanar working contact is the pair the consumer declares. A
+//     zero-backlash cut would seat ramp-on-ramp and face-on-face at once,
+//     the coplanar-solids case every proximity instrument misreads.
+//   · the same profile law feeds the BUILDER, the consumer's tick law and
+//     any battery measure (sawCouplingLiftAt) — one arithmetic, so pose and
+//     metal cannot disagree (§61/§99's rule).
+// ---------------------------------------------------------------------------
+export function sawCouplingSpec({ rOut, rIn, teeth, rampOverFriction = 2, mu = 0.2,
+                                  tipFrac = 0.15, valleyFrac = 0.30 }) {
+  const rMean = (rOut + rIn) / 2;
+  const pitch = (Math.PI * 2) / teeth;          // rad of relative angle per tooth
+  const rampFrac = 1 - tipFrac - valleyFrac;    // the ramp takes what the flats leave
+  const tanAlpha = rampOverFriction * mu;
+  const toothH = tanAlpha * (pitch * rMean) * rampFrac;
+  const backlashFrac = valleyFrac - tipFrac;    // free play, as a fraction of a pitch
+  return { rOut, rIn, rMean, teeth, pitch, tipFrac, valleyFrac, rampFrac,
+           tanAlpha, toothH, backlashFrac };
+}
+
+// Tooth-top height above the ring's base plane at local pitch fraction
+// v ∈ [0,1): valley flat → ramp → tip flat, the drive face being the step
+// back to the valley at v = 1⁻. The LOCAL +v direction is the direction the
+// profile climbs; which world sense that is belongs to the consumer's
+// mounting, not to this law.
+export function sawProfileAt(spec, v) {
+  const u = ((v % 1) + 1) % 1;
+  if (u < spec.valleyFrac) return 0;
+  if (u < spec.valleyFrac + spec.rampFrac)
+    return spec.toothH * ((u - spec.valleyFrac) / spec.rampFrac);
+  return spec.toothH;
+}
+
+// The coupling's one-sided ride law: the smallest axial LIFT (extra
+// separation above the seated gap) that lets the two rings coexist at
+// relative angle delta (rad) from the seated index. Solved by sampling the
+// two profiles against each other — the same law the meshes are cut from,
+// so this is the §99 "smallest lift that clears" answered from the source
+// profile rather than from a re-implementation. Seated (delta inside the
+// backlash) the lift is 0; camming (delta climbing the ramps) it rises to
+// toothH and snaps at the next pitch.
+export function sawCouplingLiftAt(spec, delta) {
+  const P = spec.pitch;
+  const d = (((delta % P) + P) % P) / P;        // relative shift, pitch fractions
+  const S = 96;                                 // samples per pitch — the profile is piecewise linear, this over-resolves every knee
+  let need = 0;
+  for (let i = 0; i < S; i++) {
+    const v = i / S;
+    // ring A's tooth top at v, facing ring B's top at (v − d) mirrored: the
+    // facing ring runs its profile in the OPPOSITE local sense (it was
+    // flipped to face us), so its height at shared azimuth v is prof(d − v).
+    const sum = sawProfileAt(spec, v) + sawProfileAt(spec, d - v);
+    if (sum > need) need = sum;
+  }
+  return Math.max(0, need - spec.toothH);       // seated interference is exactly toothH (tip in valley)
+}
+
+// The coupling ring as a closed, indexed solid: an annulus rIn..rOut of
+// thickness baseT with the saw profile standing on its +Z face. Every body
+// capped (the parity-raycast rule — an open mesh reads as a colliding one);
+// the drive face falls out of the sweep naturally as the duplicated-azimuth
+// quad where the profile steps. Mount the mate facing (π about a diameter);
+// `sense: -1` mirrors the profile for a pair whose drive direction must run
+// the other way without a flip.
+export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawCoupling' }) {
+  const { rOut, rIn, teeth } = spec;
+  const pos = [], idx = [];
+  const ring = [];                              // [{theta, z}] — duplicated theta at each drive face
+  // KNOT-ALIGNED azimuth samples: the profile is piecewise linear, so a
+  // sample set that lands exactly on its knees (valley→ramp, ramp→tip)
+  // makes the built surface EQUAL to sawProfileAt everywhere, not a chord
+  // of it — the law the tick and the battery read is the metal, to the
+  // vertex. Uniform sampling would leave the knees proud of the law by a
+  // chord's height, which is exactly the build-vs-law drift §99's relief
+  // discipline exists to keep out.
+  const fr = [];
+  fr.push(0, spec.valleyFrac / 2);                              // valley flat
+  const RSUB = 8;                                               // ramp facets (straight law — cosmetic count only)
+  for (let s = 0; s <= RSUB; s++) fr.push(spec.valleyFrac + (s / RSUB) * spec.rampFrac);
+  fr.push(1 - spec.tipFrac / 2);                                // tip flat
+  for (let t = 0; t < teeth; t++) {
+    for (const v of fr) {
+      const theta = sense * ((t + v) / teeth) * Math.PI * 2;
+      ring.push({ theta, z: baseT + sawProfileAt(spec, v) });
+    }
+    // the drive face: same azimuth, profile top → next valley floor
+    const thetaF = sense * ((t + 1) / teeth) * Math.PI * 2;
+    ring.push({ theta: thetaF, z: baseT + spec.toothH });
+    ring.push({ theta: thetaF, z: baseT });
+  }
+  const S = ring.length;
+  // 4 vertices per sample: (rIn,0) (rOut,0) (rOut,zTop) (rIn,zTop)
+  for (const smp of ring) {
+    const c = Math.cos(smp.theta), s = Math.sin(smp.theta);
+    pos.push(rIn * c, rIn * s, 0, rOut * c, rOut * s, 0,
+             rOut * c, rOut * s, smp.z, rIn * c, rIn * s, smp.z);
+  }
+  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  for (let i = 0; i < S; i++) {
+    const j = (i + 1) % S;
+    const A = i * 4, B = j * 4;
+    quad(A + 1, A + 0, B + 0, B + 1);   // bottom cap (faces −z)
+    quad(A + 2, A + 3, B + 3, B + 2);   // top surface / drive face (faces +z or ±θ)
+    quad(A + 0, A + 3, B + 3, B + 0);   // inner wall (faces −r)
+    quad(A + 1, B + 1, B + 2, A + 2);   // outer wall (faces +r)
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, material || MATS.steel);
+  m.name = name;
+  return m;
+}
+
 export function makeClick({ radius, thickness }) {
   const clickL = radius * 0.8;
   const cw2 = radius * 0.11;

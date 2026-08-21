@@ -71,6 +71,18 @@ const builds = [
   ['makeHand',        () => G.makeHand({ length: 30, kind: 'minute' })],
   ['makeCrown',       () => G.makeCrown({ bodyR: 5.425, bodyH: 4.55 })],
   ['makeBrandMark',   () => G.makeBrandMark({ r: 12, tubeR: 1.2 })],
+  ['makeSawCoupling', () => {
+    // the pair as assembled: one ring seated facing the other, backlash
+    // visible at the drive faces (scaled up ×8 for the eye)
+    const spec = G.sawCouplingSpec({ rOut: 8.3, rIn: 5.2, teeth: 8 });
+    const g = new THREE.Group();
+    const a = G.makeSawCoupling({ spec, baseT: 2.5 });
+    const b = G.makeSawCoupling({ spec, baseT: 2.5 });
+    b.rotation.x = Math.PI;                      // face the mate
+    b.position.z = 2 * 2.5 + spec.toothH;        // seated: tip in valley
+    g.add(a); g.add(b);
+    return g;
+  }],
 ];
 let i = 0;
 window.parts = {};
