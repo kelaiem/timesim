@@ -829,6 +829,28 @@ export const AXES = [
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
   },
   {
+    // TODO 71 — the ARREST'S OWN reversal: the arming band, cycled. The wind
+    // axis is already a tension cycle, but the registry samples every axis on
+    // its own inclusive 12-pose grid, and 1 − |2·(k/11) − 1| tops out at
+    // tension 0.909 — below the pad's touch (solved at boot, ≈ 0.97), so the
+    // arm never MOVED in any registry sample and §48's stale rule flagged a
+    // declaration its population could not see (the TODO 56 lesson: ship the
+    // mechanism's own axis or its audit passes in silence). The band starts
+    // the lift-shape assert's own seated margin (0.03) below the solved
+    // touch, read live off the clock like stemSlip's pitch, so the axis
+    // tracks the solve instead of a stale copy of it. n: one leg spans
+    // ≈ 0.06 of tension and the lift law's finest feature is its fine-grid
+    // staircase step, (1 − LAW_T0)/480 ≈ 0.0012 — 96 samples over the cycle
+    // is ≈ one sample per step each way, the wind axis's own per-feature
+    // density at this band's scale.
+    name: 'arrest',
+    n: 96,
+    pose: (f, clock) => {
+      const t0 = Math.max((clock?.windArrest?.tTouch ?? 0.97) - 0.03, 0);
+      return { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: t0 + (1 - t0) * (1 - Math.abs(2 * f - 1)) };
+    },
+  },
+  {
     // TODO 50 — the STEM'S OWN reversal: the saw coupling's relative angle
     // (windStemSlip), which no other axis can move — `tension` sweeps the
     // bank and the slip rides ALONG with it by definition (the clutch and
@@ -3954,15 +3976,14 @@ export const WIND_ARREST_HANDOFFS = [
     unitA: 'Chain', meshA: 'chainRun',
     unitB: 'Winding arrest', meshB: 'windArrestPad',
     expect: { full: 'contact', slack: 'free' },
-    // TODO 71, re-diagnosed with the parity fix: linkOuterPtsNear now
-    // models each link at its own outer/inner parity (the arming band's
-    // arm-swings-on-daylight hover collapsed from 33 to 9 ladder poses),
-    // and what remains at this row is the RIGID-BODY residue — a flat
-    // 0.7-wide pad cannot settle onto an inner link whose flanking outer
-    // caps its edges bridge, and near full wind the leaned top coil takes
-    // the pad's edge before its face (measured −0.111 at t=1, edge
-    // contact, was −0.0498 under the all-outer fiction that hid it).
-    waived: 'TODO 71 — the pad law reads the window\'s metal, not where a rigid pad settles: bridge/edge residue, −0.111 at full',
+    // TODO 71, closed in three measured steps: the pad law samples the
+    // BUILT chain buffer at each link's own parity (builtPtsNear), its
+    // window reads every wrap link rather than six pitches of it, and the
+    // pose is the lever's exact inverse instead of lift/padGain — the
+    // −0.111 this row was waived at decomposed into 0.085 of window
+    // under-read plus 0.060 of first-order-pose shortfall, and with both
+    // gone it measures −0.021 at full, inside the ±0.03 kiss band, with
+    // the waiver retired.
   },
   {
     label: 'beak ⇄ stop lug',

@@ -14473,40 +14473,81 @@ and `fuseeEnvR = K/springTq` keep their closed shapes over the table, so
 text in `checkChainLength` — prose asserting the ODE was unbuilt — is
 deleted; the row gates.
 
-## §151 — the arrest pad reads the chain's true anatomy: link parity enters the coil model
+## §151 — the arrest pad rides the metal itself: TODO 71 closed whole
 
-TODO 71, half closed — and found by a user watching the sim, not by an
-instrument: through the arming band the arrest's arm swung with open
-daylight under its finger pad. Measured on a 97-pose tension ladder, 33
-poses had the arm swung with more than the ±0.03 touch band of daylight
-under the pad, up to +0.109 — the arrest ARMED on metal that was not
-there.
+Found by a user watching the sim, not by an instrument: through the
+arming band the arrest's arm swung with open daylight under its finger
+pad. Measured on a 97-pose tension ladder, 33 poses had the arm swung
+with more than the ±0.03 touch band of daylight under the pad, up to
++0.109 — the arrest ARMED on metal that was not there. The daylight —
+and the −0.111 full-wind burial the `windArrestHandoff` row had been
+waived at — decomposed into FOUR measured causes, each one a way the
+pad's law disagreed with the chain the checkers measure. All four are
+closed, and the closure changed the law's category, not just its
+numbers.
 
-**The cause was a parity fiction, not the phase offset the item had
-filed.** `linkOuterPtsNear` — the sampled model of the wrap that the
-pad's lift law, its seat solve, the §47 arrival asserts and the
-per-sector reach tables all read — modelled EVERY link with the outer
-plates' stadium. The built chain alternates: an inner link's plates ride
-`CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085` lower and nest a leaf further
-in, so through every inner-link phase the law read metal 0.085 proud of
-the built surface, and the measured hover alternated in exactly the
-parity period. (The item's original story — a half-pitch phase offset
-between the model's `getSpacedPoints` and a hook-anchored build — was
-measured false: both samplers index the same N-equal-arc joints. The
-phase story was the parity error wearing a disguise.) The sampler now
-carries the builder's own parity law VERBATIM (`(N − 1 − i) % 2`,
-anchored at the claw end; a comment at each site names the other), with
-each link's own half-width and its own plate-stack faces. The hover
-collapsed 33 → 9 poses, boot stays silent, and every law downstream of
-the sampler re-solves from the corrected surface.
+**1 — Parity.** `linkOuterPtsNear` modelled every link with the outer
+plates' stadium; the built chain alternates, an inner link's plates
+riding `CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085` lower and nesting a
+leaf further in — the measured hover alternated in exactly the parity
+period. (The item's original story, a half-pitch phase offset between
+`getSpacedPoints` and a hook-anchored build, measured false: both
+samplers index the same N-equal-arc joints. The phase story was the
+parity error wearing a disguise.) The analytic sampler carries the
+builder's parity law verbatim now, each link with its own half-width
+and plate-stack faces.
 
-**What the fix exposed, kept as the waiver's new text**: a law that
-reads "the window's tallest metal" is still not "where a rigid pad
-settles". A flat 0.7-wide pad over an inner link has its edges over the
-flanking outer caps and BRIDGES; near full wind the leaned top coil
-takes the pad's edge before its face — the full-wind row now measures
-−0.111 (edge contact, deeper than the −0.0498 the all-outer fiction
-reported, because the fiction had been parking the pad high). The row
-stays waived citing TODO 71, whose fix path is now precise: the §99
-smallest-lift idiom run for the pad's face CHORD against the
-parity-true sampler.
+**2 — The lift table bridged real dips.** The law's node-±-interval sup
+guaranteed no-under-read, but at the fine grid's 8×-coarser node
+spacing it also bridged the wrap's REAL inter-link dips — the arm held
+its lift over gaps the coil genuinely opens, visibly arming on
+daylight. The table is the fine grid itself now, read as a
+per-interval max: the same guarantee at a quantum of ~0.001 of
+tension.
+
+**3 — The window's six-pitch memory.** The pad's reads stopped six
+pitches of arc behind the departure. The top turn is ~13 pitches, a
+leaned plate's corners reach ≈ 0.4 in z past its centerline, and the
+cone WIDENS down-arc — so the proudest metal in the pad's window at
+full wind was a link 6.5 pitches below the departure (4.081 against
+4.005 near the departure), and the window read it as absent. That
+missing 0.085 was most of the burial the wind-axis budget row kept
+finding at 0.081. The pad's window now spans every link on the wrap —
+straddler included, span excluded (the free span crosses the pad's z
+band at radii out to 29, legitimately outside the finger; the first cut
+that read the whole buffer told the travel declaration the finger
+swings 12.3 rad).
+
+**4 — The pose was a linearization.** `ψ = lift/padGain` leaves a rigid
+face (1 − cos ψ) plus chord-tilt short of the plane the law claims —
+measured, 0.060 at full throw, the remainder of the old −0.111. The
+pose is the lever's exact inverse now: a plane rotated about the stud
+has closed-form standoff R(ψ) = A + (K − B·sinψ)/cosψ with R′(0) =
+padGain (the old pose was this law's first term), inverted per tick and
+boot-asserted to 1e-6 over the law's whole range.
+
+**The category change.** Every pad-window read — the azimuth
+candidates' touch grid, the closing family, the seat solve, the lift
+table — now samples `buildChainLinkGeometry`'s OWN output buffer
+(`builtPtsNear`; the builder records per-link vertex bases so the law
+can index the stamp). Three rounds of re-deriving builder details into
+the analytic model each left a measurable divergence; sampling the
+stamp makes divergence impossible by construction. The analytic
+sampler stays for the REACH laws, where erring outward is the sound
+side (its note explains why a reach must not see the straddler). The
+window max stays exact on the mesh because proudOf's verdict is a
+linear functional: vertices inside the z band plus each edge's
+band-plane crossings are the clipped solid's own corners.
+
+**Closed state, measured.** Full-wind row −0.021, inside the ±0.03 kiss
+band at both poses, waiver retired; through the arming band the
+pad⇄coil mesh gap runs 0–0.031 with contact at most poses — the arm
+moves only with metal under it, which is what the user's eye demanded.
+Touch lands at t ≈ 0.965. And the §48 audit can finally SEE the arm:
+no registry sample on any axis reached the arming band (the wind
+cycle's inclusive 12-pose grid tops out at tension 0.909 < touch), so
+a dedicated `arrest` axis cycles the band — from the lift-shape
+assert's own seated margin below the solved touch, read live off the
+clock — and the audit's stale flag on the arrest's declared blade
+spring is gone for the honest reason: the population now contains the
+motion.
