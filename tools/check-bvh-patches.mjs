@@ -1,4 +1,4 @@
-// Verifies the two local patches in vendor/three-mesh-bvh.module.js (see
+// Verifies the three local patches in vendor/three-mesh-bvh.module.js (see
 // vendor/README.md) still hold — run after any vendor bump, before trusting
 // a single clearance number.
 //
@@ -10,6 +10,17 @@
 // 2. Direction symmetry against a vertex-sampled reference: tree(a)->b and
 //    tree(b)->a must agree, and neither may exceed the sampled bound — a
 //    correct closest-point search can never exceed a sampled point pair.
+// 3. Degenerate-triangle raycast (TODO 73): a ray that lands on a zero-area
+//    triangle must count as NO crossing, not throw. The witness is synthetic
+//    and exact, not found geometry: a sliver whose getBarycoord denominator
+//    cancels to 0 in float64 (verts (0,0,0)/(1,0,0)/(0.5,1e-9,0): dot00
+//    rounds 0.25+1e-18 -> 0.25, denom 0.25*1 - 0.5^2 === 0) while
+//    Ray.intersectTriangle still HITS it (its normal (0,0,1e-9) is nonzero)
+//    — the same float discrepancy the alarm column wheel's fourteen produce
+//    in the wild. Triangle.getInterpolation is instrumented to prove the
+//    degenerate path actually ran: zero null-returns means the witness
+//    vanished (a vendor bump changed the arithmetic), which fails the check
+//    rather than passing it silently.
 //
 // Usage: node check-bvh-patches.mjs   (needs npm ci + Playwright Chromium,
 // same as ci-battery.mjs). Exits non-zero on any violation.
@@ -88,12 +99,71 @@ const res = await page.evaluate(async () => {
   return { pairs, failures };
 });
 
+// Patch 3's witness — synthetic, so it cannot be deleted by fixing the scene
+// geometry that motivated it (the control-lives-in-the-check rule TODO 27
+// taught; roadmap §77 carries the lesson).
+const res3 = await page.evaluate(async () => {
+  const THREE = await import('three');
+  await import('./src/inspect.js');   // installs computeBoundsTree on BufferGeometry
+  const failures = [];
+
+  // One indexed geometry: a closed unit box the ray crosses twice, plus the
+  // exact sliver verified above it — appended as three more vertices so the
+  // same raycast walks both. Normals present, because the throwing branch is
+  // the `normal` interpolation.
+  const box = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+  const bp = box.getAttribute('position');
+  const bn = box.getAttribute('normal');
+  const n = bp.count;
+  const pos = new Float32Array((n + 3) * 3);
+  const nrm = new Float32Array((n + 3) * 3);
+  pos.set(bp.array.subarray(0, n * 3));
+  nrm.set(bn.array.subarray(0, n * 3));
+  // box sits centred at (0.5, 0, -2); the sliver at z = 0 above it
+  for (let i = 0; i < n; i++) { pos[i * 3] += 0.5; pos[i * 3 + 2] += -2; }
+  pos.set([0, 0, 0, 1, 0, 0, 0.5, 1e-9, 0], n * 3);
+  nrm.set([0, 0, 1, 0, 0, 1, 0, 0, 1], n * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  geo.setIndex([...Array((n + 3)).keys()]);
+  geo.computeBoundsTree();
+
+  // Prove the degenerate path RUNS: count getInterpolation's null returns.
+  let nulls = 0;
+  const orig = THREE.Triangle.getInterpolation;
+  THREE.Triangle.getInterpolation = function (...args) {
+    const out = orig.apply(this, args);
+    if (out === null) nulls++;
+    return out;
+  };
+  let hits = null, threw = null;
+  try {
+    const ray = new THREE.Ray(new THREE.Vector3(0.5, 2.5e-10, 1), new THREE.Vector3(0, 0, -1));
+    hits = geo.boundsTree.raycast(ray, THREE.DoubleSide).length;
+  } catch (e) {
+    threw = String(e);
+  } finally {
+    THREE.Triangle.getInterpolation = orig;
+  }
+  if (threw !== null)
+    failures.push(`degenerate raycast THREW (patch 3 missing?): ${threw}`);
+  else {
+    if (nulls < 1)
+      failures.push('degenerate path never ran (0 null interpolations) — the sliver witness vanished; re-derive the float cancellation for this vendor build');
+    if (hits !== 2)
+      failures.push(`degenerate crossing miscounted: ${hits} hits, expected exactly the box's 2 — a zero-area face is no countable crossing`);
+  }
+  return { nulls, hits, threw, failures };
+});
+
 await browser.close();
 srv.kill();
 if (!res.pairs) { console.error('BVH patch check BROKEN: no witness pairs found — the sleeve/rocker meshes moved; re-site the witness'); process.exit(1); }
-if (res.failures.length) {
-  console.error(`BVH patch check FAILED (${res.failures.length}):`);
-  for (const f of res.failures) console.error('  · ' + f);
+const allFailures = [...res.failures, ...res3.failures];
+if (allFailures.length) {
+  console.error(`BVH patch check FAILED (${allFailures.length}):`);
+  for (const f of allFailures) console.error('  · ' + f);
   process.exit(1);
 }
-console.log(`BVH patch check OK — ${res.pairs} witness pair(s): history-independent, direction-symmetric, within sampled bounds`);
+console.log(`BVH patch check OK — ${res.pairs} witness pair(s): history-independent, direction-symmetric, within sampled bounds; degenerate-ray witness: ${res3.nulls} null interpolation(s), ${res3.hits} crossings (no throw)`);
