@@ -6593,6 +6593,15 @@ export function checkSlenderness(clock, opts = {}) {
   }
   rows.sort((x, y) => y.lambda - x.lambda);
   const unwaived = rows.filter((r) => !r.waived);
+  // §137 — a waiver naming a unit with NO over-ceiling row is STALE: the debt
+  // it cited has been paid (or the member renamed) and the entry is now a
+  // standing excuse waiting for a new offender to hide under. This is the one
+  // thing the battery can GATE here without breaking §54's report covenant —
+  // and it is exactly what retiring SLENDER_WAIVERS['Alarm link'] must trip
+  // if the fix lands without deleting the entry.
+  const overUnits = new Set(rows.map((r) => r.unit));
+  const staleWaivers = Object.keys(SLENDER_WAIVERS).filter((u) => !overUnits.has(u))
+    .map((u) => ({ unit: u, debt: SLENDER_WAIVERS[u], problem: 'waiver names a unit with no over-ceiling row — retire it' }));
   return {
     ok: true,                       // §40 rule: a REPORT. Nothing here can fail.
     gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations — the λ rows are a REPORT (§40)',
@@ -6603,6 +6612,7 @@ export function checkSlenderness(clock, opts = {}) {
     counted: byMesh.size, exemptByKind: exempt.length,
     over: rows.length, unwaived: unwaived.length,
     bearings: { declaredMeshes, stations: declaredStations, malformed, unsupported },
+    staleWaivers,
     rows,
   };
 }

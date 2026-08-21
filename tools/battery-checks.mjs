@@ -100,12 +100,19 @@ export const BATTERY = [
   // synthetic control, and every declared bearing table's validity (malformed,
   // and a declared support with no metal at it — the INTRA_UNIT_CONTACTS
   // stale-selector precedent, and §48's no-spring rule made geometric).
+  // §137 adds one more gateable tier to the same list: WAIVER STALENESS. A
+  // SLENDER_WAIVERS entry naming a unit with no over-ceiling row is a standing
+  // excuse whose debt was already paid, waiting for a new offender to hide
+  // under — so deleting a fix's waiver becomes structurally part of the fix.
+  // It gates without touching §54's report covenant, because it judges the
+  // TABLE rather than the λ rows.
   { name: 'slenderness', opts: {},
-    gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations — the λ rows are a REPORT (§40)',
+    gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations, 0 stale waivers — the λ rows are a REPORT (§40)',
     fails: (r) => [
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
       ...r.bearings.malformed,
       ...r.bearings.unsupported,
+      ...(r.staleWaivers || []),
     ],
     note: (r) => `${r.counted} meshes, ${r.exemptByKind} exempt by kind; ${r.over} over ceiling `
       + `(${r.unwaived} unwaived — untriaged, §40); ${r.bearings.declaredMeshes} declare `
