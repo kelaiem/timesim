@@ -55,7 +55,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | OPEN | `makeJewelSetting`'s collar is wound inside out AND is an open shell — three in the scene, found by §148's own winding assert swept scene-wide. The winding is a two-line fix; the open profile is TODO 27's measured hazard and is the real work |
-| 71 | CLOSED (§150) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Four measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, and a first-order pose 0.060 short of its own law. The pad law now samples the BUILT chain buffer and the pose is the lever's exact inverse; the full-wind row measures −0.021 unwaived, and the new `arrest` axis puts the arm in §48's population |
+| 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 | 73 | OPEN | The alarm column wheel's mesh carries 14 zero-area triangles, and the vendored parity raycast throws (`null.dot`) when a ray lands on one — found by §150's report diff as an `assembly` unmeasurable row (reported, assumed joined: the safe direction). Two independent fixes owed: cap the builder's degenerate faces, and guard the vendored `getInterpolation` null |
@@ -7883,14 +7883,14 @@ before anyone had fixed them — which is rule 6 turned into a nag rather than a
 gate. Fix the setting, then call it there too, and the class is closed for
 every lathe in the movement that has a horizontal top face.
 
-## 71. The arrest pad rode a model of the coil — CLOSED (§150)
+## 71. The arrest pad rode a model of the coil — CLOSED (§151)
 
 **Found by §125 Tier B as a waived `windArrestHandoff` row, re-diagnosed
 2026-08-21 after a user-visible symptom** — through the arming band the arm
 swung with open daylight under the pad: measured on a 97-pose tension
 ladder, **33 poses with the arm swung and more than the ±0.03 touch band of
 daylight, up to +0.109** — the arrest ARMED on metal that was not there.
-The daylight decomposed into four measured causes, each closed in §150:
+The daylight decomposed into four measured causes, each closed in §151:
 
 1. **Parity.** The law modelled every link with the outer plates' stadium;
    the built chain alternates, an inner link's plates riding
@@ -7921,16 +7921,35 @@ records per-link vertex bases for it), so law-vs-mesh divergence is
 impossible by construction; the analytic `linkOuterPtsNear` stays for the
 REACH laws, where erring outward is the sound side.
 
-**Closed state, measured:** the full-wind row reads −0.021 (inside the
-±0.03 kiss band, both poses, the waiver retired); through the arming band
-the pad⇄coil mesh gap runs 0–0.031 with contact at most poses — the arm
-moves only with metal under it. The §48 audit now SEES the arm: no
-registry sample on the wind cycle's 12-pose grid reached the arming band
-(max tension 0.909 < touch ≈ 0.965), so the `arrest` axis cycles the band
-itself and the stale flag is gone. What remains above zero is the lift
-law's designed conservatism (the staircase rides each fine interval's
-highest link) and second-order shear-with-rotation — both inside the kiss
-tolerance and measured every battery run, not filed as debt.
+**A fifth cause surfaced when the corrected occupancy re-sited the pad:**
+the finger solve was blind to the free SPAN. Every feasibility law it
+consulted lives on the cone (`chainProudAt` stations, the wrapOnly reach
+tables), and the span — the chain's flight from the departure to the
+drum — crosses the hub/tab bands at arm radii near full wind. The
+re-solved fold parked the beak arm's corridor across it and the
+`expectedContacts` floor row found the bar inside the flying chain's
+link 25. Closed in position space, the ranked walk's own way: a span
+corridor law (`spanPts`, sampled over the wind from the same
+`chainLayoutAt` curve the mesh is built from) rejects any pad or beak
+azimuth whose arm chord the span crosses, and a boot assert re-measures
+the BUILT finger, lattice-sampled over its real throw, against the same
+envelope.
+
+**Closed state, measured:** the full-wind row reads 0 at both poses — an
+exact kiss, the waiver retired; the wind-axis penetration row reads
+worstDepth 0 (was 0.081 EXCEEDS); every arm and the riser clear the chain
+by ≥ 0.22 against the 0.15 floor. Touch lands at t ≈ 0.870 and through
+the arming band the pad rides the passing links with measured contact —
+the ride genuinely CHATTERS (lift falls to 0 where the wrap opens a real
+gap under the window and catches the next link as it arrives), which is
+what a follower on discrete links does and what the §47 lift-shape
+asserts accept: seated through the lug's free pass, home before the
+closing arc. The §48 audit now SEES the arm: no registry sample on the
+wind cycle's 12-pose grid reached the arming band (max tension 0.909 <
+touch), so the `arrest` axis cycles the band itself and the stale flag is
+gone. What remains above zero mid-band is the lift law's designed
+conservatism (the staircase rides each fine interval's highest link) —
+measured every battery run, not filed as debt.
 
 ---
 

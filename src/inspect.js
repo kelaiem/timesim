@@ -832,17 +832,21 @@ export const AXES = [
     // TODO 71 — the ARREST'S OWN reversal: the arming band, cycled. The wind
     // axis is already a tension cycle, but the registry samples every axis on
     // its own inclusive 12-pose grid, and 1 − |2·(k/11) − 1| tops out at
-    // tension 0.909 — below the pad's touch (solved at boot, ≈ 0.97), so the
+    // tension 0.909 — below the pad's touch (solved at boot; ≈ 0.87 at the
+    // §151 fold, and the fallback errs high on purpose: too high only
+    // narrows the cycle toward full wind, never past it), so the
     // arm never MOVED in any registry sample and §48's stale rule flagged a
     // declaration its population could not see (the TODO 56 lesson: ship the
     // mechanism's own axis or its audit passes in silence). The band starts
     // the lift-shape assert's own seated margin (0.03) below the solved
     // touch, read live off the clock like stemSlip's pitch, so the axis
-    // tracks the solve instead of a stale copy of it. n: one leg spans
-    // ≈ 0.06 of tension and the lift law's finest feature is its fine-grid
-    // staircase step, (1 − LAW_T0)/480 ≈ 0.0012 — 96 samples over the cycle
-    // is ≈ one sample per step each way, the wind axis's own per-feature
-    // density at this band's scale.
+    // tracks the solve instead of a stale copy of it. n: a leg spans
+    // 1 − (touch − 0.03) of tension (≈ 0.16 at the §151 fold) and the lift
+    // law's finest feature is its fine-grid staircase step,
+    // (1 − LAW_T0)/480 ≈ 0.0012 — 96 samples over the cycle lands within a
+    // few steps per sample, denser through the band than the wind axis's
+    // own 0.0028, and the features this axis exists for (the arm's
+    // reversal, its travel arc) are far coarser than either.
     name: 'arrest',
     n: 96,
     pose: (f, clock) => {

@@ -14539,15 +14539,47 @@ window max stays exact on the mesh because proudOf's verdict is a
 linear functional: vertices inside the z band plus each edge's
 band-plane crossings are the clipped solid's own corners.
 
-**Closed state, measured.** Full-wind row −0.021, inside the ±0.03 kiss
-band at both poses, waiver retired; through the arming band the
-pad⇄coil mesh gap runs 0–0.031 with contact at most poses — the arm
+**5 — And the corrected occupancy exposed a fifth blindness: the finger
+solve never looked at the SPAN.** Every feasibility law the candidate
+walk and the beak scan consulted lives on the cone — `chainProudAt` is
+a law of stations, the reach tables are `wrapOnly` — and the span, the
+chain's flight from the departure to the drum, is on none of them. Near
+full wind it crosses the hub and tab bands at arm radii, and when the
+built-mesh occupancy re-sited the pad, the scan parked the beak arm's
+corridor 0.74 down-fan with the departure landing 0.78 down-fan: the
+`expectedContacts` floor row found the bar's corner INSIDE the flying
+chain's link 25 — a genuine P3 collision, caught by exactly the
+instrument built for that blind spot. (The first diagnosis blamed the
+near-zero arbitration's parity ray and hardened it to a three-ray
+majority; measured, the ray had been right all along — the arm corner
+counted three crossings on every direction because it was genuinely
+inside the plate, whose nearest VERTEX sat 0.9 away on a 1.9-long leaf.
+The hardening was reverted: an instrument change written on a false
+diagnosis is report movement nobody can justify.) Closed in position
+space, the ranked walk's own way: a span corridor law — `spanPts`,
+sampled over the wind from the same `chainLayoutAt` curve the mesh is
+built from, kept where the link envelope can reach the arm bands — now
+REJECTS any pad or beak azimuth whose arm chord the span crosses
+(inflated by the envelope, the arm's half-width, the margin, and the
+throw's carry), and a boot assert re-measures the BUILT finger,
+lattice-sampled over its real throw, against the same envelope. The
+walk slid to the next legal fold.
+
+**Closed state, measured.** The full-wind row reads 0 at both poses —
+an exact kiss, the waiver retired; the wind-axis penetration row reads
+worstDepth 0 against its 0.03 budget (0.081 EXCEEDS before this); the
+arms and riser clear the chain by ≥ 0.22 against the 0.15 floor. Touch
+lands at t ≈ 0.870, and through the arming band the pad rides the
+passing links with measured contact — the ride genuinely CHATTERS,
+lift falling to 0 where the wrap opens a real gap under the window and
+catching the next link as it arrives, which is what a follower on
+discrete links does and what the §47 lift-shape asserts accept: seated
+through the lug's free pass, home before the closing arc. The arm
 moves only with metal under it, which is what the user's eye demanded.
-Touch lands at t ≈ 0.965. And the §48 audit can finally SEE the arm:
-no registry sample on any axis reached the arming band (the wind
-cycle's inclusive 12-pose grid tops out at tension 0.909 < touch), so
-a dedicated `arrest` axis cycles the band — from the lift-shape
-assert's own seated margin below the solved touch, read live off the
-clock — and the audit's stale flag on the arrest's declared blade
-spring is gone for the honest reason: the population now contains the
-motion.
+And the §48 audit can finally SEE the arm: no registry sample on any
+axis reached the arming band (the wind cycle's inclusive 12-pose grid
+tops out at tension 0.909 < touch), so a dedicated `arrest` axis
+cycles the band — from the lift-shape assert's own seated margin below
+the solved touch, read live off the clock — and the audit's stale flag
+on the arrest's declared blade spring is gone for the honest reason:
+the population now contains the motion.

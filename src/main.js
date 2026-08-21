@@ -5202,7 +5202,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // each rebuild, so the float row can never read a stale layout): the
   // welded outer template's crown indices plus each judged link's base.
   geo.userData.seat = { crownIdx: outer.seatCrownIdx, bases: seatBases };
-  // §150 — the pad law's handle on this buffer: which vertices are link i's
+  // §151 — the pad law's handle on this buffer: which vertices are link i's
   // plates (rivets live past linkBase[N]), plus the wrap bookkeeping to pick
   // the links, so builtPtsNear indexes the stamp instead of re-deriving it.
   geo.userData.links = { base: linkBase, len, N };
@@ -8214,6 +8214,58 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     return out;
   };
 
+  // --- the SPAN'S corridor through the arm bands -------------------------
+  // The free run from the cone's departure to the drum is the one chain
+  // occupancy no law of the WRAP can see: it is not on the cone, so
+  // chainProudAt (stations) and the reach tables (wrapOnly) are both
+  // structurally blind to it — and near full wind it crosses the hub and
+  // tab bands at arm radii. Measured (§151): the built-mesh occupancy
+  // re-sited the pad, the beak scan parked the riser 0.74 down-fan, and
+  // the departure at full wind landed 0.78 down-fan — the expectedContacts
+  // floor row found the beak arm's corner INSIDE the flying chain's link
+  // 25. Sampled from the same chainLayoutAt curve the mesh is built from,
+  // over the wind: every curve sample past one pitch below the departure
+  // (the straddler is the reach laws' declared blind spot too), kept where
+  // its envelope can reach the bands. ENV is the plate metal's greatest
+  // reach off a centreline sample: half a sample spacing along the run,
+  // the outer plate's half-width across it.
+  const ARM_W = 0.5;   // the arms' width — declared with the corridor law because both sides of the rejection consume it
+  const SPAN_ENV = Math.hypot(CHAIN_PITCH / 8, CHAIN_END_R_OUT);
+  const SPAN_ZLO = HUB_Z1 - CHAIN_PIN_LEN / 2 - CLEAR_MARGIN;
+  const SPAN_ZHI = TAB_Z2 + CHAIN_PIN_LEN / 2 + CLEAR_MARGIN;
+  const spanPts = [];
+  for (let ts = 0.1; ts <= 1.0001; ts += 0.025) {
+    const { curve, wrapArc } = chainLayoutAt(Math.min(ts, 1));
+    curve.arcLengthDivisions = 800;
+    const len = curve.getLength();
+    const M = Math.max(Math.round((len / CHAIN_PITCH) * 4), 8); // L/4 spacing — ENV above carries half of it
+    const pts = curve.getSpacedPoints(M);
+    for (let i = 0; i <= M; i++) {
+      if ((i / M) * len <= wrapArc - CHAIN_PITCH) continue; // the wrap is the reach laws' jurisdiction
+      const p = pts[i];
+      if (p.z < SPAN_ZLO || p.z > SPAN_ZHI) continue;
+      spanPts.push({ x: p.x, y: p.y, z: p.z });
+    }
+  }
+  // A CHORD the span crosses is not a legal fold. The scan-time test is
+  // 2-D (the bands' z is baked into spanPts) and CONSERVATIVE: the span's
+  // envelope, the arm's half-width, the shared margin, and the throw's
+  // carry (the §47 note above armMinSlack: the swing moves an arm's edge
+  // about half a unit) all inflate the chord — a rejection only walks the
+  // ranked scan one candidate on, while an acceptance is re-measured
+  // against the BUILT bars over the real throw by the assert beside them.
+  const SPAN_THROW_ALLOW = 0.55;
+  const spanFoulsChord = (sx, sy, ex, ey) => {
+    const rr = SPAN_ENV + ARM_W / 2 + CLEAR_MARGIN + SPAN_THROW_ALLOW;
+    const dx = ex - sx, dy = ey - sy;
+    const L2 = dx * dx + dy * dy || 1e-12;
+    for (const p of spanPts) {
+      const u = clamp(((p.x - sx) * dx + (p.y - sy) * dy) / L2, 0, 1);
+      if (Math.hypot(p.x - (sx + u * dx), p.y - (sy + u * dy)) < rr) return true;
+    }
+    return false;
+  };
+
   // --- the pad's catch, solved from the occupancy law --------------------
   // Which azimuth does the pad hang at? The one where chain metal first
   // reaches its window at T_TOUCH — late enough that the finger stays
@@ -8445,12 +8497,23 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const st = studAtOut(out);
     const gain = cross2({ x: pt.x - st.x, y: pt.y - st.y }, rHat(az));
     const psi = PAD_LIFT / gain;            // finger rotation at full wind (sign per the lever's own handedness)
+    // The pad arm's own chord vs the flying span (the corridor law above):
+    // its station solves outward later (armEndOutside), so the chord is
+    // tested out to the sectored stop plus the head-room that walk
+    // ordinarily spends — a candidate whose pad arm the span crosses has
+    // no legal finger at all, whatever the beak scan finds.
+    if (spanFoulsChord(st.x, st.y,
+      C.x + (armStopAt(az) + 1) * Math.cos(az), C.y + (armStopAt(az) + 1) * Math.sin(az))) {
+      return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st,
+        padGain: gain, psiFull: psi, beakParked: null, beakGain: 0, beakMoment: 0,
+        rejects: { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 1 }, trace: 'P' };
+    }
     // Scan the parked-beak azimuth over the down-fan side. A candidate is
     // legal when its arm sits in the designed ratio band, its throw runs
     // INWARD near-radially, and its inflated window is chain-free over the
     // whole wind cycle; the most-radial throw wins among the legal.
     let parked = null, bGain = 0, bMoment = 0, best = -Infinity;
-    const rejects = { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0 };
+    const rejects = { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 0 };
     const trace = [];   // one code per scan step — the scan's own report of WHY, not just how many
     for (let dAz = 0.12; dAz <= 2.2; dAz += BEAK_SCAN_STEP) {
       const baz = az - dAz;
@@ -8466,6 +8529,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
         if (chainProudAt(baz, 0.3, TAB_Z1, TAB_Z2, Math.min(t, 1), CLEAR_MARGIN) > 0) { blocked = true; break; }
       }
       if (blocked) { rejects.chain++; trace.push('c'); continue; }
+      // the beak arm's chord vs the flying SPAN — the wrap check above is
+      // stations-on-the-cone and cannot see it (the corridor law's note)
+      if (spanFoulsChord(st.x, st.y,
+        C.x + (armStopAt(baz) + 1) * Math.cos(baz), C.y + (armStopAt(baz) + 1) * Math.sin(baz))) {
+        rejects.span++; trace.push('p'); continue;
+      }
       // the tangential reaction's moment about the stud must be ENGAGING
       // (the sense that presses the beak deeper) or vanishing — never the
       // sense that peels the finger out of its own arrest
@@ -8558,7 +8627,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // and invisible to the two-parity handoff), and a node-±-interval SUP
   // reads ABOVE the metal for most of every interval — at the fine grid's
   // 8×-coarser node spacing that bridged the wrap's REAL inter-link dips
-  // and the arm visibly ARMED ON DAYLIGHT (the §150 symptom). The
+  // and the arm visibly ARMED ON DAYLIGHT (the §151 symptom). The
   // per-fine-interval max keeps the no-under-read guarantee at an 8×
   // smaller quantum: what remains above the metal is one fine step's
   // smear, ~0.001 of tension wide.
@@ -8700,7 +8769,8 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   pawl.position.set(stud.x, stud.y, 0);
   arrestUnit.add(pawl);
   const inPawl = (p) => ({ x: p.x - stud.x, y: p.y - stud.y });
-  const ARM_W = 0.5;
+  // (ARM_W is declared up with the span-corridor law — both sides of that
+  // rejection consume it.)
   // bored for the stud — a running clearance, the declared joint the
   // intraUnit row measures (a solid hub would be a confirmed penetration)
   const hub = new THREE.Mesh(ringGeo(STUD_R + 0.01, HUB_R, HUB_T), MATS.steel);
@@ -8926,6 +8996,51 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const bv = inPawl(ctr);
     m.position.set(bv.x, bv.y, (TAB_Z1 + TAB_Z2) / 2);
     pawl.add(m);
+  }
+  // --- the corridor rejection, RE-MEASURED on the built finger -----------
+  // The scan tested estimated chords with a conservative inflation; this
+  // holds the metal. Every member of the finger, lattice-sampled and swept
+  // over its own throw, must clear the flying span's envelope by the
+  // shared margin — a warn here means the chord test let a fold through,
+  // and the corridor law needs to hear about it before the battery does.
+  {
+    arrestUnit.updateWorldMatrix(true, true);
+    const names = ['windArrestPadArm', 'windArrestBeakArm', 'windArrestRiser', 'windArrestPad', 'windArrestBeak'];
+    const v = new THREE.Vector3();
+    const bb = new THREE.Box3();
+    let worstD = Infinity, worstAt = '';
+    pawl.traverse((m) => {
+      if (!m.isMesh || !names.includes(m.name)) return;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      bb.copy(m.geometry.boundingBox);
+      const nAx = ['x', 'y', 'z'].map((ax) => Math.min(12, Math.max(2, Math.ceil((bb.max[ax] - bb.min[ax]) / 0.4) + 1)));
+      for (let i = 0; i < nAx[0]; i++) {
+        for (let j = 0; j < nAx[1]; j++) {
+          for (let k = 0; k < nAx[2]; k++) {
+            v.set(
+              bb.min.x + (i / (nAx[0] - 1)) * (bb.max.x - bb.min.x),
+              bb.min.y + (j / (nAx[1] - 1)) * (bb.max.y - bb.min.y),
+              bb.min.z + (k / (nAx[2] - 1)) * (bb.max.z - bb.min.z),
+            ).applyMatrix4(m.matrixWorld);
+            for (let s = 0; s <= 12; s++) {
+              const psi = (s / 12) * PSI_MAX;
+              const ca = Math.cos(psi), sa = Math.sin(psi);
+              const qx = stud.x + (v.x - stud.x) * ca - (v.y - stud.y) * sa;
+              const qy = stud.y + (v.x - stud.x) * sa + (v.y - stud.y) * ca;
+              for (const p of spanPts) {
+                const dz = Math.abs(v.z - p.z) - CHAIN_PIN_LEN / 2;
+                if (dz > worstD) continue; // cannot beat the running worst
+                const dxy = Math.max(0, Math.hypot(qx - p.x, qy - p.y) - SPAN_ENV);
+                const d = Math.hypot(dxy, Math.max(0, dz));
+                if (d < worstD) { worstD = d; worstAt = m.name; }
+              }
+            }
+          }
+        }
+      }
+    });
+    if (worstD < CLEAR_MARGIN - 1e-9)
+      console.warn(`§151: ${worstAt} passes ${worstD.toFixed(3)} from the flying span (required ≥ ${CLEAR_MARGIN}) — the corridor rejection let a fold through`);
   }
   // The blade and its bank: a real spring pressing the finger onto a real
   // stop. The bank pin hangs from the bracket beside the beak arm's
