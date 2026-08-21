@@ -36,7 +36,7 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
 | 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
 | 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
-| 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
+| 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no metal behind it. The fix text is corrected in place: the old filing sent a click to a plate-top ratchet that does not exist (deleted as a fiction — the arbor is bidirectional), and no winding-train wheel can host one (§126: two-way driven); the metal is a saw coupling at the sliding pinion. One class with two instances — the alarm stem states the same debt |
 | 51 | CLOSED | Both rows clear, boot silent; the residue is worked through since. The beak window holds the beak's own arc plus a step (five legal steps, was two — the old demand was `2·BEAK_SCAN_STEP`, a two-sample target); the arm hold reads a 72-bin per-sector reach (`armStopAt`) instead of the compass max — stock only, riser in by 0.29; and the Fusee row's 0.1500 equality was tried against a §50 pivot-floor relief and REFUSED by measurement (the span's corridor covers every legal beak azimuth at the lower band) — the refusal is written at `HUB_Z2` |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | CLOSED | The plate floor counts the chain now: `CHAIN_TQ_REACH` bounds the discrete top-of-wrap in closed form and joins `TQ_BOT_Z`'s max beside the spring — gap 0.117 → 0.187, the A2 assert holds the margin (not just the sign) plus the bound's conservativeness, and a `Chain ⇄ Three-quarter plate` budget row sweeps it independently. Cost priced: the cock sits ~0.07 down in the plate band |
@@ -5989,13 +5989,51 @@ states the same debt in the same words ("a backward crown free-slips at
 the stem⇄contrate bevel without unbanking"), so this is one class with two
 instances.
 
-**The fix.** The going side's one-way lives at the plate-top ratchet the
-winding spur's own comment already describes (`RATCHET_TEETH` is that
-wheel's count). Give it the §99 treatment: a click with a generated
-working face on the ratchet's cut law, its stud solved by the obstacle
-scan, and the bank taken out of stored state the way `settleAlarmClick`
-takes the alarm's give-back — after which `windStemSlip` is a consequence
-of a modelled contact rather than a bookkeeping term.
+**The fix — corrected, because the first filing cited metal that does not
+exist.** This item used to send the click to "the plate-top ratchet the
+winding spur's own comment already describes", and no such ratchet exists:
+the `windTop` block deleted it deliberately (a fixed pawl on a
+bidirectional arbor was a display fiction — the fusee arbor turns both
+ways, the wind held by the escapement through the train), and four stale
+comments kept describing it anyway. Those comments are corrected and the
+`RATCHET_TEETH` alias retired; the ratio sites read `WIND_SPUR_TEETH`,
+the wheel that actually turns.
+
+Nor can ANY wheel of the winding train host a fixed click: §126 declared
+the keyless train two-way driven (the mainspring back-drives the same
+teeth through the fusee arbor on run-down), so a plate click anywhere in
+it would block the run-down — the same objection that deleted the old
+one. The only joint where backward slip physically happens is the STEM
+interface: the winding pinion ⇄ crown wheel coupling, which is exactly
+what `windStemSlip` absorbs ("backward free-wheel … and the spins the
+clutch takes out of mesh" — both cases are that one coupling's two
+disengagements).
+
+**So the metal is a saw-tooth one-way COUPLING at the sliding pinion**,
+the real keyless-works site: split the dual-purpose `windPinion` into a
+fixed winding pinion (always meshing the crown wheel, posed from the
+bank) and a sliding clutch keyed to the stem, Breguet saw faces between
+them, the yoke's fork tracking the clutch with a real yoke spring as the
+restoring element (the yoke has none today). Crown forward drives
+through the closed faces; crown backward cams the clutch axially one
+snap per pitch — the slip; run-down back-drive closes the faces from the
+pinion's side and drags the knob, which is the pose law's existing
+backward creep given its mechanism. The shipped accumulation law is
+already this coupling's law at pitch scale; what it owes is the two
+sub-pitch corrections (forward take-up of a parked gap before banking;
+knob hold through the drain until the face picks it up), persistence of
+`windStemSlip` (the parked sub-pitch lives in the stem's free angle, so
+no bank give-back à la `settleAlarmClick` — the bank is held by the
+escapement and the arrest, not by this coupling), and the axis that
+exercises the reciprocation (`setPose` never writes the slip, so today
+no sweep and no §48 audit can see the clutch move — the TODO 56 lesson).
+After that, `windStemSlip` is the coupling's relative angle — a
+consequence of a modelled contact rather than a bookkeeping term.
+
+The alarm stem states the same debt (a backward alarm crown does nothing
+at all, `main.js`'s alarm wind routing) and stays its own instance: the
+coupling builder and its lift law should be written movement-independent
+so the alarm side can consume them when its turn comes.
 
 ---
 

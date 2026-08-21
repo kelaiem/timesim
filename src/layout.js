@@ -848,10 +848,13 @@ export function solveKeyless({
   const settingWheelR = (KW_MODULE * settingWheelTeeth) / 2;
   const minuteWheelR = (KW_MODULE * minuteWheelTeeth) / 2;
   // The transfer wheel drives a plain 24-tooth WINDING SPUR on the fusee
-  // arbor (the saw-toothed ratchet lives on the plate top now, serving only
-  // the click). Same tooth count as the ratchet keeps the crown→fusee ratio;
-  // equal module makes the mesh honest — the old layout gear-meshed the
-  // ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
+  // arbor. (The saw-toothed ratchet the spur replaced is GONE, not moved:
+  // a fixed pawl on this bidirectional arbor was a display fiction — see
+  // main.js's windTop block. TODO 50 files where the real one-way lives.)
+  // The spur keeps the replaced ratchet's tooth count, so the crown→fusee
+  // ratio is unchanged; equal module makes the mesh honest — the old
+  // layout gear-meshed saw teeth at an effective module of 0.408 against
+  // KW_MODULE.
   const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
   // Winding transfer arbor axis. IDENTITY: one spur-mesh distance outboard
   // of the barrel along the (barrel-derived) stem, with the same +0.1 slop

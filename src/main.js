@@ -326,7 +326,10 @@ scene.add(movement);
 // --- Fusee & chain layout: the movement is now a FUSEE movement -----------
 // The spring barrel is a plain DRUM (no teeth) sitting off to the side; a
 // chain runs from it to the fusee cone, whose arbor carries the great
-// wheel, the winding spur and (above the plate) the ratchet. The fusee
+// wheel, the winding spur and (above the plate) the let-down square — and
+// deliberately NO ratchet: the arbor turns both ways (see the windTop
+// block), so the wind is held by the escapement through the train, with
+// maintaining power absorbing the winding-time reversal. The fusee
 // arbor sits exactly where the going barrel used to be, so every mesh
 // distance in the train is unchanged.
 const barrelR = (TRAIN.barrel.module * TRAIN.barrel.teeth) / 2;
@@ -1299,9 +1302,10 @@ barrelArbor.add(greatWheel);
 // crown-wheel arbor (see the winding path at the keyless assembly) can end
 // its climb legally: plate top at 0, spur band, then the great wheel's
 // underside at ~1.22 — everything clears by the margin. (The saw-toothed
-// RATCHET this spur replaced now sits on the plate top, on a square of
-// this same arbor, where its teeth serve only the click — see the windTop
-// block at the upper pivots.)
+// RATCHET this spur replaced is GONE, not relocated: a fixed pawl on this
+// bidirectional arbor was a display fiction — the windTop block at the
+// upper pivots has the record, and TODO 50 files where the real one-way
+// lives.)
 const RATCHET_T = 0.8;
 const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
 // Hub-less like the transfer wheel it meshes: the band under the great
@@ -2874,7 +2878,8 @@ registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 // underside, where it meshes the fusee arbor's winding SPUR (a crossing
 // arbor anywhere at spur-mesh distance sits INSIDE the great wheel's
 // radius, so the climb must END below that wheel; the saw-toothed ratchet
-// itself lives on the plate top now, serving only the click). The arbor
+// the spur replaced is gone — the fusee arbor is bidirectional, see the
+// windTop block — and TODO 50 files the real one-way). The arbor
 // runs in a real bored hole in the plate; the bore is its bearing. The
 // same tooth count top and bottom keeps the crown→fusee ratio exactly
 // what it was when the crown wheel meshed the ratchet directly (the
@@ -2974,7 +2979,10 @@ crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
 windSpinner.add(crown);
 
-const RATCHET_TEETH = WIND_SPUR_TEETH; // the spur's count — sets the crown→fusee winding ratio
+// (RATCHET_TEETH, the alias this line used to carry, is retired — TODO 50's
+// truth pass: there is no ratchet, and an alias that names one keeps the
+// fiction alive at every ratio site. The four ratio consumers read
+// WIND_SPUR_TEETH, which is the wheel that actually turns.)
 // (Pawl and detent ride constants live with the maintaining-power block;
 // the fusee arbor itself carries no ratchet any more.)
 
@@ -18387,8 +18395,11 @@ function setCrownOut(out) {
 // whole path — knob included — stops together instead of one accumulator
 // tearing the transfer⇄spur mesh against the other. The knob's displayed
 // angle is likewise derived from the bank, plus windStemSlip: the rotation
-// the stem really made that the wheel never saw — the backward free-wheel at
-// the plate-top click, and spins while the clutch is out of the winding mesh.
+// the stem really made that the wheel never saw — backward free-wheel while
+// engaged, and spins while the clutch is out of the winding mesh. (No metal
+// models that joint yet — TODO 50; the free-wheel physically belongs to the
+// winding pinion ⇄ crown wheel coupling at the stem, NOT to any plate-top
+// click: the fusee arbor is bidirectional and carries no ratchet.)
 // ---------------------------------------------------------------------------
 let crownRotation = 0;     // radians, user input, unbounded, either direction
 let lastCrownRotation = 0; // for computing crownRotDelta each tick
@@ -18457,7 +18468,7 @@ let mmPerPxCal = null;
   // shows exactly the angle the saved session left it at — the knob's datum
   // is arbitrary, but a jump on reload would read as motion nobody made.
   windStemSlip = crownRotation
-    - (RATCHET_TEETH / windPinionTeeth) * 2 * Math.PI * (barrelWindTurns - RESERVE_BARREL_TURNS);
+    - (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI * (barrelWindTurns - RESERVE_BARREL_TURNS);
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
@@ -20555,7 +20566,7 @@ function syncUpdate(realDt) {
 // past full drove the transfer⇄spur mesh teeth-through-teeth.
 document.getElementById('btn-wind').addEventListener('click', () => {
   if (crownOut) return; // crown must be pushed in (winding position) to wind
-  autoWindRemaining += (RESERVE_BARREL_TURNS * (RATCHET_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
+  autoWindRemaining += (RESERVE_BARREL_TURNS * (WIND_SPUR_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
 });
 
 // --- crown: click to pull/push, drag to turn -------------------------------
@@ -26862,9 +26873,9 @@ function tick(t) {
   lastCrownRotation = crownRotation;
   if (windEngaged) {
     if (crownRotDelta > 0) {
-      // Ratio chain gives the ratchet's rotation in RADIANS; barrelWindTurns
-      // is in TURNS, hence the /2π.
-      const turnsDelta = crownRotDelta * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / RATCHET_TEETH) / (2 * Math.PI);
+      // Ratio chain gives the winding spur's rotation in RADIANS;
+      // barrelWindTurns is in TURNS, hence the /2π.
+      const turnsDelta = crownRotDelta * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / WIND_SPUR_TEETH) / (2 * Math.PI);
       // §47 — the cap is the ARREST, not a number: the bank saturates because
       // the finger's beak is on the stop lug and the whole path from the lug
       // back to the crown is rigid, so input past it banks nothing and MOVES
@@ -26878,9 +26889,14 @@ function tick(t) {
       windArrestStalled = turnsDelta - banked > 1e-9; // the hand is on a stopped crown
     } else {
       windArrestStalled = false;
-      // One-way click: backward turns free-wheel at the plate-top ratchet
-      // without unwinding the spring — the knob really turns, the wheel
-      // really holds, so the difference accumulates as stem slip.
+      // One-way: a backward crown does not unwind the spring — the knob
+      // really turns, the wheel really holds, so the difference accumulates
+      // as stem slip. NO metal models this joint yet (TODO 50): the old
+      // comment here blamed "the plate-top ratchet", which does not exist —
+      // the fusee arbor is bidirectional and carries no ratchet at all (see
+      // windTop). The joint where backward slip physically happens is the
+      // winding pinion ⇄ crown wheel coupling at the stem, and until that
+      // is metal this scalar is a bookkeeping term, honestly labelled.
       windStemSlip += crownRotDelta;
     }
   } else {
@@ -27192,7 +27208,7 @@ function tick(t) {
   // rate through the 24:8 ratio is 1:1 with banked crown input); at the
   // arrest it stops with the wheel, which is §47's acceptance — a real
   // fusee stop stalls the crown dead, the hand slips on the knob.
-  const windStemRot = (RATCHET_TEETH / windPinionTeeth) * 2 * Math.PI
+  const windStemRot = (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI
     * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
   windSpinner.rotation.y = -windStemRot;
 
