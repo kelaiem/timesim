@@ -1396,6 +1396,7 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
   prongGeo.rotateX(Math.PI / 2);
   for (const px of [-prongGap / 2, prongGap / 2]) {
     const prong = new THREE.Mesh(prongGeo, MATS.steel);
+    prong.name = 'yokeProng'; // TODO 50: the clutch's floors row names the prong⇄collar ride
     prong.position.set(px, armLen, thickness / 2 + prongH / 2);
     g.add(prong);
   }

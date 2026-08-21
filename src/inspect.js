@@ -120,6 +120,9 @@ export const MECH_GRAPH = {
     ['Minute jumper', 'plate'],              // its pivot stud rivets into the same dial-side face,
                                              // beside the motion works (minute quick-set)
     ['Yoke', 'plate'],                       // same dial-side stud mounting
+    ['Winding clutch', 'Keyless works'],     // TODO 50: rides the stem's square (the keyed
+                                             // joint) and the yoke's fork — the clutch has no
+                                             // bearing of its own, which is the real part's truth
     ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
                                              // square just above the BASE plate (chronometer
                                              // practice — bench-only hardware lives on the lower
@@ -221,7 +224,13 @@ export const MECH_GRAPH = {
     ['Balance', 'Hairspring'],
     ['Fourth wheel', 'Heart cam (seconds reset)'], // friction slip
     ['Fusee & great wheel', 'Power-reserve train'], // slip-coupled arbor extension
-    ['crown', 'Keyless works'],
+    ['crown', 'Winding clutch'],               // TODO 50: the stem square keys the clutch — the
+                                               // hand's input enters the movement HERE
+    ['Winding clutch', 'Keyless works'],       // …and the saw coupling hands it to the fixed
+                                               // winding pinion (one-way: faces drive, ramps cam;
+                                               // the run-down back-drive closes the same faces
+                                               // from the pinion's side, so the edge is two-way
+                                               // in §126's sense while the RATCHET sense is real)
     ['Keyless works', 'Fusee & great wheel'],  // winding: crown wheel → transfer arbor through the
                                                // plate bore → transfer wheel → winding SPUR at the
                                                // arbor's plate end, under the great wheel
@@ -229,7 +238,10 @@ export const MECH_GRAPH = {
                                                // detent's beak as the train runs (never in reverse
                                                // — that is the whole point of the sandwich)
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
-    ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
+    ['Setting lever', 'Yoke'],                 // ganged clutch shift (the yoke tracks the clutch)
+    ['Yoke', 'Winding clutch'],                // TODO 50: the fork slides the clutch — pull out to
+                                               // the setting mesh, and the spring re-seats through
+                                               // the same prongs after a cam-over
     ['Setting lever', 'Hack rod'],             // §87: the rod rides the lever's own pin — the tail arm at
                                                // HACK_PIN_K, so the stroke it takes is r/SL_TAIL of the post's
     ['Hack rod', 'Stop lever'],                // rigid rod rocks the stop crank
@@ -407,9 +419,9 @@ export const MECH_GRAPH = {
       point: nearestMeshCenter,
     },
     {
-      name: "yoke's prongs reach the sliding-pinion hub",
+      name: "yoke's prongs reach the sliding clutch's hub collars",
       unit: 'Yoke',
-      target: 'Keyless works',
+      target: 'Winding clutch',   // TODO 50: the collars moved to the clutch with the split
       tol: 2.5,
       point: nearestMeshCenter,
     },
@@ -508,7 +520,11 @@ const EXPECTED_PAIRS = [
                                              // collar, hook pin) thread the rotating body — the
                                              // body's bored floor and lid RUN on the arbor now
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
-  ['Keyless works', 'Yoke'],                 // prongs on the sliding-pinion hub
+  ['Keyless works', 'Yoke'],                 // the fork's body still crosses the stem's band
+                                             // (the prong⇄collar ride moved to the clutch pair)
+  ['Winding clutch', 'Keyless works'],       // TODO 50: the saw coupling, the stem square in the
+                                             // rim's bore, and the pulled setting mesh
+  ['Winding clutch', 'Yoke'],                // prongs riding the clutch's hub collars
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
   ['Chain', 'Mainspring drum'],              // chain wraps the drum
   ['Power-reserve train', 'Fusee & great wheel'], // p0 slip-coupled on the arbor
@@ -811,6 +827,29 @@ export const AXES = [
     name: 'wind',
     n: 720,
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
+  },
+  {
+    // TODO 50 — the STEM'S OWN reversal: the saw coupling's relative angle
+    // (windStemSlip), which no other axis can move — `tension` sweeps the
+    // bank and the slip rides ALONG with it by definition (the clutch and
+    // the pinion turn together while the faces bear). The pose law is a
+    // CYCLE over exactly ONE COUPLING PITCH of backward slip and back —
+    // the wind axis's within-axis-reversal rule, applied to the clutch: a
+    // monotone ramp would sweep the lift's poses and still leave the
+    // camming's genuine reversal unobserved, the §48-population gap TODO 56
+    // documents on the alarm side. One pitch is the mechanism's whole
+    // period (the lift law is periodic by construction), so more buys
+    // nothing. n: the ride's finest feature is the backlash flat, 0.15 of
+    // a pitch; 96 samples puts ~14 of them inside it and ~53 on the ramp —
+    // the wind axis's own per-feature density, at this axis's scale. The
+    // slip enters through setPose's `windStemSlip` key (canonical entry
+    // zeroes it, so every other axis still sweeps the seated coupling).
+    name: 'stemSlip',
+    n: 96,
+    pose: (f, clock) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
+      windStemSlip: -(clock?.stemSawPitch ?? Math.PI / 4) * (1 - Math.abs(2 * f - 1)),
+    }),
   },
   {
     // One full revolution of the FUSEE arbor — catches slow-orbit collisions
@@ -1762,6 +1801,27 @@ export const EXPECTED_CONTACT_FLOORS = [
     axes: ['beat', 'reserve', 'train', 'crown'],
     contacts: [
       ['windArrestBeak', 'windArrestLug'],        // beak on the stop lug
+    ],
+  },
+  // TODO 50 — the stem clutch's EXPECTED pairs get their floors rows on
+  // arrival (no blanket excuse). The declared contacts are the coupling
+  // itself, the keyed square in the clutch's bores, and the pulled setting
+  // mesh; everything else of the clutch owes the margin everywhere in the
+  // cycle, at both parities of the coupling.
+  {
+    a: 'Winding clutch', b: 'Keyless works', min: CLEAR_MARGIN,
+    contacts: [
+      ['clutchSaw', 'windPinionSaw'],   // the coupling: faces bear seated, ramps ride camming
+      ['clutchRim', 'stemSquare'],      // the keyed joint, square through the rim's bore
+      ['clutchSleeve', 'stemSquare'],   // …and through the sleeve that makes the clutch one body
+      ['clutchRim', 'settingWheel'],    // pulled out: the setting mesh the old pinion carried
+    ],
+  },
+  {
+    a: 'Winding clutch', b: 'Yoke', min: CLEAR_MARGIN,
+    contacts: [
+      ['clutchHubCollarIn', 'yokeProng'],   // the fork rides between the collars —
+      ['clutchHubCollarOut', 'yokeProng'],  // both faces are the working pair
     ],
   },
 ];
@@ -3574,6 +3634,30 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
+  // TODO 50 — the stem coupling's ride: the clutch's saw ring against the
+  // pinion's, over the stemSlip axis (one full pitch of backward slip and
+  // back, the coupling's whole period). The rings are cut KNOT-ALIGNED to
+  // the same law the pose reads (sawCouplingLiftAt), so any depth past the
+  // track tolerance is a real build-vs-law disagreement, never sampling
+  // noise. nSamples: the finest feature is the backlash flat at 0.15 of a
+  // pitch — 480 puts 72 samples inside it, the wind family's per-feature
+  // density.
+  {
+    pair: ['Winding clutch', 'Keyless works'],
+    maxDepth: HANDOFF_TRACK_TOL,
+    axis: 'stemSlip',
+    nSamples: 480,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'clutchSaw') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windPinionSaw') out.push(o); });
+      return out;
+    },
+  },
 ];
 
 // §61 helper — worst radial burial of a mesh below an axisymmetric surface
@@ -3858,6 +3942,29 @@ export const WIND_ARREST_HANDOFFS = [
     unitA: 'Winding arrest', meshA: 'windArrestBeak',
     unitB: 'Fusee & great wheel', meshB: 'windArrestLug',
     expect: { full: 'contact', slack: 'free' },
+  },
+];
+
+// TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
+// windArrestHandoff pattern (never widen another mechanism's tables — its
+// rows stay bit-identical under the report diff). The coupling is a
+// one-sided constraint held CLOSED by the yoke spring at every relative
+// angle — seated the drive faces bear, in the backlash the tip rides the
+// valley flat, camming the ramps bear — so the pair expects CONTACT at all
+// three engaged poses and FREE only pulled out. Slip values are the
+// coupling's own fractions of its 2π/8 pitch (one saw tooth per leaf).
+export const STEM_CLUTCH_POSES = [
+  ['seated', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: 0 }],
+  ['backlash', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.075 * (Math.PI / 4) }],
+  ['camming', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.5 * (Math.PI / 4) }],
+  ['pulled', { tau: 0.13, crownPullT: 1, leverEngage: 1, tension: 1, windStemSlip: 0 }],
+];
+export const STEM_CLUTCH_HANDOFFS = [
+  {
+    label: 'clutch saw ⇄ pinion saw (the stem\'s one-way)',
+    unitA: 'Winding clutch', meshA: 'clutchSaw',
+    unitB: 'Keyless works', meshB: 'windPinionSaw',
+    expect: { seated: 'contact', backlash: 'contact', camming: 'contact', pulled: 'free' },
   },
 ];
 
@@ -5710,6 +5817,8 @@ export const STOCK_KIND_BY_MESH = {
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
   alarmClickStud: 'pivot',     // the shoulder screw's post — pin-class, ⌀ 1.0 u over the pivot floor
+  yokeSpring: 'spring',        // TODO 50 — the clutch's restoring blade, an arc about the yoke's pivot
+  yokeSpringPost: 'pivot',     // …and the pin its fixed end reacts on
   // §100 (TODO 39) — the going drum's FIXED arbor, now built where it is
   // static (Set-up work). Shaft stock, kinded as the striking arbor's
   // sleeve is: the census reports each mesh's extent, and both sections
@@ -6299,6 +6408,11 @@ const CHECKS = {
   // rows stay bit-identical under the report diff.
   windArrestHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: WIND_ARREST_POSES, handoffs: WIND_ARREST_HANDOFFS, ...opts }),
+  // TODO 50 — the stem clutch's coupling, same instrument, own tables:
+  // contact at every engaged parity (the spring holds the one-sided
+  // constraint closed), free pulled out.
+  stemClutchHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: STEM_CLUTCH_POSES, handoffs: STEM_CLUTCH_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body

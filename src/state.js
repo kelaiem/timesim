@@ -42,6 +42,14 @@ const defaultState = {
   barrelWindTurns: 1.75,
   tauIntegrated: 0,
   crownRotation: 0,
+  // TODO 50: the stem clutch's parked angle relative to the winding pinion
+  // (the saw coupling's relative index). Persisted because the parked
+  // sub-pitch lives in the STEM's free angle, not the bank — the bank is
+  // held by the escapement and the arrest, not by this coupling — so a
+  // reload must land the clutch exactly where the hand left it. A legacy
+  // save without this field re-derives the knob's datum and SNAPS it to
+  // the coupling's pitch (see the restore in main.js).
+  windStemSlip: 0,
   // The jumper's folded snap correction. crownRotation alone restores the
   // RAW setting input; without this the quantized part of it is lost and a
   // reload moves the hands by up to half a minute (and un-syncs a clock that
@@ -82,6 +90,8 @@ function sanitize(state) {
     barrelWindTurns: state.barrelWindTurns,
     tauIntegrated: state.tauIntegrated,
     crownRotation: state.crownRotation,
+    windStemSlip: state.windStemSlip,   // TODO 50: the clutch's parked index — must round-trip
+
     jumpCorr: state.jumpCorr,
     crownOut: state.crownOut,
     fastForward: state.fastForward,

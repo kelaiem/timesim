@@ -233,6 +233,13 @@ const BATTERY = [
     gate: 'the arrest shut at full wind and free at slack, both contacts',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+  // TODO 50 — the stem clutch's coupling: contact at every engaged parity
+  // (seated faces, backlash tip-on-valley, camming ramps — the yoke spring
+  // holds the one-sided constraint closed), free pulled out.
+  { name: 'stemClutchHandoff', opts: {}, cost: 1,
+    gate: 'the coupling in contact seated/backlash/camming and free pulled out',
+    fails: (r) => r.unwaived,
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'stockFloor', opts: {}, cost: 6,
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
