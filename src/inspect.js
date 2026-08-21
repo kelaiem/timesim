@@ -6065,6 +6065,264 @@ export function checkSlenderness(clock, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// §77 tiers 0+1 — MESH INTEGRITY: what a single mesh does to ITSELF.
+//
+// Every collision instrument above judges a mesh WHOLE — one mesh against
+// another, a unit's movers against its fixtures, a mesh's extents. Nothing
+// examines a mesh's own triangles, and that third blindness class has
+// produced three measured defects (TODO 27's rivets through solid plate,
+// TODO 28's zero-area gap strips, TODO 4/73's builder slivers) plus one
+// live crash: a parity ray landing on a zero-area face hit the vendored
+// raycast's unguarded null and sent an `assembly` row to `unmeasurable`
+// (TODO 73 — the guard is the vendored file's third patch; this check is
+// the instrument that holds the population it guards against).
+//
+// A REPORT, §40's rule: `ok` is always true, the rows are the product, and
+// the battery row gates only what can be held on arrival — the in-check
+// synthetic controls and the sub-body declaration table's validity. The
+// zeroArea and inverted rows land red by design (the scene measures
+// thousands of zero-area faces today) and are triaged into TODO.md, never
+// waived at birth. NOTE the fingerprint is no regression guard for any of
+// this: it hashes per-unit AABBs at 11 poses, and TODO 4 measured the
+// inside-out castellations moving no AABB and no clearance verdict — only
+// this check's own report diff watches this class.
+//
+// Tier 1's word is `zeroArea`, deliberately NOT "degenerate":
+// `checkStockFloor` owns that word for a different measurement (a unit
+// whose EXTENT collapses, gated as "0 degenerate") across its gate string,
+// return field, the CI fails closure and four probes — and TODO 4/73 both
+// already say "zero-area" for the triangle sense. Adopting their word
+// resolves §77's collision clause with zero renames and no report movement.
+//
+// No memoization anywhere: the chain swaps in a new geometry per tension
+// change (MODELING.md rule 6), so the walk reads whatever geometry each
+// mesh holds at the reset pose, every run.
+
+// Tier 1 threshold, DERIVED (rule 1) — tools/probe-77-threshold.mjs
+// histograms every inspected triangle's geometry-local area: the defective
+// population tops out in the 1e-15 decade (absarc seam twins, earcut
+// hole-bridge slivers; 2 at 1e-22 are TODO 73's minimum) and the smallest
+// INTENDED triangles start at 1e-10, a four-decade empty band. 1e-12 sits
+// two decades from each bound; re-run the probe before moving it.
+export const ZERO_AREA_MAX = 1e-12;
+// Tier 0 floor: a genuinely inverted closed body measures MINUS its own
+// volume — order bboxVol/10 — while an open or sheet-like body's signed sum
+// is float noise around zero. 1e-3 of the bbox volume separates the two by
+// orders of magnitude; a body flagged here is inside-out, not thin.
+export const INVERTED_VOL_FRAC = 1e-3;
+
+// Classify one triangle given its nine coords. Exported for the probe.
+// `collapsed` = two vertex POSITIONS bit-identical (an edge of zero
+// length); `collinear` = distinct points, exactly zero area; `sliver` =
+// area below ZERO_AREA_MAX but nonzero — the float-seam class that an
+// exact weld rightly refuses to merge (the absarc twins differ by ~1e-15)
+// and a repeated-index test therefore finds NOTHING of.
+function classifyTriangle(ax, ay, az, bx, by, bz, cx, cy, cz) {
+  const ux = bx - ax, uy = by - ay, uz = bz - az;
+  const vx = cx - ax, vy = cy - ay, vz = cz - az;
+  const qx = uy * vz - uz * vy, qy = uz * vx - ux * vz, qz = ux * vy - uy * vx;
+  const area = 0.5 * Math.sqrt(qx * qx + qy * qy + qz * qz);
+  if (area >= ZERO_AREA_MAX) return { area, kind: null };
+  const same = (x1, y1, z1, x2, y2, z2) => x1 === x2 && y1 === y2 && z1 === z2;
+  if (same(ax, ay, az, bx, by, bz) || same(bx, by, bz, cx, cy, cz) || same(ax, ay, az, cx, cy, cz))
+    return { area, kind: 'collapsed' };
+  return { area, kind: area === 0 ? 'collinear' : 'sliver' };
+}
+
+export async function checkMeshIntegrity(clock, opts = {}) {
+  const yieldEvery = opts.yieldEvery ?? 16;
+
+  // Roster: nearest-ancestor mesh dedupe (checkSlenderness' rule — units
+  // nest, and a second attribution is a FALSE one), plus collectUnits'
+  // schematic-subtree prune (flagged display never joins an instrument;
+  // §71). A third copy of both idioms, deliberately: §77 scope-guards out
+  // changes to unit collection, and this is the one landing that must move
+  // no other report — consolidating the three walks is filed in TODO 4's
+  // smaller items. The other two copies: collectUnits, unitBoxRows.
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();     // mesh -> nearest unit name
+  const walk = (o, unitName) => {
+    if (o.userData && o.userData.schematic) return;
+    if (o.isMesh && o.geometry?.attributes?.position) {
+      const prev = byMesh.get(o);
+      if (!prev || hops(o, unitName) < hops(o, prev)) byMesh.set(o, unitName);
+    }
+    for (const c of o.children) walk(c, unitName);
+  };
+  for (const e of clock.labelEntries) walk(e.obj, e.name);
+
+  // Then dedupe by GEOMETRY: shared geometries (every screw head is one
+  // lathe, every knurl ridge one cylinder) would otherwise repeat identical
+  // findings per instance. A geometry row carries its instance count and
+  // its distinct unit attributions; the representative mesh is the nearest-
+  // hop one, which is what keeps alarmColWheel's three same-named meshes
+  // three distinct rows (three geometries), not one.
+  const byGeo = new Map();      // geometry -> { unit, mesh, instances, units:Set }
+  for (const [mesh, unit] of byMesh) {
+    const rec = byGeo.get(mesh.geometry);
+    if (!rec) byGeo.set(mesh.geometry, { unit, mesh, instances: 1, units: new Set([unit]) });
+    else { rec.instances++; rec.units.add(unit); }
+  }
+
+  const census = [];
+  const zeroRows = [];
+  const invertedRows = [];
+  const malformed = [];
+  let triangles = 0, zeroTotal = 0, exactZero = 0, declaredGeometries = 0, declaredBodies = 0;
+  let gi = 0;
+  for (const [geo, rec] of byGeo) {
+    if (++gi % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+    const pos = geo.attributes.position.array;
+    const idx = geo.index ? geo.index.array : null;
+    const n = idx ? idx.length : geo.attributes.position.count;
+    const tris = Math.floor(n / 3);
+    triangles += tris;
+    const meshName = rec.mesh.name || '(unnamed)';
+    census.push({
+      unit: rec.unit, mesh: meshName, geometryType: geo.type, tris,
+      instances: rec.instances,
+      ...(rec.units.size > 1 ? { alsoUnder: [...rec.units].filter((u) => u !== rec.unit).sort() } : {}),
+    });
+
+    // Tier 1 walk + tier 0 signed volume in one pass over the index.
+    let collapsed = 0, collinear = 0, sliver = 0, minNonzero = Infinity;
+    let vol6 = 0;
+    let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    for (let t = 0; t < tris * 3; t += 3) {
+      const ia = (idx ? idx[t] : t) * 3, ib = (idx ? idx[t + 1] : t + 1) * 3, ic = (idx ? idx[t + 2] : t + 2) * 3;
+      const ax = pos[ia], ay = pos[ia + 1], az = pos[ia + 2];
+      const bx = pos[ib], by = pos[ib + 1], bz = pos[ib + 2];
+      const cx = pos[ic], cy = pos[ic + 1], cz = pos[ic + 2];
+      const cl = classifyTriangle(ax, ay, az, bx, by, bz, cx, cy, cz);
+      if (cl.kind === 'collapsed') collapsed++;
+      else if (cl.kind === 'collinear') collinear++;
+      else if (cl.kind === 'sliver') { sliver++; if (cl.area < minNonzero) minNonzero = cl.area; }
+      if (cl.area === 0) exactZero++;
+      // divergence-theorem volume: sum A·(B×C)/6 — exact for a closed body
+      vol6 += ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
+      if (ax < minX) minX = ax; if (ax > maxX) maxX = ax;
+      if (ay < minY) minY = ay; if (ay > maxY) maxY = ay;
+      if (az < minZ) minZ = az; if (az > maxZ) maxZ = az;
+    }
+    const zTotal = collapsed + collinear + sliver;
+    if (zTotal) {
+      zeroTotal += zTotal;
+      zeroRows.push({
+        unit: rec.unit, mesh: meshName, geometryType: geo.type, tris,
+        instances: rec.instances, collapsed, collinear, sliver,
+        ...(sliver ? { minSliverArea: +minNonzero.toExponential(3) } : {}),
+      });
+    }
+    const vol = vol6 / 6;
+    const bboxVol = (maxX - minX) * (maxY - minY) * (maxZ - minZ);
+    if (bboxVol > 0 && vol < -INVERTED_VOL_FRAC * bboxVol) {
+      invertedRows.push({
+        unit: rec.unit, mesh: meshName, geometryType: geo.type, tris,
+        signedVolume: +vol.toFixed(4), bboxVolume: +bboxVol.toFixed(4),
+      });
+    }
+
+    // Sub-body declarations (§77's declared route): triangle ranges into
+    // the index, weld-invariant where vertex ranges are not. Validated and
+    // GATED on arrival — a malformed table is a stale selector, the
+    // INTRA_UNIT_CONTACTS precedent — so tier 3 can trust every range it
+    // is later handed. Non-tiling coverage is legal (declare what you
+    // know); out-of-bounds, overlap and name reuse are not.
+    const sb = geo.userData && geo.userData.subBodies;
+    if (sb !== undefined) {
+      const bad = (why) => malformed.push({ unit: rec.unit, mesh: meshName, why });
+      if (!Array.isArray(sb) || sb.length === 0) bad('subBodies is not a non-empty array');
+      else {
+        declaredGeometries++;
+        const names = new Set();
+        const sorted = [...sb].sort((a, b) => (a.triStart ?? 0) - (b.triStart ?? 0));
+        let prevEnd = 0, okAll = true;
+        for (const b of sorted) {
+          if (typeof b.name !== 'string' || !b.name) { bad('a sub-body has no name'); okAll = false; break; }
+          if (names.has(b.name)) { bad(`sub-body name reused: '${b.name}'`); okAll = false; break; }
+          names.add(b.name);
+          if (!Number.isInteger(b.triStart) || !Number.isInteger(b.triCount) || b.triStart < 0 || b.triCount <= 0) {
+            bad(`sub-body '${b.name}' has a non-integral or empty range`); okAll = false; break;
+          }
+          if (b.triStart < prevEnd) { bad(`sub-body '${b.name}' overlaps the previous range`); okAll = false; break; }
+          if (b.triStart + b.triCount > tris) { bad(`sub-body '${b.name}' runs past the mesh (${b.triStart}+${b.triCount} > ${tris} tris)`); okAll = false; break; }
+          prevEnd = b.triStart + b.triCount;
+        }
+        if (okAll) declaredBodies += sb.length;
+      }
+    }
+  }
+
+  census.sort((a, b) => b.tris - a.tris || a.unit.localeCompare(b.unit) || a.mesh.localeCompare(b.mesh));
+  zeroRows.sort((a, b) => (b.collapsed + b.collinear + b.sliver) - (a.collapsed + a.collinear + a.sliver)
+    || a.unit.localeCompare(b.unit) || a.mesh.localeCompare(b.mesh));
+
+  // Aggregate identical per-geometry patterns: nine consumers of one
+  // shared builder carrying the same 8 slivers must read as ONE row with
+  // nine examples, because the fix lives in the builder (TODO 4's "clear
+  // every consumer at once"), not in nine parts.
+  const agg = new Map();
+  for (const r of zeroRows) {
+    const key = `${r.collapsed}/${r.collinear}/${r.sliver}`;
+    const a = agg.get(key) || { pattern: { collapsed: r.collapsed, collinear: r.collinear, sliver: r.sliver }, geometries: 0, examples: [] };
+    a.geometries++;
+    if (a.examples.length < 6) a.examples.push(`${r.unit} / ${r.mesh}`);
+    agg.set(key, a);
+  }
+  const aggregates = [...agg.values()].sort((a, b) => b.geometries - a.geometries);
+
+  // The controls, synthetic and in-check — they cannot be deleted by fixing
+  // the scene geometry that motivated them (TODO 27's lesson: this entry's
+  // original control, the un-bored rivets, was fixed out of the tree).
+  // Four assertions through the same classifier and volume sum the real
+  // walk uses: a sliver fires, a collapsed edge fires, a healthy triangle
+  // is silent, and an inverted box measures negative where the upright one
+  // measures +8 exactly (TODO 4's own control values).
+  const control = (() => {
+    const sliver = classifyTriangle(0, 0, 0, 1, 0, 0, 0.5, 1e-13, 0);           // area 5e-14 < 1e-12
+    if (sliver.kind !== 'sliver') return `BROKEN — the synthetic sliver classified '${sliver.kind}' (area ${sliver.area})`;
+    const collapsed = classifyTriangle(0, 0, 0, 0, 0, 0, 1, 0, 0);
+    if (collapsed.kind !== 'collapsed') return `BROKEN — the synthetic collapsed edge classified '${collapsed.kind}'`;
+    const healthy = classifyTriangle(0, 0, 0, 1, 0, 0, 0, 1, 0);
+    if (healthy.kind !== null) return `BROKEN — a healthy triangle classified '${healthy.kind}'`;
+    // A closed 2×2×2 box, wound outward: +8 exactly. Flip the winding and
+    // the same sum reads −8.
+    const P = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+    const F = [[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [2, 3, 7], [2, 7, 6], [1, 2, 6], [1, 6, 5], [3, 0, 4], [3, 4, 7]];
+    const volOf = (faces) => faces.reduce((s, [a, b, c]) => {
+      const A = P[a], B = P[b], C = P[c];
+      return s + A[0] * (B[1] * C[2] - B[2] * C[1]) + A[1] * (B[2] * C[0] - B[0] * C[2]) + A[2] * (B[0] * C[1] - B[1] * C[0]);
+    }, 0) / 6;
+    const up = volOf(F), down = volOf(F.map(([a, b, c]) => [a, c, b]));
+    if (Math.abs(up - 8) > 1e-12) return `BROKEN — the upright box control measured ${up}, expected +8`;
+    if (Math.abs(down + 8) > 1e-12) return `BROKEN — the inverted box control measured ${down}, expected −8`;
+    return 'PASS — sliver and collapsed edge fire, a healthy triangle is silent, the box measures +8 upright and −8 inverted';
+  })();
+
+  return {
+    ok: true,                     // §40 rule: a REPORT. The battery row gates control + malformed only.
+    control,
+    basis: {
+      zeroAreaMax: ZERO_AREA_MAX,
+      zeroAreaDerivation: 'probe-77-threshold.mjs: defective decades top out at 1e-15, intended start at 1e-10 — 1e-12 is two decades from each bound',
+      invertedVolFrac: INVERTED_VOL_FRAC,
+    },
+    geometries: byGeo.size, meshes: byMesh.size, triangles,
+    zeroArea: { threshold: ZERO_AREA_MAX, total: zeroTotal, exactZero, geometries: zeroRows.length, rows: zeroRows },
+    inverted: { rows: invertedRows },
+    aggregates,
+    subBodies: { declaredGeometries, bodies: declaredBodies, malformed, pairs: null },   // pairs: tier 3's slot (landing 3)
+    census,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // TODO 25 tier one — THE OSCILLATOR'S RATE, WEIGHED AGAINST THE SPEC'S.
 // main.js computes the frequency the built balance and hairspring IMPLY
 // (I from the wheel's own published dimensions, k from the spring's cut
@@ -6470,6 +6728,7 @@ const CHECKS = {
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   axisEntry: (clock, opts) => checkAxisEntry(clock, opts),               // TODO 54 — canonical axis entry holds over every ordered pair; the leak the sweeps used to carry is measured beside it
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
+  meshIntegrity: (clock, opts) => checkMeshIntegrity(clock, opts),       // §77 tiers 0+1 — a mesh's own triangles: zeroArea + inverted bodies, a REPORT; gates its controls and the sub-body tables only
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law
   chainLength: (clock, opts) => checkChainLength(clock, opts),           // TODO 40 row 3 — a chain is a fixed length of steel; the run's closure, gated to half a link pitch

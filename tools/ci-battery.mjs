@@ -244,6 +244,17 @@ const BATTERY = [
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
+  // §77 tiers 0+1 — a REPORT (§40): the zeroArea and inverted rows land red
+  // by design (3,233 zero-area triangles and 4 inverted bodies measured on
+  // arrival, triaged into TODO.md) and are NOT gated; what is gated is what
+  // can be held on day one — the in-check synthetic controls and every
+  // declared sub-body table's validity (a malformed table is a stale
+  // selector, the INTRA_UNIT_CONTACTS precedent).
+  { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY }, cost: 2,
+    gate: 'controls PASS and 0 malformed sub-body declarations — zeroArea/inverted rows are a REPORT (§40)',
+    fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]), ...r.subBodies.malformed],
+    note: (r) => `${r.geometries} geometries / ${r.triangles} tris: zeroArea ${r.zeroArea.total} in ${r.zeroArea.geometries} geometries (${r.zeroArea.exactZero} exact), `
+      + `${r.inverted.rows.length} inverted, subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries` },
   { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY }, cost: 6,
     gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors',
     fails: (r) => [...r.violations, ...r.unmatchedSelectors.map((u) => ({ unmatchedIntraUnitSelector: u }))],
