@@ -797,6 +797,120 @@ export const GROOVE_LOCAL = 4; // stem groove collars sit this far outboard of t
 export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of the stem
 
 // ---------------------------------------------------------------------------
+// The stem's ONE-WAY (TODO 50) — a Breguet-style saw FACE coupling between
+// the fixed winding pinion and the sliding clutch, the joint every real
+// keyless works puts there. The spec solver and its two laws live HERE, at
+// the bottom of the module graph, because three consumers need the one
+// arithmetic: geometry.js cuts the rings from it, main.js's tick rides it,
+// and this module's own keyless solve needs the tooth height to place the
+// clutch's stroke (swDist and the yoke's tracked band both shift by the
+// clutch's home offset). Movement-independent on purpose — the alarm stem
+// states the same debt and is this code's second customer when its turn
+// comes.
+//
+// Every quantity is derived (rule 1):
+//   · tan α = rampOverFriction · μ — at the friction cone's edge camming
+//     and jamming are the same event, so the ramp stands at twice it and
+//     a backward crown CAMS the clutch out decisively instead of wedging.
+//   · toothH = tan α · (pitch arc at rMean) · rampFrac — the rise the ramp
+//     makes across its own arc; height is a consequence of the angle.
+//   · valleyFrac > tipFrac ON PURPOSE: the (valleyFrac − tipFrac) pitch
+//     fraction is the coupling's BACKLASH — under drive the faces bear
+//     while the ramps hold daylight, so the only coplanar working contact
+//     is the declared one (the coplanar-solids case the proximity
+//     instruments misread).
+// ---------------------------------------------------------------------------
+export function sawCouplingSpec({ rOut, rIn, teeth, rampOverFriction = 2, mu = 0.2,
+                                  tipFrac = 0.15, valleyFrac = 0.30 }) {
+  const rMean = (rOut + rIn) / 2;
+  const pitch = (Math.PI * 2) / teeth;          // rad of relative angle per tooth
+  const rampFrac = 1 - tipFrac - valleyFrac;    // the ramp takes what the flats leave
+  const tanAlpha = rampOverFriction * mu;
+  const toothH = tanAlpha * (pitch * rMean) * rampFrac;
+  const backlashFrac = valleyFrac - tipFrac;    // free play, as a fraction of a pitch
+  return { rOut, rIn, rMean, teeth, pitch, tipFrac, valleyFrac, rampFrac,
+           tanAlpha, toothH, backlashFrac };
+}
+
+// Tooth-top height above the ring's base plane at local pitch fraction
+// v ∈ [0,1): valley flat → ramp → tip flat, the drive face being the step
+// back to the valley at v = 1⁻. The LOCAL +v direction is the direction the
+// profile climbs; which world sense that is belongs to the consumer's
+// mounting, not to this law.
+export function sawProfileAt(spec, v) {
+  const u = ((v % 1) + 1) % 1;
+  if (u < spec.valleyFrac) return 0;
+  if (u < spec.valleyFrac + spec.rampFrac)
+    return spec.toothH * ((u - spec.valleyFrac) / spec.rampFrac);
+  return spec.toothH;
+}
+
+// The coupling's one-sided ride law: the smallest axial LIFT (extra
+// separation above the seated gap) that lets the two rings coexist at
+// relative angle delta (rad) from the seated index. Solved by sampling the
+// two profiles against each other — the same law the meshes are cut from,
+// so this is the §99 "smallest lift that clears" answered from the source
+// profile rather than from a re-implementation. Seated (delta inside the
+// backlash) the lift is 0; camming (delta climbing the ramps) it rises to
+// toothH and snaps at the next pitch.
+export function sawCouplingLiftAt(spec, delta) {
+  const P = spec.pitch;
+  const d = (((delta % P) + P) % P) / P;        // relative shift, pitch fractions
+  const S = 96;                                 // samples per pitch — the profile is piecewise linear, this over-resolves every knee
+  let need = 0;
+  for (let i = 0; i < S; i++) {
+    const v = i / S;
+    // ring A's tooth top at v, facing ring B's top at (v − d) mirrored: the
+    // facing ring runs its profile in the OPPOSITE local sense (it was
+    // flipped to face us), so its height at shared azimuth v is prof(d − v).
+    const sum = sawProfileAt(spec, v) + sawProfileAt(spec, d - v);
+    if (sum > need) need = sum;
+  }
+  return Math.max(0, need - spec.toothH);       // seated interference is exactly toothH (tip in valley)
+}
+
+// The going stem's instance of the coupling, as DIMENSIONS (the alarm's,
+// when built, declares its own):
+//   · SAW_TEETH = windPinionTeeth — one saw tooth per leaf, the classic
+//     cut: the coupling's pitch equals the pinion's leaf pitch, so the
+//     assembly clocking is leaf-aligned, and the knob's lost motion after
+//     a reversal is one leaf (2π/8 = 45° at the knob — the crown is direct
+//     on the stem, nothing gears the feel).
+//   · ring radii: rOut = the pinion's PITCH radius (the coupling is cut on
+//     the pinion's own hub face, inside the silhouette the stem already
+//     sweeps — no new radius near the crown-wheel mesh); rIn = the stem
+//     plus a §50 pivot-floor wall.
+//   · STEM_CLUTCH_OFF — the clutch rim's home offset outboard of the
+//     pinion's centre: half the pinion, the two ring bases, the seated
+//     tooth interleave (one toothH), half the rim. The keyless solve adds
+//     it to the setting-wheel station and the yoke's tracked band, which
+//     is the whole P3 cost of the split, paid in position space.
+export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds to this)
+export const WIND_PINION_T = 1.6;     // the fixed winding pinion's thickness
+export const CLUTCH_RIM_T = 1.1;      // the clutch's setting rim — crownWheel's own class
+export const STEM_SAW_SPEC = sawCouplingSpec({
+  rOut: (KW_MODULE * windPinionTeeth) / 2,
+  rIn: STEM_R + PIVOT_MIN_U,
+  teeth: windPinionTeeth,
+});
+export const SAW_BASE_T = STOCK_MIN_U; // each ring's base — the §50 wheel floor
+export const STEM_CLUTCH_OFF = WIND_PINION_T / 2 + 2 * SAW_BASE_T
+  + STEM_SAW_SPEC.toothH + CLUTCH_RIM_T / 2;
+// The clutch's OWN throw — shorter than the stem's, and derived so the
+// pulled clutch lands EXACTLY on the station the old dual-purpose pinion
+// proved: clutchHome + CLUTCH_TRAVEL = pinDist + CROWN_PULL_DIST. The
+// setting wheel, the minute fold, the plate radius and every dial station
+// derived from it therefore DO NOT MOVE — the split's whole footprint is
+// absorbed inside the stroke the stem already had. (A first cut let swDist
+// grow by the clutch offset instead, and the §125 dial assert refused it:
+// the plate grew 2.16 and D4 fell off its two-bounds-meet optimum. Real
+// keyless works make the same choice this constant makes — the sliding
+// pinion's throw is a fraction of the stem's.) The floor it must keep:
+// pulled clear of the coupling by more than the seated interleave —
+// asserted at the build (toothH + margin, against a ~2.8 travel).
+export const CLUTCH_TRAVEL = CROWN_PULL_DIST - STEM_CLUTCH_OFF;
+
+// ---------------------------------------------------------------------------
 // solveKeyless (§13 step 3b) — the P-dependent XY FRAME as a pure function:
 // the stem line (uWind/vPerp/sideSign), the keyless cluster's distances
 // along it, the setting-lever/yoke pivots with their pull-driven angle
@@ -914,9 +1028,16 @@ export function solveKeyless({
       cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
     }
   }
-  const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // sliding pinion, pushed in (teeth overlap the wheel rim, bevel-style)
-  const pinOutDist = pinDist + CROWN_PULL_DIST;              // ...pulled out → setting mesh
-  const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
+  const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // the FIXED winding pinion (teeth overlap the wheel rim, bevel-style)
+  const pinOutDist = pinDist + CROWN_PULL_DIST;              // the stem's own outward travel
+  // TODO 50 — the SLIDING CLUTCH is what meshes the setting wheel now. Its
+  // home sits STEM_CLUTCH_OFF outboard of the pinion (the coupling's stack:
+  // half pinion, two ring bases, the seated tooth interleave, half rim) and
+  // its throw is CLUTCH_TRAVEL, derived so the pulled clutch lands on the
+  // OLD setting station — swDist is untouched by the split (see the
+  // constant's comment for the refused alternative).
+  const clutchHomeDist = pinDist + STEM_CLUTCH_OFF;
+  const swDist = clutchHomeDist + CLUTCH_TRAVEL + windPinionR * 0.55 + settingWheelR;
   // The minute wheel FOLDS perpendicularly off the stem line (see the
   // setting-path assembly for why).
   const mwFoldD = settingWheelR + minuteWheelR + 0.1;
@@ -959,13 +1080,19 @@ export function solveKeyless({
     }
     return bow;
   })();
-  const yokeMidAlong = pinDist + CROWN_PULL_DIST / 2;
+  // The yoke's fork tracks the CLUTCH's hub collars (TODO 50 moved them off
+  // the stem group and onto the clutch, which is the member that actually
+  // slides against the spring), so its pivot centres on the clutch's stroke
+  // and its angle law reads the clutch's along-stem station. `pull` here is
+  // the clutch's normalized travel: crownPullT plus the saw lift's share,
+  // which is how the cam-over reaches the fork without a second law.
+  const yokeMidAlong = clutchHomeDist + CLUTCH_TRAVEL / 2;
   const yokePivot = {
     x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
     y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
   };
   function yokeAngleAt(pull) {
-    const along = pinDist + pull * CROWN_PULL_DIST;
+    const along = clutchHomeDist + pull * CLUTCH_TRAVEL;
     const px = uWind.x * along, py = uWind.y * along;
     return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
   }
@@ -1229,7 +1356,7 @@ export function solveKeyless({
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,
     ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
-    cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
+    cwDist, pinDist, pinOutDist, clutchHomeDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,

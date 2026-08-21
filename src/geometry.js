@@ -438,7 +438,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
 // Pinion (small solid steel wheel with fat leaves)
 // ---------------------------------------------------------------------------
 
-export function makePinion({ module, teeth, thickness, material }) {
+export function makePinion({ module, teeth, thickness, material, boreR = null }) {
   const mat = material || MATS.steel;
   const pitchR = pitchRadius(module, teeth);
   const tipR = pitchR + module * 0.85;
@@ -448,7 +448,9 @@ export function makePinion({ module, teeth, thickness, material }) {
     flankFrac: 0.42,
   });
   const bore = new THREE.Path();
-  bore.absarc(0, 0, Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
+  // boreR override (TODO 50): a pinion whose arbor carries a sliding square
+  // must be bored past the square's half-diagonal, not to the default shaft
+  bore.absarc(0, 0, boreR ?? Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
   shape.holes.push(bore);
 
   const bevel = Math.min(thickness * 0.15, module * 0.2);
@@ -2219,54 +2221,13 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
 //     any battery measure (sawCouplingLiftAt) — one arithmetic, so pose and
 //     metal cannot disagree (§61/§99's rule).
 // ---------------------------------------------------------------------------
-export function sawCouplingSpec({ rOut, rIn, teeth, rampOverFriction = 2, mu = 0.2,
-                                  tipFrac = 0.15, valleyFrac = 0.30 }) {
-  const rMean = (rOut + rIn) / 2;
-  const pitch = (Math.PI * 2) / teeth;          // rad of relative angle per tooth
-  const rampFrac = 1 - tipFrac - valleyFrac;    // the ramp takes what the flats leave
-  const tanAlpha = rampOverFriction * mu;
-  const toothH = tanAlpha * (pitch * rMean) * rampFrac;
-  const backlashFrac = valleyFrac - tipFrac;    // free play, as a fraction of a pitch
-  return { rOut, rIn, rMean, teeth, pitch, tipFrac, valleyFrac, rampFrac,
-           tanAlpha, toothH, backlashFrac };
-}
-
-// Tooth-top height above the ring's base plane at local pitch fraction
-// v ∈ [0,1): valley flat → ramp → tip flat, the drive face being the step
-// back to the valley at v = 1⁻. The LOCAL +v direction is the direction the
-// profile climbs; which world sense that is belongs to the consumer's
-// mounting, not to this law.
-export function sawProfileAt(spec, v) {
-  const u = ((v % 1) + 1) % 1;
-  if (u < spec.valleyFrac) return 0;
-  if (u < spec.valleyFrac + spec.rampFrac)
-    return spec.toothH * ((u - spec.valleyFrac) / spec.rampFrac);
-  return spec.toothH;
-}
-
-// The coupling's one-sided ride law: the smallest axial LIFT (extra
-// separation above the seated gap) that lets the two rings coexist at
-// relative angle delta (rad) from the seated index. Solved by sampling the
-// two profiles against each other — the same law the meshes are cut from,
-// so this is the §99 "smallest lift that clears" answered from the source
-// profile rather than from a re-implementation. Seated (delta inside the
-// backlash) the lift is 0; camming (delta climbing the ramps) it rises to
-// toothH and snaps at the next pitch.
-export function sawCouplingLiftAt(spec, delta) {
-  const P = spec.pitch;
-  const d = (((delta % P) + P) % P) / P;        // relative shift, pitch fractions
-  const S = 96;                                 // samples per pitch — the profile is piecewise linear, this over-resolves every knee
-  let need = 0;
-  for (let i = 0; i < S; i++) {
-    const v = i / S;
-    // ring A's tooth top at v, facing ring B's top at (v − d) mirrored: the
-    // facing ring runs its profile in the OPPOSITE local sense (it was
-    // flipped to face us), so its height at shared azimuth v is prof(d − v).
-    const sum = sawProfileAt(spec, v) + sawProfileAt(spec, d - v);
-    if (sum > need) need = sum;
-  }
-  return Math.max(0, need - spec.toothH);       // seated interference is exactly toothH (tip in valley)
-}
+// The SPEC and its two laws live in layout.js (the dimensions module) —
+// layout's keyless solve needs the tooth height to place the sliding
+// clutch's stroke, and geometry.js already imports layout, so the one
+// arithmetic sits at the bottom of that edge. Re-exported here so builder
+// consumers keep a single import surface.
+import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt } from './layout.js';
+export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt };
 
 // The coupling ring as a closed, indexed solid: an annulus rIn..rOut of
 // thickness baseT with the saw profile standing on its +Z face. Every body
