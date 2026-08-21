@@ -1873,6 +1873,12 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'sliding pinion on the stem square — the clutch joint' },
   { unit: 'Keyless works', a: 'CylinderGeometry#6', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
   { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
+  // TODO 53's landing: the fusee arbor's windTop continuation welds into the
+  // upper-pivot staff at the plate's mid-plane. The two caps used to
+  // COINCIDE exactly (a knife-edge no instrument can arbitrate); the plate
+  // rise moved the abutment's phase into this check's sight, and the joint
+  // is now an overlap with its name — one arbor, two meshes.
+  { unit: 'Fusee & great wheel', a: 'fuseeTopShaft', b: 'fuseeUpperStaff', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'TorusGeometry#30', why: 'crown collar on its bushing torus' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },

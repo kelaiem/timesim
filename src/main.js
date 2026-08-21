@@ -1934,8 +1934,9 @@ tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, bor
 function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton = false } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
+  let shaft = null;
   if (len > 0.05) {
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+    shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
     shaft.rotation.x = Math.PI / 2;
     shaft.position.z = (worldTop - arbor.position.z) + len / 2; // arbor-local
     arbor.add(shaft);
@@ -1944,6 +1945,7 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton
     x: arbor.position.x, y: arbor.position.y, staffR, jewelR, chaton,
     boreR: boreR ?? staffR + PIVOT_BORE_CLEAR,
   });
+  return shaft; // so a caller with a continuation to declare can NAME its half of the joint
 }
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
@@ -1973,7 +1975,14 @@ addUpperPivot(escapeArbor, { chaton: true });
 // The square is the watchmaker's let-down square: a key on it is how the
 // power is safely released at the bench. A winding arbor runs in a plain
 // bushed bore, not a jewel — and no jewel could pass the square anyway.
-addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+{
+  // NAMED (TODO 53's landing): the windTop continuation abuts this staff at
+  // the plate's mid-plane, and the joint is declared in
+  // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
+  // coincidence and became a joint.
+  const staff = addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+  if (staff) staff.name = 'fuseeUpperStaff';
+}
 // Square across-corners = staff diameter (0.5·2), so the filed square
 // passes the plate's own bore without opening it.
 const FUSEE_SQ_S = 0.5 * Math.SQRT2;
@@ -1983,10 +1992,20 @@ const windTop = new THREE.Group();
 {
   // Shaft continuation: addUpperPivot's staff stops at the plate's
   // mid-thickness (its bearing plane); carry the round arbor on to the
-  // plate's top face, where the square begins.
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z, 12), MATS.steel);
+  // plate's top face, where the square begins. It reaches DOWN into the
+  // staff by half a §50 stock floor — one shaft in two meshes wants a weld,
+  // not a knife-edge: the two caps used to COINCIDE exactly at TQ_MID_Z,
+  // which no instrument can arbitrate (coplanar triangles), and the
+  // TODO 53 plate rise moved the abutment's phase into `intraUnit`'s sight
+  // as an undeclared MF intersection. The overlap makes the joint real and
+  // the declared row (INTRA_UNIT_CONTACTS, 'one arbor in two meshes')
+  // makes it seen — row 'arbor through the winding pinion' is the exact
+  // precedent.
+  const weld = STOCK_MIN_U / 2;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z + weld, 12), MATS.steel);
+  shaft.name = 'fuseeTopShaft';
   shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2 - L_BARREL;
+  shaft.position.z = (TQ_MID_Z - weld + TQ_TOP_Z) / 2 - L_BARREL;
   windTop.add(shaft);
   const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, LETDOWN_H), MATS.steel);
   square.position.z = TQ_TOP_Z + LETDOWN_H / 2 - L_BARREL;
