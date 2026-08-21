@@ -2139,62 +2139,12 @@ moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
 The lay shaft twelve lines below already carried this exact fix, with a
 comment explaining it. The arm did not.
 
-## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+### The shaft chronicle (moved home — §137)
 
-`sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
-musically ("A6-ish, a small bell" says the comment). The gong's actual
-dimensions imply something quite different.
-
-Wire 0.375 mm diameter, arc radius 13.125 mm, 90° of arc = **20.617 mm
-developed length**, L/d = 55. As a clamped–free steel bar (E 200 GPa,
-ρ 7850, bar wave speed 5048 m/s):
-
-| mode | frequency | ratio |
-|---|---|---|
-| fundamental | **623 Hz** | 1.00 |
-| 2nd | **3904 Hz** | 6.27 |
-| 3rd | 10932 Hz | 17.55 |
-
-Two mismatches, and the second is the interesting one:
-
-1. **Neither synthesised tone is a mode of this gong.** 880 Hz is 1.41× the
-   fundamental and 1760 Hz is 2.83× — the geometry offers 1× and 6.27×.
-2. **A struck bar's overtones are INHARMONIC.** 1 : 6.27 : 17.55, not
-   1 : 2 : 3. The octave pair models a *bell*, and the reason a steel wire
-   gong sounds like a "ting" rather than a pitched chime is precisely that
-   its partials are not harmonically related. Modelling it as an octave is
-   the one thing that removes the character being modelled.
-
-There is also a **design** question underneath the audio one: 623 Hz is
-low for an alarm. Real alarm-watch gongs (Memovox, Cricket) ring bright,
-in the low kHz, because that is what carries and what wakes someone. At
-these dimensions the fundamental is a low hum and the ring the ear would
-actually hear is the 3.9 kHz second mode. To put the FUNDAMENTAL in
-alarm territory (~2.5 kHz) the arc would need to be **45° instead of 90°**
-(10.3 mm developed), or the wire 1.50 mm thick at the current length —
-which is absurd for a gong. So the arc is roughly **twice as long as an
-alarm gong should be**.
-
-Closing this means deriving the tone from the geometry — `f_n = (β_nL)²
-·(d/4)·√(E/ρ) / (2πL²)`, struck at the modes the hammer actually excites —
-rather than picking notes. Note the hammer strikes IN-PLANE (radially at
-the free end), and a curved bar's in-plane modes sit somewhat above the
-straight-bar figures above, so the derivation should carry the curvature
-term rather than reuse this estimate.
-
-Filed rather than fixed: this is an audio-model change and a gong-geometry
-change, and the two want deciding together.
-
-**Mostly closed by §56.** The tone is now computed from the wire's own
-dimensions and the arc is a live parameter, so the pitch tracks the
-geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
-the inharmonic 1 : 6.27 ratio is what is sounded.
-
-Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
-modes sit above the straight-bar figures used here — `gongModes()` should
-carry the curvature term. And the DESIGN question is now exposed rather
-than answered: the 90° default still rings low for an alarm; whether the
-default arc should move to ~45° is a decision, not a bug.
+(The four sections below were filed under item 17 by accident — a
+whole shaft narrative living in the gong item. Moved here unchanged,
+in their original order; §137 found them while retiring their
+premise, see the measurement block above.)
 
 ### CORRECTION — the shaft thickening was REVERTED; CI rejected it
 
@@ -2263,7 +2213,13 @@ the drive-end overhang, where the exhaustive scan shows 0.97–8.3 of room.
 Bending stiffness is set by the span, so most of the 4075 N/m survives.
 The neck length is bounded by the ring's own thickness plus margin.
 
-### CLOSED — the stepped arbor
+### The stepped arbor, as designed — built, then CI-rejected (next section)
+
+(This section recorded a CLOSED that did not survive: the design below was
+built and the gates listed at its end did pass — from a session whose saved
+pose had the jumper out of the star. The virgin-boot story is the next
+section. The numbers stay because they are the candidate design any future
+attempt starts from.)
 
 Necked at **both** ends, full section between. Necking both rather than one
 is not a compromise, it is the better shape: **both cranks sit on the thin
@@ -2335,6 +2291,63 @@ two.
 Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
 restored. The **beak tail** fix and the **inverted lever** fix stand — both
 movement-side, both verified, neither implicated.
+## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+
+`sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
+musically ("A6-ish, a small bell" says the comment). The gong's actual
+dimensions imply something quite different.
+
+Wire 0.375 mm diameter, arc radius 13.125 mm, 90° of arc = **20.617 mm
+developed length**, L/d = 55. As a clamped–free steel bar (E 200 GPa,
+ρ 7850, bar wave speed 5048 m/s):
+
+| mode | frequency | ratio |
+|---|---|---|
+| fundamental | **623 Hz** | 1.00 |
+| 2nd | **3904 Hz** | 6.27 |
+| 3rd | 10932 Hz | 17.55 |
+
+Two mismatches, and the second is the interesting one:
+
+1. **Neither synthesised tone is a mode of this gong.** 880 Hz is 1.41× the
+   fundamental and 1760 Hz is 2.83× — the geometry offers 1× and 6.27×.
+2. **A struck bar's overtones are INHARMONIC.** 1 : 6.27 : 17.55, not
+   1 : 2 : 3. The octave pair models a *bell*, and the reason a steel wire
+   gong sounds like a "ting" rather than a pitched chime is precisely that
+   its partials are not harmonically related. Modelling it as an octave is
+   the one thing that removes the character being modelled.
+
+There is also a **design** question underneath the audio one: 623 Hz is
+low for an alarm. Real alarm-watch gongs (Memovox, Cricket) ring bright,
+in the low kHz, because that is what carries and what wakes someone. At
+these dimensions the fundamental is a low hum and the ring the ear would
+actually hear is the 3.9 kHz second mode. To put the FUNDAMENTAL in
+alarm territory (~2.5 kHz) the arc would need to be **45° instead of 90°**
+(10.3 mm developed), or the wire 1.50 mm thick at the current length —
+which is absurd for a gong. So the arc is roughly **twice as long as an
+alarm gong should be**.
+
+Closing this means deriving the tone from the geometry — `f_n = (β_nL)²
+·(d/4)·√(E/ρ) / (2πL²)`, struck at the modes the hammer actually excites —
+rather than picking notes. Note the hammer strikes IN-PLANE (radially at
+the free end), and a curved bar's in-plane modes sit somewhat above the
+straight-bar figures above, so the derivation should carry the curvature
+term rather than reuse this estimate.
+
+Filed rather than fixed: this is an audio-model change and a gong-geometry
+change, and the two want deciding together.
+
+**Mostly closed by §56.** The tone is now computed from the wire's own
+dimensions and the arc is a live parameter, so the pitch tracks the
+geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
+the inharmonic 1 : 6.27 ratio is what is sounded.
+
+Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
+modes sit above the straight-bar figures used here — `gongModes()` should
+carry the curvature term. And the DESIGN question is now exposed rather
+than answered: the 90° default still rings low for an alarm; whether the
+default arc should move to ~45° is a decision, not a bug.
+
 ## 19. CLOSED — the selector's sensing pin never touched the ring it read
 
 **Closed 2026-07-29.** Three defects, one contact — the third was found
@@ -7664,6 +7677,25 @@ corrected (TODO 20 closed that debt).
 > rod-end overhang carries 72.4% of the compliance and appears in none of
 > these paragraphs; the fork-end cantilever they are all sized against
 > carries 0.1%. `tools/probe-82-alarm-stall.mjs`.
+
+**THE §137 RECORD, LANDED — and one more correction, this time to the
+stroke.** The idiom record the correction above left open is in the
+battery now: `declareTransfer` rows beside each corner, the `transfers`
+gate re-verifying every row's own relations each run — click detent
+≈14.7 mN computed in-window (agreeing with the ≈15 the comment above
+derives), pawl ≈13.8 mN at the saw root, silence finger ≈51 mN, the bends
+priced live (`priceRigidBentLink`: M = F·e, σ, Euler fraction, axial
+give — the reset rod's solved offset is ZERO, so its bend does not exist;
+the hack rod's dogleg gives ≈3–32% of its stroke across the load band).
+And the tail-stall's **0.158 mm is itself a retired constant**: the
+source's own trail (`ALARM_LINK_ROD_TRAVEL = 0.42 — solve OUTPUT,
+alarmLinkParts.forward.rodTravel`) replaced the plan stroke with the
+registration solve's measured travel, **0.099 u = 0.0376 mm**, so the
+tail's stall is **≈ 11.5 mN — still TAIL-limited, still inside the
+5–50 mN band, at the other end of it**. The k (305 N/m) stands; the
+stroke it multiplies was the last stale number in the chain. The
+disarm-vs-silence terminology note is written at both rods' laws in the
+source, where a fix would look.
 
 **The elbows' bending is COMPUTED** (§137 Gate A, at the elbow-rod block —
 grep `§137 GATE A`). Loads derived from the driven members by virtual work
