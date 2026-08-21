@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-20 — items with work left first, with what remains:
+refreshed 2026-08-21 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -35,8 +35,8 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 46 | CLOSED (§124) | The chain rode the fusee base on one CORNER (1.9–2.5 u of daylight, invisible to the burial-only row). Closed by the layout: first stage re-geared 8:1 → 120/7 so the fusee runs 1.75 wraps over 2 grooves at pitch 1.389, set-up 17 → 23 clicks, level product held; links LEAN to the flank on the funded FUSEE_TILT_Z raise. Ideal torque law exact again; the new float row gates the seat at 0.202 unwaived (was 3.191 waived) |
 | 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
 | 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
-| 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
-| 50 | CLOSED (§149) | The going stem's one-way is metal: the dual-purpose pinion split into a fixed winding pinion and the sliding clutch, joined by a saw coupling one profile law cuts, rides and measures. `windStemSlip` is the coupling's relative index — persisted, with the two sub-pitch laws (forward take-up, drain pickup) and the `stemSlip` axis that lets §48 judge the clutch. The alarm instance is item 72 |
+| 49 | BLOCKED (on 40 row 3) | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal while the support edge claims the joint. Only the azimuth floats, and its one honest absorber is the chain's length, which is 40 row 3's open closure; re-verified 2026-08-21, with TODO 51/53's chain-layout consumers added to the fix's price |
+| 50 | CLOSED (§149) | The going stem's one-way is metal: the dual-purpose pinion split into a fixed winding pinion and the sliding clutch, joined by a saw coupling one profile law cuts, rides and measures — the very split a parallel 2026-08-21 re-scope reached from measurement before this landed. `windStemSlip` is the coupling's relative index — persisted, with the two sub-pitch laws (forward take-up, drain pickup) and the `stemSlip` axis that lets §48 judge the clutch. The alarm instance is item 72 |
 | 72 | OPEN | The alarm stem's one-way has no metal — a backward alarm crown does nothing at all, the free-slip at the stem⇄contrate bevel unmodelled. §149's coupling (`sawCouplingSpec`/`makeSawCoupling`, movement-independent by design) is the reuse path |
 | 51 | CLOSED | Both rows clear, boot silent; the residue is worked through since. The beak window holds the beak's own arc plus a step (five legal steps, was two — the old demand was `2·BEAK_SCAN_STEP`, a two-sample target); the arm hold reads a 72-bin per-sector reach (`armStopAt`) instead of the compass max — stock only, riser in by 0.29; and the Fusee row's 0.1500 equality was tried against a §50 pivot-floor relief and REFUSED by measurement (the span's corridor covers every legal beak azimuth at the lower band) — the refusal is written at `HUB_Z2` |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
@@ -5975,6 +5975,22 @@ demonstrably misses.
 
 **Filed by §47's scope guard**, which named it rather than absorbing it.
 
+**Re-verified 2026-08-21 — still blocked, and the cost list has grown.** Every
+claim above still describes the code (the azimuth still floats, the drum's
+congruence and claw are unchanged, `chainLength` still reports the same
+1.984% spread against 1.164% waived, and the wrap count is still asserted
+against `RESERVE_BARREL_TURNS`). What changed since the scope: two more
+instruments now consume the shipped chain layout, so path (a) — pin both
+ends and derive `wraps` from the closure — re-measures more than the §61/§124
+seating rows. TODO 53's `CHAIN_TQ_REACH` is a closed-form bound on the
+discrete top-of-wrap that the plate floor (`TQ_DESIGN_MAX`) carries, with its
+own conservativeness assert and a `Chain ⇄ Three-quarter plate` budget row;
+TODO 51's `armStopAt` is a per-sector reach table built from the same
+discrete layout, and its `HUB_Z2` refusal note binds the span ("must move
+the SPAN, not the pad"). Changing where the run lies moves all of them —
+price them with the fix, and diff the battery `--report` against the base
+when it lands.
+
 ---
 
 ## 50. CLOSED (§149) — the going stem's one-way is a saw coupling at the sliding clutch
@@ -6052,6 +6068,112 @@ The alarm stem states the same debt (a backward alarm crown does nothing
 at all, `main.js`'s alarm wind routing) and stays its own instance: the
 coupling builder and its lift law should be written movement-independent
 so the alarm side can consume them when its turn comes.
+
+### The parallel re-scope (2026-08-21) — the same joint, reached from measurement
+
+The scope below landed on `main` while §149 was in flight, written against
+the ORIGINAL filing (its "the fix above" means the old plate-top-ratchet
+text, not the corrected filing kept above). It reached the same
+conclusion independently — no winding wheel can host the one-way, the
+collapsed stem coupling is the unique honest site — and adds what the
+history above argues from structure: the measured regimes (the 3-turns-
+per-barrel-turn back-drive, the 9.6e-8 stall, the 1:1 backward slip) and
+the regime table showing the shipped laws already ARE the coupling's.
+Everything it files to build IS built by §149, with two shape differences:
+the coupling's cut lives in `sawCouplingSpec`/`makeSawCoupling` (its own
+spec solver, not a `sawRadiusAt` twin), and the fork rides a pin-in-groove
+on the clutch rather than the stem's own groove. Kept whole as the
+record's second derivation:
+
+**The fix above names a site that was deliberately removed, and no winding
+wheel can host the one-way at all.** Scoped 2026-08-21. The plate-top ratchet
+this item leans on does not exist: `RATCHET_TEETH` is an alias for
+`WIND_SPUR_TEETH` (24), the spur is an involute `makeGear` wheel, and the
+comment saying the saw-toothed ratchet "now sits on the plate top … where
+its teeth serve only the click" is STALE (its twin in the keyless build says
+the same). The windTop block both point at answers them three times over:
+"There is deliberately NO ratchet or click on this arbor any more: the arbor
+turns BOTH ways … and a fixed pawl on a bidirectional ratchet is
+impossible." Correct both stale comments when this lands — they are what
+made this item read "already described."
+
+**Since §126 that impossibility covers the whole winding train.** Every
+winding wheel poses from the bank and the bank drains with τ, so the crown
+wheel counter-rotates during run-down — in the SAME direction a backward
+crown turn would drive it. A pawl anywhere from the spur to the crown wheel
+cannot tell the two apart, and would block a drive direction the §48 audit
+declares on purpose (`declareRestoring('Keyless works', 'two-way', …)`: "the
+mainspring back-drives the same teeth through the fusee arbor and its spur
+as the watch runs down"). Measured headless on the shipped build: the stem
+spinner's spin is a pure function of the bank at exactly 3 knob turns per
+barrel turn (the 24:8 ratio — 5.25 knob turns over the full reserve, the
+knob creeping backward as the watch runs down); a backward crown turn of
+1.234 rad at mid-reserve moved the knob 1.2340 with the bank untouched, and
+the slip is CONTINUOUS — no quantum anywhere; a forward turn at the arrest
+moved the knob 9.6e-8, a dead stall.
+
+**The one joint that can be a one-way is the one the model collapsed.**
+`windPinion` "IS the sliding pinion" — one piece where a real keyless works
+cuts two: a winding pinion free on the stem, always meshed with the crown
+wheel, and a sliding (castle) pinion keyed to the stem, coupled to it by
+saw-toothed breguet crowns on their mating faces. That coupling is the only
+joint on the path where a backward crown turn and the run-down produce
+OPPOSITE relative senses — the one distinction a one-way can make — and
+every regime §126 already ships is exactly what that coupling would do:
+
+| regime | stem vs winding pinion | breguet coupling | shipped law |
+|---|---|---|---|
+| forward wind, below the arrest | driving | faces engaged, 1:1 | bank advances, knob tracks |
+| forward at the arrest | rigid | stem stalls dead | banks nothing, moves nothing, no slip (measured 9.6e-8) |
+| backward crown turn | stem backs off | cams over — the zip | `windStemSlip` accumulates (measured 1:1, bank untouched) |
+| run-down drain | pinion backs away | faces engage, back-drive the knob | knob = f(bank), 3 turns per barrel turn (measured) |
+| pulled to SET | separated axially | free spin | the clutch-out slip branch |
+
+The two-piece stem is not just the real-watch answer; it is the unique site
+consistent with what §126 ships, and it makes BOTH slip branches
+consequences of ONE modelled joint.
+
+**What to build instead.** Split `windPinion`: the winding pinion stays at
+crown-wheel mesh depth, free on the stem — it LEAVES the sliding
+`windSpinner` group, a parenting change — and the sliding pinion keeps the
+stem key, the axial ride and the setting mesh. Cut breguet crowns on the
+mating faces (the cut law is `sawRadiusAt`'s axial twin — tooth HEIGHT over
+azimuth rather than radius over azimuth); the backward-turn cam-over is an
+axial lift of the sliding pinion against the yoke's detent spring (the yoke
+already tracks its groove), with the lift law the §99 "smallest lift that
+clears the metal" idiom. The crown count N and the ramp angle are design
+parameters DERIVED from the detent-spring window (TODO 16's format: the
+ramp's axial force under a finger's backward torque must beat the spring,
+and the spring must re-seat from any parked ramp point), not chosen.
+
+**The give-back is the piece a copy of §99 would get wrong.**
+`settleAlarmClick` subtracts the parked ramp fraction out of the STORED
+WIND — the arbor recoils to its seat. Here the wheel held the whole time;
+that hold is the point. The going settle slides the STEM down the ramp to
+the nearest seat: it adjusts `windStemSlip` by up to one coupling tooth
+(quantum 2π/N of stem) and must never touch `barrelWindTurns`. The restore
+seeding that rebuilds the slip from `crownRotation` must land on a seat for
+the same reason.
+
+**Costs, priced.** The fingerprint moves (a re-parented pinion, a new part).
+The winding and sliding pinions are two movers in different frames inside
+one unit, so the coupling enters `intraUnit`'s MM tier — a declared
+`INTRA_UNIT_CONTACTS` joint plus the unit's own build asserts at the seat
+(the §120 pattern: the tier covers the class, the asserts keep the per-cycle
+instances) — and the seat wants the §99 package: a handoff row, the
+vertex-against-analytic-saw penetration form (a beak in a valley is locally
+wrapped, so `mtvDepth` pops it out sideways), `declareTravel`, and the
+restoring declaration re-stated (the sliding pinion reciprocates axially;
+its restoring element is the yoke spring, which must exist as a mesh). And
+rule 4's §48 warning applies a fourth time (items 29, 56 and 64 are the
+other three): no axis anywhere varies the going `crownRotation` — only
+`alarmCrownRotation` is swept — so the cam-over lift would reciprocate on an
+axis that does not exist. Ship the axis that exercises the backward
+free-wheel, or the audit passes the new members in silence.
+
+**The alarm instance stays the class's second row.** The alarm crown states
+the same debt in the same words at its sliding bevel ⇄ contrate coupling;
+the same two-piece treatment applies there, filed here and not absorbed.
 
 ---
 
