@@ -14808,3 +14808,103 @@ summary (175 candidates / 136 declared / 39 tested / 0 interior rows, 10.0 s);
 at three tensions across two rebuilds, and fails if a rebuild ever serves a
 stale declaration. Fingerprint bit-identical across the whole landing
 (`3757164117`) — the declarations move no geometry bytes — and boot silent.
+
+## §153 — the reserve reads as a sector: a symmetric inverted-U arc, a barely-recessed well, and a hand that rides proud
+
+Owner's redesign of the power-reserve indicator's face. Two claims, both
+of them position-space and neither touching the drive path (the TODO 48
+forward chain, the TODO 18 ratio derivation and the §104 equalisation
+gates all measure exactly as before): the graduated arc is left-right
+SYMMETRIC about the well's vertical — an inverted U over the pivot —
+and the well is BARELY recessed instead of a deep pocket.
+
+**The symmetric anchor is one rule stated in two places.** The old arc
+hung its empty end at math angle 180° (9 o'clock) and swept 150° to
+30° — the comb sat visibly lopsided. TODO 18's discipline already
+keeps the three coupled quantities (graduation, hand travel, gear
+ratio) reading one source, `RESERVE_SWEEP_DEG` and the reserve hours;
+the anchor is now the symmetry rule itself: empty at 90° + sweep/2,
+full at 90° − sweep/2. The two sites that need it —
+`paintSubdialFace`'s `angAt` and the friction coupling's SET in tick()
+(the assembly slip that zeroes a real reserve indicator) — each derive
+it from that rule, neither from the other, and both say so in place.
+
+**The sweep itself then widened to 300° (owner's call): 10° of hand
+per hour, twice the reading resolution.** Measured off the built scene
+at tension 0 / 0.5 / 1 the hand reads 240° / 90° / −60° — symmetric at
+both ends, vertical at half charge — and the un-swept remainder is a
+60° gap centred on the well's 6 o'clock, where the caption and the
+maker's mark live. Figures follow the seconds track's bezel rule: tops
+outward on the upper arc, flipped toward the pivot below the
+horizontal, where the end figures now sit. The gearing moved with the
+graduation exactly as TODO 18 demands: R = 1.75 rev × 360° ÷ 300° =
+2.1 = (28/8) × (6/10), so §22's spec law became w2 = h/5 (6 teeth at
+the 30 h default) — and with R under stage one's own 3.5, stage two is
+a STEP-UP, which is what a 300° hand off a 1.75-turn arbor costs. That
+inversion had one instrument consequence: TODO 15's stage-one gauge
+read the rigid w1+p1 pair's silhouette assuming the wheel owned it,
+and the grown p1 outgrew w1 (10 gaps reported for 28 declared teeth,
+solve refused). `solveGearChain` entries now carry an optional `gauge`
+object — the pair still aligns as ONE knob (TODO 48's one-blank
+constraint, untouched) but is read by w1's own mesh.
+
+**"Barely" is a derived depth, and the battery set it.** The first
+cut reused `DIAL_EDGE_BREAK` (0.05 mm) as the sector's depth and
+anchored the hand's keel one margin over the dial's FACE — and the
+landing battery refused it: `inspection` reported the §25 C
+rattrapante blade FORBIDDEN through the raised hand's collet on every
+alarm axis (the central alarm hand sweeps the whole dial at a fixed
+keel height over the face, and an alarm set near 12:00 stands it
+directly over the reserve station). The face is not the station's
+ceiling; the blade's sweep lane is. So the depth derives from the two
+constraints the station really has — keel a margin over the pocket
+floor, the boss's top (the hand's tallest metal) a margin under the
+blade's keel at `ALARM_RSV_LANE` ≈ 0.472 over the face — whose
+simultaneous solution is `rMin = 2·CLEAR_MARGIN + floorDrop + bossH/2
+− ALARM_RSV_LANE` ≈ 0.242, rounded up on the 0.01 grid (layout.js's
+assembly-spend precedent) to **0.25 u ≈ 0.095 mm** — half the retired
+well, and as shallow as the movement's z-stack allows: the alarm
+plane is boxed in above by §125's hour-hub lane assert, so no
+position-space move was available to buy more. `makeDial` grew a
+per-well `recess` override to carry it (the seconds well keeps
+`SUBDIAL_RECESS` 0.5 and its whole TODO 41 derivation, untouched):
+the pocket cut, its floor print, its wall silvering and the
+punch-through boot assert all resolve one per-well depth, so the cut
+and the finish cannot disagree.
+
+**The hand's plane is ceiling-anchored, and the slack lands where the
+strict gate is.** The plane sits at `ALARM_RSV_LANE − CLEAR_MARGIN −
+bossH/2` (0.088 over the face): the boss's top holds exactly the
+margin to the blade's sweep — a side with no strict floors gate
+(`Alarm disc ⇄ Power reserve` is not EXPECTED; the sweeps demand no
+contact and get the full margin) — which pushes the grid residue onto
+the floor side, where the strict `Dial ⇄ Power reserve` floors row
+lives: the keel clears the sector floor by margin + residue ≈ 0.158,
+clear of float equality with no epsilon. The blade stands proud of
+the face (top ≈ 0.178 over it); the keel dips 0.09 into the pocket
+mouth; the boss dome stands 0.32 proud, its below-keel column keeping
+TODO 41's ride-the-bore excuse (`bossR + CLEAR_MARGIN ≤
+SUBDIAL_BORE_R`, re-asserted). `ALARM_RSV_LANE` restates the alarm
+hand's plane and section because that hand is built after the dial
+consumes the recess; the restatement is boot-asserted against the
+built blade at its own site, as are the reserve-hand section facts —
+§39's falsifiable-pin pattern, three pins, three asserts. The
+indicator arbor follows the hand's plane (0.2 short of it, tip
+swallowed by the collet's dip — the same declared friction joint,
+`reserveBoss ⇄ rsvHandArbor`), crossing the floor's bore into the
+pocket mouth.
+
+**The battery also caught a misclassification the deep well had been
+hiding.** The pocket walls' SILVERING — a plated film `makeDial` lays
+on the machined wall — was judged as wheel stock by its bounding box,
+whose "thickness" is the pocket's depth: 0.19 mm cleared the 0.12 mm
+wheel floor by coincidence, and the shallow sector's 0.095 mm did
+not. The walls are named now (`reserveSubdialWall` /
+`secondsSubdialWall`) and kinded `marking` beside `screwSlots` and
+`alarmDiscTrack`, which is what the film is.
+
+`tools/probe-153-boot.mjs` measures the redesign off a boot (anchor
+angles at three tensions, hand/floor/arbor world planes, boot
+silence); `tools/probe-153-shot.mjs` renders the face and the oblique
+profile. The schematic tier's sub-dial bezel ring quotes
+`reserveHand.position.z` live, so it moved with the hand for free.

@@ -4594,21 +4594,29 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     ctx.restore();
   };
   if (kind === 'reserve') {
-    // Graduated arc: math angle 180° (empty, left) sweeping `sweepDeg` to
-    // 30° (full, right) over `hours` of reserve. Both arrive from the
-    // CALLER — main.js owns them, because the same two numbers set the
-    // indicator hand's travel and the reduction train's ratio, and the
-    // three drifting apart is exactly how TODO 18 happened: the arc was
-    // widened 120° → 150° here while the gearing kept the old figure.
-    // Major ticks every 12 hours (0/12/24), one minor per HOUR (at 150°
-    // that is 5° each), slimmed to keep the comb fine.
+    // Graduated arc, SYMMETRIC about the well's vertical (§153): empty at
+    // math angle 90° + sweepDeg/2 (upper left), full at 90° − sweepDeg/2
+    // (upper right) — an inverted U over the pivot. The ANCHOR is the one
+    // symmetry rule, so only the half-sweep appears; the sweep and hours
+    // arrive from the CALLER — main.js owns them, because the same two
+    // numbers set the indicator hand's travel and the reduction train's
+    // ratio, and the three drifting apart is exactly how TODO 18 happened:
+    // the arc was widened 120° → 150° here while the gearing kept the old
+    // figure. (The hand's friction set in tick() is sweepDeg/2 off the
+    // same vertical for the same reason — both sites derive the anchor
+    // from the symmetry rule, neither from the other.) A sweep past 180°
+    // dips below the horizontal on both sides; the un-swept remainder is
+    // a gap centred on the well's 6 o'clock, which is where the caption
+    // and the maker's mark live (at the shipped 300° that gap is 60°).
+    // Major ticks every 12 hours (0/12/24), one minor per HOUR (10° each
+    // at the shipped 300°), slimmed to keep the comb fine.
     // Defaults reproduce the shipped face for a bare makeDial() call
     // (test-geometry.html) — main.js always passes them.
-    const { sweepDeg = 150, hours = 30 } = scale;
-    const angAt = (h) => 180 - (h / hours) * sweepDeg;
+    const { sweepDeg = 300, hours = 30 } = scale;
+    const angAt = (h) => 90 + sweepDeg / 2 - (h / hours) * sweepDeg;
     for (let h = 0; h <= hours; h += 1) {
       const major = h % 12 === 0;
-      tickAt(angAt(h), sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022)); // empty end anchored at 9 o'clock — the sweep sits asymmetric
+      tickAt(angAt(h), sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022));
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -4623,16 +4631,25 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     ctx.font = `500 ${sr * 0.11}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     // One figure per MAJOR tick, however many the graduation carries — a
     // 48 h scale reads 0/12/24/36/48 where the 30 h default reads 0/12/24
-    // (identical to the fixed list this generalises).
-    for (let h = 0; h <= hours; h += 12) arcLabel(String(h), angAt(h), sr * 0.64);
+    // (identical to the fixed list this generalises). Bezel convention,
+    // the seconds track's own rule: tops radially outward on the upper
+    // arc, and a figure whose centre falls below the horizontal flips
+    // tops toward the pivot so it never renders upside-down — at 300°
+    // the end figures sit 60° below the horizontal, where outward tops
+    // would invert them.
+    for (let h = 0; h <= hours; h += 12) {
+      const aDeg = angAt(h);
+      arcLabel(String(h), aDeg, sr * 0.64, Math.sin((aDeg * Math.PI) / 180) < 0);
+    }
     // No AB / AUF bookending the arc: the German pair was the Glashütte
     // marking for a Roman-figured reserve, and with the scale figured 0→24
     // in Arabic the words name what the numbers already say. The empty end
     // is where 0 is; the caption below names the complication.
     // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
-    // of the face — the region the graduation never enters and the hand
-    // never sweeps (its tip stays on the upper arc, its tail well inside
-    // this radius). Letters upright, tops toward the pivot, reading
+    // of the face, in the graduation's 6-o'clock gap — the one region the
+    // comb never enters — and inboard of nothing the hand reaches (its tip
+    // stops at 0.8·sr, inside this radius, its tail far inside it).
+    // Letters upright, tops toward the pivot, reading
     // left→right along the bottom arc; small, light-weight and near the
     // face tone so it whispers. Radius keeps the ink one type-height off
     // the wall: centre-line at sr − 1.5·typeH (outer ink at +typeH/2,
@@ -4693,9 +4710,12 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
 // subdials: [{ x, y, r, kind: 'seconds' | 'reserve' }] in dial-local units
 // (same frame the numerals use: +y = 12 o'clock, +x = 3 o'clock as authored;
 // the caller's dialFace Y-flip makes that read correctly from the front).
-// Each entry becomes a real recessed WELL: a blind pocket `subdialRecess`
-// deep, machined into the plate's front, its floor carrying the painted
-// sub-dial face and pierced by one bore for the hand's arbor. The caller adds
+// Each entry becomes a real recessed WELL: a blind pocket machined into the
+// plate's front, its floor carrying the painted sub-dial face and pierced by
+// one bore for the hand's arbor. Depth is `subdialRecess` unless the entry
+// carries its own `recess` (§153 — the reserve's barely-recessed sector
+// against the seconds' deep well), so each pocket owns its depth through
+// both the cut and the finish. The caller adds
 // its hand inside the well at the same local position. Any hour numeral whose
 // marker would land on a sub-dial is skipped automatically (computed,
 // replacing the old hard-coded VI omission).
@@ -4942,6 +4962,10 @@ export function makeDial({
   const wells = subdials.map((sd) => ({
     pocket: circleLoop(sd.x, sd.y, sd.r, SEG, 'out'),
     bore: circleLoop(sd.x, sd.y, subdialBoreR, SEG, 'out'),
+    // §153 — the recess is PER WELL: an entry's own `recess` overrides the
+    // plate-wide default. Resolved once here so the plate's cut and the
+    // finish laid on it below read the same depth by construction.
+    recess: sd.recess ?? subdialRecess,
   }));
   // Printing and plating lie ON the plate's own surfaces — the same plane, the
   // same polygon — so which one the viewer sees is decided by draw order under
@@ -5008,10 +5032,13 @@ export function makeDial({
   // pocket floors exactly as the big sheet lies on the front flat. The solid
   // is plain brass — a dial's edge and back are not silvered.
   if (thickness > 0) {
-    // Boot asserts (standing rule 6), both stating the constraint they hold:
-    const floorT = thickness - subdialRecess;
-    if (subdials.length && floorT <= 0)
-      console.warn(`dial: sub-dial pocket punches through the plate — floor ${floorT.toFixed(3)}, need > 0 (thickness ${thickness.toFixed(3)}, recess ${subdialRecess})`);
+    // Boot asserts (standing rule 6), both stating the constraint they hold
+    // (per well since §153 — each pocket carries its own depth):
+    for (const w of wells) {
+      const floorT = thickness - w.recess;
+      if (floorT <= 0)
+        console.warn(`dial: sub-dial pocket punches through the plate — floor ${floorT.toFixed(3)}, need > 0 (thickness ${thickness.toFixed(3)}, recess ${w.recess})`);
+    }
     if (thickness - 2 * edgeBreak <= 0)
       console.warn(`dial: the edge break eats the stock — rim land ${(thickness - 2 * edgeBreak).toFixed(3)}, need > 0 (thickness ${thickness.toFixed(3)}, break ${edgeBreak})`);
 
@@ -5021,7 +5048,7 @@ export function makeDial({
     const zF = 0, zB = -thickness, b = edgeBreak;
     // A sub-dial with no recess is a plain aperture, not a well — the pocket
     // walls below would be zero deep and its floor would land on the face.
-    const sunk = subdialRecess > 0;
+    // Decided per well (§153), like the depth it is the zero case of.
     // §77 — every surface named for mergeGeos' sub-body declaration: the
     // dial plate is the richest merged body outside the chain, and a name
     // per member is what lets the declared tier later ask "does the pocket
@@ -5030,17 +5057,17 @@ export function makeDial({
     const parts = [], partNames = [];
     const part = (name, g) => { parts.push(g); partNames.push(name); };
     part('front-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => w.pocket)], zF, +1));
-    part('back-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => (sunk ? w.bore : w.pocket))], zB, -1));
+    part('back-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => (w.recess > 0 ? w.bore : w.pocket))], zB, -1));
     part('front-break', plateWall(0, 0, face, zF, rim, zF - b, true));
     part('rim-land', plateWall(0, 0, rim, zF - b, rim, zB + b, true));
     part('back-break', plateWall(0, 0, rim, zB + b, face, zB, true));
     if (bore) part('centre-bore', plateWall(0, 0, bore, zF, bore, zB, false));
     subdials.forEach((sd, i) => {
-      const { pocket, bore: hole } = wells[i];
-      if (!sunk) { part(`aperture#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, zB, false)); return; }
-      part(`pocket-wall#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, -subdialRecess, false));
-      part(`pocket-floor#${i}`, plateCap(pocket, [hole], -subdialRecess, +1));
-      part(`arbor-bore#${i}`, plateWall(sd.x, sd.y, hole, -subdialRecess, hole, zB, false));
+      const { pocket, bore: hole, recess } = wells[i];
+      if (!(recess > 0)) { part(`aperture#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, zB, false)); return; }
+      part(`pocket-wall#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, -recess, false));
+      part(`pocket-floor#${i}`, plateCap(pocket, [hole], -recess, +1));
+      part(`arbor-bore#${i}`, plateWall(sd.x, sd.y, hole, -recess, hole, zB, false));
     });
     const body = new THREE.Mesh(mergeGeos(parts, partNames), MATS.brass);
     body.name = 'dialPlate';
@@ -5057,7 +5084,7 @@ export function makeDial({
   // printed and plated onto it: the painted sub-dial face on the pocket floor,
   // the matte silvering up its wall. Both are built from `wells[i]`, the same
   // loops the pocket was cut with, and carry FINISH_ORDER.
-  if (subdials.length && subdialRecess > 0) {
+  if (wells.some((w) => w.recess > 0)) {
     // Matte and darker than the dial: the wall is the SHADOWED side of a
     // recess. A polished/metallic wall catches highlights and reads as a
     // raised bezel ring from oblique angles — the opposite of sunk.
@@ -5065,6 +5092,8 @@ export function makeDial({
       color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
     });
     subdials.forEach((sd, i) => {
+      const recess = wells[i].recess;
+      if (!(recess > 0)) return;   // an un-sunk aperture carries no floor or wall to finish
       let floorMat = null;
       if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
         // Sub-dial legibility has TWO axes, and the well's radius is only
@@ -5103,7 +5132,7 @@ export function makeDial({
       const floorShape = new THREE.Shape(wells[i].pocket);
       floorShape.holes.push(new THREE.Path(wells[i].bore.slice().reverse()));
       const floorGeo = new THREE.ShapeGeometry(floorShape);
-      floorGeo.translate(0, 0, -subdialRecess);
+      floorGeo.translate(0, 0, -recess);
       const fuv = floorGeo.attributes.uv, fpos = floorGeo.attributes.position;
       for (let k = 0; k < fuv.count; k++) {
         fuv.setXY(k, (fpos.getX(k) - sd.x) / (2 * sd.r) + 0.5, (fpos.getY(k) - sd.y) / (2 * sd.r) + 0.5);
@@ -5119,9 +5148,15 @@ export function makeDial({
       g.add(floor);
 
       // The silvering up the wall — the pocket wall's own surface, so the same
-      // call with the same loops the plate cut it with.
+      // call with the same loops the plate cut it with. Named (§153) so the
+      // stock census can kind it honestly: this is a plated FILM on the
+      // machined wall (the screwSlots / alarmDiscTrack class), and its
+      // bounding-box "thickness" is the pocket's DEPTH, not a section — the
+      // deep well cleared the wheel floor by coincidence (0.19 mm ≥ 0.12),
+      // and the barely-recessed sector (0.05 mm) exposed the misclassification.
       const wall = new THREE.Mesh(
-        plateWall(sd.x, sd.y, wells[i].pocket, 0, wells[i].pocket, -subdialRecess, false), wallMat);
+        plateWall(sd.x, sd.y, wells[i].pocket, 0, wells[i].pocket, -recess, false), wallMat);
+      wall.name = `${sd.kind}SubdialWall`;
       wall.renderOrder = FINISH_ORDER;
       g.add(wall);
     });

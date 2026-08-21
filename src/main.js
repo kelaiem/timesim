@@ -9462,7 +9462,12 @@ const secondsSubR = secondsWellR;
 // The arc is a READABILITY choice (more angular travel per hour = finer
 // reading); the hours are the movement's actual reserve; the gearing is
 // DERIVED from both. Everything downstream reads these two.
-const RESERVE_SWEEP_DEG = 150;      // graduated arc, math angle 180° (empty) → 30° (full)
+const RESERVE_SWEEP_DEG = 300;      // graduated arc, symmetric about the well's vertical (§153):
+                                    // empty at math 90° + 150° (lower left), full at 90° − 150°
+                                    // (lower right) — an inverted U over the pivot, leaving a 60°
+                                    // gap centred on the well's 6 o'clock (the caption and the
+                                    // maker's mark live in it). Widened 150° → 300° (owner's
+                                    // call): 10° of hand per hour, twice the reading resolution.
 const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated to the SPEC —
                                     // = RELAX_SECONDS / 3600 by shared derivation, and
                                     // asserted against it with the ratio below
@@ -9523,12 +9528,48 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // ALARM_LOCAL survive: they still place the crown, its stem and the setting
 // arbor, which the future az-0 train taps.)
 // Sub-dials are recessed WELLS: blind pockets machined into the dial plate's
-// front (makeDial cuts them), the hands riding inside below the dial surface.
-// In dial-local coordinates the pocket floor is at −SUBDIAL_RECESS and the
-// hands on a plane DERIVED from their own section (TODO 41 — see wellHandZ
-// beside the small-seconds hand). The pocket leaves DIAL_T − SUBDIAL_RECESS
-// = 0.556 of brass behind it, which is the floor rule DIAL_T is minted under.
+// front (makeDial cuts them). The SECONDS well keeps the deep pocket: its
+// hand rides inside, below the dial surface, on a plane DERIVED from its own
+// section (TODO 41 — see wellHandZ beside the small-seconds hand). The
+// pocket floor sits at dial-local −SUBDIAL_RECESS and leaves DIAL_T −
+// SUBDIAL_RECESS = 0.556 of brass behind it, which is the floor rule DIAL_T
+// is minted under.
 const SUBDIAL_RECESS = 0.5;
+// §153 — the RESERVE sector is BARELY recessed, and "barely" is a DERIVED
+// depth, not a chosen one: the shallowest pocket that still seats its hand
+// clear of everything that sweeps the station, at the one margin. Two
+// constraints bound the hand's stack (worked at the hand build):
+//   floor:   keel ≥ pocket floor + CLEAR_MARGIN;
+//   ceiling: the §25 C rattrapante blade sweeps the whole dial at a FIXED
+//            keel height over the face — ALARM_RSV_LANE below, ≈ 0.472 —
+//            and every part of the reserve hand (the boss's top is the
+//            tallest, at plane + bossH/2) must stay CLEAR_MARGIN under it.
+//            The first cut of this redesign anchored the hand on the face
+//            plane instead and the battery caught the blade cutting through
+//            the boss (inspection FORBIDDEN on the alarm axes) — the lane,
+//            not the face, is the real ceiling.
+// Solving both at equality gives the minimum depth
+//   rMin = 2·CLEAR_MARGIN + floorDrop + bossH/2 − ALARM_RSV_LANE ≈ 0.242,
+// rounded UP on the 0.01 grid (layout.js's assembly-spend precedent); the
+// ≤ 0.01 residue rides the strictly-gated floor side, which is what keeps
+// the Dial ⇄ Power reserve floors row (min ≥ CLEAR_MARGIN over float32
+// meshes) clear of float equality with no epsilon. ≈ 0.095 mm of cut —
+// half the retired 0.5 well — and it cannot go shallower without moving
+// the alarm hand's z-stack (ALARM_HAND_Z's lane is boxed in above by the
+// §125 hour-hub assert).
+// ALARM_RSV_LANE restates two builder laws because the parts it reads are
+// built AFTER the dial consumes this constant: the alarm hand's plane
+// (ALARM_HAND_Z = 1.1 + DIAL_T, dialFace frame → 1.1 over the face) and
+// its keel drop (central hour law, (HOUR_HAND_LEN − 1.2)·widthFactor·0.35,
+// halved by the rattrapante leaf's 0.5 z-scale). Both restatements are
+// boot-asserted against the BUILT parts at their own sites (§39's
+// falsifiable-pin pattern), as are the reserve-hand section facts below.
+const ALARM_RSV_LANE = 1.1
+  - (dialRadius * G.DIAL_MARKER_INNER_F - 1.2) * aesthetics.dial.hands.hour.widthFactor * 0.35 * 0.5;
+const RSV_HAND_DROP = 0.18;               // HAND_RBASE_FLOOR — §50's sub-dial hand section (asserted at the hand build)
+const RSV_HAND_BOSS_H = 0.18 * 2 * 1.3;   // makeHand's boss law over that section (asserted with it)
+const RESERVE_RECESS = Math.ceil(
+  (2 * CLEAR_MARGIN + RSV_HAND_DROP + RSV_HAND_BOSS_H / 2 - ALARM_RSV_LANE) * 100) / 100;
 // What passes through a pocket floor — SECONDS_HUB_R / RSV_HAND_ARBOR_R /
 // SUBDIAL_BORE_R — moved to layout.js (§97), the TODO 33 hoist one bore
 // over: the wells' radius is a spec dimension whose FLOOR is this bore
@@ -9608,6 +9649,7 @@ const dial = G.makeDial({
     // separate darker instruments — the two sit symmetric about the centre,
     // so they share the same gradient tone.
     { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5',
+      recess: RESERVE_RECESS, // §153 — the barely-recessed sector, against the plate default below
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS } },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
   ],
@@ -9725,6 +9767,10 @@ smallSecondsHand.name = 'smallSecondsHand';
 // bossH/2 ≈ 0.57, a dial z-stack renegotiation this fix does not own, and
 // a hub dome over a sub-dial face is how real small hands mount anyway.
 // Both asserts warn per rule 6.
+// (§153 — the SECONDS hand is this derivation's one rider now: the reserve
+// sector went barely-recessed, too shallow for any section's band, so that
+// hand anchors instead on the ceiling its station actually has — the
+// rattrapante blade's sweep lane; see its own build.)
 const wellHandZ = (hand) => {
   const { floorDrop, topRise, bossR } = hand.userData;
   const lo = floorDrop + CLEAR_MARGIN;
@@ -9938,7 +9984,8 @@ const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       //
 const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.51
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
 // plane to mesh it; the minute pinion and hour wheel share a second plane.
-// Both stay clear of the sub-dial well floors at −SUBDIAL_RECESS.
+// Both stay clear of the sub-dial well floors (each well's own recess since
+// §153; the seconds' −SUBDIAL_RECESS is the deep one).
 //
 // TODO 21 — THE HOUR WHEEL IS DIAL-MOST, WHICH IS THE ONLY ARRANGEMENT THAT
 // EXISTS. These two planes used to be the other way up: the chain landed on
@@ -10393,13 +10440,41 @@ dialPlateFace.add(reserveGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Power reserve', reserveGroup);
 // TODO 41 — `subdial` takes the hand off the central minute width law and
 // onto §50's floor section: at this length the central law made the blade
-// 1.5·0.299 = 0.45 thick, which the 0.5 pocket cannot hold at the one
+// 1.5·0.299 = 0.45 thick, which the deep pocket could not hold at the one
 // margin — measured before the fix, the keel rode 0.0014 over the well
 // floor, with no instrument on the pair (it is EXPECTED, and had no floors
-// row). The plane is derived by the same wellHandZ as the small seconds.
-// namePrefix names the meshes so floors rows can select them (§94's rule).
+// row). namePrefix names the meshes so floors rows can select them (§94's
+// rule).
+// §153 — the hand rides mostly PROUD of its barely-recessed sector: its
+// blade stands over the dial face the way a real reserve hand stands over
+// an engraved sector, and only its keel dips into the shallow pocket. The
+// plane is CEILING-ANCHORED: the §25 C rattrapante blade sweeps the whole
+// dial at a fixed keel height over the face (ALARM_RSV_LANE ≈ 0.472, the
+// restatement asserted at the alarm hand's build), and the boss's top —
+// the hand's tallest metal, plane + bossH/2 — sits exactly CLEAR_MARGIN
+// under it. That side carries no strict gate (Alarm disc ⇄ Power reserve
+// is not an EXPECTED pair; the sweeps demand no contact and get the full
+// margin), so the equality is safe — and it pushes the 0.01-grid residue
+// (what rounding RESERVE_RECESS up added) onto the FLOOR side, where the
+// strict Dial ⇄ Power reserve floors row lives: the keel clears the sector floor
+// by CLEAR_MARGIN + residue (≈ 0.158), clear of float equality with no
+// epsilon, asserted below per rule 6. The boss dips below the face plane
+// into the pocket mouth; its below-keel column keeps TODO 41's bore
+// excuse — over the floor it holds sqrt((SUBDIAL_BORE_R − bossR)² + dz²)
+// ≥ the margin because the radial term alone is held to it (asserted, the
+// wellHandZ assert this hand's plane no longer passes through).
 const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' });
-reserveHand.position.z = wellHandZ(reserveHand);
+reserveHand.position.z = ALARM_RSV_LANE - CLEAR_MARGIN - reserveHand.userData.bossH / 2;
+{
+  const { floorDrop, bossH, bossR } = reserveHand.userData;
+  if (Math.abs(floorDrop - RSV_HAND_DROP) > 1e-9 || Math.abs(bossH - RSV_HAND_BOSS_H) > 1e-9)
+    console.warn(`§153 reserve hand: section facts drifted from the recess derivation — built drop ${floorDrop}, boss ${bossH} vs restated ${RSV_HAND_DROP}, ${RSV_HAND_BOSS_H}; re-derive RESERVE_RECESS`);
+  const keelOverFloor = reserveHand.position.z - floorDrop + RESERVE_RECESS;
+  if (keelOverFloor < CLEAR_MARGIN + 1e-9)
+    console.warn(`§153 reserve hand: keel clears the sector floor by ${keelOverFloor.toFixed(4)} — need > ${CLEAR_MARGIN} (the grid residue collapsed; deepen RESERVE_RECESS)`);
+  if (bossR + CLEAR_MARGIN > SUBDIAL_BORE_R)
+    console.warn(`§153 reserve hand: boss r ${bossR.toFixed(3)} + margin ${CLEAR_MARGIN} exceeds the pocket bore ${SUBDIAL_BORE_R.toFixed(2)} — its below-keel column no longer rides over the bore`);
+}
 reserveGroup.add(reserveHand);
 
 // ---------------------------------------------------------------------------
@@ -10408,10 +10483,11 @@ reserveGroup.add(reserveHand);
 // under-dial space (via a friction slip coupling, the standard simple-watch
 // solution: a rigid tap of the great wheel alone can't give a bounded gauge
 // that resets on winding, and a true differential is a lot of machinery).
-// From there a two-mesh reduction across three arbors (8/28 × 10/12 = 1/4.2)
+// From there a two-mesh train across three arbors (8/28 × 10/6 = 1/2.1 —
+// stage one reduces, stage two steps back UP for the wide arc)
 // walks across the gap between plate and dial and ends on an arbor COAXIAL
 // with the sub-dial pivot — the same axis the hand rides, its post passing
-// through the dial exactly like the time hands do. 150° of hand = 1.75
+// through the dial exactly like the time hands do. 300° of hand = 1.75
 // barrel turns; the ratio is derived from that pair, not chosen (see the
 // tooth counts below, and the assert beside RESERVE_BARREL_TURNS).
 // ---------------------------------------------------------------------------
@@ -10426,7 +10502,7 @@ registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 // sub-dial moves the whole reduction train's target with it.
 const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
 const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
-const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.25 clears the recessed well floor at −6.5)
+const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
 
 // TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
 // slip-coupled to the barrel arbor, so it must turn what that arbor turns
@@ -10436,13 +10512,16 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // on the far end sweeps RESERVE_SWEEP_DEG. So the reduction is fixed by
 // the two of them:
 //
-//   R = 1.75 rev × 360° ÷ 150° = 630/150 = 4.2
+//   R = 1.75 rev × 360° ÷ 300° = 630/300 = 2.1
 //
-// and R is the product of the meshes, (W1/P0) × (W2/P1) = (28/8) × (12/10)
-// = 3.5 × 1.2 = 4.2. (The pre-§124 pair was (36/8) × (20/10) = 9 for the
-// 3.75-turn arbor; TODO 18's history — the 120°-arc ratio that was never
-// re-derived at 150° — is in git, and the assert below is why THIS
-// regraduation could not land silently either.)
+// and R is the product of the meshes, (W1/P0) × (W2/P1) = (28/8) × (6/10)
+// = 3.5 × 0.6 = 2.1 — with R under stage one's own 3.5, stage two is a
+// STEP-UP (w2 smaller than the pinion driving it), which is what a 300°
+// hand off a 1.75-turn arbor costs. (The pre-§124 pair was (36/8) ×
+// (20/10) = 9 for the 3.75-turn arbor, and the 150°-arc pair was
+// (28/8) × (12/10) = 4.2; TODO 18's history — the 120°-arc ratio that was
+// never re-derived at 150° — is in git, and the assert below is why
+// neither THAT regraduation nor this 300° one could land silently.)
 //
 // Only the tooth COUNTS moved: rsvModule1 is solved from the span (below),
 // so w2 keeps the sub-dial pivot and the centre distance is untouched.
@@ -10452,13 +10531,13 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // §22: the second-stage wheel is DERIVED from the reserve, for every spec
 // rather than only the default. The chain of constraint: p0 turns
 // RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
-// RESERVE_SWEEP_DEG (150°), so R = (7h/120)·360/150 = 0.14·h; stage one
-// is 28/8 = 3.5, so stage two must be R/3.5 = 0.04·h = h/25, and with
-// p1 = 10 that is w2 = 2h/5 — integer while the spec keeps h a multiple
+// RESERVE_SWEEP_DEG (300°), so R = (7h/120)·360/300 = 0.07·h; stage one
+// is 28/8 = 3.5, so stage two must be R/3.5 = 0.02·h = h/50, and with
+// p1 = 10 that is w2 = h/5 — integer while the spec keeps h a multiple
 // of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
-// does not). At the 30 h default: w2 = 12.
+// does not). At the 30 h default: w2 = 6.
 const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
-const rsvTeethW2 = (2 * SPEC.reserveHours) / 5;
+const rsvTeethW2 = SPEC.reserveHours / 5;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
@@ -10620,8 +10699,10 @@ reservePinion1.position.z = -RSV_Z_STEP;
 // TODO 48 — w1 and p1 are ONE PART: turned from one blank, their relative
 // phase is a constraint, not a freedom. The pair group is the structural
 // form of that constraint: the stage-one phase solve turns the PAIR
-// (solveGearChain aligns rsvPair1, whose silhouette the bigger w1 owns),
-// and p1 rides — stage two then reads p1's phase and aligns w2 to it.
+// (solveGearChain aligns rsvPair1, gauged by w1's own mesh since §153 —
+// the 300° step-up made p1 the pair's larger member, so the combined
+// silhouette stopped being w1's), and p1 rides — stage two then reads
+// p1's phase and aligns w2 to it.
 // (TODO 15 flagged the same question for the alarm's i1/i1b and never
 // answered it; here the two wheels are unambiguously one part, so this is
 // where it is answered.)
@@ -10630,9 +10711,11 @@ rsvPair1.add(rsvWheel1, reservePinion1);
 rsvArbor1.add(rsvPair1);
 reserveTrain.add(rsvArbor1);
 // Post spans from 1 above w1's plane to 0.6 past p1's — NOT the symmetric
-// +2 it used to be: w1 sits inside the recessed reserve well's footprint,
-// and the longer post's dial-ward end poked through the well floor
-// (Z_DIAL + SUBDIAL_RECESS) as a visible stub on the sub-dial face.
+// +2 it used to be: w1 sits inside the reserve well's footprint, and the
+// longer post's dial-ward end poked through the (then-protruding) well
+// floor as a visible stub on the sub-dial face. The floor lives inside the
+// plate now (TODO 26; RESERVE_RECESS deep since §153), but the short post
+// is still the honest span — nothing above w1's mesh needs metal.
 const rsvPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, RSV_Z_STEP + 1.6, 10), MATS.steel);
 rsvPost1.rotation.x = Math.PI / 2;
 rsvPost1.position.set(rsvW1Pos.x, rsvW1Pos.y, Z_RSV + 1 - (RSV_Z_STEP + 1.6) / 2);
@@ -10642,8 +10725,15 @@ const rsvArbor2 = new THREE.Group(); // w2 — the output, coaxial with the sub-
 rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
-// Indicator arbor: from w2 through the dial to the hand's pivot boss in front.
-const rsvHandZ = Z_DIAL + SUBDIAL_RECESS - 0.2 - DIAL_T; // through the well floor's bore, just behind the hand — TODO 26: the bore moved forward with the plate, so this arbor lengthens
+// Indicator arbor: from w2 through the dial to the hand's pivot boss.
+// §153 — the arbor runs through the sector floor's bore into the shallow
+// pocket's mouth and stops 0.2 short of the hand's plane (just inside the
+// face plane): the boss's bossH/2 = 0.234 dip swallows the last 0.034 of
+// it, the friction joint the floors rows declare (reserveBoss ⇄
+// rsvHandArbor). World z off the hand's own derived plane — the dialFace
+// Y-flip negates a local z on the way to world, so the plane sits the
+// hand's lift beyond the visible face at Z_DIAL − DIAL_T.
+const rsvHandZ = (Z_DIAL - DIAL_T - reserveHand.position.z) + 0.2;
 const rsvHandArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(RSV_HAND_ARBOR_R, RSV_HAND_ARBOR_R, (Z_RSV - RSV_Z_STEP) - rsvHandZ, 10), MATS.steel);
 rsvHandArbor.name = 'rsvHandArbor'; // §94 tier C — the floors rows select it by name
@@ -11668,7 +11758,7 @@ const ALARM_SET_WALLS = [
   { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
   { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: reserveWellR, halfW: DIAL_WALL_HALF,
-    lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
+    lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + RESERVE_RECESS }, // §153 — this well's own shallow depth
   { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
@@ -11983,16 +12073,20 @@ const meshPhaseTarget = (pC, pPhase, pN, qC, qN) => {
 // equivalent tooth. The response of `rotation.z` is MEASURED, not assumed:
 // under a mirroring parent a positive local turn moves the teeth the other
 // way, and that sign is exactly what the dialFace flip changes.
-const alignGear = (mesh, target, N) => {
+// `gauge` (§153) — the object whose silhouette is READ, defaulting to the one
+// being turned: a rigid pair whose smaller member no longer owns the outline
+// (the 300° re-gear made the reserve p1 outgrow its w1) aligns by its named
+// wheel's own mesh while the whole pair turns as the knob.
+const alignGear = (mesh, target, N, gauge = mesh) => {
   const pitch = (Math.PI * 2) / N;
   const before = mesh.rotation.z;
-  const cur = measuredToothPhase(mesh, N).phase;
+  const cur = measuredToothPhase(gauge, N).phase;
   // The bump must clear the gauge's own resolution: the silhouette is binned
   // at 2π/2048 ≈ 3.1e-3 rad, so the 1e-3 bump this used before was UNDER the
   // quantisation and the measured slope was noise. 0.02 rad is a sixth of the
   // finest pitch here and forty times the bin width.
   mesh.rotation.z = before + 0.02;
-  let d = measuredToothPhase(mesh, N).phase - cur;
+  let d = measuredToothPhase(gauge, N).phase - cur;
   mesh.rotation.z = before;
   while (d > Math.PI / N) d -= (Math.PI * 2) / N;   // phase lives modulo a pitch
   while (d < -Math.PI / N) d += (Math.PI * 2) / N;
@@ -12033,8 +12127,9 @@ const solveGearChain = (label, chain, module) => {
   // silent, so a skipped chain is itself a finding.
   for (const g of chain) {
     if (!g.obj) { console.warn(`TODO 15: ${label} — no handle for the ${g.name}; chain solve skipped`); return; }
+    g.gauge = g.gauge || g.obj;   // §153 — see alignGear: read this, turn obj
     g.c = worldCentreOf(g.obj);
-    const m = measuredToothPhase(g.obj, g.teeth);
+    const m = measuredToothPhase(g.gauge, g.teeth);
     if (m.gaps !== g.teeth || m.conf < 0.9) {
       console.warn(`TODO 15: ${label} the ${g.name} gauge is not credible `
         + `(found ${m.gaps} gaps for ${g.teeth} teeth, confidence ${m.conf.toFixed(3)}) — chain solve skipped`);
@@ -12064,9 +12159,9 @@ const solveGearChain = (label, chain, module) => {
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const uP = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const uP = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
     const uQ = _frac(0.5 - uP);
-    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth);
+    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth, Q.gauge);
   }
   // The residual tolerance is set by the INSTRUMENT, not by hope: gap centres
   // are quantised to 2π/2048, averaged over N gaps — comfortably inside 2% of
@@ -12074,8 +12169,8 @@ const solveGearChain = (label, chain, module) => {
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const a = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
-    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.obj, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
+    const a = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.gauge, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
     const off = Math.min(_frac(a + b - 0.5), 1 - _frac(a + b - 0.5));   // SUM: see above
     if (off > 0.02)
       console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
@@ -12102,15 +12197,18 @@ const solveGearChain = (label, chain, module) => {
   // rigid pair held, exactly as the item scoped, never one run with a
   // false centre-distance tripwire:
   //  · stage one, module rsvModule0: p0 is the datum (slip-coupled to the
-  //    barrel arbor, no upstream mesh); the PAIR aligns — its silhouette
-  //    is owned by the bigger w1, and turning rsvPair1 carries p1;
+  //    barrel arbor, no upstream mesh); the PAIR aligns as one knob and
+  //    turning rsvPair1 carries p1 — GAUGED by w1's own mesh since §153:
+  //    the 300° re-gear made stage two a step-up, so p1's outline outgrew
+  //    w1's and the pair's combined silhouette stopped having one owner
+  //    (the gauge read p1's 10 gaps against w1's declared 28 and refused);
   //  · stage two, the solved rsvModule1: p1's phase is READ (it was fixed
   //    by stage one) and w2 aligns to it on its own rotation.
   // The arbors' tick() rotations are proper mesh counter-rotations, so the
   // SUM invariant these solves establish rides every pose.
   solveGearChain('reserve stage one:', [
     { obj: reservePinion0, teeth: rsvTeethP0, name: 'p0' },
-    { obj: rsvPair1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
+    { obj: rsvPair1, gauge: rsvWheel1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
   ], rsvModule0);
   solveGearChain('reserve stage two:', [
     { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
@@ -12503,6 +12601,18 @@ alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
 alarmTubeGroup.add(alarmHand);
+// §153 — the reserve sector's depth and its hand's plane are derived from
+// THIS blade's keel height over the dial face (ALARM_RSV_LANE), restated up
+// at the recess block because this hand is built long after the dial
+// consumed it. Hold the restatement to the built part (§39's falsifiable
+// pin): the blade's keel sits at ALARM_HAND_Z − floorDrop·scale over the
+// dialFace origin, and the face is DIAL_T further out.
+{
+  const builtLane = ALARM_HAND_Z - DIAL_T - alarmHand.userData.floorDrop * alarmHand.scale.z;
+  if (Math.abs(builtLane - ALARM_RSV_LANE) > 1e-9)
+    console.warn(`§153 lane restatement drifted: built alarm-blade keel ${builtLane.toFixed(4)} over the face `
+      + `vs ALARM_RSV_LANE ${ALARM_RSV_LANE.toFixed(4)} — re-derive RESERVE_RECESS and the reserve hand's plane from the built value`);
+}
 // §125 — the FREE LANE between this blade and the hour hand's hub, asserted
 // from the two hands' own sections (TODO 41's userData exports) because both
 // GROW with their lengths: the hub reaches bossH/2 below the hour plane and
@@ -28448,26 +28558,30 @@ function tick(t) {
   // shape). Forward: p0 is slip-coupled to the barrel arbor, whose wind
   // state is tension·FUSEE_WRAP_TURNS turns; the constant term is the
   // friction coupling's SET — where assembly slipped the pinion on its
-  // arbor so the hand reads the empty end at 9 o'clock (mathematically
-  // −90°·ratio, the same 90° the well's graduation starts at; setting an
-  // indicator by slipping its friction is exactly how a real reserve is
-  // zeroed). Each mesh then counter-rotates by its real tooth ratio and
+  // arbor so the hand reads the empty end of §153's symmetric arc, half
+  // the sweep left of the well's vertical (mathematically
+  // −(RESERVE_SWEEP_DEG/2)·ratio — the same half-sweep the graduation
+  // hangs off 90° in paintSubdialFace, both sites deriving the anchor
+  // from the one symmetry rule; setting an indicator by slipping its
+  // friction is exactly how a real reserve is zeroed). Each mesh then
+  // counter-rotates by its real tooth ratio and
   // the hand ARRIVES at the far end — the dialFace Y-flip mirrors rotation
   // sense, so the hand takes the NEGATED w2 angle to co-rotate with it as
   // seen from the front. (RESERVE_SWEEP_DEG·ratio = FUSEE_WRAP_TURNS·360
   // by TODO 18's shared derivation, so the hand still sweeps exactly the
-  // graduated arc; the angles are the old ones, arrived at forwards.)
+  // graduated arc, whichever anchor the arc hangs from.)
   reserveShown = tension;
   const rsvRatio = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);
-  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 - 90 * rsvRatio) * DEG2RAD;
+  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 - (RESERVE_SWEEP_DEG / 2) * rsvRatio) * DEG2RAD;
   rsvArbor1.rotation.z = -rsvArbor0.rotation.z * (rsvTeethP0 / rsvTeethW1);
   rsvArbor2.rotation.z = -rsvArbor1.rotation.z * (rsvTeethP1 / rsvTeethW2);
   reserveHand.rotation.z = -rsvArbor2.rotation.z;
 
   // Alarm setting (BUILT §24): the pointer reads the continuous disc angle on
   // the 12 h ring. It rides the Y-flipped dialFace, so rotation.z = −(disc
-  // angle) lands it on the ring's hour (the same +90°-zero convention as the
-  // reserve hand — see makeDial's alarm face). The movement-side rotor takes
+  // angle) lands it on the ring's hour (rotation 0 points the well's
+  // vertical — the frame the reserve hand shares, its §153 set measured off
+  // the same vertical; see makeDial's alarm face). The movement-side rotor takes
   // the NEGATED angle to co-rotate as seen from the front (same flip as the
   // reserve arbor), carrying the mating bevel; the crown/stem turn with it 1:1.
   // Friction-set — everything moves together, continuously, in lockstep.
