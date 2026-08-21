@@ -1,4 +1,4 @@
-// §152 probe — symmetric reserve arc + barely-recessed sector, boot-level.
+// §153 probe — symmetric reserve arc + barely-recessed sector, boot-level.
 // Boots the sim headless, verifies boot silence, then measures the redesign's
 // claims directly off the built scene:
 //   1. the reserve hand's math angle at tension 0 / 0.5 / 1 lands on

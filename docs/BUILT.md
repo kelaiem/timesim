@@ -14809,7 +14809,7 @@ at three tensions across two rebuilds, and fails if a rebuild ever serves a
 stale declaration. Fingerprint bit-identical across the whole landing
 (`3757164117`) — the declarations move no geometry bytes — and boot silent.
 
-## §152 — the reserve reads as a sector: a symmetric inverted-U arc, a barely-recessed well, and a hand that rides proud
+## §153 — the reserve reads as a sector: a symmetric inverted-U arc, a barely-recessed well, and a hand that rides proud
 
 Owner's redesign of the power-reserve indicator's face. Two claims, both
 of them position-space and neither touching the drive path (the TODO 48
@@ -14903,8 +14903,8 @@ not. The walls are named now (`reserveSubdialWall` /
 `secondsSubdialWall`) and kinded `marking` beside `screwSlots` and
 `alarmDiscTrack`, which is what the film is.
 
-`tools/probe-152-boot.mjs` measures the redesign off a boot (anchor
+`tools/probe-153-boot.mjs` measures the redesign off a boot (anchor
 angles at three tensions, hand/floor/arbor world planes, boot
-silence); `tools/probe-152-shot.mjs` renders the face and the oblique
+silence); `tools/probe-153-shot.mjs` renders the face and the oblique
 profile. The schematic tier's sub-dial bezel ring quotes
 `reserveHand.position.z` live, so it moved with the hand for free.

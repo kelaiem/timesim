@@ -4898,7 +4898,7 @@ and the hour/alarm planes are z-stack quantities datumed against
 class; their pairs have no wells to scrape and their crossing envelope is
 bounded where the rod widths are set (`makeHand`'s crossing note).
 
-*(§152 postscript: the RESERVE half of this item's fix moved on. The
+*(§153 postscript: the RESERVE half of this item's fix moved on. The
 reserve sector went barely-recessed — `RESERVE_RECESS` = 0.25, under
 this item's own 0.42 section bound — so its hand left `wellHandZ`'s
 band: it rides mostly proud of the dial face, its plane

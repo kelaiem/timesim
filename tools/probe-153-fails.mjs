@@ -1,8 +1,8 @@
-// §152 — re-run the battery's three failing gates alone and dump their
+// §153 — re-run the battery's three failing gates alone and dump their
 // failing rows (the landing run's payload dump was lost to a tail pipe).
 // Same drive as ci-battery.mjs: dev server with a private TMPDIR, headless
 // Chromium with throttling off, sweep hold for the run, start()/status().
-// Usage: node probe-152-fails.mjs [checkName ...]  (default: the three)
+// Usage: node probe-153-fails.mjs [checkName ...]  (default: the three)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
@@ -24,8 +24,8 @@ const FAILS = {
   expectedContacts: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
   inspection: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
 };
-const port = Number(process.env.P152_PORT || 8531);
-const stateDir = mkdtempSync(join(tmpdir(), 'timesim-p152-'));
+const port = Number(process.env.P153_PORT || 8531);
+const stateDir = mkdtempSync(join(tmpdir(), 'timesim-p153-'));
 const srv = spawn('python3', [join(ROOT, 'dev_server.py'), String(port)],
   { cwd: ROOT, env: { ...process.env, TMPDIR: stateDir }, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1500));

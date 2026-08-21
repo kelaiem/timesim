@@ -1,4 +1,4 @@
-// §152 probe — screenshots of the redesigned reserve sector: dial-on view at
+// §153 probe — screenshots of the redesigned reserve sector: dial-on view at
 // three tensions, plus an oblique close-up so the shallow recess and the
 // proud hand are visible in profile. The canvas is read back with
 // toDataURL IN the same evaluate as the scripted camera write + render, so

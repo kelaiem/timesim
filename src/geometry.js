@@ -4594,7 +4594,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     ctx.restore();
   };
   if (kind === 'reserve') {
-    // Graduated arc, SYMMETRIC about the well's vertical (§152): empty at
+    // Graduated arc, SYMMETRIC about the well's vertical (§153): empty at
     // math angle 90° + sweepDeg/2 (upper left), full at 90° − sweepDeg/2
     // (upper right) — an inverted U over the pivot. The ANCHOR is the one
     // symmetry rule, so only the half-sweep appears; the sweep and hours
@@ -4713,7 +4713,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
 // Each entry becomes a real recessed WELL: a blind pocket machined into the
 // plate's front, its floor carrying the painted sub-dial face and pierced by
 // one bore for the hand's arbor. Depth is `subdialRecess` unless the entry
-// carries its own `recess` (§152 — the reserve's barely-recessed sector
+// carries its own `recess` (§153 — the reserve's barely-recessed sector
 // against the seconds' deep well), so each pocket owns its depth through
 // both the cut and the finish. The caller adds
 // its hand inside the well at the same local position. Any hour numeral whose
@@ -4962,7 +4962,7 @@ export function makeDial({
   const wells = subdials.map((sd) => ({
     pocket: circleLoop(sd.x, sd.y, sd.r, SEG, 'out'),
     bore: circleLoop(sd.x, sd.y, subdialBoreR, SEG, 'out'),
-    // §152 — the recess is PER WELL: an entry's own `recess` overrides the
+    // §153 — the recess is PER WELL: an entry's own `recess` overrides the
     // plate-wide default. Resolved once here so the plate's cut and the
     // finish laid on it below read the same depth by construction.
     recess: sd.recess ?? subdialRecess,
@@ -5033,7 +5033,7 @@ export function makeDial({
   // is plain brass — a dial's edge and back are not silvered.
   if (thickness > 0) {
     // Boot asserts (standing rule 6), both stating the constraint they hold
-    // (per well since §152 — each pocket carries its own depth):
+    // (per well since §153 — each pocket carries its own depth):
     for (const w of wells) {
       const floorT = thickness - w.recess;
       if (floorT <= 0)
@@ -5048,7 +5048,7 @@ export function makeDial({
     const zF = 0, zB = -thickness, b = edgeBreak;
     // A sub-dial with no recess is a plain aperture, not a well — the pocket
     // walls below would be zero deep and its floor would land on the face.
-    // Decided per well (§152), like the depth it is the zero case of.
+    // Decided per well (§153), like the depth it is the zero case of.
     // §77 — every surface named for mergeGeos' sub-body declaration: the
     // dial plate is the richest merged body outside the chain, and a name
     // per member is what lets the declared tier later ask "does the pocket
@@ -5148,7 +5148,7 @@ export function makeDial({
       g.add(floor);
 
       // The silvering up the wall — the pocket wall's own surface, so the same
-      // call with the same loops the plate cut it with. Named (§152) so the
+      // call with the same loops the plate cut it with. Named (§153) so the
       // stock census can kind it honestly: this is a plated FILM on the
       // machined wall (the screwSlots / alarmDiscTrack class), and its
       // bounding-box "thickness" is the pocket's DEPTH, not a section — the
