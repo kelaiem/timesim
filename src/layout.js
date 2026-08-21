@@ -793,8 +793,222 @@ export const SL_C = 10;        // setting-lever pivot's lateral offset from the 
 // note lives at its consumption in solveKeyless below.
 export const KW_WIND_IDLER_TEETH = 18;
 export const SL_TAIL = 6;      // lever tail arm length (pivot → post)
-export const GROOVE_LOCAL = 4; // stem groove collars sit this far outboard of the sliding pinion
+// (GROOVE_LOCAL — the stem's setting-lever groove station — moved below
+// the TODO 50 clutch constants: since the split it DERIVES from the
+// clutch spine's outboard reach.)
 export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of the stem
+
+// ---------------------------------------------------------------------------
+// The stem's ONE-WAY (TODO 50 / BUILT §149) — a Breguet-style saw FACE coupling between
+// the fixed winding pinion and the sliding clutch, the joint every real
+// keyless works puts there. The spec solver and its two laws live HERE, at
+// the bottom of the module graph, because three consumers need the one
+// arithmetic: geometry.js cuts the rings from it, main.js's tick rides it,
+// and this module's own keyless solve needs the tooth height to place the
+// clutch's stroke (swDist and the yoke's tracked band both shift by the
+// clutch's home offset). Movement-independent on purpose — the alarm stem
+// states the same debt and is this code's second customer when its turn
+// comes.
+//
+// Every quantity is derived (rule 1):
+//   · tan α = rampOverFriction · μ — at the friction cone's edge camming
+//     and jamming are the same event, so the ramp stands at twice it and
+//     a backward crown CAMS the clutch out decisively instead of wedging.
+//   · toothH = tan α · (pitch arc at rMean) · rampFrac — the rise the ramp
+//     makes across its own arc; height is a consequence of the angle.
+//   · valleyFrac > tipFrac ON PURPOSE: the (valleyFrac − tipFrac) pitch
+//     fraction is the coupling's BACKLASH — under drive the faces bear
+//     while the ramps hold daylight, so the only coplanar working contact
+//     is the declared one (the coplanar-solids case the proximity
+//     instruments misread).
+// ---------------------------------------------------------------------------
+export function sawCouplingSpec({ rOut, rIn, teeth, rampOverFriction = 2, mu = 0.2,
+                                  tipFrac = 0.15, valleyFrac = 0.30 }) {
+  const rMean = (rOut + rIn) / 2;
+  const pitch = (Math.PI * 2) / teeth;          // rad of relative angle per tooth
+  const rampFrac = 1 - tipFrac - valleyFrac;    // the ramp takes what the flats leave
+  const tanAlpha = rampOverFriction * mu;
+  const toothH = tanAlpha * (pitch * rMean) * rampFrac;
+  const backlashFrac = valleyFrac - tipFrac;    // free play, as a fraction of a pitch
+  return { rOut, rIn, rMean, teeth, pitch, tipFrac, valleyFrac, rampFrac,
+           tanAlpha, toothH, backlashFrac };
+}
+
+// Tooth-top height above the ring's base plane at local pitch fraction
+// v ∈ [0,1): valley flat → ramp → tip flat, the drive face being the step
+// back to the valley at v = 1⁻. The LOCAL +v direction is the direction the
+// profile climbs; which world sense that is belongs to the consumer's
+// mounting, not to this law.
+export function sawProfileAt(spec, v) {
+  const u = ((v % 1) + 1) % 1;
+  if (u < spec.valleyFrac) return 0;
+  if (u < spec.valleyFrac + spec.rampFrac)
+    return spec.toothH * ((u - spec.valleyFrac) / spec.rampFrac);
+  return spec.toothH;
+}
+
+// The coupling's one-sided ride law: the smallest axial LIFT (extra
+// separation above the seated gap) that lets the two rings coexist at
+// relative angle delta (rad) from the seated index. Solved by sampling the
+// two profiles against each other — the same law the meshes are cut from,
+// so this is the §99 "smallest lift that clears" answered from the source
+// profile rather than from a re-implementation. Seated (delta inside the
+// backlash) the lift is 0; camming (delta climbing the ramps) it rises to
+// toothH and snaps at the next pitch.
+export function sawCouplingLiftAt(spec, delta) {
+  const P = spec.pitch;
+  const d = (((delta % P) + P) % P) / P;        // relative shift, pitch fractions
+  const S = 96;                                 // samples per pitch — the profile is piecewise linear, this over-resolves every knee
+  let need = 0;
+  for (let i = 0; i < S; i++) {
+    const v = i / S;
+    // ring A's tooth top at v, facing ring B's top at (v − d) mirrored: the
+    // facing ring runs its profile in the OPPOSITE local sense (it was
+    // flipped to face us), so its height at shared azimuth v is prof(d − v).
+    const sum = sawProfileAt(spec, v) + sawProfileAt(spec, d - v);
+    if (sum > need) need = sum;
+  }
+  return Math.max(0, need - spec.toothH);       // seated interference is exactly toothH (tip in valley)
+}
+
+// The going stem's instance of the coupling, as DIMENSIONS (the alarm's,
+// when built, declares its own):
+//   · SAW_TEETH = windPinionTeeth — one saw tooth per leaf, the classic
+//     cut: the coupling's pitch equals the pinion's leaf pitch, so the
+//     assembly clocking is leaf-aligned, and the knob's lost motion after
+//     a reversal is one leaf (2π/8 = 45° at the knob — the crown is direct
+//     on the stem, nothing gears the feel).
+//   · ring radii: rOut = the pinion's PITCH radius (the coupling is cut on
+//     the pinion's own hub face, inside the silhouette the stem already
+//     sweeps — no new radius near the crown-wheel mesh); rIn = the stem
+//     plus a §50 pivot-floor wall.
+//   · STEM_CLUTCH_OFF — the clutch rim's home offset outboard of the
+//     pinion's centre: half the pinion, the two ring bases, the seated
+//     tooth interleave (one toothH), half the rim. The keyless solve adds
+//     it to the setting-wheel station and the yoke's tracked band, which
+//     is the whole P3 cost of the split, paid in position space.
+export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds to this)
+export const WIND_PINION_T = 1.6;     // the fixed winding pinion's thickness
+export const CLUTCH_RIM_T = 1.1;      // the clutch's setting rim — crownWheel's own class
+export const STEM_SAW_SPEC = sawCouplingSpec({
+  rOut: (KW_MODULE * windPinionTeeth) / 2,
+  rIn: STEM_R + PIVOT_MIN_U,
+  teeth: windPinionTeeth,
+});
+export const SAW_BASE_T = STOCK_MIN_U; // each ring's base — the §50 wheel floor
+// The clutch's ring is cut radially INSET by the movement's running fit
+// (0.05 — the winding idlers' 0.5 bore on a 0.45 stud, the fit genevaSpec
+// already cites): identical radii would put both rings' walls on ONE
+// cylinder through the interleaved band, which every proximity instrument
+// misreads as burial. The profile is shared; only the skirts differ.
+export const SAW_FIT = 0.05;
+// Each ring's base SINKS one SAW_FIT into its carrier's face (pinion face,
+// rim inboard face) — the same 0.05 quantum, spent as enclosed metal instead
+// of a running gap, so neither joint is a coincident-cap knife edge (the
+// coplanar case the proximity instruments cannot arbitrate; TODO 53's
+// windTop weld is the precedent). The seated stack must SUBTRACT both
+// sinks or the working faces stand 2×SAW_FIT apart at slip 0 — the first
+// cut did exactly that, and the handoff tier read the backlash and camming
+// poses 0.05–0.09 open against the ride law.
+// (STEM_CLUTCH_OFF itself moved below the fork-band constants it now
+// stacks over — the RIM leads the clutch and the fork band sits INBOARD
+// of it, so the pinion→rim distance includes that band.)
+// The clutch spine's radius — over its deepest bore (the saw ring's
+// rIn + SAW_FIT = 0.685) by a real radial weld; every other bore on the
+// body (rim, collars) is cut over it. main.js builds the pipe to this.
+export const CLUTCH_SLEEVE_R = 0.75;
+export const YOKE_PRONG_R = 0.4;      // the fork's prong post (makeYoke cuts to this)
+// The yoke arm's DERIVED reach. The prong is a vertical post crossing
+// the stem's plane, so it must never stand on the stem line — the old
+// hypot(YK_C, stroke/2) reach put it exactly there at both stroke ends
+// (that is the right arm for a pin-in-slot yoke, and this fork is not
+// one). Instead the arm falls short of the line so the prong hugs a
+// PARALLEL of the stem: closest at mid-stroke, where the margin against
+// the spine must hold: YK_C − arm = spineR + prongR + CLEAR_MARGIN. The
+// ends stand a shade farther out (the √ of the swing) — still inside the
+// collar's face band, asserted at the yoke's build.
+export const YOKE_ARM = YK_C - (CLUTCH_SLEEVE_R + YOKE_PRONG_R + CLEAR_MARGIN);
+// THE RIM LEADS, THE FORK TRAILS. The setting wheel is a disc centred on
+// the stem line (the stem threads its bore), so at full pull — when the
+// rim must come within a fraction of a unit of the wheel's tooth circle
+// to mesh — ANY clutch metal trailing the rim outboard stands inside the
+// wheel's slab. Measured: an outboard fork band collided from ~0.37 pull
+// on. So the clutch is arranged the way a real sliding pinion is turned:
+// the gear at the OUTBOARD end, the fork's neck behind it, the saw
+// coupling at the inboard end. Stations are clutch-local about the RIM's
+// centre (+ = outboard, toward the crown):
+//   · YOKE_FORK_OUT — the collar nearer the rim, lapping its INBOARD
+//     face by a SAW_FIT weld (no coincident caps);
+//   · groove width = prong diameter + the SAW_FIT running play per
+//     flank; YOKE_FORK_IN flanks its other side;
+//   · the fork TRACKS the groove's mid — YOKE_TRACK_OFF (negative:
+//     behind the rim) — so the angle law aims there, not at the centre;
+//   · the male saw ring's base sinks a SAW_FIT weld into the inboard
+//     collar's face; SAW_RING_ROOT is its root plane, where the female
+//     tips land at full seat.
+export const HUB_COLLAR_T = 0.4;
+// The rim's extrude bevel grows its faces outward — geometry.js's
+// gearBevel(module, thickness), mirrored here because layout sits below
+// geometry in the module graph. The battery holds the mirror true: a
+// drifted copy shows up as the very clearance failure this bound closes.
+export const KW_GEAR_BEVEL = Math.min(CLUTCH_RIM_T * 0.18, KW_MODULE * 0.22);
+// makeYoke's tip pad half-width (0.6 at prongGap 0) plus its own bevel
+// growth (thickness 1 × 0.12) — the arm metal nearest the rim.
+export const YOKE_TIP_HALF = 0.6 + 0.12;
+// The collar nearer the rim: bounded by BOTH walls, whichever is deeper —
+// lapping the rim's inboard face by a SAW_FIT weld, AND far enough in
+// that the ARM'S TIP (which rides YOKE_TRACK_OFF with the prong) keeps
+// CLEAR_MARGIN to the rim's beveled inboard face; the rim's disc dips
+// 1.7+ below the stem, straight through the arm's z-band, so the along
+// gap is the only separation that pair has. Measured before this bound:
+// 0.109 against the 0.15 floor.
+export const YOKE_FORK_OUT = Math.min(
+  -(CLUTCH_RIM_T / 2 + HUB_COLLAR_T / 2 - SAW_FIT),
+  -(CLUTCH_RIM_T / 2 + KW_GEAR_BEVEL + CLEAR_MARGIN + YOKE_TIP_HALF)
+    + (HUB_COLLAR_T / 2 + YOKE_PRONG_R + SAW_FIT));
+export const YOKE_FORK_IN = YOKE_FORK_OUT - (HUB_COLLAR_T + 2 * (YOKE_PRONG_R + SAW_FIT));
+export const YOKE_TRACK_OFF = (YOKE_FORK_IN + YOKE_FORK_OUT) / 2;
+export const SAW_RING_ROOT = YOKE_FORK_IN - HUB_COLLAR_T / 2 + SAW_FIT - SAW_BASE_T;
+// The pinion→RIM distance at full seat: the pinion's half plus its ring's
+// sunk base and tooth height reach the female tips' plane, and the male
+// root plane (SAW_RING_ROOT, clutch-local) must land exactly there.
+export const STEM_CLUTCH_OFF =
+  (WIND_PINION_T / 2 - SAW_FIT + SAW_BASE_T + STEM_SAW_SPEC.toothH) - SAW_RING_ROOT;
+// The clutch's OWN throw — derived so the pulled clutch lands EXACTLY on
+// the station the old dual-purpose pinion proved: clutchHome +
+// CLUTCH_TRAVEL = pinDist + CROWN_PULL_DIST. The setting wheel, the
+// minute fold, the plate radius and every dial station derived from it
+// therefore DO NOT MOVE — the split's whole footprint is absorbed inside
+// the stroke the stem already had. (A first cut let swDist grow by the
+// clutch offset instead, and the §125 dial assert refused it: the plate
+// grew 2.16 and D4 fell off its two-bounds-meet optimum.) The floor it
+// must keep: pulled clear of the coupling by more than the seated
+// interleave — asserted at the build (toothH + margin, against a ~1.3
+// travel).
+export const CLUTCH_TRAVEL = CROWN_PULL_DIST - STEM_CLUTCH_OFF;
+// The tick parks the clutch a hairline off the analytic seat (coincident
+// planes are the case the BVH instruments cannot arbitrate — the tick's
+// comment has the full §99 story); every reach derivation below budgets
+// it, because the DISPLAYED metal stands this much farther out than the
+// closed-form stack.
+export const SEAT_RELIEF = 0.005;
+// The stem's setting-lever GROOVE, outboard of everything the clutch can
+// reach: at home plus cam-over lift plus the seat relief, the RIM's
+// BEVELED outboard face — the clutch's leading edge — stands at
+// STEM_CLUTCH_OFF + toothH + SEAT_RELIEF + rim/2 + bevel (stem-local),
+// and the groove's inboard collar face must clear that by the margin
+// (the first cut omitted the bevel and the relief, and the instrument
+// read back exactly their sum). Was a free 4 before TODO 50's split —
+// the compact sliding pinion never reached it; the full clutch body does.
+export const GROOVE_COLLAR_T = 0.5;  // each groove collar's thickness (main.js builds to these)
+export const GROOVE_HALF = 0.95;     // collar stations sit ± this about the groove's centre
+// …plus one SAW_FIT of spare: the reach expression lands the gap EXACTLY
+// on the margin, and a boundary held by float summation over an
+// irrational tooth height loses to epsilon (measured: 0.1500 flagged) —
+// the movement's fit quantum is the machining spare, as on the rim bore.
+export const GROOVE_LOCAL = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF
+  + CLUTCH_RIM_T / 2 + KW_GEAR_BEVEL
+  + GROOVE_COLLAR_T / 2 + GROOVE_HALF + CLEAR_MARGIN + SAW_FIT;
 
 // ---------------------------------------------------------------------------
 // solveKeyless (§13 step 3b) — the P-dependent XY FRAME as a pure function:
@@ -848,10 +1062,13 @@ export function solveKeyless({
   const settingWheelR = (KW_MODULE * settingWheelTeeth) / 2;
   const minuteWheelR = (KW_MODULE * minuteWheelTeeth) / 2;
   // The transfer wheel drives a plain 24-tooth WINDING SPUR on the fusee
-  // arbor (the saw-toothed ratchet lives on the plate top now, serving only
-  // the click). Same tooth count as the ratchet keeps the crown→fusee ratio;
-  // equal module makes the mesh honest — the old layout gear-meshed the
-  // ratchet's saw teeth at an effective module of 0.408 against KW_MODULE.
+  // arbor. (The saw-toothed ratchet the spur replaced is GONE, not moved:
+  // a fixed pawl on this bidirectional arbor was a display fiction — see
+  // main.js's windTop block. TODO 50 files where the real one-way lives.)
+  // The spur keeps the replaced ratchet's tooth count, so the crown→fusee
+  // ratio is unchanged; equal module makes the mesh honest — the old
+  // layout gear-meshed saw teeth at an effective module of 0.408 against
+  // KW_MODULE.
   const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
   // Winding transfer arbor axis. IDENTITY: one spur-mesh distance outboard
   // of the barrel along the (barrel-derived) stem, with the same +0.1 slop
@@ -911,9 +1128,16 @@ export function solveKeyless({
       cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
     }
   }
-  const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // sliding pinion, pushed in (teeth overlap the wheel rim, bevel-style)
-  const pinOutDist = pinDist + CROWN_PULL_DIST;              // ...pulled out → setting mesh
-  const swDist = pinOutDist + windPinionR * 0.55 + settingWheelR;
+  const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // the FIXED winding pinion (teeth overlap the wheel rim, bevel-style)
+  const pinOutDist = pinDist + CROWN_PULL_DIST;              // the stem's own outward travel
+  // TODO 50 — the SLIDING CLUTCH is what meshes the setting wheel now. Its
+  // home sits STEM_CLUTCH_OFF outboard of the pinion (the coupling's stack:
+  // half pinion, two ring bases, the seated tooth interleave, half rim) and
+  // its throw is CLUTCH_TRAVEL, derived so the pulled clutch lands on the
+  // OLD setting station — swDist is untouched by the split (see the
+  // constant's comment for the refused alternative).
+  const clutchHomeDist = pinDist + STEM_CLUTCH_OFF;
+  const swDist = clutchHomeDist + CLUTCH_TRAVEL + windPinionR * 0.55 + settingWheelR;
   // The minute wheel FOLDS perpendicularly off the stem line (see the
   // setting-path assembly for why).
   const mwFoldD = settingWheelR + minuteWheelR + 0.1;
@@ -956,15 +1180,30 @@ export function solveKeyless({
     }
     return bow;
   })();
-  const yokeMidAlong = pinDist + CROWN_PULL_DIST / 2;
+  // The yoke's fork tracks the CLUTCH's hub collars (TODO 50 moved them off
+  // the stem group and onto the clutch, which is the member that actually
+  // slides against the spring), so its pivot centres on the clutch's stroke
+  // and its angle law reads the clutch's along-stem station. `pull` here is
+  // the clutch's normalized travel: crownPullT plus the saw lift's share,
+  // which is how the cam-over reaches the fork without a second law.
+  const yokeMidAlong = clutchHomeDist + CLUTCH_TRAVEL / 2 + YOKE_TRACK_OFF;
   const yokePivot = {
     x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
     y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
   };
   function yokeAngleAt(pull) {
-    const along = pinDist + pull * CROWN_PULL_DIST;
-    const px = uWind.x * along, py = uWind.y * along;
-    return Math.atan2(py - yokePivot.y, px - yokePivot.x) - Math.PI / 2;
+    // The arm is SHORTER than the pivot's offset to the stem line by
+    // design (YOKE_ARM's constraint: the prongs are posts that must never
+    // stand ON the line). The law tracks the clutch's along-stem station
+    // EXACTLY — the prong's flanks are what work the collar faces, so
+    // along-tracking is the contract — and the prong's perpendicular
+    // height follows as YK_C − √(arm² − a²): the margin against the
+    // spine at mid-stroke, a shade farther out at the ends.
+    const a = clutchHomeDist + pull * CLUTCH_TRAVEL + YOKE_TRACK_OFF - yokeMidAlong;
+    const drop = Math.sqrt(Math.max(0, YOKE_ARM * YOKE_ARM - a * a));
+    const tx = yokePivot.x + uWind.x * a + sideSign * vPerp.x * drop;
+    const ty = yokePivot.y + uWind.y * a + sideSign * vPerp.y * drop;
+    return Math.atan2(ty - yokePivot.y, tx - yokePivot.x) - Math.PI / 2;
   }
 
   // Plate radius: tightest circle (plus a rim margin) that contains each part's
@@ -1226,7 +1465,7 @@ export function solveKeyless({
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,
     ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
-    cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
+    cwDist, pinDist, pinOutDist, clutchHomeDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,

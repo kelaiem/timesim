@@ -124,6 +124,7 @@ export default {
   // ---- keyless ----
   ['The crown at the movement\'s edge does two unrelated things — winds the spring, sets the hands — and the mechanism that decides which is a small axial clutch on the crown\'s stem. Pushed home, the stem\'s gear engages the winding path: each turn of the crown spools chain back onto the fusee cone, storing energy. Pulled out one stop, a pivoting lever slides that gear a couple of millimetres along the stem into the setting path, where it reaches the hand wheels instead.']:
     '机芯边缘的表冠要做两件毫不相干的事——上弦与拨针——而决定此刻做哪一件的，是柄轴上一只小小的轴向离合。表冠推到底时，柄轴上的齿轮接入上弦一路：每转一下表冠，就把链条卷回塔轮锥体，把能量存起来。向外拉出一档，一只摆动的拨杆便把同一只齿轮沿柄轴推移几毫米，接入拨针一路，改而够到指针轮系。',
+  ['Turn the crown the wrong way and nothing is lost: a saw-toothed clutch face rides over its mate with a soft snap per tooth, and a small spring drops it back in — the guard every real stem carries, so a backward turn can never unwind the spring.']: '把表冠转错方向也不会有任何损失：锯齿状的离合面在对面上滑过，每齿轻响一声，一根小弹簧再把它按回原位 — 这是每根真正的柄轴都带着的保险，让反向转动永远不会放松发条。',
   ['One crown, two jobs<span class="where">interface</span>']: '一只表冠，两项差事<span class="where">操作</span>',
 
   // ---- alarm ----

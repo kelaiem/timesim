@@ -438,7 +438,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
 // Pinion (small solid steel wheel with fat leaves)
 // ---------------------------------------------------------------------------
 
-export function makePinion({ module, teeth, thickness, material }) {
+export function makePinion({ module, teeth, thickness, material, boreR = null }) {
   const mat = material || MATS.steel;
   const pitchR = pitchRadius(module, teeth);
   const tipR = pitchR + module * 0.85;
@@ -448,7 +448,9 @@ export function makePinion({ module, teeth, thickness, material }) {
     flankFrac: 0.42,
   });
   const bore = new THREE.Path();
-  bore.absarc(0, 0, Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
+  // boreR override (TODO 50): a pinion whose arbor carries a sliding square
+  // must be bored past the square's half-diagonal, not to the default shaft
+  bore.absarc(0, 0, boreR ?? Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
   shape.holes.push(bore);
 
   const bevel = Math.min(thickness * 0.15, module * 0.2);
@@ -1363,7 +1365,7 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
 // tip rise to the hub's level.
 // ---------------------------------------------------------------------------
 
-export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6 }) {
+export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6, prongR = 0.4 }) {
   const g = new THREE.Group();
   const hw = width / 2;
 
@@ -1390,10 +1392,14 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
   bossGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(bossGeo, MATS.steel));
 
-  const prongGeo = new THREE.CylinderGeometry(0.4, 0.4, prongH, 10);
+  const prongGeo = new THREE.CylinderGeometry(prongR, prongR, prongH, 10);
   prongGeo.rotateX(Math.PI / 2);
-  for (const px of [-prongGap / 2, prongGap / 2]) {
+  // prongGap 0 asks for a SINGLE pin — the groove-and-pin fork real yokes
+  // ride a sliding pinion's neck with (two coincident posts would be one
+  // part drawn twice).
+  for (const px of prongGap === 0 ? [0] : [-prongGap / 2, prongGap / 2]) {
     const prong = new THREE.Mesh(prongGeo, MATS.steel);
+    prong.name = 'yokeProng'; // TODO 50: the clutch's floors row names the prong⇄collar ride
     prong.position.set(px, armLen, thickness / 2 + prongH / 2);
     g.add(prong);
   }
@@ -2194,6 +2200,116 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
 // The click body alone (beak along +x, pivot hole at the origin end),
 // extruded 0-based — callers place and aim it. Shared by the composite
 // builder below and the plate-top click unit in main.js.
+// ---------------------------------------------------------------------------
+// Saw coupling — a Breguet-style one-way FACE coupling: two rings on one
+// axis, each carrying N axial saw teeth, drive faces bearing in one relative
+// sense and ramps camming the pair apart in the other. This is the stem's
+// one-way in a real keyless works (winding pinion ⇄ sliding pinion), filed
+// by timesim's TODO 50; the builder is deliberately MOVEMENT-INDEPENDENT so
+// the alarm stem's instance of the same debt can consume it later.
+//
+// The spec is solved here (genevaSpec's pattern) and every quantity carries
+// its constraint:
+//   · toothH is DERIVED from the ramp angle, never chosen: the ramp must cam
+//     decisively rather than marginally, so tan α = rampOverFriction · μ
+//     (twice the friction cone by default — at the cone's edge camming and
+//     jamming are the same event), and the rise across the ramp's own arc at
+//     the mean radius is toothH = tan α · (2π·rMean/N) · rampFrac.
+//   · valleyFrac > tipFrac ON PURPOSE: the tooth is narrower than its socket
+//     by (valleyFrac − tipFrac) of a pitch, which is the coupling's BACKLASH
+//     — under drive the faces bear and the ramps hold daylight, so the only
+//     coplanar working contact is the pair the consumer declares. A
+//     zero-backlash cut would seat ramp-on-ramp and face-on-face at once,
+//     the coplanar-solids case every proximity instrument misreads.
+//   · the same profile law feeds the BUILDER, the consumer's tick law and
+//     any battery measure (sawCouplingLiftAt) — one arithmetic, so pose and
+//     metal cannot disagree (§61/§99's rule).
+// ---------------------------------------------------------------------------
+// The SPEC and its two laws live in layout.js (the dimensions module) —
+// layout's keyless solve needs the tooth height to place the sliding
+// clutch's stroke, and geometry.js already imports layout, so the one
+// arithmetic sits at the bottom of that edge. Re-exported here so builder
+// consumers keep a single import surface.
+import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt } from './layout.js';
+export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt };
+
+// The coupling ring as a closed, indexed solid: an annulus rIn..rOut of
+// thickness baseT with the saw profile standing on its +Z face. Every body
+// capped (the parity-raycast rule — an open mesh reads as a colliding one);
+// the drive face falls out of the sweep naturally as the duplicated-azimuth
+// quad where the profile steps. Mount the mate facing (π about a diameter);
+// `sense: -1` mirrors the profile for a pair whose drive direction must run
+// the other way without a flip.
+// rIn/rOut overrides: the MATING ring of a pair is cut radially INSET (a
+// male/female fit) so the two rings' cylindrical walls never share a
+// surface — identical radii put both walls on one cylinder through the
+// interleaved band, and coincident surfaces are the case every proximity
+// instrument misarbitrates (the pair read as buried by its own interleave).
+// The PROFILE still comes from the shared spec, so complementarity holds.
+export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawCoupling',
+                                  rIn = spec.rIn, rOut = spec.rOut }) {
+  const { teeth } = spec;
+  const pos = [], idx = [];
+  const ring = [];                              // [{theta, z}] — duplicated theta at each drive face
+  // KNOT-ALIGNED azimuth samples: the profile is piecewise linear, so a
+  // sample set that lands exactly on its knees (valley→ramp, ramp→tip)
+  // makes the built surface EQUAL to sawProfileAt everywhere, not a chord
+  // of it — the law the tick and the battery read is the metal, to the
+  // vertex. Uniform sampling would leave the knees proud of the law by a
+  // chord's height, which is exactly the build-vs-law drift §99's relief
+  // discipline exists to keep out.
+  // Sample plan per tooth: the valley flat's midpoint, the ramp's facets
+  // (knee-aligned), the tip flat's midpoint, the drive face's TOP at the
+  // pitch boundary, and its BOTTOM a hairline of arc past it — §99's
+  // faceRelief idiom. The lean does two jobs at once: the face stays a
+  // real (near-vertical) surface instead of a duplicated azimuth, so
+  // every quad in the sweep is non-degenerate — a zero-area sliver at a
+  // duplicated azimuth flips the parity raycast that arbitrates every
+  // boolean intersection, exactly the way an open mesh does (measured:
+  // the cammed poses read BURIED by their own interleave, tracking
+  // H − lift, with the metal 0.003 clear) — and it cuts the metal
+  // strictly INSIDE the shared profile law, the conservative side for
+  // every contact the instruments measure against it.
+  const FACE_LEAN = 0.004; // rad of arc the face's foot trails its crest — a hairline, an order under any working tolerance
+  const fr = [];
+  fr.push(spec.valleyFrac / 2);                                 // valley flat
+  const RSUB = 8;                                               // ramp facets (straight law — cosmetic count only)
+  for (let s = 0; s <= RSUB; s++) fr.push(spec.valleyFrac + (s / RSUB) * spec.rampFrac);
+  fr.push(1 - spec.tipFrac / 2);                                // tip flat
+  for (let t = 0; t < teeth; t++) {
+    for (const v of fr) {
+      const theta = sense * ((t + v) / teeth) * Math.PI * 2;
+      ring.push({ theta, z: baseT + sawProfileAt(spec, v) });
+    }
+    const thetaF = sense * ((t + 1) / teeth) * Math.PI * 2;
+    ring.push({ theta: thetaF - sense * FACE_LEAN, z: baseT + spec.toothH }); // face crest, pulled the hairline BACK from the boundary (metal stays inside the law)
+    ring.push({ theta: thetaF, z: baseT });                                   // face foot, on the pitch boundary
+  }
+  const S = ring.length;
+  // 4 vertices per sample: (rIn,0) (rOut,0) (rOut,zTop) (rIn,zTop)
+  for (const smp of ring) {
+    const c = Math.cos(smp.theta), s = Math.sin(smp.theta);
+    pos.push(rIn * c, rIn * s, 0, rOut * c, rOut * s, 0,
+             rOut * c, rOut * s, smp.z, rIn * c, rIn * s, smp.z);
+  }
+  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  for (let i = 0; i < S; i++) {
+    const j = (i + 1) % S;
+    const A = i * 4, B = j * 4;
+    quad(A + 1, A + 0, B + 0, B + 1);   // bottom cap (faces −z)
+    quad(A + 2, A + 3, B + 3, B + 2);   // top surface / drive face
+    quad(A + 0, A + 3, B + 3, B + 0);   // inner wall (faces −r)
+    quad(A + 1, B + 1, B + 2, A + 2);   // outer wall (faces +r)
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, material || MATS.steel);
+  m.name = name;
+  return m;
+}
+
 export function makeClick({ radius, thickness }) {
   const clickL = radius * 0.8;
   const cw2 = radius * 0.11;

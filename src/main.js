@@ -44,6 +44,10 @@ import {
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
+  STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
+  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
+  YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
+  sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -326,7 +330,10 @@ scene.add(movement);
 // --- Fusee & chain layout: the movement is now a FUSEE movement -----------
 // The spring barrel is a plain DRUM (no teeth) sitting off to the side; a
 // chain runs from it to the fusee cone, whose arbor carries the great
-// wheel, the winding spur and (above the plate) the ratchet. The fusee
+// wheel, the winding spur and (above the plate) the let-down square — and
+// deliberately NO ratchet: the arbor turns both ways (see the windTop
+// block), so the wind is held by the escapement through the train, with
+// maintaining power absorbing the winding-time reversal. The fusee
 // arbor sits exactly where the going barrel used to be, so every mesh
 // distance in the train is unchanged.
 const barrelR = (TRAIN.barrel.module * TRAIN.barrel.teeth) / 2;
@@ -1074,7 +1081,7 @@ const KEYLESS_INPUTS = {
 const {
   barrelDist, uWind, stemAngle, vPerp, sideSign,
   ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
-  cwDist, pinDist, pinOutDist, swDist, mwFoldD, minuteArborXY, windIdler,
+  cwDist, pinDist, pinOutDist, clutchHomeDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
@@ -1299,9 +1306,10 @@ barrelArbor.add(greatWheel);
 // crown-wheel arbor (see the winding path at the keyless assembly) can end
 // its climb legally: plate top at 0, spur band, then the great wheel's
 // underside at ~1.22 — everything clears by the margin. (The saw-toothed
-// RATCHET this spur replaced now sits on the plate top, on a square of
-// this same arbor, where its teeth serve only the click — see the windTop
-// block at the upper pivots.)
+// RATCHET this spur replaced is GONE, not relocated: a fixed pawl on this
+// bidirectional arbor was a display fiction — the windTop block at the
+// upper pivots has the record, and TODO 50 files where the real one-way
+// lives.)
 const RATCHET_T = 0.8;
 const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
 // Hub-less like the transfer wheel it meshes: the band under the great
@@ -2874,7 +2882,8 @@ registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 // underside, where it meshes the fusee arbor's winding SPUR (a crossing
 // arbor anywhere at spur-mesh distance sits INSIDE the great wheel's
 // radius, so the climb must END below that wheel; the saw-toothed ratchet
-// itself lives on the plate top now, serving only the click). The arbor
+// the spur replaced is gone — the fusee arbor is bidirectional, see the
+// windTop block — and TODO 50 files the real one-way). The arbor
 // runs in a real bored hole in the plate; the bore is its bearing. The
 // same tooth count top and bottom keeps the crown→fusee ratio exactly
 // what it was when the crown wheel meshed the ratchet directly (the
@@ -2920,7 +2929,46 @@ cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS - 0.55 - 0.5)
 keyless.add(cwScrew);
 
 // Everything on the stem axis lives in one spinner group (local +Y = outward).
-const windPinion = G.makePinion({ module: KW_MODULE, teeth: windPinionTeeth, thickness: 1.6, material: MATS.steel });
+// TODO 50 / BUILT §149 SPLIT the old dual-purpose sliding pinion into its real anatomy:
+// a FIXED WINDING PINION that always meshes the crown wheel and poses from
+// the BANK (it is a winding-train wheel — §126's one-source convention),
+// and a SLIDING CLUTCH keyed to the stem (its own unit, built after the
+// yoke's collars below), the two joined by the saw coupling whose spec is
+// STEM_SAW_SPEC in layout.js. The one-way stops being a bookkeeping term
+// exactly here: backward crown input cams the clutch over the pinion's saw
+// ring, one snap per leaf, and the yoke spring reseats it.
+const windPinionGroup = new THREE.Group();
+windPinionGroup.position.set(uWind.x * pinDist, uWind.y * pinDist, Z_KEYLESS);
+windPinionGroup.rotation.order = 'ZYX';
+windPinionGroup.rotation.z = stemAngle - Math.PI / 2;
+keyless.add(windPinionGroup);
+// Bored past the stem square's half-diagonal (STEM_R·0.98, see the square's
+// build below) plus a running fit: the stem's SQUARE section slides THROUGH
+// this fixed pinion loose (the square spans the pinion's station at every
+// pull — the stem is a turned part and its round journal starts outboard),
+// the way a real winding pinion rides its stem without being keyed to it.
+const windPinion = G.makePinion({ module: KW_MODULE, teeth: windPinionTeeth, thickness: WIND_PINION_T,
+  material: MATS.steel, boreR: 0.6 }); // past the square's half-diagonal AND the extrude bevel's inward bite — loose over the square, never keyed
+windPinion.name = 'windingPinion';
+windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the stem
+windPinionGroup.add(windPinion);
+{
+  // The pinion's saw ring, on its outboard face, teeth toward the clutch.
+  // BOTH rings are cut sense +1 and mounted as mirror mounts (−π/2 here,
+  // +π/2 on the clutch), which lands the pair on sawCouplingLiftAt's own
+  // index convention: relative angle δ = −windStemSlip (+ the hairline
+  // relief), seated drive-faces at δ = 0, the backlash then the ramps as
+  // backward slip accumulates. The sign that decides this is the one a
+  // whiteboard gets wrong: a +Y rotation DECREASES the x–z plane azimuth,
+  // so a sense −1 pair (the first cut) ran the coupling mirrored — seated
+  // measured tip-on-tip, a full tooth buried. probe-50-clutch's handoff
+  // tier is what holds this convention in metal.
+  const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'windPinionSaw' });
+  ring.rotation.x = -Math.PI / 2;    // ring local +Z (teeth) → +Y (outboard)
+  ring.position.y = WIND_PINION_T / 2 - SAW_FIT; // base sunk a SAW_FIT weld into the pinion's face — no knife-edge abutment; STEM_CLUTCH_OFF subtracts this sink
+  windPinionGroup.add(ring);
+}
+
 const windSpinner = new THREE.Group();
 windSpinner.position.set(uWind.x * pinDist, uWind.y * pinDist, Z_KEYLESS);
 // Euler order matters: the winding spin (rotation.y) must compose BEFORE the
@@ -2930,12 +2978,52 @@ windSpinner.rotation.order = 'ZYX';
 windSpinner.rotation.z = stemAngle - Math.PI / 2;
 keyless.add(windSpinner);
 
-windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the stem
-windSpinner.add(windPinion);
-
+// THE STEM IS A TURNED PART (TODO 50): a SQUARE section under the clutch's
+// whole ride band, the round shaft only OUTBOARD of it — never two
+// superimposed full-length solids, because the clutch sleeve's square bore
+// (flats at 0.337) buries 0.11 into a 0.45 round shaft anywhere the two
+// coexist. The four spans are one derivation chain, clutch-local about
+// the RIM's centre (see layout.js's fork-band block for the body's
+// arrangement): the SLEEVE reaches [SLEEVE_BOT, SLEEVE_TOP], the clutch's
+// relative offset walks rel ∈ [0, STEM_CLUTCH_OFF + toothH] (pull closes
+// the offset, the saw lift adds to it), and the square spans that
+// envelope plus CLEAR_MARGIN each end.
+// SLEEVE_BOT: the spine stops CLEAR_MARGIN short of the male root plane —
+// the plane the FEMALE ring's tips sweep to at full seat, and the female
+// annulus starts at 0.635, UNDER the 0.75 spine (the tick's SEAT_RELIEF
+// keeps the measured floor a hair above the margin).
+const SLEEVE_BOT = SAW_RING_ROOT + CLEAR_MARGIN;
+// SLEEVE_TOP: the spine's outboard end, capped TWICE — under the rim's
+// outboard face by a SAW_FIT weld margin (nothing may trail the rim), and
+// harder by the SETTING WHEEL: at full pull the rim meshes the wheel
+// (centre distance = the swDist tail, 0.55·pinR + swR), and every point
+// of the spine sits at least that distance minus SLEEVE_TOP from the
+// wheel's centre — so holding THAT to the wheel's outer radius plus
+// CLEAR_MARGIN clears every wheel point at every z, by the triangle
+// inequality, with no slab arithmetic to get wrong (a first cut credited
+// the wheel's 1.1 thickness and its own bevel ate the credit).
+const SLEEVE_TOP = Math.min(
+  CLUTCH_RIM_T / 2 - SAW_FIT,
+  (windPinionR * 0.55 + settingWheelR)
+    - G.gearOuterR({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1 })  // 1.1 = the setting wheel's thickness (its build)
+    - CLEAR_MARGIN - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
+const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
+// The square's top carries the sleeve's whole reach (home + cam-over lift
+// + the seat relief) plus the margin, PLUS the round shoulder's SAW_FIT
+// weld — the shoulder sits a weld inside the square, so without that term
+// the weld eats the margin (measured: the sleeve rode to 0.095 of the
+// round shaft at cam-over, 0.15 − SAW_FIT − SEAT_RELIEF exactly).
+const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
+  + CLEAR_MARGIN + SAW_FIT;
 const stemLen = plateR + 2.2 - pinDist;
-const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, stemLen, 12), MATS.steel);
-stem.position.y = stemLen / 2;
+// Round shaft from the square's shoulder (a SAW_FIT weld into the square,
+// one turned piece modeled as two meshes) out to the crown; the bushing
+// sits ≈8+ units outboard of SQ_TOP at every pull, so the declared
+// stem-in-bushing joint always sees the ROUND section.
+const stem = new THREE.Mesh(
+  new THREE.CylinderGeometry(STEM_R, STEM_R, stemLen - (SQ_TOP - SAW_FIT), 12), MATS.steel);
+stem.name = 'windStem'; // the round journal — bushing and crown live here
+stem.position.y = (SQ_TOP - SAW_FIT + stemLen) / 2;
 windSpinner.add(stem);
 
 // Stem bushing — the stem's actual support: a bored boss at the plate rim
@@ -2944,7 +3032,14 @@ windSpinner.add(stem);
 // end embedded 0.6 into the plate, like the old foot's seat into the top
 // face) down to the bush.
 {
-  const bushDist = plateR - 2;
+  // The bushing's station: its old plateR − 2 seat is kept as the floor,
+  // but TODO 50's split moved the stem's setting-lever groove outboard
+  // (GROOVE_LOCAL derives from the clutch spine's reach), so at FULL PULL
+  // the groove's outer collar sweeps to pinDist + pull + grooveOuter — and
+  // the FOOT's near face (half its 2.2 box) must clear that by the margin.
+  const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
+  const bushDist = Math.max(plateR - 2,
+    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + 1.1);
   const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
@@ -2954,8 +3049,17 @@ windSpinner.add(stem);
   keyless.add(bush);
   const footTop = -1.4; // 0.6 into the plate's back face (−2)
   const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, footTop - Z_KEYLESS), MATS.nickel);
+  // Aligned to the STEM, not the world axes: bushDist's derivation above
+  // budgets the foot's stem-direction half-extent as 1.1, and a world-
+  // aligned box would present its half-DIAGONAL (1.56) to the groove
+  // collars instead — measured, the outer collar clipped it at full pull.
+  foot.rotation.z = stemAngle;
   foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (footTop + Z_KEYLESS) / 2);
   keyless.add(foot);
+  // Rule 6 — the boss's other wall: pushed outboard by the groove, the
+  // whole foot must still stand ON the plate.
+  if (!(bushDist + 1.1 <= plateR))
+    console.warn(`TODO 50: stem bushing foot reaches ${(bushDist + 1.1).toFixed(2)} — off the plate's ${plateR.toFixed(2)} rim`);
 }
 
 // (CROWN_PULL_DIST — the stem's outward slide when hacking — is declared up
@@ -2974,7 +3078,10 @@ crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
 windSpinner.add(crown);
 
-const RATCHET_TEETH = WIND_SPUR_TEETH; // the spur's count — sets the crown→fusee winding ratio
+// (RATCHET_TEETH, the alias this line used to carry, is retired — TODO 50's
+// truth pass: there is no ratchet, and an alias that names one keeps the
+// fiction alive at every ratio site. The four ratio consumers read
+// WIND_SPUR_TEETH, which is the wheel that actually turns.)
 // (Pawl and detent ride constants live with the maintaining-power block;
 // the fusee arbor itself carries no ratchet any more.)
 
@@ -2989,6 +3096,10 @@ const RATCHET_TEETH = WIND_SPUR_TEETH; // the spur's count — sets the crown→
 // used for the power-reserve arbor, not a literal continuous mesh into the
 // dial's flipped coordinate frame.
 const settingWheel = G.makeGear({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+// TODO 50 — named so the clutch pair's floors row can EXCLUDE the pulled
+// setting mesh by contact selector (makeGear returns a group; the selector
+// matches mesh names).
+settingWheel.traverse((o) => { if (o.isMesh) o.name = 'settingWheel'; });
 const settingWheelBase = Math.PI / settingWheelTeeth;
 settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
 keyless.add(settingWheel);
@@ -3130,26 +3241,26 @@ keyless.add(settingCap);
 // layout, up by the plate-radius computation.)
 // ---------------------------------------------------------------------------
 
-// Groove collars on the stem (ride with windSpinner) + sliding-pinion hub
-// collars for the yoke's fork. (GROOVE_LOCAL is hoisted with the XY layout —
-// the lever-angle solve needs it.) Hub collars slimmed 1.5 → 1.2: the yoke's
-// arm passes UNDER them, and every 0.1 of hub radius is 0.1 of yoke drop —
-// depth the dial gap no longer has to spare.
+// Groove collars on the stem (ride with windSpinner). (GROOVE_LOCAL is
+// hoisted with the XY layout — the lever-angle solve needs it.) The
+// sliding-pinion HUB COLLARS the yoke's fork tracks moved to the CLUTCH
+// with TODO 50's split: the clutch is the member that actually slides
+// against the spring, so the fork tracks it, not the stem. Hub collars
+// slimmed 1.5 → 1.2 back then: the yoke's arm passes UNDER them, and every
+// 0.1 of hub radius is 0.1 of yoke drop — depth the dial gap no longer has
+// to spare.
 const HUB_COLLAR_R = 1.2;
 {
-  const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.5, 12);
-  for (const dy of [-0.95, 0.95]) {
+  const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, GROOVE_COLLAR_T, 12);
+  for (const dy of [-GROOVE_HALF, GROOVE_HALF]) {
     const collar = new THREE.Mesh(collarGeo, MATS.steel);
     collar.position.y = GROOVE_LOCAL + dy;
     windSpinner.add(collar);
   }
-  const hubGeo = new THREE.CylinderGeometry(HUB_COLLAR_R, HUB_COLLAR_R, 0.4, 14);
-  for (const dy of [-1.7, 1.7]) {
-    const hub = new THREE.Mesh(hubGeo, MATS.steel);
-    hub.position.y = dy;
-    windSpinner.add(hub);
-  }
 }
+// (The groove's outboard budget is settled at the bushing's own build:
+// bushDist derives from the groove's full-pull sweep, and the foot's
+// on-plate assert there is the wall that remains.)
 
 // Setting lever: pivoted beside the stem on the balance side; the beak's pin
 // tracks the groove, whose along-stem position is pinDist+pull·slide+local.
@@ -3270,12 +3381,31 @@ addDialSidePivot(settingLeverGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_SETTIN
 // underside is what sets the keyless plane's floor against the dial.
 const Z_YOKE = Z_KEYLESS - (HUB_COLLAR_R + CLEAR_MARGIN + 0.5 + 0.06);
 const yoke = G.makeYoke({
-  armLen: Math.hypot(YK_C, CROWN_PULL_DIST / 2),
+  // TODO 50: the arm's reach is DERIVED in layout.js (YOKE_ARM) — the
+  // prongs are posts crossing the stem's plane, so the arm falls short of
+  // the stem line by spine + prong + CLEAR_MARGIN and the angle law
+  // tracks the clutch's along-station exactly. (Two refused reaches, both
+  // measured: hypot(YK_C, stroke/2) parks a prong ON the stem line at the
+  // stroke ends — a full burial into the clutch spine — and the old
+  // CROWN_PULL_DIST/2 form overreached further still.)
+  armLen: YOKE_ARM,
   width: 2.6,
   thickness: 1,
-  prongGap: 3.4,
+  // A single pin in the clutch's fork groove (YOKE_FORK_IN/OUT band —
+  // layout.js derives why a straddle fork cannot exist here).
+  prongGap: 0,
   prongH: Z_KEYLESS - Z_YOKE + 0.4,
+  prongR: YOKE_PRONG_R,
 });
+// Rule 6 — the fork's window has two walls and YOKE_ARM only derives one
+// (the spine margin at mid-stroke). The other: at the stroke ENDS the
+// prong stands farthest from the stem line, and its inner edge must still
+// land inside the collar's face band or the fork tracks nothing there.
+{
+  const perpEnd = YK_C - Math.sqrt(YOKE_ARM ** 2 - (CLUTCH_TRAVEL / 2) ** 2);
+  if (!(perpEnd - YOKE_PRONG_R < HUB_COLLAR_R))
+    console.warn(`TODO 50: fork prong inner edge ${(perpEnd - YOKE_PRONG_R).toFixed(3)} at the stroke ends — outside the collar's ${HUB_COLLAR_R} face band, the fork tracks nothing there`);
+}
 const yokeGroup = new THREE.Group();
 yokeGroup.position.set(yokePivot.x, yokePivot.y, Z_YOKE);
 yokeGroup.add(yoke);
@@ -3283,6 +3413,187 @@ movement.add(yokeGroup);
 registerExplode(yokeGroup, Z_YOKE, 4, -1);
 registerLabel('Yoke', yokeGroup);
 addDialSidePivot(yokeGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_YOKE });
+
+// ---------------------------------------------------------------------------
+// THE SLIDING CLUTCH (TODO 50 / BUILT §149) — the member the old dual-purpose windPinion
+// pretended not to be. Keyed to the stem by a real square, carrying the
+// mating saw ring toward the fixed pinion, the setting rim that meshes
+// settingWheel pulled out, and the hub collars the yoke's fork tracks. Its
+// own UNIT, and a SIBLING of the keyless group in the scene: collectUnits
+// walks labeled roots recursively, so a labeled child inside 'Keyless
+// works' would double-count its meshes into two units. tick() mirrors the
+// stem's frame onto it and slides it by pull + saw lift; the MOUNT below is
+// what label/explode own, so the tick's absolute position writes compose
+// with the explode offset instead of stomping it (§58's resetRod rule).
+// ---------------------------------------------------------------------------
+const windClutchMount = new THREE.Group();
+movement.add(windClutchMount);
+registerExplode(windClutchMount, 0, 4, -1); // dial-side tier, with the keyless cluster (the mount sits at origin — the clutch's z rides the tick's position writes)
+registerLabel('Winding clutch', windClutchMount);
+const windClutch = new THREE.Group();
+windClutch.rotation.order = 'ZYX';
+windClutch.rotation.z = stemAngle - Math.PI / 2;
+windClutchMount.add(windClutch);
+{
+  // THE SLEEVE IS THE KEYED MEMBER AND THE BODY'S SPINE — a pipe with a
+  // SQUARE bore (the stem square's outline plus the running fit), so the
+  // declared 'clutchSleeve ⇄ stemSquare' joint is metal on metal; a round
+  // bore over a square whose half-diagonal is under the bore's radius
+  // would never touch, and the first cut had exactly that fiction, plus
+  // every other body part SOLID — the full battery read the truth (the
+  // round stem threaded the sleeve and both collars, min 0 against the
+  // 0.15 floor). Everything else — the setting rim, the saw ring, both
+  // collars — bores over the sleeve's outside and WELDS onto it (real
+  // radial overlap, no knife-edge abutments: coincident caps are the
+  // coplanar case the instruments cannot arbitrate).
+  const SLEEVE_R = CLUTCH_SLEEVE_R;      // layout.js owns it (the yoke arm's reach derives from it); over the saw ring's 0.685 bore and every other bore — the spine everything welds to
+  // (The spine's [SLEEVE_BOT, SLEEVE_TOP] span is derived at the stem's
+  // own build, one chain with the square section that fills its bore.)
+  const sqHole = STEM_R * Math.SQRT2 * 0.98 + 0.05; // the square's side plus the 0.05 running fit (the movement's, see SAW_FIT)
+  // Contours are EXPLICIT point loops, never absarc: an arc contour
+  // duplicates its seam point and the extrude walls that point with a
+  // zero-area quad — the degenerate-triangle class that flips
+  // sampledVerdict's parity raycast (the saw rings hit it first; the
+  // first cut of this pipe read "inside" a detent collar 3 units away).
+  const loopPts = (r, n) => Array.from({ length: n },
+    (_, i) => new THREE.Vector2(r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n)));
+  {
+    const sleeveLen = SLEEVE_TOP - SLEEVE_BOT;
+    const shape = new THREE.Shape(loopPts(SLEEVE_R, 24));
+    const hole = new THREE.Path();
+    const h = sqHole / 2;
+    hole.moveTo(-h, -h); hole.lineTo(-h, h); hole.lineTo(h, h); hole.lineTo(h, -h); hole.closePath();
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: sleeveLen, bevelEnabled: false });
+    geo.translate(0, 0, -sleeveLen / 2);
+    geo.rotateX(Math.PI / 2);            // pipe axis → local Y (the stem)
+    const sleeve = new THREE.Mesh(geo, MATS.steel);
+    sleeve.name = 'clutchSleeve';
+    sleeve.position.y = (SLEEVE_TOP + SLEEVE_BOT) / 2;
+    windClutch.add(sleeve);
+  }
+  // Setting rim — the crown wheel's own gear class (§13's mesh honesty),
+  // bored to weld onto the sleeve. The bore's floor: outboard of the
+  // spine's top the bore stands DIRECTLY over the stem square, and the
+  // extrude bevel bites the bore's lip inward — so the nominal bore must
+  // carry the square's half-diagonal (STEM_R·0.98), the margin, both
+  // bevel bites, and the movement's SAW_FIT spare (measured: nominal
+  // 0.72 put the lip 0.122 off the square's corners). The spine's 0.75
+  // still overlaps the bitten lip — the weld the body needs.
+  const rim = G.makeGear({ module: KW_MODULE, teeth: windPinionTeeth, thickness: CLUTCH_RIM_T,
+    boreR: STEM_R * 0.98 + CLEAR_MARGIN + 2 * KW_GEAR_BEVEL + SAW_FIT, spokes: 0, material: MATS.steel, hub: false });
+  // makeGear returns a GROUP — the floors row's contact selector matches
+  // MESH names, so the name goes on the meshes, not (only) the wrapper.
+  rim.name = 'clutchRim';
+  rim.traverse((o) => { if (o.isMesh) o.name = 'clutchRim'; });
+  rim.rotation.x = Math.PI / 2;
+  windClutch.add(rim);
+  // The mating saw ring, teeth INBOARD toward the pinion — sense +1 with
+  // the +π/2 mirror mount (see the pinion ring's comment: the pair lands
+  // on sawCouplingLiftAt's index, δ = −windStemSlip, faces bearing at 0).
+  // It sits at the clutch's INBOARD end, past the fork band (layout.js's
+  // rim-leads arrangement): its base sinks a SAW_FIT weld into the
+  // inboard collar's face, and SAW_RING_ROOT is its root plane — the
+  // stack STEM_CLUTCH_OFF closes the seat against.
+  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'clutchSaw',
+    rIn: STEM_SAW_SPEC.rIn + SAW_FIT, rOut: STEM_SAW_SPEC.rOut - SAW_FIT }); // the male/female fit — see SAW_FIT
+  saw.rotation.x = Math.PI / 2;      // ring local +Z (teeth) → −Y (inboard)
+  saw.position.y = SAW_RING_ROOT + SAW_BASE_T; // = the base's outboard face, sunk SAW_FIT into collar In
+  windClutch.add(saw);
+  // Hub collars for the yoke's fork (moved here from the stem group) —
+  // bored discs riding the sleeve (0.62 bore into the 0.75 spine), 0.17
+  // clear of the stem inside.
+  {
+    const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, 20));
+    const hole = new THREE.Path(loopPts(0.62, 20).reverse()); // hole winds opposite the outer loop
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: HUB_COLLAR_T, bevelEnabled: false });
+    geo.translate(0, 0, -HUB_COLLAR_T / 2);
+    geo.rotateX(Math.PI / 2);
+    for (const dy of [YOKE_FORK_IN, YOKE_FORK_OUT]) {
+      const hub = new THREE.Mesh(geo, MATS.steel);
+      hub.name = dy === YOKE_FORK_IN ? 'clutchHubCollarIn' : 'clutchHubCollarOut';
+      hub.position.y = dy;
+      windClutch.add(hub);
+    }
+  }
+}
+// The stem's SQUARE — the keyed joint's metal, on the spinner where the
+// clutch rides. Side from the stem's own circle (inscribed square,
+// half-diagonal = STEM_R), so the square's silhouette is strictly inside
+// the round shaft's — anywhere the shaft fits, the square fits. Its span
+// must fill the SLEEVE's square bore over the whole RELATIVE travel: the
+// stem slides CROWN_PULL_DIST while the clutch slides CLUTCH_TRAVEL, so
+// their offset walks STEM_CLUTCH_OFF·(1 − pull) plus the saw lift —
+// rel ∈ [0, OFF + toothH] — and the sleeve reaches [SLEEVE_BOT,
+// SLEEVE_TOP] around it, a margin each end. A square-bored part riding a
+// ROUND cylinder is a 0.11 burial (the bore's flats sit at 0.337 against
+// the 0.45 shaft), so the round stem section starts OUTBOARD of this
+// square (see windStem below) — the stem is a turned part, not two
+// superimposed full-length solids. The square runs through the FIXED
+// pinion's bore with clearance (the pinion is bored past the square's
+// half-diagonal for exactly this — see its build). SQ_BOT/SQ_TOP are
+// derived beside the stem's own build, one chain with the round shaft's
+// shoulder.
+{
+  const sq = STEM_R * Math.SQRT2 * 0.98; // a hair under inscribed so the corners stay inside the stem's own silhouette
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(sq, SQ_TOP - SQ_BOT, sq), MATS.steel);
+  bar.name = 'stemSquare';
+  bar.position.y = (SQ_TOP + SQ_BOT) / 2;
+  windSpinner.add(bar);
+}
+// Boot assert (rule 6), the coupling's structural claim: pulled to SET the
+// saw pair must be clear metal-to-metal — the seated interleave plus a
+// margin inside the CLUTCH's own stroke.
+if (!(STEM_SAW_SPEC.toothH + CLEAR_MARGIN <= CLUTCH_TRAVEL))
+  console.warn(`TODO 50: saw interleave ${STEM_SAW_SPEC.toothH.toFixed(3)} + margin does not clear inside the clutch's ${CLUTCH_TRAVEL.toFixed(2)} travel — pulled-out setting would still graze the coupling`);
+// §48 — what brings each reciprocating member back, declared at the laws
+// that make the claim. The CLUTCH cams axially out and the yoke spring
+// reseats it; the YOKE swings out with it (and with the pull) and the same
+// blade brings it home — one spring, two declarations, because the audit
+// judges units and both units genuinely reverse under the stemSlip axis.
+declareRestoring('Winding clutch', 'spring',
+  'a backward crown cams the clutch out over the pinion\'s saw ring, one snap per leaf; the yoke spring re-seats it through the fork — the blade is real metal on its own post, and the drive faces need no spring (the crown and the run-down close them from either side)',
+  'yokeSpring');
+declareRestoring('Yoke', 'spring',
+  'the pull drives the fork both ways through the setting lever, but a cam-over lifts it with no crown motion at all — the blade about its own pivot is what brings that stroke home',
+  'yokeSpring');
+
+// THE YOKE'S SPRING — the restoring element the split makes necessary: the
+// clutch cams OUT under a backward crown and something real must reseat it.
+// windArrestSpring's convention, verbatim: a torsion arc about the member's
+// own pivot RIDING THE MEMBER (child of yokeGroup), its far end landing on
+// the line where the fixed post stands — clocked by construction, not
+// placed. P1 arithmetic, TODO 16's format: the preload is one CLEAR_MARGIN
+// of axial travel at the coupling (§99's rd.preload convention); a
+// cam-over costs that preload × tan α = 0.4 handed back through the fork's
+// lever to the crown rim — an order under the 5–50 mN detent budgets the
+// movement already carries, so a backward turn snaps instead of fighting.
+const YOKE_SPRING_R = 1.55;   // arc about the pivot: the 1.0 pivot jewel setting + margin + blade half-stock
+{
+  const sweep = Math.PI * 1.2;
+  // the yoke's arm line at the SEATED pose (pull 0), in the group's local
+  // frame the arm runs along local −Y (makeYoke's own convention); the
+  // spring's far end parks on that line so its post has the arm's own
+  // corridor, which the fork keeps clear by working there
+  const arc = new THREE.Mesh(
+    new THREE.TorusGeometry(YOKE_SPRING_R, SPRING_FLAT_U / 2, 6, 48, sweep), MATS.blueSteel);
+  arc.name = 'yokeSpring';
+  arc.position.set(0, 0, 0.55);            // just above the yoke body, under the collar band
+  arc.rotation.z = -Math.PI / 2 - sweep;   // arc END lands on the local −Y arm line
+  yokeGroup.add(arc);
+  // …and the post its fixed end reacts on: movement-frame, on the arm's
+  // seated line one blade past the arc, from the plate's back face down.
+  const postAz = yokeAngleAt(0) - Math.PI / 2; // world azimuth of the local −Y arm line at seat
+  const pr = YOKE_SPRING_R + SPRING_FLAT_U / 2 + PIVOT_MIN_U;
+  const postLen = Math.abs(Z_KEYLESS - Z_YOKE) + 0.9;
+  const sp = new THREE.Mesh(new THREE.CylinderGeometry(PIVOT_MIN_U, PIVOT_MIN_U, postLen, 10), MATS.blueSteel);
+  sp.name = 'yokeSpringPost';
+  sp.rotation.x = Math.PI / 2;
+  sp.position.set(yokePivot.x + Math.cos(postAz) * pr, yokePivot.y + Math.sin(postAz) * pr,
+    Z_YOKE + 0.55 + postLen / 2 - 0.55);
+  movement.add(sp);
+}
 
 // Reset-hammer transmission — a RIGID connecting rod (fixed length) from the
 // setting-lever post to a tail arm on the hammer. The hammer's angle is not
@@ -8531,7 +8842,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // not judge them: §121's rule, met by a part becoming visible rather than
   // by a waiver.)
   declareRestoring('Keyless works', 'two-way',
-    'the crown drives the winding wheels forward through the sliding pinion; the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring');
+    'the crown drives the winding wheels forward through the clutch\'s saw coupling into the fixed winding pinion (TODO 50\'s split); the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring; the coupling\'s own one-way lives on the CLUTCH unit, whose spring is declared there');
   declareRestoring('Winding arrest', 'spring',
     'the blade re-seats the finger on its bank pin when the coil leaves the pad — a real torsion arc about the stud, its fixed end on its own post under the bracket; the ARREST hold is the chain pressing the pad, not the spring',
     'windArrestSpring');
@@ -14716,6 +15027,9 @@ const EQUALISATION = (() => {
 // winding train and the crown stand parked too — the §25 C-era backward
 // free-spin retired with the rim mesh that caused it. A crown turned
 // backward still free-slips at the stem⇄contrate bevel without unbanking
+// — UNMODELLED, the alarm instance of TODO 50's class; the going side's
+// saw coupling (sawCouplingSpec/makeSawCoupling, movement-independent by
+// design) is the reuse path when this stem's turn comes.
 // ("only what actually banked moves the wheel"); what BANKS is now held by
 // modelled metal: the arbor ratchet's saw, the plate-grounded click, and
 // the click spring that re-seats it — the true going-barrel arrangement
@@ -18387,12 +18701,27 @@ function setCrownOut(out) {
 // whole path — knob included — stops together instead of one accumulator
 // tearing the transfer⇄spur mesh against the other. The knob's displayed
 // angle is likewise derived from the bank, plus windStemSlip: the rotation
-// the stem really made that the wheel never saw — the backward free-wheel at
-// the plate-top click, and spins while the clutch is out of the winding mesh.
+// the stem really made that the wheel never saw — backward free-wheel while
+// engaged, and spins while the clutch is out of the winding mesh. (No metal
+// models that joint yet — TODO 50; the free-wheel physically belongs to the
+// winding pinion ⇄ crown wheel coupling at the stem, NOT to any plate-top
+// click: the fusee arbor is bidirectional and carries no ratchet.)
 // ---------------------------------------------------------------------------
 let crownRotation = 0;     // radians, user input, unbounded, either direction
 let lastCrownRotation = 0; // for computing crownRotDelta each tick
 let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (see above)
+// TODO 50 — the parked gap: how far the clutch stands past the nearest
+// drive face, in stem radians ∈ [0, pitch). WRAPAROUND-GUARDED: float
+// residue can leave the slip a hair past the face (positive ε), which the
+// bare modulo reads as a full pitch of gap — and the forward take-up then
+// eats a whole tooth of wind. probe-50-clutch caught exactly that: a
+// half-pitch wiggle-and-return left slip at +2e-6 and the next pitch of
+// forward crown banked nothing.
+function stemClutchGap() {
+  const P = STEM_SAW_SPEC.pitch;
+  const g = (((-windStemSlip) % P) + P) % P;
+  return g > P - 1e-9 ? 0 : g;
+}
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
@@ -18452,12 +18781,24 @@ let mmPerPxCal = null;
   // on frame one — which silently re-winds a drained reserve on every reload,
   // and stomps any starting reserve set below full (e.g. the ?reserve= link).
   lastCrownRotation = crownRotation;
-  // §47: the knob's displayed angle is now derived from the bank plus slip
-  // (see the windStemSlip declaration). Seed the slip so the restored knob
-  // shows exactly the angle the saved session left it at — the knob's datum
-  // is arbitrary, but a jump on reload would read as motion nobody made.
-  windStemSlip = crownRotation
-    - (RATCHET_TEETH / windPinionTeeth) * 2 * Math.PI * (barrelWindTurns - RESERVE_BARREL_TURNS);
+  // §47: the knob's displayed angle is derived from the bank plus slip
+  // (see the windStemSlip declaration). TODO 50 made the slip the saw
+  // coupling's RELATIVE INDEX, so it persists (the parked sub-pitch lives
+  // in the STEM's free angle, not the bank). A legacy save without the
+  // field falls back to the old seed — the restored knob shows the saved
+  // angle — SNAPPED to the coupling's pitch: run-down back-drive closes
+  // the drive faces, so a mid-pitch park cannot have survived a running
+  // movement, and the ≤ half-pitch give-back lands in the stem's angle
+  // where it belongs (the bank is untouched — it is held by the
+  // escapement and the arrest, not by this coupling; §101's alarm settle
+  // subtracts from ITS bank because there the click is the holder).
+  if (Number.isFinite(savedState.windStemSlip)) {
+    windStemSlip = savedState.windStemSlip;
+  } else {
+    const raw = crownRotation
+      - (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI * (barrelWindTurns - RESERVE_BARREL_TURNS);
+    windStemSlip = Math.round(raw / STEM_SAW_SPEC.pitch) * STEM_SAW_SPEC.pitch;
+  }
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
@@ -20555,7 +20896,7 @@ function syncUpdate(realDt) {
 // past full drove the transfer⇄spur mesh teeth-through-teeth.
 document.getElementById('btn-wind').addEventListener('click', () => {
   if (crownOut) return; // crown must be pushed in (winding position) to wind
-  autoWindRemaining += (RESERVE_BARREL_TURNS * (RATCHET_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
+  autoWindRemaining += (RESERVE_BARREL_TURNS * (WIND_SPUR_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
 });
 
 // --- crown: click to pull/push, drag to turn -------------------------------
@@ -25065,6 +25406,7 @@ function captureState() {
     barrelWindTurns,
     tauIntegrated,
     crownRotation,
+    windStemSlip,          // TODO 50: the clutch's parked index — the stem's own state, not the bank's
     jumpCorr,
     crownOut,
     fastForward,
@@ -25168,6 +25510,7 @@ const UNIT_GROUPS = new Map([
   ])],
   ['Keyless & winding', new Map([
     ['Keyless works', null], ['Setting lever', null], ['Yoke', null],
+    ['Winding clutch', null], // TODO 50 — the sliding clutch, split out of the old dual-purpose pinion
   ])],
   ['Zero-reset & hacking', new Map([
     ['Heart cam (seconds reset)', null], ['Reset hammer', null], ['Reset rod', null],
@@ -26862,25 +27205,42 @@ function tick(t) {
   lastCrownRotation = crownRotation;
   if (windEngaged) {
     if (crownRotDelta > 0) {
-      // Ratio chain gives the ratchet's rotation in RADIANS; barrelWindTurns
-      // is in TURNS, hence the /2π.
-      const turnsDelta = crownRotDelta * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / RATCHET_TEETH) / (2 * Math.PI);
-      // §47 — the cap is the ARREST, not a number: the bank saturates because
-      // the finger's beak is on the stop lug and the whole path from the lug
-      // back to the crown is rigid, so input past it banks nothing and MOVES
-      // nothing — knob included; the only slip is the hand on a stopped
-      // crown. engageTurns is FUSEE_WRAP_TURNS by construction (asserted at
-      // the arrest build); RESERVE_BARREL_TURNS no longer appears here at
-      // all — the numeric clamp this line used to carry is a consequence of
-      // beak-on-block now, which is most of what §47 is.
-      const banked = Math.min(turnsDelta, Math.max(0, WIND_ARREST.engageTurns - barrelWindTurns));
-      barrelWindTurns += banked;
-      windArrestStalled = turnsDelta - banked > 1e-9; // the hand is on a stopped crown
+      // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
+      // parked fraction past the drive faces (relative angle −slip mod
+      // pitch), and forward input FREE-SWINGS that gap — back through the
+      // backlash and down the ramp under the yoke spring — before anything
+      // can bank. The gap is the coupling's own relative angle, read from
+      // the same spec the rings were cut from; at the seated state it is
+      // zero and this whole block is a no-op.
+      const takeUp = Math.min(crownRotDelta, stemClutchGap());
+      windStemSlip += takeUp;
+      const drive = crownRotDelta - takeUp;
+      if (drive > 0) {
+        // Ratio chain gives the winding spur's rotation in RADIANS;
+        // barrelWindTurns is in TURNS, hence the /2π.
+        const turnsDelta = drive * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / WIND_SPUR_TEETH) / (2 * Math.PI);
+        // §47 — the cap is the ARREST, not a number: the bank saturates because
+        // the finger's beak is on the stop lug and the whole path from the lug
+        // back to the crown is rigid, so input past it banks nothing and MOVES
+        // nothing — knob included; the only slip is the hand on a stopped
+        // crown. engageTurns is FUSEE_WRAP_TURNS by construction (asserted at
+        // the arrest build); RESERVE_BARREL_TURNS no longer appears here at
+        // all — the numeric clamp this line used to carry is a consequence of
+        // beak-on-block now, which is most of what §47 is.
+        const banked = Math.min(turnsDelta, Math.max(0, WIND_ARREST.engageTurns - barrelWindTurns));
+        barrelWindTurns += banked;
+        windArrestStalled = turnsDelta - banked > 1e-9; // the hand is on a stopped crown
+      } else {
+        windArrestStalled = false;
+      }
     } else {
       windArrestStalled = false;
-      // One-way click: backward turns free-wheel at the plate-top ratchet
-      // without unwinding the spring — the knob really turns, the wheel
-      // really holds, so the difference accumulates as stem slip.
+      // One-way: a backward crown does not unwind the spring — the saw
+      // coupling at the sliding clutch (TODO 50's split) ratchets: the
+      // ramps cam the clutch over the fixed pinion's ring, one snap per
+      // leaf, the yoke spring reseating it. The slip IS the coupling's
+      // relative angle now; the ride law (sawCouplingLiftAt at the pose
+      // block) and the take-up above both read it.
       windStemSlip += crownRotDelta;
     }
   } else {
@@ -26904,7 +27264,26 @@ function tick(t) {
   // Uses balanceRate as it stood at the END of the last tick, a one-frame lag
   // that's imperceptible but avoids a circular dependency (this frame's rate
   // depends on tension, which depends on this drain).
-  barrelWindTurns = Math.max(0, barrelWindTurns - (balanceRate * rawDt) / (HOURS_PER_FUSEE_TURN * 3600));
+  {
+    const before = barrelWindTurns;
+    barrelWindTurns = Math.max(0, barrelWindTurns - (balanceRate * rawDt) / (HOURS_PER_FUSEE_TURN * 3600));
+    // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
+    // reversal parked the clutch mid-pitch), the pinion's run-down advance
+    // first CLOSES the gap from its own side — the drive face travels to
+    // the free clutch while the knob holds still. Route that share of the
+    // drain into the slip (windStemRot = derived + slip stays constant
+    // through it), and only the remainder drags the knob backward, which
+    // is the drive face bearing from the pinion's side. Seated (gap 0)
+    // this is a no-op and the knob creeps exactly as before.
+    const drained = before - barrelWindTurns;
+    if (drained > 0) {
+      const gap = stemClutchGap();
+      if (gap > 1e-12) {
+        const stemRad = drained * (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI;
+        windStemSlip += Math.min(stemRad, gap);
+      }
+    }
+  }
   const tension = clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
 
   // Contact damping: the balance's own angular rate relaxes toward 0 when
@@ -27101,11 +27480,36 @@ function tick(t) {
   // (The mainspring is wound further down, off the drum's own angle — it is
   // not a readout of tension any more. TODO 1.)
 
-  // Hacking seconds: the stem/crown/winding-pinion group's position along
-  // the stem axis (local +Y = outward) — crownPullT itself was updated at
-  // the top of tick(), before the clutch routing above needed it.
+  // Hacking seconds: the stem/crown group's position along the stem axis
+  // (local +Y = outward) — crownPullT itself was updated at the top of
+  // tick(), before the clutch routing above needed it.
   const crownOutDist = pinDist + crownPullT * CROWN_PULL_DIST;
   windSpinner.position.set(uWind.x * crownOutDist, uWind.y * crownOutDist, Z_KEYLESS);
+  // TODO 50 — the CLUTCH's slide is the stem's pull PLUS the saw lift: the
+  // coupling's ride law at the coupling's own relative angle, which IS
+  // −windStemSlip (the clutch is keyed to the stem, the pinion to the bank,
+  // and their difference is by definition the slip — see the split's build
+  // comments for the index convention). One law, read from the same spec
+  // the rings were cut from.
+  // The ride law, at the coupling's ACTUAL separation: the pull already
+  // holds the faces pull·CLUTCH_TRAVEL apart, so only the lift the ramps
+  // still demand ABOVE that separation moves the clutch — pulled to SET,
+  // the coupling is clear of itself and a parked mid-ramp slip lifts
+  // nothing (the first cut added the full lift at every pull, and the
+  // pulled clutch overshot the setting station into the wheel by it).
+  const sawLift = Math.max(0,
+    sawCouplingLiftAt(STEM_SAW_SPEC, -windStemSlip) - crownPullT * CLUTCH_TRAVEL);
+  // §99's face-relief convention, at the coupling: the analytic seat would
+  // park the pair plane-on-plane twice over (tip flats on valley flats in
+  // z, drive faces in θ), and exactly-coincident planes are the one case
+  // the BVH instruments cannot arbitrate (the coplanar-triangle noise §61
+  // documents). The DISPLAYED metal therefore parks a hairline off the
+  // seat — SEAT_RELIEF (layout.js — the clutch's reach derivations budget
+  // it) axially and the same in clocking, an order under
+  // HANDOFF_TRACK_TOL (0.03) so every declared contact still measures
+  // shut — while the tick's laws read the exact slip.
+  const clutchDist = clutchHomeDist + crownPullT * CLUTCH_TRAVEL + sawLift + SEAT_RELIEF;
+  windClutch.position.set(uWind.x * clutchDist, uWind.y * clutchDist, Z_KEYLESS);
 
   // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
   // groove actually is right now (crownPullT), so the beak pin stays in the
@@ -27122,7 +27526,10 @@ function tick(t) {
   // required to explain the reversal. (The setting-lever DETENT that holds
   // each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
-  yokeGroup.rotation.z = yokeAngleAt(crownPullT);
+  // TODO 50 — the fork follows the CLUTCH, not the stem: pull plus the saw
+  // lift's share of the stroke, so a cam-over reaches the yoke through the
+  // same angle law that tracks the slide (no second law, no keyframe).
+  yokeGroup.rotation.z = yokeAngleAt(crownPullT + sawLift / CLUTCH_TRAVEL);
   updateStopWork(hackPinWorldAt(crownPullT));
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
@@ -27192,9 +27599,17 @@ function tick(t) {
   // rate through the 24:8 ratio is 1:1 with banked crown input); at the
   // arrest it stops with the wheel, which is §47's acceptance — a real
   // fusee stop stalls the crown dead, the hand slips on the knob.
-  const windStemRot = (RATCHET_TEETH / windPinionTeeth) * 2 * Math.PI
+  const windStemRot = (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI
     * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
   windSpinner.rotation.y = -windStemRot;
+  // TODO 50 — the split's two rotors. The CLUTCH is keyed to the stem
+  // (square joint): it spins with the knob, slip included. The FIXED
+  // WINDING PINION is a winding-train wheel: it poses from the BANK alone
+  // (windStemRot minus the slip — the derived term), which is §126's
+  // one-source rule; their relative angle is therefore windStemSlip by
+  // construction, the quantity the coupling's ride law reads.
+  windClutch.rotation.y = -windStemRot + 0.005; // the clocking half of SEAT_RELIEF, INTO the backlash (+δ — see the slide above and the ring-mount comment)
+  windPinionGroup.rotation.y = -(windStemRot - windStemSlip);
 
   // The spur's world-angle DELTA from the built (full-wind) pose is
   // −2π·(RESERVE − bank) — its local windLocalAt term plus the arbor's train
@@ -28563,6 +28978,8 @@ window.__clock = {
   },
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
+  get windStemSlip() { return windStemSlip; },        // TODO 50: the coupling's relative index
+  get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },
   get crownRotation() { return crownRotation; },
   get setPathRot() { return setPathRot; },
@@ -28699,6 +29116,11 @@ window.__clock = {
     // pose separately, no longer exists; a stale key in an old probe is
     // simply ignored). Clamped 0..1: the arrest's own bound, restated.
     if (p.tension !== undefined) barrelWindTurns = clamp(p.tension, 0, 1) * RESERVE_BARREL_TURNS;
+    // TODO 50: the stem clutch's relative index — poses the saw coupling's
+    // ride directly (lift, cam-over, the yoke's follow). The delta baseline
+    // re-seeds so no crown delta leaks into the next tick, the
+    // alarmCrownRotation convention above.
+    if (p.windStemSlip !== undefined) { windStemSlip = p.windStemSlip; lastCrownRotation = crownRotation; }
     if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
     if (p.alarmCrownRotation !== undefined) { // §24 alarm axis — poses "crown wound to here in SET mode"
       alarmCrownRotation = p.alarmCrownRotation;
