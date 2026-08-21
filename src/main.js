@@ -7317,6 +7317,18 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // under the bracket, because a pin stands in that gap, and the structural
   // margin under the lug, because nothing stands there — the lug simply
   // sweeps over.
+  //
+  // THE MARGIN UNDER THE LUG IS AN EQUALITY, AND RELIEVING IT WAS TRIED AND
+  // REFUSED BY MEASUREMENT (TODO 51 residue (b)). A §50 pivot floor of extra
+  // daylight here (… − CLEAR_MARGIN − PIVOT_MIN_U) drops the whole finger
+  // plate 0.185 into a fatter band — priced above, and the wider beak-window
+  // demand at LUG_OUTER absorbed the analytic side exactly as designed — but
+  // the CHAIN'S DEPARTURE CORRIDOR then covers every legal beak azimuth at
+  // every one of 147 candidate pad azimuths (trace: the 'c' rejects bridge
+  // straight into the 'l' ceiling; the moment window never opens), and the
+  // solve falls to its unchecked fallback with a disengaging moment. So the
+  // pair sits AT the margin deliberately: the fold has no z to give the pad
+  // without handing the beak to the span's corridor.
   const HUB_Z2 = Math.min(BRK_BOT - PIN_GAP, LUG_Z1 - CLEAR_MARGIN);
   const HUB_Z1 = HUB_Z2 - STOCK_MIN_U;                //  … lever stock at the floor
   // the station whose channel carries the lug — the groove's z law inverted
@@ -7371,14 +7383,29 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // well would price the same clearance twice and shove the whole finger
   // outboard for nothing. So a point dz outside the band demands only
   // √(margin² − dz²) in radius, and one inside it demands the margin whole.
+  // TODO 51 residue (c) — the same loop also fills a PER-SECTOR table,
+  // because the global is a max over the whole compass while the wrap's
+  // demand varies ~4.19–4.37 with the link phase: 72 bins of 5°, each
+  // holding its own max of the same sphere-of-margin demand. 5° is wider
+  // than a demand sphere's angular footprint (CLEAR_MARGIN/r ≈ 2°), so the
+  // neighbour-max lookup at armStopAt can never under-read a sphere that
+  // straddles a bin edge.
+  const ARM_REACH_BINS = 72;
+  const _armReachBin = new Float64Array(ARM_REACH_BINS);
   const ARM_BAND_REACH = (() => {
     let need = 0;
+    const w = TAU2 / ARM_REACH_BINS;
     for (let t = 0; t <= 1.0001; t += 0.02) {
       for (const p of linkOuterPtsNear(Math.min(t, 1), Infinity, true)) {
         const dz = p.z < HUB_Z1 ? HUB_Z1 - p.z : p.z > HUB_Z2 ? p.z - HUB_Z2 : 0;
         if (dz >= CLEAR_MARGIN) continue;
-        need = Math.max(need, Math.hypot(p.x - C.x, p.y - C.y)
-          + Math.sqrt(CLEAR_MARGIN * CLEAR_MARGIN - dz * dz));
+        const d = Math.hypot(p.x - C.x, p.y - C.y)
+          + Math.sqrt(CLEAR_MARGIN * CLEAR_MARGIN - dz * dz);
+        need = Math.max(need, d);
+        let az = Math.atan2(p.y - C.y, p.x - C.x) % TAU2;
+        if (az < 0) az += TAU2;
+        const b = Math.min(ARM_REACH_BINS - 1, Math.floor(az / w));
+        if (d > _armReachBin[b]) _armReachBin[b] = d;
       }
     }
     return need;
@@ -7460,8 +7487,16 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     // keeps the arm inside its ratio ceiling. The width between them is the
     // beak's whole freedom.
     const windowAt = (Rb) => acosC((Rs * Rs + Rb * Rb - L * L) / (2 * Rs * Rb)) - acosC(Rb / Rs);
+    // The demand IS the comment above, in arc: the beak's own tangential
+    // width at its parked radius plus one scan step. (TODO 51 residue: this
+    // read `2 * BEAK_SCAN_STEP` = 0.04 rad — a two-sample window, which is
+    // the "lands in it only by luck" case the comment warns about, and the
+    // landing's own record shows changes emptying it silently. Note the
+    // step appears on BOTH sides of the old expression: shrinking it
+    // NARROWED the built window — the demand must be in arc so resolution
+    // and freedom stay decoupled.)
     let Rb = chainProud + CLEAR_MARGIN + 0.02;
-    for (let i = 0; i < 4000 && windowAt(Rb) < 2 * BEAK_SCAN_STEP; i++) Rb += 0.005;
+    for (let i = 0; i < 4000 && windowAt(Rb) < BEAK_TAN / Rb + BEAK_SCAN_STEP; i++) Rb += 0.005;
     return Math.max(chainProud, Rb - CLEAR_MARGIN - 0.02);
   })();
   if (!(LUG_OUTER < lugSt.r + CHAIN_END_R_OUT * 2))
@@ -7469,6 +7504,24 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // the lug's orbit is the other floor for the plate: nothing at plate z may
   // stand inside it either, since the lug sweeps every azimuth once per turn
   const ARM_STOP_R = Math.max(LUG_OUTER + CLEAR_MARGIN, ARM_BAND_REACH);
+  // TODO 51 residue (c) — the SECTORED stop the arm-hold reads: the wrap's
+  // demand at the queried azimuth (bin plus both neighbours — see the table's
+  // own comment), floored everywhere by the lug's orbit, which is
+  // azimuth-UNIFORM because the lug sweeps the compass once per turn. This
+  // buys STOCK only: the beak scan and STUD_FLOOR_R deliberately keep the
+  // global — a floor the per-candidate pass could walk past would re-open
+  // the empty window it exists to close (the standing note at STUD_FLOOR_R).
+  const armStopAt = (az) => {
+    const w = TAU2 / ARM_REACH_BINS;
+    let a = az % TAU2; if (a < 0) a += TAU2;
+    const b = Math.min(ARM_REACH_BINS - 1, Math.floor(a / w));
+    const reach = Math.max(
+      _armReachBin[(b + ARM_REACH_BINS - 1) % ARM_REACH_BINS],
+      _armReachBin[b],
+      _armReachBin[(b + 1) % ARM_REACH_BINS],
+    );
+    return Math.max(LUG_OUTER + CLEAR_MARGIN, reach);
+  };
   // The pad's radial stock is not a literal: it is the gap the tab bridges,
   // from its working face out to the arm's stop, resolved once the solve has
   // both radii (see PAD_T below). This is its FLOOR, and the only thing the
@@ -8005,7 +8058,11 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // rotates the whole plate about the stud by PSI_FULL and carries an arm's
   // inner edge inward by about half a unit, which is exactly the pose the
   // gate caught (full wind, the finger thrown).
-  const armMinR = (target, samples = 24, along = 32) => {
+  // …and the hold is SLACK against the SECTORED stop (TODO 51 residue (c)):
+  // each sampled edge point is held to armStopAt at ITS OWN azimuth rather
+  // than every point to the compass-wide max, so an arm crossing a sector
+  // the wrap never fattens may sit where that sector's demand actually is.
+  const armMinSlack = (target, samples = 24, along = 32) => {
     const v = inPawl(target);
     const len = Math.hypot(v.x, v.y);
     const root = HUB_R - STOCK_MIN_U / 2;
@@ -8020,7 +8077,8 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
         for (const w of [-ARM_W / 2, ARM_W / 2]) {
           const px = a * ux + w * nx, py = a * uy + w * ny;
           const wx = stud.x + px * ca - py * sa, wy = stud.y + px * sa + py * ca;
-          worst = Math.min(worst, Math.hypot(wx - C.x, wy - C.y));
+          worst = Math.min(worst, Math.hypot(wx - C.x, wy - C.y)
+            - armStopAt(Math.atan2(wy - C.y, wx - C.x)));
         }
       }
     }
@@ -8036,10 +8094,10 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     let R = R0;
     for (let i = 0; i < 400; i++) {
       const ctr = { x: C.x + R * dir.x, y: C.y + R * dir.y };
-      if (armMinR(ctr) >= ARM_STOP_R) return { R, ctr };
+      if (armMinSlack(ctr) >= 0) return { R, ctr };
       R += 0.01;
     }
-    console.warn(`§47: no ${label} station within 4 units clears ARM_STOP_R ${ARM_STOP_R.toFixed(3)} — the fold has no position-space answer here`);
+    console.warn(`§47: no ${label} station within 4 units clears the sectored arm stop (global ${ARM_STOP_R.toFixed(3)}) — the fold has no position-space answer here`);
     return { R, ctr: { x: C.x + R * dir.x, y: C.y + R * dir.y } };
   };
   // THE PAD ARM STAYS OUT AND THE PAD REACHES IN. An arm spans thirty-odd
@@ -8051,7 +8109,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // and the pad's own stock bridges the rest — see PAD_T, which is that gap
   // rather than a literal.
   const padArmEnd = armEndOutside({ x: Math.cos(PAD_AZ), y: Math.sin(PAD_AZ) },
-    ARM_STOP_R, 'pad-arm');
+    armStopAt(PAD_AZ), 'pad-arm');
   const PAD_ARM_END_R = padArmEnd.R;
   armTo(padArmEnd.ctr, 'windArrestPadArm');
   // THE WORKING FACE IS A RADIAL PLANE, and that is the whole mechanics of
@@ -8080,11 +8138,13 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // solved by the same chord rule — pushing it out costs no mechanism
   // quantity at all, because the lever ratio is stud→beakParked and
   // beakParked is the scan's, not the riser's.
-  const riserEnd = armEndOutside(beakRad, ARM_STOP_R + RISER_W / 2, 'riser');
+  const riserEnd = armEndOutside(beakRad, armStopAt(BEAK_AZ) + RISER_W / 2, 'riser');
   let RISER_R = riserEnd.R;
   {   // the riser's own corners count too — it is a box standing on the arm's end
+    // (armStopAt's neighbour-max lookup spans ±5°, which covers the corners'
+    // own azimuth offset atan(half/R) ≈ 5° from the riser's centre)
     const half = Math.hypot(RISER_W / 2, ARM_W / 2);
-    RISER_R = Math.max(RISER_R, ARM_STOP_R + half);
+    RISER_R = Math.max(RISER_R, armStopAt(BEAK_AZ) + half);
   }
   const riserCtr = { x: C.x + RISER_R * beakRad.x, y: C.y + RISER_R * beakRad.y };
   // The tab REACHES IN, the arm STAYS OUT — the same rule as the pad's. The
@@ -8445,6 +8505,11 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // bands the pad's step separates.
   WIND_ARREST.armBandReach = ARM_BAND_REACH;
   WIND_ARREST.armStopR = ARM_STOP_R;
+  // …and the sectored stop's own table (residue (c)): per-5°-bin wrap
+  // demand, so a probe can check the arms against the same floor the
+  // build held them to, sector by sector.
+  WIND_ARREST.armReachBin = Array.from(_armReachBin);
+  WIND_ARREST.armStopAt = armStopAt;
   WIND_ARREST.padArmEndR = PAD_ARM_END_R;
   WIND_ARREST.riserR = RISER_R;
   WIND_ARREST.padT = PAD_T;
@@ -28542,6 +28607,7 @@ window.__clock = {
       engage: WIND_ARREST.engage, chainTqGap: WIND_ARREST.chainTqGap,
       chainTqBoundSlack: WIND_ARREST.chainTqBoundSlack,
       armBandReach: WIND_ARREST.armBandReach, armStopR: WIND_ARREST.armStopR,
+      armReachBin: WIND_ARREST.armReachBin, armStopAt: WIND_ARREST.armStopAt,
       beakScanTrace: WIND_ARREST.beakScanTrace, azCandidates: WIND_ARREST.azCandidates,
       azRange: WIND_ARREST.azRange, tabZ: WIND_ARREST.tabZ,
       padArmEndR: WIND_ARREST.padArmEndR, riserR: WIND_ARREST.riserR,
