@@ -5085,6 +5085,9 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const isWrapLink = (i) => wrapArc > 0 && (i + 1) * (len / N) <= wrapArc - CHAIN_PITCH;
   // Parity is anchored at the CLAW end so the link that drops over the
   // hook's pin is always an outer pair, whatever N rounds to this rebuild.
+  // linkOuterPtsNear mirrors this expression VERBATIM (same N, same
+  // joints), so the arrest pad's law reads each link at its own parity —
+  // change one and the pad rides a fiction again.
   const isOuter = (i) => (N - 1 - i) % 2 === 0;
   let total = (N + 1) * pin.pos.length;
   for (let i = 0; i < N; i++) total += (isOuter(i) ? outer : inner).pos.length;
@@ -7741,20 +7744,35 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
         y: my + t.y * aa + y.y * yy + k.y * dd,
         z: mz + t.z * aa + y.z * yy + k.z * dd,
       });
-      // outer-plate stadium boundary at both pin-end faces (d = ±PIN/2):
+      // THE LINK'S OWN PARITY, the builder's law VERBATIM (anchored at the
+      // claw end — buildChainLinkGeometry is the other reader of this
+      // expression, and both index the same N-equal-arc joints, so link i
+      // here IS link i there). The first cut modelled EVERY link with the
+      // outer plates' stadium, and the built chain alternates: an inner
+      // link's plates ride CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085 lower
+      // and nest CHAIN_PLATE_T + CHAIN_LEAF_GAP further in — so through
+      // every inner-link phase of the wrap the pad's law read metal 0.085
+      // proud of the built surface and the arrest ARMED ON A FICTION:
+      // measured, the arm swung with up to +0.109 of daylight under the
+      // pad, in alternating tension bands, exactly the parity period.
+      const isOuter = (N - 1 - i) % 2 === 0;
+      const endR = isOuter ? CHAIN_END_R_OUT : CHAIN_END_R_IN;
+      const ddFace = isOuter ? CHAIN_PIN_LEN / 2
+        : CHAIN_PIN_LEN / 2 - CHAIN_PLATE_T - CHAIN_LEAF_GAP; // the inner pair's outer faces (CHAIN_TMPL's stack)
+      // plate-pair stadium boundary at both outer faces (d = ±ddFace):
       // the straight edges chord the pitch; the caps round the pins
-      for (const dd of [-CHAIN_PIN_LEN / 2, CHAIN_PIN_LEN / 2]) {
+      for (const dd of [-ddFace, ddFace]) {
         // dense boundary: a window-edge crossing quantizes to the sample
         // spacing, and the closing-arc constraint reads dips as narrow as a
         // sample — 24 along the edge (~0.08 apart) keeps that noise inside
         // the kiss tolerance
         for (let sN = 0; sN <= 40; sN++)
-          push(-CHAIN_PITCH / 2 + (sN / 40) * CHAIN_PITCH, -CHAIN_END_R_OUT, dd); // the outboard edge
+          push(-CHAIN_PITCH / 2 + (sN / 40) * CHAIN_PITCH, -endR, dd); // the outboard edge
         for (const end of [-1, 1]) {
           for (let sN = 0; sN <= 20; sN++) {
             const ph = -Math.PI / 2 + (sN / 20) * Math.PI;
-            push(end * (CHAIN_PITCH / 2 + CHAIN_END_R_OUT * Math.sin(ph)),
-              -CHAIN_END_R_OUT * Math.cos(ph), dd); // the end cap, outboard half
+            push(end * (CHAIN_PITCH / 2 + endR * Math.sin(ph)),
+              -endR * Math.cos(ph), dd); // the end cap, outboard half
           }
         }
       }

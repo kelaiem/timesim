@@ -55,6 +55,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | OPEN | `makeJewelSetting`'s collar is wound inside out AND is an open shell — three in the scene, found by §148's own winding assert swept scene-wide. The winding is a two-line fix; the open profile is TODO 27's measured hazard and is the real work |
+| 71 | HALF CLOSED (re-measured 2026-08-21) | The arrest pad armed on a fiction: the coil model read every link as an OUTER link and the built chain alternates — 33 ladder poses swung the arm over up to +0.109 of daylight. The parity half is FIXED (the sampler carries the builder's own parity law; hover 33 → 9 poses). What remains is the rigid-body residue: a window-max law is not where a 0.7-wide pad settles on an alternating, leaned coil — bridge/edge effects, the full-wind row waived at −0.111 (edge contact). Fix: the §99 smallest-lift idiom run for the pad's face CHORD |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 | 73 | OPEN | The alarm column wheel's mesh carries 14 zero-area triangles, and the vendored parity raycast throws (`null.dot`) when a ray lands on one — found by §150's report diff as an `assembly` unmeasurable row (reported, assumed joined: the safe direction). Two independent fixes owed: cap the builder's degenerate faces, and guard the vendored `getInterpolation` null |
@@ -7882,34 +7883,53 @@ before anyone had fixed them — which is rule 6 turned into a nag rather than a
 gate. Fix the setting, then call it there too, and the class is closed for
 every lathe in the movement that has a horizontal top face.
 
-## 71. The arrest pad's seat is solved against the analytic chain, and the built links' phase can scallop 0.05 through it
+## 71. The arrest pad rides a model of the coil, and the model is not yet where a rigid pad settles
 
-**Found by §125 Tier B, and it is a waived `windArrestHandoff` row** — the
-first waiver that check has carried. Moving the small-seconds station to
-22.9 re-solved the ¾ plate's webs, the §47 finger scan re-sited the pad's
-azimuth, and at the new azimuth the full-wind row measures the coil
-**0.0498 INTO the pad** against the ±0.03 touch band (the old azimuth
-measured −0.0074 on the same chain).
+**Found by §125 Tier B as a waived `windArrestHandoff` row, re-diagnosed
+2026-08-21 after a user-visible symptom** — through the arming band the arm
+swung with open daylight under the pad: measured on a 97-pose tension
+ladder, **33 poses with the arm swung and more than the ±0.03 touch band of
+daylight, up to +0.109** — the arrest ARMED on metal that was not there.
 
-**The defect is a phase, not a radius.** `solveFinger` seats the pad off
-`linkOuterPtsNear(1)` — a densely sampled model of the full-wind wrap whose
-links are spaced by `curve.getSpacedPoints` from the arc division. The BUILT
-chain's links are anchored from the fusee hook, so their phase along the
-wrap differs from the model's by up to half a pitch — and the top coil's
-local outer surface scallops between a plate's chord and an end cap's bulge
-by ~0.05 across that phase. Whether the pad's azimuth lands on a cap or a
-chord is therefore luck of the station, which is exactly what changed: the
-old azimuth met plate, the new one meets a cap.
+**First cause, found and FIXED: the law modelled every link as an OUTER
+link.** `linkOuterPtsNear` sampled the outer plates' stadium
+(`CHAIN_END_R_OUT`, faces at ±pin/2) for every link, and the built chain
+alternates: an inner link's plates ride `CHAIN_END_R_OUT − CHAIN_END_R_IN =
+0.085` lower and nest a leaf further in. Through every inner-link phase of
+the wrap the pad's law read metal 0.085 proud of the built surface — the
+alternating hover bands are exactly the parity period. The sampler now
+carries the builder's own parity law verbatim (`(N − 1 − i) % 2`, anchored
+at the claw end — both index the same N-equal-arc joints, so link i is link
+i in both), and the hover collapsed to 9 poses ≤ +0.10. (The original
+filing blamed a half-pitch phase offset between the model's
+`getSpacedPoints` and a hook-anchored build; measured, both use the same
+joints — the phase story was the parity error wearing a disguise.)
 
-**Fix path.** Anchor `linkOuterPtsNear`'s link phase to the same origin the
-chain build uses (the fusee hook's arc position at the given tension) rather
-than letting `getSpacedPoints` choose it — one offset added to the joint
-sampling, after which the model's caps land where the built caps land and
-`restR` comes out of the surface the checker actually reads. The §47
-arrival-profile assert (`proudOf` across the t grid) inherits the same
-correction for free. Until then the row is waived citing this item:
-the arrest still arrests — 0.05 early, pressed into the coil rather than
-kissing it.
+**What remains, named precisely — the RIGID-BODY residue.** The law now
+reads the true metal in the pad's window, but a law that reads "the metal's
+max height in the window" is still not "where a rigid pad settles":
+
+- a flat 0.7-wide pad over an inner link has its edges over the flanking
+  outer caps (outer metal reaches `CHAIN_END_R_OUT` past each rivet into
+  the inner link's span), so at some phases the pad BRIDGES and cannot
+  descend to the inner plate the window's own max would let it kiss;
+- near full wind the leaned top coil takes the pad's EDGE before its face:
+  the full-wind row now measures **−0.111** (edge contact, was −0.0498
+  under the all-outer fiction that hid it), and the last few ladder poses
+  before full read up to −0.128;
+- a residual +0.06..+0.10 hover band survives around t ≈ 0.93 where the
+  coil only partially crosses the pad's z-band and the face undercuts
+  metal that sits just below it in z.
+
+**Fix path.** Replace the window-max law with a rigid settle: the largest
+lift at which the pad's FACE CHORD (with its lean and its edge break)
+first touches any correctly-modelled link surface in its span — the §99
+"smallest lift that clears" idiom run for a chord instead of a point, from
+the same parity-true sampler this item's first half landed. The seat
+(`restR`), `padLaw`, the §47 arrival-profile asserts and the per-sector
+reach consumers all inherit it. Until then the row stays waived citing
+this item: the arrest still arrests, riding true metal through the arming
+band, seated an edge-depth into the coil at full.
 
 ---
 

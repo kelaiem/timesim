@@ -14472,3 +14472,41 @@ and `fuseeEnvR = K/springTq` keep their closed shapes over the table, so
 `springTq·envR/K ≡ 1` stays algebra whatever the table holds. The waiver
 text in `checkChainLength` — prose asserting the ODE was unbuilt — is
 deleted; the row gates.
+
+## §151 — the arrest pad reads the chain's true anatomy: link parity enters the coil model
+
+TODO 71, half closed — and found by a user watching the sim, not by an
+instrument: through the arming band the arrest's arm swung with open
+daylight under its finger pad. Measured on a 97-pose tension ladder, 33
+poses had the arm swung with more than the ±0.03 touch band of daylight
+under the pad, up to +0.109 — the arrest ARMED on metal that was not
+there.
+
+**The cause was a parity fiction, not the phase offset the item had
+filed.** `linkOuterPtsNear` — the sampled model of the wrap that the
+pad's lift law, its seat solve, the §47 arrival asserts and the
+per-sector reach tables all read — modelled EVERY link with the outer
+plates' stadium. The built chain alternates: an inner link's plates ride
+`CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085` lower and nest a leaf further
+in, so through every inner-link phase the law read metal 0.085 proud of
+the built surface, and the measured hover alternated in exactly the
+parity period. (The item's original story — a half-pitch phase offset
+between the model's `getSpacedPoints` and a hook-anchored build — was
+measured false: both samplers index the same N-equal-arc joints. The
+phase story was the parity error wearing a disguise.) The sampler now
+carries the builder's own parity law VERBATIM (`(N − 1 − i) % 2`,
+anchored at the claw end; a comment at each site names the other), with
+each link's own half-width and its own plate-stack faces. The hover
+collapsed 33 → 9 poses, boot stays silent, and every law downstream of
+the sampler re-solves from the corrected surface.
+
+**What the fix exposed, kept as the waiver's new text**: a law that
+reads "the window's tallest metal" is still not "where a rigid pad
+settles". A flat 0.7-wide pad over an inner link has its edges over the
+flanking outer caps and BRIDGES; near full wind the leaned top coil
+takes the pad's edge before its face — the full-wind row now measures
+−0.111 (edge contact, deeper than the −0.0498 the all-outer fiction
+reported, because the fiction had been parking the pad high). The row
+stays waived citing TODO 71, whose fix path is now precise: the §99
+smallest-lift idiom run for the pad's face CHORD against the
+parity-true sampler.

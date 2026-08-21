@@ -3954,11 +3954,15 @@ export const WIND_ARREST_HANDOFFS = [
     unitA: 'Chain', meshA: 'chainRun',
     unitB: 'Winding arrest', meshB: 'windArrestPad',
     expect: { full: 'contact', slack: 'free' },
-    // §125 Tier B — the moved station re-sited the pad's azimuth onto an
-    // end-cap phase of the built wrap; the seat solve reads the analytic
-    // spacing and the two disagree by the cap-vs-chord scallop (measured
-    // −0.0498 vs the −0.0074 the old azimuth read on the same chain).
-    waived: 'TODO 71 — pad seat solved against the analytic link phase; anchor linkOuterPtsNear to the build\'s hook phase',
+    // TODO 71, re-diagnosed with the parity fix: linkOuterPtsNear now
+    // models each link at its own outer/inner parity (the arming band's
+    // arm-swings-on-daylight hover collapsed from 33 to 9 ladder poses),
+    // and what remains at this row is the RIGID-BODY residue — a flat
+    // 0.7-wide pad cannot settle onto an inner link whose flanking outer
+    // caps its edges bridge, and near full wind the leaned top coil takes
+    // the pad's edge before its face (measured −0.111 at t=1, edge
+    // contact, was −0.0498 under the all-outer fiction that hid it).
+    waived: 'TODO 71 — the pad law reads the window\'s metal, not where a rigid pad settles: bridge/edge residue, −0.111 at full',
   },
   {
     label: 'beak ⇄ stop lug',
