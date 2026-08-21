@@ -19,7 +19,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 |---|---|---|
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
-| 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded) |
+| 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded; item 78 catalogues the three `Minute jumper` pairs as unseeded too) |
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
@@ -62,6 +62,8 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
 | 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
+| 77 | OPEN | All — the design is written in the item: derive `SET_BACKLASH` from the setting chain's mesh backlash and make the setting-time step the spring's equilibrium over the real V, replacing the `Math.round`; step 1 (the click spring's detent-force arithmetic, P1) stands alone. Roadmap §4 keeps the WHEN half and the word |
+| 78 | OPEN | All — BUILT §1's unpaid bill, per-row: the two promised boot asserts (valley seat, crown-in lift) plus an engage-threshold check, the underived constants split zero-movement vs movement-risking, the three unseeded `Minute jumper` `EXPECTED_CONTACT_FLOORS` pairs, and the ungated explain number |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -2253,6 +2255,7 @@ two.
 Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
 restored. The **beak tail** fix and the **inverted lever** fix stand — both
 movement-side, both verified, neither implicated.
+
 ## 19. CLOSED — the selector's sensing pin never touched the ring it read
 
 **Closed 2026-07-29.** Three defects, one contact — the third was found
@@ -6493,6 +6496,23 @@ setting train's angle is a function of a quantity already saved, derive it
 and delete the state; if it genuinely is not, persist `setPathRot`
 alongside `crownRotation` and clamp it on restore.
 
+**Investigated 2026-08-21 — the derivation branch fails honestly, so
+persist is the path.** `setPathRot` accumulates only while the crown is
+out, so it is a HISTORY INTEGRAL: no saved scalar reproduces it
+(`crownRotation` restores the crown, not how much of its turning
+happened pulled). Persist it in `captureState()`, whitelist it in
+`sanitize()` — item 65's lesson: the two lists move together or the
+field dies silently — and clamp on restore by wrapping to the setting
+train's period (one minute-wheel revolution's worth), so the float
+cannot grow without bound. Two couplings to keep whole: the alarm
+re-solve watches `setPathRot` DELTAS, so its previous-value must be
+initialized from the restored number or every reload fires a spurious
+re-solve; and `jumpCorr` composes with the restored value — the reload
+must land the keyless wheels on their phase AND keep the hands where
+they were. Validation: the CI fingerprint double-boot (virgin state —
+should be unaffected; confirm), plus a save/reload probe asserting the
+setting-wheel/minute-arbor angles round-trip and the hands do not jump.
+
 ---
 
 ## 53. CLOSED — the plate floor counts the chain now, in closed form
@@ -8291,3 +8311,205 @@ whether 0.24 u of joint burial is acceptable display fiction or debt worth
 that work is an owner's call. Until then this item is the number: re-run
 the probe after any chain-frame change, and if the max span GROWS, the
 fiction deepened and this item's figures are stale.
+
+## 77. The quick-set's detent is arithmetic — deliver the setting-time step through a derived compliance window
+
+Item 58 closed as the words fix and said so in as many words: *"the
+inner defect is NOT fixed, and is now stated where someone would be
+misled instead."* This is the inner defect's own entry, with a design.
+Today `target` is `Math.round((minuteBase + rawSetOffset +
+jumpCorr)/MIN_PITCH)*MIN_PITCH` (the quick-set block in `tick` — grep
+`TODO 58` in `src/main.js`), and the star turns with `mwMinuteA` —
+computed FROM that quantized value — so the beak rides a profile the
+display has already decided. The star, the beak and the click spring
+exist as metal with an exact ride solve (`jmpRideForSeatRadius`) and a
+one-sided seat law, and they FOLLOW. In the README's vocabulary:
+modelled, not simulated — rule 2's own class of defect, one line below
+the honest input path that closed item 3.
+
+**Scope boundary first, because the word is spoken for.** Roadmap §4
+owns "jumping minute" and its two-part bill: WHEN (a jump once per
+minute while the watch RUNS — a release off the train plus an energy
+story) and WHAT DRIVES IT. This item takes only the second half, at
+SETTING time: the running display is untouched, no release, no
+remontoir. Landing it edits §4's status note (the WHEN half remains; the
+word stays unearned there) — that reconciliation is part of this item.
+
+**Why the fix is not "settle to the nearest valley".** With rigid
+gearing crown→minute wheel, a causal star simply FOLLOWS the crown
+continuously — no step at all. The real mechanism steps because the star
+can run ahead of the crown inside a COMPLIANCE WINDOW — the setting
+chain's mesh backlash on the crown side, the cannon pinion's friction
+coupling protecting the train side — and the click spring's tangential
+component on the V flank spends that window snapping the star to the
+valley. The missing quantity is the window, and it is derivable:
+
+- `SET_BACKLASH` — the compliance at the minute wheel, summed from the
+  per-mesh backlash allowances of the setting chain (setting wheel →
+  minute-arbor compound → minute wheel), each a function of that mesh's
+  module with the allowance convention named in the comment (rule 1),
+  each reflected to the minute wheel through its ratio. A number someone
+  can re-derive, not a knob. Boot assert beside it: `SET_BACKLASH <
+  STAR_PITCH` at the minute wheel — a window wider than a pitch makes
+  the equilibrium below ambiguous.
+
+**The tick surgery is local to the `target` line.** `rawSetOffset` (the
+simulated input) stays exactly as derived. `target` becomes the detent
+EQUILIBRIUM: the nearest valley reachable within ±`SET_BACKLASH/2` of
+the raw angle — and when no valley is in the window, the display is
+PINNED at the window edge, riding the flank (the spring holds the beak
+against the V; the crown holds the window). As the crown advances, the
+valley leaves the window, the display climbs the flank pinned at the
+edge, and when the next valley enters, the equilibrium jumps — a step
+delivered by the spring across a real compliance band. The spring's
+flank-side sign decides which valley when the window straddles a tip.
+Everything else keeps its semantics verbatim: the `jumpDisp` ease stays
+as the settle dynamic (`CAM_SNAP_TAU`, until the arithmetic below
+derives it), the push-in fold into `jumpCorr` stays, and `jumpSnapIdx`
+derives from the equilibrium's valley index — identical at rest to
+today's, so the sound block's edge source does not move.
+
+**Zero-dt and the sweeps are safe by construction.** The structure is
+unchanged: `target` is a pure function of pose-visible inputs, and
+`jumpDisp` is eased state that cannot move at zero dt — CLAUDE.md's trap
+holds exactly as before, the `jumperEngage` axis keeps its meaning, and
+`sweepHold` is untouched. The beak-ride block below the quantizer is
+untouched too; what changes is its EPISTEMIC status: the star turns with
+an angle that IS the spring-and-profile equilibrium, so cause and
+follower agree by construction and the §48 declaration's text becomes
+literally true.
+
+**Step 1 stands alone even if nothing else lands: the detent-force
+arithmetic** (P1, item 16's format; §137 priced five such paths in
+place, each beside its site — the alarm `switchClickSpring` block is
+the closest template — and the minute jumper's click spring still has
+none). The spring's declared section (0.2 u ⌀ ≈ 0.075 mm wire,
+`jumperClickSpring`, item 12-waived stock), its arc and working arm from
+the build, deflection at the seat (`CLEAR_MARGIN/JMP_TIP_SEAT_R` of
+over-travel), the 40° flank splitting radial from tangential → holding
+torque at the star → reflected through `MW_RATIO_1` and the keyless
+ratios to a detent torque at the crown, against the 5–50 mN real-detent
+window. A number outside the window is a finding FILED HERE, not a
+silent re-section. The same arithmetic prices the settle time, which is
+what would let `CAM_SNAP_TAU = 0.06` stop being declared by feel.
+
+**Validation, when the surgery lands.** The `Motion works ⇄ Minute
+jumper` penetration row (maxDepth 0.03, axis `jumperEngage`) must be
+re-measured per its own comment's rAF-freeze protocol — flank-pinned
+states are NEW reachable poses; at snapped rest the star still sits on
+pitch multiples, so the worst case should hold, and the `--report` diff
+is the acceptance. Plus a `step(dt)` probe: drive `setCrownRotation`
+slowly across three pitches; acceptance is the step profile
+(flank-pinned climb, snap as the valley enters the window) and no
+spring-back on push-in.
+
+**Reconciliation owed on landing:** the §1 block header (grep
+`MINUTE QUICK-SET, DETENTED DISPLAY`) and the tick comment that cites
+item 58; a note
+on item 58's record here; roadmap §4's status note; `explain.html`'s
+honesty ledger (≈2 blocks × 5 locales — `--extract`, retranslate,
+`--check`); a dated addendum on BUILT §1. The identifier freeze holds
+throughout: `'Minute jumper'`, `jmp*`, `jumperLever`, `jumpDisp` are
+load-bearing strings (`inspect.js` couples by string) and none of this
+renames them.
+
+## 78. BUILT §1's unpaid hardening bill — promised asserts, underived constants, uncovered instrument rows
+
+A 2026-08-21 robustness pass over the minute quick-set (the same
+investigation that filed item 77) found §1 carrying debt in four
+denominations, catalogued per-row (item 12's convention — do not
+bulk-edit). None of it moves geometry BY INTENT; the rows that could
+move it are marked and each is its own `--report`-diffed landing.
+
+### The asserts §1's own step 5 promised and never got
+
+`docs/BUILT.md` §1 step 5 asked for three boot asserts; only the third
+(pitch × points ≡ one minute-hand minute) exists, as the `STAR_POINTS`
+integer warn. The star's phase is set correct-by-construction
+(`minuteStar.rotation.z = JMP_TIP_AZ − STAR_PITCH/2`) and then never
+verified. Rule 6 form — `console.warn` with achieved vs required:
+
+- **Valley seat**: at `mwMinuteA = 0`, evaluate the tick's own profile
+  arithmetic — `u` at `JMP_TIP_AZ` must sit at 0.5 within tolerance,
+  and the solved aim's tip radius on `JMP_TIP_SEAT_R` within the aim
+  scan's own 0.02 acceptance band. Catches a re-phased star, a moved
+  `JMP_TIP_AZ`, or an aim-scan fallback that today warns only from
+  inside its IIFE on the boot where it first fires.
+- **Crown-in lift**: re-evaluate the lift constraint
+  (`minRAt(JMP_LIFT_SIGN·JMP_LIFT_ROT) ≥ STAR_R + CLEAR_MARGIN`)
+  OUTSIDE the lift solver — its fallback branch returns an apex-only
+  lift that explicitly does not meet the constraint, and only an
+  external assert keeps that loud on every subsequent boot. Beside it,
+  assert the two sites that derive the lifter plane (`Z_JMP_LIFTER` and
+  the tail pin's end) still agree — the same expression lives in two
+  places today.
+- **Engage threshold vs the metal**: `jmpEngaged = crownPullT > 0.5` is
+  a bare latch. Assert that at `crownPullT = 0.5` the beak's lifted tip
+  is already inside the star's tip circle (the latch engages no earlier
+  than the metal does), and write the true touch-fraction's derivation
+  in the comment; if it lands far from 0.5, that is a row here.
+
+### Underived constants, split by risk
+
+Zero-movement — derivable or nameable in place, one landing:
+
+- `JMP_REACH = JMP_LEVER − JMP_W * 0.45`: the 0.45 IS `0.9/2` —
+  `makeJumper`'s own tip-cone proportion. Export the fraction from the
+  builder and consume it; the builder and the placement solve stop
+  being able to drift apart, and the value is bit-identical.
+- `JMP_TIP_SEAT_R`'s 0.5: name it (`STAR_SEAT_FRAC`) with its
+  constraint — ride the flanks, never the root fillet — which the
+  comment already argues.
+- `STAR_R`'s comment is GARBLED: *"the star must never be / the mesh"*
+  drops its verb, so the one constraint the radius derives from is not
+  actually on record. Complete it, and decompose the expression:
+  `MW_MODULE_1 · 1.15` (a dedendum — name the convention) and the bare
+  `0.35` (state its constraint honestly, or row it below).
+- The bearing scan's tuning (obstacle pad 1.2, the `min(clr, 2)`
+  saturation, the `capD · 0.02` tiebreak): write the constraints — what
+  the pad must contain, why clearance saturates, the preference order —
+  and pin the output: `JMP_AZ` must still scan to 320°.
+
+Movement-risking — each its own landing, `--report` diff the acceptance:
+
+- `JMP_PIV_R = STAR_R + 2.4` — "~2 beak lengths" is justification after
+  the fact. A real derivation will not land on 2.4, and moving it
+  re-runs the bearing scan, the aim scan, the lift solve and the 0.03
+  penetration row.
+- The tail bar / tail pin / stud / spring stretch (the run from
+  `jumperTailPin`'s build to `jumperClickSpring`) — the least-derived
+  run in the block. Item 12 already carries the jumper's stock rows;
+  this is the geometry beside them.
+- `JMP_BIND_EPS = 0.01` — item 10's closure records its effect as
+  undistinguished from tessellation sag. Either distinguish it or
+  retire it.
+
+### The uncovered instrument rows
+
+All three `Minute jumper` EXPECTED pairs (`⇄ Motion works`, `⇄ Dial`,
+`⇄ Setting lever`) have no `EXPECTED_CONTACT_FLOORS` row — item 6's
+blanket excuse, everywhere except the star⇄beak penetration budget.
+Seed them per the table's discipline (measure FIRST, then declare):
+contacts `star ⇄ jumperBeak` for the first two (the star reaches the
+Dial pair through the nesting), the lifter bar ⇄ tail post for the
+third. A sub-margin finding is a finding — waive citing its item or fix
+it; never size the min to the defect.
+
+### The claims nothing gates
+
+- `explain.html` quotes the mechanism's headline number as "(0.1500,
+  exactly one `CLEAR_MARGIN`)" — the number BEFORE the identifier,
+  which matches none of `tools/explain-quotes.mjs`'s extractor
+  patterns. The page's own header promises its numbers are compared
+  against source; this one is not, and would drift silently if
+  `CLEAR_MARGIN` or the `JMP_LIFT_ROT` solve ever moved. Reshape the
+  sentence identifier-first (cost: that block × five locales,
+  `--extract`, retranslate, `--check`).
+- `docs/BUILT.md` §1's Mechanism bullet still says "60-point star"
+  while its own next clause and the shipped code derive 180 — and §1 is
+  still written in plan form; reconcile it when the step-5 asserts land
+  (CLAUDE.md's reconciliation rule).
+- `SPEC.md` declares no keyless works, no setting path, no
+  `makeStarWheel`/`makeJumper` — the whole mechanism grew outside the
+  architecture contract. Fold it in. The README's feature list omits
+  the quick-set; one line.
