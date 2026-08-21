@@ -13089,7 +13089,10 @@ runs down.
 claims a joint with no metal behind it), the going stem's one-way, the
 setting path's un-persisted `setPathRot`, and `Chain ⇄ three-quarter plate`
 at 0.117 against a 0.15 margin — the measurement §47 owed, taken, published
-and under the floor.
+and under the floor. *(The last is paid since: TODO 53 closed by teaching
+the plate-floor law the chain's closed-form reach — `CHAIN_TQ_REACH` joins
+`TQ_BOT_Z`'s max, the A2 assert holds the margin, and the gap measures
+0.187. The other three remain open — TODO 49, 50, 52.)*
 
 ### The accommodation, closed after the fact (TODO 51)
 

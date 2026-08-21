@@ -1512,6 +1512,13 @@ const CLEARANCE_BUDGETS = [
   { a: 'Reset rod', b: 'Three-quarter plate', min: 0.15 },    // rod re-planed to clear the plate's top
   { a: 'Setting lever', b: 'Three-quarter plate', min: 0.15 },   // tail post swings through the plate's arc slot
   { a: 'Hairspring', b: 'Three-quarter plate', min: 0.15 },
+  // TODO 53 (closed): the chain's top coil at full wind runs under the
+  // plate, and the plate floor now carries the chain's closed-form reach
+  // (CHAIN_TQ_REACH) — this row is the independent check from the other
+  // side, over the sweep rather than the one built pose. Full wind IS
+  // swept: the reserve axis reaches tension 1 at f = 0, and the beat,
+  // train and crown axes pin tension 1 throughout.
+  { a: 'Chain', b: 'Three-quarter plate', min: 0.15 },
   // The escape bridge's length is solved from exactly this gap: it overhangs
   // the pivot it carries, toward the balance, and sits inside the balance's
   // z band while doing it.
