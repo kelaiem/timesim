@@ -797,7 +797,7 @@ export const GROOVE_LOCAL = 4; // stem groove collars sit this far outboard of t
 export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of the stem
 
 // ---------------------------------------------------------------------------
-// The stem's ONE-WAY (TODO 50) — a Breguet-style saw FACE coupling between
+// The stem's ONE-WAY (TODO 50 / BUILT §149) — a Breguet-style saw FACE coupling between
 // the fixed winding pinion and the sliding clutch, the joint every real
 // keyless works puts there. The spec solver and its two laws live HERE, at
 // the bottom of the module graph, because three consumers need the one
@@ -894,6 +894,12 @@ export const STEM_SAW_SPEC = sawCouplingSpec({
   teeth: windPinionTeeth,
 });
 export const SAW_BASE_T = STOCK_MIN_U; // each ring's base — the §50 wheel floor
+// The clutch's ring is cut radially INSET by the movement's running fit
+// (0.05 — the winding idlers' 0.5 bore on a 0.45 stud, the fit genevaSpec
+// already cites): identical radii would put both rings' walls on ONE
+// cylinder through the interleaved band, which every proximity instrument
+// misreads as burial. The profile is shared; only the skirts differ.
+export const SAW_FIT = 0.05;
 export const STEM_CLUTCH_OFF = WIND_PINION_T / 2 + 2 * SAW_BASE_T
   + STEM_SAW_SPEC.toothH + CLUTCH_RIM_T / 2;
 // The clutch's OWN throw — shorter than the stem's, and derived so the

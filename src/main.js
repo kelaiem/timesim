@@ -44,7 +44,7 @@ import {
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
-  STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
+  STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
   sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
 } from './layout.js';
 
@@ -2927,7 +2927,7 @@ cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS - 0.55 - 0.5)
 keyless.add(cwScrew);
 
 // Everything on the stem axis lives in one spinner group (local +Y = outward).
-// TODO 50 SPLIT the old dual-purpose sliding pinion into its real anatomy:
+// TODO 50 / BUILT §149 SPLIT the old dual-purpose sliding pinion into its real anatomy:
 // a FIXED WINDING PINION that always meshes the crown wheel and poses from
 // the BANK (it is a winding-train wheel — §126's one-source convention),
 // and a SLIDING CLUTCH keyed to the stem (its own unit, built after the
@@ -3326,7 +3326,7 @@ registerLabel('Yoke', yokeGroup);
 addDialSidePivot(yokeGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_YOKE });
 
 // ---------------------------------------------------------------------------
-// THE SLIDING CLUTCH (TODO 50) — the member the old dual-purpose windPinion
+// THE SLIDING CLUTCH (TODO 50 / BUILT §149) — the member the old dual-purpose windPinion
 // pretended not to be. Keyed to the stem by a real square, carrying the
 // mating saw ring toward the fixed pinion, the setting rim that meshes
 // settingWheel pulled out, and the hub collars the yoke's fork tracks. Its
@@ -3357,7 +3357,8 @@ windClutchMount.add(windClutch);
   // The mating saw ring, teeth INBOARD toward the pinion — sense +1 with
   // the +π/2 mirror mount (see the pinion ring's comment: the pair lands
   // on sawCouplingLiftAt's index, δ = −windStemSlip, faces bearing at 0).
-  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'clutchSaw' });
+  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'clutchSaw',
+    rIn: STEM_SAW_SPEC.rIn + SAW_FIT, rOut: STEM_SAW_SPEC.rOut - SAW_FIT }); // the male/female fit — see SAW_FIT
   saw.rotation.x = Math.PI / 2;      // ring local +Z (teeth) → −Y (inboard)
   saw.position.y = -CLUTCH_RIM_T / 2;
   windClutch.add(saw);
@@ -14879,6 +14880,9 @@ const EQUALISATION = (() => {
 // winding train and the crown stand parked too — the §25 C-era backward
 // free-spin retired with the rim mesh that caused it. A crown turned
 // backward still free-slips at the stem⇄contrate bevel without unbanking
+// — UNMODELLED, the alarm instance of TODO 50's class; the going side's
+// saw coupling (sawCouplingSpec/makeSawCoupling, movement-independent by
+// design) is the reuse path when this stem's turn comes.
 // ("only what actually banked moves the wheel"); what BANKS is now held by
 // modelled metal: the arbor ratchet's saw, the plate-grounded click, and
 // the click spring that re-seats it — the true going-barrel arrangement

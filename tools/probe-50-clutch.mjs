@@ -73,8 +73,28 @@ try {
   });
   console.log('laws:', JSON.stringify(laws, null, 1));
 
+  // PAIR SWEEP — the coupling's measured pair clearance across a pitch of
+  // slip, via the same instrument the handoff check reads. Constant burial
+  // ⇒ an axial stack shortfall; burial growing along the ramp ⇒ an index
+  // or ramp-slope disagreement between metal and law.
+  const sweep = await page.evaluate(async () => {
+    const c = window.__clock;
+    const I = await import('./src/inspect.js');
+    const P = c.stemSawPitch;
+    const rows = [];
+    for (let k = 0; k <= 10; k++) {
+      const slip = -(k / 10) * P;
+      c.resetInputs();
+      c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: slip });
+      const m = I.measureHandoffsNow(c, { handoffs: I.STEM_CLUTCH_HANDOFFS });
+      rows.push([+(-slip / P).toFixed(2), +m[0].gap.toFixed(4)]);
+    }
+    return rows;
+  });
+  console.log('pairSweep (d/P vs gap):', JSON.stringify(sweep));
+
   const checks = {};
-  for (const name of ['support', 'graph', 'assembly', 'stemClutchHandoff', 'restoring']) {
+  for (const name of ['support', 'graph', 'assembly', 'stemClutchHandoff', 'restoring', 'stockFloor', 'intraUnit']) {
     const r = await page.evaluate(async (n) => {
       const I = await import('./src/inspect.js');
       I.start(window.__clock, n, {});
@@ -87,12 +107,13 @@ try {
     }, name);
     const res = r.result ?? {};
     const summary = { state: r.state };
-    for (const k of ['failures', 'violations', 'unwaived', 'rows', 'splits', 'ok', 'malformed', 'stale'])
+    for (const k of ['failures', 'violations', 'unwaived', 'rows', 'splits', 'ok', 'malformed', 'stale',
+      'notInGraph', 'ungrounded', 'missingFromScene', 'undriven', 'anchorFailures', 'unmatchedSelectors', 'degenerate'])
       if (res[k] !== undefined) summary[k] = Array.isArray(res[k]) ? res[k].length : res[k];
-    console.log(`check ${name}:`, JSON.stringify(summary), Object.keys(res).join(','));
-    if ((summary.failures ?? 0) > 0 || (summary.violations ?? 0) > 0 || (summary.unwaived ?? 0) > 0) {
-      console.log('  detail:', JSON.stringify(res.failures ?? res.violations ?? res.unwaived).slice(0, 2000));
-    }
+    console.log(`check ${name}:`, JSON.stringify(summary));
+    for (const k of ['failures', 'violations', 'unwaived', 'unmatchedSelectors', 'notInGraph', 'ungrounded', 'undriven', 'anchorFailures', 'degenerate'])
+      if (Array.isArray(res[k]) && res[k].length)
+        console.log(`  ${k}:`, JSON.stringify(res[k]).slice(0, 2400));
     checks[name] = summary;
   }
   console.log(warns.length ? `WARNINGS (${warns.length}):\n  ${warns.join('\n  ')}` : 'boot silent (no warnings)');

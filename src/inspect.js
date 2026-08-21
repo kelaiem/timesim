@@ -1930,8 +1930,14 @@ export const INTRA_UNIT_CONTACTS = [
   // anchors, sprung bites) — a rotating part ON its arbor models the joint
   // as coincident solids, which is what an assembly IS; the check exists
   // for parts that foul, not parts that join.
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'sliding pinion on the stem square — the clutch joint' },
-  { unit: 'Keyless works', a: 'CylinderGeometry#6', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  // TODO 50's split renumbered this unit's anonymous meshes (the pinion's
+  // saw ring lands before the stem in traversal), and re-reading the pairs
+  // corrected a why: the #5⇄#0 row had been excusing the winding pinion's
+  // teeth overlapping the crown wheel's rim — the working bevel-style mesh
+  // — under the name of the square joint, which lives on the CLUTCH pair's
+  // floors row now.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'winding pinion teeth overlap the crown wheel rim — the working mesh, bevel-style' },
+  { unit: 'Keyless works', a: 'CylinderGeometry#7', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
   { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
   // TODO 53's landing: the fusee arbor's windTop continuation welds into the
   // upper-pivot staff at the plate's mid-plane. The two caps used to

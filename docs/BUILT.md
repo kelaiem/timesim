@@ -14218,3 +14218,97 @@ NOT to move is the strike: the head's nearest approach to the gong over the
 `alarmStrike` axis measures 35.7014 on the base and **35.6872** here — the
 0.014 being the flat face standing marginally nearer than the sphere's crown
 at the swung pose — against a wire surface at 35.5 and a rest face at 35.9.
+
+## §149 — the stem's one-way is metal: the sliding pinion splits into its real anatomy, joined by a saw coupling one law owns
+
+TODO 50, closed — after the item first had to correct itself: its filed fix
+sent a §99-style click to "the plate-top ratchet the winding spur's own
+comment already describes", and no such ratchet exists. The windTop block
+deleted it deliberately (a fixed pawl on a bidirectional arbor was a display
+fiction), four comments kept describing it anyway, and §126's collapse means
+NO wheel of the winding train can host a fixed click at all — the train is
+two-way driven, back-driven by the mainspring on run-down, so a plate click
+anywhere in it would block the run-down: the same objection that deleted the
+old one. The truth pass corrected the four comments, retired the
+`RATCHET_TEETH` alias (an alias that names a ratchet keeps the fiction alive
+at every ratio site), and rewrote the item to name the joint where backward
+slip physically happens — the winding pinion ⇄ sliding pinion coupling at
+the stem, which is where every real keyless works puts it.
+
+**The split.** The old `windPinion` was two parts pretending to be one: it
+slid with the stem AND meshed the crown wheel. Now the FIXED winding pinion
+always meshes the crown wheel and poses from the bank alone (§126's
+one-source rule), carrying the coupling's inboard saw ring on its outboard
+face and bored past the stem square's half-diagonal; the SLIDING CLUTCH —
+unit `'Winding clutch'`, a scene sibling of the keyless group (a labeled
+child would double-count into two units), on a static mount so the tick's
+absolute position writes compose with the explode offset — carries the
+mating ring, the setting rim, the yoke's hub collars (moved off the stem
+group: the fork tracks the member that slides against the spring) and the
+sleeve that makes it one body. Its throw is its own: `CLUTCH_TRAVEL =
+CROWN_PULL_DIST − STEM_CLUTCH_OFF`, derived so the pulled clutch lands
+EXACTLY on the station the old pinion proved — `swDist`, the plate radius
+and every dial station are untouched (a first cut grew `swDist` by the
+clutch offset and the §125 dial assert refused it: plate +2.16, D4 off its
+two-bounds-meet optimum). The yoke SPRING exists as metal now — the
+windArrestSpring convention, a torsion arc riding the yoke, fixed end on
+its own post — because a cam-over lifts the fork with no crown motion at
+all and something real must bring that stroke home.
+
+**One arithmetic, three consumers.** `sawCouplingSpec` derives every
+quantity from a constraint (tan α = 2μ — at the friction cone's edge
+camming and jamming are the same event; toothH is the rise across the
+ramp's own arc; valleyFrac > tipFrac is the BACKLASH that keeps the only
+coplanar working contact the declared one); `sawProfileAt` is THE profile;
+`sawCouplingLiftAt` answers §99's "smallest lift that clears" from it; and
+`makeSawCoupling` cuts the rings KNOT-ALIGNED so the built surface equals
+the law to the vertex. The spec math lives in `layout.js` — the bottom of
+the module graph — because the keyless solve needs the tooth height to
+place the clutch's stroke; the pair is movement-independent on purpose, and
+TODO 72 (the alarm stem's instance of the same class) is its filed second
+customer.
+
+**What the instruments found while it landed** — each a class, not a typo:
+
+- *A +Y rotation DECREASES the x–z plane azimuth*, so the first cut's
+  sense-−1 pair ran the coupling mirrored: seated measured a full tooth
+  buried. `probe-50-clutch`'s handoff tier holds the convention in metal.
+- *A duplicated-azimuth seam flips the parity raycast* exactly the way an
+  open mesh does: the cammed poses read buried by their own interleave,
+  tracking H − lift to the millimetre, with the metal 0.003 clear. The
+  drive face carries §99's hairline lean now (a real near-vertical surface,
+  metal strictly inside the law), and the ring has no degenerate quads.
+- *Identical ring radii put both walls on one cylinder* through the
+  interleaved band — the mating ring is cut radially inset by `SAW_FIT`
+  (the movement's 0.05 running fit), the male/female skirts of a real
+  coupling.
+- *The bare modulo read a +2e-6 float residue as a full pitch of gap* and
+  the forward take-up ate a whole tooth of wind — `stemClutchGap` is
+  wraparound-guarded.
+
+**The tick's two sub-pitch laws.** Forward input FREE-SWINGS the parked gap
+(back through the backlash, down the ramp) before anything banks; and with
+the faces parted, the run-down's drain first closes the gap from the
+pinion's side while the knob holds still — measured: a half-pitch wiggle
+then its return banks nothing and re-seats to 1e-16, one clean pitch then
+banks 0.041666 turns exactly, and the knob's drift through a parked-gap
+drain is 0. `windStemSlip` is the coupling's relative index now, PERSISTED
+(the parked sub-pitch lives in the stem's free angle — the bank is held by
+the escapement and the arrest, not by this coupling, which is why there is
+deliberately no `settleAlarmClick`-style bank give-back; legacy saves snap
+the re-derived datum to the pitch).
+
+**The battery sees it.** The `stemSlip` axis — a cycle over exactly one
+coupling pitch, entering through `setPose`'s new `windStemSlip` key — is
+what lets the sweeps and §48's audit judge the clutch and the yoke (both
+declared restored by `yokeSpring`); `stemClutchHandoff` is a sibling
+registration over its own pose table (contact seated/backlash/camming, free
+pulled out — the spring holds the one-sided constraint closed at every
+engaged parity); the coupling has its own penetration budget on the
+`stemSlip` axis against the shared law; the clutch's EXPECTED pairs carry
+floors rows on arrival; and the keyless unit's index-named intra rows were
+re-derived (the split renumbered them — and re-reading the pairs found one
+row excusing the pinion⇄crown-wheel working mesh under the name of the
+square joint). `tools/probe-50-clutch.mjs` is the instrument: builder
+manifoldness, the law table, the pair sweep across a pitch (rides within
+±0.005 of the law everywhere), the three tick laws, and the focused checks.

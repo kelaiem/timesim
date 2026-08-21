@@ -2237,8 +2237,15 @@ export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt };
 // quad where the profile steps. Mount the mate facing (π about a diameter);
 // `sense: -1` mirrors the profile for a pair whose drive direction must run
 // the other way without a flip.
-export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawCoupling' }) {
-  const { rOut, rIn, teeth } = spec;
+// rIn/rOut overrides: the MATING ring of a pair is cut radially INSET (a
+// male/female fit) so the two rings' cylindrical walls never share a
+// surface — identical radii put both walls on one cylinder through the
+// interleaved band, and coincident surfaces are the case every proximity
+// instrument misarbitrates (the pair read as buried by its own interleave).
+// The PROFILE still comes from the shared spec, so complementarity holds.
+export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawCoupling',
+                                  rIn = spec.rIn, rOut = spec.rOut }) {
+  const { teeth } = spec;
   const pos = [], idx = [];
   const ring = [];                              // [{theta, z}] — duplicated theta at each drive face
   // KNOT-ALIGNED azimuth samples: the profile is piecewise linear, so a
@@ -2248,8 +2255,21 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
   // vertex. Uniform sampling would leave the knees proud of the law by a
   // chord's height, which is exactly the build-vs-law drift §99's relief
   // discipline exists to keep out.
+  // Sample plan per tooth: the valley flat's midpoint, the ramp's facets
+  // (knee-aligned), the tip flat's midpoint, the drive face's TOP at the
+  // pitch boundary, and its BOTTOM a hairline of arc past it — §99's
+  // faceRelief idiom. The lean does two jobs at once: the face stays a
+  // real (near-vertical) surface instead of a duplicated azimuth, so
+  // every quad in the sweep is non-degenerate — a zero-area sliver at a
+  // duplicated azimuth flips the parity raycast that arbitrates every
+  // boolean intersection, exactly the way an open mesh does (measured:
+  // the cammed poses read BURIED by their own interleave, tracking
+  // H − lift, with the metal 0.003 clear) — and it cuts the metal
+  // strictly INSIDE the shared profile law, the conservative side for
+  // every contact the instruments measure against it.
+  const FACE_LEAN = 0.004; // rad of arc the face's foot trails its crest — a hairline, an order under any working tolerance
   const fr = [];
-  fr.push(0, spec.valleyFrac / 2);                              // valley flat
+  fr.push(spec.valleyFrac / 2);                                 // valley flat
   const RSUB = 8;                                               // ramp facets (straight law — cosmetic count only)
   for (let s = 0; s <= RSUB; s++) fr.push(spec.valleyFrac + (s / RSUB) * spec.rampFrac);
   fr.push(1 - spec.tipFrac / 2);                                // tip flat
@@ -2258,10 +2278,9 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
       const theta = sense * ((t + v) / teeth) * Math.PI * 2;
       ring.push({ theta, z: baseT + sawProfileAt(spec, v) });
     }
-    // the drive face: same azimuth, profile top → next valley floor
     const thetaF = sense * ((t + 1) / teeth) * Math.PI * 2;
-    ring.push({ theta: thetaF, z: baseT + spec.toothH });
-    ring.push({ theta: thetaF, z: baseT });
+    ring.push({ theta: thetaF - sense * FACE_LEAN, z: baseT + spec.toothH }); // face crest, pulled the hairline BACK from the boundary (metal stays inside the law)
+    ring.push({ theta: thetaF, z: baseT });                                   // face foot, on the pitch boundary
   }
   const S = ring.length;
   // 4 vertices per sample: (rIn,0) (rOut,0) (rOut,zTop) (rIn,zTop)
@@ -2275,7 +2294,7 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
     const j = (i + 1) % S;
     const A = i * 4, B = j * 4;
     quad(A + 1, A + 0, B + 0, B + 1);   // bottom cap (faces −z)
-    quad(A + 2, A + 3, B + 3, B + 2);   // top surface / drive face (faces +z or ±θ)
+    quad(A + 2, A + 3, B + 3, B + 2);   // top surface / drive face
     quad(A + 0, A + 3, B + 3, B + 0);   // inner wall (faces −r)
     quad(A + 1, B + 1, B + 2, A + 2);   // outer wall (faces +r)
   }

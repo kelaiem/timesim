@@ -36,7 +36,8 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
 | 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
 | 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
-| 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no metal behind it. The fix text is corrected in place: the old filing sent a click to a plate-top ratchet that does not exist (deleted as a fiction — the arbor is bidirectional), and no winding-train wheel can host one (§126: two-way driven); the metal is a saw coupling at the sliding pinion. One class with two instances — the alarm stem states the same debt |
+| 50 | CLOSED (§149) | The going stem's one-way is metal: the dual-purpose pinion split into a fixed winding pinion and the sliding clutch, joined by a saw coupling one profile law cuts, rides and measures. `windStemSlip` is the coupling's relative index — persisted, with the two sub-pitch laws (forward take-up, drain pickup) and the `stemSlip` axis that lets §48 judge the clutch. The alarm instance is item 72 |
+| 72 | OPEN | The alarm stem's one-way has no metal — a backward alarm crown does nothing at all, the free-slip at the stem⇄contrate bevel unmodelled. §149's coupling (`sawCouplingSpec`/`makeSawCoupling`, movement-independent by design) is the reuse path |
 | 51 | CLOSED | Both rows clear, boot silent; the residue is worked through since. The beak window holds the beak's own arc plus a step (five legal steps, was two — the old demand was `2·BEAK_SCAN_STEP`, a two-sample target); the arm hold reads a 72-bin per-sector reach (`armStopAt`) instead of the compass max — stock only, riser in by 0.29; and the Fusee row's 0.1500 equality was tried against a §50 pivot-floor relief and REFUSED by measurement (the span's corridor covers every legal beak azimuth at the lower band) — the refusal is written at `HUB_Z2` |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | CLOSED | The plate floor counts the chain now: `CHAIN_TQ_REACH` bounds the discrete top-of-wrap in closed form and joins `TQ_BOT_Z`'s max beside the spring — gap 0.117 → 0.187, the A2 assert holds the margin (not just the sign) plus the bound's conservativeness, and a `Chain ⇄ Three-quarter plate` budget row sweeps it independently. Cost priced: the cock sits ~0.07 down in the plate band |
@@ -5976,7 +5977,24 @@ demonstrably misses.
 
 ---
 
-## 50. The going stem's one-way has no metal
+## 50. CLOSED (§149) — the going stem's one-way is a saw coupling at the sliding clutch
+
+**Closed by §149** (`docs/BUILT.md`): the dual-purpose `windPinion` split
+into the fixed winding pinion (poses from the bank, always meshing the
+crown wheel) and the sliding clutch — its own unit, keyed to the stem's
+square, the yoke's fork tracking its collars — joined by the Breguet-style
+saw coupling `sawCouplingSpec`/`makeSawCoupling` cut, ridden and measured
+by ONE profile law. `windStemSlip` is the coupling's relative index now: a
+consequence of a modelled contact, persisted (the parked sub-pitch lives
+in the stem's free angle, not the bank), with the two sub-pitch laws the
+metal demanded (forward take-up of the parked gap; the knob holding
+through the drain until the drive face picks it up) and the `stemSlip`
+axis that lets the sweeps and §48's audit see the clutch move. The alarm
+stem's instance of the same class moved to item 72 — a closed item is a
+bad place to keep live debt. The corrected filing below is kept as the
+record of the premise this item had to fix in itself first.
+
+### The filing as corrected (history)
 
 §47 collapsed the winding path onto the banked reserve, so every wheel
 from the crown wheel inward now poses from `barrelWindTurns` and the
@@ -7716,3 +7734,26 @@ arrival-profile assert (`proudOf` across the t grid) inherits the same
 correction for free. Until then the row is waived citing this item:
 the arrest still arrests — 0.05 early, pressed into the coil rather than
 kissing it.
+
+---
+
+## 72. The alarm stem's one-way has no metal
+
+The alarm instance of the class item 50 named and §149 closed on the going
+side. A backward alarm crown does nothing at all: the wind routing banks
+only positive deltas, and the free-slip "at the stem⇄contrate bevel" the
+comments describe has no metal behind it — there is not even a bookkeeping
+scalar to make the omission visible, which is why this instance is CHEAPER
+to miss than the going one was.
+
+**The fix is a reuse, by design.** §149's saw coupling was written
+movement-independent (`sawCouplingSpec`, `sawProfileAt`,
+`sawCouplingLiftAt`, `makeSawCoupling` — spec math in `layout.js`, builder
+in `geometry.js`) exactly so this stem could consume it: a fixed pinion at
+the contrate mesh, a sliding clutch on the alarm stem, the coupling
+between them, and the alarm side's own equivalents of the going landing's
+obligations — the slip state and its persistence, the sub-pitch take-up
+and pickup laws, the axis that reverses it (no alarm axis sweeps a
+backward crown today, the same §48-population gap TODO 56 documents one
+mechanism over), and the declaration set. The going landing's records
+(`docs/BUILT.md` §149, `tools/probe-50-clutch.mjs`) are the template.
