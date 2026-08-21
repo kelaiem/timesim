@@ -9501,19 +9501,41 @@ const ALARM_LOCAL = { x: Math.cos(ALARM_LOCAL_AZ) * ALARM_CD, y: Math.sin(ALARM_
 // SUBDIAL_RECESS = 0.556 of brass behind it, which is the floor rule DIAL_T
 // is minted under.
 const SUBDIAL_RECESS = 0.5;
-// §152 — the RESERVE sector is BARELY recessed, and its depth is the dial's
-// own smallest cut: DIAL_EDGE_BREAK, the 0.05 mm light break the plate's rim
-// already carries (0.132 u). A step shallower than the plate's own arris
-// break would not read as machined at all, and anything deeper re-opens the
-// deep well this redesign retires — so the constant is REUSED, not minted
-// (rule 1: the dial does not get a second smallest-step). What the depth
-// buys is a consequence, not a target: the section bound that sized the deep
-// well (floorDrop + CLEAR_MARGIN + topRise = 0.42 for this hand, TODO 41)
-// cannot fit inside 0.132, so the reserve hand no longer lives IN its
-// pocket — it rides PROUD of the dial face like the central hands (see its
-// placement at the hand build), which is how a real power-reserve sector is
-// laid out anyway.
-const RESERVE_RECESS = DIAL_EDGE_BREAK;
+// §152 — the RESERVE sector is BARELY recessed, and "barely" is a DERIVED
+// depth, not a chosen one: the shallowest pocket that still seats its hand
+// clear of everything that sweeps the station, at the one margin. Two
+// constraints bound the hand's stack (worked at the hand build):
+//   floor:   keel ≥ pocket floor + CLEAR_MARGIN;
+//   ceiling: the §25 C rattrapante blade sweeps the whole dial at a FIXED
+//            keel height over the face — ALARM_RSV_LANE below, ≈ 0.472 —
+//            and every part of the reserve hand (the boss's top is the
+//            tallest, at plane + bossH/2) must stay CLEAR_MARGIN under it.
+//            The first cut of this redesign anchored the hand on the face
+//            plane instead and the battery caught the blade cutting through
+//            the boss (inspection FORBIDDEN on the alarm axes) — the lane,
+//            not the face, is the real ceiling.
+// Solving both at equality gives the minimum depth
+//   rMin = 2·CLEAR_MARGIN + floorDrop + bossH/2 − ALARM_RSV_LANE ≈ 0.242,
+// rounded UP on the 0.01 grid (layout.js's assembly-spend precedent); the
+// ≤ 0.01 residue rides the strictly-gated floor side, which is what keeps
+// the Dial ⇄ Power reserve floors row (min ≥ CLEAR_MARGIN over float32
+// meshes) clear of float equality with no epsilon. ≈ 0.095 mm of cut —
+// half the retired 0.5 well — and it cannot go shallower without moving
+// the alarm hand's z-stack (ALARM_HAND_Z's lane is boxed in above by the
+// §125 hour-hub assert).
+// ALARM_RSV_LANE restates two builder laws because the parts it reads are
+// built AFTER the dial consumes this constant: the alarm hand's plane
+// (ALARM_HAND_Z = 1.1 + DIAL_T, dialFace frame → 1.1 over the face) and
+// its keel drop (central hour law, (HOUR_HAND_LEN − 1.2)·widthFactor·0.35,
+// halved by the rattrapante leaf's 0.5 z-scale). Both restatements are
+// boot-asserted against the BUILT parts at their own sites (§39's
+// falsifiable-pin pattern), as are the reserve-hand section facts below.
+const ALARM_RSV_LANE = 1.1
+  - (dialRadius * G.DIAL_MARKER_INNER_F - 1.2) * aesthetics.dial.hands.hour.widthFactor * 0.35 * 0.5;
+const RSV_HAND_DROP = 0.18;               // HAND_RBASE_FLOOR — §50's sub-dial hand section (asserted at the hand build)
+const RSV_HAND_BOSS_H = 0.18 * 2 * 1.3;   // makeHand's boss law over that section (asserted with it)
+const RESERVE_RECESS = Math.ceil(
+  (2 * CLEAR_MARGIN + RSV_HAND_DROP + RSV_HAND_BOSS_H / 2 - ALARM_RSV_LANE) * 100) / 100;
 // What passes through a pocket floor — SECONDS_HUB_R / RSV_HAND_ARBOR_R /
 // SUBDIAL_BORE_R — moved to layout.js (§97), the TODO 33 hoist one bore
 // over: the wells' radius is a spec dimension whose FLOOR is this bore
@@ -9712,8 +9734,9 @@ smallSecondsHand.name = 'smallSecondsHand';
 // a hub dome over a sub-dial face is how real small hands mount anyway.
 // Both asserts warn per rule 6.
 // (§152 — the SECONDS hand is this derivation's one rider now: the reserve
-// sector went barely-recessed, far under any section's band, so that hand
-// derives from the face instead — see its own build.)
+// sector went barely-recessed, too shallow for any section's band, so that
+// hand anchors instead on the ceiling its station actually has — the
+// rattrapante blade's sweep lane; see its own build.)
 const wellHandZ = (hand) => {
   const { floorDrop, topRise, bossR } = hand.userData;
   const lo = floorDrop + CLEAR_MARGIN;
@@ -10388,23 +10411,36 @@ registerLabel('Power reserve', reserveGroup);
 // floor, with no instrument on the pair (it is EXPECTED, and had no floors
 // row). namePrefix names the meshes so floors rows can select them (§94's
 // rule).
-// §152 — the hand is a PROUD rider now, not a well dweller: its sector is
-// RESERVE_RECESS (0.132) deep, far under the section bound wellHandZ holds
-// a deep well to (floorDrop + CLEAR_MARGIN + topRise = 0.42 here), so that
-// band does not exist and the plane derives from the FACE instead — keel
-// one margin over the dial's face plane (local 0), the way a real reserve
-// hand stands over its sector. The floor consequence is arithmetic, not a
-// second constraint: the sector floor sits RESERVE_RECESS further down, so
-// the Dial ⇄ Power reserve floors row measures CLEAR_MARGIN +
-// RESERVE_RECESS = 0.282 over the print by construction — clear of the
-// strict float32 gate with no epsilon. The boss dips bossH/2 = 0.234 below
-// the plane, to 0.096 over the face plane — and its nearest Dial metal is
-// the sector floor, 0.228 below it (the face sheet is a hole out to the
-// pocket radius here), so the collet clears the unit by more than the
-// margin and TODO 41's ride-the-bore excuse is retired along with the
-// depth that needed it.
+// §152 — the hand rides mostly PROUD of its barely-recessed sector: its
+// blade stands over the dial face the way a real reserve hand stands over
+// an engraved sector, and only its keel dips into the shallow pocket. The
+// plane is CEILING-ANCHORED: the §25 C rattrapante blade sweeps the whole
+// dial at a fixed keel height over the face (ALARM_RSV_LANE ≈ 0.472, the
+// restatement asserted at the alarm hand's build), and the boss's top —
+// the hand's tallest metal, plane + bossH/2 — sits exactly CLEAR_MARGIN
+// under it. That side carries no strict gate (Alarm disc ⇄ Power reserve
+// is not an EXPECTED pair; the sweeps demand no contact and get the full
+// margin), so the equality is safe — and it pushes the 0.01-grid residue
+// (what rounding RESERVE_RECESS up added) onto the FLOOR side, where the
+// strict Dial ⇄ Power reserve floors row lives: the keel clears the sector floor
+// by CLEAR_MARGIN + residue (≈ 0.158), clear of float equality with no
+// epsilon, asserted below per rule 6. The boss dips below the face plane
+// into the pocket mouth; its below-keel column keeps TODO 41's bore
+// excuse — over the floor it holds sqrt((SUBDIAL_BORE_R − bossR)² + dz²)
+// ≥ the margin because the radial term alone is held to it (asserted, the
+// wellHandZ assert this hand's plane no longer passes through).
 const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' });
-reserveHand.position.z = reserveHand.userData.floorDrop + CLEAR_MARGIN;
+reserveHand.position.z = ALARM_RSV_LANE - CLEAR_MARGIN - reserveHand.userData.bossH / 2;
+{
+  const { floorDrop, bossH, bossR } = reserveHand.userData;
+  if (Math.abs(floorDrop - RSV_HAND_DROP) > 1e-9 || Math.abs(bossH - RSV_HAND_BOSS_H) > 1e-9)
+    console.warn(`§152 reserve hand: section facts drifted from the recess derivation — built drop ${floorDrop}, boss ${bossH} vs restated ${RSV_HAND_DROP}, ${RSV_HAND_BOSS_H}; re-derive RESERVE_RECESS`);
+  const keelOverFloor = reserveHand.position.z - floorDrop + RESERVE_RECESS;
+  if (keelOverFloor < CLEAR_MARGIN + 1e-9)
+    console.warn(`§152 reserve hand: keel clears the sector floor by ${keelOverFloor.toFixed(4)} — need > ${CLEAR_MARGIN} (the grid residue collapsed; deepen RESERVE_RECESS)`);
+  if (bossR + CLEAR_MARGIN > SUBDIAL_BORE_R)
+    console.warn(`§152 reserve hand: boss r ${bossR.toFixed(3)} + margin ${CLEAR_MARGIN} exceeds the pocket bore ${SUBDIAL_BORE_R.toFixed(2)} — its below-keel column no longer rides over the bore`);
+}
 reserveGroup.add(reserveHand);
 
 // ---------------------------------------------------------------------------
@@ -10649,11 +10685,11 @@ const rsvArbor2 = new THREE.Group(); // w2 — the output, coaxial with the sub-
 rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
-// Indicator arbor: from w2 through the dial to the hand's pivot boss in
-// front. §152 — the hand rides proud of the dial face, so the arbor runs
-// through the sector floor's bore, out of the plate, and stops 0.2 short of
-// the hand's plane: the boss's bossH/2 = 0.234 dip swallows the last 0.034
-// of it, the friction joint the floors rows declare (reserveBoss ⇄
+// Indicator arbor: from w2 through the dial to the hand's pivot boss.
+// §152 — the arbor runs through the sector floor's bore into the shallow
+// pocket's mouth and stops 0.2 short of the hand's plane (just inside the
+// face plane): the boss's bossH/2 = 0.234 dip swallows the last 0.034 of
+// it, the friction joint the floors rows declare (reserveBoss ⇄
 // rsvHandArbor). World z off the hand's own derived plane — the dialFace
 // Y-flip negates a local z on the way to world, so the plane sits the
 // hand's lift beyond the visible face at Z_DIAL − DIAL_T.
@@ -12517,6 +12553,18 @@ alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
 alarmTubeGroup.add(alarmHand);
+// §152 — the reserve sector's depth and its hand's plane are derived from
+// THIS blade's keel height over the dial face (ALARM_RSV_LANE), restated up
+// at the recess block because this hand is built long after the dial
+// consumed it. Hold the restatement to the built part (§39's falsifiable
+// pin): the blade's keel sits at ALARM_HAND_Z − floorDrop·scale over the
+// dialFace origin, and the face is DIAL_T further out.
+{
+  const builtLane = ALARM_HAND_Z - DIAL_T - alarmHand.userData.floorDrop * alarmHand.scale.z;
+  if (Math.abs(builtLane - ALARM_RSV_LANE) > 1e-9)
+    console.warn(`§152 lane restatement drifted: built alarm-blade keel ${builtLane.toFixed(4)} over the face `
+      + `vs ALARM_RSV_LANE ${ALARM_RSV_LANE.toFixed(4)} — re-derive RESERVE_RECESS and the reserve hand's plane from the built value`);
+}
 // §125 — the FREE LANE between this blade and the hour hand's hub, asserted
 // from the two hands' own sections (TODO 41's userData exports) because both
 // GROW with their lengths: the hub reaches bossH/2 below the hour plane and

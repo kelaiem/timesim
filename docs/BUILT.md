@@ -14607,40 +14607,62 @@ both say so in place. Measured off the built scene at tension
 0 / 0.5 / 1 the hand reads 165° / 90° / 15°: symmetric at both ends,
 vertical at half charge.
 
-**The recess depth is a reused constant, not a minted one.** The
-sector's depth is `DIAL_EDGE_BREAK` — the 0.05 mm light break the
-plate's rim already carries (0.132 u). A step shallower than the
-plate's own arris break would not read as machined; anything deeper
-re-opens the deep well the redesign retires; and rule 1 says the dial
-does not get a second smallest-step. `makeDial` grew a per-well
-`recess` override to carry it (the seconds well keeps
+**"Barely" is a derived depth, and the battery set it.** The first
+cut reused `DIAL_EDGE_BREAK` (0.05 mm) as the sector's depth and
+anchored the hand's keel one margin over the dial's FACE — and the
+landing battery refused it: `inspection` reported the §25 C
+rattrapante blade FORBIDDEN through the raised hand's collet on every
+alarm axis (the central alarm hand sweeps the whole dial at a fixed
+keel height over the face, and an alarm set near 12:00 stands it
+directly over the reserve station). The face is not the station's
+ceiling; the blade's sweep lane is. So the depth derives from the two
+constraints the station really has — keel a margin over the pocket
+floor, the boss's top (the hand's tallest metal) a margin under the
+blade's keel at `ALARM_RSV_LANE` ≈ 0.472 over the face — whose
+simultaneous solution is `rMin = 2·CLEAR_MARGIN + floorDrop + bossH/2
+− ALARM_RSV_LANE` ≈ 0.242, rounded up on the 0.01 grid (layout.js's
+assembly-spend precedent) to **0.25 u ≈ 0.095 mm** — half the retired
+well, and as shallow as the movement's z-stack allows: the alarm
+plane is boxed in above by §125's hour-hub lane assert, so no
+position-space move was available to buy more. `makeDial` grew a
+per-well `recess` override to carry it (the seconds well keeps
 `SUBDIAL_RECESS` 0.5 and its whole TODO 41 derivation, untouched):
 the pocket cut, its floor print, its wall silvering and the
 punch-through boot assert all resolve one per-well depth, so the cut
 and the finish cannot disagree.
 
-**The hand's plane followed the depth, as arithmetic.** TODO 41's
-`wellHandZ` band — keel + margin off the pocket floor below, section
-sunk under the dial surface above — needs `floorDrop + CLEAR_MARGIN +
-topRise` = 0.42 of depth for this hand, and 0.132 cannot hold it: the
-band does not exist, so the sunk-hand design claim is retired rather
-than waived. The reserve hand now rides PROUD of the dial face — keel
-one margin (0.15) over the face plane, the way a real power-reserve
-hand stands over its sector — and the floor consequence is derived,
-not asserted: the sector floor sits `RESERVE_RECESS` further down, so
-the `Dial ⇄ Power reserve` floors row measures `CLEAR_MARGIN +
-RESERVE_RECESS` = 0.282 by construction, clear of the strict float32
-gate with no epsilon. The boss dips to 0.096 over the face plane with
-its nearest Dial metal 0.228 below it, which retires TODO 41's
-ride-the-bore excuse along with the depth that needed it. The
-indicator arbor lengthened to meet the raised hand — through the
-sector floor's bore, out of the plate, stopping 0.2 short of the
-hand's plane so the collet's 0.234 dip swallows its last 0.034: the
-same declared friction joint (`reserveBoss ⇄ rsvHandArbor`), one
-plane further forward. Nearest foreign sweep above the raised hand is
-the §25 C alarm hand's plane, ~0.4 clear of the collet's top.
+**The hand's plane is ceiling-anchored, and the slack lands where the
+strict gate is.** The plane sits at `ALARM_RSV_LANE − CLEAR_MARGIN −
+bossH/2` (0.088 over the face): the boss's top holds exactly the
+margin to the blade's sweep — a side with no strict floors gate
+(`Alarm disc ⇄ Power reserve` is not EXPECTED; the sweeps demand no
+contact and get the full margin) — which pushes the grid residue onto
+the floor side, where the strict `Dial ⇄ Power reserve` floors row
+lives: the keel clears the sector floor by margin + residue ≈ 0.158,
+clear of float equality with no epsilon. The blade stands proud of
+the face (top ≈ 0.178 over it); the keel dips 0.09 into the pocket
+mouth; the boss dome stands 0.32 proud, its below-keel column keeping
+TODO 41's ride-the-bore excuse (`bossR + CLEAR_MARGIN ≤
+SUBDIAL_BORE_R`, re-asserted). `ALARM_RSV_LANE` restates the alarm
+hand's plane and section because that hand is built after the dial
+consumes the recess; the restatement is boot-asserted against the
+built blade at its own site, as are the reserve-hand section facts —
+§39's falsifiable-pin pattern, three pins, three asserts. The
+indicator arbor follows the hand's plane (0.2 short of it, tip
+swallowed by the collet's dip — the same declared friction joint,
+`reserveBoss ⇄ rsvHandArbor`), crossing the floor's bore into the
+pocket mouth.
 
-`tools/probe-152-boot.mjs` measures all of it off a boot (anchor
+**The battery also caught a misclassification the deep well had been
+hiding.** The pocket walls' SILVERING — a plated film `makeDial` lays
+on the machined wall — was judged as wheel stock by its bounding box,
+whose "thickness" is the pocket's depth: 0.19 mm cleared the 0.12 mm
+wheel floor by coincidence, and the shallow sector's 0.095 mm did
+not. The walls are named now (`reserveSubdialWall` /
+`secondsSubdialWall`) and kinded `marking` beside `screwSlots` and
+`alarmDiscTrack`, which is what the film is.
+
+`tools/probe-152-boot.mjs` measures the redesign off a boot (anchor
 angles at three tensions, hand/floor/arbor world planes, boot
 silence); `tools/probe-152-shot.mjs` renders the face and the oblique
 profile. The schematic tier's sub-dial bezel ring quotes

@@ -5092,9 +5092,15 @@ export function makeDial({
       g.add(floor);
 
       // The silvering up the wall — the pocket wall's own surface, so the same
-      // call with the same loops the plate cut it with.
+      // call with the same loops the plate cut it with. Named (§152) so the
+      // stock census can kind it honestly: this is a plated FILM on the
+      // machined wall (the screwSlots / alarmDiscTrack class), and its
+      // bounding-box "thickness" is the pocket's DEPTH, not a section — the
+      // deep well cleared the wheel floor by coincidence (0.19 mm ≥ 0.12),
+      // and the barely-recessed sector (0.05 mm) exposed the misclassification.
       const wall = new THREE.Mesh(
         plateWall(sd.x, sd.y, wells[i].pocket, 0, wells[i].pocket, -recess, false), wallMat);
+      wall.name = `${sd.kind}SubdialWall`;
       wall.renderOrder = FINISH_ORDER;
       g.add(wall);
     });

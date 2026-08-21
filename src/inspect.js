@@ -1720,9 +1720,11 @@ export const EXPECTED_CONTACT_FLOORS = [
     // because an EXPECTED pair without a floors row still gets TODO 6's
     // blanket. Same claim as the seconds row: no contact exists between
     // these two units, so what the pair owes is clearance everywhere.
-    // §152 — the hand rides PROUD of the barely-recessed sector now, keel
-    // one margin over the dial's face plane, so this row measures
-    // CLEAR_MARGIN + RESERVE_RECESS over the floor by construction.
+    // §152 — the hand rides mostly PROUD of the barely-recessed sector
+    // now, its plane ceiling-anchored one margin under the rattrapante
+    // blade's sweep lane, so this row measures CLEAR_MARGIN plus the
+    // recess derivation's 0.01-grid residue over the floor by
+    // construction (≈ 0.158 — see the hand's build in main.js).
     a: 'Dial', b: 'Power reserve', min: CLEAR_MARGIN,
     contacts: [],
   },
@@ -5900,6 +5902,15 @@ export const STOCK_KIND_BY_MESH = {
   // as alarmDiscTrack. The HEADS carry no entry on purpose: they are real
   // stock at STOCK_MIN_U and must keep answering to the wheel floor.
   screwSlots: 'marking',
+  // §152 — the sub-dial pocket walls' SILVERING: a plated film laid on the
+  // machined wall (makeDial builds it from the same loops the plate was cut
+  // with — the wall's matter is the dialPlate solid, which keeps answering
+  // to the wheel floor). Its bounding-box "thickness" is the pocket's
+  // DEPTH, so the deep seconds well cleared the wheel floor by coincidence
+  // (0.19 mm ≥ 0.12) and the reserve's barely-recessed sector (0.05 mm)
+  // exposed the misclassification. Same class as screwSlots/alarmDiscTrack.
+  reserveSubdialWall: 'marking',
+  secondsSubdialWall: 'marking',
   // §45 — the release run's declared kinds, built to their floors (no new
   // waivers): the tail pin and sleeve posts are pin stock at/over the pivot
   // floor (the alarmSelPost precedent), the plunger and head are pin-class
