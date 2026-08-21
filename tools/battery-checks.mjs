@@ -187,6 +187,21 @@ export const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
+  // §137 — the transfer audit. Same shape as `restoring`: the rows are the
+  // product (`ok` is always true), and the gate holds what CAN be held — a
+  // declaration that is malformed, names a part that no longer exists, whose
+  // own arithmetic no longer recomputes, or that busts its declared envelope
+  // without a cited TODO. The control is gated for the same reason as §48's:
+  // a classifier that quietly stops catching bad rows is a dead instrument.
+  { name: 'transfers', opts: {},
+    gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, control PASS',
+    fails: (r) => [
+      ...r.malformed, ...r.stale, ...r.mismatched, ...r.unwaived,
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+    ],
+    note: (r) => `${r.population} transfers (`
+      + Object.entries(r.byIdiom).map(([k, n]) => `${n} ${k}`).join(', ')
+      + `), ${r.waived.length} waived (accepted debt)` },
   { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY },
     slices: INSPECTION_SLICES, merge: mergeInspection,   // §127 — divisible along its axis loop
     gate: '0 FORBIDDEN pairs',

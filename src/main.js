@@ -49,6 +49,8 @@ import {
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
+  STEEL_E_PA, cantileverK_N_per_m,            // §137: the one steel, the one cantilever law
+  SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -323,6 +325,52 @@ function declareRestoring(name, kind, why, mesh) {
   if (kind === 'spring' && !mesh)
     console.warn(`§48: '${name}' declares a spring but does not name its mesh — a spring that is only geometry does not count`);
   declaredRestoring.set(name, { kind, why, mesh });
+}
+
+// §137 — CORNERS AS REAL PARTS: the transfer audit's declaration surface.
+// Every transfer of motion around a bend is one of five NAMED idioms, and the
+// build STATES which, at the site of the corner, with the force or lever-ratio
+// arithmetic that justifies it (TODO 16's format — "≈1.6 mN against a 5–50 mN
+// detent"). The declarations feed a frozen record the inspector consumes
+// (checkTransfers), the same declare-beside-the-law discipline as
+// declareRestoring above and the same freeze-then-consume shape as
+// EQUALISATION: the check re-verifies the row's own relations from the frozen
+// inputs and never re-derives the mechanism, so the two cannot drift apart
+// silently — a drifted row is a MISMATCH, visible.
+//
+// The idioms, and the rule for which a transfer earns (the §137 vocabulary):
+//   bevelPair      — rotation through an angle: two equal-count bevel gears at
+//                    an apex (the motion-works corners are the template).
+//   doglegIdler    — rotation through a lateral offset in-plane: an idler pair
+//                    whose azimuth is SCORED against the corridor, not authored.
+//   crank          — displacement through a bend or plane change on a PIVOT:
+//                    two designed arms about a bearing that takes the side
+//                    load (the §45 rocker and the stop crank are both this —
+//                    the movement's bell cranks, whatever the code calls them).
+//   rigidBentLink  — displacement along a chord with a routing bend and NO
+//                    pivot: legitimate ONLY while the bending moment the
+//                    offset induces is computed and priced (the elbow rods).
+//   riserReach     — displacement through a plane change with no direction
+//                    change: a climb and a reach, loaded axially (the pusher).
+const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach'];
+const declaredTransfers = new Map();   // site -> row
+function declareTransfer(site, row) {
+  if (declaredTransfers.has(site)) console.warn(`§137: transfer '${site}' declared twice`);
+  if (!TRANSFER_IDIOMS.includes(row.idiom))
+    console.warn(`§137: transfer '${site}' idiom '${row.idiom}' is not in the named set`);
+  declaredTransfers.set(site, row);
+}
+// Frozen on first read (all declarations run at boot, the clock reads later).
+let _transferAudit = null;
+function transferAudit() {
+  if (!_transferAudit) {
+    _transferAudit = Object.freeze({
+      idioms: TRANSFER_IDIOMS,
+      rows: Object.freeze([...declaredTransfers.entries()]
+        .map(([site, r]) => Object.freeze({ site, ...r }))),
+    });
+  }
+  return _transferAudit;
 }
 
 const movement = new THREE.Group();
@@ -1007,7 +1055,7 @@ const palletFork = G.makePalletFork({
 // Materials, cited rather than chosen (rule 1). Steel's pair is the SAME pair
 // §56's gong voice is built from (GONG_STEEL_C = √(200e9 / 7850)) — one set of
 // numbers for one metal, in both places it is asked to behave physically.
-const OSC_STEEL_E = 200e9;      // Pa — carbon/spring steel Young's modulus (§56's value)
+const OSC_STEEL_E = STEEL_E_PA; // Pa — §137: re-sourced from layout's one copy (§56's value, unmoved)
 const OSC_STEEL_RHO = 7850;     // kg/m³ — steel density (§56's value)
 const OSC_BRASS_RHO = 8500;     // kg/m³ — wrought CuZn brass runs 8400–8730; 8500 for common CuZn37 (the rim's MATS.brass)
 const OSC_U = UNIT_MM / 1000;   // m per model unit — §39's pin, the one conversion
@@ -30011,6 +30059,7 @@ window.__clock = {
   get balanceRate() { return balanceRate; },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
+  get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   // The seconds-reset contact, as the tick law last solved it: the roller's

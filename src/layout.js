@@ -364,6 +364,40 @@ export const STOCK_MIN_R10 = flatsR(STOCK_MIN_U, 10);  // 0.167 u — ⌀ 0.12 m
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
                                   // the balance plane derivation itself.
+// §137 — THE ONE STEEL, and the one cantilever law, for force arithmetic.
+// Every force figure in the repo is first-order solid-steel beam arithmetic
+// (TODO 16's own caveat: the absolute numbers carry maybe a factor of two;
+// the RATIOS are what conclusions rest on). Before §137 the modulus lived as
+// two private copies (inspect.js's slenderness report and main.js's
+// oscillator solve) that could only drift apart; this is that number named
+// once, with both prior sites re-sourced as consumers.
+export const STEEL_E_PA = 200e9;  // Pa — carbon/spring steel Young's modulus (§56's value)
+// End-loaded cantilever stiffness in N/m from section width a, thickness c
+// (bending direction) and free length L, all in MODEL UNITS — the 3EI/L³ that
+// TODO 16 and the §54 report both already compute longhand. I = a·c³/12.
+export const cantileverK_N_per_m = (a_u, c_u, L_u) => {
+  const m = UNIT_MM / 1000;                       // m per unit — §39's pin
+  const I = (a_u * m) * (c_u * m) ** 3 / 12;      // m⁴, thin axis = c
+  return 3 * STEEL_E_PA * I / (L_u * m) ** 3;
+};
+// §137 — THE DETENT ENVELOPE, declared instead of asserted in prose.
+// TODO 16 sized the arming chain against "a detented selector ring plausibly
+// needs 5–50 mN" and that band was never anyone's constant — it lived in the
+// item's text and was quoted forward by CLAUDE.md. The basis: wristwatch
+// jumper/detent indexing loads at the tooth run single-digit to tens of mN
+// (keyless and corrector jumpers), and the repo's own click arithmetic
+// (§137's switch-click torque row) must land INSIDE this window — a miss is
+// a finding against the click, never a reason to retune the window. This is
+// a budget ENVELOPE in the design-priority sense: inherited by every fork,
+// never forkable.
+export const SELECTOR_DETENT_WINDOW_MN = Object.freeze([5, 50]);
+// §137 — what a finger delivers to a case pusher, the input end of every
+// press-driven chain. Measured chronograph-pusher actuation forces run about
+// 1–5 N at the cap; the band's LOW end is the honest working figure (a light
+// press), the high end the structural ceiling a pusher train must survive.
+// An input band, not a target: chains are sized against their DOWNSTREAM
+// windows (the detent envelope above), and this states what the finger has.
+export const CASE_PUSHER_INPUT_N = Object.freeze([1, 5]);
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
 // oscillator hangs under the open plate cutaway, and the plate's own floor
 // binds on the hairspring stack (the fusee was dropped to make that true —
