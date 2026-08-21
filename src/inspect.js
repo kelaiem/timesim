@@ -5881,12 +5881,22 @@ export function checkSlenderness(clock, opts = {}) {
   }
   rows.sort((x, y) => y.lambda - x.lambda);
   const unwaived = rows.filter((r) => !r.waived);
+  // §137 — a waiver naming a unit with NO over-ceiling row is STALE: the debt
+  // it cited has been paid (or the member renamed) and the entry is now a
+  // standing excuse waiting for a new offender to hide under. This is the one
+  // thing the battery can GATE here without breaking §54's report covenant —
+  // and it is exactly what retiring SLENDER_WAIVERS['Alarm link'] must trip
+  // if the fix lands without deleting the entry.
+  const overUnits = new Set(rows.map((r) => r.unit));
+  const staleWaivers = Object.keys(SLENDER_WAIVERS).filter((u) => !overUnits.has(u))
+    .map((u) => ({ unit: u, debt: SLENDER_WAIVERS[u], problem: 'waiver names a unit with no over-ceiling row — retire it' }));
   return {
     ok: true,                       // §40 rule: a REPORT. Nothing here can fail.
     max, basis: SLENDER_BASIS,
     measuredAgainst: 'the SECOND-smallest extent — the stiffest section dimension available',
     counted: byMesh.size, exemptByKind: exempt.length,
     over: rows.length, unwaived: unwaived.length,
+    staleWaivers,
     rows,
   };
 }
@@ -6416,6 +6426,12 @@ const CHECKS = {
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
+  // §54's slenderness report, registered at last (§137). It was exported and
+  // never in this map — the same unreachable-instrument defect TODO 29 fixed
+  // for `restoring`, found a second time: an instrument nobody can run
+  // through start() is coverage that does not exist. Its rows stay a REPORT
+  // (§40's rule, kept); the battery gates only waiver staleness.
+  slenderness: (clock, opts) => checkSlenderness(clock, opts),
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };

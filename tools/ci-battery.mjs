@@ -336,6 +336,20 @@ const BATTERY = [
     note: (r) => `${r.population} transfers (`
       + Object.entries(r.byIdiom).map(([k, n]) => `${n} ${k}`).join(', ')
       + `), ${r.waived.length} waived (accepted debt)` },
+  // §54's slenderness report, in the battery at last (§137 — it was exported
+  // and registered nowhere, the restoring defect found a second time). Its
+  // rows stay a REPORT by §54's own covenant: an audit that fails on arrival
+  // gets switched off, and seven unwaived over-ceiling members exist today
+  // (catalogued in TODO.md). What IS gated is waiver staleness — a
+  // SLENDER_WAIVERS entry naming a unit with no over-ceiling row is a
+  // standing excuse whose debt was paid, and deleting the fix's waiver is
+  // part of the fix (exactly the trip retiring the Alarm link entry must
+  // pull if the shaft steps without the table shrinking).
+  { name: 'slenderness', opts: {}, cost: 1,
+    gate: '0 stale waivers (rows are a report — §54\'s covenant)',
+    fails: (r) => r.staleWaivers,
+    note: (r) => `${r.over} over-ceiling of ${r.counted} measured, ${r.unwaived} unwaived (reported §54 findings), `
+      + `${Object.keys(r.rows.length ? r.rows.reduce((a, x) => (x.waived && (a[x.unit] = 1), a), {}) : {}).length} unit(s) waived` },
   { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 762,
     slices: INSPECTION_SLICES, merge: mergeInspection,   // §127 — divisible along its axis loop
     gate: '0 FORBIDDEN pairs',
