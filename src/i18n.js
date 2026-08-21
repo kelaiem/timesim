@@ -329,6 +329,7 @@ Object.assign(DE, {
   'Perlage ring spacing': 'Perlage-Ringabstand', 'Perlage scallop depth': 'Perlage-Muscheltiefe',
   'Pearl radius': 'Perlenradius', 'Pearl shingle direction': 'Perlen-Schuppenrichtung',
   'Pearl jitter': 'Perlen-Streuung', 'Ruby colour': 'Rubinfarbe',
+  'Dial colour': 'Zifferblattfarbe',
 });
 
 // Guided-script captions (German) — keyed by the English caption verbatim,
@@ -556,6 +557,7 @@ Object.assign(ZH, {
   'Perlage ring spacing': '珍珠纹环距', 'Perlage scallop depth': '珍珠纹扇贝深度',
   'Pearl radius': '珍珠半径', 'Pearl shingle direction': '珍珠叠瓦方向',
   'Pearl jitter': '珍珠抖动', 'Ruby colour': '红宝石颜色',
+  'Dial colour': '表盘颜色',
 });
 
 Object.assign(ZH, {
@@ -948,6 +950,7 @@ const FR = {
   ['Pearl shingle direction']: 'Sens de recouvrement des perles',
   ['Pearl jitter']: 'Irrégularité des perles',
   ['Ruby colour']: 'Couleur des rubis',
+  ['Dial colour']: 'Couleur du cadran',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
@@ -1341,6 +1344,7 @@ const JA = {
   ['Pearl shingle direction']: '真珠の重なり方向',
   ['Pearl jitter']: '真珠のばらつき',
   ['Ruby colour']: 'ルビーの色',
+  ['Dial colour']: '文字盤の色',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
@@ -1733,6 +1737,7 @@ const ZH_HANT = {
   ['Pearl shingle direction']: '珍珠疊瓦方向',
   ['Pearl jitter']: '珍珠抖動',
   ['Ruby colour']: '紅寶石顏色',
+  ['Dial colour']: '錶盤顏色',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js

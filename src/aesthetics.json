@@ -22,6 +22,13 @@
         "minLetterKeepFrac": "Keep letter if this whole"
       }
     },
+    "face": {
+      "color": "#e7e5dd",
+      "_comment": "§154 — the base tone of the dial's radial-gradient face. geometry.js's DIAL_TINT_RATIO_IN/OUT hold the shipped inner/outer gradient stops as ratios to this default, so any new tone keeps the same soft vignette rather than going flat, and this default reproduces the exact literals it replaces. Read at dial build; the advanced panel writes here (reload tier, like hourMarkers below — repainting the canvas needs a rebuild).",
+      "_labels": {
+        "color": "Dial colour"
+      }
+    },
     "hands": {
       "hour": {
         "widthFactor": 0.15,
