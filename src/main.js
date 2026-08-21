@@ -4105,14 +4105,54 @@ function makeElbowRodMesh(len, f, e) {
   for (const [p, q] of [[a, E], [E, b]]) {
     const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy);
     const seg = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, L, 8), MATS.steel);
+    seg.name = 'rodSeg';        // §137: the transfer rows name their members
     seg.position.set((p.x + q.x) / 2, (p.y + q.y) / 2, 0);
     seg.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
     g.add(seg);
   }
   const knuckle = new THREE.Mesh(new THREE.SphereGeometry(ROD_KNUCKLE_R, 10, 8), MATS.steel);
+  knuckle.name = 'rodKnuckle';  // a formed boss over the bend — it makes no pivot claim (§137)
   knuckle.position.set(E.x, E.y, 0);
   g.add(knuckle);
   return g;
+}
+// §137 — THE BEND, PRICED (TODO 63: "a real bent connecting rod carries a
+// bending moment proportional to that offset, and nothing anywhere computes
+// it"). Each elbow rod is a two-force link: the load runs pin to pin along
+// the CHORD, so the lateral offset e puts the elbow's section under a moment
+// M = F·e, and an offset column under axial load bows — the classical
+// beam-column pair, first-order (TODO 16's caveat as always: the ratios
+// carry the conclusions).
+//
+//   moment    M        = F·e                 — what the knuckle's section eats
+//   stress    σ        = M / (π·r³/4)        — solid round bar at ROD_R
+//   bow gain  P/P_E    = F / (π²EI/L²)       — the Euler fraction; the bow
+//                        the load ADDS is e·(P/P_E)/(1 − P/P_E)
+//   axial give Δ       ≈ π²·e·δbow/(2L)      — the chord shortens as the bow
+//                        grows: the bent link's hidden compliance, the
+//                        quantity a straight link simply does not have
+//
+// F is the DETENT ENVELOPE'S CEILING, not a guess: nothing in this
+// finger-driven low linkage is designed to deliver more than
+// SELECTOR_DETENT_WINDOW_MN's top anywhere in the movement, so pricing the
+// bend at that ceiling bounds every honest working load from above. The row
+// carries the give as a fraction of the rod's own stroke — the number that
+// says whether the bend is cosmetic or load-bearing at this scale.
+function priceRigidBentLink(elbow, len_u, stroke_u) {
+  const F_mN = SELECTOR_DETENT_WINDOW_MN[1];
+  const e_u = Math.abs(elbow.e);
+  const m = UNIT_MM / 1000;                               // m per unit
+  const I = Math.PI * (ROD_R * m) ** 4 / 4;               // m⁴
+  const eulerP_N = Math.PI * Math.PI * STEEL_E_PA * I / (len_u * m) ** 2;
+  const eulerFrac = (F_mN / 1000) / eulerP_N;
+  const bow_u = e_u * eulerFrac / (1 - eulerFrac);
+  const give_u = Math.PI * Math.PI * e_u * bow_u / (2 * len_u);
+  return {
+    moment_mNmm: F_mN * e_u * UNIT_MM,
+    sigma_MPa: (F_mN / 1000) * (e_u * UNIT_MM) / (Math.PI * (ROD_R * UNIT_MM) ** 3 / 4),
+    offset_e_u: e_u, eulerFrac, give_u,
+    giveFracOfStroke: stroke_u > 0 ? give_u / stroke_u : Infinity,
+  };
 }
 // Reset rod: endpoint pairs sampled over the stroke with the SAME
 // branch-tracked two-circle solve tick() uses.
@@ -4135,6 +4175,26 @@ const RESET_ROD_ELBOW = (() => {
 const resetRod = makeElbowRodMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e);
 movement.add(resetRod);
 registerLabel('Reset rod', resetRod);
+// §137 — the reset rod's transfer row: a rigid bent link, priced at its own
+// solved offset against its own stroke (the post's full travel). The rigid
+// bend is KEPT — a mid-pivot would invalidate the two-circle solves, the
+// elbow scan and the low-corridor table for zero P0 gain (the rod is
+// crown-driven both ways; a pivot adds a degree of freedom nothing
+// constrains without a new guide) — and kept honestly: the moment, stress,
+// Euler fraction and axial give are now the row's own numbers instead of
+// nothing's.
+{
+  const p0 = tailPostWorldAt(0), p1 = tailPostWorldAt(1);
+  const price = priceRigidBentLink(RESET_ROD_ELBOW, RESET_ROD_LEN, Math.hypot(p1.x - p0.x, p1.y - p0.y));
+  declareTransfer('reset linkage: elbow rod (setting-lever post → hammer tail)', {
+    unit: 'Reset rod', meshes: ['rodSeg', 'rodKnuckle'], idiom: 'rigidBentLink',
+    load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
+      source: 'the detent envelope\'s ceiling as the bounding axial load — nothing in the finger-driven low linkage is designed to deliver more' },
+    quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
+      eulerFrac: price.eulerFrac, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke },
+    why: `displacement along a chord with a routing bend and no pivot — legitimate only priced: σ ${price.sigma_MPa.toFixed(1)} MPa at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}%, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor (give scales with the load)`,
+  });
+}
 // Per-frame solve: track the intersection branch continuously from the
 // retracted pose (the calibration guaranteed the stroke never folds).
 let prevTailTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
@@ -4751,6 +4811,25 @@ if (STOP_BRACKET_CLEAR < HACK_CLEAR_MARGIN - 1e-6)
 const hackRod = makeElbowRodMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e);
 movement.add(hackRod);
 registerLabel('Hack rod', hackRod);
+// §137 — the hack rod's transfer row: the DEEP bend. §125 Tier B's southern
+// dogleg is the honest route past the reset hammer's swing and two arbor
+// collars, and it is exactly the case TODO 63 sharpened its finding on —
+// "the deeper the routing bend, the larger the moment nothing computes."
+// Now something does: same pricing as the reset rod, at this rod's own
+// solved e and its POST_STROKE. If the give fraction reads large here, that
+// is the bend's real price stated, not a defect invented — the BUILT record
+// carries the comparison.
+{
+  const price = priceRigidBentLink(HACK_ROD_ELBOW, HACK_ROD_LEN, POST_STROKE);
+  declareTransfer('stop work: elbow rod (setting-lever pin → stop-crank tail)', {
+    unit: 'Hack rod', meshes: ['rodSeg', 'rodKnuckle'], idiom: 'rigidBentLink',
+    load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
+      source: 'the detent envelope\'s ceiling as the bounding axial load — the same bound the reset rod is priced at' },
+    quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
+      eulerFrac: price.eulerFrac, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke },
+    why: `the movement's deepest routing bend (§125 Tier B's dogleg), priced: σ ${price.sigma_MPa.toFixed(1)} MPa at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}%, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor — the bend is the low linkage's compliance concentrator, stated`,
+  });
+}
 
 let stopPsiState = STOP_PSI0;
 const _rodUp = new THREE.Vector3(0, 1, 0);
