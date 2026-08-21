@@ -31,15 +31,16 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
 | 34 | OPEN | The §36 sleeve validation measures its dilation from the sweep that then approves it |
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
-| 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
+| 40 | CLOSED (§150) | All three rows. Row 3's deferred ODE built: the cone is cut from the span-aware conservation solve (wrap helix + 3-D span + coil angle with the takeoff's walk, one length), the display's 0.05-turn wrap floor stopped minting chain, and `chainLength` GATES unwaived — spread 0.5167 u = 0.633% vs the 0.95 u half-link-pitch tolerance, 43 links at every state of wind |
 | 46 | CLOSED (§124) | The chain rode the fusee base on one CORNER (1.9–2.5 u of daylight, invisible to the burial-only row). Closed by the layout: first stage re-geared 8:1 → 120/7 so the fusee runs 1.75 wraps over 2 grooves at pitch 1.389, set-up 17 → 23 clicks, level product held; links LEAN to the flank on the funded FUSEE_TILT_Z raise. Ideal torque law exact again; the new float row gates the seat at 0.202 unwaived (was 3.191 waived) |
 | 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
 | 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
-| 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
-| 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
-| 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
+| 49 | OPEN (unblocked by §150) | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal while the support edge claims the joint. Its blocker (40 row 3's length closure) is CLOSED: path (a) — pin both ends — is open, the drum end's congruence branch margin is already boot-asserted as the template, and since §150 the cone at dead reserve is honestly bare, so the anchorage is also what would keep the last link attached at all |
+| 50 | CLOSED (§149) | The going stem's one-way is metal: the dual-purpose pinion split into a fixed winding pinion and the sliding clutch, joined by a saw coupling one profile law cuts, rides and measures — the very split a parallel 2026-08-21 re-scope reached from measurement before this landed. `windStemSlip` is the coupling's relative index — persisted, with the two sub-pitch laws (forward take-up, drain pickup) and the `stemSlip` axis that lets §48 judge the clutch. The alarm instance is item 72 |
+| 72 | OPEN | The alarm stem's one-way has no metal — a backward alarm crown does nothing at all, the free-slip at the stem⇄contrate bevel unmodelled. §149's coupling (`sawCouplingSpec`/`makeSawCoupling`, movement-independent by design) is the reuse path |
+| 51 | CLOSED | Both rows clear, boot silent; the residue is worked through since. The beak window holds the beak's own arc plus a step (five legal steps, was two — the old demand was `2·BEAK_SCAN_STEP`, a two-sample target); the arm hold reads a 72-bin per-sector reach (`armStopAt`) instead of the compass max — stock only, riser in by 0.29; and the Fusee row's 0.1500 equality was tried against a §50 pivot-floor relief and REFUSED by measurement (the span's corridor covers every legal beak azimuth at the lower band) — the refusal is written at `HUB_Z2` |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
-| 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
+| 53 | CLOSED | The plate floor counts the chain now: `CHAIN_TQ_REACH` bounds the discrete top-of-wrap in closed form and joins `TQ_BOT_Z`'s max beside the spring — gap 0.117 → 0.187, the A2 assert holds the margin (not just the sign) plus the bound's conservativeness, and a `Chain ⇄ Three-quarter plate` budget row sweeps it independently. Cost priced: the cock sits ~0.07 down in the plate band |
 | 54 | CLOSED (§127) | Every sweep calls `enterAxis` before each axis, and `axisEntry` gates all 110 ordered pairs at 0 violations. The leak the old order-dependent entry used to carry is measured and REPORTED beside the gate rather than dropped — that report is the record, not a remainder |
 | 55 | CLOSED (§129) | The alarm stop-work counts the WIND now, not the arbor's absolute angle: a plate-mounted spider differential subtracts the barrel's two members, so the cross walks back as the spring empties. Residue is item 56 — a closed item is a bad place to keep live debt |
 | 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
@@ -54,9 +55,14 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | OPEN | `makeJewelSetting`'s collar is wound inside out AND is an open shell — three in the scene, found by §148's own winding assert swept scene-wide. The winding is a two-line fix; the open profile is TODO 27's measured hazard and is the real work |
+| 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
-| 72 | OPEN (filed §137) | The §54 report's seven unwaived over-ceiling members, catalogued now that the instrument is reachable: the lifter run (λ 71), both elbow rods' segments (67.7/46.6/32.5), two unnamed stems and the feeler tail. Rows are reported, never gated (§54's covenant); the battery gates only waiver staleness. Closing a row means deriving its section from its span — two close halfway just by being NAMED |
+| 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
+| 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
+| 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
+| 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
+| 77 | OPEN (filed §137) | The §54 report's seven unwaived over-ceiling members, catalogued now that the instrument is reachable: the lifter run (λ 71), both elbow rods' segments (67.7/46.6/32.5), two unnamed stems and the feeler tail. Rows are reported, never gated (§54's covenant); the battery gates only waiver staleness. Closing a row means deriving its section from its span — two close halfway just by being NAMED |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -161,6 +167,17 @@ cone takes up different chain, and the service band now rides above item
 | frames | 71 | no point may move more than one ribbon thickness between frames, at the MEASURED sensitivity |
 | segments | 266 | the chord may sag at most a tenth of the bind gap into it at the tightest radius |
 | cut-length spread | 0.0764 vs 0.2698 | the tessellation's residue on the length constraint, held to the ribbon's own thickness |
+
+**Re-quoted at §150 (2026-08-21), two re-cuts later.** §124 re-geared the
+first stage and deepened the set-up to 23 clicks, and §150 cut the cone
+from the span-aware conservation solve, so the table above is this item's
+LANDING record, not the shipped tree: today the wind range is
+`DRUM_ROT_FULL` = u(1) − θ_s = 4.2279 rad = 0.6729 turns (no longer
+`CHAIN_ENGAGED / DRUM_WRAP_R` — the drum also pays out the free span's
+give and the takeoff's walk, §150), the service band runs 5.9583 → 6.6312
+turns, frames 34, capacity S = 4.956, and the tightest coil pitch is
+0.28763 against the same 0.2698 bind (6.6% clear). Every derivation in
+the table stands; the numbers ride the two later sections.
 
 **Swept across the reserve SPEC, not just the reserve.** §22 makes the
 reserve a knob (12–48 h, clamped in `layout.js`), and it drives the wind
@@ -305,6 +322,15 @@ that's its entry, not this one.)
   `stockFloor`'s "0 degenerate" gate does not see them (it measures a mesh's
   extents, not its triangles: [item 27](#27-fasteners-are-modelled-the-openings-and-heads-they-need-are-not)'s third blindness class again). The fix
   belongs in the shared builders, so it would clear every consumer at once.
+  **MEASURED SCENE-WIDE (§77's `meshIntegrity`, 2026-08-21): the two
+  builders' 8+6 are a corner of the population.** The first triangle census
+  reads **3,233 zero-area triangles across 125 of 568 geometries** — the
+  `ringExtrude` pattern (4 or 8 slivers) across 85+ consumers exactly as
+  predicted, and beside it whole populations nobody had seen: item 74 has
+  the catalogue. The threshold is derived, not chosen: the defective
+  decades top out at 1e-15 and the smallest intended triangles start at
+  1e-10, so `ZERO_AREA_MAX = 1e-12` sits two decades from each bound
+  (`tools/probe-77-threshold.mjs` re-derives it).
 - **FIXED — the column wheel's pillars were wound INSIDE-OUT.** Reported as
   "missing surfaces on the columns", which is exactly what it looked like. NOT the
   degenerate triangles above, and not the sliver guard that skips them: a
@@ -3814,6 +3840,15 @@ already made for the hairspring, factor 4 — so the solve uses the as-cut
   again).
 - HUD: `springTorqueAt` bottoms at `SPRING_TQ_EMPTY` 0.34606, DERIVED,
   where 0.35 was authored; `trainTq` measures 1.000000 at every reserve.
+- **Re-quoted at §150 (2026-08-21)** — §124 (23 clicks, 120/7 first
+  stage) and §150 (the span-aware conservation solve) both re-cut the
+  cone since this record: today u(1) = 10.2493 rad, `DRUM_ROT_FULL` =
+  4.2279 rad = 0.6729 turns, `CHAIN_ENGAGED` = 44.554 u (the wrap's
+  helix integral — no longer `R_wrap·(u − θ_s)`), `FUSEE_TORQUE_K` =
+  3.2133, tip 3.0744, `SPRING_TQ_EMPTY` = 0.58749, service band
+  5.9583 → 6.6312 turns at 6.6% off bind. Every identity claim above
+  still holds — `trainTq` still measures 1.000000 at every reserve, and
+  the level product is still exact algebra over §150's solved table.
 
 **The instrument** is the `equalisation` battery gate (`checkEqualisation`,
 oscillator-pattern): θ_s must sit on an integer ratchet click, the level
@@ -4608,11 +4643,15 @@ filed rather than folded into §89: that landing had no reason to touch the
 going train, and a change that moves support edges deserves its own battery
 run and its own record.
 
-## 40. The fusee equalises now — and the chain is nearly a constant length
+## 40. CLOSED (§150) — the fusee equalises, and the chain is a fixed length of steel
 
-**Rows 1 and 2 are CLOSED.** The cone is cut to the equalising hyperbola
-and the readout reads the radius the chain is on. **Row 3 is most of the
-way**: the two spools now balance exactly, and one named term is left.
+**All three rows are CLOSED.** Rows 1 and 2 cut the cone to the equalising
+law and made the readout read the radius the chain is on; row 3 — the
+deferred ODE — landed as §150: the cone is cut from the span-aware
+conservation solve, the `chainLength` gate holds the run to 0.5167 u =
+0.633% over the reserve (tolerance 0.95 u, half a link pitch) with 43
+links at every state of wind, and the waiver is deleted. The text below
+is the item's record, kept in place per the heading convention.
 
 Three arithmetic gaps in one mechanism, found by plotting the shipped
 expressions in `explain.html`'s fusee plates (BUILT §91) rather than
@@ -4763,19 +4802,26 @@ same way:
 
 1.7% peak-to-peak, and flat across the whole middle.
 
-**What is left is ONE named term: the free span.** Its length is
-`√(D² − (DRUM_WRAP_R − r(t))²)`, so it shortens as the take-off radius
-falls — ~1.4 of chain, ~1.1% of the run, that nothing takes up (measured
-on the mesh under item 32's law: vertex count swings 1.10% over the
-reserve, the same order as before). Item 32 opened the spring's
-proportions and deliberately did NOT absorb this term, for a reason the
-derivation makes concrete: the law's closed form `u(t) = √(θ_s² + β·t)`
-integrates `dC/dt = 2π·W·r` with every unit of chain exchanged cone↔drum,
-and adding the span's give turns the self-consistent solve into an ODE
-with no closed form — a numerical integration whose output would then cut
-the cone. That is buildable but is its own step with its own instrument
-(`D` also drags the drum's STATION into the wind accounting), so it stays
-filed. `DRUM_ROT_FULL` is 1.3386 turns under the derived law.
+**What was left was ONE named term: the free span — and §150 absorbed
+it.** Its length is `√(D² − (DRUM_WRAP_R − r(t))²)` plus a z leg, so it
+shortens as the take-off radius falls — 0.84 u planar, measured — and
+item 32 deliberately did NOT absorb it, for the reason its derivation
+made concrete: the closed form `u(t) = √(θ_s² + β·t)` integrates
+`dC/dt = 2π·W·r` with every unit of chain exchanged cone↔drum, and
+adding the span's give makes the solve an ODE with no closed form. §150
+built exactly that ODE (fixed-step RK4 at boot, bit-reproducible, the
+closed form kept as its S′ ≡ 0 control) — and found the row had
+under-counted: the DRAWN coil's angle also carries the takeoff tangent's
+WALK around the drum wall (`dθT/dr = 1/S_planar`, ~1.4 u over the
+reserve, the span's own order with the opposite lever), and the display's
+0.05-turn wrap floor was minting 1.72 u of chain at dead reserve that no
+bookkeeping could pay for. The solve conserves all three ledgers — wrap
+helix, 3-D span, coil angle — and the fear filed here ("`D` also drags
+the drum's STATION into the wind accounting") did not materialise:
+holding `FUSEE_LEVEL_P` and the set-up pins r(0), so D is a constant of
+the ODE and no layout fixed point exists. `DRUM_ROT_FULL` is
+u(1) − θ_s = 0.6729 turns under the solved law (the 1.3386 this row once
+quoted was the pre-§124 value).
 
 **The instrument now exists, and it reports WORSE than this row estimated.**
 `chainLength` (`checkChainLength`, registered in `CHECKS` and in the battery
@@ -4809,11 +4855,15 @@ density as length drift. Convergence measured — 0.0025% between 500 and 8000
 divisions, stable to 1.5e-6 relative from 2000 up, four orders under the
 tolerance.
 
-**The row is WAIVED, not green**, citing this item: the fix is still the ODE
-this row deferred, and the waiver says so in the report where it is visible.
-What has changed is that the error is now a number the battery states every
-run instead of an argument in a markdown file — and TODO 49 is blocked on it
-(pinning the chain's fusee end needs this closure to be exact first).
+**The row is GREEN and gated since §150 — the waiver is deleted.** The
+same check now measures spread 0.5167 u = 0.633% against the unchanged
+0.95 u tolerance, min 81.4618 at reserve 0.025, max 81.9785 at 0.975, and
+the link census reads **43 at every state of wind** — the two independent
+readings agreeing that the run is one chain. What remains of the spread is
+the drawn path's own residue (spline sag inside the control polygon, the
+hook congruence's bounded fractional redistribution), named here and well
+inside the tolerance the link pitch derives. TODO 49 is UNBLOCKED by this
+closure: pinning the chain's fusee end has its exact-length prerequisite.
 
 ## 41. CLOSED — both well hands ride a plane derived from their own section; the reserve hand was 0.0014 off its floor
 
@@ -6019,9 +6069,53 @@ demonstrably misses.
 
 **Filed by §47's scope guard**, which named it rather than absorbing it.
 
----
+**Re-verified 2026-08-21 — still blocked, and the cost list has grown.** Every
+claim above still describes the code (the azimuth still floats, the drum's
+congruence and claw are unchanged, `chainLength` still reports the same
+1.984% spread against 1.164% waived, and the wrap count is still asserted
+against `RESERVE_BARREL_TURNS`). What changed since the scope: two more
+instruments now consume the shipped chain layout, so path (a) — pin both
+ends and derive `wraps` from the closure — re-measures more than the §61/§124
+seating rows. TODO 53's `CHAIN_TQ_REACH` is a closed-form bound on the
+discrete top-of-wrap that the plate floor (`TQ_DESIGN_MAX`) carries, with its
+own conservativeness assert and a `Chain ⇄ Three-quarter plate` budget row;
+TODO 51's `armStopAt` is a per-sector reach table built from the same
+discrete layout, and its `HUB_Z2` refusal note binds the span ("must move
+the SPAN, not the pad"). Changing where the run lies moves all of them —
+price them with the fix, and diff the battery `--report` against the base
+when it lands.
 
-## 50. The going stem's one-way has no metal
+**UNBLOCKED by §150, later the same day.** TODO 40 row 3 closed: the cone
+is cut from the span-aware conservation solve, `chainLength` gates the run
+at 0.5167 u spread with 43 links at every state of wind, and the waiver is
+gone. Path (a) is therefore open — pin both ends with the closure exact —
+and §150 sharpened its terms: the wrap's bottom still floats in azimuth
+only (the solve conserves LENGTH; it does not pin the wrap's start), the
+`wraps = tension·FUSEE_WRAP_TURNS` law is still load-bearing and still
+fenced, and the hook-congruence branch margin at the drum end is now
+boot-asserted, which is the same instrument a cone-end pin will need.
+Note also §150 removed the 0.05-turn wrap floor: at dead reserve the cone
+is honestly bare, so the anchorage this item wants to cut is now also the
+only thing that would keep the last link attached to the cone at all.
+
+## 50. CLOSED (§149) — the going stem's one-way is a saw coupling at the sliding clutch
+
+**Closed by §149** (`docs/BUILT.md`): the dual-purpose `windPinion` split
+into the fixed winding pinion (poses from the bank, always meshing the
+crown wheel) and the sliding clutch — its own unit, keyed to the stem's
+square, the yoke's fork tracking its collars — joined by the Breguet-style
+saw coupling `sawCouplingSpec`/`makeSawCoupling` cut, ridden and measured
+by ONE profile law. `windStemSlip` is the coupling's relative index now: a
+consequence of a modelled contact, persisted (the parked sub-pitch lives
+in the stem's free angle, not the bank), with the two sub-pitch laws the
+metal demanded (forward take-up of the parked gap; the knob holding
+through the drain until the drive face picks it up) and the `stemSlip`
+axis that lets the sweeps and §48's audit see the clutch move. The alarm
+stem's instance of the same class moved to item 72 — a closed item is a
+bad place to keep live debt. The corrected filing below is kept as the
+record of the premise this item had to fix in itself first.
+
+### The filing as corrected (history)
 
 §47 collapsed the winding path onto the banked reserve, so every wheel
 from the crown wheel inward now poses from `barrelWindTurns` and the
@@ -6034,13 +6128,157 @@ states the same debt in the same words ("a backward crown free-slips at
 the stem⇄contrate bevel without unbanking"), so this is one class with two
 instances.
 
-**The fix.** The going side's one-way lives at the plate-top ratchet the
-winding spur's own comment already describes (`RATCHET_TEETH` is that
-wheel's count). Give it the §99 treatment: a click with a generated
-working face on the ratchet's cut law, its stud solved by the obstacle
-scan, and the bank taken out of stored state the way `settleAlarmClick`
-takes the alarm's give-back — after which `windStemSlip` is a consequence
-of a modelled contact rather than a bookkeeping term.
+**The fix — corrected, because the first filing cited metal that does not
+exist.** This item used to send the click to "the plate-top ratchet the
+winding spur's own comment already describes", and no such ratchet exists:
+the `windTop` block deleted it deliberately (a fixed pawl on a
+bidirectional arbor was a display fiction — the fusee arbor turns both
+ways, the wind held by the escapement through the train), and four stale
+comments kept describing it anyway. Those comments are corrected and the
+`RATCHET_TEETH` alias retired; the ratio sites read `WIND_SPUR_TEETH`,
+the wheel that actually turns.
+
+Nor can ANY wheel of the winding train host a fixed click: §126 declared
+the keyless train two-way driven (the mainspring back-drives the same
+teeth through the fusee arbor on run-down), so a plate click anywhere in
+it would block the run-down — the same objection that deleted the old
+one. The only joint where backward slip physically happens is the STEM
+interface: the winding pinion ⇄ crown wheel coupling, which is exactly
+what `windStemSlip` absorbs ("backward free-wheel … and the spins the
+clutch takes out of mesh" — both cases are that one coupling's two
+disengagements).
+
+**So the metal is a saw-tooth one-way COUPLING at the sliding pinion**,
+the real keyless-works site: split the dual-purpose `windPinion` into a
+fixed winding pinion (always meshing the crown wheel, posed from the
+bank) and a sliding clutch keyed to the stem, Breguet saw faces between
+them, the yoke's fork tracking the clutch with a real yoke spring as the
+restoring element (the yoke has none today). Crown forward drives
+through the closed faces; crown backward cams the clutch axially one
+snap per pitch — the slip; run-down back-drive closes the faces from the
+pinion's side and drags the knob, which is the pose law's existing
+backward creep given its mechanism. The shipped accumulation law is
+already this coupling's law at pitch scale; what it owes is the two
+sub-pitch corrections (forward take-up of a parked gap before banking;
+knob hold through the drain until the face picks it up), persistence of
+`windStemSlip` (the parked sub-pitch lives in the stem's free angle, so
+no bank give-back à la `settleAlarmClick` — the bank is held by the
+escapement and the arrest, not by this coupling), and the axis that
+exercises the reciprocation (`setPose` never writes the slip, so today
+no sweep and no §48 audit can see the clutch move — the TODO 56 lesson).
+After that, `windStemSlip` is the coupling's relative angle — a
+consequence of a modelled contact rather than a bookkeeping term.
+
+The alarm stem states the same debt (a backward alarm crown does nothing
+at all, `main.js`'s alarm wind routing) and stays its own instance: the
+coupling builder and its lift law should be written movement-independent
+so the alarm side can consume them when its turn comes.
+
+### The parallel re-scope (2026-08-21) — the same joint, reached from measurement
+
+The scope below landed on `main` while §149 was in flight, written against
+the ORIGINAL filing (its "the fix above" means the old plate-top-ratchet
+text, not the corrected filing kept above). It reached the same
+conclusion independently — no winding wheel can host the one-way, the
+collapsed stem coupling is the unique honest site — and adds what the
+history above argues from structure: the measured regimes (the 3-turns-
+per-barrel-turn back-drive, the 9.6e-8 stall, the 1:1 backward slip) and
+the regime table showing the shipped laws already ARE the coupling's.
+Everything it files to build IS built by §149, with two shape differences:
+the coupling's cut lives in `sawCouplingSpec`/`makeSawCoupling` (its own
+spec solver, not a `sawRadiusAt` twin), and the fork rides a pin-in-groove
+on the clutch rather than the stem's own groove. Kept whole as the
+record's second derivation:
+
+**The fix above names a site that was deliberately removed, and no winding
+wheel can host the one-way at all.** Scoped 2026-08-21. The plate-top ratchet
+this item leans on does not exist: `RATCHET_TEETH` is an alias for
+`WIND_SPUR_TEETH` (24), the spur is an involute `makeGear` wheel, and the
+comment saying the saw-toothed ratchet "now sits on the plate top … where
+its teeth serve only the click" is STALE (its twin in the keyless build says
+the same). The windTop block both point at answers them three times over:
+"There is deliberately NO ratchet or click on this arbor any more: the arbor
+turns BOTH ways … and a fixed pawl on a bidirectional ratchet is
+impossible." Correct both stale comments when this lands — they are what
+made this item read "already described."
+
+**Since §126 that impossibility covers the whole winding train.** Every
+winding wheel poses from the bank and the bank drains with τ, so the crown
+wheel counter-rotates during run-down — in the SAME direction a backward
+crown turn would drive it. A pawl anywhere from the spur to the crown wheel
+cannot tell the two apart, and would block a drive direction the §48 audit
+declares on purpose (`declareRestoring('Keyless works', 'two-way', …)`: "the
+mainspring back-drives the same teeth through the fusee arbor and its spur
+as the watch runs down"). Measured headless on the shipped build: the stem
+spinner's spin is a pure function of the bank at exactly 3 knob turns per
+barrel turn (the 24:8 ratio — 5.25 knob turns over the full reserve, the
+knob creeping backward as the watch runs down); a backward crown turn of
+1.234 rad at mid-reserve moved the knob 1.2340 with the bank untouched, and
+the slip is CONTINUOUS — no quantum anywhere; a forward turn at the arrest
+moved the knob 9.6e-8, a dead stall.
+
+**The one joint that can be a one-way is the one the model collapsed.**
+`windPinion` "IS the sliding pinion" — one piece where a real keyless works
+cuts two: a winding pinion free on the stem, always meshed with the crown
+wheel, and a sliding (castle) pinion keyed to the stem, coupled to it by
+saw-toothed breguet crowns on their mating faces. That coupling is the only
+joint on the path where a backward crown turn and the run-down produce
+OPPOSITE relative senses — the one distinction a one-way can make — and
+every regime §126 already ships is exactly what that coupling would do:
+
+| regime | stem vs winding pinion | breguet coupling | shipped law |
+|---|---|---|---|
+| forward wind, below the arrest | driving | faces engaged, 1:1 | bank advances, knob tracks |
+| forward at the arrest | rigid | stem stalls dead | banks nothing, moves nothing, no slip (measured 9.6e-8) |
+| backward crown turn | stem backs off | cams over — the zip | `windStemSlip` accumulates (measured 1:1, bank untouched) |
+| run-down drain | pinion backs away | faces engage, back-drive the knob | knob = f(bank), 3 turns per barrel turn (measured) |
+| pulled to SET | separated axially | free spin | the clutch-out slip branch |
+
+The two-piece stem is not just the real-watch answer; it is the unique site
+consistent with what §126 ships, and it makes BOTH slip branches
+consequences of ONE modelled joint.
+
+**What to build instead.** Split `windPinion`: the winding pinion stays at
+crown-wheel mesh depth, free on the stem — it LEAVES the sliding
+`windSpinner` group, a parenting change — and the sliding pinion keeps the
+stem key, the axial ride and the setting mesh. Cut breguet crowns on the
+mating faces (the cut law is `sawRadiusAt`'s axial twin — tooth HEIGHT over
+azimuth rather than radius over azimuth); the backward-turn cam-over is an
+axial lift of the sliding pinion against the yoke's detent spring (the yoke
+already tracks its groove), with the lift law the §99 "smallest lift that
+clears the metal" idiom. The crown count N and the ramp angle are design
+parameters DERIVED from the detent-spring window (TODO 16's format: the
+ramp's axial force under a finger's backward torque must beat the spring,
+and the spring must re-seat from any parked ramp point), not chosen.
+
+**The give-back is the piece a copy of §99 would get wrong.**
+`settleAlarmClick` subtracts the parked ramp fraction out of the STORED
+WIND — the arbor recoils to its seat. Here the wheel held the whole time;
+that hold is the point. The going settle slides the STEM down the ramp to
+the nearest seat: it adjusts `windStemSlip` by up to one coupling tooth
+(quantum 2π/N of stem) and must never touch `barrelWindTurns`. The restore
+seeding that rebuilds the slip from `crownRotation` must land on a seat for
+the same reason.
+
+**Costs, priced.** The fingerprint moves (a re-parented pinion, a new part).
+The winding and sliding pinions are two movers in different frames inside
+one unit, so the coupling enters `intraUnit`'s MM tier — a declared
+`INTRA_UNIT_CONTACTS` joint plus the unit's own build asserts at the seat
+(the §120 pattern: the tier covers the class, the asserts keep the per-cycle
+instances) — and the seat wants the §99 package: a handoff row, the
+vertex-against-analytic-saw penetration form (a beak in a valley is locally
+wrapped, so `mtvDepth` pops it out sideways), `declareTravel`, and the
+restoring declaration re-stated (the sliding pinion reciprocates axially;
+its restoring element is the yoke spring, which must exist as a mesh). And
+rule 4's §48 warning applies a fourth time (items 29, 56 and 64 are the
+other three): no axis anywhere varies the going `crownRotation` — only
+`alarmCrownRotation` is swept — so the cam-over lift would reciprocate on an
+axis that does not exist. Ship the axis that exercises the backward
+free-wheel, or the audit passes the new members in silence.
+
+**The alarm instance stays the class's second row.** The alarm crown states
+the same debt in the same words at its sliding bevel ⇄ contrate coupling;
+the same two-piece treatment applies there, filed here and not absorbed.
 
 ---
 
@@ -6171,33 +6409,45 @@ beak are chosen together rather than in sequence, which is what the item's
 earlier draft asked the next pass to do. Ordinary cost is one trial; the
 best-scoring azimuth usually solves.
 
-### Residue, named
+### Residue, named — and where each row went
 
-- **The surviving beak window is TWO scan steps wide.** The scan publishes a
-  per-step trace of why it rejected each azimuth (`WIND_ARREST.beakScanTrace`,
-  one character per step: `s`/`l` arm too short/long, `r` not radial, `n` wrong
-  sense, `c` chain in the tab's window, `m` disengaging moment, `.` legal), and
-  the shipped solve reads
-  `ssssssssssssssssssssccccccccmmmmmmm..llll…` — seven moment rejects and eight
-  chain rejects on either side of two legal steps. That is a fact about this
-  fold, not a detail: several changes during this landing moved the window a
-  step or two and emptied it, each time silently reverting the beak to its
-  unchecked fallback. Anything that moves `ARM_BAND_REACH`, `HUB_R`,
-  `R_PAD_ARM` or the lug's station should expect to re-open it, and the trace is
-  the first thing to read when the boot warns.
-- **`Winding arrest ⇄ Fusee & great wheel` measures exactly 0.1500** against the
-  0.15 floor, because `HUB_Z2 = LUG_Z1 − CLEAR_MARGIN` makes the gap the margin
-  by construction. It passes deterministically (the build has no randomness),
-  but it passes with nothing to spare. Relieving the pad's top face by a §50
-  pivot floor would buy the slack; it also moves the pad's band, which moves
-  `F_PAD_WALL`, which moves the candidate set — and on this fold that is enough
-  to empty the beak window. Left as it is, deliberately, with the coupling
-  written down.
-- **`ARM_STOP_R` is azimuth-blind**, a max over the whole compass. The wrap's
-  demand actually varies 4.19–4.37 across azimuths with the link phase, so the
-  arms stop further out than any one of them needs. That is conservative in the
-  safe direction and it costs only stock; folding the per-sector reach into the
-  ranked walk is the next refinement if the window ever needs the room.
+All three rows were worked after the landing; two closed, one was attempted
+and REFUSED by measurement, which is a better state than "left deliberately"
+because the refusal is now a fact with a trace instead of a fear:
+
+- **The two-step beak window — CLOSED.** The two-step width was a TARGET,
+  not an accident: `LUG_OUTER`'s inversion grew the lug until the analytic
+  window reached exactly `2 · BEAK_SCAN_STEP` (0.04 rad), while the comment
+  above it already demanded "the beak's own tangential width plus a scan
+  step". The demand is now that arc (`BEAK_TAN / Rb + BEAK_SCAN_STEP`
+  ≈ 0.1 rad), which decouples freedom from resolution — the step appeared
+  on BOTH sides of the old expression, so a finer scan NARROWED the built
+  window. Cost: `LUG_OUTER` 4.086 → 4.231 (the lug's proudness is the
+  priced currency; fin assert silent), and the shipped trace reads five
+  legal steps (`…mmmm.....llll…`) instead of two. The trace remains the
+  first thing to read when a boot warn names the scan.
+- **`Winding arrest ⇄ Fusee & great wheel` at exactly 0.1500 — KEPT, with
+  the relief now MEASURED as impossible on this fold.** Dropping the finger
+  plate a §50 pivot floor (`HUB_Z2 = LUG_Z1 − CLEAR_MARGIN − PIVOT_MIN_U`)
+  was tried on top of the widened window: the analytic window held exactly
+  as designed, and the CHAIN'S DEPARTURE CORRIDOR then covered every legal
+  beak azimuth at every one of 147 candidate pad azimuths — the trace's
+  `c` rejects bridged straight into the `l` ceiling, the moment window
+  never opened, and the solve fell to its unchecked fallback with a
+  disengaging moment. The equality stays, with that refusal written at
+  `HUB_Z2` in place of the old fear. Any future relief has to move the
+  SPAN (the drum's hook plane or the departure azimuth), not the pad.
+- **`ARM_STOP_R` azimuth-blind — CLOSED for the arms (the safe half).**
+  The same sphere-of-margin loop now fills a 72-bin per-sector table
+  (`WIND_ARREST.armReachBin`, 5° bins, neighbour-max lookup so a demand
+  sphere's ~2° footprint cannot straddle past the query), floored
+  everywhere by the lug's orbit, and the arm hold measures SLACK against
+  `armStopAt(az)` instead of radius against the compass max. Stock only,
+  as predicted: pad-arm end 4.695 → 4.631, riser 5.765 → 5.471, pad
+  bridge 1.133 → 1.069; the beak scan and `STUD_FLOOR_R` deliberately
+  keep the global — a floor the per-candidate pass could walk past would
+  re-open the empty window it exists to close, which is the standing note
+  at `STUD_FLOOR_R` and stays answered by not doing it.
 
 ---
 
@@ -6219,24 +6469,53 @@ alongside `crownRotation` and clamp it on restore.
 
 ---
 
-## 53. Chain ⇄ three-quarter plate is 0.117, under the shared margin
+## 53. CLOSED — the plate floor counts the chain now, in closed form
 
-§47 owed this measurement and took it: nothing in the battery had ever
-measured the gap between the top coil at full wind and the plate's
-underside, and the arrest needed the number to know whether anything could
-pass over the coil. Measured over the discrete link layout the mesh
-actually lays: **0.117**, against `CLEAR_MARGIN` 0.15. The build asserts
-the SIGN (contact is the regression) and publishes the number as
-`WIND_ARREST.chainTqGap`; the margin itself is not met.
+§47 owed this measurement and took it: the gap between the top coil at
+full wind and the plate's underside, measured over the discrete link
+layout, was **0.117** against `CLEAR_MARGIN` 0.15 — a declared clearance
+the movement did not honour at its tightest station, watched only by a
+sign assert.
 
-It is not a collision and nothing rides there — the arrest's own members
-keep clear of it by construction. But it is a declared clearance the
-movement does not honour at its tightest station, and it bounds anything a
-future entry might want to run over the cone. **The fix is z, and it is
-the §51 pattern:** either the plate rises (its underside is set by
-`TQ_MEASURED_MAX` against the hairspring stack — the binding part is
-named, so the cost is priced) or the cone's band drops. Re-measure with
-the same law after either move.
+**The root cause was the plate-floor law's blindness, not the z-stack's
+tightness.** `TQ_BOT_Z` was `max(measured under-plate boxes, hairspring
+stack) + margin`, and the chain is nobody's measured box — the one
+under-plate occupant that list could never see. The item's own framing
+("either the plate rises or the cone's band drops") resolved to the plate,
+decisively: the arrest's pad band is LUG-bound (`HUB_Z2` resolves to
+`LUG_Z1 − CLEAR_MARGIN` by 0.115), `chainProudAt`'s stud ceiling already
+stood above every chain point, so a plate rise moves NO arrest quantity —
+measured, the beak window, candidate set and `LUG_OUTER` are bit-identical
+— while a cone-band drop would have dragged the pad band, `F_PAD_WALL`,
+the §104 equalisation solve and the §124 asserts all at once.
+
+**The fix is the §51 pattern — the binding part is NAMED**: `CHAIN_TQ_REACH`
+(with the fusee constants in `src/main.js`) bounds the discrete top-of-wrap
+in closed form — the wrap-top groove station plus the ramp-leaned stadium
+section's reach, `h·cosβ + max(w·sinβ, t_z·w)`, scanned over the top
+pitches, the unleaned straddling link seeding it (legal because the hook
+plane sits under the wrap top, asserted) — and joins `TQ_BOT_Z`'s max
+beside the spring. The A2 measurement now holds it honest both ways every
+boot: gap ≥ `CLEAR_MARGIN` (measures 0.187), and the discrete top under
+the bound (`chainTqBoundSlack` ≈ 0.037 published — chording errs the
+bound outward, the right side for a floor). A
+`Chain ⇄ Three-quarter plate` row in `CLEARANCE_BUDGETS` is the
+independent check from the sweep side (min 0.284 at full wind — the fusee
+window keeps plate metal off the cone's zenith).
+
+**The priced cost:** the plate rides the chain now, ~0.07 above the
+spring bind, so the balance cock's slab sits that far down IN the plate
+band instead of flush at its underside — the coupled cock/plate design
+goal is spent knowingly, with the comment at the floor law re-worded to
+say by whom. Residue: none — but any future entry that runs anything
+else over the cone inherits `CHAIN_TQ_REACH` as its ceiling's precedent.
+
+**Re-measured at §150** (the conserving solve re-cut the flank, so the
+bound re-derived exactly as this item's price warned): gap 0.1808 against
+the same 0.15 margin, `chainTqBoundSlack` 0.0308 — both asserts green,
+and the plate band settled 0.0007 lower with the new reach. That hair of
+z is also how §150's report diff found TODO 73 (a connectivity ray in the
+alarm switch rolled onto a pre-existing degenerate triangle).
 
 ## 54. CLOSED — the sweeps enter every axis canonical, and the leak they used to carry is measured
 
@@ -7656,6 +7935,20 @@ that were there first.
 
 ## 70. `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well
 
+> **Instrument note (2026-08-21).** §77's `meshIntegrity` tier 0 now
+> measures signed volume per mesh scene-wide, and its four `inverted` rows
+> (item 75) do NOT line up with this item's three collars: the negative-
+> volume lathes sit at world (9.54, −22.25), (18.95, −29.28) and
+> (17.69, −14.58) against this item's (9.58, −19.02), (19.62, −25.13) and
+> (−13.27, 9.29) — no coordinate matches, and the barrel-arbor site has no
+> negative-volume mesh at all. That is consistent rather than
+> contradictory: these collars are OPEN shells, and an open surface's
+> signed sum is path-dependent — inverted winding need not read negative.
+> So the divergence tier cannot be this item's regression guard; the
+> winding fix stays validated by `assertLatheOutward`, and closing the
+> profile (this item's real work) is what will bring the collars into
+> tier 0's domain.
+
 Found by the instrument §148 added for its own defect (`assertLatheOutward`,
 `src/geometry.js`), swept over the whole scene rather than over the chaton:
 **three meshes besides the chaton's two have top faces whose normals point
@@ -7693,36 +7986,254 @@ before anyone had fixed them — which is rule 6 turned into a nag rather than a
 gate. Fix the setting, then call it there too, and the class is closed for
 every lathe in the movement that has a horizontal top face.
 
-## 71. The arrest pad's seat is solved against the analytic chain, and the built links' phase can scallop 0.05 through it
+## 71. The arrest pad rode a model of the coil — CLOSED (§151)
 
-**Found by §125 Tier B, and it is a waived `windArrestHandoff` row** — the
-first waiver that check has carried. Moving the small-seconds station to
-22.9 re-solved the ¾ plate's webs, the §47 finger scan re-sited the pad's
-azimuth, and at the new azimuth the full-wind row measures the coil
-**0.0498 INTO the pad** against the ±0.03 touch band (the old azimuth
-measured −0.0074 on the same chain).
+**Found by §125 Tier B as a waived `windArrestHandoff` row, re-diagnosed
+2026-08-21 after a user-visible symptom** — through the arming band the arm
+swung with open daylight under the pad: measured on a 97-pose tension
+ladder, **33 poses with the arm swung and more than the ±0.03 touch band of
+daylight, up to +0.109** — the arrest ARMED on metal that was not there.
+The daylight decomposed into four measured causes, each closed in §151:
 
-**The defect is a phase, not a radius.** `solveFinger` seats the pad off
-`linkOuterPtsNear(1)` — a densely sampled model of the full-wind wrap whose
-links are spaced by `curve.getSpacedPoints` from the arc division. The BUILT
-chain's links are anchored from the fusee hook, so their phase along the
-wrap differs from the model's by up to half a pitch — and the top coil's
-local outer surface scallops between a plate's chord and an end cap's bulge
-by ~0.05 across that phase. Whether the pad's azimuth lands on a cap or a
-chord is therefore luck of the station, which is exactly what changed: the
-old azimuth met plate, the new one meets a cap.
+1. **Parity.** The law modelled every link with the outer plates' stadium;
+   the built chain alternates, an inner link's plates riding
+   `CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085` lower — hover in exactly the
+   parity period. (The original filing blamed a half-pitch phase offset;
+   measured, both samplers index the same N-equal-arc joints — the phase
+   story was the parity error wearing a disguise.)
+2. **Node-sup bridging.** The lift table's node-±-interval sup bridged the
+   wrap's REAL inter-link dips at 8× the fine grid's spacing, so the arm
+   held its lift across gaps the coil genuinely opens. The table is now
+   the fine grid itself, read as a per-interval max — the no-under-read
+   guarantee at a quantum of ~0.001 of tension.
+3. **The window's six-pitch memory.** The pad's reads stopped six pitches
+   behind the departure; the top turn is ~13 pitches of arc, a leaned
+   plate's corners reach ≈ 0.4 in z, and the cone widens down-arc — the
+   proudest metal in the window at full wind was a link 6.5 pitches below
+   the departure (4.081 vs 4.005), read as absent. The window now spans
+   every wrap link, straddler included, span excluded.
+4. **The first-order pose.** ψ = lift/padGain leaves a rigid face
+   (1 − cos ψ) plus chord-tilt short of the plane the law claims — 0.060
+   at full throw. The pose is now the lever's exact inverse (closed-form
+   standoff of a plane rotated about the stud, boot-asserted to 1e-6 over
+   the law's range).
 
-**Fix path.** Anchor `linkOuterPtsNear`'s link phase to the same origin the
-chain build uses (the fusee hook's arc position at the given tension) rather
-than letting `getSpacedPoints` choose it — one offset added to the joint
-sampling, after which the model's caps land where the built caps land and
-`restR` comes out of the surface the checker actually reads. The §47
-arrival-profile assert (`proudOf` across the t grid) inherits the same
-correction for free. Until then the row is waived citing this item:
-the arrest still arrests — 0.05 early, pressed into the coil rather than
-kissing it.
+And the law's SOURCE changed category: every pad-window read now samples
+`buildChainLinkGeometry`'s own output buffer (`builtPtsNear` — the builder
+records per-link vertex bases for it), so law-vs-mesh divergence is
+impossible by construction; the analytic `linkOuterPtsNear` stays for the
+REACH laws, where erring outward is the sound side.
 
-## 72. The §54 report's seven unwaived over-ceiling members, catalogued (§137)
+**A fifth cause surfaced when the corrected occupancy re-sited the pad:**
+the finger solve was blind to the free SPAN. Every feasibility law it
+consulted lives on the cone (`chainProudAt` stations, the wrapOnly reach
+tables), and the span — the chain's flight from the departure to the
+drum — crosses the hub/tab bands at arm radii near full wind. The
+re-solved fold parked the beak arm's corridor across it and the
+`expectedContacts` floor row found the bar inside the flying chain's
+link 25. Closed in position space, the ranked walk's own way: a span
+corridor law (`spanPts`, sampled over the wind from the same
+`chainLayoutAt` curve the mesh is built from) rejects any pad or beak
+azimuth whose arm chord the span crosses, and a boot assert re-measures
+the BUILT finger, lattice-sampled over its real throw, against the same
+envelope.
+
+**Closed state, measured:** the full-wind row reads 0 at both poses — an
+exact kiss, the waiver retired; the wind-axis penetration row reads
+worstDepth 0 (was 0.081 EXCEEDS); every arm and the riser clear the chain
+by ≥ 0.22 against the 0.15 floor. Touch lands at t ≈ 0.870 and through
+the arming band the pad rides the passing links with measured contact —
+the ride genuinely CHATTERS (lift falls to 0 where the wrap opens a real
+gap under the window and catches the next link as it arrives), which is
+what a follower on discrete links does and what the §47 lift-shape
+asserts accept: seated through the lug's free pass, home before the
+closing arc. The §48 audit now SEES the arm: no registry sample on the
+wind cycle's 12-pose grid reached the arming band (max tension 0.909 <
+touch), so the `arrest` axis cycles the band itself and the stale flag is
+gone. What remains above zero mid-band is the lift law's designed
+conservatism (the staircase rides each fine interval's highest link) —
+measured every battery run, not filed as debt.
+
+---
+
+## 72. The alarm stem's one-way has no metal
+
+The alarm instance of the class item 50 named and §149 closed on the going
+side. A backward alarm crown does nothing at all: the wind routing banks
+only positive deltas, and the free-slip "at the stem⇄contrate bevel" the
+comments describe has no metal behind it — there is not even a bookkeeping
+scalar to make the omission visible, which is why this instance is CHEAPER
+to miss than the going one was.
+
+**The fix is a reuse, by design.** §149's saw coupling was written
+movement-independent (`sawCouplingSpec`, `sawProfileAt`,
+`sawCouplingLiftAt`, `makeSawCoupling` — spec math in `layout.js`, builder
+in `geometry.js`) exactly so this stem could consume it: a fixed pinion at
+the contrate mesh, a sliding clutch on the alarm stem, the coupling
+between them, and the alarm side's own equivalents of the going landing's
+obligations — the slip state and its persistence, the sub-pitch take-up
+and pickup laws, the axis that reverses it (no alarm axis sweeps a
+backward crown today, the same §48-population gap TODO 56 documents one
+mechanism over), and the declaration set. The going landing's records
+(`docs/BUILT.md` §149, `tools/probe-50-clutch.mjs`) are the template.
+
+---
+
+## 73. PART DONE — the raycast is guarded (half 2, the vendor patch); the fourteen zero-area triangles remain (half 1)
+
+**Found by §150's report diff** — an `assembly` connectivity pair inside
+`Alarm switch` went `unmeasurable` ("Cannot read properties of null
+(reading 'dot')") on the new tree and not on the base, with the alarm side
+untouched. The check did the right thing by design: an unmeasurable pair
+is REPORTED and assumed joined (inventing a fracture is that check's
+unsafe direction), so the gate stayed honest. The mechanism, measured:
+
+- Two of the three `alarmColWheel` meshes carry **zero-area triangles** —
+  8 of 776 in one, 6 of 116 in the other (min area 1.3e-22) — identical
+  on base and §150's tree. Pre-existing cheap geometry, exactly the class
+  the TODO 27 trap note warns about: a face nobody can see is still a
+  face the instruments read.
+- The vendored three-mesh-bvh's `checkBufferGeometryIntersection` calls
+  `intersection.normal.dot(ray.direction)` without guarding
+  `Triangle.getInterpolation` returning **null**, which is what it
+  returns on a degenerate triangle. A parity ray that lands on one of the
+  fourteen throws instead of counting.
+- What §150 changed was one float, four decimals down: `CHAIN_TQ_REACH`
+  re-measured on the new flank, the three-quarter plate's band moved
+  0.0007 in z, and the alarm switch — hung from that stack — moved with
+  it (world z 9.801883 → 9.801146). Same relative transforms inside the
+  unit, epsilon-different world matrices, and one connectivity ray rolled
+  onto the knife edge that was always there.
+
+**The fix is at the source, in two independent halves.** (1) The column
+wheel's builder should not emit zero-area triangles — and the cause is now
+measured (roadmap §77's planning): they are NOT castellation corners but
+two shared-builder seams — `absarc`'s duplicate endpoint (the two seam
+points differ by ~1e-15, so the exact-bit weld rightly keeps them) and
+earcut's hole-bridge slivers — so the fix lives in `ringExtrude` and the
+skirt's extrude, clears ~9 consumers at once, moves the fingerprint, and
+is its own landing. (2) **DONE** — the vendored raycast guards the null:
+a zero-area face reads as "no countable crossing" instead of a throw.
+The third `PATCHED (timesim)` diff, documented in vendor/README.md with
+the as-shipped hash updated; `tools/check-bvh-patches.mjs` carries a
+synthetic sliver witness (a triangle whose `getBarycoord` denominator
+cancels to exactly 0 in float64 while `Ray.intersectTriangle` still hits
+it — the wild fourteen's own float discrepancy, made deterministic) that
+THROWS on the unpatched file with this item's exact error string and
+counts correctly on the patched one. One correction to this item's
+original text: three.js r165's own `Mesh.js` carries the SAME unguarded
+dereference, so there was no upstream idiom to copy — the guard is this
+repo's parity semantics. Half 1 is still owed, because a mesh with
+zero-area faces is lying to every instrument that samples it, not just
+to this one — and §77's `meshIntegrity` now MEASURES it every run: the
+column wheel's two rows read `0/1/7` and `0/0/6` (collapsed/collinear/
+sliver — the base disc's 8 and the skirt's 6, reproduced by the shipped
+instrument), so half 1's fix will be visible as those two rows emptying
+in the report diff, and any regression as their return.
+
+## 74. The first triangle census: 3,233 zero-area triangles across 125 geometries, catalogued by cause
+
+Filed from `meshIntegrity`'s arrival run (§77 tiers 0+1, 2026-08-21) — the
+first time anything counted a mesh's own triangles. Item 4's two shared
+builders (8 + 6) turn out to be a corner of the population; the fix for the
+big rows is per BUILDER, exactly as item 4 argued, and every count below is
+reproducible with `node tools/probe-77-census.mjs`.
+
+The catalogue, by pattern (collapsed edge / collinear / sliver per geometry):
+
+- **`alarmArrestCross` carries 1,160 COLLINEAR triangles** (of its 18,976) —
+  the single largest population in the scene, in one `ExtrudeGeometry`. An
+  exactly-zero-area triangle with three DISTINCT vertices is a triangulation
+  artefact, not a float seam; the §129 cross's extrude is the place to look.
+- **`chainRun` carries 1,040 COLLAPSED triangles** (of 23,464 at the boot
+  tension) — repeated vertex positions inside the stamped buffer. The chain
+  is TODO 27's own rebuilt body, so this is either the templates carrying
+  collapsed faces (×N stamps) or the stamp duplicating a seam; at today's
+  43-link chain that is ~24 per JOINT (1,040 over 44 rivets), which smells
+  like cap fans on the pin template's three cylinders.
+- **The `ringExtrude` family, 85+ geometries**: the `0/0/4` × 51 and
+  `0/0/8` × 34 patterns — every gear hub, jewel ring, barrel wall/floor and
+  the column-wheel base disc, all carrying the absarc-seam and earcut
+  hole-bridge slivers item 4 measured on one consumer. One builder fix
+  clears ~380 triangles across the whole fleet.
+- **Lathes with collapsed cap fans**: the fusee body (96), four `pillar`
+  lathes (48 each), the two governor studs (24 each) — `LatheGeometry`
+  profiles that touch their own axis collapse the fan ring to zero-length
+  edges. (`makeScrews`' tapped shanks avoided exactly this by construction —
+  its comment says so — which is the fix pattern.)
+- **Assorted extrudes**: the escape wheel (32 collapsed + 8 slivers),
+  `genevaFingerDisc` (12), `chatonSeatLand` instances (8 or 4 each),
+  `alarmCam` (4 + 4), `alarmIndexWedge` (3).
+
+None of this is visible to any other instrument — `stockFloor` measures
+extents, the fingerprint hashes AABBs (item 4 measured both blind) — so the
+census IS the regression guard: these numbers may only go DOWN, and any row
+that grows names the builder that regressed. The rows are a §40 report, not
+gated and not waived; each builder fix moves the fingerprint (vertices move)
+and is its own landing, item 73 half 1 being the first.
+
+## 75. Four bodies measure INSIDE-OUT — over half the fork cock's volume is negative
+
+Filed from `meshIntegrity` tier 0's arrival run (§77, 2026-08-21): the
+divergence-theorem signed volume, measured per mesh with a floor of
+`INVERTED_VOL_FRAC` (1e-3) of the bbox volume so open-shell float noise
+cannot classify, names four bodies wound inside-out:
+
+| unit / mesh | type | tris | signed vol | bbox vol |
+|---|---|---|---|---|
+| Fork cock / (unnamed) | Lathe | 480 | **−5.03** | 9.00 |
+| Fork cock / (unnamed) | Lathe | 224 | **−7.09** | 9.64 |
+| Balance cock / (unnamed) | Lathe | 192 | **−1.64** | 5.06 |
+| Alarm setting wheel / `alarmFaceCam` | Buffer | 576 | **−0.27** | 6.08 |
+
+The first two are 56% and 73% of their own bounding boxes — these are not
+slivers of noise, they are whole solids presenting their interiors, the
+same defect class as item 4's fixed column-wheel pillars ("missing surfaces"
+that were really culled outward faces) and item 70's three collars. They
+are NOT item 70's collars: the coordinates do not match (measured — see
+item 70's instrument note), so these are four previously unreported bodies.
+The two cocks render acceptably today only because nothing coplanar sits
+behind them — item 70 records how that same invisibility hid the chaton's
+collar for eleven sections.
+
+Fix is per builder: find the lathe profiles wound backwards (the two cocks
+and the balance cock's member are `LatheGeometry` — `assertLatheOutward`
+exists and can be pointed at them) and `alarmFaceCam`'s hand-built winding.
+Each fix moves the fingerprint and re-runs the sweeps; `meshIntegrity`'s
+`inverted` rows emptying is the acceptance, and the check's synthetic
+inverted-box control (+8 upright, −8 flipped) keeps the tier honest while
+the rows drain.
+
+## 76. The chain's declared articulation fiction, measured: adjacent bodies interpenetrate up to 0.24 u
+
+The chain's build DECLARES its articulation a fiction — the frame loop in
+`buildChainLinkGeometry` says so in as many words: wrap links carry up to
+~36.3° of per-joint twist (measured over the reserve sweep) that a real
+chain would shed by joint play, because each link is a rigid stamp posed by
+its own curve frame rather than a body articulating about its pin. §77's
+declared tier is the first instrument that could SEE the consequence, and
+on arrival it measured it: **91 adjacent-body pairs interpenetrate at the
+boot pose** — every link⇄link and link⇄rivet neighbour pair on the wound
+chain — spans median 0.05 u, max **0.24 u** (a rivet head through its
+leaf), cross-confirmed by BVH tri-tri on the same index ranges. Zero
+NON-adjacent pairs fire, which is what says the stamps themselves are
+sound: the burial lives exactly at the joints the fiction bends.
+
+The declaration now lives where the fiction does: `buildChainLinkGeometry`
+marks ADJACENT pairs `subBodyOverlapOk` citing this item, so
+`meshIntegrity` skips them (reported as a count) and keeps every
+non-adjacent pair live — a corrupted stamp or collapsed curve still rows.
+`tools/probe-77-chain.mjs` holds the declaration honest at three tensions.
+
+**The fix is the fiction's, not the instrument's**: real articulation —
+links rotating only about their pins, lean shed over the free span by
+distributed joint play — is chain-model work (the §124/§151 lineage), and
+whether 0.24 u of joint burial is acceptable display fiction or debt worth
+that work is an owner's call. Until then this item is the number: re-run
+the probe after any chain-frame change, and if the max span GROWS, the
+fiction deepened and this item's figures are stale.
+
+## 77. The §54 report's seven unwaived over-ceiling members, catalogued (§137)
 
 §137 registered `checkSlenderness` in the battery at last (it was exported
 and reachable by nothing — the restoring defect found a second time), and

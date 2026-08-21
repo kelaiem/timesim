@@ -2924,6 +2924,18 @@ function checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, 
 			_normalC.fromBufferAttribute( normal, c );
 
 			intersection.normal = Triangle.getInterpolation( _intersectionPoint, _vA, _vB, _vC, _normalA, _normalB, _normalC, new Vector3() );
+			// PATCHED (timesim, see vendor/README.md): Triangle.getInterpolation
+			// returns NULL when the triangle is degenerate (zero area —
+			// getBarycoord has no basis to interpolate in), and the unpatched
+			// dereference below then throws "Cannot read properties of null
+			// (reading 'dot')". A parity raycast that lands on a zero-area
+			// face turns into an unmeasurable verdict instead of a count
+			// (TODO 73 measured it in the alarm column wheel's fourteen).
+			// A face with no area is no countable crossing: report no hit.
+			// three.js's own Mesh.js copy of this function carries the same
+			// unguarded dereference as of r165, so this is not an upstream
+			// idiom to copy — it is the parity semantics this repo needs.
+			if ( intersection.normal === null ) return null;
 			if ( intersection.normal.dot( ray.direction ) > 0 ) {
 
 				intersection.normal.multiplyScalar( - 1 );

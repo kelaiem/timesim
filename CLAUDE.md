@@ -227,7 +227,7 @@ it into prose either.
    the seed),
    and `slenderness` **0 stale waivers** (§54's report, reachable at last —
    its rows stay a REPORT by §54's own covenant and the unwaived residue is
-   TODO 72's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
+   TODO 77's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
    unit with no over-ceiling row, so deleting a fix's waiver is
    structurally part of the fix).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the

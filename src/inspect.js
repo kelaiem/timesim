@@ -121,6 +121,9 @@ export const MECH_GRAPH = {
     ['Minute jumper', 'plate'],              // its pivot stud rivets into the same dial-side face,
                                              // beside the motion works (minute quick-set)
     ['Yoke', 'plate'],                       // same dial-side stud mounting
+    ['Winding clutch', 'Keyless works'],     // TODO 50: rides the stem's square (the keyed
+                                             // joint) and the yoke's fork — the clutch has no
+                                             // bearing of its own, which is the real part's truth
     ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
                                              // square just above the BASE plate (chronometer
                                              // practice — bench-only hardware lives on the lower
@@ -222,7 +225,13 @@ export const MECH_GRAPH = {
     ['Balance', 'Hairspring'],
     ['Fourth wheel', 'Heart cam (seconds reset)'], // friction slip
     ['Fusee & great wheel', 'Power-reserve train'], // slip-coupled arbor extension
-    ['crown', 'Keyless works'],
+    ['crown', 'Winding clutch'],               // TODO 50: the stem square keys the clutch — the
+                                               // hand's input enters the movement HERE
+    ['Winding clutch', 'Keyless works'],       // …and the saw coupling hands it to the fixed
+                                               // winding pinion (one-way: faces drive, ramps cam;
+                                               // the run-down back-drive closes the same faces
+                                               // from the pinion's side, so the edge is two-way
+                                               // in §126's sense while the RATCHET sense is real)
     ['Keyless works', 'Fusee & great wheel'],  // winding: crown wheel → transfer arbor through the
                                                // plate bore → transfer wheel → winding SPUR at the
                                                // arbor's plate end, under the great wheel
@@ -230,7 +239,10 @@ export const MECH_GRAPH = {
                                                // detent's beak as the train runs (never in reverse
                                                // — that is the whole point of the sandwich)
     ['crown', 'Setting lever'],                // the PULL, via the stem groove
-    ['Setting lever', 'Yoke'],                 // ganged clutch shift (yoke tracks the pinion)
+    ['Setting lever', 'Yoke'],                 // ganged clutch shift (the yoke tracks the clutch)
+    ['Yoke', 'Winding clutch'],                // TODO 50: the fork slides the clutch — pull out to
+                                               // the setting mesh, and the spring re-seats through
+                                               // the same prongs after a cam-over
     ['Setting lever', 'Hack rod'],             // §87: the rod rides the lever's own pin — the tail arm at
                                                // HACK_PIN_K, so the stroke it takes is r/SL_TAIL of the post's
     ['Hack rod', 'Stop lever'],                // rigid rod rocks the stop crank
@@ -408,9 +420,9 @@ export const MECH_GRAPH = {
       point: nearestMeshCenter,
     },
     {
-      name: "yoke's prongs reach the sliding-pinion hub",
+      name: "yoke's prongs reach the sliding clutch's hub collars",
       unit: 'Yoke',
-      target: 'Keyless works',
+      target: 'Winding clutch',   // TODO 50: the collars moved to the clutch with the split
       tol: 2.5,
       point: nearestMeshCenter,
     },
@@ -509,7 +521,11 @@ const EXPECTED_PAIRS = [
                                              // collar, hook pin) thread the rotating body — the
                                              // body's bored floor and lid RUN on the arbor now
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
-  ['Keyless works', 'Yoke'],                 // prongs on the sliding-pinion hub
+  ['Keyless works', 'Yoke'],                 // the fork's body still crosses the stem's band
+                                             // (the prong⇄collar ride moved to the clutch pair)
+  ['Winding clutch', 'Keyless works'],       // TODO 50: the saw coupling, the stem square in the
+                                             // rim's bore, and the pulled setting mesh
+  ['Winding clutch', 'Yoke'],                // prongs riding the clutch's hub collars
   ['Chain', 'Fusee & great wheel'],          // chain lies in the cone grooves
   ['Chain', 'Mainspring drum'],              // chain wraps the drum
   ['Power-reserve train', 'Fusee & great wheel'], // p0 slip-coupled on the arbor
@@ -812,6 +828,55 @@ export const AXES = [
     name: 'wind',
     n: 720,
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
+  },
+  {
+    // TODO 71 — the ARREST'S OWN reversal: the arming band, cycled. The wind
+    // axis is already a tension cycle, but the registry samples every axis on
+    // its own inclusive 12-pose grid, and 1 − |2·(k/11) − 1| tops out at
+    // tension 0.909 — below the pad's touch (solved at boot; ≈ 0.87 at the
+    // §151 fold, and the fallback errs high on purpose: too high only
+    // narrows the cycle toward full wind, never past it), so the
+    // arm never MOVED in any registry sample and §48's stale rule flagged a
+    // declaration its population could not see (the TODO 56 lesson: ship the
+    // mechanism's own axis or its audit passes in silence). The band starts
+    // the lift-shape assert's own seated margin (0.03) below the solved
+    // touch, read live off the clock like stemSlip's pitch, so the axis
+    // tracks the solve instead of a stale copy of it. n: a leg spans
+    // 1 − (touch − 0.03) of tension (≈ 0.16 at the §151 fold) and the lift
+    // law's finest feature is its fine-grid staircase step,
+    // (1 − LAW_T0)/480 ≈ 0.0012 — 96 samples over the cycle lands within a
+    // few steps per sample, denser through the band than the wind axis's
+    // own 0.0028, and the features this axis exists for (the arm's
+    // reversal, its travel arc) are far coarser than either.
+    name: 'arrest',
+    n: 96,
+    pose: (f, clock) => {
+      const t0 = Math.max((clock?.windArrest?.tTouch ?? 0.97) - 0.03, 0);
+      return { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: t0 + (1 - t0) * (1 - Math.abs(2 * f - 1)) };
+    },
+  },
+  {
+    // TODO 50 — the STEM'S OWN reversal: the saw coupling's relative angle
+    // (windStemSlip), which no other axis can move — `tension` sweeps the
+    // bank and the slip rides ALONG with it by definition (the clutch and
+    // the pinion turn together while the faces bear). The pose law is a
+    // CYCLE over exactly ONE COUPLING PITCH of backward slip and back —
+    // the wind axis's within-axis-reversal rule, applied to the clutch: a
+    // monotone ramp would sweep the lift's poses and still leave the
+    // camming's genuine reversal unobserved, the §48-population gap TODO 56
+    // documents on the alarm side. One pitch is the mechanism's whole
+    // period (the lift law is periodic by construction), so more buys
+    // nothing. n: the ride's finest feature is the backlash flat, 0.15 of
+    // a pitch; 96 samples puts ~14 of them inside it and ~53 on the ramp —
+    // the wind axis's own per-feature density, at this axis's scale. The
+    // slip enters through setPose's `windStemSlip` key (canonical entry
+    // zeroes it, so every other axis still sweeps the seated coupling).
+    name: 'stemSlip',
+    n: 96,
+    pose: (f, clock) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
+      windStemSlip: -(clock?.stemSawPitch ?? Math.PI / 4) * (1 - Math.abs(2 * f - 1)),
+    }),
   },
   {
     // One full revolution of the FUSEE arbor — catches slow-orbit collisions
@@ -1513,6 +1578,13 @@ const CLEARANCE_BUDGETS = [
   { a: 'Reset rod', b: 'Three-quarter plate', min: 0.15 },    // rod re-planed to clear the plate's top
   { a: 'Setting lever', b: 'Three-quarter plate', min: 0.15 },   // tail post swings through the plate's arc slot
   { a: 'Hairspring', b: 'Three-quarter plate', min: 0.15 },
+  // TODO 53 (closed): the chain's top coil at full wind runs under the
+  // plate, and the plate floor now carries the chain's closed-form reach
+  // (CHAIN_TQ_REACH) — this row is the independent check from the other
+  // side, over the sweep rather than the one built pose. Full wind IS
+  // swept: the reserve axis reaches tension 1 at f = 0, and the beat,
+  // train and crown axes pin tension 1 throughout.
+  { a: 'Chain', b: 'Three-quarter plate', min: 0.15 },
   // The escape bridge's length is solved from exactly this gap: it overhangs
   // the pivot it carries, toward the balance, and sits inside the balance's
   // z band while doing it.
@@ -1758,6 +1830,29 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['windArrestBeak', 'windArrestLug'],        // beak on the stop lug
     ],
   },
+  // TODO 50 — the stem clutch's EXPECTED pairs get their floors rows on
+  // arrival (no blanket excuse). The declared contacts are the coupling
+  // itself, the keyed square in the clutch's bores, and the pulled setting
+  // mesh; everything else of the clutch owes the margin everywhere in the
+  // cycle, at both parities of the coupling.
+  {
+    a: 'Winding clutch', b: 'Keyless works', min: CLEAR_MARGIN,
+    contacts: [
+      ['clutchSaw', 'windPinionSaw'],   // the coupling: faces bear seated, ramps ride camming
+      ['clutchSleeve', 'stemSquare'],   // the keyed joint: the square in the sleeve's square bore
+      // (no clutchSleeve ⇄ windStem row: the stem is a TURNED part — its
+      // round journal starts outboard of the square section, past the
+      // sleeve's whole ride band, so the pipe never reaches it)
+      ['clutchRim', 'settingWheel'],    // pulled out: the setting mesh the old pinion carried
+    ],
+  },
+  {
+    a: 'Winding clutch', b: 'Yoke', min: CLEAR_MARGIN,
+    contacts: [
+      ['clutchHubCollarIn', 'yokeProng'],   // the fork rides between the collars —
+      ['clutchHubCollarOut', 'yokeProng'],  // both faces are the working pair
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -1864,11 +1959,36 @@ export const INTRA_UNIT_CONTACTS = [
   // anchors, sprung bites) — a rotating part ON its arbor models the joint
   // as coincident solids, which is what an assembly IS; the check exists
   // for parts that foul, not parts that join.
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'sliding pinion on the stem square — the clutch joint' },
-  { unit: 'Keyless works', a: 'CylinderGeometry#6', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
-  { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'TorusGeometry#30', why: 'crown collar on its bushing torus' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
+  // TODO 50's split renumbered this unit's anonymous meshes (the pinion's
+  // saw ring lands before the stem in traversal), and re-reading the pairs
+  // corrected a why: the #5⇄#0 row had been excusing the winding pinion's
+  // teeth overlapping the crown wheel's rim — the working bevel-style mesh
+  // — under the name of the square joint, which lives on the CLUTCH pair's
+  // floors row now.
+  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'winding pinion teeth overlap the crown wheel rim — the working mesh, bevel-style' },
+  // 'CylinderGeometry#7' until TODO 50 named the stem's round journal (the
+  // turned-part split — see the strike sleeve above for why that stales a row).
+  { unit: 'Keyless works', a: 'windStem', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  // (A pre-split row 'CylinderGeometry#28 ⇄ ExtrudeGeometry#0' — "arbor
+  // through the winding pinion" — is retired: TODO 50's roster changes
+  // re-numbered the unit and its selectors landed on a detent collar and
+  // the crown wheel's teeth, two parts that never touch. An
+  // accidentally-matched selector is worse than an unmatched one: it
+  // excuses a pair silently. The joint it once named is same-frame metal
+  // the MM clustering already merges.)
+  // TODO 53's landing: the fusee arbor's windTop continuation welds into the
+  // upper-pivot staff at the plate's mid-plane. The two caps used to
+  // COINCIDE exactly (a knife-edge no instrument can arbitrate); the plate
+  // rise moved the abutment's phase into this check's sight, and the joint
+  // is now an overlap with its name — one arbor, two meshes.
+  { unit: 'Fusee & great wheel', a: 'fuseeTopShaft', b: 'fuseeUpperStaff', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
+  // Both were 'ExtrudeGeometry#32' until TODO 50 named the setting wheel
+  // (the clutch pair's floors row needed the name): the wheel — the
+  // crown-class collar the old why meant — laps the stem bushing at the
+  // plate rim, and a numeric selector over a roster the split re-numbered
+  // is exactly the stale-row trap.
+  { unit: 'Keyless works', a: 'settingWheel', b: 'TorusGeometry#30', why: 'setting wheel at its bushing torus' },
+  { unit: 'Keyless works', a: 'settingWheel', b: 'BoxGeometry#31', why: 'setting wheel at the bushing block face' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
   // TODO 38 W4's wind axis lifted the fixture-vs-fixture blindness on the
@@ -3350,10 +3470,11 @@ const PENETRATION_BUDGETS = [
     // (1) link chording — and §124 measured the honest chord: the outer
     // plates' stadium arc apexes reach 0.253 past each rivet, so the
     // rigid facet spans 2.41, not the 1.9 pitch. chord²/(8·r_min) =
-    // 2.41²/(8·3.2263) = 0.225 at the smallest wrap radius (3.2263 =
-    // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law —
-    // the wrap's top, not the runout tip); (2) HANDOFF_TRACK_TOL
-    // tessellation slack, 0.03. The tilted wrap measures 0.217 at
+    // 2.41²/(8·3.2133) = 0.226 at the smallest wrap radius (3.2133 =
+    // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law,
+    // re-solved by §150's conserving cut — the wrap's top, not the
+    // runout tip); (2) HANDOFF_TRACK_TOL
+    // tessellation slack, 0.03. The tilted wrap measures 0.218 at
     // reserve 0.883 — the chording bound minus what the tilt's deeper
     // curvature relief gives back — held at 0.25 so the row polices the
     // relationship, not float luck — the same round-up that held 0.76
@@ -3402,9 +3523,10 @@ const PENETRATION_BUDGETS = [
     // Budget: what a BEDDED chain owes — link chording at the honest
     // 2.41 effective chord (stadium apexes past the rivets, the burial
     // row's own §124 correction) + the base's lie-flat corner residual
-    // 0.024 (the flank there is 2.109, past the 63.43° cap's tan = 2;
-    // the envelope's curvature relieves the linearized 0.032) +
-    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.202 at the
+    // (the flank there is 2.1617 since §150's conserving solve — past
+    // the 63.43° cap's tan = 2, linearized daylight 0.0477, relieved by
+    // the envelope's curvature) +
+    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.209 at the
     // bottom turn, held at 0.25 — the burial row's own round-up. §124
     // closed TODO 46 here: the leaning chain SEATS, and this row is
     // what holds it seated (it read 3.191 waived on the 8:1 cut).
@@ -3559,6 +3681,30 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windArrestLug') out.push(o); });
+      return out;
+    },
+  },
+  // TODO 50 — the stem coupling's ride: the clutch's saw ring against the
+  // pinion's, over the stemSlip axis (one full pitch of backward slip and
+  // back, the coupling's whole period). The rings are cut KNOT-ALIGNED to
+  // the same law the pose reads (sawCouplingLiftAt), so any depth past the
+  // track tolerance is a real build-vs-law disagreement, never sampling
+  // noise. nSamples: the finest feature is the backlash flat at 0.15 of a
+  // pitch — 480 puts 72 samples inside it, the wind family's per-feature
+  // density.
+  {
+    pair: ['Winding clutch', 'Keyless works'],
+    maxDepth: HANDOFF_TRACK_TOL,
+    axis: 'stemSlip',
+    nSamples: 480,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'clutchSaw') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windPinionSaw') out.push(o); });
       return out;
     },
   },
@@ -3835,17 +3981,43 @@ export const WIND_ARREST_HANDOFFS = [
     unitA: 'Chain', meshA: 'chainRun',
     unitB: 'Winding arrest', meshB: 'windArrestPad',
     expect: { full: 'contact', slack: 'free' },
-    // §125 Tier B — the moved station re-sited the pad's azimuth onto an
-    // end-cap phase of the built wrap; the seat solve reads the analytic
-    // spacing and the two disagree by the cap-vs-chord scallop (measured
-    // −0.0498 vs the −0.0074 the old azimuth read on the same chain).
-    waived: 'TODO 71 — pad seat solved against the analytic link phase; anchor linkOuterPtsNear to the build\'s hook phase',
+    // TODO 71, closed in three measured steps: the pad law samples the
+    // BUILT chain buffer at each link's own parity (builtPtsNear), its
+    // window reads every wrap link rather than six pitches of it, and the
+    // pose is the lever's exact inverse instead of lift/padGain — the
+    // −0.111 this row was waived at decomposed into 0.085 of window
+    // under-read plus 0.060 of first-order-pose shortfall, and with both
+    // gone it measures −0.021 at full, inside the ±0.03 kiss band, with
+    // the waiver retired.
   },
   {
     label: 'beak ⇄ stop lug',
     unitA: 'Winding arrest', meshA: 'windArrestBeak',
     unitB: 'Fusee & great wheel', meshB: 'windArrestLug',
     expect: { full: 'contact', slack: 'free' },
+  },
+];
+
+// TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
+// windArrestHandoff pattern (never widen another mechanism's tables — its
+// rows stay bit-identical under the report diff). The coupling is a
+// one-sided constraint held CLOSED by the yoke spring at every relative
+// angle — seated the drive faces bear, in the backlash the tip rides the
+// valley flat, camming the ramps bear — so the pair expects CONTACT at all
+// three engaged poses and FREE only pulled out. Slip values are the
+// coupling's own fractions of its 2π/8 pitch (one saw tooth per leaf).
+export const STEM_CLUTCH_POSES = [
+  ['seated', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: 0 }],
+  ['backlash', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.075 * (Math.PI / 4) }],
+  ['camming', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.5 * (Math.PI / 4) }],
+  ['pulled', { tau: 0.13, crownPullT: 1, leverEngage: 1, tension: 1, windStemSlip: 0 }],
+];
+export const STEM_CLUTCH_HANDOFFS = [
+  {
+    label: 'clutch saw ⇄ pinion saw (the stem\'s one-way)',
+    unitA: 'Winding clutch', meshA: 'clutchSaw',
+    unitB: 'Keyless works', meshB: 'windPinionSaw',
+    expect: { seated: 'contact', backlash: 'contact', camming: 'contact', pulled: 'free' },
   },
 ];
 
@@ -5698,6 +5870,8 @@ export const STOCK_KIND_BY_MESH = {
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
   alarmClickStud: 'pivot',     // the shoulder screw's post — pin-class, ⌀ 1.0 u over the pivot floor
+  yokeSpring: 'spring',        // TODO 50 — the clutch's restoring blade, an arc about the yoke's pivot
+  yokeSpringPost: 'pivot',     // …and the pin its fixed end reacts on
   // §100 (TODO 39) — the going drum's FIXED arbor, now built where it is
   // static (Set-up work). Shaft stock, kinded as the striking arbor's
   // sleeve is: the census reports each mesh's extent, and both sections
@@ -5908,6 +6082,432 @@ export function checkSlenderness(clock, opts = {}) {
     over: rows.length, unwaived: unwaived.length,
     staleWaivers,
     rows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §77 tiers 0+1 — MESH INTEGRITY: what a single mesh does to ITSELF.
+//
+// Every collision instrument above judges a mesh WHOLE — one mesh against
+// another, a unit's movers against its fixtures, a mesh's extents. Nothing
+// examines a mesh's own triangles, and that third blindness class has
+// produced three measured defects (TODO 27's rivets through solid plate,
+// TODO 28's zero-area gap strips, TODO 4/73's builder slivers) plus one
+// live crash: a parity ray landing on a zero-area face hit the vendored
+// raycast's unguarded null and sent an `assembly` row to `unmeasurable`
+// (TODO 73 — the guard is the vendored file's third patch; this check is
+// the instrument that holds the population it guards against).
+//
+// A REPORT, §40's rule: `ok` is always true, the rows are the product, and
+// the battery row gates only what can be held on arrival — the in-check
+// synthetic controls and the sub-body declaration table's validity. The
+// zeroArea and inverted rows land red by design (the scene measures
+// thousands of zero-area faces today) and are triaged into TODO.md, never
+// waived at birth. NOTE the fingerprint is no regression guard for any of
+// this: it hashes per-unit AABBs at 11 poses, and TODO 4 measured the
+// inside-out castellations moving no AABB and no clearance verdict — only
+// this check's own report diff watches this class.
+//
+// Tier 1's word is `zeroArea`, deliberately NOT "degenerate":
+// `checkStockFloor` owns that word for a different measurement (a unit
+// whose EXTENT collapses, gated as "0 degenerate") across its gate string,
+// return field, the CI fails closure and four probes — and TODO 4/73 both
+// already say "zero-area" for the triangle sense. Adopting their word
+// resolves §77's collision clause with zero renames and no report movement.
+//
+// No memoization anywhere: the chain swaps in a new geometry per tension
+// change (MODELING.md rule 6), so the walk reads whatever geometry each
+// mesh holds at the reset pose, every run.
+
+// Tier 1 threshold, DERIVED (rule 1) — tools/probe-77-threshold.mjs
+// histograms every inspected triangle's geometry-local area: the defective
+// population tops out in the 1e-15 decade (absarc seam twins, earcut
+// hole-bridge slivers; 2 at 1e-22 are TODO 73's minimum) and the smallest
+// INTENDED triangles start at 1e-10, a four-decade empty band. 1e-12 sits
+// two decades from each bound; re-run the probe before moving it.
+export const ZERO_AREA_MAX = 1e-12;
+// Tier 0 floor: a genuinely inverted closed body measures MINUS its own
+// volume — order bboxVol/10 — while an open or sheet-like body's signed sum
+// is float noise around zero. 1e-3 of the bbox volume separates the two by
+// orders of magnitude; a body flagged here is inside-out, not thin.
+export const INVERTED_VOL_FRAC = 1e-3;
+
+// Classify one triangle given its nine coords. Exported for the probe.
+// `collapsed` = two vertex POSITIONS bit-identical (an edge of zero
+// length); `collinear` = distinct points, exactly zero area; `sliver` =
+// area below ZERO_AREA_MAX but nonzero — the float-seam class that an
+// exact weld rightly refuses to merge (the absarc twins differ by ~1e-15)
+// and a repeated-index test therefore finds NOTHING of.
+function classifyTriangle(ax, ay, az, bx, by, bz, cx, cy, cz) {
+  const ux = bx - ax, uy = by - ay, uz = bz - az;
+  const vx = cx - ax, vy = cy - ay, vz = cz - az;
+  const qx = uy * vz - uz * vy, qy = uz * vx - ux * vz, qz = ux * vy - uy * vx;
+  const area = 0.5 * Math.sqrt(qx * qx + qy * qy + qz * qz);
+  if (area >= ZERO_AREA_MAX) return { area, kind: null };
+  const same = (x1, y1, z1, x2, y2, z2) => x1 === x2 && y1 === y2 && z1 === z2;
+  if (same(ax, ay, az, bx, by, bz) || same(bx, by, bz, cx, cy, cz) || same(ax, ay, az, cx, cy, cz))
+    return { area, kind: 'collapsed' };
+  return { area, kind: area === 0 ? 'collinear' : 'sliver' };
+}
+
+// §77 tier 3 (declared route) — INTERIOR MATERIAL between two sub-bodies of
+// one mesh. Not tri-tri crossing: TODO 27's own formulation, generalized —
+// sample one body's vertices and ask whether any sits strictly INSIDE the
+// other body's closed surface, by parity along +z over that body's triangle
+// range alone. Robust exactly where tri-tri is not: a rivet head sitting
+// FLUSH in its counterbore shares surfaces without sharing interior, and a
+// pin through a BORED plate threads void, not material — the bore itself is
+// what makes the pair legal, which is the whole point of drilling it
+// (TODO 27). Legal because every buried face is capped (weldGeometry
+// property 2: no mesh opens); the strictness epsilon is TODO 27's own
+// 1e-6 assert floor. Zero-area triangles are SKIPPED by the crossing
+// counter — the chain carries 1,040 of them (TODO 74) and a parity count
+// must not consult a face with no area (the vendored raycast's third patch
+// holds the same rule one layer down).
+const INTERIOR_EPS = 1e-6;
+function rangeInteriorTest(pos, idx, bodyA, bodyB) {
+  // Sample A's unique VERTICES plus unique EDGE MIDPOINTS: vertices alone
+  // miss a through-piercing (a pin crossing a thin plate leaves no vertex
+  // inside the slab — its side edges' midpoints are what land there, and
+  // they are exactly what TODO 27's line-sampling assert walked). Still
+  // sampling, not a proof — item 7's standing caveat — but the same mode
+  // every sweep in this file accepts.
+  const points = [];
+  const verts = new Set(), edges = new Set();
+  for (let t = bodyA.triStart * 3; t < (bodyA.triStart + bodyA.triCount) * 3; t += 3) {
+    const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+    for (const v of [a, b, c]) if (!verts.has(v)) { verts.add(v); points.push([pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]]); }
+    for (const [u, v] of [[a, b], [b, c], [a, c]]) {
+      const key = u < v ? u * 0x100000 + v : v * 0x100000 + u;
+      if (edges.has(key)) continue;
+      edges.add(key);
+      points.push([(pos[u * 3] + pos[v * 3]) / 2, (pos[u * 3 + 1] + pos[v * 3 + 1]) / 2, (pos[u * 3 + 2] + pos[v * 3 + 2]) / 2]);
+    }
+  }
+  let insidePoints = 0, maxSpan = 0, sampled = 0;
+  for (const [px, py, pz] of points) {
+    sampled++;
+    // Crossings of the vertical line (px,py) with B's triangles, above and
+    // below pz — the TODO 27 assert's hitsAt, restricted to one range.
+    let above = 0, below = 0, nearestUp = Infinity, nearestDown = Infinity, graze = false;
+    for (let t = bodyB.triStart * 3; t < (bodyB.triStart + bodyB.triCount) * 3; t += 3) {
+      const ia = idx[t] * 3, ib = idx[t + 1] * 3, ic = idx[t + 2] * 3;
+      const ax = pos[ia] - px, ay = pos[ia + 1] - py;
+      const bx = pos[ib] - px, by = pos[ib + 1] - py;
+      const cx = pos[ic] - px, cy = pos[ic + 1] - py;
+      const d = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+      if (Math.abs(d) < 1e-12) continue;                    // edge-on or zero-area: no countable crossing
+      const l1 = (bx * cy - cx * by) / d, l2 = (cx * ay - ax * cy) / d, l3 = 1 - l1 - l2;
+      if (l1 < -1e-9 || l2 < -1e-9 || l3 < -1e-9) continue; // outside the triangle's shadow
+      if (l1 < 1e-9 || l2 < 1e-9 || l3 < 1e-9) { graze = true; break; } // on an edge: parity unreliable, skip the point
+      const z = l1 * pos[ia + 2] + l2 * pos[ib + 2] + l3 * pos[ic + 2];
+      const dz = z - pz;
+      if (Math.abs(dz) <= INTERIOR_EPS) { graze = true; break; }  // on B's surface: not strictly interior
+      if (dz > 0) { above++; if (dz < nearestUp) nearestUp = dz; }
+      else { below++; if (-dz < nearestDown) nearestDown = -dz; }
+    }
+    if (graze) continue;                                    // the safe direction: a grazed sample proves nothing
+    if (above % 2 === 1 && below % 2 === 1) {               // odd both ways: strictly inside B
+      insidePoints++;
+      const span = Math.min(nearestUp, nearestDown);
+      if (span > maxSpan) maxSpan = span;
+    }
+  }
+  return { insidePoints, maxSpan, sampled };
+}
+
+export async function checkMeshIntegrity(clock, opts = {}) {
+  const yieldEvery = opts.yieldEvery ?? 16;
+
+  // Roster: nearest-ancestor mesh dedupe (checkSlenderness' rule — units
+  // nest, and a second attribution is a FALSE one), plus collectUnits'
+  // schematic-subtree prune (flagged display never joins an instrument;
+  // §71). A third copy of both idioms, deliberately: §77 scope-guards out
+  // changes to unit collection, and this is the one landing that must move
+  // no other report — consolidating the three walks is filed in TODO 4's
+  // smaller items. The other two copies: collectUnits, unitBoxRows.
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();     // mesh -> nearest unit name
+  const walk = (o, unitName) => {
+    if (o.userData && o.userData.schematic) return;
+    if (o.isMesh && o.geometry?.attributes?.position) {
+      const prev = byMesh.get(o);
+      if (!prev || hops(o, unitName) < hops(o, prev)) byMesh.set(o, unitName);
+    }
+    for (const c of o.children) walk(c, unitName);
+  };
+  for (const e of clock.labelEntries) walk(e.obj, e.name);
+
+  // Then dedupe by GEOMETRY: shared geometries (every screw head is one
+  // lathe, every knurl ridge one cylinder) would otherwise repeat identical
+  // findings per instance. A geometry row carries its instance count and
+  // its distinct unit attributions; the representative mesh is the nearest-
+  // hop one, which is what keeps alarmColWheel's three same-named meshes
+  // three distinct rows (three geometries), not one.
+  const byGeo = new Map();      // geometry -> { unit, mesh, instances, units:Set }
+  for (const [mesh, unit] of byMesh) {
+    const rec = byGeo.get(mesh.geometry);
+    if (!rec) byGeo.set(mesh.geometry, { unit, mesh, instances: 1, units: new Set([unit]) });
+    else { rec.instances++; rec.units.add(unit); }
+  }
+
+  const census = [];
+  const zeroRows = [];
+  const invertedRows = [];
+  const malformed = [];
+  const pairRows = [];
+  let triangles = 0, zeroTotal = 0, exactZero = 0, declaredGeometries = 0, declaredBodies = 0;
+  let pairsCandidate = 0, pairsTested = 0, pairsSkippedDeclared = 0;
+  let gi = 0;
+  for (const [geo, rec] of byGeo) {
+    if (++gi % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+    const pos = geo.attributes.position.array;
+    const idx = geo.index ? geo.index.array : null;
+    const n = idx ? idx.length : geo.attributes.position.count;
+    const tris = Math.floor(n / 3);
+    triangles += tris;
+    const meshName = rec.mesh.name || '(unnamed)';
+    census.push({
+      unit: rec.unit, mesh: meshName, geometryType: geo.type, tris,
+      instances: rec.instances,
+      ...(rec.units.size > 1 ? { alsoUnder: [...rec.units].filter((u) => u !== rec.unit).sort() } : {}),
+    });
+
+    // Tier 1 walk + tier 0 signed volume in one pass over the index.
+    let collapsed = 0, collinear = 0, sliver = 0, minNonzero = Infinity;
+    let vol6 = 0;
+    let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    for (let t = 0; t < tris * 3; t += 3) {
+      const ia = (idx ? idx[t] : t) * 3, ib = (idx ? idx[t + 1] : t + 1) * 3, ic = (idx ? idx[t + 2] : t + 2) * 3;
+      const ax = pos[ia], ay = pos[ia + 1], az = pos[ia + 2];
+      const bx = pos[ib], by = pos[ib + 1], bz = pos[ib + 2];
+      const cx = pos[ic], cy = pos[ic + 1], cz = pos[ic + 2];
+      const cl = classifyTriangle(ax, ay, az, bx, by, bz, cx, cy, cz);
+      if (cl.kind === 'collapsed') collapsed++;
+      else if (cl.kind === 'collinear') collinear++;
+      else if (cl.kind === 'sliver') { sliver++; if (cl.area < minNonzero) minNonzero = cl.area; }
+      if (cl.area === 0) exactZero++;
+      // divergence-theorem volume: sum A·(B×C)/6 — exact for a closed body
+      vol6 += ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
+      if (ax < minX) minX = ax; if (ax > maxX) maxX = ax;
+      if (ay < minY) minY = ay; if (ay > maxY) maxY = ay;
+      if (az < minZ) minZ = az; if (az > maxZ) maxZ = az;
+    }
+    const zTotal = collapsed + collinear + sliver;
+    if (zTotal) {
+      zeroTotal += zTotal;
+      zeroRows.push({
+        unit: rec.unit, mesh: meshName, geometryType: geo.type, tris,
+        instances: rec.instances, collapsed, collinear, sliver,
+        ...(sliver ? { minSliverArea: +minNonzero.toExponential(3) } : {}),
+      });
+    }
+    const vol = vol6 / 6;
+    const bboxVol = (maxX - minX) * (maxY - minY) * (maxZ - minZ);
+    if (bboxVol > 0 && vol < -INVERTED_VOL_FRAC * bboxVol) {
+      invertedRows.push({
+        unit: rec.unit, mesh: meshName, geometryType: geo.type, tris,
+        signedVolume: +vol.toFixed(4), bboxVolume: +bboxVol.toFixed(4),
+      });
+    }
+
+    // Sub-body declarations (§77's declared route): triangle ranges into
+    // the index, weld-invariant where vertex ranges are not. Validated and
+    // GATED on arrival — a malformed table is a stale selector, the
+    // INTRA_UNIT_CONTACTS precedent — so tier 3 can trust every range it
+    // is later handed. Non-tiling coverage is legal (declare what you
+    // know); out-of-bounds, overlap and name reuse are not.
+    const sb = geo.userData && geo.userData.subBodies;
+    if (sb !== undefined) {
+      const bad = (why) => malformed.push({ unit: rec.unit, mesh: meshName, why });
+      if (!Array.isArray(sb) || sb.length === 0) bad('subBodies is not a non-empty array');
+      else {
+        declaredGeometries++;
+        const names = new Set();
+        const sorted = [...sb].sort((a, b) => (a.triStart ?? 0) - (b.triStart ?? 0));
+        let prevEnd = 0, okAll = true;
+        for (const b of sorted) {
+          if (typeof b.name !== 'string' || !b.name) { bad('a sub-body has no name'); okAll = false; break; }
+          if (names.has(b.name)) { bad(`sub-body name reused: '${b.name}'`); okAll = false; break; }
+          names.add(b.name);
+          if (!Number.isInteger(b.triStart) || !Number.isInteger(b.triCount) || b.triStart < 0 || b.triCount <= 0) {
+            bad(`sub-body '${b.name}' has a non-integral or empty range`); okAll = false; break;
+          }
+          if (b.triStart < prevEnd) { bad(`sub-body '${b.name}' overlaps the previous range`); okAll = false; break; }
+          if (b.triStart + b.triCount > tris) { bad(`sub-body '${b.name}' runs past the mesh (${b.triStart}+${b.triCount} > ${tris} tris)`); okAll = false; break; }
+          prevEnd = b.triStart + b.triCount;
+        }
+        if (okAll) {
+          declaredBodies += sb.length;
+          // Tier 3 over the validated table: per-body AABBs prefilter the
+          // pairs (bodies that share no box share no interior), then the
+          // interior-material test runs BOTH directions — A's vertices in
+          // B and B's in A, because a thin body can pierce a fat one
+          // without a fat vertex entering the thin one. A builder may
+          // declare an overlap INTENTIONAL (`userData.subBodyOverlapOk`,
+          // name pairs — the ∞ monogram's strokes cross by design); a
+          // listed name that matches no body is a malformed row, the
+          // stale-selector rule again.
+          const boxes = sorted.map((b) => {
+            let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+            for (let t = b.triStart * 3; t < (b.triStart + b.triCount) * 3; t++) {
+              const vi = idx[t] * 3;
+              const x = pos[vi], y = pos[vi + 1], z = pos[vi + 2];
+              if (x < x0) x0 = x; if (x > x1) x1 = x;
+              if (y < y0) y0 = y; if (y > y1) y1 = y;
+              if (z < z0) z0 = z; if (z > z1) z1 = z;
+            }
+            return { b, x0, y0, z0, x1, y1, z1 };
+          });
+          const okPairs = new Set();
+          const declaredOk = geo.userData.subBodyOverlapOk;
+          if (declaredOk !== undefined) {
+            for (const [na, nb] of declaredOk) {
+              if (!names.has(na) || !names.has(nb)) { bad(`subBodyOverlapOk names an unknown body: '${!names.has(na) ? na : nb}'`); continue; }
+              okPairs.add(na < nb ? `${na}|${nb}` : `${nb}|${na}`);
+            }
+          }
+          for (let i2 = 0; i2 < boxes.length; i2++) {
+            for (let j2 = i2 + 1; j2 < boxes.length; j2++) {
+              const A = boxes[i2], B = boxes[j2];
+              if (A.x0 > B.x1 || B.x0 > A.x1 || A.y0 > B.y1 || B.y0 > A.y1 || A.z0 > B.z1 || B.z0 > A.z1) continue;
+              pairsCandidate++;
+              const key = A.b.name < B.b.name ? `${A.b.name}|${B.b.name}` : `${B.b.name}|${A.b.name}`;
+              if (okPairs.has(key)) { pairsSkippedDeclared++; continue; }
+              pairsTested++;
+              const r1 = rangeInteriorTest(pos, idx, A.b, B.b);
+              const r2 = rangeInteriorTest(pos, idx, B.b, A.b);
+              if (r1.insidePoints || r2.insidePoints) {
+                pairRows.push({
+                  unit: rec.unit, mesh: meshName, a: A.b.name, b: B.b.name,
+                  insidePoints: r1.insidePoints + r2.insidePoints,
+                  maxSpan: +Math.max(r1.maxSpan, r2.maxSpan).toFixed(4),
+                  sampled: r1.sampled + r2.sampled,
+                });
+              }
+            }
+            if (i2 % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+          }
+        }
+      }
+    }
+  }
+
+  census.sort((a, b) => b.tris - a.tris || a.unit.localeCompare(b.unit) || a.mesh.localeCompare(b.mesh));
+  zeroRows.sort((a, b) => (b.collapsed + b.collinear + b.sliver) - (a.collapsed + a.collinear + a.sliver)
+    || a.unit.localeCompare(b.unit) || a.mesh.localeCompare(b.mesh));
+
+  // Aggregate identical per-geometry patterns: nine consumers of one
+  // shared builder carrying the same 8 slivers must read as ONE row with
+  // nine examples, because the fix lives in the builder (TODO 4's "clear
+  // every consumer at once"), not in nine parts.
+  const agg = new Map();
+  for (const r of zeroRows) {
+    const key = `${r.collapsed}/${r.collinear}/${r.sliver}`;
+    const a = agg.get(key) || { pattern: { collapsed: r.collapsed, collinear: r.collinear, sliver: r.sliver }, geometries: 0, examples: [] };
+    a.geometries++;
+    if (a.examples.length < 6) a.examples.push(`${r.unit} / ${r.mesh}`);
+    agg.set(key, a);
+  }
+  const aggregates = [...agg.values()].sort((a, b) => b.geometries - a.geometries);
+
+  // The controls, synthetic and in-check — they cannot be deleted by fixing
+  // the scene geometry that motivated them (TODO 27's lesson: this entry's
+  // original control, the un-bored rivets, was fixed out of the tree).
+  // Four assertions through the same classifier and volume sum the real
+  // walk uses: a sliver fires, a collapsed edge fires, a healthy triangle
+  // is silent, and an inverted box measures negative where the upright one
+  // measures +8 exactly (TODO 4's own control values).
+  const control = (() => {
+    const sliver = classifyTriangle(0, 0, 0, 1, 0, 0, 0.5, 1e-13, 0);           // area 5e-14 < 1e-12
+    if (sliver.kind !== 'sliver') return `BROKEN — the synthetic sliver classified '${sliver.kind}' (area ${sliver.area})`;
+    const collapsed = classifyTriangle(0, 0, 0, 0, 0, 0, 1, 0, 0);
+    if (collapsed.kind !== 'collapsed') return `BROKEN — the synthetic collapsed edge classified '${collapsed.kind}'`;
+    const healthy = classifyTriangle(0, 0, 0, 1, 0, 0, 0, 1, 0);
+    if (healthy.kind !== null) return `BROKEN — a healthy triangle classified '${healthy.kind}'`;
+    // A closed 2×2×2 box, wound outward: +8 exactly. Flip the winding and
+    // the same sum reads −8.
+    const P = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+    const F = [[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [2, 3, 7], [2, 7, 6], [1, 2, 6], [1, 6, 5], [3, 0, 4], [3, 4, 7]];
+    const volOf = (faces) => faces.reduce((s, [a, b, c]) => {
+      const A = P[a], B = P[b], C = P[c];
+      return s + A[0] * (B[1] * C[2] - B[2] * C[1]) + A[1] * (B[2] * C[0] - B[0] * C[2]) + A[2] * (B[0] * C[1] - B[1] * C[0]);
+    }, 0) / 6;
+    const up = volOf(F), down = volOf(F.map(([a, b, c]) => [a, c, b]));
+    if (Math.abs(up - 8) > 1e-12) return `BROKEN — the upright box control measured ${up}, expected +8`;
+    if (Math.abs(down + 8) > 1e-12) return `BROKEN — the inverted box control measured ${down}, expected −8`;
+
+    // Tier 3's control, the un-bored chain leaf REPLICA (a check-local
+    // rebuild, not an import of the template builder — main.js imports this
+    // module, so importing the builder back would be a cycle; the durable
+    // rule is kept, the control lives here and no geometry fix can delete
+    // it): a plate at the leaf's measured 0.145 thickness with a square pin
+    // through it must FIRE with the pin's midpoints inside the slab, and
+    // the same plate BORED — four boxes leaving a hole the pin threads —
+    // must be SILENT, because the bore is what makes a chain joint legal
+    // (TODO 27, whose assert validated itself the same two ways).
+    const cpos = [], cidx = [];
+    const box = (cx, cy, cz, hx, hy, hz) => {
+      const v0 = cpos.length / 3;
+      for (const [sx, sy, sz] of [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]])
+        cpos.push(cx + sx * hx, cy + sy * hy, cz + sz * hz);
+      for (const [a, b, c] of F) cidx.push(v0 + a, v0 + b, v0 + c);   // F is outward (volOf(F) = +8 above proves it); parity ignores winding but the control keeps its solids honest
+      return 12;
+    };
+    const T = 0.145 / 2;                                    // the leaf's half-thickness, TODO 27's measured fire depth
+    let tri0 = 0;
+    const bodies = [];
+    const add = (name, tris) => { bodies.push({ name, triStart: tri0, triCount: tris }); tri0 += tris; };
+    // Un-bored: one solid plate + a square pin standing through it.
+    add('plate', box(0, 0, 0, 1, 1, T));
+    add('pin', box(0, 0, 0, 0.2, 0.2, 0.5));
+    const posA = Float64Array.from(cpos), idxA = Uint32Array.from(cidx);
+    const fire = rangeInteriorTest(posA, idxA, bodies[1], bodies[0]);
+    if (!fire.insidePoints) return 'BROKEN — the un-bored leaf replica did not fire (a pin through solid plate went unseen)';
+    if (Math.abs(fire.maxSpan - T) > 0.02) return `BROKEN — the replica fired at span ${fire.maxSpan.toFixed(4)}, expected ~${T} (the plate's half-thickness)`;
+    // Bored: the same plate as four boxes around a 0.3-square hole.
+    cpos.length = 0; cidx.length = 0; tri0 = 0; bodies.length = 0;
+    let plateTris = 0;
+    plateTris += box(0, -0.65, 0, 1, 0.35, T);
+    plateTris += box(0, 0.65, 0, 1, 0.35, T);
+    plateTris += box(-0.65, 0, 0, 0.35, 0.3, T);
+    plateTris += box(0.65, 0, 0, 0.35, 0.3, T);
+    add('plate', plateTris);
+    add('pin', box(0, 0, 0, 0.2, 0.2, 0.5));
+    const posB = Float64Array.from(cpos), idxB = Uint32Array.from(cidx);
+    const clear = rangeInteriorTest(posB, idxB, bodies[1], bodies[0]);
+    if (clear.insidePoints) return `BROKEN — the BORED replica fired (${clear.insidePoints} points): the engine cannot tell a bore from a burial`;
+
+    return 'PASS — sliver and collapsed edge fire, a healthy triangle is silent, the box measures +8 upright and −8 inverted, the un-bored leaf replica fires at the plate\'s half-thickness and the bored one is silent';
+  })();
+
+  return {
+    ok: true,                     // §40 rule: a REPORT. The battery row gates control + malformed only.
+    control,
+    basis: {
+      zeroAreaMax: ZERO_AREA_MAX,
+      zeroAreaDerivation: 'probe-77-threshold.mjs: defective decades top out at 1e-15, intended start at 1e-10 — 1e-12 is two decades from each bound',
+      invertedVolFrac: INVERTED_VOL_FRAC,
+    },
+    geometries: byGeo.size, meshes: byMesh.size, triangles,
+    zeroArea: { threshold: ZERO_AREA_MAX, total: zeroTotal, exactZero, geometries: zeroRows.length, rows: zeroRows },
+    inverted: { rows: invertedRows },
+    aggregates,
+    subBodies: {
+      declaredGeometries, bodies: declaredBodies, malformed,
+      pairs: {
+        candidates: pairsCandidate, tested: pairsTested,
+        skippedDeclaredOverlap: pairsSkippedDeclared,
+        rows: pairRows.sort((a, b) => b.maxSpan - a.maxSpan || a.unit.localeCompare(b.unit) || a.a.localeCompare(b.a)),
+      },
+    },
+    census,
   };
 }
 
@@ -6354,13 +6954,12 @@ export async function checkStockFloor(clock, opts = {}) {
 // The link census beside the spread is the corroborating measurement, taken
 // from the same rule rather than from the mesh: two independent readings of
 // one fact are what make the row hard to argue with.
-export const CHAIN_LENGTH_WAIVER =
-  'TODO 40 row 3 — the free span gives ~1.4 u that nothing takes up; absorbing '
-  + 'it turns the closed-form u(t) solve into an ODE whose output would then cut '
-  + 'the cone, so item 32 deliberately left it. See also TODO 49: pinning the '
-  + "chain's fusee end needs this closure to be exact first.";
-
-export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = CHAIN_LENGTH_WAIVER } = {}) {
+// NO WAIVER any more (§150 closed TODO 40 row 3): the cone is cut from the
+// span-aware conservation solve, so the run's spread measures 0.52 u against
+// the 0.95 u tolerance and the census lays 43 links at every state of wind.
+// The `waiver` parameter stays for TODO 34's control (a gate must be
+// provably non-vacuous), but its default is none — this row GATES.
+export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = null } = {}) {
   if (typeof clock.chainRunLength !== 'function')
     return { ok: false, error: 'no chainRunLength on __clock (main.js TODO 40 exposure missing)' };
   const tol = CHAIN_PITCH / 2;
@@ -6418,12 +7017,18 @@ const CHECKS = {
   // rows stay bit-identical under the report diff.
   windArrestHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: WIND_ARREST_POSES, handoffs: WIND_ARREST_HANDOFFS, ...opts }),
+  // TODO 50 — the stem clutch's coupling, same instrument, own tables:
+  // contact at every engaged parity (the spring holds the one-sided
+  // constraint closed), free pulled out.
+  stemClutchHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: STEM_CLUTCH_POSES, handoffs: STEM_CLUTCH_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   axisEntry: (clock, opts) => checkAxisEntry(clock, opts),               // TODO 54 — canonical axis entry holds over every ordered pair; the leak the sweeps used to carry is measured beside it
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
+  meshIntegrity: (clock, opts) => checkMeshIntegrity(clock, opts),       // §77 tiers 0+1 — a mesh's own triangles: zeroArea + inverted bodies, a REPORT; gates its controls and the sub-body tables only
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law
   chainLength: (clock, opts) => checkChainLength(clock, opts),           // TODO 40 row 3 — a chain is a fixed length of steel; the run's closure, gated to half a link pitch

@@ -355,25 +355,28 @@
             <rect x="559" y="116" width="3" height="8" fill="var(--steel)"/>
             <text class="val val-ruby" x="14" y="14">turns crowded on the arbor, one long sweep to the wall</text>
             <text class="val val-ruby" x="430" y="14">near-even pitch — 23 set-up clicks still in</text>
-            <text class="lbl" x="96" y="236">FULLY WOUND · 6.6246 turns</text>
+            <text class="lbl" x="96" y="236">FULLY WOUND · 6.6312 turns</text>
             <text class="lbl" x="496" y="236">RUN DOWN · 5.9583 turns</text>
             <text class="val val-steel" x="14" y="258">arbor hook — static</text>
-            <text class="val val-brass" x="380" y="258">drum wall — 0.6663 turns over the reserve</text>
+            <text class="val val-brass" x="380" y="258">drum wall — 0.6729 turns over the reserve</text>
           </svg>
         </div>
         <figcaption>Both drawings are the same 157.489 units of ribbon between the same radii
         (1.635 at the arbor collar, 8.380 at the wall). Only the angle it spans differs, and
-        that angle is the drum's: <code>DRUM_ROT_FULL</code> = all the chain the reserve pays
-        out, taken up at the feed radius, = 0.6663 turns. Neither drawing is the ribbon's FREE
+        that angle is the drum's: <code>DRUM_ROT_FULL</code> = the spring's whole wind past
+        its set-up, u(1) − θ_s, = 0.6729 turns — since §150 the drum pays out the free
+        span's give and the takeoff's walk as well as the cone's take-up, so its travel is
+        the wind coordinate itself, no longer the cone's chain divided by the feed radius.
+        Neither drawing is the ribbon's FREE
         coil: since TODO 32 the run-down state still holds the set-up — 23 clicks of the
-        24-tooth set-up ratchet, 0.9583 turns — so the service band runs 5.9583 → 6.6246
+        24-tooth set-up ratchet, 0.9583 turns — so the service band runs 5.9583 → 6.6312
         turns and the flat 5.000-turn coil is a bench state, reachable only by letting the
         set-up down. The radial law is
         <code>r = innerR + (p/2π)·a + S·(a/A)^k</code>, where <b>p</b> is coil bind (the
         ribbon's 0.2698 thickness) and <b>k</b> is <em>solved</em> per frame so the developed
-        length never moves — 2e-13 across all 34 frames. Leftover room <b>S</b> = 4.958 at
-        full wind is the spring's capacity; the tightest gap between turns there is 0.28814
-        against the 0.2698 bind, so the wound spring sits 6.8% off coil-bound. TODO 40's
+        length never moves — 2e-13 across all 34 frames. Leftover room <b>S</b> = 4.956 at
+        full wind is the spring's capacity; the tightest gap between turns there is 0.28763
+        against the 0.2698 bind, so the wound spring sits 6.6% off coil-bound. TODO 40's
         re-cut had left it 12.6% clear and the 17-click set-up wound that slack back in to
         0.8%; §124's re-gear (TODO 46) reaches full wind in 0.67 drum turns where the 8:1
         stage took 1.34, on the same unchanged ribbon, so part of that slack is open again —
@@ -390,7 +393,7 @@
       <code>M = k·θ</code> with <code>k = E·I/L</code> from the as-cut section and developed
       length, the once-authored 0.35 floor revealed as a SET-UP on the ratchet the movement
       already builds — 17 clicks then, deepened to 23 by §124's chain-carryable cut
-      (<code>SPRING_TQ_EMPTY</code> = 0.58986, derived) — and the
+      (<code>SPRING_TQ_EMPTY</code> = 0.58749, derived) — and the
       fusee's taper solved from the derived law. The <code>equalisation</code> battery gate
       holds the solve; the record puts k at 9.16e-5 N·m/rad, an arbor moment of 0.55–0.94
       N·mm over the band — real small-barrel territory, the scale pin's sanity anchor. Item
@@ -482,7 +485,7 @@
         (<code>f = s / FUSEE_GROOVE_TURNS</code>, so a full 1.75-turn wind reaches
         <code>f</code> 0.875 and never the tip), while the coil descends
         <code>CHAIN_COIL_PITCH</code> per turn from a hook fixed on the drum wall. The two
-        descents are why the span only tilts between about 0.4 and 1.6 over an 18.0 run
+        descents are why the span only tilts between about 0.4 and 1.5 over an 18.0 run
         instead of raking
         across the train. The cone's z is pinned at both ends by parts that are not the cone:
         the center wheel's top face below and the hairspring stack above
@@ -491,12 +494,14 @@
         the movement can hold all fall out of it. <b>Watch the chain readout while it
         runs.</b> The three lengths are the model's own arithmetic, and their sum — the chain
         — is the one number in the plate that should not move. It used to, by about 9%
-        between the ends of the reserve and its middle; since the drum's angle became the
-        integral of the wrap rather than a straight line between its ends (TODO 40 row 3) the
-        cone and the drum balance exactly, and the drift you can still watch is the SPAN:
-        its own length falls from 17.2 to 16.4 as the take-off radius shrinks, and no part of
-        the model takes that 0.8 up. That is the row's remainder, stated rather than rounded
-        away.</figcaption>
+        between the ends of the reserve and its middle, then by the span's give alone after
+        the drum's angle became the integral of the wrap; since §150 (TODO 40 row 3, closed)
+        the drum pays out everything at once — the wrap's take-up, the span shrinking from
+        17.27 to 16.36 as the take-off radius falls, and the takeoff's walk around the drum
+        wall — because the cone is cut from the solve that conserves their sum. The
+        <code>chainLength</code> battery gate holds it: the run's spread over the whole
+        reserve is 0.52 of a 1.9 link pitch, and the mesh lays 43 links at every state of
+        wind.</figcaption>
       </figure>
 
       <p>So much for where the chain is. What it is <em>for</em> is the product of two numbers:
@@ -526,42 +531,47 @@
             <text class="val val-brass" x="60" y="40">cut: r = K / springTq — the law itself</text>
             <text class="val val-ruby" x="440" y="40">what the cut flank delivers</text>
             <text class="val" x="52" y="94">5.4696</text>
-            <text class="val" x="52" y="165">4.28</text>
-            <text class="val" x="52" y="237">3.09</text>
+            <text class="val" x="52" y="165">4.27</text>
+            <text class="val" x="52" y="237">3.07</text>
             <text class="val val-steel" x="186" y="120">dashed: the straight taper a plain cone would be</text>
             <text class="val val-steel" x="120" y="216">shaded: the metal the equalising cut takes out</text>
             <text class="val" x="432" y="144">1.0</text>
-            <text class="val" x="426" y="209">0.590</text>
+            <text class="val" x="426" y="209">0.587</text>
             <text class="val val-ruby" x="516" y="58">1.0000 — every state of the reserve</text>
             <text class="val val-steel" x="540" y="118">1.11, from a straight flank</text>
             <text class="lbl" x="74" y="270">FULL WIND</text>
             <text class="lbl" x="310" y="270">EMPTY →</text>
             <text class="lbl" x="454" y="270">FULL WIND</text>
             <text class="lbl" x="690" y="270">EMPTY →</text>
-            <text class="val val-brass" x="60" y="288">tip 3.0858 ringed — derived, and the wrap stops short</text>
-            <text class="val val-brass" x="440" y="288">spring torque alone, 0.590 → 1</text>
+            <text class="val val-brass" x="60" y="288">tip 3.0744 ringed — derived, and the wrap stops short</text>
+            <text class="val val-brass" x="440" y="288">spring torque alone, 0.587 → 1</text>
           </svg>
         </div>
         <figcaption><b>The cone is cut to the law now, and since TODO 32 the law is cut to the
         ribbon.</b> The flank is <code>r = FUSEE_TORQUE_K / springTq</code> — and
         <code>springTq</code> is no longer authored: the spring's moment is <code>M = k·θ</code>
         on the wind angle the drum actually gives it, the chain feed couples that angle to
-        the cone's own radius, and the self-consistent solve lands on
-        <code>u(t) = √(θ_s² + β·t)</code> — an <em>inverse-square-root</em> flank, not the
-        hyperbola the old authored line implied. The one pinned number is θ_s: an integer
+        the cone's own radius, and the self-consistent solve closes the system. Under
+        "every unit of chain trades cone↔drum" it closed in one line —
+        <code>u(t) = √(θ_s² + β·t)</code>, an <em>inverse-square-root</em> flank, not the
+        hyperbola the old authored line implied — and since §150 it closes without that
+        assumption: the free span's give and the takeoff's walk around the drum wall join
+        the chain's bookkeeping, the system becomes a first-order ODE with no closed form,
+        and <code>u(t)</code> is integrated at boot on a fixed grid, the closed form kept
+        as the integrator's own control. The one pinned number is θ_s: an integer
         <b>23 clicks</b> of the 24-tooth set-up ratchet (the bench hardware on the base
         plate), <code>SETUP_SWEEP</code> 6.02139 rad — deepened from 17 by §124, because
         θ_s is also the lever that flattens the base slope (it goes as 1/θ_s³), so the
         set-up is what makes the cut chain-carryable; derived, the empty-end fraction reads
-        0.58986. That is the envelope <code>makeFusee</code> cuts its
+        0.58749. That is the envelope <code>makeFusee</code> cuts its
         groove to, from the same expression <code>fuseeGrooveAt</code> hands the chain and
         the readout (the lathed core is that envelope relieved for the leaning chain stack —
         the ledger below says why this flank forces the relief). What the deepened set-up
         was not allowed to move is the PRODUCT: <code>FUSEE_LEVEL_P = 32.9344</code> —
         r₀·θ_s, the movement's proven operating point — is HELD, so the base radius stops
         being the free literal it was and derives as <code>FUSEE_R_LARGE</code> 5.4696
-        = P/θ_s, the level product follows as <code>FUSEE_TORQUE_K = 3.2263</code>, and the
-        small radius stops being a choice at all — 3.0858 at the tip, 3.2263 where the wrap
+        = P/θ_s, the level product follows as <code>FUSEE_TORQUE_K = 3.2133</code>, and the
+        small radius stops being a choice at all — 3.0744 at the tip, 3.2133 where the wrap
         ends. The dashed lines are the straight generator between the same two radii under
         the same derived law — a product bulging to 1.11 at mid-reserve, against 1.0000 at
         every state of the cut curve. The shaded band in the left panel is the metal the
@@ -632,11 +642,11 @@
         42.9 minutes.</figcaption>
       </figure>
 
-      <p class="note">Honesty ledger: <b>TODO 40 rows 1 and 2 are closed, TODO 32 has
-      landed on top of them, and TODO 46 is closed by §124.</b> The flank is the equalising
-      curve — since TODO 32 the
-      inverse square root <code>r = r₀·θ_s / u(t)</code> that the DERIVED spring law asks
-      for, the cut the law itself predicted — and the readout
+      <p class="note">Honesty ledger: <b>TODO 40 is closed whole — rows 1 and 2 first,
+      row 3 by §150 — with TODO 32 landed on top and TODO 46 closed by §124.</b> The flank
+      is the equalising curve — <code>r = r₀·θ_s / u(t)</code>, the shape the DERIVED
+      spring law asks for, with <code>u(t)</code> solved since §150 from the chain's own
+      conservation rather than from a closed form — and the readout
       reads the radius the chain is on through <code>fuseeGrooveAt</code>. That ideal cut
       could not, at first, physically carry its chain: its base ran ~10 of slope, the old
       0.694 groove pitch sat barely above the chain's 0.66 stack, and the bottom wrap
@@ -649,34 +659,39 @@
       grooves at pitch 1.389 — at least twice the chain's stack — while the set-up deepened
       17 → 23 clicks, the minimum integer whose full-band seat residual clears the §61
       float budget (22 → 0.200 ✗, 23 → 0.146 ✓), bringing the base slope down to a
-      chain-carryable 2.109. On that cut every link either stands or LEANS flush against
+      chain-carryable 2.1617 (§150's conserving solve steepened §124's 2.109 slightly —
+      the funded raise still affords it, asserted at boot). On that cut every link either stands or LEANS flush against
       the flank — <code>fuseeBetaAt(f)</code>, capped at the lie-flat ceiling 63.43° at
       the base — the floor is the corner-locus law at the link's own tilt (TODO 40's
       relief is its β = 0 case), the tilt's extra down-reach 0.40790 is funded once in z
       (<code>FUSEE_TILT_Z</code>: groove floor and upper stratum rise together, the band
       preserved to the digit), and the crest between wraps stays capped at §54's build-to
       proportion. The §61 FLOAT row now holds the chain <em>seated</em>, not merely
-      unburied: 0.202 unwaived against its 0.25 budget, where the same row was born
+      unburied: 0.209 unwaived against its 0.25 budget, where the same row was born
       reading 3.191 waived on the 8:1 cut. The declared articulation fiction is the
       chain's, stated: links shed their lean at the wrap departure in two adjacent-joint
       steps of ≤ β/2, rivets ride the mean frame of the two links they join, and the worst
       measured per-joint twist over the reserve is 36.3° — a real chain spreads that lean
       through joint play over the free span.
-      <b>Row 3 is most of the way</b>: <code>CHAIN_ENGAGED</code> is the closed-form integral
-      of that radius over the wrap — under the derived law simply
-      <code>R_wrap·(u(t) − θ_s)</code> — the drum's angle comes from the same expression, so
-      the two spools balance exactly and the shipped mesh's link count swings about 1% over
-      the reserve where it swung 9.6%. What is left is one named term — the free SPAN also
-      changes length as the take-off radius shrinks, by 0.8 over the reserve, and nothing
-      takes that up; absorbing it breaks the law's closed form (an ODE, not a formula), so
-      it stays filed with that reason written down. <b>TODO 32 is closed for this train</b>:
+      <b>Row 3 is closed by §150 — a chain is a fixed length of steel, and the battery says
+      so now</b>: <code>CHAIN_ENGAGED</code> is the integral of the wrap's own helix
+      take-up — the solve's second column, no longer the closed form
+      <code>R_wrap·(u(t) − θ_s)</code>, because the drum also pays out the free span's give
+      (17.27 → 16.36 over the reserve) and the takeoff tangent's walk around its wall, and
+      the cone is CUT from the solve that holds all three ledgers to one length. The old
+      one-line closure was this ODE's "span frozen" branch, and the integrator reproduces
+      it to 1e-9 as its own boot control. Measured on the shipped mesh, the run's length
+      now spreads 0.52 u over the whole reserve against the 0.95 half-link-pitch tolerance
+      (it spread 1.62 u — 43 links at some winds, 44 at others — with the span unbooked),
+      the census lays 43 links at every state of wind, and the <code>chainLength</code>
+      gate holds it unwaived. <b>TODO 32 is closed for this train</b>:
       the spring's torque is derived from the ribbon's as-cut section and developed length,
       the 0.35 floor is a set-up on the ratchet this movement already builds — 23 clicks
       since §124 — and
       the <code>equalisation</code> battery gate holds the level product at float noise —
       and since &sect;104 the item is closed whole, the alarm barrel's cadence having become
       the striking governor's arithmetic, on its own plate. The drum
-      turns 0.6663 turns over the reserve under the derived law. The maintaining sandwich is
+      turns 0.6729 turns over the reserve under the derived law. The maintaining sandwich is
       untouched and P0-clean: pawls, detent and spring are real meshes on real pivots,
       driven from the fusee's own reverse rotation. The chain's swept fan is a first-class
       obstacle in the layout (§36's registry).</p>
@@ -1255,15 +1270,26 @@
     <summary>Keyless works — one crown, two jobs<span class="where">interface · src/main.js</span></summary>
     <div class="mech-body">
       <p>The crown's stem carries a sliding pinion on a square: pushed home, the clutch routes
-      the crown's turn into the winding path — ratchet and click onto the drum, spooling the
-      chain back onto the fusee. Pulled out, the sliding pinion drops into the setting wheels
+      the crown's turn into the winding path and the chain spools back onto the fusee. Pulled
+      out, the sliding pinion drops into the setting wheels
       and the same turn walks the motion works instead. The clutch's travel is eased in the
       sim (a pulled crown is a motion, not a flag), and every mesh along both paths has its
       phase solved from measurement rather than assumed (§15's closing work).</p>
-      <p>The stem rides a bushing block, the crown collar seats on a bushing torus — all of it
-      declared joints in the intra-unit instrument's table, because a pivot in its bearing is
-      what an assembly <em>is</em>; the instrument exists for parts that foul, not parts that
-      join.</p>
+      <p><b>The stem's one-way is metal.</b> The first build's sliding pinion was two parts
+      pretending to be one — it slid with the stem AND meshed the crown wheel, and the
+      backward free-wheel every crown owner has felt was a bookkeeping scalar. The split gives
+      the stem its real anatomy: a fixed WINDING PINION that always meshes the crown wheel and
+      turns with the banked wind, and the sliding CLUTCH keyed to the stem's square, the two
+      joined by a Breguet-style saw coupling. Winding, the drive faces bear; turned backward,
+      the ramps cam the clutch axially over the pinion's ring, one snap per leaf, and the
+      yoke's spring — real metal on its own post — reseats it. One profile law cuts
+      both rings, rides the pose and answers the battery, so the metal and its law cannot
+      disagree; the tooth is cut narrower than its socket on purpose, and that backlash is why
+      the faces bear while the ramps hold daylight.</p>
+      <p>The stem rides a bushing block, the setting wheel seats against that bushing's boss —
+      all of it declared joints in the intra-unit instrument's table, because a pivot in its
+      bearing is what an assembly <em>is</em>; the instrument exists for parts that foul, not
+      parts that join.</p>
     <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One crown, two paths — the clutch decides</span></div>
         <div class="fig-body">
@@ -1276,7 +1302,7 @@
               <text class="val" x="60" y="36">sliding pinion on the stem square</text>
               <circle cx="96" cy="44" r="4" fill="var(--ruby)"/>
               <rect x="40" y="96" width="120" height="12" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
-              <text class="val val-brass" x="40" y="126">→ ratchet + click → drum: chain spools onto the fusee</text>
+              <text class="val val-brass" x="40" y="126">→ crown wheel → wind train: chain spools onto the fusee</text>
               <line x1="100" y1="86" x2="100" y2="96" stroke="var(--ruby)" stroke-width="1.5"/>
             </g>
             <g transform="translate(410 24)">
@@ -2063,11 +2089,17 @@
       <p><b>Open debt, stated rather than hidden.</b> The chain's FUSEE end is hooked to
       nothing: the drum end has a real claw, the cone end has no metal behind the support
       edge that claims one, and the wrap simply starts wherever the tangent puts it. The
-      going stem's one-way is still a scalar rather than a modelled click. And the gap
-      between the top coil and the three-quarter plate &mdash; a measurement this mechanism
-      owed and took, since nothing in the battery had ever made it &mdash; is 0.117 against a
-      0.15 margin: not a collision, but a clearance the movement does not honour at its
-      tightest station.</p>
+      finger's own debt is paid: its lift law now samples the BUILT chain &mdash; the same
+      stamped buffer the display swaps in, each link at its own parity, every wrapped link
+      in its window &mdash; and the arm swings by the lever's exact inverse rather than a
+      first-order gain, so the pad rides the coil with measured contact through the arming
+      band and the full-wind kiss holds inside its &plusmn;0.03 band, the waiver retired.
+      The entry's other two debts are paid too: the going stem's one-way is modelled metal
+      now &mdash; the saw coupling at the sliding clutch, told in the keyless works entry
+      &mdash; and the plate's own floor law counts the chain's top coil among the parts it
+      must clear &mdash; the one under-plate occupant no measured box had ever named
+      &mdash; so the gap over the coil holds the 0.15 margin at full wind, asserted at
+      every boot instead of filed as debt.</p>
     </div>
   </details>
 
@@ -2745,26 +2777,78 @@
       var COIL_PITCH = 0.69;                              // CHAIN_COIL_PITCH = CHAIN_PIN_LEN + 0.03
       var PITCH_U = 1.9;                                  // CHAIN_PITCH — for the link count
 
-      // The spring law, DERIVED (TODO 32) — the self-consistent solve, ported
-      // form for form. The one pinned number is an integer count of set-up
-      // ratchet clicks; u(t) = √(θ_s² + β·t) is the spring's wind angle off
-      // its free coil, and torque, flank and chain are all functions of it.
-      // §124 (TODO 46) deepened the set-up 17 → 23 clicks and HELD the level
-      // product P = r₀·θ_s, so r₀ derives instead of being the bare 7.4.
+      // The spring law, DERIVED (TODO 32, closed whole by §150) — the
+      // self-consistent solve, ported form for form. The one pinned number
+      // is an integer count of set-up ratchet clicks; u(t) is the spring's
+      // wind angle off its free coil, and torque, flank and chain are all
+      // functions of it. §124 (TODO 46) deepened the set-up 17 → 23 clicks
+      // and HELD the level product P = r₀·θ_s, so r₀ derives instead of
+      // being the bare 7.4. §150 (TODO 40 row 3) replaced the closed form
+      // √(θ_s² + β·t) with the chain-CONSERVING solve: the free span's give
+      // and the takeoff's walk around the drum join the bookkeeping, so
+      // u(t) is a fixed-step integration now — ported below at the same
+      // grid the source runs, because these plates draw the shipped cone.
       var SETUP_CLICKS = 23, RATCHET_TEETH = 24;          // SETUP_CLICKS / SETUP_RATCHET_TEETH
       var SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / RATCHET_TEETH;   // θ_s = 6.02139 rad
       var LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24);      // FUSEE_LEVEL_P = 32.9344 — the pre-§124 shipped product, held
       var R_LARGE = LEVEL_P / SETUP_SWEEP;                // FUSEE_R_LARGE = 5.46955 — was the bare literal 7.4
-      var D = R_LARGE + DRUM_R + 2.5;                     // drumPos: the cone, the drum, and a 2.5 gap
-      var BETA = (4 * Math.PI * WRAP_TURNS * R_LARGE * SETUP_SWEEP) / WRAP_R; // SPRING_WIND_BETA
-      function windAt(t) { return Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + BETA * t); } // springWindAt
-      var WIND_FULL = windAt(1);                          // SPRING_WIND_FULL = 10.2081 rad
+      var D = R_LARGE + DRUM_R + 2.5;                     // FUSEE_DRUM_DIST: the cone, the drum, and a 2.5 gap
+      var BETA = (4 * Math.PI * WRAP_TURNS * R_LARGE * SETUP_SWEEP) / WRAP_R; // SPRING_WIND_BETA — the S′≡0 seed
+      // SPRING_WIND_SOLVE, ported: RK4 at h = 1/4000 over t ∈ [0, 1.2],
+      // span frozen past t = 1 (the runout carries no chain), four fixed
+      // passes for the coil-descent term's u(1). Same equations, same grid.
+      var NPT = 4000, TMAX = 1.2, NSTEPS = Math.round(NPT * TMAX);
+      var SLACK = 0.3;                                    // DRUM_COIL_SLACK_TURNS
+      var SOLVE = (function () {
+        var zRate = BAND * F_ACTIVE;
+        var RwEff = Math.sqrt(WRAP_R * WRAP_R + Math.pow(COIL_PITCH / (2 * Math.PI), 2));
+        var h = 1 / NPT;
+        function span(t, ui, u1) {
+          var dz = (Z0 + zRate * t) - (COIL_TOP - ((u1 - ui) / (2 * Math.PI) + SLACK) * COIL_PITCH);
+          var dr = WRAP_R - LEVEL_P / ui;
+          return { S: Math.sqrt(D * D - dr * dr + dz * dz), dz: dz, Sp: Math.sqrt(D * D - dr * dr) };
+        }
+        function run(u1) {
+          var u = new Float64Array(NSTEPS + 1), c = new Float64Array(NSTEPS + 1);
+          u[0] = SETUP_SWEEP;
+          function du(t, ui) {
+            var r = LEVEL_P / ui;
+            if (t > 1) return (2 * Math.PI * WRAP_TURNS * r) / WRAP_R;
+            var sp = span(t, ui, u1);
+            var g = LEVEL_P / (ui * ui);
+            var wr = Math.sqrt(Math.pow(2 * Math.PI * WRAP_TURNS * r, 2) + zRate * zRate);
+            return (wr + (sp.dz * zRate) / sp.S)
+              / (RwEff * (1 - g / sp.Sp) + ((WRAP_R - r) * g) / sp.S + (sp.dz * COIL_PITCH) / (2 * Math.PI * sp.S));
+          }
+          function dc(ui) { return Math.sqrt(Math.pow(2 * Math.PI * WRAP_TURNS * (LEVEL_P / ui), 2) + zRate * zRate); }
+          for (var i = 0; i < NSTEPS; i++) {
+            var t = i * h, ui = u[i];
+            var k1u = du(t, ui), k1c = dc(ui);
+            var k2u = du(t + h / 2, ui + (h / 2) * k1u), k2c = dc(ui + (h / 2) * k1u);
+            var k3u = du(t + h / 2, ui + (h / 2) * k2u), k3c = dc(ui + (h / 2) * k2u);
+            var k4u = du(t + h, ui + h * k3u), k4c = dc(ui + h * k3u);
+            u[i + 1] = ui + (h / 6) * (k1u + 2 * k2u + 2 * k3u + k4u);
+            c[i + 1] = c[i] + (h / 6) * (k1c + 2 * k2c + 2 * k3c + k4c);
+          }
+          return { u: u, c: c };
+        }
+        var u1 = Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + BETA), sol = null;
+        for (var p = 0; p < 4; p++) { sol = run(u1); u1 = sol.u[NPT]; }
+        return sol;
+      })();
+      function tableAt(table, t) {
+        var x = t * NPT;
+        var i = Math.max(0, Math.min(table.length - 2, Math.floor(x)));
+        return table[i] + (table[i + 1] - table[i]) * (x - i);
+      }
+      function windAt(t) { return tableAt(SOLVE.u, t); }  // springWindAt
+      var WIND_FULL = windAt(1);                          // SPRING_WIND_FULL = 10.2493 rad — a solve output now
       function springTq(t) { return windAt(t) / WIND_FULL; }             // springTorqueAt — M(t)/M(1)
-      var TQ_EMPTY = SETUP_SWEEP / WIND_FULL;             // SPRING_TQ_EMPTY = 0.58986 — derived, the deep set-up's consequence
-      var TORQUE_K = R_LARGE * TQ_EMPTY;                  // FUSEE_TORQUE_K = 3.2263, the level product as a radius
-      function envR(f) { return TORQUE_K / springTq(f / F_ACTIVE); }   // fuseeEnvR — r = r₀·θ_s/u
+      var TQ_EMPTY = SETUP_SWEEP / WIND_FULL;             // SPRING_TQ_EMPTY = 0.58749 — derived, the deep set-up's consequence
+      var TORQUE_K = R_LARGE * TQ_EMPTY;                  // FUSEE_TORQUE_K = 3.2133, the level product as a radius
+      function envR(f) { return TORQUE_K / springTq(f / F_ACTIVE); }   // fuseeEnvR — r = r₀·θ_s/u, exact over the table
       function grooveAt(f) { return { r: envR(f), z: Z0 + BAND * f }; } // fuseeGrooveAt
-      var R_SMALL = envR(1);                              // FUSEE_R_SMALL — derived, 3.0858
+      var R_SMALL = envR(1);                              // FUSEE_R_SMALL — derived, 3.0744
       function trainTq(t, r) { return (springTq(t) * r) / TORQUE_K; }
       // The radius the chain sits on: the wrap stops at F_ACTIVE, and since
       // row 2 the HUD reads exactly this through fuseeGrooveAt.
@@ -2772,24 +2856,26 @@
       // The straight generator between the wrap's own end radii, drawn only
       // to show what the equalising curve buys (under the same derived law).
       function straightSeatR(t) { return R_LARGE + (TORQUE_K - R_LARGE) * t; }
-      function straightTrainTq(t) { return (springTq(t) * straightSeatR(t)) / TORQUE_K; } // bulges to 1.107 mid-reserve
-      // Chain on the cone at reserve t — closed form from the same u: the
-      // feed radius times the wind the spring has gained past its set-up
-      // (fuseeChainTo; the old law's logarithm died with the old law).
-      function chainTo(t) { return WRAP_R * (windAt(t) - SETUP_SWEEP); }
-      var ENGAGED = chainTo(1);                           // CHAIN_ENGAGED = 44.627
-      var ROT_FULL = ENGAGED / WRAP_R;                    // DRUM_ROT_FULL, radians
-      function drumRotAt(t) { return (ENGAGED - chainTo(t)) / WRAP_R; }
+      function straightTrainTq(t) { return (springTq(t) * straightSeatR(t)) / TORQUE_K; } // bulges to 1.110 mid-reserve
+      // Chain on the cone at reserve t — the solve's own second column now
+      // (fuseeChainTo): ∫ of the wrap's helix take-up. The closed form
+      // R_wrap·(u − θ_s) died with §150 — the drum also pays out the span's
+      // give and the takeoff's walk, so cone-chain and drum-angle are
+      // separate ledgers that the solve holds to one length.
+      function chainTo(t) { return tableAt(SOLVE.c, t); }
+      var ENGAGED = chainTo(1);                           // CHAIN_ENGAGED = 44.554
+      var ROT_FULL = WIND_FULL - SETUP_SWEEP;             // DRUM_ROT_FULL = u(1) − θ_s, radians — NOT ENGAGED/R_wrap any more
+      function drumRotAt(t) { return WIND_FULL - windAt(t); }
 
       // The pose rebuildChain computes for a given tension.
       function chainState(t) {
         var fActive = t * F_ACTIVE;
         var active = grooveAt(fActive);
-        var wraps = Math.max(t * WRAP_TURNS, 0.05);
+        var wraps = t * WRAP_TURNS;                       // §150: no floor — the old 0.05-turn stub was unbooked chain
         // baseTurns — the build then solves the fractional turn so the last
         // link lands on the drum-local hook; that congruence needs the
         // layout's azimuths, so the plate draws the accounting turn count.
-        var drumTurns = Math.max(drumRotAt(t) / (2 * Math.PI) + 0.3, 0.05);
+        var drumTurns = Math.max(drumRotAt(t) / (2 * Math.PI) + SLACK, 0.05);
         // The external tangent, same branch the source takes: the radii to
         // the two tangent points are PARALLEL, so one angle serves both.
         var alpha = Math.acos(clamp((active.r - WRAP_R) / D, -1, 1));
@@ -2970,16 +3056,19 @@
             fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.2,
           }));
 
-          // The chain LEDGER. The cone's share is the integral of its own
-          // radius over the wrap and the drum's is what that leaves, so the
-          // total is the one number here that ought not to move — and since
-          // TODO 40 row 3 it very nearly does not. What is left is the DRAWN
-          // path's residue, not the accounting's: a spline through control
-          // points, a link count rounded to whole links, and the 0.05-turn
-          // floor that keeps the cone from going bare at the bottom stop.
+          // The chain LEDGER, §150's accounting: the cone's share is the
+          // integral of its own helix, the span carries its z leg, and the
+          // drum's share is its coil ANGLE — rotation plus the takeoff
+          // tangent's walk around the wall — times the feed radius. The
+          // total is the one number here that must not move, and since the
+          // cone is cut from the solve that conserves exactly this sum, it
+          // does not: the source's chainLength gate holds the shipped mesh
+          // to half a link pitch, and this ledger is the same arithmetic.
           var onCone = chainTo(t);   // the integral, not a mean — see chainTo
-          var onDrum = 2 * Math.PI * WRAP_R * st.drumTurns;
-          var span = Math.sqrt(Math.max(D * D - Math.pow(WRAP_R - st.active.r, 2), 0));
+          var alphaFull = Math.acos(clamp((seatR(1) - WRAP_R) / D, -1, 1));
+          var onDrum = WRAP_R * (2 * Math.PI * SLACK + drumRotAt(t) + (st.alpha - alphaFull));
+          var dzSpan = st.active.z - st.takeoffZ;
+          var span = Math.sqrt(Math.max(D * D - Math.pow(WRAP_R - st.active.r, 2) + dzSpan * dzSpan, 0));
           var total = onCone + onDrum + span;
           readout.textContent = tr('reserve') + ' ' + (t * HOURS).toFixed(1) + ' h · ' +
             tr('wraps') + ' ' + st.wraps.toFixed(3) + ' · ' + tr('coils') + ' ' + st.drumTurns.toFixed(3) +
