@@ -47,6 +47,10 @@ export const INSPECTION_SLICES = [
   { axis: 'crown', poses: 49, ms: 24335 },
   { axis: 'reserve', poses: 61, ms: 22954 },
   { axis: 'wind', poses: 721, ms: 261735 },
+  // TODO 71 — the arrest's arming band, cycled (see the axis's own comment).
+  // ms seeded from stemSlip's measured cost (same n, and nearly every pose
+  // rebuilds the chain); --report refreshes it like every row.
+  { axis: 'arrest', poses: 97, ms: 55000 },
   { axis: 'train', poses: 97, ms: 66580 },
   { axis: 'jumperEngage', poses: 121, ms: 70719 },
   { axis: 'handSet', poses: 121, ms: 65625 },

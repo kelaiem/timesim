@@ -5085,6 +5085,11 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const isWrapLink = (i) => wrapArc > 0 && (i + 1) * (len / N) <= wrapArc - CHAIN_PITCH;
   // Parity is anchored at the CLAW end so the link that drops over the
   // hook's pin is always an outer pair, whatever N rounds to this rebuild.
+  // linkOuterPtsNear mirrors this expression VERBATIM (same N, same
+  // joints), so the wrap's REACH laws read each link at its own parity.
+  // The arrest pad's own law goes one further and samples THIS function's
+  // output buffer directly (builtPtsNear) — for a CONTACT claim the metal
+  // itself is the only source that cannot drift from the metal.
   const isOuter = (i) => (N - 1 - i) % 2 === 0;
   let total = (N + 1) * pin.pos.length;
   for (let i = 0; i < N; i++) total += (isOuter(i) ? outer : inner).pos.length;
@@ -5133,6 +5138,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
   const mid = new THREE.Vector3();
   const seatBases = [];   // §124: assembled vertex base of each judged link's outer template
+  const linkBase = new Uint32Array(N + 1); // per-link vertex base (+ end sentinel) — builtPtsNear reads links out of this buffer by index
   const L = len / N;
   if (!chainFrames || chainFrames.length < N)
     chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
@@ -5172,8 +5178,10 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
     mid.addVectors(a, b).multiplyScalar(0.5);
     if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
+    linkBase[i] = off / 3;
     write(isOuter(i) ? outer : inner, t, y, k, mid);
   }
+  linkBase[N] = off / 3; // end of the plates, start of the rivets
   // Rivets: the MEAN frame of the two links they join (orthonormalized), so
   // a pin between two leaning links leans with them instead of standing
   // world-vertical through tilted plates — the declared articulation fiction
@@ -5194,6 +5202,10 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // each rebuild, so the float row can never read a stale layout): the
   // welded outer template's crown indices plus each judged link's base.
   geo.userData.seat = { crownIdx: outer.seatCrownIdx, bases: seatBases };
+  // §151 — the pad law's handle on this buffer: which vertices are link i's
+  // plates (rivets live past linkBase[N]), plus the wrap bookkeeping to pick
+  // the links, so builtPtsNear indexes the stamp instead of re-deriving it.
+  geo.userData.links = { base: linkBase, len, N };
   return geo;
 }
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
@@ -7694,10 +7706,18 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // between its pins, sagging up to r·(1−cos(pitch/2r)) ≈ 0.13 below the
   // station circle) — the right side to err for ABSENCE claims, the wrong
   // side for a CONTACT the handoff row measures at ±HANDOFF_TRACK_TOL. So
-  // the pad's own law reads the DISCRETE layout: the same control points
-  // rebuildChain bakes (chainLayoutAt — one arithmetic, shared), the same
-  // N-equal-arc joints and leaned frames buildChainLinkGeometry stamps,
-  // sampled over the outer plates' stadium boundary.
+  // anything DISCRETE reads the layout the mesh actually lays: the same
+  // control points rebuildChain bakes (chainLayoutAt — one arithmetic,
+  // shared), the same N-equal-arc joints and leaned frames
+  // buildChainLinkGeometry stamps, sampled over the plates' stadium
+  // boundary at each link's own parity. This analytic re-derivation is
+  // what the REACH laws consume. The pad's CONTACT law does not: it
+  // samples the builder's output buffer itself (builtPtsNear, beside the
+  // pad's window below), because a contact row measures the mesh and a
+  // hand-kept mirror of five builder details is five chances to read a
+  // surface the stamp never wrote — measured, the mirror still diverged
+  // from the buffer by up to 0.086 in the pad's window after parity,
+  // plate stack and both stadium edges were folded in.
   // `wrapOnly` drops the ONE link that straddles the departure — half on the
   // cone, half already running for the drum. The pad's law needs it (that
   // link is the top of the wrap, and the pad rides it), but any law phrased
@@ -7741,20 +7761,51 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
         y: my + t.y * aa + y.y * yy + k.y * dd,
         z: mz + t.z * aa + y.z * yy + k.z * dd,
       });
-      // outer-plate stadium boundary at both pin-end faces (d = ±PIN/2):
-      // the straight edges chord the pitch; the caps round the pins
-      for (const dd of [-CHAIN_PIN_LEN / 2, CHAIN_PIN_LEN / 2]) {
-        // dense boundary: a window-edge crossing quantizes to the sample
-        // spacing, and the closing-arc constraint reads dips as narrow as a
-        // sample — 24 along the edge (~0.08 apart) keeps that noise inside
-        // the kiss tolerance
-        for (let sN = 0; sN <= 40; sN++)
-          push(-CHAIN_PITCH / 2 + (sN / 40) * CHAIN_PITCH, -CHAIN_END_R_OUT, dd); // the outboard edge
-        for (const end of [-1, 1]) {
-          for (let sN = 0; sN <= 20; sN++) {
-            const ph = -Math.PI / 2 + (sN / 20) * Math.PI;
-            push(end * (CHAIN_PITCH / 2 + CHAIN_END_R_OUT * Math.sin(ph)),
-              -CHAIN_END_R_OUT * Math.cos(ph), dd); // the end cap, outboard half
+      // THE LINK'S OWN PARITY, the builder's law VERBATIM (anchored at the
+      // claw end — buildChainLinkGeometry is the other reader of this
+      // expression, and both index the same N-equal-arc joints, so link i
+      // here IS link i there). The first cut modelled EVERY link with the
+      // outer plates' stadium, and the built chain alternates: an inner
+      // link's plates ride CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085 lower
+      // and nest CHAIN_PLATE_T + CHAIN_LEAF_GAP further in — so through
+      // every inner-link phase of the wrap the pad's law read metal 0.085
+      // proud of the built surface and the arrest ARMED ON A FICTION:
+      // measured, the arm swung with up to +0.109 of daylight under the
+      // pad, in alternating tension bands, exactly the parity period.
+      const isOuter = (N - 1 - i) % 2 === 0;
+      const endR = isOuter ? CHAIN_END_R_OUT : CHAIN_END_R_IN;
+      // Each PLATE's band along the pin (CHAIN_TMPL's stack), and THREE
+      // sample planes across it, not just its outer face: the wrap links
+      // are LEANED, so a plate's outboard edge runs diagonally through a
+      // z-window and its extremum inside the window can sit at any depth
+      // across the plate's thickness. Two-plane sampling under-read the
+      // full-wind window by 0.079 (measured — the exact depth the wind
+      // axis's penetration row then found as burial) and read phantom
+      // metal near the window's z-edge at mid-arming; the all-outer
+      // fiction had masked both by inflating everything 0.085.
+      const dHi = isOuter ? CHAIN_PIN_LEN / 2
+        : CHAIN_PIN_LEN / 2 - CHAIN_PLATE_T - CHAIN_LEAF_GAP;
+      const dLo = dHi - CHAIN_PLATE_T;
+      for (const side of [-1, 1]) {
+        for (const dd of [side * dLo, side * (dLo + dHi) / 2, side * dHi]) {
+          // dense boundary: a window-edge crossing quantizes to the sample
+          // spacing, and the closing-arc constraint reads dips as narrow as a
+          // sample — 24 along the edge (~0.08 apart) keeps that noise inside
+          // the kiss tolerance. BOTH edges and the FULL caps, because the
+          // template is a full stadium and a LEANED link's two edges differ
+          // in z by 2·endR·sin β — a one-edge model dropped the upper
+          // plate band clean out of the pad's z-window (measured: the
+          // window's real metal topped 0.15 above the model's).
+          for (const edge of [-endR, endR]) {
+            for (let sN = 0; sN <= 40; sN++)
+              push(-CHAIN_PITCH / 2 + (sN / 40) * CHAIN_PITCH, edge, dd);
+          }
+          for (const end of [-1, 1]) {
+            for (let sN = 0; sN <= 40; sN++) {
+              const ph = (sN / 40) * Math.PI * 2;
+              push(end * (CHAIN_PITCH / 2 + endR * Math.sin(ph)),
+                -endR * Math.cos(ph), dd); // the end cap, full round
+            }
           }
         }
       }
@@ -8089,6 +8140,132 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // with no swept allowance to make.
   const PAD_ZLO = PAD_Z1, PAD_ZHI = PAD_Z2;
 
+  // --- the pad's window, read off the BUILT chain ------------------------
+  // Every pad-window occupancy the finger solve and its lift law consume
+  // comes from HERE: chainLayoutAt at the sample tension, then
+  // buildChainLinkGeometry itself — the very stamp the display swaps in —
+  // read back out of its position buffer. Divergence between the law and
+  // the mesh the contact rows measure is impossible by construction; the
+  // analytic sampler above stays for the REACH laws, where erring is
+  // bounded and the span exclusion matters (see its note).
+  // The builder writes into the module's shared rebuild buffers, so this
+  // borrows PRIVATE ones for the duration of each call — scribbling over
+  // the display's live arrays at boot would hand the first frame a chain
+  // posed at the last law sample instead of the restored tension.
+  // proudOf's verdict over the window is the max of a LINEAR functional
+  // (r projected on the face plane, less lean·Δz), so on a triangle mesh
+  // it is attained at a vertex of the z-clipped solid: the vertices inside
+  // the band plus each edge's crossing of the band's two planes are an
+  // EXACT sample set for the mesh, not a discretisation of it.
+  // EVERY link on the wrap, straddler included, span excluded. Two window
+  // mistakes bracket that rule, both measured. The analytic pad reads
+  // stopped six pitches behind the departure, and that was the missing
+  // metal of TODO 71's second half: the top turn is ~13 pitches of arc,
+  // a leaned plate's corners reach ±(endR·sinβ + stack/2·cosβ) ≈ 0.4 in z,
+  // and the cone WIDENS down-arc — so the proudest metal in the pad's
+  // window at full wind is a link 6.5 pitches below the departure (4.081
+  // vs 4.005 near it), which the six-pitch window read as absent and the
+  // pad law under-lifted by exactly the burial the wind-axis budget row
+  // kept finding. And the first cut of THIS sampler read the whole buffer,
+  // span and all: the free span crosses the pad's z band too (radii out
+  // to 29, legitimately outside the pad), and a window max that read it
+  // called the span "the coil surface" — declareTravel saw 12.3 rad.
+  // Plates only, like the analytic sampler: a rivet is
+  // CHAIN_RIVET_HEAD_R = half the plate's cap radius about the same
+  // joint, radially inside the stadium's reach everywhere the window
+  // looks (measured beside the link scan: pins peak 3.79 vs plates 4.08).
+  let lawChainBuf = null, lawChainFrames = null;
+  const builtPtsNear = (tension) => {
+    const { curve, wrapArc, betaAtArc } = chainLayoutAt(Math.max(tension, 0.02));
+    const saveBuf = chainBuf, saveFrames = chainFrames;
+    chainBuf = lawChainBuf; chainFrames = lawChainFrames;
+    const geo = buildChainLinkGeometry(curve, wrapArc, betaAtArc);
+    lawChainBuf = chainBuf; lawChainFrames = chainFrames;
+    chainBuf = saveBuf; chainFrames = saveFrames;
+    const pos = geo.attributes.position.array;
+    const { base, len, N } = geo.userData.links;
+    const L = len / N;
+    const out = [];
+    const seen = (x, y, z) => out.push({ x, y, z });
+    for (let i = 0; i < N; i++) {
+      if (i * L > wrapArc) break; // past the straddler the span takes over
+      const tmpl = (N - 1 - i) % 2 === 0 ? CHAIN_TMPL.outer : CHAIN_TMPL.inner;
+      const v0 = base[i];
+      for (let v = v0 * 3; v < base[i + 1] * 3; v += 3) {
+        const z = pos[v + 2];
+        if (z >= PAD_ZLO && z <= PAD_ZHI) seen(pos[v], pos[v + 1], z);
+      }
+      // edge ⇄ band-plane crossings — with the vertices inside, these are
+      // the z-clipped solid's own corners, so the window max is EXACT
+      const I = tmpl.idx;
+      for (let e = 0; e < I.length; e += 3) {
+        for (let s = 0; s < 3; s++) {
+          const a = (I[e + s] + v0) * 3, b = (I[e + ((s + 1) % 3)] + v0) * 3;
+          const za = pos[a + 2], zb = pos[b + 2];
+          for (const zp of [PAD_ZLO, PAD_ZHI]) {
+            if ((za - zp) * (zb - zp) < 0) {
+              const u = (zp - za) / (zb - za);
+              seen(pos[a] + u * (pos[b] - pos[a]), pos[a + 1] + u * (pos[b + 1] - pos[a + 1]), zp);
+            }
+          }
+        }
+      }
+    }
+    return out;
+  };
+
+  // --- the SPAN'S corridor through the arm bands -------------------------
+  // The free run from the cone's departure to the drum is the one chain
+  // occupancy no law of the WRAP can see: it is not on the cone, so
+  // chainProudAt (stations) and the reach tables (wrapOnly) are both
+  // structurally blind to it — and near full wind it crosses the hub and
+  // tab bands at arm radii. Measured (§151): the built-mesh occupancy
+  // re-sited the pad, the beak scan parked the riser 0.74 down-fan, and
+  // the departure at full wind landed 0.78 down-fan — the expectedContacts
+  // floor row found the beak arm's corner INSIDE the flying chain's link
+  // 25. Sampled from the same chainLayoutAt curve the mesh is built from,
+  // over the wind: every curve sample past one pitch below the departure
+  // (the straddler is the reach laws' declared blind spot too), kept where
+  // its envelope can reach the bands. ENV is the plate metal's greatest
+  // reach off a centreline sample: half a sample spacing along the run,
+  // the outer plate's half-width across it.
+  const ARM_W = 0.5;   // the arms' width — declared with the corridor law because both sides of the rejection consume it
+  const SPAN_ENV = Math.hypot(CHAIN_PITCH / 8, CHAIN_END_R_OUT);
+  const SPAN_ZLO = HUB_Z1 - CHAIN_PIN_LEN / 2 - CLEAR_MARGIN;
+  const SPAN_ZHI = TAB_Z2 + CHAIN_PIN_LEN / 2 + CLEAR_MARGIN;
+  const spanPts = [];
+  for (let ts = 0.1; ts <= 1.0001; ts += 0.025) {
+    const { curve, wrapArc } = chainLayoutAt(Math.min(ts, 1));
+    curve.arcLengthDivisions = 800;
+    const len = curve.getLength();
+    const M = Math.max(Math.round((len / CHAIN_PITCH) * 4), 8); // L/4 spacing — ENV above carries half of it
+    const pts = curve.getSpacedPoints(M);
+    for (let i = 0; i <= M; i++) {
+      if ((i / M) * len <= wrapArc - CHAIN_PITCH) continue; // the wrap is the reach laws' jurisdiction
+      const p = pts[i];
+      if (p.z < SPAN_ZLO || p.z > SPAN_ZHI) continue;
+      spanPts.push({ x: p.x, y: p.y, z: p.z });
+    }
+  }
+  // A CHORD the span crosses is not a legal fold. The scan-time test is
+  // 2-D (the bands' z is baked into spanPts) and CONSERVATIVE: the span's
+  // envelope, the arm's half-width, the shared margin, and the throw's
+  // carry (the §47 note above armMinSlack: the swing moves an arm's edge
+  // about half a unit) all inflate the chord — a rejection only walks the
+  // ranked scan one candidate on, while an acceptance is re-measured
+  // against the BUILT bars over the real throw by the assert beside them.
+  const SPAN_THROW_ALLOW = 0.55;
+  const spanFoulsChord = (sx, sy, ex, ey) => {
+    const rr = SPAN_ENV + ARM_W / 2 + CLEAR_MARGIN + SPAN_THROW_ALLOW;
+    const dx = ex - sx, dy = ey - sy;
+    const L2 = dx * dx + dy * dy || 1e-12;
+    for (const p of spanPts) {
+      const u = clamp(((p.x - sx) * dx + (p.y - sy) * dy) / L2, 0, 1);
+      if (Math.hypot(p.x - (sx + u * dx), p.y - (sy + u * dy)) < rr) return true;
+    }
+    return false;
+  };
+
   // --- the pad's catch, solved from the occupancy law --------------------
   // Which azimuth does the pad hang at? The one where chain metal first
   // reaches its window at T_TOUCH — late enough that the finger stays
@@ -8160,7 +8337,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const T_GRID0 = T_LASTPASS + 0.10, T_GRIDN = 41;
     const sets = [];
     for (let i = 0; i < T_GRIDN; i++)
-      sets.push(linkOuterPtsNear(T_GRID0 + (i / (T_GRIDN - 1)) * (1 - T_GRID0)));
+      sets.push(builtPtsNear(T_GRID0 + (i / (T_GRIDN - 1)) * (1 - T_GRID0)));
     const setFull = sets[T_GRIDN - 1];
     // the whole closing tail: the discrete proudness can DIP as a link
     // slides off the window before the next arrives, and a dip inside the
@@ -8170,7 +8347,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     // a family on its own grid re-opens the gap between them.
     const setsClose = [];
     for (let k = Math.ceil((0.982 - LAW_T0) / LAW_STEP); k <= LAW_N; k++)
-      setsClose.push(linkOuterPtsNear(LAW_T0 + k * LAW_STEP));
+      setsClose.push(builtPtsNear(LAW_T0 + k * LAW_STEP));
     const win = (TQ_WINDOWS.report || []).find((w) => w.name === 'fusee');
     const inPoly = (pts, x, y) => {  // eslint-disable-line no-shadow
       let inside = false;
@@ -8253,7 +8430,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // rest radius; converges in two rounds (an earlier cut read the window
   // at a nominal radius and the real face overhung it by 20% of arc — the
   // checker found the coil 0.07 into the pad through exactly that lip).
-  const _setFullPad = linkOuterPtsNear(1);
+  const _setFullPad = builtPtsNear(1);
   const BEAK_PARKED_R = LUG_OUTER + CLEAR_MARGIN + 0.02;
   // --- the finger, solved whole from one candidate azimuth ---------------
   // Everything from the pad's rest radius to the beak's parked point, for a
@@ -8320,12 +8497,23 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const st = studAtOut(out);
     const gain = cross2({ x: pt.x - st.x, y: pt.y - st.y }, rHat(az));
     const psi = PAD_LIFT / gain;            // finger rotation at full wind (sign per the lever's own handedness)
+    // The pad arm's own chord vs the flying span (the corridor law above):
+    // its station solves outward later (armEndOutside), so the chord is
+    // tested out to the sectored stop plus the head-room that walk
+    // ordinarily spends — a candidate whose pad arm the span crosses has
+    // no legal finger at all, whatever the beak scan finds.
+    if (spanFoulsChord(st.x, st.y,
+      C.x + (armStopAt(az) + 1) * Math.cos(az), C.y + (armStopAt(az) + 1) * Math.sin(az))) {
+      return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st,
+        padGain: gain, psiFull: psi, beakParked: null, beakGain: 0, beakMoment: 0,
+        rejects: { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 1 }, trace: 'P' };
+    }
     // Scan the parked-beak azimuth over the down-fan side. A candidate is
     // legal when its arm sits in the designed ratio band, its throw runs
     // INWARD near-radially, and its inflated window is chain-free over the
     // whole wind cycle; the most-radial throw wins among the legal.
     let parked = null, bGain = 0, bMoment = 0, best = -Infinity;
-    const rejects = { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0 };
+    const rejects = { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 0 };
     const trace = [];   // one code per scan step — the scan's own report of WHY, not just how many
     for (let dAz = 0.12; dAz <= 2.2; dAz += BEAK_SCAN_STEP) {
       const baz = az - dAz;
@@ -8341,6 +8529,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
         if (chainProudAt(baz, 0.3, TAB_Z1, TAB_Z2, Math.min(t, 1), CLEAR_MARGIN) > 0) { blocked = true; break; }
       }
       if (blocked) { rejects.chain++; trace.push('c'); continue; }
+      // the beak arm's chord vs the flying SPAN — the wrap check above is
+      // stations-on-the-cone and cannot see it (the corridor law's note)
+      if (spanFoulsChord(st.x, st.y,
+        C.x + (armStopAt(baz) + 1) * Math.cos(baz), C.y + (armStopAt(baz) + 1) * Math.sin(baz))) {
+        rejects.span++; trace.push('p'); continue;
+      }
       // the tangential reaction's moment about the stud must be ENGAGING
       // (the sense that presses the beak deeper) or vanishing — never the
       // sense that peels the finger out of its own arrest
@@ -8372,7 +8566,43 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   PAD_AZ_HALF = FINGER.azHalf;
   const PAD_PROUD_FULL = FINGER.proudFull, PAD_REST_R = FINGER.restR;
   const padPt = FINGER.padPt, tHat = FINGER.tHat, stud = FINGER.stud;
-  const padGain = FINGER.padGain, PSI_FULL = FINGER.psiFull;
+  const padGain = FINGER.padGain;
+  // THE POSE IS THE LEVER'S EXACT INVERSE, not its linearization. The law
+  // hands the pose a radial standoff — restR + lift, the face plane's
+  // distance from the cone centre along the pad's ray — and the finger
+  // performs it by ROTATING about its stud. The first-order pose
+  // (ψ = lift/padGain) left the rigid face (1 − cos ψ) plus chord-tilt
+  // short of the plane the law claimed: measured, 0.060 at full throw,
+  // which the handoff row read as the pad buried −0.045 in the very coil
+  // its law kissed (TODO 71's last piece). A plane rotated about the stud
+  // has closed-form standoff
+  //   R(ψ) = A + (K − B·sinψ)/cosψ,
+  //   A = (S−C)×θ̂,  B = (S−C)×r̂ = −padGain,  K = (P₀−S)×θ̂
+  // (P₀ the rest face point, S the stud, C the cone centre, × the 2-D
+  // cross) — R(0) = restR and R′(0) = padGain, so the old pose was exactly
+  // this law's first term. ψFor inverts it: B·sinψ + (R*−A)·cosψ = K,
+  // taken on the branch the first-order seed names; a boot assert in the
+  // approach block holds the inverse to 1e-6 over the law's whole range.
+  const _psiA = cross2({ x: stud.x - C.x, y: stud.y - C.y }, tHat);
+  const _psiB = -padGain;
+  const _psiK = cross2({ x: padPt.x - stud.x, y: padPt.y - stud.y }, tHat);
+  const psiStandoff = (psi) => _psiA + (_psiK - _psiB * Math.sin(psi)) / Math.cos(psi);
+  const psiForLift = (lift) => {
+    if (lift === 0) return 0;
+    const D = PAD_REST_R + lift - _psiA;
+    const rho = Math.hypot(_psiB, D);
+    const phi = Math.atan2(D, _psiB);
+    const s = Math.asin(clamp(_psiK / rho, -1, 1));
+    const seed = lift / padGain;
+    const wrap = (p) => {
+      let v = p % (2 * Math.PI);
+      if (v > Math.PI) v -= 2 * Math.PI; if (v < -Math.PI) v += 2 * Math.PI;
+      return v;
+    };
+    const c1 = wrap(s - phi), c2 = wrap(Math.PI - s - phi);
+    return Math.abs(c1 - seed) <= Math.abs(c2 - seed) ? c1 : c2;
+  };
+  const PSI_FULL = psiForLift(PAD_LIFT);
   let beakParked = FINGER.beakParked, beakGain = FINGER.beakGain, beakMoment = FINGER.beakMoment;
   WIND_ARREST.beakScanRejects = FINGER.rejects;
   WIND_ARREST.azCandidates = candidates.length;
@@ -8388,40 +8618,37 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     console.warn(`§47: no beak azimuth is legal at ANY of the ${candidates.length} pad azimuths — using PAD_AZ−0.6 unchecked`);
   }
   // The table is CONSERVATIVE by construction, and it has to be: the true
-  // proudness STEPS when a link's leading end enters the window, so a
-  // table that interpolated between node samples would read below the
-  // metal for most of an interval and the pad would ride inside the chain
-  // (measured, before this: 0.043 of penetration at tension 0.954, caught
-  // by the wind-axis budget row and invisible to the two-parity handoff).
-  // Each node therefore takes the SUP over its own half-intervals — a
-  // linear interpolant between two sups is ≥ the sup on the interval
-  // between them, so the pad rides the highest link its window will ever
-  // see, which is what riding a chain of discrete links means.
-  const padLaw = new Float64Array(LAW_N + 1);
+  // proudness STEPS when a link's leading end enters the window, so any
+  // read that dips below the metal anywhere puts the pad inside the chain.
+  // The table is the FINE grid itself, looked up as a per-interval MAX —
+  // an upper staircase. Two failed forms bracket it, both measured: a
+  // linear interpolant between samples reads below stepping metal (0.043
+  // of penetration at tension 0.954, caught by the wind-axis budget row
+  // and invisible to the two-parity handoff), and a node-±-interval SUP
+  // reads ABOVE the metal for most of every interval — at the fine grid's
+  // 8×-coarser node spacing that bridged the wrap's REAL inter-link dips
+  // and the arm visibly ARMED ON DAYLIGHT (the §151 symptom). The
+  // per-fine-interval max keeps the no-under-read guarantee at an 8×
+  // smaller quantum: what remains above the metal is one fine step's
+  // smear, ~0.001 of tension wide.
+  const padLaw = new Float64Array(LAW_N * 4 + 1);
   {
-    const SUB = 4; // sub-samples per interval — the step's position inside an interval, resolved
-    const fine = new Float64Array(LAW_N * SUB + 1);
+    const SUB = 4; // fine samples per node interval — the step's position inside an interval, resolved
     for (let k = 0; k <= LAW_N * SUB; k++) {
       const t = LAW_T0 + (k / (LAW_N * SUB)) * (1 - LAW_T0);
-      fine[k] = Math.max(0,
-        proudOf(linkOuterPtsNear(t), PAD_AZ, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) - PAD_REST_R);
+      padLaw[k] = Math.max(0,
+        proudOf(builtPtsNear(t), PAD_AZ, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) - PAD_REST_R);
     }
-    for (let i = 0; i <= LAW_N; i++) {
-      let v = 0;
-      for (let k = Math.max(i * SUB - SUB, 0); k <= Math.min(i * SUB + SUB, LAW_N * SUB); k++)
-        v = Math.max(v, fine[k]);
-      padLaw[i] = v;
-    }
-    // …and the top node is the KISS: full wind must read the metal exactly,
-    // not a neighbourhood's sup, or the arrest would rest proud of its own
-    // coil by whatever the last interval's step happens to be.
-    padLaw[LAW_N] = fine[LAW_N * SUB];
   }
   const liftAt = (tension) => {
     if (tension <= LAW_T0) return 0;
-    const u = clamp((tension - LAW_T0) / (1 - LAW_T0), 0, 1) * LAW_N;
-    const i = Math.min(Math.floor(u), LAW_N - 1);
-    return padLaw[i] + (padLaw[i + 1] - padLaw[i]) * (u - i);
+    const M = padLaw.length - 1;
+    const u = clamp((tension - LAW_T0) / (1 - LAW_T0), 0, 1) * M;
+    const i = Math.min(Math.floor(u), M - 1);
+    // full wind is the KISS: the top sample exact, no neighbour's max —
+    // the arrest must not rest proud of its own coil.
+    if (u >= M) return padLaw[M];
+    return Math.max(padLaw[i], padLaw[i + 1]);
   };
   // THE TRAVEL IS NOT THE DESIGNED THROW, AND THE CLEARANCES ANSWER TO THE
   // TRAVEL. PAD_LIFT is what the pad rises between rest and full wind; the
@@ -8434,7 +8661,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // steps are largest. `declareTravel` already carries a 1.35 allowance for
   // the same reason; this is that allowance MEASURED instead of allowed for.
   const LIFT_MAX = padLaw.reduce((a, b) => Math.max(a, b), 0);
-  const PSI_MAX = LIFT_MAX / padGain;
+  const PSI_MAX = psiForLift(LIFT_MAX);
 
   const R_BEAK_ARM = Math.hypot(beakParked.x - stud.x, beakParked.y - stud.y);
   const BEAK_THROW = -beakGain * PSI_FULL;        // radial travel at the beak, inward > 0
@@ -8455,6 +8682,17 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const near = (x) => x.toFixed(3);
     if (!(Math.abs(padGain) > 0.9 * R_PAD_ARM))
       console.warn(`§47: pad moment arm ${near(Math.abs(padGain))} < 0.9·${R_PAD_ARM} — the stud is not tangential enough for a radial lift to work the lever`);
+    {
+      // the pose's exact inverse holds over the law's whole range: rotating
+      // by ψFor(lift) must put the face plane at restR + lift, or the pad
+      // rides short of its own law again (the first-order pose's 0.060)
+      let worstInv = 0;
+      const step = LIFT_MAX > 0 ? LIFT_MAX / 64 : 1;
+      for (let l = 0; l <= LIFT_MAX + 1e-9; l += step)
+        worstInv = Math.max(worstInv, Math.abs(psiStandoff(psiForLift(l)) - (PAD_REST_R + l)));
+      if (worstInv > 1e-6)
+        console.warn(`§47: the finger pose's exact inverse misses its demanded standoff by ${worstInv.toExponential(2)} (required ≤ 1e-6)`);
+    }
     if (beakMoment * PSI_FULL < 0)
       console.warn(`§47: the arrest's reaction moment about the stud (${near(beakMoment)}) runs in the DISENGAGING sense — the lug would peel the finger out of its own stop`);
     if (!(ENGAGE >= 0.15))
@@ -8531,7 +8769,8 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   pawl.position.set(stud.x, stud.y, 0);
   arrestUnit.add(pawl);
   const inPawl = (p) => ({ x: p.x - stud.x, y: p.y - stud.y });
-  const ARM_W = 0.5;
+  // (ARM_W is declared up with the span-corridor law — both sides of that
+  // rejection consume it.)
   // bored for the stud — a running clearance, the declared joint the
   // intraUnit row measures (a solid hub would be a confirmed penetration)
   const hub = new THREE.Mesh(ringGeo(STUD_R + 0.01, HUB_R, HUB_T), MATS.steel);
@@ -8757,6 +8996,51 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const bv = inPawl(ctr);
     m.position.set(bv.x, bv.y, (TAB_Z1 + TAB_Z2) / 2);
     pawl.add(m);
+  }
+  // --- the corridor rejection, RE-MEASURED on the built finger -----------
+  // The scan tested estimated chords with a conservative inflation; this
+  // holds the metal. Every member of the finger, lattice-sampled and swept
+  // over its own throw, must clear the flying span's envelope by the
+  // shared margin — a warn here means the chord test let a fold through,
+  // and the corridor law needs to hear about it before the battery does.
+  {
+    arrestUnit.updateWorldMatrix(true, true);
+    const names = ['windArrestPadArm', 'windArrestBeakArm', 'windArrestRiser', 'windArrestPad', 'windArrestBeak'];
+    const v = new THREE.Vector3();
+    const bb = new THREE.Box3();
+    let worstD = Infinity, worstAt = '';
+    pawl.traverse((m) => {
+      if (!m.isMesh || !names.includes(m.name)) return;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      bb.copy(m.geometry.boundingBox);
+      const nAx = ['x', 'y', 'z'].map((ax) => Math.min(12, Math.max(2, Math.ceil((bb.max[ax] - bb.min[ax]) / 0.4) + 1)));
+      for (let i = 0; i < nAx[0]; i++) {
+        for (let j = 0; j < nAx[1]; j++) {
+          for (let k = 0; k < nAx[2]; k++) {
+            v.set(
+              bb.min.x + (i / (nAx[0] - 1)) * (bb.max.x - bb.min.x),
+              bb.min.y + (j / (nAx[1] - 1)) * (bb.max.y - bb.min.y),
+              bb.min.z + (k / (nAx[2] - 1)) * (bb.max.z - bb.min.z),
+            ).applyMatrix4(m.matrixWorld);
+            for (let s = 0; s <= 12; s++) {
+              const psi = (s / 12) * PSI_MAX;
+              const ca = Math.cos(psi), sa = Math.sin(psi);
+              const qx = stud.x + (v.x - stud.x) * ca - (v.y - stud.y) * sa;
+              const qy = stud.y + (v.x - stud.x) * sa + (v.y - stud.y) * ca;
+              for (const p of spanPts) {
+                const dz = Math.abs(v.z - p.z) - CHAIN_PIN_LEN / 2;
+                if (dz > worstD) continue; // cannot beat the running worst
+                const dxy = Math.max(0, Math.hypot(qx - p.x, qy - p.y) - SPAN_ENV);
+                const d = Math.hypot(dxy, Math.max(0, dz));
+                if (d < worstD) { worstD = d; worstAt = m.name; }
+              }
+            }
+          }
+        }
+      }
+    });
+    if (worstD < CLEAR_MARGIN - 1e-9)
+      console.warn(`§151: ${worstAt} passes ${worstD.toFixed(3)} from the flying span (required ≥ ${CLEAR_MARGIN}) — the corridor rejection let a fold through`);
   }
   // The blade and its bank: a real spring pressing the finger onto a real
   // stop. The bank pin hangs from the bracket beside the beak arm's
@@ -8989,7 +9273,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // the finger on its bank; the chain lets it sit only as far as the
   // occupancy says. Pure function of tension — setPose-exact, no easing.
   WIND_ARREST.pose = (tension) => {
-    pawl.rotation.z = Math.max(0, liftAt(tension)) / padGain;
+    pawl.rotation.z = psiForLift(Math.max(0, liftAt(tension)));
   };
   WIND_ARREST.liftAt = liftAt;
   WIND_ARREST.padAz = PAD_AZ;
@@ -9028,7 +9312,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   registerLabel('Winding arrest', arrestUnit);
   registerExplode(arrestUnit, 0, 9); // rides out with the back/plate stack, the alarm click's tier convention
   declareTravel('Winding arrest', Math.abs(PSI_MAX) * 1.15,
-    'the finger swings LIFT_MAX/padGain from bank to the law\'s deepest throw — the MEASURED ride, not the designed PAD_LIFT one, since the law\'s per-interval sup carries the pad past its nominal lift; the margin covers the blade\'s seat preload, and the registry\'s containment assert widens this if the built ride exceeds it');
+    'the finger swings ψFor(LIFT_MAX) from bank to the law\'s deepest throw — the MEASURED ride through the pose\'s exact lever inverse, not the designed PAD_LIFT one, since the law carries the pad past its nominal lift; the margin covers the blade\'s seat preload, and the registry\'s containment assert widens this if the built ride exceeds it');
   // §48 — the keyless winding wheels RECIPROCATE now, and honestly: §47's
   // collapse made them pose from the bank, so the crown drives them one way
   // while the mainspring back-drives them through the fusee arbor and its

@@ -829,6 +829,32 @@ export const AXES = [
     pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
   },
   {
+    // TODO 71 — the ARREST'S OWN reversal: the arming band, cycled. The wind
+    // axis is already a tension cycle, but the registry samples every axis on
+    // its own inclusive 12-pose grid, and 1 − |2·(k/11) − 1| tops out at
+    // tension 0.909 — below the pad's touch (solved at boot; ≈ 0.87 at the
+    // §151 fold, and the fallback errs high on purpose: too high only
+    // narrows the cycle toward full wind, never past it), so the
+    // arm never MOVED in any registry sample and §48's stale rule flagged a
+    // declaration its population could not see (the TODO 56 lesson: ship the
+    // mechanism's own axis or its audit passes in silence). The band starts
+    // the lift-shape assert's own seated margin (0.03) below the solved
+    // touch, read live off the clock like stemSlip's pitch, so the axis
+    // tracks the solve instead of a stale copy of it. n: a leg spans
+    // 1 − (touch − 0.03) of tension (≈ 0.16 at the §151 fold) and the lift
+    // law's finest feature is its fine-grid staircase step,
+    // (1 − LAW_T0)/480 ≈ 0.0012 — 96 samples over the cycle lands within a
+    // few steps per sample, denser through the band than the wind axis's
+    // own 0.0028, and the features this axis exists for (the arm's
+    // reversal, its travel arc) are far coarser than either.
+    name: 'arrest',
+    n: 96,
+    pose: (f, clock) => {
+      const t0 = Math.max((clock?.windArrest?.tTouch ?? 0.97) - 0.03, 0);
+      return { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: t0 + (1 - t0) * (1 - Math.abs(2 * f - 1)) };
+    },
+  },
+  {
     // TODO 50 — the STEM'S OWN reversal: the saw coupling's relative angle
     // (windStemSlip), which no other axis can move — `tension` sweeps the
     // bank and the slip rides ALONG with it by definition (the clutch and
@@ -3954,11 +3980,14 @@ export const WIND_ARREST_HANDOFFS = [
     unitA: 'Chain', meshA: 'chainRun',
     unitB: 'Winding arrest', meshB: 'windArrestPad',
     expect: { full: 'contact', slack: 'free' },
-    // §125 Tier B — the moved station re-sited the pad's azimuth onto an
-    // end-cap phase of the built wrap; the seat solve reads the analytic
-    // spacing and the two disagree by the cap-vs-chord scallop (measured
-    // −0.0498 vs the −0.0074 the old azimuth read on the same chain).
-    waived: 'TODO 71 — pad seat solved against the analytic link phase; anchor linkOuterPtsNear to the build\'s hook phase',
+    // TODO 71, closed in three measured steps: the pad law samples the
+    // BUILT chain buffer at each link's own parity (builtPtsNear), its
+    // window reads every wrap link rather than six pitches of it, and the
+    // pose is the lever's exact inverse instead of lift/padGain — the
+    // −0.111 this row was waived at decomposed into 0.085 of window
+    // under-read plus 0.060 of first-order-pose shortfall, and with both
+    // gone it measures −0.021 at full, inside the ±0.03 kiss band, with
+    // the waiver retired.
   },
   {
     label: 'beak ⇄ stop lug',
