@@ -39,7 +39,7 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
 | 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
-| 53 | OPEN | `Chain ⇄ three-quarter plate` measures 0.117 against the 0.15 margin — the measurement §126 owed, taken and published as `WIND_ARREST.chainTqGap` |
+| 53 | CLOSED | The plate floor counts the chain now: `CHAIN_TQ_REACH` bounds the discrete top-of-wrap in closed form and joins `TQ_BOT_Z`'s max beside the spring — gap 0.117 → 0.187, the A2 assert holds the margin (not just the sign) plus the bound's conservativeness, and a `Chain ⇄ Three-quarter plate` budget row sweeps it independently. Cost priced: the cock sits ~0.07 down in the plate band |
 | 54 | CLOSED (§127) | Every sweep calls `enterAxis` before each axis, and `axisEntry` gates all 110 ordered pairs at 0 violations. The leak the old order-dependent entry used to carry is measured and REPORTED beside the gate rather than dropped — that report is the record, not a remainder |
 | 55 | CLOSED (§129) | The alarm stop-work counts the WIND now, not the arbor's absolute angle: a plate-mounted spider differential subtracts the barrel's two members, so the cross walks back as the spring empties. Residue is item 56 — a closed item is a bad place to keep live debt |
 | 56 | OPEN | No axis winds, rings and winds again, so §48's audit takes its population from a `reversed` flag that never sees the reversal — the cross is driven both ways and the gate passes it in silence. Needs the axis first, the moved rows accepted per row, then the `'two-way'` declaration |
@@ -6174,24 +6174,46 @@ alongside `crownRotation` and clamp it on restore.
 
 ---
 
-## 53. Chain ⇄ three-quarter plate is 0.117, under the shared margin
+## 53. CLOSED — the plate floor counts the chain now, in closed form
 
-§47 owed this measurement and took it: nothing in the battery had ever
-measured the gap between the top coil at full wind and the plate's
-underside, and the arrest needed the number to know whether anything could
-pass over the coil. Measured over the discrete link layout the mesh
-actually lays: **0.117**, against `CLEAR_MARGIN` 0.15. The build asserts
-the SIGN (contact is the regression) and publishes the number as
-`WIND_ARREST.chainTqGap`; the margin itself is not met.
+§47 owed this measurement and took it: the gap between the top coil at
+full wind and the plate's underside, measured over the discrete link
+layout, was **0.117** against `CLEAR_MARGIN` 0.15 — a declared clearance
+the movement did not honour at its tightest station, watched only by a
+sign assert.
 
-It is not a collision and nothing rides there — the arrest's own members
-keep clear of it by construction. But it is a declared clearance the
-movement does not honour at its tightest station, and it bounds anything a
-future entry might want to run over the cone. **The fix is z, and it is
-the §51 pattern:** either the plate rises (its underside is set by
-`TQ_MEASURED_MAX` against the hairspring stack — the binding part is
-named, so the cost is priced) or the cone's band drops. Re-measure with
-the same law after either move.
+**The root cause was the plate-floor law's blindness, not the z-stack's
+tightness.** `TQ_BOT_Z` was `max(measured under-plate boxes, hairspring
+stack) + margin`, and the chain is nobody's measured box — the one
+under-plate occupant that list could never see. The item's own framing
+("either the plate rises or the cone's band drops") resolved to the plate,
+decisively: the arrest's pad band is LUG-bound (`HUB_Z2` resolves to
+`LUG_Z1 − CLEAR_MARGIN` by 0.115), `chainProudAt`'s stud ceiling already
+stood above every chain point, so a plate rise moves NO arrest quantity —
+measured, the beak window, candidate set and `LUG_OUTER` are bit-identical
+— while a cone-band drop would have dragged the pad band, `F_PAD_WALL`,
+the §104 equalisation solve and the §124 asserts all at once.
+
+**The fix is the §51 pattern — the binding part is NAMED**: `CHAIN_TQ_REACH`
+(with the fusee constants in `src/main.js`) bounds the discrete top-of-wrap
+in closed form — the wrap-top groove station plus the ramp-leaned stadium
+section's reach, `h·cosβ + max(w·sinβ, t_z·w)`, scanned over the top
+pitches, the unleaned straddling link seeding it (legal because the hook
+plane sits under the wrap top, asserted) — and joins `TQ_BOT_Z`'s max
+beside the spring. The A2 measurement now holds it honest both ways every
+boot: gap ≥ `CLEAR_MARGIN` (measures 0.187), and the discrete top under
+the bound (`chainTqBoundSlack` ≈ 0.037 published — chording errs the
+bound outward, the right side for a floor). A
+`Chain ⇄ Three-quarter plate` row in `CLEARANCE_BUDGETS` is the
+independent check from the sweep side (min 0.284 at full wind — the fusee
+window keeps plate metal off the cone's zenith).
+
+**The priced cost:** the plate rides the chain now, ~0.07 above the
+spring bind, so the balance cock's slab sits that far down IN the plate
+band instead of flush at its underside — the coupled cock/plate design
+goal is spent knowingly, with the comment at the floor law re-worded to
+say by whom. Residue: none — but any future entry that runs anything
+else over the cone inherits `CHAIN_TQ_REACH` as its ceiling's precedent.
 
 ## 54. CLOSED — the sweeps enter every axis canonical, and the leak they used to carry is measured
 

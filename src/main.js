@@ -342,6 +342,7 @@ const DRUM_R_ACTUAL = 10;
 const DRUM_BOT_Z = L_BARREL + 0.7 + 0.08 + CLEAR_MARGIN;
 const DRUM_TOP_Z = SPRING_TOP_Z;
 const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
+const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid (declared here with the drum's band — CHAIN_TQ_REACH reads it as the span's ceiling)
 // (the drum body itself — makeBarrel — is built at the drumGroup assembly
 // further down: its arbor is sized to reach the plate's mid-thickness,
 // which isn't known yet here)
@@ -573,6 +574,47 @@ const FUSEE_BASE_Z = Math.max(
   SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
   FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
 );
+// §47/TODO 53 — THE CHAIN'S CLAIM ON THE PLATE FLOOR, in closed form. The
+// three-quarter plate's underside is solved thousands of lines before the
+// discrete chain layout exists, and its floor law had never seen the chain:
+// the top coil at full wind reached within 0.117 of the plate — under the
+// shared 0.15 margin — with only a sign assert watching it. This bound is
+// the discrete construction's own arithmetic (linkOuterPtsNear: stadium
+// sections of half-height CHAIN_PIN_LEN/2 and half-width CHAIN_END_R_OUT,
+// leaned per the §124 ramp, chorded between equal-arc joints), evaluated on
+// the continuum laws that DO exist here and erring OUTWARD exactly where
+// chording errs inward — the right side for a floor:
+//  · no wrap joint stands above the groove station z(F_ACTIVE), and at full
+//    wind the free span leaves DOWNWARD (the hook plane COIL_TOP sits under
+//    the wrap top — asserted below), so the unleaned straddling link cannot
+//    out-reach the ramp's leaned sections;
+//  · a section s of arc below the departure carries the discrete ramp's
+//    lean (none past the departure, half over the last pitch, full below)
+//    and reaches h·cosβ + max(w·sinβ, t_z·w) above its chord — the leaned
+//    edge at full half-width, OR the end cap's overhang t_z·w along the
+//    climbing tangent (t_z = pitch/(2π·r)); a stadium boundary cannot
+//    spend both at once — while sitting t_z·s below the departure. The
+//    scan takes the max over the top pitches; the unleaned straddle term
+//    seeds it.
+// The A2 measurement in the arrest block holds this honest BOTH ways every
+// boot: the discrete top under the bound (conservative), and the plate the
+// bound feeds clear of the discrete top by the full margin.
+const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
+const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
+const CHAIN_TQ_REACH = (() => {
+  const h = CHAIN_PIN_LEN / 2, w = CHAIN_END_R_OUT;
+  const zTop = FUSEE_Z0 + FUSEE_ZSPAN * FUSEE_F_ACTIVE; // the wrap-top groove station (fuseeGrooveAt's own law)
+  const tz = FUSEE_GROOVE_PITCH / (2 * Math.PI * fuseeEnvR(FUSEE_F_ACTIVE));
+  if (COIL_TOP > zTop + 1e-6)
+    console.warn(`TODO 53: the drum's hook plane (${COIL_TOP.toFixed(3)}) stands above the wrap top (${zTop.toFixed(3)}) — the span climbs and CHAIN_TQ_REACH's straddle term under-bounds it`);
+  let reach = h + tz * w; // the straddling link: unleaned, its wrap-side joint AT the departure
+  for (let s = 0; s <= 4 * CHAIN_PITCH; s += CHAIN_PITCH / 32) {
+    const f = Math.max(0, FUSEE_F_ACTIVE - (tz * s) / FUSEE_BAND);
+    const b = (s <= CHAIN_PITCH ? 0.5 : 1) * fuseeBetaAt(f);
+    reach = Math.max(reach, h * Math.cos(b) + Math.max(w * Math.sin(b), tz * w) - tz * s);
+  }
+  return zTop + reach;
+})();
 const fusee = G.makeFusee({
   rSmall: FUSEE_R_SMALL, rLarge: FUSEE_R_LARGE, height: FUSEE_H, grooveTurns: FUSEE_GROOVE_TURNS,
   // §61 — the cut is derived from the chain's stock, here, once: the cone
@@ -1529,20 +1571,28 @@ function boxOf(obj) { obj.updateMatrixWorld(true); return _tqBox.setFromObject(o
 // THROUGH it, and are cut for below.)
 const TQ_UNDER = [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup];
 // SPRING_TOP_Z joins the max so the plate's underside and the balance
-// cock's (SPRING_TOP_Z + margin, see the Z-stack block) coincide by
-// construction — the cock sits IN the plate band, which is the design
-// goal the restridden train serves. If a measured part ever outgrows the
-// spring, the plate rises off the cock plane; warn loudly instead of
-// letting the two drift apart silently.
+// cock's slab plane (SPRING_TOP_Z + margin, see the Z-stack block) stay
+// coupled by construction. CHAIN_TQ_REACH (§47/TODO 53) joins it because
+// the chain's top coil at full wind runs under the plate too, and it is
+// nobody's measured box — the one under-plate occupant this list could
+// never see, and the movement shipped 0.117 of gap against the 0.15
+// margin for exactly that reason. The chain out-reaches the spring by
+// ~0.07, so the plate now rides the CHAIN and the cock sits that far
+// down IN the plate band instead of flush at its underside: that offset
+// is the priced cost of honouring the chain's margin, with the binding
+// part NAMED (the §51 pattern). The warn below still fires if a MEASURED
+// part outgrows both named binds, because that case is unpriced growth —
+// a regression, not a design.
 const TQ_MEASURED_MAX = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z));
-if (TQ_MEASURED_MAX > SPRING_TOP_Z + 1e-6) {
-  console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack (${SPRING_TOP_Z.toFixed(2)}) — the balance cock will sit BELOW the plate band`);
+const TQ_DESIGN_MAX = Math.max(SPRING_TOP_Z, CHAIN_TQ_REACH);
+if (TQ_MEASURED_MAX > TQ_DESIGN_MAX + 1e-6) {
+  console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack and the chain's reach (${TQ_DESIGN_MAX.toFixed(2)}) — the balance cock sinks further into the plate band`);
   for (const o of TQ_UNDER) {
     const name = labelEntries.find((e) => e.obj === o)?.name ?? '(unlabeled)';
     console.warn(`  under-plate part ${name}: max z = ${boxOf(o).max.z.toFixed(3)}`);
   }
 }
-const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, SPRING_TOP_Z) + CLEAR_MARGIN;
+const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, TQ_DESIGN_MAX) + CLEAR_MARGIN;
 const TQ_T = 0.8;
 const TQ_TOP_Z = TQ_BOT_Z + TQ_T;
 const TQ_MID_Z = TQ_BOT_Z + TQ_T / 2;
@@ -1884,8 +1934,9 @@ tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, bor
 function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton = false } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
+  let shaft = null;
   if (len > 0.05) {
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+    shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
     shaft.rotation.x = Math.PI / 2;
     shaft.position.z = (worldTop - arbor.position.z) + len / 2; // arbor-local
     arbor.add(shaft);
@@ -1894,6 +1945,7 @@ function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton
     x: arbor.position.x, y: arbor.position.y, staffR, jewelR, chaton,
     boreR: boreR ?? staffR + PIVOT_BORE_CLEAR,
   });
+  return shaft; // so a caller with a continuation to declare can NAME its half of the joint
 }
 
 // The train's upper pivots. (The fourth arbor's staff passes up through the
@@ -1923,7 +1975,14 @@ addUpperPivot(escapeArbor, { chaton: true });
 // The square is the watchmaker's let-down square: a key on it is how the
 // power is safely released at the bench. A winding arbor runs in a plain
 // bushed bore, not a jewel — and no jewel could pass the square anyway.
-addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+{
+  // NAMED (TODO 53's landing): the windTop continuation abuts this staff at
+  // the plate's mid-plane, and the joint is declared in
+  // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
+  // coincidence and became a joint.
+  const staff = addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+  if (staff) staff.name = 'fuseeUpperStaff';
+}
 // Square across-corners = staff diameter (0.5·2), so the filed square
 // passes the plate's own bore without opening it.
 const FUSEE_SQ_S = 0.5 * Math.SQRT2;
@@ -1933,10 +1992,20 @@ const windTop = new THREE.Group();
 {
   // Shaft continuation: addUpperPivot's staff stops at the plate's
   // mid-thickness (its bearing plane); carry the round arbor on to the
-  // plate's top face, where the square begins.
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z, 12), MATS.steel);
+  // plate's top face, where the square begins. It reaches DOWN into the
+  // staff by half a §50 stock floor — one shaft in two meshes wants a weld,
+  // not a knife-edge: the two caps used to COINCIDE exactly at TQ_MID_Z,
+  // which no instrument can arbitrate (coplanar triangles), and the
+  // TODO 53 plate rise moved the abutment's phase into `intraUnit`'s sight
+  // as an undeclared MF intersection. The overlap makes the joint real and
+  // the declared row (INTRA_UNIT_CONTACTS, 'one arbor in two meshes')
+  // makes it seen — row 'arbor through the winding pinion' is the exact
+  // precedent.
+  const weld = STOCK_MIN_U / 2;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z + weld, 12), MATS.steel);
+  shaft.name = 'fuseeTopShaft';
   shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = (TQ_MID_Z + TQ_TOP_Z) / 2 - L_BARREL;
+  shaft.position.z = (TQ_MID_Z - weld + TQ_TOP_Z) / 2 - L_BARREL;
   windTop.add(shaft);
   const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, LETDOWN_H), MATS.steel);
   square.position.z = TQ_TOP_Z + LETDOWN_H / 2 - L_BARREL;
@@ -4291,8 +4360,8 @@ registerLabel('Mainspring drum', drumGroup);
 // drum's bearings are its own bored floor and lid running on that arbor.
 
 // Chain: rebuilt (cheaply) whenever the reserve state moves enough to see.
-const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
-const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
+// (FUSEE_Z0 / FUSEE_ZSPAN — the groove band's world frame — are declared with
+// CHAIN_TQ_REACH at the fusee constants: the plate-floor bound reads them.)
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
 let chainMesh = null;
 // §71: the schematic draws the chain as ITS OWN RUN — rebuildChain hands
@@ -4665,7 +4734,8 @@ function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
 // The old construction was inverted: the tangent was pinned near the
 // drum's top and the chain's FREE END descended, ending in mid-air with
 // no attachment at all.
-const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid
+// (COIL_TOP — the hook plane, DRUM_TOP_Z − 0.6 — is declared with the drum's
+// z-band at the top of the file: CHAIN_TQ_REACH reads it long before this block.)
 // Hook angle, drum-local. The wrap's far end lands at world angle
 // thetaT + turns·2π and the drum's rotation is rot = drumRotAt(tension) —
 // (C(1) − C(t))/R_wrap, the same u-accounting as everything else — so a
@@ -8401,20 +8471,25 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     'the blade re-seats the finger on its bank pin when the coil leaves the pad — a real torsion arc about the stud, its fixed end on its own post under the bracket; the ARREST hold is the chain pressing the pad, not the spring',
     'windArrestSpring');
 
-  // A2 — the owed measurement, Chain ⇄ three-quarter plate: from the same
-  // occupancy law (the top link's leaned section at full wind against the
-  // plate's underside). The live tree measures ~0.117 — UNDER the shared
-  // 0.15 margin; that tightness is accepted debt filed in TODO.md, and the
-  // assert holds the SIGN (contact would be the regression), not the margin.
+  // A2 — the owed measurement, Chain ⇄ three-quarter plate, CLOSED
+  // (TODO 53): from the same occupancy law (the top link's leaned section
+  // at full wind against the plate's underside). The plate floor now
+  // carries CHAIN_TQ_REACH — the closed-form bound of exactly this
+  // measurement — so the assert holds the MARGIN, no longer just the
+  // sign. A second assert holds the bound CONSERVATIVE: the discrete top
+  // (the links the mesh really lays) must sit under it, every boot,
+  // every spec variant — the continuum bound errs outward by ~0.03 where
+  // chording errs inward, which is the right side for a floor, and the
+  // slack between them is published as a report, not gated.
   {
-    // measured over the DISCRETE full-wind layout (the links the mesh
-    // really lays); the continuum's leaned corners would overshoot the top
-    // by ~0.03 and understate the gap
     let top = 0;
     for (const pnt of linkOuterPtsNear(1, 1e9)) top = Math.max(top, pnt.z);
     WIND_ARREST.chainTqGap = TQ_BOT_Z - top;
-    if (!(WIND_ARREST.chainTqGap > 0))
-      console.warn(`§47: the top coil REACHES the plate underside (gap ${WIND_ARREST.chainTqGap.toFixed(4)}) — the chain cannot pass under the plate at full wind`);
+    WIND_ARREST.chainTqBoundSlack = CHAIN_TQ_REACH - top;
+    if (!(WIND_ARREST.chainTqGap >= CLEAR_MARGIN - 1e-9))
+      console.warn(`§47/TODO 53: Chain ⇄ three-quarter plate gap ${WIND_ARREST.chainTqGap.toFixed(4)} under the ${CLEAR_MARGIN} margin — the plate floor's chain term regressed`);
+    if (WIND_ARREST.chainTqBoundSlack < -1e-9)
+      console.warn(`TODO 53: CHAIN_TQ_REACH under-bounds the discrete top by ${(-WIND_ARREST.chainTqBoundSlack).toFixed(4)} — the closed form stopped being conservative`);
   }
 }
 
@@ -28465,6 +28540,7 @@ window.__clock = {
       studAz: WIND_ARREST.studAz, studR: WIND_ARREST.studR,
       padRestR: WIND_ARREST.padRestR, beakThrow: WIND_ARREST.beakThrow,
       engage: WIND_ARREST.engage, chainTqGap: WIND_ARREST.chainTqGap,
+      chainTqBoundSlack: WIND_ARREST.chainTqBoundSlack,
       armBandReach: WIND_ARREST.armBandReach, armStopR: WIND_ARREST.armStopR,
       beakScanTrace: WIND_ARREST.beakScanTrace, azCandidates: WIND_ARREST.azCandidates,
       azRange: WIND_ARREST.azRange, tabZ: WIND_ARREST.tabZ,

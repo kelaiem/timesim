@@ -1512,6 +1512,13 @@ const CLEARANCE_BUDGETS = [
   { a: 'Reset rod', b: 'Three-quarter plate', min: 0.15 },    // rod re-planed to clear the plate's top
   { a: 'Setting lever', b: 'Three-quarter plate', min: 0.15 },   // tail post swings through the plate's arc slot
   { a: 'Hairspring', b: 'Three-quarter plate', min: 0.15 },
+  // TODO 53 (closed): the chain's top coil at full wind runs under the
+  // plate, and the plate floor now carries the chain's closed-form reach
+  // (CHAIN_TQ_REACH) — this row is the independent check from the other
+  // side, over the sweep rather than the one built pose. Full wind IS
+  // swept: the reserve axis reaches tension 1 at f = 0, and the beat,
+  // train and crown axes pin tension 1 throughout.
+  { a: 'Chain', b: 'Three-quarter plate', min: 0.15 },
   // The escape bridge's length is solved from exactly this gap: it overhangs
   // the pivot it carries, toward the balance, and sits inside the balance's
   // z band while doing it.
@@ -1866,6 +1873,12 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'sliding pinion on the stem square — the clutch joint' },
   { unit: 'Keyless works', a: 'CylinderGeometry#6', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
   { unit: 'Keyless works', a: 'CylinderGeometry#28', b: 'ExtrudeGeometry#0', why: 'arbor through the winding pinion — one shaft, two meshes' },
+  // TODO 53's landing: the fusee arbor's windTop continuation welds into the
+  // upper-pivot staff at the plate's mid-plane. The two caps used to
+  // COINCIDE exactly (a knife-edge no instrument can arbitrate); the plate
+  // rise moved the abutment's phase into this check's sight, and the joint
+  // is now an overlap with its name — one arbor, two meshes.
+  { unit: 'Fusee & great wheel', a: 'fuseeTopShaft', b: 'fuseeUpperStaff', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'TorusGeometry#30', why: 'crown collar on its bushing torus' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#32', b: 'BoxGeometry#31', why: 'crown collar at the bushing block face' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
