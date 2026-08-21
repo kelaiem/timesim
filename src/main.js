@@ -11931,6 +11931,11 @@ alarmSpinner.add(alarmCrownKnob);
 }
 
 // --- '(§45) Alarm release lifter' — the stem's pull, delivered to the sleeve
+// §137 / TODO 63 terminology — this chain (collar → lifter → rocker →
+// feeler) SILENCES: it holds or lifts the pin so a set alarm stays quiet or
+// a ringing one is arrested. DISARMING is the other mechanism — the column
+// wheel's run through alarmLinkRod to the selector ring. Keep the words
+// apart; a fix sent to the wrong one has nothing to fix.
 // The one new input §45 needs: pulling the alarm crown must PRESS the sleeve
 // toward the arm band (world-down here — dial-local +z), positively, so the
 // safety direction (release the hand to set it) is a located drive and the
@@ -17897,6 +17902,12 @@ const alarmLinkParts = {};
     const rodLen = ALARM_ROD_TOP_BUILT - rodFootRest;
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_ROD_R_SECTION, ALARM_LINK_ROD_R_SECTION, rodLen, 12), MATS.steel);
     rod.name = 'alarmLinkRod';
+    // §137 / TODO 63 terminology — this rod DISARMS: it prevents the alarm
+    // ringing (column wheel → beak → this rod → shaft → selector ring). The
+    // rod that SILENCES a ringing alarm is §45's chain (crown collar →
+    // lifter → silence rocker → feeler), which the column wheel does not
+    // drive. Different mechanisms; conflating them sends a fix to the
+    // wrong one.
     rod.rotation.x = Math.PI / 2;
     rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, rodFootRest + rodLen / 2);
     alarmLinkUnit.add(rod);

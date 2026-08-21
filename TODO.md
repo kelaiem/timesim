@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-20 — items with work left first, with what remains:
+refreshed 2026-08-21 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -24,7 +24,7 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
-| 16 | PART CLOSED | The beak lever question, and the SHAFT: item 63's re-take found the thickening REVERTED (CI overlaps) — the chain stalls ≈1.6 mN, shaft-limited, and the item carries a dated correction saying its "restored to 48 mN" described a fix that no longer ships |
+| 16 | PART CLOSED | The beak lever question, and the SHAFT — whose story §137 re-founded by measurement: the minute jumper never enters the shaft's neighbourhood any more (the CI-rejection rationale was dead), the CORRIDOR binds instead (allowance 0.434/0.801/0.428 u, probe-137-jumper-envelope), and no legal section-plus-bushes fits the current chord — the fix is position space (re-site the setting idler or re-route the chord), and the waiver stands on the live numbers |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
@@ -49,13 +49,14 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
 | 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
 | 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
-| 63 | PART DONE | The stall is RE-TAKEN from the built metal: lever gain 7.1× (measured arms 1.395/9.95 u), tail blade healthy at 305 N/m, shaft reverted to the hair — chain stalls ≈1.6 mN, SHAFT-limited, and both items' records now say so. Remains: the elbows' un-computed bending moment (`ELBOW_E_MAX` is 28 since §125 Tier B, which sharpens it) and the five force paths with no arithmetic |
+| 63 | CLOSED (§137) | The stall re-taken (≈1.6 mN, shaft-limited), the bends PRICED (M = F·e, σ, Euler fraction, axial give — the reset rod's solved offset is zero, the hack rod's dogleg gives 3–30% of its stroke across the load band), and all five force paths carry arithmetic beside their metal, held by the new `transfers` gate: click detent 14.7 mN inside the declared 5–50 mN window, pawl 13.8 mN vs the 1–5 N finger band, silence finger ≈51 mN, lay shaft 1.58 mN waived citing TODO 16. One published number corrected: the tail stall is ≈11.5 mN against the live rodTravel, not 48 |
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | OPEN | `makeJewelSetting`'s collar is wound inside out AND is an open shell — three in the scene, found by §148's own winding assert swept scene-wide. The winding is a two-line fix; the open profile is TODO 27's measured hazard and is the real work |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
+| 72 | OPEN (filed §137) | The §54 report's seven unwaived over-ceiling members, catalogued now that the instrument is reachable: the lifter run (λ 71), both elbow rods' segments (67.7/46.6/32.5), two unnamed stems and the feeler tail. Rows are reported, never gated (§54's covenant); the battery gates only waiver staleness. Closing a row means deriving its section from its span — two close halfway just by being NAMED |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -2002,62 +2003,12 @@ moved up. `rotation.order = 'ZYX'` fixes it; tail tip and rod now track
 The lay shaft twelve lines below already carried this exact fix, with a
 comment explaining it. The arm did not.
 
-## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+### The shaft chronicle (moved home — §137)
 
-`sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
-musically ("A6-ish, a small bell" says the comment). The gong's actual
-dimensions imply something quite different.
-
-Wire 0.375 mm diameter, arc radius 13.125 mm, 90° of arc = **20.617 mm
-developed length**, L/d = 55. As a clamped–free steel bar (E 200 GPa,
-ρ 7850, bar wave speed 5048 m/s):
-
-| mode | frequency | ratio |
-|---|---|---|
-| fundamental | **623 Hz** | 1.00 |
-| 2nd | **3904 Hz** | 6.27 |
-| 3rd | 10932 Hz | 17.55 |
-
-Two mismatches, and the second is the interesting one:
-
-1. **Neither synthesised tone is a mode of this gong.** 880 Hz is 1.41× the
-   fundamental and 1760 Hz is 2.83× — the geometry offers 1× and 6.27×.
-2. **A struck bar's overtones are INHARMONIC.** 1 : 6.27 : 17.55, not
-   1 : 2 : 3. The octave pair models a *bell*, and the reason a steel wire
-   gong sounds like a "ting" rather than a pitched chime is precisely that
-   its partials are not harmonically related. Modelling it as an octave is
-   the one thing that removes the character being modelled.
-
-There is also a **design** question underneath the audio one: 623 Hz is
-low for an alarm. Real alarm-watch gongs (Memovox, Cricket) ring bright,
-in the low kHz, because that is what carries and what wakes someone. At
-these dimensions the fundamental is a low hum and the ring the ear would
-actually hear is the 3.9 kHz second mode. To put the FUNDAMENTAL in
-alarm territory (~2.5 kHz) the arc would need to be **45° instead of 90°**
-(10.3 mm developed), or the wire 1.50 mm thick at the current length —
-which is absurd for a gong. So the arc is roughly **twice as long as an
-alarm gong should be**.
-
-Closing this means deriving the tone from the geometry — `f_n = (β_nL)²
-·(d/4)·√(E/ρ) / (2πL²)`, struck at the modes the hammer actually excites —
-rather than picking notes. Note the hammer strikes IN-PLANE (radially at
-the free end), and a curved bar's in-plane modes sit somewhat above the
-straight-bar figures above, so the derivation should carry the curvature
-term rather than reuse this estimate.
-
-Filed rather than fixed: this is an audio-model change and a gong-geometry
-change, and the two want deciding together.
-
-**Mostly closed by §56.** The tone is now computed from the wire's own
-dimensions and the arc is a live parameter, so the pitch tracks the
-geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
-the inharmonic 1 : 6.27 ratio is what is sounded.
-
-Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
-modes sit above the straight-bar figures used here — `gongModes()` should
-carry the curvature term. And the DESIGN question is now exposed rather
-than answered: the 90° default still rings low for an alarm; whether the
-default arc should move to ~45° is a decision, not a bug.
+(The four sections below were filed under item 17 by accident — a
+whole shaft narrative living in the gong item. Moved here unchanged,
+in their original order; §137 found them while retiring their
+premise, see the measurement block above.)
 
 ### CORRECTION — the shaft thickening was REVERTED; CI rejected it
 
@@ -2126,7 +2077,13 @@ the drive-end overhang, where the exhaustive scan shows 0.97–8.3 of room.
 Bending stiffness is set by the span, so most of the 4075 N/m survives.
 The neck length is bounded by the ring's own thickness plus margin.
 
-### CLOSED — the stepped arbor
+### The stepped arbor, as designed — built, then CI-rejected (next section)
+
+(This section recorded a CLOSED that did not survive: the design below was
+built and the gates listed at its end did pass — from a session whose saved
+pose had the jumper out of the star. The virgin-boot story is the next
+section. The numbers stay because they are the candidate design any future
+attempt starts from.)
 
 Necked at **both** ends, full section between. Necking both rather than one
 is not a compromise, it is the better shape: **both cranks sit on the thin
@@ -2198,6 +2155,63 @@ two.
 Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
 restored. The **beak tail** fix and the **inverted lever** fix stand — both
 movement-side, both verified, neither implicated.
+## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+
+`sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
+musically ("A6-ish, a small bell" says the comment). The gong's actual
+dimensions imply something quite different.
+
+Wire 0.375 mm diameter, arc radius 13.125 mm, 90° of arc = **20.617 mm
+developed length**, L/d = 55. As a clamped–free steel bar (E 200 GPa,
+ρ 7850, bar wave speed 5048 m/s):
+
+| mode | frequency | ratio |
+|---|---|---|
+| fundamental | **623 Hz** | 1.00 |
+| 2nd | **3904 Hz** | 6.27 |
+| 3rd | 10932 Hz | 17.55 |
+
+Two mismatches, and the second is the interesting one:
+
+1. **Neither synthesised tone is a mode of this gong.** 880 Hz is 1.41× the
+   fundamental and 1760 Hz is 2.83× — the geometry offers 1× and 6.27×.
+2. **A struck bar's overtones are INHARMONIC.** 1 : 6.27 : 17.55, not
+   1 : 2 : 3. The octave pair models a *bell*, and the reason a steel wire
+   gong sounds like a "ting" rather than a pitched chime is precisely that
+   its partials are not harmonically related. Modelling it as an octave is
+   the one thing that removes the character being modelled.
+
+There is also a **design** question underneath the audio one: 623 Hz is
+low for an alarm. Real alarm-watch gongs (Memovox, Cricket) ring bright,
+in the low kHz, because that is what carries and what wakes someone. At
+these dimensions the fundamental is a low hum and the ring the ear would
+actually hear is the 3.9 kHz second mode. To put the FUNDAMENTAL in
+alarm territory (~2.5 kHz) the arc would need to be **45° instead of 90°**
+(10.3 mm developed), or the wire 1.50 mm thick at the current length —
+which is absurd for a gong. So the arc is roughly **twice as long as an
+alarm gong should be**.
+
+Closing this means deriving the tone from the geometry — `f_n = (β_nL)²
+·(d/4)·√(E/ρ) / (2πL²)`, struck at the modes the hammer actually excites —
+rather than picking notes. Note the hammer strikes IN-PLANE (radially at
+the free end), and a curved bar's in-plane modes sit somewhat above the
+straight-bar figures above, so the derivation should carry the curvature
+term rather than reuse this estimate.
+
+Filed rather than fixed: this is an audio-model change and a gong-geometry
+change, and the two want deciding together.
+
+**Mostly closed by §56.** The tone is now computed from the wire's own
+dimensions and the arc is a live parameter, so the pitch tracks the
+geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
+the inharmonic 1 : 6.27 ratio is what is sounded.
+
+Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
+modes sit above the straight-bar figures used here — `gongModes()` should
+carry the curvature term. And the DESIGN question is now exposed rather
+than answered: the 90° default still rings low for an alarm; whether the
+default arc should move to ~45° is a decision, not a bug.
+
 ## 19. CLOSED — the selector's sensing pin never touched the ring it read
 
 **Closed 2026-07-29.** Three defects, one contact — the third was found
@@ -7224,7 +7238,7 @@ An instrument that would catch a wrong count or a wrong phase is filed as
 roadmap §135; **no such instrument exists today**, and `inspect.js` has no
 concept of a gear mesh as a pair at all.
 
-## 63. PART DONE — the stall number is re-taken (≈1.6 mN, shaft-limited); the elbows' bending and the missing force arithmetic remain
+## 63. CLOSED (§137) — the stall number re-taken, the bends priced, and every named force path carrying its arithmetic
 
 **Re-taken 2026-08-20, from the built metal, in TODO 16's own first-order
 format.** The current chain: beak lever nose 1.395 u / tail 9.95 u —
@@ -7240,10 +7254,42 @@ through the other member. Anyone sizing against "48 mN restored" is
 sizing against a reverted fix. The stale `alarmOn only turns the column
 wheel` line at the tube law is also corrected (TODO 20 closed that debt).
 
-**What remains below, unchanged:** the elbows' un-computed bending moment,
-the five force paths with no arithmetic (finger→pusher, pawl at the saw
-root, the click's detent torque, the elbows, the §45 silence chain), and
-the disarm-vs-silence terminology note.
+**CLOSED whole by §137 (2026-08-21).** The remainder this item carried is
+paid, each piece beside its metal and held by the new `transfers` gate
+(every row re-verified against the scene and its own relations on every
+battery run):
+
+- **The elbows' bending is computed** — `priceRigidBentLink` beside
+  `makeElbowRodMesh`: M = F·e at the elbow's section, σ = M/(πr³/4), the
+  Euler fraction, and the AXIAL GIVE the bow costs, priced at the detent
+  envelope's declared ceiling with the floor-scaled figure beside it.
+  Measured on the shipped tree the two rods split exactly as this item's
+  finding predicts: the reset rod's solved offset is ZERO (the least-bend
+  scan found a straight line legal — its bend literally does not exist),
+  while the hack rod carries §125 Tier B's dogleg at e = 11.4 — σ 118 MPa
+  at the ceiling, axial give 30% of its stroke there and 3% at the window
+  floor. The bend is the low linkage's compliance concentrator, and its
+  row now says so.
+- **The five force paths have their numbers**: click detent **14.7 mN**
+  peak at the nose flank (inside the declared 5–50 mN window — the
+  in-repo anchor the envelope's declaration promised); pawl at the saw
+  root **13.8 mN** to index one tooth against the declared 1–5 N finger
+  band; the §45 silence finger **≈51 mN** (the feeler bias blade's k·δ
+  over the full pin drop, re-levered pivot-to-pivot); the lay shaft's
+  delivered **1.58 mN** at the tab (this item's own re-take, quoted) —
+  the one envelope miss, waived citing TODO 16; finger→pusher declared
+  as `CASE_PUSHER_INPUT_N`.
+- **One number this item published moves under the live build**: the
+  tail-stall "≈ 48 mN" above used the retired 0.42-unit rod-travel
+  constant (its own citation trail says the solve output replaced it);
+  computed against the registration solve's actual |rodTravel|
+  (0.099 u = 0.0376 mm), the tail's stall is **≈ 11.5 mN**. The k
+  (305 N/m) stands; the stroke it multiplies was stale.
+- **The terminology note is in the source** at both rods' laws (disarm
+  vs silence — see below, kept for the record).
+- The jumper-envelope prerequisite was taken (`probe-137-jumper-envelope`)
+  and its verdict lives in TODO 16's measurement block: the jumper is no
+  longer the blocker; the corridor is.
 
 
 Two findings from a dogleg audit, both about force paths that were never
@@ -7251,7 +7297,7 @@ computed.
 
 **The elbows are cosmetic.** `resetRod` and `hackRod` are each a rigid
 two-segment link with a fixed bend, and the build says so plainly
-(`main.js:3042–3052`): *"each rod is a RIGID two-segment link with a fixed
+(`main.js:3423` (cited 3042–3052 when filed; the file grows)): *"each rod is a RIGID two-segment link with a fixed
 bend … The link stays rigid — its pin-to-pin chord is the calibrated length —
 so the two-circle pose solves are untouched; **only the mesh is bent.**"* The
 lateral offset `e` is solved by scan up to `ELBOW_E_MAX` — 16 when this
@@ -7265,18 +7311,18 @@ link with 16 units of offset are the same object to every instrument in this
 repo. That is the honest counter-example to the motion-works bevel corners,
 which CLAUDE.md holds up as the template precisely because *"a plain rod
 meeting another rod at an angle has nothing at the joint that could transmit
-rotation around the corner"* (`main.js:2651–2656`) — the same argument, not
+rotation around the corner"* (`main.js:3009`) — the same argument, not
 yet applied to displacement through a bend.
 
 **TODO 16's headline is stale, in the favourable direction, and nobody
 re-took it.** That item measured a **1.5 mN** stall against a 5–50 mN detent
 budget, on a beak lever with a **36.5×** displacement gain. §68 then collapsed
 that tail from ~28 to 4.0 — *"a ~3:1 lever someone would design, retiring the
-§35 tail's 36.5× as measured debt"* (`main.js:15802–15803`). Meanwhile the
+§35 tail's 36.5× as measured debt"* (`main.js:17216`). Meanwhile the
 **shaft half was reverted**: two attempts to thicken `alarmLinkShaft` were
 rejected by CI on `Alarm link ⇄ Minute jumper` (overlap 0.312 and 0.310), so
-`ALARM_LINK_SHAFT_R` stands at 0.12 (`main.js:16085`) and
-`SLENDER_WAIVERS = { 'Alarm link': 'TODO 16' }` (`inspect.js:5810`) is still
+`ALARM_LINK_SHAFT_R` stands at 0.12 (`main.js:17514`) and
+`SLENDER_WAIVERS = { 'Alarm link': 'TODO 16' }` (`inspect.js:5835`) is still
 the table's only entry.
 
 So the chain today has a **much better lever** and the **same thin shaft**, and
@@ -7292,12 +7338,12 @@ the finger→pusher input force; the pawl's tangential force at the saw root;
 **the click's detent torque** — the load that actually holds the column
 indexed, and the thing a stall must overcome; the elbow rods' bending under
 their offset; and the §45 silence chain, which has `ALARM_SIL_RATIO` (a
-*displacement* ratio, `main.js:11173`) and nothing else.
+*displacement* ratio, `main.js:12221`) and nothing else.
 
 **One terminology correction worth keeping.** The rod the column wheel drives
 is `alarmLinkRod`, and it **disarms** — it prevents the alarm ringing. The rod
 that **silences a ringing alarm** is the §45 chain (crown collar → release
-lifter → silence rocker → release feeler, `main.js:11136–11266`), which the
+lifter → silence rocker → release feeler, `main.js:12130` ff.), which the
 column wheel does not drive. They are different mechanisms and conflating them
 will send a fix to the wrong one.
 
@@ -7675,3 +7721,32 @@ arrival-profile assert (`proudOf` across the t grid) inherits the same
 correction for free. Until then the row is waived citing this item:
 the arrest still arrests — 0.05 early, pressed into the coil rather than
 kissing it.
+
+## 72. The §54 report's seven unwaived over-ceiling members, catalogued (§137)
+
+§137 registered `checkSlenderness` in the battery at last (it was exported
+and reachable by nothing — the restoring defect found a second time), and
+registration means the report's standing findings need a home a reader can
+act from. The gate holds only waiver STALENESS (§54's report covenant is
+kept: rows never fail the battery); these rows are the reported residue,
+measured on the shipped tree at registration:
+
+| unit / mesh | λ | against | note |
+|---|---|---|---|
+| Alarm release lifter / `alarmLifterRun` | 71.3 | 30 | the radial run — long by design (it spans head to fork); a §54 answer is a taller section or a mid-guide that SUPPORTS (the cheek guide locates, it does not carry) |
+| Hack rod / `rodSeg` (long leg) | 67.7 | 30 | the dogleg's long segment; §137 priced its compliance (give 3–30% of stroke across the load band) — a section fix must clear the same 0.434 corridor that binds the alarm-link shaft |
+| Reset rod / `rodSeg` (long leg) | 46.6 | 30 | the straight rod (solved e = 0); ROD_R 0.35 derives from §85 C3's corridor, so thickening is a corridor negotiation |
+| Keyless works / unnamed | 40.4 | 30 | first name it (§54's own rule: a row that cannot name its member is not actionable), then derive |
+| Alarm crown / unnamed | 35.4 | 30 | the stem — same: name, then derive |
+| Alarm release feeler / unnamed | 35.1 | 30 | the tail band; its stock is TODO 11's territory |
+| Hack rod / `rodSeg` (short leg) | 32.5 | 30 | marginal — 8.6 mm at 0.265; the §54 target (27) wants 0.32 |
+
+(The two waived rows beside these — `alarmLinkShaft` λ 139 and
+`alarmLinkRod` λ 31.3 — are TODO 16's, re-founded by §137's measurement on
+the corridor profile; see that item.)
+
+Closing a row means deriving its section from its span against §54's
+ceiling and landing it through the battery — not waiving it. Two of the
+unnamed rows close halfway just by being named. None of these is new debt:
+they were invisible only because the instrument was unreachable, which is
+the worse state this item replaces.

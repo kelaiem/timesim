@@ -14212,3 +14212,128 @@ NOT to move is the strike: the head's nearest approach to the gong over the
 `alarmStrike` axis measures 35.7014 on the base and **35.6872** here — the
 0.014 being the flat face standing marginally nearer than the sphere's crown
 at the swung pose — against a wire surface at 35.5 and a rest face at 35.9.
+
+## §137 — Corners as real parts: the transfer audit
+
+**Where this came from.** The battery's gates were all SPATIAL — collisions,
+clearances, contact closure — so no instrument asked whether a corner
+actually TRANSMITS what it claims. That is the hole §35 fell through (a
+36.5× lever "nobody asked for" behind green gates), and TODO 63's dogleg
+audit named its standing instance: the elbow rods, rigid two-segment links
+whose bend has no pivot and whose bending moment nothing computed — "a
+straight two-force link and a link with units of offset are the same object
+to every instrument in this repo."
+
+### The vocabulary, and where a row lives
+
+Five named idioms, with the rule for which a transfer earns
+(`TRANSFER_IDIOMS`, main.js): **bevelPair** (rotation through an angle —
+equal counts at an apex, the motion-works corners the template),
+**doglegIdler** (rotation across a lateral offset — idlers whose azimuth is
+SCORED against the corridor, never authored, and which cancel out of the
+ratio), **crank** (displacement through a bend or plane change on a PIVOT —
+two designed arms about a bearing that takes the side load),
+**rigidBentLink** (a routing bend with NO pivot — legitimate only while the
+moment its offset induces is computed and priced), and **riserReach**
+(a plane change with no direction change, loaded axially).
+
+Rows are declared BESIDE the metal — `declareTransfer(site, row)` is
+`declareRestoring`'s discipline — because every quantity a row needs (the
+solved elbow `e`, `bearFrac`, crank arms, the rocker's `aF/aP`) is a
+module-local const of `main.js`, unreachable from a static table in
+`inspect.js`. The declarations freeze into `clock.transfers`
+(EQUALISATION's shape), and `checkTransfers` consumes the payload without
+re-deriving anything: it re-verifies each row's OWN relations (ratio ≡
+armOut/armIn; a bent link's moment ≡ load·e·UNIT_MM), holds every name
+verbatim against the scene (stale detection — inspect.js couples by
+string), classifies malformed rows, and tests envelope membership. Tiers
+are `restoring`'s: `ok` is always true, the rows are the product, the
+battery gates the gateable subsets plus a positive control pushed through
+the same classifier.
+
+**Two numbers stopped being prose.** TODO 16's "a detented selector ring
+plausibly needs 5–50 mN" had never been anyone's constant — it lived in the
+item's text and CLAUDE.md quoted it forward. It is
+`SELECTOR_DETENT_WINDOW_MN` in layout.js now, an envelope in the
+design-priority sense (never forkable), and rows name their envelope so
+none can carry a private budget. `CASE_PUSHER_INPUT_N` (1–5 N, measured
+chronograph-pusher actuation) declares the input end. Young's modulus
+collapsed to one copy the same day (`STEEL_E_PA` + `cantileverK_N_per_m`,
+with inspect.js's and the oscillator's private copies re-sourced as
+consumers, values unmoved).
+
+### The arithmetic that landed (TODO 63's five paths, all closed)
+
+| path | number | note |
+|---|---|---|
+| click detent | **14.7 mN** peak at the nose flank | ψ(OUT)−ψ(SEAT) through the blade at bearFrac·L — INSIDE the declared window, which is the anchoring the window's declaration promised |
+| pawl at the saw root | **13.8 mN** per indexing press | the click torque paid back at the saw's own outermost radius (ratchetPoly); against the 1–5 N finger band the chain starves at the SHAFT, never the input |
+| silence finger | **≈51 mN** | the feeler bias blade's k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot; the lifter carries aF/aP of it |
+| lay shaft delivery | **1.58 mN** at the drive tab | TODO 63's re-taken 22 N/m × ALARM_SEL_TRAVEL, QUOTED not re-derived — the one envelope miss, waived citing TODO 16 |
+| elbow bends | see below | the beam-column pair, both rods |
+
+One published number moved by being computed against the live build: the
+beak tail's stall is k × the registration solve's own |rodTravel|
+(0.0376 mm) ≈ **11.5 mN**, not the 48 mN TODO 63 quoted against the retired
+0.42-unit rod-travel constant. The k (305 N/m) stands; the stroke was stale.
+
+### The elbows: rigid bend kept, and priced
+
+A mid-pivot buys zero P0 — both rods are crown-driven both ways, and a pivot
+adds a degree of freedom nothing constrains without a new guide — at the
+cost of invalidating both two-circle solves and their calibrations, the
+elbow scan, `LOW_LINKAGE_OBSTACLES`, and the tick laws. So the bend stays
+and is priced (`priceRigidBentLink`): M = F·e at the elbow's section,
+σ = M/(πr³/4), the Euler fraction, and the AXIAL GIVE the amplified bow
+costs — the bent link's hidden compliance, the quantity a straight link
+does not have. F is the detent window's ceiling as a declared bound, the
+floor-scaled figure stated beside it.
+
+Measured, the two rods split exactly as the vocabulary predicts. The reset
+rod's solved offset is **zero** — the least-bend objective found a straight
+line legal, so its row prices a bend that does not exist. The hack rod
+carries §125 Tier B's southern dogleg at **e = 11.4**: σ 118 MPa at the
+ceiling, Euler fraction 6.5%, axial give **30% of its stroke at the ceiling
+and 3% at the window floor** — the honest working regime. The bend is the
+low linkage's compliance concentrator, and its row says so. The knuckle
+sphere is a formed boss over the bend; it makes no pivot claim and needed
+no geometry change.
+
+**The bell crank was never missing.** The filing said the repo had none;
+it has two in substance — `stopCrank` (a see-saw on a radial hinge) and
+§45's `alarmSilRocker` (designed arms, "designed, not inherited") — and the
+vocabulary names them `crank` rather than inventing a part.
+
+### The slenderness report, reachable — and the waiver, re-founded
+
+`checkSlenderness` was exported and registered NOWHERE (the restoring
+defect, found a second time); it is in `CHECKS` and the battery now. Its
+rows stay a REPORT by §54's own covenant — seven unwaived over-ceiling
+members exist and are TODO 72's catalogue — and what gates is WAIVER
+STALENESS: an entry naming a unit with no over-ceiling row fails, so
+deleting a fix's waiver is structurally part of the fix.
+
+`probe-137-jumper-envelope` then took TODO 16's named prerequisite (virgin
+boot, crown pulled through step(dt), 250 settled setting samples) and
+retired the waiver's RATIONALE without retiring the debt: **the minute
+jumper never enters the shaft's neighbourhood** — §68 flipped the chord and
+§112 moved the alarm module after the CI rejections, and the
+radius-insensitivity of those rejections (0.312 vs 0.310) was the tell. The
+live binder is the corridor, measured against the §36 registry's pose-net
+hulls with the link excluded: allowance **0.434 u** along most of the chord
+(the setting idler's swept annulus), **0.801 u** under the dial plate,
+minimum 0.428. Against those walls no §54-legal section plus §50-legal bush
+walls fits any station layout on the current chord — partial thickening
+re-enters the same wall through the bush rebores. The bind is LAYOUT; per
+the design-priority rule the fix is position space (re-site the idler or
+re-route the chord, §22/§33 machinery), filed in TODO 16 with the numbers.
+The acceptance's "retire the waiver" branch therefore resolved as its other
+branch allows: the measured refusal is the record, the waiver stands
+RE-FOUNDED on live numbers in all three places its dead story lived, and
+the staleness gate guarantees the entry cannot outlive the layout fix.
+
+**Verified.** Boot silent; 13 transfer rows — 0 malformed, 0 stale,
+0 mismatched, 0 unwaived, 1 waived (the seed), control PASS; slenderness
+9 over / 7 unwaived / 0 stale waivers; identity geometry untouched
+throughout (the audit is declarations and two mesh names — the fingerprint
+hashes unit boxes at poses, and no pose law moved).
