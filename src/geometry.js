@@ -4349,6 +4349,12 @@ export function makeBrandMark({ r, tubeR, material = MATS.steel, curveSegments =
     return g;
   });
   const merged = mergeGeos(geos, m.shapes.map((_, i) => `stroke#${i}`));
+  // The monogram's strokes CROSS by design — an ∞ is its crossings — so
+  // every stroke pair is declared expected-overlap (meshIntegrity skips
+  // declared pairs and reports the skip; an undeclared overlap would be a
+  // real finding, but here there is no such thing as an illegal crossing).
+  merged.userData.subBodyOverlapOk = m.shapes.flatMap((_, i) =>
+    m.shapes.slice(i + 1).map((_, j) => [`stroke#${i}`, `stroke#${i + 1 + j}`]));
   const mesh = new THREE.Mesh(merged, material);
   mesh.userData = { r: m.r, tubeR: m.tubeR, height: m.H, strokeWidth: m.sw, proud: m.tubeR };
   return mesh;

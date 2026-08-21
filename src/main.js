@@ -5108,14 +5108,40 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     let tris = (N + 1) * pin.idx.length;
     for (let i = 0; i < N; i++) tris += (isOuter(i) ? outer : inner).idx.length;
     chainBuf = { pos: new Float32Array(total), nrm: new Float32Array(total), idx: new Uint32Array(tris) };
+    // §77 — the sub-body declaration is a function of the template sequence
+    // alone, exactly like the index it describes, so it is built in the same
+    // guard and shared across rebuilds until N changes: TRIANGLE ranges
+    // (weld/stamp-invariant where vertex ranges are not — the ranges tile
+    // chainBuf.idx by construction), one body per link plate and one per
+    // rivet, which is what lets the declared tier ask "does link 12's pin
+    // cross link 12's plate" instead of sweeping a 46k-triangle blob
+    // against itself. meshIntegrity validates the table (bounds, overlap,
+    // names) and GATES a malformed one.
+    const subBodies = [];
     let e = 0, base = 0;
-    const stamp = (tmpl) => {
+    const stamp = (tmpl, bodyName) => {
+      subBodies.push({ name: bodyName, triStart: e / 3, triCount: tmpl.idx.length / 3 });
       for (let i = 0; i < tmpl.idx.length; i++) chainBuf.idx[e + i] = tmpl.idx[i] + base;
       e += tmpl.idx.length;
       base += tmpl.pos.length / 3;
     };
-    for (let i = 0; i < N; i++) stamp(isOuter(i) ? outer : inner);
-    for (let i = 0; i <= N; i++) stamp(pin);
+    for (let i = 0; i < N; i++) stamp(isOuter(i) ? outer : inner, `link#${i}`);
+    for (let i = 0; i <= N; i++) stamp(pin, `rivet#${i}`);
+    chainBuf.subBodies = subBodies;
+    // ADJACENT pairs are declared expected-overlap, and only adjacent
+    // pairs: the chain's articulation is a declared fiction (the frame
+    // loop below — up to ~36.3° of per-joint twist a real chain would
+    // shed by joint play), so neighbouring rigid stamps interpenetrate at
+    // the joint BY DECLARATION, measured at up to 0.24 u at the boot pose
+    // (TODO 76 carries the numbers). A NON-adjacent pair overlapping is
+    // never the fiction — it is a corrupted stamp or a collapsed curve —
+    // so those stay live rows in meshIntegrity's report.
+    const overlapOk = [];
+    for (let i = 0; i < N; i++) {
+      if (i + 1 < N) overlapOk.push([`link#${i}`, `link#${i + 1}`]);
+      overlapOk.push([`link#${i}`, `rivet#${i}`], [`link#${i}`, `rivet#${i + 1}`]);
+    }
+    chainBuf.subBodyOverlapOk = overlapOk;
   }
   const { pos, nrm, idx } = chainBuf;
   let off = 0;
@@ -5206,6 +5232,11 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // plates (rivets live past linkBase[N]), plus the wrap bookkeeping to pick
   // the links, so builtPtsNear indexes the stamp instead of re-deriving it.
   geo.userData.links = { base: linkBase, len, N };
+  // §77 — the declared route's table, re-attached to every geometry the
+  // rebuild emits (same discipline as `seat`/`links` above: riding the
+  // geometry means a rebuild can never serve a stale declaration).
+  geo.userData.subBodies = chainBuf.subBodies;
+  geo.userData.subBodyOverlapOk = chainBuf.subBodyOverlapOk;
   return geo;
 }
 function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end

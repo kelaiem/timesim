@@ -250,11 +250,12 @@ const BATTERY = [
   // can be held on day one — the in-check synthetic controls and every
   // declared sub-body table's validity (a malformed table is a stale
   // selector, the INTRA_UNIT_CONTACTS precedent).
-  { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY }, cost: 2,
+  { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY }, cost: 10,
     gate: 'controls PASS and 0 malformed sub-body declarations — zeroArea/inverted rows are a REPORT (§40)',
     fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]), ...r.subBodies.malformed],
     note: (r) => `${r.geometries} geometries / ${r.triangles} tris: zeroArea ${r.zeroArea.total} in ${r.zeroArea.geometries} geometries (${r.zeroArea.exactZero} exact), `
-      + `${r.inverted.rows.length} inverted, subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries` },
+      + `${r.inverted.rows.length} inverted, subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries; `
+      + `pairs ${r.subBodies.pairs.tested} tested / ${r.subBodies.pairs.skippedDeclaredOverlap} declared / ${r.subBodies.pairs.rows.length} interior` },
   { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY }, cost: 6,
     gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors',
     fails: (r) => [...r.violations, ...r.unmatchedSelectors.map((u) => ({ unmatchedIntraUnitSelector: u }))],

@@ -61,6 +61,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
+| 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -8070,8 +8071,9 @@ The catalogue, by pattern (collapsed edge / collinear / sliver per geometry):
 - **`chainRun` carries 1,040 COLLAPSED triangles** (of 23,464 at the boot
   tension) — repeated vertex positions inside the stamped buffer. The chain
   is TODO 27's own rebuilt body, so this is either the templates carrying
-  collapsed faces (×N links) or the stamp duplicating a seam; per-link it is
-  ~5 triangles, which smells like a cap fan on one of the three templates.
+  collapsed faces (×N stamps) or the stamp duplicating a seam; at today's
+  43-link chain that is ~24 per JOINT (1,040 over 44 rivets), which smells
+  like cap fans on the pin template's three cylinders.
 - **The `ringExtrude` family, 85+ geometries**: the `0/0/4` × 51 and
   `0/0/8` × 34 patterns — every gear hub, jewel ring, barrel wall/floor and
   the column-wheel base disc, all carrying the absarc-seam and earcut
@@ -8124,3 +8126,32 @@ Each fix moves the fingerprint and re-runs the sweeps; `meshIntegrity`'s
 `inverted` rows emptying is the acceptance, and the check's synthetic
 inverted-box control (+8 upright, −8 flipped) keeps the tier honest while
 the rows drain.
+
+## 76. The chain's declared articulation fiction, measured: adjacent bodies interpenetrate up to 0.24 u
+
+The chain's build DECLARES its articulation a fiction — the frame loop in
+`buildChainLinkGeometry` says so in as many words: wrap links carry up to
+~36.3° of per-joint twist (measured over the reserve sweep) that a real
+chain would shed by joint play, because each link is a rigid stamp posed by
+its own curve frame rather than a body articulating about its pin. §77's
+declared tier is the first instrument that could SEE the consequence, and
+on arrival it measured it: **91 adjacent-body pairs interpenetrate at the
+boot pose** — every link⇄link and link⇄rivet neighbour pair on the wound
+chain — spans median 0.05 u, max **0.24 u** (a rivet head through its
+leaf), cross-confirmed by BVH tri-tri on the same index ranges. Zero
+NON-adjacent pairs fire, which is what says the stamps themselves are
+sound: the burial lives exactly at the joints the fiction bends.
+
+The declaration now lives where the fiction does: `buildChainLinkGeometry`
+marks ADJACENT pairs `subBodyOverlapOk` citing this item, so
+`meshIntegrity` skips them (reported as a count) and keeps every
+non-adjacent pair live — a corrupted stamp or collapsed curve still rows.
+`tools/probe-77-chain.mjs` holds the declaration honest at three tensions.
+
+**The fix is the fiction's, not the instrument's**: real articulation —
+links rotating only about their pins, lean shed over the free span by
+distributed joint play — is chain-model work (the §124/§151 lineage), and
+whether 0.24 u of joint burial is acceptable display fiction or debt worth
+that work is an owner's call. Until then this item is the number: re-run
+the probe after any chain-frame change, and if the max span GROWS, the
+fiction deepened and this item's figures are stale.

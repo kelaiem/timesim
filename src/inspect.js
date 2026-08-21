@@ -6129,6 +6129,72 @@ function classifyTriangle(ax, ay, az, bx, by, bz, cx, cy, cz) {
   return { area, kind: area === 0 ? 'collinear' : 'sliver' };
 }
 
+// §77 tier 3 (declared route) — INTERIOR MATERIAL between two sub-bodies of
+// one mesh. Not tri-tri crossing: TODO 27's own formulation, generalized —
+// sample one body's vertices and ask whether any sits strictly INSIDE the
+// other body's closed surface, by parity along +z over that body's triangle
+// range alone. Robust exactly where tri-tri is not: a rivet head sitting
+// FLUSH in its counterbore shares surfaces without sharing interior, and a
+// pin through a BORED plate threads void, not material — the bore itself is
+// what makes the pair legal, which is the whole point of drilling it
+// (TODO 27). Legal because every buried face is capped (weldGeometry
+// property 2: no mesh opens); the strictness epsilon is TODO 27's own
+// 1e-6 assert floor. Zero-area triangles are SKIPPED by the crossing
+// counter — the chain carries 1,040 of them (TODO 74) and a parity count
+// must not consult a face with no area (the vendored raycast's third patch
+// holds the same rule one layer down).
+const INTERIOR_EPS = 1e-6;
+function rangeInteriorTest(pos, idx, bodyA, bodyB) {
+  // Sample A's unique VERTICES plus unique EDGE MIDPOINTS: vertices alone
+  // miss a through-piercing (a pin crossing a thin plate leaves no vertex
+  // inside the slab — its side edges' midpoints are what land there, and
+  // they are exactly what TODO 27's line-sampling assert walked). Still
+  // sampling, not a proof — item 7's standing caveat — but the same mode
+  // every sweep in this file accepts.
+  const points = [];
+  const verts = new Set(), edges = new Set();
+  for (let t = bodyA.triStart * 3; t < (bodyA.triStart + bodyA.triCount) * 3; t += 3) {
+    const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+    for (const v of [a, b, c]) if (!verts.has(v)) { verts.add(v); points.push([pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]]); }
+    for (const [u, v] of [[a, b], [b, c], [a, c]]) {
+      const key = u < v ? u * 0x100000 + v : v * 0x100000 + u;
+      if (edges.has(key)) continue;
+      edges.add(key);
+      points.push([(pos[u * 3] + pos[v * 3]) / 2, (pos[u * 3 + 1] + pos[v * 3 + 1]) / 2, (pos[u * 3 + 2] + pos[v * 3 + 2]) / 2]);
+    }
+  }
+  let insidePoints = 0, maxSpan = 0, sampled = 0;
+  for (const [px, py, pz] of points) {
+    sampled++;
+    // Crossings of the vertical line (px,py) with B's triangles, above and
+    // below pz — the TODO 27 assert's hitsAt, restricted to one range.
+    let above = 0, below = 0, nearestUp = Infinity, nearestDown = Infinity, graze = false;
+    for (let t = bodyB.triStart * 3; t < (bodyB.triStart + bodyB.triCount) * 3; t += 3) {
+      const ia = idx[t] * 3, ib = idx[t + 1] * 3, ic = idx[t + 2] * 3;
+      const ax = pos[ia] - px, ay = pos[ia + 1] - py;
+      const bx = pos[ib] - px, by = pos[ib + 1] - py;
+      const cx = pos[ic] - px, cy = pos[ic + 1] - py;
+      const d = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+      if (Math.abs(d) < 1e-12) continue;                    // edge-on or zero-area: no countable crossing
+      const l1 = (bx * cy - cx * by) / d, l2 = (cx * ay - ax * cy) / d, l3 = 1 - l1 - l2;
+      if (l1 < -1e-9 || l2 < -1e-9 || l3 < -1e-9) continue; // outside the triangle's shadow
+      if (l1 < 1e-9 || l2 < 1e-9 || l3 < 1e-9) { graze = true; break; } // on an edge: parity unreliable, skip the point
+      const z = l1 * pos[ia + 2] + l2 * pos[ib + 2] + l3 * pos[ic + 2];
+      const dz = z - pz;
+      if (Math.abs(dz) <= INTERIOR_EPS) { graze = true; break; }  // on B's surface: not strictly interior
+      if (dz > 0) { above++; if (dz < nearestUp) nearestUp = dz; }
+      else { below++; if (-dz < nearestDown) nearestDown = -dz; }
+    }
+    if (graze) continue;                                    // the safe direction: a grazed sample proves nothing
+    if (above % 2 === 1 && below % 2 === 1) {               // odd both ways: strictly inside B
+      insidePoints++;
+      const span = Math.min(nearestUp, nearestDown);
+      if (span > maxSpan) maxSpan = span;
+    }
+  }
+  return { insidePoints, maxSpan, sampled };
+}
+
 export async function checkMeshIntegrity(clock, opts = {}) {
   const yieldEvery = opts.yieldEvery ?? 16;
 
@@ -6174,7 +6240,9 @@ export async function checkMeshIntegrity(clock, opts = {}) {
   const zeroRows = [];
   const invertedRows = [];
   const malformed = [];
+  const pairRows = [];
   let triangles = 0, zeroTotal = 0, exactZero = 0, declaredGeometries = 0, declaredBodies = 0;
+  let pairsCandidate = 0, pairsTested = 0, pairsSkippedDeclared = 0;
   let gi = 0;
   for (const [geo, rec] of byGeo) {
     if (++gi % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
@@ -6254,7 +6322,58 @@ export async function checkMeshIntegrity(clock, opts = {}) {
           if (b.triStart + b.triCount > tris) { bad(`sub-body '${b.name}' runs past the mesh (${b.triStart}+${b.triCount} > ${tris} tris)`); okAll = false; break; }
           prevEnd = b.triStart + b.triCount;
         }
-        if (okAll) declaredBodies += sb.length;
+        if (okAll) {
+          declaredBodies += sb.length;
+          // Tier 3 over the validated table: per-body AABBs prefilter the
+          // pairs (bodies that share no box share no interior), then the
+          // interior-material test runs BOTH directions — A's vertices in
+          // B and B's in A, because a thin body can pierce a fat one
+          // without a fat vertex entering the thin one. A builder may
+          // declare an overlap INTENTIONAL (`userData.subBodyOverlapOk`,
+          // name pairs — the ∞ monogram's strokes cross by design); a
+          // listed name that matches no body is a malformed row, the
+          // stale-selector rule again.
+          const boxes = sorted.map((b) => {
+            let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+            for (let t = b.triStart * 3; t < (b.triStart + b.triCount) * 3; t++) {
+              const vi = idx[t] * 3;
+              const x = pos[vi], y = pos[vi + 1], z = pos[vi + 2];
+              if (x < x0) x0 = x; if (x > x1) x1 = x;
+              if (y < y0) y0 = y; if (y > y1) y1 = y;
+              if (z < z0) z0 = z; if (z > z1) z1 = z;
+            }
+            return { b, x0, y0, z0, x1, y1, z1 };
+          });
+          const okPairs = new Set();
+          const declaredOk = geo.userData.subBodyOverlapOk;
+          if (declaredOk !== undefined) {
+            for (const [na, nb] of declaredOk) {
+              if (!names.has(na) || !names.has(nb)) { bad(`subBodyOverlapOk names an unknown body: '${!names.has(na) ? na : nb}'`); continue; }
+              okPairs.add(na < nb ? `${na}|${nb}` : `${nb}|${na}`);
+            }
+          }
+          for (let i2 = 0; i2 < boxes.length; i2++) {
+            for (let j2 = i2 + 1; j2 < boxes.length; j2++) {
+              const A = boxes[i2], B = boxes[j2];
+              if (A.x0 > B.x1 || B.x0 > A.x1 || A.y0 > B.y1 || B.y0 > A.y1 || A.z0 > B.z1 || B.z0 > A.z1) continue;
+              pairsCandidate++;
+              const key = A.b.name < B.b.name ? `${A.b.name}|${B.b.name}` : `${B.b.name}|${A.b.name}`;
+              if (okPairs.has(key)) { pairsSkippedDeclared++; continue; }
+              pairsTested++;
+              const r1 = rangeInteriorTest(pos, idx, A.b, B.b);
+              const r2 = rangeInteriorTest(pos, idx, B.b, A.b);
+              if (r1.insidePoints || r2.insidePoints) {
+                pairRows.push({
+                  unit: rec.unit, mesh: meshName, a: A.b.name, b: B.b.name,
+                  insidePoints: r1.insidePoints + r2.insidePoints,
+                  maxSpan: +Math.max(r1.maxSpan, r2.maxSpan).toFixed(4),
+                  sampled: r1.sampled + r2.sampled,
+                });
+              }
+            }
+            if (i2 % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+          }
+        }
       }
     }
   }
@@ -6302,7 +6421,49 @@ export async function checkMeshIntegrity(clock, opts = {}) {
     const up = volOf(F), down = volOf(F.map(([a, b, c]) => [a, c, b]));
     if (Math.abs(up - 8) > 1e-12) return `BROKEN — the upright box control measured ${up}, expected +8`;
     if (Math.abs(down + 8) > 1e-12) return `BROKEN — the inverted box control measured ${down}, expected −8`;
-    return 'PASS — sliver and collapsed edge fire, a healthy triangle is silent, the box measures +8 upright and −8 inverted';
+
+    // Tier 3's control, the un-bored chain leaf REPLICA (a check-local
+    // rebuild, not an import of the template builder — main.js imports this
+    // module, so importing the builder back would be a cycle; the durable
+    // rule is kept, the control lives here and no geometry fix can delete
+    // it): a plate at the leaf's measured 0.145 thickness with a square pin
+    // through it must FIRE with the pin's midpoints inside the slab, and
+    // the same plate BORED — four boxes leaving a hole the pin threads —
+    // must be SILENT, because the bore is what makes a chain joint legal
+    // (TODO 27, whose assert validated itself the same two ways).
+    const cpos = [], cidx = [];
+    const box = (cx, cy, cz, hx, hy, hz) => {
+      const v0 = cpos.length / 3;
+      for (const [sx, sy, sz] of [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]])
+        cpos.push(cx + sx * hx, cy + sy * hy, cz + sz * hz);
+      for (const [a, b, c] of F) cidx.push(v0 + a, v0 + b, v0 + c);   // F is outward (volOf(F) = +8 above proves it); parity ignores winding but the control keeps its solids honest
+      return 12;
+    };
+    const T = 0.145 / 2;                                    // the leaf's half-thickness, TODO 27's measured fire depth
+    let tri0 = 0;
+    const bodies = [];
+    const add = (name, tris) => { bodies.push({ name, triStart: tri0, triCount: tris }); tri0 += tris; };
+    // Un-bored: one solid plate + a square pin standing through it.
+    add('plate', box(0, 0, 0, 1, 1, T));
+    add('pin', box(0, 0, 0, 0.2, 0.2, 0.5));
+    const posA = Float64Array.from(cpos), idxA = Uint32Array.from(cidx);
+    const fire = rangeInteriorTest(posA, idxA, bodies[1], bodies[0]);
+    if (!fire.insidePoints) return 'BROKEN — the un-bored leaf replica did not fire (a pin through solid plate went unseen)';
+    if (Math.abs(fire.maxSpan - T) > 0.02) return `BROKEN — the replica fired at span ${fire.maxSpan.toFixed(4)}, expected ~${T} (the plate's half-thickness)`;
+    // Bored: the same plate as four boxes around a 0.3-square hole.
+    cpos.length = 0; cidx.length = 0; tri0 = 0; bodies.length = 0;
+    let plateTris = 0;
+    plateTris += box(0, -0.65, 0, 1, 0.35, T);
+    plateTris += box(0, 0.65, 0, 1, 0.35, T);
+    plateTris += box(-0.65, 0, 0, 0.35, 0.3, T);
+    plateTris += box(0.65, 0, 0, 0.35, 0.3, T);
+    add('plate', plateTris);
+    add('pin', box(0, 0, 0, 0.2, 0.2, 0.5));
+    const posB = Float64Array.from(cpos), idxB = Uint32Array.from(cidx);
+    const clear = rangeInteriorTest(posB, idxB, bodies[1], bodies[0]);
+    if (clear.insidePoints) return `BROKEN — the BORED replica fired (${clear.insidePoints} points): the engine cannot tell a bore from a burial`;
+
+    return 'PASS — sliver and collapsed edge fire, a healthy triangle is silent, the box measures +8 upright and −8 inverted, the un-bored leaf replica fires at the plate\'s half-thickness and the bored one is silent';
   })();
 
   return {
@@ -6317,7 +6478,14 @@ export async function checkMeshIntegrity(clock, opts = {}) {
     zeroArea: { threshold: ZERO_AREA_MAX, total: zeroTotal, exactZero, geometries: zeroRows.length, rows: zeroRows },
     inverted: { rows: invertedRows },
     aggregates,
-    subBodies: { declaredGeometries, bodies: declaredBodies, malformed, pairs: null },   // pairs: tier 3's slot (landing 3)
+    subBodies: {
+      declaredGeometries, bodies: declaredBodies, malformed,
+      pairs: {
+        candidates: pairsCandidate, tested: pairsTested,
+        skippedDeclaredOverlap: pairsSkippedDeclared,
+        rows: pairRows.sort((a, b) => b.maxSpan - a.maxSpan || a.unit.localeCompare(b.unit) || a.a.localeCompare(b.a)),
+      },
+    },
     census,
   };
 }
