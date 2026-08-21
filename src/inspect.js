@@ -7317,6 +7317,13 @@ export const TRANSFER_ENVELOPES = {
 };
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
 export const TRANSFER_WAIVERS = {
+  // The arming chain's known starvation, in the audit's own vocabulary: the
+  // lay shaft delivers ≈1.6 mN at the drive tab against the detent window's
+  // 5 mN floor — TODO 63's re-taken number on the shipped 0.12 shaft, owned
+  // by TODO 16 (two thickenings CI-rejected on Alarm link ⇄ Minute jumper;
+  // the jumper-envelope measurement is the named prerequisite for the next
+  // attempt). The waiver is the finding made visible, not made to go away.
+  'alarm arming: lay shaft cranks (rod foot → ring drive tab)': 'TODO 16',
 };
 export function checkTransfers(clock) {
   const payload = clock.transfers;
