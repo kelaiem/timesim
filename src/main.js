@@ -427,6 +427,38 @@ const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h
 const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
 if (FUSEE_LAND_W < 0.02)
   console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
+const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
+// Base DERIVED from the plate's design goal. The old bind (the chain's
+// lowest span clearing the movement-side crown wheel) vanished when the
+// keyless works moved to the dial side — after that, the only thing the
+// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
+// sits at max(tallest under-plate part, hairspring stack) + margin, and
+// the fusee tip was that tallest part by ~2.5, holding the whole back of
+// the movement high and the balance cock BELOW the plate band it is meant
+// to sit in (the long-standing console warning). Keep the tip AT or under
+// the hairspring stack's top so the spring stays the plate's binding
+// member and everything above — plate, rod planes, post, stop-work tail —
+// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
+// disc reaches under the cone's footprint (origin is only 16.2 from the
+// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
+// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
+// below its centre-line — must clear the wheel's top face by the margin.
+// Both binds explicit. Since §61 the CENTER bind governs by construction:
+// FUSEE_BAND was derived to fill exactly the space between the two binds,
+// so the max() seats the cone on the wheel-side bind with the tip 0.04
+// under the spring top (the guard pair in the band derivation). The
+// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
+// future change hands it back the governing role.
+// (This z stack — base, groove start, band — is declared BEFORE the torque
+// law below, because the span-aware solve consumes the wrap's z stations:
+// the free span's length has a z leg, and its give is part of the chain
+// conservation the law integrates. Same hoist reason as COIL_TOP's.)
+const FUSEE_BASE_Z = Math.max(
+  SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
+  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
+);
+const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
+const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 // THE SPRING'S TORQUE LAW — derived from the ribbon, and the cone solved
 // against it (TODO 32, closing; TODO 40 row 1 built the machinery).
 //
@@ -463,15 +495,52 @@ const SETUP_CLICKS = 23;          // integer detents of pre-tension — 0.95833 
 const SETUP_SWEEP = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
 //
 // The self-consistent solve (fusee design as the trade actually did it).
-// Three laws close on each other: M = k·(θ_s + C/R_wrap) (the ribbon),
-// M(t)·r(t) = const (the equalisation), dC/dt = 2π·W·r(t) (one wrap turn of
-// chain per turn of reserve, at the radius it lands on). Substitute
-// u = θ_s + C/R_wrap and the system integrates in one line: u·du ∝ dt, so
+// Three laws close on each other: M = k·(θ_s + φ) (the ribbon, φ the drum's
+// winding rotation — its ends are on the drum wall and the static arbor),
+// M(t)·r(t) = const (the equalisation), and CHAIN CONSERVATION — a chain is
+// a fixed length of steel, so what the cone gathers plus what the span
+// holds is what the drum pays out:
 //
-//   u(t) = √(θ_s² + β·t)         β = 4π·W·r₀·θ_s / R_wrap   (k cancels)
-//   r(t) = r₀·θ_s / u(t)         the flank — inverse square root, not the
-//                                 hyperbola the linear-in-t law wanted
-//   C(t) = R_wrap·(u(t) − θ_s)   the chain, closed form, from the same u
+//   R_wrap·dφ/dt = 2π·W·r(t) + S′(t)
+//
+// with S(t) the free span. Substitute u = θ_s + φ and r = P/u (the level
+// product, exact by construction — the equalisation gate holds an identity,
+// not a fit) and the system is one first-order ODE in u, u(0) = θ_s,
+// where every term is a piece of the DRAWN construction's own length
+// bookkeeping (chainLayoutAt is the geometry this law must conserve):
+//
+//  · the wrap gains chain at √((2π·W·r)² + zRate²) per unit reserve — the
+//    groove is a helix, so the climb rides along (zRate = zSpan·f_active);
+//  · the span is the 3-D tangent segment,
+//    S = √(D² − (R_wrap − r)² + Δz²), Δz its z leg — the departure
+//    station climbs the band while the coil's takeoff descends one
+//    CHAIN_COIL_PITCH per drum turn;
+//  · the coil's chain is R_eff times its ANGULAR span, and that span is
+//    (hook − thetaT)/2π — the hook turns with the drum (rot = u(1) − u)
+//    while the tangent departure thetaT WALKS as the cone's radius
+//    shrinks (dθT/dr = 1/S_planar, the external-tangent identity). The
+//    first cut of this solve dropped the walk and measured WORSE than
+//    the closed form it replaced — the walk is ~1.4 u of coil over the
+//    reserve, the same order as the span's give, with the opposite
+//    lever. thetaT is analytic in u, so the coil angle is the closed
+//    form Ω(u) = −u + acos((P/u − R_wrap)/D) up to constants, and the
+//    conservation check below reads it back independently of the
+//    stepper. R_eff = √(R_wrap² + (coilPitch/2π)²), the coil's own
+//    helix factor.
+//
+// Δz's coil term needs u(1), so the integration runs a fixed number of
+// passes, each feeding the last one's u(1) back in — the sensitivity is
+// tiny (the coil descends ~0.01 u per 1% of u(1)) and the passes land at
+// float noise, asserted below.
+//
+// TODO 40 row 3 is exactly the S′ term: the closed form the old block
+// carried — u(t) = √(θ_s² + β·t), β = 4π·W·r₀·θ_s/R_wrap — is this ODE's
+// S′ ≡ 0 branch, the "every unit of chain is exchanged cone↔drum"
+// assumption whose measured cost was a run that laid 43 links at some
+// winds and 44 at others (1.984% against the 1.164% a half link pitch
+// allows). The integrator KEEPS that closed form as its control: run with
+// the span frozen it must reproduce √(θ_s² + β·t) to 1e-9, so the numeric
+// machinery is proven against the algebra it generalises every boot.
 //
 //  · The LEVEL PRODUCT P = r₀·θ_s is the held quantity (§124, TODO 46).
 //    The train's drive torque at every reserve is k·P/R_wrap on the level
@@ -491,11 +560,125 @@ const DRUM_WRAP_R = DRUM_R_ACTUAL + CHAIN_END_R_OUT;
 const FUSEE_LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24); // 32.9344 rad·u — the pre-§124 shipped product, held
 const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;     // 5.46955 — was the bare literal 7.4
 const SPRING_WIND_BETA = (4 * Math.PI * FUSEE_WRAP_TURNS * FUSEE_R_LARGE * SETUP_SWEEP) / DRUM_WRAP_R;
+// The fusee↔drum centre distance — declared HERE because the span law
+// consumes it before the drum builds (DRUM_WRAP_R's own reason, one line
+// up). The 2.5 is the hand-set XY gap the drum block justifies (clearance
+// is taken vertically there); drumPos below consumes THIS, so the solve's
+// D and the placed drum cannot drift apart. r₀ = P/θ_s is held by the
+// solve (u(0) = θ_s exactly), so D is a CONSTANT of the ODE — the drum's
+// station does not feed back into the wind accounting.
+const FUSEE_DRUM_DIST = FUSEE_R_LARGE + DRUM_R_ACTUAL + 2.5;
+// The coil's slack: the drawn coil keeps 0.3 turns beyond the accounting's
+// rotation so the hook-anchored fractional-turn solve has headroom (see
+// HOOK_A). The span law reads the SAME constant for the takeoff's z.
+const DRUM_COIL_SLACK_TURNS = 0.3;
 // u(t): the spring's wind angle off its free coil at reserve t — set-up
 // plus everything the drum has taken up. THE one state variable: the tick's
 // setWind lands the ribbon at exactly A_free + u(t), and M(t) = k·u(t).
-const springWindAt = (t) => Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA * t);
-const SPRING_WIND_FULL = springWindAt(1);              // 10.2081 rad at the 30 h spec (§124: was 12.8609 at 17 clicks / 8:1)
+// Solved numerically (the ODE above) on a fixed grid: RK4 at h = 1/4000
+// over t ∈ [0, 1.2] — the runout past t = 1 carries no chain, so the span
+// term freezes there and the law simply continues (the cut runs on to the
+// tip, as before). Fixed step counts throughout, no convergence loops: the
+// fingerprint's double-boot compares exact strings, so the solve must be
+// bit-reproducible (the solveK/heart-table convention). Grid resolution:
+// linear interpolation of a convex table reads slightly long between
+// nodes, the error falling as 1/N² — at h = 1/4000 the u error is under
+// 1e-10, four orders below the 1e-6-scale quantities the flank feeds.
+const SPRING_WIND_NPT = 4000;                // nodes per unit reserve; t = 1 lands on a node exactly
+const SPRING_WIND_TMAX = 1.2;                // covers the runout: floorAt probes f slightly past 1 (t = f/F_ACTIVE ≤ ~1.16)
+const SPRING_WIND_SOLVE = (() => {
+  const N = Math.round(SPRING_WIND_NPT * SPRING_WIND_TMAX);
+  const h = 1 / SPRING_WIND_NPT;
+  const iFull = SPRING_WIND_NPT;             // the t = 1 node
+  const W = FUSEE_WRAP_TURNS, P = FUSEE_LEVEL_P, Rw = DRUM_WRAP_R, D = FUSEE_DRUM_DIST;
+  const zRate = FUSEE_ZSPAN * FUSEE_F_ACTIVE; // dz/dt of the departure station
+  const RwEff = Math.hypot(Rw, CHAIN_COIL_PITCH / (2 * Math.PI)); // the coil's helix factor
+  const spanAt = (t, ui, u1) => {
+    const dz = (FUSEE_Z0 + zRate * t)
+      - (COIL_TOP - ((u1 - ui) / (2 * Math.PI) + DRUM_COIL_SLACK_TURNS) * CHAIN_COIL_PITCH);
+    const dr = Rw - P / ui;
+    return { S: Math.sqrt(D * D - dr * dr + dz * dz), dz, Sp: Math.sqrt(D * D - dr * dr) };
+  };
+  // Ω(u): the coil's angular span up to constants — the hook turns with the
+  // drum (−u) while the tangent departure walks with the radius
+  // (acos((r − R_wrap)/D) is thetaT's alpha). Closed in u, so the
+  // conservation check reads the coil's chain without trusting the stepper.
+  const coilAngleAt = (ui) => -ui + Math.acos((P / ui - Rw) / D);
+  const integrate = (u1, live) => {
+    const u = new Float64Array(N + 1), c = new Float64Array(N + 1);
+    u[0] = SETUP_SWEEP;
+    const du = (t, ui) => {
+      const r = P / ui;
+      if (!live || t > 1) return (2 * Math.PI * W * r) / Rw; // S′ ≡ 0: the closed form's branch
+      const { S, dz, Sp } = spanAt(t, ui, u1);
+      const g = P / (ui * ui);               // −dr/du
+      const wr = Math.hypot(2 * Math.PI * W * r, zRate); // wrap's helix take-up per unit t
+      return (wr + (dz * zRate) / S)
+        / (RwEff * (1 - g / Sp) + ((Rw - r) * g) / S + (dz * CHAIN_COIL_PITCH) / (2 * Math.PI * S));
+    };
+    const dc = (ui) => Math.hypot(2 * Math.PI * W * (P / ui), zRate); // chain onto the cone — the helix rate the wrap really lays
+    for (let i = 0; i < N; i++) {
+      const t = i * h, ui = u[i], ci = c[i];
+      const k1u = du(t, ui), k1c = dc(ui);
+      const k2u = du(t + h / 2, ui + (h / 2) * k1u), k2c = dc(ui + (h / 2) * k1u);
+      const k3u = du(t + h / 2, ui + (h / 2) * k2u), k3c = dc(ui + (h / 2) * k2u);
+      const k4u = du(t + h, ui + h * k3u), k4c = dc(ui + h * k3u);
+      u[i + 1] = ui + (h / 6) * (k1u + 2 * k2u + 2 * k3u + k4u);
+      c[i + 1] = ci + (h / 6) * (k1c + 2 * k2c + 2 * k3c + k4c);
+    }
+    return { u, c };
+  };
+  // Fixed passes for the Δz coil term's u(1): seed from the closed form,
+  // feed each pass's endpoint into the next. Three passes land the
+  // dependence (weak by construction) at float noise; the fourth proves it.
+  let u1 = Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA);
+  let sol = null;
+  for (let pass = 0; pass < 4; pass++) {
+    sol = integrate(u1, true);
+    const next = sol.u[iFull];
+    if (pass === 3 && Math.abs(next - u1) > 1e-9)
+      console.warn(`fusee solve: u(1) passes did not converge — |Δ| ${Math.abs(next - u1).toExponential(2)} > 1e-9`);
+    u1 = next;
+  }
+  // Control — the S′ ≡ 0 branch must reproduce the closed form (proves the
+  // integrator against the algebra it generalises).
+  {
+    const ctrl = integrate(u1, false).u;
+    let worst = 0;
+    for (let i = 0; i <= iFull; i++)
+      worst = Math.max(worst, Math.abs(ctrl[i] - Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA * i * h)));
+    if (worst > 1e-9)
+      console.warn(`fusee solve: S′≡0 control off the closed form by ${worst.toExponential(2)} (> 1e-9)`);
+  }
+  // Conservation — the whole point, re-read from the solved tables rather
+  // than trusted from the stepper: cone + span + coil must be one length at
+  // every node of the reserve, with the coil's chain read through Ω(u) —
+  // the drawn construction's own angle law — not through the integrator.
+  {
+    const uF = sol.u[iFull];
+    let worst = 0;
+    const L0 = sol.c[0] + spanAt(0, sol.u[0], uF).S + RwEff * coilAngleAt(sol.u[0]);
+    for (let i = 1; i <= iFull; i++) {
+      const L = sol.c[i] + spanAt(i * h, sol.u[i], uF).S + RwEff * coilAngleAt(sol.u[i]);
+      worst = Math.max(worst, Math.abs(L - L0));
+    }
+    if (worst > 1e-9)
+      console.warn(`fusee solve: chain conservation drifts ${worst.toExponential(2)} over the reserve (> 1e-9)`);
+    for (let i = 0; i < N; i++)
+      if (!(sol.u[i + 1] > sol.u[i])) {
+        console.warn(`fusee solve: u table not strictly increasing at node ${i}`);
+        break;
+      }
+  }
+  return sol;
+})();
+const springWindAt = (t) => {
+  const table = SPRING_WIND_SOLVE.u;
+  const x = t * SPRING_WIND_NPT;
+  const i = Math.max(0, Math.min(table.length - 2, Math.floor(x)));
+  return table[i] + (table[i + 1] - table[i]) * (x - i); // clamped index ⇒ linear extension past either end
+};
+const SPRING_WIND_FULL = springWindAt(1);              // u(1) — a solve output now (was 10.2081 closed-form; the span's give lowers it ~0.8%)
 // Normalized torque for display: M(t)/M(1) = u(t)/u(1). Concave in t — a
 // real spring spends its top turns faster than its bottom ones.
 const springTorqueAt = (t) => springWindAt(t) / SPRING_WIND_FULL;
@@ -510,7 +693,6 @@ const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(f / FUSEE_F_ACTIVE);
 // second number is FUSEE_TORQUE_K by identity (r·M/M₁ constant with M₁ at
 // the wrap's top), the same identity the §61 seating budget's r_min leans on.
 const FUSEE_R_SMALL = fuseeEnvR(1);
-const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
 // §124 (TODO 46) — the chain's TILT LAW. The cut's slope at band fraction f
 // (numeric off the one envelope law, dz = BAND·df):
 const fuseeSlopeAt = (f) => {
@@ -522,8 +704,10 @@ const fuseeSlopeAt = (f) => {
 // lie-flat ceiling atan(w/h) = 63.43°, beyond which more tilt stops
 // closing daylight (the plate width is spent). Below the cap the seat is
 // EXACT (daylight w·(m·cosβ − sinβ) = 0 at β = atan m); at the cap —
-// the first ~3% of the band, where the slope peaks at 2.109 — the
-// residual is 0.032, inside the one margin. The chain builder and the
+// the first ~2.5% of the band, where the slope peaks at 2.1617 (§150's
+// conserving solve steepened §124's 2.109) — the linearized residual is
+// 0.0477, inside the one margin, and the §61 float row measures the
+// curvature-relieved truth. The chain builder and the
 // relieved cut both read THIS, so pose and metal cannot disagree.
 const fuseeBetaAt = (f) =>
   Math.min(Math.atan(fuseeSlopeAt(f)), Math.atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN / 2)));
@@ -556,31 +740,8 @@ const fuseeBetaAt = (f) =>
   if (worstSep < 0.02)
     console.warn(`fusee §124: adjacent-turn stack gap ${worstSep.toFixed(4)} at f=${atS.toFixed(3)} under the 0.02 floor`);
 })();
-// Base DERIVED from the plate's design goal. The old bind (the chain's
-// lowest span clearing the movement-side crown wheel) vanished when the
-// keyless works moved to the dial side — after that, the only thing the
-// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
-// sits at max(tallest under-plate part, hairspring stack) + margin, and
-// the fusee tip was that tallest part by ~2.5, holding the whole back of
-// the movement high and the balance cock BELOW the plate band it is meant
-// to sit in (the long-standing console warning). Keep the tip AT or under
-// the hairspring stack's top so the spring stays the plate's binding
-// member and everything above — plate, rod planes, post, stop-work tail —
-// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
-// disc reaches under the cone's footprint (origin is only 16.2 from the
-// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
-// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
-// below its centre-line — must clear the wheel's top face by the margin.
-// Both binds explicit. Since §61 the CENTER bind governs by construction:
-// FUSEE_BAND was derived to fill exactly the space between the two binds,
-// so the max() seats the cone on the wheel-side bind with the tip 0.04
-// under the spring top (the guard pair in the band derivation). The
-// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
-// future change hands it back the governing role.
-const FUSEE_BASE_Z = Math.max(
-  SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
-  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
-);
+// (FUSEE_BASE_Z, FUSEE_Z0, FUSEE_ZSPAN — the cone's z stack — are declared
+// with the torque law above: the span-aware solve consumes them.)
 // §47/TODO 53 — THE CHAIN'S CLAIM ON THE PLATE FLOOR, in closed form. The
 // three-quarter plate's underside is solved thousands of lines before the
 // discrete chain layout exists, and its floor law had never seen the chain:
@@ -606,8 +767,6 @@ const FUSEE_BASE_Z = Math.max(
 // The A2 measurement in the arrest block holds this honest BOTH ways every
 // boot: the discrete top under the bound (conservative), and the plate the
 // bound feeds clear of the discrete top by the full margin.
-const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
-const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 const CHAIN_TQ_REACH = (() => {
   const h = CHAIN_PIN_LEN / 2, w = CHAIN_END_R_OUT;
   const zTop = FUSEE_Z0 + FUSEE_ZSPAN * FUSEE_F_ACTIVE; // the wrap-top groove station (fuseeGrooveAt's own law)
@@ -4563,29 +4722,34 @@ const DRUM_R = DRUM_R_ACTUAL;
 //
 // HOW MUCH CHAIN IS ON THE CONE AT RESERVE t — integrated, not averaged
 // (TODO 40 row 3). Each turn of wrap takes up 2π·r at the radius it sits
-// at, so the total is ∫2π·r ds over the turns. Under the derived law this
-// is not even a fresh integral: dC/dt = 2π·W·r was one of the three
-// equations the law's u(t) was SOLVED from, so the chain is just
-// C(t) = R_wrap·(u(t) − θ_s) — the drum's feed radius times the wind the
-// spring has gained past its set-up. One state variable u carries the
-// spring's angle, the drum's rotation and the chain's whereabouts, which
-// is what makes the three unable to disagree.
-const fuseeChainTo = (t) => DRUM_WRAP_R * (springWindAt(t) - SETUP_SWEEP);
+// at, so the total is ∫2π·W·r dt over the reserve — the solve's own second
+// state column (it integrates dC = 2π·W·r beside u with the same steps).
+// Under the old closed form this collapsed to R_wrap·(u(t) − θ_s), because
+// every unit of chain was booked cone↔drum; the span's give broke that
+// identity, and the three reservoirs now read separately: this function is
+// the CONE's, the span is geometry (tangent between the two circles), and
+// the drum's is R_wrap·(u(1) − u(t)) below. Conservation across all three
+// is the solve's boot assert, not a bookkeeping convention.
+const fuseeChainTo = (t) => {
+  const table = SPRING_WIND_SOLVE.c;
+  const x = t * SPRING_WIND_NPT;
+  const i = Math.max(0, Math.min(table.length - 2, Math.floor(x)));
+  return table[i] + (table[i + 1] - table[i]) * (x - i);
+};
 const CHAIN_ENGAGED = fuseeChainTo(1); // chain the cone gathers over a full wind, at CENTRELINE radii (§61)
-// The drum's own travel over that reserve — all the chain, taken up at the
-// feed radius. It was written out three times (the chain rebuild, the tick,
-// and nothing else that knew it); it is now also the MAINSPRING's wind range,
-// because the drum turning against a static arbor IS the spring winding, so
-// the three readings have to be one number. (TODO 1)
-const DRUM_ROT_FULL = CHAIN_ENGAGED / DRUM_WRAP_R;
-// ...and the drum's angle AT ANY STATE, which is the same accounting rather
-// than a straight line drawn between its ends (TODO 40 row 3). Whatever the
-// cone is not holding, the drum is — and in u-terms that collapses to
-// u(1) − u(t): the drum's remaining travel IS the wind the spring has yet
-// to gain. The tick's setWind(sweepFull − drumRot) therefore lands the
-// ribbon at exactly A_free + u(t), which closes TODO 32's loop: the angle
-// the torque law reads and the angle the metal wears are one number.
-const drumRotAt = (t) => (CHAIN_ENGAGED - fuseeChainTo(t)) / DRUM_WRAP_R;
+// The drum's own travel over the reserve — the MAINSPRING's wind range,
+// because the drum turning against a static arbor IS the spring winding
+// (TODO 1: one number, read by the chain rebuild, the tick, and the ribbon
+// morph). It is u(1) − θ_s, NOT CHAIN_ENGAGED/R_wrap any more: the drum
+// pays out the cone's take-up PLUS the span's give, so the two quantities
+// differ by exactly the give the old law dropped (TODO 40 row 3).
+const DRUM_ROT_FULL = SPRING_WIND_FULL - SETUP_SWEEP;
+// ...and the drum's angle AT ANY STATE, the same accounting: the drum's
+// remaining travel IS the wind the spring has yet to gain, u(1) − u(t).
+// The tick's setWind(sweepFull − drumRot) therefore lands the ribbon at
+// exactly A_free + u(t), which closes TODO 32's loop: the angle the torque
+// law reads and the angle the metal wears are one number.
+const drumRotAt = (t) => SPRING_WIND_FULL - springWindAt(t);
 // The static arbor's spring seat inside the drum, built with the set-up work
 // far below — hoisted here because the ribbon's inner coil BEARS on it, so the
 // spring's inner radius and its section both derive from this number now
@@ -4607,8 +4771,11 @@ const drumDirRawY = -sideSign * vPerp.y + uWind.y * 0.45;
 const drumDirL = Math.hypot(drumDirRawX, drumDirRawY) || 1;
 const drumDir = { x: drumDirRawX / drumDirL, y: drumDirRawY / drumDirL };
 const drumPos = {
-  x: P.barrel.x + drumDir.x * (FUSEE_R_LARGE + DRUM_R + 2.5),
-  y: P.barrel.y + drumDir.y * (FUSEE_R_LARGE + DRUM_R + 2.5),
+  // FUSEE_DRUM_DIST is declared with the torque law: the span-aware solve
+  // consumes the centre distance before this block runs, and one constant
+  // keeps the solved D and the placed drum from drifting apart.
+  x: P.barrel.x + drumDir.x * FUSEE_DRUM_DIST,
+  y: P.barrel.y + drumDir.y * FUSEE_DRUM_DIST,
 };
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
 // gap the drum's silhouette overlaps the great wheel's radius in XY, so
@@ -5049,21 +5216,21 @@ function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
 // z-band at the top of the file: CHAIN_TQ_REACH reads it long before this block.)
 // Hook angle, drum-local. The wrap's far end lands at world angle
 // thetaT + turns·2π and the drum's rotation is rot = drumRotAt(tension) —
-// (C(1) − C(t))/R_wrap, the same u-accounting as everything else — so a
+// u(1) − u(t), the same u-accounting as everything else — so a
 // fixed drum-local hook works iff the wrap's fractional turn absorbs
 // thetaT's small drift with tension (the wrap length IS set by geometry —
-// see rebuildChain). Placing the hook at thetaT(mid-reserve) + 0.3 turns
-// centres that fractional solve on the +0.3 slack turn, giving the
-// round-to-nearest branch maximum headroom against the drift (measured
-// under TODO 32's law: −0.033..+0.007 turns off the mid-reserve anchor
-// over the full reserve, against the branch's ±0.5 flip point — the 1/√
-// flank visits the same radius continuum as the old law, only earlier
-// in t, so the mid-reserve anchor sits nearer the run-down end's angle).
+// see rebuildChain). Placing the hook at thetaT(mid-reserve) + the coil's
+// slack turn centres that fractional solve on the slack, giving the
+// round-to-nearest branch maximum headroom against the drift, and the
+// margin is ASSERTED at boot now (the congruence check after
+// chainLayoutAt) rather than only measured once: the span-aware solve
+// re-centres the anchor whenever the law moves, which is exactly when the
+// branch's headroom needs re-reading.
 const HOOK_A = (() => {
   const midR = fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r;
   const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
   const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_WRAP_R) / Math.hypot(dx, dy), -1, 1));
-  return thetaMid + 0.3 * Math.PI * 2;
+  return thetaMid + DRUM_COIL_SLACK_TURNS * Math.PI * 2;
 })();
 {
   // The hook itself: a riveted tab on the drum wall with a claw pin the
@@ -5112,12 +5279,21 @@ function chainLayoutAt(tension) {
   const pts = [];
   // 1. Helical wrap on the cone: from the bottom groove up to the active one,
   //    ending at the tangent departure angle.
-  const wraps = Math.max(tension * FUSEE_WRAP_TURNS, 0.05);
+  // No floor on the wrap: the old `max(…, 0.05)` kept a 0.05-turn stub on
+  // the cone at dead reserve as a degenerate-spline guard, and that stub
+  // was 0.05·2π·r₀ = 1.72 u of chain the law never booked — the whole
+  // t = 0 outlier in the chainLength gate, and a 44th link minted from
+  // nothing. Its fractional coil turn is pinned to the hook by the
+  // congruence below, so no bookkeeping could pay for it — the drawing
+  // had to stop minting it. The degenerate case the floor guarded is
+  // handled at the source instead: an EMPTY wrap lays exactly one control
+  // point (the departure), never a stack of coincident ones.
+  const wraps = tension * FUSEE_WRAP_TURNS;
   const SEG_PER_TURN = 14;
-  const nF = Math.max(Math.ceil(wraps * SEG_PER_TURN), 2);
+  const nF = wraps > 0 ? Math.max(Math.ceil(wraps * SEG_PER_TURN), 2) : 0;
   for (let i = 0; i <= nF; i++) {
-    const s = (i / nF) * wraps;              // turns from the stack's bottom
-    const f = (s / wraps) * fActive;
+    const s = nF ? (i / nF) * wraps : 0;     // turns from the stack's bottom (an empty wrap is the departure alone)
+    const f = wraps ? (s / wraps) * fActive : 0;
     const gp = fuseeGrooveAt(f);
     const ang = thetaT - (wraps - s) * Math.PI * 2;
     pts.push(new THREE.Vector3(
@@ -5135,7 +5311,7 @@ function chainLayoutAt(tension) {
   // its comment). The coil hangs DOWN from the hook, one chain diameter
   // per turn, so the takeoff tangent point descends as the reserve drains.
   const rot = drumRotAt(tension); // = drumGroup.rotation.z in tick()
-  const baseTurns = rot / (2 * Math.PI) + 0.3;
+  const baseTurns = rot / (2 * Math.PI) + DRUM_COIL_SLACK_TURNS; // the slack the span law's takeoff-z reads too
   let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
   if (frac < 0) frac += 1;
   const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
@@ -5203,8 +5379,28 @@ function chainLayoutAt(tension) {
     const fLink = ((lo + (s - wrapCum[lo]) / (wrapCum[hi] - wrapCum[lo] || 1)) / nF) * fActive;
     return fuseeBetaAt(fLink);
   };
-  return { curve, wrapArc, betaAtArc };
+  return { curve, wrapArc, betaAtArc, hookDrift: drumTurns - baseTurns };
 }
+// Boot assert (rule 6) — the hook congruence's BRANCH MARGIN. drumTurns'
+// fractional part is forced by the two azimuths (hook and departure); only
+// the whole part is free, and round-to-nearest flips a whole coil turn at
+// ±0.5 off baseTurns. HOOK_A's mid-reserve anchor centres the drift, but a
+// LAW change re-centres it silently — the span-aware solve moved u(t), so
+// this failure mode stopped being hypothetical. Hold the measured drift
+// under HALF the branch's headroom: the flip is the failure, half is the
+// declared standoff that catches a drifting anchor while the branch is
+// still safe.
+(() => {
+  let lo = Infinity, hi = -Infinity, atLo = 0, atHi = 0;
+  for (let i = 0; i <= 200; i++) {
+    const d = chainLayoutAt(i / 200).hookDrift;
+    if (d < lo) { lo = d; atLo = i / 200; }
+    if (d > hi) { hi = d; atHi = i / 200; }
+  }
+  const worst = Math.max(Math.abs(lo), Math.abs(hi));
+  if (worst > 0.25)
+    console.warn(`chain hook: congruence drift ${lo.toFixed(4)}..${hi.toFixed(4)} turns (at t=${atLo.toFixed(2)}/${atHi.toFixed(2)}) — over half the ±0.5 branch headroom; re-centre HOOK_A's anchor`);
+})();
 function rebuildChain(tension) {
   lastChainTension = tension;
   const { curve, wrapArc, betaAtArc } = chainLayoutAt(tension);

@@ -14355,3 +14355,120 @@ row excusing the pinion⇄crown-wheel working mesh under the name of the
 square joint). `tools/probe-50-clutch.mjs` is the instrument: builder
 manifoldness, the law table, the pair sweep across a pitch (rides within
 ±0.005 of the law everywhere), the three tick laws, and the focused checks.
+
+## §150 — the chain becomes a fixed length of steel: the span-aware conservation solve cuts the cone (TODO 40 row 3 closed)
+
+TODO 40 row 3 was the one open term in the fusee equalisation, and it was
+open on purpose: item 32's closed form `u(t) = √(θ_s² + β·t)` integrates
+the design system under the assumption that every unit of chain trades
+cone↔drum, the free span never appearing. The measured cost was in the
+battery every run — the shipped run's length spread 1.6193 u = 1.984% over
+the reserve against a derived tolerance of half a link pitch (0.95 u), and
+the mesh laid 43 links at some winds and 44 at others — WAIVED, citing the
+deferred fix: "an ODE, not a formula, whose output would then cut the
+cone." This section is that fix.
+
+### The two held quantities, and what holding them bought
+
+`FUSEE_LEVEL_P` = 32.9344 and the 23-click set-up stay held, exactly as
+§124 held them. That is not conservatism, it is what dissolves the
+circularity the row itself feared ("`D` also drags the drum's STATION into
+the wind accounting"): with P and θ_s held, `r(0) = P/θ_s = FUSEE_R_LARGE`
+is invariant under the solve, so the centre distance
+`FUSEE_DRUM_DIST = FUSEE_R_LARGE + DRUM_R + 2.5` — the span law's own
+coefficient AND the drum's station — is a CONSTANT of the ODE. No outer
+fixed point over the layout exists. (The constant is now declared with the
+torque law and `drumPos` consumes it, so the solved D and the placed drum
+cannot drift apart.)
+
+### The conservation, written from the drawn construction's own ledgers
+
+`chainLayoutAt` is the geometry the gate measures, so the law conserves
+exactly what it draws — three reservoirs, each with its own bookkeeping:
+
+- the WRAP gains chain at `√((2π·W·r)² + zRate²)` per unit reserve — the
+  groove is a helix, the climb rides along;
+- the SPAN is the 3-D tangent segment `√(D² − (R_wrap − r)² + Δz²)`, its
+  z leg moving at both ends (the departure station climbs the band, the
+  coil's takeoff descends one `CHAIN_COIL_PITCH` per drum turn);
+- the COIL's chain is `R_eff` times its ANGULAR span, and that span is
+  hook-to-takeoff: the hook turns with the drum while the tangent
+  departure thetaT WALKS as the cone's radius shrinks
+  (`dθT/dr = 1/S_planar`, the external-tangent identity). thetaT is
+  analytic in u, so the coil angle is `Ω(u) = −u + acos((P/u − R_wrap)/D)`
+  up to constants — closed in the state variable.
+
+Substituting `r = P/u` (the level product held EXACTLY — the equalisation
+gate keeps measuring an identity, 2.2e-16, not a fit) gives one
+first-order ODE in u with `u(0) = θ_s`, integrated at boot: fixed-step
+RK4 at h = 1/4000 over t ∈ [0, 1.2] (the runout past t = 1 carries no
+chain; the span term freezes there), four fixed passes for the coil-
+descent term's u(1), no convergence loops anywhere — the fingerprint's
+double-boot compares exact strings, so the solve is bit-reproducible by
+construction (the `solveK`/heart-table convention). Three boot asserts
+hold it: the conservation residual over the solved tables re-read through
+Ω(u) rather than through the stepper (≤ 1e-9; measures ~1e-12), the
+S′ ≡ 0 control — the integrator with the span frozen must reproduce
+`√(θ_s² + β·t)` to 1e-9, proving the machinery against the algebra it
+generalises — and the table's strict monotonicity.
+
+### The walk was found by measuring, not by derivation
+
+The first cut of this solve booked the span's give but treated the coil
+as pure rotation payout — and measured WORSE than the closed form it
+replaced (1.82 u of spread against the base's 1.62). The missing term was
+the takeoff tangent's walk around the drum wall: ~1.4 u of coil angle
+over the reserve, the same order as the span's give, with the opposite
+lever. The drawn construction had been carrying it all along inside the
+hook congruence's fractional turn. That is why the conservation assert
+reads the coil through Ω(u) — the drawn angle law — independently of the
+integrator: the check would have caught exactly this class of omission.
+
+### The wrap floor was minting a link
+
+With the law conserving, the `chainLength` sweep showed one outlier: at
+tension 0 the run measured 1.72 u long — `0.05·2π·r₀` to four digits, the
+`wraps = max(t·W, 0.05)` display floor. The stub's fractional coil turn
+is pinned to the hook by the congruence, so no bookkeeping could pay for
+it; the drawing had to stop minting it. `chainLayoutAt` now lays the wrap
+with no floor — an EMPTY wrap is exactly one control point (the
+departure), never a stack of coincident ones, which is the degenerate
+case the floor guarded — and the t = 0 sample fell into line with its
+neighbours.
+
+### What the drum's travel means now
+
+`DRUM_ROT_FULL` is `u(1) − θ_s` — the spring's whole wind past its
+set-up — and NOT `CHAIN_ENGAGED / R_wrap` any more: the drum pays out the
+cone's take-up PLUS the span's give PLUS the walk, so the two quantities
+differ by exactly what the old law dropped. `fuseeChainTo` is the solve's
+second state column (the wrap's helix integral), `drumRotAt(t) =
+u(1) − u(t)` keeps its form reading the new table, and the tick's
+`setWind(sweepFull − drumRot)` identity — the ribbon landing at
+`A_free + u(t)` — survives verbatim. One more assert shipped with the
+row: the HOOK congruence's branch margin (drift held under half the ±0.5
+flip point, sampled over the reserve at boot) — the solve re-centres the
+anchor whenever the law moves, which is exactly when that previously
+un-asserted failure mode needs a gate.
+
+### Measured, before → after
+
+| | old closed form | §150 solve |
+|---|---|---|
+| run length spread over the reserve | 1.6193 u = 1.984% (WAIVED) | **0.5167 u = 0.633%, GATED** |
+| link census | 43 and 44 | **43 at every state of wind** |
+| u(1) | 10.2081 rad | 10.2493 rad |
+| `FUSEE_TORQUE_K` | 3.2263 | 3.2133 |
+| `FUSEE_R_SMALL` | 3.0858 | 3.0744 |
+| `DRUM_ROT_FULL` | 4.1864 rad (0.6663 turns) | 4.2279 rad (0.6729 turns) |
+| span (3-D), full wind → empty | — | 16.359 → 17.273 |
+| base slope | 2.109 | 2.1617 (tilt affordability still positive, asserted) |
+| ribbon: full-wind turns / capacity / tightest gap | 6.6246 / 4.958 / 0.28814 (6.8% off bind) | 6.6312 / 4.956 / 0.28763 (6.6% off bind) |
+| equalisation `levelMaxDev` | 2.2e-16 (identity) | **2.2e-16 (still an identity)** |
+
+The equalisation gate surviving VERBATIM is the point of the tabulate-u
+design: only `u(t)` became numeric; `r = P/u`, `springTorqueAt = u/u(1)`
+and `fuseeEnvR = K/springTq` keep their closed shapes over the table, so
+`springTq·envR/K ≡ 1` stays algebra whatever the table holds. The waiver
+text in `checkChainLength` — prose asserting the ODE was unbuilt — is
+deleted; the row gates.

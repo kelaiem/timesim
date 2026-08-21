@@ -3443,10 +3443,11 @@ const PENETRATION_BUDGETS = [
     // (1) link chording — and §124 measured the honest chord: the outer
     // plates' stadium arc apexes reach 0.253 past each rivet, so the
     // rigid facet spans 2.41, not the 1.9 pitch. chord²/(8·r_min) =
-    // 2.41²/(8·3.2263) = 0.225 at the smallest wrap radius (3.2263 =
-    // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law —
-    // the wrap's top, not the runout tip); (2) HANDOFF_TRACK_TOL
-    // tessellation slack, 0.03. The tilted wrap measures 0.217 at
+    // 2.41²/(8·3.2133) = 0.226 at the smallest wrap radius (3.2133 =
+    // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law,
+    // re-solved by §150's conserving cut — the wrap's top, not the
+    // runout tip); (2) HANDOFF_TRACK_TOL
+    // tessellation slack, 0.03. The tilted wrap measures 0.218 at
     // reserve 0.883 — the chording bound minus what the tilt's deeper
     // curvature relief gives back — held at 0.25 so the row polices the
     // relationship, not float luck — the same round-up that held 0.76
@@ -3495,9 +3496,10 @@ const PENETRATION_BUDGETS = [
     // Budget: what a BEDDED chain owes — link chording at the honest
     // 2.41 effective chord (stadium apexes past the rivets, the burial
     // row's own §124 correction) + the base's lie-flat corner residual
-    // 0.024 (the flank there is 2.109, past the 63.43° cap's tan = 2;
-    // the envelope's curvature relieves the linearized 0.032) +
-    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.202 at the
+    // (the flank there is 2.1617 since §150's conserving solve — past
+    // the 63.43° cap's tan = 2, linearized daylight 0.0477, relieved by
+    // the envelope's curvature) +
+    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.209 at the
     // bottom turn, held at 0.25 — the burial row's own round-up. §124
     // closed TODO 46 here: the leaning chain SEATS, and this row is
     // what holds it seated (it read 3.191 waived on the 8:1 cut).
@@ -6365,13 +6367,12 @@ export async function checkStockFloor(clock, opts = {}) {
 // The link census beside the spread is the corroborating measurement, taken
 // from the same rule rather than from the mesh: two independent readings of
 // one fact are what make the row hard to argue with.
-export const CHAIN_LENGTH_WAIVER =
-  'TODO 40 row 3 — the free span gives ~1.4 u that nothing takes up; absorbing '
-  + 'it turns the closed-form u(t) solve into an ODE whose output would then cut '
-  + 'the cone, so item 32 deliberately left it. See also TODO 49: pinning the '
-  + "chain's fusee end needs this closure to be exact first.";
-
-export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = CHAIN_LENGTH_WAIVER } = {}) {
+// NO WAIVER any more (§150 closed TODO 40 row 3): the cone is cut from the
+// span-aware conservation solve, so the run's spread measures 0.52 u against
+// the 0.95 u tolerance and the census lays 43 links at every state of wind.
+// The `waiver` parameter stays for TODO 34's control (a gate must be
+// provably non-vacuous), but its default is none — this row GATES.
+export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = null } = {}) {
   if (typeof clock.chainRunLength !== 'function')
     return { ok: false, error: 'no chainRunLength on __clock (main.js TODO 40 exposure missing)' };
   const tol = CHAIN_PITCH / 2;
