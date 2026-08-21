@@ -13139,7 +13139,10 @@ shape the debt entry asked for. What that bought is recorded honestly in
 TODO 51: the surviving beak window is two scan steps wide, and the scan
 publishes a per-step trace of why it rejected each azimuth so the next
 person to move `ARM_BAND_REACH`, `HUB_R` or the lug's station can see it
-close.
+close. *(Worked through since — TODO 51's residue section has the record:
+the window demand is the beak's own arc plus a step now (five legal steps),
+the arm hold reads a per-sector reach, and the 0.1500 equality's relief was
+tried and refused by measurement at the span's corridor.)*
 
 ## §127 — the battery's partition atom becomes a TASK: `inspection` splits along its axis loop, and the sweeps stop inheriting each other's poses
 

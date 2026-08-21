@@ -37,7 +37,7 @@ refreshed 2026-08-20 — items with work left first, with what remains:
 | 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
 | 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
 | 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
-| 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
+| 51 | CLOSED | Both rows clear, boot silent; the residue is worked through since. The beak window holds the beak's own arc plus a step (five legal steps, was two — the old demand was `2·BEAK_SCAN_STEP`, a two-sample target); the arm hold reads a 72-bin per-sector reach (`armStopAt`) instead of the compass max — stock only, riser in by 0.29; and the Fusee row's 0.1500 equality was tried against a §50 pivot-floor relief and REFUSED by measurement (the span's corridor covers every legal beak azimuth at the lower band) — the refusal is written at `HUB_Z2` |
 | 52 | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload — the sibling §126 closed on the winding side by deriving rather than saving |
 | 53 | CLOSED | The plate floor counts the chain now: `CHAIN_TQ_REACH` bounds the discrete top-of-wrap in closed form and joins `TQ_BOT_Z`'s max beside the spring — gap 0.117 → 0.187, the A2 assert holds the margin (not just the sign) plus the bound's conservativeness, and a `Chain ⇄ Three-quarter plate` budget row sweeps it independently. Cost priced: the cock sits ~0.07 down in the plate band |
 | 54 | CLOSED (§127) | Every sweep calls `enterAxis` before each axis, and `axisEntry` gates all 110 ordered pairs at 0 violations. The leak the old order-dependent entry used to carry is measured and REPORTED beside the gate rather than dropped — that report is the record, not a remainder |
@@ -6126,33 +6126,45 @@ beak are chosen together rather than in sequence, which is what the item's
 earlier draft asked the next pass to do. Ordinary cost is one trial; the
 best-scoring azimuth usually solves.
 
-### Residue, named
+### Residue, named — and where each row went
 
-- **The surviving beak window is TWO scan steps wide.** The scan publishes a
-  per-step trace of why it rejected each azimuth (`WIND_ARREST.beakScanTrace`,
-  one character per step: `s`/`l` arm too short/long, `r` not radial, `n` wrong
-  sense, `c` chain in the tab's window, `m` disengaging moment, `.` legal), and
-  the shipped solve reads
-  `ssssssssssssssssssssccccccccmmmmmmm..llll…` — seven moment rejects and eight
-  chain rejects on either side of two legal steps. That is a fact about this
-  fold, not a detail: several changes during this landing moved the window a
-  step or two and emptied it, each time silently reverting the beak to its
-  unchecked fallback. Anything that moves `ARM_BAND_REACH`, `HUB_R`,
-  `R_PAD_ARM` or the lug's station should expect to re-open it, and the trace is
-  the first thing to read when the boot warns.
-- **`Winding arrest ⇄ Fusee & great wheel` measures exactly 0.1500** against the
-  0.15 floor, because `HUB_Z2 = LUG_Z1 − CLEAR_MARGIN` makes the gap the margin
-  by construction. It passes deterministically (the build has no randomness),
-  but it passes with nothing to spare. Relieving the pad's top face by a §50
-  pivot floor would buy the slack; it also moves the pad's band, which moves
-  `F_PAD_WALL`, which moves the candidate set — and on this fold that is enough
-  to empty the beak window. Left as it is, deliberately, with the coupling
-  written down.
-- **`ARM_STOP_R` is azimuth-blind**, a max over the whole compass. The wrap's
-  demand actually varies 4.19–4.37 across azimuths with the link phase, so the
-  arms stop further out than any one of them needs. That is conservative in the
-  safe direction and it costs only stock; folding the per-sector reach into the
-  ranked walk is the next refinement if the window ever needs the room.
+All three rows were worked after the landing; two closed, one was attempted
+and REFUSED by measurement, which is a better state than "left deliberately"
+because the refusal is now a fact with a trace instead of a fear:
+
+- **The two-step beak window — CLOSED.** The two-step width was a TARGET,
+  not an accident: `LUG_OUTER`'s inversion grew the lug until the analytic
+  window reached exactly `2 · BEAK_SCAN_STEP` (0.04 rad), while the comment
+  above it already demanded "the beak's own tangential width plus a scan
+  step". The demand is now that arc (`BEAK_TAN / Rb + BEAK_SCAN_STEP`
+  ≈ 0.1 rad), which decouples freedom from resolution — the step appeared
+  on BOTH sides of the old expression, so a finer scan NARROWED the built
+  window. Cost: `LUG_OUTER` 4.086 → 4.231 (the lug's proudness is the
+  priced currency; fin assert silent), and the shipped trace reads five
+  legal steps (`…mmmm.....llll…`) instead of two. The trace remains the
+  first thing to read when a boot warn names the scan.
+- **`Winding arrest ⇄ Fusee & great wheel` at exactly 0.1500 — KEPT, with
+  the relief now MEASURED as impossible on this fold.** Dropping the finger
+  plate a §50 pivot floor (`HUB_Z2 = LUG_Z1 − CLEAR_MARGIN − PIVOT_MIN_U`)
+  was tried on top of the widened window: the analytic window held exactly
+  as designed, and the CHAIN'S DEPARTURE CORRIDOR then covered every legal
+  beak azimuth at every one of 147 candidate pad azimuths — the trace's
+  `c` rejects bridged straight into the `l` ceiling, the moment window
+  never opened, and the solve fell to its unchecked fallback with a
+  disengaging moment. The equality stays, with that refusal written at
+  `HUB_Z2` in place of the old fear. Any future relief has to move the
+  SPAN (the drum's hook plane or the departure azimuth), not the pad.
+- **`ARM_STOP_R` azimuth-blind — CLOSED for the arms (the safe half).**
+  The same sphere-of-margin loop now fills a 72-bin per-sector table
+  (`WIND_ARREST.armReachBin`, 5° bins, neighbour-max lookup so a demand
+  sphere's ~2° footprint cannot straddle past the query), floored
+  everywhere by the lug's orbit, and the arm hold measures SLACK against
+  `armStopAt(az)` instead of radius against the compass max. Stock only,
+  as predicted: pad-arm end 4.695 → 4.631, riser 5.765 → 5.471, pad
+  bridge 1.133 → 1.069; the beak scan and `STUD_FLOOR_R` deliberately
+  keep the global — a floor the per-candidate pass could walk past would
+  re-open the empty window it exists to close, which is the standing note
+  at `STUD_FLOOR_R` and stays answered by not doing it.
 
 ---
 
