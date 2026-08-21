@@ -9431,9 +9431,12 @@ const secondsSubR = secondsWellR;
 // The arc is a READABILITY choice (more angular travel per hour = finer
 // reading); the hours are the movement's actual reserve; the gearing is
 // DERIVED from both. Everything downstream reads these two.
-const RESERVE_SWEEP_DEG = 150;      // graduated arc, symmetric about the well's vertical (§152):
-                                    // empty at math 90° + 75° (upper left), full at 90° − 75°
-                                    // (upper right) — an inverted U over the pivot
+const RESERVE_SWEEP_DEG = 300;      // graduated arc, symmetric about the well's vertical (§152):
+                                    // empty at math 90° + 150° (lower left), full at 90° − 150°
+                                    // (lower right) — an inverted U over the pivot, leaving a 60°
+                                    // gap centred on the well's 6 o'clock (the caption and the
+                                    // maker's mark live in it). Widened 150° → 300° (owner's
+                                    // call): 10° of hand per hour, twice the reading resolution.
 const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated to the SPEC —
                                     // = RELAX_SECONDS / 3600 by shared derivation, and
                                     // asserted against it with the ratio below
@@ -10449,10 +10452,11 @@ reserveGroup.add(reserveHand);
 // under-dial space (via a friction slip coupling, the standard simple-watch
 // solution: a rigid tap of the great wheel alone can't give a bounded gauge
 // that resets on winding, and a true differential is a lot of machinery).
-// From there a two-mesh reduction across three arbors (8/28 × 10/12 = 1/4.2)
+// From there a two-mesh train across three arbors (8/28 × 10/6 = 1/2.1 —
+// stage one reduces, stage two steps back UP for the wide arc)
 // walks across the gap between plate and dial and ends on an arbor COAXIAL
 // with the sub-dial pivot — the same axis the hand rides, its post passing
-// through the dial exactly like the time hands do. 150° of hand = 1.75
+// through the dial exactly like the time hands do. 300° of hand = 1.75
 // barrel turns; the ratio is derived from that pair, not chosen (see the
 // tooth counts below, and the assert beside RESERVE_BARREL_TURNS).
 // ---------------------------------------------------------------------------
@@ -10477,13 +10481,16 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // on the far end sweeps RESERVE_SWEEP_DEG. So the reduction is fixed by
 // the two of them:
 //
-//   R = 1.75 rev × 360° ÷ 150° = 630/150 = 4.2
+//   R = 1.75 rev × 360° ÷ 300° = 630/300 = 2.1
 //
-// and R is the product of the meshes, (W1/P0) × (W2/P1) = (28/8) × (12/10)
-// = 3.5 × 1.2 = 4.2. (The pre-§124 pair was (36/8) × (20/10) = 9 for the
-// 3.75-turn arbor; TODO 18's history — the 120°-arc ratio that was never
-// re-derived at 150° — is in git, and the assert below is why THIS
-// regraduation could not land silently either.)
+// and R is the product of the meshes, (W1/P0) × (W2/P1) = (28/8) × (6/10)
+// = 3.5 × 0.6 = 2.1 — with R under stage one's own 3.5, stage two is a
+// STEP-UP (w2 smaller than the pinion driving it), which is what a 300°
+// hand off a 1.75-turn arbor costs. (The pre-§124 pair was (36/8) ×
+// (20/10) = 9 for the 3.75-turn arbor, and the 150°-arc pair was
+// (28/8) × (12/10) = 4.2; TODO 18's history — the 120°-arc ratio that was
+// never re-derived at 150° — is in git, and the assert below is why
+// neither THAT regraduation nor this 300° one could land silently.)
 //
 // Only the tooth COUNTS moved: rsvModule1 is solved from the span (below),
 // so w2 keeps the sub-dial pivot and the centre distance is untouched.
@@ -10493,13 +10500,13 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // §22: the second-stage wheel is DERIVED from the reserve, for every spec
 // rather than only the default. The chain of constraint: p0 turns
 // RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
-// RESERVE_SWEEP_DEG (150°), so R = (7h/120)·360/150 = 0.14·h; stage one
-// is 28/8 = 3.5, so stage two must be R/3.5 = 0.04·h = h/25, and with
-// p1 = 10 that is w2 = 2h/5 — integer while the spec keeps h a multiple
+// RESERVE_SWEEP_DEG (300°), so R = (7h/120)·360/300 = 0.07·h; stage one
+// is 28/8 = 3.5, so stage two must be R/3.5 = 0.02·h = h/50, and with
+// p1 = 10 that is w2 = h/5 — integer while the spec keeps h a multiple
 // of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
-// does not). At the 30 h default: w2 = 12.
+// does not). At the 30 h default: w2 = 6.
 const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
-const rsvTeethW2 = (2 * SPEC.reserveHours) / 5;
+const rsvTeethW2 = SPEC.reserveHours / 5;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
@@ -10661,8 +10668,10 @@ reservePinion1.position.z = -RSV_Z_STEP;
 // TODO 48 — w1 and p1 are ONE PART: turned from one blank, their relative
 // phase is a constraint, not a freedom. The pair group is the structural
 // form of that constraint: the stage-one phase solve turns the PAIR
-// (solveGearChain aligns rsvPair1, whose silhouette the bigger w1 owns),
-// and p1 rides — stage two then reads p1's phase and aligns w2 to it.
+// (solveGearChain aligns rsvPair1, gauged by w1's own mesh since §152 —
+// the 300° step-up made p1 the pair's larger member, so the combined
+// silhouette stopped being w1's), and p1 rides — stage two then reads
+// p1's phase and aligns w2 to it.
 // (TODO 15 flagged the same question for the alarm's i1/i1b and never
 // answered it; here the two wheels are unambiguously one part, so this is
 // where it is answered.)
@@ -12033,16 +12042,20 @@ const meshPhaseTarget = (pC, pPhase, pN, qC, qN) => {
 // equivalent tooth. The response of `rotation.z` is MEASURED, not assumed:
 // under a mirroring parent a positive local turn moves the teeth the other
 // way, and that sign is exactly what the dialFace flip changes.
-const alignGear = (mesh, target, N) => {
+// `gauge` (§152) — the object whose silhouette is READ, defaulting to the one
+// being turned: a rigid pair whose smaller member no longer owns the outline
+// (the 300° re-gear made the reserve p1 outgrow its w1) aligns by its named
+// wheel's own mesh while the whole pair turns as the knob.
+const alignGear = (mesh, target, N, gauge = mesh) => {
   const pitch = (Math.PI * 2) / N;
   const before = mesh.rotation.z;
-  const cur = measuredToothPhase(mesh, N).phase;
+  const cur = measuredToothPhase(gauge, N).phase;
   // The bump must clear the gauge's own resolution: the silhouette is binned
   // at 2π/2048 ≈ 3.1e-3 rad, so the 1e-3 bump this used before was UNDER the
   // quantisation and the measured slope was noise. 0.02 rad is a sixth of the
   // finest pitch here and forty times the bin width.
   mesh.rotation.z = before + 0.02;
-  let d = measuredToothPhase(mesh, N).phase - cur;
+  let d = measuredToothPhase(gauge, N).phase - cur;
   mesh.rotation.z = before;
   while (d > Math.PI / N) d -= (Math.PI * 2) / N;   // phase lives modulo a pitch
   while (d < -Math.PI / N) d += (Math.PI * 2) / N;
@@ -12083,8 +12096,9 @@ const solveGearChain = (label, chain, module) => {
   // silent, so a skipped chain is itself a finding.
   for (const g of chain) {
     if (!g.obj) { console.warn(`TODO 15: ${label} — no handle for the ${g.name}; chain solve skipped`); return; }
+    g.gauge = g.gauge || g.obj;   // §152 — see alignGear: read this, turn obj
     g.c = worldCentreOf(g.obj);
-    const m = measuredToothPhase(g.obj, g.teeth);
+    const m = measuredToothPhase(g.gauge, g.teeth);
     if (m.gaps !== g.teeth || m.conf < 0.9) {
       console.warn(`TODO 15: ${label} the ${g.name} gauge is not credible `
         + `(found ${m.gaps} gaps for ${g.teeth} teeth, confidence ${m.conf.toFixed(3)}) — chain solve skipped`);
@@ -12114,9 +12128,9 @@ const solveGearChain = (label, chain, module) => {
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const uP = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const uP = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
     const uQ = _frac(0.5 - uP);
-    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth);
+    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth, Q.gauge);
   }
   // The residual tolerance is set by the INSTRUMENT, not by hope: gap centres
   // are quantised to 2π/2048, averaged over N gaps — comfortably inside 2% of
@@ -12124,8 +12138,8 @@ const solveGearChain = (label, chain, module) => {
   for (let i = 1; i < chain.length; i++) {
     const P = chain[i - 1], Q = chain[i];
     const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const a = _frac(((psi - measuredToothPhase(P.obj, P.teeth).phase) * P.teeth) / (Math.PI * 2));
-    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.obj, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
+    const a = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.gauge, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
     const off = Math.min(_frac(a + b - 0.5), 1 - _frac(a + b - 0.5));   // SUM: see above
     if (off > 0.02)
       console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
@@ -12152,15 +12166,18 @@ const solveGearChain = (label, chain, module) => {
   // rigid pair held, exactly as the item scoped, never one run with a
   // false centre-distance tripwire:
   //  · stage one, module rsvModule0: p0 is the datum (slip-coupled to the
-  //    barrel arbor, no upstream mesh); the PAIR aligns — its silhouette
-  //    is owned by the bigger w1, and turning rsvPair1 carries p1;
+  //    barrel arbor, no upstream mesh); the PAIR aligns as one knob and
+  //    turning rsvPair1 carries p1 — GAUGED by w1's own mesh since §152:
+  //    the 300° re-gear made stage two a step-up, so p1's outline outgrew
+  //    w1's and the pair's combined silhouette stopped having one owner
+  //    (the gauge read p1's 10 gaps against w1's declared 28 and refused);
   //  · stage two, the solved rsvModule1: p1's phase is READ (it was fixed
   //    by stage one) and w2 aligns to it on its own rotation.
   // The arbors' tick() rotations are proper mesh counter-rotations, so the
   // SUM invariant these solves establish rides every pose.
   solveGearChain('reserve stage one:', [
     { obj: reservePinion0, teeth: rsvTeethP0, name: 'p0' },
-    { obj: rsvPair1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
+    { obj: rsvPair1, gauge: rsvWheel1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
   ], rsvModule0);
   solveGearChain('reserve stage two:', [
     { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },

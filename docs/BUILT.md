@@ -14598,14 +14598,30 @@ hung its empty end at math angle 180° (9 o'clock) and swept 150° to
 30° — the comb sat visibly lopsided. TODO 18's discipline already
 keeps the three coupled quantities (graduation, hand travel, gear
 ratio) reading one source, `RESERVE_SWEEP_DEG` and the reserve hours;
-this change moves only the ANCHOR, and the anchor is now the symmetry
-rule itself: empty at 90° + sweep/2, full at 90° − sweep/2. The two
-sites that need it — `paintSubdialFace`'s `angAt` and the friction
-coupling's SET in tick() (the assembly slip that zeroes a real reserve
-indicator) — each derive it from that rule, neither from the other, and
-both say so in place. Measured off the built scene at tension
-0 / 0.5 / 1 the hand reads 165° / 90° / 15°: symmetric at both ends,
-vertical at half charge.
+the anchor is now the symmetry rule itself: empty at 90° + sweep/2,
+full at 90° − sweep/2. The two sites that need it —
+`paintSubdialFace`'s `angAt` and the friction coupling's SET in tick()
+(the assembly slip that zeroes a real reserve indicator) — each derive
+it from that rule, neither from the other, and both say so in place.
+
+**The sweep itself then widened to 300° (owner's call): 10° of hand
+per hour, twice the reading resolution.** Measured off the built scene
+at tension 0 / 0.5 / 1 the hand reads 240° / 90° / −60° — symmetric at
+both ends, vertical at half charge — and the un-swept remainder is a
+60° gap centred on the well's 6 o'clock, where the caption and the
+maker's mark live. Figures follow the seconds track's bezel rule: tops
+outward on the upper arc, flipped toward the pivot below the
+horizontal, where the end figures now sit. The gearing moved with the
+graduation exactly as TODO 18 demands: R = 1.75 rev × 360° ÷ 300° =
+2.1 = (28/8) × (6/10), so §22's spec law became w2 = h/5 (6 teeth at
+the 30 h default) — and with R under stage one's own 3.5, stage two is
+a STEP-UP, which is what a 300° hand off a 1.75-turn arbor costs. That
+inversion had one instrument consequence: TODO 15's stage-one gauge
+read the rigid w1+p1 pair's silhouette assuming the wheel owned it,
+and the grown p1 outgrew w1 (10 gaps reported for 28 declared teeth,
+solve refused). `solveGearChain` entries now carry an optional `gauge`
+object — the pair still aligns as ONE knob (TODO 48's one-blank
+constraint, untouched) but is read by w1's own mesh.
 
 **"Barely" is a derived depth, and the battery set it.** The first
 cut reused `DIAL_EDGE_BREAK` (0.05 mm) as the sector's depth and

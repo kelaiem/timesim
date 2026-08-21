@@ -4563,12 +4563,15 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     // the arc was widened 120° → 150° here while the gearing kept the old
     // figure. (The hand's friction set in tick() is sweepDeg/2 off the
     // same vertical for the same reason — both sites derive the anchor
-    // from the symmetry rule, neither from the other.)
-    // Major ticks every 12 hours (0/12/24), one minor per HOUR (at 150°
-    // that is 5° each), slimmed to keep the comb fine.
+    // from the symmetry rule, neither from the other.) A sweep past 180°
+    // dips below the horizontal on both sides; the un-swept remainder is
+    // a gap centred on the well's 6 o'clock, which is where the caption
+    // and the maker's mark live (at the shipped 300° that gap is 60°).
+    // Major ticks every 12 hours (0/12/24), one minor per HOUR (10° each
+    // at the shipped 300°), slimmed to keep the comb fine.
     // Defaults reproduce the shipped face for a bare makeDial() call
     // (test-geometry.html) — main.js always passes them.
-    const { sweepDeg = 150, hours = 30 } = scale;
+    const { sweepDeg = 300, hours = 30 } = scale;
     const angAt = (h) => 90 + sweepDeg / 2 - (h / hours) * sweepDeg;
     for (let h = 0; h <= hours; h += 1) {
       const major = h % 12 === 0;
@@ -4587,16 +4590,25 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     ctx.font = `500 ${sr * 0.11}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     // One figure per MAJOR tick, however many the graduation carries — a
     // 48 h scale reads 0/12/24/36/48 where the 30 h default reads 0/12/24
-    // (identical to the fixed list this generalises).
-    for (let h = 0; h <= hours; h += 12) arcLabel(String(h), angAt(h), sr * 0.64);
+    // (identical to the fixed list this generalises). Bezel convention,
+    // the seconds track's own rule: tops radially outward on the upper
+    // arc, and a figure whose centre falls below the horizontal flips
+    // tops toward the pivot so it never renders upside-down — at 300°
+    // the end figures sit 60° below the horizontal, where outward tops
+    // would invert them.
+    for (let h = 0; h <= hours; h += 12) {
+      const aDeg = angAt(h);
+      arcLabel(String(h), aDeg, sr * 0.64, Math.sin((aDeg * Math.PI) / 180) < 0);
+    }
     // No AB / AUF bookending the arc: the German pair was the Glashütte
     // marking for a Roman-figured reserve, and with the scale figured 0→24
     // in Arabic the words name what the numbers already say. The empty end
     // is where 0 is; the caption below names the complication.
     // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
-    // of the face — the region the graduation never enters and the hand
-    // never sweeps (its tip stays on the upper arc, its tail well inside
-    // this radius). Letters upright, tops toward the pivot, reading
+    // of the face, in the graduation's 6-o'clock gap — the one region the
+    // comb never enters — and inboard of nothing the hand reaches (its tip
+    // stops at 0.8·sr, inside this radius, its tail far inside it).
+    // Letters upright, tops toward the pivot, reading
     // left→right along the bottom arc; small, light-weight and near the
     // face tone so it whispers. Radius keeps the ink one type-height off
     // the wall: centre-line at sr − 1.5·typeH (outer ink at +typeH/2,
