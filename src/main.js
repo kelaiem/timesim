@@ -3889,15 +3889,101 @@ hammerGroup.add(hammerTailBar);
 }
 // --- ELBOW RODS. The low corridor crosses the transfer wheel's and the
 // winding spur's XY footprints (and, for the hack rod, the centre
-// arbor's lower-pivot collar) — a straight tube cannot clear them, so
-// each rod is a RIGID two-segment link with a fixed bend. The elbow's
-// chord-frame position (f along, e lateral) is SOLVED by scan,
-// maximizing the worst-case clearance over the whole crown stroke
-// against the low-band obstacle circles. The link stays rigid — its
-// pin-to-pin chord is the calibrated length — so the two-circle pose
-// solves are untouched; only the mesh is bent. (The drum's set-up
-// cluster is 15+ units off both routes — checked analytically, not
-// scanned, because drumPos is declared later in the build.)
+// arbor's lower-pivot collar) — a straight tube may not clear them, so
+// each rod is a RIGID two-segment link whose bend the CORRIDOR decides.
+// The elbow's chord-frame position (f along, e lateral) is SOLVED by
+// scan for the LEAST bend that clears the low-band obstacle circles over
+// the whole crown stroke (§85 C3 — the objective used to be
+// most-clearance, and a maximiser with no cost for bending bends to its
+// search bound). The link stays rigid — its pin-to-pin chord is the
+// calibrated length — so the two-circle pose solves are untouched; only
+// the mesh is bent. (The drum's set-up cluster is 15+ units off both
+// routes — checked analytically, not scanned, because drumPos is
+// declared later in the build.)
+//
+// §137 — MEASURED, and the paragraph above used to overstate its own
+// case. Today the RESET rod's least-bend solve clears at e = 0.000000:
+// it IS the straight tube, and the bend machinery buys it nothing. Only
+// the HACK rod bends — e 11.6 u = 4.396 mm, 41% of ELBOW_E_MAX, which is
+// §125 Tier B's southern dogleg past the escape arbor's collar. The
+// description stays general because the SOLVER is: a re-solved corridor
+// can bend either rod, so the arithmetic below is written for the worst
+// route the scan may pick rather than for today's. Read off the built
+// metal by tools/probe-137-elbow.mjs, which recovers e, f and the chord
+// from the knuckle's own position and then uses the SECOND segment as a
+// residual check (0 on both rods). The same probe re-takes the drum
+// claim above, which was analytic and is now measured: the tightest
+// edge-to-edge separation over the whole crown cycle is 23.008 u against
+// the set-up cluster and 20.807 u against the wider mainspring-drum
+// footprint, so "15+ units" holds by 5.8 u at its tightest. §150 hoisted
+// that centre distance into FUSEE_DRUM_DIST and now shares it with the
+// chain-conservation solve — re-take this whenever that constant moves,
+// because no sweep watches an analytic claim.
+//
+// §137 GATE A — WHAT THE BEND CARRIES, computed instead of ignored.
+// TODO 63's finding is that a straight two-force link and a link with 28
+// units of offset are the same object to every instrument here; this is
+// the arithmetic that decides whether the rigid bend is defensible as
+// MATTER. Section: ROD_R 0.35 u = 0.1326 mm, so I = πr⁴/4 = 2.432e-16 m⁴
+// and Z = I/c = 1.833e-12 m³, at the 200 GPa both SLENDER_E_PA and
+// OSC_STEEL_E already carry for this steel (EI = 4.864e-5 N·m²).
+//
+// THE LOADS, derived from the driven member rather than assumed — both
+// by virtual work, so no lever ratio has to be measured off the metal:
+//  · RESET. The hammer cams the heart to zero against the display
+//    arbor's FRICTION COUPLING, and that coupling's slip torque is
+//    bounded by this file's own argument for the coupling (above the
+//    heart cam): it must slip before it backdrives the going train
+//    through a live escapement lock, so τ_slip ≤ the train's torque at
+//    the fourth arbor. That torque is published rather than guessed —
+//    the going ribbon releases ½k(θ_full² − θ_setup²) = 3.43e-3 J over
+//    the reserve (EQUALISATION.going: k 9.9667e-5 N·m/rad, 10.2493 and
+//    6.0214 rad) and the fourth wheel turns 1 rev/min for 30 h, i.e.
+//    1.131e4 rad, so τ ≤ 3.03e-7 N·m. A reset sweeps the cam at most
+//    half a turn (this file's own "up to half a fourth-wheel
+//    revolution"), and the rod's measured driven-end stroke is 1.152 mm,
+//    so F = τ·π / 1.152 mm = 0.83 mN.
+//  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
+//    3.067 mm (measured off the built pad). Holding a 270°
+//    (AMPLITUDE_TRUE_DEG) swing means absorbing the hairspring's own
+//    peak torque k·θ = 1.234e-7 × 4.712 = 5.82e-7 N·m — 0.19 mN of
+//    friction at that radius, so ≈1.3 mN of normal force at a ruby-on-
+//    brass μ 0.15. The pad closes on the rim 0.495 u per 3.413 u of rod
+//    travel (both measured over the crown cycle), so the rod carries
+//    1.3 × 0.145 = 0.18 mN.
+// Both are sub-milliNewton — an order under the 5–50 mN detent budgets
+// the movement already carries (the yoke spring's block names that
+// envelope), which is the first thing the verdict below turns on.
+//
+// THE VERDICT, taken at ELBOW_E_MAX = 28 u = 10.612 mm rather than at
+// today's e, so it survives a re-solved route (the built e — reset 0,
+// hack 4.396 mm — is smaller in every row):
+//  · STRESS. σ = F·e/Z: reset 8.81e-6 N·m / 1.833e-12 m³ = 4.8 MPa,
+//    hack 1.1 MPa. Against the ~400 MPa yield of the same carbon steel
+//    whose E this file pins, that is 83× and 375× of margin.
+//  · DEFLECTION. δ = F·e·L²/(8EI) over the calibrated chords (17.249 and
+//    25.641 mm): 6.7 µm and 3.3 µm, i.e. 0.58% and 0.25% of the measured
+//    strokes (1.152 and 1.294 mm). The lay-shaft section block's own
+//    standard is δ ≤ 0.1 × stroke; this clears it by 17× and 39×. Read
+//    as a LOAD CEILING instead: at the worst bend the solver can pick,
+//    the standard holds up to 14.3 mN (reset) and 7.2 mN (hack) — above
+//    the 5 mN FLOOR of the detent band but nowhere near its 50 mN
+//    ceiling, so a rod that ever drives a detented member must have this
+//    re-taken rather than inherited.
+//  · CHORD SHORTENING — the quantity that actually threatens what the
+//    rigid bend exists to protect. Δ ≈ 8δ²/(3L): 7.0e-6 mm (reset) and
+//    1.1e-6 mm (hack), i.e. 1.9e-5 u and 3.0e-6 u — 4300× and 27000× under
+//    HAMMER_TAIL_DELTA's own calibration tolerances (endpoint fidelity
+//    0.08 u, fold margin 0.25 u — the two-circle solve rejects a root
+//    that misses either). At a 50 mN load it would be 0.22 u, which
+//    still clears the fold margin and does NOT clear the endpoint
+//    tolerance: that is the ordering to remember if the load ever moves.
+// So the rigid bend is DEFENSIBLE, for any route this solver can pick,
+// at these loads — first-order and good to a factor of two, the error
+// model SLENDER_WAIVERS' own INFORMATIONAL note already states. It is
+// defensible because the loads are sub-mN, not because bending is
+// harmless, which is why the two criteria are written down rather than
+// the conclusion alone.
 // §85 step B — the table takes the stations and the keyless radii it reads as
 // ARGUMENTS: a candidate arrangement moves three of these four circles (the
 // barrel handle carries the winding spur, the escape handle the fourth
@@ -13092,6 +13178,37 @@ const ALARM_SIL_PIN_LEVER = ALARM_FEELER_ARM_LEN / ALARM_SIL_TAIL_ARM; // tail t
 // to give back (measured, the first cut's 0.055).
 const ALARM_SIL_THROW = ALARM_SIL_GAP;
 const ALARM_SIL_RATIO = ALARM_SIL_THROW / ALARM_SLEEVE_TRAVEL; // finger/paddle arm ratio — designed, not inherited
+// P1, TODO 16's format (§137) — TWO BUDGETS, AGREEING, which is the lay
+// shaft's own idiom applied to a chain that had only ever published the
+// first half of it.
+//
+// DISPLACEMENT. The ratio above is 0.05 / 0.236 = 0.2119, and both ends of
+// that fraction are constraints rather than choices: the throw IS the rest
+// gap (a longer one buries the finger in a tail with no rise to give back —
+// measured, the first cut's 0.055) and the paddle's travel IS the sleeve's
+// (ALARM_SLEEVE_DR 0.186 of pin stroke plus the 0.05 rest gap). Downstream
+// the feeler multiplies it back up: ALARM_SIL_PIN_LEVER = 2.45 / 0.36 =
+// 6.81, so 0.05 u of finger throw commands 0.340 u at the pin — the whole
+// point of putting the detection three units from the lifter's run instead
+// of at the strike lock.
+//
+// FORCE. A ratio that divides displacement by 4.72 multiplies force by the
+// same 4.72 at the finger end, so the ratio's price is paid in the budget
+// that is scarce here and not in the one that is not. What the finger end
+// meets: the rocker's own return blade (0.2 × SPRING_FLAT_U over its 1.0 u
+// free length, 3EI/L³ = 8.7 kN/m) holding the paddle on the run, and the
+// feeler's return blade at the far end (SPRING_FLAT_U square over 1.0 u,
+// 5.7 kN/m) holding the pin on its track. Both are flat-spring stock worked
+// through tens of microns, so both sit in tens of mN — against a crown pull
+// that arrives at the collar ramp as a finger's 1–10 N. Two orders of
+// headroom, in the same shape as the pusher's.
+//
+// The residue, named rather than rounded off: neither blade's PRELOAD is a
+// derived constant — the rocker blade's bear station is its own mid-length
+// at 0.35 of the paddle arm rather than a declared contact, and the feeler's
+// is flexed representationally in the tick. So the forces above are bounded,
+// not gated, and pinning those two bear points is what this chain would need
+// before its budget could be held the way §54 holds the lay shaft's.
 // the physical pin: what the tail's remaining headroom under the finger
 // allows, in pin units; MIN'd with the disc's own law wherever the pin's
 // drop acts (pose, pawl, trip, re-arm). Negative = actively lifted.
@@ -17792,6 +17909,36 @@ alarmSwitchUnit.add(alarmClickArm);
 // and reads as floating, which is exactly how it looked. A return spring has
 // to be GROUNDED: one end fixed to the plate, the other pressing the moving
 // part. Anchored here to the switch unit, not the arm.
+//
+// P1, TODO 16's format (§137) — THE DETENT THIS BLADE PROVIDES, which is
+// the load every actuation of this wheel must overcome and the one the alarm
+// link's stall is judged beside. Section and arithmetic are the lock lever's
+// return blade one unit over, verbatim: SPRING_FLAT_U (0.05 mm) in the
+// direction it bends, 0.2 u (0.0758 mm) of width, over the 1.5 u free
+// length, so 3EI/L³ with I = b·h³/12 = 7.90e-19 m⁴ at 200 GPa is 2.6 kN/m.
+// The RIDE is the wheel's own: the nose travels ALARM_CLICK_SEAT 4.94
+// (dropped in a gap) → ALARM_CLICK_OUT 5.98 (riding a column), 1.04 u
+// radial, which about the pivot is 0.2216 rad and at the bear station
+// (bearFrac's 0.12 floor, 0.563 u out on a 4.693 u arm) is 0.047 mm of blade
+// deflection. That is 122 mN at the bear and, back through the same 0.12 arm
+// ratio, ≈ 15 mN pressing the nose into the wheel — INSIDE the movement's
+// 5–50 mN detent band. It is the number the pusher's pawl is sized against
+// (the press block below carries that half), and it is the same band the
+// alarm link's ≈ 48 mN tail-limited stall sits in: the click is what the
+// INPUT must overcome, the link's stall is what the OUTPUT can deliver, and
+// both landing inside one band is that loop closing.
+//
+// SAID OUT LOUD, because the detent figure alone hides it: 0.047 mm is 8.3%
+// of this blade's free length, and the root fibre at that deflection carries
+// 3Eδh/2L² ≈ 2.2 GPa — past even hardened blue steel's ~1.5 GPa elastic
+// limit. The detent is the right SIZE and the spring that makes it is
+// over-strained; a real blade would take a set and the 15 mN would decay
+// with it. The bear station is why: bearFrac hits its 0.12 floor because
+// _bearTan ≈ L (the saw's tip circle plus the blade's own depth reaches
+// nearly the whole arm), so the spring works at the pivot end, where the
+// throw per unit of nose travel is worst. The fix is position space — a
+// longer free length, or a bear station the tip circle does not crowd — not
+// a fatter blade. Filed at TODO 63.
 {
   // Bear on the arm at mid-length, on the side away from the wheel, so the
   // moment about the pivot drives the nose inward — the direction the click
@@ -18287,6 +18434,29 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // So: original section, and §54 goes on reporting λ 100.5. TODO 16 carries
 // what a real fix needs — the jumper's swept envelope measured first, so the
 // next attempt is sized against the thing that actually blocks it.
+//
+// §137 — THE ENVELOPE IS MEASURED NOW (tools/probe-137-jumper-envelope.mjs),
+// AND THE PREMISE ABOVE IS DEAD. §112 re-solved the rod site and the drive
+// tab's azimuth jointly ONE DAY after the paragraphs above were written, so
+// the pair they are about moved out from under them. From a virgin boot with
+// the crown asserted PULLED — the exact pose the local run above missed —
+// the nearest alarm-link member to the minute jumper's swept hull is
+// `alarmLinkCentrePin` at 13.32 u (the repo's own clearanceAt reads 13.49 at
+// the pulled pose), and the shaft's own hull stands 14.56 off. Station by
+// station along the chord (33.387 u, bushes at t 2.45 and 22) the jumper
+// binds NOTHING.
+//
+// What binds instead is the `Alarm setting idler`, over 89 stations, at a
+// max legal radius of 0.2850 — a constant 0.435 gap, vertical, which no
+// shaft-radius table would ever have shown because it is not the pair
+// anybody was looking at. The one tighter row, `Dial/alarmSelTab` at 0.1457
+// over 10 stations, is the DECLARED working contact (MECH_GRAPH's
+// Alarm link ⇄ Alarm selector edge), and it reproduces the hand-probed
+// 0.297 recorded twelve lines below at 0.2957. NO STATION FORBIDS THE
+// AS-BUILT 0.12. The section is a live question again, and TODO 16's
+// waiver is now waiting on a section rather than on a measurement — what
+// the envelope PERMITS and what §54's ceiling WANTS are two different
+// numbers, and the section block below carries both.
 const ALARM_LINK_SHAFT_R = 0.12;
 const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
@@ -18486,24 +18656,53 @@ const alarmLinkParts = {};
   shaft.position.set((innerEnd.x + ALARM_LINK_ROD_XY.x) / 2, (innerEnd.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
-  // §54 / TODO 16 — THE SECTION IS DERIVED FROM THE SLENDERNESS CEILING.
-  // It used to be r 0.12: a 0.09 mm rod spanning 9.05 mm, L/d = 100. A human
-  // hair is about 0.07 mm. It passed §50 only because §50 asks how thin a part
-  // is and never how LONG it is thin for.
+  // §54 / TODO 16 / §137 — THE SECTION, RECONCILED AGAINST THE METAL THAT
+  // ACTUALLY SHIPPED. This block used to derive r ≈ 0.41 from two budgets
+  // agreeing: §54's ceiling (d ≥ chordLen/30) and a load path holding the
+  // drive end's deflection to a tenth of the selector's 0.071 mm stroke
+  // under a ~20 mN detent, which wants 3EI/L³ ≳ 2800 N/m. Both were
+  // computed on a 4.5 mm drive-end cantilever, and that span no longer
+  // exists — §68's re-scan found the inboard pocket the old note said was
+  // impossible, so the bushes stand at chord stations 2.45 and 22 and the
+  // drive end overhangs 2.45 u = 0.9286 mm. The mesh two lines below has
+  // meanwhile been building at the reverted 0.12 the whole time. The
+  // derivation is restated here against both.
   //
-  // Two independent derivations land on the same number, which is the reason
-  // to trust it. §54's ceiling gives d ≥ chordLen/30. And the load path gives
-  // the same: the drive end was a 4.5 mm cantilever on the pre-§68 chord
-  // (every station inboard of its bush was under dial hardware; the §68
-  // chord's re-scan found an inboard pocket and the cantilever is now
-  // 0.93 mm — see the bush stations below), and holding the old span's
-  // deflection to a tenth of the selector's 0.071 mm stroke under a ~20 mN
-  // detent load needs 3EI/L³ ≳ 2800 N/m, i.e. r ≈ 0.41. Geometry budget and
-  // force budget agreeing to two decimals is not a coincidence worth ignoring.
+  // FORCE BUDGET, at the MEASURED 0.9286 mm cantilever (the bush stations
+  // are read off the built unit by tools/probe-137-jumper-envelope.mjs, not
+  // asserted here): 3EI/L³ with I = πr⁴/4 gives 2518 N/m AS BUILT — 90% of
+  // the 2800 target, which r 0.1232 (+2.7%) would meet outright. The old
+  // r ≈ 0.41 reproduces only on the retired span (0.4025 there, measured),
+  // so quoting it against this shaft was always describing a different
+  // part. At the largest radius the corridor permits (0.285, below) the
+  // same formula gives 80,124 N/m. The force budget is not what binds this
+  // shaft, and has not been since §68 moved the bush.
   //
-  // It FITS: the shaft's radial clearance was probed along its whole length
-  // and the tightest non-contact band is 0.97 (t 20–22). The 0.297 at t≈0.3 is
-  // `Dial/alarmSelTab` — the crank's own working contact, not an obstruction.
+  // WHAT THE CHAIN STALLS AT, in TODO 16's format and with the weakest
+  // member setting it: the shaft's 2518 N/m over the selector's 0.071 mm
+  // stroke stalls at 179 mN, while the beak tail's surviving 305 N/m blade
+  // over the rod's 0.158 mm travel stalls at 48 mN. So the transfer is
+  // TAIL-LIMITED at ≈ 48 mN against the movement's 5–50 mN detent band —
+  // inside it, at the top. (TODO 63's ≈1.6 mN headline is the same
+  // arithmetic on the retired 4.5 mm span, 22 N/m × 0.071 mm; it is
+  // corrected there.)
+  //
+  // WHAT REMAINS IS GEOMETRY, NOT FORCE. §54's ceiling wants λ ≤ 30 over
+  // the 19.55 u bush-to-bush span, i.e. r 0.3258, and the corridor's
+  // binding wall — the alarm setting idler, 89 stations of it — tops out at
+  // r 0.2850. That is 0.041 short, so NO section legal in this chord meets
+  // the ceiling and retiring SLENDER_WAIVERS['Alarm link'] needs a THIRD
+  // BUSH STATION: position space, TODO 16's to file. λ 139.1 is reported
+  // meanwhile, which is the honest state.
+  //
+  // (One correction the sweep forced, kept because it is the kind that
+  // hides: this block used to record a hand probe's "tightest non-contact
+  // band is 0.97 (t 20–22)". Measured against the same swept hulls
+  // sweptOverlap judges, t 20–20.75 is the shaft's TIGHTEST band, not its
+  // roomiest — 0.435, the alarm setting idler, which no shaft-radius hand
+  // probe had in it. The same note's 0.297 at the inner end IS reproduced,
+  // at 0.2957, and it is still `Dial/alarmSelTab` — the crank's own
+  // declared working contact, not an obstruction.)
   const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 8), MATS.steel);
   shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
   shaftRod.rotation.z = Math.PI / 2;
@@ -19047,6 +19246,24 @@ alarmSwitchUnit.add(alarmPusherGroup);
   alarmPusherGroup.add(cap);
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
+  // P1, TODO 16's format (§137) — WHAT THE FINGER BRINGS, against what the
+  // chain asks of it. The head is 2 mm across precisely so a fingertip can
+  // locate and press it, and a fingertip on a cap that size delivers 1–10 N
+  // without deliberation. What waits for it, priced at its own sites: the
+  // column's detent is the click blade's ≈ 15 mN at the nose, which reaches
+  // this stem as ≈ 9.4 mN along the press axis (the pawl's block below does
+  // that division), plus the lock lever's return blade and the link beak
+  // riding the same castellations — every one of them a single-figure-mN
+  // rider off a flat spring at SPRING_FLAT_U stock.
+  //
+  // So the input stands two to three orders over the load, the same shape of
+  // margin the lock lever's own return blade records against this pusher.
+  // The consequence worth writing down is that THE PRESS IS NOT FORCE
+  // LIMITED anywhere: nothing between the finger and the wheel is sized by
+  // how hard it must be pushed, so the head's dimension above is an
+  // ERGONOMIC constraint standing alone, and the riders' sections are set by
+  // §50's stock floors rather than by this chain. A rider that ever needs
+  // real force would have to be argued here first.
   // The pawl — a slim bar at the stem's inner end, nose down at the skirt.
   const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
   pawl.name = 'alarmPusherPawl'; // TODO 20: the hand-off row selects it by name (inspect.js couples by string)
@@ -19060,6 +19277,35 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // face's band — computed from the SAME polygon the teeth were cut from
   // (userData.ratchetPoly, the profileAt convention), for any azimuth
   // the spec chooses. The alarmHandoffs row asserts the kiss every run.
+  //
+  // P1, TODO 16's format (§137) — WHAT THE PAWL CARRIES AT THE SAW, in the
+  // wind-arrest beak's format one mechanism over: a moment divided by a
+  // radius, plus the flank angle that says where the reaction points.
+  //
+  // The MOMENT is the click's detent, and it is the click's blade that sets
+  // it (that block carries the section arithmetic): the ride stores
+  // ½kx² = 2.88e-6 J per index at 2.6 kN/m and 0.047 mm, released again on
+  // the drop, and the rise occupies the flank — 71% of each half-arc, i.e.
+  // 0.372 of the 0.5236 rad step — so the mean rising torque is 7.8e-6 N·m
+  // and a linear ramp peaks at ≈ 1.55e-5 N·m. The lock lever's return blade
+  // and the link beak ride the same castellations and add to it; the click
+  // is the largest of the three and is quoted alone, which understates
+  // nothing that would change the verdict.
+  //
+  // The RADIUS is not the tooth's — for a line of action the offset IS the
+  // moment arm, so the pawl's is ALARM_PAWL_ARM = |ALARM_PUSH_CHORD| =
+  // 4.37 u = 1.656 mm, giving ≈ 9.4 mN along the press axis. Quoted at the
+  // saw's own root circle (0.9·ALARM_COL_BASE_R = 5.13 u = 1.944 mm) the
+  // same torque is ≈ 8.0 mN of tangential force on the tooth face.
+  //
+  // The FLANK ANGLE is the cleanest half. The driving face is the CLIFF —
+  // geometry.js cuts each tooth as a radial step from root 5.13 to tip 6.384
+  // at ONE azimuth — so it is 0° off radial and the whole reaction is
+  // tangential: nothing about this contact cams the pawl out, which is why
+  // it needs no closing geometry (contrast the wind-arrest beak's 15.4°,
+  // which needs it because that contact is a HOLD, not a drive). The back
+  // flank falls tip → root over the whole 30° pitch, 67.4° off radial, and
+  // that is the ramp the pawl cams back over on the return stroke.
   const ALARM_PAWL_KISS_S = (() => {
     const cosE = Math.cos(ALARM_LOCK_ENGAGED), sinE = Math.sin(ALARM_LOCK_ENGAGED);
     const halfW = 0.3 / 2; // the pawl bar's width about the press line
