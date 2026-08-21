@@ -13,7 +13,7 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-19 — items with work left first, with what remains:
+refreshed 2026-08-20 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
@@ -23,8 +23,8 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
-| 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, is measured and carried by item 48 |
-| 16 | PART CLOSED | One item deliberately left, recorded in place |
+| 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
+| 16 | PART CLOSED | The beak lever question, and the SHAFT: item 63's re-take found the thickening REVERTED (CI overlaps) — the chain stalls ≈1.6 mN, shaft-limited, and the item carries a dated correction saying its "restored to 48 mN" described a fix that no longer ships |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
@@ -34,7 +34,7 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 40 | PART CLOSED | Rows 1 and 2 closed; row 3 most of the way, one named term left |
 | 46 | CLOSED (§124) | The chain rode the fusee base on one CORNER (1.9–2.5 u of daylight, invisible to the burial-only row). Closed by the layout: first stage re-geared 8:1 → 120/7 so the fusee runs 1.75 wraps over 2 grooves at pitch 1.389, set-up 17 → 23 clicks, level product held; links LEAN to the flank on the funded FUSEE_TILT_Z raise. Ideal torque law exact again; the new float row gates the seat at 0.202 unwaived (was 3.191 waived) |
 | 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
-| 48 | OPEN | Both power-reserve meshes measured 47–49% of a pitch off anti-phase — tooth on tooth. TODO 15's last `Math.PI / teeth` site but its own item now, because two more findings ride with it: the gap gauge's threshold misreads an 8-leaf pinion, and the train is posed backwards from its hand |
+| 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
 | 49 | OPEN | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal at all while the support edge claims the joint. Filed by §126's own scope guard |
 | 50 | OPEN | The going stem's one-way is the scalar `windStemSlip`, with no click behind it. One class with two instances — the alarm stem states the same debt |
 | 51 | CLOSED | Both rows clear (Chain 0.2256, Fusee 0.1500 against the 0.15 floor), boot silent. The reach law reads the DISCRETE links and errs on a sphere; the arms' whole CHORD is held over the MEASURED travel, not the designed throw; tabs bridge inward while arms stop out; and `LUG_OUTER` is derived from the pivot ceiling `Rs ≤ √(Rb² + L_max²)` that was empty at the lug's §126 proudness. Residue named in the item: the beak window is two scan steps wide, the Fusee row sits exactly on its floor, and `ARM_STOP_R` is azimuth-blind |
@@ -47,9 +47,9 @@ refreshed 2026-08-19 — items with work left first, with what remains:
 | 58 | CLOSED | The word is gone from every claim site: the mechanism is a **minute quick-set with a detented display**, in `BUILT.md` §1's title, `main.js`' two section headers and `explain.html`. The inner defect is not fixed — it is now SAID, in the source beside the rounding and in the explainer's own ledger: the input is driven through the real tooth counts, the detent is `Math.round(…/MIN_PITCH)`, and the star turns with the ROUNDED value, so the beak follows a profile the display already chose. Roadmap §4 is where the stronger word would be earned. Paid as filed: three explain-page blocks × five locales re-translated (`--check` PASS, 596/596), and fifteen `src/i18n.js` rows for three tour captions — one more caption than filed, because *"the beak snaps the hand"* was the same overclaim in miniature |
 | 59 | CLOSED | The nose's radius is solved against the surface it rides — the wall, and the top CORNER, whose roll-off branch (`baseR + √(noseR² − dz²)`) nobody had modelled; the transition is set by the nose radius and `dz/da`, not by the flank's whole 10.68°. Arm angle by law of cosines, not the old first-order chord. Measured over a pitch: old 30/121 samples buried worst 0.699, new **0/121**, worst clearance 0.0052. The row citing "the switch's own asserts" pointed at a check nobody wrote — one exists now, independent of the law |
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
-| 61 | OPEN | `SPEC.md:47` (the architecture contract) says "Involute-ish" and `geometry.js:313` says "Involute/cycloidal-ish", while the profile function cuts a TRAPEZOID with a relieved tip — straight-chord flanks, one quadratic, `curveSegments: 3`, no pressure angle, no conjugate action. Only `makeEscapeWheel` is a designed profile. Cheap to correct and should not wait on §136 |
-| 62 | OPEN | Nine `Math.PI / teeth` sites neither TODO 15 nor 48 names, and the GOING TRAIN has no phase at all — not one `rotation.z` is assigned, so its four meshes sit wherever `gearOutlineShape` puts a tooth at two different `tipFrac` conventions. `main.js:10130` warned about exactly that and the train was never brought under it. Fix TODO 48's threshold bug first or `solveGearChain` refuses every small pinion |
-| 63 | OPEN | The elbow rods bend for ROUTING only — a rigid two-segment link, offset to `ELBOW_E_MAX` 16, with no bending moment computed anywhere. And TODO 16's 1.5 mN stall is stale in the favourable direction: §68 collapsed the beak lever 36.5× → ~3:1 while the shaft thickening was reverted twice by CI, so it describes neither configuration. Re-take before sizing anything against it |
+| 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
+| 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
+| 63 | PART DONE | The stall is RE-TAKEN from the built metal: lever gain 7.1× (measured arms 1.395/9.95 u), tail blade healthy at 305 N/m, shaft reverted to the hair — chain stalls ≈1.6 mN, SHAFT-limited, and both items' records now say so. Remains: the elbows' un-computed bending moment (`ELBOW_E_MAX` is 28 since §125 Tier B, which sharpens it) and the five force paths with no arithmetic |
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
@@ -7223,8 +7223,10 @@ two-segment link with a fixed bend, and the build says so plainly
 (`main.js:3042–3052`): *"each rod is a RIGID two-segment link with a fixed
 bend … The link stays rigid — its pin-to-pin chord is the calibrated length —
 so the two-circle pose solves are untouched; **only the mesh is bent.**"* The
-lateral offset `e` is solved by scan up to `ELBOW_E_MAX = 16`
-(`src/layout.js:1241`).
+lateral offset `e` is solved by scan up to `ELBOW_E_MAX` — 16 when this
+was filed, **28 since §125 Tier B** (the mirrored hack rod's southern
+dogleg runs ~22 of lateral), which only sharpens the finding: the deeper
+the routing bend, the larger the moment nothing computes.
 
 A real bent connecting rod carries a **bending moment proportional to that
 offset**, and nothing anywhere computes it. A straight two-force link and a
