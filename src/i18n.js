@@ -330,6 +330,7 @@ Object.assign(DE, {
   'Pearl radius': 'Perlenradius', 'Pearl shingle direction': 'Perlen-Schuppenrichtung',
   'Pearl jitter': 'Perlen-Streuung', 'Ruby colour': 'Rubinfarbe',
   'Dial colour': 'Zifferblattfarbe',
+  'Search settings': 'Einstellungen durchsuchen',
 });
 
 // Guided-script captions (German) — keyed by the English caption verbatim,
@@ -558,6 +559,7 @@ Object.assign(ZH, {
   'Pearl radius': '珍珠半径', 'Pearl shingle direction': '珍珠叠瓦方向',
   'Pearl jitter': '珍珠抖动', 'Ruby colour': '红宝石颜色',
   'Dial colour': '表盘颜色',
+  'Search settings': '搜索设置',
 });
 
 Object.assign(ZH, {
@@ -951,6 +953,7 @@ const FR = {
   ['Pearl jitter']: 'Irrégularité des perles',
   ['Ruby colour']: 'Couleur des rubis',
   ['Dial colour']: 'Couleur du cadran',
+  ['Search settings']: 'Rechercher les réglages',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
@@ -1345,6 +1348,7 @@ const JA = {
   ['Pearl jitter']: '真珠のばらつき',
   ['Ruby colour']: 'ルビーの色',
   ['Dial colour']: '文字盤の色',
+  ['Search settings']: '設定を検索',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js
@@ -1738,6 +1742,7 @@ const ZH_HANT = {
   ['Pearl jitter']: '珍珠抖動',
   ['Ruby colour']: '紅寶石顏色',
   ['Dial colour']: '錶盤顏色',
+  ['Search settings']: '搜尋設定',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
   //    display site in main.js

@@ -19910,6 +19910,15 @@ style.textContent = `
 }
 .hud-panel .adv-row input, .hud-panel .adv-row select { width: 100%; }
 .hud-panel input[type=range] { width: 128px; accent-color: #3a6bd8; }
+/* §155 — the Advanced list's own search box. Roadmap item 141: no
+   input[type=search] existed anywhere in the app before this. */
+.hud-panel .adv-filter {
+  display: block; width: 100%; box-sizing: border-box; margin: 4px 0 8px;
+  padding: 5px 8px; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
+  color: #e8edf2; font: 11px/1.4 inherit;
+}
+.hud-panel .adv-filter::placeholder { color: #8b95a1; }
 .hud-panel select {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2;
   border-radius: 6px; padding: 4px 6px; font-size: 11px; cursor: pointer; max-width: 150px;
@@ -20307,6 +20316,11 @@ panel.innerHTML = `
            own mechanism: the panel a first-time viewer sees is unchanged. -->
       <details id="advanced-section" style="margin-top:6px;">
         <summary class="label-small" style="cursor:pointer; opacity:0.8;">Advanced</summary>
+        <!-- §155: static markup, not created after the localize pass — so
+             unlike the generated rows below it, this rides the one
+             HUD_ROOTS localizeTree walk (§73) for free; no manual t() call. -->
+        <input type="search" id="advanced-filter" class="adv-filter"
+               placeholder="Search settings" aria-label="Search settings" />
         <div id="advanced-body"></div>
         <div class="row label-small" style="opacity:0.75;">
           <span>Tuned values persist in this browser</span>
@@ -21392,6 +21406,12 @@ function askTour(onProceed) {
     },
   };
   const advBody = document.getElementById('advanced-body');
+  // §155 — roadmap item 141. `rows` above is local to buildAdvanced() and
+  // its elements are dropped once appended, so the filter needs its own
+  // list: one entry per generated row, carrying the three haystacks the
+  // entry asked for (translated label, English `_labels` source, dot key
+  // path) rather than re-walking the DOM per keystroke.
+  const advFilterables = [];
   const buildAdvanced = () => {
     const rows = [];
     const walk = (node, path) => {
@@ -21431,7 +21451,8 @@ function askTour(onProceed) {
       row.className = 'row label-small adv-row';
       const label = document.createElement('span');
       label.className = 'adv-label';
-      label.textContent = (authored ? t(authored) : r.path.slice(1).join('.')) + (live ? '' : ' ⟳');
+      const labelText = authored ? t(authored) : r.path.slice(1).join('.');
+      label.textContent = labelText + (live ? '' : ' ⟳');
       label.title = live ? r.path.join('.') : r.path.join('.') + ' — applies on reload'; // the PATH is developer vocabulary — English by contract
       row.appendChild(label);
       // §53 addendum (owner call): the scalar VALUE is shown beside the
@@ -21489,9 +21510,20 @@ function askTour(onProceed) {
       });
       row.appendChild(input);
       advBody.appendChild(row);
+      // §155 — three haystacks, per the entry: the translated label (so a
+      // German reader can type 'Perlen'), the English `_labels` source (so
+      // the project's own vocabulary works in any locale), and the dot key
+      // path (already `label.title`, English by contract). Built from
+      // `labelText` rather than `label.textContent`/`row.textContent`, so
+      // neither the ' ⟳' reload suffix nor the numeric readout can false-hit.
+      advFilterables.push({ row, hay: `${labelText} ${authored || ''} ${r.path.join('.')}`.toLowerCase() });
     }
   };
   buildAdvanced();
+  document.getElementById('advanced-filter').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    for (const f of advFilterables) f.row.style.display = (!q || f.hay.includes(q)) ? '' : 'none';
+  });
   document.getElementById('btn-reset-aesthetics').addEventListener('click', () => {
     localStorage.removeItem('aestheticsOverrides');
     location.reload();
