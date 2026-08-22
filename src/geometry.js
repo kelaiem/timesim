@@ -4527,21 +4527,23 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
 // `scale` carries the graduation the CALLER owns: for the reserve well,
 // { sweepDeg, hours } — see the `kind === 'reserve'` branch for why they
 // cannot be literals here.
-// The reserve comb's own fractions, module-scope and EXPORTED since §158,
-// because two things outside the paint now derive from them: the figure band
-// (inside, one line down from the ticks) and the reserve HAND's width floor
-// (main.js — a pointer may not be finer than the marks it indexes). Both used
-// to be free to restate 0.92 / 0.20 / 0.055 in their own arithmetic, which is
-// the drifted-copy failure rule 1 exists for: lengthen a major tick and the
-// figures must move with it, widen it and the hand must follow.
-// The well's maker's mark, one copy (makeDial's reserve-less branch sets the
-// same words on the dial itself — the two are the same signature).
+// The maker's mark's words, ONE copy: makeDial's reserve-less branch sets the
+// same signature on the dial itself, and the reserve well's notch sets it
+// there — they were the same string typed twice until §158.
 export const MARK_TEXT = 'WATCH SIMULATOR';
+// The reserve comb's own fractions, module-scope and EXPORTED since §158,
+// because three things outside the paint derive from them: the figure band
+// (inside, one line down from the ticks), §159's zone sectors, and the reserve
+// HAND's width floor (main.js — a pointer may not be finer than the marks it
+// indexes). All were free to restate 0.92 / 0.20 / 0.055 in their own
+// arithmetic, which is the drifted-copy failure rule 1 exists for: lengthen a
+// major tick and the figures must move with it, widen it and the hand must
+// follow.
 export const SUBDIAL_TICK_OUTER_F = 0.92;   // tick circle, as a fraction of the well radius
 export const SUBDIAL_MAJOR_LEN_F = 0.20, SUBDIAL_MINOR_LEN_F = 0.09;
 export const SUBDIAL_MAJOR_W_F = 0.055, SUBDIAL_MINOR_W_F = 0.022;
 
-function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
+function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null) {
   ctx.strokeStyle = '#1c1c22';
   ctx.fillStyle = '#1c1c22';
   const tickAt = (mathDeg, r1, len, w) => {
@@ -4632,6 +4634,67 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     const MINOR_LEN_F = SUBDIAL_MINOR_LEN_F;
     const MAJOR_W_F = SUBDIAL_MAJOR_W_F, MINOR_W_F = SUBDIAL_MINOR_W_F;
     const angAt = (h) => -90 + sweepDeg / 2 - (h / hours) * sweepDeg;
+    // §159 — THE SCALE'S TWO ZONES, painted UNDER the comb so the ticks read
+    // over them and the graduation stays the thing being read. A zone says at
+    // a glance what the figures cannot say at arm's length: the figures stand
+    // 8 arcmin (§158) and a coloured sector has no size at all — it is a
+    // region, and a region is legible as long as it is bigger than the eye's
+    // limit, which at 120° and 10° of arc both are by orders of magnitude.
+    //  · WARNING, at the empty end, RESERVE_WARN_HOURS wide. 12 h because the
+    //    majors fall every 12 h, so the zone ENDS on a graduation that already
+    //    exists rather than introducing an edge of its own — and because the
+    //    meaningful quantity is hours of running left, not a fraction of the
+    //    scale, it stays 12 h when ?reserveh= re-specs the movement and its
+    //    ANGLE re-derives (120° at the 30 h default, 90° at 48 h).
+    //  · MAXIMUM, at the full end, ONE HOUR DIVISION wide. The scale resolves
+    //    one hour; a mark finer would claim a precision the graduation has
+    //    not got, and a mark wider would name a range where the point of it
+    //    is a single value — the total the movement holds.
+    const RESERVE_WARN_HOURS = 12;
+    const sector = (h0, h1, fill) => {
+      const a0 = (-angAt(h0) * Math.PI) / 180, a1 = (-angAt(h1) * Math.PI) / 180;  // canvas angles: y is flipped
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(scx, scy, sr * TICK_OUTER_F, a0, a1, false);
+      ctx.arc(scx, scy, sr * (TICK_OUTER_F - MAJOR_LEN_F), a1, a0, true);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.restore();
+    };
+    // THE TONE IS SOLVED, NOT PICKED. A zone has two neighbours with opposite
+    // demands — the ground it sits on (which it must differ from) and the ink
+    // printed over it (which must still read) — so the tone is the mix of its
+    // hue with that ground which stands furthest from BOTH: a max-min over
+    // one parameter, ternary-searched because the objective is unimodal in it.
+    // Solved at PAINT time, so §157's live recolour re-solves both zones for
+    // the new ground instead of leaving two fixed swatches on a moved face.
+    const zoneTone = (hue) => {
+      if (!ground) return hue;              // no ground given: nothing to solve against
+      const score = (t) => {
+        const c = mixHex(hue, ground, t);
+        return Math.min(contrastRatio(c, ground), contrastRatio(c, DIAL_TRACK_INK));
+      };
+      let lo = 0, hi = 1;
+      for (let i = 0; i < 40; i++) {
+        const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+        if (score(m1) < score(m2)) lo = m1; else hi = m2;
+      }
+      return mixHex(hue, ground, (lo + hi) / 2);
+    };
+    const warnTone = zoneTone(RESERVE_WARN_HUE), fullTone = zoneTone(RESERVE_FULL_HUE);
+    sector(0, RESERVE_WARN_HOURS, warnTone);
+    sector(hours - 1, hours, fullTone);
+    if (ground) {
+      for (const [what, tone] of [['warning', warnTone], ['maximum', fullTone]]) {
+        const vsGround = contrastRatio(tone, ground), vsInk = contrastRatio(tone, DIAL_TRACK_INK);
+        if (Math.min(vsGround, vsInk) < DIAL_INK_CONTRAST_MIN)
+          console.warn(`reserve face: the ${what} zone's best tone on this ground holds only `
+            + `${vsGround.toFixed(2)}:1 against the face and ${vsInk.toFixed(2)}:1 against the ticks `
+            + `— need ${DIAL_INK_CONTRAST_MIN.toFixed(1)}:1 of both (WCAG 2.1 SC 1.4.11). `
+            + `Ground ${ground} leaves this hue no room.`);
+      }
+    }
     for (let h = 0; h <= hours; h += 1) {
       const major = h % 12 === 0;
       tickAt(angAt(h), sr * TICK_OUTER_F, sr * (major ? MAJOR_LEN_F : MINOR_LEN_F),
@@ -4691,16 +4754,17 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     //    the hand splitting POWER | RESERVE. It takes the outer line, at the
     //    mark's own old radius law (centre-line at sr − 1.5·typeH, leaving a
     //    type-height of air to the wall), tops outward as an upper-arc label.
-    //  · the MARK arced along the bottom edge and needed 46.7° of comb-free
+    //  · the MARK arced along the bottom edge and needed 54.6° of comb-free
     //    arc. It takes the inner line. It is NOT deleted and NOT enlarged:
     //    §157 already settled that a maker's mark is discreet by design (it
     //    reports its contrast rather than gating it), and this dial has
     //    nowhere else to print one — 6 o'clock is the seconds well, and the
     //    12 o'clock arc at MARK_RADIAL_F falls inside the applied markers'
-    //    own band. Measured, it stands 1.85 arcmin at the wrist against the 5
-    //    a character needs to be told apart, and that is accepted here rather
-    //    than fixed: enlarging a signature is not what the acuity rule is
-    //    for. The hour figures and the hand are where legibility was bought.
+    //    own band. Measured, it stands 1.85 arcmin at the wrist at its set
+    //    size and 1.61 after the solve below, against the 5 a character needs
+    //    to be told apart — accepted rather than fixed, because enlarging a
+    //    signature is not what the acuity rule is for. The hour figures and
+    //    the hand are where legibility was bought.
     // The inner line's radius is CENTRED in the air it has — equal gaps to
     // the figures' tops below and to the caption's ink above — so neither
     // line is placed by eye, and the gap is the same one-arcmin resolvable
@@ -4876,6 +4940,15 @@ function rgbToHex(rgb) {
   const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
   return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
 }
+// §159 — a straight linear blend, t = 0 keeping all of `a`, t = 1 all of `b`.
+// Channel-linear rather than perceptual on purpose: the caller that uses it
+// (the reserve's zone solve) does not care where on the ramp it lands, only
+// that the ramp is continuous and that it can measure the CONTRAST of the
+// result, which it does with the WCAG luminance below.
+function mixHex(a, b, t) {
+  const [ra, ga, ba] = hexToRgb(a), [rb, gb, bb] = hexToRgb(b);
+  return rgbToHex([ra + (rb - ra) * t, ga + (gb - ga) * t, ba + (bb - ba) * t]);
+}
 // t is the canvas gradient's own parameter (0 at the inner stop, 0.75 at the
 // base tone, 1 at the outer stop) — linear on each side of the base tone, so
 // it lands on the ratio exactly at both ends and on identity at 0.75.
@@ -4934,6 +5007,18 @@ export const DIAL_INK_CONTRAST_MIN = 3.0;
 // same constants the canvas paints with.
 export const DIAL_TRACK_INK = '#1a1a1a';
 export const DIAL_MARK_INK = '#8a887e';
+// §159 — THE RESERVE SCALE'S TWO ZONE HUES. Hue is the only part of a zone
+// that is a convention rather than a derivation: red for "running out" is the
+// one colour meaning every reader already holds (fuel, battery, oil), and its
+// opposite marks the other end. What is NOT left to taste is the LIGHTNESS —
+// paintSubdialFace solves each of these toward the well's own ground until it
+// stands as far as it can from BOTH the ground it sits on and the ticks
+// printed over it, and asserts the result against DIAL_INK_CONTRAST_MIN.
+// The pair is deliberately REDUNDANT with position and width (one zone is at
+// the empty end and 12 h wide, the other at full and one division wide), so a
+// reader who cannot separate the two hues loses nothing but the reminder.
+export const RESERVE_WARN_HUE = '#b81f1f';
+export const RESERVE_FULL_HUE = '#1f7a3d';
 
 // --- The dial plate's own geometry kit (TODO 26) ---------------------------
 // A plate with BLIND POCKETS cannot be extruded: ExtrudeGeometry cuts one
@@ -5328,9 +5413,13 @@ export function makeDial({
           const paintWell = () => {
             fctx.setTransform(1, 0, 0, 1, 0, 0);
             fctx.clearRect(0, 0, px, px);
-            fctx.fillStyle = sd.face || dialTintAt(aesthetics.dial.face.color, wellR);
+            // ONE expression for this well's ground: it fills the canvas AND
+            // it is what §159's zone tones are solved against, so the two
+            // cannot be given different answers by a second transcription.
+            const wellGround = sd.face || dialTintAt(aesthetics.dial.face.color, wellR);
+            fctx.fillStyle = wellGround;
             fctx.fillRect(0, 0, px, px);
-            paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale);
+            paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale, wellGround);
           };
           paintWell();
           const ftex = new THREE.CanvasTexture(cv);

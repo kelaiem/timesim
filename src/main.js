@@ -10596,9 +10596,11 @@ reserveHand.position.z = ALARM_RSV_LANE - CLEAR_MARGIN - reserveHand.userData.bo
   const majorTickW = G.SUBDIAL_MAJOR_W_F * reserveR;
   const hourDivision = (reserveHand.userData.length * RESERVE_SWEEP_DEG * DEG2RAD) / RESERVE_SCALE_HOURS;
   if (handW < majorTickW)
-    console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide is finer than the ${majorTickW.toFixed(3)} major ticks it indexes — a pointer thinner than its own marks`);
+    console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide (${arcminAt(handW * UNIT_MM).toFixed(2)}′ at the wrist) `
+      + `is finer than the ${majorTickW.toFixed(3)} major ticks it indexes — a pointer thinner than its own marks`);
   if (handW >= hourDivision)
-    console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide against an hour division of ${hourDivision.toFixed(3)} at the tip — it can no longer say which hour it is on`);
+    console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide (${arcminAt(handW * UNIT_MM).toFixed(2)}′) against an hour `
+      + `division of ${hourDivision.toFixed(3)} at the tip — it can no longer say which hour it is on`);
 }
 reserveGroup.add(reserveHand);
 

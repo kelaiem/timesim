@@ -15587,3 +15587,73 @@ the train's teeth and both modules, and the probe reads them. The second
 copy in the same file — a hard-coded `module: 0.34` for stage one — went
 the same way. The gauge is still TOLD the count, which is what keeps the
 check a check; it is simply no longer told by itself.
+
+## §159 — the reserve scale gains two zones: a warning at empty, a maximum at full, both tones solved against their own ground
+
+Owner's addition to §158's face, and the first thing on this well that is
+legible at the wrist without being read. §158's own measurement is the
+argument for it: the hour figures reach 8 arcmin and the hand 3, but every
+WORD on the well stands under 2 and always will on a 7.02 mm dial. A
+coloured region has no type size to fail — it is legible as long as it is
+bigger than the eye's limit, and at 120° and 10° of arc both zones clear
+that by orders of magnitude.
+
+**Two sectors, painted UNDER the comb** (the band the majors occupy,
+`SUBDIAL_TICK_OUTER_F` down to `− SUBDIAL_MAJOR_LEN_F`, read from the same
+exported fractions the ticks are drawn with), so the graduation prints
+over them and stays the thing being read.
+
+| zone | span | arc | why that span |
+|---|---|---|---|
+| warning | 0 → 12 h, at the empty end | 120° | majors fall every 12 h, so the zone ENDS on a graduation that already exists rather than introducing an edge of its own |
+| maximum | 29 → 30 h, at the full end | 10° | one hour division — the finest interval the scale resolves; finer would claim precision the graduation has not got, wider would name a range where the point is a single value |
+
+The warning is **12 hours, not a fraction of the scale**: the quantity a
+wearer acts on is hours of running left, so it stays 12 h when `?reserveh=`
+re-specs the movement and its ANGLE re-derives with the sweep — 120° at the
+30 h default, 90° at 48 h.
+
+**The zones cannot reach the notch, and that is geometry rather than
+luck.** The un-swept notch runs math 60° → 120° over the top; the
+graduated arc runs 60° → 120° the long way, through the bottom. The two
+are disjoint, so neither sector can touch the caption or the maker's mark
+stacked in the notch. The maximum sector ends at 120° — the same edge the
+mark already clears by its derived one-arcmin gap.
+
+### The tone is solved, and the conventional red would have failed
+
+Hue is the one part of a zone that is a convention rather than a
+derivation: red for "running out" is the single colour meaning every
+reader already holds, and its opposite marks the other end. The pair is
+deliberately REDUNDANT with position and width — one zone is at the empty
+end and 12 h wide, the other at full and one division wide — so a reader
+who cannot separate the two hues loses only the reminder.
+
+What is NOT taste is the lightness. A zone has two neighbours with
+opposite demands: the ground it sits on, which it must differ from, and
+the ink printed over it, which must still read. So each tone is the mix of
+its hue with that ground standing furthest from BOTH — a max-min over one
+parameter, ternary-searched because the objective is unimodal in it, and
+asserted against §157's `DIAL_INK_CONTRAST_MIN` (3.0:1, WCAG 2.1
+SC 1.4.11, the clause covering graphical objects).
+
+Measured on the shipped ground (`#f6f4ee`):
+
+| zone | hue as declared | vs ground | vs ticks | solved tone | vs ground | vs ticks |
+|---|---|---|---|---|---|---|
+| warning | `#b81f1f` | 5.87 | **2.70** ✗ | `#c75352` | 3.99 | 3.97 |
+| maximum | `#1f7a3d` | 4.88 | 3.24 | `#378851` | 3.98 | 3.98 |
+
+**The conventional dial red fails the floor as declared** — 2.70:1 against
+the ticks that print over it, which is the whole reason this is a solve
+and not a swatch. Both land at ~3.98 on each side, which is what a max-min
+looks like when it balances.
+
+It is solved at PAINT time, so §157's live recolour re-solves both zones
+for the new ground instead of leaving two fixed swatches on a moved face —
+and the assert fires per repaint, so a face tone that leaves a hue no room
+says so with all four numbers.
+
+`paintSubdialFace` takes the ground as an argument for this, and
+`paintWell` now names it once (`wellGround`) instead of computing the same
+expression for the fill and again for the paint.

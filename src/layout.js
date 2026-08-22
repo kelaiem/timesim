@@ -265,7 +265,11 @@ export const mmForArcmin = (a) => (a * WRIST_MM) / ARCMIN_PER_RAD;
 // rather than a decoration.
 export const RESOLVE_ARCMIN = 1;      // a gap smaller than this is not a gap
 export const IDENTIFY_ARCMIN = 5;     // threshold: the character can be told apart
-export const GLANCE_ARCMIN = 8;       // read without effort — what dial figures get
+// Read without effort rather than merely resolved — the floor a dial figure
+// has to meet to be an instrument. Written as the MULTIPLE it is (1.6× the
+// threshold, = 8′) rather than as an 8 that would have to be re-justified if
+// the threshold above were ever restated.
+export const GLANCE_ARCMIN = IDENTIFY_ARCMIN * 1.6;
 // A pointer is not read as a character, it is read as a POSITION, so its own
 // floor is lower — but it must not be finer than the marks it indexes (that
 // floor is the graduation's, asserted at the build site) and it must stay
