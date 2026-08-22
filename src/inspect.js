@@ -2303,6 +2303,21 @@ export const INTRA_UNIT_WAIVERS = [
   // instead: eye top pinned to the plunger's full-depression top, stub top
   // one CLEAR_MARGIN under the eye's bottom at rest, blade root riding the
   // stub. The instrument measures the repair (0 rows).
+  //
+  // TODO 77 — the reserve train's two working meshes, the first rows this
+  // tier gates outside the alarm complex. Both interpenetrate because
+  // `gearOutlineShape` cuts straight-chord flanks with no pressure angle:
+  // two non-conjugate outlines at their correct centre distance and correct
+  // phase MUST interfere through the cycle, so this is the PROFILE's debt
+  // (roadmap §136), not a placement error the phase solve could fix — TODO
+  // 48's solve measures 0.07% of a pitch off anti-phase, which is right.
+  // Measured radial overlap, swept over 41 wind states: 0.279 mm on stage
+  // one, 0.621 mm on stage two. Waived rather than silenced so the unit can
+  // be GATED: any interference here that is not these two rows now fails.
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#0', b: 'ExtrudeGeometry#2',
+    debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — trapezoidal flanks cannot roll conjugate (roadmap §136); 0.279 mm radial overlap, measured' },
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
+    debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same profile debt (roadmap §136); 0.621 mm radial overlap, measured' },
 ];
 
 // §121 — the units whose FF and MM tiers are GATED: the population this
@@ -2328,6 +2343,15 @@ export const INTRA_TIER_SCOPE = [
   // owed; it goes in WITH the re-gearing rather than before it, because the
   // tier goes red on the shipped fault the moment it is in scope.
   'Alarm winding arrest',
+  // TODO 77 — the FIRST unit in this scope that is not part of the alarm
+  // complex, added because the owner saw through the movement what the tier
+  // had been reporting past: the reserve train's two meshes interpenetrate.
+  // It goes in the way §129's entry above went in — knowing the tier goes
+  // red on the shipped fault the moment the unit is in scope — with the two
+  // rows waived against TODO 77 rather than the scope left narrow to keep
+  // the report quiet. That is the trade this list exists to make: a fault
+  // inside the gate and cited beats a fault outside it and counted.
+  'Power-reserve train',
 ];
 // The rigid-frame signature, shared by checkIntraUnit's MM tier and
 // checkAssembly (hoisted from the latter, §121 — one predicate, two
