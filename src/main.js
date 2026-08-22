@@ -18459,7 +18459,22 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // waiver is now waiting on a section rather than on a measurement — what
 // the envelope PERMITS and what §54's ceiling WANTS are two different
 // numbers, and the section block below carries both.
-const ALARM_LINK_SHAFT_R = 0.12;
+// §137 Landing 2 — THE SECTION MEETS ITS FORCE BUDGET, at last on the span
+// the movement actually has. The block that derives this (search "FORCE
+// BUDGET" below, where the shaft is built) sizes 3EI/L³ ≥ 2800 N/m over the
+// MEASURED 0.9286 mm drive-end cantilever — station one at chord t 2.45,
+// which §68's re-scan put next to the load it carries. With I = πr⁴/4 and
+// E 200 GPa that floor is r ≥ 0.123222 u, so this is the first value above
+// it at four places: 0.1233 → 2807 N/m, where the shipped 0.12 gave 2518
+// (90%) and the plan's own truncated 0.1232 gives 2798 and MISSES. The
+// corridor permits 0.285 (the alarm setting idler, 89 stations, measured by
+// tools/probe-137-jumper-envelope.mjs), so this spends 2.31× less than it
+// may. It is deliberately the force FLOOR and not more: §54's ceiling is met
+// by shortening spans, not by fattening members, and the span shortening is
+// §154's third bush station — which, when it lands, re-derives THIS number
+// against its own halved cantilever. The two move together; neither is a
+// free parameter.
+const ALARM_LINK_SHAFT_R = 0.1233;
 const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
 // now be buried inside a shaft of radius 0.402 — which is exactly why this
@@ -18672,8 +18687,11 @@ const alarmLinkParts = {};
   //
   // FORCE BUDGET, at the MEASURED 0.9286 mm cantilever (the bush stations
   // are read off the built unit by tools/probe-137-jumper-envelope.mjs, not
-  // asserted here): 3EI/L³ with I = πr⁴/4 gives 2518 N/m AS BUILT — 90% of
-  // the 2800 target, which r 0.1232 (+2.7%) would meet outright. The old
+  // asserted here): 3EI/L³ with I = πr⁴/4 gave 2518 N/m at the shipped
+  // 0.12 — 90% of the 2800 target. §137 Landing 2 CLOSED that: the
+  // section is now the force floor itself, r 0.1233 → 2807 N/m (the
+  // derivation lives at ALARM_LINK_SHAFT_R; 0.1232 is the same solve
+  // truncated and misses at 2798). The old
   // r ≈ 0.41 reproduces only on the retired span (0.4025 there, measured),
   // so quoting it against this shaft was always describing a different
   // part. At the largest radius the corridor permits (0.285, below) the
@@ -18681,8 +18699,8 @@ const alarmLinkParts = {};
   // shaft, and has not been since §68 moved the bush.
   //
   // WHAT THE CHAIN STALLS AT, in TODO 16's format and with the weakest
-  // member setting it: the shaft's 2518 N/m over the selector's 0.071 mm
-  // stroke stalls at 179 mN, while the beak tail's surviving 305 N/m blade
+  // member setting it: the shaft's 2807 N/m over the selector's 0.071 mm
+  // stroke stalls at 199 mN, while the beak tail's surviving 305 N/m blade
   // over the rod's 0.158 mm travel stalls at 48 mN. So the transfer is
   // TAIL-LIMITED at ≈ 48 mN against the movement's 5–50 mN detent band —
   // inside it, at the top. (TODO 63's ≈1.6 mN headline is the same
@@ -18694,8 +18712,10 @@ const alarmLinkParts = {};
   // binding wall — the alarm setting idler, 89 stations of it — tops out at
   // r 0.2850. That is 0.041 short, so NO section legal in this chord meets
   // the ceiling and retiring SLENDER_WAIVERS['Alarm link'] needs a THIRD
-  // BUSH STATION: position space, TODO 16's to file. λ 139.1 is reported
-  // meanwhile, which is the honest state.
+  // BUSH STATION: position space, FILED as roadmap §154. λ 135.4 is
+  // reported meanwhile (139.1 before Landing 2's section), which is the
+  // honest state — the waiver stands until §154's station lands, and
+  // this landing deliberately did not chase the ceiling with metal.
   //
   // (One correction the sweep forced, kept because it is the kind that
   // hides: this block used to record a hand probe's "tightest non-contact
@@ -19050,7 +19070,10 @@ const alarmLinkParts = {};
   // reserve poses; the shaft itself passes UNDER that cluster at −7.6 and
   // was never the problem — only the columns rising through it are).
   // Re-scanned over the full pose net including the reserve axis, at the
-  // column's need of 0.41 (bush r 0.26 + CLEAR_MARGIN) — and with the
+  // column's need of 0.41 (bush r 0.26 + CLEAR_MARGIN; §137 Landing 2's
+  // derived bush makes that 0.4133 against station one's measured 0.587 —
+  // the scan's verdict is unchanged, and this is the number to re-check if
+  // the section ever moves again) — and with the
   // reserve/going wheels held to their ANNULUS footprint, not their vertex
   // cloud: a wheel's web has no vertices, and a cloud scan reads "clean"
   // straight through it (that artifact green-lit t 12 on the old chord's
@@ -19069,7 +19092,23 @@ const alarmLinkParts = {};
     // §54: the bore follows the shaft, with a running clearance; the wall is
     // stock-floor so the bush is itself a real part. Both stations sit inside
     // the full section (the shaft is one uniform cylinder end to end).
-    const bush = new THREE.Mesh(ringGeo(0.14, 0.26, 0.3), MATS.nickel);
+    //
+    // §137 Landing 2 — AND NOW IT ACTUALLY DOES. The bore was the literal
+    // 0.14 against a 0.12 shaft while this comment claimed it followed:
+    // true by coincidence at one radius, and silently 17% tighter the
+    // moment the section moved. Both radii are derived here so the fit is
+    // a fact rather than a pair of numbers someone must remember to keep
+    // in step. The 0.02 clearance and the 0.12 wall are the SHIPPED values,
+    // preserved deliberately — this landing moves the section, not the
+    // bearing's design. Worth one look by whoever next opens this bearing:
+    // PIVOT_BORE_CLEAR is the repo's other running fit and it is 0.05, so
+    // either this joint is deliberately tighter than a plate pivot's
+    // side-shake or it inherited a number; nothing in the history says
+    // which, and this landing does not guess.
+    const ALARM_LINK_BUSH_CLEAR = 0.02;                       // running fit, shipped value (see above)
+    const ALARM_LINK_BUSH_WALL = 0.12;                        // stock-floor wall — the bush is a real part
+    const bushBore = ALARM_LINK_SHAFT_R + ALARM_LINK_BUSH_CLEAR;
+    const bush = new THREE.Mesh(ringGeo(bushBore, bushBore + ALARM_LINK_BUSH_WALL, 0.3), MATS.nickel);
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
     const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // reverted with the shaft — it runs the same congested dial-side column
