@@ -14945,3 +14945,57 @@ mechanical constraint, so no `_bounds` row; a corrupt/non-hex override
 is refused by the existing type-anchored loader (`aesthetics.js`), not
 a new check. No MECH_GRAPH entry (no new part, standing rule 3
 doesn't apply) and no fingerprint movement (color isn't hashed).
+
+## §155 — a search filter for the Advanced panel (roadmap item 141, BUILT)
+
+The generated Advanced panel (§23) walks `aesthetics.json` into one
+control per leaf — 63 today (51 sliders, 11 colour pickers since §154,
+1 checkbox), all in a 240 px scroll column. `buildAdvanced()`
+(`src/main.js`) now also pushes `{ row, hay }` onto `advFilterables` per
+row it creates — `hay` is the three haystacks the entry asked for, cased
+down: the *translated* label, the English `_labels` source (so the
+project's own vocabulary works in any locale), and the dot key path
+(already `label.title`, English by contract). A static
+`input[type=search]` above `#advanced-body` filters on `input`, showing
+only rows whose `hay` includes the (lower-cased) query, restoring every
+row on empty.
+
+**One premise in the entry corrected.** It assumed the filter's own
+`placeholder`/`aria-label` would need explicit `t()` calls, "being
+created after the localize pass" like the generated rows themselves.
+Built instead as static markup — a plain `<input>` beside the existing
+"Hand flute"/"Rib pitch" rows, ahead of `#advanced-body` — so it rides
+the one `localizeTree(root)` walk over `HUD_ROOTS` (§73) for free, the
+same as every other static row's label. One locale string ("Search
+settings"), not two per locale.
+
+**The false-hit traps the entry named, both closed by construction
+rather than by filtering them back out.** `hay` is built from
+`labelText`, the label's content *before* the `' ⟳'` reload suffix is
+appended, and never from the row's numeric readout (`.adv-val` is a
+sibling element `hay` never touches) — so neither can appear in a
+haystack to begin with. Verified with a throwaway Playwright probe
+(not committed): querying a bare `'⟳'` or a common two-digit readout
+value (`'30'`) matches nothing; querying `'ruby'` isolates exactly
+`materials.ruby.color`; on `?lang=de`, the placeholder reads
+"Einstellungen durchsuchen" and querying `'Perlen'` isolates the three
+`decoration.perlage.*` rows by their *German* labels — the entry's own
+acceptance test.
+
+**The duplicate-row question, decided.** Two schema leaves
+(`fluteFactor`, `ribbing.widthUnits`) have a hand-authored "headline"
+slider above the fold in addition to their generated Advanced row. The
+filter scopes to `#advanced-body` only — the headline sliders are a
+separate, non-generated surface with no `path`/`hay` of their own, so
+they stay visible regardless of the query; only their Advanced-panel
+twin is filtered. Decided rather than discovered: unifying the two
+surfaces was out of scope for a filter.
+
+**Record, per the entry's own acceptance.** `tools/probe-116-locale-fit.mjs`
+(d), which scans `#panel *` overflow generically rather than a fixed
+row list, reports the new element as a subject for free: "none, in any
+locale" at all eight widths, English and German. Current control count
+quoted here rather than repeating §53's stale 63-that-was-three-fixed
+(that count is now for a *different* reason — §154 added an 11th
+colour picker where §97 had removed a slider, netting back to the same
+digit as pure coincidence).
