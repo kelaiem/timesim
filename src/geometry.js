@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
-import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40)
+import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET,
+  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40)
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -4526,6 +4527,20 @@ export function makeCrown({ bodyR = 3.1, bodyH = 2.6, material = MATS.steel }) {
 // `scale` carries the graduation the CALLER owns: for the reserve well,
 // { sweepDeg, hours } — see the `kind === 'reserve'` branch for why they
 // cannot be literals here.
+// The reserve comb's own fractions, module-scope and EXPORTED since §158,
+// because two things outside the paint now derive from them: the figure band
+// (inside, one line down from the ticks) and the reserve HAND's width floor
+// (main.js — a pointer may not be finer than the marks it indexes). Both used
+// to be free to restate 0.92 / 0.20 / 0.055 in their own arithmetic, which is
+// the drifted-copy failure rule 1 exists for: lengthen a major tick and the
+// figures must move with it, widen it and the hand must follow.
+// The well's maker's mark, one copy (makeDial's reserve-less branch sets the
+// same words on the dial itself — the two are the same signature).
+export const MARK_TEXT = 'WATCH SIMULATOR';
+export const SUBDIAL_TICK_OUTER_F = 0.92;   // tick circle, as a fraction of the well radius
+export const SUBDIAL_MAJOR_LEN_F = 0.20, SUBDIAL_MINOR_LEN_F = 0.09;
+export const SUBDIAL_MAJOR_W_F = 0.055, SUBDIAL_MINOR_W_F = 0.022;
+
 function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
   ctx.strokeStyle = '#1c1c22';
   ctx.fillStyle = '#1c1c22';
@@ -4559,7 +4574,8 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
       ctx.restore();
       a += dir * ((widths[i] / 2 + extra) / r);
     });
-  };
+    return total;   // the arc it occupied, in radians — callers that must FIT
+  };                // inside a gap assert against it rather than eyeballing
   // The well's NAME, set STRAIGHT below the pivot — a caption, not another
   // graduation, so it does not fan along an arc the way the scale's own
   // lettering does. Type is the INSTRUMENT voice the chrome uses wherever it
@@ -4572,11 +4588,13 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
   // the coin diagram was one place it appeared, not its source.)
   // Lightly tracked — monospace already sets its own advance, so this only
   // opens the word.
-  // Both wells caption at the same depth, dy = 0.40·sr:
-  // clear of the busiest hand tail below the pivot (the small-seconds
-  // hand's counterweight reaches 0.26·0.8·sr + its own radius ≈ 0.24·sr)
-  // and clear of the deepest figure below it (the seconds track's 30,
-  // centred at 0.62·sr, half its 0.19·sr height = top edge at 0.525·sr).
+  // Captions sit at dy = 0.40·sr below the pivot: clear of the busiest hand
+  // tail there (the small-seconds hand's counterweight reaches 0.26·0.8·sr +
+  // its own radius ≈ 0.24·sr) and clear of the deepest figure below it (the
+  // seconds track's 30, centred at 0.62·sr, half its 0.19·sr height = top
+  // edge at 0.525·sr). The SECONDS well is the only caller since §158 — the
+  // reserve's arc now sweeps through this spot, so its caption arcs into the
+  // 12 o'clock notch instead and is set at its own site.
   const caption = (txt) => {
     ctx.save();
     ctx.font = `400 ${sr * 0.08}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
@@ -4594,70 +4612,154 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}) {
     ctx.restore();
   };
   if (kind === 'reserve') {
-    // Graduated arc, SYMMETRIC about the well's vertical (§153): empty at
-    // math angle 90° + sweepDeg/2 (upper left), full at 90° − sweepDeg/2
-    // (upper right) — an inverted U over the pivot. The ANCHOR is the one
-    // symmetry rule, so only the half-sweep appears; the sweep and hours
-    // arrive from the CALLER — main.js owns them, because the same two
-    // numbers set the indicator hand's travel and the reduction train's
-    // ratio, and the three drifting apart is exactly how TODO 18 happened:
-    // the arc was widened 120° → 150° here while the gearing kept the old
-    // figure. (The hand's friction set in tick() is sweepDeg/2 off the
-    // same vertical for the same reason — both sites derive the anchor
-    // from the symmetry rule, neither from the other.) A sweep past 180°
-    // dips below the horizontal on both sides; the un-swept remainder is
-    // a gap centred on the well's 6 o'clock, which is where the caption
-    // and the maker's mark live (at the shipped 300° that gap is 60°).
-    // Major ticks every 12 hours (0/12/24), one minor per HOUR (10° each
-    // at the shipped 300°), slimmed to keep the comb fine.
-    // Defaults reproduce the shipped face for a bare makeDial() call
-    // (test-geometry.html) — main.js always passes them.
-    const { sweepDeg = 300, hours = 30 } = scale;
-    const angAt = (h) => 90 + sweepDeg / 2 - (h / hours) * sweepDeg;
+    // Graduated arc, SYMMETRIC about the well's vertical — and since §158 it
+    // hangs from the DOWN end of that vertical: empty at math −90° +
+    // sweepDeg/2, full at −90° − sweepDeg/2, a U opening at 12 o'clock with
+    // the un-swept remainder as a notch centred on the well's 12 (60° at the
+    // shipped 300°). §153's rule is untouched — one symmetry rule, stated
+    // independently at the two sites that need it (here, and the friction
+    // coupling's SET in main.js's tick) — the ANCHOR simply names which end
+    // of the vertical the notch sits on. The sweep and hours arrive from the
+    // CALLER, because those same two numbers set the hand's travel and the
+    // reduction train's ratio and the three drifting apart is how TODO 18
+    // happened (the arc was widened 120° → 150° here while the gearing kept
+    // the old figure). NOTE the anchor is a phase, not a width: it moves the
+    // notch, never the sweep, so it cannot reach the ratio at all.
+    // Major ticks every 12 hours (0/12/24), one minor per HOUR (10° each at
+    // the shipped 300°), slimmed to keep the comb fine.
+    const { sweepDeg = 300, hours = 30, mmPerSr = null } = scale;
+    const TICK_OUTER_F = SUBDIAL_TICK_OUTER_F, MAJOR_LEN_F = SUBDIAL_MAJOR_LEN_F;
+    const MINOR_LEN_F = SUBDIAL_MINOR_LEN_F;
+    const MAJOR_W_F = SUBDIAL_MAJOR_W_F, MINOR_W_F = SUBDIAL_MINOR_W_F;
+    const angAt = (h) => -90 + sweepDeg / 2 - (h / hours) * sweepDeg;
     for (let h = 0; h <= hours; h += 1) {
       const major = h % 12 === 0;
-      tickAt(angAt(h), sr * 0.92, sr * (major ? 0.2 : 0.09), sr * (major ? 0.055 : 0.022));
+      tickAt(angAt(h), sr * TICK_OUTER_F, sr * (major ? MAJOR_LEN_F : MINOR_LEN_F),
+        sr * (major ? MAJOR_W_F : MINOR_W_F));
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Hour figures at the majors, inboard of the tick ends — ARABIC, so the
-    // reserve reads as an instrument scale rather than as more of the hour
-    // chapter. Two glyphs at the widest ('12', '24') where Roman needed four
-    // ('XXIV'), which is what buys the larger figure: 0.11·sr sets '24' about
-    // as wide as 'XXIV' was at 0.09·sr, inside the same 0.64·sr band.
-    // Arabic also retires the invented zero the Roman set needed here (an
-    // N with a vinculum overbar, after the medieval computus tables' "nulla")
-    // — this system has a 0 of its own.
-    ctx.font = `500 ${sr * 0.11}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    // One figure per MAJOR tick, however many the graduation carries — a
-    // 48 h scale reads 0/12/24/36/48 where the 30 h default reads 0/12/24
-    // (identical to the fixed list this generalises). Bezel convention,
-    // the seconds track's own rule: tops radially outward on the upper
-    // arc, and a figure whose centre falls below the horizontal flips
-    // tops toward the pivot so it never renders upside-down — at 300°
-    // the end figures sit 60° below the horizontal, where outward tops
-    // would invert them.
+    // §158 — THE FIGURES ARE SIZED BY ACUITY, AND SO IS THE BAND THEY SIT ON.
+    // Both were literals (0.11·sr of type on a 0.64·sr circle) and both were
+    // wrong for the same reason: nothing in them names the distance a watch
+    // is read from. Measured on the built well — 7.02 mm across — that type
+    // stood 2.72 arcmin at the wrist, against the 5 a character needs to be
+    // told apart at all. The figures now meet the GLANCE floor, and the band
+    // radius falls out of it rather than being chosen beside it:
+    //
+    //   cap  = mmForArcmin(GLANCE_ARCMIN) / mmPerSr        (≈ 0.232·sr here)
+    //   band = tick circle − major length − gap − cap/2    (≈ 0.575·sr)
+    //
+    // reading the SAME fractions the comb above is drawn from, so a longer
+    // major tick pushes the figures in instead of colliding with them. The
+    // gap is one arcmin — the acuity limit itself, because a space the eye
+    // cannot resolve is not a space. Arc width never enters: majors sit 12 h
+    // apart, which is 120° of azimuth at the shipped sweep, and reading a
+    // figure's WIDTH as the binding constraint is what made this look
+    // impossible the first time it was costed.
+    // mmPerSr is the well's printed radius in real mm; a caller that cannot
+    // say how big the well IS (the bare makeDial() smoke test) gets the
+    // pre-§158 fraction, since an acuity solve without a physical scale is
+    // not a solve.
+    const capF = mmPerSr ? mmForArcmin(GLANCE_ARCMIN) / mmPerSr : 0.11 * CAP_PER_EM;
+    const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
+    const figBandF = TICK_OUTER_F - MAJOR_LEN_F - gapF - capF / 2;
+    // Hour figures at the majors — ARABIC, so the reserve reads as an
+    // instrument scale rather than as more of the hour chapter, and (since
+    // §158) large enough that the claim survives being looked at. One figure
+    // per MAJOR tick, however many the graduation carries: a 48 h scale reads
+    // 0/12/24/36/48 where the 30 h default reads 0/12/24. Bezel convention,
+    // the seconds track's own rule: tops radially outward, and a figure whose
+    // centre falls below the horizontal flips tops toward the pivot so it
+    // never renders upside-down — with the arc hanging from the DOWN vertical
+    // that is now the middle figure rather than the two end ones.
+    ctx.font = `500 ${sr * (capF / CAP_PER_EM)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     for (let h = 0; h <= hours; h += 12) {
       const aDeg = angAt(h);
-      arcLabel(String(h), aDeg, sr * 0.64, Math.sin((aDeg * Math.PI) / 180) < 0);
+      arcLabel(String(h), aDeg, sr * figBandF, Math.sin((aDeg * Math.PI) / 180) < 0);
     }
     // No AB / AUF bookending the arc: the German pair was the Glashütte
     // marking for a Roman-figured reserve, and with the scale figured 0→24
     // in Arabic the words name what the numbers already say. The empty end
-    // is where 0 is; the caption below names the complication.
-    // Maker's mark, set INSIDE the well: a quiet arc hugging the lower edge
-    // of the face, in the graduation's 6-o'clock gap — the one region the
-    // comb never enters — and inboard of nothing the hand reaches (its tip
-    // stops at 0.8·sr, inside this radius, its tail far inside it).
-    // Letters upright, tops toward the pivot, reading
-    // left→right along the bottom arc; small, light-weight and near the
-    // face tone so it whispers. Radius keeps the ink one type-height off
-    // the wall: centre-line at sr − 1.5·typeH (outer ink at +typeH/2,
-    // leaving a typeH gap to the edge).
-    ctx.font = `400 ${sr * 0.075}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    // is where 0 is; the caption names the complication.
+    //
+    // §158 — BOTH LINES OF LETTERING MOVE INTO THE NOTCH, stacked, and both
+    // radii are derived. The flip put the comb through the 6 o'clock gap the
+    // two of them shared, so neither can stay:
+    //  · the CAPTION was set STRAIGHT below the pivot, which the hand now
+    //    rests on at half charge — the most-read state of the indicator, with
+    //    the hand splitting POWER | RESERVE. It takes the outer line, at the
+    //    mark's own old radius law (centre-line at sr − 1.5·typeH, leaving a
+    //    type-height of air to the wall), tops outward as an upper-arc label.
+    //  · the MARK arced along the bottom edge and needed 46.7° of comb-free
+    //    arc. It takes the inner line. It is NOT deleted and NOT enlarged:
+    //    §157 already settled that a maker's mark is discreet by design (it
+    //    reports its contrast rather than gating it), and this dial has
+    //    nowhere else to print one — 6 o'clock is the seconds well, and the
+    //    12 o'clock arc at MARK_RADIAL_F falls inside the applied markers'
+    //    own band. Measured, it stands 1.85 arcmin at the wrist against the 5
+    //    a character needs to be told apart, and that is accepted here rather
+    //    than fixed: enlarging a signature is not what the acuity rule is
+    //    for. The hour figures and the hand are where legibility was bought.
+    // The inner line's radius is CENTRED in the air it has — equal gaps to
+    // the figures' tops below and to the caption's ink above — so neither
+    // line is placed by eye, and the gap is the same one-arcmin resolvable
+    // space the figure band uses.
+    const CAPTION_EM_F = 0.08, MARK_EM_MAX_F = 0.075;
+    const capR = 1 - 1.5 * CAPTION_EM_F;
+    const notchRad = ((360 - sweepDeg) * Math.PI) / 180;
+    // The arc a string occupies at a given em, as a fraction of sr — MEASURED
+    // with the real metrics, since the tracking arcLabel adds does NOT scale
+    // with the type and a proportional estimate is wrong by exactly that much.
+    const markArcWidth = (em) => {
+      ctx.font = `400 ${sr * em}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+      const w = [...MARK_TEXT].map((ch) => ctx.measureText(ch).width);
+      return w.reduce((a, b) => a + b + sr * 0.008, -sr * 0.008) / sr;
+    };
+    const markRadiusFor = (em) => {
+      const lo = (figBandF + capF / 2) + gapF + (em * CAP_PER_EM) / 2;
+      const hi = (capR - (CAPTION_EM_F * CAP_PER_EM) / 2) - gapF - (em * CAP_PER_EM) / 2;
+      return { lo, hi, r: (lo + hi) / 2 };
+    };
+    const markFits = (em) => {
+      const { lo, hi, r } = markRadiusFor(em);
+      return hi > lo && (markArcWidth(em) + 2 * gapF) / r <= notchRad;
+    };
+    // SOLVED, not chosen: the largest em that fits, never larger than the size
+    // the mark has always been set at. Bisection because the two constraints
+    // pull opposite ways — a bigger em widens the arc AND thickens the line
+    // whose gaps the radius band has to absorb.
+    let markEm = MARK_EM_MAX_F;
+    if (!markFits(markEm)) {
+      let lo = 0, hi = MARK_EM_MAX_F;
+      for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (markFits(mid)) lo = mid; else hi = mid; }
+      markEm = lo;
+    }
+    const markR = markRadiusFor(markEm).r;
+    ctx.fillStyle = '#1c1c22';
+    ctx.font = `400 ${sr * CAPTION_EM_F}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
+    const capArc = arcLabel('POWER RESERVE', 90, sr * capR, false);
+    ctx.font = `400 ${sr * markEm}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     ctx.fillStyle = '#8a887e';
-    arcLabel('WATCH SIMULATOR', -90, sr * (1 - 1.5 * 0.075), true);
-    caption('POWER RESERVE');
+    const markArc = arcLabel(MARK_TEXT, 90, sr * markR, false);
+    // The caption is NOT solved — it is the line that names the complication,
+    // so it keeps its size and the mark yields around it. Both are asserted
+    // against the notch, which is a function of the SWEEP: a re-spec that
+    // widens the arc closes the notch on them exactly as this flip closed the
+    // 6 o'clock gap, and says so with both numbers rather than overprinting
+    // in silence. (This is also the arithmetic that refuses a 330° sweep: a
+    // 30° notch holds neither line at any size worth printing.)
+    const notchDeg = 360 - sweepDeg;
+    for (const [what, arc, r] of [['caption', capArc, capR], ["maker's mark", markArc, markR]]) {
+      const needDeg = ((arc + 2 * (gapF / r)) * 180) / Math.PI;
+      if (needDeg > notchDeg + 1e-9)
+        console.warn(`reserve face: the ${what} needs ${needDeg.toFixed(1)}° of notch and a `
+          + `${sweepDeg}° sweep leaves ${notchDeg.toFixed(1)}° — it will overprint the comb`);
+    }
+    if (markEm < MARK_EM_MAX_F * 0.5)
+      console.warn(`reserve face: the maker's mark solved down to ${markEm.toFixed(4)}·sr `
+        + `(from ${MARK_EM_MAX_F}) to fit a ${notchDeg.toFixed(1)}° notch — under half its `
+        + `set size it is no longer a signature, it is a smudge; give it somewhere else to live`);
   } else if (kind === 'seconds') {
     // Small-seconds track: 60 ticks, heavier every fifth, ARABIC quarter
     // figures (15/30/45/60). The hour chapter stays Roman; a running-seconds
@@ -5007,7 +5109,7 @@ export function makeDial({
           ctx.fillStyle = DIAL_MARK_INK;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          const msg = 'WATCH SIMULATOR';
+          const msg = MARK_TEXT;   // §158 — one copy of the signature, shared with the well's
           const extra = 2; // px of tracking between characters
           const widths = [...msg].map((ch) => ctx.measureText(ch).width);
           const rSig = R * MARK_RADIAL_F;
@@ -5580,7 +5682,7 @@ export function makeDial({
 const HAND_RBASE_FLOOR = 0.18;
 
 export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
-  namePrefix = null, subdial = false }) {
+  namePrefix = null, subdial = false, halfWidth = null }) {
   // §94 — namePrefix NAMES this hand's four meshes. inspect.js couples by
   // `.name`, and an unnamed mesh only has an index label, which no
   // EXPECTED_CONTACT_FLOORS row can select — so a hand whose contacts a
@@ -5623,7 +5725,17 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     const tipLen = rBase * 2.6; // curved taper: a little longer so the ease reads
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
-    const halfW = rBase * (Math.sqrt(3) / 2);
+    // §158 — WIDTH AND DEPTH ARE TWO QUESTIONS, and the equilateral section
+    // answered them with one number. The keel depth is a STOCK question
+    // (§50's floor, and §153 derived the reserve well's whole recess from it
+    // — floorDrop and the boss that swallows the rod both scale with rBase,
+    // so a wider hand cut this way demands a deeper pocket the z-stack has
+    // not got). The width is a READING question. A caller that has derived
+    // its own half-width passes it and the section goes wide WITHOUT going
+    // deep, which is what a real hand is: flat stock, not a chunky prism.
+    // Everything below already reads halfW for x and rBase for y, so this
+    // separates two axes that were only ever coupled by the default.
+    const halfW = halfWidth ?? rBase * (Math.sqrt(3) / 2);
     const crown = rBase * (handAesthetics.fluteFactor ?? -0.3); // <0 dishes into a flute, >0 crowns (UI-adjustable)
     // Cross-section in (x = width, y = toward viewer): keel down, top an
     // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
@@ -5746,6 +5858,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   const crown = rBase * (handAesthetics.fluteFactor ?? -0.3);
   const cwHalf = kind === 'second' ? depth / 2 : 0;
   g.userData.rBase = rBase;
+  g.userData.halfW = halfWidth ?? rBase * (Math.sqrt(3) / 2);   // §158 — the built half-width, for the placement site's asserts
   g.userData.floorDrop = Math.max(rBase, cwHalf);
   g.userData.topRise = Math.max(rBase * 0.5 + Math.max(0, crown), cwHalf);
   g.userData.bossR = bossR;

@@ -15369,3 +15369,221 @@ would void every cached baseline once. **Not done.** It stays in the roadmap
 with its number and its measurement — §152 keeps its § in both files, this
 record for what shipped and the roadmap entry for the remainder — to be
 revisited if the harness files ever stop being dragged into the same merges.
+
+## §158 — the reserve arc inverts: the notch moves to 12 o'clock, and the well's print is sized by acuity
+
+**Roadmap §158, shipped whole.** Owner's redesign of the power-reserve
+indicator's face, in the same position-space spirit as §153 and with the
+same result for the drive path: the TODO 48 forward chain, the TODO 18
+ratio derivation and the §104 equalisation gates all measure exactly as
+before. Three claims: the graduated arc hangs from the DOWN end of the
+well's vertical instead of the up end, so the un-swept notch sits at 12
+o'clock; the figures and the hand are sized from a stated acuity floor at
+a stated distance instead of from fractions; and both lines of the well's
+lettering move into the notch, stacked, at radii that derive.
+
+**The gearing does not move, and that is the load-bearing fact.** TODO
+18's law is `R = RESERVE_BARREL_TURNS × 360 ÷ sweep`. The notch's WIDTH
+sets the sweep; its POSITION is a phase. The notch stays 60°, so the
+sweep stays 300°, so `R = 1.75 × 360 ÷ 300 = 2.1 = (28/8) × (6/10)` and
+every tooth count holds. Measured after the flip: hand travel exactly
+**300.000°** (arbor 2 reads 30° / 180° / 330° at tension 0 / 0.5 / 1),
+boot **silent**, and `tools/probe-reserve-mesh.mjs` reporting both meshes
+credible at **0.07% of a pitch off anti-phase** at centre distances 6.12
+and 8.7216 — the shipped rows, unchanged.
+
+**One rule, two sites, a moved anchor.** §153's discipline was that
+`paintSubdialFace`'s `angAt` and the friction coupling's SET in `tick()`
+each derive the anchor from the symmetry rule and neither reads the
+other. That survives: `angAt` becomes `−90 + sweepDeg/2 − …`, and the
+SET becomes `+(180 − RESERVE_SWEEP_DEG/2)·rsvRatio` — the same half-sweep,
+now off the down vertical, taken up through the ratio to the pinion the
+term actually writes. The proof that the two still agree is a
+measurement, not a reading: at tension 0.5 the hand lands on the arc's
+midpoint, straight down.
+
+Half charge therefore reads DOWN where §153 had it read UP, and the
+bezel-orientation rule now flips the MIDDLE figure rather than the two
+end ones. Both are consequences of the owner's choice, recorded here
+because they are the two things a reader notices first.
+
+### The print is sized by acuity, at a distance that is now a constant
+
+`layout.js` gained the primitives, next to `UNIT_MM` and for the same
+reason — it turns "how big should this be" into arithmetic the way
+`UNIT_MM` turns "how big is a unit" into arithmetic. `WRIST_MM = 350`
+(the middle of the 300–400 mm band a raised wrist spans), `arcminAt` /
+`mmForArcmin`, and the floors: `RESOLVE_ARCMIN = 1` (20/20's resolvable
+stroke), `IDENTIFY_ARCMIN = 5` (the Snellen letter — threshold, where a
+character can be told apart), `GLANCE_ARCMIN = 8` (≈1.6× it, where a
+numeral is READ rather than resolved), `POINTER_ARCMIN = 3`, and
+`CAP_PER_EM = 0.717` because every acuity figure is a cap height and
+canvas takes an em.
+
+Measured on the built well — **7.02 mm across** (printed radius 9.2649 u
+× 0.378947 mm/u = 3.5112 mm) on a 32.53 mm dial:
+
+| feature | before | mm | arcmin @ 350 mm | after |
+|---|---|---|---|---|
+| hour figures, cap | 0.11·sr em | 0.277 | **2.72** | **8.00** (em 0.3235·sr) |
+| the hand, width | 0.3118 u | 0.118 | **1.16** | **3.00** (0.806 u, 0.305 mm) |
+| maker's mark, cap | 0.075·sr em | 0.189 | 1.85 | 0.0652·sr em, **1.61** — solved to fit, below |
+| caption, cap | 0.08·sr em | 0.197 | 1.93 | unchanged, and knowingly decorative |
+| hand travel, one hour | — | 0.490 | 4.82 | unchanged |
+
+The hour figures were below the 5 arcmin a character needs to be told
+apart AT ALL, while the reading that matters — where the hand sits — was
+always above it. That asymmetry is the finding the whole landing is built
+on: the reserve is read by hand POSITION, and its lettering was texture.
+
+**The band radius derives with the figures, from the comb's own
+fractions.** Both were literals (0.11·sr of type on a 0.64·sr circle) and
+both had to move together, so the comb's fractions are now module-scope
+exports (`SUBDIAL_TICK_OUTER_F` 0.92, `SUBDIAL_MAJOR_LEN_F` 0.20,
+`SUBDIAL_MAJOR_W_F` 0.055, and the minors) and
+
+```
+cap  = mmForArcmin(GLANCE_ARCMIN) / mmPerSr           = 0.2320·sr
+band = TICK_OUTER − MAJOR_LEN − gap − cap/2           = 0.5750·sr
+```
+
+`mmPerSr` — the well's printed radius in real mm — is passed through the
+sub-dial's `scale`, since the paint works in texture pixels and cannot
+otherwise know how big the well IS. A caller with no physical scale (the
+bare `makeDial()` smoke test) gets the pre-§158 fraction, because an
+acuity solve without a physical scale is not a solve.
+
+The gap is **one arcmin** — the acuity limit itself, on the ground that a
+space the eye cannot resolve is not a space. It lands at 0.029·sr, which
+is also, to three figures, the figure's own stem width at that em: two
+independent criteria (the eye's limit, and the typographic rule that two
+marks separated by less than a stroke merge) giving the same number.
+
+**Arc width never entered, and that is why this looked impossible once.**
+The filing first costed the glance floor as unreachable because a
+two-digit '24' would subtend 32° of arc. Majors sit 12 h apart, which is
+**120°** of azimuth at the shipped sweep. The binding constraint was
+always radial — cap height against the major tick's inner end — and it is
+met by moving the band inboard.
+
+### Both lines move into the notch, and one of them is solved
+
+The flip sweeps the comb through the 6 o'clock gap the caption and the
+maker's mark shared, so neither could stay. The notch they move to is the
+region the flip freed and the one region of this face the hand never
+enters — but it holds two arced lines only if one of them yields.
+
+**The caption takes the outer line and keeps its size.** It names the
+complication, which is the functional half, so it sits at the mark's own
+old radius law (`sr − 1.5·typeH` = 0.88·sr), tops outward: **47.01°** of
+caption inside the 60° notch. It is knowingly below the identification
+floor at 1.98 arcmin — decoration at arm's length, kept because it tells
+the two wells apart in the hand, where it can be read. A legible caption
+does not fit on a 7 mm well at all.
+
+**The mark takes the inner line, at a radius and a size that both
+derive.** The radius is CENTRED in the air it has — equal one-arcmin gaps
+to the figures' tops below and to the caption's ink above — which puts it
+at 0.7712·sr. The size is then SOLVED: the largest em that fits the notch
+at that radius, never larger than the 0.075·sr it has always been set at.
+It comes out **0.0652·sr, 87% of its set size**, occupying 55.68° of the
+60°. Bisection, because the two constraints pull opposite ways — a bigger
+em widens the arc AND thickens the line whose gaps the radius band has to
+absorb.
+
+**It is not deleted, and that is a correction to the filing.** The entry
+said delete it, on the measurement that at 1.85 arcmin it cannot be read
+at the wrist. Building it surfaced what that would cost: `makeDial`
+prints the dial's own maker's mark **only on a reserve-less dial** — the
+shipped dial's signature IS the one in this well — so deleting it here
+strips the watch of its maker's mark entirely, which nobody asked for.
+And there is nowhere else on this dial to put one: the 6 o'clock arc at
+`MARK_RADIAL_F` is occupied by the seconds well (whose rim reaches
+34.02 u against the mark's 33.48), and the 12 o'clock arc at the same
+radius falls inside the applied markers' band (0.585–0.795·R). §157 had
+already settled the principle the acuity argument was about to override —
+a maker's mark on a real dial IS discreet, which is why that file REPORTS
+its contrast rather than gating it. Enlarging a signature is not what the
+acuity rule is for; the hour figures and the hand are where legibility
+was bought, and the mark yields SPACE rather than size wherever the two
+compete.
+
+`MARK_TEXT` is now one exported constant, shared by the well's line and
+`makeDial`'s reserve-less branch — always the same signature, typed twice.
+
+**That both lines fit is asserted, not assumed.** `arcLabel` returns the
+arc it occupied, and the face warns with both numbers if either line
+needs more notch than the sweep leaves — plus a second warn if the solve
+drives the mark under half its set size, where a signature stops being a
+signature. It is also the arithmetic that refuses a 330° sweep: a 30°
+notch holds neither line at any size worth printing.
+
+**The filing planned the caption differently, and the build found
+better.** The entry moved it to a straight line above the pivot and
+flagged a contention: at the glance size, the caption's corner and the
+'0' figure came tangent within a fifth of a degree. The notch — outboard
+of the figures entirely, in the tick band's own gap — dissolves that
+rather than solving it. The band radius also came out at 0.575·sr against
+the entry's 0.584, because the entry used a placeholder 0.02·sr print
+margin where the build derives 0.029 from the acuity limit.
+
+### A measurement correction the build forced
+
+The filing's arc widths — the mark at 46.68°, `RESERVE` at 0.995·sr —
+were measured with `ctx.measureText` at a font size of **0.075 px**,
+because the measuring probe worked in units of `sr = 1`. Text metrics
+quantize at that scale and the numbers came back ~17% light. Re-measured
+at the real `sr = 512`, the mark at its old size and radius spans
+**54.56°**, not 46.68 — so in the shipped 60° gap it had 2.7° of
+clearance each side, not 6.7. What caught it was the notch assert, on the
+first build: `the maker's mark needs 67.1° of notch and a 300° sweep
+leaves 60.0°`. That is the whole reason it is a check and not a comment
+claiming the fit.
+
+### The hand: width and depth were one number, and had to stop being one
+
+The filing treated widening the hand as a section change. It is not, and
+the build found why. `makeHand`'s bur rod is an equilateral-ish prism
+whose half-width is `rBase·√3/2` — so width and keel DEPTH were the same
+parameter. §153 derived `RESERVE_RECESS` from that depth
+(`2·CLEAR_MARGIN + floorDrop + bossH/2 − ALARM_RSV_LANE`, with both
+`floorDrop` and the boss scaling with `rBase`), and §153 had already
+established the pocket was as shallow as the z-stack allows, boxed in
+above by §125's hour-hub lane. Widening the planned way — `rBase` 0.180 →
+0.465 — would have demanded a pocket **0.897 u deep against the shipped
+0.25**, nearly 4×, with no position-space move available to buy it.
+
+So the section was decoupled instead: `makeHand` takes an optional
+`halfWidth`, the shape already read `halfW` for x and `rBase` for y, and
+the hand goes **wide without going deep**. That is also what a real hand
+is — flat stock, not a chunky prism — and it leaves `floorDrop`, `bossH`,
+`topRise`, `RESERVE_RECESS` and the whole §153 z-stack bit-identical
+(their asserts still pass unchanged).
+
+The width itself is bounded from both sides, and both bounds are minted:
+
+- **Floor — never finer than what it indexes.** The major tick width,
+  read from `SUBDIAL_MAJOR_W_F` rather than restated: 0.5096 u. Built
+  0.806 u, **1.58×**.
+- **Ceiling — it must still say WHICH hour.** One hour of scale at the
+  tip is `tipR·sweep/hours` = 1.2937 u. Built **0.623** of a division.
+
+`POINTER_ARCMIN = 3` sits between them. Measured on the built hand:
+0.806 u = 0.3054 mm = **3.00 arcmin**.
+
+### Gate 0 — the instrument that judges this train had been refusing to
+
+`tools/probe-reserve-mesh.mjs` is built to refuse any silhouette reading
+whose gap count disagrees with the DECLARED tooth count — that refusal is
+the check. It carried its own copy of the declaration
+(`{ p0: 8, w1: 28, p1: 10, w2: 12 }`), and §124/§153 re-geared w2 to 6.
+Every run since died on `gauge could not identify p0/w2` instead of
+reporting a mesh, so the reserve train shipped two landings unjudged by
+the one instrument built to judge it — TODO 18's own failure shape, one
+level up, in the tooling.
+
+Fixed by publishing rather than restating: `__clock.reserveTrain` exposes
+the train's teeth and both modules, and the probe reads them. The second
+copy in the same file — a hard-coded `module: 0.34` for stage one — went
+the same way. The gauge is still TOLD the count, which is what keeps the
+check a check; it is simply no longer told by itself.

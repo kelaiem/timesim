@@ -243,6 +243,38 @@ export const CHAIN_PITCH = 1.9;        // units, rivet-to-rivet (geometry — 0.
 export const CHAIN_PITCH_MM = 0.72;    // REAL fusee chain — the manufactured standard this pins to
 export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.379 mm per unit
 export const MM = (units) => units * UNIT_MM;          // for readouts and asserts
+
+// --- READING SIZE IS DERIVED FROM ACUITY (§158) -----------------------------
+// A printed feature's size is not a taste question once you name the distance
+// it is read from. These turn "how big should it be" into arithmetic, the way
+// UNIT_MM above turns "how big is a unit" into arithmetic.
+//
+// The reference distance is the WRIST: a watch is read at arm's-bend, not at
+// desk range. 350 mm is the middle of the 300–400 mm band a raised wrist
+// spans, and every figure below is quoted at it — move this and the whole
+// print re-solves, which is the point of it being one constant.
+export const WRIST_MM = 350;
+const ARCMIN_PER_RAD = 60 * 180 / Math.PI;             // 3437.75
+export const arcminAt = (mm) => (mm / WRIST_MM) * ARCMIN_PER_RAD;
+export const mmForArcmin = (a) => (a * WRIST_MM) / ARCMIN_PER_RAD;
+// The three floors, in the eye's own units. 20/20 acuity resolves a 1 arcmin
+// stroke, and a LETTER at that threshold stands 5 arcmin — that is the
+// definition of the Snellen line, not a rounding of it. Identification at
+// threshold is not reading, though: a numeral is read at a GLANCE at about
+// 1.6× it, which is the floor a dial figure has to meet to be an instrument
+// rather than a decoration.
+export const RESOLVE_ARCMIN = 1;      // a gap smaller than this is not a gap
+export const IDENTIFY_ARCMIN = 5;     // threshold: the character can be told apart
+export const GLANCE_ARCMIN = 8;       // read without effort — what dial figures get
+// A pointer is not read as a character, it is read as a POSITION, so its own
+// floor is lower — but it must not be finer than the marks it indexes (that
+// floor is the graduation's, asserted at the build site) and it must stay
+// inside one division or it stops saying which one it is on.
+export const POINTER_ARCMIN = 3;
+// Cap height as a fraction of the em, for the sans the dial sets its figures
+// in. Helvetica's is 0.717; every acuity figure above is a CAP height, and
+// canvas takes an em, so the two are never the same number.
+export const CAP_PER_EM = 0.717;
 // The chain's CROSS-SECTION, from the same reference chain through UNIT_MM
 // (real mm in each comment). Lives here with the pitch — the fusee cone's
 // groove pitch and base seat consume the stack height long before the chain
