@@ -15353,6 +15353,54 @@ Nothing inside a restricted run can see that. What catches it is the
 unfiltered push-to-`main` run, which is never incremental — which is the whole
 argument for why the baseline producer and the backstop are the same job.
 
+### Addendum — the key's pose set is derived, not borrowed
+
+Shipped in the same PR, days zero of the follow-up the record above left
+implicit: `unitDigests()` walked the 11 `FINGERPRINT_POSES`, a list chosen for
+a DIFFERENT instrument — the fingerprint's rule is "a pose per force input" —
+while the sweeps the key gates run **1827 poses across the 13 `AXES`**. The
+blind class is a POSE-LAW change: an easing, a solver constant, a derived
+angle law in `main.js`/`layout.js`/`state.js` that leaves the sampled points
+fixed and moves geometry between them — different sweep verdicts, identical
+key, a stale green. (A pose-law change in `inspect.js` itself already forces a
+full run via the check-code digest; the hazard is pose-dependent build code.)
+
+**Measured before it was fixed** (`tools/probe-152-pose-coverage.mjs`): per
+(unit, axis), does the unit move across that axis, and does the old set visit
+more than one of the stations the axis puts it at? **75 of 122 moving
+(unit, axis) pairs — 61% — were blind.** Only `beat` and `crown` were fully
+covered (the fingerprint poses sample `tau` and `crownPullT` at multiple
+stations); `train`, `jumperEngage`, `alarm` and `handSet` were 100% blind.
+
+**The fix is §152's own pattern applied to itself**: `digestPoses(clock)`
+derives the set from `AXES` — each axis at f ∈ {0, 0.5, 1} (endpoints and
+midpoint; `alarmToggle`'s step law lands both parities exactly there), unioned
+with the fingerprint poses (they cover COMBINED input states no single axis
+reaches — armed + released + mid-strike, wound at rest), deduped to **39
+poses**. Derived in the module that owns `AXES`, so a new axis cannot ship
+without digest coverage: no declared list to keep in step, so none to fall
+behind.
+
+**Demonstrated, not argued**: the probe wraps `setPose` to displace one unit
+only inside `tension ∈ (0.45, 0.55)` — a band the old set never samples (it
+hits 0.4 and 1) and the derived set hits at `reserve`'s midpoint. The old
+digest does not notice; the new one moves for exactly that unit and no other;
+both reverse cleanly.
+
+**Cost**: one walk went 1046 ms → ~3.4 s (the harness pays it twice per run,
+~7 s against a 15–30 min battery), so the contingent version-aware shape memo
+was measured and NOT implemented — under the threshold, and an optimization
+without a bill is a liability. Changing the pose set moved every unit's key,
+which costs nothing extra: the change touches `inspect.js`, so the check-code
+digest forces the next run full anyway, and the baseline it writes carries the
+new keys.
+
+**And it is still a sample.** Three fractions cannot see a law change confined
+to an interior band — f ∈ (0.6, 0.7) moves geometry no digest pose visits. The
+honesty ceiling is unchanged in kind; the backstop remains the unfiltered
+push-to-`main` run. What this buys is coverage measured against the net the
+verdicts come from instead of coverage inherited from a neighbour.
+
 ### Landing 4 was measured and declined
 
 The filing's optional fourth landing — split the declaration tables out of

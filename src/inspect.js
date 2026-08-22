@@ -7411,7 +7411,53 @@ function hashBytes(arr, h) {
   return h >>> 0;
 }
 
-// Every labelled unit's SHAPE and PLACE digest across the canonical poses.
+// The pose set the digest is measured at — DERIVED from AXES, not borrowed.
+//
+// A sweep's verdict is f(geometry, pose net, check code), and the key stands in
+// for the first of those. Sampling it at the FINGERPRINT_POSES made the key a
+// function of a pose list chosen for a different instrument (the fingerprint's
+// rule is "a pose per force input"), and the sweeps run on AXES: a pose-law
+// change in main.js/layout.js/state.js that leaves the eleven sampled points
+// fixed and moves geometry BETWEEN them produces different sweep verdicts and
+// an identical key — a stale green, the one failure §152 exists to prevent.
+// Deriving the set from AXES here, in the module that owns AXES, also means a
+// new axis cannot ship without digest coverage: no declared list to keep in
+// step, so none to fall behind.
+//
+// THREE FRACTIONS PER AXIS — endpoints and midpoint. The cheapest set that
+// samples every axis's mid-travel, and the one alarmToggle's step law needs
+// (its parity is 1 on (0.25, 0.75) and 0 outside, so 0, 0.5, 1 lands both
+// states exactly). Several pose laws read the clock (arrest's tTouch,
+// stemSlip's pitch, train, handSet, alarmStrike, alarmWind), which is why this
+// takes the clock rather than being a const.
+//
+// THE FINGERPRINT POSES RIDE ALONG, unioned in, because they cover COMBINED
+// input states no single axis reaches — armed + released + mid-strike, wound
+// at rest — and an axis-derived set is per-input by construction.
+//
+// AND IT IS STILL A SAMPLE. Three fractions cannot see a law change confined
+// to an interior band (f ∈ (0.6, 0.7) moves geometry no pose here visits), so
+// the key's honesty ceiling is unchanged in kind: the backstop remains the
+// unfiltered push-to-main run, which is a whole verdict and never incremental.
+// What this buys is coverage measured against the net the verdicts come from
+// instead of coverage inherited from a neighbour.
+export function digestPoses(clock) {
+  const seen = new Set(), poses = [];
+  const add = (p) => {
+    // Pose objects are literals with stable key order, so stringify is a sound
+    // identity here — two axes whose endpoints coincide (every axis that pins
+    // tau at 0.13 with the crown in) contribute one walk, not two.
+    const k = JSON.stringify(p);
+    if (seen.has(k)) return;
+    seen.add(k);
+    poses.push(p);
+  };
+  for (const axis of AXES) for (const f of [0, 0.5, 1]) add(axis.pose(f, clock));
+  for (const p of FINGERPRINT_POSES) add(p);
+  return poses;
+}
+
+// Every labelled unit's SHAPE and PLACE digest across the derived poses.
 //
 // The population is collectUnits at includeExcluded — the widest one any
 // check uses (`inspection` runs there, and the row-table checks reach their
@@ -7423,7 +7469,10 @@ function hashBytes(arr, h) {
 // rather than being restated in the harness: it is a fact about this scene's
 // geometry, so it belongs to the tree that produced it, and the harness
 // unions the two trees' lists rather than picking one.
-export function unitDigests(clock, { poses = FINGERPRINT_POSES } = {}) {
+export function unitDigests(clock, { poses } = {}) {
+  // Resolved in the body, not in the parameter list: digestPoses reads the
+  // clock, which the default-parameter position cannot name.
+  poses = poses ?? digestPoses(clock);
   const shape = new Map(), place = new Map();
   const q = (n) => Math.round(n * DIGEST_PLACE_Q) / DIGEST_PLACE_Q + 0;  // +0 folds -0 → 0, unitBoxRows' precedent
   for (const pose of poses) {
