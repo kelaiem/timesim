@@ -4795,6 +4795,44 @@ export function dialTintAt(baseColor, radialFraction) {
   return dialTintStop(baseColor, t);
 }
 
+// §157 — CAN THE PRINTING STILL BE READ ON THIS GROUND? Roadmap item 140's
+// third ask, and the reason it asked: `dial.face.color` is free taste, but
+// the ink printed on it is FIXED, so a dark enough tone silently swallows
+// the minute track. Measured, at the rail radius: the shipped tone holds
+// 11.96:1 against the track, and a #1a1a1a dial collapses it to 1.02:1 —
+// invisible, with every other gate green. Nothing in the tree measured this
+// (the two existing "legibility" asserts are geometric: the crown monogram's
+// counter floor and the sub-dial texel density).
+//
+// The metric is WCAG 2.1's relative luminance and contrast ratio, used
+// because it is the standard, citable answer to "can a mark be told from its
+// ground" — the alternative was inventing a number, which rule 1 exists to
+// forbid. sRGB relative luminance per WCAG 2.1 §relative-luminance; the ratio
+// is (L_lighter + 0.05) / (L_darker + 0.05).
+function srgbLuminance(hex) {
+  const lin = hexToRgb(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+export function contrastRatio(hexA, hexB) {
+  const a = srgbLuminance(hexA), b = srgbLuminance(hexB);
+  const hi = Math.max(a, b), lo = Math.min(a, b);
+  return (hi + 0.05) / (lo + 0.05);
+}
+// The FLOOR is 3.0:1 — WCAG 2.1 SC 1.4.11 (Non-text Contrast), which is the
+// clause covering graphical objects a user must perceive, and the minute
+// track is exactly that: a graphic, not type. Not 4.5 (SC 1.4.3, normal
+// TEXT) because the track carries no glyphs.
+export const DIAL_INK_CONTRAST_MIN = 3.0;
+// The printed inks, quoted where they are used below so the assert and the
+// paint cannot drift: the chemin-de-fer rails and ticks, and the maker's
+// mark. Exported so the published measurement beside the gate reads the
+// same constants the canvas paints with.
+export const DIAL_TRACK_INK = '#1a1a1a';
+export const DIAL_MARK_INK = '#8a887e';
+
 // --- The dial plate's own geometry kit (TODO 26) ---------------------------
 // A plate with BLIND POCKETS cannot be extruded: ExtrudeGeometry cuts one
 // outline clean through, which is exactly the defect TODO 26 shipped with —
@@ -4894,6 +4932,17 @@ export function makeDial({
 }) {
   const g = new THREE.Group();
   let mat = null;
+  // §157 — the repaint hooks the live tier needs. Each is filled in only if
+  // this environment actually has a canvas; `repaintFace` stays null in the
+  // no-DOM path (test harnesses), and the caller must tolerate that rather
+  // than assume a dial can always be recoloured in place.
+  let repaintFace = null;
+  const repaintWells = [];
+
+  // The MAKER'S MARK's radius, hoisted out of the paint because the §157
+  // contrast measurement quotes the ground at exactly this fraction — a
+  // number the assert and the paint must not be able to disagree about.
+  const MARK_RADIAL_F = 0.78;
 
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
     const canvas = document.createElement('canvas');
@@ -4904,71 +4953,80 @@ export function makeDial({
       const S = 1024;
       const C = S / 2;
       const R = S * DIAL_CANVAS_FILL_F; // = S·0.46 — see the export above; main.js derives the minute hand from this frame
-      // Silvered base with a soft radial vignette, around the editable base
-      // tone (§154 — see DIAL_TINT_RATIO_{IN,OUT} above for the derivation).
-      const faceColor = aesthetics.dial.face.color;
-      const grad = ctx.createRadialGradient(C, C, R * 0.1, C, C, R);
-      grad.addColorStop(0, dialTintStop(faceColor, 0));
-      grad.addColorStop(0.75, faceColor);
-      grad.addColorStop(1, dialTintStop(faceColor, 1));
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(C, C, R, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.translate(C, C);
-      // Railroad ("chemin de fer") minute track: two concentric rails with a
-      // crossing tick every minute, heavier sleepers on the five-minute marks.
-      const rOut = R * DIAL_RAIL_OUT_F;
-      const rIn = R * DIAL_RAIL_IN_F;
-      ctx.strokeStyle = '#1a1a1a';
-      ctx.fillStyle = '#1a1a1a';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, rOut, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, 0, rIn, 0, Math.PI * 2);
-      ctx.stroke();
-      for (let i = 0; i < 60; i++) {
-        const a = (i / 60) * Math.PI * 2;
-        ctx.save();
-        ctx.rotate(a);
-        ctx.lineWidth = i % 5 === 0 ? 10 : 3;
+      // §157 — the whole paint is a FUNCTION now, so the live tier can re-run
+      // it against a new base tone without rebuilding one triangle. Geometry
+      // is untouched by a recolour by construction, which is what keeps the
+      // fingerprint still while the dial changes colour.
+      const paintFace = () => {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, S, S);
+        // Silvered base with a soft radial vignette, around the editable base
+        // tone (§154 — see DIAL_TINT_RATIO_{IN,OUT} above for the derivation).
+        const faceColor = aesthetics.dial.face.color;
+        const grad = ctx.createRadialGradient(C, C, R * 0.1, C, C, R);
+        grad.addColorStop(0, dialTintStop(faceColor, 0));
+        grad.addColorStop(0.75, faceColor);
+        grad.addColorStop(1, dialTintStop(faceColor, 1));
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(0, -rOut);
-        ctx.lineTo(0, -rIn);
+        ctx.arc(C, C, R, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.translate(C, C);
+        // Railroad ("chemin de fer") minute track: two concentric rails with a
+        // crossing tick every minute, heavier sleepers on the five-minute marks.
+        const rOut = R * DIAL_RAIL_OUT_F;
+        const rIn = R * DIAL_RAIL_IN_F;
+        ctx.strokeStyle = DIAL_TRACK_INK;
+        ctx.fillStyle = DIAL_TRACK_INK;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, rOut, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.restore();
-      }
-      // (Hour markers are applied 3D numerals — built below, not printed.)
-      // Discreet maker's mark. When a power-reserve sub-dial exists the mark
-      // is set INSIDE its well (painted by paintSubdialFace on the recessed
-      // floor); only a reserve-less dial prints it here, on the classic
-      // 6-o'clock arc.
-      if (!subdials.some((sd) => sd.kind === 'reserve')) {
-        ctx.font = '400 13px "Helvetica Neue", Helvetica, Arial, sans-serif';
-        ctx.fillStyle = '#8a887e';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const msg = 'WATCH SIMULATOR';
-        const extra = 2; // px of tracking between characters
-        const widths = [...msg].map((ch) => ctx.measureText(ch).width);
-        const rSig = R * 0.78;
-        const totalArc = widths.reduce((s, cw) => s + cw + extra, -extra) / rSig;
-        let a = (6 / 12) * Math.PI * 2 + totalArc / 2;
-        [...msg].forEach((ch, i) => {
-          a -= (widths[i] / 2) / rSig;
+        ctx.beginPath();
+        ctx.arc(0, 0, rIn, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let i = 0; i < 60; i++) {
+          const a = (i / 60) * Math.PI * 2;
           ctx.save();
-          ctx.rotate(a + Math.PI);
-          ctx.fillText(ch, 0, rSig);
+          ctx.rotate(a);
+          ctx.lineWidth = i % 5 === 0 ? 10 : 3;
+          ctx.beginPath();
+          ctx.moveTo(0, -rOut);
+          ctx.lineTo(0, -rIn);
+          ctx.stroke();
           ctx.restore();
-          a -= (widths[i] / 2 + extra) / rSig;
-        });
-      }
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      // (Sub-dial faces are NOT painted here: each one lives on its own
-      // recessed floor mesh, built below — the dial disc has a hole there.)
+        }
+        // (Hour markers are applied 3D numerals — built below, not printed.)
+        // Discreet maker's mark. When a power-reserve sub-dial exists the mark
+        // is set INSIDE its well (painted by paintSubdialFace on the recessed
+        // floor); only a reserve-less dial prints it here, on the classic
+        // 6-o'clock arc.
+        if (!subdials.some((sd) => sd.kind === 'reserve')) {
+          ctx.font = '400 13px "Helvetica Neue", Helvetica, Arial, sans-serif';
+          ctx.fillStyle = DIAL_MARK_INK;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const msg = 'WATCH SIMULATOR';
+          const extra = 2; // px of tracking between characters
+          const widths = [...msg].map((ch) => ctx.measureText(ch).width);
+          const rSig = R * MARK_RADIAL_F;
+          const totalArc = widths.reduce((s, cw) => s + cw + extra, -extra) / rSig;
+          let a = (6 / 12) * Math.PI * 2 + totalArc / 2;
+          [...msg].forEach((ch, i) => {
+            a -= (widths[i] / 2) / rSig;
+            ctx.save();
+            ctx.rotate(a + Math.PI);
+            ctx.fillText(ch, 0, rSig);
+            ctx.restore();
+            a -= (widths[i] / 2 + extra) / rSig;
+          });
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // (Sub-dial faces are NOT painted here: each one lives on its own
+        // recessed floor mesh, built below — the dial disc has a hole there.)
+      };
+      paintFace();
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.anisotropy = 8;
@@ -4983,6 +5041,7 @@ export function makeDial({
         clearcoat: 1.0,
         clearcoatRoughness: 0.07,
       });
+      repaintFace = () => { paintFace(); tex.needsUpdate = true; };
     }
   }
   if (!mat) mat = MATS.silver;
@@ -5153,16 +5212,34 @@ export function makeDial({
         cv.width = cv.height = px;
         const fctx = cv.getContext && cv.getContext('2d');
         if (fctx) {
-          // Default: slightly darker than the dial, reads as shadowed. A
-          // sub-dial may pass its own `face` colour to blend in instead.
-          fctx.fillStyle = sd.face || '#d6d6ca';
-          fctx.fillRect(0, 0, px, px);
-          paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale);
+          // §157 — THE WELL'S BLEND TONE IS DERIVED FROM ITS OWN STATION.
+          // §154 made this a derivation (`dialTintAt`) instead of the literal
+          // '#eeece5' it had been, but the caller still passed a hand-typed
+          // 0.39 as the radial fraction — the same hand-sampled number one
+          // level up, correct only while both wells sat where they sat. It is
+          // computed here now, from the well's actual distance off centre over
+          // the PRINTED disc's world radius (2·DIAL_CANVAS_FILL_F·radius — the
+          // frame that export exists to publish), so a moved station
+          // (?d4=, ?rsvr=) re-derives its own tone. A well may still pass an
+          // explicit `face` to opt out and read as a separate instrument.
+          const wellR = Math.hypot(sd.x, sd.y) / (2 * DIAL_CANVAS_FILL_F * radius);
+          const paintWell = () => {
+            fctx.setTransform(1, 0, 0, 1, 0, 0);
+            fctx.clearRect(0, 0, px, px);
+            fctx.fillStyle = sd.face || dialTintAt(aesthetics.dial.face.color, wellR);
+            fctx.fillRect(0, 0, px, px);
+            paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale);
+          };
+          paintWell();
           const ftex = new THREE.CanvasTexture(cv);
           ftex.colorSpace = THREE.SRGBColorSpace;
           ftex.anisotropy = 8;
           // Same lacquered finish as the main dial face.
           floorMat = new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
+          // Only a well that DERIVES its tone follows a live recolour; one
+          // that passed an explicit `face` asked for a fixed colour and keeps
+          // it, which is the same opt-out the paint above honours.
+          if (!sd.face) repaintWells.push(() => { paintWell(); ftex.needsUpdate = true; });
         }
       }
       if (!floorMat) floorMat = MATS.silver;
@@ -5412,6 +5489,83 @@ export function makeDial({
   }
 
   g.userData.r = radius;
+
+  // §157 — THE LEGIBILITY GATE, and the measurement beside it.
+  //
+  // ASSERTED: the chemin-de-fer against its ground, at BOTH rails. The ink
+  // is fixed and the ground is free taste, so this is the pair that a colour
+  // choice can actually break — and it is assertable because both sides are
+  // flat, known sRGB values composited in the canvas, with no lighting in
+  // between. Worst case is the OUTER rail: the vignette darkens outward, so
+  // that is where a light dial's contrast is thinnest; both are checked
+  // rather than reasoned about, because a dark base tone inverts which one
+  // is worst (the ink is nearly black, so a dark ground fails inner-first).
+  // ONE copy of the check, called at build and again on every live recolour —
+  // a second transcription of a threshold is a second place for it to rot.
+  const assertInkLegible = () => {
+    const face = aesthetics.dial.face.color;
+    for (const [name, f] of [['outer', DIAL_RAIL_OUT_F], ['inner', DIAL_RAIL_IN_F]]) {
+      const ground = dialTintAt(face, f);
+      const ratio = contrastRatio(ground, DIAL_TRACK_INK);
+      if (ratio < DIAL_INK_CONTRAST_MIN)
+        console.warn(`dial: the minute track is not legible on this face colour — ${name} rail `
+          + `${ratio.toFixed(2)}:1 (ground ${ground} vs ink ${DIAL_TRACK_INK}), `
+          + `need ${DIAL_INK_CONTRAST_MIN.toFixed(1)}:1 (WCAG 2.1 SC 1.4.11, non-text contrast). `
+          + `Face colour ${face} is too close to the printed track.`);
+    }
+  };
+  assertInkLegible();
+  // PUBLISHED, NOT GATED: the maker's mark. It measures 2.82:1 on the shipped
+  // tone — deliberately under the 3:1 floor above, because a maker's mark on
+  // a real dial IS discreet, and it is printed at all only on a reserve-less
+  // dial (the shipped one sets it inside the reserve well instead). Asserting
+  // 3:1 here would force a design change nobody asked for; lowering the floor
+  // to admit it would be widening a budget to green a row, which is the move
+  // this repo forbids. So it is reported and left alone. Note the two pull in
+  // OPPOSITE directions — darkening the dial lifts the mark's contrast while
+  // collapsing the track's — so no single threshold serves both, which is the
+  // second reason only the track is gated.
+  //
+  // Also published rather than asserted: the applied markers (MATS.steel,
+  // 0xd6d9dd) and the hands (MATS.bluedHand, 0x2450b5). Those are METALS at
+  // metalness 0.8–1.0, so what reaches the eye is the studio environment
+  // reflected off them, not their base colour — a contrast ratio computed
+  // from the base hex would be a number that looks like a check and tests
+  // nothing. materials.js:85-99 records the one time this bit for real (the
+  // old navy "read as black" under the original rig, fixed in the material),
+  // and that failure is exactly the kind a flat-colour assert would miss.
+  g.userData.inkContrast = () => {
+    const face = aesthetics.dial.face.color;
+    const at = (f) => dialTintAt(face, f);
+    return {
+      face,
+      gated: {
+        trackOuter: contrastRatio(at(DIAL_RAIL_OUT_F), DIAL_TRACK_INK),
+        trackInner: contrastRatio(at(DIAL_RAIL_IN_F), DIAL_TRACK_INK),
+        floor: DIAL_INK_CONTRAST_MIN,
+      },
+      reported: {
+        makersMark: contrastRatio(at(MARK_RADIAL_F), DIAL_MARK_INK),
+        markersBase: contrastRatio(at(DIAL_MARKER_OUTER_F), '#d6d9dd'),
+        handsBase: contrastRatio(at(DIAL_RAIL_IN_F), '#2450b5'),
+        note: 'markers and hands are metals — their rendered luminance is the '
+          + 'environment, not these base colours; ratios are indicative only',
+      },
+    };
+  };
+
+  // §157 — the live-recolour hook the aesthetics panel drives. Repaints the
+  // face canvas and every well that DERIVES its tone, then re-runs the gate
+  // above so a live drag into an illegible colour warns exactly as a boot
+  // into one would. Returns false where no canvas exists (no-DOM harnesses),
+  // so the caller can fall back to the reload tier instead of assuming.
+  g.userData.recolourFace = () => {
+    if (!repaintFace) return false;
+    repaintFace();
+    for (const w of repaintWells) w();
+    assertInkLegible();
+    return true;
+  };
   return g;
 }
 

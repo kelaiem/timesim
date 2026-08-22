@@ -9730,16 +9730,17 @@ const dial = G.makeDial({
   subdialBoreR: SUBDIAL_BORE_R,
   centerBoreR: DIAL_CENTER_BORE_R, // = ALARM_TUBE_OUTER + 0.2 — the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
-    // face: the dial's own tone at this radius (its radial gradient
-    // evaluated at ±0.39R — G.dialTintAt, §154) so BOTH wells blend in
-    // rather than reading as separate darker instruments — the two sit
-    // symmetric about the centre, so they share the same gradient tone.
-    // Derived from aesthetics.dial.face.color rather than a sampled literal,
-    // so a recolored dial doesn't leave the wells behind.
-    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: G.dialTintAt(aesthetics.dial.face.color, 0.39),
+    // No `face` on either well, deliberately (§157): makeDial DERIVES each
+    // well's blend-in tone from that well's own distance off centre over the
+    // printed disc's radius, so both read as the dial's own tone at their
+    // radius rather than as separate darker instruments. §154 made this a
+    // derivation but still handed it a hand-typed 0.39; passing nothing lets
+    // the well answer from its own station, which is what keeps it true when
+    // ?d4= or ?rsvr= moves one. Pass `face` only to opt a well OUT.
+    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve',
       recess: RESERVE_RECESS, // §153 — the barely-recessed sector, against the plate default below
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS } },
-    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: G.dialTintAt(aesthetics.dial.face.color, 0.39) },
+    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
   ],
 });
 // TODO 26 — THE DIAL'S OWN FURNITURE RIDES ONE PLATE-THICKNESS FORWARD.
@@ -21393,7 +21394,20 @@ function askTour(onProceed) {
     camera: () => { controls.dampingFactor = aesthetics.camera.dampingFactor; },
     decoration: () => { applyDecorationFromAesthetics(); if (ribPitch) ribPitch.value = aesthetics.decoration.ribbing.widthUnits; },
     materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
-    dial: (path) => { if (path[1] === 'hands') recutHands(); else return false; },
+    // §157 — `face` joins `hands` as a LIVE path. Roadmap item 140 asked for
+    // this and §154 shipped it reload-tier; the reason it was not live is that
+    // the dial face is a canvas texture, not a material `.color`, so there is
+    // no one-line `.set()` to call. `recolourFace` repaints that canvas (and
+    // every well that derives its tone from it) and flags the textures — no
+    // geometry is rebuilt, which is what keeps the fingerprint still while
+    // the colour moves. It returns false where no canvas exists, and that
+    // falls through to the ⟳ reload label rather than claiming a liveness the
+    // environment cannot deliver.
+    dial: (path) => {
+      if (path[1] === 'hands') { recutHands(); return; }
+      if (path[1] === 'face') return dial.userData.recolourFace?.() ? undefined : false;
+      return false;
+    },
     gong: () => {
       GONG_A0 = Math.min(GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD, GONG_FOOT_BOUND); // §125: the foot never leaves the plate, live edits included
       GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
@@ -21405,6 +21419,13 @@ function askTour(onProceed) {
       gongF = gongModes();   // the voice follows the wire
     },
   };
+  // §157 — the ⟳ "applies on reload" label reads THIS, and APPLIERS.dial
+  // branches on the same names, so the two cannot disagree. A live path the
+  // label calls reload-tier (or the reverse) is the panel lying about its own
+  // reach, which is the defect §23 added the marker to avoid. `face` joined
+  // `hands` when §157 made it live; add a path here and in the applier
+  // together, or not at all.
+  const DIAL_LIVE_PATHS = ['hands', 'face'];
   const advBody = document.getElementById('advanced-body');
   // §155 — roadmap item 141. `rows` above is local to buildAdvanced() and
   // its elements are dropped once appended, so the filter needs its own
@@ -21426,7 +21447,7 @@ function askTour(onProceed) {
     for (const r of rows) {
       const domain = r.path[0];
       const applier = APPLIERS[domain];
-      const live = !!applier && !(domain === 'dial' && r.path[1] !== 'hands');
+      const live = !!applier && !(domain === 'dial' && !DIAL_LIVE_PATHS.includes(r.path[1]));
       // §53 — AUTHORED NAME, STACKED, WRAPPING. Two separate defects met here.
       // The name was DERIVED from the schema key path ('hands.second.
       // counterweightOffsetFactor'), which is verbose by construction; and the
