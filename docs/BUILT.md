@@ -14908,3 +14908,40 @@ angles at three tensions, hand/floor/arbor world planes, boot
 silence); `tools/probe-153-shot.mjs` renders the face and the oblique
 profile. The schematic tier's sub-dial bezel ring quotes
 `reserveHand.position.z` live, so it moved with the hand for free.
+
+## §154 — one editable dial tone, not three literals
+
+Adds `dial.face.color` to the Advanced panel: the base tone of the
+dial's silvered radial gradient, picked up by the generated panel
+(§23) as a plain hex leaf — no new UI code. What made this more than
+a one-line swap is that the dial's face was never a flat material
+color; `makeDial` (`geometry.js`) paints a canvas texture with a
+three-stop radial gradient (`#f4f2ec` → `#e7e5dd` → `#d3d1c8`) and the
+`MeshPhysicalMaterial` reading it keeps `color: 0xffffff` on purpose
+so the texture shows unmodified — the clearcoat/roughness/metalness
+finish (P4's own concern) is untouched by this change, and so are the
+printed minute track and maker's mark, which are separate fixed-ink
+draws on the same canvas.
+
+Rather than hardcode a second and third literal alongside a new base
+tone, `DIAL_TINT_RATIO_IN`/`DIAL_TINT_RATIO_OUT` hold the shipped
+inner/outer stops as ratios to the shipped middle stop — rule 1 at
+finish scale: the ratios ARE the constraint (preserve the shipped
+vignette shape), so the default tone (`#e7e5dd`) reproduces the exact
+literals it replaces and any other tone keeps the same soft falloff
+instead of going flat. `dialTintAt(baseColor, radialFraction)` is the
+same math exposed for a caller outside the module: the two
+power-reserve/seconds sub-dial floors carried a hand-sampled literal
+(`'#eeece5'`, "the dial's own tone at ±0.39R, so both wells blend
+in") that would have gone stale the moment the tone became editable —
+`main.js` now derives it from `dialTintAt(aesthetics.dial.face.color,
+0.39)`, so the wells stay in step with whatever tone is picked.
+
+Reload tier, like `hourMarkers` beside it in the same subtree
+(`APPLIERS.dial` only live-applies the `hands` path) — repainting the
+canvas needs a rebuild, and the panel's existing ⟳ convention says so
+rather than the knob silently doing nothing. Colors carry no
+mechanical constraint, so no `_bounds` row; a corrupt/non-hex override
+is refused by the existing type-anchored loader (`aesthetics.js`), not
+a new check. No MECH_GRAPH entry (no new part, standing rule 3
+doesn't apply) and no fingerprint movement (color isn't hashed).

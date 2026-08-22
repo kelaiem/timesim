@@ -4756,6 +4756,45 @@ export const DIAL_CANVAS_FILL_F = 0.46;   // printed disc radius / canvas size
 export const DIAL_RAIL_OUT_F = 0.94;      // railroad outer rail / printed disc
 export const DIAL_RAIL_IN_F = 0.87;       // railroad inner rail / printed disc
 
+// §154 — the dial's silvered face is a three-stop radial gradient around ONE
+// editable base tone (aesthetics.dial.face.color) instead of three
+// independent literals. DIAL_TINT_RATIO_{IN,OUT} are the shipped inner/outer
+// stops (#f4f2ec, #d3d1c8) divided channel-by-channel by the shipped middle
+// stop (#e7e5dd) — so the shipped default base tone reproduces those exact
+// literals, and any other base tone keeps the same soft vignette shape
+// rather than a flat recolor. Kept private; dialTintAt below is the public
+// surface a caller outside this module needs.
+const DIAL_TINT_RATIO_IN = [244 / 231, 242 / 229, 236 / 221];
+const DIAL_TINT_RATIO_OUT = [211 / 231, 209 / 229, 200 / 221];
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHex(rgb) {
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
+}
+// t is the canvas gradient's own parameter (0 at the inner stop, 0.75 at the
+// base tone, 1 at the outer stop) — linear on each side of the base tone, so
+// it lands on the ratio exactly at both ends and on identity at 0.75.
+function dialTintStop(baseColor, t) {
+  const base = hexToRgb(baseColor);
+  const ratio = t <= 0.75
+    ? DIAL_TINT_RATIO_IN.map((r) => r + (1 - r) * (t / 0.75))
+    : [0, 1, 2].map((i) => 1 + (DIAL_TINT_RATIO_OUT[i] - 1) * ((t - 0.75) / 0.25));
+  return rgbToHex(base.map((c, i) => c * ratio[i]));
+}
+// Public surface: `radialFraction` is a fraction of the printed disc's own
+// radius (the gradient runs from 0.1x that radius to 1x it — see makeDial),
+// so a caller wanting "the dial's own tone at world radius f·dialRadius" can
+// ask directly instead of re-deriving the gradient's span. Used by main.js
+// to keep a sub-dial's blend-in `face` tone in step with the editable base
+// tone rather than a hand-sampled literal.
+export function dialTintAt(baseColor, radialFraction) {
+  const t = Math.max(0, Math.min(1, (radialFraction - 0.1) / 0.9));
+  return dialTintStop(baseColor, t);
+}
+
 // --- The dial plate's own geometry kit (TODO 26) ---------------------------
 // A plate with BLIND POCKETS cannot be extruded: ExtrudeGeometry cuts one
 // outline clean through, which is exactly the defect TODO 26 shipped with —
@@ -4865,11 +4904,13 @@ export function makeDial({
       const S = 1024;
       const C = S / 2;
       const R = S * DIAL_CANVAS_FILL_F; // = S·0.46 — see the export above; main.js derives the minute hand from this frame
-      // Silvered base with a soft radial vignette.
+      // Silvered base with a soft radial vignette, around the editable base
+      // tone (§154 — see DIAL_TINT_RATIO_{IN,OUT} above for the derivation).
+      const faceColor = aesthetics.dial.face.color;
       const grad = ctx.createRadialGradient(C, C, R * 0.1, C, C, R);
-      grad.addColorStop(0, '#f4f2ec');
-      grad.addColorStop(0.75, '#e7e5dd');
-      grad.addColorStop(1, '#d3d1c8');
+      grad.addColorStop(0, dialTintStop(faceColor, 0));
+      grad.addColorStop(0.75, faceColor);
+      grad.addColorStop(1, dialTintStop(faceColor, 1));
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(C, C, R, 0, Math.PI * 2);

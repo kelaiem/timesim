@@ -9731,13 +9731,15 @@ const dial = G.makeDial({
   centerBoreR: DIAL_CENTER_BORE_R, // = ALARM_TUBE_OUTER + 0.2 — the co-axial stack's OUTERMOST member (the §25 C alarm tube) passes with running clearance
   subdials: [
     // face: the dial's own tone at this radius (its radial gradient
-    // evaluated at ±0.39R) so BOTH wells blend in rather than reading as
-    // separate darker instruments — the two sit symmetric about the centre,
-    // so they share the same gradient tone.
-    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: '#eeece5',
+    // evaluated at ±0.39R — G.dialTintAt, §154) so BOTH wells blend in
+    // rather than reading as separate darker instruments — the two sit
+    // symmetric about the centre, so they share the same gradient tone.
+    // Derived from aesthetics.dial.face.color rather than a sampled literal,
+    // so a recolored dial doesn't leave the wells behind.
+    { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve', face: G.dialTintAt(aesthetics.dial.face.color, 0.39),
       recess: RESERVE_RECESS, // §153 — the barely-recessed sector, against the plate default below
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS } },
-    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: '#eeece5' },
+    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds', face: G.dialTintAt(aesthetics.dial.face.color, 0.39) },
   ],
 });
 // TODO 26 — THE DIAL'S OWN FURNITURE RIDES ONE PLATE-THICKNESS FORWARD.
