@@ -14999,3 +14999,110 @@ quoted here rather than repeating §53's stale 63-that-was-three-fixed
 (that count is now for a *different* reason — §154 added an 11th
 colour picker where §97 had removed a slider, netting back to the same
 digit as pure coincidence).
+
+## §157 — the dial colour goes live, and the printing gets a legibility gate (roadmap item 140 closed)
+
+§154 shipped `dial.face.color` and its derivation; roadmap item 140's
+acceptance asked for three more things and this closes all three. Each
+was a real gap, not a tidy-up — the entry is worth reading beside this,
+because two of the three had already caught this codebase once.
+
+### Live, and why it was not
+
+The entry cited `materials.ruby.color` as "the exact template" — a schema
+colour that reaches a material through `APPLIERS.materials` as a one-line
+`.set()`. That template does not transfer, and §154 shipped reload-tier
+rather than pretend it did: **the dial face is a painted canvas texture,
+not a material `.color`.** Its `MeshPhysicalMaterial` keeps
+`color: 0xffffff` on purpose so the texture shows unmodified, so there is
+no colour channel to set — the tone lives in the gradient stops of a
+1024² canvas.
+
+So `makeDial`'s paint became a FUNCTION, and the group exposes
+`userData.recolourFace()`: it re-runs that paint, re-runs every sub-dial
+well that derives its tone from the same value, and flags both textures
+`needsUpdate`. `APPLIERS.dial` now names `face` beside `hands`.
+
+**No geometry is rebuilt, and that is the point rather than an
+optimisation** — a colour that moved a vertex would move the fingerprint,
+which would make a taste knob a geometry change. Measured across a live
+recolour to `#ead9a8` and back: the dial's 41 mesh `geometry.id`s and its
+9866 vertices are IDENTICAL before and after, and the sampled face and
+both well textures change and restore exactly.
+
+One coupling this creates and the code names: the ⟳ "applies on reload"
+label is computed from its own list of live `dial` paths, which must
+agree with the applier's branches or the panel lies in one direction or
+the other. Both now read `['hands', 'face']`.
+
+### The well tone, derived one level further
+
+§154's own trap-closing was still half a literal. It replaced
+`face: '#eeece5'` with `dialTintAt(colour, 0.39)` — a real derivation fed
+a hand-typed radial fraction, correct only while both wells sat where
+they sat. `makeDial` now computes each well's fraction from that well's
+OWN distance off centre over the printed disc's world radius
+(`2·DIAL_CANVAS_FILL_F·radius`), so `?d4=` or `?rsvr=` re-derives it. The
+caller passes no `face` at all; passing one is now purely an opt-out for
+a well that wants to read as a separate instrument.
+
+A small correction falls out of it. The old comment said the two wells
+"sit symmetric about the centre, so they share the same gradient tone."
+Measured, they do not quite: the reserve well samples `238,236,229` and
+the seconds well `237,235,228`. One unit, invisible — but the derivation
+now tells the truth about it instead of averaging it away by hand.
+
+### `_bounds`: decided, not omitted
+
+The entry asked for `_bounds`. There is none, and the schema says why
+rather than leaving a silent gap: `_bounds` is a numeric `[min, max]`
+consumed ONLY by the panel's slider path, and a hex string renders as
+`input[type=color]`, which has no min or max to give it. The interval has
+no meaning for a colour. The real constraint is legibility — which is not
+an interval either, but a floor against the ink, and that is what the
+next section asserts.
+
+### The contrast gate, and what it deliberately does not gate
+
+There was **no contrast or legibility assert anywhere in the tree** (the
+two that call themselves legibility asserts are geometric: the crown
+monogram's counter floor, the sub-dial texel density). So a dial colour
+that swallowed the printed track would have shipped green — item 140 said
+so, and it measures true: at `#1a1a1a` the minute track holds **1.02:1**
+against its ground and is invisible, with every other gate passing.
+
+**Asserted: the chemin-de-fer against its ground, at both rails,
+≥ 3.0:1.** The metric is WCAG 2.1's relative luminance and contrast
+ratio, used because it is the standard citable answer to "can a mark be
+told from its ground" and the alternative was inventing a number. The
+floor is SC 1.4.11 (Non-text Contrast), which is the clause covering
+graphical objects — the track is a graphic, not type, so 3.0 and not
+4.5. It is checked at build AND on every live recolour, from one copy of
+the check. Shipped tone: **11.96:1 outer, 12.79:1 inner.** Both rails are
+tested rather than reasoned about, because which one is worst INVERTS
+with the tone (the vignette darkens outward, so a light dial is thinnest
+at the outer rail; the ink is near-black, so a dark dial fails inner
+first).
+
+**Published, not gated: the maker's mark, at 2.82:1 on the shipped
+tone** — deliberately under the floor the track is held to. Three reasons,
+all recorded because this is exactly the row someone would later
+"fix": a maker's mark on a real dial IS discreet; on the shipped dial it
+is not printed on the face at all (a reserve well takes it, so it is
+painted inside the well instead); and asserting 3:1 would force a design
+change nobody asked for, while lowering the floor to admit it would be
+widening a budget to green a row. **The two also pull in opposite
+directions** — darkening the dial lifts the mark's contrast while
+collapsing the track's (at `#000000`: mark 5.90:1, track 1.21:1) — so no
+single threshold serves both, which is the second reason only the track
+is gated.
+
+**Published, not gated: the applied markers and the hands.** Those are
+metals at metalness 0.8–1.0, so what reaches the eye is the studio
+environment reflected off them, not their base colour; a ratio computed
+from `0xd6d9dd` or `0x2450b5` would be a number that looks like a check
+and tests nothing. `materials.js` records the one time this bit for real
+— the old navy hands "read as black" under the original rig, and "the fix
+lives in the material, not the lights" — which is precisely the failure a
+flat-colour assert would have missed. `userData.inkContrast()` publishes
+all of it, gated and reported rows separated by name.
