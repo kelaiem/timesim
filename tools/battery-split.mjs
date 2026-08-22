@@ -31,37 +31,34 @@
 // `poses` is n + 1 for that axis, a FACT the assert also checks. It seeded the
 // first partition — a slice's cost as its share of the check's measured cost —
 // because no per-axis wall had ever been measured and a made-up number would
-// have been a magic constant balancing a partition. `ms` is the MEASURED wall,
-// written back from `--report` exactly as the check costs are, and it wins.
+// have been a magic constant balancing a partition. That projection still
+// stands in for a slice nobody has measured yet (buildTasks below), and a
+// MEASURED per-axis wall wins wherever one exists.
 //
-// KEEP BOTH, because the first sliced run showed how rough the proxy is: the
-// projection erred -25% (`wind`) to +44% (`alarmWind`), and it mis-ranked the
-// column — `wind` projected at 349.1 s and measured 261.7 s, `train` projected
-// 47.0 s and measured 66.6 s. Per-pose cost is dominated by how many pair
-// candidates survive the broad phase at that pose, which varies by axis and is
-// not a function of pose count. An axis added later gets the same rough seed
-// and the same correction on the next `--report`; what the pair does NOT let
-// anyone do is quietly keep a projection while believing it was measured.
+// §152 MOVED THE MEASURED MS OUT OF THIS TABLE, into ci-battery.mjs's COSTS
+// map, keyed `inspection:<axis>`. This file is one of CHECK_CODE_FILES — the
+// digest that decides whether a stored verdict may be inherited — and a cost
+// is wall clock, never a verdict (§81's rule). Refreshing the column from
+// `--report` is the most routine harness edit there is, and it must not void
+// every stored row for numbers no check can read. The FACTS stay here, where
+// the assert that holds them true against the page's own axes reads them.
 export const INSPECTION_SLICES = [
-  { axis: 'beat', poses: 97, ms: 54109 },
-  { axis: 'crown', poses: 49, ms: 24335 },
-  { axis: 'reserve', poses: 61, ms: 22954 },
-  { axis: 'wind', poses: 721, ms: 261735 },
+  { axis: 'beat', poses: 97 },
+  { axis: 'crown', poses: 49 },
+  { axis: 'reserve', poses: 61 },
+  { axis: 'wind', poses: 721 },
   // TODO 71 — the arrest's arming band, cycled (see the axis's own comment).
-  // ms seeded from stemSlip's measured cost (same n, and nearly every pose
-  // rebuilds the chain); --report refreshes it like every row.
-  { axis: 'arrest', poses: 97, ms: 55000 },
-  { axis: 'train', poses: 97, ms: 66580 },
-  { axis: 'jumperEngage', poses: 121, ms: 70719 },
-  { axis: 'handSet', poses: 121, ms: 65625 },
-  { axis: 'alarm', poses: 97, ms: 55597 },
-  { axis: 'alarmStrike', poses: 110, ms: 59415 },
-  { axis: 'alarmWind', poses: 110, ms: 76736 },
-  { axis: 'alarmToggle', poses: 49, ms: 32844 },
+  { axis: 'arrest', poses: 97 },
+  { axis: 'train', poses: 97 },
+  { axis: 'jumperEngage', poses: 121 },
+  { axis: 'handSet', poses: 121 },
+  { axis: 'alarm', poses: 97 },
+  { axis: 'alarmStrike', poses: 110 },
+  { axis: 'alarmWind', poses: 110 },
+  { axis: 'alarmToggle', poses: 49 },
   // TODO 50 — the stem clutch's own reversal (one coupling pitch, cycled).
-  // ms measured on the session's dev container battery run; poses = n 96
-  // plus the endpoint, the same accounting as every row above.
-  { axis: 'stemSlip', poses: 97, ms: 55000 },
+  // poses = n 96 plus the endpoint, the same accounting as every row above.
+  { axis: 'stemSlip', poses: 97 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -137,6 +134,48 @@ export function mergeInspection(parts, axisMeta) {
     ...(restriction ? { restriction } : {}) };
 }
 
+// §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.
+//
+// The measured column lives outside the digested files now, which means the
+// table and the battery it describes are two lists someone keeps in step —
+// exactly the drift tools/payload.sh's header names. So it is declared and
+// then asserted, both ways, and a mismatch THROWS with the offender named:
+//
+//   · a BATTERY entry with no cost row would hand `partition` an undefined
+//     cost: its comparator returns NaN, and the shard that takes the task
+//     carries a NaN total that never compares as the lightest again, so the
+//     partition silently stops balancing while reporting a shard list that
+//     looks ordinary. `resolveAxes`' rule covers this — a mistake that
+//     matches nothing must never pass for a clean answer.
+//   · a cost row naming no check (or no slice of one) is the other half of
+//     the same drift: a check renamed here and not there, refreshed forever
+//     against nothing.
+//
+// A SLICE row is legal but not required: a newly declared axis has no measured
+// wall until a sliced `--report` writes one, and buildTasks below projects its
+// share from the pose count until then. What is not legal is a slice key that
+// names an axis no check slices.
+//
+// The roster is derived from `entries` alone rather than taking the slice
+// table as a second argument, for this function's own reason: a second list
+// passed in is a second list to keep in step.
+export function assertCosts(entries, costs) {
+  const legal = new Set();
+  const missing = [];
+  for (const e of entries) {
+    legal.add(e.name);
+    if (costs[e.name] === undefined) missing.push(e.name);
+    for (const s of e.slices ?? []) legal.add(`${e.name}:${s.axis}`);
+  }
+  if (missing.length) {
+    throw new Error(`COSTS has no row for ${missing.join(', ')} — the partition would balance on undefined`);
+  }
+  const orphans = Object.keys(costs).filter((k) => !legal.has(k));
+  if (orphans.length) {
+    throw new Error(`COSTS names ${orphans.join(', ')}, which is no check and no slice of one`);
+  }
+}
+
 // One entry per unit of schedulable work: a whole check, or one slice of a
 // split check. This is what `partition` balances now.
 //
@@ -144,18 +183,20 @@ export function mergeInspection(parts, axisMeta) {
 // — a projection, and labelled one, because nothing had ever measured a single
 // axis's wall. It is only ever used to balance shards, so a wrong projection
 // costs wall clock and never a verdict (§81's rule, inherited). Once a sliced
-// run has written `ms` back through `--report`, the measured number wins.
-export function buildTasks(entries, split) {
+// run has written the slice's `ms` back through `--report` and into COSTS, the
+// measured number wins.
+export function buildTasks(entries, split, costs) {
   const tasks = [];
   for (const e of entries) {
-    if (!split || !e.slices) { tasks.push({ key: e.name, name: e.name, opts: e.opts, cost: e.cost, entry: e }); continue; }
+    if (!split || !e.slices) { tasks.push({ key: e.name, name: e.name, opts: e.opts, cost: costs[e.name], entry: e }); continue; }
     const totalPoses = e.slices.reduce((a, s) => a + s.poses, 0);
     for (const s of e.slices) {
+      const ms = costs[`${e.name}:${s.axis}`];
       tasks.push({
         key: `${e.name}:${s.axis}`, name: e.name, slice: s.axis, entry: e,
         opts: { ...e.opts, axes: [s.axis] },
-        cost: s.ms !== undefined ? s.ms / 1000 : (e.cost * s.poses) / totalPoses,
-        projected: s.ms === undefined,
+        cost: ms !== undefined ? ms / 1000 : (costs[e.name] * s.poses) / totalPoses,
+        projected: ms === undefined,
       });
     }
   }

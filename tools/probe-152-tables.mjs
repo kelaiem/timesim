@@ -76,6 +76,10 @@ for (const line of commits) {
   // A table-only inspect.js diff recovers nothing if the same merge also moved
   // the HARNESS, which voids the key just as completely. Splitting the tables
   // out of one file does not split them out of the other two.
+  // Pre-split definition of "the harness", kept so this probe's recorded
+  // ceiling (11 of 80) stays reproducible. Post-split, 3 of the 9
+  // TABLE+HARNESS merges have fresh-only harness diffs (probe-152-fresh's
+  // composition number), which is what moves Landing 4's ceiling to 14.
   const alsoHarness = files.some((f) => f === 'tools/ci-battery.mjs' || f === 'tools/battery-split.mjs');
   if (only) { tableOnly++; if (!alsoHarness) recoverable++; } else engine++;
   rows.push({ date, cls: only ? (alsoHarness ? 'TABLE+HARNESS' : 'TABLE-ONLY') : 'ENGINE',

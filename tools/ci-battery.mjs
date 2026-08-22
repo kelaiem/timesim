@@ -36,25 +36,20 @@
 //                digest difference does not mean the geometry moved and every
 //                skip taken on that reading is unfounded.
 //
-// Why the harness takes the sweep hold for the whole run: only
-// buildSweptRegistry/checkLowCorridor hold it themselves, so during the other
-// sweeps the rAF loop keeps rendering — on CI's software GL (SwiftShader)
-// those paints are pure overhead stolen from the sweep. The checks drive
-// poses through setPose and never need a paint, so the geometry-frozen page
-// is exactly what they want. beginSweepHold is a counter, so the two checks
-// that take it anyway nest cleanly.
-//
-// Why yieldEvery 64: measured, not guessed — see CLAUDE.md's yield-throttling
-// trap. The default 16 is tuned for a human-visible tab; 384 wedged a tab.
-// Headless Chromium is launched with background-timer throttling disabled, so
-// the setTimeout(0) naps cost microseconds here, but 64 keeps each blocking
-// chunk short enough that the status() poll stays live either way.
+// WHAT A CHECK COMPUTES IS NOT IN THIS FILE (§152). BATTERY, the in-page
+// start/status protocol, the virgin boot a payload is measured on and the
+// sweep hold that page is held under all live in tools/battery-checks.mjs,
+// which is DIGESTED: an incremental run may inherit a stored row only when
+// the code that produced it is unchanged. Everything here runs fresh every
+// run — the partition, the cost column, the spec boots, the anchors, the
+// logging — and so cannot stale a stored row. That boundary, and what it was
+// measured against, is argued in battery-checks.mjs's own header.
 //
 // Usage:  node tools/ci-battery.mjs            (from anywhere; paths are
 //         resolved from this file). Needs python3 on PATH for dev_server.py
 //         and a Playwright Chromium (npx playwright install chromium).
 //         --shards N        run the battery across N browser contexts,
-//                           partitioned by the measured `cost` column
+//                           partitioned by the measured COSTS column below
 //                           (default 3; 1 is the pre-§81 single-file run).
 //         --report FILE     write every check's FULL payload as JSON — the
 //                           "same rows, same numbers" instrument §80 and §81
@@ -79,11 +74,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { INSPECTION_SLICES, mergeInspection, buildTasks } from './battery-split.mjs';
+import { assertCosts, buildTasks } from './battery-split.mjs';
+import { BATTERY, RESTRICTABLE, prepPage, runCheck, virginBoot } from './battery-checks.mjs';
 import { unionCheck } from './battery-union.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const YIELD_EVERY = 64;
 // Per check. This is a WEDGED-TAB GUARD, not a budget: no check is supposed
 // to approach it, and a check that does has told us something. TODO 27 is the
 // worked example — drilling the chain's 211 joints tripled that mesh
@@ -167,19 +162,27 @@ const YIELD_EVERY = 64;
 const CHECK_TIMEOUT_MS = 35 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
 
-// The battery, in the order the gates are REPORTED: cheap and synchronous
-// first so a broken graph reads first, the expensive sweeps last. Each entry
-// names the gate standing rule 4 states for it and how to judge the check's
-// payload — plus `cost`, its measured wall clock in seconds.
+// §81 — THE MEASURED COST COLUMN, AND WHY IT IS DATA. The harness shards the
+// battery across K browser contexts and partitions the tasks by these numbers
+// (longest-processing-time greedy, below), so the wall is max(shard) instead
+// of sum(checks). A partition written as code would have to be re-argued every
+// time a check gets faster; a partition computed from a measured column is
+// re-derived by editing the column. `--report` writes the same numbers back
+// out as `ms` — and `sliceMs` for a split check — which is how they get
+// refreshed. They are used ONLY to balance the shards: a stale number costs
+// wall clock, never a wrong verdict.
 //
-// §81 — WHY THE COST IS DATA. The harness shards the battery across K browser
-// contexts and partitions the checks by `cost` (longest-processing-time
-// greedy, below), so the wall is max(shard) instead of sum(checks). A
-// partition written as code would have to be re-argued every time a check
-// gets faster; a partition computed from a measured column is re-derived by
-// editing the column. `--report` writes the same column back out as `ms`,
-// which is how they get refreshed. They are used ONLY to balance the shards:
-// a stale number costs wall clock, never a wrong verdict.
+// TWO UNITS, ON PURPOSE, because both halves are refreshed from `--report`
+// fields that carry them: a CHECK's cost is its wall in SECONDS, a SLICE's is
+// the axis's wall in MILLISECONDS (keyed `check:axis`). buildTasks divides the
+// slice rows by 1000; nothing else reads either.
+//
+// §152 MOVED THEM OUT OF THE CHECK TABLES. Refreshing this column is the most
+// routine harness edit there is, and both battery-checks.mjs and
+// battery-split.mjs are CHECK_CODE_FILES — the digest that decides whether a
+// stored verdict may be inherited. A cost is wall clock and no check can read
+// one, so a refresh must not void a single stored row. This file is not
+// digested, which is what makes that true.
 //
 // §127 REFRESHED THEM, and the drift is the argument for doing it: against the
 // post-§80 numbers this column used to carry, the measured ratios were 0.77
@@ -207,72 +210,35 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 //
 // The consequence is bounded and worth stating rather than fixing blind: that
 // CI run's partition landed 1329.4 s against an ideal 3-way split of 1209.3 s,
-// 9.9% over. That is wall clock, never a verdict (the rule below), and it is
+// 9.9% over. That is wall clock, never a verdict (the rule above), and it is
 // an argument for MORE, SMALLER tasks rather than for a CI-derived column —
 // a column measured on one runner is just as wrong on the next one, and finer
 // tasks make any single mis-estimate cost less.
-const BATTERY = [
-  { name: 'support', opts: {}, cost: 15,
-    gate: '0 failures',
-    fails: (r) => r.failures },
-  { name: 'graph', opts: {}, cost: 1,
-    gate: 'every violation list empty (todo allowed)',
-    fails: (r) => Object.entries(r)
-      .filter(([k]) => k !== 'todo')
-      .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
-  // TODO 54 — the pose contract every sweep below rests on, so it reads early:
-  // if canonical axis entry does not hold, the sweeps' findings are a function
-  // of AXES' declaration order and §127's partition is measuring a different
-  // movement in each shard. Its leak tier is a report (see checkAxisEntry).
-  { name: 'axisEntry', opts: {}, cost: 2,
-    gate: 'every ordered axis pair reproduces the entered axis exactly',
-    fails: (r) => r.violations,
-    note: (r) => `${r.pairsTested} ordered pairs; without the entry ${r.leak.pairsLeaking} leak, `
-      + `${r.leak.units.length} units move (worst ${r.leak.units[0]?.unit ?? '—'} ${r.leak.units[0]?.worst ?? 0})` },
+//
+// The per-slice seed projection for an axis that has never been measured is
+// buildTasks' business, and the first sliced run showed how rough a proxy it
+// is: the projection erred -25% (`wind`) to +44% (`alarmWind`), and it
+// mis-ranked the column — `wind` projected at 349.1 s and measured 261.7 s,
+// `train` projected 47.0 s and measured 66.6 s. Per-pose cost is dominated by
+// how many pair candidates survive the broad phase at that pose, which varies
+// by axis and is not a function of pose count. An axis added later gets the
+// same rough seed and the same correction on its first sliced `--report`; what
+// the pair does NOT let anyone do is quietly keep a projection while believing
+// it was measured.
+const COSTS = {
+  'support': 15,
+  'graph': 1,
+  'axisEntry': 2,
   // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
   // pallets halved the row's mesh work — measured 21 s.
-  { name: 'penetration', opts: {}, cost: 18,
-    gate: 'every budget row OK or waived (waived rows reported as debt)',
-    fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
-    note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
-  { name: 'alarmHandoffs', opts: {}, cost: 1,
-    gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
-    fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  // §47 — the going side's two arrest contacts, the same instrument as the
-  // alarm rows through its own pose table (full wind = shut, slack = free).
-  { name: 'windArrestHandoff', opts: {}, cost: 1,
-    gate: 'the arrest shut at full wind and free at slack, both contacts',
-    fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  // TODO 50 — the stem clutch's coupling: contact at every engaged parity
-  // (seated faces, backlash tip-on-valley, camming ramps — the yoke spring
-  // holds the one-sided constraint closed), free pulled out.
-  { name: 'stemClutchHandoff', opts: {}, cost: 1,
-    gate: 'the coupling in contact seated/backlash/camming and free pulled out',
-    fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'stockFloor', opts: {}, cost: 6,
-    gate: '0 degenerate and 0 unwaived',
-    fails: (r) => [...r.degenerate, ...r.violations],
-    note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
-  // §77 tiers 0+1 — a REPORT (§40): the zeroArea and inverted rows land red
-  // by design (3,233 zero-area triangles and 4 inverted bodies measured on
-  // arrival, triaged into TODO.md) and are NOT gated; what is gated is what
-  // can be held on day one — the in-check synthetic controls and every
-  // declared sub-body table's validity (a malformed table is a stale
-  // selector, the INTRA_UNIT_CONTACTS precedent).
-  { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY }, cost: 10,
-    gate: 'controls PASS and 0 malformed sub-body declarations — zeroArea/inverted rows are a REPORT (§40)',
-    fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]), ...r.subBodies.malformed],
-    note: (r) => `${r.geometries} geometries / ${r.triangles} tris: zeroArea ${r.zeroArea.total} in ${r.zeroArea.geometries} geometries (${r.zeroArea.exactZero} exact), `
-      + `${r.inverted.rows.length} inverted, subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries; `
-      + `pairs ${r.subBodies.pairs.tested} tested / ${r.subBodies.pairs.skippedDeclaredOverlap} declared / ${r.subBodies.pairs.rows.length} interior` },
-  { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY }, cost: 6,
-    gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors',
-    fails: (r) => [...r.violations, ...r.unmatchedSelectors.map((u) => ({ unmatchedIntraUnitSelector: u }))],
-    note: (r) => `${r.movers} movers in ${r.frames} frames over ${r.poses} poses; pairs MF ${r.tiers.MF}/FF ${r.tiers.FF}/MM ${r.tiers.MM}, `
-      + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt), ${r.unmeasurable.length} unmeasurable (reported)` },
+  'penetration': 18,
+  'alarmHandoffs': 1,
+  'windArrestHandoff': 1,
+  'stemClutchHandoff': 1,
+  'stockFloor': 6,
+  'meshIntegrity': 10,
+  'intraUnit': 6,
+  'assembly': 4,
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
   // loop is quadratic in exactly that. Measured, unscaled, on the container
@@ -290,85 +256,47 @@ const BATTERY = [
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  // §107 — TODO 5's other half. `intraUnit` above compares movers against
-  // their own unit's FIXTURES, so two meshes that always move together were
-  // never measured by anything: §104's governor anchor shipped with one pallet
-  // blade 0.236 clear of the arm carrying it, through a fully green battery,
-  // and the owner found it by looking at the screen. §48's rule holds — `ok`
-  // is always true and the rows are the product — so what is gated is what the
-  // population supports: the units in ASSEMBLY_SCOPE. Everything else reports.
-  { name: 'assembly', opts: {}, cost: 4,
-    gate: '0 undeclared, unwaived splits among the scoped units',
-    fails: (r) => r.violations,
-    note: (r) => `${r.rowsChecked} split rigid groups over ${r.poses} poses, `
-      + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt)` },
-  { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY }, cost: 389,
-    gate: '0 unwaived floor rows, 0 unmatched contact selectors',
-    fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
-    note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
-  { name: 'oscillator', opts: {}, cost: 1,
-    gate: 'the spring is cut to the beat, in real hairspring stock',
-    fails: (r) => r.failures,
-    note: (r) => `implied ${r.impliedHz} Hz vs spec ${r.specHz} Hz, ribbon ${r.spring.h_mm.toFixed(4)} mm (stock ${r.spring.windowMm[0]}–${r.spring.windowMm[1]})` },
-  // TODO 32 — the going spring's torque law is DERIVED now, and this holds
-  // the derivation: set-up quantised to the ratchet, the fusee's level
-  // product an identity at float noise, and both ribbons' published sections
-  // still describing the metal the records' k was computed from.
+  'expectedContacts': 389,
+  'oscillator': 1,
   // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
   // shipped tick law (120 ticks at two winds), which is the row's whole
   // point; a stale 1 here costs wall clock, never a verdict.
-  { name: 'equalisation', opts: {}, cost: 16,
-    gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
-    fails: (r) => r.failures,
-    note: (r) => r.summary },
-  // TODO 40 row 3's missing instrument. The row named the hole and left it:
-  // nothing in the battery ever stated that a chain is a fixed length of
-  // steel, so the run's closure error was invisible to every green run. The
-  // tolerance is not a judgement call — `buildChainLinkGeometry` lays
-  // `N = round(len / CHAIN_PITCH)` links, so half a pitch is the granularity
-  // at which the run demonstrably becomes a different chain. It costs 38 ms
-  // (41 curve evaluations), which is why it reads here rather than being
-  // deferred behind the sweeps.
-  { name: 'chainLength', opts: {}, cost: 1,
-    gate: "the run's length constant across the reserve to half a link pitch, or waived",
-    fails: (r) => r.violations,
-    note: (r) => { const row = r.rows[0]; return `spread ${row.spread} u (${row.spreadPct}%) against ${row.tol} u; `
-      + `links ${row.linkCounts.join('/')}${row.waived ? ' — WAIVED (accepted debt)' : ''}`; } },
-  // §48's no-spring audit, gated for the first time (TODO 29). It was
-  // exported and never registered, so nothing could run it — a clean report
-  // from an instrument nobody runs looks like coverage and is not. §48's own
-  // rule that it is a REPORT is kept: `ok` is always true and the rows are
-  // the product, so what is gated is the part that CAN be gated — every
-  // reversing part either has a restoring element, is driven both ways, or is
-  // waived against a filed TODO. The control is gated too: a positive control
-  // that quietly stops passing is how this class of check dies.
-  { name: 'restoring', opts: { yieldEvery: YIELD_EVERY }, cost: 3,
-    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
-    fails: (r) => [
-      ...r.unwaived,
-      ...r.malformedDeclarations,
-      ...r.staleDeclarations,
-      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
-    ],
-    note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
-      + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
-  { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY }, cost: 762,
-    slices: INSPECTION_SLICES, merge: mergeInspection,   // §127 — divisible along its axis loop
-    gate: '0 FORBIDDEN pairs',
-    fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
-    note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
-  { name: 'clearances', opts: { yieldEvery: YIELD_EVERY }, cost: 545,
-    gate: '0 violations',
-    fails: (r) => r.violations,
-    note: (r) => `${r.results.length} budgets` },
-  { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY }, cost: 260,
-    gate: '0 CONFIRMED',
-    fails: (r) => r.sound.staticVsSwept.violations,
-    note: (r) => {
-      const s = r.sound.staticVsSwept;
-      return `${s.pairsTested} pairs, tight ${s.tight.length}, refuted ${s.refutedByRefinement.length}`;
-    } },
-];
+  'equalisation': 16,
+  'chainLength': 1,
+  'restoring': 3,
+  'inspection': 762,
+  'clearances': 545,
+  'sweptOverlap': 260,
+
+  // §127 — the per-axis walls of the one split check, in MILLISECONDS
+  // (`--report`'s `sliceMs`). A slice with no row here is projected from its
+  // pose count and labelled `projected` until a sliced run measures it.
+  'inspection:beat': 54109,
+  'inspection:crown': 24335,
+  'inspection:reserve': 22954,
+  'inspection:wind': 261735,
+  // TODO 71 — seeded from stemSlip's measured cost (same n, and nearly every
+  // pose rebuilds the chain); --report refreshes it like every row.
+  'inspection:arrest': 55000,
+  'inspection:train': 66580,
+  'inspection:jumperEngage': 70719,
+  'inspection:handSet': 65625,
+  'inspection:alarm': 55597,
+  'inspection:alarmStrike': 59415,
+  'inspection:alarmWind': 76736,
+  'inspection:alarmToggle': 32844,
+  // TODO 50 — measured on a dev container battery run.
+  'inspection:stemSlip': 55000,
+};
+
+// DECLARED HERE, ASSERTED AGAINST THE BATTERY IT DESCRIBES — both ways, and it
+// throws. The column and the checks are two lists someone keeps in step now
+// that they live in different files, so the drift tools/payload.sh's header
+// names is live here: a check with no cost would leave `partition` balancing on
+// `undefined` (the `resolveAxes` precedent — a mistake that matches nothing
+// must not pass for a clean answer), and a cost naming no check is a row
+// refreshed forever against nothing. assertCosts owns the argument in full.
+assertCosts(BATTERY, COSTS);
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 
@@ -530,21 +458,37 @@ const NO_INCREMENTAL = argv.includes('--no-incremental');
 // is the code doing the checking, and AXES (the pose net) lives in inspect.js,
 // so one file carries both.
 //
-// The rule is therefore blunt and total: any difference in these three files
-// runs the whole battery. Measured cost of the bluntness, over 80 first-parent
-// merges: 56% of them touch one of these, so the incremental path is available
-// on 30%. The cause is structural rather than incidental — standing rule 3
-// sends every new part's declaration into inspect.js, which is also where the
-// sweep engines live — and splitting the declaration tables out is the only
-// thing that moves that number (roadmap §152's Landing 4, gated on its own
-// measurement).
-// The four checks a changed-unit list may narrow, and the only four. Each was
-// measured separately (roadmap §152's per-check table); `sweptOverlap` leads
-// because 96.5% of it is a confirm tier over 18 candidates that 35 of the 56
-// units appear in none of.
-const RESTRICTABLE = new Set(['sweptOverlap', 'inspection', 'clearances', 'expectedContacts']);
-
-const CHECK_CODE_FILES = ['src/inspect.js', 'tools/ci-battery.mjs', 'tools/battery-split.mjs'];
+// The rule is therefore blunt and total: any difference in these files runs
+// the whole battery. Measured cost of the bluntness against the PRE-SPLIT list
+// (inspect.js and the whole harness), over 80 first-parent merges: 56% of them
+// touch one of those, so the incremental path was available on 30%. Most of
+// the residue is inspect.js's, and it does not move here — the split below
+// recovers the 6 harness-only merges and nothing more, measured by
+// tools/probe-152-fresh.mjs. The cause is structural rather than incidental —
+// standing rule 3 sends every new part's declaration into inspect.js, which is
+// also where the sweep engines live — and splitting the declaration tables out
+// is the only thing that moves that number (roadmap §152's Landing 4, gated on
+// its own measurement).
+//
+// WHICH FILES BELONG ON THE LIST IS ITSELF A CLAIM, and the claim is narrower
+// than "the harness": a stored row may be inherited only when the code that
+// PRODUCED it is unchanged, so what has to be digested is
+// inheritable-payload-producing code. Code that runs fresh every run cannot
+// stale a stored row, because nothing it produces is ever stored. Measured
+// over 84 first-parent merges, 6 touch the harness without also touching
+// inspect.js — five SPEC_POINTS additions and one paths-ignore gate, every one
+// of them fresh-side, every one voiding the key for nothing.
+//
+// So the list is the digested pair (battery-checks.mjs holds what a check
+// computes, battery-split.mjs the slice facts and the merge that reassembles
+// them), battery-union.mjs — which SHAPES the merged payload every gate then
+// reads, and was missing from this list from the start — and inspect.js, which
+// carries the engines and the pose net both. ci-battery.mjs is deliberately
+// absent: everything left in it runs fresh. tools/probe-152-fresh.mjs is the
+// instrument for that split, and it induces both halves rather than asserting
+// them.
+const CHECK_CODE_FILES = ['src/inspect.js', 'tools/battery-checks.mjs',
+  'tools/battery-split.mjs', 'tools/battery-union.mjs'];
 function checkCodeDigest() {
   const out = {};
   for (const f of CHECK_CODE_FILES) {
@@ -552,6 +496,24 @@ function checkCodeDigest() {
   }
   return out;
 }
+
+// §152 — THE SHAPE OF WHAT IS WRITTEN, stamped on both artifacts this harness
+// produces and checked on both it reads.
+//
+// The residual hazard the digest above cannot cover: the report WRITER is
+// fresh-side, and correctly so — it produces nothing a later run inherits as a
+// verdict. But the FILE it writes is read back by the next run's union, which
+// does read it as one. So a writer that changes the report's shape cannot void
+// the check-code key, and must not silently hand the union a payload shaped
+// like something else. This version field is what closes that class instead:
+// bump it whenever the report or digests object changes shape, and every
+// artifact written under an older shape falls out of the incremental path
+// rather than being read as if it matched.
+//
+// 1 is the implicit unversioned format every artifact written before §152's
+// third landing carries — which is why an ABSENT field counts as a mismatch
+// rather than as a pass.
+const REPORT_FORMAT_VERSION = 2;
 
 // Read a JSON side-input. Returns null and says why rather than throwing: a
 // missing baseline is the ordinary case on the first PR after this lands, and
@@ -564,6 +526,20 @@ function readJsonOr(path, what) {
     console.log(`  ${what}: unreadable (${err.message}) — falling back to a FULL run`);
     return null;
   }
+}
+
+// readJsonOr's convention applied to the shape rather than the bytes: an
+// artifact this harness cannot read AS THE FORMAT IT EXPECTS is not an
+// artifact it may inherit from, and every uncertainty resolves towards more
+// work and says so.
+function atReportFormat(obj, what) {
+  if (!obj) return null;
+  if (obj.formatVersion !== REPORT_FORMAT_VERSION) {
+    console.log(`  ${what}: format v${obj.formatVersion ?? 'unversioned'} against this harness's `
+      + `v${REPORT_FORMAT_VERSION} — falling back to a FULL run`);
+    return null;
+  }
+  return obj;
 }
 
 async function freePort() {
@@ -585,57 +561,6 @@ async function waitForServer(url, deadlineMs) {
       await new Promise((r) => setTimeout(r, 200));
     }
   }
-}
-
-// Boot a VIRGIN page: fresh browser context (no localStorage) after deleting
-// the dev server's state file, so nothing of a previous session leaks in —
-// the determinism gate is only meaningful between two boots that start equal.
-async function virginBoot(browser, base) {
-  await fetch(`${base}/__state`, { method: 'DELETE' });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => {
-    // A virgin boot 404s /__state BY DESIGN (state.js falls back to defaults);
-    // that resource error is the one console error a clean boot produces.
-    if (m.type() === 'error' && !(m.location()?.url ?? '').endsWith('/__state')) errors.push(m.text());
-  });
-  await page.goto(`${base}/index.html`, { waitUntil: 'load', timeout: BOOT_TIMEOUT_MS });
-  try {
-    await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
-  } catch {
-    // TODO 30 — a boot that DIES is not a boot that is slow, and until now the
-    // two were indistinguishable here: __clock never appears, this times out,
-    // and the timeout carries no message. The diagnosis existed the whole time
-    // and was thrown away by ordering — `errors` already holds the pageerror,
-    // and the `if (errors.length)` check below is unreachable once this throws.
-    // main.js now publishes the warn buffer and the fatal error from its first
-    // lines, on their own surface, so read all three and say what happened.
-    // RACED, not awaited: a boot can fail by WEDGING as well as by dying (see
-    // CLAUDE.md's yield-throttling trap), and evaluate() on a blocked main
-    // thread never resolves — reading the diagnosis must not become a second
-    // way for CI to hang with no message.
-    const d = await Promise.race([
-      page.evaluate(() => ({
-        warns: window.__bootWarns ? window.__bootWarns.slice() : null,
-        err: window.__bootError || null,
-      })).catch(() => ({ warns: null, err: null })),
-      new Promise((r) => setTimeout(() => r({ warns: null, err: null, wedged: true }), 10000)),
-    ]);
-    const lines = [`the build never finished booting (no __clock after ${secs(BOOT_TIMEOUT_MS)})`];
-    if (d.wedged) lines.push('and its main thread did not answer in 10s — the page is WEDGED, not dead.');
-    if (d.err) lines.push(`fatal: ${d.err.message}`, ...(d.err.stack ? [d.err.stack] : []));
-    if (d.warns === null) {
-      if (!d.wedged) lines.push('__bootWarns is absent too — main.js did not reach its first 60 lines (a parse or import failure).');
-    } else if (d.warns.length) lines.push(`${d.warns.length} boot warn(s) before it died:`, ...d.warns.map((w) => `  · ${w}`));
-    else lines.push('no boot warns were recorded before it died.');
-    if (errors.length) lines.push('page errors:', ...errors.map((e) => `  · ${e}`));
-    throw new Error(lines.join('\n'));
-  }
-  await page.evaluate(async () => { window.__I = await import('./src/inspect.js'); });
-  if (errors.length) throw new Error(`page errors during boot:\n${errors.join('\n')}`);
-  return { context, page };
 }
 
 // --- TODO 36 — THE RECONFIGURE SURFACE, BOOTED --------------------------
@@ -808,21 +733,6 @@ async function specBoot(browser, base, q) {
   }
 }
 
-async function runCheck(page, name, opts) {
-  const t0 = Date.now();
-  await page.evaluate(([n, o]) => window.__I.start(window.__clock, n, o), [name, opts]);
-  for (;;) {
-    await new Promise((r) => setTimeout(r, 1000));
-    const st = await page.evaluate((n) => {
-      const s = window.__I.status(n);
-      return s.state === 'running' ? { state: 'running' } : s;
-    }, name);
-    if (st.state === 'done') return { result: st.result, ms: Date.now() - t0 };
-    if (st.state === 'error') throw new Error(`check ${name} threw:\n${st.error}`);
-    if (Date.now() - t0 > CHECK_TIMEOUT_MS) throw new Error(`check ${name} exceeded ${secs(CHECK_TIMEOUT_MS)}`);
-  }
-}
-
 const gates = [];
 const gate = (name, failures, note) => {
   const pass = failures.length === 0;
@@ -868,13 +778,14 @@ try {
     // The side-inputs are files, so they are read before anything boots: a
     // baseline that cannot be read costs a full run, and finding that out
     // after a boot would just be a slower way to learn it.
-    const baseDigests = readJsonOr(DIGESTS_BASE, 'base digests');
-    baseline = readJsonOr(BASELINE_PATH, 'baseline report');
+    const baseDigests = atReportFormat(readJsonOr(DIGESTS_BASE, 'base digests'), 'base digests');
+    baseline = atReportFormat(readJsonOr(BASELINE_PATH, 'baseline report'), 'baseline report');
 
     console.log('§152 preflight boot (virgin)…');
-    const P = await virginBoot(browser, base);
+    const P = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
     headDigests = await P.page.evaluate(() => window.__I.unitDigests(window.__clock));
     headDigests.checkCode = checkCodeDigest();
+    headDigests.formatVersion = REPORT_FORMAT_VERSION;
     // The changed set is computed ON THIS PAGE, by inspect.js's own
     // digestChangedUnits, rather than by a second implementation here. The
     // rule that a unit missing from either tree counts as changed, and that
@@ -921,7 +832,7 @@ try {
   }
 
   const t0 = Date.now();
-  const tasks = buildTasks(BATTERY, SPLIT);
+  const tasks = buildTasks(BATTERY, SPLIT, COSTS);
   // §152 — the restriction reaches the checks the way every other option does,
   // as an opt on the task. Only the four SWEEPS take it: the cheap checks sum
   // to ~76 s and are where a key mistake would hide, so they always run whole.
@@ -957,16 +868,13 @@ try {
     try {
       const boot = await bootInTurn(async () => {
         console.log(`${tag}boot (virgin)…`);
-        const p = await virginBoot(browser, base);
+        const p = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
         console.log(`${tag}  __clock up at ${secs(Date.now() - t0)}`);
         return p;
       });
       context = boot.context;
       const page = boot.page;
-      const warns = await page.evaluate(() => {
-        window.__clock.beginSweepHold(); // frozen for the whole battery — see header
-        return window.__clock.bootWarns.slice();
-      });
+      const warns = await prepPage(page);
       // §127 — the axis roster, from the page rather than from this file's
       // declaration of it. Read on shard 0 for the same reason the fingerprint
       // is: it is a property of the tree, not of the shard.
@@ -982,7 +890,7 @@ try {
         : null;
       for (const { key, name, opts } of shard.entries) {
         const t = Date.now();
-        const { result, ms } = await runCheck(page, name, opts);
+        const { result, ms } = await runCheck(page, name, opts, CHECK_TIMEOUT_MS);
         results.set(key, { result, ms });
         console.log(`${tag}${key}… ${secs(ms)} (at ${secs(t - t0 + ms)})`);
       }
@@ -1136,7 +1044,7 @@ try {
   // of this tree agree, so it stays one boot after the shards have closed.
   if (!SPEC_ONLY) {
   console.log('boot B (virgin, fresh context)…');
-  const B = await virginBoot(browser, base);
+  const B = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
   const fpB = await B.page.evaluate(() => window.__I.fingerprint(window.__clock));
   console.log(`  fingerprint B: ${fpB.hash}`);
   gate('fingerprint deterministic across virgin boots',
@@ -1313,6 +1221,7 @@ try {
     // here to refresh the cost column and is the ONE field expected to move
     // between runs — diff with it filtered out when comparing reports.
     const report = {
+      formatVersion: REPORT_FORMAT_VERSION,
       fingerprint: fpA,
       // §152 — a report is a BASELINE for the next run, not only an artifact
       // to diff. It carries the key it was measured at and, when the run was
@@ -1323,7 +1232,7 @@ try {
       checks: Object.fromEntries(BATTERY.map(({ name }) =>
         [name, results.has(name)
           // §127 — `sliceMs` appears only on a SPLIT run of a split check, and
-          // it is what refreshes INSPECTION_SLICES' seed projections. Keeping
+          // it is what refreshes COSTS' `check:axis` rows. Keeping
           // it off an unsliced run's report means `--no-split` still diffs
           // clean against a pre-§127 baseline, which is how the split was
           // accepted in the first place.

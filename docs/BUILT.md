@@ -15401,6 +15401,62 @@ honesty ceiling is unchanged in kind; the backstop remains the unfiltered
 push-to-`main` run. What this buys is coverage measured against the net the
 verdicts come from instead of coverage inherited from a neighbour.
 
+### Addendum two — the digest narrows to the code that produces inheritable rows
+
+The check-code rule shipped blunt: any difference in `src/inspect.js`,
+`tools/ci-battery.mjs` or `tools/battery-split.mjs` ran the whole battery.
+Scoping the follow-up re-measured the pitch and shrank it, which is recorded
+before the design because it decided the design: of 84 first-parent merges, 28
+touch the harness — but 22 of those also touch `inspect.js` and stay voided
+regardless. Only **6 are harness-only**, and their diffs are five
+`SPEC_POINTS` additions and one paths-ignore-gate addition: all FRESH-PER-RUN
+code that never produces a row a later run inherits.
+
+That reframes the boundary. The digest's one job is that base rows may be
+inherited only if the code that PRODUCED them is identical to what head's full
+run would use. Code that runs fresh every run — spec boots, the paths-ignore
+gate, the fingerprint and digest gates, the partition, the cost column,
+logging — cannot stale a stored row, because nothing it produces is ever
+stored. So the split is **inheritable-payload-producing vs fresh-per-run**,
+not "gates vs scheduling":
+
+- **`tools/battery-checks.mjs`** (digested) — the `BATTERY` table minus its
+  `cost` column, `YIELD_EVERY`, `RESTRICTABLE`, `runCheck`, `virginBoot`, and
+  `prepPage` (the `beginSweepHold` protocol, payload-load-bearing: rows appear
+  without it). `fails`/`note` ride along — splitting them out would make two
+  name-keyed tables to keep in step, so a rare note edit voiding the key is
+  the accepted residue.
+- **Costs move OUT of digested files** — `BATTERY.cost` and
+  `INSPECTION_SLICES`' measured `ms` into a `COSTS` map in `ci-battery.mjs`,
+  because a cost refresh is the RECURRING harness edit and a cost is
+  wall-clock, never a verdict (§81's rule). `assertCosts` gates the map both
+  ways — a check with no cost, an orphan key, a slice key on an unsliced
+  check all THROW — so the two-lists drift `payload.sh`'s header names cannot
+  arrive silently.
+- **`CHECK_CODE_FILES` = `inspect.js` + `battery-checks.mjs` +
+  `battery-split.mjs` + `battery-union.mjs`** — which ADDS the union, a
+  latent gap from day one: it shapes the merged payload every gate reads and
+  was never digested.
+- **`formatVersion` (= 2) on both artifacts**, checked on read. The report
+  WRITER stays fresh-side, correctly — but the file it writes is read back by
+  the next run's union, so a shape change there could not void the key. The
+  version field closes that class instead: an artifact written under another
+  shape (including the implicit unversioned 1) falls out of the incremental
+  path with a log line rather than being read as if it matched.
+
+**Measured and induced** (`tools/probe-152-fresh.mjs`): all **6 of 6**
+harness-only merges had entirely fresh diffs — recoverable, taking the
+eligibility ceiling from 30% to ~37%; a `COSTS` edit moves no digested file
+and a `yieldEvery` edit moves `battery-checks.mjs`, patched and restored in
+place; and every `assertCosts` throw case fires. The composition number for
+the declined Landing 4: **3 of its 9** TABLE+HARNESS merges have fresh-only
+harness diffs, so its ceiling moves 11 → 14 of ~84 — restated in the roadmap
+entry, still not enough to change its verdict.
+
+The transition costs one doubly-full PR by design: every digested file moved,
+and the cached artifacts are unversioned, so both the check-code digest and
+`formatVersion` independently force the fallback.
+
 ### Landing 4 was measured and declined
 
 The filing's optional fourth landing — split the declaration tables out of

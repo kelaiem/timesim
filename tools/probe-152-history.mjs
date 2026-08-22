@@ -44,6 +44,12 @@ const toRe = (pattern) => {
   return new RegExp(`^${re}$`);
 };
 const IGN = ignored.map(toRe);
+// DELIBERATELY the pre-split three-file list. This probe is the instrument
+// behind the recorded 56%/30% numbers, and re-pointing it would silently
+// change a published measurement without re-running it. Since the harness
+// split, the LIVE digested list is CHECK_CODE_FILES in ci-battery.mjs, and
+// tools/probe-152-fresh.mjs reads it from source rather than restating it —
+// use that instrument for any post-split eligibility claim.
 const CHECKCODE = [/^src\/inspect\.js$/, /^tools\/ci-battery\.mjs$/, /^tools\/battery-split\.mjs$/];
 
 const commits = git('log --first-parent --format="%H|%ad|%s" --date=short HEAD')

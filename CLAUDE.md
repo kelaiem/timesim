@@ -482,10 +482,14 @@ set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
 pose is walked. The pose net and the check code ride
-one file digest each (`AXES` lives in `inspect.js`), and **any difference in
-`src/inspect.js`, `tools/ci-battery.mjs` or `tools/battery-split.mjs` runs the
-whole battery** — measured, that is 56% of merges, so the incremental path is
-available on 30% of them. The changed set narrows four sweeps through one
+file digests (`AXES` lives in `inspect.js`), and **any difference in
+`src/inspect.js`, `tools/battery-checks.mjs`, `tools/battery-split.mjs` or
+`tools/battery-union.mjs` runs the whole battery** — the four files that
+produce or reshape inheritable rows; `tools/ci-battery.mjs` is deliberately
+absent because everything left in it (spec points, gates, the partition, the
+`COSTS` map) runs fresh every run and cannot stale a stored row. Measured,
+the check-code rule voids 56% of merges, so the incremental path is
+available on ~37% of them. The changed set narrows four sweeps through one
 `pairsTouching` opt that **throws on a unit name it does not know**
 (`resolveAxes`' precedent — a typo that matched nothing would report a green
 battery of no work), and the restricted payload is **UNIONED** with the
