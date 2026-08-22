@@ -15106,3 +15106,266 @@ and tests nothing. `materials.js` records the one time this bit for real
 lives in the material, not the lights" — which is precisely the failure a
 flat-colour assert would have missed. `userData.inkContrast()` publishes
 all of it, gated and reported rows separated by name.
+
+## §152 — a check runs only when it can change its answer: the per-unit key, the restricted sweeps, and the baseline that was already being thrown away
+
+**Roadmap §152, landings 0–3 of 4.** Filed 2026-08-21 (promoted out of §77, the
+third filing of an idea `inspect.js`'s own header TODO has carried for
+months), scoped 2026-08-22 against four probes, built the same day. The
+scoping measurement overturned four of the filing's premises and the build
+overturned one more of its own — each recorded below, because a plan that is
+only ever quoted back at itself is not a plan anyone measured.
+
+**What it does.** A pair sweep's verdict is a function of exactly three things
+— the GEOMETRY of the two parts, the POSE NET they are swept over, and the
+CHECK CODE. If all three are unchanged since a run that already passed, the
+verdict is unchanged too, and re-deriving it is pure spend. A PR now measures
+its own tree's geometry per unit, compares it against the merge base's, and
+sweeps only the pairs that touch a unit that moved — then UNIONS the previous
+full run's rows for everything else, so the gates still read a payload
+describing the whole movement.
+
+### The key, and why it has two halves
+
+`unitDigests()` (`src/inspect.js`) hashes, per labelled unit, at each of the
+eleven `FINGERPRINT_POSES`:
+
+- **SHAPE** — the raw BYTES of every mesh's `position` and `index` buffer,
+  plus the vertex count so a buffer that is a prefix of another cannot
+  collide with it. Bit patterns, never decimal renderings: two builds
+  differing in the last ulp are two geometries, which is the answer this
+  wants rather than one a rounding would hide.
+- **PLACE** — every mesh's `matrixWorld`, quantised to `DIGEST_PLACE_Q`
+  (1e-6).
+
+**The filing named only the first half, and one half is a stale green waiting
+to happen.** A vertex digest is blind to a part that is MOVED but not re-cut —
+which is what every §13-class layout re-solve does: same metal, new station,
+different verdicts. The fingerprint's per-unit AABB is a lossy projection of
+the PLACE half, and §77's castellations are the recorded proof that it is too
+lossy to be the key: TODO 4 records that they moved no box and no verdict, so
+a fingerprint-keyed skip would have skipped the sweep that had nothing to say
+and, on a different day, the one that did.
+
+**Every canonical pose, and that is not belt-and-braces.** Four units install
+a DIFFERENT GEOMETRY at a different pose — `Hairspring`, `Mainspring drum`,
+`Alarm barrel` and `Chain` ride frame POOLS, and a traversal only ever sees
+the frame that happens to be installed (`weldTree`'s own documented limit,
+MODELING.md rule 6). A one-pose walk would digest one frame of a wound ribbon
+and call the spring unchanged.
+
+**`Chain` is unconditionally changed** (`DIGEST_ALWAYS_CHANGED`). Its mesh is
+re-tessellated lazily and is path-dependent — `fingerprint` excludes it by
+name for exactly this. Two virgin boots DO reproduce its digest, and that is a
+fact about the harness's protocol rather than about the mesh. It costs 55 of
+1540 pairs and one of the 18 hull candidates.
+
+**And it is NOT at boot**, which is the second thing the filing asked for and
+did not get. Measured: 1046 ms for the eleven-pose walk against an 8.0 s boot,
+on a module `main.js` dynamic-imports for explore mode and never at boot "so
+the boot bundle and its silence are untouched". A second of every visitor's
+boot spent on a CI feature is the wrong trade in both directions, so it is an
+export the harness calls through `page.evaluate` exactly as it calls every
+check — one extra virgin boot, taken only when digests were asked for.
+
+### What the key cannot cover, and the blunt rule that answers it
+
+The digest is measured FROM THE BUILT ARTIFACT, so `layout.js`'s derived
+constants, `src/aesthetics.json`, a vendored tessellation change and a builder
+edit anywhere in `main.js` are all covered without naming one of them — the
+`paths-ignore` lesson applied rather than repeated. What it cannot see is the
+code doing the checking, and `AXES` lives in `inspect.js`, so one file carries
+both the engine and the pose net.
+
+**The rule is therefore total: any difference in `src/inspect.js`,
+`tools/ci-battery.mjs` or `tools/battery-split.mjs` runs the whole battery.**
+Measured over 80 first-parent merges (`tools/probe-152-history.mjs`), that
+costs a lot — 56% of merges touch one of the three, so the incremental path is
+available on 30%. The cause is structural rather than incidental: standing
+rule 3 sends every new part's declaration into `inspect.js`, which is also
+where the sweep engines live.
+
+### The restriction, measured per check
+
+One opt, `pairsTouching`, resolved inside `inspect.js` by
+`resolvePairsTouching` and **throwing on a unit name it does not know**. That
+throw is `resolveAxes`' rule for a worse version of `resolveAxes`' reason: a
+typo that silently matched nothing would restrict every sweep to no work at
+all and report a green battery of nothing done.
+
+| check | what narrows | measured on this movement |
+|---|---|---|
+| `sweptOverlap` | the hull tier's candidates, before the confirm sweep | 96.5% of the check is the confirm tier; 18 candidates over 21 units, and **35 of the 56 units appear in none of them** |
+| `inspection` | the nested unit pair loop | the pair loop only — `collectUnits` must NOT narrow, or `mergeInspection`'s unit-list throw stops protecting §127's partition |
+| `clearances` | `CLEARANCE_BUDGETS` rows | the table is MODULE-PRIVATE, which is why this could never have been done from the harness |
+| `expectedContacts` | `EXPECTED_CONTACT_FLOORS` rows | same shape; kept-row INDICES travel with the payload so the union can rebuild the table's order |
+
+**Nothing else is wired.** Every cheap check runs whole — they sum to ~76 s
+and they are where a key mistake would hide.
+
+**`sweptOverlap` moved from "skip" to "wire it first", and that is the
+filing's own numbers read differently.** The filing marked it a skip because
+"96.5% of its cost is the confirm tier, which is already restricted to the
+~15–23 raw-overlap candidates". Being restricted to 18 is not the same as
+being unable to restrict to 0: since §82 that tier is ONE batched
+`sweepClearances` over the hull tier's violation rows, so filtering it is a
+line of code on the cheap side of the check.
+
+**Two things the restriction cannot do, both worth keeping.** The broad phase
+cannot narrow at all — a pair survives if EITHER unit is named, so every unit
+is in some surviving pair and every unit's box is still needed at every pose
+(the filing hoped it would narrow; it is impossible, not merely unprofitable,
+and it was measured at 0.28% of `inspection`'s wall anyway). And the hull tier
+runs whole, because its candidate list is derived from this tree's own volumes
+and cannot be inherited.
+
+### The union, and why the gate is still the whole movement
+
+A restricted payload describes only the pairs this tree moved. Gating on that
+alone would gate LESS than standing rule 4's bar — the untouched pairs would
+be unexamined, and a report that says nothing about them looks exactly like
+one that cleared them. So `tools/battery-union.mjs` merges the baseline's rows
+back in before any gate reads the payload, and everything downstream is
+unaware the run was restricted.
+
+It is a separate module for `battery-split.mjs`'s stated reason: the
+acceptance is a byte-level identity, and a merge that can only be exercised by
+running the whole battery cannot be tested at the scale a person iterates at.
+
+Each branch keeps an ENTITLEMENT argument and throws when it cannot:
+`inspection` unions by pair and re-sorts into `runInspection`'s own
+comparator; the two declared tables merge positionally by kept INDEX (a pair
+string is not a key — two budget rows may name one pair with different axes);
+`sweptOverlap` inherits confirm verdicts only for candidates whose two units
+are digest-identical to the baseline's, and a candidate the baseline never
+raised is a contradiction it fails on rather than papers over. A union that
+throws is a hard failure, not a fallback: by then the sweeps have already run
+restricted, and reporting a partial payload as a verdict is the one outcome
+this feature must never produce.
+
+### The baseline was already there, and that is why there is no nightly
+
+`battery.yml`'s push-to-`main` trigger is deliberately unfiltered — "main is
+the only place the MERGED tree is ever tested" — so every merged tree already
+got a full, green battery, and that run's report was being thrown away. It is
+now kept in the Actions cache under its commit SHA, and a PR restores its own
+merge base's entry by EXACT key (a near-miss baseline is a baseline for a
+different tree, which is precisely what `restore-keys` would serve).
+
+The push run is never incremental, and refuses to cache a report carrying
+`restrictedTo`: a baseline must be a whole verdict or one key error would
+chain forward through every PR that ever read it.
+
+**THE FILING CALLED A NIGHTLY FULL RUN MANDATORY AND THE BUILD ESTABLISHED
+THAT THIS REPO DOES NOT NEED ONE.** The nightly's job was to bound the age of
+a key error to a day; the push trigger already does better, because it runs
+the whole battery on every merged tree and fires per MERGE rather than per
+date. A scheduled run on `main` would re-test the tree the push run just
+cleared, and on a day with no merges there is by construction nothing for it
+to catch. The deviation is recorded in `battery.yml`'s own header beside the
+reasoning, and it improves the entry's cost line rather than eroding it: the
+incremental path saves on the PR runs it is available for and adds no
+scheduled work at all.
+
+**Every uncertainty resolves towards more work, and says so.** No cache hit,
+an unreadable file, a moved check-code digest, a union that cannot be
+justified — each one runs everything (or fails) and prints why. The failure
+mode this feature can have is a stale green, so nothing about it is allowed to
+be quiet. `--no-incremental` is the reference an incremental run must agree
+with, kept for the reason `--shards 1` and `--no-split` are kept, and a
+`full-battery` label or `[full battery]` in the PR title is the escape hatch —
+because the first time someone distrusts the key they must have something to
+reach for other than reverting the feature.
+
+### Measured end to end, on this movement
+
+Two full battery runs of one tree on a dev container, the second incremental
+against the first:
+
+| | full | incremental |
+|---|---|---|
+| check time | 3214.5 s | **1274.4 s** |
+| wall | 1776.2 s | **918.5 s** |
+| gates | 28/28 | 29/29 |
+| `--report` | 138,163 lines | **byte-identical** |
+
+The changed set was **`Chain` alone** — nothing else moved, and `Chain` is
+unconditionally changed — so this is close to the WORST case an incremental run
+can have while still being one: 55 of 1540 pairs, 3.6%, and the heaviest unit
+in the scene. Per check:
+
+| check | full | restricted | |
+|---|---|---|---|
+| `clearances` | 1423.4 s | 676.2 s | 52% |
+| `expectedContacts` | 529.2 s | 22.0 s | 96% |
+| `sweptOverlap` | 142.0 s | 16.6 s | 88% |
+| `inspection:wind` | 311.4 s | 94.4 s | 70% |
+
+**`clearances` is the entry's own warning made into evidence.** 3.6% of the
+pairs cost 47% of the wall, because `Chain` is 23,464 triangles in one mesh and
+several of its budget rows run against the 74,678-triangle plate. A pair count
+is not a wall-clock share on this scene, which is why every acceptance here
+measures milliseconds.
+
+The report is **3.47 MB** and the digests **6.5 kB**. The scoping entry
+extrapolated "order 1 MB" from two axes' payload; measured, it is 3.5× that —
+still a cache entry, and the estimate is corrected here rather than left
+standing.
+
+### Three defects the acceptance caught, which is what it is for
+
+- **`checkClearances` and `checkExpectedContacts` never resolved axis NAMES.**
+  Both passed `axes` RAW to `sweepClearances`, which reads `axis.n` and
+  `axis.pose`, so a list of names swept ZERO poses and returned a clean result
+  in milliseconds. Nothing in CI had ever passed names — the battery uses the
+  default objects and `runInspection` resolves — so it had never fired. It
+  fired on the first probe that tried to restrict those two by axis. Both now
+  call `resolveAxes`, which over the default `AXES` returns the same objects
+  in the same order, so a full run measures exactly what it measured before.
+- **`mergeInspection` dropped the restriction record**, and that one was the
+  real thing rather than a near miss. `inspection` is a SPLIT check: its slices
+  are merged into one payload before any gate reads it, and the merge rebuilt
+  every field except the one that says the run was restricted. The union step
+  then saw a payload that looked WHOLE and returned it untouched, so a
+  restricted `inspection` gated on its own partial rows — **3 contacting pairs
+  against a full run's 81** — and every gate went green. That is exactly the
+  stale green this entry exists to make impossible, and it survived until the
+  first end-to-end run. Two things came out of it: the merge carries the record
+  (and throws if slices disagree about it, like the unit list next door), and a
+  new gate holds that **every check asked to restrict was unioned back** — §127's
+  "every slice must produce a payload before the merge runs", one level up.
+- **The confirm tier's buckets are in hull-candidate order**, and a union that
+  appends inherited rows destroys it. The restricted run now carries the
+  candidate order it saw and each merged bucket is re-sorted into it — a
+  detail invisible to every gate and fatal to byte-identity, which is the
+  argument for making byte-identity the acceptance.
+
+### The stale green, induced on purpose
+
+`tools/probe-152-restrict.mjs` ends with a NEGATIVE control, because a union
+that faithfully reproduces a full run is not the same as a safe one. It
+perturbs a unit's metal and then restricts the sweep to a changed set that does
+NOT name it — exactly what a missed key would produce. A full run finds **17
+new contacting pairs; the union misses 16 of them** and reports the result as a
+verdict.
+
+Nothing inside a restricted run can see that. What catches it is the
+unfiltered push-to-`main` run, which is never incremental — which is the whole
+argument for why the baseline producer and the backstop are the same job.
+
+### Landing 4 was measured and declined
+
+The filing's optional fourth landing — split the declaration tables out of
+`src/inspect.js` so a rule-3 edit stops voiding the engine key — was gated on
+a measurement rather than on the argument, and `tools/probe-152-tables.mjs`
+took it. Of the 39 merges that touch `inspect.js`, 20 (51%) touch only
+top-level declaration literals; but **9 of those 20 also move the harness**,
+which voids the key just as completely. The ceiling is therefore **11 of 80
+merges — 14 percentage points of eligibility** — and it is a generous ceiling,
+because the classifier counts every ALL-CAPS top-level literal as a table,
+which is more than a split would actually move. Against that: a 7913-line file
+split touching every table the battery couples to BY STRING, whose own landing
+would void every cached baseline once. **Not done.** It stays in the roadmap
+with its number and its measurement — §152 keeps its § in both files, this
+record for what shipped and the roadmap entry for the remainder — to be
+revisited if the harness files ever stop being dragged into the same merges.

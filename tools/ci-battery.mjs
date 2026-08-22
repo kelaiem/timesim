@@ -31,6 +31,10 @@
 //                context, state file deleted between them) — §52's determinism
 //                anchor: if the identity build does not hash the same twice on
 //                this hardware, nothing above can be trusted.
+//   unit digests the same anchor for §152's per-unit key, when one was asked
+//                for: if two virgin boots disagree about a unit's digest, a
+//                digest difference does not mean the geometry moved and every
+//                skip taken on that reading is unfounded.
 //
 // Why the harness takes the sweep hold for the whole run: only
 // buildSweptRegistry/checkLowCorridor hold it themselves, so during the other
@@ -59,9 +63,16 @@
 //                           per-axis tasks (§127). The reference the split
 //                           has to agree with, kept for the same reason
 //                           `--shards 1` is.
+//         --digests FILE    write this tree's per-unit key (§152)
+//         --digests-base FILE  the key of the tree this one is judged against
+//         --baseline FILE   that tree's --report, whose rows a restricted run
+//                           inherits for the pairs nobody touched
+//         --no-incremental  run everything whatever the digests say — the
+//                           reference an incremental run must agree with
 // Exits 0 only when every gate passes; failing gates dump their payloads.
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -69,6 +80,7 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { INSPECTION_SLICES, mergeInspection, buildTasks } from './battery-split.mjs';
+import { unionCheck } from './battery-union.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const YIELD_EVERY = 64;
@@ -478,6 +490,82 @@ const SPEC_ONLY = argv.includes('--spec-only');
 // report that moves under either is a bug in the check that moved.
 const SPLIT = !argv.includes('--no-split');
 
+// §152 — THE INCREMENTAL INPUTS AND OUTPUTS.
+//
+// The prize is not making a check faster; it is not running one that provably
+// cannot change its answer. A pair sweep's verdict is f(geometry, pose net,
+// check code), so a run that can show all three unchanged since a run that
+// already passed may inherit that run's verdict for the pairs involved.
+//
+//   --digests FILE        write this tree's per-unit key (inspect.js's
+//                         unitDigests) plus the CHECK-CODE digest below
+//   --digests-base FILE   the same file from the tree this one is judged
+//                         against — normally the merge base's, restored from
+//                         the cache battery.yml writes on every push to main
+//   --baseline FILE       that tree's --report. The restricted run inherits
+//                         its rows for the pairs nobody touched, so the gate
+//                         is still evaluated over the WHOLE movement
+//   --no-incremental      run everything, whatever the digests say. The
+//                         reference the incremental run has to agree with,
+//                         kept for the reason `--shards 1` and `--no-split`
+//                         are kept
+//
+// INCREMENTAL ENGAGES ONLY when all three of --digests-base, --baseline and a
+// matching check-code digest are present. Anything missing, unreadable or
+// moved falls back to a FULL run and SAYS SO: the failure mode this feature
+// can have is a stale green, so every uncertainty resolves towards more work
+// rather than less. That is check-shipped-list.mjs's split between "a finding"
+// and "nothing could be read", applied to a gate instead of a report.
+const DIGESTS_OUT = argOf('--digests');
+const DIGESTS_BASE = argOf('--digests-base');
+const BASELINE_PATH = argOf('--baseline');
+const NO_INCREMENTAL = argv.includes('--no-incremental');
+
+// The third argument of the verdict, and the one the scene cannot carry.
+//
+// The per-unit key is measured FROM THE BUILT ARTIFACT, so it covers
+// layout.js's derived constants, src/aesthetics.json, a vendored tessellation
+// change and a builder edit anywhere in main.js without naming one of them —
+// the paths-ignore lesson applied rather than repeated. What it cannot cover
+// is the code doing the checking, and AXES (the pose net) lives in inspect.js,
+// so one file carries both.
+//
+// The rule is therefore blunt and total: any difference in these three files
+// runs the whole battery. Measured cost of the bluntness, over 80 first-parent
+// merges: 56% of them touch one of these, so the incremental path is available
+// on 30%. The cause is structural rather than incidental — standing rule 3
+// sends every new part's declaration into inspect.js, which is also where the
+// sweep engines live — and splitting the declaration tables out is the only
+// thing that moves that number (roadmap §152's Landing 4, gated on its own
+// measurement).
+// The four checks a changed-unit list may narrow, and the only four. Each was
+// measured separately (roadmap §152's per-check table); `sweptOverlap` leads
+// because 96.5% of it is a confirm tier over 18 candidates that 35 of the 56
+// units appear in none of.
+const RESTRICTABLE = new Set(['sweptOverlap', 'inspection', 'clearances', 'expectedContacts']);
+
+const CHECK_CODE_FILES = ['src/inspect.js', 'tools/ci-battery.mjs', 'tools/battery-split.mjs'];
+function checkCodeDigest() {
+  const out = {};
+  for (const f of CHECK_CODE_FILES) {
+    out[f] = createHash('sha256').update(readFileSync(join(ROOT, f))).digest('hex');
+  }
+  return out;
+}
+
+// Read a JSON side-input. Returns null and says why rather than throwing: a
+// missing baseline is the ordinary case on the first PR after this lands, and
+// it must cost a full run rather than a crash.
+function readJsonOr(path, what) {
+  if (!path) return null;
+  try {
+    return JSON.parse(readFileSync(resolve(path), 'utf8'));
+  } catch (err) {
+    console.log(`  ${what}: unreadable (${err.message}) — falling back to a FULL run`);
+    return null;
+  }
+}
+
 async function freePort() {
   return new Promise((resolve, reject) => {
     const srv = createServer();
@@ -763,8 +851,85 @@ try {
     '--disable-renderer-backgrounding',
   ] });
 
+  // ---- §152 PREFLIGHT: the key, and the decision it licenses ---------------
+  //
+  // One extra VIRGIN boot, taken only when digests were asked for. It costs
+  // 8 s here and ~26 s on CI against the four sweeps' 51 min, and it has to
+  // come before the partition because what a shard is asked to run depends on
+  // what it establishes.
+  //
+  // Nothing about this boot is special except its timing: the digests are read
+  // the way every check is read, through page.evaluate, off a page whose state
+  // file has just been deleted.
+  let headDigests = null;      // this tree's per-unit key
+  let restriction = null;      // the changed-unit list every sweep narrows to, or null for a full run
+  let baseline = null;         // the baseline --report the union draws its inherited rows from
+  if ((DIGESTS_OUT || DIGESTS_BASE || BASELINE_PATH) && !SPEC_ONLY) {
+    // The side-inputs are files, so they are read before anything boots: a
+    // baseline that cannot be read costs a full run, and finding that out
+    // after a boot would just be a slower way to learn it.
+    const baseDigests = readJsonOr(DIGESTS_BASE, 'base digests');
+    baseline = readJsonOr(BASELINE_PATH, 'baseline report');
+
+    console.log('§152 preflight boot (virgin)…');
+    const P = await virginBoot(browser, base);
+    headDigests = await P.page.evaluate(() => window.__I.unitDigests(window.__clock));
+    headDigests.checkCode = checkCodeDigest();
+    // The changed set is computed ON THIS PAGE, by inspect.js's own
+    // digestChangedUnits, rather than by a second implementation here. The
+    // rule that a unit missing from either tree counts as changed, and that
+    // the two always-changed lists are UNIONED, is one definition in the
+    // module that owns the key — not a Node copy of it that drifts.
+    const changed = (!NO_INCREMENTAL && baseDigests && baseline
+      && JSON.stringify(baseDigests.checkCode) === JSON.stringify(headDigests.checkCode))
+      ? await P.page.evaluate(([b, h]) => window.__I.digestChangedUnits(b, h), [baseDigests, headDigests])
+      : null;
+    await P.context.close();
+    console.log(`  digests: ${headDigests.unitCount} units over ${headDigests.poseCount} poses`);
+    if (DIGESTS_OUT) {
+      writeFileSync(resolve(DIGESTS_OUT), `${JSON.stringify(headDigests, null, 2)}\n`);
+      console.log(`  digests written to ${resolve(DIGESTS_OUT)}`);
+    }
+
+    // EVERY BRANCH THAT IS NOT "restrict" SAYS WHY. A feature whose failure
+    // mode is a stale green does not get to be quiet about declining to use
+    // itself, and "the battery looked fast today" must never be something a
+    // reader has to reverse-engineer from a wall clock.
+    if (NO_INCREMENTAL) {
+      console.log('  --no-incremental: running everything (the reference an incremental run must agree with)');
+    } else if (!baseDigests || !baseline) {
+      console.log('  no usable baseline: running everything');
+    } else if (JSON.stringify(baseDigests.checkCode) !== JSON.stringify(headDigests.checkCode)) {
+      const moved = CHECK_CODE_FILES.filter((f) => baseDigests.checkCode?.[f] !== headDigests.checkCode[f]);
+      console.log(`  CHECK CODE moved (${moved.join(', ')}): every stored verdict is void — running everything`);
+    } else if (!changed.length) {
+      // Not a hypothetical: a docs-and-workflow PR that the paths filter did
+      // not take out reaches here. It still runs every cheap check, and it
+      // still unions, so the report it writes describes the whole movement.
+      console.log('  0 units changed: the sweeps have nothing to measure on this tree');
+      restriction = changed;
+    } else {
+      restriction = changed;
+      const n = headDigests.unitCount;
+      const k = changed.length;
+      const pairs = k * (n - k) + (k * (k - 1)) / 2;
+      const all = (n * (n - 1)) / 2;
+      console.log(`  ${k} unit(s) changed: ${changed.join(', ')}`);
+      console.log(`  restricting the four sweeps to ${pairs} of ${all} pairs `
+        + `(${(100 * pairs / all).toFixed(1)}%); every other check runs whole`);
+    }
+  }
+
   const t0 = Date.now();
   const tasks = buildTasks(BATTERY, SPLIT);
+  // §152 — the restriction reaches the checks the way every other option does,
+  // as an opt on the task. Only the four SWEEPS take it: the cheap checks sum
+  // to ~76 s and are where a key mistake would hide, so they always run whole.
+  if (restriction) {
+    for (const t of tasks) {
+      if (RESTRICTABLE.has(t.name)) t.opts = { ...t.opts, pairsTouching: restriction };
+    }
+  }
   const shards = SPEC_ONLY ? [] : partition(tasks, Math.min(SHARDS, tasks.length));
   if (SPEC_ONLY) console.log('--spec-only: skipping the sweeps and the fingerprint anchor.');
   const bootInTurn = serialiser();
@@ -906,6 +1071,53 @@ try {
   fpA = shardOut[0].fp;
   if (fpA) console.log(`  fingerprint A: ${fpA.hash} (${fpA.units} units, ${fpA.poseCount} poses)`);
 
+  // §152 — UNION BEFORE GATING. A restricted payload describes only the pairs
+  // this tree moved; the gates' bar is the whole movement, so the baseline's
+  // rows for the untouched pairs are merged back in first. Everything
+  // downstream — the gates, the note lines, --report — then reads a payload
+  // shaped exactly like a full run's, which is why nothing below this point
+  // knows the run was restricted.
+  //
+  // A union that CANNOT be justified throws (see battery-union.mjs's
+  // entitlement argument), and a throw here is a hard failure rather than a
+  // fallback: by this point the sweeps have already run restricted, so there
+  // is no full result to fall back TO, and reporting a partial payload as a
+  // verdict is the one outcome this feature must never produce.
+  if (restriction && baseline) {
+    const changed = new Set(restriction);
+    for (const name of RESTRICTABLE) {
+      const got = results.get(name);
+      if (!got || !got.result) continue;
+      try {
+        const merged = unionCheck(name, baseline.checks?.[name]?.result, got.result, changed);
+        if (merged !== got.result) {
+          results.set(name, { ...got, result: merged, unioned: true });
+          console.log(`  ${name}: unioned with the baseline's untouched rows`);
+        }
+      } catch (err) {
+        gate(`${name}: the restricted run unions with its baseline`, [{
+          union: String(err.message),
+          note: 'the sweeps already ran restricted, so this run cannot produce a whole-movement verdict — re-run with --no-incremental',
+        }]);
+      }
+    }
+    // AND EVERY ONE OF THEM MUST HAVE BEEN UNIONED. A restricted payload that
+    // reaches a gate un-unioned gates on its own partial rows and PASSES,
+    // which is the exact stale green this entry exists to make impossible —
+    // and it is not hypothetical: mergeInspection dropped the restriction
+    // record on its first outing, so a restricted `inspection` reported 3
+    // contacting pairs against a full run's 81 and every gate went green.
+    //
+    // This is §127's "every slice must produce a payload before the merge
+    // runs" at one level up: a check that was ASKED to restrict and cannot
+    // show the union that puts it back together has not been checked.
+    const notUnioned = [...RESTRICTABLE].filter((n) => results.get(n) && !results.get(n).unioned);
+    gate('every restricted check was unioned back to a whole-movement payload',
+      notUnioned.map((n) => ({ check: n,
+        why: 'it ran restricted and no union was applied — its payload describes only the pairs it swept' })),
+      `${RESTRICTABLE.size - notUnioned.length}/${RESTRICTABLE.size} unioned`);
+  }
+
   // Gates are evaluated in canonical BATTERY order regardless of which shard
   // produced which result, so the log a human reads (and a report diff) does
   // not depend on the partition.
@@ -930,6 +1142,25 @@ try {
   gate('fingerprint deterministic across virgin boots',
     fpA && fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
     `hash ${fpA ? fpA.hash : 'shard 0 never reported one'}`);
+
+  // §152 — THE SAME ANCHOR FOR THE KEY, and it is the property the whole
+  // feature rests on: if two virgin boots of one tree do not produce the same
+  // per-unit digest, then a digest difference does not mean the geometry
+  // moved, and every skip taken on that reading is unfounded. It rides boot B
+  // because that is already a second virgin context of this tree — the
+  // fingerprint's own reason for being read there.
+  //
+  // The gate names the ROWS that differ rather than the fact that they do:
+  // a nondeterministic unit is a specific part with a specific cause (a lazily
+  // re-tessellated mesh, an unseeded random, a pose-history leak resetInputs
+  // does not cover), and the row is what points at it.
+  if (headDigests) {
+    const dB = await B.page.evaluate(() => window.__I.unitDigests(window.__clock));
+    const drift = Object.keys(headDigests.units).filter((n) => headDigests.units[n].key !== dB.units[n]?.key);
+    gate('unit digests deterministic across virgin boots',
+      drift.map((n) => ({ unit: n, bootA: headDigests.units[n], bootB: dB.units[n] ?? null })),
+      `${headDigests.unitCount} units, ${headDigests.poseCount} poses, place quantum ${headDigests.placeQ}`);
+  }
   await B.context.close();
   }
   }
@@ -1083,6 +1314,12 @@ try {
     // between runs — diff with it filtered out when comparing reports.
     const report = {
       fingerprint: fpA,
+      // §152 — a report is a BASELINE for the next run, not only an artifact
+      // to diff. It carries the key it was measured at and, when the run was
+      // restricted, which units it was restricted to, so a reader can tell a
+      // whole verdict from an inherited one without reading the log.
+      ...(headDigests ? { digests: headDigests } : {}),
+      ...(restriction ? { restrictedTo: restriction } : {}),
       checks: Object.fromEntries(BATTERY.map(({ name }) =>
         [name, results.has(name)
           // §127 — `sliceMs` appears only on a SPLIT run of a split check, and

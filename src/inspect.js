@@ -1086,6 +1086,67 @@ export function resolveAxes(arg = AXES) {
 }
 
 // ---------------------------------------------------------------------------
+// §152 — THE RESTRICTION OPT. `pairsTouching: ['Unit A', 'Unit B']` narrows a
+// sweep to the pairs that involve at least one named unit, and every other
+// pair keeps the verdict a previous full run measured for it.
+//
+// WHY IT LIVES HERE rather than in the harness, which is where a caller would
+// naturally filter. Three of the four tables it filters are MODULE-PRIVATE:
+// `CLEARANCE_BUDGETS`, `PENETRATION_BUDGETS` and `EXPECTED_PAIRS` are not
+// exported, so `focusedCheck` can filter them and ci-battery.mjs cannot. The
+// entry that scoped this recorded the restriction on `clearances` as "free
+// today — the existing `budgets` opt", and that is true of the function next
+// door and false of CI. One opt, resolved once, in the module that owns the
+// tables.
+//
+// IT THROWS ON A NAME IT DOES NOT KNOW, and that is resolveAxes' rule for
+// resolveAxes' reason: "a mistyped slice that quietly swept nothing would
+// report a clean partition of no work." Here the failure is worse than a
+// wasted run — a typo'd unit name that silently matched nothing would restrict
+// every sweep to nothing at all and report a green battery of no work done.
+//
+// WHAT IT DOES NOT NARROW. The pair loop only; never `collectUnits`. A
+// restricted `inspection` must collect the same units a whole run collects,
+// because mergeInspection throws on a unit-list disagreement between slices
+// and that throw is the thing standing between §127's partition and a merge
+// that papers over a build difference.
+//
+// AND IT CANNOT NARROW THE BROAD PHASE, which the scoping entry hoped it
+// might. A pair survives if EITHER unit is named, so every unit in the scene
+// is in some surviving pair — paired with a named one — and every unit's box
+// is therefore still needed at every pose. The rebuild was measured at 0.28%
+// of `inspection`'s wall, so nothing is lost; what is worth keeping is that
+// it is impossible rather than merely not worth doing.
+// ---------------------------------------------------------------------------
+export function resolvePairsTouching(clock, names) {
+  if (names === undefined || names === null) return null;
+  const list = Array.isArray(names) ? names : [names];
+  const known = new Set(clock.labelEntries.map((e) => e.name));
+  const missing = list.filter((n) => !known.has(n));
+  if (missing.length) {
+    throw new Error(`pairsTouching: unknown unit name(s): ${missing.join(', ')} `
+      + '— a name that matches nothing would restrict every sweep to no work and report it green');
+  }
+  const set = new Set(list);
+  // The predicate every consumer below shares, so "touching" has one meaning.
+  set.touches = (a, b) => set.has(a) || set.has(b);
+  return set;
+}
+
+// The side-channel a restricted run carries so the harness can UNION it back
+// against a baseline: which units were named, and which rows of the declared
+// table survived, BY INDEX. Indices rather than pair strings because a pair
+// name is not a key — two budget rows may name the same pair with different
+// axes — and because the union has to rebuild the table's ORDER, which is the
+// full run's order and not the surviving subset's.
+//
+// It is attached ONLY when a restriction was applied, so a full run's payload
+// is byte-identical to the one it produced before this landing existed. That
+// identity is the acceptance for the whole entry.
+function restrictionRecord(touching, keptIndices) {
+  return { units: [...touching].sort(), keptIndices };
+}
+// ---------------------------------------------------------------------------
 // checkAxisEntry (TODO 54) — two tiers over every ORDERED PAIR of axes.
 //
 // GATED: entering an axis the way a sweep now enters it reproduces that axis's
@@ -1862,7 +1923,14 @@ export const EXPECTED_CONTACT_FLOORS = [
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
 // arc: report, triage, then gate) — `ok` is per-row and the caller decides.
-export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+  // §152 — same shape as checkClearances next door: filter the declared rows,
+  // keep their indices in the FULL table for the harness's union.
+  const touching = resolvePairsTouching(clock, pairsTouching);
+  const keptIndices = touching
+    ? rows.map((r, i) => (touching.touches(r.a, r.b) ? i : -1)).filter((i) => i >= 0)
+    : null;
+  if (touching) rows = keptIndices.map((i) => rows[i]);
   const pairs = rows.map((row) => {
     const A = unitByName(clock, row.a), B = unitByName(clock, row.b);
     // §94 — THE NESTED PAIRS, made measurable. Several EXPECTED pairs are a
@@ -1895,7 +1963,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     for (const c of row.contacts) for (const n of c) if (!names.has(n)) unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
   });
   censusStart();   // §108's experiment — report-only, see the census block
-  const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
+  const { state } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });  // §152 — see checkClearances
   const census = censusStop();
   const results = rows.map((row, i) => {
     const capped = !isFinite(state[i].min);
@@ -1916,6 +1984,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     violations: results.filter((r) => !r.ok && !r.waived),
     waivedCount: results.filter((r) => !r.ok && r.waived).length,
     unmatched, results, census,
+    ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}),
   };
 }
 
@@ -2799,7 +2868,14 @@ export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GR
   return { failures, rows };
 }
 
-export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16 } = {}) {
+export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+  // §152 — the declared table filters, keeping the surviving rows' INDICES in
+  // the full table so the harness can rebuild that order against a baseline.
+  const touching = resolvePairsTouching(clock, pairsTouching);
+  const keptIndices = touching
+    ? budgets.map((b, i) => (touching.touches(b.a, b.b) ? i : -1)).filter((i) => i >= 0)
+    : null;
+  if (touching) budgets = keptIndices.map((i) => budgets[i]);
   // All budgets ride ONE sweep: each pose is set up once and every pair
   // measured at it (per-budget axis scoping handled inside the engine) —
   // previously this re-swept the full pose space once per budget.
@@ -2810,7 +2886,16 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     refineFloor: bud.min, // exact minima only needed near the budget line
   }));
   censusStart();   // §108's experiment — report-only, see the census block
-  const { state } = await sweepClearances(clock, pairs, { axes, coarse, refineBand, yieldEvery });
+  // §152 — resolveAxes here too, so every check takes an axis list the same
+  // way. These two took `axes` RAW and passed it to the sweep engine, which
+  // reads `axis.n` and `axis.pose`: a list of axis NAMES therefore swept zero
+  // poses and reported a clean result in milliseconds. Nothing in CI passed
+  // names (the battery uses the default objects, and runInspection resolves),
+  // so it had never fired — it fired on the first probe that restricted these
+  // two by axis, which is what an acceptance probe is for. resolveAxes over
+  // the default AXES returns the same objects in the same order, so a full
+  // run measures exactly what it measured before.
+  const { state } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });
   const census = censusStop();
   const results = budgets.map((bud, i) => {
     // min === Infinity ⇒ every query pruned at the cap: the pair never came
@@ -2828,7 +2913,8 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     };
   });
   console.table(results);
-  return { violations: results.filter((r) => !r.ok), results, census };
+  return { violations: results.filter((r) => !r.ok), results, census,
+    ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}) };
 }
 
 // ---------------------------------------------------------------------------
@@ -4160,8 +4246,10 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
   };
 }
 
-export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 8, includeExcluded = false } = {}) {
+export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 8, includeExcluded = false, pairsTouching } = {}) {
   const axes = resolveAxes(axisArg);   // §127 — a slice arrives as names; see resolveAxes
+  // §152 — the pair loop narrows; the UNIT LIST does not (see resolvePairsTouching).
+  const touching = resolvePairsTouching(clock, pairsTouching);
   const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
   censusStart();   // §108's experiment — report-only, see the census block
@@ -4179,6 +4267,7 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
         for (let bi = ai + 1; bi < units.length; bi++) {
           const A = units[ai], B = units[bi];
           if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
+          if (touching && !touching.touches(A.name, B.name)) continue;   // §152
           unitPairTests++;
           if (!boxes[ai].intersectsBox(boxes[bi])) continue;
           unitPairPass++;
@@ -4216,6 +4305,8 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const census = censusStop();
   if (census) Object.assign(census, { unitPairTests, unitPairPass });
   window.__inspectReport = { units: units.map((u) => u.name), report, axes: axes.map((a) => a.name), census };
+  // Only when restricted, so a full run's payload is unchanged by this landing.
+  if (touching) window.__inspectReport.restriction = restrictionRecord(touching, null);
   console.table(report.map(({ pair, class: cls, summary }) => ({ pair, class: cls, summary })));
 
   // Helper for the human/agent: jump to a hit pose and frame the pair.
@@ -7245,6 +7336,161 @@ export function fingerprintDiff(before, after) {
 }
 
 // ---------------------------------------------------------------------------
+// §152 — THE PER-UNIT KEY: the digest that decides whether a check can be
+// skipped because it provably cannot change its answer.
+//
+// A pair sweep's verdict is a function of exactly three things — the GEOMETRY
+// of the two parts, the POSE NET they are swept over, and the CHECK CODE. If
+// all three are identical to a run that already passed, so is the verdict.
+// This function measures the first of the three, per unit, straight off the
+// built scene.
+//
+// WHY NOT THE FINGERPRINT, which already hashes per-unit boxes. Two different
+// meshes can share a bounding box, and the proof case is §77's own subject:
+// TODO 4 records that the inside-out castellations moved NO AABB and no
+// clearance verdict. A fingerprint-keyed skip would have skipped the sweep
+// that had nothing to say and, on a different day, the one that did — a stale
+// green, which is strictly worse than a slow gate.
+//
+// TWO HALVES, because the obvious one is only half the answer.
+//
+//   · SHAPE — the position and index buffers' BYTES. Bit patterns, not decimal
+//     renderings: two builds differing in the last ulp are two geometries, and
+//     that is the answer this wants rather than one a rounding would hide.
+//   · PLACE — every mesh's world matrix, quantised to PLACE_Q. A vertex digest
+//     alone is BLIND to a part that is moved but not re-cut, which is what
+//     every §13-class layout re-solve does: same metal, new station, different
+//     verdicts. The fingerprint's AABB is a lossy projection of this half; the
+//     matrices are the thing itself.
+//
+// WALKED AT EVERY CANONICAL POSE, and that is not belt-and-braces. Four units
+// install a DIFFERENT GEOMETRY at a different pose — the mainspring, the
+// hairspring, the alarm barrel and the chain ride frame POOLS, and a
+// traversal only ever sees the frame that happens to be installed (weldTree's
+// own documented limit; MODELING.md rule 6). A one-pose walk would digest one
+// frame of a wound ribbon and call the spring unchanged.
+//
+// IT IS NOT AT BOOT, and the entry that proposed this asked for it to be.
+// Measured: 1046 ms for the eleven-pose walk against an 8.0 s boot, on a
+// module main.js dynamic-imports for explore mode and NEVER at boot "so the
+// boot bundle and its silence are untouched". A second of every visitor's
+// boot spent on a CI feature is the wrong trade in both directions, so this
+// is an export the harness calls through page.evaluate exactly as it calls
+// every check.
+// ---------------------------------------------------------------------------
+
+// The quantum for the PLACE half. Six decimals is three orders finer than the
+// fingerprint's 1e-3 box quantum — this half must resolve a station move that
+// the AABB rounds away — and still far coarser than the float noise two boots
+// of one tree produce (measured: 0 of 56 rows differ across two virgin
+// contexts, the gate the harness gets from this).
+export const DIGEST_PLACE_Q = 1e6;
+
+// The one unit whose digest can never mean anything, named here rather than
+// left to the caller. updateChain re-tessellates lazily — only when the
+// reserve has visibly MOVED (see rebuildChain) — so the chain's mesh is
+// PATH-DEPENDENT: its vertex count and its box both differ between a freshly
+// rebuilt tessellation and a slightly stale one at the same tension. The
+// fingerprint excludes it by name for exactly this reason. Two virgin boots
+// DO reproduce its digest, because both walked the same path to get there,
+// and that is a fact about the harness's protocol rather than about the mesh.
+// So it is digested like everything else — and declared unconditionally
+// changed, which costs 55 of 1540 pairs and one of the 18 hull candidates.
+export const DIGEST_ALWAYS_CHANGED = ['Chain'];
+
+// FNV-1a over raw bytes. Shares strHash's constants so the two hashes are
+// visibly the same function over different input; a typed array is read as
+// its underlying bytes rather than element-wise, so a Float32Array and a
+// Uint16Array need no separate cases and no float is ever stringified.
+function hashBytes(arr, h) {
+  const b = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  for (let i = 0; i < b.length; i++) {
+    h ^= b[i];
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h >>> 0;
+}
+
+// Every labelled unit's SHAPE and PLACE digest across the canonical poses.
+//
+// The population is collectUnits at includeExcluded — the widest one any
+// check uses (`inspection` runs there, and the row-table checks reach their
+// units by name out of the same list), so a unit that is invisible here is
+// invisible to every consumer of the key.
+//
+// Returns { units: {name: {shape, place, key}}, poseCount, unitCount,
+// alwaysChanged, placeQ }. The always-changed list travels WITH the payload
+// rather than being restated in the harness: it is a fact about this scene's
+// geometry, so it belongs to the tree that produced it, and the harness
+// unions the two trees' lists rather than picking one.
+export function unitDigests(clock, { poses = FINGERPRINT_POSES } = {}) {
+  const shape = new Map(), place = new Map();
+  const q = (n) => Math.round(n * DIGEST_PLACE_Q) / DIGEST_PLACE_Q + 0;  // +0 folds -0 → 0, unitBoxRows' precedent
+  for (const pose of poses) {
+    // Canonical inputs first, the fingerprint's rule: a part the pose does not
+    // drive must sit where a fresh boot would put it, never where the last
+    // interaction left it. Without this the key would depend on session
+    // history and two runs of one tree could disagree.
+    clock.resetInputs();
+    clock.setPose(pose);
+    clock.scene.updateMatrixWorld(true);
+    for (const u of collectUnits(clock, { includeExcluded: true })) {
+      let hs = shape.get(u.name) ?? 0x811c9dc5;
+      let hp = place.get(u.name) ?? 0x811c9dc5;
+      for (const m of u.meshes) {
+        const g = m.geometry;
+        hs = hashBytes(g.attributes.position.array, hs);
+        if (g.index) hs = hashBytes(g.index.array, hs);
+        // The vertex COUNT, so a buffer that is a prefix of another cannot
+        // collide with it — a stream hash over bytes alone would.
+        hs = hashBytes(new Uint32Array([g.attributes.position.count]), hs);
+        for (const e of m.matrixWorld.elements) {
+          const s = String(q(e));
+          for (let i = 0; i < s.length; i++) {
+            hp ^= s.charCodeAt(i);
+            hp = (hp + ((hp << 1) + (hp << 4) + (hp << 7) + (hp << 8) + (hp << 24))) >>> 0;
+          }
+        }
+      }
+      shape.set(u.name, hs >>> 0);
+      place.set(u.name, hp >>> 0);
+    }
+  }
+  clock.resetInputs();
+  const units = {};
+  for (const name of [...shape.keys()].sort()) {
+    const s = shape.get(name), p = place.get(name);
+    units[name] = { shape: s, place: p, key: strHash(`${s}:${p}`) };
+  }
+  return {
+    units,
+    unitCount: Object.keys(units).length,
+    poseCount: poses.length,
+    placeQ: DIGEST_PLACE_Q,
+    alwaysChanged: [...DIGEST_ALWAYS_CHANGED],
+  };
+}
+
+// Which units differ between two digest payloads — the changed set every
+// restriction below is derived from.
+//
+// Three ways a unit lands in it, and the last two are why this is a function
+// rather than a diff someone writes inline: its key MOVED, it exists in only
+// one of the two trees (a part added or deleted is changed in the only sense
+// that matters), or it is on either tree's always-changed list. The lists are
+// UNIONED rather than taken from the newer tree: a unit that was
+// path-dependent in the base and is not any more still has a base verdict
+// that was measured under that path-dependence.
+export function digestChangedUnits(base, head) {
+  const changed = new Set([...(base.alwaysChanged || []), ...(head.alwaysChanged || [])]);
+  const names = new Set([...Object.keys(base.units || {}), ...Object.keys(head.units || {})]);
+  for (const n of names) {
+    const b = base.units?.[n], h = head.units?.[n];
+    if (!b || !h || b.key !== h.key) changed.add(n);
+  }
+  return [...changed].sort();
+}
+// ---------------------------------------------------------------------------
 // §36 PART TWO — pose-INDEPENDENT overlap against the swept registry.
 //
 // The existing battery samples poses, so it can pass a wheel spoke between two
@@ -7649,7 +7895,14 @@ export async function checkSweptOverlap(clock, opts = {}) {
   // validating the check itself — on a clean movement a violation count of
   // zero proves nothing, so the positive control is to drop the exclusions
   // and confirm the geometry test fires on pairs that are known to touch.
-  const { includeDeclared = false, confirm = !includeDeclared, yieldEvery = 16 } = opts;
+  const { includeDeclared = false, confirm = !includeDeclared, yieldEvery = 16, pairsTouching } = opts;
+  // §152 — the HULL tier runs whole (5.9 s measured, and its candidate list is
+  // derived from this tree's own volumes, so it cannot be inherited); the
+  // CONFIRM tier — 96.5% of this check — narrows to candidates touching a
+  // changed unit. 18 candidates over 21 units on this movement, and 35 of the
+  // 56 units appear in NONE of them, so a change confined to one of those
+  // drops the tier entirely.
+  const touching = resolvePairsTouching(clock, pairsTouching);
   const declared = (a, b) => !includeDeclared && (inList(EXPECTED_PAIRS, a, b) || inList(IGNORED_PAIRS, a, b));
   censusStart();   // §108's experiment — report-only; phase timers below split registry/hull/confirm
   const _t0 = performance.now();
@@ -7839,8 +8092,19 @@ export async function checkSweptOverlap(clock, opts = {}) {
   // so refuted keeps the hull's side of the story in the output rather than
   // deleting the row — the hull says "possible", the refinement says "not at
   // any refined pose", and both statements stand.
-  let confirmed = violations, tightRows = [], refuted = [];
-  if (confirm && violations.length) {
+  // §152 — the candidates this run will confirm, and the ones it declines to.
+  // A separate binding rather than a filter over `violations`: that array is
+  // the HULL tier's own output and stays whole, because the hull tier ran
+  // whole and its list is what the skipped rows are looked up against.
+  //
+  // The declined rows are NOT dropped silently — the harness pairs each one
+  // against the baseline's verdict for the same pair, and a candidate the
+  // baseline never raised is a contradiction it fails on rather than papers
+  // over (see battery-union.mjs's entitlement argument).
+  const skippedByRestriction = touching ? violations.filter((v) => !touching.touches(v.fixed, v.mover)) : [];
+  const toConfirm = touching ? violations.filter((v) => touching.touches(v.fixed, v.mover)) : violations;
+  let confirmed = toConfirm, tightRows = [], refuted = [];
+  if (confirm && toConfirm.length) {
     confirmed = [];
     // BUILT §82 levers 1 and 2 — the tier used to be fifteen sequential UNCAPPED
     // measureClearance calls, and that was 96% of the whole check: exact
@@ -7861,7 +8125,7 @@ export async function checkSweptOverlap(clock, opts = {}) {
     // a sub-cap minimum can only tighten against the sequential measurement.
     const CONFIRM_BAND = 0.4;                       // sweepClearances' default refineBand, named so the cap arithmetic is visible
     const cap = CLEAR_MARGIN + CONFIRM_BAND;
-    const pairs = violations.map((v) => ({
+    const pairs = toConfirm.map((v) => ({
       A: unitByName(clock, v.fixed), B: unitByName(clock, v.mover),
       refineFloor: CLEAR_MARGIN,
     }));
@@ -7875,8 +8139,8 @@ export async function checkSweptOverlap(clock, opts = {}) {
     // number a fresh session would measure.
     clock.resetInputs();
     const { state } = await sweepClearances(clock, pairs, { refineBand: CONFIRM_BAND, yieldEvery });
-    for (let i = 0; i < violations.length; i++) {
-      const v = violations[i], st = state[i];
+    for (let i = 0; i < toConfirm.length; i++) {
+      const v = toConfirm[i], st = state[i];
       const capped = st.min >= cap - 1e-9;
       const row = capped
         ? { ...v, refinedMinGap: +cap.toFixed(4), gapIsAtLeast: true }
@@ -7903,7 +8167,16 @@ export async function checkSweptOverlap(clock, opts = {}) {
       tight: tightRows,
       refutedByRefinement: refuted,
       confirmTier: confirm ? 'on — violations are pose-confirmed contacts; tight/refuted carry the refined gap' : 'off — raw hull overlaps',
+      ...(touching ? { skippedByRestriction } : {}),
     } },
+    ...(touching ? { restriction: {
+      ...restrictionRecord(touching, null),
+      // The hull tier's own discovery order. Each confirm bucket is filled by
+      // walking it, so a union that appends inherited rows would reorder them
+      // — and the acceptance is byte-identity, which one swapped row fails.
+      // Pair keys are unique here by construction (`seen` dedupes on them).
+      candidateOrder: violations.map((v) => v.pair),
+    } } : {}),
     notClaimed: {
       swept_vs_swept_phaseDependent: [...phaseDependent].sort(),
       approxUnitsExcluded: [...unverified].sort(),

@@ -144,6 +144,46 @@
 # makes the file fail to parse, and payload.sh's header already names the
 # alternative failure — two pathspec lists someone keeps in step.
 
+# §152 — THE INCREMENTAL PR RUN, AND WHY THERE IS NO NIGHTLY.
+#
+# A pair sweep's verdict is f(geometry, pose net, check code). A PR whose three
+# are provably unchanged since a run that already passed may inherit that run's
+# rows for the pairs it did not touch, and measure only the pairs it did. The
+# key is a per-unit SHAPE+PLACE digest (inspect.js's unitDigests); the baseline
+# is the previous full run's --report; the gates are evaluated on the UNION of
+# the two, so the bar is still standing rule 4's whole-movement bar.
+#
+# THE BASELINE COMES FROM THE PUSH RUN ABOVE, which already exists and was
+# already being thrown away. Every merged tree gets a full, unfiltered battery
+# on main; this workflow now keeps that run's report and digests in the Actions
+# cache under its SHA, and a PR restores its own merge base's entry.
+#
+# THE ENTRY THAT SCOPED THIS CALLED FOR A MANDATORY NIGHTLY FULL RUN, and
+# building it established that this repo does not need one — a deviation
+# recorded here rather than quietly taken. The nightly's job was to bound the
+# age of a key error to a day. The push trigger already does better: it is
+# deliberately unfiltered, it runs the WHOLE battery (it is never incremental —
+# a baseline must be a whole verdict, or errors would chain through the cache),
+# and it fires per MERGE rather than per day. A scheduled run on main would
+# re-test the same tree the push run just cleared; on a day with no merges there
+# is by construction nothing for it to catch. What the nightly was insurance
+# against, the push run detects within minutes of the merge instead.
+#
+# So the honest cost line is better than the entry's: the incremental path
+# saves on the ~30% of PR runs it is available for and adds no scheduled work
+# at all. `workflow_dispatch` with `full: true` is the on-demand whole run,
+# for the day someone wants one without waiting for a merge.
+#
+# EVERY WAY THIS CAN GO WRONG RESOLVES TOWARDS MORE WORK. No cache hit, an
+# unreadable file, a moved check-code digest, a union that cannot be justified
+# — each one runs (or fails) rather than skipping, and each one says so in the
+# log. The failure mode this feature could have is a stale green, so nothing
+# about it is allowed to be quiet.
+#
+# THE ESCAPE HATCH is a `full-battery` label on the PR, or `[full battery]` in
+# the PR title. It exists because the first time someone distrusts the key they
+# must have something to reach for other than reverting the feature.
+
 name: Battery
 
 on:
@@ -163,6 +203,14 @@ on:
       - 'vendor/LICENSE-*.txt'
   push:
     branches: [main]
+  # The on-demand whole run. There is no `schedule:` — see the §152 note above
+  # for why the unfiltered push trigger already does the job a nightly would.
+  workflow_dispatch:
+    inputs:
+      full:
+        description: 'Ignore any baseline and run every check (default for this trigger)'
+        type: boolean
+        default: true
 
 # A force-push mid-run should kill the stale run — the battery is long enough
 # that queued duplicates would otherwise stack up behind it.
@@ -197,5 +245,91 @@ jobs:
         working-directory: tools
         run: npx playwright install --with-deps chromium
 
+      # ---- §152: the baseline, and what this run is allowed to skip ---------
+      #
+      # A PR restores its MERGE BASE's entry — `base.sha` names the commit the
+      # PR is judged against, and it is the tree the push run above measured.
+      # An exact-key restore only: a near-miss baseline would be a baseline for
+      # a different tree, and `restore-keys` exists to serve exactly the
+      # near-miss this must never take.
+      - name: Restore the base tree's battery baseline
+        if: github.event_name == 'pull_request'
+        id: baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: .battery-baseline
+          key: battery-baseline-v1-${{ github.event.pull_request.base.sha }}
+
+      # The decision, assembled here rather than inside the harness, because a
+      # workflow's own triggers are the thing that knows which run this is.
+      # Every branch that does NOT go incremental says so in the step summary,
+      # so "the battery was fast today" is never something to reverse-engineer.
+      - name: Decide the run mode
+        id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          HIT: ${{ steps.baseline.outputs.cache-hit }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          args=""
+          why=""
+          if [ "$EVENT" != "pull_request" ]; then
+            why="not a pull request — this run IS the baseline, so it is always whole"
+          elif [ "$HIT" != "true" ]; then
+            why="no cached baseline for the merge base (${{ github.event.pull_request.base.sha }}) — running everything"
+          elif printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'full-battery'; then
+            why="the full-battery label is set — running everything"
+          elif printf '%s' "$TITLE" | grep -qF '[full battery]'; then
+            why="[full battery] in the PR title — running everything"
+          else
+            args="--baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json"
+            why="incremental if the check-code digest also matches; the harness decides and logs which"
+          fi
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+          echo "§152: $why" >> "$GITHUB_STEP_SUMMARY"
+          echo "§152: $why"
+
       - name: Run the battery
-        run: node tools/ci-battery.mjs
+        run: |
+          mkdir -p .battery-out
+          node tools/ci-battery.mjs \
+            --report .battery-out/report.json \
+            --digests .battery-out/digests.json \
+            ${{ steps.mode.outputs.args }}
+
+      # Only a run that measured the WHOLE movement may become a baseline, and
+      # only from main: a report carrying `restrictedTo` inherited rows from a
+      # previous baseline, and caching it would let one key error chain forward
+      # through every PR that ever reads it. The check is on the artifact
+      # rather than on the trigger because the artifact is what would be
+      # inherited — a trigger is a claim about a run, and this is the run.
+      - name: Keep this run as the next baseline
+        if: github.event_name == 'push' && success()
+        run: |
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-out/report.json')).restrictedTo?1:0)"; then
+            mkdir -p .battery-baseline
+            cp .battery-out/report.json .battery-out/digests.json .battery-baseline/
+            ls -l .battery-baseline | sed 's/^/§152 baseline: /' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "§152: this report is restricted — refusing to cache it as a baseline" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Cache it under this commit
+        if: github.event_name == 'push' && success()
+        uses: actions/cache/save@v4
+        with:
+          path: .battery-baseline
+          key: battery-baseline-v1-${{ github.sha }}
+
+      # The report is worth having on a red run too — CLAUDE.md makes a
+      # --report diff the acceptance for anything that could move a number, and
+      # a failed run is exactly when someone wants to read one.
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-report-${{ github.run_id }}
+          path: .battery-out/
+          retention-days: 14
