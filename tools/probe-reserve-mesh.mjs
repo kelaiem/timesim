@@ -136,7 +136,15 @@ const out = await page.evaluate(async () => {
   const w1 = w1w2.find((g) => Math.abs(g.position.z) < 1e-6) ?? w1w2[0];
   const p1 = w1w2.find((g) => g !== w1);
 
-  const TEETH = { p0: 8, w1: 28, p1: 10, w2: 12 };   // main.js: rsvTeethP0/W1/P1/W2 (w2 = 2·reserveHours/5)
+  // §158 Gate 0 — THE COUNTS ARE READ, NOT RESTATED. This line used to be a
+  // copy of main.js's rsvTeeth* ({ p0: 8, w1: 28, p1: 10, w2: 12 }), and the
+  // copy went stale the moment §124/§153 re-geared w2 to 6: every run after
+  // that landing died on `gauge could not identify p0/w2` rather than
+  // reporting a mesh, so the train shipped two changes unjudged by the one
+  // instrument built to judge it. The gauge must still be TOLD the count —
+  // refusing a silhouette whose gaps disagree with the declaration is the
+  // whole check — but the declaration now comes from the build.
+  const TEETH = C.reserveTrain.teeth;
   // p0 meshes w1, so it is the one whose gauge reads 8 gaps.
   const read = (o, n) => toothPhase(o, n);
   let p0 = null, w2 = null;
@@ -147,7 +155,7 @@ const out = await page.evaluate(async () => {
   if (!p0 || !w2) return { error: 'gauge could not identify p0/w2', got: cand.map((c) => [read(c.gear, TEETH.p0).gaps, read(c.gear, TEETH.w2).gaps]) };
 
   const MESHES = [
-    { name: 'p0 ⇄ w1', P: { obj: p0, teeth: TEETH.p0 }, Q: { obj: w1, teeth: TEETH.w1 }, module: 0.34 },
+    { name: 'p0 ⇄ w1', P: { obj: p0, teeth: TEETH.p0 }, Q: { obj: w1, teeth: TEETH.w1 }, module: C.reserveTrain.module0 },
     { name: 'p1 ⇄ w2', P: { obj: p1, teeth: TEETH.p1 }, Q: { obj: w2, teeth: TEETH.w2 }, module: null },
   ];
 

@@ -37,6 +37,7 @@ import {
   solveKeyless,
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
+  mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
   FUSEE_TILT_Z,                               // §124 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
@@ -9548,12 +9549,19 @@ const secondsSubR = secondsWellR;
 // The arc is a READABILITY choice (more angular travel per hour = finer
 // reading); the hours are the movement's actual reserve; the gearing is
 // DERIVED from both. Everything downstream reads these two.
-const RESERVE_SWEEP_DEG = 300;      // graduated arc, symmetric about the well's vertical (§153):
-                                    // empty at math 90° + 150° (lower left), full at 90° − 150°
-                                    // (lower right) — an inverted U over the pivot, leaving a 60°
-                                    // gap centred on the well's 6 o'clock (the caption and the
-                                    // maker's mark live in it). Widened 150° → 300° (owner's
-                                    // call): 10° of hand per hour, twice the reading resolution.
+const RESERVE_SWEEP_DEG = 300;      // graduated arc, symmetric about the well's vertical (§153),
+                                    // hung since §158 from the DOWN end of it: empty at math
+                                    // −90° + 150°, full at −90° − 150° — a U opening upward,
+                                    // leaving a 60° notch centred on the well's 12 o'clock,
+                                    // where the caption and the maker's mark now live,
+                                    // stacked (§158 — the mark's own size is SOLVED to fit
+                                    // under the caption, since the notch holds two lines
+                                    // only if one yields).
+                                    // Widened 150° → 300° (owner's call): 10° of hand per hour,
+                                    // twice the reading resolution. The WIDTH is what TODO 18's
+                                    // three coupled quantities key off; §158 moved only the
+                                    // notch's position, which is a phase and reaches none of
+                                    // them — so the reduction below is untouched.
 const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated to the SPEC —
                                     // = RELAX_SECONDS / 3600 by shared derivation, and
                                     // asserted against it with the ratio below
@@ -9739,7 +9747,10 @@ const dial = G.makeDial({
     // ?d4= or ?rsvr= moves one. Pass `face` only to opt a well OUT.
     { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveR, kind: 'reserve',
       recess: RESERVE_RECESS, // §153 — the barely-recessed sector, against the plate default below
-      scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS } },
+      // mmPerSr — the well's printed radius in REAL mm, which is what lets
+      // the face size its figures by acuity (§158) instead of by fraction.
+      scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS,
+        mmPerSr: reserveR * UNIT_MM } },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
   ],
 });
@@ -10552,7 +10563,24 @@ registerLabel('Power reserve', reserveGroup);
 // excuse — over the floor it holds sqrt((SUBDIAL_BORE_R − bossR)² + dz²)
 // ≥ the margin because the radial term alone is held to it (asserted, the
 // wellHandZ assert this hand's plane no longer passes through).
-const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' });
+// §158 — THE POINTER'S WIDTH IS DERIVED FROM ACUITY, bounded by the scale it
+// reads. It was 0.118 mm across (measured) — 1.16 arcmin at the wrist, FINER
+// than the 0.193 mm major ticks it indexes, which is why the well read as
+// engraving rather than as an instrument. Two constraints bound it and the
+// target sits between them:
+//   · floor — never finer than what it points at: the graduation's major tick
+//     width, read from the same fraction paintSubdialFace draws it with;
+//   · ceiling — it must still say WHICH hour: one hour of scale at the tip is
+//     tipR·(sweep/hours), and a pointer as wide as a division stops naming one.
+// POINTER_ARCMIN (3′) lands 1.6× the tick and 0.62 of a division. Note the
+// width goes through `halfWidth`, NOT through a bigger rBase: rBase is the
+// keel DEPTH, and §153 derived RESERVE_RECESS from it (floorDrop + the boss
+// that swallows the rod), so widening the section that way would demand a
+// pocket ~4× deeper than the alarm blade's lane leaves room for. Wide and
+// flat is also what a hand actually is.
+const RSV_HAND_HALF_W = mmForArcmin(POINTER_ARCMIN) / UNIT_MM / 2;
+const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true,
+  namePrefix: 'reserve', halfWidth: RSV_HAND_HALF_W });
 reserveHand.position.z = ALARM_RSV_LANE - CLEAR_MARGIN - reserveHand.userData.bossH / 2;
 {
   const { floorDrop, bossH, bossR } = reserveHand.userData;
@@ -10563,6 +10591,16 @@ reserveHand.position.z = ALARM_RSV_LANE - CLEAR_MARGIN - reserveHand.userData.bo
     console.warn(`§153 reserve hand: keel clears the sector floor by ${keelOverFloor.toFixed(4)} — need > ${CLEAR_MARGIN} (the grid residue collapsed; deepen RESERVE_RECESS)`);
   if (bossR + CLEAR_MARGIN > SUBDIAL_BORE_R)
     console.warn(`§153 reserve hand: boss r ${bossR.toFixed(3)} + margin ${CLEAR_MARGIN} exceeds the pocket bore ${SUBDIAL_BORE_R.toFixed(2)} — its below-keel column no longer rides over the bore`);
+  // §158's two bounds, minted rather than trusted to the comment above.
+  const handW = 2 * reserveHand.userData.halfW;
+  const majorTickW = G.SUBDIAL_MAJOR_W_F * reserveR;
+  const hourDivision = (reserveHand.userData.length * RESERVE_SWEEP_DEG * DEG2RAD) / RESERVE_SCALE_HOURS;
+  if (handW < majorTickW)
+    console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide (${arcminAt(handW * UNIT_MM).toFixed(2)}′ at the wrist) `
+      + `is finer than the ${majorTickW.toFixed(3)} major ticks it indexes — a pointer thinner than its own marks`);
+  if (handW >= hourDivision)
+    console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide (${arcminAt(handW * UNIT_MM).toFixed(2)}′) against an hour `
+      + `division of ${hourDivision.toFixed(3)} at the tip — it can no longer say which hour it is on`);
 }
 reserveGroup.add(reserveHand);
 
@@ -28898,21 +28936,29 @@ function tick(t) {
   // shape). Forward: p0 is slip-coupled to the barrel arbor, whose wind
   // state is tension·FUSEE_WRAP_TURNS turns; the constant term is the
   // friction coupling's SET — where assembly slipped the pinion on its
-  // arbor so the hand reads the empty end of §153's symmetric arc, half
-  // the sweep left of the well's vertical (mathematically
-  // −(RESERVE_SWEEP_DEG/2)·ratio — the same half-sweep the graduation
-  // hangs off 90° in paintSubdialFace, both sites deriving the anchor
-  // from the one symmetry rule; setting an indicator by slipping its
-  // friction is exactly how a real reserve is zeroed). Each mesh then
-  // counter-rotates by its real tooth ratio and
-  // the hand ARRIVES at the far end — the dialFace Y-flip mirrors rotation
+  // arbor so the hand reads the empty end of the symmetric arc (setting an
+  // indicator by slipping its friction is exactly how a real reserve is
+  // zeroed). Each mesh then counter-rotates by its real tooth ratio and the
+  // hand ARRIVES at the far end — the dialFace Y-flip mirrors rotation
   // sense, so the hand takes the NEGATED w2 angle to co-rotate with it as
-  // seen from the front. (RESERVE_SWEEP_DEG·ratio = FUSEE_WRAP_TURNS·360
-  // by TODO 18's shared derivation, so the hand still sweeps exactly the
+  // seen from the front. (RESERVE_SWEEP_DEG·ratio = FUSEE_WRAP_TURNS·360 by
+  // TODO 18's shared derivation, so the hand still sweeps exactly the
   // graduated arc, whichever anchor the arc hangs from.)
+  //
+  // §158 — THE ANCHOR IS THE WELL'S DOWN VERTICAL. §153's rule is unchanged
+  // (the arc is symmetric about the well's vertical, and this site derives
+  // the anchor from that rule rather than from paintSubdialFace, as does
+  // paintSubdialFace from this): what moved is which END of the vertical
+  // the un-swept notch sits on, from 6 o'clock to 12. The set is therefore
+  // half a sweep off the DOWN vertical — 180° − sweep/2 in the hand's own
+  // frame, taken up through the ratio to the pinion this term actually
+  // writes. The anchor is a PHASE and never a width, so it cannot reach
+  // TODO 18's three coupled quantities; the assert beside them stays quiet
+  // by construction. Measured: the hand lands on the arc's midpoint —
+  // straight down — at tension 0.5, which is the two sites agreeing.
   reserveShown = tension;
   const rsvRatio = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);
-  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 - (RESERVE_SWEEP_DEG / 2) * rsvRatio) * DEG2RAD;
+  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 + (180 - RESERVE_SWEEP_DEG / 2) * rsvRatio) * DEG2RAD;
   rsvArbor1.rotation.z = -rsvArbor0.rotation.z * (rsvTeethP0 / rsvTeethW1);
   rsvArbor2.rotation.z = -rsvArbor1.rotation.z * (rsvTeethP1 / rsvTeethW2);
   reserveHand.rotation.z = -rsvArbor2.rotation.z;
@@ -30198,6 +30244,17 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
+  // is built to refuse any silhouette reading whose gap count disagrees with the
+  // DECLARED count, which needs a declaration from somewhere; it carried its own
+  // copy, that copy said w2 = 12, and §124/§153 re-geared to 6 — so the one
+  // instrument that can answer "do these two meshes engage" refused every
+  // reading for two landings, in exactly the shape TODO 18 warned about one
+  // level up. A gauge may restate nothing it checks against.
+  get reserveTrain() {
+    return { teeth: { p0: rsvTeethP0, w1: rsvTeethW1, p1: rsvTeethP1, w2: rsvTeethW2 },
+      module0: rsvModule0, module1: rsvModule1 };
+  },
   cornerReport: CORNER_REPORT,   // §86 instrument A — values their own search bound chose
   // §62: what each openworked window asked for, what it got, and the sections
   // it left behind — the solve's own numbers, so a reader (or a check) can
