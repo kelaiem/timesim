@@ -7,10 +7,25 @@
 // less than the pair arithmetic suggests — so it is measured before anything
 // is designed against it.
 //
-// Measured per axis against INSPECTION_SLICES' own measured per-axis wall.
+// Measured per axis against the harness's own measured per-axis wall.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { INSPECTION_SLICES } from './battery-split.mjs';
+
+// §152's third landing moved the measured walls out of INSPECTION_SLICES and
+// into ci-battery.mjs's COSTS, so that refreshing them cannot void the
+// check-code digest. They are read from that source rather than copied here: a
+// second copy of a measured column is a second column to keep in step. Reading
+// NOTHING must not read as a clean answer either, so a literal that does not
+// parse is a hard failure.
+function costs() {
+  const src = readFileSync(new URL('./ci-battery.mjs', import.meta.url), 'utf8');
+  const m = src.match(/^const COSTS = \{$([\s\S]*?)^\};$/m);
+  if (!m) throw new Error('ci-battery.mjs: COSTS did not parse — this probe has nothing to measure against');
+  return new Function(`return {${m[1]}};`)();
+}
+const COSTS = costs();
 
 const port = process.env.PORT || '8532';
 const srv = spawn('python3', ['-m', 'http.server', port, '--bind', '127.0.0.1'], { cwd: '..', stdio: 'ignore' });
@@ -77,11 +92,11 @@ await b.close(); srv.kill();
 const bySlice = new Map(INSPECTION_SLICES.map((s) => [s.axis, s]));
 let floor = 0, total = 0;
 const table = out.rows.map((r) => {
-  const s = bySlice.get(r.axis);
-  const poses = s.poses;
+  const poses = bySlice.get(r.axis).poses;
+  const ms = COSTS[`inspection:${r.axis}`];
   const floorMs = (r.setPoseMs + r.unitBoxesMs) * poses;
-  floor += floorMs; total += s.ms;
-  return { ...r, poses, measuredMs: s.ms, floorMs: Math.round(floorMs), floorPct: +(100 * floorMs / s.ms).toFixed(2) };
+  floor += floorMs; total += ms;
+  return { ...r, poses, measuredMs: ms, floorMs: Math.round(floorMs), floorPct: +(100 * floorMs / ms).toFixed(2) };
 });
 console.log(JSON.stringify({ units: out.units, table }, null, 1));
 console.log(`floor ${(floor / 1000).toFixed(1)}s of measured ${(total / 1000).toFixed(1)}s = ${(100 * floor / total).toFixed(2)}%`);
