@@ -221,6 +221,11 @@ it into prose either.
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
    and required numbers; a warning at boot means something regressed.
+7. **A digest is a claim about the metal, so it is anchored like one.** §152's
+   per-unit key must reproduce across two virgin boots — gated beside
+   `fingerprint`'s — because a digest that drifts turns every skip taken on it
+   into an unfounded one. Ship a part whose mesh is rebuilt lazily and it
+   belongs on `DIGEST_ALWAYS_CHANGED`, not in a tolerance.
 
 ## Design priority — the mechanism outranks its accommodation
 
@@ -465,6 +470,38 @@ axis inherited the tail of the axis declared above it and every sweep's
 coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
 before each axis; the `axisEntry` check gates that over all 110 ordered pairs
 and REPORTS, beside it, what used to ride through.
+
+**Since §152 a PR run can be INCREMENTAL, and the rule is that a check runs
+only when it can change its answer.** A sweep's verdict is
+`f(geometry, pose net, check code)`. `unitDigests()` measures the first per
+unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
+matrices, both at the 11 canonical poses, because four units install a
+different geometry at a different pose. The pose net and the check code ride
+one file digest each (`AXES` lives in `inspect.js`), and **any difference in
+`src/inspect.js`, `tools/ci-battery.mjs` or `tools/battery-split.mjs` runs the
+whole battery** — measured, that is 56% of merges, so the incremental path is
+available on 30% of them. The changed set narrows four sweeps through one
+`pairsTouching` opt that **throws on a unit name it does not know**
+(`resolveAxes`' precedent — a typo that matched nothing would report a green
+battery of no work), and the restricted payload is **UNIONED** with the
+baseline's rows before any gate reads it, so the bar is still the whole
+movement's. `Chain` is unconditionally in the changed set: its mesh is
+re-tessellated lazily and is path-dependent, which is why `fingerprint`
+excludes it by name.
+
+**The baseline is the push-to-`main` run, which already existed.** That
+trigger is deliberately unfiltered and never incremental — a baseline must be
+a whole verdict or errors would chain through the cache — so every merged tree
+still gets a full battery, and `battery.yml` now keeps its `--report` and
+digests under the commit SHA for the next PR to read. **That is also why there
+is no nightly**: §152 was scoped with one as mandatory, and building it
+established that the push run bounds a key error to minutes rather than a day
+and fires per merge rather than per date. Every uncertainty — no cache hit, an
+unreadable file, a moved check-code digest, a union that cannot be justified —
+resolves towards MORE work and says so in the log. `--no-incremental` is the
+reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`
+proves on two cheap axes that a restricted run unions back to a full one byte
+for byte.
 
 `--report FILE` writes every check's FULL payload as JSON. **That, not the
 PASS/FAIL column, is what a performance change is accepted against**: a

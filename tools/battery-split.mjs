@@ -119,7 +119,22 @@ export function mergeInspection(parts, axisMeta) {
   census.exactMs = +census.exactMs.toFixed(1);
   census.verdictMs = +census.verdictMs.toFixed(1);
   const swept = new Set(parts.map((p) => p.slice));
-  return { units, report, axes: order.filter((n) => swept.has(n)), census };
+  // §152 — CARRY THE RESTRICTION THROUGH. Every slice of one run was given the
+  // same `pairsTouching`, so they all carry the same record; dropping it here
+  // made the merged payload look like a WHOLE run to the union step, which
+  // then returned it untouched and gated a restricted `inspection` on its own
+  // partial rows. It passed — 3 contacting pairs where a full run finds 81 —
+  // which is precisely the stale green this entry exists to make impossible.
+  // A disagreement between slices is a harness bug, so it throws rather than
+  // picking one, the same way the unit list above does.
+  const restriction = parts[0].result.restriction;
+  for (const p of parts) {
+    if (JSON.stringify(p.result.restriction) !== JSON.stringify(restriction)) {
+      throw new Error(`slice ${p.slice} was restricted differently than ${parts[0].slice}`);
+    }
+  }
+  return { units, report, axes: order.filter((n) => swept.has(n)), census,
+    ...(restriction ? { restriction } : {}) };
 }
 
 // One entry per unit of schedulable work: a whole check, or one slice of a
