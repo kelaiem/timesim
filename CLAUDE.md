@@ -475,8 +475,13 @@ and REPORTS, beside it, what used to ride through.
 only when it can change its answer.** A sweep's verdict is
 `f(geometry, pose net, check code)`. `unitDigests()` measures the first per
 unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
-matrices, both at the 11 canonical poses, because four units install a
-different geometry at a different pose. The pose net and the check code ride
+matrices, both at `digestPoses()`: a set DERIVED from `AXES` (every axis at
+f ∈ {0, 0.5, 1}, unioned with the 11 canonical poses for the combined states,
+39 total) rather than borrowed from the fingerprint — measured, the borrowed
+set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
+`tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
+units install a different geometry at a different pose, which is why every
+pose is walked. The pose net and the check code ride
 one file digest each (`AXES` lives in `inspect.js`), and **any difference in
 `src/inspect.js`, `tools/ci-battery.mjs` or `tools/battery-split.mjs` runs the
 whole battery** — measured, that is 56% of merges, so the incremental path is
