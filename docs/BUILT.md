@@ -16165,7 +16165,7 @@ consumers, values unmoved).
 | click detent | **14.7 mN** peak at the nose flank | ψ(OUT)−ψ(SEAT) through the blade at bearFrac·L — INSIDE the declared window, which is the anchoring the window's declaration promised |
 | pawl at the saw root | **13.8 mN** per indexing press | the click torque paid back at the saw's own outermost radius (ratchetPoly); against the 1–5 N finger band the chain starves at the SHAFT, never the input |
 | silence finger | **≈51 mN** | the feeler bias blade's k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot; the lifter carries aF/aP of it |
-| lay shaft delivery | **≈0.42 mN** at the drive tab | the SOFTEST series member's stall through the crank pair at the measured stroke ratio — the shaft's rod-end overhang (TODO 79), an order softer than the tail. Under the floor, waived citing TODO 79. Three numbers died getting here; see below |
+| lay shaft delivery | **≈1.588 mN** at the drive tab | the SERIES stiffness of all four elastic members, each reflected to the ring by n²/k (TODO 82's construction, recomputed live and asserted against its probe). Rod-end-limited at 73% of the compliance, an order under the floor, waived citing TODO 79. Four numbers died getting here; see below |
 | elbow bends | see below | the beam-column pair, both rods |
 
 Two published numbers moved by being computed against the live build, one
@@ -16252,9 +16252,10 @@ agreeing without consulting each other is better verification than either
 landing had alone. The one §-number collision (§154, minted twice) was
 caught and renumbered to §156 on the roadmap.
 
-**The arming chain's stall took four takes, and the sequence is the
-lesson**, because each take was honest arithmetic on an incomplete
-inventory:
+**The arming chain's stall took FIVE takes, and the sequence is the
+lesson**, because every one was honest arithmetic on an incomplete
+inventory — four missing a member, the fifth missing the way members
+combine:
 
 | take | figure | what was wrong with it |
 |---|---|---|
@@ -16262,13 +16263,30 @@ inventory:
 | TODO 63 | ≈1.6 mN, shaft-limited | 22 N/m was the pre-§68 4.5 mm overhang |
 | §137 Landing 2 | ≈48 mN, tail-limited | multiplied by the retired 0.42-unit plan stroke |
 | the audit's first cut | ≈6 mN, tail-limited, in-window | omitted the rod-end overhang entirely |
-| **now** | **≈0.42 mN, rod-end-limited** | first-order, and TODO 79 says take it properly |
+| the audit's second cut | ≈0.42 mN, rod-end-limited | had every member, and still took the SOFTEST one as the answer |
+| **now** | **≈1.588 mN, rod-end-limited** | first-order, and TODO 79 says take it properly |
 
-Nothing in that column is a mistake anyone could have avoided by being
-more careful with the same information — each take added a member or
-retired a constant the previous one had no way to see, and the only
-reason the last one exists is that TODO 78 made an unregistered
-instrument run. **The waiver made the same round trip**: filed against
+The first four are not mistakes anyone could have avoided by being more
+careful with the same information — each added a member or retired a
+constant the previous one had no way to see, and the only reason the
+fourth exists is that TODO 78 made an unregistered instrument run. **The
+fifth is a different kind**, and worth separating: it had the whole
+inventory and still combined it wrongly, taking a minimum where series
+compliances ADD (reflected to a common point by n²/k). TODO 82 caught it
+from the other side. The row now computes the sum from live constants and
+asserts against 82's posed probe at boot — 1.588 against 1.580 — so the
+two paths are held together rather than left to agree by inspection.
+
+Two things that correction exposed, both kept because the total hid them.
+The shaft's metal does NOT start at chord t 0 (it spans
+`[ALARM_FORK_RETREAT, fullChordLen]`), so the fork-end free length is 1.35
+and not the station literal 2.45 — that member was 5.98× too soft and the
+answer still landed right, because it carries under 1% of the compliance.
+And the two reflection ratios are not the same kind of number: the rod's is
+a solve OUTPUT the probe confirms at 0.523, while the pin's is 1 BY
+CONSTRUCTION — the solve defines the armed roll as the one moving the pin
+one ring travel — against the probe's posed 1.0152. Agreement on a total is
+not agreement on a model. **The waiver made the same round trip**: filed against
 TODO 16, deleted when the chain briefly read in-window, restored citing
 TODO 79 when the soft member appeared. The staleness tier polices that in
 both directions — a waiver with nothing left to waive fails, and so does

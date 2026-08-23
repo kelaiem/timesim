@@ -7698,12 +7698,24 @@ OVERHANG (TODO 79), a second compliance in the same series an order
 softer than the tail — 21.2 N/m against 304.8, derived here from the
 same `ALARM_LINK_BUSH_T` the bearings declaration reads and agreeing
 with 79's probe to the digit (12.487 u). The soft member binds, so the
-chain is **ROD-END-limited at ≈ 0.42 mN delivered at the tab**, under
-the floor, and the transfers seed waiver is **restored citing TODO 79**
-rather than retired — a round trip the staleness tier made honest in
-both directions (a waiver with nothing left to waive fails the battery;
-so does a missing one, by the envelope tier). The k (305 N/m) stands
-and the stroke correction stands; what was missing was a member. The
+chain is ROD-END-limited, and the transfers seed waiver is **restored
+citing TODO 79** rather than retired — a round trip the staleness tier
+made honest in both directions (a waiver with nothing left to waive
+fails the battery; so does a missing one, by the envelope tier). The k
+(305 N/m) stands and the stroke correction stands; what was missing was
+a member.
+
+**And then a second thing was missing: the ARITHMETIC.** This block once
+read ≈ 0.42 mN, taking the softest member's stall as the answer. TODO 82
+established that compliances in SERIES add, each reflected to the ring by
+the displacement ratio at its own working point (n²/k) — a minimum is only
+right when one member dominates utterly, and the bush-to-bush span carries
+a quarter of it. Summed properly the chain delivers **≈ 1.588 mN**, still
+rod-end-limited (73% of the compliance) and still an order under the floor,
+so the waiver and the verdict both stand — but the number was wrong and the
+model was wrong with it. The §137 row now computes the sum from live
+constants and ASSERTS against 82's probe at boot, which is the only reason
+the two agree rather than merely resembling each other. The
 disarm-vs-silence terminology note is written at both rods' laws in the
 source, where a fix would look.
 
