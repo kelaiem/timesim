@@ -18213,7 +18213,7 @@ alarmSwitchUnit.add(alarmClickArm);
 // ratio, ≈ 15 mN pressing the nose into the wheel — INSIDE the movement's
 // 5–50 mN detent band. It is the number the pusher's pawl is sized against
 // (the press block below carries that half), and it is the same band the
-// alarm link's ≈ 48 mN tail-limited stall sits in: the click is what the
+// alarm link's tail-limited stall sits in (≈6 mN at the tab on the live solve's stroke — see the §137 row): the click is what the
 // INPUT must overcome, the link's stall is what the OUTPUT can deliver, and
 // both landing inside one band is that loop closing.
 //
@@ -19517,47 +19517,50 @@ const alarmLinkParts = {};
       say('rim contact lateral sweep exceeds the ray-probed corridor', `${lateral.toFixed(4)} > 0.2685`);
   }
   // §137 — the arming chain's two corner rows, declared on the numbers the
-  // build just derived (TODO 63's re-take is the record these agree with:
-  // "the built arms are the record").
+  // build just derived. Two prior records each carried one stale number and
+  // the rows below carry neither: TODO 63's re-take priced the shaft at
+  // 22 N/m — a stiffness for the PRE-§68 4.5 mm overhang, retired when the
+  // bush moved next to its load (§137 Landing 1's correction; the measured
+  // drive-end cantilever is 0.929 mm and the Landing-2 section meets its
+  // 2800 N/m floor there) — and both TODO 63 and Landing 2 priced the tail
+  // against the 0.42-unit plan stroke, which the registration solve's own
+  // output (`alarmLinkParts.forward.rodTravel`) replaced. Everything here
+  // recomputes from the live solve at every boot.
   //
   // The BEAK LEVER: castellation rise in at the nose, rod driven at the
   // tail — a crank about the beak post. The load is the tail's own STALL:
   // the force at which the blade bends its whole required stroke instead of
   // moving the rod, k (shared cantilever law over the §54-derived section)
-  // × the registration solve's own rodTravel. This is the half of TODO 16's
-  // fix that SURVIVED (≈48 mN); the chain still starves downstream, which
-  // is the next row's business.
+  // × the solve's |rodTravel|.
+  //
+  // The LAY SHAFT'S CRANK PAIR: the rod's fall arrives on the rim crank,
+  // rolls the shaft, and leaves on the centre crank's pin in the fork's
+  // groove. With the shaft at its Landing-2 force floor (≈2.8 kN/m) the
+  // WEAK member is the tail upstream, so what the chain can deliver at the
+  // drive tab is the tail's stall carried through the crank pair at the
+  // measured stroke ratio (force transforms as d_rod/d_ring for a rigid
+  // pair): tailStall × |rodTravel| / ALARM_SEL_TRAVEL. That number must sit
+  // INSIDE the detent envelope — the claim TODO 16 was opened over, judged
+  // here on live metal at every boot instead of in any record's prose.
   {
     const kTail = cantileverK_N_per_m(STOCK_MIN_U, ALARM_LINK_TAIL_H, tailLen);
-    const tailStallMN = kTail * Math.abs(alarmLinkParts.forward.rodTravel) * UNIT_MM; // N/m × (u·mm/u)/1000 m × 1000 mN
+    const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
+    const tailStallMN = kTail * rodTravelU * UNIT_MM; // N/m × (u→m) × 1000 = mN
     declareTransfer('alarm arming: beak lever (castellations → rod)', {
       unit: 'Alarm link', meshes: ['alarmLinkBeakBar', 'alarmLinkBeakTail', 'alarmLinkBeakPost'], idiom: 'crank',
       load: { value: tailStallMN, unit: 'mN',
-        source: 'tail-blade cantilever k over its §54-derived deep section × the registration solve\'s |rodTravel| — the tail\'s stall, the surviving half of TODO 16\'s fix' },
+        source: 'tail-blade cantilever k over its §54-derived deep section × the registration solve\'s |rodTravel| (the live stroke — the 0.42-unit plan constant both prior records quoted is retired by the solve\'s own comment trail)' },
       quantities: { armIn_u: beakLen, armOut_u: tailLen, ratio: tailLen / beakLen },
       why: 'a pivoted lever with two designed arms about the beak post — the built arms measure the displacement gain TODO 63 re-took (7.1×, not the 36.5× the old record assumed)',
     });
-  }
-  // The LAY SHAFT'S CRANK PAIR: the rod's fall arrives on the rim crank,
-  // rolls the shaft, and leaves on the centre crank's pin in the fork's
-  // groove. What it can DELIVER is shaft-limited: TODO 63's re-take measured
-  // the crank-overhang compliance at 22 N/m on the shipped 0.12 shaft (the
-  // CI-reverted thickening documented above), and 22 N/m across the
-  // selector's ALARM_SEL_TRAVEL stroke is ≈1.6 mN at the drive tab — one
-  // order under the detent envelope's floor. The row QUOTES the re-take
-  // rather than re-deriving the compliance: a second model of the same
-  // shaft would be two chances for one law to drift apart, and the number's
-  // owner is TODO 16, cited as the waiver.
-  {
-    const SHAFT_CRANK_K_N_PER_M = 22; // TODO 63 re-take, 2026-08-20 — shaft-limited on the shipped r 0.12
-    const deliveredMN = SHAFT_CRANK_K_N_PER_M * ALARM_SEL_TRAVEL * UNIT_MM; // N/m × stroke(m)·1000
+    const deliveredMN = tailStallMN * rodTravelU / ALARM_SEL_TRAVEL;
     declareTransfer('alarm arming: lay shaft cranks (rod foot → ring drive tab)', {
       unit: 'Alarm link', meshes: ['alarmLinkShaft', 'alarmLinkCrankRim', 'alarmLinkCrankCentre'], idiom: 'crank',
       load: { value: deliveredMN, unit: 'mN',
-        source: 'TODO 63 re-take: 22 N/m crank-overhang compliance × ALARM_SEL_TRAVEL — the stall the chain can actually deliver at the tab, SHAFT-limited' },
+        source: 'the tail\'s stall carried through the rigid crank pair at the measured |rodTravel|/ALARM_SEL_TRAVEL stroke ratio — TAIL-limited since Landing 2 put the shaft on its force floor; the old 22 N/m shaft figure was the retired pre-§68 span' },
       quantities: { armIn_u: ALARM_LINK_CRANK_OFF, armOut_u: ALARM_FORK_PIN_ARM_R, ratio: ALARM_FORK_PIN_ARM_R / ALARM_LINK_CRANK_OFF },
       envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: deliveredMN },
-      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right, undersized: the delivered force misses the detent window and the row is waived citing TODO 16, which owns the shaft (two thickenings CI-rejected; the jumper-envelope measurement is the named prerequisite)',
+      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right, and since the span correction the chain\'s delivered stall sits INSIDE its detent window: the claim TODO 16 was opened over, now measured green on live metal',
     });
   }
   // bushes: hangers from the base plate's underside, at the two chord

@@ -7692,8 +7692,12 @@ source's own trail (`ALARM_LINK_ROD_TRAVEL = 0.42 — solve OUTPUT,
 alarmLinkParts.forward.rodTravel`) replaced the plan stroke with the
 registration solve's measured travel, **0.099 u = 0.0376 mm**, so the
 tail's stall is **≈ 11.5 mN — still TAIL-limited, still inside the
-5–50 mN band, at the other end of it**. The k (305 N/m) stands; the
-stroke it multiplies was the last stale number in the chain. The
+5–50 mN band, at the other end of it**, and through the crank pair's
+measured stroke ratio the chain delivers **≈ 6 mN at the drive tab** —
+in-window, so the transfers table's seed waiver retired (a staleness
+tier now holds both waiver tables to that standard: a waiver with
+nothing left to waive fails the battery). The k (305 N/m) stands; the
+stroke it multiplied was the last stale number in the chain. The
 disarm-vs-silence terminology note is written at both rods' laws in the
 source, where a fix would look.
 

@@ -223,11 +223,13 @@ it into prose either.
    TODO 16's format; the check re-verifies each row's own relations from
    the frozen payload and holds envelope membership against layout.js's
    declared windows — the 5–50 mN detent band is a CONSTANT now, never
-   forkable; a waived row cites its TODO, the lay shaft's ≈1.6 mN being
-   the seed),
+   forkable. A waived row cites its TODO and a waiver naming a site with
+   no envelope miss is itself a failure — the seed waiver, the lay
+   shaft's ≈1.6 mN, retired that way when §137's span and stroke
+   corrections put the chain's delivered ≈6 mN back inside the window),
    and `slenderness` **0 stale waivers** (§54's report, reachable at last —
    its rows stay a REPORT by §54's own covenant and the unwaived residue is
-   TODO 72's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
+   TODO 78's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
    unit with no over-ceiling row, so deleting a fix's waiver is
    structurally part of the fix).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the

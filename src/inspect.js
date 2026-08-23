@@ -7326,14 +7326,17 @@ export const TRANSFER_ENVELOPES = {
   CASE_PUSHER_INPUT_N,         // N at the cap — what a finger delivers
 };
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
+// EMPTY, and the empty table is a record: the seed waiver — the lay shaft's
+// "≈1.6 mN against a 5 mN floor" — retired when two stale numbers died in
+// one week. The 22 N/m shaft compliance was a stiffness for the pre-§68
+// 4.5 mm overhang (§137 Landing 1's correction: the measured cantilever is
+// 0.929 mm, and Landing 2 put the section on its 2800 N/m force floor), and
+// the tail's 0.158 mm stroke was the retired 0.42-unit plan constant (the
+// registration solve's own |rodTravel| reads ≈0.038 mm). On live metal the
+// chain delivers ≈6 mN at the drive tab, tail-limited, INSIDE the window —
+// so the row measures green and a waiver here would be the standing excuse
+// the staleness tier below exists to catch.
 export const TRANSFER_WAIVERS = {
-  // The arming chain's known starvation, in the audit's own vocabulary: the
-  // lay shaft delivers ≈1.6 mN at the drive tab against the detent window's
-  // 5 mN floor — TODO 63's re-taken number on the shipped 0.12 shaft, owned
-  // by TODO 16 (two thickenings CI-rejected on Alarm link ⇄ Minute jumper;
-  // the jumper-envelope measurement is the named prerequisite for the next
-  // attempt). The waiver is the finding made visible, not made to go away.
-  'alarm arming: lay shaft cranks (rod foot → ring drive tab)': 'TODO 16',
 };
 export function checkTransfers(clock) {
   const payload = clock.transfers;
@@ -7392,6 +7395,14 @@ export function checkTransfers(clock) {
     if (p.envelope) (waiver ? waived : unwaived).push({ site: row.site, ...p.envelope, ...(waiver ? { debt: waiver } : {}) });
     return { ...row, waived: waiver, problems: p };
   });
+  // A TRANSFER_WAIVERS entry naming a site with no envelope miss is STALE —
+  // the debt it cited has been paid (or the site renamed) and the entry is a
+  // standing excuse waiting for a new offender to hide under. Same covenant
+  // as the slenderness table's staleness tier, for the same reason: deleting
+  // a fix's waiver is structurally part of the fix.
+  const violatedSites = new Set([...unwaived, ...waived].map((v) => v.site));
+  const staleWaivers = Object.keys(TRANSFER_WAIVERS).filter((k) => !violatedSites.has(k))
+    .map((k) => ({ site: k, debt: TRANSFER_WAIVERS[k], problem: 'waiver names a site with no envelope miss — retire it' }));
   // Positive control — a synthetic bad row must be caught by the same
   // classifier the real rows go through, or this check has died quietly.
   const ctrl = judge({ site: '__control', idiom: 'wishfulThinking', unit: '__no_such_unit',
@@ -7404,7 +7415,7 @@ export function checkTransfers(clock) {
   return {
     ok: true,   // the §40/§48 rule: a report, gated only on its gateable tiers
     population: payload.rows.length, byIdiom, rows,
-    malformed, stale, mismatched, unwaived, waived, control,
+    malformed, stale, mismatched, unwaived, waived, staleWaivers, control,
     note: 'rows are declared beside the metal (main.js declareTransfer); '
       + 'a failing row is accepted debt only while it cites its TODO item',
   };

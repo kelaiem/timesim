@@ -201,9 +201,10 @@ export const BATTERY = [
   // without a cited TODO. The control is gated for the same reason as §48's:
   // a classifier that quietly stops catching bad rows is a dead instrument.
   { name: 'transfers', opts: {},
-    gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, control PASS',
+    gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS',
     fails: (r) => [
       ...r.malformed, ...r.stale, ...r.mismatched, ...r.unwaived,
+      ...(r.staleWaivers || []),
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
     ],
     note: (r) => `${r.population} transfers (`

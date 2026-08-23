@@ -16165,13 +16165,21 @@ consumers, values unmoved).
 | click detent | **14.7 mN** peak at the nose flank | ψ(OUT)−ψ(SEAT) through the blade at bearFrac·L — INSIDE the declared window, which is the anchoring the window's declaration promised |
 | pawl at the saw root | **13.8 mN** per indexing press | the click torque paid back at the saw's own outermost radius (ratchetPoly); against the 1–5 N finger band the chain starves at the SHAFT, never the input |
 | silence finger | **≈51 mN** | the feeler bias blade's k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot; the lifter carries aF/aP of it |
-| lay shaft delivery | **1.58 mN** at the drive tab | TODO 63's re-taken 22 N/m × ALARM_SEL_TRAVEL, QUOTED not re-derived — the one envelope miss, waived citing TODO 16 |
+| lay shaft delivery | **≈6 mN** at the drive tab | the tail's stall through the crank pair at the measured stroke ratio, TAIL-limited — INSIDE the window near its floor, so the seed waiver retired (the first cut quoted TODO 63's 22 N/m, a stiffness for the retired pre-§68 span — see the two-sessions note below) |
 | elbow bends | see below | the beam-column pair, both rods |
 
-One published number moved by being computed against the live build: the
-beak tail's stall is k × the registration solve's own |rodTravel|
-(0.0376 mm) ≈ **11.5 mN**, not the 48 mN TODO 63 quoted against the retired
-0.42-unit rod-travel constant. The k (305 N/m) stands; the stroke was stale.
+Two published numbers moved by being computed against the live build, one
+per prior record. TODO 63's ≈1.6 mN "shaft-limited" headline was 22 N/m —
+the compliance of the PRE-§68 4.5 mm overhang, retired when the bush moved
+next to its load (Landing 1's correction; the measured cantilever is
+0.929 mm, where Landing 2's section meets its 2800 N/m floor). And both
+TODO 63 and Landing 2 multiplied the tail's 305 N/m by the 0.158 mm plan
+stroke — the retired 0.42-unit constant the solve output replaced; the
+live |rodTravel| is 0.0376 mm, so the tail stalls at ≈ **11.5 mN** and the
+chain delivers ≈ **6 mN** at the tab through the crank pair's measured
+stroke ratio. TAIL-limited, inside the 5–50 mN window near its floor — the
+claim TODO 16 was opened over, now measured green on live metal at every
+boot, and the rows recompute it rather than quoting any record.
 
 ### The elbows: rigid bend kept, and priced
 
@@ -16203,36 +16211,48 @@ it has two in substance — `stopCrank` (a see-saw on a radial hinge) and
 §45's `alarmSilRocker` (designed arms, "designed, not inherited") — and the
 vocabulary names them `crank` rather than inventing a part.
 
-### The slenderness report, reachable — and the waiver, re-founded
+### The slenderness report, reachable — and the waiver, held honestly
 
 `checkSlenderness` was exported and registered NOWHERE (the restoring
 defect, found a second time); it is in `CHECKS` and the battery now. Its
 rows stay a REPORT by §54's own covenant — seven unwaived over-ceiling
-members exist and are TODO 72's catalogue — and what gates is WAIVER
-STALENESS: an entry naming a unit with no over-ceiling row fails, so
-deleting a fix's waiver is structurally part of the fix.
+members exist and are TODO 78's catalogue — and what gates is WAIVER
+STALENESS, on both waiver tables alike: an entry naming a unit (or a
+transfer site) with nothing left to waive fails, so deleting a fix's
+waiver is structurally part of the fix.
 
-`probe-137-jumper-envelope` then took TODO 16's named prerequisite (virgin
-boot, crown pulled through step(dt), 250 settled setting samples) and
-retired the waiver's RATIONALE without retiring the debt: **the minute
-jumper never enters the shaft's neighbourhood** — §68 flipped the chord and
-§112 moved the alarm module after the CI rejections, and the
-radius-insensitivity of those rejections (0.312 vs 0.310) was the tell. The
-live binder is the corridor, measured against the §36 registry's pose-net
-hulls with the link excluded: allowance **0.434 u** along most of the chord
-(the setting idler's swept annulus), **0.801 u** under the dial plate,
-minimum 0.428. Against those walls no §54-legal section plus §50-legal bush
-walls fits any station layout on the current chord — partial thickening
-re-enters the same wall through the bush rebores. The bind is LAYOUT; per
-the design-priority rule the fix is position space (re-site the idler or
-re-route the chord, §22/§33 machinery), filed in TODO 16 with the numbers.
-The acceptance's "retire the waiver" branch therefore resolved as its other
-branch allows: the measured refusal is the record, the waiver stands
-RE-FOUNDED on live numbers in all three places its dead story lived, and
-the staleness gate guarantees the entry cannot outlive the layout fix.
+The jumper-envelope probe took TODO 16's named prerequisite and retired
+the waiver's RATIONALE without retiring the debt: **the minute jumper
+never comes anywhere near the shaft** (13.32 u — §68 flipped the chord
+and §112 moved the alarm module after the CI rejections, and the
+radius-insensitivity of those rejections, 0.312 vs 0.310, was the tell).
+The live binder is the corridor: the setting idler caps the legal section
+at r 0.285 over 89 probed stations. The FORCE half closed there — Landing
+2's r 0.1233 meets the 2800 N/m floor with 2.3× of corridor to spare —
+and what the waiver still covers is §54's ceiling alone: λ 30 wants
+r 0.3258 over the bush-to-bush span, which no corridor-legal section
+reaches, so retirement is a THIRD BUSH STATION — position space, filed as
+roadmap §156 — and the staleness gate guarantees the entry cannot outlive
+that landing.
+
+### Two sessions, one §
+
+This entry landed twice in one day, from opposite ends. A parallel
+session scoped the §137 plan, built the two probes, corrected TODO 63's
+span arithmetic in comments (Landings 1–2, including the shaft's
+force-floor section); this session built the declared AUDIT — the idiom
+vocabulary, the rows, the gates — and corrected the OTHER stale number
+(the tail's plan stroke). The two converged everywhere they overlapped
+(click ≈15 mN both ways, reset e = 0 both ways, idler wall 0.285 ≡
+0.434 − CLEAR_MARGIN, jumper-not-the-blocker both ways), which is what
+measurement-first buys: two independent instruments agreeing is the
+strongest verification either landing got. The one §-number collision
+(§154, minted twice) was caught and renumbered to §156 on the roadmap.
 
 **Verified.** Boot silent; 13 transfer rows — 0 malformed, 0 stale,
-0 mismatched, 0 unwaived, 1 waived (the seed), control PASS; slenderness
-9 over / 7 unwaived / 0 stale waivers; identity geometry untouched
-throughout (the audit is declarations and two mesh names — the fingerprint
-hashes unit boxes at poses, and no pose law moved).
+0 mismatched, 0 unwaived envelope misses, 0 stale waivers (the waiver
+table is EMPTY, and emptily gated), control PASS; slenderness 9 over /
+7 unwaived / 0 stale waivers, shaft λ 135.4 at Landing 2's section;
+identity geometry untouched by the audit itself (declarations and mesh
+names only — Landing 2's radius bump is that landing's own fingerprint
+move).
